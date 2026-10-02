@@ -30,11 +30,12 @@ export function makeArchive(files: { path: string; content: string; kind?: strin
 export function makePublicBundle(
   tag = "v3.0.0",
   releaseId = "100",
-  catalog = publicFixtureCatalog
+  catalog = publicFixtureCatalog,
+  search = publicFixtureSearch
 ) {
   const files = [
     { path: "catalog.json", content: encodeJson(catalog) },
-    { path: "search-documents.json", content: encodeJson(publicFixtureSearch) },
+    { path: "search-documents.json", content: encodeJson(search) },
   ];
   const archive = makeArchive(files);
   const manifest: PlaybookManifest = {

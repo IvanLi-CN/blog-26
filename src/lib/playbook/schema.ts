@@ -19,6 +19,7 @@ export const safePathSchema = z
 
 const text = z.string().max(16 * 1024 * 1024);
 const nullableText = text.nullish();
+const normalizedKey = (key: string) => key.replace(/[^a-z0-9]/giu, "").toLowerCase();
 const sectionSchema = z.strictObject({
   id: z
     .string()
@@ -80,7 +81,7 @@ const privateMetadataKeys = new Set([
 ]);
 const metadataSchema = z.strictObject({
   key: text.refine(
-    (key) => !privateMetadataKeys.has(key.replace(/[^a-z0-9]/giu, "").toLowerCase()),
+    (key) => !privateMetadataKeys.has(normalizedKey(key)),
     "Internal metadata field"
   ),
   value: text,
@@ -254,6 +255,7 @@ export function assertPublicCatalog(value: unknown) {
         policy.resources.some(
           (resource) =>
             resource.path === "SKILL.md" ||
+            resource.path.startsWith("SKILL.md/") ||
             policy.resources.some((other) => other.path.startsWith(`${resource.path}/`))
         )
       )
@@ -267,14 +269,26 @@ function unique(values: string[]) {
   if (new Set(values).size !== values.length) throw new Error("Duplicate playbook identity");
 }
 
+const internalRecordKeys = new Set([
+  "repopath",
+  "snapshotdoc",
+  "fingerprintdoc",
+  "packagepath",
+  "latestgeneration",
+  "relatedgenerations",
+  "generationruns",
+  "threadid",
+  "apikey",
+  "accesstoken",
+  "privatekey",
+  "password",
+  "secret",
+]);
+
 function rejectInternalFields(value: unknown) {
   if (!value || typeof value !== "object") return;
   for (const [key, nested] of Object.entries(value)) {
-    if (
-      /^(repo_path|snapshot_doc|fingerprint_doc|package_path|latest_generation|related_generations|generation_runs|thread_id|api_key|access_token|private_key|password|secret)$/iu.test(
-        key
-      )
-    )
+    if (internalRecordKeys.has(normalizedKey(key)))
       throw new Error(`Internal field in public playbook: ${key}`);
     rejectInternalFields(nested);
   }

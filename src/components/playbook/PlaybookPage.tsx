@@ -41,6 +41,7 @@ function Sections({ sections }: { sections: PlaybookDocSection[] }) {
             mapContentUrl={rewritePlaybookUrl}
             rewritePublicSitePaths
             enableCodeFolding={false}
+            enableMermaid={false}
           />
         </section>
       ))}
@@ -68,6 +69,7 @@ function PolicyContent({
         mapContentUrl={(url) => rewritePlaybookUrl(url, base, resourceHref)}
         rewritePublicSitePaths
         enableCodeFolding={false}
+        enableMermaid={false}
       />
       <section id="installation">
         <h2 className="font-heading text-2xl font-semibold">手动安装</h2>

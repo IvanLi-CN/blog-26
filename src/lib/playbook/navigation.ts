@@ -14,23 +14,14 @@ export function normalizePlaybookSearch(
   catalog: PlaybookPublicCatalog,
   payload: PlaybookSearchPayload
 ): PlaybookSearchPayload {
-  const documents = payload.documents.map((document) => {
-    const href = playbookHref(document.route);
-    const parts = href.split("/");
-    const detail =
-      parts[2] === "topics"
-        ? catalog.topic_details.find((item) => item.item.slug === parts[3])
-        : catalog.project_details.find((item) => item.item.slug === parts[3]);
-    if (parts[3] && !detail) throw new Error("Search references a non-public object");
-    if (
-      document.section_id &&
-      !detail?.sections.some((section) => section.id === document.section_id)
-    )
-      throw new Error("Search references an unknown section");
-    return { ...document, route: href };
-  });
+  const documents = payload.documents.map((document) => ({
+    ...document,
+    route: validatePlaybookSearchRoute(catalog, document),
+  }));
+  if (new Set(documents.map((document) => document.id)).size !== documents.length)
+    throw new Error("Duplicate search document identity");
   for (const policy of catalog.topic_details.flatMap((topic) => topic.policy_skills)) {
-    documents.push({
+    const document: PlaybookSearchPayload["documents"][number] = {
       id: `policy:${policy.summary.slug}`,
       kind: "page",
       title: policy.summary.name,
@@ -40,11 +31,44 @@ export function normalizePlaybookSearch(
       keywords: [policy.summary.slug, policy.summary.primary_topic],
       section_id: null,
       command_id: null,
-    });
+    };
+    const existing = documents.findIndex((entry) => entry.id === document.id);
+    if (existing === -1) documents.push(document);
+    else {
+      const entry = documents[existing];
+      if (entry.kind !== "page" || entry.route !== document.route || entry.section_id)
+        throw new Error("Conflicting Policy search identity");
+      // Always index the complete catalog instruction, even when upstream supplies a summary.
+      documents[existing] = document;
+    }
   }
-  if (new Set(documents.map((document) => document.id)).size !== documents.length)
-    throw new Error("Duplicate search document identity");
   return { generated_at: payload.generated_at, documents };
+}
+
+export function validatePlaybookSearchRoute(
+  catalog: PlaybookPublicCatalog,
+  document: PlaybookSearchPayload["documents"][number]
+) {
+  const href = playbookHref(document.route, document.section_id);
+  const [pathname, anchor] = href.split("#");
+  const [, , group, slug] = pathname.split("/");
+  const detail =
+    group === "topics"
+      ? catalog.topic_details.find((entry) => entry.item.slug === slug)
+      : group === "projects"
+        ? catalog.project_details.find((entry) => entry.item.slug === slug)
+        : getPlaybookPolicies(catalog).find((entry) => entry.summary.slug === slug);
+  if (slug && !detail) throw new Error("Search references a non-public object");
+  if (anchor) {
+    const id = decodeURIComponent(anchor);
+    const valid =
+      detail &&
+      ("sections" in detail
+        ? detail.sections.some((section) => section.id === id)
+        : id === "installation" || (id === "resources" && detail.resources.length > 0));
+    if (!valid) throw new Error("Search references an unknown section");
+  }
+  return href;
 }
 
 export function getPlaybookPolicies(catalog: PlaybookPublicCatalog) {

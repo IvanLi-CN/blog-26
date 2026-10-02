@@ -13,7 +13,7 @@ import {
   playbookVersionPath,
   validatePlaybookEdition,
 } from "../../src/lib/playbook/cache";
-import { publicFixtureCatalog } from "../../src/lib/playbook/fixture";
+import { publicFixtureCatalog, publicFixtureSearch } from "../../src/lib/playbook/fixture";
 import { encodeJson, parseManifest, sha256 } from "../../src/lib/playbook/manifest";
 import {
   adoptionDecision,
@@ -88,6 +88,93 @@ describe("playbook-public-contract", () => {
         bundle: { ...bundle.manifest.bundle, size: archive.length, sha256: sha256(archive) },
       })
     ).toThrow("Unsafe");
+  });
+  test("rejects nested internal key variants without excluding ordinary public fields", () => {
+    for (const key of ["repoPath", "API-Key", "accessToken", "private.key", "Thread ID"])
+      for (const target of ["frontmatter", "stack"]) {
+        const catalog = structuredClone(publicFixtureCatalog);
+        const nested = { public: [{ [key]: "must remain private" }] };
+        if (target === "frontmatter")
+          catalog.topic_details[0].policy_skills[0].frontmatter.extra = nested;
+        else catalog.project_details[0].stack = nested;
+        expect(() => assertPublicCatalog(catalog)).toThrow("Internal field");
+      }
+    const catalog = structuredClone(publicFixtureCatalog);
+    catalog.topic_details[0].policy_skills[0].frontmatter.metadata = { code: "public sample" };
+    expect(assertPublicCatalog(catalog)).toEqual(catalog);
+  });
+  test("rejects resource paths that collide with generated SKILL.md or other files", () => {
+    for (const paths of [["SKILL.md"], ["SKILL.md/foo"], ["scripts", "scripts/verify.sh"]]) {
+      const catalog = structuredClone(publicFixtureCatalog);
+      catalog.topic_details[0].policy_skills[0].resources = paths.map((path) => ({
+        path,
+        kind: "text",
+        content: "public resource",
+      }));
+      expect(() => assertPublicCatalog(catalog)).toThrow("resource path collision");
+    }
+  });
+  test("renders package Mermaid as inert code in Topic and Policy SSR", () => {
+    const catalog = structuredClone(publicFixtureCatalog);
+    const markdown = "\n```mermaid\ngraph TD; A-->B;\nclick A call packageCallback()\n```";
+    catalog.topic_details[0].sections[0].markdown += markdown;
+    catalog.topic_details[0].policy_skills[0].instruction_markdown += markdown;
+    const { edition } = makePublicBundle("v3.0.0", "100", catalog);
+    for (const path of ["topics/delivery", "policies/safe-release"]) {
+      const html = renderToStaticMarkup(createElement(PlaybookPage, { edition, path }));
+      expect(html).toContain("packageCallback()");
+      expect(html).toContain("<pre");
+      expect(html).not.toContain("mermaid-container");
+      expect(html).not.toContain("<svg");
+    }
+  });
+  test("accepts known public Policy search pages and real anchors with one complete canonical document", () => {
+    const search = structuredClone(publicFixtureSearch);
+    search.documents.push(
+      {
+        ...search.documents[0],
+        id: "policy:safe-release",
+        route: "/policies/safe-release/",
+        body: "summary",
+      },
+      {
+        ...search.documents[0],
+        id: "policy-install",
+        kind: "section",
+        route: "/policies/safe-release/",
+        section_id: "installation",
+      },
+      {
+        ...search.documents[0],
+        id: "policy-resources",
+        kind: "section",
+        route: "/policies/safe-release/#resources",
+      }
+    );
+    const { edition } = makePublicBundle("v3.0.0", "100", publicFixtureCatalog, search);
+    expect(validatePlaybookEdition(edition)).toEqual(edition);
+    const policy = edition.search.documents.filter(
+      (document) => document.id === "policy:safe-release"
+    );
+    expect(policy).toHaveLength(1);
+    expect(policy[0].body).toBe(
+      publicFixtureCatalog.topic_details[0].policy_skills[0].instruction_markdown
+    );
+    expect(
+      edition.search.documents.find((document) => document.id === "policy-install")?.route
+    ).toBe("/playbook/policies/safe-release/#installation");
+    for (const route of ["/policies/private-rule/", "/policies/safe-release/#missing"]) {
+      const invalid = structuredClone(search);
+      invalid.documents[invalid.documents.length - 1].route = route;
+      expect(() => makePublicBundle("v3.0.0", "100", publicFixtureCatalog, invalid)).toThrow(
+        "Search references"
+      );
+    }
+    const collision = structuredClone(publicFixtureSearch);
+    collision.documents[0].id = "policy:safe-release";
+    expect(() => makePublicBundle("v3.0.0", "100", publicFixtureCatalog, collision)).toThrow(
+      "Conflicting Policy"
+    );
   });
   test("sanitizes Markdown, preserves anchors and renders useful SSR without fetching", () => {
     const catalog = structuredClone(publicFixtureCatalog);
@@ -416,6 +503,37 @@ describe("playbook-cache-http-ssr", () => {
     await expect(store.sync()).rejects.toThrow();
     expect(store.current?.edition.source.tag).toBe("v3.1.0");
     expect(PLAYBOOK_POLL_INTERVAL_MS).toBe(300_000);
+  });
+  test("console follows a verified published rollback pointer and persists both editions", async () => {
+    const root = await temp();
+    const oldCatalog = structuredClone(publicFixtureCatalog);
+    oldCatalog.topic_details[0].sections[0].markdown = "Restored stable content";
+    const rollback = makePublicBundle("v3.0.0", "100", oldCatalog);
+    const newer = makePublicBundle("v3.1.0", "101");
+    let requests = 0;
+    const store = new PlaybookStore(root, async (url) => {
+      requests++;
+      if (url.endsWith("manifest.json")) return Response.json(rollback.edition.edition);
+      return new Response(
+        encodeJson(
+          url.endsWith("catalog.json") ? rollback.edition.catalog : rollback.edition.search
+        )
+      );
+    });
+    await store.adopt(newer.edition);
+    await store.sync();
+    expect(store.current?.edition.source.tag).toBe("v3.0.0");
+    const html = renderToStaticMarkup(
+      createElement(PlaybookPage, { edition: store.current, path: "topics/delivery" })
+    );
+    expect(html).toContain("Restored stable content");
+    expect(requests).toBe(3);
+    const restored = new PlaybookStore(root);
+    await restored.load(join(root, "missing-seed.json"));
+    expect(restored.current?.edition).toEqual(rollback.edition.edition);
+    expect(restored.getEdition(newer.edition.edition.editionDigest)?.edition).toEqual(
+      newer.edition.edition
+    );
   });
 });
 test("Chinese, English and independent Policy documents use the upstream tokenization strategy", () => {

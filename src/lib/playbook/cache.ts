@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { encodeJson, parseEditionIdentity, samePlaybookEdition, verifyFile } from "./manifest";
-import { getPlaybookPolicies, playbookHref } from "./navigation";
+import { validatePlaybookSearchRoute } from "./navigation";
 import { assertPublicCatalog, searchSchema } from "./schema";
 import type { PlaybookEdition, PlaybookEditionIdentity } from "./types";
 
@@ -29,27 +29,11 @@ export function validatePlaybookEdition(value: unknown): PlaybookEdition {
   const edition = parseEditionIdentity(input.edition);
   const catalog = assertPublicCatalog(input.catalog);
   const search = searchSchema.parse(input.search);
-  const policies = getPlaybookPolicies(catalog);
   const ids = new Set<string>();
   for (const document of search.documents) {
     if (ids.has(document.id)) throw new Error("Duplicate search id");
     ids.add(document.id);
-    const href = playbookHref(document.route);
-    const [, , group, slug] = href.split("/");
-    const detail =
-      group === "topics"
-        ? catalog.topic_details.find((entry) => entry.item.slug === slug)
-        : group === "projects"
-          ? catalog.project_details.find((entry) => entry.item.slug === slug)
-          : policies.find((entry) => entry.summary.slug === slug);
-    if (slug && !detail) throw new Error("Search references a non-public object");
-    if (
-      document.section_id &&
-      (!detail ||
-        !("sections" in detail) ||
-        !detail.sections.some((section) => section.id === document.section_id))
-    )
-      throw new Error("Search anchor missing from edition");
+    validatePlaybookSearchRoute(catalog, document);
   }
   for (const file of edition.files.filter((entry) => entry.path !== "public-snapshot.json"))
     verifyFile(encodeJson(file.path === "catalog.json" ? catalog : search), file);
