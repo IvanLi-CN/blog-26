@@ -1,4 +1,4 @@
-import { encodeJson, parseManifest } from "./manifest";
+import { encodeJson, parseManifest, samePlaybookEdition } from "./manifest";
 import { PLAYBOOK_REPOSITORY, stableTagSchema } from "./schema";
 import type { PlaybookEditionIdentity, PlaybookManifest } from "./types";
 
@@ -178,10 +178,7 @@ export async function deployContent(
       const decision = adoptionDecision(manifest, latest);
       if (decision !== "update") return decision;
     }
-    if (
-      latest.rendererCommit !== edition.rendererCommit ||
-      latest.editionDigest !== current.editionDigest
-    ) {
+    if (latest.rendererCommit !== edition.rendererCommit || !samePlaybookEdition(latest, current)) {
       current = latest;
       continue;
     }

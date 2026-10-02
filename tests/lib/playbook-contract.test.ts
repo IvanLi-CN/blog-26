@@ -334,6 +334,40 @@ describe("playbook-build-deploy-adapter", () => {
     expect(renderers).toEqual(["b".repeat(40), "c".repeat(40)]);
     expect(deployed).toBe("c".repeat(40));
   });
+  test("rebuilds when a source-distinct pointer changes despite an identical digest", async () => {
+    const first = makePublicBundle("v3.0.0", "100");
+    const concurrent = makePublicBundle("v3.1.0", "101");
+    const next = makePublicBundle("v3.2.0", "102");
+    expect(first.edition.edition.editionDigest).toBe(concurrent.edition.edition.editionDigest);
+    let current = first.edition.edition;
+    const retainedSources: string[] = [];
+    let deployedPrevious = "";
+    const outcome = await deployContent(
+      {
+        current: async () => current,
+        build: async (_manifest, _renderer, retained) => {
+          if (!retained) throw new Error("Missing retained edition");
+          retainedSources.push(retained.source.tag);
+          if (retainedSources.length === 1) current = concurrent.edition.edition;
+          return {
+            ...next.edition.edition,
+            previous: { tag: retained.source.tag, editionDigest: retained.editionDigest },
+          };
+        },
+        deploy: async (edition) => {
+          deployedPrevious = edition.previous?.tag || "";
+        },
+        verify: async () => {
+          /* Successful mock operation. */
+        },
+      },
+      next.manifest,
+      { automaticUpdatesEnabled: true }
+    );
+    expect(outcome).toBe("deployed");
+    expect(retainedSources).toEqual(["v3.0.0", "v3.1.0"]);
+    expect(deployedPrevious).toBe("v3.1.0");
+  });
   test("paused updates and explicit rollback enforce production boundaries", async () => {
     const next = makePublicBundle();
     let calls = 0;
