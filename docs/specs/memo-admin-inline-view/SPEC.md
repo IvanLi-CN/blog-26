@@ -77,7 +77,7 @@ On wide screens, each card reserves a stable area for actions beside its content
 
 - Method: run `bun run demo:memo-list` and inspect the shipped Astro `/memos/?demo=true` route with a mock-only 2,400-record fixture, scrolling toward both edges. The Web Demo must reuse the real site route and production list; it must not be implemented as a Storybook page or a standalone demo route.
 - covers: `REQ-MAIV-003`
-- Pass condition: the 2,400-record fixture loads one page for each edge-directed scroll and does not continue loading during idle time; continued scrolling loads further adjacent pages; the reading anchor remains stable when prepending; rendered DOM rows remain bounded while loaded count increases. The admin E2E suite also delays one edge request and verifies that an opposite-edge request completes afterward.
+- Pass condition: the 2,400-record fixture loads one page for each edge-directed scroll and does not continue loading during idle time; continued scrolling loads further adjacent pages; the reading anchor remains stable when prepending; rendered DOM rows remain bounded while loaded count increases. The administrator component suite supplies a middle-window fixture with both cursors, delays one edge request, and verifies that the opposite-edge request completes afterward. The production-route administrator E2E suite verifies the default latest-page list and append behavior.
 
 ### VER-MAIV-003
 

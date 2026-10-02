@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
-import { parseConsoleInitialMemoPage } from "../lib/memo-pagination";
-import MemoTimeline from "./MemoTimeline";
+import MemoTimeline from "../../site/components/MemoTimeline";
+import { parseConsoleInitialMemoPage } from "../../site/lib/memo-pagination";
 
 if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
 
