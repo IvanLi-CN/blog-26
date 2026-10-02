@@ -1,4 +1,4 @@
-import { encodeJson, parseManifest, samePlaybookEdition } from "./manifest";
+import { encodeJson, parseEditionIdentity, parseManifest, samePlaybookEdition } from "./manifest";
 import { PLAYBOOK_REPOSITORY, stableTagSchema } from "./schema";
 import type { PlaybookEditionIdentity, PlaybookManifest } from "./types";
 
@@ -148,6 +148,23 @@ export interface DeploymentAdapter {
   verify(edition: PlaybookEditionIdentity): Promise<void>;
 }
 
+function matchesBuildIdentity(
+  edition: PlaybookEditionIdentity,
+  manifest: PlaybookManifest,
+  rendererCommit: string
+) {
+  try {
+    parseEditionIdentity(edition);
+  } catch {
+    return false;
+  }
+  return (
+    edition.rendererCommit === rendererCommit &&
+    encodeJson(edition.bundle) === encodeJson(manifest.bundle) &&
+    encodeJson(edition.source) === encodeJson(manifest.source)
+  );
+}
+
 // Must be called inside the production lock. No app version or image is created.
 export async function deployContent(
   adapter: DeploymentAdapter,
@@ -166,11 +183,7 @@ export async function deployContent(
   // Also supports adapters where preparation can outlive a renderer publication.
   for (let attempt = 0; attempt < 3; attempt++) {
     const edition = await adapter.build(manifest, current.rendererCommit, current);
-    if (
-      edition.rendererCommit !== current.rendererCommit ||
-      edition.bundle.sha256 !== manifest.bundle.sha256 ||
-      edition.source.releaseId !== manifest.source.releaseId
-    )
+    if (!matchesBuildIdentity(edition, manifest, current.rendererCommit))
       throw new Error("Build identity does not match the fixed inputs");
     const latest = await adapter.current();
     if (!latest) throw new Error("Deployed renderer identity disappeared");

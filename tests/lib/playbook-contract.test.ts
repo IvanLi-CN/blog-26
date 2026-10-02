@@ -5,7 +5,11 @@ import { join } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import PlaybookPage from "../../src/components/playbook/PlaybookPage";
-import { downloadRetainedEdition, writePublicEdition } from "../../src/lib/playbook/artifacts";
+import {
+  downloadRetainedEdition,
+  readPublicPointer,
+  writePublicEdition,
+} from "../../src/lib/playbook/artifacts";
 import { createPlaybookEdition, readPublicArchive } from "../../src/lib/playbook/bundle";
 import {
   PLAYBOOK_POLL_INTERVAL_MS,
@@ -14,7 +18,12 @@ import {
   validatePlaybookEdition,
 } from "../../src/lib/playbook/cache";
 import { publicFixtureCatalog, publicFixtureSearch } from "../../src/lib/playbook/fixture";
-import { encodeJson, parseManifest, sha256 } from "../../src/lib/playbook/manifest";
+import {
+  computeEditionDigest,
+  encodeJson,
+  parseManifest,
+  sha256,
+} from "../../src/lib/playbook/manifest";
 import {
   adoptionDecision,
   deployContent,
@@ -318,7 +327,9 @@ describe("playbook-build-deploy-adapter", () => {
         build: async (_manifest, renderer) => {
           renderers.push(renderer);
           if (renderers.length === 1) current = { ...current, rendererCommit: "c".repeat(40) };
-          return { ...next.edition.edition, rendererCommit: renderer };
+          const edition = { ...next.edition.edition, rendererCommit: renderer };
+          edition.editionDigest = computeEditionDigest(edition);
+          return edition;
         },
         deploy: async (edition) => {
           deployed = edition.rendererCommit;
@@ -421,9 +432,58 @@ describe("playbook-build-deploy-adapter", () => {
     ).rejects.toThrow("failed build");
     expect(deployed).toBe(false);
   });
+  test("rejects build output with mismatched source or package identity", async () => {
+    const current = makePublicBundle();
+    const next = makePublicBundle("v3.1.0", "101");
+    const mutations = [
+      (edition: typeof next.edition.edition) => ({
+        ...edition,
+        source: { ...edition.source, commit: "c".repeat(40) },
+      }),
+      (edition: typeof next.edition.edition) => ({
+        ...edition,
+        bundle: { ...edition.bundle, size: edition.bundle.size + 1 },
+      }),
+      (edition: typeof next.edition.edition) => ({
+        ...edition,
+        files: edition.files.map((file) =>
+          file.path === "catalog.json" ? { ...file, sha256: "0".repeat(64) } : file
+        ),
+      }),
+    ];
+    for (const mutate of mutations) {
+      let deployed = false;
+      await expect(
+        deployContent(
+          {
+            current: async () => current.edition.edition,
+            build: async () => mutate(next.edition.edition),
+            deploy: async () => {
+              deployed = true;
+            },
+            verify: async () => {
+              /* Successful mock operation. */
+            },
+          },
+          next.manifest,
+          { automaticUpdatesEnabled: true }
+        )
+      ).rejects.toThrow("Build identity");
+      expect(deployed).toBe(false);
+    }
+  });
 });
 
 describe("playbook-artifact-verification", () => {
+  test("bounds the public pointer response before parsing", async () => {
+    await expect(
+      readPublicPointer(
+        "https://blog.test/_content/playbook/manifest.json",
+        async () => new Response("x".repeat(64 * 1024 + 1))
+      )
+    ).rejects.toThrow("size limit");
+  });
+
   test("renderer and article snapshot changes create different immutable identities; artifacts reproduce", async () => {
     const bundle = makePublicBundle();
     const files = readPublicArchive(bundle.archive, bundle.manifest);

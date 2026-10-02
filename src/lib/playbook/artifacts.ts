@@ -16,6 +16,25 @@ async function write(path: string, data: string | Uint8Array) {
   await writeFile(path, data);
 }
 
+async function readBoundedResponse(response: Response, maxBytes: number) {
+  if (!response.body) throw new Error("Public pointer has no response body");
+  const reader = response.body.getReader();
+  const parts: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) throw new Error("Public pointer exceeds declared size limit");
+      parts.push(value);
+    }
+  } finally {
+    await reader.cancel();
+  }
+  return Buffer.concat(parts);
+}
+
 export async function readPublicPointer(url: string, fetcher: PlaybookFetcher = fetch) {
   const response = await fetcher(url, {
     redirect: "error",
@@ -24,7 +43,9 @@ export async function readPublicPointer(url: string, fetcher: PlaybookFetcher = 
   });
   if (response.status === 404) return undefined;
   if (!response.ok) throw new Error(`Public pointer unavailable: ${response.status}`);
-  return parseEditionIdentity(await response.json());
+  return parseEditionIdentity(
+    JSON.parse(new TextDecoder().decode(await readBoundedResponse(response, 64 * 1024)))
+  );
 }
 
 export async function downloadRetainedEdition(
