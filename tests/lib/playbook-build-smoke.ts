@@ -1,4 +1,5 @@
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { createServer } from "node:net";
 import { resolve } from "node:path";
 import { parseEditionIdentity, sha256 } from "../../src/lib/playbook/manifest";
 
@@ -38,7 +39,18 @@ for (const route of pageRoutes) {
 const searchBytes = await readFile(resolve(editionRoot, "search-documents.json"));
 const searchPayload = JSON.parse(searchBytes.toString("utf8")) as { documents?: unknown[] };
 if (!Array.isArray(searchPayload.documents)) throw new Error("Static search output is invalid");
-const port = "35091";
+const portProbe = createServer();
+await new Promise<void>((resolvePromise, reject) => {
+  portProbe.once("error", reject);
+  portProbe.listen(0, "127.0.0.1", () => resolvePromise());
+});
+const portAddress = portProbe.address();
+if (!portAddress || typeof portAddress === "string") {
+  await new Promise<void>((resolvePromise) => portProbe.close(() => resolvePromise()));
+  throw new Error("Playbook smoke test could not reserve a port");
+}
+const port = String(portAddress.port);
+await new Promise<void>((resolvePromise) => portProbe.close(() => resolvePromise()));
 await mkdir(".tmp", { recursive: true });
 const cacheRoot = await mkdtemp(resolve(".tmp/smoke-playbook-"));
 const child = Bun.spawn(["bun", "scripts/start-console.ts"], {
