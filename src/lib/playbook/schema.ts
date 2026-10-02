@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const PLAYBOOK_REPOSITORY = "IvanLi-CN/style-playbook-skills";
+export const PLAYBOOK_MAX_MANIFEST_BYTES = 64 * 1024;
+export const PLAYBOOK_MAX_BUNDLE_BYTES = 64 * 1024 * 1024;
 export const digestSchema = z.string().regex(/^[a-f0-9]{64}$/);
 export const commitSchema = z.string().regex(/^[a-f0-9]{40}$/);
 export const stableTagSchema = z.string().regex(/^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
@@ -197,11 +199,7 @@ export const sourceSchema = z.strictObject({
 export const bundleSchema = z.strictObject({
   name: z.literal("playbook-public.tar.gz"),
   sha256: digestSchema,
-  size: z
-    .number()
-    .int()
-    .positive()
-    .max(64 * 1024 * 1024),
+  size: z.number().int().positive().max(PLAYBOOK_MAX_BUNDLE_BYTES),
 });
 export const fileSchema = z.strictObject({
   path: safePathSchema,

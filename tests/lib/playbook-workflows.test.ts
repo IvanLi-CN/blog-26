@@ -8,7 +8,7 @@ import {
 import { getPublicStaticCacheControl } from "../../src/lib/public-static-cache-policy";
 
 describe("playbook deployment boundaries", () => {
-  test("all production jobs queue on the same lock and automatic updates start disabled", async () => {
+  test("all production jobs share the same lock and automatic updates start disabled", async () => {
     const update = load(
       await readFile(".github/workflows/playbook-content-update.yml", "utf8")
     ) as {
@@ -22,7 +22,7 @@ describe("playbook deployment boundaries", () => {
       jobs: { deploy_frontend_edgeone: { concurrency: object } };
     };
     expect(update.on.schedule[0].cron).toBe("17 * * * *");
-    const lock = { group: "blog26-edgeone-production", queue: "max", "cancel-in-progress": false };
+    const lock = { group: "blog26-edgeone-production", "cancel-in-progress": false };
     expect(update.jobs.production.concurrency).toEqual(lock);
     expect(rollback.jobs.rollback.concurrency).toEqual(lock);
     expect(release.jobs.deploy_frontend_edgeone.concurrency).toEqual(lock);

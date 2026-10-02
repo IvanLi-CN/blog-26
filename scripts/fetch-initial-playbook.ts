@@ -21,7 +21,9 @@ const release = await reader.release(id);
 const assets = release.assets;
 const manifestAsset = assets.find((asset) => asset.name === "playbook-public-manifest.json");
 if (!manifestAsset) throw new Error("Initial release has no readiness manifest");
-const manifest = JSON.parse(new TextDecoder().decode(await reader.asset(manifestAsset.id)));
+const manifest = JSON.parse(
+  new TextDecoder().decode(await reader.asset(manifestAsset.id, manifestAsset.size))
+);
 const selected = await resolveRelease(reader, {
   mode: "release",
   source_repository: "IvanLi-CN/style-playbook-skills",
@@ -31,7 +33,7 @@ const selected = await resolveRelease(reader, {
   bundle_sha256: manifest.bundle.sha256,
 });
 if (!selected) throw new Error("Initial release is not ready");
-const archive = await reader.asset(selected.bundleAssetId);
+const archive = await reader.asset(selected.bundleAssetId, selected.manifest.bundle.size);
 readPublicArchive(archive, selected.manifest);
 const directory = resolve(".tmp/playbook-initial");
 await mkdir(directory, { recursive: true });

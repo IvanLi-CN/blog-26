@@ -19,6 +19,7 @@ import {
   validatePlaybookEdition,
 } from "../../src/lib/playbook/cache";
 import { publicFixtureCatalog, publicFixtureSearch } from "../../src/lib/playbook/fixture";
+import { readBounded } from "../../src/lib/playbook/github";
 import {
   computeEditionDigest,
   encodeJson,
@@ -32,7 +33,7 @@ import {
   resolveRelease,
   type SourceRelease,
 } from "../../src/lib/playbook/release";
-import { assertPublicCatalog } from "../../src/lib/playbook/schema";
+import { assertPublicCatalog, PLAYBOOK_MAX_BUNDLE_BYTES } from "../../src/lib/playbook/schema";
 import {
   buildPlaybookIndex,
   queryPlaybookSearch,
@@ -309,6 +310,49 @@ function sourceReader(bundles: ReturnType<typeof makePublicBundle>[]): ReleaseRe
   };
 }
 describe("playbook-dispatch-and-reconcile", () => {
+  test("rejects oversized bundle metadata before downloading the asset", async () => {
+    const bundle = makePublicBundle();
+    const base = sourceReader([bundle]);
+    const release = await base.release("100");
+    let downloads = 0;
+    const reader: ReleaseReader = {
+      ...base,
+      release: async () => ({
+        ...release,
+        assets: release.assets.map((asset) =>
+          asset.name === "playbook-public.tar.gz"
+            ? { ...asset, size: PLAYBOOK_MAX_BUNDLE_BYTES + 1 }
+            : asset
+        ),
+      }),
+      asset: async (id) => {
+        downloads++;
+        return base.asset(id);
+      },
+    };
+    await expect(
+      resolveRelease(reader, {
+        mode: "release",
+        source_repository: bundle.manifest.source.repository,
+        source_release_id: bundle.manifest.source.releaseId,
+        source_tag: bundle.manifest.source.tag,
+        source_sha: bundle.manifest.source.commit,
+        bundle_sha256: bundle.manifest.bundle.sha256,
+      })
+    ).rejects.toThrow("assets are not ready");
+    expect(downloads).toBe(0);
+  });
+
+  test("bounds streaming source responses", async () => {
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(5));
+        controller.close();
+      },
+    });
+    await expect(readBounded(stream, 4)).rejects.toThrow("4-byte limit");
+  });
+
   test("selects highest ready SemVer and does not trust notification parameters", async () => {
     const bundles = [makePublicBundle("v3.9.0", "99"), makePublicBundle("v3.10.0", "100")];
     const reader = sourceReader(bundles);

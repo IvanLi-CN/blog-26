@@ -154,6 +154,9 @@ jobs:
           PUBLIC_SITE_URL: https://ivanli.cc
           PUBLIC_SITE_BASE_PATH: /
 
+      - name: Build Storybook
+        run: bun run build-storybook
+
   # Docker 仅构建校验（不推送）
   docker:
     # Keep the historical job name to avoid breaking required check contexts.

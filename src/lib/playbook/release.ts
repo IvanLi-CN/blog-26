@@ -1,5 +1,10 @@
 import { encodeJson, parseEditionIdentity, parseManifest, samePlaybookEdition } from "./manifest";
-import { PLAYBOOK_REPOSITORY, stableTagSchema } from "./schema";
+import {
+  PLAYBOOK_MAX_BUNDLE_BYTES,
+  PLAYBOOK_MAX_MANIFEST_BYTES,
+  PLAYBOOK_REPOSITORY,
+  stableTagSchema,
+} from "./schema";
 import type { PlaybookEditionIdentity, PlaybookManifest } from "./types";
 
 export interface SourceRelease {
@@ -15,7 +20,7 @@ export interface ReleaseReader {
   list(): Promise<SourceRelease[]>;
   release(id: string): Promise<SourceRelease>;
   commit(tag: string): Promise<string>;
-  asset(id: number): Promise<Uint8Array>;
+  asset(id: number, maxBytes?: number): Promise<Uint8Array>;
 }
 
 export interface ReleaseTrigger {
@@ -67,10 +72,15 @@ async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
     (asset) => asset.name === "playbook-public-manifest.json"
   );
   const bundleAsset = release.assets.find((asset) => asset.name === "playbook-public.tar.gz");
-  if (!manifestAsset || !bundleAsset || manifestAsset.size > 64 * 1024)
+  if (
+    !manifestAsset ||
+    !bundleAsset ||
+    manifestAsset.size > PLAYBOOK_MAX_MANIFEST_BYTES ||
+    bundleAsset.size > PLAYBOOK_MAX_BUNDLE_BYTES
+  )
     throw new Error("Release assets are not ready");
   const manifest = parseManifest(
-    JSON.parse(new TextDecoder().decode(await reader.asset(manifestAsset.id)))
+    JSON.parse(new TextDecoder().decode(await reader.asset(manifestAsset.id, manifestAsset.size)))
   );
   const commit = await reader.commit(release.tag_name);
   if (

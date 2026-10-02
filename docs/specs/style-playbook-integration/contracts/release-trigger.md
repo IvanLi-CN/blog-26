@@ -106,7 +106,7 @@ GitHub API 接受请求仅代表 workflow 已提交排队。当前 API 版本返
 5. 获取与正常前端部署相同的生产 job 并发组，再重新读取部署身份。若内容已被采用或已变旧则跳过；若当前渲染器已改变，则不得部署旧渲染器产物，需要重新构建后再核对。
 6. 部署完整页面及版本化数据，核对公开指针已生效，记录实际采用的输入身份与下游 run URL。console 从公开指针发现变化，无须上游单独通知。
 
-生产 job 并发组建议为 `blog26-edgeone-production`，`queue: max`、`cancel-in-progress: false`，由内容和正常前端部署共同使用。不能沿用现有按 SHA 分组的外层 release concurrency 作为跨发布互斥锁；两种流程之间需要同一个部署 job 边界。即使有排队，也必须执行版本与渲染器复核，不能依赖 dispatch 时间保证顺序。
+生产 job 并发组使用 `blog26-edgeone-production` 与 `cancel-in-progress: false`，由内容和正常前端部署共同使用。GitHub Actions 原生并发只保留一个运行中的任务和一个待处理任务；两种流程之间需要同一个部署 job 边界。待处理任务仍必须执行版本与渲染器复核，不能依赖 dispatch 时间保证顺序。
 
 ## Reconciliation and Failure Outcomes
 

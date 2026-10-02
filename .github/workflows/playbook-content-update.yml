@@ -29,7 +29,6 @@ jobs:
     timeout-minutes: 60
     concurrency:
       group: blog26-edgeone-production
-      queue: max
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
@@ -44,7 +43,7 @@ jobs:
       - uses: actions/create-github-app-token@v3
         id: source
         with:
-          client-id: ${{ vars.PLAYBOOK_SOURCE_APP_CLIENT_ID }}
+          app-id: ${{ vars.PLAYBOOK_SOURCE_APP_ID }}
           private-key: ${{ secrets.PLAYBOOK_SOURCE_APP_PRIVATE_KEY }}
           owner: IvanLi-CN
           repositories: style-playbook-skills

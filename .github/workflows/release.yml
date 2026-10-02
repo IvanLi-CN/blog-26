@@ -459,7 +459,7 @@ jobs:
         id: playbook-source
         uses: actions/create-github-app-token@v3
         with:
-          client-id: ${{ vars.PLAYBOOK_SOURCE_APP_CLIENT_ID }}
+          app-id: ${{ vars.PLAYBOOK_SOURCE_APP_ID }}
           private-key: ${{ secrets.PLAYBOOK_SOURCE_APP_PRIVATE_KEY }}
           owner: IvanLi-CN
           repositories: style-playbook-skills
@@ -492,9 +492,11 @@ jobs:
         run: bun ./scripts/verify-pages-build.ts
 
       - name: Build console SSR for Playbook smoke
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
         run: bun run console:build
 
       - name: Verify Playbook static and console SSR output
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
         env:
           PLAYBOOK_SYNC_ENABLED: 'false'
         run: bun run verify:playbook-build
@@ -606,7 +608,6 @@ jobs:
     runs-on: ubuntu-latest
     concurrency:
       group: blog26-edgeone-production
-      queue: max
       cancel-in-progress: false
     needs: [prepare, publish_frontend]
     if: ${{ needs.publish_frontend.result == 'success' && needs.prepare.outputs.channel == 'stable' && needs.prepare.outputs.is_latest_branch_head == 'true' }}
@@ -872,7 +873,7 @@ jobs:
         id: playbook-source
         uses: actions/create-github-app-token@v3
         with:
-          client-id: ${{ vars.PLAYBOOK_SOURCE_APP_CLIENT_ID }}
+          app-id: ${{ vars.PLAYBOOK_SOURCE_APP_ID }}
           private-key: ${{ secrets.PLAYBOOK_SOURCE_APP_PRIVATE_KEY }}
           owner: IvanLi-CN
           repositories: style-playbook-skills
@@ -1128,7 +1129,7 @@ jobs:
         id: playbook-source
         uses: actions/create-github-app-token@v3
         with:
-          client-id: ${{ vars.PLAYBOOK_SOURCE_APP_CLIENT_ID }}
+          app-id: ${{ vars.PLAYBOOK_SOURCE_APP_ID }}
           private-key: ${{ secrets.PLAYBOOK_SOURCE_APP_PRIVATE_KEY }}
           owner: IvanLi-CN
           repositories: style-playbook-skills

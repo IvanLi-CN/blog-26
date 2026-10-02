@@ -4,7 +4,7 @@ The blog reads stable public Release assets from `IvanLi-CN/style-playbook-skill
 
 ## Activation
 
-Production activation is separate from implementation. Merge both repository PRs first. Install two separate GitHub Apps: the upstream notification role needs blog Actions write; the blog source-reader role needs upstream Contents read. For the blog, configure `PLAYBOOK_SOURCE_APP_CLIENT_ID` (variable) and `PLAYBOOK_SOURCE_APP_PRIVATE_KEY` (secret), alongside its existing EdgeOne credentials. Keep the upstream notification switch and `PLAYBOOK_CONTENT_UPDATES_ENABLED` disabled until initial deployment succeeds.
+Production activation is separate from implementation. Merge both repository PRs first. Install two separate GitHub Apps: the upstream notification role needs blog Actions write; the blog source-reader role needs upstream Contents read. For the blog, configure `PLAYBOOK_SOURCE_APP_ID` (variable) and `PLAYBOOK_SOURCE_APP_PRIVATE_KEY` (secret), alongside its existing EdgeOne credentials. Keep the upstream notification switch and `PLAYBOOK_CONTENT_UPDATES_ENABLED` disabled until initial deployment succeeds.
 
 Publish a new stable upstream Release through its native workflow with both public assets. Its archive must match [the public package contract](../specs/style-playbook-integration/contracts/public-package.md). Set blog `PLAYBOOK_INTEGRATION_ENABLED=true` and an explicit `PLAYBOOK_INITIAL_RELEASE_ID`. Use the native stable minor application release for the initial frontend/backend capability deployment. When a deployed pointer already exists, ordinary application builds preserve that adopted source; they do not revert to the initial Release ID.
 

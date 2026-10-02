@@ -27,7 +27,7 @@ if (!selected) {
   console.log("No ready stable public release");
   process.exit(0);
 }
-const archive = await reader.asset(selected.bundleAssetId);
+const archive = await reader.asset(selected.bundleAssetId, selected.manifest.bundle.size);
 readPublicArchive(archive, selected.manifest);
 const taskRoot = resolve(
   process.env.RUNNER_TEMP || ".tmp",
