@@ -122,7 +122,6 @@ The admin needs a durable control plane for LLM configuration with safe secret h
 ## 8. References
 
 - `docs/specs/admin-shadcn-spa-phase2/SPEC.md`
-- `docs/design/tag-icons.md`
 - `docs/ai-tag-organizer-spec.md`
 
 ## 9. Visual Evidence
