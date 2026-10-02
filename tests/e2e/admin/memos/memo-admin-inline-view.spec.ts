@@ -114,15 +114,7 @@ test.describe("Inline memo admin view", () => {
     for (const row of appendedRows) expect(row.id).toBe(expectedServiceOrder[row.index]);
     expect(new Set(appendedRows.map((row) => row.index)).size).toBe(appendedRows.length);
 
-    const newerSentinel = page.getByTestId("admin-memo-pagination-sentinel-newer");
-    await expect(newerSentinel).toBeAttached();
-    const newerRequest = page.waitForRequest(
-      (request) =>
-        isMemoListRequest(request) &&
-        new URL(request.url()).searchParams.get("direction") === "newer"
-    );
-    await newerSentinel.scrollIntoViewIfNeeded();
-    await newerRequest;
+    await expect(page.getByTestId("admin-memo-pagination-sentinel-newer")).toHaveCount(0);
     await expect(memoList).toHaveAttribute(
       "data-loaded-memos",
       String(expectedServiceOrder.length)

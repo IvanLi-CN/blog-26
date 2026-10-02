@@ -104,19 +104,7 @@ test.describe("Memos 游客访问", () => {
       elements.map((element) => element.getAttribute("data-slug"))
     );
     expect(loadedSlugs).toEqual(expectedSlugs);
-    const newerSentinel = page.getByTestId("memo-pagination-sentinel-newer");
-    await expect(newerSentinel).toBeAttached();
-    const newerRequest = page.waitForRequest((request) => {
-      const url = new URL(request.url());
-      return (
-        request.method() === "GET" &&
-        url.pathname === "/api/public/memos" &&
-        url.searchParams.get("publicOnly") === "true" &&
-        url.searchParams.get("direction") === "newer"
-      );
-    });
-    await newerSentinel.scrollIntoViewIfNeeded();
-    await newerRequest;
+    await expect(page.getByTestId("memo-pagination-sentinel-newer")).toHaveCount(0);
     await expect(timeline).toHaveAttribute("data-loaded-memos", String(expectedSlugs.length));
     const mountedRows = await timeline
       .locator(":scope > .virtualized-memo-row")
@@ -133,6 +121,19 @@ test.describe("Memos 游客访问", () => {
     }
     await page.waitForTimeout(1800);
     await expect(timeline).toHaveAttribute("data-loaded-memos", String(expectedSlugs.length));
+    expect(
+      await page.evaluate(
+        () =>
+          performance
+            .getEntriesByType("resource")
+            .map((entry) => new URL(entry.name))
+            .filter(
+              (url) =>
+                url.pathname === "/api/public/memos" &&
+                url.searchParams.get("direction") === "newer"
+            ).length
+      )
+    ).toBe(0);
     await expect(page.getByText(privateTitle, { exact: false })).toHaveCount(0);
   });
 
