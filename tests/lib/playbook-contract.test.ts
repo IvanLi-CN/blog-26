@@ -84,6 +84,17 @@ describe("playbook-public-contract", () => {
     const relation = structuredClone(publicFixtureCatalog);
     relation.topic_details[0].policy_skills[0].summary.policy_dependencies = ["private-rule"];
     expect(() => assertPublicCatalog(relation)).toThrow();
+    const duplicateProject = structuredClone(publicFixtureCatalog);
+    duplicateProject.topic_details[0].item.related_projects.push({
+      ...duplicateProject.topic_details[0].item.related_projects[0],
+    });
+    duplicateProject.topic_details[0].item.project_count = 2;
+    duplicateProject.snapshot.topics[0] = duplicateProject.topic_details[0].item;
+    expect(() => assertPublicCatalog(duplicateProject)).toThrow("Duplicate playbook identity");
+    const mismatchedProject = structuredClone(publicFixtureCatalog);
+    mismatchedProject.topic_details[0].item.related_projects[0].name = "Wrong project";
+    mismatchedProject.snapshot.topics[0] = mismatchedProject.topic_details[0].item;
+    expect(() => assertPublicCatalog(mismatchedProject)).toThrow("project references");
   });
   test("rejects bad digests, traversal, links and duplicate tar entries without extraction", () => {
     const bundle = makePublicBundle();
@@ -608,6 +619,19 @@ describe("playbook-artifact-verification", () => {
     });
     expect(seeded?.edition.editionDigest).toBe(expected.edition.editionDigest);
     expect(seeded?.edition.contentSnapshotIdentity).toBe(expected.edition.contentSnapshotIdentity);
+  });
+
+  test("combined release console seed prefers the frontend edition over an older pointer", async () => {
+    const root = await temp();
+    const bundle = makePublicBundle("v3.0.0", "100");
+    const seedPath = join(root, "playbook-edition.json");
+    await writeFile(seedPath, encodeJson(bundle.edition));
+    const seeded = await loadInitialPlaybookEdition({
+      seedPath,
+      readPointer: async () => makePublicBundle("v2.9.0", "99").edition.edition,
+    });
+    expect(seeded?.edition.source.tag).toBe("v3.0.0");
+    expect(seeded?.edition.source.releaseId).toBe("100");
   });
 
   test("bounds the public pointer response before parsing", async () => {

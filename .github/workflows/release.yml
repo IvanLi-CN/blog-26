@@ -570,12 +570,12 @@ jobs:
           if-no-files-found: error
           include-hidden-files: true
 
-      - name: Upload Playbook public snapshot for backend build
+      - name: Upload Playbook console seed for backend build
         if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
         uses: actions/upload-artifact@v7
         with:
-          name: playbook-public-snapshot
-          path: ./site/generated/public-snapshot.json
+          name: playbook-console-seed
+          path: ./site/generated/playbook-edition.json
           if-no-files-found: error
 
       - name: Recheck current main head before frontend GitHub Release
@@ -1135,11 +1135,11 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Download Playbook public snapshot from frontend build
+      - name: Download Playbook console seed from frontend build
         if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && needs.publish_frontend.result == 'success' }}
         uses: actions/download-artifact@v8
         with:
-          name: playbook-public-snapshot
+          name: playbook-console-seed
           path: ./site/generated
 
       - name: Fetch public content snapshot for backend-only release
@@ -1151,7 +1151,7 @@ jobs:
         run: bash ./scripts/fetch-public-content-bundle.sh
 
       - name: Mint source-read token for an explicit initial Playbook release
-        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && vars.PLAYBOOK_INITIAL_RELEASE_ID != '' }}
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && needs.publish_frontend.result == 'skipped' && vars.PLAYBOOK_INITIAL_RELEASE_ID != '' }}
         id: playbook-source
         uses: actions/create-github-app-token@v3
         with:
@@ -1162,7 +1162,7 @@ jobs:
           permission-contents: read
 
       - name: Resolve fixed initial Playbook bundle when no deployed edition exists
-        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && needs.publish_frontend.result == 'skipped' }}
         env:
           GH_TOKEN: ${{ steps.playbook-source.outputs.token }}
           PLAYBOOK_INITIAL_RELEASE_ID: ${{ vars.PLAYBOOK_INITIAL_RELEASE_ID }}
@@ -1171,6 +1171,7 @@ jobs:
       - name: Prepare the console public seed
         if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
         env:
+          PLAYBOOK_SEED_INPUT_PATH: ${{ needs.publish_frontend.result == 'success' && './site/generated/playbook-edition.json' || '' }}
           PLAYBOOK_USE_DEPLOYED: 'true'
           COMMIT_HASH: ${{ needs.prepare.outputs.head_sha }}
         run: bun scripts/prepare-console-playbook-seed.ts

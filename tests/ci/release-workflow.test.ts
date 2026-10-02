@@ -110,9 +110,9 @@ describe("release.yml", () => {
     expect(publishFrontend).toContain("name: frontend-edgeone-site");
     expect(publishFrontend).toContain("path: ./edgeone-dist");
     expect(workflow).not.toContain("\n  deploy_frontend_pages:\n");
-    expect(publishFrontend).toContain("- name: Upload Playbook public snapshot for backend build");
-    expect(publishFrontend).toContain("name: playbook-public-snapshot");
-    expect(publishFrontend).toContain("path: ./site/generated/public-snapshot.json");
+    expect(publishFrontend).toContain("- name: Upload Playbook console seed for backend build");
+    expect(publishFrontend).toContain("name: playbook-console-seed");
+    expect(publishFrontend).toContain("path: ./site/generated/playbook-edition.json");
     expect(workflow).not.toContain("actions/upload-pages-artifact");
     expect(workflow).not.toContain("actions/deploy-pages");
     expect(workflow).not.toContain("pages: write");
@@ -160,8 +160,9 @@ describe("release.yml", () => {
     expect(publishBackend).toContain("always()");
     expect(publishBackend).toContain("needs.publish_frontend.result == 'success'");
     expect(publishBackend).toContain("needs.publish_frontend.result == 'skipped'");
-    expect(publishBackend).toContain("Download Playbook public snapshot from frontend build");
-    expect(publishBackend).toContain("name: playbook-public-snapshot");
+    expect(publishBackend).toContain("Download Playbook console seed from frontend build");
+    expect(publishBackend).toContain("name: playbook-console-seed");
+    expect(publishBackend).toContain("PLAYBOOK_SEED_INPUT_PATH");
     expect(publishBackend).toContain("Fetch public content snapshot for backend-only release");
     expect(publishBackend).toContain("bash ./scripts/fetch-public-content-bundle.sh");
     expect(publishBackend).toContain("Build backend runtime + console + admin artifacts");

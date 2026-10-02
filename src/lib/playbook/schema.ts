@@ -262,9 +262,12 @@ export function assertPublicCatalog(value: unknown) {
     if (JSON.stringify(topics.get(detail.item.slug)) !== JSON.stringify(detail.item))
       throw new Error("Topic detail identity mismatch");
     unique(detail.sections.map((section) => section.id));
+    unique(detail.item.related_projects.map((project) => project.slug));
     if (
       detail.item.project_count !== detail.item.related_projects.length ||
-      detail.item.related_projects.some((project) => !projects.has(project.slug))
+      detail.item.related_projects.some(
+        (project) => projects.get(project.slug)?.name !== project.name
+      )
     )
       throw new Error("Topic has invalid project references");
     for (const policy of detail.policy_skills) {

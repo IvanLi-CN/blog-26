@@ -2,6 +2,7 @@ import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { downloadRetainedEdition, readPublicPointer } from "../src/lib/playbook/artifacts";
 import { readPublicArchive } from "../src/lib/playbook/bundle";
+import { withoutDeploymentCredentials } from "../src/lib/playbook/child-env";
 import { githubReleaseReader } from "../src/lib/playbook/github";
 import {
   encodeJson,
@@ -44,9 +45,24 @@ const manifestUrl =
   process.env.PLAYBOOK_MANIFEST_URL || "https://ivanli.cc/_content/playbook/manifest.json";
 let buildNumber = 0;
 let rendererRoot = "";
-async function run(args: string[], cwd = process.cwd(), env = process.env) {
+async function run(
+  args: string[],
+  cwd = process.cwd(),
+  env = withoutDeploymentCredentials(process.env)
+) {
   const child = Bun.spawn(args, { cwd, env, stdout: "inherit", stderr: "inherit" });
   if ((await child.exited) !== 0) throw new Error(`Command failed: ${args[0]}`);
+}
+async function output(args: string[], cwd = process.cwd()) {
+  const child = Bun.spawn(args, {
+    cwd,
+    env: withoutDeploymentCredentials(process.env),
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const [text, status] = await Promise.all([new Response(child.stdout).text(), child.exited]);
+  if (status !== 0) throw new Error(`Command failed: ${args[0]}`);
+  return text;
 }
 if (process.env.GITHUB_STEP_SUMMARY)
   await appendFile(
@@ -69,15 +85,13 @@ try {
           resolve(rendererRoot, "site/generated/public-snapshot.json"),
           await readFile(resolve(taskRoot, "deployed/public-snapshot.json"))
         );
-        const env = {
-          ...process.env,
-          GH_TOKEN: undefined,
+        const env = withoutDeploymentCredentials(process.env, {
           PLAYBOOK_BUNDLE_DIR: bundleRoot,
           PLAYBOOK_USE_DEPLOYED: "true",
           PLAYBOOK_REQUIRED: "true",
           PLAYBOOK_RENDERER_COMMIT: renderer,
           BUILD_DATE: (
-            await Bun.$`git -C ${rendererRoot} show -s --format=%cI ${renderer}`.text()
+            await output(["git", "-C", rendererRoot, "show", "-s", "--format=%cI", renderer])
           ).trim(),
           COMMIT_HASH: renderer,
           COMMIT_SHORT_HASH: renderer.slice(0, 8),
@@ -89,7 +103,7 @@ try {
           PUBLIC_SITE_BASE_PATH: process.env.PUBLIC_SITE_BASE_PATH || "/",
           PUBLIC_STATIC_MEDIA_ORIGIN: "https://console.ivanli.cc",
           PUBLIC_STATIC_MEDIA_DOWNLOAD_CONCURRENCY: "1",
-        };
+        });
         await run(["bun", "install", "--frozen-lockfile"], rendererRoot, env);
         await run(
           ["bash", resolve(process.cwd(), "scripts/build-edgeone-content-artifact.sh")],
@@ -122,7 +136,15 @@ try {
             "-e",
             "production",
           ],
-          { stdout: "pipe", stderr: "pipe" }
+          {
+            env: {
+              ...withoutDeploymentCredentials(process.env),
+              EDGEONE_API_TOKEN: process.env.EDGEONE_API_TOKEN,
+              EDGEONE_PROJECT_NAME: process.env.EDGEONE_PROJECT_NAME,
+            },
+            stdout: "pipe",
+            stderr: "pipe",
+          }
         );
         const [output, errors, status] = await Promise.all([
           new Response(child.stdout).text(),

@@ -1,3 +1,4 @@
+import { withoutDeploymentCredentials } from "./child-env";
 import type { ReleaseReader, SourceRelease } from "./release";
 import { PLAYBOOK_MAX_BUNDLE_BYTES, PLAYBOOK_REPOSITORY } from "./schema";
 
@@ -47,7 +48,11 @@ export function githubReleaseReader(token = process.env.GH_TOKEN): ReleaseReader
         "-H",
         "X-GitHub-Api-Version: 2026-03-10",
       ],
-      { env: { ...process.env, GH_TOKEN: token }, stdout: "pipe", stderr: "pipe" }
+      {
+        env: { ...withoutDeploymentCredentials(process.env), GH_TOKEN: token },
+        stdout: "pipe",
+        stderr: "pipe",
+      }
     );
     try {
       const body = new Response(result.stdout).body;

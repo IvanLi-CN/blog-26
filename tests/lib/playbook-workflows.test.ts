@@ -5,6 +5,7 @@ import {
   createEdgeoneCacheConfig,
   findEdgeoneCacheRule,
 } from "../../scripts/prepare-edgeone-pwa-config";
+import { withoutDeploymentCredentials } from "../../src/lib/playbook/child-env";
 import { getPublicStaticCacheControl } from "../../src/lib/public-static-cache-policy";
 
 describe("playbook deployment boundaries", () => {
@@ -57,5 +58,25 @@ describe("playbook deployment boundaries", () => {
     expect(getPublicStaticCacheControl(`/${root}/catalog.json`, "catalog.json")).toContain(
       "immutable"
     );
+  });
+  test("renderer child processes cannot inherit deployment credentials", () => {
+    const env = withoutDeploymentCredentials(
+      {
+        PATH: "/bin",
+        EDGEONE_API_TOKEN: "edge-token",
+        EDGEONE_PROJECT_NAME: "blog",
+        GH_TOKEN: "github-token",
+        GITHUB_TOKEN: "github-actions-token",
+      },
+      { PUBLIC_SITE_URL: "https://ivanli.cc" }
+    );
+    expect(env).toEqual({ PATH: "/bin", PUBLIC_SITE_URL: "https://ivanli.cc" });
+  });
+  test("GitHub source reads can receive only their scoped source token", async () => {
+    const source = await readFile("src/lib/playbook/github.ts", "utf8");
+    expect(source).toContain(
+      "env: { ...withoutDeploymentCredentials(process.env), GH_TOKEN: token }"
+    );
+    expect(source).not.toContain("env: { ...process.env, GH_TOKEN: token }");
   });
 });
