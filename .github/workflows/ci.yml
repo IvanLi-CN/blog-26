@@ -183,7 +183,7 @@ jobs:
           export PLAYBOOK_RENDERER_COMMIT="$(git rev-parse HEAD)"
           bun run frontend:build
           bun run console:build
-          bun run verify:playbook-artifact
+          bun scripts/verify-playbook-artifact.ts
           bun run verify:playbook-build
 
   # Docker 仅构建校验（不推送）
