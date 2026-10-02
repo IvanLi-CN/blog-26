@@ -163,6 +163,29 @@ jobs:
       - name: Build Storybook
         run: bun run build-storybook
 
+      - name: Prepare deterministic Playbook fixture
+        run: bun tests/lib/playbook-fixture.ts .tmp/playbook-fixture
+
+      - name: Verify Playbook static and console build
+        shell: bash
+        env:
+          DB_PATH: ./test-data/sqlite.db
+          LOCAL_CONTENT_BASE_PATH: ./test-data/local
+          CONTENT_SOURCES: local
+          PUBLIC_API_BASE_URL: https://ivanli.cc
+          PUBLIC_SITE_URL: https://ivanli.cc
+          PUBLIC_SITE_BASE_PATH: /
+          PLAYBOOK_BUNDLE_DIR: .tmp/playbook-fixture
+          PLAYBOOK_REQUIRED: "true"
+          PLAYBOOK_USE_DEPLOYED: "false"
+        run: |
+          set -euo pipefail
+          export PLAYBOOK_RENDERER_COMMIT="$(git rev-parse HEAD)"
+          bun run frontend:build
+          bun run console:build
+          bun run verify:playbook-artifact
+          bun run verify:playbook-build
+
   # Docker 仅构建校验（不推送）
   docker:
     # Keep the historical job name to avoid breaking required check contexts.

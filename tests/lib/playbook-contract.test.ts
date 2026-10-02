@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { loadInitialPlaybookEdition } from "../../scripts/prepare-console-playbook-seed";
 import PlaybookPage from "../../src/components/playbook/PlaybookPage";
 import {
   downloadRetainedEdition,
@@ -585,6 +586,30 @@ describe("playbook-build-deploy-adapter", () => {
 });
 
 describe("playbook-artifact-verification", () => {
+  test("initial console seed uses the same public snapshot as the static edition", async () => {
+    const root = await temp();
+    const bundle = makePublicBundle();
+    await writeFile(join(root, "playbook-public-manifest.json"), encodeJson(bundle.manifest));
+    await writeFile(join(root, "playbook-public.tar.gz"), bundle.archive);
+    const snapshot = '{"posts":[{"slug":"same-snapshot"}]}\n';
+    const snapshotPath = join(root, "public-snapshot.json");
+    await writeFile(snapshotPath, snapshot);
+    const expected = createPlaybookEdition(
+      readPublicArchive(bundle.archive, bundle.manifest),
+      bundle.manifest,
+      "b".repeat(40),
+      snapshot
+    );
+    const seeded = await loadInitialPlaybookEdition({
+      bundleDir: root,
+      readPointer: async () => undefined,
+      rendererCommit: "b".repeat(40),
+      snapshotPath,
+    });
+    expect(seeded?.edition.editionDigest).toBe(expected.edition.editionDigest);
+    expect(seeded?.edition.contentSnapshotIdentity).toBe(expected.edition.contentSnapshotIdentity);
+  });
+
   test("bounds the public pointer response before parsing", async () => {
     await expect(
       readPublicPointer(
