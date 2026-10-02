@@ -52,6 +52,12 @@ if (isMemoListWebDemo) {
     };
     const liveMemos = Array.isArray(payload.memos) ? payload.memos : payload.items;
     if (!Array.isArray(liveMemos)) throw new Error("Memo response was invalid");
+    if (liveMemos.some((memo) => typeof memo.isPublic !== "boolean")) {
+      throw new Error("Memo visibility was invalid");
+    }
+    if (!initialIsAdmin && liveMemos.some((memo) => !memo.isPublic)) {
+      throw new Error("Guest Memo response included a private record");
+    }
     initialMemos = liveMemos;
     initialMemosHasMore = payload.hasMore === true;
     initialMemosNextCursor = payload.nextCursor ?? null;

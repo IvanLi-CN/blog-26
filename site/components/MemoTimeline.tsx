@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { z } from "zod";
 import type { PublicMemoRecord } from "@/public-site/snapshot";
 import {
   getMemoListWebDemoCursorPage,
   MEMO_LIST_WEB_DEMO_DELAY_MS,
 } from "../lib/memo-list-web-demo";
+import { parseMemoPage } from "../lib/memo-pagination";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 import MemoCard, { type MemoCardRecord } from "./MemoCard";
 import { MEMO_PAGE_SIZE } from "./MemoPagination";
@@ -21,9 +23,22 @@ export type MemoPageResponse = {
 };
 
 export type MemoPageLoader = (input: {
-  cursor: string;
+  cursor: string | null;
   direction: MemoPageDirection;
 }) => Promise<MemoPageResponse>;
+
+const publicMemoCardSchema = z
+  .object({
+    id: z.string().min(1),
+    slug: z.string().min(1),
+    title: z.string().nullable(),
+    excerpt: z.string().nullable(),
+    tags: z.array(z.string()),
+    isPublic: z.literal(true),
+    createdAt: z.string().min(1),
+    publishedAt: z.string().nullable(),
+  })
+  .passthrough();
 
 function uniqueMemos(memos: MemoCardRecord[]) {
   const seen = new Set<string>();
@@ -88,7 +103,13 @@ export default function MemoTimeline({
 
   const loadPage = useCallback(
     async (direction: MemoPageDirection, cursor: string | null) => {
-      if (!cursor || inFlightRef.current[direction]) return;
+      const retryingInitialDatabasePage =
+        source === "database" &&
+        direction === "older" &&
+        cursor === null &&
+        memos.length === 0 &&
+        Boolean(initialError);
+      if ((!cursor && !retryingInitialDatabasePage) || inFlightRef.current[direction]) return;
       inFlightRef.current[direction] = true;
       if (direction === "newer") {
         setIsLoadingNewer(true);
@@ -99,7 +120,7 @@ export default function MemoTimeline({
       }
 
       try {
-        let payload: MemoPageResponse;
+        let payload: unknown;
         if (pageLoader) {
           payload = await pageLoader({ cursor, direction });
         } else if (source === "demo" && import.meta.env.DEV) {
@@ -118,38 +139,34 @@ export default function MemoTimeline({
           );
           const response = await fetch(url ?? "");
           if (!response.ok) throw new Error(`请求失败（${response.status}）`);
-          payload = (await response.json()) as MemoPageResponse;
+          payload = await response.json();
         } else {
           const params = new URLSearchParams({
             publicOnly: "true",
             limit: String(MEMO_PAGE_SIZE),
-            cursor,
             direction,
           });
+          if (cursor) params.set("cursor", cursor);
           const response = await fetch(
             toPublicApiUrl(`/api/public/memos?${params.toString()}`) ?? "",
             {
               credentials: "include",
             }
           );
-          const result = (await response.json().catch(() => null)) as MemoPageResponse | null;
+          const result = await response.json().catch(() => null);
           if (!response.ok) throw new Error(`请求失败（${response.status}）`);
           payload = result ?? {};
         }
 
-        const pageMemos = Array.isArray(payload.memos)
-          ? payload.memos
-          : Array.isArray(payload.items)
-            ? payload.items
-            : [];
+        const page = parseMemoPage(payload, direction, publicMemoCardSchema);
         if (direction === "newer") {
-          setMemos((current) => uniqueMemos([...pageMemos, ...current]));
-          setHasNewer(payload.hasMore === true);
-          setNewerCursor(payload.previousCursor ?? null);
+          setMemos((current) => uniqueMemos([...page.memos, ...current]));
+          setHasNewer(page.hasMore);
+          setNewerCursor(page.previousCursor);
         } else {
-          setMemos((current) => uniqueMemos([...current, ...pageMemos]));
-          setHasOlder(payload.hasMore === true);
-          setOlderCursor(payload.nextCursor ?? null);
+          setMemos((current) => uniqueMemos([...current, ...page.memos]));
+          setHasOlder(page.hasMore);
+          setOlderCursor(page.nextCursor);
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -161,7 +178,7 @@ export default function MemoTimeline({
         else setIsLoadingOlder(false);
       }
     },
-    [pageLoader, snapshotVersion, source]
+    [initialError, memos.length, pageLoader, snapshotVersion, source]
   );
 
   const loadNewer = useCallback(() => loadPage("newer", newerCursor), [loadPage, newerCursor]);
@@ -255,6 +272,7 @@ export function toMemoCardRecord(memo: PublicMemoRecord): MemoCardRecord {
     title: memo.title,
     excerpt: memo.excerpt,
     tags: memo.tags,
+    isPublic: memo.isPublic,
     createdAt: memo.createdAt,
     publishedAt: memo.publishedAt,
   };

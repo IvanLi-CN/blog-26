@@ -11,6 +11,7 @@ const initialMemo = {
   title: "Already loaded Memo",
   excerpt: "This record must stay visible after a failed page request.",
   tags: [],
+  isPublic: true,
   createdAt: "2026-09-30T12:00:00.000Z",
   publishedAt: null,
 };
@@ -21,6 +22,7 @@ const nextMemo = {
   title: "Next Memo",
   excerpt: "Loaded after retry.",
   tags: [],
+  isPublic: true,
   createdAt: "2026-09-29T12:00:00.000Z",
   publishedAt: null,
 };
@@ -73,5 +75,105 @@ describe("MemoTimeline snapshot pagination", () => {
     await waitFor(() => expect(getByText("Next Memo")).toBeTruthy());
     expect(getByText("Already loaded Memo")).toBeTruthy();
     expect(requests).toBe(2);
+  });
+});
+
+describe("MemoTimeline console guest recovery", () => {
+  test("retries the first database page after the SSR request failed", async () => {
+    const requests: string[] = [];
+    globalThis.fetch = (async (input) => {
+      requests.push(String(input));
+      return new Response(JSON.stringify({ memos: [nextMemo], hasMore: false }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const { getByTestId, getByText } = render(
+      <MemoTimeline
+        source="database"
+        initialMemos={[]}
+        initialHasMore={false}
+        initialNextCursor={null}
+        initialError="Memo request failed"
+        iconMap={{}}
+        iconSvgMap={{}}
+      />
+    );
+
+    fireEvent.click(getByTestId("memo-pagination-retry"));
+
+    expect(requests).toHaveLength(1);
+    await waitFor(() => expect(getByText("Next Memo")).toBeTruthy());
+    expect(requests[0]).not.toContain("cursor=");
+  });
+});
+
+describe("MemoTimeline public page validation", () => {
+  test("keeps the current page and retry state when a successful response is malformed", async () => {
+    let requests = 0;
+    globalThis.fetch = (async () => {
+      requests += 1;
+      if (requests === 1) {
+        return new Response(JSON.stringify({ memos: [], hasMore: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ memos: [nextMemo], hasMore: false }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const { getByRole, getByTestId, queryByTestId, getByText } = render(
+      <MemoTimeline
+        source="snapshot"
+        initialMemos={[initialMemo]}
+        initialHasMore
+        initialNextCursor="older-cursor"
+        iconMap={{}}
+        iconSvgMap={{}}
+      />
+    );
+
+    fireEvent.click(getByRole("button", { name: "加载较旧的 Memo" }));
+
+    const retry = await waitFor(() => getByTestId("memo-pagination-retry"));
+    expect(getByText("Already loaded Memo")).toBeTruthy();
+    expect(queryByTestId("memo-pagination-end")).toBeNull();
+
+    fireEvent.click(retry);
+
+    await waitFor(() => expect(getByText("Next Memo")).toBeTruthy());
+    expect(getByText("Already loaded Memo")).toBeTruthy();
+    expect(requests).toBe(2);
+  });
+
+  test("rejects non-public records from a guest page without hiding loaded records", async () => {
+    const privateMemo = { ...nextMemo, title: "Private Memo", isPublic: false };
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ memos: [privateMemo], hasMore: false }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })) as typeof fetch;
+
+    const { getByRole, getByTestId, getByText, queryByText, queryByTestId } = render(
+      <MemoTimeline
+        source="snapshot"
+        initialMemos={[initialMemo]}
+        initialHasMore
+        initialNextCursor="older-cursor"
+        iconMap={{}}
+        iconSvgMap={{}}
+      />
+    );
+
+    fireEvent.click(getByRole("button", { name: "加载较旧的 Memo" }));
+
+    await waitFor(() => expect(getByTestId("memo-pagination-retry")).toBeTruthy());
+    expect(getByText("Already loaded Memo")).toBeTruthy();
+    expect(queryByText("Private Memo")).toBeNull();
+    expect(queryByTestId("memo-pagination-end")).toBeNull();
   });
 });

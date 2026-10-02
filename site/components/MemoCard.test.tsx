@@ -9,6 +9,7 @@ const memo: MemoCardRecord = {
   title: "Prefetch test",
   excerpt: "Memo card used to verify link prefetch behavior.",
   tags: ["Web Demo"],
+  isPublic: true,
   createdAt: "2026-09-30T12:00:00.000Z",
   publishedAt: null,
 };

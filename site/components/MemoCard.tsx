@@ -6,7 +6,7 @@ import { toPublicSitePath } from "../lib/runtime-urls";
 
 export type MemoCardRecord = Pick<
   PublicMemoRecord,
-  "id" | "slug" | "title" | "excerpt" | "tags" | "createdAt" | "publishedAt"
+  "id" | "slug" | "title" | "excerpt" | "tags" | "isPublic" | "createdAt" | "publishedAt"
 >;
 
 export default function MemoCard({
