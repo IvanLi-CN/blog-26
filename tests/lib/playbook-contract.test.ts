@@ -90,7 +90,23 @@ describe("playbook-public-contract", () => {
     ).toThrow("Unsafe");
   });
   test("rejects nested internal key variants without excluding ordinary public fields", () => {
-    for (const key of ["repoPath", "API-Key", "accessToken", "private.key", "Thread ID"])
+    for (const key of [
+      "repoPath",
+      "API-Key",
+      "accessToken",
+      "private.key",
+      "Thread ID",
+      "sourceUrl",
+      "repository-URL",
+      "Manifest.Dir",
+      "sessionLog",
+      "githubToken",
+      "DEPLOYTOKEN",
+      "authorization",
+      "credential",
+      "clientSecret",
+      "token",
+    ])
       for (const target of ["frontmatter", "stack"]) {
         const catalog = structuredClone(publicFixtureCatalog);
         const nested = { public: [{ [key]: "must remain private" }] };
@@ -100,8 +116,16 @@ describe("playbook-public-contract", () => {
         expect(() => assertPublicCatalog(catalog)).toThrow("Internal field");
       }
     const catalog = structuredClone(publicFixtureCatalog);
-    catalog.topic_details[0].policy_skills[0].frontmatter.metadata = { code: "public sample" };
+    catalog.topic_details[0].policy_skills[0].frontmatter.public_url_hosts = ["github.com"];
+    catalog.topic_details[0].policy_skills[0].frontmatter["allowed-tools"] = ["Read"];
     expect(assertPublicCatalog(catalog)).toEqual(catalog);
+    expect(catalog.snapshot.topics[0].token).toBe("可靠交付");
+    const metadata = structuredClone(publicFixtureCatalog);
+    metadata.project_details[0].doc_metadata.push({
+      key: "Github Token",
+      value: "must not publish",
+    });
+    expect(() => assertPublicCatalog(metadata)).toThrow("Internal metadata");
   });
   test("rejects resource paths that collide with generated SKILL.md or other files", () => {
     for (const paths of [["SKILL.md"], ["SKILL.md/foo"], ["scripts", "scripts/verify.sh"]]) {

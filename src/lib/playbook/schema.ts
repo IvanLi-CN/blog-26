@@ -20,6 +20,30 @@ export const safePathSchema = z
 const text = z.string().max(16 * 1024 * 1024);
 const nullableText = text.nullish();
 const normalizedKey = (key: string) => key.replace(/[^a-z0-9]/giu, "").toLowerCase();
+const credentialTerms = new Set([
+  "auth",
+  "authorization",
+  "credential",
+  "credentials",
+  "password",
+  "passwd",
+  "secret",
+  "token",
+  "pat",
+]);
+function isCredentialKey(key: string) {
+  const terms = key
+    .replace(/([A-Z]+)([A-Z][a-z])/gu, "$1 $2")
+    .replace(/([a-z0-9])([A-Z])/gu, "$1 $2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/u);
+  return (
+    terms.some((term) => credentialTerms.has(term)) ||
+    /(?:token|secret|password|passwd|credentials?|apikey|privatekey|authorization)$/u.test(
+      normalizedKey(key)
+    )
+  );
+}
 const sectionSchema = z.strictObject({
   id: z
     .string()
@@ -81,7 +105,7 @@ const privateMetadataKeys = new Set([
 ]);
 const metadataSchema = z.strictObject({
   key: text.refine(
-    (key) => !privateMetadataKeys.has(normalizedKey(key)),
+    (key) => !privateMetadataKeys.has(normalizedKey(key)) && !isCredentialKey(key),
     "Internal metadata field"
   ),
   value: text,
@@ -208,7 +232,10 @@ export const editionSchema = z.strictObject({
 
 export function assertPublicCatalog(value: unknown) {
   const catalog = catalogSchema.parse(value);
-  rejectInternalFields(catalog);
+  // Fixed objects are strict schemas; arbitrary public records share the metadata boundary.
+  for (const project of catalog.project_details) rejectInternalFields(project.stack);
+  for (const topic of catalog.topic_details)
+    for (const policy of topic.policy_skills) rejectInternalFields(policy.frontmatter);
   unique(catalog.snapshot.projects.map((item) => item.slug));
   unique(catalog.snapshot.topics.map((item) => item.slug));
   unique(catalog.project_details.map((item) => item.item.slug));
@@ -288,7 +315,11 @@ const internalRecordKeys = new Set([
 function rejectInternalFields(value: unknown) {
   if (!value || typeof value !== "object") return;
   for (const [key, nested] of Object.entries(value)) {
-    if (internalRecordKeys.has(normalizedKey(key)))
+    if (
+      internalRecordKeys.has(normalizedKey(key)) ||
+      privateMetadataKeys.has(normalizedKey(key)) ||
+      isCredentialKey(key)
+    )
       throw new Error(`Internal field in public playbook: ${key}`);
     rejectInternalFields(nested);
   }
