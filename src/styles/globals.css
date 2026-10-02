@@ -828,6 +828,7 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
     opacity: 1;
   }
 
+  .nature-mobile-reading-stream > .nature-mobile-reading-row,
   .nature-mobile-reading-stream > .virtualized-memo-row > .nature-mobile-reading-row {
     margin-block: 0 !important;
     border: 0 !important;
@@ -838,6 +839,7 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
     backdrop-filter: none;
   }
 
+  .nature-mobile-reading-stream > .nature-mobile-reading-row:last-child,
   .nature-mobile-reading-stream
     > .virtualized-memo-row
     > .nature-mobile-reading-row[data-is-last="true"] {

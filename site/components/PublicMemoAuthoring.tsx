@@ -389,8 +389,6 @@ export function PublicMemoComposerIsland({
           deferredMemos.current = [];
           setMemos((current) => uniqueMemos([...current, ...continuation]));
           setHasMore(page.hasMore);
-          setHasNewer(page.hasPrevious);
-          setPreviousCursor(page.previousCursor);
         }
         if (direction === "older") setNextCursor(page.nextCursor);
       } catch (error) {

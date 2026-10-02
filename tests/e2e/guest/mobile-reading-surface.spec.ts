@@ -99,11 +99,14 @@ async function sampleSurfaceContrast(
   frames: number,
   context: string
 ) {
-  await text.evaluate((element) => element.scrollIntoView({ block: "center" }));
-  await expect(text).toBeVisible();
+  // Keep the sampled node's identity while scrolling changes the virtualized window.
+  const sampledText = await text.elementHandle();
+  if (!sampledText) throw new Error(`${context}: reading text is not mounted`);
+  await sampledText.evaluate((element) => element.scrollIntoView({ block: "center" }));
+  await sampledText.waitForElementState("visible");
   await page.waitForTimeout(450);
 
-  const samplePoints = await text.evaluate((element) => {
+  const samplePoints = await sampledText.evaluate((element) => {
     const surface = element.closest(
       ".nature-mobile-reading-surface, .nature-mobile-reading-stream, .post-detail-header, .post-detail-body, .memo-detail-card, .project-detail-header, .project-mdx-section, .projects-domain-stack"
     );
@@ -206,6 +209,7 @@ async function sampleSurfaceContrast(
     await page.waitForTimeout(180);
   }
 
+  await sampledText.dispose();
   return Math.min(...ratios);
 }
 
@@ -349,9 +353,12 @@ test.describe("mobile public reading surfaces", () => {
             const contentBounds = await content.boundingBox();
             expect(contentBounds).not.toBeNull();
             expect(Math.abs((contentBounds?.x ?? 0) - expectedInset)).toBeLessThanOrEqual(1);
-            const expectedDividerWidth = await row.evaluate((element) =>
-              element.nextElementSibling ? "1px" : "0px"
-            );
+            const expectedDividerWidth = await row.evaluate((element) => {
+              if (element.closest(".virtualized-memo-row")) {
+                return element.getAttribute("data-is-last") === "true" ? "0px" : "1px";
+              }
+              return element.nextElementSibling ? "1px" : "0px";
+            });
             await expect(row).toHaveCSS("border-bottom-width", expectedDividerWidth);
             await expect(row).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
 
@@ -504,7 +511,9 @@ test.describe("mobile public reading surfaces", () => {
         const surface = page.locator(item.surface).nth(item.index ?? 0);
         const texts = surface.locator(item.text);
         await expect(texts.first()).toBeVisible();
-        for (let index = 0; index < (await texts.count()); index += 1) {
+        // Pagination may mount additional rows; keep this contrast scenario's sample set finite.
+        const sampleCount = await texts.count();
+        for (let index = 0; index < sampleCount; index += 1) {
           const text = texts.nth(index);
           if (!(await text.isVisible())) continue;
           const ratio = await sampleSurfaceContrast(
