@@ -21,6 +21,21 @@
   --crepe-shadow-2: var(--nature-shadow-strong);
 }
 
+/* Milkdown measures the handle before showing it. Keep its dimensions available
+ * and animate only opacity so the first hover does not move from stale coordinates. */
+.quick-memo-editor-surface .milkdown-block-handle {
+  transition: opacity 0.2s;
+}
+
+/* Park the hidden handle inside the editor instead of below the document. */
+.quick-memo-editor-surface .milkdown-block-handle[data-show="false"] {
+  visibility: hidden;
+  /* biome-ignore lint/complexity/noImportantStyles: Milkdown retains inline coordinates when hiding the handle. */
+  left: 0 !important;
+  /* biome-ignore lint/complexity/noImportantStyles: Milkdown retains inline coordinates when hiding the handle. */
+  top: 0 !important;
+}
+
 @media (max-width: 639px) {
   .quick-memo-editor-surface .milkdown .ProseMirror {
     padding-inline: 1rem;

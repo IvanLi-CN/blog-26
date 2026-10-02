@@ -651,6 +651,10 @@ test.describe("Inline memo admin view", () => {
         .getByTestId("quick-memo-editor-surface")
         .evaluate((element) => element.scrollWidth > element.clientWidth);
       expect(editorSurfaceOverflow).toBe(false);
+      const editorSurfaceVerticalOverflow = await editorSurface.evaluate(
+        (element) => element.scrollHeight > element.clientHeight
+      );
+      expect(editorSurfaceVerticalOverflow).toBe(false);
 
       const editor = container.locator(".ProseMirror");
       await editor.click();

@@ -2,19 +2,19 @@
 
 ## Context and Scope
 
-- Context: The public Memos page also exposes authoring and recent management controls to an authenticated administrator. The current saved content and the published public timeline are distinct states on the same page.
-- In scope: administrator-only layout and interaction on `/memos`, quick creation, the recent management list, preview and edit actions, feedback, and responsive accessibility.
-- Out of scope: a dedicated Memo admin route, the guest reading layout, public timeline content, Memo storage and publication timing, API contract changes, Memo detail redesign, and changes to the established Memo title contract.
+- Context: The static public Memos page renders the published snapshot. The Console Memos view serves live public Memos to visitors and exposes quick authoring plus one management list to authenticated administrators.
+- In scope: administrator-only layout and interaction in the Console Memos view, quick creation, the recent management list, preview and edit actions, feedback, and responsive accessibility.
+- Out of scope: changing the public snapshot, Console deployment boundaries, Memo storage and publication timing, API contract changes, Memo detail redesign, and changes to the established Memo title contract.
 
 ## Terms and Interfaces
 
 - Real-time Memo: the administrator's current saved Memo, whether public or private.
 - Public Memo timeline: the published reader-facing Memo snapshot, which can lag behind current saved content.
-- Interface: `/memos` remains the shared public route. Administrator-only controls use the existing Memo API and preview and edit capabilities.
+- Interface: the public site and Console use the `/memos` path on separate hosts and runtime modes. The public site uses its published snapshot; Console visitors receive live public Memos, and administrators use the existing Memo API and preview and edit capabilities.
 
 ## Composition
 
-The page reads in this order: existing public introduction; administrator-only status line and full-size quick editor; administrator-only recent Memo section; existing public timeline. The administrator status line identifies the mode without becoming another large surface around the editor. A clear vertical gap separates the editor from recent management. The recent section gives its heading, item count, and refresh action a single clear header, followed by the existing Memo cards and an in-place load-more action. It does not add a second search control; site-wide search remains the discovery entry point.
+The Console administrator view reads in this order: Memos introduction; administrator-only status line and full-size quick editor; administrator-only recent Memo section. The administrator status line identifies the mode without becoming another large surface around the editor. A clear vertical gap separates the editor from recent management. The recent section gives its heading, item count, and refresh action a single clear header, followed by the existing Memo cards and an in-place load-more action. It does not add a second search control; site-wide search remains the discovery entry point. The administrator view does not render a second published snapshot timeline after the management list.
 
 On wide screens, each card reserves a stable area for actions beside its content. On narrow screens, the administrator list follows the public Nature mobile content-stream pattern: one edge-to-edge reading surface with separators, no individual card shells, and row content inset 16px at 393px or 12px below 375px. The same actions move below the content in a consistent order. All Memo fields and information density remain intact, and desktop cards retain their existing form.
 
@@ -22,8 +22,8 @@ On wide screens, each card reserves a stable area for actions beside its content
 
 ### REQ-MAIV-001
 
-- The system MUST keep the public Memos introduction and public timeline on `/memos` for both guests and administrators. Only administrators may see the authoring and management area between them; guest content and navigation MUST remain unchanged.
-- The administrator area MUST NOT become a separate `/admin/memos` route or replace the public page with a distinct admin shell.
+- The static public Memos page MUST continue to render the published snapshot. Console visitors MUST receive the live public Memo view, while only administrators may see authoring and management controls. The administrator view MUST contain one Memo management list and MUST NOT add a second published snapshot timeline.
+- The authoring and management area MUST remain within the Console Memos view and MUST NOT introduce a separate Memo-specific admin route.
 
 ### REQ-MAIV-002
 
@@ -34,7 +34,7 @@ On wide screens, each card reserves a stable area for actions beside its content
 
 - The management section MUST follow the editor and show the first 10 Memos in the existing administrative list order by default. An in-place load-more action MUST provide access beyond that initial set without requiring a new route; refresh MUST return to the first page.
 - The management heading MUST distinguish current saved Memos from the published public timeline. The list MUST NOT introduce a local search control that duplicates site-wide search; its refresh action MUST remain associated with the list.
-- The list MUST preserve its existing Nature card form, fields, and information density on desktop. Below 640px, it MUST follow the public Nature mobile content-stream contract: a full-bleed translucent surface, row separators, and no individual card shells. This responsive presentation MUST NOT remove fields or reduce Memo information density. The public timeline MUST remain below the administrator area.
+- The list MUST preserve its existing Nature card form, fields, and information density on desktop. Below 640px, it MUST follow the public Nature mobile content-stream contract: a full-bleed translucent surface, row separators, and no individual card shells. This responsive presentation MUST NOT remove fields or reduce Memo information density.
 
 ### REQ-MAIV-004
 
@@ -61,7 +61,7 @@ On wide screens, each card reserves a stable area for actions beside its content
 
 - Method: authenticated and guest route checks with desktop and mobile visual inspection.
 - covers: `REQ-MAIV-001`, `REQ-MAIV-002`
-- Pass condition: the guest page retains its introduction and timeline without admin controls; the administrator sees the full editor before the recent list and the same public timeline afterward.
+- Pass condition: the static public page continues to show the published snapshot; Console visitors see live public Memos without admin controls; Console administrators see the full editor before one recent management list, with no second snapshot timeline.
 
 ### VER-MAIV-002
 
@@ -83,7 +83,7 @@ On wide screens, each card reserves a stable area for actions beside its content
 
 ## Visual Evidence
 
-The owner-approved captures below were rendered from the Storybook page fallback using mock API data. Desktop captures show the full-size editor, the repaired spacing before recent management, and the existing desktop card layout. The narrow-screen list captures show the continuous Nature stream with the sticky header collapsed above the first row, all existing Memo fields, and actions below each item's content. Top captures show the full-size editor and page hierarchy.
+The eight page-level captures below were rendered from the former Storybook page fallback using mock API data and are retained as historical records. Their administrator and guest page-story entries have been removed; they are not current page-story coverage. The dark quick-editor component capture below is the current Storybook visual evidence. The historical desktop captures show the full-size editor, spacing before recent management, and the desktop card layout. The narrow-screen captures show the prior Nature stream layout.
 
 source_type=storybook_canvas; target_program=mock-only; capture_scope=element; viewport_strategy=storybook-viewport; evidence_surface=page; sensitive_exclusion=N/A; submission_gate=approved
 - Story: `public-memo-authoring--admin-page-fallback-visual-light`; viewport: `memoDesktop` (1440x1000); state: light theme, page top.
@@ -119,9 +119,15 @@ source_type=storybook_canvas; target_program=mock-only; capture_scope=element; v
 
 Normalization used `trim_only`: seven captures were unchanged; the desktop dark page-top capture had 54px of uniform side margin removed from each side. The locked development base does not contain this topic or its assets, so all eight exact-path comparisons were `current-only`. The owner approved this set for persistence. No PR screenshot exists yet.
 
+A separate component capture records the dark quick editor on the first pointer hover after rendering. The block handle stays aligned with its paragraph throughout the measured animation frames, and the editor does not gain a spurious scrollbar.
+
+source_type=storybook_canvas; target_program=mock-only; capture_scope=element; requested_viewport=none; viewport_strategy=storybook-viewport; margin_policy=require_margin; evidence_surface=component; surface_selector=[data-visual-evidence-surface]; target_selector=[data-visual-evidence-target]; sensitive_exclusion=N/A; submission_gate=approved
+- Story: `public-memo-authoring--quick-publish-empty-dark`; state: dark theme, pointer over the empty editor paragraph after render.
+![Quick memo editor hover without layout shift](./assets/quick-editor-hover-dark.png)
+
 ## Related ADRs
 
-- [Keep Memo Authoring on the Public Memos Page](../../adr/0009-inline-memo-admin-authoring.md)
+- [Use a Self-Contained SSR Console Beside the Static Public Site](../../adr/0010-self-contained-console-runtime.md)
 
 ## References
 
