@@ -640,7 +640,7 @@ export const memosRouter = router({
         memos: sanitizedMemos,
         nextCursor,
         previousCursor,
-        hasPrevious: direction === "newer" ? hasMore : Boolean(cursor),
+        hasPrevious: direction === "newer" ? hasMore : actualMemos.length > 0 && Boolean(cursor),
         hasMore,
       };
     } catch (error) {

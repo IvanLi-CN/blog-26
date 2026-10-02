@@ -79,6 +79,9 @@ export function parseMemoPage<T>(
     if (hasMore && (memos.length === 0 || !edgeCursor)) {
       throw new Error("Memo 分页响应格式无效。");
     }
+    if (hasPrevious && (memos.length === 0 || !previousCursor)) {
+      throw new Error("Memo 分页响应格式无效。");
+    }
   }
 
   return { memos, hasMore, hasPrevious, nextCursor, previousCursor };

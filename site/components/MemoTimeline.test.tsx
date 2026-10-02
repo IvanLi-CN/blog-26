@@ -126,6 +126,15 @@ describe("Console SSR Memo page validation", () => {
     ).toThrow("Memo 分页响应格式无效。");
   });
 
+  test("rejects advertised newer records without a previous cursor", () => {
+    expect(() =>
+      parseConsoleInitialMemoPage(
+        { memos: [initialMemo], hasMore: false, hasPrevious: true, previousCursor: null },
+        false
+      )
+    ).toThrow("Memo 分页响应格式无效。");
+  });
+
   test("allows complete administrator records, including private visibility", () => {
     const page = parseConsoleInitialMemoPage(
       {

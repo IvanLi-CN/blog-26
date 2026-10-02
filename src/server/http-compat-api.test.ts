@@ -2259,6 +2259,20 @@ public: false
       "recent-underscore-memo",
     ]);
     expect(previousPage.hasMore).toBe(false);
+
+    const emptyResponse = await handlePublicApiRequest(
+      buildRequest(
+        `/api/public/memos?publicOnly=false&limit=1&cursor=${encodeURIComponent(nextPage.previousCursor)}`,
+        {},
+        ADMIN_EMAIL
+      ),
+      "/memos"
+    );
+    const emptyPage = await readJson(emptyResponse);
+    expect(emptyPage.memos).toEqual([]);
+    expect(emptyPage.hasMore).toBe(false);
+    expect(emptyPage.hasPrevious).toBe(false);
+    expect(emptyPage).not.toHaveProperty("previousCursor");
   });
 
   it("returns a controlled bad request for an over-budget public search query", async () => {
