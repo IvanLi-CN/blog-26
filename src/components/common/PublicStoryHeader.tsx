@@ -43,7 +43,7 @@ export function PublicStoryHeader({
                   <a
                     href={link.href}
                     aria-label={link.text}
-                    className={`nature-nav-link whitespace-nowrap gap-1.5 rounded-full px-1.5 transition sm:gap-2 sm:px-4 ${
+                    className={`nature-nav-link min-w-[2.75rem] justify-center whitespace-nowrap gap-1.5 rounded-full px-1.5 transition sm:gap-2 sm:px-4 ${
                       link.href === activeHref
                         ? "aw-link-active"
                         : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-accent-strong)]"
