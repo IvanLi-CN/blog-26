@@ -130,7 +130,7 @@ async function sampleSurfaceContrast(
       const owner = textNode.parentElement ?? element;
       const color = getComputedStyle(owner).color;
       let opacity = 1;
-      let ancestor: HTMLElement | null = owner;
+      let ancestor: Element | null = owner;
       while (ancestor) {
         opacity *= Number(getComputedStyle(ancestor).opacity);
         ancestor = ancestor.parentElement;
