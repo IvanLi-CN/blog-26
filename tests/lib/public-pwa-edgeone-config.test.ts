@@ -217,6 +217,41 @@ describe("EdgeOne public PWA cache config", () => {
     expect(config.headers.some(({ source }) => source === "/memos/data/57.json")).toBe(false);
   });
 
+  it("keeps Post and Memo detail pages ahead of nested static asset rules", () => {
+    const config = createEdgeoneCacheConfig("", [
+      "index.html",
+      "posts/index.html",
+      "posts/example/index.html",
+      "posts/example/metadata.json",
+      "memos/index.html",
+      "memos/memo-1/index.html",
+      "memos/memo-1/metadata.json",
+      "memos/feed.xml",
+    ]);
+
+    expect(findEdgeoneCacheRule(config, "/posts/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(findEdgeoneCacheRule(config, "/posts/example/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(findEdgeoneCacheRule(config, "/posts/example/metadata.json")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
+    );
+    expect(findEdgeoneCacheRule(config, "/memos/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(findEdgeoneCacheRule(config, "/memos/memo-1/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(findEdgeoneCacheRule(config, "/memos/memo-1/metadata.json")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
+    );
+    expect(findEdgeoneCacheRule(config, "/memos/feed.xml")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
+    );
+  });
+
   it("keeps a combined public artifact within the EdgeOne rule limit", () => {
     const rootAssets = [
       "atom.xml",
@@ -247,6 +282,7 @@ describe("EdgeOne public PWA cache config", () => {
       "posts/example/index.html",
       "memos/index.html",
       "memos/memo-1/index.html",
+      "memos/feed.xml",
       "memos/data/1.json",
       "tags/index.html",
       "tags/software/dev/index.html",
@@ -256,6 +292,7 @@ describe("EdgeOne public PWA cache config", () => {
       "projects/posters/example.webp",
       "_astro/app-123456.js",
       "_content/assets/post/example/hash/cover.webp",
+      "_content/media-manifest.json",
       "pwa/1234567890abcdef/icon-any-192.png",
       ...rootAssets,
     ]);
@@ -279,6 +316,16 @@ describe("EdgeOne public PWA cache config", () => {
     );
     expect(findEdgeoneCacheRule(config, "/memos/memo-1/")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(findEdgeoneCacheRule(config, "/memos/feed.xml")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
+    );
+    expect(
+      findEdgeoneCacheRule(config, "/_content/assets/post/example/hash/cover.webp")?.headers[0]
+        ?.value
+    ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.immutable);
+    expect(findEdgeoneCacheRule(config, "/_content/media-manifest.json")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
     );
     expect(findEdgeoneCacheRule(config, "/tags/software/dev/feed.xml")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
@@ -345,7 +392,7 @@ describe("EdgeOne public PWA cache config", () => {
     expect(
       findEdgeoneCacheRule(config, "/projects/project-39/assets/cover-39.webp")?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
-    expect(config.headers.some(({ source }) => source === "/memos/*")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/memos/feed.xml")).toBe(true);
     expect(
       config.headers.some(({ source }) => source === "/projects/:projectDir1/:projectDir2/*")
     ).toBe(true);
