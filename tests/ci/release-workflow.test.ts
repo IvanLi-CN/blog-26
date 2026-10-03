@@ -85,7 +85,17 @@ describe("release.yml", () => {
   });
 
   test("publishes the verified static artifact and functions to EdgeOne Makers only", () => {
+    const prepare = jobBlock("prepare");
+    expect(prepare).toContain("persist-credentials: false");
+    expect(
+      prepare.match(
+        /git -c http\.extraheader="AUTHORIZATION: bearer \$\{GITHUB_TOKEN\}" push origin "\$\{tag\}"/g
+      )
+    ).toHaveLength(3);
+    expect(prepare).not.toContain('git push origin "' + "${" + "tag}" + '"');
+
     const publishFrontend = jobBlock("publish_frontend");
+    expect(publishFrontend).toContain("persist-credentials: false");
     expect(publishFrontend).toContain(
       "PUBLIC_CONTENT_SNAPSHOT_URL: $" +
         "{{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://console.ivanli.cc/api/public/snapshot' }}"
@@ -165,6 +175,18 @@ describe("release.yml", () => {
     expect(publishImage).toContain(
       "PUBLIC_CONTENT_SNAPSHOT_URL: $" +
         "{{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://console.ivanli.cc/api/public/snapshot' }}"
+    );
+    expect(publishImage).toContain(
+      "- name: Download deployed Playbook console seed for image build"
+    );
+    expect(publishImage).toContain("name: playbook-console-seed-deployed");
+    expect(publishImage).toContain("path: ./site/generated");
+    expect(publishImage).toContain(
+      "PLAYBOOK_REQUIRED=$" + "{{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}"
+    );
+    expect(publishImage).toContain(
+      "PLAYBOOK_EDITION_INPUT_PATH=$" +
+        "{{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && needs.deploy_frontend_edgeone.result == 'success' && '/app/site/generated/playbook-edition.json' || '' }}"
     );
   });
 

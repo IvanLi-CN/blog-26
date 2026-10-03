@@ -1,11 +1,12 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import {
   downloadRetainedEdition,
   readPublicPointer,
   writePublicEdition,
 } from "../src/lib/playbook/artifacts";
 import { readPlaybookEdition } from "../src/lib/playbook/bundle";
+import { validatePlaybookEdition } from "../src/lib/playbook/cache";
 import {
   encodeJson,
   parseEditionIdentity,
@@ -27,9 +28,26 @@ const manifestUrl =
 const working = resolve(process.env.PLAYBOOK_WORK_DIR || ".tmp/playbook");
 let bundleRoot = process.env.PLAYBOOK_BUNDLE_DIR;
 let current: Awaited<ReturnType<typeof readPublicPointer>>;
+const inputPath = process.env.PLAYBOOK_EDITION_INPUT_PATH;
+const inputSeed = inputPath
+  ? validatePlaybookEdition(JSON.parse(await readFile(resolve(inputPath), "utf8")))
+  : undefined;
 await rm(resolve(publicRoot, "_content/playbook"), { recursive: true, force: true });
+await mkdir(working, { recursive: true });
+let snapshot: Uint8Array | undefined;
+
+// A deployed frontend seed is the immutable cross-artifact contract for image builds.
+if (inputSeed) {
+  const inputEdition = inputSeed.edition;
+  const destination = resolve(working, "deployed-input");
+  await rm(destination, { recursive: true, force: true });
+  await downloadRetainedEdition(inputEdition, manifestUrl, destination);
+  bundleRoot = destination;
+  current = inputEdition;
+  snapshot = await readFile(join(destination, "public-snapshot.json"));
+}
 // Offline builds opt in explicitly; an ordinary local build never fetches upstream.
-if (process.env.PLAYBOOK_USE_DEPLOYED === "true") {
+if (!inputSeed && process.env.PLAYBOOK_USE_DEPLOYED === "true") {
   current = await readPublicPointer(manifestUrl);
   if (current) {
     const destination = resolve(
@@ -47,9 +65,12 @@ if (!bundleRoot) {
   console.log("Playbook content is unavailable; rendering the empty state");
   process.exit(0);
 }
-await mkdir(working, { recursive: true });
-const snapshot = await readFile(snapshotPath);
+snapshot ||= await readFile(snapshotPath);
 const edition = await readPlaybookEdition(resolve(bundleRoot), renderer, snapshot);
+if (inputSeed && !samePlaybookEdition(inputSeed.edition, edition.edition)) {
+  throw new Error("Playbook edition input does not match the current renderer or snapshot");
+}
+if (inputSeed) validatePlaybookEdition(edition);
 if (current) {
   if (!samePlaybookEdition(current, edition.edition))
     edition.edition.previous = { tag: current.source.tag, editionDigest: current.editionDigest };

@@ -9,7 +9,9 @@ import { withoutDeploymentCredentials } from "../../src/lib/playbook/child-env";
 import { getPublicStaticCacheControl } from "../../src/lib/public-static-cache-policy";
 
 type WorkflowStep = {
+  name?: string;
   uses?: string;
+  if?: string;
   with?: Record<string, unknown>;
 };
 
@@ -33,6 +35,8 @@ describe("playbook deployment boundaries", () => {
     ) as { jobs: { rollback: { concurrency: object; steps: WorkflowStep[] } } };
     const release = load(await readFile(".github/workflows/release.yml", "utf8")) as {
       jobs: {
+        prepare: ReleaseJob;
+        publish_frontend: ReleaseJob;
         deploy_frontend_edgeone: ReleaseJob;
         publish_image: ReleaseJob;
         publish_backend: ReleaseJob;
@@ -58,6 +62,8 @@ describe("playbook deployment boundaries", () => {
     expect(update.jobs.production.if).toContain("PLAYBOOK_CONTENT_UPDATES_ENABLED == 'true'");
 
     for (const job of [
+      release.jobs.prepare,
+      release.jobs.publish_frontend,
       release.jobs.deploy_frontend_edgeone,
       update.jobs.production,
       rollback.jobs.rollback,
@@ -65,6 +71,35 @@ describe("playbook deployment boundaries", () => {
       const checkout = job.steps?.find((step) => step.uses === "actions/checkout@v7");
       expect(checkout?.with?.["persist-credentials"]).toBe(false);
     }
+  });
+  test("image builds consume the deployed frontend edition as an immutable input", async () => {
+    const release = load(await readFile(".github/workflows/release.yml", "utf8")) as {
+      jobs: { publish_image: ReleaseJob };
+    };
+    const seed = release.jobs.publish_image.steps?.find(
+      (step) => step.name === "Download deployed Playbook console seed for image build"
+    );
+    expect(seed?.uses).toBe("actions/download-artifact@v8");
+    expect(seed?.with).toEqual({
+      name: "playbook-console-seed-deployed",
+      path: "./site/generated",
+    });
+
+    const dockerfile = await readFile("Dockerfile", "utf8");
+    expect(dockerfile).toContain("ARG PLAYBOOK_REQUIRED=false");
+    expect(dockerfile).toContain("ARG PLAYBOOK_EDITION_INPUT_PATH=");
+    expect(dockerfile).toContain("ENV PLAYBOOK_REQUIRED=$" + "{PLAYBOOK_REQUIRED}");
+    expect(dockerfile).toContain(
+      "ENV PLAYBOOK_EDITION_INPUT_PATH=$" + "{PLAYBOOK_EDITION_INPUT_PATH}"
+    );
+
+    const prepare = await readFile("scripts/prepare-playbook-edition.ts", "utf8");
+    expect(prepare).toContain("PLAYBOOK_EDITION_INPUT_PATH");
+    expect(prepare).toContain("validatePlaybookEdition(JSON.parse");
+    expect(prepare).toContain("downloadRetainedEdition(inputEdition, manifestUrl, destination)");
+    expect(prepare).toContain(
+      "Playbook edition input does not match the current renderer or snapshot"
+    );
   });
   test("pointer revalidates, version files are immutable and package resources cannot execute", () => {
     const digest = "a".repeat(64);
