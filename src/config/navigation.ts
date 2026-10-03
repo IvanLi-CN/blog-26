@@ -34,6 +34,11 @@ export const headerData = {
       href: "/tags",
       icon: "tabler:hash",
     },
+    {
+      text: "执念",
+      href: "/playbook",
+      icon: "tabler:book",
+    },
   ] as NavLink[],
 };
 

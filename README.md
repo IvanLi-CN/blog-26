@@ -71,6 +71,8 @@ Useful optional variables:
 - `BASE_URL`: Playwright override
 - `ADMIN_EMAIL`: admin identity for dev/test verification
 
+The native `/playbook/` column consumes validated public Release assets. Production activation, content update inputs, console cache configuration and rollback are described in the [Style Playbook publishing runbook](docs/runbooks/style-playbook-publishing.md). Local builds stay offline unless explicitly configured.
+
 The app only reads content from the local content root. There is no remote content-source runtime.
 
 ## Core Commands

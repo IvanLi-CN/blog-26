@@ -1,9 +1,20 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { load } from "js-yaml";
 
 const workflowPath = path.resolve(process.cwd(), ".github/workflows/release.yml");
 const workflow = readFileSync(workflowPath, "utf8");
+const parsedWorkflow = load(workflow) as {
+  jobs: Record<
+    string,
+    {
+      concurrency?: { group?: string; "cancel-in-progress"?: boolean };
+      needs?: unknown;
+      if?: string;
+    }
+  >;
+};
 
 function jobBlock(jobName: string) {
   const marker = `\n  ${jobName}:\n`;
@@ -74,7 +85,17 @@ describe("release.yml", () => {
   });
 
   test("publishes the verified static artifact and functions to EdgeOne Makers only", () => {
+    const prepare = jobBlock("prepare");
+    expect(prepare).toContain("persist-credentials: false");
+    expect(
+      prepare.match(
+        /git -c http\.extraheader="AUTHORIZATION: bearer \$\{GITHUB_TOKEN\}" push origin "\$\{tag\}"/g
+      )
+    ).toHaveLength(3);
+    expect(prepare).not.toContain('git push origin "' + "${" + "tag}" + '"');
+
     const publishFrontend = jobBlock("publish_frontend");
+    expect(publishFrontend).toContain("persist-credentials: false");
     expect(publishFrontend).toContain(
       "PUBLIC_CONTENT_SNAPSHOT_URL: $" +
         "{{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://console.ivanli.cc/api/public/snapshot' }}"
@@ -111,6 +132,9 @@ describe("release.yml", () => {
     expect(publishFrontend).toContain("name: frontend-edgeone-site");
     expect(publishFrontend).toContain("path: ./edgeone-dist");
     expect(workflow).not.toContain("\n  deploy_frontend_pages:\n");
+    expect(publishFrontend).toContain("- name: Upload Playbook console seed for backend build");
+    expect(publishFrontend).toContain("name: playbook-console-seed");
+    expect(publishFrontend).toContain("path: ./site/generated/playbook-edition.json");
     expect(workflow).not.toContain("actions/upload-pages-artifact");
     expect(workflow).not.toContain("actions/deploy-pages");
     expect(workflow).not.toContain("pages: write");
@@ -133,6 +157,9 @@ describe("release.yml", () => {
     expect(edgeone).toContain("for attempt in {1..10}; do");
     expect(edgeone).toContain("EdgeOne backend origin and trusted fallback secret verified");
     expect(edgeone).toContain('npx edgeone@1.6.34 makers deploy "$EDGEONE_ARTIFACT_DIR"');
+    expect(edgeone).toContain("- name: Upload deployed Playbook console seed for backend build");
+    expect(edgeone).toContain("name: playbook-console-seed-deployed");
+    expect(edgeone).toContain("path: ./site/generated/playbook-edition.json");
     expect(edgeone).toContain(
       "Makers environment did not contain the expected console origin and fallback secret"
     );
@@ -150,10 +177,63 @@ describe("release.yml", () => {
       "PUBLIC_CONTENT_SNAPSHOT_URL: $" +
         "{{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://console.ivanli.cc/api/public/snapshot' }}"
     );
+    expect(publishImage).toContain(
+      "- name: Download deployed Playbook console seed for image build"
+    );
+    expect(publishImage).toContain("name: playbook-console-seed-deployed");
+    expect(publishImage).toContain("path: ./site/generated");
+    expect(publishImage).toContain("id: playbook-initial");
+    expect(publishImage).toContain(
+      "- name: Prepare the exact Playbook console seed for image build"
+    );
+    expect(publishImage).toContain(
+      "PLAYBOOK_BUNDLE_DIR: $" + "{{ steps.playbook-initial.outputs.bundle_dir }}"
+    );
+    expect(publishImage).toContain("run: bun scripts/prepare-console-playbook-seed.ts");
+    expect(publishImage).toContain(
+      "PLAYBOOK_REQUIRED=$" + "{{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}"
+    );
+    expect(publishImage).toContain(
+      "PLAYBOOK_EDITION_INPUT_PATH=$" +
+        "{{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && '/app/site/generated/playbook-edition.json' || '' }}"
+    );
+    expect(publishImage).not.toContain("env.PLAYBOOK_BUNDLE_DIR != ''");
+  });
+
+  test("serializes image and backend publication behind the deployed frontend", () => {
+    const lock = { group: "blog26-edgeone-production", "cancel-in-progress": false };
+    for (const jobName of ["deploy_frontend_edgeone", "publish_image", "publish_backend"]) {
+      expect(parsedWorkflow.jobs[jobName]?.concurrency).toEqual(lock);
+    }
+    expect(parsedWorkflow.jobs.publish_image?.needs).toEqual([
+      "prepare",
+      "publish_frontend",
+      "deploy_frontend_edgeone",
+    ]);
+    expect(parsedWorkflow.jobs.publish_image?.if).toContain("always()");
+    expect(parsedWorkflow.jobs.publish_image?.if).toContain(
+      "needs.deploy_frontend_edgeone.result == 'success'"
+    );
+    expect(parsedWorkflow.jobs.publish_image?.if).toContain(
+      "needs.deploy_frontend_edgeone.result == 'skipped'"
+    );
   });
 
   test("publishes the console SSR artifact with backend releases", () => {
     const publishBackend = jobBlock("publish_backend");
+    expect(publishBackend).toContain("needs: [prepare, publish_frontend, deploy_frontend_edgeone]");
+    expect(publishBackend).toContain("always()");
+    expect(publishBackend).toContain("needs.publish_frontend.result == 'success'");
+    expect(publishBackend).toContain("needs.publish_frontend.result == 'skipped'");
+    expect(publishBackend).toContain("needs.deploy_frontend_edgeone.result == 'success'");
+    expect(publishBackend).toContain("needs.deploy_frontend_edgeone.result == 'skipped'");
+    expect(publishBackend).toContain("Download Playbook console seed from deployed frontend");
+    expect(publishBackend).toContain("name: playbook-console-seed-deployed");
+    expect(publishBackend).toContain("Download Playbook console seed from frontend build");
+    expect(publishBackend).toContain("name: playbook-console-seed");
+    expect(publishBackend).toContain("PLAYBOOK_SEED_INPUT_PATH");
+    expect(publishBackend).toContain("Fetch public content snapshot for backend-only release");
+    expect(publishBackend).toContain("bash ./scripts/fetch-public-content-bundle.sh");
     expect(publishBackend).toContain("Build backend runtime + console + admin artifacts");
     expect(publishBackend).toContain(`backend-console-dist-\${version}.tar.gz`);
     expect(publishBackend).toContain(

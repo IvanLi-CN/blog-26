@@ -38,6 +38,9 @@ find "${DIST_DIR}/src" -type f \( -name "*.test.ts" -o -name "*.test.tsx" \) -de
 copy_tree "${ROOT_DIR}/drizzle" "${DIST_DIR}/drizzle"
 copy_tree "${ROOT_DIR}/public" "${DIST_DIR}/public"
 copy_tree "${ROOT_DIR}/site/assets/brand/source" "${DIST_DIR}/site/assets/brand/source"
+if [[ -f "${ROOT_DIR}/site/generated/playbook-edition.json" ]]; then
+  copy_file "site/generated/playbook-edition.json" "${DIST_DIR}/site/generated"
+fi
 
 chmod +x "${DIST_DIR}/docker-entrypoint.sh"
 

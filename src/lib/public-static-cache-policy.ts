@@ -22,6 +22,7 @@ export function getPublicStaticCacheControl(
   if (
     /(?:^|\/)_(?:astro)\//.test(pathname) ||
     /(?:^|\/)_(?:content\/assets)\//.test(pathname) ||
+    /(?:^|\/)_content\/playbook\/v?\d+\.\d+\.\d+\/[a-f0-9]{64}\//.test(pathname) ||
     /(?:^|\/)pwa\/[a-f0-9]{16}\//.test(pathname)
   ) {
     return VERSIONED_PUBLIC_ASSET_CACHE_CONTROL;

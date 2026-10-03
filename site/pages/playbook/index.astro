@@ -1,0 +1,9 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import PlaybookPage from "@/components/playbook/PlaybookPage";
+import { getPlaybookEdition } from "../../lib/playbook";
+const edition = await getPlaybookEdition();
+---
+<BaseLayout pathname="/playbook" title="执念 - Ivan's Blog" description="技术选型、项目实践与可复用的 Policy Skills。">
+  <PlaybookPage edition={edition} path="" />
+</BaseLayout>

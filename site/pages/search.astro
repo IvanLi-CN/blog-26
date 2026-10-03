@@ -2,8 +2,21 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import SearchPageIsland from "../components/SearchPageIsland";
 import PublicSearchPage from "../../src/components/search/PublicSearchPage";
+import { getPlaybookEdition } from "../lib/playbook";
+import { playbookVersionPath } from "@/lib/playbook/cache";
+import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 
 const bootstrapQuery = "__SEARCH_QUERY__";
+const edition = await getPlaybookEdition();
+const playbook = edition ? {
+  edition: edition.edition.editionDigest,
+  sourceReleaseId: edition.edition.source.releaseId,
+  sourceTag: edition.edition.source.tag,
+  sha256: edition.edition.files.find((file) => file.path === "search-documents.json")!.sha256,
+  url: process.env.CONSOLE_RUNTIME === "true"
+    ? toPublicApiUrl(`/api/public/playbook/search-index?edition=${edition.edition.editionDigest}&sourceReleaseId=${encodeURIComponent(edition.edition.source.releaseId)}&sourceTag=${encodeURIComponent(edition.edition.source.tag)}`)
+    : toPublicSitePath(`${playbookVersionPath(edition.edition)}search-documents.json`)!,
+} : undefined;
 ---
 <BaseLayout pathname="/search" title="搜索 - Ivan's Blog" description="搜索文章与公开 Memos">
   <div data-search-bootstrap hidden inert aria-hidden="true">
@@ -48,7 +61,7 @@ const bootstrapQuery = "__SEARCH_QUERY__";
     </section>
   </div>
   <div data-search-island>
-    <SearchPageIsland client:load />
+    <SearchPageIsland client:load playbook={playbook} />
   </div>
 
   <script is:inline data-astro-rerun>

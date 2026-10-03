@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, inArray } from "drizzle-orm";
 import type { SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import { db } from "@/lib/db";
+import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
 import { appendPublicCorsHeaders, createPublicCorsPreflightResponse } from "@/lib/public-cors";
 import { posts } from "@/lib/schema";
 import { buildPublicSnapshot, resolvePublicMemoTitle } from "@/public-site/snapshot";
@@ -9,6 +10,7 @@ import { createContext } from "@/server/context";
 import { handlePublicAssetFacadeRequest } from "@/server/public-media";
 import { appRouter } from "@/server/router";
 import { suggestPublicSearchTerms } from "@/server/services/search-suggestions";
+import { handlePlaybookRequest } from "./playbook";
 
 const PUBLIC_API_ALLOWED_METHODS = ["GET", "HEAD", "POST", "PATCH", "DELETE", "OPTIONS"] as const;
 const SEARCH_SUGGESTION_REASONS = new Set<SearchSuggestionReason>([
@@ -139,6 +141,12 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
           "cache-control": "no-store",
         },
       });
+    }
+
+    if (pathname === "/playbook/search-index" || pathname === "/playbook/resource") {
+      const response = await handlePlaybookRequest(request, pathname, getRuntimePlaybookStore());
+      appendPublicCorsHeaders(response.headers, request, PUBLIC_API_ALLOWED_METHODS);
+      return response;
     }
 
     const { caller, resHeaders } = await createCallerForRequest(request);

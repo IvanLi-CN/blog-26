@@ -1251,7 +1251,7 @@ test.describe("Nature frontend public coverage", () => {
       expect(navigationRight).toBeLessThanOrEqual(headerRight + 1);
       const gaps = navMetrics?.gaps ?? [];
       const averageContentWidth = navMetrics?.averageContentWidth ?? 0;
-      expect(gaps).toHaveLength(3);
+      expect(gaps).toHaveLength(4);
       expect(averageContentWidth).toBeGreaterThan(0);
       for (const gap of gaps) {
         expect(gap).toBeCloseTo(16, 0);
@@ -1594,7 +1594,7 @@ test.describe("Nature frontend public coverage", () => {
         expect(edges.left).toBeCloseTo(expectedEdge, 0);
         expect(edges.right).toBeCloseTo(expectedEdge, 0);
       }
-      expect(metrics.navTargets).toHaveLength(4);
+      expect(metrics.navTargets).toHaveLength(5);
       for (const target of metrics.navTargets) {
         expect(target.width).toBeGreaterThanOrEqual(44);
         expect(target.height).toBeGreaterThanOrEqual(44);

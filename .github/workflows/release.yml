@@ -88,6 +88,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ env.RELEASE_HEAD_BRANCH }}
+          persist-credentials: false
 
       - name: Resolve release intent from PR labels
         id: intent
@@ -220,6 +221,8 @@ jobs:
       - name: Create and push frontend tag (if missing)
         if: ${{ steps.intent.outputs.should_release == 'true' && steps.intent.outputs.frontend_release == 'true' && steps.main-head-before-frontend-tag.outputs.is_current_head == 'true' }}
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           tag="${{ steps.frontend-version.outputs.release_tag }}"
@@ -228,7 +231,7 @@ jobs:
             exit 0
           fi
           git tag -a "${tag}" "${{ env.RELEASE_HEAD_SHA }}" -m "${tag}"
-          git push origin "${tag}"
+          git -c http.extraheader="AUTHORIZATION: bearer ${GITHUB_TOKEN}" push origin "${tag}"
 
       - name: Recheck current main head before backend tag
         if: ${{ steps.intent.outputs.should_release == 'true' && steps.intent.outputs.backend_release == 'true' }}
@@ -252,6 +255,8 @@ jobs:
       - name: Create and push backend tag (if missing)
         if: ${{ steps.intent.outputs.should_release == 'true' && steps.intent.outputs.backend_release == 'true' && steps.main-head-before-backend-tag.outputs.is_current_head == 'true' }}
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           tag="${{ steps.backend-version.outputs.release_tag }}"
@@ -260,7 +265,7 @@ jobs:
             exit 0
           fi
           git tag -a "${tag}" "${{ env.RELEASE_HEAD_SHA }}" -m "${tag}"
-          git push origin "${tag}"
+          git -c http.extraheader="AUTHORIZATION: bearer ${GITHUB_TOKEN}" push origin "${tag}"
 
       - name: Recheck current main head before image tag
         if: ${{ steps.intent.outputs.should_release == 'true' && (steps.intent.outputs.frontend_release == 'true' || steps.intent.outputs.backend_release == 'true') }}
@@ -284,6 +289,8 @@ jobs:
       - name: Create and push Docker image tag (if missing)
         if: ${{ steps.intent.outputs.should_release == 'true' && (steps.intent.outputs.frontend_release == 'true' || steps.intent.outputs.backend_release == 'true') && steps.main-head-before-image-tag.outputs.is_current_head == 'true' }}
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           tag="${{ steps.image-version.outputs.release_tag }}"
@@ -292,7 +299,7 @@ jobs:
             exit 0
           fi
           git tag -a "${tag}" "${{ env.RELEASE_HEAD_SHA }}" -m "${tag}"
-          git push origin "${tag}"
+          git -c http.extraheader="AUTHORIZATION: bearer ${GITHUB_TOKEN}" push origin "${tag}"
 
       - name: Export metadata
         id: meta
@@ -357,6 +364,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.head_sha }}
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -454,8 +462,29 @@ jobs:
           echo "PUBLIC_SITE_URL=${site_url}" >> "$GITHUB_ENV"
           echo "PUBLIC_SITE_BASE_PATH=${site_base_path}" >> "$GITHUB_ENV"
 
+      - name: Mint source-read token for an explicit initial Playbook release
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && vars.PLAYBOOK_INITIAL_RELEASE_ID != '' }}
+        id: playbook-source
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.PLAYBOOK_SOURCE_APP_ID }}
+          private-key: ${{ secrets.PLAYBOOK_SOURCE_APP_PRIVATE_KEY }}
+          owner: IvanLi-CN
+          repositories: style-playbook-skills
+          permission-contents: read
+
+      - name: Resolve fixed initial Playbook bundle when no deployed edition exists
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        env:
+          GH_TOKEN: ${{ steps.playbook-source.outputs.token }}
+          PLAYBOOK_INITIAL_RELEASE_ID: ${{ vars.PLAYBOOK_INITIAL_RELEASE_ID }}
+        run: bun scripts/fetch-initial-playbook.ts
+
       - name: Build frontend static site
         env:
+          PLAYBOOK_USE_DEPLOYED: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+          PLAYBOOK_REQUIRED: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+          PLAYBOOK_RENDERER_COMMIT: ${{ needs.prepare.outputs.head_sha }}
           PUBLIC_CONTENT_BUNDLE_URL: ${{ secrets.PUBLIC_CONTENT_BUNDLE_URL }}
           PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
           PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: ${{ vars.PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL }}
@@ -469,6 +498,16 @@ jobs:
           PUBLIC_SITE_URL: ${{ env.PUBLIC_SITE_URL }}
           PUBLIC_SITE_BASE_PATH: ${{ env.PUBLIC_SITE_BASE_PATH }}
         run: bun ./scripts/verify-pages-build.ts
+
+      - name: Build console SSR for Playbook smoke
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        run: bun run console:build
+
+      - name: Verify Playbook static and console SSR output
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        env:
+          PLAYBOOK_SYNC_ENABLED: 'false'
+        run: bun run verify:playbook-build
 
       - name: Package referenced public media
         id: package-public-media
@@ -539,6 +578,14 @@ jobs:
           if-no-files-found: error
           include-hidden-files: true
 
+      - name: Upload Playbook console seed for backend build
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playbook-console-seed
+          path: ./site/generated/playbook-edition.json
+          if-no-files-found: error
+
       - name: Recheck current main head before frontend GitHub Release
         id: main-head-before-frontend-release
         uses: actions/github-script@v9
@@ -575,6 +622,9 @@ jobs:
   deploy_frontend_edgeone:
     name: Deploy frontend to EdgeOne Makers
     runs-on: ubuntu-latest
+    concurrency:
+      group: blog26-edgeone-production
+      cancel-in-progress: false
     needs: [prepare, publish_frontend]
     if: ${{ needs.publish_frontend.result == 'success' && needs.prepare.outputs.channel == 'stable' && needs.prepare.outputs.is_latest_branch_head == 'true' }}
     steps:
@@ -588,6 +638,53 @@ jobs:
         with:
           name: frontend-edgeone-site
           path: ./edgeone-dist
+
+      - name: Checkout the approved application renderer
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        with:
+          bun-version: 1.4.2
+
+      - name: Recover the validated initial bundle from the release artifact
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        run: |
+          bun install --frozen-lockfile
+          bun scripts/stage-playbook-initial-from-artifact.ts
+
+      - name: Rebuild with the current Playbook under the shared production lock
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        env:
+          PLAYBOOK_USE_DEPLOYED: 'true'
+          PLAYBOOK_REQUIRED: 'true'
+          PLAYBOOK_RENDERER_COMMIT: ${{ needs.prepare.outputs.head_sha }}
+          PUBLIC_CONTENT_BUNDLE_URL: ${{ secrets.PUBLIC_CONTENT_BUNDLE_URL }}
+          PUBLIC_CONTENT_SNAPSHOT_URL: ${{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://console.ivanli.cc/api/public/snapshot' }}
+          PUBLIC_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL || 'https://console.ivanli.cc' }}
+          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://ivanli.cc' }}
+          PUBLIC_SITE_BASE_PATH: ${{ vars.PUBLIC_SITE_BASE_PATH || '/' }}
+          PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: ${{ vars.PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL }}
+          PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL: ${{ vars.PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL }}
+          PUBLIC_OCTO_RILL_METRICS_BASE_URL: ${{ vars.PUBLIC_OCTO_RILL_METRICS_BASE_URL }}
+        run: |
+          bun install --frozen-lockfile
+          bash scripts/fetch-public-content-bundle.sh
+          bash scripts/build-edgeone-content-artifact.sh
+          bun scripts/verify-playbook-artifact.ts
+
+      - name: Upload deployed Playbook console seed for backend build
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playbook-console-seed-deployed
+          path: ./site/generated/playbook-edition.json
+          if-no-files-found: error
 
       - name: Stage EdgeOne artifact outside repository
         shell: bash
@@ -761,11 +858,22 @@ jobs:
             exit 1
           fi
 
+      - name: Verify the deployed Playbook pointer
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && steps.deployment.outcome == 'success' }}
+        run: bun scripts/verify-deployed-playbook.ts
+
   publish_image:
     name: Publish unified Docker image
     runs-on: ubuntu-latest
-    needs: [prepare]
-    if: ${{ needs.prepare.outputs.should_release == 'true' && (needs.prepare.outputs.frontend_release == 'true' || needs.prepare.outputs.backend_release == 'true') }}
+    needs: [prepare, publish_frontend, deploy_frontend_edgeone]
+    if: >-
+      ${{ always() && needs.prepare.outputs.should_release == 'true' &&
+      (needs.prepare.outputs.frontend_release == 'true' || needs.prepare.outputs.backend_release == 'true') &&
+      (needs.publish_frontend.result == 'success' || needs.publish_frontend.result == 'skipped') &&
+      (needs.deploy_frontend_edgeone.result == 'success' || needs.deploy_frontend_edgeone.result == 'skipped') }}
+    concurrency:
+      group: blog26-edgeone-production
+      cancel-in-progress: false
     permissions:
       contents: read
       packages: write
@@ -775,6 +883,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.head_sha }}
+          persist-credentials: false
 
       - name: Fetch content bundle
         env:
@@ -782,6 +891,52 @@ jobs:
           PUBLIC_CONTENT_SNAPSHOT_URL: ${{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://console.ivanli.cc/api/public/snapshot' }}
           PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
         run: bash ./scripts/fetch-public-content-bundle.sh
+
+      - uses: oven-sh/setup-bun@v2
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        with:
+          bun-version: 1.4.2
+
+      - name: Install the public input validator
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        run: bun install --frozen-lockfile
+
+      - name: Download deployed Playbook console seed for image build
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && needs.deploy_frontend_edgeone.result == 'success' }}
+        uses: actions/download-artifact@v8
+        with:
+          name: playbook-console-seed-deployed
+          path: ./site/generated
+
+      - name: Mint source-read token for an explicit initial Playbook release
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && vars.PLAYBOOK_INITIAL_RELEASE_ID != '' }}
+        id: playbook-source
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.PLAYBOOK_SOURCE_APP_ID }}
+          private-key: ${{ secrets.PLAYBOOK_SOURCE_APP_PRIVATE_KEY }}
+          owner: IvanLi-CN
+          repositories: style-playbook-skills
+          permission-contents: read
+
+      - name: Resolve fixed initial Playbook bundle when no deployed edition exists
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        id: playbook-initial
+        env:
+          GH_TOKEN: ${{ steps.playbook-source.outputs.token }}
+          PLAYBOOK_INITIAL_RELEASE_ID: ${{ vars.PLAYBOOK_INITIAL_RELEASE_ID }}
+        run: bun scripts/fetch-initial-playbook.ts
+
+      - name: Prepare the exact Playbook console seed for image build
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        env:
+          PLAYBOOK_BUNDLE_DIR: ${{ steps.playbook-initial.outputs.bundle_dir }}
+          PLAYBOOK_MANIFEST_URL: ${{ vars.PLAYBOOK_MANIFEST_URL || 'https://ivanli.cc/_content/playbook/manifest.json' }}
+          PLAYBOOK_SEED_INPUT_PATH: ${{ needs.deploy_frontend_edgeone.result == 'success' && './site/generated/playbook-edition.json' || '' }}
+          PLAYBOOK_USE_DEPLOYED: 'true'
+          COMMIT_HASH: ${{ needs.prepare.outputs.head_sha }}
+          PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
+        run: bun scripts/prepare-console-playbook-seed.ts
 
       - name: Resolve Docker public site config
         id: public-site-config
@@ -970,6 +1125,10 @@ jobs:
             PUBLIC_SITE_URL=${{ steps.public-site-config.outputs.site_url }}
             PUBLIC_SITE_BASE_PATH=${{ steps.public-site-config.outputs.site_base_path }}
             PUBLIC_CONTENT_BUNDLE_URL=preloaded
+            PLAYBOOK_USE_DEPLOYED=${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+            PLAYBOOK_REQUIRED=${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+            PLAYBOOK_EDITION_INPUT_PATH=${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && '/app/site/generated/playbook-edition.json' || '' }}
+            PLAYBOOK_BUNDLE_DIR=
             WITH_PLAYWRIGHT=false
             DRIZZLE_ORM_VERSION=${{ steps.pkg.outputs.drizzle_version }}
           cache-from: type=gha
@@ -978,8 +1137,15 @@ jobs:
   publish_backend:
     name: Publish backend release artifacts
     runs-on: ubuntu-latest
-    needs: [prepare]
-    if: ${{ needs.prepare.outputs.should_release == 'true' && needs.prepare.outputs.backend_release == 'true' }}
+    needs: [prepare, publish_frontend, deploy_frontend_edgeone]
+    if: >-
+      ${{ always() && needs.prepare.outputs.should_release == 'true' &&
+      needs.prepare.outputs.backend_release == 'true' &&
+      (needs.publish_frontend.result == 'success' || needs.publish_frontend.result == 'skipped') &&
+      (needs.deploy_frontend_edgeone.result == 'success' || needs.deploy_frontend_edgeone.result == 'skipped') }}
+    concurrency:
+      group: blog26-edgeone-production
+      cancel-in-progress: false
     permissions:
       contents: write
     timeout-minutes: 60
@@ -988,6 +1154,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.head_sha }}
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -1011,6 +1178,54 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Download Playbook console seed from deployed frontend
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && needs.deploy_frontend_edgeone.result == 'success' }}
+        uses: actions/download-artifact@v8
+        with:
+          name: playbook-console-seed-deployed
+          path: ./site/generated
+
+      - name: Download Playbook console seed from frontend build
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && needs.publish_frontend.result == 'success' && needs.deploy_frontend_edgeone.result == 'skipped' }}
+        uses: actions/download-artifact@v8
+        with:
+          name: playbook-console-seed
+          path: ./site/generated
+
+      - name: Fetch public content snapshot for backend-only release
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && needs.publish_frontend.result == 'skipped' }}
+        env:
+          PUBLIC_CONTENT_BUNDLE_URL: ${{ secrets.PUBLIC_CONTENT_BUNDLE_URL }}
+          PUBLIC_CONTENT_SNAPSHOT_URL: ${{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://console.ivanli.cc/api/public/snapshot' }}
+          PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
+        run: bash ./scripts/fetch-public-content-bundle.sh
+
+      - name: Mint source-read token for an explicit initial Playbook release
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && needs.publish_frontend.result == 'skipped' && vars.PLAYBOOK_INITIAL_RELEASE_ID != '' }}
+        id: playbook-source
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.PLAYBOOK_SOURCE_APP_ID }}
+          private-key: ${{ secrets.PLAYBOOK_SOURCE_APP_PRIVATE_KEY }}
+          owner: IvanLi-CN
+          repositories: style-playbook-skills
+          permission-contents: read
+
+      - name: Resolve fixed initial Playbook bundle when no deployed edition exists
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && needs.publish_frontend.result == 'skipped' }}
+        env:
+          GH_TOKEN: ${{ steps.playbook-source.outputs.token }}
+          PLAYBOOK_INITIAL_RELEASE_ID: ${{ vars.PLAYBOOK_INITIAL_RELEASE_ID }}
+        run: bun scripts/fetch-initial-playbook.ts
+
+      - name: Prepare the console public seed
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        env:
+          PLAYBOOK_SEED_INPUT_PATH: ${{ needs.publish_frontend.result == 'success' && './site/generated/playbook-edition.json' || '' }}
+          PLAYBOOK_USE_DEPLOYED: 'true'
+          COMMIT_HASH: ${{ needs.prepare.outputs.head_sha }}
+        run: bun scripts/prepare-console-playbook-seed.ts
 
       - name: Build backend runtime + console + admin artifacts
         run: bun run backend:build

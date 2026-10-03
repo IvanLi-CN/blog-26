@@ -33,6 +33,7 @@ function isVersionedAsset(path: string) {
   return (
     path.startsWith("_astro/") ||
     path.startsWith("_content/assets/") ||
+    /^_content\/playbook\/v?\d+\.\d+\.\d+\/[a-f0-9]{64}\//.test(path) ||
     /^pwa\/[a-f0-9]{16}\//.test(path)
   );
 }
@@ -63,13 +64,40 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
   );
   const htmlRules = [
     rule(scopedPath(basePath, "/"), EDGEONE_PUBLIC_CACHE_CONTROL.html),
-    ...["/about*", "/search*", "/posts*", "/memos*", "/tags/", "/tags/*/"].map((path) =>
-      rule(scopedPath(basePath, path), EDGEONE_PUBLIC_CACHE_CONTROL.html)
-    ),
+    ...[
+      "/about*",
+      "/search*",
+      "/posts*",
+      "/memos*",
+      "/tags/",
+      "/tags/*/",
+      "/playbook",
+      "/playbook/*",
+    ].map((path) => rule(scopedPath(basePath, path), EDGEONE_PUBLIC_CACHE_CONTROL.html)),
     rule(scopedPath(basePath, "/projects/"), EDGEONE_PUBLIC_CACHE_CONTROL.html),
     rule(scopedPath(basePath, "/projects/:slug/"), EDGEONE_PUBLIC_CACHE_CONTROL.html),
   ];
   const versionedRules = [
+    ...[
+      ...new Set(
+        normalizedStaticFiles
+          .filter((path) => /^_content\/playbook\/v?\d+\.\d+\.\d+\/[a-f0-9]{64}\//.test(path))
+          .map((path) => path.split("/").slice(0, 4).join("/"))
+      ),
+    ]
+      .sort()
+      .flatMap((path) => [
+        {
+          source: scopedPath(basePath, `/${path}/policies/*`),
+          headers: [
+            { key: "Cache-Control", value: EDGEONE_PUBLIC_CACHE_CONTROL.immutable },
+            { key: "Content-Type", value: "text/plain; charset=utf-8" },
+            { key: "Content-Disposition", value: "attachment" },
+            { key: "X-Content-Type-Options", value: "nosniff" },
+          ],
+        },
+        rule(scopedPath(basePath, `/${path}/*`), EDGEONE_PUBLIC_CACHE_CONTROL.immutable),
+      ]),
     rule(scopedPath(basePath, "/_astro/*"), EDGEONE_PUBLIC_CACHE_CONTROL.immutable),
     ...(hasContentAssetFiles
       ? [rule(scopedPath(basePath, "/_content/assets/*"), EDGEONE_PUBLIC_CACHE_CONTROL.immutable)]
@@ -226,6 +254,8 @@ function validateHtmlFiles(staticFiles: readonly string[], basePath: string) {
       "/tags/*/",
       "/projects/",
       "/projects/:slug/",
+      "/playbook",
+      "/playbook/*",
     ].some((source) => edgeoneSourceMatches(scopedPath(normalizedBase, source), scoped));
     if (!represented) throw new Error(`Public HTML route has no EdgeOne HTML cache rule: ${file}`);
   }

@@ -436,7 +436,7 @@ export default function PublicSearchPage({
             icon="tabler:sparkles"
             eyebrow="开始探索"
             title="输入关键词开始搜索"
-            description="可搜索公开文章、Memos、标签和工具名。用清晰名词进入最快。"
+            description="可搜索文章、公开闪念，以及执念中的 Topic、项目实践和 Policy Skill。"
             watermark="GO"
           />
         )}
@@ -504,11 +504,30 @@ export default function PublicSearchPage({
         )}
 
         {!isLoading && filteredResults.length > 0 && (
-          <SearchResultsList
-            results={filteredResults}
-            query={activeQuery}
-            resolveHref={resolveHref}
-          />
+          <div className="grid gap-7">
+            {[
+              { key: "blog", title: "文章与闪念" },
+              { key: "playbook", title: "执念" },
+            ].map((group) => {
+              const items = filteredResults.filter(
+                (result) => (result.source === "playbook" ? "playbook" : "blog") === group.key
+              );
+              return (
+                items.length > 0 && (
+                  <section key={group.key} aria-label={group.title}>
+                    {results.some((result) => result.source === "playbook") && (
+                      <h2 className="mb-4 font-heading text-xl font-semibold">{group.title}</h2>
+                    )}
+                    <SearchResultsList
+                      results={items}
+                      query={activeQuery}
+                      resolveHref={resolveHref}
+                    />
+                  </section>
+                )
+              );
+            })}
+          </div>
         )}
       </section>
     </div>

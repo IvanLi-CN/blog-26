@@ -3,6 +3,7 @@ import { stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, resolve } from "node:path";
 import { extractAuthFromRequest } from "@/lib/auth-utils";
+import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
 
 const port = Number(process.env.PORT || 25090);
 const hostname = process.env.BIND_HOST || "0.0.0.0";
@@ -194,6 +195,13 @@ async function serveAdmin(
 }
 
 const astro = await import("../console-dist/server/entry.mjs");
+const playbook = getRuntimePlaybookStore();
+await playbook.load();
+if (
+  process.env.PLAYBOOK_SYNC_ENABLED === "true" ||
+  (process.env.NODE_ENV === "production" && process.env.PLAYBOOK_SYNC_ENABLED !== "false")
+)
+  playbook.start();
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
   if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
@@ -206,6 +214,20 @@ const server = createServer(async (request, response) => {
   astro.handler(request, response);
 });
 
+function shutdown() {
+  playbook.stop();
+  const deadline = setTimeout(() => process.exit(1), 5000);
+  deadline.unref();
+  server.close(() => {
+    clearTimeout(deadline);
+    process.exit(0);
+  });
+}
+process.once("SIGTERM", shutdown);
+process.once("SIGINT", shutdown);
+
 server.listen(port, hostname, () => {
-  console.log(`[console] listening on http://${hostname}:${port}`);
+  const address = server.address();
+  const listeningPort = address && typeof address !== "string" ? address.port : port;
+  console.log(`[console] listening on http://${hostname}:${listeningPort}`);
 });
