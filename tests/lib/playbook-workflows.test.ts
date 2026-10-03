@@ -97,9 +97,11 @@ describe("playbook deployment boundaries", () => {
     expect(prepare).toContain("PLAYBOOK_EDITION_INPUT_PATH");
     expect(prepare).toContain("validatePlaybookEdition(JSON.parse");
     expect(prepare).toContain("downloadRetainedEdition(inputEdition, manifestUrl, destination)");
-    expect(prepare).toContain(
-      "Playbook edition input does not match the current renderer or snapshot"
-    );
+    expect(prepare).toContain("const edition = inputSeed");
+
+    const initial = await readFile("scripts/fetch-initial-playbook.ts", "utf8");
+    expect(initial).toContain("GITHUB_OUTPUT");
+    expect(initial).toContain("bundle_dir=" + "$" + "{directory}");
   });
   test("pointer revalidates, version files are immutable and package resources cannot execute", () => {
     const digest = "a".repeat(64);

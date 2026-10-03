@@ -921,17 +921,22 @@ jobs:
 
       - name: Resolve fixed initial Playbook bundle when no deployed edition exists
         if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        id: playbook-initial
         env:
           GH_TOKEN: ${{ steps.playbook-source.outputs.token }}
           PLAYBOOK_INITIAL_RELEASE_ID: ${{ vars.PLAYBOOK_INITIAL_RELEASE_ID }}
         run: bun scripts/fetch-initial-playbook.ts
 
-      - name: Stage the fixed initial bundle in the Docker context
-        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && env.PLAYBOOK_BUNDLE_DIR != '' }}
-        run: |
-          mkdir -p site/generated/playbook-input
-          cp "$PLAYBOOK_BUNDLE_DIR/playbook-public.tar.gz" site/generated/playbook-input/
-          cp "$PLAYBOOK_BUNDLE_DIR/playbook-public-manifest.json" site/generated/playbook-input/
+      - name: Prepare the exact Playbook console seed for image build
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        env:
+          PLAYBOOK_BUNDLE_DIR: ${{ steps.playbook-initial.outputs.bundle_dir }}
+          PLAYBOOK_MANIFEST_URL: ${{ vars.PLAYBOOK_MANIFEST_URL || 'https://ivanli.cc/_content/playbook/manifest.json' }}
+          PLAYBOOK_SEED_INPUT_PATH: ${{ needs.deploy_frontend_edgeone.result == 'success' && './site/generated/playbook-edition.json' || '' }}
+          PLAYBOOK_USE_DEPLOYED: 'true'
+          COMMIT_HASH: ${{ needs.prepare.outputs.head_sha }}
+          PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
+        run: bun scripts/prepare-console-playbook-seed.ts
 
       - name: Resolve Docker public site config
         id: public-site-config
@@ -1122,8 +1127,8 @@ jobs:
             PUBLIC_CONTENT_BUNDLE_URL=preloaded
             PLAYBOOK_USE_DEPLOYED=${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
             PLAYBOOK_REQUIRED=${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
-            PLAYBOOK_EDITION_INPUT_PATH=${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && needs.deploy_frontend_edgeone.result == 'success' && '/app/site/generated/playbook-edition.json' || '' }}
-            PLAYBOOK_BUNDLE_DIR=${{ env.PLAYBOOK_BUNDLE_DIR != '' && '/app/site/generated/playbook-input' || '' }}
+            PLAYBOOK_EDITION_INPUT_PATH=${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && '/app/site/generated/playbook-edition.json' || '' }}
+            PLAYBOOK_BUNDLE_DIR=
             WITH_PLAYWRIGHT=false
             DRIZZLE_ORM_VERSION=${{ steps.pkg.outputs.drizzle_version }}
           cache-from: type=gha

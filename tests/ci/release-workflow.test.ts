@@ -181,13 +181,22 @@ describe("release.yml", () => {
     );
     expect(publishImage).toContain("name: playbook-console-seed-deployed");
     expect(publishImage).toContain("path: ./site/generated");
+    expect(publishImage).toContain("id: playbook-initial");
+    expect(publishImage).toContain(
+      "- name: Prepare the exact Playbook console seed for image build"
+    );
+    expect(publishImage).toContain(
+      "PLAYBOOK_BUNDLE_DIR: $" + "{{ steps.playbook-initial.outputs.bundle_dir }}"
+    );
+    expect(publishImage).toContain("run: bun scripts/prepare-console-playbook-seed.ts");
     expect(publishImage).toContain(
       "PLAYBOOK_REQUIRED=$" + "{{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}"
     );
     expect(publishImage).toContain(
       "PLAYBOOK_EDITION_INPUT_PATH=$" +
-        "{{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && needs.deploy_frontend_edgeone.result == 'success' && '/app/site/generated/playbook-edition.json' || '' }}"
+        "{{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && '/app/site/generated/playbook-edition.json' || '' }}"
     );
+    expect(publishImage).not.toContain("env.PLAYBOOK_BUNDLE_DIR != ''");
   });
 
   test("serializes image and backend publication behind the deployed frontend", () => {

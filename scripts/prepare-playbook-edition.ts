@@ -66,11 +66,10 @@ if (!bundleRoot) {
   process.exit(0);
 }
 snapshot ||= await readFile(snapshotPath);
-const edition = await readPlaybookEdition(resolve(bundleRoot), renderer, snapshot);
-if (inputSeed && !samePlaybookEdition(inputSeed.edition, edition.edition)) {
-  throw new Error("Playbook edition input does not match the current renderer or snapshot");
-}
-if (inputSeed) validatePlaybookEdition(edition);
+const edition = inputSeed
+  ? inputSeed
+  : await readPlaybookEdition(resolve(bundleRoot), renderer, snapshot);
+validatePlaybookEdition(edition);
 if (current) {
   if (!samePlaybookEdition(current, edition.edition))
     edition.edition.previous = { tag: current.source.tag, editionDigest: current.editionDigest };
@@ -102,5 +101,5 @@ await writePublicEdition(publicRoot, edition, resolve(bundleRoot), snapshot);
 await mkdir(resolve("site/generated"), { recursive: true });
 await writeFile(seedPath, encodeJson(edition));
 console.log(
-  `Playbook edition ${edition.edition.editionDigest} (${edition.edition.source.tag}, renderer ${renderer})`
+  `Playbook edition ${edition.edition.editionDigest} (${edition.edition.source.tag}, renderer ${edition.edition.rendererCommit})`
 );

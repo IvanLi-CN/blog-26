@@ -41,4 +41,6 @@ await writeFile(resolve(directory, "playbook-public-manifest.json"), encodeJson(
 await writeFile(resolve(directory, "playbook-public.tar.gz"), archive);
 if (process.env.GITHUB_ENV)
   await appendFile(process.env.GITHUB_ENV, `PLAYBOOK_BUNDLE_DIR=${directory}\n`);
+if (process.env.GITHUB_OUTPUT)
+  await appendFile(process.env.GITHUB_OUTPUT, `bundle_dir=${directory}\n`);
 console.log(`Initial bundle ready: ${selected.manifest.source.tag}`);
