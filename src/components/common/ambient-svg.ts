@@ -1,3 +1,4 @@
+import { AMBIENT_CURRENT_ALPHA, AMBIENT_LEAF_SCALE, createAmbientLeafPaths } from "./ambient-leaf";
 import type { AmbientRenderer, AmbientRendererContext } from "./ambient-renderer";
 import {
   AMBIENT_STATIC_FRAME_TIME,
@@ -15,10 +16,6 @@ function svgElement<K extends keyof SVGElementTagNameMap>(tag: K) {
   return document.createElementNS(SVG_NS, tag) as SVGElementTagNameMap[K];
 }
 
-function leafPath() {
-  return "M -0.62 0 Q 0 -0.3 0.62 0 Q 0 0.3 -0.62 0 Z M -0.78 0 L 0.76 0";
-}
-
 class SvgRenderer implements AmbientRenderer {
   readonly kind = "svg" as const;
 
@@ -26,11 +23,13 @@ class SvgRenderer implements AmbientRenderer {
   private model: AmbientMotionModel;
   private palette: AmbientPalette;
   private svg: SVGSVGElement | null = null;
+  private readonly frameTime: number;
 
   constructor(context: AmbientRendererContext) {
     this.root = context.root;
     this.model = context.model;
     this.palette = context.palette;
+    this.frameTime = context.frameTime ?? AMBIENT_STATIC_FRAME_TIME;
   }
 
   mount() {
@@ -65,6 +64,7 @@ class SvgRenderer implements AmbientRenderer {
 
   private rebuild() {
     this.destroy();
+    this.root.dataset.ambientRenderer = "svg";
     const svg = svgElement("svg");
     svg.classList.add("nature-ambient-svg");
     svg.setAttribute("aria-hidden", "true");
@@ -80,31 +80,28 @@ class SvgRenderer implements AmbientRenderer {
       path.classList.add("nature-ambient-current", `nature-ambient-current-${tone}`);
       path.setAttribute(
         "d",
-        ambientPathData(getAmbientCurrentPath(this.model, AMBIENT_STATIC_FRAME_TIME, current))
+        ambientPathData(getAmbientCurrentPath(this.model, this.frameTime, current))
       );
       path.setAttribute("fill", "none");
       path.setAttribute("stroke-linecap", "round");
       path.setAttribute("stroke-width", "1.2");
+      path.setAttribute("stroke", `rgb(var(--ambient-${tone}-rgb))`);
+      path.setAttribute("stroke-opacity", String(AMBIENT_CURRENT_ALPHA));
       svg.append(path);
     }
 
     for (const seed of this.model.seeds) {
-      const pose = getAmbientSeedPose(this.model, seed, AMBIENT_STATIC_FRAME_TIME);
+      const pose = getAmbientSeedPose(this.model, seed, this.frameTime);
       const group = svgElement("g");
-      const path = svgElement("path");
       group.classList.add("nature-ambient-seed", `nature-ambient-seed-${seed.tone}`);
-      group.style.setProperty("--ambient-seed-fill-alpha", (seed.alpha * 0.26).toFixed(4));
-      group.style.setProperty("--ambient-seed-stroke-alpha", seed.alpha.toFixed(4));
+      group.setAttribute("data-leaf-variant", seed.variant);
       group.setAttribute(
         "transform",
         `translate(${pose.x.toFixed(2)} ${pose.y.toFixed(2)}) rotate(${(
           (pose.angle * 180) / Math.PI
-        ).toFixed(2)}) scale(${seed.size.toFixed(2)})`
+        ).toFixed(2)}) scale(${(seed.size / AMBIENT_LEAF_SCALE).toFixed(6)})`
       );
-      path.setAttribute("d", leafPath());
-      path.setAttribute("stroke-linecap", "round");
-      path.setAttribute("stroke-width", "0.07");
-      group.append(path);
+      group.append(...createAmbientLeafPaths(seed.variant, `rgb(var(--ambient-${seed.tone}-rgb))`));
       svg.append(group);
     }
 

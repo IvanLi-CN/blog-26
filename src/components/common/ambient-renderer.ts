@@ -1,3 +1,5 @@
+import type { AmbientLeafAtlas } from "./ambient-leaf";
+import type { AmbientRenderTier } from "./ambient-performance";
 import type { AmbientCanvasSize, AmbientMotionModel, AmbientPalette } from "./ambient-scene";
 
 export type AmbientRendererKind = "svg" | "webgpu";
@@ -8,6 +10,11 @@ export type AmbientRendererContext = {
   palette: AmbientPalette;
   reducedMotion: boolean;
   onUnavailable?: () => void;
+  size?: AmbientCanvasSize;
+  /** Internal deterministic evidence/test inputs; production uses browser timing and limits. */
+  frameTime?: number;
+  renderTier?: AmbientRenderTier;
+  loadLeafAtlas?: (scale: number) => Promise<AmbientLeafAtlas>;
 };
 
 export type AmbientRenderer = {
