@@ -1,9 +1,20 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { load } from "js-yaml";
 
 const workflowPath = path.resolve(process.cwd(), ".github/workflows/release.yml");
 const workflow = readFileSync(workflowPath, "utf8");
+const parsedWorkflow = load(workflow) as {
+  jobs: Record<
+    string,
+    {
+      concurrency?: { group?: string; "cancel-in-progress"?: boolean };
+      needs?: unknown;
+      if?: string;
+    }
+  >;
+};
 
 function jobBlock(jobName: string) {
   const marker = `\n  ${jobName}:\n`;
@@ -154,6 +165,25 @@ describe("release.yml", () => {
     expect(publishImage).toContain(
       "PUBLIC_CONTENT_SNAPSHOT_URL: $" +
         "{{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://console.ivanli.cc/api/public/snapshot' }}"
+    );
+  });
+
+  test("serializes image and backend publication behind the deployed frontend", () => {
+    const lock = { group: "blog26-edgeone-production", "cancel-in-progress": false };
+    for (const jobName of ["deploy_frontend_edgeone", "publish_image", "publish_backend"]) {
+      expect(parsedWorkflow.jobs[jobName]?.concurrency).toEqual(lock);
+    }
+    expect(parsedWorkflow.jobs.publish_image?.needs).toEqual([
+      "prepare",
+      "publish_frontend",
+      "deploy_frontend_edgeone",
+    ]);
+    expect(parsedWorkflow.jobs.publish_image?.if).toContain("always()");
+    expect(parsedWorkflow.jobs.publish_image?.if).toContain(
+      "needs.deploy_frontend_edgeone.result == 'success'"
+    );
+    expect(parsedWorkflow.jobs.publish_image?.if).toContain(
+      "needs.deploy_frontend_edgeone.result == 'skipped'"
     );
   });
 

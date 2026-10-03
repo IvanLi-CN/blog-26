@@ -8,26 +8,63 @@ import {
 import { withoutDeploymentCredentials } from "../../src/lib/playbook/child-env";
 import { getPublicStaticCacheControl } from "../../src/lib/public-static-cache-policy";
 
+type WorkflowStep = {
+  uses?: string;
+  with?: Record<string, unknown>;
+};
+
+type ReleaseJob = {
+  concurrency?: object;
+  steps?: WorkflowStep[];
+  needs?: unknown;
+  if?: string;
+};
+
 describe("playbook deployment boundaries", () => {
   test("all production jobs share the same lock and automatic updates start disabled", async () => {
     const update = load(
       await readFile(".github/workflows/playbook-content-update.yml", "utf8")
     ) as {
       on: { schedule: { cron: string }[] };
-      jobs: { production: { if: string; concurrency: object } };
+      jobs: { production: { if: string; concurrency: object; steps: WorkflowStep[] } };
     };
     const rollback = load(
       await readFile(".github/workflows/playbook-content-rollback.yml", "utf8")
-    ) as { jobs: { rollback: { concurrency: object } } };
+    ) as { jobs: { rollback: { concurrency: object; steps: WorkflowStep[] } } };
     const release = load(await readFile(".github/workflows/release.yml", "utf8")) as {
-      jobs: { deploy_frontend_edgeone: { concurrency: object } };
+      jobs: {
+        deploy_frontend_edgeone: ReleaseJob;
+        publish_image: ReleaseJob;
+        publish_backend: ReleaseJob;
+      };
     };
     expect(update.on.schedule[0].cron).toBe("17 * * * *");
     const lock = { group: "blog26-edgeone-production", "cancel-in-progress": false };
     expect(update.jobs.production.concurrency).toEqual(lock);
     expect(rollback.jobs.rollback.concurrency).toEqual(lock);
     expect(release.jobs.deploy_frontend_edgeone.concurrency).toEqual(lock);
+    expect(release.jobs.publish_image.concurrency).toEqual(lock);
+    expect(release.jobs.publish_backend.concurrency).toEqual(lock);
+    expect(release.jobs.publish_image.needs).toEqual([
+      "prepare",
+      "publish_frontend",
+      "deploy_frontend_edgeone",
+    ]);
+    expect(release.jobs.publish_backend.needs).toEqual([
+      "prepare",
+      "publish_frontend",
+      "deploy_frontend_edgeone",
+    ]);
     expect(update.jobs.production.if).toContain("PLAYBOOK_CONTENT_UPDATES_ENABLED == 'true'");
+
+    for (const job of [
+      release.jobs.deploy_frontend_edgeone,
+      update.jobs.production,
+      rollback.jobs.rollback,
+    ]) {
+      const checkout = job.steps?.find((step) => step.uses === "actions/checkout@v7");
+      expect(checkout?.with?.["persist-credentials"]).toBe(false);
+    }
   });
   test("pointer revalidates, version files are immutable and package resources cannot execute", () => {
     const digest = "a".repeat(64);

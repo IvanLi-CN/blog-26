@@ -49,6 +49,29 @@ const storyFiles = new Set([
   "./src/components/playbook/PlaybookPage.stories.tsx",
   "./src/components/search/PublicSearchPage.stories.tsx",
 ]);
+const expectedStoryIds = new Set([
+  "public-playbook-page--index",
+  "public-playbook-page--policy",
+  "public-playbook-page--topic",
+  "public-playbook-page--unavailable",
+  "public-search-page--advanced-query",
+  "public-search-page--dark-loading",
+  "public-search-page--empty",
+  "public-search-page--error-state",
+  "public-search-page--filtered-empty",
+  "public-search-page--initial",
+  "public-search-page--invalid-query-literal-retry",
+  "public-search-page--loading",
+  "public-search-page--mobile-empty",
+  "public-search-page--mobile-loading",
+  "public-search-page--mobile-results",
+  "public-search-page--narrow-mobile-recommendations",
+  "public-search-page--playbook-results",
+  "public-search-page--playbook-stale-edition",
+  "public-search-page--results",
+  "public-search-page--simple-and-query",
+  "public-search-page--untitled-memo-result",
+]);
 
 function contentType(pathname: string): string {
   switch (extname(pathname)) {
@@ -182,6 +205,10 @@ async function main() {
     .sort();
   if (storyIds.length === 0) {
     throw new Error("No Playbook or public search play stories were found in Storybook index");
+  }
+  const missingStoryIds = [...expectedStoryIds].filter((storyId) => !storyIds.includes(storyId));
+  if (missingStoryIds.length > 0) {
+    throw new Error(`Missing required Playbook/search stories: ${missingStoryIds.join(", ")}`);
   }
 
   const { server, baseUrl } = await createStaticServer();

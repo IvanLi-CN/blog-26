@@ -16,11 +16,10 @@ const catalog = JSON.parse(await readFile(resolve(editionRoot, "catalog.json"), 
   topic_details?: { policy_skills?: { summary: { slug: string } }[] }[];
 };
 const routes = [
-  ...(catalog.snapshot?.topics ?? []).slice(0, 1).map((topic) => `topics/${topic.slug}`),
-  ...(catalog.snapshot?.projects ?? []).slice(0, 1).map((project) => `projects/${project.slug}`),
+  ...(catalog.snapshot?.topics ?? []).map((topic) => `topics/${topic.slug}`),
+  ...(catalog.snapshot?.projects ?? []).map((project) => `projects/${project.slug}`),
   ...(catalog.topic_details ?? [])
     .flatMap((topic) => topic.policy_skills ?? [])
-    .slice(0, 1)
     .map((policy) => `policies/${policy.summary.slug}`),
 ];
 const pageRoutes = [...new Set(["", ...routes])];
