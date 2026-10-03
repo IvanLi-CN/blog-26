@@ -32,6 +32,37 @@ function assertMainHeadGate(jobName: string, sideEffectName: string, gateId: str
 }
 
 describe("release.yml", () => {
+  test("fetches one public snapshot and shares it across release jobs", () => {
+    const prepareContent = jobBlock("prepare_public_content");
+    expect(prepareContent).toContain("needs: [prepare]");
+    expect(prepareContent).toContain("scripts/fetch-public-content-bundle.sh");
+    expect(prepareContent).toContain("PUBLIC_CONTENT_SNAPSHOT_URL");
+    expect(prepareContent).toContain("uses: actions/upload-artifact@v7");
+    expect(prepareContent).toContain("name: public-content-snapshot");
+    expect(prepareContent).toContain("path: ./site/generated/public-snapshot.json");
+    expect(prepareContent).not.toContain("Record public content snapshot identity");
+
+    for (const jobName of ["publish_frontend", "publish_image"]) {
+      const job = jobBlock(jobName);
+      expect(job).toContain("prepare_public_content");
+      expect(job).toContain("uses: actions/download-artifact@v8");
+      expect(job).toContain("name: public-content-snapshot");
+      expect(job).toContain("path: ./site/generated");
+      expect(job).not.toContain("Fetch content bundle");
+      expect(job).not.toContain("PUBLIC_CONTENT_SNAPSHOT_URL");
+    }
+  });
+
+  test("uses HTTP/1.1 and retries transient content bundle failures", () => {
+    const fetchScript = readFileSync(
+      path.resolve(process.cwd(), "scripts/fetch-public-content-bundle.sh"),
+      "utf8"
+    );
+    expect(fetchScript.match(/--http1\.1/g)).toHaveLength(2);
+    expect(fetchScript.match(/--retry-all-errors/g)).toHaveLength(2);
+    expect(fetchScript.match(/--retry-max-time 300/g)).toHaveLength(2);
+  });
+
   test("rechecks main immediately before each release tag side effect", () => {
     assertMainHeadGate(
       "prepare",
@@ -75,10 +106,8 @@ describe("release.yml", () => {
 
   test("publishes the verified static artifact and functions to EdgeOne Makers only", () => {
     const publishFrontend = jobBlock("publish_frontend");
-    expect(publishFrontend).toContain(
-      "PUBLIC_CONTENT_SNAPSHOT_URL: $" +
-        "{{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://console.ivanli.cc/api/public/snapshot' }}"
-    );
+    expect(publishFrontend).toContain("Download shared public content snapshot");
+    expect(publishFrontend).toContain("PUBLIC_CONTENT_BUNDLE_URL: preloaded");
     expect(publishFrontend).toContain(
       "PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: $" +
         "{{ vars.PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL }}"
@@ -146,10 +175,8 @@ describe("release.yml", () => {
     expect(edgeone).toContain("https://ivanli.cc/mcp");
 
     const publishImage = jobBlock("publish_image");
-    expect(publishImage).toContain(
-      "PUBLIC_CONTENT_SNAPSHOT_URL: $" +
-        "{{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://console.ivanli.cc/api/public/snapshot' }}"
-    );
+    expect(publishImage).toContain("Download shared public content snapshot");
+    expect(publishImage).toContain("PUBLIC_CONTENT_BUNDLE_URL=preloaded");
   });
 
   test("publishes the console SSR artifact with backend releases", () => {
