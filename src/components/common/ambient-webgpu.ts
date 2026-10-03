@@ -224,6 +224,7 @@ class WebGpuRenderer implements AmbientRenderer {
   private raf: number | null = null;
   private lastRenderTime: number | null = null;
   private destroyed = false;
+  private mounted = false;
   private resourcesReleased = false;
   private failed = false;
   private resizeGeneration = 0;
@@ -358,6 +359,8 @@ class WebGpuRenderer implements AmbientRenderer {
 
   mount() {
     if (this.destroyed || this.failed) return;
+    this.mounted = true;
+    this.hidden = document.hidden;
     this.input.root.dataset.ambientRenderer = "webgpu";
     this.canvas.className = "nature-ambient-webgpu";
     this.canvas.setAttribute("aria-hidden", "true");
@@ -499,7 +502,7 @@ class WebGpuRenderer implements AmbientRenderer {
   }
   private syncPlayback() {
     this.stop();
-    if (this.destroyed || this.failed || this.hidden || this.reducedMotion) return;
+    if (!this.mounted || this.destroyed || this.failed || this.hidden || this.reducedMotion) return;
     this.render(performance.now());
     if (this.input.frameTime === undefined) this.schedule();
   }
@@ -517,7 +520,15 @@ class WebGpuRenderer implements AmbientRenderer {
     });
   }
   private render(timestamp: number) {
-    if (!this.size || !this.texture || this.destroyed || this.failed || this.hidden) return;
+    if (
+      !this.mounted ||
+      !this.size ||
+      !this.texture ||
+      this.destroyed ||
+      this.failed ||
+      this.hidden
+    )
+      return;
     try {
       this.device.queue.writeBuffer(
         this.uniformBuffer,

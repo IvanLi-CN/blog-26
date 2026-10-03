@@ -78,7 +78,10 @@ adapter. SVG remains mounted during initial preparation and is the fallback
 for decode/upload/context/pipeline failure and device loss. Generation guards
 discard late work; replacement and teardown close bitmaps and release GPU
 resources. Visible motion retains approximately 30Hz scheduling and hidden
-pages stop submissions. ADR 0011 owns the current rendering decision.
+pages stop submissions, including initialization that completes while the page
+is hidden. The prepared renderer does not submit until mount and rereads
+document visibility at that boundary. ADR 0011 owns the current rendering
+decision.
 
 The co-located ambient Storybook gallery uses the production coordinator with
 internal fixed-frame and renderer-tier inputs. Viewport-bound desktop/mobile

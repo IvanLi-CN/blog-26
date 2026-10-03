@@ -14,12 +14,18 @@ const originalGetContext = HTMLCanvasElement.prototype.getContext;
 const originalRaf = window.requestAnimationFrame;
 const originalCancelRaf = window.cancelAnimationFrame;
 const originalNow = performance.now;
+const originalDocumentHidden = Object.getOwnPropertyDescriptor(document, "hidden");
 afterEach(() => {
   Object.defineProperty(navigator, "gpu", { configurable: true, value: originalGpu });
   HTMLCanvasElement.prototype.getContext = originalGetContext;
   window.requestAnimationFrame = originalRaf;
   window.cancelAnimationFrame = originalCancelRaf;
   performance.now = originalNow;
+  if (originalDocumentHidden) {
+    Object.defineProperty(document, "hidden", originalDocumentHidden);
+  } else {
+    Reflect.deleteProperty(document, "hidden");
+  }
   document.body.replaceChildren();
 });
 
@@ -201,6 +207,39 @@ describe("ambient GPU resource lifecycle", () => {
     renderer?.destroy();
     expect(f.textures.size).toBe(0);
     expect(f.buffers.size).toBe(0);
+  });
+  test("does not submit frames when atlas preparation finishes after the page is hidden", async () => {
+    const f = fixture();
+    let resolveAtlas: (atlas: AmbientLeafAtlas) => void = () => undefined;
+    let notifyAtlasStarted: () => void = () => undefined;
+    const atlasStarted = new Promise<void>((resolve) => {
+      notifyAtlasStarted = resolve;
+    });
+    let atlasScale = 1;
+    Object.defineProperty(document, "hidden", { configurable: true, value: false });
+    const rendererPromise = createWebGpuRenderer({
+      ...f.input,
+      loadLeafAtlas: (scale) => {
+        atlasScale = scale;
+        notifyAtlasStarted();
+        return new Promise((resolve) => {
+          resolveAtlas = resolve;
+        });
+      },
+    });
+    await atlasStarted;
+    Object.defineProperty(document, "hidden", { configurable: true, value: true });
+    resolveAtlas(f.atlas(atlasScale));
+
+    const renderer = await rendererPromise;
+    expect(f.state.submits).toBe(0);
+    renderer?.mount();
+    expect(f.state.submits).toBe(0);
+
+    Object.defineProperty(document, "hidden", { configurable: true, value: false });
+    renderer?.setVisibility(false);
+    expect(f.state.submits).toBe(1);
+    renderer?.destroy();
   });
   test("reuses masks for theme and viewport changes and replaces them for DPR", async () => {
     const f = fixture();
