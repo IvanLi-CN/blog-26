@@ -126,7 +126,7 @@ Unified Docker image release:
 ### 4.5 Frontend content source contract
 
 - Each expected release prepares and validates one public snapshot before frontend/image publishing jobs start. A live fetch uses HTTP/1.1 and retries transient transfer failures up to five times; publication fails before any dependent output is built if fetching still fails.
-- If `PUBLIC_CONTENT_BUNDLE_URL` and `PUBLIC_CONTENT_SNAPSHOT_URL` resolve to the same scheme, host, port, and path, query-token differences do not trigger a second request. Otherwise, the live snapshot endpoint refreshes the bundled snapshot.
+- If `PUBLIC_CONTENT_BUNDLE_URL` and `PUBLIC_CONTENT_SNAPSHOT_URL` resolve to the same scheme, host, port, and exact path, differences are ignored only for the explicitly recognized credential query keys (`token`, `bundle-token`, `bundle_token`, `access_token`, `auth_token`, `api_token`, `api_key`, `api-key`, `apikey`, `auth`, `sig`, `signature`, `x-amz-signature`, and `x-goog-signature`). Other query parameters must match; otherwise, the live snapshot endpoint refreshes the bundled snapshot.
 - the bundle must contain `public-snapshot.json` (directly or inside an archive)
 - The accepted snapshot must contain `generatedAt`, `posts`, `memos`, and `tags`; release summary records its generation time, content counts, and SHA-256.
 - The workflow uploads the accepted snapshot as a short-lived artifact. Frontend SSG and unified-image publishing consume that same artifact and must not independently fetch or regenerate the snapshot.

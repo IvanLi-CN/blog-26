@@ -93,7 +93,31 @@ PY
 if [[ -n "${SNAPSHOT_URL}" ]]; then
   if PUBLIC_CONTENT_BUNDLE_URL="${BUNDLE_URL}" PUBLIC_CONTENT_SNAPSHOT_URL="${SNAPSHOT_URL}" python3 - <<'PY'
 from os import environ
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlsplit
+
+credential_query_keys = {
+    "token",
+    "bundle-token",
+    "bundle_token",
+    "access_token",
+    "auth_token",
+    "api_token",
+    "api_key",
+    "api-key",
+    "apikey",
+    "auth",
+    "sig",
+    "signature",
+    "x-amz-signature",
+    "x-goog-signature",
+}
+
+def content_query(url):
+    return sorted(
+        (key, value)
+        for key, value in parse_qsl(url.query, keep_blank_values=True)
+        if key.lower() not in credential_query_keys
+    )
 
 try:
     bundle = urlsplit(environ["PUBLIC_CONTENT_BUNDLE_URL"])
@@ -106,7 +130,8 @@ try:
         and bundle.hostname == snapshot.hostname
         and (bundle.port or default_ports.get(bundle_scheme))
         == (snapshot.port or default_ports.get(snapshot_scheme))
-        and (bundle.path.rstrip("/") or "/") == (snapshot.path.rstrip("/") or "/")
+        and bundle.path == snapshot.path
+        and content_query(bundle) == content_query(snapshot)
     )
 except (KeyError, ValueError):
     same_endpoint = False

@@ -89,7 +89,7 @@ async function fetchSnapshot(
 describe("fetch-public-content-bundle.sh", () => {
   test("does not request the same snapshot endpoint twice when bundle tokens differ", async () => {
     const result = await fetchSnapshot(
-      "/api/public/snapshot?bundle-token=test",
+      "/api/public/snapshot?token=bundle-secret",
       "/api/public/snapshot"
     );
 
@@ -97,6 +97,17 @@ describe("fetch-public-content-bundle.sh", () => {
     expect(result.requests).toHaveLength(1);
     expect(result.requests[0]?.httpVersion).toBe("1.1");
     expect(result.snapshot.generatedAt).toBe("2026-10-01T00:00:00.000Z");
+  });
+
+  test("refreshes when non-token query parameters select different content", async () => {
+    const result = await fetchSnapshot(
+      "/api/public/snapshot?token=bundle-secret&locale=en",
+      "/api/public/snapshot?token=live-secret&locale=zh"
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.requests).toHaveLength(2);
+    expect(result.snapshot.generatedAt).toBe("2026-10-03T00:00:00.000Z");
   });
 
   test("refreshes the snapshot when the bundle and live snapshot use different paths", async () => {

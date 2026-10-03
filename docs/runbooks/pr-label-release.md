@@ -54,7 +54,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 3. `prepare` accepts only the current `main` head SHA. A manual dispatch must provide that exact SHA; a stale or non-main SHA fails before release intent, tag creation, artifact publishing, image publishing, or EdgeOne deployment. Each publish side effect rechecks the same `main` head immediately before it runs.
 4. `prepare` verifies no post-merge mutations on release labels (`type:*` / `channel:*` / `release:*`), then resolves release intent from merged PR labels.
 5. If `should_release=false`, workflow exits with summary only.
-6. When a release is expected, the workflow fetches and validates the public content snapshot once, records its generation time and SHA-256, and uploads a short-lived workflow artifact. If the bundle and live snapshot URLs point to the same endpoint (query tokens may differ), it reuses the first response instead of fetching the same data again. The frontend and image jobs share this artifact rather than independently rebuilding the snapshot.
+6. When a release is expected, the workflow fetches and validates the public content snapshot once, records its generation time and SHA-256, and uploads a short-lived workflow artifact. It reuses the bundle response only when scheme, host, port, exact path, and non-credential query parameters match; differences in explicitly recognized credential parameters do not trigger a second request. The frontend and image jobs share this artifact rather than independently rebuilding the snapshot.
 7. If `release:frontend` is present, the workflow:
    - builds `site-dist`
    - uploads frontend release assets
