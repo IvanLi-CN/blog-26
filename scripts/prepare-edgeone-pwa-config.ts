@@ -24,9 +24,12 @@ const HTML_ROUTE_PATTERNS = [
   "/tags/*/",
   "/projects/",
   "/projects/:slug/",
+  "/posts/",
+  "/posts/:slug/",
+  "/memos/",
+  "/memos/:slug/",
 ] as const;
 
-const HTML_FALLBACK_PATTERNS = ["/posts*", "/memos*"] as const;
 const DYNAMIC_ROOT_PATHS = new Set(["api", "admin", "mcp"]);
 const GROUPED_ROOT_ASSET_PREFIXES = new Set(["f", "r", "w"]);
 const DYNAMIC_ROUTE_PROBES = [
@@ -97,9 +100,6 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     path.startsWith("_content/assets/")
   );
   const htmlRules = HTML_ROUTE_PATTERNS.map((path) =>
-    rule(scopedPath(basePath, path), EDGEONE_PUBLIC_CACHE_CONTROL.html)
-  );
-  const htmlFallbackRules = HTML_FALLBACK_PATTERNS.map((path) =>
     rule(scopedPath(basePath, path), EDGEONE_PUBLIC_CACHE_CONTROL.html)
   );
   const versionedRules = [
@@ -198,7 +198,6 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
       ...[...projectAssetSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
-      ...htmlFallbackRules,
       ...[...rootAssetSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
@@ -273,7 +272,7 @@ function validateHtmlFiles(staticFiles: readonly string[], basePath: string) {
           ? `/${file.slice(0, -"/index.html".length)}/`
           : `/${file}`;
     const scoped = scopedPath(normalizedBase, urlPath);
-    const represented = [...HTML_ROUTE_PATTERNS, ...HTML_FALLBACK_PATTERNS].some((source) =>
+    const represented = HTML_ROUTE_PATTERNS.some((source) =>
       edgeoneSourceMatches(scopedPath(normalizedBase, source), scoped)
     );
     if (!represented) throw new Error(`Public HTML route has no EdgeOne HTML cache rule: ${file}`);
