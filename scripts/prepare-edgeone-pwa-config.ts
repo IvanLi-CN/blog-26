@@ -100,10 +100,10 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
   const assetSources = new Set<string>();
   const projectAssetSources = new Set<string>();
   let hasTagFeedFiles = false;
+  let hasRootLevelAssetFiles = false;
 
   for (const path of unversionedFiles) {
     const parent = dirname(path).replaceAll("\\", "/");
-    const basename = path.slice(path.lastIndexOf("/") + 1);
     const exactSource = scopedPath(basePath, `/${path}`);
 
     if (path.startsWith("tags/") && path.endsWith("/feed.xml")) {
@@ -120,8 +120,8 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
       continue;
     }
 
-    if (parent === "." && basename.startsWith("f")) {
-      assetSources.add(scopedPath(basePath, "/f*"));
+    if (parent === ".") {
+      hasRootLevelAssetFiles = true;
       continue;
     }
 
@@ -167,6 +167,9 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
       ...htmlFallbackRules,
+      ...(hasRootLevelAssetFiles
+        ? [rule(scopedPath(basePath, "/:rootAsset"), EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)]
+        : []),
     ],
   };
 

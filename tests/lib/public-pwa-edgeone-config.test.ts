@@ -89,7 +89,7 @@ describe("EdgeOne public PWA cache config", () => {
     expect(findEdgeoneCacheRule(config, "/blog-26/favicon-dark.ico")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
     );
-    expect(config.headers.some(({ source }) => source === "/blog-26/f*")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/blog-26/:rootAsset")).toBe(true);
     expect(
       findEdgeoneCacheRule(config, "/blog-26/projects/posters/blog-26.webp")?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
@@ -174,6 +174,68 @@ describe("EdgeOne public PWA cache config", () => {
     );
     expect(config.headers.filter(({ source }) => source === "/memos/data/*")).toHaveLength(1);
     expect(config.headers.some(({ source }) => source === "/memos/data/57.json")).toBe(false);
+  });
+
+  it("keeps a combined public artifact within the EdgeOne rule limit", () => {
+    const rootAssets = [
+      "atom.xml",
+      "default-avatar.svg",
+      "favicon-dark.ico",
+      "favicon.ico",
+      "favicon.svg",
+      "feed.json",
+      "feed.xml",
+      "globe.svg",
+      "ivan-blog-mark.svg",
+      "mcp",
+      "next.svg",
+      "robots.txt",
+      "rss.xml",
+      "site.webmanifest",
+      "sitemap.xml",
+      "vercel.svg",
+      "watermark-ivanli.svg",
+      "window.svg",
+    ];
+    const config = createEdgeoneCacheConfig("", [
+      "index.html",
+      "about/index.html",
+      "search/index.html",
+      "posts/index.html",
+      "posts/example/index.html",
+      "memos/index.html",
+      "memos/memo-1/index.html",
+      "memos/data/1.json",
+      "tags/index.html",
+      "tags/software/dev/index.html",
+      "tags/software/dev/feed.xml",
+      "projects/index.html",
+      "projects/example/index.html",
+      "projects/posters/example.webp",
+      "_astro/app-123456.js",
+      "_content/assets/post/example/hash/cover.webp",
+      "pwa/1234567890abcdef/icon-any-192.png",
+      ...rootAssets,
+    ]);
+
+    expect(config.headers.length).toBeLessThanOrEqual(30);
+    expect(config.headers.some(({ source }) => source === "/:rootAsset")).toBe(true);
+    for (const path of rootAssets) {
+      expect(findEdgeoneCacheRule(config, `/${path}`)?.headers[0]?.value).toBe(
+        EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
+      );
+    }
+    expect(findEdgeoneCacheRule(config, "/posts/example/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(findEdgeoneCacheRule(config, "/memos/memo-1/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(findEdgeoneCacheRule(config, "/tags/software/dev/feed.xml")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
+    );
+    expect(findEdgeoneCacheRule(config, "/api/public/content-bundle")).toBeUndefined();
+    expect(findEdgeoneCacheRule(config, "/admin/index.html")).toBeUndefined();
   });
 
   it("keeps HTML routes ahead of project asset wildcards and narrows overlapping assets", () => {
