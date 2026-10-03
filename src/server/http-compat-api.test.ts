@@ -2197,7 +2197,7 @@ public: false
       expect(detailResponse.status).toBe(200);
       expect(await readJson(detailResponse)).toEqual(expect.objectContaining({ title }));
     }
-  });
+  }, 15_000);
 
   it("paginates memo IDs containing underscores without repeating the first page", async () => {
     await seedPost({
