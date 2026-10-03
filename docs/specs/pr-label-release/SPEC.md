@@ -125,8 +125,11 @@ Unified Docker image release:
 
 ### 4.5 Frontend content source contract
 
-- CI fetches a content bundle from `PUBLIC_CONTENT_BUNDLE_URL`
+- Each expected release prepares and validates one public snapshot before frontend/image publishing jobs start. A live fetch uses HTTP/1.1 and retries transient transfer failures up to five times; publication fails before any dependent output is built if fetching still fails.
+- If `PUBLIC_CONTENT_BUNDLE_URL` and `PUBLIC_CONTENT_SNAPSHOT_URL` resolve to the same scheme, host, port, and path, query-token differences do not trigger a second request. Otherwise, the live snapshot endpoint refreshes the bundled snapshot.
 - the bundle must contain `public-snapshot.json` (directly or inside an archive)
+- The accepted snapshot must contain `generatedAt`, `posts`, `memos`, and `tags`; release summary records its generation time, content counts, and SHA-256.
+- The workflow uploads the accepted snapshot as a short-lived artifact. Frontend SSG and unified-image publishing consume that same artifact and must not independently fetch or regenerate the snapshot.
 - Astro SSG consumes the snapshot and must not depend on runtime DB or local content directories during release publishing or Docker image startup
 - public runtime API/file URLs inside the static site are rewritten against `PUBLIC_API_BASE_URL`, which must be configured to the live backend origin
 - Docker image builds must receive a preloaded `site/generated/public-snapshot.json` or fetch one from `PUBLIC_CONTENT_BUNDLE_URL`; they must fail fast instead of falling back to an empty local DB when the snapshot is missing
@@ -159,7 +162,7 @@ Unified Docker image release:
    - `publish_frontend` + `deploy_frontend_edgeone`
    - `publish_backend`
    - `publish_image`
-4. Add CI-time content-bundle download for frontend SSG via `PUBLIC_CONTENT_BUNDLE_URL`.
+4. Prepare and validate public content once per expected release, then share the accepted snapshot artifact across frontend SSG and unified-image publishing.
 5. Produce a dedicated `backend-dist` runtime bundle and package it with `admin-dist` plus prebuilt `console-dist` in the console Docker image.
 6. Update CI smoke coverage so the Docker image proves:
    - `/api/health` reports `status=ok` and `runtime=console`
@@ -195,19 +198,20 @@ Unified Docker image release:
    - the release-owning agent reports successful publication or failure to the owner
    - the workflow does not write a result comment to the source PR
 7. A manual dispatch or delayed release run for a stale or non-main SHA fails before it can publish an artifact, tag, image, or EdgeOne deployment.
+8. A transient public snapshot fetch failure is retried, and a successful release records the exact snapshot generation time, counts, and SHA-256 shared by frontend and image publishing.
 
 ## 7. Risks and rollback
 
 ### Risks
 
 - Component tag history can drift if tags are edited manually.
-- Frontend releases depend on availability and correctness of `PUBLIC_CONTENT_BUNDLE_URL`.
+- Frontend releases depend on availability and correctness of `PUBLIC_CONTENT_BUNDLE_URL` and the live snapshot endpoint when they differ.
 - EdgeOne Makers, backend artifact releases, and unified Docker image releases now have partially independent failure modes.
 
 ### Mitigations
 
 - Validate release intent and major alignment before any tag is pushed.
-- Fail fast when the content bundle cannot be downloaded or does not contain `public-snapshot.json`.
+- Retry transient content fetch errors, then fail before publishing if the bundle or live snapshot cannot be downloaded or validated.
 - Keep release jobs idempotent by reusing existing matching tags on rerun.
 - Preserve explicit workflow summaries for skip/failure reasons.
 - Keep the EdgeOne project type as direct upload so the workflow can publish the verified artifact without a second build.

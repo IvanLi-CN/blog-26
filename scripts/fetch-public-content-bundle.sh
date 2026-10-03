@@ -20,8 +20,10 @@ mkdir -p "${WORK_DIR}" "$(dirname "${OUTPUT_PATH}")" "${EXTRACT_DIR}"
 
 echo "Downloading public content bundle..."
 curl -fsSL \
-  --retry 3 \
-  --retry-delay 2 \
+  --http1.1 \
+  --retry 5 \
+  --retry-delay 5 \
+  --retry-max-time 300 \
   --retry-all-errors \
   --max-time 300 \
   "${BUNDLE_URL}" \
@@ -70,17 +72,62 @@ if [[ "${kind}" != "json" ]]; then
   cp "${snapshot_file}" "${OUTPUT_PATH}"
 fi
 
-if [[ -n "${SNAPSHOT_URL}" ]]; then
-  echo "Refreshing public snapshot from ${SNAPSHOT_URL}..."
-  curl -fsSL \
-    --retry 3 \
-    --retry-delay 2 \
-    --retry-all-errors \
-    --max-time 120 \
-    "${SNAPSHOT_URL}" \
-    -o "${LIVE_SNAPSHOT_PATH}"
+python3 - "${OUTPUT_PATH}" <<'PY'
+from pathlib import Path
+import json
+import sys
 
-  python3 - "${LIVE_SNAPSHOT_PATH}" "${OUTPUT_PATH}" <<'PY'
+path = Path(sys.argv[1])
+try:
+    snapshot = json.loads(path.read_text("utf-8"))
+except (OSError, json.JSONDecodeError) as exc:
+    raise SystemExit(f"Invalid bundled public snapshot: {exc}")
+
+if not isinstance(snapshot, dict):
+    raise SystemExit("Bundled public snapshot must be a JSON object")
+for key in ("posts", "memos", "tags"):
+    if key not in snapshot:
+        raise SystemExit(f"Bundled public snapshot is missing required key: {key}")
+PY
+
+if [[ -n "${SNAPSHOT_URL}" ]]; then
+  if PUBLIC_CONTENT_BUNDLE_URL="${BUNDLE_URL}" PUBLIC_CONTENT_SNAPSHOT_URL="${SNAPSHOT_URL}" python3 - <<'PY'
+from os import environ
+from urllib.parse import urlsplit
+
+try:
+    bundle = urlsplit(environ["PUBLIC_CONTENT_BUNDLE_URL"])
+    snapshot = urlsplit(environ["PUBLIC_CONTENT_SNAPSHOT_URL"])
+    default_ports = {"http": 80, "https": 443}
+    bundle_scheme = bundle.scheme.lower()
+    snapshot_scheme = snapshot.scheme.lower()
+    same_endpoint = (
+        bundle_scheme == snapshot_scheme
+        and bundle.hostname == snapshot.hostname
+        and (bundle.port or default_ports.get(bundle_scheme))
+        == (snapshot.port or default_ports.get(snapshot_scheme))
+        and (bundle.path.rstrip("/") or "/") == (snapshot.path.rstrip("/") or "/")
+    )
+except (KeyError, ValueError):
+    same_endpoint = False
+
+raise SystemExit(0 if same_endpoint else 1)
+PY
+  then
+    echo "Reusing the downloaded content bundle; its URL matches the live snapshot endpoint."
+  else
+    echo "Refreshing public snapshot from the configured endpoint..."
+    curl -fsSL \
+      --http1.1 \
+      --retry 5 \
+      --retry-delay 5 \
+      --retry-max-time 300 \
+      --retry-all-errors \
+      --max-time 120 \
+      "${SNAPSHOT_URL}" \
+      -o "${LIVE_SNAPSHOT_PATH}"
+
+    python3 - "${LIVE_SNAPSHOT_PATH}" "${OUTPUT_PATH}" <<'PY'
 from pathlib import Path
 import json
 import sys
@@ -103,7 +150,8 @@ output.write_text(
     encoding="utf-8",
 )
 PY
-  echo "Live public snapshot accepted and written to ${OUTPUT_PATH}"
+    echo "Live public snapshot accepted and written to ${OUTPUT_PATH}"
+  fi
 fi
 
 echo "Public snapshot ready at ${OUTPUT_PATH}"

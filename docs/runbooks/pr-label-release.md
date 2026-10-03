@@ -54,22 +54,21 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 3. `prepare` accepts only the current `main` head SHA. A manual dispatch must provide that exact SHA; a stale or non-main SHA fails before release intent, tag creation, artifact publishing, image publishing, or EdgeOne deployment. Each publish side effect rechecks the same `main` head immediately before it runs.
 4. `prepare` verifies no post-merge mutations on release labels (`type:*` / `channel:*` / `release:*`), then resolves release intent from merged PR labels.
 5. If `should_release=false`, workflow exits with summary only.
-6. If `release:frontend` is present, the workflow:
-   - downloads `PUBLIC_CONTENT_BUNDLE_URL`
-   - reuses the bundled `public-snapshot.json`
+6. When a release is expected, the workflow fetches and validates the public content snapshot once, records its generation time and SHA-256, and uploads a short-lived workflow artifact. If the bundle and live snapshot URLs point to the same endpoint (query tokens may differ), it reuses the first response instead of fetching the same data again. The frontend and image jobs share this artifact rather than independently rebuilding the snapshot.
+7. If `release:frontend` is present, the workflow:
    - builds `site-dist`
    - uploads frontend release assets
    - packages the verified static output with `edge-functions` as a GitHub Actions artifact
    - deploys that artifact to EdgeOne Makers
-7. If `release:backend` is present, the workflow:
+8. If `release:backend` is present, the workflow:
    - builds `admin-dist`
    - prepares `backend-dist`
    - uploads backend release assets
-8. If either release target is present, the workflow:
-   - downloads `PUBLIC_CONTENT_BUNDLE_URL`
+9. If either release target is present, the workflow:
+   - downloads the shared public snapshot artifact
    - builds the console Docker image containing `console-dist`, `backend-dist`, and `admin-dist`; `site-dist` is published separately to EdgeOne
    - pushes the image to GHCR with the plain `v*` tag, and `latest` for current-head stable releases
-9. The prepare and publish job summaries contain the actual release outcomes. The release-owning agent reports successful publication to the owner, and the workflow does not write a result comment to the source PR.
+10. The prepare and publish job summaries contain the actual release outcomes. The release-owning agent reports successful publication to the owner, and the workflow does not write a result comment to the source PR.
 
 ## Permissions and required-check note
 
