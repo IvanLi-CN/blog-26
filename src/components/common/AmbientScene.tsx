@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { AmbientRenderer } from "./ambient-renderer";
+import type { AmbientRenderer, AmbientRendererContext } from "./ambient-renderer";
 import {
   type AmbientPalette,
   createAmbientMotionModel,
@@ -11,15 +11,24 @@ import {
 import { createSvgRenderer } from "./ambient-svg";
 import { createWebGpuRenderer } from "./ambient-webgpu";
 
-function readPalette(): AmbientPalette {
-  const style = getComputedStyle(document.documentElement);
+function readPalette(root: HTMLElement): AmbientPalette {
+  const style = getComputedStyle(root);
   return {
     accent: style.getPropertyValue("--nature-accent-rgb").trim() || DEFAULT_AMBIENT_PALETTE.accent,
     mist: style.getPropertyValue("--nature-mist-rgb").trim() || DEFAULT_AMBIENT_PALETTE.mist,
   };
 }
 
-export default function AmbientScene() {
+/** Internal evidence inputs keep stories on the production coordinator. */
+export type AmbientSceneEvidence = {
+  width: number;
+  height: number;
+  renderer?: "auto" | "svg" | "full" | "conservative";
+  frameTime?: number;
+  loadLeafAtlas?: AmbientRendererContext["loadLeafAtlas"];
+};
+
+export default function AmbientScene({ evidence }: { evidence?: AmbientSceneEvidence } = {}) {
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -27,16 +36,19 @@ export default function AmbientScene() {
     if (!root) return;
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let palette = readPalette();
-    let model = createAmbientMotionModel(window.innerWidth, window.innerHeight);
+    let palette = readPalette(root);
+    let model = createAmbientMotionModel(
+      evidence?.width ?? window.innerWidth,
+      evidence?.height ?? window.innerHeight
+    );
     let active: AmbientRenderer | null = null;
     let generation = 0;
     let disposed = false;
 
     const size = () =>
       getAmbientWebGpuCanvasSize(
-        window.innerWidth,
-        window.innerHeight,
+        evidence?.width ?? window.innerWidth,
+        evidence?.height ?? window.innerHeight,
         window.devicePixelRatio || 1
       );
 
@@ -47,6 +59,7 @@ export default function AmbientScene() {
         model,
         palette,
         reducedMotion: reducedMotion.matches,
+        frameTime: evidence?.frameTime,
       });
       renderer.mount();
       renderer.resize(model, size());
@@ -63,6 +76,7 @@ export default function AmbientScene() {
 
     const tryWebGpu = async () => {
       const token = ++generation;
+      if (evidence?.renderer === "svg") return;
       let candidate: AmbientRenderer | null = null;
       let candidateFailed = false;
       candidate = await createWebGpuRenderer({
@@ -70,6 +84,13 @@ export default function AmbientScene() {
         model,
         palette,
         reducedMotion: reducedMotion.matches,
+        size: size(),
+        frameTime: evidence?.frameTime,
+        renderTier:
+          evidence?.renderer === "full" || evidence?.renderer === "conservative"
+            ? evidence.renderer
+            : undefined,
+        loadLeafAtlas: evidence?.loadLeafAtlas,
         onUnavailable: () => {
           if (active === candidate) fallbackToSvg();
           else candidateFailed = true;
@@ -113,7 +134,7 @@ export default function AmbientScene() {
     };
 
     const syncPalette = () => {
-      palette = readPalette();
+      palette = readPalette(root);
       active?.setPalette(palette);
     };
 
@@ -146,7 +167,14 @@ export default function AmbientScene() {
       document.removeEventListener("visibilitychange", syncVisibility);
       reducedMotion.removeEventListener("change", syncReducedMotion);
     };
-  }, []);
+  }, [evidence]);
 
-  return <div ref={rootRef} className="nature-ambient" aria-hidden="true" />;
+  return (
+    <div
+      ref={rootRef}
+      className="nature-ambient"
+      style={evidence ? { position: "absolute" } : undefined}
+      aria-hidden="true"
+    />
+  );
 }

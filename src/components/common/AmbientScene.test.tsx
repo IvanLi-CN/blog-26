@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { cleanup, render } from "@testing-library/react";
 import AmbientScene from "./AmbientScene";
+import { getAmbientLeafAtlasSize } from "./ambient-leaf";
 
 if (typeof document === "undefined") GlobalRegistrator.register();
 
@@ -72,6 +73,7 @@ describe("AmbientScene coordinator", () => {
     const originalHidden = Object.getOwnPropertyDescriptor(document, "hidden");
     const device = {
       queue: {
+        copyExternalImageToTexture: () => undefined,
         writeBuffer() {
           // The coordinator test only needs a valid queue shape.
         },
@@ -83,6 +85,8 @@ describe("AmbientScene coordinator", () => {
         resolveLost = resolve;
       }),
       createShaderModule: () => ({}),
+      createSampler: () => ({}),
+      createTexture: () => ({ createView: () => ({}), destroy: () => undefined }),
       createBuffer: () => ({
         destroy() {
           // The coordinator owns resource cleanup.
@@ -145,7 +149,19 @@ describe("AmbientScene coordinator", () => {
     Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
 
     try {
-      const { container } = render(<AmbientScene />);
+      const { container } = render(
+        <AmbientScene
+          evidence={{
+            width: 1440,
+            height: 900,
+            loadLeafAtlas: async (scale) => ({
+              source: {} as ImageBitmap,
+              size: getAmbientLeafAtlasSize(scale),
+              close: () => undefined,
+            }),
+          }}
+        />
+      );
       expect(container.querySelector("svg.nature-ambient-svg")).toBeTruthy();
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(container.querySelector("canvas.nature-ambient-webgpu")).toBeTruthy();

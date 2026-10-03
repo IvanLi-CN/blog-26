@@ -48,8 +48,17 @@ describe("ambient SVG fallback", () => {
 
     expect(root.querySelectorAll("g.nature-ambient-seed")).toHaveLength(7);
     const firstSeed = root.querySelector("g.nature-ambient-seed") as SVGGElement;
-    expect(firstSeed.style.getPropertyValue("--ambient-seed-fill-alpha")).toBe("0.0627");
-    expect(firstSeed.style.getPropertyValue("--ambient-seed-stroke-alpha")).toBe("0.2412");
+    expect(firstSeed.querySelector('[data-leaf-part="blade"]')?.getAttribute("fill-opacity")).toBe(
+      "0.035"
+    );
+    expect(firstSeed.querySelector('[data-leaf-part="rib"]')?.getAttribute("fill")).toBe("none");
+    expect(firstSeed.querySelector('[data-leaf-part="rib"]')?.getAttribute("stroke-opacity")).toBe(
+      "0.14"
+    );
+    expect(
+      firstSeed.querySelector('[data-leaf-part="veins"]')?.getAttribute("stroke-opacity")
+    ).toBe("0.07");
+    expect(root.querySelectorAll("use")).toHaveLength(0);
     expect(root.querySelector("svg")?.style.getPropertyValue("--ambient-accent-rgb")).toBe(
       "1, 2, 3"
     );

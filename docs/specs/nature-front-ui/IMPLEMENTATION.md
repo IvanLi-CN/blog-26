@@ -63,23 +63,26 @@ offset; endpoint no-ops continue through the normal direction gates.
 
 ## Ambient renderer
 
-The public shell mounts a transparent native-DPR WebGPU ambient renderer over
-the CSS theme background. A deterministic motion model drives three wind paths
-and the responsive desktop/mobile leaf count. The WebGPU pass uses premultiplied
-alpha and a transparent clear value, while visible pages use direct
-`requestAnimationFrame` scheduling at approximately 30Hz and hidden pages stop
-submitting commands.
-The adapter's public limits are checked against the exact native-DPR backing
-size before configuration; an unsupported allocation uses SVG instead of
-lowering DPR. A deterministic internal `performanceScore` uses only the
-adapter's public limits and fixed seed-buffer requirement: score 2 renders the
-complete WebGPU scene, score 1 keeps WebGPU while omitting the non-essential
-leaf outline, and score 0 uses SVG. Queue completion timing, frame timing,
-private browser fields, vendor tables, and hardware heuristics do not affect
-this score or select another renderer.
-The shell first mounts a complete static SVG scene so reduced-motion users and
-unsupported or failed WebGPU initialization have an immediate, vector-quality
-fallback. Device loss, context/pipeline failure, theme changes, resize, and
-reduced-motion changes are guarded by the renderer lifecycle coordinator. The
-production decision is recorded in ADR 0007; ADR 0004 through ADR 0006 remain
-historical Canvas, benchmark, and initial WebGPU decisions.
+The public shell mounts a transparent native-DPR WebGPU renderer over the
+existing Nature CSS background. `ambient-leaf.ts` owns the approved broad and
+willow vector masters, explicit path opacities, and four-tile atlas generation.
+SVG uses independent path nodes; WebGPU instances sample the same masks and
+apply the shared deterministic pose and current theme palette. The atlas uses
+twice native-DPR leaf density and two-texel isolation; theme and ordinary
+viewport changes reuse it, while DPR changes replace it asynchronously.
+
+Public adapter and device limits cover the canvas, atlas, and fixed seed
+buffer. Full detail includes secondary veins; conservative detail preserves
+the complete outline, stem, and primary rib. Reduced motion never requests an
+adapter. SVG remains mounted during initial preparation and is the fallback
+for decode/upload/context/pipeline failure and device loss. Generation guards
+discard late work; replacement and teardown close bitmaps and release GPU
+resources. Visible motion retains approximately 30Hz scheduling and hidden
+pages stop submissions, including initialization that completes while the page
+is hidden. The prepared renderer does not submit until mount and rereads
+document visibility at that boundary. ADR 0011 owns the current rendering
+decision.
+
+The co-located ambient Storybook gallery uses the production coordinator with
+internal fixed-frame and renderer-tier inputs. Viewport-bound desktop/mobile
+stories supply deterministic browser evidence independently of backend data.

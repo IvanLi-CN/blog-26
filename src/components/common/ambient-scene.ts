@@ -1,3 +1,5 @@
+import type { AmbientLeafVariant } from "./ambient-leaf";
+
 export const AMBIENT_STATIC_FRAME_TIME = 0;
 export const AMBIENT_MODEL_SEED = 0x6a09e667;
 
@@ -14,7 +16,8 @@ export type AmbientSeed = {
   size: number;
   duration: number;
   phase: number;
-  alpha: number;
+  rotation: number;
+  variant: AmbientLeafVariant;
   tone: AmbientTone;
 };
 
@@ -59,15 +62,19 @@ export function createAmbientMotionModel(
 ): AmbientMotionModel {
   const random = createRandom(seed ^ Math.round(width) ^ Math.round(height));
   const count = width < 640 ? 7 : 12;
-  const seeds = Array.from({ length: count }, () => ({
-    lane: random(),
-    offset: random(),
-    size: 16 + random() * 22,
-    duration: 26_000 + random() * 18_000,
-    phase: random() * Math.PI * 2,
-    alpha: 0.22 + random() * 0.17,
-    tone: random() > 0.3 ? ("accent" as const) : ("mist" as const),
-  }));
+  const seeds = Array.from({ length: count }, (_, index) => {
+    const phase = random() * Math.PI * 2;
+    return {
+      lane: random(),
+      offset: random(),
+      size: 28 + random() * 12,
+      duration: 26_000 + random() * 18_000,
+      phase,
+      rotation: phase - Math.PI,
+      variant: index % 3 === 2 ? ("willow" as const) : ("broad" as const),
+      tone: index % 4 === 3 ? ("mist" as const) : ("accent" as const),
+    };
+  });
 
   return {
     width: Math.max(1, Math.round(width)),
@@ -112,7 +119,7 @@ export function getAmbientSeedPose(
   return {
     x: -seed.size + progress * (model.width + seed.size * 2),
     y: model.height * (0.12 + seed.lane * 0.76) + wave * model.height * 0.045,
-    angle: wave * 0.22 + 0.14,
+    angle: wave * 0.22 + seed.rotation,
     progress,
   };
 }
