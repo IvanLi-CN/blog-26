@@ -130,6 +130,17 @@ describe("fetch-public-content-bundle.sh", () => {
     expect(result.snapshot.generatedAt).toBe("2026-10-03T00:00:00.000Z");
   });
 
+  test("does not treat case-variant query keys as recognized credentials", async () => {
+    const result = await fetchSnapshot(
+      "/api/public/snapshot?TOKEN=bundle-secret&locale=en",
+      "/api/public/snapshot?TOKEN=live-secret&locale=en"
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.requests).toHaveLength(2);
+    expect(result.snapshot.generatedAt).toBe("2026-10-03T00:00:00.000Z");
+  });
+
   test("preserves repeated content query parameter order when comparing endpoints", async () => {
     const result = await fetchSnapshot(
       "/api/public/snapshot?token=bundle-secret&locale=en&locale=zh",
@@ -201,6 +212,22 @@ describe("fetch-public-content-bundle.sh", () => {
 
   test("rejects snapshots with an invalid generatedAt timestamp", async () => {
     const incompleteSnapshot = { ...validBundleSnapshot, generatedAt: null };
+    const result = await fetchSnapshot(
+      "/api/public/snapshot?token=bundle-secret",
+      "/api/public/snapshot",
+      0,
+      incompleteSnapshot
+    );
+
+    expect(result.code).not.toBe(0);
+    expect(result.output).toContain("generatedAt must be a valid ISO timestamp");
+  });
+
+  test("rejects newline-separated generatedAt timestamps", async () => {
+    const incompleteSnapshot = {
+      ...validBundleSnapshot,
+      generatedAt: "2026-10-01\n00:00:00+00:00",
+    };
     const result = await fetchSnapshot(
       "/api/public/snapshot?token=bundle-secret",
       "/api/public/snapshot",

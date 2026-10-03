@@ -98,7 +98,7 @@ def content_query(url):
     return [
         (key, value)
         for key, value in parse_qsl(url.query, keep_blank_values=True)
-        if key.lower() not in credential_query_keys
+        if key not in credential_query_keys
     ]
 
 try:
@@ -163,6 +163,7 @@ from hashlib import sha256
 from pathlib import Path
 import json
 import os
+import re
 import sys
 
 path = Path(sys.argv[1])
@@ -184,7 +185,11 @@ def require_array(value, name):
 
 snapshot = require_object(snapshot, "Public snapshot")
 generated_at = snapshot.get("generatedAt")
-if not isinstance(generated_at, str) or not generated_at.strip():
+iso_timestamp = re.compile(
+    r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
+    r"(?:\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})"
+)
+if not isinstance(generated_at, str) or not iso_timestamp.fullmatch(generated_at):
     raise SystemExit("generatedAt must be a valid ISO timestamp")
 try:
     parsed_generated_at = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
