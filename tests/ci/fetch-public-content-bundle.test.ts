@@ -8,6 +8,23 @@ import path from "node:path";
 const repositoryRoot = process.cwd();
 const fetchScript = path.resolve(repositoryRoot, "scripts/fetch-public-content-bundle.sh");
 
+const validBundleSnapshot = {
+  generatedAt: "2026-10-01T00:00:00.000Z",
+  site: {},
+  stats: { totalPosts: 0, categories: [] },
+  posts: [],
+  memos: [],
+  relatedPosts: {},
+  tags: {
+    summaries: [],
+    groups: [],
+    categoryIcons: {},
+    tagIconMap: {},
+    tagIconSvgMap: {},
+    timelines: {},
+  },
+};
+
 function startServer(server: Server) {
   return new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
 }
@@ -32,15 +49,12 @@ function runFetcher(environment: NodeJS.ProcessEnv) {
 async function fetchSnapshot(
   bundlePath: string,
   liveSnapshotPath: string,
-  transientBundleFailures = 0
+  transientBundleFailures = 0,
+  bundleSnapshotOverride: Record<string, unknown> = validBundleSnapshot,
+  credentials: { bundle?: string; live?: string } = {}
 ) {
   const requests: Array<{ path: string; httpVersion: string }> = [];
-  const bundleSnapshot = {
-    generatedAt: "2026-10-01T00:00:00.000Z",
-    posts: [],
-    memos: [],
-    tags: { summaries: [] },
-  };
+  const bundleSnapshot = bundleSnapshotOverride;
   const liveSnapshot = {
     ...bundleSnapshot,
     generatedAt: "2026-10-03T00:00:00.000Z",
@@ -63,14 +77,20 @@ async function fetchSnapshot(
   const address = server.address();
   if (!address || typeof address === "string") throw new Error("Test server did not bind a port");
   const baseUrl = `http://127.0.0.1:${address.port}`;
+  const bundleBaseUrl = credentials.bundle
+    ? `http://${credentials.bundle}@127.0.0.1:${address.port}`
+    : baseUrl;
+  const liveBaseUrl = credentials.live
+    ? `http://${credentials.live}@127.0.0.1:${address.port}`
+    : baseUrl;
   const workDir = mkdtempSync(path.join(tmpdir(), "public-snapshot-test-"));
   const outputPath = path.join(workDir, "site", "generated", "public-snapshot.json");
 
   try {
     const result = await runFetcher({
       ...process.env,
-      PUBLIC_CONTENT_BUNDLE_URL: `${baseUrl}${bundlePath}`,
-      PUBLIC_CONTENT_SNAPSHOT_URL: `${baseUrl}${liveSnapshotPath}`,
+      PUBLIC_CONTENT_BUNDLE_URL: `${bundleBaseUrl}${bundlePath}`,
+      PUBLIC_CONTENT_SNAPSHOT_URL: `${liveBaseUrl}${liveSnapshotPath}`,
       PUBLIC_SNAPSHOT_PATH: outputPath,
       PUBLIC_CONTENT_WORK_DIR: path.join(workDir, "work"),
     });
@@ -108,6 +128,101 @@ describe("fetch-public-content-bundle.sh", () => {
     expect(result.code).toBe(0);
     expect(result.requests).toHaveLength(2);
     expect(result.snapshot.generatedAt).toBe("2026-10-03T00:00:00.000Z");
+  });
+
+  test("preserves repeated content query parameter order when comparing endpoints", async () => {
+    const result = await fetchSnapshot(
+      "/api/public/snapshot?token=bundle-secret&locale=en&locale=zh",
+      "/api/public/snapshot?token=live-secret&locale=zh&locale=en"
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.requests).toHaveLength(2);
+    expect(result.snapshot.generatedAt).toBe("2026-10-03T00:00:00.000Z");
+  });
+
+  test("refreshes when endpoint Basic Auth identities differ", async () => {
+    const result = await fetchSnapshot(
+      "/api/public/snapshot?token=bundle-secret",
+      "/api/public/snapshot",
+      0,
+      validBundleSnapshot,
+      { bundle: "bundle-user:bundle-pass", live: "live-user:live-pass" }
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.requests).toHaveLength(2);
+    expect(result.snapshot.generatedAt).toBe("2026-10-03T00:00:00.000Z");
+    expect(result.output).not.toContain("bundle-pass");
+    expect(result.output).not.toContain("live-pass");
+  });
+
+  test("rejects a snapshot whose post count does not match its total", async () => {
+    const truncatedSnapshot = {
+      ...validBundleSnapshot,
+      posts: [
+        {
+          id: "post-1",
+          slug: "post-1",
+          title: "Post 1",
+          body: "Body",
+          publishDate: "2026-10-01T00:00:00.000Z",
+          tags: [],
+          media: { primary: null, cover: null, content: [], attachments: [] },
+        },
+      ],
+    };
+    const result = await fetchSnapshot(
+      "/api/public/snapshot?token=bundle-secret",
+      "/api/public/snapshot",
+      0,
+      truncatedSnapshot
+    );
+
+    expect(result.code).not.toBe(0);
+    expect(result.output).toContain("stats.totalPosts must match posts.length");
+  });
+
+  test("rejects snapshots with a missing required tag timeline map", async () => {
+    const incompleteSnapshot = {
+      ...validBundleSnapshot,
+      tags: { ...validBundleSnapshot.tags, timelines: null },
+    };
+    const result = await fetchSnapshot(
+      "/api/public/snapshot?token=bundle-secret",
+      "/api/public/snapshot",
+      0,
+      incompleteSnapshot
+    );
+
+    expect(result.code).not.toBe(0);
+    expect(result.output).toContain("tags.timelines must be an object");
+  });
+
+  test("rejects snapshots with an invalid generatedAt timestamp", async () => {
+    const incompleteSnapshot = { ...validBundleSnapshot, generatedAt: null };
+    const result = await fetchSnapshot(
+      "/api/public/snapshot?token=bundle-secret",
+      "/api/public/snapshot",
+      0,
+      incompleteSnapshot
+    );
+
+    expect(result.code).not.toBe(0);
+    expect(result.output).toContain("generatedAt must be a valid ISO timestamp");
+  });
+
+  test("rejects snapshots whose tags value is an array", async () => {
+    const incompleteSnapshot = { ...validBundleSnapshot, tags: [] };
+    const result = await fetchSnapshot(
+      "/api/public/snapshot?token=bundle-secret",
+      "/api/public/snapshot",
+      0,
+      incompleteSnapshot
+    );
+
+    expect(result.code).not.toBe(0);
+    expect(result.output).toContain("tags must be an object");
   });
 
   test("refreshes the snapshot when the bundle and live snapshot use different paths", async () => {

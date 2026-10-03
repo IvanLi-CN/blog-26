@@ -72,24 +72,6 @@ if [[ "${kind}" != "json" ]]; then
   cp "${snapshot_file}" "${OUTPUT_PATH}"
 fi
 
-python3 - "${OUTPUT_PATH}" <<'PY'
-from pathlib import Path
-import json
-import sys
-
-path = Path(sys.argv[1])
-try:
-    snapshot = json.loads(path.read_text("utf-8"))
-except (OSError, json.JSONDecodeError) as exc:
-    raise SystemExit(f"Invalid bundled public snapshot: {exc}")
-
-if not isinstance(snapshot, dict):
-    raise SystemExit("Bundled public snapshot must be a JSON object")
-for key in ("posts", "memos", "tags"):
-    if key not in snapshot:
-        raise SystemExit(f"Bundled public snapshot is missing required key: {key}")
-PY
-
 if [[ -n "${SNAPSHOT_URL}" ]]; then
   if PUBLIC_CONTENT_BUNDLE_URL="${BUNDLE_URL}" PUBLIC_CONTENT_SNAPSHOT_URL="${SNAPSHOT_URL}" python3 - <<'PY'
 from os import environ
@@ -113,11 +95,11 @@ credential_query_keys = {
 }
 
 def content_query(url):
-    return sorted(
+    return [
         (key, value)
         for key, value in parse_qsl(url.query, keep_blank_values=True)
         if key.lower() not in credential_query_keys
-    )
+    ]
 
 try:
     bundle = urlsplit(environ["PUBLIC_CONTENT_BUNDLE_URL"])
@@ -131,6 +113,8 @@ try:
         and (bundle.port or default_ports.get(bundle_scheme))
         == (snapshot.port or default_ports.get(snapshot_scheme))
         and bundle.path == snapshot.path
+        and bundle.username == snapshot.username
+        and bundle.password == snapshot.password
         and content_query(bundle) == content_query(snapshot)
     )
 except (KeyError, ValueError):
@@ -164,12 +148,6 @@ try:
 except (OSError, json.JSONDecodeError) as exc:
     raise SystemExit(f"Invalid live public snapshot: {exc}")
 
-if not isinstance(snapshot, dict):
-    raise SystemExit("Live public snapshot must be a JSON object")
-for key in ("posts", "memos", "tags"):
-    if key not in snapshot:
-        raise SystemExit(f"Live public snapshot is missing required key: {key}")
-
 output.write_text(
     json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n",
     encoding="utf-8",
@@ -178,5 +156,83 @@ PY
     echo "Live public snapshot accepted and written to ${OUTPUT_PATH}"
   fi
 fi
+
+python3 - "${OUTPUT_PATH}" <<'PY'
+from datetime import datetime
+from hashlib import sha256
+from pathlib import Path
+import json
+import os
+import sys
+
+path = Path(sys.argv[1])
+try:
+    raw = path.read_bytes()
+    snapshot = json.loads(raw.decode("utf-8"))
+except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+    raise SystemExit(f"Invalid public snapshot: {exc}")
+
+def require_object(value, name):
+    if not isinstance(value, dict):
+        raise SystemExit(f"{name} must be an object")
+    return value
+
+def require_array(value, name):
+    if not isinstance(value, list):
+        raise SystemExit(f"{name} must be an array")
+    return value
+
+snapshot = require_object(snapshot, "Public snapshot")
+generated_at = snapshot.get("generatedAt")
+if not isinstance(generated_at, str) or not generated_at.strip():
+    raise SystemExit("generatedAt must be a valid ISO timestamp")
+try:
+    parsed_generated_at = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+except ValueError:
+    raise SystemExit("generatedAt must be a valid ISO timestamp")
+if parsed_generated_at.tzinfo is None:
+    raise SystemExit("generatedAt must include a timezone")
+
+require_object(snapshot.get("site"), "site")
+stats = require_object(snapshot.get("stats"), "stats")
+posts = require_array(snapshot.get("posts"), "posts")
+memos = require_array(snapshot.get("memos"), "memos")
+categories = require_array(stats.get("categories"), "stats.categories")
+total_posts = stats.get("totalPosts")
+if not isinstance(total_posts, int) or isinstance(total_posts, bool) or total_posts < 0:
+    raise SystemExit("stats.totalPosts must be a non-negative integer")
+if total_posts != len(posts):
+    raise SystemExit("stats.totalPosts must match posts.length")
+
+for collection_name, records in (("posts", posts), ("memos", memos)):
+    for index, record in enumerate(records):
+        require_object(record, f"{collection_name}[{index}]")
+for index, category in enumerate(categories):
+    require_object(category, f"stats.categories[{index}]")
+
+require_object(snapshot.get("relatedPosts"), "relatedPosts")
+tags = require_object(snapshot.get("tags"), "tags")
+for key in ("summaries", "groups"):
+    require_array(tags.get(key), f"tags.{key}")
+for key in ("categoryIcons", "tagIconMap", "tagIconSvgMap", "timelines"):
+    require_object(tags.get(key), f"tags.{key}")
+
+summary = "\n".join(
+    [
+        "### Public content snapshot",
+        f"- generated_at: `{generated_at}`",
+        f"- posts: `{len(posts)}`",
+        f"- memos: `{len(memos)}`",
+        f"- sha256: `{sha256(raw).hexdigest()}`",
+        "",
+    ]
+)
+summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+if summary_path:
+    with open(summary_path, "a", encoding="utf-8") as summary_file:
+        summary_file.write(summary)
+else:
+    print(summary, end="")
+PY
 
 echo "Public snapshot ready at ${OUTPUT_PATH}"

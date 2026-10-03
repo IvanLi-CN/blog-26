@@ -360,35 +360,6 @@ jobs:
           PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
         run: bash ./scripts/fetch-public-content-bundle.sh
 
-      - name: Record public content snapshot identity
-        shell: bash
-        run: |
-          set -euo pipefail
-          node - ./site/generated/public-snapshot.json >> "$GITHUB_STEP_SUMMARY" <<'NODE'
-          const { createHash } = require("node:crypto");
-          const { readFileSync } = require("node:fs");
-          const path = process.argv[2];
-          const raw = readFileSync(path);
-          const snapshot = JSON.parse(raw.toString("utf8"));
-          const generatedAt = new Date(snapshot.generatedAt);
-          if (!Number.isFinite(generatedAt.getTime())) {
-            throw new Error("Public snapshot has an invalid generatedAt timestamp");
-          }
-          for (const key of ["posts", "memos"]) {
-            if (!Array.isArray(snapshot[key])) {
-              throw new Error(`Public snapshot ${key} must be an array`);
-            }
-          }
-          if (!snapshot.tags || typeof snapshot.tags !== "object") {
-            throw new Error("Public snapshot tags must be an object");
-          }
-          console.log("### Public content snapshot");
-          console.log(`- generated_at: \`${snapshot.generatedAt}\``);
-          console.log(`- posts: \`${snapshot.posts.length}\``);
-          console.log(`- memos: \`${snapshot.memos.length}\``);
-          console.log(`- sha256: \`${createHash("sha256").update(raw).digest("hex")}\``);
-          NODE
-
       - name: Upload shared public content snapshot
         uses: actions/upload-artifact@v7
         with:

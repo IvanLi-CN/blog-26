@@ -37,12 +37,10 @@ describe("release.yml", () => {
     expect(prepareContent).toContain("needs: [prepare]");
     expect(prepareContent).toContain("scripts/fetch-public-content-bundle.sh");
     expect(prepareContent).toContain("PUBLIC_CONTENT_SNAPSHOT_URL");
-    expect(prepareContent).toContain("Record public content snapshot identity");
-    expect(prepareContent).toContain("generated_at:");
-    expect(prepareContent).toContain("sha256:");
     expect(prepareContent).toContain("uses: actions/upload-artifact@v7");
     expect(prepareContent).toContain("name: public-content-snapshot");
     expect(prepareContent).toContain("path: ./site/generated/public-snapshot.json");
+    expect(prepareContent).not.toContain("Record public content snapshot identity");
 
     for (const jobName of ["publish_frontend", "publish_image"]) {
       const job = jobBlock(jobName);
