@@ -16,6 +16,22 @@ type EdgeoneHeaderRule = {
 
 export type EdgeoneCacheConfig = { headers: EdgeoneHeaderRule[] };
 
+const HTML_ROUTE_PATTERNS = [
+  "/",
+  "/about*",
+  "/search*",
+  "/posts/",
+  "/posts/:slug/",
+  "/memos/",
+  "/memos/:slug/",
+  "/tags/",
+  "/tags/*/",
+  "/projects/",
+  "/projects/:slug/",
+] as const;
+
+const HTML_FALLBACK_PATTERNS = ["/posts*", "/memos*"] as const;
+
 export function normalizeBasePath(raw = "") {
   const value = raw.trim();
   if (!value || value === "/") return "";
@@ -61,14 +77,12 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
   const hasContentAssetFiles = normalizedStaticFiles.some((path) =>
     path.startsWith("_content/assets/")
   );
-  const htmlRules = [
-    rule(scopedPath(basePath, "/"), EDGEONE_PUBLIC_CACHE_CONTROL.html),
-    ...["/about*", "/search*", "/posts*", "/memos*", "/tags/", "/tags/*/"].map((path) =>
-      rule(scopedPath(basePath, path), EDGEONE_PUBLIC_CACHE_CONTROL.html)
-    ),
-    rule(scopedPath(basePath, "/projects/"), EDGEONE_PUBLIC_CACHE_CONTROL.html),
-    rule(scopedPath(basePath, "/projects/:slug/"), EDGEONE_PUBLIC_CACHE_CONTROL.html),
-  ];
+  const htmlRules = HTML_ROUTE_PATTERNS.map((path) =>
+    rule(scopedPath(basePath, path), EDGEONE_PUBLIC_CACHE_CONTROL.html)
+  );
+  const htmlFallbackRules = HTML_FALLBACK_PATTERNS.map((path) =>
+    rule(scopedPath(basePath, path), EDGEONE_PUBLIC_CACHE_CONTROL.html)
+  );
   const versionedRules = [
     rule(scopedPath(basePath, "/_astro/*"), EDGEONE_PUBLIC_CACHE_CONTROL.immutable),
     ...(hasContentAssetFiles
@@ -152,6 +166,7 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
       ...[...projectAssetSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
+      ...htmlFallbackRules,
     ],
   };
 
@@ -216,17 +231,9 @@ function validateHtmlFiles(staticFiles: readonly string[], basePath: string) {
           ? `/${file.slice(0, -"/index.html".length)}/`
           : `/${file}`;
     const scoped = scopedPath(normalizedBase, urlPath);
-    const represented = [
-      "/",
-      "/about*",
-      "/search*",
-      "/posts*",
-      "/memos*",
-      "/tags/",
-      "/tags/*/",
-      "/projects/",
-      "/projects/:slug/",
-    ].some((source) => edgeoneSourceMatches(scopedPath(normalizedBase, source), scoped));
+    const represented = [...HTML_ROUTE_PATTERNS, ...HTML_FALLBACK_PATTERNS].some((source) =>
+      edgeoneSourceMatches(scopedPath(normalizedBase, source), scoped)
+    );
     if (!represented) throw new Error(`Public HTML route has no EdgeOne HTML cache rule: ${file}`);
   }
 }

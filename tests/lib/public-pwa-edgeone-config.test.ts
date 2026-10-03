@@ -156,6 +156,26 @@ describe("EdgeOne public PWA cache config", () => {
     expect(findEdgeoneCacheRule(config, "/admin/")).toBeUndefined();
   });
 
+  it("groups memo pagination JSON without exceeding EdgeOne rule limits", () => {
+    const memoPages = Array.from({ length: 57 }, (_, index) => `memos/data/${index + 1}.json`);
+    const config = createEdgeoneCacheConfig("", [
+      "index.html",
+      "memos/index.html",
+      "memos/memo-56/index.html",
+      ...memoPages,
+    ]);
+
+    expect(config.headers.length).toBeLessThanOrEqual(30);
+    expect(findEdgeoneCacheRule(config, "/memos/memo-56/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(findEdgeoneCacheRule(config, "/memos/data/57.json")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
+    );
+    expect(config.headers.filter(({ source }) => source === "/memos/data/*")).toHaveLength(1);
+    expect(config.headers.some(({ source }) => source === "/memos/data/57.json")).toBe(false);
+  });
+
   it("keeps HTML routes ahead of project asset wildcards and narrows overlapping assets", () => {
     const projectOutputFiles = Array.from({ length: 40 }, (_, index) => [
       `projects/project-${index}/index.html`,
@@ -173,6 +193,9 @@ describe("EdgeOne public PWA cache config", () => {
     expect(findEdgeoneCacheRule(config, "/memos/")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.html
     );
+    expect(findEdgeoneCacheRule(config, "/memos/example/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
     expect(findEdgeoneCacheRule(config, "/memos/feed.xml")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
     );
@@ -188,7 +211,7 @@ describe("EdgeOne public PWA cache config", () => {
     expect(
       findEdgeoneCacheRule(config, "/projects/project-39/assets/cover-39.webp")?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
-    expect(config.headers.some(({ source }) => source === "/memos/*")).toBe(false);
+    expect(config.headers.some(({ source }) => source === "/memos/*")).toBe(true);
     expect(
       config.headers.some(({ source }) => source === "/projects/:projectDir1/:projectDir2/*")
     ).toBe(true);
