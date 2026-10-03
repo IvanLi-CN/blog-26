@@ -120,6 +120,12 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
   - `pr_not_merged_or_missing_merged_at`
   - `intent_skip`
 
+### Product change was merged with `type:skip`
+
+- Do not change `type:*`, `channel:*`, or `release:*` labels after merge. The release workflow rejects post-merge label mutations.
+- If the product change now needs publication, create a follow-up PR from the current `main` head with a meaningful in-scope change and the intended release labels before merge. The normal release workflow then publishes against the follow-up PR's new merge SHA, which includes the earlier change.
+- Do not dispatch a release for the historical merge SHA or use a label edit as a same-SHA recovery path.
+
 ### Release failed in `prepare`
 
 - Common failure reasons:
