@@ -31,6 +31,24 @@ const HTML_ROUTE_PATTERNS = [
 ] as const;
 
 const HTML_FALLBACK_PATTERNS = ["/posts*", "/memos*"] as const;
+const DYNAMIC_ROOT_PATHS = new Set(["api", "admin", "mcp"]);
+const GROUPED_ROOT_ASSET_PREFIXES = new Set(["f", "r", "w"]);
+const DYNAMIC_ROUTE_PROBES = [
+  "/api",
+  "/api/",
+  "/api/health",
+  "/api/public/snapshot",
+  "/api/public/content-bundle",
+  "/api/probe",
+  "/api/probe/probe",
+  "/admin",
+  "/admin/",
+  "/admin/index.html",
+  "/admin/probe",
+  "/mcp",
+  "/mcp/",
+  "/mcp/probe",
+] as const;
 
 export function normalizeBasePath(raw = "") {
   const value = raw.trim();
@@ -99,8 +117,8 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
   const exactAssetSources = new Set<string>();
   const assetSources = new Set<string>();
   const projectAssetSources = new Set<string>();
+  const rootAssetSources = new Set<string>();
   let hasTagFeedFiles = false;
-  let hasRootLevelAssetFiles = false;
 
   for (const path of unversionedFiles) {
     const parent = dirname(path).replaceAll("\\", "/");
@@ -121,7 +139,15 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     }
 
     if (parent === ".") {
-      hasRootLevelAssetFiles = true;
+      const basename = path.slice(path.lastIndexOf("/") + 1);
+      if (DYNAMIC_ROOT_PATHS.has(basename)) continue;
+
+      const prefix = basename[0];
+      if (prefix && GROUPED_ROOT_ASSET_PREFIXES.has(prefix)) {
+        rootAssetSources.add(scopedPath(basePath, `/${prefix}*`));
+      } else {
+        rootAssetSources.add(exactSource);
+      }
       continue;
     }
 
@@ -167,9 +193,9 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
       ...htmlFallbackRules,
-      ...(hasRootLevelAssetFiles
-        ? [rule(scopedPath(basePath, "/:rootAsset"), EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)]
-        : []),
+      ...[...rootAssetSources]
+        .sort()
+        .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
     ],
   };
 
@@ -184,14 +210,21 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     if (!headerRule.source.startsWith("/")) {
       throw new Error(`EdgeOne source must start with /: ${headerRule.source}`);
     }
-    if (headerRule.source.startsWith("/api/") || headerRule.source.startsWith("/admin/")) {
-      throw new Error(
-        `EdgeOne cache policy must not match API or admin paths: ${headerRule.source}`
-      );
-    }
     if (normalizedBase && !headerRule.source.startsWith(`${normalizedBase}/`)) {
       throw new Error(`EdgeOne source escaped the public base path: ${headerRule.source}`);
     }
+  }
+
+  const dynamicRoutePaths = new Set(
+    DYNAMIC_ROUTE_PROBES.flatMap((path) => [path, scopedPath(basePath, path)])
+  );
+  const dynamicRouteMatches = [...dynamicRoutePaths].filter((path) =>
+    config.headers.some(({ source }) => edgeoneSourceMatches(source, path))
+  );
+  if (dynamicRouteMatches.length > 0) {
+    throw new Error(
+      `EdgeOne cache policy must not match dynamic routes: ${dynamicRouteMatches.join(", ")}`
+    );
   }
 
   return config;

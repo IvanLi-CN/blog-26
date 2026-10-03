@@ -19,7 +19,7 @@ afterEach(async () => {
 });
 
 describe("EdgeOne public PWA cache config", () => {
-  it("covers public pages and assets at a base path without matching API or admin", () => {
+  it("covers public pages and assets at a base path without matching API, admin, or gateway", () => {
     const config = createEdgeoneCacheConfig("/blog-26", [
       "index.html",
       "about/index.html",
@@ -89,18 +89,25 @@ describe("EdgeOne public PWA cache config", () => {
     expect(findEdgeoneCacheRule(config, "/blog-26/favicon-dark.ico")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
     );
-    expect(config.headers.some(({ source }) => source === "/blog-26/:rootAsset")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/blog-26/:rootAsset")).toBe(false);
+    expect(config.headers.some(({ source }) => source === "/blog-26/f*")).toBe(true);
     expect(
       findEdgeoneCacheRule(config, "/blog-26/projects/posters/blog-26.webp")?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
     expect(config.headers.some(({ source }) => source === "/blog-26/projects/:projectDir1/*")).toBe(
       true
     );
+    expect(findEdgeoneCacheRule(config, "/blog-26/api")).toBeUndefined();
+    expect(findEdgeoneCacheRule(config, "/blog-26/api/health")).toBeUndefined();
+    expect(findEdgeoneCacheRule(config, "/blog-26/api/public/assets/post/a/cover.webp")).toBe(
+      undefined
+    );
+    expect(findEdgeoneCacheRule(config, "/blog-26/api/v1/feed.xml")).toBeUndefined();
+    expect(findEdgeoneCacheRule(config, "/blog-26/mcp")).toBeUndefined();
+    expect(findEdgeoneCacheRule(config, "/blog-26/admin")).toBeUndefined();
+    expect(findEdgeoneCacheRule(config, "/blog-26/admin/")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/api/health")).toBeUndefined();
-    expect(findEdgeoneCacheRule(config, "/api/public/assets/post/a/cover.webp")).toBeUndefined();
-    expect(findEdgeoneCacheRule(config, "/api/v1/feed.xml")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/mcp")).toBeUndefined();
-    expect(findEdgeoneCacheRule(config, "/admin/")).toBeUndefined();
   });
 
   it("builds rules from site output and refuses an unclassified HTML page", () => {
@@ -185,6 +192,7 @@ describe("EdgeOne public PWA cache config", () => {
       "favicon.svg",
       "feed.json",
       "feed.xml",
+      "file.svg",
       "globe.svg",
       "ivan-blog-mark.svg",
       "mcp",
@@ -219,11 +227,18 @@ describe("EdgeOne public PWA cache config", () => {
     ]);
 
     expect(config.headers.length).toBeLessThanOrEqual(30);
-    expect(config.headers.some(({ source }) => source === "/:rootAsset")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/:rootAsset")).toBe(false);
+    expect(config.headers.some(({ source }) => source === "/f*")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/r*")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/w*")).toBe(true);
     for (const path of rootAssets) {
-      expect(findEdgeoneCacheRule(config, `/${path}`)?.headers[0]?.value).toBe(
-        EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
-      );
+      if (path === "mcp") {
+        expect(findEdgeoneCacheRule(config, `/${path}`)).toBeUndefined();
+      } else {
+        expect(findEdgeoneCacheRule(config, `/${path}`)?.headers[0]?.value).toBe(
+          EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
+        );
+      }
     }
     expect(findEdgeoneCacheRule(config, "/posts/example/")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.html
@@ -234,8 +249,31 @@ describe("EdgeOne public PWA cache config", () => {
     expect(findEdgeoneCacheRule(config, "/tags/software/dev/feed.xml")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
     );
-    expect(findEdgeoneCacheRule(config, "/api/public/content-bundle")).toBeUndefined();
-    expect(findEdgeoneCacheRule(config, "/admin/index.html")).toBeUndefined();
+    expect(findEdgeoneCacheRule(config, "/search/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(findEdgeoneCacheRule(config, "/search/deep-route")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    for (const path of [
+      "/api",
+      "/api/",
+      "/api/health",
+      "/api/public/snapshot",
+      "/api/public/content-bundle",
+      "/api/public/assets/post/a/cover.webp",
+      "/api/probe",
+      "/api/probe/probe",
+      "/admin",
+      "/admin/",
+      "/admin/index.html",
+      "/admin/probe",
+      "/mcp",
+      "/mcp/",
+      "/mcp/probe",
+    ]) {
+      expect(findEdgeoneCacheRule(config, path)).toBeUndefined();
+    }
   });
 
   it("keeps HTML routes ahead of project asset wildcards and narrows overlapping assets", () => {
