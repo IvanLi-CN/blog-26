@@ -120,6 +120,40 @@ describe("EdgeOne public PWA cache config", () => {
     }
   });
 
+  it("excludes dynamic route trees and colliding HTML from public cache rules", () => {
+    const config = createEdgeoneCacheConfig("/blog-26", [
+      "index.html",
+      "memos/index.html",
+      "_astro/site.js",
+      "favicon.ico",
+      "api/index.html",
+      "api/internal/data.json",
+      "api/probe.json",
+      "admin/index.html",
+      "admin/static/x.js",
+      "mcp/index.html",
+      "mcp/internal/data.json",
+      "mcp/asset.json",
+    ]);
+
+    expect(findEdgeoneCacheRule(config, "/blog-26/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(findEdgeoneCacheRule(config, "/blog-26/_astro/site.js")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.immutable
+    );
+    expect(findEdgeoneCacheRule(config, "/blog-26/favicon.ico")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
+    );
+
+    for (const root of ["api", "admin", "mcp"]) {
+      for (const suffix of ["", "/", "/index.html", "/probe.json", "/internal/data.json"]) {
+        expect(findEdgeoneCacheRule(config, `/blog-26/${root}${suffix}`)).toBeUndefined();
+        expect(findEdgeoneCacheRule(config, `/${root}${suffix}`)).toBeUndefined();
+      }
+    }
+  });
+
   it("keeps nested tag pages and feeds within the EdgeOne rule limit", () => {
     const tagSegments = [
       "Hardware/Component/OperationalAmplifier",

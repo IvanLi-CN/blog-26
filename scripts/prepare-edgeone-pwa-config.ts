@@ -71,6 +71,10 @@ function isVersionedAsset(path: string) {
   );
 }
 
+function isDynamicRouteOutput(path: string) {
+  return DYNAMIC_ROOT_PATHS.has(path.split("/", 1)[0] ?? "");
+}
+
 function versionedPwaDirectory(path: string) {
   const match = /^pwa\/([a-f0-9]{16})\//.exec(path);
   return match ? `pwa/${match[1]}` : undefined;
@@ -81,18 +85,19 @@ function rule(source: string, value: string): EdgeoneHeaderRule {
 }
 
 export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly string[]) {
-  validateHtmlFiles(staticFiles, basePath);
-  const normalizedStaticFiles = staticFiles
+  const cacheableStaticFiles = staticFiles
     .map((path) => path.replaceAll("\\", "/").replace(/^\.\//, ""))
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((path) => !isDynamicRouteOutput(path));
+  validateHtmlFiles(cacheableStaticFiles, basePath);
   const versionedPwaDirectories = [
     ...new Set(
-      normalizedStaticFiles
+      cacheableStaticFiles
         .map(versionedPwaDirectory)
         .filter((path): path is string => path !== undefined)
     ),
   ].sort();
-  const hasContentAssetFiles = normalizedStaticFiles.some((path) =>
+  const hasContentAssetFiles = cacheableStaticFiles.some((path) =>
     path.startsWith("_content/assets/")
   );
   const htmlRules = HTML_ROUTE_PATTERNS.map((path) =>
@@ -110,7 +115,7 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
       rule(scopedPath(basePath, `/${path}/*`), EDGEONE_PUBLIC_CACHE_CONTROL.immutable)
     ),
   ];
-  const unversionedFiles = normalizedStaticFiles
+  const unversionedFiles = cacheableStaticFiles
     .filter((path) => path && !path.endsWith(".html") && path !== "CNAME")
     .filter((path) => !isVersionedAsset(path))
     .sort();
