@@ -20,10 +20,6 @@ const HTML_ROUTE_PATTERNS = [
   "/",
   "/about*",
   "/search*",
-  "/posts/",
-  "/posts/:slug/",
-  "/memos/",
-  "/memos/:slug/",
   "/tags/",
   "/tags/*/",
   "/projects/",
@@ -131,6 +127,11 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
 
     if (path.startsWith("tags/") && path.endsWith("/feed.xml")) {
       hasTagFeedFiles = true;
+      continue;
+    }
+
+    if (path === "memos/feed.xml") {
+      exactAssetSources.add(exactSource);
       continue;
     }
 
