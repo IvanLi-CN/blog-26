@@ -388,9 +388,11 @@ test("@targeted runtime failure and recovery preserve the visual slot", async ({
     await page.evaluate(() => document.dispatchEvent(new Event("astro:page-load")));
     await page.clock.fastForward(300_001);
     for (const slug of cards) {
-      expect(requestCounts.get(slug), `${slug} must bind only one refresh timer`).toBe(
-        (beforeRebind.get(slug) ?? 0) + 1
-      );
+      await expect
+        .poll(() => requestCounts.get(slug), {
+          message: `${slug} must bind only one refresh timer`,
+        })
+        .toBe((beforeRebind.get(slug) ?? 0) + 1);
     }
     for (const slug of cards) {
       await expect(
