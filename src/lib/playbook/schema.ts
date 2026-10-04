@@ -120,7 +120,7 @@ const projectSchema = z.strictObject({
   source: text,
   tags: z.array(text),
   snapshot_exists: z.boolean(),
-  visibility: z.literal("public").nullish(),
+  visibility: z.literal("public").nullable(),
   created_at: nullableText,
   updated_at: nullableText,
 });

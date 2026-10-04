@@ -178,6 +178,11 @@ function matchesBuildIdentity(
   );
 }
 
+function assertOlderRollbackTarget(target: PlaybookManifest, current: PlaybookEditionIdentity) {
+  if (compareStableTags(target.source.tag, current.source.tag) >= 0)
+    throw new Error("Rollback target must be older than the current stable release");
+}
+
 // Must be called inside the production lock. No app version or image is created.
 export async function deployContent(
   adapter: DeploymentAdapter,
@@ -193,6 +198,7 @@ export async function deployContent(
     if (decision !== "update") return decision;
   }
   if (!current) throw new Error("Initial deployment must use the normal application release");
+  if (options.rollback) assertOlderRollbackTarget(manifest, current);
   // Also supports adapters where preparation can outlive a renderer publication.
   for (let attempt = 0; attempt < 3; attempt++) {
     const edition = await adapter.build(manifest, current.rendererCommit, current);
@@ -200,7 +206,9 @@ export async function deployContent(
       throw new Error("Build identity does not match the fixed inputs");
     const latest = await adapter.current();
     if (!latest) throw new Error("Deployed renderer identity disappeared");
-    if (!options.rollback) {
+    if (options.rollback) {
+      assertOlderRollbackTarget(manifest, latest);
+    } else {
       const decision = adoptionDecision(manifest, latest);
       if (decision !== "update") return decision;
     }

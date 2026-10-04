@@ -75,6 +75,14 @@ describe("playbook-public-contract", () => {
     const privateCatalog = structuredClone(publicFixtureCatalog);
     privateCatalog.snapshot.projects[0].visibility = "private";
     expect(() => assertPublicCatalog(privateCatalog)).toThrow();
+    const missingVisibility = structuredClone(publicFixtureCatalog);
+    Reflect.deleteProperty(missingVisibility.snapshot.projects[0], "visibility");
+    Reflect.deleteProperty(missingVisibility.project_details[0].item, "visibility");
+    expect(() => assertPublicCatalog(missingVisibility)).toThrow();
+    const unknownVisibility = structuredClone(publicFixtureCatalog);
+    Reflect.set(unknownVisibility.snapshot.projects[0], "visibility", "internal");
+    Reflect.set(unknownVisibility.project_details[0].item, "visibility", "internal");
+    expect(() => assertPublicCatalog(unknownVisibility)).toThrow();
     const invalid = structuredClone(publicFixtureCatalog);
     invalid.topic_details[0].policy_skills[0].frontmatter.secret = "never publish";
     expect(() => assertPublicCatalog(invalid)).toThrow("Internal field");
@@ -487,13 +495,14 @@ describe("playbook-build-deploy-adapter", () => {
     expect(deployedPrevious).toBe("v3.1.0");
   });
   test("paused updates and explicit rollback enforce production boundaries", async () => {
-    const next = makePublicBundle();
+    const current = makePublicBundle("v3.1.0", "101");
+    const previous = makePublicBundle("v3.0.0", "100");
     let calls = 0;
     const adapter = {
-      current: async () => next.edition.edition,
+      current: async () => current.edition.edition,
       build: async () => {
         calls++;
-        return next.edition.edition;
+        return previous.edition.edition;
       },
       deploy: async () => {
         /* Successful mock operation. */
@@ -502,19 +511,68 @@ describe("playbook-build-deploy-adapter", () => {
         /* Successful mock operation. */
       },
     };
-    expect(await deployContent(adapter, next.manifest, { automaticUpdatesEnabled: false })).toBe(
-      "paused"
-    );
+    expect(
+      await deployContent(adapter, previous.manifest, { automaticUpdatesEnabled: false })
+    ).toBe("paused");
     await expect(
-      deployContent(adapter, next.manifest, { rollback: true, automaticUpdatesEnabled: true })
+      deployContent(adapter, previous.manifest, { rollback: true, automaticUpdatesEnabled: true })
     ).rejects.toThrow("Pause");
     expect(calls).toBe(0);
     expect(
-      await deployContent(adapter, next.manifest, {
+      await deployContent(adapter, previous.manifest, {
         rollback: true,
         automaticUpdatesEnabled: false,
       })
     ).toBe("deployed");
+  });
+  test("explicit rollback rejects a newer target and rechecks the current release after build", async () => {
+    const current = makePublicBundle("v3.0.0", "100");
+    const newer = makePublicBundle("v3.1.0", "101");
+    let buildCalls = 0;
+    await expect(
+      deployContent(
+        {
+          current: async () => current.edition.edition,
+          build: async () => {
+            buildCalls++;
+            return newer.edition.edition;
+          },
+          deploy: async () => {
+            /* Successful mock operation. */
+          },
+          verify: async () => {
+            /* Successful mock operation. */
+          },
+        },
+        newer.manifest,
+        { rollback: true, automaticUpdatesEnabled: false }
+      )
+    ).rejects.toThrow("older than");
+    expect(buildCalls).toBe(0);
+
+    const target = makePublicBundle("v3.0.0", "100");
+    let latest = makePublicBundle("v3.2.0", "102").edition.edition;
+    let deployed = false;
+    await expect(
+      deployContent(
+        {
+          current: async () => latest,
+          build: async () => {
+            latest = target.edition.edition;
+            return target.edition.edition;
+          },
+          deploy: async () => {
+            deployed = true;
+          },
+          verify: async () => {
+            /* Successful mock operation. */
+          },
+        },
+        target.manifest,
+        { rollback: true, automaticUpdatesEnabled: false }
+      )
+    ).rejects.toThrow("older than");
+    expect(deployed).toBe(false);
   });
   test("build failure never calls deployment", async () => {
     let deployed = false;

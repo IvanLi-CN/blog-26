@@ -18,7 +18,7 @@ The production job locks before reading deployed state and building. Repeated/al
 
 ## Explicit rollback
 
-Set `PLAYBOOK_CONTENT_UPDATES_ENABLED=false`, wait for any in-flight content run to finish, then dispatch `playbook-content-rollback.yml` with the exact old stable Release ID/tag/commit/bundle digest. Rollback is unavailable through the normal update interface. The rollback workflow refuses to run while automatic updates are enabled, validates the old package through the same source/format checks, and rebuilds all pages/data using the current renderer. A schema-incompatible package fails before deployment. The lock keeps rollback and normal application deployment serial.
+Set `PLAYBOOK_CONTENT_UPDATES_ENABLED=false`, wait for any in-flight content run to finish, then dispatch `playbook-content-rollback.yml` with the exact old stable Release ID/tag/commit/bundle digest. The target tag must be lower than the currently deployed stable tag; the consumer rechecks this after building and before deployment. Rollback is unavailable through the normal update interface. The rollback workflow refuses to run while automatic updates are enabled, validates the old package through the same source/format checks, and rebuilds all pages/data using the current renderer. A schema-incompatible package fails before deployment. The lock keeps rollback and normal application deployment serial.
 
 Verify the adopted source and renderer in the public pointer and Actions summary. Explicitly restore automatic updates only after reviewing the next ready upstream candidate; reconciliation may otherwise undo a deliberate rollback.
 
