@@ -112,6 +112,22 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - The live response adapter accepts only the approved aggregate fields. CVM and Hikari keep the current Stat/trend shape; CVM's daily series may contain `null` historical values, while the current trend point remains present. OctoRill's two trends are adapted from the interface-provided ordered arrays, and its `u8` freshness array is rendered byte-for-byte in the received order. The browser exposes no raw records, prompts, search content, repository names, account identifiers, keys, IPs, or provider error details. The build-time Mock fixture remains a structural/test fixture and is never shown as live data.
 - Project title and shortcut links reflow when narrow space or enlarged text requires it; they must remain visible and must not create horizontal page overflow.
 
+#### Project visual slot geometry and density
+
+The 项目视觉槽位 owns the fixed 4:5 border-box geometry of every project-wall card. Its height follows the card's current width, not the amount of runtime content. The poster, fallback poster, and ready runtime panel each fill the same slot, including its border and padding. Titles, summaries, and shortcut links remain outside this contract and may reflow independently. Project detail pages retain their poster presentation.
+
+| Panel | Stable content | Density-sensitive content |
+| --- | --- | --- |
+| Codex Vibe Monitor | Three approved metrics, 90 daily activity positions, fixed-length Stat trends | Long numeric values use the existing compact representation and full-value tooltip. |
+| Tavily Hikari | Four approved metrics, 90 daily activity positions, fixed-length Stat trends | Long numeric values use the existing compact representation and full-value tooltip. |
+| OctoRill | Two approved metrics and their Stat trends | One ordered freshness cell per repository; increasing repository count reduces heatmap cell size and spacing inside the available lower region. |
+
+All approved metric labels and values remain readable. Decorative material may be clipped; activity data may not be omitted. OctoRill count changes at a fixed viewport leave its logo, metric-region structure, typography, and allocated upper-region height stable. Only the lower freshness heatmap adapts its density. Every status byte remains represented in received order without sorting, aggregation, folding, pagination, internal scrolling, or clipping of data cells. Dense samples may produce very small cells; preserving the fixed slot and complete ordered data takes precedence over guaranteeing individually distinguishable pixels at unbounded repository counts. A different representation for such extreme counts requires a separate product decision.
+
+An unconfigured source shows the poster. While the first request is pending, or a request fails HTTP or response validation, the slot presents its original poster without diagnostic text. A later valid refresh can replace it with the runtime panel. Successful refreshes, fallback transitions, theme changes, resizing, and tooltips leave the slot geometry stable for a fixed card width. A short in-slot opacity transition is optional and respects reduced motion; height animation is excluded.
+
+Valid zero metrics remain runtime data. Missing CVM history uses the protocol's 90 dated positions with permitted null values; Hikari still requires 90 valid daily points, including zero values. OctoRill may have zero repositories and an empty freshness array. An empty array or incomplete payload is not made valid where the existing response contract rejects it.
+
 ### 4.8 Mobile public header motion
 
 - Below `640px`, every `BaseLayout` public page uses one real header element in
@@ -181,6 +197,8 @@ We need a frontend-owned design system that keeps routes and content behavior st
 20. The homepage's six featured-project cards keep available official logos beside titles, omit the LoadLynx logo slot, and use non-interactive theme-aware watermarks without obscuring card content. Card footer links show short labels when space allows and switch to accessible 44px-or-larger icon targets when needed. The section-level browse-all action keeps its icon and label at `393px` and becomes an accessible 44px icon target at `320px`; the page has no horizontal overflow at either width.
 21. Light, dark, and system themes keep primary reading text legible over ambient motion. Touch press, keyboard focus, long unbroken text, and theme changes preserve row feedback width, text insets, and usable links without layout jumps.
 22. The three selected 开发工具 cards use 4:5 runtime-data panels with exactly the approved per-project fields when their BaseURL is non-empty; an empty BaseURL leaves the original poster and makes no request. CVM and Hikari each expose 90 daily activity points in seven Sunday-to-Saturday rows across week columns, with no axis labels or ticks; OctoRill exposes the two approved statistics and renders every byte of its freshness `Uint8Array` in order without a legend. Configured panels use only their dedicated aggregate endpoints, preserve project detail and external shortcut navigation, stop refresh while hidden, and retain the poster if the first live request cannot be validated.
+23. Actual visual-slot height satisfies `abs(height - width * 5 / 4) <= 1 CSS px`, and the active poster or panel fills its slot within the same tolerance. At a fixed viewport and card width, requesting, loading valid data, refreshing, entering fallback, recovering, changing theme, and opening tooltips change neither slot height nor the position of the copy below it by more than `1 CSS px`. Hover transforms are excluded from the measurement by keeping the pointer outside the card. Total card heights may differ when copy wraps.
+24. OctoRill's freshness heatmap fits its allocated lower region with complete cell count and received order at zero, ordinary, and dense repository counts. Changing repository count alone preserves the upper metric-region geometry and typography. Every data cell lies inside the heatmap and visual slot; smaller cells and gaps resolve density without hiding repositories or introducing internal scrolling.
 
 ## 6. Validation
 
@@ -232,7 +250,10 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ### Project runtime panels
 
-- A configured local response project wall is captured at `1780px × 1071px` and `393px × 852px` in both themes. The evidence includes the generated panel atmosphere assets, real uPlot Stat charts, the Sunday-to-Saturday activity grids, and the unchanged project card links.
+- Evidence binding: implementation commit `365acc120c6ae8e0ef76bfc90c7a3a2cd35164e4` on current base `3ae6b7e4f7716b606dd5ee961359789d4e97ee17`. The original capture preceded the base sync; its four newer base commits touch only release and Playbook files, so the rendered project wall and its mock inputs are unchanged. Source type `ui_demo`; target program `mock-only` Astro project wall; capture scope `browser-viewport`; requested viewports `1780px × 1071px` and `393px × 852px`; viewport strategy `devtools-emulate`; margin policy `trim_only`; evidence surface `page`; sensitive exclusion `N/A`.
+- The owner confirmed the ordinary, dense, and poster-fallback screenshots in both themes. All captures use configured fixture BaseURLs and the production `/projects` page. The ordinary state shows the three live panels with their uPlot Stat charts and activity grids; the dense state changes only OctoRill's lower freshness grid to 3000 complete ordered cells; the fallback state restores OctoRill's poster in the same 4:5 slot. Project links and copy remain below the visuals. The four ordinary screenshots replace the previous same-path evidence after a baseline/current/heatmap comparison; dense and fallback images are current-only evidence.
+
+#### Ordinary density
 
 ![Runtime panels desktop light](./assets/project-runtime-panels-desktop-light-1780x1071.png)
 
@@ -241,6 +262,26 @@ We need a frontend-owned design system that keeps routes and content behavior st
 ![Runtime panels mobile light](./assets/project-runtime-panels-mobile-light-393x852.png)
 
 ![Runtime panels mobile dark](./assets/project-runtime-panels-mobile-dark-393x852.png)
+
+#### Dense OctoRill freshness
+
+![Dense runtime panels desktop light](./assets/project-runtime-panels-dense-desktop-light-1780x1071.png)
+
+![Dense runtime panels desktop dark](./assets/project-runtime-panels-dense-desktop-dark-1780x1071.png)
+
+![Dense runtime panels mobile light](./assets/project-runtime-panels-dense-mobile-light-393x852.png)
+
+![Dense runtime panels mobile dark](./assets/project-runtime-panels-dense-mobile-dark-393x852.png)
+
+#### Poster fallback
+
+![Fallback runtime panels desktop light](./assets/project-runtime-panels-fallback-desktop-light-1780x1071.png)
+
+![Fallback runtime panels desktop dark](./assets/project-runtime-panels-fallback-desktop-dark-1780x1071.png)
+
+![Fallback runtime panels mobile light](./assets/project-runtime-panels-fallback-mobile-light-393x852.png)
+
+![Fallback runtime panels mobile dark](./assets/project-runtime-panels-fallback-mobile-dark-393x852.png)
 
 ### Project media showcase
 
@@ -401,6 +442,8 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 - `REQ-NATURE-PROJECT-DETAIL-MDX`: Project detail bodies MUST be project-specific MDX with build-time slug validation, optional reviewed static content blocks, and a verified catalog-only fallback when no body exists.
 - `REQ-NATURE-PROJECT-READING`: Project detail pages MUST keep the Hero free of duplicate external links, expose all available entries in the sidebar, and place the sidebar before the body on narrow screens while preserving readable heading navigation.
 - `REQ-NATURE-PROJECT-INTERACTION`: Project-wall summaries MUST remain one-line and ellipsized at rest, expose their full text on keyboard focus, and keep icon-only external shortcuts weak at rest but usable on hover, focus, and touch.
+- `REQ-NATURE-PROJECT-VISUAL-GEOMETRY`: Every project-wall card MUST reserve one fixed 4:5 项目视觉槽位 and fit its poster, fallback, or runtime panel to that region. Runtime content, loading and failure states, refreshes, theme changes, and tooltips MUST preserve its dimensions for a fixed card width within `1 CSS px`. All approved labels and values MUST remain readable; long numbers MAY use the existing compact representation and full-value tooltip. The card's copy remains outside this geometry contract.
+- `REQ-NATURE-OCTORILL-DENSITY`: OctoRill MUST fit every freshness status cell in received order inside its lower heatmap region while preserving its upper metric-region geometry and typography at a fixed viewport. Growing repository count MUST be handled through smaller cells and spacing rather than omitted, aggregated, sorted, folded, paginated, internally scrolled, or clipped data. Fixed slot geometry takes precedence at extreme density.
 
 ## Verification
 
@@ -413,6 +456,8 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 - `VER-NATURE-PROJECT-READING`: covers: `REQ-NATURE-PROJECT-READING`; focused guest Playwright coverage and the desktop/mobile light/dark page evidence verify sidebar order, TOC behavior, spacing, and responsive stacking.
 - `VER-NATURE-PROJECT-INTERACTION`: covers: `REQ-NATURE-PROJECT-INTERACTION`; focused guest Playwright coverage verifies rest-state truncation, focus-visible expansion, shortcut names/targets, and hover/focus contrast behavior.
 - `VER-NATURE-PROJECT-RUNTIME-LIVE`: covers the runtime-data panel contract; `tests/lib/project-runtime-metrics.test.ts`, `tests/lib/project-runtime-sources.test.ts`, the focused guest Playwright project-wall test, `bun run check`, and the static Astro build verify the field whitelist, source URL disabling, dedicated endpoint paths, 90-day shape, historical-null handling, non-negative values, OctoRill count conservation and order, 4:5 panels, interaction tooltips, preserved links, visibility-aware refresh, and no request when a BaseURL is empty.
+- `VER-NATURE-PROJECT-VISUAL-GEOMETRY`: covers: `REQ-NATURE-PROJECT-VISUAL-GEOMETRY`; a focused project-wall browser regression MUST measure actual slot, active visual, and copy bounds using `getBoundingClientRect()` at `1780px` desktop, `1048px` narrow desktop, `820px` tablet, and `393px`, `375px`, `360px`, and `320px` mobile widths in both themes. At each viewport, use deterministic intercepted aggregate responses, preserve the existing data validation path, and check poster-only, pending, valid zero, loaded, refresh, HTTP error, invalid payload, recovery, theme change, and tooltip states. Assert `abs(height - width * 5 / 4) <= 1 CSS px`, slot-to-visual bound agreement within `1 CSS px`, and unchanged slot and copy coordinates for same-width state transitions. Freeze time and motion, keep hover transforms inactive, and allow copy reflow across viewport changes. The test MUST fail on a real rendered size violation even if computed `aspect-ratio` reports `4 / 5`.
+- `VER-NATURE-OCTORILL-DENSITY`: covers: `REQ-NATURE-OCTORILL-DENSITY`; deterministic project-wall fixtures MUST exercise repository counts `0`, `1`, `30`, `31`, `502`, `3000`, and `10000`, with mixed valid status codes and a matching current repository Stat and trend. Include refreshes from ordinary to dense data and back. Check exact DOM cell count and byte order, every cell's bounds inside the heatmap and slot, no internal scrolling, no overlap with the metric region, and upper-region position, height, label/value typography, and slot dimensions unchanged within the geometry tolerance. These fixture sizes are regression samples, not a new provider payload limit. Verify CVM's null history and Hikari's zero history against their fixed 90-position contracts independently.
 
 ### Desktop header search width
 

@@ -116,6 +116,44 @@ describe("project runtime sources", () => {
     expect(parseProjectRuntimeMetrics("codex-vibe-monitor", payload)).toBeNull();
   });
 
+  test("accepts zero metrics and empty OctoRill repositories", () => {
+    const cvm = asCvmPayload();
+    cvm.tokensPerMinute.value = 0;
+    cvm.tokensPerMinute.trend.points = cvm.tokensPerMinute.trend.points.map((point) => ({
+      ...point,
+      value: 0,
+    }));
+    expect(parseProjectRuntimeMetrics("codex-vibe-monitor", cvm)?.kind).toBe("codex-vibe-monitor");
+
+    const hikari = asHikariPayload();
+    hikari.todayRequests.value = 0;
+    hikari.todayRequests.trend.points = hikari.todayRequests.trend.points.map((point) => ({
+      ...point,
+      value: 0,
+    }));
+    expect(parseProjectRuntimeMetrics("tavily-hikari", hikari)?.kind).toBe("tavily-hikari");
+
+    const octo = asOctoPayload();
+    octo.deduplicatedRepositories.value = 0;
+    octo.deduplicatedRepositories.trend = Array(12).fill(0);
+    octo.freshness = [];
+    const parsed = parseProjectRuntimeMetrics("octo-rill", octo);
+    expect(parsed?.kind).toBe("octo-rill");
+    expect(parsed && "freshness" in parsed ? parsed.freshness.length : -1).toBe(0);
+  });
+
+  test("rejects missing Hikari activity and incomplete OctoRill data", () => {
+    expect(
+      parseProjectRuntimeMetrics("tavily-hikari", {
+        ...asHikariPayload(),
+        requestActivity90d: [],
+      })
+    ).toBeNull();
+    const octo = asOctoPayload();
+    expect(parseProjectRuntimeMetrics("octo-rill", { ...octo, freshness: [] })).toBeNull();
+    expect(parseProjectRuntimeMetrics("octo-rill", { freshness: octo.freshness })).toBeNull();
+  });
+
   test("rejects fields outside the public allowlist", () => {
     expect(
       parseProjectRuntimeMetrics("tavily-hikari", { ...asHikariPayload(), accountId: "private" })
