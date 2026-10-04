@@ -194,12 +194,6 @@ jobs:
             fi
           fi
 
-      - name: Configure Git user
-        if: ${{ steps.intent.outputs.should_release == 'true' }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
       - name: Recheck current main head before frontend tag
         if: ${{ steps.intent.outputs.should_release == 'true' && steps.intent.outputs.frontend_release == 'true' }}
         id: main-head-before-frontend-tag
@@ -219,20 +213,21 @@ jobs:
             core.setOutput("is_current_head", isCurrentHead ? "true" : "false");
             if (!isCurrentHead) core.setFailed("Release source is no longer the current main head");
 
-      - name: Create and push frontend tag (if missing)
+      - name: Create or verify frontend tag
         if: ${{ steps.intent.outputs.should_release == 'true' && steps.intent.outputs.frontend_release == 'true' && steps.main-head-before-frontend-tag.outputs.is_current_head == 'true' }}
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          tag="${{ steps.frontend-version.outputs.release_tag }}"
-          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
-            echo "Tag ${tag} already exists. Skip creating."
-            exit 0
-          fi
-          git tag -a "${tag}" "${{ env.RELEASE_HEAD_SHA }}" -m "${tag}"
-          git -c http.extraheader="AUTHORIZATION: bearer ${GITHUB_TOKEN}" push origin "${tag}"
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { createOrVerifyTag } = require("./.github/scripts/create-release-tag.cjs");
+            await createOrVerifyTag({
+              github,
+              core,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: "${{ steps.frontend-version.outputs.release_tag }}",
+              targetSha: "${{ env.RELEASE_HEAD_SHA }}",
+            });
 
       - name: Recheck current main head before backend tag
         if: ${{ steps.intent.outputs.should_release == 'true' && steps.intent.outputs.backend_release == 'true' }}
@@ -253,20 +248,21 @@ jobs:
             core.setOutput("is_current_head", isCurrentHead ? "true" : "false");
             if (!isCurrentHead) core.setFailed("Release source is no longer the current main head");
 
-      - name: Create and push backend tag (if missing)
+      - name: Create or verify backend tag
         if: ${{ steps.intent.outputs.should_release == 'true' && steps.intent.outputs.backend_release == 'true' && steps.main-head-before-backend-tag.outputs.is_current_head == 'true' }}
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          tag="${{ steps.backend-version.outputs.release_tag }}"
-          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
-            echo "Tag ${tag} already exists. Skip creating."
-            exit 0
-          fi
-          git tag -a "${tag}" "${{ env.RELEASE_HEAD_SHA }}" -m "${tag}"
-          git -c http.extraheader="AUTHORIZATION: bearer ${GITHUB_TOKEN}" push origin "${tag}"
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { createOrVerifyTag } = require("./.github/scripts/create-release-tag.cjs");
+            await createOrVerifyTag({
+              github,
+              core,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: "${{ steps.backend-version.outputs.release_tag }}",
+              targetSha: "${{ env.RELEASE_HEAD_SHA }}",
+            });
 
       - name: Recheck current main head before image tag
         if: ${{ steps.intent.outputs.should_release == 'true' && (steps.intent.outputs.frontend_release == 'true' || steps.intent.outputs.backend_release == 'true') }}
@@ -287,20 +283,21 @@ jobs:
             core.setOutput("is_current_head", isCurrentHead ? "true" : "false");
             if (!isCurrentHead) core.setFailed("Release source is no longer the current main head");
 
-      - name: Create and push Docker image tag (if missing)
+      - name: Create or verify Docker image tag
         if: ${{ steps.intent.outputs.should_release == 'true' && (steps.intent.outputs.frontend_release == 'true' || steps.intent.outputs.backend_release == 'true') && steps.main-head-before-image-tag.outputs.is_current_head == 'true' }}
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          tag="${{ steps.image-version.outputs.release_tag }}"
-          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
-            echo "Tag ${tag} already exists. Skip creating."
-            exit 0
-          fi
-          git tag -a "${tag}" "${{ env.RELEASE_HEAD_SHA }}" -m "${tag}"
-          git -c http.extraheader="AUTHORIZATION: bearer ${GITHUB_TOKEN}" push origin "${tag}"
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { createOrVerifyTag } = require("./.github/scripts/create-release-tag.cjs");
+            await createOrVerifyTag({
+              github,
+              core,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: "${{ steps.image-version.outputs.release_tag }}",
+              targetSha: "${{ env.RELEASE_HEAD_SHA }}",
+            });
 
       - name: Export metadata
         id: meta
