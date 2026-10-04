@@ -47,18 +47,10 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22.23.2
-      - uses: actions/create-github-app-token@v3
-        id: source
-        with:
-          app-id: ${{ vars.PLAYBOOK_SOURCE_APP_ID }}
-          private-key: ${{ secrets.PLAYBOOK_SOURCE_APP_PRIVATE_KEY }}
-          owner: IvanLi-CN
-          repositories: style-playbook-skills
-          permission-contents: read
       - run: bun install --frozen-lockfile
       - run: bun scripts/playbook-content-update.ts
         env:
-          GH_TOKEN: ${{ steps.source.outputs.token }}
+          GH_TOKEN: ${{ secrets.PLAYBOOK_SOURCE_TOKEN }}
           PLAYBOOK_ROLLBACK: 'true'
           PLAYBOOK_CONTENT_UPDATES_ENABLED: ${{ vars.PLAYBOOK_CONTENT_UPDATES_ENABLED }}
           PUBLIC_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL || 'https://console.ivanli.cc' }}

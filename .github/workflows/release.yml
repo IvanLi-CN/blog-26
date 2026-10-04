@@ -491,21 +491,10 @@ jobs:
           echo "PUBLIC_SITE_URL=${site_url}" >> "$GITHUB_ENV"
           echo "PUBLIC_SITE_BASE_PATH=${site_base_path}" >> "$GITHUB_ENV"
 
-      - name: Mint source-read token for an explicit initial Playbook release
-        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && vars.PLAYBOOK_INITIAL_RELEASE_ID != '' }}
-        id: playbook-source
-        uses: actions/create-github-app-token@v3
-        with:
-          app-id: ${{ vars.PLAYBOOK_SOURCE_APP_ID }}
-          private-key: ${{ secrets.PLAYBOOK_SOURCE_APP_PRIVATE_KEY }}
-          owner: IvanLi-CN
-          repositories: style-playbook-skills
-          permission-contents: read
-
       - name: Resolve fixed initial Playbook bundle when no deployed edition exists
         if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
         env:
-          GH_TOKEN: ${{ steps.playbook-source.outputs.token }}
+          GH_TOKEN: ${{ secrets.PLAYBOOK_SOURCE_TOKEN }}
           PLAYBOOK_INITIAL_RELEASE_ID: ${{ vars.PLAYBOOK_INITIAL_RELEASE_ID }}
         run: bun scripts/fetch-initial-playbook.ts
 
@@ -931,22 +920,11 @@ jobs:
           name: playbook-console-seed-deployed
           path: ./site/generated
 
-      - name: Mint source-read token for an explicit initial Playbook release
-        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && vars.PLAYBOOK_INITIAL_RELEASE_ID != '' }}
-        id: playbook-source
-        uses: actions/create-github-app-token@v3
-        with:
-          app-id: ${{ vars.PLAYBOOK_SOURCE_APP_ID }}
-          private-key: ${{ secrets.PLAYBOOK_SOURCE_APP_PRIVATE_KEY }}
-          owner: IvanLi-CN
-          repositories: style-playbook-skills
-          permission-contents: read
-
       - name: Resolve fixed initial Playbook bundle when no deployed edition exists
         if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
         id: playbook-initial
         env:
-          GH_TOKEN: ${{ steps.playbook-source.outputs.token }}
+          GH_TOKEN: ${{ secrets.PLAYBOOK_SOURCE_TOKEN }}
           PLAYBOOK_INITIAL_RELEASE_ID: ${{ vars.PLAYBOOK_INITIAL_RELEASE_ID }}
         run: bun scripts/fetch-initial-playbook.ts
 
@@ -1221,21 +1199,10 @@ jobs:
           PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
         run: bash ./scripts/fetch-public-content-bundle.sh
 
-      - name: Mint source-read token for an explicit initial Playbook release
-        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && needs.publish_frontend.result == 'skipped' && vars.PLAYBOOK_INITIAL_RELEASE_ID != '' }}
-        id: playbook-source
-        uses: actions/create-github-app-token@v3
-        with:
-          app-id: ${{ vars.PLAYBOOK_SOURCE_APP_ID }}
-          private-key: ${{ secrets.PLAYBOOK_SOURCE_APP_PRIVATE_KEY }}
-          owner: IvanLi-CN
-          repositories: style-playbook-skills
-          permission-contents: read
-
       - name: Resolve fixed initial Playbook bundle when no deployed edition exists
         if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && needs.publish_frontend.result == 'skipped' }}
         env:
-          GH_TOKEN: ${{ steps.playbook-source.outputs.token }}
+          GH_TOKEN: ${{ secrets.PLAYBOOK_SOURCE_TOKEN }}
           PLAYBOOK_INITIAL_RELEASE_ID: ${{ vars.PLAYBOOK_INITIAL_RELEASE_ID }}
         run: bun scripts/fetch-initial-playbook.ts
 
