@@ -57,11 +57,11 @@ Policy Skill 的公开文本文件必须能在页面内直接查看，预览区�
 
 ### REQ-PBI-003 — 固定来源与包身份
 
-自动发布只能采用非 draft、非 prerelease 的稳定 Release，并固定仓库身份、Release ID/tag、tag 解析后的源 commit 和包 digest。数据 manifest 必须包含 schema 版本、来源身份、发布时间及各文件 SHA-256 和大小。下载时不得重新解析 `latest`，不得以当前分支导出冒充旧 tag。接收端必须重新核对通知参数、Release 元数据与资产；同一 Release 的既有资产 digest 不一致时必须拒绝静默替换。
+自动发布只能采用非 draft、非 prerelease 的稳定 Release，并固定仓库身份、Release ID/tag、tag 解析后的源 commit 和包 digest。首次引导与补漏可枚举稳定 Release，按 SemVer 选择最高的就绪版本；选中后，构建必须固定该 Release 的身份并校验 manifest、tag commit 和包 digest。不得下载浮动的 `latest` URL，也不得以当前分支导出冒充旧 tag。接收端必须重新核对触发参数、Release 元数据与资产；同一 Release 的既有资产 digest 不一致时必须拒绝静默替换。
 
 ### REQ-PBI-004 — 稳定发布自动更新
 
-上游稳定 Release 的数据包及就绪 manifest 成功发布后，必须在该发布流程尾部显式调用博客内容 workflow 的 `workflow_dispatch`。博客使用已发布的稳定前端渲染器、固定Playbook包和明确身份的文章/Memo 公开快照执行静态构建、校验与部署。未经应用发布门禁的最新 `main` 不得自动作为渲染器。触发必须符合 [Release 触发契约](./contracts/release-trigger.md)，并提供定时补漏与手动重试，复用相同的输入校验和部署入口；通知成功与实际部署成功必须分别记录。
+博客内容 workflow 每小时检查一次上游稳定 Release；发布资产齐全且通过校验后，自动选择最高的就绪稳定 SemVer 并构建、部署。首次应用发布在没有已部署指针时也使用相同的选择逻辑。博客使用已发布的稳定前端渲染器和明确身份的文章/Memo 公开快照。未经应用发布门禁的最新 `main` 不得自动作为渲染器。人工可默认执行 `mode=reconcile`，也可提交固定来源身份进行 `mode=release` 重试；两种入口复用相同的来源校验和部署流程。上游无需跨仓调用博客 Actions API。
 
 ### REQ-PBI-005 — 内容与应用发布分离
 

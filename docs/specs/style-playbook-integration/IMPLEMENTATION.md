@@ -11,7 +11,7 @@
 | Requirements | 实现 | 验证 |
 | --- | --- | --- |
 | `REQ-PBI-001`、`REQ-PBI-002` | Astro 原生目录与详情、真实标题层级、静态子标题 anchor 与当前阅读位置、受控 Markdown、关系、公开文件树和高亮预览及匿名 Policy 资源；严格公开包校验和归档安全检查 | `playbook-contract.test.ts` 的完整公开样例、私有字段拒绝、损坏归档与 SSR；`playbook-outline.test.ts` 的已有编号、重复标题与锚点一致性；`playbook-resources.test.tsx` 的原文保真、惰性 HTML、同版下载链接及文件引用；Storybook 控制场景 |
-| `REQ-PBI-003`、`REQ-PBI-004` | 固定 Release 元数据复核、tag commit 核对；release/reconcile 入口及每小时第 17 分钟补漏 | 模拟 GitHub reader 检查 draft、prerelease、身份不符与最高就绪稳定 SemVer |
+| `REQ-PBI-003`、`REQ-PBI-004` | 固定 Release 元数据复核、tag commit 核对；首次引导与每小时补漏都选择最高就绪稳定 SemVer，手动入口默认 reconcile | 模拟 GitHub reader 检查 draft、prerelease、身份不符与最高就绪稳定 SemVer |
 | `REQ-PBI-005`、`REQ-PBI-006` | 内容刷新复用已部署 renderer 和独立文章/Memo 快照；正常前端与内容/回滚 job 共享排队锁，锁内重建 | 部署适配器检查幂等、迟到、变化后重建、失败不采用及显式暂停回滚；workflow 结构测试 |
 | `REQ-PBI-007` | edition 包含 renderer、来源包和完整公开文件摘要；同批指针、页面、搜索、资源及原始包，保留前一版 | 静态产物校验、身份重算、旧文件保留、不可变与重新验证缓存策略测试 |
 | `REQ-PBI-008`、`REQ-PBI-009` | console 启动加载持久缓存/固定 seed，立即和每 300 秒单任务同步；完整验证后原子采用 | 可控时钟、断网/损坏/schema 不兼容、重启、缓存优先、首次 HTTP SSR 及指定 edition 搜索 |
@@ -27,8 +27,8 @@ Policy 公开资源使用 SSR 文件浏览器：可收起的原生目录树、�
 
 ## Remaining Gaps
 
-- 上游原生 Release 尚需产出可重复公开包并在 manifest 最后上传后调用博客入口，见 [公开包契约](./contracts/public-package.md) 和 [触发契约](./contracts/release-trigger.md)。消费端提供共享类型、校验器和样例；此 PR 不修改上游。
-- Fine-grained source token、跨仓调用与生产通知尚未配置或验证；博客自动更新保持关闭。首次接入使用显式固定且具有完整公开资产的稳定 Release。
+- 上游原生 Release 负责发布可重复公开包，并在数据包之后最后上传 manifest；博客通过每小时补漏读取最新就绪稳定版，不要求上游调用博客 Actions API。见 [公开包契约](./contracts/public-package.md) 和 [触发契约](./contracts/release-trigger.md)。
+- `PLAYBOOK_SOURCE_TOKEN` 提供上游只读访问；生产更新仍须在首次应用部署验证指针后手动启用。首次引导自动选择最高的就绪稳定 SemVer，不需要固定 Release ID。
 - 真实 EdgeOne 原子发布、生产指针及 console 五分钟跟随由两仓合并后的上线阶段验证；模拟适配器与本地 HTTP 结果不替代生产验收。
 - 本任务停在 merge-ready，不合并、不触发真实 Release、不配置远端凭据。上线顺序和暂停/回滚流程见 [发布 runbook](../../runbooks/style-playbook-publishing.md)。
 
