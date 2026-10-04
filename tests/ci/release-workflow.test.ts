@@ -80,19 +80,11 @@ describe("release.yml", () => {
   });
 
   test("rechecks main immediately before each release tag side effect", () => {
+    assertMainHeadGate("prepare", "Create or verify frontend tag", "main-head-before-frontend-tag");
+    assertMainHeadGate("prepare", "Create or verify backend tag", "main-head-before-backend-tag");
     assertMainHeadGate(
       "prepare",
-      "Create and push frontend tag (if missing)",
-      "main-head-before-frontend-tag"
-    );
-    assertMainHeadGate(
-      "prepare",
-      "Create and push backend tag (if missing)",
-      "main-head-before-backend-tag"
-    );
-    assertMainHeadGate(
-      "prepare",
-      "Create and push Docker image tag (if missing)",
+      "Create or verify Docker image tag",
       "main-head-before-image-tag"
     );
   });
@@ -124,11 +116,10 @@ describe("release.yml", () => {
     const prepare = jobBlock("prepare");
     expect(prepare).toContain("persist-credentials: false");
     expect(
-      prepare.match(
-        /git -c http\.extraheader="AUTHORIZATION: bearer \$\{GITHUB_TOKEN\}" push origin "\$\{tag\}"/g
-      )
+      prepare.match(/require\("\.\/\.github\/scripts\/create-release-tag\.cjs"\)/g)
     ).toHaveLength(3);
-    expect(prepare).not.toContain('git push origin "' + "${" + "tag}" + '"');
+    expect(prepare).not.toContain("AUTHORIZATION: bearer");
+    expect(prepare).not.toContain("git push origin");
 
     const publishFrontend = jobBlock("publish_frontend");
     expect(publishFrontend).toContain("persist-credentials: false");
