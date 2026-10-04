@@ -84,8 +84,12 @@ _Avoid_: 固定相关实践卡
 A vertical project identity visual used to make a project recognizable during discovery and at the start of its focused view.
 _Avoid_: 项目封面
 
+**项目视觉槽位**:
+The fixed 4:5 visual region of a 项目索引卡 occupied by either its 项目海报 or its 项目运行数据面板. The title, summary, and shortcuts belong to the card outside this region.
+_Avoid_: 卡片总高度, 聚合指标卡片整体
+
 **项目运行数据面板**:
-A 4:5 data surface inside a selected 项目索引卡. It replaces the 项目海报 in the project wall's visual slot and presents only the approved public runtime metrics for that project; it is not an overlay on the poster and does not add status, latency, success-rate, or synchronization fields.
+A public aggregate-data surface occupying the 项目视觉槽位 of a selected 项目索引卡 in place of its 项目海报. Its approved content consists of project metrics and activity graphics, separate from operational status or diagnostic details.
 _Avoid_: 海报数据浮层, 运行状态卡
 
 **运行数据 Mock**:
@@ -97,7 +101,7 @@ A 运行数据 Mock source containing only the approved aggregate metrics. It ex
 _Avoid_: 生产数据副本, 原始运行日志
 
 **仓库刷新新鲜度活动图**:
-The OctoRill activity graph from the approved visual reference. It shows the count of visible repositories in five refresh-age categories: within 4 hours, 4-12 hours, 12-24 hours, over 24 hours, and no successful record.
+The OctoRill activity graphic with one ordered status cell per deduplicated repository. Each cell belongs to one of five refresh-age categories: within 4 hours, 4-12 hours, 12-24 hours, over 24 hours, or no successful record.
 _Avoid_: 五段活动分桶图
 
 **积分总量**:

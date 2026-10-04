@@ -24,6 +24,56 @@ Each approved Stat is represented by a current numeric value plus a small ordere
 
 Runtime panel interiors also carry low-contrast, project-specific generated raster backgrounds. They are clipped to the 4:5 panel, keep labels and activity cells readable, and contain no chart-like marks. All data-like lines and bars visible in the panels are rendered by uPlot from the corresponding Stat trend values.
 
+## Project visual slot sizing
+
+Status: design confirmed; implementation and rendered geometry verification pending. The authoritative requirements are `REQ-NATURE-PROJECT-VISUAL-GEOMETRY` and `REQ-NATURE-OCTORILL-DENSITY` in [SPEC.md](./SPEC.md).
+
+The current project-wall implementation leaves `.projects-poster-visual` content-sized. `ProjectPoster.astro` and `ProjectRuntimeDataPanel.astro` independently declare `aspect-ratio: 4 / 5`; `RuntimeActivityChart.astro` sets activity-grid minimum heights, while OctoRill's `.runtime-freshness-grid` sets a minimum height, its own preferred aspect ratio, 30 columns, and minimum cell height. The live adapter changes OctoRill cell count whenever a valid payload arrives. The existing guest test checks the computed aspect-ratio declaration rather than actual slot geometry. These are source observations relevant to the reported height mismatch, not a browser-confirmed root cause. No red-capable rendered reproduction has been run for this design-only change.
+
+### Geometry ownership
+
+The intended change reserves the project's visual height once in the index page:
+
+- Give `.projects-poster-visual` relative positioning, full card width, border-box sizing, a 4:5 aspect ratio, and clipping of decorative overflow.
+- Fit the direct poster, fallback wrapper, nested fallback poster, and runtime panel to this reserved box. Size replacement layers from the slot using absolute positioning and `inset: 0`, with `width: 100%`, `height: 100%`, and `min-height: 0`. Include the runtime panel's padding and border inside its dimensions.
+- Scope the sizing overrides to project-wall visuals. Standalone project-detail posters retain their own ratio. An inner component's ratio or intrinsic minimum must not become a competing source of wall height.
+- Keep the title, summary, and shortcut links in document flow below the slot; their existing wrapping behavior remains available.
+- Keep the runtime logo and metric rows content-sized. The lower activity region uses the remaining grid track with `minmax(0, 1fr)` and `min-height: 0`; descendants must also allow shrinking. Replace fixed activity-grid and freshness-cell minimum heights, and let the heatmap fit this remaining height instead of deriving it from its own aspect ratio.
+
+CVM's three metrics, Hikari's four metrics, their 12/25-point Stat trends, and their 90-date activity data are structurally bounded. They need the shared slot constraint and shrinkable activity regions, rather than a count-dependent density controller. Long metric values continue to use compact formatting and the existing full-value tooltip; labels and values remain above their background sparkline. Neither tooltip content nor uPlot canvases participate in slot sizing.
+
+### OctoRill heatmap fit
+
+Repository growth changes only the lower freshness grid. At the same card width, preserve the logo, two metric rows, fonts, and metric-region height. Obtain the heatmap's available inner width `W`, height `H`, and the validated freshness count `N` after layout. For `N = 0`, keep the lower region with zero cells and skip count-based division.
+
+For `N > 0`, keep 30 columns at ordinary density and allow more columns at high density so cells can stay approximately square. A bounded fit calculation is:
+
+```text
+columns = max(30, ceil(sqrt(N * W / H)))
+rows = ceil(N / columns)
+gap = min(designGap, W / (2 * columns), H / (2 * rows))
+cellSize = min(
+  (W - (columns - 1) * gap) / columns,
+  (H - (rows - 1) * gap) / rows
+)
+```
+
+Use positive measured bounds; defer when a hidden grid has zero width or height. Clamp the rendered cell size to the ordinary design maximum so sparse data does not create oversized cells. Keep a fixed grid height, explicit row count, square cells, and spacing that fits both dimensions. Permit subpixel cell sizes at extreme density. Place the `N` data cells in row-major received order; unused grid positions are layout space, not fabricated repository statuses. Exclude data cells from any clipping fallback.
+
+Recompute the fit when the grid's available bounds change or its validated payload replaces the cells. Integrate the update with `project-runtime-metrics-updated` and a scoped `ResizeObserver`, with lifecycle cleanup and without introducing another network request or timer. Update only the lower grid's geometry. At extreme counts, individual colors may become indistinguishable at the physical pixel scale; this design preserves DOM completeness, order, and fixed geometry and makes no promise of unlimited individual-cell legibility.
+
+### Presentation states
+
+Configured pending sources and failed HTTP or invalid/incomplete responses display the original poster in the reserved slot. Valid later refreshes display the runtime panel, including valid zero metrics, permitted null CVM history, and zero OctoRill repositories. Preserve Hikari's 90 valid daily points and reject empty arrays wherever the existing adapter rejects them. Update the live adapter to restore fallback on failed refreshes as well as initial failures; the current catch path only sets an error flag and does not restore the poster after an earlier success. Optional opacity transitions occur entirely inside the slot and respect reduced motion.
+
+### Verification still required
+
+Before changing runtime styles, establish and run a focused deterministic browser regression on the actual `/projects` route that fails on the reported geometry symptom. Use approved aggregate fixtures and the production response parser, and measure rendered bounds rather than accepting a CSS aspect-ratio string as proof. Record the failing command and measured dimensions before assigning a root cause; then use that same loop for the fix. The accepted design does not replace this diagnostic gate.
+
+The Spec verification matrix covers desktop, narrow desktop, tablet, and four mobile widths in both themes, same-width state transitions, zero and null data, complete OctoRill cells at counts `0`, `1`, `30`, `31`, `502`, `3000`, and `10000`, and refreshes from ordinary to dense data and back. Assertions include slot ratio, active visual bounds, copy position, heatmap containment and order, upper metrics remaining stable, and absence of internal scrolling. Later implementation must run the focused browser checks and required build checks on the shared testbox under repository policy, and produce the controlled visual evidence required for UI delivery. Existing screenshots do not verify the newly specified geometry and dense-data acceptance criteria.
+
+## Other public surfaces
+
 Mobile homepage, article-list, Memo, tag-detail, and search-result streams use an unframed reading row with a divider and a `16px` text inset at `393px`. Article and Memo detail pages flatten their reading surfaces to the same inset, and project-detail headers flatten their primary surface; article cover media reaches both viewport edges without cropping. Distinct project sections, search states, tag tiles, poster cards, and profile modules retain their own framing. Desktop surfaces retain their existing framing.
 
 The homepage keeps a local mapping from five featured projects to their official independent logo files. Native-color assets use the available theme pair; the monochrome SpotiBind and XP marks take their approved light/dark project colors through CSS masks. Each available mark sits beside its project title and may repeat as a decorative watermark behind the card content. LoadLynx intentionally has neither mark nor placeholder slot. Homepage-only adaptive external links retain full accessible names while changing from short icon-and-label buttons to icon-only buttons when the footer width requires it; other `ProjectExternalLinks` callers keep their existing behavior. The section-level browse-all action also keeps an accessible name and becomes icon-only at `360px` and below.
