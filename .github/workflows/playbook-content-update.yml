@@ -5,7 +5,7 @@ on:
       mode:
         type: choice
         options: [release, reconcile]
-        default: release
+        default: reconcile
       source_repository:
         type: string
       source_release_id:

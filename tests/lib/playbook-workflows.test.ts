@@ -29,7 +29,10 @@ describe("playbook deployment boundaries", () => {
     const update = load(
       await readFile(".github/workflows/playbook-content-update.yml", "utf8")
     ) as {
-      on: { schedule: { cron: string }[] };
+      on: {
+        schedule: { cron: string }[];
+        workflow_dispatch: { inputs: { mode: { default: string } } };
+      };
       jobs: { production: { if: string; concurrency: object; steps: WorkflowStep[] } };
     };
     const rollback = load(
@@ -50,6 +53,7 @@ describe("playbook deployment boundaries", () => {
       };
     };
     expect(update.on.schedule[0].cron).toBe("17 * * * *");
+    expect(update.on.workflow_dispatch.inputs.mode.default).toBe("reconcile");
     const lock = {
       group: "blog26-edgeone-production",
       "cancel-in-progress": false,
@@ -157,6 +161,29 @@ describe("playbook deployment boundaries", () => {
     for (const source of [updateText, rollbackText, releaseText]) {
       expect(source).not.toContain("create-github-app-token");
       expect(source).not.toContain("PLAYBOOK_SOURCE_APP_");
+    }
+  });
+  test("initial application bootstrap uses the latest ready stable release without a pinned ID", async () => {
+    const releaseText = await readFile(".github/workflows/release.yml", "utf8");
+    const release = load(releaseText) as {
+      jobs: {
+        publish_frontend: ReleaseJob;
+        publish_image: ReleaseJob;
+        publish_backend: ReleaseJob;
+      };
+    };
+    const initialScript = await readFile("scripts/fetch-initial-playbook.ts", "utf8");
+    const sourceTokenSecret = "$" + "{{ secrets.PLAYBOOK_SOURCE_TOKEN }}";
+    expect(initialScript).toMatch(/resolveRelease\(reader,\s*\{\s*mode: "reconcile"/u);
+    for (const job of [
+      release.jobs.publish_frontend,
+      release.jobs.publish_image,
+      release.jobs.publish_backend,
+    ]) {
+      const initialStep = job.steps?.find(
+        (step) => step.run === "bun scripts/fetch-initial-playbook.ts"
+      );
+      expect(initialStep?.env).toEqual({ GH_TOKEN: sourceTokenSecret });
     }
   });
   test("pointer revalidates, version files are immutable and package resources cannot execute", () => {

@@ -488,11 +488,10 @@ jobs:
           echo "PUBLIC_SITE_URL=${site_url}" >> "$GITHUB_ENV"
           echo "PUBLIC_SITE_BASE_PATH=${site_base_path}" >> "$GITHUB_ENV"
 
-      - name: Resolve fixed initial Playbook bundle when no deployed edition exists
+      - name: Resolve latest ready Playbook bundle when no deployed edition exists
         if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
         env:
           GH_TOKEN: ${{ secrets.PLAYBOOK_SOURCE_TOKEN }}
-          PLAYBOOK_INITIAL_RELEASE_ID: ${{ vars.PLAYBOOK_INITIAL_RELEASE_ID }}
         run: bun scripts/fetch-initial-playbook.ts
 
       - name: Build frontend static site
@@ -917,12 +916,11 @@ jobs:
           name: playbook-console-seed-deployed
           path: ./site/generated
 
-      - name: Resolve fixed initial Playbook bundle when no deployed edition exists
+      - name: Resolve latest ready Playbook bundle when no deployed edition exists
         if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
         id: playbook-initial
         env:
           GH_TOKEN: ${{ secrets.PLAYBOOK_SOURCE_TOKEN }}
-          PLAYBOOK_INITIAL_RELEASE_ID: ${{ vars.PLAYBOOK_INITIAL_RELEASE_ID }}
         run: bun scripts/fetch-initial-playbook.ts
 
       - name: Prepare the exact Playbook console seed for image build
@@ -1196,11 +1194,10 @@ jobs:
           PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
         run: bash ./scripts/fetch-public-content-bundle.sh
 
-      - name: Resolve fixed initial Playbook bundle when no deployed edition exists
+      - name: Resolve latest ready Playbook bundle when no deployed edition exists
         if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && needs.publish_frontend.result == 'skipped' }}
         env:
           GH_TOKEN: ${{ secrets.PLAYBOOK_SOURCE_TOKEN }}
-          PLAYBOOK_INITIAL_RELEASE_ID: ${{ vars.PLAYBOOK_INITIAL_RELEASE_ID }}
         run: bun scripts/fetch-initial-playbook.ts
 
       - name: Prepare the console public seed
