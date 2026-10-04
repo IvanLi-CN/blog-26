@@ -39,6 +39,7 @@ type PreviewArticleShellProps = {
   };
   bodyClassName?: string;
   leadingControls?: ReactNode;
+  bodyContent?: ReactNode;
 };
 
 function PreviewTags({ tags }: PreviewTagProps) {
@@ -190,6 +191,7 @@ export function PreviewArticleShell({
   publicMediaContext,
   bodyClassName,
   leadingControls,
+  bodyContent,
 }: PreviewArticleShellProps) {
   return (
     <article className="space-y-6 rounded-[2rem] border border-border/58 bg-card/88 p-6 shadow-xl shadow-shadow-soft lg:p-7">
@@ -224,23 +226,27 @@ export function PreviewArticleShell({
 
       <div
         className={cn(
-          "admin-editor-preview rounded-[1.6rem] border border-border/54 bg-background/88 px-5 py-6 shadow-inner shadow-shadow-inset sm:px-6",
+          bodyContent
+            ? "min-w-0"
+            : "admin-editor-preview rounded-[1.6rem] border border-border/54 bg-background/88 px-5 py-6 shadow-inner shadow-shadow-inset sm:px-6",
           bodyClassName
         )}
         data-testid={bodyTestId}
       >
-        <MarkdownRenderer
-          content={body || ""}
-          variant="article"
-          surface="admin"
-          articlePath={articlePath}
-          contentSource="local"
-          publicMediaContext={publicMediaContext}
-          enableImageLightbox
-          enableMath
-          enableMermaid
-          enableCodeFolding
-        />
+        {bodyContent ?? (
+          <MarkdownRenderer
+            content={body || ""}
+            variant="article"
+            surface="admin"
+            articlePath={articlePath}
+            contentSource="local"
+            publicMediaContext={publicMediaContext}
+            enableImageLightbox
+            enableMath
+            enableMermaid
+            enableCodeFolding
+          />
+        )}
       </div>
     </article>
   );

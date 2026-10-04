@@ -1,0 +1,49 @@
+/* Adapt the shared clipping reader to the admin theme without importing public global styles. */
+.clipping-admin-surface {
+  --nature-bg: var(--background);
+  --nature-surface: var(--input-surface);
+  --nature-line: var(--border);
+  --nature-text: var(--foreground);
+  --nature-accent: var(--primary);
+  color: var(--foreground);
+}
+.clipping-admin-surface .nature-muted {
+  color: var(--muted-foreground);
+}
+.clipping-admin-surface .nature-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  text-decoration: none;
+  cursor: pointer;
+}
+.clipping-admin-surface .nature-button-outline {
+  background: var(--card);
+  color: var(--foreground);
+}
+.clipping-admin-surface .nature-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+.clipping-admin-surface .nature-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.clipping-admin-surface .nature-alert {
+  padding: 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  background: var(--muted);
+}
+.clipping-admin-surface .nature-alert-error {
+  border-color: var(--destructive);
+}

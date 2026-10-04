@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { ArrowUpRight, CircleSlash, RefreshCcw } from "lucide-react";
 import type React from "react";
+import { ClippingDetail } from "@/components/memos/ClippingDetail";
 import { type AdminPreviewMemo, type AdminPreviewPost, adminApi } from "@/lib/admin-api-client";
 import { stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
 import {
@@ -165,6 +166,19 @@ export function MemoPreviewArticle({ memo }: { memo: AdminPreviewMemo }) {
       })}
       bodyTestId="admin-preview-memo-body"
       body={body}
+      bodyContent={
+        memo.clipping ? (
+          <ClippingDetail
+            key={memo.slug}
+            slug={memo.slug}
+            surface="admin"
+            memoContent={body}
+            initialArticle={{ reading: memo.clipping, source: null, translation: null }}
+            live
+            initialCanDiscuss
+          />
+        ) : undefined
+      }
       articlePath={memo.filePath || memo.slug}
       publicMediaContext={{
         kind: "memo",

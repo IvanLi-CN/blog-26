@@ -92,6 +92,14 @@ Product releases use **Manual Product Release** from main with one optional `ver
 
 The app only reads content from the local content root. There is no remote content-source runtime.
 
+## Memo Clipping
+
+Save a memo whose first non-empty authored line is an HTTP(S) URL or Markdown link, with the exact `#剪藏` tag. The processor captures public HTML, appends a summary after your notes, translates the saved article into Simplified Chinese, and supports private creator/admin discussion in the console detail page. Public pages include only published reading materials.
+
+The chat model uses the existing admin LLM settings. `PI_DURABLE_DB_PATH` and `CLIPPING_CONTENT_BASE_PATH` default beside `DB_PATH` and must stay on a persistent volume outside the public content root. Run exactly one gateway/console processor; the 30-second lease must expire after a crash before a new owner starts. `CLIPPING_PROCESSOR_ENABLED=false` stops processing while retaining authored content and saved reading materials.
+
+Back up the authored Markdown, managed clipping directory (including `identity.key`), application database, and Pi database together while the processor is stopped. See [clipping operations and recovery](docs/specs/memo-clipping/IMPLEMENTATION.md#storage-and-deployment) for paths, migration, limitations, and troubleshooting.
+
 ## Core Commands
 
 ```bash

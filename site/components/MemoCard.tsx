@@ -6,7 +6,15 @@ import { toPublicSitePath } from "../lib/runtime-urls";
 
 export type MemoCardRecord = Pick<
   PublicMemoRecord,
-  "id" | "slug" | "title" | "excerpt" | "tags" | "isPublic" | "createdAt" | "publishedAt"
+  | "id"
+  | "slug"
+  | "title"
+  | "excerpt"
+  | "tags"
+  | "isPublic"
+  | "createdAt"
+  | "publishedAt"
+  | "clipping"
 >;
 
 export default function MemoCard({
@@ -83,6 +91,16 @@ export default function MemoCard({
 
           {memo.excerpt ? (
             <p className="nature-muted mt-3 text-base leading-7">{memo.excerpt}</p>
+          ) : null}
+          {memo.clipping?.targetUrl ? (
+            <a
+              href={memo.clipping.targetUrl}
+              target="_blank"
+              rel="nofollow noopener noreferrer"
+              className="nature-button nature-button-outline mt-3 min-h-11"
+            >
+              打开原网页 ↗
+            </a>
           ) : null}
 
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">

@@ -2,6 +2,7 @@
 import Icon from "@/components/ui/Icon";
 import { extractTextSummary } from "@/lib/markdown-utils";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
+import { ClippingDetail } from "@/components/memos/ClippingDetail";
 import { stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
 import type { PublicMemoRecord } from "@/public-site/snapshot";
 import BaseLayout from "../../layouts/BaseLayout.astro";
@@ -99,7 +100,7 @@ const structuredData = {
           )}
 
           <div class="mt-6">
-            <MarkdownRenderer
+            {memo.clipping ? <ClippingDetail client:load slug={memo.slug} memoContent={memoDetailContent} initialArticle={snapshot.clippingArticles?.[memo.slug] ?? { reading: memo.clipping, source: null, translation: null }} /> : <MarkdownRenderer
               client:visible={{ rootMargin: "480px" }}
               content={memoDetailContent}
               variant="article"
@@ -111,7 +112,7 @@ const structuredData = {
               articlePath={memo.filePath}
               contentSource={contentSource}
               publicMediaContext={publicMediaContext}
-            />
+            />}
           </div>
         </div>
       </div>

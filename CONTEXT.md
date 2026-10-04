@@ -168,6 +168,50 @@ _Avoid_: 实时 Memo 列表 + 公开时间线, 管理卡片列表
 The administrator-only authoring surface on the console Memos page. It remains separate from the 管理 Memo 列表 and does not count as another list.
 _Avoid_: 编辑器列表, 管理列表
 
+**剪藏闪念**:
+A Memo marked with `#剪藏` whose first non-empty authored line, whether a title or body line, identifies one external article for capture. It remains a Memo while gaining a captured source, generated summary, translation, and article conversation.
+_Avoid_: 剪藏文章, 导入文章
+
+**剪藏目标链接**:
+The single HTTP(S) destination identified by the first non-empty authored line of a 剪藏闪念, either as plain text or a Markdown link. Its reader-facing representation is the source-page action rather than a repeated URL in the Memo body.
+_Avoid_: 文章链接集合, 正文外链
+
+**剪藏备注**:
+The user-authored Memo content that accompanies the 剪藏目标链接 and remains visible before the generated summary.
+_Avoid_: 摘要输入, 原文摘录
+
+**剪藏摘要**:
+The Agent-generated summary displayed as Memo content, after any 剪藏备注 and separated from those remarks by a horizontal rule.
+_Avoid_: Memo 摘要字段, 文章摘要卡
+
+**剪藏原文**:
+The captured article converted to Markdown and retained as the source-language reading version for one 剪藏闪念.
+_Avoid_: 原始网页, 网页快照
+
+**剪藏译文**:
+The captured article translated into Simplified Chinese and retained as the alternate reading version for one 剪藏闪念.
+_Avoid_: 翻译 Memo, 译文文章
+
+**剪藏标题**:
+The visible title of a 剪藏闪念: the author's explicit title when present, otherwise the captured page title, then the target link's label, or no title. A URL-only title is source input rather than an explicit author title.
+_Avoid_: 文件名标题, 自动 Memo 标题
+
+**剪藏处理版本**:
+A retained source capture and its corresponding summary, translation, and processing outcome. A 剪藏闪念 can retain multiple versions while presenting one current reading version.
+_Avoid_: Memo 编辑版本, 对话版本
+
+**剪藏处理状态**:
+The progress or outcome of capturing and preparing the reading material. Summary and translation completion remain distinguishable so one usable result is not hidden by another unfinished step.
+_Avoid_: 发布状态, 对话状态
+
+**剪藏对话**:
+The private persistent conversation attached to one 剪藏闪念, accessible to its creator and administrators. It can use the captured source, translation, summary, and 剪藏备注 as its context.
+_Avoid_: 通用聊天, 评论区
+
+**剪藏外链边界**:
+The clipping-specific policy for user-invokable external links that asks search engines not to follow or associate those destinations with this site. It does not prohibit a reader from opening the source page.
+_Avoid_: 外链爬取, 链接权重传递
+
 **移动内容流**:
 The narrow-screen presentation of 内容时间线. It keeps chronological order and item metadata while removing the decorative rail, nodes, and connectors so each event reads like a compact content entry.
 _Avoid_: 移动时间轴

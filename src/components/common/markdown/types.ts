@@ -11,6 +11,8 @@ export interface MarkdownRendererProps {
   mapContentUrl?: (url: string) => string;
   /** Opt in to stable, sanitized heading anchors for an outline. */
   headingAnchorPrefix?: string;
+  /** Qualify external links in clipping materials while preserving same-site navigation. */
+  nofollowExternalLinks?: boolean;
   /** Markdown 内容字符串 */
   content: string;
   /** 自定义 CSS 类名 */

@@ -65,7 +65,7 @@ const markdownSanitizeSchema = {
 import "katex/dist/katex.min.css";
 import "@/styles/markdown-code.css";
 
-function getMarkdownLinkBehavior(href: string | undefined) {
+function getMarkdownLinkBehavior(href: string | undefined, nofollow = false) {
   if (!href) {
     return {};
   }
@@ -76,7 +76,7 @@ function getMarkdownLinkBehavior(href: string | undefined) {
 
   return {
     target: "_blank",
-    rel: "noopener noreferrer",
+    rel: nofollow ? "nofollow noopener noreferrer" : "noopener noreferrer",
   };
 }
 
@@ -112,6 +112,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
     rewritePublicSitePaths = false,
     mapContentUrl,
     headingAnchorPrefix,
+    nofollowExternalLinks = false,
   }) => {
     // 获取变体配置
     const variantConfig = useMemo(() => getVariantConfig(variant), [variant]);
@@ -343,7 +344,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
         a: ({ href, children }) => (
           <a
             href={href}
-            {...getMarkdownLinkBehavior(href)}
+            {...getMarkdownLinkBehavior(href, nofollowExternalLinks)}
             className="nature-link-inline break-words underline decoration-[rgba(var(--nature-accent-rgb),0.35)] underline-offset-4"
           >
             {children}
@@ -360,7 +361,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
           </pre>
         ),
       }),
-      [config, headingAnchorPrefix]
+      [config, headingAnchorPrefix, nofollowExternalLinks]
     );
 
     // 如果没有内容，显示占位符

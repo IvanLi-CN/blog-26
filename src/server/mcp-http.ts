@@ -8,6 +8,7 @@ type McpWebTransportState = Awaited<ReturnType<typeof createMcpWebTransport>>;
 type McpSessionAuth = {
   isAdmin: boolean;
   userEmail?: string;
+  userId?: string;
 };
 
 const mcpWebTransportSessions = new Map<
@@ -129,6 +130,7 @@ export async function handleMcpHttpRequest(request: Request) {
         const resolved = await resolveUserByPersonalAccessToken(rawToken);
         if (resolved) {
           requestAuth.userEmail = resolved.user.email;
+          requestAuth.userId = resolved.user.id;
           const adminEmail = getAdminEmail();
           requestAuth.isAdmin = !!adminEmail && requestAuth.userEmail === adminEmail;
         }

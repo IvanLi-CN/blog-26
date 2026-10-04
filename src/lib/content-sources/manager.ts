@@ -7,6 +7,8 @@
 import { desc, eq, lt, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { clearSearchCache } from "@/lib/ai/search-cache";
+import { notifyClippingChange } from "@/server/clipping/runtime";
+import { projectClippingMemo } from "@/server/clipping/store";
 import { db, initializeDB } from "../db";
 import type { ContentSyncLog } from "../schema";
 import { contentSyncLogs, contentSyncStatus, posts } from "../schema";
@@ -551,6 +553,14 @@ export class ContentSourceManager {
         }
 
         if (change.operation === "create" || change.operation === "update") {
+          const authoredBody = (change.item.metadata.content as string) || "";
+          const clipping =
+            change.item.type === "memo" &&
+            (change.item.metadata.authoredClipping || change.item.metadata.clipping)
+              ? await projectClippingMemo(change.item.id)
+              : null;
+          const readingBody = clipping?.content ?? authoredBody;
+          const readingTitle = clipping ? (clipping.title ?? "") : change.item.title;
           // 插入或更新内容
           await db
             .insert(posts)
@@ -558,9 +568,9 @@ export class ContentSourceManager {
               id: change.item.id,
               slug: change.item.slug,
               type: change.item.type,
-              title: change.item.title,
-              excerpt: change.item.excerpt || "",
-              body: (change.item.metadata.content as string) || "",
+              title: readingTitle,
+              excerpt: clipping ? readingBody.slice(0, 200) : change.item.excerpt || "",
+              body: readingBody,
               publishDate: change.item.publishDate,
               updateDate: change.item.updateDate,
               draft: change.item.draft,
@@ -582,9 +592,9 @@ export class ContentSourceManager {
               set: {
                 slug: change.item.slug,
                 type: change.item.type,
-                title: change.item.title,
-                excerpt: change.item.excerpt || "",
-                body: (change.item.metadata.content as string) || "",
+                title: readingTitle,
+                excerpt: clipping ? readingBody.slice(0, 200) : change.item.excerpt || "",
+                body: readingBody,
                 publishDate: change.item.publishDate,
                 updateDate: change.item.updateDate || Date.now(),
                 draft: change.item.draft,
@@ -603,6 +613,7 @@ export class ContentSourceManager {
               },
             });
 
+          if (change.item.type === "memo") notifyClippingChange(change.item.id);
           if (change.operation === "create") {
             stats.created++;
             // 记录创建成功的日志
@@ -636,6 +647,7 @@ export class ContentSourceManager {
           }
         } else if (change.operation === "delete") {
           await db.delete(posts).where(eq(posts.id, change.item.id));
+          if (change.item.type === "memo") notifyClippingChange(change.item.id);
           stats.deleted++;
           // 记录删除成功的日志
           await this.logSync(

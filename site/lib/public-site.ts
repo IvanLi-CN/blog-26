@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import matter from "gray-matter";
 import { SITE } from "@/config/site";
+import { renderClippingFeed } from "@/lib/clipping-feed";
 import { extractMemoTitle, isGeneratedMemoTitle } from "@/lib/content-sources/utils";
 import { extractPostCoverCandidate, isExternalImageUrl } from "@/lib/post-cover";
 import {
@@ -441,7 +442,10 @@ export function buildTagFeedItems(
       title: item.type === "memo" ? getMemoMetadataTitle(item.title, item.publishDate) : item.title,
       link: getCanonicalUrl(path),
       description: item.excerpt ?? undefined,
-      content: source,
+      content:
+        item.type === "memo" && item.clipping
+          ? renderClippingFeed(source, item.clipping.targetUrl)
+          : source,
       authorName: SITE.author.name,
       authorEmail: SITE.author.email,
       categories: item.tags,

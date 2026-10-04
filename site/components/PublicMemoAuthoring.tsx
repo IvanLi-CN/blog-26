@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
+import { ClippingDetail } from "@/components/memos/ClippingDetail";
 import { QuickMemoEditModal } from "@/components/memos/QuickMemoEditModal";
 import { type QuickMemoData, QuickMemoEditor } from "@/components/memos/QuickMemoEditor";
 import Icon from "@/components/ui/Icon";
 import { extractTextSummary, stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
 import { webDemoFetch } from "@/lib/web-demo-fetch";
+import type { ClippingReading } from "@/lib/memo-clipping";
 import { adminMemoRecordSchema, parseMemoPage } from "../lib/memo-pagination";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 import { MEMO_PAGE_SIZE } from "./MemoPagination";
@@ -22,6 +24,10 @@ type PublicMemoRecord = {
   tags: string[];
   filePath?: string;
   source?: string;
+  clipping?: ClippingReading;
+  canDiscuss?: boolean;
+  authoredContent?: string;
+  authoredTitle?: string;
 };
 
 type PublicMemoListResponse = {
@@ -119,6 +125,7 @@ function usePublicAuth(initialIsAdmin = false) {
   }, [refetch]);
 
   return {
+    user,
     isAdmin: user?.isAdmin || false,
     isLoading,
     refetch,
@@ -195,6 +202,16 @@ function PublicMemoCard({
           ) : null}
           {memo.excerpt ? (
             <p className="nature-muted mt-3 text-base leading-7">{memo.excerpt}</p>
+          ) : null}
+          {memo.clipping?.targetUrl ? (
+            <a
+              href={memo.clipping.targetUrl}
+              target="_blank"
+              rel="nofollow noopener noreferrer"
+              className="nature-button nature-button-outline mt-3 min-h-11"
+            >
+              打开原网页 ↗
+            </a>
           ) : null}
           <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
             <div
@@ -527,7 +544,7 @@ export function PublicMemoComposerIsland({
               id: editingMemo.id,
               content: values.content,
               isPublic: values.isPublic,
-              title: editingMemo.title ?? "",
+              title: editingMemo.authoredTitle ?? editingMemo.title ?? "",
               tags: editingMemo.tags,
             }),
           }
@@ -692,7 +709,7 @@ export function PublicMemoComposerIsland({
         onClose={closeEdit}
         onSave={saveEditedMemo}
         memoTitle={editingMemo?.title ?? undefined}
-        initialContent={editingMemo?.content ?? ""}
+        initialContent={editingMemo?.authoredContent ?? editingMemo?.content ?? ""}
         initialIsPublic={editingMemo?.isPublic ?? true}
         articlePath={editingMemo?.filePath ?? (editingSlug ? `${editingSlug}.md` : "")}
         isLoading={isEditLoading}
@@ -704,14 +721,14 @@ export function PublicMemoComposerIsland({
 }
 
 export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
-  const { isAdmin, isLoading } = usePublicAuth();
+  const { user, isAdmin, isLoading } = usePublicAuth();
   const [memo, setMemo] = useState<PublicMemoRecord | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useHideStaticSnapshot("[data-public-memo-static-shell]", isAdmin);
+  useHideStaticSnapshot("[data-public-memo-static-shell]", isAdmin || Boolean(memo?.canDiscuss));
 
   const loadMemo = useCallback(async () => {
     setIsFetching(true);
@@ -730,9 +747,9 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
   }, [slug]);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!user) return;
     void loadMemo();
-  }, [isAdmin, loadMemo]);
+  }, [user, loadMemo]);
 
   const handleSave = useCallback(
     async (values: { content: string; isPublic: boolean }) => {
@@ -750,7 +767,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
               id: memo.id,
               content: values.content,
               isPublic: values.isPublic,
-              title: memo.title,
+              title: memo.authoredTitle ?? memo.title,
               tags: memo.tags,
             }),
           }
@@ -788,56 +805,58 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
 
   const detailBody = memo ? stripMatchingLeadingTitleHeading(memo.content, memo.title) : "";
 
-  if (isLoading || !isAdmin) {
+  if (isLoading || (!isAdmin && !memo?.canDiscuss)) {
     return null;
   }
 
   return (
     <section className="mb-6 space-y-4" data-testid="public-memo-detail-controls">
-      <div className="nature-panel flex flex-wrap items-center justify-between gap-3 px-5 py-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
-            <Icon
-              name="tabler:shield-check"
-              className="h-4 w-4 text-[color:var(--nature-accent-strong)]"
-            />
-            <span>管理员模式</span>
+      {isAdmin ? (
+        <div className="nature-panel flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
+              <Icon
+                name="tabler:shield-check"
+                className="h-4 w-4 text-[color:var(--nature-accent-strong)]"
+              />
+              <span>管理员模式</span>
+            </div>
+            <p className="text-sm text-[color:var(--nature-text-soft)]">
+              当前显示最新管理员内容；公开页面显示最近发布版本。
+            </p>
           </div>
-          <p className="text-sm text-[color:var(--nature-text-soft)]">
-            当前显示最新管理员内容；公开页面显示最近发布版本。
-          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="nature-button nature-button-outline"
+              onClick={() => void loadMemo()}
+              disabled={isFetching}
+            >
+              刷新当前内容
+            </button>
+            <a className="nature-button nature-button-outline" href={buildPreviewHref(slug)}>
+              打开专用预览
+            </a>
+            <button
+              type="button"
+              className="nature-button"
+              onClick={() => setModalOpen(true)}
+              disabled={!memo || isFetching}
+            >
+              编辑 Memo
+            </button>
+            <button
+              type="button"
+              className="nature-button nature-button-danger"
+              data-testid="admin-live-memo-delete"
+              onClick={() => void handleDelete()}
+              disabled={!memo || isDeleting}
+            >
+              删除 Memo
+            </button>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="nature-button nature-button-outline"
-            onClick={() => void loadMemo()}
-            disabled={isFetching}
-          >
-            刷新当前内容
-          </button>
-          <a className="nature-button nature-button-outline" href={buildPreviewHref(slug)}>
-            打开专用预览
-          </a>
-          <button
-            type="button"
-            className="nature-button"
-            onClick={() => setModalOpen(true)}
-            disabled={!memo || isFetching}
-          >
-            编辑 Memo
-          </button>
-          <button
-            type="button"
-            className="nature-button nature-button-danger"
-            data-testid="admin-live-memo-delete"
-            onClick={() => void handleDelete()}
-            disabled={!memo || isDeleting}
-          >
-            删除 Memo
-          </button>
-        </div>
-      </div>
+      ) : null}
 
       {memo ? (
         <article>
@@ -870,17 +889,33 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
           </div>
 
           <div className="nature-panel px-4 py-7 sm:px-8" data-testid="public-memo-detail-body">
-            <MarkdownRenderer
-              content={detailBody}
-              variant="article"
-              enableMath={true}
-              enableMermaid={true}
-              enableCodeFolding={true}
-              removeTags={true}
-              rewritePublicSitePaths={true}
-              articlePath={memo.filePath ?? ""}
-              contentSource="local"
-            />
+            {memo.clipping ? (
+              <ClippingDetail
+                key={memo.slug}
+                slug={memo.slug}
+                memoContent={detailBody}
+                initialArticle={{ reading: memo.clipping, source: null, translation: null }}
+                live
+                initialCanDiscuss={Boolean(memo.canDiscuss || isAdmin)}
+                onTitleChange={(title) =>
+                  setMemo((current) =>
+                    current && current.title !== title ? { ...current, title } : current
+                  )
+                }
+              />
+            ) : (
+              <MarkdownRenderer
+                content={detailBody}
+                variant="article"
+                enableMath={true}
+                enableMermaid={true}
+                enableCodeFolding={true}
+                removeTags={true}
+                rewritePublicSitePaths={true}
+                articlePath={memo.filePath ?? ""}
+                contentSource="local"
+              />
+            )}
           </div>
         </article>
       ) : null}
@@ -891,17 +926,19 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
         </div>
       ) : null}
 
-      <QuickMemoEditModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSave={handleSave}
-        memoTitle={memo?.title ?? undefined}
-        initialContent={memo?.content}
-        initialIsPublic={memo?.isPublic}
-        articlePath={memo?.filePath ?? ""}
-        contentSource="local"
-        isLoading={isFetching}
-      />
+      {isAdmin ? (
+        <QuickMemoEditModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSave={handleSave}
+          memoTitle={memo?.title ?? undefined}
+          initialContent={memo?.authoredContent ?? memo?.content}
+          initialIsPublic={memo?.isPublic}
+          articlePath={memo?.filePath ?? ""}
+          contentSource="local"
+          isLoading={isFetching}
+        />
+      ) : null}
     </section>
   );
 }

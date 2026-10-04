@@ -13,6 +13,7 @@ import {
   type ContentPathMappings,
   inferContentTypeFromConfiguredPaths,
 } from "@/lib/content-path-mappings";
+import { recognizeMemoClipping } from "@/lib/memo-clipping";
 import { isMemoContentPath } from "@/lib/memo-paths";
 import { parseContentTags } from "@/lib/tag-parser";
 import type { ContentItem, ContentType, FileInfo, ParsedContent } from "./types";
@@ -69,8 +70,10 @@ export function createContentItemFromParsed(
   const slug = generateSlugFromPath(filePath, frontmatter.slug as string, contentType);
 
   // 提取标题
-  const title =
-    contentType === "memo"
+  const clipping = contentType === "memo" ? recognizeMemoClipping(body, frontmatter) : null;
+  const title = clipping?.enabled
+    ? (clipping.authorTitle ?? clipping.linkLabel ?? "")
+    : contentType === "memo"
       ? extractMemoTitle(frontmatter, body)
       : extractTitle(frontmatter, body, filePath);
 
@@ -105,6 +108,7 @@ export function createContentItemFromParsed(
     image: frontmatter.image as string,
     metadata: {
       ...frontmatter,
+      authoredClipping: clipping?.enabled || undefined,
       // 添加正文内容到 metadata 中
       content: body,
       cleanedContent,
