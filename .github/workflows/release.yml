@@ -32,8 +32,9 @@ env:
   RELEASE_PR_NUMBER: ${{ github.event_name == 'workflow_dispatch' && inputs.pr_number || '' }}
 
 concurrency:
-  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event.workflow_run.head_sha }}
+  group: blog26-edgeone-production
   cancel-in-progress: false
+  queue: max
 
 jobs:
   prepare:
@@ -650,9 +651,6 @@ jobs:
   deploy_frontend_edgeone:
     name: Deploy frontend to EdgeOne Makers
     runs-on: ubuntu-latest
-    concurrency:
-      group: blog26-edgeone-production
-      cancel-in-progress: false
     needs: [prepare, publish_frontend]
     if: ${{ needs.publish_frontend.result == 'success' && needs.prepare.outputs.channel == 'stable' && needs.prepare.outputs.is_latest_branch_head == 'true' }}
     steps:
@@ -900,9 +898,6 @@ jobs:
       (needs.prepare.outputs.frontend_release == 'true' || needs.prepare.outputs.backend_release == 'true') &&
       (needs.publish_frontend.result == 'success' || needs.publish_frontend.result == 'skipped') &&
       (needs.deploy_frontend_edgeone.result == 'success' || needs.deploy_frontend_edgeone.result == 'skipped') }}
-    concurrency:
-      group: blog26-edgeone-production
-      cancel-in-progress: false
     permissions:
       contents: read
       packages: write
@@ -1171,9 +1166,6 @@ jobs:
       needs.prepare.outputs.backend_release == 'true' &&
       (needs.publish_frontend.result == 'success' || needs.publish_frontend.result == 'skipped') &&
       (needs.deploy_frontend_edgeone.result == 'success' || needs.deploy_frontend_edgeone.result == 'skipped') }}
-    concurrency:
-      group: blog26-edgeone-production
-      cancel-in-progress: false
     permissions:
       contents: write
     timeout-minutes: 60

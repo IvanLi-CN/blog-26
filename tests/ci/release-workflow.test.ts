@@ -6,6 +6,11 @@ import { load } from "js-yaml";
 const workflowPath = path.resolve(process.cwd(), ".github/workflows/release.yml");
 const workflow = readFileSync(workflowPath, "utf8");
 const parsedWorkflow = load(workflow) as {
+  concurrency?: {
+    group?: string;
+    "cancel-in-progress"?: boolean;
+    queue?: string;
+  };
   jobs: Record<
     string,
     {
@@ -227,10 +232,14 @@ describe("release.yml", () => {
     expect(publishImage).not.toContain("env.PLAYBOOK_BUNDLE_DIR != ''");
   });
 
-  test("serializes image and backend publication behind the deployed frontend", () => {
-    const lock = { group: "blog26-edgeone-production", "cancel-in-progress": false };
+  test("holds the shared production lock across the complete release workflow", () => {
+    expect(parsedWorkflow.concurrency).toEqual({
+      group: "blog26-edgeone-production",
+      "cancel-in-progress": false,
+      queue: "max",
+    });
     for (const jobName of ["deploy_frontend_edgeone", "publish_image", "publish_backend"]) {
-      expect(parsedWorkflow.jobs[jobName]?.concurrency).toEqual(lock);
+      expect(parsedWorkflow.jobs[jobName]?.concurrency).toBeUndefined();
     }
     expect(parsedWorkflow.jobs.publish_image?.needs).toEqual([
       "prepare",

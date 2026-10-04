@@ -34,6 +34,11 @@ describe("playbook deployment boundaries", () => {
       await readFile(".github/workflows/playbook-content-rollback.yml", "utf8")
     ) as { jobs: { rollback: { concurrency: object; steps: WorkflowStep[] } } };
     const release = load(await readFile(".github/workflows/release.yml", "utf8")) as {
+      concurrency: {
+        group: string;
+        "cancel-in-progress": boolean;
+        queue: string;
+      };
       jobs: {
         prepare: ReleaseJob;
         publish_frontend: ReleaseJob;
@@ -43,12 +48,17 @@ describe("playbook deployment boundaries", () => {
       };
     };
     expect(update.on.schedule[0].cron).toBe("17 * * * *");
-    const lock = { group: "blog26-edgeone-production", "cancel-in-progress": false };
+    const lock = {
+      group: "blog26-edgeone-production",
+      "cancel-in-progress": false,
+      queue: "max",
+    };
+    expect(release.concurrency).toEqual(lock);
     expect(update.jobs.production.concurrency).toEqual(lock);
     expect(rollback.jobs.rollback.concurrency).toEqual(lock);
-    expect(release.jobs.deploy_frontend_edgeone.concurrency).toEqual(lock);
-    expect(release.jobs.publish_image.concurrency).toEqual(lock);
-    expect(release.jobs.publish_backend.concurrency).toEqual(lock);
+    expect(release.jobs.deploy_frontend_edgeone.concurrency).toBeUndefined();
+    expect(release.jobs.publish_image.concurrency).toBeUndefined();
+    expect(release.jobs.publish_backend.concurrency).toBeUndefined();
     expect(release.jobs.publish_image.needs).toEqual([
       "prepare",
       "prepare_public_content",

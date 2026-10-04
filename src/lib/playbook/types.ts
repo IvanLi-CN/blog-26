@@ -44,7 +44,7 @@ export interface PlaybookPublicProjectListItem {
   source: string;
   tags: string[];
   snapshot_exists: boolean;
-  visibility?: string | null;
+  visibility: "public" | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
