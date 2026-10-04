@@ -376,6 +376,12 @@ test("@targeted runtime failure and recovery preserve the visual slot", async ({
       }
     }
 
+    for (const slug of ["tavily-hikari", "octo-rill"]) {
+      const panel = projectCard(page, slug).locator("[data-project-runtime-panel]");
+      await expect(panel).toHaveAttribute("data-runtime-error", "true");
+      await expect(panel).not.toHaveAttribute("data-runtime-fetching", "true");
+    }
+
     octoMode = "valid";
     hikariMode = "valid";
     const beforeRebind = new Map(requestCounts);
