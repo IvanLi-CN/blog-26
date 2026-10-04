@@ -250,7 +250,10 @@ Valid zero metrics remain runtime data. Missing CVM history uses the protocol's 
 
 ### Project runtime panels
 
-- A configured local response project wall is captured at `1780px × 1071px` and `393px × 852px` in both themes. The evidence includes the generated panel atmosphere assets, real uPlot Stat charts, the Sunday-to-Saturday activity grids, and the unchanged project card links.
+- Evidence binding: implementation commit `365acc120c6ae8e0ef76bfc90c7a3a2cd35164e4` on current base `3ae6b7e4f7716b606dd5ee961359789d4e97ee17`. The original capture preceded the base sync; its four newer base commits touch only release and Playbook files, so the rendered project wall and its mock inputs are unchanged. Source type `ui_demo`; target program `mock-only` Astro project wall; capture scope `browser-viewport`; requested viewports `1780px × 1071px` and `393px × 852px`; viewport strategy `devtools-emulate`; margin policy `trim_only`; evidence surface `page`; sensitive exclusion `N/A`.
+- The owner confirmed the ordinary, dense, and poster-fallback screenshots in both themes. All captures use configured fixture BaseURLs and the production `/projects` page. The ordinary state shows the three live panels with their uPlot Stat charts and activity grids; the dense state changes only OctoRill's lower freshness grid to 3000 complete ordered cells; the fallback state restores OctoRill's poster in the same 4:5 slot. Project links and copy remain below the visuals. The four ordinary screenshots replace the previous same-path evidence after a baseline/current/heatmap comparison; dense and fallback images are current-only evidence.
+
+#### Ordinary density
 
 ![Runtime panels desktop light](./assets/project-runtime-panels-desktop-light-1780x1071.png)
 
@@ -259,6 +262,26 @@ Valid zero metrics remain runtime data. Missing CVM history uses the protocol's 
 ![Runtime panels mobile light](./assets/project-runtime-panels-mobile-light-393x852.png)
 
 ![Runtime panels mobile dark](./assets/project-runtime-panels-mobile-dark-393x852.png)
+
+#### Dense OctoRill freshness
+
+![Dense runtime panels desktop light](./assets/project-runtime-panels-dense-desktop-light-1780x1071.png)
+
+![Dense runtime panels desktop dark](./assets/project-runtime-panels-dense-desktop-dark-1780x1071.png)
+
+![Dense runtime panels mobile light](./assets/project-runtime-panels-dense-mobile-light-393x852.png)
+
+![Dense runtime panels mobile dark](./assets/project-runtime-panels-dense-mobile-dark-393x852.png)
+
+#### Poster fallback
+
+![Fallback runtime panels desktop light](./assets/project-runtime-panels-fallback-desktop-light-1780x1071.png)
+
+![Fallback runtime panels desktop dark](./assets/project-runtime-panels-fallback-desktop-dark-1780x1071.png)
+
+![Fallback runtime panels mobile light](./assets/project-runtime-panels-fallback-mobile-light-393x852.png)
+
+![Fallback runtime panels mobile dark](./assets/project-runtime-panels-fallback-mobile-dark-393x852.png)
 
 ### Project media showcase
 
