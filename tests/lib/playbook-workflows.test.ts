@@ -51,6 +51,7 @@ describe("playbook deployment boundaries", () => {
     expect(release.jobs.publish_backend.concurrency).toEqual(lock);
     expect(release.jobs.publish_image.needs).toEqual([
       "prepare",
+      "prepare_public_content",
       "publish_frontend",
       "deploy_frontend_edgeone",
     ]);

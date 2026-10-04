@@ -37,7 +37,37 @@ describe("ambient scene rendering contract", () => {
     expect(desktop.seeds).toEqual(desktopAgain.seeds);
     expect(desktop.seeds).toHaveLength(12);
     expect(mobile.seeds).toHaveLength(7);
-    expect(desktop.seeds.every((seed) => seed.size >= 16 && seed.size <= 38)).toBe(true);
+    expect(desktop.seeds.filter((seed) => seed.variant === "willow")).toHaveLength(4);
+    expect(desktop.seeds.filter((seed) => seed.tone === "mist")).toHaveLength(3);
+    expect(desktop.seeds.map((seed) => seed.variant)).toEqual([
+      "broad",
+      "broad",
+      "willow",
+      "broad",
+      "broad",
+      "willow",
+      "broad",
+      "broad",
+      "willow",
+      "broad",
+      "broad",
+      "willow",
+    ]);
+    expect(desktop.seeds.map((seed) => seed.tone)).toEqual([
+      "accent",
+      "accent",
+      "accent",
+      "mist",
+      "accent",
+      "accent",
+      "accent",
+      "mist",
+      "accent",
+      "accent",
+      "accent",
+      "mist",
+    ]);
+    expect(desktop.seeds.every((seed) => seed.size >= 28 && seed.size <= 40)).toBe(true);
   });
 
   test("keeps wind paths and seed poses inside the shared motion contract", () => {

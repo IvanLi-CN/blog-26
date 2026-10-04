@@ -56,7 +56,7 @@
 
 ### REQ-PWA-006
 
-- The system MUST NOT add cache directives or change online response semantics for API, gateway, or `/admin/` requests as part of public PWA caching.
+- The system MUST NOT add cache directives or change online response semantics for `/api` and its descendants, `/mcp` and its descendants, or `/admin` and its descendants as part of public PWA caching, even when generated static output contains a colliding path.
 - Inputs: API, gateway, and admin requests.
 - Outputs: their existing response/cache behavior.
 
@@ -90,7 +90,7 @@
 
 - Method: gateway HTTP checks and EdgeOne artifact route-policy checks.
 - covers: `REQ-PWA-005`, `REQ-PWA-006`.
-- Pass condition: HTML, versioned assets, and stable assets receive the prescribed headers; the EdgeOne artifact stays within 30 rules; overlapping HTML and asset paths resolve to the right policy; a matching ETag yields 304; unclassified non-error HTML output is rejected; API and admin paths receive no new cache policy.
+- Pass condition: HTML, versioned assets, and stable assets receive the prescribed headers; the EdgeOne artifact stays within 30 rules; overlapping HTML and asset paths resolve to the right policy; a matching ETag yields 304; unclassified non-error HTML output is rejected; API, `/mcp`, and admin paths receive no new cache policy.
 
 ### VER-PWA-005
 

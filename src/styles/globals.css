@@ -354,24 +354,6 @@ h6 {
   background: transparent;
 }
 
-.nature-ambient-svg .nature-ambient-current-accent {
-  stroke: rgba(var(--ambient-accent-rgb), 0.24);
-}
-
-.nature-ambient-svg .nature-ambient-current-mist {
-  stroke: rgba(var(--ambient-mist-rgb), 0.17);
-}
-
-.nature-ambient-svg .nature-ambient-seed-accent {
-  fill: rgba(var(--ambient-accent-rgb), var(--ambient-seed-fill-alpha));
-  stroke: rgba(var(--ambient-accent-rgb), var(--ambient-seed-stroke-alpha));
-}
-
-.nature-ambient-svg .nature-ambient-seed-mist {
-  fill: rgba(var(--ambient-mist-rgb), var(--ambient-seed-fill-alpha));
-  stroke: rgba(var(--ambient-mist-rgb), var(--ambient-seed-stroke-alpha));
-}
-
 .nature-surface {
   border: 1px solid var(--nature-line);
   background: linear-gradient(180deg, var(--nature-surface-strong), var(--nature-surface));

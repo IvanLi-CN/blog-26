@@ -9,7 +9,7 @@
 - [ADR 0001: Project Detail MDX Authoring](../../adr/0001-project-detail-mdx-authoring.md)
 - [ADR 0002: Mobile Public Header Scroll Model](../../adr/0002-mobile-public-header-scroll.md)
 - [ADR 0003: Public Mobile Content Stream](../../adr/0003-public-mobile-content-stream.md)
-- [ADR 0007: Ambient WebGPU Capability Profile](../../adr/0007-ambient-webgpu-capability-profile.md)
+- [ADR 0011: Shared Ambient Leaf Atlas](../../adr/0011-shared-ambient-leaf-atlas.md)
 
 ## 1. Background
 
@@ -29,7 +29,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - No admin panel redesign or admin-only component migration.
 - No API, search, comment moderation, or sync workflow changes except the cross-layer memo title contract owned by [memo-title-semantics](../memo-title-semantics/SPEC.md). Project detail content now has an Astro MDX authoring path described by ADR 0001.
 - No repository-wide DaisyUI dependency removal in the same change.
-- No Storybook adoption for this task.
+- No new Storybook infrastructure; ambient component evidence uses the existing Storybook installation.
 
 ## 4. Contract
 
@@ -51,7 +51,9 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - The 环境背景层 provides atmosphere. Primary reading content uses a theme-aware 阅读承载层 so text remains readable over the moving background: translucent white in light mode and an equivalently legible dark surface in dark mode. Normal-sized reading text maintains at least a 4.5:1 contrast ratio against the composited surface.
 - Reading-heavy pages keep motion density lower than index/list pages.
 - Reduced-motion users receive the same layout and hierarchy with heavily reduced animation and particle effects.
-- The ambient public scene uses a transparent native-DPR WebGPU Canvas for normal-motion pages. The page's themed CSS background remains below the canvas; WebGPU draws three wind paths and the responsive leaf count with premultiplied alpha, pauses while the document is hidden, and uses requestAnimationFrame as a clock for approximately 30Hz visible submissions. Adapter limits are checked against the native-DPR backing and fixed seed buffer before the first resize; an internal `performanceScore` of 2 keeps the complete WebGPU scene, while score 1 keeps WebGPU and omits only the non-essential leaf outline. A score of 0 or an actual initialization/device failure uses SVG rather than lowering DPR. Queue completion timing, frame timing, private browser fields, vendor tables, and hardware heuristics never select a renderer or detail tier. Reduced-motion users and environments without a usable WebGPU adapter receive one complete deterministic SVG scene with three wind paths and the responsive leaf count. WebGPU initialization or device loss must fall back to SVG without leaving an animation scheduler running.
+- The ambient public scene uses a transparent native-DPR WebGPU Canvas over the existing Nature CSS background. A shared vector definition owns broad and willow blades, curved stems, primary ribs, and secondary veins. Blade fill opacity is `0.035`, outline/primary-rib opacity is `0.14`, and secondary-vein opacity is `0.07`; vector stroke widths are `1.5`, `1.6`, and `1`. Wind opacity is `0.035`. The shared frame is `-64 -42 128 84`, scaled by `size/90`, with size `28–40`; widths below `640px` use seven leaves, otherwise twelve. Every third leaf is willow and every fourth leaf is mist; the other leaves use broad/accent. The deterministic model retains its `26–44s` drift and adds the phase-derived base angle to its gentle sway.
+- WebGPU samples theme-independent transparent masks rasterized from the same vector paths at twice native-DPR leaf density. The four atlas tiles cover both shapes and full/conservative detail, with two-texel isolation. Full detail includes secondary veins; conservative detail preserves blade outline, stem, and primary rib and omits only secondary veins. Native-DPR backing, atlas dimensions, and the fixed seed buffer must fit public adapter/device limits. Score 2 requires double capacity, score 1 requires minimum capacity, and score 0 uses SVG. Queue timing, private browser fields, vendor tables, and hardware heuristics never select a renderer or tier. Atlas resources are rebuilt only for initialization or changed DPR; theme changes update the palette.
+- The scene uses premultiplied alpha, pauses submissions while hidden (including when GPU initialization completes during that pause), and schedules visible motion at approximately `30Hz`. A prepared WebGPU renderer submits no frames before mounting and refreshes the page visibility state at mount. Reduced-motion users do not request WebGPU and receive the complete deterministic SVG with independent explicitly styled path nodes. SVG remains visible until WebGPU initialization completes. Decode/upload/context/pipeline failures and device loss use complete SVG without leaked textures, bitmaps, buffers, or callbacks; stale asynchronous results cannot replace the current instance.
 - Public route transitions expose a non-blocking pending indicator anchored to the site header. The indicator floats below the header frame without shifting document flow, sets page busy state while navigation is preparing, and clears after the next page load.
 - Article and memo detail pages preserve server-rendered Markdown content for first paint while deferring interactive Markdown hydration until the content approaches the viewport; neither page may expose a persistent live loading state or static interaction guidance after content is readable.
 
@@ -358,14 +360,19 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ![Public narrow mobile search](./assets/public-search-narrow-mobile-dark.png)
 
-### Ambient renderer selection
+### Natural ambient leaves
 
-- Evidence binding `ce3e3963478d1ebee21cc909683114ed31e99fe6c6a14343f10a0257744d7c28`; source type `ui_demo`, target program `Ego Browser`, capture scope `browser-viewport`, and final production renderer `WebGPU with complete static SVG fallback`.
-- The WebGPU scene and SVG fallback preserve the three wind paths and responsive leaf count in light, dark, and reduced-motion states. The WebGPU backing store uses the exact CSS size multiplied by the native device-pixel ratio; the SVG path is vector-scaled through its viewBox. Both paths pause or remain static while the document is hidden, and a failed WebGPU lifecycle must not leave an animation scheduler running. The renderer decision is recorded in [ADR 0007](../../adr/0007-ambient-webgpu-capability-profile.md); ADR 0004, ADR 0005, and ADR 0006 remain historical decision and benchmark records.
+- Source type `storybook_canvas`, target program `mock-only`, capture scope `element`, requested viewports `1440x900` and `393x852`, viewport strategy `storybook-viewport`, margin policy `require_margin`, evidence surface `component`; owner confirmation received.
+- Fixed frame `t=0` uses the production coordinator and Nature styles. The full SVG, real WebGPU full, and real WebGPU conservative outputs were individually inspected in light and dark themes. Broad/willow tips, curved stems, primary ribs, and subtle transparent fills retain the accepted reading atmosphere without opaque quad backgrounds. Native DPR 1 and 2 and a `320px` narrow surface were checked.
+- [ADR 0011](../../adr/0011-shared-ambient-leaf-atlas.md) owns the shared vector atlas and secondary-vein-only detail reduction. ADR 0004 through ADR 0007 remain historical renderer decisions.
 
-![Ambient renderer desktop light](./assets/ambient-webgpu-final-desktop-light.png)
+![Ambient leaves desktop light](./assets/ambient-leaf-desktop-light.png)
 
-![Ambient renderer mobile dark reduced motion](./assets/ambient-svg-final-mobile-dark-reduced.png)
+![Ambient leaves desktop dark](./assets/ambient-leaf-desktop-dark.png)
+
+![Ambient leaves mobile light](./assets/ambient-leaf-mobile-light.png)
+
+![Ambient leaves mobile dark](./assets/ambient-leaf-mobile-dark.png)
 
 ### Mobile reading type metadata
 

@@ -47,6 +47,11 @@ describe("ambient performance capability profile", () => {
     expect(ambientGpuLimitsSupportSize({ maxTextureDimension2D: 8192 }, size)).toBe(true);
   });
 
+  test("includes atlas dimensions when the viewport is smaller than a leaf tile", () => {
+    const size = getAmbientWebGpuCanvasSize(100, 100, 3);
+    expect(ambientGpuLimitsSupportSize({ maxTextureDimension2D: 400 }, size)).toBe(false);
+  });
+
   test("treats omitted mock limits as minimum-capability unknowns", () => {
     const size = getAmbientWebGpuCanvasSize(1440, 1000, 2);
     expect(ambientPerformanceScore(undefined, size)).toBe(1);

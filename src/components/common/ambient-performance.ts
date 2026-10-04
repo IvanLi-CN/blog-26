@@ -1,3 +1,4 @@
+import { getAmbientLeafAtlasSize } from "./ambient-leaf";
 import type { AmbientCanvasSize } from "./ambient-scene";
 
 export const AMBIENT_TARGET_FPS = 30;
@@ -20,13 +21,18 @@ function limitHasHeadroom(value: number | undefined, required: number) {
   return value !== undefined && value >= required * 2;
 }
 
+function requiredTextureDimension(size: AmbientCanvasSize) {
+  const atlas = getAmbientLeafAtlasSize(size.scale);
+  return Math.max(size.backingWidth, size.backingHeight, atlas.width, atlas.height);
+}
+
 export function ambientGpuLimitsSupportSize(
   limits: AmbientGpuLimits | undefined,
   size: AmbientCanvasSize
 ) {
   return (
     limitAtLeast(limits?.maxStorageBufferBindingSize, AMBIENT_SEED_BUFFER_BYTES) &&
-    limitAtLeast(limits?.maxTextureDimension2D, Math.max(size.backingWidth, size.backingHeight))
+    limitAtLeast(limits?.maxTextureDimension2D, requiredTextureDimension(size))
   );
 }
 
@@ -36,7 +42,7 @@ export function ambientPerformanceScore(
 ): AmbientPerformanceScore {
   if (!ambientGpuLimitsSupportSize(limits, size)) return 0;
 
-  const requiredDimension = Math.max(size.backingWidth, size.backingHeight);
+  const requiredDimension = requiredTextureDimension(size);
   if (
     limitHasHeadroom(limits?.maxStorageBufferBindingSize, AMBIENT_SEED_BUFFER_BYTES) &&
     limitHasHeadroom(limits?.maxTextureDimension2D, requiredDimension)
