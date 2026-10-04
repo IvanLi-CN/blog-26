@@ -24,10 +24,10 @@ const HTML_ROUTE_PATTERNS = [
   "/tags/*/",
   "/projects/",
   "/projects/:slug/",
-  "/posts/",
-  "/posts/:slug/",
+  "/posts*",
   "/memos/",
   "/memos/:slug/",
+  "/playbook*",
 ] as const;
 
 const DYNAMIC_ROOT_PATHS = new Set(["api", "admin", "mcp"]);
@@ -66,6 +66,7 @@ function isVersionedAsset(path: string) {
   return (
     path.startsWith("_astro/") ||
     path.startsWith("_content/assets/") ||
+    /^_content\/playbook\/v?\d+\.\d+\.\d+\/[a-f0-9]{64}\//.test(path) ||
     /^pwa\/[a-f0-9]{16}\//.test(path)
   );
 }
@@ -103,6 +104,26 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     rule(scopedPath(basePath, path), EDGEONE_PUBLIC_CACHE_CONTROL.html)
   );
   const versionedRules = [
+    ...[
+      ...new Set(
+        cacheableStaticFiles
+          .filter((path) => /^_content\/playbook\/v?\d+\.\d+\.\d+\/[a-f0-9]{64}\//.test(path))
+          .map((path) => path.split("/").slice(0, 4).join("/"))
+      ),
+    ]
+      .sort()
+      .flatMap((path) => [
+        {
+          source: scopedPath(basePath, `/${path}/policies/*`),
+          headers: [
+            { key: "Cache-Control", value: EDGEONE_PUBLIC_CACHE_CONTROL.immutable },
+            { key: "Content-Type", value: "text/plain; charset=utf-8" },
+            { key: "Content-Disposition", value: "attachment" },
+            { key: "X-Content-Type-Options", value: "nosniff" },
+          ],
+        },
+        rule(scopedPath(basePath, `/${path}/*`), EDGEONE_PUBLIC_CACHE_CONTROL.immutable),
+      ]),
     rule(scopedPath(basePath, "/_astro/*"), EDGEONE_PUBLIC_CACHE_CONTROL.immutable),
     ...(hasContentAssetFiles
       ? [rule(scopedPath(basePath, "/_content/assets/*"), EDGEONE_PUBLIC_CACHE_CONTROL.immutable)]

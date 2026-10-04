@@ -184,6 +184,28 @@ _Avoid_: 单次测试, 性能截图
 Trace, compositor, raster, frame-interval, and backing-buffer observations used to compare browser rendering behavior; they are not system GPU utilization, power, or battery measurements.
 _Avoid_: GPU 占用率, 功耗指标
 
+## Style Playbook
+
+**Style Playbook**:
+The blog-native reading collection of published Style Playbook knowledge, with shared blog navigation and search.
+_Avoid_: 上游管理站, 技能仓库镜像
+
+**Topic**:
+A reusable engineering topic that gathers guidance, trade-offs, and evidence from project experience. It can relate to several 项目实践快照 and Policy Skills.
+_Avoid_: 博客标签, 博客文章, 单项目说明
+
+**项目实践快照**:
+A Style Playbook account of a project's engineering choices and evidence. It is distinct from the blog's curated 项目详情 and may describe projects absent from the 项目展墙.
+_Avoid_: 项目详情, 项目正文, 实时仓库状态
+
+**Policy Skill**:
+A reusable, installable project policy associated with a Topic. Reading its published instructions does not apply the policy to a reader's project.
+_Avoid_: Topic Skill, 已安装策略
+
+**已发布Playbook快照**:
+A public edition of the Style Playbook that has successfully reached the blog's readers. Its version identifies the Topic, 项目实践快照, and Policy Skill content that belong together; console follows this edition and may temporarily retain the previous successful edition.
+_Avoid_: 上游最新内容, 未发布目录, 实时仓库状态
+
 ## CI 与发布
 
 **依赖新鲜度漂移**:

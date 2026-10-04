@@ -157,6 +157,8 @@ components:
 
 组件使用原则是避免卡片套卡片。复杂页面应先用页面结构和区域标题分组，再用 card 或 panel 承载可重复或可操作的信息块。
 
+公开站的移动端容器与控件规则见 [Nature UI Spec 的响应式契约](docs/specs/nature-front-ui/SPEC.md#44-responsive-control-and-code-density)和 [ADR 0003](docs/adr/0003-public-mobile-content-stream.md)。上面的移动圆角值适用于需要框架的实体卡片和控件；连续阅读承载层与结构容器按该契约呈现。新增功能的 Spec 与组件应继承这些规则。
+
 # Do's and Don'ts
 
 Do: 让内容和状态先被看懂。用清楚标题、可辨状态、稳定布局和明确操作反馈组织页面。

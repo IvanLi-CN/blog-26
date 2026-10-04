@@ -40,3 +40,4 @@
 | Remote MCP reimplementation | active | implemented | `remote-mcp/SPEC.md` | - | `/mcp` uses current Streamable HTTP sessions and durable content-origin metadata. |
 | Search syntax parsing and SQLite FTS5 fallback | active | implemented | `search-full-text-fallback/SPEC.md` | - | Controlled advanced syntax and SQLite FTS5 preserve search when AI providers are unavailable. |
 | Zero Next cleanup | active | in progress | `zero-next-cleanup/SPEC.md` | - | Removes remaining Next ownership while preserving Astro, admin SPA, gateway, and MCP behavior. |
+| Style Playbook integration | active | in progress | `style-playbook-integration/SPEC.md` | - | Native public knowledge collection, independent release-driven content updates, and console cache of the blog's deployed edition; implementation has not started. |

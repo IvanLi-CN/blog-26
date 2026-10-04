@@ -142,6 +142,8 @@ function SearchStory({
       data-ui-theme={theme}
       data-ui-preference="system"
       data-theme={theme}
+      data-visual-evidence-surface="page"
+      data-visual-evidence-target="page"
     >
       <PublicSearchPage
         query={query}
@@ -195,6 +197,98 @@ export const Results: Story = {
   },
 };
 
+const playbookResults: SearchResultItem[] = [
+  {
+    slug: "delivery",
+    title: "稳定发布 Topic",
+    type: "topic",
+    source: "playbook",
+    href: "/playbook/topics/delivery/",
+    snippet: "发布、回滚与质量门禁。",
+  },
+  {
+    slug: "sample-project",
+    title: "Sample Project 发布实践",
+    type: "experience",
+    source: "playbook",
+    href: "/playbook/projects/sample-project/",
+    snippet: "公开项目的工程取舍。",
+  },
+  {
+    slug: "safe-release",
+    title: "Safe Release Policy",
+    type: "policy",
+    source: "playbook",
+    href: "/playbook/policies/safe-release/",
+    snippet: "可手动安装的稳定发布规则。",
+  },
+];
+export const PlaybookResults: Story = {
+  name: "执念 / 来源分组与类型筛选",
+  render: () => (
+    <SearchStory initialQuery="发布" items={[...results.slice(0, 2), ...playbookResults]} />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("region", { name: "文章与闪念" })).toBeInTheDocument();
+    await expect(canvas.getByRole("region", { name: "执念" })).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("button", { name: /Policy Skill/ }));
+    await expect(canvas.getByRole("link", { name: /Safe Release Policy/ })).toHaveAttribute(
+      "href",
+      "/playbook/policies/safe-release/"
+    );
+    await expect(canvas.queryByRole("link", { name: /Sample Project/ })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("region", { name: "文章与闪念" })).not.toBeInTheDocument();
+  },
+};
+export const PlaybookStaleEdition: Story = {
+  name: "执念 / 旧版本要求刷新",
+  render: () => <SearchStory items={results} error="执念版本已更新，请刷新页面" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("alert")).toHaveTextContent("执念版本已更新，请刷新页面");
+    await expect(canvas.getByRole("link", { name: /Arch Linux on Apple Silicon/ })).toBeVisible();
+  },
+};
+
+export const MobilePlaybookResults: Story = {
+  ...PlaybookResults,
+  ...searchMobileViewport,
+  parameters: {
+    viewport: {
+      options: {
+        searchMobile: {
+          name: "Playbook search 390 × 844",
+          styles: { width: "390px", height: "844px" },
+          type: "mobile",
+        },
+      },
+    },
+  },
+};
+export const DesktopPlaybookResults: Story = {
+  ...PlaybookResults,
+  render: () => (
+    <SearchStory
+      initialQuery="发布"
+      items={[...results.slice(0, 2), ...playbookResults]}
+      theme="dark"
+    />
+  ),
+  parameters: {
+    viewport: {
+      options: {
+        searchDesktop: {
+          name: "Playbook search 1280 × 900",
+          styles: { width: "1280px", height: "900px" },
+          type: "desktop",
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: "searchDesktop", isRotated: false } },
+};
+
 export const UntitledMemoResult: Story = {
   name: "结果 / 无标题闪念",
   parameters: {
@@ -221,11 +315,11 @@ export const UntitledMemoResult: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("link", { name: "打开闪念：无标题闪念" })).toHaveAttribute(
-      "href",
-      "/memos/killport"
-    );
-    await expect(canvas.getByText("killport 是一个轻量级命令行工具。")).toBeVisible();
+    const memo = canvas.getByRole("link", { name: "打开闪念：无标题闪念" });
+    await expect(memo).toHaveAttribute("href", "/memos/killport");
+    await expect(memo).toBeVisible();
+    await expect(memo).toHaveTextContent("killport 是一个轻量级命令行工具。");
+    await expect(within(memo).getByText("killport", { selector: "mark" })).toBeVisible();
     await expect(canvasElement.querySelector("[data-search-result-card] h2")).toBeNull();
   },
 };
@@ -364,11 +458,17 @@ export const MobileLoading: Story = {
     expect(resultsRegion).not.toBeNull();
     expect(queryPanel?.querySelector(".nature-kicker")).toBeNull();
     const bounds = container?.getBoundingClientRect();
+    const queryBounds = queryPanel?.getBoundingClientRect();
     const resultsBounds = resultsRegion?.getBoundingClientRect();
+    const loadingBounds = within(context.canvasElement)
+      .getByRole("status", { name: "搜索结果加载中" })
+      .getBoundingClientRect();
     expect(
       Math.abs((bounds?.left ?? 0) - (document.documentElement.clientWidth - (bounds?.right ?? 0)))
     ).toBeLessThanOrEqual(1);
-    expect(resultsBounds?.top ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(250);
+    expect(resultsBounds?.top ?? 0).toBeGreaterThanOrEqual(queryBounds?.bottom ?? 0);
+    expect((resultsBounds?.top ?? 0) - (queryBounds?.bottom ?? 0)).toBeLessThanOrEqual(32);
+    expect(loadingBounds.bottom).toBeLessThanOrEqual(document.documentElement.clientHeight);
     expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth);
   },
 };
@@ -489,10 +589,9 @@ export const MobileEmpty: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("没有找到相关内容")).toBeVisible();
     await expect(canvas.getByText("还没有找到「Zettelkasten」")).not.toBeVisible();
-    const suggestionButtons = Array.from(
-      canvasElement.querySelectorAll<HTMLElement>(".nature-link-action")
+    const suggestionButtons = ["知识管理", "双链笔记", "Evergreen Notes", "卡片笔记"].map((term) =>
+      canvas.getByRole("button", { name: new RegExp(term) })
     );
-    expect(suggestionButtons.length).toBeGreaterThan(0);
     expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
     for (const button of suggestionButtons) {
       expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);

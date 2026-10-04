@@ -7,6 +7,10 @@ import type { PublicMediaContext } from "@/lib/public-media";
  * Markdown 渲染器组件的属性接口
  */
 export interface MarkdownRendererProps {
+  /** Map content URLs before the renderer's existing safe URL transform. */
+  mapContentUrl?: (url: string) => string;
+  /** Opt in to stable, sanitized heading anchors for an outline. */
+  headingAnchorPrefix?: string;
   /** Markdown 内容字符串 */
   content: string;
   /** 自定义 CSS 类名 */

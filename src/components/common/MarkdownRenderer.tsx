@@ -9,6 +9,7 @@ import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { remarkHeadingAnchors } from "@/lib/markdown-outline";
 import { removeInlineTags } from "@/lib/tag-parser";
 import { CodeBlock, ImageLightbox } from "./markdown/components";
 import { ClientMermaidRenderer } from "./markdown/components/ClientMermaidRenderer";
@@ -109,6 +110,8 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
     publicMediaContext,
     removeTags = false,
     rewritePublicSitePaths = false,
+    mapContentUrl,
+    headingAnchorPrefix,
   }) => {
     // 获取变体配置
     const variantConfig = useMemo(() => getVariantConfig(variant), [variant]);
@@ -156,9 +159,11 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
       }
 
       plugins.push(remarkGfm);
+      if (headingAnchorPrefix)
+        plugins.push([remarkHeadingAnchors, { prefix: headingAnchorPrefix }]);
 
       return plugins;
-    }, [config.enableMath]);
+    }, [config.enableMath, headingAnchorPrefix]);
 
     // 配置 rehype 插件
     const rehypePlugins = useMemo(() => {
@@ -204,10 +209,10 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
       return plugins;
     }, [config, articlePath, contentSource, publicMediaContext]);
 
-    const urlTransform = useMemo(
-      () => (rewritePublicSitePaths ? publicSiteUrlTransform : defaultUrlTransform),
-      [rewritePublicSitePaths]
-    );
+    const urlTransform = useMemo(() => {
+      const safeTransform = rewritePublicSitePaths ? publicSiteUrlTransform : defaultUrlTransform;
+      return (url: string) => safeTransform(mapContentUrl ? mapContentUrl(url) : url);
+    }, [rewritePublicSitePaths, mapContentUrl]);
 
     // 自定义组件映射
     const components = useMemo<Components>(
@@ -260,33 +265,51 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
         },
 
         // 标题样式
-        h1: ({ children }) => (
-          <h1 className="mt-8 mb-6 font-heading text-3xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] first:mt-0">
+        h1: ({ children, id }) => (
+          <h1
+            id={headingAnchorPrefix ? id : undefined}
+            className="mt-8 mb-6 font-heading text-3xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] first:mt-0"
+          >
             {children}
           </h1>
         ),
-        h2: ({ children }) => (
-          <h2 className="mt-8 mb-4 font-heading text-2xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)] first:mt-0">
+        h2: ({ children, id }) => (
+          <h2
+            id={headingAnchorPrefix ? id : undefined}
+            className="mt-8 mb-4 font-heading text-2xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)] first:mt-0"
+          >
             {children}
           </h2>
         ),
-        h3: ({ children }) => (
-          <h3 className="mt-6 mb-3 font-heading text-xl font-semibold tracking-[-0.02em] text-[color:var(--nature-text)] first:mt-0">
+        h3: ({ children, id }) => (
+          <h3
+            id={headingAnchorPrefix ? id : undefined}
+            className="mt-6 mb-3 font-heading text-xl font-semibold tracking-[-0.02em] text-[color:var(--nature-text)] first:mt-0"
+          >
             {children}
           </h3>
         ),
-        h4: ({ children }) => (
-          <h4 className="mt-6 mb-3 text-lg font-semibold text-[color:var(--nature-text)] first:mt-0">
+        h4: ({ children, id }) => (
+          <h4
+            id={headingAnchorPrefix ? id : undefined}
+            className="mt-6 mb-3 text-lg font-semibold text-[color:var(--nature-text)] first:mt-0"
+          >
             {children}
           </h4>
         ),
-        h5: ({ children }) => (
-          <h5 className="mt-4 mb-2 text-base font-semibold text-[color:var(--nature-text)] first:mt-0">
+        h5: ({ children, id }) => (
+          <h5
+            id={headingAnchorPrefix ? id : undefined}
+            className="mt-4 mb-2 text-base font-semibold text-[color:var(--nature-text)] first:mt-0"
+          >
             {children}
           </h5>
         ),
-        h6: ({ children }) => (
-          <h6 className="mt-4 mb-2 text-sm font-semibold text-[color:var(--nature-text-soft)] first:mt-0">
+        h6: ({ children, id }) => (
+          <h6
+            id={headingAnchorPrefix ? id : undefined}
+            className="mt-4 mb-2 text-sm font-semibold text-[color:var(--nature-text-soft)] first:mt-0"
+          >
             {children}
           </h6>
         ),
@@ -337,7 +360,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
           </pre>
         ),
       }),
-      [config]
+      [config, headingAnchorPrefix]
     );
 
     // 如果没有内容，显示占位符

@@ -1,0 +1,67 @@
+name: Update Playbook content
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [release, reconcile]
+        default: release
+      source_repository:
+        type: string
+      source_release_id:
+        type: string
+      source_tag:
+        type: string
+      source_sha:
+        type: string
+      bundle_sha256:
+        type: string
+      source_run_id:
+        type: string
+  schedule:
+    - cron: '17 * * * *'
+permissions:
+  contents: read
+jobs:
+  production:
+    if: ${{ vars.PLAYBOOK_CONTENT_UPDATES_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    concurrency:
+      group: blog26-edgeone-production
+      cancel-in-progress: false
+      queue: max
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.2
+      - uses: actions/create-github-app-token@v3
+        id: source
+        with:
+          app-id: ${{ vars.PLAYBOOK_SOURCE_APP_ID }}
+          private-key: ${{ secrets.PLAYBOOK_SOURCE_APP_PRIVATE_KEY }}
+          owner: IvanLi-CN
+          repositories: style-playbook-skills
+          permission-contents: read
+      - run: bun install --frozen-lockfile
+      - name: Reconcile, build and deploy under the production lock
+        run: bun scripts/playbook-content-update.ts
+        env:
+          GH_TOKEN: ${{ steps.source.outputs.token }}
+          PLAYBOOK_CONTENT_UPDATES_ENABLED: ${{ vars.PLAYBOOK_CONTENT_UPDATES_ENABLED }}
+          PLAYBOOK_MANIFEST_URL: https://ivanli.cc/_content/playbook/manifest.json
+          PUBLIC_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL || 'https://console.ivanli.cc' }}
+          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://ivanli.cc' }}
+          PUBLIC_SITE_BASE_PATH: ${{ vars.PUBLIC_SITE_BASE_PATH || '/' }}
+          PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: ${{ vars.PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL }}
+          PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL: ${{ vars.PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL }}
+          PUBLIC_OCTO_RILL_METRICS_BASE_URL: ${{ vars.PUBLIC_OCTO_RILL_METRICS_BASE_URL }}
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_PROJECT_NAME: ${{ vars.EDGEONE_PROJECT_NAME }}

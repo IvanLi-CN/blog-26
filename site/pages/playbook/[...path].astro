@@ -1,0 +1,18 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import PlaybookPage, { resolvePlaybookTitle } from "@/components/playbook/PlaybookPage";
+import { getPlaybookEdition, getPlaybookStaticPaths } from "../../lib/playbook";
+export const prerender = process.env.CONSOLE_RUNTIME !== "true";
+export async function getStaticPaths() { return getPlaybookStaticPaths(); }
+const edition = await getPlaybookEdition();
+const path = Astro.params.path || "";
+const title = resolvePlaybookTitle(edition, path);
+if (!title) Astro.response.status = 404;
+---
+<BaseLayout pathname={`/playbook/${path}`} title={`${title || "内容未找到"} - 执念 - Ivan's Blog`}>
+  <PlaybookPage edition={edition} path={path} />
+</BaseLayout>
+<script>
+  import "@/lib/public-playbook-outline";
+  import "@/lib/public-playbook-resources";
+</script>

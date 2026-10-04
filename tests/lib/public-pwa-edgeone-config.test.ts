@@ -33,8 +33,13 @@ describe("EdgeOne public PWA cache config", () => {
       "tags/nature/feed.xml",
       "projects/index.html",
       "projects/blog-26/index.html",
+      "playbook/index.html",
+      "playbook/topics/delivery/index.html",
       "_astro/app-123456.js",
       "_content/assets/post/example/hash/cover.webp",
+      `_content/playbook/v3.0.0/${"a".repeat(64)}/catalog.json`,
+      `_content/playbook/v3.0.0/${"a".repeat(64)}/policies/safe-release/SKILL.md`,
+      "_content/playbook/manifest.json",
       "pwa/1234567890abcdef/icon-any-192.png",
       "pwa/undigested/icon.png",
       "site.webmanifest",
@@ -54,6 +59,26 @@ describe("EdgeOne public PWA cache config", () => {
     expect(findEdgeoneCacheRule(config, "/blog-26/projects/blog-26/")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.html
     );
+    expect(findEdgeoneCacheRule(config, "/blog-26/playbook/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(
+      findEdgeoneCacheRule(config, "/blog-26/playbook/topics/delivery/")?.headers[0]?.value
+    ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.html);
+    expect(
+      findEdgeoneCacheRule(
+        config,
+        `/blog-26/_content/playbook/v3.0.0/${"a".repeat(64)}/policies/safe-release/SKILL.md`
+      )?.headers
+    ).toEqual([
+      { key: "Cache-Control", value: EDGEONE_PUBLIC_CACHE_CONTROL.immutable },
+      { key: "Content-Type", value: "text/plain; charset=utf-8" },
+      { key: "Content-Disposition", value: "attachment" },
+      { key: "X-Content-Type-Options", value: "nosniff" },
+    ]);
+    expect(
+      findEdgeoneCacheRule(config, "/blog-26/_content/playbook/manifest.json")?.headers[0]?.value
+    ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
     expect(findEdgeoneCacheRule(config, "/blog-26/memos/")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.html
     );
