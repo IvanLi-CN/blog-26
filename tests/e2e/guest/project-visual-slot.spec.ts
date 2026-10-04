@@ -299,6 +299,14 @@ test("@targeted OctoRill freshness density keeps every repository in the fixed p
           snapshot.rects.every((rect) => rect.width > 0 && rect.height > 0),
           label
         ).toBe(true);
+        const lastRect = snapshot.rects.at(-1);
+        expect(lastRect, label).toBeDefined();
+        if (lastRect) {
+          expect(
+            Math.abs(lastRect.bottom - snapshot.grid.bottom),
+            `${label} freshness should align to the bottom of its available region`
+          ).toBeLessThanOrEqual(1);
+        }
         expect(
           snapshot.rects.every((rect) => Math.abs(rect.width - rect.height) <= 1),
           label
