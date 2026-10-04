@@ -28,7 +28,7 @@ Policy 公开资源使用 SSR 文件浏览器：可收起的原生目录树、�
 ## Remaining Gaps
 
 - 上游原生 Release 尚需产出可重复公开包并在 manifest 最后上传后调用博客入口，见 [公开包契约](./contracts/public-package.md) 和 [触发契约](./contracts/release-trigger.md)。消费端提供共享类型、校验器和样例；此 PR 不修改上游。
-- GitHub App 安装、权限与真实跨仓调用未验证；生产通知和博客自动更新未启用。现有旧 Release 不作为初始包，首次接入使用显式固定、具有资产的新稳定 Release。
+- Fine-grained source token、跨仓调用与生产通知尚未配置或验证；博客自动更新保持关闭。首次接入使用显式固定且具有完整公开资产的稳定 Release。
 - 真实 EdgeOne 原子发布、生产指针及 console 五分钟跟随由两仓合并后的上线阶段验证；模拟适配器与本地 HTTP 结果不替代生产验收。
 - 本任务停在 merge-ready，不合并、不触发真实 Release、不配置远端凭据。上线顺序和暂停/回滚流程见 [发布 runbook](../../runbooks/style-playbook-publishing.md)。
 

@@ -32,7 +32,7 @@ export async function readBounded(stream: ReadableStream<Uint8Array>, maxBytes: 
 }
 
 export function githubReleaseReader(token = process.env.GH_TOKEN): ReleaseReader {
-  if (!token) throw new Error("A source-read GitHub App token is required");
+  if (!token) throw new Error("A source-read GitHub token is required");
   async function api(
     path: string,
     binary = false,

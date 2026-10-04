@@ -12,7 +12,9 @@ type WorkflowStep = {
   name?: string;
   uses?: string;
   if?: string;
+  run?: string;
   with?: Record<string, unknown>;
+  env?: Record<string, unknown>;
 };
 
 type ReleaseJob = {
@@ -113,6 +115,49 @@ describe("playbook deployment boundaries", () => {
     const initial = await readFile("scripts/fetch-initial-playbook.ts", "utf8");
     expect(initial).toContain("GITHUB_OUTPUT");
     expect(initial).toContain("bundle_dir=" + "$" + "{directory}");
+  });
+  test("private source reads use the scoped PAT secret without minting GitHub Apps", async () => {
+    const updateText = await readFile(".github/workflows/playbook-content-update.yml", "utf8");
+    const rollbackText = await readFile(".github/workflows/playbook-content-rollback.yml", "utf8");
+    const releaseText = await readFile(".github/workflows/release.yml", "utf8");
+    const update = load(updateText) as { jobs: { production: ReleaseJob } };
+    const rollback = load(rollbackText) as { jobs: { rollback: ReleaseJob } };
+    const release = load(releaseText) as {
+      jobs: {
+        publish_frontend: ReleaseJob;
+        publish_image: ReleaseJob;
+        publish_backend: ReleaseJob;
+      };
+    };
+    const sourceTokenSecret = "$" + "{{ secrets.PLAYBOOK_SOURCE_TOKEN }}";
+
+    expect(
+      update.jobs.production.steps?.find(
+        (step) => step.run === "bun scripts/playbook-content-update.ts"
+      )?.env?.GH_TOKEN
+    ).toBe(sourceTokenSecret);
+    expect(
+      rollback.jobs.rollback.steps?.find(
+        (step) => step.run === "bun scripts/playbook-content-update.ts"
+      )?.env?.GH_TOKEN
+    ).toBe(sourceTokenSecret);
+    for (const job of [
+      release.jobs.publish_frontend,
+      release.jobs.publish_image,
+      release.jobs.publish_backend,
+    ]) {
+      expect(
+        job.steps?.some(
+          (step) =>
+            step.run === "bun scripts/fetch-initial-playbook.ts" &&
+            step.env?.GH_TOKEN === sourceTokenSecret
+        )
+      ).toBe(true);
+    }
+    for (const source of [updateText, rollbackText, releaseText]) {
+      expect(source).not.toContain("create-github-app-token");
+      expect(source).not.toContain("PLAYBOOK_SOURCE_APP_");
+    }
   });
   test("pointer revalidates, version files are immutable and package resources cannot execute", () => {
     const digest = "a".repeat(64);

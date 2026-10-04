@@ -69,13 +69,13 @@
 
 [GITHUB_TOKEN 官方说明](https://docs.github.com/en/actions/concepts/security/github_token) 明确 token 权限限于 workflow 所在仓库；它产生的事件通常不会新建 workflow run，`workflow_dispatch` 与 `repository_dispatch` 是例外。因此不能依靠上游由该 token 创建的 Release 再自动触发独立 `release: published` workflow。
 
-[workflow_dispatch REST 接口](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event) 支持 GitHub App / fine-grained token，需要目标仓库 `Actions: write`。[repository_dispatch REST 接口](https://docs.github.com/en/rest/repos/repos#create-a-repository-dispatch-event) 则需要 `Contents: write`。[workflow 事件文档](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows) 说明相关 workflow 应存在于默认分支。
+[workflow_dispatch REST 接口](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event) 支持 fine-grained token，需要目标仓库 `Actions: write`。[repository_dispatch REST 接口](https://docs.github.com/en/rest/repos/repos#create-a-repository-dispatch-event) 则需要 `Contents: write`。[workflow 事件文档](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows) 说明相关 workflow 应存在于默认分支。
 
 设计影响：上游成功发布数据后显式 dispatch 博客 workflow，或由博客定时检查补漏；跨仓库调用使用明确授予的目标仓库凭据。dispatch 参数应由接收端重新核对，不能把通知本身当作已验证内容。
 
 ## 验证限制
 
-本研究使用 `gh` 只读接口、固定上游源码及博客工作区源码。代码图工具不可用，结构结论使用源码核对。未核实 EdgeOne 控制台配置、GitHub App/PAT 可用性或实际跨仓触发，没有导出可公开实体的数量，也没有上传、触发 workflow 或更改私有仓库可见性。
+本研究使用 `gh` 只读接口、固定上游源码及博客工作区源码。代码图工具不可用，结构结论使用源码核对。未核实 EdgeOne 控制台配置、fine-grained PAT 可用性或实际跨仓触发，没有导出可公开实体的数量，也没有上传、触发 workflow 或更改私有仓库可见性。
 
 ## References
 

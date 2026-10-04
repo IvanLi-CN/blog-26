@@ -89,11 +89,11 @@ GitHub API 接受请求仅代表 workflow 已提交排队。当前 API 版本返
 
 | 使用位置 | 所需授权 |
 | --- | --- |
-| 上游通知 job | 对 `blog-26` 的 `Actions: write`，用于调用目标 workflow |
-| 博客下载/补漏 job | 对私有上游仓库的只读访问，用于读取 Release 元数据和资产 |
+| 上游通知 job | `PLAYBOOK_BLOG_WORKFLOW_TOKEN` 对 `blog-26` 的 `Actions: write`，用于调用目标 workflow |
+| 博客下载/补漏 job | `PLAYBOOK_SOURCE_TOKEN` 对私有上游仓库的 `Contents: read`，用于读取 Release 元数据和资产 |
 | 博客部署 job | 复用博客自己的 EdgeOne 部署凭据 |
 
-推荐 GitHub App 安装 token，或限定目标仓库的 fine-grained token。上游自带 `GITHUB_TOKEN` 仅能访问来源仓库，不能直接承担跨仓通知。通知凭据与来源读取凭据是两个权限角色；console 与访客只读博客公开 JSON。
+使用两个独立的 fine-grained PAT，分别存为上游和博客仓库 Secret，避免共享权限。上游自带 `GITHUB_TOKEN` 仅能访问来源仓库，不能直接承担跨仓通知。console 与访客只读博客公开 JSON。
 
 这里选择 `workflow_dispatch`，可以只授予目标 `Actions: write`；`repository_dispatch` 需要目标 `Contents: write`。上游既有流程通过默认 token 创建 Release，不能依赖该动作再触发独立 `release: published` 工作流，因此直接在原 Release workflow 尾部发送通知。
 
