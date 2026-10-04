@@ -31,6 +31,10 @@ Source lives under `src/`, shared UI under `src/components/`, libraries under `s
 - Prefer the dev login API for manual local verification: `POST /api/dev/login`.
 - Avoid introducing proxy-based auth shortcuts that mask authorization regressions.
 
+## Public UI
+
+- Before changing public layouts, containers, or controls, read [DESIGN.md](DESIGN.md), the responsive contract in [Nature UI Spec](docs/specs/nature-front-ui/SPEC.md#44-responsive-control-and-code-density), and [ADR 0003](docs/adr/0003-public-mobile-content-stream.md). Feature specs refine this shared contract; validate the changed surface against it at mobile and desktop sizes.
+
 ## Commits
 
 - Use Conventional Commits in English.

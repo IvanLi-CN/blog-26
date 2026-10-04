@@ -4,6 +4,10 @@ import { gzipSync } from "node:zlib";
 import { createPlaybookEdition, readPublicArchive } from "../../src/lib/playbook/bundle";
 import { publicFixtureCatalog, publicFixtureSearch } from "../../src/lib/playbook/fixture";
 import { encodeJson, fileRecord, sha256 } from "../../src/lib/playbook/manifest";
+import {
+  publicReadingFixtureCatalog,
+  publicReadingFixtureSearch,
+} from "../../src/lib/playbook/reading-fixture";
 import type { PlaybookManifest } from "../../src/lib/playbook/types";
 
 export function makeArchive(files: { path: string; content: string; kind?: string }[]) {
@@ -62,7 +66,9 @@ export function makePublicBundle(
 
 if (import.meta.main) {
   const root = resolve(process.argv[2] || ".tmp/playbook-fixture");
-  const bundle = makePublicBundle();
+  const bundle = process.argv.includes("--long")
+    ? makePublicBundle("v3.0.0", "100", publicReadingFixtureCatalog, publicReadingFixtureSearch)
+    : makePublicBundle();
   await mkdir(root, { recursive: true });
   await writeFile(resolve(root, "playbook-public-manifest.json"), encodeJson(bundle.manifest));
   await writeFile(resolve(root, "playbook-public.tar.gz"), bundle.archive);

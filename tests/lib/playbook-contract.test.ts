@@ -220,7 +220,9 @@ describe("playbook-public-contract", () => {
       expect(html).toContain("packageCallback()");
       expect(html).toContain("<pre");
       expect(html).not.toContain("mermaid-container");
-      expect(html).not.toContain("<svg");
+      const codeBlocks = html.match(/<pre\b[^>]*>[\s\S]*?<\/pre>/g) ?? [];
+      expect(codeBlocks.some((block) => block.includes("packageCallback()"))).toBe(true);
+      expect(codeBlocks.every((block) => !block.includes("<svg"))).toBe(true);
     }
   });
   test("accepts known public Policy search pages and real anchors with one complete canonical document", () => {

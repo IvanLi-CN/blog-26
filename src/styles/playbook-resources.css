@@ -1,0 +1,450 @@
+.playbook-resource-browser {
+  --playbook-file-toolbar-height: 56px;
+  container: playbook-files / inline-size;
+  min-width: 0;
+  color: var(--nature-text);
+}
+.playbook-resource-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 44px;
+}
+.playbook-resource-minimize,
+[data-fullscreen="true"] .playbook-resource-maximize {
+  display: none;
+}
+[data-fullscreen="true"] .playbook-resource-minimize {
+  display: block;
+}
+.playbook-resource-layout {
+  display: grid;
+  min-width: 0;
+  margin-top: 1rem;
+  border-block: 1px solid var(--nature-line);
+}
+.playbook-file-sidebar {
+  min-width: 0;
+  padding: 0.75rem 0.25rem;
+  border-bottom: 1px solid var(--nature-line);
+}
+.playbook-file-sidebar-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: 0.75rem;
+  min-height: 44px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--nature-text-soft);
+}
+.playbook-file-sidebar nav {
+  max-height: 13rem;
+  overflow: auto;
+  scrollbar-color: var(--nature-line) transparent;
+}
+.playbook-file-tree-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.playbook-file-tree-list .playbook-file-tree-list {
+  padding-inline-start: 1rem;
+}
+.playbook-file-directory,
+.playbook-file-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--nature-text-soft);
+  cursor: pointer;
+}
+.playbook-file-directory {
+  list-style: none;
+}
+.playbook-file-directory::-webkit-details-marker {
+  display: none;
+}
+.playbook-file-directory svg,
+.playbook-file-link svg {
+  flex-shrink: 0;
+}
+.playbook-file-directory span,
+.playbook-file-link span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.playbook-file-link {
+  padding-inline-start: 2.125rem;
+}
+.playbook-file-chevron {
+  transition: transform 160ms var(--nature-ease);
+}
+details[open] > .playbook-file-directory > .playbook-file-chevron {
+  transform: rotate(90deg);
+}
+.playbook-file-link[aria-current="true"] {
+  color: var(--nature-accent-strong);
+  font-weight: 600;
+  background: var(--nature-accent-soft);
+}
+.playbook-file-link:hover,
+.playbook-file-directory:hover {
+  color: var(--nature-accent-strong);
+}
+.playbook-file-window,
+.playbook-file-panel {
+  min-width: 0;
+}
+.playbook-file-fallback-summary {
+  padding: 0.75rem;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.playbook-file-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  min-height: 56px;
+  border-bottom: 1px solid var(--nature-line);
+}
+.playbook-file-path {
+  min-width: 0;
+  flex: 1;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.playbook-file-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  color: var(--nature-text-soft);
+  cursor: pointer;
+}
+.playbook-file-icon-button:hover {
+  background: var(--nature-accent-soft);
+  color: var(--nature-accent-strong);
+}
+.playbook-resource-browser
+  :is(a, button, summary, pre, [data-playbook-file-reading]):focus-visible {
+  outline: 2px solid var(--nature-accent-strong);
+  outline-offset: -2px;
+}
+.playbook-file-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 60px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--nature-text-soft);
+}
+.playbook-file-view-controls {
+  display: flex;
+  gap: 0.125rem;
+}
+.playbook-file-view-controls button {
+  min-height: 44px;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.playbook-file-view-controls button[aria-pressed="true"] {
+  color: var(--nature-accent-strong);
+  background: var(--nature-accent-soft);
+}
+.playbook-file-reading {
+  padding: 0.25rem 1rem 1.25rem;
+  overflow-wrap: anywhere;
+}
+.playbook-file-frontmatter {
+  margin: 0 0 1.25rem;
+  padding-block: 0.5rem 1rem;
+  border-bottom: 1px solid var(--nature-line);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.playbook-file-frontmatter > div {
+  display: grid;
+  grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr);
+  gap: 0.75rem;
+}
+.playbook-file-frontmatter > div + div {
+  margin-top: 0.5rem;
+}
+.playbook-file-frontmatter dt {
+  color: var(--nature-text-soft);
+  overflow-wrap: anywhere;
+}
+.playbook-file-frontmatter dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.playbook-file-frontmatter-raw {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.playbook-file-source pre {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  max-height: 32rem;
+  overflow: auto;
+  tab-size: 2;
+}
+.playbook-file-source[data-markdown-surface="public"] {
+  --markdown-code-background: transparent;
+  --markdown-code-comment: color-mix(
+    in srgb,
+    var(--nature-code-comment) 65%,
+    var(--nature-code-foreground)
+  );
+  --markdown-code-keyword: color-mix(
+    in srgb,
+    var(--nature-code-keyword) 80%,
+    var(--nature-code-foreground)
+  );
+  --markdown-code-string: color-mix(
+    in srgb,
+    var(--nature-code-string) 80%,
+    var(--nature-code-foreground)
+  );
+  --markdown-code-number: color-mix(
+    in srgb,
+    var(--nature-code-number) 80%,
+    var(--nature-code-foreground)
+  );
+  --markdown-code-function: color-mix(
+    in srgb,
+    var(--nature-code-function) 80%,
+    var(--nature-code-foreground)
+  );
+  --markdown-code-variable: color-mix(
+    in srgb,
+    var(--nature-code-variable) 80%,
+    var(--nature-code-foreground)
+  );
+  --markdown-code-literal: color-mix(
+    in srgb,
+    var(--nature-code-literal) 80%,
+    var(--nature-code-foreground)
+  );
+  --markdown-code-meta: color-mix(
+    in srgb,
+    var(--nature-code-meta) 80%,
+    var(--nature-code-foreground)
+  );
+}
+.playbook-file-source pre > code {
+  min-width: max-content;
+  font-size: 0.8125rem;
+  line-height: 1.75;
+}
+.playbook-file-js {
+  display: none;
+}
+[data-playbook-resource-browser][data-enhanced="true"] .playbook-file-js {
+  display: inline-flex;
+}
+[data-playbook-resource-browser][data-enhanced="true"] .playbook-file-fallback-summary {
+  display: none;
+}
+[data-enhanced="true"] .playbook-resource-layout {
+  /* Small viewport units keep browser chrome changes from resizing the workspace. */
+  height: clamp(28rem, 70svh, 36rem);
+  position: relative;
+  grid-template-rows: minmax(0, 1fr);
+}
+[data-enhanced="true"] .playbook-file-sidebar {
+  position: absolute;
+  z-index: 3;
+  inset-block-start: calc(var(--playbook-file-toolbar-height) + 0.25rem);
+  inset-inline-start: 0.5rem;
+  width: min(18rem, calc(100% - 1rem));
+  max-height: min(26rem, calc(100% - var(--playbook-file-toolbar-height) - 0.75rem));
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-block: 0.25rem 0.5rem;
+  border: 0;
+  border-radius: 12px;
+  background: var(--nature-bg);
+  box-shadow: var(--nature-shadow-strong);
+}
+[data-enhanced="true"] .playbook-file-sidebar-heading {
+  flex-shrink: 0;
+}
+[data-enhanced="true"] .playbook-file-sidebar nav {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+[data-enhanced="true"] :is(.playbook-file-window, .playbook-file-panel) {
+  min-height: 0;
+  height: 100%;
+}
+[data-enhanced="true"] .playbook-file-panel {
+  position: relative;
+}
+[data-enhanced="true"] .playbook-file-preview {
+  /* Anchor to the panel, not the browser's auto-sized native details content box. */
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+[data-enhanced="true"] :is(.playbook-file-toolbar, .playbook-file-meta) {
+  flex-shrink: 0;
+}
+[data-enhanced="true"] :is(.playbook-file-reading, .playbook-file-source) {
+  flex: 1;
+  min-height: 0;
+}
+[data-enhanced="true"] .playbook-file-reading {
+  overflow: auto;
+  scrollbar-color: var(--nature-line) transparent;
+}
+[data-enhanced="true"] .playbook-file-source pre {
+  height: 100%;
+  max-height: none;
+  scrollbar-color: var(--nature-line) transparent;
+}
+.playbook-resource-browser [hidden] {
+  display: none;
+}
+@container playbook-files (min-width: 40rem) {
+  .playbook-resource-layout {
+    grid-template-columns: 12.5rem minmax(0, 1fr);
+  }
+  .playbook-file-sidebar {
+    border-bottom: 0;
+    border-right: 1px solid var(--nature-line);
+  }
+  .playbook-file-sidebar nav {
+    max-height: 34rem;
+  }
+  [data-enhanced="true"] .playbook-resource-layout {
+    height: clamp(28rem, 68svh, 40rem);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  [data-enhanced="true"] .playbook-file-sidebar nav {
+    max-height: none;
+  }
+  [data-enhanced="true"] .playbook-file-sidebar {
+    position: static;
+    width: auto;
+    max-height: none;
+    padding: 0.75rem 0.25rem;
+    border-right: 1px solid var(--nature-line);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  [data-tree-open="false"] .playbook-resource-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (min-width: 1024px) and (pointer: fine) {
+  .playbook-resource-browser {
+    --playbook-file-toolbar-height: 48px;
+  }
+  .playbook-file-sidebar-heading,
+  .playbook-file-directory,
+  .playbook-file-link {
+    min-height: 36px;
+  }
+  .playbook-file-toolbar,
+  .playbook-file-meta {
+    min-height: 48px;
+  }
+  .playbook-file-icon-button {
+    width: 36px;
+    min-height: 36px;
+  }
+  .playbook-file-view-controls button {
+    min-height: 32px;
+  }
+}
+.playbook-resource-fullscreen {
+  container: playbook-files / inline-size;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: var(--nature-text);
+  background: var(--nature-bg);
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+.playbook-resource-fullscreen::backdrop {
+  background: var(--nature-bg);
+}
+.playbook-resource-fullscreen[open] {
+  animation: playbook-resource-expand 180ms var(--nature-ease);
+}
+.playbook-resource-fullscreen[open] .playbook-resource-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right))
+    max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+}
+[data-enhanced="true"] .playbook-resource-fullscreen[open] .playbook-resource-layout {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  margin-top: 0.5rem;
+  border-bottom: 0;
+}
+@media (min-width: 640px) {
+  .playbook-resource-fullscreen[open] .playbook-resource-workspace {
+    padding: max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right))
+      max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
+  }
+}
+@keyframes playbook-resource-expand {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .playbook-file-chevron {
+    transition: none;
+  }
+  .playbook-resource-fullscreen[open] {
+    animation: none;
+  }
+}

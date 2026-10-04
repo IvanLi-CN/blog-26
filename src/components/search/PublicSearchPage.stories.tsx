@@ -315,11 +315,11 @@ export const UntitledMemoResult: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("link", { name: "打开闪念：无标题闪念" })).toHaveAttribute(
-      "href",
-      "/memos/killport"
-    );
-    await expect(canvas.getByText("killport 是一个轻量级命令行工具。")).toBeVisible();
+    const memo = canvas.getByRole("link", { name: "打开闪念：无标题闪念" });
+    await expect(memo).toHaveAttribute("href", "/memos/killport");
+    await expect(memo).toBeVisible();
+    await expect(memo).toHaveTextContent("killport 是一个轻量级命令行工具。");
+    await expect(within(memo).getByText("killport", { selector: "mark" })).toBeVisible();
     await expect(canvasElement.querySelector("[data-search-result-card] h2")).toBeNull();
   },
 };
@@ -458,11 +458,17 @@ export const MobileLoading: Story = {
     expect(resultsRegion).not.toBeNull();
     expect(queryPanel?.querySelector(".nature-kicker")).toBeNull();
     const bounds = container?.getBoundingClientRect();
+    const queryBounds = queryPanel?.getBoundingClientRect();
     const resultsBounds = resultsRegion?.getBoundingClientRect();
+    const loadingBounds = within(context.canvasElement)
+      .getByRole("status", { name: "搜索结果加载中" })
+      .getBoundingClientRect();
     expect(
       Math.abs((bounds?.left ?? 0) - (document.documentElement.clientWidth - (bounds?.right ?? 0)))
     ).toBeLessThanOrEqual(1);
-    expect(resultsBounds?.top ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(250);
+    expect(resultsBounds?.top ?? 0).toBeGreaterThanOrEqual(queryBounds?.bottom ?? 0);
+    expect((resultsBounds?.top ?? 0) - (queryBounds?.bottom ?? 0)).toBeLessThanOrEqual(32);
+    expect(loadingBounds.bottom).toBeLessThanOrEqual(document.documentElement.clientHeight);
     expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth);
   },
 };
@@ -583,10 +589,9 @@ export const MobileEmpty: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("没有找到相关内容")).toBeVisible();
     await expect(canvas.getByText("还没有找到「Zettelkasten」")).not.toBeVisible();
-    const suggestionButtons = Array.from(
-      canvasElement.querySelectorAll<HTMLElement>(".nature-link-action")
+    const suggestionButtons = ["知识管理", "双链笔记", "Evergreen Notes", "卡片笔记"].map((term) =>
+      canvas.getByRole("button", { name: new RegExp(term) })
     );
-    expect(suggestionButtons.length).toBeGreaterThan(0);
     expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
     for (const button of suggestionButtons) {
       expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);

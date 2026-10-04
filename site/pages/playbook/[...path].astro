@@ -12,3 +12,7 @@ if (!title) Astro.response.status = 404;
 <BaseLayout pathname={`/playbook/${path}`} title={`${title || "内容未找到"} - 执念 - Ivan's Blog`}>
   <PlaybookPage edition={edition} path={path} />
 </BaseLayout>
+<script>
+  import "@/lib/public-playbook-outline";
+  import "@/lib/public-playbook-resources";
+</script>
