@@ -26,51 +26,17 @@ Runtime panel interiors also carry low-contrast, project-specific generated rast
 
 ## Project visual slot sizing
 
-Status: design confirmed; implementation and rendered geometry verification pending. The authoritative requirements are `REQ-NATURE-PROJECT-VISUAL-GEOMETRY` and `REQ-NATURE-OCTORILL-DENSITY` in [SPEC.md](./SPEC.md).
+Status: implemented and visually confirmed. The authoritative requirements remain `REQ-NATURE-PROJECT-VISUAL-GEOMETRY` and `REQ-NATURE-OCTORILL-DENSITY` in [SPEC.md](./SPEC.md).
 
-The current project-wall implementation leaves `.projects-poster-visual` content-sized. `ProjectPoster.astro` and `ProjectRuntimeDataPanel.astro` independently declare `aspect-ratio: 4 / 5`; `RuntimeActivityChart.astro` sets activity-grid minimum heights, while OctoRill's `.runtime-freshness-grid` sets a minimum height, its own preferred aspect ratio, 30 columns, and minimum cell height. The live adapter changes OctoRill cell count whenever a valid payload arrives. The existing guest test checks the computed aspect-ratio declaration rather than actual slot geometry. These are source observations relevant to the reported height mismatch, not a browser-confirmed root cause. No red-capable rendered reproduction has been run for this design-only change.
+The rendered regression exposed the cause at a `1048px` viewport: Tavily Hikari's poster slot measured `284.65625px` high, while the adjacent OctoRill link and slot grew to `326.1875px` despite equal card widths. OctoRill's former `11.25rem` heatmap minimum and independent aspect ratio contributed a larger min-content size through the content-sized visual slot. Setting the slot's `min-width: 0` in a browser probe reduced the OctoRill height to the poster's height, confirming the intrinsic-size path before the fix.
 
-### Geometry ownership
+The project index now reserves one relative, border-box `4:5` `.projects-poster-visual` per card. Its direct poster, fallback layer and nested poster, and runtime panel fill that box with absolute `inset: 0` positioning and explicit full width and height. The panel border and padding remain inside the slot; title, summary, and shortcuts stay in normal flow below it. These overrides apply only to the project wall. Both 90-day activity grids and the OctoRill freshness area use shrinkable remaining-height tracks without their previous independent minimum heights. CVM and Hikari retain their bounded metric and trend structures and full-value tooltips.
 
-The intended change reserves the project's visual height once in the index page:
+OctoRill's lower grid uses `calculateFreshnessLayout(N, W, H, designGap)` after each valid payload and local resize. For positive dimensions and `N > 0`, it sets `columns = max(30, ceil(sqrt(N * W / H)))`, `rows = ceil(N / columns)`, `gap = min(designGap, W / (2 * columns), H / (2 * rows))`, and a square cell size equal to the minimum of `8px` and both remaining-width and remaining-height fits. Zero repositories leave the reserved lower region empty; zero or hidden measurements defer calculation. CSS variables apply the explicit column, row, gap, and cell dimensions to all received statuses in original row-major order. No data is removed, sorted, paginated, or placed in an internal scroller. The scoped `ResizeObserver` and existing `project-runtime-metrics-updated` event recalculate density without a new request or timer, and binding cleanup removes listeners and observers on page exit.
 
-- Give `.projects-poster-visual` relative positioning, full card width, border-box sizing, a 4:5 aspect ratio, and clipping of decorative overflow.
-- Fit the direct poster, fallback wrapper, nested fallback poster, and runtime panel to this reserved box. Size replacement layers from the slot using absolute positioning and `inset: 0`, with `width: 100%`, `height: 100%`, and `min-height: 0`. Include the runtime panel's padding and border inside its dimensions.
-- Scope the sizing overrides to project-wall visuals. Standalone project-detail posters retain their own ratio. An inner component's ratio or intrinsic minimum must not become a competing source of wall height.
-- Keep the title, summary, and shortcut links in document flow below the slot; their existing wrapping behavior remains available.
-- Keep the runtime logo and metric rows content-sized. The lower activity region uses the remaining grid track with `minmax(0, 1fr)` and `min-height: 0`; descendants must also allow shrinking. Replace fixed activity-grid and freshness-cell minimum heights, and let the heatmap fit this remaining height instead of deriving it from its own aspect ratio.
+HTTP or validation failures set the panel back to pending and reveal its original poster, including failures after a prior success. A later valid response clears the error flag and restores the panel. The existing parser still permits zero metrics, CVM historical nulls, and an empty OctoRill repository list while rejecting incomplete payloads and Hikari activity arrays without 90 points.
 
-CVM's three metrics, Hikari's four metrics, their 12/25-point Stat trends, and their 90-date activity data are structurally bounded. They need the shared slot constraint and shrinkable activity regions, rather than a count-dependent density controller. Long metric values continue to use compact formatting and the existing full-value tooltip; labels and values remain above their background sparkline. Neither tooltip content nor uPlot canvases participate in slot sizing.
-
-### OctoRill heatmap fit
-
-Repository growth changes only the lower freshness grid. At the same card width, preserve the logo, two metric rows, fonts, and metric-region height. Obtain the heatmap's available inner width `W`, height `H`, and the validated freshness count `N` after layout. For `N = 0`, keep the lower region with zero cells and skip count-based division.
-
-For `N > 0`, keep 30 columns at ordinary density and allow more columns at high density so cells can stay approximately square. A bounded fit calculation is:
-
-```text
-columns = max(30, ceil(sqrt(N * W / H)))
-rows = ceil(N / columns)
-gap = min(designGap, W / (2 * columns), H / (2 * rows))
-cellSize = min(
-  (W - (columns - 1) * gap) / columns,
-  (H - (rows - 1) * gap) / rows
-)
-```
-
-Use positive measured bounds; defer when a hidden grid has zero width or height. Clamp the rendered cell size to the ordinary design maximum so sparse data does not create oversized cells. Keep a fixed grid height, explicit row count, square cells, and spacing that fits both dimensions. Permit subpixel cell sizes at extreme density. Place the `N` data cells in row-major received order; unused grid positions are layout space, not fabricated repository statuses. Exclude data cells from any clipping fallback.
-
-Recompute the fit when the grid's available bounds change or its validated payload replaces the cells. Integrate the update with `project-runtime-metrics-updated` and a scoped `ResizeObserver`, with lifecycle cleanup and without introducing another network request or timer. Update only the lower grid's geometry. At extreme counts, individual colors may become indistinguishable at the physical pixel scale; this design preserves DOM completeness, order, and fixed geometry and makes no promise of unlimited individual-cell legibility.
-
-### Presentation states
-
-Configured pending sources and failed HTTP or invalid/incomplete responses display the original poster in the reserved slot. Valid later refreshes display the runtime panel, including valid zero metrics, permitted null CVM history, and zero OctoRill repositories. Preserve Hikari's 90 valid daily points and reject empty arrays wherever the existing adapter rejects them. Update the live adapter to restore fallback on failed refreshes as well as initial failures; the current catch path only sets an error flag and does not restore the poster after an earlier success. Optional opacity transitions occur entirely inside the slot and respect reduced motion.
-
-### Verification still required
-
-Before changing runtime styles, establish and run a focused deterministic browser regression on the actual `/projects` route that fails on the reported geometry symptom. Use approved aggregate fixtures and the production response parser, and measure rendered bounds rather than accepting a CSS aspect-ratio string as proof. Record the failing command and measured dimensions before assigning a root cause; then use that same loop for the fix. The accepted design does not replace this diagnostic gate.
-
-The Spec verification matrix covers desktop, narrow desktop, tablet, and four mobile widths in both themes, same-width state transitions, zero and null data, complete OctoRill cells at counts `0`, `1`, `30`, `31`, `502`, `3000`, and `10000`, and refreshes from ordinary to dense data and back. Assertions include slot ratio, active visual bounds, copy position, heatmap containment and order, upper metrics remaining stable, and absence of internal scrolling. Later implementation must run the focused browser checks and required build checks on the shared testbox under repository policy, and produce the controlled visual evidence required for UI delivery. Existing screenshots do not verify the newly specified geometry and dense-data acceptance criteria.
+The focused guest regression runs against the actual `/projects` route with all three public BaseURLs set to the fixture origin at build time. Its pre-fix run failed on the measured `41.53125px` OctoRill overflow; the repaired run passes at `1780`, `1048`, `820`, `772`, `393`, `375`, `360`, and `320px` in both themes. It also checks same-width fallback and recovery, duplicate binding, ordered heatmap data and cell containment at counts `0`, `1`, `30`, `31`, `502`, `3000`, and `10000`, upper-region stability, 90-day activity cells, and no internal scroll. The shared testbox production build and focused guest E2E pass, as do `bun run check` and the related Bun unit tests. The owner confirmed the mock-only visual comparison covering ordinary, dense, and fallback states at desktop and `393px` mobile sizes in both themes; the Spec records those images.
 
 ## Other public surfaces
 

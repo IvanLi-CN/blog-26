@@ -9,6 +9,7 @@ import {
   parseProjectRuntimeMetrics,
 } from "./project-runtime-sources";
 import { formatRuntimeValue, getRuntimeValueCandidates } from "./runtime-format";
+import { calculateFreshnessLayout } from "./runtime-freshness-layout";
 
 const freshnessStatusClasses = [
   "within-4-hours",
@@ -187,6 +188,7 @@ function applyMetrics(panel: HTMLElement, metrics: ProjectRuntimeMetrics) {
     updateFreshness(panel, metrics.freshness, metrics.deduplicatedRepositories.value);
   }
 
+  delete panel.dataset.runtimeError;
   panel.dataset.runtimeState = "ready";
   panel
     .closest<HTMLElement>(".projects-poster-visual")
@@ -217,6 +219,11 @@ async function refreshPanel(panel: HTMLElement, controller: AbortController) {
   } catch (error) {
     if (!(error instanceof DOMException && error.name === "AbortError")) {
       panel.dataset.runtimeError = "true";
+      panel.dataset.runtimeState = "pending";
+      panel
+        .closest<HTMLElement>(".projects-poster-visual")
+        ?.querySelector<HTMLElement>("[data-runtime-fallback-poster]")
+        ?.removeAttribute("hidden");
     }
   } finally {
     delete panel.dataset.runtimeFetching;
@@ -232,29 +239,63 @@ function bindPanel(panel: HTMLElement) {
   panel.dataset.runtimeLiveBound = "true";
   const controller = new AbortController();
   let timer: number | undefined;
+  const freshnessGrid = panel.querySelector<HTMLElement>(".runtime-freshness-grid");
+  const fitFreshness = () => {
+    if (!freshnessGrid || panel.dataset.runtimeState !== "ready") return;
+    const bounds = freshnessGrid.getBoundingClientRect();
+    const designGap = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) * 0.18;
+    const layout = calculateFreshnessLayout(
+      freshnessGrid.childElementCount,
+      bounds.width,
+      bounds.height,
+      designGap
+    );
+    if (!layout) return;
+    freshnessGrid.style.setProperty("--runtime-freshness-columns", String(layout.columns));
+    freshnessGrid.style.setProperty("--runtime-freshness-rows", String(layout.rows));
+    freshnessGrid.style.setProperty("--runtime-freshness-gap", `${layout.gap}px`);
+    freshnessGrid.style.setProperty("--runtime-freshness-cell-size", `${layout.cellSize}px`);
+  };
+  const onMetricsUpdated = (event: Event) => {
+    if ((event as CustomEvent<{ panel: HTMLElement }>).detail?.panel === panel) fitFreshness();
+  };
+  const resizeObserver = freshnessGrid ? new ResizeObserver(fitFreshness) : null;
+  if (freshnessGrid) {
+    resizeObserver?.observe(freshnessGrid);
+    window.addEventListener("project-runtime-metrics-updated", onMetricsUpdated);
+  }
   const interval = getProjectRuntimeRefreshInterval(slug);
   const stop = () => {
     if (timer !== undefined) window.clearInterval(timer);
     timer = undefined;
     controller.abort();
+    delete panel.dataset.runtimeLiveBound;
+    resizeObserver?.disconnect();
+    window.removeEventListener("project-runtime-metrics-updated", onMetricsUpdated);
+    window.removeEventListener("pagehide", stop);
+    document.removeEventListener("astro:before-swap", stop);
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+    panel.removeEventListener("runtime:stop", stop);
   };
   const start = () => {
-    if (document.hidden || controller.signal.aborted) return;
+    if (document.hidden || controller.signal.aborted || timer !== undefined) return;
     void refreshPanel(panel, controller);
     timer = window.setInterval(() => void refreshPanel(panel, controller), interval);
   };
-
-  start();
-  panel.addEventListener("runtime:stop", stop, { once: true });
-  window.addEventListener("pagehide", stop, { once: true });
-  document.addEventListener("visibilitychange", () => {
+  const onVisibilityChange = () => {
     if (document.hidden) {
       if (timer !== undefined) window.clearInterval(timer);
       timer = undefined;
     } else {
       start();
     }
-  });
+  };
+
+  start();
+  panel.addEventListener("runtime:stop", stop, { once: true });
+  window.addEventListener("pagehide", stop, { once: true });
+  document.addEventListener("astro:before-swap", stop, { once: true });
+  document.addEventListener("visibilitychange", onVisibilityChange);
 }
 
 export function initializeProjectRuntimeLiveData() {
