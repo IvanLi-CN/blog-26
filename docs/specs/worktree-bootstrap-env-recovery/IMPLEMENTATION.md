@@ -15,6 +15,7 @@
 - Verification commands: `bun run test:worktree-bootstrap`, shell syntax checks, Python compilation, `bun run check`, and `git diff --check`.
 - Review follow-up: the linked-worktree smoke fixture now reads modes through Python's standard library on both BSD and GNU hosts, and uses quoted source port assignments to verify lease rewriting.
 - Review follow-up: source reads now use descriptor validation and non-blocking special-file handling, transient source loss returns to generated-default fallback, CRLF files remain loadable, and port values are omitted from success logs.
+- Review follow-up: malformed shell variable names are skipped without exporting their values, and the smoke fixture now covers non-main primary topology, prunable secondary metadata, and the source/target validation matrix.
 
 ## Coverage / rollout summary
 

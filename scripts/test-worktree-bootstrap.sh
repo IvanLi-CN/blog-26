@@ -15,6 +15,7 @@ EXPORT_WORKTREE="$TMP_DIR/export"
 STALE_SCOPE_WORKTREE="$TMP_DIR/stale-scope"
 SOURCE_WORKTREE="$TMP_DIR/source"
 SECONDARY_WORKTREE="$TMP_DIR/secondary"
+PRUNABLE_WORKTREE="$TMP_DIR/prunable"
 FALLBACK_WORKTREE="$TMP_DIR/fallback"
 INVALID_SOURCE_WORKTREE="$TMP_DIR/invalid-source"
 DAMAGED_WORKTREE="$TMP_DIR/damaged"
@@ -42,6 +43,7 @@ cleanup() {
   git -C "$SNAPSHOT_REPO" worktree remove --force "$STALE_SCOPE_WORKTREE" >/dev/null 2>&1 || true
   git -C "$SNAPSHOT_REPO" worktree remove --force "$SOURCE_WORKTREE" >/dev/null 2>&1 || true
   git -C "$SNAPSHOT_REPO" worktree remove --force "$SECONDARY_WORKTREE" >/dev/null 2>&1 || true
+  git -C "$SNAPSHOT_REPO" worktree prune >/dev/null 2>&1 || true
   git -C "$SNAPSHOT_REPO" worktree remove --force "$FALLBACK_WORKTREE" >/dev/null 2>&1 || true
   git -C "$SNAPSHOT_REPO" worktree remove --force "$INVALID_SOURCE_WORKTREE" >/dev/null 2>&1 || true
   git -C "$SNAPSHOT_REPO" worktree remove --force "$DAMAGED_WORKTREE" >/dev/null 2>&1 || true
@@ -171,7 +173,7 @@ create_snapshot_repo() {
     git config user.email "codex@example.com"
     git add .
     git commit -m "test snapshot" >/dev/null
-    git branch -M main
+    git branch -M bootstrap-primary
   )
 }
 
@@ -227,6 +229,7 @@ DB_PATH=./dev-data/shared.sqlite.db
 LOCAL_CONTENT_BASE_PATH=/tmp/shared-worktree-content
 CONTENT_SOURCES=local
 SECRET_MARKER=synthetic-source-only
+MALFORMED-SECRET=synthetic-malformed-only
 EOF
   chmod 0644 "$SNAPSHOT_REPO/.env.local"
 }
@@ -247,8 +250,15 @@ ADMIN_PORT=39215
 DB_PATH=./dev-data/secondary.sqlite.db
 LOCAL_CONTENT_BASE_PATH=/tmp/secondary-worktree-content
 CONTENT_SOURCES=local
-SECRET_MARKER=synthetic-secondary-only
+  SECRET_MARKER=synthetic-secondary-only
 EOF
+
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$PRUNABLE_WORKTREE" >/tmp/worktree-bootstrap-prunable.log 2>&1
+  )
+  rm -rf "$PRUNABLE_WORKTREE"
 
   (
     cd "$SNAPSHOT_REPO"
@@ -266,8 +276,10 @@ EOF
   [[ -f "$target_env" ]] || { echo "recovered target .env.local is missing" >&2; exit 1; }
   assert_file_contains /tmp/worktree-bootstrap-source.log 'recovered missing \.env\.local with leased worktree ports'
   assert_file_contains "$target_env" '^SECRET_MARKER=synthetic-source-only$'
+  assert_file_contains "$target_env" '^MALFORMED-SECRET=synthetic-malformed-only$'
   assert_file_not_contains "$target_env" 'synthetic-secondary-only'
   assert_file_not_contains /tmp/worktree-bootstrap-source.log 'synthetic-source-only'
+  assert_file_not_contains /tmp/worktree-bootstrap-source.log 'synthetic-malformed-only'
   cmp -s "$source_nonports" "$target_nonports" || {
     echo "recovered target changed a non-port source setting" >&2
     exit 1
@@ -452,6 +464,44 @@ EOF
   write_primary_source_env
 }
 
+check_source_validation_matrix() {
+  log "check source validation fallback matrix"
+  local case_name case_root log_file
+  for case_name in empty missing-port invalid-derived unreadable; do
+    case_root="$TMP_DIR/source-$case_name"
+    log_file="/tmp/worktree-bootstrap-source-$case_name.log"
+    case "$case_name" in
+      empty)
+        : >"$SNAPSHOT_REPO/.env.local"
+        ;;
+      missing-port)
+        printf 'DB_PATH=./dev-data/source-matrix.sqlite.db\nSECRET_MARKER=synthetic-source-matrix-only\n' >"$SNAPSHOT_REPO/.env.local"
+        ;;
+      invalid-derived)
+        printf 'PORT=39111\nSITE_PORT=not-a-port\nSECRET_MARKER=synthetic-source-matrix-only\n' >"$SNAPSHOT_REPO/.env.local"
+        ;;
+      unreadable)
+        printf 'PORT=39111\nSITE_PORT=39114\nADMIN_PORT=39115\nSECRET_MARKER=synthetic-source-matrix-only\n' >"$SNAPSHOT_REPO/.env.local"
+        chmod 000 "$SNAPSHOT_REPO/.env.local"
+        ;;
+    esac
+    (
+      cd "$SNAPSHOT_REPO"
+      export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+      git worktree add --detach "$case_root" >"$log_file" 2>&1
+    )
+    [[ -f "$case_root/.env.local" ]] || { echo "source $case_name fallback target is missing" >&2; exit 1; }
+    assert_file_contains "$log_file" 'no usable inherited environment is available'
+    assert_file_contains "$case_root/.env.local" '^DB_PATH=\./dev-data/sqlite\.db$'
+    assert_file_not_contains "$case_root/.env.local" 'synthetic-source-matrix-only'
+    if [[ "$case_name" == unreadable ]]; then
+      chmod 0644 "$SNAPSHOT_REPO/.env.local"
+    fi
+    git -C "$SNAPSHOT_REPO" worktree remove --force "$case_root" >/dev/null 2>&1 || true
+  done
+  write_primary_source_env
+}
+
 check_damaged_target_is_preserved() {
   log "check damaged target is never overwritten"
   (
@@ -479,6 +529,53 @@ check_damaged_target_is_preserved() {
   }
   assert_file_contains /tmp/worktree-bootstrap-damaged-file.log 'bootstrap failed at phase=env'
   assert_file_not_contains /tmp/worktree-bootstrap-damaged-file.log 'synthetic-damaged-only'
+
+  local target_case target_log target_before
+  for target_case in empty missing-port invalid-derived unreadable; do
+    target_log="/tmp/worktree-bootstrap-damaged-$target_case.log"
+    target_before="$TMP_DIR/damaged-$target_case.before"
+    rm -f "$DAMAGED_WORKTREE/.env.local"
+    case "$target_case" in
+      empty)
+        : >"$DAMAGED_WORKTREE/.env.local"
+        ;;
+      missing-port)
+        printf 'DB_PATH=./dev-data/damaged-matrix.sqlite.db\n' >"$DAMAGED_WORKTREE/.env.local"
+        ;;
+      invalid-derived)
+        printf 'PORT=32111\nSITE_PORT=not-a-port\nADMIN_PORT=32115\nSECRET_MARKER=synthetic-damaged-matrix-only\n' >"$DAMAGED_WORKTREE/.env.local"
+        ;;
+      unreadable)
+        printf 'PORT=32111\nSITE_PORT=32114\nADMIN_PORT=32115\nSECRET_MARKER=synthetic-damaged-matrix-only\n' >"$DAMAGED_WORKTREE/.env.local"
+        chmod 000 "$DAMAGED_WORKTREE/.env.local"
+        ;;
+    esac
+    rm -f "$marker_file"
+    if [[ "$target_case" == unreadable ]]; then
+      chmod 0600 "$DAMAGED_WORKTREE/.env.local"
+    fi
+    cp "$DAMAGED_WORKTREE/.env.local" "$target_before"
+    if [[ "$target_case" == unreadable ]]; then
+      chmod 000 "$DAMAGED_WORKTREE/.env.local"
+    fi
+    (
+      cd "$DAMAGED_WORKTREE"
+      export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+      if bash ./scripts/worktree-bootstrap.sh --force --no-db >"$target_log" 2>&1; then
+        echo "bootstrap unexpectedly accepted $target_case target" >&2
+        exit 1
+      fi
+    )
+    if [[ "$target_case" == unreadable ]]; then
+      chmod 0600 "$DAMAGED_WORKTREE/.env.local"
+    fi
+    cmp -s "$target_before" "$DAMAGED_WORKTREE/.env.local" || {
+      echo "$target_case target file was overwritten" >&2
+      exit 1
+    }
+    assert_file_contains "$target_log" 'bootstrap failed at phase=env'
+    assert_file_not_contains "$target_log" 'synthetic-damaged-matrix-only'
+  done
 
   rm -f "$DAMAGED_WORKTREE/.env.local"
   mkdir "$DAMAGED_WORKTREE/.env.local"
@@ -922,6 +1019,7 @@ check_legacy_env_is_accepted
 check_dry_run_is_read_only
 check_primary_source_fallback
 check_invalid_primary_source_fallback
+check_source_validation_matrix
 check_damaged_target_is_preserved
 check_publish_failure_is_strict_and_non_blocking
 check_concurrent_publication_is_atomic

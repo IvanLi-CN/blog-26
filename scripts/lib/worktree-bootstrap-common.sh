@@ -310,6 +310,7 @@ wtb_load_env_file() {
     value="${value#\"}"
     value="${value%\'}"
     value="${value#\'}"
+    [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
     export "$key=$value"
   done <"$env_path"
 }
