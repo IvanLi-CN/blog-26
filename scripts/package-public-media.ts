@@ -554,6 +554,8 @@ export async function packagePublicMedia(
   );
 
   for (const [file, content] of fileContents) {
+    const artifactPath = relative(siteDistDir, file).split(sep).join("/");
+    if (isPlaybookSnapshotDataPath(artifactPath)) continue;
     const rewritten = content.replace(PUBLIC_MEDIA_URL_RE, (token) => {
       const raw = trimUrlToken(token);
       const reference = referenceByRaw.get(raw);

@@ -25,8 +25,9 @@ function response(body: string, headers: Record<string, string> = {}) {
 }
 
 describe("packagePublicMedia", () => {
-  test("does not fetch hash-verified media candidates from a Playbook snapshot", async () => {
+  test("preserves hash-verified Playbook snapshots when page media URLs match", async () => {
     const cwd = await fixture();
+    const candidateUrl = "/api/public/assets/post/candidate/hash/cover.webp";
     const snapshotPath = join(
       cwd,
       "site-dist",
@@ -41,7 +42,7 @@ describe("packagePublicMedia", () => {
         {
           media: {
             primary: {
-              sources: [{ url: "/api/public/assets/post/candidate/hash/cover.webp" }],
+              sources: [{ url: candidateUrl }],
             },
           },
         },
@@ -51,10 +52,7 @@ describe("packagePublicMedia", () => {
       recursive: true,
     });
     await writeFile(snapshotPath, snapshot);
-    await writeFile(
-      join(cwd, "site-dist", "index.html"),
-      '<img src="/api/public/assets/post/rendered/hash/card.webp">'
-    );
+    await writeFile(join(cwd, "site-dist", "index.html"), `<img src="${candidateUrl}">`);
 
     const requestedUrls: string[] = [];
     await packagePublicMedia({
@@ -67,10 +65,11 @@ describe("packagePublicMedia", () => {
       },
     });
 
-    expect(requestedUrls).toEqual([
-      "https://api.example/api/public/assets/post/rendered/hash/card.webp",
-    ]);
+    expect(requestedUrls).toEqual([`https://api.example${candidateUrl}`]);
     expect(await readFile(snapshotPath, "utf8")).toBe(snapshot);
+    expect(await readFile(join(cwd, "site-dist", "index.html"), "utf8")).toContain(
+      "/_content/assets/post/candidate/hash/cover.webp"
+    );
     await expect(
       verifyPublicMediaPackage({
         cwd,
