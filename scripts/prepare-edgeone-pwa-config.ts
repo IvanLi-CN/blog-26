@@ -117,14 +117,9 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     ),
   ].sort();
   const versionedRules = [
-    ...(playbookEditionDirectories.length > 0
-      ? [
-          rule(
-            scopedPath(basePath, "/_content/playbook/:tag/:editionDigest/*"),
-            EDGEONE_PUBLIC_CACHE_CONTROL.immutable
-          ),
-        ]
-      : []),
+    ...playbookEditionDirectories.map((path) =>
+      rule(scopedPath(basePath, `/${path}/*`), EDGEONE_PUBLIC_CACHE_CONTROL.immutable)
+    ),
     rule(scopedPath(basePath, "/_astro/*"), EDGEONE_PUBLIC_CACHE_CONTROL.immutable),
     ...(hasContentAssetFiles
       ? [rule(scopedPath(basePath, "/_content/assets/*"), EDGEONE_PUBLIC_CACHE_CONTROL.immutable)]
@@ -132,19 +127,15 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     ...versionedPwaDirectories.map((path) =>
       rule(scopedPath(basePath, `/${path}/*`), EDGEONE_PUBLIC_CACHE_CONTROL.immutable)
     ),
-    ...(playbookEditionDirectories.length > 0
-      ? [
-          {
-            source: scopedPath(basePath, "/_content/playbook/:tag/:editionDigest/policies/*"),
-            headers: [
-              { key: "Cache-Control", value: EDGEONE_PUBLIC_CACHE_CONTROL.immutable },
-              { key: "Content-Type", value: "text/plain; charset=utf-8" },
-              { key: "Content-Disposition", value: "attachment" },
-              { key: "X-Content-Type-Options", value: "nosniff" },
-            ],
-          },
-        ]
-      : []),
+    ...playbookEditionDirectories.map((path) => ({
+      source: scopedPath(basePath, `/${path}/policies/*`),
+      headers: [
+        { key: "Cache-Control", value: EDGEONE_PUBLIC_CACHE_CONTROL.immutable },
+        { key: "Content-Type", value: "text/plain; charset=utf-8" },
+        { key: "Content-Disposition", value: "attachment" },
+        { key: "X-Content-Type-Options", value: "nosniff" },
+      ],
+    })),
   ];
   const unversionedFiles = cacheableStaticFiles
     .filter((path) => path && !path.endsWith(".html") && path !== "CNAME")
@@ -165,17 +156,23 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     }
 
     const [root, slug] = path.split("/");
+    const overlapsHtmlRoute = htmlRules.some(({ source }) =>
+      edgeoneSourceMatches(source, exactSource)
+    );
+
     if (root === "posts" && slug && path.split("/").length >= 3 && extname(path)) {
       postRouteAssetSources.add(scopedPath(basePath, "/posts/:slug/*.*"));
       continue;
     }
 
-    const overlapsHtmlRoute = htmlRules.some(({ source }) =>
-      edgeoneSourceMatches(source, exactSource)
-    );
-
     if (overlapsHtmlRoute) {
       exactAssetSources.add(exactSource);
+      continue;
+    }
+
+    if (root === "pwa") {
+      const source = parent === "pwa" ? exactSource : scopedPath(basePath, `/${parent}/*`);
+      assetRootSources.add(source);
       continue;
     }
 
@@ -183,18 +180,19 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
       const basename = path.slice(path.lastIndexOf("/") + 1);
       if (DYNAMIC_ROOT_PATHS.has(basename)) continue;
 
+      if (basename.includes(".")) {
+        // Keep root assets in one rule without matching dynamic subpaths.
+        rootAssetSources.add(scopedPath(basePath, "/:rootAsset.:extension"));
+        if (overlapsHtmlRoute) exactAssetSources.add(exactSource);
+        continue;
+      }
+
       const prefix = safeRootAssetPrefix(basename);
       if (prefix) {
         rootAssetSources.add(scopedPath(basePath, `/${prefix}*`));
       } else {
         rootAssetSources.add(exactSource);
       }
-      continue;
-    }
-
-    if (root === "pwa") {
-      const source = parent === "pwa" ? exactSource : scopedPath(basePath, `/${parent}/*`);
-      assetRootSources.add(source);
       continue;
     }
 
