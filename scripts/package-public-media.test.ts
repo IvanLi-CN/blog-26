@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { type PublicMediaFetcher, packagePublicMedia } from "./package-public-media";
 import { verifyPublicMediaPackage } from "./verify-public-media-package";
 
@@ -25,33 +25,24 @@ function response(body: string, headers: Record<string, string> = {}) {
 }
 
 describe("packagePublicMedia", () => {
-  test("preserves hash-verified Playbook snapshots when page media URLs match", async () => {
+  test("preserves immutable Playbook edition files when page media URLs match", async () => {
     const cwd = await fixture();
     const candidateUrl = "/api/public/assets/post/candidate/hash/cover.webp";
-    const snapshotPath = join(
+    const editionDirectory = join(
       cwd,
       "site-dist",
       "_content",
       "playbook",
       "v3.0.0",
-      "a".repeat(64),
-      "public-snapshot.json"
+      "a".repeat(64)
     );
-    const snapshot = JSON.stringify({
-      posts: [
-        {
-          media: {
-            primary: {
-              sources: [{ url: candidateUrl }],
-            },
-          },
-        },
-      ],
-    });
-    await mkdir(join(cwd, "site-dist", "_content", "playbook", "v3.0.0", "a".repeat(64)), {
-      recursive: true,
-    });
+    const snapshotPath = join(editionDirectory, "public-snapshot.json");
+    const catalogPath = join(editionDirectory, "catalog.json");
+    const snapshot = JSON.stringify({ media: { sources: [{ url: candidateUrl }] } });
+    const catalog = JSON.stringify({ content: `![image](${candidateUrl})` });
+    await mkdir(editionDirectory, { recursive: true });
     await writeFile(snapshotPath, snapshot);
+    await writeFile(catalogPath, catalog);
     await writeFile(join(cwd, "site-dist", "index.html"), `<img src="${candidateUrl}">`);
 
     const requestedUrls: string[] = [];
@@ -67,6 +58,7 @@ describe("packagePublicMedia", () => {
 
     expect(requestedUrls).toEqual([`https://api.example${candidateUrl}`]);
     expect(await readFile(snapshotPath, "utf8")).toBe(snapshot);
+    expect(await readFile(catalogPath, "utf8")).toBe(catalog);
     expect(await readFile(join(cwd, "site-dist", "index.html"), "utf8")).toContain(
       "/_content/assets/post/candidate/hash/cover.webp"
     );
@@ -79,6 +71,56 @@ describe("packagePublicMedia", () => {
         maxProjectBytes: 1024 * 1024,
       })
     ).resolves.toMatchObject({ fileCount: expect.any(Number) });
+  });
+
+  test("does not exempt non-stable or malformed Playbook edition paths", async () => {
+    const cwd = await fixture();
+    const invalidTagPath = join(
+      cwd,
+      "site-dist",
+      "_content",
+      "playbook",
+      "latest",
+      "a".repeat(64),
+      "catalog.json"
+    );
+    const invalidDigestPath = join(
+      cwd,
+      "site-dist",
+      "_content",
+      "playbook",
+      "v3.0.0",
+      "not-a-digest",
+      "catalog.json"
+    );
+    await mkdir(dirname(invalidTagPath), { recursive: true });
+    await mkdir(dirname(invalidDigestPath), { recursive: true });
+    await writeFile(
+      invalidTagPath,
+      '{"media":"/api/public/assets/post/invalid-tag/hash/card.webp"}'
+    );
+    await writeFile(
+      invalidDigestPath,
+      '{"media":"/api/public/assets/post/invalid-digest/hash/card.webp"}'
+    );
+
+    const requestedUrls: string[] = [];
+    await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      fetchImpl: async (input) => {
+        requestedUrls.push(String(input));
+        return response("image");
+      },
+    });
+
+    expect(requestedUrls).toEqual([
+      "https://api.example/api/public/assets/post/invalid-tag/hash/card.webp",
+      "https://api.example/api/public/assets/post/invalid-digest/hash/card.webp",
+    ]);
+    expect(await readFile(invalidTagPath, "utf8")).toContain("/_content/assets/");
+    expect(await readFile(invalidDigestPath, "utf8")).toContain("/_content/assets/");
   });
 
   test("verifies the configured final EdgeOne media artifact directory", async () => {

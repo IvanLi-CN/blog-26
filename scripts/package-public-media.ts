@@ -13,8 +13,8 @@ export const DEFAULT_DOWNLOAD_CONCURRENCY = 1;
 export const DEFAULT_DOWNLOAD_ATTEMPTS = 3;
 export const DEFAULT_RETRY_DELAY_MS = 500;
 
-const PLAYBOOK_SNAPSHOT_DATA_PATH_RE =
-  /^_content\/playbook\/[^/]+\/[a-f0-9]{64}\/public-snapshot\.json$/u;
+const PLAYBOOK_EDITION_FILE_PATH_RE =
+  /^_content\/playbook\/v?(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\/[a-f0-9]{64}\/.+$/u;
 
 const TEXT_EXTENSIONS = new Set([
   ".css",
@@ -126,8 +126,8 @@ export function extractPublicMediaUrls(content: string) {
   return [...content.matchAll(PUBLIC_MEDIA_URL_RE)].map((match) => trimUrlToken(match[0]));
 }
 
-export function isPlaybookSnapshotDataPath(path: string) {
-  return PLAYBOOK_SNAPSHOT_DATA_PATH_RE.test(path);
+export function isPlaybookEditionFilePath(path: string) {
+  return PLAYBOOK_EDITION_FILE_PATH_RE.test(path);
 }
 
 function assertSafeAssetPath(pathname: string) {
@@ -499,8 +499,8 @@ export async function packagePublicMedia(
     const content = await readFile(file, "utf8");
     fileContents.set(file, content);
     const artifactPath = relative(siteDistDir, file).split(sep).join("/");
-    // This hash-verified edition input is metadata, not a page media reference list.
-    if (isPlaybookSnapshotDataPath(artifactPath)) continue;
+    // Edition files are immutable; rendered page references are scanned separately.
+    if (isPlaybookEditionFilePath(artifactPath)) continue;
     references.push(...extractReferences(content, siteUrl, mediaOrigin, basePath));
   }
   const referenceByRaw = new Map(references.map((reference) => [reference.raw, reference]));
@@ -555,7 +555,7 @@ export async function packagePublicMedia(
 
   for (const [file, content] of fileContents) {
     const artifactPath = relative(siteDistDir, file).split(sep).join("/");
-    if (isPlaybookSnapshotDataPath(artifactPath)) continue;
+    if (isPlaybookEditionFilePath(artifactPath)) continue;
     const rewritten = content.replace(PUBLIC_MEDIA_URL_RE, (token) => {
       const raw = trimUrlToken(token);
       const reference = referenceByRaw.get(raw);
