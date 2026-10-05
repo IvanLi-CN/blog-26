@@ -180,11 +180,13 @@ describe("packagePublicMedia", () => {
       [
         '<img src="/api/public/assets/post/one/hash/card.webp">',
         '<img src="/api/public/assets/post/one/hash/cover.webp">',
+        '<img src="/api/public/assets/post/one/hash/stream.webp">',
       ].join("\n")
     );
 
     const calls: string[] = [];
     let oversizedBodyCancelled = false;
+    let oversizedStreamCancelled = false;
     const manifest = await packagePublicMedia({
       cwd,
       mediaOrigin: "https://api.example",
@@ -204,6 +206,17 @@ describe("packagePublicMedia", () => {
             { status: 200, headers: { "content-length": "11" } }
           );
         }
+        if (url.endsWith("/stream.webp")) {
+          return new Response(
+            new ReadableStream<Uint8Array>({
+              start: (controller) => controller.enqueue(new Uint8Array(11)),
+              cancel: () => {
+                oversizedStreamCancelled = true;
+              },
+            }),
+            { status: 200 }
+          );
+        }
         return response("tiny", { "content-length": "4" });
       },
     });
@@ -211,12 +224,14 @@ describe("packagePublicMedia", () => {
     expect(calls).toEqual([
       "GET https://api.example/api/public/assets/post/one/hash/card.webp",
       "GET https://api.example/api/public/assets/post/one/hash/cover.webp",
+      "GET https://api.example/api/public/assets/post/one/hash/stream.webp",
     ]);
     expect(oversizedBodyCancelled).toBe(true);
-    expect(manifest).toMatchObject({ packagedCount: 1, externalCount: 1 });
-    expect(await readFile(join(cwd, "site-dist", "index.html"), "utf8")).toContain(
-      "https://api.example/api/public/assets/post/one/hash/cover.webp"
-    );
+    expect(oversizedStreamCancelled).toBe(true);
+    expect(manifest).toMatchObject({ packagedCount: 1, externalCount: 2 });
+    const html = await readFile(join(cwd, "site-dist", "index.html"), "utf8");
+    expect(html).toContain("https://api.example/api/public/assets/post/one/hash/cover.webp");
+    expect(html).toContain("https://api.example/api/public/assets/post/one/hash/stream.webp");
   });
 
   test("rejects redirects that leave the configured media origin", async () => {
