@@ -37,12 +37,24 @@ const HTML_FILE_ROUTE_PATTERNS = [
   "/posts/:slug/",
   "/projects/",
   "/projects/:slug/",
-  "/playbook/*",
+  "/playbook/",
+  "/playbook/topics/",
+  "/playbook/topics/:slug/",
+  "/playbook/projects/",
+  "/playbook/projects/:slug/",
+  "/playbook/policies/",
+  "/playbook/policies/:slug/",
   "/memos/",
   "/memos/:slug/",
 ] as const;
 
 const DYNAMIC_ROOT_PATHS = new Set(["api", "admin", "mcp"]);
+const ROOT_ASSET_ROUTE_PATTERNS = new Map([
+  ["favicon-dark.ico", "/favicon*.ico"],
+  ["favicon.ico", "/favicon*.ico"],
+  ["feed.json", "/feed.*"],
+  ["feed.xml", "/feed.*"],
+]);
 const DYNAMIC_ROUTE_PROBES = [
   "/api",
   "/api/",
@@ -93,13 +105,6 @@ function versionedPwaDirectory(path: string) {
 
 function rule(source: string, value: string): EdgeoneHeaderRule {
   return { source, headers: [{ key: "Cache-Control", value }] };
-}
-
-function safeRootAssetPrefix(name: string) {
-  for (let length = 1; length <= name.length; length += 1) {
-    const prefix = name.slice(0, length);
-    if (![...DYNAMIC_ROOT_PATHS].some((root) => root.startsWith(prefix))) return prefix;
-  }
 }
 
 export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly string[]) {
@@ -219,13 +224,8 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     if (parent === ".") {
       const basename = path.slice(path.lastIndexOf("/") + 1);
       if (DYNAMIC_ROOT_PATHS.has(basename)) continue;
-
-      const prefix = safeRootAssetPrefix(basename);
-      if (prefix) {
-        rootAssetSources.add(scopedPath(basePath, `/${prefix}*`));
-      } else {
-        rootAssetSources.add(exactSource);
-      }
+      const sharedPattern = ROOT_ASSET_ROUTE_PATTERNS.get(basename);
+      rootAssetSources.add(scopedPath(basePath, sharedPattern ?? `/${basename}`));
       continue;
     }
 

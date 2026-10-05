@@ -34,7 +34,12 @@ describe("EdgeOne public PWA cache config", () => {
       "projects/index.html",
       "projects/blog-26/index.html",
       "playbook/index.html",
+      "playbook/topics/index.html",
       "playbook/topics/delivery/index.html",
+      "playbook/projects/index.html",
+      "playbook/projects/sample-project/index.html",
+      "playbook/policies/index.html",
+      "playbook/policies/safe-release/index.html",
       "_astro/app-123456.js",
       "_content/assets/post/example/hash/cover.webp",
       `_content/playbook/v3.0.0/${"a".repeat(64)}/catalog.json`,
@@ -46,7 +51,15 @@ describe("EdgeOne public PWA cache config", () => {
       "favicon.svg",
       "favicon.ico",
       "favicon-dark.ico",
-      "ivan-blog-mark.svg",
+      "feed.json",
+      "feed.xml",
+      "site-assets/default-avatar.svg",
+      "site-assets/file.svg",
+      "site-assets/globe.svg",
+      "site-assets/ivan-blog-mark.svg",
+      "site-assets/next.svg",
+      "site-assets/vercel.svg",
+      "site-assets/window.svg",
       "projects/posters/blog-26.webp",
     ]);
 
@@ -118,7 +131,12 @@ describe("EdgeOne public PWA cache config", () => {
     expect(findEdgeoneCacheRule(config, "/blog-26/favicon-dark.ico")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
     );
-    expect(config.headers.some(({ source }) => source === "/blog-26/f*")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/blog-26/favicon*.ico")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/blog-26/favicon.svg")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/blog-26/feed.*")).toBe(true);
+    expect(
+      findEdgeoneCacheRule(config, "/blog-26/site-assets/ivan-blog-mark.svg")?.headers[0]?.value
+    ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
     expect(
       findEdgeoneCacheRule(config, "/blog-26/projects/posters/blog-26.webp")?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
@@ -130,6 +148,11 @@ describe("EdgeOne public PWA cache config", () => {
       "/blog-26/private/x",
       "/blog-26/proxy/x",
       "/blog-26/people/x",
+      "/blog-26/status",
+      "/blog-26/settings",
+      "/blog-26/search/deep-route",
+      "/blog-26/favicon-settings/",
+      "/blog-26/feed/private",
       "/blog-26/postscript/",
       "/blog-26/projects-archive/",
       "/blog-26/playbook-private/",
@@ -160,8 +183,13 @@ describe("EdgeOne public PWA cache config", () => {
       "private/index.html",
       "proxy/index.html",
       "people/index.html",
+      "status/index.html",
+      "settings/index.html",
       "tags-private/index.html",
       "playbook-private/index.html",
+      "playbook/unknown/index.html",
+      "playbook/topics/a/extra/index.html",
+      "playbook/topic/delivery/index.html",
       "posts/example/unknown/index.html",
       "projects/example/unknown/index.html",
     ];
@@ -364,24 +392,24 @@ describe("EdgeOne public PWA cache config", () => {
   it("keeps a combined public artifact within the EdgeOne rule limit", () => {
     const rootAssets = [
       "atom.xml",
-      "default-avatar.svg",
       "favicon-dark.ico",
       "favicon.ico",
       "favicon.svg",
       "feed.json",
       "feed.xml",
-      "file.svg",
-      "globe.svg",
-      "ivan-blog-mark.svg",
       "mcp",
-      "next.svg",
       "robots.txt",
       "rss.xml",
       "site.webmanifest",
       "sitemap.xml",
-      "vercel.svg",
       "watermark-ivanli.svg",
-      "window.svg",
+      "site-assets/default-avatar.svg",
+      "site-assets/file.svg",
+      "site-assets/globe.svg",
+      "site-assets/ivan-blog-mark.svg",
+      "site-assets/next.svg",
+      "site-assets/vercel.svg",
+      "site-assets/window.svg",
     ];
     const editionRoot = `_content/playbook/v2.3.3/${"a".repeat(64)}`;
     const previousEditionRoot = `_content/playbook/v2.3.2/${"b".repeat(64)}`;
@@ -434,8 +462,10 @@ describe("EdgeOne public PWA cache config", () => {
     ]);
 
     expect(config.headers.length).toBeLessThanOrEqual(30);
-    expect(config.headers.some(({ source }) => source === "/at*")).toBe(true);
-    expect(config.headers.some(({ source }) => source === "/f*")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/atom.xml")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/favicon*.ico")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/favicon.svg")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/feed.*")).toBe(true);
     expect(config.headers.some(({ source }) => source === "/a*")).toBe(false);
     for (const path of rootAssets) {
       if (path === "mcp") {
@@ -495,9 +525,7 @@ describe("EdgeOne public PWA cache config", () => {
     expect(findEdgeoneCacheRule(config, "/search/")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.html
     );
-    expect(findEdgeoneCacheRule(config, "/search/deep-route")?.headers[0]?.value).toBe(
-      EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
-    );
+    expect(findEdgeoneCacheRule(config, "/search/deep-route")).toBeUndefined();
     for (const path of [
       "/api",
       "/api/",
