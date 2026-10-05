@@ -48,8 +48,8 @@ async function addTransparencyTile(left: number, top: number, size: number) {
   layers.push({ input: checker, left, top });
 }
 
-const lightFavicon = await readFile(resolve(root, "public/favicon.ico"));
-const darkFavicon = await readFile(resolve(root, "public/favicon-dark.ico"));
+const lightFavicon = await readFile(resolve(root, "public/site-assets/favicon.ico"));
+const darkFavicon = await readFile(resolve(root, "public/site-assets/favicon-dark.ico"));
 for (const [index, size] of [16, 32, 48].entries()) {
   const offset = 6 + index * 16;
   await addTransparencyTile(42 + index * 150, 145, 96);

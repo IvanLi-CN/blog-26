@@ -64,8 +64,8 @@ describe("public PWA assets", () => {
       return data[(8 * info.width + 4) * info.channels];
     }
 
-    expect(await markCenter("favicon.ico")).toBeLessThan(100);
-    expect(await markCenter("favicon-dark.ico")).toBeGreaterThan(180);
+    expect(await markCenter("site-assets/favicon.ico")).toBeLessThan(100);
+    expect(await markCenter("site-assets/favicon-dark.ico")).toBeGreaterThan(180);
   });
 
   it("scopes manifest identity and every icon URL to root or a configured base path", async () => {

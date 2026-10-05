@@ -176,18 +176,14 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
       continue;
     }
 
-    if (parent === "." && basenameOf(path).startsWith("favicon") && extname(path) === ".ico") {
-      rootAssetSources.add(scopedPath(basePath, "/favicon*.ico"));
+    const basename = basenameOf(path);
+    if (path.startsWith("site-assets/")) {
+      rootAssetSources.add(scopedPath(basePath, "/site-assets/*"));
       continue;
     }
 
-    const basename = basenameOf(path);
-    if (
-      path.startsWith("site-assets/") ||
-      (parent === "." && ["site.webmanifest", "sitemap.xml"].includes(basename))
-    ) {
-      // These public static assets share a prefix and cache policy; HTML outputs are validated above.
-      rootAssetSources.add(scopedPath(basePath, "/site*"));
+    if (parent === "." && ["site.webmanifest", "sitemap.xml"].includes(basename)) {
+      rootAssetSources.add(exactSource);
       continue;
     }
 
