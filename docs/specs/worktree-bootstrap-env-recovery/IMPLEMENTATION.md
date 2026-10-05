@@ -1,0 +1,38 @@
+# Worktree Bootstrap Environment Recovery Implementation Status
+
+> The current normative contract is in `./SPEC.md`. This file records implementation coverage and rollout facts only.
+
+## Current Status
+
+- Implementation: implemented
+- Lifecycle: active
+- Catalog note: Requirements are documented; runtime changes remain outside this phase.
+
+## Implementation Coverage
+
+- Existing coverage: the repository retains the repo-owned bootstrap entrypoint, non-blocking `post-checkout` wrapper, Git-dir initialization markers, legacy `PORT` compatibility, and lock-protected worktree port leases.
+- Implemented coverage: primary worktree discovery, source-only recovery for missing targets, port-only normalization, source/target damage distinctions, owner-only atomic publication, fallback behavior, and concurrent create-once handling.
+- Verification commands: `bun run test:worktree-bootstrap`, shell syntax checks, Python compilation, `bun run check`, and `git diff --check`.
+
+## Coverage / rollout summary
+
+- Runtime behavior is implemented in the current bootstrap entrypoint and covered by the linked-worktree smoke fixture. Existing target files remain authoritative, while missing linked targets may inherit only the primary `.env.local` content.
+
+## Remaining Gaps
+
+- The full `REQ-WTENV-*` contract is covered by the implementation and smoke fixture; no known implementation gap remains in this topic.
+- The linked-worktree smoke fixture uses real `git worktree add` operations and synthetic secret markers only.
+
+## Related Changes
+
+- `scripts/lib/worktree-bootstrap-env.py`
+- `scripts/lib/worktree-bootstrap-common.sh`
+- `scripts/worktree-bootstrap.sh`
+- `scripts/test-worktree-bootstrap.sh`
+
+## References
+
+- `./SPEC.md`
+- `./HISTORY.md`
+- `../../../scripts/worktree-bootstrap.sh`
+- `../../../scripts/test-worktree-bootstrap.sh`

@@ -147,20 +147,57 @@ prepare_env() {
   local env_path="$1"
   maybe_fail env || return 1
 
-  if [[ -f "$env_path" ]]; then
-    wtb_load_env_file "$env_path"
-  elif [[ "$DRY_RUN" == true ]]; then
-    export PORT=10000
-    export SITE_PORT=10003
-    export ADMIN_PORT=10004
-    export DB_PATH=./dev-data/sqlite.db
-    export LOCAL_CONTENT_BASE_PATH=./dev-data/local
-    export CONTENT_SOURCES=local
-    wtb_log "dry-run: would create .env.local with leased worktree ports"
-  else
-    wtb_write_initial_env_file "$env_path" || return 1
-    wtb_load_env_file "$env_path"
+  if [[ ! -f "$WORKTREE_BOOTSTRAP_ENV_HELPER" ]]; then
+    wtb_error "environment recovery helper is unavailable in this checkout"
+    return 1
   fi
+
+  local path_kind
+  path_kind="$(wtb_env_path_kind "$env_path")" || return 1
+
+  case "$path_kind" in
+    regular)
+      wtb_validate_target_env "$env_path" || return 1
+      wtb_load_env_file "$env_path" || return 1
+      if [[ "$DRY_RUN" == true ]]; then
+        wtb_log "dry-run: would validate port leases for existing .env.local"
+      fi
+      ;;
+    missing)
+      if [[ "$DRY_RUN" == true ]]; then
+        wtb_describe_dry_run_recovery
+        export PORT=10000
+        export SITE_PORT=10003
+        export ADMIN_PORT=10004
+        export DB_PATH=./dev-data/sqlite.db
+        export LOCAL_CONTENT_BASE_PATH=./dev-data/local
+        export CONTENT_SOURCES=local
+      else
+        local recovery_status
+        if wtb_recover_env_from_primary; then
+          :
+        else
+          recovery_status=$?
+          if [[ "$recovery_status" -ne 2 ]]; then
+            return 1
+          fi
+          wtb_warn "no usable inherited environment is available; use generated default environment"
+          wtb_write_initial_env_file "$env_path" || return 1
+        fi
+        path_kind="$(wtb_env_path_kind "$env_path")" || return 1
+        if [[ "$path_kind" != "regular" ]]; then
+          wtb_error "recovered .env.local is not a regular file"
+          return 1
+        fi
+        wtb_validate_target_env "$env_path" || return 1
+        wtb_load_env_file "$env_path" || return 1
+      fi
+      ;;
+    *)
+      wtb_error "cannot use .env.local because the existing path is not a regular file"
+      return 1
+      ;;
+  esac
 
   validate_ports || return 1
 }
@@ -230,6 +267,10 @@ perform_bootstrap() {
   wtb_require_command bun || return 1
   if [[ ! -f "$WORKTREE_BOOTSTRAP_PORT_REGISTRY" ]]; then
     wtb_error "port registry helper not found: $WORKTREE_BOOTSTRAP_PORT_REGISTRY"
+    return 1
+  fi
+  if [[ ! -f "$WORKTREE_BOOTSTRAP_ENV_HELPER" ]]; then
+    wtb_error "environment recovery helper not found: $WORKTREE_BOOTSTRAP_ENV_HELPER"
     return 1
   fi
 

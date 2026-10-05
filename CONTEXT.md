@@ -235,3 +235,25 @@ _Avoid_: 撤回版本, 删除 release
 **稳定前端补发**:
 Publishing a stable frontend release from the current `main` head after the release path was previously skipped, including the unified image and stable frontend deployment effects defined by the release workflow.
 _Avoid_: 回滚, 重建已发布版本
+
+## Local Development Workspaces
+
+**主工作区**:
+The canonical Git worktree that anchors local environment inheritance for the repository. It is identified by Git worktree topology rather than by the name of its checked-out branch.
+_Avoid_: main 分支工作区
+
+**目标 linked worktree**:
+A non-primary Git worktree being prepared for local development. It owns its local environment after that environment exists.
+_Avoid_: 临时分支目录
+
+**worktree-local 覆盖**:
+A target worktree's deliberate local environment choice that bootstrap preserves once the target environment exists.
+_Avoid_: 主工作区同步值
+
+**本地环境继承**:
+The one-time filling of a missing target environment from the primary worktree, rather than ongoing synchronization or merging.
+_Avoid_: 配置中心同步
+
+**端口隔离**:
+The rule that each worktree receives its own local service port block so independent worktrees do not reuse one another's listeners.
+_Avoid_: 端口共享
