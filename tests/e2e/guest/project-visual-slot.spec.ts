@@ -299,6 +299,14 @@ test("@targeted OctoRill freshness density keeps every repository in the fixed p
           snapshot.rects.every((rect) => rect.width > 0 && rect.height > 0),
           label
         ).toBe(true);
+        const lastRect = snapshot.rects.at(-1);
+        expect(lastRect, label).toBeDefined();
+        if (lastRect) {
+          expect(
+            Math.abs(lastRect.bottom - snapshot.grid.bottom),
+            `${label} freshness should align to the bottom of its available region`
+          ).toBeLessThanOrEqual(1);
+        }
         expect(
           snapshot.rects.every((rect) => Math.abs(rect.width - rect.height) <= 1),
           label
@@ -368,15 +376,23 @@ test("@targeted runtime failure and recovery preserve the visual slot", async ({
       }
     }
 
+    for (const slug of ["tavily-hikari", "octo-rill"]) {
+      const panel = projectCard(page, slug).locator("[data-project-runtime-panel]");
+      await expect(panel).toHaveAttribute("data-runtime-error", "true");
+      await expect(panel).not.toHaveAttribute("data-runtime-fetching", "true");
+    }
+
     octoMode = "valid";
     hikariMode = "valid";
     const beforeRebind = new Map(requestCounts);
     await page.evaluate(() => document.dispatchEvent(new Event("astro:page-load")));
     await page.clock.fastForward(300_001);
     for (const slug of cards) {
-      expect(requestCounts.get(slug), `${slug} must bind only one refresh timer`).toBe(
-        (beforeRebind.get(slug) ?? 0) + 1
-      );
+      await expect
+        .poll(() => requestCounts.get(slug), {
+          message: `${slug} must bind only one refresh timer`,
+        })
+        .toBe((beforeRebind.get(slug) ?? 0) + 1);
     }
     for (const slug of cards) {
       await expect(
