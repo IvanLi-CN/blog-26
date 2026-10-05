@@ -968,8 +968,12 @@ if __name__ == "__main__":
     data = Path(target).read_text()
     if data.count("SECRET_MARKER=") != 1:
         raise SystemExit("concurrent publisher did not leave one complete winner")
-    if "synthetic-first-winner" not in data and "synthetic-second-challenger" not in data:
-        raise SystemExit("concurrent publisher lost both source markers")
+    expected = {
+        "synthetic-first-winner": "PORT=47111\nSITE_PORT=47114\nADMIN_PORT=47115\nSECRET_MARKER=synthetic-first-winner\n",
+        "synthetic-second-challenger": "PORT=47211\nSITE_PORT=47214\nADMIN_PORT=47215\nSECRET_MARKER=synthetic-second-challenger\n",
+    }
+    if data not in expected.values():
+        raise SystemExit("concurrent publisher did not leave one complete expected winner")
 PY
 }
 

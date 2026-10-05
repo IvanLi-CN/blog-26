@@ -151,6 +151,8 @@ def validate_env(data: bytes) -> None:
 
 def validated_source(path: Path) -> tuple[bytes, int]:
     data, source_mode = read_regular(path)
+    if not source_mode & stat.S_IRUSR:
+        raise EnvInvalid("source environment is not owner-readable")
     try:
         validate_env(data)
     except EnvInvalid:
@@ -252,7 +254,7 @@ def command_publish(args: argparse.Namespace) -> int:
         return 0
     try:
         source_data, source_mode = validated_source(Path(args.source))
-        target_mode = (source_mode & 0o600) | 0o400
+        target_mode = source_mode & 0o600
         data = rewrite_ports(
             source_data,
             {b"PORT": args.port, b"SITE_PORT": args.site_port, b"ADMIN_PORT": args.admin_port},

@@ -20,6 +20,7 @@
 - Review follow-up: source parsing now follows LF/CRLF boundaries and rejects mismatched port quotes; coverage also proves manual missing-target recovery, prunable-primary fallback, complete duplicate-port rewriting, concurrent winner leases, and bounded fixture cleanup.
 - Review follow-up: publication preserves a complete source's missing-final-newline EOF, derives permissions from the opened source descriptor, and verifies full dry-run registry identity, automatic damaged-target degradation, and create-once challenger preservation.
 - Review follow-up: the shell loader now consumes unterminated final records, while tests verify effective loading, non-dry-run existing-target preservation, and barrier-synchronized concurrent publishers.
+- Review follow-up: source inheritance now requires owner-read permission before preserving source mode bits, and the synchronized race asserts a complete winner marker-plus-port tuple.
 
 ## Coverage / rollout summary
 

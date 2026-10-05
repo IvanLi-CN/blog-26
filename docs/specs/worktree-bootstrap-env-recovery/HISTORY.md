@@ -29,6 +29,7 @@
 - The follow-up repair aligns source parsing with the shell loader's LF boundaries, rejects mixed quote forms, and expands the smoke evidence for manual recovery, prunable-primary fallback, full lease replacement, and concurrent publication.
 - The latest repair preserves EOF bytes when no port rows need adding, derives target permissions from the bytes actually opened, and strengthens dry-run, automatic-damage, and create-once publication evidence.
 - The final evidence pass loads unterminated final environment records correctly and proves effective target preservation plus synchronized create-once races.
+- The final permission/race hardening rejects mode-bit sources that cannot safely yield an owner-readable target and verifies the full winning publication bytes.
 
 ## References
 
