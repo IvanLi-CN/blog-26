@@ -6,7 +6,7 @@
 
 - Implementation: implemented
 - Lifecycle: active
-- Catalog note: Requirements are documented; runtime changes remain outside this phase.
+- Catalog note: Requirements and runtime recovery behavior are implemented in this phase.
 
 ## Implementation Coverage
 
@@ -22,6 +22,7 @@
 - Review follow-up: the shell loader now consumes unterminated final records, while tests verify effective loading, non-dry-run existing-target preservation, and barrier-synchronized concurrent publishers.
 - Review follow-up: source inheritance now requires owner-read permission before preserving source mode bits, and the synchronized race asserts a complete winner marker-plus-port tuple.
 - Review follow-up: all port-key records are rewritten, including invalid earlier duplicates; trailing-CR append boundaries, root-portable owner-read fallback, and deterministic publication/entrypoint failures are covered.
+- Review follow-up: root-portable publication injection proves manual strict failure and hook degradation, while a synchronized bootstrap barrier proves the shell create-once loser path.
 
 ## Coverage / rollout summary
 

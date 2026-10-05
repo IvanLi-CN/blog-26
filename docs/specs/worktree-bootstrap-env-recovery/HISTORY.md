@@ -31,6 +31,7 @@
 - The final evidence pass loads unterminated final environment records correctly and proves effective target preservation plus synchronized create-once races.
 - The final permission/race hardening rejects mode-bit sources that cannot safely yield an owner-readable target and verifies the full winning publication bytes.
 - The final parser hardening rewrites every port-key record, separates trailing-CR additions safely, and adds root-portable permission and deterministic failure evidence.
+- The final evidence repair makes helper overrides explicit for deterministic fixtures and synchronizes the shell-level publisher race, including its loser reload path.
 
 ## References
 

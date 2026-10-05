@@ -839,10 +839,18 @@ check_publish_failure_is_strict_and_non_blocking() {
     exit 1
   }
   assert_file_not_contains /tmp/worktree-bootstrap-helper-publish-fail.log 'synthetic-source-only'
-  if [[ "$(id -u)" == "0" ]]; then
-    log "skip chmod-based publication failure fixture when running as root"
-    return 0
-  fi
+
+  local failing_helper="$TMP_DIR/failing-env-helper.sh"
+  cat >"$failing_helper" <<EOF
+import subprocess
+import sys
+
+if len(sys.argv) > 1 and sys.argv[1] == "publish":
+    print("environment publication failed", file=sys.stderr)
+    raise SystemExit(1)
+raise SystemExit(subprocess.call([sys.executable, "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py", *sys.argv[1:]]))
+EOF
+  chmod +x "$failing_helper"
   (
     cd "$SNAPSHOT_REPO"
     export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
@@ -851,6 +859,46 @@ check_publish_failure_is_strict_and_non_blocking() {
 
   local marker_file
   marker_file="$(git -C "$PUBLISH_FAIL_WORKTREE" rev-parse --git-dir)/.codex-worktree-bootstrap-initialized"
+  rm -f "$PUBLISH_FAIL_WORKTREE/.env.local" "$marker_file"
+
+  (
+    cd "$PUBLISH_FAIL_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    export WORKTREE_BOOTSTRAP_ENV_HELPER="$failing_helper"
+    if bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-publish-fail-injected-manual.log 2>&1; then
+      echo "manual bootstrap unexpectedly ignored injected publication failure" >&2
+      exit 1
+    fi
+  )
+  [[ ! -e "$PUBLISH_FAIL_WORKTREE/.env.local" ]] || { echo "injected manual failure left a target file" >&2; exit 1; }
+  [[ -z "$(find "$PUBLISH_FAIL_WORKTREE" -maxdepth 1 -name '.env.local.*.tmp' -print -quit)" ]] || {
+    echo "injected manual failure left a temporary target" >&2
+    exit 1
+  }
+  assert_file_contains /tmp/worktree-bootstrap-publish-fail-injected-manual.log 'bootstrap failed at phase=env'
+  assert_file_not_contains /tmp/worktree-bootstrap-publish-fail-injected-manual.log 'synthetic-source-only'
+
+  (
+    cd "$PUBLISH_FAIL_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    export WORKTREE_BOOTSTRAP_ENV_HELPER="$failing_helper"
+    if ! ./scripts/post-checkout-worktree-bootstrap.sh \
+      0000000000000000000000000000000000000000 \
+      "$(git rev-parse HEAD)" \
+      1 >/tmp/worktree-bootstrap-publish-fail-injected-auto.log 2>&1; then
+      echo "automatic bootstrap did not degrade injected publication failure" >&2
+      exit 1
+    fi
+  )
+  [[ ! -e "$PUBLISH_FAIL_WORKTREE/.env.local" ]] || { echo "injected automatic failure left a target file" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-publish-fail-injected-auto.log 'automatic worktree bootstrap failed'
+  assert_file_not_contains /tmp/worktree-bootstrap-publish-fail-injected-auto.log 'synthetic-source-only'
+
+  if [[ "$(id -u)" == "0" ]]; then
+    log "skip chmod-based publication failure fixture when running as root"
+    return 0
+  fi
+
   rm -f "$PUBLISH_FAIL_WORKTREE/.env.local" "$marker_file"
   chmod u-w "$PUBLISH_FAIL_WORKTREE"
   (
@@ -904,20 +952,61 @@ check_concurrent_publication_is_atomic() {
     --json release-scope \
     --scope-id "$scope_id" >/dev/null
 
+  local race_barrier_dir="$TMP_DIR/bootstrap-race-barrier"
+  local race_helper="$TMP_DIR/race-env-helper.sh"
+  mkdir -p "$race_barrier_dir"
+  cat >"$race_helper" <<EOF
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+if len(sys.argv) > 1 and sys.argv[1] == "publish":
+    barrier_dir = Path("$race_barrier_dir")
+    (barrier_dir / str(os.getpid())).mkdir()
+    for _ in range(200):
+        if sum(path.is_dir() for path in barrier_dir.iterdir()) >= 2:
+            break
+        time.sleep(0.05)
+    else:
+        raise SystemExit(1)
+raise SystemExit(subprocess.call([sys.executable, "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py", *sys.argv[1:]]))
+EOF
+  chmod +x "$race_helper"
+
   (
     cd "$CONCURRENT_WORKTREE"
     export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    export WORKTREE_BOOTSTRAP_ENV_HELPER="$race_helper"
     bash ./scripts/worktree-bootstrap.sh --force --no-db --simulate-failure-step install >/tmp/worktree-bootstrap-concurrent-a.log 2>&1
   ) &
   local first_pid=$!
   (
     cd "$CONCURRENT_WORKTREE"
     export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    export WORKTREE_BOOTSTRAP_ENV_HELPER="$race_helper"
     bash ./scripts/worktree-bootstrap.sh --force --no-db --simulate-failure-step install >/tmp/worktree-bootstrap-concurrent-b.log 2>&1
   ) &
   local second_pid=$!
-  wait "$first_pid" || true
-  wait "$second_pid" || true
+  local first_status=0 second_status=0
+  wait "$first_pid" || first_status=$?
+  wait "$second_pid" || second_status=$?
+  [[ "$first_status" == "1" && "$second_status" == "1" ]] || {
+    echo "concurrent bootstrap callers did not reach the injected install failure: $first_status, $second_status" >&2
+    exit 1
+  }
+  [[ "$(find "$race_barrier_dir" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" == "2" ]] || {
+    echo "concurrent bootstrap callers did not both reach publication" >&2
+    exit 1
+  }
+  assert_file_contains /tmp/worktree-bootstrap-concurrent-a.log 'simulated failure at step=install'
+  assert_file_contains /tmp/worktree-bootstrap-concurrent-b.log 'simulated failure at step=install'
+  if ! grep -q 'appeared during recovery' /tmp/worktree-bootstrap-concurrent-a.log \
+    && ! grep -q 'appeared during recovery' /tmp/worktree-bootstrap-concurrent-b.log; then
+    echo "concurrent bootstrap callers did not exercise the create-once loser path" >&2
+    exit 1
+  fi
 
   local env_file="$CONCURRENT_WORKTREE/.env.local"
   [[ -f "$env_file" ]] || { echo "concurrent publication produced no target" >&2; exit 1; }
