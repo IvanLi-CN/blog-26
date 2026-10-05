@@ -21,6 +21,7 @@
 - Review follow-up: publication preserves a complete source's missing-final-newline EOF, derives permissions from the opened source descriptor, and verifies full dry-run registry identity, automatic damaged-target degradation, and create-once challenger preservation.
 - Review follow-up: the shell loader now consumes unterminated final records, while tests verify effective loading, non-dry-run existing-target preservation, and barrier-synchronized concurrent publishers.
 - Review follow-up: source inheritance now requires owner-read permission before preserving source mode bits, and the synchronized race asserts a complete winner marker-plus-port tuple.
+- Review follow-up: all port-key records are rewritten, including invalid earlier duplicates; trailing-CR append boundaries, root-portable owner-read fallback, and deterministic publication/entrypoint failures are covered.
 
 ## Coverage / rollout summary
 

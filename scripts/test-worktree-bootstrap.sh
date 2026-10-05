@@ -430,6 +430,41 @@ PY
   write_primary_source_env
 }
 
+check_port_rewrite_boundaries() {
+  log "check duplicate and trailing-CR port rewrite boundaries"
+  local source_path="$TMP_DIR/port-boundary-source.env"
+  local target_path="$TMP_DIR/port-boundary-target.env"
+  printf 'PORT=not-a-port\nPORT=39111\nSITE_PORT=39114\nADMIN_PORT=39115\n' >"$source_path"
+  python3 "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py" publish \
+    --source "$source_path" \
+    --target "$target_path" \
+    --port 41111 \
+    --site-port 41114 \
+    --admin-port 41115 >/tmp/worktree-bootstrap-port-duplicate.log
+  assert_file_not_contains "$target_path" 'not-a-port'
+  assert_file_contains "$target_path" '^PORT=41111$'
+  [[ "$(grep -c '^PORT=41111$' "$target_path")" == "2" ]] || {
+    echo "all duplicate PORT assignments were not rewritten" >&2
+    exit 1
+  }
+
+  printf 'PORT=39111\r' >"$source_path"
+  target_path="$TMP_DIR/port-boundary-trailing-cr.env"
+  python3 "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py" publish \
+    --source "$source_path" \
+    --target "$target_path" \
+    --port 42111 \
+    --site-port 42114 \
+    --admin-port 42115 >/tmp/worktree-bootstrap-port-trailing-cr.log
+  python3 - "$target_path" <<'PY'
+from pathlib import Path
+import sys
+
+if Path(sys.argv[1]).read_bytes() != b"PORT=42111\r\nSITE_PORT=42114\nADMIN_PORT=42115\n":
+    raise SystemExit("trailing-CR source did not get a valid separated port block")
+PY
+}
+
 check_existing_env_is_preserved() {
   log "check existing .env.local is preserved"
   (
@@ -565,7 +600,7 @@ EOF
 check_source_validation_matrix() {
   log "check source validation fallback matrix"
   local case_name case_root log_file
-  local -a source_cases=(empty missing-port invalid-derived mismatched-quotes non-lf-separator)
+  local -a source_cases=(empty missing-port invalid-derived mismatched-quotes non-lf-separator owner-unreadable)
   if [[ "$(id -u)" == "0" ]]; then
     log "skip unreadable source fixture when running as root"
   else
@@ -590,6 +625,10 @@ check_source_validation_matrix() {
       non-lf-separator)
         printf 'TOKEN=before\vPORT=39111\nSITE_PORT=39114\nADMIN_PORT=39115\nSECRET_MARKER=synthetic-source-matrix-only\n' >"$SNAPSHOT_REPO/.env.local"
         ;;
+      owner-unreadable)
+        printf 'PORT=39111\nSITE_PORT=39114\nADMIN_PORT=39115\nSECRET_MARKER=synthetic-source-matrix-only\n' >"$SNAPSHOT_REPO/.env.local"
+        chmod 0200 "$SNAPSHOT_REPO/.env.local"
+        ;;
       unreadable)
         printf 'PORT=39111\nSITE_PORT=39114\nADMIN_PORT=39115\nSECRET_MARKER=synthetic-source-matrix-only\n' >"$SNAPSHOT_REPO/.env.local"
         chmod 000 "$SNAPSHOT_REPO/.env.local"
@@ -604,7 +643,7 @@ check_source_validation_matrix() {
     assert_file_contains "$log_file" 'no usable inherited environment is available'
     assert_file_contains "$case_root/.env.local" '^DB_PATH=\./dev-data/sqlite\.db$'
     assert_file_not_contains "$case_root/.env.local" 'synthetic-source-matrix-only'
-    if [[ "$case_name" == unreadable ]]; then
+    if [[ "$case_name" == unreadable || "$case_name" == owner-unreadable ]]; then
       chmod 0644 "$SNAPSHOT_REPO/.env.local"
     fi
     git -C "$SNAPSHOT_REPO" worktree remove --force "$case_root" >/dev/null 2>&1 || true
@@ -784,6 +823,22 @@ PY
 
 check_publish_failure_is_strict_and_non_blocking() {
   log "check environment publication failure boundaries"
+  local blocked_parent="$TMP_DIR/publication-blocked-parent"
+  printf 'blocked\n' >"$blocked_parent"
+  if python3 "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py" publish \
+    --source "$SNAPSHOT_REPO/.env.local" \
+    --target "$blocked_parent/.env.local" \
+    --port 43111 \
+    --site-port 43114 \
+    --admin-port 43115 >/tmp/worktree-bootstrap-helper-publish-fail.log 2>&1; then
+    echo "helper publication unexpectedly succeeded with a blocked parent" >&2
+    exit 1
+  fi
+  [[ ! -e "$blocked_parent/.env.local" ]] || {
+    echo "helper publication failure left a target file" >&2
+    exit 1
+  }
+  assert_file_not_contains /tmp/worktree-bootstrap-helper-publish-fail.log 'synthetic-source-only'
   if [[ "$(id -u)" == "0" ]]; then
     log "skip chmod-based publication failure fixture when running as root"
     return 0
@@ -1268,6 +1323,16 @@ check_failure_is_non_blocking() {
   (
     cd "$FAIL_WORKTREE"
     export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    if bash ./scripts/worktree-bootstrap.sh --force --no-db --simulate-failure-step env >/tmp/worktree-bootstrap-fail-manual.log 2>&1; then
+      echo "manual simulated environment failure unexpectedly succeeded" >&2
+      exit 1
+    fi
+  )
+  assert_file_contains /tmp/worktree-bootstrap-fail-manual.log 'bootstrap failed at phase=env'
+
+  (
+    cd "$FAIL_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
     export WORKTREE_BOOTSTRAP_SIMULATE_FAILURE_STEP=env
     if ! ./scripts/post-checkout-worktree-bootstrap.sh \
       0000000000000000000000000000000000000000 \
@@ -1290,6 +1355,7 @@ check_primary_source_recovery
 check_manual_missing_target_recovery
 check_crlf_source_recovery
 check_source_without_final_newline_preserves_eof
+check_port_rewrite_boundaries
 check_existing_env_is_preserved
 check_legacy_env_is_accepted
 check_dry_run_is_read_only

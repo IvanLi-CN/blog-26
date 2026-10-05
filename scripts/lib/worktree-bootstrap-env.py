@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 PORT_KEYS = (b"PORT", b"SITE_PORT", b"ADMIN_PORT")
-ASSIGNMENT_RE = re.compile(rb"^(PORT|SITE_PORT|ADMIN_PORT)=(?:[0-9]+|\"[0-9]+\"|'[0-9]+')$")
+PORT_LINE_RE = re.compile(rb"^(PORT|SITE_PORT|ADMIN_PORT)=")
 
 
 class EnvUnavailable(Exception):
@@ -164,7 +164,7 @@ def rewrite_ports(data: bytes, ports: dict[bytes, int]) -> bytes:
     found: set[bytes] = set()
     output: list[bytes] = []
     for raw, line, ending in iter_records(data):
-        match = ASSIGNMENT_RE.fullmatch(line)
+        match = PORT_LINE_RE.match(line)
         if not match:
             output.append(raw)
             continue
@@ -174,7 +174,7 @@ def rewrite_ports(data: bytes, ports: dict[bytes, int]) -> bytes:
         found.add(key_bytes)
 
     missing_keys = [key for key in PORT_KEYS if key not in found]
-    if missing_keys and output and not (data.endswith(b"\n") or data.endswith(b"\r")):
+    if missing_keys and output and not data.endswith(b"\n"):
         output.append(b"\n")
     for key in missing_keys:
         output.append(key + b"=" + str(ports[key]).encode("ascii") + b"\n")
@@ -196,8 +196,11 @@ def fsync_directory(directory: Path) -> None:
 
 
 def publish_bytes(target: Path, data: bytes, mode: int) -> str:
-    if path_kind(target) != "missing":
+    target_kind = path_kind(target)
+    if target_kind in ("regular", "non-regular"):
         return "exists"
+    if target_kind != "missing":
+        raise OSError("target environment is unavailable")
     target.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary_name = tempfile.mkstemp(prefix=f".{target.name}.", suffix=".tmp", dir=target.parent)
     temporary_path = Path(temporary_name)
@@ -249,9 +252,12 @@ def command_validate(args: argparse.Namespace) -> int:
 
 def command_publish(args: argparse.Namespace) -> int:
     target = Path(args.target)
-    if path_kind(target) != "missing":
+    target_kind = path_kind(target)
+    if target_kind in ("regular", "non-regular"):
         print("exists")
         return 0
+    if target_kind != "missing":
+        return fail("target environment is unavailable")
     try:
         source_data, source_mode = validated_source(Path(args.source))
         target_mode = source_mode & 0o600
@@ -278,8 +284,15 @@ def command_default(args: argparse.Namespace) -> int:
         "LOCAL_CONTENT_BASE_PATH=./dev-data/local\n"
         "CONTENT_SOURCES=local\n"
     ).encode("ascii")
+    target = Path(args.target)
+    target_kind = path_kind(target)
+    if target_kind in ("regular", "non-regular"):
+        print("exists")
+        return 0
+    if target_kind != "missing":
+        return fail("target environment is unavailable")
     try:
-        print(publish_bytes(Path(args.target), data, 0o600))
+        print(publish_bytes(target, data, 0o600))
     except OSError:
         return fail("environment publication failed")
     return 0
