@@ -117,9 +117,14 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     ),
   ].sort();
   const versionedRules = [
-    ...playbookEditionDirectories.map((path) =>
-      rule(scopedPath(basePath, `/${path}/*`), EDGEONE_PUBLIC_CACHE_CONTROL.immutable)
-    ),
+    ...(playbookEditionDirectories.length > 0
+      ? [
+          rule(
+            scopedPath(basePath, "/_content/playbook/:tag/:editionDigest/*"),
+            EDGEONE_PUBLIC_CACHE_CONTROL.immutable
+          ),
+        ]
+      : []),
     rule(scopedPath(basePath, "/_astro/*"), EDGEONE_PUBLIC_CACHE_CONTROL.immutable),
     ...(hasContentAssetFiles
       ? [rule(scopedPath(basePath, "/_content/assets/*"), EDGEONE_PUBLIC_CACHE_CONTROL.immutable)]
@@ -127,15 +132,19 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     ...versionedPwaDirectories.map((path) =>
       rule(scopedPath(basePath, `/${path}/*`), EDGEONE_PUBLIC_CACHE_CONTROL.immutable)
     ),
-    ...playbookEditionDirectories.map((path) => ({
-      source: scopedPath(basePath, `/${path}/policies/*`),
-      headers: [
-        { key: "Cache-Control", value: EDGEONE_PUBLIC_CACHE_CONTROL.immutable },
-        { key: "Content-Type", value: "text/plain; charset=utf-8" },
-        { key: "Content-Disposition", value: "attachment" },
-        { key: "X-Content-Type-Options", value: "nosniff" },
-      ],
-    })),
+    ...(playbookEditionDirectories.length > 0
+      ? [
+          {
+            source: scopedPath(basePath, "/_content/playbook/:tag/:editionDigest/policies/*"),
+            headers: [
+              { key: "Cache-Control", value: EDGEONE_PUBLIC_CACHE_CONTROL.immutable },
+              { key: "Content-Type", value: "text/plain; charset=utf-8" },
+              { key: "Content-Disposition", value: "attachment" },
+              { key: "X-Content-Type-Options", value: "nosniff" },
+            ],
+          },
+        ]
+      : []),
   ];
   const unversionedFiles = cacheableStaticFiles
     .filter((path) => path && !path.endsWith(".html") && path !== "CNAME")

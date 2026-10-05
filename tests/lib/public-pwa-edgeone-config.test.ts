@@ -342,6 +342,16 @@ describe("EdgeOne public PWA cache config", () => {
       "window.svg",
     ];
     const editionRoot = `_content/playbook/v2.3.3/${"a".repeat(64)}`;
+    const previousEditionRoot = `_content/playbook/v2.3.2/${"b".repeat(64)}`;
+    const playbookFiles = (root: string) => [
+      `${root}/catalog.json`,
+      `${root}/search-documents.json`,
+      `${root}/public-snapshot.json`,
+      `${root}/playbook-public-manifest.json`,
+      `${root}/playbook-public.tar.gz`,
+      `${root}/policies/safe-release/SKILL.md`,
+      `${root}/policies/safe-release/scripts/verify.sh`,
+    ];
     const releasePages = [
       ...Array.from({ length: 20 }, (_, index) => `posts/release-post-${index}/index.html`),
       ...Array.from({ length: 276 }, (_, index) => `memos/release-memo-${index}/index.html`),
@@ -373,13 +383,8 @@ describe("EdgeOne public PWA cache config", () => {
       "_content/assets/post/example/hash/cover.webp",
       "_content/media-manifest.json",
       `_content/playbook/manifest.json`,
-      `${editionRoot}/catalog.json`,
-      `${editionRoot}/search-documents.json`,
-      `${editionRoot}/public-snapshot.json`,
-      `${editionRoot}/playbook-public-manifest.json`,
-      `${editionRoot}/playbook-public.tar.gz`,
-      `${editionRoot}/policies/safe-release/SKILL.md`,
-      `${editionRoot}/policies/safe-release/scripts/verify.sh`,
+      ...playbookFiles(editionRoot),
+      ...playbookFiles(previousEditionRoot),
       "pwa/1234567890abcdef/icon-any-192.png",
       ...releasePages,
       ...releaseMedia,
@@ -415,6 +420,30 @@ describe("EdgeOne public PWA cache config", () => {
       findEdgeoneCacheRule(config, "/_content/assets/post/example/hash/cover.webp")?.headers[0]
         ?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.immutable);
+    for (const root of [editionRoot, previousEditionRoot]) {
+      expect(findEdgeoneCacheRule(config, `/${root}/catalog.json`)?.headers[0]?.value).toBe(
+        EDGEONE_PUBLIC_CACHE_CONTROL.immutable
+      );
+      expect(
+        findEdgeoneCacheRule(config, `/${root}/search-documents.json`)?.headers[0]?.value
+      ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.immutable);
+      expect(
+        findEdgeoneCacheRule(config, `/${root}/policies/safe-release/scripts/verify.sh`)?.headers
+      ).toEqual([
+        { key: "Cache-Control", value: EDGEONE_PUBLIC_CACHE_CONTROL.immutable },
+        { key: "Content-Type", value: "text/plain; charset=utf-8" },
+        { key: "Content-Disposition", value: "attachment" },
+        { key: "X-Content-Type-Options", value: "nosniff" },
+      ]);
+    }
+    expect(
+      config.headers.filter(({ source }) => source === "/_content/playbook/:tag/:editionDigest/*")
+    ).toHaveLength(1);
+    expect(
+      config.headers.filter(
+        ({ source }) => source === "/_content/playbook/:tag/:editionDigest/policies/*"
+      )
+    ).toHaveLength(1);
     expect(findEdgeoneCacheRule(config, "/_content/media-manifest.json")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
     );
