@@ -49,12 +49,7 @@ const HTML_FILE_ROUTE_PATTERNS = [
 ] as const;
 
 const DYNAMIC_ROOT_PATHS = new Set(["api", "admin", "mcp"]);
-const ROOT_ASSET_ROUTE_PATTERNS = new Map([
-  ["favicon-dark.ico", "/favicon*.ico"],
-  ["favicon.ico", "/favicon*.ico"],
-  ["feed.json", "/feed.*"],
-  ["feed.xml", "/feed.*"],
-]);
+const ROOT_ASSETS_USING_DEFAULT_CACHE = new Set(["atom.xml", "feed.json"]);
 const DYNAMIC_ROUTE_PROBES = [
   "/api",
   "/api/",
@@ -224,8 +219,9 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     if (parent === ".") {
       const basename = path.slice(path.lastIndexOf("/") + 1);
       if (DYNAMIC_ROOT_PATHS.has(basename)) continue;
-      const sharedPattern = ROOT_ASSET_ROUTE_PATTERNS.get(basename);
-      rootAssetSources.add(scopedPath(basePath, sharedPattern ?? `/${basename}`));
+      // EdgeOne already revalidates un-hashed static files and purges its edge cache on deploy.
+      if (ROOT_ASSETS_USING_DEFAULT_CACHE.has(basename)) continue;
+      rootAssetSources.add(scopedPath(basePath, `/${basename}`));
       continue;
     }
 
