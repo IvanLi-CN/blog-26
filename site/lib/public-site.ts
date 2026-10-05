@@ -79,12 +79,16 @@ function normalizeSnapshotMedia(
     if (!item || preserveSourceDescriptors) return item ?? null;
     return { ...item, sources: [] };
   };
+  const normalizeItems = (items: PublicMediaItem[] | undefined) =>
+    Array.isArray(items)
+      ? items.map((item) => (preserveSourceDescriptors ? item : { ...item, sources: [] }))
+      : [];
 
   return {
     primary: normalizeItem(media.primary),
     cover: normalizeItem(media.cover),
-    content: Array.isArray(media.content) ? media.content.map(normalizeItem) : [],
-    attachments: Array.isArray(media.attachments) ? media.attachments.map(normalizeItem) : [],
+    content: normalizeItems(media.content),
+    attachments: normalizeItems(media.attachments),
   };
 }
 

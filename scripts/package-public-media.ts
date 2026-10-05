@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { appendFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { extname, join, resolve } from "node:path";
+import { extname, join, relative, resolve, sep } from "node:path";
 
 export const PUBLIC_MEDIA_FACADE_PREFIX = "/api/public/assets/";
 export const STATIC_MEDIA_PREFIX = "/_content/assets/";
@@ -12,6 +12,9 @@ export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 export const DEFAULT_DOWNLOAD_CONCURRENCY = 1;
 export const DEFAULT_DOWNLOAD_ATTEMPTS = 3;
 export const DEFAULT_RETRY_DELAY_MS = 500;
+
+const PLAYBOOK_SNAPSHOT_DATA_PATH_RE =
+  /^_content\/playbook\/[^/]+\/[a-f0-9]{64}\/public-snapshot\.json$/u;
 
 const TEXT_EXTENSIONS = new Set([
   ".css",
@@ -121,6 +124,10 @@ function trimUrlToken(value: string) {
 
 export function extractPublicMediaUrls(content: string) {
   return [...content.matchAll(PUBLIC_MEDIA_URL_RE)].map((match) => trimUrlToken(match[0]));
+}
+
+export function isPlaybookSnapshotDataPath(path: string) {
+  return PLAYBOOK_SNAPSHOT_DATA_PATH_RE.test(path);
 }
 
 function assertSafeAssetPath(pathname: string) {
@@ -491,6 +498,9 @@ export async function packagePublicMedia(
   for (const file of files) {
     const content = await readFile(file, "utf8");
     fileContents.set(file, content);
+    const artifactPath = relative(siteDistDir, file).split(sep).join("/");
+    // This hash-verified edition input is metadata, not a page media reference list.
+    if (isPlaybookSnapshotDataPath(artifactPath)) continue;
     references.push(...extractReferences(content, siteUrl, mediaOrigin, basePath));
   }
   const referenceByRaw = new Map(references.map((reference) => [reference.raw, reference]));

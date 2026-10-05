@@ -25,6 +25,63 @@ function response(body: string, headers: Record<string, string> = {}) {
 }
 
 describe("packagePublicMedia", () => {
+  test("does not fetch hash-verified media candidates from a Playbook snapshot", async () => {
+    const cwd = await fixture();
+    const snapshotPath = join(
+      cwd,
+      "site-dist",
+      "_content",
+      "playbook",
+      "v3.0.0",
+      "a".repeat(64),
+      "public-snapshot.json"
+    );
+    const snapshot = JSON.stringify({
+      posts: [
+        {
+          media: {
+            primary: {
+              sources: [{ url: "/api/public/assets/post/candidate/hash/cover.webp" }],
+            },
+          },
+        },
+      ],
+    });
+    await mkdir(join(cwd, "site-dist", "_content", "playbook", "v3.0.0", "a".repeat(64)), {
+      recursive: true,
+    });
+    await writeFile(snapshotPath, snapshot);
+    await writeFile(
+      join(cwd, "site-dist", "index.html"),
+      '<img src="/api/public/assets/post/rendered/hash/card.webp">'
+    );
+
+    const requestedUrls: string[] = [];
+    await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      fetchImpl: async (input) => {
+        requestedUrls.push(String(input));
+        return response("image");
+      },
+    });
+
+    expect(requestedUrls).toEqual([
+      "https://api.example/api/public/assets/post/rendered/hash/card.webp",
+    ]);
+    expect(await readFile(snapshotPath, "utf8")).toBe(snapshot);
+    await expect(
+      verifyPublicMediaPackage({
+        cwd,
+        mediaOrigin: "https://api.example",
+        siteBasePath: "/",
+        maxFiles: 100,
+        maxProjectBytes: 1024 * 1024,
+      })
+    ).resolves.toMatchObject({ fileCount: expect.any(Number) });
+  });
+
   test("verifies the configured final EdgeOne media artifact directory", async () => {
     const cwd = await fixture();
     await writeFile(join(cwd, "site-dist", "index.html"), "<main>site</main>");
