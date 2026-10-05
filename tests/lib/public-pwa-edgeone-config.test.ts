@@ -140,8 +140,12 @@ describe("EdgeOne public PWA cache config", () => {
     );
     expect(config.headers.some(({ source }) => source === "/blog-26/favicon*.ico")).toBe(true);
     expect(config.headers.some(({ source }) => source === "/blog-26/favicon.svg")).toBe(true);
-    expect(config.headers.some(({ source }) => source === "/blog-26/feed.*")).toBe(true);
-    expect(config.headers.some(({ source }) => source === "/blog-26/tags/*.xml")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/blog-26/feed.json")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/blog-26/feed.xml")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/blog-26/tags/*/feed.xml")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/blog-26/tags/*.xml")).toBe(false);
+    expect(config.headers.some(({ source }) => source === "/blog-26/site*")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/blog-26/site-assets/*")).toBe(false);
     expect(
       findEdgeoneCacheRule(config, "/blog-26/site-assets/ivan-blog-mark.svg")?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
@@ -162,6 +166,7 @@ describe("EdgeOne public PWA cache config", () => {
       "/blog-26/favicon-settings/",
       "/blog-26/favicon-secret/",
       "/blog-26/feed/private",
+      "/blog-26/feed.private",
       "/blog-26/postscript/",
       "/blog-26/projects-archive/",
       "/blog-26/playbook-private/",
@@ -287,7 +292,7 @@ describe("EdgeOne public PWA cache config", () => {
         ?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
     expect(config.headers.filter(({ source }) => source === "/tags/*")).toHaveLength(1);
-    expect(config.headers.filter(({ source }) => source === "/tags/*.xml")).toHaveLength(1);
+    expect(config.headers.filter(({ source }) => source === "/tags/*/feed.xml")).toHaveLength(1);
     expect(
       findEdgeoneCacheRule(config, "/tags/Hardware/Component/OperationalAmplifier/NOTICE")
         ?.headers[0]?.value
@@ -415,6 +420,7 @@ describe("EdgeOne public PWA cache config", () => {
       "site.webmanifest",
       "sitemap.xml",
       "watermark-ivanli.svg",
+      "ivan-blog-mark.svg",
       "site-assets/default-avatar.svg",
       "site-assets/file.svg",
       "site-assets/globe.svg",
@@ -473,12 +479,14 @@ describe("EdgeOne public PWA cache config", () => {
       ...rootAssets,
     ]);
 
-    expect(config.headers.length).toBeLessThanOrEqual(30);
+    expect(config.headers.length).toBe(30);
     expect(config.headers.some(({ source }) => source === "/atom.xml")).toBe(true);
     expect(config.headers.some(({ source }) => source === "/favicon*.ico")).toBe(true);
     expect(config.headers.some(({ source }) => source === "/favicon.svg")).toBe(true);
-    expect(config.headers.some(({ source }) => source === "/feed.*")).toBe(true);
-    expect(config.headers.some(({ source }) => source === "/feed.json")).toBe(false);
+    expect(config.headers.some(({ source }) => source === "/feed.json")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/feed.xml")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/tags/*/feed.xml")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/site*")).toBe(true);
     expect(config.headers.some(({ source }) => source === "/a*")).toBe(false);
     for (const path of rootAssets) {
       if (path === "mcp") {

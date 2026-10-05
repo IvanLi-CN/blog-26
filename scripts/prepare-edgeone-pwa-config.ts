@@ -171,17 +171,23 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     const exactSource = scopedPath(basePath, `/${path}`);
 
     if (path.startsWith("tags/") && path.endsWith("/feed.xml")) {
-      tagFeedSources.add(scopedPath(basePath, "/tags/*.xml"));
-      continue;
-    }
-
-    if (parent === "." && basenameOf(path).startsWith("feed.")) {
-      rootAssetSources.add(scopedPath(basePath, "/feed.*"));
+      const source = path === "tags/feed.xml" ? "/tags/feed.xml" : "/tags/*/feed.xml";
+      tagFeedSources.add(scopedPath(basePath, source));
       continue;
     }
 
     if (parent === "." && basenameOf(path).startsWith("favicon") && extname(path) === ".ico") {
       rootAssetSources.add(scopedPath(basePath, "/favicon*.ico"));
+      continue;
+    }
+
+    const basename = basenameOf(path);
+    if (
+      path.startsWith("site-assets/") ||
+      (parent === "." && ["site.webmanifest", "sitemap.xml"].includes(basename))
+    ) {
+      // These public static assets share a prefix and cache policy; HTML outputs are validated above.
+      rootAssetSources.add(scopedPath(basePath, "/site*"));
       continue;
     }
 
