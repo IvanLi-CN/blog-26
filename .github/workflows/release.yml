@@ -659,12 +659,6 @@ jobs:
         with:
           node-version: 22.23.2
 
-      - name: Download frontend EdgeOne artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: frontend-edgeone-site
-          path: ./edgeone-dist
-
       - name: Checkout the approved application renderer
         if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
         uses: actions/checkout@v7
@@ -677,6 +671,12 @@ jobs:
         if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
         with:
           bun-version: 1.4.2
+
+      - name: Download frontend EdgeOne artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: frontend-edgeone-site
+          path: ./edgeone-dist
 
       - name: Recover the validated initial bundle from the release artifact
         if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}

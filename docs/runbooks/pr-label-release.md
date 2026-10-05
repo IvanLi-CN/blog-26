@@ -90,6 +90,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
   - repository variable `EDGEONE_PROJECT_NAME`
 - The stable EdgeOne deployment reconciles the Makers production environment variable `BLOG_BACKEND_ORIGIN=https://console.ivanli.cc` through the official CLI in a runner-local temporary directory. The deployed functions proxy public fallback requests for `/api/public/*`, `/api/health`, and `/mcp` to this upstream, while the static bundle uses the console origin for API and media requests.
 - The release workflow deploys EdgeOne only from the verified `site-dist` output plus `edge-functions`, and only for `channel:stable`. Its first eligible deployment creates the named direct-upload project if it does not yet exist; it does not bind a custom domain, alter DNS, or perform a manual upload.
+- In the EdgeOne deployment job, checkout the approved renderer before downloading `frontend-edgeone-site` into the workspace. `actions/checkout` cleans untracked files and would otherwise remove the downloaded artifact before Playbook recovery and deployment.
 - `PUBLIC_API_BASE_URL=https://console.ivanli.cc` is required for the static bundle; `console.ivanli.cc` must allow the public site's CORS origin for anonymous `/api/public/*` and `/api/public/assets/*` traffic.
 - The frontend release remains a static `site-dist` build. Its build step scans generated HTML, feeds, JSON and scripts for facade references, downloads referenced processed media from `PUBLIC_STATIC_MEDIA_ORIGIN`, writes qualifying files below `/_content/assets/`, and records `_content/media-manifest.json`.
 - Media downloads allow only redirects that remain on the configured backend origin; a cross-origin redirect fails the release rather than expanding the runner's fetch scope.
@@ -152,6 +153,12 @@ When `release_head_must_match_current_main` occurs, `prepare` records both the r
 - Confirm the live imagor deployment also allows internal HTTP source fetches from the blog service, including `HTTP_LOADER_BLOCK_PRIVATE_NETWORKS=0` for the `blog:25090` internal-source model.
 - Confirm the published `site-dist` also contains `watermark-ivanli.svg`, and the public entrypoint serves `https://ivanli.cc/watermark-ivanli.svg` directly from the same-origin static surface.
 - Confirm `PUBLIC_SITE_URL` and `PUBLIC_SITE_BASE_PATH` match the custom-domain target (`https://ivanli.cc` + `/`).
+
+### EdgeOne cannot recover the initial Playbook bundle
+
+- Confirm the `frontend-edgeone-site` artifact contains `_content/playbook/manifest.json`.
+- Ensure the renderer checkout occurs before the artifact is downloaded into the workspace; checkout cleanup removes untracked files.
+- Retry only after confirming `main` still equals the release source SHA so the existing tag is verified against its original target.
 
 ### Unified Docker image missing expected assets
 
