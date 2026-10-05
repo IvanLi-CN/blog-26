@@ -65,6 +65,7 @@ describe("EdgeOne public PWA cache config", () => {
     expect(
       findEdgeoneCacheRule(config, "/blog-26/playbook/topics/delivery/")?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.html);
+    expect(config.headers.some(({ source }) => source === "/blog-26/p*")).toBe(true);
     expect(
       findEdgeoneCacheRule(
         config,
@@ -114,13 +115,12 @@ describe("EdgeOne public PWA cache config", () => {
     expect(findEdgeoneCacheRule(config, "/blog-26/favicon-dark.ico")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
     );
-    expect(
-      config.headers.filter(({ source }) => source === "/blog-26/:rootAsset.:extension")
-    ).toHaveLength(1);
+    expect(config.headers.some(({ source }) => source === "/blog-26/f*")).toBe(true);
     expect(
       findEdgeoneCacheRule(config, "/blog-26/projects/posters/blog-26.webp")?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
-    expect(config.headers.some(({ source }) => source === "/blog-26/projects/*")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/blog-26/projects/:slug/*")).toBe(true);
+    expect(config.headers.every(({ source }) => source.split("*").length <= 2)).toBe(true);
     expect(findEdgeoneCacheRule(config, "/blog-26/api")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/blog-26/api/health")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/blog-26/api/public/assets/post/a/cover.webp")).toBe(
@@ -192,6 +192,7 @@ describe("EdgeOne public PWA cache config", () => {
     const config = createEdgeoneCacheConfig("", [
       "index.html",
       "tags/index.html",
+      "tags/Hardware/Component/OperationalAmplifier/NOTICE",
       ...tagOutputFiles,
       "_astro/app-123456.js",
       "_content/assets/post/example/hash/cover.webp",
@@ -216,7 +217,12 @@ describe("EdgeOne public PWA cache config", () => {
       findEdgeoneCacheRule(config, "/tags/Hardware/Component/OperationalAmplifier/feed.xml")
         ?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
-    expect(config.headers.filter(({ source }) => source === "/tags/*")).toHaveLength(1);
+    expect(config.headers.filter(({ source }) => source === "/tags*")).toHaveLength(1);
+    expect(config.headers.filter(({ source }) => source === "/tags/*/feed.xml")).toHaveLength(1);
+    expect(
+      findEdgeoneCacheRule(config, "/tags/Hardware/Component/OperationalAmplifier/NOTICE")
+        ?.headers[0]?.value
+    ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
     expect(findEdgeoneCacheRule(config, "/api/public/assets/post/a/cover.webp")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/admin/")).toBeUndefined();
   });
@@ -314,7 +320,7 @@ describe("EdgeOne public PWA cache config", () => {
     expect(findEdgeoneCacheRule(config, "/memos/data/28.json")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
     );
-    expect(config.headers.filter(({ source }) => source === "/posts/:slug/*.*")).toHaveLength(1);
+    expect(config.headers.filter(({ source }) => source === "/posts/:slug/*")).toHaveLength(1);
     expect(config.headers.filter(({ source }) => source === "/memos/*")).toHaveLength(1);
     expect(config.headers.some(({ source }) => source.includes("post-119"))).toBe(false);
     expect(config.headers.some(({ source }) => source.includes("memo-275"))).toBe(false);
@@ -393,9 +399,9 @@ describe("EdgeOne public PWA cache config", () => {
     ]);
 
     expect(config.headers.length).toBeLessThanOrEqual(30);
-    expect(config.headers.filter(({ source }) => source === "/:rootAsset.:extension")).toHaveLength(
-      1
-    );
+    expect(config.headers.some(({ source }) => source === "/at*")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/f*")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/a*")).toBe(false);
     for (const path of rootAssets) {
       if (path === "mcp") {
         expect(findEdgeoneCacheRule(config, `/${path}`)).toBeUndefined();
@@ -534,7 +540,7 @@ describe("EdgeOne public PWA cache config", () => {
       findEdgeoneCacheRule(config, "/projects/project-without-extension/NOTICE")?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
     expect(config.headers.some(({ source }) => source === "/memos/*")).toBe(true);
-    expect(config.headers.filter(({ source }) => source === "/projects/*")).toHaveLength(1);
+    expect(config.headers.filter(({ source }) => source === "/projects/:slug/*")).toHaveLength(1);
     expect(config.headers.some(({ source }) => source.startsWith("/projects/:projectDir"))).toBe(
       false
     );

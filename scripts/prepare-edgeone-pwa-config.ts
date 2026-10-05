@@ -20,14 +20,12 @@ const HTML_ROUTE_PATTERNS = [
   "/",
   "/about*",
   "/search*",
-  "/tags/",
-  "/tags/*/",
-  "/projects/",
+  "/tags*",
+  "/p*",
+  "/posts/:slug/",
   "/projects/:slug/",
-  "/posts*",
   "/memos/",
   "/memos/:slug/",
-  "/playbook*",
 ] as const;
 
 const DYNAMIC_ROOT_PATHS = new Set(["api", "admin", "mcp"]);
@@ -109,6 +107,15 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
   const htmlRules = HTML_ROUTE_PATTERNS.map((path) =>
     rule(scopedPath(basePath, path), EDGEONE_PUBLIC_CACHE_CONTROL.html)
   );
+  const pPrefixHtmlSource = scopedPath(basePath, "/p*");
+  const detailHtmlSources = new Set(
+    ["/posts/:slug/", "/projects/:slug/"].map((path) => scopedPath(basePath, path))
+  );
+  const pPrefixHtmlRules = htmlRules.filter(({ source }) => source === pPrefixHtmlSource);
+  const detailHtmlRules = htmlRules.filter(({ source }) => detailHtmlSources.has(source));
+  const primaryHtmlRules = htmlRules.filter(
+    ({ source }) => source !== pPrefixHtmlSource && !detailHtmlSources.has(source)
+  );
   const playbookEditionDirectories = [
     ...new Set(
       cacheableStaticFiles
@@ -144,14 +151,18 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
   const exactAssetSources = new Set<string>();
   const assetRootSources = new Set<string>();
   const postRouteAssetSources = new Set<string>();
+  const projectRouteAssetSources = new Set<string>();
+  const pwaAssetRootSources = new Set<string>();
   const rootAssetSources = new Set<string>();
+  const tagFeedSources = new Set<string>();
 
   for (const path of unversionedFiles) {
     const parent = dirname(path).replaceAll("\\", "/");
     const exactSource = scopedPath(basePath, `/${path}`);
 
     if (path.startsWith("tags/") && path.endsWith("/feed.xml")) {
-      assetRootSources.add(scopedPath(basePath, "/tags/*"));
+      const source = path === "tags/feed.xml" ? "/tags/feed.xml" : "/tags/*/feed.xml";
+      tagFeedSources.add(scopedPath(basePath, source));
       continue;
     }
 
@@ -161,7 +172,21 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     );
 
     if (root === "posts" && slug && path.split("/").length >= 3 && extname(path)) {
-      postRouteAssetSources.add(scopedPath(basePath, "/posts/:slug/*.*"));
+      postRouteAssetSources.add(scopedPath(basePath, "/posts/:slug/*"));
+      continue;
+    }
+
+    if (root === "projects") {
+      if (extname(path)) {
+        projectRouteAssetSources.add(scopedPath(basePath, "/projects/:slug/*"));
+      } else {
+        exactAssetSources.add(exactSource);
+      }
+      continue;
+    }
+
+    if (root === "tags") {
+      exactAssetSources.add(exactSource);
       continue;
     }
 
@@ -172,20 +197,13 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
 
     if (root === "pwa") {
       const source = parent === "pwa" ? exactSource : scopedPath(basePath, `/${parent}/*`);
-      assetRootSources.add(source);
+      pwaAssetRootSources.add(source);
       continue;
     }
 
     if (parent === ".") {
       const basename = path.slice(path.lastIndexOf("/") + 1);
       if (DYNAMIC_ROOT_PATHS.has(basename)) continue;
-
-      if (basename.includes(".")) {
-        // Keep root assets in one rule without matching dynamic subpaths.
-        rootAssetSources.add(scopedPath(basePath, "/:rootAsset.:extension"));
-        if (overlapsHtmlRoute) exactAssetSources.add(exactSource);
-        continue;
-      }
 
       const prefix = safeRootAssetPrefix(basename);
       if (prefix) {
@@ -212,10 +230,21 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
       ...[...rootAssetSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
-      ...htmlRules,
+      ...primaryHtmlRules,
+      ...pPrefixHtmlRules,
+      ...[...tagFeedSources]
+        .sort()
+        .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
+      ...[...projectRouteAssetSources]
+        .sort()
+        .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
       ...[...postRouteAssetSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
+      ...[...pwaAssetRootSources]
+        .sort()
+        .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
+      ...detailHtmlRules,
       ...[...exactAssetSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
@@ -231,6 +260,9 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
 
   const normalizedBase = normalizeBasePath(basePath);
   for (const headerRule of config.headers) {
+    if (headerRule.source.split("*").length > 2) {
+      throw new Error(`EdgeOne source may contain at most one wildcard: ${headerRule.source}`);
+    }
     if (!headerRule.source.startsWith("/")) {
       throw new Error(`EdgeOne source must start with /: ${headerRule.source}`);
     }
