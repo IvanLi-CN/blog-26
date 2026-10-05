@@ -9,7 +9,8 @@ tags:
   - lefthook
   - local-dev
 status: "active"
-related_specs: []
+related_specs:
+  - "docs/specs/worktree-bootstrap-env-recovery/SPEC.md"
 symptoms:
   - "New linked worktrees require maintainers to remember a manual setup checklist before local development works."
   - "Worktrees collide on the default dev ports and silently reuse stale local runtime assumptions."
@@ -44,7 +45,9 @@ The previous flow concentrated all setup logic in `scripts/setup.sh`. That scrip
 8. Preserve an explicit rerun path through `bun run worktree:bootstrap -- --force`.
 9. Keep `--dry-run` read-only: no `.env.local` creation and no port-registry mutations.
 10. Treat generated dev fixtures as repo-managed data only: if `LOCAL_CONTENT_BASE_PATH` points outside `./dev-data`, bootstrap skips fixture generation and syncs the existing real content root instead.
-11. Add a linked-worktree smoke test that exercises first-run bootstrap, existing `.env.local` preservation, legacy env compatibility, non-rerun on later branch switches, dry-run non-mutation, real-root fixture guardrails, and degraded hook failure behavior.
+11. When a linked target lacks `.env.local`, use the first non-bare primary worktree as the only source candidate; copy only that file, preserve all non-port settings, and fall back to generated defaults when the source is unavailable.
+12. Publish recovered and generated environment files atomically with owner-only permissions; concurrent publishers use create-once semantics and never overwrite a target that appeared first.
+13. Add a linked-worktree smoke test that exercises first-run bootstrap, primary-source recovery and fallback, existing `.env.local` preservation, legacy env compatibility, non-rerun on later branch switches, dry-run non-mutation, atomic publication, real-root fixture guardrails, and degraded hook failure behavior.
 
 # Guardrails / Reuse notes
 

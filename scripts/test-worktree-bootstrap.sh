@@ -7,12 +7,26 @@ SNAPSHOT_REPO="$TMP_DIR/repo"
 REGISTRY_DIR="$TMP_DIR/port-registry"
 AUTO_WORKTREE="$TMP_DIR/auto"
 MANUAL_WORKTREE="$TMP_DIR/manual"
+MANUAL_RECOVERY_WORKTREE="$TMP_DIR/manual-recovery"
 FAIL_WORKTREE="$TMP_DIR/fail"
 RECOVERY_WORKTREE="$TMP_DIR/recovery"
 LEGACY_WORKTREE="$TMP_DIR/legacy"
 DRY_RUN_WORKTREE="$TMP_DIR/dry-run"
 EXPORT_WORKTREE="$TMP_DIR/export"
 STALE_SCOPE_WORKTREE="$TMP_DIR/stale-scope"
+SOURCE_WORKTREE="$TMP_DIR/source"
+SECONDARY_WORKTREE="$TMP_DIR/secondary"
+PRUNABLE_WORKTREE="$TMP_DIR/prunable"
+FALLBACK_WORKTREE="$TMP_DIR/fallback"
+INVALID_SOURCE_WORKTREE="$TMP_DIR/invalid-source"
+DAMAGED_WORKTREE="$TMP_DIR/damaged"
+CONCURRENT_WORKTREE="$TMP_DIR/concurrent"
+PUBLISH_FAIL_WORKTREE="$TMP_DIR/publish-fail"
+CRLF_WORKTREE="$TMP_DIR/crlf"
+PRUNABLE_PRIMARY_REPO="$TMP_DIR/prunable-primary"
+PRUNABLE_PRIMARY_META="$TMP_DIR/prunable-primary-meta"
+PRUNABLE_PRIMARY_TARGET="$TMP_DIR/prunable-primary-target"
+PRUNABLE_PRIMARY_DECOY="$TMP_DIR/prunable-primary-decoy"
 ROOT_ENV_BACKUP="$TMP_DIR/root-env.local.bak"
 PORT_HOLDER_PID=""
 PORT_HOLDER_PID_2=""
@@ -24,14 +38,6 @@ cleanup() {
   if [[ -n "$PORT_HOLDER_PID_2" ]]; then
     kill "$PORT_HOLDER_PID_2" >/dev/null 2>&1 || true
   fi
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$AUTO_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$MANUAL_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$FAIL_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$RECOVERY_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$LEGACY_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$DRY_RUN_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$EXPORT_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$STALE_SCOPE_WORKTREE" >/dev/null 2>&1 || true
   rm -rf "$TMP_DIR"
 }
 trap cleanup EXIT
@@ -134,6 +140,46 @@ assert_file_not_contains() {
   fi
 }
 
+assert_env_ports_match_scope_leases() {
+  local env_file="$1"
+  local scope_id="$2"
+  local inspect_json
+  inspect_json="$(python3 "$SNAPSHOT_REPO/scripts/port-registry.py" --registry-dir "$REGISTRY_DIR" --json inspect --scope-id "$scope_id")"
+  python3 - "$env_file" "$inspect_json" <<'PY'
+from pathlib import Path
+import json
+import sys
+
+env_path = Path(sys.argv[1])
+payload = json.loads(sys.argv[2])
+rows = payload.get("rows", [])
+expected = {row["service"]: row["port"] for row in rows}
+if set(expected) != {"web", "site", "admin"}:
+    raise SystemExit(f"expected one complete web/site/admin lease block, got {rows!r}")
+
+assignments = {"PORT": [], "SITE_PORT": [], "ADMIN_PORT": []}
+for raw in env_path.read_bytes().split(b"\n"):
+    if b"=" not in raw:
+        continue
+    key, value = raw.split(b"=", 1)
+    if key.decode("ascii", "ignore") not in assignments:
+        continue
+    value = value.rstrip(b"\r")
+    if len(value) >= 2 and value[:1] in (b"'", b'"') and value[-1:] == value[:1]:
+        value = value[1:-1]
+    assignments[key.decode("ascii")].append(value.decode("ascii"))
+
+expected_values = {
+    "PORT": expected["web"],
+    "SITE_PORT": expected["site"],
+    "ADMIN_PORT": expected["admin"],
+}
+for key, expected_value in expected_values.items():
+    if not assignments[key] or any(value != expected_value for value in assignments[key]):
+        raise SystemExit(f"{key} assignments do not all match the target lease: {assignments[key]!r} != {expected_value}")
+PY
+}
+
 copy_root_contents() {
   local destination="$1"
   while IFS= read -r relative_path; do
@@ -155,6 +201,7 @@ create_snapshot_repo() {
     git config user.email "codex@example.com"
     git add .
     git commit -m "test snapshot" >/dev/null
+    git branch -M bootstrap-primary
   )
 }
 
@@ -201,6 +248,223 @@ check_auto_bootstrap() {
   assert_file_not_contains "$env_file" '^ADMIN_PORT=25094$'
 }
 
+write_primary_source_env() {
+  cat >"$SNAPSHOT_REPO/.env.local" <<'EOF'
+PORT="39111"
+SITE_PORT='39114'
+ADMIN_PORT=39115
+PORT='39112'
+DB_PATH=./dev-data/shared.sqlite.db
+LOCAL_CONTENT_BASE_PATH=/tmp/shared-worktree-content
+CONTENT_SOURCES=local
+SECRET_MARKER=synthetic-source-only
+MALFORMED-SECRET=synthetic-malformed-only
+TAIL_SETTING=synthetic-tail
+EOF
+  chmod 0644 "$SNAPSHOT_REPO/.env.local"
+}
+
+check_primary_source_recovery() {
+  log "check missing target inherits only primary environment settings"
+  write_primary_source_env
+
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$SECONDARY_WORKTREE" >/tmp/worktree-bootstrap-secondary.log 2>&1
+  )
+  cat >"$SECONDARY_WORKTREE/.env.local" <<'EOF'
+PORT=39211
+SITE_PORT=39214
+ADMIN_PORT=39215
+DB_PATH=./dev-data/secondary.sqlite.db
+LOCAL_CONTENT_BASE_PATH=/tmp/secondary-worktree-content
+CONTENT_SOURCES=local
+  SECRET_MARKER=synthetic-secondary-only
+EOF
+
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$PRUNABLE_WORKTREE" >/tmp/worktree-bootstrap-prunable.log 2>&1
+  )
+  rm -rf "$PRUNABLE_WORKTREE"
+
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$SOURCE_WORKTREE" >/tmp/worktree-bootstrap-source.log 2>&1
+  )
+
+  local source_env="$SNAPSHOT_REPO/.env.local"
+  local target_env="$SOURCE_WORKTREE/.env.local"
+  local source_nonports="$TMP_DIR/source-nonports"
+  local target_nonports="$TMP_DIR/target-nonports"
+  grep -vE '^(PORT|SITE_PORT|ADMIN_PORT)=' "$source_env" >"$source_nonports"
+  grep -vE '^(PORT|SITE_PORT|ADMIN_PORT)=' "$target_env" >"$target_nonports"
+
+  [[ -f "$target_env" ]] || { echo "recovered target .env.local is missing" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-source.log 'recovered missing \.env\.local with leased worktree ports'
+  assert_file_contains "$target_env" '^SECRET_MARKER=synthetic-source-only$'
+  assert_file_contains "$target_env" '^MALFORMED-SECRET=synthetic-malformed-only$'
+  assert_file_not_contains "$target_env" 'synthetic-secondary-only'
+  assert_file_not_contains /tmp/worktree-bootstrap-source.log 'synthetic-source-only'
+  assert_file_not_contains /tmp/worktree-bootstrap-source.log 'synthetic-malformed-only'
+  cmp -s "$source_nonports" "$target_nonports" || {
+    echo "recovered target changed a non-port source setting" >&2
+    exit 1
+  }
+  local source_port target_port source_mode target_mode
+  source_port="$(grep '^PORT=' "$source_env" | head -n1 | cut -d= -f2)"
+  target_port="$(grep '^PORT=' "$target_env" | head -n1 | cut -d= -f2)"
+  [[ "$target_port" != "$source_port" ]] || { echo "recovered target reused primary PORT" >&2; exit 1; }
+  source_mode="$(python3 -c 'import os, stat, sys; print(format(stat.S_IMODE(os.stat(sys.argv[1]).st_mode), "o"))' "$source_env")"
+  target_mode="$(python3 -c 'import os, stat, sys; print(format(stat.S_IMODE(os.stat(sys.argv[1]).st_mode), "o"))' "$target_env")"
+  [[ "$source_mode" == "644" ]] || { echo "source fixture mode changed unexpectedly" >&2; exit 1; }
+  [[ "$target_mode" == "600" ]] || { echo "recovered target mode is not owner-only: $target_mode" >&2; exit 1; }
+  assert_env_ports_match_scope_leases "$target_env" "$(worktree_scope_id "$SOURCE_WORKTREE")"
+}
+
+check_manual_missing_target_recovery() {
+  log "check manual bootstrap recovers a missing target"
+  write_primary_source_env
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$MANUAL_RECOVERY_WORKTREE" >/tmp/worktree-bootstrap-manual-recovery-add.log 2>&1
+  )
+
+  local env_file="$MANUAL_RECOVERY_WORKTREE/.env.local"
+  local marker_file
+  marker_file="$(git -C "$MANUAL_RECOVERY_WORKTREE" rev-parse --git-dir)/.codex-worktree-bootstrap-initialized"
+  rm -f "$env_file" "$marker_file"
+  (
+    cd "$MANUAL_RECOVERY_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-manual-recovery.log 2>&1
+  )
+
+  [[ -f "$env_file" ]] || { echo "manual recovery target .env.local is missing" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-manual-recovery.log 'worktree bootstrap complete'
+  assert_file_contains "$env_file" '^SECRET_MARKER=synthetic-source-only$'
+  assert_file_contains "$env_file" '^DB_PATH=\./dev-data/shared\.sqlite\.db$'
+  assert_file_contains "$env_file" '^LOCAL_CONTENT_BASE_PATH=/tmp/shared-worktree-content$'
+  assert_file_not_contains /tmp/worktree-bootstrap-manual-recovery.log 'synthetic-source-only'
+  assert_env_ports_match_scope_leases "$env_file" "$(worktree_scope_id "$MANUAL_RECOVERY_WORKTREE")"
+}
+
+check_crlf_source_recovery() {
+  log "check CRLF source recovery remains loadable"
+  write_primary_source_env
+  python3 - "$SNAPSHOT_REPO/.env.local" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+PY
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$CRLF_WORKTREE" >/tmp/worktree-bootstrap-crlf.log 2>&1
+  )
+
+  local env_file="$CRLF_WORKTREE/.env.local"
+  [[ -f "$env_file" ]] || { echo "CRLF recovery target .env.local is missing" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-crlf.log 'recovered missing \.env\.local with leased worktree ports'
+  assert_file_not_contains /tmp/worktree-bootstrap-crlf.log 'synthetic-source-only'
+  python3 - "$env_file" <<'PY'
+from pathlib import Path
+import sys
+
+values = {}
+for line in Path(sys.argv[1]).read_bytes().splitlines():
+    if b"=" in line:
+        key, value = line.split(b"=", 1)
+        values[key] = value
+
+if any(not values.get(key, b"").isdigit() for key in (b"PORT", b"SITE_PORT", b"ADMIN_PORT")):
+    raise SystemExit("CRLF recovery did not produce numeric ports")
+if values.get(b"DB_PATH") != b"./dev-data/shared.sqlite.db":
+    raise SystemExit("CRLF recovery changed DB_PATH")
+if b"SECRET_MARKER=synthetic-source-only" not in Path(sys.argv[1]).read_bytes():
+    raise SystemExit("CRLF recovery lost source settings")
+PY
+  write_primary_source_env
+}
+
+check_source_without_final_newline_preserves_eof() {
+  log "check source without final newline preserves EOF bytes"
+  write_primary_source_env
+  python3 - "$SNAPSHOT_REPO/.env.local" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+path.write_bytes(path.read_bytes().rstrip(b"\r\n"))
+PY
+  local target_dir="$TMP_DIR/no-final-newline-target"
+  local target_env="$target_dir/.env.local"
+  mkdir -p "$target_dir"
+  python3 "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py" publish \
+    --source "$SNAPSHOT_REPO/.env.local" \
+    --target "$target_env" \
+    --port 40111 \
+    --site-port 40114 \
+    --admin-port 40115 >/tmp/worktree-bootstrap-no-final-newline.log
+  python3 - "$target_env" <<'PY'
+from pathlib import Path
+import sys
+
+data = Path(sys.argv[1]).read_bytes()
+if data.endswith((b"\n", b"\r")):
+    raise SystemExit("recovery added an EOF newline to a complete source")
+if b"DB_PATH=./dev-data/shared.sqlite.db" not in data:
+    raise SystemExit("recovery lost non-port source settings")
+if not data.endswith(b"TAIL_SETTING=synthetic-tail"):
+    raise SystemExit("recovery lost the final unterminated source setting")
+PY
+  local loaded_tail
+  loaded_tail="$(bash -c 'source "$1"; unset TAIL_SETTING; wtb_load_env_file "$2"; printf "%s" "${TAIL_SETTING:-}"' _ "$ROOT_DIR/scripts/lib/worktree-bootstrap-common.sh" "$target_env")"
+  [[ "$loaded_tail" == "synthetic-tail" ]] || { echo "loader skipped the final unterminated source setting" >&2; exit 1; }
+  write_primary_source_env
+}
+
+check_port_rewrite_boundaries() {
+  log "check duplicate and trailing-CR port rewrite boundaries"
+  local source_path="$TMP_DIR/port-boundary-source.env"
+  local target_path="$TMP_DIR/port-boundary-target.env"
+  printf 'PORT=not-a-port\nPORT=39111\nSITE_PORT=39114\nADMIN_PORT=39115\n' >"$source_path"
+  python3 "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py" publish \
+    --source "$source_path" \
+    --target "$target_path" \
+    --port 41111 \
+    --site-port 41114 \
+    --admin-port 41115 >/tmp/worktree-bootstrap-port-duplicate.log
+  assert_file_not_contains "$target_path" 'not-a-port'
+  assert_file_contains "$target_path" '^PORT=41111$'
+  [[ "$(grep -c '^PORT=41111$' "$target_path")" == "2" ]] || {
+    echo "all duplicate PORT assignments were not rewritten" >&2
+    exit 1
+  }
+
+  printf 'PORT=39111\r' >"$source_path"
+  target_path="$TMP_DIR/port-boundary-trailing-cr.env"
+  python3 "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py" publish \
+    --source "$source_path" \
+    --target "$target_path" \
+    --port 42111 \
+    --site-port 42114 \
+    --admin-port 42115 >/tmp/worktree-bootstrap-port-trailing-cr.log
+  python3 - "$target_path" <<'PY'
+from pathlib import Path
+import sys
+
+if Path(sys.argv[1]).read_bytes() != b"PORT=42111\r\nSITE_PORT=42114\nADMIN_PORT=42115\n":
+    raise SystemExit("trailing-CR source did not get a valid separated port block")
+PY
+}
+
 check_existing_env_is_preserved() {
   log "check existing .env.local is preserved"
   (
@@ -209,18 +473,22 @@ check_existing_env_is_preserved() {
     git worktree add --detach "$MANUAL_WORKTREE" >/dev/null 2>&1
   )
 
-  cat >"$MANUAL_WORKTREE/.env.local" <<'EOF'
+cat >"$MANUAL_WORKTREE/.env.local" <<'EOF'
+# target-owned formatting must remain untouched
 PORT=32111
 SITE_PORT=32114
 ADMIN_PORT=32115
 DB_PATH=./dev-data/custom.sqlite.db
 LOCAL_CONTENT_BASE_PATH=./dev-data/custom-local
 CONTENT_SOURCES=local
+SECRET_MARKER=synthetic-target-only
 EOF
+cp "$MANUAL_WORKTREE/.env.local" "$TMP_DIR/existing-target.before"
 
   (
     cd "$MANUAL_WORKTREE"
     export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-manual-real.log 2>&1
     bash ./scripts/worktree-bootstrap.sh --force --no-db --dry-run >/tmp/worktree-bootstrap-manual.log 2>&1
     git checkout -B bootstrap-rerun-check >/tmp/worktree-bootstrap-rerun.log 2>&1
   )
@@ -228,7 +496,13 @@ EOF
   assert_file_contains "$MANUAL_WORKTREE/.env.local" '^PORT=32111$'
   assert_file_contains "$MANUAL_WORKTREE/.env.local" '^SITE_PORT=32114$'
   assert_file_contains "$MANUAL_WORKTREE/.env.local" '^ADMIN_PORT=32115$'
+  cmp -s "$TMP_DIR/existing-target.before" "$MANUAL_WORKTREE/.env.local" || {
+    echo "existing target .env.local was rewritten" >&2
+    exit 1
+  }
+  assert_file_contains /tmp/worktree-bootstrap-manual-real.log 'worktree bootstrap complete'
   assert_file_contains /tmp/worktree-bootstrap-manual.log 'dry-run: would validate port leases for existing \.env\.local'
+  assert_file_not_contains /tmp/worktree-bootstrap-manual.log 'synthetic-target-only'
   assert_file_contains /tmp/worktree-bootstrap-rerun.log 'skip auto bootstrap for this checkout'
 }
 
@@ -257,7 +531,7 @@ EOF
   derived_site_port="$(cd "$LEGACY_WORKTREE" && bun ./scripts/resolve-worktree-port.ts site)"
   derived_admin_port="$(cd "$LEGACY_WORKTREE" && bun ./scripts/resolve-worktree-port.ts admin)"
 
-  assert_file_contains /tmp/worktree-bootstrap-legacy.log 'worktree ports loaded \(PORT=33111, SITE_PORT=33114, ADMIN_PORT=33115\)'
+  assert_file_contains /tmp/worktree-bootstrap-legacy.log 'worktree ports loaded$'
   assert_file_contains "$LEGACY_WORKTREE/.env.local" '^PORT=33111$'
   assert_file_not_contains "$LEGACY_WORKTREE/.env.local" '^SITE_PORT='
   assert_file_not_contains "$LEGACY_WORKTREE/.env.local" '^ADMIN_PORT='
@@ -287,6 +561,566 @@ EOF
   assert_file_contains /tmp/worktree-bootstrap-legacy-gateway.log 'publicPort: 33111'
 }
 
+check_primary_source_fallback() {
+  log "check missing primary source falls back to generated default"
+  rm -f "$SNAPSHOT_REPO/.env.local"
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$FALLBACK_WORKTREE" >/tmp/worktree-bootstrap-fallback.log 2>&1
+  )
+
+  local env_file="$FALLBACK_WORKTREE/.env.local"
+  [[ -f "$env_file" ]] || { echo "fallback target .env.local is missing" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-fallback.log 'no usable inherited environment is available'
+  assert_file_contains "$env_file" '^DB_PATH=\./dev-data/sqlite\.db$'
+  assert_file_not_contains "$env_file" 'synthetic-source-only'
+}
+
+check_invalid_primary_source_fallback() {
+  log "check invalid primary source falls back without copying content"
+  cat >"$SNAPSHOT_REPO/.env.local" <<'EOF'
+PORT=not-a-port
+SECRET_MARKER=synthetic-invalid-only
+EOF
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$INVALID_SOURCE_WORKTREE" >/tmp/worktree-bootstrap-invalid-source.log 2>&1
+  )
+
+  local env_file="$INVALID_SOURCE_WORKTREE/.env.local"
+  [[ -f "$env_file" ]] || { echo "invalid-source fallback .env.local is missing" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-invalid-source.log 'no usable inherited environment is available'
+  assert_file_contains "$env_file" '^DB_PATH=\./dev-data/sqlite\.db$'
+  assert_file_not_contains "$env_file" 'synthetic-invalid-only'
+  write_primary_source_env
+}
+
+check_source_validation_matrix() {
+  log "check source validation fallback matrix"
+  local case_name case_root log_file
+  local -a source_cases=(empty missing-port invalid-derived mismatched-quotes non-lf-separator owner-unreadable)
+  if [[ "$(id -u)" == "0" ]]; then
+    log "skip unreadable source fixture when running as root"
+  else
+    source_cases+=(unreadable)
+  fi
+  for case_name in "${source_cases[@]}"; do
+    case_root="$TMP_DIR/source-$case_name"
+    log_file="/tmp/worktree-bootstrap-source-$case_name.log"
+    case "$case_name" in
+      empty)
+        : >"$SNAPSHOT_REPO/.env.local"
+        ;;
+      missing-port)
+        printf 'DB_PATH=./dev-data/source-matrix.sqlite.db\nSECRET_MARKER=synthetic-source-matrix-only\n' >"$SNAPSHOT_REPO/.env.local"
+        ;;
+      invalid-derived)
+        printf 'PORT=39111\nSITE_PORT=not-a-port\nSECRET_MARKER=synthetic-source-matrix-only\n' >"$SNAPSHOT_REPO/.env.local"
+        ;;
+      mismatched-quotes)
+        printf "PORT=39111\nPORT=\"39112'\nSITE_PORT=39114\nADMIN_PORT=39115\nSECRET_MARKER=synthetic-source-matrix-only\n" >"$SNAPSHOT_REPO/.env.local"
+        ;;
+      non-lf-separator)
+        printf 'TOKEN=before\vPORT=39111\nSITE_PORT=39114\nADMIN_PORT=39115\nSECRET_MARKER=synthetic-source-matrix-only\n' >"$SNAPSHOT_REPO/.env.local"
+        ;;
+      owner-unreadable)
+        printf 'PORT=39111\nSITE_PORT=39114\nADMIN_PORT=39115\nSECRET_MARKER=synthetic-source-matrix-only\n' >"$SNAPSHOT_REPO/.env.local"
+        chmod 0200 "$SNAPSHOT_REPO/.env.local"
+        ;;
+      unreadable)
+        printf 'PORT=39111\nSITE_PORT=39114\nADMIN_PORT=39115\nSECRET_MARKER=synthetic-source-matrix-only\n' >"$SNAPSHOT_REPO/.env.local"
+        chmod 000 "$SNAPSHOT_REPO/.env.local"
+        ;;
+    esac
+    (
+      cd "$SNAPSHOT_REPO"
+      export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+      git worktree add --detach "$case_root" >"$log_file" 2>&1
+    )
+    [[ -f "$case_root/.env.local" ]] || { echo "source $case_name fallback target is missing" >&2; exit 1; }
+    assert_file_contains "$log_file" 'no usable inherited environment is available'
+    assert_file_contains "$case_root/.env.local" '^DB_PATH=\./dev-data/sqlite\.db$'
+    assert_file_not_contains "$case_root/.env.local" 'synthetic-source-matrix-only'
+    if [[ "$case_name" == unreadable || "$case_name" == owner-unreadable ]]; then
+      chmod 0644 "$SNAPSHOT_REPO/.env.local"
+    fi
+    git -C "$SNAPSHOT_REPO" worktree remove --force "$case_root" >/dev/null 2>&1 || true
+  done
+  write_primary_source_env
+}
+
+check_prunable_primary_falls_back() {
+  log "check prunable primary falls back without selecting a decoy"
+  mkdir -p "$PRUNABLE_PRIMARY_META"
+  git init --separate-git-dir "$PRUNABLE_PRIMARY_META" "$PRUNABLE_PRIMARY_REPO" >/dev/null
+  copy_root_contents "$PRUNABLE_PRIMARY_REPO"
+  (
+    cd "$PRUNABLE_PRIMARY_REPO"
+    git config user.name "Codex"
+    git config user.email "codex@example.com"
+    git add .
+    git commit -m "test prunable primary snapshot" >/dev/null
+    git branch -M prunable-primary
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$PRUNABLE_PRIMARY_TARGET" >/tmp/worktree-bootstrap-prunable-primary-target.log 2>&1
+    git worktree add --detach "$PRUNABLE_PRIMARY_DECOY" >/tmp/worktree-bootstrap-prunable-primary-decoy.log 2>&1
+  )
+  cat >"$PRUNABLE_PRIMARY_DECOY/.env.local" <<'EOF'
+PORT=39911
+SITE_PORT=39914
+ADMIN_PORT=39915
+SECRET_MARKER=synthetic-decoy-only
+EOF
+
+  rm -f "$PRUNABLE_PRIMARY_TARGET/.env.local" "$(git -C "$PRUNABLE_PRIMARY_TARGET" rev-parse --git-dir)/.codex-worktree-bootstrap-initialized"
+  rm -rf "$PRUNABLE_PRIMARY_REPO"
+  (
+    cd "$PRUNABLE_PRIMARY_TARGET"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-prunable-primary.log 2>&1
+  )
+
+  local env_file="$PRUNABLE_PRIMARY_TARGET/.env.local"
+  [[ -f "$env_file" ]] || { echo "prunable-primary fallback target .env.local is missing" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-prunable-primary.log 'no usable inherited environment is available'
+  assert_file_contains "$env_file" '^DB_PATH=\./dev-data/sqlite\.db$'
+  assert_file_not_contains "$env_file" 'synthetic-decoy-only'
+}
+
+check_damaged_target_is_preserved() {
+  log "check damaged target is never overwritten"
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$DAMAGED_WORKTREE" >/tmp/worktree-bootstrap-damaged-add.log 2>&1
+  )
+
+  local marker_file
+  marker_file="$(git -C "$DAMAGED_WORKTREE" rev-parse --git-dir)/.codex-worktree-bootstrap-initialized"
+  rm -f "$DAMAGED_WORKTREE/.env.local" "$marker_file"
+  printf 'PORT=not-a-port\nSECRET_MARKER=synthetic-damaged-only\n' >"$DAMAGED_WORKTREE/.env.local"
+  cp "$DAMAGED_WORKTREE/.env.local" "$TMP_DIR/damaged-target.before"
+  (
+    cd "$DAMAGED_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    if bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-damaged-file.log 2>&1; then
+      echo "bootstrap unexpectedly accepted damaged target" >&2
+      exit 1
+    fi
+  )
+  cmp -s "$TMP_DIR/damaged-target.before" "$DAMAGED_WORKTREE/.env.local" || {
+    echo "damaged target file was overwritten" >&2
+    exit 1
+  }
+  assert_file_contains /tmp/worktree-bootstrap-damaged-file.log 'bootstrap failed at phase=env'
+  assert_file_not_contains /tmp/worktree-bootstrap-damaged-file.log 'synthetic-damaged-only'
+
+  cp "$DAMAGED_WORKTREE/.env.local" "$TMP_DIR/damaged-auto.before"
+  (
+    cd "$DAMAGED_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    if ! ./scripts/post-checkout-worktree-bootstrap.sh \
+      0000000000000000000000000000000000000000 \
+      "$(git rev-parse HEAD)" \
+      1 >/tmp/worktree-bootstrap-damaged-auto.log 2>&1; then
+      echo "automatic bootstrap wrapper unexpectedly failed for damaged target" >&2
+      exit 1
+    fi
+  )
+  cmp -s "$TMP_DIR/damaged-auto.before" "$DAMAGED_WORKTREE/.env.local" || {
+    echo "automatic damaged-target bootstrap overwrote the target" >&2
+    exit 1
+  }
+  assert_file_contains /tmp/worktree-bootstrap-damaged-auto.log 'automatic worktree bootstrap failed during post-checkout'
+  assert_file_contains /tmp/worktree-bootstrap-damaged-auto.log 'Recovery: bun run worktree:bootstrap -- --force'
+  assert_file_not_contains /tmp/worktree-bootstrap-damaged-auto.log 'synthetic-damaged-only'
+
+  local target_case target_log target_before
+  local -a target_cases=(empty missing-port invalid-derived)
+  if [[ "$(id -u)" == "0" ]]; then
+    log "skip unreadable target fixture when running as root"
+  else
+    target_cases+=(unreadable)
+  fi
+  for target_case in "${target_cases[@]}"; do
+    target_log="/tmp/worktree-bootstrap-damaged-$target_case.log"
+    target_before="$TMP_DIR/damaged-$target_case.before"
+    rm -f "$DAMAGED_WORKTREE/.env.local"
+    case "$target_case" in
+      empty)
+        : >"$DAMAGED_WORKTREE/.env.local"
+        ;;
+      missing-port)
+        printf 'DB_PATH=./dev-data/damaged-matrix.sqlite.db\n' >"$DAMAGED_WORKTREE/.env.local"
+        ;;
+      invalid-derived)
+        printf 'PORT=32111\nSITE_PORT=not-a-port\nADMIN_PORT=32115\nSECRET_MARKER=synthetic-damaged-matrix-only\n' >"$DAMAGED_WORKTREE/.env.local"
+        ;;
+      unreadable)
+        printf 'PORT=32111\nSITE_PORT=32114\nADMIN_PORT=32115\nSECRET_MARKER=synthetic-damaged-matrix-only\n' >"$DAMAGED_WORKTREE/.env.local"
+        chmod 000 "$DAMAGED_WORKTREE/.env.local"
+        ;;
+    esac
+    rm -f "$marker_file"
+    if [[ "$target_case" == unreadable ]]; then
+      chmod 0600 "$DAMAGED_WORKTREE/.env.local"
+    fi
+    cp "$DAMAGED_WORKTREE/.env.local" "$target_before"
+    if [[ "$target_case" == unreadable ]]; then
+      chmod 000 "$DAMAGED_WORKTREE/.env.local"
+    fi
+    (
+      cd "$DAMAGED_WORKTREE"
+      export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+      if bash ./scripts/worktree-bootstrap.sh --force --no-db >"$target_log" 2>&1; then
+        echo "bootstrap unexpectedly accepted $target_case target" >&2
+        exit 1
+      fi
+    )
+    if [[ "$target_case" == unreadable ]]; then
+      chmod 0600 "$DAMAGED_WORKTREE/.env.local"
+    fi
+    cmp -s "$target_before" "$DAMAGED_WORKTREE/.env.local" || {
+      echo "$target_case target file was overwritten" >&2
+      exit 1
+    }
+    assert_file_contains "$target_log" 'bootstrap failed at phase=env'
+    assert_file_not_contains "$target_log" 'synthetic-damaged-matrix-only'
+  done
+
+  rm -f "$DAMAGED_WORKTREE/.env.local"
+  mkdir "$DAMAGED_WORKTREE/.env.local"
+  (
+    cd "$DAMAGED_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    if bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-damaged-directory.log 2>&1; then
+      echo "bootstrap unexpectedly replaced non-regular target" >&2
+      exit 1
+    fi
+  )
+  [[ -d "$DAMAGED_WORKTREE/.env.local" ]] || { echo "non-regular target was replaced" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-damaged-directory.log 'not a regular file'
+
+  local fifo_path="$TMP_DIR/source-fifo"
+  mkfifo "$fifo_path"
+  python3 - "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py" "$fifo_path" <<'PY'
+import subprocess
+import sys
+
+completed = subprocess.run(
+    [sys.executable, sys.argv[1], "validate", "--path", sys.argv[2]],
+    capture_output=True,
+    text=True,
+    timeout=2,
+    check=False,
+)
+if completed.returncode == 0 or completed.stdout.strip() != "unusable":
+    raise SystemExit("FIFO validation was not rejected promptly")
+PY
+}
+
+check_publish_failure_is_strict_and_non_blocking() {
+  log "check environment publication failure boundaries"
+  local blocked_parent="$TMP_DIR/publication-blocked-parent"
+  printf 'blocked\n' >"$blocked_parent"
+  if python3 "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py" publish \
+    --source "$SNAPSHOT_REPO/.env.local" \
+    --target "$blocked_parent/.env.local" \
+    --port 43111 \
+    --site-port 43114 \
+    --admin-port 43115 >/tmp/worktree-bootstrap-helper-publish-fail.log 2>&1; then
+    echo "helper publication unexpectedly succeeded with a blocked parent" >&2
+    exit 1
+  fi
+  [[ ! -e "$blocked_parent/.env.local" ]] || {
+    echo "helper publication failure left a target file" >&2
+    exit 1
+  }
+  assert_file_not_contains /tmp/worktree-bootstrap-helper-publish-fail.log 'synthetic-source-only'
+
+  local failing_helper="$TMP_DIR/failing-env-helper.sh"
+  cat >"$failing_helper" <<EOF
+import subprocess
+import sys
+
+if len(sys.argv) > 1 and sys.argv[1] == "publish":
+    print("environment publication failed", file=sys.stderr)
+    raise SystemExit(1)
+raise SystemExit(subprocess.call([sys.executable, "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py", *sys.argv[1:]]))
+EOF
+  chmod +x "$failing_helper"
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$PUBLISH_FAIL_WORKTREE" >/tmp/worktree-bootstrap-publish-fail-add.log 2>&1
+  )
+
+  local marker_file
+  marker_file="$(git -C "$PUBLISH_FAIL_WORKTREE" rev-parse --git-dir)/.codex-worktree-bootstrap-initialized"
+  rm -f "$PUBLISH_FAIL_WORKTREE/.env.local" "$marker_file"
+
+  (
+    cd "$PUBLISH_FAIL_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    export WORKTREE_BOOTSTRAP_ENV_HELPER="$failing_helper"
+    if bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-publish-fail-injected-manual.log 2>&1; then
+      echo "manual bootstrap unexpectedly ignored injected publication failure" >&2
+      exit 1
+    fi
+  )
+  [[ ! -e "$PUBLISH_FAIL_WORKTREE/.env.local" ]] || { echo "injected manual failure left a target file" >&2; exit 1; }
+  [[ -z "$(find "$PUBLISH_FAIL_WORKTREE" -maxdepth 1 -name '.env.local.*.tmp' -print -quit)" ]] || {
+    echo "injected manual failure left a temporary target" >&2
+    exit 1
+  }
+  assert_file_contains /tmp/worktree-bootstrap-publish-fail-injected-manual.log 'bootstrap failed at phase=env'
+  assert_file_not_contains /tmp/worktree-bootstrap-publish-fail-injected-manual.log 'synthetic-source-only'
+
+  (
+    cd "$PUBLISH_FAIL_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    export WORKTREE_BOOTSTRAP_ENV_HELPER="$failing_helper"
+    if ! ./scripts/post-checkout-worktree-bootstrap.sh \
+      0000000000000000000000000000000000000000 \
+      "$(git rev-parse HEAD)" \
+      1 >/tmp/worktree-bootstrap-publish-fail-injected-auto.log 2>&1; then
+      echo "automatic bootstrap did not degrade injected publication failure" >&2
+      exit 1
+    fi
+  )
+  [[ ! -e "$PUBLISH_FAIL_WORKTREE/.env.local" ]] || { echo "injected automatic failure left a target file" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-publish-fail-injected-auto.log 'automatic worktree bootstrap failed'
+  assert_file_not_contains /tmp/worktree-bootstrap-publish-fail-injected-auto.log 'synthetic-source-only'
+
+  if [[ "$(id -u)" == "0" ]]; then
+    log "skip chmod-based publication failure fixture when running as root"
+    return 0
+  fi
+
+  rm -f "$PUBLISH_FAIL_WORKTREE/.env.local" "$marker_file"
+  chmod u-w "$PUBLISH_FAIL_WORKTREE"
+  (
+    cd "$PUBLISH_FAIL_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    if bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-publish-fail-manual.log 2>&1; then
+      echo "manual bootstrap unexpectedly published into read-only worktree" >&2
+      exit 1
+    fi
+  )
+  chmod u+w "$PUBLISH_FAIL_WORKTREE"
+  [[ ! -e "$PUBLISH_FAIL_WORKTREE/.env.local" ]] || { echo "failed publication left a target file" >&2; exit 1; }
+  [[ -z "$(find "$PUBLISH_FAIL_WORKTREE" -maxdepth 1 -name '.env.local.*.tmp' -print -quit)" ]] || {
+    echo "failed publication left a temporary target" >&2
+    exit 1
+  }
+  assert_file_contains /tmp/worktree-bootstrap-publish-fail-manual.log 'bootstrap failed at phase=env'
+
+  chmod u-w "$PUBLISH_FAIL_WORKTREE"
+  (
+    cd "$PUBLISH_FAIL_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    if ! ./scripts/post-checkout-worktree-bootstrap.sh \
+      0000000000000000000000000000000000000000 \
+      "$(git rev-parse HEAD)" \
+      1 >/tmp/worktree-bootstrap-publish-fail-auto.log 2>&1; then
+      echo "automatic bootstrap wrapper unexpectedly failed" >&2
+      exit 1
+    fi
+  )
+  chmod u+w "$PUBLISH_FAIL_WORKTREE"
+  [[ ! -e "$PUBLISH_FAIL_WORKTREE/.env.local" ]] || { echo "automatic failed publication left a target file" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-publish-fail-auto.log 'automatic worktree bootstrap failed'
+  assert_file_not_contains /tmp/worktree-bootstrap-publish-fail-auto.log 'synthetic-source-only'
+}
+
+check_concurrent_publication_is_atomic() {
+  log "check concurrent missing-target publication is atomic"
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$CONCURRENT_WORKTREE" >/tmp/worktree-bootstrap-concurrent-add.log 2>&1
+  )
+
+  local marker_file scope_id
+  marker_file="$(git -C "$CONCURRENT_WORKTREE" rev-parse --git-dir)/.codex-worktree-bootstrap-initialized"
+  rm -f "$CONCURRENT_WORKTREE/.env.local" "$marker_file"
+  scope_id="$(worktree_scope_id "$CONCURRENT_WORKTREE")"
+  python3 "$SNAPSHOT_REPO/scripts/port-registry.py" \
+    --registry-dir "$REGISTRY_DIR" \
+    --json release-scope \
+    --scope-id "$scope_id" >/dev/null
+
+  local race_barrier_dir="$TMP_DIR/bootstrap-race-barrier"
+  local race_helper="$TMP_DIR/race-env-helper.sh"
+  mkdir -p "$race_barrier_dir"
+  cat >"$race_helper" <<EOF
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+if len(sys.argv) > 1 and sys.argv[1] == "publish":
+    barrier_dir = Path("$race_barrier_dir")
+    (barrier_dir / str(os.getpid())).mkdir()
+    for _ in range(200):
+        if sum(path.is_dir() for path in barrier_dir.iterdir()) >= 2:
+            break
+        time.sleep(0.05)
+    else:
+        raise SystemExit(1)
+raise SystemExit(subprocess.call([sys.executable, "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py", *sys.argv[1:]]))
+EOF
+  chmod +x "$race_helper"
+
+  (
+    cd "$CONCURRENT_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    export WORKTREE_BOOTSTRAP_ENV_HELPER="$race_helper"
+    bash ./scripts/worktree-bootstrap.sh --force --no-db --simulate-failure-step install >/tmp/worktree-bootstrap-concurrent-a.log 2>&1
+  ) &
+  local first_pid=$!
+  (
+    cd "$CONCURRENT_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    export WORKTREE_BOOTSTRAP_ENV_HELPER="$race_helper"
+    bash ./scripts/worktree-bootstrap.sh --force --no-db --simulate-failure-step install >/tmp/worktree-bootstrap-concurrent-b.log 2>&1
+  ) &
+  local second_pid=$!
+  local first_status=0 second_status=0
+  wait "$first_pid" || first_status=$?
+  wait "$second_pid" || second_status=$?
+  [[ "$first_status" == "1" && "$second_status" == "1" ]] || {
+    echo "concurrent bootstrap callers did not reach the injected install failure: $first_status, $second_status" >&2
+    exit 1
+  }
+  [[ "$(find "$race_barrier_dir" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" == "2" ]] || {
+    echo "concurrent bootstrap callers did not both reach publication" >&2
+    exit 1
+  }
+  assert_file_contains /tmp/worktree-bootstrap-concurrent-a.log 'simulated failure at step=install'
+  assert_file_contains /tmp/worktree-bootstrap-concurrent-b.log 'simulated failure at step=install'
+  if ! grep -q 'appeared during recovery' /tmp/worktree-bootstrap-concurrent-a.log \
+    && ! grep -q 'appeared during recovery' /tmp/worktree-bootstrap-concurrent-b.log; then
+    echo "concurrent bootstrap callers did not exercise the create-once loser path" >&2
+    exit 1
+  fi
+
+  local env_file="$CONCURRENT_WORKTREE/.env.local"
+  [[ -f "$env_file" ]] || { echo "concurrent publication produced no target" >&2; exit 1; }
+  assert_file_contains "$env_file" '^SECRET_MARKER=synthetic-source-only$'
+  assert_env_ports_match_scope_leases "$env_file" "$scope_id"
+  assert_file_not_contains /tmp/worktree-bootstrap-concurrent-a.log 'synthetic-source-only'
+  assert_file_not_contains /tmp/worktree-bootstrap-concurrent-b.log 'synthetic-source-only'
+  [[ -z "$(find "$CONCURRENT_WORKTREE" -maxdepth 1 -name '.env.local.*.tmp' -print -quit)" ]] || {
+    echo "concurrent publication left a temporary target" >&2
+    exit 1
+  }
+
+  local inspect_json inspect_count
+  inspect_json="$(python3 "$SNAPSHOT_REPO/scripts/port-registry.py" --registry-dir "$REGISTRY_DIR" --json inspect --scope-id "$scope_id")"
+  inspect_count="$(python3 - <<'PY' "$inspect_json"
+import json
+import sys
+
+print(json.loads(sys.argv[1])["count"])
+PY
+)"
+  [[ "$inspect_count" == "3" ]] || { echo "expected one complete three-port lease block, got $inspect_count" >&2; exit 1; }
+
+  local direct_dir="$TMP_DIR/create-once-challenger"
+  local direct_target="$direct_dir/.env.local"
+  mkdir -p "$direct_dir"
+  cat >"$TMP_DIR/create-once-a.env" <<'EOF'
+PORT=45111
+SITE_PORT=45114
+ADMIN_PORT=45115
+SECRET_MARKER=synthetic-first-winner
+EOF
+  cat >"$TMP_DIR/create-once-b.env" <<'EOF'
+PORT=45211
+SITE_PORT=45214
+ADMIN_PORT=45215
+SECRET_MARKER=synthetic-second-challenger
+EOF
+  local first_publish second_publish
+  first_publish="$(python3 "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py" publish \
+    --source "$TMP_DIR/create-once-a.env" \
+    --target "$direct_target" \
+    --port 46111 \
+    --site-port 46114 \
+    --admin-port 46115)"
+  second_publish="$(python3 "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py" publish \
+    --source "$TMP_DIR/create-once-b.env" \
+    --target "$direct_target" \
+    --port 46211 \
+    --site-port 46214 \
+    --admin-port 46215)"
+  [[ "$first_publish" == "created" ]] || { echo "first create-once publisher did not win" >&2; exit 1; }
+  [[ "$second_publish" == "exists" ]] || { echo "challenger publisher did not preserve the winner" >&2; exit 1; }
+  assert_file_contains "$direct_target" '^SECRET_MARKER=synthetic-first-winner$'
+  assert_file_not_contains "$direct_target" 'synthetic-second-challenger'
+
+  local concurrent_direct_dir="$TMP_DIR/concurrent-create-once"
+  local concurrent_direct_target="$concurrent_direct_dir/.env.local"
+  mkdir -p "$concurrent_direct_dir"
+  python3 - "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py" \
+    "$TMP_DIR/create-once-a.env" "$TMP_DIR/create-once-b.env" "$concurrent_direct_target" <<'PY'
+import importlib.util
+import multiprocessing
+from pathlib import Path
+import sys
+from types import SimpleNamespace
+
+helper_path, source_a, source_b, target = sys.argv[1:]
+
+
+def worker(source, target_path, barrier, port):
+    spec = importlib.util.spec_from_file_location("worktree_bootstrap_env", helper_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    original_link = module.os.link
+
+    def synchronized_link(source_path, target_path):
+        barrier.wait(timeout=10)
+        return original_link(source_path, target_path)
+
+    module.os.link = synchronized_link
+    args = SimpleNamespace(
+        source=source,
+        target=target_path,
+        port=port,
+        site_port=port + 3,
+        admin_port=port + 4,
+    )
+    raise SystemExit(module.command_publish(args))
+
+
+if __name__ == "__main__":
+    multiprocessing.set_start_method("fork")
+    barrier = multiprocessing.Barrier(2)
+    first = multiprocessing.Process(target=worker, args=(source_a, target, barrier, 47111))
+    second = multiprocessing.Process(target=worker, args=(source_b, target, barrier, 47211))
+    first.start()
+    second.start()
+    first.join(15)
+    second.join(15)
+    if first.exitcode != 0 or second.exitcode != 0:
+        raise SystemExit(f"concurrent publishers failed: {first.exitcode}, {second.exitcode}")
+    data = Path(target).read_text()
+    if data.count("SECRET_MARKER=") != 1:
+        raise SystemExit("concurrent publisher did not leave one complete winner")
+    expected = {
+        "synthetic-first-winner": "PORT=47111\nSITE_PORT=47114\nADMIN_PORT=47115\nSECRET_MARKER=synthetic-first-winner\n",
+        "synthetic-second-challenger": "PORT=47211\nSITE_PORT=47214\nADMIN_PORT=47215\nSECRET_MARKER=synthetic-second-challenger\n",
+    }
+    if data not in expected.values():
+        raise SystemExit("concurrent publisher did not leave one complete expected winner")
+PY
+}
+
 check_dry_run_is_read_only() {
   log "check dry-run does not mutate env or registry"
   (
@@ -302,6 +1136,7 @@ check_dry_run_is_read_only() {
   rm -f "$marker_file"
   local before_count
   before_count="$(python3 "$SNAPSHOT_REPO/scripts/port-registry.py" --registry-dir "$REGISTRY_DIR" --json inspect | python3 -c 'import json,sys; print(json.load(sys.stdin)["count"])')"
+  cp "$REGISTRY_DIR/leases.tsv" "$TMP_DIR/dry-run-registry.before"
 
   (
     cd "$DRY_RUN_WORKTREE"
@@ -315,7 +1150,11 @@ check_dry_run_is_read_only() {
   [[ ! -f "$env_file" ]] || { echo ".env.local should not be created during dry-run" >&2; exit 1; }
   [[ ! -f "$marker_file" ]] || { echo "initialized marker should not be written during dry-run" >&2; exit 1; }
   [[ "$before_count" == "$after_count" ]] || { echo "registry count changed during dry-run" >&2; exit 1; }
-  assert_file_contains /tmp/worktree-bootstrap-dry-run.log 'dry-run: would create \.env\.local with leased worktree ports'
+  cmp -s "$TMP_DIR/dry-run-registry.before" "$REGISTRY_DIR/leases.tsv" || {
+    echo "registry contents changed during dry-run" >&2
+    exit 1
+  }
+  assert_file_contains /tmp/worktree-bootstrap-dry-run.log 'dry-run: would recover missing \.env\.local from primary and re-lease target ports'
 }
 
 check_existing_env_rejects_occupied_port() {
@@ -500,9 +1339,9 @@ check_stale_scope_port_block_is_revalidated() {
   local marker_file
   marker_file="$(git -C "$STALE_SCOPE_WORKTREE" rev-parse --git-dir)/.codex-worktree-bootstrap-initialized"
   local stale_port stale_site_port stale_admin_port
-  stale_port="$(grep '^PORT=' "$env_file" | cut -d= -f2)"
-  stale_site_port="$(grep '^SITE_PORT=' "$env_file" | cut -d= -f2)"
-  stale_admin_port="$(grep '^ADMIN_PORT=' "$env_file" | cut -d= -f2)"
+  stale_port="$(grep '^PORT=' "$env_file" | head -n1 | cut -d= -f2)"
+  stale_site_port="$(grep '^SITE_PORT=' "$env_file" | head -n1 | cut -d= -f2)"
+  stale_admin_port="$(grep '^ADMIN_PORT=' "$env_file" | head -n1 | cut -d= -f2)"
 
   rm -f "$env_file" "$marker_file"
   start_port_holder "$stale_port" PORT_HOLDER_PID
@@ -551,7 +1390,8 @@ check_test_fixture_clean_removes_root_artifacts() {
 
   (
     cd "$SNAPSHOT_REPO"
-    bun ./scripts/generate-test-data.ts --clean >/tmp/worktree-bootstrap-test-clean.log 2>&1
+    LOCAL_CONTENT_BASE_PATH="$SNAPSHOT_REPO/test-data/local" \
+      bun ./scripts/generate-test-data.ts --clean >/tmp/worktree-bootstrap-test-clean.log 2>&1
   )
 
   [[ ! -e "$SNAPSHOT_REPO/test-data/sqlite.db" ]] || { echo "test sqlite artifact should be removed by clean" >&2; exit 1; }
@@ -569,6 +1409,16 @@ check_failure_is_non_blocking() {
 
   rm -f "$FAIL_WORKTREE/.env.local"
   rm -f "$(git -C "$FAIL_WORKTREE" rev-parse --git-dir)/.codex-worktree-bootstrap-initialized"
+  (
+    cd "$FAIL_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    if bash ./scripts/worktree-bootstrap.sh --force --no-db --simulate-failure-step env >/tmp/worktree-bootstrap-fail-manual.log 2>&1; then
+      echo "manual simulated environment failure unexpectedly succeeded" >&2
+      exit 1
+    fi
+  )
+  assert_file_contains /tmp/worktree-bootstrap-fail-manual.log 'bootstrap failed at phase=env'
+
   (
     cd "$FAIL_WORKTREE"
     export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
@@ -590,9 +1440,21 @@ check_failure_is_non_blocking() {
 create_snapshot_repo
 prepare_root_hooks
 check_auto_bootstrap
+check_primary_source_recovery
+check_manual_missing_target_recovery
+check_crlf_source_recovery
+check_source_without_final_newline_preserves_eof
+check_port_rewrite_boundaries
 check_existing_env_is_preserved
 check_legacy_env_is_accepted
 check_dry_run_is_read_only
+check_primary_source_fallback
+check_invalid_primary_source_fallback
+check_source_validation_matrix
+check_prunable_primary_falls_back
+check_damaged_target_is_preserved
+check_publish_failure_is_strict_and_non_blocking
+check_concurrent_publication_is_atomic
 check_existing_env_rejects_occupied_port
 check_atomic_block_allocation_skips_derived_port_conflict
 check_managed_custom_content_root_is_used

@@ -138,6 +138,8 @@ runner resets fixtures once, builds once, then executes isolated per-project run
 ## Worktree Bootstrap
 
 - Auto bootstrap runs only on the first branch checkout of a new linked worktree.
+- A missing linked-worktree `.env.local` inherits the primary worktree's local configuration when that source is usable; only `PORT`, `SITE_PORT`, and `ADMIN_PORT` are re-leased for the target.
+- If the primary source is unavailable or unusable, bootstrap falls back to the generated default environment without blocking checkout.
 - Existing `.env.local` files are never overwritten by bootstrap.
 - Older `.env.local` files without `SITE_PORT` / `ADMIN_PORT` stay valid; bootstrap derives those ports from `PORT` at runtime.
 - Later branch switches do not rerun full bootstrap automatically.
