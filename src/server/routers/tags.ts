@@ -1,11 +1,9 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/lib/db";
-import { buildLegacyPublicMediaUrl, rewritePublicContentMediaUrls } from "@/lib/public-media";
-import { posts } from "@/lib/schema";
-import { toMsTimestamp } from "@/lib/utils";
-import { buildPublicMediaCollection, pickLegacyPublicImage } from "@/server/public-media";
+import type { PublicMediaCollection } from "@/lib/public-media";
+import { getTaggedProjects } from "@/lib/snapshot-tags";
+import { matchesTag, normalizeTagPath } from "@/lib/tag-directory";
+import { readEligibleContent } from "@/server/services/tag-content";
 import { resolveTagIconsForTags } from "@/server/services/tag-icon-resolver";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 
@@ -15,53 +13,12 @@ const timelineSchema = z.object({
   cursor: z.string().optional(), // cursor format: "publishDateISO_id"
 });
 
-function normalizeTags(raw: unknown): string[] {
-  if (!raw) return [];
-
-  if (Array.isArray(raw)) {
-    return raw.map((tag) => String(tag).trim()).filter((tag) => tag.length > 0);
-  }
-
-  if (typeof raw === "string") {
-    const trimmed = raw.trim();
-    if (!trimmed) {
-      return [];
-    }
-
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed)) {
-        return parsed.map((tag) => String(tag).trim()).filter((tag) => tag.length > 0);
-      }
-    } catch {
-      // ignore JSON parse errors and fall back to comma-separated parsing
-    }
-
-    return trimmed
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter((tag) => tag.length > 0);
-  }
-
-  return [];
-}
-
 function decodeMaybeURIComponent(value: string): string {
   try {
     return decodeURIComponent(value);
   } catch {
     return value;
   }
-}
-
-function buildHierarchicalTagFilter(tagPath: string) {
-  // Tags are stored as a JSON string array, e.g. ["Geek/SMS","Geek/SMS/Child"].
-  // We match:
-  // - exact element: "Geek/SMS"
-  // - hierarchical child: "Geek/SMS/<...>"
-  const exact = like(posts.tags, `%"${tagPath}"%`);
-  const childPrefix = like(posts.tags, `%"${tagPath}/%`);
-  return or(exact, childPrefix);
 }
 
 export type TagsTimelineItem = {
@@ -74,7 +31,7 @@ export type TagsTimelineItem = {
   publishDate: string;
   tags: string[];
   image?: string;
-  media?: ReturnType<typeof buildPublicMediaCollection>;
+  media?: PublicMediaCollection;
   dataSource?: string;
   filePath?: string;
 };
@@ -82,7 +39,7 @@ export type TagsTimelineItem = {
 export const tagsRouter = createTRPCRouter({
   timeline: publicProcedure.input(timelineSchema).query(async ({ input, ctx }) => {
     const limit = input.limit;
-    const tagPath = decodeMaybeURIComponent(input.tagPath.trim());
+    const tagPath = normalizeTagPath(decodeMaybeURIComponent(input.tagPath));
     const cursor = input.cursor ? decodeMaybeURIComponent(input.cursor) : undefined;
 
     if (!tagPath) {
@@ -90,102 +47,65 @@ export const tagsRouter = createTRPCRouter({
     }
 
     try {
-      const conditions = [
-        inArray(posts.type, ["post", "memo"]),
-        buildHierarchicalTagFilter(tagPath),
-      ];
-
-      if (!ctx.isAdmin) {
-        conditions.push(eq(posts.public, true));
-        conditions.push(sql`(${posts.type} <> 'post' OR ${posts.draft} = 0)`);
-      }
-
-      // Cursor pagination (publishDate DESC, id DESC) using (publishDate, id)
+      const content = await readEligibleContent({
+        includeDrafts: ctx.isAdmin,
+        includeUnpublished: ctx.isAdmin,
+      });
+      let items: TagsTimelineItem[] = [
+        ...content.posts.map((post) => ({
+          type: "post" as const,
+          id: post.id,
+          slug: post.slug,
+          title: post.title,
+          excerpt: post.excerpt ?? undefined,
+          publishDate: post.publishDate,
+          tags: post.tags,
+          image: post.image ?? undefined,
+          media: post.media,
+          dataSource: post.dataSource ?? undefined,
+          filePath: post.filePath,
+        })),
+        ...content.memos.map((memo) => ({
+          type: "memo" as const,
+          id: memo.id,
+          slug: memo.slug,
+          title: memo.title ?? "",
+          excerpt: memo.excerpt ?? undefined,
+          content: memo.content,
+          publishDate: memo.publishedAt ?? memo.createdAt,
+          tags: memo.tags,
+          image: memo.image ?? undefined,
+          media: memo.media,
+          dataSource: memo.dataSource ?? undefined,
+          filePath: memo.filePath,
+        })),
+      ]
+        .filter((item) => matchesTag(tagPath, item.tags))
+        .sort(
+          (a, b) =>
+            b.publishDate.localeCompare(a.publishDate) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0)
+        );
       if (cursor) {
-        try {
-          const [cursorDate, cursorId] = cursor.split("_");
-          if (cursorDate && cursorId) {
-            const cursorTimestamp = new Date(cursorDate).getTime();
-            if (!Number.isNaN(cursorTimestamp)) {
-              conditions.push(
-                sql`(${posts.publishDate} < ${cursorTimestamp} OR (${posts.publishDate} = ${cursorTimestamp} AND ${posts.id} < ${cursorId}))`
-              );
-            }
-          }
-        } catch (error) {
-          console.error("[tags.timeline] Failed to parse cursor:", error);
+        const separator = cursor.indexOf("_");
+        const date = cursor.slice(0, separator);
+        const id = cursor.slice(separator + 1);
+        const timestamp = Date.parse(date);
+        if (separator > 0 && id && Number.isFinite(timestamp)) {
+          items = items.filter(
+            (item) =>
+              Date.parse(item.publishDate) < timestamp ||
+              (Date.parse(item.publishDate) === timestamp && item.id < id)
+          );
         }
       }
-
-      const rows = await db
-        .select({
-          id: posts.id,
-          slug: posts.slug,
-          type: posts.type,
-          title: posts.title,
-          excerpt: posts.excerpt,
-          body: posts.body,
-          publishDate: posts.publishDate,
-          tags: posts.tags,
-          image: posts.image,
-          metadata: posts.metadata,
-          dataSource: posts.dataSource,
-          filePath: posts.filePath,
-          source: posts.source,
-        })
-        .from(posts)
-        .where(and(...conditions))
-        .orderBy(desc(posts.publishDate), desc(posts.id))
-        .limit(limit + 1);
-
-      const hasMore = rows.length > limit;
-      const actual = hasMore ? rows.slice(0, limit) : rows;
-
-      const items: TagsTimelineItem[] = actual.map((row) => {
-        const contentKind = row.type === "memo" ? "memo" : "post";
-        const media = buildPublicMediaCollection(contentKind, row as typeof posts.$inferSelect);
-        const publicMediaContext = {
-          kind: contentKind,
-          slug: row.slug,
-          filePath: row.filePath ?? row.id,
-        } as const;
-        return {
-          type: contentKind,
-          id: row.id,
-          slug: row.slug,
-          title: row.title,
-          excerpt: row.excerpt ?? undefined,
-          content:
-            row.type === "memo"
-              ? rewritePublicContentMediaUrls(row.body, publicMediaContext)
-              : undefined,
-          publishDate: new Date(toMsTimestamp(row.publishDate)).toISOString(),
-          tags: normalizeTags(row.tags),
-          image:
-            pickLegacyPublicImage(media, "card") ??
-            buildLegacyPublicMediaUrl({
-              mediaPath: row.image,
-              dataSource: row.dataSource,
-              filePath: row.filePath,
-            }) ??
-            undefined,
-          media,
-          dataSource: row.dataSource ?? undefined,
-          filePath: row.filePath ?? row.id,
-        };
-      });
-
-      let nextCursor: string | undefined;
-      if (hasMore && actual.length > 0) {
-        const last = actual[actual.length - 1];
-        const lastDateIso = new Date(toMsTimestamp(last.publishDate)).toISOString();
-        nextCursor = `${lastDateIso}_${last.id}`;
-      }
-
+      const hasMore = items.length > limit;
+      const page = items.slice(0, limit);
+      const last = page.at(-1);
       return {
-        items,
-        nextCursor,
+        projects: getTaggedProjects(tagPath),
+        items: page,
         hasMore,
+        nextCursor: hasMore && last ? `${last.publishDate}_${last.id}` : undefined,
       };
     } catch (error) {
       console.error("[tags.timeline] Failed:", error);

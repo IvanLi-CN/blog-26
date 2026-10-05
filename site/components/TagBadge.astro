@@ -1,5 +1,6 @@
 ---
-import Icon from "@/components/ui/Icon";
+import { NativeTagLink } from "@/components/common/NativeTagLink";
+import { normalizeTagPath } from "@/lib/tag-directory";
 import { buildTagHref } from "@/lib/tag-href";
 import { toPublicSitePath } from "../lib/runtime-urls";
 import { pickTagIconSvg } from "../lib/public-site";
@@ -12,21 +13,7 @@ interface Props {
 }
 
 const { tag, iconMap = {}, iconSvgMap = {}, className = "" } = Astro.props;
-const label = String(tag).split("/").filter(Boolean).at(-1)?.replace(/^#/, "") ?? String(tag);
+const label = normalizeTagPath(String(tag)).split("/").at(-1) ?? String(tag);
 const { iconId, iconSvg } = pickTagIconSvg(String(tag), iconMap, iconSvgMap);
 ---
-<a
-  href={toPublicSitePath(buildTagHref(String(tag)))}
-  class={`nature-hover-hitbox nature-hover-hitbox-inline group align-middle ${className}`}
->
-  <span class="nature-hover-lift nature-hover-surface inline-flex items-center gap-1 rounded-full border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.24)] px-2.5 py-1 text-sm font-medium text-[color:var(--nature-text-soft)] transition-all duration-200 [--nature-hover-border-color:rgba(var(--nature-accent-rgb),0.36)] [--nature-hover-lift-offset:-0.125rem] [--nature-hover-shadow:0_12px_24px_rgba(8,21,16,0.08)] group-hover:text-[color:var(--nature-accent-strong)]">
-    <span class="hidden sm:inline-flex text-[color:var(--nature-accent-strong)]" aria-hidden="true">
-      {iconSvg ? (
-        <span class="inline-flex [&>svg]:h-3 [&>svg]:w-3" set:html={iconSvg} />
-      ) : (
-        <Icon name={iconId} className="h-3 w-3" />
-      )}
-    </span>
-    <span>{label}</span>
-  </span>
-</a>
+<NativeTagLink href={toPublicSitePath(buildTagHref(String(tag))) ?? "/tags"} label={label} iconId={iconId} iconSvg={iconSvg} className={className} />

@@ -1,3 +1,4 @@
+import { normalizeTagPath } from "./tag-directory";
 /**
  * Build tag hrefs using segment encoding.
  *
@@ -15,15 +16,9 @@
  * - "/tags/DevOps/Network"
  */
 export function buildTagHref(tagPath: string): string {
-  const cleaned = (tagPath ?? "")
-    .trim()
-    // tags may come with a leading "#", e.g. "#DevOps/Network"
-    .replace(/^#+/, "");
-
-  const segments = cleaned
+  const segments = normalizeTagPath(tagPath ?? "")
     .split("/")
-    .map((segment) => segment.trim())
-    .filter((segment) => segment.length > 0);
+    .filter(Boolean);
 
   if (segments.length === 0) return "/tags";
 

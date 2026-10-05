@@ -790,6 +790,12 @@ if (!ENABLE) {
       expect(tagsRes.error).toBeUndefined();
       const tagPayload = JSON.parse(tagsRes.result?.content?.[0]?.text || "{}");
       expect(Array.isArray(tagPayload.items)).toBe(true);
+      expect(
+        tagPayload.items.find((item: { name: string }) => item.name === "Harness")?.projectCount
+      ).toBeGreaterThan(0);
+      expect(
+        tagPayload.items.find((item: { name: string }) => item.name === "React")?.projectCount
+      ).toBe(10);
 
       if (tagPayload.items.length > 0) {
         const tagName = tagPayload.items[0]?.name;

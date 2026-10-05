@@ -2761,6 +2761,37 @@ public: false
     expect(updated.isPublic).toBe(false);
   });
 
+  it("shares project discovery with protected tag administration and the public timeline API", async () => {
+    const unauthorized = await handleAdminApiRequest(
+      buildRequest("/api/admin/tags/overview"),
+      "/tags/overview"
+    );
+    expect(unauthorized.status).toBe(401);
+    const overview = await handleAdminApiRequest(
+      buildRequest("/api/admin/tags/overview", {}, ADMIN_EMAIL),
+      "/tags/overview"
+    );
+    expect(overview.status).toBe(200);
+    const payload = await readJson(overview);
+    expect(
+      payload.tagSummaries.find((tag: { name: string }) => tag.name === "Harness")?.projectCount
+    ).toBeGreaterThan(0);
+    const icons = await handleAdminApiRequest(
+      buildRequest("/api/admin/tag-icons/overview", {}, ADMIN_EMAIL),
+      "/tag-icons/overview"
+    );
+    expect(icons.status).toBe(200);
+    expect(JSON.stringify(await readJson(icons))).toContain("I²C");
+    const timeline = await handlePublicApiRequest(
+      buildRequest("/api/public/tags/timeline?tagPath=Harness"),
+      "/tags/timeline"
+    );
+    expect(timeline.status).toBe(200);
+    const publicPayload = await readJson(timeline);
+    expect(publicPayload.projects.length).toBeGreaterThan(0);
+    expect(publicPayload.items).toEqual([]);
+  });
+
   it("keeps stored memo body raw when patching metadata without content", async () => {
     await seedPost({
       id: "memos/legacy-facade-source.md",
