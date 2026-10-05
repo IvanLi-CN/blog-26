@@ -218,8 +218,8 @@ check_auto_bootstrap() {
 
 write_primary_source_env() {
   cat >"$SNAPSHOT_REPO/.env.local" <<'EOF'
-PORT=39111
-SITE_PORT=39114
+PORT="39111"
+SITE_PORT='39114'
 ADMIN_PORT=39115
 DB_PATH=./dev-data/shared.sqlite.db
 LOCAL_CONTENT_BASE_PATH=/tmp/shared-worktree-content
@@ -274,8 +274,8 @@ EOF
   source_port="$(grep '^PORT=' "$source_env" | cut -d= -f2)"
   target_port="$(grep '^PORT=' "$target_env" | cut -d= -f2)"
   [[ "$target_port" != "$source_port" ]] || { echo "recovered target reused primary PORT" >&2; exit 1; }
-  source_mode="$(stat -f '%Lp' "$source_env")"
-  target_mode="$(stat -f '%Lp' "$target_env")"
+  source_mode="$(python3 -c 'import os, stat, sys; print(format(stat.S_IMODE(os.stat(sys.argv[1]).st_mode), "o"))' "$source_env")"
+  target_mode="$(python3 -c 'import os, stat, sys; print(format(stat.S_IMODE(os.stat(sys.argv[1]).st_mode), "o"))' "$target_env")"
   [[ "$source_mode" == "644" ]] || { echo "source fixture mode changed unexpectedly" >&2; exit 1; }
   [[ "$target_mode" == "600" ]] || { echo "recovered target mode is not owner-only: $target_mode" >&2; exit 1; }
 }
