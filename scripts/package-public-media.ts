@@ -205,6 +205,14 @@ function readContentLength(response: Response) {
   return Number(value);
 }
 
+async function cancelResponseBody(response: Response) {
+  try {
+    await response.body?.cancel();
+  } catch {
+    // Cleanup failures must not replace the packaging result.
+  }
+}
+
 function mediaDownloadError(url: string, attempts: number, cause: unknown) {
   const details = cause instanceof Error ? `${cause.name}: ${cause.message}` : String(cause);
   return new Error(
@@ -309,6 +317,7 @@ async function fetchMediaWithinOrigin(
     }
     if (response.status < 300 || response.status >= 400) return response;
 
+    await cancelResponseBody(response);
     const location = response.headers.get("location");
     if (!location) throw new Error("Media origin returned a redirect without a location");
     const nextUrl = new URL(location, currentUrl);
@@ -348,6 +357,7 @@ async function downloadMedia(
       continue;
     }
     if (!response.ok) {
+      await cancelResponseBody(response);
       const retryable =
         response.status === 404 ||
         response.status === 408 ||
@@ -361,7 +371,7 @@ async function downloadMedia(
     }
     const declaredLength = readContentLength(response);
     if (declaredLength !== null && declaredLength > maxBytes) {
-      await response.body?.cancel().catch(() => undefined);
+      await cancelResponseBody(response);
       return { status: "external", bytes: declaredLength, reason: "over_max_bytes" };
     }
 
