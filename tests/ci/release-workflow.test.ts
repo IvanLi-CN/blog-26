@@ -200,17 +200,25 @@ describe("release.yml", () => {
     expect(edgeone).toContain("name: frontend-edgeone-site");
     expect(edgeone).toContain("path: ./edgeone-dist");
     const edgeoneSteps = parsedWorkflow.jobs.deploy_frontend_edgeone?.steps ?? [];
-    const sharedSnapshot = edgeoneSteps.find(
-      (step) => step.name === "Download the shared public snapshot for EdgeOne rebuild"
+    const sharedSnapshotDownloads = edgeoneSteps.filter(
+      (step) =>
+        step.uses === "actions/download-artifact@v8" &&
+        step.with?.name === "public-content-snapshot"
     );
+    expect(sharedSnapshotDownloads).toHaveLength(1);
+    const sharedSnapshot = sharedSnapshotDownloads[0];
+    expect(sharedSnapshot?.name).toBe("Download the shared public snapshot for EdgeOne rebuild");
     expect(sharedSnapshot?.uses).toBe("actions/download-artifact@v8");
     expect(sharedSnapshot?.with).toEqual({
       name: "public-content-snapshot",
       path: "./site/generated",
     });
-    const playbookRebuild = parsedWorkflow.jobs.deploy_frontend_edgeone?.steps?.find(
+    const playbookRebuildSteps = edgeoneSteps.filter(
       (step) => step.name === "Rebuild with the current Playbook under the shared production lock"
     );
+    expect(playbookRebuildSteps).toHaveLength(1);
+    const playbookRebuild = playbookRebuildSteps[0];
+    expect(playbookRebuild?.env?.PUBLIC_CONTENT_BUNDLE_URL).toBe("preloaded");
     expect(playbookRebuild?.env?.PUBLIC_STATIC_MEDIA_ORIGIN).toBe(
       `\${{ vars.PUBLIC_STATIC_MEDIA_ORIGIN || 'https://console.ivanli.cc' }}`
     );
@@ -223,6 +231,11 @@ describe("release.yml", () => {
     );
     expect(sharedSnapshotIndex).toBeGreaterThanOrEqual(0);
     expect(playbookRebuildIndex).toBeGreaterThan(sharedSnapshotIndex);
+    expect(
+      edgeoneSteps
+        .slice(sharedSnapshotIndex + 1)
+        .some((step) => step.run?.includes("fetch-public-content-bundle.sh"))
+    ).toBe(false);
     expect(edgeone).toContain(`EDGEONE_API_TOKEN: \${{ secrets.EDGEONE_API_TOKEN }}`);
     expect(edgeone).toContain(`EDGEONE_PROJECT_NAME: \${{ vars.EDGEONE_PROJECT_NAME }}`);
     expect(edgeone).toContain("- name: Configure EdgeOne Makers backend origin");

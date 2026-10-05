@@ -697,6 +697,7 @@ jobs:
           PLAYBOOK_USE_DEPLOYED: 'true'
           PLAYBOOK_REQUIRED: 'true'
           PLAYBOOK_RENDERER_COMMIT: ${{ needs.prepare.outputs.head_sha }}
+          PUBLIC_CONTENT_BUNDLE_URL: preloaded
           PUBLIC_STATIC_MEDIA_ORIGIN: ${{ vars.PUBLIC_STATIC_MEDIA_ORIGIN || 'https://console.ivanli.cc' }}
           PUBLIC_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL || 'https://console.ivanli.cc' }}
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://ivanli.cc' }}
