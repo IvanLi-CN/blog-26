@@ -85,7 +85,6 @@ describe("packagePublicMedia", () => {
 
     expect(requestedUrls).toEqual([
       "https://api.example/api/public/assets/post/hello/hash/content.webp",
-      "https://api.example/api/public/assets/post/hello/hash/content.webp",
     ]);
     expect(await readFile(join(cwd, "site-dist", "index.html"), "utf8")).toContain(
       "/_content/assets/post/hello/hash/content.webp)\\n\\n正文"
@@ -121,7 +120,6 @@ describe("packagePublicMedia", () => {
 
     expect(requestedUrls).toEqual([
       "https://api.example/api/public/assets/post/hello/hash/content.webp",
-      "https://api.example/api/public/assets/post/hello/hash/content.webp",
     ]);
   });
 
@@ -138,11 +136,9 @@ describe("packagePublicMedia", () => {
     const fetchImpl: PublicMediaFetcher = async (input, init) => {
       const url = String(input);
       calls.push(`${init?.method ?? "GET"} ${url}`);
-      if (init?.method === "HEAD" && url.includes("/cover.webp")) {
-        return response("", { "content-length": "11" });
+      if (url.includes("/cover.webp")) {
+        return response("oversized!!", { "content-length": "11" });
       }
-      if (init?.method === "HEAD") return response("", { "content-length": "4" });
-      if (url.includes("/cover.webp")) return response("oversized!!");
       return response("tiny", { "content-length": "4" });
     };
 
@@ -162,12 +158,10 @@ describe("packagePublicMedia", () => {
     expect(
       await readFile(join(cwd, "site-dist", "_content/assets/post/hello/hash/card.webp"), "utf8")
     ).toBe("tiny");
-    expect(calls).toContain(
-      "HEAD https://api.example/api/public/assets/post/hello/hash/card.webp?v=1"
-    );
-    expect(calls).not.toContain(
-      "GET https://api.example/api/public/assets/post/hello/hash/cover.webp?v=1"
-    );
+    expect(calls).toEqual([
+      "GET https://api.example/api/public/assets/post/hello/hash/card.webp?v=1",
+      "GET https://api.example/api/public/assets/post/hello/hash/cover.webp?v=1",
+    ]);
 
     const result = await verifyPublicMediaPackage({
       cwd,
@@ -177,6 +171,52 @@ describe("packagePublicMedia", () => {
       maxProjectBytes: 1024 * 1024,
     });
     expect(result.fileCount).toBeGreaterThan(1);
+  });
+
+  test("uses one GET per asset and cancels oversized response bodies", async () => {
+    const cwd = await fixture();
+    await writeFile(
+      join(cwd, "site-dist", "index.html"),
+      [
+        '<img src="/api/public/assets/post/one/hash/card.webp">',
+        '<img src="/api/public/assets/post/one/hash/cover.webp">',
+      ].join("\n")
+    );
+
+    const calls: string[] = [];
+    let oversizedBodyCancelled = false;
+    const manifest = await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      maxBytes: 10,
+      fetchImpl: async (input, init) => {
+        const url = String(input);
+        calls.push(`${init?.method ?? "GET"} ${url}`);
+        if (url.endsWith("/cover.webp")) {
+          return new Response(
+            new ReadableStream<Uint8Array>({
+              start: (controller) => controller.enqueue(new Uint8Array(11)),
+              cancel: () => {
+                oversizedBodyCancelled = true;
+              },
+            }),
+            { status: 200, headers: { "content-length": "11" } }
+          );
+        }
+        return response("tiny", { "content-length": "4" });
+      },
+    });
+
+    expect(calls).toEqual([
+      "GET https://api.example/api/public/assets/post/one/hash/card.webp",
+      "GET https://api.example/api/public/assets/post/one/hash/cover.webp",
+    ]);
+    expect(oversizedBodyCancelled).toBe(true);
+    expect(manifest).toMatchObject({ packagedCount: 1, externalCount: 1 });
+    expect(await readFile(join(cwd, "site-dist", "index.html"), "utf8")).toContain(
+      "https://api.example/api/public/assets/post/one/hash/cover.webp"
+    );
   });
 
   test("rejects redirects that leave the configured media origin", async () => {
@@ -236,13 +276,12 @@ describe("packagePublicMedia", () => {
         cwd,
         mediaOrigin: "https://api.example",
         siteUrl: "https://site.example",
-        fetchImpl: async (_input, init) =>
-          new Response("missing", { status: init?.method === "HEAD" ? 404 : 404 }),
+        fetchImpl: async () => new Response("missing", { status: 404 }),
       })
     ).rejects.toThrow("HTTP 404");
   });
 
-  test("falls back to GET when the media origin rejects HEAD", async () => {
+  test("downloads media with one GET without requiring HEAD support", async () => {
     const cwd = await fixture();
     await writeFile(
       join(cwd, "site-dist", "index.html"),
@@ -256,14 +295,11 @@ describe("packagePublicMedia", () => {
       siteUrl: "https://site.example",
       fetchImpl: async (_input, init) => {
         methods.push(init?.method ?? "GET");
-        if (init?.method === "HEAD") {
-          return new Response('{"message":"maximum resolution exceeded"}', { status: 422 });
-        }
         return response("animated-derivative", { "content-length": "18" });
       },
     });
 
-    expect(methods).toEqual(["HEAD", "GET"]);
+    expect(methods).toEqual(["GET"]);
     expect(
       await readFile(
         join(cwd, "site-dist", "_content/assets/memo/animated/hash/content.webp"),

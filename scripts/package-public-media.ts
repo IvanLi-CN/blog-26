@@ -262,7 +262,7 @@ async function readResponseWithinLimit(
       if (next.done) break;
       total += next.value.byteLength;
       if (total > maxBytes) {
-        await reader.cancel();
+        await reader.cancel().catch(() => undefined);
         return { body: undefined, tooLarge: true };
       }
       chunks.push(next.value);
@@ -329,26 +329,7 @@ async function downloadMedia(
   downloadAttempts: number,
   retryDelayMs: number
 ): Promise<DownloadResult> {
-  let head: Response | null = null;
-  try {
-    head = await fetchMediaWithinOrigin(
-      url,
-      mediaOrigin,
-      { method: "HEAD" },
-      fetchImpl,
-      requestTimeoutMs
-    );
-  } catch {
-    head = null;
-  }
-
-  if (head?.ok) {
-    const length = readContentLength(head);
-    if (length !== null && length > maxBytes) {
-      return { status: "external", bytes: length, reason: "over_max_bytes" };
-    }
-  }
-
+  // GET headers provide the size limit without a separate round-trip.
   let lastError: unknown;
   for (let attempt = 1; attempt <= downloadAttempts; attempt += 1) {
     let response: Response;
@@ -380,6 +361,7 @@ async function downloadMedia(
     }
     const declaredLength = readContentLength(response);
     if (declaredLength !== null && declaredLength > maxBytes) {
+      await response.body?.cancel().catch(() => undefined);
       return { status: "external", bytes: declaredLength, reason: "over_max_bytes" };
     }
 
