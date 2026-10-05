@@ -49,7 +49,6 @@ const HTML_FILE_ROUTE_PATTERNS = [
 ] as const;
 
 const DYNAMIC_ROOT_PATHS = new Set(["api", "admin", "mcp"]);
-const ROOT_ASSETS_USING_DEFAULT_CACHE = new Set(["atom.xml", "feed.json"]);
 const DYNAMIC_ROUTE_PROBES = [
   "/api",
   "/api/",
@@ -58,13 +57,19 @@ const DYNAMIC_ROUTE_PROBES = [
   "/api/public/content-bundle",
   "/api/probe",
   "/api/probe/probe",
+  "/api/probe.xml",
+  "/api/probe.ico",
   "/admin",
   "/admin/",
   "/admin/index.html",
   "/admin/probe",
+  "/admin/probe.xml",
+  "/admin/probe.ico",
   "/mcp",
   "/mcp/",
   "/mcp/probe",
+  "/mcp/probe.xml",
+  "/mcp/probe.ico",
 ] as const;
 
 export function normalizeBasePath(raw = "") {
@@ -166,8 +171,17 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     const exactSource = scopedPath(basePath, `/${path}`);
 
     if (path.startsWith("tags/") && path.endsWith("/feed.xml")) {
-      const source = path === "tags/feed.xml" ? "/tags/feed.xml" : "/tags/*/feed.xml";
-      tagFeedSources.add(scopedPath(basePath, source));
+      tagFeedSources.add(scopedPath(basePath, "/tags/*.xml"));
+      continue;
+    }
+
+    if (parent === "." && basenameOf(path).startsWith("feed.")) {
+      rootAssetSources.add(scopedPath(basePath, "/feed.*"));
+      continue;
+    }
+
+    if (parent === "." && basenameOf(path).startsWith("favicon") && extname(path) === ".ico") {
+      rootAssetSources.add(scopedPath(basePath, "/favicon*.ico"));
       continue;
     }
 
@@ -219,8 +233,6 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     if (parent === ".") {
       const basename = path.slice(path.lastIndexOf("/") + 1);
       if (DYNAMIC_ROOT_PATHS.has(basename)) continue;
-      // EdgeOne already revalidates un-hashed static files and purges its edge cache on deploy.
-      if (ROOT_ASSETS_USING_DEFAULT_CACHE.has(basename)) continue;
       rootAssetSources.add(scopedPath(basePath, `/${basename}`));
       continue;
     }
@@ -293,6 +305,10 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
   }
 
   return config;
+}
+
+function basenameOf(path: string) {
+  return path.slice(path.lastIndexOf("/") + 1);
 }
 
 function edgeoneSourceMatches(source: string, pathname: string) {
