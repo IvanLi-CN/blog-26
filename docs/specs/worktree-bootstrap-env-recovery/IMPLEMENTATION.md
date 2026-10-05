@@ -14,6 +14,7 @@
 - Implemented coverage: primary worktree discovery, source-only recovery for missing targets, port-only normalization, source/target damage distinctions, owner-only atomic publication, fallback behavior, and concurrent create-once handling.
 - Verification commands: `bun run test:worktree-bootstrap`, shell syntax checks, Python compilation, `bun run check`, and `git diff --check`.
 - Review follow-up: the linked-worktree smoke fixture now reads modes through Python's standard library on both BSD and GNU hosts, and uses quoted source port assignments to verify lease rewriting.
+- Review follow-up: source reads now use descriptor validation and non-blocking special-file handling, transient source loss returns to generated-default fallback, CRLF files remain loadable, and port values are omitted from success logs.
 
 ## Coverage / rollout summary
 

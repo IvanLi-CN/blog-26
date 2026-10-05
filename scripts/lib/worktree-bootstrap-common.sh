@@ -241,15 +241,21 @@ wtb_recover_env_from_primary() {
   fi
 
   wtb_allocate_ports || return 1
-  result="$(python3 "$WORKTREE_BOOTSTRAP_ENV_HELPER" publish \
+  if result="$(python3 "$WORKTREE_BOOTSTRAP_ENV_HELPER" publish \
     --source "$source_env" \
     --target "$(wtb_env_path)" \
     --port "$WTB_PORT" \
     --site-port "$WTB_SITE_PORT" \
-    --admin-port "$WTB_ADMIN_PORT")" || {
+    --admin-port "$WTB_ADMIN_PORT")"; then
+    :
+  else
+    local publish_status=$?
+    if [[ "$publish_status" == 2 ]]; then
+      return 2
+    fi
     wtb_error "failed to publish recovered .env.local"
     return 1
-  }
+  fi
   case "$result" in
     created)
       wtb_log "recovered missing .env.local with leased worktree ports"

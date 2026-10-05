@@ -386,7 +386,7 @@ EOF
   derived_site_port="$(cd "$LEGACY_WORKTREE" && bun ./scripts/resolve-worktree-port.ts site)"
   derived_admin_port="$(cd "$LEGACY_WORKTREE" && bun ./scripts/resolve-worktree-port.ts admin)"
 
-  assert_file_contains /tmp/worktree-bootstrap-legacy.log 'worktree ports loaded \(PORT=33111, SITE_PORT=33114, ADMIN_PORT=33115\)'
+  assert_file_contains /tmp/worktree-bootstrap-legacy.log 'worktree ports loaded$'
   assert_file_contains "$LEGACY_WORKTREE/.env.local" '^PORT=33111$'
   assert_file_not_contains "$LEGACY_WORKTREE/.env.local" '^SITE_PORT='
   assert_file_not_contains "$LEGACY_WORKTREE/.env.local" '^ADMIN_PORT='
@@ -492,6 +492,23 @@ check_damaged_target_is_preserved() {
   )
   [[ -d "$DAMAGED_WORKTREE/.env.local" ]] || { echo "non-regular target was replaced" >&2; exit 1; }
   assert_file_contains /tmp/worktree-bootstrap-damaged-directory.log 'not a regular file'
+
+  local fifo_path="$TMP_DIR/source-fifo"
+  mkfifo "$fifo_path"
+  python3 - "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py" "$fifo_path" <<'PY'
+import subprocess
+import sys
+
+completed = subprocess.run(
+    [sys.executable, sys.argv[1], "validate", "--path", sys.argv[2]],
+    capture_output=True,
+    text=True,
+    timeout=2,
+    check=False,
+)
+if completed.returncode == 0 or completed.stdout.strip() != "unusable":
+    raise SystemExit("FIFO validation was not rejected promptly")
+PY
 }
 
 check_publish_failure_is_strict_and_non_blocking() {

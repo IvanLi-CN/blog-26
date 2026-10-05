@@ -23,6 +23,7 @@
 
 - Tier 3 review identified a BSD-only file-mode assertion in the smoke fixture; it now uses Python standard-library mode inspection so the test runs on macOS and Ubuntu.
 - The source fixture includes quoted port assignments, preserving the contract proof that recovery replaces all three lease-bound port values.
+- A follow-up review hardened special-file/race handling, preserved fallback for transient source loss, normalized CRLF loading, and removed port values from bootstrap logs.
 
 ## References
 

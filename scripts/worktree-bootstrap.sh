@@ -103,7 +103,7 @@ validate_ports() {
     wtb_ensure_registered_port site "$site_port" "$port_base" || return 1
     wtb_ensure_registered_port admin "$admin_port" "$port_base" || return 1
   fi
-  wtb_log "worktree ports loaded (PORT=${web_port}, SITE_PORT=${site_port}, ADMIN_PORT=${admin_port})"
+  wtb_log "worktree ports loaded"
 }
 
 install_lefthook() {

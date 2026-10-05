@@ -117,18 +117,21 @@ def read_regular(path: Path) -> tuple[bytes, int]:
     if not stat.S_ISREG(initial_mode):
         raise EnvUnavailable("environment file is not a regular file")
 
-    flags = os.O_RDONLY
+    flags = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0)
     no_follow = getattr(os, "O_NOFOLLOW", 0)
+    fd = -1
     try:
         fd = os.open(path, flags | no_follow)
-    except OSError as exc:
-        raise EnvUnavailable("environment file cannot be read") from exc
-
-    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise EnvUnavailable("environment file is not a regular file")
         with os.fdopen(fd, "rb") as handle:
+            fd = -1
             data = handle.read()
     except OSError as exc:
         raise EnvUnavailable("environment file cannot be read") from exc
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
     return data, stat.S_IMODE(initial_mode)
 
@@ -247,18 +250,16 @@ def command_publish(args: argparse.Namespace) -> int:
         return 0
     try:
         source_data, source_mode = validated_source(Path(args.source))
-        target_mode = source_mode & 0o600
-        if target_mode & 0o400 == 0:
-            raise EnvUnavailable("source environment is not owner-readable")
+        target_mode = source_mode & 0o600 or 0o400
         data = rewrite_ports(
             source_data,
             {b"PORT": args.port, b"SITE_PORT": args.site_port, b"ADMIN_PORT": args.admin_port},
         )
         print(publish_bytes(target, data, target_mode))
     except EnvInvalid:
-        return fail("source environment is invalid")
+        return fail("source environment is invalid", 2)
     except EnvUnavailable:
-        return fail("source environment is unavailable")
+        return fail("source environment is unavailable", 2)
     except OSError:
         return fail("environment publication failed")
     return 0
