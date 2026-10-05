@@ -8,6 +8,7 @@ sha="${WORKFLOW_RUN_SHA:-${COMMIT_SHA:-${GITHUB_SHA:-}}}"
 target_branch="${TARGET_BRANCH:-main}"
 pr_number_override="${PR_NUMBER_OVERRIDE:-}"
 is_latest_branch_head="true"
+branch_head_sha=""
 
 if [[ -z "${repo}" ]]; then
   echo "release-intent: missing GITHUB_REPOSITORY" >&2
@@ -55,6 +56,7 @@ emit_skip() {
   write_output "components" ""
   write_output "pr_number" ""
   write_output "is_latest_branch_head" "${is_latest_branch_head}"
+  write_output "current_main_sha" "${branch_head_sha:-}"
   write_output "reason" "${reason}"
 }
 
@@ -70,6 +72,7 @@ emit_failure() {
   write_output "components" ""
   write_output "pr_number" ""
   write_output "is_latest_branch_head" "${is_latest_branch_head}"
+  write_output "current_main_sha" "${branch_head_sha:-}"
   write_output "reason" "${reason}"
   exit 3
 }
@@ -513,6 +516,7 @@ fi
 echo "release-intent:"
 echo "  sha=${sha}"
 echo "  is_latest_branch_head=${is_latest_branch_head}"
+echo "  current_main_sha=${branch_head_sha}"
 echo "  pr_number=${pr_number}"
 echo "  intent_type=${intent_type:-<none>}"
 echo "  channel=${channel:-<none>}"
@@ -530,4 +534,5 @@ write_output "backend_release" "${backend_release}"
 write_output "components" "${components}"
 write_output "pr_number" "${pr_number}"
 write_output "is_latest_branch_head" "${is_latest_branch_head}"
+write_output "current_main_sha" "${branch_head_sha}"
 write_output "reason" "${reason}"

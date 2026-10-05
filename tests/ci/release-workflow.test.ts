@@ -112,6 +112,27 @@ describe("release.yml", () => {
     );
   });
 
+  test("reports the current main SHA and safe recovery for a stale release source", () => {
+    const prepare = jobBlock("prepare");
+    const summaryStart = prepare.indexOf("      - name: Write summary\n");
+    expect(summaryStart).toBeGreaterThanOrEqual(0);
+    const summary = prepare.slice(summaryStart);
+
+    expect(summary).toContain(
+      "CURRENT_MAIN_SHA: $" + "{{ steps.intent.outputs.current_main_sha }}"
+    );
+    expect(summary).toContain(
+      'expected_stale_reason="release_head_must_match_current_' +
+        String.fromCharCode(36) +
+        '{RELEASE_HEAD_BRANCH}"'
+    );
+    expect(summary).toContain(
+      "This run stopped before version tags, release assets, container images, or EdgeOne deployment were created."
+    );
+    expect(summary).toContain("create a new meaningful in-scope PR from current main");
+    expect(summary).toContain("Do not rerun this stale source SHA");
+  });
+
   test("publishes the verified static artifact and functions to EdgeOne Makers only", () => {
     const prepare = jobBlock("prepare");
     expect(prepare).toContain("persist-credentials: false");

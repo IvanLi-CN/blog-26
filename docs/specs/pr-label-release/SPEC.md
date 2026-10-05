@@ -18,7 +18,7 @@ This spec owns the label-driven release workflow and the CI quality gates that m
 - `REQ-CI-REPRODUCIBLE`: CI MUST keep `bun install --frozen-lockfile` as a blocking reproducible-installation check.
 - `REQ-CI-FUNCTIONAL`: CI MUST keep lint, unit, worktree bootstrap, build, and Docker smoke checks as blocking functional gates.
 - `REQ-RELEASE-INTENT`: Release publication MUST use the validated PR `type:*`, `channel:*`, and `release:*` label contract.
-- `REQ-RELEASE-CURRENT-MAIN`: Release publication MUST use the exact current `main` head and MUST reject stale or non-main source SHAs before publication.
+- `REQ-RELEASE-CURRENT-MAIN`: Release publication MUST use the exact current `main` head and MUST reject stale or non-main source SHAs before publication. A stale rejection MUST expose the requested SHA and observed current `main` SHA, confirm that publication side effects did not run, and point to the follow-up PR recovery path.
 
 ## Verification
 
@@ -26,7 +26,7 @@ This spec owns the label-driven release workflow and the CI quality gates that m
 - `VER-CI-REPRODUCIBLE`: Run `bun install --frozen-lockfile` and confirm the lockfile remains unchanged; covers: `REQ-CI-REPRODUCIBLE`.
 - `VER-CI-FUNCTIONAL`: Run lint, unit, worktree, build, Docker smoke, and applicable E2E checks; covers: `REQ-CI-FUNCTIONAL`.
 - `VER-RELEASE-INTENT`: Run the label gate and inspect the release intent resolution for the labeled repair PR; covers: `REQ-RELEASE-INTENT`.
-- `VER-RELEASE-CURRENT-MAIN`: Inspect release prepare checks and the post-merge workflow source SHA; covers: `REQ-RELEASE-CURRENT-MAIN`.
+- `VER-RELEASE-CURRENT-MAIN`: Inspect release prepare checks and the post-merge workflow source SHA; verify stale-source summaries include both SHAs and the no-side-effect recovery guidance; covers: `REQ-RELEASE-CURRENT-MAIN`.
 
 ## 1. Background
 
