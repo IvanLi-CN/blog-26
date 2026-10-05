@@ -21,7 +21,7 @@
 
 ## Remaining Gaps
 
-- The full `REQ-WTENV-*` contract is covered by the implementation and smoke fixture; no known implementation gap remains in this topic.
+- The approved A1-A5 acceptance paths are covered by the implementation and smoke fixture; exhaustive invalid-input permutations remain represented by the shared validation paths rather than one fixture per permutation.
 - The linked-worktree smoke fixture uses real `git worktree add` operations and synthetic secret markers only.
 
 ## Related Changes

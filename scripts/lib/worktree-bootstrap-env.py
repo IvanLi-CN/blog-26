@@ -114,8 +114,8 @@ def read_regular(path: Path) -> tuple[bytes, int]:
         initial_mode = os.lstat(path).st_mode
     except (FileNotFoundError, OSError) as exc:
         raise EnvUnavailable("environment file is unavailable") from exc
-    if not stat.S_ISREG(initial_mode) or initial_mode & stat.S_IRUSR == 0:
-        raise EnvUnavailable("environment file is not owner-readable")
+    if not stat.S_ISREG(initial_mode):
+        raise EnvUnavailable("environment file is not a regular file")
 
     flags = os.O_RDONLY
     no_follow = getattr(os, "O_NOFOLLOW", 0)

@@ -20,6 +20,7 @@ INVALID_SOURCE_WORKTREE="$TMP_DIR/invalid-source"
 DAMAGED_WORKTREE="$TMP_DIR/damaged"
 CONCURRENT_WORKTREE="$TMP_DIR/concurrent"
 PUBLISH_FAIL_WORKTREE="$TMP_DIR/publish-fail"
+CRLF_WORKTREE="$TMP_DIR/crlf"
 ROOT_ENV_BACKUP="$TMP_DIR/root-env.local.bak"
 PORT_HOLDER_PID=""
 PORT_HOLDER_PID_2=""
@@ -46,6 +47,7 @@ cleanup() {
   git -C "$SNAPSHOT_REPO" worktree remove --force "$DAMAGED_WORKTREE" >/dev/null 2>&1 || true
   git -C "$SNAPSHOT_REPO" worktree remove --force "$CONCURRENT_WORKTREE" >/dev/null 2>&1 || true
   git -C "$SNAPSHOT_REPO" worktree remove --force "$PUBLISH_FAIL_WORKTREE" >/dev/null 2>&1 || true
+  git -C "$SNAPSHOT_REPO" worktree remove --force "$CRLF_WORKTREE" >/dev/null 2>&1 || true
   rm -rf "$TMP_DIR"
 }
 trap cleanup EXIT
@@ -278,6 +280,46 @@ EOF
   target_mode="$(python3 -c 'import os, stat, sys; print(format(stat.S_IMODE(os.stat(sys.argv[1]).st_mode), "o"))' "$target_env")"
   [[ "$source_mode" == "644" ]] || { echo "source fixture mode changed unexpectedly" >&2; exit 1; }
   [[ "$target_mode" == "600" ]] || { echo "recovered target mode is not owner-only: $target_mode" >&2; exit 1; }
+}
+
+check_crlf_source_recovery() {
+  log "check CRLF source recovery remains loadable"
+  write_primary_source_env
+  python3 - "$SNAPSHOT_REPO/.env.local" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+PY
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$CRLF_WORKTREE" >/tmp/worktree-bootstrap-crlf.log 2>&1
+  )
+
+  local env_file="$CRLF_WORKTREE/.env.local"
+  [[ -f "$env_file" ]] || { echo "CRLF recovery target .env.local is missing" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-crlf.log 'recovered missing \.env\.local with leased worktree ports'
+  assert_file_not_contains /tmp/worktree-bootstrap-crlf.log 'synthetic-source-only'
+  python3 - "$env_file" <<'PY'
+from pathlib import Path
+import sys
+
+values = {}
+for line in Path(sys.argv[1]).read_bytes().splitlines():
+    if b"=" in line:
+        key, value = line.split(b"=", 1)
+        values[key] = value
+
+if any(not values.get(key, b"").isdigit() for key in (b"PORT", b"SITE_PORT", b"ADMIN_PORT")):
+    raise SystemExit("CRLF recovery did not produce numeric ports")
+if values.get(b"DB_PATH") != b"./dev-data/shared.sqlite.db":
+    raise SystemExit("CRLF recovery changed DB_PATH")
+if b"SECRET_MARKER=synthetic-source-only" not in Path(sys.argv[1]).read_bytes():
+    raise SystemExit("CRLF recovery lost source settings")
+PY
+  write_primary_source_env
 }
 
 check_existing_env_is_preserved() {
@@ -857,6 +899,7 @@ create_snapshot_repo
 prepare_root_hooks
 check_auto_bootstrap
 check_primary_source_recovery
+check_crlf_source_recovery
 check_existing_env_is_preserved
 check_legacy_env_is_accepted
 check_dry_run_is_read_only

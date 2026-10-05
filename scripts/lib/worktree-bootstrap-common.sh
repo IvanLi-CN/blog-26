@@ -293,6 +293,7 @@ wtb_load_env_file() {
 
   while IFS= read -r raw; do
     local line="$raw"
+    line="${line%$'\r'}"
     [[ -z "$line" || "$line" == \#* ]] && continue
     if [[ "$line" != *=* ]]; then
       continue
