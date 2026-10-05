@@ -7,6 +7,7 @@ import { extractPostCoverCandidate, isExternalImageUrl } from "@/lib/post-cover"
 import {
   createEmptyPublicMediaCollection,
   type PublicMediaCollection,
+  type PublicMediaItem,
   rewritePublicContentMediaUrls,
 } from "@/lib/public-media";
 import { getPublicSiteUrl, toPublicSitePath } from "@/lib/public-runtime-url";
@@ -67,17 +68,23 @@ function normalizeLegacyMemoTitle(
 }
 
 function normalizeSnapshotMedia(
-  media: PublicMediaCollection | null | undefined
+  media: PublicMediaCollection | null | undefined,
+  preserveSourceDescriptors: boolean
 ): PublicMediaCollection {
   if (!media || typeof media !== "object") {
     return createEmptyPublicMediaCollection();
   }
 
+  const normalizeItem = (item: PublicMediaItem | null | undefined) => {
+    if (!item || preserveSourceDescriptors) return item ?? null;
+    return { ...item, sources: [] };
+  };
+
   return {
-    primary: media.primary ?? null,
-    cover: media.cover ?? null,
-    content: Array.isArray(media.content) ? media.content : [],
-    attachments: Array.isArray(media.attachments) ? media.attachments : [],
+    primary: normalizeItem(media.primary),
+    cover: normalizeItem(media.cover),
+    content: Array.isArray(media.content) ? media.content.map(normalizeItem) : [],
+    attachments: Array.isArray(media.attachments) ? media.attachments.map(normalizeItem) : [],
   };
 }
 
@@ -85,10 +92,13 @@ type SnapshotTimelineRecord = PublicTagTimelineItem & {
   media?: PublicMediaCollection | null;
 };
 
-function normalizeSnapshotPaths(snapshot: PublicSnapshot): PublicSnapshot {
+function normalizeSnapshotPaths(
+  snapshot: PublicSnapshot,
+  preserveSourceDescriptors: boolean
+): PublicSnapshot {
   const posts = snapshot.posts.map((post) => ({
     ...post,
-    media: normalizeSnapshotMedia(post.media),
+    media: normalizeSnapshotMedia(post.media, preserveSourceDescriptors),
     filePath: getSnapshotRecordPath(post),
     body: rewritePublicContentMediaUrls(post.body, {
       kind: "post",
@@ -104,7 +114,7 @@ function normalizeSnapshotPaths(snapshot: PublicSnapshot): PublicSnapshot {
       memo.content,
       memo.slug
     ),
-    media: normalizeSnapshotMedia(memo.media),
+    media: normalizeSnapshotMedia(memo.media, preserveSourceDescriptors),
     filePath: getSnapshotRecordPath(memo),
     content: rewritePublicContentMediaUrls(memo.content, {
       kind: "memo",
@@ -148,7 +158,7 @@ function normalizeSnapshotPaths(snapshot: PublicSnapshot): PublicSnapshot {
                     timelineItem.slug
                   )
               : timelineItem.title,
-          media: normalizeSnapshotMedia(timelineItem.media),
+          media: normalizeSnapshotMedia(timelineItem.media, preserveSourceDescriptors),
           filePath,
           content:
             timelineItem.type === "memo" && typeof timelineItem.content === "string"
@@ -233,12 +243,12 @@ function getSnapshotPath() {
 export async function getSnapshot() {
   if (process.env.CONSOLE_RUNTIME === "true") {
     const { buildPublicSnapshot } = await import("@/public-site/snapshot");
-    return normalizeSnapshotPaths(await buildPublicSnapshot());
+    return normalizeSnapshotPaths(await buildPublicSnapshot(), true);
   }
 
   if (!snapshotPromise) {
     snapshotPromise = readFile(getSnapshotPath(), "utf8").then((raw) =>
-      normalizeSnapshotPaths(JSON.parse(raw) as PublicSnapshot)
+      normalizeSnapshotPaths(JSON.parse(raw) as PublicSnapshot, false)
     );
   }
   return snapshotPromise;
