@@ -217,7 +217,7 @@ function buildDynamicChecks(
       excludes: ["/./assets/"],
     },
     {
-      file: "site-dist/default-avatar.svg",
+      file: "site-dist/site-assets/default-avatar.svg",
       includes: ["<svg"],
       excludes: [],
     },

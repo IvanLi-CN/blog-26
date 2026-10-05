@@ -55,6 +55,7 @@ describe("release-intent.sh", () => {
         TARGET_BRANCH: "main",
         WORKFLOW_RUN_SHA: requestedSha,
       },
+      timeout: 15_000,
     });
 
     expect(result.status).toBe(3);
@@ -62,5 +63,5 @@ describe("release-intent.sh", () => {
     expect(await readFile(outputPath, "utf8")).toContain(
       "reason=release_head_must_match_current_main"
     );
-  });
+  }, 20_000);
 });

@@ -90,7 +90,7 @@ describe("verify-pages-build", () => {
       "site-dist/feed.json",
       `{"items":[{"url":"${siteUrl}/posts/${postSlug}/","image":"${mediaUrl}"}]}`
     );
-    writeBuildFile(cwd, "site-dist/default-avatar.svg", "<svg></svg>");
+    writeBuildFile(cwd, "site-dist/site-assets/default-avatar.svg", "<svg></svg>");
     writeBuildFile(cwd, "site-dist/watermark-ivanli.svg", "<svg>ivanli.cc</svg>");
     writeBuildFile(
       cwd,
@@ -168,7 +168,7 @@ describe("verify-pages-build", () => {
       "site-dist/feed.json",
       `{"items":[{"url":"${siteUrl}/posts/release-fix/","image":"${siteUrl}/api/public/assets/post/release-fix/hash1234/cover.webp"}]}`
     );
-    writeBuildFile(cwd, "site-dist/default-avatar.svg", "<svg></svg>");
+    writeBuildFile(cwd, "site-dist/site-assets/default-avatar.svg", "<svg></svg>");
     writeBuildFile(cwd, "site-dist/watermark-ivanli.svg", "<svg>ivanli.cc</svg>");
     writeBuildFile(
       cwd,
@@ -247,7 +247,7 @@ describe("verify-pages-build", () => {
       "site-dist/feed.json",
       `{"items":[{"url":"${siteUrl}/posts/release-fix/","image":"https://cdn.example.test/release-fix.webp"}]}`
     );
-    writeBuildFile(cwd, "site-dist/default-avatar.svg", "<svg></svg>");
+    writeBuildFile(cwd, "site-dist/site-assets/default-avatar.svg", "<svg></svg>");
     writeBuildFile(cwd, "site-dist/watermark-ivanli.svg", "<svg>ivanli.cc</svg>");
     writeBuildFile(
       cwd,
@@ -324,7 +324,7 @@ describe("verify-pages-build", () => {
       "site-dist/feed.json",
       `{"items":[{"url":"${siteUrl}/posts/release-fix/","image":"${siteUrl}/api/public/assets/post/release-fix/hash1234/cover.webp"}]}`
     );
-    writeBuildFile(cwd, "site-dist/default-avatar.svg", "<svg></svg>");
+    writeBuildFile(cwd, "site-dist/site-assets/default-avatar.svg", "<svg></svg>");
     writeBuildFile(cwd, "site-dist/watermark-ivanli.svg", "<svg>ivanli.cc</svg>");
     writeBuildFile(
       cwd,

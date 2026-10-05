@@ -11,7 +11,7 @@
 - `brand master`: the approved `IB-M17-01` reference image and the exact black-on-transparent `ivan-blog-mark.svg` source.
 - `versioned asset`: a public asset whose URL contains a digest derived from the brand source and icon-generation contract.
 - `online-first`: the site requires a network connection for navigation and content; regular browser caching may improve repeat visits but does not promise offline access.
-- Interface: the build-generated `/site.webmanifest`, stable `/favicon.svg`, `/favicon.ico`, and `/favicon-dark.ico`, and digest-qualified files under `/pwa/`.
+- Interface: the build-generated `/site.webmanifest`, compatible `/favicon.ico`, theme-aware favicon and brand assets under `/site-assets/`, and digest-qualified files under `/pwa/`.
 
 ## Requirements
 

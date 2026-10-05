@@ -230,8 +230,16 @@ export async function verifyPublicPwaAssets(options: VerifyPublicPwaAssetsOption
     throw new Error("Approved SVG source hash changed");
   if (sha256(png) !== APPROVED_BRAND_PNG_SHA256)
     throw new Error("Approved IB-M17-01 image hash changed");
-  if (!(await readFile(join(publicDir, "ivan-blog-mark.svg"))).equals(svg)) {
+  const siteAssetsDir = join(publicDir, "site-assets");
+  if (!(await readFile(join(siteAssetsDir, "ivan-blog-mark.svg"))).equals(svg)) {
     throw new Error("Public SVG mark must be byte-identical to the approved source");
+  }
+  if (
+    !(await readFile(join(publicDir, "favicon.ico"))).equals(
+      await readFile(join(siteAssetsDir, "favicon.ico"))
+    )
+  ) {
+    throw new Error("Root compatibility favicon must match the public site asset");
   }
 
   const assets = await getPublicPwaAssetPaths(root);
@@ -245,14 +253,15 @@ export async function verifyPublicPwaAssets(options: VerifyPublicPwaAssetsOption
     verifyPng(join(iconDir, "icon-maskable-512.png"), 512, "maskable"),
     verifyPng(join(iconDir, "apple-touch-icon-180.png"), 180, "opaque"),
     verifyIco(join(publicDir, "favicon.ico")),
-    verifyIco(join(publicDir, "favicon-dark.ico")),
+    verifyIco(join(siteAssetsDir, "favicon.ico")),
+    verifyIco(join(siteAssetsDir, "favicon-dark.ico")),
   ]);
 
   const [any192, maskable192, apple180, faviconSvg] = await Promise.all([
     readFile(join(iconDir, "icon-any-192.png")),
     readFile(join(iconDir, "icon-maskable-192.png")),
     readFile(join(iconDir, "apple-touch-icon-180.png")),
-    readFile(join(publicDir, "favicon.svg"), "utf8"),
+    readFile(join(siteAssetsDir, "favicon.svg"), "utf8"),
   ]);
   if (any192.equals(maskable192) || maskable192.equals(apple180)) {
     throw new Error("Transparent, maskable, and Apple icon assets must remain separate files");

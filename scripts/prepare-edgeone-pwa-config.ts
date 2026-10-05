@@ -18,20 +18,37 @@ export type EdgeoneCacheConfig = { headers: EdgeoneHeaderRule[] };
 
 const HTML_ROUTE_PATTERNS = [
   "/",
-  "/about*",
-  "/search*",
-  "/tags/",
-  "/tags/*/",
-  "/projects/",
-  "/projects/:slug/",
-  "/posts*",
+  "/about/",
+  "/search/",
+  "/tags/*",
+  "/posts/*",
+  "/projects/*",
+  "/playbook/*",
   "/memos/",
   "/memos/:slug/",
-  "/playbook*",
+] as const;
+
+const HTML_FILE_ROUTE_PATTERNS = [
+  "/",
+  "/about/",
+  "/search/",
+  "/tags/*",
+  "/posts/",
+  "/posts/:slug/",
+  "/projects/",
+  "/projects/:slug/",
+  "/playbook/",
+  "/playbook/topics/",
+  "/playbook/topics/:slug/",
+  "/playbook/projects/",
+  "/playbook/projects/:slug/",
+  "/playbook/policies/",
+  "/playbook/policies/:slug/",
+  "/memos/",
+  "/memos/:slug/",
 ] as const;
 
 const DYNAMIC_ROOT_PATHS = new Set(["api", "admin", "mcp"]);
-const GROUPED_ROOT_ASSET_PREFIXES = new Set(["f", "r", "w"]);
 const DYNAMIC_ROUTE_PROBES = [
   "/api",
   "/api/",
@@ -40,13 +57,19 @@ const DYNAMIC_ROUTE_PROBES = [
   "/api/public/content-bundle",
   "/api/probe",
   "/api/probe/probe",
+  "/api/probe.xml",
+  "/api/probe.ico",
   "/admin",
   "/admin/",
   "/admin/index.html",
   "/admin/probe",
+  "/admin/probe.xml",
+  "/admin/probe.ico",
   "/mcp",
   "/mcp/",
   "/mcp/probe",
+  "/mcp/probe.xml",
+  "/mcp/probe.ico",
 ] as const;
 
 export function normalizeBasePath(raw = "") {
@@ -136,82 +159,116 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     .filter((path) => !isVersionedAsset(path))
     .sort();
   const exactAssetSources = new Set<string>();
-  const assetSources = new Set<string>();
-  const projectAssetSources = new Set<string>();
+  const assetRootSources = new Set<string>();
+  const postRouteAssetSources = new Set<string>();
+  const projectRouteAssetSources = new Set<string>();
+  const pwaAssetRootSources = new Set<string>();
   const rootAssetSources = new Set<string>();
-  let hasTagFeedFiles = false;
+  const tagFeedSources = new Set<string>();
 
   for (const path of unversionedFiles) {
     const parent = dirname(path).replaceAll("\\", "/");
     const exactSource = scopedPath(basePath, `/${path}`);
 
     if (path.startsWith("tags/") && path.endsWith("/feed.xml")) {
-      hasTagFeedFiles = true;
+      const source = path === "tags/feed.xml" ? "/tags/feed.xml" : "/tags/*/feed.xml";
+      tagFeedSources.add(scopedPath(basePath, source));
       continue;
     }
 
-    if (path === "memos/feed.xml") {
-      exactAssetSources.add(exactSource);
+    const basename = basenameOf(path);
+    if (path.startsWith("site-assets/")) {
+      rootAssetSources.add(scopedPath(basePath, "/site-assets/*"));
       continue;
     }
 
+    if (parent === "." && ["site.webmanifest", "sitemap.xml"].includes(basename)) {
+      rootAssetSources.add(exactSource);
+      continue;
+    }
+
+    const [root, slug] = path.split("/");
     const overlapsHtmlRoute = htmlRules.some(({ source }) =>
       edgeoneSourceMatches(source, exactSource)
     );
+
+    const pathSegments = path.split("/");
+
+    if (root === "posts" && slug && pathSegments.length >= 3 && extname(path)) {
+      const source = pathSegments.length === 3 ? "/posts/:slug/:asset" : "/posts/:slug/:parent/*";
+      postRouteAssetSources.add(scopedPath(basePath, source));
+      continue;
+    }
+
+    if (root === "projects") {
+      if (extname(path)) {
+        const source =
+          pathSegments.length === 3
+            ? "/projects/:slug/:asset"
+            : pathSegments.length > 3
+              ? "/projects/:slug/:parent/*"
+              : undefined;
+        if (source) projectRouteAssetSources.add(scopedPath(basePath, source));
+        else exactAssetSources.add(exactSource);
+      } else {
+        exactAssetSources.add(exactSource);
+      }
+      continue;
+    }
+
+    if (root === "tags") {
+      exactAssetSources.add(exactSource);
+      continue;
+    }
 
     if (overlapsHtmlRoute) {
       exactAssetSources.add(exactSource);
       continue;
     }
 
+    if (root === "pwa") {
+      const source = parent === "pwa" ? exactSource : scopedPath(basePath, `/${parent}/*`);
+      pwaAssetRootSources.add(source);
+      continue;
+    }
+
     if (parent === ".") {
       const basename = path.slice(path.lastIndexOf("/") + 1);
       if (DYNAMIC_ROOT_PATHS.has(basename)) continue;
-
-      const prefix = basename[0];
-      if (prefix && GROUPED_ROOT_ASSET_PREFIXES.has(prefix)) {
-        rootAssetSources.add(scopedPath(basePath, `/${prefix}*`));
-      } else {
-        rootAssetSources.add(exactSource);
-      }
+      rootAssetSources.add(scopedPath(basePath, `/${basename}`));
       continue;
     }
 
-    if (path.startsWith("projects/")) {
-      const extension = extname(path);
-      if (!extension) {
-        exactAssetSources.add(exactSource);
-        continue;
-      }
-
-      // The suffix wildcard groups files at any depth without matching clean project routes.
-      projectAssetSources.add(scopedPath(basePath, "/projects/*.*"));
+    if (!root) {
+      exactAssetSources.add(exactSource);
       continue;
     }
-
-    const useExactPath =
-      parent === "." || parent === "_content" || parent === "_astro" || parent === "pwa";
-    const source = useExactPath ? exactSource : scopedPath(basePath, `/${parent}/*`);
-    assetSources.add(source);
+    assetRootSources.add(scopedPath(basePath, `/${root}/*`));
   }
 
   const config: EdgeoneCacheConfig = {
     headers: [
-      // EdgeOne evaluates matching headers top-to-bottom, with later matches taking precedence.
-      ...[...projectAssetSources]
+      // Root assets precede HTML routes; route-specific assets and versioned rules follow.
+      ...[...assetRootSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
-      ...[...assetSources]
+      ...[...rootAssetSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
       ...htmlRules,
-      ...[...exactAssetSources]
+      ...[...tagFeedSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
-      ...(hasTagFeedFiles
-        ? [rule(scopedPath(basePath, "/tags/*/feed.xml"), EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)]
-        : []),
-      ...[...rootAssetSources]
+      ...[...projectRouteAssetSources]
+        .sort()
+        .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
+      ...[...postRouteAssetSources]
+        .sort()
+        .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
+      ...[...pwaAssetRootSources]
+        .sort()
+        .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
+      ...[...exactAssetSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
       ...versionedRules,
@@ -220,12 +277,15 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
 
   if (config.headers.length > 30) {
     throw new Error(
-      `EdgeOne cache policy needs ${config.headers.length} header rules; the limit is 30.`
+      `EdgeOne cache policy needs ${config.headers.length} header rules; the limit is 30: ${config.headers.map(({ source }) => source).join(", ")}`
     );
   }
 
   const normalizedBase = normalizeBasePath(basePath);
   for (const headerRule of config.headers) {
+    if (headerRule.source.split("*").length > 2) {
+      throw new Error(`EdgeOne source may contain at most one wildcard: ${headerRule.source}`);
+    }
     if (!headerRule.source.startsWith("/")) {
       throw new Error(`EdgeOne source must start with /: ${headerRule.source}`);
     }
@@ -247,6 +307,10 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
   }
 
   return config;
+}
+
+function basenameOf(path: string) {
+  return path.slice(path.lastIndexOf("/") + 1);
 }
 
 function edgeoneSourceMatches(source: string, pathname: string) {
@@ -289,7 +353,7 @@ function validateHtmlFiles(staticFiles: readonly string[], basePath: string) {
           ? `/${file.slice(0, -"/index.html".length)}/`
           : `/${file}`;
     const scoped = scopedPath(normalizedBase, urlPath);
-    const represented = HTML_ROUTE_PATTERNS.some((source) =>
+    const represented = HTML_FILE_ROUTE_PATTERNS.some((source) =>
       edgeoneSourceMatches(scopedPath(normalizedBase, source), scoped)
     );
     if (!represented) throw new Error(`Public HTML route has no EdgeOne HTML cache rule: ${file}`);

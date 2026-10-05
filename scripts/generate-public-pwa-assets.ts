@@ -124,7 +124,9 @@ export async function generatePublicPwaAssets(options: GeneratePublicPwaAssetsOp
   const sourceSvg = svgBuffer.toString("utf8");
   const paths = await getPublicPwaAssetPaths(root);
   const versionedDir = resolve(publicDir, paths.publicDirectory.slice(1));
+  const siteAssetsDir = resolve(publicDir, "site-assets");
   await mkdir(versionedDir, { recursive: true });
+  await mkdir(siteAssetsDir, { recursive: true });
 
   const any192 = await renderPng(
     buildIconSvg(
@@ -197,10 +199,11 @@ export async function generatePublicPwaAssets(options: GeneratePublicPwaAssetsOp
     [resolve(versionedDir, "icon-maskable-192.png"), maskable192],
     [resolve(versionedDir, "icon-maskable-512.png"), maskable512],
     [resolve(versionedDir, "apple-touch-icon-180.png"), apple180],
-    [resolve(publicDir, "favicon.svg"), Buffer.from(buildAdaptiveFaviconSvg(sourceSvg))],
     [resolve(publicDir, "favicon.ico"), createIco(lightFaviconPngs)],
-    [resolve(publicDir, "favicon-dark.ico"), createIco(darkFaviconPngs)],
-    [resolve(publicDir, "ivan-blog-mark.svg"), svgBuffer],
+    [resolve(siteAssetsDir, "favicon.svg"), Buffer.from(buildAdaptiveFaviconSvg(sourceSvg))],
+    [resolve(siteAssetsDir, "favicon.ico"), createIco(lightFaviconPngs)],
+    [resolve(siteAssetsDir, "favicon-dark.ico"), createIco(darkFaviconPngs)],
+    [resolve(siteAssetsDir, "ivan-blog-mark.svg"), svgBuffer],
   ] as const;
 
   await Promise.all(

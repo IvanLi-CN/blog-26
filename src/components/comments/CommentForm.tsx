@@ -49,8 +49,8 @@ export default function CommentForm({
   const [captchaResponse, setCaptchaResponse] = useState<string | null>(null);
   const [captchaError, setCaptchaError] = useState<string | null>(null);
   const fallbackAvatarUrl = usePublicSitePaths
-    ? (toPublicSitePath("/default-avatar.svg") ?? "/default-avatar.svg")
-    : "/default-avatar.svg";
+    ? (toPublicSitePath("/site-assets/default-avatar.svg") ?? "/site-assets/default-avatar.svg")
+    : "/site-assets/default-avatar.svg";
 
   const handleCaptchaSuccess = useCallback((response: string) => {
     setCaptchaResponse(response);

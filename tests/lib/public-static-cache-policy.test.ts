@@ -41,9 +41,15 @@ describe("public static cache policy", () => {
     expect(getPublicStaticCacheControl("/favicon.ico", "/site-dist/favicon.ico")).toBe(
       REVALIDATED_PUBLIC_ASSET_CACHE_CONTROL
     );
-    expect(getPublicStaticCacheControl("/favicon-dark.ico", "/site-dist/favicon-dark.ico")).toBe(
-      REVALIDATED_PUBLIC_ASSET_CACHE_CONTROL
-    );
+    expect(
+      getPublicStaticCacheControl("/site-assets/favicon.ico", "/site-dist/site-assets/favicon.ico")
+    ).toBe(REVALIDATED_PUBLIC_ASSET_CACHE_CONTROL);
+    expect(
+      getPublicStaticCacheControl(
+        "/site-assets/favicon-dark.ico",
+        "/site-dist/site-assets/favicon-dark.ico"
+      )
+    ).toBe(REVALIDATED_PUBLIC_ASSET_CACHE_CONTROL);
     expect(
       getPublicStaticCacheControl("/api/public/assets/post/a/cover.webp", "/site-dist/cover.webp")
     ).toBeNull();

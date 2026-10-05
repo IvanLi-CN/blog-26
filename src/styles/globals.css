@@ -989,7 +989,7 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
 }
 
 .nature-brand-mark {
-  --nature-brand-mark-url: url("/ivan-blog-mark.svg");
+  --nature-brand-mark-url: url("/site-assets/ivan-blog-mark.svg");
   display: block;
   width: 3.25rem;
   height: 2.3125rem;
