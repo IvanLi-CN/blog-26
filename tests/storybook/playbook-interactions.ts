@@ -280,8 +280,11 @@ async function main() {
 
   const { server, baseUrl } = await createStaticServer();
   try {
-    for (const storyId of storyIds) await runStory(baseUrl, storyId);
-    process.stdout.write(`Verified ${storyIds.length} Storybook play functions\n`);
+    const prefix = process.env.STORYBOOK_STORY_PREFIX;
+    const selectedStoryIds = prefix ? storyIds.filter((id) => id.startsWith(prefix)) : storyIds;
+    if (!selectedStoryIds.length) throw new Error(`No play stories match ${prefix}`);
+    for (const storyId of selectedStoryIds) await runStory(baseUrl, storyId);
+    process.stdout.write(`Verified ${selectedStoryIds.length} Storybook play functions\n`);
   } finally {
     await new Promise<void>((resolvePromise) => server.close(() => resolvePromise()));
   }

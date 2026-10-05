@@ -15,20 +15,22 @@
 
 ## Verification
 
-- Passed: targeted Astro compiler syntax transforms for the five changed `.astro` surfaces（不是整站构建）。
-- Passed: `bun run check`（现有 Biome 提示不阻断）；`git diff --check`；Spec structural contract check。
-- Passed: `bun test src/lib/__tests__/tag-directory.test.ts src/lib/__tests__/tag-group-identity.test.ts tests/lib/project-tags-snapshot.test.ts src/lib/__tests__/public-site-snapshot-compat.test.ts src/lib/__tests__/tag-href.test.ts`：19 tests、271 assertions。
-- Added, not yet executed: tag service/database eligibility and metadata tests; tags router permission, exact matching and pagination tests; protected admin/public HTTP tests; MCP catalog assertions。
-- Added, not yet executed: NativeTagLink Storybook themes/mobile/focus/long-label play coverage and repository interaction runner registration。
-- Controlled page demo: `bun scripts/build-project-tags-demo.ts` creates an old-format fixture and builds actual Astro templates without production DB or online content retrieval。
-- Browser geometry/navigation: `PROJECT_TAGS_DEMO_URL=<leased demo URL> bun tests/lib/project-tags-browser.ts` covers desktop and 393/375/360/320 px, light/dark, all project tags, native section ordering, counts, RSS and unknown-tag status。
+- `bun run check` and Spec structural contract check pass; existing Biome warnings remain non-blocking.
+- Agent VM runs the required pre-commit suite as an ordinary user: 779 tests, 3488 assertions pass after mainline synchronization. Permission-sensitive rollback tests require a non-root runner.
+- Tag aggregation, permissions, inline Memo tags, unavailable local media, old-bundle reconstruction, metadata pruning, exact-case matching, cursor IDs containing underscores, admin organizer/icon overview and AI canonical identity have direct automated coverage.
+- Controlled `bun scripts/build-project-tags-demo.ts` builds the actual static Astro templates from an old-format fixture. The full `site:build`, PWA, poster and social-preview artifact checks pass. Mirrored VM source sets `PLAYBOOK_RENDERER_COMMIT` to its full source commit SHA.
+- `bun run console:build` and `bun run build-storybook` pass in Agent VM. Builds run separately within its memory limit.
+- `STORYBOOK_STORY_PREFIX=public-native-tag-link-- bun run test:storybook-interactions` passes all four affected component play functions, including themes, focus, long labels and 393px states.
+- The controlled static and isolated SQLite-backed SSR fixtures each pass 230 page/theme/viewport checks at 1280, 393, 375, 360 and 320px. These assert complete tags, featured subsets, native navigation, section ordering, counts, minimum targets, focus, overflow, dated empty states, feeds and unknown-tag 404s.
+- An official MCP SDK client against the isolated console confirms `tags.list` includes Harness project associations and React with 10 projects and 12 total entities.
+- `readTagRoutePath` reads raw URL segments exactly once. Regression coverage includes spaces, plus, superscripts, reserved characters, literal percent escapes and a `/blog` base path. This avoids Astro's partial URI decoding of reserved characters.
 
 ## Remaining Gaps
 
-- Agent VM acquisition was retried after the instance-count denial. The current denial is `resource_insufficient`: other allocations use the full 24 GiB project memory ceiling, so the requested 8 GiB would exceed it. No VM lease or guest was created. Heavy validation awaits environment recovery or an explicit local-validation exception。
-- Database/integration tests, static/SSR builds, Storybook build/play and controlled browser verification remain unverified。
-- Visual evidence has not been captured or confirmed; canonical assets remain absent。
-- Formal Tier 3 review, signed-off commits, PR publication and current-head CI have not started。
+- Current-candidate browser checks are being refreshed for desktop native project cards; mobile rows retain the shared Nature UI reading contract.
+- A controlled `/blog` static build verifies native links with a runtime base path.
+- Screenshot comparison is current-only and awaits owner confirmation before canonical asset persistence.
+- Formal Tier 3 four-lane review and current-head PR/CI convergence remain pending.
 
 ## References
 

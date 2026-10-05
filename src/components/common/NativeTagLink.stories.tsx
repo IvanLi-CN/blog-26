@@ -9,10 +9,12 @@ function TagsSurface({ dark = false }: { dark?: boolean }) {
   useEffect(() => {
     document.documentElement.dataset.uiTheme = dark ? "dark" : "light";
     document.documentElement.dataset.theme = dark ? "dark" : "light";
+    document.documentElement.classList.toggle("dark", dark);
     document.documentElement.style.colorScheme = dark ? "dark" : "light";
     return () => {
       document.documentElement.dataset.uiTheme = "light";
       document.documentElement.dataset.theme = "light";
+      document.documentElement.classList.remove("dark");
       document.documentElement.style.colorScheme = "light";
     };
   }, [dark]);
@@ -20,13 +22,13 @@ function TagsSurface({ dark = false }: { dark?: boolean }) {
     <div
       data-visual-evidence-surface
       style={{
-        padding: 24,
+        padding: 32,
         background: "var(--nature-bg)",
         width: "100%",
         boxSizing: "border-box",
       }}
     >
-      <div data-visual-evidence-content className="flex flex-wrap gap-2">
+      <div data-visual-evidence-target className="flex flex-wrap gap-2">
         {[
           "React",
           "USB-C PD + PPS",
@@ -61,7 +63,7 @@ const verify: Story["play"] = async ({ canvasElement }) => {
       : 44;
     if (rect.height < minimum || rect.width < minimum)
       throw new Error("Native tag target too small");
-    if (rect.right > boundary.right - 23 || rect.left < boundary.left + 23)
+    if (rect.right > boundary.right - 31 || rect.left < boundary.left + 31)
       throw new Error("Tag exceeds source-owned margin");
     link.focus();
     if (document.activeElement !== link) throw new Error("Tag link is not keyboard focusable");

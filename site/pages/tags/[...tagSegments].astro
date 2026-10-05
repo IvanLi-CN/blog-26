@@ -3,9 +3,10 @@ import { getProjectBySlug, getProjectDomainDefinition, getProjectDetailPath } fr
 import Icon from "@/components/ui/Icon";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getSnapshot, pickTagIconSvg } from "../../lib/public-site";
-import { buildTagHref } from "@/lib/tag-href";
+import { buildTagHref, readTagRoutePath } from "@/lib/tag-href";
 import { formatAbsoluteDate } from "../../lib/format";
 import { toPublicSitePath } from "../../lib/runtime-urls";
+import ProjectTagLogo from "../../components/projects/ProjectTagLogo.astro";
 
 export async function getStaticPaths() {
   const snapshot = await getSnapshot();
@@ -17,7 +18,7 @@ export async function getStaticPaths() {
 
 const snapshot = await getSnapshot();
 const summaryFromProps = (Astro.props as { summary?: typeof snapshot.tags.summaries[number] }).summary;
-const tagPath = (Astro.params.tagSegments ?? "").replace(/^\/+|\/+$/g, "");
+const tagPath = readTagRoutePath(Astro.url.pathname, toPublicSitePath("/tags") ?? "/tags");
 const summary =
   summaryFromProps ??
   snapshot.tags.summaries.find(
@@ -75,14 +76,17 @@ const { iconId, iconSvg } = pickTagIconSvg(summary.name, snapshot.tags.tagIconMa
     {projects.length > 0 && (
       <section class="mb-8" aria-labelledby="tag-projects-title" data-tag-projects>
         <h2 id="tag-projects-title" class="tag-section-heading nature-title mb-3 text-xl">相关项目 <span class="nature-muted text-sm">{projects.length}</span></h2>
-        <div class="nature-mobile-reading-stream">
+        <div class="nature-mobile-reading-stream space-y-4">
           {projects.map((project) => (
-            <article class="tag-project-entry nature-mobile-reading-row border-b border-[color:var(--nature-line)] px-4 py-4 sm:px-5">
+            <article class="tag-project-entry nature-panel nature-panel-soft nature-mobile-reading-row flex items-start gap-3 px-4 py-4 sm:px-6 sm:py-5">
+              <ProjectTagLogo slug={project.slug} title={project.title} />
+              <div class="min-w-0 flex-1">
               <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <h3 class="nature-title text-lg"><a class="nature-link-inline inline-flex min-h-11 items-center" href={toPublicSitePath(getProjectDetailPath(project.slug))}>{project.title}</a></h3>
                 <span class="nature-muted text-xs">{getProjectDomainDefinition(project.domain).title}</span>
               </div>
               <p class="nature-muted mt-1 text-sm leading-7">{project.summary}</p>
+              </div>
             </article>
           ))}
         </div>

@@ -24,3 +24,16 @@ export function buildTagHref(tagPath: string): string {
 
   return `/tags/${segments.map((segment) => encodeURIComponent(segment)).join("/")}`;
 }
+
+/** Read the raw URL once: Astro route params already decode some URI escapes. */
+export function readTagRoutePath(pathname: string, tagsRoot = "/tags", feed = false): string {
+  const prefix = `${tagsRoot.replace(/\/$/, "")}/`;
+  if (!pathname.startsWith(prefix)) return "";
+  let path = pathname.slice(prefix.length).replace(/\/$/, "");
+  if (feed) path = path.replace(/\/feed\.xml$/, "");
+  try {
+    return normalizeTagPath(path.split("/").map(decodeURIComponent).join("/"));
+  } catch {
+    return "";
+  }
+}
