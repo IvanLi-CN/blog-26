@@ -219,6 +219,7 @@ describe("release.yml", () => {
     expect(playbookRebuildSteps).toHaveLength(1);
     const playbookRebuild = playbookRebuildSteps[0];
     expect(playbookRebuild?.env?.PUBLIC_CONTENT_BUNDLE_URL).toBe("preloaded");
+    expect(playbookRebuild?.env?.PUBLIC_SNAPSHOT_PATH).toBe("site/generated/public-snapshot.json");
     expect(playbookRebuild?.env?.PUBLIC_STATIC_MEDIA_ORIGIN).toBe(
       `\${{ vars.PUBLIC_STATIC_MEDIA_ORIGIN || 'https://console.ivanli.cc' }}`
     );
@@ -231,6 +232,11 @@ describe("release.yml", () => {
     );
     expect(sharedSnapshotIndex).toBeGreaterThanOrEqual(0);
     expect(playbookRebuildIndex).toBeGreaterThan(sharedSnapshotIndex);
+    expect(
+      edgeoneSteps
+        .slice(sharedSnapshotIndex + 1, playbookRebuildIndex)
+        .some((step) => step.run?.includes("public-snapshot.json"))
+    ).toBe(false);
     expect(
       edgeoneSteps
         .slice(sharedSnapshotIndex + 1)
