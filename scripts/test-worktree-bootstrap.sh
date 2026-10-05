@@ -259,6 +259,7 @@ LOCAL_CONTENT_BASE_PATH=/tmp/shared-worktree-content
 CONTENT_SOURCES=local
 SECRET_MARKER=synthetic-source-only
 MALFORMED-SECRET=synthetic-malformed-only
+TAIL_SETTING=synthetic-tail
 EOF
   chmod 0644 "$SNAPSHOT_REPO/.env.local"
 }
@@ -420,7 +421,12 @@ if data.endswith((b"\n", b"\r")):
     raise SystemExit("recovery added an EOF newline to a complete source")
 if b"DB_PATH=./dev-data/shared.sqlite.db" not in data:
     raise SystemExit("recovery lost non-port source settings")
+if not data.endswith(b"TAIL_SETTING=synthetic-tail"):
+    raise SystemExit("recovery lost the final unterminated source setting")
 PY
+  local loaded_tail
+  loaded_tail="$(bash -c 'source "$1"; unset TAIL_SETTING; wtb_load_env_file "$2"; printf "%s" "${TAIL_SETTING:-}"' _ "$ROOT_DIR/scripts/lib/worktree-bootstrap-common.sh" "$target_env")"
+  [[ "$loaded_tail" == "synthetic-tail" ]] || { echo "loader skipped the final unterminated source setting" >&2; exit 1; }
   write_primary_source_env
 }
 
@@ -447,6 +453,7 @@ cp "$MANUAL_WORKTREE/.env.local" "$TMP_DIR/existing-target.before"
   (
     cd "$MANUAL_WORKTREE"
     export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-manual-real.log 2>&1
     bash ./scripts/worktree-bootstrap.sh --force --no-db --dry-run >/tmp/worktree-bootstrap-manual.log 2>&1
     git checkout -B bootstrap-rerun-check >/tmp/worktree-bootstrap-rerun.log 2>&1
   )
@@ -458,6 +465,7 @@ cp "$MANUAL_WORKTREE/.env.local" "$TMP_DIR/existing-target.before"
     echo "existing target .env.local was rewritten" >&2
     exit 1
   }
+  assert_file_contains /tmp/worktree-bootstrap-manual-real.log 'worktree bootstrap complete'
   assert_file_contains /tmp/worktree-bootstrap-manual.log 'dry-run: would validate port leases for existing \.env\.local'
   assert_file_not_contains /tmp/worktree-bootstrap-manual.log 'synthetic-target-only'
   assert_file_contains /tmp/worktree-bootstrap-rerun.log 'skip auto bootstrap for this checkout'
@@ -910,6 +918,59 @@ EOF
   [[ "$second_publish" == "exists" ]] || { echo "challenger publisher did not preserve the winner" >&2; exit 1; }
   assert_file_contains "$direct_target" '^SECRET_MARKER=synthetic-first-winner$'
   assert_file_not_contains "$direct_target" 'synthetic-second-challenger'
+
+  local concurrent_direct_dir="$TMP_DIR/concurrent-create-once"
+  local concurrent_direct_target="$concurrent_direct_dir/.env.local"
+  mkdir -p "$concurrent_direct_dir"
+  python3 - "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py" \
+    "$TMP_DIR/create-once-a.env" "$TMP_DIR/create-once-b.env" "$concurrent_direct_target" <<'PY'
+import importlib.util
+import multiprocessing
+from pathlib import Path
+import sys
+from types import SimpleNamespace
+
+helper_path, source_a, source_b, target = sys.argv[1:]
+
+
+def worker(source, target_path, barrier, port):
+    spec = importlib.util.spec_from_file_location("worktree_bootstrap_env", helper_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    original_link = module.os.link
+
+    def synchronized_link(source_path, target_path):
+        barrier.wait(timeout=10)
+        return original_link(source_path, target_path)
+
+    module.os.link = synchronized_link
+    args = SimpleNamespace(
+        source=source,
+        target=target_path,
+        port=port,
+        site_port=port + 3,
+        admin_port=port + 4,
+    )
+    raise SystemExit(module.command_publish(args))
+
+
+if __name__ == "__main__":
+    multiprocessing.set_start_method("fork")
+    barrier = multiprocessing.Barrier(2)
+    first = multiprocessing.Process(target=worker, args=(source_a, target, barrier, 47111))
+    second = multiprocessing.Process(target=worker, args=(source_b, target, barrier, 47211))
+    first.start()
+    second.start()
+    first.join(15)
+    second.join(15)
+    if first.exitcode != 0 or second.exitcode != 0:
+        raise SystemExit(f"concurrent publishers failed: {first.exitcode}, {second.exitcode}")
+    data = Path(target).read_text()
+    if data.count("SECRET_MARKER=") != 1:
+        raise SystemExit("concurrent publisher did not leave one complete winner")
+    if "synthetic-first-winner" not in data and "synthetic-second-challenger" not in data:
+        raise SystemExit("concurrent publisher lost both source markers")
+PY
 }
 
 check_dry_run_is_read_only() {

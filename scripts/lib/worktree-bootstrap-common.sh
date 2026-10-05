@@ -297,7 +297,7 @@ wtb_load_env_file() {
     return 0
   fi
 
-  while IFS= read -r raw; do
+  while IFS= read -r raw || [[ -n "${raw:-}" ]]; do
     local line="$raw"
     line="${line%$'\r'}"
     [[ -z "$line" || "$line" == \#* ]] && continue

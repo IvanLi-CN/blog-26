@@ -28,6 +28,7 @@
 - The final repair makes quoted and duplicate port assignments explicit in the rewrite contract, guarantees owner-read access on recovered files, and keeps permission fixtures portable for root-run test environments.
 - The follow-up repair aligns source parsing with the shell loader's LF boundaries, rejects mixed quote forms, and expands the smoke evidence for manual recovery, prunable-primary fallback, full lease replacement, and concurrent publication.
 - The latest repair preserves EOF bytes when no port rows need adding, derives target permissions from the bytes actually opened, and strengthens dry-run, automatic-damage, and create-once publication evidence.
+- The final evidence pass loads unterminated final environment records correctly and proves effective target preservation plus synchronized create-once races.
 
 ## References
 
