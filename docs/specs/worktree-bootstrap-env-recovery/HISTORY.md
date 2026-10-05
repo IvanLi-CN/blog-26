@@ -27,6 +27,7 @@
 - The final review follow-up skips malformed shell variable names without exporting their values and expands topology and source/target validation-matrix coverage.
 - The final repair makes quoted and duplicate port assignments explicit in the rewrite contract, guarantees owner-read access on recovered files, and keeps permission fixtures portable for root-run test environments.
 - The follow-up repair aligns source parsing with the shell loader's LF boundaries, rejects mixed quote forms, and expands the smoke evidence for manual recovery, prunable-primary fallback, full lease replacement, and concurrent publication.
+- The latest repair preserves EOF bytes when no port rows need adding, derives target permissions from the bytes actually opened, and strengthens dry-run, automatic-damage, and create-once publication evidence.
 
 ## References
 

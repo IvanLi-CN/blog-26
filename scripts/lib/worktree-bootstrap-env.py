@@ -124,7 +124,8 @@ def read_regular(path: Path) -> tuple[bytes, int]:
     fd = -1
     try:
         fd = os.open(path, flags | no_follow)
-        if not stat.S_ISREG(os.fstat(fd).st_mode):
+        opened_mode = os.fstat(fd).st_mode
+        if not stat.S_ISREG(opened_mode):
             raise EnvUnavailable("environment file is not a regular file")
         with os.fdopen(fd, "rb") as handle:
             fd = -1
@@ -135,7 +136,7 @@ def read_regular(path: Path) -> tuple[bytes, int]:
         if fd >= 0:
             os.close(fd)
 
-    return data, stat.S_IMODE(initial_mode)
+    return data, stat.S_IMODE(opened_mode)
 
 
 def validate_env(data: bytes) -> None:
@@ -170,11 +171,11 @@ def rewrite_ports(data: bytes, ports: dict[bytes, int]) -> bytes:
         output.append(key_bytes + b"=" + str(ports[key_bytes]).encode("ascii") + ending)
         found.add(key_bytes)
 
-    if output and not (data.endswith(b"\n") or data.endswith(b"\r")):
+    missing_keys = [key for key in PORT_KEYS if key not in found]
+    if missing_keys and output and not (data.endswith(b"\n") or data.endswith(b"\r")):
         output.append(b"\n")
-    for key in PORT_KEYS:
-        if key not in found:
-            output.append(key + b"=" + str(ports[key]).encode("ascii") + b"\n")
+    for key in missing_keys:
+        output.append(key + b"=" + str(ports[key]).encode("ascii") + b"\n")
     return b"".join(output)
 
 

@@ -392,6 +392,38 @@ PY
   write_primary_source_env
 }
 
+check_source_without_final_newline_preserves_eof() {
+  log "check source without final newline preserves EOF bytes"
+  write_primary_source_env
+  python3 - "$SNAPSHOT_REPO/.env.local" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+path.write_bytes(path.read_bytes().rstrip(b"\r\n"))
+PY
+  local target_dir="$TMP_DIR/no-final-newline-target"
+  local target_env="$target_dir/.env.local"
+  mkdir -p "$target_dir"
+  python3 "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py" publish \
+    --source "$SNAPSHOT_REPO/.env.local" \
+    --target "$target_env" \
+    --port 40111 \
+    --site-port 40114 \
+    --admin-port 40115 >/tmp/worktree-bootstrap-no-final-newline.log
+  python3 - "$target_env" <<'PY'
+from pathlib import Path
+import sys
+
+data = Path(sys.argv[1]).read_bytes()
+if data.endswith((b"\n", b"\r")):
+    raise SystemExit("recovery added an EOF newline to a complete source")
+if b"DB_PATH=./dev-data/shared.sqlite.db" not in data:
+    raise SystemExit("recovery lost non-port source settings")
+PY
+  write_primary_source_env
+}
+
 check_existing_env_is_preserved() {
   log "check existing .env.local is preserved"
   (
@@ -638,6 +670,26 @@ check_damaged_target_is_preserved() {
   assert_file_contains /tmp/worktree-bootstrap-damaged-file.log 'bootstrap failed at phase=env'
   assert_file_not_contains /tmp/worktree-bootstrap-damaged-file.log 'synthetic-damaged-only'
 
+  cp "$DAMAGED_WORKTREE/.env.local" "$TMP_DIR/damaged-auto.before"
+  (
+    cd "$DAMAGED_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    if ! ./scripts/post-checkout-worktree-bootstrap.sh \
+      0000000000000000000000000000000000000000 \
+      "$(git rev-parse HEAD)" \
+      1 >/tmp/worktree-bootstrap-damaged-auto.log 2>&1; then
+      echo "automatic bootstrap wrapper unexpectedly failed for damaged target" >&2
+      exit 1
+    fi
+  )
+  cmp -s "$TMP_DIR/damaged-auto.before" "$DAMAGED_WORKTREE/.env.local" || {
+    echo "automatic damaged-target bootstrap overwrote the target" >&2
+    exit 1
+  }
+  assert_file_contains /tmp/worktree-bootstrap-damaged-auto.log 'automatic worktree bootstrap failed during post-checkout'
+  assert_file_contains /tmp/worktree-bootstrap-damaged-auto.log 'Recovery: bun run worktree:bootstrap -- --force'
+  assert_file_not_contains /tmp/worktree-bootstrap-damaged-auto.log 'synthetic-damaged-only'
+
   local target_case target_log target_before
   local -a target_cases=(empty missing-port invalid-derived)
   if [[ "$(id -u)" == "0" ]]; then
@@ -825,6 +877,39 @@ print(json.loads(sys.argv[1])["count"])
 PY
 )"
   [[ "$inspect_count" == "3" ]] || { echo "expected one complete three-port lease block, got $inspect_count" >&2; exit 1; }
+
+  local direct_dir="$TMP_DIR/create-once-challenger"
+  local direct_target="$direct_dir/.env.local"
+  mkdir -p "$direct_dir"
+  cat >"$TMP_DIR/create-once-a.env" <<'EOF'
+PORT=45111
+SITE_PORT=45114
+ADMIN_PORT=45115
+SECRET_MARKER=synthetic-first-winner
+EOF
+  cat >"$TMP_DIR/create-once-b.env" <<'EOF'
+PORT=45211
+SITE_PORT=45214
+ADMIN_PORT=45215
+SECRET_MARKER=synthetic-second-challenger
+EOF
+  local first_publish second_publish
+  first_publish="$(python3 "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py" publish \
+    --source "$TMP_DIR/create-once-a.env" \
+    --target "$direct_target" \
+    --port 46111 \
+    --site-port 46114 \
+    --admin-port 46115)"
+  second_publish="$(python3 "$ROOT_DIR/scripts/lib/worktree-bootstrap-env.py" publish \
+    --source "$TMP_DIR/create-once-b.env" \
+    --target "$direct_target" \
+    --port 46211 \
+    --site-port 46214 \
+    --admin-port 46215)"
+  [[ "$first_publish" == "created" ]] || { echo "first create-once publisher did not win" >&2; exit 1; }
+  [[ "$second_publish" == "exists" ]] || { echo "challenger publisher did not preserve the winner" >&2; exit 1; }
+  assert_file_contains "$direct_target" '^SECRET_MARKER=synthetic-first-winner$'
+  assert_file_not_contains "$direct_target" 'synthetic-second-challenger'
 }
 
 check_dry_run_is_read_only() {
@@ -842,6 +927,7 @@ check_dry_run_is_read_only() {
   rm -f "$marker_file"
   local before_count
   before_count="$(python3 "$SNAPSHOT_REPO/scripts/port-registry.py" --registry-dir "$REGISTRY_DIR" --json inspect | python3 -c 'import json,sys; print(json.load(sys.stdin)["count"])')"
+  cp "$REGISTRY_DIR/leases.tsv" "$TMP_DIR/dry-run-registry.before"
 
   (
     cd "$DRY_RUN_WORKTREE"
@@ -855,6 +941,10 @@ check_dry_run_is_read_only() {
   [[ ! -f "$env_file" ]] || { echo ".env.local should not be created during dry-run" >&2; exit 1; }
   [[ ! -f "$marker_file" ]] || { echo "initialized marker should not be written during dry-run" >&2; exit 1; }
   [[ "$before_count" == "$after_count" ]] || { echo "registry count changed during dry-run" >&2; exit 1; }
+  cmp -s "$TMP_DIR/dry-run-registry.before" "$REGISTRY_DIR/leases.tsv" || {
+    echo "registry contents changed during dry-run" >&2
+    exit 1
+  }
   assert_file_contains /tmp/worktree-bootstrap-dry-run.log 'dry-run: would recover missing \.env\.local from primary and re-lease target ports'
 }
 
@@ -1134,6 +1224,7 @@ check_auto_bootstrap
 check_primary_source_recovery
 check_manual_missing_target_recovery
 check_crlf_source_recovery
+check_source_without_final_newline_preserves_eof
 check_existing_env_is_preserved
 check_legacy_env_is_accepted
 check_dry_run_is_read_only

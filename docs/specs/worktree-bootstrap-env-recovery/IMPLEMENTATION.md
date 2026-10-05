@@ -18,6 +18,7 @@
 - Review follow-up: malformed shell variable names are skipped without exporting their values, and the smoke fixture now covers non-main primary topology, prunable secondary metadata, and the source/target validation matrix.
 - Review follow-up: port assignments accept bare or quoted numeric values and every matching assignment is rewritten; recovered files retain owner-read access while remaining owner-only, and unreadable-fixture checks adapt when tests run as root.
 - Review follow-up: source parsing now follows LF/CRLF boundaries and rejects mismatched port quotes; coverage also proves manual missing-target recovery, prunable-primary fallback, complete duplicate-port rewriting, concurrent winner leases, and bounded fixture cleanup.
+- Review follow-up: publication preserves a complete source's missing-final-newline EOF, derives permissions from the opened source descriptor, and verifies full dry-run registry identity, automatic damaged-target degradation, and create-once challenger preservation.
 
 ## Coverage / rollout summary
 
