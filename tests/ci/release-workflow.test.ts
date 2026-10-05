@@ -17,7 +17,13 @@ const parsedWorkflow = load(workflow) as {
       concurrency?: { group?: string; "cancel-in-progress"?: boolean };
       needs?: unknown;
       if?: string;
-      steps?: Array<{ name?: string; env?: Record<string, string> }>;
+      steps?: Array<{
+        name?: string;
+        env?: Record<string, string>;
+        uses?: string;
+        with?: Record<string, string>;
+        run?: string;
+      }>;
     }
   >;
 };
@@ -193,12 +199,30 @@ describe("release.yml", () => {
     expect(edgeone).toContain("uses: actions/download-artifact@v8");
     expect(edgeone).toContain("name: frontend-edgeone-site");
     expect(edgeone).toContain("path: ./edgeone-dist");
+    const edgeoneSteps = parsedWorkflow.jobs.deploy_frontend_edgeone?.steps ?? [];
+    const sharedSnapshot = edgeoneSteps.find(
+      (step) => step.name === "Download the shared public snapshot for EdgeOne rebuild"
+    );
+    expect(sharedSnapshot?.uses).toBe("actions/download-artifact@v8");
+    expect(sharedSnapshot?.with).toEqual({
+      name: "public-content-snapshot",
+      path: "./site/generated",
+    });
     const playbookRebuild = parsedWorkflow.jobs.deploy_frontend_edgeone?.steps?.find(
       (step) => step.name === "Rebuild with the current Playbook under the shared production lock"
     );
     expect(playbookRebuild?.env?.PUBLIC_STATIC_MEDIA_ORIGIN).toBe(
       `\${{ vars.PUBLIC_STATIC_MEDIA_ORIGIN || 'https://console.ivanli.cc' }}`
     );
+    expect(playbookRebuild?.run).not.toContain("fetch-public-content-bundle.sh");
+    const sharedSnapshotIndex = edgeoneSteps.findIndex(
+      (step) => step.name === "Download the shared public snapshot for EdgeOne rebuild"
+    );
+    const playbookRebuildIndex = edgeoneSteps.findIndex(
+      (step) => step.name === "Rebuild with the current Playbook under the shared production lock"
+    );
+    expect(sharedSnapshotIndex).toBeGreaterThanOrEqual(0);
+    expect(playbookRebuildIndex).toBeGreaterThan(sharedSnapshotIndex);
     expect(edgeone).toContain(`EDGEONE_API_TOKEN: \${{ secrets.EDGEONE_API_TOKEN }}`);
     expect(edgeone).toContain(`EDGEONE_PROJECT_NAME: \${{ vars.EDGEONE_PROJECT_NAME }}`);
     expect(edgeone).toContain("- name: Configure EdgeOne Makers backend origin");

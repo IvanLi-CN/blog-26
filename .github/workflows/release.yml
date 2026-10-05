@@ -684,14 +684,19 @@ jobs:
           bun install --frozen-lockfile
           bun scripts/stage-playbook-initial-from-artifact.ts
 
+      - name: Download the shared public snapshot for EdgeOne rebuild
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        uses: actions/download-artifact@v8
+        with:
+          name: public-content-snapshot
+          path: ./site/generated
+
       - name: Rebuild with the current Playbook under the shared production lock
         if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
         env:
           PLAYBOOK_USE_DEPLOYED: 'true'
           PLAYBOOK_REQUIRED: 'true'
           PLAYBOOK_RENDERER_COMMIT: ${{ needs.prepare.outputs.head_sha }}
-          PUBLIC_CONTENT_BUNDLE_URL: ${{ secrets.PUBLIC_CONTENT_BUNDLE_URL }}
-          PUBLIC_CONTENT_SNAPSHOT_URL: ${{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://console.ivanli.cc/api/public/snapshot' }}
           PUBLIC_STATIC_MEDIA_ORIGIN: ${{ vars.PUBLIC_STATIC_MEDIA_ORIGIN || 'https://console.ivanli.cc' }}
           PUBLIC_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL || 'https://console.ivanli.cc' }}
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://ivanli.cc' }}
@@ -701,7 +706,6 @@ jobs:
           PUBLIC_OCTO_RILL_METRICS_BASE_URL: ${{ vars.PUBLIC_OCTO_RILL_METRICS_BASE_URL }}
         run: |
           bun install --frozen-lockfile
-          bash scripts/fetch-public-content-bundle.sh
           bash scripts/build-edgeone-content-artifact.sh
           bun scripts/verify-playbook-artifact.ts
 
