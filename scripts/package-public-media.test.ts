@@ -77,14 +77,13 @@ describe("packagePublicMedia", () => {
       cwd,
       mediaOrigin: "https://api.example",
       siteUrl: "https://site.example",
-      fetchImpl: async (input, init) => {
+      fetchImpl: async (input) => {
         requestedUrls.push(String(input));
-        return response(init?.method === "HEAD" ? "" : "four", { "content-length": "4" });
+        return response("four", { "content-length": "4" });
       },
     });
 
     expect(requestedUrls).toEqual([
-      "https://api.example/api/public/assets/post/hello/hash/content.webp",
       "https://api.example/api/public/assets/post/hello/hash/content.webp",
     ]);
     expect(await readFile(join(cwd, "site-dist", "index.html"), "utf8")).toContain(
@@ -113,14 +112,13 @@ describe("packagePublicMedia", () => {
       cwd,
       mediaOrigin: "https://api.example",
       siteUrl: "https://site.example",
-      fetchImpl: async (input, init) => {
+      fetchImpl: async (input) => {
         requestedUrls.push(String(input));
-        return response(init?.method === "HEAD" ? "" : "four", { "content-length": "4" });
+        return response("four", { "content-length": "4" });
       },
     });
 
     expect(requestedUrls).toEqual([
-      "https://api.example/api/public/assets/post/hello/hash/content.webp",
       "https://api.example/api/public/assets/post/hello/hash/content.webp",
     ]);
   });
@@ -138,11 +136,9 @@ describe("packagePublicMedia", () => {
     const fetchImpl: PublicMediaFetcher = async (input, init) => {
       const url = String(input);
       calls.push(`${init?.method ?? "GET"} ${url}`);
-      if (init?.method === "HEAD" && url.includes("/cover.webp")) {
-        return response("", { "content-length": "11" });
+      if (url.includes("/cover.webp")) {
+        return response("oversized!!", { "content-length": "11" });
       }
-      if (init?.method === "HEAD") return response("", { "content-length": "4" });
-      if (url.includes("/cover.webp")) return response("oversized!!");
       return response("tiny", { "content-length": "4" });
     };
 
@@ -162,12 +158,10 @@ describe("packagePublicMedia", () => {
     expect(
       await readFile(join(cwd, "site-dist", "_content/assets/post/hello/hash/card.webp"), "utf8")
     ).toBe("tiny");
-    expect(calls).toContain(
-      "HEAD https://api.example/api/public/assets/post/hello/hash/card.webp?v=1"
-    );
-    expect(calls).not.toContain(
-      "GET https://api.example/api/public/assets/post/hello/hash/cover.webp?v=1"
-    );
+    expect(calls).toEqual([
+      "GET https://api.example/api/public/assets/post/hello/hash/card.webp?v=1",
+      "GET https://api.example/api/public/assets/post/hello/hash/cover.webp?v=1",
+    ]);
 
     const result = await verifyPublicMediaPackage({
       cwd,
@@ -177,6 +171,67 @@ describe("packagePublicMedia", () => {
       maxProjectBytes: 1024 * 1024,
     });
     expect(result.fileCount).toBeGreaterThan(1);
+  });
+
+  test("uses one GET per asset and cancels oversized response bodies", async () => {
+    const cwd = await fixture();
+    await writeFile(
+      join(cwd, "site-dist", "index.html"),
+      [
+        '<img src="/api/public/assets/post/one/hash/card.webp">',
+        '<img src="/api/public/assets/post/one/hash/cover.webp">',
+        '<img src="/api/public/assets/post/one/hash/stream.webp">',
+      ].join("\n")
+    );
+
+    const calls: string[] = [];
+    let oversizedBodyCancelled = false;
+    let oversizedStreamCancelled = false;
+    const manifest = await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      maxBytes: 10,
+      fetchImpl: async (input, init) => {
+        const url = String(input);
+        calls.push(`${init?.method ?? "GET"} ${url}`);
+        if (url.endsWith("/cover.webp")) {
+          return new Response(
+            new ReadableStream<Uint8Array>({
+              start: (controller) => controller.enqueue(new Uint8Array(11)),
+              cancel: () => {
+                oversizedBodyCancelled = true;
+              },
+            }),
+            { status: 200, headers: { "content-length": "11" } }
+          );
+        }
+        if (url.endsWith("/stream.webp")) {
+          return new Response(
+            new ReadableStream<Uint8Array>({
+              start: (controller) => controller.enqueue(new Uint8Array(11)),
+              cancel: () => {
+                oversizedStreamCancelled = true;
+              },
+            }),
+            { status: 200 }
+          );
+        }
+        return response("tiny", { "content-length": "4" });
+      },
+    });
+
+    expect(calls).toEqual([
+      "GET https://api.example/api/public/assets/post/one/hash/card.webp",
+      "GET https://api.example/api/public/assets/post/one/hash/cover.webp",
+      "GET https://api.example/api/public/assets/post/one/hash/stream.webp",
+    ]);
+    expect(oversizedBodyCancelled).toBe(true);
+    expect(oversizedStreamCancelled).toBe(true);
+    expect(manifest).toMatchObject({ packagedCount: 1, externalCount: 2 });
+    const html = await readFile(join(cwd, "site-dist", "index.html"), "utf8");
+    expect(html).toContain("https://api.example/api/public/assets/post/one/hash/cover.webp");
+    expect(html).toContain("https://api.example/api/public/assets/post/one/hash/stream.webp");
   });
 
   test("rejects redirects that leave the configured media origin", async () => {
@@ -198,6 +253,42 @@ describe("packagePublicMedia", () => {
           }),
       })
     ).rejects.toThrow("escaped the configured origin");
+  });
+
+  test("cancels same-origin redirect bodies before following the location", async () => {
+    const cwd = await fixture();
+    const sourceUrl = "https://api.example/api/public/assets/post/redirect/hash/card.webp";
+    const targetUrl = "https://api.example/api/public/assets/post/redirect/hash/final.webp";
+    await writeFile(
+      join(cwd, "site-dist", "index.html"),
+      '<img src="/api/public/assets/post/redirect/hash/card.webp">'
+    );
+
+    let responseBodyCancelled = false;
+    const requestedUrls: string[] = [];
+    await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      fetchImpl: async (input) => {
+        requestedUrls.push(String(input));
+        if (requestedUrls.length === 1) {
+          return new Response(
+            new ReadableStream<Uint8Array>({
+              start: (controller) => controller.enqueue(new Uint8Array([1])),
+              cancel: () => {
+                responseBodyCancelled = true;
+              },
+            }),
+            { status: 302, headers: { location: targetUrl } }
+          );
+        }
+        return response("four", { "content-length": "4" });
+      },
+    });
+
+    expect(requestedUrls).toEqual([sourceUrl, targetUrl]);
+    expect(responseBodyCancelled).toBe(true);
   });
 
   test("preserves unrelated generated content under _content", async () => {
@@ -231,18 +322,29 @@ describe("packagePublicMedia", () => {
       '<img src="/api/public/assets/post/missing/hash/card.webp">'
     );
 
+    let responseBodyCancelled = false;
     await expect(
       packagePublicMedia({
         cwd,
         mediaOrigin: "https://api.example",
         siteUrl: "https://site.example",
-        fetchImpl: async (_input, init) =>
-          new Response("missing", { status: init?.method === "HEAD" ? 404 : 404 }),
+        downloadAttempts: 1,
+        fetchImpl: async () =>
+          new Response(
+            new ReadableStream<Uint8Array>({
+              start: (controller) => controller.enqueue(new Uint8Array([1])),
+              cancel: () => {
+                responseBodyCancelled = true;
+              },
+            }),
+            { status: 404 }
+          ),
       })
     ).rejects.toThrow("HTTP 404");
+    expect(responseBodyCancelled).toBe(true);
   });
 
-  test("falls back to GET when the media origin rejects HEAD", async () => {
+  test("downloads media with one GET without requiring HEAD support", async () => {
     const cwd = await fixture();
     await writeFile(
       join(cwd, "site-dist", "index.html"),
@@ -256,14 +358,11 @@ describe("packagePublicMedia", () => {
       siteUrl: "https://site.example",
       fetchImpl: async (_input, init) => {
         methods.push(init?.method ?? "GET");
-        if (init?.method === "HEAD") {
-          return new Response('{"message":"maximum resolution exceeded"}', { status: 422 });
-        }
         return response("animated-derivative", { "content-length": "18" });
       },
     });
 
-    expect(methods).toEqual(["HEAD", "GET"]);
+    expect(methods).toEqual(["GET"]);
     expect(
       await readFile(
         join(cwd, "site-dist", "_content/assets/memo/animated/hash/content.webp"),
@@ -310,14 +409,12 @@ describe("packagePublicMedia", () => {
       mediaOrigin: "https://api.example",
       siteUrl: "https://site.example",
       downloadConcurrency: 2,
-      fetchImpl: async (_input, init) => {
+      fetchImpl: async (_input) => {
         active += 1;
         maximumActive = Math.max(maximumActive, active);
         await new Promise((resolve) => setTimeout(resolve, 5));
         active -= 1;
-        return response(init?.method === "HEAD" ? "" : "four", {
-          "content-length": init?.method === "HEAD" ? "4" : "4",
-        });
+        return response("four", { "content-length": "4" });
       },
     });
 
@@ -362,8 +459,7 @@ describe("packagePublicMedia", () => {
         siteUrl: "https://site.example",
         downloadAttempts: 2,
         retryDelayMs: 0,
-        fetchImpl: async (_input, init) => {
-          if (init?.method === "HEAD") return response("", { "content-length": "4" });
+        fetchImpl: async () => {
           getAttempts += 1;
           throw new DOMException("The operation timed out.", "TimeoutError");
         },
@@ -385,8 +481,7 @@ describe("packagePublicMedia", () => {
       siteUrl: "https://site.example",
       downloadAttempts: 5,
       retryDelayMs: 0,
-      fetchImpl: async (_input, init) => {
-        if (init?.method === "HEAD") return response("", { "content-length": "4" });
+      fetchImpl: async () => {
         getAttempts += 1;
         if (getAttempts < 5) {
           throw new DOMException("The operation timed out.", "TimeoutError");
@@ -415,8 +510,7 @@ describe("packagePublicMedia", () => {
         mediaOrigin: "https://api.example",
         siteUrl: "https://site.example",
         requestTimeoutMs: 5,
-        fetchImpl: async (_input, init) => {
-          if (init?.method === "HEAD") return response("", { "content-length": "4" });
+        fetchImpl: async () => {
           return new Response(
             new ReadableStream<Uint8Array>({
               start: () => undefined,
@@ -441,8 +535,7 @@ describe("packagePublicMedia", () => {
       mediaOrigin: "https://api.example",
       siteUrl: "https://site.example",
       downloadAttempts: 2,
-      fetchImpl: async (_input, init) => {
-        if (init?.method === "HEAD") return response("", { "content-length": "4" });
+      fetchImpl: async () => {
         getAttempts += 1;
         if (getAttempts === 1) {
           return new Response(
@@ -468,21 +561,32 @@ describe("packagePublicMedia", () => {
     await writeFile(join(cwd, "site-dist", "index.html"), `<img src="${mediaPath}">`);
 
     let getAttempts = 0;
+    let errorBodyCancelled = false;
     await packagePublicMedia({
       cwd,
       mediaOrigin: "https://api.example",
       siteUrl: "https://site.example",
       downloadAttempts: 2,
       retryDelayMs: 1,
-      fetchImpl: async (_input, init) => {
-        if (init?.method === "HEAD") return response("", { "content-length": "4" });
+      fetchImpl: async () => {
         getAttempts += 1;
-        if (getAttempts === 1) return new Response("not ready", { status: 404 });
+        if (getAttempts === 1) {
+          return new Response(
+            new ReadableStream<Uint8Array>({
+              start: (controller) => controller.enqueue(new Uint8Array([1])),
+              cancel: () => {
+                errorBodyCancelled = true;
+              },
+            }),
+            { status: 404 }
+          );
+        }
         return response("four", { "content-length": "4" });
       },
     });
 
     expect(getAttempts).toBe(2);
+    expect(errorBodyCancelled).toBe(true);
     expect(
       await readFile(join(cwd, "site-dist/_content/assets/post/retry-404/hash/card.webp"), "utf8")
     ).toBe("four");
