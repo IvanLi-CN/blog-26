@@ -329,10 +329,14 @@ jobs:
       - name: Write summary
         if: always()
         shell: bash
+        env:
+          INTENT_REASON: ${{ steps.intent.outputs.reason }}
+          CURRENT_MAIN_SHA: ${{ steps.intent.outputs.current_main_sha }}
         run: |
           {
             echo "### Release intent result"
             echo "- head_sha: \`${{ env.RELEASE_HEAD_SHA }}\`"
+            echo "- current_main_sha: \`${CURRENT_MAIN_SHA:-n/a}\`"
             echo "- pr_number: \`${{ steps.intent.outputs.pr_number || 'n/a' }}\`"
             echo "- intent_type: \`${{ steps.intent.outputs.intent_type || 'n/a' }}\`"
             echo "- channel: \`${{ steps.intent.outputs.channel || 'n/a' }}\`"
@@ -343,6 +347,17 @@ jobs:
             echo "- image_release_tag: \`${{ steps.image-version.outputs.release_tag || 'n/a' }}\`"
             echo "- reason: \`${{ steps.intent.outputs.reason }}\`"
           } >> "${GITHUB_STEP_SUMMARY}"
+
+          expected_stale_reason="release_head_must_match_current_${RELEASE_HEAD_BRANCH}"
+          if [[ "${INTENT_REASON:-}" == "${expected_stale_reason}" ]]; then
+            {
+              echo
+              echo "### Safe recovery"
+              echo "- This run stopped before version tags, release assets, container images, or EdgeOne deployment were created."
+              echo "- Confirm the current main commit includes the intended change, then create a new meaningful in-scope PR from current main with the intended release labels."
+              echo "- Do not rerun this stale source SHA, dispatch it as a replacement, or change labels on the merged PR."
+            } >> "${GITHUB_STEP_SUMMARY}"
+          fi
 
   prepare_public_content:
     name: Fetch current public content snapshot

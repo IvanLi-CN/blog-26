@@ -63,5 +63,6 @@ describe("release-intent.sh", () => {
     expect(await readFile(outputPath, "utf8")).toContain(
       "reason=release_head_must_match_current_main"
     );
+    expect(await readFile(outputPath, "utf8")).toContain(`current_main_sha=${mainHeadSha}`);
   }, 20_000);
 });

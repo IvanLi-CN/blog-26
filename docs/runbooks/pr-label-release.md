@@ -135,6 +135,12 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
   - `post_merge_label_mutation(...)`
   - component major mismatch
 
+When `release_head_must_match_current_main` occurs, `prepare` records both the requested source SHA and the current `main` SHA. The source guard runs before version computation and before tags, release assets, images, or deployments are created.
+
+- Confirm the current `main` contains the intended change and verify the failed run produced no release side effects.
+- Do not rerun the stale source SHA, dispatch it as a replacement, or change labels on the merged PR.
+- Create a new meaningful in-scope PR from current `main` with the intended release labels. The normal CI and release workflows then bind the new publication to that PR's merge SHA and recompute the next version from current tags.
+
 ### Frontend build failed
 
 - Verify `PUBLIC_CONTENT_BUNDLE_URL` is configured and downloadable from Actions.
