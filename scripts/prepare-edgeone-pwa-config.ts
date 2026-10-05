@@ -18,12 +18,26 @@ export type EdgeoneCacheConfig = { headers: EdgeoneHeaderRule[] };
 
 const HTML_ROUTE_PATTERNS = [
   "/",
-  "/about*",
-  "/search*",
-  "/tags*",
-  "/p*",
+  "/about/",
+  "/search/",
+  "/tags/*",
+  "/posts/*",
+  "/projects/*",
+  "/playbook/*",
+  "/memos/",
+  "/memos/:slug/",
+] as const;
+
+const HTML_FILE_ROUTE_PATTERNS = [
+  "/",
+  "/about/",
+  "/search/",
+  "/tags/*",
+  "/posts/",
   "/posts/:slug/",
+  "/projects/",
   "/projects/:slug/",
+  "/playbook/*",
   "/memos/",
   "/memos/:slug/",
 ] as const;
@@ -107,15 +121,6 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
   const htmlRules = HTML_ROUTE_PATTERNS.map((path) =>
     rule(scopedPath(basePath, path), EDGEONE_PUBLIC_CACHE_CONTROL.html)
   );
-  const pPrefixHtmlSource = scopedPath(basePath, "/p*");
-  const detailHtmlSources = new Set(
-    ["/posts/:slug/", "/projects/:slug/"].map((path) => scopedPath(basePath, path))
-  );
-  const pPrefixHtmlRules = htmlRules.filter(({ source }) => source === pPrefixHtmlSource);
-  const detailHtmlRules = htmlRules.filter(({ source }) => detailHtmlSources.has(source));
-  const primaryHtmlRules = htmlRules.filter(
-    ({ source }) => source !== pPrefixHtmlSource && !detailHtmlSources.has(source)
-  );
   const playbookEditionDirectories = [
     ...new Set(
       cacheableStaticFiles
@@ -171,14 +176,24 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
       edgeoneSourceMatches(source, exactSource)
     );
 
-    if (root === "posts" && slug && path.split("/").length >= 3 && extname(path)) {
-      postRouteAssetSources.add(scopedPath(basePath, "/posts/:slug/*"));
+    const pathSegments = path.split("/");
+
+    if (root === "posts" && slug && pathSegments.length >= 3 && extname(path)) {
+      const source = pathSegments.length === 3 ? "/posts/:slug/:asset" : "/posts/:slug/:parent/*";
+      postRouteAssetSources.add(scopedPath(basePath, source));
       continue;
     }
 
     if (root === "projects") {
       if (extname(path)) {
-        projectRouteAssetSources.add(scopedPath(basePath, "/projects/:slug/*"));
+        const source =
+          pathSegments.length === 3
+            ? "/projects/:slug/:asset"
+            : pathSegments.length > 3
+              ? "/projects/:slug/:parent/*"
+              : undefined;
+        if (source) projectRouteAssetSources.add(scopedPath(basePath, source));
+        else exactAssetSources.add(exactSource);
       } else {
         exactAssetSources.add(exactSource);
       }
@@ -223,15 +238,14 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
 
   const config: EdgeoneCacheConfig = {
     headers: [
-      // Directory asset rules run first; later HTML and versioned rules take precedence.
+      // Root assets precede HTML routes; route-specific assets and versioned rules follow.
       ...[...assetRootSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
       ...[...rootAssetSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
-      ...primaryHtmlRules,
-      ...pPrefixHtmlRules,
+      ...htmlRules,
       ...[...tagFeedSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
@@ -244,7 +258,6 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
       ...[...pwaAssetRootSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
-      ...detailHtmlRules,
       ...[...exactAssetSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
@@ -326,7 +339,7 @@ function validateHtmlFiles(staticFiles: readonly string[], basePath: string) {
           ? `/${file.slice(0, -"/index.html".length)}/`
           : `/${file}`;
     const scoped = scopedPath(normalizedBase, urlPath);
-    const represented = HTML_ROUTE_PATTERNS.some((source) =>
+    const represented = HTML_FILE_ROUTE_PATTERNS.some((source) =>
       edgeoneSourceMatches(scopedPath(normalizedBase, source), scoped)
     );
     if (!represented) throw new Error(`Public HTML route has no EdgeOne HTML cache rule: ${file}`);

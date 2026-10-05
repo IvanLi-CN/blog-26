@@ -65,7 +65,10 @@ describe("EdgeOne public PWA cache config", () => {
     expect(
       findEdgeoneCacheRule(config, "/blog-26/playbook/topics/delivery/")?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.html);
-    expect(config.headers.some(({ source }) => source === "/blog-26/p*")).toBe(true);
+    for (const source of ["/blog-26/posts/*", "/blog-26/projects/*", "/blog-26/playbook/*"]) {
+      expect(config.headers.some((header) => header.source === source)).toBe(true);
+    }
+    expect(config.headers.some(({ source }) => source === "/blog-26/tags/*")).toBe(true);
     expect(
       findEdgeoneCacheRule(
         config,
@@ -119,8 +122,21 @@ describe("EdgeOne public PWA cache config", () => {
     expect(
       findEdgeoneCacheRule(config, "/blog-26/projects/posters/blog-26.webp")?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
-    expect(config.headers.some(({ source }) => source === "/blog-26/projects/:slug/*")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/blog-26/projects/:slug/:asset")).toBe(
+      true
+    );
     expect(config.headers.every(({ source }) => source.split("*").length <= 2)).toBe(true);
+    for (const path of [
+      "/blog-26/private/x",
+      "/blog-26/proxy/x",
+      "/blog-26/people/x",
+      "/blog-26/postscript/",
+      "/blog-26/projects-archive/",
+      "/blog-26/playbook-private/",
+      "/blog-26/tags-private/",
+    ]) {
+      expect(findEdgeoneCacheRule(config, path)).toBeUndefined();
+    }
     expect(findEdgeoneCacheRule(config, "/blog-26/api")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/blog-26/api/health")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/blog-26/api/public/assets/post/a/cover.webp")).toBe(
@@ -135,7 +151,20 @@ describe("EdgeOne public PWA cache config", () => {
   });
 
   it("builds rules from site output and refuses an unclassified HTML page", () => {
-    const unclassifiedHtmlFiles = ["unknown-route/index.html", "feed.html", "nested/feed.html"];
+    const unclassifiedHtmlFiles = [
+      "unknown-route/index.html",
+      "feed.html",
+      "nested/feed.html",
+      "about-private/index.html",
+      "search-private/index.html",
+      "private/index.html",
+      "proxy/index.html",
+      "people/index.html",
+      "tags-private/index.html",
+      "playbook-private/index.html",
+      "posts/example/unknown/index.html",
+      "projects/example/unknown/index.html",
+    ];
 
     for (const file of unclassifiedHtmlFiles) {
       expect(() => createEdgeoneCacheConfig("", ["index.html", file])).toThrow(
@@ -217,7 +246,7 @@ describe("EdgeOne public PWA cache config", () => {
       findEdgeoneCacheRule(config, "/tags/Hardware/Component/OperationalAmplifier/feed.xml")
         ?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
-    expect(config.headers.filter(({ source }) => source === "/tags*")).toHaveLength(1);
+    expect(config.headers.filter(({ source }) => source === "/tags/*")).toHaveLength(1);
     expect(config.headers.filter(({ source }) => source === "/tags/*/feed.xml")).toHaveLength(1);
     expect(
       findEdgeoneCacheRule(config, "/tags/Hardware/Component/OperationalAmplifier/NOTICE")
@@ -283,10 +312,13 @@ describe("EdgeOne public PWA cache config", () => {
   });
 
   it("groups large Post and Memo resource trees without changing detail page caching", () => {
-    const postAssets = Array.from(
-      { length: 120 },
-      (_, index) => `posts/post-${index}/assets/cover-${index}.webp`
-    );
+    const postAssets = [
+      "posts/direct-asset/cover.webp",
+      ...Array.from(
+        { length: 120 },
+        (_, index) => `posts/post-${index}/assets/cover-${index}.webp`
+      ),
+    ];
     const memoAssets = Array.from(
       { length: 276 },
       (_, index) => `memos/memo-${index}/assets/content-${index}.webp`
@@ -320,7 +352,10 @@ describe("EdgeOne public PWA cache config", () => {
     expect(findEdgeoneCacheRule(config, "/memos/data/28.json")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
     );
-    expect(config.headers.filter(({ source }) => source === "/posts/:slug/*")).toHaveLength(1);
+    expect(config.headers.filter(({ source }) => source === "/posts/:slug/:asset")).toHaveLength(1);
+    expect(config.headers.filter(({ source }) => source === "/posts/:slug/:parent/*")).toHaveLength(
+      1
+    );
     expect(config.headers.filter(({ source }) => source === "/memos/*")).toHaveLength(1);
     expect(config.headers.some(({ source }) => source.includes("post-119"))).toBe(false);
     expect(config.headers.some(({ source }) => source.includes("memo-275"))).toBe(false);
@@ -461,7 +496,7 @@ describe("EdgeOne public PWA cache config", () => {
       EDGEONE_PUBLIC_CACHE_CONTROL.html
     );
     expect(findEdgeoneCacheRule(config, "/search/deep-route")?.headers[0]?.value).toBe(
-      EDGEONE_PUBLIC_CACHE_CONTROL.html
+      EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
     );
     for (const path of [
       "/api",
@@ -540,7 +575,12 @@ describe("EdgeOne public PWA cache config", () => {
       findEdgeoneCacheRule(config, "/projects/project-without-extension/NOTICE")?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
     expect(config.headers.some(({ source }) => source === "/memos/*")).toBe(true);
-    expect(config.headers.filter(({ source }) => source === "/projects/:slug/*")).toHaveLength(1);
+    expect(config.headers.filter(({ source }) => source === "/projects/:slug/:asset")).toHaveLength(
+      1
+    );
+    expect(
+      config.headers.filter(({ source }) => source === "/projects/:slug/:parent/*")
+    ).toHaveLength(1);
     expect(config.headers.some(({ source }) => source.startsWith("/projects/:projectDir"))).toBe(
       false
     );
