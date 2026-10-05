@@ -19,6 +19,11 @@
 - `scripts/lib/worktree-bootstrap-env.py` provides primary discovery, validation, and atomic publication.
 - `scripts/test-worktree-bootstrap.sh` covers source inheritance, fallback, damage preservation, permissions, publication failure, and concurrent publication.
 
+## Review Follow-up
+
+- Tier 3 review identified a BSD-only file-mode assertion in the smoke fixture; it now uses Python standard-library mode inspection so the test runs on macOS and Ubuntu.
+- The source fixture includes quoted port assignments, preserving the contract proof that recovery replaces all three lease-bound port values.
+
 ## References
 
 - `./SPEC.md`

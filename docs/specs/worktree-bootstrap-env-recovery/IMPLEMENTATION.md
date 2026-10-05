@@ -13,6 +13,7 @@
 - Existing coverage: the repository retains the repo-owned bootstrap entrypoint, non-blocking `post-checkout` wrapper, Git-dir initialization markers, legacy `PORT` compatibility, and lock-protected worktree port leases.
 - Implemented coverage: primary worktree discovery, source-only recovery for missing targets, port-only normalization, source/target damage distinctions, owner-only atomic publication, fallback behavior, and concurrent create-once handling.
 - Verification commands: `bun run test:worktree-bootstrap`, shell syntax checks, Python compilation, `bun run check`, and `git diff --check`.
+- Review follow-up: the linked-worktree smoke fixture now reads modes through Python's standard library on both BSD and GNU hosts, and uses quoted source port assignments to verify lease rewriting.
 
 ## Coverage / rollout summary
 
