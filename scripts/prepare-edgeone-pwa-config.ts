@@ -103,27 +103,17 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
   const htmlRules = HTML_ROUTE_PATTERNS.map((path) =>
     rule(scopedPath(basePath, path), EDGEONE_PUBLIC_CACHE_CONTROL.html)
   );
+  const playbookEditionDirectories = [
+    ...new Set(
+      cacheableStaticFiles
+        .filter((path) => /^_content\/playbook\/v?\d+\.\d+\.\d+\/[a-f0-9]{64}\//.test(path))
+        .map((path) => path.split("/").slice(0, 4).join("/"))
+    ),
+  ].sort();
   const versionedRules = [
-    ...[
-      ...new Set(
-        cacheableStaticFiles
-          .filter((path) => /^_content\/playbook\/v?\d+\.\d+\.\d+\/[a-f0-9]{64}\//.test(path))
-          .map((path) => path.split("/").slice(0, 4).join("/"))
-      ),
-    ]
-      .sort()
-      .flatMap((path) => [
-        {
-          source: scopedPath(basePath, `/${path}/policies/*`),
-          headers: [
-            { key: "Cache-Control", value: EDGEONE_PUBLIC_CACHE_CONTROL.immutable },
-            { key: "Content-Type", value: "text/plain; charset=utf-8" },
-            { key: "Content-Disposition", value: "attachment" },
-            { key: "X-Content-Type-Options", value: "nosniff" },
-          ],
-        },
-        rule(scopedPath(basePath, `/${path}/*`), EDGEONE_PUBLIC_CACHE_CONTROL.immutable),
-      ]),
+    ...playbookEditionDirectories.map((path) =>
+      rule(scopedPath(basePath, `/${path}/*`), EDGEONE_PUBLIC_CACHE_CONTROL.immutable)
+    ),
     rule(scopedPath(basePath, "/_astro/*"), EDGEONE_PUBLIC_CACHE_CONTROL.immutable),
     ...(hasContentAssetFiles
       ? [rule(scopedPath(basePath, "/_content/assets/*"), EDGEONE_PUBLIC_CACHE_CONTROL.immutable)]
@@ -131,6 +121,15 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     ...versionedPwaDirectories.map((path) =>
       rule(scopedPath(basePath, `/${path}/*`), EDGEONE_PUBLIC_CACHE_CONTROL.immutable)
     ),
+    ...playbookEditionDirectories.map((path) => ({
+      source: scopedPath(basePath, `/${path}/policies/*`),
+      headers: [
+        { key: "Cache-Control", value: EDGEONE_PUBLIC_CACHE_CONTROL.immutable },
+        { key: "Content-Type", value: "text/plain; charset=utf-8" },
+        { key: "Content-Disposition", value: "attachment" },
+        { key: "X-Content-Type-Options", value: "nosniff" },
+      ],
+    })),
   ];
   const unversionedFiles = cacheableStaticFiles
     .filter((path) => path && !path.endsWith(".html") && path !== "CNAME")
@@ -198,23 +197,24 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
 
   const config: EdgeoneCacheConfig = {
     headers: [
-      ...versionedRules,
+      // EdgeOne evaluates matching headers top-to-bottom, with later matches taking precedence.
+      ...[...projectAssetSources]
+        .sort()
+        .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
+      ...[...assetSources]
+        .sort()
+        .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
+      ...htmlRules,
       ...[...exactAssetSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
       ...(hasTagFeedFiles
         ? [rule(scopedPath(basePath, "/tags/*/feed.xml"), EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)]
         : []),
-      ...htmlRules,
-      ...[...assetSources]
-        .sort()
-        .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
-      ...[...projectAssetSources]
-        .sort()
-        .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
       ...[...rootAssetSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
+      ...versionedRules,
     ],
   };
 
@@ -260,7 +260,10 @@ function edgeoneSourceMatches(source: string, pathname: string) {
 }
 
 export function findEdgeoneCacheRule(config: EdgeoneCacheConfig, pathname: string) {
-  return config.headers.find((headerRule) => edgeoneSourceMatches(headerRule.source, pathname));
+  for (let index = config.headers.length - 1; index >= 0; index -= 1) {
+    const headerRule = config.headers[index];
+    if (headerRule && edgeoneSourceMatches(headerRule.source, pathname)) return headerRule;
+  }
 }
 
 export async function collectStaticFiles(root: string, directory = root): Promise<string[]> {

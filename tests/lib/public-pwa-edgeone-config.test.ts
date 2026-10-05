@@ -394,6 +394,7 @@ describe("EdgeOne public PWA cache config", () => {
       "memos/index.html",
       "memos/feed.xml",
       "projects/index.html",
+      "projects/project.with.dot/index.html",
       "projects/posters/blog-26.webp",
       "projects/project-without-extension/NOTICE",
       ...projectOutputFiles,
@@ -413,6 +414,9 @@ describe("EdgeOne public PWA cache config", () => {
       EDGEONE_PUBLIC_CACHE_CONTROL.html
     );
     expect(findEdgeoneCacheRule(config, "/projects/project-39/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(findEdgeoneCacheRule(config, "/projects/project.with.dot/")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.html
     );
     expect(findEdgeoneCacheRule(config, "/projects/posters/blog-26.webp")?.headers[0]?.value).toBe(
