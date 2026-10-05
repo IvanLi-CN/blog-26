@@ -185,15 +185,8 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
         continue;
       }
 
-      const projectDirectoryDepth = path.split("/").length - 2;
-      // Project assets share one public cache policy regardless of file type.
-      // Keeping one rule per directory depth leaves room under EdgeOne's 30-rule limit.
-      const pattern = [
-        "projects",
-        ...Array.from({ length: projectDirectoryDepth }, (_, index) => `:projectDir${index + 1}`),
-        "*",
-      ].join("/");
-      projectAssetSources.add(scopedPath(basePath, `/${pattern}`));
+      // The suffix wildcard groups files at any depth without matching clean project routes.
+      projectAssetSources.add(scopedPath(basePath, "/projects/*.*"));
       continue;
     }
 

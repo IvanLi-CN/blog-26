@@ -119,9 +119,7 @@ describe("EdgeOne public PWA cache config", () => {
     expect(
       findEdgeoneCacheRule(config, "/blog-26/projects/posters/blog-26.webp")?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
-    expect(config.headers.some(({ source }) => source === "/blog-26/projects/:projectDir1/*")).toBe(
-      true
-    );
+    expect(config.headers.some(({ source }) => source === "/blog-26/projects/*.*")).toBe(true);
     expect(findEdgeoneCacheRule(config, "/blog-26/api")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/blog-26/api/health")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/blog-26/api/public/assets/post/a/cover.webp")).toBe(
@@ -387,13 +385,19 @@ describe("EdgeOne public PWA cache config", () => {
       `projects/project-${index}/index.html`,
       `projects/project-${index}/assets/cover-${index}.webp`,
     ]).flat();
+    const deeplyNestedProjectAssets = Array.from({ length: 20 }, (_, depth) => {
+      const nestedDirectories = Array.from({ length: depth + 1 }, (_, index) => `nested-${index}`);
+      return `projects/deep-${depth}/${nestedDirectories.join("/")}/asset-${depth}.webp`;
+    });
     const config = createEdgeoneCacheConfig("", [
       "index.html",
       "memos/index.html",
       "memos/feed.xml",
       "projects/index.html",
       "projects/posters/blog-26.webp",
+      "projects/project-without-extension/NOTICE",
       ...projectOutputFiles,
+      ...deeplyNestedProjectAssets,
     ]);
 
     expect(findEdgeoneCacheRule(config, "/memos/")?.headers[0]?.value).toBe(
@@ -417,10 +421,18 @@ describe("EdgeOne public PWA cache config", () => {
     expect(
       findEdgeoneCacheRule(config, "/projects/project-39/assets/cover-39.webp")?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
-    expect(config.headers.some(({ source }) => source === "/memos/feed.xml")).toBe(true);
     expect(
-      config.headers.some(({ source }) => source === "/projects/:projectDir1/:projectDir2/*")
-    ).toBe(true);
+      findEdgeoneCacheRule(config, "/projects/deep-19/nested-0/nested-1/asset-19.webp")?.headers[0]
+        ?.value
+    ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
+    expect(
+      findEdgeoneCacheRule(config, "/projects/project-without-extension/NOTICE")?.headers[0]?.value
+    ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
+    expect(config.headers.some(({ source }) => source === "/memos/feed.xml")).toBe(true);
+    expect(config.headers.filter(({ source }) => source === "/projects/*.*")).toHaveLength(1);
+    expect(config.headers.some(({ source }) => source.startsWith("/projects/:projectDir"))).toBe(
+      false
+    );
     expect(config.headers.some(({ source }) => source === "/projects/*")).toBe(false);
     expect(config.headers.some(({ source }) => source === "/_content/assets/*")).toBe(false);
     expect(config.headers.length).toBeLessThanOrEqual(30);
