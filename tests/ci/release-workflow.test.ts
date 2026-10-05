@@ -17,6 +17,7 @@ const parsedWorkflow = load(workflow) as {
       concurrency?: { group?: string; "cancel-in-progress"?: boolean };
       needs?: unknown;
       if?: string;
+      steps?: Array<{ name?: string }>;
     }
   >;
 };
@@ -242,6 +243,18 @@ describe("release.yml", () => {
         "{{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && '/app/site/generated/playbook-edition.json' || '' }}"
     );
     expect(publishImage).not.toContain("env.PLAYBOOK_BUNDLE_DIR != ''");
+  });
+
+  test("checks out the renderer before downloading the EdgeOne artifact into the workspace", () => {
+    const steps = parsedWorkflow.jobs.deploy_frontend_edgeone?.steps ?? [];
+    const indexOf = (name: string) => steps.findIndex((step) => step.name === name);
+    const checkoutIndex = indexOf("Checkout the approved application renderer");
+    const downloadIndex = indexOf("Download frontend EdgeOne artifact");
+    const recoverIndex = indexOf("Recover the validated initial bundle from the release artifact");
+
+    expect(checkoutIndex).toBeGreaterThanOrEqual(0);
+    expect(downloadIndex).toBeGreaterThan(checkoutIndex);
+    expect(recoverIndex).toBeGreaterThan(downloadIndex);
   });
 
   test("holds the shared production lock across the complete release workflow", () => {

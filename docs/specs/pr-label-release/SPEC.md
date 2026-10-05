@@ -130,6 +130,7 @@ Unified Docker image release:
 - the bundle must contain `public-snapshot.json` (directly or inside an archive)
 - The accepted snapshot must have a timezone-qualified ISO `generatedAt`; object-valued `site`, `stats`, `relatedPosts`, and `tags`; post and memo arrays containing objects; `stats.categories` matching the expected array shape; and `stats.totalPosts` equal to `posts.length`. The tags object must include summary/group arrays and category/tag icon maps plus the `timelines` object. Release summary records generation time, content counts, and SHA-256.
 - The workflow uploads the accepted snapshot as a short-lived artifact. Frontend SSG and unified-image publishing consume that same artifact and must not independently fetch or regenerate the snapshot.
+- The EdgeOne deployment job checks out the approved renderer before downloading the verified site artifact into the workspace, preserving the artifact through checkout cleanup and subsequent Playbook recovery.
 - Astro SSG consumes the snapshot and must not depend on runtime DB or local content directories during release publishing or Docker image startup
 - public runtime API/file URLs inside the static site are rewritten against `PUBLIC_API_BASE_URL`, which must be configured to the live backend origin
 - Docker image builds must receive a preloaded `site/generated/public-snapshot.json` or fetch one from `PUBLIC_CONTENT_BUNDLE_URL`; they must fail fast instead of falling back to an empty local DB when the snapshot is missing
