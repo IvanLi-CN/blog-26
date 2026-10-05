@@ -7,6 +7,7 @@ SNAPSHOT_REPO="$TMP_DIR/repo"
 REGISTRY_DIR="$TMP_DIR/port-registry"
 AUTO_WORKTREE="$TMP_DIR/auto"
 MANUAL_WORKTREE="$TMP_DIR/manual"
+MANUAL_RECOVERY_WORKTREE="$TMP_DIR/manual-recovery"
 FAIL_WORKTREE="$TMP_DIR/fail"
 RECOVERY_WORKTREE="$TMP_DIR/recovery"
 LEGACY_WORKTREE="$TMP_DIR/legacy"
@@ -22,6 +23,10 @@ DAMAGED_WORKTREE="$TMP_DIR/damaged"
 CONCURRENT_WORKTREE="$TMP_DIR/concurrent"
 PUBLISH_FAIL_WORKTREE="$TMP_DIR/publish-fail"
 CRLF_WORKTREE="$TMP_DIR/crlf"
+PRUNABLE_PRIMARY_REPO="$TMP_DIR/prunable-primary"
+PRUNABLE_PRIMARY_META="$TMP_DIR/prunable-primary-meta"
+PRUNABLE_PRIMARY_TARGET="$TMP_DIR/prunable-primary-target"
+PRUNABLE_PRIMARY_DECOY="$TMP_DIR/prunable-primary-decoy"
 ROOT_ENV_BACKUP="$TMP_DIR/root-env.local.bak"
 PORT_HOLDER_PID=""
 PORT_HOLDER_PID_2=""
@@ -33,23 +38,6 @@ cleanup() {
   if [[ -n "$PORT_HOLDER_PID_2" ]]; then
     kill "$PORT_HOLDER_PID_2" >/dev/null 2>&1 || true
   fi
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$AUTO_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$MANUAL_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$FAIL_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$RECOVERY_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$LEGACY_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$DRY_RUN_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$EXPORT_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$STALE_SCOPE_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$SOURCE_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$SECONDARY_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree prune >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$FALLBACK_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$INVALID_SOURCE_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$DAMAGED_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$CONCURRENT_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$PUBLISH_FAIL_WORKTREE" >/dev/null 2>&1 || true
-  git -C "$SNAPSHOT_REPO" worktree remove --force "$CRLF_WORKTREE" >/dev/null 2>&1 || true
   rm -rf "$TMP_DIR"
 }
 trap cleanup EXIT
@@ -150,6 +138,46 @@ assert_file_not_contains() {
     printf 'Assertion failed: %s unexpectedly contains /%s/\n' "$file" "$pattern" >&2
     exit 1
   fi
+}
+
+assert_env_ports_match_scope_leases() {
+  local env_file="$1"
+  local scope_id="$2"
+  local inspect_json
+  inspect_json="$(python3 "$SNAPSHOT_REPO/scripts/port-registry.py" --registry-dir "$REGISTRY_DIR" --json inspect --scope-id "$scope_id")"
+  python3 - "$env_file" "$inspect_json" <<'PY'
+from pathlib import Path
+import json
+import sys
+
+env_path = Path(sys.argv[1])
+payload = json.loads(sys.argv[2])
+rows = payload.get("rows", [])
+expected = {row["service"]: row["port"] for row in rows}
+if set(expected) != {"web", "site", "admin"}:
+    raise SystemExit(f"expected one complete web/site/admin lease block, got {rows!r}")
+
+assignments = {"PORT": [], "SITE_PORT": [], "ADMIN_PORT": []}
+for raw in env_path.read_bytes().split(b"\n"):
+    if b"=" not in raw:
+        continue
+    key, value = raw.split(b"=", 1)
+    if key.decode("ascii", "ignore") not in assignments:
+        continue
+    value = value.rstrip(b"\r")
+    if len(value) >= 2 and value[:1] in (b"'", b'"') and value[-1:] == value[:1]:
+        value = value[1:-1]
+    assignments[key.decode("ascii")].append(value.decode("ascii"))
+
+expected_values = {
+    "PORT": expected["web"],
+    "SITE_PORT": expected["site"],
+    "ADMIN_PORT": expected["admin"],
+}
+for key, expected_value in expected_values.items():
+    if not assignments[key] or any(value != expected_value for value in assignments[key]):
+        raise SystemExit(f"{key} assignments do not all match the target lease: {assignments[key]!r} != {expected_value}")
+PY
 }
 
 copy_root_contents() {
@@ -293,6 +321,35 @@ EOF
   target_mode="$(python3 -c 'import os, stat, sys; print(format(stat.S_IMODE(os.stat(sys.argv[1]).st_mode), "o"))' "$target_env")"
   [[ "$source_mode" == "644" ]] || { echo "source fixture mode changed unexpectedly" >&2; exit 1; }
   [[ "$target_mode" == "600" ]] || { echo "recovered target mode is not owner-only: $target_mode" >&2; exit 1; }
+  assert_env_ports_match_scope_leases "$target_env" "$(worktree_scope_id "$SOURCE_WORKTREE")"
+}
+
+check_manual_missing_target_recovery() {
+  log "check manual bootstrap recovers a missing target"
+  write_primary_source_env
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$MANUAL_RECOVERY_WORKTREE" >/tmp/worktree-bootstrap-manual-recovery-add.log 2>&1
+  )
+
+  local env_file="$MANUAL_RECOVERY_WORKTREE/.env.local"
+  local marker_file
+  marker_file="$(git -C "$MANUAL_RECOVERY_WORKTREE" rev-parse --git-dir)/.codex-worktree-bootstrap-initialized"
+  rm -f "$env_file" "$marker_file"
+  (
+    cd "$MANUAL_RECOVERY_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-manual-recovery.log 2>&1
+  )
+
+  [[ -f "$env_file" ]] || { echo "manual recovery target .env.local is missing" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-manual-recovery.log 'worktree bootstrap complete'
+  assert_file_contains "$env_file" '^SECRET_MARKER=synthetic-source-only$'
+  assert_file_contains "$env_file" '^DB_PATH=\./dev-data/shared\.sqlite\.db$'
+  assert_file_contains "$env_file" '^LOCAL_CONTENT_BASE_PATH=/tmp/shared-worktree-content$'
+  assert_file_not_contains /tmp/worktree-bootstrap-manual-recovery.log 'synthetic-source-only'
+  assert_env_ports_match_scope_leases "$env_file" "$(worktree_scope_id "$MANUAL_RECOVERY_WORKTREE")"
 }
 
 check_crlf_source_recovery() {
@@ -468,7 +525,7 @@ EOF
 check_source_validation_matrix() {
   log "check source validation fallback matrix"
   local case_name case_root log_file
-  local -a source_cases=(empty missing-port invalid-derived)
+  local -a source_cases=(empty missing-port invalid-derived mismatched-quotes non-lf-separator)
   if [[ "$(id -u)" == "0" ]]; then
     log "skip unreadable source fixture when running as root"
   else
@@ -486,6 +543,12 @@ check_source_validation_matrix() {
         ;;
       invalid-derived)
         printf 'PORT=39111\nSITE_PORT=not-a-port\nSECRET_MARKER=synthetic-source-matrix-only\n' >"$SNAPSHOT_REPO/.env.local"
+        ;;
+      mismatched-quotes)
+        printf "PORT=39111\nPORT=\"39112'\nSITE_PORT=39114\nADMIN_PORT=39115\nSECRET_MARKER=synthetic-source-matrix-only\n" >"$SNAPSHOT_REPO/.env.local"
+        ;;
+      non-lf-separator)
+        printf 'TOKEN=before\vPORT=39111\nSITE_PORT=39114\nADMIN_PORT=39115\nSECRET_MARKER=synthetic-source-matrix-only\n' >"$SNAPSHOT_REPO/.env.local"
         ;;
       unreadable)
         printf 'PORT=39111\nSITE_PORT=39114\nADMIN_PORT=39115\nSECRET_MARKER=synthetic-source-matrix-only\n' >"$SNAPSHOT_REPO/.env.local"
@@ -507,6 +570,44 @@ check_source_validation_matrix() {
     git -C "$SNAPSHOT_REPO" worktree remove --force "$case_root" >/dev/null 2>&1 || true
   done
   write_primary_source_env
+}
+
+check_prunable_primary_falls_back() {
+  log "check prunable primary falls back without selecting a decoy"
+  mkdir -p "$PRUNABLE_PRIMARY_META"
+  git init --separate-git-dir "$PRUNABLE_PRIMARY_META" "$PRUNABLE_PRIMARY_REPO" >/dev/null
+  copy_root_contents "$PRUNABLE_PRIMARY_REPO"
+  (
+    cd "$PRUNABLE_PRIMARY_REPO"
+    git config user.name "Codex"
+    git config user.email "codex@example.com"
+    git add .
+    git commit -m "test prunable primary snapshot" >/dev/null
+    git branch -M prunable-primary
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$PRUNABLE_PRIMARY_TARGET" >/tmp/worktree-bootstrap-prunable-primary-target.log 2>&1
+    git worktree add --detach "$PRUNABLE_PRIMARY_DECOY" >/tmp/worktree-bootstrap-prunable-primary-decoy.log 2>&1
+  )
+  cat >"$PRUNABLE_PRIMARY_DECOY/.env.local" <<'EOF'
+PORT=39911
+SITE_PORT=39914
+ADMIN_PORT=39915
+SECRET_MARKER=synthetic-decoy-only
+EOF
+
+  rm -f "$PRUNABLE_PRIMARY_TARGET/.env.local" "$(git -C "$PRUNABLE_PRIMARY_TARGET" rev-parse --git-dir)/.codex-worktree-bootstrap-initialized"
+  rm -rf "$PRUNABLE_PRIMARY_REPO"
+  (
+    cd "$PRUNABLE_PRIMARY_TARGET"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-prunable-primary.log 2>&1
+  )
+
+  local env_file="$PRUNABLE_PRIMARY_TARGET/.env.local"
+  [[ -f "$env_file" ]] || { echo "prunable-primary fallback target .env.local is missing" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-prunable-primary.log 'no usable inherited environment is available'
+  assert_file_contains "$env_file" '^DB_PATH=\./dev-data/sqlite\.db$'
+  assert_file_not_contains "$env_file" 'synthetic-decoy-only'
 }
 
 check_damaged_target_is_preserved() {
@@ -623,6 +724,10 @@ PY
 
 check_publish_failure_is_strict_and_non_blocking() {
   log "check environment publication failure boundaries"
+  if [[ "$(id -u)" == "0" ]]; then
+    log "skip chmod-based publication failure fixture when running as root"
+    return 0
+  fi
   (
     cd "$SNAPSHOT_REPO"
     export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
@@ -702,6 +807,7 @@ check_concurrent_publication_is_atomic() {
   local env_file="$CONCURRENT_WORKTREE/.env.local"
   [[ -f "$env_file" ]] || { echo "concurrent publication produced no target" >&2; exit 1; }
   assert_file_contains "$env_file" '^SECRET_MARKER=synthetic-source-only$'
+  assert_env_ports_match_scope_leases "$env_file" "$scope_id"
   assert_file_not_contains /tmp/worktree-bootstrap-concurrent-a.log 'synthetic-source-only'
   assert_file_not_contains /tmp/worktree-bootstrap-concurrent-b.log 'synthetic-source-only'
   [[ -z "$(find "$CONCURRENT_WORKTREE" -maxdepth 1 -name '.env.local.*.tmp' -print -quit)" ]] || {
@@ -1026,6 +1132,7 @@ create_snapshot_repo
 prepare_root_hooks
 check_auto_bootstrap
 check_primary_source_recovery
+check_manual_missing_target_recovery
 check_crlf_source_recovery
 check_existing_env_is_preserved
 check_legacy_env_is_accepted
@@ -1033,6 +1140,7 @@ check_dry_run_is_read_only
 check_primary_source_fallback
 check_invalid_primary_source_fallback
 check_source_validation_matrix
+check_prunable_primary_falls_back
 check_damaged_target_is_preserved
 check_publish_failure_is_strict_and_non_blocking
 check_concurrent_publication_is_atomic

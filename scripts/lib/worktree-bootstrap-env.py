@@ -87,21 +87,23 @@ def split_line_ending(raw: bytes) -> tuple[bytes, bytes]:
 
 
 def strip_shell_quotes(value: bytes) -> bytes:
-    if value.endswith(b'"'):
-        value = value[:-1]
-    if value.startswith(b'"'):
-        value = value[1:]
-    if value.endswith(b"'"):
-        value = value[:-1]
-    if value.startswith(b"'"):
-        value = value[1:]
+    if len(value) >= 2 and value[:1] in (b'"', b"'") and value[-1:] == value[:1]:
+        return value[1:-1]
     return value
+
+
+def iter_records(data: bytes):
+    parts = data.split(b"\n")
+    for index, part in enumerate(parts):
+        ending = b"\n" if index < len(parts) - 1 else b""
+        raw = part + ending
+        line, line_ending = split_line_ending(raw)
+        yield raw, line, line_ending
 
 
 def parse_env(data: bytes) -> dict[bytes, bytes]:
     values: dict[bytes, bytes] = {}
-    for raw in data.splitlines(keepends=True):
-        line, _ = split_line_ending(raw)
+    for _, line, _ in iter_records(data):
         if not line or line.startswith(b"#") or b"=" not in line:
             continue
         key, value = line.split(b"=", 1)
@@ -158,8 +160,7 @@ def validated_source(path: Path) -> tuple[bytes, int]:
 def rewrite_ports(data: bytes, ports: dict[bytes, int]) -> bytes:
     found: set[bytes] = set()
     output: list[bytes] = []
-    for raw in data.splitlines(keepends=True):
-        line, ending = split_line_ending(raw)
+    for raw, line, ending in iter_records(data):
         match = ASSIGNMENT_RE.fullmatch(line)
         if not match:
             output.append(raw)

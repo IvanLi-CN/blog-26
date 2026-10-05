@@ -26,6 +26,7 @@
 - A follow-up review hardened special-file/race handling, preserved fallback for transient source loss, normalized CRLF loading, and removed port values from bootstrap logs.
 - The final review follow-up skips malformed shell variable names without exporting their values and expands topology and source/target validation-matrix coverage.
 - The final repair makes quoted and duplicate port assignments explicit in the rewrite contract, guarantees owner-read access on recovered files, and keeps permission fixtures portable for root-run test environments.
+- The follow-up repair aligns source parsing with the shell loader's LF boundaries, rejects mixed quote forms, and expands the smoke evidence for manual recovery, prunable-primary fallback, full lease replacement, and concurrent publication.
 
 ## References
 
