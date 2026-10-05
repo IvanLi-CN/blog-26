@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 PORT_KEYS = (b"PORT", b"SITE_PORT", b"ADMIN_PORT")
-ASSIGNMENT_RE = re.compile(rb"^(PORT|SITE_PORT|ADMIN_PORT)=[^\r\n]*$")
+ASSIGNMENT_RE = re.compile(rb"^(PORT|SITE_PORT|ADMIN_PORT)=(?:[0-9]+|\"[0-9]+\"|'[0-9]+')$")
 
 
 class EnvUnavailable(Exception):
@@ -250,7 +250,7 @@ def command_publish(args: argparse.Namespace) -> int:
         return 0
     try:
         source_data, source_mode = validated_source(Path(args.source))
-        target_mode = source_mode & 0o600 or 0o400
+        target_mode = (source_mode & 0o600) | 0o400
         data = rewrite_ports(
             source_data,
             {b"PORT": args.port, b"SITE_PORT": args.site_port, b"ADMIN_PORT": args.admin_port},

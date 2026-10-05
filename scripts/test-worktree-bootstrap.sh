@@ -225,6 +225,7 @@ write_primary_source_env() {
 PORT="39111"
 SITE_PORT='39114'
 ADMIN_PORT=39115
+PORT='39112'
 DB_PATH=./dev-data/shared.sqlite.db
 LOCAL_CONTENT_BASE_PATH=/tmp/shared-worktree-content
 CONTENT_SOURCES=local
@@ -285,8 +286,8 @@ EOF
     exit 1
   }
   local source_port target_port source_mode target_mode
-  source_port="$(grep '^PORT=' "$source_env" | cut -d= -f2)"
-  target_port="$(grep '^PORT=' "$target_env" | cut -d= -f2)"
+  source_port="$(grep '^PORT=' "$source_env" | head -n1 | cut -d= -f2)"
+  target_port="$(grep '^PORT=' "$target_env" | head -n1 | cut -d= -f2)"
   [[ "$target_port" != "$source_port" ]] || { echo "recovered target reused primary PORT" >&2; exit 1; }
   source_mode="$(python3 -c 'import os, stat, sys; print(format(stat.S_IMODE(os.stat(sys.argv[1]).st_mode), "o"))' "$source_env")"
   target_mode="$(python3 -c 'import os, stat, sys; print(format(stat.S_IMODE(os.stat(sys.argv[1]).st_mode), "o"))' "$target_env")"
@@ -467,7 +468,13 @@ EOF
 check_source_validation_matrix() {
   log "check source validation fallback matrix"
   local case_name case_root log_file
-  for case_name in empty missing-port invalid-derived unreadable; do
+  local -a source_cases=(empty missing-port invalid-derived)
+  if [[ "$(id -u)" == "0" ]]; then
+    log "skip unreadable source fixture when running as root"
+  else
+    source_cases+=(unreadable)
+  fi
+  for case_name in "${source_cases[@]}"; do
     case_root="$TMP_DIR/source-$case_name"
     log_file="/tmp/worktree-bootstrap-source-$case_name.log"
     case "$case_name" in
@@ -531,7 +538,13 @@ check_damaged_target_is_preserved() {
   assert_file_not_contains /tmp/worktree-bootstrap-damaged-file.log 'synthetic-damaged-only'
 
   local target_case target_log target_before
-  for target_case in empty missing-port invalid-derived unreadable; do
+  local -a target_cases=(empty missing-port invalid-derived)
+  if [[ "$(id -u)" == "0" ]]; then
+    log "skip unreadable target fixture when running as root"
+  else
+    target_cases+=(unreadable)
+  fi
+  for target_case in "${target_cases[@]}"; do
     target_log="/tmp/worktree-bootstrap-damaged-$target_case.log"
     target_before="$TMP_DIR/damaged-$target_case.before"
     rm -f "$DAMAGED_WORKTREE/.env.local"
@@ -921,9 +934,9 @@ check_stale_scope_port_block_is_revalidated() {
   local marker_file
   marker_file="$(git -C "$STALE_SCOPE_WORKTREE" rev-parse --git-dir)/.codex-worktree-bootstrap-initialized"
   local stale_port stale_site_port stale_admin_port
-  stale_port="$(grep '^PORT=' "$env_file" | cut -d= -f2)"
-  stale_site_port="$(grep '^SITE_PORT=' "$env_file" | cut -d= -f2)"
-  stale_admin_port="$(grep '^ADMIN_PORT=' "$env_file" | cut -d= -f2)"
+  stale_port="$(grep '^PORT=' "$env_file" | head -n1 | cut -d= -f2)"
+  stale_site_port="$(grep '^SITE_PORT=' "$env_file" | head -n1 | cut -d= -f2)"
+  stale_admin_port="$(grep '^ADMIN_PORT=' "$env_file" | head -n1 | cut -d= -f2)"
 
   rm -f "$env_file" "$marker_file"
   start_port_holder "$stale_port" PORT_HOLDER_PID

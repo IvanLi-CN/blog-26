@@ -25,6 +25,7 @@
 - The source fixture includes quoted port assignments, preserving the contract proof that recovery replaces all three lease-bound port values.
 - A follow-up review hardened special-file/race handling, preserved fallback for transient source loss, normalized CRLF loading, and removed port values from bootstrap logs.
 - The final review follow-up skips malformed shell variable names without exporting their values and expands topology and source/target validation-matrix coverage.
+- The final repair makes quoted and duplicate port assignments explicit in the rewrite contract, guarantees owner-read access on recovered files, and keeps permission fixtures portable for root-run test environments.
 
 ## References
 

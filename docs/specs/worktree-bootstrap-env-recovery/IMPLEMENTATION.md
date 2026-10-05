@@ -16,6 +16,7 @@
 - Review follow-up: the linked-worktree smoke fixture now reads modes through Python's standard library on both BSD and GNU hosts, and uses quoted source port assignments to verify lease rewriting.
 - Review follow-up: source reads now use descriptor validation and non-blocking special-file handling, transient source loss returns to generated-default fallback, CRLF files remain loadable, and port values are omitted from success logs.
 - Review follow-up: malformed shell variable names are skipped without exporting their values, and the smoke fixture now covers non-main primary topology, prunable secondary metadata, and the source/target validation matrix.
+- Review follow-up: port assignments accept bare or quoted numeric values and every matching assignment is rewritten; recovered files retain owner-read access while remaining owner-only, and unreadable-fixture checks adapt when tests run as root.
 
 ## Coverage / rollout summary
 
