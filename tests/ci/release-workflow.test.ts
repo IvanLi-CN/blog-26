@@ -17,7 +17,7 @@ const parsedWorkflow = load(workflow) as {
       concurrency?: { group?: string; "cancel-in-progress"?: boolean };
       needs?: unknown;
       if?: string;
-      steps?: Array<{ name?: string }>;
+      steps?: Array<{ name?: string; env?: Record<string, string> }>;
     }
   >;
 };
@@ -193,6 +193,12 @@ describe("release.yml", () => {
     expect(edgeone).toContain("uses: actions/download-artifact@v8");
     expect(edgeone).toContain("name: frontend-edgeone-site");
     expect(edgeone).toContain("path: ./edgeone-dist");
+    const playbookRebuild = parsedWorkflow.jobs.deploy_frontend_edgeone?.steps?.find(
+      (step) => step.name === "Rebuild with the current Playbook under the shared production lock"
+    );
+    expect(playbookRebuild?.env?.PUBLIC_STATIC_MEDIA_ORIGIN).toBe(
+      `\${{ vars.PUBLIC_STATIC_MEDIA_ORIGIN || 'https://console.ivanli.cc' }}`
+    );
     expect(edgeone).toContain(`EDGEONE_API_TOKEN: \${{ secrets.EDGEONE_API_TOKEN }}`);
     expect(edgeone).toContain(`EDGEONE_PROJECT_NAME: \${{ vars.EDGEONE_PROJECT_NAME }}`);
     expect(edgeone).toContain("- name: Configure EdgeOne Makers backend origin");
