@@ -6,6 +6,7 @@ import {
   DEFAULT_MAX_FILES,
   DEFAULT_MAX_PROJECT_BYTES,
   extractPublicMediaUrls,
+  isPlaybookEditionFilePath,
   PUBLIC_MEDIA_FACADE_PREFIX,
   type PublicMediaManifest,
   STATIC_MEDIA_PREFIX,
@@ -260,6 +261,7 @@ export async function verifyPublicMediaPackage(
     ) {
       continue;
     }
+    if (isPlaybookEditionFilePath(artifactPath)) continue;
     const content = await readFile(file, "utf8");
     for (const raw of extractPublicMediaUrls(content)) {
       const parsed = new URL(raw, siteUrl);

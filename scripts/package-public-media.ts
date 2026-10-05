@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { appendFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { extname, join, resolve } from "node:path";
+import { extname, join, relative, resolve, sep } from "node:path";
 
 export const PUBLIC_MEDIA_FACADE_PREFIX = "/api/public/assets/";
 export const STATIC_MEDIA_PREFIX = "/_content/assets/";
@@ -12,6 +12,9 @@ export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 export const DEFAULT_DOWNLOAD_CONCURRENCY = 1;
 export const DEFAULT_DOWNLOAD_ATTEMPTS = 3;
 export const DEFAULT_RETRY_DELAY_MS = 500;
+
+const PLAYBOOK_EDITION_FILE_PATH_RE =
+  /^_content\/playbook\/v?(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\/[a-f0-9]{64}\/.+$/u;
 
 const TEXT_EXTENSIONS = new Set([
   ".css",
@@ -121,6 +124,10 @@ function trimUrlToken(value: string) {
 
 export function extractPublicMediaUrls(content: string) {
   return [...content.matchAll(PUBLIC_MEDIA_URL_RE)].map((match) => trimUrlToken(match[0]));
+}
+
+export function isPlaybookEditionFilePath(path: string) {
+  return PLAYBOOK_EDITION_FILE_PATH_RE.test(path);
 }
 
 function assertSafeAssetPath(pathname: string) {
@@ -491,6 +498,9 @@ export async function packagePublicMedia(
   for (const file of files) {
     const content = await readFile(file, "utf8");
     fileContents.set(file, content);
+    const artifactPath = relative(siteDistDir, file).split(sep).join("/");
+    // Edition files are immutable; rendered page references are scanned separately.
+    if (isPlaybookEditionFilePath(artifactPath)) continue;
     references.push(...extractReferences(content, siteUrl, mediaOrigin, basePath));
   }
   const referenceByRaw = new Map(references.map((reference) => [reference.raw, reference]));
@@ -544,6 +554,8 @@ export async function packagePublicMedia(
   );
 
   for (const [file, content] of fileContents) {
+    const artifactPath = relative(siteDistDir, file).split(sep).join("/");
+    if (isPlaybookEditionFilePath(artifactPath)) continue;
     const rewritten = content.replace(PUBLIC_MEDIA_URL_RE, (token) => {
       const raw = trimUrlToken(token);
       const reference = referenceByRaw.get(raw);
