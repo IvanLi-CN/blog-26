@@ -6,7 +6,7 @@ import type { ClippingService } from "./service";
 import { clippingStoragePaths } from "./store";
 
 const key = Symbol.for("blog26.clipping.runtime");
-type RuntimeSlot = { service: ClippingService | null; starting?: Promise<ClippingService> };
+type RuntimeSlot = { service: ClippingService | null; starting?: Promise<ClippingService | null> };
 const shared = globalThis as typeof globalThis & { [key]?: RuntimeSlot };
 shared[key] ??= { service: null };
 const slot = shared[key];
@@ -35,7 +35,14 @@ export async function startClippingRuntime() {
     await mkdir(dirname(paths.runtime), { recursive: true });
     const base = getActiveLocalBasePath();
     if (base) {
-      const root = await realpath(base);
+      const root = await realpath(base).catch((error) => {
+        if (error.code !== "ENOENT") throw error;
+        return null;
+      });
+      if (!root) {
+        console.warn("[clipping] Content directory is not ready; processor startup skipped.");
+        return null;
+      }
       const actual = await realpath(paths.runtime).catch((error) => {
         if (error.code !== "ENOENT") throw error;
         return realpath(dirname(paths.runtime));

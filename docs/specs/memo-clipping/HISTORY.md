@@ -34,6 +34,8 @@
 - Owner rejected the redundant clipping badge beside the date in the actual Web Demo Memo list. The added badge is removed from public and live author Memo lists; their existing type icon continues to identify clipping entries. Detail type labels remain in their existing positions.
 - Owner rejected the placement of three equal-emphasis detail buttons beneath the title/tags. Management actions now accompany processing status, and the original-page link accompanies the article language controls; spacing and wrapping express the two tasks without changing card ownership or list appearance.
 
+- PR CI exposed a legacy gateway bootstrap configuration whose content directory does not exist yet. Clipping runtime now skips processor startup for that precise ENOENT state without weakening storage/ownership checks; a focused regression preserves the gateway compatibility boundary.
+
 ## References
 
 - [Requirements contract](./SPEC.md)
