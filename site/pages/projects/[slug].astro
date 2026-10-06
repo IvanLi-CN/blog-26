@@ -63,7 +63,7 @@ const structuredData = {
             </div>
             <h1 class="mt-5 font-heading text-3xl font-semibold tracking-[-0.05em] text-[color:var(--nature-text)] sm:text-4xl md:text-5xl">{project.title}</h1>
             <p class="mt-5 max-w-3xl text-base leading-8 text-[color:var(--nature-text)] sm:text-lg">{heroSummary}</p>
-            <div class="mt-6 flex flex-wrap gap-2">{project.techTags.map((tag) => <TagBadge tag={tag} iconMap={snapshot.tags.tagIconMap} iconSvgMap={snapshot.tags.tagIconSvgMap} />)}</div>
+            <div class="native-tag-list mt-6 flex flex-wrap gap-2">{project.techTags.map((tag) => <TagBadge tag={tag} iconMap={snapshot.tags.tagIconMap} iconSvgMap={snapshot.tags.tagIconSvgMap} />)}</div>
           </div>
           <div class="w-full max-w-[18rem] justify-self-start lg:justify-self-end"><ProjectPoster project={project} compact={true} showOverlay={false} priority={true} fetchPriority="high" /></div>
         </div>

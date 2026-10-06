@@ -28,7 +28,7 @@ function TagsSurface({ dark = false }: { dark?: boolean }) {
         boxSizing: "border-box",
       }}
     >
-      <div data-visual-evidence-target className="flex flex-wrap gap-2">
+      <div data-visual-evidence-target className="native-tag-list flex flex-wrap gap-2">
         {[
           "React",
           "USB-C PD + PPS",

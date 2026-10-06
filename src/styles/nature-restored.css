@@ -827,6 +827,17 @@
   outline-offset: 3px;
   border-radius: 999px;
 }
+@media (max-width: 639px) {
+  .native-tag-link-surface {
+    padding: 3px 8px;
+    font-size: 13px;
+    line-height: 18px;
+  }
+  .native-tag-list {
+    column-gap: 4px;
+    row-gap: 0;
+  }
+}
 @media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
   .native-tag-link {
     min-width: 32px;

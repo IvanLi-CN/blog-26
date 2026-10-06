@@ -160,7 +160,7 @@ const featuredProjectLogos = {
 
                 <p class="nature-muted min-h-[4.25rem] text-sm leading-7">{project.summary}</p>
 
-                <div class="flex min-h-8 flex-wrap content-start gap-2">
+                <div class="native-tag-list flex min-h-8 flex-wrap content-start gap-2">
                   {(project.featuredTags ?? []).map((tag) => (
                     <TagBadge tag={tag} iconMap={snapshot.tags.tagIconMap} iconSvgMap={snapshot.tags.tagIconSvgMap} />
                   ))}

@@ -34,9 +34,39 @@ try {
               return `Target too small: ${link.textContent}`;
             if (rect.right > innerWidth + 1 || rect.left < -1)
               return `Tag overflows: ${link.textContent}`;
+            if (innerWidth < 640) {
+              const surface = link.querySelector<HTMLElement>(".native-tag-link-surface");
+              const label = link.querySelector<HTMLElement>(".native-tag-link-label");
+              if (!surface || !label) return "Missing compact tag surface";
+              const style = getComputedStyle(surface);
+              if (style.fontSize !== "13px" || style.lineHeight !== "18px")
+                return "Incorrect mobile tag typography";
+              const pill = surface.getBoundingClientRect();
+              if (
+                label.getBoundingClientRect().height <= 19 &&
+                (pill.height < 26 || pill.height > 28)
+              )
+                return "Incorrect single-line mobile tag height";
+            }
             link.focus();
             if (document.activeElement !== link || getComputedStyle(link).outlineStyle === "none")
               return "Missing keyboard focus";
+          }
+          for (const list of document.querySelectorAll(".native-tag-list")) {
+            const targets = [...list.querySelectorAll(".native-tag-link")].map((link) =>
+              link.getBoundingClientRect()
+            );
+            for (let index = 0; index < targets.length; index++)
+              for (const other of targets.slice(index + 1)) {
+                const target = targets[index];
+                if (
+                  target.left < other.right &&
+                  target.right > other.left &&
+                  target.top < other.bottom &&
+                  target.bottom > other.top
+                )
+                  return "Overlapping tag hit targets";
+              }
           }
           for (const row of document.querySelectorAll("[data-tag-projects] article")) {
             const style = getComputedStyle(row);

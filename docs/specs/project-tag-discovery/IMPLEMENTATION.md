@@ -27,6 +27,7 @@
 
 ## Remaining Gaps
 
+- Mobile tag density follows the accepted 13px text / 26px single-line pill design while retaining the 44px link target. The density candidate passes static and SSR builds, all four Storybook plays, 782 pre-commit tests and 230 static browser checks. Fresh validation after canonical mainline synchronization and mobile images remain pending.
 - Screenshot comparison is current-only and awaits owner confirmation before canonical asset persistence.
 - Formal Tier 3 four-lane review and current-head PR/CI convergence remain pending.
 
