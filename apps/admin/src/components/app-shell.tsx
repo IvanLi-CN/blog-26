@@ -64,6 +64,7 @@ const DEFAULT_SIDEBAR_WIDTH = 272;
 const MIN_SIDEBAR_WIDTH = 232;
 const MAX_SIDEBAR_WIDTH = 460;
 const isAdminWebDemoBuild = import.meta.env.VITE_WEB_DEMO_BUILD === "true";
+const isAdminWebDemoE2eFixtureBuild = import.meta.env.VITE_WEB_DEMO_E2E_FIXTURE === "true";
 
 function constrainSidebarWidth(width: number) {
   return Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, Math.round(width)));
@@ -616,7 +617,9 @@ export function AppShell() {
           </DialogContent>
         </Dialog>
       </div>
-      {isAdminWebDemoBuild ? <WebDemoInspector app="admin" /> : null}
+      {isAdminWebDemoBuild && !isAdminWebDemoE2eFixtureBuild ? (
+        <WebDemoInspector app="admin" />
+      ) : null}
     </AppShellSidebarContext.Provider>
   );
 }
