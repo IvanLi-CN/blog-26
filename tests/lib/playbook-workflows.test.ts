@@ -98,10 +98,20 @@ describe("playbook deployment boundaries", () => {
       (step) => step.name === "Require Playbook integration for application releases"
     );
     expect(applicationReleaseGuard?.if).toContain("vars.PLAYBOOK_INTEGRATION_ENABLED != 'true'");
+    expect(applicationReleaseGuard?.if).toContain("steps.intent.outputs.should_release == 'true'");
+    expect(applicationReleaseGuard?.if).toContain(
+      "steps.intent.outputs.frontend_release == 'true' || steps.intent.outputs.backend_release == 'true'"
+    );
     expect(applicationReleaseGuard?.shell).toBe("bash");
     expect(applicationReleaseGuard?.run).toContain("exit 1");
     expect(applicationReleaseGuard?.run).toContain(
       "Application releases require PLAYBOOK_INTEGRATION_ENABLED=true"
+    );
+    expect(release.jobs.publish_image.if).toContain(
+      "always() && needs.prepare.result == 'success'"
+    );
+    expect(release.jobs.publish_backend.if).toContain(
+      "always() && needs.prepare.result == 'success'"
     );
     const updateScript = await readFile("scripts/playbook-content-update.ts", "utf8");
     expect(updateScript).toContain('process.env.PLAYBOOK_INTEGRATION_ENABLED === "true"');

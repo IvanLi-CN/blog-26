@@ -910,7 +910,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [prepare, prepare_public_content, publish_frontend, deploy_frontend_edgeone]
     if: >-
-      ${{ always() && needs.prepare.outputs.should_release == 'true' &&
+      ${{ always() && needs.prepare.result == 'success' && needs.prepare.outputs.should_release == 'true' &&
       needs.prepare_public_content.result == 'success' &&
       (needs.prepare.outputs.frontend_release == 'true' || needs.prepare.outputs.backend_release == 'true') &&
       (needs.publish_frontend.result == 'success' || needs.publish_frontend.result == 'skipped') &&
@@ -1166,7 +1166,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [prepare, publish_frontend, deploy_frontend_edgeone]
     if: >-
-      ${{ always() && needs.prepare.outputs.should_release == 'true' &&
+      ${{ always() && needs.prepare.result == 'success' && needs.prepare.outputs.should_release == 'true' &&
       needs.prepare.outputs.backend_release == 'true' &&
       (needs.publish_frontend.result == 'success' || needs.publish_frontend.result == 'skipped') &&
       (needs.deploy_frontend_edgeone.result == 'success' || needs.deploy_frontend_edgeone.result == 'skipped') }}
