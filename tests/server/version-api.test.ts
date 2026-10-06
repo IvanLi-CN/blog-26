@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { handleVersionRequest } from "../../src/server/version-api";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { handleVersionRequest, readRuntimeVersionInfo } from "../../src/server/version-api";
 
 const metadata = {
   productVersion: "2.8.0",
@@ -7,6 +11,26 @@ const metadata = {
   sourceSha: "a".repeat(40),
 };
 describe("read-only product version API", () => {
+  test("fresh development boot tolerates absent generated metadata while production fails closed", async () => {
+    const root = await mkdtemp(join(tmpdir(), "product-version-test-"));
+    const file = pathToFileURL(join(root, "version.json"));
+    try {
+      expect(await readRuntimeVersionInfo(file, false)).toEqual({
+        productVersion: null,
+        buildVersion: "dev-local",
+        sourceSha: "unknown",
+      });
+      await expect(readRuntimeVersionInfo(file, true)).rejects.toThrow();
+      await writeFile(file, JSON.stringify(metadata));
+      expect(await readRuntimeVersionInfo(file, true)).toEqual(metadata);
+      await writeFile(file, JSON.stringify({ ...metadata, sourceSha: "unknown" }));
+      await expect(readRuntimeVersionInfo(file, true)).rejects.toThrow("incomplete");
+      await writeFile(file, "invalid json");
+      await expect(readRuntimeVersionInfo(file, false)).rejects.toThrow();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
   test("reports product and build identity separately without caching stale deployments", async () => {
     const response = handleVersionRequest(
       new Request("https://console.ivanli.cc/api/version"),

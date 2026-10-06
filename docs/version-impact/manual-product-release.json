@@ -50,8 +50,8 @@
     "docs/specs/README.md": "07c9ec88285e369bcfad2cf926886eace905854e",
     "docs/specs/admin-soft-ui-redesign/IMPLEMENTATION.md": "097ee9cb37ef2857fe916affdcb6ea9e9255ee3e",
     "docs/specs/admin-soft-ui-redesign/SPEC.md": "cd7ce30b8508cf30e1938e78b4cf82fcb385b654",
-    "docs/specs/manual-version-release/HISTORY.md": "672ed6780911d32685a07ad9de68030a63183e59",
-    "docs/specs/manual-version-release/IMPLEMENTATION.md": "505b74af55f2c5a3ebe970a848c42940bfd4043b",
+    "docs/specs/manual-version-release/HISTORY.md": "9c8aee3b1a68ce34fa57dda3c121e9153f164054",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "87825652596c4f5c3453a28e4f6b709bed4b8cb3",
     "docs/specs/manual-version-release/SPEC.md": "e60e59825d996cc4c150f16e833e2a9ef1eefde9",
     "docs/specs/memo-admin-inline-view/IMPLEMENTATION.md": "0badd808c41606c734b690564146261a730473ba",
     "docs/specs/memo-admin-inline-view/SPEC.md": "2a5474ca4ebafda679047831a0332c2f7436c65f",
@@ -78,8 +78,8 @@
     "scripts/product-release.ts": "a49a4b5f4d62b8ba1a6d6486541db7fb56ec7f0e",
     "scripts/release-settings.ts": "4e64a816dd0e45697fa26f0c8b457ccf6bee046b",
     "scripts/smoke-product-release.ts": "7285e6021b7074facbceb921ff9171d684758fff",
-    "scripts/start-console.ts": "a24c7360b80fc78ac88eb10fb076785ac0349fdd",
-    "scripts/start-gateway.ts": "a27e16db6573e6dbfc72415255b39fbbc093d4d1",
+    "scripts/start-console.ts": "be1ea96209a0dd10eabc85e68fcf8af2e4d18ff2",
+    "scripts/start-gateway.ts": "b05bd9bdb94914e48b33805c84de8762f83b21c8",
     "site/components/MemoTimeline.tsx": "147726d1dea33edc78d161f2b7995ad519bd60dc",
     "site/layouts/BaseLayout.astro": "20fc8484a8e5950cb2515523d7019754db305e4e",
     "site/lib/memo-list-web-demo.ts": "f4b2217ab719d2fdb448fb75fcf6c7c7bc91d30c",
@@ -105,12 +105,12 @@
     "src/lib/release/ledger.ts": "2f124136e70189020928f7311373772c5aa59ee9",
     "src/lib/release/policy.ts": "abcbd49da21a2484e9454ffb4f3a0d26dc8ac1d2",
     "src/lib/release/preparation.ts": "8815171a4a45adc1a63670d1a1b00e8f46b430e7",
-    "src/lib/release/products.ts": "36a18e69312bbfaa53160d8bfb1792b5df19eb23",
+    "src/lib/release/products.ts": "12cabc6977b020e231afb94b090950d66195dcc9",
     "src/lib/release/publication.ts": "d9e1bf1bda7c80a6fe3d9917e7922d104d83af9f",
     "src/lib/release/source.ts": "fc9be63f1228d7c60b09c32b954f7d3b645c7783",
     "src/lib/version-info.ts": "de25d694341bab26f2ecbdaeea43bef72d3f7cba",
     "src/lib/web-demo-runtime.ts": "a8cb6a81878e6c1b21cad0bbac0949879b57d7b6",
-    "src/server/version-api.ts": "5a013c3b6e237ba02808dca9b04e31899d017086",
+    "src/server/version-api.ts": "4d1e148ba24d157c820dba0f3050f5da531281c9",
     "tests/ci/compute-version.test.ts": null,
     "tests/ci/create-release-tag.test.ts": null,
     "tests/ci/notify-release-failure-workflow.test.ts": "ebc8c239f28b412691a469b816dc799c64106b39",
@@ -127,7 +127,7 @@
     "tests/lib/playbook-workflows.test.ts": "2921115a0b6629d9f7e10f6e7c80b5ee43403a2b",
     "tests/lib/web-demo-inspector-layout.test.ts": "0396e7cee190653bb9a266fb70f51614b576d52c",
     "tests/lib/web-demo-runtime.test.ts": "d868f2d7986127ed750dfa08283ee93fadfe58df",
-    "tests/server/version-api.test.ts": "b45ad8b7643f2a7fd93bde33218bb779e3dfc983",
+    "tests/server/version-api.test.ts": "746ed7e7dfc790dd70131c0a7dca07c44f9c07c7",
     "tests/storybook/playbook-interactions.ts": "4f6c29b73f2cfc44ad6be9b5dbcb0a8bf37d59d4",
     "tests/storybook/story-boundary.test.ts": "f4dcf03db1e00e271461cc78547f66e2dbcc3d51"
   },
@@ -159,8 +159,8 @@
         },
         {
           "path": "tests/server/version-api.test.ts",
-          "blob": "b45ad8b7643f2a7fd93bde33218bb779e3dfc983",
-          "command": "bun run test:precommit"
+          "blob": "746ed7e7dfc790dd70131c0a7dca07c44f9c07c7",
+          "command": "bun test tests/server/version-api.test.ts tests/lib/manual-release-*.test.ts"
         },
         {
           "path": "src/lib/__tests__/persisted-paths.test.ts",
@@ -201,8 +201,8 @@
         },
         {
           "path": "tests/server/version-api.test.ts",
-          "blob": "b45ad8b7643f2a7fd93bde33218bb779e3dfc983",
-          "command": "bun run test:precommit"
+          "blob": "746ed7e7dfc790dd70131c0a7dca07c44f9c07c7",
+          "command": "bun test tests/server/version-api.test.ts tests/lib/manual-release-*.test.ts"
         },
         {
           "path": "src/lib/__tests__/persisted-paths.test.ts",
@@ -247,8 +247,8 @@
         },
         {
           "path": "tests/server/version-api.test.ts",
-          "blob": "b45ad8b7643f2a7fd93bde33218bb779e3dfc983",
-          "command": "bun run test:precommit"
+          "blob": "746ed7e7dfc790dd70131c0a7dca07c44f9c07c7",
+          "command": "bun test tests/server/version-api.test.ts tests/lib/manual-release-*.test.ts"
         },
         {
           "path": "src/lib/__tests__/persisted-paths.test.ts",
@@ -291,8 +291,8 @@
         },
         {
           "path": "tests/server/version-api.test.ts",
-          "blob": "b45ad8b7643f2a7fd93bde33218bb779e3dfc983",
-          "command": "bun run test:precommit"
+          "blob": "746ed7e7dfc790dd70131c0a7dca07c44f9c07c7",
+          "command": "bun test tests/server/version-api.test.ts tests/lib/manual-release-*.test.ts"
         },
         {
           "path": "tests/lib/web-demo-runtime.test.ts",

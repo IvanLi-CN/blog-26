@@ -4,8 +4,12 @@ import { createServer } from "node:http";
 import { extname, resolve } from "node:path";
 import { extractAuthFromRequest } from "@/lib/auth-utils";
 import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
-import { versionInfo } from "@/lib/version-info";
-import { handleVersionRequest } from "@/server/version-api";
+import { handleVersionRequest, readRuntimeVersionInfo } from "@/server/version-api";
+
+const versionInfo = await readRuntimeVersionInfo(
+  new URL("../src/generated/version.json", import.meta.url),
+  process.env.NODE_ENV === "production"
+);
 
 const port = Number(process.env.PORT || 25090);
 const hostname = process.env.BIND_HOST || "0.0.0.0";

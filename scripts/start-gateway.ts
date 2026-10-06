@@ -4,7 +4,6 @@ import { extname, resolve } from "node:path";
 import { getSsoEmailHeaderName } from "@/lib/admin-config";
 import { extractAuthFromRequest } from "@/lib/auth-utils";
 import { getPublicStaticCacheControl } from "@/lib/public-static-cache-policy";
-import { versionInfo } from "@/lib/version-info";
 import { loadWorktreeEnvFileIfPresent, resolveWorktreePort } from "@/lib/worktree-env";
 import { handleAdminApiRequest } from "@/server/admin-api/router";
 import { handleDevApiRequest } from "@/server/dev-api/router";
@@ -14,13 +13,17 @@ import { handlePublicApiRequest } from "@/server/public-api/router";
 import { handleInternalAssetSourceRequest } from "@/server/public-media";
 import { handleTestApiRequest } from "@/server/test-api/router";
 import { handleTrpcHttpRequest } from "@/server/trpc-http";
-import { handleVersionRequest } from "@/server/version-api";
+import { handleVersionRequest, readRuntimeVersionInfo } from "@/server/version-api";
 
 loadWorktreeEnvFileIfPresent();
 
 type GatewayMode = "dev" | "production";
 
 const mode = (process.env.NODE_ENV === "production" ? "production" : "dev") as GatewayMode;
+const versionInfo = await readRuntimeVersionInfo(
+  new URL("../src/generated/version.json", import.meta.url),
+  mode === "production"
+);
 const publicPort = resolveWorktreePort("web");
 const sitePort = resolveWorktreePort("site");
 const adminPort = resolveWorktreePort("admin");

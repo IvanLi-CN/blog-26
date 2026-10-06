@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { z } from "zod";
 import { fileDigest, sealDirectory, verifyDirectory } from "./artifacts";
@@ -80,6 +80,7 @@ export async function buildProducts(
     await buildCommand(["bun", command], env);
   await packageFrozenMedia(inputs, config);
   await buildCommand(["bun", "scripts/verify-public-media-package.ts"], env);
+  await rm("edgeone-dist", { recursive: true, force: true });
   await cp("site-dist", "edgeone-dist", { recursive: true });
   await cp("edge-functions", "edgeone-dist/edge-functions", { recursive: true });
   await buildCommand(["bun", "scripts/prepare-edgeone-pwa-config.ts"], env);
