@@ -131,7 +131,9 @@ try {
   const page = await context.newPage();
   await page.goto(`${base}/admin/preview/memos/${slug}`);
   await page.getByRole("heading", { name: "Durable article", exact: true }).waitFor();
-  const sourceLink = page.getByRole("link", { name: "打开原网页 ↗" });
+  const sourceLink = page
+    .locator(".clipping-reading-card .clipping-article-toolbar")
+    .getByRole("link", { name: "打开原网页", exact: true });
   if ((await sourceLink.getAttribute("rel")) !== "nofollow noopener noreferrer")
     throw new Error("Clipping source link policy is missing");
   await page.getByRole("button", { name: "简体中文译文", exact: true }).click();
