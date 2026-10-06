@@ -168,10 +168,13 @@ function toBuiltHtmlRoute(file: string) {
 
   const withoutRoot = file.slice(SITE_DIST_DIR.length);
   if (withoutRoot === "/index.html") return "/";
-  if (withoutRoot.endsWith("/index.html")) {
-    return withoutRoot.slice(0, -"index.html".length);
-  }
-  return `${withoutRoot.slice(0, -".html".length)}/`;
+  const route = withoutRoot.endsWith("/index.html")
+    ? withoutRoot.slice(0, -"index.html".length)
+    : `${withoutRoot.slice(0, -".html".length)}/`;
+  return route
+    .split("/")
+    .map((segment) => (segment ? encodeURIComponent(segment) : segment))
+    .join("/");
 }
 
 function buildDynamicChecks(

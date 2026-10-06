@@ -547,7 +547,7 @@ test.describe("Nature frontend public coverage", () => {
     await expect(
       page.locator('a[href="https://github.com/IvanLi-CN/spoti-bind"]').first()
     ).toBeVisible();
-    await expect(page.getByText("Media Keys", { exact: true })).toBeVisible();
+    await expect(page.getByText("Event Tap API", { exact: true })).toBeVisible();
   });
 
   test("project wall separates detail navigation from available quick links", async ({ page }) => {

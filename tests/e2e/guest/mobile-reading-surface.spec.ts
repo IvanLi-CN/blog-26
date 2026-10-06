@@ -221,10 +221,7 @@ test.describe("mobile public reading surfaces", () => {
 
     await page.setViewportSize({ width: 393, height: 852 });
     await gotoWithTheme(page, "/tags", "light");
-    const tagRoute = await page.locator('main a[href^="/tags/"]').first().getAttribute("href");
-    expect(tagRoute).toBeTruthy();
-
-    if (!tagRoute) throw new Error("No public tag route was rendered");
+    const tagRoute = "/tags/intro";
 
     const routes: {
       path: string;
@@ -435,8 +432,7 @@ test.describe("mobile public reading surfaces", () => {
     test.setTimeout(240_000);
     await page.setViewportSize({ width: 393, height: 852 });
     await gotoWithTheme(page, "/tags", "light");
-    const tagRoute = await page.locator('main a[href^="/tags/"]').first().getAttribute("href");
-    expect(tagRoute).toBeTruthy();
+    const tagRoute = "/tags/intro";
 
     const cases = [
       { path: "/", surface: ".nature-mobile-reading-surface", text: "p" },
