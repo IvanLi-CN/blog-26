@@ -40,11 +40,12 @@ function getSnapshotRecordPath(record: SnapshotRecordWithPath) {
 
 export function getMemoMetadataTitle(
   title: string | null | undefined,
-  date: string | number | Date | null | undefined
+  date: string | number | Date | null | undefined,
+  typeLabel = "闪念"
 ) {
   const normalizedTitle = title?.trim();
   if (normalizedTitle) return normalizedTitle;
-  return `无标题闪念 · ${formatAbsoluteDate(date)}`;
+  return `无标题${typeLabel} · ${formatAbsoluteDate(date)}`;
 }
 
 function normalizeLegacyMemoTitle(

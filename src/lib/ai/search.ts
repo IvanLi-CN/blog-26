@@ -3,7 +3,7 @@ import { uniqueRankedContent } from "@/lib/search/content-identity";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../db";
 import { postEmbeddings, posts } from "../schema";
-import { searchContent } from "../search/content-search";
+import { isClippingSearchMemo, searchContent } from "../search/content-search";
 import { parseSearchQuery } from "../search/query";
 import { cosineSimilarity, createEmbedding, hashEmbeddingInput } from "./embeddings";
 import { rerank as rerankApi } from "./rerank";
@@ -24,6 +24,7 @@ export type SearchResult = {
   excerpt?: string | null;
   snippet?: string | null;
   type?: "post" | "memo"; // 用于前端路由跳转
+  isClipping?: boolean;
   cosine?: number;
   rerank?: number;
   final?: number;
@@ -315,6 +316,7 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
       draft: posts.draft,
       public: posts.public,
       type: posts.type,
+      tags: posts.tags,
       publishDate: posts.publishDate,
     })
     .from(posts)
@@ -328,6 +330,7 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
     excerpt: p.excerpt,
     snippet: buildSearchSnippet(input.q, p),
     type: p.type === "post" || p.type === "memo" ? p.type : undefined,
+    ...(isClippingSearchMemo(p.type, p.tags) ? { isClipping: true } : {}),
     cosine: scoreBySlug.get(p.slug) ?? 0,
     publishDate: p.publishDate,
   }));

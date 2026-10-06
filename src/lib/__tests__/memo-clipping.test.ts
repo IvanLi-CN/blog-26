@@ -35,10 +35,28 @@ describe("authored clipping recognition", () => {
     "https://example.com/article\n\n`#剪藏`",
     "https://example.com/article\n\n```text\n#剪藏\n```",
     "https://example.com/article\n\n[链接](https://example.com/#剪藏)",
-    "https://example.com/article\n\n\\#剪藏",
     "https://example.com/article\n\n#剪藏笔记",
   ])("ignores non-tag contexts: %s", (body) => {
     expect(recognizeMemoClipping(body, {}).enabled).toBe(false);
+  });
+
+  it.each(["#剪藏", "\\#剪藏"])("recognizes editor-authored tags: %s", (tag) => {
+    const result = recognizeMemoClipping(`<https://example.com/article>\n\n作者备注\n\n${tag}`, {
+      tags: null,
+    });
+    expect(result).toMatchObject({
+      enabled: true,
+      targetUrl: "https://example.com/article",
+      remarks: "作者备注",
+    });
+  });
+
+  it("removes a repeated target line when the saved title is the same link", () => {
+    const result = recognizeMemoClipping("<https://example.com/article>\n\n\\#剪藏", {
+      title: "<https://example.com/article>",
+      tags: null,
+    });
+    expect(result).toMatchObject({ enabled: true, remarks: "", authorTitle: null });
   });
 
   it("uses a URL-only title as target and retains a custom title", () => {

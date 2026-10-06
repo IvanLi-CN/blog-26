@@ -105,6 +105,39 @@ async function fixture() {
 }
 
 describe("clipping lifecycle and canonical content", () => {
+  test("recovers an editor-saved inline clipping without rewriting the author file", async () => {
+    const data = await fixture();
+    let service: ClippingService | undefined;
+    try {
+      const raw = matter.stringify("<https://article.example/one>\n\n\\#剪藏", {
+        title: "<https://article.example/one>",
+        public: true,
+        tags: null,
+      });
+      await writeFile(data.path, raw);
+      service = await ClippingService.open(data.options);
+      await service.idle();
+      const projection = await projectClippingMemo(data.memoId, data.store, true);
+      expect(projection?.reading.status).toBe("completed");
+      expect(projection?.title).toBe("Durable agents");
+      expect(projection?.content).toBe(
+        "**Agent 摘要**\n\n文章介绍持久执行，重启后恢复已保存的进度。"
+      );
+      expect(projection?.translation).toContain("const durable = true;");
+      expect(await readFile(data.path, "utf8")).toBe(raw);
+      await service.close();
+      service = await ClippingService.open(data.options);
+      await service.idle();
+      const recovered = await projectClippingMemo(data.memoId, data.store);
+      expect(recovered?.manifest?.versions).toHaveLength(1);
+      expect(recovered?.content).toBe(projection?.content);
+      expect(data.captures()).toBe(1);
+    } finally {
+      await service?.close();
+      await data.cleanup();
+    }
+  });
+
   test("retries transient model errors without duplicating the visible summary", async () => {
     const data = await fixture();
     data.modelFailures.remaining = 1;

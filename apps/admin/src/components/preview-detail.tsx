@@ -22,6 +22,7 @@ type PreviewHero = {
 };
 
 type PreviewArticleShellProps = {
+  contentType?: ReactNode;
   modeLabel?: string;
   title: string;
   description?: string | null;
@@ -39,7 +40,7 @@ type PreviewArticleShellProps = {
   };
   bodyClassName?: string;
   leadingControls?: ReactNode;
-  bodyContent?: ReactNode;
+  bodyContent?: ReactNode | ((header: ReactNode) => ReactNode);
 };
 
 function PreviewTags({ tags }: PreviewTagProps) {
@@ -192,35 +193,51 @@ export function PreviewArticleShell({
   bodyClassName,
   leadingControls,
   bodyContent,
+  contentType,
 }: PreviewArticleShellProps) {
+  const header = (
+    <header className="space-y-5">
+      <div className="inline-flex items-center gap-2 rounded-full border border-border/62 bg-muted/58 px-3 py-1 text-xs text-muted-foreground shadow-inner shadow-shadow-inset">
+        <Eye className="size-3.5" />
+        {modeLabel}
+      </div>
+
+      <PreviewMeta items={meta} />
+      {contentType}
+
+      <div className="space-y-3">
+        <h1 className="max-w-[18ch] text-balance text-3xl font-semibold tracking-[-0.03em] text-foreground sm:text-4xl">
+          {title}
+        </h1>
+        {description ? (
+          <p
+            data-testid="admin-preview-description"
+            className="max-w-[70ch] text-pretty text-base leading-7 text-muted-foreground sm:text-[1.02rem]"
+          >
+            {description}
+          </p>
+        ) : null}
+      </div>
+
+      {tags.length > 0 ? <PreviewTags tags={tags} /> : null}
+    </header>
+  );
+  if (typeof bodyContent === "function")
+    return (
+      <article className="min-w-0" data-testid={bodyTestId}>
+        {bodyContent(
+          <>
+            {leadingControls}
+            {header}
+          </>
+        )}
+      </article>
+    );
   return (
     <article className="space-y-6 rounded-[2rem] border border-border/58 bg-card/88 p-6 shadow-xl shadow-shadow-soft lg:p-7">
       {leadingControls ? <div className="flex justify-end">{leadingControls}</div> : null}
 
-      <header className="space-y-5">
-        <div className="inline-flex items-center gap-2 rounded-full border border-border/62 bg-muted/58 px-3 py-1 text-xs text-muted-foreground shadow-inner shadow-shadow-inset">
-          <Eye className="size-3.5" />
-          {modeLabel}
-        </div>
-
-        <PreviewMeta items={meta} />
-
-        <div className="space-y-3">
-          <h1 className="max-w-[18ch] text-balance text-3xl font-semibold tracking-[-0.03em] text-foreground sm:text-4xl">
-            {title}
-          </h1>
-          {description ? (
-            <p
-              data-testid="admin-preview-description"
-              className="max-w-[70ch] text-pretty text-base leading-7 text-muted-foreground sm:text-[1.02rem]"
-            >
-              {description}
-            </p>
-          ) : null}
-        </div>
-
-        {tags.length > 0 ? <PreviewTags tags={tags} /> : null}
-      </header>
+      {header}
 
       {hero ? <PreviewHeroImage hero={hero} /> : null}
 

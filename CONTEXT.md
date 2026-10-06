@@ -169,7 +169,7 @@ The administrator-only authoring surface on the console Memos page. It remains s
 _Avoid_: 编辑器列表, 管理列表
 
 **剪藏闪念**:
-A Memo marked with `#剪藏` whose first non-empty authored line, whether a title or body line, identifies one external article for capture. It remains a Memo while gaining a captured source, generated summary, translation, and article conversation.
+A Memo marked with `#剪藏` whose first non-empty authored line, whether a title or body line, identifies one external article for capture. It remains a Memo while gaining a captured source, generated summary, translation, and article conversation. Reading interfaces call this content type 剪藏, alongside 闪念, and present its marker as a content identity rather than an ordinary visible tag.
 _Avoid_: 剪藏文章, 导入文章
 
 **剪藏目标链接**:

@@ -39,6 +39,8 @@ bun run web-demo:build
 
 The command creates `web-demo-site-dist/` (standalone SSR server plus browser assets) and `web-demo-admin-dist/` without replacing `site-dist/` or `admin-dist/`. It prepares deterministic local content, a public snapshot, and a Playbook fixture before building. The Admin mock API is installed before the real router renders, and all Demo mutations stay in memory.
 
+The Astro CLI requires Node.js 22.12 or newer. After building, lease a dedicated `WEB_DEMO_PORT` and run `bun run web-demo:preview` to serve both artifacts without the gateway or development server. `/api/**` always returns 404. Run `bun run test:e2e:clipping-web-demo` against the generated artifact for clipping interactions and responsive checks.
+
 Each Demo artifact includes the shared Inspector on the official route. It exposes the current scene, persona, network condition, data density, refresh/reset actions, simulated in-memory save, shareable `d_*` state, and recent simulated mutations. It is a control surface for the Demo build only; it does not grant permissions or send writes to a real backend.
 
 For an interactive public Demo during development, start the Demo build:
@@ -63,6 +65,10 @@ http://127.0.0.1:${ADMIN_PORT}/admin/dashboard
 ```
 
 The public Memo list uses the same shipped Astro `/memos/` route and deterministic 2,400-record fixture in the Demo artifact. The build also emits the corresponding official Memo detail routes so sample links remain usable; the live build does not emit those Demo-only records. Storybook remains the component state gallery; it is not the page evidence source.
+
+The clipping sample is `/memos/memo-web-demo-1181/`. Its Inspector offers completed, translating, translation failure, previous-version fallback, and long-article scenes. Guest reads the captured Markdown and translation; Admin also exercises the actual discussion card or mobile drawer, version history, restore, and retry controls. Replies cite deterministic sample paragraphs and are explicitly simulated. No article fetch, model call, login, API request, or event stream is needed. Refreshing the browser discards simulated edits and messages.
+
+`web-demo:site` prepares its own database, content, clipping, and snapshot directories under `dev-data/web-demo/` (override with `WEB_DEMO_DATA_DIR`). The clipping processor stays disabled. The Demo dev server uses its separate Astro/Vite cache and supports running alongside the ordinary dev server; lease a distinct `SITE_PORT` before starting it.
 
 ## Environment
 

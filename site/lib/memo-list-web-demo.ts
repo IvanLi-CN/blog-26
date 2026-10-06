@@ -1,3 +1,4 @@
+import { getClippingWebDemoMemo } from "../../src/lib/clipping-web-demo";
 import type { WebDemoDataMode, WebDemoScene } from "../../src/lib/web-demo-runtime";
 import type { PublicMemoRecord } from "../../src/public-site/snapshot";
 
@@ -27,6 +28,8 @@ function clampStart(start: number) {
 }
 
 function createMemo(index: number): PublicMemoRecord {
+  if (process.env.PUBLIC_WEB_DEMO_BUILD === "true" && index === MEMO_LIST_WEB_DEMO_INITIAL_START)
+    return getClippingWebDemoMemo();
   const number = index + 1;
   const suffix = String(number).padStart(4, "0");
   const excerpts = [

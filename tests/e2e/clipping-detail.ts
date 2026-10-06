@@ -150,6 +150,58 @@ try {
   });
   if (columns.display !== "grid" || (columns.sourceRight ?? Infinity) > (columns.chatLeft ?? 0))
     throw new Error(`Article and discussion are not adjacent: ${JSON.stringify(columns)}`);
+  await page.goto(`${base}/memos/${slug}`);
+  await page.locator('[data-testid="public-memo-detail-controls"] .clipping-chat-card').waitFor();
+  const memoBadge = page.locator(
+    '[data-testid="public-memo-detail-controls"] .clipping-memo-card [data-content-kind="clipping"]'
+  );
+  if (
+    !(await memoBadge.textContent())?.includes("剪藏") ||
+    !(await memoBadge.locator("svg").count())
+  )
+    throw new Error("Console clipping identity is missing");
+  if (await page.locator(".clipping-memo-card").getByText("#剪藏", { exact: true }).count())
+    throw new Error("Reading header repeats the clipping marker as a tag");
+  const memoRecord = await context.request.get(`${base}/api/public/memos/${slug}`);
+  if (!(await memoRecord.json()).tags.includes("剪藏"))
+    throw new Error("Presentation filtering changed the authored clipping tag");
+  const publicCards = await page.evaluate(() => {
+    const layout = document.querySelector(
+      '[data-testid="public-memo-detail-controls"] .clipping-detail-layout'
+    );
+    const reader = layout?.querySelector(".clipping-reading-card");
+    const column = layout?.querySelector(".clipping-reading-column");
+    const memo = layout?.querySelector(".clipping-memo-card");
+    const discussion = layout?.querySelector(".clipping-chat-card");
+    return {
+      width: layout?.getBoundingClientRect().width ?? 0,
+      siblings: column?.parentElement === discussion?.parentElement,
+      readingSiblings: memo?.parentElement === reader?.parentElement,
+      readingGap:
+        memo && reader
+          ? reader.getBoundingClientRect().top - memo.getBoundingClientRect().bottom
+          : 0,
+      nested: Boolean(layout?.closest(".nature-panel")),
+      gap:
+        reader && discussion
+          ? discussion.getBoundingClientRect().left - reader.getBoundingClientRect().right
+          : 0,
+      overflow: document.documentElement.scrollWidth > innerWidth,
+    };
+  });
+  if (
+    publicCards.width <= 920 ||
+    !publicCards.siblings ||
+    !publicCards.readingSiblings ||
+    publicCards.readingGap !== 24 ||
+    publicCards.nested ||
+    publicCards.gap !== 24 ||
+    publicCards.overflow
+  )
+    throw new Error(
+      `Public memo clips its reading/discussion cards: ${JSON.stringify(publicCards)}`
+    );
+  console.log("PASS console memo page: independent cards and wide reading container");
   const desktopDraft = page.getByRole("textbox", { name: "向文章助手提问" });
   await desktopDraft.fill("保留跨视口草稿。");
   for (const width of [320, 360, 375, 393, 768]) {

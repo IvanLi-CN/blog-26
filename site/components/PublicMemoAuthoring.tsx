@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import { ClippingDetail } from "@/components/memos/ClippingDetail";
+import { MemoTypeBadge } from "@/components/memos/MemoTypeBadge";
 import { QuickMemoEditModal } from "@/components/memos/QuickMemoEditModal";
 import { type QuickMemoData, QuickMemoEditor } from "@/components/memos/QuickMemoEditor";
 import Icon from "@/components/ui/Icon";
 import { extractTextSummary, stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
 import { webDemoFetch } from "@/lib/web-demo-fetch";
 import type { ClippingReading } from "@/lib/memo-clipping";
+import { getMemoPresentation } from "@/lib/memo-presentation";
 import { adminMemoRecordSchema, parseMemoPage } from "../lib/memo-pagination";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 import { MEMO_PAGE_SIZE } from "./MemoPagination";
@@ -169,6 +171,7 @@ function PublicMemoCard({
   isLast: boolean;
   onEdit: (memo: PublicMemoRecord) => void;
 }) {
+  const presentation = getMemoPresentation(memo);
   return (
     <article
       className="nature-timeline-item nature-mobile-reading-row"
@@ -177,10 +180,11 @@ function PublicMemoCard({
       data-id={memo.id}
       data-slug={memo.slug}
       data-source={memo.source ?? "local"}
+      data-content-kind={presentation.kind}
     >
       <div className="nature-timeline-rail" aria-hidden="true">
         <div className="nature-timeline-node text-[color:var(--nature-secondary)]">
-          <Icon name="tabler:bulb" className="h-5 w-5" />
+          <Icon name={presentation.icon} className="h-5 w-5" />
         </div>
         {!isLast ? <div className="nature-timeline-connector" /> : null}
       </div>
@@ -188,8 +192,11 @@ function PublicMemoCard({
         <div className="nature-panel nature-timeline-card px-4 py-4 sm:px-6 sm:py-5">
           <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
             <span className="nature-timeline-type-icon inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(var(--nature-secondary-rgb),0.16)] text-[color:var(--nature-secondary)]">
-              <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
+              <Icon name={presentation.icon} className="h-3.5 w-3.5" />
             </span>
+            {presentation.kind === "clipping" ? (
+              <span className="sr-only sm:hidden">{presentation.label}</span>
+            ) : null}
             <span
               className={`nature-chip ${memo.isPublic ? "nature-chip-info" : "nature-chip-warning"}`}
               data-testid={memo.isPublic ? "public-indicator" : "private-indicator"}
@@ -218,7 +225,7 @@ function PublicMemoCard({
               className="min-w-0 flex flex-1 flex-wrap gap-2"
               data-testid="admin-live-memo-content"
             >
-              {memo.tags.map((tag) => (
+              {presentation.tags.map((tag) => (
                 <span key={`${memo.id}-${tag}`} className="nature-chip">
                   #{tag}
                 </span>
@@ -232,7 +239,7 @@ function PublicMemoCard({
                 className="nature-icon-button inline-flex min-h-11 min-w-11 shrink-0 p-0"
                 href={buildPreviewHref(memo.slug)}
                 aria-label="预览"
-                title="预览 Memo"
+                title={presentation.kind === "clipping" ? "预览剪藏" : "预览 Memo"}
               >
                 <Icon name="tabler:eye" className="h-5 w-5" />
               </a>
@@ -240,8 +247,8 @@ function PublicMemoCard({
                 type="button"
                 className="nature-icon-button inline-flex min-h-11 min-w-11 shrink-0 p-0"
                 data-testid="admin-live-memo-edit"
-                aria-label="编辑 Memo"
-                title="编辑 Memo"
+                aria-label={`编辑 ${presentation.kind === "clipping" ? "剪藏" : "Memo"}`}
+                title={`编辑 ${presentation.kind === "clipping" ? "剪藏" : "Memo"}`}
                 onClick={() => onEdit(memo)}
               >
                 <Icon name="tabler:edit" className="h-5 w-5" />
@@ -804,6 +811,31 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
   }, [isDeleting, memo, slug]);
 
   const detailBody = memo ? stripMatchingLeadingTitleHeading(memo.content, memo.title) : "";
+  const detailPresentation = getMemoPresentation(memo ?? {});
+  const detailHeader = memo ? (
+    <header className="space-y-4" data-testid="public-memo-detail-heading">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--nature-text-soft)]">
+        <span className={`nature-chip ${memo.isPublic ? "nature-chip-info" : "nature-chip-warn"}`}>
+          {memo.isPublic ? "Public" : "Draft / Private"}
+        </span>
+        <MemoTypeBadge record={memo} />
+      </div>
+      {memo.title?.trim() ? (
+        <h1 className="nature-title mt-5 text-4xl font-semibold leading-tight tracking-[-0.04em]">
+          {memo.title}
+        </h1>
+      ) : null}
+      {detailPresentation.tags.length > 0 ? (
+        <div className="mt-5 flex flex-wrap gap-2">
+          {detailPresentation.tags.map((tag) => (
+            <span key={`${memo.id}-${tag}`} className="nature-chip">
+              #{tag}
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </header>
+  ) : null;
 
   if (isLoading || (!isAdmin && !memo?.canDiscuss)) {
     return null;
@@ -843,7 +875,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
               onClick={() => setModalOpen(true)}
               disabled={!memo || isFetching}
             >
-              编辑 Memo
+              编辑 {detailPresentation.kind === "clipping" ? "剪藏" : "Memo"}
             </button>
             <button
               type="button"
@@ -852,48 +884,27 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
               onClick={() => void handleDelete()}
               disabled={!memo || isDeleting}
             >
-              删除 Memo
+              删除 {detailPresentation.kind === "clipping" ? "剪藏" : "Memo"}
             </button>
           </div>
         </div>
       ) : null}
 
       {memo ? (
-        <article>
-          <div className="nature-panel px-4 py-7 sm:px-8" data-testid="public-memo-detail-card">
-            <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--nature-text-soft)]">
-              <span
-                className={`nature-chip ${memo.isPublic ? "nature-chip-info" : "nature-chip-warn"}`}
-              >
-                {memo.isPublic ? "Public" : "Draft / Private"}
-              </span>
-              <span className="nature-chip gap-1">
-                <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
-                Memo
-              </span>
+        <article className="space-y-6">
+          {!memo.clipping ? (
+            <div className="nature-panel px-4 py-7 sm:px-8" data-testid="public-memo-detail-card">
+              {detailHeader}
             </div>
-            {memo.title?.trim() ? (
-              <h1 className="nature-title mt-5 text-4xl font-semibold leading-tight tracking-[-0.04em]">
-                {memo.title}
-              </h1>
-            ) : null}
-            {memo.tags.length > 0 ? (
-              <div className="mt-5 flex flex-wrap gap-2">
-                {memo.tags.map((tag) => (
-                  <span key={`${memo.id}-${tag}`} className="nature-chip">
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-          </div>
+          ) : null}
 
-          <div className="nature-panel px-4 py-7 sm:px-8" data-testid="public-memo-detail-body">
-            {memo.clipping ? (
+          {memo.clipping ? (
+            <div data-testid="public-memo-detail-body">
               <ClippingDetail
                 key={memo.slug}
                 slug={memo.slug}
                 memoContent={detailBody}
+                header={detailHeader}
                 initialArticle={{ reading: memo.clipping, source: null, translation: null }}
                 live
                 initialCanDiscuss={Boolean(memo.canDiscuss || isAdmin)}
@@ -903,7 +914,9 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
                   )
                 }
               />
-            ) : (
+            </div>
+          ) : (
+            <div className="nature-panel px-4 py-7 sm:px-8" data-testid="public-memo-detail-body">
               <MarkdownRenderer
                 content={detailBody}
                 variant="article"
@@ -915,8 +928,8 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
                 articlePath={memo.filePath ?? ""}
                 contentSource="local"
               />
-            )}
-          </div>
+            </div>
+          )}
         </article>
       ) : null}
 

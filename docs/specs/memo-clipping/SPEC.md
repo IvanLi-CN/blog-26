@@ -11,6 +11,7 @@
 ## Terms and Interfaces
 
 - 剪藏闪念: an existing Memo with the exact 剪藏 tag and one captured target URL.
+- 剪藏: the reader-facing content type for a clipping Memo, presented alongside 闪念 without changing its stored identity or permissions.
 - 剪藏目标链接: the HTTP(S) URL represented by the first non-empty authored line, as plain text or a Markdown link.
 - 剪藏备注: author-authored Memo content other than the target-link line; it remains before the generated summary.
 - 剪藏摘要: the Agent-generated Simplified Chinese summary displayed as Memo content after any author remarks.
@@ -20,6 +21,8 @@
 - 剪藏处理版本: one source snapshot with its summary, translation, processing metadata, and result state.
 - 剪藏处理状态: progress or outcome with distinguishable summary and translation completion.
 - 剪藏对话: the persistent, creator/admin-only conversation associated with a clipping's target; replacing the target creates a new conversation.
+- Validation boundary: pages MUST NOT be created in Storybook. Page layout and behavior verification MUST use actual application routes.
+- Web Demo MUST use the separately enabled Demo build on the official Memo list and detail routes with the production reader. Deterministic captured materials and in-memory discussion/history operations MUST need no login, backend, article fetch, or model. The shared Inspector MUST expose clipping processing, success, translation failure, previous-version fallback, long content, persona, network, data, and reset/share controls; runtime query parameters MUST NOT activate Demo behavior in live artifacts.
 - Interface: the existing Memo create/edit/detail/list, local Markdown source, database index, MCP, public snapshot, and live console boundaries remain authoritative for their respective surfaces.
 
 ## Reading Flow
@@ -43,6 +46,7 @@ The reading header keeps author remarks and the generated summary visible. The o
 
 - The system MUST treat a Memo as a clipping when its effective authored tag set contains the exact 剪藏 tag, while preserving the Memo identity, existing permissions, dates, attachments, and other tags.
 - Tag detection MUST use frontmatter and authored Markdown only. It MUST ignore fenced code, inline code, Markdown link destinations, generated clipping artifacts, URL fragments, and unrelated text containing the characters #剪藏.
+- A literal authored #剪藏 tag serialized by the editor as `\#剪藏` MUST retain its tag meaning; Markdown escaping MUST NOT prevent clipping recognition or leave an escape character in the reading projection.
 - Processing MUST retain the 剪藏 tag; Agent output MUST NOT add or remove authored tags.
 - The same recognition rule MUST apply to browser authoring, MCP writes, filesystem synchronization, reprocessing, and public snapshot generation.
 
@@ -52,6 +56,7 @@ The reading header keeps author remarks and the generated summary visible. The o
 - A separately stored title that consists entirely of a URL or Markdown link MUST act as that target line. Otherwise, title metadata remains an explicit author title and the first non-empty body line MUST supply the target. An ATX H1, H2, or H3 wrapping the target line MUST be recognized after removing only its heading syntax.
 - The line MUST be either a complete plain http:// or https:// URL, or a complete Markdown link whose destination is an http:// or https:// URL. A line containing surrounding prose, an unsupported scheme, or a URL in a later line MUST NOT silently select a target.
 - The system MUST retain the original input for editing and diagnostics and MUST NOT infer the target from a truncated or derived database title.
+- When the stored link-only title and first body line repeat the same target, the reading projection MUST omit the repeated target line while preserving the authored file.
 - An invalid target MUST NOT discard the saved Memo or fetch a substitute URL; the author MUST receive an explicit correction path.
 
 ### REQ-MCL-003
@@ -101,7 +106,14 @@ The reading header keeps author remarks and the generated summary visible. The o
 
 ### REQ-MCL-009
 
+- Reader-facing lists, timeline entries, detail headers, search results, and management previews MUST identify clipping Memos as 剪藏 with the scissors icon rather than the ordinary Memo label and bulb icon. The icon MUST match the existing article and Memo outline family, stroke weight, rendered size, and shared timeline node frame. Displayed tag chips MUST omit only the exact 剪藏 marker for clipping Memos; other tags MUST remain visible. Authoring fields, stored tags, tag-based retrieval, routes, and permission boundaries MUST retain their existing behavior.
+- Clipping type presentation MUST NOT change ordinary Memo list appearance. Ordinary entries retain their existing metadata, icon sizes, card structure, width, spacing, and responsive behavior. Memo lists MUST identify clipping entries through the existing type icon and MUST NOT add a redundant clipping badge beside the date or visibility metadata. Detail headers and surfaces with existing type labels MUST use the clipping label.
+- Search result presentation MUST distinguish 剪藏 from ordinary 闪念 while preserving Memo detail URLs. The public search UI MUST offer a separate 剪藏 filter/count using the result's display classification, without changing the indexed Memo type.
 - For authorized conversation participants, desktop detail MUST present the article reading surface on the left and the clipping conversation on the right, with a stable boundary that does not make either column unusable.
+- The left reading column MUST contain two separate sibling cards in an unframed stack: a Memo card for its heading, remarks, summary, processing status, and actions, followed by an article card for language controls and captured source/translation Markdown. The cards MUST have a 24px vertical gap and MUST NOT be nested inside another card. The conversation MUST remain its own card alongside that unframed reading column, owning its heading, internally scrolling messages, and composer.
+- Reprocess and version-history actions MUST form a low-emphasis management group beside the Memo's processing status. The original-page entry MUST accompany the article's language controls. These toolbars MUST wrap their groups without overflow on narrow screens and MUST NOT combine all three actions into equal-emphasis pills beneath the title.
+- Authorized desktop detail MUST use the wide content container with a 24px inter-card gap and a 320–360px discussion column. Ordinary Memos and visitor-only clipping reading MUST retain the existing single-column reading width. Card hover or focus MUST NOT shift the reading position or discussion layout.
+- Language controls MUST clearly identify the displayed source or translation through their selected state and a non-color visual indicator. Focus on an inactive control MUST NOT imply selection; activation MUST update both the selected indicator and the displayed article together.
 - For authorized conversation participants, narrow detail MUST prioritize continuous article reading and expose the conversation through an explicit button that opens a bottom-sheet overlay. Other readers MUST receive the authorized reading surface without loading private conversation data.
 - The bottom sheet MUST support a clear close action, focus capture and return, controlled background scrolling, safe-area padding, software-keyboard avoidance, preserved scroll position, and preserved unsent draft state.
 - The UI MUST follow the Nature responsive contract: continuous reading surfaces, no unnecessary nested cards, minimum 44px touch targets outside fine-pointer desktop, readable long text, light/dark/system themes, and reduced-motion behavior.

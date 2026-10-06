@@ -5,8 +5,10 @@ import { useParams } from "@tanstack/react-router";
 import { ArrowUpRight, CircleSlash, RefreshCcw } from "lucide-react";
 import type React from "react";
 import { ClippingDetail } from "@/components/memos/ClippingDetail";
+import { MemoTypeBadge } from "@/components/memos/MemoTypeBadge";
 import { type AdminPreviewMemo, type AdminPreviewPost, adminApi } from "@/lib/admin-api-client";
 import { stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
+import { getMemoPresentation } from "@/lib/memo-presentation";
 import {
   buildMemoPreviewMeta,
   buildPostPreviewMeta,
@@ -152,32 +154,39 @@ export function PostPreviewArticle({ post }: { post: AdminPreviewPost }) {
 
 export function MemoPreviewArticle({ memo }: { memo: AdminPreviewMemo }) {
   const body = stripMatchingLeadingTitleHeading(memo.content || "", memo.title || memo.slug);
+  const presentation = getMemoPresentation(memo);
 
   return (
     <PreviewArticleShell
-      modeLabel="公开 Memo 预览"
+      modeLabel={presentation.kind === "clipping" ? "公开剪藏预览" : "公开 Memo 预览"}
       title={memo.title}
-      tags={memo.tags}
+      tags={presentation.tags}
       meta={buildMemoPreviewMeta({
         createdAt: memo.createdAt,
         publishedAt: memo.publishedAt,
         updatedAt: memo.updatedAt,
         isPublic: memo.isPublic,
       })}
+      contentType={
+        presentation.kind === "clipping" ? <MemoTypeBadge record={memo} surface="admin" /> : null
+      }
       bodyTestId="admin-preview-memo-body"
       body={body}
       bodyContent={
-        memo.clipping ? (
-          <ClippingDetail
-            key={memo.slug}
-            slug={memo.slug}
-            surface="admin"
-            memoContent={body}
-            initialArticle={{ reading: memo.clipping, source: null, translation: null }}
-            live
-            initialCanDiscuss
-          />
-        ) : undefined
+        memo.clipping
+          ? (header) => (
+              <ClippingDetail
+                key={memo.slug}
+                slug={memo.slug}
+                surface="admin"
+                memoContent={body}
+                header={header}
+                initialArticle={{ reading: memo.clipping, source: null, translation: null }}
+                live
+                initialCanDiscuss
+              />
+            )
+          : undefined
       }
       articlePath={memo.filePath || memo.slug}
       publicMediaContext={{

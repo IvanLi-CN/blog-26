@@ -2,6 +2,7 @@
 
 import {
   type MutableRefObject,
+  type ReactNode,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -12,6 +13,7 @@ import {
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import "./clipping-admin.css";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
+import Icon from "@/components/ui/Icon";
 import type { ClippingReading } from "@/lib/memo-clipping";
 import { toPublicApiUrl } from "@/lib/public-runtime-url";
 
@@ -132,7 +134,7 @@ function ChatPanel({
     <div className="flex min-h-0 flex-1 flex-col" data-testid="clipping-chat">
       <div
         ref={container}
-        className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4 [overflow-wrap:anywhere]"
+        className="clipping-chat-messages min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 py-5 [overflow-wrap:anywhere]"
         onScroll={(event) => {
           scroll.current = event.currentTarget.scrollTop;
           pinned.current =
@@ -150,12 +152,7 @@ function ChatPanel({
           </p>
         ) : null}
         {snapshot.messages.map((message) => (
-          <div
-            key={`${message.id}-${message.role}`}
-            className={
-              message.role === "user" ? "border-l-2 border-[color:var(--nature-accent)] pl-3" : ""
-            }
-          >
+          <div key={`${message.id}-${message.role}`} className="clipping-chat-message">
             <p className="nature-muted mb-2 text-xs">
               {message.role === "user" ? "你" : "文章助手"}
             </p>
@@ -197,7 +194,7 @@ function ChatPanel({
         </p>
       ) : (
         <form
-          className="shrink-0 border-t border-[color:var(--nature-line)] px-4 py-3"
+          className="shrink-0 border-t border-[color:var(--nature-line)] px-5 py-4"
           onSubmit={(event) => {
             event.preventDefault();
             send();
@@ -212,7 +209,7 @@ function ChatPanel({
             onChange={(event) => setDraft(event.target.value)}
             rows={3}
             maxLength={10_000}
-            className="nature-input w-full resize-none rounded-xl border border-[color:var(--nature-line)] bg-[color:var(--nature-surface)] px-3 py-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--nature-accent)]"
+            className="clipping-chat-input w-full resize-none px-3 py-3 text-base"
             placeholder="这篇文章的核心论点是什么？"
             onKeyDown={(event) => {
               if (
@@ -229,7 +226,7 @@ function ChatPanel({
             <span className="nature-muted text-xs">Ctrl / ⌘ + Enter 发送</span>
             <button
               type="submit"
-              className="nature-button min-h-11"
+              className="nature-button nature-button-primary min-h-11 shrink-0"
               disabled={sending || snapshot.generating || !draft.trim()}
             >
               {sending ? "正在提交…" : "发送"}
@@ -250,6 +247,7 @@ export function ClippingDetail({
   transport: providedTransport,
   onTitleChange,
   surface = "public",
+  header,
 }: {
   slug: string;
   memoContent: string;
@@ -259,6 +257,7 @@ export function ClippingDetail({
   transport?: ClippingTransport;
   onTitleChange?: (title: string | null) => void;
   surface?: "public" | "admin";
+  header?: ReactNode;
 }) {
   const [transport] = useState(() => providedTransport ?? createTransport(slug));
   const [article, setArticle] = useState(initialArticle);
@@ -410,169 +409,184 @@ export function ClippingDetail({
       scroll={scroll}
     />
   );
-  const controls = (
-    <div className="mb-5 flex flex-wrap items-center gap-2">
-      {reading.targetUrl ? (
-        <a
-          href={reading.targetUrl}
-          target="_blank"
-          rel="nofollow noopener noreferrer"
-          className="nature-button nature-button-outline min-h-11"
+  const managementActions =
+    canDiscuss && live ? (
+      <fieldset className="clipping-management-actions min-w-0 border-0 p-0" aria-label="剪藏管理">
+        <button
+          type="button"
+          className="nature-button nature-button-ghost min-h-11"
+          disabled={busy}
+          onClick={() => void operate(() => transport.request("reprocess", {}))}
         >
-          打开原网页 ↗
-        </a>
-      ) : null}
-      {canDiscuss && live ? (
-        <>
-          <button
-            type="button"
-            className="nature-button nature-button-outline min-h-11"
-            disabled={busy}
-            onClick={() => void operate(() => transport.request("reprocess", {}))}
-          >
-            重新处理
-          </button>
-          <button
-            type="button"
-            className="nature-button nature-button-outline min-h-11"
-            onClick={() => void loadHistory()}
-            ref={historyTrigger}
-          >
-            版本历史
-          </button>
-        </>
-      ) : null}
-    </div>
-  );
+          重新处理
+        </button>
+        <button
+          type="button"
+          className="nature-button nature-button-ghost min-h-11"
+          onClick={() => void loadHistory()}
+          ref={historyTrigger}
+        >
+          版本历史
+        </button>
+      </fieldset>
+    ) : null;
   return (
     <section
-      className={`min-w-0 ${surface === "admin" ? "clipping-admin-surface admin-editor-preview" : ""} ${canDiscuss && desktop ? "grid grid-cols-[minmax(0,1fr)_minmax(300px,36%)] items-start gap-7" : ""}`}
+      className={`clipping-detail-layout min-w-0 ${surface === "admin" ? "clipping-admin-surface admin-editor-preview" : ""} ${canDiscuss && desktop ? "" : "clipping-detail-layout-single"}`}
       data-testid="clipping-detail"
       data-clipping-discussion={canDiscuss}
+      data-clipping-surface={surface}
     >
-      <div className="min-w-0 [overflow-wrap:anywhere]">
-        {controls}
-        <div role="status" className="nature-muted mb-5 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          <span>
-            摘要：
-            {
-              (
+      <div className="clipping-reading-column">
+        <section
+          className="clipping-memo-card nature-panel nature-mobile-reading-surface min-w-0 px-4 py-6 sm:px-8 sm:py-8 [overflow-wrap:anywhere]"
+          aria-label="剪藏闪念"
+        >
+          {header ? <div className="mb-6">{header}</div> : null}
+          <div className="clipping-status-toolbar">
+            <div role="status" className="nature-muted flex flex-wrap gap-x-4 gap-y-1 text-sm">
+              <span>
+                摘要：
                 {
-                  pending: "等待生成",
-                  processing: "正在整理",
-                  completed: "已完成",
-                  failed: "未完成",
-                } as const
-              )[reading.summaryState]
-            }
-          </span>
-          <span>
-            译文：
-            {
-              (
+                  (
+                    {
+                      pending: "等待生成",
+                      processing: "正在整理",
+                      completed: "已完成",
+                      failed: "未完成",
+                    } as const
+                  )[reading.summaryState]
+                }
+              </span>
+              <span>
+                译文：
                 {
-                  pending: "等待生成",
-                  processing: "正在翻译",
-                  completed: "已完成",
-                  failed: "未完成",
-                } as const
-              )[reading.translationState]
-            }
-            {reading.translationState === "processing" && reading.segmentCount
-              ? ` · ${reading.translatedSegments ?? 0}/${reading.segmentCount}`
-              : ""}
-          </span>
-        </div>
-        {reading.error || error ? (
-          <div role="alert" className="nature-alert nature-alert-error mb-5">
-            {error ?? reading.error}
-            {reading.status === "invalid" ? (
-              <p className="mt-2 text-sm">编辑闪念，将第一条非空行改为完整网页链接。</p>
+                  (
+                    {
+                      pending: "等待生成",
+                      processing: "正在翻译",
+                      completed: "已完成",
+                      failed: "未完成",
+                    } as const
+                  )[reading.translationState]
+                }
+                {reading.translationState === "processing" && reading.segmentCount
+                  ? ` · ${reading.translatedSegments ?? 0}/${reading.segmentCount}`
+                  : ""}
+              </span>
+            </div>
+            {managementActions}
+          </div>
+          {reading.error || error ? (
+            <div role="alert" className="nature-alert nature-alert-error mb-5">
+              {error ?? reading.error}
+              {reading.status === "invalid" ? (
+                <p className="mt-2 text-sm">编辑闪念，将第一条非空行改为完整网页链接。</p>
+              ) : null}
+            </div>
+          ) : null}
+          {reading.usingPreviousVersion ? (
+            <p className="nature-alert mb-5 text-sm">
+              正在显示先前保存的阅读版本。该版本来源：
+              <a
+                href={reading.sourceUrl ?? "#"}
+                target="_blank"
+                rel="nofollow noopener noreferrer"
+                className="underline [overflow-wrap:anywhere]"
+              >
+                {reading.sourceUrl}
+              </a>
+            </p>
+          ) : null}
+          {(article.content ?? memoContent) ? (
+            <div>
+              <MarkdownRenderer
+                surface={surface}
+                content={article.content ?? memoContent}
+                variant="article"
+                removeTags
+                nofollowExternalLinks
+                enableMermaid={false}
+              />
+            </div>
+          ) : null}
+          {reading.warning ? <p className="nature-alert mb-5 text-sm">{reading.warning}</p> : null}
+        </section>
+        <article
+          className="clipping-reading-card nature-panel nature-mobile-reading-surface min-w-0 px-4 py-6 sm:px-8 sm:py-8 [overflow-wrap:anywhere]"
+          aria-label="剪藏文章"
+        >
+          <div className="clipping-article-toolbar">
+            <fieldset className="min-w-0 border-0 p-0" aria-label="文章语言">
+              <div className="clipping-language-switch nature-surface-quiet">
+                <button
+                  type="button"
+                  aria-pressed={activeLanguage === "source"}
+                  className="clipping-language-button"
+                  onClick={() => switchLanguage("source")}
+                >
+                  原文
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={activeLanguage === "translation"}
+                  className="clipping-language-button"
+                  onClick={() => switchLanguage("translation")}
+                >
+                  简体中文译文
+                </button>
+              </div>
+            </fieldset>
+            {reading.targetUrl ? (
+              <a
+                href={reading.targetUrl}
+                target="_blank"
+                rel="nofollow noopener noreferrer"
+                className="nature-button nature-button-ghost min-h-11 gap-2"
+              >
+                打开原网页
+                <span aria-hidden="true">
+                  <Icon name="tabler:external-link" className="h-4 w-4" />
+                </span>
+              </a>
             ) : null}
           </div>
-        ) : null}
-        {reading.usingPreviousVersion ? (
-          <p className="nature-alert mb-5 text-sm">
-            正在显示先前保存的阅读版本。该版本来源：
-            <a
-              href={reading.sourceUrl ?? "#"}
-              target="_blank"
-              rel="nofollow noopener noreferrer"
-              className="underline [overflow-wrap:anywhere]"
-            >
-              {reading.sourceUrl}
-            </a>
-          </p>
-        ) : null}
-        {(article.content ?? memoContent) ? (
-          <div className="mb-8">
+          {activeLanguage === "translation" &&
+          (reading.sourceTranslationState ?? reading.translationState) !== "completed" ? (
+            <p role="status" className="nature-alert mb-5 text-sm">
+              全文翻译尚未完成。
+              {article.translation
+                ? "下面仅显示已保存的部分译文。"
+                : "可以先阅读原文；已完成的摘要不会受影响。"}
+            </p>
+          ) : null}
+          <div data-testid="clipping-article-source" hidden={activeLanguage !== "source"}>
             <MarkdownRenderer
               surface={surface}
-              content={article.content ?? memoContent}
+              content={article.source ?? "原文尚未抓取，请等待处理或重试。"}
               variant="article"
-              removeTags
               nofollowExternalLinks
               enableMermaid={false}
             />
           </div>
-        ) : null}
-        {reading.warning ? <p className="nature-alert mb-5 text-sm">{reading.warning}</p> : null}
-        <fieldset
-          className="mb-6 flex flex-wrap items-center gap-2 border-b border-[color:var(--nature-line)] pb-3"
-          aria-label="文章语言"
-        >
-          <button
-            type="button"
-            aria-pressed={activeLanguage === "source"}
-            className={`nature-button min-h-11 ${activeLanguage === "source" ? "" : "nature-button-outline"}`}
-            onClick={() => switchLanguage("source")}
-          >
-            原文
-          </button>
-          <button
-            type="button"
-            aria-pressed={activeLanguage === "translation"}
-            className={`nature-button min-h-11 ${activeLanguage === "translation" ? "" : "nature-button-outline"}`}
-            onClick={() => switchLanguage("translation")}
-          >
-            简体中文译文
-          </button>
-        </fieldset>
-        {activeLanguage === "translation" &&
-        (reading.sourceTranslationState ?? reading.translationState) !== "completed" ? (
-          <p role="status" className="nature-alert mb-5 text-sm">
-            全文翻译尚未完成。
-            {article.translation
-              ? "下面仅显示已保存的部分译文。"
-              : "可以先阅读原文；已完成的摘要不会受影响。"}
-          </p>
-        ) : null}
-        <div data-testid="clipping-article-source" hidden={activeLanguage !== "source"}>
-          <MarkdownRenderer
-            surface={surface}
-            content={article.source ?? "原文尚未抓取，请等待处理或重试。"}
-            variant="article"
-            nofollowExternalLinks
-            enableMermaid={false}
-          />
-        </div>
-        <div data-testid="clipping-article-translation" hidden={activeLanguage !== "translation"}>
-          <MarkdownRenderer
-            surface={surface}
-            content={article.translation ?? "译文尚未生成。"}
-            variant="article"
-            nofollowExternalLinks
-            enableMermaid={false}
-          />
-        </div>
+          <div data-testid="clipping-article-translation" hidden={activeLanguage !== "translation"}>
+            <MarkdownRenderer
+              surface={surface}
+              content={article.translation ?? "译文尚未生成。"}
+              variant="article"
+              nofollowExternalLinks
+              enableMermaid={false}
+            />
+          </div>
+        </article>
       </div>
       {canDiscuss ? (
         desktop ? (
           <aside
-            className="sticky top-6 flex h-[min(80dvh,900px)] min-h-0 min-w-0 flex-col border-l border-[color:var(--nature-line)]"
+            className="clipping-chat-card nature-panel nature-mobile-reading-surface sticky top-6 flex h-[min(80dvh,900px)] min-h-0 min-w-0 flex-col"
             aria-label="文章对话"
           >
-            <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-3">
+            <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 border-b border-[color:var(--nature-line)] px-5 py-4">
               <h2 className="font-semibold">文章对话</h2>
               {historicalConversation ? (
                 <button

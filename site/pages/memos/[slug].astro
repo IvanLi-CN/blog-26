@@ -1,14 +1,13 @@
 ---
-import Icon from "@/components/ui/Icon";
+import MemoDetailHeading from "../../components/MemoDetailHeading.astro";
 import { extractTextSummary } from "@/lib/markdown-utils";
+import { getMemoPresentation } from "@/lib/memo-presentation";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
-import { ClippingDetail } from "@/components/memos/ClippingDetail";
+import { ClippingDetail } from "@clipping-reader";
 import { stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
 import type { PublicMemoRecord } from "@/public-site/snapshot";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { PublicMemoDetailControlsIsland } from "@console-memo-authoring";
-import TagBadge from "../../components/TagBadge.astro";
-import { formatAbsoluteDate, formatDateTime } from "../../lib/format";
 import { getCanonicalUrl, getMemoBySlug, getMemoMetadataTitle, getSnapshot } from "../../lib/public-site";
 import {
   getMemoListWebDemoRecord,
@@ -39,7 +38,7 @@ const memo =
     : getMemoBySlug(snapshot, Astro.params.slug ?? ""));
 if (!memo) return new Response("Not Found", { status: 404 });
 const displayDate = memo.publishedAt ?? memo.createdAt;
-const metadataTitle = getMemoMetadataTitle(memo.title, displayDate);
+const metadataTitle = getMemoMetadataTitle(memo.title, displayDate, getMemoPresentation(memo).label);
 const contentSource = "local" as const;
 const publicMediaContext = { kind: "memo" as const, slug: memo.slug, filePath: memo.filePath };
 const memoDescription = extractTextSummary(memo.content, 180) || snapshot.site.description;
@@ -75,46 +74,30 @@ const structuredData = {
       ) : null}
 
       <div data-public-memo-static-shell>
-        <div class="nature-panel nature-mobile-reading-surface memo-detail-card px-4 py-5 sm:px-8 sm:py-7" data-testid="public-memo-detail-card">
-          <div class="flex flex-wrap items-center gap-3 text-sm text-[color:var(--nature-text-soft)]">
-            <span class="nature-chip nature-chip-info gap-1">
-              <Icon name="tabler:clock" className="h-3.5 w-3.5" />
-              <time dateTime={displayDate} title={formatDateTime(displayDate)}>
-                {formatAbsoluteDate(displayDate)}
-              </time>
-            </span>
-            <span class="nature-chip gap-1">
-              <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
-              Memo
-            </span>
-          </div>
-
-          <h1 class:list={["nature-title", "mt-5", "text-3xl", "font-semibold", "leading-tight", "tracking-[-0.04em]", "sm:text-4xl", !memo.title && "sr-only"]}>{metadataTitle}</h1>
-
-          {memo.tags.length > 0 && (
-            <div class="mt-5 flex flex-wrap gap-2">
-              {memo.tags.map((tag) => (
-                <TagBadge tag={tag} iconMap={snapshot.tags.tagIconMap} iconSvgMap={snapshot.tags.tagIconSvgMap} />
-              ))}
+        {memo.clipping ? (
+          <ClippingDetail client:load slug={memo.slug} memoContent={memoDetailContent} initialArticle={snapshot.clippingArticles?.[memo.slug] ?? { reading: memo.clipping, source: null, translation: null }}>
+            <Fragment slot="header"><MemoDetailHeading memo={memo} metadataTitle={metadataTitle} displayDate={displayDate} tagIconMap={snapshot.tags.tagIconMap} tagIconSvgMap={snapshot.tags.tagIconSvgMap} /></Fragment>
+          </ClippingDetail>
+        ) : (
+          <div class="nature-panel nature-mobile-reading-surface memo-detail-card px-4 py-5 sm:px-8 sm:py-7" data-testid="public-memo-detail-card">
+            <MemoDetailHeading memo={memo} metadataTitle={metadataTitle} displayDate={displayDate} tagIconMap={snapshot.tags.tagIconMap} tagIconSvgMap={snapshot.tags.tagIconSvgMap} />
+            <div class="mt-6">
+              <MarkdownRenderer
+                client:visible={{ rootMargin: "480px" }}
+                content={memoDetailContent}
+                variant="article"
+                enableMath={true}
+                enableMermaid={true}
+                enableCodeFolding={true}
+                removeTags={true}
+                rewritePublicSitePaths={true}
+                articlePath={memo.filePath}
+                contentSource={contentSource}
+                publicMediaContext={publicMediaContext}
+              />
             </div>
-          )}
-
-          <div class="mt-6">
-            {memo.clipping ? <ClippingDetail client:load slug={memo.slug} memoContent={memoDetailContent} initialArticle={snapshot.clippingArticles?.[memo.slug] ?? { reading: memo.clipping, source: null, translation: null }} /> : <MarkdownRenderer
-              client:visible={{ rootMargin: "480px" }}
-              content={memoDetailContent}
-              variant="article"
-              enableMath={true}
-              enableMermaid={true}
-              enableCodeFolding={true}
-              removeTags={true}
-              rewritePublicSitePaths={true}
-              articlePath={memo.filePath}
-              contentSource={contentSource}
-              publicMediaContext={publicMediaContext}
-            />}
           </div>
-        </div>
+        )}
       </div>
     </article>
   </section>

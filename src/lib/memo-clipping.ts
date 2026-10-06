@@ -36,7 +36,8 @@ export type ClippingReading = {
 };
 
 const parser = unified().use(remarkParse);
-const TAG = /(^|\s)#剪藏(?=$|[\s,.!?，。；：！？）)])/gu;
+// Milkdown escapes a literal leading hash when serializing an authored tag.
+const TAG = /(^|\s)\\?#剪藏(?=$|[\s,.!?，。；：！？）)])/gu;
 
 function clippingTagRanges(body: string) {
   const ranges: Array<[number, number]> = [];
@@ -46,7 +47,7 @@ function clippingTagRanges(body: string) {
       const source = body.slice(start, node.position.end.offset);
       for (const match of source.matchAll(TAG)) {
         const offset = start + (match.index ?? 0) + match[1].length;
-        ranges.push([offset, offset + "#剪藏".length]);
+        ranges.push([offset, start + (match.index ?? 0) + match[0].length]);
       }
     }
     for (const child of node.children ?? []) visit(child);
@@ -130,7 +131,7 @@ export function recognizeMemoClipping(
       error: "请将第一条非空正文行改为完整的 HTTP(S) 链接或 Markdown 链接。也可使用纯链接标题。",
     };
   }
-  if (!titleTarget && line) {
+  if (line && bodyTarget && bodyTarget.url === target.url) {
     const offset = line[0].indexOf(line[1]);
     ranges.push([offset, offset + line[1].length]);
   }

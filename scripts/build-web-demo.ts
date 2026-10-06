@@ -43,24 +43,9 @@ async function assertFile(path: string) {
   if (!entry?.isFile()) throw new Error(`Web Demo build is missing ${relative(repoRoot, path)}`);
 }
 
-async function assertDirectory(path: string) {
-  const entry = await stat(path).catch(() => undefined);
-  if (!entry?.isDirectory()) {
-    throw new Error(`Web Demo build is missing ${relative(repoRoot, path)}/`);
-  }
-}
-
-async function main() {
+export async function prepareWebDemoInputs() {
   assertGeneratedPath(generatedRoot, "WEB_DEMO_DATA_DIR");
-  assertGeneratedPath(siteDist, "WEB_DEMO_SITE_DIST_DIR", [
-    resolve(repoRoot, "web-demo-site-dist"),
-  ]);
-  assertGeneratedPath(adminDist, "WEB_DEMO_ADMIN_DIST_DIR", [
-    resolve(repoRoot, "web-demo-admin-dist"),
-  ]);
   await rm(generatedRoot, { recursive: true, force: true });
-  await rm(siteDist, { recursive: true, force: true });
-  await rm(adminDist, { recursive: true, force: true });
   await mkdir(generatedRoot, { recursive: true });
 
   const env: NodeJS.ProcessEnv = {
@@ -68,6 +53,9 @@ async function main() {
     DB_PATH: relative(repoRoot, join(generatedRoot, "sqlite.db")),
     LOCAL_CONTENT_BASE_PATH: relative(repoRoot, join(generatedRoot, "local")),
     CONTENT_SOURCES: "local",
+    PI_DURABLE_DB_PATH: relative(repoRoot, join(generatedRoot, "pi-durable.sqlite")),
+    CLIPPING_CONTENT_BASE_PATH: relative(repoRoot, join(generatedRoot, "clippings")),
+    CLIPPING_PROCESSOR_ENABLED: "false",
     PUBLIC_SNAPSHOT_PATH: relative(repoRoot, publicSnapshotPath),
     PLAYBOOK_BUNDLE_DIR: relative(repoRoot, playbookBundleDir),
     PLAYBOOK_WORK_DIR: relative(repoRoot, join(generatedRoot, "playbook-work")),
@@ -78,9 +66,11 @@ async function main() {
     ADMIN_OUT_DIR: relative(repoRoot, adminDist),
     ASTRO_CACHE_DIR: ".astro-web-demo",
     VITE_CACHE_DIR: "node_modules/.vite-web-demo",
-    ADMIN_VITE_CACHE_DIR: "node_modules/.vite-web-demo-admin",
     CONSOLE_RUNTIME: "false",
     PUBLIC_API_BASE_URL: "",
+    PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: "",
+    PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL: "",
+    PUBLIC_OCTO_RILL_METRICS_BASE_URL: "",
   };
 
   await run("prepare deterministic local content", ["run", "migrate"], env);
@@ -97,6 +87,19 @@ async function main() {
   await run("generate public assets", ["run", "generate:public-pwa"], env);
   await run("generate project posters", ["run", "generate:project-posters"], env);
   await run("generate project social previews", ["run", "generate:project-social-previews"], env);
+  return env;
+}
+
+async function main() {
+  assertGeneratedPath(siteDist, "WEB_DEMO_SITE_DIST_DIR", [
+    resolve(repoRoot, "web-demo-site-dist"),
+  ]);
+  assertGeneratedPath(adminDist, "WEB_DEMO_ADMIN_DIST_DIR", [
+    resolve(repoRoot, "web-demo-admin-dist"),
+  ]);
+  await rm(siteDist, { recursive: true, force: true });
+  await rm(adminDist, { recursive: true, force: true });
+  const env = await prepareWebDemoInputs();
   await run("build public Web Demo", ["x", "astro", "build"], env);
   await run(
     "build admin Web Demo",
@@ -105,8 +108,12 @@ async function main() {
   );
 
   await Promise.all([
-    assertFile(join(siteDist, "server", "entry.mjs")),
-    assertDirectory(join(siteDist, "client")),
+    assertFile(join(siteDist, "index.html")),
+    assertFile(join(siteDist, "memos", "index.html")),
+    assertFile(join(siteDist, "memos", "memo-web-demo-0001", "index.html")),
+    assertFile(join(siteDist, "memos", "memo-web-demo-2400", "index.html")),
+    assertFile(join(siteDist, "memos", "memo-web-demo-1181", "index.html")),
+    assertFile(join(siteDist, "playbook", "index.html")),
     assertFile(join(adminDist, "index.html")),
   ]);
   console.log(
