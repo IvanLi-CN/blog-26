@@ -4,6 +4,7 @@ import { downloadRetainedEdition, readPublicPointer } from "../src/lib/playbook/
 import { readPlaybookEdition } from "../src/lib/playbook/bundle";
 import { validatePlaybookEdition } from "../src/lib/playbook/cache";
 import { encodeJson } from "../src/lib/playbook/manifest";
+import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
 
 type SeedOptions = {
   bundleDir?: string;
@@ -23,10 +24,7 @@ export async function loadInitialPlaybookEdition(options: SeedOptions = {}) {
     });
     if (raw) return validatePlaybookEdition(JSON.parse(raw));
   }
-  const url =
-    options.manifestUrl ||
-    process.env.PLAYBOOK_MANIFEST_URL ||
-    "https://ivanli.cc/_content/playbook/manifest.json";
+  const url = options.manifestUrl || PLAYBOOK_PUBLIC_POINTER_URL;
   const pointer = await (options.readPointer || readPublicPointer)(url);
   if (pointer) return downloadRetainedEdition(pointer, url, resolve(".tmp/console-playbook-seed"));
 

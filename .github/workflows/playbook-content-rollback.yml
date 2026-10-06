@@ -35,7 +35,7 @@ jobs:
     steps:
       - name: Require paused automatic updates
         env:
-          ENABLED: ${{ vars.PLAYBOOK_CONTENT_UPDATES_ENABLED }}
+          ENABLED: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED }}
         run: test "$ENABLED" != true
       - uses: actions/checkout@v7
         with:
@@ -52,7 +52,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PLAYBOOK_SOURCE_TOKEN }}
           PLAYBOOK_ROLLBACK: 'true'
-          PLAYBOOK_CONTENT_UPDATES_ENABLED: ${{ vars.PLAYBOOK_CONTENT_UPDATES_ENABLED }}
+          PLAYBOOK_INTEGRATION_ENABLED: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED }}
           PUBLIC_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL || 'https://console.ivanli.cc' }}
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://ivanli.cc' }}
           PUBLIC_SITE_BASE_PATH: ${{ vars.PUBLIC_SITE_BASE_PATH || '/' }}
