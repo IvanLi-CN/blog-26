@@ -97,6 +97,56 @@ export function verifyTrustedTags(github: GitHubRelease, ledger: ReleaseLedger):
   }
 }
 
+export async function retireStalePreparations(
+  github: GitHubRelease,
+  store: LedgerStore,
+  sourceSha: string,
+  actor: string,
+  preparationRunId: number
+): Promise<void> {
+  const { ledger } = await store.read();
+  for (const old of ledger.entries.filter(
+    (entry) =>
+      entry.stage === "reserved" &&
+      entry.sourceSha !== sourceSha &&
+      entry.preparationRunId !== preparationRunId
+  )) {
+    if (old.actor !== actor) throw new Error("A stale preparation belongs to another operator");
+    const pulls = github.pages(
+      `${github.root}/pulls?state=all&head=IvanLi-CN:${releaseBranch(old)}&base=${github.contract.branch}&per_page=100`
+    );
+    if (pulls.length > 1) throw new Error("Multiple PRs claim the stale preparation");
+    let proof: Partial<ReleaseEntry> = {};
+    if (pulls[0]) {
+      const pull = github.pull(
+        z.object({ number: z.number().int().positive() }).parse(pulls[0]).number
+      );
+      const linked = {
+        ...old,
+        prNumber: pull.number,
+        preparationHead: old.preparationHead || pull.head.sha,
+      };
+      assertReleasePull(github, linked, pull);
+      if (pull.state !== "closed" || pull.merged)
+        throw new Error("Stale preparation has a PR; close the unmerged PR before preparing again");
+      proof = { prNumber: linked.prNumber, preparationHead: linked.preparationHead };
+    }
+    await changeLedger(store, (current) => {
+      const present = current.entries.find((entry) => entry.id === old.id);
+      if (
+        present?.stage !== "reserved" ||
+        present.preparationHead !== old.preparationHead ||
+        present.prNumber !== old.prNumber
+      )
+        throw new Error("Stale preparation changed while checking its PR");
+      return {
+        ledger: updateRelease(current, old.id, { ...proof, stage: "abandoned" }),
+        result: null,
+      };
+    });
+  }
+}
+
 export async function prepareRelease(
   github: GitHubRelease,
   store: LedgerStore,
@@ -120,6 +170,8 @@ export async function prepareRelease(
         result: null,
       }));
   }
+  // A fresh manual preparation retires stale unopened reservations; original retries never do.
+  await retireStalePreparations(github, store, sourceSha, actor, preparationRunId);
   const current = await store.read();
   const existingRun = current.ledger.entries.find(
     (entry) => entry.preparationRunId === preparationRunId

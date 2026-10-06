@@ -107,15 +107,12 @@ if (command === "notification") {
   );
 } else if (command === "probe") {
   const app = github();
-  verifyTrustedTags(
-    app,
-    app.reference(`heads/${contract.ledgerBranch}`) &&
-      app.reference(`heads/${contract.ledgerBranch}`) !== contract.bootstrap.sourceSha
-      ? (await new GitHubLedgerStore(app).read()).ledger
-      : initialLedger(contract)
-  );
+  const head = app.reference(`heads/${contract.ledgerBranch}`);
+  if (!head || head === contract.bootstrap.sourceSha)
+    throw new Error(
+      "Read-only probe requires a signed ledger initialized by trusted release preparation"
+    );
   const store = new GitHubLedgerStore(app);
-  await store.initialize();
   const verified = await store.read();
   verifyTrustedTags(app, verified.ledger);
   console.log(

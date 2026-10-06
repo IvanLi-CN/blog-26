@@ -52,6 +52,8 @@
 
 预留更新 MUST 通过 GraphQL `createCommitOnBranch` 绑定登记分支旧 `expectedHeadOid`，产生唯一父提交并原子比较交换。准备 PR MUST 使用内置 `GITHUB_TOKEN` 创建 GitHub 签名、Verified、Signed-off-by 提交，并采用 squash 自动合并；主干来源移动后 MUST 阻断旧准备。关闭未合并 PR MUST 废弃预留，版本不得再次分配。
 
+来源移动后的重新准备 MUST 由原发版人以新的手动运行发起。尚未登记 PR 的旧预留 MUST 核验不存在开放或已合并 PR，再废弃并保留记录和已占用版本；关闭但未登记的 PR MUST 核验原准备来源。原运行重跑 MUST NOT 废弃旧身份或替换来源，其他发版人 MUST NOT 接管准备。
+
 ### REQ-MVR-010
 
 准备 MUST 显式 dispatch 确切 preparation head 的 CI/E2E；合并衔接 MUST 核验全部 PR 检查、观察受保护的自动合并并显式 dispatch 同一 merge SHA 的 main CI/E2E。发布 MUST 由 CI/E2E 的 main push 或已验证 dispatch 完成事件自动衔接，核验确切 merge SHA 的全部 main required checks。普通实现提交 MUST 跳过产品发布。PR 可取消过期运行；main 和发布评估 MUST 保留必需运行。重跑 MUST 使用原运行身份及策略。

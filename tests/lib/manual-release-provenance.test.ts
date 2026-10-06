@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { load } from "js-yaml";
+import { z } from "zod";
 import qualityJson from "../../.github/quality-gates.json";
 import contractJson from "../../.github/release-contract.json";
 import { assertRunSource, mainChecksPassed, qualitySchema } from "../../src/lib/release/completion";
@@ -30,6 +33,16 @@ function transport(request: GitHubTransport["request"]): GitHubTransport {
 }
 
 describe("trusted release evaluation", () => {
+  test("candidate signature probes never execute with a repository write token", () => {
+    const workflow = z
+      .object({
+        jobs: z.object({
+          "release-token-probe": z.object({ permissions: z.record(z.string(), z.string()) }),
+        }),
+      })
+      .parse(load(readFileSync(".github/workflows/ci.yml", "utf8")));
+    expect(Object.values(workflow.jobs["release-token-probe"].permissions)).not.toContain("write");
+  });
   test("accepts exact-main dispatch while rejecting forks, unrelated events and source drift", () => {
     const github = new GitHubRelease(
       contract,

@@ -102,7 +102,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
-      contents: write
+      contents: read
       actions: read
     concurrency:
       group: manual-product-release
@@ -116,7 +116,7 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
-      - name: Verify the built-in token and GitHub-signed ledger commit
+      - name: Read-only verification of the built-in token and signed ledger commit
         run: bun scripts/product-release.ts probe
         env:
           GH_TOKEN: ${{ github.token }}

@@ -8,7 +8,7 @@
 
 仓库 Actions 默认权限保持只读。为创建 VERSION-only PR，开启 “Allow GitHub Actions to create and approve pull requests”；发布代码只创建 PR 和启用受保护的自动合并，不调用审批接口，不获得 main 绕过权限。准备 job 按需声明 contents/pull-requests/actions 写权限，发布 job 声明 contents/packages 写权限，合并衔接 job 仅声明 actions 写权限；Playbook 来源 token 独立。
 
-配置读回使用 `bun scripts/release-settings.ts`；已获仓库配置授权时使用 `--apply` 对齐声明。从实现候选分支运行 CI/CD Pipeline 的 `workflow_dispatch`，其中 **Release Token Probe** 核验内置令牌创建的初始签名登记提交并展示 commit URL。探针不创建产品版本 tag、不上传 GHCR、不部署生产。
+配置读回使用 `bun scripts/release-settings.ts`；已获仓库配置授权时使用 `--apply` 对齐声明。从实现候选分支运行 CI/CD Pipeline 的 `workflow_dispatch`，其中 **Release Token Probe** 使用只读令牌核验已初始化的签名登记并展示 commit URL。签名登记的初始化和更新属于 main 的正式准备流程；候选探针不创建登记、产品版本 tag，不上传 GHCR 或部署生产。
 
 内置令牌产生的事件不能作为自动触发下一条工作流的可靠前提。准备阶段显式 dispatch 同一 preparation head 的 CI/E2E，Release Merge Followup 核验全部检查并观察受保护的 squash 自动合并，再显式 dispatch 同一 main merge SHA 的 CI/E2E。Product Release 只消费登记过且检查通过的 merge identity；后续衔接不需要第二次人工触发。来源移动、检查失败或无法观察合并时停止，并保持原身份供对应运行重试。
 
@@ -29,6 +29,8 @@
 重跑失败的原工作流；不重新 dispatch 一个替代版本。恢复读取原 release-ledger 登记，复用版本、来源、输入和冻结产物，仅补齐缺失步骤。已存在 tag、发布资产或镜像的身份与摘要不同则停止，不能覆盖。
 
 冻结产物保留 90 天。产物失效或缺失时报告恢复受阻，不联网重新生成同身份的新内容。关闭未合并的版本 PR 会废弃预留，已占用版本不会重新分配。较新版本已完成生产部署后，旧身份重跑不会回退生产指针。
+
+主干在 PR 创建前移动时，原运行重跑仍会阻断。原发版人重新手动触发准备后，系统核验旧准备尚无 PR，或其 PR 已关闭且未合并，再将旧登记标记为废弃并保留已占用版本，为新来源重新分配身份；若仍有开放 PR，先关闭该 PR。新触发不得接管其他发版人的准备。
 
 ## 操作边界
 
