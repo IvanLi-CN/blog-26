@@ -70,7 +70,10 @@ async function expectStableLiftHover(page: Page, hitbox: Locator) {
 }
 
 async function expectStablePlaybookTabHover(page: Page, tab: Locator) {
+  const surface = tab.locator("[data-playbook-tab-surface]");
+
   await expect(tab).toBeVisible();
+  await expect(surface).toBeVisible();
 
   const beforeHover = await tab.boundingBox();
   expect(beforeHover).not.toBeNull();
@@ -109,8 +112,10 @@ async function expectStablePlaybookTabHover(page: Page, tab: Locator) {
     pointerEnterCount: Number(element.dataset.pointerEnterCount),
     pointerLeaveCount: Number(element.dataset.pointerLeaveCount),
   }));
+  const hoverTransform = await surface.evaluate((element) => getComputedStyle(element).transform);
 
   expect(hoverState).toEqual({ hovered: true, pointerEnterCount: 1, pointerLeaveCount: 0 });
+  expect(hoverTransform).not.toBe("none");
   expect(Math.abs(afterHover.x - beforeHover.x)).toBeLessThan(0.5);
   expect(Math.abs(afterHover.y - beforeHover.y)).toBeLessThan(0.5);
 }
