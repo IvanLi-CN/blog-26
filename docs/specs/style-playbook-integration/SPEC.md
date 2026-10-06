@@ -169,7 +169,7 @@ console 必须后台同步博客的公开 JSON，在网络健康且 schema 兼�
 - [实现状态](./IMPLEMENTATION.md)
 - [研究基线与主题历史](./HISTORY.md)
 - [Release 触发契约](./contracts/release-trigger.md)
-- [应用发布契约](../pr-label-release/SPEC.md)
+- [应用发布契约](../manual-version-release/SPEC.md)
 - [既有搜索契约](../search-full-text-fallback/SPEC.md)
 
 

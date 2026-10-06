@@ -1,19 +1,48 @@
 # Release 失败 Oidrune 告警接入
 
-## Summary
-- 为 `Release (PR Label Driven)` 工作流补一个 repo-local notifier wrapper，统一复用 Oidrune 通知 workflow。
-- 为 release 目标 SHA 增加显式日志标记，确保失败告警能定位真实 release target。
-- 接入后通过 `workflow_dispatch` smoke test 验证 OIDC-authenticated 通知链路。
+## Context and Scope
 
-## Scope
-- 新增 `.github/workflows/notify-release-failure.yml`。
-- 更新 `.github/workflows/release.yml` 输出 `RELEASE_REQUESTED_SHA` / `RELEASE_TARGET_SHA` 标记。
-- 以固定发布 SHA 调用 `IvanLi-CN/oidrune/.github/workflows/notify.yml`，并使用其默认网关。
-- 保持现有发布逻辑与 artifact 行为不变。
+本主题定义产品发布失败的通知合同，使用固定版本的 Oidrune reusable workflow 和 GitHub OIDC 认证。
 
-## Acceptance
-- `workflow_run` 在 `Release (PR Label Driven)` 失败时触发 Oidrune 通知。
-- `workflow_dispatch` 可手动发送 smoke test 通知。
-- 调用 job 仅授予 `id-token: write`，不需要 Telegram 或 Shoutrrr secret。
-- 默认网关 handoff 失败只警告，不改变已完成的 release 结果。
-- 失败告警优先携带真实 release target SHA，而不是仅回退到 workflow 头 SHA。
+## Requirements
+
+### REQ-RFA-001
+
+系统 MUST 将已确认的产品发布失败交给 Oidrune 通知流程，并记录产品版本、实际发布来源 SHA、workflow run URL 和运行次数。
+
+### REQ-RFA-002
+
+通知调用 MUST 仅使用 GitHub OIDC 所需的 `id-token: write` 权限和 Oidrune 默认网关，通知交接失败 MUST 报告警告而不能改变产品发布结果。
+
+### REQ-RFA-003
+
+系统 MUST 保留 `workflow_dispatch` 通知 smoke test，以独立核对通知链路。
+
+## Verification
+
+### VER-RFA-001
+
+- Method: 核对失败发布的通知摘要和相同发布身份。
+- covers: `REQ-RFA-001`
+- Pass condition: 摘要中的产品版本、来源 SHA、run URL 和运行次数对应失败的实际发布。
+
+### VER-RFA-002
+
+- Method: 检查固定 reusable workflow 引用、调用权限及网关失败处理。
+- covers: `REQ-RFA-002`
+- Pass condition: 仅授予 `id-token: write`，网关失败只影响通知交接结果。
+
+### VER-RFA-003
+
+- Method: 显式触发手动通知 smoke test，并核对对应运行摘要。
+- covers: `REQ-RFA-003`
+- Pass condition: 通知明确标为 smoke test，运行身份可追溯。
+
+## Related ADRs
+
+None
+
+## References
+
+- [实现状态](./IMPLEMENTATION.md)
+- [主题记录](./HISTORY.md)

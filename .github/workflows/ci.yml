@@ -146,7 +146,7 @@ jobs:
           PUBLIC_API_BASE_URL: https://ivanli.cc
           PUBLIC_SITE_URL: https://ivanli.cc
           PUBLIC_SITE_BASE_PATH: /
-      - name: Build backend release artifacts
+      - name: Build complete application runtime
         run: bun run backend:build
         env:
           DB_PATH: ./test-data/sqlite.db

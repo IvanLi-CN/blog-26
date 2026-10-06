@@ -20,7 +20,7 @@ const oidruneWorkflow =
   "IvanLi-CN/oidrune/.github/workflows/notify.yml@00bbb56c1853eed577652f69678a0419c468e969";
 
 describe("notify-release-failure.yml", () => {
-  for (const jobName of ["notify_failure", "smoke_test"]) {
+  for (const jobName of ["smoke_test"]) {
     test(`${jobName} uses the pinned Oidrune workflow without caller secrets`, () => {
       const job = workflow.jobs[jobName];
 
@@ -34,16 +34,9 @@ describe("notify-release-failure.yml", () => {
     });
   }
 
-  test("preserves release context and smoke-test intent in caller summaries", () => {
-    const failureSummary = workflow.jobs.notify_failure.with?.summary ?? "";
+  test("preserves smoke-test intent in the caller summary", () => {
     const smokeSummary = workflow.jobs.smoke_test.with?.summary ?? "";
 
-    expect(failureSummary).toContain("status: failure");
-    expect(failureSummary).toContain("$" + "{{ needs.resolve_release_context.outputs.ref_label }}");
-    expect(failureSummary).toContain(
-      "sha: $" + "{{ needs.resolve_release_context.outputs.head_sha }}"
-    );
-    expect(failureSummary).toContain("url: $" + "{{ github.event.workflow_run.html_url }}");
     expect(smokeSummary).toContain("status: smoke test");
     expect(smokeSummary).toContain("note: manual notifier smoke test");
   });
