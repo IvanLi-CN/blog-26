@@ -2,6 +2,9 @@ import versionJson from "@/generated/version.json";
 
 export interface VersionInfo {
   version: string;
+  productVersion: string | null;
+  buildVersion: string;
+  sourceSha: string;
   buildDate: string;
   commitHash: string;
   commitShortHash: string;
@@ -13,6 +16,9 @@ export interface VersionInfo {
 
 const FALLBACK_VERSION_INFO: VersionInfo = {
   version: "dev-local",
+  productVersion: null,
+  buildVersion: "dev-local",
+  sourceSha: "unknown",
   buildDate: "00000000",
   commitHash: "unknown",
   commitShortHash: "unknown",
@@ -30,6 +36,13 @@ const parsedVersionInfo = versionJson as PartialVersionInfo;
 
 export const versionInfo: VersionInfo = {
   version: parsedVersionInfo.version ?? FALLBACK_VERSION_INFO.version,
+  productVersion: parsedVersionInfo.productVersion ?? FALLBACK_VERSION_INFO.productVersion,
+  buildVersion:
+    parsedVersionInfo.buildVersion ??
+    parsedVersionInfo.version ??
+    FALLBACK_VERSION_INFO.buildVersion,
+  sourceSha:
+    parsedVersionInfo.sourceSha ?? parsedVersionInfo.commitHash ?? FALLBACK_VERSION_INFO.sourceSha,
   buildDate: parsedVersionInfo.buildDate ?? FALLBACK_VERSION_INFO.buildDate,
   commitHash: parsedVersionInfo.commitHash ?? FALLBACK_VERSION_INFO.commitHash,
   commitShortHash: parsedVersionInfo.commitShortHash ?? FALLBACK_VERSION_INFO.commitShortHash,

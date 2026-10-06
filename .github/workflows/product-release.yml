@@ -1,0 +1,133 @@
+name: Product Release
+on:
+  workflow_run:
+    workflows: [CI/CD Pipeline, E2E Tests]
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  production:
+    if: (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') && github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: write
+      actions: read
+      checks: read
+      pull-requests: read
+      packages: write
+    concurrency:
+      group: blog26-edgeone-production
+      cancel-in-progress: false
+      queue: max
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.2
+      - run: bun install --frozen-lockfile
+      - name: Resolve only registered release merges
+        id: identify
+        run: bun scripts/product-release.ts resolve --read-only
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Bind original release run
+        if: steps.identify.outputs.active == 'true'
+        run: bun scripts/product-release.ts resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Checkout the verified merged source
+        if: steps.identify.outputs.active == 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.identify.outputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - if: steps.identify.outputs.active == 'true'
+        run: bun install --frozen-lockfile
+      - name: Restore immutable artifacts from the original run
+        if: steps.identify.outputs.active == 'true'
+        id: restore
+        run: bun scripts/product-release.ts restore
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Freeze public build inputs under the production lock
+        if: steps.restore.outputs.need_inputs == 'true'
+        run: bun scripts/product-release.ts freeze-inputs
+        env:
+          PLAYBOOK_SOURCE_TOKEN: ${{ secrets.PLAYBOOK_SOURCE_TOKEN }}
+          PUBLIC_CONTENT_SNAPSHOT_URL: ${{ vars.PUBLIC_CONTENT_SNAPSHOT_URL }}
+          PUBLIC_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL || 'https://console.ivanli.cc' }}
+          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://ivanli.cc' }}
+          PUBLIC_SITE_BASE_PATH: ${{ vars.PUBLIC_SITE_BASE_PATH || '/' }}
+          PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: ${{ vars.PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL }}
+          PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL: ${{ vars.PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL }}
+          PUBLIC_OCTO_RILL_METRICS_BASE_URL: ${{ vars.PUBLIC_OCTO_RILL_METRICS_BASE_URL }}
+      - name: Retain frozen inputs for 90 days
+        if: steps.restore.outputs.need_inputs == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.restore.outputs.input_name }}
+          path: ${{ steps.restore.outputs.inputs }}
+          retention-days: 90
+          if-no-files-found: error
+      - name: Bind frozen inputs
+        if: steps.restore.outputs.need_inputs == 'true'
+        run: bun scripts/product-release.ts record-inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - if: steps.restore.outputs.need_products == 'true'
+        uses: docker/setup-buildx-action@v4
+      - name: Build the static frontend and full-feature image
+        if: steps.restore.outputs.need_products == 'true'
+        run: bun scripts/product-release.ts build-products
+      - name: Verify production-mode frozen products
+        if: steps.restore.outputs.need_products == 'true'
+        run: |
+          sudo apt-get update && sudo apt-get install -y skopeo
+          bun scripts/smoke-product-release.ts
+      - name: Retain both immutable products for 90 days
+        if: steps.restore.outputs.need_products == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.restore.outputs.product_name }}
+          path: ${{ steps.restore.outputs.products }}
+          retention-days: 90
+          if-no-files-found: error
+      - name: Bind immutable products
+        if: steps.restore.outputs.need_products == 'true'
+        run: bun scripts/product-release.ts record-products
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - if: steps.identify.outputs.active == 'true'
+        run: sudo apt-get update && sudo apt-get install -y skopeo
+      - name: Authenticate the job-scoped image publisher
+        if: steps.identify.outputs.active == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Publish both products, deploy the same static archive, then promote latest
+        if: steps.identify.outputs.active == 'true'
+        run: bun scripts/product-release.ts publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_PROJECT_NAME: ${{ vars.EDGEONE_PROJECT_NAME }}
+          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://ivanli.cc' }}
+      - name: Preserve failure location for original-run recovery
+        if: failure() && steps.identify.outputs.active == 'true'
+        continue-on-error: true
+        run: bun scripts/product-release.ts failure
+        env:
+          GH_TOKEN: ${{ steps.publish_app.outputs.token || steps.app.outputs.token }}

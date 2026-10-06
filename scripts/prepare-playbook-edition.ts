@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
   downloadRetainedEdition,
@@ -16,6 +16,26 @@ import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
 
 const publicRoot = resolve("public");
 const seedPath = resolve("site/generated/playbook-edition.json");
+if (process.env.PLAYBOOK_FROZEN_INPUT_DIR) {
+  const frozen = resolve(process.env.PLAYBOOK_FROZEN_INPUT_DIR);
+  const seed = validatePlaybookEdition(
+    JSON.parse(await readFile(join(frozen, "playbook-edition.json"), "utf8"))
+  );
+  const pointer = parseEditionIdentity(
+    JSON.parse(await readFile(join(frozen, "playbook/manifest.json"), "utf8"))
+  );
+  if (
+    !samePlaybookEdition(seed.edition, pointer) ||
+    seed.edition.rendererCommit !== process.env.COMMIT_HASH
+  )
+    throw new Error("Frozen Playbook input does not match the renderer");
+  await rm(join(publicRoot, "_content/playbook"), { recursive: true, force: true });
+  await cp(join(frozen, "playbook"), join(publicRoot, "_content/playbook"), { recursive: true });
+  await mkdir(resolve("site/generated"), { recursive: true });
+  await writeFile(seedPath, encodeJson(seed));
+  console.log(`Reusing frozen Playbook edition ${pointer.editionDigest}`);
+  process.exit(0);
+}
 const snapshotPath = resolve(
   process.env.PUBLIC_SNAPSHOT_PATH || "site/generated/public-snapshot.json"
 );

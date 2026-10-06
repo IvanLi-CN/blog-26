@@ -2,10 +2,62 @@ name: Notify failed release
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: [Manual Product Release, Product Release]
+    types: [completed]
+    branches: [main]
 
 permissions: {}
 
 jobs:
+  failure_identity:
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      (github.event.workflow_run.path == '.github/workflows/manual-product-release.yml' ||
+       github.event.workflow_run.path == '.github/workflows/product-release.yml')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      confirmed: ${{ steps.identity.outputs.confirmed }}
+      version: ${{ steps.identity.outputs.version }}
+      source: ${{ steps.identity.outputs.source }}
+      identity: ${{ steps.identity.outputs.identity }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - id: identity
+        run: bun scripts/product-release.ts notification
+        env:
+          GH_TOKEN: ${{ github.token }}
+  release_failure:
+    needs: failure_identity
+    if: needs.failure_identity.outputs.confirmed == 'true'
+    permissions:
+      id-token: write
+    uses: IvanLi-CN/oidrune/.github/workflows/notify.yml@00bbb56c1853eed577652f69678a0419c468e969
+    with:
+      outcome: failure
+      on_gateway_failure: warn
+      summary: |
+        status: product release failed
+        workflow: ${{ github.event.workflow_run.name }}
+        product version: ${{ needs.failure_identity.outputs.version }}
+        source: ${{ needs.failure_identity.outputs.source }}
+        identity: ${{ needs.failure_identity.outputs.identity }}
+        attempt: ${{ github.event.workflow_run.run_attempt }}
+        url: ${{ github.event.workflow_run.html_url }}
+        note: Retry the original release run; keep its reserved identity and frozen products.
   smoke_test:
     if: ${{ github.event_name == 'workflow_dispatch' }}
     permissions:

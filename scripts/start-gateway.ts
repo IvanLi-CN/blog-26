@@ -4,6 +4,7 @@ import { extname, resolve } from "node:path";
 import { getSsoEmailHeaderName } from "@/lib/admin-config";
 import { extractAuthFromRequest } from "@/lib/auth-utils";
 import { getPublicStaticCacheControl } from "@/lib/public-static-cache-policy";
+import { versionInfo } from "@/lib/version-info";
 import { loadWorktreeEnvFileIfPresent, resolveWorktreePort } from "@/lib/worktree-env";
 import { handleAdminApiRequest } from "@/server/admin-api/router";
 import { handleDevApiRequest } from "@/server/dev-api/router";
@@ -13,6 +14,7 @@ import { handlePublicApiRequest } from "@/server/public-api/router";
 import { handleInternalAssetSourceRequest } from "@/server/public-media";
 import { handleTestApiRequest } from "@/server/test-api/router";
 import { handleTrpcHttpRequest } from "@/server/trpc-http";
+import { handleVersionRequest } from "@/server/version-api";
 
 loadWorktreeEnvFileIfPresent();
 
@@ -484,6 +486,8 @@ const server = Bun.serve({
     const url = new URL(request.url);
     const { pathname, search, searchParams } = url;
     const effectiveRequest = withLocalPreviewIdentity(request, pathname, searchParams);
+
+    if (pathname === "/api/version") return handleVersionRequest(request, versionInfo);
 
     if (pathname === "/api/health") {
       const [siteHealthy, adminHealthy, gatewayApis] = await Promise.all([

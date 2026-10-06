@@ -20,7 +20,7 @@ const oidruneWorkflow =
   "IvanLi-CN/oidrune/.github/workflows/notify.yml@00bbb56c1853eed577652f69678a0419c468e969";
 
 describe("notify-release-failure.yml", () => {
-  for (const jobName of ["smoke_test"]) {
+  for (const jobName of ["smoke_test", "release_failure"]) {
     test(`${jobName} uses the pinned Oidrune workflow without caller secrets`, () => {
       const job = workflow.jobs[jobName];
 

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "repository": "IvanLi-CN/blog-26",
+  "branch": "main",
+  "ledgerBranch": "release-ledger",
+  "versionPolicy": "stable-semver-v1",
+  "impactRecordDirectory": "docs/version-impact",
+  "bootstrap": {
+    "version": "2.7.0",
+    "sourceSha": "ea9fcea19ab9546a9c1b4456d54500866f567540"
+  },
+  "products": {
+    "static": { "assetName": "frontend.tar.gz" },
+    "image": {
+      "repository": "ghcr.io/ivanli-cn/blog-26",
+      "platform": "linux/amd64"
+    }
+  },
+  "qualityPolicy": ".github/quality-gates.json",
+  "automation": {
+    "token": "GITHUB_TOKEN",
+    "actor": "github-actions[bot]",
+    "commitMethod": "createCommitOnBranch"
+  },
+  "artifactRetentionDays": 90,
+  "productionConcurrency": "blog26-edgeone-production",
+  "prepareTimeoutMinutes": 30,
+  "releaseTimeoutMinutes": 180
+}

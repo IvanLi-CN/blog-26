@@ -7,11 +7,14 @@
  */
 
 import { execSync } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 interface VersionInfo {
   version: string;
+  productVersion: string | null;
+  buildVersion: string;
+  sourceSha: string;
   buildDate: string;
   commitHash: string;
   commitShortHash: string;
@@ -163,16 +166,32 @@ function generateVersionInfo(): VersionInfo {
     }
 
     // 生成版本号，如果有未提交的更改则添加 -draft 后缀
-    let version = `${buildDate}-${commitShortHash}`;
+    let version = process.env.BUILD_VERSION || `${buildDate}-${commitShortHash}`;
     if (hasUncommittedChanges) {
       version += "-draft";
     }
 
     // 生成 commit URL
     const commitUrl = `${repositoryUrl}/commit/${commitHash}`;
+    const versionPath = path.resolve("VERSION");
+    const storedProductVersion = existsSync(versionPath)
+      ? readFileSync(versionPath, "utf8").trim()
+      : null;
+    if (
+      storedProductVersion &&
+      !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(storedProductVersion)
+    ) {
+      throw new Error("VERSION must contain a canonical stable product version");
+    }
+    if (process.env.PRODUCT_VERSION && process.env.PRODUCT_VERSION !== storedProductVersion) {
+      throw new Error("Product version does not match the checked-out VERSION file");
+    }
 
     return {
       version,
+      productVersion: storedProductVersion,
+      buildVersion: version,
+      sourceSha: commitHash,
       buildDate,
       commitHash,
       commitShortHash,
@@ -201,6 +220,9 @@ function generateVersionInfo(): VersionInfo {
 
     return {
       version: fallbackVersion,
+      productVersion: null,
+      buildVersion: fallbackVersion,
+      sourceSha: "unknown",
       buildDate,
       commitHash: "unknown",
       commitShortHash: "unknown",
@@ -237,6 +259,12 @@ function main() {
   console.log("🔧 Generating version information...");
 
   const versionInfo = generateVersionInfo();
+  if (
+    process.env.RELEASE_BUILD === "true" &&
+    (!versionInfo.productVersion || !/^[a-f0-9]{40}$/.test(versionInfo.sourceSha))
+  ) {
+    throw new Error("Release builds require an exact product version and source SHA");
+  }
 
   console.log("📋 Version Info:");
   console.log(`  Version: ${versionInfo.version}`);
@@ -275,6 +303,14 @@ function main() {
   }
 
   console.log(`✅ Version info written to: ${outputPath}`);
+  if (!process.env.VERSION_INFO_OUTPUT_PATH) {
+    const publicPath = path.resolve("public/version.json");
+    mkdirSync(path.dirname(publicPath), { recursive: true });
+    writeFileSync(
+      publicPath,
+      `${JSON.stringify({ productVersion: versionInfo.productVersion, buildVersion: versionInfo.buildVersion, sourceSha: versionInfo.sourceSha }, null, 2)}\n`
+    );
+  }
 }
 
 if (import.meta.main) {
