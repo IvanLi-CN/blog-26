@@ -338,6 +338,7 @@ for (const key of fileContents.keys()) {
   addParentDirectoriesFromKey(key);
 }
 directoryPaths.add("local:Hardware");
+const E2E_FIXTURE_SESSION_KEY = "admin-demo-e2e-fixture-editor";
 
 const comments = [
   {
@@ -626,7 +627,15 @@ export function setupAdminDemoApiMocks() {
 }
 
 function isE2eFixtureRoute() {
-  return window.location.pathname === "/admin/posts/editor";
+  if (window.location.pathname !== "/admin/posts/editor") return false;
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("slug") === "react-hooks-deep-dive") {
+    window.sessionStorage.setItem(E2E_FIXTURE_SESSION_KEY, "true");
+    return true;
+  }
+
+  return window.sessionStorage.getItem(E2E_FIXTURE_SESSION_KEY) === "true";
 }
 
 declare global {
