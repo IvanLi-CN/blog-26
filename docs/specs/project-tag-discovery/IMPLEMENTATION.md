@@ -16,19 +16,18 @@
 ## Verification
 
 - `bun run check` and Spec structural contract check pass; existing Biome warnings remain non-blocking.
-- Agent VM runs the required pre-commit suite as an ordinary user: 782 tests, 3516 assertions pass after mainline synchronization. Permission-sensitive rollback tests require a non-root runner. The explicit HTTP compatibility suite passes 94 tests and 531 assertions.
+- Agent VM runs the required pre-commit suite as an ordinary user: 783 tests, 3543 assertions pass after mainline synchronization. Permission-sensitive rollback tests require a non-root runner. The explicit HTTP compatibility suite passes 94 tests and 531 assertions.
 - Tag aggregation, permissions, inline Memo tags, unavailable local media, old-bundle reconstruction, metadata pruning, exact-case matching, cursor IDs containing underscores, admin organizer/icon overview and AI canonical identity have direct automated coverage.
 - Controlled `bun scripts/build-project-tags-demo.ts` builds the actual static Astro templates from an old-format fixture. The full `site:build`, PWA, poster and social-preview artifact checks pass. Mirrored VM source sets `PLAYBOOK_RENDERER_COMMIT` to its full source commit SHA.
 - `bun run console:build` and `bun run build-storybook` pass in Agent VM. Builds run separately within its memory limit.
 - `STORYBOOK_STORY_PREFIX=public-native-tag-link-- bun run test:storybook-interactions` passes all four affected component play functions, including themes, focus, long labels and 393px states.
-- Controlled static, isolated SQLite-backed SSR and `/blog` static fixtures each pass 230 page/theme/viewport checks at 1280, 393, 375, 360 and 320px, for 690 checks overall. These assert complete tags, featured subsets, native navigation, section ordering, counts, minimum targets, focus, overflow, desktop cards, mobile rows, square Logo/Icon regions, original image proportions, fallback SVGs, dated empty states, feeds and unknown-tag 404s.
+- Controlled static, isolated SQLite-backed SSR and `/blog` static fixtures each pass 230 page/theme/viewport checks at 1280, 393, 375, 360 and 320px, for 690 checks overall. These assert complete tags, featured subsets, native navigation, section ordering, counts, minimum targets, focus, overflow, desktop cards, mobile rows, square Logo/Icon regions, original image proportions, fallback SVGs, dated empty states, feeds and unknown-tag 404s. Mobile checks also assert 13px typography, 26–28px single-line pills and non-overlapping hit targets.
 - An official MCP SDK client against the isolated console confirms `tags.list` includes Harness project associations and React with 10 projects and 12 total entities.
 - `readTagRoutePath` reads raw URL segments exactly once. Regression coverage includes spaces, plus, superscripts, reserved characters, literal percent escapes and a `/blog` base path. This avoids Astro's partial URI decoding of reserved characters.
+- The owner confirmed the final four-image mobile density evidence set. The images are stored in the Spec; page normalization retains the original boundaries and the component capture retains the Story-owned 32px margins.
 
 ## Remaining Gaps
 
-- Mobile tag density follows the accepted 13px text / 26px single-line pill design while retaining the 44px link target. The density candidate passes static and SSR builds, all four Storybook plays, 782 pre-commit tests and 230 static browser checks. Fresh validation after canonical mainline synchronization and mobile images remain pending.
-- Screenshot comparison is current-only and awaits owner confirmation before canonical asset persistence.
 - Formal Tier 3 four-lane review and current-head PR/CI convergence remain pending.
 
 ## References

@@ -75,7 +75,15 @@
 
 ## Visual Evidence
 
-- None
+The owner confirmed this mock-only evidence set. Page evidence uses the controlled Astro `ui_demo` fixture at 393×852 with `devtools-emulate`; component evidence uses the `public-native-tag-link--mobile-dark` Storybook canvas bound to 393×852. Page normalization requires no cropping. Component capture includes the declared opaque theme surface and its 32px source-owned margins.
+
+![Mobile project tags, light theme](./assets/mains-aegis-mobile-light.png)
+
+![Mobile homepage tags, light theme](./assets/home-mobile-light.png)
+
+![Mobile project tags, dark theme](./assets/mains-aegis-mobile-dark.png)
+
+![Mobile native tag component, dark theme](./assets/storybook-mobile-dark.png)
 
 ## References
 
