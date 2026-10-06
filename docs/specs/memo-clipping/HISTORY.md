@@ -36,6 +36,8 @@
 
 - PR CI exposed a legacy gateway bootstrap configuration whose content directory does not exist yet. Clipping runtime now skips processor startup for that precise ENOENT state without weakening storage/ownership checks; a focused regression preserves the gateway compatibility boundary.
 
+- Formal review repairs stage cross-source target replacements beside the authored file before atomic rename, and isolate the production-console smoke in a migrated temporary database/content/material root that is removed on completion.
+
 ## References
 
 - [Requirements contract](./SPEC.md)

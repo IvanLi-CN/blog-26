@@ -1,4 +1,3 @@
-import { writeFile } from "node:fs/promises";
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import matter from "gray-matter";
@@ -8,6 +7,7 @@ import { db } from "@/lib/db";
 import { recognizeClippingTarget } from "@/lib/memo-clipping";
 import { posts } from "@/lib/schema";
 import type { TRPCContext } from "@/server/context";
+import { replaceAuthoredContent } from "./authored-write";
 import { getClippingRuntime } from "./runtime";
 import { ClippingStore, clippingIdForMemo, projectClippingMemo, readAuthoredMemo } from "./store";
 
@@ -208,7 +208,10 @@ async function routeClippingRequest(
           : version.targetUrl;
         authored.body = authored.body.replace(first[1], replacement);
       }
-      await writeFile(authored.path, matter.stringify(authored.body, authored.frontmatter), "utf8");
+      await replaceAuthoredContent(
+        authored.path,
+        matter.stringify(authored.body, authored.frontmatter)
+      );
     }
     await runtime().restore(row.id, version.id, parsed.data.replaceTarget);
     return response({ restored: true });

@@ -71,6 +71,8 @@
 - Bind the real-provider article/translation/chat/interruption acceptance to the final committed Candidate; current local observations include an uncommitted parser fix and cannot substitute for final-Candidate evidence.
 - Execute the required runtime review lanes and direct PR delivery gates after final-Candidate empirical acceptance.
 
+- Cross-source restore stages and syncs the replacement before an atomic same-directory rename, preserving file permissions and keeping the original intact on write failure. Production-console smoke fixtures use their own migrated temporary database, authored content, and clipping materials, with final cleanup.
+
 ## References
 
 - [Requirements contract](./SPEC.md)
