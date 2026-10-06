@@ -1,4 +1,5 @@
 import {
+  type ProjectCatalogItem,
   type ProjectDomain,
   type ProjectPublicEntry,
   type ProjectPublicEntryKind,
