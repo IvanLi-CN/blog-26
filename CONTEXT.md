@@ -12,6 +12,22 @@ _Avoid_: 项目橱窗
 A focused public view for one project that brings together its identity, context, visual material, and entry points.
 _Avoid_: 详情页
 
+**项目分类标签**:
+An English classification term attached to a curated project, identifying its technology stack, key engineering approach, or a relevant discovery subject such as AI, Agent, or Harness.
+_Avoid_: 功能清单, 描述性徽章
+
+**原生标签**:
+A classification identity shared by the blog's article, Memo, and curated-project discovery surfaces.
+_Avoid_: 独立项目标签体系, Style Playbook Topic
+
+**标签详情**:
+The focused discovery surface for one 原生标签, bringing together the associated public articles, Memos, and curated projects.
+_Avoid_: 项目专用标签页
+
+**标签分组**:
+A browsing category that organizes several 原生标签. It is distinct from the identity of an individual tag and from a project's product domain.
+_Avoid_: 项目领域, 标签本体
+
 **项目索引卡**:
 A compact project record on the 项目展墙. It contains a poster, title, one-line summary, and only the quick entries the project actually provides.
 _Avoid_: 列表卡片

@@ -19,7 +19,7 @@ const groups = getGroupedTags(snapshot);
           </span>
           <div>
             <h1 class="nature-title text-3xl sm:text-4xl">浏览所有标签</h1>
-            <p class="nature-muted mt-2 text-sm">最新公开内容使用到的标签都会记录在这里。</p>
+            <p class="nature-muted mt-2 text-sm">按标签发现公开文章、闪念与项目。</p>
           </div>
         </div>
         <div class="nature-panel-soft flex items-center gap-4 px-4 py-3 text-sm text-[color:var(--nature-text-soft)]">
@@ -42,7 +42,7 @@ const groups = getGroupedTags(snapshot);
             </div>
 
             <div class="nature-surface nature-mobile-structural p-3 sm:p-4">
-              <div class="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-3 sm:gap-4">
+              <div class="grid grid-cols-[repeat(auto-fill,minmax(min(14rem,100%),1fr))] gap-3 sm:gap-4">
                 {group.items.map((tag) => {
                   const { iconId, iconSvg } = pickTagIconSvg(tag.name, snapshot.tags.tagIconMap, snapshot.tags.tagIconSvgMap);
                   return (
@@ -62,7 +62,7 @@ const groups = getGroupedTags(snapshot);
                           </span>
                           <div class="min-w-0 flex-1">
                             <p class="truncate text-base font-semibold text-[color:var(--nature-text)]">{tag.lastSegment}</p>
-                            <p class="mt-1 text-xs text-[color:var(--nature-text-soft)]">{tag.count} 篇内容</p>
+                            <p class="mt-1 text-xs text-[color:var(--nature-text-soft)]">{tag.postCount} 篇文章 · {tag.memoCount} 条闪念 · {tag.projectCount} 个项目</p>
                           </div>
                           <Icon name="tabler:chevron-right" className="mt-1 h-4 w-4 flex-shrink-0 text-[color:var(--nature-text-faint)] transition group-hover:text-[color:var(--nature-accent-strong)]" />
                         </div>

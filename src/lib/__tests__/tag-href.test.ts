@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { buildTagHref } from "../tag-href";
+import { buildTagHref, readTagRoutePath } from "../tag-href";
 
 describe("buildTagHref", () => {
   it("builds hierarchical tag hrefs without encoding slashes", () => {
@@ -23,5 +23,19 @@ describe("buildTagHref", () => {
     expect(buildTagHref("   ")).toBe("/tags");
     expect(buildTagHref("////")).toBe("/tags");
     expect(buildTagHref("#")).toBe("/tags");
+  });
+});
+
+describe("readTagRoutePath", () => {
+  it("round-trips spaces, plus, superscripts and reserved characters once", () => {
+    for (const tag of ["USB-C PD + PPS", "I²C", "Rust no_std", "Literal %2B", "A?B/C#D"]) {
+      expect(readTagRoutePath(`${buildTagHref(tag)}/`)).toBe(tag);
+      expect(readTagRoutePath(`/blog${buildTagHref(tag)}/feed.xml`, "/blog/tags", true)).toBe(tag);
+    }
+  });
+
+  it("rejects unrelated paths and malformed escapes", () => {
+    expect(readTagRoutePath("/projects/React")).toBe("");
+    expect(readTagRoutePath("/tags/%zz")).toBe("");
   });
 });

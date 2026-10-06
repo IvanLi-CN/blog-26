@@ -35,6 +35,8 @@ type Viewport = { width: number; height: number };
 
 const defaultViewport: Viewport = { width: 1280, height: 900 };
 const storyViewports = new Map<string, Viewport>([
+  ["public-native-tag-link--mobile", { width: 393, height: 852 }],
+  ["public-native-tag-link--mobile-dark", { width: 393, height: 852 }],
   ["public-playbook-resource-browser--mobile", { width: 390, height: 844 }],
   ["public-playbook-resource-browser--mobile-dark", { width: 390, height: 844 }],
   ["public-playbook-resource-browser--narrow-mobile", { width: 320, height: 700 }],
@@ -77,11 +79,16 @@ const storyViewports = new Map<string, Viewport>([
 
 const staticRoot = resolve(process.env.STORYBOOK_STATIC_DIR || "storybook-static");
 const storyFiles = new Set([
+  "./src/components/common/NativeTagLink.stories.tsx",
   "./src/components/playbook/PlaybookPage.stories.tsx",
   "./src/components/playbook/PlaybookResourceBrowser.stories.tsx",
   "./src/components/search/PublicSearchPage.stories.tsx",
 ]);
 const expectedStoryIds = new Set([
+  "public-native-tag-link--default",
+  "public-native-tag-link--dark",
+  "public-native-tag-link--mobile",
+  "public-native-tag-link--mobile-dark",
   "public-playbook-resource-browser--default",
   "public-playbook-resource-browser--markdown-source",
   "public-playbook-resource-browser--narrow-mobile",
@@ -273,8 +280,11 @@ async function main() {
 
   const { server, baseUrl } = await createStaticServer();
   try {
-    for (const storyId of storyIds) await runStory(baseUrl, storyId);
-    process.stdout.write(`Verified ${storyIds.length} Storybook play functions\n`);
+    const prefix = process.env.STORYBOOK_STORY_PREFIX;
+    const selectedStoryIds = prefix ? storyIds.filter((id) => id.startsWith(prefix)) : storyIds;
+    if (!selectedStoryIds.length) throw new Error(`No play stories match ${prefix}`);
+    for (const storyId of selectedStoryIds) await runStory(baseUrl, storyId);
+    process.stdout.write(`Verified ${selectedStoryIds.length} Storybook play functions\n`);
   } finally {
     await new Promise<void>((resolvePromise) => server.close(() => resolvePromise()));
   }

@@ -1,5 +1,6 @@
 import OpenAI, { type APIError } from "openai";
 import type { ChatCompletion } from "openai/resources/chat/completions";
+import { resolveTagGroupIdentities } from "@/lib/tag-group-identity";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import type { TagGroup } from "@/types/tag-groups";
 import { getCurrentGroupCount, validateTagGroupsConfig } from "./tag-groups";
@@ -44,16 +45,6 @@ export async function organizeTagsWithAI(options?: {
   if (tags.length === 0) {
     return { groups: [], model };
   }
-  const normalizeTagName = (value: string): string =>
-    value.trim().normalize("NFKC").replace(/\s+/g, "");
-  const tagLookup = new Map<string, string>();
-  for (const tag of tags) {
-    const key = normalizeTagName(tag.name);
-    if (!tagLookup.has(key)) {
-      tagLookup.set(key, tag.name);
-    }
-  }
-
   const systemPrompt = `You are an information architect for a technical blog. Return ONLY valid JSON with no markdown fences or commentary. If you cannot honour every rule from the user, reply with {"error":"reason"}.`;
   const idealMin = Math.floor(tags.length / targetGroups);
   const idealMax = Math.ceil(tags.length / targetGroups);
@@ -209,29 +200,10 @@ export async function organizeTagsWithAI(options?: {
     throw new Error("AI output is not valid JSON");
   }
 
-  const seenNormalized = new Set<string>();
-  for (const group of parsed.groups) {
-    const canonicalTags: string[] = [];
-    for (const tag of group.tags) {
-      const key = normalizeTagName(tag);
-      const original = tagLookup.get(key);
-      if (!original) {
-        throw new Error(`Tag not found in source list: ${tag}`);
-      }
-      if (seenNormalized.has(key)) {
-        throw new Error(`Tag duplicated across groups: ${original}`);
-      }
-      seenNormalized.add(key);
-      canonicalTags.push(original);
-    }
-    group.tags = canonicalTags;
-  }
-  const missing = tags
-    .filter((tag) => !seenNormalized.has(normalizeTagName(tag.name)))
-    .map((t) => t.name);
-  if (missing.length) {
-    parsed.groups.push({ key: "unassigned", title: "Unassigned", tags: missing });
-  }
+  parsed.groups = resolveTagGroupIdentities(
+    parsed.groups,
+    tags.map((tag) => tag.name)
+  );
 
   const validation = validateTagGroupsConfig(
     { groups: parsed.groups },

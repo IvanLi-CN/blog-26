@@ -1,4 +1,5 @@
 ---
+import TagBadge from "../components/TagBadge.astro";
 import { SITE } from "@/config/site";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import ProjectExternalLinks from "../components/projects/ProjectExternalLinks.astro";
@@ -159,9 +160,9 @@ const featuredProjectLogos = {
 
                 <p class="nature-muted min-h-[4.25rem] text-sm leading-7">{project.summary}</p>
 
-                <div class="flex min-h-8 flex-wrap content-start gap-2">
-                  {project.techTags.slice(0, 2).map((tag) => (
-                    <span class="nature-chip text-xs">{tag}</span>
+                <div class="native-tag-list flex min-h-8 flex-wrap content-start gap-2">
+                  {(project.featuredTags ?? []).map((tag) => (
+                    <TagBadge tag={tag} iconMap={snapshot.tags.tagIconMap} iconSvgMap={snapshot.tags.tagIconSvgMap} />
                   ))}
                 </div>
 

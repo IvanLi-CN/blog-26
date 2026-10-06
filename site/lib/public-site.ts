@@ -11,6 +11,7 @@ import {
   rewritePublicContentMediaUrls,
 } from "@/lib/public-media";
 import { getPublicSiteUrl, toPublicSitePath } from "@/lib/public-runtime-url";
+import { rebuildSnapshotTags } from "@/lib/snapshot-tags";
 import type {
   PublicPostRecord,
   PublicSnapshot,
@@ -92,10 +93,6 @@ function normalizeSnapshotMedia(
   };
 }
 
-type SnapshotTimelineRecord = PublicTagTimelineItem & {
-  media?: PublicMediaCollection | null;
-};
-
 function normalizeSnapshotPaths(
   snapshot: PublicSnapshot,
   preserveSourceDescriptors: boolean
@@ -126,66 +123,7 @@ function normalizeSnapshotPaths(
       filePath: getSnapshotRecordPath(memo),
     }),
   }));
-  const pathByTimelineKey = new Map<string, string>();
-
-  for (const post of posts) {
-    pathByTimelineKey.set(`post:${post.slug}`, post.filePath);
-  }
-  for (const memo of memos) {
-    pathByTimelineKey.set(`memo:${memo.slug}`, memo.filePath);
-  }
-
-  const timelines = Object.fromEntries(
-    Object.entries(snapshot.tags.timelines).map(([tagPath, items]) => [
-      tagPath,
-      items.map((item) => {
-        const timelineItem = item as SnapshotTimelineRecord;
-        const filePath =
-          timelineItem.filePath?.trim() ||
-          pathByTimelineKey.get(`${timelineItem.type}:${timelineItem.slug}`);
-        if (!filePath) {
-          throw new Error(
-            `Public snapshot timeline item ${timelineItem.type}:${timelineItem.slug} is missing a canonical file path`
-          );
-        }
-        const normalizedMemo = memos.find((memo) => memo.slug === timelineItem.slug);
-        return {
-          ...timelineItem,
-          title:
-            timelineItem.type === "memo"
-              ? normalizedMemo
-                ? normalizedMemo.title
-                : normalizeLegacyMemoTitle(
-                    timelineItem.title,
-                    filePath,
-                    timelineItem.content,
-                    timelineItem.slug
-                  )
-              : timelineItem.title,
-          media: normalizeSnapshotMedia(timelineItem.media, preserveSourceDescriptors),
-          filePath,
-          content:
-            timelineItem.type === "memo" && typeof timelineItem.content === "string"
-              ? rewritePublicContentMediaUrls(timelineItem.content, {
-                  kind: "memo",
-                  slug: timelineItem.slug,
-                  filePath,
-                })
-              : timelineItem.content,
-        };
-      }),
-    ])
-  );
-
-  return {
-    ...snapshot,
-    posts,
-    memos,
-    tags: {
-      ...snapshot.tags,
-      timelines,
-    },
-  };
+  return rebuildSnapshotTags({ ...snapshot, posts, memos });
 }
 
 export function getSiteUrl() {

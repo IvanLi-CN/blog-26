@@ -59,6 +59,8 @@ describe("static public site snapshot media", () => {
             slug: "post",
             title: "Post",
             body: "",
+            tags: ["engineering"],
+            publishDate: "2026-10-01T00:00:00.000Z",
             filePath: "posts/post.md",
             media: {
               primary: postMedia,
@@ -74,11 +76,20 @@ describe("static public site snapshot media", () => {
             slug: "memo",
             title: "Memo",
             content: "",
+            tags: [],
+            inlineTags: [],
+            isPublic: true,
+            createdAt: "2026-10-01T00:00:00.000Z",
             filePath: "memos/memo.md",
             media: { primary: memoMedia, cover: null, content: [], attachments: [] },
           },
         ],
         tags: {
+          summaries: [],
+          groups: [],
+          categoryIcons: {},
+          tagIconMap: {},
+          tagIconSvgMap: {},
           timelines: {
             engineering: [
               {
@@ -111,6 +122,7 @@ describe("static public site snapshot media", () => {
     ];
 
     expect(items).toHaveLength(5);
+    expect(snapshot.tags.timelines.engineering?.[0]?.media.primary?.hash).toBe("post-image");
     for (const item of items) {
       expect(item?.sources).toEqual([]);
       expect(item?.variants.content).toMatch(/^\/api\/public\/assets\//u);

@@ -6,7 +6,15 @@ import path from "node:path";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { db, initializeDB } from "@/lib/db";
-import { posts } from "@/lib/schema";
+import { projectCatalog } from "@/lib/project-catalog";
+import { posts, tags } from "@/lib/schema";
+import { readEligibleContent } from "@/server/services/tag-content";
+import {
+  readTagGroupsFromDB,
+  validateTagGroupsConfig,
+  writeTagGroupsToDB,
+} from "@/server/services/tag-groups";
+import { assignTagIcon, getAllTagIcons } from "@/server/services/tag-icons";
 import { getPostsByTag, getTagSummaries } from "@/server/services/tag-service";
 
 const TEST_DB_PATH = path.join(process.cwd(), "tmp/tag-service-test.sqlite");
@@ -91,7 +99,7 @@ async function prepareDB(): Promise<void> {
     public: false,
   });
 
-  // memo entry should be ignored
+  // Memos contribute to the directory, while article queries remain article-only
   await seedPost({
     title: "Memo Entry",
     slug: "memo-entry",
@@ -139,7 +147,22 @@ describe("tag-service", () => {
     const summaries = await getTagSummaries();
     const names = summaries.map((item) => item.name);
 
-    expect(names).toEqual(["backend/api", "platform/design", "frontend/hooks", "frontend/react"]);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "backend",
+        "backend/api",
+        "platform/design",
+        "frontend",
+        "frontend/hooks",
+        "frontend/react",
+        "memo/thoughts",
+        "Harness",
+      ])
+    );
+    expect(summaries.find((item) => item.name === "frontend")?.postCount).toBe(2);
+    expect(summaries.find((item) => item.name === "memo")?.memoCount).toBe(1);
+    expect(summaries.find((item) => item.name === "React")?.projectCount).toBe(10);
+    expect(await getPostsByTag("Harness")).toEqual([]);
 
     const reactSummary = summaries.find((item) => item.name === "frontend/react");
     expect(reactSummary?.count).toBe(2);
@@ -186,6 +209,55 @@ describe("tag-service", () => {
     for (const post of defaultPosts) {
       expect(Array.isArray(post.tags)).toBe(true);
       expect(post.tags.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("discovers project-only tags without writes, then manages their grouping and icon metadata", async () => {
+    await db.delete(tags);
+    const catalogBefore = JSON.stringify(projectCatalog);
+    const summaries = await getTagSummaries({ includeDrafts: true, includeUnpublished: true });
+    expect(await db.select().from(tags)).toEqual([]);
+    const knownTags = summaries.map((tag) => tag.name);
+    const groups = [{ key: "hardware", title: "Hardware", tags: ["I²C", "Harness"] }];
+    expect(validateTagGroupsConfig({ groups }, { knownTags })).toEqual({ valid: true });
+    await writeTagGroupsToDB(groups, knownTags);
+    await assignTagIcon("I²C", "tabler:cpu");
+    expect((await readTagGroupsFromDB()).groups[0].tags.sort()).toEqual(["Harness", "I²C"]);
+    expect((await getAllTagIcons())["I²C"]).toBe("tabler:cpu");
+    expect(JSON.stringify(projectCatalog)).toBe(catalogBefore);
+  });
+
+  it("uses the same existing source/media eligibility boundary for public counts and records", async () => {
+    const originalRoot = process.env.LOCAL_CONTENT_BASE_PATH;
+    process.env.LOCAL_CONTENT_BASE_PATH = path.join(
+      process.cwd(),
+      "tmp/missing-tag-content-fixture"
+    );
+    try {
+      await seedPost({
+        slug: "missing-media",
+        tags: '["MissingMediaTag"]',
+        body: "![missing](missing-image.png)",
+      });
+      await seedPost({ slug: "private", public: false, tags: '["PrivateTag"]' });
+      await seedPost({ slug: "draft-memo", type: "memo", draft: true, body: "#DraftTag" });
+      await seedPost({ slug: "inline-public", type: "memo", body: "#PublicInlineTag" });
+      const content = await readEligibleContent();
+      expect(content.posts).toEqual([]);
+      expect(content.memos.map((memo) => memo.slug)).toEqual(["inline-public"]);
+      const names = (await getTagSummaries()).map((tag) => tag.name);
+      expect(names).toContain("PublicInlineTag");
+      expect(names).not.toContain("MissingMediaTag");
+      expect(names).not.toContain("PrivateTag");
+      expect(names).not.toContain("DraftTag");
+      expect(
+        (await getTagSummaries({ includeDrafts: true, includeUnpublished: true })).map(
+          (tag) => tag.name
+        )
+      ).toEqual(expect.arrayContaining(["PrivateTag", "DraftTag"]));
+    } finally {
+      if (originalRoot === undefined) delete process.env.LOCAL_CONTENT_BASE_PATH;
+      else process.env.LOCAL_CONTENT_BASE_PATH = originalRoot;
     }
   });
 });

@@ -1,29 +1,15 @@
-import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
-import { and, desc, eq } from "drizzle-orm";
-import { getLocalPath, isLocalContentEnabled } from "@/config/paths";
 import { SITE } from "@/config/site";
-import {
-  extractMemoTitle,
-  isGeneratedMemoTitle,
-  parseMarkdownContent,
-} from "@/lib/content-sources/utils";
-import { db, initializeDB } from "@/lib/db";
-import { extractTextSummary } from "@/lib/markdown-utils";
-import {
-  buildLegacyPublicMediaUrl,
-  isLocalPublicMediaDataSource,
-  type PublicMediaCollection,
-  rewritePublicContentMediaUrls,
-} from "@/lib/public-media";
-import { posts } from "@/lib/schema";
-import { parseContentTags } from "@/lib/tag-parser";
-import { safeJsonParse, toMsTimestamp } from "@/lib/utils";
-import { buildPublicMediaCollection, pickLegacyPublicImage } from "@/server/public-media";
+import { projectCatalog } from "@/lib/project-catalog";
+import type { PublicMediaCollection } from "@/lib/public-media";
+import { rebuildSnapshotTags } from "@/lib/snapshot-tags";
+import { buildTagDirectory } from "@/lib/tag-directory";
+import { readEligibleContent } from "@/server/services/tag-content";
 import { readTagGroupsFromDB } from "@/server/services/tag-groups";
 import { resolveTagIconSvgsForTags } from "@/server/services/tag-icon-ssr";
 import { getAllCategoryIcons } from "@/server/services/tag-icons";
-import { getTagSummaries } from "@/server/services/tag-service";
+import type { TagSummary } from "@/types/tags";
+
+export { resolvePublicMemoTitle } from "@/server/services/tag-content";
 
 export interface PublicPostRecord {
   id: string;
@@ -61,12 +47,7 @@ export interface PublicMemoRecord {
   media: PublicMediaCollection;
 }
 
-export interface PublicTagSummary {
-  name: string;
-  segments: string[];
-  lastSegment: string;
-  count: number;
-}
+export type PublicTagSummary = TagSummary;
 
 export interface PublicTagTimelineItem {
   type: "post" | "memo";
@@ -99,104 +80,8 @@ export interface PublicSnapshot {
     tagIconMap: Record<string, string | null>;
     tagIconSvgMap: Record<string, string | null>;
     timelines: Record<string, PublicTagTimelineItem[]>;
+    projectsByTag?: Record<string, string[]>;
   };
-}
-
-function normalizeTags(raw: unknown): string[] {
-  if (!raw) return [];
-  if (Array.isArray(raw)) {
-    return raw.map((tag) => String(tag).trim()).filter(Boolean);
-  }
-  if (typeof raw === "string") {
-    const trimmed = raw.trim();
-    if (!trimmed) return [];
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed)) {
-        return parsed.map((tag) => String(tag).trim()).filter(Boolean);
-      }
-    } catch {
-      // ignore
-    }
-    return trimmed
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean);
-  }
-  return [];
-}
-
-function normalizeMetadata(raw: string | null): Record<string, unknown> {
-  if (!raw) return {};
-  return safeJsonParse<Record<string, unknown>>(raw, {});
-}
-
-function toIso(input: number | null | undefined): string | null {
-  if (input === null || input === undefined) return null;
-  const normalized = toMsTimestamp(input);
-  if (!Number.isFinite(normalized) || normalized <= 0) return null;
-  return new Date(normalized).toISOString();
-}
-
-function resolveMemoTime(row: typeof posts.$inferSelect) {
-  const publishDate = toIso(row.publishDate);
-  const updateDate = toIso(row.updateDate ?? row.lastModified ?? undefined);
-  const createdAt = publishDate ?? updateDate ?? new Date().toISOString();
-  return {
-    createdAt,
-    publishedAt: publishDate,
-    updatedAt: updateDate,
-  };
-}
-
-function getCanonicalFilePath(row: typeof posts.$inferSelect): string {
-  const filePath = row.filePath?.trim() || row.id.trim();
-  if (!filePath) {
-    throw new Error(`Public content row ${row.slug || row.id} is missing a canonical file path`);
-  }
-  return filePath;
-}
-
-function isLocalMemoRow(row: typeof posts.$inferSelect) {
-  return row.dataSource === "local" || row.source === "local";
-}
-
-/**
- * Resolve memo titles at the public read boundary. Legacy rows whose title is
- * exactly the generated filename title are re-read from the local Markdown
- * source; inaccessible sources keep the stored value conservatively.
- */
-export async function resolvePublicMemoTitle(
-  row: typeof posts.$inferSelect
-): Promise<string | null> {
-  const storedTitle = row.title?.trim() || "";
-  if (!storedTitle) return null;
-
-  const filePath = getCanonicalFilePath(row);
-  if (!isLocalMemoRow(row) || !isGeneratedMemoTitle(storedTitle, filePath)) {
-    return storedTitle;
-  }
-
-  if (!isLocalContentEnabled()) {
-    console.warn("[public-snapshot] cannot verify legacy memo title without local source", {
-      slug: row.slug,
-      filePath,
-    });
-    return storedTitle;
-  }
-
-  try {
-    const rawContent = await readFile(getLocalPath(filePath), "utf8");
-    const parsed = parseMarkdownContent(rawContent, filePath);
-    return extractMemoTitle(parsed.frontmatter, parsed.body) || null;
-  } catch (error) {
-    console.warn("[public-snapshot] preserving legacy memo title because source is unavailable", {
-      slug: row.slug,
-      filePath,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return storedTitle;
-  }
 }
 
 function buildRelatedPosts(postList: PublicPostRecord[]): Record<string, string[]> {
@@ -217,207 +102,28 @@ function buildRelatedPosts(postList: PublicPostRecord[]): Record<string, string[
   );
 }
 
-function matchesTag(tagPath: string, tags: string[]): boolean {
-  return tags.some((tag) => tag === tagPath || tag.startsWith(`${tagPath}/`));
-}
-
-function buildTagTimelines(
-  tagPaths: string[],
-  postList: PublicPostRecord[],
-  memoList: PublicMemoRecord[]
-): Record<string, PublicTagTimelineItem[]> {
-  const timelines: Record<string, PublicTagTimelineItem[]> = {};
-
-  for (const tagPath of tagPaths) {
-    const items = [
-      ...postList
-        .filter((post) => matchesTag(tagPath, post.tags))
-        .map<PublicTagTimelineItem>((post) => ({
-          type: "post",
-          slug: post.slug,
-          title: post.title,
-          excerpt: post.excerpt,
-          content: null,
-          publishDate: post.publishDate,
-          tags: post.tags,
-          image: post.image,
-          media: post.media,
-          dataSource: post.dataSource,
-          filePath: post.filePath,
-        })),
-      ...memoList
-        .filter((memo) => matchesTag(tagPath, memo.tags))
-        .map<PublicTagTimelineItem>((memo) => ({
-          type: "memo",
-          slug: memo.slug,
-          title: memo.title,
-          excerpt: memo.excerpt,
-          content: memo.content,
-          publishDate: memo.publishedAt ?? memo.createdAt,
-          tags: memo.tags,
-          image: memo.image,
-          media: memo.media,
-          dataSource: memo.dataSource,
-          filePath: memo.filePath,
-        })),
-    ].sort((a, b) => b.publishDate.localeCompare(a.publishDate));
-
-    timelines[tagPath] = items;
-  }
-
-  return timelines;
-}
-
-function publicMediaItems(media: PublicMediaCollection) {
-  return [media.primary, media.cover, ...media.content, ...media.attachments].filter(
-    (item): item is NonNullable<typeof item> => item !== null
-  );
-}
-
-function hasAvailableLocalMedia(kind: "post" | "memo", row: typeof posts.$inferSelect) {
-  if (!isLocalContentEnabled() || !isLocalPublicMediaDataSource(row.dataSource)) {
-    return true;
-  }
-
-  const media = buildPublicMediaCollection(kind, row);
-  const mediaItems = publicMediaItems(media);
-  const missing = mediaItems.filter((item) => !existsSync(getLocalPath(item.sourcePath)));
-  const contentPath = getCanonicalFilePath(row);
-  if (mediaItems.length > 0 && !existsSync(getLocalPath(contentPath))) {
-    console.warn("[public-snapshot] skipping content with missing local source:", {
-      kind,
-      slug: row.slug,
-      contentPath,
-    });
-    return false;
-  }
-  if (missing.length > 0) {
-    console.warn("[public-snapshot] skipping content with missing local media:", {
-      kind,
-      slug: row.slug,
-      sourcePaths: missing.map((item) => item.sourcePath),
-    });
-    return false;
-  }
-  return true;
-}
-
 export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
-  await initializeDB();
-
-  const rawPosts = await db
-    .select()
-    .from(posts)
-    .where(and(eq(posts.type, "post"), eq(posts.draft, false), eq(posts.public, true)))
-    .orderBy(desc(posts.publishDate));
-
-  const rawMemos = await db
-    .select()
-    .from(posts)
-    .where(and(eq(posts.type, "memo"), eq(posts.draft, false), eq(posts.public, true)))
-    .orderBy(desc(posts.publishDate), desc(posts.id));
-
-  const postList: PublicPostRecord[] = rawPosts
-    .filter((row) => hasAvailableLocalMedia("post", row))
-    .map((row) => {
-      const filePath = getCanonicalFilePath(row);
-      const media = buildPublicMediaCollection("post", row);
-      const publicMediaContext = {
-        kind: "post" as const,
-        slug: row.slug,
-        filePath,
-      };
-      return {
-        id: row.id,
-        slug: row.slug,
-        title: row.title,
-        excerpt: row.excerpt || extractTextSummary(row.body, 180),
-        body: rewritePublicContentMediaUrls(row.body, publicMediaContext),
-        publishDate: toIso(row.publishDate) ?? new Date().toISOString(),
-        updateDate: toIso(row.updateDate),
-        category: row.category,
-        tags: normalizeTags(row.tags),
-        author: row.author,
-        image:
-          pickLegacyPublicImage(media, "cover") ??
-          buildLegacyPublicMediaUrl({
-            mediaPath: row.image,
-            dataSource: row.dataSource,
-            filePath,
-          }),
-        media,
-        dataSource: row.dataSource,
-        filePath,
-        metadata: normalizeMetadata(row.metadata),
-      };
-    });
-
-  const memoList: PublicMemoRecord[] = (
-    await Promise.all(
-      rawMemos
-        .filter((row) => hasAvailableLocalMedia("memo", row))
-        .map(async (row) => {
-          const parsed = parseContentTags(row.body || "");
-          const storedTags = normalizeTags(row.tags);
-          const inlineTags = parsed.tags.map((tag) => tag.name);
-          const mergedTags = Array.from(new Set([...inlineTags, ...storedTags]));
-          const { createdAt, publishedAt, updatedAt } = resolveMemoTime(row);
-          const filePath = getCanonicalFilePath(row);
-          const media = buildPublicMediaCollection("memo", row);
-          const publicMediaContext = {
-            kind: "memo" as const,
-            slug: row.slug,
-            filePath,
-          };
-          const title = await resolvePublicMemoTitle(row);
-          return {
-            id: row.id,
-            slug: row.slug,
-            title,
-            excerpt: row.excerpt || extractTextSummary(parsed.cleanedContent || row.body, 140),
-            content: rewritePublicContentMediaUrls(row.body, publicMediaContext),
-            tags: mergedTags,
-            inlineTags,
-            isPublic: row.public,
-            createdAt,
-            publishedAt,
-            updatedAt,
-            dataSource: row.dataSource,
-            filePath,
-            image:
-              pickLegacyPublicImage(media, "content") ??
-              buildLegacyPublicMediaUrl({
-                mediaPath: row.image,
-                dataSource: row.dataSource,
-                filePath,
-              }),
-            media,
-          };
-        })
-    )
-  ).filter((memo): memo is PublicMemoRecord => Boolean(memo));
-
-  const [tagSummaries, tagGroupsConfig, categoryIcons] = await Promise.all([
-    getTagSummaries({ includeDrafts: false, includeUnpublished: false }),
+  const { posts: postList, memos: memoList } = await readEligibleContent();
+  const tagSummaries = buildTagDirectory([
+    ...postList.map((post) => ({ type: "post" as const, id: post.id, tags: post.tags })),
+    ...memoList.map((memo) => ({ type: "memo" as const, id: memo.id, tags: memo.tags })),
+    ...projectCatalog.map((project) => ({
+      type: "project" as const,
+      id: project.slug,
+      tags: project.techTags,
+    })),
+  ]);
+  const [tagGroupsConfig, categoryIcons] = await Promise.all([
     readTagGroupsFromDB(),
     getAllCategoryIcons(),
   ]);
-
-  const allTagPaths = Array.from(
-    new Set([
-      ...tagSummaries.map((tag) => tag.name),
-      ...postList.flatMap((post) => post.tags),
-      ...memoList.flatMap((memo) => memo.tags),
-    ])
+  const { iconMap, svgMap } = await resolveTagIconSvgsForTags(
+    tagSummaries.map((tag) => tag.name),
+    {
+      svgHeight: "20",
+      includeHashFallback: true,
+    }
   );
-
-  const { iconMap, svgMap } =
-    allTagPaths.length > 0
-      ? await resolveTagIconSvgsForTags(allTagPaths, {
-          svgHeight: "20",
-          includeHashFallback: true,
-        })
-      : { iconMap: {}, svgMap: {} };
 
   const categories = new Map<string, number>();
   for (const post of postList) {
@@ -425,7 +131,7 @@ export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
     categories.set(post.category, (categories.get(post.category) ?? 0) + 1);
   }
 
-  return {
+  return rebuildSnapshotTags({
     generatedAt: new Date().toISOString(),
     site: SITE,
     stats: {
@@ -436,19 +142,14 @@ export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
     memos: memoList,
     relatedPosts: buildRelatedPosts(postList),
     tags: {
-      summaries: tagSummaries.map((tag) => ({
-        name: tag.name,
-        segments: tag.segments,
-        lastSegment: tag.lastSegment,
-        count: tag.count,
-      })),
+      summaries: tagSummaries,
       groups: tagGroupsConfig.groups,
       categoryIcons,
       tagIconMap: iconMap,
       tagIconSvgMap: svgMap,
-      timelines: buildTagTimelines(allTagPaths, postList, memoList),
+      timelines: {},
     },
-  };
+  });
 }
 
 export async function writePublicSnapshot(outputPath: string) {

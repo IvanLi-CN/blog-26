@@ -1,7 +1,9 @@
 import type { APIRoute } from "astro";
 import { shouldReturnNotModified } from "@/lib/rss";
+import { readTagRoutePath } from "@/lib/tag-href";
 import { buildTagFeed } from "../../../lib/feeds";
 import { getSnapshot } from "../../../lib/public-site";
+import { toPublicSitePath } from "../../../lib/runtime-urls";
 
 export async function getStaticPaths() {
   const snapshot = await getSnapshot();
@@ -11,11 +13,11 @@ export async function getStaticPaths() {
   }));
 }
 
-export const GET: APIRoute = async ({ props, params, request }) => {
+export const GET: APIRoute = async ({ props, request, url }) => {
   const snapshot = await getSnapshot();
   const tagPath =
     (props.tagPath as string | undefined) ||
-    (params.tagSegments || "").split("/").filter(Boolean).join("/");
+    readTagRoutePath(url.pathname, toPublicSitePath("/tags") ?? "/tags", true);
   const summary = snapshot.tags.summaries.find(
     (candidate) => candidate.segments.join("/") === tagPath || candidate.name === tagPath
   );

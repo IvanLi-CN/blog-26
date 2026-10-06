@@ -91,7 +91,7 @@ function createLegacySnapshot(): PublicSnapshot {
           segments: ["Notes"],
           lastSegment: "Notes",
           count: 2,
-        },
+        } as PublicSnapshot["tags"]["summaries"][number],
       ],
       groups: [],
       categoryIcons: {},
@@ -165,7 +165,7 @@ describe("public snapshot compatibility", () => {
       const loaded = await getSnapshot();
 
       expect(loaded.memos[0]?.title).toBeNull();
-      expect(loaded.tags.timelines.Notes?.[1]?.title).toBeNull();
+      expect(loaded.tags.timelines.Notes?.find((item) => item.type === "memo")?.title).toBeNull();
       expect(buildMemosFeed(loaded).rss).toContain("无标题闪念 · 2025年7月6日");
       expect(buildTagFeed(loaded, "Notes").rss).toContain("无标题闪念 · 2025年7月6日");
       expect(getMemoMetadataTitle(loaded.memos[0]?.title, loaded.memos[0]?.publishedAt)).toBe(
@@ -202,7 +202,9 @@ describe("public snapshot compatibility", () => {
       const loaded = await getSnapshot();
 
       expect(loaded.memos[0]?.title).toBe("Frontmatter memo title");
-      expect(loaded.tags.timelines.Notes?.[1]?.title).toBe("Frontmatter memo title");
+      expect(loaded.tags.timelines.Notes?.find((item) => item.type === "memo")?.title).toBe(
+        "Frontmatter memo title"
+      );
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -230,7 +232,7 @@ describe("public snapshot compatibility", () => {
       const loaded = await getSnapshot();
 
       expect(loaded.memos[0]?.title).toBeNull();
-      expect(loaded.tags.timelines.Notes?.[1]?.title).toBeNull();
+      expect(loaded.tags.timelines.Notes?.find((item) => item.type === "memo")?.title).toBeNull();
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -260,7 +262,9 @@ describe("public snapshot compatibility", () => {
       const loaded = await getSnapshot();
 
       expect(loaded.memos[0]?.title).toBe("Actual memo heading");
-      expect(loaded.tags.timelines.Notes?.[1]?.title).toBe("Actual memo heading");
+      expect(loaded.tags.timelines.Notes?.find((item) => item.type === "memo")?.title).toBe(
+        "Actual memo heading"
+      );
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -346,7 +350,7 @@ describe("public snapshot compatibility", () => {
 
       expect(loaded.memos[0]?.content).toContain("/api/public/assets/memo/legacy-webdav-memo/");
       expect(loaded.memos[0]?.content).not.toContain("/api/files/");
-      expect(loaded.tags.timelines.Notes?.[1]?.content).toContain(
+      expect(loaded.tags.timelines.Notes?.find((item) => item.type === "memo")?.content).toContain(
         "/api/public/assets/memo/legacy-webdav-memo/"
       );
     } finally {

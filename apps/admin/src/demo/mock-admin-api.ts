@@ -366,12 +366,15 @@ const tagGroups: TagGroup[] = [
   { key: "ops", title: "Operations", tags: ["Kubernetes", "Ops"] },
 ];
 
-const tagSummaries: TagSummary[] = [
-  { name: "React", count: 1 },
-  { name: "Redis", count: 1 },
-  { name: "GraphQL", count: 1 },
-  { name: "Kubernetes", count: 1 },
-];
+const tagSummaries: TagSummary[] = ["React", "Redis", "GraphQL", "Kubernetes"].map((name) => ({
+  name,
+  segments: [name],
+  lastSegment: name,
+  count: 1,
+  postCount: 1,
+  memoCount: 0,
+  projectCount: 0,
+}));
 
 let pats: PersonalAccessTokenListRow[] = [
   createPat("pat-1", "CI deploy token", now - 8 * 86_400_000, null),

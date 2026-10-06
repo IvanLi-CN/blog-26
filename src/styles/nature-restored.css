@@ -806,3 +806,41 @@
     }
   }
 }
+
+/* Static native tag links share the Nature UI pointer and narrow-screen contract. */
+.native-tag-link {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 100%;
+  align-items: center;
+}
+.native-tag-link-surface {
+  min-width: 0;
+  max-width: 100%;
+}
+.native-tag-link-label {
+  overflow-wrap: anywhere;
+}
+.native-tag-link:focus-visible {
+  outline: 2px solid var(--nature-accent-strong);
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+@media (max-width: 639px) {
+  .native-tag-link-surface {
+    padding: 3px 8px;
+    font-size: 13px;
+    line-height: 18px;
+  }
+  .native-tag-list {
+    column-gap: 4px;
+    row-gap: 0;
+  }
+}
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  .native-tag-link {
+    min-width: 32px;
+    min-height: 32px;
+  }
+}

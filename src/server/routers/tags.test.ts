@@ -184,4 +184,63 @@ describe("tagsRouter.timeline", () => {
     const uniqueIds = new Set(allIds);
     expect(uniqueIds.size).toBe(allIds.length);
   });
+
+  it("merges inline memo tags, excludes private/draft rows, and retains projects across pages", async () => {
+    const date = Date.parse("2026-01-01T00:00:00Z");
+    await seedPost({
+      id: "z_underscored",
+      slug: "public-post",
+      tags: '["React"]',
+      publishDate: date,
+    });
+    await seedPost({
+      id: "a_underscored",
+      slug: "inline-memo",
+      type: "memo",
+      body: "A thought #React",
+      publishDate: date,
+    });
+    await seedPost({ slug: "private", public: false, tags: '["React"]', publishDate: date + 10 });
+    await seedPost({
+      slug: "draft-memo",
+      type: "memo",
+      draft: true,
+      body: "#React",
+      publishDate: date + 20,
+    });
+    const caller = createCaller(false);
+    const first = await caller.tags.timeline({ tagPath: "React", limit: 1 });
+    const second = await caller.tags.timeline({
+      tagPath: "React",
+      limit: 1,
+      cursor: first.nextCursor,
+    });
+    expect(first.items.map((item) => item.slug)).toEqual(["public-post"]);
+    expect(second.items.map((item) => item.slug)).toEqual(["inline-memo"]);
+    expect(second.hasMore).toBe(false);
+    expect(first.projects).toHaveLength(10);
+    expect(second.projects).toEqual(first.projects);
+    expect(first.projects[0]).toMatchObject({
+      slug: "codex-vibe-monitor",
+      path: "/projects/codex-vibe-monitor",
+    });
+    expect(
+      (await createCaller(true).tags.timeline({ tagPath: "React", limit: 50 })).items
+    ).toHaveLength(4);
+  });
+
+  it("matches canonical case and punctuation without SQL wildcard semantics", async () => {
+    await seedPost({ slug: "canonical", tags: '["Rust no_std"]' });
+    await seedPost({ slug: "wildcard-lookalike", tags: '["Rust noXstd"]' });
+    await seedPost({ slug: "case-lookalike", tags: '["rust no_std"]' });
+    expect(
+      (await createCaller(false).tags.timeline({ tagPath: "Rust no_std" })).items.map(
+        (item) => item.slug
+      )
+    ).toEqual(["canonical"]);
+    const projectOnly = await createCaller(false).tags.timeline({ tagPath: "I%C2%B2C" });
+    expect(projectOnly.items).toEqual([]);
+    expect(projectOnly.projects.map((project) => project.title)).toEqual(["IsolaRail"]);
+    expect(projectOnly.hasMore).toBe(false);
+  });
 });

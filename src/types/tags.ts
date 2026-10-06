@@ -3,6 +3,9 @@ export type TagSummary = {
   segments: string[];
   lastSegment: string;
   count: number;
+  postCount: number;
+  memoCount: number;
+  projectCount: number;
 };
 
 export type TaggedPost = {

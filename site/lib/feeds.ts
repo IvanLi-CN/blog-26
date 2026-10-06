@@ -1,5 +1,6 @@
 import { SITE } from "@/config/site";
 import { type BuiltFeed, buildFeed } from "@/lib/rss";
+import { buildTagHref } from "@/lib/tag-href";
 import type { PublicSnapshot } from "@/public-site/snapshot";
 import {
   buildTagFeedItems,
@@ -107,7 +108,7 @@ export function buildTagFeed(snapshot: PublicSnapshot, tagPath: string): BuiltFe
   );
   return buildFeed(
     {
-      ...buildMeta(`/tags/${tagPath}/feed.xml`),
+      ...buildMeta(`${buildTagHref(tagPath)}/feed.xml`),
       title: `${SITE.title} · #${tagPath}`,
       description: `标签 #${tagPath} 的公开订阅`,
     },
