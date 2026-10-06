@@ -87,6 +87,7 @@ describe("playbook deployment boundaries", () => {
       (step) => step.name === "Require paused automatic updates"
     );
     expect(rollbackPause?.env?.ENABLED).toBe("$" + "{{ vars.PLAYBOOK_INTEGRATION_ENABLED }}");
+    expect(rollbackPause?.run).toBe('test "$ENABLED" != true');
     const rollbackStep = rollback.jobs.rollback.steps?.find(
       (step) => step.run === "bun scripts/playbook-content-update.ts"
     );
@@ -97,6 +98,11 @@ describe("playbook deployment boundaries", () => {
       (step) => step.name === "Require Playbook integration for application releases"
     );
     expect(applicationReleaseGuard?.if).toContain("vars.PLAYBOOK_INTEGRATION_ENABLED != 'true'");
+    expect(applicationReleaseGuard?.shell).toBe("bash");
+    expect(applicationReleaseGuard?.run).toContain("exit 1");
+    expect(applicationReleaseGuard?.run).toContain(
+      "Application releases require PLAYBOOK_INTEGRATION_ENABLED=true"
+    );
     const updateScript = await readFile("scripts/playbook-content-update.ts", "utf8");
     expect(updateScript).toContain('process.env.PLAYBOOK_INTEGRATION_ENABLED === "true"');
     expect(updateScript).toContain("Initial Playbook edition must be deployed through");
@@ -187,6 +193,7 @@ describe("playbook deployment boundaries", () => {
     }
   });
   test("the public pointer is fixed in code and is not a GitHub Actions setting", async () => {
+    const schemaText = await readFile("src/lib/playbook/schema.ts", "utf8");
     const updateText = await readFile(".github/workflows/playbook-content-update.yml", "utf8");
     const releaseText = await readFile(".github/workflows/release.yml", "utf8");
     const update = load(updateText) as { jobs: { production: ReleaseJob } };
@@ -200,16 +207,24 @@ describe("playbook deployment boundaries", () => {
       (step) => step.name === "Prepare the exact Playbook console seed for image build"
     );
 
+    expect(schemaText).toContain(
+      'PLAYBOOK_PUBLIC_POINTER_URL = "https://ivanli.cc/_content/playbook/manifest.json"'
+    );
     expect(updateStep?.env).not.toHaveProperty("PLAYBOOK_MANIFEST_URL");
     expect(seedStep?.env).not.toHaveProperty("PLAYBOOK_MANIFEST_URL");
-    for (const file of [
-      "scripts/fetch-initial-playbook.ts",
-      "scripts/prepare-playbook-edition.ts",
-      "scripts/prepare-console-playbook-seed.ts",
-      "scripts/playbook-content-update.ts",
-      "src/lib/playbook/cache.ts",
+    for (const [file, expectedConsumer] of [
+      ["scripts/fetch-initial-playbook.ts", "readPublicPointer(PLAYBOOK_PUBLIC_POINTER_URL)"],
+      ["scripts/prepare-playbook-edition.ts", "const manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL"],
+      [
+        "scripts/prepare-console-playbook-seed.ts",
+        "options.manifestUrl || PLAYBOOK_PUBLIC_POINTER_URL",
+      ],
+      ["scripts/playbook-content-update.ts", "const manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL"],
+      ["src/lib/playbook/cache.ts", "sync(manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL)"],
     ]) {
-      expect(await readFile(file, "utf8")).not.toContain("process.env.PLAYBOOK_MANIFEST_URL");
+      const source = await readFile(file, "utf8");
+      expect(source).toContain(expectedConsumer);
+      expect(source).not.toContain("process.env.PLAYBOOK_MANIFEST_URL");
     }
   });
   test("initial application bootstrap uses the latest ready stable release without a pinned ID", async () => {
