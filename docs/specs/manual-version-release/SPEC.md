@@ -48,6 +48,8 @@
 
 手动工作流 MUST 仅接受可选字符串 `version`，且仅从 main 发起。规范版本为 `X.Y.Z`；预发布和构建元数据不属于产品版本。自动版本 MUST 满足整个待发布区间最高 verified 影响的必要升级，并高于所有已占用版本。指定版本 MUST 同时满足这两项约束。公开 API 与持久状态兼容性 MUST 分别保留 planned、current、verified 结论及与当前文件 blob 绑定的证据；证据缺失、过期或未覆盖时停止。
 
+语义证据过期指可信基线、待发布变更范围、文件或验证见证 blob、公开 API 或持久状态兼容性假设发生变化，原 verified 结论不再覆盖当前来源。评估时间用于审计，不设置仅按经过天数失效的期限。
+
 ### REQ-MVR-009
 
 预留更新 MUST 通过 GraphQL `createCommitOnBranch` 绑定登记分支旧 `expectedHeadOid`，产生唯一父提交并原子比较交换。准备 PR MUST 使用内置 `GITHUB_TOKEN` 创建 GitHub 签名、Verified、Signed-off-by 提交，并采用 squash 自动合并；主干来源移动后 MUST 阻断旧准备。关闭未合并 PR MUST 废弃预留，版本不得再次分配。

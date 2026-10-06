@@ -99,6 +99,65 @@ const serverArtifactSchema = z.object({
   digest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
   workflow_run: z.object({ id: z.number().int().positive() }),
 });
+
+export function assertNeverFrozen(
+  github: GitHubRelease,
+  entry: ReleaseEntry,
+  kind: ArtifactManifest["kind"]
+): void {
+  const run = z
+    .object({
+      id: z.number().int().positive(),
+      run_attempt: z.number().int().positive(),
+      event: z.literal("workflow_run"),
+      path: z.literal(".github/workflows/product-release.yml"),
+      head_branch: z.literal("main"),
+      head_repository: z.object({ full_name: z.literal(github.contract.repository) }),
+    })
+    .parse(github.api(`${github.root}/actions/runs/${entry.releaseRunId}`));
+  if (run.id !== entry.releaseRunId) throw new Error("Original release run identity changed");
+  const completedFreezeSteps =
+    kind === "inputs"
+      ? ["Freeze public build inputs under the production lock", "Retain frozen inputs for 90 days"]
+      : [
+          "Build the static frontend and full-feature image",
+          "Retain both immutable products for 90 days",
+        ];
+  for (let attempt = 1; attempt <= run.run_attempt; attempt++) {
+    const jobs = github.pages(
+      `${github.root}/actions/runs/${run.id}/attempts/${attempt}/jobs?per_page=100`,
+      "jobs"
+    );
+    const production = jobs
+      .map((raw) =>
+        z
+          .object({
+            name: z.string(),
+            status: z.string(),
+            steps: z.array(
+              z.object({ name: z.string(), status: z.string(), conclusion: z.string().nullable() })
+            ),
+          })
+          .parse(raw)
+      )
+      .filter((job) => job.name === "production");
+    if (
+      production.length !== 1 ||
+      (attempt < run.run_attempt && production[0]?.status !== "completed")
+    )
+      throw new Error("Original freeze history is unavailable; recovery is blocked");
+    if (
+      production[0]?.steps.some(
+        (step) =>
+          completedFreezeSteps.includes(step.name) &&
+          step.status === "completed" &&
+          step.conclusion === "success"
+      )
+    )
+      throw new Error("Unbound frozen artifact was lost; recovery is blocked");
+  }
+}
+
 export function findArtifact(
   github: GitHubRelease,
   entry: ReleaseEntry,
@@ -115,6 +174,8 @@ export function findArtifact(
   const recorded = entry[kind];
   if (!artifact) {
     if (recorded) throw new Error("Frozen artifact was removed; recovery is blocked");
+    // An upload may succeed before the ledger bind. Its native run history survives artifact loss.
+    assertNeverFrozen(github, entry, kind);
     return undefined;
   }
   if (artifact.expired) throw new Error("Frozen artifact expired; recovery is blocked");

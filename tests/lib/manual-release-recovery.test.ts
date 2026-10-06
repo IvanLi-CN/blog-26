@@ -3,7 +3,8 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import contractJson from "../../.github/release-contract.json";
-import { sealDirectory, verifyDirectory } from "../../src/lib/release/artifacts";
+import { findArtifact, sealDirectory, verifyDirectory } from "../../src/lib/release/artifacts";
+import { GitHubRelease } from "../../src/lib/release/github";
 import {
   initialLedger,
   type LedgerStore,
@@ -86,6 +87,59 @@ function proofs(entry: ReleaseEntry) {
   };
 }
 describe("frozen release recovery", () => {
+  test("lost artifacts before ledger binding cannot cause re-freezing or rebuilding", () => {
+    const { entry: original } = frozenStore();
+    const entry = { ...original, stage: "merged" as const, products: undefined, inputs: undefined };
+    let completedStep = "";
+    let previousStatus = "completed";
+    const github = new GitHubRelease(contract, "github-actions", {
+      request(endpoint) {
+        if (endpoint.includes("/artifacts?")) return [{ artifacts: [] }];
+        if (endpoint.endsWith("/runs/7"))
+          return {
+            id: 7,
+            run_attempt: 2,
+            event: "workflow_run",
+            path: ".github/workflows/product-release.yml",
+            head_branch: "main",
+            head_repository: { full_name: contract.repository },
+          };
+        if (endpoint.includes("/jobs?"))
+          return [
+            {
+              jobs: [
+                {
+                  name: "production",
+                  status: endpoint.includes("/attempts/1/") ? previousStatus : "in_progress",
+                  steps:
+                    endpoint.includes("/attempts/1/") && completedStep
+                      ? [{ name: completedStep, status: "completed", conclusion: "success" }]
+                      : [],
+                },
+              ],
+            },
+          ];
+        throw new Error(`Unexpected read ${endpoint}`);
+      },
+      command() {
+        throw new Error("Recovery validation cannot issue external writes");
+      },
+    });
+    expect(findArtifact(github, entry, "inputs")).toBeUndefined();
+    expect(findArtifact(github, entry, "products")).toBeUndefined();
+    for (const [kind, step] of [
+      ["inputs", "Freeze public build inputs under the production lock"],
+      ["inputs", "Retain frozen inputs for 90 days"],
+      ["products", "Build the static frontend and full-feature image"],
+      ["products", "Retain both immutable products for 90 days"],
+    ] as const) {
+      completedStep = step;
+      expect(() => findArtifact(github, entry, kind)).toThrow("lost");
+    }
+    completedStep = "";
+    previousStatus = "in_progress";
+    expect(() => findArtifact(github, entry, "inputs")).toThrow("unavailable");
+  });
   test("deployment failure resumes without republishing either immutable product", async () => {
     const { store, id, entry } = frozenStore();
     const proof = proofs(entry);
