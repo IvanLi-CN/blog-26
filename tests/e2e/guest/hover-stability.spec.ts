@@ -69,6 +69,52 @@ async function expectStableLiftHover(page: Page, hitbox: Locator) {
   expect(sweepTransform).not.toBe("none");
 }
 
+async function expectStablePlaybookTabHover(page: Page, tab: Locator) {
+  await expect(tab).toBeVisible();
+
+  const beforeHover = await tab.boundingBox();
+  expect(beforeHover).not.toBeNull();
+
+  if (!beforeHover) {
+    throw new Error("Playbook tab is missing a measurable hitbox");
+  }
+
+  await tab.evaluate((element) => {
+    element.dataset.pointerEnterCount = "0";
+    element.dataset.pointerLeaveCount = "0";
+    element.addEventListener("pointerenter", () => {
+      element.dataset.pointerEnterCount = String(Number(element.dataset.pointerEnterCount) + 1);
+    });
+    element.addEventListener("pointerleave", () => {
+      element.dataset.pointerLeaveCount = String(Number(element.dataset.pointerLeaveCount) + 1);
+    });
+  });
+
+  const pointer = {
+    x: beforeHover.x + beforeHover.width / 2,
+    y: beforeHover.y + beforeHover.height - 1,
+  };
+  await page.mouse.move(pointer.x, pointer.y);
+  await page.waitForTimeout(500);
+
+  const afterHover = await tab.boundingBox();
+  expect(afterHover).not.toBeNull();
+
+  if (!afterHover) {
+    throw new Error("Playbook tab lost its measurable hitbox after hover");
+  }
+
+  const hoverState = await tab.evaluate((element) => ({
+    hovered: element.matches(":hover"),
+    pointerEnterCount: Number(element.dataset.pointerEnterCount),
+    pointerLeaveCount: Number(element.dataset.pointerLeaveCount),
+  }));
+
+  expect(hoverState).toEqual({ hovered: true, pointerEnterCount: 1, pointerLeaveCount: 0 });
+  expect(Math.abs(afterHover.x - beforeHover.x)).toBeLessThan(0.5);
+  expect(Math.abs(afterHover.y - beforeHover.y)).toBeLessThan(0.5);
+}
+
 test.describe("Public hover stability @targeted", () => {
   test("timeline cards, tag cards, and search results keep a stable hitbox while lifted", async ({
     page,
@@ -84,5 +130,19 @@ test.describe("Public hover stability @targeted", () => {
     await gotoWithTheme(page, "/search?q=Hello", "light");
     const searchResultLink = page.locator('main a.nature-hover-hitbox[href^="/posts/"]').first();
     await expectStableLiftHover(page, searchResultLink);
+  });
+
+  test("playbook category tabs keep their hitboxes stable at the hover boundary", async ({
+    page,
+  }) => {
+    await gotoWithTheme(page, "/playbook", "light");
+
+    const tabs = page.getByRole("tab");
+    await expect(tabs).toHaveCount(4);
+
+    for (let index = 0; index < 4; index += 1) {
+      await expectStablePlaybookTabHover(page, tabs.nth(index));
+      await page.mouse.move(0, 0);
+    }
   });
 });
