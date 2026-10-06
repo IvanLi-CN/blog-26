@@ -10,15 +10,21 @@ import {
   samePlaybookEdition,
 } from "../src/lib/playbook/manifest";
 import { deployContent, type ReleaseTrigger, resolveRelease } from "../src/lib/playbook/release";
+import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
 
-const enabled = process.env.PLAYBOOK_CONTENT_UPDATES_ENABLED === "true";
+const enabled = process.env.PLAYBOOK_INTEGRATION_ENABLED === "true";
 const rollback = process.env.PLAYBOOK_ROLLBACK === "true";
+const manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL;
 if (!rollback && !enabled) {
   console.log("Playbook automatic updates are paused");
   process.exit(0);
 }
 if (rollback && enabled) throw new Error("Pause automatic updates before explicit rollback");
 if (!process.env.GITHUB_EVENT_PATH) throw new Error("A GitHub event file is required");
+if (!rollback && !(await readPublicPointer(manifestUrl))) {
+  console.log("Initial Playbook edition must be deployed through the normal application release");
+  process.exit(0);
+}
 const event = JSON.parse(await readFile(process.env.GITHUB_EVENT_PATH, "utf8"));
 const input: ReleaseTrigger =
   process.env.GITHUB_EVENT_NAME === "schedule" ? { mode: "reconcile" } : event.inputs;
@@ -41,8 +47,6 @@ await writeFile(
   encodeJson(selected.manifest)
 );
 await writeFile(resolve(bundleRoot, "playbook-public.tar.gz"), archive);
-const manifestUrl =
-  process.env.PLAYBOOK_MANIFEST_URL || "https://ivanli.cc/_content/playbook/manifest.json";
 let buildNumber = 0;
 let rendererRoot = "";
 async function run(

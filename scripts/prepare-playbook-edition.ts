@@ -12,6 +12,7 @@ import {
   parseEditionIdentity,
   samePlaybookEdition,
 } from "../src/lib/playbook/manifest";
+import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
 
 const publicRoot = resolve("public");
 const seedPath = resolve("site/generated/playbook-edition.json");
@@ -23,8 +24,7 @@ const renderer =
   process.env.COMMIT_HASH ||
   process.env.GITHUB_SHA ||
   (await Bun.$`git rev-parse HEAD`.text()).trim();
-const manifestUrl =
-  process.env.PLAYBOOK_MANIFEST_URL || "https://ivanli.cc/_content/playbook/manifest.json";
+const manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL;
 const working = resolve(process.env.PLAYBOOK_WORK_DIR || ".tmp/playbook");
 let bundleRoot = process.env.PLAYBOOK_BUNDLE_DIR;
 let current: Awaited<ReturnType<typeof readPublicPointer>>;

@@ -24,7 +24,7 @@ permissions:
   contents: read
 jobs:
   production:
-    if: ${{ vars.PLAYBOOK_CONTENT_UPDATES_ENABLED == 'true' }}
+    if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     concurrency:
@@ -47,8 +47,7 @@ jobs:
         run: bun scripts/playbook-content-update.ts
         env:
           GH_TOKEN: ${{ secrets.PLAYBOOK_SOURCE_TOKEN }}
-          PLAYBOOK_CONTENT_UPDATES_ENABLED: ${{ vars.PLAYBOOK_CONTENT_UPDATES_ENABLED }}
-          PLAYBOOK_MANIFEST_URL: https://ivanli.cc/_content/playbook/manifest.json
+          PLAYBOOK_INTEGRATION_ENABLED: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED }}
           PUBLIC_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL || 'https://console.ivanli.cc' }}
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://ivanli.cc' }}
           PUBLIC_SITE_BASE_PATH: ${{ vars.PUBLIC_SITE_BASE_PATH || '/' }}

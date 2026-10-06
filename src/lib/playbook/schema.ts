@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const PLAYBOOK_REPOSITORY = "IvanLi-CN/style-playbook-skills";
+export const PLAYBOOK_PUBLIC_POINTER_URL = "https://ivanli.cc/_content/playbook/manifest.json";
 export const PLAYBOOK_MAX_MANIFEST_BYTES = 64 * 1024;
 export const PLAYBOOK_MAX_BUNDLE_BYTES = 64 * 1024 * 1024;
 export const digestSchema = z.string().regex(/^[a-f0-9]{64}$/);

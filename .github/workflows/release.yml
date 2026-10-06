@@ -101,6 +101,16 @@ jobs:
           PR_NUMBER_OVERRIDE: ${{ env.RELEASE_PR_NUMBER }}
         run: bash ./.github/scripts/release-intent.sh
 
+      - name: Require Playbook integration for application releases
+        if: >-
+          steps.intent.outputs.should_release == 'true' &&
+          (steps.intent.outputs.frontend_release == 'true' || steps.intent.outputs.backend_release == 'true') &&
+          vars.PLAYBOOK_INTEGRATION_ENABLED != 'true'
+        shell: bash
+        run: |
+          echo "Application releases require PLAYBOOK_INTEGRATION_ENABLED=true so the deployed Playbook edition is preserved." >&2
+          exit 1
+
       - name: Compute frontend release version/tag
         if: ${{ steps.intent.outputs.should_release == 'true' && steps.intent.outputs.frontend_release == 'true' }}
         id: frontend-version
@@ -949,7 +959,6 @@ jobs:
         if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
         env:
           PLAYBOOK_BUNDLE_DIR: ${{ steps.playbook-initial.outputs.bundle_dir }}
-          PLAYBOOK_MANIFEST_URL: ${{ vars.PLAYBOOK_MANIFEST_URL || 'https://ivanli.cc/_content/playbook/manifest.json' }}
           PLAYBOOK_SEED_INPUT_PATH: ${{ needs.deploy_frontend_edgeone.result == 'success' && './site/generated/playbook-edition.json' || '' }}
           PLAYBOOK_USE_DEPLOYED: 'true'
           COMMIT_HASH: ${{ needs.prepare.outputs.head_sha }}

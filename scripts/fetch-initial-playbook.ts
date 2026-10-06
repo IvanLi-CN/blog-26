@@ -5,13 +5,9 @@ import { readPublicArchive } from "../src/lib/playbook/bundle";
 import { githubReleaseReader } from "../src/lib/playbook/github";
 import { encodeJson } from "../src/lib/playbook/manifest";
 import { resolveRelease } from "../src/lib/playbook/release";
+import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
 
-if (
-  await readPublicPointer(
-    process.env.PLAYBOOK_MANIFEST_URL || "https://ivanli.cc/_content/playbook/manifest.json"
-  )
-)
-  process.exit(0);
+if (await readPublicPointer(PLAYBOOK_PUBLIC_POINTER_URL)) process.exit(0);
 const reader = githubReleaseReader();
 const selected = await resolveRelease(reader, { mode: "reconcile" });
 if (!selected)

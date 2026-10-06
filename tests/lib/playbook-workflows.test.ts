@@ -25,7 +25,7 @@ type ReleaseJob = {
 };
 
 describe("playbook deployment boundaries", () => {
-  test("all production jobs share the same lock and automatic updates start disabled", async () => {
+  test("all production jobs share the same lock and automatic updates follow integration", async () => {
     const update = load(
       await readFile(".github/workflows/playbook-content-update.yml", "utf8")
     ) as {
@@ -76,7 +76,30 @@ describe("playbook deployment boundaries", () => {
       "publish_frontend",
       "deploy_frontend_edgeone",
     ]);
-    expect(update.jobs.production.if).toContain("PLAYBOOK_CONTENT_UPDATES_ENABLED == 'true'");
+    expect(update.jobs.production.if).toContain("PLAYBOOK_INTEGRATION_ENABLED == 'true'");
+    const updateStep = update.jobs.production.steps.find(
+      (step) => step.run === "bun scripts/playbook-content-update.ts"
+    );
+    expect(updateStep?.env?.PLAYBOOK_INTEGRATION_ENABLED).toBe(
+      "$" + "{{ vars.PLAYBOOK_INTEGRATION_ENABLED }}"
+    );
+    const rollbackPause = rollback.jobs.rollback.steps?.find(
+      (step) => step.name === "Require paused automatic updates"
+    );
+    expect(rollbackPause?.env?.ENABLED).toBe("$" + "{{ vars.PLAYBOOK_INTEGRATION_ENABLED }}");
+    const rollbackStep = rollback.jobs.rollback.steps?.find(
+      (step) => step.run === "bun scripts/playbook-content-update.ts"
+    );
+    expect(rollbackStep?.env?.PLAYBOOK_INTEGRATION_ENABLED).toBe(
+      "$" + "{{ vars.PLAYBOOK_INTEGRATION_ENABLED }}"
+    );
+    const applicationReleaseGuard = release.jobs.prepare.steps?.find(
+      (step) => step.name === "Require Playbook integration for application releases"
+    );
+    expect(applicationReleaseGuard?.if).toContain("vars.PLAYBOOK_INTEGRATION_ENABLED != 'true'");
+    const updateScript = await readFile("scripts/playbook-content-update.ts", "utf8");
+    expect(updateScript).toContain('process.env.PLAYBOOK_INTEGRATION_ENABLED === "true"');
+    expect(updateScript).toContain("Initial Playbook edition must be deployed through");
 
     for (const job of [
       release.jobs.prepare,
@@ -161,6 +184,32 @@ describe("playbook deployment boundaries", () => {
     for (const source of [updateText, rollbackText, releaseText]) {
       expect(source).not.toContain("create-github-app-token");
       expect(source).not.toContain("PLAYBOOK_SOURCE_APP_");
+    }
+  });
+  test("the public pointer is fixed in code and is not a GitHub Actions setting", async () => {
+    const updateText = await readFile(".github/workflows/playbook-content-update.yml", "utf8");
+    const releaseText = await readFile(".github/workflows/release.yml", "utf8");
+    const update = load(updateText) as { jobs: { production: ReleaseJob } };
+    const release = load(releaseText) as {
+      jobs: { publish_image: ReleaseJob };
+    };
+    const updateStep = update.jobs.production.steps?.find(
+      (step) => step.run === "bun scripts/playbook-content-update.ts"
+    );
+    const seedStep = release.jobs.publish_image.steps?.find(
+      (step) => step.name === "Prepare the exact Playbook console seed for image build"
+    );
+
+    expect(updateStep?.env).not.toHaveProperty("PLAYBOOK_MANIFEST_URL");
+    expect(seedStep?.env).not.toHaveProperty("PLAYBOOK_MANIFEST_URL");
+    for (const file of [
+      "scripts/fetch-initial-playbook.ts",
+      "scripts/prepare-playbook-edition.ts",
+      "scripts/prepare-console-playbook-seed.ts",
+      "scripts/playbook-content-update.ts",
+      "src/lib/playbook/cache.ts",
+    ]) {
+      expect(await readFile(file, "utf8")).not.toContain("process.env.PLAYBOOK_MANIFEST_URL");
     }
   });
   test("initial application bootstrap uses the latest ready stable release without a pinned ID", async () => {

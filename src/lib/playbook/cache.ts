@@ -3,7 +3,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { encodeJson, parseEditionIdentity, samePlaybookEdition, verifyFile } from "./manifest";
 import { validatePlaybookSearchRoute } from "./navigation";
-import { assertPublicCatalog, searchSchema } from "./schema";
+import { assertPublicCatalog, PLAYBOOK_PUBLIC_POINTER_URL, searchSchema } from "./schema";
 import type { PlaybookEdition, PlaybookEditionIdentity } from "./types";
 
 export interface PlaybookCacheState {
@@ -132,10 +132,7 @@ export class PlaybookStore {
     this.state = next;
   }
 
-  sync(
-    manifestUrl = process.env.PLAYBOOK_MANIFEST_URL ||
-      "https://ivanli.cc/_content/playbook/manifest.json"
-  ) {
+  sync(manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL) {
     if (!this.flight)
       this.flight = this.download(manifestUrl).finally(() => {
         this.flight = undefined;
