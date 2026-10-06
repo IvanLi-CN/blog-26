@@ -54,8 +54,19 @@ export function groupSearchResults(
 export function isSearchResultGroup(value: unknown): value is SearchResultGroup {
   if (!value || typeof value !== "object") return false;
   const result = value as SearchResultGroup;
+  const nullableText = (field: unknown) => field == null || typeof field === "string";
+  const optionalNumber = (field: unknown) => field === undefined || Number.isFinite(field);
   return (
     typeof result.slug === "string" &&
+    nullableText(result.title) &&
+    nullableText(result.excerpt) &&
+    nullableText(result.snippet) &&
+    (result.href === undefined || typeof result.href === "string") &&
+    (result.source === undefined || result.source === "playbook") &&
+    (result.type === undefined ||
+      ["post", "memo", "topic", "experience", "policy"].includes(result.type)) &&
+    optionalNumber(result.final) &&
+    optionalNumber(result.cosine) &&
     typeof result.contentKey === "string" &&
     typeof result.canonicalHref === "string" &&
     Array.isArray(result.sections) &&

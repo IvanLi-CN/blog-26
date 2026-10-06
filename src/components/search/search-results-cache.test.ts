@@ -42,6 +42,17 @@ describe("content-level result cache", () => {
         expiresAt: Date.now() + 10000,
         results: [{ ...groupSearchResults(items)[0], sections: [null] }],
       },
+      ...[
+        { title: {} },
+        { snippet: 42 },
+        { href: {} },
+        { source: "unknown" },
+        { type: "unknown" },
+        { final: "0.9" },
+      ].map((fields) => ({
+        expiresAt: Date.now() + 10000,
+        results: [{ ...groupSearchResults(items)[0], ...fields }],
+      })),
     ]) {
       window.sessionStorage.setItem(key, JSON.stringify(entry));
       expect(readCachedSearchResults("release", "one")).toBeNull();
