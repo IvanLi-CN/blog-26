@@ -505,7 +505,9 @@ export const NarrowMobileRecommendations: Story = {
     />
   ),
   play: async ({ canvasElement }) => {
-    const buttons = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button"));
+    const buttons = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).filter(
+      (button) => button.getBoundingClientRect().width > 0
+    );
 
     expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth);
     for (const button of buttons) {
@@ -706,7 +708,22 @@ const verifyGrouped: Story["play"] = async ({ canvasElement }) => {
   const mainLink = canvasElement.querySelector<HTMLElement>(
     '[data-search-result-card][href^="/playbook/"]'
   );
-  if (window.innerWidth >= 640) {
+  if (window.innerWidth >= 1024) {
+    const queryPanel = canvasElement.querySelector<HTMLElement>("[data-search-query-panel]");
+    const resultsRegion = canvasElement.querySelector<HTMLElement>("[data-search-results-region]");
+    const panelBounds = queryPanel?.getBoundingClientRect();
+    const resultsBounds = resultsRegion?.getBoundingClientRect();
+    await expect(panelBounds).toBeDefined();
+    await expect(resultsBounds).toBeDefined();
+    await expect(resultsBounds?.left ?? 0).toBeGreaterThan(panelBounds?.right ?? 0);
+    await expect(Math.abs((resultsBounds?.top ?? 0) - (panelBounds?.top ?? 0))).toBeLessThanOrEqual(
+      1
+    );
+    const operations = within(canvas.getByRole("region", { name: "搜索操作" }));
+    await expect(operations.getByRole("textbox", { name: "搜索关键词" })).toBeVisible();
+    await expect(operations.getByRole("group", { name: "结果类型筛选" })).toBeVisible();
+    await expect(operations.getByRole("region", { name: "建议搜索词" })).toBeVisible();
+  } else if (window.innerWidth >= 640) {
     const queryPanel = canvasElement.querySelector<HTMLElement>("[data-search-query-panel]");
     const panelBounds = queryPanel?.getBoundingClientRect();
     const resultBounds = mainLink?.parentElement?.getBoundingClientRect();
@@ -741,6 +758,15 @@ const verifyGrouped: Story["play"] = async ({ canvasElement }) => {
     "false"
   );
   await expect(canvasElement.querySelector("a a, a button")).toBeNull();
+  if (window.innerWidth >= 1024) {
+    const suggestions = within(canvas.getByRole("region", { name: "建议搜索词" }));
+    await userEvent.click(suggestions.getByRole("button", { name: "SQLite" }));
+    await expect(canvas.getByRole("textbox", { name: "搜索关键词" })).toHaveValue("SQLite");
+    await expect(canvas.getByRole("button", { name: "展开更多匹配（2）" })).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    );
+  }
 };
 export const GroupedContent: Story = {
   ...searchDesktopViewport,
