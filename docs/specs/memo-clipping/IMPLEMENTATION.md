@@ -42,7 +42,7 @@
 - The clipping Memo title supplies a valid Nature body-font fallback even when `--font-body` is unset: Noto Sans SC, regional Noto Sans CJK SC, and platform Chinese sans fallbacks. It requests the available 500 weight, normal tracking, and 1.4 leading so the mixed Chinese/Latin title stays aligned with the reading body instead of switching to a serif face. Runtime and preview share a 30px narrow / 36px wider responsive scale through the scoped Memo-card style.
 - The earlier desktop list mock was rejected and has been removed. Public and live author Memo lists retain their baseline metadata without an added clipping type chip; clipping entries use the existing type icon position. The live author list retains its original 20px node glyph. Ordinary detail badges keep the existing Memo wording, and ordinary admin previews have no added type badge. The owner selected the Tabler scissors outline; previous mock captures are withdrawn as current evidence.
 - Ordinary Memo preservation validation passes four server-rendered comparisons against the exact development-baseline Memo card source: titled, titleless, tagless, and multi-tag records match byte-for-byte after removing the new inert root `data-content-kind` attribute. Shared public styles and date formatting are unchanged against that baseline.
-- Visual evidence is not yet accepted. Formal review must not begin until the remaining readiness gates are satisfied.
+- The owner accepted the three current-only native Web Demo evidence images: desktop list, desktop three-card detail, and mobile discussion drawer. Canonical assets are in the Spec Visual Evidence section; no page-level Storybook fixture is required or introduced.
 
 ## Storage and Deployment
 
@@ -68,7 +68,7 @@
 
 - Complete current-source full-suite checks, builds, fault recovery, and delivery evidence.
 - Bind the real-provider article/translation/chat/interruption acceptance to the final committed Candidate; current local observations include an uncommitted parser fix and cannot substitute for final-Candidate evidence.
-- Capture, show, and obtain owner confirmation of current UI evidence; then execute the required runtime review lanes and direct PR delivery gates.
+- Execute the required runtime review lanes and direct PR delivery gates after final-Candidate empirical acceptance.
 
 ## References
 

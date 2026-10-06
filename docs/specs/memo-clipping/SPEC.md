@@ -206,7 +206,13 @@ The reading header keeps author remarks and the generated summary visible. The o
 
 ## Visual Evidence
 
-- None. The responsive UI contract is normative; implementation evidence belongs in the delivery workflow after the surfaces exist.
+The owner-confirmed native Web Demo demonstrates the shared list, detail cards, and responsive private discussion. Fixtures are isolated from live APIs and model services.
+
+![Desktop clipping list](./assets/list-dark-1440.png)
+
+![Desktop clipping detail and discussion](./assets/detail-dark-1440.png)
+
+![Mobile article discussion drawer](./assets/detail-light-393.png)
 
 ## References
 
