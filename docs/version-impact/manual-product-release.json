@@ -15,7 +15,7 @@
     ".github/workflows/label-gate.yml": null,
     ".github/workflows/manual-product-release.yml": "2a8f520018c6d7657baa9110f0d9f1531c444b20",
     ".github/workflows/notify-release-failure.yml": "7f7aa566abd39c485756b939822c04b1d0c9f40f",
-    ".github/workflows/product-release.yml": "42a0128515233b2f6339034f79579099eb04174b",
+    ".github/workflows/product-release.yml": "2eb8ee20355b808252415056127676c7efbed1f7",
     ".github/workflows/release-merge-followup.yml": "4b73c92f1d880835a2193a9b0e93826717b028ca",
     ".github/workflows/release.yml": null,
     ".gitignore": "8a2342e4ffaa79d57673a41b07ba3fed6c34bb13",

@@ -130,4 +130,4 @@ jobs:
         continue-on-error: true
         run: bun scripts/product-release.ts failure
         env:
-          GH_TOKEN: ${{ steps.publish_app.outputs.token || steps.app.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
