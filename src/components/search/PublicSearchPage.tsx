@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent, ReactNode, RefObject } from "react";
+import { type FormEvent, type ReactNode, type RefObject, useMemo, useState } from "react";
 import type { SearchSuggestionItem, SearchSuggestionStrategy } from "@/lib/ai/search-suggestions";
 import { cn } from "@/lib/utils";
 import SearchHydrationSafeIcon from "./SearchHydrationSafeIcon";
@@ -8,7 +8,9 @@ import SearchResultsList from "./SearchResultsList";
 import {
   countSearchResultsByType,
   filterSearchResults,
+  groupSearchResults,
   type SearchFilter,
+  type SearchResultGroup,
   type SearchResultItem,
   searchFilters,
 } from "./search-model";
@@ -16,7 +18,7 @@ import {
 export type PublicSearchPageProps = {
   query: string;
   searchedQuery?: string;
-  results: SearchResultItem[];
+  results: Array<SearchResultItem | SearchResultGroup>;
   isLoading?: boolean;
   error?: unknown;
   filter: SearchFilter;
@@ -283,9 +285,20 @@ export default function PublicSearchPage({
   const activeQuery = (searchedQuery ?? trimmedQuery).trim();
   const canSearch = trimmedQuery.length > 0;
   const errorMessage = formatError(error);
-  const counts = countSearchResultsByType(results);
-  const filteredResults = filterSearchResults(results, filter);
-  const hasResults = results.length > 0;
+  const groupedResults = useMemo(() => groupSearchResults(results), [results]);
+  const [expansion, setExpansion] = useState({ query: activeQuery, keys: new Set<string>() });
+  if (expansion.query !== activeQuery)
+    setExpansion({ query: activeQuery, keys: new Set<string>() });
+  const toggleContent = (key: string) =>
+    setExpansion((previous) => {
+      const keys = new Set(previous.query === activeQuery ? previous.keys : []);
+      if (keys.has(key)) keys.delete(key);
+      else keys.add(key);
+      return { query: activeQuery, keys };
+    });
+  const counts = countSearchResultsByType(groupedResults);
+  const filteredResults = filterSearchResults(groupedResults, filter);
+  const hasResults = groupedResults.length > 0;
   const runRecommendedSearch = onRecommendedSearch ?? onQueryChange;
   const hideNoResultsSummaryOnMobile = activeQuery.length > 0 && !isLoading && !hasResults;
 
@@ -377,7 +390,7 @@ export default function PublicSearchPage({
                     正在搜索「<span data-search-query-text>{activeQuery}</span>」
                   </>
                 ) : hasResults ? (
-                  `关键词「${activeQuery}」 · 找到 ${results.length} 条内容`
+                  `关键词「${activeQuery}」 · 找到 ${groupedResults.length} 条内容`
                 ) : activeQuery ? (
                   `还没有找到「${activeQuery}」`
                 ) : (
@@ -520,6 +533,8 @@ export default function PublicSearchPage({
                     )}
                     <SearchResultsList
                       results={items}
+                      expandedContentKeys={expansion.keys}
+                      onToggleContent={toggleContent}
                       query={activeQuery}
                       resolveHref={resolveHref}
                     />

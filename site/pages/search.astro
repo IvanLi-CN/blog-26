@@ -2,6 +2,7 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import SearchPageIsland from "../components/SearchPageIsland";
 import PublicSearchPage from "../../src/components/search/PublicSearchPage";
+import { createPlaybookSearchPages } from "../../src/lib/playbook/search";
 import { getPlaybookEdition } from "../lib/playbook";
 import { playbookVersionPath } from "@/lib/playbook/cache";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
@@ -9,6 +10,7 @@ import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 const bootstrapQuery = "__SEARCH_QUERY__";
 const edition = await getPlaybookEdition();
 const playbook = edition ? {
+  pages: createPlaybookSearchPages(edition.catalog),
   edition: edition.edition.editionDigest,
   sourceReleaseId: edition.edition.source.releaseId,
   sourceTag: edition.edition.source.tag,

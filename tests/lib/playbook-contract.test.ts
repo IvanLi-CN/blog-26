@@ -37,6 +37,7 @@ import {
 import { assertPublicCatalog, PLAYBOOK_MAX_BUNDLE_BYTES } from "../../src/lib/playbook/schema";
 import {
   buildPlaybookIndex,
+  createPlaybookSearchPages,
   queryPlaybookSearch,
   tokenizePlaybookText,
 } from "../../src/lib/playbook/search";
@@ -969,7 +970,7 @@ test("retains distinct source identities when two Releases have identical data d
 
 test("Chinese, English and independent Policy documents use the upstream tokenization strategy", () => {
   const { edition } = makePublicBundle();
-  const index = buildPlaybookIndex(edition.search);
+  const index = buildPlaybookIndex(edition.search, createPlaybookSearchPages(edition.catalog));
   expect(tokenizePlaybookText("Ａstro 发布_git-workflow")).toEqual([
     "Astro",
     "发",

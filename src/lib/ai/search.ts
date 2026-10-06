@@ -1,4 +1,5 @@
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { uniqueRankedContent } from "@/lib/search/content-identity";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../db";
 import { postEmbeddings, posts } from "../schema";
@@ -339,7 +340,7 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
     return b.id.localeCompare(a.id);
   });
 
-  const results: SearchResult[] = rankedResults
+  const results: SearchResult[] = uniqueRankedContent(rankedResults)
     .slice(0, input.topK ?? 50)
     .map(({ id: _id, publishDate: _publishDate, ...result }) => result);
   return { results, source: "semantic" };

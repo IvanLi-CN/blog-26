@@ -14,6 +14,63 @@ export type SearchResultItem = {
   cosine?: number;
 };
 
+export type SearchSectionResult = {
+  href: string;
+  title: string;
+  snippet: string;
+  score: number;
+  order: number;
+};
+
+/** Display model only; public search responses retain their original array shape. */
+export type SearchResultGroup = SearchResultItem & {
+  contentKey: string;
+  canonicalHref: string;
+  sections: SearchSectionResult[];
+};
+
+export function groupSearchResults(
+  results: Array<SearchResultItem | SearchResultGroup>
+): SearchResultGroup[] {
+  const groups = new Map<string, SearchResultGroup>();
+  for (const result of results) {
+    const canonicalHref = getSearchResultHref(result).split("#")[0];
+    const contentKey = JSON.stringify([
+      result.source ?? "blog",
+      getSearchResultType(result),
+      canonicalHref,
+    ]);
+    if (groups.has(contentKey)) continue;
+    groups.set(contentKey, {
+      ...result,
+      contentKey,
+      canonicalHref,
+      sections: "sections" in result ? result.sections : [],
+    });
+  }
+  return [...groups.values()];
+}
+
+export function isSearchResultGroup(value: unknown): value is SearchResultGroup {
+  if (!value || typeof value !== "object") return false;
+  const result = value as SearchResultGroup;
+  return (
+    typeof result.slug === "string" &&
+    typeof result.contentKey === "string" &&
+    typeof result.canonicalHref === "string" &&
+    Array.isArray(result.sections) &&
+    result.sections.every(
+      (section) =>
+        section &&
+        typeof section.href === "string" &&
+        typeof section.title === "string" &&
+        typeof section.snippet === "string" &&
+        Number.isFinite(section.score) &&
+        Number.isFinite(section.order)
+    )
+  );
+}
+
 export const searchFilters: Array<{ key: SearchFilter; label: string }> = [
   { key: "all", label: "全部" },
   { key: "post", label: "文章" },

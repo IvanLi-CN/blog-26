@@ -2,21 +2,32 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import PublicSearchPage from "@/components/search/PublicSearchPage";
 import {
   getSearchResultHref,
+  groupSearchResults,
   type SearchFilter,
+  type SearchResultGroup,
   type SearchResultItem,
 } from "@/components/search/search-model";
 import { buildSearchHref, shouldPushSearchHref } from "@/components/search/search-navigation";
+import {
+  readCachedSearchResults,
+  writeCachedSearchResults,
+} from "@/components/search/search-results-cache";
 import type { SearchSuggestionItem, SearchSuggestionReason } from "@/lib/ai/search-suggestions";
-import { buildPlaybookIndex, queryPlaybookSearch } from "@/lib/playbook/search";
+import {
+  buildPlaybookIndex,
+  type PlaybookSearchPage,
+  queryPlaybookSearch,
+} from "@/lib/playbook/search";
 import type { PlaybookSearchPayload } from "@/lib/playbook/types";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 
 const SEARCH_RESULTS_CACHE_TTL_MS = 5 * 60 * 1000;
-const SEARCH_RESULTS_CACHE_PREFIX = "blog25:public-search:v4:";
+
 const SEARCH_SUGGESTIONS_CACHE_PREFIX = "blog25:public-search-suggestions:v3:";
 const useSafeLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 export type PlaybookSearchSource = {
+  pages: PlaybookSearchPage[];
   edition: string;
   sourceReleaseId: string;
   sourceTag: string;
@@ -55,7 +66,7 @@ async function searchPlaybook(query: string, source?: PlaybookSearchSource) {
           ) !== source.sha256
         )
           throw new Error("执念搜索数据校验失败");
-        return buildPlaybookIndex(data);
+        return buildPlaybookIndex(data, source.pages);
       })
       .catch((error) => {
         playbookIndexes.delete(key);
@@ -66,37 +77,13 @@ async function searchPlaybook(query: string, source?: PlaybookSearchSource) {
   return queryPlaybookSearch(await pending, query);
 }
 
-type CachedSearchResults = {
-  expiresAt: number;
-  results: SearchResultItem[];
-};
-
 type CachedSearchSuggestions = {
   expiresAt: number;
   suggestions: SearchSuggestionItem[];
 };
 
-function getSearchResultsCacheKey(query: string, edition = "none") {
-  return `${SEARCH_RESULTS_CACHE_PREFIX}${edition}:${encodeURIComponent(query.trim().toLowerCase())}:50`;
-}
-
 function getSearchSuggestionsCacheKey(query: string, reason: SearchSuggestionReason) {
   return `${SEARCH_SUGGESTIONS_CACHE_PREFIX}${reason}:${encodeURIComponent(query.trim().toLowerCase())}:5`;
-}
-
-function readCachedSearchResults(query: string, edition?: string) {
-  try {
-    const raw = window.sessionStorage.getItem(getSearchResultsCacheKey(query, edition));
-    if (!raw) return null;
-    const cached = JSON.parse(raw) as CachedSearchResults;
-    if (!Array.isArray(cached.results) || cached.expiresAt <= Date.now()) {
-      window.sessionStorage.removeItem(getSearchResultsCacheKey(query, edition));
-      return null;
-    }
-    return cached.results;
-  } catch {
-    return null;
-  }
 }
 
 function readCachedSearchSuggestions(query: string, reason: SearchSuggestionReason) {
@@ -118,20 +105,6 @@ function readCachedSearchSuggestions(query: string, reason: SearchSuggestionReas
     );
   } catch {
     return null;
-  }
-}
-
-function writeCachedSearchResults(query: string, results: SearchResultItem[], edition?: string) {
-  try {
-    window.sessionStorage.setItem(
-      getSearchResultsCacheKey(query, edition),
-      JSON.stringify({
-        expiresAt: Date.now() + SEARCH_RESULTS_CACHE_TTL_MS,
-        results,
-      } satisfies CachedSearchResults)
-    );
-  } catch {
-    // Storage can be unavailable in private contexts; search still works without it.
   }
 }
 
@@ -209,7 +182,7 @@ export default function SearchPageIsland({ playbook }: { playbook?: PlaybookSear
   const [query, setQuery] = useState("");
   const [searchedQuery, setSearchedQuery] = useState("");
   const [filter, setFilter] = useState<SearchFilter>("all");
-  const [results, setResults] = useState<SearchResultItem[]>([]);
+  const [results, setResults] = useState<SearchResultGroup[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [recommendedSearchTerms, setRecommendedSearchTerms] = useState<SearchSuggestionItem[]>([]);
@@ -245,8 +218,8 @@ export default function SearchPageIsland({ playbook }: { playbook?: PlaybookSear
       searchPlaybook(current.trim(), playbook),
     ])
       .then((sources) => {
-        const nextResults = sources.flatMap((source) =>
-          source.status === "fulfilled" ? source.value : []
+        const nextResults = groupSearchResults(
+          sources.flatMap((source) => (source.status === "fulfilled" ? source.value : []))
         );
         if (sources.every((source) => source.status === "rejected"))
           throw new Error("搜索暂不可用，请重试");

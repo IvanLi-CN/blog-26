@@ -5,6 +5,7 @@ import "@/styles/globals.css";
 import "@/styles/nature-restored.css";
 import type { SearchSuggestionItem } from "@/lib/ai/search-suggestions";
 import PublicSearchPage from "./PublicSearchPage";
+import { groupedSearchFixture } from "./search-fixture";
 import type { SearchFilter, SearchResultItem } from "./search-model";
 
 const results: SearchResultItem[] = [
@@ -108,6 +109,21 @@ const searchNarrowMobileViewport = {
   },
 } as const;
 
+const searchDesktopViewport = {
+  parameters: {
+    viewport: {
+      options: {
+        searchDesktop: {
+          name: "Search desktop 1280 × 900",
+          styles: { width: "1280px", height: "900px" },
+          type: "desktop",
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: "searchDesktop", isRotated: false } },
+} as const;
+
 function SearchStory({
   initialQuery = "Arch",
   searchedQuery = initialQuery,
@@ -169,7 +185,10 @@ function SearchStory({
           setActiveQuery(term);
           setFilter("all");
         }}
-        onSubmit={(event) => event.preventDefault()}
+        onSubmit={(event) => {
+          event.preventDefault();
+          setActiveQuery(query.trim());
+        }}
       />
     </div>
   );
@@ -661,4 +680,88 @@ export const DarkResults: Story = {
     backgrounds: { default: "public dark" },
   },
   render: () => <SearchStory theme="dark" />,
+};
+
+const groupedItems = [
+  groupedSearchFixture(),
+  {
+    slug: "version-notes",
+    type: "post" as const,
+    title: "版本发布记录",
+    snippet: "最新版本，并更新 package.json 中的版本。",
+  },
+];
+const verifyGrouped: Story["play"] = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  await expect(
+    canvas.getAllByRole("heading", { name: "Manual version release delivery" })
+  ).toHaveLength(1);
+  await expect(canvasElement.querySelectorAll("[data-search-section]")).toHaveLength(3);
+  await document.fonts.ready;
+  for (const element of canvasElement.querySelectorAll<HTMLElement>(
+    "[data-search-result-card], [data-search-section], button[aria-expanded]"
+  )) {
+    await expect(element.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+  }
+  const mainLink = canvasElement.querySelector<HTMLElement>(
+    '[data-search-result-card][href^="/playbook/"]'
+  );
+  mainLink?.focus();
+  await userEvent.tab();
+  await expect(document.activeElement).toBe(canvasElement.querySelector("[data-search-section]"));
+  for (let index = 0; index < 3; index++) await userEvent.tab();
+  await expect(document.activeElement).toBe(
+    canvas.getByRole("button", { name: "展开更多匹配（2）" })
+  );
+  await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+  await userEvent.click(canvas.getByRole("button", { name: "展开更多匹配（2）" }));
+  await expect(canvasElement.querySelectorAll("[data-search-section]")).toHaveLength(5);
+  await userEvent.click(canvas.getByRole("button", { name: /^文章/ }));
+  await expect(canvas.queryByRole("button", { name: "收起更多匹配" })).not.toBeInTheDocument();
+  await userEvent.click(canvas.getByRole("button", { name: /^全部/ }));
+  await expect(canvas.getByRole("button", { name: "收起更多匹配" })).toBeInTheDocument();
+  await userEvent.clear(canvas.getByRole("textbox"));
+  await userEvent.type(canvas.getByRole("textbox"), "发布");
+  await userEvent.click(canvas.getByRole("button", { name: "搜索" }));
+  await expect(canvas.getByRole("button", { name: "展开更多匹配（2）" })).toHaveAttribute(
+    "aria-expanded",
+    "false"
+  );
+  await expect(canvasElement.querySelector("a a, a button")).toBeNull();
+};
+export const GroupedContent: Story = {
+  ...searchDesktopViewport,
+  name: "按内容聚合",
+  render: () => <SearchStory initialQuery="版本" items={groupedItems} />,
+  play: verifyGrouped,
+};
+export const DarkGroupedContent: Story = {
+  ...searchDesktopViewport,
+  name: "深色内容聚合",
+  render: () => <SearchStory initialQuery="版本" items={groupedItems} theme="dark" />,
+  play: verifyGrouped,
+};
+export const MobileGroupedContent: Story = {
+  ...searchMobileViewport,
+  name: "移动内容聚合",
+  render: () => <SearchStory initialQuery="版本" items={groupedItems} />,
+  play: verifyGrouped,
+};
+export const MobileDarkGroupedContent: Story = {
+  ...searchMobileViewport,
+  name: "移动深色内容聚合",
+  render: () => <SearchStory initialQuery="版本" items={groupedItems} theme="dark" />,
+  play: verifyGrouped,
+};
+export const NarrowGroupedContent: Story = {
+  ...searchNarrowMobileViewport,
+  name: "窄屏内容聚合",
+  render: () => <SearchStory initialQuery="版本" items={groupedItems} />,
+  play: verifyGrouped,
+};
+export const NarrowDarkGroupedContent: Story = {
+  ...searchNarrowMobileViewport,
+  name: "窄屏深色内容聚合",
+  render: () => <SearchStory initialQuery="版本" items={groupedItems} theme="dark" />,
+  play: verifyGrouped,
 };

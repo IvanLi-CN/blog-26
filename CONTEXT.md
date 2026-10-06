@@ -242,6 +242,28 @@ _Avoid_: Topic Skill, 已安装策略
 A public edition of the Style Playbook that has successfully reached the blog's readers. Its version identifies the Topic, 项目实践快照, and Policy Skill content that belong together; console follows this edition and may temporarily retain the previous successful edition.
 _Avoid_: 上游最新内容, 未发布目录, 实时仓库状态
 
+## Unified Search
+
+**搜索内容对象**:
+One independently readable public article, Memo, Topic, 项目实践快照, or Policy Skill, with its own identity and canonical reading destination. A chapter or command belongs to its containing object rather than becoming another 搜索内容对象.
+_Avoid_: 搜索文档, 标题相同的内容
+
+**搜索命中**:
+A query match against a 搜索内容对象 or a location within it. Several 搜索命中 can belong to the same object without representing several pieces of content.
+_Avoid_: 一篇内容, 一条顶层结果
+
+**内容搜索结果**:
+The single top-level search entry for a matched 搜索内容对象, combining its identity with a representative match and any useful 章节子结果.
+_Avoid_: 每个命中一张卡片, 搜索文档结果
+
+**章节子结果**:
+A matched chapter within a 内容搜索结果, identified by its location in the containing object and accompanied by a chapter title and match excerpt. It is a subordinate reading entry rather than a separate content count.
+_Avoid_: 独立文章结果, 关联内容推荐
+
+**搜索命中高亮**:
+Visual emphasis on the matched characters in a 内容搜索结果 or 章节子结果. It preserves the original text, spacing, and reading layout while making the match recognizable.
+_Avoid_: 关键词徽章, 带内边距的文字标签
+
 ## CI 与发布
 
 **依赖新鲜度漂移**:

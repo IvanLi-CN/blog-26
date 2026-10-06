@@ -12,6 +12,7 @@ tags:
 status: "active"
 related_specs:
   - "docs/specs/search-full-text-fallback/SPEC.md"
+  - "docs/specs/style-playbook-integration/SPEC.md"
 symptoms:
   - "AI search becomes unavailable when embeddings or reranking providers fail."
   - "Whitespace queries accidentally behave like OR or depend on raw FTS syntax."
@@ -53,6 +54,7 @@ The old implementation had no intermediate query representation. It passed some 
 14. Route every non-`simple` query through the controlled FTS compiler because embeddings cannot preserve field filters, Boolean precedence, phrases, prefixes, `NEAR`, or literal-retry semantics.
 15. Limit semantic vector materialization to `MAX_SEMANTIC_VECTOR_ROWS + 1` so concurrent growth is detected without an unbounded read; decode stored vectors defensively and use uncached FTS for malformed or dimension-mismatched values.
 16. Include a non-secret hash of the effective embedding/rerank model, endpoint, and credential state in semantic/enhanced cache keys so provider changes cannot reuse stale results.
+17. Rank and deduplicate by `(type, slug)` before applying a content-result limit. For pure FTS, materialize BM25 hits before using a window partition to choose the best row per content identity; SQLite's FTS auxiliary scores must be evaluated in their MATCH context. For mixed short-text search, score every eligible row before deduplication: a fixed raw-row cap lets repeated routes hide other content. Preserve the existing score/date/id ordering and public array response.
 
 # Guardrails / Reuse notes
 
@@ -68,6 +70,7 @@ The old implementation had no intermediate query representation. It passed some 
 - Never scan an unbounded vector candidate set or accept partially/incorrectly indexed rerank output; use the bounded FTS or semantic-base fallback instead.
 - Treat `memos.list` as an admin-aware public procedure: public callers receive the enforced public scope, while only the authenticated request context can retain its private/draft branch.
 - Keep the public search response as the existing array and do not expose internal mode/source metadata.
+- Exercise more duplicate rows than any former candidate cap, alongside another route and a same-slug memo, so a result-count assertion verifies content limits rather than raw-hit limits.
 - Add parser tests for all three modes, precedence, quoted operators, invalid syntax, column filters, prefixes, `NEAR`, and short Unicode terms. Add SQLite tests for triggers and type transitions.
 
 # References

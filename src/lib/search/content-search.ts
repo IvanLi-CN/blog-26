@@ -3,6 +3,7 @@ import type { SearchResult, SemanticSearchInput } from "@/lib/ai/search";
 import { buildSearchSnippet } from "@/lib/ai/search-snippet";
 import { db } from "@/lib/db";
 import { posts } from "@/lib/schema";
+import { uniqueRankedContent } from "./content-identity";
 import {
   getSearchLiteralTerms,
   parseSearchQuery,
@@ -14,7 +15,6 @@ import {
 } from "./query";
 
 const BM25_WEIGHTS = [0, 0, 1, 8, 4, 1, 4] as const;
-const MAX_SEARCH_ROWS = 200;
 
 type ContentSearchRow = {
   id: string;
@@ -229,7 +229,7 @@ async function executePureFtsSearch(
   limit: number
 ) {
   const rows = (await db.all(sql`
-    SELECT
+    WITH hits AS MATERIALIZED (SELECT
       p.id AS id,
       p.slug AS slug,
       p.title AS title,
@@ -243,7 +243,13 @@ async function executePureFtsSearch(
     INNER JOIN posts AS p ON p.id = posts_search_fts.post_id
     WHERE posts_search_fts MATCH ${plan.ftsQuery}
       AND ${buildRawPostFilters(input)}
-    ORDER BY searchScore ASC, p.publish_date DESC, p.id DESC
+    ), ranked AS (
+      SELECT *, ROW_NUMBER() OVER (
+        PARTITION BY type, slug ORDER BY searchScore ASC, publishDate DESC, id DESC
+      ) AS contentRank FROM hits
+    )
+    SELECT * FROM ranked WHERE contentRank = 1
+    ORDER BY searchScore ASC, publishDate DESC, id DESC
     LIMIT ${limit}
   `)) as Array<ContentSearchRow & { searchScore: number }>;
 
@@ -356,8 +362,7 @@ async function executeMixedSearch(
     })
     .from(posts)
     .where(and(searchCondition, ...buildPostFilters(input)))
-    .orderBy(desc(posts.publishDate), desc(posts.id))
-    .limit(Math.max(limit, MAX_SEARCH_ROWS))) as ContentSearchRow[];
+    .orderBy(desc(posts.publishDate), desc(posts.id))) as ContentSearchRow[];
 
   const scored = rows
     .map((row) => ({ row, score: scoreShortSearchRow(row, plan) }))
@@ -372,13 +377,16 @@ async function executeMixedSearch(
 
   const maxScore = scored[0]?.score ?? 0;
   const minScore = scored.at(-1)?.score ?? 0;
-  return scored.slice(0, limit).map(({ row, score }) => {
-    const final =
-      maxScore === minScore
-        ? 0.98
-        : Math.max(0.12, Math.min(0.98, (score - minScore) / (maxScore - minScore)));
-    return toSearchResult(row, plan, final);
-  });
+  return uniqueRankedContent(scored.map(({ row, score }) => ({ ...row, score })))
+    .slice(0, limit)
+    .map((row) => {
+      const score = row.score;
+      const final =
+        maxScore === minScore
+          ? 0.98
+          : Math.max(0.12, Math.min(0.98, (score - minScore) / (maxScore - minScore)));
+      return toSearchResult(row, plan, final);
+    });
 }
 
 export async function executeContentSearch(
