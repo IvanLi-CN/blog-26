@@ -713,9 +713,16 @@ const verifyGrouped: Story["play"] = async ({ canvasElement }) => {
     const resultsRegion = canvasElement.querySelector<HTMLElement>("[data-search-results-region]");
     const panelBounds = queryPanel?.getBoundingClientRect();
     const resultsBounds = resultsRegion?.getBoundingClientRect();
+    const layoutBounds = queryPanel?.parentElement?.parentElement?.getBoundingClientRect();
     await expect(panelBounds).toBeDefined();
     await expect(resultsBounds).toBeDefined();
     await expect(resultsBounds?.left ?? 0).toBeGreaterThan(panelBounds?.right ?? 0);
+    await expect(
+      Math.abs((panelBounds?.left ?? 0) - (layoutBounds?.left ?? 0))
+    ).toBeLessThanOrEqual(1);
+    await expect(
+      Math.abs((resultsBounds?.right ?? 0) - (layoutBounds?.right ?? 0))
+    ).toBeLessThanOrEqual(1);
     await expect(Math.abs((resultsBounds?.top ?? 0) - (panelBounds?.top ?? 0))).toBeLessThanOrEqual(
       1
     );

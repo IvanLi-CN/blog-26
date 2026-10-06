@@ -176,6 +176,13 @@ h6 {
   margin: 0 auto;
 }
 
+@media (min-width: 1024px) {
+  .public-search-layout > .nature-container {
+    width: 100%;
+    margin: 0;
+  }
+}
+
 .memo-stream-page {
   overflow-anchor: none;
 }
