@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import { expect, adminTest as test } from "./fixtures";
 
-const DEMO_EDITOR_URL = "/admin/posts/editor?demo=true&slug=react-hooks-deep-dive";
+const DEMO_EDITOR_URL = "/admin/posts/editor?slug=react-hooks-deep-dive";
 const ADDITIVE_SELECTION_MODIFIER = process.platform === "darwin" ? "Meta" : "Control";
 
 async function openDemoEditor(page: Page) {

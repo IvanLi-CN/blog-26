@@ -9,8 +9,19 @@ import { PublicMemoDetailControlsIsland } from "@console-memo-authoring";
 import TagBadge from "../../components/TagBadge.astro";
 import { formatAbsoluteDate, formatDateTime } from "../../lib/format";
 import { getCanonicalUrl, getMemoBySlug, getMemoMetadataTitle, getSnapshot } from "../../lib/public-site";
+import {
+  getMemoListWebDemoRecord,
+  getMemoListWebDemoRecords,
+} from "../../lib/memo-list-web-demo";
 
 export async function getStaticPaths() {
+  if (process.env.WEB_DEMO_BUILD === "true") {
+    return getMemoListWebDemoRecords().map((memo) => ({
+      params: { slug: memo.slug },
+      props: { memo },
+    }));
+  }
+
   const snapshot = await getSnapshot();
   return snapshot.memos.map((memo) => ({
     params: { slug: memo.slug },
@@ -20,7 +31,11 @@ export async function getStaticPaths() {
 
 const snapshot = await getSnapshot();
 const memoFromProps = (Astro.props as { memo?: PublicMemoRecord }).memo;
-const memo = memoFromProps ?? getMemoBySlug(snapshot, Astro.params.slug ?? "");
+const memo =
+  memoFromProps ??
+  (process.env.WEB_DEMO_BUILD === "true"
+    ? getMemoListWebDemoRecord(Astro.params.slug ?? "")
+    : getMemoBySlug(snapshot, Astro.params.slug ?? ""));
 if (!memo) return new Response("Not Found", { status: 404 });
 const displayDate = memo.publishedAt ?? memo.createdAt;
 const metadataTitle = getMemoMetadataTitle(memo.title, displayDate);

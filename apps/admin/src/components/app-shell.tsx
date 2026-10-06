@@ -26,6 +26,7 @@ import {
   useRef,
   useState,
 } from "react";
+import WebDemoInspector from "@/components/WebDemoInspector";
 import { adminApi } from "@/lib/admin-api-client";
 import { ThemeToggle } from "~/components/theme-toggle";
 import {
@@ -62,6 +63,7 @@ const SIDEBAR_WIDTH_STORAGE_KEY = "admin-sidebar-width";
 const DEFAULT_SIDEBAR_WIDTH = 272;
 const MIN_SIDEBAR_WIDTH = 232;
 const MAX_SIDEBAR_WIDTH = 460;
+const isAdminWebDemoBuild = import.meta.env.VITE_WEB_DEMO_BUILD === "true";
 
 function constrainSidebarWidth(width: number) {
   return Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, Math.round(width)));
@@ -614,6 +616,7 @@ export function AppShell() {
           </DialogContent>
         </Dialog>
       </div>
+      {isAdminWebDemoBuild ? <WebDemoInspector app="admin" /> : null}
     </AppShellSidebarContext.Provider>
   );
 }

@@ -72,9 +72,9 @@ Out of scope:
 5. Light and dark themes both render complete Soft UI surfaces with clear focus, hover, disabled, loading, empty, warning, success, and destructive states.
 6. Shared controls use local wrappers over Radix primitives where approved.
 7. Shipped admin files do not introduce DaisyUI classes.
-8. Storybook covers the redesigned primitives and representative page states; page-level fallback stories render the shipped shell and page components instead of maintaining hand-written visual mirrors.
+8. Storybook covers the redesigned primitives and reusable states; page-level evidence uses the build-time Web Demo on the shipped Admin routes instead of maintaining page-level Stories.
 9. Visual evidence covers desktop, tablet, and mobile views for key admin workflows before PR handoff.
-10. Demo mode is toggled only on real `/admin/*` URLs with `?demo=true|false`, and the choice is remembered in `localStorage`.
+10. Demo mode is selected at build time. The Web Demo reuses real `/admin/*` URLs and starts the in-memory API mock before the router renders; the live artifact has no URL or `localStorage` Demo switch.
 11. Demo-specific code is limited to API mocking and the tiny bootstrap needed to enable that mock layer; no standalone demo route exists, and the shell, pages, router, editor, navigation, and shared components are the shipped admin implementation.
 12. The demo editor preserves the shipped editor interaction model: real file-tree and navigation modes share the left sidebar, opening content creates or activates editor tabs, tab state is independent per file, Markdown content keeps WYSIWYG / Source / 对照, and plain-text files are constrained to Source-only mode. 对照 mode uses a read-only Milkdown rendered pane beside the editable Markdown source pane.
 13. The editor renders Markdown syntax consistently across modes: Source mode keeps raw Markdown syntax visible, while WYSIWYG and the read-only compare preview render headings, lists, blockquotes, inline code, fenced code blocks, and syntax highlighting.
@@ -103,12 +103,11 @@ Out of scope:
 
 This section keeps only the final, currently valid screenshots grouped by workflow.
 
-PR: none
 
 Shared capture contexts:
 
 - Seeded preview baseline: deterministic local production preview using Playwright test data, `target_program=local test preview app`, `capture_scope=browser-viewport`, `viewport_strategy=playwright-viewport`, `source_type=mock_ui`, evidence binding `c1ade722`
-- Real admin route verification: local Vite admin preview on shipped `/admin/*` routes with demo API mocks enabled through `?demo=true` and `localStorage["admin-demo-mode"]`
+- Real admin route verification: the separately built Admin Web Demo on shipped `/admin/*` routes with deterministic API mocks installed before router bootstrap
 
 ### Control density and preview code surface
 
@@ -152,7 +151,7 @@ These screenshots show the shipped Soft UI direction across major routes, themes
 
 ### Editor Workspace
 
-Verified on `/admin/posts/editor?demo=true&slug=react-hooks-deep-dive`.
+Verified on the Admin Web Demo's shipped `/admin/posts/editor?slug=react-hooks-deep-dive` route.
 
 - Markdown mode parity: WYSIWYG renders formatted content, Source keeps raw Markdown syntax, and 对照 pairs the editable source pane with a read-only Milkdown preview
 - Frontmatter diagnostics: header keeps a compact error badge with hover-only detail, while invalid lines carry inline line-end markers plus wavy underline for direct location
@@ -245,7 +244,7 @@ source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-vi
 
 ### Posts Workspace And Shell Chrome
 
-Verified on `/admin/posts?demo=true`.
+Verified on the Admin Web Demo's shipped `/admin/posts` route.
 
 - Filter alignment: labels and controls share a single grid rhythm with `0px` top and bottom deltas, and batch actions stay on one line
 - Desktop density: standard action and field controls render at `32px`, compact tools and table actions at `28px`, and explicit large actions at `36px`; coarse-pointer layouts restore `44px` targets

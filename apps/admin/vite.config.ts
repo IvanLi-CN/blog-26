@@ -7,6 +7,11 @@ import { defineConfig } from "vite";
 const appRoot = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(appRoot, "../..");
 const adminPort = Number(process.env.ADMIN_PORT || 25094);
+const adminOutDir = process.env.ADMIN_OUT_DIR || "admin-dist";
+const webDemoInspectorModule =
+  process.env.VITE_WEB_DEMO_BUILD === "true"
+    ? resolve(repoRoot, "src/components/WebDemoInspector.tsx")
+    : resolve(repoRoot, "src/components/WebDemoInspector.disabled.tsx");
 
 export default defineConfig({
   root: appRoot,
@@ -14,10 +19,11 @@ export default defineConfig({
   cacheDir: resolve(repoRoot, "node_modules/.vite-admin"),
   plugins: [react(), tailwindcss()],
   resolve: {
-    alias: {
-      "@": resolve(repoRoot, "src"),
-      "~": resolve(appRoot, "src"),
-    },
+    alias: [
+      { find: "@/components/WebDemoInspector", replacement: webDemoInspectorModule },
+      { find: "@", replacement: resolve(repoRoot, "src") },
+      { find: "~", replacement: resolve(appRoot, "src") },
+    ],
   },
   server: {
     host: "127.0.0.1",
@@ -35,7 +41,7 @@ export default defineConfig({
     strictPort: true,
   },
   build: {
-    outDir: resolve(repoRoot, "admin-dist"),
+    outDir: resolve(repoRoot, adminOutDir),
     emptyOutDir: true,
     sourcemap: true,
     rollupOptions: {

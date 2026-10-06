@@ -1,3 +1,4 @@
+import type { WebDemoDataMode, WebDemoScene } from "../../src/lib/web-demo-runtime";
 import type { PublicMemoRecord } from "../../src/public-site/snapshot";
 
 export const MEMO_LIST_WEB_DEMO_TOTAL = 2400;
@@ -14,6 +15,11 @@ export type MemoListWebDemoPage = {
   nextCursor: string | null;
   hasPrevious: boolean;
   previousCursor: string | null;
+};
+
+export type MemoListWebDemoState = {
+  scene: WebDemoScene;
+  data: WebDemoDataMode;
 };
 
 function clampStart(start: number) {
@@ -57,12 +63,47 @@ function createPage(start: number, count: number): PublicMemoRecord[] {
   return Array.from({ length: end - first }, (_, offset) => createMemo(first + offset));
 }
 
+export function getMemoListWebDemoRecord(slug: string): PublicMemoRecord | null {
+  const match = /^memo-web-demo-(\d{4})$/.exec(slug);
+  const number = match?.[1] ? Number(match[1]) : Number.NaN;
+  if (!Number.isInteger(number) || number < 1 || number > MEMO_LIST_WEB_DEMO_TOTAL) return null;
+  return createMemo(number - 1);
+}
+
+export function getMemoListWebDemoRecords(): PublicMemoRecord[] {
+  return createPage(0, MEMO_LIST_WEB_DEMO_TOTAL);
+}
+
 export function getMemoListWebDemoInitialPage(): MemoListWebDemoPage {
-  const start = MEMO_LIST_WEB_DEMO_INITIAL_START;
-  const end = start + MEMO_LIST_WEB_DEMO_INITIAL_COUNT;
+  return getMemoListWebDemoInitialPageForState({ scene: "memo-middle", data: "fixture" });
+}
+
+function emptyPage(): MemoListWebDemoPage {
+  return {
+    memos: [],
+    hasMore: false,
+    nextCursor: null,
+    hasPrevious: false,
+    previousCursor: null,
+  };
+}
+
+export function getMemoListWebDemoInitialPageForState(
+  state: MemoListWebDemoState
+): MemoListWebDemoPage {
+  if (state.data === "empty") return emptyPage();
+
+  const start =
+    state.scene === "memo-newest"
+      ? 0
+      : state.scene === "memo-oldest"
+        ? MEMO_LIST_WEB_DEMO_TOTAL - MEMO_LIST_WEB_DEMO_INITIAL_COUNT
+        : MEMO_LIST_WEB_DEMO_INITIAL_START;
+  const count = state.data === "dense" ? 80 : MEMO_LIST_WEB_DEMO_INITIAL_COUNT;
+  const end = Math.min(MEMO_LIST_WEB_DEMO_TOTAL, start + count);
 
   return {
-    memos: createPage(start, MEMO_LIST_WEB_DEMO_INITIAL_COUNT),
+    memos: createPage(start, count),
     hasMore: end < MEMO_LIST_WEB_DEMO_TOTAL,
     nextCursor: end < MEMO_LIST_WEB_DEMO_TOTAL ? String(end) : null,
     hasPrevious: start > 0,

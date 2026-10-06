@@ -75,7 +75,7 @@ On wide screens, each card reserves a stable area for actions beside its content
 
 ### VER-MAIV-005
 
-- Method: run `bun run demo:memo-list` and inspect the shipped Astro `/memos/?demo=true` route with a mock-only 2,400-record fixture, scrolling toward both edges. The Web Demo must reuse the real site route and production list; it must not be implemented as a Storybook page or a standalone demo route.
+- Method: run `bun run web-demo:build` or `bun run web-demo:site` and inspect the shipped Astro `/memos/` route with the build-time mock-only 2,400-record fixture, scrolling toward both edges. The Web Demo must reuse the real site route and production list; it must not be implemented as a Storybook page or a separate copied route.
 - covers: `REQ-MAIV-003`
 - Pass condition: the 2,400-record fixture loads one page for each edge-directed scroll and does not continue loading during idle time; continued scrolling loads further adjacent pages; the reading anchor remains stable when prepending; rendered DOM rows remain bounded while loaded count increases. The administrator component suite supplies a middle-window fixture with both cursors, delays one edge request, and verifies that the opposite-edge request completes afterward. The production-route administrator E2E suite verifies the default latest-page list and append behavior.
 
@@ -95,10 +95,10 @@ On wide screens, each card reserves a stable area for actions beside its content
 
 The eight page-level captures below were rendered from the former Storybook page fallback using mock API data and are retained as historical records. Their administrator and guest page-story entries have been removed; they are not current page-story coverage. The dark quick-editor component capture below is the current Storybook visual evidence. The historical desktop captures show the full-size editor, spacing before recent management, and the desktop card layout. The narrow-screen captures show the prior Nature stream layout.
 
-The bidirectional virtual-list capture comes from the production Astro `/memos/?demo=true` Web Demo, using the shared production timeline, cards, pagination, and virtualized list with local mock data. The image records a rendered list state; browser and E2E checks provide the behavioral proof for loading in both directions, preserving order, stopping at the finite edges, and keeping mounted rows bounded.
+The bidirectional virtual-list capture comes from the production Astro `/memos/` route in the build-time Web Demo, using the shared production timeline, cards, pagination, and virtualized list with local mock data. The image records a rendered list state; browser and E2E checks provide the behavioral proof for loading in both directions, preserving order, stopping at the finite edges, and keeping mounted rows bounded.
 
 source_type=ui_demo; target_program=mock-only; capture_scope=page; sensitive_exclusion=N/A; submission_gate=approved
-- Route: `/memos/?demo=true`; state: 130 of 2,400 records loaded after traversing both edges, 22 virtual rows mounted, viewport 2320x1329.
+- Route: `/memos/` in the Web Demo artifact; state: 130 of 2,400 records loaded after traversing both edges, 22 virtual rows mounted, viewport 2320x1329.
 ![Memo bidirectional virtual-list Web Demo](./assets/memo-list-web-demo-scroll.png)
 
 source_type=storybook_canvas; target_program=mock-only; capture_scope=element; viewport_strategy=storybook-viewport; evidence_surface=page; sensitive_exclusion=N/A; submission_gate=approved

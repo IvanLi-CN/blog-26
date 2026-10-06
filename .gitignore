@@ -121,3 +121,8 @@ site-dist/
 admin-dist/
 backend-dist/
 console-dist/
+web-demo-site-dist/
+web-demo-admin-dist/
+.astro-web-demo/
+.astro-web-demo-dev/
+web-demo-site-dev-dist/

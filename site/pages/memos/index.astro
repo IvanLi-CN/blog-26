@@ -9,8 +9,7 @@ import { getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
 import { parseConsoleInitialMemoPage } from "../../lib/memo-pagination";
 
-const isMemoListWebDemo =
-  import.meta.env.DEV && Astro.url.searchParams.get("demo") === "true";
+const isMemoListWebDemo = process.env.WEB_DEMO_BUILD === "true";
 const snapshot = isMemoListWebDemo ? null : await getSnapshot();
 const isConsoleBuild = !isMemoListWebDemo && process.env.CONSOLE_RUNTIME === "true";
 const runtimeContext = isConsoleBuild

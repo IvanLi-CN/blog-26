@@ -24,6 +24,7 @@ import type {
   AdminSecretState,
 } from "@/lib/llm-settings";
 import { rebasePersistedLocalLinks, rebasePersistedLocalReferences } from "@/lib/persisted-paths";
+import { getWebDemoState } from "@/lib/web-demo-runtime";
 import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
 
@@ -595,6 +596,18 @@ export function setupAdminDemoApiMocks() {
     const { url, method } = request;
     if (url.origin !== window.location.origin) return originalFetch(input, init);
 
+    const isDemoApiRequest =
+      url.pathname.startsWith("/api/admin/") || url.pathname.startsWith("/api/files/");
+    if (!isDemoApiRequest) return originalFetch(input, init);
+
+    const demoState = getWebDemoState(window.location, "admin");
+    if (demoState.network === "offline") {
+      return json({ error: { message: "模拟网络故障：请求未发送到真实服务。" } }, 503);
+    }
+    if (demoState.network === "slow") {
+      await new Promise((resolve) => window.setTimeout(resolve, 1100));
+    }
+
     if (url.pathname.startsWith("/api/admin/")) {
       return handleAdminRequest(url, method, init);
     }
@@ -633,9 +646,14 @@ async function handleAdminRequest(url: URL, method: string, init?: RequestInit) 
   const body = await readJsonBody(init);
 
   if (path === "/api/admin/session") {
+    const state = getWebDemoState(window.location, "admin");
     return json({
-      user: { id: "demo-user", nickname: "Ivan", email: "author@example.com" },
-      isAdmin: true,
+      user: {
+        id: state.persona === "admin" ? "demo-admin" : "demo-guest",
+        nickname: state.persona === "admin" ? "Ivan" : "Guest",
+        email: state.persona === "admin" ? "author@example.com" : "guest@example.com",
+      },
+      isAdmin: state.persona === "admin",
     });
   }
   if (path === "/api/admin/dashboard/stats") return json(dashboardStats());
@@ -844,7 +862,19 @@ function createPost(
 function listPosts(url: URL) {
   const status = url.searchParams.get("status");
   const search = url.searchParams.get("search")?.toLowerCase() ?? "";
-  let visible = [...posts];
+  const dataMode = getWebDemoState(window.location, "admin").data;
+  let visible = dataMode === "empty" ? [] : [...posts];
+  if (dataMode === "dense") {
+    visible = [
+      ...visible,
+      ...visible.map((post, index) => ({
+        ...post,
+        id: `${post.id}-dense-${index + 1}`,
+        slug: `${post.slug}-dense-${index + 1}`,
+        title: `${post.title} · 样例 ${index + 1}`,
+      })),
+    ];
+  }
   if (status === "draft") visible = visible.filter((post) => post.draft);
   if (status === "published") visible = visible.filter((post) => !post.draft && post.public);
   if (search) {
@@ -900,11 +930,28 @@ function pagination(total: number) {
 }
 
 function dashboardStats(): DashboardStats {
+  const dataMode = getWebDemoState(window.location, "admin").data;
+  if (dataMode === "empty") {
+    return {
+      posts: { total: 0, published: 0, draft: 0 },
+      comments: { total: 0, approved: 0, pending: 0 },
+      users: { total: 0 },
+      activity: { verificationCodes: 0 },
+    };
+  }
+
+  const visiblePosts = dataMode === "dense" ? posts.length * 2 : posts.length;
   return {
     posts: {
-      total: posts.length,
-      published: posts.filter((post) => post.public && !post.draft).length,
-      draft: posts.filter((post) => post.draft).length,
+      total: visiblePosts,
+      published:
+        dataMode === "dense"
+          ? posts.filter((post) => post.public && !post.draft).length * 2
+          : posts.filter((post) => post.public && !post.draft).length,
+      draft:
+        dataMode === "dense"
+          ? posts.filter((post) => post.draft).length * 2
+          : posts.filter((post) => post.draft).length,
     },
     comments: { total: comments.length, approved: 1, pending: 1 },
     users: { total: 1 },
