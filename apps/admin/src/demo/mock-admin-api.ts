@@ -596,6 +596,10 @@ export function setupAdminDemoApiMocks() {
     const { url, method } = request;
     if (url.origin !== window.location.origin) return originalFetch(input, init);
 
+    if (import.meta.env.VITE_WEB_DEMO_E2E_FIXTURE === "true" && !isE2eFixtureRoute()) {
+      return originalFetch(input, init);
+    }
+
     const isDemoApiRequest =
       url.pathname.startsWith("/api/admin/") || url.pathname.startsWith("/api/files/");
     if (!isDemoApiRequest) return originalFetch(input, init);
@@ -618,6 +622,13 @@ export function setupAdminDemoApiMocks() {
 
     return originalFetch(input, init);
   };
+}
+
+function isE2eFixtureRoute() {
+  return (
+    window.location.pathname === "/admin/posts/editor" &&
+    new URLSearchParams(window.location.search).get("slug") === "react-hooks-deep-dive"
+  );
 }
 
 declare global {
