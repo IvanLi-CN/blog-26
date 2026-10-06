@@ -2,7 +2,7 @@
 
 ## Current Status
 
-- Implementation: in progress
+- Implementation: implemented
 - Lifecycle: active
 
 ## Implementation Coverage
@@ -25,10 +25,12 @@
 - An official MCP SDK client against the isolated console confirms `tags.list` includes Harness project associations and React with 10 projects and 12 total entities.
 - `readTagRoutePath` reads raw URL segments exactly once. Regression coverage includes spaces, plus, superscripts, reserved characters, literal percent escapes and a `/blog` base path. This avoids Astro's partial URI decoding of reserved characters.
 - The owner confirmed the final four-image mobile density evidence set. The images are stored in the Spec; page normalization retains the original boundaries and the component capture retains the Story-owned 32px margins.
+- The static-output verifier derives segment-encoded canonical routes from decoded build filenames. Existing guest checks use the controlled `intro` dated-content fixture and SpotiBind's approved `Event Tap API` classification.
+- Tier 3 contract, state-concurrency, failure-data-safety and test-platform review lanes are clear. PR validation covers the full build, Docker runtime, unit tests, all four E2E roles and release-label policy; live SHA-bound results belong to PR #168.
 
 ## Remaining Gaps
 
-- Formal Tier 3 four-lane review and current-head PR/CI convergence remain pending.
+- No implementation gaps remain. Merge and publication are outside the authorized merge-ready delivery boundary.
 
 ## References
 

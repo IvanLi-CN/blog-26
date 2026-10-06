@@ -13,7 +13,7 @@
 
 ## Related Changes
 
-- None
+- [PR #168](https://github.com/IvanLi-CN/blog-26/pull/168) integrates projects with native tag discovery, preserves approved card identity and mobile density, and aligns existing public validation with encoded tag routes and canonical classifications.
 
 ## References
 
