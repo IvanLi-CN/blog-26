@@ -726,7 +726,7 @@ log("gateway ready", {
   publicPort,
   sitePort,
   adminPort,
-  adminDemoUrl: `http://${internalHostname}:${adminPort}/admin/dashboard?demo=true`,
+  adminRouteUrl: `http://${internalHostname}:${adminPort}/admin/dashboard`,
   hostname,
   siteDistDir,
   adminDistDir,

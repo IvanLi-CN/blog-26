@@ -206,6 +206,22 @@ _Avoid_: GPU 占用率, 功耗指标
 
 ## Style Playbook
 
+**Web Demo**:
+A build-time-isolated, owner-facing browser surface that reuses the shipped product tree and official routes with deterministic mock or read-only data. The live artifact cannot enable it through URL state or browser storage.
+_Avoid_: Storybook 页面, 静态截图, 独立演示页
+
+**页面级 Story**:
+A Storybook entry whose rendered boundary mounts a route, page, App Shell, or full-page composition. The rendered boundary decides its category; the filename alone does not.
+_Avoid_: 文件名判断
+
+**组件 Story**:
+A Storybook entry that mounts a reusable component, fragment, or focused interaction state without impersonating a shipped route or full application shell.
+_Avoid_: 页面截图替代品
+
+**历史视觉证据**:
+A retained screenshot or Spec record produced by an earlier source. It documents past review context and does not count as current executable page coverage.
+_Avoid_: 当前验证
+
 **Style Playbook**:
 The blog-native reading collection of published Style Playbook knowledge, with shared blog navigation and search.
 _Avoid_: 上游管理站, 技能仓库镜像

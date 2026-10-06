@@ -18,8 +18,8 @@ Implementation state is tracked here while the `sftui` spec is active.
 - Storybook play coverage asserts the desktop primitive measurements and the `10px × 12px` admin code padding, preventing a later utility class or highlighter baseline from widening those controls or code blocks.
 - The primitive Storybook interaction checks portaled confirmation dialogs from the document root, preserving a real assertion for the local Radix dialog wrapper.
 - Visual evidence must be written back to the spec and shown in chat before PR handoff.
-- Demo mode is toggled on real admin URLs with `?demo=true|false`, remembered in `localStorage`, and never exposed through a standalone demo route.
-- The real admin `main.tsx` dynamically installs `setupAdminDemoApiMocks()` only when remembered demo mode is active, then renders the normal TanStack Router instance and shipped route tree.
+- Demo mode is selected at build time and uses real admin URLs; it is never exposed through a runtime query, browser storage, or a separate copied route.
+- The Demo Admin build installs `setupAdminDemoApiMocks()` before rendering the normal TanStack Router instance and shipped route tree. The live Admin build never imports the mock bootstrap.
 - Demo interactions are powered by mocked `/api/admin/*` and `/api/files/*` responses while navigation, filtering, dialogs, editor tabs, file browsing, saving, and route transitions use the real admin pages and components.
 - The demo editor uses the real nested content repository tree, real AppShell route sidebar, and real `UniversalEditor` surface.
 - The critique pass removes redundant card-like page headers across the demo, replaces large metric tiles with compact status strips, consolidates repeated LLM advanced controls, and removes the token page's non-actionable operation preview block.

@@ -37,7 +37,7 @@ const results: SearchResultItem[] = [
 const emptyResults: SearchResultItem[] = [];
 
 const meta = {
-  title: "Public/Search Page",
+  title: "Public/Search States",
   component: PublicSearchPage,
   tags: ["autodocs"],
   parameters: {
@@ -142,8 +142,8 @@ function SearchStory({
       data-ui-theme={theme}
       data-ui-preference="system"
       data-theme={theme}
-      data-visual-evidence-surface="page"
-      data-visual-evidence-target="page"
+      data-visual-evidence-surface="component"
+      data-visual-evidence-target="search"
     >
       <PublicSearchPage
         query={query}

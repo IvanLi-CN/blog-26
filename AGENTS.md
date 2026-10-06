@@ -35,6 +35,15 @@ Source lives under `src/`, shared UI under `src/components/`, libraries under `s
 
 - Before changing public layouts, containers, or controls, read [DESIGN.md](DESIGN.md), the responsive contract in [Nature UI Spec](docs/specs/nature-front-ui/SPEC.md#44-responsive-control-and-code-density), and [ADR 0003](docs/adr/0003-public-mobile-content-stream.md). Feature specs refine this shared contract; validate the changed surface against it at mobile and desktop sizes.
 
+## Storybook and Web Demo
+
+- Page-level evidence uses the build-time Web Demo artifact and the shipped product routes. Do not add a separate demo route or copy a page into Storybook.
+- Live and Web Demo builds are separate artifacts. A query string, `localStorage`, or another browser-side switch must not enable Demo mode in the live artifact.
+- Storybook is limited to reusable components, fragments, and focused state/interaction coverage. A new page-level Story is prohibited when the official-route Web Demo can provide the page evidence.
+- A complete Web Demo must include the shared Inspector: scene, persona, network, data, simulated actions, shareable state, and recent in-memory mutations. A static route without these controls is incomplete evidence infrastructure.
+- Existing page Stories do not establish precedent. Do not recreate the deleted page Stories; update the Web Demo route and its browser evidence instead.
+- Any exceptional fallback must be documented in the owning Spec and ADR before code is added, and is only valid when no stable Web Demo source exists.
+
 ## Commits
 
 - Use Conventional Commits in English.

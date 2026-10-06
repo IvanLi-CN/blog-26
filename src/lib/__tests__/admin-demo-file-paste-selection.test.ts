@@ -12,7 +12,7 @@ const originalWindow = (globalThis as typeof globalThis & { window?: DemoWindow 
 
 function installDemoWindow() {
   const demoWindow: DemoWindow = {
-    location: new URL("http://localhost/admin/posts/editor?demo=true"),
+    location: new URL("http://localhost/admin/posts/editor"),
     fetch: globalThis.fetch.bind(globalThis),
     __adminDemoApiMockInstalled: false,
   };

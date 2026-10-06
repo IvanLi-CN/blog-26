@@ -29,25 +29,38 @@ bun run worktree:bootstrap -- --force
 
 ## Web Demo
 
-A Web Demo is a real browser route served by the shipped web application with deterministic demo data enabled. It is not a Storybook story, component iframe, static screenshot, or isolated visual fixture.
+A Web Demo is a separate build-time artifact of the shipped web application. It reuses the official product routes with deterministic local fixtures or in-memory API mocks; it is not a Storybook story, component iframe, static screenshot, or copied page. The live artifact cannot be switched into Demo mode by a query string or browser storage.
 
-The admin Web Demo uses the normal Vite admin SPA routes with `?demo=true`. Demo mode installs frontend API mocks in `apps/admin/src/main.tsx`, remembers the setting in `localStorage["admin-demo-mode"]`, and keeps the real router, shell, pages, editor, navigation, and components in use. Open the Demo directly on `ADMIN_PORT`; the gateway `PORT` is the authenticated application entry and `?demo=true` does not bypass its session check. The direct Demo does not require auth, seeded data, or a backend service.
+Build both public and admin Demo artifacts with:
 
-For the dashboard Demo, open:
-
-```text
-http://127.0.0.1:${ADMIN_PORT}/admin/dashboard?demo=true
+```bash
+bun run web-demo:build
 ```
 
-For the editor demo, start the admin SPA and open:
+The command creates `web-demo-site-dist/` and `web-demo-admin-dist/` without replacing `site-dist/` or `admin-dist/`. It prepares deterministic local content, a public snapshot, and a Playbook fixture before building. The Admin mock API is installed before the real router renders, and all Demo mutations stay in memory.
 
-```text
-http://127.0.0.1:${ADMIN_PORT}/admin/posts/editor?demo=true&slug=react-hooks-deep-dive
+Each Demo artifact includes the shared Inspector on the official route. It exposes the current scene, persona, network condition, data density, refresh/reset actions, simulated in-memory save, shareable `d_*` state, and recent simulated mutations. It is a control surface for the Demo build only; it does not grant permissions or send writes to a real backend.
+
+For an interactive public Demo during development, start the Demo build:
+
+```bash
+bun run web-demo:site
 ```
 
-Storybook remains useful for component state galleries and visual evidence, but it is not the Web Demo surface.
+Open the official route:
 
-The public Memo list Web Demo uses the shipped Astro `/memos/` route with `?demo=true`. Start it with `bun run demo:memo-list` and open `/memos/?demo=true` on the printed local site port. In development, the route renders deterministic local records and pages them in the browser; it does not read or write the database.
+```text
+http://127.0.0.1:${SITE_PORT}/memos/
+```
+
+For the Admin Demo, start the separately configured Vite Demo build:
+
+```text
+bun run web-demo:admin
+http://127.0.0.1:${ADMIN_PORT}/admin/dashboard
+```
+
+The public Memo list uses the same shipped Astro `/memos/` route and deterministic 2,400-record fixture in the Demo artifact. The build also emits the corresponding official Memo detail routes so sample links remain usable; the live build does not emit those Demo-only records. Storybook remains the component state gallery; it is not the page evidence source.
 
 ## Environment
 

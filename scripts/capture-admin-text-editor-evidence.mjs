@@ -15,7 +15,7 @@ async function waitForHeading(page) {
 }
 
 async function openDemoEditor(page) {
-  const response = await page.goto(`${BASE_URL}/admin/posts/editor?demo=true`, {
+  const response = await page.goto(`${BASE_URL}/admin/posts/editor`, {
     waitUntil: "domcontentloaded",
     timeout: 60_000,
   });

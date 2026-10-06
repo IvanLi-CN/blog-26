@@ -10,16 +10,16 @@
 
 | Requirements | 实现 | 验证 |
 | --- | --- | --- |
-| `REQ-PBI-001`、`REQ-PBI-002` | Astro 原生目录与详情、真实标题层级、静态子标题 anchor 与当前阅读位置、受控 Markdown、关系、公开文件树和高亮预览及匿名 Policy 资源；严格公开包校验和归档安全检查 | `playbook-contract.test.ts` 的完整公开样例、私有字段拒绝、损坏归档与 SSR；`playbook-outline.test.ts` 的已有编号、重复标题与锚点一致性；`playbook-resources.test.tsx` 的原文保真、惰性 HTML、同版下载链接及文件引用；Storybook 控制场景 |
+| `REQ-PBI-001`、`REQ-PBI-002` | Astro 原生目录与详情、真实标题层级、静态子标题 anchor 与当前阅读位置、受控 Markdown、关系、公开文件树和高亮预览及匿名 Policy 资源；严格公开包校验和归档安全检查 | `playbook-contract.test.ts` 的完整公开样例、私有字段拒绝、损坏归档与 SSR；`playbook-outline.test.ts` 的已有编号、重复标题与锚点一致性；`playbook-resources.test.tsx` 的原文保真、惰性 HTML、同版下载链接及文件引用；正式 `/playbook/` Web Demo 路由检查；Storybook 仅保留资源浏览器组件场景 |
 | `REQ-PBI-003`、`REQ-PBI-004` | 固定 Release 元数据复核、tag commit 核对；首次引导与每小时补漏都选择最高就绪稳定 SemVer，手动入口默认 reconcile | 模拟 GitHub reader 检查 draft、prerelease、身份不符与最高就绪稳定 SemVer |
 | `REQ-PBI-005`、`REQ-PBI-006` | 内容刷新复用已部署 renderer 和独立文章/Memo 快照；正常前端与内容/回滚 job 共享排队锁，锁内重建 | 部署适配器检查幂等、迟到、变化后重建、失败不采用及显式暂停回滚；workflow 结构测试 |
 | `REQ-PBI-007` | edition 包含 renderer、来源包和完整公开文件摘要；同批指针、页面、搜索、资源及原始包，保留前一版 | 静态产物校验、身份重算、旧文件保留、不可变与重新验证缓存策略测试 |
 | `REQ-PBI-008`、`REQ-PBI-009` | console 启动加载持久缓存/固定 seed，立即和每 300 秒单任务同步；完整验证后原子采用 | 可控时钟、断网/损坏/schema 不兼容、重启、缓存优先、首次 HTTP SSR 及指定 edition 搜索 |
-| `REQ-PBI-010`、`REQ-PBI-011` | MiniSearch 中英文分词、Policy 独立文档、五类过滤、按来源分组；请求/采用身份记录和整体回滚入口 | 确定性检索、API 409、Storybook 搜索场景及构建/部署适配器测试 |
+| `REQ-PBI-010`、`REQ-PBI-011` | MiniSearch 中英文分词、Policy 独立文档、五类过滤、按来源分组；请求/采用身份记录和整体回滚入口 | 确定性检索、API 409、正式 `/search` Web Demo 路由、搜索组件 Storybook 场景及构建/部署适配器测试 |
 
 ## Validation Evidence
 
-共享测试机执行静态站、console 与 Storybook 构建；实际静态 HTML 和 console 首次 HTTP 响应包含Playbook正文、anchor 及同一 edition，指定搜索 edition 可读取，未知 edition 返回 409。仓库测试与提交门禁测试均通过，受影响的静态站、console、Storybook 构建与 HTTP SSR 已重新验证。`bun run check` 保留仓库既有告警，不引入新的检查失败。
+页面级验证使用独立的 Web Demo 构建物；实际静态 HTML 和 console 首次 HTTP 响应包含 Playbook 正文、anchor 及同一 edition，指定搜索 edition 可读取，未知 edition 返回 409。正式路由上的共享 Inspector 提供可复现的场景、身份、网络、数据、模拟操作和 `d_*` 分享状态，并且不触达真实写接口。Storybook 构建只验证组件/资源/搜索状态，不再承担页面级证据。仓库测试与提交门禁测试均通过后，需重新验证受影响的静态站、Web Demo 构建、Storybook 构建与 HTTP SSR。`bun run check` 保留仓库既有告警，不引入新的检查失败。
 
 视觉证据覆盖 390/768/1280 宽度及明暗主题，使用公开控制样例，无登录或来源仓库访问。Spec 中保存已确认的证据。正文前目录复用 `nature-panel nature-mobile-reading-surface`：640–1023px 呈现与正文一致的主题卡片，小于 640px 由共享响应式契约覆盖为全宽平面阅读层。768px 明暗主题场景直接比较目录与正文的背景、边框、圆角、阴影与宽度，截图见 Spec；移动端平面目录与桌面吸附目录回归另行验证。当前 Candidate 的正式审查和 live PR 状态仍属于交付门禁，尚未通过的门禁不计为已完成验收。
 

@@ -1,5 +1,6 @@
 // 图标组件 - 兼容历史的 `icon` / `name` 两种调用方式。
 import { Icon as IconifyIcon } from "@iconify/react";
+import "@/lib/iconify-collections";
 
 interface IconProps {
   name?: string;

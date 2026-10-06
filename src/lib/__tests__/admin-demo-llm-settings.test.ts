@@ -16,7 +16,7 @@ const originalWindow = (globalThis as typeof globalThis & { window?: DemoWindow 
 
 function installDemoWindow() {
   const demoWindow: DemoWindow = {
-    location: new URL("http://localhost/admin/llm-settings?demo=true"),
+    location: new URL("http://localhost/admin/llm-settings"),
     fetch: globalThis.fetch.bind(globalThis),
     __adminDemoApiMockInstalled: false,
   };

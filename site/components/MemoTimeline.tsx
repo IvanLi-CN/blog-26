@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PublicMemoRecord } from "@/public-site/snapshot";
 import {
+  getWebDemoState,
+  WEB_DEMO_ACTION_EVENT,
+  WEB_DEMO_STATE_EVENT,
+  type WebDemoActionDetail,
+  type WebDemoState,
+} from "../../src/lib/web-demo-runtime";
+import {
   getMemoListWebDemoCursorPage,
+  getMemoListWebDemoInitialPageForState,
   MEMO_LIST_WEB_DEMO_DELAY_MS,
 } from "../lib/memo-list-web-demo";
 import { parseMemoPage, publicMemoCardSchema } from "../lib/memo-pagination";
@@ -71,7 +79,55 @@ export default function MemoTimeline({
   const [olderError, setOlderError] = useState<string | null>(initialError ?? null);
   const [newerError, setNewerError] = useState<string | null>(null);
   const [renderedMemos, setRenderedMemos] = useState(0);
+  const [demoState, setDemoState] = useState<WebDemoState | null>(() =>
+    source === "demo" && typeof window !== "undefined"
+      ? getWebDemoState(window.location, "public")
+      : null
+  );
   const inFlightRef = useRef({ newer: false, older: false });
+
+  useEffect(() => {
+    if (source !== "demo") return;
+
+    const resetFromState = (state: WebDemoState) => {
+      const initialPage = getMemoListWebDemoInitialPageForState(state);
+      const demoError =
+        state.network === "offline" || state.scene === "memo-network-fault"
+          ? "模拟网络故障：本次请求未发送到真实服务。"
+          : null;
+      setMemos(initialPage.memos.map(toMemoCardRecord));
+      setHasOlder(initialPage.hasMore);
+      setOlderCursor(initialPage.nextCursor);
+      setHasNewer(initialPage.hasPrevious);
+      setNewerCursor(initialPage.previousCursor);
+      setIsLoadingOlder(false);
+      setIsLoadingNewer(false);
+      setOlderError(demoError);
+      setNewerError(null);
+      inFlightRef.current = { newer: false, older: false };
+      setDemoState(state);
+    };
+
+    const handleState = (event: Event) => {
+      const state = (event as CustomEvent<{ state: WebDemoState }>).detail?.state;
+      if (state) resetFromState(state);
+    };
+    const handleAction = (event: Event) => {
+      const detail = (event as CustomEvent<WebDemoActionDetail>).detail;
+      if (detail?.action === "refresh-data")
+        resetFromState(getWebDemoState(window.location, "public"));
+      if (detail?.action === "reset-state")
+        resetFromState(getWebDemoState(window.location, "public"));
+    };
+
+    resetFromState(getWebDemoState(window.location, "public"));
+    window.addEventListener(WEB_DEMO_STATE_EVENT, handleState);
+    window.addEventListener(WEB_DEMO_ACTION_EVENT, handleAction);
+    return () => {
+      window.removeEventListener(WEB_DEMO_STATE_EVENT, handleState);
+      window.removeEventListener(WEB_DEMO_ACTION_EVENT, handleAction);
+    };
+  }, [source]);
 
   useEffect(() => {
     if (source !== "demo") return;
@@ -109,15 +165,23 @@ export default function MemoTimeline({
         let payload: unknown;
         if (pageLoader) {
           payload = await pageLoader({ cursor, direction });
-        } else if (source === "demo" && import.meta.env.DEV) {
-          await new Promise((resolve) => setTimeout(resolve, MEMO_LIST_WEB_DEMO_DELAY_MS));
+        } else if (source === "demo" && import.meta.env.PUBLIC_WEB_DEMO_BUILD === "true") {
+          const currentDemoState = getWebDemoState(window.location, "public");
+          if (
+            currentDemoState.network === "offline" ||
+            currentDemoState.scene === "memo-network-fault"
+          ) {
+            throw new Error("模拟网络故障：本次请求未发送到真实服务。");
+          }
+          const delay = currentDemoState.network === "slow" ? 1600 : MEMO_LIST_WEB_DEMO_DELAY_MS;
+          await new Promise((resolve) => setTimeout(resolve, delay));
           const page = getMemoListWebDemoCursorPage(cursor, direction);
           payload = {
             ...page,
             memos: page.memos.map(toMemoCardRecord),
           };
         } else if (source === "demo") {
-          throw new Error("Memo list Web Demo is only available in development.");
+          throw new Error("Memo list Web Demo requires the Web Demo build.");
         } else if (source === "snapshot") {
           if (direction !== "older") throw new Error("公开快照不支持加载更新的页面。");
           const url = toPublicSitePath(
@@ -181,6 +245,10 @@ export default function MemoTimeline({
           aria-live="polite"
         >
           Web Demo · 已加载 {memos.length} / 2,400 条 · 当前挂载 {renderedMemos} 条
+          {demoState?.network === "slow" ? " · 慢速网络" : ""}
+          {demoState?.network === "offline"
+            ? ` · 网络故障${olderError || newerError ? " · 可重试" : ""}`
+            : ""}
         </p>
       ) : null}
       {memos.length === 0 ? (

@@ -552,7 +552,7 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 
 ### Memo detail hierarchy
 
-- Evidence bound to local HEAD `0ed11b57` from Storybook mock stories for the public memo detail shell.
+- Historical evidence bound to local HEAD `0ed11b57` from the former Storybook mock story for the public memo detail shell; current page evidence uses the public Web Demo route.
 - Memo detail renders as a single card instead of a split header/body pair.
 - Time, type, title, tags, and Markdown body live inside the same surface so short memos read as one unit.
 
@@ -571,9 +571,9 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 
 ### Search interface redesign
 
-- Evidence captured from Storybook mock canvas for the public search page on branch `th/search-interface-redesign`.
+- Historical evidence captured from the Storybook mock canvas for public search page states on branch `th/search-interface-redesign`; current page behavior uses the public `/search` route in the Web Demo.
 - The page now renders the deep-linked query in the first paint, uses query-aware status, exposes type filters with counts, and presents result cards with readable content type, keyword-aware snippets, highlight marks, and relevance metadata.
-- Keyword snippet evidence was captured with Chrome DevTools from the controlled Storybook canvas served on a local preview lease.
+- Keyword snippet evidence was captured with Chrome DevTools from the controlled Storybook component canvas served on a local preview lease; it is component-state evidence, not page evidence.
 - Search stories render only the real search component. Header and full-page behavior must be verified against the actual public route, not a Storybook shell that imitates production-only components.
 - Prompt states use a shared status panel for initial, loading, empty, error, and filtered-empty stories, keeping the message aligned to the content grid with a stronger icon, title, description, and recovery action.
 - Empty, error, and filtered-empty recovery actions now use recommended search terms. The public API generates suggestions with the configured chat LLM when available and falls back to public content tags, titles, and excerpts when it is not configured.

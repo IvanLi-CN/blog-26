@@ -12,6 +12,8 @@ const viteCacheDir = process.env.VITE_CACHE_DIR || "./node_modules/.vite";
 const configuredSiteUrl = process.env.PUBLIC_SITE_URL ?? "";
 const configuredSiteBasePath = process.env.PUBLIC_SITE_BASE_PATH ?? "";
 const consoleRuntime = process.env.CONSOLE_RUNTIME === "true";
+const astroOutDir =
+  process.env.ASTRO_OUT_DIR || (consoleRuntime ? "./console-dist" : "./site-dist");
 
 function normalizeBasePath(raw) {
   const value = typeof raw === "string" ? raw.trim() : "";
@@ -56,6 +58,10 @@ const astroSiteUrl = resolveAstroSite(configuredSiteUrl, astroBasePath);
 const memoAuthoringModule = "@console-memo-authoring";
 const memoAuthoringImplementation = resolve("./site/components/PublicMemoAuthoring.tsx");
 const memoAuthoringPublicStub = resolve("./site/components/PublicMemoAuthoring.public.tsx");
+const webDemoInspectorModule =
+  process.env.WEB_DEMO_BUILD === "true"
+    ? resolve("./src/components/WebDemoInspector.tsx")
+    : resolve("./src/components/WebDemoInspector.disabled.tsx");
 
 export default defineConfig({
   integrations: [react(), mdx()],
@@ -63,7 +69,7 @@ export default defineConfig({
   output: consoleRuntime ? "server" : "static",
   trailingSlash: consoleRuntime ? "ignore" : "always",
   srcDir: "./site",
-  outDir: consoleRuntime ? "./console-dist" : "./site-dist",
+  outDir: astroOutDir,
   site: astroSiteUrl,
   base: astroBasePath || undefined,
   cacheDir: astroCacheDir,
@@ -80,14 +86,25 @@ export default defineConfig({
         clientPort: sitePort,
         protocol: "ws",
       },
+      watch: {
+        ignored: [
+          "**/.astro-web-demo/**",
+          "**/.astro-web-demo-dev/**",
+          "**/web-demo-site-dist/**",
+          "**/web-demo-site-dev-dist/**",
+          "**/web-demo-admin-dist/**",
+        ],
+      },
     },
     resolve: {
-      alias: {
-        "@": resolve("./src"),
-        [memoAuthoringModule]: consoleRuntime
-          ? memoAuthoringImplementation
-          : memoAuthoringPublicStub,
-      },
+      alias: [
+        { find: "@/components/WebDemoInspector", replacement: webDemoInspectorModule },
+        { find: "@", replacement: resolve("./src") },
+        {
+          find: memoAuthoringModule,
+          replacement: consoleRuntime ? memoAuthoringImplementation : memoAuthoringPublicStub,
+        },
+      ],
     },
     define: {
       "process.env.PUBLIC_LUOSIMAO_SITE_KEY": JSON.stringify(
@@ -95,6 +112,8 @@ export default defineConfig({
       ),
       "process.env.PUBLIC_API_BASE_URL": JSON.stringify(process.env.PUBLIC_API_BASE_URL ?? ""),
       "process.env.CONSOLE_RUNTIME": JSON.stringify(process.env.CONSOLE_RUNTIME ?? ""),
+      "process.env.WEB_DEMO_BUILD": JSON.stringify(process.env.WEB_DEMO_BUILD ?? ""),
+      "process.env.PUBLIC_WEB_DEMO_BUILD": JSON.stringify(process.env.PUBLIC_WEB_DEMO_BUILD ?? ""),
       "process.env.PUBLIC_SITE_URL": JSON.stringify(process.env.PUBLIC_SITE_URL ?? ""),
       "process.env.PUBLIC_SITE_BASE_PATH": JSON.stringify(process.env.PUBLIC_SITE_BASE_PATH ?? ""),
       "process.env.PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL": JSON.stringify(
