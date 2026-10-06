@@ -101,7 +101,7 @@ function getSnippetBlocks(snippet: string) {
   return blocks;
 }
 
-function renderSnippet(snippet: string, query?: string) {
+function renderSnippet(snippet: string, query?: string, proseLines?: 1 | 2) {
   return getSnippetBlocks(snippet).map((block) => {
     if (block.kind === "code") {
       const code = block.lines.map((line) => normalizeCodeSnippetLine(line.value)).join("\n");
@@ -116,7 +116,7 @@ function renderSnippet(snippet: string, query?: string) {
     }
 
     return (
-      <span key={block.key} className="block">
+      <span key={block.key} className={proseLines ? `line-clamp-${proseLines}` : "block"}>
         {block.lines.map((line) =>
           line.value.trim() ? (
             <span key={line.key} className="block">
@@ -168,63 +168,63 @@ export function SearchResultCard({
     <li className="nature-mobile-reading-row list-none" data-search-content-key={r.contentKey}>
       <div
         className={cn(
-          "nature-panel search-result-card nature-panel-soft min-w-0 overflow-hidden px-0 py-0",
+          "nature-panel nature-hover-lift search-result-card nature-panel-soft min-w-0 overflow-hidden px-0 py-0",
           linkClassName
         )}
       >
         <a
           href={resolveHref(r)}
           aria-label={`打开${getSearchResultTypeLabel(type)}：${accessibleTitle}`}
-          className="nature-hover-hitbox group block"
+          className="group block min-h-11 transition-colors hover:bg-[rgba(var(--nature-accent-rgb),0.04)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[color:var(--nature-accent-strong)]"
           data-search-result-card
         >
-          <div className="nature-hover-surface px-4 py-3.5 sm:px-5 sm:py-4">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-              <span className="nature-chip nature-content-type-chip gap-1">
+          <div className="px-4 py-4 sm:px-6 sm:py-5">
+            <div className="flex items-start justify-between gap-3">
+              {displayTitle ? (
+                <h2 className="min-w-0 line-clamp-2 font-heading text-lg font-semibold leading-7 text-[color:var(--nature-text)] transition-colors group-hover:text-[color:var(--nature-accent-strong)] sm:text-xl">
+                  {displayTitle}
+                </h2>
+              ) : null}
+              <span className="nature-content-type-chip inline-flex shrink-0 items-center gap-1 py-1 text-xs text-[color:var(--nature-text-soft)]">
                 <Icon
                   name={getSearchResultIcon(type)}
                   className="nature-content-type-icon inline h-3.5 w-3.5 sm:hidden"
                 />
                 <span className="sr-only sm:not-sr-only">{getSearchResultTypeLabel(type)}</span>
               </span>
-              {query && (
-                <span
-                  className="text-xs text-[color:var(--nature-text-faint)]"
-                  data-search-match-meta
-                >
-                  匹配 {query}
-                </span>
-              )}
-              {r.source !== "playbook" && score !== null && Number.isFinite(score) && (
-                <span
-                  className="text-xs text-[color:var(--nature-text-faint)] opacity-75"
-                  data-search-relevance-meta
-                >
-                  相关度 {formatScore(score)}%
-                </span>
-              )}
             </div>
-            {displayTitle ? (
-              <h2 className="mt-2 line-clamp-2 font-heading text-lg font-semibold leading-7 text-[color:var(--nature-text)] transition-colors group-hover:text-[color:var(--nature-accent-strong)] sm:text-xl">
-                {displayTitle}
-              </h2>
-            ) : null}
+            {query && (
+              <span className="sr-only" data-search-match-meta>
+                匹配 {query}
+              </span>
+            )}
+            {r.source !== "playbook" && score !== null && Number.isFinite(score) && (
+              <span
+                className="mt-1 block text-xs text-[color:var(--nature-text-faint)]"
+                data-search-relevance-meta
+              >
+                相关度 {formatScore(score)}%
+              </span>
+            )}
             {snippet && (
               <div
                 data-search-snippet
-                className="nature-muted mt-1.5 max-h-48 overflow-hidden break-words text-sm leading-6"
+                className={cn(
+                  "nature-muted mt-2 max-w-[75ch] overflow-hidden break-words text-sm leading-6",
+                  showSections ? "max-h-12" : "max-h-48"
+                )}
               >
-                {renderSnippet(snippet, query)}
+                {renderSnippet(snippet, query, showSections ? 2 : undefined)}
               </div>
             )}
           </div>
         </a>
         {showSections && (
-          <div className="px-4 pb-3.5 sm:px-5 sm:pb-4">
+          <div className="px-4 pb-4 sm:px-6 sm:pb-5">
             <ul
               id={sectionsId}
               aria-label={`${accessibleTitle}的匹配章节`}
-              className="ml-2 border-l border-[color:var(--nature-line)] pl-3 sm:ml-3 sm:pl-4"
+              className="border-l border-[color:var(--nature-line)] pl-4"
             >
               {visibleSections.map((section) => (
                 <li
@@ -233,15 +233,23 @@ export function SearchResultCard({
                 >
                   <a
                     href={resolveHref({ ...r, href: section.href })}
-                    className="group block min-h-11 py-2.5 text-[color:var(--nature-text-soft)] hover:text-[color:var(--nature-accent-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--nature-accent-strong)]"
+                    className="group block min-h-11 py-3 text-[color:var(--nature-text-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--nature-accent-strong)]"
                     data-search-section
                   >
-                    <h3 className="text-sm font-medium leading-6">{section.title}</h3>
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="text-sm font-medium leading-6 text-[color:var(--nature-text)] transition-colors group-hover:text-[color:var(--nature-accent-strong)]">
+                        {section.title}
+                      </h3>
+                      <Icon
+                        name="tabler:chevron-right"
+                        className="mt-1 h-4 w-4 shrink-0 opacity-40 transition-opacity group-hover:opacity-100"
+                      />
+                    </div>
                     <div
                       data-search-snippet
-                      className="mt-1 max-h-36 overflow-hidden break-words text-sm leading-6"
+                      className="mt-1 max-h-36 max-w-[75ch] overflow-hidden break-words text-sm leading-6"
                     >
-                      {renderSnippet(section.snippet, query)}
+                      {renderSnippet(section.snippet, query, 1)}
                     </div>
                   </a>
                 </li>
@@ -253,9 +261,13 @@ export function SearchResultCard({
                 aria-expanded={expanded}
                 aria-controls={sectionsId}
                 onClick={onToggle}
-                className="mt-1 inline-flex min-h-11 items-center rounded-md px-2 text-sm text-[color:var(--nature-accent-strong)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--nature-accent-strong)]"
+                className="mt-1 ml-4 inline-flex min-h-11 items-center gap-1.5 rounded-md text-sm text-[color:var(--nature-accent-strong)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--nature-accent-strong)]"
               >
                 {expanded ? "收起更多匹配" : `展开更多匹配（${r.sections.length - 3}）`}
+                <Icon
+                  name={expanded ? "tabler:chevron-up" : "tabler:chevron-down"}
+                  className="h-4 w-4"
+                />
               </button>
             )}
           </div>

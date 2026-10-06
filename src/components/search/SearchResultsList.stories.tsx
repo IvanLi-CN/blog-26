@@ -15,6 +15,7 @@ function ResultsSurface({ count = 5, expanded = false }: { count?: number; expan
         padding: 32,
         background: "var(--nature-bg)",
         width: "100%",
+        maxWidth: 1280,
         boxSizing: "border-box",
       }}
     >

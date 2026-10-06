@@ -1791,7 +1791,8 @@ html[data-ui-theme="dark"] .nature-brand-mark {
     padding-inline: 12px !important;
   }
 
-  .search-result-card > div {
+  .search-result-card > div,
+  .search-result-card > a[data-search-result-card] > div {
     padding-inline: 12px !important;
   }
 }
