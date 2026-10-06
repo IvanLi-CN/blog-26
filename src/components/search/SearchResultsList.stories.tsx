@@ -15,7 +15,7 @@ function ResultsSurface({ count = 5, expanded = false }: { count?: number; expan
         padding: 32,
         background: "var(--nature-bg)",
         width: "100%",
-        maxWidth: 1280,
+        maxWidth: 832,
         boxSizing: "border-box",
       }}
     >
@@ -87,18 +87,23 @@ const comparisonTexts = [
   "    release --upgrade --target semver 版本\n        package.json 版本",
 ];
 function ComparisonContent() {
+  const comparisonResult = (snippet: string) => {
+    const result = groupedSearchFixture(2);
+    return {
+      ...result,
+      snippet,
+      sections: result.sections.map((section) => ({ ...section, snippet })),
+    };
+  };
   return (
     <div className="bg-[color:var(--nature-bg)] p-4" data-highlight-comparison>
       {comparisonTexts.map((snippet, index) => (
         <div key={snippet} data-highlight-pair={index}>
           <div data-highlight-off>
-            <SearchResultsList results={[{ slug: `comparison-${index}`, snippet }]} />
+            <SearchResultsList results={[comparisonResult(snippet)]} />
           </div>
           <div data-highlight-on>
-            <SearchResultsList
-              results={[{ slug: `comparison-${index}`, snippet }]}
-              query="版本 version fi"
-            />
+            <SearchResultsList results={[comparisonResult(snippet)]} query="版本 version fi" />
           </div>
         </div>
       ))}
@@ -131,63 +136,74 @@ export const HighlightComparison: Story = {
       return { bounds, coordinates };
     };
     for (const pair of canvasElement.querySelectorAll("[data-highlight-pair]")) {
-      const off = pair.querySelector<HTMLElement>("[data-highlight-off] [data-search-snippet]");
-      const on = pair.querySelector<HTMLElement>("[data-highlight-on] [data-search-snippet]");
-      if (!off || !on) throw new Error("Missing highlight comparison");
-      await expect(off.textContent).toBe(on.textContent);
-      const plain = positions(off);
-      const highlighted = positions(on);
-      await expect(highlighted.coordinates).toHaveLength(plain.coordinates.length);
-      for (const key of ["width", "height"] as const) {
-        await expect(Math.abs(plain.bounds[key] - highlighted.bounds[key])).toBeLessThanOrEqual(1);
-      }
-      for (let i = 0; i < plain.coordinates.length; i++) {
-        for (const key of ["x", "y", "width", "height"] as const) {
-          await expect(
-            Math.abs(plain.coordinates[i][key] - highlighted.coordinates[i][key])
-          ).toBeLessThanOrEqual(1);
+      const plainSnippets = pair.querySelectorAll<HTMLElement>(
+        "[data-highlight-off] [data-search-snippet]"
+      );
+      const highlightedSnippets = pair.querySelectorAll<HTMLElement>(
+        "[data-highlight-on] [data-search-snippet]"
+      );
+      await expect(plainSnippets).toHaveLength(3);
+      await expect(highlightedSnippets).toHaveLength(plainSnippets.length);
+      for (let snippetIndex = 0; snippetIndex < plainSnippets.length; snippetIndex++) {
+        const off = plainSnippets[snippetIndex];
+        const on = highlightedSnippets[snippetIndex];
+        await expect(off.textContent).toBe(on.textContent);
+        const plain = positions(off);
+        const highlighted = positions(on);
+        await expect(highlighted.coordinates).toHaveLength(plain.coordinates.length);
+        for (const key of ["width", "height"] as const) {
+          await expect(Math.abs(plain.bounds[key] - highlighted.bounds[key])).toBeLessThanOrEqual(
+            1
+          );
         }
-        const plainBreak =
-          i > 0 && Math.abs(plain.coordinates[i].y - plain.coordinates[i - 1].y) > 1;
-        const highlightedBreak =
-          i > 0 && Math.abs(highlighted.coordinates[i].y - highlighted.coordinates[i - 1].y) > 1;
-        await expect(highlightedBreak).toBe(plainBreak);
-      }
-      const copied = (element: HTMLElement) => {
-        const selection = window.getSelection();
-        const range = document.createRange();
-        range.selectNodeContents(element);
-        selection?.removeAllRanges();
-        selection?.addRange(range);
-        const text = selection?.toString();
-        selection?.removeAllRanges();
-        return text;
-      };
-      await expect(copied(off)).toBe(copied(on));
-      for (const mark of on.querySelectorAll("mark")) {
-        const style = getComputedStyle(mark);
-        const parentStyle = getComputedStyle(mark.parentElement ?? on);
-        for (const key of [
-          "fontFamily",
-          "fontSize",
-          "fontWeight",
-          "lineHeight",
-          "letterSpacing",
-          "wordSpacing",
-          "whiteSpace",
-        ] as const)
-          await expect(style[key]).toBe(parentStyle[key]);
-        for (const key of [
-          "paddingLeft",
-          "paddingRight",
-          "paddingTop",
-          "paddingBottom",
-          "marginLeft",
-          "marginRight",
-          "borderLeftWidth",
-          "borderRightWidth",
-        ] as const)
-          await expect(style[key]).toBe("0px");
+        for (let i = 0; i < plain.coordinates.length; i++) {
+          for (const key of ["x", "y", "width", "height"] as const) {
+            await expect(
+              Math.abs(plain.coordinates[i][key] - highlighted.coordinates[i][key])
+            ).toBeLessThanOrEqual(1);
+          }
+          const plainBreak =
+            i > 0 && Math.abs(plain.coordinates[i].y - plain.coordinates[i - 1].y) > 1;
+          const highlightedBreak =
+            i > 0 && Math.abs(highlighted.coordinates[i].y - highlighted.coordinates[i - 1].y) > 1;
+          await expect(highlightedBreak).toBe(plainBreak);
+        }
+        const copied = (element: HTMLElement) => {
+          const selection = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(element);
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+          const text = selection?.toString();
+          selection?.removeAllRanges();
+          return text;
+        };
+        await expect(copied(off)).toBe(copied(on));
+        for (const mark of on.querySelectorAll("mark")) {
+          const style = getComputedStyle(mark);
+          const parentStyle = getComputedStyle(mark.parentElement ?? on);
+          for (const key of [
+            "fontFamily",
+            "fontSize",
+            "fontWeight",
+            "lineHeight",
+            "letterSpacing",
+            "wordSpacing",
+            "whiteSpace",
+          ] as const)
+            await expect(style[key]).toBe(parentStyle[key]);
+          for (const key of [
+            "paddingLeft",
+            "paddingRight",
+            "paddingTop",
+            "paddingBottom",
+            "marginLeft",
+            "marginRight",
+            "borderLeftWidth",
+            "borderRightWidth",
+          ] as const)
+            await expect(style[key]).toBe("0px");
+        }
       }
     }
   },

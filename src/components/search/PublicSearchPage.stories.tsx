@@ -706,6 +706,19 @@ const verifyGrouped: Story["play"] = async ({ canvasElement }) => {
   const mainLink = canvasElement.querySelector<HTMLElement>(
     '[data-search-result-card][href^="/playbook/"]'
   );
+  if (window.innerWidth >= 640) {
+    const queryPanel = canvasElement.querySelector<HTMLElement>("[data-search-query-panel]");
+    const panelBounds = queryPanel?.getBoundingClientRect();
+    const resultBounds = mainLink?.parentElement?.getBoundingClientRect();
+    await expect(panelBounds).toBeDefined();
+    await expect(resultBounds).toBeDefined();
+    await expect(
+      Math.abs((resultBounds?.left ?? 0) - (panelBounds?.left ?? 0))
+    ).toBeLessThanOrEqual(1);
+    await expect(
+      Math.abs((resultBounds?.right ?? 0) - (panelBounds?.right ?? 0))
+    ).toBeLessThanOrEqual(1);
+  }
   mainLink?.focus();
   await userEvent.tab();
   await expect(document.activeElement).toBe(canvasElement.querySelector("[data-search-section]"));

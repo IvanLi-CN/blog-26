@@ -101,7 +101,12 @@ function getSnippetBlocks(snippet: string) {
   return blocks;
 }
 
-function renderSnippet(snippet: string, query?: string, proseLines?: 1 | 2) {
+function renderSnippet(
+  snippet: string,
+  query?: string,
+  proseLines?: 1 | 2,
+  limitToParagraph = false
+) {
   return getSnippetBlocks(snippet).map((block) => {
     if (block.kind === "code") {
       const code = block.lines.map((line) => normalizeCodeSnippetLine(line.value)).join("\n");
@@ -115,9 +120,19 @@ function renderSnippet(snippet: string, query?: string, proseLines?: 1 | 2) {
       );
     }
 
+    const firstContentLine = block.lines.findIndex((line) => line.value.trim());
+    const nextParagraph = block.lines.findIndex(
+      (line, index) => index > firstContentLine && !line.value.trim()
+    );
+    const lines = limitToParagraph
+      ? block.lines.slice(
+          Math.max(0, firstContentLine),
+          nextParagraph < 0 ? undefined : nextParagraph
+        )
+      : block.lines;
     return (
       <span key={block.key} className={proseLines ? `line-clamp-${proseLines}` : "block"}>
-        {block.lines.map((line) =>
+        {lines.map((line) =>
           line.value.trim() ? (
             <span key={line.key} className="block">
               {renderHighlightedText(line.value, query, line.key)}
@@ -175,13 +190,13 @@ export function SearchResultCard({
         <a
           href={resolveHref(r)}
           aria-label={`打开${getSearchResultTypeLabel(type)}：${accessibleTitle}`}
-          className="group block min-h-11 transition-colors hover:bg-[rgba(var(--nature-accent-rgb),0.04)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[color:var(--nature-accent-strong)]"
+          className="group block min-h-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[color:var(--nature-accent-strong)]"
           data-search-result-card
         >
-          <div className="px-4 py-4 sm:px-6 sm:py-5">
-            <div className="flex items-start justify-between gap-3">
+          <div className="px-4 py-4 sm:px-5 sm:py-5">
+            <div className="flex items-baseline gap-3">
               {displayTitle ? (
-                <h2 className="min-w-0 line-clamp-2 font-heading text-lg font-semibold leading-7 text-[color:var(--nature-text)] transition-colors group-hover:text-[color:var(--nature-accent-strong)] sm:text-xl">
+                <h2 className="min-w-0 line-clamp-2 font-heading text-lg font-semibold leading-7 text-[color:var(--nature-accent-strong)] underline-offset-4 group-hover:underline sm:text-xl">
                   {displayTitle}
                 </h2>
               ) : null}
@@ -214,42 +229,33 @@ export function SearchResultCard({
                   showSections ? "max-h-12" : "max-h-48"
                 )}
               >
-                {renderSnippet(snippet, query, showSections ? 2 : undefined)}
+                {renderSnippet(snippet, query, 2, r.source === "playbook")}
               </div>
             )}
           </div>
         </a>
         {showSections && (
-          <div className="px-4 pb-4 sm:px-6 sm:pb-5">
+          <div className="px-4 pb-4 sm:px-5 sm:pb-5">
             <ul
               id={sectionsId}
               aria-label={`${accessibleTitle}的匹配章节`}
-              className="border-l border-[color:var(--nature-line)] pl-4"
+              className="ml-3 grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2"
             >
               {visibleSections.map((section) => (
-                <li
-                  key={section.href}
-                  className="list-none border-t border-[color:var(--nature-line)] first:border-t-0"
-                >
+                <li key={section.href} className="min-w-0 list-none">
                   <a
                     href={resolveHref({ ...r, href: section.href })}
-                    className="group block min-h-11 py-3 text-[color:var(--nature-text-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--nature-accent-strong)]"
+                    className="group block min-h-11 py-2 text-[color:var(--nature-text-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--nature-accent-strong)]"
                     data-search-section
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-sm font-medium leading-6 text-[color:var(--nature-text)] transition-colors group-hover:text-[color:var(--nature-accent-strong)]">
-                        {section.title}
-                      </h3>
-                      <Icon
-                        name="tabler:chevron-right"
-                        className="mt-1 h-4 w-4 shrink-0 opacity-40 transition-opacity group-hover:opacity-100"
-                      />
-                    </div>
+                    <h3 className="text-sm font-medium leading-6 text-[color:var(--nature-accent-strong)] underline-offset-4 group-hover:underline">
+                      {section.title}
+                    </h3>
                     <div
                       data-search-snippet
                       className="mt-1 max-h-36 max-w-[75ch] overflow-hidden break-words text-sm leading-6"
                     >
-                      {renderSnippet(section.snippet, query, 1)}
+                      {renderSnippet(section.snippet, query, 2, true)}
                     </div>
                   </a>
                 </li>
@@ -261,7 +267,7 @@ export function SearchResultCard({
                 aria-expanded={expanded}
                 aria-controls={sectionsId}
                 onClick={onToggle}
-                className="mt-1 ml-4 inline-flex min-h-11 items-center gap-1.5 rounded-md text-sm text-[color:var(--nature-accent-strong)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--nature-accent-strong)]"
+                className="mt-1 ml-3 inline-flex min-h-11 items-center gap-1.5 rounded-md text-sm text-[color:var(--nature-accent-strong)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--nature-accent-strong)]"
               >
                 {expanded ? "收起更多匹配" : `展开更多匹配（${r.sections.length - 3}）`}
                 <Icon

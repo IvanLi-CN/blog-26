@@ -90,6 +90,22 @@ describe("content groups and highlight text", () => {
       expect(mark.className).not.toContain("px-1");
     }
   });
+  test("compact previews stop at the current paragraph without leaking later section markup", () => {
+    const result = groupedSearchFixture(2);
+    const paragraph = "版本身份必须保持一致，才能可靠交付。";
+    const snippet = `${paragraph}\n\n### Another section\nNext section content`;
+    result.snippet = snippet;
+    result.sections = result.sections.map((section) => ({ ...section, snippet }));
+    const { container, rerender } = render(<SearchResultsList results={[result]} />);
+    const plain = [...container.querySelectorAll("[data-search-snippet]")].map(
+      (element) => element.textContent
+    );
+    expect(plain).toEqual([paragraph, paragraph, paragraph]);
+    rerender(<SearchResultsList results={[result]} query="版本" />);
+    expect(
+      [...container.querySelectorAll("[data-search-snippet]")].map((element) => element.textContent)
+    ).toEqual(plain);
+  });
   test("highlighted code copies the same indentation as the existing code presentation", () => {
     const props = {
       results: [{ slug: "code", snippet: "    release 版本\n        package.json 版本" }],

@@ -42,6 +42,19 @@ function search(documents: PlaybookSearchDocument[], limit = 50) {
 }
 
 describe("Playbook content aggregation", () => {
+  test("matching context starts in the matching paragraph so compact previews retain the term", () => {
+    for (const separator of ["\n\n", "\r\n\r\n", "\n \n"]) {
+      const [group] = search([
+        document(
+          "paragraph",
+          0,
+          `Previous paragraph${separator}Current release version text.${separator}### Future heading`
+        ),
+      ]);
+      expect(group.snippet?.startsWith("…Current release version text.")).toBe(true);
+      expect(group.snippet).not.toContain("Previous paragraph");
+    }
+  });
   test("only chapter hits still use the bound catalog title and a single chapter target", () => {
     const [group] = search([document("section-only", 0, "release single chapter")]);
     expect(group.title).toBe("Canonical delivery");

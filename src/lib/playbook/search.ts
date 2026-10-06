@@ -89,7 +89,12 @@ export function buildPlaybookIndex(payload: PlaybookSearchPayload, pages: Playbo
 function matchingSnippet(document: PlaybookSearchDocument, query: string) {
   const body = document.body;
   const match = body.toLowerCase().indexOf(query.toLowerCase());
-  const start = Math.max(0, match - 40);
+  let start = Math.max(0, match - 40);
+  if (match >= 0) {
+    for (const separator of body.slice(0, match).matchAll(/\r?\n[\t ]*\r?\n/g)) {
+      start = Math.max(start, (separator.index ?? 0) + separator[0].length);
+    }
+  }
   return `${start ? "…" : ""}${body.slice(start, start + 180)}`;
 }
 

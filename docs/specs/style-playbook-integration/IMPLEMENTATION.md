@@ -18,7 +18,7 @@
 | `REQ-PBI-008`、`REQ-PBI-009` | console 启动加载持久缓存/固定 seed，立即和每 300 秒单任务同步；完整验证后原子采用 | 可控时钟、断网/损坏/schema 不兼容、重启、缓存优先、首次 HTTP SSR 及指定 edition 搜索 |
 | `REQ-PBI-010`、`REQ-PBI-011` | MiniSearch 中英文分词、Policy 独立文档、五类过滤、按来源分组；请求/采用身份记录和整体回滚入口 | 确定性检索、API 409、正式 `/search` Web Demo 路由、搜索组件 Storybook 场景及构建/部署适配器测试 |
 | `REQ-PBI-012` | 展示层 SearchResultGroup 按来源、类型和规范路由归组；同 edition catalog 提供权威标题与章节位置，单章节直接作为主入口 | Playbook 身份、标题、锚点、Policy/栏目及缺失公开对象测试；文章/Memo 跨类型身份回归 |
-| `REQ-PBI-013` | 独立主链接、章节链接和展开按钮；紧凑主摘要与缩进章节列表，默认三章节，查询重置、类型筛选保留展开 | 0/1/2/3/5 章节组件测试；1280/393/320px 明暗主题的展开、筛选、查询、键盘与触控 Storybook 断言 |
+| `REQ-PBI-013` | 独立主链接、章节链接和展开按钮；紧凑主摘要与缩进章节附属链接，默认三章节，查询重置、类型筛选保留展开 | 0/1/2/3/5 章节组件测试；1280/393/320px 明暗主题的展开、筛选、查询、键盘与触控 Storybook 断言 |
 | `REQ-PBI-014` | 全部合格命中先聚合后限制内容数；最高命中排名，独立来源上限与内容计数；v5 edition 缓存 | 60 个同页 Playbook 命中、250 个同路由全文命中、语义去重、缓存恢复及旧缓存拒绝回归 |
 | `REQ-PBI-015` | 主片段与章节共用内联 mark；仅颜色和背景强调，零 padding/margin/border，继承字体、字重与断行属性 | 字体加载后的逐字符几何、换行、容器尺寸、复制及代码缩进对比；六组视口/主题场景 |
 
@@ -32,11 +32,11 @@
 
 ## Validation Evidence
 
-搜索聚合候选同步到主线 `295f37394cc8f649bd501a353e2670a58dd5a816` 后，在会话 Agent VM 使用 Bun 1.4.2、Node 22.12.0 与 Playwright Chromium 执行验证：`bun run test:precommit` 为 812 pass、0 fail，32 个搜索 Storybook play 场景通过；`bun run check` 无失败，仅有三条既有告警。文件权限回滚测试在移除 VM root 的 DAC 绕过能力后执行，保持只读文件的真实权限语义。
+搜索聚合候选同步到主线 `295f37394cc8f649bd501a353e2670a58dd5a816` 后，在会话 Agent VM 使用 Bun 1.4.2、Node 22.12.0 与 Playwright Chromium 执行验证：`bun run test:precommit` 的既有聚合候选为 812 pass、0 fail。附属链接展示调整后的相关单元测试为 17 pass、0 fail，32 个搜索 Storybook play 场景通过；当前展示调整后的完整提交门禁测试待补。`bun run check` 无失败，仅有三条既有告警。文件权限回滚测试在移除 VM root 的 DAC 绕过能力后执行，保持只读文件的真实权限语义。
 
 `VER-PBI-012` 与 `VER-PBI-014` 覆盖权威标题、章节/命令归组、跨类型身份、单章节入口、缺失父对象和锚点回退，以及 Playbook 60 命中、全文 250 重复行、语义去重与 v5 缓存；`VER-PBI-013` 覆盖章节数量边界、展开/收起、筛选保留、新查询重置、无嵌套入口、Tab 顺序、44px 目标和无横向溢出。`VER-PBI-015` 等待字体加载后，在 1280/393/320px 明暗主题中逐字符比较文字坐标、尺寸、断行和复制文本，包含部分连字与代码；所有差异不超过 1 CSS px，断行和复制完全一致。
 
-当前源码的 Storybook、独立 Web Demo、静态站和 console 构建通过；Playbook artifact 校验和静态 HTML、首次 console HTTP SSR、edition 搜索 smoke 通过。页面证据从 Web Demo 的 `/search/?q=版本` 捕获，组件展开证据从 `Public/Search Results/Expanded` 捕获；截图确认前不将候选图片写为正式 Spec 资产。搜索展示保留 Nature 主题，主标题旁使用轻量类型标识；多章节主摘要最多两行，章节 prose 片段一行，代码沿用原有多行缩进。摘要使用完整行省略且保留文字节点，移除内部悬停阴影与父卡片位移，窄于 375px 的主入口同步使用 12px 阅读边距。
+搜索页面证据从 Web Demo 的 `/search/?q=版本` 捕获，组件展开证据从 `Public/Search Results/Expanded` 捕获；截图确认前不将候选图片写为正式 Spec 资产。搜索展示保留 Nature 主题，主标题旁使用轻量类型标识；桌面结果卡片铺满内容区，与上方查询面板两侧对齐，避免固定结果列造成大块右侧空白。章节使用两列附属链接、移动端使用单列，并通过缩进与间距表达归属。移除目录竖线、逐行分隔与章节箭头。主摘要与章节 prose 片段最多两行，Playbook 短预览停在当前段落；索引上下文从匹配所在段落开始，避免前一段占据预览而隐藏关键词。代码沿用原有多行缩进。摘要使用完整行省略，移除内部悬停阴影与父卡片位移，窄于 375px 的主入口同步使用 12px 阅读边距。恢复桌面宽度后的 Storybook、Web Demo、静态站和 console 构建与浏览器验证待刷新。
 
 页面级验证使用独立的 Web Demo 构建物；实际静态 HTML 和 console 首次 HTTP 响应包含 Playbook 正文、anchor 及同一 edition，指定搜索 edition 可读取，未知 edition 返回 409。正式路由上的共享 Inspector 提供可复现的场景、身份、网络、数据、模拟操作和 `d_*` 分享状态，并且不触达真实写接口。Storybook 构建只验证组件/资源/搜索状态，不再承担页面级证据。仓库测试与提交门禁测试均通过后，需重新验证受影响的静态站、Web Demo 构建、Storybook 构建与 HTTP SSR。`bun run check` 保留仓库既有告警，不引入新的检查失败。
 
