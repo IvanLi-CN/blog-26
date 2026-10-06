@@ -566,32 +566,13 @@ export default function PublicSearchPage({
         )}
 
         {!isLoading && filteredResults.length > 0 && (
-          <div className="grid gap-7">
-            {[
-              { key: "blog", title: "文章与闪念" },
-              { key: "playbook", title: "执念" },
-            ].map((group) => {
-              const items = filteredResults.filter(
-                (result) => (result.source === "playbook" ? "playbook" : "blog") === group.key
-              );
-              return (
-                items.length > 0 && (
-                  <section key={group.key} aria-label={group.title}>
-                    {results.some((result) => result.source === "playbook") && (
-                      <h2 className="mb-4 font-heading text-xl font-semibold">{group.title}</h2>
-                    )}
-                    <SearchResultsList
-                      results={items}
-                      expandedContentKeys={expansion.keys}
-                      onToggleContent={toggleContent}
-                      query={activeQuery}
-                      resolveHref={resolveHref}
-                    />
-                  </section>
-                )
-              );
-            })}
-          </div>
+          <SearchResultsList
+            results={filteredResults}
+            expandedContentKeys={expansion.keys}
+            onToggleContent={toggleContent}
+            query={activeQuery}
+            resolveHref={resolveHref}
+          />
         )}
       </section>
     </div>

@@ -243,21 +243,34 @@ const playbookResults: SearchResultItem[] = [
   },
 ];
 export const PlaybookResults: Story = {
-  name: "执念 / 来源分组与类型筛选",
+  name: "跨来源统一结果与类型筛选",
   render: () => (
-    <SearchStory initialQuery="发布" items={[...results.slice(0, 2), ...playbookResults]} />
+    <SearchStory
+      initialQuery="发布"
+      items={[results[0], playbookResults[0], results[1], ...playbookResults.slice(1)]}
+    />
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("region", { name: "文章与闪念" })).toBeInTheDocument();
-    await expect(canvas.getByRole("region", { name: "执念" })).toBeInTheDocument();
+    const resultRegion = canvas.getByRole("region", { name: "搜索结果" });
+    const resultCanvas = within(resultRegion);
+    await expect(resultCanvas.queryAllByRole("list")).toHaveLength(1);
+    await expect(resultCanvas.queryAllByRole("region")).toHaveLength(0);
+    await expect(
+      resultCanvas.queryByRole("heading", { name: "文章与闪念" })
+    ).not.toBeInTheDocument();
+    await expect(resultCanvas.queryByRole("heading", { name: "执念" })).not.toBeInTheDocument();
+    const links = resultCanvas.getAllByRole("link");
+    await expect(links[0]).toHaveAttribute("href", "/posts/arch-linux-on-m1-notes");
+    await expect(links[1]).toHaveAttribute("href", playbookResults[0].href);
+    await expect(links[2]).toHaveAttribute("href", "/memos/pacman-cache-cleanup");
     await userEvent.click(canvas.getByRole("button", { name: /Policy Skill/ }));
     await expect(canvas.getByRole("link", { name: /Safe Release Policy/ })).toHaveAttribute(
       "href",
       "/playbook/policies/safe-release/"
     );
     await expect(canvas.queryByRole("link", { name: /Sample Project/ })).not.toBeInTheDocument();
-    await expect(canvas.queryByRole("region", { name: "文章与闪念" })).not.toBeInTheDocument();
+    await expect(resultCanvas.getAllByRole("link")).toHaveLength(1);
   },
 };
 export const PlaybookStaleEdition: Story = {
