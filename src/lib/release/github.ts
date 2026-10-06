@@ -72,7 +72,8 @@ export function ghTransport(token = process.env.GH_TOKEN): GitHubTransport {
   return {
     command,
     request(endpoint, method = "GET", payload, paginate = false) {
-      const args = ["api", endpoint, "--method", method, "-H", "X-GitHub-Api-Version: 2026-03-10"];
+      // The PR provenance contract requires merge_commit_sha, removed in the 2026 API.
+      const args = ["api", endpoint, "--method", method, "-H", "X-GitHub-Api-Version: 2022-11-28"];
       if (paginate) args.push("--paginate", "--slurp");
       if (payload !== undefined) args.push("--input", "-");
       const output = command(args, payload === undefined ? undefined : JSON.stringify(payload));

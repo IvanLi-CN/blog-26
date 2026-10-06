@@ -20,6 +20,8 @@
 
 ## 语义证据
 
+GitHub 适配器固定 REST API `2022-11-28`，按该字段合同核验 PR 与真实合并来源。升级 API 版本前必须先核验 PR 元数据与恢复所需字段；`2026-03-10` 已删除所有 PR 响应中的 `merge_commit_sha`，不得通过放松来源校验来兼容。[GitHub breaking changes](https://docs.github.com/en/rest/about-the-rest-api/breaking-changes)。
+
 `docs/version-impact/` 保存成员变更的 planned、current、verified 结论以及 API/state 的分开证据。记录绑定被评估文件的 Git blob；缺失、过期或未覆盖的变更会阻断发布。版本文件、PR 数量和提交描述都不是版本基线或分类证据。
 
 记录的 `base_sha` 为可信已发布来源，`covered_files` 覆盖该来源之后所有待发布文件变化，删除文件用 null。证据条目记录仓库相对路径、Git blob 和实际验证命令。新增改动必须更新 current 并重新验证受影响结论；不得把未运行命令或缺失现场权限证据写成 verified。记录 JSON 本身不纳入其文件覆盖清单，避免自引用摘要。
