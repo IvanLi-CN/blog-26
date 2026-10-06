@@ -337,6 +337,7 @@ const directoryPaths = new Set<string>();
 for (const key of fileContents.keys()) {
   addParentDirectoriesFromKey(key);
 }
+directoryPaths.add("local:Hardware");
 
 const comments = [
   {
@@ -625,10 +626,7 @@ export function setupAdminDemoApiMocks() {
 }
 
 function isE2eFixtureRoute() {
-  return (
-    window.location.pathname === "/admin/posts/editor" &&
-    new URLSearchParams(window.location.search).get("slug") === "react-hooks-deep-dive"
-  );
+  return window.location.pathname === "/admin/posts/editor";
 }
 
 declare global {
