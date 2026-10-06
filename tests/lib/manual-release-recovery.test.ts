@@ -92,6 +92,7 @@ describe("frozen release recovery", () => {
     const entry = { ...original, stage: "merged" as const, products: undefined, inputs: undefined };
     let completedStep = "";
     let previousStatus = "completed";
+    let conclusion: string | null = "success";
     const github = new GitHubRelease(contract, "github-actions", {
       request(endpoint) {
         if (endpoint.includes("/artifacts?")) return [{ artifacts: [] }];
@@ -113,7 +114,7 @@ describe("frozen release recovery", () => {
                   status: endpoint.includes("/attempts/1/") ? previousStatus : "in_progress",
                   steps:
                     endpoint.includes("/attempts/1/") && completedStep
-                      ? [{ name: completedStep, status: "completed", conclusion: "success" }]
+                      ? [{ name: completedStep, status: "completed", conclusion }]
                       : [],
                 },
               ],
@@ -135,6 +136,16 @@ describe("frozen release recovery", () => {
     ] as const) {
       completedStep = step;
       expect(() => findArtifact(github, entry, kind)).toThrow("lost");
+    }
+    for (const kind of ["inputs", "products"] as const) {
+      completedStep =
+        kind === "inputs"
+          ? "Freeze public build inputs under the production lock"
+          : "Build the static frontend and full-feature image";
+      for (conclusion of ["failure", "cancelled", null])
+        expect(() => findArtifact(github, entry, kind)).toThrow("unavailable");
+      conclusion = "skipped";
+      expect(findArtifact(github, entry, kind)).toBeUndefined();
     }
     completedStep = "";
     previousStatus = "in_progress";

@@ -146,15 +146,14 @@ export function assertNeverFrozen(
       (attempt < run.run_attempt && production[0]?.status !== "completed")
     )
       throw new Error("Original freeze history is unavailable; recovery is blocked");
-    if (
-      production[0]?.steps.some(
-        (step) =>
-          completedFreezeSteps.includes(step.name) &&
-          step.status === "completed" &&
-          step.conclusion === "success"
-      )
-    )
-      throw new Error("Unbound frozen artifact was lost; recovery is blocked");
+    for (const step of production[0]?.steps ?? []) {
+      if (!completedFreezeSteps.includes(step.name) || step.conclusion === "skipped") continue;
+      if (step.status === "completed" && step.conclusion === "success")
+        throw new Error("Unbound frozen artifact was lost; recovery is blocked");
+      // A failed/cancelled process can have sealed bytes before exit; absence is unproven.
+      if (!["pending", "queued"].includes(step.status))
+        throw new Error("Original freeze outcome is unavailable; recovery is blocked");
+    }
   }
 }
 

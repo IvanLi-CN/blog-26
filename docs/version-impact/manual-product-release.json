@@ -97,7 +97,7 @@
     "src/lib/__tests__/admin-demo-file-tree.test.ts": "fa39e7f23dde7126e24c43eb25dd388dbab124ba",
     "src/lib/__tests__/admin-demo-llm-settings.test.ts": "f925fbf36e2717aff8f1b4159fce36dea6098d44",
     "src/lib/playbook/child-env.ts": "d6f344e6439869d39b0e363ea735e5f5888fe6ad",
-    "src/lib/release/artifacts.ts": "333abfeae3449dc451aea1be924d5fada51a05d0",
+    "src/lib/release/artifacts.ts": "fd18f8c9823707d66a4fbbf9105d9c5a9e0f189d",
     "src/lib/release/completion.ts": "97e537ba29e93bb789a681083729701d92172e58",
     "src/lib/release/deployment.ts": "37e8fa5af98a9ff02a735fcb696062eb6855812f",
     "src/lib/release/github.ts": "d10df7aae3a4a38f133bc31a3cf214e4faab2938",
@@ -122,7 +122,7 @@
     "tests/lib/manual-release-media.test.ts": "57488e7a228793d57a632eaa78bfa93e7cf9fcf8",
     "tests/lib/manual-release-policy.test.ts": "5fc3945774851eae7e1a99c4f7dd1237dfe7d3f9",
     "tests/lib/manual-release-provenance.test.ts": "01496353150171b571e007bb11cbd354d9ff7d7b",
-    "tests/lib/manual-release-recovery.test.ts": "06f7f14da1efb9864836b209aec32ea63a7724b5",
+    "tests/lib/manual-release-recovery.test.ts": "b968c24bb056ad5509420a13008b8f0f8f855e19",
     "tests/lib/memo-list-web-demo.test.ts": "38f0f87d65565abfa3b35e9b2b5f60e2d561bddd",
     "tests/lib/playbook-workflows.test.ts": "2921115a0b6629d9f7e10f6e7c80b5ee43403a2b",
     "tests/lib/web-demo-inspector-layout.test.ts": "0396e7cee190653bb9a266fb70f51614b576d52c",
@@ -154,7 +154,7 @@
         },
         {
           "path": "tests/lib/manual-release-recovery.test.ts",
-          "blob": "06f7f14da1efb9864836b209aec32ea63a7724b5",
+          "blob": "b968c24bb056ad5509420a13008b8f0f8f855e19",
           "command": "bun run test:precommit"
         },
         {
@@ -196,7 +196,7 @@
         },
         {
           "path": "tests/lib/manual-release-recovery.test.ts",
-          "blob": "06f7f14da1efb9864836b209aec32ea63a7724b5",
+          "blob": "b968c24bb056ad5509420a13008b8f0f8f855e19",
           "command": "bun run test:precommit"
         },
         {
@@ -242,7 +242,7 @@
         },
         {
           "path": "tests/lib/manual-release-recovery.test.ts",
-          "blob": "06f7f14da1efb9864836b209aec32ea63a7724b5",
+          "blob": "b968c24bb056ad5509420a13008b8f0f8f855e19",
           "command": "bun run test:precommit"
         },
         {
@@ -286,7 +286,7 @@
         },
         {
           "path": "tests/lib/manual-release-recovery.test.ts",
-          "blob": "06f7f14da1efb9864836b209aec32ea63a7724b5",
+          "blob": "b968c24bb056ad5509420a13008b8f0f8f855e19",
           "command": "bun run test:precommit"
         },
         {
