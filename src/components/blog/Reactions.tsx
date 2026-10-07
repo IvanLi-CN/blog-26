@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { webDemoFetch } from "@/lib/web-demo-fetch";
 import { getVisitorId } from "../../lib/fingerprint";
 import { toPublicApiUrl } from "../../lib/public-runtime-url";
 import type { UserInfo } from "../comments/types";
@@ -20,7 +21,7 @@ interface ReactionItem {
 const EMOJI_OPTIONS = ["👍", "❤️", "😂", "🎉", "🤔"];
 
 async function readJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, {
+  const response = await webDemoFetch(input, {
     credentials: "include",
     ...init,
   });

@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import MemoTimeline from "../../site/components/MemoTimeline";
 import { parseConsoleInitialMemoPage } from "../../site/lib/memo-pagination";
 
-if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
+if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register({ url: "http://localhost/" });
 
 const initialMemo = {
   id: "memo-initial",
@@ -33,7 +33,32 @@ const originalFetch = globalThis.fetch;
 afterEach(() => {
   cleanup();
   globalThis.fetch = originalFetch;
+  window.history.replaceState({}, "", "/");
   document.body.replaceChildren();
+});
+
+describe("MemoTimeline Web Demo initial read", () => {
+  test("retains SSR memos when the first client read is offline", async () => {
+    window.history.replaceState({}, "", "/memos/?d_connection=offline");
+
+    const { getByTestId, getByText, queryByTestId } = render(
+      <MemoTimeline
+        source="demo"
+        initialMemos={[initialMemo]}
+        initialHasMore
+        initialNextCursor="older-cursor"
+        iconMap={{}}
+        iconSvgMap={{}}
+      />
+    );
+
+    expect(getByText("Already loaded Memo")).toBeTruthy();
+    await waitFor(() =>
+      expect(getByTestId("memo-list-demo-status").textContent).toContain("网络故障")
+    );
+    expect(queryByTestId("memos-empty")).toBeNull();
+    expect(getByTestId("memo-list-demo-status").textContent).toContain("网络故障");
+  });
 });
 
 describe("MemoTimeline snapshot pagination", () => {

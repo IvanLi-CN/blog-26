@@ -737,8 +737,8 @@ html[data-ui-theme="light"] {
       0 12px 30px color-mix(in oklch, var(--primary) 20%, transparent);
   }
 
-  .admin-sidebar-resize-handle:hover::after,
-  .admin-sidebar-resize-handle:focus-visible::after {
+.admin-sidebar-resize-handle:hover::after,
+.admin-sidebar-resize-handle:focus-visible::after {
     height: 2.15rem;
     background: radial-gradient(
         circle,
@@ -752,4 +752,10 @@ html[data-ui-theme="light"] {
   .admin-sidebar-resize-handle:focus-visible {
     outline: none;
   }
+}
+
+html[data-web-demo-motion="reduce"] .admin-button,
+html[data-web-demo-motion="reduce"] .admin-sidebar-resize-handle::before,
+html[data-web-demo-motion="reduce"] .admin-sidebar-resize-handle::after {
+  transition-duration: 0.01ms !important;
 }

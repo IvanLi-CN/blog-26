@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { toPublicApiUrl } from "@/lib/public-runtime-url";
+import { webDemoFetch } from "@/lib/web-demo-fetch";
 import type { Comment, UserInfo } from "./types";
 
 async function readJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, {
+  const response = await webDemoFetch(input, {
     credentials: "include",
     ...init,
   });

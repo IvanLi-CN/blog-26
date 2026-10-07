@@ -36,6 +36,8 @@ export default function AmbientScene({ evidence }: { evidence?: AmbientSceneEvid
     if (!root) return;
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const isReducedMotion = () =>
+      reducedMotion.matches || document.documentElement.dataset.webDemoMotion === "reduce";
     let palette = readPalette(root);
     let model = createAmbientMotionModel(
       evidence?.width ?? window.innerWidth,
@@ -58,7 +60,7 @@ export default function AmbientScene({ evidence }: { evidence?: AmbientSceneEvid
         root,
         model,
         palette,
-        reducedMotion: reducedMotion.matches,
+        reducedMotion: isReducedMotion(),
         frameTime: evidence?.frameTime,
       });
       renderer.mount();
@@ -83,7 +85,7 @@ export default function AmbientScene({ evidence }: { evidence?: AmbientSceneEvid
         root,
         model,
         palette,
-        reducedMotion: reducedMotion.matches,
+        reducedMotion: isReducedMotion(),
         size: size(),
         frameTime: evidence?.frameTime,
         renderTier:
@@ -96,13 +98,7 @@ export default function AmbientScene({ evidence }: { evidence?: AmbientSceneEvid
           else candidateFailed = true;
         },
       });
-      if (
-        !candidate ||
-        candidateFailed ||
-        disposed ||
-        token !== generation ||
-        reducedMotion.matches
-      ) {
+      if (!candidate || candidateFailed || disposed || token !== generation || isReducedMotion()) {
         candidate?.destroy();
         return;
       }
@@ -125,7 +121,7 @@ export default function AmbientScene({ evidence }: { evidence?: AmbientSceneEvid
     };
 
     mountSvg();
-    if (!reducedMotion.matches) void tryWebGpu();
+    if (!isReducedMotion()) void tryWebGpu();
 
     const syncSize = () => {
       const nextSize = size();
@@ -145,7 +141,7 @@ export default function AmbientScene({ evidence }: { evidence?: AmbientSceneEvid
     const syncReducedMotion = () => {
       generation += 1;
       mountSvg();
-      if (!reducedMotion.matches) void tryWebGpu();
+      if (!isReducedMotion()) void tryWebGpu();
     };
 
     const themeObserver = new MutationObserver(syncPalette);
@@ -157,6 +153,8 @@ export default function AmbientScene({ evidence }: { evidence?: AmbientSceneEvid
     window.addEventListener("resize", syncSize);
     document.addEventListener("visibilitychange", syncVisibility);
     reducedMotion.addEventListener("change", syncReducedMotion);
+    const handleDemoMotion = () => syncReducedMotion();
+    window.addEventListener("web-demo:motion-change", handleDemoMotion);
 
     return () => {
       disposed = true;
@@ -166,6 +164,7 @@ export default function AmbientScene({ evidence }: { evidence?: AmbientSceneEvid
       window.removeEventListener("resize", syncSize);
       document.removeEventListener("visibilitychange", syncVisibility);
       reducedMotion.removeEventListener("change", syncReducedMotion);
+      window.removeEventListener("web-demo:motion-change", handleDemoMotion);
     };
   }, [evidence]);
 

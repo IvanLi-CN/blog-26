@@ -323,6 +323,25 @@ h6 {
   }
 }
 
+html[data-web-demo-motion="reduce"] {
+  scroll-behavior: auto !important;
+}
+
+html[data-web-demo-motion="reduce"] .animate-fade-in-up,
+html[data-web-demo-motion="reduce"] .animate-fade-in,
+html[data-web-demo-motion="reduce"] .animate-scale-in,
+html[data-web-demo-motion="reduce"] .pending-draft-text,
+html[data-web-demo-motion="reduce"] .pending-draft-text::after {
+  animation: none !important;
+}
+
+html[data-web-demo-motion="reduce"] .nature-panel,
+html[data-web-demo-motion="reduce"] .nature-button,
+html[data-web-demo-motion="reduce"] .nature-icon-button,
+html[data-web-demo-motion="reduce"] .nature-hover-lift {
+  transition-duration: 0.01ms !important;
+}
+
 .nature-detail-container {
   width: var(--nature-content-width);
   margin: 0 auto;

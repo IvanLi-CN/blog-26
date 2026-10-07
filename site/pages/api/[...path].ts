@@ -59,7 +59,7 @@ export async function ALL({ request, params }: { request: Request; params: { pat
     return Response.json(
       {
         status: "ok",
-        runtime: "console",
+        runtime: process.env.WEB_DEMO_BUILD === "true" ? "web-demo" : "console",
         authenticated: Boolean(auth.user),
         isAdmin: auth.isAdmin,
       },
@@ -122,7 +122,8 @@ export async function ALL({ request, params }: { request: Request; params: { pat
   return notFound();
 }
 
-export const prerender = process.env.CONSOLE_RUNTIME !== "true";
+export const prerender =
+  process.env.CONSOLE_RUNTIME !== "true" && process.env.WEB_DEMO_BUILD !== "true";
 
 export function getStaticPaths() {
   return [];

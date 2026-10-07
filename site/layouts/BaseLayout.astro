@@ -37,6 +37,7 @@ const resolvedImage =
 ---
 <html
   lang="zh-CN"
+  data-web-demo-build={isWebDemoBuild ? "true" : undefined}
   data-ui-theme="light"
   data-ui-preference="system"
   data-theme="light"
@@ -99,6 +100,7 @@ const resolvedImage =
         defaultTheme: UI.theme.default,
         legacyLightThemes: UI.theme.legacyLight,
         legacyDarkThemes: UI.theme.legacyDark,
+        webDemoBuild: isWebDemoBuild,
       }}
     >
       (() => {
@@ -120,7 +122,41 @@ const resolvedImage =
         }
 
         function getStoredTheme() {
+          if (webDemoBuild) {
+            const urlThemeValue = new URLSearchParams(window.location.search).get("d_theme");
+            const urlTheme = normalizeTheme(urlThemeValue);
+            if (urlThemeValue && ["light", "dark", "system"].includes(urlThemeValue)) {
+              localStorage.setItem("theme", urlTheme);
+              return urlTheme;
+            }
+            try {
+              const session = JSON.parse(
+                sessionStorage.getItem("web-demo-global-environment") || "null"
+              );
+              if (session && ["light", "dark", "system"].includes(session.theme)) {
+                localStorage.setItem("theme", session.theme);
+                return session.theme;
+              }
+            } catch {
+              // Ignore malformed session state and keep the product preference.
+            }
+          }
           return localStorage.getItem("theme") || defaultTheme;
+        }
+
+        function getDemoMotionPreference() {
+          if (!webDemoBuild) return;
+          const urlMotion = new URLSearchParams(window.location.search).get("d_motion");
+          if (urlMotion === "system" || urlMotion === "reduce") return urlMotion;
+          try {
+            const session = JSON.parse(
+              sessionStorage.getItem("web-demo-global-environment") || "null"
+            );
+            if (session?.motion === "system" || session?.motion === "reduce") return session.motion;
+          } catch {
+            // Ignore malformed session state and keep the system preference.
+          }
+          return "system";
         }
 
         function syncThemeColor(doc = document) {
@@ -162,6 +198,8 @@ const resolvedImage =
         function syncDocumentState(doc = document) {
           applyTheme(getStoredTheme(), doc);
           ensureNavigationSession(doc);
+          const motion = getDemoMotionPreference();
+          if (motion) doc.documentElement.dataset.webDemoMotion = motion;
         }
 
         colorSchemePreference.addEventListener("change", () => {

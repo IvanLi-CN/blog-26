@@ -43,3 +43,4 @@
 | Style Playbook integration | active | in progress | `style-playbook-integration/SPEC.md` | - | Native public knowledge collection, highest-ready stable Release bootstrap, scheduled content reconciliation, and console cache of the blog's deployed edition; production activation remains pending. |
 | Worktree bootstrap environment recovery | active | implemented | `worktree-bootstrap-env-recovery/SPEC.md` | - | Copies a missing linked-worktree `.env.local` from the primary worktree, preserves existing target overrides, and re-leases only worktree ports. |
 | Project native tag discovery | active | implemented | `project-tag-discovery/SPEC.md` | - | Shared article, Memo and catalog project classification. |
+| Web Demo global Inspector controls | active | partial | `web-demo-global-controls/SPEC.md` | - | Shared identity, connectivity, delay, theme and motion controls are implemented. Full public-page CSR is a separate follow-up; Agent VM build/E2E remains pending. |

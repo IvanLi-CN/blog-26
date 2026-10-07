@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useId, useLayoutEffect, useState } from "react";
-import { applyThemeToDocument, isDarkTheme, normalizeThemeSelection } from "@/lib/theme";
+import {
+  isDarkTheme,
+  normalizeThemeSelection,
+  setThemePreference,
+  UI_THEME_PREFERENCE_EVENT,
+} from "@/lib/theme";
 import { UI, type UiThemeSelection } from "../../config/site";
 import Icon from "../ui/Icon";
 
@@ -41,10 +46,18 @@ export default function ThemeToggle({
     setCurrentTheme(readThemeSelectionFromDocument());
   }, []);
 
+  useEffect(() => {
+    const handlePreference = (event: Event) => {
+      const nextTheme = (event as CustomEvent<{ theme?: UiThemeSelection }>).detail?.theme;
+      if (nextTheme) setCurrentTheme(nextTheme);
+    };
+    window.addEventListener(UI_THEME_PREFERENCE_EVENT, handlePreference);
+    return () => window.removeEventListener(UI_THEME_PREFERENCE_EVENT, handlePreference);
+  }, []);
+
   const setTheme = (theme: UiThemeSelection) => {
     setCurrentTheme(theme);
-    localStorage.setItem("theme", theme);
-    applyThemeToDocument(theme);
+    setThemePreference(theme);
   };
 
   const modes = UI.theme.options.map((theme) => ({

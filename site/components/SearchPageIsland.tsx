@@ -19,6 +19,7 @@ import {
   queryPlaybookSearch,
 } from "@/lib/playbook/search";
 import type { PlaybookSearchPayload } from "@/lib/playbook/types";
+import { webDemoFetch } from "@/lib/web-demo-fetch";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 
 const SEARCH_RESULTS_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -40,7 +41,7 @@ async function searchPlaybook(query: string, source?: PlaybookSearchSource) {
   const key = `${source.url}:${source.edition}:${source.sourceReleaseId}:${source.sourceTag}`;
   let pending = playbookIndexes.get(key);
   if (!pending) {
-    pending = fetch(source.url, { signal: AbortSignal.timeout(30_000) })
+    pending = webDemoFetch(source.url, { signal: AbortSignal.timeout(30_000) })
       .then(async (response) => {
         if (!response.ok)
           throw new Error(
@@ -127,7 +128,7 @@ function writeCachedSearchSuggestions(
 }
 
 async function search(query: string, signal?: AbortSignal) {
-  const response = await fetch(
+  const response = await webDemoFetch(
     toPublicApiUrl(`/api/public/search?q=${encodeURIComponent(query)}&topK=50`),
     { signal }
   );
@@ -145,7 +146,7 @@ async function loadSearchSuggestions(
   reason: SearchSuggestionReason,
   signal?: AbortSignal
 ) {
-  const response = await fetch(
+  const response = await webDemoFetch(
     toPublicApiUrl(
       `/api/public/search/suggestions?q=${encodeURIComponent(query)}&reason=${encodeURIComponent(
         reason

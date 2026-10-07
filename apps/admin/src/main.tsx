@@ -6,14 +6,21 @@ import { ThemeProvider } from "~/components/theme-provider";
 import { router } from "~/router";
 import "~/styles.css";
 import {
+  cancelWebDemoRequests,
+  initializeWebDemoEnvironment,
   WEB_DEMO_ACTION_EVENT,
   WEB_DEMO_STATE_EVENT,
   type WebDemoActionDetail,
+  type WebDemoStateChangeDetail,
 } from "@/lib/web-demo-runtime";
 
 const queryClient = new QueryClient();
 const rootElement = document.getElementById("app");
 const isAdminWebDemoBuild = import.meta.env.VITE_WEB_DEMO_BUILD === "true";
+
+if (isAdminWebDemoBuild) {
+  document.documentElement.dataset.webDemoBuild = "true";
+}
 
 if (!rootElement) {
   throw new Error("Admin app root element #app not found");
@@ -39,16 +46,24 @@ async function bootstrapAdminApp() {
     if (isAdminWebDemoBuild) {
       const { setupAdminDemoApiMocks } = await import("~/demo/mock-admin-api");
       setupAdminDemoApiMocks();
+      initializeWebDemoEnvironment("admin");
     }
 
     if (isAdminWebDemoBuild) {
       const refreshDemoQueries = (event: Event) => {
         const detail = (event as CustomEvent<WebDemoActionDetail>).detail;
+        const stateDetail = (event as CustomEvent<WebDemoStateChangeDetail>).detail;
+        const changed = stateDetail?.changed ?? [];
+        const changesBusinessEnvironment = changed.some((key) =>
+          ["persona", "connection", "delay"].includes(key)
+        );
         if (
-          event.type === WEB_DEMO_STATE_EVENT ||
+          changesBusinessEnvironment ||
           detail?.action === "refresh-data" ||
           detail?.action === "reset-state"
         ) {
+          if (changesBusinessEnvironment) cancelWebDemoRequests();
+          void queryClient.cancelQueries();
           void queryClient.invalidateQueries();
         }
       };

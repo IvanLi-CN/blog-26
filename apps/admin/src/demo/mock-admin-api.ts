@@ -24,7 +24,13 @@ import type {
   AdminSecretState,
 } from "@/lib/llm-settings";
 import { rebasePersistedLocalLinks, rebasePersistedLocalReferences } from "@/lib/persisted-paths";
-import { getWebDemoState } from "@/lib/web-demo-runtime";
+import {
+  assertWebDemoRequestAvailable,
+  getWebDemoEnvironment,
+  getWebDemoState,
+  type WebDemoEnvironment,
+  waitForWebDemoRequest,
+} from "@/lib/web-demo-runtime";
 import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
 
@@ -591,11 +597,11 @@ export function setupAdminDemoApiMocks() {
 
   const originalFetch = window.fetch.bind(window);
 
-  window.fetch = async (input, init) => {
+  window.fetch = (async (input, init) => {
     const request = normalizeRequest(input, init);
     if (!request) return originalFetch(input, init);
 
-    const { url, method } = request;
+    const { url, method, signal } = request;
     if (url.origin !== window.location.origin) return originalFetch(input, init);
 
     if (import.meta.env.VITE_WEB_DEMO_E2E_FIXTURE === "true" && !isE2eFixtureRoute()) {
@@ -606,24 +612,23 @@ export function setupAdminDemoApiMocks() {
       url.pathname.startsWith("/api/admin/") || url.pathname.startsWith("/api/files/");
     if (!isDemoApiRequest) return originalFetch(input, init);
 
-    const demoState = getWebDemoState(window.location, "admin");
-    if (demoState.network === "offline") {
-      return json({ error: { message: "模拟网络故障：请求未发送到真实服务。" } }, 503);
-    }
-    if (demoState.network === "slow") {
-      await new Promise((resolve) => window.setTimeout(resolve, 1100));
-    }
+    const environment = getWebDemoEnvironment(window.location, "admin");
+    await waitForWebDemoRequest(environment, signal);
 
     if (url.pathname.startsWith("/api/admin/")) {
-      return handleAdminRequest(url, method, init);
+      return handleAdminRequest(url, method, init, signal, environment);
     }
 
     if (url.pathname.startsWith("/api/files/")) {
+      assertWebDemoRequestAvailable(environment, signal);
+      if (environment.persona !== "admin") {
+        return json({ error: { code: "FORBIDDEN", message: "演示会话没有管理员权限。" } }, 403);
+      }
       return handleFileAssetRequest(url);
     }
 
     return originalFetch(input, init);
-  };
+  }) as typeof window.fetch;
 }
 
 function isE2eFixtureRoute() {
@@ -653,26 +658,41 @@ function normalizeRequest(input: RequestInfo | URL, init?: RequestInit) {
     const method = (
       init?.method ?? (input instanceof Request ? input.method : "GET")
     ).toUpperCase();
-    return { url, method };
+    const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
+    return { url, method, signal };
   } catch {
     return null;
   }
 }
 
-async function handleAdminRequest(url: URL, method: string, init?: RequestInit) {
+async function handleAdminRequest(
+  url: URL,
+  method: string,
+  init?: RequestInit,
+  signal?: AbortSignal,
+  environment?: WebDemoEnvironment
+) {
   const path = url.pathname;
   const body = await readJsonBody(init);
+  if (environment) assertWebDemoRequestAvailable(environment, signal);
 
   if (path === "/api/admin/session") {
     const state = getWebDemoState(window.location, "admin");
+    const persona = environment?.persona ?? state.persona;
     return json({
-      user: {
-        id: state.persona === "admin" ? "demo-admin" : "demo-guest",
-        nickname: state.persona === "admin" ? "Ivan" : "Guest",
-        email: state.persona === "admin" ? "author@example.com" : "guest@example.com",
-      },
-      isAdmin: state.persona === "admin",
+      user:
+        persona === "guest"
+          ? null
+          : {
+              id: persona === "admin" ? "demo-admin" : "demo-user",
+              nickname: persona === "admin" ? "Ivan" : "Demo User",
+              email: persona === "admin" ? "author@example.com" : "user@example.com",
+            },
+      isAdmin: persona === "admin",
     });
+  }
+  if (environment?.persona !== "admin") {
+    return json({ error: { code: "FORBIDDEN", message: "演示会话没有管理员权限。" } }, 403);
   }
   if (path === "/api/admin/dashboard/stats") return json(dashboardStats());
   if (path === "/api/admin/dashboard/recent-activity") return json(recentActivity());
@@ -789,12 +809,18 @@ async function handleAdminRequest(url: URL, method: string, init?: RequestInit) 
       items: listDirectory(sourceParam(url), pathParam(url)),
     });
   if (path === "/api/admin/files/read") return json(readFile(sourceParam(url), pathParam(url)));
-  if (path === "/api/admin/files/write") return delayedJson(writeFile(body), 180);
-  if (path === "/api/admin/files/create-directory") return delayedJson(createDirectory(body), 180);
-  if (path === "/api/admin/files/rename") return delayedJson(renameFile(body), 320);
-  if (path === "/api/admin/files/move") return handleFileMutation(() => moveEntries(body), 220);
-  if (path === "/api/admin/files/copy") return handleFileMutation(() => copyEntries(body), 220);
-  if (path === "/api/admin/files/delete") return handleFileMutation(() => deleteEntries(body), 220);
+  if (path === "/api/admin/files/write")
+    return delayedJson(() => writeFile(body), 180, 200, signal);
+  if (path === "/api/admin/files/create-directory")
+    return delayedJson(() => createDirectory(body), 180, 200, signal);
+  if (path === "/api/admin/files/rename")
+    return delayedJson(() => renameFile(body), 320, 200, signal);
+  if (path === "/api/admin/files/move")
+    return handleFileMutation(() => moveEntries(body), 220, signal);
+  if (path === "/api/admin/files/copy")
+    return handleFileMutation(() => copyEntries(body), 220, signal);
+  if (path === "/api/admin/files/delete")
+    return handleFileMutation(() => deleteEntries(body), 220, signal);
 
   return json({ error: { message: `未实现的 demo API: ${path}` } }, 404);
 }
@@ -810,16 +836,38 @@ function json(data: unknown, status = 200) {
   });
 }
 
-function delayedJson(data: unknown, delayMs: number, status = 200) {
-  return new Promise<Response>((resolve) => {
-    globalThis.setTimeout(() => resolve(json(data, status)), delayMs);
+function delayedJson(
+  data: unknown | (() => unknown),
+  delayMs: number,
+  status = 200,
+  signal?: AbortSignal
+) {
+  return new Promise<Response>((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(createDemoAbortError());
+      return;
+    }
+    const onAbort = () => {
+      globalThis.clearTimeout(timer);
+      reject(createDemoAbortError());
+    };
+    const timer = globalThis.setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      try {
+        resolve(json(typeof data === "function" ? data() : data, status));
+      } catch (error) {
+        reject(error);
+      }
+    }, delayMs);
+    signal?.addEventListener("abort", onAbort, { once: true });
   });
 }
 
-function handleFileMutation(handler: () => unknown, delayMs = 0) {
+async function handleFileMutation(handler: () => unknown, delayMs = 0, signal?: AbortSignal) {
   try {
-    return delayedJson(handler(), delayMs);
+    return await delayedJson(handler, delayMs, 200, signal);
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
     if (error instanceof DemoApiError) {
       return json({ error: { message: error.message } }, error.status);
     }
@@ -833,6 +881,15 @@ function handleFileMutation(handler: () => unknown, delayMs = 0) {
       500
     );
   }
+}
+
+function createDemoAbortError() {
+  if (typeof DOMException !== "undefined") {
+    return new DOMException("The request was aborted.", "AbortError");
+  }
+  const error = new Error("The request was aborted.");
+  error.name = "AbortError";
+  return error;
 }
 
 async function readJsonBody(init?: RequestInit) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { webDemoFetch } from "@/lib/web-demo-fetch";
 
 export interface AuthUser {
   id: string;
@@ -19,7 +20,7 @@ export interface UseAuthResult {
 }
 
 async function readUser() {
-  const response = await fetch("/api/public/auth/me", {
+  const response = await webDemoFetch("/api/public/auth/me", {
     credentials: "same-origin",
   });
   const payload = await response.json().catch(() => null);

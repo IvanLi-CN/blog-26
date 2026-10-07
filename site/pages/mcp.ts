@@ -1,4 +1,5 @@
-export const prerender = process.env.CONSOLE_RUNTIME !== "true";
+export const prerender =
+  process.env.CONSOLE_RUNTIME !== "true" && process.env.WEB_DEMO_BUILD !== "true";
 
 export async function ALL({ request }: { request: Request }) {
   if (process.env.CONSOLE_RUNTIME !== "true") {
