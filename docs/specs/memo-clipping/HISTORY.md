@@ -58,3 +58,5 @@
 - Formal review identified stale-index detail authorization after private tag removal; the live detail boundary now checks canonical visibility independently of the optional clipping projection. Artifact publication also removes the asynchronous rename gap after its final ownership check.
 
 - Formal contract review found MCP tag defaults could remove clipping on remarks-only updates. The update schema now distinguishes omission from an explicit empty list, preserving omitted author tags.
+
+- Reconciliation reads canonical authored input inside the serialized owner transaction, preventing queued old reads from rolling back a newer target. Private operations reject removed clipping markers; conversation snapshots revalidate current canonical target, revision and conversation after loading, including before each SSE delivery. Deterministic regression fixtures cover a queued reconcile across a save and a delayed snapshot across target replacement without configured-model requests.

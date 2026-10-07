@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { extractAuthFromRequest } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
+import { recognizeMemoClipping } from "@/lib/memo-clipping";
 import { posts } from "@/lib/schema";
 import type { TRPCContext } from "@/server/context";
 import { getClippingRuntime } from "./runtime";
@@ -64,6 +65,9 @@ async function access(slug: string, ctx: TRPCContext, discussion = false) {
   )[0];
   if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "闪念不存在" });
   const authored = await readAuthoredMemo(row.id);
+  const recognition = recognizeMemoClipping(authored.body, authored.frontmatter);
+  if (discussion && !recognition.enabled)
+    throw new TRPCError({ code: "NOT_FOUND", message: "此闪念没有启用剪藏" });
   const id = clippingIdForMemo(row.id, authored.frontmatter);
   const manifest = await store.manifest(id);
   if (manifest && (manifest.memoId !== row.id || manifest.deleted))
@@ -84,7 +88,28 @@ async function access(slug: string, ctx: TRPCContext, discussion = false) {
   ) {
     throw new TRPCError({ code: "FORBIDDEN", message: "无权阅读此闪念" });
   }
-  return { row, authored, manifest, participant };
+  return { row, authored, manifest, participant, recognition };
+}
+
+function currentDiscussion(current: Awaited<ReturnType<typeof access>>) {
+  const { manifest, recognition } = current;
+  if (!manifest?.enabled || !recognition.targetUrl || recognition.targetUrl !== manifest.targetUrl)
+    throw new TRPCError({ code: "CONFLICT", message: "剪藏目标已变化，请重新打开对话。" });
+  return manifest;
+}
+
+async function revalidateDiscussion(
+  slug: string,
+  ctx: TRPCContext,
+  expected: NonNullable<Awaited<ReturnType<typeof access>>["manifest"]>
+) {
+  const current = currentDiscussion(await access(slug, ctx, true));
+  if (
+    current.id !== expected.id ||
+    current.revision !== expected.revision ||
+    current.conversationId !== expected.conversationId
+  )
+    throw new TRPCError({ code: "CONFLICT", message: "剪藏目标已变化，请重新打开对话。" });
 }
 
 function runtime() {
@@ -134,23 +159,32 @@ async function routeClippingRequest(
     return response({ accepted: true }, 202);
   }
   if (operation === "chat") {
+    currentDiscussion(authorized);
     if (request.method === "GET") {
       const requested = new URL(request.url).searchParams.get("conversationId");
       const conversationId = manifest.conversationId;
       if (requested && requested !== conversationId)
         throw new TRPCError({ code: "FORBIDDEN", message: "仅能访问当前文章对话" });
-      if (!conversationId)
+      if (!conversationId) {
+        await revalidateDiscussion(slug, ctx, manifest);
         return response({ messages: [], generating: false, partial: "", conversationId: null });
-      return response({
-        ...(await runtime().chatSnapshot(conversationId)),
-        conversationId,
-      });
+      }
+      const snapshot = await runtime().chatSnapshot(conversationId);
+      await revalidateDiscussion(slug, ctx, manifest);
+      return response({ ...snapshot, conversationId });
     }
     if (request.method === "POST") {
       const parsed = turnSchema.safeParse(await input(request));
       if (!parsed.success)
         throw new TRPCError({ code: "BAD_REQUEST", message: "消息为空、过长或缺少幂等标识" });
-      return response(await runtime().chat(row.id, parsed.data.text, parsed.data.requestId), 202);
+      const submission = await runtime().chat(row.id, parsed.data.text, parsed.data.requestId);
+      const current = currentDiscussion(await access(slug, ctx, true));
+      if (
+        current.revision !== manifest.revision ||
+        current.conversationId !== submission.conversationId
+      )
+        throw new TRPCError({ code: "CONFLICT", message: "剪藏目标已变化，请重新打开对话。" });
+      return response(submission, 202);
     }
     return response({ error: "Method not allowed" }, 405);
   }
@@ -174,11 +208,16 @@ async function routeClippingRequest(
               isAdmin: identity.isAdmin,
             };
             const current = await access(slug, currentContext, true);
-            if (!current.manifest?.enabled || !current.manifest.conversationId) break;
-            const snapshot = await service.chatSnapshot(current.manifest.conversationId);
+            const binding = currentDiscussion(current);
+            if (!binding.conversationId) break;
+            const snapshot = await service.chatSnapshot(binding.conversationId);
+            // Permission and target can change while the snapshot is being loaded.
+            const liveIdentity = await extractAuthFromRequest(request);
+            await revalidateDiscussion(slug, { ...ctx, ...liveIdentity }, binding);
+            if (cancelled || request.signal.aborted) break;
             const data = JSON.stringify({
               ...snapshot,
-              conversationId: current.manifest.conversationId,
+              conversationId: binding.conversationId,
             });
             if (data !== previous) {
               controller.enqueue(

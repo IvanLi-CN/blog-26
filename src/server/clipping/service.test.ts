@@ -300,3 +300,52 @@ describe("clipping lifecycle and canonical content", () => {
     }
   });
 });
+
+test("queued reconcile reads canonical input only after the preceding owner transaction", async () => {
+  const data = await fixture();
+  let service: ClippingService | undefined;
+  let entered!: () => void;
+  let release!: () => void;
+  const blocked = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let pause = false;
+  try {
+    service = await ClippingService.open({
+      ...data.options,
+      resolveModel: async () => ({ model: null, baseUrl: null, apiKey: null }),
+      index: async () => {
+        if (pause) {
+          pause = false;
+          entered();
+          await gate;
+        }
+      },
+    });
+    await service.idle();
+    pause = true;
+    const first = service.reconcile(data.memoId);
+    await blocked;
+    const queued = service.reconcile(data.memoId);
+    // Let any incorrectly eager authored read settle before the next save.
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    const parsed = matter(await readFile(data.path, "utf8"));
+    await writeFile(
+      data.path,
+      matter.stringify(parsed.content.replace("/one", "/two"), parsed.data)
+    );
+    release();
+    await Promise.all([first, queued]);
+    await service.idle();
+    const projection = await projectClippingMemo(data.memoId, data.store);
+    expect(projection?.manifest?.targetUrl).toBe("https://article.example/two");
+    expect(projection?.manifest?.revision).toBe(2);
+  } finally {
+    release?.();
+    await service?.close();
+    await data.cleanup();
+  }
+});

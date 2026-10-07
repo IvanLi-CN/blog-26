@@ -254,3 +254,63 @@ test("MCP omitted tags preserve clipping metadata while explicit empty tags remo
     await writeFile(join(root, "authored", id), raw);
   }
 });
+
+test("private operations reject a removed canonical marker before stale runtime state", async () => {
+  try {
+    await writeFile(
+      join(root, "authored", id),
+      matter.stringify("https://article.example/one", { ...fm, tags: [] })
+    );
+    for (const operation of ["chat", "chat/events", "reprocess"])
+      for (const actor of ["creator", "admin"] as const)
+        await expect(request(operation, actor)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  } finally {
+    await writeFile(join(root, "authored", id), raw);
+  }
+});
+
+test("a snapshot loaded across a target change cannot be returned as the current conversation", async () => {
+  const service = await ClippingService.open({
+    store,
+    runtimePath: join(root, "api-race.sqlite"),
+    memoIds: async () => [id],
+    resolveModel: async () => ({ model: null, baseUrl: null, apiKey: null }),
+    scanIntervalMs: 60_000,
+  });
+  const key = Symbol.for("blog26.clipping.runtime");
+  const globals = globalThis as typeof globalThis & { [key]: { service: ClippingService | null } };
+  const previous = globals[key].service;
+  const original = service.chatSnapshot;
+  let entered!: () => void;
+  let release!: () => void;
+  const blocked = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  service.chatSnapshot = async () => {
+    entered();
+    await gate;
+    return { messages: [], generating: false, partial: "" };
+  };
+  globals[key].service = service;
+  try {
+    const pending = request("chat", "creator");
+    const result = pending.then(
+      () => ({ code: "unexpected-success" }),
+      (error) => error
+    );
+    await blocked;
+    await writeFile(join(root, "authored", id), matter.stringify(body.replace("/one", "/two"), fm));
+    release();
+    expect(await result).toMatchObject({ code: "CONFLICT" });
+    await expect(request("chat", "admin")).rejects.toMatchObject({ code: "CONFLICT" });
+  } finally {
+    release();
+    globals[key].service = previous;
+    service.chatSnapshot = original;
+    await writeFile(join(root, "authored", id), raw);
+    await service.close();
+  }
+});

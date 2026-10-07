@@ -12,8 +12,8 @@
     "bun.lock": "45265ef3a329a3d7f95662797e49214235bd8c4e",
     "docs/adr/0012-memo-clipping-content-boundaries.md": "ffcdcd1cf9079461961519b1fd3c2ef70283a913",
     "docs/specs/README.md": "e3711242be7130339e46fa911b6c9f355d062ba2",
-    "docs/specs/memo-clipping/HISTORY.md": "816c84edcbb92a0beb4610491c0ff20e8c26e050",
-    "docs/specs/memo-clipping/IMPLEMENTATION.md": "0bfa7c2659cb120cc4032c792f7940d3ef6ffd31",
+    "docs/specs/memo-clipping/HISTORY.md": "6105c4b76f3664705f6b73d5f3eaa7ff6cd9e701",
+    "docs/specs/memo-clipping/IMPLEMENTATION.md": "269a64b724dbe35b84f360563767bcaae9a67510",
     "docs/specs/memo-clipping/SPEC.md": "223b3f7cd2473b68fd4d94745e8a42d17131f9f5",
     "docs/specs/memo-clipping/assets/detail-dark-1440.png": "7c8842afbdc424ec726016c2cb0243794a184a30",
     "docs/specs/memo-clipping/assets/detail-light-393.png": "0253e14b8d3690a397ad917d4583c28c804af4f5",
@@ -68,8 +68,8 @@
     "src/public-site/snapshot.ts": "8973e3bcc43abc6e7e9267423afa0b1b58791340",
     "src/server/clipping/agent-runtime.test.ts": "b9c6feeee3f66cde97853e583d522137dbed4c45",
     "src/server/clipping/agent-runtime.ts": "c78d797f4ec2ba2557c4e64bf97721a62b8cbe73",
-    "src/server/clipping/api.test.ts": "ce8fc96681c381e8cfc34fab85a003b6075ddcbf",
-    "src/server/clipping/api.ts": "933679cd59299f17120d948f7106983d3f2e5570",
+    "src/server/clipping/api.test.ts": "4e3ad48317a8d4f02f07063fec48e98a3b0508e4",
+    "src/server/clipping/api.ts": "ac2ab8819c9c24208e2d22c0a463651849dcbcce",
     "src/server/clipping/article-segments.test.ts": "318ca39bbf9f9da0cdd9820e2ea13ba92ecbb1ca",
     "src/server/clipping/article-segments.ts": "dc1ff3c55326de419f920a40279f53f1c5d4c7f3",
     "src/server/clipping/extract.test.ts": "c930c19115874115787be31c07dbaa874ec54f95",
@@ -82,8 +82,8 @@
     "src/server/clipping/runtime.ts": "6855a0184d8cf68e2cd4f7e7f54d2b20540b416a",
     "src/server/clipping/service-interruption.fixture.ts": "60ab2a7561a566f2471accee16247a054dab7416",
     "src/server/clipping/service-recovery.test.ts": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-    "src/server/clipping/service.test.ts": "f63650649eb990f86baa14925e60be132063de7a",
-    "src/server/clipping/service.ts": "8f190c4d8cfdd583c6244f2f4a3b07f3b3774d91",
+    "src/server/clipping/service.test.ts": "884037494208376565cebc2dc5c50577decf892e",
+    "src/server/clipping/service.ts": "3087c8bb6ad3a7d435e27321cdd7c0a6287fe409",
     "src/server/clipping/store.test.ts": "f0e3dbd5fac805fac0d777561953dadbf90f72fc",
     "src/server/clipping/store.ts": "acb88f078f884e4ceeba18d4d0f2e1974e889b08",
     "src/server/clipping/turndown-gfm.d.ts": "b42f4bb08636ac5e3ee6fe4d33370816878a7b06",
@@ -112,7 +112,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "ce8fc96681c381e8cfc34fab85a003b6075ddcbf",
+          "blob": "4e3ad48317a8d4f02f07063fec48e98a3b0508e4",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
         },
         {
@@ -127,7 +127,7 @@
         },
         {
           "path": "src/server/clipping/service.test.ts",
-          "blob": "f63650649eb990f86baa14925e60be132063de7a",
+          "blob": "884037494208376565cebc2dc5c50577decf892e",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
         },
         {
@@ -149,7 +149,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "ce8fc96681c381e8cfc34fab85a003b6075ddcbf",
+          "blob": "4e3ad48317a8d4f02f07063fec48e98a3b0508e4",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
         },
         {
@@ -164,7 +164,7 @@
         },
         {
           "path": "src/server/clipping/service.test.ts",
-          "blob": "f63650649eb990f86baa14925e60be132063de7a",
+          "blob": "884037494208376565cebc2dc5c50577decf892e",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
         },
         {
@@ -190,7 +190,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "ce8fc96681c381e8cfc34fab85a003b6075ddcbf",
+          "blob": "4e3ad48317a8d4f02f07063fec48e98a3b0508e4",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
         },
         {
@@ -205,7 +205,7 @@
         },
         {
           "path": "src/server/clipping/service.test.ts",
-          "blob": "f63650649eb990f86baa14925e60be132063de7a",
+          "blob": "884037494208376565cebc2dc5c50577decf892e",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
         },
         {
@@ -229,7 +229,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "ce8fc96681c381e8cfc34fab85a003b6075ddcbf",
+          "blob": "4e3ad48317a8d4f02f07063fec48e98a3b0508e4",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
         },
         {
@@ -253,7 +253,7 @@
         },
         {
           "path": "src/server/clipping/service.test.ts",
-          "blob": "f63650649eb990f86baa14925e60be132063de7a",
+          "blob": "884037494208376565cebc2dc5c50577decf892e",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
         },
         {

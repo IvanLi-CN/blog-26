@@ -91,3 +91,5 @@
 - Live Memo detail checks canonical clipping visibility even when tag removal makes the reading projection disappear before index synchronization. Artifact publication performs its final guarded rename synchronously inside the owner transaction, without an asynchronous gap after the ownership check. Regression fixtures cover stale private detail denial and ownership loss while staging a replacement.
 
 - MCP Memo updates preserve existing author tags when the `tags` argument is omitted; an explicit empty array still clears them. An official MCP SDK client regression exercises both cases and verifies the signed clipping reference remains intact.
+
+- Reconciliation reads canonical authored input inside the serialized owner transaction, preventing queued old reads from rolling back a newer target. Private operations reject removed clipping markers; conversation snapshots revalidate current canonical target, revision and conversation after loading, including before each SSE delivery. Deterministic regression fixtures cover a queued reconcile across a save and a delayed snapshot across target replacement without configured-model requests.

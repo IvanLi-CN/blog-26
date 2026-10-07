@@ -188,30 +188,30 @@ export class ClippingService {
 
   async reconcile(memoId: string, reprocess = false) {
     if (this.closing) throw new Error("剪藏处理器正在停止。");
-    let authored: Awaited<ReturnType<typeof readAuthoredMemo>> | null;
-    try {
-      authored = await readAuthoredMemo(memoId);
-    } catch (error) {
-      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT")
-        authored = null;
-      else throw error;
-    }
-    const id = authored
-      ? clippingIdForMemo(memoId, authored.frontmatter)
-      : (this.known.get(memoId) ??
-        (
-          await db
-            .select({ id: memoClippings.id })
-            .from(memoClippings)
-            .where(eq(memoClippings.memoId, memoId))
-            .limit(1)
-        )[0]?.id);
-    if (!id) return;
-    const recognition = authored
-      ? recognizeMemoClipping(authored.body, authored.frontmatter)
-      : null;
     const abort: string[] = [];
     await this.runtime.exclusive(async () => {
+      let authored: Awaited<ReturnType<typeof readAuthoredMemo>> | null;
+      try {
+        authored = await readAuthoredMemo(memoId);
+      } catch (error) {
+        if (error && typeof error === "object" && "code" in error && error.code === "ENOENT")
+          authored = null;
+        else throw error;
+      }
+      const id = authored
+        ? clippingIdForMemo(memoId, authored.frontmatter)
+        : (this.known.get(memoId) ??
+          (
+            await db
+              .select({ id: memoClippings.id })
+              .from(memoClippings)
+              .where(eq(memoClippings.memoId, memoId))
+              .limit(1)
+          )[0]?.id);
+      if (!id) return;
+      const recognition = authored
+        ? recognizeMemoClipping(authored.body, authored.frontmatter)
+        : null;
       let manifest = await this.store.manifest(id);
       if (!manifest && !recognition?.enabled) return;
       if (manifest && manifest.memoId !== memoId) throw new Error("剪藏引用不属于当前闪念。");
