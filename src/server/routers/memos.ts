@@ -1062,7 +1062,7 @@ export const memosRouter = router({
           : ctx.user?.email || "admin@example.com",
         updateDate: nowIso,
       };
-      await attachClippingReference(normalized.content, frontmatter, null, id);
+      await attachClippingReference(normalized.content, frontmatter, ctx.user?.id ?? null, id);
       const existingPublishIso = toIsoString(existingMemo.publishDate ?? null);
       if (existingPublishIso) {
         frontmatter.publishDate = existingPublishIso;

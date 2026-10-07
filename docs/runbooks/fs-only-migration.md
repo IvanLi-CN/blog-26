@@ -19,23 +19,43 @@ export PI_DURABLE_DB_PATH="/path/to/pi-durable.sqlite"
 export CLIPPING_CONTENT_BASE_PATH="/path/to/clippings"
 export BACKUP_DIR="/path/to/backup/$(date +%Y%m%d-%H%M%S)"
 
+case "$CONTENT_ROOT" in ""|"/"|[!/]*) echo "CONTENT_ROOT must be a non-root absolute path" >&2; exit 2;; esac
+case "$CLIPPING_CONTENT_BASE_PATH" in ""|"/"|[!/]*) echo "CLIPPING_CONTENT_BASE_PATH must be a non-root absolute path" >&2; exit 2;; esac
+case "$DB_PATH" in ""|"/"|[!/]*) echo "DB_PATH must be an absolute path" >&2; exit 2;; esac
+case "$PI_DURABLE_DB_PATH" in ""|"/"|[!/]*) echo "PI_DURABLE_DB_PATH must be an absolute path" >&2; exit 2;; esac
+test "$CONTENT_ROOT" != "$CLIPPING_CONTENT_BASE_PATH"
+test "$DB_PATH" != "$PI_DURABLE_DB_PATH"
+
 # Stop the sole console/gateway runtime owner through its process supervisor
 # (for example, the deployment's console and gateway service units). Do not
 # rely on changing this variable to stop an already-running process. Verify
 # that both processes have exited and the owner lease has closed before copy.
 # Keep the processor disabled throughout the backup, migration, and validation.
 export CLIPPING_PROCESSOR_ENABLED=false
-mkdir -p "$BACKUP_DIR"
+case "$BACKUP_DIR" in ""|"/") echo "BACKUP_DIR must not be empty or /" >&2; exit 2;; esac
+mkdir -p "$(dirname "$BACKUP_DIR")"
+mkdir "$BACKUP_DIR"
+# After the supervisor reports both processes stopped and the owner lease
+# closed, create this marker. The rollback block requires the same marker.
+touch "$BACKUP_DIR/owner-closed"
 test -d "$CONTENT_ROOT"
 test -f "$DB_PATH"
 cp -a "$CONTENT_ROOT" "$BACKUP_DIR/content-root"
-cp -a "$DB_PATH" "$BACKUP_DIR/sqlite.db"
+for suffix in "" "-wal" "-shm"; do
+  source_path="${DB_PATH}${suffix}"
+  if [ -e "$source_path" ]; then
+    cp -a "$source_path" "$BACKUP_DIR/sqlite.db${suffix}"
+  fi
+done
 for suffix in "" "-wal" "-shm"; do
   source_path="${PI_DURABLE_DB_PATH}${suffix}"
   if [ -e "$source_path" ]; then
     cp -a "$source_path" "$BACKUP_DIR/pi-durable.sqlite${suffix}"
   fi
 done
+if [ ! -e "$PI_DURABLE_DB_PATH" ]; then
+  : > "$BACKUP_DIR/pi-durable.sqlite.absent"
+fi
 if [ -d "$CLIPPING_CONTENT_BASE_PATH" ]; then
   cp -a "$CLIPPING_CONTENT_BASE_PATH" "$BACKUP_DIR/clippings"
 else
@@ -50,6 +70,7 @@ set -euo pipefail
 
 export CONTENT_SOURCES=local
 export LOCAL_CONTENT_BASE_PATH="$CONTENT_ROOT"
+export CLIPPING_PROCESSOR_ENABLED=false
 
 bun run migrate
 bun run content:scan-api-links --include-db --format human
@@ -63,6 +84,7 @@ bun run content:scan-api-links --include-db --fail-on-found
 ```bash
 set -euo pipefail
 
+export CLIPPING_PROCESSOR_ENABLED=false
 bun run check
 bun run test
 bun run test:e2e
@@ -89,22 +111,51 @@ set -euo pipefail
 # replacing any files. The export alone does not stop an existing process.
 export CLIPPING_PROCESSOR_ENABLED=false
 
+case "$CONTENT_ROOT" in ""|"/"|[!/]*) echo "CONTENT_ROOT must be a non-root absolute path" >&2; exit 2;; esac
+case "$CLIPPING_CONTENT_BASE_PATH" in ""|"/"|[!/]*) echo "CLIPPING_CONTENT_BASE_PATH must be a non-root absolute path" >&2; exit 2;; esac
+case "$DB_PATH" in ""|"/"|[!/]*) echo "DB_PATH must be an absolute path" >&2; exit 2;; esac
+case "$PI_DURABLE_DB_PATH" in ""|"/"|[!/]*) echo "PI_DURABLE_DB_PATH must be an absolute path" >&2; exit 2;; esac
+test "$CONTENT_ROOT" != "$CLIPPING_CONTENT_BASE_PATH"
+test "$DB_PATH" != "$PI_DURABLE_DB_PATH"
 test -n "${BACKUP_DIR:-}"
 test "$BACKUP_DIR" != "/"
+test -f "$BACKUP_DIR/owner-closed"
 test -d "$BACKUP_DIR/content-root"
 test -f "$BACKUP_DIR/sqlite.db"
 test -d "$BACKUP_DIR/clippings"
-test -f "$BACKUP_DIR/pi-durable.sqlite"
+if [ -f "$BACKUP_DIR/pi-durable.sqlite.absent" ]; then
+  test ! -e "$BACKUP_DIR/pi-durable.sqlite"
+else
+  test -f "$BACKUP_DIR/pi-durable.sqlite"
+fi
+
+for suffix in "" "-wal" "-shm"; do
+  backup_path="$BACKUP_DIR/sqlite.db${suffix}"
+  if [ -e "${DB_PATH}${suffix}" ] && [ ! -e "$backup_path" ]; then
+    echo "Application database backup is missing ${suffix}" >&2
+    exit 1
+  fi
+done
+bun -e 'import { Database } from "bun:sqlite"; const db = new Database(process.argv[1], { readonly: true }); const row = db.query("PRAGMA integrity_check").get(); db.close(); if (row?.integrity_check !== "ok") throw new Error("SQLite integrity check failed");' "$BACKUP_DIR/sqlite.db"
+if [ -f "$BACKUP_DIR/pi-durable.sqlite" ]; then
+  bun -e 'import { Database } from "bun:sqlite"; const db = new Database(process.argv[1], { readonly: true }); const row = db.query("PRAGMA integrity_check").get(); db.close(); if (row?.integrity_check !== "ok") throw new Error("SQLite integrity check failed");' "$BACKUP_DIR/pi-durable.sqlite"
+fi
 
 rm -rf "$CONTENT_ROOT"
 cp -a "$BACKUP_DIR/content-root" "$CONTENT_ROOT"
-cp -a "$BACKUP_DIR/sqlite.db" "$DB_PATH"
+for suffix in "" "-wal" "-shm"; do
+  rm -f "${DB_PATH}${suffix}"
+  backup_path="$BACKUP_DIR/sqlite.db${suffix}"
+  if [ -e "$backup_path" ]; then
+    cp -a "$backup_path" "${DB_PATH}${suffix}"
+  fi
+done
 rm -rf "$CLIPPING_CONTENT_BASE_PATH"
 cp -a "$BACKUP_DIR/clippings" "$CLIPPING_CONTENT_BASE_PATH"
 for suffix in "" "-wal" "-shm"; do
   rm -f "${PI_DURABLE_DB_PATH}${suffix}"
   backup_path="$BACKUP_DIR/pi-durable.sqlite${suffix}"
-  if [ -e "$backup_path" ]; then
+  if [ -e "$backup_path" ] && [ ! -f "$BACKUP_DIR/pi-durable.sqlite.absent" ]; then
     cp -a "$backup_path" "${PI_DURABLE_DB_PATH}${suffix}"
   fi
 done

@@ -11,6 +11,7 @@
     "astro.config.mjs": "c57d12b0faf70e902e63d86ae3898c25cc259e2a",
     "bun.lock": "45265ef3a329a3d7f95662797e49214235bd8c4e",
     "docs/adr/0012-memo-clipping-content-boundaries.md": "ffcdcd1cf9079461961519b1fd3c2ef70283a913",
+    "docs/runbooks/fs-only-migration.md": "0a7854bd5034e1732af4fbe0f32cbb628e723e49",
     "docs/specs/README.md": "15f797f61adab98d48ccf77cc07295c78851f8e1",
     "docs/specs/memo-clipping/HISTORY.md": "6dfcdd29260cdbe02e4c6d0ba85cf8f947de7f63",
     "docs/specs/memo-clipping/IMPLEMENTATION.md": "178132b066eb93a5e32ee8438b984036d3c1711e",

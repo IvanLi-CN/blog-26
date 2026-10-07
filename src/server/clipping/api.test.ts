@@ -123,12 +123,36 @@ function context(actor: "admin" | "creator" | "other" | "guest"): TRPCContext {
 }
 async function request(operation: string, actor: Parameters<typeof context>[0]) {
   return handleClippingRequest(
-    new Request(`http://localhost/api/public/memos/clip/clipping/${operation}`),
+    new Request(
+      `http://localhost/api/public/memos/clip/clipping/${operation}`,
+      operation === "reprocess"
+        ? {
+            method: "POST",
+            headers: { origin: "http://localhost", "content-type": "application/json" },
+            body: "{}",
+          }
+        : undefined
+    ),
     "clip",
     operation,
     context(actor)
   );
 }
+
+test("reprocess rejects cross-origin cookie mutations", async () => {
+  await expect(
+    handleClippingRequest(
+      new Request("http://localhost/api/public/memos/clip/clipping/reprocess", {
+        method: "POST",
+        headers: { origin: "https://attacker.example", "content-type": "application/json" },
+        body: "{}",
+      }),
+      "clip",
+      "reprocess",
+      context("creator")
+    )
+  ).rejects.toMatchObject({ code: "FORBIDDEN" });
+});
 test("public reading exposes only materials; conversation is restricted to creator and admin and history/restore are absent", async () => {
   const reading = await (await request("", "guest")).json();
   expect(reading.source).toContain("Source.");

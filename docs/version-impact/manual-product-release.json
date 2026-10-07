@@ -48,6 +48,7 @@
     "docs/releases/frontend-v2.4.0.md": null,
     "docs/releases/frontend-v2.4.1.md": null,
     "docs/releases/frontend-v2.4.2.md": null,
+    "docs/runbooks/fs-only-migration.md": "0a7854bd5034e1732af4fbe0f32cbb628e723e49",
     "docs/runbooks/manual-version-release.md": "b7542f3d373167cd332a8c9b0b780935eb755eb6",
     "docs/runbooks/pr-label-release.md": null,
     "docs/solutions/search/sqlite-fts5-fallback.md": "d9cc4bc78fe95f3038e6cc600219969c76b909fe",

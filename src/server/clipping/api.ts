@@ -4,6 +4,7 @@ import { z } from "zod";
 import { extractAuthFromRequest } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { recognizeMemoClipping } from "@/lib/memo-clipping";
+import { resolveRequestOrigin } from "@/lib/public-cors";
 import { posts } from "@/lib/schema";
 import type { TRPCContext } from "@/server/context";
 import { getClippingRuntime } from "./runtime";
@@ -122,6 +123,19 @@ function runtime() {
   return service;
 }
 
+function requireSameOriginMutation(request: Request) {
+  const rawOrigin = request.headers.get("origin");
+  const requestOrigin = resolveRequestOrigin(request);
+  let origin: string | null = null;
+  try {
+    origin = rawOrigin ? new URL(rawOrigin).origin : null;
+  } catch {
+    origin = null;
+  }
+  if (!origin || !requestOrigin || origin !== requestOrigin)
+    throw new TRPCError({ code: "FORBIDDEN", message: "拒绝跨来源剪藏操作" });
+}
+
 async function routeClippingRequest(
   request: Request,
   slug: string,
@@ -155,6 +169,7 @@ async function routeClippingRequest(
   if (!manifest) throw new TRPCError({ code: "NOT_FOUND", message: "剪藏尚未建立，请稍后重试" });
   if (operation === "reprocess") {
     if (request.method !== "POST") return response({ error: "Method not allowed" }, 405);
+    requireSameOriginMutation(request);
     await runtime().reconcile(row.id, true);
     return response({ accepted: true }, 202);
   }
