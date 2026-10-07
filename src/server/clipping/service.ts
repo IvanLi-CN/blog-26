@@ -256,8 +256,16 @@ export class ClippingService {
       });
       this.known.set(memoId, id);
       const changedTarget = recognition?.enabled && recognition.targetUrl !== manifest.targetUrl;
+      const activeVersion = manifest.versions.find(
+        (version) => version.id === manifest.activeVersionId
+      );
+      const reprocessAlreadyRunning =
+        reprocess &&
+        !changedTarget &&
+        Boolean(activeVersion) &&
+        ["queued", "processing"].includes(activeVersion.status);
       const changed =
-        reprocess ||
+        (reprocess && !reprocessAlreadyRunning) ||
         changedTarget ||
         Boolean(recognition?.enabled) !== manifest.enabled ||
         !authored !== manifest.deleted;

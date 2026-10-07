@@ -125,13 +125,14 @@ function getMissingRecommendedMetadata(fm: Record<string, unknown>, kind: Conten
   return fields.filter((field) => isMissingFrontmatterValue(fm[field]));
 }
 
-function stripPrivateClippingMetadata(metadata: string | null): string | null {
+function stripPrivateMcpMetadata(metadata: string | null): string | null {
   if (!metadata) return metadata;
   try {
     const parsed = JSON.parse(metadata);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return metadata;
     const sanitized = { ...(parsed as Record<string, unknown>) };
-    delete sanitized.clipping;
+    for (const key of ["authorEmail", "clipping", "content", "creatorId", "proof", "updatedVia"])
+      delete sanitized[key];
     return JSON.stringify(sanitized);
   } catch {
     return metadata;
@@ -209,7 +210,7 @@ async function annotateContentRows<T extends PostRow>(rows: T[], kind: ContentKi
             }
           : {}),
         ...(kind === "memo" && !auth.isAdmin
-          ? { metadata: stripPrivateClippingMetadata(row.metadata) }
+          ? { metadata: stripPrivateMcpMetadata(row.metadata) }
           : {}),
         ...(await getFrontmatterDiagnostics(row, kind)),
       };

@@ -43,6 +43,13 @@ async function assertFile(path: string) {
   if (!entry?.isFile()) throw new Error(`Web Demo build is missing ${relative(repoRoot, path)}`);
 }
 
+async function assertDirectory(path: string) {
+  const entry = await stat(path).catch(() => undefined);
+  if (!entry?.isDirectory()) {
+    throw new Error(`Web Demo build is missing ${relative(repoRoot, path)}/`);
+  }
+}
+
 export async function prepareWebDemoInputs() {
   assertGeneratedPath(generatedRoot, "WEB_DEMO_DATA_DIR");
   await rm(generatedRoot, { recursive: true, force: true });
@@ -108,12 +115,8 @@ async function main() {
   );
 
   await Promise.all([
-    assertFile(join(siteDist, "index.html")),
-    assertFile(join(siteDist, "memos", "index.html")),
-    assertFile(join(siteDist, "memos", "memo-web-demo-0001", "index.html")),
-    assertFile(join(siteDist, "memos", "memo-web-demo-2400", "index.html")),
-    assertFile(join(siteDist, "memos", "memo-web-demo-1181", "index.html")),
-    assertFile(join(siteDist, "playbook", "index.html")),
+    assertFile(join(siteDist, "server", "entry.mjs")),
+    assertDirectory(join(siteDist, "client")),
     assertFile(join(adminDist, "index.html")),
   ]);
   console.log(

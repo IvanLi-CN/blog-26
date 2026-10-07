@@ -5,7 +5,7 @@ import { createWebDemoPreviewServer } from "../../scripts/preview-web-demo";
 import { WEB_DEMO_CLIPPING_SLUG } from "../../src/lib/web-demo-runtime";
 
 const root = resolve(process.env.WEB_DEMO_SITE_DIST_DIR || "web-demo-site-dist");
-if (!(await Bun.file(resolve(root, "memos", WEB_DEMO_CLIPPING_SLUG, "index.html")).exists()))
+if (!(await Bun.file(resolve(root, "server", "entry.mjs")).exists()))
   throw new Error("Build the separate Web Demo artifact before this test.");
 const server = await createWebDemoPreviewServer({ siteRoot: root, port: 0 });
 const base = `http://127.0.0.1:${server.port}`;

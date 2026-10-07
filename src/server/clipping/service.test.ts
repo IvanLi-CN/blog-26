@@ -326,6 +326,28 @@ describe("clipping lifecycle and canonical content", () => {
     }
   });
 
+  test("coalesces repeated reprocess requests while the active version is running", async () => {
+    const data = await fixture();
+    let service: ClippingService | undefined;
+    try {
+      service = await ClippingService.open(data.options);
+      await service.idle();
+      const before = await data.store.manifest("11111111-1111-4111-8111-111111111111");
+      if (!before?.activeVersionId) throw new Error("Missing initial clipping version");
+      await Promise.all([
+        service.reconcile(data.memoId, true),
+        service.reconcile(data.memoId, true),
+      ]);
+      await service.idle();
+      const after = await data.store.manifest(before.id);
+      expect(after?.versions).toHaveLength(2);
+      expect(data.captures()).toBe(2);
+    } finally {
+      await service?.close();
+      await data.cleanup();
+    }
+  });
+
   test("replacing the target separates conversations; removing a tag and deleting stop stale publication", async () => {
     const data = await fixture();
     let service: ClippingService | undefined;
