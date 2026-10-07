@@ -345,7 +345,7 @@ const updateMemoInput = z.object({
   content: z.string().min(1),
   title: z.string().optional(),
   isPublic: z.boolean().default(true),
-  tags: z.array(z.string()).default([]),
+  tags: z.array(z.string()).optional(),
 });
 const deleteMemoInput = z.object({ slug: z.string() });
 
@@ -781,7 +781,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         async (fm) => {
           if (input.title !== undefined) fm.title = input.title;
           fm.public = input.isPublic;
-          fm.tags = input.tags;
+          if (input.tags !== undefined) fm.tags = input.tags;
           fm.updateDate = new Date().toISOString();
           await attachClippingReference(input.content, fm, null, row.id);
         },

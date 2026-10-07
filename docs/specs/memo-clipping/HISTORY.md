@@ -56,3 +56,5 @@
 - The owner requires separate explicit authorization for actual model calls. This delivery uses deterministic automated model fixtures; live provider compatibility and generated-content quality are deferred, unverified, and excluded from the implementation PR readiness gate.
 
 - Formal review identified stale-index detail authorization after private tag removal; the live detail boundary now checks canonical visibility independently of the optional clipping projection. Artifact publication also removes the asynchronous rename gap after its final ownership check.
+
+- Formal contract review found MCP tag defaults could remove clipping on remarks-only updates. The update schema now distinguishes omission from an explicit empty list, preserving omitted author tags.

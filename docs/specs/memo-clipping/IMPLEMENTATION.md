@@ -89,3 +89,5 @@
 - Existing runtime configuration guidance remains applicable: [LLM settings runtime configuration](../../solutions/admin/llm-settings-runtime-config.md).
 
 - Live Memo detail checks canonical clipping visibility even when tag removal makes the reading projection disappear before index synchronization. Artifact publication performs its final guarded rename synchronously inside the owner transaction, without an asynchronous gap after the ownership check. Regression fixtures cover stale private detail denial and ownership loss while staging a replacement.
+
+- MCP Memo updates preserve existing author tags when the `tags` argument is omitted; an explicit empty array still clears them. An official MCP SDK client regression exercises both cases and verifies the signed clipping reference remains intact.

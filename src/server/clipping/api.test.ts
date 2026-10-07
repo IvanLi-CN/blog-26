@@ -4,6 +4,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import matter from "gray-matter";
@@ -11,6 +13,7 @@ import { db, initializeDB } from "@/lib/db";
 import { memoClippings, posts } from "@/lib/schema";
 import { buildPublicSnapshot, writePublicSnapshot } from "@/public-site/snapshot";
 import type { TRPCContext } from "@/server/context";
+import { runWithMcpAuth } from "@/server/mcp-auth-context";
 import { memosRouter } from "@/server/routers/memos";
 import { handleClippingRequest } from "./api";
 import { ClippingService } from "./service";
@@ -209,6 +212,45 @@ test("memo detail rejects stale public clipping rows after private tag removal",
       code: "FORBIDDEN",
     });
   } finally {
+    await writeFile(join(root, "authored", id), raw);
+  }
+});
+
+test("MCP omitted tags preserve clipping metadata while explicit empty tags remove the marker", async () => {
+  const { createMcpWebTransport } = await import("@/server/mcp");
+  const connected = await createMcpWebTransport();
+  const server = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    fetch: (request) =>
+      runWithMcpAuth({ isAdmin: true, userId: "creator" }, () =>
+        connected.transport.handleRequest(request)
+      ),
+  });
+  const client = new Client({ name: "clipping-regression", version: "1" });
+  try {
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${server.port}/mcp`))
+    );
+    const content = "https://article.example/one\n\nUpdated remarks.";
+    const result = await client.callTool({
+      name: "memos_update",
+      arguments: { slug: "clip", content, isPublic: true },
+    });
+    expect(result.isError).not.toBe(true);
+    const updated = matter(await Bun.file(join(root, "authored", id)).text());
+    expect(updated.data.tags).toEqual(fm.tags);
+    expect(updated.data.clipping).toEqual(fm.clipping);
+    const cleared = await client.callTool({
+      name: "memos_update",
+      arguments: { slug: "clip", content, isPublic: true, tags: [] },
+    });
+    expect(cleared.isError).not.toBe(true);
+    expect(matter(await Bun.file(join(root, "authored", id)).text()).data.tags).toEqual([]);
+  } finally {
+    await client.close();
+    await connected.server.close();
+    server.stop(true);
     await writeFile(join(root, "authored", id), raw);
   }
 });
