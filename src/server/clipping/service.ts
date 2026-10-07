@@ -140,6 +140,7 @@ export class ClippingService {
     { controller: AbortController; done: Promise<void> }
   >();
   private pumping: Promise<void> | null = null;
+  private pumpRequested = false;
   private readonly answerTails = new Map<string, Promise<void>>();
   private mutationTail: Promise<void> = Promise.resolve();
   private constructor(private readonly options: ServiceOptions) {
@@ -276,11 +277,13 @@ export class ClippingService {
         if (previous?.jobConversationId && ["queued", "processing"].includes(previous.status))
           abort.push(previous.jobConversationId);
         this.running.get(id)?.controller.abort();
-        if (changedTarget && manifest.conversationId && manifest.targetUrl) {
-          manifest.previousConversations.push({
-            targetUrl: manifest.targetUrl,
-            conversationId: manifest.conversationId,
-          });
+        if (manifest.conversationId && (changedTarget || !recognition?.enabled || !authored)) {
+          if (changedTarget && manifest.targetUrl) {
+            manifest.previousConversations.push({
+              targetUrl: manifest.targetUrl,
+              conversationId: manifest.conversationId,
+            });
+          }
           abort.push(manifest.conversationId);
           manifest.conversationId = null;
         }
@@ -319,7 +322,11 @@ export class ClippingService {
   }
 
   private pump() {
-    if (this.closing || this.pumping) return;
+    if (this.closing) return;
+    if (this.pumping) {
+      this.pumpRequested = true;
+      return;
+    }
     let started = false;
     this.pumping = (async () => {
       const candidates = [...this.known.values()].filter((id) => !this.running.has(id));
@@ -359,7 +366,9 @@ export class ClippingService {
       .catch((error) => console.error("[clipping] Task queue inspection failed.", error))
       .finally(() => {
         this.pumping = null;
-        if (started && !this.closing && this.running.size < 2) this.pump();
+        const requested = this.pumpRequested;
+        this.pumpRequested = false;
+        if ((started || requested) && !this.closing && this.running.size < 2) this.pump();
       });
   }
 
