@@ -308,13 +308,15 @@ export class GitHubLedgerStore implements LedgerStore {
       );
     let expected = sha;
     let rootFound = false;
-    const recoverySha = this.github
-      .commit(sha)
-      .message.match(/Ledger-Recovery:\s*([a-f0-9]{40})/)?.[1];
     let legacySha: string | undefined;
     const commits = this.github.pages(`${this.github.root}/commits?sha=${sha}&per_page=100`);
-    for (const raw of commits) {
-      const commit = repositoryCommitSchema.parse(raw);
+    const parsedCommits = commits.map((raw) => repositoryCommitSchema.parse(raw));
+    const recoverySha = parsedCommits
+      .map((commit) => commit.commit.message.match(/Ledger-Recovery:\s*([a-f0-9]{40})/)?.[1])
+      .find((value): value is string => value !== undefined);
+    for (const [index, commit] of parsedCommits.entries()) {
+      const raw = commits[index];
+      if (!raw) throw new Error("Ledger history response was truncated");
       if (commit.sha !== expected || commit.parents.length > 1)
         throw new Error("Ledger history is not a single-parent chain");
       const owner = contract.repository.split("/")[0];
