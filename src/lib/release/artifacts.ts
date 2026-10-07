@@ -150,6 +150,17 @@ export function assertNeverFrozen(
       if (!completedFreezeSteps.includes(step.name) || step.conclusion === "skipped") continue;
       if (step.status === "completed" && step.conclusion === "success")
         throw new Error("Unbound frozen artifact was lost; recovery is blocked");
+      // These steps only create bytes in the ephemeral runner workspace. If they fail,
+      // no immutable artifact can exist until the following upload step succeeds.
+      if (
+        step.status === "completed" &&
+        [
+          "Freeze public build inputs under the production lock",
+          "Build the static frontend and full-feature image",
+        ].includes(step.name) &&
+        ["failure", "cancelled"].includes(step.conclusion || "")
+      )
+        continue;
       // A failed/cancelled process can have sealed bytes before exit; absence is unproven.
       if (!["pending", "queued"].includes(step.status))
         throw new Error("Original freeze outcome is unavailable; recovery is blocked");

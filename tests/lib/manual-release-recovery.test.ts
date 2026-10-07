@@ -142,8 +142,10 @@ describe("frozen release recovery", () => {
         kind === "inputs"
           ? "Freeze public build inputs under the production lock"
           : "Build the static frontend and full-feature image";
-      for (conclusion of ["failure", "cancelled", null])
-        expect(() => findArtifact(github, entry, kind)).toThrow("unavailable");
+      for (conclusion of ["failure", "cancelled"])
+        expect(findArtifact(github, entry, kind)).toBeUndefined();
+      conclusion = null;
+      expect(() => findArtifact(github, entry, kind)).toThrow("unavailable");
       conclusion = "skipped";
       expect(findArtifact(github, entry, kind)).toBeUndefined();
     }

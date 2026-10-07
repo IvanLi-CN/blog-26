@@ -179,6 +179,22 @@ describe("durable product release reservations", () => {
       "revived"
     );
   });
+  test("failed merged releases can be abandoned before any artifact is frozen", () => {
+    const first = reserveRelease(initialLedger(contract), request);
+    let merged = updateRelease(first.ledger, first.entry.id, {
+      stage: "pr_open",
+      preparationHead: "e".repeat(40),
+      prNumber: 4,
+    });
+    merged = updateRelease(merged, first.entry.id, {
+      stage: "merged",
+      mergeSha: "f".repeat(40),
+      releaseRunId: 7,
+      failure: { phase: "merged", runId: "7", attempt: 1 },
+    });
+    const abandoned = updateRelease(merged, first.entry.id, { stage: "abandoned" });
+    expect(abandoned.entries[0]?.stage).toBe("abandoned");
+  });
   test("unproven stages and source replacement cannot be committed", () => {
     const first = reserveRelease(initialLedger(contract), request);
     expect(() => updateRelease(first.ledger, first.entry.id, { stage: "published" })).toThrow(
