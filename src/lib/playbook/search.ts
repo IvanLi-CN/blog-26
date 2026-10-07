@@ -86,9 +86,31 @@ export function buildPlaybookIndex(payload: PlaybookSearchPayload, pages: Playbo
   return { index, pages: pageMap };
 }
 
-function matchingSnippet(document: PlaybookSearchDocument, query: string) {
+function matchingSnippet(document: PlaybookSearchDocument, query: string, matchedTerms: string[]) {
   const body = document.body;
-  const match = body.toLowerCase().indexOf(query.toLowerCase());
+  const normalizedCharacters = Array.from(body, (character) =>
+    character.normalize("NFKC").toLowerCase()
+  );
+  const normalizedBody = normalizedCharacters.join("");
+  let match = normalizedBody.indexOf(query.normalize("NFKC").toLowerCase());
+  if (match < 0) {
+    const offsets = matchedTerms.map((term) => normalizedBody.indexOf(term)).filter((n) => n >= 0);
+    if (offsets.length) match = Math.min(...offsets);
+  }
+  // Translate the normalized match back to original text; never rewrite the displayed slice.
+  if (match >= 0) {
+    let offset = 0;
+    let index = 0;
+    for (const character of body) {
+      const length = normalizedCharacters[index++].length;
+      if (match < length) {
+        match = offset;
+        break;
+      }
+      match -= length;
+      offset += character.length;
+    }
+  }
   let start = Math.max(0, match - 40);
   if (match >= 0) {
     for (const separator of body.slice(0, match).matchAll(/\r?\n[\t ]*\r?\n/g)) {
@@ -120,7 +142,7 @@ export function queryPlaybookSearch(
     const section =
       document.kind !== "page" ? page.sections.find((item) => item.id === sectionId) : undefined;
     const href = section ? playbookHref(canonicalHref, section.id) : canonicalHref;
-    const snippet = matchingSnippet(document, term);
+    const snippet = matchingSnippet(document, term, result.terms);
     let group = groups.get(canonicalHref);
     if (!group) {
       group = {

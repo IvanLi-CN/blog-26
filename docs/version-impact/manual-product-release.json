@@ -66,8 +66,8 @@
     "docs/specs/release-failure-telegram-alerts/HISTORY.md": "83c05243b415749850534d5b0e206ff86213d2ce",
     "docs/specs/release-failure-telegram-alerts/IMPLEMENTATION.md": "5b06386d180120b55a7740037459aa3e07eb7aec",
     "docs/specs/release-failure-telegram-alerts/SPEC.md": "439b85a711bed3ac7f18cc686ec6b312899fd713",
-    "docs/specs/style-playbook-integration/HISTORY.md": "2236e19ff7ea64073758ddf6cc16328466c8c8ef",
-    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "e223d3b17b94e75d470ba95753a5213bbe553e01",
+    "docs/specs/style-playbook-integration/HISTORY.md": "505fa5688d4f5ce976cd8d43b0a975be37f0d144",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "d8b0338999e3ef8dc6bde7025639ba59c7fa6bb4",
     "docs/specs/style-playbook-integration/SPEC.md": "cc8214b107707b39ec4ccf599adb6453b6b787ef",
     "docs/specs/style-playbook-integration/assets/search-children-expanded.png": "3187f95764fa508012c64b9088ea3a7472b8722a",
     "docs/specs/style-playbook-integration/assets/search-grouped-desktop-dark.png": "8476a52e3ee94ef0110c116daa620515d12c73dc",
@@ -115,8 +115,8 @@
     "src/lib/ai/search-fallback.test.ts": "15157675512f1fd0bf3f0a851d4e1943024a9f5a",
     "src/lib/ai/search.ts": "78f01536c849dbf87f7735c475522bb16d32771f",
     "src/lib/playbook/child-env.ts": "d6f344e6439869d39b0e363ea735e5f5888fe6ad",
-    "src/lib/playbook/search.test.ts": "4e9afce73dfd7ff430b9b2eaa665ee310fe0fa0c",
-    "src/lib/playbook/search.ts": "5b75a35313db4942f9f77af5bccde3fd85d775f1",
+    "src/lib/playbook/search.test.ts": "9d58afc7b6c44d99e9b22e4297dc384a71647221",
+    "src/lib/playbook/search.ts": "c0b0ed70c641609c94e5fde7286ba76c4f47bce7",
     "src/lib/release/artifacts.ts": "fd18f8c9823707d66a4fbbf9105d9c5a9e0f189d",
     "src/lib/release/completion.ts": "97e537ba29e93bb789a681083729701d92172e58",
     "src/lib/release/deployment.ts": "37e8fa5af98a9ff02a735fcb696062eb6855812f",
@@ -208,7 +208,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "The unpublished interval retains the compatible read-only version metadata and Web Demo additions (minor). Search aggregation, stable content limits, v5 cache misses for obsolete entries, inline highlighting and responsive controls repair existing behavior (patch). The public search array API, visibility rules, SQLite schema and local content format remain compatible; no durable-state migration is introduced.",
-      "assessed_at": "2026-10-07T03:35:51.154021Z",
+      "assessed_at": "2026-10-07T03:43:50.424033Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -257,7 +257,7 @@
         },
         {
           "path": "src/lib/playbook/search.test.ts",
-          "blob": "4e9afce73dfd7ff430b9b2eaa665ee310fe0fa0c",
+          "blob": "9d58afc7b6c44d99e9b22e4297dc384a71647221",
           "command": "bun run test:precommit"
         },
         {
@@ -279,7 +279,7 @@
     "verified": {
       "impact": "minor",
       "reasoning": "The unpublished interval retains the compatible read-only version metadata and Web Demo additions (minor). Search aggregation, stable content limits, v5 cache misses for obsolete entries, inline highlighting and responsive controls repair existing behavior (patch). The public search array API, visibility rules, SQLite schema and local content format remain compatible; no durable-state migration is introduced.",
-      "assessed_at": "2026-10-07T03:35:51.154021Z",
+      "assessed_at": "2026-10-07T03:43:50.424033Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -328,7 +328,7 @@
         },
         {
           "path": "src/lib/playbook/search.test.ts",
-          "blob": "4e9afce73dfd7ff430b9b2eaa665ee310fe0fa0c",
+          "blob": "9d58afc7b6c44d99e9b22e4297dc384a71647221",
           "command": "bun run test:precommit"
         },
         {
@@ -392,7 +392,7 @@
         },
         {
           "path": "src/lib/playbook/search.test.ts",
-          "blob": "4e9afce73dfd7ff430b9b2eaa665ee310fe0fa0c",
+          "blob": "9d58afc7b6c44d99e9b22e4297dc384a71647221",
           "command": "bun run test:precommit"
         }
       ]

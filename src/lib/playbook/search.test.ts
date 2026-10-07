@@ -42,6 +42,34 @@ function search(documents: PlaybookSearchDocument[], limit = 50) {
 }
 
 describe("Playbook content aggregation", () => {
+  test("separate query terms retain actual matching context for main and chapter snippets", () => {
+    const body = `${"Unrelated introduction. ".repeat(20)}\n\nLater release details preserve useful context.`;
+    const index = buildPlaybookIndex(
+      {
+        generated_at: "fixture",
+        documents: [document("first", 0, body), document("second", 1, body)],
+      },
+      pages
+    );
+    for (const query of ["release context", "release cont", "releaze context"]) {
+      const [group] = queryPlaybookSearch(index, query);
+      expect(group).toBeDefined();
+      expect(group.snippet).toBe("…Later release details preserve useful context.");
+      expect(group.sections).toHaveLength(2);
+      expect(group.sections.every((section) => section.snippet === group.snippet)).toBe(true);
+    }
+  });
+  test("normalized matching retains original source characters in the snippet", () => {
+    const body = `${"Unrelated introduction. ".repeat(20)}\n\nLater ＲＥＬＥＡＳＥ details preserve context.`;
+    const [group] = queryPlaybookSearch(
+      buildPlaybookIndex(
+        { generated_at: "fixture", documents: [document("wide", 0, body)] },
+        pages
+      ),
+      "release context"
+    );
+    expect(group.snippet).toBe("…Later ＲＥＬＥＡＳＥ details preserve context.");
+  });
   test("matching context starts in the matching paragraph so compact previews retain the term", () => {
     for (const separator of ["\n\n", "\r\n\r\n", "\n \n"]) {
       const [group] = search([
