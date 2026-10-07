@@ -252,3 +252,14 @@ console 必须后台同步博客的公开 JSON，在网络健康且 schema 兼�
 ![移动端深色公开资源浏览器，文件树以浮层打开](./assets/playbook-resource-mobile-dark.png)
 
 ![桌面端浅色公开资源浏览器，文件树与预览并列](./assets/playbook-resource-desktop-light.png)
+
+搜索聚合证据使用 Web Demo 构建产物的正式 `/search/?q=版本` 路由，分别在 1280 × 900 桌面和 393 × 852 移动视口捕获明暗主题。桌面操作栏为 352px，输入外框为 54px、提交按钮为 44px，按钮上、下、右内缩均为 5px；页面只呈现一个连续结果列表，无来源分区标题。该组展示已由 owner 确认。
+
+| 搜索场景 | 浅色 | 深色 |
+| --- | --- | --- |
+| 桌面双栏 | ![桌面浅色聚合搜索](./assets/search-grouped-desktop-light.png) | ![桌面深色聚合搜索](./assets/search-grouped-desktop-dark.png) |
+| 移动连续阅读 | ![移动浅色聚合搜索](./assets/search-grouped-mobile-light.png) | ![移动深色聚合搜索](./assets/search-grouped-mobile-dark.png) |
+
+章节展开组件证据使用 Storybook `public-search-results--expanded` Canvas，视口 1280 × 900，捕获组件声明的 832 × 513 自然主题表面；目标四侧边距均为 32px。组件以五个去重章节展示展开状态，包含代码片段高亮，已由 owner 确认。
+
+![章节展开组件](./assets/search-children-expanded.png)
