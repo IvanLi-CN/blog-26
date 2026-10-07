@@ -319,6 +319,19 @@ describe("durable product release reservations", () => {
     changed.entries[0].version = "2.9.0";
     expect(() => validateLedger(changed, contract)).toThrow("identity");
   });
+  test("accepts an existing identity created before version input was added", () => {
+    const first = reserveRelease(initialLedger(contract), request);
+    const persisted = structuredClone(first.ledger);
+    const entry = persisted.entries[0];
+    if (!entry) throw new Error("Missing fixture");
+    entry.id = digest({
+      version: entry.version,
+      sourceSha: entry.sourceSha,
+      policyDigest: entry.policyDigest,
+      evidenceDigest: entry.evidenceDigest,
+    });
+    expect(validateLedger(persisted, contract).entries[0]?.id).toBe(entry.id);
+  });
   test("simultaneous compare-and-swap writers cannot reserve two identities", async () => {
     let sha = "root";
     let ledger = initialLedger(contract);
