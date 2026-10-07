@@ -23,7 +23,7 @@
     "CONTEXT.md": "c3d445cca605259c28fe05bfc23d8a54fe6d8c85",
     "Dockerfile": "6e1616b4117589937ce07ce06e8c7b8627ef639a",
     "README.md": "0b6106ec587ab5367d92155bf72b668610b2cec1",
-    "VERSION": "24ba9a38de68d00674ec97b283a967699716b9f4",
+    "VERSION": "834f2629538327723c074ed4c3addca9888f0256",
     "apps/admin/src/components/admin-soft-ui.stories.tsx": "9a9e6b9ecceaa5c5351940d47c12e83f72adff11",
     "apps/admin/src/components/app-shell.tsx": "5adc074871a85045314bce8f87e3f55168d1f5d8",
     "apps/admin/src/components/theme-provider.tsx": "c1d0ee657c054716960bfe48f7779f1c566ab0ab",
@@ -31,7 +31,7 @@
     "apps/admin/src/main.tsx": "ec4e63191752aee907fce65285976c04e6cd6709",
     "apps/admin/src/pages/preview.stories.tsx": null,
     "apps/admin/src/styles.css": "8612a028c7f3ad01a54b3da4749e818ec9d649e9",
-    "apps/admin/vite.config.ts": "4fcdd63c43603e2990b6f854f72b5b26905ba844",
+    "apps/admin/vite.config.ts": "0cf2af30d157cc5594b925de44a67b129232ec38",
     "astro.config.mjs": "519637da1cef972e31c57cc1ea728d3fc513006b",
     "docs/adr/0013-build-time-web-demo-and-story-boundary.md": "732cb449c350a8e85110ca762f7b3ed320073e7f",
     "docs/adr/0014-unified-product-release-version-scope.md": "1e08ef623f046f454e5c39d46f0b7acc3fd965ce",
@@ -79,14 +79,14 @@
     "docs/specs/style-playbook-integration/assets/search-grouped-desktop-light.png": "cca266b2b09be2c5a211327a10acf17dd692e334",
     "docs/specs/style-playbook-integration/assets/search-grouped-mobile-dark.png": "1852060bb5bb48c1bde20ea938272034cbd242f4",
     "docs/specs/style-playbook-integration/assets/search-grouped-mobile-light.png": "4ecbf53e6631db54cb9d22110f6cedac56bee085",
-    "docs/specs/web-demo-global-controls/HISTORY.md": "945a1e1bbd3cf14dfff30a7da88f7b3066eee8a1",
-    "docs/specs/web-demo-global-controls/IMPLEMENTATION.md": "1d58326ce9ef9c5ac8f8fa5231a117f5a51ee978",
+    "docs/specs/web-demo-global-controls/HISTORY.md": "7b2e29b561327bc7b03f3b7f87b49629bb28bc75",
+    "docs/specs/web-demo-global-controls/IMPLEMENTATION.md": "b5f7b3da4eecb67df5de762908f5cc1d9dd79131",
     "docs/specs/web-demo-global-controls/SPEC.md": "d762e99d1968133145e5496720eb5ffd019a4ea0",
     "docs/specs/web-demo-global-controls/assets/inspector-desktop.png": "fa5fc685751e29f8cb49791023879b20037964d3",
     "docs/specs/web-demo-global-controls/assets/inspector-mobile.png": "4f1048e5aae50ab0a10f75cf747da2a6be8a1992",
-    "package.json": "0efa150852aca2c488705a33bece5f47d148b099",
+    "package.json": "8f087cca0856e334bb9c94147d4ce8ba93234267",
     "playwright.config.ts": "fd5bb1beff25d5b94949fe3988fd9b5c2007b457",
-    "scripts/build-web-demo.ts": "db546e2a8ccfe1b026a2172f44e7aa1c94e27d86",
+    "scripts/build-web-demo.ts": "3142ed38ea388874d2c59fe7453a5dc2d4c1e381",
     "scripts/capture-admin-text-editor-evidence.mjs": "12bb8ad506f8836142a4d8ba51f01fd188605978",
     "scripts/generate-version.ts": "e4cede0c07a84b3e5af6cb2487f1818add276516",
     "scripts/playbook-content-update.ts": "469d45c21ce339ca139469ed43b151e7c80b9200",
@@ -112,7 +112,7 @@
     "src/components/WebDemoInspector.css": "4150b40bd7f4347c212efbd8c6220fda095044db",
     "src/components/WebDemoInspector.disabled.tsx": "162be29cadd806f39a293b2ca4f7115bee8f08d2",
     "src/components/WebDemoInspector.tsx": "8f59d31219690168e15efbf09ab969ae2aebfd5e",
-    "src/components/blog/Reactions.tsx": "20506687ee511b9e6cb59fe61b857b565e752805",
+    "src/components/blog/Reactions.tsx": "2307d0f2c5fc09ed192ea01b8afbe048f7ed347a",
     "src/components/comments/hooks.ts": "1c383710e1d4c451c05b89f53589c9bc27cfc456",
     "src/components/common/AmbientScene.tsx": "01417ceda1fff9f7d840c1de1c49c2a75f15db73",
     "src/components/common/PublicArticleDetail.stories.tsx": null,
@@ -191,7 +191,8 @@
     "tests/lib/web-demo-runtime.test.ts": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb",
     "tests/server/version-api.test.ts": "746ed7e7dfc790dd70131c0a7dca07c44f9c07c7",
     "tests/storybook/playbook-interactions.ts": "b7f34f03fbdc81ae4d6b8d5c80860dd90e81a8c9",
-    "tests/storybook/story-boundary.test.ts": "34f87f3d68d1259f3161d77644d22f8d43197c8d"
+    "tests/storybook/story-boundary.test.ts": "34f87f3d68d1259f3161d77644d22f8d43197c8d",
+    "tests/components/Reactions.test.tsx": "88aa3ab1eba18c70962c6f0a74e159c07a2134af"
   },
   "change": {
     "description": "Cover the complete unpublished interval: compatible product version metadata, manual two-product delivery, search fixes, full-width Playbook card descriptions, and build-time Web Demo global identity, connectivity, delay, theme and motion controls. Public CSR navigation remains a separate follow-up.",
@@ -244,7 +245,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change the live API contracts or SQLite/local content formats. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded. The full-width Playbook card descriptions and deterministic fixture copy preserve existing API and durable-state contracts.",
-      "assessed_at": "2026-10-07T14:35:59.649Z",
+      "assessed_at": "2026-10-07T16:44:06.586Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -344,18 +345,23 @@
         {
           "path": "tests/lib/web-demo-motion.test.ts",
           "blob": "7981d306cac819189bd01e2740b70a2b4dd5a620",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/components/Reactions.test.tsx",
+          "blob": "88aa3ab1eba18c70962c6f0a74e159c07a2134af",
           "command": "bun run test:precommit"
         }
       ],
       "scope_drift": {
         "detected": true,
-        "description": "Reassessed global Inspector and request adapters against current source blobs; live API and durable state remain compatible. Browser environment state accepts existing d_network links, and public CSR remains separate. The current candidate also retains the presentation-only Playbook card correction merged into main."
+        "description": "Reclassified the current candidate after the inherited VERSION change from PR #176; this PR introduces no independent VERSION edit. Global Inspector and request adapters remain live-API and durable-state compatible, while public CSR remains a separate follow-up."
       }
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change the live API contracts or SQLite/local content formats. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded. The full-width Playbook card descriptions and deterministic fixture copy preserve existing API and durable-state contracts.",
-      "assessed_at": "2026-10-07T14:35:59.734Z",
+      "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change live API contracts or SQLite/local content formats. The repair adds mounted reaction request recovery and separates Admin Vite caches without changing public contracts. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded.",
+      "assessed_at": "2026-10-07T16:44:06.586Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -455,6 +461,11 @@
         {
           "path": "tests/lib/web-demo-motion.test.ts",
           "blob": "7981d306cac819189bd01e2740b70a2b4dd5a620",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/components/Reactions.test.tsx",
+          "blob": "88aa3ab1eba18c70962c6f0a74e159c07a2134af",
           "command": "bun run test:precommit"
         }
       ]
@@ -514,6 +525,11 @@
         {
           "path": "tests/components/WebDemoIdentity.test.tsx",
           "blob": "a501e7de34d818b986d6750075f44d67245127de",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/components/Reactions.test.tsx",
+          "blob": "88aa3ab1eba18c70962c6f0a74e159c07a2134af",
           "command": "bun run test:precommit"
         }
       ]

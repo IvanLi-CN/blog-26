@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { webDemoFetch } from "@/lib/web-demo-fetch";
+import { subscribeWebDemoRequestChanges } from "@/lib/web-demo-runtime";
 import { getVisitorId } from "../../lib/fingerprint";
 import { toPublicApiUrl } from "../../lib/public-runtime-url";
 import type { UserInfo } from "../comments/types";
@@ -41,6 +42,8 @@ export default function Reactions({ targetType, targetId, userInfo }: ReactionsP
   const [items, setItems] = useState<ReactionItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestVersion = useRef(0);
+  const requestController = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!userInfo) {
@@ -57,42 +60,70 @@ export default function Reactions({ targetType, targetId, userInfo }: ReactionsP
 
   const fetchReactions = useCallback(async () => {
     if (!canFetch) return;
+    const version = ++requestVersion.current;
+    requestController.current?.abort();
+    const controller = new AbortController();
+    requestController.current = controller;
     setIsLoading(true);
     setError(null);
     try {
       const data = await readJson<{ reactions: ReactionItem[] }>(
         toPublicApiUrl(
           `/api/public/reactions?targetType=${encodeURIComponent(targetType)}&targetId=${encodeURIComponent(targetId)}`
-        )
+        ),
+        { signal: controller.signal }
       );
+      if (version !== requestVersion.current) return;
       setItems(data.reactions ?? []);
     } catch (err: unknown) {
+      if (version !== requestVersion.current) return;
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setIsLoading(false);
+      if (version === requestVersion.current) {
+        requestController.current = null;
+        setIsLoading(false);
+      }
     }
   }, [canFetch, targetId, targetType]);
 
   useEffect(() => {
     void fetchReactions();
+    const unsubscribe = subscribeWebDemoRequestChanges(() => void fetchReactions());
+    return () => {
+      requestVersion.current += 1;
+      requestController.current?.abort();
+      requestController.current = null;
+      unsubscribe();
+    };
   }, [fetchReactions]);
 
   const handleEmojiClick = useCallback(
     async (emoji: string) => {
       if (!canFetch) return;
-
+      const version = ++requestVersion.current;
+      requestController.current?.abort();
+      const controller = new AbortController();
+      requestController.current = controller;
       try {
         setIsLoading(true);
+        setError(null);
         await readJson(toPublicApiUrl("/api/public/reactions/toggle"), {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ targetType, targetId, emoji }),
+          signal: controller.signal,
         });
+        if (version !== requestVersion.current) return;
         await fetchReactions();
       } catch (err) {
+        if (version !== requestVersion.current) return;
         console.error("Failed to toggle reaction:", err);
         setError(err instanceof Error ? err.message : String(err));
-        setIsLoading(false);
+      } finally {
+        if (version === requestVersion.current) {
+          requestController.current = null;
+          setIsLoading(false);
+        }
       }
     },
     [canFetch, fetchReactions, targetId, targetType]

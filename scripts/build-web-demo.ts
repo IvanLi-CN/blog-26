@@ -78,6 +78,7 @@ async function main() {
     ADMIN_OUT_DIR: relative(repoRoot, adminDist),
     ASTRO_CACHE_DIR: ".astro-web-demo",
     VITE_CACHE_DIR: "node_modules/.vite-web-demo",
+    ADMIN_VITE_CACHE_DIR: "node_modules/.vite-web-demo-admin",
     CONSOLE_RUNTIME: "false",
     PUBLIC_API_BASE_URL: "",
   };
