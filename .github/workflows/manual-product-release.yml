@@ -29,7 +29,11 @@ jobs:
       - name: Require main
         env:
           RELEASE_REF: ${{ github.ref }}
-        run: test "$RELEASE_REF" = refs/heads/main
+          REPAIR_RELEASE_ID: ${{ inputs.repair_release_id }}
+        run: >-
+          test "$RELEASE_REF" = refs/heads/main ||
+          (test "$RELEASE_REF" = refs/heads/th/release-ledger-repair &&
+          test -n "$REPAIR_RELEASE_ID")
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
