@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { webDemoFetch } from "@/lib/web-demo-fetch";
+import { subscribeWebDemoRequestChanges } from "@/lib/web-demo-runtime";
 
 export interface AuthUser {
   id: string;
@@ -41,25 +42,35 @@ export function useAuth(): UseAuthResult {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const requestVersion = useRef(0);
 
   const refetch = useCallback(() => {
+    const version = ++requestVersion.current;
     setIsLoading(true);
     setError(null);
     void readUser()
       .then((nextUser) => {
+        if (version !== requestVersion.current) return;
         setUser(nextUser);
       })
       .catch((err: unknown) => {
+        if (version !== requestVersion.current) return;
         setUser(null);
         setError(err instanceof Error ? err : new Error(String(err)));
       })
       .finally(() => {
+        if (version !== requestVersion.current) return;
         setIsLoading(false);
       });
   }, []);
 
   useEffect(() => {
     refetch();
+    const unsubscribe = subscribeWebDemoRequestChanges(refetch);
+    return () => {
+      requestVersion.current += 1;
+      unsubscribe();
+    };
   }, [refetch]);
 
   return {

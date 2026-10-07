@@ -3,6 +3,7 @@ import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import MemoTimeline from "../../site/components/MemoTimeline";
 import { parseConsoleInitialMemoPage } from "../../site/lib/memo-pagination";
+import { getWebDemoRuntimeState, WEB_DEMO_STATE_EVENT } from "../../src/lib/web-demo-runtime";
 
 if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register({ url: "http://localhost/" });
 
@@ -38,6 +39,40 @@ afterEach(() => {
 });
 
 describe("MemoTimeline Web Demo initial read", () => {
+  test.each(["theme", "motion"] as const)(
+    "keeps in-flight pagination when only %s changes",
+    async (key) => {
+      window.history.replaceState({}, "", "/memos/?d_scene=memo-newest&d_connection=online");
+      let finishPage:
+        | ((page: { memos: (typeof nextMemo)[]; hasMore: boolean }) => void)
+        | undefined;
+      const pendingPage = new Promise<{ memos: (typeof nextMemo)[]; hasMore: boolean }>(
+        (resolve) => {
+          finishPage = resolve;
+        }
+      );
+      const { getByRole, getByText } = render(
+        <MemoTimeline
+          source="demo"
+          initialMemos={[initialMemo]}
+          initialHasMore
+          initialNextCursor="older-cursor"
+          pageLoader={() => pendingPage}
+          iconMap={{}}
+          iconSvgMap={{}}
+        />
+      );
+      fireEvent.click(getByRole("button", { name: "加载较旧的 Memo" }));
+      const state = getWebDemoRuntimeState(window.location, "public");
+      fireEvent(
+        window,
+        new CustomEvent(WEB_DEMO_STATE_EVENT, { detail: { ...state, changed: [key] } })
+      );
+      finishPage?.({ memos: [nextMemo], hasMore: false });
+      await waitFor(() => expect(getByText("Next Memo")).toBeTruthy());
+    }
+  );
+
   test("retains SSR memos when the first client read is offline", async () => {
     window.history.replaceState({}, "", "/memos/?d_connection=offline");
 

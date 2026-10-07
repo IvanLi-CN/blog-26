@@ -27,7 +27,7 @@
     "apps/admin/src/components/admin-soft-ui.stories.tsx": "9a9e6b9ecceaa5c5351940d47c12e83f72adff11",
     "apps/admin/src/components/app-shell.tsx": "5adc074871a85045314bce8f87e3f55168d1f5d8",
     "apps/admin/src/components/theme-provider.tsx": "c1d0ee657c054716960bfe48f7779f1c566ab0ab",
-    "apps/admin/src/demo/mock-admin-api.ts": "89aec7f5f2182a37a7156debef8e5e58e10611bb",
+    "apps/admin/src/demo/mock-admin-api.ts": "7bd04da752e63143cba38b5ac9e04c6e011bc59e",
     "apps/admin/src/main.tsx": "ec4e63191752aee907fce65285976c04e6cd6709",
     "apps/admin/src/pages/preview.stories.tsx": null,
     "apps/admin/src/styles.css": "8612a028c7f3ad01a54b3da4749e818ec9d649e9",
@@ -77,8 +77,8 @@
     "docs/specs/style-playbook-integration/assets/search-grouped-desktop-light.png": "cca266b2b09be2c5a211327a10acf17dd692e334",
     "docs/specs/style-playbook-integration/assets/search-grouped-mobile-dark.png": "1852060bb5bb48c1bde20ea938272034cbd242f4",
     "docs/specs/style-playbook-integration/assets/search-grouped-mobile-light.png": "4ecbf53e6631db54cb9d22110f6cedac56bee085",
-    "docs/specs/web-demo-global-controls/HISTORY.md": "753b898845f64e0979100fb3b77c98090fb9d9f1",
-    "docs/specs/web-demo-global-controls/IMPLEMENTATION.md": "3b38b16e1cefb92efc5d10202850fbd008c8cc03",
+    "docs/specs/web-demo-global-controls/HISTORY.md": "60d99c3250e3fb617e089880759e0ed9257f34a3",
+    "docs/specs/web-demo-global-controls/IMPLEMENTATION.md": "e8f86023ed48a33d79da163d561f2feae36e8eb3",
     "docs/specs/web-demo-global-controls/SPEC.md": "d762e99d1968133145e5496720eb5ffd019a4ea0",
     "docs/specs/web-demo-global-controls/assets/inspector-desktop.png": "fa5fc685751e29f8cb49791023879b20037964d3",
     "docs/specs/web-demo-global-controls/assets/inspector-mobile.png": "4f1048e5aae50ab0a10f75cf747da2a6be8a1992",
@@ -94,7 +94,7 @@
     "scripts/smoke-product-release.ts": "7285e6021b7074facbceb921ff9171d684758fff",
     "scripts/start-console.ts": "be1ea96209a0dd10eabc85e68fcf8af2e4d18ff2",
     "scripts/start-gateway.ts": "b05bd9bdb94914e48b33805c84de8762f83b21c8",
-    "site/components/MemoTimeline.tsx": "e05dd0143628cd6b6078ac03b734c2ec8f61b59a",
+    "site/components/MemoTimeline.tsx": "af9206e9860978f65560f9c20775b1c3534d3980",
     "site/components/PublicMemoAuthoring.tsx": "70729ab77633772fe09a429cfec6fe76d01345c9",
     "site/components/SearchPageIsland.tsx": "fe97193475eebbe5a226ec7829f315c5f0386e59",
     "site/layouts/BaseLayout.astro": "1d4a005719b7686cb8897d0b0e34ce49376d12d7",
@@ -111,7 +111,7 @@
     "src/components/WebDemoInspector.disabled.tsx": "162be29cadd806f39a293b2ca4f7115bee8f08d2",
     "src/components/WebDemoInspector.tsx": "8f59d31219690168e15efbf09ab969ae2aebfd5e",
     "src/components/blog/Reactions.tsx": "20506687ee511b9e6cb59fe61b857b565e752805",
-    "src/components/comments/hooks.ts": "2f97e6d16b566fa1814a6289f4333dd37574b28f",
+    "src/components/comments/hooks.ts": "1c383710e1d4c451c05b89f53589c9bc27cfc456",
     "src/components/common/AmbientScene.tsx": "01417ceda1fff9f7d840c1de1c49c2a75f15db73",
     "src/components/common/PublicArticleDetail.stories.tsx": null,
     "src/components/common/PublicMemoDetail.stories.tsx": null,
@@ -131,7 +131,7 @@
     "src/components/ui/compact-controls.css": "6d1865961185c3888942ad17f797239d393c8e3b",
     "src/components/ui/input.tsx": "a721f01054a3a44ff65865b2f0ad3a9c27a4d225",
     "src/components/ui/radio-group.tsx": "57bcb5af339c6e053aaba0983b43bedfa8314b9f",
-    "src/hooks/useAuth.ts": "01d472350df52c779302ed49f1c36e67f89bcf87",
+    "src/hooks/useAuth.ts": "58c0bd9075f7b898a2128db8ece36129203d8aee",
     "src/lib/__tests__/admin-demo-file-paste-selection.test.ts": "1ac69f46f89d597846052f4138b74c19836f353d",
     "src/lib/__tests__/admin-demo-file-tree.test.ts": "fa39e7f23dde7126e24c43eb25dd388dbab124ba",
     "src/lib/__tests__/admin-demo-llm-settings.test.ts": "f925fbf36e2717aff8f1b4159fce36dea6098d44",
@@ -157,8 +157,8 @@
     "src/lib/search/content-search.ts": "9f2529b4b4745ac40f8e719b5f1c3e290317b93d",
     "src/lib/theme.ts": "5db5adffa88525df15f2029d4e636e9d82715616",
     "src/lib/version-info.ts": "de25d694341bab26f2ecbdaeea43bef72d3f7cba",
-    "src/lib/web-demo-fetch.ts": "b2c491a17e503e35896279b9dd598aef19e8fada",
-    "src/lib/web-demo-runtime.ts": "a3c6c7700d9a5b8a9aad5a1a5132a8881e3e1891",
+    "src/lib/web-demo-fetch.ts": "48a13e7e8489e1f81c72b608a98cbc3de9f15e59",
+    "src/lib/web-demo-runtime.ts": "493acfc0398e2baa595f3bbd0bba8b0be1d1792c",
     "src/server/version-api.ts": "4d1e148ba24d157c820dba0f3050f5da531281c9",
     "src/styles/globals.css": "bbe9715ac942db32c5cd08aab0afd94ada7d5577",
     "src/styles/nature-restored.css": "ea4f64836f02212969a73481faa6d0dad23c920e",
@@ -168,7 +168,8 @@
     "tests/ci/prepare-release-fixture.ts": "461d9a16e49263cd35a416bc76398f1ff12509ae",
     "tests/ci/release-intent.test.ts": null,
     "tests/ci/release-workflow.test.ts": null,
-    "tests/components/MemoTimeline.test.tsx": "2bcb6e62aa6bb129f5ffeb845dda6c63ec359402",
+    "tests/components/MemoTimeline.test.tsx": "832432e91965c5872efc2e97c45092457c484c95",
+    "tests/components/WebDemoIdentity.test.tsx": "a501e7de34d818b986d6750075f44d67245127de",
     "tests/e2e/admin/post-editor-markdown-modes.spec.ts": "15e2e2fa4f0335204aec44ccadce6ac385fe171e",
     "tests/e2e/guest/mobile-reading-surface.spec.ts": "abb822347ab9216a444ff30b9b0de1d9875acb5e",
     "tests/lib/manual-release-ledger.test.ts": "2a7a71f224ccb652f4169fbcbed76feaf669bab4",
@@ -180,7 +181,7 @@
     "tests/lib/playbook-contract.test.ts": "38047c495879fdd4cb00f81791db6bdd8737a49b",
     "tests/lib/playbook-workflows.test.ts": "2921115a0b6629d9f7e10f6e7c80b5ee43403a2b",
     "tests/lib/web-demo-boundary.test.ts": "d3631d64cafb7297df4af827fdd60b5383fd70f6",
-    "tests/lib/web-demo-fetch.test.ts": "b491e4cd6665b2491905b0e497d792166545880d",
+    "tests/lib/web-demo-fetch.test.ts": "427c9d2a45a01b137b702d508f01de523053c889",
     "tests/lib/web-demo-inspector-layout.test.ts": "6b85d36d695d904d4cc9070689430bdc7bc79118",
     "tests/lib/web-demo-runtime.test.ts": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb",
     "tests/server/version-api.test.ts": "746ed7e7dfc790dd70131c0a7dca07c44f9c07c7",
@@ -238,7 +239,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change the live API contracts or SQLite/local content formats. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded.",
-      "assessed_at": "2026-10-07T13:29:57.303Z",
+      "assessed_at": "2026-10-07T14:05:21.345Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -307,7 +308,7 @@
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "b491e4cd6665b2491905b0e497d792166545880d",
+          "blob": "427c9d2a45a01b137b702d508f01de523053c889",
           "command": "bun run test:precommit"
         },
         {
@@ -317,7 +318,12 @@
         },
         {
           "path": "tests/components/MemoTimeline.test.tsx",
-          "blob": "2bcb6e62aa6bb129f5ffeb845dda6c63ec359402",
+          "blob": "832432e91965c5872efc2e97c45092457c484c95",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/components/WebDemoIdentity.test.tsx",
+          "blob": "a501e7de34d818b986d6750075f44d67245127de",
           "command": "bun run test:precommit"
         }
       ],
@@ -329,7 +335,7 @@
     "verified": {
       "impact": "minor",
       "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change the live API contracts or SQLite/local content formats. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded.",
-      "assessed_at": "2026-10-07T13:29:57.304Z",
+      "assessed_at": "2026-10-07T14:05:21.446Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -398,7 +404,7 @@
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "b491e4cd6665b2491905b0e497d792166545880d",
+          "blob": "427c9d2a45a01b137b702d508f01de523053c889",
           "command": "bun run test:precommit"
         },
         {
@@ -408,7 +414,12 @@
         },
         {
           "path": "tests/components/MemoTimeline.test.tsx",
-          "blob": "2bcb6e62aa6bb129f5ffeb845dda6c63ec359402",
+          "blob": "832432e91965c5872efc2e97c45092457c484c95",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/components/WebDemoIdentity.test.tsx",
+          "blob": "a501e7de34d818b986d6750075f44d67245127de",
           "command": "bun run test:precommit"
         }
       ]
@@ -463,6 +474,11 @@
         {
           "path": "src/lib/playbook/search.test.ts",
           "blob": "9d58afc7b6c44d99e9b22e4297dc384a71647221",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/components/WebDemoIdentity.test.tsx",
+          "blob": "a501e7de34d818b986d6750075f44d67245127de",
           "command": "bun run test:precommit"
         }
       ]

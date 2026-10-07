@@ -159,8 +159,10 @@ export default function MemoTimeline({
       if (!detail) return;
       if (detail.changed.includes("scene") || detail.changed.includes("data")) {
         resetFromScene(detail.sceneState, detail.environment);
-      } else {
+      } else if (detail.changed.some((key) => ["persona", "connection", "delay"].includes(key))) {
         syncEnvironment(detail.environment);
+      } else {
+        setDemoEnvironment(detail.environment);
       }
     };
     const handleAction = (event: Event) => {

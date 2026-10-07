@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
+import { setupAdminDemoApiMocks } from "../../apps/admin/src/demo/mock-admin-api";
 import { webDemoFetch } from "../../src/lib/web-demo-fetch";
 import { cancelWebDemoRequests } from "../../src/lib/web-demo-runtime";
 
@@ -19,6 +20,7 @@ function installBrowser(search: string, enabled = true) {
     },
     setTimeout,
     clearTimeout,
+    fetch: originalFetch.bind(globalThis),
   };
   const fakeDocument = { documentElement: { dataset } };
 
@@ -87,5 +89,55 @@ describe("webDemoFetch", () => {
 
     expect(await response.json()).toEqual({ source: "live" });
     expect(fetchCalls).toBe(1);
+  });
+
+  it("returns online search results and suggestions through the fixture boundary", async () => {
+    installBrowser("?d_connection=online");
+    const response = await webDemoFetch("/api/public/search?q=fixture");
+    expect(response.ok).toBe(true);
+    expect(await response.json()).toContainEqual(
+      expect.objectContaining({ slug: "code-block-fixture" })
+    );
+    const suggestions = await webDemoFetch("/api/public/search/suggestions?q=fixture");
+    expect(await suggestions.json()).toHaveProperty("items");
+  });
+
+  it("rejects unauthenticated comment mutations and non-admin moderation", async () => {
+    installBrowser("?d_persona=guest");
+    expect((await webDemoFetch("/api/public/comments/missing", { method: "DELETE" })).status).toBe(
+      401
+    );
+    installBrowser("?d_persona=user");
+    expect((await webDemoFetch("/api/public/comments/missing", { method: "PATCH" })).status).toBe(
+      404
+    );
+    expect(
+      (await webDemoFetch("/api/public/comments/missing/moderate", { method: "POST" })).status
+    ).toBe(403);
+    installBrowser("?d_persona=admin");
+    expect(
+      (await webDemoFetch("/api/public/comments/missing/moderate", { method: "POST" })).ok
+    ).toBe(true);
+  });
+
+  it("cancels direct admin uploads even when the caller supplies no signal", async () => {
+    installBrowser("?d_persona=admin&d_delay=custom&d_delay_ms=2300");
+    setupAdminDemoApiMocks();
+    const pending = window.fetch("/api/files/local/blog/upload.png", {
+      method: "POST",
+      body: "fixture",
+    });
+    cancelWebDemoRequests();
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("honors an AbortSignal carried by a Request object", async () => {
+    installBrowser("?d_delay=custom&d_delay_ms=2300");
+    const controller = new AbortController();
+    const pending = webDemoFetch(
+      new Request("http://127.0.0.1:38110/api/public/auth/me", { signal: controller.signal })
+    );
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
   });
 });

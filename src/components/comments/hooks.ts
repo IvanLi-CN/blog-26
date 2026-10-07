@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toPublicApiUrl } from "@/lib/public-runtime-url";
 import { webDemoFetch } from "@/lib/web-demo-fetch";
+import { subscribeWebDemoRequestChanges } from "@/lib/web-demo-runtime";
 import type { Comment, UserInfo } from "./types";
 
 async function readJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
@@ -24,21 +25,30 @@ type CommentWithAuthorAndReplies = Comment;
 export function useUserInfo() {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const requestVersion = useRef(0);
 
   const fetchUserInfo = useCallback(async () => {
+    const version = ++requestVersion.current;
     setIsLoading(true);
     try {
       const data = await readJson<UserInfo | null>(toPublicApiUrl("/api/public/auth/me"));
+      if (version !== requestVersion.current) return;
       setUserInfo(data);
     } catch {
+      if (version !== requestVersion.current) return;
       setUserInfo(null);
     } finally {
-      setIsLoading(false);
+      if (version === requestVersion.current) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void fetchUserInfo();
+    const unsubscribe = subscribeWebDemoRequestChanges(() => void fetchUserInfo());
+    return () => {
+      requestVersion.current += 1;
+      unsubscribe();
+    };
   }, [fetchUserInfo]);
 
   const logout = useCallback(async () => {
@@ -64,9 +74,11 @@ export function useComments({ postSlug }: UseCommentsProps) {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isAdmin, setIsAdmin] = useState(false);
+  const requestVersion = useRef(0);
 
   const fetchComments = useCallback(
     async (pageNum: number, refresh = false) => {
+      const version = ++requestVersion.current;
       setIsLoading(true);
       setError(null);
       try {
@@ -79,6 +91,7 @@ export function useComments({ postSlug }: UseCommentsProps) {
             `/api/public/comments?slug=${encodeURIComponent(postSlug)}&page=${pageNum}&limit=10`
           )
         );
+        if (version !== requestVersion.current) return;
         setComments((prev) =>
           pageNum === 1 || refresh ? data.comments : [...prev, ...data.comments]
         );
@@ -86,10 +99,11 @@ export function useComments({ postSlug }: UseCommentsProps) {
         setIsAdmin(data.isAdmin || false);
         setPage(pageNum);
       } catch (err: unknown) {
+        if (version !== requestVersion.current) return;
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
       } finally {
-        setIsLoading(false);
+        if (version === requestVersion.current) setIsLoading(false);
       }
     },
     [postSlug]
@@ -107,6 +121,11 @@ export function useComments({ postSlug }: UseCommentsProps) {
 
   useEffect(() => {
     void fetchComments(1);
+    const unsubscribe = subscribeWebDemoRequestChanges(() => void fetchComments(1, true));
+    return () => {
+      requestVersion.current += 1;
+      unsubscribe();
+    };
   }, [fetchComments]);
 
   return { comments, isLoading, error, totalPages, page, loadMore, refetch, isAdmin };

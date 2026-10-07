@@ -611,6 +611,18 @@ export function isWebDemoBuildEnabled() {
   );
 }
 
+export function subscribeWebDemoRequestChanges(onChange: () => void) {
+  if (!isWebDemoBuildEnabled()) return () => undefined;
+  const handleChange = (event: Event) => {
+    const detail = (event as CustomEvent<WebDemoStateChangeDetail>).detail;
+    if (detail?.changed.some((key) => ["persona", "connection", "delay"].includes(key))) {
+      onChange();
+    }
+  };
+  window.addEventListener(WEB_DEMO_STATE_EVENT, handleChange);
+  return () => window.removeEventListener(WEB_DEMO_STATE_EVENT, handleChange);
+}
+
 let webDemoRequestController: AbortController | null = null;
 
 export function getWebDemoRequestSignal(): AbortSignal | undefined {

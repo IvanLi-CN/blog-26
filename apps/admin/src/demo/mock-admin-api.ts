@@ -24,9 +24,11 @@ import type {
   AdminSecretState,
 } from "@/lib/llm-settings";
 import { rebasePersistedLocalLinks, rebasePersistedLocalReferences } from "@/lib/persisted-paths";
+import { combineAbortSignals } from "@/lib/web-demo-fetch";
 import {
   assertWebDemoRequestAvailable,
   getWebDemoEnvironment,
+  getWebDemoRequestSignal,
   getWebDemoState,
   type WebDemoEnvironment,
   waitForWebDemoRequest,
@@ -601,7 +603,7 @@ export function setupAdminDemoApiMocks() {
     const request = normalizeRequest(input, init);
     if (!request) return originalFetch(input, init);
 
-    const { url, method, signal } = request;
+    const { url, method } = request;
     if (url.origin !== window.location.origin) return originalFetch(input, init);
 
     if (import.meta.env.VITE_WEB_DEMO_E2E_FIXTURE === "true" && !isE2eFixtureRoute()) {
@@ -612,6 +614,7 @@ export function setupAdminDemoApiMocks() {
       url.pathname.startsWith("/api/admin/") || url.pathname.startsWith("/api/files/");
     if (!isDemoApiRequest) return originalFetch(input, init);
 
+    const signal = combineAbortSignals(request.signal, getWebDemoRequestSignal());
     const environment = getWebDemoEnvironment(window.location, "admin");
     await waitForWebDemoRequest(environment, signal);
 

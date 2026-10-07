@@ -7,7 +7,7 @@ import {
   waitForWebDemoRequest,
 } from "./web-demo-runtime";
 
-function combineAbortSignals(...signals: Array<AbortSignal | null | undefined>) {
+export function combineAbortSignals(...signals: Array<AbortSignal | null | undefined>) {
   const activeSignals = signals.filter((signal): signal is AbortSignal => Boolean(signal));
   if (activeSignals.length <= 1) return activeSignals[0];
   if (typeof AbortSignal !== "undefined" && "any" in AbortSignal) {
@@ -71,7 +71,52 @@ function getDemoPublicResponse(url: URL, method: string, environment: WebDemoEnv
   }
 
   if (url.pathname.startsWith("/api/public/comments/") && ["PATCH", "DELETE"].includes(method)) {
-    return jsonResponse({ ok: true });
+    if (environment.persona === "guest") return jsonResponse({ error: "UNAUTHORIZED" }, 401);
+    return jsonResponse({ error: "评论不存在" }, 404);
+  }
+
+  if (/^\/api\/public\/comments\/[^/]+\/moderate$/.test(url.pathname) && method === "POST") {
+    if (environment.persona === "guest") return jsonResponse({ error: "UNAUTHORIZED" }, 401);
+    if (environment.persona !== "admin") return jsonResponse({ error: "FORBIDDEN" }, 403);
+    return jsonResponse({ success: true });
+  }
+
+  if (url.pathname === "/api/public/search" && method === "GET") {
+    const query = (url.searchParams.get("q") ?? "").trim().toLowerCase();
+    const results = [
+      {
+        slug: "code-block-fixture",
+        title: "Code Block Fixture",
+        excerpt: "Canonical markdown code rendering fixture.",
+        type: "post",
+      },
+      {
+        slug: "hello-world",
+        title: "Hello World",
+        excerpt: "The primary local fixture post.",
+        type: "post",
+      },
+      {
+        slug: "local-memo",
+        title: "Local Memo",
+        excerpt: "A memo fixture stored in the local content tree.",
+        type: "memo",
+      },
+    ];
+    return jsonResponse(
+      query
+        ? results.filter((item) => `${item.title} ${item.excerpt}`.toLowerCase().includes(query))
+        : []
+    );
+  }
+
+  if (url.pathname === "/api/public/search/suggestions" && method === "GET") {
+    return jsonResponse({
+      items: [
+        { term: "fixture", strategy: "related" },
+        { term: "Memo", strategy: "related" },
+      ],
+    });
   }
 
   if (url.pathname === "/api/public/reactions" && method === "GET") {
@@ -98,7 +143,10 @@ export async function webDemoFetch(
 
   const url = resolveRequestUrl(input);
   const environment = getWebDemoEnvironment(window.location, app);
-  const signal = combineAbortSignals(init?.signal, getWebDemoRequestSignal());
+  const signal = combineAbortSignals(
+    init?.signal ?? (input instanceof Request ? input.signal : undefined),
+    getWebDemoRequestSignal()
+  );
   await waitForWebDemoRequest(environment, signal);
 
   if (app === "public" && url) {
