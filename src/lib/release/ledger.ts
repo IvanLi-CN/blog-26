@@ -339,8 +339,15 @@ export function newerDeploymentExists(ledger: ReleaseLedger, entry: ReleaseEntry
   );
 }
 
+export interface LedgerReadOptions {
+  allowLegacyHead?: boolean;
+  allowLegacyAncestor?: boolean;
+}
+
 export interface LedgerStore {
-  read(): Promise<{ sha: string; ledger: ReleaseLedger }>;
+  read(
+    options?: LedgerReadOptions
+  ): Promise<{ sha: string; ledger: ReleaseLedger; legacySha?: string }>;
   compareAndSwap(expectedSha: string, ledger: ReleaseLedger): Promise<string>;
 }
 

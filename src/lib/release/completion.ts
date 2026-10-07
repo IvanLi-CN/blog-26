@@ -205,7 +205,13 @@ export async function resolveCompletedRelease(
 async function readPolicyLedger(github: GitHubRelease, store: LedgerStore): Promise<ReleaseLedger> {
   if (!github.reference(`heads/${github.contract.ledgerBranch}`))
     return initialLedger(github.contract);
-  return (await store.read()).ledger;
+  try {
+    return (await store.read()).ledger;
+  } catch (error) {
+    const recovered = await store.read({ allowLegacyHead: true, allowLegacyAncestor: true });
+    if (!recovered.legacySha) throw error;
+    return recovered.ledger;
+  }
 }
 
 export async function validateCandidatePolicy(
