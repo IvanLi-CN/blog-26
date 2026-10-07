@@ -297,7 +297,9 @@ export class GitHubLedgerStore implements LedgerStore {
     await this.read();
   }
 
-  async read(): Promise<{ sha: string; ledger: ReleaseLedger }> {
+  async read(
+    options: { allowLegacyHead?: boolean } = {}
+  ): Promise<{ sha: string; ledger: ReleaseLedger }> {
     const { contract } = this.github;
     const sha = this.github.reference(`heads/${contract.ledgerBranch}`);
     if (!sha)
@@ -311,7 +313,18 @@ export class GitHubLedgerStore implements LedgerStore {
       const commit = repositoryCommitSchema.parse(raw);
       if (commit.sha !== expected || commit.parents.length > 1)
         throw new Error("Ledger history is not a single-parent chain");
-      this.github.verifyBotCommit(commit.sha, raw);
+      if (options.allowLegacyHead && commit.sha === sha) {
+        const owner = contract.repository.split("/")[0];
+        const bot = `${this.github.botSlug}[bot]`;
+        if (
+          commit.author?.login !== owner ||
+          commit.committer?.login !== "web-flow" ||
+          !commit.commit.verification.verified ||
+          commit.commit.verification.reason !== "valid" ||
+          !commit.commit.message.includes(`Signed-off-by: ${bot} <`)
+        )
+          throw new Error("Legacy ledger head is not a valid GitHub-signed recovery candidate");
+      } else this.github.verifyBotCommit(commit.sha, raw);
       if (!/Ledger-Digest: [a-f0-9]{64}/.test(commit.commit.message))
         throw new Error("Ledger commit lacks its state digest");
       const parent = commit.parents[0];
