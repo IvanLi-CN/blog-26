@@ -245,6 +245,12 @@ console 必须后台同步博客的公开 JSON，在网络健康且 schema 兼�
 
 ![桌面端深色索引，类型图标位于标题左侧](./assets/playbook-card-title-icons-desktop-dark.png)
 
+本次目录卡片修复使用长描述 fixture 重新验证正文宽度：桌面端正文延伸至卡片内容区并自然换行，移动端保持连续阅读布局，无横向溢出。
+
+![桌面端长描述目录卡片，正文占满内容区](./assets/playbook-desktop-card-copy-full-width-dark-1280.png)
+
+![移动端长描述目录卡片，正文自然换行](./assets/playbook-mobile-card-copy-full-width-dark-393.png)
+
 768 × 900 平板目录与正文使用同一主题面板背景、边框、圆角、阴影及可用宽度；浅色和深色场景均由 owner 确认。
 
 公开资源浏览器位于正文后的独立全宽区域。桌面端在同一表面内并列显示文件树与预览；移动端文件树作为预览上的浮层按需打开。资源卡片支持铺满视口查看。
