@@ -134,6 +134,11 @@ export function validateLedger(raw: unknown, contract: ReleaseContract): Release
 }
 
 function validateEntry(entry: ReleaseEntry): void {
+  if (entry.stage === "abandoned") {
+    if (entry.inputs || entry.products || entry.publication || entry.deployment)
+      throw new Error("Abandoned releases cannot retain frozen or published proofs");
+    return;
+  }
   const level = stages.indexOf(entry.stage as (typeof stages)[number]);
   if (level >= 1 && (!entry.preparationHead || !entry.prNumber))
     throw new Error("PR provenance is missing");
@@ -304,7 +309,14 @@ export function updateRelease(
   }
   const next = entrySchema.parse({ ...original, ...patch, updatedAt: now });
   if (next.stage === "abandoned") {
-    if (!["reserved", "pr_open", "abandoned"].includes(original.stage))
+    const failedBeforeArtifacts =
+      original.stage === "merged" &&
+      Boolean(original.failure) &&
+      !original.inputs &&
+      !original.products &&
+      !original.publication &&
+      !original.deployment;
+    if (!["reserved", "pr_open", "abandoned"].includes(original.stage) && !failedBeforeArtifacts)
       throw new Error("A merged release cannot be abandoned");
   } else if (next.stage !== original.stage) {
     if (

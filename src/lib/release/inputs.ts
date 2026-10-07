@@ -39,6 +39,43 @@ const publicEnvNames = [
   "PUBLIC_OCTO_RILL_METRICS_BASE_URL",
 ] as const;
 
+const snapshotRetryDelaysMs = [1_000, 3_000] as const;
+type SnapshotFetcher = typeof fetch;
+type SnapshotSleep = (delayMs: number) => Promise<void>;
+
+function isRetryableSnapshotStatus(status: number): boolean {
+  return status === 408 || status === 425 || status === 429 || status >= 500;
+}
+
+export async function fetchPublicSnapshot(
+  snapshotUrl: URL,
+  fetcher: SnapshotFetcher = fetch,
+  sleep: SnapshotSleep = (delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs))
+): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= snapshotRetryDelaysMs.length; attempt += 1) {
+    let response: Response;
+    try {
+      response = await fetcher(snapshotUrl, {
+        redirect: "error",
+        signal: AbortSignal.timeout(60_000),
+      });
+    } catch (error) {
+      if (attempt === snapshotRetryDelaysMs.length) throw error;
+      lastError = error;
+      await sleep(snapshotRetryDelaysMs[attempt] || 0);
+      continue;
+    }
+    if (response.ok) return response;
+    lastError = new Error(`Public snapshot acquisition failed (HTTP ${response.status})`);
+    if (!isRetryableSnapshotStatus(response.status) || attempt === snapshotRetryDelaysMs.length)
+      throw lastError;
+    await sleep(snapshotRetryDelaysMs[attempt] || 0);
+  }
+  if (lastError instanceof Error) throw lastError;
+  throw new Error("Public snapshot acquisition failed");
+}
+
 export async function buildCommand(
   args: string[],
   env: Record<string, string | undefined> = {},
@@ -95,11 +132,7 @@ export async function freezeInputs(entry: ReleaseEntry, root: string): Promise<v
     snapshotUrl.hash
   )
     throw new Error("Snapshot URL must stay within the public API origin");
-  const response = await fetch(snapshotUrl, {
-    redirect: "error",
-    signal: AbortSignal.timeout(60_000),
-  });
-  if (!response.ok) throw new Error(`Public snapshot acquisition failed (HTTP ${response.status})`);
+  const response = await fetchPublicSnapshot(snapshotUrl);
   const snapshot = await response.text();
   // The public snapshot is JSON data, never executable input.
   const parsed = z

@@ -305,4 +305,41 @@ if (command === "notification") {
     }),
     result: null,
   }));
+} else if (command === "abandon-failed") {
+  const app = github();
+  const store = new GitHubLedgerStore(app);
+  const requestedId = process.env.RELEASE_ID || "";
+  if (!requestedId) throw new Error("RELEASE_ID is required");
+  const current = await store.read();
+  const entry = current.ledger.entries.find((item) => item.id === requestedId);
+  if (!entry) throw new Error("Unknown release identity");
+  if (entry.stage !== "merged" || !entry.failure || entry.inputs || entry.products)
+    throw new Error("Only a failed merged release without frozen artifacts can be abandoned");
+  if (entry.releaseRunId !== Number(entry.failure.runId))
+    throw new Error("Release failure does not belong to the registered release run");
+  const run = z
+    .object({
+      id: z.number().int().positive(),
+      run_attempt: z.number().int().positive(),
+      event: z.literal("workflow_run"),
+      path: z.literal(".github/workflows/product-release.yml"),
+      status: z.literal("completed"),
+      conclusion: z.literal("failure"),
+      head_branch: z.literal("main"),
+      head_repository: z.object({ full_name: z.literal(contract.repository) }),
+    })
+    .parse(app.api(`${app.root}/actions/runs/${entry.releaseRunId}`));
+  if (run.id !== entry.releaseRunId) throw new Error("Release run identity changed");
+  if (entry.failure.attempt > run.run_attempt)
+    throw new Error("Release failure attempt is newer than the registered run");
+  const { findArtifact } = await import("../src/lib/release/artifacts");
+  for (const kind of ["inputs", "products"] as const) {
+    if (findArtifact(app, entry, kind))
+      throw new Error(`Cannot abandon a release with frozen ${kind}`);
+  }
+  await changeLedger(store, (ledger) => ({
+    ledger: updateRelease(ledger, entry.id, { stage: "abandoned" }),
+    result: null,
+  }));
+  console.log(`Abandoned failed release ${entry.id}`);
 } else throw new Error("Unknown product release operation");
