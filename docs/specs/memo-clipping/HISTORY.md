@@ -52,3 +52,5 @@
 - [Requirements contract](./SPEC.md)
 - [Implementation facts](./IMPLEMENTATION.md)
 - [Content and conversation boundaries](../../adr/0012-memo-clipping-content-boundaries.md)
+
+- The owner requires separate explicit authorization for actual model calls. This delivery uses deterministic automated model fixtures; live provider compatibility and generated-content quality are deferred, unverified, and excluded from the implementation PR readiness gate.

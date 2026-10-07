@@ -6,7 +6,7 @@
 
 - Implementation: in progress; business workflow, API, publication projection, and responsive UI are implemented locally.
 - Lifecycle: active.
-- Delivery: [direct PR #170](https://github.com/IvanLi-CN/blog-26/pull/170) is open. The local candidate is synchronized with the manual-release baseline, with approved scope/UI changes still staged. Fresh validation, empirical acceptance, formal review, and current-head CI remain required before PR readiness.
+- Delivery: [direct PR #170](https://github.com/IvanLi-CN/blog-26/pull/170) is open. The local candidate is synchronized with the manual-release baseline, with approved scope/UI changes committed. Automated validation is complete; fresh formal review and current-head CI remain required before PR readiness. Actual model calls are prohibited without separate explicit owner authorization, and live provider/translation/answer-quality acceptance is deferred and unverified for this delivery.
 
 ## Implementation Coverage
 
@@ -22,7 +22,7 @@
 
 ## Verification
 
-- The history-removal scope is implemented. `bun run check` and six focused Web Demo tests pass; current desktop/mobile mock captures show no history/restore controls. New VM integration, compiled-route E2E, exact-Candidate empirical acceptance, and fresh formal review remain pending because shared VM admission currently has no memory capacity. These gates are not replaced by the earlier Candidate evidence.
+- The history-removal scope is implemented. Session-owned VM validation passes `bun run check`, 905 tests, frozen installation, public/admin Web Demo and production admin/console builds, seven-width compiled Demo E2E, production console E2E, bootstrap smoke, and native release-policy assessment. Current desktop/mobile mock captures show no history/restore controls. Actual configured-model calls are not authorized; earlier live-provider observations are historical and do not prove the current candidate. Current real-model acceptance is deferred, while automated durable recovery remains covered.
 
 - The owner prohibits creating pages in Storybook. All page fixtures introduced for clipping detail, list presentation, icon selection, and clipping search have been removed, together with their dedicated runner and package command. Their prior captures are withdrawn as current UI evidence. Page verification must exercise the actual application routes; existing unrelated Storybook stories are preserved.
 - The native Web Demo now includes one clipping in the existing 2,400-record list and renders `/memos/memo-web-demo-1181/` through the same Astro route, heading, and `ClippingDetail` as the product. A build-time alias supplies only the in-memory transport adapter; it does not duplicate page markup. The Inspector adds five clipping scenes and immediate mutation-log updates. Simulated chat submission is idempotent, delayed requests recheck persona, translation retry advances through saved progress, and same-target reprocessing preserves the discussion. Empty capture state has no generated summary or discussion.
@@ -75,8 +75,8 @@
 ## Remaining Gates
 
 - Complete current-source full-suite checks, builds, fault recovery, and delivery evidence on the session Agent VM. The session VM is available again; frozen installation, format checks, and the full 905-test suite pass with DAC bypass capabilities removed. No local heavy-test fallback or hook bypass is used.
-- Bind the real-provider article/translation/chat/interruption acceptance to the final committed Candidate; the preceding committed Candidate passed, but baseline and approved scope changes invalidate its SHA/contract-bound card for the new Candidate.
-- Execute the required runtime review lanes and direct PR delivery gates after final-Candidate empirical acceptance.
+- Live-provider acceptance is deferred and unverified. Do not invoke the opt-in provider runner without separate explicit owner authorization.
+- Execute the required runtime review lanes and direct PR delivery gates after current automated validation and visual evidence.
 
 - Production-console smoke fixtures use their own migrated temporary database, authored content, and clipping materials, with final cleanup. Removing all manual restoration code also removes its author-file replacement path and concurrent-edit risk.
 

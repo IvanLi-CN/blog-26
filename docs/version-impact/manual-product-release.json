@@ -293,7 +293,7 @@
         },
         {
           "path": "src/lib/ai/search-fallback.test.ts",
-          "blob": "15157675512f1fd0bf3f0a851d4e1943024a9f5a",
+          "blob": "7ad10d1d7e640abb86bf702015111d870f8d5040",
           "command": "bun run test:precommit"
         },
         {
@@ -308,7 +308,7 @@
         },
         {
           "path": "src/components/search/SearchResultsList.test.tsx",
-          "blob": "e39ac622e61901ef8a0508a18d49fcafd2598dd8",
+          "blob": "552681e47d3bcda703a3d6a0040da081311a7239",
           "command": "bun run test:precommit"
         },
         {
@@ -424,7 +424,7 @@
         },
         {
           "path": "src/lib/ai/search-fallback.test.ts",
-          "blob": "15157675512f1fd0bf3f0a851d4e1943024a9f5a",
+          "blob": "7ad10d1d7e640abb86bf702015111d870f8d5040",
           "command": "bun run test:precommit"
         },
         {
@@ -439,7 +439,7 @@
         },
         {
           "path": "src/components/search/SearchResultsList.test.tsx",
-          "blob": "e39ac622e61901ef8a0508a18d49fcafd2598dd8",
+          "blob": "552681e47d3bcda703a3d6a0040da081311a7239",
           "command": "bun run test:precommit"
         },
         {
@@ -548,7 +548,7 @@
         },
         {
           "path": "src/lib/ai/search-fallback.test.ts",
-          "blob": "15157675512f1fd0bf3f0a851d4e1943024a9f5a",
+          "blob": "7ad10d1d7e640abb86bf702015111d870f8d5040",
           "command": "bun run test:precommit"
         },
         {
@@ -587,7 +587,7 @@
         },
         {
           "path": "src/components/search/SearchResultsList.test.tsx",
-          "blob": "e39ac622e61901ef8a0508a18d49fcafd2598dd8",
+          "blob": "552681e47d3bcda703a3d6a0040da081311a7239",
           "command": "bun run test:precommit"
         }
       ]

@@ -163,6 +163,8 @@ The reading header keeps author remarks and the generated summary visible. The o
 
 ## Verification
 
+Automated acceptance uses deterministic model doubles and isolated provider fixtures. Actual configured-model calls require separate explicit owner authorization; generic testing, retry, or delivery instructions do not grant that authorization. Live model answer quality, provider compatibility, and full-article translation quality are deferred when authorization is absent and are reported as unverified, without blocking the implementation PR. Durable execution, extraction, permissions, and UI remain required automated acceptance.
+
 ### VER-MCL-001
 
 - Method: parser and tag fixture tests covering plain URLs, Markdown links, URL-only title metadata, separate custom titles, first-line H1/H2/H3 links, leading blanks, surrounding prose, unsupported schemes, later links, code spans, fenced code, link destinations, URL fragments, and generated content.
