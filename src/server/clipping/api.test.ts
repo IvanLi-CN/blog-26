@@ -232,6 +232,23 @@ test("MCP omitted tags preserve clipping metadata while explicit empty tags remo
     await client.connect(
       new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${server.port}/mcp`))
     );
+    await writeFile(
+      join(root, "authored", id),
+      matter.stringify("Ordinary author remarks.", { public: true, tags: ["保留"] })
+    );
+    const converted = await client.callTool({
+      name: "memos_update",
+      arguments: {
+        slug: "clip",
+        content: "https://article.example/one\n\nConverted remarks.",
+        isPublic: true,
+        tags: ["剪藏"],
+      },
+    });
+    expect(converted.isError).not.toBe(true);
+    const convertedMemo = matter(await Bun.file(join(root, "authored", id)).text());
+    expect(convertedMemo.data.clipping?.creatorId).toBe("creator");
+    await writeFile(join(root, "authored", id), raw);
     const content = "https://article.example/one\n\nUpdated remarks.";
     const result = await client.callTool({
       name: "memos_update",

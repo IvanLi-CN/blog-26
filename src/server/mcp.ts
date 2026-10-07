@@ -783,7 +783,12 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
           fm.public = input.isPublic;
           if (input.tags !== undefined) fm.tags = input.tags;
           fm.updateDate = new Date().toISOString();
-          await attachClippingReference(input.content, fm, null, row.id);
+          await attachClippingReference(
+            input.content,
+            fm,
+            getMcpAuthContext().userId ?? null,
+            row.id
+          );
         },
         input.content,
         "memo"

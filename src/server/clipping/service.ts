@@ -41,6 +41,15 @@ type ServiceOptions = {
   memoIds?: () => Promise<string[]>;
   index?: (manifest: ClippingManifest, projection: Projection) => Promise<void>;
   scanIntervalMs?: number;
+  beforeChatSubmit?: () => Promise<void>;
+};
+
+type ConversationBinding = {
+  memoId: string;
+  clippingId: string;
+  conversationId: string;
+  revision: number;
+  targetUrl: string;
 };
 
 async function resolveModel() {
@@ -129,6 +138,7 @@ export class ClippingService {
     string,
     { controller: AbortController; done: Promise<void> }
   >();
+  private mutationTail: Promise<void> = Promise.resolve();
   private constructor(private readonly options: ServiceOptions) {
     this.store = options.store ?? new ClippingStore();
   }
@@ -187,6 +197,19 @@ export class ClippingService {
   }
 
   async reconcile(memoId: string, reprocess = false) {
+    return this.withMutationLock(() => this.reconcileUnlocked(memoId, reprocess));
+  }
+
+  private withMutationLock<T>(operation: () => Promise<T>) {
+    const result = this.mutationTail.then(operation);
+    this.mutationTail = result.then(
+      () => undefined,
+      () => undefined
+    );
+    return result;
+  }
+
+  private async reconcileUnlocked(memoId: string, reprocess = false) {
     if (this.closing) throw new Error("剪藏处理器正在停止。");
     const abort: string[] = [];
     await this.runtime.exclusive(async () => {
@@ -525,6 +548,10 @@ export class ClippingService {
 
   async ensureConversation(memoId: string) {
     await this.reconcile(memoId);
+    return (await this.ensureConversationBinding(memoId)).conversationId;
+  }
+
+  private async ensureConversationBinding(memoId: string): Promise<ConversationBinding> {
     const id = this.known.get(memoId);
     const manifest = id ? await this.store.manifest(id) : null;
     if (!manifest?.enabled || manifest.deleted || !manifest.targetUrl)
@@ -534,7 +561,14 @@ export class ClippingService {
     );
     if (!sourceVersion || !(await this.store.read(manifest.id, sourceVersion.id, "source")))
       throw new Error("原文尚未抓取，暂时无法讨论文章。");
-    if (manifest.conversationId) return manifest.conversationId;
+    if (manifest.conversationId)
+      return {
+        memoId,
+        clippingId: manifest.id,
+        conversationId: manifest.conversationId,
+        revision: manifest.revision,
+        targetUrl: manifest.targetUrl,
+      };
     const conversationId = await this.runtime.createConversation(CHAT_INSTRUCTIONS, true);
     return this.runtime.exclusive(async () => {
       const current = await this.store.manifest(manifest.id);
@@ -548,8 +582,31 @@ export class ClippingService {
       // A concurrent call can create an unused empty runtime conversation, never two active conversations.
       current.conversationId ??= conversationId;
       await this.persist(current);
-      return current.conversationId;
+      return {
+        memoId,
+        clippingId: current.id,
+        conversationId: current.conversationId,
+        revision: current.revision,
+        targetUrl: current.targetUrl,
+      };
     });
+  }
+
+  private async assertConversationBinding(binding: ConversationBinding) {
+    const authored = await readAuthoredMemo(binding.memoId);
+    const recognition = recognizeMemoClipping(authored.body, authored.frontmatter);
+    const id = clippingIdForMemo(binding.memoId, authored.frontmatter);
+    const current = await this.store.manifest(id);
+    if (
+      !recognition.enabled ||
+      recognition.targetUrl !== binding.targetUrl ||
+      !current?.enabled ||
+      current.deleted ||
+      current.revision !== binding.revision ||
+      current.targetUrl !== binding.targetUrl ||
+      current.conversationId !== binding.conversationId
+    )
+      throw new Error("剪藏目标已变化，请重新打开对话。");
   }
 
   private async articleContext(conversationId: string, query: string) {
@@ -582,12 +639,22 @@ export class ClippingService {
     return this.runtime.snapshot(conversationId);
   }
   async chat(memoId: string, text: string, requestId: string) {
-    const conversationId = await this.ensureConversation(memoId);
-    const submissionId = await this.runtime.submit(conversationId, text, requestId);
-    void this.runtime.answer(conversationId, submissionId).catch(() => {
-      /* Snapshot retains submission failure and committed messages. */
+    return this.withMutationLock(async () => {
+      await this.reconcileUnlocked(memoId);
+      const binding = await this.ensureConversationBinding(memoId);
+      await this.options.beforeChatSubmit?.();
+      await this.assertConversationBinding(binding);
+      const submissionId = await this.runtime.submit(binding.conversationId, text, requestId);
+      void this.withMutationLock(async () => {
+        try {
+          await this.assertConversationBinding(binding);
+          await this.runtime.answer(binding.conversationId, submissionId);
+        } catch {
+          /* Snapshot retains submission failure and committed messages. */
+        }
+      });
+      return { conversationId: binding.conversationId };
     });
-    return { conversationId };
   }
 
   async idle() {
@@ -601,6 +668,7 @@ export class ClippingService {
     await this.scanning?.catch(() => {
       /* Shutdown retains last checkpoint. */
     });
+    await this.mutationTail;
     await this.runtime.close();
     await this.idle();
   }

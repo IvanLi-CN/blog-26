@@ -299,6 +299,38 @@ describe("clipping lifecycle and canonical content", () => {
       await data.cleanup();
     }
   });
+
+  test("rejects a chat submission when the authored target changes after binding", async () => {
+    const data = await fixture();
+    let service: ClippingService | undefined;
+    let changed = false;
+    try {
+      service = await ClippingService.open({
+        ...data.options,
+        beforeChatSubmit: async () => {
+          if (changed) return;
+          changed = true;
+          const parsed = matter(await readFile(data.path, "utf8"));
+          await writeFile(
+            data.path,
+            matter.stringify(parsed.content.replace("/one", "/two"), parsed.data)
+          );
+        },
+      });
+      await service.idle();
+      const oldConversation = await service.ensureConversation(data.memoId);
+      await expect(service.chat(data.memoId, "请讨论旧文章", "stale-request")).rejects.toThrow(
+        "剪藏目标已变化"
+      );
+      expect((await service.chatSnapshot(oldConversation)).messages).toHaveLength(0);
+      await service.reconcile(data.memoId);
+      await service.idle();
+      expect(await service.ensureConversation(data.memoId)).not.toBe(oldConversation);
+    } finally {
+      await service?.close();
+      await data.cleanup();
+    }
+  });
 });
 
 test("queued reconcile reads canonical input only after the preceding owner transaction", async () => {
