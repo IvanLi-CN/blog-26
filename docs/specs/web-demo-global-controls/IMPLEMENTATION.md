@@ -24,14 +24,22 @@
 - 全局 runtime、Inspector、Web Demo 请求适配器和 Memos 离线首屏回归的定向测试通过；后台 Demo mock、Memo 请求策略和 Storybook 边界测试继续作为相关验证集。
 - 本地热更新验证使用 `web-demo-site-dev` `http://127.0.0.1:38110/` 和 `web-demo-admin-dev` `http://127.0.0.1:25094/admin/`：覆盖公共文章详情的身份/评论/反应请求、文章/项目/标签/Playbook 的 SSR 路由内容保留、离线时同源 `ClientRouter` 正常切换且 SSR-only 页面不出现共享错误、Memos 与搜索等独立 CSR 请求由各自页面承接失败、后台请求失败路径、主题双向同步、减少动效、跨正式路由恢复及权限拒绝；当前紧凑布局确认移动端场景选择器完整可见且无横向溢出。
 - 已用受控 fixture 直接执行 `WEB_DEMO_BUILD=true bunx astro build`：构建输出为 `output: "server"`，产物包含 `server/entry.mjs` 与 `client/`；临时启动 standalone 入口后，`GET /posts/` 返回实时 SSR HTML，并包含正式页面内容、ClientRouter 和共享 Inspector。
-- Agent VM `doctor/status` 正常，但当前服务处于 draining 状态并拒绝新 lease，因此 VER-WDG-009 的重型 live/Demo 制品构建与完整 E2E 尚未执行；不可将该门禁标记为通过。
+- Agent VM 已恢复 admission，本任务已获得独立 VM；VER-WDG-009 的重型 live/Demo 制品构建与完整 E2E 尚未完成，不可将该门禁标记为通过。
 - 产品验收仍以 `SPEC.md` 中的 VER-WDG-001 至 VER-WDG-009 为准。
 
 ## Remaining Gaps
 
 - 公共产品路由目前仍获取目标 SSR HTML，离线导航因此可以显示目标内容；这不是完整 CSR，也不是全局网络控制已经覆盖公共路由数据加载的证明。按主人确认，公共路由 CSR 改造通过独立 PR 交付，共用正式产品渲染与数据层，不恢复 Demo 专属错误面板。
 - Inspector 的装饰性分隔线已移除，主人已确认当前布局；发布证据与功能验收应区分，不能以视觉通过代替路由请求语义通过。
-- 在 Agent VM 允许新 lease 后运行完整 `bun run web-demo:build`、live/Demo 制品边界检查和相关集成/E2E；本地 SSR dev server、聚焦行为测试、直接 SSR 构建和受控浏览器验证已经完成。
+- 完成 Agent VM 内的 `bun run web-demo:build`、live/Demo 制品边界检查和相关集成/E2E；本地 SSR dev server、聚焦行为测试、直接 SSR 构建和受控浏览器验证已经完成。
+
+## Publication Evidence
+
+受控 Web Demo 的面板截图：桌面 1440×1000，移动端 393×852。主分组与头部不再绘制装饰性分隔线，仅次要工作流保留边界；这组图片只证明面板呈现，不代表公共页面 CSR 已完成。
+
+![Inspector desktop](./assets/inspector-desktop.png)
+
+![Inspector mobile](./assets/inspector-mobile.png)
 
 ## References
 

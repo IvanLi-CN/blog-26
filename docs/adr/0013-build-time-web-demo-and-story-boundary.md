@@ -19,7 +19,7 @@ The repository already has real Astro public routes and a Vite admin application
 5. Storybook contains reusable components, fragments, and focused states only. The deleted route/page Stories must not be reintroduced. Search remains a component-state Story and no longer declares a page evidence surface.
 6. A repository test checks the Story boundary and the absence of runtime Demo toggles. The package exposes `web-demo:site`, `web-demo:admin`, `web-demo:build`, and `web-demo:start` entry points.
 7. Every Web Demo artifact includes the shared Inspector on the official route. It controls scene, persona, network condition, data mode, simulated actions, shareable `d_*` state, and recent in-memory mutations without granting permissions or calling a real write API.
-8. `WEB_DEMO_BUILD` selects the SSR Demo target at build time. The public server renders each official route from controlled fixture/snapshot data, while browser-side islands and the Inspector exercise CSR requests, delays, offline failures, identity responses, and client route transitions. The live public target remains static and cannot be switched into Demo mode.
+8. `WEB_DEMO_BUILD` selects the SSR Demo target at build time. Browser-side product requests use the shared Demo environment policy. Astro ClientRouter HTML exchange is client navigation, not full page CSR data loading; the latter belongs to a separate shared-product routing change. The live public target remains static and cannot be switched into Demo mode.
 
 ## Consequences
 
