@@ -152,37 +152,37 @@
     "current": {
       "impact": "minor",
       "reasoning": "Additive memo clipping recognition, optional reading metadata and private creator/admin discussion APIs preserve ordinary Memo behavior. Migration 0011 adds rebuildable indices; authored Markdown is preserved and managed material/Pi storage is isolated. No existing endpoint or baseline durable state format is removed.",
-      "assessed_at": "2026-10-07T21:36:00Z",
+      "assessed_at": "2026-10-07T21:43:57Z",
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "4f459487b034f981b0e6d0ca2bf1f33007c9703d",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/store.test.ts",
           "blob": "ddd9281063b4e28749284c21467583e9f624635d",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
           "blob": "5e616a71fc0098eafb6d23560b5cb560ba5cf5d8",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         }
       ],
       "scope_drift": {
@@ -193,37 +193,37 @@
     "verified": {
       "impact": "minor",
       "reasoning": "Additive memo clipping recognition, optional reading metadata and private creator/admin discussion APIs preserve ordinary Memo behavior. Migration 0011 adds rebuildable indices; authored Markdown is preserved and managed material/Pi storage is isolated. No existing endpoint or baseline durable state format is removed.",
-      "assessed_at": "2026-10-07T21:36:00Z",
+      "assessed_at": "2026-10-07T21:43:57Z",
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "4f459487b034f981b0e6d0ca2bf1f33007c9703d",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/store.test.ts",
           "blob": "ddd9281063b4e28749284c21467583e9f624635d",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
           "blob": "5e616a71fc0098eafb6d23560b5cb560ba5cf5d8",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         }
       ]
     }
@@ -237,12 +237,12 @@
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "4f459487b034f981b0e6d0ca2bf1f33007c9703d",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         }
       ]
     },
@@ -256,22 +256,22 @@
         {
           "path": "src/server/clipping/store.test.ts",
           "blob": "ddd9281063b4e28749284c21467583e9f624635d",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
           "blob": "5e616a71fc0098eafb6d23560b5cb560ba5cf5d8",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         }
       ]
     }
