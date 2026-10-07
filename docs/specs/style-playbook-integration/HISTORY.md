@@ -53,7 +53,7 @@
 
 [ADR 0010](../../adr/0010-self-contained-console-runtime.md) 明确 console 是自包含 SSR 应用；公开静态站与 console 的实时 Memo 可以有不同新鲜度。该实时边界不自动适用于尚未接入的Playbook。
 
-[Release workflow](../../../.github/workflows/release.yml) 的前端构建下载内容 bundle，并默认从 `https://console.ivanli.cc/api/public/snapshot` 刷新文章/Memo 快照，校验后打包 `site-dist`、附加 Edge Functions，并在稳定发布时部署 EdgeOne Makers。发布源必须是当前 `main`；前端或后端发布还会触发统一 Docker 镜像发布。参见 [release contract](../pr-label-release/SPEC.md)。
+按照 [产品发布合同](../manual-version-release/SPEC.md)，静态前台与完整功能 Docker 镜像共享同一产品版本。Playbook 的静态产物和 console 读取的内容身份继续遵循本主题的公开包与已部署指针合同；应用发布准备和实际发布的实现状态见 [发布实现状态](../manual-version-release/IMPLEMENTATION.md)。
 
 [fetch-public-content-bundle.sh](../../../scripts/fetch-public-content-bundle.sh) 即使设置 snapshot URL 仍要求 bundle URL；刷新后用 console 返回的 posts/memos/tags 覆盖下载快照。它不能直接承接 Playbook 数据。
 

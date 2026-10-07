@@ -11,6 +11,9 @@ import {
 } from "../src/lib/playbook/manifest";
 import { deployContent, type ReleaseTrigger, resolveRelease } from "../src/lib/playbook/release";
 import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
+import { publicVersionSchema } from "../src/lib/release/deployment";
+import { versionSchema } from "../src/lib/release/policy";
+import { readContract } from "../src/lib/release/source";
 
 const enabled = process.env.PLAYBOOK_INTEGRATION_ENABLED === "true";
 const rollback = process.env.PLAYBOOK_ROLLBACK === "true";
@@ -49,6 +52,7 @@ await writeFile(
 await writeFile(resolve(bundleRoot, "playbook-public.tar.gz"), archive);
 let buildNumber = 0;
 let rendererRoot = "";
+let productVersion = "";
 async function run(
   args: string[],
   cwd = process.cwd(),
@@ -83,6 +87,15 @@ try {
         rendererRoot = resolve(taskRoot, `renderer-${++buildNumber}`);
         await run(["git", "fetch", "origin", renderer]);
         await run(["git", "worktree", "add", "--detach", rendererRoot, renderer]);
+        try {
+          productVersion = versionSchema.parse(
+            (await readFile(resolve(rendererRoot, "VERSION"), "utf8")).trim()
+          );
+        } catch (error) {
+          const bootstrap = readContract().bootstrap;
+          if (renderer !== bootstrap.sourceSha) throw error;
+          productVersion = bootstrap.version;
+        }
         await downloadRetainedEdition(current, manifestUrl, resolve(taskRoot, "deployed"));
         await mkdir(resolve(rendererRoot, "site/generated"), { recursive: true });
         await writeFile(
@@ -114,6 +127,17 @@ try {
           rendererRoot,
           env
         );
+        // Content-only builds keep the deployed renderer's product version,
+        // including the explicitly approved bootstrap renderer without VERSION.
+        const generated = JSON.parse(
+          await readFile(resolve(rendererRoot, "src/generated/version.json"), "utf8")
+        );
+        const metadata = publicVersionSchema.parse({
+          productVersion,
+          sourceSha: renderer,
+          buildVersion: generated.buildVersion || generated.version,
+        });
+        await writeFile(resolve(rendererRoot, "edgeone-dist/version.json"), encodeJson(metadata));
         return parseEditionIdentity(
           JSON.parse(
             await readFile(
@@ -169,7 +193,20 @@ try {
       async verify(edition) {
         for (let attempt = 0; attempt < 15; attempt++) {
           const actual = await readPublicPointer(manifestUrl);
-          if (actual && samePlaybookEdition(actual, edition)) return;
+          if (actual && samePlaybookEdition(actual, edition)) {
+            const response = await fetch(
+              new URL("version.json", process.env.PUBLIC_SITE_URL || "https://ivanli.cc/"),
+              { cache: "no-store", redirect: "error", signal: AbortSignal.timeout(30_000) }
+            );
+            if (response.ok) {
+              const metadata = publicVersionSchema.parse(await response.json());
+              if (
+                metadata.productVersion === productVersion &&
+                metadata.sourceSha === edition.rendererCommit
+              )
+                return;
+            }
+          }
           await new Promise((done) => setTimeout(done, 2000));
         }
         throw new Error("Deployment did not publish the expected public pointer");

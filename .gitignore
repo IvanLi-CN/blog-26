@@ -74,6 +74,7 @@ old/
 
 # generated files
 src/generated/
+/public/version.json
 
 # logs
 *.log
@@ -118,6 +119,7 @@ site/generated/
 /public/projects/social/*.webp
 
 site-dist/
+edgeone-dist/
 admin-dist/
 backend-dist/
 console-dist/

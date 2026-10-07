@@ -1,0 +1,40 @@
+name: Manual Product Release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Optional forward-only X.Y.Z; leave empty for verified-impact allocation
+        required: false
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: manual-product-release
+  cancel-in-progress: false
+  queue: max
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+      checks: read
+    steps:
+      - name: Require main
+        env:
+          RELEASE_REF: ${{ github.ref }}
+        run: test "$RELEASE_REF" = refs/heads/main
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - name: Reserve version, prepare the signed VERSION-only PR and dispatch exact-head gates
+        run: bun scripts/product-release.ts prepare
+        env:
+          GH_TOKEN: ${{ github.token }}

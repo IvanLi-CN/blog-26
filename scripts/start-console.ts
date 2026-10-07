@@ -4,6 +4,12 @@ import { createServer } from "node:http";
 import { extname, resolve } from "node:path";
 import { extractAuthFromRequest } from "@/lib/auth-utils";
 import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
+import { handleVersionRequest, readRuntimeVersionInfo } from "@/server/version-api";
+
+const versionInfo = await readRuntimeVersionInfo(
+  new URL("../src/generated/version.json", import.meta.url),
+  process.env.NODE_ENV === "production"
+);
 
 const port = Number(process.env.PORT || 25090);
 const hostname = process.env.BIND_HOST || "0.0.0.0";
@@ -204,6 +210,15 @@ if (
   playbook.start();
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
+  if (url.pathname === "/api/version") {
+    const result = handleVersionRequest(
+      new Request(url, { method: request.method || "GET" }),
+      versionInfo
+    );
+    response.writeHead(result.status, Object.fromEntries(result.headers));
+    response.end(await result.text());
+    return;
+  }
   if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
     await serveAdmin(request, response, url);
     return;

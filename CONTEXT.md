@@ -257,16 +257,44 @@ A quality gate based on known vulnerability findings. It is a separate concern f
 _Avoid_: 过期依赖检查
 
 **发布意图**:
-The validated combination of PR `type:*`, `channel:*`, and `release:*` labels that selects whether and what the release workflow may publish.
+The validated manual release decision that identifies the whole-product source identity and product version eligible for publication. Its fixed outputs are the static frontend and full-function Docker image.
 _Avoid_: CI 通过, 发布成功
+
+**手动版本发布**:
+A release flow initiated by one manual dispatch. The system selects the next product version automatically when the optional version input is empty, or validates an explicitly requested forward version. A VERSION-only PR passes the repository's protected merge path with native auto-merge, then source, artifacts, publication, and recovery bind to one whole-product release identity. The fixed outputs are the static frontend and the full-function Docker image.
+_Avoid_: 手动改 tag, workflow 任意发版
+
+**版本策略**:
+The auditable policy that defines a release version's grammar, trusted baseline, ordering and monotonicity, identity fields, publication mapping, collision handling, reservation, retry, and recovery rules.
+_Avoid_: package.json version, VERSION 文件本身
+
+**发布身份**:
+The immutable tuple that binds the whole-product release unit and canonical 产品版本 to its merged source SHA, Version Policy identity, preparation reservation, artifact digests, and fixed publication set.
+_Avoid_: 发布意图, 构建标识
+
+**产品版本**:
+A SemVer value assigned to one whole-product release event and shared by the static frontend and full-function Docker image. It is selected automatically by monotonic policy or explicitly set to a higher value; it identifies the product release and is separate from the build's commit-derived identity.
+_Avoid_: 构建标识, 发布意图
+
+**构建标识**:
+The commit-derived build identity generated from the build date and abbreviated commit hash. It identifies the exact build context and remains separate from the 产品版本.
+_Avoid_: 产品版本, SemVer 版本
+
+**统一产品版本发布**:
+A release boundary in which the static frontend and full-function Docker image release identities are always emitted together and carry the same 产品版本 value. A stable `latest` alias is a channel pointer, not another product version.
+_Avoid_: latest 版本, 构建标识
+
+**统一版本基线**:
+The highest trusted product version together with its effective reservations used by the Version Policy for automatic progression and explicit forward selection. The mutable VERSION file alone does not establish this baseline.
+_Avoid_: package.json version, VERSION 文件本身
 
 **清退（依赖新鲜度检查）**:
 Removing the `bun outdated` freshness check from CI entirely. It does not delete dependency declarations, lockfiles, versions, tags, releases, or deployments.
 _Avoid_: 撤回版本, 删除 release
 
-**稳定前端补发**:
-Publishing a stable frontend release from the current `main` head after the release path was previously skipped, including the unified image and stable frontend deployment effects defined by the release workflow.
-_Avoid_: 回滚, 重建已发布版本
+**发布恢复**:
+Completing an interrupted product release with the same product version, merged source, reservation, frozen inputs, and verified artifact digests. Existing outputs are verified and reused while missing publication steps are completed.
+_Avoid_: 新版本重发, 版本递增恢复
 
 ## Local Development Workspaces
 

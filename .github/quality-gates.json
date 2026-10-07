@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "baseline_policy": "explicit-waiver-required",
+    "require_signed_commits": true,
+    "branch_protection": {
+      "protected_branches": ["main"],
+      "require_pull_request": true,
+      "disallow_direct_pushes": true,
+      "strict": true,
+      "enforce_admins": true,
+      "allow_force_pushes": false,
+      "allow_deletions": false,
+      "required_approving_review_count": 0
+    }
+  },
+  "required_checks": [
+    "Lint & Format Check",
+    "Unit Tests (exclude old/)",
+    "Worktree Bootstrap Smoke",
+    "Build",
+    "Build and Push Docker Image",
+    "Release Policy",
+    "Playwright E2E (guest)",
+    "Playwright E2E (admin)",
+    "Playwright E2E (user)",
+    "Playwright E2E (mcp)"
+  ],
+  "main_required_checks": [
+    "Lint & Format Check",
+    "Unit Tests (exclude old/)",
+    "Worktree Bootstrap Smoke",
+    "Build and Push Docker Image",
+    "Release Policy",
+    "Playwright E2E (guest)",
+    "Playwright E2E (admin)",
+    "Playwright E2E (user)",
+    "Playwright E2E (mcp)"
+  ],
+  "informational_checks": ["Release Token Probe", "Frozen Product Smoke"],
+  "waivers": [],
+  "expected_pr_workflows": [
+    {
+      "workflow": "CI/CD Pipeline",
+      "jobs": [
+        "Lint & Format Check",
+        "Unit Tests (exclude old/)",
+        "Worktree Bootstrap Smoke",
+        "Build",
+        "Build and Push Docker Image",
+        "Release Policy"
+      ]
+    },
+    {
+      "workflow": "E2E Tests",
+      "jobs": [
+        "Playwright E2E (guest)",
+        "Playwright E2E (admin)",
+        "Playwright E2E (user)",
+        "Playwright E2E (mcp)"
+      ]
+    }
+  ]
+}

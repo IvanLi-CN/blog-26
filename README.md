@@ -86,6 +86,8 @@ Useful optional variables:
 
 The native `/playbook/` column consumes validated public Release assets. Production activation, content update inputs, console cache configuration and rollback are described in the [Style Playbook publishing runbook](docs/runbooks/style-playbook-publishing.md). Local builds stay offline unless explicitly configured.
 
+Product releases use **Manual Product Release** from main with one optional `version` input. Verified semantic impact allocates the version automatically when omitted; explicit versions must move forward. The protected VERSION-only PR starts publication of the static frontend and full-feature Docker image, followed by deployment of the same static archive. See the [manual release runbook](docs/runbooks/manual-version-release.md) for built-in token permissions, immutable artifact recovery and version endpoints.
+
 The app only reads content from the local content root. There is no remote content-source runtime.
 
 ## Core Commands

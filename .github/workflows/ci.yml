@@ -11,6 +11,8 @@ on:
       - develop
   release:
     types: [ published ]
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch: # 允许手动触发
 
 concurrency:
@@ -28,6 +30,97 @@ env:
   PLATFORMS: linux/amd64
 
 jobs:
+  frozen-product-smoke:
+    name: Frozen Product Smoke
+    if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/th/release-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      DB_PATH: ./test-data/sqlite.db
+      LOCAL_CONTENT_BASE_PATH: ./test-data/local
+      CONTENT_SOURCES: local
+      PUBLIC_API_BASE_URL: https://console.ivanli.cc
+      PUBLIC_SITE_URL: https://ivanli.cc
+      PUBLIC_SITE_BASE_PATH: /
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.2
+      - uses: docker/setup-buildx-action@v4
+      - run: bun install --frozen-lockfile
+      - run: sudo apt-get update && sudo apt-get install -y skopeo
+      - name: Prepare non-production public data
+        run: bun run test-env:reset-fs-only && bun run public:export
+      - name: Exercise the frozen two-product build and production runtime
+        run: |
+          bun tests/ci/prepare-release-fixture.ts
+          bun scripts/product-release.ts build-products
+          bun scripts/smoke-product-release.ts
+      - name: Save candidate identity and product digest evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: candidate-product-proof-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/product-release/products/release-manifest.json
+            ${{ runner.temp }}/product-release/products/artifact-manifest.json
+          retention-days: 90
+          if-no-files-found: error
+
+  release-policy:
+    name: Release Policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - name: Validate semantic evidence and registered VERSION-only provenance
+        run: bun scripts/product-release.ts policy
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  release-token-probe:
+    name: Release Token Probe
+    if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/th/release-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    concurrency:
+      group: manual-product-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - name: Read-only verification of the built-in token and signed ledger commit
+        run: bun scripts/product-release.ts probe
+        env:
+          GH_TOKEN: ${{ github.token }}
+
   lint:
     name: Lint & Format Check
     runs-on: ubuntu-latest
@@ -106,7 +199,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group'
     needs: [lint, unit-tests, worktree-bootstrap]
     timeout-minutes: 20
     steps:
@@ -146,7 +239,7 @@ jobs:
           PUBLIC_API_BASE_URL: https://ivanli.cc
           PUBLIC_SITE_URL: https://ivanli.cc
           PUBLIC_SITE_BASE_PATH: /
-      - name: Build backend release artifacts
+      - name: Build complete application runtime
         run: bun run backend:build
         env:
           DB_PATH: ./test-data/sqlite.db
@@ -200,6 +293,8 @@ jobs:
     needs: [lint, unit-tests]
     if: >-
       github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'merge_group' ||
       (github.event_name == 'push' && github.ref == 'refs/heads/main')
     permissions:
       contents: read

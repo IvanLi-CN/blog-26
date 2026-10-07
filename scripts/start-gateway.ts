@@ -13,12 +13,17 @@ import { handlePublicApiRequest } from "@/server/public-api/router";
 import { handleInternalAssetSourceRequest } from "@/server/public-media";
 import { handleTestApiRequest } from "@/server/test-api/router";
 import { handleTrpcHttpRequest } from "@/server/trpc-http";
+import { handleVersionRequest, readRuntimeVersionInfo } from "@/server/version-api";
 
 loadWorktreeEnvFileIfPresent();
 
 type GatewayMode = "dev" | "production";
 
 const mode = (process.env.NODE_ENV === "production" ? "production" : "dev") as GatewayMode;
+const versionInfo = await readRuntimeVersionInfo(
+  new URL("../src/generated/version.json", import.meta.url),
+  mode === "production"
+);
 const publicPort = resolveWorktreePort("web");
 const sitePort = resolveWorktreePort("site");
 const adminPort = resolveWorktreePort("admin");
@@ -484,6 +489,8 @@ const server = Bun.serve({
     const url = new URL(request.url);
     const { pathname, search, searchParams } = url;
     const effectiveRequest = withLocalPreviewIdentity(request, pathname, searchParams);
+
+    if (pathname === "/api/version") return handleVersionRequest(request, versionInfo);
 
     if (pathname === "/api/health") {
       const [siteHealthy, adminHealthy, gatewayApis] = await Promise.all([

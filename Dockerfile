@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1.7
 
-FROM oven/bun:1 AS deps
+ARG BUN_BUILD_IMAGE=oven/bun:1
+ARG BUN_RUNTIME_IMAGE=oven/bun:1-slim
+FROM ${BUN_BUILD_IMAGE} AS deps
 WORKDIR /app
 COPY package.json bun.lock ./
 
@@ -38,7 +40,7 @@ RUN --mount=type=cache,target=/var/cache/apt \
 RUN if [ "$WITH_PLAYWRIGHT" = "true" ]; then \
       timeout 1200 bunx playwright install chromium --force; \
     fi
-FROM oven/bun:1 AS builder
+FROM ${BUN_BUILD_IMAGE} AS builder
 WORKDIR /app
 ARG BUILD_DATE
 ARG COMMIT_HASH
@@ -75,7 +77,7 @@ ENV NODE_ENV=production
 ENV TSC_COMPILE_ON_ERROR=1
 # Build the public site, backend runtime bundle, and admin SPA in-image.
 RUN bun run prebuild && bun run build:compiled
-FROM oven/bun:1-slim AS app-image-built
+FROM ${BUN_RUNTIME_IMAGE} AS app-image-built
 WORKDIR /app
 ARG DRIZZLE_ORM_VERSION=0.44.2
 RUN --mount=type=cache,target=/var/cache/apt \
@@ -111,7 +113,7 @@ ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["bun", "run", "console:start"]
 
 # Prebuilt target: use prebuilt backend/admin artifacts from build outputs
-FROM oven/bun:1-slim AS app-image-prebuilt
+FROM ${BUN_RUNTIME_IMAGE} AS app-image-prebuilt
 WORKDIR /app
 ARG DRIZZLE_ORM_VERSION=0.44.2
 RUN --mount=type=cache,target=/var/cache/apt \
