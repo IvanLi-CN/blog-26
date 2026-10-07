@@ -243,6 +243,12 @@ console 必须后台同步博客的公开 JSON，在网络健康且 schema 兼�
 
 索引采用“全部 / 主题 / 项目实践 / 规则”分类选择器。桌面端以独立卡片展示，移动端使用连续阅读列表；类型图标位于标题左侧，内容不使用时间线。该索引展示已由 owner 确认。
 
+分类选择器不再显示入口前的装饰点，保留类型图标、文字与选中状态。改动已在 Web Demo 正式 `/playbook/` 路由、深色主题下由 owner 确认，视口为 1280 × 900 与 390 × 844。
+
+![桌面端深色索引，分类入口无装饰点](./assets/playbook-index-filter-dots-desktop-dark.png)
+
+![移动端深色索引，分类入口无装饰点](./assets/playbook-index-filter-dots-mobile-dark.png)
+
 ![桌面端深色索引，类型图标位于标题左侧](./assets/playbook-card-title-icons-desktop-dark.png)
 
 本次目录卡片修复使用长描述 fixture 重新验证正文宽度：桌面端正文延伸至卡片内容区并自然换行，移动端保持连续阅读布局，无横向溢出。
