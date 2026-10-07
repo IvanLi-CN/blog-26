@@ -30,6 +30,7 @@ jobs:
         env:
           RELEASE_REF: ${{ github.ref }}
           REPAIR_RELEASE_ID: ${{ inputs.repair_release_id }}
+        # The isolated repair branch is allowed only for the signed ledger recovery path below.
         run: >-
           test "$RELEASE_REF" = refs/heads/main ||
           (test "$RELEASE_REF" = refs/heads/th/release-ledger-repair &&
