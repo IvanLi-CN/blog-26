@@ -1761,20 +1761,24 @@ html[data-ui-theme="dark"] .nature-brand-mark {
     min-height: 44px;
   }
 
-  a[data-search-result-card]:active > .search-result-card {
+  a[data-search-result-card]:active {
     background: var(--nature-surface-muted) !important;
   }
 
-  a[data-search-result-card]:focus-visible > .search-result-card {
+  a[data-search-result-card]:focus-visible {
     outline: 2px solid var(--nature-accent-strong);
     outline-offset: -2px;
     background: var(--nature-surface-muted) !important;
   }
 
-  a[data-search-result-card]:is(:hover, :focus-visible, :focus-within) > .search-result-card {
+  a[data-search-result-card]:is(:hover, :focus-visible, :focus-within) {
     transform: none !important;
     border-color: transparent !important;
     box-shadow: none !important;
+  }
+
+  html[data-ui-theme="light"] .nature-mobile-reading-stream .search-result-card {
+    --nature-accent-strong: #456f54;
   }
 }
 

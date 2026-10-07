@@ -193,7 +193,7 @@ export function SearchResultCard({
           className="group block min-h-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[color:var(--nature-accent-strong)]"
           data-search-result-card
         >
-          <div className="px-4 py-4 sm:px-5 sm:py-5">
+          <div data-search-result-content className="px-4 py-4 sm:px-5 sm:py-5">
             <div className="flex items-baseline gap-3">
               {displayTitle ? (
                 <h2 className="min-w-0 line-clamp-2 font-heading text-lg font-semibold leading-7 text-[color:var(--nature-accent-strong)] underline-offset-4 group-hover:underline sm:text-xl">

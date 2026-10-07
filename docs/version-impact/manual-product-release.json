@@ -66,14 +66,14 @@
     "docs/specs/release-failure-telegram-alerts/HISTORY.md": "83c05243b415749850534d5b0e206ff86213d2ce",
     "docs/specs/release-failure-telegram-alerts/IMPLEMENTATION.md": "5b06386d180120b55a7740037459aa3e07eb7aec",
     "docs/specs/release-failure-telegram-alerts/SPEC.md": "439b85a711bed3ac7f18cc686ec6b312899fd713",
-    "docs/specs/style-playbook-integration/HISTORY.md": "505fa5688d4f5ce976cd8d43b0a975be37f0d144",
-    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "db1384740eb4a455f7d2f9b5fdacc6e56036bb87",
-    "docs/specs/style-playbook-integration/SPEC.md": "cc8214b107707b39ec4ccf599adb6453b6b787ef",
+    "docs/specs/style-playbook-integration/HISTORY.md": "ffa287c6f9e1493e1b3f399a0b84e9af5799e80c",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "8c42f8f8b15d005cd70fbf9bab5e10fbd83e8567",
+    "docs/specs/style-playbook-integration/SPEC.md": "78057aeab817fa6a09e0c4ce5652f74fce7b3837",
     "docs/specs/style-playbook-integration/assets/search-children-expanded.png": "3187f95764fa508012c64b9088ea3a7472b8722a",
-    "docs/specs/style-playbook-integration/assets/search-grouped-desktop-dark.png": "8476a52e3ee94ef0110c116daa620515d12c73dc",
-    "docs/specs/style-playbook-integration/assets/search-grouped-desktop-light.png": "47a33e1cc91119189fa9d14073aaac841e2ae8de",
-    "docs/specs/style-playbook-integration/assets/search-grouped-mobile-dark.png": "f1e79b93b71fe828a8629d77f108cd522f70b52a",
-    "docs/specs/style-playbook-integration/assets/search-grouped-mobile-light.png": "928b0b520704fef4d98ba31b0d52407194859834",
+    "docs/specs/style-playbook-integration/assets/search-grouped-desktop-dark.png": "962364ad8936970736e6a546a52f496221c686fe",
+    "docs/specs/style-playbook-integration/assets/search-grouped-desktop-light.png": "cca266b2b09be2c5a211327a10acf17dd692e334",
+    "docs/specs/style-playbook-integration/assets/search-grouped-mobile-dark.png": "1852060bb5bb48c1bde20ea938272034cbd242f4",
+    "docs/specs/style-playbook-integration/assets/search-grouped-mobile-light.png": "4ecbf53e6631db54cb9d22110f6cedac56bee085",
     "package.json": "79e7642d5ec9dc4c4be0dbccf63a82ea4519957d",
     "playwright.config.ts": "fd5bb1beff25d5b94949fe3988fd9b5c2007b457",
     "scripts/build-web-demo.ts": "b60efdb26a1042dc7b3dd11c69ae6c605ab04687",
@@ -103,7 +103,7 @@
     "src/components/search/PublicSearchPage.tsx": "af75e3503a467d1b5013c06d4e11f7eca448530b",
     "src/components/search/SearchResultsList.stories.tsx": "a41e487bd6a71055e47596156237ca533ee0a443",
     "src/components/search/SearchResultsList.test.tsx": "e39ac622e61901ef8a0508a18d49fcafd2598dd8",
-    "src/components/search/SearchResultsList.tsx": "3172742006f9d1e0e7126a1224631704a9e264ed",
+    "src/components/search/SearchResultsList.tsx": "216f9befc9a411966c9ed40417850977668f8af3",
     "src/components/search/search-fixture.ts": "74cfeaaf5bb50095a332555c46ea0b50986a7d83",
     "src/components/search/search-model.ts": "c9e4706e90f89d3ddc71825335a078b62bbb97e6",
     "src/components/search/search-results-cache.test.ts": "c880240d6e36b988897ea65a63d6fd1863805300",
@@ -134,7 +134,7 @@
     "src/lib/version-info.ts": "de25d694341bab26f2ecbdaeea43bef72d3f7cba",
     "src/lib/web-demo-runtime.ts": "a8cb6a81878e6c1b21cad0bbac0949879b57d7b6",
     "src/server/version-api.ts": "4d1e148ba24d157c820dba0f3050f5da531281c9",
-    "src/styles/globals.css": "2ce30c6b6ad0589dcee7450cbc62fd2fd6c05e10",
+    "src/styles/globals.css": "027ec0455cf7be9b2a23bb4b02c74160f1508fbc",
     "src/styles/nature-restored.css": "ea4f64836f02212969a73481faa6d0dad23c920e",
     "tests/ci/compute-version.test.ts": null,
     "tests/ci/create-release-tag.test.ts": null,
@@ -143,6 +143,7 @@
     "tests/ci/release-intent.test.ts": null,
     "tests/ci/release-workflow.test.ts": null,
     "tests/e2e/admin/post-editor-markdown-modes.spec.ts": "15e2e2fa4f0335204aec44ccadce6ac385fe171e",
+    "tests/e2e/guest/mobile-reading-surface.spec.ts": "abb822347ab9216a444ff30b9b0de1d9875acb5e",
     "tests/lib/manual-release-ledger.test.ts": "2a7a71f224ccb652f4169fbcbed76feaf669bab4",
     "tests/lib/manual-release-media.test.ts": "57488e7a228793d57a632eaa78bfa93e7cf9fcf8",
     "tests/lib/manual-release-policy.test.ts": "5fc3945774851eae7e1a99c4f7dd1237dfe7d3f9",
@@ -208,7 +209,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "The unpublished interval retains the compatible read-only version metadata and Web Demo additions (minor). Search aggregation, stable content limits, v5 cache misses for obsolete entries, inline highlighting and responsive controls repair existing behavior (patch). The public search array API, visibility rules, SQLite schema and local content format remain compatible; no durable-state migration is introduced.",
-      "assessed_at": "2026-10-07T03:48:07.336219Z",
+      "assessed_at": "2026-10-07T08:22:11.785900Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -269,6 +270,11 @@
           "path": "src/components/search/SearchResultsList.test.tsx",
           "blob": "e39ac622e61901ef8a0508a18d49fcafd2598dd8",
           "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/e2e/guest/mobile-reading-surface.spec.ts",
+          "blob": "abb822347ab9216a444ff30b9b0de1d9875acb5e",
+          "command": "Focused guest Playwright: reading margins/type icons, actual-source contrast, and edge-to-edge press/focus feedback"
         }
       ],
       "scope_drift": {
@@ -279,7 +285,7 @@
     "verified": {
       "impact": "minor",
       "reasoning": "The unpublished interval retains the compatible read-only version metadata and Web Demo additions (minor). Search aggregation, stable content limits, v5 cache misses for obsolete entries, inline highlighting and responsive controls repair existing behavior (patch). The public search array API, visibility rules, SQLite schema and local content format remain compatible; no durable-state migration is introduced.",
-      "assessed_at": "2026-10-07T03:48:07.336219Z",
+      "assessed_at": "2026-10-07T08:22:11.785900Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -340,6 +346,11 @@
           "path": "src/components/search/SearchResultsList.test.tsx",
           "blob": "e39ac622e61901ef8a0508a18d49fcafd2598dd8",
           "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/e2e/guest/mobile-reading-surface.spec.ts",
+          "blob": "abb822347ab9216a444ff30b9b0de1d9875acb5e",
+          "command": "Focused guest Playwright: reading margins/type icons, actual-source contrast, and edge-to-edge press/focus feedback"
         }
       ]
     }
