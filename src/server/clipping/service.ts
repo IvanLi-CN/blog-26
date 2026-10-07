@@ -43,6 +43,7 @@ type ServiceOptions = {
   scanIntervalMs?: number;
   beforeChatSubmit?: () => Promise<void>;
   beforeChatAnswer?: () => Promise<void>;
+  onOwnershipLost?: () => void;
 };
 
 type ConversationBinding = {
@@ -141,6 +142,7 @@ export class ClippingService {
   >();
   private pumping: Promise<void> | null = null;
   private pumpRequested = false;
+  private ownershipLost = false;
   private readonly answerTails = new Map<string, Promise<void>>();
   private mutationTail: Promise<void> = Promise.resolve();
   private constructor(private readonly options: ServiceOptions) {
@@ -201,7 +203,20 @@ export class ClippingService {
   }
 
   async reconcile(memoId: string, reprocess = false) {
-    return this.withMutationLock(() => this.reconcileUnlocked(memoId, reprocess));
+    return this.withMutationLock(() => this.reconcileUnlocked(memoId, reprocess)).catch((error) => {
+      if (error instanceof RuntimeOwnershipError) this.markOwnershipLost();
+      throw error;
+    });
+  }
+
+  private markOwnershipLost() {
+    if (this.ownershipLost) return;
+    this.ownershipLost = true;
+    this.closing = true;
+    if (this.timer) clearInterval(this.timer);
+    for (const job of this.running.values()) job.controller.abort();
+    console.error("[clipping] Runtime ownership lost; this process stopped accepting work.");
+    setTimeout(() => this.options.onOwnershipLost?.(), 0);
   }
 
   private withMutationLock<T>(operation: () => Promise<T>) {
@@ -348,12 +363,7 @@ export class ClippingService {
         const done = this.run(id, controller.signal)
           .catch((error) => {
             if (error instanceof RuntimeOwnershipError) {
-              this.closing = true;
-              if (this.timer) clearInterval(this.timer);
-              for (const job of this.running.values()) job.controller.abort();
-              console.error(
-                "[clipping] Runtime ownership lost; this process stopped accepting work."
-              );
+              this.markOwnershipLost();
             } else console.error("[clipping] Task stopped; saved materials retained.");
           })
           .finally(() => {
@@ -712,6 +722,9 @@ export class ClippingService {
       const submissionId = await this.runtime.submit(binding.conversationId, text, requestId);
       this.queueChatAnswer(binding, submissionId);
       return { conversationId: binding.conversationId };
+    }).catch((error) => {
+      if (error instanceof RuntimeOwnershipError) this.markOwnershipLost();
+      throw error;
     });
   }
 

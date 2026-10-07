@@ -298,7 +298,7 @@ export class AgentRuntimeFacade {
         entries.push(...page.items);
         cursor = page.next;
       } while (cursor);
-      const latestAnswer = entries.find((entry) => AssistantEntry.is(entry));
+      const latestAnswer = entries.findLast((entry) => AssistantEntry.is(entry));
       const live = view.value.docs["pi.live"];
       const generation = live?.generation;
       const partial =

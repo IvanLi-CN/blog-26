@@ -189,6 +189,7 @@ async function routeClippingRequest(
       return response({ ...snapshot, conversationId });
     }
     if (request.method === "POST") {
+      requireSameOriginMutation(request);
       const parsed = turnSchema.safeParse(await input(request));
       if (!parsed.success)
         throw new TRPCError({ code: "BAD_REQUEST", message: "消息为空、过长或缺少幂等标识" });

@@ -25,6 +25,13 @@ case "$DB_PATH" in ""|"/"|[!/]*) echo "DB_PATH must be an absolute path" >&2; ex
 case "$PI_DURABLE_DB_PATH" in ""|"/"|[!/]*) echo "PI_DURABLE_DB_PATH must be an absolute path" >&2; exit 2;; esac
 test "$CONTENT_ROOT" != "$CLIPPING_CONTENT_BASE_PATH"
 test "$DB_PATH" != "$PI_DURABLE_DB_PATH"
+content_real="$(realpath "$CONTENT_ROOT")"
+clippings_real="$(realpath "$CLIPPING_CONTENT_BASE_PATH" 2>/dev/null || true)"
+backup_real="$(realpath "$BACKUP_DIR")"
+case "$backup_real/" in "$content_real/"*) echo "BACKUP_DIR must be outside content roots" >&2; exit 2;; esac
+if [ -n "$clippings_real" ]; then
+  case "$backup_real/" in "$clippings_real/"*) echo "BACKUP_DIR must be outside content roots" >&2; exit 2;; esac
+fi
 
 # Stop the sole console/gateway runtime owner through its process supervisor
 # (for example, the deployment's console and gateway service units). Do not
@@ -35,9 +42,11 @@ export CLIPPING_PROCESSOR_ENABLED=false
 case "$BACKUP_DIR" in ""|"/") echo "BACKUP_DIR must not be empty or /" >&2; exit 2;; esac
 mkdir -p "$(dirname "$BACKUP_DIR")"
 mkdir "$BACKUP_DIR"
-# After the supervisor reports both processes stopped and the owner lease
-# closed, create this marker. The rollback block requires the same marker.
-touch "$BACKUP_DIR/owner-closed"
+# After the supervisor reports both processes stopped, verify the persisted
+# lease is absent or expired before copying any state.
+if [ -f "$PI_DURABLE_DB_PATH" ]; then
+  bun -e 'import { Database } from "bun:sqlite"; const db = new Database(process.argv[1], { readonly: true }); const row = db.query("SELECT expires FROM clipping_runtime_owner WHERE singleton=1").get(); db.close(); if (row && Number(row.expires) > Date.now()) throw new Error("Pi owner lease is still active");' "$PI_DURABLE_DB_PATH"
+fi
 test -d "$CONTENT_ROOT"
 test -f "$DB_PATH"
 cp -a "$CONTENT_ROOT" "$BACKUP_DIR/content-root"
@@ -119,26 +128,30 @@ test "$CONTENT_ROOT" != "$CLIPPING_CONTENT_BASE_PATH"
 test "$DB_PATH" != "$PI_DURABLE_DB_PATH"
 test -n "${BACKUP_DIR:-}"
 test "$BACKUP_DIR" != "/"
-test -f "$BACKUP_DIR/owner-closed"
+test -d "$CONTENT_ROOT"
+test -d "$CLIPPING_CONTENT_BASE_PATH"
+content_real="$(realpath "$CONTENT_ROOT")"
+clippings_real="$(realpath "$CLIPPING_CONTENT_BASE_PATH")"
+backup_real="$(realpath "$BACKUP_DIR")"
+case "$backup_real/" in "$content_real/"*|"$clippings_real/"*) echo "BACKUP_DIR must be outside content roots" >&2; exit 2;; esac
 test -d "$BACKUP_DIR/content-root"
 test -f "$BACKUP_DIR/sqlite.db"
 test -d "$BACKUP_DIR/clippings"
+if [ -n "$(find "$BACKUP_DIR/clippings" -name manifest.json -print -quit)" ]; then
+  test -f "$BACKUP_DIR/clippings/identity.key"
+fi
 if [ -f "$BACKUP_DIR/pi-durable.sqlite.absent" ]; then
   test ! -e "$BACKUP_DIR/pi-durable.sqlite"
 else
   test -f "$BACKUP_DIR/pi-durable.sqlite"
 fi
 
-for suffix in "" "-wal" "-shm"; do
-  backup_path="$BACKUP_DIR/sqlite.db${suffix}"
-  if [ -e "${DB_PATH}${suffix}" ] && [ ! -e "$backup_path" ]; then
-    echo "Application database backup is missing ${suffix}" >&2
-    exit 1
-  fi
-done
 bun -e 'import { Database } from "bun:sqlite"; const db = new Database(process.argv[1], { readonly: true }); const row = db.query("PRAGMA integrity_check").get(); db.close(); if (row?.integrity_check !== "ok") throw new Error("SQLite integrity check failed");' "$BACKUP_DIR/sqlite.db"
 if [ -f "$BACKUP_DIR/pi-durable.sqlite" ]; then
   bun -e 'import { Database } from "bun:sqlite"; const db = new Database(process.argv[1], { readonly: true }); const row = db.query("PRAGMA integrity_check").get(); db.close(); if (row?.integrity_check !== "ok") throw new Error("SQLite integrity check failed");' "$BACKUP_DIR/pi-durable.sqlite"
+fi
+if [ -f "$PI_DURABLE_DB_PATH" ]; then
+  bun -e 'import { Database } from "bun:sqlite"; const db = new Database(process.argv[1], { readonly: true }); const row = db.query("SELECT expires FROM clipping_runtime_owner WHERE singleton=1").get(); db.close(); if (row && Number(row.expires) > Date.now()) throw new Error("Pi owner lease is still active");' "$PI_DURABLE_DB_PATH"
 fi
 
 rm -rf "$CONTENT_ROOT"

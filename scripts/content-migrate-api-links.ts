@@ -129,9 +129,17 @@ async function backupFile(opts: { backupDirAbs: string; relPath: string; srcAbs:
 
 async function backupDbFile(opts: { backupDirAbs: string; dbPath: string }) {
   const srcAbs = resolvePath(process.cwd(), opts.dbPath);
-  const destAbs = join(opts.backupDirAbs, "db.sqlite");
   await ensureDir(opts.backupDirAbs);
-  await copyFile(srcAbs, destAbs);
+  for (const suffix of ["", "-wal", "-shm"]) {
+    const source = `${srcAbs}${suffix}`;
+    const destination = join(opts.backupDirAbs, `db.sqlite${suffix}`);
+    try {
+      await copyFile(source, destination);
+    } catch (error) {
+      if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT"))
+        throw error;
+    }
+  }
 }
 
 function normalizeMetadataAttachments(
