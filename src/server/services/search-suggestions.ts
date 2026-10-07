@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import OpenAI from "openai";
+import { filterPublishedClippingResults } from "@/lib/ai/search";
 import {
   buildFallbackSearchSuggestionItems,
   normalizeSearchSuggestionItems,
@@ -11,6 +12,7 @@ import {
 import { db, initializeDB } from "@/lib/db";
 import { posts } from "@/lib/schema";
 import { searchContent } from "@/lib/search/content-search";
+import { isClippingRowPublic } from "@/server/clipping/projection";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 
 export type PublicSearchSuggestionsResult = {
@@ -46,6 +48,10 @@ async function loadPublicSuggestionSeeds(limit = 80): Promise<SearchSuggestionSe
   await ensureDBReady();
   const rows = await db
     .select({
+      id: posts.id,
+      type: posts.type,
+      body: posts.body,
+      metadata: posts.metadata,
       title: posts.title,
       excerpt: posts.excerpt,
       tags: posts.tags,
@@ -57,7 +63,11 @@ async function loadPublicSuggestionSeeds(limit = 80): Promise<SearchSuggestionSe
     .orderBy(desc(posts.publishDate))
     .limit(limit);
 
-  return rows.map((row) => ({
+  const publicRows = (
+    await Promise.all(rows.map(async (row) => ((await isClippingRowPublic(row)) ? row : null)))
+  ).filter((row): row is (typeof rows)[number] => row !== null);
+
+  return publicRows.map((row) => ({
     title: row.title,
     excerpt: row.excerpt,
     tags: parseTags(row.tags),
@@ -124,12 +134,14 @@ async function validateSuggestionItems(
     items.map(async (item) => {
       if (!searchSuggestionItemRelatesToQuery(item, query)) return null;
       try {
-        const results = await searchContent({
-          q: item.term,
-          topK: 5,
-          type: "all",
-          publishedOnly: true,
-        });
+        const results = await filterPublishedClippingResults(
+          await searchContent({
+            q: item.term,
+            topK: 5,
+            type: "all",
+            publishedOnly: true,
+          })
+        );
         if (results.length === 0 && !seedLexicallyMatches(item.term, seeds)) return null;
         const slugSignature = results
           .slice(0, 3)

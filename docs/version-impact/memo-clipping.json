@@ -1,0 +1,279 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "ea9fcea19ab9546a9c1b4456d54500866f567540",
+  "covered_files": {
+    "CONTEXT.md": "a16d70b5a8dc53e6b385902b497fca4f8591df29",
+    "README.md": "c2ea174ab911e1c89d74fe3de11d6833587de90a",
+    "apps/admin/src/components/preview-detail.tsx": "8acd0a4251c283fc429f970fd82ad4bd634325ff",
+    "apps/admin/src/pages/preview.tsx": "2430b1ffc0710c34a0256d08d700e93175811403",
+    "apps/admin/src/styles.css": "26273d29016b1bcc47992aeef36404f3ade3ec3f",
+    "astro.config.mjs": "c57d12b0faf70e902e63d86ae3898c25cc259e2a",
+    "bun.lock": "45265ef3a329a3d7f95662797e49214235bd8c4e",
+    "docs/adr/0012-memo-clipping-content-boundaries.md": "ffcdcd1cf9079461961519b1fd3c2ef70283a913",
+    "docs/runbooks/fs-only-migration.md": "5959459a1a36f52d1e460c6aa4264ae5bd52cd31",
+    "docs/specs/README.md": "15f797f61adab98d48ccf77cc07295c78851f8e1",
+    "docs/specs/memo-clipping/HISTORY.md": "6dfcdd29260cdbe02e4c6d0ba85cf8f947de7f63",
+    "docs/specs/memo-clipping/IMPLEMENTATION.md": "178132b066eb93a5e32ee8438b984036d3c1711e",
+    "docs/specs/memo-clipping/SPEC.md": "223b3f7cd2473b68fd4d94745e8a42d17131f9f5",
+    "docs/specs/memo-clipping/assets/detail-dark-1440.png": "7c8842afbdc424ec726016c2cb0243794a184a30",
+    "docs/specs/memo-clipping/assets/detail-light-393.png": "0253e14b8d3690a397ad917d4583c28c804af4f5",
+    "docs/specs/memo-clipping/assets/list-dark-1440.png": "df897b19aadf30c5cf113c71d59c317e170b6670",
+    "drizzle/0011_memo_clipping.sql": "4b216cca1e2c7833960b0e399e922849339ea14c",
+    "drizzle/meta/_journal.json": "6b421d2596ebc3a857abe2e30da28780635c5d97",
+    "package.json": "aeeca17e1955017a1682f3d264ceb41fab73698e",
+    "scripts/build-web-demo.ts": "6db4e050ed4596c2565763d187adac49d40eac2e",
+    "scripts/clipping-empirical.ts": "da8fddcb659d9658f72e2ab0914abf4c0873c821",
+    "scripts/content-migrate-api-links.ts": "1e9927a7b26be419f974f9d745744d1272f561ea",
+    "scripts/preview-web-demo.ts": "eb6b7a9eb30481723a68def44a26d882d6382724",
+    "scripts/start-console.ts": "a21424aeec65e25373ccf4056cf7f64142a1e89d",
+    "scripts/start-gateway.ts": "769637de516d2f1978b7a24c00286c206b24f9f0",
+    "scripts/start-web-demo-site.ts": "75c311d0e5f2014cb116a472604473f73a2ac74a",
+    "site/components/ClippingWebDemo.tsx": "353900f5fd2a0f6e91629ed83f72ca4a42bd9a18",
+    "site/components/MemoCard.tsx": "c82624114e5e6321feab2472b45126c1e0b3d3f2",
+    "site/components/MemoDetailHeading.astro": "46ae2a197d00b56f394c119390022cab2cf13db6",
+    "site/components/MemoTimeline.tsx": "d3f5d03356b9fc89ce50ff2992845dade22c22b9",
+    "site/components/PublicMemoAuthoring.tsx": "2b17859999e55dd349c24a99f2f07035b1834540",
+    "site/components/SearchPageIsland.tsx": "fe97193475eebbe5a226ec7829f315c5f0386e59",
+    "site/components/TimelineCard.astro": "660bbb5c90d406585b59a7ab2c0b292aea47a78d",
+    "site/lib/feeds.ts": "5ca3af8739e47fbaeb7dfa9a3cf9f9b37be8a415",
+    "site/lib/memo-list-web-demo.ts": "ed6591bebc2b7052ebec2a1488f8a6c3f48b1c90",
+    "site/lib/public-site.ts": "bc170ac41c8fd28edbeaeff9646370bcafff1b74",
+    "site/pages/memos/[slug].astro": "e2a6dcdecf2cc55ad795db0e3de215f912353b30",
+    "src/components/WebDemoInspector.css": "ccb8ae61e758025ed90fa59228632fb2858af0b0",
+    "src/components/WebDemoInspector.tsx": "8f59d31219690168e15efbf09ab969ae2aebfd5e",
+    "src/components/common/MarkdownRenderer.tsx": "5922032e53abab28d70d02926e80b584a26099a6",
+    "src/components/common/markdown/__tests__/utils.test.ts": "a23d44f194f7b6b0ffd267e8da16b11e0534fa54",
+    "src/components/common/markdown/utils.ts": "8902cb3e0519e31faf0d3dcf2294a5a21b8432df",
+    "src/components/common/markdown/types.ts": "2b18b5db79fd982a696f101e3b620d6035c24c02",
+    "src/components/memos/ClippingDetail.tsx": "6f9e9c3e92c5169016f707ae670315bd38fdf58e",
+    "src/components/memos/MemoTypeBadge.tsx": "fe36401e4351c285300c2a0362a3fd1e76479802",
+    "src/components/memos/clipping-admin.css": "349c60d5c1590b5c5a04a65e4d2b43276458f7c3",
+    "src/components/search/PublicSearchPage.stories.tsx": "b169f645f97fa49ac0762827f2a2e1f9c9ce0471",
+    "src/components/search/PublicSearchPage.tsx": "f254637e52b1854710df4b6055122672a8197727",
+    "src/components/search/SearchResultsList.test.tsx": "552681e47d3bcda703a3d6a0040da081311a7239",
+    "src/components/search/SearchResultsList.tsx": "6d8e97d16c032777654b710e29a2d8e839ff35b0",
+    "src/components/search/search-model.ts": "d158a6577685a118ce1d4392b3ccbfbcaf8ad53b",
+    "src/components/ui/bottom-sheet.tsx": "434f3c2ceacc57a8fa3ae3d054f2208c8e67fb46",
+    "src/lib/__tests__/memo-clipping.test.ts": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
+    "src/lib/admin-api-client.ts": "10565f7bf042831a24beb5ef52ce84aa2be6928e",
+    "src/lib/ai/search-fallback.test.ts": "7ad10d1d7e640abb86bf702015111d870f8d5040",
+    "src/lib/ai/search.ts": "6b384e8a884224f618d75c33f0474a9b073c957d",
+    "src/lib/clipping-feed.ts": "7524d8715ce53802aa6742061e50d90feabb9ee4",
+    "src/lib/clipping-web-demo.ts": "a15b87855de24ce38df08bf37f281738e44d3032",
+    "src/lib/content-sources/manager.ts": "e45efefccfe05e190037ed8c3d3c8bb57a8759a9",
+    "src/lib/content-sources/utils.ts": "788229e85ebe789d3a713a0bbe0743ce8fd5a59e",
+    "src/lib/memo-clipping.ts": "cd69e7f4252eb9201eb9ccba3ceaf05eb8ad395f",
+    "src/lib/memo-presentation.ts": "d5c494fcaabbcc5563d583a4c0dafea531137ffb",
+    "src/lib/schema.ts": "b65cc931f8ac2807b210c5d24f8e629466b4f4e4",
+    "src/lib/search/content-search.ts": "f23117e387a0e4396a5ead499ce62a0cc3b36511",
+    "src/lib/snapshot-tags.ts": "984a59a4758a59183de68e3bb18fb43daa258593",
+    "src/lib/web-demo-runtime.ts": "128468be2d35c9a169f10d7dd3303bef3506b36c",
+    "src/public-site/snapshot.ts": "8973e3bcc43abc6e7e9267423afa0b1b58791340",
+    "src/server/clipping/agent-runtime.test.ts": "b9c6feeee3f66cde97853e583d522137dbed4c45",
+    "src/server/clipping/agent-runtime.ts": "a8ead68b7114cc989f5b8b2b7f639692d3c23bc5",
+    "src/server/clipping/api.test.ts": "4f459487b034f981b0e6d0ca2bf1f33007c9703d",
+    "src/server/clipping/api.ts": "60659835926032f727021832dfa4ef917466b49e",
+    "src/server/clipping/article-segments.test.ts": "318ca39bbf9f9da0cdd9820e2ea13ba92ecbb1ca",
+    "src/server/clipping/article-segments.ts": "dc1ff3c55326de419f920a40279f53f1c5d4c7f3",
+    "src/server/clipping/extract.test.ts": "c930c19115874115787be31c07dbaa874ec54f95",
+    "src/server/clipping/extract.ts": "bfd8dbb952167d5c0333015268a5f1c9e47dc524",
+    "src/server/clipping/pi-interruption.fixture.ts": "003e264deacd47bf54abf4e239afa8c7026044d6",
+    "src/server/clipping/pi-sqlite.test.ts": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
+    "src/server/clipping/pi-sqlite.ts": "4d2d67bdfa1ecc7ced9822562a1c0da0e67cd35d",
+    "src/server/clipping/projection.ts": "6148209c12785867d58fc81cc68f6b846b7d5cb9",
+    "src/server/clipping/runtime.test.ts": "148a6b6920d87958fe5aa28b3d56d8ec203dc3fb",
+    "src/server/clipping/runtime.ts": "5b9e51409ac7d33a94749e7ec901f5c58da0abdd",
+    "src/server/clipping/service-interruption.fixture.ts": "60ab2a7561a566f2471accee16247a054dab7416",
+    "src/server/clipping/service-recovery.test.ts": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
+    "src/server/clipping/service.test.ts": "5e616a71fc0098eafb6d23560b5cb560ba5cf5d8",
+    "src/server/clipping/service.ts": "7faa9ee5349edb95a39908014202bbdb041be1fd",
+    "src/server/clipping/store.test.ts": "ddd9281063b4e28749284c21467583e9f624635d",
+    "src/server/clipping/store.ts": "107a7222092e4a7fb2c7cc4ccee5875aa1d42ddb",
+    "src/server/clipping/turndown-gfm.d.ts": "b42f4bb08636ac5e3ee6fe4d33370816878a7b06",
+    "src/server/mcp-auth-context.ts": "7729c8ce062cd5cdd034ba835b45857d6a56fcbf",
+    "src/server/mcp-http.test.ts": "2b71d09f04e21817231be4723822839ba940f655",
+    "src/server/mcp-http.ts": "435ba24ae8ef62e958b27a3cb6390b247a65fa37",
+    "src/server/mcp.ts": "4ed935cc92ef2ab1751243eef63c0a77aca7d414",
+    "src/server/http-compat-api.test.ts": "de446578fffefd5c61ca59c7a3959f45ee6b9447",
+    "src/server/public-api/router.ts": "c54e168c7bd2ff5d47ae7fdc19ffac9b78422c62",
+    "src/server/routers/memos.ts": "adb108ab802eec676966b863419cbaefaee9a9a3",
+    "src/server/routers/tags.ts": "a375a6e04387c7ff8c8edfb00f67f36dea909ac0",
+    "src/server/services/tag-content.ts": "c55a89dae44ca99d2bfccc7b91eb79a910490edd",
+    "tests/e2e/clipping-detail.ts": "1a16934b457fca6a09aff6484760cd802f983750",
+    "tests/e2e/clipping-web-demo.ts": "46747d74b4822499921a3ea5e3925ee104d33e15",
+    "tests/lib/clipping-web-demo.test.ts": "e5b6d938f65df12897ac82b92e76775b53960921",
+    "src/server/routers/search.test.ts": "627b836e4bbedaf3509f365947b26c4836571568",
+    "src/server/services/search-suggestions.ts": "07eff12db05dd57034f01669f05a2276447edc09"
+  },
+  "change": {
+    "description": "Add memo clipping capture, summary, translation, current-target private discussion and native Web Demo coverage; user-facing history and manual restore are excluded.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "Additive memo clipping recognition, optional reading metadata and private creator/admin discussion APIs preserve ordinary Memo behavior. Migration 0011 adds rebuildable indices; authored Markdown is preserved and managed material/Pi storage is isolated. No existing endpoint or baseline durable state format is removed.",
+      "assessed_at": "2026-10-07T07:59:50.657946Z",
+      "evidence": [
+        {
+          "path": "src/server/clipping/api.test.ts",
+          "blob": "4f459487b034f981b0e6d0ca2bf1f33007c9703d",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+        },
+        {
+          "path": "src/lib/__tests__/memo-clipping.test.ts",
+          "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+        },
+        {
+          "path": "src/server/clipping/store.test.ts",
+          "blob": "ddd9281063b4e28749284c21467583e9f624635d",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+        },
+        {
+          "path": "src/server/clipping/service.test.ts",
+          "blob": "5e616a71fc0098eafb6d23560b5cb560ba5cf5d8",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+        },
+        {
+          "path": "src/server/clipping/service-recovery.test.ts",
+          "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+        },
+        {
+          "path": "src/server/clipping/pi-sqlite.test.ts",
+          "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "Additive memo clipping recognition, optional reading metadata and private creator/admin discussion APIs preserve ordinary Memo behavior. Migration 0011 adds rebuildable indices; authored Markdown is preserved and managed material/Pi storage is isolated. No existing endpoint or baseline durable state format is removed.",
+      "assessed_at": "2026-10-07T21:43:57Z",
+      "evidence": [
+        {
+          "path": "src/server/clipping/api.test.ts",
+          "blob": "4f459487b034f981b0e6d0ca2bf1f33007c9703d",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
+        },
+        {
+          "path": "src/lib/__tests__/memo-clipping.test.ts",
+          "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
+        },
+        {
+          "path": "src/server/clipping/store.test.ts",
+          "blob": "ddd9281063b4e28749284c21467583e9f624635d",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
+        },
+        {
+          "path": "src/server/clipping/service.test.ts",
+          "blob": "5e616a71fc0098eafb6d23560b5cb560ba5cf5d8",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
+        },
+        {
+          "path": "src/server/clipping/service-recovery.test.ts",
+          "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
+        },
+        {
+          "path": "src/server/clipping/pi-sqlite.test.ts",
+          "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
+        }
+      ],
+      "scope_drift": {
+        "detected": true,
+        "description": "Owner removed history/manual restore and confirmed refined clipping cards/composer; baseline sync preserves native manual-release version metadata."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "Additive memo clipping recognition, optional reading metadata and private creator/admin discussion APIs preserve ordinary Memo behavior. Migration 0011 adds rebuildable indices; authored Markdown is preserved and managed material/Pi storage is isolated. No existing endpoint or baseline durable state format is removed.",
+      "assessed_at": "2026-10-07T21:43:57Z",
+      "evidence": [
+        {
+          "path": "src/server/clipping/api.test.ts",
+          "blob": "4f459487b034f981b0e6d0ca2bf1f33007c9703d",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
+        },
+        {
+          "path": "src/lib/__tests__/memo-clipping.test.ts",
+          "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
+        },
+        {
+          "path": "src/server/clipping/store.test.ts",
+          "blob": "ddd9281063b4e28749284c21467583e9f624635d",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
+        },
+        {
+          "path": "src/server/clipping/service.test.ts",
+          "blob": "5e616a71fc0098eafb6d23560b5cb560ba5cf5d8",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
+        },
+        {
+          "path": "src/server/clipping/service-recovery.test.ts",
+          "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
+        },
+        {
+          "path": "src/server/clipping/pi-sqlite.test.ts",
+          "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": ["2.7.0"],
+      "evidence": [
+        {
+          "path": "src/server/clipping/api.test.ts",
+          "blob": "4f459487b034f981b0e6d0ca2bf1f33007c9703d",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
+        },
+        {
+          "path": "src/lib/__tests__/memo-clipping.test.ts",
+          "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "minor",
+      "applicable": true,
+      "state_description": "Existing authored content and application rows remain readable; clipping adds private managed processing checkpoints, rebuildable SQLite indices and independent Pi runtime storage.",
+      "readable_by_prior_versions": ["2.7.0"],
+      "upgrade_from_versions": ["2.7.0"],
+      "evidence": [
+        {
+          "path": "src/server/clipping/store.test.ts",
+          "blob": "ddd9281063b4e28749284c21467583e9f624635d",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
+        },
+        {
+          "path": "src/server/clipping/service.test.ts",
+          "blob": "5e616a71fc0098eafb6d23560b5cb560ba5cf5d8",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
+        },
+        {
+          "path": "src/server/clipping/service-recovery.test.ts",
+          "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
+        },
+        {
+          "path": "src/server/clipping/pi-sqlite.test.ts",
+          "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
+        }
+      ]
+    }
+  }
+}

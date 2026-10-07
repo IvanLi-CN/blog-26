@@ -5,6 +5,7 @@ import type {
   AdminLlmSettingsUpdateInput,
   LlmTier,
 } from "@/lib/llm-settings";
+import type { ClippingReading } from "@/lib/memo-clipping";
 import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
 import type { LlmModelOption, LlmModelSource } from "./llm-models";
@@ -371,6 +372,9 @@ export interface AdminPreviewMemo {
   createdAt: string;
   publishedAt?: string;
   updatedAt: string;
+  clipping?: ClippingReading;
+  authoredContent?: string;
+  authoredTitle?: string;
 }
 
 async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {

@@ -11,6 +11,26 @@ afterEach(() => {
 });
 
 describe("SearchResultsList titles", () => {
+  test("keeps clipping links on Memo routes and avoids a slug title fallback", () => {
+    const { container, getByRole } = render(
+      <SearchResultsList
+        results={[
+          {
+            slug: "clip-without-title",
+            type: "memo",
+            isClipping: true,
+            title: null,
+            snippet: "Saved article",
+          },
+        ]}
+      />
+    );
+    expect(getByRole("link", { name: "打开剪藏：无标题剪藏" }).getAttribute("href")).toBe(
+      "/memos/clip-without-title"
+    );
+    expect(container.querySelector("h2")).toBeNull();
+    expect(container.querySelector(".nature-content-type-chip")?.textContent).toBe("剪藏");
+  });
   test("omits a missing memo title without losing its snippet or link", () => {
     const { container, getByRole, getByText } = render(
       <SearchResultsList

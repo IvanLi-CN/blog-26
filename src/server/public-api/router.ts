@@ -6,6 +6,9 @@ import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
 import { appendPublicCorsHeaders, createPublicCorsPreflightResponse } from "@/lib/public-cors";
 import { posts } from "@/lib/schema";
 import { buildPublicSnapshot, resolvePublicMemoTitle } from "@/public-site/snapshot";
+import { handleClippingRequest } from "@/server/clipping/api";
+import { isClippingRowPublic } from "@/server/clipping/projection";
+import { readAuthoredMemo } from "@/server/clipping/store";
 import { createContext } from "@/server/context";
 import { handlePublicAssetFacadeRequest } from "@/server/public-media";
 import { appRouter } from "@/server/router";
@@ -97,17 +100,26 @@ async function normalizePublicSearchTitles<
     .select()
     .from(posts)
     .where(and(eq(posts.type, "memo"), inArray(posts.slug, memoSlugs)));
+  const publicBySlug = new Map(
+    await Promise.all(
+      memoRows.map(async (row) => [row.slug, await isClippingRowPublic(row)] as const)
+    )
+  );
   const titleBySlug = new Map(
     await Promise.all(
-      memoRows.map(async (row) => [row.slug, await resolvePublicMemoTitle(row)] as const)
+      memoRows
+        .filter((row) => publicBySlug.get(row.slug) ?? false)
+        .map(async (row) => [row.slug, await resolvePublicMemoTitle(row)] as const)
     )
   );
 
-  return results.map((result) =>
-    result.type === "memo" && titleBySlug.has(result.slug)
-      ? { ...result, title: titleBySlug.get(result.slug) ?? null }
-      : result
-  );
+  return results
+    .map((result) =>
+      result.type === "memo" && titleBySlug.has(result.slug)
+        ? { ...result, title: titleBySlug.get(result.slug) ?? null }
+        : result
+    )
+    .filter((result) => result.type !== "memo" || (publicBySlug.get(result.slug) ?? false));
 }
 
 export async function handlePublicApiRequest(request: Request, subPath: string) {
@@ -149,7 +161,20 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
       return response;
     }
 
-    const { caller, resHeaders } = await createCallerForRequest(request);
+    const { caller, resHeaders, ctx } = await createCallerForRequest(request);
+    const clippingMatch = pathname.match(
+      /^\/memos\/([^/]+)\/clipping(?:\/(status|reprocess|chat(?:\/events)?))?$/
+    );
+    if (clippingMatch) {
+      const result = await handleClippingRequest(
+        request,
+        decodeURIComponent(clippingMatch[1]),
+        clippingMatch[2] ?? "",
+        ctx
+      );
+      appendPublicCorsHeaders(result.headers, request, PUBLIC_API_ALLOWED_METHODS);
+      return result;
+    }
 
     if (pathname === "/auth/me") {
       if (request.method !== "GET") return methodNotAllowed(request, request.method);
@@ -232,13 +257,21 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
           .where(eq(posts.id, existing.id))
           .limit(1)
           .then((rows) => rows[0]);
-        if (!rawExisting || rawExisting.type !== "memo") {
+        if (rawExisting?.type !== "memo") {
           throw new TRPCError({ code: "NOT_FOUND", message: "Memo 不存在" });
         }
+        const authoredExisting = await readAuthoredMemo(rawExisting.id).catch(() => ({
+          body: rawExisting.body,
+          frontmatter: {} as Record<string, unknown>,
+        }));
         const result = await caller.memos.update({
           id: existing.id,
-          content: typeof body.content === "string" ? body.content : rawExisting.body,
-          title: body.title ?? existing.title ?? "",
+          content: typeof body.content === "string" ? body.content : authoredExisting.body.trim(),
+          title:
+            body.title ??
+            (typeof authoredExisting.frontmatter.title === "string"
+              ? authoredExisting.frontmatter.title
+              : ""),
           isPublic: body.isPublic ?? existing.isPublic,
           tags: Array.isArray(body.tags) ? body.tags : (existing.tags ?? []),
           attachments: Array.isArray(body.attachments)

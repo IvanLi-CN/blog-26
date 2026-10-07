@@ -2,10 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
+import { ClippingDetail } from "@/components/memos/ClippingDetail";
+import { MemoTypeBadge } from "@/components/memos/MemoTypeBadge";
 import { QuickMemoEditModal } from "@/components/memos/QuickMemoEditModal";
 import { type QuickMemoData, QuickMemoEditor } from "@/components/memos/QuickMemoEditor";
 import Icon from "@/components/ui/Icon";
 import { extractTextSummary, stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
+import type { ClippingReading } from "@/lib/memo-clipping";
+import { getMemoPresentation } from "@/lib/memo-presentation";
 import { webDemoFetch } from "@/lib/web-demo-fetch";
 import { adminMemoRecordSchema, parseMemoPage } from "../lib/memo-pagination";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
@@ -22,6 +26,10 @@ type PublicMemoRecord = {
   tags: string[];
   filePath?: string;
   source?: string;
+  clipping?: ClippingReading;
+  canDiscuss?: boolean;
+  authoredContent?: string;
+  authoredTitle?: string;
 };
 
 type PublicMemoListResponse = {
@@ -119,6 +127,7 @@ function usePublicAuth(initialIsAdmin = false) {
   }, [refetch]);
 
   return {
+    user,
     isAdmin: user?.isAdmin || false,
     isLoading,
     refetch,
@@ -162,6 +171,7 @@ function PublicMemoCard({
   isLast: boolean;
   onEdit: (memo: PublicMemoRecord) => void;
 }) {
+  const presentation = getMemoPresentation(memo);
   return (
     <article
       className="nature-timeline-item nature-mobile-reading-row"
@@ -170,10 +180,11 @@ function PublicMemoCard({
       data-id={memo.id}
       data-slug={memo.slug}
       data-source={memo.source ?? "local"}
+      data-content-kind={presentation.kind}
     >
       <div className="nature-timeline-rail" aria-hidden="true">
         <div className="nature-timeline-node text-[color:var(--nature-secondary)]">
-          <Icon name="tabler:bulb" className="h-5 w-5" />
+          <Icon name={presentation.icon} className="h-5 w-5" />
         </div>
         {!isLast ? <div className="nature-timeline-connector" /> : null}
       </div>
@@ -181,8 +192,11 @@ function PublicMemoCard({
         <div className="nature-panel nature-timeline-card px-4 py-4 sm:px-6 sm:py-5">
           <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
             <span className="nature-timeline-type-icon inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(var(--nature-secondary-rgb),0.16)] text-[color:var(--nature-secondary)]">
-              <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
+              <Icon name={presentation.icon} className="h-3.5 w-3.5" />
             </span>
+            {presentation.kind === "clipping" ? (
+              <span className="sr-only sm:hidden">{presentation.label}</span>
+            ) : null}
             <span
               className={`nature-chip ${memo.isPublic ? "nature-chip-info" : "nature-chip-warning"}`}
               data-testid={memo.isPublic ? "public-indicator" : "private-indicator"}
@@ -196,12 +210,22 @@ function PublicMemoCard({
           {memo.excerpt ? (
             <p className="nature-muted mt-3 text-base leading-7">{memo.excerpt}</p>
           ) : null}
+          {memo.clipping?.targetUrl ? (
+            <a
+              href={memo.clipping.targetUrl}
+              target="_blank"
+              rel="nofollow noopener noreferrer"
+              className="nature-button nature-button-outline mt-3 min-h-11"
+            >
+              打开原网页 ↗
+            </a>
+          ) : null}
           <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
             <div
               className="min-w-0 flex flex-1 flex-wrap gap-2"
               data-testid="admin-live-memo-content"
             >
-              {memo.tags.map((tag) => (
+              {presentation.tags.map((tag) => (
                 <span key={`${memo.id}-${tag}`} className="nature-chip">
                   #{tag}
                 </span>
@@ -215,7 +239,7 @@ function PublicMemoCard({
                 className="nature-icon-button inline-flex min-h-11 min-w-11 shrink-0 p-0"
                 href={buildPreviewHref(memo.slug)}
                 aria-label="预览"
-                title="预览 Memo"
+                title={presentation.kind === "clipping" ? "预览剪藏" : "预览 Memo"}
               >
                 <Icon name="tabler:eye" className="h-5 w-5" />
               </a>
@@ -223,8 +247,8 @@ function PublicMemoCard({
                 type="button"
                 className="nature-icon-button inline-flex min-h-11 min-w-11 shrink-0 p-0"
                 data-testid="admin-live-memo-edit"
-                aria-label="编辑 Memo"
-                title="编辑 Memo"
+                aria-label={`编辑 ${presentation.kind === "clipping" ? "剪藏" : "Memo"}`}
+                title={`编辑 ${presentation.kind === "clipping" ? "剪藏" : "Memo"}`}
                 onClick={() => onEdit(memo)}
               >
                 <Icon name="tabler:edit" className="h-5 w-5" />
@@ -527,7 +551,7 @@ export function PublicMemoComposerIsland({
               id: editingMemo.id,
               content: values.content,
               isPublic: values.isPublic,
-              title: editingMemo.title ?? "",
+              title: editingMemo.authoredTitle ?? editingMemo.title ?? "",
               tags: editingMemo.tags,
             }),
           }
@@ -692,7 +716,7 @@ export function PublicMemoComposerIsland({
         onClose={closeEdit}
         onSave={saveEditedMemo}
         memoTitle={editingMemo?.title ?? undefined}
-        initialContent={editingMemo?.content ?? ""}
+        initialContent={editingMemo?.authoredContent ?? editingMemo?.content ?? ""}
         initialIsPublic={editingMemo?.isPublic ?? true}
         articlePath={editingMemo?.filePath ?? (editingSlug ? `${editingSlug}.md` : "")}
         isLoading={isEditLoading}
@@ -704,14 +728,14 @@ export function PublicMemoComposerIsland({
 }
 
 export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
-  const { isAdmin, isLoading } = usePublicAuth();
+  const { user, isAdmin, isLoading } = usePublicAuth();
   const [memo, setMemo] = useState<PublicMemoRecord | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useHideStaticSnapshot("[data-public-memo-static-shell]", isAdmin);
+  useHideStaticSnapshot("[data-public-memo-static-shell]", isAdmin || Boolean(memo?.canDiscuss));
 
   const loadMemo = useCallback(async () => {
     setIsFetching(true);
@@ -730,9 +754,9 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
   }, [slug]);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!user) return;
     void loadMemo();
-  }, [isAdmin, loadMemo]);
+  }, [user, loadMemo]);
 
   const handleSave = useCallback(
     async (values: { content: string; isPublic: boolean }) => {
@@ -750,7 +774,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
               id: memo.id,
               content: values.content,
               isPublic: values.isPublic,
-              title: memo.title,
+              title: memo.authoredTitle ?? memo.title,
               tags: memo.tags,
             }),
           }
@@ -787,101 +811,125 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
   }, [isDeleting, memo, slug]);
 
   const detailBody = memo ? stripMatchingLeadingTitleHeading(memo.content, memo.title) : "";
+  const detailPresentation = getMemoPresentation(memo ?? {});
+  const detailHeader = memo ? (
+    <header className="space-y-4" data-testid="public-memo-detail-heading">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--nature-text-soft)]">
+        <span className={`nature-chip ${memo.isPublic ? "nature-chip-info" : "nature-chip-warn"}`}>
+          {memo.isPublic ? "Public" : "Draft / Private"}
+        </span>
+        <MemoTypeBadge record={memo} />
+      </div>
+      {memo.title?.trim() ? (
+        <h1 className="nature-title mt-5 text-4xl font-semibold leading-tight tracking-[-0.04em]">
+          {memo.title}
+        </h1>
+      ) : null}
+      {detailPresentation.tags.length > 0 ? (
+        <div className="mt-5 flex flex-wrap gap-2">
+          {detailPresentation.tags.map((tag) => (
+            <span key={`${memo.id}-${tag}`} className="nature-chip">
+              #{tag}
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </header>
+  ) : null;
 
-  if (isLoading || !isAdmin) {
+  if (isLoading || (!isAdmin && !memo?.canDiscuss)) {
     return null;
   }
 
   return (
     <section className="mb-6 space-y-4" data-testid="public-memo-detail-controls">
-      <div className="nature-panel flex flex-wrap items-center justify-between gap-3 px-5 py-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
-            <Icon
-              name="tabler:shield-check"
-              className="h-4 w-4 text-[color:var(--nature-accent-strong)]"
-            />
-            <span>管理员模式</span>
+      {isAdmin ? (
+        <div className="nature-panel flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
+              <Icon
+                name="tabler:shield-check"
+                className="h-4 w-4 text-[color:var(--nature-accent-strong)]"
+              />
+              <span>管理员模式</span>
+            </div>
+            <p className="text-sm text-[color:var(--nature-text-soft)]">
+              当前显示最新管理员内容；公开页面显示最近发布版本。
+            </p>
           </div>
-          <p className="text-sm text-[color:var(--nature-text-soft)]">
-            当前显示最新管理员内容；公开页面显示最近发布版本。
-          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="nature-button nature-button-outline"
+              onClick={() => void loadMemo()}
+              disabled={isFetching}
+            >
+              刷新当前内容
+            </button>
+            <a className="nature-button nature-button-outline" href={buildPreviewHref(slug)}>
+              打开专用预览
+            </a>
+            <button
+              type="button"
+              className="nature-button"
+              onClick={() => setModalOpen(true)}
+              disabled={!memo || isFetching}
+            >
+              编辑 {detailPresentation.kind === "clipping" ? "剪藏" : "Memo"}
+            </button>
+            <button
+              type="button"
+              className="nature-button nature-button-danger"
+              data-testid="admin-live-memo-delete"
+              onClick={() => void handleDelete()}
+              disabled={!memo || isDeleting}
+            >
+              删除 {detailPresentation.kind === "clipping" ? "剪藏" : "Memo"}
+            </button>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="nature-button nature-button-outline"
-            onClick={() => void loadMemo()}
-            disabled={isFetching}
-          >
-            刷新当前内容
-          </button>
-          <a className="nature-button nature-button-outline" href={buildPreviewHref(slug)}>
-            打开专用预览
-          </a>
-          <button
-            type="button"
-            className="nature-button"
-            onClick={() => setModalOpen(true)}
-            disabled={!memo || isFetching}
-          >
-            编辑 Memo
-          </button>
-          <button
-            type="button"
-            className="nature-button nature-button-danger"
-            data-testid="admin-live-memo-delete"
-            onClick={() => void handleDelete()}
-            disabled={!memo || isDeleting}
-          >
-            删除 Memo
-          </button>
-        </div>
-      </div>
+      ) : null}
 
       {memo ? (
-        <article>
-          <div className="nature-panel px-4 py-7 sm:px-8" data-testid="public-memo-detail-card">
-            <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--nature-text-soft)]">
-              <span
-                className={`nature-chip ${memo.isPublic ? "nature-chip-info" : "nature-chip-warn"}`}
-              >
-                {memo.isPublic ? "Public" : "Draft / Private"}
-              </span>
-              <span className="nature-chip gap-1">
-                <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
-                Memo
-              </span>
+        <article className="space-y-6">
+          {!memo.clipping ? (
+            <div className="nature-panel px-4 py-7 sm:px-8" data-testid="public-memo-detail-card">
+              {detailHeader}
             </div>
-            {memo.title?.trim() ? (
-              <h1 className="nature-title mt-5 text-4xl font-semibold leading-tight tracking-[-0.04em]">
-                {memo.title}
-              </h1>
-            ) : null}
-            {memo.tags.length > 0 ? (
-              <div className="mt-5 flex flex-wrap gap-2">
-                {memo.tags.map((tag) => (
-                  <span key={`${memo.id}-${tag}`} className="nature-chip">
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-          </div>
+          ) : null}
 
-          <div className="nature-panel px-4 py-7 sm:px-8" data-testid="public-memo-detail-body">
-            <MarkdownRenderer
-              content={detailBody}
-              variant="article"
-              enableMath={true}
-              enableMermaid={true}
-              enableCodeFolding={true}
-              removeTags={true}
-              rewritePublicSitePaths={true}
-              articlePath={memo.filePath ?? ""}
-              contentSource="local"
-            />
-          </div>
+          {memo.clipping ? (
+            <div data-testid="public-memo-detail-body">
+              <ClippingDetail
+                key={memo.slug}
+                slug={memo.slug}
+                memoContent={detailBody}
+                header={detailHeader}
+                initialArticle={{ reading: memo.clipping, source: null, translation: null }}
+                live
+                initialCanDiscuss={Boolean(memo.canDiscuss || isAdmin)}
+                onTitleChange={(title) =>
+                  setMemo((current) =>
+                    current && current.title !== title ? { ...current, title } : current
+                  )
+                }
+              />
+            </div>
+          ) : (
+            <div className="nature-panel px-4 py-7 sm:px-8" data-testid="public-memo-detail-body">
+              <MarkdownRenderer
+                content={detailBody}
+                variant="article"
+                enableMath={true}
+                enableMermaid={true}
+                enableCodeFolding={true}
+                removeTags={true}
+                rewritePublicSitePaths={true}
+                articlePath={memo.filePath ?? ""}
+                contentSource="local"
+              />
+            </div>
+          )}
         </article>
       ) : null}
 
@@ -891,17 +939,19 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
         </div>
       ) : null}
 
-      <QuickMemoEditModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSave={handleSave}
-        memoTitle={memo?.title ?? undefined}
-        initialContent={memo?.content}
-        initialIsPublic={memo?.isPublic}
-        articlePath={memo?.filePath ?? ""}
-        contentSource="local"
-        isLoading={isFetching}
-      />
+      {isAdmin ? (
+        <QuickMemoEditModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSave={handleSave}
+          memoTitle={memo?.title ?? undefined}
+          initialContent={memo?.authoredContent ?? memo?.content}
+          initialIsPublic={memo?.isPublic}
+          articlePath={memo?.filePath ?? ""}
+          contentSource="local"
+          isLoading={isFetching}
+        />
+      ) : null}
     </section>
   );
 }

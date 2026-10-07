@@ -219,6 +219,7 @@ describe("MCP HTTP request helpers", () => {
     expect(getMcpSessionAuthForTests(sessionId || "")).toEqual({
       isAdmin: true,
       userEmail: adminEmail,
+      userId,
     });
 
     const deleteResponse = await handleMcpHttpRequest(

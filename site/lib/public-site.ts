@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import matter from "gray-matter";
 import { SITE } from "@/config/site";
+import { renderClippingFeed } from "@/lib/clipping-feed";
 import { extractMemoTitle, isGeneratedMemoTitle } from "@/lib/content-sources/utils";
 import { extractPostCoverCandidate, isExternalImageUrl } from "@/lib/post-cover";
 import {
@@ -39,11 +40,12 @@ function getSnapshotRecordPath(record: SnapshotRecordWithPath) {
 
 export function getMemoMetadataTitle(
   title: string | null | undefined,
-  date: string | number | Date | null | undefined
+  date: string | number | Date | null | undefined,
+  typeLabel = "闪念"
 ) {
   const normalizedTitle = title?.trim();
   if (normalizedTitle) return normalizedTitle;
-  return `无标题闪念 · ${formatAbsoluteDate(date)}`;
+  return `无标题${typeLabel} · ${formatAbsoluteDate(date)}`;
 }
 
 function normalizeLegacyMemoTitle(
@@ -441,7 +443,10 @@ export function buildTagFeedItems(
       title: item.type === "memo" ? getMemoMetadataTitle(item.title, item.publishDate) : item.title,
       link: getCanonicalUrl(path),
       description: item.excerpt ?? undefined,
-      content: source,
+      content:
+        item.type === "memo" && item.clipping
+          ? renderClippingFeed(source, item.clipping.targetUrl)
+          : source,
       authorName: SITE.author.name,
       authorEmail: SITE.author.email,
       categories: item.tags,

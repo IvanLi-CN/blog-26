@@ -1,4 +1,8 @@
 @import "tailwindcss";
+/* biome-ignore lint/suspicious/noUnknownAtRules: Shared clipping UI lives outside the admin Tailwind source root. */
+@source "../../../src/components/memos/ClippingDetail.tsx";
+/* biome-ignore lint/suspicious/noUnknownAtRules: Include the shared drawer's responsive utility classes. */
+@source "../../../src/components/ui/bottom-sheet.tsx";
 
 :root {
   --radius: 1.25rem;

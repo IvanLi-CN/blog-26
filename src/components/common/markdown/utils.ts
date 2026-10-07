@@ -7,7 +7,7 @@ import type { VariantConfig } from "./types";
  */
 export function isExternalUrl(url: string): boolean {
   if (!url) return false;
-  return /^https?:\/\//.test(url) || url.startsWith("//");
+  return /^(?:https?:)?\/\//i.test(url);
 }
 
 export function isSameSiteUrl(url: string): boolean {

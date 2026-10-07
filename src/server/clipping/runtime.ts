@@ -1,0 +1,118 @@
+import { lstat, mkdir, realpath, stat } from "node:fs/promises";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
+import { getActiveLocalBasePath } from "@/config/paths";
+import { initializeDB } from "@/lib/db";
+import type { ClippingService } from "./service";
+import { clippingStoragePaths } from "./store";
+
+const key = Symbol.for("blog26.clipping.runtime");
+type RuntimeSlot = {
+  service: ClippingService | null;
+  starting?: Promise<ClippingService | null>;
+  stopping?: Promise<void>;
+};
+const shared = globalThis as typeof globalThis & { [key]?: RuntimeSlot };
+shared[key] ??= { service: null };
+const slot = shared[key];
+
+export function getClippingRuntime() {
+  return slot.service;
+}
+
+/** Called only by the gateway (development) or console process (production). */
+export async function startClippingRuntime() {
+  if (process.env.CLIPPING_PROCESSOR_ENABLED === "false") return null;
+  if (slot.stopping) await slot.stopping;
+  if (slot.service) return slot.service;
+  if (slot.starting) return slot.starting;
+  slot.starting = (async () => {
+    await initializeDB();
+    const paths = clippingStoragePaths();
+    const applicationPath = resolve(process.env.DB_PATH || "./sqlite.db");
+    const applicationRealPath = await realpath(applicationPath);
+    const runtimeEntry = await lstat(paths.runtime).catch((error) => {
+      if (error.code !== "ENOENT") throw error;
+      return null;
+    });
+    if (runtimeEntry?.isSymbolicLink()) {
+      await realpath(paths.runtime).catch(() => {
+        throw new Error("Pi storage symlink target must exist.");
+      });
+    }
+    const runtimeRealPath = await realpath(paths.runtime).catch((error) => {
+      if (error.code !== "ENOENT") throw error;
+      return null;
+    });
+    const [applicationIdentity, runtimeIdentity] = await Promise.all([
+      stat(applicationPath),
+      runtimeRealPath ? stat(runtimeRealPath) : Promise.resolve(null),
+    ]);
+    if (
+      paths.runtime === applicationPath ||
+      runtimeRealPath === applicationRealPath ||
+      (runtimeIdentity &&
+        applicationIdentity.dev === runtimeIdentity.dev &&
+        applicationIdentity.ino === runtimeIdentity.ino)
+    )
+      throw new Error("Pi storage must be separate from the application database.");
+    await mkdir(dirname(paths.runtime), { recursive: true });
+    const base = getActiveLocalBasePath();
+    if (base) {
+      const root = await realpath(base).catch((error) => {
+        if (error.code !== "ENOENT") throw error;
+        return null;
+      });
+      if (!root) {
+        console.warn("[clipping] Content directory is not ready; processor startup skipped.");
+        return null;
+      }
+      const actual = await realpath(paths.runtime).catch((error) => {
+        if (error.code !== "ENOENT") throw error;
+        return realpath(dirname(paths.runtime));
+      });
+      const part = relative(root, actual);
+      if (part === "" || (!part.startsWith("..") && !isAbsolute(part)))
+        throw new Error("Pi storage must be outside the public content root.");
+    }
+    const { ClippingService } = await import("./service");
+    let service: ClippingService;
+    service = await ClippingService.open({
+      onOwnershipLost: () => {
+        setTimeout(() => {
+          if (slot.service === service) void stopClippingRuntime();
+        }, 0);
+      },
+    });
+    slot.service = service;
+    return service;
+  })();
+  try {
+    return await slot.starting;
+  } finally {
+    slot.starting = undefined;
+  }
+}
+
+export async function stopClippingRuntime() {
+  if (slot.stopping) return slot.stopping;
+  const stopping = (async () => {
+    const starting = slot.starting;
+    const service = starting ? await starting.catch(() => null) : slot.service;
+    if (slot.service === service) slot.service = null;
+    await service?.close();
+  })();
+  const wrapped = stopping.finally(() => {
+    if (slot.stopping === wrapped) slot.stopping = undefined;
+  });
+  slot.stopping = wrapped;
+  return wrapped;
+}
+
+/** Index/file writers can notify an existing owner; they never create one. */
+export function notifyClippingChange(memoId: string) {
+  const service = slot.service;
+  if (service)
+    void service
+      .reconcile(memoId)
+      .catch(() => console.error("[clipping] Saved memo will be reconciled on the next scan."));
+}

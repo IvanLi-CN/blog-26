@@ -3,6 +3,7 @@ import { removeInlineTags } from "@/lib/tag-parser";
 import {
   defaultUrlTransform,
   generateOptimizedImageUrl,
+  isExternalUrl,
   isSameSiteUrl,
   publicSiteUrlTransform,
 } from "../utils";
@@ -203,6 +204,13 @@ More content with`);
       expect(defaultUrlTransform("/api/files/local/assets/image.jpg")).toBe(
         "/api/files/local/assets/image.jpg"
       );
+    });
+  });
+
+  describe("isExternalUrl", () => {
+    it("treats case-variant HTTP schemes as external", () => {
+      expect(isExternalUrl("HTTP://external.example/article")).toBe(true);
+      expect(isExternalUrl("hTTps://external.example/article")).toBe(true);
     });
   });
 

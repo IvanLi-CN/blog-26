@@ -204,8 +204,20 @@ function toSearchResult(
     excerpt: row.excerpt,
     snippet: buildSearchSnippet(buildSnippetQuery(plan), row),
     type: row.type === "post" || row.type === "memo" ? row.type : undefined,
+    ...(isClippingSearchMemo(row.type, row.tags) ? { isClipping: true } : {}),
     ...(typeof final === "number" ? { final } : {}),
   };
+}
+
+/** Expose a display subtype while keeping the indexed and routed content type as Memo. */
+export function isClippingSearchMemo(type: string, tags: string | null): boolean {
+  if (type !== "memo" || !tags) return false;
+  try {
+    const parsed: unknown = JSON.parse(tags);
+    return Array.isArray(parsed) && parsed.includes("剪藏");
+  } catch {
+    return false;
+  }
 }
 
 function normalizeBm25Scores(rows: Array<ContentSearchRow & { searchScore: number }>) {

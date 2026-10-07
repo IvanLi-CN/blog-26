@@ -1,9 +1,10 @@
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { uniqueRankedContent } from "@/lib/search/content-identity";
+import { isClippingRowPublic } from "@/server/clipping/projection";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../db";
 import { postEmbeddings, posts } from "../schema";
-import { searchContent } from "../search/content-search";
+import { isClippingSearchMemo, searchContent } from "../search/content-search";
 import { parseSearchQuery } from "../search/query";
 import { cosineSimilarity, createEmbedding, hashEmbeddingInput } from "./embeddings";
 import { rerank as rerankApi } from "./rerank";
@@ -24,6 +25,7 @@ export type SearchResult = {
   excerpt?: string | null;
   snippet?: string | null;
   type?: "post" | "memo"; // 用于前端路由跳转
+  isClipping?: boolean;
   cosine?: number;
   rerank?: number;
   final?: number;
@@ -315,6 +317,7 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
       draft: posts.draft,
       public: posts.public,
       type: posts.type,
+      tags: posts.tags,
       publishDate: posts.publishDate,
     })
     .from(posts)
@@ -328,6 +331,7 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
     excerpt: p.excerpt,
     snippet: buildSearchSnippet(input.q, p),
     type: p.type === "post" || p.type === "memo" ? p.type : undefined,
+    ...(isClippingSearchMemo(p.type, p.tags) ? { isClipping: true } : {}),
     cosine: scoreBySlug.get(p.slug) ?? 0,
     publishDate: p.publishDate,
   }));
@@ -356,10 +360,31 @@ async function getSemanticExecution(input: SemanticSearchInput): Promise<Semanti
       cacheable: execution.source === "semantic",
     };
   });
+  const results =
+    input.publishedOnly === true
+      ? await filterPublishedClippingResults(execution.results)
+      : execution.results;
   return {
-    results: execution.results,
+    results,
     source: execution.source === "fts" ? "fts" : "semantic",
   };
+}
+
+export async function filterPublishedClippingResults(results: SearchResult[]) {
+  const memoSlugs = Array.from(
+    new Set(results.filter((result) => result.type === "memo").map((result) => result.slug))
+  );
+  if (memoSlugs.length === 0) return results;
+  const rows = await db
+    .select()
+    .from(posts)
+    .where(and(eq(posts.type, "memo"), inArray(posts.slug, memoSlugs)));
+  const publicBySlug = new Map(
+    await Promise.all(rows.map(async (row) => [row.slug, await isClippingRowPublic(row)] as const))
+  );
+  return results.filter(
+    (result) => result.type !== "memo" || (publicBySlug.get(result.slug) ?? false)
+  );
 }
 
 export async function semantic(input: SemanticSearchInput): Promise<SearchResult[]> {
@@ -434,6 +459,10 @@ export async function enhanced(
   input: SemanticSearchInput & { rerankTopK?: number; rerank?: boolean; rerankerModel?: string }
 ) {
   const cacheInput = await buildSearchCacheInput("enhanced", input);
-  return (await getCachedSearchExecution("enhanced", cacheInput, () => computeEnhanced(input)))
-    .results;
+  const execution = await getCachedSearchExecution("enhanced", cacheInput, () =>
+    computeEnhanced(input)
+  );
+  return input.publishedOnly === true
+    ? await filterPublishedClippingResults(execution.results)
+    : execution.results;
 }

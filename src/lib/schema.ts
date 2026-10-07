@@ -50,6 +50,36 @@ export const posts = sqliteTable("posts", {
 });
 
 // 向量化文件表
+// Rebuildable clipping indexes. Canonical materials live in the managed content directory.
+export const memoClippings = sqliteTable("memo_clippings", {
+  id: text("id").primaryKey(),
+  memoId: text("memo_id").notNull().unique(),
+  creatorId: text("creator_id"),
+  revision: integer("revision").notNull(),
+  enabled: integer("enabled", { mode: "boolean" }).notNull(),
+  deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
+  targetUrl: text("target_url"),
+  currentVersionId: text("current_version_id"),
+  conversationId: text("conversation_id"),
+  manifest: text("manifest").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
+export const memoClippingVersions = sqliteTable(
+  "memo_clipping_versions",
+  {
+    id: text("id").primaryKey(),
+    clippingId: text("clipping_id").notNull(),
+    revision: integer("revision").notNull(),
+    targetUrl: text("target_url").notNull(),
+    createdAt: integer("created_at").notNull(),
+    status: text("status").notNull(),
+    metadata: text("metadata").notNull(),
+  },
+  (table) => [index("memo_clipping_versions_clipping_idx").on(table.clippingId)]
+);
+
+// 向量化文件表
 export const vectorizedFiles = sqliteTable("vectorized_files", {
   filepath: text("filepath").primaryKey(),
   slug: text("slug").notNull(),

@@ -436,6 +436,20 @@
   }
 }
 
+/* Keep the Demo controls separate from the reader's floating discussion action. */
+html[data-web-demo-scene^="clipping-"]
+  body[data-web-demo-inspector-open="false"]
+  .web-demo-inspector-host {
+  z-index: 60;
+}
+
+@media (max-width: 1023px) {
+  html[data-web-demo-scene^="clipping-"] .web-demo-inspector-bubble {
+    right: auto;
+    left: max(1rem, env(safe-area-inset-left, 0px));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .web-demo-inspector-icon-button,
   .web-demo-inspector-bubble,

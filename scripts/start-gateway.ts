@@ -6,6 +6,7 @@ import { extractAuthFromRequest } from "@/lib/auth-utils";
 import { getPublicStaticCacheControl } from "@/lib/public-static-cache-policy";
 import { loadWorktreeEnvFileIfPresent, resolveWorktreePort } from "@/lib/worktree-env";
 import { handleAdminApiRequest } from "@/server/admin-api/router";
+import { startClippingRuntime, stopClippingRuntime } from "@/server/clipping/runtime";
 import { handleDevApiRequest } from "@/server/dev-api/router";
 import { handleFilesApiRequest } from "@/server/files-api/router";
 import { handleMcpHttpRequest } from "@/server/mcp-http";
@@ -16,6 +17,7 @@ import { handleTrpcHttpRequest } from "@/server/trpc-http";
 import { handleVersionRequest, readRuntimeVersionInfo } from "@/server/version-api";
 
 loadWorktreeEnvFileIfPresent();
+await startClippingRuntime();
 
 type GatewayMode = "dev" | "production";
 
@@ -739,8 +741,9 @@ log("gateway ready", {
   adminDistDir,
 });
 
-const shutdown = () => {
+const shutdown = async () => {
   log("shutting down gateway");
+  await stopClippingRuntime();
   server.stop();
 };
 

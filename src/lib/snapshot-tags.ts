@@ -64,6 +64,7 @@ export function rebuildSnapshotTags(
             title: memo.title,
             excerpt: memo.excerpt,
             content: memo.content,
+            ...(memo.clipping ? { clipping: memo.clipping } : {}),
             publishDate: memo.publishedAt ?? memo.createdAt,
             tags: memo.tags,
             image: memo.image,

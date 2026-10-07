@@ -4,6 +4,7 @@ import { createServer } from "node:http";
 import { extname, resolve } from "node:path";
 import { extractAuthFromRequest } from "@/lib/auth-utils";
 import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
+import { startClippingRuntime, stopClippingRuntime } from "@/server/clipping/runtime";
 import { handleVersionRequest, readRuntimeVersionInfo } from "@/server/version-api";
 
 const versionInfo = await readRuntimeVersionInfo(
@@ -201,6 +202,7 @@ async function serveAdmin(
 }
 
 const astro = await import("../console-dist/server/entry.mjs");
+await startClippingRuntime();
 const playbook = getRuntimePlaybookStore();
 await playbook.load();
 if (
@@ -229,10 +231,11 @@ const server = createServer(async (request, response) => {
   astro.handler(request, response);
 });
 
-function shutdown() {
+async function shutdown() {
   playbook.stop();
   const deadline = setTimeout(() => process.exit(1), 5000);
   deadline.unref();
+  await stopClippingRuntime();
   server.close(() => {
     clearTimeout(deadline);
     process.exit(0);

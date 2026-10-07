@@ -1,4 +1,7 @@
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
 import { SITE } from "@/config/site";
+import type { ClippingReading } from "@/lib/memo-clipping";
 import { projectCatalog } from "@/lib/project-catalog";
 import type { PublicMediaCollection } from "@/lib/public-media";
 import { rebuildSnapshotTags } from "@/lib/snapshot-tags";
@@ -36,6 +39,7 @@ export interface PublicMemoRecord {
   excerpt: string | null;
   content: string;
   tags: string[];
+  clipping?: ClippingReading;
   inlineTags: string[];
   isPublic: boolean;
   createdAt: string;
@@ -47,9 +51,16 @@ export interface PublicMemoRecord {
   media: PublicMediaCollection;
 }
 
+export type PublicClippingArticle = {
+  source: string | null;
+  translation: string | null;
+  reading: ClippingReading;
+};
+
 export type PublicTagSummary = TagSummary;
 
 export interface PublicTagTimelineItem {
+  clipping?: ClippingReading;
   type: "post" | "memo";
   slug: string;
   title: string | null;
@@ -72,6 +83,7 @@ export interface PublicSnapshot {
   };
   posts: PublicPostRecord[];
   memos: PublicMemoRecord[];
+  clippingArticles?: Record<string, PublicClippingArticle>;
   relatedPosts: Record<string, string[]>;
   tags: {
     summaries: PublicTagSummary[];
@@ -103,7 +115,11 @@ function buildRelatedPosts(postList: PublicPostRecord[]): Record<string, string[
 }
 
 export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
-  const { posts: postList, memos: memoList } = await readEligibleContent();
+  const {
+    posts: postList,
+    memos: memoList,
+    clippingArticles,
+  } = await readEligibleContent({ includeClippingArticles: true });
   const tagSummaries = buildTagDirectory([
     ...postList.map((post) => ({ type: "post" as const, id: post.id, tags: post.tags })),
     ...memoList.map((memo) => ({ type: "memo" as const, id: memo.id, tags: memo.tags })),
@@ -140,6 +156,7 @@ export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
     },
     posts: postList,
     memos: memoList,
+    clippingArticles,
     relatedPosts: buildRelatedPosts(postList),
     tags: {
       summaries: tagSummaries,
@@ -155,5 +172,35 @@ export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
 export async function writePublicSnapshot(outputPath: string) {
   const snapshot = await buildPublicSnapshot();
   await Bun.write(outputPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+  const directory = join(dirname(outputPath), "clippings");
+  await mkdir(directory, { recursive: true });
+  const ownershipPath = join(directory, ".managed-articles.json");
+  let previous: string[] = [];
+  try {
+    const parsed: unknown = JSON.parse(await readFile(ownershipPath, "utf8"));
+    if (Array.isArray(parsed))
+      previous = parsed.filter(
+        (name): name is string =>
+          typeof name === "string" &&
+          name === basename(name) &&
+          name.endsWith(".json") &&
+          !name.startsWith(".")
+      );
+  } catch {
+    /* First export has no managed artifacts. */
+  }
+  const current = Object.keys(snapshot.clippingArticles ?? {}).map(
+    (slug) => `${encodeURIComponent(slug)}.json`
+  );
+  for (const [slug, article] of Object.entries(snapshot.clippingArticles ?? {}))
+    await writeFile(
+      join(directory, `${encodeURIComponent(slug)}.json`),
+      `${JSON.stringify(article)}\n`
+    );
+  for (const name of previous.filter((name) => !current.includes(name)))
+    await unlink(join(directory, name)).catch((error) => {
+      if (error.code !== "ENOENT") throw error;
+    });
+  await writeFile(ownershipPath, `${JSON.stringify(current)}\n`);
   return snapshot;
 }
