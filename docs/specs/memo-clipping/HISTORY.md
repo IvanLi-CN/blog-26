@@ -45,7 +45,7 @@
 
 - The owner accepted the flat composer and full-inset solid separator, then changed the delivery stop to PR readiness. Canonical evidence was refreshed. The branch was rebased onto the manual-release baseline, preserving both version-info loading and clipping-runtime lifecycle in the console entry point; old release-label version predictions are retired.
 
-- Session VM admission resumed after the protocol/capacity update. Frozen dependency installation, format checks and 905 unit/integration tests passed; root DAC bypass was removed so file-permission rollback scenarios exercise the intended failures. Native Release Policy coverage classifies the additive API and durable-state changes as minor.
+- Session VM admission resumed after the protocol/capacity update. Frozen dependency installation, format checks and 935 unit/integration tests passed; root DAC bypass was removed so file-permission rollback scenarios exercise the intended failures. Native Release Policy coverage classifies the additive API and durable-state changes as minor.
 
 ## References
 
