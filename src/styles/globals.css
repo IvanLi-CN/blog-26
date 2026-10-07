@@ -687,7 +687,6 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
 
 .nature-search-submit:hover:not(:disabled) {
   background: var(--nature-action-primary-bg-hover);
-  transform: translateY(-1px) scale(1.01);
   box-shadow: 0 22px 42px rgba(var(--nature-accent-rgb), 0.28);
 }
 
@@ -1095,10 +1094,10 @@ html[data-ui-theme="dark"] .nature-brand-mark {
 }
 
 .nature-search-input-shell {
-  min-height: 3rem;
-  padding: 0.5rem 0.75rem;
+  min-height: calc(2.75rem + 1rem + 2px);
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
   border-color: var(--nature-line-strong);
-  border-radius: 20px;
+  border-radius: 999px;
   background: rgba(var(--nature-surface-rgb), 0.68);
 }
 

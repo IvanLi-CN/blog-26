@@ -394,7 +394,7 @@ export default function PublicSearchPage({
                     type="submit"
                     disabled={!canSearch}
                     aria-label="搜索"
-                    className="nature-search-submit inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-45"
+                    className="nature-search-submit inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-full text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto sm:px-4 lg:w-11 lg:px-0"
                   >
                     <SearchHydrationSafeIcon name="tabler:arrow-right" className="h-4 w-4" />
                     <span className="hidden sm:inline lg:hidden">搜索</span>
