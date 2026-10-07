@@ -11,6 +11,8 @@ This runbook verifies that content and database records are clean for the local-
 ## Preparation
 
 ```bash
+set -euo pipefail
+
 export CONTENT_ROOT="/path/to/content-root"
 export DB_PATH="/path/to/sqlite.db"
 export PI_DURABLE_DB_PATH="/path/to/pi-durable.sqlite"
@@ -24,6 +26,8 @@ export BACKUP_DIR="/path/to/backup/$(date +%Y%m%d-%H%M%S)"
 # Keep the processor disabled throughout the backup, migration, and validation.
 export CLIPPING_PROCESSOR_ENABLED=false
 mkdir -p "$BACKUP_DIR"
+test -d "$CONTENT_ROOT"
+test -f "$DB_PATH"
 cp -a "$CONTENT_ROOT" "$BACKUP_DIR/content-root"
 cp -a "$DB_PATH" "$BACKUP_DIR/sqlite.db"
 for suffix in "" "-wal" "-shm"; do
@@ -32,15 +36,22 @@ for suffix in "" "-wal" "-shm"; do
     cp -a "$source_path" "$BACKUP_DIR/pi-durable.sqlite${suffix}"
   fi
 done
-cp -a "$CLIPPING_CONTENT_BASE_PATH" "$BACKUP_DIR/clippings"
+if [ -d "$CLIPPING_CONTENT_BASE_PATH" ]; then
+  cp -a "$CLIPPING_CONTENT_BASE_PATH" "$BACKUP_DIR/clippings"
+else
+  mkdir -p "$BACKUP_DIR/clippings"
+fi
 ```
 
 ## Scan and Migrate
 
 ```bash
+set -euo pipefail
+
 export CONTENT_SOURCES=local
 export LOCAL_CONTENT_BASE_PATH="$CONTENT_ROOT"
 
+bun run migrate
 bun run content:scan-api-links --include-db --format human
 bun run content:migrate-api-links --include-db --dry-run --backup-dir "$BACKUP_DIR/migrate-preview"
 bun run content:migrate-api-links --include-db --apply --backup-dir "$BACKUP_DIR/migrate-apply"
@@ -50,6 +61,8 @@ bun run content:scan-api-links --include-db --fail-on-found
 ## Validation
 
 ```bash
+set -euo pipefail
+
 bun run check
 bun run test
 bun run test:e2e
@@ -69,6 +82,13 @@ progress.
 ## Rollback
 
 ```bash
+set -euo pipefail
+
+# Stop the sole console/gateway runtime owner through its process supervisor,
+# keep CLIPPING_PROCESSOR_ENABLED=false, and verify its lease has closed before
+# replacing any files. The export alone does not stop an existing process.
+export CLIPPING_PROCESSOR_ENABLED=false
+
 rm -rf "$CONTENT_ROOT"
 cp -a "$BACKUP_DIR/content-root" "$CONTENT_ROOT"
 cp -a "$BACKUP_DIR/sqlite.db" "$DB_PATH"
@@ -82,3 +102,7 @@ for suffix in "" "-wal" "-shm"; do
   fi
 done
 ```
+
+After rollback, rerun the validation steps while the processor remains
+disabled. Restart the sole runtime owner through its process supervisor with
+`CLIPPING_PROCESSOR_ENABLED=true` only after validation passes.
