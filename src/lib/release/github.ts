@@ -322,7 +322,7 @@ export class GitHubLedgerStore implements LedgerStore {
         (options.allowLegacyHead && commit.sha === sha) ||
         (options.allowLegacyAncestor && commit.sha !== sha && !legacySha) ||
         (recoverySha !== undefined && commit.sha !== sha);
-      if (legacyRequested && commit.author?.login === owner) {
+      if (legacyRequested && (commit.author?.login === owner || recoverySha === commit.sha)) {
         const bot = `${this.github.botSlug}[bot]`;
         if (
           commit.author?.login !== owner ||
