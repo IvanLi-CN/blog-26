@@ -197,7 +197,7 @@ The visible title of a 剪藏闪念: the author's explicit title when present, o
 _Avoid_: 文件名标题, 自动 Memo 标题
 
 **剪藏处理版本**:
-A retained source capture and its corresponding summary, translation, and processing outcome. A 剪藏闪念 can retain multiple versions while presenting one current reading version.
+A retained source capture and its corresponding summary, translation, and processing outcome. A 剪藏闪念 can retain multiple internal processing versions for interruption recovery and failed-reprocess fallback while presenting one current reading version. These are not user-browsable history or manually restorable Memo edits.
 _Avoid_: Memo 编辑版本, 对话版本
 
 **剪藏处理状态**:

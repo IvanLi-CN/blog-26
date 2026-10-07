@@ -132,14 +132,9 @@ try {
   await page.getByRole("textbox", { name: "向文章助手提问" }).fill("恢复时为什么要使用同一来源？");
   await page.getByRole("button", { name: "发送", exact: true }).click();
   await expect(page.getByTestId("clipping-chat")).toContainText("内存模拟回答");
-  await page.getByRole("button", { name: "版本历史", exact: true }).click();
-  await page.getByRole("button", { name: "查看此版本", exact: true }).last().click();
-  await expect(page.getByRole("heading", { name: "所选历史版本" })).toBeVisible();
-  await page.getByRole("button", { name: "恢复此版本", exact: true }).last().click();
-  await page.getByRole("button", { name: "关闭", exact: true }).click();
-  await expect(page.getByTestId("clipping-chat")).toContainText("恢复时为什么要使用同一来源");
+  await expect(page.getByRole("button", { name: "版本历史", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "恢复此版本", exact: true })).toHaveCount(0);
   await inspector();
-  await expect(page.locator(".web-demo-inspector-mutations")).toContainText("模拟恢复版本");
   await page.getByRole("button", { name: "模拟保存", exact: true }).click();
   await expect(page.locator(".clipping-memo-card")).toContainText("新增的备注");
 
@@ -184,7 +179,7 @@ try {
   expect(unexpected).toEqual([]);
   expect(errors).toEqual([]);
   console.log(
-    "PASS: official routes; language state; three cards; conversation/history/save/retry; 7 widths; focus/draft; network/persona; zero live API/model requests (font CDN blocked)"
+    "PASS: official routes; language state; three cards; conversation/save/retry; no history/restore controls; 7 widths; focus/draft; network/persona; zero live API/model requests (font CDN blocked)"
   );
 } finally {
   await browser.close();

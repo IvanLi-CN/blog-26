@@ -19,7 +19,7 @@ The author-authored content remains before the generated summary, separated by a
 - Public content exports can include the published Memo summary and captured reading versions, but must exclude private conversation state, user messages, model credentials, and runtime logs.
 - Conversation access requires its own authorization checks, including when its parent Memo is public.
 - Memo editing and content synchronization must preserve the clipping relationship and distinguish author-authored content from generated output.
-- Replacing the target URL creates a new conversation and reading version; earlier material remains recoverable without being silently attributed to the new source.
+- Replacing the target URL creates a new conversation and reading version; earlier successful material may remain internally as an explicitly attributed fallback. User-facing version history, past-conversation browsing, and manual restoration are not part of the clipping feature.
 - Runtime execution state is separate from canonical Memo content and retained reading artifacts, so recovery and runtime replacement cannot change content ownership or publication permissions.
 - The static public site retains its existing publication-snapshot semantics; clipping does not turn it into an authenticated server application.
 

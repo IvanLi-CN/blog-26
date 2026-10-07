@@ -38,6 +38,15 @@
 
 - Formal review repairs stage cross-source target replacements beside the authored file before atomic rename, and isolate the production-console smoke in a migrated temporary database/content/material root that is removed on completion.
 
+- The owner narrowed the feature to clipping, summary, translation, current-target discussion, and failed-reprocess fallback. Version-history UI, historical conversation browsing, and all manual restore operations were removed. Internal processing checkpoints remain; the cross-source restore author-overwrite review finding is resolved by deleting that operation rather than introducing a new authoring concurrency contract.
+
+- Owner identified the rounded textarea as an unwanted card nested inside the discussion card. Its border, corner radius, and separate background were removed; the composer keeps the section divider and a keyboard-focus underline.
+- Owner questioned the remark/summary separator's fit with the theme. The shared divider's high-opacity center was too prominent in the clipping card. The first theme-token fade candidate was then rejected as too faint. This surface uses a uniform 1px line in the stronger theme boundary token with 24px vertical spacing. Further owner feedback exposed the inherited 72ch wrapper shortening the divider; the Memo wrapper now fills the card inset, with reading width applied to content blocks instead.
+
+- The owner accepted the flat composer and full-inset solid separator, then changed the delivery stop to PR readiness. Canonical evidence was refreshed. The branch was rebased onto the manual-release baseline, preserving both version-info loading and clipping-runtime lifecycle in the console entry point; old release-label version predictions are retired.
+
+- Session VM admission resumed after the protocol/capacity update. Frozen dependency installation, format checks and 905 unit/integration tests passed; root DAC bypass was removed so file-permission rollback scenarios exercise the intended failures. Native Release Policy coverage classifies the additive API and durable-state changes as minor.
+
 ## References
 
 - [Requirements contract](./SPEC.md)

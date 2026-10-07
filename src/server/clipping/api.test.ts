@@ -125,19 +125,21 @@ async function request(operation: string, actor: Parameters<typeof context>[0]) 
     context(actor)
   );
 }
-test("public reading exposes only materials; conversation/history is restricted to creator and admin", async () => {
+test("public reading exposes only materials; conversation is restricted to creator and admin and history/restore are absent", async () => {
   const reading = await (await request("", "guest")).json();
   expect(reading.source).toContain("Source.");
   expect(reading.content).toBe("备注\n\n---\n\n**Agent 摘要**\n\n摘要。");
   expect(JSON.stringify(reading)).not.toContain("private-conversation");
   expect(JSON.stringify(reading)).not.toContain("creator");
   for (const actor of ["guest", "other"] as const)
-    for (const operation of ["history", "chat", "chat/events"])
+    for (const operation of ["chat", "chat/events"])
       await expect(request(operation, actor)).rejects.toMatchObject({
         code: actor === "guest" ? "UNAUTHORIZED" : "FORBIDDEN",
       });
-  for (const actor of ["creator", "admin"] as const)
-    expect((await request("history", actor)).status).toBe(200);
+  for (const actor of ["guest", "creator", "admin"] as const) {
+    expect((await request("history", actor)).status).toBe(404);
+    expect((await request("restore", actor)).status).toBe(404);
+  }
   expect((await (await request("status", "guest")).json()).source).toBeUndefined();
 });
 test("public exports omit identities, runtime data, private conversation and stale article artifacts", async () => {
@@ -171,5 +173,20 @@ test("canonical files rebuild a deleted index without executing completed materi
     expect((await buildPublicSnapshot()).clippingArticles?.clip.translation).toContain("正文。");
   } finally {
     await service.close();
+  }
+});
+
+test("conversation selectors cannot expose an earlier target discussion", async () => {
+  for (const actor of ["creator", "admin"] as const) {
+    await expect(
+      handleClippingRequest(
+        new Request(
+          "http://localhost/api/public/memos/clip/clipping/chat?conversationId=old-target"
+        ),
+        "clip",
+        "chat",
+        context(actor)
+      )
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   }
 });

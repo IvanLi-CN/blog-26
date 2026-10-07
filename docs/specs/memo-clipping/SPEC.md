@@ -22,7 +22,7 @@
 - 剪藏处理状态: progress or outcome with distinguishable summary and translation completion.
 - 剪藏对话: the persistent, creator/admin-only conversation associated with a clipping's target; replacing the target creates a new conversation.
 - Validation boundary: pages MUST NOT be created in Storybook. Page layout and behavior verification MUST use actual application routes.
-- Web Demo MUST use the separately enabled Demo build on the official Memo list and detail routes with the production reader. Deterministic captured materials and in-memory discussion/history operations MUST need no login, backend, article fetch, or model. The shared Inspector MUST expose clipping processing, success, translation failure, previous-version fallback, long content, persona, network, data, and reset/share controls; runtime query parameters MUST NOT activate Demo behavior in live artifacts.
+- Web Demo MUST use the separately enabled Demo build on the official Memo list and detail routes with the production reader. Deterministic captured materials and in-memory discussion/reprocess operations MUST need no login, backend, article fetch, or model. The shared Inspector MUST expose clipping processing, success, translation failure, previous-version fallback, long content, persona, network, data, and reset/share controls; runtime query parameters MUST NOT activate Demo behavior in live artifacts.
 - Interface: the existing Memo create/edit/detail/list, local Markdown source, database index, MCP, public snapshot, and live console boundaries remain authoritative for their respective surfaces.
 
 ## Reading Flow
@@ -97,7 +97,7 @@ The reading header keeps author remarks and the generated summary visible. The o
 
 ### REQ-MCL-008
 
-- Each clipping MUST retain its processing versions, identify one current reading version, and maintain one active persistent conversation for its current target. Previous versions and conversations MUST remain available to authorized history/recovery operations.
+- Each clipping MUST retain its processing versions, identify one current reading version, and maintain one active persistent conversation for its current target. Previous successful reading materials MUST remain available internally for failed-reprocess fallback. User-facing version history, past-conversation browsing, and manual version restoration are out of scope; no history/restore UI or business API may be exposed.
 - The conversation MUST be accessible only to the Memo creator and administrators, even when the parent Memo is public.
 - Conversation context MUST include the current source Markdown, translation when available, summary, and author remarks. Answers SHOULD distinguish source claims from Agent inference and SHOULD identify relevant sections or passages.
 - Discussion MUST be available once source Markdown exists, without waiting for translation. Without a captured source, the Agent MUST NOT imply that it has read the article.
@@ -111,7 +111,8 @@ The reading header keeps author remarks and the generated summary visible. The o
 - Search result presentation MUST distinguish 剪藏 from ordinary 闪念 while preserving Memo detail URLs. The public search UI MUST offer a separate 剪藏 filter/count using the result's display classification, without changing the indexed Memo type.
 - For authorized conversation participants, desktop detail MUST present the article reading surface on the left and the clipping conversation on the right, with a stable boundary that does not make either column unusable.
 - The left reading column MUST contain two separate sibling cards in an unframed stack: a Memo card for its heading, remarks, summary, processing status, and actions, followed by an article card for language controls and captured source/translation Markdown. The cards MUST have a 24px vertical gap and MUST NOT be nested inside another card. The conversation MUST remain its own card alongside that unframed reading column, owning its heading, internally scrolling messages, and composer.
-- Reprocess and version-history actions MUST form a low-emphasis management group beside the Memo's processing status. The original-page entry MUST accompany the article's language controls. These toolbars MUST wrap their groups without overflow on narrow screens and MUST NOT combine all three actions into equal-emphasis pills beneath the title.
+- The conversation composer MUST blend into the discussion card or mobile drawer without an additional rounded input surface. Input text MUST align with the messages, and keyboard focus MUST remain visible.
+- The reprocess action MUST form a low-emphasis management group beside the Memo's processing status. The original-page entry MUST accompany the article's language controls. These toolbars MUST wrap their groups without overflow on narrow screens and MUST NOT combine all three actions into equal-emphasis pills beneath the title.
 - Authorized desktop detail MUST use the wide content container with a 24px inter-card gap and a 320–360px discussion column. Ordinary Memos and visitor-only clipping reading MUST retain the existing single-column reading width. Card hover or focus MUST NOT shift the reading position or discussion layout.
 - Language controls MUST clearly identify the displayed source or translation through their selected state and a non-color visual indicator. Focus on an inactive control MUST NOT imply selection; activation MUST update both the selected indicator and the displayed article together.
 - For authorized conversation participants, narrow detail MUST prioritize continuous article reading and expose the conversation through an explicit button that opens a bottom-sheet overlay. Other readers MUST receive the authorized reading surface without loading private conversation data.
@@ -138,10 +139,10 @@ The reading header keeps author remarks and the generated summary visible. The o
 ### REQ-MCL-012
 
 - Editing clipping remarks MUST NOT automatically re-run the Agent or overwrite a newer author edit.
-- Changing the target URL MUST create a new processing version and a new conversation; the previous version and conversation MUST remain recoverable.
-- Removing #剪藏 MUST stop unfinished clipping work, restore ordinary Memo presentation, and retain historical clipping versions for deliberate recovery.
+- Changing the target URL MUST create a new processing version and a new conversation; previous successful material MAY remain as an explicitly attributed fallback; earlier conversations are not available through user-facing history operations.
+- Removing #剪藏 MUST stop unfinished clipping work, restore ordinary Memo presentation, and retain saved reading materials internally without exposing manual historical recovery.
 - Manual reprocessing of the same target MUST retain the previous successful version until the replacement reaches a usable state.
-- Manual reprocessing of the same target MUST retain its conversation. Historical summaries and translations MUST be viewable and restorable as matched source versions; unrelated source versions MUST NOT be silently mixed into one reading result or conversation.
+- Manual reprocessing of the same target MUST retain its conversation. Source, summary, and translation used for automatic fallback MUST belong to one matched processing version; unrelated source versions MUST NOT be silently mixed into one reading result or conversation.
 - If the reader sees a previous successful version while a changed target is processing or has failed, the displayed material MUST identify its actual source and version rather than imply it belongs to the new URL.
 - Every new Memo with the same URL MUST remain an independent clipping and conversation; implementations MAY reuse safe fetch/cache material without merging user-facing records.
 - Deleting a Memo MUST stop its work and obey the existing deletion/retention policy. A delayed completion MUST NOT recreate deleted content, restore a removed tag, or overwrite a newer target.
@@ -151,7 +152,7 @@ The reading header keeps author remarks and the generated summary visible. The o
 - UI authoring, MCP writes, and filesystem synchronization MUST preserve the clipping relationship, generated-output boundary, version metadata, and current author content.
 - Existing Memo content remains file-backed with the database as its synchronized index; a clipping implementation MUST prevent ordinary edits or resync from silently discarding clipping metadata or generated artifacts.
 - Generated summary, original, and translation content MUST not re-trigger #剪藏 detection or become a second target link.
-- Retained processing versions MUST identify their target, capture time, source fingerprint, model/prompt identity, and result completeness so a restored summary and translation can be traced to the same source snapshot. Ordinary readers need not receive runtime diagnostics.
+- Retained processing versions MUST identify their target, capture time, source fingerprint, model/prompt identity, and result completeness so fallback summaries and translations can be traced to the same source snapshot. Ordinary readers need not receive runtime diagnostics.
 
 ### REQ-MCL-014
 
@@ -176,9 +177,9 @@ The reading header keeps author remarks and the generated summary visible. The o
 
 ### VER-MCL-003
 
-- Method: content contract tests against Memo create/edit/delete, concurrent author edits, MCP create/update, filesystem sync, history restoration, duplicate-URL Memos, target replacement/removal, and database/public snapshot projection.
+- Method: content contract tests against Memo create/edit/delete, concurrent author edits, MCP create/update, filesystem sync, automatic previous-success fallback, absent history/restore endpoints, duplicate-URL Memos, target replacement/removal, and database/public snapshot projection.
 - covers: REQ-MCL-005, REQ-MCL-007, REQ-MCL-010, REQ-MCL-012, and REQ-MCL-013
-- Pass condition: author remarks, titles, tags, visibility, attachments, clipping metadata, matched historical versions, and source ownership survive every supported write path; removing a tag or Memo stops stale writes; same-URL Memos remain independent; remarks precede exactly one summary with a separator only when needed; private records never enter public projections.
+- Pass condition: author remarks, titles, tags, visibility, attachments, clipping metadata, matched fallback materials, and source ownership survive every supported write path; removing a tag or Memo stops stale writes; same-URL Memos remain independent; remarks precede exactly one summary with a separator only when needed; private records never enter public projections.
 
 ### VER-MCL-004
 
@@ -206,7 +207,7 @@ The reading header keeps author remarks and the generated summary visible. The o
 
 ## Visual Evidence
 
-The owner-confirmed native Web Demo demonstrates the shared list, detail cards, and responsive private discussion. Fixtures are isolated from live APIs and model services.
+The native Web Demo demonstrates the shared list, detail cards, and responsive private discussion. Fixtures are isolated from live APIs and model services.
 
 ![Desktop clipping list](./assets/list-dark-1440.png)
 

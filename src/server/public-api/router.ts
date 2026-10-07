@@ -153,7 +153,7 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
 
     const { caller, resHeaders, ctx } = await createCallerForRequest(request);
     const clippingMatch = pathname.match(
-      /^\/memos\/([^/]+)\/clipping(?:\/(status|history|reprocess|restore|chat(?:\/events)?))?$/
+      /^\/memos\/([^/]+)\/clipping(?:\/(status|reprocess|chat(?:\/events)?))?$/
     );
     if (clippingMatch) {
       const result = await handleClippingRequest(

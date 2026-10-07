@@ -137,6 +137,15 @@ async function runSmoke() {
     const login = await context.request.post(`${base}/api/dev/login`, { data: { email } });
     if (!login.ok()) throw new Error(`Dev login failed: ${login.status()}`);
     const page = await context.newPage();
+    for (const operation of ["history", "restore"]) {
+      const removed =
+        operation === "history"
+          ? await context.request.get(`${base}/api/public/memos/${slug}/clipping/history`)
+          : await context.request.post(`${base}/api/public/memos/${slug}/clipping/restore`, {
+              data: { versionId, replaceTarget: true },
+            });
+      if (removed.status() !== 404) throw new Error(`Removed ${operation} route remains exposed`);
+    }
     await page.goto(`${base}/admin/preview/memos/${slug}`);
     await page.getByRole("heading", { name: "Durable article", exact: true }).waitFor();
     const sourceLink = page
@@ -238,7 +247,7 @@ async function runSmoke() {
     const reading = await guest.request.get(`${base}/api/public/memos/${slug}/clipping`);
     if (!reading.ok() || !(await reading.json()).source?.includes("saved checkpoint"))
       throw new Error("Guest cannot read public clipping material");
-    for (const operation of ["chat", "history"])
+    for (const operation of ["chat"])
       if ((await guest.request.get(`${base}/api/public/memos/${slug}/clipping/${operation}`)).ok())
         throw new Error("Guest can access private discussion/history");
     console.log("PASS production source/translation, authenticated discussion, guest boundary");

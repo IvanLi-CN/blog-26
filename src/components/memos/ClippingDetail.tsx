@@ -22,7 +22,6 @@ export type ClippingChat = {
   generating: boolean;
   partial: string;
   conversationId?: string | null;
-  historical?: boolean;
   error?: string | null;
 };
 export type ClippingArticle = {
@@ -33,21 +32,6 @@ export type ClippingArticle = {
   title?: string | null;
   canDiscuss?: boolean;
   processorEnabled?: boolean;
-};
-type Version = {
-  id: string;
-  targetUrl: string;
-  createdAt: number;
-  status: string;
-  summaryState: string;
-  translationState: string;
-  warning: string | null;
-  error: string | null;
-};
-type History = {
-  versions: Version[];
-  currentVersionId: string | null;
-  previousConversations: Array<{ targetUrl: string; conversationId: string }>;
 };
 export type ClippingTransport = {
   request: <T>(operation: string, body?: unknown) => Promise<T>;
@@ -107,7 +91,6 @@ function ChatPanel({
   send,
   sending,
   error,
-  historical,
   surface,
   scroll,
 }: {
@@ -117,7 +100,6 @@ function ChatPanel({
   send: () => void;
   sending: boolean;
   error: string | null;
-  historical: boolean;
   surface: "public" | "admin";
   scroll: MutableRefObject<number>;
 }) {
@@ -188,52 +170,46 @@ function ChatPanel({
           {error ?? snapshot.error}
         </p>
       ) : null}
-      {historical ? (
-        <p className="nature-muted border-t border-[color:var(--nature-line)] px-4 py-4 text-sm">
-          这是先前目标的对话，当前仅供回看。
-        </p>
-      ) : (
-        <form
-          className="shrink-0 border-t border-[color:var(--nature-line)] px-5 py-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            send();
+      <form
+        className="shrink-0 border-t border-[color:var(--nature-line)] px-5 py-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          send();
+        }}
+      >
+        <label htmlFor="clipping-chat-draft" className="sr-only">
+          向文章助手提问
+        </label>
+        <textarea
+          id="clipping-chat-draft"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          rows={3}
+          maxLength={10_000}
+          className="clipping-chat-input w-full resize-none py-2 text-base"
+          placeholder="这篇文章的核心论点是什么？"
+          onKeyDown={(event) => {
+            if (
+              event.key === "Enter" &&
+              (event.ctrlKey || event.metaKey) &&
+              !event.nativeEvent.isComposing
+            ) {
+              event.preventDefault();
+              send();
+            }
           }}
-        >
-          <label htmlFor="clipping-chat-draft" className="sr-only">
-            向文章助手提问
-          </label>
-          <textarea
-            id="clipping-chat-draft"
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            rows={3}
-            maxLength={10_000}
-            className="clipping-chat-input w-full resize-none px-3 py-3 text-base"
-            placeholder="这篇文章的核心论点是什么？"
-            onKeyDown={(event) => {
-              if (
-                event.key === "Enter" &&
-                (event.ctrlKey || event.metaKey) &&
-                !event.nativeEvent.isComposing
-              ) {
-                event.preventDefault();
-                send();
-              }
-            }}
-          />
-          <div className="mt-2 flex items-center justify-between gap-3">
-            <span className="nature-muted text-xs">Ctrl / ⌘ + Enter 发送</span>
-            <button
-              type="submit"
-              className="nature-button nature-button-primary min-h-11 shrink-0"
-              disabled={sending || snapshot.generating || !draft.trim()}
-            >
-              {sending ? "正在提交…" : "发送"}
-            </button>
-          </div>
-        </form>
-      )}
+        />
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <span className="nature-muted text-xs">Ctrl / ⌘ + Enter 发送</span>
+          <button
+            type="submit"
+            className="nature-button nature-button-primary min-h-11 shrink-0"
+            disabled={sending || snapshot.generating || !draft.trim()}
+          >
+            {sending ? "正在提交…" : "发送"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -266,21 +242,11 @@ export function ClippingDetail({
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [history, setHistory] = useState<History | null>(null);
-  const [selectedVersion, setSelectedVersion] = useState<{
-    version: Version;
-    source: string | null;
-    summary: string | null;
-    translation: string | null;
-  } | null>(null);
-  const [historicalConversation, setHistoricalConversation] = useState<string | null>(null);
   const [activeLanguage, setActiveLanguage] = useState<"source" | "translation">("source");
   const [error, setError] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const scroll = useRef(0);
-  const historyTrigger = useRef<HTMLButtonElement>(null);
   const titleChanged = useRef(onTitleChange);
   titleChanged.current = onTitleChange;
   const readingPositions = useRef<Partial<Record<"source" | "translation", number>>>({});
@@ -335,9 +301,7 @@ export function ClippingDetail({
 
   const readChat = useCallback(async () => {
     try {
-      const next = await transport.request<ClippingChat>(
-        `chat${historicalConversation ? `?conversationId=${encodeURIComponent(historicalConversation)}` : ""}`
-      );
+      const next = await transport.request<ClippingChat>("chat");
       setSnapshot(next);
       setChatError(null);
     } catch (error) {
@@ -349,13 +313,12 @@ export function ClippingDetail({
       }
       setChatError(error instanceof Error ? error.message : "对话连接中断，请重试。");
     }
-  }, [historicalConversation, transport]);
+  }, [transport]);
   useEffect(() => {
     if (!live || !canDiscuss) return;
     void readChat();
-    if (historicalConversation) return;
     return transport.subscribe(setSnapshot, () => void readChat());
-  }, [live, canDiscuss, historicalConversation, readChat, transport]);
+  }, [live, canDiscuss, readChat, transport]);
 
   async function send() {
     if (sending || snapshot.generating || !draft.trim()) return;
@@ -373,15 +336,6 @@ export function ClippingDetail({
       setChatError(error instanceof Error ? error.message : "消息未提交，请重试。");
     } finally {
       setSending(false);
-    }
-  }
-  async function loadHistory() {
-    setHistoryOpen(true);
-    setError(null);
-    try {
-      setHistory(await transport.request<History>("history"));
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "历史无法读取。");
     }
   }
   async function operate(action: () => Promise<unknown>) {
@@ -405,7 +359,6 @@ export function ClippingDetail({
       sending={sending}
       error={chatError}
       surface={surface}
-      historical={Boolean(historicalConversation)}
       scroll={scroll}
     />
   );
@@ -419,14 +372,6 @@ export function ClippingDetail({
           onClick={() => void operate(() => transport.request("reprocess", {}))}
         >
           重新处理
-        </button>
-        <button
-          type="button"
-          className="nature-button nature-button-ghost min-h-11"
-          onClick={() => void loadHistory()}
-          ref={historyTrigger}
-        >
-          版本历史
         </button>
       </fieldset>
     ) : null;
@@ -588,15 +533,6 @@ export function ClippingDetail({
           >
             <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 border-b border-[color:var(--nature-line)] px-5 py-4">
               <h2 className="font-semibold">文章对话</h2>
-              {historicalConversation ? (
-                <button
-                  type="button"
-                  className="nature-button nature-button-outline min-h-11"
-                  onClick={() => setHistoricalConversation(null)}
-                >
-                  当前对话
-                </button>
-              ) : null}
             </div>
             {chat}
           </aside>
@@ -618,126 +554,9 @@ export function ClippingDetail({
               </button>
             }
           >
-            {historicalConversation ? (
-              <button
-                type="button"
-                className="nature-button nature-button-outline mx-4 mb-2 min-h-11"
-                onClick={() => setHistoricalConversation(null)}
-              >
-                返回当前对话
-              </button>
-            ) : null}
             {chat}
           </BottomSheet>
         )
-      ) : null}
-      {canDiscuss ? (
-        <BottomSheet
-          open={historyOpen}
-          onOpenChange={setHistoryOpen}
-          title="剪藏版本历史"
-          surface={surface}
-          returnFocusRef={historyTrigger}
-          trigger={
-            <button type="button" className="sr-only" tabIndex={-1}>
-              查看版本历史
-            </button>
-          }
-        >
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
-            {history?.versions.toReversed().map((version) => (
-              <div
-                key={version.id}
-                className="border-b border-[color:var(--nature-line)] py-4 [overflow-wrap:anywhere]"
-              >
-                <p className="font-medium">
-                  {new Date(version.createdAt).toLocaleString("zh-CN")}
-                  {history.currentVersionId === version.id ? " · 当前读取" : ""}
-                </p>
-                <p className="nature-muted mt-1 text-sm">{version.targetUrl}</p>
-                <p className="nature-muted mt-1 text-sm">
-                  {version.status === "completed"
-                    ? "原文、摘要与译文已完成"
-                    : (version.error ?? "处理中或部分完成")}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="nature-button nature-button-outline min-h-11"
-                    onClick={() =>
-                      void operate(async () =>
-                        setSelectedVersion(
-                          await transport.request(
-                            `history?versionId=${encodeURIComponent(version.id)}`
-                          )
-                        )
-                      )
-                    }
-                  >
-                    查看此版本
-                  </button>
-                  <button
-                    type="button"
-                    className="nature-button nature-button-outline min-h-11"
-                    disabled={busy || version.summaryState !== "completed"}
-                    onClick={() => {
-                      const replaceTarget = version.targetUrl !== reading.targetUrl;
-                      if (
-                        replaceTarget &&
-                        !window.confirm(
-                          "此版本来自其他网页。确认替换当前剪藏目标，并建立该目标的新对话？"
-                        )
-                      )
-                        return;
-                      void operate(() =>
-                        transport.request("restore", { versionId: version.id, replaceTarget })
-                      );
-                    }}
-                  >
-                    {version.targetUrl !== reading.targetUrl ? "替换目标并恢复" : "恢复此版本"}
-                  </button>
-                </div>
-              </div>
-            ))}
-            {history?.previousConversations.map((conversation) => (
-              <button
-                type="button"
-                key={conversation.conversationId}
-                className="nature-button nature-button-outline mt-3 min-h-11 max-w-full [overflow-wrap:anywhere]"
-                onClick={() => {
-                  setHistoricalConversation(conversation.conversationId);
-                  setHistoryOpen(false);
-                  setSheetOpen(true);
-                }}
-              >
-                回看对话：{conversation.targetUrl}
-              </button>
-            ))}
-            {selectedVersion ? (
-              <section className="mt-6">
-                <h3 className="mb-3 font-semibold">所选历史版本</h3>
-                <MarkdownRenderer
-                  surface={surface}
-                  content={selectedVersion.summary ?? "摘要未完成"}
-                  nofollowExternalLinks
-                  enableMermaid={false}
-                />
-                <MarkdownRenderer
-                  surface={surface}
-                  content={selectedVersion.source ?? "原文未抓取"}
-                  nofollowExternalLinks
-                  enableMermaid={false}
-                />
-                <MarkdownRenderer
-                  surface={surface}
-                  content={selectedVersion.translation ?? "译文未完成"}
-                  nofollowExternalLinks
-                  enableMermaid={false}
-                />
-              </section>
-            ) : null}
-          </div>
-        </BottomSheet>
       ) : null}
     </section>
   );

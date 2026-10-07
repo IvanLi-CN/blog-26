@@ -165,21 +165,11 @@ export function createClippingWebDemoModel(
   let chat = structuredClone(initialChat);
   const snapshot = () => structuredClone(chat);
   const permitted = () => {
-    if (state.persona !== "admin") throw new Error("模拟访客没有对话或版本操作权限。");
+    if (state.persona !== "admin") throw new Error("模拟访客没有对话或重新处理权限。");
   };
   const publish = () => {
     if (state.persona === "admin") for (const listener of listeners) listener(snapshot());
   };
-  const version = (id: string) => ({
-    id,
-    targetUrl,
-    createdAt: fixtureTime - (id === previousVersion ? 86_400_000 : 0),
-    status: "completed",
-    summaryState: "completed",
-    translationState: "completed",
-    warning: null,
-    error: null,
-  });
   const transport: ClippingTransport = {
     async request<T>(operation: string, body?: unknown): Promise<T> {
       if (state.network === "offline")
@@ -198,7 +188,7 @@ export function createClippingWebDemoModel(
           } else article.reading.translatedSegments = 2;
         }
         result = { ...article, canDiscuss: state.persona === "admin" && Boolean(article.source) };
-      } else if (operation === "chat" || operation.startsWith("chat?")) {
+      } else if (operation === "chat") {
         if (!article.source) throw new Error("模拟文章尚未抓取，暂时不能讨论。");
         if (body !== undefined && typeof input.text === "string") {
           const requestId = String(input.requestId ?? `demo-request-${++sequence}`);
@@ -221,28 +211,10 @@ export function createClippingWebDemoModel(
           }
         }
         result = snapshot();
-      } else if (operation === "history") {
-        result = {
-          versions: [version(previousVersion), version(currentVersion)],
-          currentVersionId: article.reading.versionId,
-          previousConversations: [],
-        };
-      } else if (operation.startsWith("history?")) {
-        const id = new URLSearchParams(operation.split("?")[1]).get("versionId");
-        if (id !== currentVersion && id !== previousVersion) throw new Error("模拟版本不存在。");
-        result = { version: version(id), source, summary, translation };
       } else if (operation === "reprocess") {
         article = getClippingWebDemoArticle({ ...state, scene: "clipping-processing" });
         processingStep = 1;
         onMutation("模拟重新处理", "只更新内存进度，未抓取网页或调用模型。");
-        result = { ok: true };
-      } else if (operation === "restore") {
-        if (input.versionId !== currentVersion && input.versionId !== previousVersion)
-          throw new Error("模拟版本不存在。");
-        article = getClippingWebDemoArticle({ ...state, scene: "clipping-ready" });
-        article.reading.versionId = String(input.versionId);
-        processingStep = 0;
-        onMutation("模拟恢复版本", "恢复同一来源的阅读材料，当前模拟对话保留。");
         result = { ok: true };
       } else throw new Error(`不支持的模拟操作：${operation}`);
       return structuredClone(result) as T;

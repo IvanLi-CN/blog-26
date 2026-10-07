@@ -1,0 +1,272 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "ea9fcea19ab9546a9c1b4456d54500866f567540",
+  "covered_files": {
+    "CONTEXT.md": "5739c3b11ae86cb4ff731cb56e6d92e825f171bd",
+    "README.md": "3f4b9738e8d687f03ff2ff0da26dbf4531d6898d",
+    "apps/admin/src/components/preview-detail.tsx": "8acd0a4251c283fc429f970fd82ad4bd634325ff",
+    "apps/admin/src/pages/preview.tsx": "2430b1ffc0710c34a0256d08d700e93175811403",
+    "apps/admin/src/styles.css": "ddc01fe9df2ed3f4b92ab8c02e37ba132a5333a7",
+    "astro.config.mjs": "ce3d65928367c4b7559ba1c5e0d0ac706d4be252",
+    "bun.lock": "45265ef3a329a3d7f95662797e49214235bd8c4e",
+    "docs/adr/0012-memo-clipping-content-boundaries.md": "ffcdcd1cf9079461961519b1fd3c2ef70283a913",
+    "docs/specs/README.md": "e3711242be7130339e46fa911b6c9f355d062ba2",
+    "docs/specs/memo-clipping/HISTORY.md": "1d2b5b002afd5ede85cc84ac87d8c6d9811afea2",
+    "docs/specs/memo-clipping/IMPLEMENTATION.md": "03a962384d89b7a0e84f4217f7fce5123cced16b",
+    "docs/specs/memo-clipping/SPEC.md": "2f0ad35e9d035c84740300e76cb71341d6cf629b",
+    "docs/specs/memo-clipping/assets/detail-dark-1440.png": "7c8842afbdc424ec726016c2cb0243794a184a30",
+    "docs/specs/memo-clipping/assets/detail-light-393.png": "0253e14b8d3690a397ad917d4583c28c804af4f5",
+    "docs/specs/memo-clipping/assets/list-dark-1440.png": "df897b19aadf30c5cf113c71d59c317e170b6670",
+    "drizzle/0011_memo_clipping.sql": "4b216cca1e2c7833960b0e399e922849339ea14c",
+    "drizzle/meta/_journal.json": "6b421d2596ebc3a857abe2e30da28780635c5d97",
+    "package.json": "c3851a47accf92ead2057a057759ef3e58be5bcb",
+    "scripts/build-web-demo.ts": "8ea042e06b67e5873443d144688e8057d84f38fd",
+    "scripts/clipping-empirical.ts": "da8fddcb659d9658f72e2ab0914abf4c0873c821",
+    "scripts/preview-web-demo.ts": "e75ff06d3dfb8ba7134a67946330d28d3d964a73",
+    "scripts/start-console.ts": "a21424aeec65e25373ccf4056cf7f64142a1e89d",
+    "scripts/start-gateway.ts": "769637de516d2f1978b7a24c00286c206b24f9f0",
+    "scripts/start-web-demo-site.ts": "75c311d0e5f2014cb116a472604473f73a2ac74a",
+    "site/components/ClippingWebDemo.tsx": "353900f5fd2a0f6e91629ed83f72ca4a42bd9a18",
+    "site/components/MemoCard.tsx": "c82624114e5e6321feab2472b45126c1e0b3d3f2",
+    "site/components/MemoDetailHeading.astro": "46ae2a197d00b56f394c119390022cab2cf13db6",
+    "site/components/MemoTimeline.tsx": "91d2e3b8ecc8cd94777df7d988e1e0354b25e92f",
+    "site/components/PublicMemoAuthoring.tsx": "1aa523ed26c8550bad3ba80f2d142b2aa5cc6cb7",
+    "site/components/SearchPageIsland.tsx": "033445f7e4b9c7e14273cf9ae24abb64f9f9bc58",
+    "site/components/TimelineCard.astro": "660bbb5c90d406585b59a7ab2c0b292aea47a78d",
+    "site/lib/feeds.ts": "5ca3af8739e47fbaeb7dfa9a3cf9f9b37be8a415",
+    "site/lib/memo-list-web-demo.ts": "ed6591bebc2b7052ebec2a1488f8a6c3f48b1c90",
+    "site/lib/public-site.ts": "bc170ac41c8fd28edbeaeff9646370bcafff1b74",
+    "site/pages/memos/[slug].astro": "e2a6dcdecf2cc55ad795db0e3de215f912353b30",
+    "src/components/WebDemoInspector.css": "4feda4892cb9b7030cb2d617a9cb0bd40aed1236",
+    "src/components/WebDemoInspector.tsx": "98bcf571890130d95b77178c34685eb41998608c",
+    "src/components/common/MarkdownRenderer.tsx": "5922032e53abab28d70d02926e80b584a26099a6",
+    "src/components/common/markdown/types.ts": "2b18b5db79fd982a696f101e3b620d6035c24c02",
+    "src/components/memos/ClippingDetail.tsx": "6f9e9c3e92c5169016f707ae670315bd38fdf58e",
+    "src/components/memos/MemoTypeBadge.tsx": "fe36401e4351c285300c2a0362a3fd1e76479802",
+    "src/components/memos/clipping-admin.css": "349c60d5c1590b5c5a04a65e4d2b43276458f7c3",
+    "src/components/search/PublicSearchPage.stories.tsx": "b6fa24b17c416dac8fbbc5340b9e36abe9e41786",
+    "src/components/search/PublicSearchPage.tsx": "7970158a307e37a2133b8e4218cb809b3b95acd3",
+    "src/components/search/SearchResultsList.test.tsx": "0df0a92eafe5d4f57cfa08fbf7742ccb7a0485c1",
+    "src/components/search/SearchResultsList.tsx": "e177d68d10d7ec342c49170296102937b7283d9e",
+    "src/components/search/search-model.ts": "976ef8f1de9055b997ad7a81ddc88d28a340eb3f",
+    "src/components/ui/bottom-sheet.tsx": "434f3c2ceacc57a8fa3ae3d054f2208c8e67fb46",
+    "src/lib/__tests__/memo-clipping.test.ts": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
+    "src/lib/admin-api-client.ts": "0df374cf1d05ee2cea7430a440e5e22290902fff",
+    "src/lib/ai/search-fallback.test.ts": "9af765673e9f1fb390f965f06b6851e8e3f0f336",
+    "src/lib/ai/search.ts": "4419b996ecb01edbb89b558db4d391306e2d9756",
+    "src/lib/clipping-feed.ts": "7524d8715ce53802aa6742061e50d90feabb9ee4",
+    "src/lib/clipping-web-demo.ts": "a15b87855de24ce38df08bf37f281738e44d3032",
+    "src/lib/content-sources/manager.ts": "e45efefccfe05e190037ed8c3d3c8bb57a8759a9",
+    "src/lib/content-sources/utils.ts": "788229e85ebe789d3a713a0bbe0743ce8fd5a59e",
+    "src/lib/memo-clipping.ts": "cd69e7f4252eb9201eb9ccba3ceaf05eb8ad395f",
+    "src/lib/memo-presentation.ts": "d5c494fcaabbcc5563d583a4c0dafea531137ffb",
+    "src/lib/schema.ts": "b65cc931f8ac2807b210c5d24f8e629466b4f4e4",
+    "src/lib/search/content-search.ts": "9fbfa24f31993e535a165752905fce452c0d1ec1",
+    "src/lib/snapshot-tags.ts": "984a59a4758a59183de68e3bb18fb43daa258593",
+    "src/lib/web-demo-runtime.ts": "af02d57b016282f4258d412a837182e7ef3537b0",
+    "src/public-site/snapshot.ts": "8973e3bcc43abc6e7e9267423afa0b1b58791340",
+    "src/server/clipping/agent-runtime.test.ts": "b9c6feeee3f66cde97853e583d522137dbed4c45",
+    "src/server/clipping/agent-runtime.ts": "c78d797f4ec2ba2557c4e64bf97721a62b8cbe73",
+    "src/server/clipping/api.test.ts": "416c07b5a244bc93ff0301d22453da3a458f2f8c",
+    "src/server/clipping/api.ts": "933679cd59299f17120d948f7106983d3f2e5570",
+    "src/server/clipping/article-segments.test.ts": "318ca39bbf9f9da0cdd9820e2ea13ba92ecbb1ca",
+    "src/server/clipping/article-segments.ts": "dc1ff3c55326de419f920a40279f53f1c5d4c7f3",
+    "src/server/clipping/extract.test.ts": "c930c19115874115787be31c07dbaa874ec54f95",
+    "src/server/clipping/extract.ts": "bfd8dbb952167d5c0333015268a5f1c9e47dc524",
+    "src/server/clipping/pi-interruption.fixture.ts": "003e264deacd47bf54abf4e239afa8c7026044d6",
+    "src/server/clipping/pi-sqlite.test.ts": "7511e5a2a6fab61ebbeb4d4f3d170405c2916ace",
+    "src/server/clipping/pi-sqlite.ts": "92a1ca81ae1c6b3cbc2ea8f0c14e73776ed4dd76",
+    "src/server/clipping/projection.ts": "6148209c12785867d58fc81cc68f6b846b7d5cb9",
+    "src/server/clipping/runtime.test.ts": "29418af2c98e33572d8e3cef2caa7f742424611d",
+    "src/server/clipping/runtime.ts": "6855a0184d8cf68e2cd4f7e7f54d2b20540b416a",
+    "src/server/clipping/service-interruption.fixture.ts": "60ab2a7561a566f2471accee16247a054dab7416",
+    "src/server/clipping/service-recovery.test.ts": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
+    "src/server/clipping/service.test.ts": "f63650649eb990f86baa14925e60be132063de7a",
+    "src/server/clipping/service.ts": "8f190c4d8cfdd583c6244f2f4a3b07f3b3774d91",
+    "src/server/clipping/store.test.ts": "70391eabcd842bda84a647d74082075a7ff32420",
+    "src/server/clipping/store.ts": "47336b832f997717b36d8024ef6aa551c59fcefe",
+    "src/server/clipping/turndown-gfm.d.ts": "b42f4bb08636ac5e3ee6fe4d33370816878a7b06",
+    "src/server/mcp-auth-context.ts": "7729c8ce062cd5cdd034ba835b45857d6a56fcbf",
+    "src/server/mcp-http.test.ts": "2b71d09f04e21817231be4723822839ba940f655",
+    "src/server/mcp-http.ts": "435ba24ae8ef62e958b27a3cb6390b247a65fa37",
+    "src/server/mcp.ts": "eacd3be220a278366c6af9ed6d73895eec6f9884",
+    "src/server/public-api/router.ts": "a509e9a1f7e662a7f15783acb9d455059303a677",
+    "src/server/routers/memos.ts": "4557c70f5776817a0974a627db640d7a981464d7",
+    "src/server/routers/tags.ts": "a375a6e04387c7ff8c8edfb00f67f36dea909ac0",
+    "src/server/services/tag-content.ts": "c55a89dae44ca99d2bfccc7b91eb79a910490edd",
+    "tests/e2e/clipping-detail.ts": "1a16934b457fca6a09aff6484760cd802f983750",
+    "tests/e2e/clipping-web-demo.ts": "6c4275d4fcf2b06fb091e0ca911b88077796f6f0",
+    "tests/lib/clipping-web-demo.test.ts": "e5b6d938f65df12897ac82b92e76775b53960921"
+  },
+  "change": {
+    "description": "Add memo clipping capture, summary, translation, current-target private discussion and native Web Demo coverage; user-facing history and manual restore are excluded.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "Additive memo clipping recognition, optional reading metadata and private creator/admin discussion APIs preserve ordinary Memo behavior. Migration 0011 adds rebuildable indices; authored Markdown is preserved and managed material/Pi storage is isolated. No existing endpoint or baseline durable state format is removed.",
+      "assessed_at": "2026-10-07T07:59:50.657946Z",
+      "evidence": [
+        {
+          "path": "src/server/clipping/api.test.ts",
+          "blob": "416c07b5a244bc93ff0301d22453da3a458f2f8c",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/lib/__tests__/memo-clipping.test.ts",
+          "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/server/clipping/store.test.ts",
+          "blob": "70391eabcd842bda84a647d74082075a7ff32420",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/server/clipping/service.test.ts",
+          "blob": "f63650649eb990f86baa14925e60be132063de7a",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/server/clipping/service-recovery.test.ts",
+          "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/server/clipping/pi-sqlite.test.ts",
+          "blob": "7511e5a2a6fab61ebbeb4d4f3d170405c2916ace",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "Additive memo clipping recognition, optional reading metadata and private creator/admin discussion APIs preserve ordinary Memo behavior. Migration 0011 adds rebuildable indices; authored Markdown is preserved and managed material/Pi storage is isolated. No existing endpoint or baseline durable state format is removed.",
+      "assessed_at": "2026-10-07T07:59:50.657946Z",
+      "evidence": [
+        {
+          "path": "src/server/clipping/api.test.ts",
+          "blob": "416c07b5a244bc93ff0301d22453da3a458f2f8c",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/lib/__tests__/memo-clipping.test.ts",
+          "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/server/clipping/store.test.ts",
+          "blob": "70391eabcd842bda84a647d74082075a7ff32420",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/server/clipping/service.test.ts",
+          "blob": "f63650649eb990f86baa14925e60be132063de7a",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/server/clipping/service-recovery.test.ts",
+          "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/server/clipping/pi-sqlite.test.ts",
+          "blob": "7511e5a2a6fab61ebbeb4d4f3d170405c2916ace",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        }
+      ],
+      "scope_drift": {
+        "detected": true,
+        "description": "Owner removed history/manual restore and confirmed refined clipping cards/composer; baseline sync preserves native manual-release version metadata."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "Additive memo clipping recognition, optional reading metadata and private creator/admin discussion APIs preserve ordinary Memo behavior. Migration 0011 adds rebuildable indices; authored Markdown is preserved and managed material/Pi storage is isolated. No existing endpoint or baseline durable state format is removed.",
+      "assessed_at": "2026-10-07T07:59:50.657946Z",
+      "evidence": [
+        {
+          "path": "src/server/clipping/api.test.ts",
+          "blob": "416c07b5a244bc93ff0301d22453da3a458f2f8c",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/lib/__tests__/memo-clipping.test.ts",
+          "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/server/clipping/store.test.ts",
+          "blob": "70391eabcd842bda84a647d74082075a7ff32420",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/server/clipping/service.test.ts",
+          "blob": "f63650649eb990f86baa14925e60be132063de7a",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/server/clipping/service-recovery.test.ts",
+          "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/server/clipping/pi-sqlite.test.ts",
+          "blob": "7511e5a2a6fab61ebbeb4d4f3d170405c2916ace",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": ["2.7.0"],
+      "evidence": [
+        {
+          "path": "src/server/clipping/api.test.ts",
+          "blob": "416c07b5a244bc93ff0301d22453da3a458f2f8c",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/lib/__tests__/memo-clipping.test.ts",
+          "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "minor",
+      "applicable": true,
+      "state_description": "Existing authored content and application rows remain readable; clipping adds private managed processing checkpoints, rebuildable SQLite indices and independent Pi runtime storage.",
+      "readable_by_prior_versions": ["2.7.0"],
+      "upgrade_from_versions": ["2.7.0"],
+      "evidence": [
+        {
+          "path": "src/server/clipping/store.test.ts",
+          "blob": "70391eabcd842bda84a647d74082075a7ff32420",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/server/clipping/service.test.ts",
+          "blob": "f63650649eb990f86baa14925e60be132063de7a",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/server/clipping/service-recovery.test.ts",
+          "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        },
+        {
+          "path": "src/server/clipping/pi-sqlite.test.ts",
+          "blob": "7511e5a2a6fab61ebbeb4d4f3d170405c2916ace",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
+        }
+      ]
+    }
+  }
+}

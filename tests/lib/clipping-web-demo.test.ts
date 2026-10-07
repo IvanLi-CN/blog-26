@@ -89,7 +89,7 @@ describe("clipping Web Demo on the official route", () => {
     expect((await model.transport.request<ClippingChat>("chat")).messages).toHaveLength(2);
   });
 
-  it("deduplicates messages, publishes snapshots, and restores materials without losing the conversation", async () => {
+  it("deduplicates messages and publishes current conversation snapshots", async () => {
     const mutations: string[] = [];
     const snapshots: ClippingChat[] = [];
     const model = createClippingWebDemoModel(admin, (label) => mutations.push(label));
@@ -105,10 +105,8 @@ describe("clipping Web Demo on the official route", () => {
     expect(chat.messages.at(-1)?.text).toContain("原文段落 1");
     expect(mutations).toHaveLength(1);
     expect(snapshots).toHaveLength(2);
-    const history = await model.transport.request<{ versions: { id: string }[] }>("history");
-    await model.transport.request("restore", { versionId: history.versions[0]?.id });
-    expect((await model.transport.request<ClippingChat>("chat")).messages).toEqual(chat.messages);
-    await expect(model.transport.request("history?versionId=unknown")).rejects.toThrow("不存在");
+    await expect(model.transport.request("history")).rejects.toThrow("不支持");
+    await expect(model.transport.request("restore", {})).rejects.toThrow("不支持");
     unsubscribe();
     model.reset(admin);
     expect((await model.transport.request<ClippingChat>("chat")).messages).toHaveLength(2);

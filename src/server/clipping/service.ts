@@ -590,36 +590,6 @@ export class ClippingService {
     return { conversationId };
   }
 
-  async restore(memoId: string, versionId: string, replaceTarget: boolean) {
-    await this.reconcile(memoId);
-    const id = this.known.get(memoId);
-    const manifest = id ? await this.store.manifest(id) : null;
-    const version = manifest?.versions.find((entry) => entry.id === versionId);
-    if (!manifest || !version?.sourceHash || version.summaryState !== "completed")
-      throw new Error("此版本没有可恢复的成套阅读材料。");
-    if (version.targetUrl !== manifest.targetUrl && !replaceTarget)
-      throw new Error("恢复不同来源需要明确替换当前目标。");
-    // Target replacement is performed by the authenticated authoring boundary before this call.
-    const authored = await readAuthoredMemo(memoId);
-    if (recognizeMemoClipping(authored.body, authored.frontmatter).targetUrl !== version.targetUrl)
-      throw new Error("请先将作者原稿的剪藏目标替换为该版本的地址。");
-    await this.runtime.exclusive(async () => {
-      const current = await this.store.manifest(manifest.id);
-      if (!current || current.revision !== manifest.revision)
-        throw new Error("剪藏状态已变化，请重试恢复。");
-      this.running.get(id ?? "")?.controller.abort();
-      current.revision++;
-      current.currentVersionId = version.id;
-      current.activeVersionId = version.id;
-      await this.persist(current);
-    });
-    const interrupted = manifest.versions.find((entry) => entry.id === manifest.activeVersionId);
-    if (interrupted?.jobConversationId && ["queued", "processing"].includes(interrupted.status))
-      await this.runtime.abort(interrupted.jobConversationId).catch(() => {
-        /* Revision fencing already prevents interrupted output from being published. */
-      });
-  }
-
   async idle() {
     while (this.running.size)
       await Promise.allSettled([...this.running.values()].map(({ done }) => done));
