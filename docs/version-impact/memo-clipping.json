@@ -152,7 +152,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "Additive memo clipping recognition, optional reading metadata and private creator/admin discussion APIs preserve ordinary Memo behavior. Migration 0011 adds rebuildable indices; authored Markdown is preserved and managed material/Pi storage is isolated. No existing endpoint or baseline durable state format is removed.",
-      "assessed_at": "2026-10-07T21:18:42Z",
+      "assessed_at": "2026-10-07T21:31:39Z",
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
@@ -193,7 +193,7 @@
     "verified": {
       "impact": "minor",
       "reasoning": "Additive memo clipping recognition, optional reading metadata and private creator/admin discussion APIs preserve ordinary Memo behavior. Migration 0011 adds rebuildable indices; authored Markdown is preserved and managed material/Pi storage is isolated. No existing endpoint or baseline durable state format is removed.",
-      "assessed_at": "2026-10-07T21:18:42Z",
+      "assessed_at": "2026-10-07T21:31:39Z",
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
