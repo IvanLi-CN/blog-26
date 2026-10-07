@@ -5,6 +5,7 @@ import "@/styles/globals.css";
 import "@/styles/nature-restored.css";
 import type { SearchSuggestionItem } from "@/lib/ai/search-suggestions";
 import PublicSearchPage from "./PublicSearchPage";
+import { groupedSearchFixture } from "./search-fixture";
 import type { SearchFilter, SearchResultItem } from "./search-model";
 
 const results: SearchResultItem[] = [
@@ -108,6 +109,21 @@ const searchNarrowMobileViewport = {
   },
 } as const;
 
+const searchDesktopViewport = {
+  parameters: {
+    viewport: {
+      options: {
+        searchDesktop: {
+          name: "Search desktop 1280 × 900",
+          styles: { width: "1280px", height: "900px" },
+          type: "desktop",
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: "searchDesktop", isRotated: false } },
+} as const;
+
 function SearchStory({
   initialQuery = "Arch",
   searchedQuery = initialQuery,
@@ -169,7 +185,10 @@ function SearchStory({
           setActiveQuery(term);
           setFilter("all");
         }}
-        onSubmit={(event) => event.preventDefault()}
+        onSubmit={(event) => {
+          event.preventDefault();
+          setActiveQuery(query.trim());
+        }}
       />
     </div>
   );
@@ -224,21 +243,34 @@ const playbookResults: SearchResultItem[] = [
   },
 ];
 export const PlaybookResults: Story = {
-  name: "执念 / 来源分组与类型筛选",
+  name: "跨来源统一结果与类型筛选",
   render: () => (
-    <SearchStory initialQuery="发布" items={[...results.slice(0, 2), ...playbookResults]} />
+    <SearchStory
+      initialQuery="发布"
+      items={[results[0], playbookResults[0], results[1], ...playbookResults.slice(1)]}
+    />
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("region", { name: "文章与闪念" })).toBeInTheDocument();
-    await expect(canvas.getByRole("region", { name: "执念" })).toBeInTheDocument();
+    const resultRegion = canvas.getByRole("region", { name: "搜索结果" });
+    const resultCanvas = within(resultRegion);
+    await expect(resultCanvas.queryAllByRole("list")).toHaveLength(1);
+    await expect(resultCanvas.queryAllByRole("region")).toHaveLength(0);
+    await expect(
+      resultCanvas.queryByRole("heading", { name: "文章与闪念" })
+    ).not.toBeInTheDocument();
+    await expect(resultCanvas.queryByRole("heading", { name: "执念" })).not.toBeInTheDocument();
+    const links = resultCanvas.getAllByRole("link");
+    await expect(links[0]).toHaveAttribute("href", "/posts/arch-linux-on-m1-notes");
+    await expect(links[1]).toHaveAttribute("href", playbookResults[0].href);
+    await expect(links[2]).toHaveAttribute("href", "/memos/pacman-cache-cleanup");
     await userEvent.click(canvas.getByRole("button", { name: /Policy Skill/ }));
     await expect(canvas.getByRole("link", { name: /Safe Release Policy/ })).toHaveAttribute(
       "href",
       "/playbook/policies/safe-release/"
     );
     await expect(canvas.queryByRole("link", { name: /Sample Project/ })).not.toBeInTheDocument();
-    await expect(canvas.queryByRole("region", { name: "文章与闪念" })).not.toBeInTheDocument();
+    await expect(resultCanvas.getAllByRole("link")).toHaveLength(1);
   },
 };
 export const PlaybookStaleEdition: Story = {
@@ -486,7 +518,9 @@ export const NarrowMobileRecommendations: Story = {
     />
   ),
   play: async ({ canvasElement }) => {
-    const buttons = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button"));
+    const buttons = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).filter(
+      (button) => button.getBoundingClientRect().width > 0
+    );
 
     expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth);
     for (const button of buttons) {
@@ -661,4 +695,132 @@ export const DarkResults: Story = {
     backgrounds: { default: "public dark" },
   },
   render: () => <SearchStory theme="dark" />,
+};
+
+const groupedItems = [
+  groupedSearchFixture(),
+  {
+    slug: "version-notes",
+    type: "post" as const,
+    title: "版本发布记录",
+    snippet: "最新版本，并更新 package.json 中的版本。",
+  },
+];
+const verifyGrouped: Story["play"] = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  await expect(
+    canvas.getAllByRole("heading", { name: "Manual version release delivery" })
+  ).toHaveLength(1);
+  await expect(canvasElement.querySelectorAll("[data-search-section]")).toHaveLength(3);
+  await document.fonts.ready;
+  for (const element of canvasElement.querySelectorAll<HTMLElement>(
+    "[data-search-result-card], [data-search-section], button[aria-expanded]"
+  )) {
+    await expect(element.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+  }
+  const mainLink = canvasElement.querySelector<HTMLElement>(
+    '[data-search-result-card][href^="/playbook/"]'
+  );
+  if (window.innerWidth >= 1024) {
+    const queryPanel = canvasElement.querySelector<HTMLElement>("[data-search-query-panel]");
+    const resultsRegion = canvasElement.querySelector<HTMLElement>("[data-search-results-region]");
+    const panelBounds = queryPanel?.getBoundingClientRect();
+    const resultsBounds = resultsRegion?.getBoundingClientRect();
+    const layoutBounds = queryPanel?.parentElement?.parentElement?.getBoundingClientRect();
+    await expect(panelBounds).toBeDefined();
+    await expect(resultsBounds).toBeDefined();
+    await expect(resultsBounds?.left ?? 0).toBeGreaterThan(panelBounds?.right ?? 0);
+    await expect(
+      Math.abs((panelBounds?.left ?? 0) - (layoutBounds?.left ?? 0))
+    ).toBeLessThanOrEqual(1);
+    await expect(
+      Math.abs((resultsBounds?.right ?? 0) - (layoutBounds?.right ?? 0))
+    ).toBeLessThanOrEqual(1);
+    await expect(Math.abs((resultsBounds?.top ?? 0) - (panelBounds?.top ?? 0))).toBeLessThanOrEqual(
+      1
+    );
+    const operations = within(canvas.getByRole("region", { name: "搜索操作" }));
+    await expect(operations.getByRole("textbox", { name: "搜索关键词" })).toBeVisible();
+    await expect(operations.getByRole("group", { name: "结果类型筛选" })).toBeVisible();
+    await expect(operations.getByRole("region", { name: "建议搜索词" })).toBeVisible();
+  } else if (window.innerWidth >= 640) {
+    const queryPanel = canvasElement.querySelector<HTMLElement>("[data-search-query-panel]");
+    const panelBounds = queryPanel?.getBoundingClientRect();
+    const resultBounds = mainLink?.parentElement?.getBoundingClientRect();
+    await expect(panelBounds).toBeDefined();
+    await expect(resultBounds).toBeDefined();
+    await expect(
+      Math.abs((resultBounds?.left ?? 0) - (panelBounds?.left ?? 0))
+    ).toBeLessThanOrEqual(1);
+    await expect(
+      Math.abs((resultBounds?.right ?? 0) - (panelBounds?.right ?? 0))
+    ).toBeLessThanOrEqual(1);
+  }
+  mainLink?.focus();
+  await userEvent.tab();
+  await expect(document.activeElement).toBe(canvasElement.querySelector("[data-search-section]"));
+  for (let index = 0; index < 3; index++) await userEvent.tab();
+  await expect(document.activeElement).toBe(
+    canvas.getByRole("button", { name: "展开更多匹配（2）" })
+  );
+  await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+  await userEvent.click(canvas.getByRole("button", { name: "展开更多匹配（2）" }));
+  await expect(canvasElement.querySelectorAll("[data-search-section]")).toHaveLength(5);
+  await userEvent.click(canvas.getByRole("button", { name: /^文章/ }));
+  await expect(canvas.queryByRole("button", { name: "收起更多匹配" })).not.toBeInTheDocument();
+  await userEvent.click(canvas.getByRole("button", { name: /^全部/ }));
+  await expect(canvas.getByRole("button", { name: "收起更多匹配" })).toBeInTheDocument();
+  await userEvent.clear(canvas.getByRole("textbox"));
+  await userEvent.type(canvas.getByRole("textbox"), "发布");
+  await userEvent.click(canvas.getByRole("button", { name: "搜索" }));
+  await expect(canvas.getByRole("button", { name: "展开更多匹配（2）" })).toHaveAttribute(
+    "aria-expanded",
+    "false"
+  );
+  await expect(canvasElement.querySelector("a a, a button")).toBeNull();
+  if (window.innerWidth >= 1024) {
+    const suggestions = within(canvas.getByRole("region", { name: "建议搜索词" }));
+    await userEvent.click(suggestions.getByRole("button", { name: "SQLite" }));
+    await expect(canvas.getByRole("textbox", { name: "搜索关键词" })).toHaveValue("SQLite");
+    await expect(canvas.getByRole("button", { name: "展开更多匹配（2）" })).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    );
+  }
+};
+export const GroupedContent: Story = {
+  ...searchDesktopViewport,
+  name: "按内容聚合",
+  render: () => <SearchStory initialQuery="版本" items={groupedItems} />,
+  play: verifyGrouped,
+};
+export const DarkGroupedContent: Story = {
+  ...searchDesktopViewport,
+  name: "深色内容聚合",
+  render: () => <SearchStory initialQuery="版本" items={groupedItems} theme="dark" />,
+  play: verifyGrouped,
+};
+export const MobileGroupedContent: Story = {
+  ...searchMobileViewport,
+  name: "移动内容聚合",
+  render: () => <SearchStory initialQuery="版本" items={groupedItems} />,
+  play: verifyGrouped,
+};
+export const MobileDarkGroupedContent: Story = {
+  ...searchMobileViewport,
+  name: "移动深色内容聚合",
+  render: () => <SearchStory initialQuery="版本" items={groupedItems} theme="dark" />,
+  play: verifyGrouped,
+};
+export const NarrowGroupedContent: Story = {
+  ...searchNarrowMobileViewport,
+  name: "窄屏内容聚合",
+  render: () => <SearchStory initialQuery="版本" items={groupedItems} />,
+  play: verifyGrouped,
+};
+export const NarrowDarkGroupedContent: Story = {
+  ...searchNarrowMobileViewport,
+  name: "窄屏深色内容聚合",
+  render: () => <SearchStory initialQuery="版本" items={groupedItems} theme="dark" />,
+  play: verifyGrouped,
 };

@@ -284,7 +284,8 @@ test.describe("mobile public reading surfaces", () => {
           {
             selector: ".nature-mobile-reading-stream",
             row: ".nature-mobile-reading-row",
-            content: ".search-result-card .min-w-0",
+            content:
+              "[data-search-result-content] h2, [data-search-result-content] [data-search-snippet]",
           },
         ],
         surfaces: [],
@@ -360,7 +361,7 @@ test.describe("mobile public reading surfaces", () => {
             await expect(row).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
 
             if (route.path === tagRoute || route.path.startsWith("/search/")) {
-              const typeChip = row.locator(".nature-chip").first();
+              const typeChip = row.locator(".nature-content-type-chip").first();
               const accessibleType = typeChip.locator(".sr-only");
               await expect(typeChip.locator(".nature-content-type-icon")).toBeVisible();
               await expect(accessibleType).toHaveCSS("position", "absolute");
@@ -581,8 +582,10 @@ test.describe("mobile public reading surfaces", () => {
     await page.setViewportSize({ width: 393, height: 852 });
     await gotoWithTheme(page, "/search/?q=Hello", "light");
     const link = page.locator("a[data-search-result-card]").first();
-    const card = link.locator(".search-result-card");
-    const content = card.locator(".min-w-0");
+    const content = link
+      .locator("[data-search-result-content]")
+      .locator("h2, [data-search-snippet]")
+      .first();
     await expect(link).toBeVisible();
     await expectEdgeToEdge(link, page);
     const linkBox = await link.boundingBox();
@@ -597,7 +600,7 @@ test.describe("mobile public reading surfaces", () => {
     await page.mouse.down();
     await expect
       .poll(async () => {
-        const pressedBackground = await card.evaluate(
+        const pressedBackground = await link.evaluate(
           (element) => getComputedStyle(element).backgroundColor
         );
         return parseCssColor(pressedBackground).alpha;
@@ -607,7 +610,6 @@ test.describe("mobile public reading surfaces", () => {
 
     await gotoWithTheme(page, "/search/?q=Hello", "dark");
     const focusedLink = page.locator("a[data-search-result-card]").first();
-    const focusedCard = focusedLink.locator(".search-result-card");
     let focused = false;
     for (let index = 0; index < 80 && !focused; index += 1) {
       await page.keyboard.press("Tab");
@@ -615,8 +617,8 @@ test.describe("mobile public reading surfaces", () => {
     }
     expect(focused).toBe(true);
     expect(await focusedLink.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
-    await expect(focusedCard).toHaveCSS("outline-style", "solid");
-    await expect(focusedCard).toHaveCSS("outline-width", "2px");
+    await expect(focusedLink).toHaveCSS("outline-style", "solid");
+    await expect(focusedLink).toHaveCSS("outline-width", "2px");
     await expectEdgeToEdge(focusedLink, page);
 
     await gotoWithTheme(page, "/memos", "light");

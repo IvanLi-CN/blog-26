@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent, ReactNode, RefObject } from "react";
+import { type FormEvent, type ReactNode, type RefObject, useMemo, useState } from "react";
 import type { SearchSuggestionItem, SearchSuggestionStrategy } from "@/lib/ai/search-suggestions";
 import { cn } from "@/lib/utils";
 import SearchHydrationSafeIcon from "./SearchHydrationSafeIcon";
@@ -8,7 +8,9 @@ import SearchResultsList from "./SearchResultsList";
 import {
   countSearchResultsByType,
   filterSearchResults,
+  groupSearchResults,
   type SearchFilter,
+  type SearchResultGroup,
   type SearchResultItem,
   searchFilters,
 } from "./search-model";
@@ -16,7 +18,7 @@ import {
 export type PublicSearchPageProps = {
   query: string;
   searchedQuery?: string;
-  results: SearchResultItem[];
+  results: Array<SearchResultItem | SearchResultGroup>;
   isLoading?: boolean;
   error?: unknown;
   filter: SearchFilter;
@@ -185,11 +187,29 @@ function RecommendedSearchTerms({
   terms,
   isLoading,
   onSearch,
+  compact = false,
 }: {
   terms: Array<string | SearchSuggestionItem>;
   isLoading?: boolean;
   onSearch?: (query: string) => void;
+  compact?: boolean;
 }) {
+  if (compact) {
+    return isLoading ? (
+      <p className="text-sm leading-6 text-[color:var(--nature-text-soft)]">正在准备可重试的方向</p>
+    ) : (
+      <div className="flex flex-wrap gap-2">
+        {toSuggestionItems(terms).map((item) => (
+          <SearchTermButton
+            key={`${item.strategy}-${item.term}`}
+            onClick={() => onSearch?.(item.term)}
+          >
+            {item.term}
+          </SearchTermButton>
+        ))}
+      </div>
+    );
+  }
   if (isLoading) {
     return (
       <div className="w-full rounded-[var(--nature-radius-sm)] border border-[rgba(var(--nature-accent-rgb),0.16)] bg-[rgba(var(--nature-surface-rgb),0.68)] px-4 py-3">
@@ -283,22 +303,42 @@ export default function PublicSearchPage({
   const activeQuery = (searchedQuery ?? trimmedQuery).trim();
   const canSearch = trimmedQuery.length > 0;
   const errorMessage = formatError(error);
-  const counts = countSearchResultsByType(results);
-  const filteredResults = filterSearchResults(results, filter);
-  const hasResults = results.length > 0;
+  const groupedResults = useMemo(() => groupSearchResults(results), [results]);
+  const [expansion, setExpansion] = useState({ query: activeQuery, keys: new Set<string>() });
+  if (expansion.query !== activeQuery)
+    setExpansion({ query: activeQuery, keys: new Set<string>() });
+  const toggleContent = (key: string) =>
+    setExpansion((previous) => {
+      const keys = new Set(previous.query === activeQuery ? previous.keys : []);
+      if (keys.has(key)) keys.delete(key);
+      else keys.add(key);
+      return { query: activeQuery, keys };
+    });
+  const counts = countSearchResultsByType(groupedResults);
+  const filteredResults = filterSearchResults(groupedResults, filter);
+  const hasResults = groupedResults.length > 0;
   const runRecommendedSearch = onRecommendedSearch ?? onQueryChange;
   const hideNoResultsSummaryOnMobile = activeQuery.length > 0 && !isLoading && !hasResults;
 
   return (
-    <div className={cn("w-full", className)} aria-busy={isLoading || undefined}>
-      <section className="nature-container pb-2 pt-2 sm:py-6 lg:py-8">
+    <div
+      className={cn(
+        "public-search-layout w-full lg:mx-auto lg:grid lg:w-[var(--nature-content-width)] lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:gap-8 lg:py-8 xl:grid-cols-[22rem_minmax(0,1fr)]",
+        className
+      )}
+      aria-busy={isLoading || undefined}
+    >
+      <section
+        aria-label="搜索操作"
+        className="nature-container pb-2 pt-2 sm:py-6 lg:m-0 lg:w-full lg:min-w-0 lg:p-0"
+      >
         <div className="nature-surface overflow-hidden" data-search-query-panel>
-          <div className="grid gap-3 px-4 py-4 sm:gap-5 sm:px-7 sm:py-6 lg:grid-cols-[minmax(0,0.68fr)_minmax(26rem,1fr)] lg:items-center lg:gap-8 lg:px-8">
+          <div className="grid gap-3 px-4 py-4 sm:gap-5 sm:px-7 sm:py-6 lg:px-5 lg:py-5">
             <div className="min-w-0">
-              <h1 className="nature-title text-xl font-semibold leading-tight sm:text-3xl">
+              <h1 className="nature-title text-xl font-semibold leading-tight sm:text-3xl lg:text-2xl">
                 搜索内容
               </h1>
-              <p className="mt-2 hidden max-w-[58ch] text-sm leading-6 text-[color:var(--nature-text-soft)] sm:mt-3 sm:block sm:text-base sm:leading-7">
+              <p className="mt-2 hidden max-w-[58ch] text-sm leading-6 text-[color:var(--nature-text-soft)] sm:mt-3 sm:block sm:text-base sm:leading-7 lg:text-sm lg:leading-6">
                 输入技术名词、项目名、标签或片段，快速定位相关记录。
               </p>
             </div>
@@ -354,18 +394,18 @@ export default function PublicSearchPage({
                     type="submit"
                     disabled={!canSearch}
                     aria-label="搜索"
-                    className="nature-search-submit inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-45"
+                    className="nature-search-submit inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-full text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto sm:px-4 lg:w-11 lg:px-0"
                   >
                     <SearchHydrationSafeIcon name="tabler:arrow-right" className="h-4 w-4" />
-                    <span className="hidden sm:inline">搜索</span>
+                    <span className="hidden sm:inline lg:hidden">搜索</span>
                   </button>
                 )}
               </div>
             </form>
           </div>
 
-          <div className="border-t border-[color:var(--nature-line)] bg-[rgba(var(--nature-surface-rgb),0.52)] px-4 py-1.5 sm:px-7 sm:py-4 lg:px-8">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+          <div className="border-t border-[color:var(--nature-line)] bg-[rgba(var(--nature-surface-rgb),0.52)] px-4 py-1.5 sm:px-7 sm:py-4 lg:px-5 lg:py-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 lg:flex-col lg:items-stretch lg:gap-5">
               <div
                 className={cn(
                   "text-sm text-[color:var(--nature-text-soft)]",
@@ -377,15 +417,17 @@ export default function PublicSearchPage({
                     正在搜索「<span data-search-query-text>{activeQuery}</span>」
                   </>
                 ) : hasResults ? (
-                  `关键词「${activeQuery}」 · 找到 ${results.length} 条内容`
+                  `关键词「${activeQuery}」 · 找到 ${groupedResults.length} 条内容`
                 ) : activeQuery ? (
                   `还没有找到「${activeQuery}」`
                 ) : (
                   "等待输入关键词"
                 )}
               </div>
-              <fieldset className="flex flex-wrap items-center gap-2">
-                <legend className="sr-only">结果类型筛选</legend>
+              <fieldset className="flex flex-wrap items-center gap-2 lg:grid lg:grid-cols-2 lg:gap-1">
+                <legend className="sr-only lg:mb-3 lg:block lg:not-sr-only lg:text-sm lg:font-semibold">
+                  结果类型筛选
+                </legend>
                 {searchFilters.map((item) => (
                   <button
                     key={item.key}
@@ -393,10 +435,10 @@ export default function PublicSearchPage({
                     onClick={() => onFilterChange(item.key)}
                     disabled={isBootstrap}
                     className={cn(
-                      "inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-sm transition",
+                      "inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-sm transition lg:w-full lg:justify-between lg:rounded-lg lg:border-0",
                       filter === item.key
                         ? "border-[rgba(var(--nature-accent-rgb),0.42)] bg-[rgba(var(--nature-accent-rgb),0.14)] text-[color:var(--nature-accent-strong)]"
-                        : "border-[color:var(--nature-line)] bg-[rgba(var(--nature-surface-rgb),0.48)] text-[color:var(--nature-text-soft)] hover:border-[color:var(--nature-line-strong)] hover:text-[color:var(--nature-text)]"
+                        : "border-[color:var(--nature-line)] bg-[rgba(var(--nature-surface-rgb),0.48)] text-[color:var(--nature-text-soft)] hover:border-[color:var(--nature-line-strong)] hover:text-[color:var(--nature-text)] lg:bg-transparent"
                     )}
                     aria-pressed={filter === item.key}
                   >
@@ -407,10 +449,28 @@ export default function PublicSearchPage({
               </fieldset>
             </div>
           </div>
+          <section
+            aria-label="建议搜索词"
+            className="hidden border-t border-[color:var(--nature-line)] px-5 py-5 lg:block"
+          >
+            <h2 className="mb-3 text-sm font-semibold">建议搜索词</h2>
+            <RecommendedSearchTerms
+              compact
+              terms={
+                recommendedSearchTerms.length ? recommendedSearchTerms : ["Arch", "React", "SQLite"]
+              }
+              isLoading={isLoadingRecommendations}
+              onSearch={runRecommendedSearch}
+            />
+          </section>
         </div>
       </section>
 
-      <section className="nature-container pb-10 pt-1 sm:pb-14 sm:pt-4" data-search-results-region>
+      <section
+        aria-label="搜索结果"
+        className="nature-container pb-10 pt-1 sm:pb-14 sm:pt-4 lg:m-0 lg:w-full lg:min-w-0 lg:pt-0"
+        data-search-results-region
+      >
         {errorMessage && (
           <SearchPromptPanel
             role="alert"
@@ -495,39 +555,24 @@ export default function PublicSearchPage({
             description="没有命中当前关键词。下面是更可能找到内容的搜索方向，点一下即可重试。"
             watermark="0"
           >
-            <RecommendedSearchTerms
-              terms={recommendedSearchTerms}
-              isLoading={isLoadingRecommendations}
-              onSearch={runRecommendedSearch}
-            />
+            <div className="w-full lg:hidden">
+              <RecommendedSearchTerms
+                terms={recommendedSearchTerms}
+                isLoading={isLoadingRecommendations}
+                onSearch={runRecommendedSearch}
+              />
+            </div>
           </SearchPromptPanel>
         )}
 
         {!isLoading && filteredResults.length > 0 && (
-          <div className="grid gap-7">
-            {[
-              { key: "blog", title: "文章与闪念" },
-              { key: "playbook", title: "执念" },
-            ].map((group) => {
-              const items = filteredResults.filter(
-                (result) => (result.source === "playbook" ? "playbook" : "blog") === group.key
-              );
-              return (
-                items.length > 0 && (
-                  <section key={group.key} aria-label={group.title}>
-                    {results.some((result) => result.source === "playbook") && (
-                      <h2 className="mb-4 font-heading text-xl font-semibold">{group.title}</h2>
-                    )}
-                    <SearchResultsList
-                      results={items}
-                      query={activeQuery}
-                      resolveHref={resolveHref}
-                    />
-                  </section>
-                )
-              );
-            })}
-          </div>
+          <SearchResultsList
+            results={filteredResults}
+            expandedContentKeys={expansion.keys}
+            onToggleContent={toggleContent}
+            query={activeQuery}
+            resolveHref={resolveHref}
+          />
         )}
       </section>
     </div>

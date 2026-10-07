@@ -274,6 +274,25 @@ describe("AI search fallback boundaries", () => {
     ]);
   });
 
+  test("semantic limits count unique routes and preserve independent content types", async () => {
+    await seedPost({ id: "newer-duplicate", slug: "shared", publishDate: 300 });
+    await seedPost({ id: "older-duplicate", slug: "shared", publishDate: 200 });
+    await seedPost({ id: "independent", slug: "other", publishDate: 100 });
+    await seedPost({ id: "memo-shared", slug: "shared", type: "memo", publishDate: 50 });
+    process.env.EMBEDDING_MODEL_NAME = "test-embedding";
+    process.env.OPENAI_API_KEY = "search-test-key";
+    process.env.OPENAI_API_BASE_URL = "https://search.example.test";
+    globalThis.fetch = mock(async () =>
+      Response.json({ data: [{ embedding: [1, 0] }] })
+    ) as unknown as typeof fetch;
+    const result = await semantic({ q: "SQLite", topK: 3 });
+    expect(result.map((entry) => [entry.type, entry.slug])).toEqual([
+      ["post", "shared"],
+      ["post", "other"],
+      ["memo", "shared"],
+    ]);
+  });
+
   test("returns the semantic base when reranking fails", async () => {
     await seedPost();
     process.env.EMBEDDING_MODEL_NAME = "test-embedding";

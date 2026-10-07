@@ -85,6 +85,43 @@ describe("content search", () => {
     if (fs.existsSync(TEST_DB_PATH)) fs.rmSync(TEST_DB_PATH);
   });
 
+  test("content limits apply after duplicate routes, retaining types and tie order", async () => {
+    for (let n = 0; n < 250; n++)
+      await seedPost({
+        id: `duplicate-${n}`,
+        slug: "same",
+        title: "release 搜索",
+        body: "release 搜索",
+        publishDate: n,
+      });
+    await seedPost({
+      id: "other",
+      slug: "other",
+      title: "release 搜索",
+      body: "release 搜索",
+      publishDate: -1,
+    });
+    await seedPost({
+      id: "memo",
+      slug: "same",
+      type: "memo",
+      title: "release 搜索",
+      body: "release 搜索",
+      publishDate: -2,
+    });
+    await seedPost({ slug: "hidden", title: "release 搜索", public: false });
+    for (const q of ["release", "搜索"]) {
+      const result = await searchContent({ q, topK: 3 });
+      expect(result.map((item) => `${item.type}:${item.slug}`).sort()).toEqual([
+        "memo:same",
+        "post:other",
+        "post:same",
+      ]);
+      expect(result[0].slug).toBe("same");
+      expect(result).toHaveLength(3);
+    }
+  });
+
   test("keeps the FTS index synchronized across insert, update, type change, and delete", async () => {
     await seedPost({ id: "triggered-post", title: "Initial title" });
     expect(countIndexedRows("triggered-post")).toBe(1);
