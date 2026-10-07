@@ -297,7 +297,9 @@ export class GitHubLedgerStore implements LedgerStore {
     await this.read();
   }
 
-  async read(): Promise<{ sha: string; ledger: ReleaseLedger }> {
+  async read(
+    options: { allowLegacyHead?: boolean; allowLegacyAncestor?: boolean } = {}
+  ): Promise<{ sha: string; ledger: ReleaseLedger; legacySha?: string }> {
     const { contract } = this.github;
     const sha = this.github.reference(`heads/${contract.ledgerBranch}`);
     if (!sha)
@@ -306,12 +308,32 @@ export class GitHubLedgerStore implements LedgerStore {
       );
     let expected = sha;
     let rootFound = false;
+    const recoverySha = this.github
+      .commit(sha)
+      .message.match(/Ledger-Recovery:\s*([a-f0-9]{40})/)?.[1];
+    let legacySha: string | undefined;
     const commits = this.github.pages(`${this.github.root}/commits?sha=${sha}&per_page=100`);
     for (const raw of commits) {
       const commit = repositoryCommitSchema.parse(raw);
       if (commit.sha !== expected || commit.parents.length > 1)
         throw new Error("Ledger history is not a single-parent chain");
-      this.github.verifyBotCommit(commit.sha, raw);
+      const owner = contract.repository.split("/")[0];
+      const legacyRequested =
+        (options.allowLegacyHead && commit.sha === sha) ||
+        (options.allowLegacyAncestor && commit.sha !== sha && !legacySha) ||
+        (recoverySha !== undefined && commit.sha !== sha);
+      if (legacyRequested && (commit.author?.login === owner || recoverySha === commit.sha)) {
+        const bot = `${this.github.botSlug}[bot]`;
+        if (
+          commit.author?.login !== owner ||
+          commit.committer?.login !== "web-flow" ||
+          !commit.commit.verification.verified ||
+          commit.commit.verification.reason !== "valid" ||
+          !commit.commit.message.includes(`Signed-off-by: ${bot} <`)
+        )
+          throw new Error("Legacy ledger head is not a valid GitHub-signed recovery candidate");
+        legacySha = commit.sha;
+      } else this.github.verifyBotCommit(commit.sha, raw);
       if (!/Ledger-Digest: [a-f0-9]{64}/.test(commit.commit.message))
         throw new Error("Ledger commit lacks its state digest");
       const parent = commit.parents[0];
@@ -334,13 +356,19 @@ export class GitHubLedgerStore implements LedgerStore {
       expected = parent.sha;
     }
     if (!rootFound) throw new Error("Incomplete ledger ancestry");
+    if (recoverySha !== undefined && legacySha !== recoverySha)
+      throw new Error("Ledger recovery marker does not bind its legacy commit");
     const ledger = validateLedger(JSON.parse(this.github.file("ledger.json", sha)), contract);
     if (!this.github.commit(sha).message.includes(`Ledger-Digest: ${digest(ledger)}`))
       throw new Error("Ledger state digest does not match the signed head");
-    return { sha, ledger };
+    return { sha, ledger, legacySha };
   }
 
-  async compareAndSwap(expectedSha: string, ledger: ReleaseLedger): Promise<string> {
+  async compareAndSwap(
+    expectedSha: string,
+    ledger: ReleaseLedger,
+    recoverySha?: string
+  ): Promise<string> {
     validateLedger(ledger, this.github.contract);
     if (this.github.reference(`heads/${this.github.contract.ledgerBranch}`) !== expectedSha)
       throw new Error("Ledger CAS conflict; reread the original identity before retrying");
@@ -348,7 +376,9 @@ export class GitHubLedgerStore implements LedgerStore {
       this.github.contract.ledgerBranch,
       expectedSha,
       [{ path: "ledger.json", content: `${canonicalJson(ledger)}\n` }],
-      `chore(release): record product delivery state\n\nLedger-Digest: ${digest(ledger)}`
+      `chore(release): record product delivery state\n\nLedger-Digest: ${digest(ledger)}${
+        recoverySha ? `\nLedger-Recovery: ${shaSchema.parse(recoverySha)}` : ""
+      }`
     );
     if (this.github.reference(`heads/${this.github.contract.ledgerBranch}`) !== sha)
       throw new Error("Ledger update was not confirmed");

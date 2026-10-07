@@ -6,6 +6,10 @@ on:
         description: Optional forward-only X.Y.Z; leave empty for verified-impact allocation
         required: false
         type: string
+      repair_release_id:
+        description: Internal recovery only; abandon one failed merged release without artifacts
+        required: false
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -25,7 +29,12 @@ jobs:
       - name: Require main
         env:
           RELEASE_REF: ${{ github.ref }}
-        run: test "$RELEASE_REF" = refs/heads/main
+          REPAIR_RELEASE_ID: ${{ inputs.repair_release_id }}
+        # The isolated repair branch is allowed only for the signed ledger recovery path below.
+        run: >-
+          test "$RELEASE_REF" = refs/heads/main ||
+          (test "$RELEASE_REF" = refs/heads/th/release-ledger-repair &&
+          test -n "$REPAIR_RELEASE_ID")
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
@@ -34,7 +43,14 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
+      - name: Repair the failed release ledger with the Actions signing identity
+        if: ${{ inputs.repair_release_id != '' }}
+        run: bun scripts/product-release.ts repair-ledger
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ inputs.repair_release_id }}
       - name: Reserve version, prepare the signed VERSION-only PR and dispatch exact-head gates
+        if: ${{ inputs.repair_release_id == '' }}
         run: bun scripts/product-release.ts prepare
         env:
           GH_TOKEN: ${{ github.token }}
