@@ -67,7 +67,7 @@
     "docs/specs/release-failure-telegram-alerts/IMPLEMENTATION.md": "5b06386d180120b55a7740037459aa3e07eb7aec",
     "docs/specs/release-failure-telegram-alerts/SPEC.md": "439b85a711bed3ac7f18cc686ec6b312899fd713",
     "docs/specs/style-playbook-integration/HISTORY.md": "505fa5688d4f5ce976cd8d43b0a975be37f0d144",
-    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "d8b0338999e3ef8dc6bde7025639ba59c7fa6bb4",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "db1384740eb4a455f7d2f9b5fdacc6e56036bb87",
     "docs/specs/style-playbook-integration/SPEC.md": "cc8214b107707b39ec4ccf599adb6453b6b787ef",
     "docs/specs/style-playbook-integration/assets/search-children-expanded.png": "3187f95764fa508012c64b9088ea3a7472b8722a",
     "docs/specs/style-playbook-integration/assets/search-grouped-desktop-dark.png": "8476a52e3ee94ef0110c116daa620515d12c73dc",
@@ -208,7 +208,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "The unpublished interval retains the compatible read-only version metadata and Web Demo additions (minor). Search aggregation, stable content limits, v5 cache misses for obsolete entries, inline highlighting and responsive controls repair existing behavior (patch). The public search array API, visibility rules, SQLite schema and local content format remain compatible; no durable-state migration is introduced.",
-      "assessed_at": "2026-10-07T03:43:50.424033Z",
+      "assessed_at": "2026-10-07T03:48:07.336219Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -279,7 +279,7 @@
     "verified": {
       "impact": "minor",
       "reasoning": "The unpublished interval retains the compatible read-only version metadata and Web Demo additions (minor). Search aggregation, stable content limits, v5 cache misses for obsolete entries, inline highlighting and responsive controls repair existing behavior (patch). The public search array API, visibility rules, SQLite schema and local content format remain compatible; no durable-state migration is introduced.",
-      "assessed_at": "2026-10-07T03:43:50.424033Z",
+      "assessed_at": "2026-10-07T03:48:07.336219Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
