@@ -12,8 +12,8 @@
     "bun.lock": "45265ef3a329a3d7f95662797e49214235bd8c4e",
     "docs/adr/0012-memo-clipping-content-boundaries.md": "ffcdcd1cf9079461961519b1fd3c2ef70283a913",
     "docs/specs/README.md": "e3711242be7130339e46fa911b6c9f355d062ba2",
-    "docs/specs/memo-clipping/HISTORY.md": "cb180df14ffb30206ad8974e680a4ac2e2a21ab9",
-    "docs/specs/memo-clipping/IMPLEMENTATION.md": "bd656664b68e34462e31a71eed2101a2e9230ac1",
+    "docs/specs/memo-clipping/HISTORY.md": "2d021a8f28540c3ba25790e797112edd51ec58fa",
+    "docs/specs/memo-clipping/IMPLEMENTATION.md": "32ce5b271212666be14033988da2fd01cf28251a",
     "docs/specs/memo-clipping/SPEC.md": "223b3f7cd2473b68fd4d94745e8a42d17131f9f5",
     "docs/specs/memo-clipping/assets/detail-dark-1440.png": "7c8842afbdc424ec726016c2cb0243794a184a30",
     "docs/specs/memo-clipping/assets/detail-light-393.png": "0253e14b8d3690a397ad917d4583c28c804af4f5",
@@ -82,8 +82,8 @@
     "src/server/clipping/runtime.ts": "6855a0184d8cf68e2cd4f7e7f54d2b20540b416a",
     "src/server/clipping/service-interruption.fixture.ts": "60ab2a7561a566f2471accee16247a054dab7416",
     "src/server/clipping/service-recovery.test.ts": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-    "src/server/clipping/service.test.ts": "92306494641901574afab00db802d001dd8765a2",
-    "src/server/clipping/service.ts": "dbb3af02892bf78857e0ef69b4d59fceacd5d9c1",
+    "src/server/clipping/service.test.ts": "9991f0cf7405885ab9fc1ffa9e29145e4a149f83",
+    "src/server/clipping/service.ts": "9be2f2babe23ffbb47d66cb6a32168a296af1adc",
     "src/server/clipping/store.test.ts": "f0e3dbd5fac805fac0d777561953dadbf90f72fc",
     "src/server/clipping/store.ts": "acb88f078f884e4ceeba18d4d0f2e1974e889b08",
     "src/server/clipping/turndown-gfm.d.ts": "b42f4bb08636ac5e3ee6fe4d33370816878a7b06",
@@ -113,32 +113,32 @@
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "ede3383b45d3ccd1b7534db1f76e994b9b03ce30",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/server/clipping/store.test.ts",
           "blob": "f0e3dbd5fac805fac0d777561953dadbf90f72fc",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
-          "blob": "92306494641901574afab00db802d001dd8765a2",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "blob": "9991f0cf7405885ab9fc1ffa9e29145e4a149f83",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "7511e5a2a6fab61ebbeb4d4f3d170405c2916ace",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         }
       ]
     },
@@ -150,32 +150,32 @@
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "ede3383b45d3ccd1b7534db1f76e994b9b03ce30",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/server/clipping/store.test.ts",
           "blob": "f0e3dbd5fac805fac0d777561953dadbf90f72fc",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
-          "blob": "92306494641901574afab00db802d001dd8765a2",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "blob": "9991f0cf7405885ab9fc1ffa9e29145e4a149f83",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "7511e5a2a6fab61ebbeb4d4f3d170405c2916ace",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         }
       ],
       "scope_drift": {
@@ -191,32 +191,32 @@
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "ede3383b45d3ccd1b7534db1f76e994b9b03ce30",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/server/clipping/store.test.ts",
           "blob": "f0e3dbd5fac805fac0d777561953dadbf90f72fc",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
-          "blob": "92306494641901574afab00db802d001dd8765a2",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "blob": "9991f0cf7405885ab9fc1ffa9e29145e4a149f83",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "7511e5a2a6fab61ebbeb4d4f3d170405c2916ace",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         }
       ]
     }
@@ -230,12 +230,12 @@
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "ede3383b45d3ccd1b7534db1f76e994b9b03ce30",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         }
       ]
     },
@@ -249,22 +249,22 @@
         {
           "path": "src/server/clipping/store.test.ts",
           "blob": "f0e3dbd5fac805fac0d777561953dadbf90f72fc",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
-          "blob": "92306494641901574afab00db802d001dd8765a2",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "blob": "9991f0cf7405885ab9fc1ffa9e29145e4a149f83",
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "7511e5a2a6fab61ebbeb4d4f3d170405c2916ace",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 935 passed)"
+          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 936 passed)"
         }
       ]
     }
