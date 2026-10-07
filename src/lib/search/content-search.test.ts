@@ -86,14 +86,27 @@ describe("content search", () => {
   });
 
   test("content limits apply after duplicate routes, retaining types and tie order", async () => {
-    for (let n = 0; n < 250; n++)
-      await seedPost({
-        id: `duplicate-${n}`,
-        slug: "same",
-        title: "release 搜索",
-        body: "release 搜索",
-        publishDate: n,
-      });
+    // Fixture setup uses one transaction instead of 250 durable commits.
+    const now = Date.now();
+    db.transaction((tx) => {
+      for (let n = 0; n < 250; n++)
+        tx.insert(posts)
+          .values({
+            id: `duplicate-${n}`,
+            slug: "same",
+            type: "post",
+            title: "release 搜索",
+            body: "release 搜索",
+            publishDate: n,
+            updateDate: now,
+            draft: false,
+            public: true,
+            author: "search-test",
+            dataSource: "local",
+            contentHash: randomUUID(),
+          })
+          .run();
+    });
     await seedPost({
       id: "other",
       slug: "other",

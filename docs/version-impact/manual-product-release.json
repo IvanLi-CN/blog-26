@@ -23,7 +23,7 @@
     "CONTEXT.md": "155f3bb3008b4fd0e778d84fc2b49c5c9eba081d",
     "Dockerfile": "6e1616b4117589937ce07ce06e8c7b8627ef639a",
     "README.md": "0b6106ec587ab5367d92155bf72b668610b2cec1",
-    "VERSION": "834f2629538327723c074ed4c3addca9888f0256",
+    "VERSION": "24ba9a38de68d00674ec97b283a967699716b9f4",
     "apps/admin/src/components/admin-soft-ui.stories.tsx": "9a9e6b9ecceaa5c5351940d47c12e83f72adff11",
     "apps/admin/src/components/app-shell.tsx": "5adc074871a85045314bce8f87e3f55168d1f5d8",
     "apps/admin/src/components/theme-provider.tsx": "c1d0ee657c054716960bfe48f7779f1c566ab0ab",
@@ -159,7 +159,7 @@
     "src/lib/release/publication.ts": "f76d8aa146bb3f20bc83091857bd09c81edba02f",
     "src/lib/release/source.ts": "1795f3bdde6f794fadfcd1899cef3e6d1713d8dc",
     "src/lib/search/content-identity.ts": "5a3fa2a1eaae29fb03d72e75bb8b7982f6dec177",
-    "src/lib/search/content-search.test.ts": "327a9b3aa02e898f7032299e3279b613430f8ae0",
+    "src/lib/search/content-search.test.ts": "2149f97140b3797b477952559b9e3bae40257a16",
     "src/lib/search/content-search.ts": "9f2529b4b4745ac40f8e719b5f1c3e290317b93d",
     "src/lib/theme.ts": "5db5adffa88525df15f2029d4e636e9d82715616",
     "src/lib/version-info.ts": "de25d694341bab26f2ecbdaeea43bef72d3f7cba",
@@ -212,7 +212,10 @@
   "change": {
     "description": "Cover the complete unpublished interval: compatible version metadata, manual two-product delivery, transient snapshot retry and artifact-safe recovery, search fixes, inherited Playbook presentation and design metadata, and build-time Web Demo global controls. Public CSR navigation remains a separate follow-up.",
     "release_unit_description": "static frontend and full-feature Docker image",
-    "affected_contracts": ["public-api", "persistent-state"]
+    "affected_contracts": [
+      "public-api",
+      "persistent-state"
+    ]
   },
   "classification": {
     "planned": {
@@ -520,7 +523,9 @@
     "public_api": {
       "impact": "minor",
       "change": "compatible",
-      "supported_consumer_versions": ["2.7.0"],
+      "supported_consumer_versions": [
+        "2.7.0"
+      ],
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -583,8 +588,12 @@
       "impact": "patch",
       "applicable": true,
       "state_description": "Unchanged SQLite schema and local content path format; existing state remains readable without a migration. Browser result-cache v5 ignores obsolete v4 entries; versions keep independent cache namespaces without changing durable SQLite or local content.",
-      "readable_by_prior_versions": ["2.7.0"],
-      "upgrade_from_versions": ["2.7.0"],
+      "readable_by_prior_versions": [
+        "2.7.0"
+      ],
+      "upgrade_from_versions": [
+        "2.7.0"
+      ],
       "evidence": [
         {
           "path": "src/lib/__tests__/persisted-paths.test.ts",
