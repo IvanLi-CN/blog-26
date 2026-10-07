@@ -608,10 +608,6 @@ export default function PlaybookPage({
                   data-playbook-tab-surface
                   className={`nature-hover-lift nature-hover-surface inline-flex min-h-11 items-center gap-2 rounded-[var(--nature-radius-sm)] px-3 py-2 text-sm font-medium transition-[background-color,color,box-shadow,transform] duration-200 [--nature-hover-lift-offset:-0.125rem] group-hover:bg-[rgba(var(--nature-highlight-rgb),0.2)] group-hover:text-[color:var(--nature-accent-strong)] sm:px-3.5 ${!group ? "bg-[rgba(var(--nature-accent-rgb),0.16)] text-[color:var(--nature-accent-strong)] shadow-[inset_0_1px_0_rgba(var(--nature-highlight-rgb),0.28)]" : "text-[color:var(--nature-text-soft)]"}`}
                 >
-                  <span
-                    className={`h-1.5 w-1.5 shrink-0 rounded-full transition-colors ${!group ? "bg-[color:var(--nature-accent-strong)]" : "bg-[color:var(--nature-text-faint)] opacity-60 group-hover:bg-[color:var(--nature-accent-strong)]"}`}
-                    aria-hidden="true"
-                  />
                   <span className="hidden h-4 w-4 shrink-0 sm:inline-flex" aria-hidden="true">
                     <Icon name="tabler:layout-grid" className="h-4 w-4" />
                   </span>
@@ -631,10 +627,6 @@ export default function PlaybookPage({
                     data-playbook-tab-surface
                     className={`nature-hover-lift nature-hover-surface inline-flex min-h-11 items-center gap-2 rounded-[var(--nature-radius-sm)] px-3 py-2 text-sm font-medium transition-[background-color,color,box-shadow,transform] duration-200 [--nature-hover-lift-offset:-0.125rem] group-hover:bg-[rgba(var(--nature-highlight-rgb),0.2)] group-hover:text-[color:var(--nature-accent-strong)] sm:px-3.5 ${group === item.key ? "bg-[rgba(var(--nature-accent-rgb),0.16)] text-[color:var(--nature-accent-strong)] shadow-[inset_0_1px_0_rgba(var(--nature-highlight-rgb),0.28)]" : "text-[color:var(--nature-text-soft)]"}`}
                   >
-                    <span
-                      className={`h-1.5 w-1.5 shrink-0 rounded-full transition-colors ${group === item.key ? "bg-[color:var(--nature-accent-strong)]" : "bg-[color:var(--nature-text-faint)] opacity-60 group-hover:bg-[color:var(--nature-accent-strong)]"}`}
-                      aria-hidden="true"
-                    />
                     <span className="hidden h-4 w-4 shrink-0 sm:inline-flex" aria-hidden="true">
                       <Icon name={item.icon} className="h-4 w-4" />
                     </span>
