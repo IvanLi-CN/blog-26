@@ -1,9 +1,15 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import MemoTimeline from "../../site/components/MemoTimeline";
 import { parseConsoleInitialMemoPage } from "../../site/lib/memo-pagination";
-import { getWebDemoRuntimeState, WEB_DEMO_STATE_EVENT } from "../../src/lib/web-demo-runtime";
+import {
+  cancelWebDemoRequests,
+  getWebDemoRuntimeState,
+  setWebDemoRuntimeState,
+  WEB_DEMO_STATE_EVENT,
+  waitForWebDemoRequest,
+} from "../../src/lib/web-demo-runtime";
 
 if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register({ url: "http://localhost/" });
 
@@ -33,8 +39,11 @@ const originalFetch = globalThis.fetch;
 
 afterEach(() => {
   cleanup();
+  cancelWebDemoRequests();
   globalThis.fetch = originalFetch;
   window.history.replaceState({}, "", "/");
+  window.sessionStorage.removeItem("web-demo-global-environment");
+  delete document.documentElement.dataset.webDemoBuild;
   document.body.replaceChildren();
 });
 
@@ -73,26 +82,78 @@ describe("MemoTimeline Web Demo initial read", () => {
     }
   );
 
-  test("retains SSR memos when the first client read is offline", async () => {
-    window.history.replaceState({}, "", "/memos/?d_connection=offline");
+  test.each(["online", "offline"] as const)(
+    "hydrates %s SSR content without inventing a failed request",
+    (connection) => {
+      window.history.replaceState({}, "", `/memos/?d_connection=${connection}`);
+      let requests = 0;
+      const { getByTestId, getByText, queryByTestId } = render(
+        <MemoTimeline
+          source="demo"
+          initialMemos={[initialMemo]}
+          initialHasMore
+          initialNextCursor="older-cursor"
+          pageLoader={async () => {
+            requests += 1;
+            return { memos: [nextMemo], hasMore: false };
+          }}
+          iconMap={{}}
+          iconSvgMap={{}}
+        />
+      );
 
-    const { getByTestId, getByText, queryByTestId } = render(
+      expect(getByText("Already loaded Memo")).toBeTruthy();
+      expect(requests).toBe(0);
+      expect(queryByTestId("memos-empty")).toBeNull();
+      expect(queryByTestId("memo-pagination-retry")).toBeNull();
+      expect(getByTestId("memo-list-demo-status").textContent).not.toContain("网络故障");
+    }
+  );
+
+  test("reports offline failure only after pagination, then recovers online", async () => {
+    document.documentElement.dataset.webDemoBuild = "true";
+    window.history.replaceState({}, "", "/memos/?d_connection=online&d_delay=normal");
+    let requests = 0;
+    const { getByTestId, getByText, getByRole, queryByTestId } = render(
       <MemoTimeline
         source="demo"
         initialMemos={[initialMemo]}
         initialHasMore
         initialNextCursor="older-cursor"
+        pageLoader={async () => {
+          requests += 1;
+          await waitForWebDemoRequest(
+            getWebDemoRuntimeState(window.location, "public").environment
+          );
+          return { memos: [nextMemo], hasMore: false };
+        }}
         iconMap={{}}
         iconSvgMap={{}}
       />
     );
 
+    const changeConnection = (connection: "online" | "offline") => {
+      const state = getWebDemoRuntimeState(window.location, "public");
+      act(() =>
+        setWebDemoRuntimeState(
+          { ...state, environment: { ...state.environment, connection } },
+          { syncTheme: false }
+        )
+      );
+    };
+    changeConnection("offline");
+    expect(requests).toBe(0);
+    expect(queryByTestId("memo-pagination-retry")).toBeNull();
+    expect(getByTestId("memo-list-demo-status").textContent).not.toContain("网络故障");
+    fireEvent.click(getByRole("button", { name: "加载较旧的 Memo" }));
+    await waitFor(() => expect(getByTestId("memo-pagination-retry")).toBeTruthy());
+    expect(requests).toBe(1);
     expect(getByText("Already loaded Memo")).toBeTruthy();
-    await waitFor(() =>
-      expect(getByTestId("memo-list-demo-status").textContent).toContain("网络故障")
-    );
-    expect(queryByTestId("memos-empty")).toBeNull();
-    expect(getByTestId("memo-list-demo-status").textContent).toContain("网络故障");
+    changeConnection("online");
+    fireEvent.click(getByRole("button", { name: "加载较旧的 Memo" }));
+    await waitFor(() => expect(getByText("Next Memo")).toBeTruthy());
+    expect(getByText("Already loaded Memo")).toBeTruthy();
+    expect(requests).toBe(2);
   });
 });
 

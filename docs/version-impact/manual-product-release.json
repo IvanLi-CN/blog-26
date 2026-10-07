@@ -79,8 +79,8 @@
     "docs/specs/style-playbook-integration/assets/search-grouped-desktop-light.png": "cca266b2b09be2c5a211327a10acf17dd692e334",
     "docs/specs/style-playbook-integration/assets/search-grouped-mobile-dark.png": "1852060bb5bb48c1bde20ea938272034cbd242f4",
     "docs/specs/style-playbook-integration/assets/search-grouped-mobile-light.png": "4ecbf53e6631db54cb9d22110f6cedac56bee085",
-    "docs/specs/web-demo-global-controls/HISTORY.md": "7b2e29b561327bc7b03f3b7f87b49629bb28bc75",
-    "docs/specs/web-demo-global-controls/IMPLEMENTATION.md": "b5f7b3da4eecb67df5de762908f5cc1d9dd79131",
+    "docs/specs/web-demo-global-controls/HISTORY.md": "7a2295795fb24bb34678fdf60f6dc6afe1fcbdd0",
+    "docs/specs/web-demo-global-controls/IMPLEMENTATION.md": "2653ac6858a8a8dba058b25b2378536c94c7cab3",
     "docs/specs/web-demo-global-controls/SPEC.md": "d762e99d1968133145e5496720eb5ffd019a4ea0",
     "docs/specs/web-demo-global-controls/assets/inspector-desktop.png": "fa5fc685751e29f8cb49791023879b20037964d3",
     "docs/specs/web-demo-global-controls/assets/inspector-mobile.png": "4f1048e5aae50ab0a10f75cf747da2a6be8a1992",
@@ -96,7 +96,7 @@
     "scripts/smoke-product-release.ts": "7285e6021b7074facbceb921ff9171d684758fff",
     "scripts/start-console.ts": "be1ea96209a0dd10eabc85e68fcf8af2e4d18ff2",
     "scripts/start-gateway.ts": "b05bd9bdb94914e48b33805c84de8762f83b21c8",
-    "site/components/MemoTimeline.tsx": "af9206e9860978f65560f9c20775b1c3534d3980",
+    "site/components/MemoTimeline.tsx": "cd0749ec80f532932f320c0a736987b85b3583c4",
     "site/components/PublicMemoAuthoring.tsx": "70729ab77633772fe09a429cfec6fe76d01345c9",
     "site/components/SearchPageIsland.tsx": "fe97193475eebbe5a226ec7829f315c5f0386e59",
     "site/layouts/BaseLayout.astro": "1d4a005719b7686cb8897d0b0e34ce49376d12d7",
@@ -172,7 +172,7 @@
     "tests/ci/prepare-release-fixture.ts": "461d9a16e49263cd35a416bc76398f1ff12509ae",
     "tests/ci/release-intent.test.ts": null,
     "tests/ci/release-workflow.test.ts": null,
-    "tests/components/MemoTimeline.test.tsx": "832432e91965c5872efc2e97c45092457c484c95",
+    "tests/components/MemoTimeline.test.tsx": "b8b7700d436c05e0b9be84c2fcb5764c5f868c9f",
     "tests/components/WebDemoIdentity.test.tsx": "a501e7de34d818b986d6750075f44d67245127de",
     "tests/e2e/admin/post-editor-markdown-modes.spec.ts": "15e2e2fa4f0335204aec44ccadce6ac385fe171e",
     "tests/e2e/guest/mobile-reading-surface.spec.ts": "abb822347ab9216a444ff30b9b0de1d9875acb5e",
@@ -245,7 +245,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change the live API contracts or SQLite/local content formats. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded. The full-width Playbook card descriptions and deterministic fixture copy preserve existing API and durable-state contracts.",
-      "assessed_at": "2026-10-07T16:44:06.586Z",
+      "assessed_at": "2026-10-07T17:23:06Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -324,7 +324,7 @@
         },
         {
           "path": "tests/components/MemoTimeline.test.tsx",
-          "blob": "832432e91965c5872efc2e97c45092457c484c95",
+          "blob": "b8b7700d436c05e0b9be84c2fcb5764c5f868c9f",
           "command": "bun run test:precommit"
         },
         {
@@ -355,13 +355,13 @@
       ],
       "scope_drift": {
         "detected": true,
-        "description": "Reclassified the current candidate after the inherited VERSION change from PR #176; this PR introduces no independent VERSION edit. Global Inspector and request adapters remain live-API and durable-state compatible, while public CSR remains a separate follow-up."
+        "description": "Reclassified the candidate after inherited VERSION from PR #176 and the Memos request-boundary repair; no independent VERSION edit is introduced. Memos hydration preserves SSR data without fabricating failed requests. Global controls and request adapters remain live-API and durable-state compatible; public CSR remains separate."
       }
     },
     "verified": {
       "impact": "minor",
       "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change live API contracts or SQLite/local content formats. The repair adds mounted reaction request recovery and separates Admin Vite caches without changing public contracts. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded.",
-      "assessed_at": "2026-10-07T16:44:06.586Z",
+      "assessed_at": "2026-10-07T17:23:06Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -440,7 +440,7 @@
         },
         {
           "path": "tests/components/MemoTimeline.test.tsx",
-          "blob": "832432e91965c5872efc2e97c45092457c484c95",
+          "blob": "b8b7700d436c05e0b9be84c2fcb5764c5f868c9f",
           "command": "bun run test:precommit"
         },
         {

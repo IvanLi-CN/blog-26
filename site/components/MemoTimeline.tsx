@@ -124,14 +124,10 @@ export default function MemoTimeline({
 
     const resetFromScene = (sceneState: WebDemoSceneState, environment: WebDemoEnvironment) => {
       cancelPendingRequests();
-      const demoError =
-        environment.connection === "offline" || sceneState.scene === "memo-network-fault"
-          ? "模拟网络故障：本次请求未发送到真实服务。"
-          : null;
       setDemoEnvironment(environment);
-      setOlderError(demoError);
+      setOlderError(null);
       setNewerError(null);
-      if (demoError !== null) return;
+      if (environment.connection === "offline" || sceneState.scene === "memo-network-fault") return;
 
       const initialPage = getMemoListWebDemoInitialPageForState(sceneState);
       setMemos(initialPage.memos.map(toMemoCardRecord));
@@ -146,12 +142,8 @@ export default function MemoTimeline({
     const syncEnvironment = (environment: WebDemoEnvironment) => {
       cancelPendingRequests();
       setDemoEnvironment(environment);
-      if (environment.connection === "online") {
-        setOlderError(null);
-        setNewerError(null);
-      } else {
-        setOlderError("模拟网络故障：本次请求未发送到真实服务。");
-      }
+      setOlderError(null);
+      setNewerError(null);
     };
 
     const handleState = (event: Event) => {
@@ -179,10 +171,7 @@ export default function MemoTimeline({
         );
     };
 
-    resetFromScene(
-      getWebDemoSceneState(window.location, "public"),
-      getWebDemoEnvironment(window.location, "public")
-    );
+    syncEnvironment(getWebDemoEnvironment(window.location, "public"));
     const handlePopState = () => {
       resetFromScene(
         getWebDemoSceneState(window.location, "public"),
@@ -332,8 +321,8 @@ export default function MemoTimeline({
           Web Demo · 已加载 {memos.length} / 2,400 条 · 当前挂载 {renderedMemos} 条
           {demoEnvironment?.delay === "slow" ? " · 慢速网络" : ""}
           {demoEnvironment?.delay === "custom" ? ` · +${demoEnvironment.delayMs} ms` : ""}
-          {demoEnvironment?.connection === "offline"
-            ? ` · 网络故障${olderError || newerError ? " · 可重试" : ""}`
+          {demoEnvironment?.connection === "offline" && (olderError || newerError)
+            ? " · 网络故障 · 可重试"
             : ""}
         </p>
       ) : null}
