@@ -32,7 +32,7 @@ async function fixture() {
   const source =
     "# Durable agents\n\nSaved progress survives a restart.\n\n## Recovery\n\nCommitted results remain available.\n\n```ts\nconst durable = true;\n```";
   const events: string[] = [];
-  const modelFailures = { remaining: 0 };
+  const modelFailures = { remaining: 0, translation: false };
   const server = Bun.serve({
     port: 0,
     hostname: "127.0.0.1",
@@ -42,13 +42,16 @@ async function fixture() {
         return Response.json({ error: { message: "Temporary overload" } }, { status: 429 });
       const user = payload.messages.findLast((message: { role: string }) => message.role === "user")
         ?.content as string;
-      const answer = user.includes("提取以下")
-        ? "持久化与恢复要点。"
-        : user.includes("生成简体中文文章摘要")
-          ? "文章介绍持久执行，重启后恢复已保存的进度。"
-          : user.includes("全文翻译任务")
-            ? user.split("<article>\n")[1].split("\n</article>")[0]
-            : "依据 [原文段落 2]，重启后进度可恢复；这是文章观点。";
+      const answer =
+        user.includes("全文翻译任务") && modelFailures.translation
+          ? "翻译失败"
+          : user.includes("提取以下")
+            ? "持久化与恢复要点。"
+            : user.includes("生成简体中文文章摘要")
+              ? "文章介绍持久执行，重启后恢复已保存的进度。"
+              : user.includes("全文翻译任务")
+                ? user.split("<article>\n")[1].split("\n</article>")[0]
+                : "依据 [原文段落 2]，重启后进度可恢复；这是文章观点。";
       const data = [
         {
           choices: [
@@ -262,6 +265,29 @@ describe("clipping lifecycle and canonical content", () => {
       expect(after?.content).toBe(before?.content);
       expect(after?.reading.versionId).toBe(before?.reading.versionId);
       expect(matter(await readFile(data.path, "utf8")).content.trim()).toBe(data.authored);
+    } finally {
+      await service?.close();
+      await data.cleanup();
+    }
+  });
+
+  test("keeps the previous successful material visible when reprocessing translation fails", async () => {
+    const data = await fixture();
+    let service: ClippingService | undefined;
+    try {
+      service = await ClippingService.open(data.options);
+      await service.idle();
+      const before = await projectClippingMemo(data.memoId, data.store, true);
+      if (!before) throw new Error("Missing clipping fixture projection");
+      data.modelFailures.translation = true;
+      await service.reconcile(data.memoId, true);
+      await service.idle();
+      const after = await projectClippingMemo(data.memoId, data.store, true);
+      expect(after?.reading.status).toBe("failed");
+      expect(after?.reading.usingPreviousVersion).toBe(true);
+      expect(after?.reading.versionId).toBe(before.reading.versionId);
+      expect(after?.content).toBe(before.content);
+      expect(after?.translation).toBe(before.translation);
     } finally {
       await service?.close();
       await data.cleanup();

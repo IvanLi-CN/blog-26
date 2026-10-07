@@ -488,10 +488,9 @@ export class ClippingService {
           `基于以下完整章节要点生成简体中文文章摘要，说明主旨、关键观点、结论及限制，使用简洁 Markdown。不要重复标题，不要添加 Agent 摘要标签，不要将推断说成原文事实。\n\n${notes.join("\n\n")}`,
           "summary"
         );
-        await this.checkpoint(id, version, async (current, stored) => {
+        await this.checkpoint(id, version, async (_current, stored) => {
           await this.store.write(id, version.id, "summary", summary);
           stored.summaryState = "completed";
-          current.currentVersionId ??= version.id;
         });
       }
       await this.checkpoint(id, version, (_manifest, stored) => {
