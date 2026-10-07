@@ -575,6 +575,7 @@ export function setWebDemoRuntimeState(
     setThemePreference(normalized.environment.theme);
   }
   if (previous.environment.motion !== normalized.environment.motion) {
+    document.documentElement.dataset.webDemoMotion = normalized.environment.motion;
     window.dispatchEvent(
       new CustomEvent<{ motion: WebDemoMotionPreference }>(WEB_DEMO_MOTION_EVENT, {
         detail: { motion: normalized.environment.motion },

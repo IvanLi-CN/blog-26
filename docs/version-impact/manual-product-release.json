@@ -79,8 +79,8 @@
     "docs/specs/style-playbook-integration/assets/search-grouped-desktop-light.png": "cca266b2b09be2c5a211327a10acf17dd692e334",
     "docs/specs/style-playbook-integration/assets/search-grouped-mobile-dark.png": "1852060bb5bb48c1bde20ea938272034cbd242f4",
     "docs/specs/style-playbook-integration/assets/search-grouped-mobile-light.png": "4ecbf53e6631db54cb9d22110f6cedac56bee085",
-    "docs/specs/web-demo-global-controls/HISTORY.md": "60d99c3250e3fb617e089880759e0ed9257f34a3",
-    "docs/specs/web-demo-global-controls/IMPLEMENTATION.md": "861989510412375afe31b3c77d99794c6bc323f2",
+    "docs/specs/web-demo-global-controls/HISTORY.md": "945a1e1bbd3cf14dfff30a7da88f7b3066eee8a1",
+    "docs/specs/web-demo-global-controls/IMPLEMENTATION.md": "1d58326ce9ef9c5ac8f8fa5231a117f5a51ee978",
     "docs/specs/web-demo-global-controls/SPEC.md": "d762e99d1968133145e5496720eb5ffd019a4ea0",
     "docs/specs/web-demo-global-controls/assets/inspector-desktop.png": "fa5fc685751e29f8cb49791023879b20037964d3",
     "docs/specs/web-demo-global-controls/assets/inspector-mobile.png": "4f1048e5aae50ab0a10f75cf747da2a6be8a1992",
@@ -161,8 +161,8 @@
     "src/lib/search/content-search.ts": "9f2529b4b4745ac40f8e719b5f1c3e290317b93d",
     "src/lib/theme.ts": "5db5adffa88525df15f2029d4e636e9d82715616",
     "src/lib/version-info.ts": "de25d694341bab26f2ecbdaeea43bef72d3f7cba",
-    "src/lib/web-demo-fetch.ts": "48a13e7e8489e1f81c72b608a98cbc3de9f15e59",
-    "src/lib/web-demo-runtime.ts": "493acfc0398e2baa595f3bbd0bba8b0be1d1792c",
+    "src/lib/web-demo-fetch.ts": "d5fd6cdb0810159f35a5ec2176c9c684edc64095",
+    "src/lib/web-demo-runtime.ts": "d80767252522a4874110c22c6c418b5d151bb127",
     "src/server/version-api.ts": "4d1e148ba24d157c820dba0f3050f5da531281c9",
     "src/styles/globals.css": "bbe9715ac942db32c5cd08aab0afd94ada7d5577",
     "src/styles/nature-restored.css": "ea4f64836f02212969a73481faa6d0dad23c920e",
@@ -185,8 +185,9 @@
     "tests/lib/playbook-contract.test.ts": "38047c495879fdd4cb00f81791db6bdd8737a49b",
     "tests/lib/playbook-workflows.test.ts": "2921115a0b6629d9f7e10f6e7c80b5ee43403a2b",
     "tests/lib/web-demo-boundary.test.ts": "d3631d64cafb7297df4af827fdd60b5383fd70f6",
-    "tests/lib/web-demo-fetch.test.ts": "427c9d2a45a01b137b702d508f01de523053c889",
+    "tests/lib/web-demo-fetch.test.ts": "44575ddcc0e8b2bbc1ad53d4da379eba51fdae7a",
     "tests/lib/web-demo-inspector-layout.test.ts": "6b85d36d695d904d4cc9070689430bdc7bc79118",
+    "tests/lib/web-demo-motion.test.ts": "7981d306cac819189bd01e2740b70a2b4dd5a620",
     "tests/lib/web-demo-runtime.test.ts": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb",
     "tests/server/version-api.test.ts": "746ed7e7dfc790dd70131c0a7dca07c44f9c07c7",
     "tests/storybook/playbook-interactions.ts": "b7f34f03fbdc81ae4d6b8d5c80860dd90e81a8c9",
@@ -243,7 +244,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change the live API contracts or SQLite/local content formats. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded. The full-width Playbook card descriptions and deterministic fixture copy preserve existing API and durable-state contracts.",
-      "assessed_at": "2026-10-07T14:11:30.521Z",
+      "assessed_at": "2026-10-07T14:35:59.649Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -312,7 +313,7 @@
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "427c9d2a45a01b137b702d508f01de523053c889",
+          "blob": "44575ddcc0e8b2bbc1ad53d4da379eba51fdae7a",
           "command": "bun run test:precommit"
         },
         {
@@ -339,6 +340,11 @@
           "path": "src/lib/playbook/fixture.ts",
           "blob": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
           "command": "bun test tests/lib/playbook-contract.test.ts"
+        },
+        {
+          "path": "tests/lib/web-demo-motion.test.ts",
+          "blob": "7981d306cac819189bd01e2740b70a2b4dd5a620",
+          "command": "bun run test:precommit"
         }
       ],
       "scope_drift": {
@@ -349,7 +355,7 @@
     "verified": {
       "impact": "minor",
       "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change the live API contracts or SQLite/local content formats. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded. The full-width Playbook card descriptions and deterministic fixture copy preserve existing API and durable-state contracts.",
-      "assessed_at": "2026-10-07T14:11:30.694Z",
+      "assessed_at": "2026-10-07T14:35:59.734Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -418,7 +424,7 @@
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "427c9d2a45a01b137b702d508f01de523053c889",
+          "blob": "44575ddcc0e8b2bbc1ad53d4da379eba51fdae7a",
           "command": "bun run test:precommit"
         },
         {
@@ -445,6 +451,11 @@
           "path": "src/lib/playbook/fixture.ts",
           "blob": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
           "command": "bun test tests/lib/playbook-contract.test.ts"
+        },
+        {
+          "path": "tests/lib/web-demo-motion.test.ts",
+          "blob": "7981d306cac819189bd01e2740b70a2b4dd5a620",
+          "command": "bun run test:precommit"
         }
       ]
     }

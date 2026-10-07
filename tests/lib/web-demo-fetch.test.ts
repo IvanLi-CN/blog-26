@@ -140,4 +140,11 @@ describe("webDemoFetch", () => {
     controller.abort();
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });
   });
+
+  it("cancels zero-delay responses before they leave the request boundary", async () => {
+    installBrowser("?d_persona=admin&d_connection=online&d_delay=normal");
+    const pending = webDemoFetch("/api/public/auth/me");
+    cancelWebDemoRequests();
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+  });
 });

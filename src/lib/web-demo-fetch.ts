@@ -1,4 +1,5 @@
 import {
+  assertWebDemoRequestAvailable,
   getWebDemoEnvironment,
   getWebDemoRequestSignal,
   isWebDemoBuildEnabled,
@@ -148,6 +149,7 @@ export async function webDemoFetch(
     getWebDemoRequestSignal()
   );
   await waitForWebDemoRequest(environment, signal);
+  assertWebDemoRequestAvailable(environment, signal);
 
   if (app === "public" && url) {
     const method = (
