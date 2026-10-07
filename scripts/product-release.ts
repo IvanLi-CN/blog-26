@@ -323,10 +323,8 @@ if (command === "notification") {
     throw new Error(
       "Only an abandoned release without frozen artifacts can repair the ledger head"
     );
-  await changeLedger(store, (ledger) => ({
-    ledger: updateRelease(ledger, entry.id, { stage: "abandoned" }),
-    result: null,
-  }));
+  const repaired = updateRelease(current.ledger, entry.id, { stage: "abandoned" });
+  await store.compareAndSwap(current.sha, repaired);
   console.log(`Repaired abandoned release ledger ${entry.id}`);
 } else if (command === "abandon-failed") {
   const app = github();
