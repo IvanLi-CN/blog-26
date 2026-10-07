@@ -1,5 +1,6 @@
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import { link, mkdir, readFile, realpath, rename, unlink, writeFile } from "node:fs/promises";
+import { renameSync } from "node:fs";
+import { link, mkdir, readFile, realpath, unlink, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import matter from "gray-matter";
 import { z } from "zod";
@@ -225,7 +226,9 @@ export class ClippingStore {
     this.beforePublish?.();
     await writeFile(temporary, content, { encoding: "utf8", mode: 0o600 });
     this.beforePublish?.();
-    await rename(temporary, path);
+    // Do not yield between the final ownership check and publication. The runtime
+    // transaction still holds the owner-row write lock throughout this rename.
+    renameSync(temporary, path);
   }
 }
 

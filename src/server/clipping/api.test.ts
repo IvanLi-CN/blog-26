@@ -11,6 +11,7 @@ import { db, initializeDB } from "@/lib/db";
 import { memoClippings, posts } from "@/lib/schema";
 import { buildPublicSnapshot, writePublicSnapshot } from "@/public-site/snapshot";
 import type { TRPCContext } from "@/server/context";
+import { memosRouter } from "@/server/routers/memos";
 import { handleClippingRequest } from "./api";
 import { ClippingService } from "./service";
 import {
@@ -188,5 +189,26 @@ test("conversation selectors cannot expose an earlier target discussion", async 
         context(actor)
       )
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  }
+});
+
+test("memo detail rejects stale public clipping rows after private tag removal", async () => {
+  try {
+    await writeFile(
+      join(root, "authored", id),
+      matter.stringify("Private author remarks.", { ...fm, public: false, tags: [] })
+    );
+    await expect(
+      memosRouter.createCaller(context("guest")).bySlug({ slug: "clip" })
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    await expect(
+      memosRouter.createCaller(context("other")).bySlug({ slug: "clip" })
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+  } finally {
+    await writeFile(join(root, "authored", id), raw);
   }
 });

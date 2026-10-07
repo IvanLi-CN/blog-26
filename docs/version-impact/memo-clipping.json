@@ -12,8 +12,8 @@
     "bun.lock": "45265ef3a329a3d7f95662797e49214235bd8c4e",
     "docs/adr/0012-memo-clipping-content-boundaries.md": "ffcdcd1cf9079461961519b1fd3c2ef70283a913",
     "docs/specs/README.md": "e3711242be7130339e46fa911b6c9f355d062ba2",
-    "docs/specs/memo-clipping/HISTORY.md": "71046074fa15c6d606f11638563838b1258efb61",
-    "docs/specs/memo-clipping/IMPLEMENTATION.md": "3a184cb46b154a151620b62209b7cdcb4d209692",
+    "docs/specs/memo-clipping/HISTORY.md": "28809319dbe52e3b56ea1e5c96d3b5aa206c199a",
+    "docs/specs/memo-clipping/IMPLEMENTATION.md": "75315fce6f85da5fd561789760e7cd3154a9e462",
     "docs/specs/memo-clipping/SPEC.md": "223b3f7cd2473b68fd4d94745e8a42d17131f9f5",
     "docs/specs/memo-clipping/assets/detail-dark-1440.png": "7c8842afbdc424ec726016c2cb0243794a184a30",
     "docs/specs/memo-clipping/assets/detail-light-393.png": "0253e14b8d3690a397ad917d4583c28c804af4f5",
@@ -68,7 +68,7 @@
     "src/public-site/snapshot.ts": "8973e3bcc43abc6e7e9267423afa0b1b58791340",
     "src/server/clipping/agent-runtime.test.ts": "b9c6feeee3f66cde97853e583d522137dbed4c45",
     "src/server/clipping/agent-runtime.ts": "c78d797f4ec2ba2557c4e64bf97721a62b8cbe73",
-    "src/server/clipping/api.test.ts": "416c07b5a244bc93ff0301d22453da3a458f2f8c",
+    "src/server/clipping/api.test.ts": "733b9071513a40e711c5178f13e138f188e8b3ae",
     "src/server/clipping/api.ts": "933679cd59299f17120d948f7106983d3f2e5570",
     "src/server/clipping/article-segments.test.ts": "318ca39bbf9f9da0cdd9820e2ea13ba92ecbb1ca",
     "src/server/clipping/article-segments.ts": "dc1ff3c55326de419f920a40279f53f1c5d4c7f3",
@@ -84,15 +84,15 @@
     "src/server/clipping/service-recovery.test.ts": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
     "src/server/clipping/service.test.ts": "f63650649eb990f86baa14925e60be132063de7a",
     "src/server/clipping/service.ts": "8f190c4d8cfdd583c6244f2f4a3b07f3b3774d91",
-    "src/server/clipping/store.test.ts": "70391eabcd842bda84a647d74082075a7ff32420",
-    "src/server/clipping/store.ts": "47336b832f997717b36d8024ef6aa551c59fcefe",
+    "src/server/clipping/store.test.ts": "f0e3dbd5fac805fac0d777561953dadbf90f72fc",
+    "src/server/clipping/store.ts": "acb88f078f884e4ceeba18d4d0f2e1974e889b08",
     "src/server/clipping/turndown-gfm.d.ts": "b42f4bb08636ac5e3ee6fe4d33370816878a7b06",
     "src/server/mcp-auth-context.ts": "7729c8ce062cd5cdd034ba835b45857d6a56fcbf",
     "src/server/mcp-http.test.ts": "2b71d09f04e21817231be4723822839ba940f655",
     "src/server/mcp-http.ts": "435ba24ae8ef62e958b27a3cb6390b247a65fa37",
     "src/server/mcp.ts": "eacd3be220a278366c6af9ed6d73895eec6f9884",
     "src/server/public-api/router.ts": "a509e9a1f7e662a7f15783acb9d455059303a677",
-    "src/server/routers/memos.ts": "4557c70f5776817a0974a627db640d7a981464d7",
+    "src/server/routers/memos.ts": "818f8ccff0ee3486fbde08e1c55b3e5b934ca97a",
     "src/server/routers/tags.ts": "a375a6e04387c7ff8c8edfb00f67f36dea909ac0",
     "src/server/services/tag-content.ts": "c55a89dae44ca99d2bfccc7b91eb79a910490edd",
     "tests/e2e/clipping-detail.ts": "1a16934b457fca6a09aff6484760cd802f983750",
@@ -112,7 +112,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "416c07b5a244bc93ff0301d22453da3a458f2f8c",
+          "blob": "733b9071513a40e711c5178f13e138f188e8b3ae",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
         },
         {
@@ -122,7 +122,7 @@
         },
         {
           "path": "src/server/clipping/store.test.ts",
-          "blob": "70391eabcd842bda84a647d74082075a7ff32420",
+          "blob": "f0e3dbd5fac805fac0d777561953dadbf90f72fc",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
         },
         {
@@ -149,7 +149,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "416c07b5a244bc93ff0301d22453da3a458f2f8c",
+          "blob": "733b9071513a40e711c5178f13e138f188e8b3ae",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
         },
         {
@@ -159,7 +159,7 @@
         },
         {
           "path": "src/server/clipping/store.test.ts",
-          "blob": "70391eabcd842bda84a647d74082075a7ff32420",
+          "blob": "f0e3dbd5fac805fac0d777561953dadbf90f72fc",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
         },
         {
@@ -190,7 +190,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "416c07b5a244bc93ff0301d22453da3a458f2f8c",
+          "blob": "733b9071513a40e711c5178f13e138f188e8b3ae",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
         },
         {
@@ -200,7 +200,7 @@
         },
         {
           "path": "src/server/clipping/store.test.ts",
-          "blob": "70391eabcd842bda84a647d74082075a7ff32420",
+          "blob": "f0e3dbd5fac805fac0d777561953dadbf90f72fc",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
         },
         {
@@ -229,7 +229,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "416c07b5a244bc93ff0301d22453da3a458f2f8c",
+          "blob": "733b9071513a40e711c5178f13e138f188e8b3ae",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
         },
         {
@@ -248,7 +248,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/store.test.ts",
-          "blob": "70391eabcd842bda84a647d74082075a7ff32420",
+          "blob": "f0e3dbd5fac805fac0d777561953dadbf90f72fc",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 905 passed)"
         },
         {

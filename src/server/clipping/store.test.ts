@@ -86,3 +86,23 @@ test("private artifact storage rejects public-root placement and path traversal"
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("losing ownership while staging an artifact preserves the committed material", async () => {
+  const root = await fixture();
+  try {
+    const store = new ClippingStore();
+    const id = "11111111-1111-4111-8111-111111111111";
+    const version = "22222222-2222-4222-8222-222222222222";
+    await store.write(id, version, "summary", "Committed summary.");
+    let checks = 0;
+    store.beforePublish = () => {
+      if (++checks === 2) throw new Error("Owner lease expired");
+    };
+    await expect(store.write(id, version, "summary", "Stale replacement.")).rejects.toThrow(
+      "Owner lease expired"
+    );
+    expect(await store.read(id, version, "summary")).toBe("Committed summary.");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
