@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import contractJson from "../../.github/release-contract.json";
-import { GitHubRelease } from "../../src/lib/release/github";
+import { GitHubLedgerStore, GitHubRelease } from "../../src/lib/release/github";
 import {
   changeLedger,
   initialLedger,
@@ -9,7 +9,7 @@ import {
   updateRelease,
   validateLedger,
 } from "../../src/lib/release/ledger";
-import { contractSchema } from "../../src/lib/release/policy";
+import { canonicalJson, contractSchema, digest } from "../../src/lib/release/policy";
 import { retireStalePreparations } from "../../src/lib/release/preparation";
 
 const contract = contractSchema.parse(contractJson);
@@ -23,6 +23,85 @@ const request = {
 };
 
 describe("durable product release reservations", () => {
+  test("preserves a recovery marker carried by an ancestor ledger commit", async () => {
+    const ledger = initialLedger(contract);
+    const head = "c".repeat(40);
+    const recoveryCommit = "b".repeat(40);
+    const legacy = "d".repeat(40);
+    const root = "e".repeat(40);
+    const tree = "f".repeat(40);
+    const digestLine = `Ledger-Digest: ${digest(ledger)}`;
+    const bot = "github-actions[bot]";
+    const signedOff = `Signed-off-by: ${bot} <41898282+${bot}@users.noreply.github.com>`;
+    const commit = (
+      sha: string,
+      parent: string,
+      message: string,
+      author: string = bot,
+      committer = "web-flow"
+    ) => ({
+      sha,
+      author: { login: author },
+      committer: { login: committer },
+      parents: [{ sha: parent }],
+      commit: {
+        message,
+        tree: { sha: tree },
+        verification: { verified: true, reason: "valid" },
+      },
+    });
+    const commits = [
+      commit(
+        head,
+        recoveryCommit,
+        `chore(release): record product delivery state\n\n${digestLine}\n${signedOff}`
+      ),
+      commit(
+        recoveryCommit,
+        legacy,
+        `chore(release): record product delivery state\n\n${digestLine}\nLedger-Recovery: ${legacy}\n${signedOff}`
+      ),
+      commit(
+        legacy,
+        root,
+        `chore(release): recover legacy ledger\n\n${digestLine}\n${signedOff}`,
+        contract.repository.split("/")[0]
+      ),
+      commit(
+        root,
+        contract.bootstrap.sourceSha,
+        `chore(release): initialize product ledger\n\nBootstrap-Source: ${contract.bootstrap.sourceSha}\n${digestLine}\n${signedOff}`
+      ),
+    ];
+    const github = new GitHubRelease(contract, "github-actions", {
+      request(endpoint) {
+        if (endpoint.endsWith(`/git/ref/heads/${contract.ledgerBranch}`))
+          return { object: { sha: head, type: "commit" } };
+        if (endpoint.includes("/contents/ledger.json?ref="))
+          return {
+            encoding: "base64",
+            type: "file",
+            content: Buffer.from(`${canonicalJson(ledger)}\n`).toString("base64"),
+          };
+        if (endpoint.includes(`/commits?sha=${head}`)) return [commits];
+        if (endpoint.includes("/git/commits/")) {
+          const sha = endpoint.split("/").at(-1);
+          const found = commits.find((item) => item.sha === sha);
+          if (!found) throw new Error(`Unknown commit ${sha}`);
+          return { sha: found.sha, parents: found.parents, ...found.commit };
+        }
+        throw new Error(`Unexpected read ${endpoint}`);
+      },
+      command() {
+        throw new Error("Ledger reads must not issue shell commands");
+      },
+    });
+    const result = await new GitHubLedgerStore(github).read();
+    expect(result.sha).toBe(head);
+    expect(result.legacySha).toBe(legacy);
+    expect(result.ledger).toEqual(ledger);
+  });
+
   test("fresh preparation retires a stale unopened reservation without replacing or reusing its identity", async () => {
     const original = reserveRelease(initialLedger(contract), request);
     let ledger = original.ledger;
