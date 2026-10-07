@@ -7,7 +7,7 @@
 
 已实现机器可读合同、语义版本策略、签名登记分支适配器、VERSION-only PR 准备、main 完成事件核验、冻结输入与两种产物、GitHub Release/GHCR 发布及 EdgeOne 恢复链路。版本端点分开返回产品版本、构建身份和来源。
 
-当前候选实现采用 `product-semver-v1`，支持 stable/alpha/beta/rc 快捷值及完整 SemVer，使用精确整数排序、独立正式语义基线与占用下界。原请求纳入不可变身份，预发布完成要求两种产物证明、生产指针前后读回一致，以及部署/latest 的不适用结果。预发布部署与晋升入口分别拒绝请求，工作流将部署密钥限制在正式发布步骤。针对性测试已通过；完整 Agent VM 构建、Candidate Actions 和真实 alpha 发布尚待取得证据。
+当前候选实现采用 `product-semver-v1`，支持 stable/alpha/beta/rc 快捷值及完整 SemVer，使用精确整数排序、独立正式语义基线与占用下界。原请求纳入不可变身份，预发布完成要求两种产物证明、生产指针前后读回一致，以及部署/latest 的不适用结果。预发布部署与晋升入口分别拒绝请求，工作流将部署密钥限制在正式发布步骤。`837` 个测试和 `3707` 个断言已通过，稳定版与 alpha 两种非生产两产品 smoke 也已通过；候选 Actions、实现 PR 合并和真实 alpha 发布仍待取得平台证据。
 
 ## Requirements Intake
 
