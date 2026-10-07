@@ -29,6 +29,18 @@ case "$(basename "$CONTENT_ROOT")" in ""|"."|"..") echo "CONTENT_ROOT must name 
 case "$(basename "$CLIPPING_CONTENT_BASE_PATH")" in ""|"."|"..") echo "CLIPPING_CONTENT_BASE_PATH must name a directory" >&2; exit 2;; esac
 case "$(basename "$BACKUP_DIR")" in ""|"."|"..") echo "BACKUP_DIR must name a directory" >&2; exit 2;; esac
 mkdir -p "$(dirname "$BACKUP_DIR")"
+if [ -L "$CONTENT_ROOT" ]; then
+  echo "CONTENT_ROOT must not be a symlink" >&2
+  exit 2
+fi
+if [ -L "$CLIPPING_CONTENT_BASE_PATH" ]; then
+  echo "CLIPPING_CONTENT_BASE_PATH must not be a symlink" >&2
+  exit 2
+fi
+if [ -L "$DB_PATH" ]; then
+  echo "DB_PATH must not be a symlink" >&2
+  exit 2
+fi
 content_real="$(realpath "$CONTENT_ROOT")"
 if [ -e "$CLIPPING_CONTENT_BASE_PATH" ]; then
   clippings_real="$(realpath "$CLIPPING_CONTENT_BASE_PATH")"
@@ -71,6 +83,9 @@ if [ -f "$PI_DURABLE_DB_PATH" ]; then
 fi
 test -d "$CONTENT_ROOT"
 test -f "$DB_PATH"
+test ! -L "$CONTENT_ROOT"
+test ! -L "$DB_PATH"
+test ! -L "$CLIPPING_CONTENT_BASE_PATH"
 cp -a "$CONTENT_ROOT" "$BACKUP_DIR/content-root"
 for suffix in "" "-wal" "-shm"; do
   source_path="${DB_PATH}${suffix}"
@@ -153,6 +168,22 @@ case "$(basename "$CLIPPING_CONTENT_BASE_PATH")" in ""|"."|"..") echo "CLIPPING_
 test -n "${BACKUP_DIR:-}"
 test "$BACKUP_DIR" != "/"
 mkdir -p "$(dirname "$CONTENT_ROOT")" "$(dirname "$CLIPPING_CONTENT_BASE_PATH")" "$(dirname "$DB_PATH")" "$(dirname "$PI_DURABLE_DB_PATH")"
+if [ -L "$CONTENT_ROOT" ]; then
+  echo "CONTENT_ROOT must not be a symlink" >&2
+  exit 2
+fi
+if [ -L "$CLIPPING_CONTENT_BASE_PATH" ]; then
+  echo "CLIPPING_CONTENT_BASE_PATH must not be a symlink" >&2
+  exit 2
+fi
+if [ -L "$DB_PATH" ]; then
+  echo "DB_PATH must not be a symlink" >&2
+  exit 2
+fi
+if [ -L "$PI_DURABLE_DB_PATH" ]; then
+  echo "PI_DURABLE_DB_PATH must not be a symlink" >&2
+  exit 2
+fi
 content_real="$(realpath "$(dirname "$CONTENT_ROOT")")/$(basename "$CONTENT_ROOT")"
 clippings_real="$(realpath "$(dirname "$CLIPPING_CONTENT_BASE_PATH")")/$(basename "$CLIPPING_CONTENT_BASE_PATH")"
 db_real="$(realpath "$(dirname "$DB_PATH")")/$(basename "$DB_PATH")"
@@ -165,11 +196,15 @@ test "$content_real" != "$clippings_real"
 case "$db_real" in "$content_real/"*|"$clippings_real/"*) echo "DB_PATH must be outside content roots" >&2; exit 2;; esac
 case "$pi_real" in "$content_real/"*|"$clippings_real/"*) echo "PI_DURABLE_DB_PATH must be outside content roots" >&2; exit 2;; esac
 test "$db_real" != "$pi_real"
-if [ -e "$DB_PATH" ] && [ -e "$PI_DURABLE_DB_PATH" ]; then
+if [ -e "$DB_PATH" ] || [ -L "$DB_PATH" ]; then
   test -f "$DB_PATH"
   test ! -L "$DB_PATH"
+fi
+if [ -e "$PI_DURABLE_DB_PATH" ] || [ -L "$PI_DURABLE_DB_PATH" ]; then
   test -f "$PI_DURABLE_DB_PATH"
   test ! -L "$PI_DURABLE_DB_PATH"
+fi
+if [ -e "$DB_PATH" ] && [ -e "$PI_DURABLE_DB_PATH" ]; then
   bun -e 'import { statSync } from "node:fs"; const a=statSync(process.argv[1]); const b=statSync(process.argv[2]); if (a.dev === b.dev && a.ino === b.ino) throw new Error("DB_PATH and PI_DURABLE_DB_PATH must be different files");' "$DB_PATH" "$PI_DURABLE_DB_PATH"
 fi
 test -d "$BACKUP_DIR/content-root"

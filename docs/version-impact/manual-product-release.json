@@ -48,7 +48,7 @@
     "docs/releases/frontend-v2.4.0.md": null,
     "docs/releases/frontend-v2.4.1.md": null,
     "docs/releases/frontend-v2.4.2.md": null,
-    "docs/runbooks/fs-only-migration.md": "08010661ef2594fd3108251931a915d38ac39d47",
+    "docs/runbooks/fs-only-migration.md": "5959459a1a36f52d1e460c6aa4264ae5bd52cd31",
     "docs/runbooks/manual-version-release.md": "b7542f3d373167cd332a8c9b0b780935eb755eb6",
     "docs/runbooks/pr-label-release.md": null,
     "docs/solutions/search/sqlite-fts5-fallback.md": "d9cc4bc78fe95f3038e6cc600219969c76b909fe",
@@ -252,7 +252,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change the live API contracts or SQLite/local content formats. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded. The full-width Playbook card descriptions and deterministic fixture copy preserve existing API and durable-state contracts.",
-      "assessed_at": "2026-10-07T21:21:00Z",
+      "assessed_at": "2026-10-07T21:36:00Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -383,7 +383,7 @@
     "verified": {
       "impact": "minor",
       "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change live API contracts or SQLite/local content formats. The repair adds mounted reaction request recovery and separates Admin Vite caches without changing public contracts. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded.",
-      "assessed_at": "2026-10-07T21:21:00Z",
+      "assessed_at": "2026-10-07T21:36:00Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
