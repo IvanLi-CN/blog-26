@@ -42,3 +42,83 @@ test("Web Demo Inspector uses the project Select primitive for scene selection",
   expect(styles).toContain(".web-demo-inspector-select-content");
   expect(styles).toContain(".web-demo-inspector-select-item[data-highlighted]");
 });
+
+test("Web Demo Inspector keeps primary controls ahead of secondary share history", async () => {
+  const component = await readFile(
+    resolve(repoRoot, "src/components/WebDemoInspector.tsx"),
+    "utf8"
+  );
+
+  expect(component).toContain("web-demo-inspector-global-group");
+  expect(component).toContain("web-demo-inspector-scene-group");
+  expect(component).toContain("web-demo-inspector-data-group");
+  expect(component).toContain("web-demo-inspector-actions-group");
+  expect(component).toContain('aria-labelledby="web-demo-inspector-global-heading"');
+  expect(component).toContain("web-demo-inspector-group-heading");
+  expect(component).not.toContain('<fieldset className="web-demo-inspector-group');
+  expect(component).toContain("web-demo-inspector-secondary");
+  expect(component.indexOf("web-demo-inspector-scene-group")).toBeLessThan(
+    component.indexOf("web-demo-inspector-secondary")
+  );
+  expect(component).toContain('<details className="web-demo-inspector-secondary">');
+  expect(component).toContain("分享与记录");
+});
+
+test("Web Demo Inspector keeps advanced settings full-width inside global environment", async () => {
+  const styles = await readFile(resolve(repoRoot, "src/components/WebDemoInspector.css"), "utf8");
+
+  expect(styles).toContain(".web-demo-inspector-global-group .web-demo-inspector-advanced");
+  expect(styles).toContain("margin: 0.65rem 0 0;");
+  expect(styles).toContain("background: transparent;");
+  expect(styles).not.toContain("border-left: 1px solid var(--web-demo-line)");
+  expect(styles).not.toContain(
+    "background: color-mix(in srgb, var(--web-demo-inset) 34%, transparent)"
+  );
+});
+
+test("Web Demo Inspector describes available advanced settings accurately", async () => {
+  const component = await readFile(
+    resolve(repoRoot, "src/components/WebDemoInspector.tsx"),
+    "utf8"
+  );
+
+  expect(component).toContain('isAdvancedOpen ? "收起设置" : "展开设置"');
+  expect(component).not.toContain("暂无高级设置");
+});
+
+test("Web Demo Inspector uses a consistent compact section rhythm", async () => {
+  const styles = await readFile(resolve(repoRoot, "src/components/WebDemoInspector.css"), "utf8");
+
+  expect(styles).toContain("padding: 0.7rem 0 0.75rem;");
+  expect(styles).toContain(".web-demo-inspector-group + .web-demo-inspector-group {");
+  expect(styles).toContain("padding-top: 0.75rem;");
+  expect(styles).toContain(
+    ".web-demo-inspector-scene-group .web-demo-inspector-field {\n  margin-top: 0.5rem;"
+  );
+  expect(styles).toContain(
+    ".web-demo-inspector-data-mode,\n.web-demo-inspector-actions-group .web-demo-inspector-actions {\n  margin-top: 0.5rem;"
+  );
+  expect(styles).toContain("row-gap: 0.65rem;\n  margin-top: 0.55rem;");
+});
+
+test("Web Demo Inspector uses shared compact control variants", async () => {
+  const [component, button, input, radioGroup, compactStyles] = await Promise.all([
+    readFile(resolve(repoRoot, "src/components/WebDemoInspector.tsx"), "utf8"),
+    readFile(resolve(repoRoot, "src/components/ui/button.tsx"), "utf8"),
+    readFile(resolve(repoRoot, "src/components/ui/input.tsx"), "utf8"),
+    readFile(resolve(repoRoot, "src/components/ui/radio-group.tsx"), "utf8"),
+    readFile(resolve(repoRoot, "src/components/ui/compact-controls.css"), "utf8"),
+  ]);
+
+  expect(component).toContain('density="compact"');
+  expect(component).toContain('size="compact"');
+  expect(component).toContain("web-demo-inspector-data-mode");
+  expect(component).toContain('aria-label="数据规模"');
+  expect(component).toContain("CircleUserRound");
+  expect(component).toContain("personaOptions.map(({ value, label, icon: Icon })");
+  expect(button).toContain('compact: "nature-button-compact"');
+  expect(input).toContain('density?: "default" | "compact"');
+  expect(radioGroup).toContain('"nature-radio-item-compact"');
+  expect(compactStyles).toContain("height: 2.25rem;");
+  expect(compactStyles).toContain(".nature-radio-item-compact:focus-visible");
+});

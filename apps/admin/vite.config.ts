@@ -8,6 +8,11 @@ const appRoot = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(appRoot, "../..");
 const adminPort = Number(process.env.ADMIN_PORT || 25094);
 const adminOutDir = process.env.ADMIN_OUT_DIR || "admin-dist";
+const adminCacheDir =
+  process.env.ADMIN_VITE_CACHE_DIR ||
+  (process.env.VITE_WEB_DEMO_BUILD === "true"
+    ? "node_modules/.vite-web-demo-admin"
+    : "node_modules/.vite-admin");
 const webDemoInspectorModule =
   process.env.VITE_WEB_DEMO_BUILD === "true"
     ? resolve(repoRoot, "src/components/WebDemoInspector.tsx")
@@ -16,7 +21,7 @@ const webDemoInspectorModule =
 export default defineConfig({
   root: appRoot,
   base: "/admin/",
-  cacheDir: resolve(repoRoot, "node_modules/.vite-admin"),
+  cacheDir: resolve(repoRoot, adminCacheDir),
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: [

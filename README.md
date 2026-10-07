@@ -29,7 +29,7 @@ bun run worktree:bootstrap -- --force
 
 ## Web Demo
 
-A Web Demo is a separate build-time artifact of the shipped web application. It reuses the official product routes with deterministic local fixtures or in-memory API mocks; it is not a Storybook story, component iframe, static screenshot, or copied page. The live artifact cannot be switched into Demo mode by a query string or browser storage.
+A Web Demo is a separate build-time-selected runtime artifact of the shipped web application. Its public target uses Astro Node SSR and hydrates the product's client islands and Inspector against deterministic fixtures or in-memory API mocks. Public navigation currently exchanges server-rendered HTML through Astro ClientRouter; full page CSR data loading is a separate follow-up. It is not a Storybook story, component iframe, static screenshot, or copied page. The live artifact cannot be switched into Demo mode by a query string or browser storage.
 
 Build both public and admin Demo artifacts with:
 
@@ -37,7 +37,7 @@ Build both public and admin Demo artifacts with:
 bun run web-demo:build
 ```
 
-The command creates `web-demo-site-dist/` and `web-demo-admin-dist/` without replacing `site-dist/` or `admin-dist/`. It prepares deterministic local content, a public snapshot, and a Playbook fixture before building. The Admin mock API is installed before the real router renders, and all Demo mutations stay in memory.
+The command creates `web-demo-site-dist/` (standalone SSR server plus browser assets) and `web-demo-admin-dist/` without replacing `site-dist/` or `admin-dist/`. It prepares deterministic local content, a public snapshot, and a Playbook fixture before building. The Admin mock API is installed before the real router renders, and all Demo mutations stay in memory.
 
 Each Demo artifact includes the shared Inspector on the official route. It exposes the current scene, persona, network condition, data density, refresh/reset actions, simulated in-memory save, shareable `d_*` state, and recent simulated mutations. It is a control surface for the Demo build only; it does not grant permissions or send writes to a real backend.
 
@@ -46,6 +46,8 @@ For an interactive public Demo during development, start the Demo build:
 ```bash
 bun run web-demo:site
 ```
+
+This starts the public Demo with Astro's SSR dev server and hot reload. To run the built public SSR artifact, use `bun run web-demo:start` after `bun run web-demo:build`.
 
 Open the official route:
 

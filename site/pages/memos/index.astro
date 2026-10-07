@@ -1,15 +1,19 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import MemoTimeline, { toMemoCardRecord } from "../../components/MemoTimeline";
-import { getMemoListWebDemoInitialPage } from "../../lib/memo-list-web-demo";
+import { getMemoListWebDemoInitialPageForState } from "../../lib/memo-list-web-demo";
 import { PublicMemoComposerIsland } from "@console-memo-authoring";
 import { getSnapshot } from "../../lib/public-site";
 import { isLocalContentEnabled } from "@/config/paths";
 import { getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
+import { getWebDemoSceneState } from "@/lib/web-demo-runtime";
 import { parseConsoleInitialMemoPage } from "../../lib/memo-pagination";
 
 const isMemoListWebDemo = process.env.WEB_DEMO_BUILD === "true";
+const webDemoSceneState = isMemoListWebDemo
+  ? getWebDemoSceneState(Astro.url, "public")
+  : undefined;
 const snapshot = isMemoListWebDemo ? null : await getSnapshot();
 const isConsoleBuild = !isMemoListWebDemo && process.env.CONSOLE_RUNTIME === "true";
 const runtimeContext = isConsoleBuild
@@ -25,7 +29,9 @@ let initialMemosPreviousCursor: string | null = null;
 let initialMemosError: string | null = null;
 
 if (isMemoListWebDemo) {
-  const demoPage = getMemoListWebDemoInitialPage();
+  const demoPage = getMemoListWebDemoInitialPageForState(
+    webDemoSceneState ?? { scene: "memo-middle", data: "fixture" }
+  );
   initialMemos = demoPage.memos;
   initialMemosHasMore = demoPage.hasMore;
   initialMemosNextCursor = demoPage.nextCursor;

@@ -8,7 +8,13 @@ import {
   useState,
 } from "react";
 import { UI, type UiResolvedTheme, type UiThemeSelection } from "@/config/site";
-import { applyThemeToDocument, normalizeThemeSelection, resolveThemeName } from "@/lib/theme";
+import {
+  applyThemeToDocument,
+  normalizeThemeSelection,
+  resolveThemeName,
+  setThemePreference,
+  UI_THEME_PREFERENCE_EVENT,
+} from "@/lib/theme";
 
 type ThemeContextValue = {
   theme: UiThemeSelection;
@@ -41,9 +47,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 
   const setTheme = useCallback((nextTheme: UiThemeSelection) => {
-    localStorage.setItem("theme", nextTheme);
     setThemeState(nextTheme);
-    setResolvedTheme(applyThemeToDocument(nextTheme));
+    setResolvedTheme(setThemePreference(nextTheme));
   }, []);
 
   useEffect(() => {
@@ -69,11 +74,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setResolvedTheme(applyThemeToDocument(storedTheme));
     };
 
+    const handlePreference = (event: Event) => {
+      const nextTheme = (event as CustomEvent<{ theme?: UiThemeSelection }>).detail?.theme;
+      if (!nextTheme) return;
+      setThemeState(nextTheme);
+      setResolvedTheme(applyThemeToDocument(nextTheme));
+    };
+
     query.addEventListener("change", handleChange);
     window.addEventListener("storage", handleStorage);
+    window.addEventListener(UI_THEME_PREFERENCE_EVENT, handlePreference);
     return () => {
       query.removeEventListener("change", handleChange);
       window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(UI_THEME_PREFERENCE_EVENT, handlePreference);
     };
   }, []);
 

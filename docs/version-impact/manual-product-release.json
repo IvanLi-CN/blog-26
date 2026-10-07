@@ -3,7 +3,6 @@
   "kind": "version-impact-record",
   "base_sha": "ea9fcea19ab9546a9c1b4456d54500866f567540",
   "covered_files": {
-    ".impeccable/design.json": "304d41d82f7ffca7b9e1b80f0373a70723ee5038",
     ".codex/skills/style-topic-pr-label-release/SKILL.md": null,
     ".codex/skills/style-topic-pr-label-release/agents/openai.yaml": null,
     ".github/quality-gates.json": "33a2f2e09ec16672eb192db9128fe83310570553",
@@ -21,19 +20,22 @@
     ".github/workflows/release.yml": null,
     ".gitignore": "8a2342e4ffaa79d57673a41b07ba3fed6c34bb13",
     "AGENTS.md": "043a300f5054f4b889e8992dd98209c4dfe2143d",
-    "CONTEXT.md": "d85da3d68a36c6de67b3c8f08db263e8d769bfd8",
+    "CONTEXT.md": "c3d445cca605259c28fe05bfc23d8a54fe6d8c85",
     "Dockerfile": "6e1616b4117589937ce07ce06e8c7b8627ef639a",
-    "README.md": "69db28f329010fdd9d6334a8c6048385ec0ab586",
+    "README.md": "0b6106ec587ab5367d92155bf72b668610b2cec1",
     "VERSION": "834f2629538327723c074ed4c3addca9888f0256",
     "apps/admin/src/components/admin-soft-ui.stories.tsx": "9a9e6b9ecceaa5c5351940d47c12e83f72adff11",
-    "apps/admin/src/components/app-shell.tsx": "aa6a42928c7e751a17e84cc5f575d18e2a254328",
-    "apps/admin/src/demo/mock-admin-api.ts": "69e7531aedfd41016cbb29bbc5b7ad4eeec7381c",
-    "apps/admin/src/main.tsx": "069eff824715a4172a59ab71c4fd459e7b8806e7",
+    "apps/admin/src/components/app-shell.tsx": "5adc074871a85045314bce8f87e3f55168d1f5d8",
+    "apps/admin/src/components/theme-provider.tsx": "c1d0ee657c054716960bfe48f7779f1c566ab0ab",
+    "apps/admin/src/demo/mock-admin-api.ts": "7bd04da752e63143cba38b5ac9e04c6e011bc59e",
+    "apps/admin/src/main.tsx": "ec4e63191752aee907fce65285976c04e6cd6709",
     "apps/admin/src/pages/preview.stories.tsx": null,
-    "apps/admin/vite.config.ts": "4fcdd63c43603e2990b6f854f72b5b26905ba844",
-    "astro.config.mjs": "4853c6cf82f4abdac5b541979378e34870faf5dd",
-    "docs/adr/0013-build-time-web-demo-and-story-boundary.md": "0e48cfbac4a13a68f718891f7f2197e16724bb8b",
+    "apps/admin/src/styles.css": "8612a028c7f3ad01a54b3da4749e818ec9d649e9",
+    "apps/admin/vite.config.ts": "0cf2af30d157cc5594b925de44a67b129232ec38",
+    "astro.config.mjs": "519637da1cef972e31c57cc1ea728d3fc513006b",
+    "docs/adr/0013-build-time-web-demo-and-story-boundary.md": "732cb449c350a8e85110ca762f7b3ed320073e7f",
     "docs/adr/0014-unified-product-release-version-scope.md": "1e08ef623f046f454e5c39d46f0b7acc3fd965ce",
+    "docs/adr/0014-web-demo-global-inspector-controls.md": "ad90940b6a347d8fbdd27f6ea596e1d7277132a0",
     "docs/adr/0015-manual-version-release-delivery.md": "03ccd8d077eb3eb4b87efb82a7a21c93765837d2",
     "docs/adr/0016-signed-release-ledger-and-frozen-products.md": "2710d983808215da32faed6b37fc1dc6900e0795",
     "docs/releases/backend-v2.0.4.md": null,
@@ -49,7 +51,7 @@
     "docs/runbooks/manual-version-release.md": "b7542f3d373167cd332a8c9b0b780935eb755eb6",
     "docs/runbooks/pr-label-release.md": null,
     "docs/solutions/search/sqlite-fts5-fallback.md": "d9cc4bc78fe95f3038e6cc600219969c76b909fe",
-    "docs/specs/README.md": "07c9ec88285e369bcfad2cf926886eace905854e",
+    "docs/specs/README.md": "546dc8e621c8ba78d42e1e0bbc52baef19fd21b8",
     "docs/specs/admin-soft-ui-redesign/IMPLEMENTATION.md": "097ee9cb37ef2857fe916affdcb6ea9e9255ee3e",
     "docs/specs/admin-soft-ui-redesign/SPEC.md": "cd7ce30b8508cf30e1938e78b4cf82fcb385b654",
     "docs/specs/manual-version-release/HISTORY.md": "9c8aee3b1a68ce34fa57dda3c121e9153f164054",
@@ -70,14 +72,21 @@
     "docs/specs/style-playbook-integration/HISTORY.md": "ffa287c6f9e1493e1b3f399a0b84e9af5799e80c",
     "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "8c42f8f8b15d005cd70fbf9bab5e10fbd83e8567",
     "docs/specs/style-playbook-integration/SPEC.md": "2634a987630e6294d1a875a654e558dfc66059d5",
+    "docs/specs/style-playbook-integration/assets/playbook-desktop-card-copy-full-width-dark-1280.png": "e5072fa8838fca87fdc113dfc4b13ace93a157ea",
+    "docs/specs/style-playbook-integration/assets/playbook-mobile-card-copy-full-width-dark-393.png": "3c6368ca34d8ba1192fd0363cd34248f29f41c4b",
     "docs/specs/style-playbook-integration/assets/search-children-expanded.png": "3187f95764fa508012c64b9088ea3a7472b8722a",
     "docs/specs/style-playbook-integration/assets/search-grouped-desktop-dark.png": "962364ad8936970736e6a546a52f496221c686fe",
     "docs/specs/style-playbook-integration/assets/search-grouped-desktop-light.png": "cca266b2b09be2c5a211327a10acf17dd692e334",
     "docs/specs/style-playbook-integration/assets/search-grouped-mobile-dark.png": "1852060bb5bb48c1bde20ea938272034cbd242f4",
     "docs/specs/style-playbook-integration/assets/search-grouped-mobile-light.png": "4ecbf53e6631db54cb9d22110f6cedac56bee085",
-    "package.json": "79e7642d5ec9dc4c4be0dbccf63a82ea4519957d",
+    "docs/specs/web-demo-global-controls/HISTORY.md": "7a2295795fb24bb34678fdf60f6dc6afe1fcbdd0",
+    "docs/specs/web-demo-global-controls/IMPLEMENTATION.md": "ea9699ce432ac720f0cf47ec0f4f7343282c4193",
+    "docs/specs/web-demo-global-controls/SPEC.md": "d762e99d1968133145e5496720eb5ffd019a4ea0",
+    "docs/specs/web-demo-global-controls/assets/inspector-desktop.png": "fa5fc685751e29f8cb49791023879b20037964d3",
+    "docs/specs/web-demo-global-controls/assets/inspector-mobile.png": "4f1048e5aae50ab0a10f75cf747da2a6be8a1992",
+    "package.json": "8f087cca0856e334bb9c94147d4ce8ba93234267",
     "playwright.config.ts": "fd5bb1beff25d5b94949fe3988fd9b5c2007b457",
-    "scripts/build-web-demo.ts": "b60efdb26a1042dc7b3dd11c69ae6c605ab04687",
+    "scripts/build-web-demo.ts": "3142ed38ea388874d2c59fe7453a5dc2d4c1e381",
     "scripts/capture-admin-text-editor-evidence.mjs": "12bb8ad506f8836142a4d8ba51f01fd188605978",
     "scripts/generate-version.ts": "e4cede0c07a84b3e5af6cb2487f1818add276516",
     "scripts/playbook-content-update.ts": "469d45c21ce339ca139469ed43b151e7c80b9200",
@@ -87,19 +96,30 @@
     "scripts/smoke-product-release.ts": "7285e6021b7074facbceb921ff9171d684758fff",
     "scripts/start-console.ts": "be1ea96209a0dd10eabc85e68fcf8af2e4d18ff2",
     "scripts/start-gateway.ts": "b05bd9bdb94914e48b33805c84de8762f83b21c8",
-    "site/components/MemoTimeline.tsx": "147726d1dea33edc78d161f2b7995ad519bd60dc",
-    "site/components/SearchPageIsland.tsx": "0196dc8b4f62bc457218654ce4197ae18570971c",
-    "site/layouts/BaseLayout.astro": "20fc8484a8e5950cb2515523d7019754db305e4e",
+    "site/components/MemoTimeline.tsx": "87365a0d5da261238bb6c630c25e17f09e6a9cb0",
+    "site/components/PublicMemoAuthoring.tsx": "70729ab77633772fe09a429cfec6fe76d01345c9",
+    "site/components/SearchPageIsland.tsx": "fe97193475eebbe5a226ec7829f315c5f0386e59",
+    "site/layouts/BaseLayout.astro": "1d4a005719b7686cb8897d0b0e34ce49376d12d7",
     "site/lib/memo-list-web-demo.ts": "f4b2217ab719d2fdb448fb75fcf6c7c7bc91d30c",
+    "site/lib/project-runtime-live.ts": "96121df6d0a82c4cd17aa7933a8f7760ee8508e8",
+    "site/pages/[...path].ts": "91d608285c2efbce78fe4a181147207e5e9be4d9",
+    "site/pages/api/[...path].ts": "ab8296e62bc58983d1eba6993e90c1d53aeb3d07",
+    "site/pages/mcp.ts": "0922d70e909d23bfbe37ac8505adce82249aa423",
     "site/pages/memos/[slug].astro": "b5b2049fda0ed9e70f66034d4dbf67033c82a8af",
-    "site/pages/memos/index.astro": "964a29fd02b49c0928f1f82123ad4a943171854f",
+    "site/pages/memos/index.astro": "5861cf8c20a68ef8f90b451466dd65c2865c2875",
+    "site/pages/playbook/[...path].astro": "cd2baf43accb47e4be843a93a6534bfb23883e22",
     "site/pages/search.astro": "8662ad59f8dc6cfa7de4c2c5944ff3fbff040c95",
-    "src/components/WebDemoInspector.css": "5f27629fb2c1fb7feb9528aac125e69a84892c91",
+    "src/components/WebDemoInspector.css": "4150b40bd7f4347c212efbd8c6220fda095044db",
     "src/components/WebDemoInspector.disabled.tsx": "162be29cadd806f39a293b2ca4f7115bee8f08d2",
-    "src/components/WebDemoInspector.tsx": "62bfe28226db2b78e77c27d1f57966e6046340c1",
+    "src/components/WebDemoInspector.tsx": "8f59d31219690168e15efbf09ab969ae2aebfd5e",
+    "src/components/blog/Reactions.tsx": "2307d0f2c5fc09ed192ea01b8afbe048f7ed347a",
+    "src/components/comments/hooks.ts": "1c383710e1d4c451c05b89f53589c9bc27cfc456",
+    "src/components/common/AmbientScene.tsx": "01417ceda1fff9f7d840c1de1c49c2a75f15db73",
     "src/components/common/PublicArticleDetail.stories.tsx": null,
     "src/components/common/PublicMemoDetail.stories.tsx": null,
+    "src/components/common/ThemeToggle.tsx": "4d6da82f96742e13e06be24d24cef0cbc247a03a",
     "src/components/playbook/PlaybookPage.stories.tsx": null,
+    "src/components/playbook/PlaybookPage.tsx": "fb74adc6384bad14b5e4a1b9e522a7606c1e6e6b",
     "src/components/search/PublicSearchPage.stories.tsx": "b169f645f97fa49ac0762827f2a2e1f9c9ce0471",
     "src/components/search/PublicSearchPage.tsx": "af75e3503a467d1b5013c06d4e11f7eca448530b",
     "src/components/search/SearchResultsList.stories.tsx": "a41e487bd6a71055e47596156237ca533ee0a443",
@@ -110,12 +130,19 @@
     "src/components/search/search-results-cache.test.ts": "c880240d6e36b988897ea65a63d6fd1863805300",
     "src/components/search/search-results-cache.ts": "c76faf7253a268b1e47d26fee220acb5bc8291c3",
     "src/components/ui/Icon.tsx": "2b0e444bdf2ab66c24b69a5b1106ac93373e5ac7",
+    "src/components/ui/button.tsx": "8d88ee97557c236d70dc1160d1f4ad1df15e29c4",
+    "src/components/ui/compact-controls.css": "6d1865961185c3888942ad17f797239d393c8e3b",
+    "src/components/ui/input.tsx": "a721f01054a3a44ff65865b2f0ad3a9c27a4d225",
+    "src/components/ui/radio-group.tsx": "57bcb5af339c6e053aaba0983b43bedfa8314b9f",
+    "src/hooks/useAuth.ts": "58c0bd9075f7b898a2128db8ece36129203d8aee",
     "src/lib/__tests__/admin-demo-file-paste-selection.test.ts": "1ac69f46f89d597846052f4138b74c19836f353d",
     "src/lib/__tests__/admin-demo-file-tree.test.ts": "fa39e7f23dde7126e24c43eb25dd388dbab124ba",
     "src/lib/__tests__/admin-demo-llm-settings.test.ts": "f925fbf36e2717aff8f1b4159fce36dea6098d44",
+    "src/lib/admin-api-client.ts": "f5ec4e6eef5a96ac163501ccacdc103b517db5df",
     "src/lib/ai/search-fallback.test.ts": "15157675512f1fd0bf3f0a851d4e1943024a9f5a",
     "src/lib/ai/search.ts": "78f01536c849dbf87f7735c475522bb16d32771f",
     "src/lib/playbook/child-env.ts": "d6f344e6439869d39b0e363ea735e5f5888fe6ad",
+    "src/lib/playbook/fixture.ts": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
     "src/lib/playbook/search.test.ts": "9d58afc7b6c44d99e9b22e4297dc384a71647221",
     "src/lib/playbook/search.ts": "c0b0ed70c641609c94e5fde7286ba76c4f47bce7",
     "src/lib/release/artifacts.ts": "fd18f8c9823707d66a4fbbf9105d9c5a9e0f189d",
@@ -132,10 +159,12 @@
     "src/lib/search/content-identity.ts": "5a3fa2a1eaae29fb03d72e75bb8b7982f6dec177",
     "src/lib/search/content-search.test.ts": "327a9b3aa02e898f7032299e3279b613430f8ae0",
     "src/lib/search/content-search.ts": "9f2529b4b4745ac40f8e719b5f1c3e290317b93d",
+    "src/lib/theme.ts": "5db5adffa88525df15f2029d4e636e9d82715616",
     "src/lib/version-info.ts": "de25d694341bab26f2ecbdaeea43bef72d3f7cba",
-    "src/lib/web-demo-runtime.ts": "a8cb6a81878e6c1b21cad0bbac0949879b57d7b6",
+    "src/lib/web-demo-fetch.ts": "d5fd6cdb0810159f35a5ec2176c9c684edc64095",
+    "src/lib/web-demo-runtime.ts": "d80767252522a4874110c22c6c418b5d151bb127",
     "src/server/version-api.ts": "4d1e148ba24d157c820dba0f3050f5da531281c9",
-    "src/styles/globals.css": "027ec0455cf7be9b2a23bb4b02c74160f1508fbc",
+    "src/styles/globals.css": "bbe9715ac942db32c5cd08aab0afd94ada7d5577",
     "src/styles/nature-restored.css": "ea4f64836f02212969a73481faa6d0dad23c920e",
     "tests/ci/compute-version.test.ts": null,
     "tests/ci/create-release-tag.test.ts": null,
@@ -143,6 +172,8 @@
     "tests/ci/prepare-release-fixture.ts": "461d9a16e49263cd35a416bc76398f1ff12509ae",
     "tests/ci/release-intent.test.ts": null,
     "tests/ci/release-workflow.test.ts": null,
+    "tests/components/MemoTimeline.test.tsx": "215902ac3164c99063cdb5ca83ed48a80d942f2f",
+    "tests/components/WebDemoIdentity.test.tsx": "a501e7de34d818b986d6750075f44d67245127de",
     "tests/e2e/admin/post-editor-markdown-modes.spec.ts": "15e2e2fa4f0335204aec44ccadce6ac385fe171e",
     "tests/e2e/guest/mobile-reading-surface.spec.ts": "abb822347ab9216a444ff30b9b0de1d9875acb5e",
     "tests/lib/manual-release-ledger.test.ts": "2a7a71f224ccb652f4169fbcbed76feaf669bab4",
@@ -153,20 +184,21 @@
     "tests/lib/memo-list-web-demo.test.ts": "38f0f87d65565abfa3b35e9b2b5f60e2d561bddd",
     "tests/lib/playbook-contract.test.ts": "38047c495879fdd4cb00f81791db6bdd8737a49b",
     "tests/lib/playbook-workflows.test.ts": "2921115a0b6629d9f7e10f6e7c80b5ee43403a2b",
-    "tests/lib/web-demo-inspector-layout.test.ts": "0396e7cee190653bb9a266fb70f51614b576d52c",
-    "tests/lib/web-demo-runtime.test.ts": "d868f2d7986127ed750dfa08283ee93fadfe58df",
+    "tests/lib/web-demo-boundary.test.ts": "d3631d64cafb7297df4af827fdd60b5383fd70f6",
+    "tests/lib/web-demo-fetch.test.ts": "44575ddcc0e8b2bbc1ad53d4da379eba51fdae7a",
+    "tests/lib/web-demo-inspector-layout.test.ts": "6b85d36d695d904d4cc9070689430bdc7bc79118",
+    "tests/lib/web-demo-motion.test.ts": "7981d306cac819189bd01e2740b70a2b4dd5a620",
+    "tests/lib/web-demo-runtime.test.ts": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb",
     "tests/server/version-api.test.ts": "746ed7e7dfc790dd70131c0a7dca07c44f9c07c7",
     "tests/storybook/playbook-interactions.ts": "b7f34f03fbdc81ae4d6b8d5c80860dd90e81a8c9",
-    "tests/storybook/story-boundary.test.ts": "f4dcf03db1e00e271461cc78547f66e2dbcc3d51",
-    "docs/specs/style-playbook-integration/assets/playbook-desktop-card-copy-full-width-dark-1280.png": "e5072fa8838fca87fdc113dfc4b13ace93a157ea",
-    "docs/specs/style-playbook-integration/assets/playbook-mobile-card-copy-full-width-dark-393.png": "3c6368ca34d8ba1192fd0363cd34248f29f41c4b",
+    "tests/storybook/story-boundary.test.ts": "34f87f3d68d1259f3161d77644d22f8d43197c8d",
+    "tests/components/Reactions.test.tsx": "88aa3ab1eba18c70962c6f0a74e159c07a2134af",
+    ".impeccable/design.json": "304d41d82f7ffca7b9e1b80f0373a70723ee5038",
     "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-desktop-dark.png": "fb4c38f8823b8618ad5e2169192bd06a32c931ab",
-    "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-mobile-dark.png": "b35703d4469a45750b341a86b0f7730f2d72155f",
-    "src/components/playbook/PlaybookPage.tsx": "fb74adc6384bad14b5e4a1b9e522a7606c1e6e6b",
-    "src/lib/playbook/fixture.ts": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3"
+    "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-mobile-dark.png": "b35703d4469a45750b341a86b0f7730f2d72155f"
   },
   "change": {
-    "description": "Cover the complete unpublished interval: build-time web demo/runtime boundaries, manual unified two-product delivery, search content aggregation and layout-safe highlighting, Playbook directory card width, removal of redundant Playbook filter dots with confirmed desktop/mobile evidence, full-width Playbook directory card descriptions with deterministic long-copy fixtures, and design-system sidecar metadata.",
+    "description": "Cover the complete unpublished interval: compatible version metadata, manual two-product delivery, search fixes, inherited Playbook presentation and design metadata, and build-time Web Demo global controls. Public CSR navigation remains a separate follow-up.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api", "persistent-state"]
   },
@@ -215,8 +247,8 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The unpublished interval retains compatible read-only version metadata and Web Demo additions (minor). Search aggregation and responsive repairs preserve the public search array API and durable state; Playbook card-width and filter-dot changes are presentation-only, so no public API or persistent-state migration is introduced.",
-      "assessed_at": "2026-10-07T15:51:01Z",
+      "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change the live API contracts or SQLite/local content formats. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded. The full-width Playbook card descriptions and deterministic fixture copy preserve existing API and durable-state contracts.",
+      "assessed_at": "2026-10-07T17:36:00Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -245,12 +277,12 @@
         },
         {
           "path": "tests/lib/web-demo-runtime.test.ts",
-          "blob": "d868f2d7986127ed750dfa08283ee93fadfe58df",
+          "blob": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb",
           "command": "bun run test:precommit"
         },
         {
           "path": "tests/storybook/story-boundary.test.ts",
-          "blob": "f4dcf03db1e00e271461cc78547f66e2dbcc3d51",
+          "blob": "34f87f3d68d1259f3161d77644d22f8d43197c8d",
           "command": "bun run test:precommit"
         },
         {
@@ -286,7 +318,7 @@
         {
           "path": "src/components/playbook/PlaybookPage.tsx",
           "blob": "fb74adc6384bad14b5e4a1b9e522a7606c1e6e6b",
-          "command": "bunx biome check src/components/playbook/PlaybookPage.tsx"
+          "command": "bun run check"
         },
         {
           "path": "docs/specs/style-playbook-integration/SPEC.md",
@@ -307,17 +339,47 @@
           "path": "src/lib/playbook/fixture.ts",
           "blob": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
           "command": "bun test tests/lib/playbook-contract.test.ts"
+        },
+        {
+          "path": "tests/lib/web-demo-fetch.test.ts",
+          "blob": "44575ddcc0e8b2bbc1ad53d4da379eba51fdae7a",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/lib/web-demo-boundary.test.ts",
+          "blob": "d3631d64cafb7297df4af827fdd60b5383fd70f6",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/components/MemoTimeline.test.tsx",
+          "blob": "215902ac3164c99063cdb5ca83ed48a80d942f2f",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/components/WebDemoIdentity.test.tsx",
+          "blob": "a501e7de34d818b986d6750075f44d67245127de",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/lib/web-demo-motion.test.ts",
+          "blob": "7981d306cac819189bd01e2740b70a2b4dd5a620",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/components/Reactions.test.tsx",
+          "blob": "88aa3ab1eba18c70962c6f0a74e159c07a2134af",
+          "command": "bun run test:precommit"
         }
       ],
       "scope_drift": {
         "detected": true,
-        "description": "Reclassified search aggregation, responsive UI, cache compatibility, Playbook card width, removal of decorative filter dots, and confirmed visual evidence within the same unpublished interval; existing product/version additions remain minor."
+        "description": "Reconciled main PR178/179 coverage and the Memos real-vs-simulated error boundary. Inherited VERSION remains 2.8.0; no independent product release or state migration."
       }
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "The unpublished interval retains compatible read-only version metadata and Web Demo additions (minor). Search aggregation and responsive repairs preserve the public search array API and durable state; Playbook card-width and filter-dot changes are presentation-only, so no public API or persistent-state migration is introduced.",
-      "assessed_at": "2026-10-07T15:51:01Z",
+      "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change live API contracts or SQLite/local content formats. The repair adds mounted reaction request recovery and separates Admin Vite caches without changing public contracts. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded.",
+      "assessed_at": "2026-10-07T17:36:00Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -346,12 +408,12 @@
         },
         {
           "path": "tests/lib/web-demo-runtime.test.ts",
-          "blob": "d868f2d7986127ed750dfa08283ee93fadfe58df",
+          "blob": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb",
           "command": "bun run test:precommit"
         },
         {
           "path": "tests/storybook/story-boundary.test.ts",
-          "blob": "f4dcf03db1e00e271461cc78547f66e2dbcc3d51",
+          "blob": "34f87f3d68d1259f3161d77644d22f8d43197c8d",
           "command": "bun run test:precommit"
         },
         {
@@ -387,7 +449,7 @@
         {
           "path": "src/components/playbook/PlaybookPage.tsx",
           "blob": "fb74adc6384bad14b5e4a1b9e522a7606c1e6e6b",
-          "command": "bunx biome check src/components/playbook/PlaybookPage.tsx"
+          "command": "bun run check"
         },
         {
           "path": "docs/specs/style-playbook-integration/SPEC.md",
@@ -408,6 +470,36 @@
           "path": "src/lib/playbook/fixture.ts",
           "blob": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
           "command": "bun test tests/lib/playbook-contract.test.ts"
+        },
+        {
+          "path": "tests/lib/web-demo-fetch.test.ts",
+          "blob": "44575ddcc0e8b2bbc1ad53d4da379eba51fdae7a",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/lib/web-demo-boundary.test.ts",
+          "blob": "d3631d64cafb7297df4af827fdd60b5383fd70f6",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/components/MemoTimeline.test.tsx",
+          "blob": "215902ac3164c99063cdb5ca83ed48a80d942f2f",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/components/WebDemoIdentity.test.tsx",
+          "blob": "a501e7de34d818b986d6750075f44d67245127de",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/lib/web-demo-motion.test.ts",
+          "blob": "7981d306cac819189bd01e2740b70a2b4dd5a620",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/components/Reactions.test.tsx",
+          "blob": "88aa3ab1eba18c70962c6f0a74e159c07a2134af",
+          "command": "bun run test:precommit"
         }
       ]
     }
@@ -440,12 +532,12 @@
         },
         {
           "path": "tests/lib/web-demo-runtime.test.ts",
-          "blob": "d868f2d7986127ed750dfa08283ee93fadfe58df",
+          "blob": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb",
           "command": "bun run test:precommit"
         },
         {
           "path": "tests/storybook/story-boundary.test.ts",
-          "blob": "f4dcf03db1e00e271461cc78547f66e2dbcc3d51",
+          "blob": "34f87f3d68d1259f3161d77644d22f8d43197c8d",
           "command": "bun run test:precommit"
         },
         {
@@ -461,6 +553,16 @@
         {
           "path": "src/lib/playbook/search.test.ts",
           "blob": "9d58afc7b6c44d99e9b22e4297dc384a71647221",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/components/WebDemoIdentity.test.tsx",
+          "blob": "a501e7de34d818b986d6750075f44d67245127de",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/components/Reactions.test.tsx",
+          "blob": "88aa3ab1eba18c70962c6f0a74e159c07a2134af",
           "command": "bun run test:precommit"
         }
       ]

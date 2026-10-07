@@ -1,10 +1,17 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import MemoTimeline from "../../site/components/MemoTimeline";
 import { parseConsoleInitialMemoPage } from "../../site/lib/memo-pagination";
+import {
+  cancelWebDemoRequests,
+  getWebDemoRuntimeState,
+  setWebDemoRuntimeState,
+  WEB_DEMO_STATE_EVENT,
+  waitForWebDemoRequest,
+} from "../../src/lib/web-demo-runtime";
 
-if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
+if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register({ url: "http://localhost/" });
 
 const initialMemo = {
   id: "memo-initial",
@@ -32,11 +39,150 @@ const originalFetch = globalThis.fetch;
 
 afterEach(() => {
   cleanup();
+  cancelWebDemoRequests();
   globalThis.fetch = originalFetch;
+  window.history.replaceState({}, "", "/");
+  window.sessionStorage.removeItem("web-demo-global-environment");
+  delete document.documentElement.dataset.webDemoBuild;
   document.body.replaceChildren();
 });
 
+describe("MemoTimeline Web Demo initial read", () => {
+  test.each(["theme", "motion"] as const)(
+    "keeps in-flight pagination when only %s changes",
+    async (key) => {
+      window.history.replaceState({}, "", "/memos/?d_scene=memo-newest&d_connection=online");
+      let finishPage:
+        | ((page: { memos: (typeof nextMemo)[]; hasMore: boolean }) => void)
+        | undefined;
+      const pendingPage = new Promise<{ memos: (typeof nextMemo)[]; hasMore: boolean }>(
+        (resolve) => {
+          finishPage = resolve;
+        }
+      );
+      const { getByRole, getByText } = render(
+        <MemoTimeline
+          source="demo"
+          initialMemos={[initialMemo]}
+          initialHasMore
+          initialNextCursor="older-cursor"
+          pageLoader={() => pendingPage}
+          iconMap={{}}
+          iconSvgMap={{}}
+        />
+      );
+      fireEvent.click(getByRole("button", { name: "加载较旧的 Memo" }));
+      const state = getWebDemoRuntimeState(window.location, "public");
+      fireEvent(
+        window,
+        new CustomEvent(WEB_DEMO_STATE_EVENT, { detail: { ...state, changed: [key] } })
+      );
+      finishPage?.({ memos: [nextMemo], hasMore: false });
+      await waitFor(() => expect(getByText("Next Memo")).toBeTruthy());
+    }
+  );
+
+  test.each(["online", "offline"] as const)(
+    "hydrates %s SSR content without inventing a failed request",
+    (connection) => {
+      window.history.replaceState({}, "", `/memos/?d_connection=${connection}`);
+      let requests = 0;
+      const { getByTestId, getByText, queryByTestId } = render(
+        <MemoTimeline
+          source="demo"
+          initialMemos={[initialMemo]}
+          initialHasMore
+          initialNextCursor="older-cursor"
+          pageLoader={async () => {
+            requests += 1;
+            return { memos: [nextMemo], hasMore: false };
+          }}
+          iconMap={{}}
+          iconSvgMap={{}}
+        />
+      );
+
+      expect(getByText("Already loaded Memo")).toBeTruthy();
+      expect(requests).toBe(0);
+      expect(queryByTestId("memos-empty")).toBeNull();
+      expect(queryByTestId("memo-pagination-retry")).toBeNull();
+      expect(getByTestId("memo-list-demo-status").textContent).not.toContain("网络故障");
+    }
+  );
+
+  test("reports offline failure only after pagination, then recovers online", async () => {
+    document.documentElement.dataset.webDemoBuild = "true";
+    window.history.replaceState({}, "", "/memos/?d_connection=online&d_delay=normal");
+    let requests = 0;
+    const { getByTestId, getByText, getByRole, queryByTestId } = render(
+      <MemoTimeline
+        source="demo"
+        initialMemos={[initialMemo]}
+        initialHasMore
+        initialNextCursor="older-cursor"
+        pageLoader={async () => {
+          requests += 1;
+          await waitForWebDemoRequest(
+            getWebDemoRuntimeState(window.location, "public").environment
+          );
+          return { memos: [nextMemo], hasMore: false };
+        }}
+        iconMap={{}}
+        iconSvgMap={{}}
+      />
+    );
+
+    const changeConnection = (connection: "online" | "offline") => {
+      const state = getWebDemoRuntimeState(window.location, "public");
+      act(() =>
+        setWebDemoRuntimeState(
+          { ...state, environment: { ...state.environment, connection } },
+          { syncTheme: false }
+        )
+      );
+    };
+    changeConnection("offline");
+    expect(requests).toBe(0);
+    expect(queryByTestId("memo-pagination-retry")).toBeNull();
+    expect(getByTestId("memo-list-demo-status").textContent).not.toContain("网络故障");
+    fireEvent.click(getByRole("button", { name: "加载较旧的 Memo" }));
+    await waitFor(() => expect(getByTestId("memo-pagination-retry")).toBeTruthy());
+    expect(requests).toBe(1);
+    expect(getByText("Already loaded Memo")).toBeTruthy();
+    changeConnection("online");
+    fireEvent.click(getByRole("button", { name: "加载较旧的 Memo" }));
+    await waitFor(() => expect(getByText("Next Memo")).toBeTruthy());
+    expect(getByText("Already loaded Memo")).toBeTruthy();
+    expect(requests).toBe(2);
+  });
+});
+
 describe("MemoTimeline snapshot pagination", () => {
+  test.each(["snapshot", "database"] as const)(
+    "keeps real fetch errors for the %s source",
+    async (source) => {
+      globalThis.fetch = (async () => {
+        throw new TypeError("Failed to fetch the real Memo page");
+      }) as typeof fetch;
+      const { getByRole, getByTestId, getByText } = render(
+        <MemoTimeline
+          source={source}
+          initialMemos={[initialMemo]}
+          initialHasMore
+          initialNextCursor="older-cursor"
+          iconMap={{}}
+          iconSvgMap={{}}
+        />
+      );
+
+      fireEvent.click(getByRole("button", { name: "加载较旧的 Memo" }));
+      const retry = await waitFor(() => getByTestId("memo-pagination-retry"));
+      expect(retry.getAttribute("aria-label")).toContain("Failed to fetch the real Memo page");
+      expect(retry.getAttribute("aria-label")).not.toContain("模拟网络故障");
+      expect(getByText("Already loaded Memo")).toBeTruthy();
+    }
+  );
+
   test("keeps the current page and retries after a non-OK response with valid JSON", async () => {
     let requests = 0;
     globalThis.fetch = (async () => {

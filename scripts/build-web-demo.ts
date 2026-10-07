@@ -43,6 +43,13 @@ async function assertFile(path: string) {
   if (!entry?.isFile()) throw new Error(`Web Demo build is missing ${relative(repoRoot, path)}`);
 }
 
+async function assertDirectory(path: string) {
+  const entry = await stat(path).catch(() => undefined);
+  if (!entry?.isDirectory()) {
+    throw new Error(`Web Demo build is missing ${relative(repoRoot, path)}/`);
+  }
+}
+
 async function main() {
   assertGeneratedPath(generatedRoot, "WEB_DEMO_DATA_DIR");
   assertGeneratedPath(siteDist, "WEB_DEMO_SITE_DIST_DIR", [
@@ -71,6 +78,7 @@ async function main() {
     ADMIN_OUT_DIR: relative(repoRoot, adminDist),
     ASTRO_CACHE_DIR: ".astro-web-demo",
     VITE_CACHE_DIR: "node_modules/.vite-web-demo",
+    ADMIN_VITE_CACHE_DIR: "node_modules/.vite-web-demo-admin",
     CONSOLE_RUNTIME: "false",
     PUBLIC_API_BASE_URL: "",
   };
@@ -97,11 +105,8 @@ async function main() {
   );
 
   await Promise.all([
-    assertFile(join(siteDist, "index.html")),
-    assertFile(join(siteDist, "memos", "index.html")),
-    assertFile(join(siteDist, "memos", "memo-web-demo-0001", "index.html")),
-    assertFile(join(siteDist, "memos", "memo-web-demo-2400", "index.html")),
-    assertFile(join(siteDist, "playbook", "index.html")),
+    assertFile(join(siteDist, "server", "entry.mjs")),
+    assertDirectory(join(siteDist, "client")),
     assertFile(join(adminDist, "index.html")),
   ]);
   console.log(

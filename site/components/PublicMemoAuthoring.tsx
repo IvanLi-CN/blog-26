@@ -6,6 +6,7 @@ import { QuickMemoEditModal } from "@/components/memos/QuickMemoEditModal";
 import { type QuickMemoData, QuickMemoEditor } from "@/components/memos/QuickMemoEditor";
 import Icon from "@/components/ui/Icon";
 import { extractTextSummary, stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
+import { webDemoFetch } from "@/lib/web-demo-fetch";
 import { adminMemoRecordSchema, parseMemoPage } from "../lib/memo-pagination";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 import { MEMO_PAGE_SIZE } from "./MemoPagination";
@@ -71,7 +72,7 @@ type PublicAuthUser = {
 };
 
 async function readJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, {
+  const response = await webDemoFetch(input, {
     credentials: "include",
     ...init,
   });

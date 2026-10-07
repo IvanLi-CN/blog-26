@@ -210,6 +210,22 @@ _Avoid_: GPU 占用率, 功耗指标
 A build-time-isolated, owner-facing browser surface that reuses the shipped product tree and official routes with deterministic mock or read-only data. The live artifact cannot enable it through URL state or browser storage.
 _Avoid_: Storybook 页面, 静态截图, 独立演示页
 
+**Web Demo 全局控制**:
+A session-wide Inspector control whose meaning remains the same across the demo's product routes and scenes. It governs simulated identity, connectivity, request delay, theme, or motion preference rather than an individual dataset, resource, or business operation.
+_Avoid_: 跨场景可复用控件, 当前页面数据开关, 全部请求返回同一结果
+
+**Web Demo 会话**:
+One browsing session within a demo application in which the chosen global environment accompanies navigation between its product routes and scenes.
+_Avoid_: 真实登录会话, 所有浏览器标签共享的状态
+
+**Inspector 常驻控制**:
+A frequently used global control visible when the Inspector's global-control area is open, without expanding advanced settings.
+_Avoid_: 宽屏固定面板, 永久展开整个 Inspector
+
+**Inspector 高级控制**:
+A global control for precise delay configuration or motion preference, placed in a collapsible advanced area whose active settings remain recognizable when collapsed.
+_Avoid_: 场景专属参数, 调试工具集合
+
 **页面级 Story**:
 A Storybook entry whose rendered boundary mounts a route, page, App Shell, or full-page composition. The rendered boundary decides its category; the filename alone does not.
 _Avoid_: 文件名判断

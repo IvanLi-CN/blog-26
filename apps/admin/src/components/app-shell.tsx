@@ -28,6 +28,7 @@ import {
 } from "react";
 import WebDemoInspector from "@/components/WebDemoInspector";
 import { adminApi } from "@/lib/admin-api-client";
+import { WEB_DEMO_ROUTE_EVENT } from "@/lib/web-demo-runtime";
 import { ThemeToggle } from "~/components/theme-toggle";
 import {
   Alert,
@@ -364,6 +365,12 @@ export function AppShell() {
   const [sidebarWidth, setSidebarWidth] = useState(readStoredSidebarWidth);
   const sidebarWidthRef = useRef(sidebarWidth);
   const hasRouteSidebar = Boolean(routeSidebar);
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent<{ pathname: string }>(WEB_DEMO_ROUTE_EVENT, { detail: { pathname } })
+    );
+  }, [pathname]);
 
   useEffect(() => {
     if (!hasRouteSidebar) {

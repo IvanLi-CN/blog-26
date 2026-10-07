@@ -12,8 +12,11 @@ const viteCacheDir = process.env.VITE_CACHE_DIR || "./node_modules/.vite";
 const configuredSiteUrl = process.env.PUBLIC_SITE_URL ?? "";
 const configuredSiteBasePath = process.env.PUBLIC_SITE_BASE_PATH ?? "";
 const consoleRuntime = process.env.CONSOLE_RUNTIME === "true";
+const webDemoRuntime = process.env.WEB_DEMO_BUILD === "true";
+const serverRuntime = consoleRuntime || webDemoRuntime;
 const astroOutDir =
-  process.env.ASTRO_OUT_DIR || (consoleRuntime ? "./console-dist" : "./site-dist");
+  process.env.ASTRO_OUT_DIR ||
+  (consoleRuntime ? "./console-dist" : webDemoRuntime ? "./web-demo-site-dist" : "./site-dist");
 
 function normalizeBasePath(raw) {
   const value = typeof raw === "string" ? raw.trim() : "";
@@ -65,9 +68,9 @@ const webDemoInspectorModule =
 
 export default defineConfig({
   integrations: [react(), mdx()],
-  adapter: consoleRuntime ? node({ mode: "middleware" }) : undefined,
-  output: consoleRuntime ? "server" : "static",
-  trailingSlash: consoleRuntime ? "ignore" : "always",
+  adapter: serverRuntime ? node({ mode: webDemoRuntime ? "standalone" : "middleware" }) : undefined,
+  output: serverRuntime ? "server" : "static",
+  trailingSlash: serverRuntime ? "ignore" : "always",
   srcDir: "./site",
   outDir: astroOutDir,
   site: astroSiteUrl,

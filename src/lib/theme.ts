@@ -1,5 +1,7 @@
 import { UI, type UiResolvedTheme, type UiThemeSelection } from "@/config/site";
 
+export const UI_THEME_PREFERENCE_EVENT = "ui:theme-preference-change";
+
 export function normalizeThemeSelection(
   selectedTheme: UiThemeSelection | string
 ): UiThemeSelection {
@@ -50,5 +52,18 @@ export function applyThemeToDocument(selectedTheme: UiThemeSelection | string): 
   const backgroundColor = window.getComputedStyle(root).getPropertyValue("--nature-bg").trim();
   if (themeColor && backgroundColor) themeColor.setAttribute("content", backgroundColor);
 
+  return resolvedTheme;
+}
+
+export function setThemePreference(selectedTheme: UiThemeSelection | string) {
+  const normalizedTheme = normalizeThemeSelection(selectedTheme);
+  localStorage.setItem("theme", normalizedTheme);
+  const resolvedTheme = applyThemeToDocument(normalizedTheme);
+  window.dispatchEvent(
+    new CustomEvent<{ theme: UiThemeSelection; resolvedTheme: UiResolvedTheme }>(
+      UI_THEME_PREFERENCE_EVENT,
+      { detail: { theme: normalizedTheme, resolvedTheme } }
+    )
+  );
   return resolvedTheme;
 }

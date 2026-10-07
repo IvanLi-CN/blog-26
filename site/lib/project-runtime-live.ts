@@ -1,3 +1,4 @@
+import { webDemoFetch } from "@/lib/web-demo-fetch";
 import type {
   ProjectRuntimeMetrics,
   RuntimeActivityPoint,
@@ -205,7 +206,7 @@ async function refreshPanel(panel: HTMLElement, controller: AbortController) {
 
   panel.dataset.runtimeFetching = "true";
   try {
-    const response = await fetch(sourceUrl, {
+    const response = await webDemoFetch(sourceUrl, {
       cache: "no-store",
       credentials: "omit",
       headers: { Accept: "application/json" },

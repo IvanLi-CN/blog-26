@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PublicMemoRecord } from "@/public-site/snapshot";
 import {
-  getWebDemoState,
+  getWebDemoEnvironment,
+  getWebDemoSceneState,
+  isWebDemoAbortError,
   WEB_DEMO_ACTION_EVENT,
   WEB_DEMO_STATE_EVENT,
   type WebDemoActionDetail,
-  type WebDemoState,
+  type WebDemoEnvironment,
+  type WebDemoSceneState,
+  type WebDemoStateChangeDetail,
+  waitForWebDemoRequest,
 } from "../../src/lib/web-demo-runtime";
 import {
   getMemoListWebDemoCursorPage,
@@ -44,6 +49,27 @@ function uniqueMemos(memos: MemoCardRecord[]) {
   });
 }
 
+function waitForMemoPage(ms: number, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    let timer = 0;
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      signal.removeEventListener("abort", onAbort);
+    };
+    const onAbort = () => {
+      cleanup();
+      const error = new DOMException("The request was aborted.", "AbortError");
+      reject(error);
+    };
+    timer = window.setTimeout(() => {
+      cleanup();
+      if (signal.aborted) reject(new DOMException("The request was aborted.", "AbortError"));
+      else resolve();
+    }, ms);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
 export default function MemoTimeline({
   source,
   initialMemos,
@@ -79,22 +105,31 @@ export default function MemoTimeline({
   const [olderError, setOlderError] = useState<string | null>(initialError ?? null);
   const [newerError, setNewerError] = useState<string | null>(null);
   const [renderedMemos, setRenderedMemos] = useState(0);
-  const [demoState, setDemoState] = useState<WebDemoState | null>(() =>
-    source === "demo" && typeof window !== "undefined"
-      ? getWebDemoState(window.location, "public")
-      : null
-  );
+  const [demoEnvironment, setDemoEnvironment] = useState<WebDemoEnvironment | null>(null);
   const inFlightRef = useRef({ newer: false, older: false });
+  const requestControllersRef = useRef(new Set<AbortController>());
+  const requestGenerationRef = useRef(0);
 
   useEffect(() => {
     if (source !== "demo") return;
 
-    const resetFromState = (state: WebDemoState) => {
-      const initialPage = getMemoListWebDemoInitialPageForState(state);
-      const demoError =
-        state.network === "offline" || state.scene === "memo-network-fault"
-          ? "模拟网络故障：本次请求未发送到真实服务。"
-          : null;
+    const cancelPendingRequests = () => {
+      requestGenerationRef.current += 1;
+      for (const controller of requestControllersRef.current) controller.abort();
+      requestControllersRef.current.clear();
+      inFlightRef.current = { newer: false, older: false };
+      setIsLoadingOlder(false);
+      setIsLoadingNewer(false);
+    };
+
+    const resetFromScene = (sceneState: WebDemoSceneState, environment: WebDemoEnvironment) => {
+      cancelPendingRequests();
+      setDemoEnvironment(environment);
+      setOlderError(null);
+      setNewerError(null);
+      if (environment.connection === "offline" || sceneState.scene === "memo-network-fault") return;
+
+      const initialPage = getMemoListWebDemoInitialPageForState(sceneState);
       setMemos(initialPage.memos.map(toMemoCardRecord));
       setHasOlder(initialPage.hasMore);
       setOlderCursor(initialPage.nextCursor);
@@ -102,37 +137,68 @@ export default function MemoTimeline({
       setNewerCursor(initialPage.previousCursor);
       setIsLoadingOlder(false);
       setIsLoadingNewer(false);
-      setOlderError(demoError);
+    };
+
+    const syncEnvironment = (environment: WebDemoEnvironment) => {
+      cancelPendingRequests();
+      setDemoEnvironment(environment);
+      setOlderError(null);
       setNewerError(null);
-      inFlightRef.current = { newer: false, older: false };
-      setDemoState(state);
     };
 
     const handleState = (event: Event) => {
-      const state = (event as CustomEvent<{ state: WebDemoState }>).detail?.state;
-      if (state) resetFromState(state);
+      const detail = (event as CustomEvent<WebDemoStateChangeDetail>).detail;
+      if (!detail) return;
+      if (detail.changed.includes("scene") || detail.changed.includes("data")) {
+        resetFromScene(detail.sceneState, detail.environment);
+      } else if (detail.changed.some((key) => ["persona", "connection", "delay"].includes(key))) {
+        syncEnvironment(detail.environment);
+      } else {
+        setDemoEnvironment(detail.environment);
+      }
     };
     const handleAction = (event: Event) => {
       const detail = (event as CustomEvent<WebDemoActionDetail>).detail;
       if (detail?.action === "refresh-data")
-        resetFromState(getWebDemoState(window.location, "public"));
+        resetFromScene(
+          getWebDemoSceneState(window.location, "public"),
+          getWebDemoEnvironment(window.location, "public")
+        );
       if (detail?.action === "reset-state")
-        resetFromState(getWebDemoState(window.location, "public"));
+        resetFromScene(
+          getWebDemoSceneState(window.location, "public"),
+          getWebDemoEnvironment(window.location, "public")
+        );
     };
 
-    resetFromState(getWebDemoState(window.location, "public"));
+    syncEnvironment(getWebDemoEnvironment(window.location, "public"));
+    const handlePopState = () => {
+      resetFromScene(
+        getWebDemoSceneState(window.location, "public"),
+        getWebDemoEnvironment(window.location, "public")
+      );
+    };
     window.addEventListener(WEB_DEMO_STATE_EVENT, handleState);
     window.addEventListener(WEB_DEMO_ACTION_EVENT, handleAction);
+    window.addEventListener("popstate", handlePopState);
     return () => {
+      cancelPendingRequests();
       window.removeEventListener(WEB_DEMO_STATE_EVENT, handleState);
       window.removeEventListener(WEB_DEMO_ACTION_EVENT, handleAction);
+      window.removeEventListener("popstate", handlePopState);
     };
   }, [source]);
 
   useEffect(() => {
-    if (source !== "demo") return;
+    if (source !== "demo" || memos.length === 0) {
+      setRenderedMemos(0);
+      return;
+    }
     const list = document.querySelector<HTMLElement>('[data-testid="memos-timeline"]');
-    if (!list) return;
+    if (!list) {
+      setRenderedMemos(0);
+      return;
+    }
 
     const updateRenderedCount = () => {
       setRenderedMemos(Number(list.dataset.renderedMemos ?? 0));
@@ -141,7 +207,7 @@ export default function MemoTimeline({
     const observer = new MutationObserver(updateRenderedCount);
     observer.observe(list, { attributes: true, attributeFilter: ["data-rendered-memos"] });
     return () => observer.disconnect();
-  }, [source]);
+  }, [memos.length, source]);
 
   const loadPage = useCallback(
     async (direction: MemoPageDirection, cursor: string | null) => {
@@ -152,6 +218,9 @@ export default function MemoTimeline({
         memos.length === 0 &&
         Boolean(initialError);
       if ((!cursor && !retryingInitialDatabasePage) || inFlightRef.current[direction]) return;
+      const requestVersion = requestGenerationRef.current;
+      const controller = new AbortController();
+      requestControllersRef.current.add(controller);
       inFlightRef.current[direction] = true;
       if (direction === "newer") {
         setIsLoadingNewer(true);
@@ -166,15 +235,13 @@ export default function MemoTimeline({
         if (pageLoader) {
           payload = await pageLoader({ cursor, direction });
         } else if (source === "demo" && import.meta.env.PUBLIC_WEB_DEMO_BUILD === "true") {
-          const currentDemoState = getWebDemoState(window.location, "public");
-          if (
-            currentDemoState.network === "offline" ||
-            currentDemoState.scene === "memo-network-fault"
-          ) {
+          const currentSceneState = getWebDemoSceneState(window.location, "public");
+          const currentEnvironment = getWebDemoEnvironment(window.location, "public");
+          if (currentSceneState.scene === "memo-network-fault") {
             throw new Error("模拟网络故障：本次请求未发送到真实服务。");
           }
-          const delay = currentDemoState.network === "slow" ? 1600 : MEMO_LIST_WEB_DEMO_DELAY_MS;
-          await new Promise((resolve) => setTimeout(resolve, delay));
+          await waitForWebDemoRequest(currentEnvironment, controller.signal);
+          await waitForMemoPage(MEMO_LIST_WEB_DEMO_DELAY_MS, controller.signal);
           const page = getMemoListWebDemoCursorPage(cursor, direction);
           payload = {
             ...page,
@@ -209,6 +276,7 @@ export default function MemoTimeline({
         }
 
         const page = parseMemoPage(payload, direction, publicMemoCardSchema);
+        if (requestVersion !== requestGenerationRef.current) return;
         if (direction === "newer") {
           setMemos((current) => uniqueMemos([...page.memos, ...current]));
           setHasNewer(page.hasMore);
@@ -219,13 +287,21 @@ export default function MemoTimeline({
           setOlderCursor(page.nextCursor);
         }
       } catch (error) {
+        if (isWebDemoAbortError(error) || requestVersion !== requestGenerationRef.current) return;
         const message = error instanceof Error ? error.message : String(error);
-        if (direction === "newer") setNewerError(message);
-        else setOlderError(message);
+        const displayMessage =
+          source === "demo" && error instanceof TypeError
+            ? "模拟网络故障：本次请求未发送到真实服务。"
+            : message;
+        if (direction === "newer") setNewerError(displayMessage);
+        else setOlderError(displayMessage);
       } finally {
-        inFlightRef.current[direction] = false;
-        if (direction === "newer") setIsLoadingNewer(false);
-        else setIsLoadingOlder(false);
+        requestControllersRef.current.delete(controller);
+        if (requestVersion === requestGenerationRef.current) {
+          inFlightRef.current[direction] = false;
+          if (direction === "newer") setIsLoadingNewer(false);
+          else setIsLoadingOlder(false);
+        }
       }
     },
     [initialError, memos.length, pageLoader, snapshotVersion, source]
@@ -245,9 +321,10 @@ export default function MemoTimeline({
           aria-live="polite"
         >
           Web Demo · 已加载 {memos.length} / 2,400 条 · 当前挂载 {renderedMemos} 条
-          {demoState?.network === "slow" ? " · 慢速网络" : ""}
-          {demoState?.network === "offline"
-            ? ` · 网络故障${olderError || newerError ? " · 可重试" : ""}`
+          {demoEnvironment?.delay === "slow" ? " · 慢速网络" : ""}
+          {demoEnvironment?.delay === "custom" ? ` · +${demoEnvironment.delayMs} ms` : ""}
+          {demoEnvironment?.connection === "offline" && (olderError || newerError)
+            ? " · 网络故障 · 可重试"
             : ""}
         </p>
       ) : null}

@@ -2,10 +2,11 @@
 
 import * as React from "react";
 import { cn } from "../../lib/utils";
+import "./compact-controls.css";
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
-  size?: "default" | "sm" | "lg" | "icon";
+  size?: "default" | "sm" | "lg" | "icon" | "compact";
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -24,6 +25,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       sm: "px-3 text-sm",
       lg: "px-5 text-base",
       icon: "nature-icon-button inline-flex p-0",
+      compact: "nature-button-compact",
     } as const;
 
     return (

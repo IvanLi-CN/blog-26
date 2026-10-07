@@ -9,6 +9,7 @@ import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
 import type { LlmModelOption, LlmModelSource } from "./llm-models";
 import type { PublicMediaCollection } from "./public-media";
+import { getWebDemoRequestSignal, isWebDemoAbortError } from "./web-demo-runtime";
 
 export interface AdminUser {
   id: string;
@@ -383,12 +384,15 @@ async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
 
   let response: Response;
   try {
+    const requestSignal = combineAbortSignals(init?.signal, getWebDemoRequestSignal());
     response = await fetch(path, {
       credentials: "same-origin",
       ...init,
       headers,
+      ...(requestSignal ? { signal: requestSignal } : {}),
     });
   } catch (error) {
+    if (isWebDemoAbortError(error)) throw error;
     throw new AdminApiError(
       "网络请求失败，请检查连接后重试",
       0,
@@ -417,6 +421,27 @@ async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   return data as T;
+}
+
+function combineAbortSignals(...signals: Array<AbortSignal | null | undefined>) {
+  const activeSignals = signals.filter((signal): signal is AbortSignal => Boolean(signal));
+  if (activeSignals.length <= 1) return activeSignals[0];
+  if (typeof AbortSignal !== "undefined" && "any" in AbortSignal) {
+    return (
+      AbortSignal as typeof AbortSignal & { any: (signals: AbortSignal[]) => AbortSignal }
+    ).any(activeSignals);
+  }
+
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  for (const signal of activeSignals) {
+    if (signal.aborted) {
+      abort();
+      break;
+    }
+    signal.addEventListener("abort", abort, { once: true });
+  }
+  return controller.signal;
 }
 
 function buildSearch(params: Record<string, string | number | boolean | undefined | null>) {
