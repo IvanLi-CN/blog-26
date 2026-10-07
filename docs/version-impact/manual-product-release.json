@@ -236,12 +236,12 @@
         },
         {
           "path": "tests/lib/web-demo-runtime.test.ts",
-          "blob": "d868f2d7986127ed750dfa08283ee93fadfe58df",
+          "blob": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb",
           "command": "bun run test:precommit"
         },
         {
           "path": "tests/storybook/story-boundary.test.ts",
-          "blob": "f4dcf03db1e00e271461cc78547f66e2dbcc3d51",
+          "blob": "34f87f3d68d1259f3161d77644d22f8d43197c8d",
           "command": "bun run test:precommit"
         }
       ]

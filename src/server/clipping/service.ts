@@ -722,6 +722,21 @@ export class ClippingService {
       await Promise.allSettled(pending);
     }
   }
+
+  private async abortActiveConversations() {
+    const conversations = new Set(this.answerTails.keys());
+    for (const id of this.known.values()) {
+      const manifest = await this.store.manifest(id).catch(() => null);
+      if (!manifest) continue;
+      if (manifest.conversationId) conversations.add(manifest.conversationId);
+      const version = manifest.versions.find((entry) => entry.id === manifest.activeVersionId);
+      if (version?.jobConversationId) conversations.add(version.jobConversationId);
+    }
+    await Promise.allSettled(
+      [...conversations].map((conversation) => this.runtime.abort(conversation))
+    );
+  }
+
   async close() {
     this.closing = true;
     if (this.timer) clearInterval(this.timer);
@@ -730,8 +745,9 @@ export class ClippingService {
       /* Shutdown retains last checkpoint. */
     });
     await this.mutationTail;
-    await this.runtime.close();
+    await this.abortActiveConversations();
     await Promise.allSettled(this.answerTails.values());
     await this.idle();
+    await this.runtime.close();
   }
 }
