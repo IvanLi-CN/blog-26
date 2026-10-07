@@ -4,7 +4,7 @@
 
 - Implementation: partial
 - Lifecycle: active
-- 五项全局环境控制、共享请求策略、SSR Web Demo 运行时和已有客户端读取器已接入；面板采用紧凑分组，Scene、Data、Actions 常驻，分享状态与最近记录默认折叠。公共页面导航仍通过 Astro ClientRouter 交换服务端 HTML，完整页面 CSR 尚未实现；重型 VM 验证尚未完成。
+- 五项全局环境控制、共享请求策略、SSR Web Demo 运行时和已有客户端读取器已接入；面板采用紧凑分组，Scene、Data、Actions 常驻，分享状态与最近记录默认折叠。公共页面导航仍通过 Astro ClientRouter 交换服务端 HTML，完整页面 CSR 尚未实现，按确认的拆分边界另行交付。
 
 ## Implementation Coverage
 
@@ -24,14 +24,16 @@
 - 全局 runtime、Inspector、Web Demo 请求适配器和 Memos 离线首屏回归的定向测试通过；后台 Demo mock、Memo 请求策略和 Storybook 边界测试继续作为相关验证集。
 - 本地热更新验证使用 `web-demo-site-dev` `http://127.0.0.1:38110/` 和 `web-demo-admin-dev` `http://127.0.0.1:25094/admin/`：覆盖公共文章详情的身份/评论/反应请求、文章/项目/标签/Playbook 的 SSR 路由内容保留、离线时同源 `ClientRouter` 正常切换且 SSR-only 页面不出现共享错误、Memos 与搜索等独立 CSR 请求由各自页面承接失败、后台请求失败路径、主题双向同步、减少动效、跨正式路由恢复及权限拒绝；当前紧凑布局确认移动端场景选择器完整可见且无横向溢出。
 - 已用受控 fixture 直接执行 `WEB_DEMO_BUILD=true bunx astro build`：构建输出为 `output: "server"`，产物包含 `server/entry.mjs` 与 `client/`；临时启动 standalone 入口后，`GET /posts/` 返回实时 SSR HTML，并包含正式页面内容、ClientRouter 和共享 Inspector。
-- Agent VM 已恢复 admission，本任务已获得独立 VM；VER-WDG-009 的重型 live/Demo 制品构建与完整 E2E 尚未完成，不可将该门禁标记为通过。
+- Agent VM 的非 root 完整单元套件通过：836 项测试、3688 项断言。`bun run web-demo:build` 在与 CI 相同的 Node 22.23.2、Bun 1.4.2 环境完成公共 standalone SSR 与后台 CSR 构建；同步时显式传入 renderer commit，避免将无 `.git` 的 VM 源目录误当成独立 Git checkout。
+- Agent VM 同时生成 live 公共与后台产物，确认 live 不包含 Inspector UI 或后台 mock chunk、公共 HTML 不含 Demo 启用属性且内联初始化绑定 `false`；Demo 产物包含 Inspector 和 standalone SSR 入口。编译后的 live 初始化脚本在附带 Demo URL 参数与会话环境时仍保留正式主题，不启用 Demo 动效或构建标记。
+- GitHub 的实现候选 `09b66ad5df7a6483139d632131869903bf5491a9` 已通过 Build、Docker 构建以及 guest、admin、user、mcp 四组 Playwright E2E。后续文档与语义证据提交仍由各自提交的 required checks 确认；这些检查不替代未完成的公共页面 CSR 验收。
 - 产品验收仍以 `SPEC.md` 中的 VER-WDG-001 至 VER-WDG-009 为准。
 
 ## Remaining Gaps
 
 - 公共产品路由目前仍获取目标 SSR HTML，离线导航因此可以显示目标内容；这不是完整 CSR，也不是全局网络控制已经覆盖公共路由数据加载的证明。按主人确认，公共路由 CSR 改造通过独立 PR 交付，共用正式产品渲染与数据层，不恢复 Demo 专属错误面板。
 - Inspector 的装饰性分隔线已移除，主人已确认当前布局；发布证据与功能验收应区分，不能以视觉通过代替路由请求语义通过。
-- 完成 Agent VM 内的 `bun run web-demo:build`、live/Demo 制品边界检查和相关集成/E2E；本地 SSR dev server、聚焦行为测试、直接 SSR 构建和受控浏览器验证已经完成。
+- live/Demo 的制品边界验证独立于公共 CSR 导航验收；产品页面 SSR 的初始内容与后续业务 API 请求必须区分，不能用首屏 SSR 内容推断离线 API 成功。
 
 ## Publication Evidence
 
