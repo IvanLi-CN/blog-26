@@ -23,7 +23,7 @@
     "CONTEXT.md": "d85da3d68a36c6de67b3c8f08db263e8d769bfd8",
     "Dockerfile": "6e1616b4117589937ce07ce06e8c7b8627ef639a",
     "README.md": "69db28f329010fdd9d6334a8c6048385ec0ab586",
-    "VERSION": "24ba9a38de68d00674ec97b283a967699716b9f4",
+    "VERSION": "834f2629538327723c074ed4c3addca9888f0256",
     "apps/admin/src/components/admin-soft-ui.stories.tsx": "9a9e6b9ecceaa5c5351940d47c12e83f72adff11",
     "apps/admin/src/components/app-shell.tsx": "aa6a42928c7e751a17e84cc5f575d18e2a254328",
     "apps/admin/src/demo/mock-admin-api.ts": "69e7531aedfd41016cbb29bbc5b7ad4eeec7381c",
