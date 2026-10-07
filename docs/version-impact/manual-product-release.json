@@ -71,7 +71,7 @@
     "docs/specs/release-failure-telegram-alerts/SPEC.md": "439b85a711bed3ac7f18cc686ec6b312899fd713",
     "docs/specs/style-playbook-integration/HISTORY.md": "ffa287c6f9e1493e1b3f399a0b84e9af5799e80c",
     "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "8c42f8f8b15d005cd70fbf9bab5e10fbd83e8567",
-    "docs/specs/style-playbook-integration/SPEC.md": "eeae922d8b3bf60ff640ab0a249be55414b5c794",
+    "docs/specs/style-playbook-integration/SPEC.md": "2634a987630e6294d1a875a654e558dfc66059d5",
     "docs/specs/style-playbook-integration/assets/playbook-desktop-card-copy-full-width-dark-1280.png": "e5072fa8838fca87fdc113dfc4b13ace93a157ea",
     "docs/specs/style-playbook-integration/assets/playbook-mobile-card-copy-full-width-dark-393.png": "3c6368ca34d8ba1192fd0363cd34248f29f41c4b",
     "docs/specs/style-playbook-integration/assets/search-children-expanded.png": "3187f95764fa508012c64b9088ea3a7472b8722a",
@@ -80,7 +80,7 @@
     "docs/specs/style-playbook-integration/assets/search-grouped-mobile-dark.png": "1852060bb5bb48c1bde20ea938272034cbd242f4",
     "docs/specs/style-playbook-integration/assets/search-grouped-mobile-light.png": "4ecbf53e6631db54cb9d22110f6cedac56bee085",
     "docs/specs/web-demo-global-controls/HISTORY.md": "7a2295795fb24bb34678fdf60f6dc6afe1fcbdd0",
-    "docs/specs/web-demo-global-controls/IMPLEMENTATION.md": "2653ac6858a8a8dba058b25b2378536c94c7cab3",
+    "docs/specs/web-demo-global-controls/IMPLEMENTATION.md": "ea9699ce432ac720f0cf47ec0f4f7343282c4193",
     "docs/specs/web-demo-global-controls/SPEC.md": "d762e99d1968133145e5496720eb5ffd019a4ea0",
     "docs/specs/web-demo-global-controls/assets/inspector-desktop.png": "fa5fc685751e29f8cb49791023879b20037964d3",
     "docs/specs/web-demo-global-controls/assets/inspector-mobile.png": "4f1048e5aae50ab0a10f75cf747da2a6be8a1992",
@@ -96,7 +96,7 @@
     "scripts/smoke-product-release.ts": "7285e6021b7074facbceb921ff9171d684758fff",
     "scripts/start-console.ts": "be1ea96209a0dd10eabc85e68fcf8af2e4d18ff2",
     "scripts/start-gateway.ts": "b05bd9bdb94914e48b33805c84de8762f83b21c8",
-    "site/components/MemoTimeline.tsx": "cd0749ec80f532932f320c0a736987b85b3583c4",
+    "site/components/MemoTimeline.tsx": "87365a0d5da261238bb6c630c25e17f09e6a9cb0",
     "site/components/PublicMemoAuthoring.tsx": "70729ab77633772fe09a429cfec6fe76d01345c9",
     "site/components/SearchPageIsland.tsx": "fe97193475eebbe5a226ec7829f315c5f0386e59",
     "site/layouts/BaseLayout.astro": "1d4a005719b7686cb8897d0b0e34ce49376d12d7",
@@ -119,7 +119,7 @@
     "src/components/common/PublicMemoDetail.stories.tsx": null,
     "src/components/common/ThemeToggle.tsx": "4d6da82f96742e13e06be24d24cef0cbc247a03a",
     "src/components/playbook/PlaybookPage.stories.tsx": null,
-    "src/components/playbook/PlaybookPage.tsx": "bd015d5062a3bb440af463adf9b6f6effa7cf375",
+    "src/components/playbook/PlaybookPage.tsx": "fb74adc6384bad14b5e4a1b9e522a7606c1e6e6b",
     "src/components/search/PublicSearchPage.stories.tsx": "b169f645f97fa49ac0762827f2a2e1f9c9ce0471",
     "src/components/search/PublicSearchPage.tsx": "af75e3503a467d1b5013c06d4e11f7eca448530b",
     "src/components/search/SearchResultsList.stories.tsx": "a41e487bd6a71055e47596156237ca533ee0a443",
@@ -172,7 +172,7 @@
     "tests/ci/prepare-release-fixture.ts": "461d9a16e49263cd35a416bc76398f1ff12509ae",
     "tests/ci/release-intent.test.ts": null,
     "tests/ci/release-workflow.test.ts": null,
-    "tests/components/MemoTimeline.test.tsx": "b8b7700d436c05e0b9be84c2fcb5764c5f868c9f",
+    "tests/components/MemoTimeline.test.tsx": "215902ac3164c99063cdb5ca83ed48a80d942f2f",
     "tests/components/WebDemoIdentity.test.tsx": "a501e7de34d818b986d6750075f44d67245127de",
     "tests/e2e/admin/post-editor-markdown-modes.spec.ts": "15e2e2fa4f0335204aec44ccadce6ac385fe171e",
     "tests/e2e/guest/mobile-reading-surface.spec.ts": "abb822347ab9216a444ff30b9b0de1d9875acb5e",
@@ -192,10 +192,13 @@
     "tests/server/version-api.test.ts": "746ed7e7dfc790dd70131c0a7dca07c44f9c07c7",
     "tests/storybook/playbook-interactions.ts": "b7f34f03fbdc81ae4d6b8d5c80860dd90e81a8c9",
     "tests/storybook/story-boundary.test.ts": "34f87f3d68d1259f3161d77644d22f8d43197c8d",
-    "tests/components/Reactions.test.tsx": "88aa3ab1eba18c70962c6f0a74e159c07a2134af"
+    "tests/components/Reactions.test.tsx": "88aa3ab1eba18c70962c6f0a74e159c07a2134af",
+    ".impeccable/design.json": "304d41d82f7ffca7b9e1b80f0373a70723ee5038",
+    "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-desktop-dark.png": "fb4c38f8823b8618ad5e2169192bd06a32c931ab",
+    "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-mobile-dark.png": "b35703d4469a45750b341a86b0f7730f2d72155f"
   },
   "change": {
-    "description": "Cover the complete unpublished interval: compatible product version metadata, manual two-product delivery, search fixes, full-width Playbook card descriptions, and build-time Web Demo global identity, connectivity, delay, theme and motion controls. Public CSR navigation remains a separate follow-up.",
+    "description": "Cover the complete unpublished interval: compatible version metadata, manual two-product delivery, search fixes, inherited Playbook presentation and design metadata, and build-time Web Demo global controls. Public CSR navigation remains a separate follow-up.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api", "persistent-state"]
   },
@@ -245,7 +248,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change the live API contracts or SQLite/local content formats. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded. The full-width Playbook card descriptions and deterministic fixture copy preserve existing API and durable-state contracts.",
-      "assessed_at": "2026-10-07T17:23:06Z",
+      "assessed_at": "2026-10-07T17:36:00Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -313,6 +316,31 @@
           "command": "Focused guest Playwright: reading margins/type icons, actual-source contrast, and edge-to-edge press/focus feedback"
         },
         {
+          "path": "src/components/playbook/PlaybookPage.tsx",
+          "blob": "fb74adc6384bad14b5e4a1b9e522a7606c1e6e6b",
+          "command": "bun run check"
+        },
+        {
+          "path": "docs/specs/style-playbook-integration/SPEC.md",
+          "blob": "2634a987630e6294d1a875a654e558dfc66059d5",
+          "command": "git diff --check"
+        },
+        {
+          "path": "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-desktop-dark.png",
+          "blob": "fb4c38f8823b8618ad5e2169192bd06a32c931ab",
+          "command": "Web Demo /playbook/ screenshot at 1280x900, owner-confirmed"
+        },
+        {
+          "path": "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-mobile-dark.png",
+          "blob": "b35703d4469a45750b341a86b0f7730f2d72155f",
+          "command": "Web Demo /playbook/ screenshot at 390x844, owner-confirmed"
+        },
+        {
+          "path": "src/lib/playbook/fixture.ts",
+          "blob": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
+          "command": "bun test tests/lib/playbook-contract.test.ts"
+        },
+        {
           "path": "tests/lib/web-demo-fetch.test.ts",
           "blob": "44575ddcc0e8b2bbc1ad53d4da379eba51fdae7a",
           "command": "bun run test:precommit"
@@ -324,23 +352,13 @@
         },
         {
           "path": "tests/components/MemoTimeline.test.tsx",
-          "blob": "b8b7700d436c05e0b9be84c2fcb5764c5f868c9f",
+          "blob": "215902ac3164c99063cdb5ca83ed48a80d942f2f",
           "command": "bun run test:precommit"
         },
         {
           "path": "tests/components/WebDemoIdentity.test.tsx",
           "blob": "a501e7de34d818b986d6750075f44d67245127de",
           "command": "bun run test:precommit"
-        },
-        {
-          "path": "src/components/playbook/PlaybookPage.tsx",
-          "blob": "bd015d5062a3bb440af463adf9b6f6effa7cf375",
-          "command": "bun run check"
-        },
-        {
-          "path": "src/lib/playbook/fixture.ts",
-          "blob": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
-          "command": "bun test tests/lib/playbook-contract.test.ts"
         },
         {
           "path": "tests/lib/web-demo-motion.test.ts",
@@ -355,13 +373,13 @@
       ],
       "scope_drift": {
         "detected": true,
-        "description": "Reclassified the candidate after inherited VERSION from PR #176 and the Memos request-boundary repair; no independent VERSION edit is introduced. Memos hydration preserves SSR data without fabricating failed requests. Global controls and request adapters remain live-API and durable-state compatible; public CSR remains separate."
+        "description": "Reconciled main PR178/179 coverage and the Memos real-vs-simulated error boundary. Inherited VERSION remains 2.8.0; no independent product release or state migration."
       }
     },
     "verified": {
       "impact": "minor",
       "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change live API contracts or SQLite/local content formats. The repair adds mounted reaction request recovery and separates Admin Vite caches without changing public contracts. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded.",
-      "assessed_at": "2026-10-07T17:23:06Z",
+      "assessed_at": "2026-10-07T17:36:00Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -429,6 +447,31 @@
           "command": "Focused guest Playwright: reading margins/type icons, actual-source contrast, and edge-to-edge press/focus feedback"
         },
         {
+          "path": "src/components/playbook/PlaybookPage.tsx",
+          "blob": "fb74adc6384bad14b5e4a1b9e522a7606c1e6e6b",
+          "command": "bun run check"
+        },
+        {
+          "path": "docs/specs/style-playbook-integration/SPEC.md",
+          "blob": "2634a987630e6294d1a875a654e558dfc66059d5",
+          "command": "git diff --check"
+        },
+        {
+          "path": "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-desktop-dark.png",
+          "blob": "fb4c38f8823b8618ad5e2169192bd06a32c931ab",
+          "command": "Web Demo /playbook/ screenshot at 1280x900, owner-confirmed"
+        },
+        {
+          "path": "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-mobile-dark.png",
+          "blob": "b35703d4469a45750b341a86b0f7730f2d72155f",
+          "command": "Web Demo /playbook/ screenshot at 390x844, owner-confirmed"
+        },
+        {
+          "path": "src/lib/playbook/fixture.ts",
+          "blob": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
+          "command": "bun test tests/lib/playbook-contract.test.ts"
+        },
+        {
           "path": "tests/lib/web-demo-fetch.test.ts",
           "blob": "44575ddcc0e8b2bbc1ad53d4da379eba51fdae7a",
           "command": "bun run test:precommit"
@@ -440,23 +483,13 @@
         },
         {
           "path": "tests/components/MemoTimeline.test.tsx",
-          "blob": "b8b7700d436c05e0b9be84c2fcb5764c5f868c9f",
+          "blob": "215902ac3164c99063cdb5ca83ed48a80d942f2f",
           "command": "bun run test:precommit"
         },
         {
           "path": "tests/components/WebDemoIdentity.test.tsx",
           "blob": "a501e7de34d818b986d6750075f44d67245127de",
           "command": "bun run test:precommit"
-        },
-        {
-          "path": "src/components/playbook/PlaybookPage.tsx",
-          "blob": "bd015d5062a3bb440af463adf9b6f6effa7cf375",
-          "command": "bun run check"
-        },
-        {
-          "path": "src/lib/playbook/fixture.ts",
-          "blob": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
-          "command": "bun test tests/lib/playbook-contract.test.ts"
         },
         {
           "path": "tests/lib/web-demo-motion.test.ts",

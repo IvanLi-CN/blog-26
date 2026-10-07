@@ -158,6 +158,31 @@ describe("MemoTimeline Web Demo initial read", () => {
 });
 
 describe("MemoTimeline snapshot pagination", () => {
+  test.each(["snapshot", "database"] as const)(
+    "keeps real fetch errors for the %s source",
+    async (source) => {
+      globalThis.fetch = (async () => {
+        throw new TypeError("Failed to fetch the real Memo page");
+      }) as typeof fetch;
+      const { getByRole, getByTestId, getByText } = render(
+        <MemoTimeline
+          source={source}
+          initialMemos={[initialMemo]}
+          initialHasMore
+          initialNextCursor="older-cursor"
+          iconMap={{}}
+          iconSvgMap={{}}
+        />
+      );
+
+      fireEvent.click(getByRole("button", { name: "加载较旧的 Memo" }));
+      const retry = await waitFor(() => getByTestId("memo-pagination-retry"));
+      expect(retry.getAttribute("aria-label")).toContain("Failed to fetch the real Memo page");
+      expect(retry.getAttribute("aria-label")).not.toContain("模拟网络故障");
+      expect(getByText("Already loaded Memo")).toBeTruthy();
+    }
+  );
+
   test("keeps the current page and retries after a non-OK response with valid JSON", async () => {
     let requests = 0;
     globalThis.fetch = (async () => {

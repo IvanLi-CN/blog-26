@@ -23,7 +23,7 @@
 - `bun run check` 通过；仓库已有 3 个非本主题 Biome warning，无错误。
 - 全局 runtime、Inspector、Web Demo 请求适配器和 Memos 离线首屏回归的定向测试通过；后台 Demo mock、Memo 请求策略和 Storybook 边界测试继续作为相关验证集。
 - `tests/components/Reactions.test.tsx` 在旧实现上三项失败，修复后全部通过：附加延迟中的读取取消与恢复、离线恢复在线后已挂载控件重试、目标切换后迟到结果隔离。与身份、Memos、请求策略、环境状态和动效测试合并运行，共 32 项通过。
-- Memos 挂载时只同步环境并保留 SSR 初始窗口；连接变化取消过时读取，但不预设失败。网络故障与重试仅来自实际分页读取的失败，初始化不会替换首屏数据或额外读取。回归验证在线/离线 hydration、连接切换、分页失败和恢复。
+- Memos 挂载时只同步环境并保留 SSR 初始窗口；连接变化取消过时读取，但不预设失败。网络故障与重试仅来自实际分页读取的失败，初始化不会替换首屏数据或额外读取。回归验证在线/离线 hydration、连接切换、分页失败和恢复；正式 snapshot/database 请求的 `TypeError` 保留真实错误信息，不使用 Demo 专属文案。
 - 本地热更新验证使用 `web-demo-site-dev` `http://127.0.0.1:38110/` 和 `web-demo-admin-dev` `http://127.0.0.1:25094/admin/`：覆盖公共文章详情的身份/评论/反应请求、文章/项目/标签/Playbook 的 SSR 路由内容保留、离线时同源 `ClientRouter` 正常切换且 SSR-only 页面不出现共享错误、Memos 与搜索等独立 CSR 请求由各自页面承接失败、后台请求失败路径、主题双向同步、减少动效、跨正式路由恢复及权限拒绝；当前紧凑布局确认移动端场景选择器完整可见且无横向溢出。
 - 已用受控 fixture 直接执行 `WEB_DEMO_BUILD=true bunx astro build`：构建输出为 `output: "server"`，产物包含 `server/entry.mjs` 与 `client/`；临时启动 standalone 入口后，`GET /posts/` 返回实时 SSR HTML，并包含正式页面内容、ClientRouter 和共享 Inspector。
 - Agent VM 的非 root 完整单元套件通过。回归覆盖主题/动效切换不取消 Memos 分页、未显式携带 signal 的后台附件上传仍被环境变更取消、Request 对象取消、零延迟响应返回前的取消、动效通知先应用偏好再触发背景重建、已挂载的三种公共身份切换及过时身份结果隔离、公共搜索 fixture 与受保护评论操作的权限响应。`bun run web-demo:build` 在与 CI 相同的 Node 22.23.2、Bun 1.4.2 环境完成公共 standalone SSR 与后台 CSR 构建；修复后重新构建公共与后台的 Demo/live 四个目标。同步时显式传入 renderer commit，避免将无 `.git` 的 VM 源目录误当成独立 Git checkout。

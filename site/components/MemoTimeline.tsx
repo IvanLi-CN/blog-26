@@ -290,7 +290,9 @@ export default function MemoTimeline({
         if (isWebDemoAbortError(error) || requestVersion !== requestGenerationRef.current) return;
         const message = error instanceof Error ? error.message : String(error);
         const displayMessage =
-          error instanceof TypeError ? "模拟网络故障：本次请求未发送到真实服务。" : message;
+          source === "demo" && error instanceof TypeError
+            ? "模拟网络故障：本次请求未发送到真实服务。"
+            : message;
         if (direction === "newer") setNewerError(displayMessage);
         else setOlderError(displayMessage);
       } finally {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-16T04:30:01.000Z",
+  "generatedAt": "2026-10-07T15:07:08Z",
   "title": "Design System: Ivan's Blog",
   "source": "DESIGN.md",
   "extensions": {
@@ -9,37 +9,85 @@
         "role": "primary",
         "displayName": "Nature Green Accent",
         "canonical": "#7ca98b",
+        "tonalRamp": [
+          "#1e3025",
+          "#34533f",
+          "#4e7e60",
+          "#61916f",
+          "#7ca98b",
+          "#a6c8af",
+          "#cce0d1",
+          "#edf6ef"
+        ],
         "description": "Public-site accent for primary actions, tags, timeline nodes, and paths that invite continued exploration."
       },
       "public.accentStrong": {
         "role": "primary",
         "displayName": "Deep Nature Green",
         "canonical": "#4e7e60",
-        "description": "Stronger public-site accent for emphasis and contrast."
+        "tonalRamp": [
+          "#16291c",
+          "#294e3a",
+          "#3b674b",
+          "#4e7e60",
+          "#6a9878",
+          "#92b99b",
+          "#bdd5c2",
+          "#e8f1e9"
+        ],
+        "description": "Stronger public-site accent for emphasis, contrast, focus, and active navigation."
       },
       "public.secondary": {
         "role": "secondary",
         "displayName": "Blue Green Secondary",
         "canonical": "#84a7b5",
-        "description": "Secondary public-site color for timeline changes and information classification."
+        "tonalRamp": [
+          "#21323a",
+          "#3a5965",
+          "#577b89",
+          "#6f91a0",
+          "#84a7b5",
+          "#aac3cc",
+          "#cedde2",
+          "#edf4f6"
+        ],
+        "description": "Secondary public-site color for timeline changes, information classification, and quiet supporting paths."
       },
       "admin.primary": {
         "role": "primary",
         "displayName": "Console Blue",
-        "canonical": "hsl(221 83% 53%)",
-        "description": "Primary admin color for key actions, current selection, and focus."
+        "canonical": "oklch(64% 0.12 224)",
+        "description": "Light admin primary for key actions, current selection, and focus."
       },
       "admin.secondary": {
         "role": "secondary",
         "displayName": "Console Secondary",
-        "canonical": "hsl(221 70% 97%)",
-        "description": "Quiet admin surface color for supporting paths and dense information grouping."
+        "canonical": "oklch(70% 0.09 154)",
+        "description": "Light admin secondary for supporting paths and dense information grouping."
       },
       "admin.destructive": {
         "role": "state",
         "displayName": "Destructive State",
-        "canonical": "hsl(0 72% 51%)",
-        "description": "Admin destructive state color used only for real danger and recovery feedback."
+        "canonical": "oklch(59% 0.16 28)",
+        "description": "Light admin destructive state used only for real danger and recovery feedback."
+      },
+      "admin.dark.primary": {
+        "role": "primary",
+        "displayName": "Console Blue Dark",
+        "canonical": "oklch(72% 0.11 224)",
+        "description": "Dark admin primary for key actions, current selection, and focus."
+      },
+      "admin.dark.secondary": {
+        "role": "secondary",
+        "displayName": "Console Green Dark",
+        "canonical": "oklch(76% 0.09 154)",
+        "description": "Dark admin secondary for supporting paths and dense information grouping."
+      },
+      "admin.dark.destructive": {
+        "role": "state",
+        "displayName": "Destructive State Dark",
+        "canonical": "oklch(70% 0.13 28)",
+        "description": "Dark admin destructive state used only for real danger and recovery feedback."
       }
     },
     "typographyMeta": {
@@ -80,6 +128,16 @@
         "name": "Public Dark Strong",
         "value": "0 28px 80px rgba(0, 0, 0, 0.44)",
         "purpose": "Strong dark-theme public surface separation."
+      },
+      {
+        "name": "Admin Soft",
+        "value": "var(--shadow-soft)",
+        "purpose": "Low-noise grouping for admin cards and actionable surfaces."
+      },
+      {
+        "name": "Admin Strong",
+        "value": "var(--shadow-strong)",
+        "purpose": "Additional separation for admin overlays and editor surfaces."
       }
     ],
     "motion": [
@@ -87,6 +145,11 @@
         "name": "Public Ambient",
         "value": "low-frequency ambient motion",
         "purpose": "Allow restrained atmosphere on public surfaces while reducing motion on reading-heavy pages."
+      },
+      {
+        "name": "Public Interaction",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Use for public panel, button, navigation, and resource-browser state transitions."
       },
       {
         "name": "Admin Feedback",
@@ -109,34 +172,98 @@
         "value": "min(920px, calc(100vw - 3rem))"
       },
       {
+        "name": "Public Compact",
+        "value": "640px",
+        "purpose": "Switch public content widths and rounded corners to mobile values below this threshold."
+      },
+      {
+        "name": "Public Navigation",
+        "value": "1024px",
+        "purpose": "Switch the public playbook outline between mobile and desktop navigation."
+      },
+      {
+        "name": "Resource Browser Container",
+        "value": "40rem",
+        "purpose": "Promote the playbook resource browser from stacked panels to a file-tree workspace."
+      },
+      {
         "name": "Admin Maximum",
         "value": "1760px"
       }
     ]
   },
+  "components": [
+    {
+      "name": "Nature Primary Button",
+      "kind": "button",
+      "refersTo": "public.button",
+      "description": "主要公开站操作，使用自然绿渐变和轻微浮起反馈。",
+      "html": "<button class=\"ds-nature-button ds-nature-button-primary\" type=\"button\">继续阅读</button>",
+      "css": ".ds-nature-button { display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem; min-height: 2.75rem; padding: 0.72rem 1rem; border: 1px solid transparent; border-radius: 999px; cursor: pointer; transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1), background-color 220ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-nature-button-primary { background: linear-gradient(135deg, #4e7e60, #294e3a); color: #f7fff8; box-shadow: 0 18px 34px rgba(124, 169, 139, 0.22); } .ds-nature-button-primary:hover { transform: translateY(-1px) scale(1.01); box-shadow: 0 22px 42px rgba(124, 169, 139, 0.28); } .ds-nature-button-primary:focus-visible { outline: 3px solid #4e7e60; outline-offset: 3px; } .ds-nature-button-primary:active { transform: translateY(0) scale(0.99); }"
+    },
+    {
+      "name": "Nature Surface Panel",
+      "kind": "card",
+      "refersTo": "public.panel",
+      "description": "公共站内容承载层，以半透明叠层、有机圆角和柔和阴影分组内容。",
+      "html": "<article class=\"ds-nature-panel\"><h3>项目实践</h3><p>从实际项目中提炼的结构、取舍与实践。</p></article>",
+      "css": ".ds-nature-panel { position: relative; padding: 1.25rem; border: 1px solid rgba(84, 114, 96, 0.14); border-radius: 32px 38px 28px 36px / 30px 34px 40px 28px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(252, 253, 251, 0.78)); box-shadow: 0 24px 60px rgba(95, 122, 108, 0.14); color: #24352d; transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), border-color 260ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-nature-panel:hover { transform: translateY(-2px); border-color: rgba(84, 114, 96, 0.22); box-shadow: 0 24px 70px rgba(74, 98, 86, 0.2); } .ds-nature-panel:focus-within { outline: 2px solid #4e7e60; outline-offset: 2px; } .ds-nature-panel h3 { margin: 0 0 0.75rem; font: 600 1.25rem/1.4 \"Noto Serif SC\", serif; } .ds-nature-panel p { margin: 0; color: rgba(36, 53, 45, 0.68); line-height: 1.75; }"
+    },
+    {
+      "name": "Nature Accent Chip",
+      "kind": "chip",
+      "refersTo": "public.chip",
+      "description": "轻量标签，用于内容分类和继续探索路径。",
+      "html": "<span class=\"ds-nature-chip ds-nature-chip-accent\">主题</span>",
+      "css": ".ds-nature-chip { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.72rem; border: 1px solid rgba(84, 114, 96, 0.14); border-radius: 999px; background: rgba(255, 255, 255, 0.28); color: rgba(36, 53, 45, 0.68); font: 600 0.8rem/1.2 \"Noto Sans SC\", sans-serif; } .ds-nature-chip-accent { border-color: rgba(124, 169, 139, 0.28); background: rgba(78, 126, 96, 0.14); color: #4e7e60; } .ds-nature-chip-accent:focus-visible { outline: 2px solid #4e7e60; outline-offset: 2px; }"
+    },
+    {
+      "name": "Nature Input Shell",
+      "kind": "input",
+      "refersTo": "public.input-shell",
+      "description": "公共站搜索和筛选输入，保持内容优先的柔和边界与明确焦点。",
+      "html": "<label class=\"ds-nature-input-shell\"><span>搜索</span><input aria-label=\"搜索文章\" placeholder=\"搜索文章\" /></label>",
+      "css": ".ds-nature-input-shell { display: flex; align-items: center; gap: 0.7rem; min-height: 3.25rem; padding: 0.75rem 1rem; border: 1px solid rgba(84, 114, 96, 0.14); border-radius: 18px 20px 16px 22px / 18px 18px 22px 18px; background: rgba(252, 253, 251, 0.78); color: rgba(36, 53, 45, 0.68); } .ds-nature-input-shell:focus-within { border-color: rgba(78, 126, 96, 0.42); box-shadow: 0 0 0 3px rgba(78, 126, 96, 0.12); } .ds-nature-input-shell input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: #24352d; font: 400 1rem/1.5 \"Noto Sans SC\", sans-serif; }"
+    },
+    {
+      "name": "Playbook Resource Browser",
+      "kind": "custom",
+      "refersTo": "public.editor-surface",
+      "description": "Playbook 公开资源浏览器，在宽容器中展开文件树、阅读视图和源码视图。",
+      "html": "<section class=\"ds-playbook-resource-browser\"><h2>公开资源</h2><div class=\"ds-playbook-resource-layout\"><aside>文件</aside><pre><code># SKILL.md</code></pre></div></section>",
+      "css": ".ds-playbook-resource-browser { color: #24352d; } .ds-playbook-resource-browser h2 { margin: 0; font: 600 1.5rem/1.4 \"Noto Serif SC\", serif; } .ds-playbook-resource-layout { display: grid; min-width: 0; margin-top: 1rem; border-block: 1px solid rgba(84, 114, 96, 0.14); } .ds-playbook-resource-layout aside { min-height: 44px; padding: 0.75rem; border-bottom: 1px solid rgba(84, 114, 96, 0.14); color: rgba(36, 53, 45, 0.68); font: 600 0.8125rem/1.5 \"Noto Sans SC\", sans-serif; } .ds-playbook-resource-layout pre { min-width: 0; margin: 0; padding: 1rem; overflow: auto; background: transparent; color: #24352d; font: 400 0.8125rem/1.75 ui-monospace, SFMono-Regular, Menlo, monospace; } @media (min-width: 40rem) { .ds-playbook-resource-layout { grid-template-columns: 12.5rem minmax(0, 1fr); } .ds-playbook-resource-layout aside { border-right: 1px solid rgba(84, 114, 96, 0.14); border-bottom: 0; } }"
+    },
+    {
+      "name": "Admin Status Card",
+      "kind": "card",
+      "refersTo": "admin.card",
+      "description": "后台状态承载层，以低噪声 surface、清楚文字和可比较的结果表达任务状态。",
+      "html": "<section class=\"ds-admin-card\"><span class=\"ds-admin-card-label\">同步状态</span><strong>已完成</strong></section>",
+      "css": ".ds-admin-card { display: grid; gap: 0.35rem; padding: 1rem; border: 1px solid oklch(88% 0.018 88); border-radius: 1.25rem; background: oklch(99% 0.008 88); color: oklch(29% 0.026 252); box-shadow: 0 12px 28px oklch(57% 0.04 252 / 0.16); } .ds-admin-card-label { color: oklch(49% 0.026 252); font: 600 0.75rem/1.4 InterVariable, Inter, system-ui, sans-serif; } .ds-admin-card strong { color: oklch(58% 0.125 154); font: 600 1rem/1.5 InterVariable, Inter, system-ui, sans-serif; } .ds-admin-card:focus-within { outline: 2px solid oklch(64% 0.12 224); outline-offset: 2px; }"
+    }
+  ],
   "narrative": {
     "northStar": "数字温室",
-    "overview": "公共站采用 Nature Interface。它固定为当前公共站的长期方向：自然色、柔和半透明 surface、有机圆角、时间线节奏、轻量 ambient layer，以及 light、dark、system 三态主题。文章、Memos、标签、搜索和项目都应保持读者能继续探索的路径。\n\n后台采用 Soft UI 内容养护台。它不参考旧后台的样式、排版或布局，而以柔和 surface、大圆角、低饱和色、清楚状态、稳定操作反馈和宽屏工作区承载写作、审核、同步、计划任务和 AI 配置。",
+    "overview": "创意北极星是“数字温室”：公开站像一个安静、柔和、可漫游的个人内容空间，后台像内容养护台，帮助作者整理、同步、审核、配置和恢复系统状态。默认 register 是 product，因此设计必须先服务任务完成，再表达个人气质。\n\n公共站采用 Nature Interface。它固定为当前公共站的长期方向：自然色、柔和半透明 surface、有机圆角、时间线节奏、轻量 ambient layer，以及 light、dark、system 三态主题。文章、Memos、标签、搜索和项目都应保持读者能继续探索的路径。\n\n后台采用 Soft UI 内容养护台。它不参考旧后台的样式、排版或布局，而以柔和 surface、大圆角、低饱和色、清楚状态、稳定操作反馈和宽屏工作区承载写作、审核、同步、计划任务和 AI 配置。",
     "keyCharacteristics": [
-      "公共站保持数字温室方向。",
-      "后台保持安静、密集、任务优先。",
-      "公共站与后台可以有不同密度与气质，但都体现安静、精确、可亲。",
-      "减少动态偏好下仍保留可理解的结构和反馈。"
+      "公共站采用 Nature Interface。",
+      "后台采用 Soft UI 内容养护台。",
+      "跨表面的共同点是对比清楚、状态稳定、语义一致。",
+      "组件使用原则是避免卡片套卡片。",
+      "动效必须克制。"
     ],
     "rules": [],
     "dos": [
-      "让内容和状态先被看懂。",
-      "公共站保持数字温室方向。",
-      "后台保持安静、密集、任务优先。",
-      "状态必须有文本、图标、位置或结构辅助。",
-      "减少动态偏好下仍保留可理解的结构和反馈。"
+      "让内容和状态先被看懂。用清楚标题、可辨状态、稳定布局和明确操作反馈组织页面。",
+      "公共站保持数字温室方向。使用柔和自然色、半透明 surface、时间线节奏和轻量动效，但不要遮挡内容。",
+      "后台保持安静控制台方向。优先可扫读表格、明确筛选、状态徽章、错误说明和恢复操作。",
+      "保持 light、dark、system 主题一致性，并确认减少动态偏好下仍可理解页面结构。"
     ],
     "donts": [
-      "不要把个人博客做成通用 SaaS 营销页。",
-      "不要把公开站做成社交信息流。",
-      "不要把后台做成无差别企业模板。",
-      "不要使用默认 AI 产品视觉作为主要风格。",
-      "不要新增卡片套卡片、过强阴影或不可解释动效。"
+      "把个人博客做成通用 SaaS 营销页、社交信息流或默认 AI 产品视觉。",
+      "参考旧后台的样式、排版或布局；后台的新视觉重点是 Soft UI 触感、任务、状态和结果。",
+      "用颜色作为唯一状态表达；状态必须有文本、图标、位置或结构上的辅助。",
+      "新增卡片套卡片、过强阴影、过度渐变、不可解释动效或只为装饰存在的图形层。"
     ]
   }
 }
