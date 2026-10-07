@@ -310,18 +310,18 @@ export class GitHubLedgerStore implements LedgerStore {
     let rootFound = false;
     const recoverySha = this.github
       .commit(sha)
-      .message.match(/(?:^|\n)Ledger-Recovery: ([a-f0-9]{40})(?:\n|$)/)?.[1];
+      .message.match(/Ledger-Recovery:\s*([a-f0-9]{40})/)?.[1];
     let legacySha: string | undefined;
     const commits = this.github.pages(`${this.github.root}/commits?sha=${sha}&per_page=100`);
     for (const raw of commits) {
       const commit = repositoryCommitSchema.parse(raw);
       if (commit.sha !== expected || commit.parents.length > 1)
         throw new Error("Ledger history is not a single-parent chain");
+      const owner = contract.repository.split("/")[0];
       const legacyRequested =
         (options.allowLegacyHead && commit.sha === sha) ||
         (options.allowLegacyAncestor && commit.sha !== sha && !legacySha) ||
-        recoverySha === commit.sha;
-      const owner = contract.repository.split("/")[0];
+        (recoverySha !== undefined && commit.sha !== sha);
       if (legacyRequested && commit.author?.login === owner) {
         const bot = `${this.github.botSlug}[bot]`;
         if (
