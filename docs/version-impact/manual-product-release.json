@@ -48,7 +48,7 @@
     "docs/releases/frontend-v2.4.0.md": null,
     "docs/releases/frontend-v2.4.1.md": null,
     "docs/releases/frontend-v2.4.2.md": null,
-    "docs/runbooks/fs-only-migration.md": "7ea28508f4e91edd97f3995c0d8718a5066f097b",
+    "docs/runbooks/fs-only-migration.md": "08010661ef2594fd3108251931a915d38ac39d47",
     "docs/runbooks/manual-version-release.md": "b7542f3d373167cd332a8c9b0b780935eb755eb6",
     "docs/runbooks/pr-label-release.md": null,
     "docs/solutions/search/sqlite-fts5-fallback.md": "d9cc4bc78fe95f3038e6cc600219969c76b909fe",
@@ -141,7 +141,7 @@
     "src/lib/__tests__/admin-demo-llm-settings.test.ts": "f925fbf36e2717aff8f1b4159fce36dea6098d44",
     "src/lib/admin-api-client.ts": "10565f7bf042831a24beb5ef52ce84aa2be6928e",
     "src/lib/ai/search-fallback.test.ts": "7ad10d1d7e640abb86bf702015111d870f8d5040",
-    "src/lib/ai/search.ts": "db1549c3528d6f318e6add7d7d05994a683defbf",
+    "src/lib/ai/search.ts": "6b384e8a884224f618d75c33f0474a9b073c957d",
     "src/lib/playbook/child-env.ts": "d6f344e6439869d39b0e363ea735e5f5888fe6ad",
     "src/lib/playbook/fixture.ts": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
     "src/lib/playbook/search.test.ts": "9d58afc7b6c44d99e9b22e4297dc384a71647221",
@@ -197,7 +197,9 @@
     "tests/components/Reactions.test.tsx": "88aa3ab1eba18c70962c6f0a74e159c07a2134af",
     ".impeccable/design.json": "304d41d82f7ffca7b9e1b80f0373a70723ee5038",
     "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-desktop-dark.png": "fb4c38f8823b8618ad5e2169192bd06a32c931ab",
-    "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-mobile-dark.png": "b35703d4469a45750b341a86b0f7730f2d72155f"
+    "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-mobile-dark.png": "b35703d4469a45750b341a86b0f7730f2d72155f",
+    "scripts/content-migrate-api-links.ts": "1e9927a7b26be419f974f9d745744d1272f561ea",
+    "src/server/services/search-suggestions.ts": "07eff12db05dd57034f01669f05a2276447edc09"
   },
   "change": {
     "description": "Cover the complete unpublished interval: compatible version metadata, manual two-product delivery, transient snapshot retry and artifact-safe recovery, search fixes, inherited Playbook presentation and design metadata, and build-time Web Demo global controls. Public CSR navigation remains a separate follow-up.",
@@ -250,127 +252,127 @@
     "current": {
       "impact": "minor",
       "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change the live API contracts or SQLite/local content formats. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded. The full-width Playbook card descriptions and deterministic fixture copy preserve existing API and durable-state contracts.",
-      "assessed_at": "2026-10-07T17:36:00Z",
+      "assessed_at": "2026-10-07T21:21:00Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
           "blob": "5fc3945774851eae7e1a99c4f7dd1237dfe7d3f9",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/lib/manual-release-provenance.test.ts",
           "blob": "01496353150171b571e007bb11cbd354d9ff7d7b",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/lib/manual-release-recovery.test.ts",
           "blob": "1ba9c072989f7c294944fea9578a05c300725020",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/server/version-api.test.ts",
           "blob": "746ed7e7dfc790dd70131c0a7dca07c44f9c07c7",
-          "command": "bun test tests/server/version-api.test.ts tests/lib/manual-release-*.test.ts"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/__tests__/persisted-paths.test.ts",
           "blob": "b97a9944409d6e24e7a75aaec1e6eacf08d0ad07",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/lib/web-demo-runtime.test.ts",
           "blob": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/storybook/story-boundary.test.ts",
           "blob": "34f87f3d68d1259f3161d77644d22f8d43197c8d",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/search/content-search.test.ts",
           "blob": "327a9b3aa02e898f7032299e3279b613430f8ae0",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/ai/search-fallback.test.ts",
           "blob": "7ad10d1d7e640abb86bf702015111d870f8d5040",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/playbook/search.test.ts",
           "blob": "9d58afc7b6c44d99e9b22e4297dc384a71647221",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/components/search/search-results-cache.test.ts",
           "blob": "c880240d6e36b988897ea65a63d6fd1863805300",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/components/search/SearchResultsList.test.tsx",
           "blob": "552681e47d3bcda703a3d6a0040da081311a7239",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/e2e/guest/mobile-reading-surface.spec.ts",
           "blob": "abb822347ab9216a444ff30b9b0de1d9875acb5e",
-          "command": "Focused guest Playwright: reading margins/type icons, actual-source contrast, and edge-to-edge press/focus feedback"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/components/playbook/PlaybookPage.tsx",
           "blob": "fb74adc6384bad14b5e4a1b9e522a7606c1e6e6b",
-          "command": "bun run check"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "docs/specs/style-playbook-integration/SPEC.md",
           "blob": "2634a987630e6294d1a875a654e558dfc66059d5",
-          "command": "git diff --check"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-desktop-dark.png",
           "blob": "fb4c38f8823b8618ad5e2169192bd06a32c931ab",
-          "command": "Web Demo /playbook/ screenshot at 1280x900, owner-confirmed"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-mobile-dark.png",
           "blob": "b35703d4469a45750b341a86b0f7730f2d72155f",
-          "command": "Web Demo /playbook/ screenshot at 390x844, owner-confirmed"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/playbook/fixture.ts",
           "blob": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
-          "command": "bun test tests/lib/playbook-contract.test.ts"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
           "blob": "44575ddcc0e8b2bbc1ad53d4da379eba51fdae7a",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/lib/web-demo-boundary.test.ts",
           "blob": "d3631d64cafb7297df4af827fdd60b5383fd70f6",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/components/MemoTimeline.test.tsx",
           "blob": "215902ac3164c99063cdb5ca83ed48a80d942f2f",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/components/WebDemoIdentity.test.tsx",
           "blob": "a501e7de34d818b986d6750075f44d67245127de",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/lib/web-demo-motion.test.ts",
           "blob": "7981d306cac819189bd01e2740b70a2b4dd5a620",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/components/Reactions.test.tsx",
           "blob": "88aa3ab1eba18c70962c6f0a74e159c07a2134af",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         }
       ],
       "scope_drift": {
@@ -381,127 +383,127 @@
     "verified": {
       "impact": "minor",
       "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change live API contracts or SQLite/local content formats. The repair adds mounted reaction request recovery and separates Admin Vite caches without changing public contracts. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded.",
-      "assessed_at": "2026-10-07T17:36:00Z",
+      "assessed_at": "2026-10-07T21:21:00Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
           "blob": "5fc3945774851eae7e1a99c4f7dd1237dfe7d3f9",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/lib/manual-release-provenance.test.ts",
           "blob": "01496353150171b571e007bb11cbd354d9ff7d7b",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/lib/manual-release-recovery.test.ts",
           "blob": "1ba9c072989f7c294944fea9578a05c300725020",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/server/version-api.test.ts",
           "blob": "746ed7e7dfc790dd70131c0a7dca07c44f9c07c7",
-          "command": "bun test tests/server/version-api.test.ts tests/lib/manual-release-*.test.ts"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/__tests__/persisted-paths.test.ts",
           "blob": "b97a9944409d6e24e7a75aaec1e6eacf08d0ad07",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/lib/web-demo-runtime.test.ts",
           "blob": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/storybook/story-boundary.test.ts",
           "blob": "34f87f3d68d1259f3161d77644d22f8d43197c8d",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/search/content-search.test.ts",
           "blob": "327a9b3aa02e898f7032299e3279b613430f8ae0",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/ai/search-fallback.test.ts",
           "blob": "7ad10d1d7e640abb86bf702015111d870f8d5040",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/playbook/search.test.ts",
           "blob": "9d58afc7b6c44d99e9b22e4297dc384a71647221",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/components/search/search-results-cache.test.ts",
           "blob": "c880240d6e36b988897ea65a63d6fd1863805300",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/components/search/SearchResultsList.test.tsx",
           "blob": "552681e47d3bcda703a3d6a0040da081311a7239",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/e2e/guest/mobile-reading-surface.spec.ts",
           "blob": "abb822347ab9216a444ff30b9b0de1d9875acb5e",
-          "command": "Focused guest Playwright: reading margins/type icons, actual-source contrast, and edge-to-edge press/focus feedback"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/components/playbook/PlaybookPage.tsx",
           "blob": "fb74adc6384bad14b5e4a1b9e522a7606c1e6e6b",
-          "command": "bun run check"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "docs/specs/style-playbook-integration/SPEC.md",
           "blob": "2634a987630e6294d1a875a654e558dfc66059d5",
-          "command": "git diff --check"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-desktop-dark.png",
           "blob": "fb4c38f8823b8618ad5e2169192bd06a32c931ab",
-          "command": "Web Demo /playbook/ screenshot at 1280x900, owner-confirmed"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-mobile-dark.png",
           "blob": "b35703d4469a45750b341a86b0f7730f2d72155f",
-          "command": "Web Demo /playbook/ screenshot at 390x844, owner-confirmed"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/playbook/fixture.ts",
           "blob": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
-          "command": "bun test tests/lib/playbook-contract.test.ts"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
           "blob": "44575ddcc0e8b2bbc1ad53d4da379eba51fdae7a",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/lib/web-demo-boundary.test.ts",
           "blob": "d3631d64cafb7297df4af827fdd60b5383fd70f6",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/components/MemoTimeline.test.tsx",
           "blob": "215902ac3164c99063cdb5ca83ed48a80d942f2f",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/components/WebDemoIdentity.test.tsx",
           "blob": "a501e7de34d818b986d6750075f44d67245127de",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/lib/web-demo-motion.test.ts",
           "blob": "7981d306cac819189bd01e2740b70a2b4dd5a620",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/components/Reactions.test.tsx",
           "blob": "88aa3ab1eba18c70962c6f0a74e159c07a2134af",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         }
       ]
     }
@@ -515,57 +517,57 @@
         {
           "path": "tests/lib/manual-release-policy.test.ts",
           "blob": "5fc3945774851eae7e1a99c4f7dd1237dfe7d3f9",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/lib/manual-release-provenance.test.ts",
           "blob": "01496353150171b571e007bb11cbd354d9ff7d7b",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/lib/manual-release-recovery.test.ts",
           "blob": "1ba9c072989f7c294944fea9578a05c300725020",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/server/version-api.test.ts",
           "blob": "746ed7e7dfc790dd70131c0a7dca07c44f9c07c7",
-          "command": "bun test tests/server/version-api.test.ts tests/lib/manual-release-*.test.ts"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/lib/web-demo-runtime.test.ts",
           "blob": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/storybook/story-boundary.test.ts",
           "blob": "34f87f3d68d1259f3161d77644d22f8d43197c8d",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/search/content-search.test.ts",
           "blob": "327a9b3aa02e898f7032299e3279b613430f8ae0",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/ai/search-fallback.test.ts",
           "blob": "7ad10d1d7e640abb86bf702015111d870f8d5040",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/playbook/search.test.ts",
           "blob": "9d58afc7b6c44d99e9b22e4297dc384a71647221",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/components/WebDemoIdentity.test.tsx",
           "blob": "a501e7de34d818b986d6750075f44d67245127de",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "tests/components/Reactions.test.tsx",
           "blob": "88aa3ab1eba18c70962c6f0a74e159c07a2134af",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         }
       ]
     },
@@ -579,17 +581,17 @@
         {
           "path": "src/lib/__tests__/persisted-paths.test.ts",
           "blob": "b97a9944409d6e24e7a75aaec1e6eacf08d0ad07",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/components/search/search-results-cache.test.ts",
           "blob": "c880240d6e36b988897ea65a63d6fd1863805300",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/components/search/SearchResultsList.test.tsx",
           "blob": "552681e47d3bcda703a3d6a0040da081311a7239",
-          "command": "bun run test:precommit"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         }
       ]
     }

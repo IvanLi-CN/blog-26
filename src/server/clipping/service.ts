@@ -166,11 +166,13 @@ export class ClippingService {
       path: options.runtimePath ?? clippingStoragePaths().runtime,
       resolveModel: options.resolveModel ?? resolveModel,
       strictConfiguration: false,
+      resume: false,
+      onOwnershipLost: () => service.markOwnershipLost(),
       retrieveArticle: (conversationId, query) => service.articleContext(conversationId, query),
     });
     service.store.beforePublish = () => service.runtime.assertOwnership();
     try {
-      await service.scan();
+      await service.scan(true);
       service.timer = setInterval(
         () =>
           void service
@@ -188,13 +190,14 @@ export class ClippingService {
     }
   }
 
-  scan() {
+  scan(resume = false) {
     if (this.closing) return Promise.resolve();
     if (this.scanning) return this.scanning;
     this.scanning = (async () => {
       for (const memoId of await (this.options.memoIds ?? listMemoIds)()) {
         await this.reconcile(memoId);
       }
+      if (resume) this.runtime.resume();
       this.pump();
     })().finally(() => {
       this.scanning = null;
@@ -483,7 +486,14 @@ export class ClippingService {
         });
       }
       if (!version.jobConversationId) {
+        if (signal.aborted || this.closing) return;
         const conversationId = await this.runtime.createConversation(PROCESS_INSTRUCTIONS);
+        if (signal.aborted || this.closing) {
+          await this.runtime.abort(conversationId).catch((error) => {
+            if (error instanceof RuntimeOwnershipError) this.markOwnershipLost();
+          });
+          return;
+        }
         const config = await (this.options.resolveModel ?? resolveModel)();
         await this.checkpoint(id, version, (_manifest, stored) => {
           stored.jobConversationId = conversationId;

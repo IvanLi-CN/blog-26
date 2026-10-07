@@ -1,5 +1,6 @@
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { uniqueRankedContent } from "@/lib/search/content-identity";
+import { isClippingRowPublic } from "@/server/clipping/projection";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../db";
 import { postEmbeddings, posts } from "../schema";
@@ -359,10 +360,31 @@ async function getSemanticExecution(input: SemanticSearchInput): Promise<Semanti
       cacheable: execution.source === "semantic",
     };
   });
+  const results =
+    input.publishedOnly === true
+      ? await filterPublishedClippingResults(execution.results)
+      : execution.results;
   return {
-    results: execution.results,
+    results,
     source: execution.source === "fts" ? "fts" : "semantic",
   };
+}
+
+export async function filterPublishedClippingResults(results: SearchResult[]) {
+  const memoSlugs = Array.from(
+    new Set(results.filter((result) => result.type === "memo").map((result) => result.slug))
+  );
+  if (memoSlugs.length === 0) return results;
+  const rows = await db
+    .select()
+    .from(posts)
+    .where(and(eq(posts.type, "memo"), inArray(posts.slug, memoSlugs)));
+  const publicBySlug = new Map(
+    await Promise.all(rows.map(async (row) => [row.slug, await isClippingRowPublic(row)] as const))
+  );
+  return results.filter(
+    (result) => result.type !== "memo" || (publicBySlug.get(result.slug) ?? false)
+  );
 }
 
 export async function semantic(input: SemanticSearchInput): Promise<SearchResult[]> {
@@ -437,6 +459,10 @@ export async function enhanced(
   input: SemanticSearchInput & { rerankTopK?: number; rerank?: boolean; rerankerModel?: string }
 ) {
   const cacheInput = await buildSearchCacheInput("enhanced", input);
-  return (await getCachedSearchExecution("enhanced", cacheInput, () => computeEnhanced(input)))
-    .results;
+  const execution = await getCachedSearchExecution("enhanced", cacheInput, () =>
+    computeEnhanced(input)
+  );
+  return input.publishedOnly === true
+    ? await filterPublishedClippingResults(execution.results)
+    : execution.results;
 }

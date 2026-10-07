@@ -53,6 +53,30 @@ describe("Pi runtime ownership and recovery", () => {
     }
   });
 
+  it("notifies the owner when a heartbeat observes a lease takeover", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "pi-owner-heartbeat-"));
+    const path = join(directory, "runtime.sqlite");
+    let clock = 1000;
+    let lost = 0;
+    const first = await PiSqliteDatabase.open(path, {
+      now: () => clock,
+      leaseMs: 100,
+      heartbeatMs: 10,
+      onOwnershipLost: () => lost++,
+    });
+    let second: PiSqliteDatabase | undefined;
+    try {
+      clock += 101;
+      second = await PiSqliteDatabase.open(path, { now: () => clock });
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      expect(lost).toBe(1);
+    } finally {
+      await first.close();
+      await second?.close();
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it("serializes outside operations, rolls back errors and expires transaction handles", async () => {
     const database = await PiSqliteDatabase.open(":memory:");
     let retained: SqliteExecutor | undefined;

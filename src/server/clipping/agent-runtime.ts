@@ -99,7 +99,8 @@ export class AgentRuntimeFacade {
     private readonly harness: Harness,
     private readonly refresh: () => Promise<Model<"openai-completions">>,
     private readonly tools: readonly ToolRegistration[],
-    private readonly database: PiSqliteDatabase
+    private readonly database: PiSqliteDatabase,
+    private readonly resumable: boolean
   ) {}
 
   static async open(options: {
@@ -107,6 +108,8 @@ export class AgentRuntimeFacade {
     resolveModel: () => Promise<AgentModelConfig>;
     retrieveArticle?: (conversationId: string, query: string) => Promise<string>;
     strictConfiguration?: boolean;
+    resume?: boolean;
+    onOwnershipLost?: () => void;
   }) {
     const models = createModels();
     const registry = createRegistry();
@@ -168,7 +171,9 @@ export class AgentRuntimeFacade {
         throw error;
       }
     }
-    const database = await PiSqliteDatabase.open(options.path);
+    const database = await PiSqliteDatabase.open(options.path, {
+      onOwnershipLost: options.onOwnershipLost,
+    });
     try {
       const harness = await Harness.open(
         await SqliteStorage.open(database),
@@ -201,8 +206,8 @@ export class AgentRuntimeFacade {
         }
         cursor = page.next;
       } while (cursor);
-      if (model) harness.resume();
-      return new AgentRuntimeFacade(harness, refresh, articleTools, database);
+      if (model && options.resume !== false) harness.resume();
+      return new AgentRuntimeFacade(harness, refresh, articleTools, database, Boolean(model));
     } catch (error) {
       await database.close();
       throw error;
@@ -340,5 +345,9 @@ export class AgentRuntimeFacade {
 
   async close() {
     await this.harness.close(BACKGROUND_CONTEXT);
+  }
+
+  resume() {
+    if (this.resumable) this.harness.resume();
   }
 }

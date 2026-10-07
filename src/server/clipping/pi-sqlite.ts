@@ -29,7 +29,8 @@ export class PiSqliteDatabase implements SqliteDatabase {
     private readonly database: Database,
     private readonly now: () => number,
     private readonly leaseMs: number,
-    heartbeatMs: number
+    heartbeatMs: number,
+    private readonly onOwnershipLost?: () => void
   ) {
     database.exec("BEGIN IMMEDIATE");
     try {
@@ -57,14 +58,22 @@ export class PiSqliteDatabase implements SqliteDatabase {
           this.owner,
           this.epoch
         );
-      }).catch(() => clearInterval(this.timer));
+      }).catch((error) => {
+        clearInterval(this.timer);
+        if (error instanceof RuntimeOwnershipError) this.onOwnershipLost?.();
+      });
     }, heartbeatMs);
     this.timer.unref();
   }
 
   static async open(
     path: string,
-    options: { now?: () => number; leaseMs?: number; heartbeatMs?: number } = {}
+    options: {
+      now?: () => number;
+      leaseMs?: number;
+      heartbeatMs?: number;
+      onOwnershipLost?: () => void;
+    } = {}
   ) {
     if (path !== ":memory:") await mkdir(dirname(path), { recursive: true });
     const database = new Database(path, { create: true, strict: true });
@@ -74,7 +83,8 @@ export class PiSqliteDatabase implements SqliteDatabase {
         database,
         options.now ?? Date.now,
         options.leaseMs ?? 30_000,
-        options.heartbeatMs ?? 10_000
+        options.heartbeatMs ?? 10_000,
+        options.onOwnershipLost
       );
     } catch (error) {
       database.close();

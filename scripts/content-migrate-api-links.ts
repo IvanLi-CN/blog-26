@@ -13,8 +13,17 @@
  */
 
 import { Database } from "bun:sqlite";
-import { copyFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
-import { join, resolve as resolvePath } from "node:path";
+import {
+  copyFile,
+  lstat,
+  mkdir,
+  readdir,
+  readFile,
+  realpath,
+  rm,
+  writeFile,
+} from "node:fs/promises";
+import { basename, dirname, join, resolve as resolvePath } from "node:path";
 import { normalizePersistedLink, rewriteApiFilesUrlsToRelative } from "../src/lib/persisted-paths";
 
 type ChangeSample = {
@@ -121,6 +130,25 @@ async function ensureDir(path: string) {
   await mkdir(path, { recursive: true });
 }
 
+async function canonicalCandidate(path: string) {
+  const name = basename(path);
+  if (!name || name === "." || name === "..")
+    throw new Error("Backup directory must name a directory");
+  try {
+    const stats = await lstat(path);
+    if (stats.isSymbolicLink()) throw new Error("Backup directory must not be a symlink");
+    return await realpath(path);
+  } catch (error) {
+    if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT"))
+      throw error;
+  }
+  return join(await realpath(dirname(path)), name);
+}
+
+function containsPath(parent: string, child: string) {
+  return parent === "/" || child === parent || child.startsWith(`${parent}/`);
+}
+
 async function backupFile(opts: { backupDirAbs: string; relPath: string; srcAbs: string }) {
   const destAbs = join(opts.backupDirAbs, "markdown", opts.relPath);
   await ensureDir(join(destAbs, ".."));
@@ -140,6 +168,7 @@ async function backupDbFile(opts: { backupDirAbs: string; dbPath: string }) {
     } catch (error) {
       if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT"))
         throw error;
+      await rm(destination, { force: true });
     }
   }
 }
@@ -187,6 +216,26 @@ async function main() {
   }
 
   const backupDirAbs = args.backupDir ? resolvePath(process.cwd(), args.backupDir) : "";
+
+  if (args.apply) {
+    await ensureDir(dirname(backupDirAbs));
+    const backupReal = await canonicalCandidate(backupDirAbs);
+    const sourceRoots: Array<{ path: string; label: string }> = [];
+    if (localBase)
+      sourceRoots.push({
+        path: await realpath(resolvePath(process.cwd(), localBase)),
+        label: "content root",
+      });
+    if (shouldMigrateDb) {
+      const dbReal = await realpath(resolvePath(process.cwd(), process.env.DB_PATH?.trim() ?? ""));
+      if (containsPath(backupReal, dbReal))
+        throw new Error("Backup directory must be outside the application database path");
+    }
+    for (const root of sourceRoots) {
+      if (containsPath(root.path, backupReal) || containsPath(backupReal, root.path))
+        throw new Error(`Backup directory must not overlap the ${root.label}`);
+    }
+  }
 
   const samples: ChangeSample[] = [];
   const sampleLimit = 3;

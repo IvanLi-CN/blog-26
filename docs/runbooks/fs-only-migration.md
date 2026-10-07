@@ -30,14 +30,31 @@ case "$(basename "$CLIPPING_CONTENT_BASE_PATH")" in ""|"."|"..") echo "CLIPPING_
 case "$(basename "$BACKUP_DIR")" in ""|"."|"..") echo "BACKUP_DIR must name a directory" >&2; exit 2;; esac
 mkdir -p "$(dirname "$BACKUP_DIR")"
 content_real="$(realpath "$CONTENT_ROOT")"
-clippings_real="$(realpath "$CLIPPING_CONTENT_BASE_PATH" 2>/dev/null || true)"
+if [ -e "$CLIPPING_CONTENT_BASE_PATH" ]; then
+  clippings_real="$(realpath "$CLIPPING_CONTENT_BASE_PATH")"
+else
+  clippings_real="$(realpath "$(dirname "$CLIPPING_CONTENT_BASE_PATH")")/$(basename "$CLIPPING_CONTENT_BASE_PATH")"
+fi
+db_real="$(realpath "$DB_PATH")"
+if [ -e "$PI_DURABLE_DB_PATH" ] || [ -L "$PI_DURABLE_DB_PATH" ]; then
+  test -f "$PI_DURABLE_DB_PATH"
+  test ! -L "$PI_DURABLE_DB_PATH"
+  pi_real="$(realpath "$PI_DURABLE_DB_PATH")"
+  test "$db_real" != "$pi_real"
+  bun -e 'import { statSync } from "node:fs"; const a=statSync(process.argv[1]); const b=statSync(process.argv[2]); if (a.dev === b.dev && a.ino === b.ino) throw new Error("DB_PATH and PI_DURABLE_DB_PATH must be different files");' "$DB_PATH" "$PI_DURABLE_DB_PATH"
+else
+  pi_real="$(realpath "$(dirname "$PI_DURABLE_DB_PATH")")/$(basename "$PI_DURABLE_DB_PATH")"
+fi
+test "$content_real" != "/" && test "$clippings_real" != "/" && test "$db_real" != "/" && test "$pi_real" != "/"
+case "$content_real/" in "$clippings_real/"*) echo "Content roots must not overlap" >&2; exit 2;; esac
+case "$clippings_real/" in "$content_real/"*) echo "Content roots must not overlap" >&2; exit 2;; esac
+case "$db_real" in "$content_real/"*|"$clippings_real/"*) echo "DB_PATH must be outside content roots" >&2; exit 2;; esac
+case "$pi_real" in "$content_real/"*|"$clippings_real/"*) echo "PI_DURABLE_DB_PATH must be outside content roots" >&2; exit 2;; esac
 backup_parent="$(realpath "$(dirname "$BACKUP_DIR")")"
 backup_real="$backup_parent/$(basename "$BACKUP_DIR")"
 case "$backup_real/" in "$content_real/"*) echo "BACKUP_DIR must be outside content roots" >&2; exit 2;; esac
 test "$backup_real" != "/" && test "$backup_real" != "$content_real" && test "$backup_real" != "$clippings_real"
-if [ -n "$clippings_real" ]; then
-  case "$backup_real/" in "$clippings_real/"*) echo "BACKUP_DIR must be outside content roots" >&2; exit 2;; esac
-fi
+case "$backup_real/" in "$clippings_real/"*) echo "BACKUP_DIR must be outside content roots" >&2; exit 2;; esac
 
 # Stop the sole console/gateway runtime owner through its process supervisor
 # (for example, the deployment's console and gateway service units). Do not
@@ -135,13 +152,26 @@ case "$(basename "$CONTENT_ROOT")" in ""|"."|"..") echo "CONTENT_ROOT must name 
 case "$(basename "$CLIPPING_CONTENT_BASE_PATH")" in ""|"."|"..") echo "CLIPPING_CONTENT_BASE_PATH must name a directory" >&2; exit 2;; esac
 test -n "${BACKUP_DIR:-}"
 test "$BACKUP_DIR" != "/"
-mkdir -p "$(dirname "$CONTENT_ROOT")" "$(dirname "$CLIPPING_CONTENT_BASE_PATH")"
+mkdir -p "$(dirname "$CONTENT_ROOT")" "$(dirname "$CLIPPING_CONTENT_BASE_PATH")" "$(dirname "$DB_PATH")" "$(dirname "$PI_DURABLE_DB_PATH")"
 content_real="$(realpath "$(dirname "$CONTENT_ROOT")")/$(basename "$CONTENT_ROOT")"
 clippings_real="$(realpath "$(dirname "$CLIPPING_CONTENT_BASE_PATH")")/$(basename "$CLIPPING_CONTENT_BASE_PATH")"
+db_real="$(realpath "$(dirname "$DB_PATH")")/$(basename "$DB_PATH")"
+pi_real="$(realpath "$(dirname "$PI_DURABLE_DB_PATH")")/$(basename "$PI_DURABLE_DB_PATH")"
 backup_real="$(realpath "$BACKUP_DIR")"
+test "$content_real" != "/" && test "$clippings_real" != "/" && test "$db_real" != "/" && test "$pi_real" != "/"
 case "$backup_real/" in "$content_real/"*|"$clippings_real/"*) echo "BACKUP_DIR must be outside content roots" >&2; exit 2;; esac
 test "$backup_real" != "/" && test "$backup_real" != "$content_real" && test "$backup_real" != "$clippings_real"
 test "$content_real" != "$clippings_real"
+case "$db_real" in "$content_real/"*|"$clippings_real/"*) echo "DB_PATH must be outside content roots" >&2; exit 2;; esac
+case "$pi_real" in "$content_real/"*|"$clippings_real/"*) echo "PI_DURABLE_DB_PATH must be outside content roots" >&2; exit 2;; esac
+test "$db_real" != "$pi_real"
+if [ -e "$DB_PATH" ] && [ -e "$PI_DURABLE_DB_PATH" ]; then
+  test -f "$DB_PATH"
+  test ! -L "$DB_PATH"
+  test -f "$PI_DURABLE_DB_PATH"
+  test ! -L "$PI_DURABLE_DB_PATH"
+  bun -e 'import { statSync } from "node:fs"; const a=statSync(process.argv[1]); const b=statSync(process.argv[2]); if (a.dev === b.dev && a.ino === b.ino) throw new Error("DB_PATH and PI_DURABLE_DB_PATH must be different files");' "$DB_PATH" "$PI_DURABLE_DB_PATH"
+fi
 test -d "$BACKUP_DIR/content-root"
 test -f "$BACKUP_DIR/sqlite.db"
 test -d "$BACKUP_DIR/clippings"

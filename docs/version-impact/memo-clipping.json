@@ -11,7 +11,7 @@
     "astro.config.mjs": "c57d12b0faf70e902e63d86ae3898c25cc259e2a",
     "bun.lock": "45265ef3a329a3d7f95662797e49214235bd8c4e",
     "docs/adr/0012-memo-clipping-content-boundaries.md": "ffcdcd1cf9079461961519b1fd3c2ef70283a913",
-    "docs/runbooks/fs-only-migration.md": "7ea28508f4e91edd97f3995c0d8718a5066f097b",
+    "docs/runbooks/fs-only-migration.md": "08010661ef2594fd3108251931a915d38ac39d47",
     "docs/specs/README.md": "15f797f61adab98d48ccf77cc07295c78851f8e1",
     "docs/specs/memo-clipping/HISTORY.md": "6dfcdd29260cdbe02e4c6d0ba85cf8f947de7f63",
     "docs/specs/memo-clipping/IMPLEMENTATION.md": "178132b066eb93a5e32ee8438b984036d3c1711e",
@@ -24,7 +24,7 @@
     "package.json": "aeeca17e1955017a1682f3d264ceb41fab73698e",
     "scripts/build-web-demo.ts": "6db4e050ed4596c2565763d187adac49d40eac2e",
     "scripts/clipping-empirical.ts": "da8fddcb659d9658f72e2ab0914abf4c0873c821",
-    "scripts/content-migrate-api-links.ts": "b20374f584c191042375a11661b89cd20d714d8c",
+    "scripts/content-migrate-api-links.ts": "1e9927a7b26be419f974f9d745744d1272f561ea",
     "scripts/preview-web-demo.ts": "eb6b7a9eb30481723a68def44a26d882d6382724",
     "scripts/start-console.ts": "a21424aeec65e25373ccf4056cf7f64142a1e89d",
     "scripts/start-gateway.ts": "769637de516d2f1978b7a24c00286c206b24f9f0",
@@ -58,7 +58,7 @@
     "src/lib/__tests__/memo-clipping.test.ts": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
     "src/lib/admin-api-client.ts": "10565f7bf042831a24beb5ef52ce84aa2be6928e",
     "src/lib/ai/search-fallback.test.ts": "7ad10d1d7e640abb86bf702015111d870f8d5040",
-    "src/lib/ai/search.ts": "db1549c3528d6f318e6add7d7d05994a683defbf",
+    "src/lib/ai/search.ts": "6b384e8a884224f618d75c33f0474a9b073c957d",
     "src/lib/clipping-feed.ts": "7524d8715ce53802aa6742061e50d90feabb9ee4",
     "src/lib/clipping-web-demo.ts": "a15b87855de24ce38df08bf37f281738e44d3032",
     "src/lib/content-sources/manager.ts": "e45efefccfe05e190037ed8c3d3c8bb57a8759a9",
@@ -71,7 +71,7 @@
     "src/lib/web-demo-runtime.ts": "128468be2d35c9a169f10d7dd3303bef3506b36c",
     "src/public-site/snapshot.ts": "8973e3bcc43abc6e7e9267423afa0b1b58791340",
     "src/server/clipping/agent-runtime.test.ts": "b9c6feeee3f66cde97853e583d522137dbed4c45",
-    "src/server/clipping/agent-runtime.ts": "11b180821de29470cb1cfbe482a54e32a071fff5",
+    "src/server/clipping/agent-runtime.ts": "a8ead68b7114cc989f5b8b2b7f639692d3c23bc5",
     "src/server/clipping/api.test.ts": "4f459487b034f981b0e6d0ca2bf1f33007c9703d",
     "src/server/clipping/api.ts": "60659835926032f727021832dfa4ef917466b49e",
     "src/server/clipping/article-segments.test.ts": "318ca39bbf9f9da0cdd9820e2ea13ba92ecbb1ca",
@@ -79,15 +79,15 @@
     "src/server/clipping/extract.test.ts": "c930c19115874115787be31c07dbaa874ec54f95",
     "src/server/clipping/extract.ts": "bfd8dbb952167d5c0333015268a5f1c9e47dc524",
     "src/server/clipping/pi-interruption.fixture.ts": "003e264deacd47bf54abf4e239afa8c7026044d6",
-    "src/server/clipping/pi-sqlite.test.ts": "7511e5a2a6fab61ebbeb4d4f3d170405c2916ace",
-    "src/server/clipping/pi-sqlite.ts": "92a1ca81ae1c6b3cbc2ea8f0c14e73776ed4dd76",
+    "src/server/clipping/pi-sqlite.test.ts": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
+    "src/server/clipping/pi-sqlite.ts": "4d2d67bdfa1ecc7ced9822562a1c0da0e67cd35d",
     "src/server/clipping/projection.ts": "6148209c12785867d58fc81cc68f6b846b7d5cb9",
     "src/server/clipping/runtime.test.ts": "148a6b6920d87958fe5aa28b3d56d8ec203dc3fb",
     "src/server/clipping/runtime.ts": "5b9e51409ac7d33a94749e7ec901f5c58da0abdd",
     "src/server/clipping/service-interruption.fixture.ts": "60ab2a7561a566f2471accee16247a054dab7416",
     "src/server/clipping/service-recovery.test.ts": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
     "src/server/clipping/service.test.ts": "5e616a71fc0098eafb6d23560b5cb560ba5cf5d8",
-    "src/server/clipping/service.ts": "1767ccf8f1e56e8f14b3ada3b8fc2cda63af2838",
+    "src/server/clipping/service.ts": "7faa9ee5349edb95a39908014202bbdb041be1fd",
     "src/server/clipping/store.test.ts": "ddd9281063b4e28749284c21467583e9f624635d",
     "src/server/clipping/store.ts": "107a7222092e4a7fb2c7cc4ccee5875aa1d42ddb",
     "src/server/clipping/turndown-gfm.d.ts": "b42f4bb08636ac5e3ee6fe4d33370816878a7b06",
@@ -102,7 +102,9 @@
     "src/server/services/tag-content.ts": "c55a89dae44ca99d2bfccc7b91eb79a910490edd",
     "tests/e2e/clipping-detail.ts": "1a16934b457fca6a09aff6484760cd802f983750",
     "tests/e2e/clipping-web-demo.ts": "46747d74b4822499921a3ea5e3925ee104d33e15",
-    "tests/lib/clipping-web-demo.test.ts": "e5b6d938f65df12897ac82b92e76775b53960921"
+    "tests/lib/clipping-web-demo.test.ts": "e5b6d938f65df12897ac82b92e76775b53960921",
+    "src/server/routers/search.test.ts": "627b836e4bbedaf3509f365947b26c4836571568",
+    "src/server/services/search-suggestions.ts": "07eff12db05dd57034f01669f05a2276447edc09"
   },
   "change": {
     "description": "Add memo clipping capture, summary, translation, current-target private discussion and native Web Demo coverage; user-facing history and manual restore are excluded.",
@@ -142,7 +144,7 @@
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
-          "blob": "7511e5a2a6fab61ebbeb4d4f3d170405c2916ace",
+          "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
         }
       ]
@@ -150,37 +152,37 @@
     "current": {
       "impact": "minor",
       "reasoning": "Additive memo clipping recognition, optional reading metadata and private creator/admin discussion APIs preserve ordinary Memo behavior. Migration 0011 adds rebuildable indices; authored Markdown is preserved and managed material/Pi storage is isolated. No existing endpoint or baseline durable state format is removed.",
-      "assessed_at": "2026-10-07T07:59:50.657946Z",
+      "assessed_at": "2026-10-07T21:18:42Z",
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "4f459487b034f981b0e6d0ca2bf1f33007c9703d",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/store.test.ts",
           "blob": "ddd9281063b4e28749284c21467583e9f624635d",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
           "blob": "5e616a71fc0098eafb6d23560b5cb560ba5cf5d8",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
-          "blob": "7511e5a2a6fab61ebbeb4d4f3d170405c2916ace",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+          "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         }
       ],
       "scope_drift": {
@@ -191,37 +193,37 @@
     "verified": {
       "impact": "minor",
       "reasoning": "Additive memo clipping recognition, optional reading metadata and private creator/admin discussion APIs preserve ordinary Memo behavior. Migration 0011 adds rebuildable indices; authored Markdown is preserved and managed material/Pi storage is isolated. No existing endpoint or baseline durable state format is removed.",
-      "assessed_at": "2026-10-07T07:59:50.657946Z",
+      "assessed_at": "2026-10-07T21:18:42Z",
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "4f459487b034f981b0e6d0ca2bf1f33007c9703d",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/store.test.ts",
           "blob": "ddd9281063b4e28749284c21467583e9f624635d",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
           "blob": "5e616a71fc0098eafb6d23560b5cb560ba5cf5d8",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
-          "blob": "7511e5a2a6fab61ebbeb4d4f3d170405c2916ace",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+          "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         }
       ]
     }
@@ -235,12 +237,12 @@
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "4f459487b034f981b0e6d0ca2bf1f33007c9703d",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         }
       ]
     },
@@ -254,22 +256,22 @@
         {
           "path": "src/server/clipping/store.test.ts",
           "blob": "ddd9281063b4e28749284c21467583e9f624635d",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
           "blob": "5e616a71fc0098eafb6d23560b5cb560ba5cf5d8",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
-          "blob": "7511e5a2a6fab61ebbeb4d4f3d170405c2916ace",
-          "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
+          "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
+          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 977 passed; real model calls disabled)"
         }
       ]
     }
