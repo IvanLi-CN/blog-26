@@ -13,7 +13,7 @@ export async function readRuntimeVersionInfo(
       .object({
         productVersion: z
           .string()
-          .regex(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/)
+          .refine(isValidVersion, "Expected a canonical SemVer product version")
           .nullable(),
         buildVersion: z.string().min(1),
         sourceSha: z.string().min(1),
@@ -54,3 +54,4 @@ export function handleVersionRequest(request: Request, metadata: ProductVersionI
 
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
+import { isValidVersion } from "../lib/release/version";

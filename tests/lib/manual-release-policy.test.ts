@@ -7,6 +7,7 @@ import {
   verifyImpactRecords,
 } from "../../src/lib/release/policy";
 import { policyFingerprint } from "../../src/lib/release/source";
+import { imageVersionTag, parseVersion } from "../../src/lib/release/version";
 
 const base = "a".repeat(40);
 const code = "b".repeat(40);
@@ -60,7 +61,7 @@ const verify = (
   supported = ["2.7.0"]
 ) => verifyImpactRecords(records, diff, tree, base, supported, "2.7.0");
 
-describe("stable product version policy", () => {
+describe("product SemVer policy", () => {
   test("a reservation binds policy implementation while VERSION-only preparation preserves it", () => {
     const source = {
       "src/lib/release/policy.ts": code,
@@ -87,13 +88,63 @@ describe("stable product version policy", () => {
       "2.7.1",
       "v2.8.0",
       "02.8.0",
-      "2.8.0-rc.1",
-      "2.8.0+build",
+      "2.8.0-alpha.01",
+      "auto",
       " 2.8.0",
-    ]) {
+      "2.8.0\n",
+    ] as const) {
       expect(() => allocateVersion("2.7.0", [], "minor", version)).toThrow();
     }
     expect(() => allocateVersion("2.7.0", ["2.9.0"], "minor", "2.9.0")).toThrow();
+  });
+  test("shortcuts advance one target through prerelease stages and stable", () => {
+    const occupied: string[] = [];
+    for (const [input, expected] of [
+      ["alpha", "2.8.0-alpha.1"],
+      ["alpha", "2.8.0-alpha.2"],
+      ["beta", "2.8.0-beta.1"],
+      ["rc", "2.8.0-rc.1"],
+      ["stable", "2.8.0"],
+      ["alpha", "2.8.1-alpha.1"],
+    ]) {
+      expect(allocateVersion("2.7.0", occupied, "minor", input)).toBe(expected);
+      occupied.push(expected);
+    }
+    expect(allocateVersion("2.7.0", ["2.8.0-alpha.1"], "minor", "")).toBe("2.8.0");
+    expect(allocateVersion("2.7.0", [], "minor", "rc")).toBe("2.8.0-rc.1");
+    expect(() => allocateVersion("2.7.0", ["2.8.0-beta.1"], "minor", "alpha")).toThrow("backwards");
+    expect(allocateVersion("2.7.0", ["2.8.0-beta.1"], "minor", "2.9.0-alpha.1")).toBe(
+      "2.9.0-alpha.1"
+    );
+  });
+  test("exact versions retain metadata but cannot reserve metadata-only identities", () => {
+    expect(allocateVersion("2.7.0", [], "minor", "2.8.0-RC.1+Build.001")).toBe(
+      "2.8.0-RC.1+Build.001"
+    );
+    expect(imageVersionTag("2.8.0-RC.1+Build.001")).toBe("v2.8.0-RC.1_Build.001");
+    expect(compareVersions("2.8.0+one", "2.8.0+two")).toBe(0);
+    expect(() => allocateVersion("2.7.0", ["2.8.0+one"], "minor", "2.8.0+two")).toThrow("floor");
+    expect(() => allocateVersion("2.7.0", [], "minor", `2.8.0+${"x".repeat(128)}`)).toThrow();
+    expect(() => allocateVersion("2.7.0", [], "minor", "2.8.0-alpha.lock")).toThrow("Git tag");
+    expect(() => allocateVersion("2.7.0", [], "minor", "2.8.0+build.lock")).toThrow("Git tag");
+    expect(() => parseVersion("2.8.0-alpha.00")).toThrow();
+    expect(compareVersions("2.8.0-alpha.9007199254740993", "2.8.0-alpha.9007199254740992")).toBe(1);
+    const ordered = [
+      "2.8.0-alpha",
+      "2.8.0-alpha.1",
+      "2.8.0-alpha.beta",
+      "2.8.0-beta",
+      "2.8.0-beta.2",
+      "2.8.0-beta.11",
+      "2.8.0-rc.1",
+      "2.8.0",
+    ];
+    for (let i = 1; i < ordered.length; i++) {
+      const previous = ordered[i - 1];
+      const current = ordered[i];
+      if (!previous || !current) throw new Error("Missing ordered fixture");
+      expect(compareVersions(previous, current)).toBe(-1);
+    }
   });
   test("numeric ordering does not round large SemVer components", () => {
     expect(compareVersions("2.10.0", "2.9.999")).toBe(1);

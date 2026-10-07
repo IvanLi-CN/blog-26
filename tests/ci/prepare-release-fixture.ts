@@ -10,10 +10,15 @@ import { sealDirectory } from "../../src/lib/release/artifacts";
 import { buildCommand, frozenConfigSchema } from "../../src/lib/release/inputs";
 import { entrySchema } from "../../src/lib/release/ledger";
 import { canonicalJson, digest } from "../../src/lib/release/policy";
+import { imageVersionTag } from "../../src/lib/release/version";
 import { makePublicBundle } from "../lib/playbook-fixture";
 
 const sourceSha = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
-const version = (await readFile("VERSION", "utf8")).trim();
+const storedVersion = (await readFile("VERSION", "utf8")).trim();
+const version = process.env.PRODUCT_RELEASE_FIXTURE_VERSION || storedVersion;
+imageVersionTag(version);
+// Only this non-production fixture prepares alternate VERSION bytes in its disposable checkout.
+if (version !== storedVersion) await writeFile("VERSION", `${version}\n`);
 const work = resolve(process.env.RUNNER_TEMP || ".tmp", "product-release");
 const inputs = resolve(work, "inputs");
 const bundleRoot = resolve(work, "fixture-bundle");
@@ -49,16 +54,16 @@ const identity = {
   sourceSha,
   policyDigest: digest("candidate-fixture"),
   evidenceDigest: digest("candidate-fixture"),
+  versionInput: version,
 };
 const entry = entrySchema.parse({
   ...identity,
   id: digest(identity),
-  baselineVersion: version,
+  baselineVersion: "2.7.0",
   baselineSha: sourceSha,
   impact: "minor",
   actor: "candidate-fixture",
   preparationRunId: 1,
-  versionInput: "",
   stage: "merged",
   mergeSha: sourceSha,
   releaseRunId: 1,

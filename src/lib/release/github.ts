@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { z } from "zod";
 import { initialLedger, type LedgerStore, type ReleaseLedger, validateLedger } from "./ledger";
 import { canonicalJson, digest, type ReleaseContract, shaSchema } from "./policy";
+import { parseVersion } from "./version";
 
 const refSchema = z.object({
   object: z.object({ sha: shaSchema, type: z.enum(["commit", "tag"]) }),
@@ -262,7 +263,11 @@ export class GitHubRelease {
         .object({ ref: z.string(), object: z.object({ sha: shaSchema, type: z.string() }) })
         .parse(raw);
       const version = item.ref.replace(/^refs\/tags\/v/, "");
-      if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) return [];
+      try {
+        parseVersion(version);
+      } catch {
+        return [];
+      }
       let target = item.object;
       for (let depth = 0; target.type === "tag" && depth < 8; depth++) {
         target = z

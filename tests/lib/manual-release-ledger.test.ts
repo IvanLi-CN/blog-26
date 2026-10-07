@@ -245,7 +245,7 @@ describe("durable product release reservations", () => {
       "operator"
     );
     expect(() => reserveRelease(first.ledger, { ...request, sourceSha: "e".repeat(40) })).toThrow(
-      "active"
+      "Retry"
     );
   });
   test("abandonment burns the version and requires a fresh identity", () => {

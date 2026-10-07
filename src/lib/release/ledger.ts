@@ -9,9 +9,12 @@ import {
   impactSchema,
   type ReleaseContract,
   shaSchema,
+  stableVersionSchema,
   validateStateUpgrade,
+  versionRequestSchema,
   versionSchema,
 } from "./policy";
+import { isPrerelease, precedenceKey } from "./version";
 
 export const stages = [
   "reserved",
@@ -36,19 +39,41 @@ const productsSchema = artifactReferenceSchema.extend({
   imageSha256: digestSchema,
   imageDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
 });
+export const productionPointersSchema = z
+  .object({
+    githubLatest: z
+      .object({ id: z.number().int().positive(), tag: z.string() })
+      .strict()
+      .nullable(),
+    imageLatest: z
+      .string()
+      .regex(/^sha256:[a-f0-9]{64}$/)
+      .nullable(),
+    siteVersion: z
+      .object({
+        productVersion: versionSchema,
+        buildVersion: z.string().min(1),
+        sourceSha: shaSchema,
+      })
+      .strict()
+      .nullable(),
+    playbookPointer: z.object({ editionDigest: digestSchema, rendererCommit: shaSchema }).strict(),
+  })
+  .strict();
+export type ProductionPointers = z.infer<typeof productionPointersSchema>;
 export const entrySchema = z
   .object({
     id: digestSchema,
     version: versionSchema,
     sourceSha: shaSchema,
-    baselineVersion: versionSchema,
+    baselineVersion: stableVersionSchema,
     baselineSha: shaSchema,
     policyDigest: digestSchema,
     evidenceDigest: digestSchema,
     impact: impactSchema,
     actor: z.string().min(1),
     preparationRunId: z.number().int().positive(),
-    versionInput: z.union([z.literal(""), versionSchema]),
+    versionInput: versionRequestSchema,
     stage: z.enum([...stages, "abandoned"]),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
@@ -77,6 +102,10 @@ export const entrySchema = z
       .strict()
       .optional(),
     latestVerified: z.boolean().optional(),
+    deploymentStatus: z.literal("not-applicable").optional(),
+    latestStatus: z.literal("not-applicable").optional(),
+    productionBefore: productionPointersSchema.optional(),
+    productionAfter: productionPointersSchema.optional(),
     failure: z
       .object({
         phase: z.string().min(1),
@@ -92,7 +121,7 @@ export type ReleaseEntry = z.infer<typeof entrySchema>;
 export const ledgerSchema = z
   .object({
     schemaVersion: z.literal(1),
-    bootstrap: z.object({ version: versionSchema, sourceSha: shaSchema }).strict(),
+    bootstrap: z.object({ version: stableVersionSchema, sourceSha: shaSchema }).strict(),
     entries: z.array(entrySchema),
   })
   .strict();
@@ -110,10 +139,14 @@ export function validateLedger(raw: unknown, contract: ReleaseContract): Release
   const versions = new Set<string>();
   const runs = new Set<number>();
   for (const entry of ledger.entries) {
-    if (ids.has(entry.id) || versions.has(entry.version) || runs.has(entry.preparationRunId))
+    if (
+      ids.has(entry.id) ||
+      versions.has(precedenceKey(entry.version)) ||
+      runs.has(entry.preparationRunId)
+    )
       throw new Error("Ledger contains a duplicate identity or version");
     ids.add(entry.id);
-    versions.add(entry.version);
+    versions.add(precedenceKey(entry.version));
     runs.add(entry.preparationRunId);
     if (
       entry.id !==
@@ -122,6 +155,7 @@ export function validateLedger(raw: unknown, contract: ReleaseContract): Release
         sourceSha: entry.sourceSha,
         policyDigest: entry.policyDigest,
         evidenceDigest: entry.evidenceDigest,
+        versionInput: entry.versionInput,
       })
     ) {
       throw new Error("Ledger identity was modified");
@@ -139,7 +173,40 @@ function validateEntry(entry: ReleaseEntry): void {
       throw new Error("Abandoned releases cannot retain frozen or published proofs");
     return;
   }
+  const prerelease = isPrerelease(entry.version);
   const level = stages.indexOf(entry.stage as (typeof stages)[number]);
+  if (
+    prerelease &&
+    (entry.stage === "deployed" || entry.deployment || entry.latestVerified !== undefined)
+  )
+    throw new Error("Prerelease cannot contain deployment or latest promotion proofs");
+  if (!prerelease && (entry.deploymentStatus || entry.latestStatus))
+    throw new Error("Stable deployment and latest promotion cannot be marked not-applicable");
+  if (!prerelease && (entry.productionBefore || entry.productionAfter))
+    throw new Error("Prerelease isolation evidence cannot be attached to a stable release");
+  if (
+    (entry.productionBefore && level < 3) ||
+    (entry.productionAfter && entry.stage !== "complete")
+  )
+    throw new Error("Production isolation proofs cannot precede frozen products or completion");
+  if (
+    prerelease &&
+    entry.stage === "complete" &&
+    (!entry.productionBefore ||
+      !entry.productionAfter ||
+      canonicalJson(entry.productionBefore) !== canonicalJson(entry.productionAfter))
+  )
+    throw new Error("Prerelease completion requires unchanged production pointer evidence");
+  if (
+    prerelease &&
+    entry.stage === "complete" &&
+    (entry.deploymentStatus !== "not-applicable" || entry.latestStatus !== "not-applicable")
+  )
+    throw new Error(
+      "Prerelease completion requires explicit not-applicable deployment/latest results"
+    );
+  if (entry.stage !== "complete" && (entry.deploymentStatus || entry.latestStatus))
+    throw new Error("Not-applicable outcomes belong to verified prerelease completion");
   if (level >= 1 && (!entry.preparationHead || !entry.prNumber))
     throw new Error("PR provenance is missing");
   if (level >= 2 && (!entry.mergeSha || !entry.releaseRunId))
@@ -152,6 +219,7 @@ function validateEntry(entry: ReleaseEntry): void {
   )
     throw new Error("Both publication proofs are required");
   if (
+    !prerelease &&
     level >= 5 &&
     (!entry.deployment ||
       entry.deployment.productVersion !== entry.version ||
@@ -160,7 +228,7 @@ function validateEntry(entry: ReleaseEntry): void {
   ) {
     throw new Error("Deployment must consume the frozen static product");
   }
-  if (level >= 6 && entry.latestVerified !== true)
+  if (!prerelease && level >= 6 && entry.latestVerified !== true)
     throw new Error("Latest promotion must be verified before completion");
   if (entry.inputs && !entry.mergeSha)
     throw new Error("Inputs cannot be frozen before the source is merged");
@@ -185,7 +253,10 @@ function validateEntry(entry: ReleaseEntry): void {
 
 export function publishedBaseline(ledger: ReleaseLedger): { version: string; sourceSha: string } {
   return ledger.entries
-    .filter((entry) => ["published", "deployed", "complete"].includes(entry.stage))
+    .filter(
+      (entry) =>
+        !isPrerelease(entry.version) && ["published", "deployed", "complete"].includes(entry.stage)
+    )
     .reduce(
       (base, entry) =>
         compareVersions(entry.version, base.version) > 0
@@ -199,7 +270,11 @@ export function supportedVersions(ledger: ReleaseLedger): string[] {
   return [
     ledger.bootstrap.version,
     ...ledger.entries
-      .filter((entry) => ["published", "deployed", "complete"].includes(entry.stage))
+      .filter(
+        (entry) =>
+          !isPrerelease(entry.version) &&
+          ["published", "deployed", "complete"].includes(entry.stage)
+      )
       .map((entry) => entry.version),
   ];
 }
@@ -217,26 +292,23 @@ export function reserveRelease(
   },
   now = new Date().toISOString()
 ): { ledger: ReleaseLedger; entry: ReleaseEntry; reused: boolean } {
-  const same = ledger.entries.find(
-    (entry) =>
-      entry.stage !== "abandoned" &&
-      entry.sourceSha === request.sourceSha &&
-      entry.policyDigest === request.policyDigest &&
-      entry.evidenceDigest === request.evidenceDigest
-  );
+  const same = ledger.entries.find((entry) => entry.preparationRunId === request.preparationRunId);
   if (same) {
     if (same.actor !== request.actor)
       throw new Error("An existing preparation belongs to another operator");
-    if (request.version && request.version !== same.version)
-      throw new Error("Retry cannot replace the reserved version");
+    if (
+      same.sourceSha !== request.sourceSha ||
+      same.policyDigest !== request.policyDigest ||
+      same.evidenceDigest !== request.evidenceDigest ||
+      same.stage === "abandoned"
+    )
+      throw new Error("Retry cannot replace the reserved source or policy identity");
     if ((request.version || "") !== same.versionInput)
       throw new Error("Retry cannot replace the original version input");
     return { ledger, entry: same, reused: true };
   }
   if (ledger.entries.some((entry) => entry.stage !== "complete" && entry.stage !== "abandoned"))
     throw new Error("Another release identity is active; recover or abandon it first");
-  if (ledger.entries.some((entry) => entry.preparationRunId === request.preparationRunId))
-    throw new Error("A preparation run cannot claim a second identity");
   const baseline = publishedBaseline(ledger);
   const version = allocateVersion(
     baseline.version,
@@ -250,6 +322,7 @@ export function reserveRelease(
     sourceSha: request.sourceSha,
     policyDigest: request.policyDigest,
     evidenceDigest: request.evidenceDigest,
+    versionInput: request.version || "",
   };
   const entry = entrySchema.parse({
     ...identity,
@@ -288,6 +361,10 @@ const immutable = [
   "products",
   "publication",
   "deployment",
+  "deploymentStatus",
+  "latestStatus",
+  "productionBefore",
+  "productionAfter",
 ] as const;
 
 export function updateRelease(
@@ -337,8 +414,12 @@ export function updateRelease(
       throw new Error("A merged release cannot be abandoned");
   } else if (next.stage !== original.stage) {
     if (
-      stages.indexOf(next.stage) !==
-      stages.indexOf(original.stage as (typeof stages)[number]) + 1
+      !(
+        isPrerelease(next.version) &&
+        original.stage === "published" &&
+        next.stage === "complete"
+      ) &&
+      stages.indexOf(next.stage) !== stages.indexOf(original.stage as (typeof stages)[number]) + 1
     )
       throw new Error("Release stage cannot be skipped or rolled back");
   }
@@ -351,6 +432,7 @@ export function updateRelease(
 export function newerDeploymentExists(ledger: ReleaseLedger, entry: ReleaseEntry): boolean {
   return ledger.entries.some(
     (other) =>
+      other.deployment !== undefined &&
       ["deployed", "complete"].includes(other.stage) &&
       compareVersions(other.version, entry.version) > 0
   );

@@ -14,9 +14,11 @@
 
 ## 输入与流程
 
-从 main 手动运行 **Manual Product Release**。唯一输入 `version` 为可选项；留空按整个待发布区间的最高已验证语义影响自动递增，填写时仅接受规范 `X.Y.Z` 且必须向前并满足兼容性政策。
+从 main 手动运行 **Manual Product Release**。唯一可选文本输入 `version` 接受留空、`stable`、`alpha`、`beta`、`rc` 或完整 SemVer。留空等同 `stable`，不接受 `auto`。快捷值按整个待发布区间的最高 verified API/state 影响自动分配；完整版本精确指定，必须满足必要核心版本并高于全部已发布、预留与废弃版本。原始大小写与 metadata 保留，但 metadata 不改变排序，不能仅换 metadata 创建新身份。
 
-版本准备先写持久预留，再创建仅修改 VERSION 的 PR 并启用自动合并。GitHub 等全部 required checks 通过后合并。**Product Release** 核验同一合并提交的 main CI/E2E、机器人来源及预留，构建并冻结两种产物，发布 GitHub Release 和 GHCR 镜像，随后将相同静态产物部署到 EdgeOne。部署验证完成后推进 latest。
+版本准备先写持久预留，再创建仅修改 VERSION 的 PR 并启用自动合并。GitHub 等全部 required checks 通过后合并。**Product Release** 核验同一合并提交的 main CI/E2E、机器人来源及预留，构建并冻结两种产物，发布 GitHub Release 和 GHCR 镜像。正式版随后将同一静态产物部署到 EdgeOne，验证后推进 latest；所有带预发布标识的版本仅发布产物，Release 标记 prerelease，不部署站点、不推进正式 latest，也不接收 EdgeOne 部署密钥。
+
+例如正式基线为 `2.7.0`、verified impact 为 minor，连续新请求可分配 `2.8.0-alpha.1` → `2.8.0-alpha.2` → `2.8.0-beta.1` → `2.8.0-rc.1` → `2.8.0`，允许跳过阶段。同核心进入 beta 后再请求 alpha 会停止；可显式填写更高的完整目标，例如 `2.9.0-alpha.1`。每个完整版本有独立身份、发布 PR、确切合并来源及冻结字节，不能将预发布产物直接改标正式版。Git tag 为 `v` 加完整版本；镜像 tag 同样带 `v`，仅将 metadata 分隔符 `+` 映射为 `_`，长度超出 registry 限制时预留前拒绝。
 
 ## 语义证据
 
@@ -26,9 +28,15 @@ GitHub 适配器固定 REST API `2022-11-28`，按该字段合同核验 PR 与�
 
 记录的 `base_sha` 为可信已发布来源，`covered_files` 覆盖该来源之后所有待发布文件变化，删除文件用 null。证据条目记录仓库相对路径、Git blob 和实际验证命令。新增改动必须更新 current 并重新验证受影响结论；不得把未运行命令或缺失现场权限证据写成 verified。记录 JSON 本身不纳入其文件覆盖清单，避免自引用摘要。
 
+预发布不替换正式语义基线。期间登记过的 VERSION-only 差异必须通过签名、发布 PR 和确切父提交验证，随后从业务语义覆盖中单独核验；它不会使原业务文件的见证失效。未知 VERSION 修改仍阻断发布。
+
 ## 恢复
 
 重跑失败的原工作流；不重新 dispatch 一个替代版本。恢复读取原 release-ledger 登记，复用版本、来源、输入和冻结产物，仅补齐缺失步骤。已存在 tag、发布资产或镜像的身份与摘要不同则停止，不能覆盖。
+
+同一准备 run 重跑复用原始请求与身份；前一身份完成后，新 run 可申请下一个版本。预发布两种产物发布成功后，记录共享锁内正式 GitHub latest、镜像 latest、生产版本与 Playbook 指针的前后读回；一致才能 complete，部署和晋升均记为 `not-applicable`。读取失败或变化不能当作不变证明。已完成预发布的幂等恢复不要求生产仍停留在历史指针。
+
+首次验收时，批准的 bootstrap renderer 可能尚无静态 `/version.json`。仅当明确读回 404 且 Playbook rendererCommit 与 bootstrap 来源一致时记录该端点不存在；未知 renderer、其他错误或解析失败会停止。该记录不能当作新正式版部署的验收证据。
 
 冻结产物保留 90 天。产物失效或缺失时报告恢复受阻，不联网重新生成同身份的新内容。关闭未合并的版本 PR 会废弃预留，已占用版本不会重新分配。较新版本已完成生产部署后，旧身份重跑不会回退生产指针。
 

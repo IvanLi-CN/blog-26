@@ -3,9 +3,17 @@
 ## Current Status
 
 - Lifecycle: active
-- Implementation: implemented
+- Implementation: partial
 
 已实现机器可读合同、语义版本策略、签名登记分支适配器、VERSION-only PR 准备、main 完成事件核验、冻结输入与两种产物、GitHub Release/GHCR 发布及 EdgeOne 恢复链路。版本端点分开返回产品版本、构建身份和来源。
+
+当前候选实现采用 `product-semver-v1`，支持 stable/alpha/beta/rc 快捷值及完整 SemVer，使用精确整数排序、独立正式语义基线与占用下界。原请求纳入不可变身份，预发布完成要求两种产物证明、生产指针前后读回一致，以及部署/latest 的不适用结果。预发布部署与晋升入口分别拒绝请求，工作流将部署密钥限制在正式发布步骤。针对性测试已通过；完整 Agent VM 构建、Candidate Actions 和真实 alpha 发布尚待取得证据。
+
+## Requirements Intake
+
+已确认：唯一 `version` 文本输入；留空或 stable 自动正式版；alpha/beta/rc 自动预发布；完整版本精确指定；预发布只发布两种产物，不部署站点或推进正式 latest。正式语义基线与已占用下界分别计算，同目标的预发布阶段向前且允许跳过；阶段回退停止，由发版人显式指定更高完整目标。预发布完整能力必须通过获授权的真实 alpha 发布验收，正式部署需独立证据。
+
+主人已批准实现 PR 合并及合并后一次真实 alpha 发布验收；没有未决设计问题。本轮不执行正式版部署或 beta/rc 真实发布，也不新增凭据或改变保护规则。
 
 ## Implementation Coverage
 

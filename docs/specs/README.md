@@ -34,7 +34,7 @@
 | Posts cover fallback | active | implemented | `posts-cover-fallback/SPEC.md` | - | Post cards fall back to the first supported body image. |
 | Posts list title contrast | archived | implemented | `posts-list-title-contrast/SPEC.md` | - | Semantic title colors preserve hierarchy across themes. |
 | Public Blog Logo Assets and Online-First PWA | active | implemented | `public-pwa/SPEC.md` | - | Approved brand source, generated browser/install icons, public-only install metadata, and online-first caching. |
-| Manual version release | active | in progress | `manual-version-release/SPEC.md` | - | Fixed static frontend and full-function Docker image, automatic version progression with optional forward selection, and protected auto-merge preparation. |
+| Manual version release | active | partial | `manual-version-release/SPEC.md` | - | Static frontend and full-function Docker image share product-semver-v1 identity; prerelease allocation and publication-only completion are implemented in the candidate, full platform validation and real alpha acceptance remain pending. |
 | Public media assets facade | active | implemented | `public-media-assets-facade/SPEC.md` | - | Public media references use blog-owned stable facade URLs. |
 | Release failure Oidrune alerts | active | in progress | `release-failure-telegram-alerts/SPEC.md` | - | OIDC-authenticated Oidrune handoff with original product-release failure identity; live notification acceptance remains pending. |
 | Remote MCP reimplementation | active | implemented | `remote-mcp/SPEC.md` | - | `/mcp` uses current Streamable HTTP sessions and durable content-origin metadata. |

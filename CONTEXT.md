@@ -343,7 +343,7 @@ The validated manual release decision that identifies the whole-product source i
 _Avoid_: CI 通过, 发布成功
 
 **手动版本发布**:
-A release flow initiated by one manual dispatch. The system selects the next product version automatically when the optional version input is empty, or validates an explicitly requested forward version. A VERSION-only PR passes the repository's protected merge path with native auto-merge, then source, artifacts, publication, and recovery bind to one whole-product release identity. The fixed outputs are the static frontend and the full-function Docker image.
+A release flow initiated by one manual dispatch with a 产品版本请求. The system allocates a product version for an automatic request or validates an explicitly requested forward version. A VERSION-only PR passes the repository's protected merge path with native auto-merge, then source, artifacts, publication, and recovery bind to one whole-product release identity. The fixed outputs are the static frontend and the full-function Docker image.
 _Avoid_: 手动改 tag, workflow 任意发版
 
 **版本策略**:
@@ -358,6 +358,18 @@ _Avoid_: 发布意图, 构建标识
 A SemVer value assigned to one whole-product release event and shared by the static frontend and full-function Docker image. It is selected automatically by monotonic policy or explicitly set to a higher value; it identifies the product release and is separate from the build's commit-derived identity.
 _Avoid_: 构建标识, 发布意图
 
+**产品版本请求**:
+The release operator's selection for a whole-product release: an automatic stable or prerelease-stage allocation, or an explicitly specified 产品版本. An automatic request is resolved into a complete 产品版本 before a 发布身份 is reserved.
+_Avoid_: 产品版本本身, 构建标识
+
+**产品预发布**:
+A whole-product release whose 产品版本 carries a prerelease identifier, including alpha, beta, or rc. Its static frontend and full-function Docker image share that same version; the prerelease designation is distinct from the destination where those products are deployed.
+_Avoid_: 候选 CI 构建, 正式产品发布, 预览站点
+
+**正式产品发布**:
+A whole-product release whose 产品版本 has no prerelease identifier. It shares the same two-product boundary as 产品预发布 and represents a stable product version.
+_Avoid_: CI 通过, 发布意图, 生产部署本身
+
 **构建标识**:
 The commit-derived build identity generated from the build date and abbreviated commit hash. It identifies the exact build context and remains separate from the 产品版本.
 _Avoid_: 产品版本, SemVer 版本
@@ -367,8 +379,16 @@ A release boundary in which the static frontend and full-function Docker image r
 _Avoid_: latest 版本, 构建标识
 
 **统一版本基线**:
-The highest trusted product version together with its effective reservations used by the Version Policy for automatic progression and explicit forward selection. The mutable VERSION file alone does not establish this baseline.
-_Avoid_: package.json version, VERSION 文件本身
+The trusted released product history from which the version policy derives semantic upgrade requirements and forward allocation. The 正式语义基线 and 已占用版本下界 have distinct roles; the mutable VERSION file does not establish either one.
+_Avoid_: package.json version, VERSION 文件本身, 最高预发布版本等于正式语义基线
+
+**正式语义基线**:
+The trusted published stable 产品版本 and its source used to assess the whole unpublished interval's compatibility impact. 产品预发布 does not replace this baseline.
+_Avoid_: 当前 VERSION, 最高预发布版本, 正式 latest 指针本身
+
+**已占用版本下界**:
+The highest SemVer precedence occupied by published, reserved, or abandoned whole-product release identities. A new identity must be strictly above this bound; an abandoned identity keeps its version occupied.
+_Avoid_: 正式语义基线, 空闲版本, 发布成功状态
 
 **清退（依赖新鲜度检查）**:
 Removing the `bun outdated` freshness check from CI entirely. It does not delete dependency declarations, lockfiles, versions, tags, releases, or deployments.

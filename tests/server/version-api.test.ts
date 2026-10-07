@@ -23,6 +23,11 @@ describe("read-only product version API", () => {
       await expect(readRuntimeVersionInfo(file, true)).rejects.toThrow();
       await writeFile(file, JSON.stringify(metadata));
       expect(await readRuntimeVersionInfo(file, true)).toEqual(metadata);
+      const prerelease = { ...metadata, productVersion: "2.8.0-rc.1+Candidate.001" };
+      await writeFile(file, JSON.stringify(prerelease));
+      expect(await readRuntimeVersionInfo(file, true)).toEqual(prerelease);
+      await writeFile(file, JSON.stringify({ ...metadata, productVersion: "2.8.0-alpha.01" }));
+      await expect(readRuntimeVersionInfo(file, true)).rejects.toThrow();
       await writeFile(file, JSON.stringify({ ...metadata, sourceSha: "unknown" }));
       await expect(readRuntimeVersionInfo(file, true)).rejects.toThrow("incomplete");
       await writeFile(file, "invalid json");
@@ -38,6 +43,14 @@ describe("read-only product version API", () => {
     );
     expect(await response.json()).toEqual(metadata);
     expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+  test("prerelease metadata survives the read-only endpoint without normalization", async () => {
+    const prerelease = { ...metadata, productVersion: "2.8.0-rc.1+Candidate.001" };
+    const response = handleVersionRequest(
+      new Request("https://console.ivanli.cc/api/version"),
+      prerelease
+    );
+    expect(await response.json()).toEqual(prerelease);
   });
   test("HEAD has no body and mutation methods cannot change version metadata", async () => {
     const head = handleVersionRequest(

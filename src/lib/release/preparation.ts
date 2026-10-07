@@ -97,6 +97,18 @@ export function verifyTrustedTags(github: GitHubRelease, ledger: ReleaseLedger):
   }
 }
 
+export function assessReleaseSource(
+  github: GitHubRelease,
+  ledger: ReleaseLedger,
+  sourceSha: string
+) {
+  return sourceAssessment(ledger, sourceSha, (entry) => {
+    if (!entry.prNumber || !entry.mergeSha)
+      throw new Error("Registered VERSION provenance is incomplete");
+    assertMerge(github, entry, github.pull(entry.prNumber), entry.mergeSha);
+  });
+}
+
 export async function retireStalePreparations(
   github: GitHubRelease,
   store: LedgerStore,
@@ -185,7 +197,9 @@ export async function prepareRelease(
       existingRun.stage === "abandoned")
   )
     throw new Error("Preparation retry cannot change its original identity");
-  const assessment = existingRun ? undefined : sourceAssessment(current.ledger, sourceSha);
+  const assessment = existingRun
+    ? undefined
+    : assessReleaseSource(github, current.ledger, sourceSha);
   const reserved =
     existingRun ||
     (await changeLedger(store, (ledger) => {

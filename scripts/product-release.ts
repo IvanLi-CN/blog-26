@@ -27,8 +27,10 @@ import {
   productProof,
   promoteLatest,
   publishProducts,
+  readProductionPointers,
 } from "../src/lib/release/publication";
 import { readContract } from "../src/lib/release/source";
+import { isPrerelease } from "../src/lib/release/version";
 
 const contract = readContract();
 const quality = readQuality();
@@ -218,6 +220,7 @@ if (command === "notification") {
     active: String(Boolean(entry)),
     source_sha: entry?.mergeSha || "",
     identity: entry?.id || "",
+    prerelease: entry ? String(isPrerelease(entry.version)) : "false",
   });
   if (entry) await save(entry);
 } else if (command === "restore") {
@@ -278,9 +281,19 @@ if (command === "notification") {
     result: null,
   }));
   await fresh();
-} else if (command === "publish") {
+} else if (
+  command === "publish" ||
+  command === "publish-prerelease" ||
+  command === "publish-stable"
+) {
   const { app, store, entry } = await fresh();
+  if (
+    (command === "publish-prerelease" && !isPrerelease(entry.version)) ||
+    (command === "publish-stable" && isPrerelease(entry.version))
+  )
+    throw new Error("Publication command does not match the reserved release type");
   const completed = await finishRelease(store, entry.id, {
+    productionPointers: () => readProductionPointers(app),
     publish: (identity) => publishProducts(app, identity, products),
     deploy: async (identity) => {
       await assertProductionOwner(app, (await store.read()).ledger, identity);

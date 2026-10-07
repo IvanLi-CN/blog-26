@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Optional forward-only X.Y.Z; leave empty for verified-impact allocation
+        description: Optional stable, alpha, beta, rc or forward-only full SemVer; empty means stable
         required: false
         type: string
       repair_release_id:

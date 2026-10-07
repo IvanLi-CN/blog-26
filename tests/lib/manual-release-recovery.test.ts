@@ -16,7 +16,7 @@ import { contractSchema } from "../../src/lib/release/policy";
 import { finishRelease, type PublicationPorts } from "../../src/lib/release/publication";
 
 const contract = contractSchema.parse(contractJson);
-function frozenStore() {
+function frozenStore(version = "") {
   const first = reserveRelease(initialLedger(contract), {
     sourceSha: "b".repeat(40),
     policyDigest: "c".repeat(64),
@@ -24,6 +24,7 @@ function frozenStore() {
     actor: "owner",
     impact: "minor",
     preparationRunId: 1,
+    version,
   });
   let ledger = updateRelease(first.ledger, first.entry.id, {
     stage: "pr_open",
@@ -87,6 +88,117 @@ function proofs(entry: ReleaseEntry) {
   };
 }
 describe("frozen release recovery", () => {
+  const pointers = {
+    githubLatest: { id: 1, tag: "v2.7.0" },
+    imageLatest: `sha256:${"a".repeat(64)}`,
+    siteVersion: { productVersion: "2.7.0", buildVersion: "production", sourceSha: "a".repeat(40) },
+    playbookPointer: { editionDigest: "a".repeat(64), rendererCommit: "a".repeat(40) },
+  };
+  for (const phase of ["alpha", "beta", "rc"]) {
+    test(`${phase} publishes two products and completes without deploying or promoting`, async () => {
+      const { store, id, entry } = frozenStore(phase);
+      let attempts = 0;
+      const ports: PublicationPorts = {
+        async productionPointers() {
+          return pointers;
+        },
+        async publish() {
+          if (++attempts === 1) throw new Error("partial publication failure");
+          return proofs(entry).publication;
+        },
+        async deploy() {
+          throw new Error("prerelease must not deploy");
+        },
+        async promote() {
+          throw new Error("prerelease must not promote");
+        },
+      };
+      await expect(finishRelease(store, id, ports)).rejects.toThrow("partial publication");
+      const completed = await finishRelease(store, id, ports);
+      expect(completed).toMatchObject({
+        stage: "complete",
+        deploymentStatus: "not-applicable",
+        latestStatus: "not-applicable",
+        productionBefore: pointers,
+        productionAfter: pointers,
+      });
+      expect(completed.deployment).toBeUndefined();
+      expect(completed.latestVerified).toBeUndefined();
+      ports.productionPointers = async () => {
+        throw new Error("completed retry must not inspect newer production");
+      };
+      expect((await finishRelease(store, id, ports)).id).toBe(id);
+      expect(attempts).toBe(2);
+    });
+  }
+  test("unavailable or changed production observations never prove isolation", async () => {
+    const { store, id, entry } = frozenStore("alpha");
+    let reads = 0;
+    const ports: PublicationPorts = {
+      async productionPointers() {
+        if (++reads === 1) throw new Error("pointer unavailable");
+        return reads === 2 ? pointers : { ...pointers, imageLatest: `sha256:${"b".repeat(64)}` };
+      },
+      async publish() {
+        return proofs(entry).publication;
+      },
+      async deploy() {
+        throw new Error("unexpected deploy");
+      },
+      async promote() {
+        throw new Error("unexpected promotion");
+      },
+    };
+    await expect(finishRelease(store, id, ports)).rejects.toThrow("unavailable");
+    await expect(finishRelease(store, id, ports)).rejects.toThrow();
+    expect((await store.read()).ledger.entries[0]?.stage).toBe("published");
+  });
+  test("production isolation proofs cannot be attached before their verified stage", async () => {
+    const { store, id } = frozenStore("alpha");
+    const { ledger } = await store.read();
+    expect(() => updateRelease(ledger, id, { productionAfter: pointers })).toThrow("precede");
+    expect(() => updateRelease(ledger, id, { deploymentStatus: "not-applicable" })).toThrow(
+      "completion"
+    );
+  });
+  test("a failed publication ledger write recovers using the original immutable products", async () => {
+    const { store, id, entry } = frozenStore("alpha");
+    let fail = true;
+    const interrupted: LedgerStore = {
+      read: () => store.read(),
+      async compareAndSwap(expected, next) {
+        if (fail && next.entries.some((item) => item.stage === "published")) {
+          fail = false;
+          throw new Error("injected publication ledger failure");
+        }
+        return store.compareAndSwap(expected, next);
+      },
+    };
+    let publishCalls = 0;
+    const ports: PublicationPorts = {
+      async productionPointers() {
+        return pointers;
+      },
+      async publish(identity) {
+        publishCalls++;
+        expect(identity.id).toBe(id);
+        expect(identity.products).toEqual(entry.products);
+        return proofs(identity).publication;
+      },
+      async deploy() {
+        throw new Error("prerelease must not deploy");
+      },
+      async promote() {
+        throw new Error("prerelease must not promote");
+      },
+    };
+    await expect(finishRelease(interrupted, id, ports)).rejects.toThrow("ledger failure");
+    expect((await store.read()).ledger.entries[0]?.stage).toBe("frozen");
+    const recovered = await finishRelease(interrupted, id, ports);
+    expect(recovered.stage).toBe("complete");
+    expect(recovered.products).toEqual(entry.products);
+    expect(publishCalls).toBe(2);
+  });
   test("lost artifacts before ledger binding cannot cause re-freezing or rebuilding", () => {
     const { entry: original } = frozenStore();
     const entry = { ...original, stage: "merged" as const, products: undefined, inputs: undefined };
