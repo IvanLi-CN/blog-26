@@ -89,6 +89,13 @@ set -euo pipefail
 # replacing any files. The export alone does not stop an existing process.
 export CLIPPING_PROCESSOR_ENABLED=false
 
+test -n "${BACKUP_DIR:-}"
+test "$BACKUP_DIR" != "/"
+test -d "$BACKUP_DIR/content-root"
+test -f "$BACKUP_DIR/sqlite.db"
+test -d "$BACKUP_DIR/clippings"
+test -f "$BACKUP_DIR/pi-durable.sqlite"
+
 rm -rf "$CONTENT_ROOT"
 cp -a "$BACKUP_DIR/content-root" "$CONTENT_ROOT"
 cp -a "$BACKUP_DIR/sqlite.db" "$DB_PATH"
