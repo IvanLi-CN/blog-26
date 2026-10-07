@@ -23,7 +23,7 @@
     "CONTEXT.md": "d85da3d68a36c6de67b3c8f08db263e8d769bfd8",
     "Dockerfile": "6e1616b4117589937ce07ce06e8c7b8627ef639a",
     "README.md": "69db28f329010fdd9d6334a8c6048385ec0ab586",
-    "VERSION": "24ba9a38de68d00674ec97b283a967699716b9f4",
+    "VERSION": "834f2629538327723c074ed4c3addca9888f0256",
     "apps/admin/src/components/admin-soft-ui.stories.tsx": "9a9e6b9ecceaa5c5351940d47c12e83f72adff11",
     "apps/admin/src/components/app-shell.tsx": "aa6a42928c7e751a17e84cc5f575d18e2a254328",
     "apps/admin/src/demo/mock-admin-api.ts": "69e7531aedfd41016cbb29bbc5b7ad4eeec7381c",
@@ -68,7 +68,7 @@
     "docs/specs/release-failure-telegram-alerts/SPEC.md": "439b85a711bed3ac7f18cc686ec6b312899fd713",
     "docs/specs/style-playbook-integration/HISTORY.md": "ffa287c6f9e1493e1b3f399a0b84e9af5799e80c",
     "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "8c42f8f8b15d005cd70fbf9bab5e10fbd83e8567",
-    "docs/specs/style-playbook-integration/SPEC.md": "eeae922d8b3bf60ff640ab0a249be55414b5c794",
+    "docs/specs/style-playbook-integration/SPEC.md": "2634a987630e6294d1a875a654e558dfc66059d5",
     "docs/specs/style-playbook-integration/assets/search-children-expanded.png": "3187f95764fa508012c64b9088ea3a7472b8722a",
     "docs/specs/style-playbook-integration/assets/search-grouped-desktop-dark.png": "962364ad8936970736e6a546a52f496221c686fe",
     "docs/specs/style-playbook-integration/assets/search-grouped-desktop-light.png": "cca266b2b09be2c5a211327a10acf17dd692e334",
@@ -159,11 +159,13 @@
     "tests/storybook/story-boundary.test.ts": "f4dcf03db1e00e271461cc78547f66e2dbcc3d51",
     "docs/specs/style-playbook-integration/assets/playbook-desktop-card-copy-full-width-dark-1280.png": "e5072fa8838fca87fdc113dfc4b13ace93a157ea",
     "docs/specs/style-playbook-integration/assets/playbook-mobile-card-copy-full-width-dark-393.png": "3c6368ca34d8ba1192fd0363cd34248f29f41c4b",
-    "src/components/playbook/PlaybookPage.tsx": "bd015d5062a3bb440af463adf9b6f6effa7cf375",
+    "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-desktop-dark.png": "fb4c38f8823b8618ad5e2169192bd06a32c931ab",
+    "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-mobile-dark.png": "b35703d4469a45750b341a86b0f7730f2d72155f",
+    "src/components/playbook/PlaybookPage.tsx": "fb74adc6384bad14b5e4a1b9e522a7606c1e6e6b",
     "src/lib/playbook/fixture.ts": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3"
   },
   "change": {
-    "description": "Cover the complete unpublished interval: build-time web demo/runtime boundaries, manual unified two-product delivery, search content aggregation and layout-safe highlighting, and full-width Playbook directory card descriptions with deterministic long-copy fixtures.",
+    "description": "Cover the complete unpublished interval: build-time web demo/runtime boundaries, manual unified two-product delivery, search content aggregation and layout-safe highlighting, Playbook directory card width, and removal of redundant Playbook filter dots with confirmed desktop/mobile evidence.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api", "persistent-state"]
   },
@@ -212,8 +214,8 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The unpublished interval retains the compatible read-only version metadata and Web Demo additions (minor). Search aggregation and responsive repairs preserve the public search array API and durable state; the Playbook directory card copy-width correction is presentation-only and uses deterministic fixture text, so no public API or persistent-state migration is introduced.",
-      "assessed_at": "2026-10-07T09:58:53Z",
+      "reasoning": "The unpublished interval retains compatible read-only version metadata and Web Demo additions (minor). Search aggregation and responsive repairs preserve the public search array API and durable state; Playbook card-width and filter-dot changes are presentation-only, so no public API or persistent-state migration is introduced.",
+      "assessed_at": "2026-10-07T15:51:01Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -282,8 +284,23 @@
         },
         {
           "path": "src/components/playbook/PlaybookPage.tsx",
-          "blob": "bd015d5062a3bb440af463adf9b6f6effa7cf375",
-          "command": "bun run check"
+          "blob": "fb74adc6384bad14b5e4a1b9e522a7606c1e6e6b",
+          "command": "bunx biome check src/components/playbook/PlaybookPage.tsx"
+        },
+        {
+          "path": "docs/specs/style-playbook-integration/SPEC.md",
+          "blob": "2634a987630e6294d1a875a654e558dfc66059d5",
+          "command": "git diff --check"
+        },
+        {
+          "path": "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-desktop-dark.png",
+          "blob": "fb4c38f8823b8618ad5e2169192bd06a32c931ab",
+          "command": "Web Demo /playbook/ screenshot at 1280x900, owner-confirmed"
+        },
+        {
+          "path": "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-mobile-dark.png",
+          "blob": "b35703d4469a45750b341a86b0f7730f2d72155f",
+          "command": "Web Demo /playbook/ screenshot at 390x844, owner-confirmed"
         },
         {
           "path": "src/lib/playbook/fixture.ts",
@@ -293,13 +310,13 @@
       ],
       "scope_drift": {
         "detected": true,
-        "description": "Reclassified current search aggregation, responsive UI, cache compatibility, Playbook card copy width and supporting evidence within the same unpublished interval; existing product/version additions remain minor."
+        "description": "Reclassified search aggregation, responsive UI, cache compatibility, Playbook card width, removal of decorative filter dots, and confirmed visual evidence within the same unpublished interval; existing product/version additions remain minor."
       }
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "The unpublished interval retains the compatible read-only version metadata and Web Demo additions (minor). Search aggregation and responsive repairs preserve the public search array API and durable state; the Playbook directory card copy-width correction is presentation-only and uses deterministic fixture text, so no public API or persistent-state migration is introduced.",
-      "assessed_at": "2026-10-07T09:58:53Z",
+      "reasoning": "The unpublished interval retains compatible read-only version metadata and Web Demo additions (minor). Search aggregation and responsive repairs preserve the public search array API and durable state; Playbook card-width and filter-dot changes are presentation-only, so no public API or persistent-state migration is introduced.",
+      "assessed_at": "2026-10-07T15:51:01Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -368,8 +385,23 @@
         },
         {
           "path": "src/components/playbook/PlaybookPage.tsx",
-          "blob": "bd015d5062a3bb440af463adf9b6f6effa7cf375",
-          "command": "bun run check"
+          "blob": "fb74adc6384bad14b5e4a1b9e522a7606c1e6e6b",
+          "command": "bunx biome check src/components/playbook/PlaybookPage.tsx"
+        },
+        {
+          "path": "docs/specs/style-playbook-integration/SPEC.md",
+          "blob": "2634a987630e6294d1a875a654e558dfc66059d5",
+          "command": "git diff --check"
+        },
+        {
+          "path": "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-desktop-dark.png",
+          "blob": "fb4c38f8823b8618ad5e2169192bd06a32c931ab",
+          "command": "Web Demo /playbook/ screenshot at 1280x900, owner-confirmed"
+        },
+        {
+          "path": "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-mobile-dark.png",
+          "blob": "b35703d4469a45750b341a86b0f7730f2d72155f",
+          "command": "Web Demo /playbook/ screenshot at 390x844, owner-confirmed"
         },
         {
           "path": "src/lib/playbook/fixture.ts",
