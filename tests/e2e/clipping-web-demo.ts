@@ -168,11 +168,11 @@ try {
   await page.getByRole("button", { name: "关闭", exact: true }).click();
   await scene("剪藏 · 已完成");
   const tools = await inspector();
-  await tools.getByRole("button", { name: "故障", exact: true }).click();
+  await tools.getByTestId("web-demo-connection-offline").click();
   await closeInspector();
   await expect(page.getByRole("alert")).toContainText("模拟网络故障");
   const recovery = await inspector();
-  await recovery.getByRole("button", { name: "正常", exact: true }).click();
+  await recovery.getByTestId("web-demo-connection-online").click();
   await recovery.getByTestId("web-demo-persona-guest").click();
   await closeInspector();
   await expect(page.getByTestId("clipping-open-chat")).toHaveCount(0);
