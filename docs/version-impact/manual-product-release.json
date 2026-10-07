@@ -3,6 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "ea9fcea19ab9546a9c1b4456d54500866f567540",
   "covered_files": {
+    ".impeccable/design.json": "304d41d82f7ffca7b9e1b80f0373a70723ee5038",
     ".codex/skills/style-topic-pr-label-release/SKILL.md": null,
     ".codex/skills/style-topic-pr-label-release/agents/openai.yaml": null,
     ".github/quality-gates.json": "33a2f2e09ec16672eb192db9128fe83310570553",
@@ -165,7 +166,7 @@
     "src/lib/playbook/fixture.ts": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3"
   },
   "change": {
-    "description": "Cover the complete unpublished interval: build-time web demo/runtime boundaries, manual unified two-product delivery, search content aggregation and layout-safe highlighting, Playbook directory card width, and removal of redundant Playbook filter dots with confirmed desktop/mobile evidence.",
+    "description": "Cover the complete unpublished interval: build-time web demo/runtime boundaries, manual unified two-product delivery, search content aggregation and layout-safe highlighting, Playbook directory card width, removal of redundant Playbook filter dots with confirmed desktop/mobile evidence, full-width Playbook directory card descriptions with deterministic long-copy fixtures, and design-system sidecar metadata.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api", "persistent-state"]
   },
