@@ -17,5 +17,7 @@
 
 ## References
 
+- [PR #177](https://github.com/IvanLi-CN/blog-26/pull/177) 承载预发布实现；候选保留主干 Web Demo 和发布快照恢复变更，并将 content search 的重复路由测试数据放入单个事务，保留测试数量和全部断言。经证明的 VERSION-only 写入使用业务语义投影校验证据，未登记的写入仍阻断。
+
 - [SPEC.md](./SPEC.md)
 - [IMPLEMENTATION.md](./IMPLEMENTATION.md)
