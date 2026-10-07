@@ -110,7 +110,7 @@ try {
   ).toHaveAttribute("rel", "nofollow noopener noreferrer");
 
   const panel = await inspector();
-  await panel.getByRole("button", { name: "Admin", exact: true }).click();
+  await panel.getByTestId("web-demo-persona-admin").click();
   await closeInspector();
   await expect(page.locator(".clipping-chat-card")).toBeVisible();
   await expect(page.getByRole("region", { name: "剪藏闪念" })).toBeVisible();
@@ -173,7 +173,7 @@ try {
   await expect(page.getByRole("alert")).toContainText("模拟网络故障");
   const recovery = await inspector();
   await recovery.getByRole("button", { name: "正常", exact: true }).click();
-  await recovery.getByRole("button", { name: "Guest", exact: true }).click();
+  await recovery.getByTestId("web-demo-persona-guest").click();
   await closeInspector();
   await expect(page.getByTestId("clipping-open-chat")).toHaveCount(0);
   expect(unexpected).toEqual([]);
