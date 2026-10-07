@@ -69,7 +69,7 @@
     "src/server/clipping/agent-runtime.test.ts": "b9c6feeee3f66cde97853e583d522137dbed4c45",
     "src/server/clipping/agent-runtime.ts": "c78d797f4ec2ba2557c4e64bf97721a62b8cbe73",
     "src/server/clipping/api.test.ts": "4e3ad48317a8d4f02f07063fec48e98a3b0508e4",
-    "src/server/clipping/api.ts": "ac2ab8819c9c24208e2d22c0a463651849dcbcce",
+    "src/server/clipping/api.ts": "f9e179f67c5c3415f87a06e4faddb31fdc68cfaa",
     "src/server/clipping/article-segments.test.ts": "318ca39bbf9f9da0cdd9820e2ea13ba92ecbb1ca",
     "src/server/clipping/article-segments.ts": "dc1ff3c55326de419f920a40279f53f1c5d4c7f3",
     "src/server/clipping/extract.test.ts": "c930c19115874115787be31c07dbaa874ec54f95",
