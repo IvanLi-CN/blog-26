@@ -4,7 +4,8 @@ import type { PlaybookPublicCatalog, PlaybookSearchPayload } from "./types";
 const project = {
   slug: "sample-project",
   name: "Sample Project",
-  description: "公开的项目实践快照。",
+  description:
+    "Astro site 用于标记把 Astro 作为 public/static site 交付面的项目。它不等同于整个仓库都是 Astro 应用：当前代表项目里，Astro 负责面向读者的 public content rendering 和 static export，而 admin SPA、gateway 与 API 由其他边界承担。",
   source: "https://github.com/example/public-project",
   tags: ["astro", "交付"],
   snapshot_exists: true,
@@ -15,7 +16,8 @@ const project = {
 const topic = {
   slug: "delivery",
   token: "可靠交付",
-  description: "从固定输入构建可追溯的产物。",
+  description:
+    "从固定输入构建可追溯的产物，并把版本校验、发布指针与失败恢复纳入同一条交付链路。每次部署都能回到明确的来源、摘要和内容版本，避免环境差异把问题推迟到读者面前。",
   categories: ["工程", "Release"],
   project_count: 1,
   related_projects: [{ slug: project.slug, name: project.name }],
@@ -64,13 +66,15 @@ export const publicFixtureCatalog: PlaybookPublicCatalog = {
           summary: {
             slug: "safe-release",
             name: "Safe Release",
-            description: "发布校验与失败恢复规则。",
+            description:
+              "发布校验与失败恢复规则，强调固定输入、产物摘要和来源身份必须在切换公开指针前完成核对；如果构建或部署失败，继续提供最后一个已验证版本，恢复后再整体切换新内容。",
             primary_topic: "delivery",
             policy_dependencies: [],
           },
           frontmatter: {
             name: "Safe Release",
-            description: "Public release policy",
+            description:
+              "Public release policy covering deterministic input checks, immutable artifact identity, and recovery to the last verified public version.",
             visibility: "public",
           },
           instruction_markdown:

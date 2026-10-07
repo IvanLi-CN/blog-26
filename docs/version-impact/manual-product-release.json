@@ -71,14 +71,16 @@
     "docs/specs/release-failure-telegram-alerts/SPEC.md": "439b85a711bed3ac7f18cc686ec6b312899fd713",
     "docs/specs/style-playbook-integration/HISTORY.md": "ffa287c6f9e1493e1b3f399a0b84e9af5799e80c",
     "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "8c42f8f8b15d005cd70fbf9bab5e10fbd83e8567",
-    "docs/specs/style-playbook-integration/SPEC.md": "78057aeab817fa6a09e0c4ce5652f74fce7b3837",
+    "docs/specs/style-playbook-integration/SPEC.md": "eeae922d8b3bf60ff640ab0a249be55414b5c794",
+    "docs/specs/style-playbook-integration/assets/playbook-desktop-card-copy-full-width-dark-1280.png": "e5072fa8838fca87fdc113dfc4b13ace93a157ea",
+    "docs/specs/style-playbook-integration/assets/playbook-mobile-card-copy-full-width-dark-393.png": "3c6368ca34d8ba1192fd0363cd34248f29f41c4b",
     "docs/specs/style-playbook-integration/assets/search-children-expanded.png": "3187f95764fa508012c64b9088ea3a7472b8722a",
     "docs/specs/style-playbook-integration/assets/search-grouped-desktop-dark.png": "962364ad8936970736e6a546a52f496221c686fe",
     "docs/specs/style-playbook-integration/assets/search-grouped-desktop-light.png": "cca266b2b09be2c5a211327a10acf17dd692e334",
     "docs/specs/style-playbook-integration/assets/search-grouped-mobile-dark.png": "1852060bb5bb48c1bde20ea938272034cbd242f4",
     "docs/specs/style-playbook-integration/assets/search-grouped-mobile-light.png": "4ecbf53e6631db54cb9d22110f6cedac56bee085",
     "docs/specs/web-demo-global-controls/HISTORY.md": "60d99c3250e3fb617e089880759e0ed9257f34a3",
-    "docs/specs/web-demo-global-controls/IMPLEMENTATION.md": "e8f86023ed48a33d79da163d561f2feae36e8eb3",
+    "docs/specs/web-demo-global-controls/IMPLEMENTATION.md": "861989510412375afe31b3c77d99794c6bc323f2",
     "docs/specs/web-demo-global-controls/SPEC.md": "d762e99d1968133145e5496720eb5ffd019a4ea0",
     "docs/specs/web-demo-global-controls/assets/inspector-desktop.png": "fa5fc685751e29f8cb49791023879b20037964d3",
     "docs/specs/web-demo-global-controls/assets/inspector-mobile.png": "4f1048e5aae50ab0a10f75cf747da2a6be8a1992",
@@ -117,6 +119,7 @@
     "src/components/common/PublicMemoDetail.stories.tsx": null,
     "src/components/common/ThemeToggle.tsx": "4d6da82f96742e13e06be24d24cef0cbc247a03a",
     "src/components/playbook/PlaybookPage.stories.tsx": null,
+    "src/components/playbook/PlaybookPage.tsx": "bd015d5062a3bb440af463adf9b6f6effa7cf375",
     "src/components/search/PublicSearchPage.stories.tsx": "b169f645f97fa49ac0762827f2a2e1f9c9ce0471",
     "src/components/search/PublicSearchPage.tsx": "af75e3503a467d1b5013c06d4e11f7eca448530b",
     "src/components/search/SearchResultsList.stories.tsx": "a41e487bd6a71055e47596156237ca533ee0a443",
@@ -139,6 +142,7 @@
     "src/lib/ai/search-fallback.test.ts": "15157675512f1fd0bf3f0a851d4e1943024a9f5a",
     "src/lib/ai/search.ts": "78f01536c849dbf87f7735c475522bb16d32771f",
     "src/lib/playbook/child-env.ts": "d6f344e6439869d39b0e363ea735e5f5888fe6ad",
+    "src/lib/playbook/fixture.ts": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
     "src/lib/playbook/search.test.ts": "9d58afc7b6c44d99e9b22e4297dc384a71647221",
     "src/lib/playbook/search.ts": "c0b0ed70c641609c94e5fde7286ba76c4f47bce7",
     "src/lib/release/artifacts.ts": "fd18f8c9823707d66a4fbbf9105d9c5a9e0f189d",
@@ -189,7 +193,7 @@
     "tests/storybook/story-boundary.test.ts": "34f87f3d68d1259f3161d77644d22f8d43197c8d"
   },
   "change": {
-    "description": "Cover the complete unpublished interval: compatible product version metadata, manual two-product delivery, search fixes, and build-time Web Demo global identity, connectivity, delay, theme and motion controls. Public CSR navigation remains a separate follow-up.",
+    "description": "Cover the complete unpublished interval: compatible product version metadata, manual two-product delivery, search fixes, full-width Playbook card descriptions, and build-time Web Demo global identity, connectivity, delay, theme and motion controls. Public CSR navigation remains a separate follow-up.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api", "persistent-state"]
   },
@@ -238,8 +242,8 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change the live API contracts or SQLite/local content formats. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded.",
-      "assessed_at": "2026-10-07T14:05:21.345Z",
+      "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change the live API contracts or SQLite/local content formats. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded. The full-width Playbook card descriptions and deterministic fixture copy preserve existing API and durable-state contracts.",
+      "assessed_at": "2026-10-07T14:11:30.521Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -325,17 +329,27 @@
           "path": "tests/components/WebDemoIdentity.test.tsx",
           "blob": "a501e7de34d818b986d6750075f44d67245127de",
           "command": "bun run test:precommit"
+        },
+        {
+          "path": "src/components/playbook/PlaybookPage.tsx",
+          "blob": "bd015d5062a3bb440af463adf9b6f6effa7cf375",
+          "command": "bun run check"
+        },
+        {
+          "path": "src/lib/playbook/fixture.ts",
+          "blob": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
+          "command": "bun test tests/lib/playbook-contract.test.ts"
         }
       ],
       "scope_drift": {
         "detected": true,
-        "description": "Reassessed global Inspector and request adapters against current source blobs; live API and durable state remain compatible. Browser environment state accepts existing d_network links, and public CSR remains separate."
+        "description": "Reassessed global Inspector and request adapters against current source blobs; live API and durable state remain compatible. Browser environment state accepts existing d_network links, and public CSR remains separate. The current candidate also retains the presentation-only Playbook card correction merged into main."
       }
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change the live API contracts or SQLite/local content formats. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded.",
-      "assessed_at": "2026-10-07T14:05:21.446Z",
+      "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change the live API contracts or SQLite/local content formats. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded. The full-width Playbook card descriptions and deterministic fixture copy preserve existing API and durable-state contracts.",
+      "assessed_at": "2026-10-07T14:11:30.694Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -421,6 +435,16 @@
           "path": "tests/components/WebDemoIdentity.test.tsx",
           "blob": "a501e7de34d818b986d6750075f44d67245127de",
           "command": "bun run test:precommit"
+        },
+        {
+          "path": "src/components/playbook/PlaybookPage.tsx",
+          "blob": "bd015d5062a3bb440af463adf9b6f6effa7cf375",
+          "command": "bun run check"
+        },
+        {
+          "path": "src/lib/playbook/fixture.ts",
+          "blob": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
+          "command": "bun test tests/lib/playbook-contract.test.ts"
         }
       ]
     }
