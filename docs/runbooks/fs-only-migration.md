@@ -17,13 +17,21 @@ export PI_DURABLE_DB_PATH="/path/to/pi-durable.sqlite"
 export CLIPPING_CONTENT_BASE_PATH="/path/to/clippings"
 export BACKUP_DIR="/path/to/backup/$(date +%Y%m%d-%H%M%S)"
 
-# Stop the sole console/gateway runtime owner and wait for its lease to close.
-# Keep the processor disabled throughout the backup and migration.
+# Stop the sole console/gateway runtime owner through its process supervisor
+# (for example, the deployment's console and gateway service units). Do not
+# rely on changing this variable to stop an already-running process. Verify
+# that both processes have exited and the owner lease has closed before copy.
+# Keep the processor disabled throughout the backup, migration, and validation.
 export CLIPPING_PROCESSOR_ENABLED=false
 mkdir -p "$BACKUP_DIR"
 cp -a "$CONTENT_ROOT" "$BACKUP_DIR/content-root"
 cp -a "$DB_PATH" "$BACKUP_DIR/sqlite.db"
-cp -a "$PI_DURABLE_DB_PATH" "$BACKUP_DIR/pi-durable.sqlite"
+for suffix in "" "-wal" "-shm"; do
+  source_path="${PI_DURABLE_DB_PATH}${suffix}"
+  if [ -e "$source_path" ]; then
+    cp -a "$source_path" "$BACKUP_DIR/pi-durable.sqlite${suffix}"
+  fi
+done
 cp -a "$CLIPPING_CONTENT_BASE_PATH" "$BACKUP_DIR/clippings"
 ```
 
@@ -37,10 +45,6 @@ bun run content:scan-api-links --include-db --format human
 bun run content:migrate-api-links --include-db --dry-run --backup-dir "$BACKUP_DIR/migrate-preview"
 bun run content:migrate-api-links --include-db --apply --backup-dir "$BACKUP_DIR/migrate-apply"
 bun run content:scan-api-links --include-db --fail-on-found
-
-# Restore the configured paths and start the sole runtime owner only after
-# every backup/migration step and validation has completed.
-export CLIPPING_PROCESSOR_ENABLED=true
 ```
 
 ## Validation
@@ -57,6 +61,11 @@ Manually verify at least:
 - two memo pages
 - image and attachment rendering
 
+Only after all checks pass, restart the sole console/gateway runtime owner
+through its process supervisor with `CLIPPING_PROCESSOR_ENABLED=true`. Confirm
+the owner lease is acquired once and that the processor resumes from persisted
+progress.
+
 ## Rollback
 
 ```bash
@@ -65,5 +74,11 @@ cp -a "$BACKUP_DIR/content-root" "$CONTENT_ROOT"
 cp -a "$BACKUP_DIR/sqlite.db" "$DB_PATH"
 rm -rf "$CLIPPING_CONTENT_BASE_PATH"
 cp -a "$BACKUP_DIR/clippings" "$CLIPPING_CONTENT_BASE_PATH"
-cp -a "$BACKUP_DIR/pi-durable.sqlite" "$PI_DURABLE_DB_PATH"
+for suffix in "" "-wal" "-shm"; do
+  rm -f "${PI_DURABLE_DB_PATH}${suffix}"
+  backup_path="$BACKUP_DIR/pi-durable.sqlite${suffix}"
+  if [ -e "$backup_path" ]; then
+    cp -a "$backup_path" "${PI_DURABLE_DB_PATH}${suffix}"
+  fi
+done
 ```
