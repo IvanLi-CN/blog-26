@@ -68,7 +68,7 @@
     "docs/specs/release-failure-telegram-alerts/SPEC.md": "439b85a711bed3ac7f18cc686ec6b312899fd713",
     "docs/specs/style-playbook-integration/HISTORY.md": "ffa287c6f9e1493e1b3f399a0b84e9af5799e80c",
     "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "8c42f8f8b15d005cd70fbf9bab5e10fbd83e8567",
-    "docs/specs/style-playbook-integration/SPEC.md": "78057aeab817fa6a09e0c4ce5652f74fce7b3837",
+    "docs/specs/style-playbook-integration/SPEC.md": "eeae922d8b3bf60ff640ab0a249be55414b5c794",
     "docs/specs/style-playbook-integration/assets/search-children-expanded.png": "3187f95764fa508012c64b9088ea3a7472b8722a",
     "docs/specs/style-playbook-integration/assets/search-grouped-desktop-dark.png": "962364ad8936970736e6a546a52f496221c686fe",
     "docs/specs/style-playbook-integration/assets/search-grouped-desktop-light.png": "cca266b2b09be2c5a211327a10acf17dd692e334",
@@ -156,10 +156,14 @@
     "tests/lib/web-demo-runtime.test.ts": "d868f2d7986127ed750dfa08283ee93fadfe58df",
     "tests/server/version-api.test.ts": "746ed7e7dfc790dd70131c0a7dca07c44f9c07c7",
     "tests/storybook/playbook-interactions.ts": "b7f34f03fbdc81ae4d6b8d5c80860dd90e81a8c9",
-    "tests/storybook/story-boundary.test.ts": "f4dcf03db1e00e271461cc78547f66e2dbcc3d51"
+    "tests/storybook/story-boundary.test.ts": "f4dcf03db1e00e271461cc78547f66e2dbcc3d51",
+    "docs/specs/style-playbook-integration/assets/playbook-desktop-card-copy-full-width-dark-1280.png": "e5072fa8838fca87fdc113dfc4b13ace93a157ea",
+    "docs/specs/style-playbook-integration/assets/playbook-mobile-card-copy-full-width-dark-393.png": "3c6368ca34d8ba1192fd0363cd34248f29f41c4b",
+    "src/components/playbook/PlaybookPage.tsx": "bd015d5062a3bb440af463adf9b6f6effa7cf375",
+    "src/lib/playbook/fixture.ts": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3"
   },
   "change": {
-    "description": "Cover the complete unpublished interval: build-time web demo/runtime boundaries and manual unified two-product delivery. Search content aggregation and layout-safe highlighting fix repeated results and preserve the existing API and durable state.",
+    "description": "Cover the complete unpublished interval: build-time web demo/runtime boundaries, manual unified two-product delivery, search content aggregation and layout-safe highlighting, and full-width Playbook directory card descriptions with deterministic long-copy fixtures.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api", "persistent-state"]
   },
@@ -208,8 +212,8 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The unpublished interval retains the compatible read-only version metadata and Web Demo additions (minor). Search aggregation, stable content limits, v5 cache misses for obsolete entries, inline highlighting and responsive controls repair existing behavior (patch). The public search array API, visibility rules, SQLite schema and local content format remain compatible; no durable-state migration is introduced.",
-      "assessed_at": "2026-10-07T08:22:11.785900Z",
+      "reasoning": "The unpublished interval retains the compatible read-only version metadata and Web Demo additions (minor). Search aggregation and responsive repairs preserve the public search array API and durable state; the Playbook directory card copy-width correction is presentation-only and uses deterministic fixture text, so no public API or persistent-state migration is introduced.",
+      "assessed_at": "2026-10-07T09:58:53Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -275,17 +279,27 @@
           "path": "tests/e2e/guest/mobile-reading-surface.spec.ts",
           "blob": "abb822347ab9216a444ff30b9b0de1d9875acb5e",
           "command": "Focused guest Playwright: reading margins/type icons, actual-source contrast, and edge-to-edge press/focus feedback"
+        },
+        {
+          "path": "src/components/playbook/PlaybookPage.tsx",
+          "blob": "bd015d5062a3bb440af463adf9b6f6effa7cf375",
+          "command": "bun run check"
+        },
+        {
+          "path": "src/lib/playbook/fixture.ts",
+          "blob": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
+          "command": "bun test tests/lib/playbook-contract.test.ts"
         }
       ],
       "scope_drift": {
         "detected": true,
-        "description": "Reclassified current search aggregation, responsive UI, cache compatibility and supporting evidence within the same unpublished interval; existing product/version additions remain minor."
+        "description": "Reclassified current search aggregation, responsive UI, cache compatibility, Playbook card copy width and supporting evidence within the same unpublished interval; existing product/version additions remain minor."
       }
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "The unpublished interval retains the compatible read-only version metadata and Web Demo additions (minor). Search aggregation, stable content limits, v5 cache misses for obsolete entries, inline highlighting and responsive controls repair existing behavior (patch). The public search array API, visibility rules, SQLite schema and local content format remain compatible; no durable-state migration is introduced.",
-      "assessed_at": "2026-10-07T08:22:11.785900Z",
+      "reasoning": "The unpublished interval retains the compatible read-only version metadata and Web Demo additions (minor). Search aggregation and responsive repairs preserve the public search array API and durable state; the Playbook directory card copy-width correction is presentation-only and uses deterministic fixture text, so no public API or persistent-state migration is introduced.",
+      "assessed_at": "2026-10-07T09:58:53Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -351,6 +365,16 @@
           "path": "tests/e2e/guest/mobile-reading-surface.spec.ts",
           "blob": "abb822347ab9216a444ff30b9b0de1d9875acb5e",
           "command": "Focused guest Playwright: reading margins/type icons, actual-source contrast, and edge-to-edge press/focus feedback"
+        },
+        {
+          "path": "src/components/playbook/PlaybookPage.tsx",
+          "blob": "bd015d5062a3bb440af463adf9b6f6effa7cf375",
+          "command": "bun run check"
+        },
+        {
+          "path": "src/lib/playbook/fixture.ts",
+          "blob": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
+          "command": "bun test tests/lib/playbook-contract.test.ts"
         }
       ]
     }

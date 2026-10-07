@@ -248,7 +248,7 @@ function ContentEntry({
           )}
         </div>
         {description && (
-          <p className="nature-muted mt-3 max-w-3xl break-words text-base leading-7">
+          <p className="nature-muted mt-3 w-full max-w-none break-words text-base leading-7">
             {description}
           </p>
         )}
