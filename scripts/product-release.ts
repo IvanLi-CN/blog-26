@@ -310,7 +310,7 @@ if (command === "notification") {
   const store = new GitHubLedgerStore(app);
   const requestedId = process.env.RELEASE_ID || "";
   if (!requestedId) throw new Error("RELEASE_ID is required");
-  const current = await store.read({ allowLegacyHead: true });
+  const current = await store.read({ allowLegacyHead: true, allowLegacyAncestor: true });
   const entry = current.ledger.entries.find((item) => item.id === requestedId);
   if (!entry) throw new Error("Unknown release identity");
   if (
@@ -324,7 +324,9 @@ if (command === "notification") {
       "Only an abandoned release without frozen artifacts can repair the ledger head"
     );
   const repaired = updateRelease(current.ledger, entry.id, { stage: "abandoned" });
-  await store.compareAndSwap(current.sha, repaired);
+  if (!current.legacySha)
+    throw new Error("Legacy ledger repair did not identify a historical commit");
+  await store.compareAndSwap(current.sha, repaired, current.legacySha);
   console.log(`Repaired abandoned release ledger ${entry.id}`);
 } else if (command === "abandon-failed") {
   const app = github();
