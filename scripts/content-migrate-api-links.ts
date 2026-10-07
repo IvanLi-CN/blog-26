@@ -130,7 +130,9 @@ async function backupFile(opts: { backupDirAbs: string; relPath: string; srcAbs:
 async function backupDbFile(opts: { backupDirAbs: string; dbPath: string }) {
   const srcAbs = resolvePath(process.cwd(), opts.dbPath);
   await ensureDir(opts.backupDirAbs);
+  await copyFile(srcAbs, join(opts.backupDirAbs, "db.sqlite"));
   for (const suffix of ["", "-wal", "-shm"]) {
+    if (suffix === "") continue;
     const source = `${srcAbs}${suffix}`;
     const destination = join(opts.backupDirAbs, `db.sqlite${suffix}`);
     try {

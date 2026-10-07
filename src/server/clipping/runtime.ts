@@ -1,4 +1,4 @@
-import { mkdir, realpath } from "node:fs/promises";
+import { lstat, mkdir, realpath, stat } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { getActiveLocalBasePath } from "@/config/paths";
 import { initializeDB } from "@/lib/db";
@@ -29,12 +29,30 @@ export async function startClippingRuntime() {
     await initializeDB();
     const paths = clippingStoragePaths();
     const applicationPath = resolve(process.env.DB_PATH || "./sqlite.db");
+    const applicationRealPath = await realpath(applicationPath);
+    const runtimeEntry = await lstat(paths.runtime).catch((error) => {
+      if (error.code !== "ENOENT") throw error;
+      return null;
+    });
+    if (runtimeEntry?.isSymbolicLink()) {
+      await realpath(paths.runtime).catch(() => {
+        throw new Error("Pi storage symlink target must exist.");
+      });
+    }
+    const runtimeRealPath = await realpath(paths.runtime).catch((error) => {
+      if (error.code !== "ENOENT") throw error;
+      return null;
+    });
+    const [applicationIdentity, runtimeIdentity] = await Promise.all([
+      stat(applicationPath),
+      runtimeRealPath ? stat(runtimeRealPath) : Promise.resolve(null),
+    ]);
     if (
       paths.runtime === applicationPath ||
-      (await realpath(paths.runtime).catch((error) => {
-        if (error.code !== "ENOENT") throw error;
-        return null;
-      })) === (await realpath(applicationPath))
+      runtimeRealPath === applicationRealPath ||
+      (runtimeIdentity &&
+        applicationIdentity.dev === runtimeIdentity.dev &&
+        applicationIdentity.ino === runtimeIdentity.ino)
     )
       throw new Error("Pi storage must be separate from the application database.");
     await mkdir(dirname(paths.runtime), { recursive: true });

@@ -25,10 +25,16 @@ case "$DB_PATH" in ""|"/"|[!/]*) echo "DB_PATH must be an absolute path" >&2; ex
 case "$PI_DURABLE_DB_PATH" in ""|"/"|[!/]*) echo "PI_DURABLE_DB_PATH must be an absolute path" >&2; exit 2;; esac
 test "$CONTENT_ROOT" != "$CLIPPING_CONTENT_BASE_PATH"
 test "$DB_PATH" != "$PI_DURABLE_DB_PATH"
+case "$(basename "$CONTENT_ROOT")" in ""|"."|"..") echo "CONTENT_ROOT must name a directory" >&2; exit 2;; esac
+case "$(basename "$CLIPPING_CONTENT_BASE_PATH")" in ""|"."|"..") echo "CLIPPING_CONTENT_BASE_PATH must name a directory" >&2; exit 2;; esac
+case "$(basename "$BACKUP_DIR")" in ""|"."|"..") echo "BACKUP_DIR must name a directory" >&2; exit 2;; esac
+mkdir -p "$(dirname "$BACKUP_DIR")"
 content_real="$(realpath "$CONTENT_ROOT")"
 clippings_real="$(realpath "$CLIPPING_CONTENT_BASE_PATH" 2>/dev/null || true)"
-backup_real="$(realpath "$BACKUP_DIR")"
+backup_parent="$(realpath "$(dirname "$BACKUP_DIR")")"
+backup_real="$backup_parent/$(basename "$BACKUP_DIR")"
 case "$backup_real/" in "$content_real/"*) echo "BACKUP_DIR must be outside content roots" >&2; exit 2;; esac
+test "$backup_real" != "/" && test "$backup_real" != "$content_real" && test "$backup_real" != "$clippings_real"
 if [ -n "$clippings_real" ]; then
   case "$backup_real/" in "$clippings_real/"*) echo "BACKUP_DIR must be outside content roots" >&2; exit 2;; esac
 fi
@@ -40,7 +46,6 @@ fi
 # Keep the processor disabled throughout the backup, migration, and validation.
 export CLIPPING_PROCESSOR_ENABLED=false
 case "$BACKUP_DIR" in ""|"/") echo "BACKUP_DIR must not be empty or /" >&2; exit 2;; esac
-mkdir -p "$(dirname "$BACKUP_DIR")"
 mkdir "$BACKUP_DIR"
 # After the supervisor reports both processes stopped, verify the persisted
 # lease is absent or expired before copying any state.
@@ -126,14 +131,17 @@ case "$DB_PATH" in ""|"/"|[!/]*) echo "DB_PATH must be an absolute path" >&2; ex
 case "$PI_DURABLE_DB_PATH" in ""|"/"|[!/]*) echo "PI_DURABLE_DB_PATH must be an absolute path" >&2; exit 2;; esac
 test "$CONTENT_ROOT" != "$CLIPPING_CONTENT_BASE_PATH"
 test "$DB_PATH" != "$PI_DURABLE_DB_PATH"
+case "$(basename "$CONTENT_ROOT")" in ""|"."|"..") echo "CONTENT_ROOT must name a directory" >&2; exit 2;; esac
+case "$(basename "$CLIPPING_CONTENT_BASE_PATH")" in ""|"."|"..") echo "CLIPPING_CONTENT_BASE_PATH must name a directory" >&2; exit 2;; esac
 test -n "${BACKUP_DIR:-}"
 test "$BACKUP_DIR" != "/"
-test -d "$CONTENT_ROOT"
-test -d "$CLIPPING_CONTENT_BASE_PATH"
-content_real="$(realpath "$CONTENT_ROOT")"
-clippings_real="$(realpath "$CLIPPING_CONTENT_BASE_PATH")"
+mkdir -p "$(dirname "$CONTENT_ROOT")" "$(dirname "$CLIPPING_CONTENT_BASE_PATH")"
+content_real="$(realpath "$(dirname "$CONTENT_ROOT")")/$(basename "$CONTENT_ROOT")"
+clippings_real="$(realpath "$(dirname "$CLIPPING_CONTENT_BASE_PATH")")/$(basename "$CLIPPING_CONTENT_BASE_PATH")"
 backup_real="$(realpath "$BACKUP_DIR")"
 case "$backup_real/" in "$content_real/"*|"$clippings_real/"*) echo "BACKUP_DIR must be outside content roots" >&2; exit 2;; esac
+test "$backup_real" != "/" && test "$backup_real" != "$content_real" && test "$backup_real" != "$clippings_real"
+test "$content_real" != "$clippings_real"
 test -d "$BACKUP_DIR/content-root"
 test -f "$BACKUP_DIR/sqlite.db"
 test -d "$BACKUP_DIR/clippings"

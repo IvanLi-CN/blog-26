@@ -322,7 +322,8 @@ export class ClippingService {
       await this.persist(manifest);
     });
     for (const conversation of abort)
-      await this.runtime.abort(conversation).catch(() => {
+      await this.runtime.abort(conversation).catch((error) => {
+        if (error instanceof RuntimeOwnershipError) this.markOwnershipLost();
         /* Already settled or removed. */
       });
     this.pump();
@@ -688,7 +689,12 @@ export class ClippingService {
   }
 
   async chatSnapshot(conversationId: string) {
-    return this.runtime.snapshot(conversationId);
+    try {
+      return await this.runtime.snapshot(conversationId);
+    } catch (error) {
+      if (error instanceof RuntimeOwnershipError) this.markOwnershipLost();
+      throw error;
+    }
   }
 
   private queueChatAnswer(binding: ConversationBinding, submissionId: string) {
@@ -703,7 +709,8 @@ export class ClippingService {
           })
         );
       })
-      .catch(() => {
+      .catch((error) => {
+        if (error instanceof RuntimeOwnershipError) this.markOwnershipLost();
         /* Snapshot retains submission failure and committed messages. */
       });
     const tracked = task.finally(() => {

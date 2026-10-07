@@ -7,6 +7,7 @@ import { appendPublicCorsHeaders, createPublicCorsPreflightResponse } from "@/li
 import { posts } from "@/lib/schema";
 import { buildPublicSnapshot, resolvePublicMemoTitle } from "@/public-site/snapshot";
 import { handleClippingRequest } from "@/server/clipping/api";
+import { isClippingRowPublic } from "@/server/clipping/projection";
 import { readAuthoredMemo } from "@/server/clipping/store";
 import { createContext } from "@/server/context";
 import { handlePublicAssetFacadeRequest } from "@/server/public-media";
@@ -99,17 +100,26 @@ async function normalizePublicSearchTitles<
     .select()
     .from(posts)
     .where(and(eq(posts.type, "memo"), inArray(posts.slug, memoSlugs)));
+  const publicBySlug = new Map(
+    await Promise.all(
+      memoRows.map(async (row) => [row.slug, await isClippingRowPublic(row)] as const)
+    )
+  );
   const titleBySlug = new Map(
     await Promise.all(
-      memoRows.map(async (row) => [row.slug, await resolvePublicMemoTitle(row)] as const)
+      memoRows
+        .filter((row) => publicBySlug.get(row.slug) ?? false)
+        .map(async (row) => [row.slug, await resolvePublicMemoTitle(row)] as const)
     )
   );
 
-  return results.map((result) =>
-    result.type === "memo" && titleBySlug.has(result.slug)
-      ? { ...result, title: titleBySlug.get(result.slug) ?? null }
-      : result
-  );
+  return results
+    .map((result) =>
+      result.type === "memo" && titleBySlug.has(result.slug)
+        ? { ...result, title: titleBySlug.get(result.slug) ?? null }
+        : result
+    )
+    .filter((result) => result.type !== "memo" || (publicBySlug.get(result.slug) ?? false));
 }
 
 export async function handlePublicApiRequest(request: Request, subPath: string) {

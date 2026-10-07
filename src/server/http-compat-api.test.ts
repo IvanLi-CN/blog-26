@@ -2089,6 +2089,37 @@ public: false
     );
   });
 
+  it("rechecks canonical clipping visibility before returning public search results", async () => {
+    const relativePath = "Memos/private-search-clipping.md";
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos"), { recursive: true });
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, relativePath),
+      "---\ntitle: Private clipping\npublic: false\ntags:\n  - 剪藏\n---\n\nhttps://example.com/private-search\n\nprivate-clipping-search-marker",
+      "utf8"
+    );
+    await seedPost({
+      id: relativePath,
+      filePath: relativePath,
+      slug: "private-search-clipping",
+      type: "memo",
+      title: "Stale public clipping title",
+      body: "https://example.com/private-search\n\nprivate-clipping-search-marker",
+      tags: JSON.stringify(["剪藏"]),
+      metadata: null,
+      public: true,
+      draft: false,
+    });
+
+    const response = await handlePublicApiRequest(
+      buildRequest("/api/public/search?q=private-clipping-search-marker&topK=20"),
+      "/search"
+    );
+
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as Array<{ slug: string }>;
+    expect(payload.some((result) => result.slug === "private-search-clipping")).toBe(false);
+  });
+
   it("normalizes legacy memo titles across search, list, detail, and snapshot reads", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos"), { recursive: true });
     fs.writeFileSync(
