@@ -3,6 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "ea9fcea19ab9546a9c1b4456d54500866f567540",
   "covered_files": {
+    ".impeccable/design.json": "304d41d82f7ffca7b9e1b80f0373a70723ee5038",
     ".codex/skills/style-topic-pr-label-release/SKILL.md": null,
     ".codex/skills/style-topic-pr-label-release/agents/openai.yaml": null,
     ".github/quality-gates.json": "33a2f2e09ec16672eb192db9128fe83310570553",
@@ -23,7 +24,7 @@
     "CONTEXT.md": "d85da3d68a36c6de67b3c8f08db263e8d769bfd8",
     "Dockerfile": "6e1616b4117589937ce07ce06e8c7b8627ef639a",
     "README.md": "69db28f329010fdd9d6334a8c6048385ec0ab586",
-    "VERSION": "24ba9a38de68d00674ec97b283a967699716b9f4",
+    "VERSION": "834f2629538327723c074ed4c3addca9888f0256",
     "apps/admin/src/components/admin-soft-ui.stories.tsx": "9a9e6b9ecceaa5c5351940d47c12e83f72adff11",
     "apps/admin/src/components/app-shell.tsx": "aa6a42928c7e751a17e84cc5f575d18e2a254328",
     "apps/admin/src/demo/mock-admin-api.ts": "69e7531aedfd41016cbb29bbc5b7ad4eeec7381c",
@@ -163,7 +164,7 @@
     "src/lib/playbook/fixture.ts": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3"
   },
   "change": {
-    "description": "Cover the complete unpublished interval: build-time web demo/runtime boundaries, manual unified two-product delivery, search content aggregation and layout-safe highlighting, and full-width Playbook directory card descriptions with deterministic long-copy fixtures.",
+    "description": "Cover the complete unpublished interval: build-time web demo/runtime boundaries, manual unified two-product delivery, search content aggregation and layout-safe highlighting, full-width Playbook directory card descriptions with deterministic long-copy fixtures, and design-system sidecar metadata.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api", "persistent-state"]
   },
