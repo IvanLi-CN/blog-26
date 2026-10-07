@@ -157,6 +157,38 @@ describe("clipping lifecycle and canonical content", () => {
     }
   });
 
+  test("drains queued clipping jobs beyond the concurrency limit", async () => {
+    const data = await fixture();
+    const secondId = "Memos/second.md";
+    const thirdId = "Memos/third.md";
+    const references = [
+      [secondId, "22222222-2222-4222-8222-222222222222", "https://article.example/two"],
+      [thirdId, "33333333-3333-4333-8333-333333333333", "https://article.example/three"],
+    ] as const;
+    for (const [memoId, clippingId, target] of references) {
+      await writeFile(
+        join(data.root, "authored", memoId),
+        matter.stringify(`${target}\n\n备注\n\n#剪藏`, {
+          public: false,
+          tags: ["剪藏"],
+          clipping: { id: clippingId, creatorId: "creator" },
+        })
+      );
+    }
+    data.options.memoIds = async () => [data.memoId, secondId, thirdId];
+    let service: ClippingService | undefined;
+    try {
+      service = await ClippingService.open(data.options);
+      await service.idle();
+      for (const memoId of [data.memoId, secondId, thirdId])
+        expect((await projectClippingMemo(memoId, data.store))?.reading.status).toBe("completed");
+      expect(data.captures()).toBe(3);
+    } finally {
+      await service?.close();
+      await data.cleanup();
+    }
+  });
+
   test("a late capture cannot publish into a replacement target", async () => {
     const data = await fixture();
     let release: (() => void) | undefined;
@@ -353,6 +385,45 @@ describe("clipping lifecycle and canonical content", () => {
       await service.idle();
       expect(await service.ensureConversation(data.memoId)).not.toBe(oldConversation);
     } finally {
+      await service?.close();
+      await data.cleanup();
+    }
+  });
+
+  test("does not hold reconciliation behind a pending chat answer", async () => {
+    const data = await fixture();
+    let answerStarted!: () => void;
+    let releaseAnswer!: () => void;
+    const answerReady = new Promise<void>((resolve) => {
+      answerStarted = resolve;
+    });
+    const answerGate = new Promise<void>((resolve) => {
+      releaseAnswer = resolve;
+    });
+    let service: ClippingService | undefined;
+    try {
+      service = await ClippingService.open({
+        ...data.options,
+        beforeChatAnswer: async () => {
+          answerStarted();
+          await answerGate;
+        },
+      });
+      await service.idle();
+      await service.chat(data.memoId, "请讨论文章", "chat-queue-regression");
+      await answerReady;
+      const parsed = matter(await readFile(data.path, "utf8"));
+      await writeFile(
+        data.path,
+        matter.stringify(parsed.content.replace("/one", "/two"), parsed.data)
+      );
+      const reconciled = await Promise.race([
+        service.reconcile(data.memoId).then(() => true),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 500)),
+      ]);
+      expect(reconciled).toBe(true);
+    } finally {
+      releaseAnswer();
       await service?.close();
       await data.cleanup();
     }

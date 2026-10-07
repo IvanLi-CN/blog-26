@@ -219,13 +219,11 @@ test("memo detail rejects stale public clipping rows after private tag removal",
 test("MCP omitted tags preserve clipping metadata while explicit empty tags remove the marker", async () => {
   const { createMcpWebTransport } = await import("@/server/mcp");
   const connected = await createMcpWebTransport();
+  let actor: { isAdmin: boolean; userId?: string } = { isAdmin: true, userId: "creator" };
   const server = Bun.serve({
     hostname: "127.0.0.1",
     port: 0,
-    fetch: (request) =>
-      runWithMcpAuth({ isAdmin: true, userId: "creator" }, () =>
-        connected.transport.handleRequest(request)
-      ),
+    fetch: (request) => runWithMcpAuth(actor, () => connected.transport.handleRequest(request)),
   });
   const client = new Client({ name: "clipping-regression", version: "1" });
   try {
@@ -264,6 +262,19 @@ test("MCP omitted tags preserve clipping metadata while explicit empty tags remo
     });
     expect(cleared.isError).not.toBe(true);
     expect(matter(await Bun.file(join(root, "authored", id)).text()).data.tags).toEqual([]);
+    actor = { isAdmin: false };
+    const publicList = await client.callTool({
+      name: "memos_list",
+      arguments: { publicOnly: true, limit: 10 },
+    });
+    const listed = JSON.parse(String(publicList.content?.[0]?.text)) as {
+      items: Array<{ id: string; metadata?: string | null }>;
+    };
+    const clearedMemo = listed.items.find((item) => item.id === id);
+    expect(clearedMemo).toBeTruthy();
+    expect(clearedMemo?.metadata).not.toContain("creator");
+    expect(clearedMemo?.metadata).not.toContain("proof");
+    expect(clearedMemo?.metadata).not.toContain('"clipping"');
   } finally {
     await client.close();
     await connected.server.close();

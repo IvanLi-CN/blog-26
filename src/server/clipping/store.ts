@@ -103,9 +103,11 @@ export async function attachClippingReference(
   memoId: string
 ) {
   if (recognizeMemoClipping(body, frontmatter).enabled && !frontmatter.clipping) {
-    const id = randomUUID();
     const store = new ClippingStore();
+    const id = clippingIdForMemo(memoId, frontmatter);
     await store.validateBoundary();
+    const existing = await store.manifest(id);
+    const effectiveCreatorId = existing ? existing.creatorId : creatorId;
     const keyPath = join(store.root, "identity.key");
     const candidate = `${keyPath}.${randomUUID()}.tmp`;
     await writeFile(candidate, randomBytes(32), { flag: "wx", mode: 0o600 });
@@ -119,9 +121,9 @@ export async function attachClippingReference(
     }
     const key = await readFile(keyPath);
     const proof = createHmac("sha256", key)
-      .update(JSON.stringify([memoId, id, creatorId]))
+      .update(JSON.stringify([memoId, id, effectiveCreatorId]))
       .digest("hex");
-    frontmatter.clipping = { id, creatorId, proof };
+    frontmatter.clipping = { id, creatorId: effectiveCreatorId, proof };
   }
 }
 

@@ -248,7 +248,11 @@ export class AgentRuntimeFacade {
     return String(submission.id);
   }
 
-  async answer(id: string, submissionId: string) {
+  async answer(
+    id: string,
+    submissionId: string,
+    beforeCommit?: (commit: () => Promise<string>) => Promise<string>
+  ) {
     const conversation = await this.conversation(id);
     const submission = await this.harness.submission(
       decodeId(submissionId) as SubmissionId,
@@ -264,20 +268,23 @@ export class AgentRuntimeFacade {
     if (result.status !== "done" || result.type !== "input") {
       throw new Error("模型生成失败，请重试；已保存的文章和对话仍然保留。");
     }
-    const answer = await conversation.commit(
-      (tx) => tx.entry(AssistantEntry, result.answer),
-      BACKGROUND_CONTEXT
-    );
-    if (
-      answer?.model?.some(
-        (message) => message.role === "assistant" && message.stopReason === "length"
-      )
-    ) {
-      throw new Error("模型输出达到长度限制；未将部分结果标记为全文完成，请重试。");
-    }
-    const text = answer?.model?.map(messageText).join("\n").trim();
-    if (!text) throw new Error("模型返回了空内容，请重试。");
-    return text;
+    const commit = async () => {
+      const answer = await conversation.commit(
+        (tx) => tx.entry(AssistantEntry, result.answer),
+        BACKGROUND_CONTEXT
+      );
+      if (
+        answer?.model?.some(
+          (message) => message.role === "assistant" && message.stopReason === "length"
+        )
+      ) {
+        throw new Error("模型输出达到长度限制；未将部分结果标记为全文完成，请重试。");
+      }
+      const text = answer?.model?.map(messageText).join("\n").trim();
+      if (!text) throw new Error("模型返回了空内容，请重试。");
+      return text;
+    };
+    return beforeCommit ? beforeCommit(commit) : commit();
   }
 
   async snapshot(id: string): Promise<AgentConversationSnapshot> {

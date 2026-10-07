@@ -125,6 +125,19 @@ function getMissingRecommendedMetadata(fm: Record<string, unknown>, kind: Conten
   return fields.filter((field) => isMissingFrontmatterValue(fm[field]));
 }
 
+function stripPrivateClippingMetadata(metadata: string | null): string | null {
+  if (!metadata) return metadata;
+  try {
+    const parsed = JSON.parse(metadata);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return metadata;
+    const sanitized = { ...(parsed as Record<string, unknown>) };
+    delete sanitized.clipping;
+    return JSON.stringify(sanitized);
+  } catch {
+    return metadata;
+  }
+}
+
 function buildRecommendedMetadata(row: PostRow, missing: string[]): Record<string, unknown> {
   const recommended: Record<string, unknown> = {};
   for (const field of missing) {
@@ -174,7 +187,8 @@ async function getFrontmatterDiagnostics(row: PostRow, kind: ContentKind) {
 async function annotateContentRows<T extends PostRow>(rows: T[], kind: ContentKind) {
   const results = await Promise.all(
     rows.map(async (row) => {
-      if (!getMcpAuthContext().isAdmin && !(await isClippingRowPublic(row))) return null;
+      const auth = getMcpAuthContext();
+      if (!auth.isAdmin && !(await isClippingRowPublic(row))) return null;
       const clipping = kind === "memo" ? await clippingProjectionForRow(row) : null;
       return {
         ...row,
@@ -193,6 +207,9 @@ async function annotateContentRows<T extends PostRow>(rows: T[], kind: ContentKi
                   }
                 : {}),
             }
+          : {}),
+        ...(kind === "memo" && !auth.isAdmin
+          ? { metadata: stripPrivateClippingMetadata(row.metadata) }
           : {}),
         ...(await getFrontmatterDiagnostics(row, kind)),
       };

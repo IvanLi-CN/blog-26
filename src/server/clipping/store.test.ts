@@ -4,7 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import matter from "gray-matter";
 import { isClippingRowPublic } from "./projection";
-import { attachClippingReference, ClippingStore, clippingCreator } from "./store";
+import {
+  attachClippingReference,
+  ClippingStore,
+  clippingCreator,
+  clippingIdForMemo,
+  clippingManifestSchema,
+} from "./store";
 
 const prior = {
   content: process.env.LOCAL_CONTENT_BASE_PATH,
@@ -51,6 +57,44 @@ test("creator proof cannot be forged or copied to a different memo; imports rema
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("preserves the stable imported clipping identity during a later edit", async () => {
+  const root = await fixture();
+  try {
+    const memoId = "Memos/imported.md";
+    const stableId = clippingIdForMemo(memoId, {});
+    const store = new ClippingStore();
+    await store.save(
+      clippingManifestSchema.parse({
+        schemaVersion: 1,
+        id: stableId,
+        memoId,
+        creatorId: null,
+        revision: 1,
+        enabled: true,
+        deleted: false,
+        targetUrl: "https://example.com/article",
+        conversationId: null,
+        previousConversations: [],
+        currentVersionId: null,
+        activeVersionId: null,
+        versions: [],
+      })
+    );
+    const frontmatter: Record<string, unknown> = {};
+    await attachClippingReference(
+      "https://example.com/article\n\nEdited remarks\n\n#剪藏",
+      frontmatter,
+      "editor",
+      memoId
+    );
+    expect((frontmatter.clipping as Record<string, unknown>).id).toBe(stableId);
+    expect((frontmatter.clipping as Record<string, unknown>).creatorId).toBeNull();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("raw visibility fences stale public indices and missing authored files", async () => {
   const root = await fixture();
   try {

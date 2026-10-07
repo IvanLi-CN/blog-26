@@ -42,6 +42,7 @@ type ServiceOptions = {
   index?: (manifest: ClippingManifest, projection: Projection) => Promise<void>;
   scanIntervalMs?: number;
   beforeChatSubmit?: () => Promise<void>;
+  beforeChatAnswer?: () => Promise<void>;
 };
 
 type ConversationBinding = {
@@ -138,6 +139,8 @@ export class ClippingService {
     string,
     { controller: AbortController; done: Promise<void> }
   >();
+  private pumping: Promise<void> | null = null;
+  private readonly answerTails = new Map<string, Promise<void>>();
   private mutationTail: Promise<void> = Promise.resolve();
   private constructor(private readonly options: ServiceOptions) {
     this.store = options.store ?? new ClippingStore();
@@ -308,25 +311,48 @@ export class ClippingService {
   }
 
   private pump() {
-    if (this.closing) return;
-    for (const id of this.known.values()) {
-      if (this.running.size >= 2) break;
-      if (this.running.has(id)) continue;
-      const controller = new AbortController();
-      const done = this.run(id, controller.signal)
-        .catch((error) => {
-          if (error instanceof RuntimeOwnershipError) {
-            this.closing = true;
-            if (this.timer) clearInterval(this.timer);
-            for (const job of this.running.values()) job.controller.abort();
-            console.error(
-              "[clipping] Runtime ownership lost; this process stopped accepting work."
-            );
-          } else console.error("[clipping] Task stopped; saved materials retained.");
-        })
-        .finally(() => this.running.delete(id));
-      this.running.set(id, { controller, done });
-    }
+    if (this.closing || this.pumping) return;
+    let started = false;
+    this.pumping = (async () => {
+      const candidates = [...this.known.values()].filter((id) => !this.running.has(id));
+      const manifests = await Promise.all(
+        candidates.map(async (id) => ({ id, manifest: await this.store.manifest(id) }))
+      );
+      for (const { id, manifest } of manifests) {
+        if (this.running.size >= 2) break;
+        const version = manifest?.versions.find((entry) => entry.id === manifest.activeVersionId);
+        if (
+          !manifest?.enabled ||
+          manifest.deleted ||
+          !version ||
+          !["queued", "processing"].includes(version.status)
+        )
+          continue;
+        started = true;
+        const controller = new AbortController();
+        const done = this.run(id, controller.signal)
+          .catch((error) => {
+            if (error instanceof RuntimeOwnershipError) {
+              this.closing = true;
+              if (this.timer) clearInterval(this.timer);
+              for (const job of this.running.values()) job.controller.abort();
+              console.error(
+                "[clipping] Runtime ownership lost; this process stopped accepting work."
+              );
+            } else console.error("[clipping] Task stopped; saved materials retained.");
+          })
+          .finally(() => {
+            this.running.delete(id);
+            this.pump();
+          });
+        this.running.set(id, { controller, done });
+      }
+    })()
+      .catch((error) => console.error("[clipping] Task queue inspection failed.", error))
+      .finally(() => {
+        this.pumping = null;
+        if (started && !this.closing && this.running.size < 2) this.pump();
+      });
   }
 
   private async current(id: string, version: ClippingVersion) {
@@ -637,6 +663,29 @@ export class ClippingService {
   async chatSnapshot(conversationId: string) {
     return this.runtime.snapshot(conversationId);
   }
+
+  private queueChatAnswer(binding: ConversationBinding, submissionId: string) {
+    const previous = this.answerTails.get(binding.conversationId) ?? Promise.resolve();
+    const task = previous
+      .then(async () => {
+        await this.options.beforeChatAnswer?.();
+        await this.runtime.answer(binding.conversationId, submissionId, (commit) =>
+          this.withMutationLock(async () => {
+            await this.assertConversationBinding(binding);
+            return commit();
+          })
+        );
+      })
+      .catch(() => {
+        /* Snapshot retains submission failure and committed messages. */
+      });
+    const tracked = task.finally(() => {
+      if (this.answerTails.get(binding.conversationId) === tracked)
+        this.answerTails.delete(binding.conversationId);
+    });
+    this.answerTails.set(binding.conversationId, tracked);
+  }
+
   async chat(memoId: string, text: string, requestId: string) {
     return this.withMutationLock(async () => {
       await this.reconcileUnlocked(memoId);
@@ -644,21 +693,17 @@ export class ClippingService {
       await this.options.beforeChatSubmit?.();
       await this.assertConversationBinding(binding);
       const submissionId = await this.runtime.submit(binding.conversationId, text, requestId);
-      void this.withMutationLock(async () => {
-        try {
-          await this.assertConversationBinding(binding);
-          await this.runtime.answer(binding.conversationId, submissionId);
-        } catch {
-          /* Snapshot retains submission failure and committed messages. */
-        }
-      });
+      this.queueChatAnswer(binding, submissionId);
       return { conversationId: binding.conversationId };
     });
   }
 
   async idle() {
-    while (this.running.size)
-      await Promise.allSettled([...this.running.values()].map(({ done }) => done));
+    while (this.running.size || this.pumping) {
+      const pending = [...this.running.values()].map(({ done }) => done);
+      if (this.pumping) pending.push(this.pumping);
+      await Promise.allSettled(pending);
+    }
   }
   async close() {
     this.closing = true;
@@ -669,6 +714,7 @@ export class ClippingService {
     });
     await this.mutationTail;
     await this.runtime.close();
+    await Promise.allSettled(this.answerTails.values());
     await this.idle();
   }
 }
