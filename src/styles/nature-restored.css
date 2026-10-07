@@ -604,8 +604,8 @@
   }
 
   .nature-search-input-shell {
-    min-height: calc(2.75rem + 1rem + 2px);
-    padding: 0.5rem 0.5rem 0.5rem 1rem;
+    min-height: calc(2.75rem + 0.5rem + 2px);
+    padding: 0.25rem 0.25rem 0.25rem 1rem;
     border-color: var(--nature-line-strong);
     border-radius: 999px;
     background: rgba(var(--nature-surface-rgb), 0.68);

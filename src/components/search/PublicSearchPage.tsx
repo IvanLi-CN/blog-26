@@ -323,7 +323,7 @@ export default function PublicSearchPage({
   return (
     <div
       className={cn(
-        "public-search-layout w-full lg:mx-auto lg:grid lg:w-[var(--nature-content-width)] lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start lg:gap-8 lg:py-8",
+        "public-search-layout w-full lg:mx-auto lg:grid lg:w-[var(--nature-content-width)] lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:gap-8 lg:py-8 xl:grid-cols-[22rem_minmax(0,1fr)]",
         className
       )}
       aria-busy={isLoading || undefined}
