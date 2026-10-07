@@ -11,6 +11,7 @@ import { postEmbeddings, posts } from "@/lib/schema";
 import { appRouter } from "@/server/router";
 
 const TEST_DB_PATH = path.join(process.cwd(), "tmp/search-router-test.sqlite");
+const TEST_CONTENT_ROOT = path.join(process.cwd(), "tmp/search-router-content");
 const MIGRATIONS_PATH = path.join(process.cwd(), "drizzle");
 
 function createCaller() {
@@ -24,8 +25,11 @@ function createCaller() {
 describe("search router visibility", () => {
   beforeAll(async () => {
     process.env.DB_PATH = TEST_DB_PATH;
+    process.env.LOCAL_CONTENT_BASE_PATH = TEST_CONTENT_ROOT;
     fs.mkdirSync(path.dirname(TEST_DB_PATH), { recursive: true });
     if (fs.existsSync(TEST_DB_PATH)) fs.rmSync(TEST_DB_PATH);
+    fs.rmSync(TEST_CONTENT_ROOT, { recursive: true, force: true });
+    fs.mkdirSync(TEST_CONTENT_ROOT, { recursive: true });
 
     const sqlite = new Database(TEST_DB_PATH);
     migrate(drizzle(sqlite), { migrationsFolder: MIGRATIONS_PATH });
@@ -38,10 +42,13 @@ describe("search router visibility", () => {
     await db.delete(postEmbeddings);
     await db.delete(posts);
     clearSearchCache();
+    fs.rmSync(TEST_CONTENT_ROOT, { recursive: true, force: true });
+    fs.mkdirSync(TEST_CONTENT_ROOT, { recursive: true });
   });
 
   afterAll(() => {
     if (fs.existsSync(TEST_DB_PATH)) fs.rmSync(TEST_DB_PATH);
+    if (fs.existsSync(TEST_CONTENT_ROOT)) fs.rmSync(TEST_CONTENT_ROOT, { recursive: true });
   });
 
   it("forces public semantic search to exclude unpublished rows", async () => {
@@ -101,5 +108,39 @@ describe("search router visibility", () => {
       published: false,
     });
     expect(list.posts.map((entry) => entry.slug)).toEqual([`${marker}-public`]);
+  });
+
+  it("filters canonical private clippings before public search consumers receive results", async () => {
+    if (!db) throw new Error("Database has not been initialised");
+    const relativePath = "Memos/private-search.md";
+    fs.mkdirSync(path.join(TEST_CONTENT_ROOT, "Memos"), { recursive: true });
+    fs.writeFileSync(
+      path.join(TEST_CONTENT_ROOT, relativePath),
+      "---\ntitle: Private clipping\npublic: false\ntags:\n  - 剪藏\n---\n\nhttps://example.com/private\n\nprivate-router-search-marker",
+      "utf8"
+    );
+    await db.insert(posts).values({
+      id: relativePath,
+      slug: "private-router-search",
+      type: "memo",
+      title: "Stale public clipping",
+      excerpt: "private-router-search-marker",
+      body: "https://example.com/private\n\nprivate-router-search-marker",
+      publishDate: Date.now(),
+      updateDate: Date.now(),
+      draft: false,
+      public: true,
+      tags: JSON.stringify(["剪藏"]),
+      author: "search-test",
+      metadata: null,
+      dataSource: "local",
+      contentHash: randomUUID(),
+    });
+
+    const result = await createCaller().search.ai.semantic({
+      q: "private-router-search-marker",
+      topK: 10,
+    });
+    expect(result.some((entry) => entry.slug === "private-router-search")).toBe(false);
   });
 });

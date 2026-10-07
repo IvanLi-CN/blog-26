@@ -15,6 +15,9 @@ import { buildMemoRelativePath } from "@/lib/memo-paths";
 import { posts as postsTable } from "@/lib/schema";
 import { buildContentSearchCondition } from "@/lib/search/content-search";
 import { isSearchQueryWithinBudget } from "@/lib/search/query";
+import { clippingProjectionForRow, isClippingRowPublic } from "@/server/clipping/projection";
+import { notifyClippingChange } from "@/server/clipping/runtime";
+import { attachClippingReference } from "@/server/clipping/store";
 import { getPostsByTag, getTagSummaries, groupPostsByTag } from "@/server/services/tag-service";
 import { getMcpAuthContext, requireAdmin } from "./mcp-auth-context";
 
@@ -122,6 +125,20 @@ function getMissingRecommendedMetadata(fm: Record<string, unknown>, kind: Conten
   return fields.filter((field) => isMissingFrontmatterValue(fm[field]));
 }
 
+function stripPrivateMcpMetadata(metadata: string | null): string | null {
+  if (!metadata) return metadata;
+  try {
+    const parsed = JSON.parse(metadata);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return metadata;
+    const sanitized = { ...(parsed as Record<string, unknown>) };
+    for (const key of ["authorEmail", "clipping", "content", "creatorId", "proof", "updatedVia"])
+      delete sanitized[key];
+    return JSON.stringify(sanitized);
+  } catch {
+    return metadata;
+  }
+}
+
 function buildRecommendedMetadata(row: PostRow, missing: string[]): Record<string, unknown> {
   const recommended: Record<string, unknown> = {};
   for (const field of missing) {
@@ -169,12 +186,37 @@ async function getFrontmatterDiagnostics(row: PostRow, kind: ContentKind) {
 }
 
 async function annotateContentRows<T extends PostRow>(rows: T[], kind: ContentKind) {
-  return Promise.all(
-    rows.map(async (row) => ({
-      ...row,
-      ...(await getFrontmatterDiagnostics(row, kind)),
-    }))
+  const results = await Promise.all(
+    rows.map(async (row) => {
+      const auth = getMcpAuthContext();
+      if (!auth.isAdmin && !(await isClippingRowPublic(row))) return null;
+      const clipping = kind === "memo" ? await clippingProjectionForRow(row) : null;
+      return {
+        ...row,
+        ...(clipping
+          ? {
+              title: clipping.title,
+              body: clipping.content,
+              clipping: clipping.reading,
+              metadata: JSON.stringify({
+                attachments: clipping.authored.frontmatter.attachments ?? [],
+              }),
+              ...(getMcpAuthContext().isAdmin
+                ? {
+                    authoredContent: clipping.authored.body.trim(),
+                    authoredTitle: clipping.authored.frontmatter.title ?? "",
+                  }
+                : {}),
+            }
+          : {}),
+        ...(kind === "memo" && !auth.isAdmin
+          ? { metadata: stripPrivateMcpMetadata(row.metadata) }
+          : {}),
+        ...(await getFrontmatterDiagnostics(row, kind)),
+      };
+    })
   );
+  return results.filter((row) => row !== null);
 }
 
 function resolveStorageSource(_row: Pick<PostRow, "source" | "dataSource">): StorageSource {
@@ -212,7 +254,7 @@ async function deleteIndexedContentRow(id: string): Promise<void> {
 
 async function updateFrontmatterInStorage(
   row: PostRow,
-  mut: (fm: Record<string, unknown>) => void,
+  mut: (fm: Record<string, unknown>) => void | Promise<void>,
   newBody?: string,
   kind: ContentKind = row.type === "memo" ? "memo" : "post"
 ): Promise<FrontmatterWriteResult> {
@@ -222,7 +264,7 @@ async function updateFrontmatterInStorage(
   const frontmatterAdded = !hasYamlFrontmatter(raw);
   const { data, content } = matter(raw);
   const nowIso = new Date().toISOString();
-  mut(data);
+  await mut(data);
   ensureMcpUpdateFrontmatter(data, row, nowIso);
   const fmPart = buildFrontmatter({
     title: data.title as string | undefined,
@@ -321,7 +363,7 @@ const updateMemoInput = z.object({
   content: z.string().min(1),
   title: z.string().optional(),
   isPublic: z.boolean().default(true),
-  tags: z.array(z.string()).default([]),
+  tags: z.array(z.string()).optional(),
 });
 const deleteMemoInput = z.object({ slug: z.string() });
 
@@ -709,19 +751,30 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
     // 管理员专属
     requireAdmin();
     const input = args as z.infer<typeof createMemoInput>;
+    const authoredMetadata: Record<string, unknown> = { title: input.title, tags: input.tags };
+    const rel = buildMemoRelativePath(
+      `${Date.now()}_${limax(input.title || "memo")}.md`,
+      LOCAL_PATHS.memos[0]
+    );
+    await attachClippingReference(
+      input.content,
+      authoredMetadata,
+      getMcpAuthContext().userId ?? null,
+      rel
+    );
     const fm = buildFrontmatter({
       title: input.title,
       public: input.isPublic,
       tags: input.tags,
       publishDate: Date.now(),
-      extra: { createdVia: MCP_CREATED_VIA },
+      extra: {
+        createdVia: MCP_CREATED_VIA,
+        ...(authoredMetadata.clipping ? { clipping: authoredMetadata.clipping } : {}),
+      },
     });
     const md = `${fm}${formatMarkdownBody(input.content)}`;
-    const rel = buildMemoRelativePath(
-      `${Date.now()}_${limax(input.title || "memo")}.md`,
-      LOCAL_PATHS.memos[0]
-    );
     await writeStorageFile("local", rel, md);
+    notifyClippingChange(rel);
     await triggerIncrementalSync();
     return { content: [{ type: "text", text: "ok" }] };
   });
@@ -743,15 +796,22 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       if (!row?.filePath) throw new Error("Memo not found or missing filePath");
       const result = await updateFrontmatterInStorage(
         row,
-        (fm) => {
-          if (input.title) fm.title = input.title;
+        async (fm) => {
+          if (input.title !== undefined) fm.title = input.title;
           fm.public = input.isPublic;
-          fm.tags = input.tags;
+          if (input.tags !== undefined) fm.tags = input.tags;
           fm.updateDate = new Date().toISOString();
+          await attachClippingReference(
+            input.content,
+            fm,
+            getMcpAuthContext().userId ?? null,
+            row.id
+          );
         },
         input.content,
         "memo"
       );
+      notifyClippingChange(row.id);
       await triggerIncrementalSync();
       return buildToolResult(result);
     }
@@ -770,6 +830,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
     if (!row?.filePath) throw new Error("Memo not found or missing filePath");
     await deleteStorageFile(resolveStorageSource(row), row.filePath);
     await deleteIndexedContentRow(row.id);
+    notifyClippingChange(row.id);
     await triggerIncrementalSync();
     return { content: [{ type: "text", text: "ok" }] };
   });

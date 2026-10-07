@@ -6,6 +6,7 @@ import { z } from "zod";
 import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
 import { clearSearchCache } from "@/lib/ai/search-cache";
+import { recognizeMemoClipping } from "@/lib/memo-clipping";
 import { buildMemoAssetPath, buildMemoRelativePath, getMemoRootPath } from "@/lib/memo-paths";
 import {
   hasApiFilesReference,
@@ -14,6 +15,13 @@ import {
 } from "@/lib/persisted-paths";
 import { buildLegacyPublicMediaUrl, rewritePublicContentMediaUrls } from "@/lib/public-media";
 import { resolvePublicMemoTitle } from "@/public-site/snapshot";
+import { clippingProjectionForRow, isClippingRowPublic } from "@/server/clipping/projection";
+import { notifyClippingChange } from "@/server/clipping/runtime";
+import {
+  attachClippingReference,
+  projectClippingMemo,
+  readAuthoredMemo,
+} from "@/server/clipping/store";
 import {
   buildPublicMediaCollection,
   pickLegacyPublicImage,
@@ -365,7 +373,13 @@ export function buildSafeMemoResponse(
     console.error("[memos.create] 解析时间戳失败，使用当前时间降级:", error);
   }
 
-  const safeTitle = memo.title || fallbackTitle || extractTitleFromContent(fallbackContent);
+  const clipping = recognizeMemoClipping(fallbackContent, {
+    title: fallbackTitle,
+    tags: inputTags,
+  });
+  const safeTitle = clipping.enabled
+    ? memo.title || clipping.authorTitle || clipping.linkLabel || null
+    : memo.title || fallbackTitle || extractTitleFromContent(fallbackContent);
   const safeContent = (memo as any).body ?? fallbackContent;
 
   return {
@@ -548,12 +562,14 @@ export const memosRouter = router({
       );
 
       // 转换为 API 响应格式
-      const formattedMemos = await Promise.all(
+      const memoResults = await Promise.all(
         memosWithVectorStatus.map(async (memo) => {
+          if (!ctx.isAdmin && !(await isClippingRowPublic(memo))) return null;
           const media = buildPublicMediaCollection("memo", memo as MemoRow);
           const attachments = rewritePublicMemoAttachments(memo as MemoRow, media);
           const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
-          const title = await resolvePublicMemoTitle(memo as MemoRow);
+          const clipping = await clippingProjectionForRow(memo);
+          const title = clipping ? clipping.title : await resolvePublicMemoTitle(memo as MemoRow);
           const publicMediaContext = {
             kind: "memo" as const,
             slug: memo.slug,
@@ -565,7 +581,11 @@ export const memosRouter = router({
             slug: memo.slug,
             title,
             excerpt: memo.excerpt,
-            content: rewritePublicContentMediaUrls(memo.body, publicMediaContext),
+            content: rewritePublicContentMediaUrls(
+              clipping?.content ?? memo.body,
+              publicMediaContext
+            ),
+            ...(clipping ? { clipping: clipping.reading } : {}),
             isPublic: memo.public,
             tags: memo.tags ? JSON.parse(memo.tags) : [],
             attachments,
@@ -591,6 +611,8 @@ export const memosRouter = router({
         })
       );
 
+      const formattedMemos = memoResults.filter((memo) => memo !== null);
+
       // 为非管理员移除不在界面展示的敏感/内部字段，避免接口信息泄露
       // 对非管理员进行字段最小化（但保留 UI 必需字段：attachments、author、filePath、source）
       const sanitizedMemos = ctx.isAdmin
@@ -601,6 +623,7 @@ export const memosRouter = router({
             title: m.title,
             excerpt: m.excerpt,
             content: m.content,
+            ...("clipping" in m ? { clipping: m.clipping } : {}),
             isPublic: m.isPublic,
             tags: m.tags,
             attachments: (m as any).attachments,
@@ -673,7 +696,7 @@ export const memosRouter = router({
       }
 
       // 权限检查：非管理员只能查看已公开且非草稿的 memo
-      if ((!memo.public || memo.draft) && !ctx.isAdmin) {
+      if ((!memo.public || memo.draft || !(await isClippingRowPublic(memo))) && !ctx.isAdmin) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "无权访问此 memo",
@@ -694,14 +717,32 @@ export const memosRouter = router({
       };
 
       const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
-      const title = await resolvePublicMemoTitle(memo);
+      const clipping = await clippingProjectionForRow(memo);
+      if (
+        clipping &&
+        (clipping.authored.frontmatter.public === false ||
+          clipping.authored.frontmatter.draft === true) &&
+        !ctx.isAdmin
+      )
+        throw new TRPCError({ code: "FORBIDDEN", message: "无权访问此闪念" });
+      const title = clipping ? clipping.title : await resolvePublicMemoTitle(memo);
 
       const base = {
         id: memo.id,
         slug: memo.slug,
         title,
         excerpt: memo.excerpt,
-        content: rewritePublicContentMediaUrls(memo.body, publicMediaContext),
+        content: rewritePublicContentMediaUrls(clipping?.content ?? memo.body, publicMediaContext),
+        ...(clipping
+          ? {
+              clipping: clipping.reading,
+              canDiscuss:
+                ctx.isAdmin ||
+                Boolean(
+                  clipping.manifest?.creatorId && clipping.manifest.creatorId === ctx.user?.id
+                ),
+            }
+          : {}),
         isPublic: memo.public,
         tags: memo.tags ? JSON.parse(memo.tags) : [],
         image:
@@ -726,6 +767,15 @@ export const memosRouter = router({
       // 管理员返回完整信息
       return {
         ...base,
+        ...(clipping
+          ? {
+              authoredContent: clipping.authored.body.trim(),
+              authoredTitle:
+                typeof clipping.authored.frontmatter.title === "string"
+                  ? clipping.authored.frontmatter.title
+                  : "",
+            }
+          : {}),
         attachments: publicAttachments,
         author: memo.author || undefined,
         filePath: memo.filePath,
@@ -821,13 +871,21 @@ export const memosRouter = router({
         createdId = buildMemoRelativePath(fileName, getLocalMemoRootPath()).replace(/\\+/g, "/");
 
         const frontmatter: Record<string, unknown> = {
-          title: title || extractTitleFromContent(normalizedContent),
+          title: recognizeMemoClipping(normalizedContent, { title, tags: inputTags }).enabled
+            ? title || ""
+            : title || extractTitleFromContent(normalizedContent),
           public: isPublic,
           tags: inputTags,
           attachments: normalizedAttachments,
           authorEmail: ctx.user?.email || "admin@example.com",
           publishDate: nowIso,
         };
+        await attachClippingReference(
+          normalizedContent,
+          frontmatter,
+          ctx.user?.id ?? null,
+          createdId
+        );
 
         const markdownContent = buildMemoMarkdownDocument(normalizedContent, frontmatter);
         const basePath = getLocalBasePathOrThrow();
@@ -842,7 +900,7 @@ export const memosRouter = router({
             id: createdId,
             type: "memo" as const,
             slug: generateSlugFromPath(createdId, undefined, "memo"),
-            title: title || extractTitleFromContent(normalizedContent),
+            title: typeof frontmatter.title === "string" ? frontmatter.title : "",
             excerpt: generateExcerptFromContent(normalizedContent),
             contentHash: calculateSimpleHash(normalizedContent),
             lastModified: now,
@@ -854,7 +912,11 @@ export const memosRouter = router({
             updateDate: now,
             tags: JSON.stringify(inputTags),
             author: ctx.user?.email || "admin@example.com",
-            metadata: JSON.stringify({ attachments: normalizedAttachments }),
+            metadata: JSON.stringify({
+              ...frontmatter,
+              content: normalizedContent,
+              attachments: normalizedAttachments,
+            }),
             body: normalizedContent,
             dataSource: source,
           };
@@ -886,6 +948,7 @@ export const memosRouter = router({
     }
 
     clearSearchCache();
+    notifyClippingChange(createdId);
 
     // 触发增量数据同步（内部已处理错误日志）
     if (isTestEnv) {
@@ -915,13 +978,27 @@ export const memosRouter = router({
     }
 
     try {
-      return buildSafeMemoResponse(createdMemo, {
+      const response = buildSafeMemoResponse(createdMemo, {
         inputAttachments: normalizedAttachments,
         inputTags,
         fallbackContent: normalizedContent,
         fallbackTitle: title,
         faultDegrade: forceDegrade,
       });
+      const clipping = await clippingProjectionForRow(createdMemo);
+      return clipping
+        ? {
+            ...response,
+            title: clipping.title,
+            content: clipping.content,
+            clipping: clipping.reading,
+            authoredContent: clipping.authored.body.trim(),
+            authoredTitle:
+              typeof clipping.authored.frontmatter.title === "string"
+                ? clipping.authored.frontmatter.title
+                : "",
+          }
+        : response;
     } catch (error) {
       console.error("[memos.create] 构造响应失败，使用降级结构:", error);
       return buildFallbackResponse(createdId);
@@ -955,18 +1032,37 @@ export const memosRouter = router({
         attachments: Array.isArray(attachments) ? attachments : [],
         markdownFilePath,
       });
-      const resolvedTitle = title ?? extractTitleFromContent(normalized.content);
+      let existingFrontmatter: Record<string, unknown> = {};
+      try {
+        existingFrontmatter = (await readAuthoredMemo(id)).frontmatter;
+      } catch (error) {
+        if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT"))
+          throw error;
+      }
+      const clippingInput = recognizeMemoClipping(normalized.content, {
+        ...existingFrontmatter,
+        title,
+        tags,
+      });
+      const resolvedTitle = clippingInput.enabled
+        ? (title ??
+          (typeof existingFrontmatter.title === "string" ? existingFrontmatter.title : ""))
+        : (title ?? extractTitleFromContent(normalized.content));
 
       // 构建 markdown 内容
       const nowIso = new Date().toISOString();
       const frontmatter: Record<string, unknown> = {
+        ...existingFrontmatter,
         title: resolvedTitle,
         public: isPublic,
         tags,
         attachments: normalized.attachments,
-        authorEmail: ctx.user?.email || "admin@example.com",
+        authorEmail: existingFrontmatter.clipping
+          ? existingFrontmatter.authorEmail
+          : ctx.user?.email || "admin@example.com",
         updateDate: nowIso,
       };
+      await attachClippingReference(normalized.content, frontmatter, ctx.user?.id ?? null, id);
       const existingPublishIso = toIsoString(existingMemo.publishDate ?? null);
       if (existingPublishIso) {
         frontmatter.publishDate = existingPublishIso;
@@ -991,6 +1087,10 @@ export const memosRouter = router({
         meta = {};
       }
       meta.attachments = normalized.attachments;
+      if (frontmatter.clipping) {
+        meta.clipping = frontmatter.clipping;
+        meta.content = normalized.content;
+      }
 
       const updateData = {
         title: resolvedTitle,
@@ -1006,6 +1106,7 @@ export const memosRouter = router({
 
       await db.update(posts).set(updateData).where(eq(posts.id, id));
       clearSearchCache();
+      notifyClippingChange(id);
 
       // 触发增量数据同步
       if (isTestEnv) {
@@ -1017,11 +1118,19 @@ export const memosRouter = router({
       const updatedRow: MemoRow = { ...existingMemo, ...updateData } as MemoRow;
       const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(updatedRow);
 
+      const clipping = clippingInput.enabled ? await projectClippingMemo(id) : null;
       return {
         id,
         slug: existingMemo.slug,
-        title: updateData.title,
-        content: updateData.body, // 使用 body 字段匹配实际数据库结构
+        title: clipping ? clipping.title : updateData.title,
+        content: clipping?.content ?? updateData.body,
+        ...(clipping
+          ? {
+              clipping: clipping.reading,
+              authoredContent: clipping.authored.body.trim(),
+              authoredTitle: resolvedTitle,
+            }
+          : {}),
         isPublic: updateData.public,
         tags,
         attachments: normalized.attachments,
@@ -1079,6 +1188,7 @@ export const memosRouter = router({
 
       // 从数据库删除
       await db.delete(posts).where(eq(posts.id, id));
+      notifyClippingChange(id);
       clearSearchCache();
 
       // 触发增量数据同步

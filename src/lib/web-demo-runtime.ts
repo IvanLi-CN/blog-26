@@ -4,6 +4,8 @@ export const WEB_DEMO_STATE_EVENT = "web-demo:state-change";
 export const WEB_DEMO_ACTION_EVENT = "web-demo:action";
 export const WEB_DEMO_MOTION_EVENT = "web-demo:motion-change";
 export const WEB_DEMO_ROUTE_EVENT = "web-demo:route-change";
+export const WEB_DEMO_MUTATION_EVENT = "web-demo:mutation";
+export const WEB_DEMO_CLIPPING_SLUG = "memo-web-demo-1181";
 
 const WEB_DEMO_SESSION_KEY = "web-demo-global-environment";
 
@@ -24,6 +26,11 @@ export type WebDemoScene =
   | "memo-newest"
   | "memo-oldest"
   | "memo-network-fault"
+  | "clipping-ready"
+  | "clipping-processing"
+  | "clipping-translation-failure"
+  | "clipping-previous-version"
+  | "clipping-long-article"
   | "playbook-index"
   | "playbook-topic"
   | "admin-dashboard"
@@ -123,6 +130,11 @@ const scenes = [
   "memo-newest",
   "memo-oldest",
   "memo-network-fault",
+  "clipping-ready",
+  "clipping-processing",
+  "clipping-translation-failure",
+  "clipping-previous-version",
+  "clipping-long-article",
   "playbook-index",
   "playbook-topic",
   "admin-dashboard",
@@ -195,8 +207,13 @@ export function getDefaultWebDemoSceneState(pathname = ""): WebDemoSceneState {
   if (pathname.startsWith("/playbook/topics/"))
     return { ...defaultSceneState, scene: "playbook-topic" };
   if (pathname.startsWith("/playbook")) return { ...defaultSceneState, scene: "playbook-index" };
+  if (isClippingWebDemoPath(pathname)) return { ...defaultSceneState, scene: "clipping-ready" };
   if (pathname.startsWith("/memos")) return { ...defaultSceneState, scene: "memo-middle" };
   return { ...defaultSceneState };
+}
+
+export function isClippingWebDemoPath(pathname: string) {
+  return pathname.replace(/\/$/, "").endsWith(`/memos/${WEB_DEMO_CLIPPING_SLUG}`);
 }
 
 export function getDefaultWebDemoEnvironment(pathname = "", app: WebDemoApp = "public") {
@@ -234,8 +251,13 @@ export function normalizeWebDemoSceneState(
 ): WebDemoSceneState {
   const fallback = getDefaultWebDemoSceneState(pathname);
   let scene = isValue(state.scene, scenes) ? state.scene : fallback.scene;
-  if (app === "admin" && scene.startsWith("memo-")) scene = "admin-dashboard";
+  if (app === "admin" && (scene.startsWith("memo-") || scene.startsWith("clipping-")))
+    scene = "admin-dashboard";
   if (app === "public" && scene.startsWith("admin-")) scene = fallback.scene;
+  if (app === "public" && scene.startsWith("clipping-") && !isClippingWebDemoPath(pathname)) {
+    scene = fallback.scene;
+  }
+  if (isClippingWebDemoPath(pathname) && !scene.startsWith("clipping-")) scene = fallback.scene;
   return {
     scene,
     data: isValue(state.data, dataModes) ? state.data : fallback.data,
@@ -403,6 +425,36 @@ export function getWebDemoSceneOptions(pathname: string, app: WebDemoApp): WebDe
         value: "admin-editor",
         label: "后台 · 编辑器",
         description: "文件树、编辑器和模拟保存反馈。",
+      },
+    ];
+  }
+
+  if (isClippingWebDemoPath(pathname)) {
+    return [
+      {
+        value: "clipping-ready",
+        label: "剪藏 · 已完成",
+        description: "原文、摘要、译文与文章对话。",
+      },
+      {
+        value: "clipping-processing",
+        label: "剪藏 · 正在翻译",
+        description: "摘要已完成，显示分段进度和部分译文。",
+      },
+      {
+        value: "clipping-translation-failure",
+        label: "剪藏 · 翻译失败",
+        description: "保留原文与摘要，可模拟重新处理。",
+      },
+      {
+        value: "clipping-previous-version",
+        label: "剪藏 · 旧版本回退",
+        description: "显示旧成功材料的真实来源与版本历史。",
+      },
+      {
+        value: "clipping-long-article",
+        label: "剪藏 · 长文章",
+        description: "章节、宽表格、代码和独立对话滚动。",
       },
     ];
   }
@@ -709,6 +761,7 @@ export function recordWebDemoMutation(label: string, detail: string): WebDemoMut
     at: Date.now(),
   };
   window.__webDemoMutationLog = [mutation, ...(window.__webDemoMutationLog ?? [])].slice(0, 8);
+  window.dispatchEvent(new Event(WEB_DEMO_MUTATION_EVENT));
   return mutation;
 }
 

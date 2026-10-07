@@ -174,8 +174,11 @@ export function SearchResultCard({
       : typeof r.cosine === "number"
         ? (r.cosine + 1) / 2
         : null;
-  const displayTitle = type === "memo" ? r.title?.trim() || "" : r.title || r.slug;
-  const accessibleTitle = type === "memo" ? r.title?.trim() || "无标题闪念" : r.title || r.slug;
+  const isMemo = type === "memo" || type === "clipping";
+  const displayTitle = isMemo ? r.title?.trim() || "" : r.title || r.slug;
+  const accessibleTitle = isMemo
+    ? r.title?.trim() || `无标题${getSearchResultTypeLabel(type)}`
+    : r.title || r.slug;
   const showSections = r.sections.length >= 2;
   const visibleSections = expanded ? r.sections : r.sections.slice(0, 3);
 

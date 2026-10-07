@@ -1,4 +1,5 @@
 import { SITE } from "@/config/site";
+import { renderClippingFeed } from "@/lib/clipping-feed";
 import { type BuiltFeed, buildFeed } from "@/lib/rss";
 import { buildTagHref } from "@/lib/tag-href";
 import type { PublicSnapshot } from "@/public-site/snapshot";
@@ -80,7 +81,9 @@ export function buildMemosFeed(snapshot: PublicSnapshot): BuiltFeed {
       title: getMemoMetadataTitle(memo.title, memo.publishedAt ?? memo.createdAt),
       link: getCanonicalUrl(`/memos/${memo.slug}`),
       description: memo.excerpt ?? undefined,
-      content: memo.content,
+      content: memo.clipping
+        ? renderClippingFeed(memo.content, memo.clipping.targetUrl)
+        : memo.content,
       authorName: SITE.author.name,
       authorEmail: SITE.author.email,
       categories: memo.tags,

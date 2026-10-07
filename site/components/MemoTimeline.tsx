@@ -406,5 +406,6 @@ export function toMemoCardRecord(memo: PublicMemoRecord): MemoCardRecord {
     isPublic: memo.isPublic,
     createdAt: memo.createdAt,
     publishedAt: memo.publishedAt,
+    ...(memo.clipping ? { clipping: memo.clipping } : {}),
   };
 }

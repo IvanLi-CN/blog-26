@@ -65,6 +65,10 @@ const webDemoInspectorModule =
   process.env.WEB_DEMO_BUILD === "true"
     ? resolve("./src/components/WebDemoInspector.tsx")
     : resolve("./src/components/WebDemoInspector.disabled.tsx");
+const clippingReaderModule =
+  process.env.WEB_DEMO_BUILD === "true"
+    ? resolve("./site/components/ClippingWebDemo.tsx")
+    : resolve("./src/components/memos/ClippingDetail.tsx");
 
 export default defineConfig({
   integrations: [react(), mdx()],
@@ -101,6 +105,7 @@ export default defineConfig({
     },
     resolve: {
       alias: [
+        { find: "@clipping-reader", replacement: clippingReaderModule },
         { find: "@/components/WebDemoInspector", replacement: webDemoInspectorModule },
         { find: "@", replacement: resolve("./src") },
         {

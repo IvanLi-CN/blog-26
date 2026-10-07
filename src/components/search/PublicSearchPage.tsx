@@ -496,7 +496,7 @@ export default function PublicSearchPage({
             icon="tabler:sparkles"
             eyebrow="开始探索"
             title="输入关键词开始搜索"
-            description="可搜索文章、公开闪念，以及执念中的 Topic、项目实践和 Policy Skill。"
+            description="可搜索文章、公开闪念与剪藏，以及执念中的 Topic、项目实践和 Policy Skill。"
             watermark="GO"
           />
         )}

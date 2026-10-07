@@ -78,6 +78,13 @@
       "when": 1785818846000,
       "tag": "0010_search_full_text_fallback",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791158400000,
+      "tag": "0011_memo_clipping",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,7 @@
 export type SearchResultType = "post" | "memo" | "topic" | "experience" | "policy";
 
-export type SearchFilter = "all" | SearchResultType;
+export type SearchDisplayType = SearchResultType | "clipping";
+export type SearchFilter = "all" | SearchDisplayType;
 
 export type SearchResultItem = {
   slug: string;
@@ -8,6 +9,7 @@ export type SearchResultItem = {
   excerpt?: string | null;
   snippet?: string | null;
   type?: SearchResultType;
+  isClipping?: boolean;
   href?: string;
   source?: "playbook";
   final?: number;
@@ -86,35 +88,39 @@ export const searchFilters: Array<{ key: SearchFilter; label: string }> = [
   { key: "all", label: "全部" },
   { key: "post", label: "文章" },
   { key: "memo", label: "闪念" },
+  { key: "clipping", label: "剪藏" },
   { key: "topic", label: "Topic" },
   { key: "experience", label: "项目实践" },
   { key: "policy", label: "Policy Skill" },
 ];
 
-export function getSearchResultType(result: SearchResultItem): SearchResultType {
+export function getSearchResultType(result: SearchResultItem): SearchDisplayType {
+  if (result.type === "memo" && result.isClipping) return "clipping";
   return result.type ?? "post";
 }
 
 export function getSearchResultHref(result: SearchResultItem) {
   if (result.href?.startsWith("/playbook/")) return result.href;
   const type = getSearchResultType(result);
-  return type === "memo" ? `/memos/${result.slug}` : `/posts/${result.slug}`;
+  return type === "memo" || type === "clipping" ? `/memos/${result.slug}` : `/posts/${result.slug}`;
 }
 
-export function getSearchResultTypeLabel(type: SearchResultType) {
+export function getSearchResultTypeLabel(type: SearchDisplayType) {
   return {
     post: "文章",
     memo: "闪念",
+    clipping: "剪藏",
     topic: "Topic",
     experience: "项目实践",
     policy: "Policy Skill",
   }[type];
 }
 
-export function getSearchResultIcon(type: SearchResultType) {
+export function getSearchResultIcon(type: SearchDisplayType) {
   return {
     post: "tabler:article",
     memo: "tabler:notes",
+    clipping: "tabler:scissors",
     topic: "tabler:book",
     experience: "tabler:code",
     policy: "tabler:checklist",
@@ -133,7 +139,7 @@ export function countSearchResultsByType(results: SearchResultItem[]) {
       counts.all += 1;
       return counts;
     },
-    { all: 0, post: 0, memo: 0, topic: 0, experience: 0, policy: 0 } satisfies Record<
+    { all: 0, post: 0, memo: 0, clipping: 0, topic: 0, experience: 0, policy: 0 } satisfies Record<
       SearchFilter,
       number
     >

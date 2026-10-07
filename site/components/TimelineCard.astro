@@ -1,5 +1,6 @@
 ---
 import Icon from "@/components/ui/Icon";
+import { getMemoPresentation } from "@/lib/memo-presentation";
 import { extractTextSummary } from "@/lib/markdown-utils";
 import type { PublicMediaCollection } from "@/lib/public-media";
 import { formatAbsoluteDate } from "../lib/format";
@@ -28,6 +29,7 @@ interface Props {
 }
 
 const { item, isLast = true, iconMap = {}, iconSvgMap = {}, assetVersion = null } = Astro.props;
+const presentation = item.type === "memo" ? getMemoPresentation(item) : { kind: "post", label: "文章", icon: "tabler:article", tags: item.tags };
 const href = toPublicSitePath(item.type === "memo" ? `/memos/${item.slug}` : `/posts/${item.slug}`);
 const preview = item.excerpt || extractTextSummary(item.content || "", 180);
 const imageSrc = appendPublicAssetVersion(
@@ -37,9 +39,9 @@ const imageSrc = appendPublicAssetVersion(
 ---
 <article class="nature-timeline-item nature-mobile-reading-row" data-is-last={isLast} data-testid="timeline-item">
   <div class="nature-timeline-rail" aria-hidden="true">
-    <div class="nature-timeline-node" data-testid="timeline-node" data-timeline-kind={item.type}>
+    <div class="nature-timeline-node" data-testid="timeline-node" data-timeline-kind={presentation.kind}>
       <Icon
-        name={item.type === "memo" ? "tabler:bulb" : "tabler:article"}
+        name={presentation.icon}
         className={`h-5 w-5 sm:h-6 sm:w-6 ${item.type === "memo" ? "text-[color:var(--nature-secondary)]" : "text-[color:var(--nature-accent-strong)]"}`}
       />
     </div>
@@ -54,17 +56,17 @@ const imageSrc = appendPublicAssetVersion(
         aria-hidden="true"
       >
         <Icon
-          name={item.type === "memo" ? "tabler:bulb" : "tabler:article"}
+          name={presentation.icon}
           className="h-3.5 w-3.5"
         />
       </span>
       <span class="sr-only sm:hidden" data-testid="timeline-accessible-type">
-        {item.type === "memo" ? "闪念" : "文章"}
+        {presentation.label}
       </span>
       <time dateTime={item.publishDate}>{formatAbsoluteDate(item.publishDate)}</time>
       <span class="nature-chip nature-timeline-type-label gap-1" data-testid="timeline-type-label">
-        <Icon name={item.type === "memo" ? "tabler:bulb" : "tabler:article"} className="h-3.5 w-3.5" />
-        {item.type === "memo" ? "闪念" : "文章"}
+        <Icon name={presentation.icon} className="h-3.5 w-3.5" />
+        {presentation.label}
       </span>
     </div>
 
@@ -91,13 +93,13 @@ const imageSrc = appendPublicAssetVersion(
             )}
             {!item.title && item.type === "memo" && (
               <a href={href} class="nature-link-inline mt-3 inline-flex min-h-10 items-center px-2 text-sm">
-                查看闪念详情
+                查看{presentation.label}详情
               </a>
             )}
             {preview && <p class="nature-muted mt-3 text-base leading-7">{preview}</p>}
-            {item.tags.length > 0 && (
+            {presentation.tags.length > 0 && (
               <div class="mt-4 flex flex-wrap gap-2">
-                {item.tags.slice(0, 4).map((tag) => (
+                {presentation.tags.slice(0, 4).map((tag) => (
                   <TagBadge tag={tag} iconMap={iconMap} iconSvgMap={iconSvgMap} />
                 ))}
               </div>

@@ -19,7 +19,12 @@ import { posts } from "@/lib/schema";
 import { normalizeTags } from "@/lib/tag-directory";
 import { parseContentTags } from "@/lib/tag-parser";
 import { safeJsonParse, toMsTimestamp } from "@/lib/utils";
-import type { PublicMemoRecord, PublicPostRecord } from "@/public-site/snapshot";
+import type {
+  PublicClippingArticle,
+  PublicMemoRecord,
+  PublicPostRecord,
+} from "@/public-site/snapshot";
+import { clippingProjectionForRow, isClippingRowPublic } from "@/server/clipping/projection";
 import { buildPublicMediaCollection, pickLegacyPublicImage } from "@/server/public-media";
 
 function normalizeMetadata(raw: string | null): Record<string, unknown> {
@@ -65,6 +70,8 @@ function isLocalMemoRow(row: typeof posts.$inferSelect) {
 export async function resolvePublicMemoTitle(
   row: typeof posts.$inferSelect
 ): Promise<string | null> {
+  const clipping = await clippingProjectionForRow(row);
+  if (clipping) return clipping.title;
   const storedTitle = row.title?.trim() || "";
   if (!storedTitle) return null;
 
@@ -130,6 +137,7 @@ function hasAvailableLocalMedia(kind: "post" | "memo", row: typeof posts.$inferS
 }
 
 export interface ContentReadOptions {
+  includeClippingArticles?: boolean;
   includeDrafts?: boolean;
   includeUnpublished?: boolean;
 }
@@ -187,12 +195,27 @@ export async function readEligibleContent(options: ContentReadOptions = {}) {
       };
     });
 
+  const clippingArticles: Record<string, PublicClippingArticle> = {};
   const memoList: PublicMemoRecord[] = (
     await Promise.all(
       rawMemos
         .filter((row) => hasAvailableLocalMedia("memo", row))
         .map(async (row) => {
-          const parsed = parseContentTags(row.body || "");
+          if (!options.includeUnpublished && !(await isClippingRowPublic(row))) return null;
+          const clipping = await clippingProjectionForRow(row, options.includeClippingArticles);
+          if (
+            clipping &&
+            ((!options.includeUnpublished && clipping.authored.frontmatter.public === false) ||
+              (!options.includeDrafts && clipping.authored.frontmatter.draft === true))
+          )
+            return null;
+          if (clipping && options.includeClippingArticles)
+            clippingArticles[row.slug] = {
+              source: clipping.source,
+              translation: clipping.translation,
+              reading: clipping.reading,
+            };
+          const parsed = parseContentTags(clipping?.authored.body ?? row.body ?? "");
           const storedTags = normalizeTags(row.tags);
           const inlineTags = parsed.tags.map((tag) => tag.name);
           const mergedTags = Array.from(new Set([...inlineTags, ...storedTags]));
@@ -204,13 +227,19 @@ export async function readEligibleContent(options: ContentReadOptions = {}) {
             slug: row.slug,
             filePath,
           };
-          const title = await resolvePublicMemoTitle(row);
+          const title = clipping ? clipping.title : await resolvePublicMemoTitle(row);
           return {
             id: row.id,
             slug: row.slug,
             title,
-            excerpt: row.excerpt || extractTextSummary(parsed.cleanedContent || row.body, 140),
-            content: rewritePublicContentMediaUrls(row.body, publicMediaContext),
+            excerpt: clipping
+              ? extractTextSummary(clipping.content, 140)
+              : row.excerpt || extractTextSummary(parsed.cleanedContent || row.body, 140),
+            content: rewritePublicContentMediaUrls(
+              clipping?.content ?? row.body,
+              publicMediaContext
+            ),
+            ...(clipping ? { clipping: clipping.reading } : {}),
             tags: mergedTags,
             inlineTags,
             isPublic: row.public,
@@ -230,7 +259,7 @@ export async function readEligibleContent(options: ContentReadOptions = {}) {
           };
         })
     )
-  ).filter((memo): memo is PublicMemoRecord => Boolean(memo));
+  ).filter((memo) => memo !== null);
 
-  return { posts: postList, memos: memoList };
+  return { posts: postList, memos: memoList, clippingArticles };
 }

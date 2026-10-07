@@ -35,6 +35,7 @@ async function seedPost(
     public: boolean;
     vector: [number, number] | null;
     publishDate: number;
+    tags: string[];
   }> = {}
 ) {
   if (!db) throw new Error("Database has not been initialised");
@@ -52,7 +53,7 @@ async function seedPost(
     updateDate: overrides.publishDate ?? now,
     draft: overrides.draft ?? false,
     public: overrides.public ?? true,
-    tags: JSON.stringify(["search"]),
+    tags: JSON.stringify(overrides.tags ?? ["search"]),
     author: "search-test",
     image: null,
     metadata: null,
@@ -114,6 +115,15 @@ describe("AI search fallback boundaries", () => {
     if (originalEnv.baseUrl) process.env.OPENAI_API_BASE_URL = originalEnv.baseUrl;
     else delete process.env.OPENAI_API_BASE_URL;
     if (fs.existsSync(TEST_DB_PATH)) fs.rmSync(TEST_DB_PATH);
+  });
+
+  test("exposes clipping identity from stored tags without changing Memo routes", async () => {
+    await seedPost({ id: "clipping-search", type: "memo", tags: ["剪藏", "search"] });
+    await seedPost({ id: "ordinary-post", type: "post", tags: ["剪藏"] });
+    const results = await semantic({ q: "SQLite" });
+    expect(results.find((item) => item.slug === "clipping-search")?.isClipping).toBe(true);
+    expect(results.find((item) => item.slug === "clipping-search")?.type).toBe("memo");
+    expect(results.find((item) => item.slug === "ordinary-post")?.isClipping).toBeUndefined();
   });
 
   test("uses uncached FTS for semantic and enhanced requests without vectors", async () => {

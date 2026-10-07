@@ -1,4 +1,5 @@
 import Icon from "@/components/ui/Icon";
+import { getMemoPresentation } from "@/lib/memo-presentation";
 import { buildTagHref } from "@/lib/tag-href";
 import type { PublicMemoRecord } from "@/public-site/snapshot";
 import { formatAbsoluteDate } from "../lib/format";
@@ -6,7 +7,15 @@ import { toPublicSitePath } from "../lib/runtime-urls";
 
 export type MemoCardRecord = Pick<
   PublicMemoRecord,
-  "id" | "slug" | "title" | "excerpt" | "tags" | "isPublic" | "createdAt" | "publishedAt"
+  | "id"
+  | "slug"
+  | "title"
+  | "excerpt"
+  | "tags"
+  | "isPublic"
+  | "createdAt"
+  | "publishedAt"
+  | "clipping"
 >;
 
 export default function MemoCard({
@@ -23,8 +32,10 @@ export default function MemoCard({
   iconSvgMap?: Record<string, string | null>;
 }) {
   const displayDate = memo.publishedAt ?? memo.createdAt;
+  const presentation = getMemoPresentation(memo);
   const showMobileDetailLink = !memo.title;
-  const detailLabel = memo.title || `无标题闪念 · ${formatAbsoluteDate(displayDate)}`;
+  const detailLabel =
+    memo.title || `无标题${presentation.label} · ${formatAbsoluteDate(displayDate)}`;
 
   return (
     <article
@@ -32,14 +43,15 @@ export default function MemoCard({
       data-is-last={isLast}
       data-testid="memo-card"
       data-slug={memo.slug}
+      data-content-kind={presentation.kind}
     >
       <div className="nature-timeline-rail" aria-hidden="true">
         <div
           className="nature-timeline-node text-[color:var(--nature-secondary)]"
           data-testid="timeline-node"
-          data-timeline-kind="memo"
+          data-timeline-kind={presentation.kind}
         >
-          <Icon name="tabler:bulb" className="h-5 w-5 sm:h-6 sm:w-6" />
+          <Icon name={presentation.icon} className="h-5 w-5 sm:h-6 sm:w-6" />
         </div>
         {!isLast ? (
           <div className="nature-timeline-connector" data-testid="timeline-connector" />
@@ -54,10 +66,10 @@ export default function MemoCard({
               data-testid="timeline-type-icon"
               aria-hidden="true"
             >
-              <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
+              <Icon name={presentation.icon} className="h-3.5 w-3.5" />
             </span>
             <span className="sr-only sm:hidden" data-testid="timeline-accessible-type">
-              闪念
+              {presentation.label}
             </span>
             <span
               className="nature-timeline-date-icon inline-flex h-4 w-4 items-center justify-center text-[color:var(--nature-accent-strong)]"
@@ -84,12 +96,22 @@ export default function MemoCard({
           {memo.excerpt ? (
             <p className="nature-muted mt-3 text-base leading-7">{memo.excerpt}</p>
           ) : null}
+          {memo.clipping?.targetUrl ? (
+            <a
+              href={memo.clipping.targetUrl}
+              target="_blank"
+              rel="nofollow noopener noreferrer"
+              className="nature-button nature-button-outline mt-3 min-h-11"
+            >
+              打开原网页 ↗
+            </a>
+          ) : null}
 
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex flex-col gap-3">
-              {memo.tags.length > 0 ? (
+              {presentation.tags.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
-                  {memo.tags.map((tag) => {
+                  {presentation.tags.map((tag) => {
                     const iconId = iconMap[tag] ?? "tabler:hash";
                     const iconSvg = iconSvgMap[iconId] ?? iconSvgMap["tabler:hash"];
                     const label = tag.split("/").filter(Boolean).at(-1)?.replace(/^#/, "") ?? tag;

@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 export interface McpAuthContext {
   isAdmin: boolean;
   userEmail?: string;
+  userId?: string;
 }
 
 const storage = new AsyncLocalStorage<McpAuthContext>();

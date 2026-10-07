@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import type { ClippingReading } from "@/lib/memo-clipping";
 import type { PublicMediaCollection } from "@/lib/public-media";
 import { getTaggedProjects } from "@/lib/snapshot-tags";
 import { matchesTag, normalizeTagPath } from "@/lib/tag-directory";
@@ -28,6 +29,7 @@ export type TagsTimelineItem = {
   title: string;
   excerpt?: string;
   content?: string;
+  clipping?: ClippingReading;
   publishDate: string;
   tags: string[];
   image?: string;
@@ -72,6 +74,7 @@ export const tagsRouter = createTRPCRouter({
           title: memo.title ?? "",
           excerpt: memo.excerpt ?? undefined,
           content: memo.content,
+          ...(memo.clipping ? { clipping: memo.clipping } : {}),
           publishDate: memo.publishedAt ?? memo.createdAt,
           tags: memo.tags,
           image: memo.image ?? undefined,
