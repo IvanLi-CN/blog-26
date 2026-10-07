@@ -45,3 +45,4 @@
 | Project native tag discovery | active | implemented | `project-tag-discovery/SPEC.md` | - | Shared article, Memo and catalog project classification. |
 | Web Demo global Inspector controls | active | partial | `web-demo-global-controls/SPEC.md` | - | Shared identity, connectivity, delay, theme and motion controls are implemented. Full public-page CSR is a separate follow-up; Agent VM build/E2E remains pending. |
 | Memo clipping workflow | active | in progress | `memo-clipping/SPEC.md` | - | Memo-tagged URL clipping with durable article processing, source Markdown, translation, private conversation, and responsive reading surfaces; runtime and UI implemented locally, empirical and delivery gates remain open. |
+| Public first document and CSR navigation | active | in progress | `public-csr-navigation/SPEC.md` | - | Shared product routing, structured data loading and target-page failure/recovery. Requirements recorded; implementation has not started. |
