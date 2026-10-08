@@ -69,19 +69,19 @@ export default function ProjectSocialPreview(props: Props) {
           ) : themedSocialPreviewAsset ? (
             <picture
               data-themed-project-social-picture=""
-              data-light-avif-srcSet={toSocialPreviewSourceSet(
+              data-light-avif-srcset={toSocialPreviewSourceSet(
                 themedSocialPreviewAsset.light,
                 "avif"
               )}
-              data-dark-avif-srcSet={toSocialPreviewSourceSet(
+              data-dark-avif-srcset={toSocialPreviewSourceSet(
                 themedSocialPreviewAsset.dark,
                 "avif"
               )}
-              data-light-webp-srcSet={toSocialPreviewSourceSet(
+              data-light-webp-srcset={toSocialPreviewSourceSet(
                 themedSocialPreviewAsset.light,
                 "webp"
               )}
-              data-dark-webp-srcSet={toSocialPreviewSourceSet(
+              data-dark-webp-srcset={toSocialPreviewSourceSet(
                 themedSocialPreviewAsset.dark,
                 "webp"
               )}

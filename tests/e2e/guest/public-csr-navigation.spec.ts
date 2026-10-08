@@ -6,6 +6,11 @@ const routeData = (url: string) => {
 };
 
 test("public navigation renders structured data without document exchange", async ({ page }) => {
+  const hydrationErrors: string[] = [];
+  page.on("console", (message) => {
+    if (/hydrat|Minified React error #(418|425)/i.test(message.text()))
+      hydrationErrors.push(message.text());
+  });
   await page.goto("/posts/?d_connection=offline&d_persona=admin");
   await page.waitForFunction(
     () =>
@@ -31,6 +36,7 @@ test("public navigation renders structured data without document exchange", asyn
   await expect(page.locator(".post-detail-body pre code")).toContainText("const tiny");
   expect(reads).toHaveLength(3);
   expect(documents).toEqual([]);
+  expect(hydrationErrors).toEqual([]);
 });
 
 test("a failed product data read stays at its destination and retries in place", async ({

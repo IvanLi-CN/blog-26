@@ -93,15 +93,22 @@ export default defineConfig({
       {
         name: "shared-react-project-mdx",
         enforce: "pre",
-        resolveId(source, importer) {
+        async resolveId(source, importer) {
           if (source.startsWith(publicMdxPrefix)) return source;
+          if (importer?.startsWith(publicMdxPrefix)) {
+            return this.resolve(
+              source,
+              importer.slice(publicMdxPrefix.length, -".public-react.js".length),
+              { skipSelf: true }
+            );
+          }
           if (!source.endsWith("?public-react-mdx")) return;
           const path = source.slice(0, -"?public-react-mdx".length);
-          return `${publicMdxPrefix}${resolve(importer ? resolve(importer, "..") : process.cwd(), path)}`;
+          return `${publicMdxPrefix}${resolve(importer ? resolve(importer, "..") : process.cwd(), path)}.public-react.js`;
         },
         async load(id) {
           if (!id.startsWith(publicMdxPrefix)) return;
-          const file = id.slice(publicMdxPrefix.length);
+          const file = id.slice(publicMdxPrefix.length, -".public-react.js".length);
           this.addWatchFile(file);
           const source = await readFile(file, "utf8");
           return String(

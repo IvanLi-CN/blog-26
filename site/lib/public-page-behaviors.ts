@@ -1,4 +1,6 @@
 import uPlot from "uplot";
+import "@/lib/public-header-scroll";
+import "@/lib/public-scrollbar";
 import { initializeProjectRuntimeLiveData } from "./project-runtime-live";
 import "@/lib/public-playbook-outline";
 import "@/lib/public-playbook-resources";

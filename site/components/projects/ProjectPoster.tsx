@@ -145,10 +145,10 @@ export default function ProjectPoster(props: Props) {
         <picture
           className="project-poster-media"
           data-themed-project-picture=""
-          data-light-avif-srcSet={toPosterSourceSet(themedPosterAsset.light, "avif")}
-          data-dark-avif-srcSet={toPosterSourceSet(themedPosterAsset.dark, "avif")}
-          data-light-webp-srcSet={toPosterSourceSet(themedPosterAsset.light, "webp")}
-          data-dark-webp-srcSet={toPosterSourceSet(themedPosterAsset.dark, "webp")}
+          data-light-avif-srcset={toPosterSourceSet(themedPosterAsset.light, "avif")}
+          data-dark-avif-srcset={toPosterSourceSet(themedPosterAsset.dark, "avif")}
+          data-light-webp-srcset={toPosterSourceSet(themedPosterAsset.light, "webp")}
+          data-dark-webp-srcset={toPosterSourceSet(themedPosterAsset.dark, "webp")}
           data-light-src={toPosterFallbackSource(themedPosterAsset.light)}
           data-dark-src={toPosterFallbackSource(themedPosterAsset.dark)}
           data-light-placeholder={themedPosterAsset.light.placeholder}

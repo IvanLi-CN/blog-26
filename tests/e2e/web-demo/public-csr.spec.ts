@@ -21,6 +21,11 @@ async function clickRoute(page: Page, path: string) {
 }
 
 test("SSR content hydrates without repeating its page read", async ({ page, request }) => {
+  const hydrationErrors: string[] = [];
+  page.on("console", (message) => {
+    if (/hydrat|Minified React error #(418|425)/i.test(message.text()))
+      hydrationErrors.push(message.text());
+  });
   const response = await request.get("/posts/code-block-fixture/?d_connection=offline");
   expect(await response.text()).toContain("This fixture exists for canonical full E2E coverage");
   const reads: string[] = [];
@@ -32,6 +37,7 @@ test("SSR content hydrates without repeating its page read", async ({ page, requ
   await expect(page.locator("main")).toContainText("Code Block Fixture");
   await expect(page.locator("main [role=alert]")).toHaveCount(0);
   expect(reads).toEqual([]);
+  expect(hydrationErrors).toEqual([]);
 });
 
 for (const path of [
