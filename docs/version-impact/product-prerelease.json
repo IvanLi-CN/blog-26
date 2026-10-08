@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "43190e6e8b9ff89f8e04d203c4389398f1dedbd9",
+  "base_sha": "14c7e30522aecc3f356196968683cb3ab8f87272",
   "covered_files": {
     ".github/quality-gates.json": "b344117ce393945e73ab2d4c498eb50eb1467610",
     ".github/release-contract.json": "b019adfd2969ca868d58ed7014692c9fade8ee8a",
