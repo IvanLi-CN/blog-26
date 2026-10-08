@@ -1103,6 +1103,34 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.locator(".project-poster-image")).toHaveCSS("transition-duration", "0s");
   });
 
+  test("Oidrune fallback poster follows the active color theme", async ({ page }) => {
+    const readPosterTheme = () =>
+      page.locator(".project-poster").evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          surface: style.getPropertyValue("--project-poster-surface-rgb").trim(),
+          mark: style.getPropertyValue("--project-poster-mark-rgb").trim(),
+          background: style.backgroundImage,
+        };
+      });
+
+    await gotoWithTheme(page, "/projects/oidrune", "light");
+    await expect(page.locator(".project-poster-fallback")).toBeVisible();
+    await expect.poll(readPosterTheme).toMatchObject({
+      surface: "236, 242, 237",
+      mark: "36, 53, 45",
+    });
+
+    await gotoWithTheme(page, "/projects/oidrune", "dark");
+    await page.evaluate(() => {
+      document.documentElement.dataset.uiTheme = "dark";
+    });
+    await expect.poll(readPosterTheme).toMatchObject({
+      surface: "22, 32, 27",
+      mark: "255, 255, 255",
+    });
+  });
+
   test("mobile detail reading measure does not apply a second horizontal gutter", async ({
     page,
   }) => {
