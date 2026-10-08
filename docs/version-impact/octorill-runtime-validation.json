@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e4a14c1e89f72b776ea122d2d767cdafb246f684",
+  "covered_files": {
+    "docs/specs/nature-front-ui/SPEC.md": "07b2a3b19b3c3c8b8bc1e97aa127ab7ddada285d",
+    "site/lib/project-runtime-sources.ts": "68d320c174a4a11701915a63a07bdaffd7e9659e",
+    "tests/lib/project-runtime-sources.test.ts": "32b69f29835f5b40759630f4385a389115e17c52"
+  },
+  "change": {
+    "description": "Accept valid OctoRill hourly trend responses with one to twelve available samples so the public project wall renders aggregate metrics instead of falling back to the poster.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a backward-compatible runtime response validation fix; no endpoint, persistence, or release protocol changes are introduced.",
+      "assessed_at": "2026-10-09T01:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/project-runtime-sources.test.ts",
+          "blob": "32b69f29835f5b40759630f4385a389115e17c52",
+          "command": "bun test tests/lib/project-runtime-sources.test.ts tests/lib/project-runtime-metrics.test.ts"
+        },
+        {
+          "path": "docs/specs/nature-front-ui/SPEC.md",
+          "blob": "07b2a3b19b3c3c8b8bc1e97aa127ab7ddada285d",
+          "command": "spec contract and drift checks"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "OctoRill trend validation now accepts the provider's available one to twelve hourly samples while preserving strict empty and over-limit rejection; output order and public endpoint behavior remain compatible.",
+      "assessed_at": "2026-10-09T01:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/project-runtime-sources.test.ts",
+          "blob": "32b69f29835f5b40759630f4385a389115e17c52",
+          "command": "bun test tests/lib/project-runtime-sources.test.ts tests/lib/project-runtime-metrics.test.ts"
+        },
+        {
+          "path": "docs/specs/nature-front-ui/SPEC.md",
+          "blob": "07b2a3b19b3c3c8b8bc1e97aa127ab7ddada285d",
+          "command": "spec contract and drift checks"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "No scope drift; the candidate is limited to the approved OctoRill parser contract, regression coverage, and associated Nature Spec wording."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused parser and metrics tests, full pre-commit tests, full repository check, live HTTP 200 payload parsing, and all PR E2E suites verify a reversible compatible fix.",
+      "assessed_at": "2026-10-09T01:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/project-runtime-sources.test.ts",
+          "blob": "32b69f29835f5b40759630f4385a389115e17c52",
+          "command": "bun test tests/lib/project-runtime-sources.test.ts tests/lib/project-runtime-metrics.test.ts"
+        },
+        {
+          "path": "docs/specs/nature-front-ui/SPEC.md",
+          "blob": "07b2a3b19b3c3c8b8bc1e97aa127ab7ddada285d",
+          "command": "spec contract and drift checks"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": ["2.7.0", "2.8.3", "2.9.0", "2.10.0"],
+      "evidence": [
+        {
+          "path": "tests/lib/project-runtime-sources.test.ts",
+          "blob": "32b69f29835f5b40759630f4385a389115e17c52",
+          "command": "bun test tests/lib/project-runtime-sources.test.ts tests/lib/project-runtime-metrics.test.ts"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local content, browser persistence, or durable release state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/project-runtime-sources.test.ts",
+          "blob": "32b69f29835f5b40759630f4385a389115e17c52",
+          "command": "bun test tests/lib/project-runtime-sources.test.ts tests/lib/project-runtime-metrics.test.ts"
+        }
+      ]
+    }
+  }
+}

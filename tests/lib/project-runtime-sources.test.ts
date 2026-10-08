@@ -102,6 +102,31 @@ describe("project runtime sources", () => {
     );
   });
 
+  test("accepts OctoRill hourly trends with fewer than twelve available samples", () => {
+    const octo = asOctoPayload();
+    octo.deduplicatedRepositories.trend = octo.deduplicatedRepositories.trend.slice(-10);
+    octo.pressure.trend = octo.pressure.trend.slice(-10);
+
+    const parsed = parseProjectRuntimeMetrics("octo-rill", octo);
+
+    expect(parsed?.kind).toBe("octo-rill");
+    expect(parsed && "freshness" in parsed ? parsed.freshness.length : -1).toBe(
+      octo.freshness.length
+    );
+  });
+
+  test("keeps OctoRill hourly trend bounds strict", () => {
+    const empty = asOctoPayload();
+    empty.deduplicatedRepositories.trend = [];
+    empty.pressure.trend = [];
+    expect(parseProjectRuntimeMetrics("octo-rill", empty)).toBeNull();
+
+    const oversized = asOctoPayload();
+    oversized.deduplicatedRepositories.trend = Array(13).fill(0);
+    oversized.pressure.trend = Array(13).fill(0);
+    expect(parseProjectRuntimeMetrics("octo-rill", oversized)).toBeNull();
+  });
+
   test("accepts missing historical CVM values but rejects missing current trend values", () => {
     const payload = asCvmPayload();
     payload.tokenActivity90d.points[0] = {
