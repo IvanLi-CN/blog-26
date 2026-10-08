@@ -132,13 +132,17 @@ export default function PublicRouter({
   );
   const [payload, setPayload] = useState<PublicRoutePayload | null>(initial);
   const [error, setError] = useState<string | null>(null);
+  const [scrollRevision, setScrollRevision] = useState(0);
   const request = useRef<AbortController | null>(null);
   const generation = useRef(0);
   const stateRef = useRef({ payload, error });
   const urlRef = useRef(url);
   urlRef.current = url;
   stateRef.current = { payload, error };
-  const pendingScroll = useRef<{ top: number; left: number } | null>(null);
+  const pendingScroll = useRef<{
+    position: { top: number; left: number } | null;
+    restore: boolean;
+  } | null>(null);
   const navigationStarted = useRef(false);
   const navigateRef = useRef<(target: URL, mode: "push" | "pop" | "retry") => void>(() => {
     /* Assigned on each render. */
@@ -159,10 +163,10 @@ export default function PublicRouter({
       );
       window.history.pushState({ publicCsr: true }, "", target);
     }
-    pendingScroll.current =
-      mode === "pop"
-        ? (window.history.state?.publicCsrScroll ?? { top: 0, left: 0 })
-        : { top: 0, left: 0 };
+    pendingScroll.current = {
+      position: mode === "pop" ? (window.history.state?.publicCsrScroll ?? null) : null,
+      restore: mode === "pop",
+    };
     setUrl(target.pathname + target.search + target.hash);
     setError(null);
     setPayload(null);
@@ -212,7 +216,13 @@ export default function PublicRouter({
         stateRef.current.payload
       ) {
         setUrl(target.pathname + target.search + target.hash);
-        pendingScroll.current = window.history.state?.publicCsrScroll ?? null;
+        navigationStarted.current = true;
+        pendingScroll.current = {
+          position: window.history.state?.publicCsrScroll ?? null,
+          restore: true,
+        };
+        // Distinct history entries can share the same URL but reading positions.
+        setScrollRevision((revision) => revision + 1);
         return;
       }
       navigateRef.current(target, "pop");
@@ -245,11 +255,16 @@ export default function PublicRouter({
     };
     const previousScrollRestoration = window.history.scrollRestoration;
     window.history.scrollRestoration = "manual";
-    const saveScroll = () =>
+    const saveScroll = () => {
+      // A pending route still has the previous page's geometry. Do not overwrite
+      // the destination history entry before its own content has settled.
+      if (pendingScroll.current) return;
       window.history.replaceState(
         { ...window.history.state, publicCsrScroll: { top: window.scrollY, left: window.scrollX } },
         ""
       );
+    };
+    saveScroll();
     window.addEventListener("scroll", saveScroll, { passive: true });
     document.addEventListener("click", click);
     window.addEventListener("popstate", pop);
@@ -269,6 +284,7 @@ export default function PublicRouter({
     };
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Same-URL history entries must also restore their distinct reading positions.
   useEffect(() => {
     document.documentElement.dataset.publicNavigationState = payload || error ? "idle" : "loading";
     document.documentElement.toggleAttribute("data-public-navigation-pending", !payload && !error);
@@ -302,9 +318,15 @@ export default function PublicRouter({
         document.querySelector(selector)?.setAttribute("content", content);
     }
     if (payload || error) document.dispatchEvent(new Event("astro:page-load"));
-    if ((payload || error) && navigationStarted.current) {
-      const frame = requestAnimationFrame(() => {
+    if ((payload || error) && navigationStarted.current && pendingScroll.current) {
+      let observer: MutationObserver | undefined;
+      let frame = 0;
+      const restoreScroll = () => {
         const main = document.querySelector<HTMLElement>("main.nature-main");
+        // MDX is route-specific and may resolve after the page DTO. Wait for
+        // its real headings and height before restoring a fragment or history.
+        if (main?.querySelector("[data-public-body-pending]")) return;
+        observer?.disconnect();
         main?.focus({ preventScroll: true });
         const hash = new URL(url, "https://public.invalid").hash;
         let anchor: HTMLElement | null = null;
@@ -313,14 +335,28 @@ export default function PublicRouter({
         } catch {
           /* Invalid fragment has no matching anchor. */
         }
-        if (anchor) anchor.scrollIntoView();
-        else if (pendingScroll.current)
-          window.scrollTo({ ...pendingScroll.current, behavior: "instant" });
+        const scroll = pendingScroll.current;
+        if (scroll?.restore && scroll.position)
+          window.scrollTo({ ...scroll.position, behavior: "instant" });
+        else if (anchor) anchor.scrollIntoView();
+        else window.scrollTo({ top: 0, left: 0, behavior: "instant" });
         pendingScroll.current = null;
-      });
-      return () => cancelAnimationFrame(frame);
+      };
+      const main = document.querySelector<HTMLElement>("main.nature-main");
+      if (main) {
+        observer = new MutationObserver(() => {
+          cancelAnimationFrame(frame);
+          frame = requestAnimationFrame(restoreScroll);
+        });
+        observer.observe(main, { childList: true, subtree: true });
+      }
+      frame = requestAnimationFrame(restoreScroll);
+      return () => {
+        cancelAnimationFrame(frame);
+        observer?.disconnect();
+      };
     }
-  }, [payload, error, url, route?.path]);
+  }, [payload, error, url, route?.path, scrollRevision]);
 
   return (
     <>

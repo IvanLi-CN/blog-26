@@ -11,7 +11,13 @@ const bodies = Object.fromEntries(
 export default function ProjectBody({ slug }: { slug: string }) {
   const Body = bodies[`../content/projects/${slug}.mdx`];
   return Body ? (
-    <Suspense fallback={<p role="status">正在加载正文…</p>}>
+    <Suspense
+      fallback={
+        <p role="status" data-public-body-pending>
+          正在加载正文…
+        </p>
+      }
+    >
       <Body />
     </Suspense>
   ) : null;

@@ -4,9 +4,10 @@
 
 - Implementation: 已实现，验收收敛中
 - Lifecycle: active
-- 公共页面已迁移到共享 React 渲染器：SSR 或静态首屏提供当前页数据，后续导航读取结构化数据并由客户端渲染。正式产品与 Demo 共用页面和请求状态，Demo 只在数据适配层应用模拟环境。本地功能与视觉验收已完成；PR 仍处于 Draft，正式评审与 CI 尚待收敛。
+- 公共页面已迁移到共享 React 渲染器：SSR 或静态首屏提供当前页数据，后续导航读取结构化数据并由客户端渲染。正式产品与 Demo 共用页面和请求状态，Demo 只在数据适配层应用模拟环境。功能与视觉证据已收齐，正式评审与 CI 的交付状态以 PR #175 为准。
 - 主线剪藏阅读器与 Memo 类型标记沿用生产组件；当前详情独立携带阅读材料，其他路由不预载剪藏正文。项目 MDX 使用带 JavaScript 后缀的虚拟模块，避免 dev 依赖扫描访问不存在的文件或再次应用 Astro MDX 编译。
 - Header 滚动和代码滚动条等会修改页面 DOM 的行为在共享 renderer hydration 后初始化；主题与阅读视口仍在首屏初始化。SSR preview 为原生 Demo fixture 提供完整路径，且只开放结构化页面 GET，其余业务 API 保持阻断。
+- 片段历史恢复使用保存的阅读位置；同 URL 的历史项也独立触发恢复。项目 MDX 正文尚未就绪时等待其真实标题与高度，再执行目标锚点或历史定位。Playbook 页面 DTO 不携带独立搜索索引的正文，搜索仍走版本绑定的既有来源。
 
 ## Implementation Coverage
 
@@ -22,9 +23,9 @@
 
 候选基线为 `14c7e30522aecc3f356196968683cb3ab8f87272`。应用源码与 `5f192917a45b267475e88891b5d27c6c4f720c13` 相同，差异只有主线的 `VERSION` 更新；主线剪藏阅读器与类型标记均已接入。以下验证覆盖当前页面实现。
 
-- Agent VM 预提交套件：1002 项通过，包含组件 Story 边界、构建隔离、路由匹配、公开接口、请求取消及未访问剪藏正文的载荷隔离。命令：`bun run test:precommit`，提交 hook 保持启用。
+- Agent VM 预提交套件通过，包含组件 Story 边界、构建隔离、路由匹配、公开接口、请求取消及未访问正文的载荷隔离。命令：`bun run test:precommit`，提交 hook 保持启用。Playbook 搜索正文隔离另有回归断言。
 - Demo 导航：`tests/e2e/web-demo/public-csr.spec.ts` 16 项全部通过，覆盖 SSR 离线首屏、12 类离线目标及恢复、历史、主题、取消、静态页面和 404，并断言没有 hydration 错误。命令：`WEB_DEMO_TEST_URL=<demo-origin> bun x playwright test --config tests/e2e/web-demo/playwright.config.ts`。
-- 正式静态站：`tests/e2e/guest/public-csr-navigation.spec.ts` 4 项通过，覆盖结构化导航、目标错误与原位重试、搜索参数及 hydration 交接。console 的 4 项 CSR、6 项首屏与主题、3 项窄屏交互及 1 项作者隔离测试全部通过。
+- 正式静态站：`tests/e2e/guest/public-csr-navigation.spec.ts` 6 项通过，覆盖结构化导航、目标错误与原位重试、搜索参数、hydration 交接、直接入口及跨页片段历史滚动、延迟 MDX 正文的锚点定位。console 的首屏与主题、窄屏交互及作者隔离测试通过；共享 CSR 回归覆盖相同正式页面。
 - console 作者界面与公共主机隔离：同步后的 `tests/e2e/admin/public-csr-authoring.spec.ts` 通过。CSR 请求保留 `private, no-store`，管理员看到私密记录，公共主机即使携带身份也不能得到这些记录。测试身份使用 runtime 配置的 `ADMIN_EMAIL`，无代理鉴权捷径。
 - 剪藏 Demo 的独立 E2E 脚本通过：正式详情链接使用 CSR，原文／译文、讨论、保存、重试、焦点与草稿、网络与身份及 7 种宽度均验证；除页面 DTO 外没有真实 API 或模型请求。
 - 公共页面的正文、代码块、浅深色和系统主题，以及 320、360、375、393、640、1024px 内容流通过。完整逐节点三帧对比度矩阵通过，AA 门槛保持 4.5。两项完整矩阵分别以独立输出目录复测；此前失败原因均为整体预算耗尽。阅读矩阵预算为 600 秒，实际约 8.3 分钟；对比度预算为 720 秒，独立运行约 6.1 分钟，采样与断言没有减少。
@@ -32,10 +33,11 @@
 - `bun run check` 通过，保留迁移前样式与原生媒体带来的警告；Spec 结构和 owner-facing 图片文档检查通过。
 - 制品检查逐一读取 125 个静态 JSON 的 HTTP 响应，包含 92 个原生标签路径；全部匹配构建载荷。125 份 live HTML 不包含 Demo 启用标记；Demo 离线 SSR 仍含当前文章正文，console 列表 DTO 不携带文章详情正文。
 - 本地 `web-demo:site` dev server 使用独立缓存和端口租约；项目 MDX 的临时修改及恢复均自动更新，开发工具栏通过本地 Astro 偏好关闭，未修改产品布局。
+- 六方向只读评审发现的片段时序、历史滚动与 Playbook 搜索载荷问题按原合同修复，并增加对应回归。改动不改变已确认五张截图的初始页面、样式或文案；视觉证据继续代表这些页面。
 
 ## Remaining Gaps
 
-- 完成当前候选的正式只读评审、PR 更新与 CI 收敛，再移出 Draft。本任务尚未获得合并授权。
+- PR #175 的当前评审与检查记录是交付门禁的事实来源。本任务尚未获得合并授权。
 
 ## References
 

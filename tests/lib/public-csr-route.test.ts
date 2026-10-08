@@ -1,11 +1,22 @@
 import { describe, expect, it } from "bun:test";
 import { matchPublicRoute, shouldHandlePublicLink } from "../../site/lib/public-route";
-import { trimRouteSnapshot } from "../../site/lib/route-data-utils";
+import { trimRouteEdition, trimRouteSnapshot } from "../../site/lib/route-data-utils";
 import { SITE } from "../../src/config/site";
 import { getClippingWebDemoMemo } from "../../src/lib/clipping-web-demo";
 import type { PublicSnapshot } from "../../src/public-site/snapshot";
+import { makePublicBundle } from "./playbook-fixture";
 
 describe("public client routes", () => {
+  it("keeps Playbook search bodies in the edition-bound search source, not page payloads", () => {
+    const { edition } = makePublicBundle();
+    expect(edition.search.documents.length).toBeGreaterThan(0);
+    for (const path of ["", "topics/delivery", "policies/safe-release", "projects/blog-26"]) {
+      const payload = trimRouteEdition(edition, path);
+      expect(payload?.search.documents).toEqual([]);
+      expect(payload?.edition).toEqual(edition.edition);
+    }
+    expect(edition.search.documents.length).toBeGreaterThan(0);
+  });
   it("does not preload unvisited clipping bodies into another route's bootstrap", () => {
     const memo = getClippingWebDemoMemo();
     if (!memo.clipping) throw new Error("Clipping fixture must include its reading projection");

@@ -67,6 +67,9 @@ export function trimRouteEdition(edition: PlaybookEdition | undefined, path: str
   const [group, slug] = path.replace(/\/$/, "").split("/");
   return {
     ...edition,
+    // Search has its own edition-bound endpoint and must not preload detail
+    // bodies into every page's bootstrap or CSR response.
+    search: { ...edition.search, documents: [] },
     catalog: {
       ...edition.catalog,
       topic_details: edition.catalog.topic_details.map((topic) => ({

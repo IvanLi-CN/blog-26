@@ -1,9 +1,78 @@
 import { expect, test } from "@playwright/test";
 
+async function ready(page: import("@playwright/test").Page) {
+  await page.waitForFunction(
+    () =>
+      !document.querySelector('astro-island[component-url*="PublicRouter"]')?.hasAttribute("ssr")
+  );
+}
+
+async function linkTo(page: import("@playwright/test").Page, href: string) {
+  await page.evaluate((href) => {
+    const link = document.createElement("a");
+    link.href = href;
+    link.dataset.csrTestLink = "true";
+    link.textContent = "Navigate to target";
+    document.body.append(link);
+    link.click();
+    link.remove();
+  }, href);
+}
+
 const routeData = (url: string) => {
   const path = new URL(url).pathname;
   return path === "/api/public/page" || path.startsWith("/_content/routes/");
 };
+
+test("fragment history restores reading positions on direct and cross-page entries", async ({
+  page,
+}) => {
+  await page.goto("/projects/xp/");
+  await ready(page);
+  await page.evaluate(() => window.scrollTo({ top: 450, behavior: "instant" }));
+  await expect.poll(() => page.evaluate(() => history.state?.publicCsrScroll?.top)).toBe(450);
+  await linkTo(page, "#raft-期望状态");
+  await expect(page).toHaveURL(/#raft-/);
+  await page.goBack();
+  await expect.poll(() => page.evaluate(() => Math.abs(window.scrollY - 450))).toBeLessThan(2);
+  await page.goForward();
+  await expect(page).toHaveURL(/#raft-/);
+  await page.evaluate(() => window.scrollTo({ top: 1100, behavior: "instant" }));
+  await expect.poll(() => page.evaluate(() => history.state?.publicCsrScroll?.top)).toBe(1100);
+  await linkTo(page, "/posts/");
+  await expect(page.locator("main.nature-main h1")).toHaveText("文章");
+  await page.goBack();
+  await expect(page.locator("#raft-期望状态")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => Math.abs(window.scrollY - 1100))).toBeLessThan(2);
+});
+
+test("a cross-page fragment waits for the route-specific MDX module", async ({ page }) => {
+  await page.goto("/posts/");
+  await ready(page);
+  let resume = () => {
+    /* Assigned synchronously by the Promise constructor. */
+  };
+  const released = new Promise<void>((resolve) => {
+    resume = resolve;
+  });
+  await page.route("**/*", async (route) => {
+    if (route.request().resourceType() === "script") await released;
+    await route.continue();
+  });
+  try {
+    await linkTo(page, "/projects/xp/#raft-期望状态");
+    await expect(page.locator("[data-public-body-pending]")).toBeVisible();
+  } finally {
+    resume();
+  }
+  await expect(page.locator("#raft-期望状态")).toBeVisible();
+  await expect
+    .poll(() =>
+      page.locator("#raft-期望状态").evaluate((node) => Math.abs(node.getBoundingClientRect().top))
+    )
+    .toBeLessThan(250);
+  await expect(page.locator("main.nature-main")).toBeFocused();
+});
 
 test("public navigation renders structured data without document exchange", async ({ page }) => {
   const hydrationErrors: string[] = [];
