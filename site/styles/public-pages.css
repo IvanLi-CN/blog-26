@@ -174,7 +174,7 @@ html[data-ui-theme="dark"] .featured-project-logo-dark {
   box-shadow: 0 14px 30px rgba(30, 56, 42, 0.1);
 }
 
-:global(html[data-ui-theme="dark"]) .project-poster {
+html[data-ui-theme="dark"] .project-poster {
   --project-poster-placeholder: var(
     --project-poster-placeholder-dark,
     var(--project-poster-placeholder-light, none)
@@ -573,17 +573,16 @@ html[data-ui-theme="dark"] .featured-project-logo-dark {
 .pattern-signal .project-poster-line-a,
 .pattern-signal .project-poster-line-b {
   height: 1.8rem;
-  background:
-    linear-gradient(
-      90deg,
-      rgba(var(--project-poster-mark-rgb), 0) 0 8%,
-      rgba(var(--project-poster-mark-rgb), 0.34) 8% 14%,
-      rgba(var(--project-poster-mark-rgb), 0) 14% 22%,
-      rgba(var(--project-poster-mark-rgb), 0.28) 22% 28%,
-      rgba(var(--project-poster-mark-rgb), 0) 28% 40%,
-      rgba(var(--project-poster-mark-rgb), 0.32) 40% 50%,
-      rgba(var(--project-poster-mark-rgb), 0) 50% 100%
-    );
+  background: linear-gradient(
+    90deg,
+    rgba(var(--project-poster-mark-rgb), 0) 0 8%,
+    rgba(var(--project-poster-mark-rgb), 0.34) 8% 14%,
+    rgba(var(--project-poster-mark-rgb), 0) 14% 22%,
+    rgba(var(--project-poster-mark-rgb), 0.28) 22% 28%,
+    rgba(var(--project-poster-mark-rgb), 0) 28% 40%,
+    rgba(var(--project-poster-mark-rgb), 0.32) 40% 50%,
+    rgba(var(--project-poster-mark-rgb), 0) 50% 100%
+  );
 }
 
 .pattern-signal .project-poster-line-a {

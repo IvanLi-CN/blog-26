@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
-import { verifyPagesBuild } from "./verify-pages-build";
+import { extractBuildTimePublicAssetUrls, verifyPagesBuild } from "./verify-pages-build";
 
 const tempRoots: string[] = [];
 
@@ -26,6 +26,23 @@ function writeBuildFile(root: string, relativePath: string, content: string) {
 }
 
 describe("verify-pages-build", () => {
+  it("checks browser media references independently of serialized island props", () => {
+    const url = "/api/public/assets/post/hello/hash/cover.webp";
+    const content = [
+      `<astro-island props="{&quot;image&quot;:[0,&quot;${url}&quot;]}">`,
+      `<img src="${url}?v=snapshot&amp;format=webp">`,
+      "</astro-island>",
+      `<style>.cover { background: url('${url}?v=snapshot'); }</style>`,
+      `<script type="application/ld+json">{"image":"${url}?v=snapshot"}</script>`,
+    ].join("\n");
+    expect(extractBuildTimePublicAssetUrls(content)).toEqual([
+      `${url}?v=snapshot&format=webp`,
+      `${url}?v=snapshot`,
+      `${url}?v=snapshot`,
+    ]);
+    expect(extractBuildTimePublicAssetUrls(`<img src="${url}">`)).toEqual([url]);
+  });
+
   it("verifies a non-fixture static build by discovering real post and tag pages", () => {
     const cwd = makeTempBuildRoot();
     const siteUrl = "https://pages.example.test/blog-26";

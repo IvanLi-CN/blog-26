@@ -15,7 +15,6 @@
     "AGENTS.md": "043a300f5054f4b889e8992dd98209c4dfe2143d",
     "CONTEXT.md": "aa1054a4c7bbee8555ba201c33c4989de49f720e",
     "Dockerfile": "6e1616b4117589937ce07ce06e8c7b8627ef639a",
-    "README.md": "c2ea174ab911e1c89d74fe3de11d6833587de90a",
     "VERSION": "c8e38b614057b7e417c63fde44726a4143de9da0",
     "apps/admin/src/components/admin-soft-ui.stories.tsx": "9a9e6b9ecceaa5c5351940d47c12e83f72adff11",
     "apps/admin/src/components/app-shell.tsx": "5adc074871a85045314bce8f87e3f55168d1f5d8",
@@ -24,7 +23,6 @@
     "apps/admin/src/main.tsx": "ec4e63191752aee907fce65285976c04e6cd6709",
     "apps/admin/src/styles.css": "26273d29016b1bcc47992aeef36404f3ade3ec3f",
     "apps/admin/vite.config.ts": "0cf2af30d157cc5594b925de44a67b129232ec38",
-    "astro.config.mjs": "c57d12b0faf70e902e63d86ae3898c25cc259e2a",
     "docs/adr/0013-build-time-web-demo-and-story-boundary.md": "732cb449c350a8e85110ca762f7b3ed320073e7f",
     "docs/adr/0013-native-project-tag-discovery.md": "685754ce830f1e81118dd90afaab0b07274cab9f",
     "docs/adr/0014-unified-product-release-version-scope.md": "1e08ef623f046f454e5c39d46f0b7acc3fd965ce",
@@ -34,7 +32,6 @@
     "docs/runbooks/fs-only-migration.md": "5959459a1a36f52d1e460c6aa4264ae5bd52cd31",
     "docs/runbooks/manual-version-release.md": "fd1764f692713c32219e570b5f9a4acfecff19d0",
     "docs/solutions/search/sqlite-fts5-fallback.md": "d9cc4bc78fe95f3038e6cc600219969c76b909fe",
-    "docs/specs/README.md": "01cf58d7b3761375603e7bb6d5c5643b3485b33a",
     "docs/specs/admin-soft-ui-redesign/IMPLEMENTATION.md": "097ee9cb37ef2857fe916affdcb6ea9e9255ee3e",
     "docs/specs/admin-soft-ui-redesign/SPEC.md": "cd7ce30b8508cf30e1938e78b4cf82fcb385b654",
     "docs/specs/manual-version-release/HISTORY.md": "2fecca128944bf6bea5830020819af6cb4f4bdff",
@@ -70,7 +67,6 @@
     "docs/specs/web-demo-global-controls/SPEC.md": "d762e99d1968133145e5496720eb5ffd019a4ea0",
     "docs/specs/web-demo-global-controls/assets/inspector-desktop.png": "fa5fc685751e29f8cb49791023879b20037964d3",
     "docs/specs/web-demo-global-controls/assets/inspector-mobile.png": "4f1048e5aae50ab0a10f75cf747da2a6be8a1992",
-    "package.json": "aeeca17e1955017a1682f3d264ceb41fab73698e",
     "playwright.config.ts": "fd5bb1beff25d5b94949fe3988fd9b5c2007b457",
     "scripts/build-web-demo.ts": "6db4e050ed4596c2565763d187adac49d40eac2e",
     "scripts/capture-admin-text-editor-evidence.mjs": "12bb8ad506f8836142a4d8ba51f01fd188605978",
@@ -85,20 +81,10 @@
     "scripts/start-console.ts": "a21424aeec65e25373ccf4056cf7f64142a1e89d",
     "scripts/start-gateway.ts": "769637de516d2f1978b7a24c00286c206b24f9f0",
     "site/content/projects/oidrune.mdx": "d06c8bdefe268af76fa0de8ad377598ffbc2c377",
-    "site/components/MemoTimeline.tsx": "d3f5d03356b9fc89ce50ff2992845dade22c22b9",
-    "site/components/PublicMemoAuthoring.tsx": "2b17859999e55dd349c24a99f2f07035b1834540",
-    "site/components/projects/ProjectPoster.astro": "ab646097b63f83e650b6f3a9ebde26251a382d23",
-    "site/components/SearchPageIsland.tsx": "fe97193475eebbe5a226ec7829f315c5f0386e59",
-    "site/layouts/BaseLayout.astro": "1d4a005719b7686cb8897d0b0e34ce49376d12d7",
     "site/lib/memo-list-web-demo.ts": "ed6591bebc2b7052ebec2a1488f8a6c3f48b1c90",
     "site/lib/project-runtime-live.ts": "76b4bf7c273219d7f4e895f48e998731a9e03b7d",
     "site/pages/[...path].ts": "91d608285c2efbce78fe4a181147207e5e9be4d9",
-    "site/pages/api/[...path].ts": "ab8296e62bc58983d1eba6993e90c1d53aeb3d07",
     "site/pages/mcp.ts": "0922d70e909d23bfbe37ac8505adce82249aa423",
-    "site/pages/memos/[slug].astro": "e2a6dcdecf2cc55ad795db0e3de215f912353b30",
-    "site/pages/memos/index.astro": "5861cf8c20a68ef8f90b451466dd65c2865c2875",
-    "site/pages/playbook/[...path].astro": "cd2baf43accb47e4be843a93a6534bfb23883e22",
-    "site/pages/search.astro": "8662ad59f8dc6cfa7de4c2c5944ff3fbff040c95",
     "src/components/WebDemoInspector.css": "ccb8ae61e758025ed90fa59228632fb2858af0b0",
     "src/components/WebDemoInspector.disabled.tsx": "162be29cadd806f39a293b2ca4f7115bee8f08d2",
     "src/components/WebDemoInspector.tsx": "8f59d31219690168e15efbf09ab969ae2aebfd5e",
@@ -106,7 +92,6 @@
     "src/components/comments/hooks.ts": "1c383710e1d4c451c05b89f53589c9bc27cfc456",
     "src/components/common/AmbientScene.tsx": "01417ceda1fff9f7d840c1de1c49c2a75f15db73",
     "src/components/common/ThemeToggle.tsx": "4d6da82f96742e13e06be24d24cef0cbc247a03a",
-    "src/components/playbook/PlaybookPage.tsx": "56c3bbfea40a664b7417f800d44af4c2db899de3",
     "src/components/search/PublicSearchPage.stories.tsx": "b169f645f97fa49ac0762827f2a2e1f9c9ce0471",
     "src/components/search/PublicSearchPage.tsx": "f254637e52b1854710df4b6055122672a8197727",
     "src/components/search/SearchResultsList.stories.tsx": "a41e487bd6a71055e47596156237ca533ee0a443",
@@ -150,7 +135,6 @@
     "src/lib/search/content-search.ts": "f23117e387a0e4396a5ead499ce62a0cc3b36511",
     "src/lib/theme.ts": "5db5adffa88525df15f2029d4e636e9d82715616",
     "src/lib/version-info.ts": "de25d694341bab26f2ecbdaeea43bef72d3f7cba",
-    "src/lib/web-demo-fetch.ts": "d5fd6cdb0810159f35a5ec2176c9c684edc64095",
     "src/lib/web-demo-runtime.ts": "128468be2d35c9a169f10d7dd3303bef3506b36c",
     "src/server/version-api.ts": "9bfb712fdf25caef06d30d7fa27aa2380bb10bac",
     "src/styles/globals.css": "bbe9715ac942db32c5cd08aab0afd94ada7d5577",
@@ -160,8 +144,6 @@
     "tests/components/MemoTimeline.test.tsx": "215902ac3164c99063cdb5ca83ed48a80d942f2f",
     "tests/components/WebDemoIdentity.test.tsx": "a501e7de34d818b986d6750075f44d67245127de",
     "tests/e2e/admin/post-editor-markdown-modes.spec.ts": "15e2e2fa4f0335204aec44ccadce6ac385fe171e",
-    "tests/e2e/guest/mobile-reading-surface.spec.ts": "abb822347ab9216a444ff30b9b0de1d9875acb5e",
-    "tests/e2e/guest/nature-front-coverage.spec.ts": "ed134eb5f227ec3d2b685bd7d26c56d7c61c18b8",
     "tests/fixtures/project-content.ts": "a1bfdc7a0b39c1a84275e4cfb8562407f5d458c4",
     "tests/lib/manual-release-inputs.test.ts": "4797f03b7fe9cb15915ef3f6a6cca4ccd258a17b",
     "tests/lib/manual-release-ledger.test.ts": "1f68d8e74176630889a4880fcca1dcbfe462f4c4",
@@ -173,14 +155,11 @@
     "tests/lib/memo-list-web-demo.test.ts": "38f0f87d65565abfa3b35e9b2b5f60e2d561bddd",
     "tests/lib/playbook-contract.test.ts": "fb45d06f75ca42b0b5ff5447e0202b863e01590d",
     "tests/lib/playbook-workflows.test.ts": "2921115a0b6629d9f7e10f6e7c80b5ee43403a2b",
-    "tests/lib/web-demo-boundary.test.ts": "d3631d64cafb7297df4af827fdd60b5383fd70f6",
-    "tests/lib/web-demo-fetch.test.ts": "44575ddcc0e8b2bbc1ad53d4da379eba51fdae7a",
     "tests/lib/web-demo-inspector-layout.test.ts": "6b85d36d695d904d4cc9070689430bdc7bc79118",
     "tests/lib/web-demo-motion.test.ts": "7981d306cac819189bd01e2740b70a2b4dd5a620",
     "tests/lib/web-demo-runtime.test.ts": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb",
     "tests/server/version-api.test.ts": "c86011cb95db3b9f8358570c62e22630af004ac0",
     "tests/storybook/playbook-interactions.ts": "b7f34f03fbdc81ae4d6b8d5c80860dd90e81a8c9",
-    "tests/storybook/story-boundary.test.ts": "34f87f3d68d1259f3161d77644d22f8d43197c8d",
     "tests/components/Reactions.test.tsx": "88aa3ab1eba18c70962c6f0a74e159c07a2134af",
     ".impeccable/design.json": "304d41d82f7ffca7b9e1b80f0373a70723ee5038",
     "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-desktop-dark.png": "fb4c38f8823b8618ad5e2169192bd06a32c931ab",
@@ -192,11 +171,10 @@
     "src/lib/release/version.ts": "ee820d89fba837618243554a16e9d931e8e90189",
     "tests/ci/product-prerelease-workflow.test.ts": "84ad0ffda08e0c836a03c76000ea7f5c725245dc",
     "tests/lib/manual-release-publication.test.ts": "fb861f2597ce10183b20575ec7f1ea61aac8da94",
-    "tests/lib/manual-release-source.test.ts": "bbca05771b3f44228b82a14fcae5b0c1ebc0baa1",
-    "tests/lib/project-content.test.ts": "0359fcbe3433c62dcd74c4e6e46bf05dda2286c5"
+    "tests/lib/manual-release-source.test.ts": "bbca05771b3f44228b82a14fcae5b0c1ebc0baa1"
   },
   "change": {
-    "description": "Cover the complete unpublished interval: compatible version metadata, manual two-product delivery, transient snapshot retry and artifact-safe recovery, search fixes, inherited Playbook presentation and design metadata, and build-time Web Demo global controls. Public CSR navigation remains a separate follow-up.",
+    "description": "Cover the complete unpublished interval: compatible version metadata, manual two-product delivery, transient snapshot retry and artifact-safe recovery, search fixes, inherited Playbook presentation and design metadata, and build-time Web Demo global controls. CSR-owned changes are reclassified in public-csr-navigation.json; this record retains the unchanged release, search and Demo foundation scope.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api", "persistent-state"]
   },
@@ -246,7 +224,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "The complete interval from the signed 2.7.0 baseline adds compatible version metadata, product SemVer requests, and prerelease completion state; application SQLite and local-content formats remain unchanged. Full unit coverage, stable/alpha/beta/rc two-product smoke fixtures, and platform E2E evidence cover the approved scope.",
-      "assessed_at": "2026-10-07T17:36:00Z",
+      "assessed_at": "2026-10-08T08:33:00Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -279,11 +257,6 @@
           "command": "bun run test:precommit"
         },
         {
-          "path": "tests/storybook/story-boundary.test.ts",
-          "blob": "34f87f3d68d1259f3161d77644d22f8d43197c8d",
-          "command": "bun run test:precommit"
-        },
-        {
           "path": "src/lib/search/content-search.test.ts",
           "blob": "2149f97140b3797b477952559b9e3bae40257a16",
           "command": "bun run test:precommit"
@@ -309,16 +282,6 @@
           "command": "bun run test:precommit"
         },
         {
-          "path": "tests/e2e/guest/mobile-reading-surface.spec.ts",
-          "blob": "abb822347ab9216a444ff30b9b0de1d9875acb5e",
-          "command": "Focused guest Playwright: reading margins/type icons, actual-source contrast, and edge-to-edge press/focus feedback"
-        },
-        {
-          "path": "src/components/playbook/PlaybookPage.tsx",
-          "blob": "56c3bbfea40a664b7417f800d44af4c2db899de3",
-          "command": "bun run check"
-        },
-        {
           "path": "docs/specs/style-playbook-integration/SPEC.md",
           "blob": "2ebfc806f7fe5310181719f298da9ffdb6398d05",
           "command": "git diff --check"
@@ -337,16 +300,6 @@
           "path": "src/lib/playbook/fixture.ts",
           "blob": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
           "command": "bun test tests/lib/playbook-contract.test.ts"
-        },
-        {
-          "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "44575ddcc0e8b2bbc1ad53d4da379eba51fdae7a",
-          "command": "bun run test:precommit"
-        },
-        {
-          "path": "tests/lib/web-demo-boundary.test.ts",
-          "blob": "d3631d64cafb7297df4af827fdd60b5383fd70f6",
-          "command": "bun run test:precommit"
         },
         {
           "path": "tests/components/MemoTimeline.test.tsx",
@@ -371,7 +324,7 @@
       ],
       "scope_drift": {
         "detected": true,
-        "description": "Reconciled main PR178/179 coverage and the Memos real-vs-simulated error boundary. Inherited VERSION remains 2.8.0; no independent product release or state migration."
+        "description": "CSR migration transfers changed renderers, route adapters, shared tests and removals to public-csr-navigation.json. Remaining topic scope and witnesses are unchanged; planned assessment remains historical. VERSION remains 2.9.0; this PR does not publish a release. Reclassified paths: README.md, astro.config.mjs, docs/specs/README.md, package.json, site/components/MemoTimeline.tsx, site/components/PublicMemoAuthoring.tsx, site/components/projects/ProjectPoster.astro, site/components/SearchPageIsland.tsx, site/layouts/BaseLayout.astro, site/pages/api/[...path].ts, site/pages/memos/[slug].astro, site/pages/memos/index.astro, site/pages/playbook/[...path].astro, site/pages/search.astro, src/components/playbook/PlaybookPage.tsx, src/lib/web-demo-fetch.ts, tests/e2e/guest/mobile-reading-surface.spec.ts, tests/e2e/guest/nature-front-coverage.spec.ts, tests/lib/web-demo-boundary.test.ts, tests/lib/web-demo-fetch.test.ts, tests/storybook/story-boundary.test.ts, tests/lib/project-content.test.ts."
       }
     },
     "verified": {
@@ -410,11 +363,6 @@
           "command": "bun run test:precommit"
         },
         {
-          "path": "tests/storybook/story-boundary.test.ts",
-          "blob": "34f87f3d68d1259f3161d77644d22f8d43197c8d",
-          "command": "bun run test:precommit"
-        },
-        {
           "path": "src/lib/search/content-search.test.ts",
           "blob": "2149f97140b3797b477952559b9e3bae40257a16",
           "command": "bun run test:precommit"
@@ -440,16 +388,6 @@
           "command": "bun run test:precommit"
         },
         {
-          "path": "tests/e2e/guest/mobile-reading-surface.spec.ts",
-          "blob": "abb822347ab9216a444ff30b9b0de1d9875acb5e",
-          "command": "Focused guest Playwright: reading margins/type icons, actual-source contrast, and edge-to-edge press/focus feedback"
-        },
-        {
-          "path": "src/components/playbook/PlaybookPage.tsx",
-          "blob": "56c3bbfea40a664b7417f800d44af4c2db899de3",
-          "command": "bun run check"
-        },
-        {
           "path": "docs/specs/style-playbook-integration/SPEC.md",
           "blob": "2ebfc806f7fe5310181719f298da9ffdb6398d05",
           "command": "git diff --check"
@@ -468,16 +406,6 @@
           "path": "src/lib/playbook/fixture.ts",
           "blob": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
           "command": "bun test tests/lib/playbook-contract.test.ts"
-        },
-        {
-          "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "44575ddcc0e8b2bbc1ad53d4da379eba51fdae7a",
-          "command": "bun run test:precommit"
-        },
-        {
-          "path": "tests/lib/web-demo-boundary.test.ts",
-          "blob": "d3631d64cafb7297df4af827fdd60b5383fd70f6",
-          "command": "bun run test:precommit"
         },
         {
           "path": "tests/components/MemoTimeline.test.tsx",
@@ -531,11 +459,6 @@
         {
           "path": "tests/lib/web-demo-runtime.test.ts",
           "blob": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb",
-          "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
-        },
-        {
-          "path": "tests/storybook/story-boundary.test.ts",
-          "blob": "34f87f3d68d1259f3161d77644d22f8d43197c8d",
           "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {

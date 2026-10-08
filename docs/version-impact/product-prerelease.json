@@ -13,7 +13,6 @@
     "docs/adr/0017-product-prerelease-publication-boundary.md": "f49a2f664db0d3cf75e3fb800ce7fb5962909fcb",
     "docs/adr/0018-product-prerelease-version-allocation.md": "2b058a5898d06d4526d4c97894e3a5b3fa3183d3",
     "docs/runbooks/manual-version-release.md": "fd1764f692713c32219e570b5f9a4acfecff19d0",
-    "docs/specs/README.md": "01cf58d7b3761375603e7bb6d5c5643b3485b33a",
     "docs/specs/manual-version-release/HISTORY.md": "2fecca128944bf6bea5830020819af6cb4f4bdff",
     "docs/specs/manual-version-release/IMPLEMENTATION.md": "1b11b98ce5cb2bdcdb452a2be3ea020007340b31",
     "docs/specs/manual-version-release/SPEC.md": "020e28edd1303192171b4a83c61b759c587891f0",
@@ -31,7 +30,6 @@
     "scripts/product-release.ts": "2ecf4a6c77c9e2def993585023a47b8bd22a48f5",
     "scripts/run-precommit-tests.ts": "c192558538cce7a40bca519ad3fad0891f821679",
     "site/content/projects/oidrune.mdx": "d06c8bdefe268af76fa0de8ad377598ffbc2c377",
-    "site/components/projects/ProjectPoster.astro": "ab646097b63f83e650b6f3a9ebde26251a382d23",
     "src/lib/__tests__/tag-directory.test.ts": "44baf67d30585b89c679216cac02812284311319",
     "src/lib/project-catalog.ts": "0a3960a0bd5189eb8e8da0441db4e19d8a5769da",
     "src/lib/release/completion.ts": "93c8e78b5dedac4f8155a8db18b9d65818b17354",
@@ -47,14 +45,12 @@
     "src/server/version-api.ts": "9bfb712fdf25caef06d30d7fa27aa2380bb10bac",
     "tests/ci/prepare-release-fixture.ts": "79a621ec55014121d9a772882aa345cf6d58fde7",
     "tests/ci/product-prerelease-workflow.test.ts": "84ad0ffda08e0c836a03c76000ea7f5c725245dc",
-    "tests/e2e/guest/nature-front-coverage.spec.ts": "ed134eb5f227ec3d2b685bd7d26c56d7c61c18b8",
     "tests/fixtures/project-content.ts": "a1bfdc7a0b39c1a84275e4cfb8562407f5d458c4",
     "tests/lib/manual-release-ledger.test.ts": "1f68d8e74176630889a4880fcca1dcbfe462f4c4",
     "tests/lib/manual-release-policy.test.ts": "2435afe5a32a75d263c5757709c9c4db976b2f95",
     "tests/lib/manual-release-publication.test.ts": "fb861f2597ce10183b20575ec7f1ea61aac8da94",
     "tests/lib/manual-release-recovery.test.ts": "8da7d35f101b78c81fc755e251538b50164b7e78",
     "tests/lib/manual-release-source.test.ts": "bbca05771b3f44228b82a14fcae5b0c1ebc0baa1",
-    "tests/lib/project-content.test.ts": "0359fcbe3433c62dcd74c4e6e46bf05dda2286c5",
     "tests/server/version-api.test.ts": "c86011cb95db3b9f8358570c62e22630af004ac0"
   },
   "change": {
@@ -113,7 +109,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "Add compatible prerelease version requests and product metadata without changing existing stable behavior, public API fields, SQLite schema or local content formats. Operational release-ledger identities are validated separately from product persistent state.",
-      "assessed_at": "2026-10-08T02:44:08.174Z",
+      "assessed_at": "2026-10-08T08:33:00Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -158,7 +154,7 @@
       ],
       "scope_drift": {
         "detected": true,
-        "description": "Reconciled main PR178/179 coverage and the Memos real-vs-simulated error boundary. Inherited VERSION remains 2.8.0; no independent product release or state migration."
+        "description": "CSR migration transfers changed renderers, route adapters, shared tests and removals to public-csr-navigation.json. Remaining topic scope and witnesses are unchanged; planned assessment remains historical. VERSION remains 2.9.0; this PR does not publish a release. Reclassified paths: docs/specs/README.md, site/components/projects/ProjectPoster.astro, tests/e2e/guest/nature-front-coverage.spec.ts, tests/lib/project-content.test.ts."
       }
     },
     "verified": {

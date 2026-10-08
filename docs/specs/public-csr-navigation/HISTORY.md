@@ -15,6 +15,8 @@
 
 - 基础：[Inspector PR #174](https://github.com/IvanLi-CN/blog-26/pull/174) 已合并。本主题 [PR #175](https://github.com/IvanLi-CN/blog-26/pull/175) 已同步到 main，独立提交公共页面 CSR 工作。
 - ADR 0019 替代 ADR 0010 中的后续 HTML 交换导航选择；首屏授权、主机隔离、缓存和部署边界继续保留。
+- CI 发现静态媒体检查误读初始化载荷、发布影响证据仍绑定旧 Astro 路径，以及搜索 hydration 测试仍依赖旧独立组件。主人批准第 4 批修复；保持媒体版本和搜索首屏断言，重新绑定当前共享渲染结构与累计发布影响证据。
+- 同步主线 Oidrune 项目时，将主线海报主题样式迁入共享 React 页面样式，保留其已发布基线的浅深色表现。
 
 ## References
 

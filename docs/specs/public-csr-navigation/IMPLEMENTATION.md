@@ -23,7 +23,7 @@
 
 ## Verification
 
-候选基线为 `90ef97ae16e26fa6b36fb45997d498df48a1e99e`。保留主线剪藏阅读器、类型标记、Playbook 面向访客的文案简化及 OctoRill 新鲜度布局修复；以下验证覆盖共享页面实现。
+候选基线为 `b43da0d92c87d8caa0dd0a6d5489b3f4e6538f46`。保留主线剪藏阅读器、类型标记、Playbook 面向访客的文案简化、OctoRill 新鲜度布局修复及 Oidrune 项目；海报的浅深色 tokens 从主线 Astro 样式迁入共享样式，保持主线主题行为。以下验证覆盖共享页面实现。
 
 - Agent VM 预提交套件通过，包含组件 Story 边界、构建隔离、路由匹配、公开接口、请求取消及未访问正文的载荷隔离。命令：`bun run test:precommit`，提交 hook 保持启用。Playbook 搜索正文隔离另有回归断言。
 - Demo 导航：`tests/e2e/web-demo/public-csr.spec.ts` 16 项全部通过，覆盖 SSR 离线首屏、12 类离线目标及恢复、历史、主题、取消、静态页面和 404，并断言没有 hydration 错误。命令：`WEB_DEMO_TEST_URL=<demo-origin> bun x playwright test --config tests/e2e/web-demo/playwright.config.ts`。
@@ -32,11 +32,14 @@
 - 剪藏 Demo 的独立 E2E 脚本通过：正式详情链接使用 CSR，原文／译文、讨论、保存、重试、焦点与草稿、网络与身份及 7 种宽度均验证；除页面 DTO 外没有真实 API 或模型请求。
 - 公共页面的正文、代码块、浅深色和系统主题，以及 320、360、375、393、640、1024px 内容流通过。完整逐节点三帧对比度矩阵通过，AA 门槛保持 4.5。两项完整矩阵分别以独立输出目录复测；此前失败原因均为整体预算耗尽。阅读矩阵预算为 600 秒，实际约 8.3 分钟；对比度预算为 720 秒，独立运行约 6.1 分钟，采样与断言没有减少。
 - live、console、Demo 三种 Astro 制品构建通过。新 CSR 文件的类型诊断已清除；全仓库 TypeScript 检查仍有原有后台与测试错误，以及未改动的 `site/lib/feeds.ts` 可空标题问题，不记录为全仓库类型通过。
+- 静态媒体校验解析 HTML 属性、样式和结构化元信息中的实际资源引用，保留 card／cover 的快照版本要求；Astro 初始化记录中的源路径不等同于浏览器媒体请求。回归同时验证实体解码、初始化载荷与实际未加版本的图片；使用 CI 原生构建方式的静态制品校验通过。
 - `bun run check` 通过，保留迁移前样式与原生媒体带来的警告；Spec 结构和 owner-facing 图片文档检查通过。
-- 制品检查逐一读取 125 个静态 JSON 的 HTTP 响应，包含 92 个原生标签路径；全部匹配构建载荷。125 份 live HTML 不包含 Demo 启用标记；Demo 离线 SSR 仍含当前文章正文，console 列表 DTO 不携带文章详情正文。
+- 制品检查逐一读取 128 个静态 JSON 的 HTTP 响应，包含原生标签路径与主线 Oidrune 页面；全部匹配构建载荷。128 份 live HTML 不包含 Demo 启用标记；Demo 离线 SSR 仍含当前文章正文，console 列表 DTO 不携带文章详情正文。
 - 本地 `web-demo:site` dev server 使用独立缓存和端口租约；项目 MDX 的临时修改及恢复均自动更新，开发工具栏通过本地 Astro 偏好关闭，未修改产品布局。
 - 六方向只读评审发现的片段时序、历史滚动与 Playbook 搜索载荷问题按原合同修复，并增加对应回归。主线 Playbook 的文案同步保留正式产品实现；本 PR 不调整站点导航的图标展示规则。
 - Playbook 的“全部／主题／项目实践／规则”入口按分类栏实际可用宽度显示已有图标：达到 344px 时显示，较窄时保留完整文字；操作高度保持 44px。320、360、393、1440px 视口均无横向溢出，393px 浅深色及键盘导航验证通过。更新后的 Playbook 移动端截图已由主人确认，其余四张证据不变。
+- 搜索首屏回归阻塞实际 `PublicRouter` 模块，验证查询、加载、加载失败与重试，以及 hydration 后的空查询状态；断言绑定可见 bootstrap 与共享 renderer 的就绪事件，不再等待已移除的独立 island。Oidrune 主线海报浅深色 fallback 回归通过。
+- 发布影响记录按 v2.9.0 已发布基线累计覆盖；迁移文件由 CSR 独立记录重新分类为兼容新增能力，旧主题保留未变化的证据，不放宽媒体、版本或 CI 门禁。该普通 PR 不修改 `VERSION`，产品发布仍由独立手动发布流程完成。
 
 ## Remaining Gaps
 
