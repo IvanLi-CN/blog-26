@@ -101,7 +101,7 @@ function parseTrendPoint(value: unknown): RuntimeTrendPoint | null {
 
 function parseTrend(value: unknown): RuntimeTrend | null {
   if (Array.isArray(value)) {
-    if (value.length !== 12 || !value.every(isNonNegativeNumber)) return null;
+    if (value.length < 1 || value.length > 12 || !value.every(isNonNegativeNumber)) return null;
     const end = Math.floor(Date.now() / 3_600_000) * 3_600_000;
     return {
       range: "recent-hours",
