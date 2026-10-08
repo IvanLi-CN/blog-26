@@ -21,6 +21,7 @@
     "site/components/projects/runtime-cell-grid.css": "e8be7c3f70658e955551af03d10fa1f8e7076498",
     "site/lib/project-runtime-channel.ts": "e21ca318e423b4fde77cb3ade685e4a7484e6576",
     "site/lib/project-runtime-live.ts": "e849273e11472c082fa327b86bca04470ac07118",
+    "site/lib/runtime-format.ts": "ea0714f2c9e0990e063ff25a31bf4b62c7c9cc0b",
     "site/pages/projects/index.astro": "28567272d31b418103b890392fc6654c2e2fc437",
     "src/components/projects/RuntimeCellGrid.stories.tsx": "41d0b255feeddd70559e0cbed1c927a26057d048",
     "src/components/ui/tooltip.tsx": "09c06b59a1f94bd62d0273a7cd8017fe88439c8f",
@@ -31,6 +32,7 @@
     "tests/e2e/guest/nature-front-coverage.spec.ts": "28b6046d23ad9bbe5fd384c554b3691c07438c95",
     "tests/e2e/guest/project-visual-slot.spec.ts": "e275ff47a999fe223531a105b7c269f280c4f19a",
     "tests/lib/project-runtime-channel.test.ts": "b6ec3782142530f3193d54e1e299fd6d0e51488f",
+    "tests/lib/runtime-format.test.ts": "6ca1e77925668aba998ffebe90d153c057e278fb",
     "tests/storybook/playbook-interactions.ts": "5146401d3660b6913feea67e723874df7634c508"
   },
   "change": {
@@ -50,6 +52,11 @@
           "command": "bun test --isolate --timeout=15000 tests/components/runtime-cell-grid.test.tsx tests/components/runtime-cell-gesture.test.ts tests/lib/project-runtime-channel.test.ts tests/lib/runtime-freshness-layout.test.ts tests/lib/web-demo-runtime.test.ts"
         },
         {
+          "path": "tests/lib/runtime-format.test.ts",
+          "blob": "6ca1e77925668aba998ffebe90d153c057e278fb",
+          "command": "bun test --isolate --timeout=15000 tests/lib/runtime-format.test.ts"
+        },
+        {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
           "blob": "e275ff47a999fe223531a105b7c269f280c4f19a",
           "command": "focused production guest Playwright at desktop and narrow mobile viewports"
@@ -65,6 +72,11 @@
           "path": "tests/components/runtime-cell-grid.test.tsx",
           "blob": "2ffe4cd28b4ac2c1ad53e69d962b05e56f1d5161",
           "command": "17 focused Bun tests pass"
+        },
+        {
+          "path": "tests/lib/runtime-format.test.ts",
+          "blob": "6ca1e77925668aba998ffebe90d153c057e278fb",
+          "command": "formatting and rounded-unit boundary tests pass"
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
