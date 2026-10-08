@@ -48,6 +48,8 @@ const HTML_FILE_ROUTE_PATTERNS = [
   "/memos/:slug/",
 ] as const;
 
+const PLAYBOOK_POLICY_SOURCE = "/_content/playbook/:version/:digest/policies/*";
+
 const DYNAMIC_ROOT_PATHS = new Set(["api", "admin", "mcp"]);
 const DYNAMIC_ROUTE_PROBES = [
   "/api",
@@ -144,15 +146,19 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     ...versionedPwaDirectories.map((path) =>
       rule(scopedPath(basePath, `/${path}/*`), EDGEONE_PUBLIC_CACHE_CONTROL.immutable)
     ),
-    ...playbookEditionDirectories.map((path) => ({
-      source: scopedPath(basePath, `/${path}/policies/*`),
-      headers: [
-        { key: "Cache-Control", value: EDGEONE_PUBLIC_CACHE_CONTROL.immutable },
-        { key: "Content-Type", value: "text/plain; charset=utf-8" },
-        { key: "Content-Disposition", value: "attachment" },
-        { key: "X-Content-Type-Options", value: "nosniff" },
-      ],
-    })),
+    ...(playbookEditionDirectories.length > 0
+      ? [
+          {
+            source: scopedPath(basePath, PLAYBOOK_POLICY_SOURCE),
+            headers: [
+              { key: "Cache-Control", value: EDGEONE_PUBLIC_CACHE_CONTROL.immutable },
+              { key: "Content-Type", value: "text/plain; charset=utf-8" },
+              { key: "Content-Disposition", value: "attachment" },
+              { key: "X-Content-Type-Options", value: "nosniff" },
+            ],
+          },
+        ]
+      : []),
   ];
   const unversionedFiles = cacheableStaticFiles
     .filter((path) => path && !path.endsWith(".html") && path !== "CNAME")
