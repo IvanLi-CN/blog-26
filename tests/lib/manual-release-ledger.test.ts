@@ -301,6 +301,7 @@ describe("durable product release reservations", () => {
     });
     expect(abandoned.entries[0]?.stage).toBe("abandoned");
     expect(abandoned.entries[0]?.inputs).toBeUndefined();
+    expect(() => canonicalJson(abandoned)).not.toThrow();
   });
   test("unproven stages and source replacement cannot be committed", () => {
     const first = reserveRelease(initialLedger(contract), request);
