@@ -306,6 +306,19 @@ Valid zero metrics remain runtime data. Missing CVM history uses the protocol's 
 
 ![Current project wall dark mobile](./assets/projects-wall-dark-mobile-current.png)
 
+#### Oidrune operations group
+
+- Evidence binding: implementation commit `6f34e926746e495b974b1f18ef27a89ce849c485`; source type `ui_demo`; target program `Ego Browser`; capture scope `browser-viewport`; requested viewports `1780px × 1071px` and `393px × 852px`; viewport strategy `devtools-emulate`; margin policy `trim_only`; evidence surface `page`; sensitive exclusion `N/A`.
+- The owner confirmed the Oidrune operations-group captures in light and dark themes at desktop and mobile sizes. These four focused captures are the submission evidence for this change; the mobile captures position the horizontal poster rail on Oidrune.
+
+![Oidrune operations desktop light](./assets/projects-oidrune-operations-desktop-light.png)
+
+![Oidrune operations desktop dark](./assets/projects-oidrune-operations-desktop-dark.png)
+
+![Oidrune operations mobile light](./assets/projects-oidrune-operations-mobile-light.png)
+
+![Oidrune operations mobile dark](./assets/projects-oidrune-operations-mobile-dark.png)
+
 ![SpotiBind detail light](./assets/project-spoti-bind-light.png)
 
 ![SpotiBind detail dark](./assets/project-spoti-bind-dark.png)
