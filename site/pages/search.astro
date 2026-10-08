@@ -1,133 +1,62 @@
 ---
-import BaseLayout from "../layouts/BaseLayout.astro";
-import SearchPageIsland from "../components/SearchPageIsland";
-import PublicSearchPage from "../../src/components/search/PublicSearchPage";
-import { createPlaybookSearchPages } from "../../src/lib/playbook/search";
-import { getPlaybookEdition } from "../lib/playbook";
-import { playbookVersionPath } from "@/lib/playbook/cache";
-import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PublicRouter from '../components/PublicRouter';
+import {loadPublicRoute} from '../lib/route-data';
+import {loadabout} from '../lib/page-data/about';
+import {publicRouteMetadata} from '../lib/route-metadata';
+import SearchBootstrap from '../components/SearchBootstrap.astro';
 
-const bootstrapQuery = "__SEARCH_QUERY__";
-const edition = await getPlaybookEdition();
-const playbook = edition ? {
-  pages: createPlaybookSearchPages(edition.catalog),
-  edition: edition.edition.editionDigest,
-  sourceReleaseId: edition.edition.source.releaseId,
-  sourceTag: edition.edition.source.tag,
-  sha256: edition.edition.files.find((file) => file.path === "search-documents.json")!.sha256,
-  url: process.env.CONSOLE_RUNTIME === "true"
-    ? toPublicApiUrl(`/api/public/playbook/search-index?edition=${edition.edition.editionDigest}&sourceReleaseId=${encodeURIComponent(edition.edition.source.releaseId)}&sourceTag=${encodeURIComponent(edition.edition.source.tag)}`)
-    : toPublicSitePath(`${playbookVersionPath(edition.edition)}search-documents.json`)!,
-} : undefined;
+const initial = await loadPublicRoute(Astro.request);
+if (initial.kind === 'notFound') Astro.response.status = 404;
+const metadata = publicRouteMetadata(initial);
+const about = { kind: 'about' as const, data: await loadabout(Astro) };
 ---
-<BaseLayout pathname="/search" title="搜索 - Ivan's Blog" description="搜索文章与公开 Memos">
-  <div data-search-bootstrap hidden inert aria-hidden="true">
-    <PublicSearchPage
-      query={bootstrapQuery}
-      searchedQuery={bootstrapQuery}
-      results={[]}
-      isLoading
-      filter="all"
-      inputId="public-search-bootstrap-input"
-      isBootstrap
-      onFilterChange={() => undefined}
-      onQueryChange={() => undefined}
-      onSubmit={() => undefined}
-    />
-    <section
-      data-search-bootstrap-error
-      hidden
-      class="nature-container pb-10 pt-3 sm:pb-14 sm:pt-4"
-    >
-      <article
-        role="alert"
-        class="nature-panel nature-panel-soft relative overflow-hidden px-5 py-5 sm:px-6 sm:py-6"
-      >
-        <div class="relative max-w-[64ch]">
-          <span class="nature-kicker inline-flex px-3 py-1 text-xs">搜索中断</span>
-          <h2 class="mt-3 font-heading text-2xl font-semibold leading-tight text-[color:var(--nature-text)] sm:text-3xl">
-            搜索组件暂时没有加载完成
-          </h2>
-          <p class="mt-3 text-sm leading-7 text-[color:var(--nature-text-soft)] sm:text-base">
-            关键词「<span data-search-query-text>{bootstrapQuery}</span>」仍已保留，请刷新页面重试。
-          </p>
-          <button
-            type="button"
-            data-search-bootstrap-reload
-            class="mt-5 inline-flex min-h-11 items-center justify-center rounded-full border border-[rgba(var(--nature-accent-rgb),0.28)] bg-[rgba(var(--nature-accent-rgb),0.1)] px-4 text-sm font-medium text-[color:var(--nature-accent-strong)] transition hover:-translate-y-0.5 hover:border-[rgba(var(--nature-accent-rgb),0.46)] hover:bg-[rgba(var(--nature-accent-rgb),0.16)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(var(--nature-accent-rgb),0.42)]"
-          >
-            刷新重试
-          </button>
-        </div>
-      </article>
-    </section>
-  </div>
-  <div data-search-island>
-    <SearchPageIsland client:load playbook={playbook} />
-  </div>
-
-  <script is:inline data-astro-rerun>
+<BaseLayout pathname={Astro.url.pathname} {...metadata}>
+  <PublicRouter client:load initial={initial} about={about} initialUrl={Astro.url.pathname + Astro.url.search + Astro.url.hash}>
+    <SearchBootstrap slot="searchBootstrap" />
+  </PublicRouter>
+  <script is:inline>
     (() => {
       const bootstrap = document.querySelector("[data-search-bootstrap]");
       const islandHost = document.querySelector("[data-search-island]");
       if (!(bootstrap instanceof HTMLElement) || !(islandHost instanceof HTMLElement)) return;
-
-      const revealIsland = () => {
-        window.clearTimeout(hydrationTimeout);
-        bootstrap.hidden = true;
-        bootstrap.inert = true;
-        bootstrap.setAttribute("aria-hidden", "true");
-        islandHost.hidden = false;
-        islandHost.inert = false;
-        islandHost.removeAttribute("aria-hidden");
-      };
-
+      const island = islandHost.closest("astro-island");
       let hydrationTimeout = 0;
-
+      const reveal = () => {
+        window.clearTimeout(hydrationTimeout);
+        const current = document.querySelector("[data-search-bootstrap]");
+        if (current instanceof HTMLElement) {
+          current.hidden = true;
+          current.inert = true;
+          current.setAttribute("aria-hidden", "true");
+        }
+        document.documentElement.removeAttribute("data-public-search-bootstrap-active");
+      };
       const query = new URL(window.location.href).searchParams.get("q") ?? "";
-      const normalizedQuery = query.trim();
-      if (!normalizedQuery) {
-        revealIsland();
-        return;
-      }
-
+      if (!query.trim() || !(island instanceof HTMLElement) || island.dataset.searchReady === "true") return;
       const input = bootstrap.querySelector("[data-search-query-input]");
-      if (input instanceof HTMLInputElement) input.value = query;
-      bootstrap.querySelectorAll("[data-search-query-text]").forEach((element) => {
-        element.textContent = normalizedQuery;
-      });
-
+      if (input instanceof HTMLInputElement) {
+        input.value = query;
+        input.setAttribute("value", query);
+      }
+      bootstrap.querySelectorAll("[data-search-query-text]").forEach((element) => { element.textContent = query.trim(); });
       bootstrap.hidden = false;
       bootstrap.inert = false;
       bootstrap.removeAttribute("aria-hidden");
-      islandHost.hidden = true;
-      islandHost.inert = true;
-      islandHost.setAttribute("aria-hidden", "true");
-
-      const island = islandHost.querySelector("astro-island");
-      if (!(island instanceof HTMLElement) || !island.hasAttribute("ssr")) {
-        revealIsland();
-        return;
-      }
-      if (island.dataset.searchReady === "true") {
-        revealIsland();
-        return;
-      }
-      island.addEventListener("public-search:ready", revealIsland, { once: true });
-      const showHydrationError = () => {
-        window.clearTimeout(hydrationTimeout);
-        const searchRoot = bootstrap.firstElementChild;
-        if (searchRoot instanceof HTMLElement) searchRoot.removeAttribute("aria-busy");
-        const loadingRegion = bootstrap.querySelector("[data-search-results-region]");
-        if (loadingRegion instanceof HTMLElement) loadingRegion.hidden = true;
-        const errorRegion = bootstrap.querySelector("[data-search-bootstrap-error]");
-        if (errorRegion instanceof HTMLElement) errorRegion.hidden = false;
+      document.documentElement.setAttribute("data-public-search-bootstrap-active", "");
+      // Astro transports named slots during hydration. Each committed search
+      // render must hide the current slot node, including a route-key remount.
+      island.addEventListener("public-search:ready", reveal);
+      const showError = () => {
+        bootstrap.firstElementChild?.removeAttribute("aria-busy");
+        const loading = bootstrap.querySelector("[data-search-results-region]");
+        const error = bootstrap.querySelector("[data-search-bootstrap-error]");
+        if (loading instanceof HTMLElement) loading.hidden = true;
+        if (error instanceof HTMLElement) error.hidden = false;
       };
-      island.addEventListener("public-search:error", showHydrationError, { once: true });
-      bootstrap
-        .querySelector("[data-search-bootstrap-reload]")
-        ?.addEventListener("click", () => window.location.reload(), { once: true });
-      hydrationTimeout = window.setTimeout(showHydrationError, 10_000);
+      island.addEventListener("public-search:error", showError, { once: true });
+      bootstrap.querySelector("[data-search-bootstrap-reload]")?.addEventListener("click", () => window.location.reload());
+      hydrationTimeout = window.setTimeout(showError, 10_000);
     })();
   </script>
 </BaseLayout>

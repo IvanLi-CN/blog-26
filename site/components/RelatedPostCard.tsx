@@ -1,0 +1,89 @@
+import Icon from "@/components/ui/Icon";
+import { extractPostCoverCandidate, isExternalImageUrl } from "@/lib/post-cover";
+import type { PublicPostRecord } from "@/public-site/snapshot";
+import { appendPublicAssetVersion } from "../lib/public-site-client";
+import { toPublicSitePath } from "../lib/runtime-urls";
+
+interface Props {
+  post: PublicPostRecord;
+  assetVersion?: string | null;
+}
+export default function RelatedPostCard(props: Props) {
+  const { post, assetVersion = null } = props;
+  const coverCandidate = extractPostCoverCandidate(post);
+  const imageSrc = appendPublicAssetVersion(
+    post.media.cover?.variants.card ??
+      post.media.primary?.variants.card ??
+      (coverCandidate && isExternalImageUrl(coverCandidate) ? coverCandidate : null),
+    assetVersion
+  );
+  const hasCover = Boolean(imageSrc);
+  const excerpt = post.excerpt?.trim() || "";
+  const articleClass = "min-w-0 self-start";
+  const linkClass =
+    "nature-panel nature-hover-lift nature-hover-surface flex min-h-0 overflow-hidden p-0 transition-all duration-300 [--nature-hover-border-color:rgba(var(--nature-accent-rgb),0.42)] [--nature-hover-lift-offset:-0.25rem] [--nature-hover-shadow:0_20px_44px_rgba(8,21,16,0.14)] flex-col md:grid md:aspect-[12/5] md:grid-cols-[40%_1fr] md:grid-rows-1 lg:flex lg:aspect-square lg:flex-col lg:grid-cols-none";
+  const mediaClass =
+    "relative aspect-[16/9] overflow-hidden border-b border-[rgba(var(--nature-border-rgb),0.68)] bg-[linear-gradient(135deg,rgba(var(--nature-accent-rgb),0.18),rgba(var(--nature-secondary-rgb),0.12))] md:h-full md:min-h-0 md:aspect-auto md:border-b-0 md:border-r lg:basis-[44%] lg:border-r-0 lg:border-b";
+  const placeholderClass =
+    "relative flex h-full w-full flex-col justify-between overflow-hidden p-4 text-[color:var(--nature-text-soft)] md:p-3 lg:p-4";
+  const bodyClass =
+    "flex min-h-0 flex-col justify-start gap-3 p-4 md:flex-1 md:gap-2 md:p-4 lg:p-4";
+  const titleClass =
+    "line-clamp-2 shrink-0 text-base font-semibold leading-6 text-[color:var(--nature-text)] transition-colors duration-200 group-hover:text-[color:var(--nature-accent-strong)] md:text-[1.125rem] md:leading-6 lg:text-base lg:leading-6";
+  const excerptClass =
+    "line-clamp-2 text-sm leading-6 text-[color:var(--nature-text-soft)] md:line-clamp-2 md:leading-5 lg:line-clamp-3 lg:leading-6";
+  return (
+    <article
+      className={articleClass}
+      itemProp="isRelatedTo"
+      itemScope
+      itemType="https://schema.org/Article"
+    >
+      <a
+        className="nature-hover-hitbox group block"
+        href={toPublicSitePath(`/posts/${post.slug}`)}
+        itemProp="url"
+      >
+        <div className={linkClass}>
+          {hasCover ? (
+            <div className={mediaClass}>
+              <img
+                src={imageSrc ?? undefined}
+                alt={post.title}
+                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
+                loading="lazy"
+                decoding="async"
+                itemProp="image"
+              />
+            </div>
+          ) : (
+            <div className={`${mediaClass} hidden md:block`}>
+              <div className={placeholderClass}>
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.28),transparent_38%),linear-gradient(135deg,rgba(var(--nature-accent-rgb),0.22),rgba(var(--nature-secondary-rgb),0.12))]" />
+                <div className="absolute inset-x-4 bottom-4 z-0 space-y-2 opacity-70">
+                  <div className="h-2 rounded-full bg-white/55" />
+                  <div className="h-2 w-3/4 rounded-full bg-white/35" />
+                  <div className="h-2 w-1/2 rounded-full bg-white/25" />
+                </div>
+                <Icon
+                  name="tabler:article"
+                  className="absolute -right-3 -top-3 h-20 w-20 text-[color:var(--nature-accent-strong)]/10 md:h-14 md:w-14 lg:h-20 lg:w-20"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className={bodyClass}>
+            <h3 className={titleClass} itemProp="headline">
+              {post.title}
+            </h3>
+
+            <p className={excerptClass} itemProp="description">
+              {excerpt}
+            </p>
+          </div>
+        </div>
+      </a>
+    </article>
+  );
+}

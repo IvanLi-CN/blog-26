@@ -79,12 +79,14 @@ type PublicAuthUser = {
   isAdmin: boolean;
 };
 
-async function readJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
+async function requestJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
+  init?.signal?.throwIfAborted();
   const response = await webDemoFetch(input, {
     credentials: "include",
     ...init,
   });
   const payload = await response.json().catch(() => null);
+  init?.signal?.throwIfAborted();
   if (!response.ok) {
     const errorPayload = payload as { error?: string | { message?: string } } | null;
     const message =
@@ -100,7 +102,27 @@ async function readJson<T>(input: RequestInfo | URL, init?: RequestInit): Promis
   return payload as T;
 }
 
+function useMemoRequest() {
+  const controller = useRef(new AbortController());
+  useEffect(() => {
+    controller.current = new AbortController();
+    const current = controller.current;
+    const cancel = () => current.abort();
+    document.addEventListener("astro:before-swap", cancel);
+    return () => {
+      document.removeEventListener("astro:before-swap", cancel);
+      cancel();
+    };
+  }, []);
+  return useCallback(
+    <T,>(input: RequestInfo | URL, init?: RequestInit) =>
+      requestJson<T>(input, { ...init, signal: controller.current.signal }),
+    []
+  );
+}
+
 function usePublicAuth(initialIsAdmin = false) {
+  const readJson = useMemoRequest();
   const [user, setUser] = useState<PublicAuthUser | null>(
     initialIsAdmin
       ? { id: "ssr-admin", nickname: "admin", email: "", avatarUrl: "", isAdmin: true }
@@ -120,7 +142,7 @@ function usePublicAuth(initialIsAdmin = false) {
       .finally(() => {
         setIsLoading(false);
       });
-  }, []);
+  }, [readJson]);
 
   useEffect(() => {
     refetch();
@@ -280,6 +302,7 @@ export function PublicMemoComposerIsland({
   initialHasNewer?: boolean;
   initialPreviousCursor?: string | null;
 }) {
+  const readJson = useMemoRequest();
   const { isAdmin, isLoading } = usePublicAuth(initialIsAdmin);
   const [memos, setMemos] = useState<PublicMemoRecord[]>(initialMemos);
   const [isListLoading, setIsListLoading] = useState(initialIsAdmin && initialMemos.length === 0);
@@ -450,7 +473,7 @@ export function PublicMemoComposerIsland({
         }
       }
     },
-    []
+    [readJson]
   );
   requestMemoPageRef.current = requestMemoPage;
 
@@ -496,29 +519,32 @@ export function PublicMemoComposerIsland({
       setPreviousCursor(null);
       void requestMemoPage({});
     },
-    [requestMemoPage]
+    [readJson, requestMemoPage]
   );
 
-  const handleEdit = useCallback(async (memo: PublicMemoRecord) => {
-    const requestId = ++editRequestId.current;
-    editReturnScrollY.current = window.scrollY;
-    setEditingSlug(memo.slug);
-    setEditingMemo(null);
-    setIsEditLoading(true);
-    setEditError(null);
-    try {
-      const fullMemo = await readJson<PublicMemoRecord>(
-        toPublicApiUrl(`/api/public/memos/${encodeURIComponent(memo.slug)}`)
-      );
-      if (requestId === editRequestId.current) setEditingMemo(fullMemo);
-    } catch (error) {
-      if (requestId === editRequestId.current) {
-        setEditError(error instanceof Error ? error.message : String(error));
+  const handleEdit = useCallback(
+    async (memo: PublicMemoRecord) => {
+      const requestId = ++editRequestId.current;
+      editReturnScrollY.current = window.scrollY;
+      setEditingSlug(memo.slug);
+      setEditingMemo(null);
+      setIsEditLoading(true);
+      setEditError(null);
+      try {
+        const fullMemo = await readJson<PublicMemoRecord>(
+          toPublicApiUrl(`/api/public/memos/${encodeURIComponent(memo.slug)}`)
+        );
+        if (requestId === editRequestId.current) setEditingMemo(fullMemo);
+      } catch (error) {
+        if (requestId === editRequestId.current) {
+          setEditError(error instanceof Error ? error.message : String(error));
+        }
+      } finally {
+        if (requestId === editRequestId.current) setIsEditLoading(false);
       }
-    } finally {
-      if (requestId === editRequestId.current) setIsEditLoading(false);
-    }
-  }, []);
+    },
+    [readJson]
+  );
 
   const closeEdit = useCallback(() => {
     const returnScrollY = editReturnScrollY.current;
@@ -574,7 +600,7 @@ export function PublicMemoComposerIsland({
         setIsEditSaving(false);
       }
     },
-    [editingMemo, editingSlug]
+    [editingMemo, editingSlug, readJson]
   );
 
   const isListBusy = isListLoading || isLoadingMore || isLoadingNewer;
@@ -728,6 +754,7 @@ export function PublicMemoComposerIsland({
 }
 
 export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
+  const readJson = useMemoRequest();
   const { user, isAdmin, isLoading } = usePublicAuth();
   const [memo, setMemo] = useState<PublicMemoRecord | null>(null);
   const [isFetching, setIsFetching] = useState(false);
@@ -751,7 +778,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
     } finally {
       setIsFetching(false);
     }
-  }, [slug]);
+  }, [readJson, slug]);
 
   useEffect(() => {
     if (!user) return;
@@ -786,7 +813,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
         throw error;
       }
     },
-    [memo, slug]
+    [memo, readJson, slug]
   );
 
   const handleDelete = useCallback(async () => {
@@ -808,7 +835,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
     } finally {
       setIsDeleting(false);
     }
-  }, [isDeleting, memo, slug]);
+  }, [isDeleting, memo, readJson, slug]);
 
   const detailBody = memo ? stripMatchingLeadingTitleHeading(memo.content, memo.title) : "";
   const detailPresentation = getMemoPresentation(memo ?? {});

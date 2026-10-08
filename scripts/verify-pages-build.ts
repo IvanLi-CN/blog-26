@@ -2,6 +2,7 @@
 
 import { type Dirent, existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { JSDOM } from "jsdom";
 
 const TRAILING_SLASH = /\/+$/;
 const SITE_DIST_DIR = "site-dist";
@@ -108,8 +109,21 @@ function readContent(cwd: string, contents: Map<string, string>, file: string) {
   return contents.get(file) ?? "";
 }
 
-function extractBuildTimePublicAssetUrls(content: string) {
-  return content.match(BUILD_TIME_PUBLIC_ASSET_PATTERN) ?? [];
+export function extractBuildTimePublicAssetUrls(content: string) {
+  const document = JSDOM.fragment(content);
+  const references: string[] = [];
+  for (const element of document.querySelectorAll("*")) {
+    for (const attribute of element.attributes) {
+      // Hydration data retains source paths; renderers append the snapshot
+      // version when turning those records into browser media references.
+      if (element.localName === "astro-island" && attribute.name === "props") continue;
+      references.push(attribute.value);
+    }
+    if (element.localName === "style" || element.localName === "script") {
+      references.push(element.textContent ?? "");
+    }
+  }
+  return references.flatMap((value) => value.match(BUILD_TIME_PUBLIC_ASSET_PATTERN) ?? []);
 }
 
 function requiresBuildTimeAssetVersion(url: string) {

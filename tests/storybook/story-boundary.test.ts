@@ -42,7 +42,7 @@ test("page evidence mode is selected at build time", async () => {
   };
   const astroConfig = await readFile(resolve(repoRoot, "astro.config.mjs"), "utf8");
   const adminMain = await readFile(resolve(repoRoot, "apps/admin/src/main.tsx"), "utf8");
-  const memoPage = await readFile(resolve(repoRoot, "site/pages/memos/index.astro"), "utf8");
+  const memoPage = await readFile(resolve(repoRoot, "site/lib/page-data/memos.ts"), "utf8");
   const memoTimeline = await readFile(
     resolve(repoRoot, "site/components/MemoTimeline.tsx"),
     "utf8"

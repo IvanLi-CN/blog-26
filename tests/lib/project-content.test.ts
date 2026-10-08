@@ -66,7 +66,7 @@ describe("project content contracts", () => {
     });
 
     const detailSource = readFileSync(
-      join(process.cwd(), "site/pages/projects/[slug].astro"),
+      join(process.cwd(), "site/components/pages/project.tsx"),
       "utf8"
     );
     expect(detailSource).toContain("project-catalog-fallback");
@@ -193,7 +193,10 @@ describe("project content contracts", () => {
       expect(actualHash).toBe(expectedHash);
     }
 
-    const homepageSource = readFileSync(join(process.cwd(), "site/pages/index.astro"), "utf8");
+    const homepageSource = readFileSync(
+      join(process.cwd(), "site/components/pages/home.tsx"),
+      "utf8"
+    );
     expect(homepageSource).toContain("featuredProjectLogos");
     expect(homepageSource).not.toContain("loadlynxLogo");
   });

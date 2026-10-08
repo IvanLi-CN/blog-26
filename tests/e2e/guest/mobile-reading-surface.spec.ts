@@ -217,7 +217,8 @@ test.describe("mobile public reading surfaces", () => {
   test("edge-to-edge streams and primary prose fit every narrow viewport and theme", async ({
     page,
   }) => {
-    test.setTimeout(240_000);
+    // This matrix visits every reading route in eight viewport/theme combinations.
+    test.setTimeout(600_000);
 
     await page.setViewportSize({ width: 393, height: 852 });
     await gotoWithTheme(page, "/tags", "light");
@@ -430,7 +431,8 @@ test.describe("mobile public reading surfaces", () => {
   test("composited text contrast stays AA-readable across ambient frames and theme changes", async ({
     page,
   }) => {
-    test.setTimeout(240_000);
+    // This matrix captures three composited frames for every text node in both themes.
+    test.setTimeout(720_000);
     await page.setViewportSize({ width: 393, height: 852 });
     await gotoWithTheme(page, "/tags", "light");
     const tagRoute = "/tags/intro";

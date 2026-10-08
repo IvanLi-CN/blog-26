@@ -1,5 +1,20 @@
 import { z } from "zod";
 import type { PublicMemoRecord } from "@/public-site/snapshot";
+import type { MemoCardRecord } from "../components/MemoCard";
+
+export function toMemoCardRecord(memo: MemoCardRecord): MemoCardRecord {
+  return {
+    id: memo.id,
+    slug: memo.slug,
+    title: memo.title,
+    excerpt: memo.excerpt,
+    tags: memo.tags,
+    isPublic: memo.isPublic,
+    createdAt: memo.createdAt,
+    publishedAt: memo.publishedAt,
+    ...(memo.clipping ? { clipping: memo.clipping } : {}),
+  };
+}
 
 export const MEMO_PAGE_SIZE = 10;
 
@@ -88,7 +103,9 @@ export function parseMemoPage<T>(
 }
 
 export function parseConsoleInitialMemoPage(value: unknown, isAdmin: boolean) {
-  return parseMemoPage(value, "older", isAdmin ? adminMemoRecordSchema : publicMemoCardSchema);
+  return isAdmin
+    ? parseMemoPage(value, "older", adminMemoRecordSchema)
+    : parseMemoPage(value, "older", publicMemoCardSchema);
 }
 
 export type PublicMemoStaticPage = {

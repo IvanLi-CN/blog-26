@@ -18,7 +18,6 @@
     "docs/specs/nature-front-ui/assets/project-runtime-panels-fallback-mobile-light-393x852.png": "9c88a0e328cc222ebe339b54e9343c4e6ef77017",
     "docs/specs/nature-front-ui/assets/project-runtime-panels-mobile-dark-393x852.png": "b291fb7e2b69d5f805ec9f20bfa3f7737b6fd881",
     "docs/specs/nature-front-ui/assets/project-runtime-panels-mobile-light-393x852.png": "1a59336df528bb7a659a01b6384f927491b316a9",
-    "site/components/projects/ProjectRuntimeDataPanel.astro": "2325f5bda8a78d484dc7184d9b002cb2ad86fd8b",
     "site/lib/project-runtime-live.ts": "76b4bf7c273219d7f4e895f48e998731a9e03b7d",
     "site/lib/runtime-freshness-layout.ts": "5038d10e3c11e058367bdf40d0e29ea5f2c81017",
     "tests/e2e/guest/project-visual-slot.spec.ts": "59a6de75de10559bbf69824210b59fa0d2b81257",
@@ -55,7 +54,7 @@
     "current": {
       "impact": "patch",
       "reasoning": "The implementation changes only project-wall layout calculation, stable-region measurement, focused regression coverage, and Nature evidence assets; runtime data order and public APIs remain unchanged.",
-      "assessed_at": "2026-10-08T13:30:00+08:00",
+      "assessed_at": "2026-10-08T08:33:00Z",
       "evidence": [
         {
           "path": "tests/lib/runtime-freshness-layout.test.ts",
@@ -74,8 +73,8 @@
         }
       ],
       "scope_drift": {
-        "detected": false,
-        "description": "The current record covers the complete OctoRill freshness layout correction from the v2.9.0 published baseline."
+        "detected": true,
+        "description": "CSR migration transfers changed renderers, route adapters, shared tests and removals to public-csr-navigation.json. Remaining topic scope and witnesses are unchanged; planned assessment remains historical. CSR does not modify the inherited VERSION; this PR does not publish a release. Reclassified paths: site/components/projects/ProjectRuntimeDataPanel.astro."
       }
     },
     "verified": {

@@ -1,9 +1,12 @@
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import mdx from "@astrojs/mdx";
 import node from "@astrojs/node";
 import react from "@astrojs/react";
+import { compile } from "@mdx-js/mdx";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
+import rehypeSlug from "rehype-slug";
 
 const sitePort = Number(process.env.SITE_PORT || 25093);
 const siteHost = process.env.SITE_HOST || "127.0.0.1";
@@ -69,6 +72,7 @@ const clippingReaderModule =
   process.env.WEB_DEMO_BUILD === "true"
     ? resolve("./site/components/ClippingWebDemo.tsx")
     : resolve("./src/components/memos/ClippingDetail.tsx");
+const publicMdxPrefix = "\0shared-public-mdx:";
 
 export default defineConfig({
   integrations: [react(), mdx()],
@@ -85,7 +89,45 @@ export default defineConfig({
     port: sitePort,
   },
   vite: {
-    plugins: [tailwindcss()],
+    plugins: [
+      {
+        name: "shared-react-project-mdx",
+        enforce: "pre",
+        async resolveId(source, importer) {
+          if (source.startsWith(publicMdxPrefix)) return source;
+          if (importer?.startsWith(publicMdxPrefix)) {
+            return this.resolve(
+              source,
+              importer.slice(publicMdxPrefix.length, -".public-react.js".length),
+              { skipSelf: true }
+            );
+          }
+          if (!source.endsWith("?public-react-mdx")) return;
+          const path = source.slice(0, -"?public-react-mdx".length);
+          return `${publicMdxPrefix}${resolve(importer ? resolve(importer, "..") : process.cwd(), path)}.public-react.js`;
+        },
+        async load(id) {
+          if (!id.startsWith(publicMdxPrefix)) return;
+          const file = id.slice(publicMdxPrefix.length, -".public-react.js".length);
+          this.addWatchFile(file);
+          const source = await readFile(file, "utf8");
+          return String(
+            await compile(source.replace(/^---\s*\n[\s\S]*?\n---\s*/, ""), {
+              rehypePlugins: [rehypeSlug],
+            })
+          );
+        },
+        async transform(source, id) {
+          if (!id.includes("?public-react-mdx")) return;
+          return String(
+            await compile(source.replace(/^---\s*\n[\s\S]*?\n---\s*/, ""), {
+              rehypePlugins: [rehypeSlug],
+            })
+          );
+        },
+      },
+      tailwindcss(),
+    ],
     cacheDir: viteCacheDir,
     server: {
       hmr: {

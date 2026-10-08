@@ -29,7 +29,8 @@ await page.route("**/*", async (route) => {
     await route.abort();
     return;
   }
-  if (url.origin !== base || url.pathname.startsWith("/api/")) {
+  const routeData = url.pathname === "/api/public/page" && route.request().method() === "GET";
+  if (url.origin !== base || (url.pathname.startsWith("/api/") && !routeData)) {
     unexpected.push(url.href);
     await route.abort();
   } else await route.continue();
@@ -90,11 +91,17 @@ try {
   const normal = page.locator('[data-slug="memo-web-demo-1182"]');
   await expect(normal.getByTestId("timeline-type-label")).toHaveCount(0);
   await expect(normal.locator("h2")).toHaveText("时间线样例 1182");
+  let documentNavigations = 0;
+  page.on("request", (request) => {
+    if (request.isNavigationRequest() && request.resourceType() === "document")
+      documentNavigations++;
+  });
   await clipping.locator("h2 a").click();
   await expect(page).toHaveURL(new RegExp(`/memos/${WEB_DEMO_CLIPPING_SLUG}/`));
   await expect(page.getByTestId("clipping-article-source")).toContainText(
     "Durable article workflows"
   );
+  expect(documentNavigations).toBe(0);
   await expect(page.getByTestId("clipping-chat")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "原文", exact: true })).toHaveAttribute(
     "aria-pressed",

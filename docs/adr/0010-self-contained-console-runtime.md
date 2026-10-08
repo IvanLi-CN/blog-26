@@ -8,6 +8,8 @@ status: accepted
 
 ## Considered Options
 
+The subsequent public navigation choice is replaced by [ADR 0019](0019-shared-public-ssr-csr-renderer.md). The first-document, authorization, host, cache and deployment contracts in this ADR remain accepted.
+
 - **Gateway in front of separate static and SSR services**: rejected because it adds a deployment boundary the console does not need and makes host, cache, and authentication behavior harder to reason about.
 - **Full browser SPA**: rejected because the first request would lose server-rendered authorization and content, and it would widen the client migration beyond the current Astro navigation model.
 

@@ -1,11 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 
 if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register({ url: "http://localhost/" });
-const { PublicMemoComposerIsland } = await import("../../site/components/PublicMemoAuthoring");
+const { PublicMemoComposerIsland, PublicMemoDetailControlsIsland } = await import(
+  "../../site/components/PublicMemoAuthoring"
+);
 
 const originalFetch = globalThis.fetch;
+const originalConfirm = window.confirm;
 const memo = (id: string) => ({
   id,
   slug: id,
@@ -18,7 +21,54 @@ const memo = (id: string) => ({
 afterEach(() => {
   cleanup();
   globalThis.fetch = originalFetch;
+  window.confirm = originalConfirm;
+  window.history.replaceState(null, "", "/");
   document.body.replaceChildren();
+});
+
+describe("Author request lifetime", () => {
+  for (const boundary of ["route-start", "unmount"]) {
+    test(`ignores a late successful delete after ${boundary}`, async () => {
+      let release: (() => void) | undefined;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let writeSignal: AbortSignal | null | undefined;
+      globalThis.fetch = (async (input, init) => {
+        const url = new URL(String(input), "http://localhost");
+        if (url.pathname === "/api/public/auth/me") return Response.json({ isAdmin: true });
+        if (init?.method === "DELETE") {
+          writeSignal = init.signal;
+          // Deliberately return success even after cancellation to exercise the completion guard.
+          await gate;
+          return Response.json({ success: true });
+        }
+        return Response.json(memo("local-memo"));
+      }) as typeof fetch;
+      window.confirm = () => true;
+      const view = render(<PublicMemoDetailControlsIsland slug="local-memo" />);
+      try {
+        const button = await waitFor(() => {
+          const candidate = view.getByTestId("admin-live-memo-delete") as HTMLButtonElement;
+          expect(candidate.disabled).toBe(false);
+          return candidate;
+        });
+        fireEvent.click(button);
+        await waitFor(() => expect(writeSignal).toBeDefined());
+        if (boundary === "route-start") document.dispatchEvent(new Event("astro:before-swap"));
+        else view.unmount();
+        expect(writeSignal?.aborted).toBe(true);
+        window.history.replaceState(null, "", "/projects/");
+        await act(async () => {
+          release?.();
+          await gate;
+        });
+        expect(window.location.pathname).toBe("/projects/");
+      } finally {
+        release?.();
+      }
+    });
+  }
 });
 
 describe("Administrator Memo pagination", () => {

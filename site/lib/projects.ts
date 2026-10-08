@@ -9,7 +9,7 @@ import {
   type ResolvedProjectRelatedEntry,
 } from "@/lib/project-catalog";
 import type { PublicMemoRecord, PublicPostRecord, PublicSnapshot } from "@/public-site/snapshot";
-import { getCanonicalUrl } from "./public-site";
+import { getCanonicalUrl } from "./public-site-client";
 
 export * from "@/lib/project-catalog";
 

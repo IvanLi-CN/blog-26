@@ -1,13 +1,10 @@
 ---
-import { getProjectBySlug, getProjectDomainDefinition, getProjectDetailPath } from "../../lib/projects";
-import Icon from "@/components/ui/Icon";
-import BaseLayout from "../../layouts/BaseLayout.astro";
-import { getSnapshot, pickTagIconSvg } from "../../lib/public-site";
-import { buildTagHref, readTagRoutePath } from "@/lib/tag-href";
-import { formatAbsoluteDate } from "../../lib/format";
-import { toPublicSitePath } from "../../lib/runtime-urls";
-import ProjectTagLogo from "../../components/projects/ProjectTagLogo.astro";
-
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PublicRouter from '../../components/PublicRouter';
+import {loadPublicRoute} from '../../lib/route-data';
+import {loadabout} from '../../lib/page-data/about';
+import {publicRouteMetadata} from '../../lib/route-metadata';
+import {getSnapshot} from '../../lib/public-site';
 export async function getStaticPaths() {
   const snapshot = await getSnapshot();
   return snapshot.tags.summaries.map((summary) => ({
@@ -15,159 +12,11 @@ export async function getStaticPaths() {
     props: { summary },
   }));
 }
-
-const snapshot = await getSnapshot();
-const summaryFromProps = (Astro.props as { summary?: typeof snapshot.tags.summaries[number] }).summary;
-const tagPath = readTagRoutePath(Astro.url.pathname, toPublicSitePath("/tags") ?? "/tags");
-const summary =
-  summaryFromProps ??
-  snapshot.tags.summaries.find(
-    (candidate) => candidate.segments.join("/") === tagPath || candidate.name === tagPath
-  );
-if (!summary) return new Response("Not Found", { status: 404 });
-const items = snapshot.tags.timelines[summary.name] ?? [];
-const projects = (snapshot.tags.projectsByTag?.[summary.name] ?? []).flatMap((slug) => {
-  const project = getProjectBySlug(slug);
-  return project ? [project] : [];
-});
-const breadcrumbs = summary.segments.map((segment, index) => ({
-  label: segment,
-  href: toPublicSitePath(buildTagHref(summary.segments.slice(0, index + 1).join("/"))),
-}));
-const { iconId, iconSvg } = pickTagIconSvg(summary.name, snapshot.tags.tagIconMap, snapshot.tags.tagIconSvgMap);
+const initial = await loadPublicRoute(Astro.request);
+if (initial.kind === 'notFound') Astro.response.status = 404;
+const metadata = publicRouteMetadata(initial);
+const about = { kind: 'about' as const, data: await loadabout(Astro) };
 ---
-<BaseLayout pathname={buildTagHref(summary.name)} title={`#${summary.name} - Ivan's Blog`} description={`标签 ${summary.name} 的公开内容时间线`}>
-  <section class="nature-container tag-detail-layout px-2 py-8 sm:px-6 lg:py-12">
-    <nav aria-label="Breadcrumb" class="mb-4">
-      <ol class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[color:var(--nature-text-soft)]">
-        <li>
-          <a href={toPublicSitePath("/tags")} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
-            标签
-          </a>
-        </li>
-        {breadcrumbs.map((item) => (
-          <li class="flex items-center gap-2">
-            <Icon name="tabler:chevron-right" className="h-4 w-4 text-[color:var(--nature-text-faint)]" />
-            <a href={item.href} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">{item.label}</a>
-          </li>
-        ))}
-      </ol>
-    </nav>
-
-    <div class="nature-surface tag-detail-header mb-6 flex items-center justify-between gap-4 px-4 py-4 sm:mb-8 sm:px-5 sm:py-5">
-      <div class="min-w-0">
-        <h1 class="flex items-center gap-2 font-heading text-2xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)] md:text-3xl">
-          {iconSvg ? (
-            <span class="inline-flex text-[color:var(--nature-accent-strong)] [&>svg]:h-5 [&>svg]:w-5" set:html={iconSvg} />
-          ) : (
-            <Icon name={iconId} className="h-5 w-5 text-[color:var(--nature-accent-strong)]" />
-          )}
-          <span class="truncate">{summary.lastSegment}</span>
-        </h1>
-        <p class="mt-2 truncate text-sm text-[color:var(--nature-text-soft)]">#{summary.name}</p>
-      </div>
-
-      <a href={toPublicSitePath("/tags")} class="nature-button nature-button-ghost min-h-10 px-4 py-2">
-        <Icon name="tabler:tags" className="h-4 w-4" />
-        返回
-      </a>
-    </div>
-
-    {projects.length > 0 && (
-      <section class="mb-8" aria-labelledby="tag-projects-title" data-tag-projects>
-        <h2 id="tag-projects-title" class="tag-section-heading nature-title mb-3 text-xl">相关项目 <span class="nature-muted text-sm">{projects.length}</span></h2>
-        <div class="nature-mobile-reading-stream space-y-4">
-          {projects.map((project) => (
-            <article class="tag-project-entry nature-panel nature-panel-soft nature-mobile-reading-row flex items-start gap-3 px-4 py-4 sm:px-6 sm:py-5">
-              <ProjectTagLogo slug={project.slug} title={project.title} />
-              <div class="min-w-0 flex-1">
-              <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <h3 class="nature-title text-lg"><a class="nature-link-inline inline-flex min-h-11 items-center" href={toPublicSitePath(getProjectDetailPath(project.slug))}>{project.title}</a></h3>
-                <span class="nature-muted text-xs">{getProjectDomainDefinition(project.domain).title}</span>
-              </div>
-              <p class="nature-muted mt-1 text-sm leading-7">{project.summary}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-    )}
-    <section aria-labelledby="tag-dated-title" data-tag-dated>
-    <h2 id="tag-dated-title" class="tag-section-heading nature-title mb-4 text-xl">文章与闪念</h2>
-    {items.length > 0 ? (
-      <div class="nature-mobile-reading-stream space-y-4">
-        {items.map((item) => {
-          const href = toPublicSitePath(
-            item.type === "memo" ? `/memos/${item.slug}` : `/posts/${item.slug}`
-          );
-          return (
-            <article class="nature-panel nature-panel-soft nature-mobile-reading-row tag-detail-entry px-4 py-4 sm:px-6 sm:py-5">
-              <div class="flex flex-wrap items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
-                <span class="nature-chip nature-content-type-chip gap-1">
-                  <Icon name={item.type === "memo" ? "tabler:bulb" : "tabler:article"} className="nature-content-type-icon h-3.5 w-3.5" />
-                  <span class="sr-only sm:not-sr-only">{item.type === "memo" ? "闪念" : "文章"}</span>
-                </span>
-                <time dateTime={item.publishDate}>{formatAbsoluteDate(item.publishDate)}</time>
-              </div>
-              {item.title && (
-                <h2 class="nature-title mt-3 text-xl font-semibold">
-                  <a href={href} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
-                    {item.title}
-                  </a>
-                </h2>
-              )}
-              {!item.title && item.type === "memo" && (
-                <a
-                  href={href}
-                  class="nature-link-inline mt-3 inline-flex min-h-10 items-center px-2 text-sm"
-                >
-                  查看闪念详情
-                </a>
-              )}
-              {item.excerpt && <p class="nature-muted mt-3 text-base leading-7">{item.excerpt}</p>}
-            </article>
-          );
-        })}
-      </div>
-    ) : (
-      <div class="nature-empty"><p>该标签下暂无公开文章或闪念。</p></div>
-    )}
-    </section>
-  </section>
+<BaseLayout pathname={Astro.url.pathname} {...metadata}>
+  <PublicRouter client:load initial={initial} about={about} initialUrl={Astro.url.pathname + Astro.url.search + Astro.url.hash} />
 </BaseLayout>
-
-<style>
-  @media (max-width: 639px) {
-    .tag-detail-layout {
-      padding-inline: 0;
-    }
-
-    .tag-detail-header {
-      padding-inline: 1rem;
-    }
-
-    .tag-section-heading { padding-inline: 1rem; }
-
-    .tag-project-entry,
-    .tag-detail-entry {
-      padding: 1.25rem 1rem;
-      border-color: transparent;
-      border-radius: 0;
-      background: transparent;
-      box-shadow: none;
-      backdrop-filter: none;
-    }
-
-    .tag-detail-entry:is(:hover, :focus-within) {
-      transform: none;
-      border-color: transparent;
-      box-shadow: none;
-    }
-  }
-
-  @media (max-width: 374px) {
-    .tag-section-heading, .tag-project-entry, .tag-detail-entry {
-      padding-inline: 0.75rem;
-    }
-  }
-</style>

@@ -8,6 +8,7 @@ export async function createWebDemoPreviewServer({
 } = {}) {
   const ssrEntry = resolve(siteRoot, "server", "entry.mjs");
   if (await Bun.file(ssrEntry).exists()) {
+    const dataRoot = resolve(process.env.WEB_DEMO_DATA_DIR || "dev-data/web-demo");
     const upstreamProbe = Bun.serve({
       hostname: "127.0.0.1",
       port: 0,
@@ -23,6 +24,19 @@ export async function createWebDemoPreviewServer({
         WEB_DEMO_BUILD: "true",
         PUBLIC_WEB_DEMO_BUILD: "true",
         CONSOLE_RUNTIME: "false",
+        CONTENT_SOURCES: "local",
+        PUBLIC_SNAPSHOT_PATH:
+          process.env.PUBLIC_SNAPSHOT_PATH || resolve(dataRoot, "public-snapshot.json"),
+        DB_PATH: process.env.DB_PATH || resolve(dataRoot, "sqlite.db"),
+        LOCAL_CONTENT_BASE_PATH: process.env.LOCAL_CONTENT_BASE_PATH || resolve(dataRoot, "local"),
+        PLAYBOOK_BUNDLE_DIR:
+          process.env.PLAYBOOK_BUNDLE_DIR || resolve(dataRoot, "playbook-fixture"),
+        PLAYBOOK_WORK_DIR: process.env.PLAYBOOK_WORK_DIR || resolve(dataRoot, "playbook-work"),
+        PI_DURABLE_DB_PATH:
+          process.env.PI_DURABLE_DB_PATH || resolve(dataRoot, "pi-durable.sqlite"),
+        CLIPPING_CONTENT_BASE_PATH:
+          process.env.CLIPPING_CONTENT_BASE_PATH || resolve(dataRoot, "clippings"),
+        CLIPPING_PROCESSOR_ENABLED: "false",
       },
       stdout: "inherit",
       stderr: "inherit",
@@ -45,7 +59,8 @@ export async function createWebDemoPreviewServer({
       port,
       async fetch(request) {
         const url = new URL(request.url);
-        if (url.pathname === "/api" || url.pathname.startsWith("/api/"))
+        const routeData = url.pathname === "/api/public/page" && request.method === "GET";
+        if ((url.pathname === "/api" || url.pathname.startsWith("/api/")) && !routeData)
           return new Response("No live API in Web Demo", { status: 404 });
         const upstream = new URL(url.pathname + url.search, `http://127.0.0.1:${upstreamPort}`);
         return fetch(upstream, request);

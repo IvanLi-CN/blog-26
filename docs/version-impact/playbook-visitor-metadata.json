@@ -10,7 +10,6 @@
     "docs/specs/style-playbook-integration/SPEC.md": "2ebfc806f7fe5310181719f298da9ffdb6398d05",
     "docs/specs/style-playbook-integration/assets/visitor-reading/playbook-topic-desktop-dark.png": "7f13d53e3b2505260069673fe8253c90560d59c9",
     "docs/specs/style-playbook-integration/assets/visitor-reading/playbook-topic-mobile-light.png": "6b07ae12fffab23510e35f872f31da0f912ad1fb",
-    "src/components/playbook/PlaybookPage.tsx": "56c3bbfea40a664b7417f800d44af4c2db899de3",
     "src/lib/playbook/visitor-reading.ts": "31fda888ea2ef36504cabf75fbd45a4b22d5224a",
     "tests/lib/playbook-build-smoke.ts": "d1da71fa88c66dc3a7659e4da73898599055b9b5",
     "tests/lib/playbook-contract.test.ts": "fb45d06f75ca42b0b5ff5447e0202b863e01590d",
@@ -37,7 +36,7 @@
     "current": {
       "impact": "patch",
       "reasoning": "The change only removes low-value visitor metadata from Playbook topic views; public API and durable state contracts remain unchanged.",
-      "assessed_at": "2026-10-08T05:20:00Z",
+      "assessed_at": "2026-10-08T08:33:00Z",
       "evidence": [
         {
           "path": "tests/lib/playbook-visitor-reading.test.ts",
@@ -46,8 +45,8 @@
         }
       ],
       "scope_drift": {
-        "detected": false,
-        "description": "The implemented scope matches the planned visitor metadata reduction."
+        "detected": true,
+        "description": "CSR migration transfers changed renderers, route adapters, shared tests and removals to public-csr-navigation.json. Remaining topic scope and witnesses are unchanged; planned assessment remains historical. CSR does not modify the inherited VERSION; this PR does not publish a release. Reclassified paths: src/components/playbook/PlaybookPage.tsx."
       }
     },
     "verified": {

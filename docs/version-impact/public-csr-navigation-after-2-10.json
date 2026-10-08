@@ -1,0 +1,279 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e4a14c1e89f72b776ea122d2d767cdafb246f684",
+  "covered_files": {
+    "README.md": "795b4dac947224bd929ba8be89dbd69491eedd7f",
+    "astro.config.mjs": "98e54eb4b6d401c14a2fb448778926acc85a690e",
+    "bun.lock": "804bf1eca95f285aa47993613b05ddb7a4f10b63",
+    "docs/adr/0010-self-contained-console-runtime.md": "e2a7335be1f3ee8473738bbd3a3b416f2df93416",
+    "docs/adr/0019-shared-public-ssr-csr-renderer.md": "6043776178510d10cf91073a3d0725cc0c59a3b0",
+    "docs/solutions/routing/astro-shared-react-mdx.md": "88c565a2622b14f1167b78effd7e9807c6a0bc89",
+    "docs/solutions/routing/astro-static-route-data.md": "007197668b45ca9df15eaca7be4401886ada1482",
+    "docs/specs/README.md": "e4e3065c453611e707f430d174c65a1407fe74c1",
+    "docs/specs/public-csr-navigation/HISTORY.md": "80b1f7b8a3b12da3235b1b88be2e8f699a9cbea3",
+    "docs/specs/public-csr-navigation/IMPLEMENTATION.md": "efaf8aca07a16b8177539e8ef3885dee4274e9ba",
+    "docs/specs/public-csr-navigation/SPEC.md": "56a3c0c40ba6ff7979d7925f13449f3ff310150b",
+    "docs/specs/public-csr-navigation/assets/csr-clipping-mobile-dark.png": "aa64acd19f8f80b8fdf4f63579edf3542c272c60",
+    "docs/specs/public-csr-navigation/assets/csr-offline-desktop-dark.png": "64be9ace1a13b0014e4d876cdc688480a141103a",
+    "docs/specs/public-csr-navigation/assets/csr-playbook-mobile-dark.png": "8ec57709dc0a4d1bfe3833dfceac60447f2ecc6f",
+    "docs/specs/public-csr-navigation/assets/csr-post-mobile-light.png": "da3270057b0eb60b2822f619e2fa87adcb187070",
+    "docs/specs/public-csr-navigation/assets/csr-project-desktop-light.png": "5587edb53ebc22d4fc405db066faecea8214ef25",
+    "package.json": "e3d1aa1ea8cdecf9d3ae4d7fa8be5f98fa6d7320",
+    "scripts/preview-web-demo.ts": "6984b239be4515101940047ff142d7333d7c089b",
+    "scripts/verify-pages-build.test.ts": "58366a234979064fca185740798413c8e11e30cc",
+    "scripts/verify-pages-build.ts": "e7ee4aff704114f383f6cf849cacf39b5186383c",
+    "site/components/MemoDetailHeading.astro": null,
+    "site/components/MemoDetailHeading.tsx": "83b07ff362b9908bd9c733d07f0012a4af67782e",
+    "site/components/MemoTimeline.tsx": "d7f6e8060c4a7c6aec11ccc0fc7d381b3effea81",
+    "site/components/PostCard.astro": null,
+    "site/components/PostCard.tsx": "4d33f4ab6cff26a88dc8baa0d60f0f30e917e835",
+    "site/components/ProjectBody.tsx": "1772b04a6be86ae3a24d4a232e7cc5dd4ae662e1",
+    "site/components/PublicMemoAuthoring.tsx": "d58d56f8fc9c8291b4890d2c51aee13d2bdc7d78",
+    "site/components/PublicRouter.tsx": "30219df748fabc934fbbea340a499fb8b3627212",
+    "site/components/RelatedPostCard.astro": null,
+    "site/components/RelatedPostCard.tsx": "4223508aa835af3397900f934124d0c53642ddee",
+    "site/components/SearchBootstrap.astro": "32b375c16e9a2cf4d72274a67177ea72d60a3d84",
+    "site/components/SearchPageIsland.tsx": "12efbbedd8128d3a544a4479b763df25fd927cd9",
+    "site/components/SiteFooter.astro": null,
+    "site/components/SiteFooter.tsx": "3b212fbdf60470cd7dae326b53f8a2715b36aae9",
+    "site/components/SiteHeader.astro": null,
+    "site/components/SiteHeader.tsx": "ae37f7d96f712342b857fe09226437ebecb64a39",
+    "site/components/TagBadge.astro": null,
+    "site/components/TagBadge.tsx": "048cd394f47da305dfb06aac09c65fd479cbd348",
+    "site/components/TimelineCard.astro": null,
+    "site/components/TimelineCard.tsx": "8c288691b17f5bbcc92488a45fa24977f9e95084",
+    "site/components/pages/about.tsx": "7161a2a62c9fdb67ce5070587fa69596162e4512",
+    "site/components/pages/home.tsx": "4dbf9ee603e2546ac50b4c1b0866b15586b57de8",
+    "site/components/pages/memo.tsx": "9b9b241b72b8a89447084ca919bc50ca564325e9",
+    "site/components/pages/memos.tsx": "f9a312bd5c41802cdc763924558f8d7e846743fd",
+    "site/components/pages/notFound.tsx": "a3977f086ed58cc058e7598e8a5f204c0348c4e1",
+    "site/components/pages/playbook.tsx": "e83eb453c9a322d5c359f420c64023ab5e13f2c4",
+    "site/components/pages/playbookDetail.tsx": "4d35d64d314c8fee8e9ca98620050902149e7791",
+    "site/components/pages/post.tsx": "1ace561d35d4f86411a2441a7c97583b09c475b8",
+    "site/components/pages/posts.tsx": "57fe48bf1905bf47d41271f41c43ca38fa55d123",
+    "site/components/pages/project.tsx": "b5d0774bc99ef5af40ff0fde03f759fe823ff704",
+    "site/components/pages/projects.tsx": "5a58febf9786ef23dc774fbc7a2870d236b9e8f3",
+    "site/components/pages/tag.tsx": "093c0693f6a1f573778db30d937531e389ba25d5",
+    "site/components/pages/tags.tsx": "78b135bff492ad6a0f25f8049f2a82dc9aaf294d",
+    "site/components/projects/FeaturedProjectLogo.astro": null,
+    "site/components/projects/FeaturedProjectLogo.tsx": "cf83ff4a408e8818b638b121dd1c9a50089a0a11",
+    "site/components/projects/ProjectExternalLinks.astro": null,
+    "site/components/projects/ProjectExternalLinks.tsx": "2bb953564f4d953e5633d2c3a577c8f5b88948f8",
+    "site/components/projects/ProjectPoster.astro": null,
+    "site/components/projects/ProjectPoster.tsx": "6ea8b22c7ce7723fa696dc9a3c52b82bba73959d",
+    "site/components/projects/ProjectRuntimeDataPanel.astro": null,
+    "site/components/projects/ProjectRuntimeDataPanel.tsx": "76060117e24aea9934a6ae22f096d3846b9aaf24",
+    "site/components/projects/ProjectSocialPreview.astro": null,
+    "site/components/projects/ProjectSocialPreview.tsx": "068d6d9f4a028ba36359aa6fb75fc981bb3b59e7",
+    "site/components/projects/ProjectTagLogo.astro": null,
+    "site/components/projects/ProjectTagLogo.tsx": "93f700b9555b7349bad76da2245ef9b6936ac070",
+    "site/components/projects/RuntimeActivityChart.astro": null,
+    "site/components/projects/RuntimeActivityChart.tsx": "a54463a0a33bda2a6e7e5857b6b0974b3e0fd9ec",
+    "site/components/projects/RuntimeMetricValue.astro": null,
+    "site/components/projects/RuntimeMetricValue.tsx": "226a82132f88df4c1aa2e45591b13cba17209a47",
+    "site/components/projects/RuntimePanelAtmosphere.astro": null,
+    "site/components/projects/RuntimePanelAtmosphere.tsx": "afd32fd2123e6f8a97404c1d207d2330cb81e578",
+    "site/components/projects/RuntimeProjectLogo.astro": null,
+    "site/components/projects/RuntimeProjectLogo.tsx": "ec62e66e6435f5220d99de29bab4a4b18586ec97",
+    "site/components/projects/RuntimeSparkline.astro": null,
+    "site/components/projects/RuntimeSparkline.tsx": "c8caef0647f9f57907075d77f1053c9393d0df50",
+    "site/env.d.ts": "0b293dac59bc9be63889d4b55d3bb79bda5323a9",
+    "site/layouts/BaseLayout.astro": "cbda7cb057647ace8fdac4824a0bd55d1227f9be",
+    "site/lib/memo-pagination.ts": "5895aa83cb2e86b48bcae03a33eebb3a45477fe7",
+    "site/lib/page-data/about.ts": "87d863c5c0d243ce3cfc6403723d692fccbcbf75",
+    "site/lib/page-data/home.ts": "b98824a14073e6327872dc01b6c9db79aa7756cf",
+    "site/lib/page-data/memo.ts": "84da5be85bdc77129d1a54523f1e206b0fbd3956",
+    "site/lib/page-data/memos.ts": "b3b9995bc0f24dfc33e6cd5a458a44b948a1c0ec",
+    "site/lib/page-data/notFound.ts": "19600ad841453dff92d302c0d8423ef51dd25a51",
+    "site/lib/page-data/playbook.ts": "4b4fdc0ca0a8480a31d5edb2f1573b706355b1df",
+    "site/lib/page-data/playbookDetail.ts": "187d8058cd27d55bd63e1ff222a17f9f80bc603e",
+    "site/lib/page-data/post.ts": "2b53baf1981d63914eed665c9c3bfdf4915e8da5",
+    "site/lib/page-data/posts.ts": "d18861c4599e818394a5528350c120988f465954",
+    "site/lib/page-data/project.ts": "3d8b2e7619c4ac686d18b0ebafaa26c21ec51955",
+    "site/lib/page-data/projects.ts": "099a7069ce6586d11a0243dc1fd80199e497ca3d",
+    "site/lib/page-data/search.ts": "d3057cb9ff09f5c68205374096220e45660fb93d",
+    "site/lib/page-data/tag.ts": "c0e44faa9ac405d221d93c67da1573f53846a5e1",
+    "site/lib/page-data/tags.ts": "ba400d4d756fef03725c9b588151fafa3b041d55",
+    "site/lib/project-content.ts": "ae9c38125b7da677a84dd49117232c7eeb3e087e",
+    "site/lib/projects.ts": "9cfb1c0b05292ec4e2189a744af66493eb9cc2cd",
+    "site/lib/public-page-behaviors.ts": "5bb2ed667e913f4aadc77ec25625583d9a0da2d8",
+    "site/lib/public-route.ts": "f593f14411c995a982b35865e565d107ea4b8df3",
+    "site/lib/public-site-client.ts": "28625a539dcf7163ddee8c60003795249d85329c",
+    "site/lib/public-site.ts": "3499f6d4324af8b269a6efee404d9a66cb05942f",
+    "site/lib/react-template.ts": "1924f79741c1edc84262a46b3779394710ce3563",
+    "site/lib/route-data-utils.ts": "2b0a35ce8132aeb737ed7c918282461b90581a57",
+    "site/lib/route-data.ts": "6335e0658fcf958368af962b9c7a151d1e6d42c7",
+    "site/lib/route-metadata.ts": "c54b9ccf56fac83630bec84bb97b6ffb27173a43",
+    "site/lib/runtime-urls.ts": "bdee41367213591ed526b56a2fca99d73aed4560",
+    "site/lib/static-route-data.ts": "bce304b2c374f3043d5fbfeb1dcd62bb28970aa4",
+    "site/pages/404.astro": "d6be5f961bbcaac78dd2ffc1b52229202c6bf3ce",
+    "site/pages/[...route].json.ts": "4ef86f404578e1e52b674055c567874cead9ff77",
+    "site/pages/about.astro": "d6be5f961bbcaac78dd2ffc1b52229202c6bf3ce",
+    "site/pages/api/[...path].ts": "2a911f77ea9dacae8cfb5e4c04c9cb9b24dea1dd",
+    "site/pages/index.astro": "d6be5f961bbcaac78dd2ffc1b52229202c6bf3ce",
+    "site/pages/memos/[slug].astro": "1643eb4f3600f3142541b9639e366a0d3ce71a3f",
+    "site/pages/memos/index.astro": "28567272d31b418103b890392fc6654c2e2fc437",
+    "site/pages/playbook/[...path].astro": "3203025fa8adb44cab209ec8c185ad3d4e7a221c",
+    "site/pages/playbook/index.astro": "28567272d31b418103b890392fc6654c2e2fc437",
+    "site/pages/posts/[slug].astro": "57a276a1331c1b03ef67d1e942accfa3c07ccfa8",
+    "site/pages/posts/index.astro": "28567272d31b418103b890392fc6654c2e2fc437",
+    "site/pages/projects/[slug].astro": "dcc199aa5f2ea617a898f6693b3e27c9ddc263a1",
+    "site/pages/projects/index.astro": "28567272d31b418103b890392fc6654c2e2fc437",
+    "site/pages/search.astro": "d2c08c113f895f1890fd62b7812ba4b48b6c04cd",
+    "site/pages/tags/[...tagSegments].astro": "4ea99937a0c2eba39deb93b5884af963fb67e3b2",
+    "site/pages/tags/index.astro": "28567272d31b418103b890392fc6654c2e2fc437",
+    "site/styles/public-pages.css": "103b0cb71003e349866e2653e02ca13f824fe74e",
+    "src/components/playbook/PlaybookPage.tsx": "c5ceacb9769c6d7f012a558c5fa217aec7267632",
+    "src/lib/web-demo-fetch.ts": "314d5062d9ac6775b44c36b2652e2e64737f290e",
+    "tests/components/PublicMemoAuthoring.test.tsx": "64c5676df7110b1ce06494c7d4f933f4652c4f17",
+    "tests/e2e/admin/public-csr-authoring.spec.ts": "b2d9e8c7dcc2edaf9c589dcbeec62d0073aa4b70",
+    "tests/e2e/clipping-web-demo.ts": "996f804d348c184986bdf454963343f6470fd995",
+    "tests/e2e/guest/astro-front-phase1.spec.ts": "9c293bcbdc03d2548eef2d9ab77a4cd0456ee2d5",
+    "tests/e2e/guest/mobile-reading-surface.spec.ts": "b887fa5c89f3b0d47533d94c3a9e63cbd2efe727",
+    "tests/e2e/guest/nature-front-coverage.spec.ts": "ffc57190c187ce92225d4a4a565e952857bc7595",
+    "tests/e2e/guest/public-csr-navigation.spec.ts": "681ab740665a151d2ece14f6b7f5d08644175aee",
+    "tests/e2e/web-demo/playwright.config.ts": "f16cccb3a7f8d2583adefa78f783587ae09c7d08",
+    "tests/e2e/web-demo/public-csr.spec.ts": "ea610949ea4c4d938b4f9c62c27f035f1588f529",
+    "tests/lib/project-content.test.ts": "9b6a8c126935cbcddb51196d7e6ea4fcd71f9b06",
+    "tests/lib/public-csr-route.test.ts": "1c1000aa508884951596ee6ddf13b06bb6506ed3",
+    "tests/lib/web-demo-boundary.test.ts": "9687b36aef3778b96a93a3b128bc2ab9921cf949",
+    "tests/lib/web-demo-fetch.test.ts": "85c0dd2a6ef5b11d1e369350fdc5460b3fe3b6cf",
+    "tests/storybook/story-boundary.test.ts": "94803bd632f1372a2c7529c56aa7a6e1ad78ff8d"
+  },
+  "change": {
+    "description": "Shared public SSR/CSR navigation, route-scoped structured reads, cancellation and target-owned failures; preserve mainline clipping, authoring, poster themes and static media versions. Reclassify migrated paths from earlier cumulative records.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "Add structured public route reads and shared SSR/CSR renderers without removing or changing existing endpoints. Static publishing retains entry HTML; console retains SSR authorization and private no-store reads. Demo only substitutes data/request adapters. Existing SQLite and local-content formats remain unchanged.",
+      "assessed_at": "2026-10-08T08:33:00Z",
+      "evidence": [
+        {
+          "path": "tests/lib/public-csr-route.test.ts",
+          "blob": "1c1000aa508884951596ee6ddf13b06bb6506ed3",
+          "command": "bun test tests/lib/public-csr-route.test.ts (Agent VM)"
+        },
+        {
+          "path": "tests/lib/web-demo-fetch.test.ts",
+          "blob": "85c0dd2a6ef5b11d1e369350fdc5460b3fe3b6cf",
+          "command": "bun test tests/lib/web-demo-fetch.test.ts tests/lib/web-demo-boundary.test.ts (Agent VM)"
+        },
+        {
+          "path": "tests/e2e/guest/public-csr-navigation.spec.ts",
+          "blob": "681ab740665a151d2ece14f6b7f5d08644175aee",
+          "command": "Playwright guest public-csr-navigation: all 8 cases pass on native static and console artifacts (Agent VM)"
+        },
+        {
+          "path": "tests/e2e/web-demo/public-csr.spec.ts",
+          "blob": "ea610949ea4c4d938b4f9c62c27f035f1588f529",
+          "command": "Playwright Web Demo public-csr: all 16 cases pass, including 12 offline target families and recovery (Agent VM)"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "Add structured public route reads and shared SSR/CSR renderers without removing or changing existing endpoints. Static publishing retains entry HTML; console retains SSR authorization and private no-store reads. Demo only substitutes data/request adapters. Existing SQLite and local-content formats remain unchanged.",
+      "assessed_at": "2026-10-08T08:33:00Z",
+      "evidence": [
+        {
+          "path": "tests/lib/public-csr-route.test.ts",
+          "blob": "1c1000aa508884951596ee6ddf13b06bb6506ed3",
+          "command": "bun test tests/lib/public-csr-route.test.ts (Agent VM)"
+        },
+        {
+          "path": "tests/lib/web-demo-fetch.test.ts",
+          "blob": "85c0dd2a6ef5b11d1e369350fdc5460b3fe3b6cf",
+          "command": "bun test tests/lib/web-demo-fetch.test.ts tests/lib/web-demo-boundary.test.ts (Agent VM)"
+        },
+        {
+          "path": "tests/e2e/guest/public-csr-navigation.spec.ts",
+          "blob": "681ab740665a151d2ece14f6b7f5d08644175aee",
+          "command": "Playwright guest public-csr-navigation: all 8 cases pass on native static and console artifacts (Agent VM)"
+        },
+        {
+          "path": "tests/e2e/web-demo/public-csr.spec.ts",
+          "blob": "ea610949ea4c4d938b4f9c62c27f035f1588f529",
+          "command": "Playwright Web Demo public-csr: all 16 cases pass, including 12 offline target families and recovery (Agent VM)"
+        }
+      ],
+      "scope_drift": {
+        "detected": true,
+        "description": "CI exposed stale cumulative Astro renderer blobs after the approved CSR migration. The owner authorized repair batch 4: reclassify migrated paths, correct HTML reference inspection and update the shared-router hydration witness; retain the accepted UI and all policy gates. This record covers CSR changes after mainline v2.10.0 preparation; the v2.9.0 cumulative record remains applicable until that independent release becomes the published baseline."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "Add structured public route reads and shared SSR/CSR renderers without removing or changing existing endpoints. Static publishing retains entry HTML; console retains SSR authorization and private no-store reads. Demo only substitutes data/request adapters. Existing SQLite and local-content formats remain unchanged.",
+      "assessed_at": "2026-10-08T08:33:00Z",
+      "evidence": [
+        {
+          "path": "tests/lib/public-csr-route.test.ts",
+          "blob": "1c1000aa508884951596ee6ddf13b06bb6506ed3",
+          "command": "bun test tests/lib/public-csr-route.test.ts (Agent VM)"
+        },
+        {
+          "path": "tests/lib/web-demo-fetch.test.ts",
+          "blob": "85c0dd2a6ef5b11d1e369350fdc5460b3fe3b6cf",
+          "command": "bun test tests/lib/web-demo-fetch.test.ts tests/lib/web-demo-boundary.test.ts (Agent VM)"
+        },
+        {
+          "path": "tests/e2e/guest/public-csr-navigation.spec.ts",
+          "blob": "681ab740665a151d2ece14f6b7f5d08644175aee",
+          "command": "Playwright guest public-csr-navigation: all 8 cases pass on native static and console artifacts (Agent VM)"
+        },
+        {
+          "path": "tests/e2e/web-demo/public-csr.spec.ts",
+          "blob": "ea610949ea4c4d938b4f9c62c27f035f1588f529",
+          "command": "Playwright Web Demo public-csr: all 16 cases pass, including 12 offline target families and recovery (Agent VM)"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": ["2.7.0", "2.8.3", "2.9.0", "2.10.0"],
+      "evidence": [
+        {
+          "path": "tests/lib/public-csr-route.test.ts",
+          "blob": "1c1000aa508884951596ee6ddf13b06bb6506ed3",
+          "command": "bun test tests/lib/public-csr-route.test.ts (Agent VM)"
+        },
+        {
+          "path": "tests/e2e/guest/public-csr-navigation.spec.ts",
+          "blob": "681ab740665a151d2ece14f6b7f5d08644175aee",
+          "command": "Playwright guest public-csr-navigation: all 8 cases pass on native static and console artifacts (Agent VM)"
+        },
+        {
+          "path": "tests/e2e/admin/public-csr-authoring.spec.ts",
+          "blob": "b2d9e8c7dcc2edaf9c589dcbeec62d0073aa4b70",
+          "command": "Playwright admin public-csr-authoring: 3 cases pass using configured runtime identity, including cancellation and public-host isolation (Agent VM)"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite, local-content, release-ledger or durable format changes. Navigation history is ephemeral; existing theme and Demo environment storage retain their contracts.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/web-demo-boundary.test.ts",
+          "blob": "9687b36aef3778b96a93a3b128bc2ab9921cf949",
+          "command": "bun test tests/lib/web-demo-boundary.test.ts (Agent VM)"
+        },
+        {
+          "path": "tests/e2e/admin/public-csr-authoring.spec.ts",
+          "blob": "b2d9e8c7dcc2edaf9c589dcbeec62d0073aa4b70",
+          "command": "Playwright admin public-csr-authoring: 3 cases pass using configured runtime identity, including cancellation and public-host isolation (Agent VM)"
+        }
+      ]
+    }
+  }
+}
