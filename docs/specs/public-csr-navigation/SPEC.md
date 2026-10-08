@@ -112,6 +112,8 @@
 
 移动端保留文章代码块、主线剪藏阅读器和 Playbook 内容流。
 
+Playbook 分类入口在可用宽度足够时显示已有图标，窄屏保留完整文字和 44px 操作高度；站点顶部导航保持原有规则。
+
 ![Mobile post](./assets/csr-post-mobile-light.png)
 
 ![Mobile clipping](./assets/csr-clipping-mobile-dark.png)

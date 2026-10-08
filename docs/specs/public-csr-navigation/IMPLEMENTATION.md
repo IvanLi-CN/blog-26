@@ -21,7 +21,7 @@
 
 ## Verification
 
-候选基线为 `14c7e30522aecc3f356196968683cb3ab8f87272`。应用源码与 `5f192917a45b267475e88891b5d27c6c4f720c13` 相同，差异只有主线的 `VERSION` 更新；主线剪藏阅读器与类型标记均已接入。以下验证覆盖当前页面实现。
+候选基线为 `973d788309e23f98cf836f2b607d22e2cb53a3b2`。保留主线剪藏阅读器、类型标记及 Playbook 面向访客的文案简化；以下验证覆盖共享页面实现。
 
 - Agent VM 预提交套件通过，包含组件 Story 边界、构建隔离、路由匹配、公开接口、请求取消及未访问正文的载荷隔离。命令：`bun run test:precommit`，提交 hook 保持启用。Playbook 搜索正文隔离另有回归断言。
 - Demo 导航：`tests/e2e/web-demo/public-csr.spec.ts` 16 项全部通过，覆盖 SSR 离线首屏、12 类离线目标及恢复、历史、主题、取消、静态页面和 404，并断言没有 hydration 错误。命令：`WEB_DEMO_TEST_URL=<demo-origin> bun x playwright test --config tests/e2e/web-demo/playwright.config.ts`。
@@ -33,7 +33,8 @@
 - `bun run check` 通过，保留迁移前样式与原生媒体带来的警告；Spec 结构和 owner-facing 图片文档检查通过。
 - 制品检查逐一读取 125 个静态 JSON 的 HTTP 响应，包含 92 个原生标签路径；全部匹配构建载荷。125 份 live HTML 不包含 Demo 启用标记；Demo 离线 SSR 仍含当前文章正文，console 列表 DTO 不携带文章详情正文。
 - 本地 `web-demo:site` dev server 使用独立缓存和端口租约；项目 MDX 的临时修改及恢复均自动更新，开发工具栏通过本地 Astro 偏好关闭，未修改产品布局。
-- 六方向只读评审发现的片段时序、历史滚动与 Playbook 搜索载荷问题按原合同修复，并增加对应回归。改动不改变已确认五张截图的初始页面、样式或文案；视觉证据继续代表这些页面。
+- 六方向只读评审发现的片段时序、历史滚动与 Playbook 搜索载荷问题按原合同修复，并增加对应回归。主线 Playbook 的文案同步保留正式产品实现；本 PR 不调整站点导航的图标展示规则。
+- Playbook 的“全部／主题／项目实践／规则”入口按分类栏实际可用宽度显示已有图标：达到 344px 时显示，较窄时保留完整文字；操作高度保持 44px。320、360、393、1440px 视口均无横向溢出，393px 浅深色及键盘导航验证通过。更新后的 Playbook 移动端截图已由主人确认，其余四张证据不变。
 
 ## Remaining Gaps
 
