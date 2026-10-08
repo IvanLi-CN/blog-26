@@ -308,7 +308,7 @@ Valid zero metrics remain runtime data. Missing CVM history uses the protocol's 
 
 #### Oidrune operations group
 
-- Evidence binding: implementation commit `9d6077d296ab9de6bd4a489cc0e9e625127cc138`; source type `ui_demo`; target program `Ego Browser`; capture scope `browser-viewport`; requested viewports `1780px × 1071px` and `393px × 852px`; viewport strategy `devtools-emulate`; margin policy `trim_only`; evidence surface `page`; sensitive exclusion `N/A`.
+- Evidence binding: implementation commit `e714acb7`; source type `ui_demo`; target program `Ego Browser`; capture scope `browser-viewport`; requested viewports `1780px × 1071px` and `393px × 852px`; viewport strategy `devtools-emulate`; margin policy `trim_only`; evidence surface `page`; sensitive exclusion `N/A`.
 - The owner confirmed the Oidrune operations-group captures in light and dark themes at desktop and mobile sizes. These four focused captures are the submission evidence for this change; the mobile captures position the horizontal poster rail on Oidrune.
 
 ![Oidrune operations desktop light](./assets/projects-oidrune-operations-desktop-light.png)
