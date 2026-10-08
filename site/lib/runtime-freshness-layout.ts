@@ -3,6 +3,7 @@ export interface FreshnessLayout {
   rows: number;
   gap: number;
   cellSize: number;
+  gridHeight: number;
 }
 
 export function calculateFreshnessLayout(
@@ -24,16 +25,42 @@ export function calculateFreshnessLayout(
     return null;
   }
 
-  if (count === 0) return { columns: 30, rows: 1, gap: 0, cellSize: 0 };
+  if (count === 0) return { columns: 30, rows: 0, gap: 0, cellSize: 0, gridHeight: 0 };
 
-  const columns = Math.max(30, Math.ceil(Math.sqrt((count * width) / height)));
-  const rows = Math.ceil(count / columns);
-  const gap = Math.min(designGap, width / (2 * columns), height / (2 * rows));
-  const cellSize = Math.min(
-    8,
-    (width - (columns - 1) * gap) / columns,
-    (height - (rows - 1) * gap) / rows
-  );
+  const gapRatio = designGap / 8;
+  const minimumColumns = Math.max(30, Math.ceil((width / 8 + gapRatio) / (1 + gapRatio)));
+  const minimumHeightColumns = Math.ceil((width / height + gapRatio) / (1 + gapRatio));
+  let upperColumns = Math.max(minimumColumns, count, minimumHeightColumns);
+  const epsilon = 1e-9;
 
-  return { columns, rows, gap, cellSize };
+  const measure = (columns: number) => {
+    const cellSize = width / (columns + gapRatio * (columns - 1));
+    const rows = Math.ceil(count / columns);
+    const gap = gapRatio * cellSize;
+    const gridHeight = rows * cellSize + (rows - 1) * gap;
+    return { columns, rows, gap, cellSize, gridHeight };
+  };
+  const fits = (layout: ReturnType<typeof measure>) =>
+    layout.cellSize <= 8 + epsilon && layout.gridHeight <= height + epsilon;
+
+  while (!fits(measure(upperColumns))) {
+    const nextColumns = Math.min(
+      Number.MAX_SAFE_INTEGER,
+      Math.max(upperColumns + 1, upperColumns * 2)
+    );
+    if (nextColumns === upperColumns) return null;
+    upperColumns = nextColumns;
+  }
+
+  let lowerColumns = minimumColumns;
+  while (lowerColumns < upperColumns) {
+    const middleColumns = lowerColumns + Math.floor((upperColumns - lowerColumns) / 2);
+    if (fits(measure(middleColumns))) {
+      upperColumns = middleColumns;
+    } else {
+      lowerColumns = middleColumns + 1;
+    }
+  }
+
+  return measure(lowerColumns);
 }
