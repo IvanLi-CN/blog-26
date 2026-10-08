@@ -15,7 +15,7 @@
     "scripts/run-precommit-tests.ts": "9e0b8ae84036cd40761f4f679dab95aad60c9013",
     "site/components/projects/ProjectRuntimeDataPanel.astro": "37f04419154a8f0832788f90f52d5eed2df28e99",
     "site/components/projects/RuntimeActivityChart.astro": "0c984a8ac60c0e92cc61a310549ed8a105537e6f",
-    "site/components/projects/RuntimeCellGrid.tsx": "a32d05aaf26a09adeffd7427c25f20de52e02ac4",
+    "site/components/projects/RuntimeCellGrid.tsx": "01db9db7723a71b138d27c0178581c37bee4e0b3",
     "site/components/projects/runtime-cell-gesture.ts": "6a0f5bdd2109006d2c678e53a85a276400d2c813",
     "site/components/projects/runtime-cell-grid.css": "e8be7c3f70658e955551af03d10fa1f8e7076498",
     "site/lib/project-runtime-channel.ts": "e21ca318e423b4fde77cb3ade685e4a7484e6576",
@@ -28,7 +28,7 @@
     "tests/components/runtime-cell-gesture.test.ts": "b06677b53c32f08d1a60a60e8803988354bd3652",
     "tests/components/runtime-cell-grid.test.tsx": "41b9723dd017ec831a51bca8f6abed824675572f",
     "tests/e2e/guest/nature-front-coverage.spec.ts": "ad42973e6cbc6169a476089accb7975ebc1b72bf",
-    "tests/e2e/guest/project-visual-slot.spec.ts": "bc4f0c5440d5105572c0374061d340612ea9fe33",
+    "tests/e2e/guest/project-visual-slot.spec.ts": "5f345658d956acadf12dc549b8a4d7425c2d8e0b",
     "tests/lib/project-runtime-channel.test.ts": "b6ec3782142530f3193d54e1e299fd6d0e51488f",
     "tests/storybook/playbook-interactions.ts": "5146401d3660b6913feea67e723874df7634c508"
   },
@@ -50,7 +50,7 @@
         },
         {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
-          "blob": "bc4f0c5440d5105572c0374061d340612ea9fe33",
+          "blob": "5f345658d956acadf12dc549b8a4d7425c2d8e0b",
           "command": "focused production guest Playwright at desktop and narrow mobile viewports"
         }
       ]
@@ -88,7 +88,7 @@
         },
         {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
-          "blob": "bc4f0c5440d5105572c0374061d340612ea9fe33",
+          "blob": "5f345658d956acadf12dc549b8a4d7425c2d8e0b",
           "command": "official /projects targeted Playwright route: 4/4 passed"
         },
         {
@@ -107,7 +107,7 @@
       "evidence": [
         {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
-          "blob": "bc4f0c5440d5105572c0374061d340612ea9fe33",
+          "blob": "5f345658d956acadf12dc549b8a4d7425c2d8e0b",
           "command": "official /projects route preserves values, statuses, navigation, and visual slots"
         }
       ]
