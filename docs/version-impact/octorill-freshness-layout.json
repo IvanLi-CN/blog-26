@@ -5,7 +5,7 @@
   "covered_files": {
     "docs/specs/nature-front-ui/HISTORY.md": "8fb4d930b5b34a4e20ecfbbb2ea51502a9dd0193",
     "docs/specs/nature-front-ui/IMPLEMENTATION.md": "a6f956ede52f82609afb91a60fa4f7f3caffd3c8",
-    "docs/specs/nature-front-ui/SPEC.md": "e84dbf0b29a35762650f4529e0456b3a4a92d4dc",
+    "docs/specs/nature-front-ui/SPEC.md": "07b2a3b19b3c3c8b8bc1e97aa127ab7ddada285d",
     "docs/specs/nature-front-ui/assets/project-runtime-panels-dense-desktop-dark-1780x1071.png": "33ab2d5b69f6b68b840e1c257175245aeee4738d",
     "docs/specs/nature-front-ui/assets/project-runtime-panels-dense-desktop-light-1780x1071.png": "ca1d3772639390d6fc4cd726cc1722f236e86992",
     "docs/specs/nature-front-ui/assets/project-runtime-panels-dense-mobile-dark-393x852.png": "5bcbbf805fd6994f7f2df6d09445acd6ca18d969",
@@ -19,12 +19,14 @@
     "docs/specs/nature-front-ui/assets/project-runtime-panels-mobile-dark-393x852.png": "b291fb7e2b69d5f805ec9f20bfa3f7737b6fd881",
     "docs/specs/nature-front-ui/assets/project-runtime-panels-mobile-light-393x852.png": "1a59336df528bb7a659a01b6384f927491b316a9",
     "site/lib/project-runtime-live.ts": "76b4bf7c273219d7f4e895f48e998731a9e03b7d",
+    "site/lib/project-runtime-sources.ts": "68d320c174a4a11701915a63a07bdaffd7e9659e",
     "site/lib/runtime-freshness-layout.ts": "5038d10e3c11e058367bdf40d0e29ea5f2c81017",
     "tests/e2e/guest/project-visual-slot.spec.ts": "59a6de75de10559bbf69824210b59fa0d2b81257",
+    "tests/lib/project-runtime-sources.test.ts": "32b69f29835f5b40759630f4385a389115e17c52",
     "tests/lib/runtime-freshness-layout.test.ts": "690f1b0930e2aa57cf6df4e766b3b9b64b9a4be8"
   },
   "change": {
-    "description": "Align OctoRill freshness title and heatmap spacing, fit complete rows to the available width, and preserve ordered repository cells across the fixed project visual slot.",
+    "description": "Align OctoRill freshness title and heatmap spacing, fit complete rows to the available width, preserve ordered repository cells, and accept valid short provider trend samples.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api"]
   },
@@ -46,20 +48,25 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "e84dbf0b29a35762650f4529e0456b3a4a92d4dc",
+          "blob": "07b2a3b19b3c3c8b8bc1e97aa127ab7ddada285d",
           "command": "spec contract and drift checks"
         }
       ]
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The implementation changes only project-wall layout calculation, stable-region measurement, focused regression coverage, and Nature evidence assets; runtime data order and public APIs remain unchanged.",
-      "assessed_at": "2026-10-08T08:33:00Z",
+      "reasoning": "The implementation changes project-wall layout calculation, stable-region measurement, focused regression coverage, and OctoRill response validation; runtime data order, endpoint shape, and public APIs remain compatible.",
+      "assessed_at": "2026-10-09T01:00:00+08:00",
       "evidence": [
         {
           "path": "tests/lib/runtime-freshness-layout.test.ts",
           "blob": "690f1b0930e2aa57cf6df4e766b3b9b64b9a4be8",
           "command": "bun test tests/lib/runtime-freshness-layout.test.ts tests/lib/project-runtime-metrics.test.ts tests/lib/project-runtime-sources.test.ts"
+        },
+        {
+          "path": "tests/lib/project-runtime-sources.test.ts",
+          "blob": "32b69f29835f5b40759630f4385a389115e17c52",
+          "command": "bun test tests/lib/project-runtime-sources.test.ts tests/lib/project-runtime-metrics.test.ts"
         },
         {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
@@ -68,7 +75,7 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "e84dbf0b29a35762650f4529e0456b3a4a92d4dc",
+          "blob": "07b2a3b19b3c3c8b8bc1e97aa127ab7ddada285d",
           "command": "spec contract and drift checks"
         }
       ],
@@ -79,13 +86,18 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Focused unit tests, full pre-commit tests, production build, focused Playwright geometry/state regression, Spec checks, and owner-confirmed visual evidence verify a reversible UI-only correction.",
-      "assessed_at": "2026-10-08T13:30:00+08:00",
+      "reasoning": "Focused parser and layout tests, full pre-commit tests, production build, focused Playwright geometry/state regression, Spec checks, and live payload parsing verify a reversible UI/runtime correction.",
+      "assessed_at": "2026-10-09T01:00:00+08:00",
       "evidence": [
         {
           "path": "tests/lib/runtime-freshness-layout.test.ts",
           "blob": "690f1b0930e2aa57cf6df4e766b3b9b64b9a4be8",
           "command": "bun test tests/lib/runtime-freshness-layout.test.ts tests/lib/project-runtime-metrics.test.ts tests/lib/project-runtime-sources.test.ts"
+        },
+        {
+          "path": "tests/lib/project-runtime-sources.test.ts",
+          "blob": "32b69f29835f5b40759630f4385a389115e17c52",
+          "command": "bun test tests/lib/project-runtime-sources.test.ts tests/lib/project-runtime-metrics.test.ts"
         },
         {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
@@ -94,7 +106,7 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "e84dbf0b29a35762650f4529e0456b3a4a92d4dc",
+          "blob": "07b2a3b19b3c3c8b8bc1e97aa127ab7ddada285d",
           "command": "spec contract and drift checks"
         }
       ]
@@ -112,8 +124,13 @@
           "command": "bun test tests/lib/runtime-freshness-layout.test.ts tests/lib/project-runtime-metrics.test.ts tests/lib/project-runtime-sources.test.ts"
         },
         {
+          "path": "tests/lib/project-runtime-sources.test.ts",
+          "blob": "32b69f29835f5b40759630f4385a389115e17c52",
+          "command": "bun test tests/lib/project-runtime-sources.test.ts tests/lib/project-runtime-metrics.test.ts"
+        },
+        {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "e84dbf0b29a35762650f4529e0456b3a4a92d4dc",
+          "blob": "07b2a3b19b3c3c8b8bc1e97aa127ab7ddada285d",
           "command": "spec contract and drift checks"
         }
       ]
@@ -132,7 +149,7 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "e84dbf0b29a35762650f4529e0456b3a4a92d4dc",
+          "blob": "07b2a3b19b3c3c8b8bc1e97aa127ab7ddada285d",
           "command": "spec contract and drift checks"
         }
       ]
