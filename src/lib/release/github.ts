@@ -316,9 +316,16 @@ export class GitHubLedgerStore implements LedgerStore {
     let legacySha: string | undefined;
     const commits = this.github.pages(`${this.github.root}/commits?sha=${sha}&per_page=100`);
     const parsedCommits = commits.map((raw) => repositoryCommitSchema.parse(raw));
-    const recoverySha = parsedCommits
-      .map((commit) => commit.commit.message.match(/Ledger-Recovery:\s*([a-f0-9]{40})/)?.[1])
-      .find((value): value is string => value !== undefined);
+    let recoverySha: string | undefined;
+    for (const [index, commit] of parsedCommits.entries()) {
+      const recovered = commit.commit.message.match(/^Ledger-Recovery: ([a-f0-9]{40})$/m)?.[1];
+      if (!recovered) continue;
+      // A recovery declaration is authority only when signed by the release bot.
+      this.github.verifyBotCommit(commit.sha, commits[index]);
+      if (recoverySha && recoverySha !== recovered)
+        throw new Error("Conflicting ledger recovery declarations");
+      recoverySha = recovered;
+    }
     for (const [index, commit] of parsedCommits.entries()) {
       const raw = commits[index];
       if (!raw) throw new Error("Ledger history response was truncated");
@@ -328,7 +335,7 @@ export class GitHubLedgerStore implements LedgerStore {
       const legacyRequested =
         (options.allowLegacyHead && commit.sha === sha) ||
         (options.allowLegacyAncestor && commit.sha !== sha && !legacySha) ||
-        (recoverySha !== undefined && commit.sha !== sha);
+        (recoverySha === commit.sha && commit.sha !== sha);
       if (legacyRequested && (commit.author?.login === owner || recoverySha === commit.sha)) {
         const bot = `${this.github.botSlug}[bot]`;
         if (

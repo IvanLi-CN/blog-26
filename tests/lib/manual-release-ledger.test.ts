@@ -100,6 +100,24 @@ describe("durable product release reservations", () => {
     expect(result.sha).toBe(head);
     expect(result.legacySha).toBe(legacy);
     expect(result.ledger).toEqual(ledger);
+    const declaration = commits[1];
+    const recovered = commits[2];
+    if (!declaration || !recovered) throw new Error("Missing recovery fixture");
+    declaration.commit.verification = { verified: false, reason: "unsigned" };
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
+    ).rejects.toThrow("Verified");
+    declaration.commit.verification = { verified: true, reason: "valid" };
+    const unrelated = "9".repeat(40);
+    declaration.parents = [{ sha: unrelated }];
+    commits.splice(
+      2,
+      0,
+      commit(unrelated, legacy, `${digestLine}\n${signedOff}`, contract.repository.split("/")[0])
+    );
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
+    ).rejects.toThrow("github-actions[bot]");
   });
 
   test("fresh preparation retires a stale unopened reservation without replacing or reusing its identity", async () => {
