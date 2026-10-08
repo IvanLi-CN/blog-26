@@ -316,7 +316,20 @@ export function updateRelease(
       !original.products &&
       !original.publication &&
       !original.deployment;
-    if (!["reserved", "pr_open", "abandoned"].includes(original.stage) && !failedBeforeArtifacts)
+    const abandonedFrozenInputs =
+      original.stage === "merged" &&
+      Boolean(original.failure) &&
+      Boolean(original.inputs) &&
+      !original.products &&
+      !original.publication &&
+      !original.deployment &&
+      Object.hasOwn(patch, "inputs") &&
+      patch.inputs === undefined;
+    if (
+      !["reserved", "pr_open", "abandoned"].includes(original.stage) &&
+      !failedBeforeArtifacts &&
+      !abandonedFrozenInputs
+    )
       throw new Error("A merged release cannot be abandoned");
   } else if (next.stage !== original.stage) {
     if (

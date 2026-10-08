@@ -274,6 +274,34 @@ describe("durable product release reservations", () => {
     const abandoned = updateRelease(merged, first.entry.id, { stage: "abandoned" });
     expect(abandoned.entries[0]?.stage).toBe("abandoned");
   });
+  test("failed merged releases can abandon a frozen input before products exist", () => {
+    const first = reserveRelease(initialLedger(contract), request);
+    let merged = updateRelease(first.ledger, first.entry.id, {
+      stage: "pr_open",
+      preparationHead: "e".repeat(40),
+      prNumber: 4,
+    });
+    merged = updateRelease(merged, first.entry.id, {
+      stage: "merged",
+      mergeSha: "f".repeat(40),
+      releaseRunId: 7,
+      failure: { phase: "merged", runId: "7", attempt: 1 },
+    });
+    const input = {
+      runId: 7,
+      artifactId: 10,
+      artifactName: `release-${first.entry.id}-inputs`,
+      archiveDigest: `sha256:${"1".repeat(64)}`,
+      manifestDigest: "2".repeat(64),
+    };
+    const frozen = updateRelease(merged, first.entry.id, { inputs: input });
+    const abandoned = updateRelease(frozen, first.entry.id, {
+      stage: "abandoned",
+      inputs: undefined,
+    });
+    expect(abandoned.entries[0]?.stage).toBe("abandoned");
+    expect(abandoned.entries[0]?.inputs).toBeUndefined();
+  });
   test("unproven stages and source replacement cannot be committed", () => {
     const first = reserveRelease(initialLedger(contract), request);
     expect(() => updateRelease(first.ledger, first.entry.id, { stage: "published" })).toThrow(
