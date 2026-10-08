@@ -33,9 +33,12 @@ export function formatRuntimeValue(value: number): string {
   let unitIndex = runtimeUnits.findIndex(({ threshold }) => absoluteValue >= threshold);
   if (unitIndex < 0) unitIndex = runtimeUnits.length;
 
-  const unit = runtimeUnits[unitIndex];
-  const scaledValue = unit ? absoluteValue / unit.threshold : absoluteValue;
-  if (unitIndex > 0 && Number(scaledValue.toFixed(3)) >= 1000) unitIndex -= 1;
+  while (unitIndex > 0) {
+    const unit = runtimeUnits[unitIndex];
+    const scaledValue = unit ? absoluteValue / unit.threshold : absoluteValue;
+    if (Number(scaledValue.toFixed(3)) < 1000) break;
+    unitIndex -= 1;
+  }
 
   const formattedValue =
     unitIndex === runtimeUnits.length
