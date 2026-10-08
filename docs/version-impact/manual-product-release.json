@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "ea9fcea19ab9546a9c1b4456d54500866f567540",
+  "base_sha": "43190e6e8b9ff89f8e04d203c4389398f1dedbd9",
   "covered_files": {
     ".codex/skills/style-topic-pr-label-release/SKILL.md": null,
     ".codex/skills/style-topic-pr-label-release/agents/openai.yaml": null,
