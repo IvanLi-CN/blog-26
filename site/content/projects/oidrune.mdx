@@ -1,0 +1,39 @@
+---
+slug: oidrune
+---
+
+<section className="project-mdx-section">
+
+## GitHub Actions 通知入口
+
+Oidrune 是一个部署在 Cloudflare 上的 GitHub Actions 通知网关。它接收工作流完成事件，再把结构化通知异步投递到由运营者控制的一个 Telegram 私聊、群组或频道。
+
+通知调用方不需要保存 Telegram token、webhook secret、目标标识或 Oidrune 凭据。接入仓库只需调用固定版本的可复用 workflow，并授予 GitHub OIDC 所需的 `id-token: write` 权限。
+
+</section>
+
+<section className="project-mdx-section">
+
+## OIDC 身份与入口边界
+
+公共入口只接受 GitHub 签名的 OIDC token，并根据获批的 owner 或 repository 进行校验。入口还结合可信 workflow release SHA 和 GitHub-hosted runner 约束通知来源，把调用方的信任边界收窄到可审计的工作流身份。
+
+公共协议入口保持在 `/v1/events/workflow-completed`。Cloudflare Access 只保护 `/console*` 与 `/api/admin*`，不把 OIDC 事件接收和运营控制台混成同一条访问路径。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 接收、重试与死信
+
+Oidrune 以持久化接收记录承接事件，再通过异步队列尝试发送通知。自动重试和死信队列保留失败事件的处理边界，运营者可以围绕接收、投递尝试和最终状态判断通知链路，而不需要把 Telegram 凭据下放给每个调用仓库。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 运营控制台与生产验证
+
+运营控制台和管理员 API 使用 GitHub-only 的 Cloudflare Access 身份。仓库同时保留一个手动触发的 `Oidrune smoke` workflow，用 GitHub OIDC 调用固定 SHA 的通知 workflow，验证公共网关返回 `202`，并继续核对对应事件是否最终由队列消费者记录为 `delivered`。
+
+</section>

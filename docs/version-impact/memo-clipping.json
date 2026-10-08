@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "ea9fcea19ab9546a9c1b4456d54500866f567540",
   "covered_files": {
-    "CONTEXT.md": "a16d70b5a8dc53e6b385902b497fca4f8591df29",
+    "CONTEXT.md": "aa1054a4c7bbee8555ba201c33c4989de49f720e",
     "README.md": "c2ea174ab911e1c89d74fe3de11d6833587de90a",
     "apps/admin/src/components/preview-detail.tsx": "8acd0a4251c283fc429f970fd82ad4bd634325ff",
     "apps/admin/src/pages/preview.tsx": "2430b1ffc0710c34a0256d08d700e93175811403",
@@ -12,7 +12,7 @@
     "bun.lock": "45265ef3a329a3d7f95662797e49214235bd8c4e",
     "docs/adr/0012-memo-clipping-content-boundaries.md": "ffcdcd1cf9079461961519b1fd3c2ef70283a913",
     "docs/runbooks/fs-only-migration.md": "5959459a1a36f52d1e460c6aa4264ae5bd52cd31",
-    "docs/specs/README.md": "15f797f61adab98d48ccf77cc07295c78851f8e1",
+    "docs/specs/README.md": "01cf58d7b3761375603e7bb6d5c5643b3485b33a",
     "docs/specs/memo-clipping/HISTORY.md": "6dfcdd29260cdbe02e4c6d0ba85cf8f947de7f63",
     "docs/specs/memo-clipping/IMPLEMENTATION.md": "178132b066eb93a5e32ee8438b984036d3c1711e",
     "docs/specs/memo-clipping/SPEC.md": "223b3f7cd2473b68fd4d94745e8a42d17131f9f5",

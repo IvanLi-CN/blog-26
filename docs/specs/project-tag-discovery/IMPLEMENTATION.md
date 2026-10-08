@@ -7,7 +7,7 @@
 
 ## Implementation Coverage
 
-- REQ-TAGS-001: `src/lib/project-catalog.ts` 保存获批的 15 项标签及首页 featuredTags；`site/lib/projects.ts` 保留路由、领域与相关内容入口。
+- REQ-TAGS-001: `src/lib/project-catalog.ts` 保存获批的 16 项项目分类及首页 featuredTags；`site/lib/projects.ts` 保留路由、领域与相关内容入口。
 - REQ-TAGS-002: `src/lib/tag-directory.ts` 聚合实体身份、祖先与分类型计数；`src/server/services/tag-content.ts` 复用内容权限及现有素材有效性读取。
 - REQ-TAGS-003: `src/lib/snapshot-tags.ts` 读取时重新组合当前目录、旧快照记录及可用公共元数据；保留原生成时间。
 - REQ-TAGS-004: tag-service、tags router 与既有管理/MCP 消费者共享目录；`tag-group-identity.ts` 保留 AI 标签规范身份。

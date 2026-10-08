@@ -3,9 +3,9 @@
   "kind": "version-impact-record",
   "base_sha": "14c7e30522aecc3f356196968683cb3ab8f87272",
   "covered_files": {
-    "docs/specs/nature-front-ui/HISTORY.md": "7f58ee36a46e635bfdabd35b7d9ee198e1be228e",
-    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "d687392470bbe01cc504015dda0e91254f5d106c",
-    "docs/specs/nature-front-ui/SPEC.md": "3e5243828f3730096883ec01e39ebc2011623c85",
+    "docs/specs/nature-front-ui/HISTORY.md": "8fb4d930b5b34a4e20ecfbbb2ea51502a9dd0193",
+    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "a6f956ede52f82609afb91a60fa4f7f3caffd3c8",
+    "docs/specs/nature-front-ui/SPEC.md": "e84dbf0b29a35762650f4529e0456b3a4a92d4dc",
     "docs/specs/nature-front-ui/assets/project-runtime-panels-dense-desktop-dark-1780x1071.png": "33ab2d5b69f6b68b840e1c257175245aeee4738d",
     "docs/specs/nature-front-ui/assets/project-runtime-panels-dense-desktop-light-1780x1071.png": "ca1d3772639390d6fc4cd726cc1722f236e86992",
     "docs/specs/nature-front-ui/assets/project-runtime-panels-dense-mobile-dark-393x852.png": "5bcbbf805fd6994f7f2df6d09445acd6ca18d969",
@@ -47,7 +47,7 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "3e5243828f3730096883ec01e39ebc2011623c85",
+          "blob": "e84dbf0b29a35762650f4529e0456b3a4a92d4dc",
           "command": "spec contract and drift checks"
         }
       ]
@@ -69,7 +69,7 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "3e5243828f3730096883ec01e39ebc2011623c85",
+          "blob": "e84dbf0b29a35762650f4529e0456b3a4a92d4dc",
           "command": "spec contract and drift checks"
         }
       ],
@@ -95,7 +95,7 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "3e5243828f3730096883ec01e39ebc2011623c85",
+          "blob": "e84dbf0b29a35762650f4529e0456b3a4a92d4dc",
           "command": "spec contract and drift checks"
         }
       ]
@@ -114,7 +114,7 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "3e5243828f3730096883ec01e39ebc2011623c85",
+          "blob": "e84dbf0b29a35762650f4529e0456b3a4a92d4dc",
           "command": "spec contract and drift checks"
         }
       ]
@@ -133,7 +133,7 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "3e5243828f3730096883ec01e39ebc2011623c85",
+          "blob": "e84dbf0b29a35762650f4529e0456b3a4a92d4dc",
           "command": "spec contract and drift checks"
         }
       ]

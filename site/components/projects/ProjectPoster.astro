@@ -280,6 +280,11 @@ const posterPlaceholderStyle = posterAsset
 <style>
   .project-poster {
     --project-poster-placeholder: var(--project-poster-placeholder-light, none);
+    --project-poster-surface-rgb: var(--nature-surface-alt-rgb);
+    --project-poster-surface-strong-rgb: var(--nature-surface-rgb);
+    --project-poster-mark-rgb: 36, 53, 45;
+    --project-poster-ink-rgb: 36, 53, 45;
+    --project-poster-text-shadow-rgb: 36, 53, 45;
     position: relative;
     isolation: isolate;
     overflow: hidden;
@@ -287,7 +292,11 @@ const posterPlaceholderStyle = posterAsset
     background:
       radial-gradient(circle at 14% 12%, rgba(var(--project-tone-rgb), 0.24), transparent 30%),
       radial-gradient(circle at 88% 14%, rgba(var(--project-glow-rgb), 0.18), transparent 30%),
-      linear-gradient(160deg, rgba(var(--project-panel-rgb), 0.96), rgba(var(--project-panel-rgb), 0.82));
+      linear-gradient(
+        160deg,
+        rgba(var(--project-poster-surface-rgb), 0.96),
+        rgba(var(--project-poster-surface-strong-rgb), 0.82)
+      );
     box-shadow: 0 14px 30px rgba(30, 56, 42, 0.1);
   }
 
@@ -296,6 +305,11 @@ const posterPlaceholderStyle = posterAsset
       --project-poster-placeholder-dark,
       var(--project-poster-placeholder-light, none)
     );
+    --project-poster-surface-rgb: var(--project-panel-rgb);
+    --project-poster-surface-strong-rgb: var(--project-panel-rgb);
+    --project-poster-mark-rgb: 255, 255, 255;
+    --project-poster-ink-rgb: 250, 253, 251;
+    --project-poster-text-shadow-rgb: 0, 0, 0;
     box-shadow: 0 16px 34px rgba(0, 0, 0, 0.2);
   }
 
@@ -367,8 +381,8 @@ const posterPlaceholderStyle = posterAsset
     font-size: 0.76rem;
     font-weight: 700;
     letter-spacing: 0.12em;
-    color: rgba(243, 249, 245, 0.74);
-    text-shadow: 0 1px 12px rgba(0, 0, 0, 0.22);
+    color: rgba(var(--project-poster-ink-rgb), 0.74);
+    text-shadow: 0 1px 12px rgba(var(--project-poster-text-shadow-rgb), 0.22);
   }
 
   .project-poster-title {
@@ -377,18 +391,18 @@ const posterPlaceholderStyle = posterAsset
     font-size: clamp(1.8rem, 2vw, 2.5rem);
     line-height: 0.92;
     letter-spacing: -0.035em;
-    color: rgba(250, 253, 251, 0.98);
+    color: rgba(var(--project-poster-ink-rgb), 0.98);
     text-wrap: balance;
-    text-shadow: 0 3px 24px rgba(0, 0, 0, 0.3);
+    text-shadow: 0 3px 24px rgba(var(--project-poster-text-shadow-rgb), 0.3);
   }
 
   .project-poster-strapline {
     max-width: 22rem;
     font-size: 0.92rem;
     line-height: 1.7;
-    color: rgba(240, 247, 243, 0.88);
+    color: rgba(var(--project-poster-ink-rgb), 0.88);
     text-wrap: pretty;
-    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.26);
+    text-shadow: 0 2px 14px rgba(var(--project-poster-text-shadow-rgb), 0.26);
   }
 
   .project-poster.is-compact .project-poster-copy {
@@ -443,8 +457,8 @@ const posterPlaceholderStyle = posterAsset
   .project-poster-grid {
     inset: 0;
     background:
-      linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+      linear-gradient(90deg, rgba(var(--project-poster-mark-rgb), 0.06) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(var(--project-poster-mark-rgb), 0.05) 1px, transparent 1px);
     background-size: 3.5rem 3.5rem;
     mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.28), transparent 84%);
     opacity: 0.6;
@@ -474,7 +488,12 @@ const posterPlaceholderStyle = posterAsset
 
   .project-poster-line {
     border-radius: 999px;
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0));
+    background: linear-gradient(
+      90deg,
+      rgba(var(--project-poster-mark-rgb), 0),
+      rgba(var(--project-poster-mark-rgb), 0.32),
+      rgba(var(--project-poster-mark-rgb), 0)
+    );
     opacity: 0.72;
   }
 
@@ -496,8 +515,8 @@ const posterPlaceholderStyle = posterAsset
     width: 0.58rem;
     height: 0.58rem;
     border-radius: 999px;
-    background: rgba(248, 252, 250, 0.9);
-    box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.08);
+    background: rgba(var(--project-poster-mark-rgb), 0.9);
+    box-shadow: 0 0 0 6px rgba(var(--project-poster-mark-rgb), 0.08);
   }
 
   .project-poster-node-a {
@@ -518,9 +537,9 @@ const posterPlaceholderStyle = posterAsset
   .project-poster-stack {
     width: 5.5rem;
     height: 3.8rem;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(var(--project-poster-mark-rgb), 0.12);
     border-radius: 1.1rem;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(var(--project-poster-mark-rgb), 0.05);
     backdrop-filter: blur(2px);
   }
 
@@ -543,7 +562,7 @@ const posterPlaceholderStyle = posterAsset
   .pattern-rings .project-poster-line {
     width: 9rem;
     height: 9rem;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(var(--project-poster-mark-rgb), 0.12);
     background: none;
     border-radius: 999px;
   }
@@ -572,7 +591,7 @@ const posterPlaceholderStyle = posterAsset
   .pattern-grid .project-poster-line-b {
     height: auto;
     background: none;
-    border-left: 1px solid rgba(255, 255, 255, 0.22);
+    border-left: 1px solid rgba(var(--project-poster-mark-rgb), 0.22);
     width: 0;
   }
 
@@ -592,7 +611,12 @@ const posterPlaceholderStyle = posterAsset
   .pattern-beams .project-poster-line-b {
     height: 1.15rem;
     border-radius: 999px;
-    background: linear-gradient(90deg, rgba(var(--project-tone-rgb), 0.04), rgba(255, 255, 255, 0.3), rgba(var(--project-glow-rgb), 0.04));
+    background: linear-gradient(
+      90deg,
+      rgba(var(--project-tone-rgb), 0.04),
+      rgba(var(--project-poster-mark-rgb), 0.3),
+      rgba(var(--project-glow-rgb), 0.04)
+    );
   }
 
   .pattern-beams .project-poster-line-a {
@@ -676,7 +700,16 @@ const posterPlaceholderStyle = posterAsset
   .pattern-signal .project-poster-line-b {
     height: 1.8rem;
     background:
-      linear-gradient(90deg, rgba(255, 255, 255, 0) 0 8%, rgba(255, 255, 255, 0.34) 8% 14%, rgba(255, 255, 255, 0) 14% 22%, rgba(255, 255, 255, 0.28) 22% 28%, rgba(255, 255, 255, 0) 28% 40%, rgba(255, 255, 255, 0.32) 40% 50%, rgba(255, 255, 255, 0) 50% 100%);
+      linear-gradient(
+        90deg,
+        rgba(var(--project-poster-mark-rgb), 0) 0 8%,
+        rgba(var(--project-poster-mark-rgb), 0.34) 8% 14%,
+        rgba(var(--project-poster-mark-rgb), 0) 14% 22%,
+        rgba(var(--project-poster-mark-rgb), 0.28) 22% 28%,
+        rgba(var(--project-poster-mark-rgb), 0) 28% 40%,
+        rgba(var(--project-poster-mark-rgb), 0.32) 40% 50%,
+        rgba(var(--project-poster-mark-rgb), 0) 50% 100%
+      );
   }
 
   .pattern-signal .project-poster-line-a {

@@ -27,7 +27,7 @@ function isTestFile(filePath: string): boolean {
   return /(\.test|\.spec)\.(ts|tsx|js|jsx)$/.test(filePath);
 }
 
-function walk(dir: string, files: string[]) {
+function walk(dir: string, files: Set<string>) {
   let entries: string[];
   try {
     entries = readdirSync(dir);
@@ -49,7 +49,7 @@ function walk(dir: string, files: string[]) {
       walk(full, files);
     } else if (st.isFile()) {
       if (isTestFile(full)) {
-        files.push(full);
+        files.add(full);
       }
     }
   }
@@ -59,7 +59,7 @@ async function main() {
   // Ensure the drizzle journal metadata remains monotonic before running tests
   validateDrizzleJournal();
 
-  const files: string[] = [];
+  const fileSet = new Set<string>();
 
   const roots = ROOTS.filter((r) => existsSync(r));
   if (roots.length === 0) {
@@ -67,15 +67,14 @@ async function main() {
     process.exit(0);
   }
 
-  for (const r of roots) walk(r, files);
+  for (const r of roots) walk(r, fileSet);
+
+  const files = [...fileSet].sort();
 
   if (files.length === 0) {
     console.log("No matching test files found outside 'old/'. Skipping.");
     return;
   }
-
-  // Ensure stable ordering for reproducibility
-  files.sort();
 
   // Search/database tests use process-level DB_PATH state; isolate each file's module graph.
   const cmd = ["bun", "test", "--isolate", ...files];

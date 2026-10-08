@@ -373,7 +373,7 @@ test.describe("Nature frontend public coverage", () => {
   test("project catalog keeps each domain within the card-density contract", async ({ page }) => {
     await gotoWithTheme(page, "/projects", "light");
 
-    await expect(page.getByText("15 个公开项目", { exact: true })).toBeVisible();
+    await expect(page.getByText("16 个公开项目", { exact: true })).toBeVisible();
     await expect(page.getByText("6 个产品领域", { exact: true })).toBeVisible();
 
     const expectedGroups = [
@@ -382,7 +382,7 @@ test.describe("Nature frontend public coverage", () => {
       { title: "Web 产品", count: 2 },
       { title: "硬件产品", count: 3 },
       { title: "设备控制", count: 3 },
-      { title: "运维工具", count: 2 },
+      { title: "运维工具", count: 3 },
     ] as const;
     const panel = page.locator(".projects-domain-stack.nature-surface");
     await expect(panel).toHaveCount(1);
@@ -399,6 +399,7 @@ test.describe("Nature frontend public coverage", () => {
       await expect(section.locator(".projects-poster-card")).toHaveCount(group.count);
       await expect(section.locator(".projects-domain-count")).toHaveText(`${group.count} 项`);
     }
+    await expect(page.getByRole("heading", { name: "Oidrune", exact: true })).toBeVisible();
 
     const projectImages = page.locator(".projects-poster-card img");
     await expect(projectImages).toHaveCount(14);
@@ -1100,6 +1101,34 @@ test.describe("Nature frontend public coverage", () => {
     await gotoWithTheme(page, "/projects/kaisoumail", "dark");
 
     await expect(page.locator(".project-poster-image")).toHaveCSS("transition-duration", "0s");
+  });
+
+  test("Oidrune fallback poster follows the active color theme", async ({ page }) => {
+    const readPosterTheme = () =>
+      page.locator(".project-poster").evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          surface: style.getPropertyValue("--project-poster-surface-rgb").trim(),
+          mark: style.getPropertyValue("--project-poster-mark-rgb").trim(),
+          background: style.backgroundImage,
+        };
+      });
+
+    await gotoWithTheme(page, "/projects/oidrune", "light");
+    await expect(page.locator(".project-poster-fallback")).toBeVisible();
+    await expect.poll(readPosterTheme).toMatchObject({
+      surface: "236, 242, 237",
+      mark: "36, 53, 45",
+    });
+
+    await gotoWithTheme(page, "/projects/oidrune", "dark");
+    await page.evaluate(() => {
+      document.documentElement.dataset.uiTheme = "dark";
+    });
+    await expect.poll(readPosterTheme).toMatchObject({
+      surface: "22, 32, 27",
+      mark: "255, 255, 255",
+    });
   });
 
   test("mobile detail reading measure does not apply a second horizontal gutter", async ({

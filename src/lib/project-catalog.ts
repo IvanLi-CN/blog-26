@@ -697,4 +697,39 @@ export const projectCatalog: ProjectCatalog = [
     relatedEntries: [{ type: "post", slug: "upgrade-all-in-one-pve-8-to-9-and-pbs-3-to-4" }],
     order: 602,
   },
+  {
+    slug: "oidrune",
+    title: "Oidrune",
+    domain: "operations-tools",
+    summary:
+      "基于 Cloudflare 的 GitHub Actions 通知网关，用 GitHub OIDC 接收工作流完成事件并异步投递到运营者控制的 Telegram 目标。",
+    description:
+      "Oidrune 把 GitHub Actions 的工作流完成通知收束成一个无调用方密钥的网关：调用仓库只需复用固定版本的 workflow 并授予 id-token: write，网关负责身份校验、持久化接收、重试、死信和运营控制台。",
+    poster: {
+      eyebrow: "GitHub 通知",
+      strapline: "OIDC 验证与异步告警投递",
+      pattern: "signal",
+    },
+    links: createLinks("oidrune"),
+    techTags: [
+      "Cloudflare Workers",
+      "GitHub Actions",
+      "GitHub OIDC",
+      "Telegram",
+      "Hono",
+      "TypeScript",
+      "Bun",
+      "D1",
+      "Queues",
+      "Cloudflare Access",
+    ],
+    featuredTags: ["Cloudflare Workers", "GitHub Actions"],
+    highlights: [
+      "调用仓库不需要保存 Telegram token、webhook secret 或 Oidrune 凭据。",
+      "使用 owner/repository allowlist、可信 workflow SHA 和 GitHub-hosted runner 约束入口。",
+      "接收、自动重试、DLQ 与运营控制台围绕同一条通知链路组织。",
+    ],
+    relatedEntries: [],
+    order: 603,
+  },
 ] as const;
