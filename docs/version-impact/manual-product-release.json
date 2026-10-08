@@ -520,7 +520,7 @@
     "public_api": {
       "impact": "minor",
       "change": "compatible",
-      "supported_consumer_versions": ["2.7.0"],
+      "supported_consumer_versions": ["2.7.0", "2.8.3"],
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -583,8 +583,8 @@
       "impact": "patch",
       "applicable": true,
       "state_description": "Unchanged SQLite schema and local content path format; existing state remains readable without a migration. Browser result-cache v5 ignores obsolete v4 entries; versions keep independent cache namespaces without changing durable SQLite or local content.",
-      "readable_by_prior_versions": ["2.7.0"],
-      "upgrade_from_versions": ["2.7.0"],
+      "readable_by_prior_versions": ["2.7.0", "2.8.3"],
+      "upgrade_from_versions": ["2.7.0", "2.8.3"],
       "evidence": [
         {
           "path": "src/lib/__tests__/persisted-paths.test.ts",
