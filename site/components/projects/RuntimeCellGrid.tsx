@@ -626,7 +626,6 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
       if (!isFreshness) {
         event.preventDefault();
         event.stopPropagation();
-        setCell(cell);
       }
     };
     const onTouchStart = (event: TouchEvent) => {

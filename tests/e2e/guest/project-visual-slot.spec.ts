@@ -856,8 +856,7 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
     await dispatchTouch("touchend");
     await expect(tooltip).toBeHidden();
     expect(await dispatchMouseClick(4)).toBe(true);
-    await expect(tooltip).toBeVisible();
-    await page.keyboard.press("Escape");
+    await expect(tooltip).toBeHidden();
     await dispatchTouch("touchstart", 4);
     await page.waitForTimeout(550);
     await expect(tooltip).toBeVisible();
@@ -866,8 +865,7 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
     expect(await dispatchClick(4)).toBe(true);
     await expect(tooltip).toBeHidden();
     expect(await dispatchClick(5)).toBe(true);
-    await expect(tooltip).toBeVisible();
-    await page.keyboard.press("Escape");
+    await expect(tooltip).toBeHidden();
 
     const gapPoint = await grid.evaluate((element) => {
       const cells = Array.from(element.querySelectorAll<HTMLElement>("[data-runtime-cell]"));
