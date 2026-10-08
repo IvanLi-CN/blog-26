@@ -21,7 +21,7 @@
 
 ## Verification
 
-候选基线为 `973d788309e23f98cf836f2b607d22e2cb53a3b2`。保留主线剪藏阅读器、类型标记及 Playbook 面向访客的文案简化；以下验证覆盖共享页面实现。
+候选基线为 `90ef97ae16e26fa6b36fb45997d498df48a1e99e`。保留主线剪藏阅读器、类型标记、Playbook 面向访客的文案简化及 OctoRill 新鲜度布局修复；以下验证覆盖共享页面实现。
 
 - Agent VM 预提交套件通过，包含组件 Story 边界、构建隔离、路由匹配、公开接口、请求取消及未访问正文的载荷隔离。命令：`bun run test:precommit`，提交 hook 保持启用。Playbook 搜索正文隔离另有回归断言。
 - Demo 导航：`tests/e2e/web-demo/public-csr.spec.ts` 16 项全部通过，覆盖 SSR 离线首屏、12 类离线目标及恢复、历史、主题、取消、静态页面和 404，并断言没有 hydration 错误。命令：`WEB_DEMO_TEST_URL=<demo-origin> bun x playwright test --config tests/e2e/web-demo/playwright.config.ts`。
