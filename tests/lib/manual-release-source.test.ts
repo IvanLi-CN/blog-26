@@ -16,9 +16,14 @@ import { semanticSourceBlobs } from "../../src/lib/release/source";
 describe("business evidence across VERSION-only releases", () => {
   test("authenticated prereleases preserve business blobs and the formal baseline", () => {
     const root = mkdtempSync(join(tmpdir(), "release-source-"));
+    const gitEnv = { ...process.env };
+    for (const key of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX"]) {
+      delete gitEnv[key];
+    }
     const git = (...args: string[]) =>
       execFileSync("git", ["-c", "core.hooksPath=/dev/null", ...args], {
         cwd: root,
+        env: gitEnv,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
       }).trim();
@@ -56,7 +61,14 @@ describe("business evidence across VERSION-only releases", () => {
       entries: [{ ...initial.entry, mergeSha: alpha, stage: "complete" as const }],
     };
     const originalCwd = process.cwd();
+    const originalGitEnv = new Map(
+      ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX"].map((key) => [
+        key,
+        process.env[key],
+      ])
+    );
     try {
+      for (const key of originalGitEnv.keys()) delete process.env[key];
       process.chdir(root);
       const before = semanticSourceBlobs(initialLedger(contract), business);
       expect(() => semanticSourceBlobs(ledger, alpha)).toThrow("provenance");
@@ -91,6 +103,10 @@ describe("business evidence across VERSION-only releases", () => {
       ).toThrow("Unregistered VERSION");
     } finally {
       process.chdir(originalCwd);
+      for (const [key, value] of originalGitEnv) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
     }
   });
 });
