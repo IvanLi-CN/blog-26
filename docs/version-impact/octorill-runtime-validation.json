@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "e4a14c1e89f72b776ea122d2d767cdafb246f684",
   "covered_files": {
-    "docs/specs/nature-front-ui/SPEC.md": "933d6a8b7a7d4eb4f8bfee0b7a513e4f646a0cb9",
+    "docs/specs/nature-front-ui/SPEC.md": "ef4e70d78d8a644b8cd7ac28efe1ead674d2d263",
     "site/lib/project-runtime-sources.ts": "68d320c174a4a11701915a63a07bdaffd7e9659e",
     "tests/lib/project-runtime-sources.test.ts": "32b69f29835f5b40759630f4385a389115e17c52"
   },
@@ -25,7 +25,7 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "933d6a8b7a7d4eb4f8bfee0b7a513e4f646a0cb9",
+          "blob": "ef4e70d78d8a644b8cd7ac28efe1ead674d2d263",
           "command": "spec contract and drift checks"
         }
       ]
@@ -42,7 +42,7 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "933d6a8b7a7d4eb4f8bfee0b7a513e4f646a0cb9",
+          "blob": "ef4e70d78d8a644b8cd7ac28efe1ead674d2d263",
           "command": "spec contract and drift checks"
         }
       ],
@@ -63,7 +63,7 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "933d6a8b7a7d4eb4f8bfee0b7a513e4f646a0cb9",
+          "blob": "ef4e70d78d8a644b8cd7ac28efe1ead674d2d263",
           "command": "spec contract and drift checks"
         }
       ]

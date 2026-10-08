@@ -652,16 +652,6 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
     const grid = cvm.locator(".runtime-activity-grid");
     const tooltipAnchor = cvm.locator(".runtime-tooltip-anchor");
     const octoGrid = projectCard(page, "octo-rill").locator(".runtime-freshness-grid");
-    const dispatchClick = (index: number, targetGrid: typeof grid = grid) =>
-      targetGrid.evaluate((element, cellIndex) => {
-        const cell = Array.from(element.querySelectorAll<HTMLElement>("[data-runtime-cell]"))[
-          cellIndex
-        ];
-        if (!cell) throw new Error("click test cell missing");
-        const event = new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 });
-        cell.dispatchEvent(event);
-        return event.defaultPrevented;
-      }, index);
     const dispatchMouseClick = (index: number) =>
       grid.evaluate((element, cellIndex) => {
         const cell = Array.from(element.querySelectorAll<HTMLElement>("[data-runtime-cell]"))[
@@ -672,6 +662,19 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
           new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse" })
         );
         const event = new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 });
+        cell.dispatchEvent(event);
+        return event.defaultPrevented;
+      }, index);
+    const dispatchTouchClick = (index: number) =>
+      grid.evaluate((element, cellIndex) => {
+        const cell = Array.from(element.querySelectorAll<HTMLElement>("[data-runtime-cell]"))[
+          cellIndex
+        ];
+        if (!cell) throw new Error("touch click test cell missing");
+        const event = new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 });
+        Object.defineProperty(event, "sourceCapabilities", {
+          value: { firesTouchEvents: true },
+        });
         cell.dispatchEvent(event);
         return event.defaultPrevented;
       }, index);
@@ -856,15 +859,21 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
     await dispatchTouch("touchend");
     await expect(tooltip).toBeHidden();
     expect(await dispatchMouseClick(4)).toBe(true);
-    await expect(tooltip).toBeHidden();
+    await expect(tooltip).toBeVisible();
+    await page.keyboard.press("Escape");
     await dispatchTouch("touchstart", 4);
     await page.waitForTimeout(550);
     await expect(tooltip).toBeVisible();
     await dispatchTouch("touchend");
     await expect(tooltip).toBeHidden();
-    expect(await dispatchClick(4)).toBe(true);
+    expect(await dispatchTouchClick(4)).toBe(true);
     await expect(tooltip).toBeHidden();
-    expect(await dispatchClick(5)).toBe(true);
+    expect(await dispatchMouseClick(5)).toBe(true);
+    await expect(tooltip).toBeVisible();
+    await page.keyboard.press("Escape");
+    await dispatchTouch("touchstart", 5);
+    await dispatchTouch("touchend");
+    expect(await dispatchTouchClick(5)).toBe(false);
     await expect(tooltip).toBeHidden();
 
     const gapPoint = await grid.evaluate((element) => {

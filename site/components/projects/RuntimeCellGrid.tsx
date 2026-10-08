@@ -232,6 +232,7 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
   const pendingMetrics = React.useRef<ProjectRuntimeMetrics | null>(null);
   const suppressContextMenuUntil = React.useRef(0);
   const suppressClickUntil = React.useRef(0);
+  const touchClickUntil = React.useRef(0);
   const activeCellIndex = React.useRef<number | null>(null);
   const touchGestureRef = React.useRef<ReturnType<
     typeof createRuntimeTouchGestureController
@@ -546,7 +547,10 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
       if (cell) schedulePointerCell(cell, false);
     };
     const onPointerDown = (event: PointerEvent) => {
-      if (event.pointerType === "mouse") suppressClickUntil.current = 0;
+      if (event.pointerType === "mouse") {
+        suppressClickUntil.current = 0;
+        touchClickUntil.current = 0;
+      }
     };
     const onPointerOut = (event: PointerEvent) => {
       if (event.pointerType === "touch") return;
@@ -614,6 +618,11 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
       ).sourceCapabilities;
       const explicitMouseClick = sourceCapabilities?.firesTouchEvents === false;
       const keyboardActivated = event.detail === 0 && !sourceCapabilities?.firesTouchEvents;
+      const touchClick =
+        sourceCapabilities?.firesTouchEvents === true ||
+        (event.detail > 0 &&
+          Date.now() < touchClickUntil.current &&
+          sourceCapabilities?.firesTouchEvents !== false);
       if (explicitMouseClick) suppressClickUntil.current = 0;
       if (Date.now() < suppressClickUntil.current && !keyboardActivated) {
         suppressClickUntil.current = 0;
@@ -622,14 +631,17 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
         return;
       }
       suppressClickUntil.current = 0;
+      if (touchClick) return;
       if (!isFreshness) {
         event.preventDefault();
         event.stopPropagation();
+        setCell(cell);
       }
     };
     const onTouchStart = (event: TouchEvent) => {
       suppressClickUntil.current = 0;
       suppressContextMenuUntil.current = 0;
+      touchClickUntil.current = Date.now() + 1200;
       if (event.touches.length !== 1) {
         hide();
         pendingMetrics.current = null;
