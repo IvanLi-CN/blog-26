@@ -239,6 +239,8 @@ test("@targeted OctoRill freshness density keeps every repository in the fixed p
       await expect(grid.locator(".runtime-freshness-cell")).toHaveCount(expectedCount);
       const snapshot = await grid.evaluate((element) => {
         const gridRect = element.getBoundingClientRect();
+        const section = element.closest<HTMLElement>(".runtime-freshness");
+        const title = section?.querySelector<HTMLElement>(".runtime-chart-title");
         const panelRect = element
           .closest<HTMLElement>(".project-runtime-panel")
           ?.getBoundingClientRect();
@@ -269,6 +271,9 @@ test("@targeted OctoRill freshness density keeps every repository in the fixed p
             scrollWidth: element.scrollWidth,
             scrollHeight: element.scrollHeight,
           },
+          titleBottom: title?.getBoundingClientRect().bottom,
+          titleGap: section ? Number.parseFloat(getComputedStyle(section).rowGap) : undefined,
+          columns: Number(element.style.getPropertyValue("--runtime-freshness-columns")),
           panel: panelRect && {
             left: panelRect.left,
             right: panelRect.right,
@@ -294,6 +299,7 @@ test("@targeted OctoRill freshness density keeps every repository in the fixed p
       if (snapshot.metricBottom !== undefined) {
         expect(snapshot.grid.top, label).toBeGreaterThanOrEqual(snapshot.metricBottom - 1);
       }
+      expect(snapshot.titleBottom, label).toBeDefined();
       if (expectedCount > 0) {
         expect(
           snapshot.rects.every((rect) => rect.width > 0 && rect.height > 0),
@@ -306,6 +312,23 @@ test("@targeted OctoRill freshness density keeps every repository in the fixed p
             Math.abs(lastRect.bottom - snapshot.grid.bottom),
             `${label} freshness should align to the bottom of its available region`
           ).toBeLessThanOrEqual(1);
+        }
+        expect(snapshot.titleGap, label).toBeCloseTo(0.55 * 16, 1);
+        if (snapshot.titleBottom !== undefined && snapshot.titleGap !== undefined) {
+          expect(
+            Math.abs(snapshot.rects[0].top - snapshot.titleBottom - snapshot.titleGap),
+            `${label} title should stay adjacent to the freshness grid`
+          ).toBeLessThanOrEqual(1);
+        }
+        if (snapshot.columns > 0 && expectedCount >= snapshot.columns) {
+          const completeRowEnd = snapshot.rects[snapshot.columns - 1];
+          expect(completeRowEnd, label).toBeDefined();
+          if (completeRowEnd) {
+            expect(
+              Math.abs(completeRowEnd.right - snapshot.grid.right),
+              `${label} complete rows should fill the freshness width`
+            ).toBeLessThanOrEqual(1);
+          }
         }
         expect(
           snapshot.rects.every((rect) => Math.abs(rect.width - rect.height) <= 1),
@@ -321,6 +344,12 @@ test("@targeted OctoRill freshness density keeps every repository in the fixed p
           ),
           label
         ).toBe(true);
+      } else {
+        expect(snapshot.titleGap, label).toBe(0);
+        expect(snapshot.grid.bottom - snapshot.grid.top, label).toBeLessThanOrEqual(1);
+        if (snapshot.titleBottom !== undefined) {
+          expect(Math.abs(snapshot.grid.top - snapshot.titleBottom), label).toBeLessThanOrEqual(1);
+        }
       }
       expect(snapshot.grid.scrollWidth).toBeLessThanOrEqual(snapshot.grid.clientWidth + 1);
       expect(snapshot.grid.scrollHeight).toBeLessThanOrEqual(snapshot.grid.clientHeight + 1);
@@ -328,7 +357,7 @@ test("@targeted OctoRill freshness density keeps every repository in the fixed p
       expect(await readUpper()).toEqual(baseline);
     };
 
-    for (const nextCount of [1, 30, 31, 502, 3000, 10000, 502]) {
+    for (const nextCount of [1, 30, 31, 502, 503, 3000, 10000, 502]) {
       repositoryCount = nextCount;
       await page.clock.fastForward(300_001);
       await assertFreshness(nextCount, `dark 1048px ${nextCount}`);

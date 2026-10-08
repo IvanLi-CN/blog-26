@@ -162,6 +162,8 @@ function updateActivityChart(
 function updateFreshness(panel: HTMLElement, freshness: Uint8Array, repositoryCount: number) {
   const grid = panel.querySelector<HTMLElement>(".runtime-freshness-grid");
   if (!grid) return;
+  const section = grid.closest<HTMLElement>(".runtime-freshness");
+  if (section) section.dataset.runtimeEmpty = freshness.length === 0 ? "true" : "false";
   grid.replaceChildren(
     ...Array.from(freshness, (statusCode) => {
       const cell = document.createElement("span");
@@ -240,35 +242,72 @@ function bindPanel(panel: HTMLElement) {
   panel.dataset.runtimeLiveBound = "true";
   const controller = new AbortController();
   let timer: number | undefined;
+  let fitFrame: number | undefined;
+  const freshnessSection = panel.querySelector<HTMLElement>(".runtime-freshness");
+  const freshnessTitle = freshnessSection?.querySelector<HTMLElement>(".runtime-chart-title");
   const freshnessGrid = panel.querySelector<HTMLElement>(".runtime-freshness-grid");
   const fitFreshness = () => {
-    if (!freshnessGrid || panel.dataset.runtimeState !== "ready") return;
-    const bounds = freshnessGrid.getBoundingClientRect();
+    fitFrame = undefined;
+    if (!freshnessGrid || !freshnessSection || panel.dataset.runtimeState !== "ready") return;
+    const sectionBounds = freshnessSection.getBoundingClientRect();
+    const sectionStyle = getComputedStyle(freshnessSection);
+    const titleBounds = freshnessTitle?.getBoundingClientRect();
+    const pixelValue = (value: string) => Number.parseFloat(value) || 0;
+    const width = Math.max(
+      0,
+      sectionBounds.width -
+        pixelValue(sectionStyle.paddingLeft) -
+        pixelValue(sectionStyle.paddingRight) -
+        pixelValue(sectionStyle.borderLeftWidth) -
+        pixelValue(sectionStyle.borderRightWidth)
+    );
+    const gap = freshnessGrid.childElementCount > 0 ? pixelValue(sectionStyle.rowGap) : 0;
+    const height = Math.max(
+      0,
+      sectionBounds.height -
+        pixelValue(sectionStyle.paddingTop) -
+        pixelValue(sectionStyle.paddingBottom) -
+        pixelValue(sectionStyle.borderTopWidth) -
+        pixelValue(sectionStyle.borderBottomWidth) -
+        (titleBounds?.height ?? 0) -
+        gap
+    );
     const designGap = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) * 0.18;
     const layout = calculateFreshnessLayout(
       freshnessGrid.childElementCount,
-      bounds.width,
-      bounds.height,
+      width,
+      height,
       designGap
     );
     if (!layout) return;
+    freshnessSection.dataset.runtimeEmpty = layout.rows === 0 ? "true" : "false";
     freshnessGrid.style.setProperty("--runtime-freshness-columns", String(layout.columns));
     freshnessGrid.style.setProperty("--runtime-freshness-rows", String(layout.rows));
     freshnessGrid.style.setProperty("--runtime-freshness-gap", `${layout.gap}px`);
     freshnessGrid.style.setProperty("--runtime-freshness-cell-size", `${layout.cellSize}px`);
+    freshnessGrid.style.setProperty("--runtime-freshness-grid-height", `${layout.gridHeight}px`);
+  };
+  const scheduleFitFreshness = () => {
+    if (fitFrame !== undefined) return;
+    fitFrame = window.requestAnimationFrame(fitFreshness);
   };
   const onMetricsUpdated = (event: Event) => {
-    if ((event as CustomEvent<{ panel: HTMLElement }>).detail?.panel === panel) fitFreshness();
+    if ((event as CustomEvent<{ panel: HTMLElement }>).detail?.panel === panel) {
+      scheduleFitFreshness();
+    }
   };
-  const resizeObserver = freshnessGrid ? new ResizeObserver(fitFreshness) : null;
-  if (freshnessGrid) {
-    resizeObserver?.observe(freshnessGrid);
+  const resizeObserver = freshnessSection ? new ResizeObserver(scheduleFitFreshness) : null;
+  if (freshnessSection) {
+    resizeObserver?.observe(freshnessSection);
+    if (freshnessTitle) resizeObserver.observe(freshnessTitle);
     window.addEventListener("project-runtime-metrics-updated", onMetricsUpdated);
   }
   const interval = getProjectRuntimeRefreshInterval(slug);
   const stop = () => {
     if (timer !== undefined) window.clearInterval(timer);
     timer = undefined;
+    if (fitFrame !== undefined) window.cancelAnimationFrame(fitFrame);
+    fitFrame = undefined;
     controller.abort();
     delete panel.dataset.runtimeLiveBound;
     resizeObserver?.disconnect();

@@ -111,7 +111,11 @@ const freshnessCells =
             <RuntimeSparkline label="压力值" stat={metrics.pressure} tone="warm" />
           </div>
         </div>
-        <section class="runtime-freshness" aria-label="仓库刷新新鲜度活动图">
+        <section
+          class="runtime-freshness"
+          data-runtime-empty={freshnessCells.length === 0 ? "true" : "false"}
+          aria-label="仓库刷新新鲜度活动图"
+        >
           <h3 class="runtime-chart-title">刷新新鲜度</h3>
           <div
             class="runtime-freshness-grid"
@@ -327,12 +331,17 @@ const freshnessCells =
     position: relative;
     grid-row: 3;
     z-index: 1;
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
     gap: 0.55rem;
     min-height: 0;
     padding-top: 0.7rem;
     border-top: 1px solid rgba(var(--runtime-highlight-rgb), 0.14);
+  }
+
+  .runtime-freshness[data-runtime-empty="true"] {
+    gap: 0;
   }
 
   .runtime-chart-title {
@@ -347,20 +356,28 @@ const freshnessCells =
     display: grid;
     box-sizing: border-box;
     width: 100%;
-    height: 100%;
+    height: var(--runtime-freshness-grid-height, auto);
     min-width: 0;
     min-height: 0;
-    grid-template-columns: repeat(var(--runtime-freshness-columns, 30), var(--runtime-freshness-cell-size, 0.5rem));
-    grid-template-rows: repeat(var(--runtime-freshness-rows, 1), var(--runtime-freshness-cell-size, 0.5rem));
-    grid-auto-rows: var(--runtime-freshness-cell-size, 0.5rem);
+    grid-template-columns: repeat(var(--runtime-freshness-columns, 30), minmax(0, 1fr));
+    grid-template-rows: repeat(
+      var(--runtime-freshness-rows, 1),
+      minmax(var(--runtime-freshness-cell-size, 0.5rem), 1fr)
+    );
     gap: var(--runtime-freshness-gap, 0.18rem);
-    align-content: end;
-    justify-content: start;
+    align-content: stretch;
+    justify-content: stretch;
+  }
+
+  .runtime-freshness[data-runtime-empty="true"] .runtime-freshness-grid {
+    height: 0;
   }
 
   :global(.runtime-freshness-cell) {
     min-width: 0;
     min-height: 0;
+    width: 100%;
+    height: 100%;
     border-radius: 0.12rem;
     background: rgb(var(--runtime-secondary-rgb));
   }
