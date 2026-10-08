@@ -98,6 +98,26 @@
 - covers: REQ-PCSR-003、REQ-PCSR-006
 - Pass condition: 正式与 Demo 使用同一路由和组件；只有中间层的数据来源不同；live 不包含可启用的 Demo 路径；保留正文、媒体、元信息、移动阅读合同与 Inspector 几何。
 
+## Visual Evidence
+
+证据源为构建时隔离、fixture 驱动的正式路由 Web Demo。桌面视口为 1440×1000，移动端为 393×852 CSS px；通过视口模拟取图，页面无需空白裁剪。主人已确认以下五张图片准确反映实现。Storybook 页面级证据不适用。
+
+离线 CSR 已切换到目标文章列表 URL；页面只显示产品请求错误与重试，不保留来源页正文或未读取的数据。
+
+![Desktop offline destination](./assets/csr-offline-desktop-dark.png)
+
+项目页使用共享产品正文与图片，浅色主题保持一致。
+
+![Desktop project](./assets/csr-project-desktop-light.png)
+
+移动端保留文章代码块、主线剪藏阅读器和 Playbook 内容流。
+
+![Mobile post](./assets/csr-post-mobile-light.png)
+
+![Mobile clipping](./assets/csr-clipping-mobile-dark.png)
+
+![Mobile Playbook](./assets/csr-playbook-mobile-dark.png)
+
 ## Related ADRs
 
 - [Self-contained console runtime](../../adr/0010-self-contained-console-runtime.md)
