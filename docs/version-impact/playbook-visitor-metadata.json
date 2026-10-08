@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "14c7e30522aecc3f356196968683cb3ab8f87272",
+  "covered_files": {
+    "CONTEXT.md": "aa1054a4c7bbee8555ba201c33c4989de49f720e",
+    "docs/adr/0011-published-playbook-read-model.md": "1bd94efa58e6ec8cd21bef975c25870a970b77e6",
+    "docs/specs/style-playbook-integration/HISTORY.md": "ad9c2cbc5e4fe33de28b47221390890cd860164d",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "127c8e2ae23588949b0defb148598d92bf009f70",
+    "docs/specs/style-playbook-integration/SPEC.md": "2ebfc806f7fe5310181719f298da9ffdb6398d05",
+    "docs/specs/style-playbook-integration/assets/visitor-reading/playbook-topic-desktop-dark.png": "7f13d53e3b2505260069673fe8253c90560d59c9",
+    "docs/specs/style-playbook-integration/assets/visitor-reading/playbook-topic-mobile-light.png": "6b07ae12fffab23510e35f872f31da0f912ad1fb",
+    "src/components/playbook/PlaybookPage.tsx": "56c3bbfea40a664b7417f800d44af4c2db899de3",
+    "src/lib/playbook/visitor-reading.ts": "31fda888ea2ef36504cabf75fbd45a4b22d5224a",
+    "tests/lib/playbook-build-smoke.ts": "d1da71fa88c66dc3a7659e4da73898599055b9b5",
+    "tests/lib/playbook-contract.test.ts": "fb45d06f75ca42b0b5ff5447e0202b863e01590d",
+    "tests/lib/playbook-visitor-reading.test.ts": "0fdbea49ae33e789f69d3eaa277567935f6cce34"
+  },
+  "change": {
+    "description": "Simplify visitor-facing Playbook topic metadata while preserving public contracts and durable state.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change only removes low-value visitor metadata from Playbook topic views; public API and durable state contracts remain unchanged.",
+      "assessed_at": "2026-10-08T05:20:00Z",
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-visitor-reading.test.ts",
+          "blob": "0fdbea49ae33e789f69d3eaa277567935f6cce34",
+          "command": "bun test --isolate tests/lib/playbook-visitor-reading.test.ts tests/lib/playbook-contract.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The change only removes low-value visitor metadata from Playbook topic views; public API and durable state contracts remain unchanged.",
+      "assessed_at": "2026-10-08T05:20:00Z",
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-visitor-reading.test.ts",
+          "blob": "0fdbea49ae33e789f69d3eaa277567935f6cce34",
+          "command": "bun test --isolate tests/lib/playbook-visitor-reading.test.ts tests/lib/playbook-contract.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The implemented scope matches the planned visitor metadata reduction."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The change only removes low-value visitor metadata from Playbook topic views; public API and durable state contracts remain unchanged.",
+      "assessed_at": "2026-10-08T05:20:00Z",
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-visitor-reading.test.ts",
+          "blob": "0fdbea49ae33e789f69d3eaa277567935f6cce34",
+          "command": "bun test --isolate tests/lib/playbook-visitor-reading.test.ts tests/lib/playbook-contract.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": ["2.7.0", "2.8.3", "2.9.0"],
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-visitor-reading.test.ts",
+          "blob": "0fdbea49ae33e789f69d3eaa277567935f6cce34",
+          "command": "bun test --isolate tests/lib/playbook-visitor-reading.test.ts tests/lib/playbook-contract.test.ts"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite, local-content, cache-schema, or public package state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-contract.test.ts",
+          "blob": "fb45d06f75ca42b0b5ff5447e0202b863e01590d",
+          "command": "bun test --isolate tests/lib/playbook-visitor-reading.test.ts tests/lib/playbook-contract.test.ts"
+        }
+      ]
+    }
+  }
+}
