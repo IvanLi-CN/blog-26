@@ -100,6 +100,24 @@ describe("durable product release reservations", () => {
     expect(result.sha).toBe(head);
     expect(result.legacySha).toBe(legacy);
     expect(result.ledger).toEqual(ledger);
+    const declaration = commits[1];
+    const recovered = commits[2];
+    if (!declaration || !recovered) throw new Error("Missing recovery fixture");
+    declaration.commit.verification = { verified: false, reason: "unsigned" };
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
+    ).rejects.toThrow("Verified");
+    declaration.commit.verification = { verified: true, reason: "valid" };
+    const unrelated = "9".repeat(40);
+    declaration.parents = [{ sha: unrelated }];
+    commits.splice(
+      2,
+      0,
+      commit(unrelated, legacy, `${digestLine}\n${signedOff}`, contract.repository.split("/")[0])
+    );
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
+    ).rejects.toThrow("github-actions[bot]");
   });
 
   test("fresh preparation retires a stale unopened reservation without replacing or reusing its identity", async () => {
@@ -245,7 +263,7 @@ describe("durable product release reservations", () => {
       "operator"
     );
     expect(() => reserveRelease(first.ledger, { ...request, sourceSha: "e".repeat(40) })).toThrow(
-      "active"
+      "Retry"
     );
   });
   test("abandonment burns the version and requires a fresh identity", () => {
@@ -318,6 +336,19 @@ describe("durable product release reservations", () => {
     if (!changed.entries[0]) throw new Error("Missing fixture");
     changed.entries[0].version = "2.9.0";
     expect(() => validateLedger(changed, contract)).toThrow("identity");
+  });
+  test("accepts an existing identity created before version input was added", () => {
+    const first = reserveRelease(initialLedger(contract), request);
+    const persisted = structuredClone(first.ledger);
+    const entry = persisted.entries[0];
+    if (!entry) throw new Error("Missing fixture");
+    entry.id = digest({
+      version: entry.version,
+      sourceSha: entry.sourceSha,
+      policyDigest: entry.policyDigest,
+      evidenceDigest: entry.evidenceDigest,
+    });
+    expect(validateLedger(persisted, contract).entries[0]?.id).toBe(entry.id);
   });
   test("simultaneous compare-and-swap writers cannot reserve two identities", async () => {
     let sha = "root";

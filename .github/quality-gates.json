@@ -37,7 +37,13 @@
     "Playwright E2E (user)",
     "Playwright E2E (mcp)"
   ],
-  "informational_checks": ["Release Token Probe", "Frozen Product Smoke"],
+  "informational_checks": [
+    "Release Token Probe",
+    "Frozen Product Smoke (2.8.0)",
+    "Frozen Product Smoke (2.8.0-alpha.1)",
+    "Frozen Product Smoke (2.8.0-beta.1)",
+    "Frozen Product Smoke (2.8.0-rc.1+Candidate.001)"
+  ],
   "waivers": [],
   "expected_pr_workflows": [
     {

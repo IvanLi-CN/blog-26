@@ -1,6 +1,11 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { publishedBaseline, type ReleaseLedger, supportedVersions } from "./ledger";
+import {
+  publishedBaseline,
+  type ReleaseEntry,
+  type ReleaseLedger,
+  supportedVersions,
+} from "./ledger";
 import {
   contractSchema,
   digest,
@@ -90,10 +95,58 @@ export function changedBlobs(base: string, head: string): Record<string, string 
   );
 }
 
-export function sourceAssessment(ledger: ReleaseLedger, sourceSha: string) {
+/** Separate authenticated protocol-only VERSION writes from business compatibility evidence. */
+export function semanticSourceBlobs(
+  ledger: ReleaseLedger,
+  sourceSha: string,
+  proveRelease?: (entry: ReleaseEntry) => void
+): { changed: Record<string, string | null>; blobs: Record<string, string | null> } {
   const baseline = publishedBaseline(ledger);
   const changed = changedBlobs(baseline.sourceSha, sourceSha);
   const blobs = { ...treeBlobs(sourceSha), ...changed };
+  let businessVersion = treeBlobs(baseline.sourceSha).VERSION ?? null;
+  for (const sha of gitOutput([
+    "rev-list",
+    "--first-parent",
+    "--reverse",
+    `${baseline.sourceSha}..${sourceSha}`,
+    "--",
+    "VERSION",
+  ])
+    .trim()
+    .split("\n")
+    .filter(Boolean)) {
+    const entry = ledger.entries.find((item) => item.mergeSha === sha);
+    if (entry) {
+      if (!proveRelease) throw new Error("VERSION release provenance must be verified");
+      proveRelease(entry);
+    } else {
+      const parent = gitOutput(["rev-parse", `${sha}^`]).trim();
+      if (
+        businessVersion !== null ||
+        gitFile(parent, "VERSION") !== undefined ||
+        gitFile(sha, "VERSION") !== `${ledger.bootstrap.version}\n` ||
+        !gitOutput(["ls-tree", sha, "VERSION"]).startsWith("100644 blob ")
+      )
+        throw new Error("Unregistered VERSION change cannot supply semantic release evidence");
+      businessVersion = treeBlobs(sha).VERSION ?? null;
+    }
+  }
+  if (Object.hasOwn(changed, "VERSION")) {
+    if (businessVersion === (treeBlobs(baseline.sourceSha).VERSION ?? null)) delete changed.VERSION;
+    else changed.VERSION = businessVersion;
+    blobs.VERSION = businessVersion;
+  }
+  return { changed, blobs };
+}
+
+export function sourceAssessment(
+  ledger: ReleaseLedger,
+  sourceSha: string,
+  proveRelease?: (entry: ReleaseEntry) => void
+) {
+  const baseline = publishedBaseline(ledger);
+  const { changed, blobs } = semanticSourceBlobs(ledger, sourceSha, proveRelease);
   const records: ImpactRecord[] = Object.keys(treeBlobs(sourceSha))
     .filter((path) => /^docs\/version-impact\/[^/]+\.json$/.test(path))
     .map((path) => impactRecordSchema.parse(JSON.parse(gitFile(sourceSha, path) || "null")));

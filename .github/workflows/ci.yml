@@ -31,10 +31,14 @@ env:
 
 jobs:
   frozen-product-smoke:
-    name: Frozen Product Smoke
+    name: Frozen Product Smoke (${{ matrix.version }})
     if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/th/release-')
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ['2.8.0', '2.8.0-alpha.1', '2.8.0-beta.1', '2.8.0-rc.1+Candidate.001']
     env:
       DB_PATH: ./test-data/sqlite.db
       LOCAL_CONTENT_BASE_PATH: ./test-data/local
@@ -42,6 +46,7 @@ jobs:
       PUBLIC_API_BASE_URL: https://console.ivanli.cc
       PUBLIC_SITE_URL: https://ivanli.cc
       PUBLIC_SITE_BASE_PATH: /
+      PRODUCT_RELEASE_FIXTURE_VERSION: ${{ matrix.version }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -66,7 +71,7 @@ jobs:
       - name: Save candidate identity and product digest evidence
         uses: actions/upload-artifact@v7
         with:
-          name: candidate-product-proof-${{ github.sha }}
+          name: candidate-product-proof-${{ github.sha }}-${{ matrix.version }}
           path: |
             ${{ runner.temp }}/product-release/products/release-manifest.json
             ${{ runner.temp }}/product-release/products/artifact-manifest.json

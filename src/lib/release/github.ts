@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { z } from "zod";
 import { initialLedger, type LedgerStore, type ReleaseLedger, validateLedger } from "./ledger";
 import { canonicalJson, digest, type ReleaseContract, shaSchema } from "./policy";
+import { parseVersion } from "./version";
 
 const refSchema = z.object({
   object: z.object({ sha: shaSchema, type: z.enum(["commit", "tag"]) }),
@@ -262,7 +263,11 @@ export class GitHubRelease {
         .object({ ref: z.string(), object: z.object({ sha: shaSchema, type: z.string() }) })
         .parse(raw);
       const version = item.ref.replace(/^refs\/tags\/v/, "");
-      if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) return [];
+      try {
+        parseVersion(version);
+      } catch {
+        return [];
+      }
       let target = item.object;
       for (let depth = 0; target.type === "tag" && depth < 8; depth++) {
         target = z
@@ -311,9 +316,16 @@ export class GitHubLedgerStore implements LedgerStore {
     let legacySha: string | undefined;
     const commits = this.github.pages(`${this.github.root}/commits?sha=${sha}&per_page=100`);
     const parsedCommits = commits.map((raw) => repositoryCommitSchema.parse(raw));
-    const recoverySha = parsedCommits
-      .map((commit) => commit.commit.message.match(/Ledger-Recovery:\s*([a-f0-9]{40})/)?.[1])
-      .find((value): value is string => value !== undefined);
+    let recoverySha: string | undefined;
+    for (const [index, commit] of parsedCommits.entries()) {
+      const recovered = commit.commit.message.match(/^Ledger-Recovery: ([a-f0-9]{40})$/m)?.[1];
+      if (!recovered) continue;
+      // A recovery declaration is authority only when signed by the release bot.
+      this.github.verifyBotCommit(commit.sha, commits[index]);
+      if (recoverySha && recoverySha !== recovered)
+        throw new Error("Conflicting ledger recovery declarations");
+      recoverySha = recovered;
+    }
     for (const [index, commit] of parsedCommits.entries()) {
       const raw = commits[index];
       if (!raw) throw new Error("Ledger history response was truncated");
@@ -323,7 +335,7 @@ export class GitHubLedgerStore implements LedgerStore {
       const legacyRequested =
         (options.allowLegacyHead && commit.sha === sha) ||
         (options.allowLegacyAncestor && commit.sha !== sha && !legacySha) ||
-        (recoverySha !== undefined && commit.sha !== sha);
+        (recoverySha === commit.sha && commit.sha !== sha);
       if (legacyRequested && (commit.author?.login === owner || recoverySha === commit.sha)) {
         const bot = `${this.github.botSlug}[bot]`;
         if (

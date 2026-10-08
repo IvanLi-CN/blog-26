@@ -117,9 +117,15 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - name: Publish both products, deploy the same static archive, then promote latest
-        if: steps.identify.outputs.active == 'true'
-        run: bun scripts/product-release.ts publish
+      - name: Publish prerelease products without deployment or latest promotion
+        if: steps.identify.outputs.active == 'true' && steps.identify.outputs.prerelease == 'true'
+        run: bun scripts/product-release.ts publish-prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://ivanli.cc' }}
+      - name: Publish stable products, deploy the same static archive, then promote latest
+        if: steps.identify.outputs.active == 'true' && steps.identify.outputs.prerelease == 'false'
+        run: bun scripts/product-release.ts publish-stable
         env:
           GH_TOKEN: ${{ github.token }}
           EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}

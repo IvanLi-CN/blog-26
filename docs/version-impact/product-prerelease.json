@@ -1,0 +1,291 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "43190e6e8b9ff89f8e04d203c4389398f1dedbd9",
+  "covered_files": {
+    ".github/quality-gates.json": "b344117ce393945e73ab2d4c498eb50eb1467610",
+    ".github/release-contract.json": "b019adfd2969ca868d58ed7014692c9fade8ee8a",
+    ".github/workflows/ci.yml": "d0ce015111ffb8d71e11ad8e3d1650d2b6c44548",
+    ".github/workflows/manual-product-release.yml": "ea9a5c86fe62d31bf5949ee7c9684c507c7aaecd",
+    ".github/workflows/product-release.yml": "be25706242df623b5362363d27846a865e9a6e5d",
+    "CONTEXT.md": "d46b196c60fa7d2cb747b7aa419f89da969e3b00",
+    "docs/adr/0017-product-prerelease-publication-boundary.md": "f49a2f664db0d3cf75e3fb800ce7fb5962909fcb",
+    "docs/adr/0018-product-prerelease-version-allocation.md": "2b058a5898d06d4526d4c97894e3a5b3fa3183d3",
+    "docs/runbooks/manual-version-release.md": "fd1764f692713c32219e570b5f9a4acfecff19d0",
+    "docs/specs/README.md": "01cf58d7b3761375603e7bb6d5c5643b3485b33a",
+    "docs/specs/manual-version-release/HISTORY.md": "2fecca128944bf6bea5830020819af6cb4f4bdff",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "1b11b98ce5cb2bdcdb452a2be3ea020007340b31",
+    "docs/specs/manual-version-release/SPEC.md": "020e28edd1303192171b4a83c61b759c587891f0",
+    "scripts/generate-version.ts": "540261910827ab73f674c741cc3e7404fc97809e",
+    "scripts/product-release.ts": "2ecf4a6c77c9e2def993585023a47b8bd22a48f5",
+    "src/lib/release/completion.ts": "93c8e78b5dedac4f8155a8db18b9d65818b17354",
+    "src/lib/release/deployment.ts": "8125665bd69a1e631f599ff61d01e2a95c5c907f",
+    "src/lib/release/github.ts": "676bd7adb753ffb5126ce1e6d79e96123ff0a786",
+    "src/lib/release/ledger.ts": "f0dafd749a599f1979d6feb0f9e597ed1831c27d",
+    "src/lib/release/policy.ts": "8ba02e8fd5cd7e832ea8a3d0de4c2099415851c6",
+    "src/lib/release/preparation.ts": "75421405bd7dd05e566332f49eb03ad97c7e3f7f",
+    "src/lib/release/publication.ts": "f76d8aa146bb3f20bc83091857bd09c81edba02f",
+    "src/lib/release/source.ts": "1795f3bdde6f794fadfcd1899cef3e6d1713d8dc",
+    "src/lib/release/version.ts": "ee820d89fba837618243554a16e9d931e8e90189",
+    "src/lib/search/content-search.test.ts": "2149f97140b3797b477952559b9e3bae40257a16",
+    "src/server/version-api.ts": "9bfb712fdf25caef06d30d7fa27aa2380bb10bac",
+    "tests/ci/prepare-release-fixture.ts": "79a621ec55014121d9a772882aa345cf6d58fde7",
+    "tests/ci/product-prerelease-workflow.test.ts": "84ad0ffda08e0c836a03c76000ea7f5c725245dc",
+    "tests/lib/manual-release-ledger.test.ts": "1f68d8e74176630889a4880fcca1dcbfe462f4c4",
+    "tests/lib/manual-release-policy.test.ts": "2435afe5a32a75d263c5757709c9c4db976b2f95",
+    "tests/lib/manual-release-publication.test.ts": "fb861f2597ce10183b20575ec7f1ea61aac8da94",
+    "tests/lib/manual-release-recovery.test.ts": "8da7d35f101b78c81fc755e251538b50164b7e78",
+    "tests/lib/manual-release-source.test.ts": "a870bad9943a9fff42f9ef244034bbbff51c6d74",
+    "tests/server/version-api.test.ts": "c86011cb95db3b9f8358570c62e22630af004ac0"
+  },
+  "change": {
+    "description": "Unified stable/alpha/beta/rc allocation and two-product prerelease publication with production-pointer isolation, authenticated signed-ledger recovery and compatible product version metadata.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "Add compatible prerelease version requests and product metadata without changing existing stable behavior, public API fields, SQLite schema or local content formats. Operational release-ledger identities are validated separately from product persistent state.",
+      "assessed_at": "2026-10-08T02:44:08.173Z",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-policy.test.ts",
+          "blob": "2435afe5a32a75d263c5757709c9c4db976b2f95",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-ledger.test.ts",
+          "blob": "1f68d8e74176630889a4880fcca1dcbfe462f4c4",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-provenance.test.ts",
+          "blob": "01496353150171b571e007bb11cbd354d9ff7d7b",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "8da7d35f101b78c81fc755e251538b50164b7e78",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-source.test.ts",
+          "blob": "a870bad9943a9fff42f9ef244034bbbff51c6d74",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-publication.test.ts",
+          "blob": "fb861f2597ce10183b20575ec7f1ea61aac8da94",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/server/version-api.test.ts",
+          "blob": "c86011cb95db3b9f8358570c62e22630af004ac0",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "84ad0ffda08e0c836a03c76000ea7f5c725245dc",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "Add compatible prerelease version requests and product metadata without changing existing stable behavior, public API fields, SQLite schema or local content formats. Operational release-ledger identities are validated separately from product persistent state.",
+      "assessed_at": "2026-10-08T02:44:08.174Z",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-policy.test.ts",
+          "blob": "2435afe5a32a75d263c5757709c9c4db976b2f95",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-ledger.test.ts",
+          "blob": "1f68d8e74176630889a4880fcca1dcbfe462f4c4",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-provenance.test.ts",
+          "blob": "01496353150171b571e007bb11cbd354d9ff7d7b",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "8da7d35f101b78c81fc755e251538b50164b7e78",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-source.test.ts",
+          "blob": "a870bad9943a9fff42f9ef244034bbbff51c6d74",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-publication.test.ts",
+          "blob": "fb861f2597ce10183b20575ec7f1ea61aac8da94",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/server/version-api.test.ts",
+          "blob": "c86011cb95db3b9f8358570c62e22630af004ac0",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "84ad0ffda08e0c836a03c76000ea7f5c725245dc",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        }
+      ],
+      "scope_drift": {
+        "detected": true,
+        "description": "Reconciled main PR178/179 coverage and the Memos real-vs-simulated error boundary. Inherited VERSION remains 2.8.0; no independent product release or state migration."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "Add compatible prerelease version requests and product metadata without changing existing stable behavior, public API fields, SQLite schema or local content formats. Operational release-ledger identities are validated separately from product persistent state.",
+      "assessed_at": "2026-10-08T02:44:08.174Z",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-policy.test.ts",
+          "blob": "2435afe5a32a75d263c5757709c9c4db976b2f95",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-ledger.test.ts",
+          "blob": "1f68d8e74176630889a4880fcca1dcbfe462f4c4",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-provenance.test.ts",
+          "blob": "01496353150171b571e007bb11cbd354d9ff7d7b",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "8da7d35f101b78c81fc755e251538b50164b7e78",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-source.test.ts",
+          "blob": "a870bad9943a9fff42f9ef244034bbbff51c6d74",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-publication.test.ts",
+          "blob": "fb861f2597ce10183b20575ec7f1ea61aac8da94",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/server/version-api.test.ts",
+          "blob": "c86011cb95db3b9f8358570c62e22630af004ac0",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "84ad0ffda08e0c836a03c76000ea7f5c725245dc",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": ["2.7.0", "2.8.3"],
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-policy.test.ts",
+          "blob": "2435afe5a32a75d263c5757709c9c4db976b2f95",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-ledger.test.ts",
+          "blob": "1f68d8e74176630889a4880fcca1dcbfe462f4c4",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-provenance.test.ts",
+          "blob": "01496353150171b571e007bb11cbd354d9ff7d7b",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "8da7d35f101b78c81fc755e251538b50164b7e78",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-source.test.ts",
+          "blob": "a870bad9943a9fff42f9ef244034bbbff51c6d74",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-publication.test.ts",
+          "blob": "fb861f2597ce10183b20575ec7f1ea61aac8da94",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/server/version-api.test.ts",
+          "blob": "c86011cb95db3b9f8358570c62e22630af004ac0",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "84ad0ffda08e0c836a03c76000ea7f5c725245dc",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": true,
+      "state_description": "Unchanged SQLite schema and local content path format; existing state remains readable without a migration. Browser result-cache v5 ignores obsolete v4 entries; versions keep independent cache namespaces without changing durable SQLite or local content.",
+      "readable_by_prior_versions": ["2.7.0", "2.8.3"],
+      "upgrade_from_versions": ["2.7.0", "2.8.3"],
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-policy.test.ts",
+          "blob": "2435afe5a32a75d263c5757709c9c4db976b2f95",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-ledger.test.ts",
+          "blob": "1f68d8e74176630889a4880fcca1dcbfe462f4c4",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-provenance.test.ts",
+          "blob": "01496353150171b571e007bb11cbd354d9ff7d7b",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "8da7d35f101b78c81fc755e251538b50164b7e78",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-source.test.ts",
+          "blob": "a870bad9943a9fff42f9ef244034bbbff51c6d74",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/lib/manual-release-publication.test.ts",
+          "blob": "fb861f2597ce10183b20575ec7f1ea61aac8da94",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/server/version-api.test.ts",
+          "blob": "c86011cb95db3b9f8358570c62e22630af004ac0",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "84ad0ffda08e0c836a03c76000ea7f5c725245dc",
+          "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
+        }
+      ]
+    }
+  }
+}

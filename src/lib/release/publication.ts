@@ -10,17 +10,21 @@ import {
   changeLedger,
   type LedgerStore,
   newerDeploymentExists,
+  type ProductionPointers,
+  productionPointersSchema,
   type ReleaseEntry,
   type ReleaseLedger,
   updateRelease,
 } from "./ledger";
-import { compareVersions } from "./policy";
+import { canonicalJson, compareVersions } from "./policy";
 import { type ProductManifest, verifyProducts } from "./products";
+import { imageVersionTag, isPrerelease, releaseTag } from "./version";
 
 export interface PublicationPorts {
   publish(entry: ReleaseEntry): Promise<NonNullable<ReleaseEntry["publication"]>>;
   deploy(entry: ReleaseEntry): Promise<NonNullable<ReleaseEntry["deployment"]>>;
   promote(entry: ReleaseEntry): Promise<void>;
+  productionPointers?(): Promise<ProductionPointers>;
 }
 
 export async function finishRelease(
@@ -32,7 +36,11 @@ export async function finishRelease(
     const { ledger } = await store.read();
     const entry = ledger.entries.find((item) => item.id === identity);
     if (!entry) throw new Error("Release identity is missing");
-    if (newerDeploymentExists(ledger, entry))
+    if (
+      !isPrerelease(entry.version) &&
+      entry.stage !== "complete" &&
+      newerDeploymentExists(ledger, entry)
+    )
       throw new Error(
         "A newer product already owns production; recovery must not move its pointers backwards"
       );
@@ -46,12 +54,37 @@ export async function finishRelease(
   }
   let entry = await current();
   if (entry.stage === "complete") return entry;
+  if (!["frozen", "published", "deployed"].includes(entry.stage))
+    throw new Error("Publication requires both frozen products");
+  async function pointers(): Promise<ProductionPointers> {
+    if (!ports.productionPointers)
+      throw new Error("Prerelease isolation observations are required");
+    return productionPointersSchema.parse(await ports.productionPointers());
+  }
+  if (isPrerelease(entry.version)) {
+    const observed = await pointers();
+    if (entry.productionBefore && canonicalJson(observed) !== canonicalJson(entry.productionBefore))
+      throw new Error("Production pointers changed; prerelease isolation cannot be proven");
+    if (!entry.productionBefore) {
+      await record({ productionBefore: observed });
+      entry = await current();
+    }
+  }
   if (entry.stage === "frozen") {
     const publication = await ports.publish(entry);
     await record({ publication, stage: "published" });
     entry = await current();
   }
   if (entry.stage === "published") {
+    if (isPrerelease(entry.version)) {
+      await record({
+        productionAfter: await pointers(),
+        deploymentStatus: "not-applicable",
+        latestStatus: "not-applicable",
+        stage: "complete",
+      });
+      return current();
+    }
     const deployment = await ports.deploy(entry);
     await record({ deployment, stage: "deployed" });
     entry = await current();
@@ -63,6 +96,43 @@ export async function finishRelease(
   }
   if (entry.stage !== "complete") throw new Error("Publication requires both frozen products");
   return entry;
+}
+
+export async function readProductionPointers(github: GitHubRelease): Promise<ProductionPointers> {
+  const raw = github.optional(`${github.root}/releases/latest`);
+  const latest =
+    raw === undefined
+      ? null
+      : z.object({ id: z.number().int().positive(), tag_name: z.string() }).parse(raw);
+  const site = new URL(process.env.PUBLIC_SITE_URL || "https://ivanli.cc/");
+  if (site.protocol !== "https:" || site.username || site.password || site.search || site.hash)
+    throw new Error("Production observation URL is invalid");
+  const options = {
+    redirect: "error" as const,
+    cache: "no-store" as const,
+    signal: AbortSignal.timeout(30_000),
+  };
+  const versionResponse = await fetch(new URL("version.json", site), options);
+  if (!versionResponse.ok && versionResponse.status !== 404)
+    throw new Error("Production version observation failed");
+  const pointerResponse = await fetch(new URL("_content/playbook/manifest.json", site), options);
+  if (!pointerResponse.ok) throw new Error("Production Playbook pointer observation failed");
+  const playbookPointer = z
+    .object({ editionDigest: z.string(), rendererCommit: z.string() })
+    .parse(await pointerResponse.json());
+  if (
+    versionResponse.status === 404 &&
+    playbookPointer.rendererCommit !== github.contract.bootstrap.sourceSha
+  )
+    throw new Error("Absent version endpoint cannot identify an unknown production renderer");
+  return productionPointersSchema.parse({
+    githubLatest: latest && { id: latest.id, tag: latest.tag_name },
+    imageLatest: registryDigest(`${github.contract.products.image.repository}:latest`) ?? null,
+    siteVersion: versionResponse.ok
+      ? publicVersionSchema.parse(await versionResponse.json())
+      : null,
+    playbookPointer,
+  });
 }
 
 const releaseSchema = z.object({
@@ -189,7 +259,8 @@ export async function publishProducts(
   root: string
 ): Promise<NonNullable<ReleaseEntry["publication"]>> {
   const manifest = await verifyProducts(entry, root);
-  const tag = `v${entry.version}`;
+  const tag = releaseTag(entry.version);
+  const prerelease = isPrerelease(entry.version);
   const existingTag = github.canonicalTags().find((item) => item.version === entry.version);
   if (existingTag && existingTag.sha !== entry.mergeSha)
     throw new Error("Unified tag belongs to a different source");
@@ -204,7 +275,7 @@ export async function publishProducts(
         name: tag,
         body: `Static frontend and full-feature Docker image.\n\n${marker}`,
         draft: true,
-        prerelease: false,
+        prerelease,
         make_latest: "false",
       })
   );
@@ -212,7 +283,7 @@ export async function publishProducts(
     release.tag_name !== tag ||
     release.target_commitish !== entry.mergeSha ||
     !release.body?.includes(marker) ||
-    release.prerelease ||
+    release.prerelease !== prerelease ||
     release.author.login !== `${github.botSlug}[bot]`
   )
     throw new Error("Release belongs to a different identity");
@@ -264,7 +335,7 @@ export async function publishProducts(
     "release-manifest.json",
     bytesDigest(await readFile(join(root, "release-manifest.json")))
   );
-  const image = `${github.contract.products.image.repository}:${tag}`;
+  const image = `${github.contract.products.image.repository}:${imageVersionTag(entry.version)}`;
   const previous = registryDigest(image);
   if (previous && previous !== manifest.imageDigest)
     throw new Error("Version image already has different immutable bytes");
@@ -288,10 +359,11 @@ export async function publishProducts(
 }
 
 export async function promoteLatest(github: GitHubRelease, entry: ReleaseEntry): Promise<void> {
+  if (isPrerelease(entry.version)) throw new Error("Prerelease cannot promote formal latest");
   if (!entry.publication || !entry.products)
     throw new Error("Both publication proofs are required before promotion");
   const image = github.contract.products.image.repository;
-  const immutable = `${image}:v${entry.version}`;
+  const immutable = `${image}:${imageVersionTag(entry.version)}`;
   if (registryDigest(immutable) !== entry.products.imageDigest)
     throw new Error("Immutable version image changed before latest promotion");
   if (registryDigest(`${image}:latest`) !== entry.products.imageDigest)

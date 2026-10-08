@@ -9,6 +9,7 @@
 import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { parseVersion } from "../src/lib/release/version";
 
 interface VersionInfo {
   version: string;
@@ -177,12 +178,7 @@ function generateVersionInfo(): VersionInfo {
     const storedProductVersion = existsSync(versionPath)
       ? readFileSync(versionPath, "utf8").trim()
       : null;
-    if (
-      storedProductVersion &&
-      !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(storedProductVersion)
-    ) {
-      throw new Error("VERSION must contain a canonical stable product version");
-    }
+    if (storedProductVersion) parseVersion(storedProductVersion);
     if (process.env.PRODUCT_VERSION && process.env.PRODUCT_VERSION !== storedProductVersion) {
       throw new Error("Product version does not match the checked-out VERSION file");
     }

@@ -6,6 +6,7 @@ import { withoutDeploymentCredentials } from "../playbook/child-env";
 import type { ReleaseEntry } from "./ledger";
 import { shaSchema, versionSchema } from "./policy";
 import { type ProductManifest, verifyProducts } from "./products";
+import { isPrerelease } from "./version";
 
 export const publicVersionSchema = z
   .object({ productVersion: versionSchema, buildVersion: z.string().min(1), sourceSha: shaSchema })
@@ -97,6 +98,7 @@ export async function deployStatic(
   entry: ReleaseEntry,
   root: string
 ): Promise<NonNullable<ReleaseEntry["deployment"]>> {
+  if (isPrerelease(entry.version)) throw new Error("Prerelease cannot deploy a site");
   if (!process.env.EDGEONE_API_TOKEN || !process.env.EDGEONE_PROJECT_NAME)
     throw new Error("EdgeOne deployment configuration is missing");
   const destination = resolve(process.env.RUNNER_TEMP || ".tmp", `product-deploy-${entry.id}`);

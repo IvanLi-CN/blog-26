@@ -10,8 +10,14 @@ import {
   updateRelease,
 } from "./ledger";
 import { compareVersions, shaSchema } from "./policy";
-import { assertMerge, assertReleasePull, verifyTrustedTags } from "./preparation";
-import { changedBlobs, gitFile, gitOutput, policyIdentity, sourceAssessment } from "./source";
+import {
+  assertMerge,
+  assertReleasePull,
+  assessReleaseSource,
+  verifyTrustedTags,
+} from "./preparation";
+import { changedBlobs, gitFile, gitOutput, policyIdentity } from "./source";
+import { isPrerelease } from "./version";
 
 export const qualitySchema = z
   .object({
@@ -271,11 +277,14 @@ export async function validateCandidatePolicy(
         throw new Error("Release source moved before merge");
     } else assertMerge(github, entry, linked, head);
     const reserved = entry;
-    const assessment = sourceAssessment(
+    const assessment = assessReleaseSource(
+      github,
       {
         ...ledger,
         entries: ledger.entries.filter(
-          (item) => compareVersions(item.version, reserved.baselineVersion) <= 0
+          (item) =>
+            isPrerelease(item.version) ||
+            compareVersions(item.version, reserved.baselineVersion) <= 0
         ),
       },
       reserved.sourceSha
@@ -292,6 +301,6 @@ export async function validateCandidatePolicy(
     )
       throw new Error("Ordinary changes cannot modify VERSION; use Manual Product Release");
   }
-  const assessment = sourceAssessment(await readPolicyLedger(github, store), head);
+  const assessment = assessReleaseSource(github, await readPolicyLedger(github, store), head);
   return `Verified ${assessment.impact} impact for ${Object.keys(assessment.changed).length} source changes`;
 }

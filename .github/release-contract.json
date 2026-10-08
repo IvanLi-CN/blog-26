@@ -3,7 +3,7 @@
   "repository": "IvanLi-CN/blog-26",
   "branch": "main",
   "ledgerBranch": "release-ledger",
-  "versionPolicy": "stable-semver-v1",
+  "versionPolicy": "product-semver-v1",
   "impactRecordDirectory": "docs/version-impact",
   "bootstrap": {
     "version": "2.7.0",

@@ -3,12 +3,21 @@
 ## Current Status
 
 - Lifecycle: active
-- Implementation: implemented
+- Implementation: partial
 
 已实现机器可读合同、语义版本策略、签名登记分支适配器、VERSION-only PR 准备、main 完成事件核验、冻结输入与两种产物、GitHub Release/GHCR 发布及 EdgeOne 恢复链路。版本端点分开返回产品版本、构建身份和来源。
 
+当前候选实现采用 `product-semver-v1`，支持 stable/alpha/beta/rc 快捷值及完整 SemVer，使用精确整数排序、独立正式语义基线与占用下界。原请求纳入不可变身份，预发布完成要求两种产物证明、生产指针前后读回一致，以及部署/latest 的不适用结果。预发布部署与晋升入口分别拒绝请求，工作流将部署密钥限制在正式发布步骤。Agent VM 全量钩子通过 `867` 个测试和 `3840` 个断言；同步主干恢复修复后，登记、快照获取和恢复的 `21` 个针对性测试通过。stable、alpha、beta、rc 的非生产两产品 smoke 在平台运行中取得过成功证据；最终候选的当前 Actions、审查、实现 PR 合并和真实 alpha 发布仍待完成。
+
+## Requirements Intake
+
+已确认：唯一 `version` 文本输入；留空或 stable 自动正式版；alpha/beta/rc 自动预发布；完整版本精确指定；预发布只发布两种产物，不部署站点或推进正式 latest。正式语义基线与已占用下界分别计算，同目标的预发布阶段向前且允许跳过；阶段回退停止，由发版人显式指定更高完整目标。预发布完整能力必须通过获授权的真实 alpha 发布验收，正式部署需独立证据。
+
+主人已批准实现 PR 合并及合并后一次真实 alpha 发布验收；没有未决设计问题。本轮不执行正式版部署或 beta/rc 真实发布，也不新增凭据或改变保护规则。
+
 ## Implementation Coverage
 
+- 登记读取支持 Verified 发布机器人提交中的 `Ledger-Recovery` 声明，只认可声明明确指向的 GitHub 签名异常提交；声明本身必须通过机器人作者与签名校验，未登记的人类提交仍阻断。恢复记录可保留在祖先提交中，不需要改写远端历史。登记、来源与单一工作流输入的 18 项针对性测试通过；真实远端登记只读探针通过并核验登记提交 `387b5c6e14cf1101799c5b61ae06394e989b8739`。当前 `2.8.3` 发布身份尚未完成，alpha 验收不得替换它。
 - 版本、证据、并发预留、来源和故障恢复模块有固定样例测试；完整构建和生产模式 smoke 使用非生产 fixture。
 - 来源移动后的新手动准备保留废弃记录和已占用版本；原运行重跑及其他发版人不能替换旧身份。尚未绑定的 PR 也必须核验来源并关闭后才能重新准备。
 - 自动合并与 main 保护规则已通过实际配置读回核验：十项 required checks、严格 up-to-date、Verified commits、管理员受约束、禁止 force/delete、零新增人工审批。
