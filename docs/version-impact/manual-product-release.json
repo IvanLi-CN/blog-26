@@ -13,7 +13,7 @@
     ".github/workflows/release-merge-followup.yml": "4b73c92f1d880835a2193a9b0e93826717b028ca",
     ".gitignore": "8a2342e4ffaa79d57673a41b07ba3fed6c34bb13",
     "AGENTS.md": "043a300f5054f4b889e8992dd98209c4dfe2143d",
-    "CONTEXT.md": "d46b196c60fa7d2cb747b7aa419f89da969e3b00",
+    "CONTEXT.md": "aa1054a4c7bbee8555ba201c33c4989de49f720e",
     "Dockerfile": "6e1616b4117589937ce07ce06e8c7b8627ef639a",
     "README.md": "c2ea174ab911e1c89d74fe3de11d6833587de90a",
     "VERSION": "c8e38b614057b7e417c63fde44726a4143de9da0",
@@ -55,9 +55,9 @@
     "docs/specs/release-failure-telegram-alerts/HISTORY.md": "83c05243b415749850534d5b0e206ff86213d2ce",
     "docs/specs/release-failure-telegram-alerts/IMPLEMENTATION.md": "5b06386d180120b55a7740037459aa3e07eb7aec",
     "docs/specs/release-failure-telegram-alerts/SPEC.md": "439b85a711bed3ac7f18cc686ec6b312899fd713",
-    "docs/specs/style-playbook-integration/HISTORY.md": "ffa287c6f9e1493e1b3f399a0b84e9af5799e80c",
-    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "8c42f8f8b15d005cd70fbf9bab5e10fbd83e8567",
-    "docs/specs/style-playbook-integration/SPEC.md": "2634a987630e6294d1a875a654e558dfc66059d5",
+    "docs/specs/style-playbook-integration/HISTORY.md": "ad9c2cbc5e4fe33de28b47221390890cd860164d",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "127c8e2ae23588949b0defb148598d92bf009f70",
+    "docs/specs/style-playbook-integration/SPEC.md": "2ebfc806f7fe5310181719f298da9ffdb6398d05",
     "docs/specs/style-playbook-integration/assets/playbook-desktop-card-copy-full-width-dark-1280.png": "e5072fa8838fca87fdc113dfc4b13ace93a157ea",
     "docs/specs/style-playbook-integration/assets/playbook-mobile-card-copy-full-width-dark-393.png": "3c6368ca34d8ba1192fd0363cd34248f29f41c4b",
     "docs/specs/style-playbook-integration/assets/search-children-expanded.png": "3187f95764fa508012c64b9088ea3a7472b8722a",
@@ -106,7 +106,7 @@
     "src/components/comments/hooks.ts": "1c383710e1d4c451c05b89f53589c9bc27cfc456",
     "src/components/common/AmbientScene.tsx": "01417ceda1fff9f7d840c1de1c49c2a75f15db73",
     "src/components/common/ThemeToggle.tsx": "4d6da82f96742e13e06be24d24cef0cbc247a03a",
-    "src/components/playbook/PlaybookPage.tsx": "fb74adc6384bad14b5e4a1b9e522a7606c1e6e6b",
+    "src/components/playbook/PlaybookPage.tsx": "56c3bbfea40a664b7417f800d44af4c2db899de3",
     "src/components/search/PublicSearchPage.stories.tsx": "b169f645f97fa49ac0762827f2a2e1f9c9ce0471",
     "src/components/search/PublicSearchPage.tsx": "f254637e52b1854710df4b6055122672a8197727",
     "src/components/search/SearchResultsList.stories.tsx": "a41e487bd6a71055e47596156237ca533ee0a443",
@@ -171,7 +171,7 @@
     "tests/lib/manual-release-recovery.test.ts": "8da7d35f101b78c81fc755e251538b50164b7e78",
     "tests/lib/public-pwa-edgeone-config.test.ts": "29ae1cfbfd649e731121069048cd85a6e86e8c7e",
     "tests/lib/memo-list-web-demo.test.ts": "38f0f87d65565abfa3b35e9b2b5f60e2d561bddd",
-    "tests/lib/playbook-contract.test.ts": "38047c495879fdd4cb00f81791db6bdd8737a49b",
+    "tests/lib/playbook-contract.test.ts": "fb45d06f75ca42b0b5ff5447e0202b863e01590d",
     "tests/lib/playbook-workflows.test.ts": "2921115a0b6629d9f7e10f6e7c80b5ee43403a2b",
     "tests/lib/web-demo-boundary.test.ts": "d3631d64cafb7297df4af827fdd60b5383fd70f6",
     "tests/lib/web-demo-fetch.test.ts": "44575ddcc0e8b2bbc1ad53d4da379eba51fdae7a",
@@ -315,12 +315,12 @@
         },
         {
           "path": "src/components/playbook/PlaybookPage.tsx",
-          "blob": "fb74adc6384bad14b5e4a1b9e522a7606c1e6e6b",
+          "blob": "56c3bbfea40a664b7417f800d44af4c2db899de3",
           "command": "bun run check"
         },
         {
           "path": "docs/specs/style-playbook-integration/SPEC.md",
-          "blob": "2634a987630e6294d1a875a654e558dfc66059d5",
+          "blob": "2ebfc806f7fe5310181719f298da9ffdb6398d05",
           "command": "git diff --check"
         },
         {
@@ -446,12 +446,12 @@
         },
         {
           "path": "src/components/playbook/PlaybookPage.tsx",
-          "blob": "fb74adc6384bad14b5e4a1b9e522a7606c1e6e6b",
+          "blob": "56c3bbfea40a664b7417f800d44af4c2db899de3",
           "command": "bun run check"
         },
         {
           "path": "docs/specs/style-playbook-integration/SPEC.md",
-          "blob": "2634a987630e6294d1a875a654e558dfc66059d5",
+          "blob": "2ebfc806f7fe5310181719f298da9ffdb6398d05",
           "command": "git diff --check"
         },
         {

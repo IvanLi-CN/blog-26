@@ -8,7 +8,7 @@
     ".github/workflows/ci.yml": "d0ce015111ffb8d71e11ad8e3d1650d2b6c44548",
     ".github/workflows/manual-product-release.yml": "ea9a5c86fe62d31bf5949ee7c9684c507c7aaecd",
     ".github/workflows/product-release.yml": "be25706242df623b5362363d27846a865e9a6e5d",
-    "CONTEXT.md": "d46b196c60fa7d2cb747b7aa419f89da969e3b00",
+    "CONTEXT.md": "aa1054a4c7bbee8555ba201c33c4989de49f720e",
     "docs/adr/0013-native-project-tag-discovery.md": "685754ce830f1e81118dd90afaab0b07274cab9f",
     "docs/adr/0017-product-prerelease-publication-boundary.md": "f49a2f664db0d3cf75e3fb800ce7fb5962909fcb",
     "docs/adr/0018-product-prerelease-version-allocation.md": "2b058a5898d06d4526d4c97894e3a5b3fa3183d3",
