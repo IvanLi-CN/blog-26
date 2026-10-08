@@ -1,21 +1,11 @@
 import {
+  extractProjectToc,
   type ProjectTocItem,
-  resolveProjectBody,
   validateProjectMdxImports,
 } from "./project-content-utils";
 
 export type { ProjectTocItem } from "./project-content-utils";
 
-export interface ProjectBody {
-  Content: any;
-  toc: ProjectTocItem[];
-}
-
-type MdxModule = { default: any };
-
-const compiledBodies = import.meta.glob<MdxModule>("../content/projects/*.mdx", {
-  eager: true,
-});
 const sourceBodies = import.meta.glob<string>("../content/projects/*.mdx", {
   eager: true,
   query: "?raw",
@@ -41,14 +31,12 @@ function validateBodies() {
       );
     }
     validateProjectMdxImports(source, path);
-    if (!compiledBodies[path]) {
-      throw new Error(`Project MDX source was not compiled: ${path}`);
-    }
   }
 }
 
 validateBodies();
 
-export function getProjectBody(slug: string): ProjectBody | null {
-  return resolveProjectBody(slug, compiledBodies, sourceBodies);
+export function getProjectContentMetadata(slug: string): { toc: ProjectTocItem[] } | null {
+  const source = sourceBodies[`../content/projects/${slug}.mdx`];
+  return source ? { toc: extractProjectToc(source) } : null;
 }

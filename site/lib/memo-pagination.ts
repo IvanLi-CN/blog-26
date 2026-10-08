@@ -88,7 +88,9 @@ export function parseMemoPage<T>(
 }
 
 export function parseConsoleInitialMemoPage(value: unknown, isAdmin: boolean) {
-  return parseMemoPage(value, "older", isAdmin ? adminMemoRecordSchema : publicMemoCardSchema);
+  return isAdmin
+    ? parseMemoPage(value, "older", adminMemoRecordSchema)
+    : parseMemoPage(value, "older", publicMemoCardSchema);
 }
 
 export type PublicMemoStaticPage = {

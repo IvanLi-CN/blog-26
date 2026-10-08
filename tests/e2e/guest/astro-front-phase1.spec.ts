@@ -176,31 +176,45 @@ test.describe("Astro public front (phase 1)", () => {
   });
 
   test("shows the stored light theme in the toggle before hydration finishes", async ({ page }) => {
-    await page.route(/ThemeToggle\..*\.js$/, async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 2_000));
+    let resume = () => {
+      // Assigned synchronously by the Promise constructor.
+    };
+    const released = new Promise<void>((resolve) => {
+      resume = resolve;
+    });
+    await page.route(/PublicRouter\..*\.js$/, async (route) => {
+      await released;
       await route.continue();
     });
+    await page.addInitScript(() => localStorage.setItem("theme", "light"));
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    try {
+      await expectThemeState(page, "light", "light");
+      await expect(page.locator('astro-island[component-url*="PublicRouter"]')).toHaveAttribute(
+        "ssr",
+        ""
+      );
 
-    await gotoWithTheme(page, "/", "light");
-    await expectThemeState(page, "light", "light");
-
-    await expect
-      .poll(async () => readToggleVisualState(page))
-      .toEqual({
-        light: expect.objectContaining({
-          ariaPressed: "false",
-          backgroundColor: "rgba(124, 169, 139, 0.16)",
-          color: "rgb(78, 126, 96)",
-        }),
-        dark: expect.objectContaining({
-          ariaPressed: "false",
-          backgroundColor: "rgba(0, 0, 0, 0)",
-        }),
-        auto: expect.objectContaining({
-          ariaPressed: "false",
-          backgroundColor: "rgba(0, 0, 0, 0)",
-        }),
-      });
+      await expect
+        .poll(async () => readToggleVisualState(page))
+        .toEqual({
+          light: expect.objectContaining({
+            ariaPressed: "false",
+            backgroundColor: "rgba(124, 169, 139, 0.16)",
+            color: "rgb(78, 126, 96)",
+          }),
+          dark: expect.objectContaining({
+            ariaPressed: "false",
+            backgroundColor: "rgba(0, 0, 0, 0)",
+          }),
+          auto: expect.objectContaining({
+            ariaPressed: "false",
+            backgroundColor: "rgba(0, 0, 0, 0)",
+          }),
+        });
+    } finally {
+      resume();
+    }
 
     await expect(page.getByRole("button", { name: "Light" })).toHaveAttribute(
       "aria-pressed",

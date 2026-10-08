@@ -53,6 +53,24 @@ export async function ALL({ request, params }: { request: Request; params: { pat
     resolveRuntimeContext(request).mode === "public" ? withoutIdentity(request) : request;
   const path = pathFromParams(params.path);
 
+  if (path === "/public/page") {
+    if (request.method !== "GET")
+      return new Response(null, { status: 405, headers: { allow: "GET" } });
+    const target = new URL(request.url).searchParams.get("path") || "/";
+    if (!target.startsWith("/") || target.startsWith("//"))
+      return Response.json({ error: "Invalid path" }, { status: 400 });
+    const url = new URL(target, new URL(request.url).origin);
+    if (url.origin !== new URL(request.url).origin)
+      return Response.json({ error: "Invalid path" }, { status: 400 });
+    const { loadPublicRoute } = await import("../../lib/route-data");
+    return Response.json(
+      await loadPublicRoute(
+        new Request(url, { headers: runtimeRequest.headers, signal: request.signal })
+      ),
+      { headers: { "cache-control": "no-store" } }
+    );
+  }
+
   if (path === "/health") {
     const { extractAuthFromRequest } = await import("@/lib/auth-utils");
     const auth = await extractAuthFromRequest(runtimeRequest);

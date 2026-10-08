@@ -1,3 +1,21 @@
+import {
+  appendPublicAssetVersion,
+  getCanonicalUrl,
+  getSiteOrigin,
+  getSiteUrl,
+  pickTagIconSvg,
+  toAbsoluteSiteUrl,
+} from "./public-site-client";
+
+export {
+  appendPublicAssetVersion,
+  getCanonicalUrl,
+  getSiteOrigin,
+  getSiteUrl,
+  pickTagIconSvg,
+  toAbsoluteSiteUrl,
+};
+
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import matter from "gray-matter";
@@ -11,7 +29,7 @@ import {
   type PublicMediaItem,
   rewritePublicContentMediaUrls,
 } from "@/lib/public-media";
-import { getPublicSiteUrl, toPublicSitePath } from "@/lib/public-runtime-url";
+import { toPublicSitePath } from "@/lib/public-runtime-url";
 import { rebuildSnapshotTags } from "@/lib/snapshot-tags";
 import type {
   PublicPostRecord,
@@ -126,55 +144,6 @@ function normalizeSnapshotPaths(
     }),
   }));
   return rebuildSnapshotTags({ ...snapshot, posts, memos });
-}
-
-export function getSiteUrl() {
-  return getPublicSiteUrl() || SITE.url;
-}
-
-export function getSiteOrigin() {
-  const siteUrl = getSiteUrl();
-  try {
-    return new URL(siteUrl).origin;
-  } catch {
-    return siteUrl.replace(/\/+$/, "");
-  }
-}
-
-export function getCanonicalUrl(pathname = "/") {
-  if (/^https?:\/\//.test(pathname)) {
-    return pathname;
-  }
-  const siteUrl = getSiteUrl().replace(/\/+$/, "");
-  return new URL(toPublicSitePath(pathname) ?? pathname, `${siteUrl}/`).toString();
-}
-
-export function toAbsoluteSiteUrl(pathname: string) {
-  return getCanonicalUrl(pathname);
-}
-
-export function appendPublicAssetVersion(
-  url: string | null | undefined,
-  version: string | null | undefined
-) {
-  if (!url) return url ?? null;
-  if (!version) return url;
-
-  if (url.startsWith("/")) {
-    const parsed = new URL(url, "https://public.invalid");
-    if (!parsed.pathname.startsWith("/api/public/assets/")) return url;
-    parsed.searchParams.set("v", version);
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
-  }
-
-  try {
-    const parsed = new URL(url);
-    if (!parsed.pathname.startsWith("/api/public/assets/")) return url;
-    parsed.searchParams.set("v", version);
-    return parsed.toString();
-  } catch {
-    return url;
-  }
 }
 
 function getSnapshotPath() {
@@ -411,18 +380,6 @@ export function getStaticPageEntries(snapshot: PublicSnapshot) {
     pages.push(`/tags/${tag.segments.map((segment) => encodeURIComponent(segment)).join("/")}`);
   }
   return pages;
-}
-
-export function pickTagIconSvg(
-  tag: string,
-  iconMap: Record<string, string | null>,
-  iconSvgMap: Record<string, string | null>
-) {
-  const iconId = iconMap[tag] ?? "tabler:hash";
-  return {
-    iconId,
-    iconSvg: iconSvgMap[iconId] ?? iconSvgMap["tabler:hash"] ?? null,
-  };
 }
 
 export function buildTagFeedItems(

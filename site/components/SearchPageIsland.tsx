@@ -174,17 +174,23 @@ async function loadSearchSuggestions(
     : [];
 }
 
-export default function SearchPageIsland({ playbook }: { playbook?: PlaybookSearchSource }) {
+export default function SearchPageIsland({
+  playbook,
+  initialQuery = "",
+}: {
+  playbook?: PlaybookSearchSource;
+  initialQuery?: string;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const suggestionsAbortRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
   const suggestionsRequestIdRef = useRef(0);
-  const [query, setQuery] = useState("");
-  const [searchedQuery, setSearchedQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
+  const [searchedQuery, setSearchedQuery] = useState(initialQuery);
   const [filter, setFilter] = useState<SearchFilter>("all");
   const [results, setResults] = useState<SearchResultGroup[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(Boolean(initialQuery.trim()));
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [recommendedSearchTerms, setRecommendedSearchTerms] = useState<SearchSuggestionItem[]>([]);
   const [error, setError] = useState<string | null>(null);

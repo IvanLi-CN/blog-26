@@ -29,7 +29,7 @@ bun run worktree:bootstrap -- --force
 
 ## Web Demo
 
-A Web Demo is a separate build-time-selected runtime artifact of the shipped web application. Its public target uses Astro Node SSR and hydrates the product's client islands and Inspector against deterministic fixtures or in-memory API mocks. Public navigation currently exchanges server-rendered HTML through Astro ClientRouter; full page CSR data loading is a separate follow-up. It is not a Storybook story, component iframe, static screenshot, or copied page. The live artifact cannot be switched into Demo mode by a query string or browser storage.
+A Web Demo is a separate build-time-selected runtime artifact of the shipped web application. Its public target uses Astro Node SSR and hydrates the shared product renderer and Inspector against deterministic fixtures or in-memory API mocks. Subsequent public navigation renders shared React pages from structured data through the same request boundary as the product; simulated offline and delay apply to those reads. The published static site retains prerendered first documents and provides route JSON for the same client router. The live artifact cannot be switched into Demo mode by a query string or browser storage.
 
 Build both public and admin Demo artifacts with:
 

@@ -1,5 +1,4 @@
 ---
-import { ClientRouter } from "astro:transitions";
 import "@/lib/iconify-collections";
 import "../../src/styles/globals.css";
 import "../../src/styles/nature-restored.css";
@@ -7,8 +6,6 @@ import AmbientScene from "@/components/common/AmbientScene";
 import WebDemoInspector from "@/components/WebDemoInspector";
 import { SITE, UI } from "@/config/site";
 import IconifyBoot from "../components/IconifyBoot";
-import SiteFooter from "../components/SiteFooter.astro";
-import SiteHeader from "../components/SiteHeader.astro";
 import { getPublicPwaAssetPaths } from "../lib/public-pwa";
 import { getCanonicalUrl, toAbsoluteSiteUrl } from "../lib/public-site";
 import { toPublicSitePath } from "../lib/runtime-urls";
@@ -91,7 +88,6 @@ const resolvedImage =
     <meta name="twitter:site" content={SITE.seo.twitter.site} />
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#edf4ef" />
-    <ClientRouter />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -221,60 +217,6 @@ const resolvedImage =
       })();
     </script>
     <script>
-      (() => {
-        const CLEAR_DELAY_MS = 180;
-        const MAX_NAVIGATION_MS = 12000;
-        let clearTimer;
-        let safetyTimer;
-
-        function getLoadingElement(doc = document) {
-          return doc.getElementById("public-route-loading");
-        }
-
-        function setNavigationState(state, doc = document) {
-          const root = doc.documentElement;
-          const loadingElement = getLoadingElement(doc);
-          const main = doc.querySelector("main.nature-main");
-          const isIdle = state === "idle";
-
-          root.dataset.publicNavigationState = state;
-          root.toggleAttribute("data-public-navigation-pending", !isIdle);
-          main?.toggleAttribute("aria-busy", !isIdle);
-
-          if (loadingElement) {
-            loadingElement.setAttribute("aria-hidden", isIdle ? "true" : "false");
-          }
-        }
-
-        function clearNavigationSoon() {
-          window.clearTimeout(clearTimer);
-          clearTimer = window.setTimeout(() => {
-            setNavigationState("idle");
-            window.clearTimeout(safetyTimer);
-          }, CLEAR_DELAY_MS);
-        }
-
-        document.addEventListener("astro:before-preparation", () => {
-          window.clearTimeout(clearTimer);
-          window.clearTimeout(safetyTimer);
-          setNavigationState("loading");
-          safetyTimer = window.setTimeout(() => setNavigationState("idle"), MAX_NAVIGATION_MS);
-        });
-
-        document.addEventListener("astro:after-preparation", () => {
-          setNavigationState("ready");
-        });
-
-        document.addEventListener("astro:after-swap", () => {
-          setNavigationState("ready");
-        });
-
-        document.addEventListener("astro:page-load", () => {
-          clearNavigationSoon();
-        });
-      })();
-    </script>
-    <script>
       import "@/lib/public-scrollbar";
       import "@/lib/public-header-scroll";
       import "@/lib/public-reading-viewport";
@@ -283,13 +225,9 @@ const resolvedImage =
   <body>
     <IconifyBoot client:load />
     <div class="nature-app-shell flex min-h-screen flex-col" data-testid="public-site-shell">
-      <AmbientScene client:load transition:persist />
+      <AmbientScene client:load />
       <div class="nature-content-layer flex min-h-screen flex-col">
-        <SiteHeader pathname={pathname} />
-        <main class="nature-main">
-          <slot />
-        </main>
-        <SiteFooter />
+        <slot />
       </div>
     </div>
     {isWebDemoBuild ? (

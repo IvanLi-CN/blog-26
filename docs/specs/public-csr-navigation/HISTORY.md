@@ -13,7 +13,8 @@
 
 ## Related Changes
 
-- 基础：[Inspector PR #174](https://github.com/IvanLi-CN/blog-26/pull/174)。本主题 PR 以其分支为 base，使审查差异仅包含 CSR 工作；基础合并后再按其实际合并结果同步并改为 main。
+- 基础：[Inspector PR #174](https://github.com/IvanLi-CN/blog-26/pull/174) 已合并。本主题 [PR #175](https://github.com/IvanLi-CN/blog-26/pull/175) 已同步到 main，独立提交公共页面 CSR 工作。
+- ADR 0019 替代 ADR 0010 中的后续 HTML 交换导航选择；首屏授权、主机隔离、缓存和部署边界继续保留。
 
 ## References
 

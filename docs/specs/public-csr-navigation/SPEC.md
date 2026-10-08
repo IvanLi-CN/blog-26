@@ -103,6 +103,7 @@
 - [Self-contained console runtime](../../adr/0010-self-contained-console-runtime.md)
 - [Build-time Web Demo boundary](../../adr/0013-build-time-web-demo-and-story-boundary.md)
 - [Web Demo global Inspector controls](../../adr/0014-web-demo-global-inspector-controls.md)
+- [Shared public SSR and CSR renderer](../../adr/0019-shared-public-ssr-csr-renderer.md)
 
 ## References
 

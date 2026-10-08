@@ -1,0 +1,106 @@
+import { expect, test } from "@playwright/test";
+
+const routeData = (url: string) => {
+  const path = new URL(url).pathname;
+  return path === "/api/public/page" || path.startsWith("/_content/routes/");
+};
+
+test("public navigation renders structured data without document exchange", async ({ page }) => {
+  await page.goto("/posts/?d_connection=offline&d_persona=admin");
+  await page.waitForFunction(
+    () =>
+      !document.querySelector('astro-island[component-url*="PublicRouter"]')?.hasAttribute("ssr")
+  );
+  await expect(page.locator("html")).not.toHaveAttribute("data-web-demo-build", "true");
+  await expect(page.getByText("Inspector", { exact: true })).toHaveCount(0);
+  const documents: string[] = [];
+  const reads: string[] = [];
+  page.on("request", (request) => {
+    if (request.resourceType() === "document") documents.push(request.url());
+    if (routeData(request.url())) reads.push(request.url());
+  });
+  await page.getByRole("link", { name: "Code Block Fixture", exact: true }).click();
+  await expect(page.locator(".post-detail-body pre code")).toContainText("const tiny");
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+    "content",
+    /Code Block Fixture/
+  );
+  await page.getByRole("link", { name: "项目", exact: true }).click();
+  await expect(page.locator("main.nature-main h1")).toHaveText("项目");
+  await page.goBack();
+  await expect(page.locator(".post-detail-body pre code")).toContainText("const tiny");
+  expect(reads).toHaveLength(3);
+  expect(documents).toEqual([]);
+});
+
+test("a failed product data read stays at its destination and retries in place", async ({
+  page,
+}) => {
+  await page.goto("/posts/code-block-fixture/");
+  await page.waitForFunction(
+    () =>
+      !document.querySelector('astro-island[component-url*="PublicRouter"]')?.hasAttribute("ssr")
+  );
+  let fail = true;
+  await page.route("**/*", async (route) => {
+    if (fail && routeData(route.request().url()))
+      await route.fulfill({ status: 503, body: "Unavailable" });
+    else await route.continue();
+  });
+  await page.getByRole("link", { name: "项目", exact: true }).click();
+  await expect(page).toHaveURL(/\/projects\/?$/);
+  await expect(page.locator("main.nature-main [role=alert]")).toContainText("页面暂时无法加载");
+  await expect(page.locator(".post-detail-body")).toHaveCount(0);
+  fail = false;
+  await page.getByRole("button", { name: "重试", exact: true }).click();
+  await expect(page.locator("main.nature-main h1")).toHaveText("项目");
+  await expect(page.locator("main.nature-main [role=alert]")).toHaveCount(0);
+});
+
+test("search query survives client navigation and a direct prerendered entry", async ({ page }) => {
+  await page.goto("/posts/");
+  await page.waitForFunction(
+    () =>
+      !document.querySelector('astro-island[component-url*="PublicRouter"]')?.hasAttribute("ssr")
+  );
+  const form = page.locator("header form");
+  await form.locator("input").fill("fixture");
+  await form.locator("input").press("Enter");
+  await expect(page).toHaveURL(/\/search\/?\?q=fixture$/);
+  await expect(page.getByRole("textbox", { name: "搜索关键词", exact: true })).toHaveValue(
+    "fixture"
+  );
+  await page.reload();
+  await expect(page.getByRole("textbox", { name: "搜索关键词", exact: true })).toHaveValue(
+    "fixture"
+  );
+});
+
+test("a search deep link preserves its query before the shared renderer hydrates", async ({
+  page,
+}) => {
+  let resume = () => {
+    /* Assigned synchronously by the Promise constructor. */
+  };
+  const released = new Promise<void>((resolve) => {
+    resume = resolve;
+  });
+  await page.route(/PublicRouter\..*\.js$/, async (route) => {
+    await released;
+    await route.continue();
+  });
+  try {
+    await page.goto("/search/?q=fixture", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-search-bootstrap]")).toBeVisible();
+    await expect(page.locator("[data-search-bootstrap] [data-search-query-input]")).toHaveValue(
+      "fixture"
+    );
+    await expect(page.locator("[data-search-island]")).toBeHidden();
+  } finally {
+    resume();
+  }
+  await expect(page.getByRole("textbox", { name: "搜索关键词", exact: true })).toHaveValue(
+    "fixture"
+  );
+  await expect(page.locator("[data-search-bootstrap]")).toBeHidden();
+});

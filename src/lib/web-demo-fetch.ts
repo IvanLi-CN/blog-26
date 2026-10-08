@@ -55,6 +55,9 @@ function demoPublicUser(environment: WebDemoEnvironment) {
 }
 
 function getDemoPublicResponse(url: URL, method: string, environment: WebDemoEnvironment) {
+  // The Demo build's server supplies route-scoped fixture data after the
+  // common connection/delay/abort policy has admitted this actual read.
+  if (url.pathname === "/api/public/page" && method === "GET") return null;
   if (url.pathname === "/api/public/auth/me" && method === "GET") {
     return jsonResponse(demoPublicUser(environment));
   }

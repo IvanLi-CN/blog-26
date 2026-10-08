@@ -4,6 +4,9 @@ import { webDemoFetch } from "../../src/lib/web-demo-fetch";
 import { cancelWebDemoRequests } from "../../src/lib/web-demo-runtime";
 
 const originalFetch = globalThis.fetch;
+function mockFetch(handler: () => Promise<Response>): typeof fetch {
+  return Object.assign(handler, { preconnect: originalFetch.preconnect });
+}
 const originalWindow = (globalThis as { window?: unknown }).window;
 const originalDocument = (globalThis as { document?: unknown }).document;
 
@@ -36,13 +39,45 @@ afterEach(() => {
 });
 
 describe("webDemoFetch", () => {
+  it("admits only online route data reads through the fixture server boundary", async () => {
+    installBrowser("?d_connection=offline&d_delay=normal");
+    let calls = 0;
+    globalThis.fetch = mockFetch(async () => {
+      calls += 1;
+      return Response.json({ kind: "posts", data: { source: "fixture" } });
+    });
+    await expect(webDemoFetch("/api/public/page?path=%2Fposts%2F")).rejects.toThrow(
+      "Failed to fetch"
+    );
+    expect(calls).toBe(0);
+    installBrowser("?d_connection=online&d_delay=normal");
+    expect(await (await webDemoFetch("/api/public/page?path=%2Fposts%2F")).json()).toMatchObject({
+      kind: "posts",
+    });
+    expect(calls).toBe(1);
+  });
+  it("cancels a delayed route read before contacting the fixture server", async () => {
+    installBrowser("?d_connection=online&d_delay=custom&d_delay_ms=2300");
+    let calls = 0;
+    globalThis.fetch = mockFetch(async () => {
+      calls += 1;
+      return Response.json({});
+    });
+    const controller = new AbortController();
+    const pending = webDemoFetch("/api/public/page?path=%2Fposts%2F", {
+      signal: controller.signal,
+    });
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    expect(calls).toBe(0);
+  });
   it("short-circuits public requests when the simulated connection is offline", async () => {
     installBrowser("?d_persona=admin&d_connection=offline&d_delay=normal");
     let fetchCalls = 0;
-    globalThis.fetch = async () => {
+    globalThis.fetch = mockFetch(async () => {
       fetchCalls += 1;
       return new Response("unexpected");
-    };
+    });
 
     await expect(webDemoFetch("/api/public/auth/me")).rejects.toThrow("Failed to fetch");
     expect(fetchCalls).toBe(0);
@@ -51,10 +86,10 @@ describe("webDemoFetch", () => {
   it("returns simulated public identity without reaching the real API", async () => {
     installBrowser("?d_persona=admin&d_connection=online&d_delay=normal");
     let fetchCalls = 0;
-    globalThis.fetch = async () => {
+    globalThis.fetch = mockFetch(async () => {
       fetchCalls += 1;
       return new Response("unexpected");
-    };
+    });
 
     const response = await webDemoFetch("/api/public/auth/me");
 
@@ -65,10 +100,10 @@ describe("webDemoFetch", () => {
   it("does not fall back to a real public API for unknown endpoints", async () => {
     installBrowser("?d_persona=admin&d_connection=online&d_delay=normal");
     let fetchCalls = 0;
-    globalThis.fetch = async () => {
+    globalThis.fetch = mockFetch(async () => {
       fetchCalls += 1;
       return new Response("unexpected");
-    };
+    });
 
     const response = await webDemoFetch("/api/public/unknown");
 
@@ -80,10 +115,10 @@ describe("webDemoFetch", () => {
   it("preserves the live fetch path when the build flag is absent", async () => {
     installBrowser("?d_persona=admin&d_connection=offline&d_delay=slow", false);
     let fetchCalls = 0;
-    globalThis.fetch = async () => {
+    globalThis.fetch = mockFetch(async () => {
       fetchCalls += 1;
       return new Response(JSON.stringify({ source: "live" }));
-    };
+    });
 
     const response = await webDemoFetch("/api/public/auth/me");
 
