@@ -74,7 +74,7 @@
       ],
       "scope_drift": {
         "detected": true,
-        "description": "CSR migration transfers changed renderers, route adapters, shared tests and removals to public-csr-navigation.json. Remaining topic scope and witnesses are unchanged; planned assessment remains historical. VERSION remains 2.9.0; this PR does not publish a release. Reclassified paths: site/components/projects/ProjectRuntimeDataPanel.astro."
+        "description": "CSR migration transfers changed renderers, route adapters, shared tests and removals to public-csr-navigation.json. Remaining topic scope and witnesses are unchanged; planned assessment remains historical. CSR does not modify the inherited VERSION; this PR does not publish a release. Reclassified paths: site/components/projects/ProjectRuntimeDataPanel.astro."
       }
     },
     "verified": {

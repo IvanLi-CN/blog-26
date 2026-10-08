@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "14c7e30522aecc3f356196968683cb3ab8f87272",
+  "base_sha": "e4a14c1e89f72b776ea122d2d767cdafb246f684",
   "covered_files": {
     "README.md": "795b4dac947224bd929ba8be89dbd69491eedd7f",
     "astro.config.mjs": "98e54eb4b6d401c14a2fb448778926acc85a690e",
@@ -202,7 +202,7 @@
       ],
       "scope_drift": {
         "detected": true,
-        "description": "CI exposed stale cumulative Astro renderer blobs after the approved CSR migration. The owner authorized repair batch 4: reclassify migrated paths, correct HTML reference inspection and update the shared-router hydration witness; retain the accepted UI and all policy gates."
+        "description": "CI exposed stale cumulative Astro renderer blobs after the approved CSR migration. The owner authorized repair batch 4: reclassify migrated paths, correct HTML reference inspection and update the shared-router hydration witness; retain the accepted UI and all policy gates. This record covers CSR changes after mainline v2.10.0 preparation; the v2.9.0 cumulative record remains applicable until that independent release becomes the published baseline."
       }
     },
     "verified": {
@@ -237,7 +237,7 @@
     "public_api": {
       "impact": "minor",
       "change": "compatible",
-      "supported_consumer_versions": ["2.7.0", "2.8.3", "2.9.0"],
+      "supported_consumer_versions": ["2.7.0", "2.8.3", "2.9.0", "2.10.0"],
       "evidence": [
         {
           "path": "tests/lib/public-csr-route.test.ts",

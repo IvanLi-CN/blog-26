@@ -23,7 +23,7 @@
 
 ## Verification
 
-候选基线为 `b43da0d92c87d8caa0dd0a6d5489b3f4e6538f46`。保留主线剪藏阅读器、类型标记、Playbook 面向访客的文案简化、OctoRill 新鲜度布局修复及 Oidrune 项目；海报的浅深色 tokens 从主线 Astro 样式迁入共享样式，保持主线主题行为。以下验证覆盖共享页面实现。
+候选基线为 `e4a14c1e89f72b776ea122d2d767cdafb246f684`，继承主线独立发布准备提交的 `VERSION=2.10.0`。保留主线剪藏阅读器、类型标记、Playbook 面向访客的文案简化、OctoRill 新鲜度布局修复及 Oidrune 项目；海报的浅深色 tokens 从主线 Astro 样式迁入共享样式，保持主线主题行为。以下验证覆盖共享页面实现。
 
 - Agent VM 预提交套件通过，包含组件 Story 边界、构建隔离、路由匹配、公开接口、请求取消及未访问正文的载荷隔离。命令：`bun run test:precommit`，提交 hook 保持启用。Playbook 搜索正文隔离另有回归断言。
 - Demo 导航：`tests/e2e/web-demo/public-csr.spec.ts` 16 项全部通过，覆盖 SSR 离线首屏、12 类离线目标及恢复、历史、主题、取消、静态页面和 404，并断言没有 hydration 错误。命令：`WEB_DEMO_TEST_URL=<demo-origin> bun x playwright test --config tests/e2e/web-demo/playwright.config.ts`。
@@ -39,7 +39,7 @@
 - 六方向只读评审发现的片段时序、历史滚动与 Playbook 搜索载荷问题按原合同修复，并增加对应回归。主线 Playbook 的文案同步保留正式产品实现；本 PR 不调整站点导航的图标展示规则。
 - Playbook 的“全部／主题／项目实践／规则”入口按分类栏实际可用宽度显示已有图标：达到 344px 时显示，较窄时保留完整文字；操作高度保持 44px。320、360、393、1440px 视口均无横向溢出，393px 浅深色及键盘导航验证通过。更新后的 Playbook 移动端截图已由主人确认，其余四张证据不变。
 - 搜索首屏回归阻塞实际 `PublicRouter` 模块，验证查询、加载、加载失败与重试，以及 hydration 后的空查询状态；断言绑定可见 bootstrap 与共享 renderer 的就绪事件，不再等待已移除的独立 island。Oidrune 主线海报浅深色 fallback 回归通过。
-- 发布影响记录按 v2.9.0 已发布基线累计覆盖；迁移文件由 CSR 独立记录重新分类为兼容新增能力，旧主题保留未变化的证据，不放宽媒体、版本或 CI 门禁。该普通 PR 不修改 `VERSION`，产品发布仍由独立手动发布流程完成。
+- 发布影响记录覆盖已发布的 v2.9.0 累计区间，并保存主线 v2.10.0 准备提交之后的 CSR 区间，以便独立发布完成后仍按对应基线验证。迁移文件由 CSR 独立记录重新分类为兼容新增能力，旧主题保留未变化的证据，不放宽媒体、版本或 CI 门禁。该普通 PR 不修改继承的 `VERSION`，产品发布仍由独立手动发布流程完成。
 
 ## Remaining Gaps
 
