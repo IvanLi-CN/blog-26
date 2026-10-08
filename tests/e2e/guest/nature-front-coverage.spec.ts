@@ -1034,7 +1034,7 @@ test.describe("Nature frontend public coverage", () => {
     await expect(runtimeTooltip).toBeVisible();
     await expect(runtimeTooltip).toContainText("2026-09-27");
     await expect(runtimeTooltip).toContainText("Token 消耗量");
-    await expect(runtimeTooltip).toContainText("2,120,666,094 Token");
+    await expect(runtimeTooltip).toContainText("2.121B Token");
     await expect
       .poll(() =>
         cards.cvm

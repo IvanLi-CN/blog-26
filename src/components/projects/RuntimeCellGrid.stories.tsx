@@ -40,7 +40,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The public runtime grids expose complete daily values and anonymous freshness buckets through the shared Tooltip. The same cells support hover, keyboard navigation, and touch long-press inspection.",
+          "The public runtime grids expose scaled daily values and anonymous freshness buckets through the shared Tooltip. Activity values promote to K/M/B/T units instead of rendering multiple grouping separators. The same cells support hover, keyboard navigation, and touch long-press inspection.",
       },
     },
   },
@@ -71,7 +71,7 @@ export const DailyValues: Story = {
     await new Promise((resolve) => window.setTimeout(resolve, 180));
     const tooltip = within(document.body).getByRole("tooltip");
     await expect(tooltip).toHaveTextContent("2026-07-05");
-    await expect(tooltip).toHaveTextContent("1,234,567 Token");
+    await expect(tooltip).toHaveTextContent("1.235M Token");
     await userEvent.unhover(exactCell);
     await expect(within(document.body).queryByRole("tooltip")).not.toBeInTheDocument();
   },

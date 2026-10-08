@@ -21,14 +21,15 @@ describe("runtime cell grid model", () => {
   });
 
   test("formats complete activity values and anonymous freshness buckets", () => {
-    expect(formatExactValue(1_234_567)).toBe("1,234,567");
+    expect(formatExactValue(1_234_567)).toBe("1.235M");
+    expect(formatExactValue(4_342_983_119)).toBe("4.343B");
     expect(
       formatRuntimeCellText("tokens", {
         index: 1,
         date: "2026-07-03",
         value: 1_234_567,
       })
-    ).toBe("2026-07-03 · Token 消耗量：1,234,567 Token");
+    ).toBe("2026-07-03 · Token 消耗量：1.235M Token");
     expect(formatRuntimeCellText("tokens", { index: 2, value: 0 })).toContain("0 Token");
     expect(formatRuntimeCellText("freshness", { index: 3, statusCode: 4 })).toBe("从未成功刷新");
   });

@@ -17,15 +17,15 @@
 
 | 图表 | 方块含义 | 推荐 Tooltip 内容 |
 | --- | --- | --- |
-| Codex Vibe Monitor | 一个日期的 Token 消耗量 | 日期；`Token 消耗量：2,120,666,094`，保留精确值与单位。 |
-| Tavily Hikari | 一个日期的请求次数 | 日期；`请求次数：34,182 次`，保留精确值与单位。 |
+| Codex Vibe Monitor | 一个日期的 Token 消耗量 | 日期；`Token 消耗量：2.121B Token`，按 `K/M/B/T` 自动升级量级，避免出现多个千分位分隔符。 |
+| Tavily Hikari | 一个日期的请求次数 | 日期；`请求次数：34.182K 次`，按 `K/M/B/T` 自动升级量级，避免出现多个千分位分隔符。 |
 | OctoRill | 一个匿名仓库的刷新新鲜度状态 | `最近成功刷新：4 小时内`、`4–12 小时前`、`12–24 小时前`、`超过 24 小时`或`从未成功刷新`，按接口状态表达。 |
 
 数字为文案示例，不是实时数据。日期使用接口给出的日历日期，不转换成设备时区，也不另行聚合。零活动量必须展示为 `0`；缺少数据不得转换成零。日历边界补位不代表活动数据，不产生 Tooltip。
 
 ## 仓库现状
 
-`site/components/projects/RuntimeCellGrid.tsx` 现在由 CVM、Hikari 和 OctoRill 共享，保留原始日历日期、完整数值和匿名新鲜度状态；`RuntimeActivityChart.astro` 与 `ProjectRuntimeDataPanel.astro` 只负责 Astro 布局和数据注入。格子通过公共 Nature Tooltip 提供 hover、键盘和受控触摸巡视，空槽与未占用区域不产生虚构数据。
+`site/components/projects/RuntimeCellGrid.tsx` 现在由 CVM、Hikari 和 OctoRill 共享，保留原始日历日期、原始数值和匿名新鲜度状态；活动图 Tooltip 在展示层按 `K/M/B/T` 自动升级量级，避免出现多个千分位分隔符。`RuntimeActivityChart.astro` 与 `ProjectRuntimeDataPanel.astro` 只负责 Astro 布局和数据注入。格子通过公共 Nature Tooltip 提供 hover、键盘和受控触摸巡视，空槽与未占用区域不产生虚构数据。
 
 公共 `src/components/ui/tooltip.tsx` 以 Radix Tooltip 为基础并使用 Portal、碰撞边距和 Nature tokens；后台 `apps/admin` 仍拥有独立的 Soft UI 包装。两者共享交互基础但不共用主题样式。
 
@@ -63,7 +63,7 @@
 
 ## 验收建议
 
-- 三种图表的 hover、键盘与长按显示同一格的完整数据，OctoRill 五类状态全部可解释；零、缺失和边界补位被明确区分。
+- 三种图表的 hover、键盘与长按显示同一格的数据，活动图数值按 `K/M/B/T` 自动升级量级且不出现多个千分位分隔符，OctoRill 五类状态全部可解释；零、缺失和边界补位被明确区分。
 - 长按前上下滚动和横向换卡仍可用；长按成功后任意方向巡视不产生页面或卡片滚动，不出现上下文菜单、文本选择或详情跳转。
 - 活动图未识别为长按的短触和普通点击不产生动作；OctoRill 有效新鲜度链接、标题与摘要导航及外部快捷入口保持现有行为；长按后的点击抑制不误伤下一次独立链接点击。
 - 按住跨多格、穿过间隙、移出后返回、松手、取消、多指、页面切换、数据刷新及失败回退均无残留提示或错误高亮。

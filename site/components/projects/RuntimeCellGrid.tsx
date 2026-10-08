@@ -10,6 +10,7 @@ import type {
   ProjectRuntimeMetrics,
   RuntimeActivityPoint,
 } from "../../lib/project-runtime-metrics";
+import { formatRuntimeValue } from "../../lib/runtime-format";
 import { calculateFreshnessLayout } from "../../lib/runtime-freshness-layout";
 import { createRuntimeTouchGestureController } from "./runtime-cell-gesture";
 import "./runtime-cell-grid.css";
@@ -67,9 +68,7 @@ function formatUtcDate(timestamp: number) {
 }
 
 export function formatExactValue(value: number) {
-  return Number.isInteger(value)
-    ? value.toLocaleString("en-US")
-    : value.toLocaleString("en-US", { maximumFractionDigits: 6 });
+  return formatRuntimeValue(value);
 }
 
 export function buildActivityCells(points: RuntimeActivityPoint[]) {

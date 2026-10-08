@@ -552,7 +552,7 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
     await page.waitForTimeout(180);
     const tooltip = page.getByRole("tooltip");
     await expect(tooltip).toContainText("2026-09-27");
-    await expect(tooltip).toContainText("2,120,666,094 Token");
+    await expect(tooltip).toContainText("2.121B Token");
 
     const zeroCell = cvm.locator('[data-runtime-cell][data-value="0"]').first();
     await expect(zeroCell).toHaveAttribute("data-value", "0");

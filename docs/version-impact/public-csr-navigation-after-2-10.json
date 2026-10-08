@@ -131,7 +131,7 @@
     "tests/e2e/clipping-web-demo.ts": "996f804d348c184986bdf454963343f6470fd995",
     "tests/e2e/guest/astro-front-phase1.spec.ts": "9c293bcbdc03d2548eef2d9ab77a4cd0456ee2d5",
     "tests/e2e/guest/mobile-reading-surface.spec.ts": "b887fa5c89f3b0d47533d94c3a9e63cbd2efe727",
-    "tests/e2e/guest/nature-front-coverage.spec.ts": "458f6a7c6d294655a68d6552848718a8139886c9",
+    "tests/e2e/guest/nature-front-coverage.spec.ts": "28b6046d23ad9bbe5fd384c554b3691c07438c95",
     "tests/e2e/guest/public-csr-navigation.spec.ts": "681ab740665a151d2ece14f6b7f5d08644175aee",
     "tests/e2e/web-demo/playwright.config.ts": "f16cccb3a7f8d2583adefa78f783587ae09c7d08",
     "tests/e2e/web-demo/public-csr.spec.ts": "ea610949ea4c4d938b4f9c62c27f035f1588f529",
