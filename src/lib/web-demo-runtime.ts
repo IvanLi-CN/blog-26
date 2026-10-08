@@ -618,7 +618,11 @@ export function setWebDemoRuntimeState(
     environment: normalizeWebDemoEnvironment(next.environment, window.location.pathname),
   };
   const changed = getWebDemoStateChangeKeys(previous, normalized);
-  if (changed.some((key) => key === "persona" || key === "connection" || key === "delay")) {
+  if (
+    changed.some(
+      (key) => key === "data" || key === "persona" || key === "connection" || key === "delay"
+    )
+  ) {
     cancelWebDemoRequests();
   }
   writeWebDemoRuntimeStateToLocation(normalized);

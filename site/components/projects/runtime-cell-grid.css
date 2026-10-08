@@ -1,0 +1,185 @@
+.runtime-activity,
+.runtime-freshness {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.55rem;
+  min-height: 0;
+  overflow: visible;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(var(--runtime-highlight-rgb, 132, 167, 181), 0.14);
+  color: var(--runtime-text, #eaf4ee);
+}
+
+.runtime-freshness {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.runtime-freshness[data-runtime-empty="true"] {
+  gap: 0;
+}
+
+.runtime-chart-title {
+  margin: 0;
+  color: var(--runtime-text-soft, rgba(234, 244, 238, 0.72));
+  font-size: 0.71rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.runtime-grid-shell {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.runtime-activity-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--runtime-week-count), minmax(0, 1fr));
+  grid-template-rows: repeat(7, minmax(0, 1fr));
+  gap: 0.18rem;
+  min-height: 0;
+}
+
+.runtime-activity-cell,
+.runtime-activity-slot {
+  display: block;
+  grid-column: var(--runtime-week);
+  grid-row: var(--runtime-weekday);
+  min-width: 0;
+  min-height: 0;
+  border-radius: 0.13rem;
+}
+
+.runtime-activity-cell {
+  outline: none;
+  background: rgba(
+    var(--runtime-accent-rgb, 102, 214, 163),
+    calc(0.12 + var(--runtime-intensity) * 0.78)
+  );
+  box-shadow: inset 0 0 0 1px rgba(var(--runtime-highlight-rgb, 247, 255, 250), 0.04);
+  cursor: help;
+  touch-action: pan-y pan-x;
+}
+
+.runtime-activity-cell,
+.runtime-freshness-cell {
+  pointer-events: auto;
+}
+
+.runtime-activity-slot--empty {
+  background: transparent;
+  box-shadow: none;
+  cursor: default;
+  pointer-events: none;
+}
+
+.runtime-activity-cell[data-value="0"] {
+  background: rgba(var(--runtime-highlight-rgb, 247, 255, 250), 0.08);
+}
+
+.runtime-activity-cell:hover,
+.runtime-activity-cell:focus-visible,
+.runtime-activity-cell[data-runtime-active="true"] {
+  z-index: 1;
+  outline: 2px solid rgba(var(--runtime-highlight-rgb, 247, 255, 250), 0.9);
+  outline-offset: 1px;
+  background: rgba(var(--runtime-warm-rgb, 236, 181, 87), 0.92);
+}
+
+.runtime-freshness-grid {
+  display: grid;
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--runtime-freshness-grid-height, auto);
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: repeat(var(--runtime-freshness-columns, 30), minmax(0, 1fr));
+  grid-template-rows: repeat(
+      var(--runtime-freshness-rows, 1),
+      minmax(var(--runtime-freshness-cell-size, 0.5rem), 1fr)
+    );
+  gap: var(--runtime-freshness-gap, 0.18rem);
+  align-content: stretch;
+  justify-content: stretch;
+}
+
+.runtime-freshness > .runtime-grid-shell {
+  align-self: flex-start;
+  width: 100%;
+  height: max-content;
+}
+
+.runtime-freshness[data-runtime-empty="true"] .runtime-freshness-grid {
+  height: 0;
+}
+
+.runtime-freshness[data-runtime-empty="true"] > .runtime-grid-shell {
+  height: 0;
+}
+
+.runtime-freshness-cell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0.12rem;
+  background: rgb(var(--runtime-secondary-rgb, 89, 181, 214));
+  color: inherit;
+  text-decoration: none;
+  touch-action: pan-y pan-x;
+}
+
+.runtime-freshness-cell:hover,
+.runtime-freshness-cell:focus-visible,
+.runtime-freshness-cell:focus-within,
+.runtime-freshness-cell[data-runtime-active="true"] {
+  z-index: 1;
+  outline: 2px solid rgba(var(--runtime-highlight-rgb, 247, 255, 250), 0.9);
+  outline-offset: 1px;
+  filter: brightness(1.08);
+}
+
+.runtime-freshness-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+
+.runtime-freshness-cell--within-4-hours {
+  background: rgb(var(--runtime-accent-rgb, 102, 214, 163));
+}
+
+.runtime-freshness-cell--4-to-12-hours {
+  background: rgb(var(--runtime-warm-rgb, 236, 181, 87));
+}
+
+.runtime-freshness-cell--12-to-24-hours {
+  background: rgb(var(--runtime-freshness-late-rgb, 238, 126, 92));
+}
+
+.runtime-freshness-cell--over-24-hours {
+  background: rgb(var(--runtime-freshness-overdue-rgb, 207, 102, 134));
+}
+
+.runtime-freshness-cell--no-success {
+  background: rgb(var(--runtime-freshness-empty-rgb, 111, 116, 128));
+}
+
+.runtime-tooltip-anchor {
+  position: absolute;
+  z-index: 2;
+  width: 2px;
+  height: 2px;
+  pointer-events: none;
+  opacity: 0;
+}

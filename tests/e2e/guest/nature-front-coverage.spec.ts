@@ -1024,17 +1024,17 @@ test.describe("Nature frontend public coverage", () => {
       )
       .toEqual(["1", "0", "2", "1", "0", "0", "0", "0"]);
 
-    const lastCvmPoint = cards.cvm.locator(".runtime-activity-cell").last();
+    const lastCvmPoint = cards.cvm.locator('.runtime-activity-cell[data-date="2026-09-27"]');
     const activityGridHeightBeforeTooltip = await cards.cvm
       .locator(".runtime-activity-grid")
       .evaluate((grid) => grid.getBoundingClientRect().height);
     await lastCvmPoint.focus();
     await expect(lastCvmPoint).toBeFocused();
-    await expect(cards.cvm.locator("[data-runtime-tooltip]")).toBeVisible();
-    await expect(cards.cvm.locator("[data-runtime-tooltip]")).toHaveCSS("position", "absolute");
-    await expect(cards.cvm.locator("[data-runtime-tooltip]")).toContainText("2026-09-27");
-    await expect(cards.cvm.locator("[data-runtime-tooltip]")).toContainText("Token");
-    await expect(cards.cvm.locator("[data-runtime-tooltip]")).toContainText("2.121B");
+    const runtimeTooltip = page.getByRole("tooltip");
+    await expect(runtimeTooltip).toBeVisible();
+    await expect(runtimeTooltip).toContainText("2026-09-27");
+    await expect(runtimeTooltip).toContainText("Token 消耗量");
+    await expect(runtimeTooltip).toContainText("2,120,666,094 Token");
     await expect
       .poll(() =>
         cards.cvm

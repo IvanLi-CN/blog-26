@@ -63,6 +63,7 @@ const staticRoot = resolve(process.env.STORYBOOK_STATIC_DIR || "storybook-static
 const storyFiles = new Set([
   "./src/components/common/NativeTagLink.stories.tsx",
   "./src/components/playbook/PlaybookResourceBrowser.stories.tsx",
+  "./src/components/projects/RuntimeCellGrid.stories.tsx",
   "./src/components/search/PublicSearchPage.stories.tsx",
   "./src/components/search/SearchResultsList.stories.tsx",
 ]);
@@ -80,6 +81,9 @@ const expectedStoryIds = new Set([
   "public-playbook-resource-browser--fullscreen",
   "public-playbook-resource-browser--mobile-fullscreen",
   "public-playbook-resource-browser--narrow-fullscreen",
+  "public-projects-runtime-cell-grid--daily-values",
+  "public-projects-runtime-cell-grid--freshness-statuses",
+  "public-projects-runtime-cell-grid--keyboard-inspection",
   "public-search-results--default",
   "public-search-results--expanded",
   "public-search-results--single-chapter",

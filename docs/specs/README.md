@@ -29,7 +29,7 @@
 | Inline Memo admin view | active | implemented | `memo-admin-inline-view/SPEC.md` | - | Build, lint, HTTP/title tests, seven Storybook states, and ten targeted admin/guest browser cases pass; eight owner-approved visual captures are stored. Current-candidate Tier 3 review and PR/required-CI remain open. |
 | Memo title semantics | active | implemented | `memo-title-semantics/SPEC.md` | - | Optional memo titles resolve from approved metadata/headings and stay nullable in the public model. |
 | Memos Markdown theme contrast | archived | implemented | `memos-content-contrast/SPEC.md` | - | Semantic theme colors keep Memo Markdown readable across supported themes. |
-| Nature frontend redesign without DaisyUI | active | in progress | `nature-front-ui/SPEC.md` | - | Public styling uses the Nature design system; mobile reading surfaces remain to be implemented and verified. |
+| Nature frontend redesign without DaisyUI | active | in progress | `nature-front-ui/SPEC.md` | - | Public styling uses the Nature design system; runtime-cell Tooltip and touch inspection are implemented, while native-device evidence and delivery gates remain open. |
 | Next runtime reduction after admin SPA migration | superseded | implemented | `next-runtime-reduction/SPEC.md` | `zero-next-cleanup/SPEC.md` | Production runtime reduction completed; repository-wide removal moved to the successor. |
 | Posts cover fallback | active | implemented | `posts-cover-fallback/SPEC.md` | - | Post cards fall back to the first supported body image. |
 | Posts list title contrast | archived | implemented | `posts-list-title-contrast/SPEC.md` | - | Semantic title colors preserve hierarchy across themes. |

@@ -117,7 +117,7 @@ async function readVisualBounds(page: Page, slug: string) {
         '[data-project-runtime-panel][data-runtime-state="ready"]'
       ) ??
       element.querySelector<HTMLElement>(
-        "[data-runtime-fallback-poster]:not([hidden]) .project-poster, .projects-poster-visual > .project-poster"
+        "[data-runtime-fallback-poster]:not([hidden]) .project-poster, .projects-poster-poster-link > .project-poster"
       );
     const copy = element.querySelector<HTMLElement>(".projects-poster-copy");
     if (!slot || !visual || !copy) throw new Error("project visual structure is incomplete");
@@ -282,6 +282,19 @@ test("@targeted OctoRill freshness density keeps every repository in the fixed p
           },
           metricBottom: metricRect?.bottom,
           statuses: cells.map((cell) => cell.dataset.statusCode),
+          ariaRows: Number(element.getAttribute("aria-rowcount")),
+          ariaColumns: Number(element.getAttribute("aria-colcount")),
+          cssRows: Number.parseInt(
+            getComputedStyle(element).getPropertyValue("--runtime-freshness-rows"),
+            10
+          ),
+          cssColumns: Number.parseInt(
+            getComputedStyle(element).getPropertyValue("--runtime-freshness-columns"),
+            10
+          ),
+          rowSizes: Array.from(element.querySelectorAll<HTMLElement>('[role="row"]')).map(
+            (row) => row.querySelectorAll<HTMLElement>(".runtime-freshness-cell").length
+          ),
           rects,
         };
       });
@@ -301,6 +314,13 @@ test("@targeted OctoRill freshness density keeps every repository in the fixed p
       }
       expect(snapshot.titleBottom, label).toBeDefined();
       if (expectedCount > 0) {
+        expect(snapshot.ariaColumns, label).toBe(snapshot.cssColumns);
+        expect(snapshot.ariaRows, label).toBe(snapshot.cssRows);
+        expect(snapshot.rowSizes, label).toEqual(
+          Array.from({ length: snapshot.cssRows }, (_, rowIndex) =>
+            Math.min(snapshot.cssColumns, expectedCount - rowIndex * snapshot.cssColumns)
+          )
+        );
         expect(
           snapshot.rects.every((rect) => rect.width > 0 && rect.height > 0),
           label
@@ -498,7 +518,7 @@ test("@targeted runtime failure and recovery preserve the visual slot", async ({
         projectCard(page, slug).locator("[data-project-runtime-panel]")
       ).not.toHaveAttribute("data-runtime-live-bound", "true");
     }
-    await page.evaluate(() => document.dispatchEvent(new Event("astro:page-load")));
+    await page.evaluate(() => window.dispatchEvent(new Event("pageshow")));
     for (const slug of cards) {
       await expect(projectCard(page, slug).locator("[data-project-runtime-panel]")).toHaveAttribute(
         "data-runtime-live-bound",
@@ -508,6 +528,393 @@ test("@targeted runtime failure and recovery preserve the visual slot", async ({
         (beforePagehide.get(slug) ?? 0) + 1
       );
     }
+    await page.evaluate(() => document.dispatchEvent(new Event("astro:page-load")));
+  } finally {
+    await page.close();
+  }
+});
+
+test("@targeted runtime cells keep exact inspection data across pointer, keyboard, and touch", async ({
+  context,
+}) => {
+  const page = await openProjectPage(context, "dark", {
+    getHikariMode: () => "valid",
+    getOctoMode: () => "valid",
+  });
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  try {
+    const cvm = projectCard(page, "codex-vibe-monitor");
+    const cvmCells = cvm.locator(".runtime-activity-cell");
+    await expect(cvmCells).toHaveCount(90);
+    const exactCell = cvm.locator('.runtime-activity-cell[data-date="2026-09-27"]');
+    await exactCell.hover();
+    await page.waitForTimeout(180);
+    const tooltip = page.getByRole("tooltip");
+    await expect(tooltip).toContainText("2026-09-27");
+    await expect(tooltip).toContainText("2,120,666,094 Token");
+
+    const zeroCell = cvm.locator('[data-runtime-cell][data-value="0"]').first();
+    await expect(zeroCell).toHaveAttribute("data-value", "0");
+    await zeroCell.focus();
+    await expect(tooltip).toContainText("0 Token");
+    await page.keyboard.press("ArrowRight");
+    await expect(page.locator('[data-runtime-cell][data-runtime-active="true"]')).toHaveCount(1);
+    await page.keyboard.press("Escape");
+    await expect(tooltip).toBeHidden();
+
+    const spatialCell = cvm.locator('.runtime-activity-cell[data-date="2026-09-27"]');
+    const spatialWeek = Number(await spatialCell.getAttribute("data-week"));
+    const spatialWeekday = await spatialCell.getAttribute("data-weekday");
+    await spatialCell.focus();
+    await expect(spatialCell).toHaveAttribute("aria-colindex", String(spatialWeek));
+    await page.keyboard.press("ArrowLeft");
+    const spatialPrevious = page.locator('[data-runtime-cell][data-runtime-active="true"]');
+    await expect(spatialPrevious).toHaveAttribute("data-week", String(spatialWeek - 1));
+    await expect(spatialPrevious).toHaveAttribute("data-weekday", spatialWeekday ?? "");
+    await page.keyboard.press("Escape");
+
+    const freshness = projectCard(page, "octo-rill").locator(".runtime-freshness-cell");
+    await expect(freshness).toHaveCount(501);
+    await expect(projectCard(page, "octo-rill").locator(".runtime-freshness-grid")).toHaveAttribute(
+      "role",
+      "grid"
+    );
+    await expect(freshness.first()).toHaveRole("gridcell");
+    const freshnessLinks = projectCard(page, "octo-rill").locator(".runtime-freshness-link");
+    await expect(freshnessLinks).toHaveCount(501);
+    await expect(freshnessLinks.first()).toHaveRole("link");
+    await expect(freshnessLinks.first()).toHaveAttribute("href", "/projects/octo-rill/");
+    const freshnessLabels = [
+      "最近成功刷新：4 小时内",
+      "最近成功刷新：4–12 小时前",
+      "最近成功刷新：12–24 小时前",
+      "最近成功刷新：超过 24 小时",
+      "从未成功刷新",
+    ];
+    for (const [index, label] of freshnessLabels.entries()) {
+      const freshnessCell = freshness.nth(index);
+      await freshnessCell.scrollIntoViewIfNeeded();
+      const freshnessBounds = await freshnessCell.boundingBox();
+      if (!freshnessBounds) throw new Error("freshness cell has no hitbox");
+      await page.mouse.move(
+        freshnessBounds.x + freshnessBounds.width / 2,
+        freshnessBounds.y + freshnessBounds.height / 2
+      );
+      await page.waitForTimeout(180);
+      await expect(freshnessCell).toHaveAttribute("data-runtime-active", "true");
+      await expect(tooltip).toHaveText(label);
+      await expect(tooltip).not.toContainText("仓库");
+    }
+
+    const firstFreshnessLink = freshnessLinks.first();
+    await firstFreshnessLink.focus();
+    await expect(firstFreshnessLink).toBeFocused();
+    await page.keyboard.press("ArrowRight");
+    await expect(freshnessLinks.nth(1)).toBeFocused();
+    await page.keyboard.press("Home");
+    await expect(firstFreshnessLink).toBeFocused();
+    await page.setViewportSize({ width: 320, height: 852 });
+    await page.waitForTimeout(50);
+    await expect(freshnessLinks.first()).toBeFocused();
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.waitForTimeout(50);
+    await expect(freshnessLinks.first()).toBeFocused();
+    await page.keyboard.press("Space");
+    await expect(tooltip).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(tooltip).toBeHidden();
+
+    await page.evaluate(() => {
+      const link = document.querySelector<HTMLAnchorElement>(".runtime-freshness-link");
+      if (!link) throw new Error("OctoRill freshness link is missing");
+      link.addEventListener(
+        "click",
+        (event) => {
+          event.preventDefault();
+          (window as Window & { __octoLinkActivated?: boolean }).__octoLinkActivated = true;
+        },
+        { once: true }
+      );
+    });
+    await firstFreshnessLink.focus();
+    await page.keyboard.press("Enter");
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (window as Window & { __octoLinkActivated?: boolean }).__octoLinkActivated
+        )
+      )
+      .toBe(true);
+
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(20);
+    const grid = cvm.locator(".runtime-activity-grid");
+    const octoGrid = projectCard(page, "octo-rill").locator(".runtime-freshness-grid");
+    const dispatchClick = (index: number, targetGrid: typeof grid = grid) =>
+      targetGrid.evaluate((element, cellIndex) => {
+        const cell = Array.from(element.querySelectorAll<HTMLElement>("[data-runtime-cell]"))[
+          cellIndex
+        ];
+        if (!cell) throw new Error("click test cell missing");
+        const event = new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 });
+        cell.dispatchEvent(event);
+        return event.defaultPrevented;
+      }, index);
+    const dispatchMouseClick = (index: number) =>
+      grid.evaluate((element, cellIndex) => {
+        const cell = Array.from(element.querySelectorAll<HTMLElement>("[data-runtime-cell]"))[
+          cellIndex
+        ];
+        if (!cell) throw new Error("mouse click test cell missing");
+        cell.dispatchEvent(
+          new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse" })
+        );
+        const event = new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 });
+        cell.dispatchEvent(event);
+        return event.defaultPrevented;
+      }, index);
+    const dispatchLinkClick = (index: number) =>
+      freshnessLinks.nth(index).evaluate((link) => {
+        const event = new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 });
+        link.dispatchEvent(event);
+        return event.defaultPrevented;
+      });
+    const dispatchTouch = (
+      type: "touchstart" | "touchmove" | "touchend" | "touchcancel",
+      index?: number,
+      touchCount = 1,
+      targetGrid: typeof grid = grid
+    ) =>
+      targetGrid.evaluate(
+        (element, payload) => {
+          const cells = Array.from(element.querySelectorAll<HTMLElement>("[data-runtime-cell]"));
+          const cell = payload.index === undefined ? null : cells[payload.index];
+          if (payload.index !== undefined && !cell) throw new Error("touch test cell missing");
+          const makeTouch = (target: HTMLElement, identifier: number) => {
+            const rect = target.getBoundingClientRect();
+            return {
+              identifier,
+              clientX: rect.left + rect.width / 2,
+              clientY: rect.top + rect.height / 2,
+              radiusX: 4,
+              radiusY: 4,
+              target,
+            };
+          };
+          const touches = cell
+            ? Array.from({ length: payload.touchCount }, (_, touchIndex) =>
+                makeTouch(cell, touchIndex + 1)
+              )
+            : [];
+          const event = new Event(payload.type, { bubbles: true, cancelable: true });
+          Object.defineProperties(event, {
+            touches: { value: touches },
+            targetTouches: { value: touches },
+            changedTouches: { value: touches },
+          });
+          element.dispatchEvent(event);
+          return event.defaultPrevented;
+        },
+        { type, index, touchCount }
+      );
+    await dispatchTouch("touchstart", 0, 1, octoGrid);
+    await page.waitForTimeout(550);
+    await expect(tooltip).toBeVisible();
+    await dispatchTouch("touchend", undefined, 1, octoGrid);
+    await expect(tooltip).toBeHidden();
+    const keyboardClickObservedDefaultPrevented = await firstFreshnessLink.evaluate((link) => {
+      const grid = link.closest<HTMLElement>(".runtime-freshness-grid");
+      if (!grid) throw new Error("OctoRill freshness grid is missing");
+      let observedDefaultPrevented: boolean | null = null;
+      grid.addEventListener(
+        "click",
+        (event) => {
+          observedDefaultPrevented = event.defaultPrevented;
+          event.preventDefault();
+        },
+        { once: true }
+      );
+      const event = new MouseEvent("click", { bubbles: true, cancelable: true, detail: 0 });
+      link.dispatchEvent(event);
+      return observedDefaultPrevented;
+    });
+    expect(keyboardClickObservedDefaultPrevented).toBe(false);
+    await dispatchTouch("touchstart", 0, 1, octoGrid);
+    await page.waitForTimeout(550);
+    await expect(tooltip).toBeVisible();
+    await dispatchTouch("touchend", undefined, 1, octoGrid);
+    await expect(tooltip).toBeHidden();
+    expect(await dispatchLinkClick(0)).toBe(true);
+    await expect(page).toHaveURL(/\/projects\/?$/);
+
+    await page.evaluate(() => {
+      const link = document.querySelector<HTMLAnchorElement>(".runtime-freshness-link");
+      if (!link) throw new Error("OctoRill freshness link is missing");
+      (window as Window & { __octoKeyboardLinkActivated?: boolean }).__octoKeyboardLinkActivated =
+        false;
+      link.addEventListener(
+        "click",
+        (event) => {
+          event.preventDefault();
+          (
+            window as Window & { __octoKeyboardLinkActivated?: boolean }
+          ).__octoKeyboardLinkActivated = true;
+        },
+        { once: true }
+      );
+    });
+    await firstFreshnessLink.focus();
+    await page.keyboard.press("Enter");
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as Window & { __octoKeyboardLinkActivated?: boolean })
+              .__octoKeyboardLinkActivated
+        )
+      )
+      .toBe(true);
+
+    await dispatchTouch("touchstart", 4);
+    const preRecognitionMovePrevented = await dispatchTouch("touchmove", 5);
+    expect(preRecognitionMovePrevented).toBe(false);
+    await expect(tooltip).toBeHidden();
+    await dispatchTouch("touchend");
+    await dispatchTouch("touchstart", 4);
+    await page.waitForTimeout(550);
+    await expect(tooltip).toBeVisible();
+    const movePrevented = await dispatchTouch("touchmove", 5);
+    expect(movePrevented).toBe(true);
+    const contextMenuPrevented = await grid.evaluate((element) => {
+      const event = new Event("contextmenu", { bubbles: true, cancelable: true });
+      element.dispatchEvent(event);
+      return event.defaultPrevented;
+    });
+    expect(contextMenuPrevented).toBe(true);
+    await dispatchTouch("touchend");
+    await expect(tooltip).toBeHidden();
+    expect(await dispatchMouseClick(4)).toBe(true);
+    await expect(tooltip).toBeVisible();
+    await page.keyboard.press("Escape");
+    await dispatchTouch("touchstart", 4);
+    await page.waitForTimeout(550);
+    await expect(tooltip).toBeVisible();
+    await dispatchTouch("touchend");
+    await expect(tooltip).toBeHidden();
+    expect(await dispatchClick(4)).toBe(true);
+    await expect(tooltip).toBeHidden();
+    expect(await dispatchClick(5)).toBe(true);
+    await expect(tooltip).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    const refreshDate = "2026-09-27";
+    const refreshCell = cvm.locator(`.runtime-activity-cell[data-date="${refreshDate}"]`);
+    const refreshCellIndex = await grid.evaluate((element, date) => {
+      const cells = Array.from(element.querySelectorAll<HTMLElement>("[data-runtime-cell]"));
+      return cells.findIndex((cell) => cell.dataset.date === date);
+    }, refreshDate);
+    expect(refreshCellIndex).toBeGreaterThanOrEqual(0);
+    const initialRefreshValue = await refreshCell.getAttribute("data-value");
+    const publishCvmMetrics = async (todayTokens: number) => {
+      const metrics = projectRuntimeMetricsBySlug["codex-vibe-monitor"];
+      const nextMetrics = {
+        ...metrics,
+        todayTokens: {
+          ...metrics.todayTokens,
+          value: todayTokens,
+          trend: {
+            ...metrics.todayTokens.trend,
+            points: metrics.todayTokens.trend.points.map((point, index, points) =>
+              index === points.length - 1 ? { ...point, value: todayTokens } : point
+            ),
+          },
+        },
+        tokenActivity90d: metrics.tokenActivity90d.map((point) =>
+          point.date === refreshDate ? { ...point, value: todayTokens } : point
+        ),
+      };
+      await page.evaluate((payload) => {
+        const panel = document.querySelector<HTMLElement>(
+          '.projects-poster-card:has(a[href="/projects/codex-vibe-monitor/"]) [data-project-runtime-panel]'
+        );
+        if (!panel) throw new Error("CVM runtime panel is missing");
+        window.dispatchEvent(
+          new CustomEvent("project-runtime-metrics-updated", {
+            detail: { panel, metrics: payload },
+          })
+        );
+      }, nextMetrics);
+    };
+
+    await dispatchTouch("touchstart", refreshCellIndex);
+    await page.waitForTimeout(550);
+    await expect(tooltip).toBeVisible();
+    await publishCvmMetrics(111);
+    await publishCvmMetrics(222);
+    await expect(refreshCell).toHaveAttribute("data-value", initialRefreshValue ?? "");
+    await dispatchTouch("touchend");
+    await expect(
+      cvm.locator('[data-runtime-stat-key="todayTokens"] [data-runtime-value]')
+    ).toHaveAttribute("data-runtime-value-full", "222");
+    await expect(refreshCell).toHaveAttribute("data-value", "222");
+    await expect(tooltip).toBeHidden();
+
+    await dispatchTouch("touchstart", refreshCellIndex);
+    await page.waitForTimeout(550);
+    await expect(tooltip).toBeVisible();
+    await publishCvmMetrics(333);
+    await dispatchTouch("touchmove", refreshCellIndex, 2);
+    await expect(tooltip).toBeHidden();
+    await expect(refreshCell).toHaveAttribute("data-value", "222");
+
+    await dispatchTouch("touchstart", refreshCellIndex);
+    await page.waitForTimeout(550);
+    await expect(tooltip).toBeVisible();
+    await publishCvmMetrics(445);
+    await dispatchTouch("touchcancel", refreshCellIndex);
+    await expect(tooltip).toBeHidden();
+    await expect(refreshCell).toHaveAttribute("data-value", "222");
+
+    await dispatchTouch("touchstart", refreshCellIndex);
+    await page.waitForTimeout(550);
+    await expect(tooltip).toBeVisible();
+    await publishCvmMetrics(444);
+    await page.evaluate(() => {
+      const panel = document.querySelector<HTMLElement>(
+        '.projects-poster-card:has(a[href="/projects/codex-vibe-monitor/"]) [data-project-runtime-panel]'
+      );
+      if (!panel) throw new Error("CVM runtime panel is missing");
+      window.dispatchEvent(
+        new CustomEvent("project-runtime-metrics-fallback", { detail: { panel } })
+      );
+    });
+    await expect(tooltip).toBeHidden();
+    await expect(refreshCell).toHaveAttribute("data-value", "222");
+
+    await dispatchTouch("touchstart", refreshCellIndex);
+    await page.waitForTimeout(550);
+    await expect(tooltip).toBeVisible();
+    await publishCvmMetrics(555);
+    await page.evaluate(() => {
+      Object.defineProperty(document, "hidden", { configurable: true, value: true });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await expect(tooltip).toBeHidden();
+    await expect(refreshCell).toHaveAttribute("data-value", "222");
+    await page.evaluate(() => {
+      Object.defineProperty(document, "hidden", { configurable: true, value: false });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    await dispatchTouch("touchstart", refreshCellIndex);
+    await page.waitForTimeout(550);
+    await expect(tooltip).toBeVisible();
+    await publishCvmMetrics(666);
+    await page.evaluate(() => document.dispatchEvent(new Event("astro:before-swap")));
+    await expect(tooltip).toBeHidden();
+    await expect(cvm.locator('[data-runtime-cell][data-runtime-active="true"]')).toHaveCount(0);
+    expect(pageErrors).toEqual([]);
   } finally {
     await page.close();
   }

@@ -1,9 +1,17 @@
 import { webDemoFetch } from "@/lib/web-demo-fetch";
-import type {
-  ProjectRuntimeMetrics,
-  RuntimeActivityPoint,
-  RuntimeStat,
-} from "./project-runtime-metrics";
+import {
+  WEB_DEMO_ACTION_EVENT,
+  WEB_DEMO_STATE_EVENT,
+  type WebDemoActionDetail,
+  type WebDemoStateChangeDetail,
+} from "../../src/lib/web-demo-runtime";
+import {
+  clearProjectRuntimeChannel,
+  type ProjectRuntimeMetricsUpdatedDetail,
+  publishProjectRuntimeFallback,
+  publishProjectRuntimeMetrics,
+} from "./project-runtime-channel";
+import type { ProjectRuntimeMetrics, RuntimeStat } from "./project-runtime-metrics";
 import {
   getProjectRuntimeRefreshInterval,
   type ProjectRuntimeSlug,
@@ -11,14 +19,6 @@ import {
 } from "./project-runtime-sources";
 import { formatRuntimeValue, getRuntimeValueCandidates } from "./runtime-format";
 import { calculateFreshnessLayout } from "./runtime-freshness-layout";
-
-const freshnessStatusClasses = [
-  "within-4-hours",
-  "4-to-12-hours",
-  "12-to-24-hours",
-  "over-24-hours",
-  "no-success",
-] as const;
 
 const isProjectRuntimeSlug = (value: string): value is ProjectRuntimeSlug =>
   value === "codex-vibe-monitor" || value === "tavily-hikari" || value === "octo-rill";
@@ -75,132 +75,22 @@ function updateMetricElements(panel: HTMLElement, metrics: ProjectRuntimeMetrics
   });
 }
 
-function parseUtcDate(date: string) {
-  const [year, month, day] = date.split("-").map(Number);
-  return Date.UTC(year, month - 1, day);
-}
-
-function formatUtcDate(timestamp: number) {
-  return new Date(timestamp).toISOString().slice(0, 10);
-}
-
-function createActivityCell(
-  cell: { date: string; value: number | null } | undefined,
-  week: number,
-  weekday: number,
-  maxValue: number,
-  valueLabel: string
-) {
-  const element = document.createElement("span");
-  element.style.setProperty("--runtime-week", String(week));
-  element.style.setProperty("--runtime-weekday", String(weekday));
-
-  if (!cell || cell.value === null) {
-    element.className = "runtime-activity-slot runtime-activity-slot--empty";
-    element.setAttribute("aria-hidden", "true");
-    return element;
-  }
-
-  element.className = "runtime-activity-cell";
-  element.dataset.runtimePoint = "";
-  element.dataset.date = cell.date;
-  element.dataset.value = formatRuntimeValue(cell.value);
-  element.dataset.label = valueLabel;
-  element.style.setProperty("--runtime-intensity", String(Math.min(cell.value / maxValue, 1)));
-  element.setAttribute("role", "img");
-  element.tabIndex = 0;
-  element.setAttribute(
-    "aria-label",
-    `${cell.date} ${valueLabel} ${formatRuntimeValue(cell.value)}`
-  );
-  return element;
-}
-
-function updateActivityChart(
-  chart: HTMLElement,
-  points: RuntimeActivityPoint[],
-  valueLabel: string
-) {
-  const validPoints = points.filter((point) => point.date);
-  const firstTimestamp = parseUtcDate(validPoints[0]?.date ?? "1970-01-01");
-  const lastTimestamp = parseUtcDate(
-    validPoints.at(-1)?.date ?? validPoints[0]?.date ?? "1970-01-01"
-  );
-  const dayMilliseconds = 24 * 60 * 60 * 1000;
-  const calendarStart = firstTimestamp - new Date(firstTimestamp).getUTCDay() * dayMilliseconds;
-  const calendarEnd = lastTimestamp + (6 - new Date(lastTimestamp).getUTCDay()) * dayMilliseconds;
-  const weekCount = Math.floor((calendarEnd - calendarStart) / (7 * dayMilliseconds)) + 1;
-  const pointsByDate = new Map(points.map((point) => [point.date, point]));
-  const maxValue = Math.max(
-    ...points.flatMap((point) => (point.value === null ? [] : [point.value])),
-    1
-  );
-  const grid = chart.querySelector<HTMLElement>(".runtime-activity-grid");
-  const tooltip = chart.querySelector<HTMLElement>("[data-runtime-tooltip]");
-  if (!grid) return;
-
-  const cells = Array.from({ length: weekCount * 7 }, (_, index) => {
-    const timestamp = calendarStart + index * dayMilliseconds;
-    const date = formatUtcDate(timestamp);
-    return createActivityCell(
-      pointsByDate.get(date),
-      Math.floor(index / 7) + 1,
-      (index % 7) + 1,
-      maxValue,
-      valueLabel
-    );
-  });
-  grid.replaceChildren(...cells);
-  grid.dataset.weekCount = String(weekCount);
-  grid.style.setProperty("--runtime-week-count", String(weekCount));
-  if (tooltip) {
-    tooltip.hidden = true;
-    tooltip.textContent = "";
-  }
-}
-
-function updateFreshness(panel: HTMLElement, freshness: Uint8Array, repositoryCount: number) {
-  const grid = panel.querySelector<HTMLElement>(".runtime-freshness-grid");
-  if (!grid) return;
-  const section = grid.closest<HTMLElement>(".runtime-freshness");
-  if (section) section.dataset.runtimeEmpty = freshness.length === 0 ? "true" : "false";
-  grid.replaceChildren(
-    ...Array.from(freshness, (statusCode) => {
-      const cell = document.createElement("span");
-      cell.className = `runtime-freshness-cell runtime-freshness-cell--${freshnessStatusClasses[statusCode] ?? "unknown"}`;
-      cell.dataset.statusCode = String(statusCode);
-      cell.setAttribute("aria-hidden", "true");
-      return cell;
-    })
-  );
-  grid.setAttribute(
-    "aria-label",
-    `仓库刷新新鲜度热点图，共 ${formatRuntimeValue(repositoryCount)} 个仓库`
-  );
-}
-
 function applyMetrics(panel: HTMLElement, metrics: ProjectRuntimeMetrics) {
   updateMetricElements(panel, metrics);
-  if (metrics.kind === "codex-vibe-monitor") {
-    const chart = panel.querySelector<HTMLElement>('[data-runtime-chart][aria-label*="Token"]');
-    if (chart) updateActivityChart(chart, metrics.tokenActivity90d, "Token");
-  } else if (metrics.kind === "tavily-hikari") {
-    const chart = panel.querySelector<HTMLElement>('[data-runtime-chart][aria-label*="请求"]');
-    if (chart) updateActivityChart(chart, metrics.requestActivity90d, "请求");
-  } else {
-    updateFreshness(panel, metrics.freshness, metrics.deduplicatedRepositories.value);
-  }
-
   delete panel.dataset.runtimeError;
   panel.dataset.runtimeState = "ready";
   panel
     .closest<HTMLElement>(".projects-poster-visual")
     ?.querySelector<HTMLElement>("[data-runtime-fallback-poster]")
     ?.setAttribute("hidden", "");
-  window.dispatchEvent(new CustomEvent("project-runtime-metrics-updated", { detail: { panel } }));
+  publishProjectRuntimeMetrics(panel, metrics);
 }
 
-async function refreshPanel(panel: HTMLElement, controller: AbortController) {
+async function refreshPanel(
+  panel: HTMLElement,
+  controller: AbortController,
+  isCurrent: () => boolean = () => true
+) {
   if (panel.dataset.runtimeFetching === "true") return;
   const sourceUrl = panel.dataset.runtimeSourceUrl;
   const slug = panel.dataset.runtimeKind;
@@ -218,15 +108,17 @@ async function refreshPanel(panel: HTMLElement, controller: AbortController) {
     const payload: unknown = await response.json();
     const metrics = parseProjectRuntimeMetrics(slug, payload);
     if (!metrics) throw new Error("runtime metrics response failed validation");
+    if (!isCurrent()) return;
     applyMetrics(panel, metrics);
   } catch (error) {
-    if (!(error instanceof DOMException && error.name === "AbortError")) {
+    if (isCurrent() && !(error instanceof DOMException && error.name === "AbortError")) {
       panel.dataset.runtimeError = "true";
       panel.dataset.runtimeState = "pending";
       panel
         .closest<HTMLElement>(".projects-poster-visual")
         ?.querySelector<HTMLElement>("[data-runtime-fallback-poster]")
         ?.removeAttribute("hidden");
+      publishProjectRuntimeFallback(panel);
     }
   } finally {
     delete panel.dataset.runtimeFetching;
@@ -242,13 +134,17 @@ function bindPanel(panel: HTMLElement) {
   panel.dataset.runtimeLiveBound = "true";
   const controller = new AbortController();
   let timer: number | undefined;
+  let refreshRequested = false;
+  let refreshRevision = 0;
   let fitFrame: number | undefined;
-  const freshnessSection = panel.querySelector<HTMLElement>(".runtime-freshness");
-  const freshnessTitle = freshnessSection?.querySelector<HTMLElement>(".runtime-chart-title");
-  const freshnessGrid = panel.querySelector<HTMLElement>(".runtime-freshness-grid");
+  let freshnessGrid: HTMLElement | null = null;
   const fitFreshness = () => {
     fitFrame = undefined;
-    if (!freshnessGrid || !freshnessSection || panel.dataset.runtimeState !== "ready") return;
+    const freshnessSection = panel.querySelector<HTMLElement>(".runtime-freshness");
+    const freshnessTitle = freshnessSection?.querySelector<HTMLElement>(".runtime-chart-title");
+    const currentGrid = freshnessSection?.querySelector<HTMLElement>(".runtime-freshness-grid");
+    if (!currentGrid || !freshnessSection || panel.dataset.runtimeState !== "ready") return;
+    freshnessGrid = currentGrid;
     const sectionBounds = freshnessSection.getBoundingClientRect();
     const sectionStyle = getComputedStyle(freshnessSection);
     const titleBounds = freshnessTitle?.getBoundingClientRect();
@@ -261,7 +157,7 @@ function bindPanel(panel: HTMLElement) {
         pixelValue(sectionStyle.borderLeftWidth) -
         pixelValue(sectionStyle.borderRightWidth)
     );
-    const gap = freshnessGrid.childElementCount > 0 ? pixelValue(sectionStyle.rowGap) : 0;
+    const gap = currentGrid.childElementCount > 0 ? pixelValue(sectionStyle.rowGap) : 0;
     const height = Math.max(
       0,
       sectionBounds.height -
@@ -274,44 +170,86 @@ function bindPanel(panel: HTMLElement) {
     );
     const designGap = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) * 0.18;
     const layout = calculateFreshnessLayout(
-      freshnessGrid.childElementCount,
+      currentGrid.querySelectorAll<HTMLElement>(".runtime-freshness-cell").length,
       width,
       height,
       designGap
     );
     if (!layout) return;
     freshnessSection.dataset.runtimeEmpty = layout.rows === 0 ? "true" : "false";
-    freshnessGrid.style.setProperty("--runtime-freshness-columns", String(layout.columns));
-    freshnessGrid.style.setProperty("--runtime-freshness-rows", String(layout.rows));
-    freshnessGrid.style.setProperty("--runtime-freshness-gap", `${layout.gap}px`);
-    freshnessGrid.style.setProperty("--runtime-freshness-cell-size", `${layout.cellSize}px`);
-    freshnessGrid.style.setProperty("--runtime-freshness-grid-height", `${layout.gridHeight}px`);
+    currentGrid.style.setProperty("--runtime-freshness-columns", String(layout.columns));
+    currentGrid.style.setProperty("--runtime-freshness-rows", String(layout.rows));
+    currentGrid.style.setProperty("--runtime-freshness-gap", `${layout.gap}px`);
+    currentGrid.style.setProperty("--runtime-freshness-cell-size", `${layout.cellSize}px`);
+    currentGrid.style.setProperty("--runtime-freshness-grid-height", `${layout.gridHeight}px`);
+    currentGrid.dataset.runtimeFreshnessColumns = String(layout.columns);
+    currentGrid.dataset.runtimeFreshnessRows = String(layout.rows);
+    currentGrid.dispatchEvent(new CustomEvent("runtime-freshness-layout"));
   };
   const scheduleFitFreshness = () => {
     if (fitFrame !== undefined) return;
     fitFrame = window.requestAnimationFrame(fitFreshness);
   };
   const onMetricsUpdated = (event: Event) => {
-    if ((event as CustomEvent<{ panel: HTMLElement }>).detail?.panel === panel) {
-      scheduleFitFreshness();
+    const detail = (event as CustomEvent<ProjectRuntimeMetricsUpdatedDetail>).detail;
+    if (detail?.panel !== panel) return;
+    if (detail.metrics && detail.source !== "adapter") applyMetrics(panel, detail.metrics);
+    scheduleFitFreshness();
+  };
+  const runRefresh = () => {
+    if (controller.signal.aborted) return;
+    if (panel.dataset.runtimeFetching === "true") {
+      refreshRequested = true;
+      return;
+    }
+    refreshRequested = false;
+    const revision = refreshRevision;
+    void refreshPanel(panel, controller, () => revision === refreshRevision).finally(() => {
+      if (refreshRequested && !controller.signal.aborted) runRefresh();
+    });
+  };
+  const refreshFromDemo = () => {
+    refreshRevision += 1;
+    refreshRequested = true;
+    runRefresh();
+  };
+  const onDemoAction = (event: Event) => {
+    const detail = (event as CustomEvent<WebDemoActionDetail>).detail;
+    if (detail?.action === "refresh-data" || detail?.action === "reset-state") refreshFromDemo();
+  };
+  const onDemoState = (event: Event) => {
+    const detail = (event as CustomEvent<WebDemoStateChangeDetail>).detail;
+    if (detail?.changed.some((key) => ["data", "connection", "delay"].includes(key))) {
+      refreshFromDemo();
     }
   };
-  const resizeObserver = freshnessSection ? new ResizeObserver(scheduleFitFreshness) : null;
-  if (freshnessSection) {
-    resizeObserver?.observe(freshnessSection);
-    if (freshnessTitle) resizeObserver.observe(freshnessTitle);
-    window.addEventListener("project-runtime-metrics-updated", onMetricsUpdated);
-  }
+  const resizeObserver = new ResizeObserver(scheduleFitFreshness);
+  resizeObserver.observe(panel);
+  window.addEventListener("project-runtime-metrics-updated", onMetricsUpdated);
+  window.addEventListener(WEB_DEMO_ACTION_EVENT, onDemoAction);
+  window.addEventListener(WEB_DEMO_STATE_EVENT, onDemoState);
+  const mutationObserver = new MutationObserver(() => {
+    const currentGrid = panel.querySelector<HTMLElement>(".runtime-freshness-grid");
+    if (currentGrid && currentGrid !== freshnessGrid) resizeObserver.observe(currentGrid);
+    scheduleFitFreshness();
+  });
+  mutationObserver.observe(panel, { childList: true, subtree: true });
+  scheduleFitFreshness();
   const interval = getProjectRuntimeRefreshInterval(slug);
   const stop = () => {
     if (timer !== undefined) window.clearInterval(timer);
     timer = undefined;
+    refreshRevision += 1;
     if (fitFrame !== undefined) window.cancelAnimationFrame(fitFrame);
     fitFrame = undefined;
     controller.abort();
+    clearProjectRuntimeChannel(panel);
     delete panel.dataset.runtimeLiveBound;
     resizeObserver?.disconnect();
+    mutationObserver.disconnect();
     window.removeEventListener("project-runtime-metrics-updated", onMetricsUpdated);
+    window.removeEventListener(WEB_DEMO_ACTION_EVENT, onDemoAction);
+    window.removeEventListener(WEB_DEMO_STATE_EVENT, onDemoState);
     window.removeEventListener("pagehide", stop);
     document.removeEventListener("astro:before-swap", stop);
     document.removeEventListener("visibilitychange", onVisibilityChange);
@@ -319,8 +257,8 @@ function bindPanel(panel: HTMLElement) {
   };
   const start = () => {
     if (document.hidden || controller.signal.aborted || timer !== undefined) return;
-    void refreshPanel(panel, controller);
-    timer = window.setInterval(() => void refreshPanel(panel, controller), interval);
+    runRefresh();
+    timer = window.setInterval(runRefresh, interval);
   };
   const onVisibilityChange = () => {
     if (document.hidden) {
