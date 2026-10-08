@@ -10,6 +10,10 @@ on:
         description: Internal recovery only; abandon one failed merged release without artifacts
         required: false
         type: string
+      abandon_frozen_inputs_id:
+        description: Internal recovery only; abandon one failed merged release before products exist
+        required: false
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -49,6 +53,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_ID: ${{ inputs.repair_release_id }}
+      - name: Abandon failed release after inputs-only freeze
+        if: ${{ inputs.abandon_frozen_inputs_id != '' }}
+        run: bun scripts/product-release.ts abandon-failed-inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ inputs.abandon_frozen_inputs_id }}
       - name: Reserve version, prepare the signed VERSION-only PR and dispatch exact-head gates
         if: ${{ inputs.repair_release_id == '' }}
         run: bun scripts/product-release.ts prepare
