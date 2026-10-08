@@ -27,7 +27,7 @@
     "src/lib/web-demo-runtime.ts": "c30a0f0d6fed32d3fe77824145bac73c49f8f51c",
     "tests/components/runtime-cell-gesture.test.ts": "b06677b53c32f08d1a60a60e8803988354bd3652",
     "tests/components/runtime-cell-grid.test.tsx": "41b9723dd017ec831a51bca8f6abed824675572f",
-    "tests/e2e/guest/nature-front-coverage.spec.ts": "ad42973e6cbc6169a476089accb7975ebc1b72bf",
+    "tests/e2e/guest/nature-front-coverage.spec.ts": "458f6a7c6d294655a68d6552848718a8139886c9",
     "tests/e2e/guest/project-visual-slot.spec.ts": "09a5aa4cc3692a498464f2eccda703075241032f",
     "tests/lib/project-runtime-channel.test.ts": "b6ec3782142530f3193d54e1e299fd6d0e51488f",
     "tests/storybook/playbook-interactions.ts": "5146401d3660b6913feea67e723874df7634c508"
