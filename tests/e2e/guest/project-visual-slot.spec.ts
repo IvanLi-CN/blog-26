@@ -650,6 +650,7 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
     await page.keyboard.press("Escape");
     await page.waitForTimeout(20);
     const grid = cvm.locator(".runtime-activity-grid");
+    const tooltipAnchor = cvm.locator(".runtime-tooltip-anchor");
     const octoGrid = projectCard(page, "octo-rill").locator(".runtime-freshness-grid");
     const dispatchClick = (index: number, targetGrid: typeof grid = grid) =>
       targetGrid.evaluate((element, cellIndex) => {
@@ -838,8 +839,14 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
     await dispatchTouch("touchstart", 4);
     await page.waitForTimeout(550);
     await expect(tooltip).toBeVisible();
+    const initialTouchAnchor = await tooltipAnchor.boundingBox();
+    if (!initialTouchAnchor) throw new Error("touch tooltip anchor is missing");
     const movePrevented = await dispatchTouch("touchmove", 5);
     expect(movePrevented).toBe(true);
+    const movedTouchAnchor = await tooltipAnchor.boundingBox();
+    if (!movedTouchAnchor) throw new Error("moved touch tooltip anchor is missing");
+    expect(movedTouchAnchor.x).toBeCloseTo(initialTouchAnchor.x, 1);
+    expect(movedTouchAnchor.y).toBeCloseTo(initialTouchAnchor.y, 1);
     const contextMenuPrevented = await grid.evaluate((element) => {
       const event = new Event("contextmenu", { bubbles: true, cancelable: true });
       element.dispatchEvent(event);

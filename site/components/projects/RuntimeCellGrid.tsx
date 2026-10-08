@@ -112,10 +112,6 @@ function isElementTarget(target: EventTarget | null): target is Element {
   return target instanceof Element;
 }
 
-function distanceSquared(a: { x: number; y: number }, b: { x: number; y: number }) {
-  return (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
-}
-
 function getPointFromTarget(target: EventTarget | null, grid: HTMLElement) {
   if (!isElementTarget(target)) return null;
   const point = target.closest<HTMLElement>("[data-runtime-cell]");
@@ -223,25 +219,11 @@ function getDirectionalCell(
   return candidates[0]?.candidate ?? null;
 }
 
-function getSafeAnchorRect(grid: HTMLElement, touch: { x: number; y: number; radius: number }) {
+function getStableTouchAnchorRect(grid: HTMLElement) {
   const bounds = grid.getBoundingClientRect();
-  const occlusionRadius = Math.max(48, touch.radius);
-  const candidates = [
-    { x: bounds.left + bounds.width / 2, y: bounds.top + 4 },
-    { x: bounds.left + 4, y: bounds.top + bounds.height / 2 },
-    { x: bounds.right - 4, y: bounds.top + bounds.height / 2 },
-    { x: bounds.left + bounds.width / 2, y: bounds.bottom - 4 },
-  ];
-  const isSafe = (candidate: { x: number; y: number }) =>
-    distanceSquared(candidate, touch) >= (occlusionRadius + 24) ** 2;
-  const anchor =
-    candidates.find(isSafe) ??
-    candidates.reduce((farthest, candidate) =>
-      distanceSquared(candidate, touch) > distanceSquared(farthest, touch) ? candidate : farthest
-    );
   return {
-    left: Math.min(Math.max(anchor.x - bounds.left - 1, 0), Math.max(bounds.width - 2, 0)),
-    top: Math.min(Math.max(anchor.y - bounds.top - 1, 0), Math.max(bounds.height - 2, 0)),
+    left: Math.min(Math.max(bounds.width / 2 - 1, 0), Math.max(bounds.width - 2, 0)),
+    top: 0,
   };
 }
 
@@ -531,7 +513,7 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
         const cell = getPointFromCoordinates(grid, point.x, point.y);
         if (!cell) return;
         setCell(cell, true);
-        setTouchAnchor(getSafeAnchorRect(grid, point));
+        setTouchAnchor(getStableTouchAnchorRect(grid));
       },
     });
     touchGestureRef.current = gesture;
@@ -702,7 +684,6 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
         return;
       }
       setCell(cell, true);
-      setTouchAnchor(getSafeAnchorRect(grid, result.point));
     };
     const onTouchEnd = () => {
       const recognized = gesture.end().recognized;

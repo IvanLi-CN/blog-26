@@ -15,7 +15,7 @@
     "scripts/run-precommit-tests.ts": "9e0b8ae84036cd40761f4f679dab95aad60c9013",
     "site/components/projects/ProjectRuntimeDataPanel.astro": "37f04419154a8f0832788f90f52d5eed2df28e99",
     "site/components/projects/RuntimeActivityChart.astro": "0c984a8ac60c0e92cc61a310549ed8a105537e6f",
-    "site/components/projects/RuntimeCellGrid.tsx": "6444b7a188df06163c57fbf1d3f51d813612197a",
+    "site/components/projects/RuntimeCellGrid.tsx": "909df81298db586d70019f83af1f3425ca985633",
     "site/components/projects/runtime-cell-gesture.ts": "6a0f5bdd2109006d2c678e53a85a276400d2c813",
     "site/components/projects/runtime-cell-grid.css": "e8be7c3f70658e955551af03d10fa1f8e7076498",
     "site/lib/project-runtime-channel.ts": "e21ca318e423b4fde77cb3ade685e4a7484e6576",
@@ -28,7 +28,7 @@
     "tests/components/runtime-cell-gesture.test.ts": "b06677b53c32f08d1a60a60e8803988354bd3652",
     "tests/components/runtime-cell-grid.test.tsx": "41b9723dd017ec831a51bca8f6abed824675572f",
     "tests/e2e/guest/nature-front-coverage.spec.ts": "ad42973e6cbc6169a476089accb7975ebc1b72bf",
-    "tests/e2e/guest/project-visual-slot.spec.ts": "9225f2956ea371b1c95da09e74b8f73c60da7c4c",
+    "tests/e2e/guest/project-visual-slot.spec.ts": "27f59c1ce3ff127c0cb19cb65f10f8538c9356f4",
     "tests/lib/project-runtime-channel.test.ts": "b6ec3782142530f3193d54e1e299fd6d0e51488f",
     "tests/storybook/playbook-interactions.ts": "5146401d3660b6913feea67e723874df7634c508"
   },
@@ -41,7 +41,7 @@
     "planned": {
       "impact": "minor",
       "reasoning": "This adds compatible public frontend interaction capabilities without changing upstream endpoints, persistence, or existing navigation contracts.",
-      "assessed_at": "2026-10-08T20:51:03+08:00",
+      "assessed_at": "2026-10-08T21:54:06+08:00",
       "evidence": [
         {
           "path": "tests/components/runtime-cell-grid.test.tsx",
@@ -50,7 +50,7 @@
         },
         {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
-          "blob": "9225f2956ea371b1c95da09e74b8f73c60da7c4c",
+          "blob": "27f59c1ce3ff127c0cb19cb65f10f8538c9356f4",
           "command": "focused production guest Playwright at desktop and narrow mobile viewports"
         }
       ]
@@ -58,7 +58,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "The candidate adds only compatible public UI inspection and accessibility behavior; upstream metrics payloads, anonymous OctoRill boundaries, persistence, and release protocol remain unchanged.",
-      "assessed_at": "2026-10-08T20:51:03+08:00",
+      "assessed_at": "2026-10-08T21:54:06+08:00",
       "evidence": [
         {
           "path": "tests/components/runtime-cell-grid.test.tsx",
@@ -79,7 +79,7 @@
     "verified": {
       "impact": "minor",
       "reasoning": "Focused tests, 990-test Bun coverage, production Web Demo build, official-route Playwright checks including the transparent-gap regression, and spec checks verify a compatible public frontend feature.",
-      "assessed_at": "2026-10-08T20:51:03+08:00",
+      "assessed_at": "2026-10-08T21:54:06+08:00",
       "evidence": [
         {
           "path": "tests/components/runtime-cell-gesture.test.ts",
@@ -88,8 +88,8 @@
         },
         {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
-          "blob": "9225f2956ea371b1c95da09e74b8f73c60da7c4c",
-          "command": "official /projects targeted Playwright route: 1/1 passed, including a transparent-gap long-press context-menu regression"
+          "blob": "27f59c1ce3ff127c0cb19cb65f10f8538c9356f4",
+          "command": "official /projects targeted Playwright route: 1/1 passed, including stable touch-tooltip anchoring and the transparent-gap long-press context-menu regression"
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
@@ -107,7 +107,7 @@
       "evidence": [
         {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
-          "blob": "9225f2956ea371b1c95da09e74b8f73c60da7c4c",
+          "blob": "27f59c1ce3ff127c0cb19cb65f10f8538c9356f4",
           "command": "official /projects route preserves values, statuses, navigation, and visual slots"
         }
       ]
