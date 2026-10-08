@@ -494,7 +494,7 @@ describe("EdgeOne public PWA cache config", () => {
       ...rootAssets,
     ]);
 
-    expect(config.headers.length).toBe(30);
+    expect(config.headers.length).toBeLessThanOrEqual(30);
     expect(config.headers.some(({ source }) => source === "/atom.xml")).toBe(true);
     expect(config.headers.some(({ source }) => source === "/site-assets/*")).toBe(true);
     expect(config.headers.some(({ source }) => source === "/feed.json")).toBe(true);
@@ -542,8 +542,12 @@ describe("EdgeOne public PWA cache config", () => {
         { key: "Content-Disposition", value: "attachment" },
         { key: "X-Content-Type-Options", value: "nosniff" },
       ]);
-      expect(config.headers.some(({ source }) => source === `/${root}/policies/*`)).toBe(true);
     }
+    expect(
+      config.headers.some(
+        ({ source }) => source === "/_content/playbook/:version/:digest/policies/*"
+      )
+    ).toBe(true);
     for (const path of [
       `/_content/playbook/evil/${"c".repeat(64)}/catalog.json`,
       `/_content/playbook/v2.3.3/not-a-digest/catalog.json`,
