@@ -307,7 +307,11 @@ export function updateRelease(
       throw new Error(`Recovery cannot replace ${key}`);
     }
   }
-  const next = entrySchema.parse({ ...original, ...patch, updatedAt: now });
+  const merged: Record<string, unknown> = { ...original, ...patch, updatedAt: now };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) delete merged[key];
+  }
+  const next = entrySchema.parse(merged);
   if (next.stage === "abandoned") {
     const failedBeforeArtifacts =
       original.stage === "merged" &&
