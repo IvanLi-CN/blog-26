@@ -135,6 +135,9 @@ describe("project content contracts", () => {
         site: "https://dockrev.ivanli.cc/",
         demo: "https://ivanli-cn.github.io/dockrev/demo/",
       },
+      oidrune: {
+        repository: "https://github.com/IvanLi-CN/oidrune",
+      },
     } as const;
 
     for (const [slug, destinations] of Object.entries(expected)) {

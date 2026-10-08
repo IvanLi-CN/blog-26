@@ -70,10 +70,11 @@ The approved replacement assignments are:
 | IsolaRail | Rust, ESP32-S3, CH335F, M24C64 EEPROM, USB JSONL, Native IPC, LAN HTTP, I²C, Overcurrent Protection |
 | XP | Rust, OpenRaft, Xray gRPC, HTTP2 Mesh, VLESS + REALITY, Shadowsocks 2022, React, PWA, Docker, Cloudflare Tunnel |
 | Dockrev | Rust, Tokio, Axum, tracing, Docker Engine API, Docker Compose, React, TypeScript, Vite, Supervisor |
+| Oidrune | Cloudflare Workers, GitHub Actions, GitHub OIDC, Telegram, Hono, TypeScript, Bun, D1, Queues, Cloudflare Access |
 
 ## Acceptance Evidence
 
-- All 15 catalog projects receive the approved tag sets and use English labels.
+- All 16 catalog projects receive the approved tag sets and use English labels.
 - Every visible project tag resolves to its native detail route, including project-only tags, tags containing spaces or `+`, and `I²C`, on static and console targets and under a configured public base path.
 - A shared tag returns each associated project, article, and Memo once; public counts equal the displayed eligible associations, and ancestors use the same descendant rule. Private, draft, or unpublishable content does not enter public discovery.
 - Reusing an article/Memo content bundle while changing catalog tags produces routes and associations from the current catalog, with no stale project results.

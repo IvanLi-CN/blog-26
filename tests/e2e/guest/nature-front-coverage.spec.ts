@@ -373,7 +373,7 @@ test.describe("Nature frontend public coverage", () => {
   test("project catalog keeps each domain within the card-density contract", async ({ page }) => {
     await gotoWithTheme(page, "/projects", "light");
 
-    await expect(page.getByText("15 个公开项目", { exact: true })).toBeVisible();
+    await expect(page.getByText("16 个公开项目", { exact: true })).toBeVisible();
     await expect(page.getByText("6 个产品领域", { exact: true })).toBeVisible();
 
     const expectedGroups = [
@@ -382,7 +382,7 @@ test.describe("Nature frontend public coverage", () => {
       { title: "Web 产品", count: 2 },
       { title: "硬件产品", count: 3 },
       { title: "设备控制", count: 3 },
-      { title: "运维工具", count: 2 },
+      { title: "运维工具", count: 3 },
     ] as const;
     const panel = page.locator(".projects-domain-stack.nature-surface");
     await expect(panel).toHaveCount(1);
@@ -399,6 +399,7 @@ test.describe("Nature frontend public coverage", () => {
       await expect(section.locator(".projects-poster-card")).toHaveCount(group.count);
       await expect(section.locator(".projects-domain-count")).toHaveText(`${group.count} 项`);
     }
+    await expect(page.getByRole("heading", { name: "Oidrune", exact: true })).toBeVisible();
 
     const projectImages = page.locator(".projects-poster-card img");
     await expect(projectImages).toHaveCount(14);

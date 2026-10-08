@@ -9,6 +9,7 @@ export const migratedProjectSlugs = [
   "loadlynx",
   "mains-aegis",
   "octo-rill",
+  "oidrune",
   "paste-preset",
   "spoti-bind",
   "tavily-hikari",

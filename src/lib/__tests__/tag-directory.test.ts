@@ -30,9 +30,9 @@ describe("unified tag directory", () => {
     expect(matchesTag("USB-C PD + PPS", ["USB-C PD + PPS"])).toBe(true);
     expect(matchesTag("Web", ["Webby", "Webster/foo"])).toBe(false);
   });
-  it("implements the accepted 15 project assignments, without inferred additions", () => {
+  it("implements the accepted 16 project assignments, without inferred additions", () => {
     const adr = readFileSync("docs/adr/0013-native-project-tag-discovery.md", "utf8");
-    expect(projectCatalog).toHaveLength(15);
+    expect(projectCatalog).toHaveLength(16);
     for (const project of projectCatalog) {
       const row = adr.split("\n").find((line) => line.startsWith(`| ${project.title} | `));
       expect(row).toBeDefined();
