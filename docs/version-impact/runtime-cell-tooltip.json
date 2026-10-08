@@ -6,9 +6,9 @@
     "GLOSSARY.md": "6c80ab22690561941f310517a6f463e2939f3397",
     "docs/project-runtime-tooltip-design.md": "c8ed1363ce551824e1be63f5fd003fac2083a783",
     "docs/specs/README.md": "ffbdc8903b6afbae16b7501e0e2bb23c9f7e6fca",
-    "docs/specs/nature-front-ui/HISTORY.md": "0e9e9e376cf6d64b0f2f0c5705a37bebdeb4a324",
-    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "55586c1a8e0810534e20ea7e11bcf56a11487e0e",
-    "docs/specs/nature-front-ui/SPEC.md": "d2b7a837551b0e6a79ad568c87515bd199ed7923",
+    "docs/specs/nature-front-ui/HISTORY.md": "175f3727027ce6f6f84dae8b77d7e6719effcf3d",
+    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "c08fb31ed8201934997396e492edf0a0f29a44ea",
+    "docs/specs/nature-front-ui/SPEC.md": "60d67bf4111036ad1b3e695e053f4de7c5d2abbc",
     "docs/specs/nature-front-ui/assets/runtime-cell-tooltip-desktop-dark-1780x1071.png": "460a59d7f370cdb4f34ca5513ae44fffd5662e56",
     "docs/specs/nature-front-ui/assets/runtime-cell-tooltip-mobile-dark-393x852.png": "71f11eda077beefd3e7bfb02089c7d7b8a8c9413",
     "scripts/build-web-demo.ts": "3518ea6fa200c9d1694759b825aa93ccc017da23",
@@ -67,7 +67,7 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "d2b7a837551b0e6a79ad568c87515bd199ed7923",
+          "blob": "60d67bf4111036ad1b3e695e053f4de7c5d2abbc",
           "command": "Nature UI contract and spec drift checks"
         }
       ],
@@ -93,7 +93,7 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "d2b7a837551b0e6a79ad568c87515bd199ed7923",
+          "blob": "60d67bf4111036ad1b3e695e053f4de7c5d2abbc",
           "command": "spec drift check"
         }
       ]
