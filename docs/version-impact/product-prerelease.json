@@ -9,6 +9,7 @@
     ".github/workflows/manual-product-release.yml": "ea9a5c86fe62d31bf5949ee7c9684c507c7aaecd",
     ".github/workflows/product-release.yml": "be25706242df623b5362363d27846a865e9a6e5d",
     "CONTEXT.md": "d46b196c60fa7d2cb747b7aa419f89da969e3b00",
+    "docs/adr/0013-native-project-tag-discovery.md": "685754ce830f1e81118dd90afaab0b07274cab9f",
     "docs/adr/0017-product-prerelease-publication-boundary.md": "f49a2f664db0d3cf75e3fb800ce7fb5962909fcb",
     "docs/adr/0018-product-prerelease-version-allocation.md": "2b058a5898d06d4526d4c97894e3a5b3fa3183d3",
     "docs/runbooks/manual-version-release.md": "fd1764f692713c32219e570b5f9a4acfecff19d0",
@@ -16,8 +17,22 @@
     "docs/specs/manual-version-release/HISTORY.md": "2fecca128944bf6bea5830020819af6cb4f4bdff",
     "docs/specs/manual-version-release/IMPLEMENTATION.md": "1b11b98ce5cb2bdcdb452a2be3ea020007340b31",
     "docs/specs/manual-version-release/SPEC.md": "020e28edd1303192171b4a83c61b759c587891f0",
+    "docs/specs/nature-front-ui/HISTORY.md": "caef5e3f6c83800a510c50d175ea989d7a891e66",
+    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "48849e434c3ac034cc7ebb5ed72e280c66504a91",
+    "docs/specs/nature-front-ui/SPEC.md": "efdf4a649599c6e8f27f73f09b29ae593e73152d",
+    "docs/specs/nature-front-ui/assets/projects-oidrune-operations-desktop-dark.png": "51c5e94147fc6cfcc41959e14469f87b099d2dfa",
+    "docs/specs/nature-front-ui/assets/projects-oidrune-operations-desktop-light.png": "13035339f76aa098dc318f4aa40a3ad01c91a235",
+    "docs/specs/nature-front-ui/assets/projects-oidrune-operations-mobile-dark.png": "f87dcabddf88dcf2f28721442cfdf87dd700ec0c",
+    "docs/specs/nature-front-ui/assets/projects-oidrune-operations-mobile-light.png": "e41ee0d40afc072aa80ddd7704c4540f975028b0",
+    "docs/specs/project-tag-discovery/HISTORY.md": "2f4ef216684c39128fd7aeea4ea1a56d4f6b1a3b",
+    "docs/specs/project-tag-discovery/IMPLEMENTATION.md": "fded624b8781e9926cbd6ea72b002296efd01c54",
+    "docs/specs/project-tag-discovery/SPEC.md": "05cc16cb00e5d7f0800b01856fc2ebdaff1482e6",
     "scripts/generate-version.ts": "540261910827ab73f674c741cc3e7404fc97809e",
     "scripts/product-release.ts": "2ecf4a6c77c9e2def993585023a47b8bd22a48f5",
+    "scripts/run-precommit-tests.ts": "c192558538cce7a40bca519ad3fad0891f821679",
+    "site/content/projects/oidrune.mdx": "d06c8bdefe268af76fa0de8ad377598ffbc2c377",
+    "src/lib/__tests__/tag-directory.test.ts": "44baf67d30585b89c679216cac02812284311319",
+    "src/lib/project-catalog.ts": "0a3960a0bd5189eb8e8da0441db4e19d8a5769da",
     "src/lib/release/completion.ts": "93c8e78b5dedac4f8155a8db18b9d65818b17354",
     "src/lib/release/deployment.ts": "8125665bd69a1e631f599ff61d01e2a95c5c907f",
     "src/lib/release/github.ts": "676bd7adb753ffb5126ce1e6d79e96123ff0a786",
@@ -31,11 +46,14 @@
     "src/server/version-api.ts": "9bfb712fdf25caef06d30d7fa27aa2380bb10bac",
     "tests/ci/prepare-release-fixture.ts": "79a621ec55014121d9a772882aa345cf6d58fde7",
     "tests/ci/product-prerelease-workflow.test.ts": "84ad0ffda08e0c836a03c76000ea7f5c725245dc",
+    "tests/e2e/guest/nature-front-coverage.spec.ts": "a3467f34afea32dca1996df35657ccc61f3e513c",
+    "tests/fixtures/project-content.ts": "a1bfdc7a0b39c1a84275e4cfb8562407f5d458c4",
     "tests/lib/manual-release-ledger.test.ts": "1f68d8e74176630889a4880fcca1dcbfe462f4c4",
     "tests/lib/manual-release-policy.test.ts": "2435afe5a32a75d263c5757709c9c4db976b2f95",
     "tests/lib/manual-release-publication.test.ts": "fb861f2597ce10183b20575ec7f1ea61aac8da94",
     "tests/lib/manual-release-recovery.test.ts": "8da7d35f101b78c81fc755e251538b50164b7e78",
-    "tests/lib/manual-release-source.test.ts": "a870bad9943a9fff42f9ef244034bbbff51c6d74",
+    "tests/lib/manual-release-source.test.ts": "bbca05771b3f44228b82a14fcae5b0c1ebc0baa1",
+    "tests/lib/project-content.test.ts": "0359fcbe3433c62dcd74c4e6e46bf05dda2286c5",
     "tests/server/version-api.test.ts": "c86011cb95db3b9f8358570c62e22630af004ac0"
   },
   "change": {
@@ -71,7 +89,7 @@
         },
         {
           "path": "tests/lib/manual-release-source.test.ts",
-          "blob": "a870bad9943a9fff42f9ef244034bbbff51c6d74",
+          "blob": "bbca05771b3f44228b82a14fcae5b0c1ebc0baa1",
           "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
         },
         {
@@ -118,7 +136,7 @@
         },
         {
           "path": "tests/lib/manual-release-source.test.ts",
-          "blob": "a870bad9943a9fff42f9ef244034bbbff51c6d74",
+          "blob": "bbca05771b3f44228b82a14fcae5b0c1ebc0baa1",
           "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
         },
         {
@@ -169,7 +187,7 @@
         },
         {
           "path": "tests/lib/manual-release-source.test.ts",
-          "blob": "a870bad9943a9fff42f9ef244034bbbff51c6d74",
+          "blob": "bbca05771b3f44228b82a14fcae5b0c1ebc0baa1",
           "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
         },
         {
@@ -218,7 +236,7 @@
         },
         {
           "path": "tests/lib/manual-release-source.test.ts",
-          "blob": "a870bad9943a9fff42f9ef244034bbbff51c6d74",
+          "blob": "bbca05771b3f44228b82a14fcae5b0c1ebc0baa1",
           "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
         },
         {
@@ -267,7 +285,7 @@
         },
         {
           "path": "tests/lib/manual-release-source.test.ts",
-          "blob": "a870bad9943a9fff42f9ef244034bbbff51c6d74",
+          "blob": "bbca05771b3f44228b82a14fcae5b0c1ebc0baa1",
           "command": "bun run test:precommit (997 passed, 4355 assertions; session-owned Agent VM)"
         },
         {
