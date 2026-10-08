@@ -680,6 +680,26 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
         link.dispatchEvent(event);
         return event.defaultPrevented;
       });
+    const dispatchExplicitMouseLinkClick = (index: number) =>
+      freshnessLinks.nth(index).evaluate((link) => {
+        const grid = link.closest<HTMLElement>(".runtime-freshness-grid");
+        if (!grid) throw new Error("OctoRill freshness grid is missing");
+        let observedDefaultPrevented = false;
+        grid.addEventListener(
+          "click",
+          (event) => {
+            observedDefaultPrevented = event.defaultPrevented;
+            event.preventDefault();
+          },
+          { once: true }
+        );
+        const event = new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 });
+        Object.defineProperty(event, "sourceCapabilities", {
+          value: { firesTouchEvents: false },
+        });
+        link.dispatchEvent(event);
+        return observedDefaultPrevented;
+      });
     const dispatchTouch = (
       type: "touchstart" | "touchmove" | "touchend" | "touchcancel",
       index?: number,
@@ -723,6 +743,11 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
     await expect(tooltip).toBeVisible();
     await dispatchTouch("touchend", undefined, 1, octoGrid);
     await expect(tooltip).toBeHidden();
+    expect(await dispatchExplicitMouseLinkClick(0)).toBe(false);
+    await dispatchTouch("touchstart", 0, 1, octoGrid);
+    await page.waitForTimeout(550);
+    await dispatchTouch("touchend", undefined, 1, octoGrid);
+    expect(await dispatchLinkClick(0)).toBe(true);
     const keyboardClickObservedDefaultPrevented = await firstFreshnessLink.evaluate((link) => {
       const grid = link.closest<HTMLElement>(".runtime-freshness-grid");
       if (!grid) throw new Error("OctoRill freshness grid is missing");

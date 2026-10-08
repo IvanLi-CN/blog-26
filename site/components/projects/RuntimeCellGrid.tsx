@@ -626,7 +626,9 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
       const sourceCapabilities = (
         event as MouseEvent & { sourceCapabilities?: { firesTouchEvents?: boolean } }
       ).sourceCapabilities;
+      const explicitMouseClick = sourceCapabilities?.firesTouchEvents === false;
       const keyboardActivated = event.detail === 0 && !sourceCapabilities?.firesTouchEvents;
+      if (explicitMouseClick) suppressClickUntil.current = 0;
       if (Date.now() < suppressClickUntil.current && !keyboardActivated) {
         suppressClickUntil.current = 0;
         event.preventDefault();
