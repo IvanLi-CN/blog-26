@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "5f192917a45b267475e88891b5d27c6c4f720c13",
+  "covered_files": {
+    "docs/specs/nature-front-ui/HISTORY.md": "7f58ee36a46e635bfdabd35b7d9ee198e1be228e",
+    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "d687392470bbe01cc504015dda0e91254f5d106c",
+    "docs/specs/nature-front-ui/SPEC.md": "b7af561ed4a029ca59c2221240065e23683ca04f",
+    "docs/specs/nature-front-ui/assets/project-runtime-panels-dense-desktop-dark-1780x1071.png": "33ab2d5b69f6b68b840e1c257175245aeee4738d",
+    "docs/specs/nature-front-ui/assets/project-runtime-panels-dense-desktop-light-1780x1071.png": "ca1d3772639390d6fc4cd726cc1722f236e86992",
+    "docs/specs/nature-front-ui/assets/project-runtime-panels-dense-mobile-dark-393x852.png": "5bcbbf805fd6994f7f2df6d09445acd6ca18d969",
+    "docs/specs/nature-front-ui/assets/project-runtime-panels-dense-mobile-light-393x852.png": "08cbcbcc40971ce212543edc7b36c11c049a37ca",
+    "docs/specs/nature-front-ui/assets/project-runtime-panels-desktop-dark-1780x1071.png": "8a7da22d6a8d25df29849e61830cbb71398f654c",
+    "docs/specs/nature-front-ui/assets/project-runtime-panels-desktop-light-1780x1071.png": "eadf2c9286235d1dfcae3cfc23411eb3cdff33bb",
+    "docs/specs/nature-front-ui/assets/project-runtime-panels-fallback-desktop-dark-1780x1071.png": "13ae3b1b0e8db8f3acff5a8d0496e31b6ddfd384",
+    "docs/specs/nature-front-ui/assets/project-runtime-panels-fallback-desktop-light-1780x1071.png": "bfe898a8f873f1cb283546c2190f507dba2a7140",
+    "docs/specs/nature-front-ui/assets/project-runtime-panels-fallback-mobile-dark-393x852.png": "2e137dbcc73f43fa8f352a2c67b9297135bb97fb",
+    "docs/specs/nature-front-ui/assets/project-runtime-panels-fallback-mobile-light-393x852.png": "9c88a0e328cc222ebe339b54e9343c4e6ef77017",
+    "docs/specs/nature-front-ui/assets/project-runtime-panels-mobile-dark-393x852.png": "b291fb7e2b69d5f805ec9f20bfa3f7737b6fd881",
+    "docs/specs/nature-front-ui/assets/project-runtime-panels-mobile-light-393x852.png": "1a59336df528bb7a659a01b6384f927491b316a9",
+    "site/components/projects/ProjectRuntimeDataPanel.astro": "2325f5bda8a78d484dc7184d9b002cb2ad86fd8b",
+    "site/lib/project-runtime-live.ts": "76b4bf7c273219d7f4e895f48e998731a9e03b7d",
+    "site/lib/runtime-freshness-layout.ts": "5038d10e3c11e058367bdf40d0e29ea5f2c81017",
+    "tests/e2e/guest/project-visual-slot.spec.ts": "59a6de75de10559bbf69824210b59fa0d2b81257",
+    "tests/lib/runtime-freshness-layout.test.ts": "690f1b0930e2aa57cf6df4e766b3b9b64b9a4be8"
+  },
+  "change": {
+    "description": "Align OctoRill freshness title and heatmap spacing, fit complete rows to the available width, and preserve ordered repository cells across the fixed project visual slot.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a local visual layout correction with no endpoint, data contract, persistence, or release protocol change.",
+      "assessed_at": "2026-10-08T13:30:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/runtime-freshness-layout.test.ts",
+          "blob": "690f1b0930e2aa57cf6df4e766b3b9b64b9a4be8",
+          "command": "bun test tests/lib/runtime-freshness-layout.test.ts tests/lib/project-runtime-metrics.test.ts tests/lib/project-runtime-sources.test.ts"
+        },
+        {
+          "path": "tests/e2e/guest/project-visual-slot.spec.ts",
+          "blob": "59a6de75de10559bbf69824210b59fa0d2b81257",
+          "command": "focused production guest Playwright at 1780/1048/820/772/393/375/360/320px in both themes"
+        },
+        {
+          "path": "docs/specs/nature-front-ui/SPEC.md",
+          "blob": "b7af561ed4a029ca59c2221240065e23683ca04f",
+          "command": "spec contract and drift checks"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The implementation changes only project-wall layout calculation, stable-region measurement, focused regression coverage, and Nature evidence assets; runtime data order and public APIs remain unchanged.",
+      "assessed_at": "2026-10-08T13:30:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/runtime-freshness-layout.test.ts",
+          "blob": "690f1b0930e2aa57cf6df4e766b3b9b64b9a4be8",
+          "command": "bun test tests/lib/runtime-freshness-layout.test.ts tests/lib/project-runtime-metrics.test.ts tests/lib/project-runtime-sources.test.ts"
+        },
+        {
+          "path": "tests/e2e/guest/project-visual-slot.spec.ts",
+          "blob": "59a6de75de10559bbf69824210b59fa0d2b81257",
+          "command": "focused production guest Playwright at 1780/1048/820/772/393/375/360/320px in both themes"
+        },
+        {
+          "path": "docs/specs/nature-front-ui/SPEC.md",
+          "blob": "b7af561ed4a029ca59c2221240065e23683ca04f",
+          "command": "spec contract and drift checks"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The current record covers the complete OctoRill freshness layout correction from the v2.9.0 published baseline."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused unit tests, full pre-commit tests, production build, focused Playwright geometry/state regression, Spec checks, and owner-confirmed visual evidence verify a reversible UI-only correction.",
+      "assessed_at": "2026-10-08T13:30:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/runtime-freshness-layout.test.ts",
+          "blob": "690f1b0930e2aa57cf6df4e766b3b9b64b9a4be8",
+          "command": "bun test tests/lib/runtime-freshness-layout.test.ts tests/lib/project-runtime-metrics.test.ts tests/lib/project-runtime-sources.test.ts"
+        },
+        {
+          "path": "tests/e2e/guest/project-visual-slot.spec.ts",
+          "blob": "59a6de75de10559bbf69824210b59fa0d2b81257",
+          "command": "focused production guest Playwright at 1780/1048/820/772/393/375/360/320px in both themes"
+        },
+        {
+          "path": "docs/specs/nature-front-ui/SPEC.md",
+          "blob": "b7af561ed4a029ca59c2221240065e23683ca04f",
+          "command": "spec contract and drift checks"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": ["2.9.0"],
+      "evidence": [
+        {
+          "path": "tests/lib/runtime-freshness-layout.test.ts",
+          "blob": "690f1b0930e2aa57cf6df4e766b3b9b64b9a4be8",
+          "command": "bun test tests/lib/runtime-freshness-layout.test.ts tests/lib/project-runtime-metrics.test.ts tests/lib/project-runtime-sources.test.ts"
+        },
+        {
+          "path": "docs/specs/nature-front-ui/SPEC.md",
+          "blob": "b7af561ed4a029ca59c2221240065e23683ca04f",
+          "command": "spec contract and drift checks"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local content path, browser persistence, or durable release state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/runtime-freshness-layout.test.ts",
+          "blob": "690f1b0930e2aa57cf6df4e766b3b9b64b9a4be8",
+          "command": "bun test tests/lib/runtime-freshness-layout.test.ts tests/lib/project-runtime-metrics.test.ts tests/lib/project-runtime-sources.test.ts"
+        },
+        {
+          "path": "docs/specs/nature-front-ui/SPEC.md",
+          "blob": "b7af561ed4a029ca59c2221240065e23683ca04f",
+          "command": "spec contract and drift checks"
+        }
+      ]
+    }
+  }
+}
