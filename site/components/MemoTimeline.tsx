@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { PublicMemoRecord } from "@/public-site/snapshot";
 import {
   getWebDemoEnvironment,
   getWebDemoSceneState,
@@ -17,7 +16,7 @@ import {
   getMemoListWebDemoInitialPageForState,
   MEMO_LIST_WEB_DEMO_DELAY_MS,
 } from "../lib/memo-list-web-demo";
-import { parseMemoPage, publicMemoCardSchema } from "../lib/memo-pagination";
+import { parseMemoPage, publicMemoCardSchema, toMemoCardRecord } from "../lib/memo-pagination";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 import MemoCard, { type MemoCardRecord } from "./MemoCard";
 import { MEMO_PAGE_SIZE } from "./MemoPagination";
@@ -396,16 +395,4 @@ export default function MemoTimeline({
   );
 }
 
-export function toMemoCardRecord(memo: PublicMemoRecord): MemoCardRecord {
-  return {
-    id: memo.id,
-    slug: memo.slug,
-    title: memo.title,
-    excerpt: memo.excerpt,
-    tags: memo.tags,
-    isPublic: memo.isPublic,
-    createdAt: memo.createdAt,
-    publishedAt: memo.publishedAt,
-    ...(memo.clipping ? { clipping: memo.clipping } : {}),
-  };
-}
+export { toMemoCardRecord } from "../lib/memo-pagination";

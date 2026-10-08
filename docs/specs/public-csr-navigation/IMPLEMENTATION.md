@@ -8,6 +8,7 @@
 - 主线剪藏阅读器与 Memo 类型标记沿用生产组件；当前详情独立携带阅读材料，其他路由不预载剪藏正文。项目 MDX 使用带 JavaScript 后缀的虚拟模块，避免 dev 依赖扫描访问不存在的文件或再次应用 Astro MDX 编译。
 - Header 滚动和代码滚动条等会修改页面 DOM 的行为在共享 renderer hydration 后初始化；主题与阅读视口仍在首屏初始化。SSR preview 为原生 Demo fixture 提供完整路径，且只开放结构化页面 GET，其余业务 API 保持阻断。
 - 片段历史恢复使用保存的阅读位置；同 URL 的历史项也独立触发恢复。项目 MDX 正文尚未就绪时等待其真实标题与高度，再执行目标锚点或历史定位。Playbook 页面 DTO 不携带独立搜索索引的正文，搜索仍走版本绑定的既有来源。
+- Memo 列表 DTO 在序列化前投影为既有卡片字段，公开列表不携带未打开详情的正文；授权作者编辑仍保留完整记录。历史恢复尚未完成时再次导航保留历史条目原有阅读位置，不用加载界面的位置覆盖它。
 
 ## Implementation Coverage
 
@@ -25,7 +26,7 @@
 
 - Agent VM 预提交套件通过，包含组件 Story 边界、构建隔离、路由匹配、公开接口、请求取消及未访问正文的载荷隔离。命令：`bun run test:precommit`，提交 hook 保持启用。Playbook 搜索正文隔离另有回归断言。
 - Demo 导航：`tests/e2e/web-demo/public-csr.spec.ts` 16 项全部通过，覆盖 SSR 离线首屏、12 类离线目标及恢复、历史、主题、取消、静态页面和 404，并断言没有 hydration 错误。命令：`WEB_DEMO_TEST_URL=<demo-origin> bun x playwright test --config tests/e2e/web-demo/playwright.config.ts`。
-- 正式静态站：`tests/e2e/guest/public-csr-navigation.spec.ts` 6 项通过，覆盖结构化导航、目标错误与原位重试、搜索参数、hydration 交接、直接入口及跨页片段历史滚动、延迟 MDX 正文的锚点定位。console 的首屏与主题、窄屏交互及作者隔离测试通过；共享 CSR 回归覆盖相同正式页面。
+- 正式静态站：`tests/e2e/guest/public-csr-navigation.spec.ts` 覆盖结构化导航、目标错误与原位重试、搜索参数、hydration 交接、直接入口及跨页片段历史滚动、延迟 MDX 正文的锚点定位、列表 DTO 正文隔离，以及历史恢复期间的新导航。console 的首屏与主题、窄屏交互及作者隔离测试通过；共享 CSR 回归覆盖相同正式页面。
 - console 作者界面与公共主机隔离：同步后的 `tests/e2e/admin/public-csr-authoring.spec.ts` 通过。CSR 请求保留 `private, no-store`，管理员看到私密记录，公共主机即使携带身份也不能得到这些记录。测试身份使用 runtime 配置的 `ADMIN_EMAIL`，无代理鉴权捷径。
 - 剪藏 Demo 的独立 E2E 脚本通过：正式详情链接使用 CSR，原文／译文、讨论、保存、重试、焦点与草稿、网络与身份及 7 种宽度均验证；除页面 DTO 外没有真实 API 或模型请求。
 - 公共页面的正文、代码块、浅深色和系统主题，以及 320、360、375、393、640、1024px 内容流通过。完整逐节点三帧对比度矩阵通过，AA 门槛保持 4.5。两项完整矩阵分别以独立输出目录复测；此前失败原因均为整体预算耗尽。阅读矩阵预算为 600 秒，实际约 8.3 分钟；对比度预算为 720 秒，独立运行约 6.1 分钟，采样与断言没有减少。

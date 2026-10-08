@@ -24,6 +24,66 @@ const routeData = (url: string) => {
   return path === "/api/public/page" || path.startsWith("/_content/routes/");
 };
 
+test("Memo list route data contains card summaries without unvisited detail bodies", async ({
+  page,
+}) => {
+  await page.goto("/posts/");
+  await ready(page);
+  const response = page.waitForResponse((response) => routeData(response.url()));
+  await page.getByRole("link", { name: "闪念", exact: true }).click();
+  const payload = await (await response).json();
+  expect(payload.kind).toBe("memos");
+  for (const field of ["initialMemos", "renderedMemos"]) {
+    expect(payload.data[field].length).toBeGreaterThan(0);
+    for (const memo of payload.data[field]) {
+      expect(memo).toHaveProperty("slug");
+      expect(memo).toHaveProperty("excerpt");
+      expect(memo).not.toHaveProperty("content");
+    }
+  }
+});
+
+test("navigation during a pending history read preserves the destination reading position", async ({
+  page,
+}) => {
+  await page.goto("/projects/xp/");
+  await ready(page);
+  await page.evaluate(() => window.scrollTo({ top: 1100, behavior: "instant" }));
+  await expect.poll(() => page.evaluate(() => history.state?.publicCsrScroll?.top)).toBe(1100);
+  await page.getByRole("link", { name: "文章", exact: true }).click();
+  await expect(page.locator("main.nature-main h1")).toHaveText("文章");
+  let resume = () => {
+    /* Assigned synchronously by the Promise constructor. */
+  };
+  const released = new Promise<void>((resolve) => {
+    resume = resolve;
+  });
+  await page.route("**/*", async (route) => {
+    const url = new URL(route.request().url());
+    if (
+      routeData(url.href) &&
+      (url.searchParams.get("path") === "/projects/xp/" ||
+        url.pathname.endsWith("/projects/xp.json"))
+    ) {
+      await released;
+      await route.continue().catch(() => {
+        /* The obsolete history read may already have been aborted. */
+      });
+    } else await route.continue();
+  });
+  try {
+    await page.goBack();
+    await expect(page.locator("main.nature-main h1")).toHaveText("正在加载页面");
+    await page.getByRole("link", { name: "标签", exact: true }).click();
+    await expect(page.locator("main.nature-main h1")).toHaveText("浏览所有标签");
+  } finally {
+    resume();
+  }
+  await page.goBack();
+  await expect(page.locator("#raft-期望状态")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => Math.abs(window.scrollY - 1100))).toBeLessThan(2);
+});
+
 test("fragment history restores reading positions on direct and cross-page entries", async ({
   page,
 }) => {

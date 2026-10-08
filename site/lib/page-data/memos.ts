@@ -5,7 +5,12 @@ import { resolveRuntimeContext } from "@/lib/runtime-context";
 import { getWebDemoSceneState } from "@/lib/web-demo-runtime";
 import type { MemoCardRecord } from "../../components/MemoCard";
 import { getMemoListWebDemoInitialPageForState } from "../memo-list-web-demo";
-import { adminMemoRecordSchema, parseMemoPage, publicMemoCardSchema } from "../memo-pagination";
+import {
+  adminMemoRecordSchema,
+  parseMemoPage,
+  publicMemoCardSchema,
+  toMemoCardRecord,
+} from "../memo-pagination";
 import { getSnapshot } from "../public-site";
 import type { PageContext } from "../route-data-utils";
 import { trimRouteSnapshot } from "../route-data-utils";
@@ -91,7 +96,7 @@ export async function loadmemos(Astro: PageContext) {
     runtimeContext,
     isConsoleRuntime,
     initialIsAdmin,
-    initialMemos,
+    initialMemos: initialMemos.map(toMemoCardRecord),
     initialAuthorMemos,
     initialMemosHasMore,
     initialMemosNextCursor,
@@ -100,7 +105,7 @@ export async function loadmemos(Astro: PageContext) {
     initialMemosError,
     localSourceEnabled,
     localMemoRootPath,
-    renderedMemos,
+    renderedMemos: renderedMemos.map(toMemoCardRecord),
     renderedMemosHasMore,
     renderedMemosNextCursor,
   };

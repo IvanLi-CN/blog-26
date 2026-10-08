@@ -1,5 +1,20 @@
 import { z } from "zod";
 import type { PublicMemoRecord } from "@/public-site/snapshot";
+import type { MemoCardRecord } from "../components/MemoCard";
+
+export function toMemoCardRecord(memo: MemoCardRecord): MemoCardRecord {
+  return {
+    id: memo.id,
+    slug: memo.slug,
+    title: memo.title,
+    excerpt: memo.excerpt,
+    tags: memo.tags,
+    isPublic: memo.isPublic,
+    createdAt: memo.createdAt,
+    publishedAt: memo.publishedAt,
+    ...(memo.clipping ? { clipping: memo.clipping } : {}),
+  };
+}
 
 export const MEMO_PAGE_SIZE = 10;
 

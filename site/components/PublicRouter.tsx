@@ -157,10 +157,14 @@ export default function PublicRouter({
     navigationStarted.current = true;
     document.dispatchEvent(new Event("astro:before-swap"));
     if (mode === "push") {
-      window.history.replaceState(
-        { ...window.history.state, publicCsrScroll: { top: window.scrollY, left: window.scrollX } },
-        ""
-      );
+      if (!pendingScroll.current)
+        window.history.replaceState(
+          {
+            ...window.history.state,
+            publicCsrScroll: { top: window.scrollY, left: window.scrollX },
+          },
+          ""
+        );
       window.history.pushState({ publicCsr: true }, "", target);
     }
     pendingScroll.current = {
