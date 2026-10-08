@@ -6,6 +6,7 @@
 - Implementation: 博客消费端已实现，正在完成交付验证与独立审查；上游公开资产与通知由独立任务实现。
 - Catalog note: 原生Playbook、内容 workflow 和 console 持久快照已落地，生产接入及自动更新默认关闭。
 - `REQ-PBI-012` 至 `REQ-PBI-015` 已实现内容聚合、章节展开和零占位高亮；主线同步后的自动验证通过，搜索视觉确认与正式审查待完成。
+- `REQ-PBI-016` 已在博客消费端实现：详情与索引移除自动生成的内容版本和维护字段，明确异常状态使用中文提示。针对性 SSR、纯函数、静态 smoke、浏览器视觉与格式检查已通过，交付门禁待完成。
 
 ## Implementation Coverage
 
@@ -21,6 +22,13 @@
 | `REQ-PBI-013` | 独立主链接、章节链接和展开按钮；紧凑主摘要与缩进章节附属链接，默认三章节，查询重置、类型筛选保留展开 | 0/1/2/3/5 章节组件测试；1280/393/320px 明暗主题的展开、筛选、查询、键盘与触控 Storybook 断言 |
 | `REQ-PBI-014` | 全部合格命中先聚合后限制内容数；最高命中排名，独立来源上限与内容计数；v5 edition 缓存 | 60 个同页 Playbook 命中、250 个同路由全文命中、语义去重、缓存恢复及旧缓存拒绝回归 |
 | `REQ-PBI-015` | 主片段与章节共用内联 mark；仅颜色和背景强调，零 padding/margin/border，继承字体、字重与断行属性 | 字体加载后的逐字符几何、换行、容器尺寸、复制及代码缩进对比；六组视口/主题场景 |
+| `REQ-PBI-016` | `src/lib/playbook/visitor-reading.ts` 提供消费端纯函数；`PlaybookPage` 仅呈现明确影响适用性的状态提示并移除版本行；入口和分类索引不生成维护字段 | `playbook-visitor-reading.test.ts`、`playbook-contract.test.ts`、静态构建、console 首次响应、无 JavaScript、Web Demo 桌面/移动明暗视觉证据与格式检查通过 |
+
+## 访客元信息实现
+
+[PlaybookDetail](../../../src/components/playbook/PlaybookPage.tsx) 现在通过 [访客阅读信息适配器](../../../src/lib/playbook/visitor-reading.ts) 读取 `doc_metadata`，只把唯一且明确的 `stale`/`outdated`、`deprecated` 或 `superseded` 状态映射为中文提示；`current`、未知、空值和冲突值均隐藏。标题、简介、标签、目录和正文继续使用各自的语义位置，关联项目继续复用既有公开链接。
+
+详情 Hero、入口和分类索引不再生成 `内容版本` 或发布日期文案；edition digest、请求绑定参数、公开包和缓存身份仍由数据链路保留。没有筛选结果时不生成元信息容器、分隔线或展开控件。固定公开样例覆盖维护字段隐藏和状态映射。
 
 ## 搜索实现
 
@@ -50,7 +58,7 @@ Policy 公开资源使用 SSR 文件浏览器：可收起的原生目录树、�
 
 ## Remaining Gaps
 
-- 当前候选的本地验证与搜索视觉确认已完成，等待受影响的独立审查刷新和 live PR 当前 head 门禁；实现覆盖不等同于交付完成。
+- 当前候选的 Playbook 纯函数、SSR、静态/Web Demo/console 构建、视觉证据和格式检查已完成；变更截图待 owner 确认，受影响的独立审查与 live PR 当前 head 门禁仍待完成。实现覆盖不等同于交付完成。
 - 上游原生 Release 负责发布可重复公开包，并在数据包之后最后上传 manifest；博客通过每小时补漏读取最新就绪稳定版，不要求上游调用博客 Actions API。见 [公开包契约](./contracts/public-package.md) 和 [触发契约](./contracts/release-trigger.md)。
 - `PLAYBOOK_SOURCE_TOKEN` 提供上游只读访问；生产更新仍须在首次应用部署验证指针后手动启用。首次引导自动选择最高的就绪稳定 SemVer，不需要固定 Release ID。
 - 真实 EdgeOne 原子发布、生产指针及 console 五分钟跟随由两仓合并后的上线阶段验证；模拟适配器与本地 HTTP 结果不替代生产验收。

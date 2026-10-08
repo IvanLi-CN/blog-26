@@ -300,6 +300,40 @@ describe("playbook-public-contract", () => {
     expect(html).not.toContain("<script");
     expect(html).not.toContain("onerror");
   });
+  test("renders only useful visitor information and keeps edition identity out of Playbook UI", () => {
+    const catalog = structuredClone(publicFixtureCatalog);
+    catalog.topic_details[0].doc_metadata = [
+      { key: "schema_version", value: "3" },
+      { key: "status", value: "stale" },
+      { key: "last_verified", value: "2026-09-01" },
+      { key: "routing", value: "native-app" },
+    ];
+    const project = catalog.project_details[0];
+    project.doc_metadata = [
+      { key: "status", value: "current" },
+      { key: "confidence", value: "high" },
+    ];
+    const { edition } = makePublicBundle("v3.0.0", "100", catalog);
+    const topicHtml = renderToStaticMarkup(
+      createElement(PlaybookPage, { edition, path: "topics/delivery" })
+    );
+    const projectHtml = renderToStaticMarkup(
+      createElement(PlaybookPage, { edition, path: "projects/sample-project" })
+    );
+    const indexHtml = renderToStaticMarkup(createElement(PlaybookPage, { edition, path: "" }));
+    const groupHtml = renderToStaticMarkup(
+      createElement(PlaybookPage, { edition, path: "topics" })
+    );
+    expect(topicHtml).toContain("内容已过时");
+    expect(projectHtml).not.toContain("内容已过时");
+    for (const html of [indexHtml, groupHtml, topicHtml, projectHtml]) {
+      expect(html).not.toContain("内容版本 v3.0.0");
+      expect(html).not.toContain("schema_version");
+      expect(html).not.toContain("last_verified");
+      expect(html).not.toContain("confidence");
+      expect(html).not.toContain("native-app");
+    }
+  });
 });
 
 function sourceReader(bundles: ReturnType<typeof makePublicBundle>[]): ReleaseReader {

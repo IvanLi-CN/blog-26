@@ -6,6 +6,14 @@
 
 以下保存初始研究基线及其设计影响。核对时间为 2026-10-02；上游源码基线为 `9156e9f68e5659927b1c5960a3f1ce783b7d7f44`。这些来源事实不代表能力已经实现；当前覆盖见 [IMPLEMENTATION.md](./IMPLEMENTATION.md)。
 
+## 访客元信息展示边界
+
+公开 Topic 的标题区域出现 `schema_version`、`slug`、`confidence`、路由配置等知识源维护字段，暴露了“字段可公开”与“字段值得展示”之间的区别。需求明确要求先按访客价值筛选，再以人类语言呈现；不能仅把原始字段翻译成中文，也不能把摘要或正文归入元信息区。例行维护日期默认隐藏，明确影响适用性的过时、废弃或替代状态保留为中文提示；资源阅读沿用同一原则，源码与下载保持原文。内容版本对访客没有足够价值，不在公开阅读界面展示；版本身份继续保留于公开数据、缓存与运维追溯记录。原先要求“版本可见”的阅读验收据此调整，已有 ADR 的呈现后果同步修正，不改变已发布快照的一致性边界。
+
+该范围记录于 `REQ-PBI-016` 与 `VER-PBI-016`，实现缺口记录于 [IMPLEMENTATION.md](./IMPLEMENTATION.md)。这是既有阅读呈现的可逆调整，不改变知识源所有权、已发布Playbook快照身份或公开包安全边界，因此没有新增 ADR。
+
+本次博客消费端实现新增纯函数筛选层：详情只输出明确影响适用性的中文状态提示，入口与索引移除自动生成的内容版本。实现保留 edition 身份、公开包和缓存契约，并以固定公开样例补齐 SSR、无脚本与访客元信息回归。
+
 ## 来源身份与已发布产物
 
 通过 `gh repo view IvanLi-CN/style-playbook-skills` 与 `gh api repos/IvanLi-CN/style-playbook-skills` 核实：仓库规范身份仍为 `IvanLi-CN/style-playbook-skills`，`private=true`、`visibility=private`、默认分支为 `main`。来源链接为 [上游仓库](https://github.com/IvanLi-CN/style-playbook-skills)。匿名网页/API 返回 404 与其私有状态一致，Git clone 成功不能证明匿名可读。
