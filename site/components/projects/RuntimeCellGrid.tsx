@@ -175,7 +175,11 @@ function getPointFromCoordinates(grid: HTMLElement, clientX: number, clientY: nu
   }
   if (!best?.hasAttribute("data-runtime-cell")) return null;
   const bestRect = best.getBoundingClientRect();
-  const maxGap = Math.max(bestRect.width, bestRect.height) * 0.6;
+  const gridStyle = getComputedStyle(grid);
+  const columnGap = Number.parseFloat(gridStyle.columnGap) || 0;
+  const rowGap = Number.parseFloat(gridStyle.rowGap) || 0;
+  const gapRadius = Math.hypot(columnGap, rowGap) / 2 + 1;
+  const maxGap = Math.max(Math.max(bestRect.width, bestRect.height) * 0.6, gapRadius);
   if (Math.sqrt(bestDistance) > maxGap) return null;
   return best;
 }
@@ -521,6 +525,7 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
   React.useEffect(() => {
     const grid = gridRef.current;
     if (!grid) return;
+    const interactionRoot = grid.closest<HTMLElement>("[data-project-runtime-panel]") ?? grid;
     const gesture = createRuntimeTouchGestureController({
       onRecognized: (point) => {
         const cell = getPointFromCoordinates(grid, point.x, point.y);
@@ -644,6 +649,7 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
     };
     const onTouchStart = (event: TouchEvent) => {
       suppressClickUntil.current = 0;
+      suppressContextMenuUntil.current = 0;
       if (event.touches.length !== 1) {
         hide();
         pendingMetrics.current = null;
@@ -664,6 +670,7 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
         return;
       }
       pendingMetrics.current = null;
+      suppressContextMenuUntil.current = Date.now() + 800;
       gesture.start({
         id: touch.identifier,
         x: touch.clientX,
@@ -683,6 +690,7 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
       );
       if (result.cancelled) {
         pendingMetrics.current = null;
+        suppressContextMenuUntil.current = 0;
         hide();
         return;
       }
@@ -705,6 +713,8 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
         suppressClickUntil.current = suppressUntil;
         hide();
         if (nextMetrics) applyMetrics(nextMetrics);
+      } else {
+        suppressContextMenuUntil.current = 0;
       }
       pendingMetrics.current = null;
     };
@@ -713,9 +723,10 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
       pendingMetrics.current = null;
       hide();
       suppressClickUntil.current = 0;
+      suppressContextMenuUntil.current = 0;
     };
     const onContextMenu = (event: MouseEvent) => {
-      if (gesture.isInspecting() || Date.now() < suppressContextMenuUntil.current) {
+      if (gesture.phase !== "idle" || Date.now() < suppressContextMenuUntil.current) {
         event.preventDefault();
         event.stopPropagation();
       }
@@ -729,11 +740,20 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
     grid.addEventListener("focusout", onFocusOut);
     grid.addEventListener("keydown", onKeyDown);
     grid.addEventListener("click", onClick);
-    grid.addEventListener("touchstart", onTouchStart, { passive: true });
-    grid.addEventListener("touchmove", onTouchMove, { passive: false });
-    grid.addEventListener("touchend", onTouchEnd, { passive: true });
-    grid.addEventListener("touchcancel", onTouchCancel, { passive: true });
-    grid.addEventListener("contextmenu", onContextMenu);
+    interactionRoot.addEventListener("touchstart", onTouchStart, {
+      capture: true,
+      passive: true,
+    });
+    interactionRoot.addEventListener("touchmove", onTouchMove, {
+      capture: true,
+      passive: false,
+    });
+    interactionRoot.addEventListener("touchend", onTouchEnd, { capture: true, passive: true });
+    interactionRoot.addEventListener("touchcancel", onTouchCancel, {
+      capture: true,
+      passive: true,
+    });
+    interactionRoot.addEventListener("contextmenu", onContextMenu, { capture: true });
     return () => {
       grid.removeEventListener("pointerover", onPointerOver);
       grid.removeEventListener("pointermove", onPointerMove);
@@ -743,12 +763,13 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
       grid.removeEventListener("focusout", onFocusOut);
       grid.removeEventListener("keydown", onKeyDown);
       grid.removeEventListener("click", onClick);
-      grid.removeEventListener("touchstart", onTouchStart);
-      grid.removeEventListener("touchmove", onTouchMove);
-      grid.removeEventListener("touchend", onTouchEnd);
-      grid.removeEventListener("touchcancel", onTouchCancel);
-      grid.removeEventListener("contextmenu", onContextMenu);
+      interactionRoot.removeEventListener("touchstart", onTouchStart, { capture: true });
+      interactionRoot.removeEventListener("touchmove", onTouchMove, { capture: true });
+      interactionRoot.removeEventListener("touchend", onTouchEnd, { capture: true });
+      interactionRoot.removeEventListener("touchcancel", onTouchCancel, { capture: true });
+      interactionRoot.removeEventListener("contextmenu", onContextMenu, { capture: true });
       gesture.cancel();
+      suppressContextMenuUntil.current = 0;
       if (touchGestureRef.current === gesture) touchGestureRef.current = null;
     };
   }, [applyMetrics, clearActiveCell, clearHover, hide, isFreshness, navigationUrl, setCell]);

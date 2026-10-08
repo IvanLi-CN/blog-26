@@ -738,6 +738,35 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
         },
         { type, index, touchCount }
       );
+    const dispatchTouchAt = (
+      type: "touchstart" | "touchmove" | "touchend" | "touchcancel",
+      point: { x: number; y: number },
+      targetGrid: typeof grid = grid
+    ) =>
+      targetGrid.evaluate(
+        (element, payload) => {
+          const target = document.elementFromPoint(payload.x, payload.y) ?? element;
+          const touch = {
+            identifier: 1,
+            clientX: payload.x,
+            clientY: payload.y,
+            radiusX: 4,
+            radiusY: 4,
+            target,
+          };
+          const touches =
+            payload.type === "touchend" || payload.type === "touchcancel" ? [] : [touch];
+          const event = new Event(payload.type, { bubbles: true, cancelable: true });
+          Object.defineProperties(event, {
+            touches: { value: touches },
+            targetTouches: { value: touches },
+            changedTouches: { value: [touch] },
+          });
+          target.dispatchEvent(event);
+          return event.defaultPrevented;
+        },
+        { type, ...point }
+      );
     await dispatchTouch("touchstart", 0, 1, octoGrid);
     await page.waitForTimeout(550);
     await expect(tooltip).toBeVisible();
@@ -832,6 +861,44 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
     expect(await dispatchClick(5)).toBe(true);
     await expect(tooltip).toBeVisible();
     await page.keyboard.press("Escape");
+
+    const gapPoint = await grid.evaluate((element) => {
+      const cells = Array.from(element.querySelectorAll<HTMLElement>("[data-runtime-cell]"));
+      let best: { distance: number; point: { x: number; y: number } } | undefined;
+      for (let leftIndex = 0; leftIndex < cells.length; leftIndex += 1) {
+        const left = cells[leftIndex].getBoundingClientRect();
+        for (let rightIndex = leftIndex + 1; rightIndex < cells.length; rightIndex += 1) {
+          const right = cells[rightIndex].getBoundingClientRect();
+          const horizontalOverlap =
+            Math.min(left.right, right.right) - Math.max(left.left, right.left);
+          const verticalGap = Math.max(left.top, right.top) - Math.min(left.bottom, right.bottom);
+          if (horizontalOverlap <= 0 || verticalGap <= 0) continue;
+          const point = {
+            x: Math.max(left.left, right.left) + horizontalOverlap / 2,
+            y: (Math.min(left.bottom, right.bottom) + Math.max(left.top, right.top)) / 2,
+          };
+          if (!best || verticalGap < best.distance) {
+            best = { distance: verticalGap, point };
+          }
+        }
+      }
+      if (!best) throw new Error("runtime cell gap is missing");
+      return best;
+    });
+    expect(await dispatchTouchAt("touchstart", gapPoint.point)).toBe(false);
+    await page.waitForTimeout(550);
+    await expect(tooltip).toBeVisible();
+    expect(await grid.locator('[data-runtime-active="true"]').count()).toBe(1);
+    const gapContextMenuPrevented = await page.evaluate((point) => {
+      const target = document.elementFromPoint(point.x, point.y);
+      if (!target) throw new Error("gap context-menu target is missing");
+      const event = new Event("contextmenu", { bubbles: true, cancelable: true });
+      target.dispatchEvent(event);
+      return event.defaultPrevented;
+    }, gapPoint.point);
+    expect(gapContextMenuPrevented).toBe(true);
+    await dispatchTouchAt("touchend", gapPoint.point);
+    await expect(tooltip).toBeHidden();
 
     const refreshDate = "2026-09-27";
     const refreshCell = cvm.locator(`.runtime-activity-cell[data-date="${refreshDate}"]`);
