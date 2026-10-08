@@ -30,7 +30,7 @@ for (const route of pageRoutes) {
   );
   if (
     !html.includes(`data-playbook-edition="${identity.editionDigest}"`) ||
-    !html.includes("内容版本")
+    /内容版本\s*(?:<[^>]*>\s*)*v\d/iu.test(html)
   )
     throw new Error("Static HTML does not contain the fixed edition");
 }
@@ -93,7 +93,7 @@ try {
   const html = await response.text();
   if (
     !html.includes(`data-playbook-edition="${identity.editionDigest}"`) ||
-    !html.includes("内容版本")
+    /内容版本\s*(?:<[^>]*>\s*)*v\d/iu.test(html)
   )
     throw new Error("Console first response is missing Playbook SSR content");
   const search = await fetch(

@@ -302,6 +302,14 @@ _Avoid_: Topic Skill, 已安装策略
 A public edition of the Style Playbook that has successfully reached the blog's readers. Its version identifies the Topic, 项目实践快照, and Policy Skill content that belong together; console follows this edition and may temporarily retain the previous successful edition.
 _Avoid_: 上游最新内容, 未发布目录, 实时仓库状态
 
+**Playbook 访客阅读信息**:
+Information that helps a public reader understand a Playbook item, judge its applicability, or find related practice. It is distinct from the item's authored prose and from metadata used to maintain or route the knowledge source.
+_Avoid_: 全部公开字段, frontmatter 清单
+
+**Playbook 维护元数据**:
+Information used to organize, verify, or route the Playbook knowledge source. Being publicly available does not make it useful to a public reader.
+_Avoid_: 正文, 访客阅读信息
+
 ## Unified Search
 
 **搜索内容对象**:

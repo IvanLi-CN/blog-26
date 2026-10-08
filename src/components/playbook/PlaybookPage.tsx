@@ -7,6 +7,7 @@ import type {
   PlaybookPublicProjectDetail,
   PlaybookPublicTopicDetail,
 } from "@/lib/playbook/types";
+import { getPlaybookStatusNotice } from "@/lib/playbook/visitor-reading";
 import { toPublicSitePath } from "@/lib/public-runtime-url";
 import MarkdownRenderer from "../common/MarkdownRenderer";
 import Icon from "../ui/Icon";
@@ -291,7 +292,7 @@ function PlaybookDetail({
   policy?: PlaybookPolicySkillDetail;
 }) {
   const sections = topic?.sections ?? project?.sections ?? [];
-  const metadata = topic?.doc_metadata ?? project?.doc_metadata ?? [];
+  const statusNotice = getPlaybookStatusNotice(topic?.doc_metadata ?? project?.doc_metadata);
   const labels = topic?.item.categories ?? project?.item.tags ?? [];
   const contents = policy
     ? [
@@ -366,7 +367,6 @@ function PlaybookDetail({
               <Icon name={group.icon} className="h-3.5 w-3.5" />
               {group.title}
             </span>
-            <span>内容版本 {edition.edition.source.tag}</span>
           </div>
           <h1 className="mt-5 break-words font-heading text-3xl font-semibold leading-tight tracking-[-0.02em] text-[color:var(--nature-text)] sm:text-4xl md:text-5xl">
             {title}
@@ -392,15 +392,10 @@ function PlaybookDetail({
               ))}
             </ul>
           )}
-          {metadata.length > 0 && (
-            <dl className="mt-5 grid gap-2 text-sm leading-6 text-[color:var(--nature-text-soft)]">
-              {metadata.map((field) => (
-                <div key={field.key} className="flex flex-wrap gap-x-3 gap-y-1">
-                  <dt className="font-medium">{field.key}</dt>
-                  <dd className="min-w-0 break-words">{field.value}</dd>
-                </div>
-              ))}
-            </dl>
+          {statusNotice && (
+            <p className="nature-muted mt-4 text-sm leading-6" role="status">
+              {statusNotice}
+            </p>
           )}
         </header>
         {contents.length > 0 && <PlaybookMobileNavigation contents={contents} />}
@@ -578,15 +573,6 @@ export default function PlaybookPage({
             <p className="nature-muted mx-auto mt-4 max-w-2xl text-base leading-8 sm:text-lg">
               {introDescription}
             </p>
-            {edition && (
-              <p className="nature-muted mt-3 text-sm">
-                内容版本{" "}
-                <strong className="text-[color:var(--nature-text)]">
-                  {edition.edition.source.tag}
-                </strong>
-                <span className="ml-3">{edition.edition.source.publishedAt.slice(0, 10)}</span>
-              </p>
-            )}
           </header>
         )}
 
@@ -641,7 +627,7 @@ export default function PlaybookPage({
         {!edition ? (
           <div className="nature-empty" role="status">
             <h2 className="font-heading text-xl font-semibold">执念暂不可用</h2>
-            <p className="nature-muted">公开内容版本就绪后会在这里提供完整目录。</p>
+            <p className="nature-muted">内容就绪后会在这里提供完整目录。</p>
           </div>
         ) : !title ? (
           <div className="nature-empty" role="status">
