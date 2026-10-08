@@ -33,10 +33,17 @@ test("fragment history restores reading positions on direct and cross-page entri
   await expect.poll(() => page.evaluate(() => history.state?.publicCsrScroll?.top)).toBe(450);
   await linkTo(page, "#raft-期望状态");
   await expect(page).toHaveURL(/#raft-/);
+  await expect
+    .poll(() =>
+      page.locator("#raft-期望状态").evaluate((node) => Math.abs(node.getBoundingClientRect().top))
+    )
+    .toBeLessThan(250);
+  const fragmentScroll = await page.evaluate(() => window.scrollY);
   await page.goBack();
   await expect.poll(() => page.evaluate(() => Math.abs(window.scrollY - 450))).toBeLessThan(2);
   await page.goForward();
   await expect(page).toHaveURL(/#raft-/);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(fragmentScroll);
   await page.evaluate(() => window.scrollTo({ top: 1100, behavior: "instant" }));
   await expect.poll(() => page.evaluate(() => history.state?.publicCsrScroll?.top)).toBe(1100);
   await linkTo(page, "/posts/");
