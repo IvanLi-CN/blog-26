@@ -1010,11 +1010,11 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
     };
 
     await dispatchTouch("touchstart", refreshCellIndex);
-    await page.waitForTimeout(550);
-    await expect(tooltip).toBeVisible();
     await publishCvmMetrics(111);
     await publishCvmMetrics(222);
     await expect(refreshCell).toHaveAttribute("data-value", initialRefreshValue ?? "");
+    await page.waitForTimeout(550);
+    await expect(tooltip).toBeVisible();
     await dispatchTouch("touchend");
     await expect(
       cvm.locator('[data-runtime-stat-key="todayTokens"] [data-runtime-value]')

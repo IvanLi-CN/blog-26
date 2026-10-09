@@ -436,7 +436,7 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
           ? "codex-vibe-monitor"
           : "tavily-hikari";
       if (detail.metrics.kind !== expectedKind) return;
-      if (touchGestureRef.current?.isInspecting()) pendingMetrics.current = detail.metrics;
+      if (touchGestureRef.current?.phase !== "idle") pendingMetrics.current = detail.metrics;
       else applyMetrics(detail.metrics);
     };
     const onFallback = (event: Event) => {
@@ -704,10 +704,10 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
         suppressContextMenuUntil.current = suppressUntil;
         suppressClickUntil.current = suppressUntil;
         hide();
-        if (nextMetrics) applyMetrics(nextMetrics);
       } else {
         suppressContextMenuUntil.current = 0;
       }
+      if (nextMetrics) applyMetrics(nextMetrics);
       pendingMetrics.current = null;
     };
     const onTouchCancel = () => {
