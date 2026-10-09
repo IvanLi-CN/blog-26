@@ -85,13 +85,21 @@
   background: rgba(var(--runtime-highlight-rgb, 247, 255, 250), 0.08);
 }
 
-.runtime-activity-cell:hover,
 .runtime-activity-cell:focus-visible,
 .runtime-activity-cell[data-runtime-active="true"] {
   z-index: 1;
   outline: 2px solid rgba(var(--runtime-highlight-rgb, 247, 255, 250), 0.9);
   outline-offset: 1px;
   background: rgba(var(--runtime-warm-rgb, 236, 181, 87), 0.92);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .runtime-activity-cell:hover {
+    z-index: 1;
+    outline: 2px solid rgba(var(--runtime-highlight-rgb, 247, 255, 250), 0.9);
+    outline-offset: 1px;
+    background: rgba(var(--runtime-warm-rgb, 236, 181, 87), 0.92);
+  }
 }
 
 .runtime-freshness-grid {
@@ -138,7 +146,6 @@
   touch-action: pan-y pan-x;
 }
 
-.runtime-freshness-cell:hover,
 .runtime-freshness-cell:focus-visible,
 .runtime-freshness-cell:focus-within,
 .runtime-freshness-cell[data-runtime-active="true"] {
@@ -146,6 +153,15 @@
   outline: 2px solid rgba(var(--runtime-highlight-rgb, 247, 255, 250), 0.9);
   outline-offset: 1px;
   filter: brightness(1.08);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .runtime-freshness-cell:hover {
+    z-index: 1;
+    outline: 2px solid rgba(var(--runtime-highlight-rgb, 247, 255, 250), 0.9);
+    outline-offset: 1px;
+    filter: brightness(1.08);
+  }
 }
 
 .runtime-freshness-link {

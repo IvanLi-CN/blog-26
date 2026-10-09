@@ -547,6 +547,10 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
       if (cell) schedulePointerCell(cell, false);
     };
     const onPointerDown = (event: PointerEvent) => {
+      if (!isFreshness && event.isPrimary && event.button === 0) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       if (event.pointerType === "mouse") {
         suppressClickUntil.current = 0;
         touchClickUntil.current = 0;
@@ -631,7 +635,13 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
         return;
       }
       suppressClickUntil.current = 0;
-      if (touchClick) return;
+      if (touchClick) {
+        if (!isFreshness) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      }
       if (!isFreshness) {
         event.preventDefault();
         event.stopPropagation();
@@ -698,7 +708,7 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
       const recognized = gesture.end().recognized;
       const nextMetrics = pendingMetrics.current;
       if (recognized) {
-        const suppressUntil = Date.now() + 700;
+        const suppressUntil = Date.now() + 1200;
         suppressContextMenuUntil.current = suppressUntil;
         suppressClickUntil.current = suppressUntil;
         hide();

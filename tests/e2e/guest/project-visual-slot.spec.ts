@@ -678,6 +678,22 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
         cell.dispatchEvent(event);
         return event.defaultPrevented;
       }, index);
+    const dispatchTouchPointerDown = (index: number) =>
+      grid.evaluate((element, cellIndex) => {
+        const cell = Array.from(element.querySelectorAll<HTMLElement>("[data-runtime-cell]"))[
+          cellIndex
+        ];
+        if (!cell) throw new Error("touch pointerdown test cell missing");
+        const event = new PointerEvent("pointerdown", {
+          bubbles: true,
+          cancelable: true,
+          pointerType: "touch",
+          isPrimary: true,
+          button: 0,
+        });
+        cell.dispatchEvent(event);
+        return event.defaultPrevented;
+      }, index);
     const dispatchLinkClick = (index: number) =>
       freshnessLinks.nth(index).evaluate((link) => {
         const event = new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 });
@@ -871,7 +887,8 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
     await expect(tooltip).toBeHidden();
     await dispatchTouch("touchstart", 5);
     await dispatchTouch("touchend");
-    expect(await dispatchTouchClick(5)).toBe(false);
+    expect(await dispatchTouchPointerDown(5)).toBe(true);
+    expect(await dispatchTouchClick(5)).toBe(true);
     await expect(tooltip).toBeHidden();
 
     const gapPoint = await grid.evaluate((element) => {

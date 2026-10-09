@@ -58,15 +58,16 @@ export default function projectsPage(data: Awaited<ReturnType<typeof loadproject
                       key={project.slug}
                       className="projects-poster-card nature-hover-hitbox"
                     >
-                      <a
-                        href={toPublicSitePath(getProjectDetailPath(project.slug))}
-                        className="projects-poster-link nature-hover-lift"
-                        aria-label={`查看 ${project.title} 项目案例`}
-                      >
+                      <div className="projects-poster-link nature-hover-lift">
                         <div className="projects-poster-visual">
                           {runtimePanelEnabled ? (
                             <>
-                              <div data-runtime-fallback-poster="">
+                              <a
+                                href={toPublicSitePath(getProjectDetailPath(project.slug))}
+                                className="projects-poster-poster-link"
+                                data-runtime-fallback-poster=""
+                                aria-label={`查看 ${project.title} 项目案例`}
+                              >
                                 <ProjectPoster
                                   project={project}
                                   compact={true}
@@ -75,22 +76,29 @@ export default function projectsPage(data: Awaited<ReturnType<typeof loadproject
                                     project.slug === firstProjectSlug ? "high" : "auto"
                                   }
                                 />
-                              </div>
+                              </a>
                               <ProjectRuntimeDataPanel
                                 metrics={runtimeMetrics!}
                                 sourceUrl={runtimeSourceUrl}
+                                detailUrl={toPublicSitePath(getProjectDetailPath(project.slug))}
                               />
                             </>
                           ) : (
-                            <ProjectPoster
-                              project={project}
-                              compact={true}
-                              priority={project.slug === firstProjectSlug}
-                              fetchPriority={project.slug === firstProjectSlug ? "high" : "auto"}
-                            />
+                            <a
+                              href={toPublicSitePath(getProjectDetailPath(project.slug))}
+                              className="projects-poster-poster-link"
+                              aria-label={`查看 ${project.title} 项目案例`}
+                            >
+                              <ProjectPoster
+                                project={project}
+                                compact={true}
+                                priority={project.slug === firstProjectSlug}
+                                fetchPriority={project.slug === firstProjectSlug ? "high" : "auto"}
+                              />
+                            </a>
                           )}
                         </div>
-                      </a>
+                      </div>
                       <div className="projects-poster-copy">
                         <div className="projects-poster-heading">
                           <a

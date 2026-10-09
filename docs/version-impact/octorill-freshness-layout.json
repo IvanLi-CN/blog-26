@@ -21,7 +21,7 @@
     "site/lib/project-runtime-live.ts": "76b4bf7c273219d7f4e895f48e998731a9e03b7d",
     "site/lib/project-runtime-sources.ts": "68d320c174a4a11701915a63a07bdaffd7e9659e",
     "site/lib/runtime-freshness-layout.ts": "5038d10e3c11e058367bdf40d0e29ea5f2c81017",
-    "tests/e2e/guest/project-visual-slot.spec.ts": "59a6de75de10559bbf69824210b59fa0d2b81257",
+    "tests/e2e/guest/project-visual-slot.spec.ts": "f63b523ff2d7d21cf0710ffd02424e6df7988896",
     "tests/lib/project-runtime-sources.test.ts": "32b69f29835f5b40759630f4385a389115e17c52",
     "tests/lib/runtime-freshness-layout.test.ts": "690f1b0930e2aa57cf6df4e766b3b9b64b9a4be8"
   },
@@ -43,7 +43,7 @@
         },
         {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
-          "blob": "59a6de75de10559bbf69824210b59fa0d2b81257",
+          "blob": "f63b523ff2d7d21cf0710ffd02424e6df7988896",
           "command": "focused production guest Playwright at 1780/1048/820/772/393/375/360/320px in both themes"
         },
         {
@@ -70,7 +70,7 @@
         },
         {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
-          "blob": "59a6de75de10559bbf69824210b59fa0d2b81257",
+          "blob": "f63b523ff2d7d21cf0710ffd02424e6df7988896",
           "command": "focused production guest Playwright at 1780/1048/820/772/393/375/360/320px in both themes"
         },
         {
@@ -101,7 +101,7 @@
         },
         {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
-          "blob": "59a6de75de10559bbf69824210b59fa0d2b81257",
+          "blob": "f63b523ff2d7d21cf0710ffd02424e6df7988896",
           "command": "focused production guest Playwright at 1780/1048/820/772/393/375/360/320px in both themes"
         },
         {

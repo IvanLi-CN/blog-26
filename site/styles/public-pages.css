@@ -1052,12 +1052,20 @@ html[data-ui-theme="dark"] .project-tag-logo-light:has(+ .project-tag-logo-dark)
   background: rgba(var(--runtime-highlight-rgb, var(--nature-highlight-rgb)), 0.08);
 }
 
-.runtime-activity-cell:hover,
 .runtime-activity-cell:focus-visible {
   z-index: 1;
   outline: 2px solid rgba(var(--runtime-highlight-rgb, var(--nature-highlight-rgb)), 0.9);
   outline-offset: 1px;
   background: rgba(var(--runtime-warm-rgb), 0.92);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .runtime-activity-cell:hover {
+    z-index: 1;
+    outline: 2px solid rgba(var(--runtime-highlight-rgb, var(--nature-highlight-rgb)), 0.9);
+    outline-offset: 1px;
+    background: rgba(var(--runtime-warm-rgb), 0.92);
+  }
 }
 
 .runtime-chart-tooltip {
@@ -1570,6 +1578,7 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
 }
 
 .projects-poster-visual > .project-poster,
+.projects-poster-visual > .projects-poster-poster-link,
 .projects-poster-visual > [data-runtime-fallback-poster],
 .projects-poster-visual > .project-runtime-panel,
 [data-runtime-fallback-poster] > .project-poster {
