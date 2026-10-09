@@ -73,6 +73,33 @@ describe("packagePublicMedia", () => {
     ).resolves.toMatchObject({ fileCount: expect.any(Number) });
   });
 
+  test("ignores HTML entities immediately after packaged static media URLs", async () => {
+    const cwd = await fixture();
+    const candidateUrl = "/api/public/assets/post/entity/hash/cover.webp";
+    await writeFile(join(cwd, "site-dist", "index.html"), `<img src="${candidateUrl}">`);
+
+    await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      fetchImpl: async () => response("image"),
+    });
+
+    await writeFile(
+      join(cwd, "site-dist", "index.html"),
+      '<img src="/_content/assets/post/entity/hash/cover.webp&quot;">'
+    );
+
+    await expect(
+      verifyPublicMediaPackage({
+        cwd,
+        mediaOrigin: "https://api.example",
+        maxFiles: 100,
+        maxProjectBytes: 1024 * 1024,
+      })
+    ).resolves.toMatchObject({ fileCount: expect.any(Number) });
+  });
+
   test("does not exempt non-stable or malformed Playbook edition paths", async () => {
     const cwd = await fixture();
     const invalidTagPath = join(
