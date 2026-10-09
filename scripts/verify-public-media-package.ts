@@ -25,7 +25,7 @@ const TEXT_EXTENSIONS = new Set([
   ".xml",
 ]);
 const STATIC_MEDIA_URL_RE =
-  /(?:https?:\/\/[^"'`\s<>\\]+)?\/_content\/assets\/[^"'`\s<>\\()[\]{}]+/g;
+  /(?:https?:\/\/[^"'`&\s<>\\]+)?\/_content\/assets\/[^"'`&\s<>\\()[\]{}]+/g;
 
 export type VerifyPublicMediaPackageOptions = {
   cwd?: string;
