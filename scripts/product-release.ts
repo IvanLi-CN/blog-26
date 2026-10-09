@@ -18,7 +18,7 @@ import {
   ledgerSchema,
   updateRelease,
 } from "../src/lib/release/ledger";
-import { canonicalJson, digest } from "../src/lib/release/policy";
+import { canonicalJson, digest, versionSchema } from "../src/lib/release/policy";
 import {
   assertMerge,
   assertReleasePull,
@@ -320,7 +320,31 @@ if (command === "notification") {
   if (!sourceSha) throw new Error("REPAIR_LEDGER_SOURCE_SHA is required");
   const head = app.reference(`heads/${contract.ledgerBranch}`);
   if (!head) throw new Error("Release ledger has not been initialized");
-  const sourceLedger = ledgerSchema.parse(JSON.parse(app.file("ledger.json", sourceSha)));
+  const rawSource = JSON.parse(app.file("ledger.json", sourceSha)) as {
+    entries?: unknown[];
+    [key: string]: unknown;
+  };
+  const rawEntries = rawSource.entries;
+  if (!Array.isArray(rawEntries)) throw new Error("Ledger source entries are missing");
+  const invalidEntries = rawEntries.filter((item) => {
+    if (!item || typeof item !== "object") return true;
+    return !versionSchema.safeParse((item as { version?: unknown }).version).success;
+  });
+  if (
+    invalidEntries.some((item) => {
+      if (!item || typeof item !== "object") return true;
+      const record = item as Record<string, unknown>;
+      return (
+        record.stage !== "abandoned" ||
+        ["inputs", "products", "publication", "deployment"].some((key) => record[key])
+      );
+    })
+  )
+    throw new Error("Ledger source contains an invalid entry with active release proofs");
+  const sourceLedger = ledgerSchema.parse({
+    ...rawSource,
+    entries: rawEntries.filter((item) => !invalidEntries.includes(item)),
+  });
   const entry = sourceLedger.entries.find((item) => item.id === requestedId);
   if (!entry) throw new Error("Unknown release identity");
   if (

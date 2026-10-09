@@ -91,7 +91,7 @@
     "scripts/generate-version.ts": "e4cede0c07a84b3e5af6cb2487f1818add276516",
     "scripts/playbook-content-update.ts": "469d45c21ce339ca139469ed43b151e7c80b9200",
     "scripts/prepare-playbook-edition.ts": "6e8ff021a4c5d29d63b122203cf644c55246ca7a",
-    "scripts/product-release.ts": "e3ee8fbc1be8560ffa7603ce5cc67bebc1c11d25",
+    "scripts/product-release.ts": "d2b294c8878d43a8da8daeb04cc54fe7fa0161a8",
     "scripts/release-settings.ts": "4e64a816dd0e45697fa26f0c8b457ccf6bee046b",
     "scripts/smoke-product-release.ts": "7285e6021b7074facbceb921ff9171d684758fff",
     "scripts/start-console.ts": "be1ea96209a0dd10eabc85e68fcf8af2e4d18ff2",
