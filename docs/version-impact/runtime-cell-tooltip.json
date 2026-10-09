@@ -8,7 +8,7 @@
     "docs/specs/README.md": "0f2fba8d004daea623b097cd3d05762cf01e87aa",
     "docs/specs/nature-front-ui/HISTORY.md": "d89ddd540d4ed8e3e3c509035ad987c9c7a1286a",
     "docs/specs/nature-front-ui/IMPLEMENTATION.md": "581efcbdfb5742f3653327f0cc430c21b04e4d80",
-    "docs/specs/nature-front-ui/SPEC.md": "857b03c526480477416ef021168fe2b273b9da8c",
+    "docs/specs/nature-front-ui/SPEC.md": "6942821ea8ba31af6b374b8e237aca96c2f0f395",
     "docs/specs/nature-front-ui/assets/runtime-cell-tooltip-desktop-dark-1780x1071.png": "460a59d7f370cdb4f34ca5513ae44fffd5662e56",
     "docs/specs/nature-front-ui/assets/runtime-cell-tooltip-mobile-dark-393x852.png": "71f11eda077beefd3e7bfb02089c7d7b8a8c9413",
     "scripts/build-web-demo.ts": "3518ea6fa200c9d1694759b825aa93ccc017da23",
@@ -80,7 +80,7 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "857b03c526480477416ef021168fe2b273b9da8c",
+          "blob": "6942821ea8ba31af6b374b8e237aca96c2f0f395",
           "command": "Nature UI contract, activity-cell click boundary, and spec drift checks"
         }
       ],
@@ -106,7 +106,7 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "857b03c526480477416ef021168fe2b273b9da8c",
+          "blob": "6942821ea8ba31af6b374b8e237aca96c2f0f395",
           "command": "spec contract and drift check"
         }
       ]
