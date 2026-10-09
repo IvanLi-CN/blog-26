@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "cd74c923c76359ebeb7fb3ba8eba33471fcfad29",
+  "base_sha": "dcd0bb0ccb1d5af885fa75e6c1474a9b00bd436b",
   "covered_files": {
     "GLOSSARY.md": "6c80ab22690561941f310517a6f463e2939f3397",
     "docs/project-runtime-tooltip-design.md": "5f217ab4a7d4a05eb4aee1c347efcc46cc0a00df",
