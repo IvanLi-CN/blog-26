@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e4a14c1e89f72b776ea122d2d767cdafb246f684",
+  "covered_files": {
+    "src/lib/release/completion.ts": "58320f7177db69c242590111b9ac2222c3decd03"
+  },
+  "change": {
+    "description": "Keep abandoned release merges available as authenticated VERSION provenance during later release policy checks without treating them as published baselines.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The release policy only changes how already recorded abandoned release merges are recognized during source auditing; product APIs and published baselines are unchanged.",
+      "assessed_at": "2026-10-09T13:30:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-provenance.test.ts",
+          "blob": "01496353150171b571e007bb11cbd354d9ff7d7b",
+          "command": "bun test tests/lib/manual-release-provenance.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Abandoned entries remain available to prove historical VERSION merge commits while baseline selection continues to use only published, deployed, or complete stable entries.",
+      "assessed_at": "2026-10-09T13:30:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-provenance.test.ts",
+          "blob": "01496353150171b571e007bb11cbd354d9ff7d7b",
+          "command": "bun test tests/lib/manual-release-provenance.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains limited to release provenance filtering and its existing trusted-evaluation tests."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The focused provenance tests and full pre-commit suite verify that abandoned release history is authenticated without changing published version selection.",
+      "assessed_at": "2026-10-09T13:30:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-provenance.test.ts",
+          "blob": "01496353150171b571e007bb11cbd354d9ff7d7b",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "src/lib/release/completion.ts",
+          "blob": "58320f7177db69c242590111b9ac2222c3decd03",
+          "command": "bun run test:precommit"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": ["2.7.0", "2.8.3", "2.9.0", "2.10.0"],
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-provenance.test.ts",
+          "blob": "01496353150171b571e007bb11cbd354d9ff7d7b",
+          "command": "bun test tests/lib/manual-release-provenance.test.ts"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": true,
+      "state_description": "Existing release ledger entries remain readable; abandoned release provenance is accepted without changing the published baseline set.",
+      "readable_by_prior_versions": ["2.10.0"],
+      "upgrade_from_versions": ["2.10.0"],
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-provenance.test.ts",
+          "blob": "01496353150171b571e007bb11cbd354d9ff7d7b",
+          "command": "bun test tests/lib/manual-release-provenance.test.ts"
+        }
+      ]
+    }
+  }
+}
