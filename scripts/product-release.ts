@@ -11,7 +11,13 @@ import {
 import { deployStatic } from "../src/lib/release/deployment";
 import { GitHubLedgerStore, GitHubRelease } from "../src/lib/release/github";
 import { freezeInputs } from "../src/lib/release/inputs";
-import { changeLedger, entrySchema, initialLedger, updateRelease } from "../src/lib/release/ledger";
+import {
+  changeLedger,
+  entrySchema,
+  initialLedger,
+  ledgerSchema,
+  updateRelease,
+} from "../src/lib/release/ledger";
 import { canonicalJson, digest } from "../src/lib/release/policy";
 import {
   assertMerge,
@@ -309,9 +315,13 @@ if (command === "notification") {
   const app = github();
   const store = new GitHubLedgerStore(app);
   const requestedId = process.env.RELEASE_ID || "";
+  const sourceSha = process.env.REPAIR_LEDGER_SOURCE_SHA || "";
   if (!requestedId) throw new Error("RELEASE_ID is required");
-  const current = await store.read({ allowLegacyHead: true, allowLegacyAncestor: true });
-  const entry = current.ledger.entries.find((item) => item.id === requestedId);
+  if (!sourceSha) throw new Error("REPAIR_LEDGER_SOURCE_SHA is required");
+  const head = app.reference(`heads/${contract.ledgerBranch}`);
+  if (!head) throw new Error("Release ledger has not been initialized");
+  const sourceLedger = ledgerSchema.parse(JSON.parse(app.file("ledger.json", sourceSha)));
+  const entry = sourceLedger.entries.find((item) => item.id === requestedId);
   if (!entry) throw new Error("Unknown release identity");
   if (
     entry.stage !== "abandoned" ||
@@ -323,10 +333,8 @@ if (command === "notification") {
     throw new Error(
       "Only an abandoned release without frozen artifacts can repair the ledger head"
     );
-  const repaired = updateRelease(current.ledger, entry.id, { stage: "abandoned" });
-  if (!current.legacySha)
-    throw new Error("Legacy ledger repair did not identify a historical commit");
-  await store.compareAndSwap(current.sha, repaired, current.legacySha);
+  const repaired = updateRelease(sourceLedger, entry.id, { stage: "abandoned" });
+  await store.compareAndSwap(head, repaired, head);
   console.log(`Repaired abandoned release ledger ${entry.id}`);
 } else if (command === "abandon-failed") {
   const app = github();
