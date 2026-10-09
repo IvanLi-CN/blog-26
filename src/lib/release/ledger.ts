@@ -115,15 +115,20 @@ export function validateLedger(raw: unknown, contract: ReleaseContract): Release
     ids.add(entry.id);
     versions.add(entry.version);
     runs.add(entry.preparationRunId);
-    if (
-      entry.id !==
-      digest({
-        version: entry.version,
-        sourceSha: entry.sourceSha,
-        policyDigest: entry.policyDigest,
-        evidenceDigest: entry.evidenceDigest,
-      })
-    ) {
+    const currentIdentity = digest({
+      version: entry.version,
+      sourceSha: entry.sourceSha,
+      policyDigest: entry.policyDigest,
+      evidenceDigest: entry.evidenceDigest,
+    });
+    const legacyIdentity = digest({
+      version: entry.version,
+      sourceSha: entry.sourceSha,
+      policyDigest: entry.policyDigest,
+      evidenceDigest: entry.evidenceDigest,
+      versionInput: entry.versionInput,
+    });
+    if (entry.id !== currentIdentity && entry.id !== legacyIdentity) {
       throw new Error("Ledger identity was modified");
     }
     if (compareVersions(entry.version, ledger.bootstrap.version) <= 0)

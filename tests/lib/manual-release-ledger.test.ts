@@ -9,7 +9,7 @@ import {
   updateRelease,
   validateLedger,
 } from "../../src/lib/release/ledger";
-import { contractSchema } from "../../src/lib/release/policy";
+import { contractSchema, digest } from "../../src/lib/release/policy";
 import { retireStalePreparations } from "../../src/lib/release/preparation";
 
 const contract = contractSchema.parse(contractJson);
@@ -210,6 +210,20 @@ describe("durable product release reservations", () => {
     if (!changed.entries[0]) throw new Error("Missing fixture");
     changed.entries[0].version = "2.9.0";
     expect(() => validateLedger(changed, contract)).toThrow("identity");
+  });
+  test("accepts identities written by the prior version-input release policy", () => {
+    const first = reserveRelease(initialLedger(contract), request);
+    const legacy = structuredClone(first.ledger);
+    const entry = legacy.entries[0];
+    if (!entry) throw new Error("Missing fixture");
+    entry.id = digest({
+      version: entry.version,
+      sourceSha: entry.sourceSha,
+      policyDigest: entry.policyDigest,
+      evidenceDigest: entry.evidenceDigest,
+      versionInput: entry.versionInput,
+    });
+    expect(validateLedger(legacy, contract).entries[0]?.id).toBe(entry.id);
   });
   test("simultaneous compare-and-swap writers cannot reserve two identities", async () => {
     let sha = "root";
