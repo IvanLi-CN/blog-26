@@ -537,6 +537,7 @@ test("@targeted runtime failure and recovery preserve the visual slot", async ({
 test("@targeted runtime cells keep exact inspection data across pointer, keyboard, and touch", async ({
   context,
 }) => {
+  test.setTimeout(120_000);
   const page = await openProjectPage(context, "dark", {
     getHikariMode: () => "valid",
     getOctoMode: () => "valid",
@@ -556,7 +557,7 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
 
     const zeroCell = cvm.locator('[data-runtime-cell][data-value="0"]').first();
     await expect(zeroCell).toHaveAttribute("data-value", "0");
-    await zeroCell.focus();
+    await zeroCell.locator("[data-runtime-link]").focus();
     await expect(tooltip).toContainText("0 Token");
     await page.keyboard.press("ArrowRight");
     await expect(page.locator('[data-runtime-cell][data-runtime-active="true"]')).toHaveCount(1);
@@ -566,7 +567,7 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
     const spatialCell = cvm.locator('.runtime-activity-cell[data-date="2026-09-27"]');
     const spatialWeek = Number(await spatialCell.getAttribute("data-week"));
     const spatialWeekday = await spatialCell.getAttribute("data-weekday");
-    await spatialCell.focus();
+    await spatialCell.locator("[data-runtime-link]").focus();
     await expect(spatialCell).toHaveAttribute("aria-colindex", String(spatialWeek));
     await page.keyboard.press("ArrowLeft");
     const spatialPrevious = page.locator('[data-runtime-cell][data-runtime-active="true"]');
@@ -696,9 +697,18 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
       }, index);
     const dispatchLinkClick = (index: number) =>
       freshnessLinks.nth(index).evaluate((link) => {
+        const panel = link.closest<HTMLElement>("[data-project-runtime-panel]");
+        if (!panel) throw new Error("OctoRill runtime panel is missing");
+        let observedDefaultPrevented: boolean | null = null;
+        const observeClick = (event: MouseEvent) => {
+          observedDefaultPrevented = event.defaultPrevented;
+          event.preventDefault();
+        };
+        panel.addEventListener("click", observeClick);
         const event = new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 });
         link.dispatchEvent(event);
-        return event.defaultPrevented;
+        panel.removeEventListener("click", observeClick);
+        return observedDefaultPrevented ?? event.defaultPrevented;
       });
     const dispatchExplicitMouseLinkClick = (index: number) =>
       freshnessLinks.nth(index).evaluate((link) => {
@@ -757,6 +767,39 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
           return event.defaultPrevented;
         },
         { type, index, touchCount }
+      );
+    const dispatchShortTouch = (index: number, nextIndex?: number) =>
+      grid.evaluate(
+        (element, payload) => {
+          const cells = element.querySelectorAll<HTMLElement>("[data-runtime-cell]");
+          const touchAt = (cellIndex: number) => {
+            const cell = cells[cellIndex];
+            const bounds = cell.getBoundingClientRect();
+            return {
+              identifier: 1,
+              clientX: bounds.x + bounds.width / 2,
+              clientY: bounds.y + bounds.height / 2,
+              radiusX: 4,
+              radiusY: 4,
+              target: cell,
+            };
+          };
+          const dispatch = (type: string, touches: ReturnType<typeof touchAt>[]) => {
+            const event = new Event(type, { bubbles: true, cancelable: true });
+            Object.defineProperties(event, {
+              touches: { value: touches },
+              targetTouches: { value: touches },
+              changedTouches: { value: touches },
+            });
+            element.dispatchEvent(event);
+            return event.defaultPrevented;
+          };
+          dispatch("touchstart", [touchAt(payload.index)]);
+          return payload.nextIndex === undefined
+            ? dispatch("touchend", [])
+            : dispatch("touchmove", [touchAt(payload.nextIndex)]);
+        },
+        { index, nextIndex }
       );
     const dispatchTouchAt = (
       type: "touchstart" | "touchmove" | "touchend" | "touchcancel",
@@ -850,8 +893,7 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
       )
       .toBe(true);
 
-    await dispatchTouch("touchstart", 4);
-    const preRecognitionMovePrevented = await dispatchTouch("touchmove", 5);
+    const preRecognitionMovePrevented = await dispatchShortTouch(4, 5);
     expect(preRecognitionMovePrevented).toBe(false);
     await expect(tooltip).toBeHidden();
     await dispatchTouch("touchend");
@@ -874,7 +916,7 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
     expect(contextMenuPrevented).toBe(true);
     await dispatchTouch("touchend");
     await expect(tooltip).toBeHidden();
-    expect(await dispatchMouseClick(4)).toBe(true);
+    expect(await dispatchMouseClick(4)).toBe(false);
     await expect(tooltip).toBeHidden();
     await dispatchTouch("touchstart", 4);
     await page.waitForTimeout(550);
@@ -883,12 +925,11 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
     await expect(tooltip).toBeHidden();
     expect(await dispatchTouchClick(4)).toBe(true);
     await expect(tooltip).toBeHidden();
-    expect(await dispatchMouseClick(5)).toBe(true);
+    expect(await dispatchMouseClick(5)).toBe(false);
     await expect(tooltip).toBeHidden();
-    await dispatchTouch("touchstart", 5);
-    await dispatchTouch("touchend");
+    await dispatchShortTouch(5);
     expect(await dispatchTouchPointerDown(5)).toBe(true);
-    expect(await dispatchTouchClick(5)).toBe(true);
+    expect(await dispatchTouchClick(5)).toBe(false);
     await expect(tooltip).toBeHidden();
 
     const gapPoint = await grid.evaluate((element) => {
@@ -1040,3 +1081,99 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
     await page.close();
   }
 });
+
+for (const mobile of [false, true]) {
+  for (const slug of ["codex-vibe-monitor", "tavily-hikari", "octo-rill"]) {
+    test(`@targeted runtime poster clicks retain details (${slug}, ${mobile ? "touch" : "mouse"})`, async ({
+      browser,
+    }) => {
+      test.setTimeout(90_000);
+      const context = await browser.newContext({
+        viewport: mobile ? { width: 393, height: 852 } : { width: 1780, height: 1071 },
+        isMobile: mobile,
+        hasTouch: mobile,
+        reducedMotion: "reduce",
+      });
+      const page = await context.newPage();
+      await routeRuntimeResponses(page, { getHikariMode: () => "valid" });
+      const open = async (slug: string) => {
+        await page.goto("/projects/", { waitUntil: "domcontentloaded" });
+        const panel = projectCard(page, slug).locator("[data-project-runtime-panel]");
+        await expect(panel).toHaveAttribute("data-runtime-state", "ready");
+        await panel.evaluate((element) =>
+          element.scrollIntoView({ inline: "center", block: "center", behavior: "instant" })
+        );
+        return panel;
+      };
+      try {
+        for (const selector of [
+          "[data-runtime-project-logo]",
+          ".runtime-metric-grid",
+          "[data-runtime-link]",
+          "gap",
+        ]) {
+          const panel = await open(slug);
+          const target = panel
+            .locator(selector === "gap" ? "[data-runtime-cell]" : selector)
+            .first();
+          // Record the state at the actual browser click before navigation unmounts the grid.
+          await panel.evaluate((element) => {
+            element.addEventListener("click", () => {
+              sessionStorage.setItem(
+                "runtime-tap-state",
+                JSON.stringify({
+                  active: Boolean(element.querySelector('[data-runtime-active="true"]')),
+                  tooltip: Boolean(document.querySelector("[data-radix-popper-content-wrapper]")),
+                })
+              );
+            });
+          });
+          await target.scrollIntoViewIfNeeded();
+          const bounds = await target.boundingBox();
+          if (!bounds) throw new Error("runtime navigation target missing");
+          const point =
+            selector === "gap"
+              ? await panel.evaluate((element) => {
+                  const cells = element.querySelectorAll("[data-runtime-cell]");
+                  const first = cells[0].getBoundingClientRect();
+                  const second = cells[1].getBoundingClientRect();
+                  return { x: (first.right + second.left) / 2, y: first.y + first.height / 2 };
+                })
+              : { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
+          const { x, y } = point;
+          if (mobile) await page.touchscreen.tap(x, y);
+          else await page.mouse.click(x, y);
+          await expect(page).toHaveURL(new RegExp(`/projects/${slug}/?$`));
+          if (mobile) {
+            expect(
+              await page.evaluate(() =>
+                JSON.parse(sessionStorage.getItem("runtime-tap-state") ?? "null")
+              )
+            ).toEqual({ active: false, tooltip: false });
+          }
+        }
+        if (!mobile) return;
+        const panel = await open(slug);
+        const cell = panel.locator("[data-runtime-link]").first();
+        await cell.scrollIntoViewIfNeeded();
+        const bounds = await cell.boundingBox();
+        if (!bounds) throw new Error("touch inspection cell missing");
+        const client = await context.newCDPSession(page);
+        await client.send("Input.dispatchTouchEvent", {
+          type: "touchStart",
+          touchPoints: [{ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }],
+        });
+        await expect(page.getByRole("tooltip")).toBeVisible();
+        await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        await expect(page.getByRole("tooltip")).toBeHidden();
+        await expect(panel.locator('[data-runtime-active="true"]')).toHaveCount(0);
+        await expect(page).toHaveURL(/\/projects\/?$/);
+        await cell.tap();
+        await expect(page).toHaveURL(new RegExp(`/projects/${slug}/?$`));
+        await client.detach();
+      } finally {
+        await context.close();
+      }
+    });
+  }
+}

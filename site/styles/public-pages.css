@@ -661,6 +661,22 @@ html[data-ui-theme="dark"] .project-poster {
   display: contents;
 }
 
+.runtime-panel-detail-link {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+[data-runtime-detail-link="true"] .runtime-panel-body {
+  pointer-events: none;
+}
+
+.runtime-panel-link {
+  color: inherit;
+  text-decoration: none;
+  pointer-events: auto;
+}
+
 .runtime-panel-art-stage {
   position: absolute;
   inset: 0;
