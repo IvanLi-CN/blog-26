@@ -283,6 +283,7 @@ export async function validateCandidatePolicy(
         ...ledger,
         entries: ledger.entries.filter(
           (item) =>
+            item.stage === "abandoned" ||
             isPrerelease(item.version) ||
             compareVersions(item.version, reserved.baselineVersion) <= 0
         ),
