@@ -301,7 +301,7 @@ Ordinary clicks and mobile taps on all three runtime panels, including cells, gr
 
 #### Runtime cell Tooltip candidate
 
-- Evidence binding: implementation commit `2bb66cd43414690711f86a187f9806df3ec0bbdc`; browser evidence and focused `/projects` checks describe this candidate. Native iOS Safari, Android Chrome, and touch-capable desktop input remain an explicit acceptance gate.
+- Evidence binding: implementation commit `b22c9aac97e3eb4a6505fc3b609a3259fdc911b3`; browser evidence and focused `/projects` checks describe this candidate. Native iOS Safari, Android Chrome, and touch-capable desktop input remain an explicit acceptance gate.
 - Current-candidate browser evidence uses the official Web Demo `/projects/` route with the shared Inspector, `Ego Browser`, `devtools-emulate`, and CSS viewports `1780px × 1071px` and `393px × 852px`. The desktop capture shows a complete CVM date/value Tooltip and the narrow capture shows a held-touch Tooltip placed above the contact with the finger-avoidance margin. The candidate also passes the focused official-route checks for Hikari values and all five anonymous OctoRill freshness labels.
 - These images are browser evidence for the current candidate; native iOS Safari, Android Chrome, and touch-capable desktop input remain an explicit acceptance gate and are not represented by these captures.
 

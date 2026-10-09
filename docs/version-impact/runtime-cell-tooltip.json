@@ -7,8 +7,8 @@
     "docs/project-runtime-tooltip-design.md": "5f217ab4a7d4a05eb4aee1c347efcc46cc0a00df",
     "docs/specs/README.md": "0f2fba8d004daea623b097cd3d05762cf01e87aa",
     "docs/specs/nature-front-ui/HISTORY.md": "d89ddd540d4ed8e3e3c509035ad987c9c7a1286a",
-    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "879ecbd1d1abdab20f7cbddcb26160c63d7d5740",
-    "docs/specs/nature-front-ui/SPEC.md": "8af1620640c0c5f4d7027fb21c268dccc25afe34",
+    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "bf808e37c798be21dcea21898a3c6dc49600dfa2",
+    "docs/specs/nature-front-ui/SPEC.md": "abe5229a83b1782c5420b39c1ba4561ba8a20fd2",
     "docs/specs/nature-front-ui/assets/runtime-cell-tooltip-desktop-dark-1780x1071.png": "460a59d7f370cdb4f34ca5513ae44fffd5662e56",
     "docs/specs/nature-front-ui/assets/runtime-cell-tooltip-mobile-dark-393x852.png": "71f11eda077beefd3e7bfb02089c7d7b8a8c9413",
     "scripts/build-web-demo.ts": "3518ea6fa200c9d1694759b825aa93ccc017da23",
@@ -16,7 +16,7 @@
     "site/components/pages/projects.tsx": "ca165b616f09c1f3e838d42b534f51ecd1d525eb",
     "site/components/projects/ProjectRuntimeDataPanel.tsx": "905bd3283d613dce06230ad09493de04f90307b9",
     "site/components/projects/RuntimeActivityChart.tsx": "a54463a0a33bda2a6e7e5857b6b0974b3e0fd9ec",
-    "site/components/projects/RuntimeCellGrid.tsx": "a46d8c61357673c400bf7597d2a7e419f4706b47",
+    "site/components/projects/RuntimeCellGrid.tsx": "d30ab85afe4568cf87ab96c44b9942dba5322896",
     "site/components/projects/runtime-cell-gesture.ts": "6a0f5bdd2109006d2c678e53a85a276400d2c813",
     "site/components/projects/runtime-cell-grid.css": "b163c24a97c93d2f65b615407d437d1e9887ec4b",
     "site/lib/project-runtime-channel.ts": "e21ca318e423b4fde77cb3ade685e4a7484e6576",
@@ -30,7 +30,7 @@
     "tests/components/runtime-cell-gesture.test.ts": "b06677b53c32f08d1a60a60e8803988354bd3652",
     "tests/components/runtime-cell-grid.test.tsx": "2ffe4cd28b4ac2c1ad53e69d962b05e56f1d5161",
     "tests/e2e/guest/nature-front-coverage.spec.ts": "d5012d88342f19a524e1ee47380d41c84bed28e8",
-    "tests/e2e/guest/project-visual-slot.spec.ts": "598a306a2effea5e26975f927a6f7e1309be3142",
+    "tests/e2e/guest/project-visual-slot.spec.ts": "cda57ea1628ddb02d96658f83b09ae8f03bbbbbf",
     "tests/lib/project-runtime-channel.test.ts": "b6ec3782142530f3193d54e1e299fd6d0e51488f",
     "tests/lib/runtime-format.test.ts": "6ca1e77925668aba998ffebe90d153c057e278fb",
     "tests/storybook/playbook-interactions.ts": "5146401d3660b6913feea67e723874df7634c508"
@@ -58,7 +58,7 @@
         },
         {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
-          "blob": "598a306a2effea5e26975f927a6f7e1309be3142",
+          "blob": "cda57ea1628ddb02d96658f83b09ae8f03bbbbbf",
           "command": "official /projects guest Playwright: 7/7 passed; mouse click and browser-generated mobile tap/long-press navigation for all three runtime panels, plus synthetic state and refresh coverage; actual native-device acceptance remains unavailable"
         }
       ]
@@ -80,7 +80,7 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "8af1620640c0c5f4d7027fb21c268dccc25afe34",
+          "blob": "abe5229a83b1782c5420b39c1ba4561ba8a20fd2",
           "command": "Nature UI contract, activity-cell click boundary, and spec drift checks"
         }
       ],
@@ -101,12 +101,12 @@
         },
         {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
-          "blob": "598a306a2effea5e26975f927a6f7e1309be3142",
+          "blob": "cda57ea1628ddb02d96658f83b09ae8f03bbbbbf",
           "command": "official /projects guest Playwright: 7/7 passed; mouse click and browser-generated mobile tap/long-press navigation for all three runtime panels, plus synthetic state and refresh coverage; actual native-device acceptance remains unavailable"
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "8af1620640c0c5f4d7027fb21c268dccc25afe34",
+          "blob": "abe5229a83b1782c5420b39c1ba4561ba8a20fd2",
           "command": "spec contract and drift check"
         }
       ]
@@ -120,7 +120,7 @@
       "evidence": [
         {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
-          "blob": "598a306a2effea5e26975f927a6f7e1309be3142",
+          "blob": "cda57ea1628ddb02d96658f83b09ae8f03bbbbbf",
           "command": "official /projects guest Playwright: 7/7 passed; mouse click and browser-generated mobile tap/long-press navigation for all three runtime panels, plus synthetic state and refresh coverage; actual native-device acceptance remains unavailable"
         }
       ]
