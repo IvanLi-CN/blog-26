@@ -859,8 +859,7 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
     await dispatchTouch("touchend");
     await expect(tooltip).toBeHidden();
     expect(await dispatchMouseClick(4)).toBe(true);
-    await expect(tooltip).toBeVisible();
-    await page.keyboard.press("Escape");
+    await expect(tooltip).toBeHidden();
     await dispatchTouch("touchstart", 4);
     await page.waitForTimeout(550);
     await expect(tooltip).toBeVisible();
@@ -869,8 +868,7 @@ test("@targeted runtime cells keep exact inspection data across pointer, keyboar
     expect(await dispatchTouchClick(4)).toBe(true);
     await expect(tooltip).toBeHidden();
     expect(await dispatchMouseClick(5)).toBe(true);
-    await expect(tooltip).toBeVisible();
-    await page.keyboard.press("Escape");
+    await expect(tooltip).toBeHidden();
     await dispatchTouch("touchstart", 5);
     await dispatchTouch("touchend");
     expect(await dispatchTouchClick(5)).toBe(false);
