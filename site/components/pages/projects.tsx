@@ -58,13 +58,13 @@ export default function projectsPage(data: Awaited<ReturnType<typeof loadproject
                       key={project.slug}
                       className="projects-poster-card nature-hover-hitbox"
                     >
-                      <div className="projects-poster-link nature-hover-lift">
+                      <div className="projects-poster-shell nature-hover-lift">
                         <div className="projects-poster-visual">
                           {runtimePanelEnabled ? (
                             <>
                               <a
                                 href={toPublicSitePath(getProjectDetailPath(project.slug))}
-                                className="projects-poster-poster-link"
+                                className="projects-poster-link projects-poster-poster-link"
                                 data-runtime-fallback-poster=""
                                 aria-label={`查看 ${project.title} 项目案例`}
                               >
@@ -86,7 +86,7 @@ export default function projectsPage(data: Awaited<ReturnType<typeof loadproject
                           ) : (
                             <a
                               href={toPublicSitePath(getProjectDetailPath(project.slug))}
-                              className="projects-poster-poster-link"
+                              className="projects-poster-link projects-poster-poster-link"
                               aria-label={`查看 ${project.title} 项目案例`}
                             >
                               <ProjectPoster

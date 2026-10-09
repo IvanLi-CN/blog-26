@@ -1491,7 +1491,7 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
   filter: saturate(1);
 }
 
-.projects-poster-link {
+.projects-poster-shell {
   display: grid;
   gap: 1rem;
   color: inherit;

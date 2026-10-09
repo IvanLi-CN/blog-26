@@ -555,7 +555,7 @@ test.describe("Nature frontend public coverage", () => {
     await gotoWithTheme(page, "/projects", "light");
 
     const codexCard = page.locator(".projects-poster-card").filter({
-      has: page.getByRole("link", { name: "查看 Codex Vibe Monitor 项目案例" }),
+      has: page.locator('a[href="/projects/codex-vibe-monitor/"]'),
     });
     await expect(codexCard.locator(".projects-poster-link")).toHaveAttribute(
       "href",
@@ -603,7 +603,8 @@ test.describe("Nature frontend public coverage", () => {
         return grid.getBoundingClientRect().top;
       }),
       codexCard
-        .locator(".project-poster")
+        .locator(".project-runtime-panel, .projects-poster-link:not([hidden]) .project-poster")
+        .first()
         .evaluate((element) => element.getBoundingClientRect().top),
     ]);
     expect(posterTop).toBeGreaterThanOrEqual(gridTop - 0.5);
