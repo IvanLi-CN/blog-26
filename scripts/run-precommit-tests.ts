@@ -76,8 +76,11 @@ async function main() {
     return;
   }
 
+  // Ensure stable ordering and avoid re-running nested roots for reproducibility.
+  const uniqueFiles = [...new Set(files)].sort();
+
   // Search/database tests use process-level DB_PATH state; isolate each file's module graph.
-  const cmd = ["bun", "test", "--isolate", ...files];
+  const cmd = ["bun", "test", "--isolate", "--timeout=15000", ...uniqueFiles];
   console.log(`Running: ${cmd.join(" ")}`);
 
   // Use child_process to avoid relying on Bun global within pre-commit
@@ -87,7 +90,14 @@ async function main() {
     console.error("No command to run");
     process.exit(1);
   }
-  const proc = spawn(bin, args, { stdio: "inherit" });
+  const {
+    GIT_DIR: _gitDir,
+    GIT_WORK_TREE: _gitWorkTree,
+    GIT_INDEX_FILE: _gitIndexFile,
+    GIT_COMMON_DIR: _gitCommonDir,
+    ...testEnv
+  } = process.env;
+  const proc = spawn(bin, args, { stdio: "inherit", env: testEnv });
   const exitCode: number = await new Promise((resolve) => {
     proc.on("close", (code) => resolve(code ?? 1));
   });

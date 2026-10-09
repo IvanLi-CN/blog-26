@@ -1,6 +1,5 @@
 import type { ProjectRuntimeMetrics } from "../../lib/project-runtime-metrics";
-import { formatRuntimeValue } from "../../lib/runtime-format";
-import RuntimeActivityChart from "./RuntimeActivityChart";
+import RuntimeCellGrid from "./RuntimeCellGrid";
 import RuntimeMetricValue from "./RuntimeMetricValue";
 import RuntimePanelAtmosphere from "./RuntimePanelAtmosphere";
 import RuntimeProjectLogo from "./RuntimeProjectLogo";
@@ -9,17 +8,10 @@ import RuntimeSparkline from "./RuntimeSparkline";
 interface Props {
   metrics: ProjectRuntimeMetrics;
   sourceUrl?: string;
+  detailUrl?: string;
 }
 export default function ProjectRuntimeDataPanel(props: Props) {
-  const { metrics, sourceUrl = "" } = props;
-  const freshnessStatusClasses = [
-    "within-4-hours",
-    "4-to-12-hours",
-    "12-to-24-hours",
-    "over-24-hours",
-    "no-success",
-  ] as const;
-  const freshnessCells = metrics.kind === "octo-rill" ? Array.from(metrics.freshness) : [];
+  const { metrics, sourceUrl = "", detailUrl = "" } = props;
   return (
     <div
       className={`project-runtime-panel project-runtime-panel--${metrics.kind}`}
@@ -27,7 +19,18 @@ export default function ProjectRuntimeDataPanel(props: Props) {
       data-runtime-kind={metrics.kind}
       data-runtime-source-url={sourceUrl || undefined}
       data-runtime-state={sourceUrl ? "pending" : "ready"}
+      data-runtime-detail-link={detailUrl ? "true" : undefined}
     >
+      {detailUrl && (
+        <a
+          className="runtime-panel-detail-link"
+          href={detailUrl}
+          tabIndex={-1}
+          aria-label="查看项目详情"
+        >
+          <span className="sr-only">查看项目详情</span>
+        </a>
+      )}
       <div className="runtime-panel-body">
         <div className="runtime-panel-art-stage">
           <RuntimePanelAtmosphere kind={metrics.kind} />
@@ -36,7 +39,11 @@ export default function ProjectRuntimeDataPanel(props: Props) {
 
         {metrics.kind === "codex-vibe-monitor" && (
           <>
-            <div className="runtime-metric-grid runtime-metric-grid--cvm">
+            <a
+              href={detailUrl || undefined}
+              tabIndex={-1}
+              className="runtime-metric-grid runtime-metric-grid--cvm runtime-panel-link"
+            >
               <div
                 className="runtime-metric runtime-metric--accent"
                 data-runtime-stat-key="tokensPerMinute"
@@ -66,18 +73,23 @@ export default function ProjectRuntimeDataPanel(props: Props) {
                   placement="right"
                 />
               </div>
-            </div>
-            <RuntimeActivityChart
+            </a>
+            <RuntimeCellGrid
               points={metrics.tokenActivity90d}
               label="最近 90 天 Token 消耗量活动图"
               kind="tokens"
+              navigationUrl={detailUrl}
             />
           </>
         )}
 
         {metrics.kind === "tavily-hikari" && (
           <>
-            <div className="runtime-metric-grid runtime-metric-grid--hikari">
+            <a
+              href={detailUrl || undefined}
+              tabIndex={-1}
+              className="runtime-metric-grid runtime-metric-grid--hikari runtime-panel-link"
+            >
               <div
                 className="runtime-metric runtime-metric--accent"
                 data-runtime-stat-key="todayRequests"
@@ -124,18 +136,23 @@ export default function ProjectRuntimeDataPanel(props: Props) {
                   variant="bars"
                 />
               </div>
-            </div>
-            <RuntimeActivityChart
+            </a>
+            <RuntimeCellGrid
               points={metrics.requestActivity90d}
               label="最近 90 天每日请求数活动图"
               kind="requests"
+              navigationUrl={detailUrl}
             />
           </>
         )}
 
         {metrics.kind === "octo-rill" && (
           <>
-            <div className="runtime-metric-grid runtime-metric-grid--octo">
+            <a
+              href={detailUrl || undefined}
+              tabIndex={-1}
+              className="runtime-metric-grid runtime-metric-grid--octo runtime-panel-link"
+            >
               <div
                 className="runtime-metric runtime-metric--accent"
                 data-runtime-stat-key="deduplicatedRepositories"
@@ -149,28 +166,13 @@ export default function ProjectRuntimeDataPanel(props: Props) {
                 <RuntimeMetricValue value={metrics.pressure.value} format="fixed-2" />
                 <RuntimeSparkline label="压力值" stat={metrics.pressure} tone="warm" />
               </div>
-            </div>
-            <section
-              className="runtime-freshness"
-              data-runtime-empty={freshnessCells.length === 0 ? "true" : "false"}
-              aria-label="仓库刷新新鲜度活动图"
-            >
-              <h3 className="runtime-chart-title">刷新新鲜度</h3>
-              <div
-                className="runtime-freshness-grid"
-                role="img"
-                aria-label={`仓库刷新新鲜度热点图，共 ${formatRuntimeValue(metrics.deduplicatedRepositories.value)} 个仓库`}
-              >
-                {freshnessCells.map((statusCode, position) => (
-                  <span
-                    key={position}
-                    className={`runtime-freshness-cell runtime-freshness-cell--${freshnessStatusClasses[statusCode] ?? "unknown"}`}
-                    data-status-code={statusCode}
-                    aria-hidden="true"
-                  ></span>
-                ))}
-              </div>
-            </section>
+            </a>
+            <RuntimeCellGrid
+              kind="freshness"
+              label="仓库刷新新鲜度热点图"
+              freshness={Array.from(metrics.freshness)}
+              navigationUrl={detailUrl}
+            />
           </>
         )}
       </div>

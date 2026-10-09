@@ -661,6 +661,22 @@ html[data-ui-theme="dark"] .project-poster {
   display: contents;
 }
 
+.runtime-panel-detail-link {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+[data-runtime-detail-link="true"] .runtime-panel-body {
+  pointer-events: none;
+}
+
+.runtime-panel-link {
+  color: inherit;
+  text-decoration: none;
+  pointer-events: auto;
+}
+
 .runtime-panel-art-stage {
   position: absolute;
   inset: 0;
@@ -1052,12 +1068,20 @@ html[data-ui-theme="dark"] .project-tag-logo-light:has(+ .project-tag-logo-dark)
   background: rgba(var(--runtime-highlight-rgb, var(--nature-highlight-rgb)), 0.08);
 }
 
-.runtime-activity-cell:hover,
 .runtime-activity-cell:focus-visible {
   z-index: 1;
   outline: 2px solid rgba(var(--runtime-highlight-rgb, var(--nature-highlight-rgb)), 0.9);
   outline-offset: 1px;
   background: rgba(var(--runtime-warm-rgb), 0.92);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .runtime-activity-cell:hover {
+    z-index: 1;
+    outline: 2px solid rgba(var(--runtime-highlight-rgb, var(--nature-highlight-rgb)), 0.9);
+    outline-offset: 1px;
+    background: rgba(var(--runtime-warm-rgb), 0.92);
+  }
 }
 
 .runtime-chart-tooltip {
@@ -1483,7 +1507,7 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
   filter: saturate(1);
 }
 
-.projects-poster-link {
+.projects-poster-shell {
   display: grid;
   gap: 1rem;
   color: inherit;
@@ -1570,6 +1594,7 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
 }
 
 .projects-poster-visual > .project-poster,
+.projects-poster-visual > .projects-poster-poster-link,
 .projects-poster-visual > [data-runtime-fallback-poster],
 .projects-poster-visual > .project-runtime-panel,
 [data-runtime-fallback-poster] > .project-poster {

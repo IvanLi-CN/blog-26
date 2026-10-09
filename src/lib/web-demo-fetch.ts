@@ -1,7 +1,9 @@
+import { projectRuntimeMetricsBySlug } from "../../site/lib/project-runtime-metrics";
 import {
   assertWebDemoRequestAvailable,
   getWebDemoEnvironment,
   getWebDemoRequestSignal,
+  getWebDemoSceneState,
   isWebDemoBuildEnabled,
   type WebDemoApp,
   type WebDemoEnvironment,
@@ -54,7 +56,56 @@ function demoPublicUser(environment: WebDemoEnvironment) {
   };
 }
 
-function getDemoPublicResponse(url: URL, method: string, environment: WebDemoEnvironment) {
+function demoRuntimeMetrics(slug: string, dataMode: "fixture" | "dense" | "empty") {
+  const metrics = projectRuntimeMetricsBySlug[slug as keyof typeof projectRuntimeMetricsBySlug];
+  if (!metrics) return null;
+  if (metrics.kind === "codex-vibe-monitor") {
+    const tokenActivity90d = metrics.tokenActivity90d.map((point, index) => ({
+      ...point,
+      value: dataMode === "empty" ? (index === 0 ? 0 : null) : point.value,
+    }));
+    return {
+      ...metrics,
+      tokenActivity90d: { status: "partial", points: tokenActivity90d },
+    };
+  }
+  if (metrics.kind === "tavily-hikari") {
+    const { kind: _kind, ...payload } = metrics;
+    return {
+      ...payload,
+      requestActivity90d: payload.requestActivity90d.map((point) => ({
+        ...point,
+        value: dataMode === "empty" ? 0 : point.value,
+      })),
+    };
+  }
+  const { kind: _kind, freshness, ...payload } = metrics;
+  const count =
+    dataMode === "empty"
+      ? 0
+      : dataMode === "dense"
+        ? Math.max(freshness.length * 3, 720)
+        : freshness.length;
+  const nextFreshness = Array.from({ length: count }, (_, index) => (count === 0 ? 4 : index % 5));
+  const nextRepositories = {
+    ...payload.deduplicatedRepositories,
+    value: count,
+    trend: {
+      ...payload.deduplicatedRepositories.trend,
+      points: payload.deduplicatedRepositories.trend.points.map((point, index, points) =>
+        index === points.length - 1 ? { ...point, value: count } : point
+      ),
+    },
+  };
+  return { ...payload, deduplicatedRepositories: nextRepositories, freshness: nextFreshness };
+}
+
+function getDemoPublicResponse(
+  url: URL,
+  method: string,
+  environment: WebDemoEnvironment,
+  dataMode: "fixture" | "dense" | "empty"
+) {
   // The Demo build's server supplies route-scoped fixture data after the
   // common connection/delay/abort policy has admitted this actual read.
   if (url.pathname === "/api/public/page" && method === "GET") return null;
@@ -83,6 +134,12 @@ function getDemoPublicResponse(url: URL, method: string, environment: WebDemoEnv
     if (environment.persona === "guest") return jsonResponse({ error: "UNAUTHORIZED" }, 401);
     if (environment.persona !== "admin") return jsonResponse({ error: "FORBIDDEN" }, 403);
     return jsonResponse({ success: true });
+  }
+
+  const runtimeMatch = url.pathname.match(/^\/api\/public\/metrics\/v1\/([^/]+)$/);
+  if (runtimeMatch && method === "GET") {
+    const payload = demoRuntimeMetrics(runtimeMatch[1] ?? "", dataMode);
+    return payload ? jsonResponse(payload) : jsonResponse({ error: "指标不存在" }, 404);
   }
 
   if (url.pathname === "/api/public/search" && method === "GET") {
@@ -147,6 +204,7 @@ export async function webDemoFetch(
 
   const url = resolveRequestUrl(input);
   const environment = getWebDemoEnvironment(window.location, app);
+  const sceneState = getWebDemoSceneState(window.location, app);
   const signal = combineAbortSignals(
     init?.signal ?? (input instanceof Request ? input.signal : undefined),
     getWebDemoRequestSignal()
@@ -158,7 +216,7 @@ export async function webDemoFetch(
     const method = (
       init?.method ?? (input instanceof Request ? input.method : "GET")
     ).toUpperCase();
-    const mockResponse = getDemoPublicResponse(url, method, environment);
+    const mockResponse = getDemoPublicResponse(url, method, environment, sceneState.data);
     if (mockResponse) return mockResponse;
   }
 

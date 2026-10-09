@@ -4,8 +4,8 @@
   "base_sha": "14c7e30522aecc3f356196968683cb3ab8f87272",
   "covered_files": {
     "docs/specs/nature-front-ui/HISTORY.md": "8fb4d930b5b34a4e20ecfbbb2ea51502a9dd0193",
-    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "a6f956ede52f82609afb91a60fa4f7f3caffd3c8",
-    "docs/specs/nature-front-ui/SPEC.md": "07b2a3b19b3c3c8b8bc1e97aa127ab7ddada285d",
+    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "bf808e37c798be21dcea21898a3c6dc49600dfa2",
+    "docs/specs/nature-front-ui/SPEC.md": "abe5229a83b1782c5420b39c1ba4561ba8a20fd2",
     "docs/specs/nature-front-ui/assets/project-runtime-panels-dense-desktop-dark-1780x1071.png": "33ab2d5b69f6b68b840e1c257175245aeee4738d",
     "docs/specs/nature-front-ui/assets/project-runtime-panels-dense-desktop-light-1780x1071.png": "ca1d3772639390d6fc4cd726cc1722f236e86992",
     "docs/specs/nature-front-ui/assets/project-runtime-panels-dense-mobile-dark-393x852.png": "5bcbbf805fd6994f7f2df6d09445acd6ca18d969",
@@ -21,7 +21,7 @@
     "site/lib/project-runtime-live.ts": "76b4bf7c273219d7f4e895f48e998731a9e03b7d",
     "site/lib/project-runtime-sources.ts": "68d320c174a4a11701915a63a07bdaffd7e9659e",
     "site/lib/runtime-freshness-layout.ts": "5038d10e3c11e058367bdf40d0e29ea5f2c81017",
-    "tests/e2e/guest/project-visual-slot.spec.ts": "59a6de75de10559bbf69824210b59fa0d2b81257",
+    "tests/e2e/guest/project-visual-slot.spec.ts": "cda57ea1628ddb02d96658f83b09ae8f03bbbbbf",
     "tests/lib/project-runtime-sources.test.ts": "32b69f29835f5b40759630f4385a389115e17c52",
     "tests/lib/runtime-freshness-layout.test.ts": "690f1b0930e2aa57cf6df4e766b3b9b64b9a4be8"
   },
@@ -43,12 +43,12 @@
         },
         {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
-          "blob": "59a6de75de10559bbf69824210b59fa0d2b81257",
+          "blob": "cda57ea1628ddb02d96658f83b09ae8f03bbbbbf",
           "command": "focused production guest Playwright at 1780/1048/820/772/393/375/360/320px in both themes"
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "07b2a3b19b3c3c8b8bc1e97aa127ab7ddada285d",
+          "blob": "abe5229a83b1782c5420b39c1ba4561ba8a20fd2",
           "command": "spec contract and drift checks"
         }
       ]
@@ -70,12 +70,12 @@
         },
         {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
-          "blob": "59a6de75de10559bbf69824210b59fa0d2b81257",
+          "blob": "cda57ea1628ddb02d96658f83b09ae8f03bbbbbf",
           "command": "focused production guest Playwright at 1780/1048/820/772/393/375/360/320px in both themes"
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "07b2a3b19b3c3c8b8bc1e97aa127ab7ddada285d",
+          "blob": "abe5229a83b1782c5420b39c1ba4561ba8a20fd2",
           "command": "spec contract and drift checks"
         }
       ],
@@ -101,12 +101,12 @@
         },
         {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
-          "blob": "59a6de75de10559bbf69824210b59fa0d2b81257",
+          "blob": "cda57ea1628ddb02d96658f83b09ae8f03bbbbbf",
           "command": "focused production guest Playwright at 1780/1048/820/772/393/375/360/320px in both themes"
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "07b2a3b19b3c3c8b8bc1e97aa127ab7ddada285d",
+          "blob": "abe5229a83b1782c5420b39c1ba4561ba8a20fd2",
           "command": "spec contract and drift checks"
         }
       ]
@@ -130,7 +130,7 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "07b2a3b19b3c3c8b8bc1e97aa127ab7ddada285d",
+          "blob": "abe5229a83b1782c5420b39c1ba4561ba8a20fd2",
           "command": "spec contract and drift checks"
         }
       ]
@@ -149,7 +149,7 @@
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "07b2a3b19b3c3c8b8bc1e97aa127ab7ddada285d",
+          "blob": "abe5229a83b1782c5420b39c1ba4561ba8a20fd2",
           "command": "spec contract and drift checks"
         }
       ]

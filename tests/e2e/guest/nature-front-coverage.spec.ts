@@ -555,7 +555,7 @@ test.describe("Nature frontend public coverage", () => {
     await gotoWithTheme(page, "/projects", "light");
 
     const codexCard = page.locator(".projects-poster-card").filter({
-      has: page.getByRole("link", { name: "查看 Codex Vibe Monitor 项目案例" }),
+      has: page.locator('a[href="/projects/codex-vibe-monitor/"]'),
     });
     await expect(codexCard.locator(".projects-poster-link")).toHaveAttribute(
       "href",
@@ -603,7 +603,8 @@ test.describe("Nature frontend public coverage", () => {
         return grid.getBoundingClientRect().top;
       }),
       codexCard
-        .locator(".project-poster")
+        .locator(".project-runtime-panel, .projects-poster-link:not([hidden]) .project-poster")
+        .first()
         .evaluate((element) => element.getBoundingClientRect().top),
     ]);
     expect(posterTop).toBeGreaterThanOrEqual(gridTop - 0.5);
@@ -1024,17 +1025,17 @@ test.describe("Nature frontend public coverage", () => {
       )
       .toEqual(["1", "0", "2", "1", "0", "0", "0", "0"]);
 
-    const lastCvmPoint = cards.cvm.locator(".runtime-activity-cell").last();
+    const lastCvmPoint = cards.cvm.locator('.runtime-activity-cell[data-date="2026-09-27"]');
     const activityGridHeightBeforeTooltip = await cards.cvm
       .locator(".runtime-activity-grid")
       .evaluate((grid) => grid.getBoundingClientRect().height);
     await lastCvmPoint.focus();
     await expect(lastCvmPoint).toBeFocused();
-    await expect(cards.cvm.locator("[data-runtime-tooltip]")).toBeVisible();
-    await expect(cards.cvm.locator("[data-runtime-tooltip]")).toHaveCSS("position", "absolute");
-    await expect(cards.cvm.locator("[data-runtime-tooltip]")).toContainText("2026-09-27");
-    await expect(cards.cvm.locator("[data-runtime-tooltip]")).toContainText("Token");
-    await expect(cards.cvm.locator("[data-runtime-tooltip]")).toContainText("2.121B");
+    const runtimeTooltip = page.getByRole("tooltip");
+    await expect(runtimeTooltip).toBeVisible();
+    await expect(runtimeTooltip).toContainText("2026-09-27");
+    await expect(runtimeTooltip).toContainText("Token 消耗量");
+    await expect(runtimeTooltip).toContainText("2.121B Token");
     await expect
       .poll(() =>
         cards.cvm

@@ -75,9 +75,9 @@ export async function prepareWebDemoInputs() {
     VITE_CACHE_DIR: "node_modules/.vite-web-demo",
     CONSOLE_RUNTIME: "false",
     PUBLIC_API_BASE_URL: "",
-    PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: "",
-    PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL: "",
-    PUBLIC_OCTO_RILL_METRICS_BASE_URL: "",
+    PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: "https://metrics.example.test",
+    PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL: "https://metrics.example.test",
+    PUBLIC_OCTO_RILL_METRICS_BASE_URL: "https://metrics.example.test",
   };
 
   await run("prepare deterministic local content", ["run", "migrate"], env);

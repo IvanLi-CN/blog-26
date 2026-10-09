@@ -21,5 +21,7 @@ describe("formatRuntimeValue", () => {
     expect(candidates.slice(0, 4)).toEqual(["793.758K", "793.76K", "793.8K", "794K"]);
     expect(getRuntimeValueCandidates(999_999.9)).toContain("1M");
     expect(formatRuntimeValue(999_999.9)).toBe("1M");
+    expect(formatRuntimeValue(999_999_999.9)).toBe("1B");
+    expect(formatRuntimeValue(999_999_999_999.9)).toBe("1T");
   });
 });
