@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "e4a14c1e89f72b776ea122d2d767cdafb246f684",
+  "base_sha": "cd74c923c76359ebeb7fb3ba8eba33471fcfad29",
   "covered_files": {
     "GLOSSARY.md": "6c80ab22690561941f310517a6f463e2939f3397",
     "docs/project-runtime-tooltip-design.md": "5f217ab4a7d4a05eb4aee1c347efcc46cc0a00df",
@@ -19,6 +19,7 @@
     "site/components/projects/RuntimeCellGrid.tsx": "d30ab85afe4568cf87ab96c44b9942dba5322896",
     "site/components/projects/runtime-cell-gesture.ts": "6a0f5bdd2109006d2c678e53a85a276400d2c813",
     "site/components/projects/runtime-cell-grid.css": "b163c24a97c93d2f65b615407d437d1e9887ec4b",
+    "site/styles/public-pages.css": "a25a85f36a6611087b1252c318b58fb0a8b0776b",
     "site/lib/project-runtime-channel.ts": "e21ca318e423b4fde77cb3ade685e4a7484e6576",
     "site/lib/project-runtime-live.ts": "e849273e11472c082fa327b86bca04470ac07118",
     "site/lib/runtime-format.ts": "ea0714f2c9e0990e063ff25a31bf4b62c7c9cc0b",
@@ -116,7 +117,7 @@
     "public_api": {
       "impact": "minor",
       "change": "compatible",
-      "supported_consumer_versions": ["2.7.0", "2.8.3", "2.9.0", "2.10.0"],
+      "supported_consumer_versions": ["2.7.0", "2.8.3", "2.9.0", "2.10.0", "2.11.2"],
       "evidence": [
         {
           "path": "tests/e2e/guest/project-visual-slot.spec.ts",
