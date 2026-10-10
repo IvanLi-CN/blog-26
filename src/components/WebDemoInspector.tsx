@@ -68,6 +68,7 @@ import "./WebDemoInspector.css";
 
 const OPEN_STORAGE_KEY = "web-demo-inspector-open";
 const ADVANCED_STORAGE_KEY = "web-demo-inspector-advanced";
+const DEFAULT_INSPECTOR_OPEN = false;
 
 const personaOptions: Array<{ value: WebDemoPersona; label: string; icon: typeof UserRound }> = [
   { value: "guest", label: "未登录", icon: UserRound },
@@ -111,11 +112,11 @@ function readStoredBoolean(key: string, fallback: boolean) {
 }
 
 function readInitialOpen() {
-  if (typeof window === "undefined") return false;
+  if (typeof window === "undefined") return DEFAULT_INSPECTOR_OPEN;
   const stored = window.localStorage.getItem(OPEN_STORAGE_KEY);
   if (stored === "true") return true;
   if (stored === "false") return false;
-  return !window.matchMedia("(max-width: 720px)").matches;
+  return DEFAULT_INSPECTOR_OPEN;
 }
 
 function formatMutationTime(timestamp: number) {

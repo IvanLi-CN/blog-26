@@ -21,6 +21,8 @@ test("Web Demo Inspector uses a wide public rail without affecting normal deskto
   expect(styles).toContain("height: 100dvh;");
   expect(styles).not.toContain("padding-left: min(22rem");
   expect(styles).not.toContain("padding-right: min(24rem");
+  expect(component).toContain("const DEFAULT_INSPECTOR_OPEN = false;");
+  expect(component).toContain("return DEFAULT_INSPECTOR_OPEN;");
   expect(component).toContain("document.body.dataset.webDemoInspectorApp");
   expect(component).toContain("document.body.dataset.webDemoInspectorOpen");
   expect(component).toContain("const [isOpen, setIsOpen] = useState(false);");
