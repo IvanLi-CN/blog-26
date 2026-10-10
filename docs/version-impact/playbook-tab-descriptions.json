@@ -4,7 +4,7 @@
   "base_sha": "f383c2ba2c81cc330670fea44eff17442f02bc9e",
   "covered_files": {
     "src/components/playbook/PlaybookPage.tsx": "749c488212c1e024a53006013031edfc7f01362a",
-    "src/components/WebDemoInspector.tsx": "ab2f1d0ea0b0f58338d2a63a1701a387e10287a",
+    "src/components/WebDemoInspector.tsx": "ab2f1d0ea0b0f58338d2a63a1701a387e10287a1",
     "tests/lib/web-demo-inspector-layout.test.ts": "9e6874c480bd272b2c3295d85aecfbc4b7fc7a65"
   },
   "change": {
@@ -25,7 +25,7 @@
         },
         {
           "path": "src/components/WebDemoInspector.tsx",
-          "blob": "ab2f1d0ea0b0f58338d2a63a1701a387e10287a",
+          "blob": "ab2f1d0ea0b0f58338d2a63a1701a387e10287a1",
           "command": "bunx biome check src/components/WebDemoInspector.tsx"
         },
         {
@@ -52,7 +52,7 @@
         },
         {
           "path": "src/components/WebDemoInspector.tsx",
-          "blob": "ab2f1d0ea0b0f58338d2a63a1701a387e10287a",
+          "blob": "ab2f1d0ea0b0f58338d2a63a1701a387e10287a1",
           "command": "bunx biome check src/components/WebDemoInspector.tsx"
         },
         {
@@ -83,7 +83,7 @@
         },
         {
           "path": "src/components/WebDemoInspector.tsx",
-          "blob": "ab2f1d0ea0b0f58338d2a63a1701a387e10287a",
+          "blob": "ab2f1d0ea0b0f58338d2a63a1701a387e10287a1",
           "command": "bunx biome check src/components/WebDemoInspector.tsx"
         },
         {
