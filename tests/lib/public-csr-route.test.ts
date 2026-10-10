@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { matchPublicRoute, shouldHandlePublicLink } from "../../site/lib/public-route";
+import { isAsyncPublicRouteKind } from "../../site/lib/public-route-skeleton";
 import { trimRouteEdition, trimRouteSnapshot } from "../../site/lib/route-data-utils";
 import { SITE } from "../../src/config/site";
 import { getClippingWebDemoMemo } from "../../src/lib/clipping-web-demo";
@@ -81,6 +82,26 @@ describe("public client routes", () => {
     ])
       expect(matchPublicRoute(path)).toBeNull();
     expect(matchPublicRoute("/posts/bad%zz")?.kind).toBe("notFound");
+  });
+  it("maps only data-backed public routes to page-level navigation skeletons", () => {
+    for (const kind of [
+      "home",
+      "posts",
+      "post",
+      "projects",
+      "project",
+      "tags",
+      "tag",
+      "memos",
+      "memo",
+      "playbook",
+      "playbookDetail",
+      "search",
+    ] as const)
+      expect(isAsyncPublicRouteKind(kind)).toBe(true);
+    expect(isAsyncPublicRouteKind("about")).toBe(false);
+    expect(isAsyncPublicRouteKind("notFound")).toBe(false);
+    expect(isAsyncPublicRouteKind(null)).toBe(false);
   });
   it("preserves native external, download, modifier and same-document fragment behavior", () => {
     const current = new URL("https://example.com/posts/one/");

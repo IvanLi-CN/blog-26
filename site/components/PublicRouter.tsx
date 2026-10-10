@@ -8,10 +8,12 @@ import {
   type WebDemoStateChangeDetail,
 } from "@/lib/web-demo-runtime";
 import { matchPublicRoute, publicRouteIdentity, shouldHandlePublicLink } from "../lib/public-route";
+import { isAsyncPublicRouteKind } from "../lib/public-route-skeleton";
 import { getCanonicalUrl } from "../lib/public-site-client";
 import type { PublicRoutePayload } from "../lib/route-data";
 import { publicRouteMetadata } from "../lib/route-metadata";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
+import { PublicRouteError, PublicRouteSkeleton } from "./PublicRouteSkeleton";
 import About from "./pages/about";
 import Home from "./pages/home";
 import Memo from "./pages/memo";
@@ -173,9 +175,13 @@ export default function PublicRouter({
     };
     setUrl(target.pathname + target.search + target.hash);
     setError(null);
-    setPayload(null);
     if (mode !== "pop") window.scrollTo({ top: 0, behavior: "instant" });
     const targetRoute = matchPublicRoute(target.pathname);
+    const isAsyncTarget = isAsyncPublicRouteKind(targetRoute?.kind);
+    if (targetRoute?.kind === "notFound") setPayload({ kind: "notFound", data: {} });
+    else if (targetRoute?.kind === "about" && about) setPayload(about);
+    else if (isAsyncTarget) setPayload(null);
+    else setPayload({ kind: "notFound", data: {} });
     const load =
       targetRoute?.kind === "notFound"
         ? Promise.resolve({ kind: "notFound" as const, data: {} })
@@ -290,11 +296,12 @@ export default function PublicRouter({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Same-URL history entries must also restore their distinct reading positions.
   useEffect(() => {
-    document.documentElement.dataset.publicNavigationState = payload || error ? "idle" : "loading";
-    document.documentElement.toggleAttribute("data-public-navigation-pending", !payload && !error);
+    const navigationPending = isAsyncPublicRouteKind(route?.kind) && !payload && !error;
+    document.documentElement.dataset.publicNavigationState = navigationPending ? "loading" : "idle";
+    document.documentElement.toggleAttribute("data-public-navigation-pending", navigationPending);
     document
       .getElementById("public-route-loading")
-      ?.setAttribute("aria-hidden", payload || error ? "true" : "false");
+      ?.setAttribute("aria-hidden", navigationPending ? "false" : "true");
     {
       const metadata = payload
         ? publicRouteMetadata(payload)
@@ -369,7 +376,7 @@ export default function PublicRouter({
         className="nature-main"
         tabIndex={-1}
         data-public-route={route?.kind}
-        aria-busy={!payload && !error}
+        aria-busy={!payload && !error && isAsyncPublicRouteKind(route?.kind)}
       >
         {payload ? (
           <Page
@@ -377,31 +384,13 @@ export default function PublicRouter({
             payload={payload}
             searchBootstrap={searchBootstrap}
           />
+        ) : error ? (
+          <PublicRouteError
+            message={error}
+            onRetry={() => navigateRef.current(new URL(window.location.href), "retry")}
+          />
         ) : (
-          <section className="nature-container px-2 py-10 sm:px-6 sm:py-16">
-            <div
-              className="nature-panel nature-mobile-reading-surface px-4 py-5 sm:px-8 sm:py-7"
-              role={error ? "alert" : "status"}
-            >
-              <h1 className="nature-title text-3xl">
-                {error ? "页面暂时无法加载" : "正在加载页面"}
-              </h1>
-              {error ? (
-                <>
-                  <p className="nature-muted mt-4">{error}</p>
-                  <button
-                    type="button"
-                    className="nature-button nature-button-outline mt-5"
-                    onClick={() => navigateRef.current(new URL(window.location.href), "retry")}
-                  >
-                    重试
-                  </button>
-                </>
-              ) : (
-                <p className="nature-muted mt-4">请稍候。</p>
-              )}
-            </div>
-          </section>
+          <PublicRouteSkeleton kind={route?.kind} />
         )}
       </main>
       <SiteFooter />

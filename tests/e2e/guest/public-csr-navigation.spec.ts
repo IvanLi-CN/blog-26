@@ -73,7 +73,10 @@ test("navigation during a pending history read preserves the destination reading
   });
   try {
     await page.goBack();
-    await expect(page.locator("main.nature-main h1")).toHaveText("正在加载页面");
+    await expect(
+      page.locator('main.nature-main [data-public-route-skeleton="project"]')
+    ).toBeVisible();
+    await expect(page.locator("main.nature-main")).toHaveAttribute("aria-busy", "true");
     await page.getByRole("link", { name: "标签", exact: true }).click();
     await expect(page.locator("main.nature-main h1")).toHaveText("浏览所有标签");
   } finally {
