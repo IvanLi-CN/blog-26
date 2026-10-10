@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "f383c2ba2c81cc330670fea44eff17442f02bc9e",
+  "covered_files": {
+    "src/components/playbook/PlaybookPage.tsx": "749c488212c1e024a53006013031edfc7f01362a",
+    "src/components/WebDemoInspector.tsx": "ab2f1d0ea0b0f58338d2a63a1701a387e10287a1",
+    "tests/lib/web-demo-inspector-layout.test.ts": "9e6874c480bd272b2c3295d85aecfbc4b7fc7a65"
+  },
+  "change": {
+    "description": "Refine Playbook tab descriptions around Agent-collaborative origins, project validation, continued use, and deliberate curation, while keeping the Web Demo Inspector closed by default so the public page header remains centered until debugging is requested.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This updates visitor-facing Playbook copy and the Web Demo Inspector default presentation only; routes, data shapes, persistence, and release protocol remain unchanged.",
+      "assessed_at": "2026-10-10T22:53:25+08:00",
+      "evidence": [
+        {
+          "path": "src/components/playbook/PlaybookPage.tsx",
+          "blob": "749c488212c1e024a53006013031edfc7f01362a",
+          "command": "bunx biome check src/components/playbook/PlaybookPage.tsx"
+        },
+        {
+          "path": "src/components/WebDemoInspector.tsx",
+          "blob": "ab2f1d0ea0b0f58338d2a63a1701a387e10287a1",
+          "command": "bunx biome check src/components/WebDemoInspector.tsx"
+        },
+        {
+          "path": "tests/lib/playbook-contract.test.ts",
+          "blob": "fb45d06f75ca42b0b5ff5447e0202b863e01590d",
+          "command": "bun test tests/lib/playbook-contract.test.ts"
+        },
+        {
+          "path": "tests/lib/web-demo-inspector-layout.test.ts",
+          "blob": "9e6874c480bd272b2c3295d85aecfbc4b7fc7a65",
+          "command": "bun test tests/lib/web-demo-inspector-layout.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate updates four static Playbook descriptions and the Web Demo Inspector default presentation; the public route, rendering contract, and persisted runtime values remain unchanged.",
+      "assessed_at": "2026-10-10T22:53:25+08:00",
+      "evidence": [
+        {
+          "path": "src/components/playbook/PlaybookPage.tsx",
+          "blob": "749c488212c1e024a53006013031edfc7f01362a",
+          "command": "bunx biome check src/components/playbook/PlaybookPage.tsx"
+        },
+        {
+          "path": "src/components/WebDemoInspector.tsx",
+          "blob": "ab2f1d0ea0b0f58338d2a63a1701a387e10287a1",
+          "command": "bunx biome check src/components/WebDemoInspector.tsx"
+        },
+        {
+          "path": "tests/lib/playbook-contract.test.ts",
+          "blob": "fb45d06f75ca42b0b5ff5447e0202b863e01590d",
+          "command": "bun test tests/lib/playbook-contract.test.ts"
+        },
+        {
+          "path": "tests/lib/web-demo-inspector-layout.test.ts",
+          "blob": "9e6874c480bd272b2c3295d85aecfbc4b7fc7a65",
+          "command": "bun test tests/lib/web-demo-inspector-layout.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "No scope drift; the candidate remains limited to Playbook copy and the public Demo inspector default presentation."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Biome, focused Playbook and Web Demo Inspector contract tests, and the full pre-commit suite verify a compatible frontend copy and layout-default change.",
+      "assessed_at": "2026-10-10T22:53:25+08:00",
+      "evidence": [
+        {
+          "path": "src/components/playbook/PlaybookPage.tsx",
+          "blob": "749c488212c1e024a53006013031edfc7f01362a",
+          "command": "bunx biome check src/components/playbook/PlaybookPage.tsx"
+        },
+        {
+          "path": "src/components/WebDemoInspector.tsx",
+          "blob": "ab2f1d0ea0b0f58338d2a63a1701a387e10287a1",
+          "command": "bunx biome check src/components/WebDemoInspector.tsx"
+        },
+        {
+          "path": "tests/lib/playbook-contract.test.ts",
+          "blob": "fb45d06f75ca42b0b5ff5447e0202b863e01590d",
+          "command": "bun test tests/lib/playbook-contract.test.ts"
+        },
+        {
+          "path": "tests/lib/web-demo-inspector-layout.test.ts",
+          "blob": "9e6874c480bd272b2c3295d85aecfbc4b7fc7a65",
+          "command": "bun test tests/lib/playbook-contract.test.ts tests/lib/web-demo-inspector-layout.test.ts; pre-commit suite: 1017 passed"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": ["2.7.0", "2.8.3", "2.9.0", "2.10.0", "2.11.2", "2.12.0"],
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-contract.test.ts",
+          "blob": "fb45d06f75ca42b0b5ff5447e0202b863e01590d",
+          "command": "bun test tests/lib/playbook-contract.test.ts"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local content, cache schema, or public package state changes; the inspector preference remains an existing localStorage presentation setting.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/components/WebDemoInspector.tsx",
+          "blob": "ab2f1d0ea0b0f58338d2a63a1701a387e10287a1",
+          "command": "bunx biome check src/components/WebDemoInspector.tsx"
+        }
+      ]
+    }
+  }
+}

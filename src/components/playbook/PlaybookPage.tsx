@@ -19,21 +19,21 @@ const groups = [
     key: "topics",
     title: "主题",
     eyebrow: "Topics",
-    description: "技术选型与工程习惯的主题指南。",
+    description: "从与 Agent 协作开发的现场，提炼已经在项目中验证的技术判断。",
     icon: "tabler:book-2",
   },
   {
     key: "projects",
     title: "项目实践",
     eyebrow: "Projects",
-    description: "从实际项目中提炼的结构、取舍与实践。",
+    description: "记录已经进入真实项目并持续使用的结构、取舍与做法。",
     icon: "tabler:briefcase-2",
   },
   {
     key: "policies",
     title: "规则",
     eyebrow: "Policy Skills",
-    description: "可阅读、复制和手动安装的工程规则。",
+    description: "将开发过程中主动保留、经项目验证的协作方法整理成可复用的工程规则。",
     icon: "tabler:shield-check",
   },
 ] as const;
@@ -528,7 +528,7 @@ export default function PlaybookPage({
     topic?.item.description ??
     project?.item.description ??
     policy?.summary.description ??
-    "把技术选型、实际项目实践与可复用规则放在一起阅读。";
+    "收拢与 Agent 协作开发时形成、在项目中验证过的技术判断、实践与规则。";
   const isDetail = Boolean(group && slug);
   const groupItems = edition && groupMeta ? getGroupItems(edition, groupMeta.key) : [];
   const directoryItems = edition
