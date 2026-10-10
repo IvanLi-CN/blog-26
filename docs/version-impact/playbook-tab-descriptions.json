@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "f383c2ba2c81cc330670fea44eff17442f02bc9e",
+  "base_sha": "bb8263a4a3fd04605f7d82e7a3c92df085205277",
   "covered_files": {
     "src/components/playbook/PlaybookPage.tsx": "749c488212c1e024a53006013031edfc7f01362a",
     "src/components/WebDemoInspector.tsx": "ab2f1d0ea0b0f58338d2a63a1701a387e10287a1",
