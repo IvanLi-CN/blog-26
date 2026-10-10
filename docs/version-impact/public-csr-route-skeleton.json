@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "f383c2ba2c81cc330670fea44eff17442f02bc9e",
+  "covered_files": {
+    "GLOSSARY.md": "21d3b3d8b57e195ac3af31d22803dffda7badcd4",
+    "docs/specs/public-csr-navigation/HISTORY.md": "be9e577ffe0d47570791ff2a6ccc30033251cd95",
+    "docs/specs/public-csr-navigation/IMPLEMENTATION.md": "c410d1ade9df827aafc8ab333fc47f6c71a20281",
+    "docs/specs/public-csr-navigation/SPEC.md": "72bbf7e78c94feabee7e4c5796e9da38dd3464c8",
+    "site/components/PublicRouteSkeleton.tsx": "134d0a071a5bb977ab315bac6abdcb2f5d6e071f",
+    "site/components/PublicRouter.tsx": "ba3a465bb22b411f0617660bcd389822a51151ba",
+    "site/lib/public-route-skeleton.ts": "345ce7f375c30f2f27b940a70e37965fbf995468",
+    "site/styles/public-pages.css": "2a6830fdea929861b4cb581bb9bb5fe713f2be51",
+    "tests/e2e/guest/public-csr-navigation.spec.ts": "ad366b51afad990cdb7c9520d85957d96be2e6e0",
+    "tests/e2e/web-demo/public-csr.spec.ts": "e5d1397a81984bbafa33a6807e6dfcc4a971d6f8",
+    "tests/lib/public-csr-route.test.ts": "7216901d8d686be2a80c0ea54592c6b97af38f4c"
+  },
+  "change": {
+    "description": "Add destination-shaped page skeletons and a unified retryable error surface to public client-side navigation while preserving server-rendered entry pages, local loading states, route data, and navigation lifecycle contracts.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "This adds compatible public frontend navigation feedback for existing route and data contracts. It adds no endpoint, payload, database, local-content, or release-state format.",
+      "assessed_at": "2026-10-11T01:18:51+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/public-csr-route.test.ts",
+          "blob": "7216901d8d686be2a80c0ea54592c6b97af38f4c",
+          "command": "bun test tests/lib/public-csr-route.test.ts"
+        },
+        {
+          "path": "tests/e2e/web-demo/public-csr.spec.ts",
+          "blob": "e5d1397a81984bbafa33a6807e6dfcc4a971d6f8",
+          "command": "Official Web Demo public CSR route suite"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "The candidate only changes the pending and failure presentation during same-origin public client navigation. Existing route reads, SSR hydration, URL/history/scroll/hash behavior, themes, Inspector state, and page-local loading remain unchanged.",
+      "assessed_at": "2026-10-11T01:18:51+08:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/public-csr.spec.ts",
+          "blob": "e5d1397a81984bbafa33a6807e6dfcc4a971d6f8",
+          "command": "17 official Web Demo route, cancellation, error, retry, SSR, and document-contract cases pass"
+        },
+        {
+          "path": "docs/specs/public-csr-navigation/SPEC.md",
+          "blob": "72bbf7e78c94feabee7e4c5796e9da38dd3464c8",
+          "command": "Accepted public CSR navigation skeleton contract and six-family visual matrix"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "No endpoint, payload, persistence, or release protocol changes are included; the candidate is limited to route-scoped pending/error UI, its Nature UI styles, contract documentation, and coverage."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "The focused route mapping test, full check, production Web Demo build, 17-case official Web Demo suite, and desktop/mobile light/dark/reduced-motion visual matrix verify a compatible public frontend navigation capability without data or persistence changes.",
+      "assessed_at": "2026-10-11T01:18:51+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/public-csr-route.test.ts",
+          "blob": "7216901d8d686be2a80c0ea54592c6b97af38f4c",
+          "command": "bun test tests/lib/public-csr-route.test.ts (5 passed, 68 assertions)"
+        },
+        {
+          "path": "tests/e2e/web-demo/public-csr.spec.ts",
+          "blob": "e5d1397a81984bbafa33a6807e6dfcc4a971d6f8",
+          "command": "Official Web Demo route suite (17 passed)"
+        },
+        {
+          "path": "site/styles/public-pages.css",
+          "blob": "2a6830fdea929861b4cb581bb9bb5fe713f2be51",
+          "command": "Official Web Demo visual matrix: six page families at desktop/mobile in light, dark, and reduced-motion modes"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": ["2.7.0", "2.8.3", "2.9.0", "2.10.0", "2.11.2", "2.12.0"],
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/public-csr.spec.ts",
+          "blob": "e5d1397a81984bbafa33a6807e6dfcc4a971d6f8",
+          "command": "Existing public route reads and payload contracts remain covered by the official Web Demo navigation suite"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local-content format, browser persistence, or durable release-ledger state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/public-csr-route.test.ts",
+          "blob": "7216901d8d686be2a80c0ea54592c6b97af38f4c",
+          "command": "Route classification and payload isolation tests pass without persistence changes"
+        }
+      ]
+    }
+  }
+}

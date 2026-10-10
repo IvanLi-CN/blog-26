@@ -20,6 +20,68 @@ async function clickRoute(page: Page, path: string) {
   await page.locator("a[data-csr-test-link]").evaluate((node) => node.remove());
 }
 
+const asyncSkeletonRoutes = [
+  ["/", "home"],
+  ["/posts/", "posts"],
+  ["/posts/hello-world/", "post"],
+  ["/projects/", "projects"],
+  ["/projects/codex-vibe-monitor/", "project"],
+  ["/tags/", "tags"],
+  ["/tags/code/", "tag"],
+  ["/memos/", "memos"],
+  ["/memos/memo-web-demo-1181/", "memo"],
+  ["/search/?q=fixture", "search"],
+  ["/playbook/", "playbook"],
+  ["/playbook/topics/delivery/", "playbookDetail"],
+] as const;
+
+test("client navigation renders the destination skeleton for every async route family", async ({
+  page,
+}) => {
+  await page.goto("/posts/?d_connection=online&d_delay=normal");
+  await ready(page);
+
+  for (const [path, kind] of asyncSkeletonRoutes) {
+    let release = () => {
+      /* Assigned synchronously by the Promise constructor. */
+    };
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let held = false;
+    const routeHandler = async (route: import("@playwright/test").Route) => {
+      const requestPath = new URL(route.request().url()).searchParams.get("path") ?? "";
+      if (!held && requestPath.startsWith(path)) {
+        held = true;
+        await gate;
+      }
+      await route.continue();
+    };
+    await page.route("**/api/public/page**", routeHandler);
+    try {
+      await clickRoute(page, path);
+      await expect.poll(() => held, { message: `expected a gated read for ${path}` }).toBe(true);
+      await expect(page.locator(`main [data-public-route-skeleton="${kind}"]`)).toBeVisible();
+      await expect(page.locator("main.nature-main")).toHaveAttribute("aria-busy", "true");
+      await expect(page.locator("html[data-public-navigation-pending]")).toHaveCount(1);
+    } finally {
+      release();
+    }
+    await expect(page.locator("main.nature-main")).toHaveAttribute("aria-busy", "false");
+    await expect(page.locator("html[data-public-navigation-pending]")).toHaveCount(0);
+    await page.unroute("**/api/public/page**", routeHandler);
+  }
+
+  await clickRoute(page, "/about/");
+  await expect(page.locator("main [data-public-route-skeleton]")).toHaveCount(0);
+  await expect(page.locator("html[data-public-navigation-pending]")).toHaveCount(0);
+  await expect(page.locator("main h1")).toContainText("你好");
+  await clickRoute(page, "/definitely-not-a-product-route/");
+  await expect(page.locator("main [data-public-route-skeleton]")).toHaveCount(0);
+  await expect(page.locator("html[data-public-navigation-pending]")).toHaveCount(0);
+  await expect(page.locator("main")).toContainText("404");
+});
+
 test("SSR content hydrates without repeating its page read", async ({ page, request }) => {
   const hydrationErrors: string[] = [];
   page.on("console", (message) => {
@@ -63,6 +125,8 @@ for (const path of [
     });
     await clickRoute(page, path);
     await expect(page.locator("main [role=alert]")).toContainText("页面暂时无法加载");
+    await expect(page.locator("main [data-public-route-error]")).toBeVisible();
+    await expect(page.locator("html[data-public-navigation-pending]")).toHaveCount(0);
     expect(new URL(page.url()).pathname).toBe(new URL(path, "http://demo.invalid").pathname);
     await expect(page.locator("main .post-detail-body")).toHaveCount(0);
     await expect(page.locator("main")).not.toContainText("Inspector");

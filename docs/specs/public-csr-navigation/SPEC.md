@@ -14,6 +14,9 @@
 - 路由成功：目标 URL、路由身份和对应页面组件已切换；目标数据读取失败不撤销这次路由切换。
 - 模拟离线：已有 Web Demo API/数据适配器产生连接失败。页面模块、Inspector、开发工具、脚本和样式仍可用。
 - 共享实现边界：正式产品与 Demo 使用相同路由匹配、页面组件和请求状态；Demo 只替换 API/数据来源等中间层。
+- 目标页骨架：客户端导航等待目标业务数据时，对目标页面主要结构、阅读宽度和内容节奏的无数据预览。它只表达布局，不代表尚未读取的业务内容。
+- 统一错误面板：目标业务数据读取失败后替换目标页骨架、承载错误说明与原位重试入口的公共状态界面。
+- 局部加载状态：已渲染页面中的正文、搜索结果、分页或其他子模块独立等待数据时展示的反馈；它不触发整页目标页骨架。
 
 ### Route Coverage
 
@@ -66,6 +69,21 @@
 - 页面迁移 MUST 保持既有 Nature 组件、移动内容流、后台 authoring 语义、标题、元信息、正文、媒体和可访问性；不能只为网络演示换成简化版页面。
 - Inspector 的侧栏、浮层与移动停靠几何 MUST 不被本主题改动。
 
+### REQ-PCSR-007 — Destination-Shaped Navigation Skeleton
+
+- 同源公共客户端导航在目标数据读取期间 MUST 按目标 `PublicRouteKind` 渲染目标页骨架，覆盖首页、文章列表与详情、项目列表与详情、标签目录与详情、Memos 列表与详情、Playbook 目录与详情以及搜索。
+- 目标页骨架 MUST 复刻目标页面的主要容器层级、阅读宽度、列数、卡片或媒体比例、移动内容流和主要间距，并沿用 Nature surface、主题、响应式和 reduced-motion 契约。
+- 目标页骨架 MUST NOT 猜测或展示尚未读取的标题、正文、标签、数量、图片、权限或其他业务数据；未知内容使用对辅助技术隐藏的 shimmer 占位表达。
+- About、404 和未知公共路径等无需业务读取的目标 MUST 继续即时渲染，不得制造页面级骨架或网络读取。
+- 目标页骨架仅适用于客户端导航、GET 搜索提交、前进/后退和失败重试；直接打开或刷新 MUST 保留 SSR 首屏与 hydration，正文、搜索结果、Memos 分页和项目 MDX 等已有局部加载 MUST 保持局部行为。
+- 导航期间 `main` MUST 保持可访问的 busy/status 语义；骨架的装饰动画在 reduced-motion 下 MUST 停止，同时保留结构、状态和对比度。
+
+### REQ-PCSR-008 — Destination Error Presentation
+
+- 目标数据读取失败 MUST 在目标 URL 下以统一错误面板替换整个目标页骨架，并提供可键盘操作的原位重试。
+- 失败目标 MUST NOT 保留源页正文、源页业务数据或通用“正在加载页面”内容；重试成功后 MUST 在同一目标页面恢复目标组件。
+- 统一错误面板 MUST 使用公共 Nature UI 的状态、对比度和响应式规则，并与正式产品和 Web Demo 共用；不得新增 Demo 专用错误页面。
+
 ## Verification
 
 ### VER-PCSR-001 — Direct Entry
@@ -97,6 +115,16 @@
 - Method: live/Demo 制品检查、正式 SSR/CSR 页面内容比较，以及公共桌面、移动、浅深色浏览器证据。
 - covers: REQ-PCSR-003、REQ-PCSR-006
 - Pass condition: 正式与 Demo 使用同一路由和组件；只有中间层的数据来源不同；live 不包含可启用的 Demo 路径；保留正文、媒体、元信息、移动阅读合同与 Inspector 几何。
+
+### VER-PCSR-006 — Destination Skeleton and Error States
+
+- Method: 对全部异步目标路由执行客户端导航，在可控延迟期间记录 URL、`main[aria-busy]`、目标骨架标识、源页正文缺失、取消和最新响应；再分别注入失败、重试和恢复。
+- Pass condition: 每个目标路由先显示对应页面族骨架，About/404 不显示骨架；旧请求不能覆盖新目标；失败时只显示目标 URL 下的统一错误面板，重试原位恢复目标页面。
+
+### VER-PCSR-007 — Skeleton Visual Evidence
+
+- Method: 使用正式路径的 Web Demo 取首页、列表、详情、标签/聚合、Playbook、搜索六类页面族的桌面与移动证据，并分别检查浅色、深色和 reduced-motion；在请求延迟期间截取骨架，在失败期间截取统一错误面板。
+- Pass condition: 骨架的容器、阅读宽度、列数、媒体比例、主要间距和移动内容流与对应目标页一致；占位不泄露业务数据；浅深色对比度、触控尺寸和 reduced-motion 行为符合 Nature 规范。
 
 ## Visual Evidence
 

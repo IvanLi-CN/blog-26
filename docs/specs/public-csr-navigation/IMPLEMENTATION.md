@@ -2,7 +2,7 @@
 
 ## Current Status
 
-- Implementation: 已实现，验收收敛中
+- Implementation: 共享 SSR/CSR 导航、目标页骨架与统一错误承载已实现
 - Lifecycle: active
 - 公共页面已迁移到共享 React 渲染器：SSR 或静态首屏提供当前页数据，后续导航读取结构化数据并由客户端渲染。正式产品与 Demo 共用页面和请求状态，Demo 只在数据适配层应用模拟环境。功能与视觉证据已收齐，正式评审与 CI 的交付状态以 PR #175 为准。
 - 主线剪藏阅读器与 Memo 类型标记沿用生产组件；当前详情独立携带阅读材料，其他路由不预载剪藏正文。项目 MDX 使用带 JavaScript 后缀的虚拟模块，避免 dev 依赖扫描访问不存在的文件或再次应用 Astro MDX 编译。
@@ -10,6 +10,7 @@
 - 片段历史恢复使用保存的阅读位置；同 URL 的历史项也独立触发恢复。项目 MDX 正文尚未就绪时等待其真实标题与高度，再执行目标锚点或历史定位。Playbook 页面 DTO 不携带独立搜索索引的正文，搜索仍走版本绑定的既有来源。
 - Memo 列表 DTO 在序列化前投影为既有卡片字段，公开列表不携带未打开详情的正文；授权作者编辑仍保留完整记录。历史恢复尚未完成时再次导航保留历史条目原有阅读位置，不用加载界面的位置覆盖它。
 - 闪念作者的身份、读取和写请求绑定组件生命周期，路由开始切换或卸载即取消；响应解码后再次检查取消状态，已离开页面的保存或删除不能跳转覆盖新路由。
+- 页面级导航状态由 `site/components/PublicRouteSkeleton.tsx` 统一选择：所有异步 `PublicRouteKind` 使用目标页面族的纯 shimmer 结构，About 与 notFound 直接复用本地 payload；失败时使用同一 Nature UI 错误面板并保留原位重试。`site/lib/public-route-skeleton.ts` 提供无 UI 依赖的路由分类，供路由和单元测试共享。
 
 ## Implementation Coverage
 
@@ -20,6 +21,7 @@
 | REQ-PCSR-004 | Demo 页面读取经过 `webDemoFetch` 的连接、延迟和取消策略；bootstrap 只携带当前页需要的数据。恢复在线可在失败目标重试，主题不触发页面数据刷新。静态 about 与真实未知路由不制造网络错误。 | 12 类目标的离线与恢复、身份与主题保持验证通过。 |
 | REQ-PCSR-005 | URL 先切换；`AbortController` 与代次检查隔离过时读取；历史导航重新读取，保留查询、片段与滚动状态。GET 搜索表单使用相同客户端路由。 | 取消、历史与查询参数验证通过。 |
 | REQ-PCSR-006 | 页面结构与 Nature 样式迁移，项目正文共享 React MDX，元信息随目标更新。console 作者界面与公共主机身份剥离继续沿用既有接口规则。Inspector 几何未改动。 | 五张桌面和移动端截图已确认并保存；完整移动与对比度矩阵通过。 |
+| REQ-PCSR-007、REQ-PCSR-008 | `PublicRouteSkeleton` 按 12 个异步目标 kind 渲染首页、列表、详情、标签/聚合、Playbook、搜索的页面结构；`main[aria-busy]`、`data-public-navigation-pending`、status 语义和 reduced-motion 规则保持稳定。About/notFound 在导航开始时同步设置本地 payload；读取失败由 `PublicRouteError` 整体替换骨架并提供原位重试。 | 无功能缺口；后续评审与 CI 仍按当前提交重新绑定。 |
 
 ## Verification
 
@@ -27,6 +29,8 @@
 
 - Agent VM 预提交套件通过，包含组件 Story 边界、构建隔离、路由匹配、公开接口、请求取消及未访问正文的载荷隔离。命令：`bun run test:precommit`，提交 hook 保持启用。Playbook 搜索正文隔离另有回归断言。
 - Demo 导航：`tests/e2e/web-demo/public-csr.spec.ts` 16 项全部通过，覆盖 SSR 离线首屏、12 类离线目标及恢复、历史、主题、取消、静态页面和 404，并断言没有 hydration 错误。命令：`WEB_DEMO_TEST_URL=<demo-origin> bun x playwright test --config tests/e2e/web-demo/playwright.config.ts`。
+- 目标页骨架回归：`tests/lib/public-csr-route.test.ts` 的路由分类断言通过；Web Demo 新增逐一挂起全部 12 个异步目标的骨架、busy 状态、About/404 旁路断言，连同既有错误重试和生命周期场景共 17 项通过。命令：`WEB_DEMO_TEST_URL=http://127.0.0.1:13900 bunx playwright test -c tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-csr.spec.ts`。
+- 视觉证据：官方 Web Demo 以 1440×1000 与 393×852 CSS 视口覆盖首页、文章详情、项目列表、标签详情、Memos 列表、Playbook 详情和搜索骨架；浅色、深色与 reduced-motion 均检查，`main` 无横向溢出，reduced-motion 下占位动画计算值为 `none`。失败态截图确认 `role="alert"` 面板替换完整骨架并保留 `重试`。
 - 正式静态站：`tests/e2e/guest/public-csr-navigation.spec.ts` 覆盖结构化导航、目标错误与原位重试、搜索参数、hydration 交接、直接入口及跨页片段历史滚动、延迟 MDX 正文的锚点定位、列表 DTO 正文隔离，以及历史恢复期间的新导航。console 的首屏与主题、窄屏交互及作者隔离测试通过；共享 CSR 回归覆盖相同正式页面。
 - console 作者界面与公共主机隔离：同步后的 `tests/e2e/admin/public-csr-authoring.spec.ts` 通过。CSR 请求保留 `private, no-store`，管理员看到私密记录，公共主机即使携带身份也不能得到这些记录。测试身份使用 runtime 配置的 `ADMIN_EMAIL`，无代理鉴权捷径。
 - 剪藏 Demo 的独立 E2E 脚本通过：正式详情链接使用 CSR，原文／译文、讨论、保存、重试、焦点与草稿、网络与身份及 7 种宽度均验证；除页面 DTO 外没有真实 API 或模型请求。
@@ -44,6 +48,7 @@
 ## Remaining Gaps
 
 - PR #175 的当前评审与检查记录是交付门禁的事实来源。本任务尚未获得合并授权。
+- 目标页骨架与错误承载已完成；剩余交付门禁是当前 head 的 PR、CI 和正式评审收口。
 
 ## References
 
