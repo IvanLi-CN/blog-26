@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "f383c2ba2c81cc330670fea44eff17442f02bc9e",
+  "covered_files": {
+    ".github/workflows/recover-published-release.yml": "6b793bd16513a8986c29389608ad90265732c6f1",
+    "scripts/recover-published-release.ts": "45071be7a362f61d48ea44fb11319307af357f57"
+  },
+  "change": {
+    "description": "Add a temporary, identity-bound recovery workflow for the already-published v2.13.0 release after deployment propagation was confirmed.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The recovery-only workflow changes no product runtime, API, persistent state, or release inputs.",
+      "assessed_at": "2026-10-11T13:00:00+08:00",
+      "evidence": [
+        {
+          "path": "scripts/recover-published-release.ts",
+          "blob": "45071be7a362f61d48ea44fb11319307af357f57",
+          "command": "bunx biome check scripts/recover-published-release.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate only adds an identity-bound operational recovery path; product behavior and release artifacts are unchanged.",
+      "assessed_at": "2026-10-11T13:00:00+08:00",
+      "evidence": [
+        {
+          "path": "scripts/recover-published-release.ts",
+          "blob": "45071be7a362f61d48ea44fb11319307af357f57",
+          "command": "bunx biome check scripts/recover-published-release.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "No product or release scope drift; this is a temporary recovery-only path."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The recovery script verifies the frozen manifest, deployed identity, production ownership, GHCR digest, and GitHub latest pointer before recording completion.",
+      "assessed_at": "2026-10-11T13:00:00+08:00",
+      "evidence": [
+        {
+          "path": "scripts/recover-published-release.ts",
+          "blob": "45071be7a362f61d48ea44fb11319307af357f57",
+          "command": "bunx biome check scripts/recover-published-release.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": ["2.7.0", "2.8.3", "2.9.0", "2.10.0", "2.11.2", "2.12.0"],
+      "evidence": [
+        {
+          "path": "scripts/recover-published-release.ts",
+          "blob": "45071be7a362f61d48ea44fb11319307af357f57",
+          "command": "bunx biome check scripts/recover-published-release.ts"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The workflow only records the already-proven deployment and latest promotion for one existing release identity.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "scripts/recover-published-release.ts",
+          "blob": "45071be7a362f61d48ea44fb11319307af357f57",
+          "command": "bunx biome check scripts/recover-published-release.ts"
+        }
+      ]
+    }
+  }
+}
