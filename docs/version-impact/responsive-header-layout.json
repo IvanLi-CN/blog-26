@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "fc40177f04ab0fa911c38542b0476276a1641ccd",
+  "base_sha": "4001a2df221914b8777670bbfb49798f7c0e7500",
   "covered_files": {
     "docs/specs/nature-front-ui/HISTORY.md": "9383291dacef155c784b081592b0b8d59c923266",
     "docs/specs/nature-front-ui/IMPLEMENTATION.md": "246235cfd9e784d84ced4315fd575f4c3fe06981",
