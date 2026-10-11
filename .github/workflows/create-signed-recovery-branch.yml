@@ -1,0 +1,29 @@
+name: Create Signed Recovery Branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: Signed recovery branch name
+        required: true
+        default: th/recover-2130-signed
+
+permissions:
+  contents: write
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Create one verified recovery commit from main
+        run: bun scripts/create-signed-recovery-branch.ts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+          BASE_SHA: 4001a2df221914b8777670bbfb49798f7c0e7500
