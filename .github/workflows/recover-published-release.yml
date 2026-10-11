@@ -1,0 +1,41 @@
+name: Recover Published Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.2
+      - run: bun install --frozen-lockfile
+      - run: sudo apt-get update && sudo apt-get install -y skopeo
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Download immutable release manifest
+        run: gh release download v2.13.0 --repo "$GITHUB_REPOSITORY" --dir "$RUNNER_TEMP/recovery" --pattern release-manifest.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Verify deployed identity and promote latest
+        run: bun scripts/recover-published-release.ts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ddbd308e0009d436196055e04da5963ab69b1e9353755a220aa93c860450e4b3
+          RELEASE_MANIFEST_PATH: ${{ runner.temp }}/recovery/release-manifest.json
+          PUBLIC_SITE_URL: https://ivanli.cc
