@@ -990,6 +990,8 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
 
   .nature-site-header-frame nav {
     padding-inline: 0;
+    width: calc(100% + 2px);
+    margin-inline: -1px;
   }
 }
 
