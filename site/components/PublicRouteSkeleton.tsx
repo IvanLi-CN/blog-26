@@ -35,6 +35,20 @@ function Surface({ children, className = "" }: { children: ReactNode; className?
   );
 }
 
+function StructuralSurface({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <div className={`nature-surface nature-mobile-structural ${className}`}>{children}</div>;
+}
+
+function TileSurface({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <div className={`nature-surface ${className}`}>{children}</div>;
+}
+
 function Intro({ detail = false }: { detail?: boolean }) {
   return (
     <header className={`public-skeleton-intro ${detail ? "public-skeleton-intro-detail" : ""}`}>
@@ -275,7 +289,7 @@ function ProjectSkeleton() {
 
 function TagsSkeleton() {
   return (
-    <section className="public-route-skeleton-page public-skeleton-tags nature-container">
+    <section className="public-route-skeleton-page public-skeleton-tags-page nature-container">
       <div className="public-skeleton-tag-heading">
         <div>
           <SkeletonBar className="public-skeleton-kicker" />
@@ -293,17 +307,19 @@ function TagsSkeleton() {
             <SkeletonBar className="public-skeleton-meta-chip" />
             <SkeletonBar className="public-skeleton-meta-line" />
           </div>
-          <div className="public-skeleton-tag-grid">
-            {skeletonKeys("tag-card", 6).map((cardKey) => (
-              <Surface key={cardKey} className="public-skeleton-tag-card">
-                <SkeletonBlock className="public-skeleton-tag-icon" />
-                <div>
-                  <SkeletonBar className="public-skeleton-card-title public-skeleton-card-title-short" />
-                  <SkeletonBar className="public-skeleton-copy public-skeleton-copy-short" />
-                </div>
-              </Surface>
-            ))}
-          </div>
+          <StructuralSurface className="public-skeleton-tag-surface">
+            <div className="public-skeleton-tag-grid">
+              {skeletonKeys("tag-card", 6).map((cardKey) => (
+                <TileSurface key={cardKey} className="public-skeleton-tag-card">
+                  <SkeletonBlock className="public-skeleton-tag-icon" />
+                  <div>
+                    <SkeletonBar className="public-skeleton-card-title public-skeleton-card-title-short" />
+                    <SkeletonBar className="public-skeleton-copy public-skeleton-copy-short" />
+                  </div>
+                </TileSurface>
+              ))}
+            </div>
+          </StructuralSurface>
         </section>
       ))}
     </section>

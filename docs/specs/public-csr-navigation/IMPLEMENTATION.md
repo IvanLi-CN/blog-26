@@ -29,8 +29,8 @@
 
 - Agent VM 预提交套件通过，包含组件 Story 边界、构建隔离、路由匹配、公开接口、请求取消及未访问正文的载荷隔离。命令：`bun run test:precommit`，提交 hook 保持启用。Playbook 搜索正文隔离另有回归断言。
 - Demo 导航：`tests/e2e/web-demo/public-csr.spec.ts` 16 项全部通过，覆盖 SSR 离线首屏、12 类离线目标及恢复、历史、主题、取消、静态页面和 404，并断言没有 hydration 错误。命令：`WEB_DEMO_TEST_URL=<demo-origin> bun x playwright test --config tests/e2e/web-demo/playwright.config.ts`。
-- 目标页骨架回归：`tests/lib/public-csr-route.test.ts` 的路由分类断言通过；Web Demo 新增逐一挂起全部 12 个异步目标的骨架、busy 状态、About/404 旁路断言，连同既有错误重试和生命周期场景共 17 项通过。命令：`WEB_DEMO_TEST_URL=http://127.0.0.1:13900 bunx playwright test -c tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-csr.spec.ts`。
-- 视觉证据：官方 Web Demo 以 1440×1000 与 393×852 CSS 视口覆盖首页、文章详情、项目列表、标签详情、Memos 列表、Playbook 详情和搜索骨架；浅色、深色与 reduced-motion 均检查，`main` 无横向溢出，reduced-motion 下占位动画计算值为 `none`。失败态截图确认 `role="alert"` 面板替换完整骨架并保留 `重试`。
+- 目标页骨架回归：`tests/lib/public-csr-route.test.ts` 的路由分类断言通过；Web Demo 逐一挂起全部 12 个异步目标的骨架、busy 状态、About/404 旁路断言，并额外断言标签列表的页面根布局、分组面板与多列卡片几何，连同既有错误重试和生命周期场景共 18 项通过。命令：`WEB_DEMO_TEST_URL=http://127.0.0.1:13900 bunx playwright test -c tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-csr.spec.ts`。
+- 视觉证据：官方 Web Demo 以 1440×1000 与 393×852 CSS 视口覆盖首页、文章详情、项目列表、标签详情、标签列表、Memos 列表、Playbook 详情和搜索骨架；浅色、深色与 reduced-motion 均检查，`main` 无横向溢出，reduced-motion 下占位动画计算值为 `none`。标签列表截图确认标题/统计、分组承载层和标签卡片网格保持目标页几何；失败态截图确认 `role="alert"` 面板替换完整骨架并保留 `重试`。
 - 正式静态站：`tests/e2e/guest/public-csr-navigation.spec.ts` 覆盖结构化导航、目标错误与原位重试、搜索参数、hydration 交接、直接入口及跨页片段历史滚动、延迟 MDX 正文的锚点定位、列表 DTO 正文隔离，以及历史恢复期间的新导航。console 的首屏与主题、窄屏交互及作者隔离测试通过；共享 CSR 回归覆盖相同正式页面。
 - console 作者界面与公共主机隔离：同步后的 `tests/e2e/admin/public-csr-authoring.spec.ts` 通过。CSR 请求保留 `private, no-store`，管理员看到私密记录，公共主机即使携带身份也不能得到这些记录。测试身份使用 runtime 配置的 `ADMIN_EMAIL`，无代理鉴权捷径。
 - 剪藏 Demo 的独立 E2E 脚本通过：正式详情链接使用 CSR，原文／译文、讨论、保存、重试、焦点与草稿、网络与身份及 7 种宽度均验证；除页面 DTO 外没有真实 API 或模型请求。

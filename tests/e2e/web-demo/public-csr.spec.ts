@@ -82,6 +82,57 @@ test("client navigation renders the destination skeleton for every async route f
   await expect(page.locator("main")).toContainText("404");
 });
 
+test("tags navigation skeleton keeps the grouped tag index geometry", async ({ page }) => {
+  await page.goto("/posts/?d_connection=online&d_delay=normal");
+  await ready(page);
+
+  let release = () => {
+    /* Assigned synchronously by the Promise constructor. */
+  };
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let held = false;
+  const routeHandler = async (route: import("@playwright/test").Route) => {
+    const requestPath = new URL(route.request().url()).searchParams.get("path") ?? "";
+    if (!held && requestPath.startsWith("/tags/")) {
+      held = true;
+      await gate;
+    }
+    await route.continue();
+  };
+  await page.route("**/api/public/page**", routeHandler);
+  try {
+    await clickRoute(page, "/tags/");
+    await expect.poll(() => held, { message: "expected a gated tags read" }).toBe(true);
+    await expect(page.locator('main [data-public-route-skeleton="tags"]')).toBeVisible();
+
+    const geometry = await page
+      .locator('main [data-public-route-skeleton="tags"]')
+      .evaluate((root) => {
+        const pageSkeleton = root.querySelector<HTMLElement>(".public-skeleton-tags-page");
+        const groups = [...root.querySelectorAll<HTMLElement>(".public-skeleton-tag-group")];
+        const grids = [...root.querySelectorAll<HTMLElement>(".public-skeleton-tag-grid")];
+        return {
+          pageDisplay: pageSkeleton ? getComputedStyle(pageSkeleton).display : null,
+          groupDisplays: groups.map((group) => getComputedStyle(group).display),
+          gridColumnCounts: grids.map(
+            (grid) => getComputedStyle(grid).gridTemplateColumns.split(" ").length
+          ),
+          cardCounts: grids.map((grid) => grid.children.length),
+        };
+      });
+    expect(geometry.pageDisplay).toBe("grid");
+    expect(geometry.groupDisplays).toEqual(["grid", "grid", "grid"]);
+    expect(geometry.gridColumnCounts.every((count) => count >= 2)).toBe(true);
+    expect(geometry.cardCounts).toEqual([6, 6, 6]);
+  } finally {
+    release();
+  }
+  await expect(page.locator("main.nature-main")).toHaveAttribute("aria-busy", "false");
+  await page.unroute("**/api/public/page**", routeHandler);
+});
+
 test("SSR content hydrates without repeating its page read", async ({ page, request }) => {
   const hydrationErrors: string[] = [];
   page.on("console", (message) => {
