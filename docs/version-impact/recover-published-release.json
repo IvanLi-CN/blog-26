@@ -10,9 +10,7 @@
   "change": {
     "description": "Add temporary, identity-bound recovery workflows for the already-published v2.13.0 release after deployment propagation was confirmed.",
     "release_unit_description": "static frontend and full-feature Docker image",
-    "affected_contracts": [
-      "public-api"
-    ]
+    "affected_contracts": ["public-api"]
   },
   "classification": {
     "planned": {
@@ -82,9 +80,7 @@
       "applicable": false,
       "state_description": "The workflow only records the already-proven deployment and latest promotion for one existing release identity.",
       "readable_by_prior_versions": [],
-      "upgrade_from_versions": [
-        "2.13.0"
-      ],
+      "upgrade_from_versions": ["2.13.0"],
       "evidence": [
         {
           "path": "scripts/recover-published-release.ts",
