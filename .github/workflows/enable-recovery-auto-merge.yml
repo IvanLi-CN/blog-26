@@ -19,8 +19,8 @@ permissions:
 jobs:
   enable:
     if: >-
-      (github.event_name == 'workflow_dispatch' && inputs.pr_number == '210') ||
-      (github.event.pull_request.number == 210 &&
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.ref == 'th/recover-2130-signed' &&
       github.event.pull_request.base.ref == 'main' &&
       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
