@@ -71,7 +71,15 @@
     "public_api": {
       "impact": "minor",
       "change": "compatible",
-      "supported_consumer_versions": ["2.13.0"],
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0"
+      ],
       "evidence": [
         {
           "path": "tests/e2e/guest/mobile-reading-surface.spec.ts",
