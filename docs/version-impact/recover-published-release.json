@@ -3,11 +3,12 @@
   "kind": "version-impact-record",
   "base_sha": "4001a2df221914b8777670bbfb49798f7c0e7500",
   "covered_files": {
+    ".github/workflows/enable-recovery-auto-merge.yml": "2f21b8e2e019ba0c86d53181c46a216820da1bf9",
     ".github/workflows/recover-published-release.yml": "6b793bd16513a8986c29389608ad90265732c6f1",
     "scripts/recover-published-release.ts": "45071be7a362f61d48ea44fb11319307af357f57"
   },
   "change": {
-    "description": "Add a temporary, identity-bound recovery workflow for the already-published v2.13.0 release after deployment propagation was confirmed.",
+    "description": "Add temporary, identity-bound recovery workflows for the already-published v2.13.0 release after deployment propagation was confirmed.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api"]
   },
