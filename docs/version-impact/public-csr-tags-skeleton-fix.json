@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "4001a2df221914b8777670bbfb49798f7c0e7500",
+  "covered_files": {
+    "docs/specs/public-csr-navigation/IMPLEMENTATION.md": "17a4e06c8cf1cdbdf9f074f820e91fd34192872e",
+    "docs/specs/public-csr-navigation/SPEC.md": "1add9cc3035171689f1bed2870792f16daf3dbc6",
+    "docs/specs/public-csr-navigation/assets/csr-tags-desktop-dark.png": "27785f88e8e18a2e07efee7d2189c6410e8937df",
+    "docs/specs/public-csr-navigation/assets/csr-tags-mobile-light-reduced.png": "3d3add4333c8ee60514805932200fa90f5299aba",
+    "site/components/PublicRouteSkeleton.tsx": "7a8ae6e9b0d986393afb91f9a9c9c323e8c017ec",
+    "site/styles/public-pages.css": "48b6f718c993acaef3d96ef7945122d80acfa19c",
+    "tests/e2e/web-demo/public-csr.spec.ts": "793e44d7bf3cffe02194b771669528eab2b9f08d"
+  },
+  "change": {
+    "description": "Correct the tags destination skeleton so grouped tag sections retain page-level grid geometry and framed responsive tag tiles during public client-side navigation.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a compatible public frontend presentation repair for the existing tags route skeleton. It changes no endpoint, payload, database, local-content, or release-state format.",
+      "assessed_at": "2026-10-11T19:05:53Z",
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/public-csr.spec.ts",
+          "blob": "793e44d7bf3cffe02194b771669528eab2b9f08d",
+          "command": "Official Web Demo tags navigation skeleton geometry regression passes"
+        },
+        {
+          "path": "site/components/PublicRouteSkeleton.tsx",
+          "blob": "7a8ae6e9b0d986393afb91f9a9c9c323e8c017ec",
+          "command": "Target page skeleton dispatch and structural surface render pass focused checks"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate only corrects tags skeleton container geometry, responsive tile framing, and the associated Web Demo/spec evidence. Existing route reads, SSR hydration, URL/history behavior, themes, and page-local loading remain unchanged.",
+      "assessed_at": "2026-10-11T19:05:53Z",
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/public-csr.spec.ts",
+          "blob": "793e44d7bf3cffe02194b771669528eab2b9f08d",
+          "command": "Official Web Demo tags route verifies grouped structural surfaces, responsive card columns, and six-card groups"
+        },
+        {
+          "path": "docs/specs/public-csr-navigation/SPEC.md",
+          "blob": "1add9cc3035171689f1bed2870792f16daf3dbc6",
+          "command": "Accepted public CSR skeleton contract and tags visual evidence are synchronized"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to the tags destination skeleton geometry, Nature UI structural surfaces, synchronized visual evidence, and its Web Demo regression coverage; no route, API, persistence, or VERSION contract drift was found."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused unit checks, full check, official Web Demo tags geometry coverage, and desktop/mobile light/dark/reduced-motion evidence verify a compatible public frontend presentation repair without data or persistence changes.",
+      "assessed_at": "2026-10-11T19:05:53Z",
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/public-csr.spec.ts",
+          "blob": "793e44d7bf3cffe02194b771669528eab2b9f08d",
+          "command": "Official Web Demo tags geometry regression passes on desktop and mobile skeleton states"
+        },
+        {
+          "path": "site/styles/public-pages.css",
+          "blob": "48b6f718c993acaef3d96ef7945122d80acfa19c",
+          "command": "Nature UI tags structural surfaces preserve responsive grid geometry and reduced-motion styling"
+        },
+        {
+          "path": "docs/specs/public-csr-navigation/SPEC.md",
+          "blob": "1add9cc3035171689f1bed2870792f16daf3dbc6",
+          "command": "Spec contract check and visual evidence references pass"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0"
+      ],
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/public-csr.spec.ts",
+          "blob": "793e44d7bf3cffe02194b771669528eab2b9f08d",
+          "command": "Official Web Demo navigation reads remain unchanged while tags pending presentation is corrected"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local-content format, browser persistence, or durable release-ledger state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/public-csr-route.test.ts",
+          "blob": "7216901d8d686be2a80c0ea54592c6b97af38f4c",
+          "command": "Route classification and payload isolation tests pass without persistence changes"
+        }
+      ]
+    }
+  }
+}
