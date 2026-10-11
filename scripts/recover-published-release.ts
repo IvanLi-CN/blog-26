@@ -15,10 +15,14 @@ if (!identity) throw new Error("RELEASE_ID is required");
 const manifest = z
   .object({
     identity: z.string(),
+    schemaVersion: z.number().int().positive(),
     productVersion: z.string(),
     sourceSha: z.string(),
+    staticBuildVersion: z.string(),
     staticSha256: z.string(),
+    imageBuildVersion: z.string(),
     imageDigest: z.string(),
+    imageSha256: z.string(),
     playbookEdition: z.string(),
   })
   .strict()
