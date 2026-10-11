@@ -11,7 +11,7 @@
     "site/components/SiteHeader.tsx": "429b18f851228b66a8fbb7162f970e4091309ee0",
     "site/styles/public-pages.css": "973a6bfa3ed16ca9bfafb8a792e67cb4cc1539d9",
     "src/components/common/PublicStoryHeader.tsx": "ea27271a9b62e6be038d2a9933364eac2392ba05",
-    "src/styles/globals.css": "d8955a73ac690ac903202e50fd43e539b73f8095",
+    "src/styles/globals.css": "3e1ec5281d4b1d47deb7dd6082ab940a3a4f0f50",
     "tests/e2e/guest/mobile-reading-surface.spec.ts": "747a2190764de4a425ef7c6275e7b5e7c73262d3",
     "tests/e2e/guest/nature-front-coverage.spec.ts": "7ccea9ac6a60258ec9fb13f80d8be3eabe757c17"
   },
