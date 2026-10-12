@@ -28,6 +28,8 @@ describe("durable product release reservations", () => {
     const head = "c".repeat(40);
     const recoveryCommit = "b".repeat(40);
     const legacy = "d".repeat(40);
+    const olderRecovery = "1".repeat(40);
+    const olderLegacy = "2".repeat(40);
     const root = "e".repeat(40);
     const tree = "f".repeat(40);
     const digestLine = `Ledger-Digest: ${digest(ledger)}`;
@@ -63,6 +65,17 @@ describe("durable product release reservations", () => {
       ),
       commit(
         legacy,
+        olderRecovery,
+        `chore(release): recover legacy ledger\n\n${digestLine}\n${signedOff}`,
+        contract.repository.split("/")[0]
+      ),
+      commit(
+        olderRecovery,
+        olderLegacy,
+        `chore(release): record product delivery state\n\n${digestLine}\nLedger-Recovery: ${olderLegacy}\n${signedOff}`
+      ),
+      commit(
+        olderLegacy,
         root,
         `chore(release): recover legacy ledger\n\n${digestLine}\n${signedOff}`,
         contract.repository.split("/")[0]
