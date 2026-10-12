@@ -2,6 +2,13 @@
 
 ARG BUN_BUILD_IMAGE=oven/bun:1
 ARG BUN_RUNTIME_IMAGE=oven/bun:1-slim
+FROM rust:1.91-bookworm AS search-native
+WORKDIR /native/search
+COPY native/search/Cargo.toml native/search/Cargo.lock native/search/build.rs ./
+COPY native/search/src ./src
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/native/search/target \
+    cargo build --release --locked && cp target/release/libblog_search.so /search.linux-x64.node
 FROM ${BUN_BUILD_IMAGE} AS deps
 WORKDIR /app
 COPY package.json bun.lock ./
@@ -59,6 +66,7 @@ ARG PLAYBOOK_BUNDLE_DIR=
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /ms-playwright /ms-playwright
 COPY . .
+COPY --from=search-native /search.linux-x64.node ./native/search/search.linux-x64.node
 ENV BUILD_DATE=${BUILD_DATE}
 ENV COMMIT_HASH=${COMMIT_HASH}
 ENV COMMIT_SHORT_HASH=${COMMIT_SHORT_HASH}

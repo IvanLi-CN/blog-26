@@ -17,8 +17,14 @@
 
 - The previous search fallback matched only selected fields with `LIKE`, did not share behavior with content lists, and could expose reranker outages as service-unavailable responses.
 - The physical index includes private/draft rows so administrator list behavior remains compatible; public visibility is enforced by the caller query.
+- [搜索相关性主题](../search-relevance/SPEC.md) 拥有三种可选模式、默认 RAG、名称边界、原始关键词保全及两种 AI 的直接回退，采用内嵌 Tantivy。新模式及 enhanced 不支持 NEAR，独立 semantic 与列表过滤继续保留共用 parser、SQLite 索引和旧 NEAR 行为；新主题已接入产品运行时，其交付验收状态单独记录，不覆盖旧契约的验证边界。
 
 ## References
 
 - `./SPEC.md`
 - `./IMPLEMENTATION.md`
+
+## Related PRs
+
+- [PR #61](https://github.com/IvanLi-CN/blog-26/pull/61): Original SQLite FTS5 and shared parser implementation.
+- Canonical requirement identifiers and verification traceability were added during the three-mode search integration; existing paths, assets and legacy grammar were retained.

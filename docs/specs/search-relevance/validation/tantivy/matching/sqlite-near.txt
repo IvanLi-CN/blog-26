@@ -1,0 +1,29 @@
+{"bun":"1.4.2","sqlite":{"version":"3.51.0"},"documents":["alpha beta","beta alpha","alpha x beta","alpha enormousgap beta","abcXYZdef","defXYZabc","abc def","abcXdef","abcXXdef","甲乙丙丁戊己","甲乙丙中间丁戊己","丁戊己甲乙丙","中文Arch-中文SQLite","中文Arch......SQLite","Arch中文SQLite","甲乙丙。丁戊己"]}
+{"raw":"NEAR(alpha beta, 0)","mode":"advanced-valid","ftsQuery":"NEAR(\"alpha\" \"beta\", 0)","rows":[]}
+{"raw":"NEAR(alpha beta, 1)","mode":"advanced-valid","ftsQuery":"NEAR(\"alpha\" \"beta\", 1)","rows":[]}
+{"raw":"NEAR(alpha beta, 2)","mode":"advanced-valid","ftsQuery":"NEAR(\"alpha\" \"beta\", 2)","rows":[]}
+{"raw":"NEAR(alpha beta, 3)","mode":"advanced-valid","ftsQuery":"NEAR(\"alpha\" \"beta\", 3)","rows":[{"rowid":1,"body":"alpha beta"},{"rowid":2,"body":"beta alpha"}]}
+{"raw":"NEAR(alpha beta, 4)","mode":"advanced-valid","ftsQuery":"NEAR(\"alpha\" \"beta\", 4)","rows":[{"rowid":1,"body":"alpha beta"},{"rowid":2,"body":"beta alpha"}]}
+{"raw":"NEAR(alpha beta, 8)","mode":"advanced-valid","ftsQuery":"NEAR(\"alpha\" \"beta\", 8)","rows":[{"rowid":1,"body":"alpha beta"},{"rowid":2,"body":"beta alpha"},{"rowid":3,"body":"alpha x beta"}]}
+{"raw":"NEAR(alpha beta, 16)","mode":"advanced-valid","ftsQuery":"NEAR(\"alpha\" \"beta\", 16)","rows":[{"rowid":1,"body":"alpha beta"},{"rowid":2,"body":"beta alpha"},{"rowid":3,"body":"alpha x beta"},{"rowid":4,"body":"alpha enormousgap beta"}]}
+{"raw":"NEAR(abc def, 0)","mode":"advanced-valid","ftsQuery":"NEAR(\"abc\" \"def\", 0)","rows":[]}
+{"raw":"NEAR(abc def, 1)","mode":"advanced-valid","ftsQuery":"NEAR(\"abc\" \"def\", 1)","rows":[]}
+{"raw":"NEAR(abc def, 2)","mode":"advanced-valid","ftsQuery":"NEAR(\"abc\" \"def\", 2)","rows":[]}
+{"raw":"NEAR(abc def, 3)","mode":"advanced-valid","ftsQuery":"NEAR(\"abc\" \"def\", 3)","rows":[{"rowid":7,"body":"abc def"},{"rowid":8,"body":"abcXdef"}]}
+{"raw":"NEAR(abc def, 4)","mode":"advanced-valid","ftsQuery":"NEAR(\"abc\" \"def\", 4)","rows":[{"rowid":7,"body":"abc def"},{"rowid":8,"body":"abcXdef"},{"rowid":9,"body":"abcXXdef"}]}
+{"raw":"NEAR(abc def, 8)","mode":"advanced-valid","ftsQuery":"NEAR(\"abc\" \"def\", 8)","rows":[{"rowid":5,"body":"abcXYZdef"},{"rowid":6,"body":"defXYZabc"},{"rowid":7,"body":"abc def"},{"rowid":8,"body":"abcXdef"},{"rowid":9,"body":"abcXXdef"}]}
+{"raw":"NEAR(abc def, 16)","mode":"advanced-valid","ftsQuery":"NEAR(\"abc\" \"def\", 16)","rows":[{"rowid":5,"body":"abcXYZdef"},{"rowid":6,"body":"defXYZabc"},{"rowid":7,"body":"abc def"},{"rowid":8,"body":"abcXdef"},{"rowid":9,"body":"abcXXdef"}]}
+{"raw":"NEAR(甲乙丙 丁戊己, 0)","mode":"advanced-valid","ftsQuery":"NEAR(\"甲乙丙\" \"丁戊己\", 0)","rows":[]}
+{"raw":"NEAR(甲乙丙 丁戊己, 1)","mode":"advanced-valid","ftsQuery":"NEAR(\"甲乙丙\" \"丁戊己\", 1)","rows":[]}
+{"raw":"NEAR(甲乙丙 丁戊己, 2)","mode":"advanced-valid","ftsQuery":"NEAR(\"甲乙丙\" \"丁戊己\", 2)","rows":[{"rowid":10,"body":"甲乙丙丁戊己"},{"rowid":12,"body":"丁戊己甲乙丙"}]}
+{"raw":"NEAR(甲乙丙 丁戊己, 3)","mode":"advanced-valid","ftsQuery":"NEAR(\"甲乙丙\" \"丁戊己\", 3)","rows":[{"rowid":10,"body":"甲乙丙丁戊己"},{"rowid":12,"body":"丁戊己甲乙丙"},{"rowid":16,"body":"甲乙丙。丁戊己"}]}
+{"raw":"NEAR(甲乙丙 丁戊己, 4)","mode":"advanced-valid","ftsQuery":"NEAR(\"甲乙丙\" \"丁戊己\", 4)","rows":[{"rowid":10,"body":"甲乙丙丁戊己"},{"rowid":11,"body":"甲乙丙中间丁戊己"},{"rowid":12,"body":"丁戊己甲乙丙"},{"rowid":16,"body":"甲乙丙。丁戊己"}]}
+{"raw":"NEAR(甲乙丙 丁戊己, 8)","mode":"advanced-valid","ftsQuery":"NEAR(\"甲乙丙\" \"丁戊己\", 8)","rows":[{"rowid":10,"body":"甲乙丙丁戊己"},{"rowid":11,"body":"甲乙丙中间丁戊己"},{"rowid":12,"body":"丁戊己甲乙丙"},{"rowid":16,"body":"甲乙丙。丁戊己"}]}
+{"raw":"NEAR(甲乙丙 丁戊己, 16)","mode":"advanced-valid","ftsQuery":"NEAR(\"甲乙丙\" \"丁戊己\", 16)","rows":[{"rowid":10,"body":"甲乙丙丁戊己"},{"rowid":11,"body":"甲乙丙中间丁戊己"},{"rowid":12,"body":"丁戊己甲乙丙"},{"rowid":16,"body":"甲乙丙。丁戊己"}]}
+{"raw":"NEAR(Arch SQLite, 0)","mode":"advanced-valid","ftsQuery":"NEAR(\"Arch\" \"SQLite\", 0)","rows":[]}
+{"raw":"NEAR(Arch SQLite, 1)","mode":"advanced-valid","ftsQuery":"NEAR(\"Arch\" \"SQLite\", 1)","rows":[]}
+{"raw":"NEAR(Arch SQLite, 2)","mode":"advanced-valid","ftsQuery":"NEAR(\"Arch\" \"SQLite\", 2)","rows":[]}
+{"raw":"NEAR(Arch SQLite, 3)","mode":"advanced-valid","ftsQuery":"NEAR(\"Arch\" \"SQLite\", 3)","rows":[]}
+{"raw":"NEAR(Arch SQLite, 4)","mode":"advanced-valid","ftsQuery":"NEAR(\"Arch\" \"SQLite\", 4)","rows":[{"rowid":15,"body":"Arch中文SQLite"}]}
+{"raw":"NEAR(Arch SQLite, 8)","mode":"advanced-valid","ftsQuery":"NEAR(\"Arch\" \"SQLite\", 8)","rows":[{"rowid":13,"body":"中文Arch-中文SQLite"},{"rowid":14,"body":"中文Arch......SQLite"},{"rowid":15,"body":"Arch中文SQLite"}]}
+{"raw":"NEAR(Arch SQLite, 16)","mode":"advanced-valid","ftsQuery":"NEAR(\"Arch\" \"SQLite\", 16)","rows":[{"rowid":13,"body":"中文Arch-中文SQLite"},{"rowid":14,"body":"中文Arch......SQLite"},{"rowid":15,"body":"Arch中文SQLite"}]}

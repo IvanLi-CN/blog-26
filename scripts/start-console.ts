@@ -5,6 +5,10 @@ import { extname, resolve } from "node:path";
 import { extractAuthFromRequest } from "@/lib/auth-utils";
 import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
 import { startClippingRuntime, stopClippingRuntime } from "@/server/clipping/runtime";
+import {
+  startSearchIndexRuntime,
+  stopSearchIndexRuntime,
+} from "@/server/services/search-index-runtime";
 import { handleVersionRequest, readRuntimeVersionInfo } from "@/server/version-api";
 
 const versionInfo = await readRuntimeVersionInfo(
@@ -203,6 +207,7 @@ async function serveAdmin(
 
 const astro = await import("../console-dist/server/entry.mjs");
 await startClippingRuntime();
+await startSearchIndexRuntime();
 const playbook = getRuntimePlaybookStore();
 await playbook.load();
 if (
@@ -236,6 +241,7 @@ async function shutdown() {
   const deadline = setTimeout(() => process.exit(1), 5000);
   deadline.unref();
   await stopClippingRuntime();
+  stopSearchIndexRuntime();
   server.close(() => {
     clearTimeout(deadline);
     process.exit(0);

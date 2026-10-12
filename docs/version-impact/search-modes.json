@@ -1,0 +1,287 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "4001a2df221914b8777670bbfb49798f7c0e7500",
+  "covered_files": {
+    ".dockerignore": "8664b0673857a477780c179744f608f777069893",
+    ".github/workflows/ci.yml": "78f3c7c90c6d8155f17802a12b18e0b02d98bb74",
+    ".github/workflows/product-release.yml": "57d5dbbe84f8292882ee715dab354d02fcdb8699",
+    ".gitignore": "b5abe07770f0a5d13057d9524984906ec63f44f7",
+    ".storybook/main.ts": "1a19dbda1a380ec5bcd25067146cf75c4dce2785",
+    "Dockerfile": "d4db524b8afd2d6b278bfd802aa4de5cb377930a",
+    "GLOSSARY.md": "f3df145ac6ee1cc75669d98effcb0a6f8f2ef70c",
+    "README.md": "d8b6af318d6a097dc09ffeb0f7499b74adfdb1ca",
+    "apps/admin/src/components/search-policy-card.stories.tsx": "986f4b8799a0c5d1d73233a944ba371219b01a97",
+    "apps/admin/src/components/search-policy-card.tsx": "9bc867de85533ef48db0feeb0de4ce64cabb73f0",
+    "apps/admin/src/components/search-settings-panel.tsx": "5267bcaf905acd222a2edfaa4e890630a034783e",
+    "apps/admin/src/components/ui.tsx": "f4ac81c07bada1252dd0fd2ff8eac159cf37c280",
+    "apps/admin/src/demo/mock-admin-api.ts": "1fbedad67a43e7e73c0d006d6d1bb063e979ad5e",
+    "apps/admin/src/pages/llm-settings.tsx": "2e8e093b38292240f74a6e428f0f784a13e59048",
+    "apps/admin/src/styles.css": "6ca074f8dbbfab7928051a65a04002b36ac3faba",
+    "docs/adr/0020-keyword-first-hybrid-search.md": "0e15254ee5a163f668d7851c3333e942d886218d",
+    "docs/adr/0021-embedded-tantivy-search.md": "16dc3f1c3e93962112d5af163224bd26ed01ae25",
+    "docs/specs/README.md": "acea87e7bac8ea62d45471ad109e2d6f1f8bc8f0",
+    "docs/specs/admin-llm-settings/IMPLEMENTATION.md": "2da704a9282f231d65b2aded22a18876b89cf83e",
+    "docs/specs/search-full-text-fallback/HISTORY.md": "77ec01a31e45226ea4ebb041bd69ea1395e5a90d",
+    "docs/specs/search-full-text-fallback/IMPLEMENTATION.md": "cc10e6ce17a530dcb3c4f4c2dc4a1e07f8a92202",
+    "docs/specs/search-full-text-fallback/SPEC.md": "ec591741353e88a06637c3fd2257279261e07d47",
+    "docs/specs/search-relevance/HISTORY.md": "22d37c9a14cf87041074f283f97ee4935d2eb0fc",
+    "docs/specs/search-relevance/IMPLEMENTATION.md": "7e52d000b062dc0bc8cc90f0f525c5b11ec6bfce",
+    "docs/specs/search-relevance/SPEC.md": "fa5c96af35ad3aa493d4f4c0d5cc9570e7f62044",
+    "docs/specs/search-relevance/VALIDATION.md": "62bb0894496c151c02f20eeacf0553a846e81f56",
+    "docs/specs/search-relevance/assets/admin-search-policy-switch-fix.png": "23d04f90febfaad84dc8d6aada4f1c731a382351",
+    "docs/specs/search-relevance/validation/product/corpus-benchmark-v2.json": "d9e1762edd1a822e4d47ce5131d012afe6083343",
+    "docs/specs/search-relevance/validation/product/corpus-benchmark.json": "91b29d23e1433640141340b1991fa2c85b786e9c",
+    "docs/specs/search-relevance/validation/product/empirical-authorized-30s-failure.txt": "e95b34012ecf7d7f8d1597fc52c7a2bce9de0b3e",
+    "docs/specs/search-relevance/validation/product/empirical-ranking-fixed.txt": "26c2fead74015cd5e3a47f575d9209ba69639eb6",
+    "docs/specs/search-relevance/validation/product/empirical-regression.txt": "38b8698f88096c72e09d86cac35e2ffa169478d6",
+    "docs/specs/search-relevance/validation/product/empirical-rewrite-discovery-failure.txt": "0d20114b8a4e1fba8fa8307a67397a6a9d8a42ee",
+    "docs/specs/search-relevance/validation/product/empirical-rewrite-retrieval-fixed.txt": "bf941df293d336447f07282e15ca228c76cb0428",
+    "docs/specs/search-relevance/validation/product/empirical.txt": "ef1045d29a099f1347284024c5f428b58da2cc5a",
+    "docs/specs/search-relevance/validation/product/image-http-regression.txt": "56107ee8752ea4307315b0413bf2abf401ea16ea",
+    "docs/specs/search-relevance/validation/tantivy/Cargo.lock": "03acffc7f3de8fe2de9248631d648a11d41ec403",
+    "docs/specs/search-relevance/validation/tantivy/Cargo.toml": "096d485fd97775e0b27788433a61375e0e0c0887",
+    "docs/specs/search-relevance/validation/tantivy/README.md": "7c290dae408bf1b34286cba51f9086a574051bf9",
+    "docs/specs/search-relevance/validation/tantivy/build-retry.txt": "0cc326b2d13a1b97fc2f8dc2fdf336f6ac121603",
+    "docs/specs/search-relevance/validation/tantivy/build.txt": "c78b3e7b3f69abfae5e89da61f9210770239705f",
+    "docs/specs/search-relevance/validation/tantivy/bun-bridge/Cargo.toml": "7a87e282626c82689c49ebd566f07e8bb52e26c4",
+    "docs/specs/search-relevance/validation/tantivy/bun-bridge/abi.txt": "25cfb5d42b82ed2b0e909517a0326f846fba46d4",
+    "docs/specs/search-relevance/validation/tantivy/bun-bridge/bridge-report.md": "c71d35006392832f3fb65c1bb594c01f9dfced1a",
+    "docs/specs/search-relevance/validation/tantivy/bun-bridge/build.rs": "0f1b01002b079d101cc8ccc17a3b1fab5d84068e",
+    "docs/specs/search-relevance/validation/tantivy/bun-bridge/environment.txt": "e2e0ebb9abb09d3f3111fce8762886af5c9bf5af",
+    "docs/specs/search-relevance/validation/tantivy/bun-bridge/runtime.txt": "72442a96b9df748716ec3835b4c1285b0a01845e",
+    "docs/specs/search-relevance/validation/tantivy/bun-bridge/src/lib.rs": "7e513cbb044aa37ee300acf0a4639f9bb59cdfbc",
+    "docs/specs/search-relevance/validation/tantivy/bun-bridge/verify.mjs": "fd990c0a4fbc7675f26b15ce3e3d84a0203d8033",
+    "docs/specs/search-relevance/validation/tantivy/matching/Cargo.toml": "7554749e450210c519f0f1f7c6476639fcdf72b6",
+    "docs/specs/search-relevance/validation/tantivy/matching/matching-report.md": "00f23438e4f0c641e9a879227fbbfdfbf06389e5",
+    "docs/specs/search-relevance/validation/tantivy/matching/native-results.txt": "51c251930f4caa2bf8858b4409cee4119a140938",
+    "docs/specs/search-relevance/validation/tantivy/matching/sqlite-near-linux.txt": "f1747cc076687b72255c1061874bfe7a4bfc5877",
+    "docs/specs/search-relevance/validation/tantivy/matching/sqlite-near.ts": "8e19500d51f248e210dd9db49eb26d94795e7c2d",
+    "docs/specs/search-relevance/validation/tantivy/matching/sqlite-near.txt": "6e4669b775020d7e72937dd59f9747e14edc60e4",
+    "docs/specs/search-relevance/validation/tantivy/matching/src/main.rs": "2564caea58e34b47dbc49a7829048073761a8ec9",
+    "docs/specs/search-relevance/validation/tantivy/sync/Cargo.toml": "c66b192b8ab393e27de6fcaf230a510ef8e909c9",
+    "docs/specs/search-relevance/validation/tantivy/sync/native-results.txt": "cfe91963993081bf113cbb3f2c30f3f62e2f179a",
+    "docs/specs/search-relevance/validation/tantivy/sync/persistence-report.md": "bfb213296de7cd7b960df3aeb8cb1db300946889",
+    "docs/specs/search-relevance/validation/tantivy/sync/src/main.rs": "775a433d014d077ac5e7b04930723b17691b9b48",
+    "drizzle/0012_search_modes.sql": "010d9d51f608f010700ccca5b39d01532fac67b2",
+    "drizzle/meta/_journal.json": "b540fcdc977cc191a3bcba125ada2d375de2f06e",
+    "native/search/Cargo.lock": "3b1eb7017f0b1a3a4480e4a510b07444168f7b75",
+    "native/search/Cargo.toml": "6238ac37116b14c44378e12caa2833ed82d32e66",
+    "native/search/build.rs": "89c974efa3ad0c70abd19826ceaf2fb9b041b15a",
+    "native/search/src/lib.rs": "57193b55bb3aeb0f383411f18e67ebc591ecefde",
+    "package.json": "7814c2c4241a318e4c345ce0454668e1732d748d",
+    "scripts/build-native-search.sh": "de151d04e68a92d1dcfa7f7004c6440f21ff46d1",
+    "scripts/build-web-demo.ts": "f9906f5d3f1c7d05cde9ae006ea583d292792e86",
+    "scripts/prepare-backend-dist.sh": "f2a8b868dbeefb9b28cfdefcfff3a74f9ecdc9b6",
+    "scripts/preview-web-demo.ts": "c09c4039257cff829e05555220b6148cf136045f",
+    "scripts/search-index.ts": "f9e99ac3a616c5ebe5096673824a672b974f4d47",
+    "scripts/start-console.ts": "0f98d3fd02dc001e7c2a9409f82f4fc5ccd83403",
+    "scripts/start-gateway.ts": "6e67f0d8df26470593b690ef2e2ee18c2b095e31",
+    "scripts/verify-native-search.ts": "6f74245e0b3f4c9b4135b6c7ffbb9ec39f2f5ed1",
+    "scripts/verify-search-empirical.ts": "cf813370ea1ebdd611b540b94e89a3fda88b282f",
+    "site/components/PublicRouter.tsx": "9a51bd8a1b60f19c3e1475eabe10e9761af657ba",
+    "site/components/SearchPageIsland.tsx": "a7082a810293d97551bb60fdaa4e78dce67ba8e9",
+    "site/lib/page-data/search.ts": "5f8cd225e22cf28706576c4e3a924f7afa9773b6",
+    "site/pages/search.astro": "2c6d35cf0f84d0d49f338c42711aace6554126f7",
+    "src/components/search/PublicSearchPage.stories.tsx": "fc7db24142b12e88965a7ff3425b43d803813af5",
+    "src/components/search/PublicSearchPage.tsx": "5d30791c101c9147df80e2f36c11e06b66ce3642",
+    "src/components/search/SearchModeControl.stories.tsx": "52de4f7fcbab7e616343ef61a67b6318b2b6e480",
+    "src/components/search/SearchModeControl.tsx": "722d0e750750156cb60dda77e41131e4e41ed8ed",
+    "src/components/search/SearchResultsList.test.tsx": "9b5ce4a213a9d975ab967d2ccb798cafd4c092e2",
+    "src/components/search/SearchResultsList.tsx": "2fb0277db6c6457338995a43951a9d7c804a1cbf",
+    "src/components/search/search-model.ts": "fc89c78f01609f293cadca597a9fd556c43d7b9a",
+    "src/components/search/search-navigation.test.ts": "5794d0ac5b6abc741ffd240fa9c08bc21e62a341",
+    "src/components/search/search-navigation.ts": "a1cb5ec61a4ff315e1b550d1297fa0261e354279",
+    "src/lib/admin-api-client.ts": "d76f676b4cc0b8768d65b6b8ed45336e2720ff57",
+    "src/lib/ai/search-fallback.test.ts": "dcc4add2d0829cf44ab6201a4823c8ddd13e9556",
+    "src/lib/ai/search-snippet.ts": "330211b26dcfc83f85c86c9d402d4bffc5f9dbd5",
+    "src/lib/ai/search.ts": "410643c45c457423b634b66199d8209dd2421551",
+    "src/lib/release/products.ts": "45ee9d794ddc5fc7f9bd9420cc212da49713fd4b",
+    "src/lib/schema.ts": "181d94c63abb284068b80f4f0a871e6c56f2ae14",
+    "src/lib/search/highlights.test.ts": "d8d3b49053e915d4542c776fcaa628a1a216d9e5",
+    "src/lib/search/highlights.ts": "9de8d99fa8d7f9d54314b1886ee4835349f4f967",
+    "src/lib/search/native-index.ts": "484c5236a4317622b622b4a3298f2a26a358b256",
+    "src/lib/search/native-query.test.ts": "a18783f93fd3d6f1792a28da8eec1c8e87f4121f",
+    "src/lib/search/native-query.ts": "65ff546cb972b3caf9a50a6fe9f26dc41951c45a",
+    "src/lib/search/query.ts": "b862c7de91798fb9fe85fa8d8980aa59961a9642",
+    "src/lib/search/settings.ts": "d2dd267a7f60c52f6210917a3b50eedff2220b01",
+    "src/lib/search/web-demo-fixtures.ts": "1ef41b761a390e3984fbb9d7f1373045a606a689",
+    "src/lib/web-demo-fetch.ts": "15d3b7618049e12700fcb1aa1d3d53dbeb8762c6",
+    "src/lib/web-demo-runtime.ts": "c1893d22c02cabd282bb66e7dae31ff8873b8172",
+    "src/server/admin-api/router.ts": "b5ad40e700cac10bfa6ce6cb0b2592bb0ae67539",
+    "src/server/http-compat-api.test.ts": "affa808a821b8a5319da9c1abadeb6f60a4da17e",
+    "src/server/mcp.ts": "897817e8ffd82336f33ae2712fc3bdb02ffbe2a6",
+    "src/server/public-api/router.ts": "ef49f46ece1aee633599d9ba67c5e4e9b09be882",
+    "src/server/routers/search.ts": "17d4169e418c2b1bede78af2ada2f7c265e39067",
+    "src/server/services/content-search-index.ts": "e5f9734b3440d67e42eb4a049bee7fbf319a48d2",
+    "src/server/services/content-search.test.ts": "bdd9189c273315d8e523a0d3a7852caac907231e",
+    "src/server/services/content-search.ts": "073c0ddf9dec8dec292a08ed1bd03874436caf31",
+    "src/server/services/search-index-recovery.test.ts": "18ab31a2f3acc78dcc2796dbe50b06212c213f04",
+    "src/server/services/search-index-runtime.ts": "85d1e9c80c30b0bbfa8c88e68e74d456a928babe",
+    "src/server/services/search-migration.test.ts": "17f28fa21e41b54b5e1e45f612032dbf6aad3e74",
+    "src/server/services/search-model.ts": "340232352f0a79166061e442b7df8d961c5f2a86",
+    "src/server/services/search-policy.ts": "2958d919f588da3d00db19de3436c4dfd141ebe5",
+    "src/server/services/search-ranking.test.ts": "a1927cc89a51dcbec2a1ed13253042455e81aa65",
+    "src/server/services/search-ranking.ts": "e724b26ed28274b18021725a7ec1897fea396d1a",
+    "src/server/services/search-rewrite-quality.ts": "73840d921747c97e28a396238fef71f05f9c5c63",
+    "src/server/services/search-rewrite.ts": "44039180c541240b702ae8f37da6fda47465fc70",
+    "src/server/services/search-suggestions.ts": "70dae530f395a3b0f1637b436d3c654de85f6049",
+    "src/server/services/search-validation.ts": "12aff86b24c8973579dce15893635a3deca3c73d",
+    "tests/e2e/web-demo/search-modes.spec.ts": "a67bed949eeb263a581f974a9f78607f2ef32719",
+    "tests/lib/web-demo-fetch.test.ts": "58fe5562c007f153e2d07d21ef1314ee90c492dd",
+    "tests/fixtures/search-recovery-process.ts": "2b2cd51d287cb64b15440b8798a36152051f0641",
+    "tests/storybook/playbook-interactions.ts": "10e26bd2780064beb513e07948bb93e274a39c5b",
+    "docs/adr/0022-keyword-default-unified-ranking.md": "845be97d41656cddf36ac63afd5fd28cede38dba",
+    ".github/workflows/e2e.yml": "4cfc39d9e327efc9ff624050dbaba1aa61aad4d8",
+    ".github/workflows/enable-recovery-auto-merge.yml": "9bceaeafdbac4718809aedcf4fe5f9f50c488ed3",
+    ".github/workflows/recover-published-release.yml": "6b793bd16513a8986c29389608ad90265732c6f1",
+    "VERSION": "fb2c0766b7cc222e3f7c0296bcd6cbf144995f36",
+    "docs/specs/public-csr-navigation/HISTORY.md": "be9e577ffe0d47570791ff2a6ccc30033251cd95",
+    "docs/specs/public-csr-navigation/IMPLEMENTATION.md": "c410d1ade9df827aafc8ab333fc47f6c71a20281",
+    "docs/specs/public-csr-navigation/SPEC.md": "72bbf7e78c94feabee7e4c5796e9da38dd3464c8",
+    "docs/version-impact/playbook-tab-descriptions.json": "31cc237e683dd29cf39c511490832cb6297445a9",
+    "docs/version-impact/public-csr-route-skeleton.json": "01b9786e5ceeb274b9020467f9f15cc8035c6ce1",
+    "docs/version-impact/recover-published-release.json": "47489533495b060d85c8dc6bc079b876bd5dd5ad",
+    "scripts/recover-published-release.ts": "33007d14c6602fcca26b3ff12e63e65899c8eeac",
+    "site/components/PublicRouteSkeleton.tsx": "134d0a071a5bb977ab315bac6abdcb2f5d6e071f",
+    "site/lib/public-route-skeleton.ts": "345ce7f375c30f2f27b940a70e37965fbf995468",
+    "site/styles/public-pages.css": "2a6830fdea929861b4cb581bb9bb5fe713f2be51",
+    "src/components/WebDemoInspector.tsx": "ab2f1d0ea0b0f58338d2a63a1701a387e10287a1",
+    "src/components/playbook/PlaybookPage.tsx": "749c488212c1e024a53006013031edfc7f01362a",
+    "tests/e2e/guest/public-csr-navigation.spec.ts": "ad366b51afad990cdb7c9520d85957d96be2e6e0",
+    "tests/e2e/web-demo/public-csr.spec.ts": "e5d1397a81984bbafa33a6807e6dfcc4a971d6f8",
+    "tests/lib/public-csr-route.test.ts": "7216901d8d686be2a80c0ea54592c6b97af38f4c",
+    "tests/lib/web-demo-inspector-layout.test.ts": "9e6874c480bd272b2c3295d85aecfbc4b7fc7a65",
+    "tests/e2e/guest/nature-front-coverage.spec.ts": "d71525950e6095ca5dd396b723fa27eb3b54ea38"
+  },
+  "change": {
+    "description": "Introduce embedded Tantivy keyword search, independently configurable RAG and query-rewrite modes, direct original-query fallback, mode-aware public/API/MCP behavior, and existing administrator model-page search controls.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "major",
+      "reasoning": "Embedded Tantivy and independent AI modes add capabilities, but enhanced search now deliberately rejects NEAR and unsupported reranker-model overrides; these externally observable compatibility breaks require a Major. SQLite upgrades are additive and preserve source content and the legacy reader.",
+      "assessed_at": "2026-10-09T12:08:24.266643+00:00",
+      "evidence": [
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "bdd9189c273315d8e523a0d3a7852caac907231e",
+          "command": "bun test --timeout 30000 src/server/services/content-search.test.ts src/server/services/search-ranking.test.ts"
+        },
+        {
+          "path": "src/lib/search/native-query.test.ts",
+          "blob": "a18783f93fd3d6f1792a28da8eec1c8e87f4121f",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "src/server/services/search-migration.test.ts",
+          "blob": "17f28fa21e41b54b5e1e45f612032dbf6aad3e74",
+          "command": "bun test src/server/services/search-migration.test.ts"
+        },
+        {
+          "path": "src/server/services/search-index-recovery.test.ts",
+          "blob": "18ab31a2f3acc78dcc2796dbe50b06212c213f04",
+          "command": "bun run test:precommit"
+        }
+      ]
+    },
+    "current": {
+      "impact": "major",
+      "reasoning": "Embedded Tantivy and independent AI modes add capabilities, but enhanced search now deliberately rejects NEAR and unsupported reranker-model overrides; these externally observable compatibility breaks require a Major. SQLite upgrades are additive and preserve source content and the legacy reader.",
+      "assessed_at": "2026-10-09T12:08:24.266643+00:00",
+      "evidence": [
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "bdd9189c273315d8e523a0d3a7852caac907231e",
+          "command": "bun test --timeout 30000 src/server/services/content-search.test.ts src/server/services/search-ranking.test.ts"
+        },
+        {
+          "path": "src/lib/search/native-query.test.ts",
+          "blob": "a18783f93fd3d6f1792a28da8eec1c8e87f4121f",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "src/server/services/search-migration.test.ts",
+          "blob": "17f28fa21e41b54b5e1e45f612032dbf6aad3e74",
+          "command": "bun test src/server/services/search-migration.test.ts"
+        },
+        {
+          "path": "src/server/services/search-index-recovery.test.ts",
+          "blob": "18ab31a2f3acc78dcc2796dbe50b06212c213f04",
+          "command": "bun run test:precommit"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The final scope follows the approved three-mode and administrator settings contract; empirical ranking repairs preserve the accepted relevance requirements."
+      }
+    },
+    "verified": {
+      "impact": "major",
+      "reasoning": "Embedded Tantivy and independent AI modes add capabilities, but enhanced search now deliberately rejects NEAR and unsupported reranker-model overrides; these externally observable compatibility breaks require a Major. SQLite upgrades are additive and preserve source content and the legacy reader.",
+      "assessed_at": "2026-10-09T12:08:24.266643+00:00",
+      "evidence": [
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "bdd9189c273315d8e523a0d3a7852caac907231e",
+          "command": "bun test --timeout 30000 src/server/services/content-search.test.ts src/server/services/search-ranking.test.ts"
+        },
+        {
+          "path": "src/lib/search/native-query.test.ts",
+          "blob": "a18783f93fd3d6f1792a28da8eec1c8e87f4121f",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "src/server/services/search-migration.test.ts",
+          "blob": "17f28fa21e41b54b5e1e45f612032dbf6aad3e74",
+          "command": "bun test src/server/services/search-migration.test.ts"
+        },
+        {
+          "path": "src/server/services/search-index-recovery.test.ts",
+          "blob": "18ab31a2f3acc78dcc2796dbe50b06212c213f04",
+          "command": "bun run test:precommit"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "major",
+      "change": "breaking",
+      "supported_consumer_versions": ["2.12.0"],
+      "evidence": [
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "bdd9189c273315d8e523a0d3a7852caac907231e",
+          "command": "bun test --timeout 30000 src/server/services/content-search.test.ts src/server/services/search-ranking.test.ts"
+        },
+        {
+          "path": "src/lib/search/native-query.test.ts",
+          "blob": "a18783f93fd3d6f1792a28da8eec1c8e87f4121f",
+          "command": "bun run test:precommit"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "minor",
+      "applicable": true,
+      "state_description": "New SQLite outbox/version/checkpoint/settings tables and triggers; Tantivy is a rebuildable versioned projection. Released migration SQL remains unchanged. Supported 2.7.0 uses migration 0010; 2.8.3 through 2.12.0 use 0011. Both historical states upgrade and retain the existing SQLite reader.",
+      "readable_by_prior_versions": ["2.7.0", "2.8.3", "2.9.0", "2.10.0", "2.11.2", "2.12.0"],
+      "upgrade_from_versions": ["2.7.0", "2.8.3", "2.9.0", "2.10.0", "2.11.2", "2.12.0", "2.13.0"],
+      "evidence": [
+        {
+          "path": "src/server/services/search-migration.test.ts",
+          "blob": "17f28fa21e41b54b5e1e45f612032dbf6aad3e74",
+          "command": "bun test src/server/services/search-migration.test.ts"
+        },
+        {
+          "path": "src/server/services/search-index-recovery.test.ts",
+          "blob": "18ab31a2f3acc78dcc2796dbe50b06212c213f04",
+          "command": "bun run test:precommit"
+        }
+      ]
+    }
+  }
+}

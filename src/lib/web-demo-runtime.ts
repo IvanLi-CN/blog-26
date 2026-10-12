@@ -33,6 +33,10 @@ export type WebDemoScene =
   | "clipping-long-article"
   | "playbook-index"
   | "playbook-topic"
+  | "search-ready"
+  | "search-rewrite-ready"
+  | "search-ai-unavailable"
+  | "search-index-unavailable"
   | "admin-dashboard"
   | "admin-editor";
 
@@ -137,6 +141,10 @@ const scenes = [
   "clipping-long-article",
   "playbook-index",
   "playbook-topic",
+  "search-ready",
+  "search-rewrite-ready",
+  "search-ai-unavailable",
+  "search-index-unavailable",
   "admin-dashboard",
   "admin-editor",
 ] as const satisfies readonly WebDemoScene[];
@@ -209,6 +217,7 @@ export function getDefaultWebDemoSceneState(pathname = ""): WebDemoSceneState {
   if (pathname.startsWith("/playbook")) return { ...defaultSceneState, scene: "playbook-index" };
   if (isClippingWebDemoPath(pathname)) return { ...defaultSceneState, scene: "clipping-ready" };
   if (pathname.startsWith("/memos")) return { ...defaultSceneState, scene: "memo-middle" };
+  if (pathname.startsWith("/search")) return { ...defaultSceneState, scene: "search-ready" };
   return { ...defaultSceneState };
 }
 
@@ -425,6 +434,31 @@ export function getWebDemoSceneOptions(pathname: string, app: WebDemoApp): WebDe
         value: "admin-editor",
         label: "后台 · 编辑器",
         description: "文件树、编辑器和模拟保存反馈。",
+      },
+    ];
+  }
+
+  if (pathname.startsWith("/search")) {
+    return [
+      {
+        value: "search-ready",
+        label: "搜索 · RAG 补充",
+        description: "先显示全文命中，再展示 RAG 语义补充。",
+      },
+      {
+        value: "search-rewrite-ready",
+        label: "搜索 · AI 改写补充",
+        description: "先显示全文命中，再展示 AI 改写带来的补充结果。",
+      },
+      {
+        value: "search-ai-unavailable",
+        label: "搜索 · AI 不可用",
+        description: "保留所选模式，使用原始关键词回退。",
+      },
+      {
+        value: "search-index-unavailable",
+        label: "搜索 · 索引故障",
+        description: "显示受控错误，区别于成功空列表。",
       },
     ];
   }

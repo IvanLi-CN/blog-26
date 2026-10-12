@@ -8,10 +8,6 @@ import {
   type SearchResultItem,
 } from "@/components/search/search-model";
 import { buildSearchHref, shouldPushSearchHref } from "@/components/search/search-navigation";
-import {
-  readCachedSearchResults,
-  writeCachedSearchResults,
-} from "@/components/search/search-results-cache";
 import type { SearchSuggestionItem, SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import {
   buildPlaybookIndex,
@@ -19,12 +15,15 @@ import {
   queryPlaybookSearch,
 } from "@/lib/playbook/search";
 import type { PlaybookSearchPayload } from "@/lib/playbook/types";
+import { type SearchMode, type SearchReason, searchModeSchema } from "@/lib/search/settings";
 import { webDemoFetch } from "@/lib/web-demo-fetch";
+import { getWebDemoEnvironment, isWebDemoBuildEnabled } from "@/lib/web-demo-runtime";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 
 const SEARCH_RESULTS_CACHE_TTL_MS = 5 * 60 * 1000;
 
-const SEARCH_SUGGESTIONS_CACHE_PREFIX = "blog25:public-search-suggestions:v3:";
+const SEARCH_SUGGESTIONS_CACHE_PREFIX = "blog25:public-search-suggestions:v4:";
+const WEB_DEMO_AI_SUPPLEMENT_DELAY_MS = 5000;
 const useSafeLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 export type PlaybookSearchSource = {
@@ -83,13 +82,21 @@ type CachedSearchSuggestions = {
   suggestions: SearchSuggestionItem[];
 };
 
-function getSearchSuggestionsCacheKey(query: string, reason: SearchSuggestionReason) {
-  return `${SEARCH_SUGGESTIONS_CACHE_PREFIX}${reason}:${encodeURIComponent(query.trim().toLowerCase())}:5`;
+function getSearchSuggestionsCacheKey(
+  query: string,
+  reason: SearchSuggestionReason,
+  strategy: "auto" | "deterministic"
+) {
+  return `${SEARCH_SUGGESTIONS_CACHE_PREFIX}${strategy}:${reason}:${encodeURIComponent(query.trim().toLowerCase())}:5`;
 }
 
-function readCachedSearchSuggestions(query: string, reason: SearchSuggestionReason) {
+function readCachedSearchSuggestions(
+  query: string,
+  reason: SearchSuggestionReason,
+  strategy: "auto" | "deterministic"
+) {
   try {
-    const cacheKey = getSearchSuggestionsCacheKey(query, reason);
+    const cacheKey = getSearchSuggestionsCacheKey(query, reason, strategy);
     const raw = window.sessionStorage.getItem(cacheKey);
     if (!raw) return null;
     const cached = JSON.parse(raw) as CachedSearchSuggestions;
@@ -112,11 +119,12 @@ function readCachedSearchSuggestions(query: string, reason: SearchSuggestionReas
 function writeCachedSearchSuggestions(
   query: string,
   reason: SearchSuggestionReason,
-  suggestions: SearchSuggestionItem[]
+  suggestions: SearchSuggestionItem[],
+  strategy: "auto" | "deterministic"
 ) {
   try {
     window.sessionStorage.setItem(
-      getSearchSuggestionsCacheKey(query, reason),
+      getSearchSuggestionsCacheKey(query, reason, strategy),
       JSON.stringify({
         expiresAt: Date.now() + SEARCH_RESULTS_CACHE_TTL_MS,
         suggestions,
@@ -127,9 +135,9 @@ function writeCachedSearchSuggestions(
   }
 }
 
-async function search(query: string, signal?: AbortSignal) {
+async function search(query: string, mode: SearchMode, signal?: AbortSignal) {
   const response = await webDemoFetch(
-    toPublicApiUrl(`/api/public/search?q=${encodeURIComponent(query)}&topK=50`),
+    toPublicApiUrl(`/api/public/search?q=${encodeURIComponent(query)}&topK=50&mode=${mode}`),
     { signal }
   );
   const payload = await response.json().catch(() => []);
@@ -138,19 +146,52 @@ async function search(query: string, signal?: AbortSignal) {
       payload && typeof payload.error === "string" ? payload.error : "搜索失败，请稍后重试";
     throw new Error(message);
   }
-  return (payload ?? []) as SearchResultItem[];
+  const effective = searchModeSchema.safeParse(response.headers.get("Search-Effective-Mode"));
+  return {
+    results: (payload ?? []) as SearchResultItem[],
+    effectiveMode: effective.success ? effective.data : mode,
+    reason: response.headers.get("Search-Reason") as SearchReason | null,
+  };
+}
+
+function waitForWebDemoAiSupplement(signal?: AbortSignal) {
+  const environment = getWebDemoEnvironment(window.location, "public");
+  const delayMs =
+    environment.delay === "slow"
+      ? 6500
+      : environment.delay === "custom"
+        ? Math.max(600, environment.delayMs)
+        : WEB_DEMO_AI_SUPPLEMENT_DELAY_MS;
+  return new Promise<void>((resolve, reject) => {
+    let timer = 0;
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+    };
+    const onAbort = () => {
+      cleanup();
+      reject(new DOMException("The AI supplement was aborted.", "AbortError"));
+    };
+    timer = window.setTimeout(() => {
+      cleanup();
+      if (signal?.aborted) onAbort();
+      else resolve();
+    }, delayMs);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 async function loadSearchSuggestions(
   query: string,
   reason: SearchSuggestionReason,
+  strategy: "auto" | "deterministic",
   signal?: AbortSignal
 ) {
   const response = await webDemoFetch(
     toPublicApiUrl(
       `/api/public/search/suggestions?q=${encodeURIComponent(query)}&reason=${encodeURIComponent(
         reason
-      )}&limit=5`
+      )}&limit=5&strategy=${strategy}`
     ),
     { signal }
   );
@@ -177,9 +218,11 @@ async function loadSearchSuggestions(
 export default function SearchPageIsland({
   playbook,
   initialQuery = "",
+  initialMode = "keyword",
 }: {
   playbook?: PlaybookSearchSource;
   initialQuery?: string;
+  initialMode?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -188,30 +231,41 @@ export default function SearchPageIsland({
   const suggestionsRequestIdRef = useRef(0);
   const [query, setQuery] = useState(initialQuery);
   const [searchedQuery, setSearchedQuery] = useState(initialQuery);
+  const [mode, setMode] = useState<SearchMode>(
+    () => searchModeSchema.safeParse(initialMode).data ?? "keyword"
+  );
+  const [effectiveMode, setEffectiveMode] = useState<SearchMode | undefined>();
+  const [reason, setReason] = useState<SearchReason | undefined>();
   const [filter, setFilter] = useState<SearchFilter>("all");
   const [results, setResults] = useState<SearchResultGroup[]>([]);
   const [isLoading, setIsLoading] = useState(Boolean(initialQuery.trim()));
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [recommendedSearchTerms, setRecommendedSearchTerms] = useState<SearchSuggestionItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [aiSupplementLoading, setAiSupplementLoading] = useState(false);
 
   const syncFromLocation = useCallback(() => {
     abortRef.current?.abort();
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
-    const current = new URL(window.location.href).searchParams.get("q") || "";
-    setQuery(current);
-    setSearchedQuery(current);
-    setFilter("all");
-    if (!current.trim()) {
+    const params = new URL(window.location.href).searchParams;
+    const current = params.get("q") || "";
+    const selected = searchModeSchema.safeParse(params.get("mode") ?? "keyword");
+    setEffectiveMode(undefined);
+    setReason(undefined);
+    if (!selected.success) {
+      setError("不支持的搜索模式，请重新选择。");
       setResults([]);
-      setError(null);
       setIsLoading(false);
       return;
     }
-    const cachedResults = readCachedSearchResults(current.trim(), playbook?.edition);
-    if (cachedResults) {
-      setResults(cachedResults);
+    setMode(selected.data);
+    setQuery(current);
+    setSearchedQuery(current);
+    setFilter("all");
+    setAiSupplementLoading(false);
+    if (!current.trim()) {
+      setResults([]);
       setError(null);
       setIsLoading(false);
       return;
@@ -221,27 +275,58 @@ export default function SearchPageIsland({
     setIsLoading(true);
     setError(null);
     void Promise.allSettled([
-      search(current.trim(), controller.signal),
+      search(current.trim(), selected.data, controller.signal),
       searchPlaybook(current.trim(), playbook),
     ])
       .then((sources) => {
-        const nextResults = groupSearchResults(
-          sources.flatMap((source) => (source.status === "fulfilled" ? source.value : []))
+        if (requestIdRef.current !== requestId || controller.signal.aborted) return;
+        const blog = sources[0];
+        const playbookSource = sources[1];
+        const blogResults = blog.status === "fulfilled" ? blog.value.results : [];
+        const playbookResults = playbookSource.status === "fulfilled" ? playbookSource.value : [];
+        const keywordResults = blogResults.filter((result) => result.searchOrigin !== "ai");
+        const aiResults = blogResults.filter((result) => result.searchOrigin === "ai");
+        const canStageAiSupplement =
+          isWebDemoBuildEnabled() &&
+          selected.data !== "keyword" &&
+          blog.status === "fulfilled" &&
+          blog.value.effectiveMode === selected.data &&
+          aiResults.length > 0;
+        setResults(
+          groupSearchResults(
+            canStageAiSupplement
+              ? [...keywordResults, ...playbookResults]
+              : [...blogResults, ...playbookResults]
+          )
         );
-        if (sources.every((source) => source.status === "rejected"))
-          throw new Error("搜索暂不可用，请重试");
-        if (requestIdRef.current === requestId) {
-          setResults(nextResults);
-          const playbookSource = sources[1];
-          if (playbookSource.status === "rejected")
-            setError(
-              playbookSource.reason instanceof Error
-                ? playbookSource.reason.message
-                : "执念搜索暂不可用"
-            );
-          if (sources.every((source) => source.status === "fulfilled"))
-            writeCachedSearchResults(current.trim(), nextResults, playbook?.edition);
+        if (blog.status === "fulfilled") {
+          setEffectiveMode(blog.value.effectiveMode);
+          setReason(blog.value.reason ?? undefined);
         }
+        if (canStageAiSupplement) {
+          setAiSupplementLoading(true);
+          void waitForWebDemoAiSupplement(controller.signal)
+            .then(() => {
+              if (requestIdRef.current !== requestId || controller.signal.aborted) return;
+              // The API has already ranked literal and AI candidates together.
+              // Preserve that order when the delayed supplement becomes visible.
+              setResults(groupSearchResults([...blogResults, ...playbookResults]));
+              setAiSupplementLoading(false);
+            })
+            .catch(() => {
+              if (requestIdRef.current !== requestId || controller.signal.aborted) return;
+              setAiSupplementLoading(false);
+            });
+        }
+        const failures = sources.filter((source) => source.status === "rejected");
+        if (failures.length)
+          setError(
+            failures
+              .map((source) =>
+                source.reason instanceof Error ? source.reason.message : "搜索暂不可用"
+              )
+              .join("；")
+          );
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;
@@ -284,12 +369,15 @@ export default function SearchPageIsland({
   const suggestionReason = useMemo<SearchSuggestionReason | null>(() => {
     const current = searchedQuery.trim();
     if (!current || isLoading) return null;
-    if (results.length === 0) return "empty";
+    if (error || results.length === 0) return "empty";
     return null;
-  }, [isLoading, results.length, searchedQuery]);
+  }, [isLoading, results.length, searchedQuery, error]);
+  const suggestionStrategy =
+    effectiveMode === "keyword" || mode === "keyword" || error ? "deterministic" : "auto";
 
   useEffect(() => {
     suggestionsAbortRef.current?.abort();
+    const requestId = ++suggestionsRequestIdRef.current;
     const currentQuery = searchedQuery.trim();
     if (!suggestionReason || !currentQuery) {
       setRecommendedSearchTerms([]);
@@ -297,24 +385,36 @@ export default function SearchPageIsland({
       return;
     }
 
-    const cachedSuggestions = readCachedSearchSuggestions(currentQuery, suggestionReason);
+    const cachedSuggestions = readCachedSearchSuggestions(
+      currentQuery,
+      suggestionReason,
+      suggestionStrategy
+    );
     if (cachedSuggestions) {
       setRecommendedSearchTerms(cachedSuggestions);
       setIsLoadingRecommendations(false);
       return;
     }
 
-    const requestId = suggestionsRequestIdRef.current + 1;
-    suggestionsRequestIdRef.current = requestId;
     const controller = new AbortController();
     suggestionsAbortRef.current = controller;
     setIsLoadingRecommendations(true);
     setRecommendedSearchTerms([]);
-    void loadSearchSuggestions(currentQuery, suggestionReason, controller.signal)
+    void loadSearchSuggestions(
+      currentQuery,
+      suggestionReason,
+      suggestionStrategy,
+      controller.signal
+    )
       .then((suggestions) => {
         if (suggestionsRequestIdRef.current !== requestId) return;
         setRecommendedSearchTerms(suggestions);
-        writeCachedSearchSuggestions(currentQuery, suggestionReason, suggestions);
+        writeCachedSearchSuggestions(
+          currentQuery,
+          suggestionReason,
+          suggestions,
+          suggestionStrategy
+        );
       })
       .catch(() => {
         if (controller.signal.aborted || suggestionsRequestIdRef.current !== requestId) return;
@@ -325,15 +425,15 @@ export default function SearchPageIsland({
       });
 
     return () => controller.abort();
-  }, [searchedQuery, suggestionReason]);
+  }, [searchedQuery, suggestionReason, suggestionStrategy]);
 
   const runSearchForQuery = useCallback(
-    (value: string) => {
+    (value: string, selectedMode = mode) => {
       const nextQuery = value.trim();
       setQuery(nextQuery);
       const currentHref = window.location.href;
-      const nextHref = buildSearchHref(currentHref, nextQuery);
-      if (!shouldPushSearchHref(currentHref, nextQuery)) {
+      const nextHref = buildSearchHref(currentHref, nextQuery, selectedMode);
+      if (!shouldPushSearchHref(currentHref, nextQuery, selectedMode)) {
         window.history.replaceState({ publicSearchQuery: nextQuery }, "", nextHref);
         syncFromLocation();
         return;
@@ -342,7 +442,7 @@ export default function SearchPageIsland({
       window.history.pushState({ publicSearchQuery: nextQuery }, "", nextHref);
       syncFromLocation();
     },
-    [syncFromLocation]
+    [syncFromLocation, mode]
   );
 
   const clearSearch = useCallback(() => {
@@ -365,6 +465,10 @@ export default function SearchPageIsland({
 
   return (
     <PublicSearchPage
+      mode={mode}
+      effectiveMode={effectiveMode}
+      reason={reason}
+      onModeChange={(nextMode) => runSearchForQuery(searchedQuery || query, nextMode)}
       query={query}
       searchedQuery={searchedQuery}
       results={results}
@@ -379,6 +483,7 @@ export default function SearchPageIsland({
       onSubmit={onSubmit}
       recommendedSearchTerms={recommendedSearchTerms}
       isLoadingRecommendations={isLoadingRecommendations}
+      aiSupplementLoading={aiSupplementLoading}
       inputRef={inputRef}
       resolveHref={(result) => toPublicSitePath(getSearchResultHref(result)) ?? "#"}
     />

@@ -3,6 +3,8 @@
 
 # 依赖目录
 node_modules
+native/search/target/
+native/search/*.node
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

@@ -28,4 +28,16 @@ describe("search navigation", () => {
   test("reads the current search term from a route", () => {
     expect(readSearchQueryFromHref("http://example.test/search?q=React+Hooks")).toBe("React Hooks");
   });
+
+  test("preserves explicit modes in shareable URLs and history entries", () => {
+    expect(buildSearchHref("http://example.test/search?q=Node&mode=rag", "SQLite", "rewrite")).toBe(
+      "http://example.test/search?q=SQLite&mode=rewrite"
+    );
+    expect(
+      shouldPushSearchHref("http://example.test/search?q=Node&mode=rag", "Node", "keyword")
+    ).toBe(true);
+    expect(
+      shouldPushSearchHref("http://example.test/search?q=Node&mode=keyword", "Node", "keyword")
+    ).toBe(false);
+  });
 });

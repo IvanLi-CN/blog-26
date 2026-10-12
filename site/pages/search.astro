@@ -34,6 +34,10 @@ const about = { kind: 'about' as const, data: await loadabout(Astro) };
       };
       const query = new URL(window.location.href).searchParams.get("q") ?? "";
       if (!query.trim() || !(island instanceof HTMLElement) || island.dataset.searchReady === "true") return;
+      const requestedMode = new URL(window.location.href).searchParams.get("mode") ?? "keyword";
+      bootstrap.querySelectorAll("[data-search-mode]").forEach(element => element.setAttribute("aria-pressed", String(element.getAttribute("data-search-mode") === requestedMode)));
+      const description = bootstrap.querySelector("[data-search-mode-description]");
+      if (description) description.textContent = ({ rag: "先返回全文命中，再由 AI 补充语义相关内容。", rewrite: "先返回全文命中，再由 AI 改写查询补充结果。", keyword: "关闭智能搜索，仅使用快速全文检索。" })[requestedMode] ?? "不支持的搜索模式";
       const input = bootstrap.querySelector("[data-search-query-input]");
       if (input instanceof HTMLInputElement) {
         input.value = query;

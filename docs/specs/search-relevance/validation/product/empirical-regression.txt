@@ -1,0 +1,46 @@
+Connected to the SQLite database at /tmp/blog-search-empirical-63hb90/content.sqlite
+Drizzle ORM initialized.
+{"isolatedArtifacts":"/tmp/blog-search-empirical-63hb90","policy":{"rag":{"enabled":true,"model":null,"timeoutMs":10000,"maxInputTokens":16384,"maxOutputTokens":2048,"candidateLimit":20,"contentCodePoints":2048},"rewrite":{"enabled":true,"model":null,"timeoutMs":30000,"maxInputTokens":4096,"maxOutputTokens":4096,"maxQueries":3}}}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":469}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":197}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":140}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":5372}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":3659}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":6152}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":1916}
+{"validation":{"id":"af815e9a-0be7-4aea-805c-c59aba49a232","mode":"rag","fingerprint":"b57a1d5a108471ee5d0fd655e2565237dc495eccaa1e5c0e14b08642e3978a1c","status":"passed","completed":4,"total":4,"startedAt":1791542133193,"finishedAt":1791542151133}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":2403}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":2216}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":2105}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":1080}
+{"validation":{"id":"54a8f9bf-ef44-4d1b-a714-bd075e286fb0","mode":"rewrite","fingerprint":"431643520ff288445614224cc6ce193a56bc81667a5dd56038499ded82c4c389","status":"passed","completed":4,"total":4,"startedAt":1791542151158,"finishedAt":1791542158975}}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":152}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":142}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":154}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":132}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":138}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":130}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":144}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":"TimeoutError"}
+{"execution":{"q":"SQLite","requestedMode":"rag","effectiveMode":"keyword","reason":"timeout","ids":["keyword"]}}
+134 |           reason: result.reason,
+135 |           ids,
+136 |         },
+137 |       })
+138 |     );
+139 |     assert.equal(result.effectiveMode, mode, "the selected AI chain actually executed");
+                 ^
+AssertionError: the selected AI chain actually executed
+
+'keyword' !== 'rag'
+
+ generatedMessage: false,
+     actual: "keyword",
+   expected: "rag",
+   operator: "strictEqual",
+       diff: "simple",
+       code: "ERR_ASSERTION"
+
+      at /workspace/worktrees/search-modes/src/scripts/verify-search-empirical.ts:139:12
+
+Bun v1.4.2 (Linux x64)

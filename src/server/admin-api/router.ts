@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import OpenAI from "openai";
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
 import { isValidIconId } from "@/lib/icons/aliases";
 import {
   decorateUpstreamLlmModelNames,
@@ -9,6 +9,7 @@ import {
   toBuiltinLlmModelOptions,
 } from "@/lib/llm-models";
 import { type LlmTier, llmTierSchema } from "@/lib/llm-settings";
+import { aiSearchModeSchema } from "@/lib/search/settings";
 import { createContext } from "@/server/context";
 import { handleAdminPreviewAssetRequest } from "@/server/public-media";
 import { appRouter } from "@/server/router";
@@ -22,6 +23,8 @@ import {
   testAdminLlmSettings,
   updateAdminLlmSettings,
 } from "@/server/services/llm-settings";
+import { getAdminSearchSettings, saveSearchPolicy } from "@/server/services/search-policy";
+import { getSearchValidationRun, startSearchValidation } from "@/server/services/search-validation";
 import { organizeTagsWithAI } from "@/server/services/tag-ai";
 import {
   readTagGroupsFromDB,
@@ -264,6 +267,37 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
 
     const { caller, resHeaders } = await createAdminCallerForRequest(request);
 
+    if (pathname === "/search-settings") {
+      if (request.method === "GET")
+        return json(
+          await getAdminSearchSettings(),
+          { status: 200, headers: { "cache-control": "no-store" } },
+          resHeaders
+        );
+      if (request.method === "PUT")
+        return json(await saveSearchPolicy(await request.json()), { status: 200 }, resHeaders);
+      return methodNotAllowed(request.method, resHeaders);
+    }
+    if (pathname === "/search-settings/validate") {
+      if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
+      const body = z
+        .object({ mode: aiSearchModeSchema })
+        .strict()
+        .parse(await request.json());
+      return json(await startSearchValidation(body.mode), { status: 202 }, resHeaders);
+    }
+    const validationMatch = pathname.match(/^\/search-settings\/validation\/([0-9a-f-]{36})$/u);
+    if (validationMatch) {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      const run = getSearchValidationRun(validationMatch[1]);
+      return run
+        ? json(run, { status: 200, headers: { "cache-control": "no-store" } }, resHeaders)
+        : json(
+            { error: { code: "NOT_FOUND", message: "Validation run not found" } },
+            { status: 404 },
+            resHeaders
+          );
+    }
     if (pathname === "/llm-settings") {
       if (request.method === "GET") {
         return json(await getAdminLlmSettingsPayload(), { status: 200 }, resHeaders);
@@ -1027,6 +1061,12 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
       resHeaders
     );
   } catch (error) {
+    if (error instanceof ZodError || error instanceof SyntaxError) {
+      return json(
+        { error: { code: "BAD_REQUEST", message: "Invalid search settings input" } },
+        { status: 400 }
+      );
+    }
     if (error instanceof TRPCError) {
       return trpcErrorResponse(error);
     }

@@ -12,12 +12,17 @@ import { handleFilesApiRequest } from "@/server/files-api/router";
 import { handleMcpHttpRequest } from "@/server/mcp-http";
 import { handlePublicApiRequest } from "@/server/public-api/router";
 import { handleInternalAssetSourceRequest } from "@/server/public-media";
+import {
+  startSearchIndexRuntime,
+  stopSearchIndexRuntime,
+} from "@/server/services/search-index-runtime";
 import { handleTestApiRequest } from "@/server/test-api/router";
 import { handleTrpcHttpRequest } from "@/server/trpc-http";
 import { handleVersionRequest, readRuntimeVersionInfo } from "@/server/version-api";
 
 loadWorktreeEnvFileIfPresent();
 await startClippingRuntime();
+await startSearchIndexRuntime();
 
 type GatewayMode = "dev" | "production";
 
@@ -744,6 +749,7 @@ log("gateway ready", {
 const shutdown = async () => {
   log("shutting down gateway");
   await stopClippingRuntime();
+  stopSearchIndexRuntime();
   server.stop();
 };
 

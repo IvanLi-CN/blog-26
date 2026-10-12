@@ -16,6 +16,7 @@ import type {
   LlmTier,
 } from "@/lib/llm-settings";
 import { LlmModelPicker } from "~/components/llm-model-picker";
+import { SearchSettingsPanel } from "~/components/search-settings-panel";
 import {
   Alert,
   Button,
@@ -49,7 +50,7 @@ const TIER_META: Record<LlmTier, { title: string; accent: string }> = {
   },
   rerank: {
     title: "重排序模型",
-    accent: "增强检索重排",
+    accent: "独立重排序请求",
   },
 };
 
@@ -497,6 +498,7 @@ export function LlmSettingsPage() {
     onSuccess: (payload) => {
       queryClient.setQueryData(["admin-llm-settings"], payload);
       queryClient.invalidateQueries({ queryKey: ["admin-llm-models"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-search-settings"] });
       setEditor(settingsToEditor(payload));
       setNotice(
         payload.hints.embeddingReindexRequired
@@ -630,6 +632,8 @@ export function LlmSettingsPage() {
         }}
         onChange={setEditor}
       />
+
+      <SearchSettingsPanel providerDirty={editorDirty} />
 
       <LlmModelPicker
         source={pickerSource}

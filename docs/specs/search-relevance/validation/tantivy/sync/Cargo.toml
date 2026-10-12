@@ -1,0 +1,9 @@
+[package]
+name = "tantivy-sync-validation"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tantivy.workspace = true
+rusqlite.workspace = true
+tempfile.workspace = true

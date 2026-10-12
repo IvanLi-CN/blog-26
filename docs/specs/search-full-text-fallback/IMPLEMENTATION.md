@@ -8,6 +8,8 @@
 - Lifecycle: active
 - Catalog note: FTS5 index, parser, fallback routing, list integration, operational checks, and Storybook evidence are implemented on `th/search-fts-fallback`.
 
+三种模式、默认 RAG、原始关键词保全、名称与别名、独立 AI 链及直接关键词回退由 [搜索相关性主题](../search-relevance/SPEC.md) 定义，已接入运行时，当前交付验收仍在进行。下述仅从语义候选取结果及重排失败返回语义基础结果描述既有实现，不代表新目标。新主题采用内嵌 Tantivy，不以现有 trigram 已满足名称规则为前提；新模式及 enhanced 明确不支持 NEAR，旧列表与独立 semantic 的 SQLite 查询及 NEAR 计量保留，不删除共享 parser 能力。
+
 ## Coverage / rollout summary
 
 - Baseline inspection confirmed Bun SQLite FTS5 and the `trigram` tokenizer are available.
@@ -41,3 +43,34 @@
 
 - `./SPEC.md`
 - `./HISTORY.md`
+
+## Retained verification and operational considerations
+
+### Acceptance coverage
+
+- Index schema, backfill, and trigger lifecycle are defined.
+- Query modes, grammar, precedence, invalid retry, and short-word behavior are defined.
+- AI fallback and rerank exception behavior are defined.
+- Public/admin/list interface compatibility is defined.
+- Operational repair and validation commands are defined.
+
+### Quality gates
+
+#### Testing
+
+- Unit tests cover lexer/parser modes, operator precedence, quoted operators, malformed syntax, and AST compilation.
+- Integration tests cover migration, triggers, FTS ranking, Chinese short terms, index check/rebuild, and all search callers.
+- API/E2E tests cover public array responses, admin visibility, list pagination/sorting, and rerank fallback.
+
+#### UI / Storybook
+
+- No component contract changes are required. The existing public search render surface must be checked with deterministic fallback result fixtures if result ordering/content changes visibly.
+
+#### Quality checks
+
+- `bun run db:migrations:validate`
+- `bun run check`
+- targeted tests, `bun run test`, and `bun run build`
+
+
+FTS5 trigram cannot represent all short tokens; the controlled compiler retains escaped LIKE for those leaves. Direct database writers remain covered by SQLite triggers. Bun FTS5/trigram availability was verified for the original implementation. The three-mode successor does not replace these legacy list and explicit-semantic boundaries.

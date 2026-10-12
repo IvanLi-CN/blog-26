@@ -134,7 +134,11 @@ describe("webDemoFetch", () => {
       expect.objectContaining({ slug: "code-block-fixture" })
     );
     const suggestions = await webDemoFetch("/api/public/search/suggestions?q=fixture");
-    expect(await suggestions.json()).toHaveProperty("items");
+    expect(await suggestions.json()).toEqual({
+      items: [{ term: "Code Block Fixture", strategy: "related" }],
+    });
+    const unrelated = await webDemoFetch("/api/public/search/suggestions?q=Zettelkasten");
+    expect(await unrelated.json()).toEqual({ items: [] });
   });
 
   it("rejects unauthenticated comment mutations and non-admin moderation", async () => {

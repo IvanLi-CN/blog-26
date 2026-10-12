@@ -151,6 +151,27 @@ export const llmSettings = sqliteTable("llm_settings", {
   updatedAt: integer("updated_at").notNull(),
 });
 
+export const searchOutbox = sqliteTable("search_outbox", {
+  seq: integer("seq").primaryKey({ autoIncrement: true }),
+  contentId: text("content_id").notNull(),
+  operation: text("operation").notNull(),
+});
+export const searchContentVersions = sqliteTable("search_content_versions", {
+  contentId: text("content_id").primaryKey(),
+  version: integer("version").notNull(),
+});
+export const searchIndexState = sqliteTable("search_index_state", {
+  id: text("id").primaryKey(),
+  generation: text("generation").notNull(),
+  checkpoint: integer("checkpoint").notNull(),
+  schemaVersion: text("schema_version").notNull(),
+});
+export const searchSettings = sqliteTable("search_settings", {
+  id: text("id").primaryKey(),
+  config: text("config").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
 // 反应表
 export const reactions = sqliteTable("reactions", {
   id: text("id").primaryKey(),

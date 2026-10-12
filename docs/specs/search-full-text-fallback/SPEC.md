@@ -2,11 +2,13 @@
 
 > The normative contract lives here. Implementation coverage is recorded in `./IMPLEMENTATION.md`; durable decision rationale is recorded in `./HISTORY.md`.
 
-## Background / Problem Statement
+## Context and Scope
 
 The blog currently relies on embeddings and an optional reranker for the dedicated search route, while list endpoints use several inconsistent `LIKE` predicates. When an embedding provider or search model is unavailable, search can become unavailable instead of remaining useful. The existing implementation also has no reliable way to distinguish literal multi-word queries from advanced search syntax.
 
 This topic defines one SQLite-backed search contract for public posts, memos, and administrator lists. It keeps the public response shape stable while making syntax parsing, full-text indexing, fallback behavior, and operational repair durable project behavior.
+
+The [three-mode search contract](../search-relevance/SPEC.md) owns the successor behavior of the public dedicated search route and enhanced entry points: embedded Tantivy, protected original keyword matches, independent AI modes, and direct keyword fallback. For those entry points its requirements take precedence over this topic's old enhanced/rerank behavior and NEAR support. This topic remains authoritative for content list filters, explicit semantic search, the shared legacy parser, and their SQLite index/NEAR behavior; it is not retired as a whole.
 
 ## Goals / Non-goals
 
@@ -46,29 +48,30 @@ This topic defines one SQLite-backed search contract for public posts, memos, an
 
 ### MUST
 
-- The virtual table must be named `posts_search_fts` and contain `post_id UNINDEXED`, `type UNINDEXED`, `slug`, `title`, `excerpt`, `body`, and `tags`, using the `trigram` tokenizer.
-- The physical index must contain every row whose `type` is `post` or `memo`; caller-specific visibility and type filters must be applied outside the index.
-- The migration must backfill the index and create triggers for inserts, updates, deletes, and type changes. A migration failure must fail the migration command.
-- User input must be lexed and parsed before it reaches FTS5. Values and `LIKE` patterns must be bound parameters; column identifiers must come from an allowlist.
-- Search input must enforce bounded Unicode length, lexer token count, AST depth, and compiled SQL parameter cost before FTS/`LIKE` compilation; over-budget public requests must return a controlled `400 BAD_REQUEST` and must not enter literal retry.
-- A `simple` query must produce an AST whose literal leaves are joined with `AND`.
-- A valid advanced query must preserve its AST, with `NOT`/`AND` evaluated before `OR` and parentheses taking precedence.
-- Operators inside quotes must remain literal text. Malformed or unsupported advanced syntax must be classified as `advanced-invalid` and retried as literal terms joined by `AND`.
-- FTS results must not enter the existing AI search cache. Successful semantic/enhanced results may continue to use that cache.
-- Public `/search` must continue returning a JSON array with the existing result item fields; no mode/source field may be added.
-- Public tRPC search must always use `draft=false AND public=true`; MCP callers may request unpublished rows only when the MCP session is administrator-authenticated.
-- Public list contexts must enforce `draft=false AND public=true` regardless of compatibility input flags; `memos.list` is admin-aware and retains its existing draft/private scope for administrator contexts.
-- Semantic vector reads must be bounded by the eligible candidate limit, and malformed or dimension-mismatched stored vectors must select uncached FTS instead of failing the request.
+- REQ-SFT-001: The virtual table must be named `posts_search_fts` and contain `post_id UNINDEXED`, `type UNINDEXED`, `slug`, `title`, `excerpt`, `body`, and `tags`, using the `trigram` tokenizer.
+- REQ-SFT-002: The physical index must contain every row whose `type` is `post` or `memo`; caller-specific visibility and type filters must be applied outside the index.
+- REQ-SFT-003: The migration must backfill the index and create triggers for inserts, updates, deletes, and type changes. A migration failure must fail the migration command.
+- REQ-SFT-004: User input must be lexed and parsed before it reaches FTS5. Values and `LIKE` patterns must be bound parameters; column identifiers must come from an allowlist.
+- REQ-SFT-005: Search input must enforce bounded Unicode length, lexer token count, AST depth, and compiled SQL parameter cost before FTS/`LIKE` compilation; over-budget public requests must return a controlled `400 BAD_REQUEST` and must not enter literal retry.
+- REQ-SFT-006: A `simple` query must produce an AST whose literal leaves are joined with `AND`.
+- REQ-SFT-007: A valid advanced query must preserve its AST, with `NOT`/`AND` evaluated before `OR` and parentheses taking precedence.
+- REQ-SFT-008: Operators inside quotes must remain literal text. Malformed or unsupported advanced syntax must be classified as `advanced-invalid` and retried as literal terms joined by `AND`.
+- REQ-SFT-009: FTS results must not enter the existing AI search cache. Successful semantic/enhanced results may continue to use that cache.
+- REQ-SFT-010: Public `/search` must continue returning a JSON array with the existing result item fields; no mode/source field may be added.
+- REQ-SFT-011: Public tRPC search must always use `draft=false AND public=true`; MCP callers may request unpublished rows only when the MCP session is administrator-authenticated.
+- REQ-SFT-012: Public list contexts must enforce `draft=false AND public=true` regardless of compatibility input flags; `memos.list` is admin-aware and retains its existing draft/private scope for administrator contexts.
+- REQ-SFT-013: Semantic vector reads must be bounded by the eligible candidate limit, and malformed or dimension-mismatched stored vectors must select uncached FTS instead of failing the request.
 
 ### SHOULD
 
-- FTS ranking should use BM25 weights `slug=1`, `title=8`, `excerpt=4`, `body=1`, and `tags=4`.
-- FTS and literal fallback snippets should reuse the existing Markdown-aware snippet builder.
-- `db-tools search-index check` should detect missing, extra, duplicate, or stale indexed rows; `rebuild` should be explicit and writable.
+- REQ-SFT-014: FTS ranking should use BM25 weights `slug=1`, `title=8`, `excerpt=4`, `body=1`, and `tags=4`.
+- REQ-SFT-015: FTS and literal fallback snippets should reuse the existing Markdown-aware snippet builder.
+- REQ-SFT-016: `db-tools search-index check` should detect missing, extra, duplicate, or stale indexed rows; `rebuild` should be explicit and writable.
 
 ### COULD
 
-- Add internal diagnostics for the selected query mode and search source without exposing them in public responses.
+- REQ-SFT-017: Add internal diagnostics for the selected query mode and search source without exposing them in public responses.
+
 
 ## Functional / Behavior Spec
 
@@ -137,35 +140,35 @@ The migration creates and backfills `posts_search_fts`, then installs triggers. 
 - Given `published=false` on the public `posts.list` compatibility input, when the request is executed, then private and draft rows remain excluded.
 - Given index drift, when `search-index check` runs, then it exits non-zero with a diagnostic; after `rebuild`, the check passes.
 
-## Acceptance Coverage
+## Verification
 
-- Index schema, backfill, and trigger lifecycle are defined.
-- Query modes, grammar, precedence, invalid retry, and short-word behavior are defined.
-- AI fallback and rerank exception behavior are defined.
-- Public/admin/list interface compatibility is defined.
-- Operational repair and validation commands are defined.
+### VER-SFT-001 — Index consistency
 
-## Quality Gates
+- Covers: REQ-SFT-001, REQ-SFT-002, REQ-SFT-003, REQ-SFT-016.
+- Method: Migrate a populated SQLite database and exercise insert/update/delete/type transitions, including transaction rollback; run explicit index check and rebuild against synthetic drift.
+- Pass condition: All eligible source rows are represented exactly once, triggers maintain current values, migration failures are visible, and repair is explicit.
 
-### Testing
+### VER-SFT-002 — Controlled query semantics and budgets
 
-- Unit tests cover lexer/parser modes, operator precedence, quoted operators, malformed syntax, and AST compilation.
-- Integration tests cover migration, triggers, FTS ranking, Chinese short terms, index check/rebuild, and all search callers.
-- API/E2E tests cover public array responses, admin visibility, list pagination/sorting, and rerank fallback.
+- Covers: REQ-SFT-004, REQ-SFT-005, REQ-SFT-006, REQ-SFT-007, REQ-SFT-008.
+- Method: Exercise simple AND, Boolean precedence, quotes, field filters, bounded NEAR, short Chinese terms, malformed literal retry, and each resource budget with SQL-injection-shaped inputs.
+- Pass condition: Bound values and allowlisted columns preserve the AST; malformed syntax retries literally, while oversized requests are rejected before compilation or retry.
 
-### UI / Storybook
+### VER-SFT-003 — Semantic fallback and cache isolation
 
-- No component contract changes are required. The existing public search render surface must be checked with deterministic fallback result fixtures if result ordering/content changes visibly.
+- Covers: REQ-SFT-009, REQ-SFT-013, REQ-SFT-015, REQ-SFT-017.
+- Method: Use missing/failing embedding configuration, empty/over-limit/corrupt vectors, advanced queries, changed provider fingerprints, and Markdown snippets.
+- Pass condition: Explicit semantic search selects uncached controlled FTS fallback when necessary, with bounded reads and valid snippets; fallback results do not enter AI caches.
 
-### Quality checks
+### VER-SFT-004 — Caller compatibility and ranking
 
-- `bun run db:migrations:validate`
-- `bun run check`
-- targeted tests, `bun run test`, and `bun run build`
+- Covers: REQ-SFT-010, REQ-SFT-011, REQ-SFT-012, REQ-SFT-014.
+- Method: Compare public/admin list permissions, pagination and ordering, explicit semantic response arrays, MCP unpublished access, and weighted FTS ranking.
+- Pass condition: Published-only callers cannot expose private/draft rows; authenticated administrators retain their scope, list ordering remains stable, and legacy FTS ranking is reproducible. Public dedicated/enhanced successor behavior is verified under search-relevance.
 
 ## Visual Evidence
 
-Evidence binding: `6a6f98e1468d71671a3d0d2c390f1a7fdf5a9ff1` (current implementation head; the Storybook surface is unchanged since capture)
+Historical evidence binding: `6a6f98e1468d71671a3d0d2c390f1a7fdf5a9ff1`. These retained captures document the original fallback UI; current public-page evidence is owned by search-relevance and uses shipped Web Demo routes. They do not authorize recreating page Stories.
 
 - source_type: storybook_canvas
   target_program: mock-only
@@ -179,7 +182,6 @@ Evidence binding: `6a6f98e1468d71671a3d0d2c390f1a7fdf5a9ff1` (current implementa
   story_id_or_title: `public-search-page--simple-and-query`
   state: simple AND query
   evidence_note: The public search surface renders a normal multi-word query and its stable result list.
-  PR: include
   image: ![Simple AND query](./assets/search-simple-and.png)
 
 - source_type: storybook_canvas
@@ -194,7 +196,6 @@ Evidence binding: `6a6f98e1468d71671a3d0d2c390f1a7fdf5a9ff1` (current implementa
   story_id_or_title: `public-search-page--advanced-query`
   state: advanced-valid query
   evidence_note: The public search surface preserves a column-filtered OR query in the existing array result layout.
-  PR: include
   image: ![Advanced query](./assets/search-advanced-query.png)
 
 - source_type: storybook_canvas
@@ -209,18 +210,11 @@ Evidence binding: `6a6f98e1468d71671a3d0d2c390f1a7fdf5a9ff1` (current implementa
   story_id_or_title: `public-search-page--invalid-query-literal-retry`
   state: advanced-invalid literal retry
   evidence_note: The public search surface keeps a malformed query usable and shows results instead of an error state.
-  PR: include
   image: ![Invalid query literal retry](./assets/search-invalid-literal-retry.png)
 
-## Related PRs
+## Related ADRs
 
-- PR #61: https://github.com/IvanLi-CN/blog-26/pull/61
-
-## Risks / Open Questions / Assumptions
-
-- Risk: FTS5 trigram cannot represent every short token; the AST compiler must keep short leaves on the escaped `LIKE` path.
-- Risk: Direct database writers outside routers must remain covered by SQLite triggers.
-- Assumption: the current Bun runtime provides FTS5 trigram support, as verified before implementation.
+None
 
 ## References
 

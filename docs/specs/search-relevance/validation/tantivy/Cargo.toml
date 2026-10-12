@@ -1,0 +1,23 @@
+# Validation-only workspace. Not a production search implementation.
+[workspace]
+members = ["bun-bridge", "matching", "sync"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+publish = false
+
+[workspace.dependencies]
+tantivy = "=0.26.2"
+napi = { version = "=3.14.2", features = ["napi8", "tokio_rt"] }
+napi-derive = "=3.6.12"
+napi-build = "=2.6.0"
+rusqlite = { version = "=0.40.2", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"
+anyhow = "1"
+
+[profile.dev]
+debug = 0
+incremental = false

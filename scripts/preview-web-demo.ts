@@ -59,6 +59,27 @@ export async function createWebDemoPreviewServer({
       port,
       async fetch(request) {
         const url = new URL(request.url);
+        if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
+          let pathname: string;
+          try {
+            pathname = decodeURIComponent(url.pathname.slice("/admin".length) || "/");
+          } catch {
+            return new Response("Bad request", { status: 400 });
+          }
+          const candidate = resolve(
+            adminRoot,
+            `.${pathname}`,
+            pathname.endsWith("/") ? "index.html" : ""
+          );
+          if (!candidate.startsWith(`${adminRoot}${sep}`))
+            return new Response("Forbidden", { status: 403 });
+          let file = Bun.file(candidate);
+          if (!(await file.exists()) && !extname(pathname))
+            file = Bun.file(resolve(adminRoot, "index.html"));
+          return (await file.exists())
+            ? new Response(file)
+            : new Response("Not found", { status: 404 });
+        }
         const routeData = url.pathname === "/api/public/page" && request.method === "GET";
         if ((url.pathname === "/api" || url.pathname.startsWith("/api/")) && !routeData)
           return new Response("No live API in Web Demo", { status: 404 });

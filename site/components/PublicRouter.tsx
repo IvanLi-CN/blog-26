@@ -71,7 +71,11 @@ function Page({
         <>
           {searchBootstrap}
           <div data-search-island>
-            <SearchPageIsland playbook={payload.data.playbook} initialQuery={payload.data.query} />
+            <SearchPageIsland
+              playbook={payload.data.playbook}
+              initialQuery={payload.data.query}
+              initialMode={payload.data.mode}
+            />
           </div>
         </>
       );
@@ -239,9 +243,14 @@ export default function PublicRouter({
     };
     const environment = (event: Event) => {
       const detail = (event as CustomEvent<WebDemoStateChangeDetail>).detail;
+      const changed = detail?.changed ?? [];
+      const sceneChanged = changed.some((field) => field === "scene" || field === "data");
+      const environmentChanged = changed.some((field) =>
+        ["persona", "connection", "delay"].includes(field)
+      );
       if (
-        detail?.changed.some((field) => ["persona", "connection", "delay"].includes(field)) &&
-        (stateRef.current.error || !stateRef.current.payload)
+        sceneChanged ||
+        (environmentChanged && (stateRef.current.error || !stateRef.current.payload))
       )
         navigateRef.current(new URL(window.location.href), "retry");
     };

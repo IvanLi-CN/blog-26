@@ -574,6 +574,10 @@ html[data-ui-theme="light"] {
   margin: 1.5rem 0;
 }
 
+.admin-switch-thumb[data-state="checked"] {
+  transform: translateX(1.5rem);
+}
+
 @media (min-width: 1024px) and (pointer: fine) {
   .admin-button {
     height: 2rem;
@@ -635,7 +639,7 @@ html[data-ui-theme="light"] {
   }
 
   .admin-switch-thumb[data-state="checked"] {
-    transform: translateX(1.125rem);
+    transform: translateX(1rem);
   }
 
   .admin-tabs-trigger {

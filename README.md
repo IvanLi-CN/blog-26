@@ -137,7 +137,22 @@ Content sync imports Markdown from the configured local content root into SQLite
 
 ## Search Index Operations
 
-Migrations create the `posts_search_fts` SQLite FTS5 `trigram` index for post and memo slugs, titles, excerpts, bodies, and tags. SQLite triggers keep it synchronized with inserts, updates, deletes, and post/memo type changes. The application does not rebuild the index during startup.
+Public search supports `rag` (default), `rewrite`, and `keyword`, selected through the page controls or `mode` URL parameter. RAG reads retrieved content and ranks it; rewrite only reformulates the query before full-text search. Either unavailable AI mode falls back directly to the original keyword query. Search policy and fixed-sample quality validation live in the existing admin LLM settings page; enabling a mode alone does not mark its model quality as passed.
+
+The three modes and legacy enhanced search use embedded Tantivy on linux/amd64. Build its locked native module in a Linux development environment before preparing an index. `SEARCH_INDEX_PATH` defaults to `${DB_PATH}.search`; keep development, test, and production paths separate. Startup prepares the projection and follows the transactional SQLite outbox; requests never rebuild it implicitly.
+
+```bash
+bun run search:native:build
+bun run search:native:verify
+DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local bun run migrate
+DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local bun run search:index prepare
+DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local bun run search:index status
+DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local bun run search:index check
+```
+
+`status` reads durable metadata. Stop the gateway/console writer before running `prepare`, `check`, or `rebuild` from a separate process. After diagnosing index drift or corruption, explicitly run `bun run search:index rebuild` with the same paths, then restart the service. The index is a rebuildable projection; it never replaces source content. See [search implementation and maintenance](docs/specs/search-relevance/IMPLEMENTATION.md) for model budgets, validation, supported queries, and recovery.
+
+The `posts_search_fts` SQLite FTS5 `trigram` index remains for content list filters and independent semantic search, including their existing NEAR syntax. SQLite triggers keep that index synchronized; the following commands maintain only this legacy index:
 
 Check or explicitly rebuild the index with:
 

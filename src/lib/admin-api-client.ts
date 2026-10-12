@@ -10,6 +10,12 @@ import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
 import type { LlmModelOption, LlmModelSource } from "./llm-models";
 import type { PublicMediaCollection } from "./public-media";
+import type {
+  AdminSearchSettings,
+  AiSearchMode,
+  SearchPolicy,
+  SearchValidationRun,
+} from "./search/settings";
 import { getWebDemoRequestSignal, isWebDemoAbortError } from "./web-demo-runtime";
 
 export interface AdminUser {
@@ -617,6 +623,21 @@ export const adminApi = {
     }),
   getTagIconsOverview: () =>
     adminRequest<TagIconsOverviewResponse>("/api/admin/tag-icons/overview"),
+  getSearchSettings: () => adminRequest<AdminSearchSettings>("/api/admin/search-settings"),
+  updateSearchSettings: (policy: SearchPolicy) =>
+    adminRequest<AdminSearchSettings>("/api/admin/search-settings", {
+      method: "PUT",
+      body: JSON.stringify(policy),
+    }),
+  validateSearchSettings: (mode: AiSearchMode) =>
+    adminRequest<SearchValidationRun>("/api/admin/search-settings/validate", {
+      method: "POST",
+      body: JSON.stringify({ mode }),
+    }),
+  getSearchValidation: (id: string) =>
+    adminRequest<SearchValidationRun>(
+      `/api/admin/search-settings/validation/${encodeURIComponent(id)}`
+    ),
   getLlmSettings: () => adminRequest<AdminLlmSettingsPayload>("/api/admin/llm-settings"),
   updateLlmSettings: (input: AdminLlmSettingsUpdateInput) =>
     adminRequest<AdminLlmSettingsPayload>("/api/admin/llm-settings", {

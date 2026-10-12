@@ -1,0 +1,48 @@
+Connected to the SQLite database at /tmp/blog-search-empirical-RfdpMM/content.sqlite
+Drizzle ORM initialized.
+{"isolatedArtifacts":"/tmp/blog-search-empirical-RfdpMM","policy":{"rag":{"enabled":true,"model":null,"timeoutMs":10000,"maxInputTokens":16384,"maxOutputTokens":2048,"candidateLimit":20,"contentCodePoints":2048},"rewrite":{"enabled":true,"model":null,"timeoutMs":30000,"maxInputTokens":4096,"maxOutputTokens":4096,"maxQueries":3}}}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":466}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":974}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":129}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":3953}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":2968}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":2188}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":2515}
+{"validation":{"id":"9bd43631-060b-43b0-9ae3-bb4e6b8c474f","mode":"rag","fingerprint":"b51fb675ab2e1e4b01f2f0cc2bdf1e1250a79457e758001781f638fbf2971c7e","status":"passed","completed":4,"total":4,"startedAt":1791539679282,"finishedAt":1791539692600}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":867}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":1375}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":1564}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":989}
+{"validation":{"id":"c12ddac4-6728-466f-a8da-0cea18c2a52d","mode":"rewrite","fingerprint":"9a75ea6190034514862fd6e7a3a50f699d062f15e3108448a556225d4320583c","status":"passed","completed":4,"total":4,"startedAt":1791539692601,"finishedAt":1791539697429}}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":138}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":168}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":144}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":132}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":126}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":132}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":127}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":9234}
+{"execution":{"q":"SQLite","requestedMode":"rag","effectiveMode":"rag","ids":["sqlite3","keyword"]}}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":133}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":7010}
+{"execution":{"q":"Node.js","requestedMode":"rag","effectiveMode":"rag","ids":["runtime"]}}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":138}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":7292}
+{"execution":{"q":"文章","requestedMode":"rag","effectiveMode":"rag","ids":["article"]}}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":139}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":3109}
+{"execution":{"q":"长颈鹿骑宇宙自行车","requestedMode":"rag","effectiveMode":"rag","ids":[]}}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":264}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":8072}
+{"execution":{"q":"嵌入式 SQL 数据库","requestedMode":"rag","effectiveMode":"rag","ids":["sqlite3"]}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":4231}
+{"execution":{"q":"SQLite","requestedMode":"rewrite","effectiveMode":"rewrite","ids":["keyword"]}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":1733}
+{"execution":{"q":"Node.js","requestedMode":"rewrite","effectiveMode":"rewrite","ids":[]}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":2181}
+{"execution":{"q":"文章","requestedMode":"rewrite","effectiveMode":"rewrite","ids":["article"]}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":936}
+{"execution":{"q":"长颈鹿骑宇宙自行车","requestedMode":"rewrite","effectiveMode":"rewrite","ids":[]}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":4725}
+{"execution":{"q":"嵌入式 SQL 数据库","requestedMode":"rewrite","effectiveMode":"rewrite","ids":["sqlite3"]}}
+PASS fixed model quality and both actual search chains
