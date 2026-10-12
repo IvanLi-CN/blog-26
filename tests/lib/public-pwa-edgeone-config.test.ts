@@ -24,6 +24,7 @@ describe("EdgeOne public PWA cache config", () => {
       "index.html",
       "about/index.html",
       "search/index.html",
+      "share/index.html",
       "posts/index.html",
       "posts/example/index.html",
       "memos/index.html",
@@ -70,6 +71,9 @@ describe("EdgeOne public PWA cache config", () => {
       EDGEONE_PUBLIC_CACHE_CONTROL.html
     );
     expect(findEdgeoneCacheRule(config, "/blog-26/posts/example/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(findEdgeoneCacheRule(config, "/blog-26/share/")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.html
     );
     expect(findEdgeoneCacheRule(config, "/blog-26/projects/blog-26/")?.headers[0]?.value).toBe(
