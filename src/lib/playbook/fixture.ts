@@ -33,7 +33,21 @@ export const publicFixtureCatalog: PlaybookPublicCatalog = {
       item: project,
       title: "Sample Project 实践快照",
       doc_metadata: [{ key: "范围", value: "公开样例" }],
-      stack: { framework: "Astro" },
+      stack: {
+        framework: "Astro",
+        runtime: "Bun",
+        language: "TypeScript",
+        deployment: "Static export",
+        markers_present: ["bun_lock", "package_json", "astro", "tests"],
+        ci_workflows: ["ci.yml", "release.yml"],
+        package_json: {
+          deps_prod: ["@astrojs/react", "react", "react-dom"],
+          deps_dev: ["astro", "playwright", "typescript"],
+        },
+        configs_root: ["astro.config.mjs", "tsconfig.json", "biome.json"],
+        scripts: ["dev", "build", "check", "test"],
+        testing: "Bun test + Playwright",
+      },
       sections: [
         {
           id: "architecture",
