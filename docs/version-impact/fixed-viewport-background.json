@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "a35f56e4b1116cfc168e1cfda67b7fe5fb8dc9f1",
+  "covered_files": {
+    "docs/specs/nature-front-ui/SPEC.md": "ed82d5f5503f09bc1f3d5038148b2489c52b75c6",
+    "docs/specs/nature-front-ui/assets/fixed-viewport-background-desktop-home-light.png": "661511010889da10593cf1cb487fca925d9bb94b",
+    "docs/specs/nature-front-ui/assets/fixed-viewport-background-desktop-post-dark.png": "7036da1e3802307b8929f203068d09e3740ca67c",
+    "docs/specs/nature-front-ui/assets/fixed-viewport-background-desktop-project-light.png": "0adfc2dcf238045f820877b5f4139ab37769aeba",
+    "docs/specs/nature-front-ui/assets/fixed-viewport-background-mobile-home-dark.png": "33b2305fd8a75a3f2edf37a7d45eea375809412b",
+    "docs/specs/nature-front-ui/assets/fixed-viewport-background-mobile-post-light.png": "f2f4f0ced550e6af8a62b88d2ebd8d72757e273b",
+    "docs/specs/nature-front-ui/assets/fixed-viewport-background-mobile-project-dark.png": "63ae266730d33dc89ad65928601b6b7d13c118a8",
+    "src/components/common/AmbientScene.stories.tsx": "9743fe3ac3e752ebec6a57c571be2fa75bd69315",
+    "src/styles/globals.css": "4cfd1caf6affea04091c90cb4d12f2def4cd1932",
+    "src/styles/nature-restored.css": "0fb65a3835f493c90bc10a86d032274a40b52767",
+    "tests/e2e/guest/astro-front-phase1.spec.ts": "afd59aab42a4e1abedde50834557ae6c55825f7e"
+  },
+  "change": {
+    "description": "Pin the shared Nature atmosphere to the viewport while preserving existing theme tokens, AmbientScene behavior, content surfaces, and public routes.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a compatible public presentation correction. It changes only the shared CSS stacking boundary, visual evidence, and regression coverage; endpoints, payloads, persistence, and release state remain unchanged.",
+      "assessed_at": "2026-10-13T01:20:46+08:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/guest/astro-front-phase1.spec.ts",
+          "blob": "afd59aab42a4e1abedde50834557ae6c55825f7e",
+          "command": "Focused Playwright contract checks fixed position, inset, stacking, theme changes, route lengths, and top/middle/bottom scroll positions"
+        },
+        {
+          "path": "src/styles/globals.css",
+          "blob": "4cfd1caf6affea04091c90cb4d12f2def4cd1932",
+          "command": "Biome check and computed-style inspection verify the viewport-bound atmosphere layer"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate moves the existing Nature gradient from document-height painting to a fixed shell pseudo-layer, mirrors the public stylesheet entry point, and records the accepted page evidence. Public routes, API behavior, data, and AmbientScene animation remain unchanged.",
+      "assessed_at": "2026-10-13T01:20:46+08:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/guest/astro-front-phase1.spec.ts",
+          "blob": "afd59aab42a4e1abedde50834557ae6c55825f7e",
+          "command": "Current-candidate focused E2E passes across public home and article routes in light/dark themes"
+        },
+        {
+          "path": "docs/specs/nature-front-ui/SPEC.md",
+          "blob": "ed82d5f5503f09bc1f3d5038148b2489c52b75c6",
+          "command": "Nature UI contract and owner-confirmed desktop/mobile fixed-atmosphere evidence are synchronized"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to the shared public atmosphere, its duplicated stylesheet entry point, Storybook assertion, focused public E2E coverage, and synchronized Nature UI evidence; no route, API, persistence, or VERSION contract drift was found."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused Playwright and unit checks, Biome validation, the 131-page public Astro build, and owner-confirmed desktop/mobile evidence verify a reversible compatible presentation correction without data or persistence changes.",
+      "assessed_at": "2026-10-13T01:20:46+08:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/guest/astro-front-phase1.spec.ts",
+          "blob": "afd59aab42a4e1abedde50834557ae6c55825f7e",
+          "command": "Focused Playwright atmosphere invariant passes"
+        },
+        {
+          "path": "docs/specs/nature-front-ui/assets/fixed-viewport-background-desktop-home-light.png",
+          "blob": "661511010889da10593cf1cb487fca925d9bb94b",
+          "command": "Owner-confirmed desktop and mobile light/dark public route captures show the fixed atmosphere behind content"
+        },
+        {
+          "path": "src/styles/nature-restored.css",
+          "blob": "0fb65a3835f493c90bc10a86d032274a40b52767",
+          "command": "Duplicated public stylesheet entry point passes Biome and retains the same fixed-layer token implementation"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3"
+      ],
+      "evidence": [
+        {
+          "path": "tests/e2e/guest/astro-front-phase1.spec.ts",
+          "blob": "afd59aab42a4e1abedde50834557ae6c55825f7e",
+          "command": "Public route rendering and fixed-atmosphere regression checks pass without API changes"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local-content format, browser persistence, or durable release-ledger state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/e2e/guest/astro-front-phase1.spec.ts",
+          "blob": "afd59aab42a4e1abedde50834557ae6c55825f7e",
+          "command": "Public route regression checks exercise presentation-only behavior without persistent-state changes"
+        }
+      ]
+    }
+  }
+}
