@@ -455,7 +455,7 @@ impl Task for SearchTask {
             return Err(err("invalid index identity"));
         }
         let mut hits = Vec::new();
-        for ((score, _, _), address) in top {
+        for ((score, publish_date, _), address) in top {
             let doc: TantivyDocument = searcher.doc(address).map_err(err)?;
             let get = |name| -> Result<String> {
                 Ok(doc
@@ -464,14 +464,23 @@ impl Task for SearchTask {
                     .ok_or_else(|| err("missing stored identity"))?
                     .to_owned())
             };
-            hits.push(Hit {
-                id: get("id")?,
-                version: get("version")?,
-                score,
-            });
+            hits.push((
+                Hit {
+                    id: get("id")?,
+                    version: get("version")?,
+                    score,
+                },
+                publish_date,
+            ));
         }
-        hits.sort_by(|a, b| b.score.total_cmp(&a.score).then(a.id.cmp(&b.id)));
-        serde_json::to_string(&hits).map_err(err)
+        hits.sort_by(|(a, a_date), (b, b_date)| {
+            b.score
+                .total_cmp(&a.score)
+                .then(b_date.cmp(a_date))
+                .then(a.id.cmp(&b.id))
+        });
+        serde_json::to_string(&hits.into_iter().map(|(hit, _)| hit).collect::<Vec<_>>())
+            .map_err(err)
     }
     fn resolve(&mut self, _: Env, output: String) -> Result<String> {
         Ok(output)

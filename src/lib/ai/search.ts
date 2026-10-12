@@ -21,6 +21,8 @@ export type SemanticSearchInput = {
 };
 
 export type SearchResult = {
+  /** Internal row identity; defined as non-enumerable on FTS results. */
+  id?: string;
   slug: string;
   title?: string | null;
   excerpt?: string | null;

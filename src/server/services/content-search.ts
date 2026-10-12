@@ -222,21 +222,30 @@ export async function executeContentModes(
       type: input.type,
       publishedOnly,
     });
-    const memoSlugs = [
-      ...new Set(legacy.filter((item) => item.type === "memo").map((x) => x.slug)),
+    const memoIds = [
+      ...new Set(
+        legacy
+          .filter((item) => item.type === "memo")
+          .map((item) => (item as typeof item & { id?: string }).id)
+          .filter((id): id is string => Boolean(id))
+      ),
     ];
-    if (publishedOnly && memoSlugs.length) {
+    if (publishedOnly && memoIds.length) {
       const rows = await db
         .select()
         .from(posts)
-        .where(and(eq(posts.type, "memo"), inArray(posts.slug, memoSlugs)));
+        .where(and(eq(posts.type, "memo"), inArray(posts.id, memoIds)));
       const visible = new Map(
         await Promise.all(
-          rows.map(async (row) => [row.slug, await authorizeContent(row, true)] as const)
+          rows.map(async (row) => [row.id, await authorizeContent(row, true)] as const)
         )
       );
       const results = legacy
-        .filter((item) => item.type !== "memo" || visible.get(item.slug) === true)
+        .filter(
+          (item) =>
+            item.type !== "memo" ||
+            visible.get((item as typeof item & { id?: string }).id ?? "") === true
+        )
         .map((item) => ({ ...item, searchOrigin: "keyword" as const }));
       return {
         results,

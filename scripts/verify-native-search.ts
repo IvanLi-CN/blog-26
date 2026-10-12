@@ -151,11 +151,15 @@ await index.apply(
 );
 const dateTied = JSON.parse(
   await index.search(
-    JSON.stringify({ ast: planNativeQuery("dateprobe").ast, limit: 1, published_only: true })
+    JSON.stringify({ ast: planNativeQuery("dateprobe").ast, limit: 2, published_only: true })
   )
 );
-assert.equal(dateTied[0]?.id, "new-date", "same-score ties prefer newer content before truncation");
-console.log("PASS stable same-score date ordering before truncation");
+assert.deepEqual(
+  dateTied.map((hit: { id: string }) => hit.id),
+  ["new-date", "old-date"],
+  "same-score ties retain newer-first order for caller truncation"
+);
+console.log("PASS stable same-score date order survives the native result adapter");
 const tied = JSON.parse(
   await index.search(
     JSON.stringify({ ast: planNativeQuery("equalword").ast, limit: 10, published_only: true })

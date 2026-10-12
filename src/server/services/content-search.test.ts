@@ -657,22 +657,27 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     const file = path.join(process.env.LOCAL_CONTENT_BASE_PATH ?? "", memoId);
     mkdirSync(path.dirname(file), { recursive: true });
     writeFileSync(file, "---\ntitle: Private clipping\npublic: false\n---\nprivate marker");
-    await db.insert(posts).values(
+    await db.insert(posts).values([
       fixture(memoId, "private marker", {
-        slug: "private-near-search",
+        slug: "shared-near-search",
         type: "memo",
         tags: JSON.stringify(["剪藏"]),
         metadata: JSON.stringify({ authoredClipping: true }),
         title: "Stale public clipping title",
-      })
-    );
+      }),
+      fixture("Memos/public-near-search.md", "unrelated public content", {
+        slug: "shared-near-search",
+        type: "memo",
+        title: "Public memo sharing the slug",
+      }),
+    ]);
 
     const result = await executeContentModes({
       q: "NEAR(private marker, 3)",
       mode: "keyword",
     });
 
-    expect(result.results.some((item) => item.slug === "private-near-search")).toBe(false);
+    expect(result.results.some((item) => item.slug === "shared-near-search")).toBe(false);
   });
   test("failed generation creation leaves the previous durable generation selected", async () => {
     const index = await contentSearchIndex();

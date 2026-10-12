@@ -198,7 +198,7 @@ function toSearchResult(
   plan: SearchQueryPlan,
   final?: number
 ): SearchResult {
-  return {
+  const result: SearchResult = {
     slug: row.slug,
     title: row.title,
     excerpt: row.excerpt,
@@ -207,6 +207,8 @@ function toSearchResult(
     ...(isClippingSearchMemo(row.type, row.tags) ? { isClipping: true } : {}),
     ...(typeof final === "number" ? { final } : {}),
   };
+  Object.defineProperty(result, "id", { value: row.id });
+  return result;
 }
 
 /** Expose a display subtype while keeping the indexed and routed content type as Memo. */
