@@ -20,7 +20,7 @@ function ListItems({ entry, items }: { entry: TechStackEntry; items: TechStackNo
   const mode = techStackArrayMode(items);
   const keys = new Map<string, number>();
   const content = (
-    <ul className={mode === "chips" ? "flex flex-wrap gap-2" : "space-y-2"}>
+    <ul className={mode === "chips" ? "flex flex-wrap gap-1.5" : "space-y-1"}>
       {items.map((item) => {
         const baseKey = `${entry.key}-${item.kind === "scalar" ? String(item.value) : JSON.stringify(item)}`;
         const occurrence = keys.get(baseKey) ?? 0;
@@ -29,7 +29,7 @@ function ListItems({ entry, items }: { entry: TechStackEntry; items: TechStackNo
           <li key={`${baseKey}-${occurrence}`} className="min-w-0">
             {item.kind === "scalar" ? (
               mode === "chips" ? (
-                <span className="inline-flex max-w-full break-words rounded-full border border-[rgba(var(--nature-accent-rgb),0.24)] bg-[rgba(var(--nature-accent-rgb),0.1)] px-2.5 py-1 font-mono text-xs font-medium leading-5 text-[color:var(--nature-accent-strong)]">
+                <span className="inline-flex max-w-full break-words rounded-full border border-[rgba(var(--nature-accent-rgb),0.24)] bg-[rgba(var(--nature-accent-rgb),0.1)] px-2 py-0.5 font-mono text-[11px] font-medium leading-4 text-[color:var(--nature-accent-strong)]">
                   {String(item.value)}
                 </span>
               ) : (
@@ -63,13 +63,13 @@ function ListItems({ entry, items }: { entry: TechStackEntry; items: TechStackNo
 
 function RecordValue({ entries }: { entries: TechStackEntry[] }) {
   return (
-    <dl className="mt-1.5 min-w-0 space-y-2.5">
+    <dl className="mt-1 min-w-0 space-y-1.5">
       {entries.map((entry) => (
-        <div key={entry.key} className="min-w-0">
+        <div key={entry.key} className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
           <dt className="text-xs font-semibold tracking-wide text-[color:var(--nature-text-soft)]">
             {entry.label}
           </dt>
-          <dd className="mt-1 min-w-0">
+          <dd className="min-w-0 flex-1">
             <NodeValue entry={entry} value={entry.value} />
           </dd>
         </div>
@@ -94,7 +94,7 @@ export default function PlaybookTechStack({ value }: { value: unknown }) {
   const tabsId = "playbook-tech-stack-tabs";
   return (
     <section
-      className="mb-8 border-b border-[color:var(--nature-line)] pb-6"
+      className="mb-6 border-b border-[color:var(--nature-line)] pb-4"
       aria-labelledby="playbook-tech-stack-title"
     >
       <div>
@@ -109,7 +109,7 @@ export default function PlaybookTechStack({ value }: { value: unknown }) {
         id={tabsId}
         role="tablist"
         aria-label="技术栈分类"
-        className="mt-3 flex max-w-full gap-1 overflow-x-auto border-b border-[color:var(--nature-line)] pb-1"
+        className="mt-2 flex max-w-full gap-1 overflow-x-auto border-b border-[color:var(--nature-line)] pb-1"
       >
         {groups.map((group) => (
           <button
@@ -138,16 +138,19 @@ export default function PlaybookTechStack({ value }: { value: unknown }) {
           role="tabpanel"
           aria-labelledby={`${tabsId}-tab-${group.id}`}
           hidden={selectedGroupId !== group.id}
-          className="min-w-0 pt-4"
+          className="min-w-0 pt-3"
         >
           <h3 className="sr-only">{group.label}</h3>
-          <dl className="min-w-0 space-y-3">
+          <dl className="min-w-0 space-y-2.5">
             {group.entries.map((entry) => (
-              <div key={entry.key} className="min-w-0">
+              <div
+                key={entry.key}
+                className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"
+              >
                 <dt className="text-xs font-semibold tracking-wide text-[color:var(--nature-text-soft)]">
                   {entry.label}
                 </dt>
-                <dd className="mt-1 min-w-0">
+                <dd className="min-w-0 flex-1">
                   <NodeValue entry={entry} value={entry.value} />
                 </dd>
               </div>
@@ -155,11 +158,11 @@ export default function PlaybookTechStack({ value }: { value: unknown }) {
           </dl>
         </section>
       ))}
-      <details className="mt-5 border-t border-[color:var(--nature-line)] pt-3">
+      <details className="mt-4 border-t border-[color:var(--nature-line)] pt-2">
         <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-[color:var(--nature-accent-strong)] underline decoration-[color:var(--nature-line-strong)] underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--nature-accent)]">
           查看原始数据
         </summary>
-        <pre className="mt-3 max-h-80 max-w-full overflow-auto whitespace-pre-wrap break-all rounded-md bg-[rgba(var(--nature-accent-rgb),0.07)] p-3 text-xs leading-6 text-[color:var(--nature-text-soft)]">
+        <pre className="mt-2 max-h-80 max-w-full overflow-auto whitespace-pre-wrap break-all rounded-md bg-[rgba(var(--nature-accent-rgb),0.07)] p-2.5 text-xs leading-5 text-[color:var(--nature-text-soft)]">
           {formatTechStackRaw(value)}
         </pre>
       </details>
