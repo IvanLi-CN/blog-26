@@ -1,0 +1,9 @@
+Candidate validation for the bounded DeepSeek request-contract repair. The run used only the fixed synthetic rows in `scripts/verify-search-empirical.ts`; no production content or credentials were sent to the model.
+
+Command: `bun scripts/verify-search-empirical.ts --rag-timeout-ms 30000 --rag-output-tokens 4096 --rewrite-timeout-ms 30000 --rewrite-output-tokens 4096 --capture-judgments`
+
+Request contract: DeepSeek chat requests include `thinking: {"type":"disabled"}` and `reasoning_effort: "none"`; other model names do not receive provider-specific fields. The provider returned HTTP 200 with `finishReason: "stop"` for every chat request and `reasoning_tokens: 0`.
+
+Quality validation: RAG 4/4 passed, fingerprint `220b0bcb7223f0769e73a55f163eae497bf12117c4e44df32c66fbff47a9a8de`; rewrite 4/4 passed, fingerprint `b085e8e6a6c99a0612b72e5183b7cf62b100fa00da2a432752747cdbbc37a95f`.
+
+Actual search: both RAG and rewrite executed all five fixed queries. `SQLite` returned the SQLite3 topic before the passing mention while preserving the literal result; `Node.js` returned the runtime and rejected graph/cluster nodes; `文章` returned the article; the nonsensical query returned no results; and `嵌入式 SQL 数据库` found the SQLite3 topic. No automatic retry was used.

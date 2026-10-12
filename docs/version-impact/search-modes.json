@@ -31,7 +31,7 @@
     "docs/specs/search-relevance/HISTORY.md": "6aebd99661ff5560c9c29ae840fca98f7060b3e3",
     "docs/specs/search-relevance/IMPLEMENTATION.md": "ee876cb91f17a69fa0763aa26f1878cf6bb8da3c",
     "docs/specs/search-relevance/SPEC.md": "aef764de43d7277f09d30f0f4f617d5e63b61d99",
-    "docs/specs/search-relevance/VALIDATION.md": "7b7c1ac89318f6f3de941387531e33547590ab71",
+    "docs/specs/search-relevance/VALIDATION.md": "96569beaeb391f79af86ff770b421b592f4aff00",
     "docs/specs/search-relevance/assets/admin-search-policy-switch-fix.png": "23d04f90febfaad84dc8d6aada4f1c731a382351",
     "docs/specs/search-relevance/validation/product/corpus-benchmark-v2.json": "d9e1762edd1a822e4d47ce5131d012afe6083343",
     "docs/specs/search-relevance/validation/product/corpus-benchmark.json": "91b29d23e1433640141340b1991fa2c85b786e9c",
@@ -40,6 +40,7 @@
     "docs/specs/search-relevance/validation/product/empirical-regression.txt": "38b8698f88096c72e09d86cac35e2ffa169478d6",
     "docs/specs/search-relevance/validation/product/empirical-rewrite-discovery-failure.txt": "0d20114b8a4e1fba8fa8307a67397a6a9d8a42ee",
     "docs/specs/search-relevance/validation/product/empirical-rewrite-retrieval-fixed.txt": "bf941df293d336447f07282e15ca228c76cb0428",
+    "docs/specs/search-relevance/validation/product/empirical-search-model-nonthinking.txt": "838be0dc0c2960c80778a25fb44e36befe9a05ce",
     "docs/specs/search-relevance/validation/product/empirical.txt": "ef1045d29a099f1347284024c5f428b58da2cc5a",
     "docs/specs/search-relevance/validation/product/image-http-regression.txt": "56107ee8752ea4307315b0413bf2abf401ea16ea",
     "docs/specs/search-relevance/validation/tantivy/Cargo.lock": "03acffc7f3de8fe2de9248631d648a11d41ec403",
@@ -124,7 +125,8 @@
     "src/server/services/search-index-recovery.test.ts": "18ab31a2f3acc78dcc2796dbe50b06212c213f04",
     "src/server/services/search-index-runtime.ts": "85d1e9c80c30b0bbfa8c88e68e74d456a928babe",
     "src/server/services/search-migration.test.ts": "17f28fa21e41b54b5e1e45f612032dbf6aad3e74",
-    "src/server/services/search-model.ts": "340232352f0a79166061e442b7df8d961c5f2a86",
+    "src/server/services/search-model.ts": "43621c3d6a55434f1e50781e810b4380188bb868",
+    "src/server/services/search-model.test.ts": "c648968fb7ca8880d932db29ef02c7b48bccb0a9",
     "src/server/services/search-policy.ts": "2958d919f588da3d00db19de3436c4dfd141ebe5",
     "src/server/services/search-ranking.test.ts": "a1927cc89a51dcbec2a1ed13253042455e81aa65",
     "src/server/services/search-ranking.ts": "e724b26ed28274b18021725a7ec1897fea396d1a",
@@ -160,7 +162,7 @@
     "tests/e2e/guest/nature-front-coverage.spec.ts": "d71525950e6095ca5dd396b723fa27eb3b54ea38"
   },
   "change": {
-    "description": "Introduce embedded Tantivy keyword search, independently configurable RAG and query-rewrite modes, direct original-query fallback, mode-aware public/API/MCP behavior, and existing administrator model-page search controls.",
+    "description": "Introduce embedded Tantivy keyword search, independently configurable RAG and query-rewrite modes, direct original-query fallback, mode-aware public/API/MCP behavior, existing administrator model-page search controls, and bounded non-thinking DeepSeek JSON requests.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api", "persistent-state"]
   },
@@ -225,7 +227,7 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "Embedded Tantivy and independent AI modes add compatible capabilities. Legacy NEAR queries continue through SQLite FTS5, enhanced rerankerModel overrides remain accepted, and rerank=false retains its historical semantic-search behavior. SQLite upgrades are additive and Tantivy is a rebuildable projection. The Playbook detail width repair and shared system-share changes remain compatible.",
+      "reasoning": "Embedded Tantivy and independent AI modes add compatible capabilities. Legacy NEAR queries continue through SQLite FTS5, enhanced rerankerModel overrides remain accepted, and rerank=false retains its historical semantic-search behavior. SQLite upgrades are additive and Tantivy is a rebuildable projection. DeepSeek-only reasoning controls preserve the existing JSON search contract and leave other OpenAI-compatible providers unchanged. The Playbook detail width repair and shared system-share changes remain compatible.",
       "assessed_at": "2026-10-12T04:38:00+00:00",
       "evidence": [
         {
@@ -252,6 +254,11 @@
           "path": "src/components/playbook/PlaybookPage.tsx",
           "blob": "26bb3682a2b8164d268423b39bf282d97188bd49",
           "command": "bunx biome check src/components/playbook/PlaybookPage.tsx; bun run web-demo:build"
+        },
+        {
+          "path": "src/server/services/search-model.test.ts",
+          "blob": "c648968fb7ca8880d932db29ef02c7b48bccb0a9",
+          "command": "bun test src/server/services/search-model.test.ts"
         }
       ]
     }

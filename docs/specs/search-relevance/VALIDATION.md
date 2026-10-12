@@ -4,6 +4,8 @@
 
 ## 当前候选交付证据
 
+当前候选的模型请求契约修复已通过真实提供方复核：DeepSeek 的结构化搜索请求关闭 thinking，RAG 与改写各通过 4/4 固定质量样例及 5/5 实际搜索。输出、指纹和断言边界见 [非思考模式证据](./validation/product/empirical-search-model-nonthinking.txt)。
+
 PR #214 的当前头（基线 `0d101aa7c259c0e7b675a8c0f4dfe05162489430`）继承并保留已通过的 GitHub Actions Lint、Unit、Build、Docker、Worktree Bootstrap、Admin/User/Guest/MCP E2E 与 Release Policy 结果；新的 CI 会对每个当前头重新执行。正式 Web Demo 已验证关闭、RAG、AI 改写三种模式、渐进补充、回退、场景切换和管理员策略页，受控视觉证据保存在 PR 的 Visual Evidence 区域及本 Spec 的管理页截图资产中。当前候选仍未部署生产，合并后需以实际 merge SHA 重新绑定发行产物和发布记录。
 
 ## 改写概念发现修复
