@@ -50,6 +50,7 @@ const HTML_FILE_ROUTE_PATTERNS = [
 ] as const;
 
 const SKIPPED_PUBLIC_HTML_ROUTE_PATTERNS = ["/share/"] as const;
+const SKIPPED_PUBLIC_ASSET_PATHS = new Set(["share-target-sw.js"]);
 
 const PLAYBOOK_POLICY_SOURCE = "/_content/playbook/:version/:digest/policies/*";
 
@@ -176,6 +177,7 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
   const tagFeedSources = new Set<string>();
 
   for (const path of unversionedFiles) {
+    if (SKIPPED_PUBLIC_ASSET_PATHS.has(path)) continue;
     const parent = dirname(path).replaceAll("\\", "/");
     const exactSource = scopedPath(basePath, `/${path}`);
 
