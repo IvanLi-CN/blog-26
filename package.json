@@ -106,6 +106,7 @@
     "test:e2e": "bun ./scripts/run-e2e.ts full",
     "test:e2e:playwright": "playwright test",
     "test:e2e:project": "bun ./scripts/run-e2e.ts project",
+    "test:e2e:web-demo": "bunx playwright test --config tests/e2e/web-demo/playwright.config.ts",
     "test:e2e:targeted": "E2E_INCLUDE_TAG=@targeted playwright test",
     "test:e2e:experimental": "E2E_INCLUDE_TAG=@experimental playwright test",
     "test:e2e:headless": "HEADLESS=true bun ./scripts/run-e2e.ts full",
@@ -144,7 +145,10 @@
     "frontend:build": "bun run prebuild && bun run site:build",
     "backend:dist": "bash ./scripts/prepare-backend-dist.sh",
     "backend:build": "bun run prebuild && bun run generate:project-posters && bun run generate:project-social-previews && bun run admin:build:compiled && bun run console:build && bun run backend:dist",
-    "playbook:prepare": "bun scripts/prepare-playbook-edition.ts"
+    "playbook:prepare": "bun scripts/prepare-playbook-edition.ts",
+    "search:native:build": "bash scripts/build-native-search.sh",
+    "search:native:verify": "bun scripts/verify-native-search.ts",
+    "search:index": "bun scripts/search-index.ts"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "7.3.1",

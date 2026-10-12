@@ -1,0 +1,785 @@
+import { Database } from "bun:sqlite";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/bun-sqlite";
+import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
+import { db, initializeDB } from "@/lib/db";
+import { postEmbeddings, posts, searchIndexState, searchSettings } from "@/lib/schema";
+import { DEFAULT_SEARCH_POLICY } from "@/lib/search/settings";
+import { handleMcpHttpRequest } from "@/server/mcp-http";
+import { handlePublicApiRequest } from "@/server/public-api/router";
+import { appRouter } from "@/server/router";
+import { executeContentModes } from "./content-search";
+import { contentSearchIndex } from "./content-search-index";
+import {
+  readSearchSettings,
+  recordSearchQuality,
+  resolveSearchPolicy,
+  saveSearchPolicy,
+} from "./search-policy";
+import { getSearchValidationRun, startSearchValidation } from "./search-validation";
+
+const originalFetch = globalThis.fetch;
+const envNames = [
+  "DB_PATH",
+  "SEARCH_INDEX_PATH",
+  "OPENAI_API_KEY",
+  "OPENAI_API_BASE_URL",
+  "CHAT_COMPLETION_MODEL",
+  "EMBEDDING_MODEL_NAME",
+  "LOCAL_CONTENT_BASE_PATH",
+] as const;
+const oldEnv = Object.fromEntries(envNames.map((key) => [key, process.env[key]]));
+let directory: string;
+function fixture(id: string, body: string, overrides: Partial<typeof posts.$inferInsert> = {}) {
+  return {
+    id,
+    slug: id,
+    type: "post",
+    title: id,
+    body,
+    publishDate: 1,
+    updateDate: 1,
+    draft: false,
+    public: true,
+    dataSource: "local",
+    contentHash: id,
+    ...overrides,
+  };
+}
+function fakeFetch(
+  handler: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
+): typeof fetch {
+  return Object.assign(mock(handler), { preconnect: originalFetch.preconnect });
+}
+async function enable(mode: "rag" | "rewrite") {
+  const resolved = await resolveSearchPolicy(mode);
+  if (!resolved.fingerprint) throw new Error("test policy must be configured");
+  expect(await recordSearchQuality(mode, resolved.fingerprint, true)).toBe(true);
+}
+
+describe.skipIf(process.platform !== "linux")("content modes with persistent Tantivy", () => {
+  beforeAll(async () => {
+    directory = mkdtempSync(path.join(os.tmpdir(), "blog-search-modes-"));
+    process.env.DB_PATH = path.join(directory, "content.sqlite");
+    process.env.SEARCH_INDEX_PATH = path.join(directory, "index");
+    const sqlite = new Database(process.env.DB_PATH);
+    migrate(drizzle(sqlite), { migrationsFolder: path.resolve("drizzle") });
+    sqlite.close();
+    await initializeDB(true);
+    await (await contentSearchIndex()).prepare();
+  });
+  beforeEach(async () => {
+    await db.delete(postEmbeddings);
+    await db.delete(posts);
+    await db.delete(searchSettings);
+    await saveSearchPolicy(structuredClone(DEFAULT_SEARCH_POLICY));
+    process.env.OPENAI_API_KEY = "synthetic-test-key";
+    process.env.OPENAI_API_BASE_URL = "https://synthetic-search.example.test";
+    process.env.CHAT_COMPLETION_MODEL = `synthetic-chat-${Date.now()}`;
+    process.env.EMBEDDING_MODEL_NAME = "synthetic-embedding";
+    process.env.LOCAL_CONTENT_BASE_PATH = path.join(directory, "local");
+    globalThis.fetch = fakeFetch(async () => {
+      throw new Error("Unexpected AI request");
+    });
+  });
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+  afterAll(() => {
+    for (const key of envNames)
+      if (oldEnv[key] === undefined) delete process.env[key];
+      else process.env[key] = oldEnv[key];
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  test("protects exact names before result truncation and excludes private rows", async () => {
+    await db
+      .insert(posts)
+      .values([
+        fixture("real", "Arch Linux 中文Arch中文"),
+        fixture("false", "archive search aarch64 ArchLinux arch_linux"),
+        fixture("private", "Arch", { public: false }),
+        fixture("draft", "Arch", { draft: true }),
+      ]);
+    const result = await executeContentModes({ q: "Arch", mode: "keyword", topK: 1 });
+    expect(result.results.map((item) => item.slug)).toEqual(["real"]);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+  test("shares one native writer with a separately bundled SSR module", async () => {
+    await db.insert(posts).values(fixture("bundled", "SQLite"));
+    const entrypoint = path.join(directory, "search-ssr-entry.ts");
+    writeFileSync(
+      entrypoint,
+      `export { contentSearchIndex } from ${JSON.stringify(path.resolve("src/server/services/content-search-index.ts"))};`
+    );
+    const build = await Bun.build({
+      entrypoints: [entrypoint],
+      target: "bun",
+      outdir: path.join(directory, "ssr-bundle"),
+    });
+    expect(build.success).toBe(true);
+    const bundled = await import(build.outputs[0].path);
+    const original = await contentSearchIndex();
+    const ssrIndex = await bundled.contentSearchIndex();
+    expect(ssrIndex).toBe(original);
+    expect(
+      (await ssrIndex.search("SQLite", { limit: 20, publishedOnly: true })).map(
+        (item: { row: { slug: string } }) => item.row.slug
+      )
+    ).toEqual(["bundled"]);
+  });
+  test("uses literal Node with definite aliases and keeps ambiguous graph nodes", async () => {
+    await db
+      .insert(posts)
+      .values([
+        fixture("graph", "Graph node"),
+        fixture("runtime", "Node.js JavaScript"),
+        fixture("alias", "NodeJS JavaScript"),
+      ]);
+    expect(
+      (await executeContentModes({ q: "Node", mode: "keyword" })).results.map((x) => x.slug).sort()
+    ).toEqual(["alias", "graph", "runtime"]);
+    expect(
+      (await executeContentModes({ q: "NodeJS", mode: "keyword" })).results
+        .map((x) => x.slug)
+        .sort()
+    ).toEqual(["alias", "runtime"]);
+  });
+  test("normalizes queries while preserving full-width and accented document spelling", async () => {
+    await db
+      .insert(posts)
+      .values([
+        fixture("ascii", "Arch"),
+        fixture("fullwidth", "Ａｒｃｈ"),
+        fixture("accented", "İ"),
+      ]);
+    for (const q of ["Arch", "Ａｒｃｈ"]) {
+      expect(
+        (await executeContentModes({ q, mode: "keyword" })).results.map((item) => item.slug)
+      ).toEqual(["ascii"]);
+    }
+    expect((await executeContentModes({ q: "i", mode: "keyword" })).results).toEqual([]);
+  });
+  test("rolls back both content and transactional outbox", async () => {
+    const index = await contentSearchIndex();
+    const before = (await index.status()).watermark;
+    expect(() =>
+      db.transaction((tx) => {
+        tx.insert(posts).values(fixture("rollback", "SQLite")).run();
+        throw new Error("rollback");
+      })
+    ).toThrow("rollback");
+    expect((await index.status()).watermark).toBe(before);
+    expect((await executeContentModes({ q: "SQLite", mode: "keyword" })).results).toEqual([]);
+  });
+  test("replays commits idempotently when SQLite checkpoint trails durable index", async () => {
+    await db.insert(posts).values(fixture("durable", "SQLite"));
+    const index = await contentSearchIndex();
+    await index.synchronize();
+    await db
+      .update(searchIndexState)
+      .set({ checkpoint: 0 })
+      .where(eq(searchIndexState.id, "content"));
+    await index.synchronize();
+    expect(await index.check()).toMatchObject({ ok: true, duplicates: 0, expected: 1, indexed: 1 });
+    await db.update(posts).set({ body: "PostgreSQL" }).where(eq(posts.id, "durable"));
+    expect((await executeContentModes({ q: "SQLite", mode: "keyword" })).results).toEqual([]);
+    await db.delete(posts);
+    expect(await index.check()).toMatchObject({ ok: true, expected: 0, indexed: 0 });
+  });
+  test("atomically rebuilds a generation and detects missing projection state", async () => {
+    const index = await contentSearchIndex();
+    const old = (await index.status()).state?.generation;
+    await db.insert(posts).values(fixture("backfill", "SQLite"));
+    await index.prepare(true);
+    expect((await index.status()).state?.generation).not.toBe(old);
+    expect(await index.check()).toMatchObject({ ok: true });
+    await db.delete(searchIndexState);
+    await expect(executeContentModes({ q: "SQLite", mode: "keyword" })).rejects.toThrow(
+      "prepare-required"
+    );
+    await index.prepare();
+  });
+  test("unvalidated AI and advanced expressions fall back without model calls", async () => {
+    await db.insert(posts).values(fixture("literal", "SQLite"));
+    const result = await executeContentModes({ q: "SQLite", mode: "rag" });
+    expect(result).toMatchObject({
+      requestedMode: "rag",
+      effectiveMode: "keyword",
+      reason: "unvalidated",
+    });
+    expect((await executeContentModes({ q: "body:SQLite", mode: "rewrite" })).reason).toBe(
+      "explicit-query"
+    );
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    await expect(
+      executeContentModes({ q: "NEAR(SQLite database)", mode: "keyword" })
+    ).rejects.toThrow("unsupported-query");
+  });
+  test("rewrite sends only query policy, never site content or embeddings", async () => {
+    await db
+      .insert(posts)
+      .values([fixture("original", "嵌入式数据库"), fixture("supplement", "SQLite3 SQL engine")]);
+    await enable("rewrite");
+    const requests: Array<{ url: string; body: unknown }> = [];
+    globalThis.fetch = fakeFetch(async (url, init) => {
+      requests.push({ url: String(url), body: JSON.parse(String(init?.body)) });
+      return Response.json({
+        choices: [
+          { finish_reason: "stop", message: { content: JSON.stringify({ queries: ["SQLite3"] }) } },
+        ],
+      });
+    });
+    const result = await executeContentModes({ q: "嵌入式数据库", mode: "rewrite" });
+    expect(result.effectiveMode).toBe("rewrite");
+    expect(result.results.map((x) => x.slug).sort()).toEqual(["original", "supplement"]);
+    expect(requests).toHaveLength(1);
+    expect(requests[0].url.endsWith("/chat/completions")).toBe(true);
+    expect(JSON.stringify(requests[0].body)).not.toContain("SQLite3 SQL engine");
+    expect(JSON.stringify(requests[0].body)).not.toContain("candidates");
+  });
+  test("failed rewriting returns original query, without querying failed reformulation", async () => {
+    await db
+      .insert(posts)
+      .values([fixture("original", "originalquery"), fixture("other", "otherquery")]);
+    await enable("rewrite");
+    globalThis.fetch = fakeFetch(async () => new Response("unavailable", { status: 503 }));
+    const result = await executeContentModes({ q: "originalquery", mode: "rewrite" });
+    expect(result).toMatchObject({ effectiveMode: "keyword", reason: "unavailable" });
+    expect(result.results.map((x) => x.slug)).toEqual(["original"]);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+  test("RAG can reject Node graph supplements without deleting keyword matches", async () => {
+    await db
+      .insert(posts)
+      .values([
+        fixture("keyword", "NodeJS JavaScript runtime"),
+        fixture("runtime", "Node JavaScript runtime"),
+        fixture("graph", "Graph node is a vertex"),
+      ]);
+    await enable("rag");
+    globalThis.fetch = fakeFetch(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const payload = JSON.parse(body.messages[1].content);
+      return Response.json({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: {
+              content: JSON.stringify({
+                items: payload.candidates.map((candidate: { id: string; content: string }) => ({
+                  id: candidate.id,
+                  relevant: candidate.id === "runtime",
+                  rank: candidate.id === "runtime" ? 0 : 100,
+                  evidence: candidate.content,
+                })),
+              }),
+            },
+          },
+        ],
+      });
+    });
+    const result = await executeContentModes({ q: "NodeJS", mode: "rag" });
+    expect(result.effectiveMode).toBe("rag");
+    expect(result.results.map((x) => x.slug)).toEqual(["runtime", "keyword"]);
+  });
+  test("RAG retrieves vectors and rejects invented result IDs with original-query fallback", async () => {
+    await db
+      .insert(posts)
+      .values([fixture("exact", "SQLite"), fixture("concept", "SQLite3 engine")]);
+    await db.insert(postEmbeddings).values({
+      id: "concept-vector",
+      postId: "concept",
+      slug: "concept",
+      type: "post",
+      modelName: "synthetic-embedding",
+      dim: 2,
+      contentHash: hashEmbeddingInput(buildEmbeddingInput(fixture("concept", "SQLite3 engine"))),
+      vector: Buffer.from(new Float32Array([1, 0]).buffer),
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    await enable("rag");
+    const urls: string[] = [];
+    globalThis.fetch = fakeFetch(async (url) => {
+      urls.push(String(url));
+      if (String(url).endsWith("/embeddings"))
+        return Response.json({ data: [{ embedding: [1, 0] }] });
+      return Response.json({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: { content: '{"items":[{"id":"invented","relevant":true,"rank":0}]}' },
+          },
+        ],
+      });
+    });
+    const result = await executeContentModes({ q: "SQLite", mode: "rag" });
+    expect(result).toMatchObject({ effectiveMode: "keyword", reason: "invalid-output" });
+    expect(result.results.map((x) => x.slug)).toEqual(["exact"]);
+    expect(urls.some((url) => url.endsWith("/embeddings"))).toBe(true);
+  });
+  test("keeps the entire engine-selected keyword capacity despite model rejection", async () => {
+    await db
+      .insert(posts)
+      .values(Array.from({ length: 5 }, (_, i) => fixture(`exact-${i}`, "SQLite")));
+    await enable("rag");
+    globalThis.fetch = fakeFetch(async (_url, init) => {
+      const payload = JSON.parse(JSON.parse(String(init?.body)).messages[1].content);
+      return Response.json({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: {
+              content: JSON.stringify({
+                items: payload.candidates.map((x: { id: string }) => ({
+                  id: x.id,
+                  relevant: false,
+                  rank: 100,
+                })),
+              }),
+            },
+          },
+        ],
+      });
+    });
+    const expected = (await executeContentModes({ q: "SQLite", mode: "keyword", topK: 3 })).results
+      .map((x) => x.slug)
+      .sort();
+    expect(
+      (await executeContentModes({ q: "SQLite", mode: "rag", topK: 3 })).results
+        .map((x) => x.slug)
+        .sort()
+    ).toEqual(expected);
+  });
+  test("only fresh embedding-input hashes supply RAG context, including late body evidence", async () => {
+    const concept = fixture("concept", `${"Introduction. ".repeat(500)}SQLite3 embedded database`);
+    await db.insert(posts).values([concept, fixture("stale", "Unrelated old content")]);
+    for (const id of ["concept", "stale"])
+      await db.insert(postEmbeddings).values({
+        id: `${id}-vector`,
+        postId: id,
+        slug: id,
+        type: "post",
+        modelName: "synthetic-embedding",
+        dim: 2,
+        contentHash:
+          id === "concept" ? hashEmbeddingInput(buildEmbeddingInput(concept)) : "stale-input-hash",
+        vector: Buffer.from(new Float32Array([1, 0]).buffer),
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    await enable("rag");
+    globalThis.fetch = fakeFetch(async (url, init) => {
+      if (String(url).endsWith("/embeddings"))
+        return Response.json({ data: [{ embedding: [1, 0] }] });
+      const payload = JSON.parse(JSON.parse(String(init?.body)).messages[1].content);
+      expect(payload.candidates.map((item: { id: string }) => item.id)).toEqual(["concept"]);
+      expect(payload.candidates[0].content).toContain("SQLite3 embedded database");
+      return Response.json({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: {
+              content: JSON.stringify({
+                items: [
+                  { id: "concept", relevant: true, rank: 0, evidence: "SQLite3 embedded database" },
+                ],
+              }),
+            },
+          },
+        ],
+      });
+    });
+    const result = await executeContentModes({ q: "SQLite", mode: "rag" });
+    expect(result.effectiveMode).toBe("rag");
+    expect(result.results.map((item) => item.slug)).toEqual(["concept"]);
+  });
+  test("a relevance judgment without an original quotation falls back to original keywords", async () => {
+    await db.insert(posts).values(fixture("exact", "SQLite"));
+    await enable("rag");
+    globalThis.fetch = fakeFetch(async () =>
+      Response.json({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: {
+              content: JSON.stringify({
+                items: [{ id: "exact", relevant: true, rank: 0, evidence: "Invented quotation" }],
+              }),
+            },
+          },
+        ],
+      })
+    );
+    const result = await executeContentModes({ q: "SQLite", mode: "rag" });
+    expect(result).toMatchObject({ effectiveMode: "keyword", reason: "invalid-output" });
+    expect(result.results.map((item) => item.slug)).toEqual(["exact"]);
+  });
+  test("RAG ties use content time and identity rather than incomparable retrieval scores", async () => {
+    const exact = fixture("exact", "SQLite", { title: "SQLite SQLite", publishDate: 1 });
+    const concept = fixture("concept", "SQLite3 embedded database", { publishDate: 2 });
+    await db.insert(posts).values([exact, concept]);
+    await db.insert(postEmbeddings).values({
+      id: "concept-vector",
+      postId: concept.id,
+      slug: concept.slug,
+      type: "post",
+      modelName: "synthetic-embedding",
+      dim: 2,
+      contentHash: hashEmbeddingInput(buildEmbeddingInput(concept)),
+      vector: Buffer.from(new Float32Array([1, 0]).buffer),
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    await enable("rag");
+    globalThis.fetch = fakeFetch(async (url, init) => {
+      if (String(url).endsWith("/embeddings"))
+        return Response.json({ data: [{ embedding: [1, 0] }] });
+      const payload = JSON.parse(JSON.parse(String(init?.body)).messages[1].content);
+      return Response.json({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: {
+              content: JSON.stringify({
+                items: payload.candidates.map((item: { id: string; title: string }) => ({
+                  id: item.id,
+                  relevant: true,
+                  rank: 0,
+                  evidence: item.title,
+                })),
+              }),
+            },
+          },
+        ],
+      });
+    });
+    const result = await executeContentModes({ q: "SQLite", mode: "rag" });
+    expect(result.effectiveMode).toBe("rag");
+    expect(result.results.map((item) => item.slug)).toEqual(["concept", "exact"]);
+  });
+  test("quality validation rejects topic and passing-mention ties regardless of input order", async () => {
+    globalThis.fetch = fakeFetch(async (url, init) => {
+      const request = JSON.parse(String(init?.body));
+      if (String(url).endsWith("/embeddings"))
+        return Response.json({
+          data: [{ embedding: request.input.startsWith("Plant") ? [0, 1] : [1, 0] }],
+        });
+      const payload = JSON.parse(request.messages[1].content);
+      return Response.json({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: {
+              content: JSON.stringify({
+                items: payload.candidates.map((item: { id: string; content: string }) => ({
+                  id: item.id,
+                  relevant: item.id !== "random",
+                  rank: item.id === "random" ? 100 : 0,
+                  ...(item.id !== "random" ? { evidence: item.content } : {}),
+                })),
+              }),
+            },
+          },
+        ],
+      });
+    });
+    const run = await startSearchValidation("rag");
+    while (run.status === "running") await Bun.sleep(5);
+    expect(run.status).toBe("failed");
+    expect(run.completed).toBe(0);
+    expect((await resolveSearchPolicy("rag")).reason).toBe("unvalidated");
+  });
+  test("policy changes invalidate only the changed mode and reject stale quality grants", async () => {
+    await enable("rag");
+    await enable("rewrite");
+    const old = await resolveSearchPolicy("rag");
+    const policy = (await readSearchSettings()).policy;
+    policy.rag.timeoutMs++;
+    await saveSearchPolicy(policy);
+    expect((await resolveSearchPolicy("rag")).reason).toBe("unvalidated");
+    expect((await resolveSearchPolicy("rewrite")).reason).toBeUndefined();
+    expect(await recordSearchQuality("rag", old.fingerprint ?? "", true)).toBe(false);
+  });
+  test.each([
+    { name: "SQLite-only concept expansion", node: ["NodeJS"], sql: ["SQLite"], completed: 1 },
+    {
+      name: "generic JavaScript expansion",
+      node: ["NodeJS", "JavaScript"],
+      sql: ["SQLite3"],
+      completed: 0,
+    },
+  ])("rewrite quality rejects $name using actual retrieval", async ({ node, sql, completed }) => {
+    globalThis.fetch = fakeFetch(async (_url, init) => {
+      const payload = JSON.parse(JSON.parse(String(init?.body)).messages[1].content);
+      expect(Object.keys(payload)).toEqual(["query"]);
+      const queries = payload.query === "NodeJS" ? node : sql;
+      return Response.json({
+        choices: [{ finish_reason: "stop", message: { content: JSON.stringify({ queries }) } }],
+      });
+    });
+    const run = await startSearchValidation("rewrite");
+    while (run.status === "running") await Bun.sleep(5);
+    expect(run.status).toBe("failed");
+    expect(run.completed).toBe(completed);
+    expect(run.reason).toBe("invalid-output");
+    expect((await resolveSearchPolicy("rewrite")).reason).toBe("unvalidated");
+  });
+  test("rewrite quality proves positive and negative retrieval without sending documents", async () => {
+    const requests: string[] = [];
+    globalThis.fetch = fakeFetch(async (url, init) => {
+      expect(String(url).endsWith("/chat/completions")).toBe(true);
+      const payload = JSON.parse(JSON.parse(String(init?.body)).messages[1].content);
+      expect(Object.keys(payload)).toEqual(["query"]);
+      requests.push(payload.query);
+      const queries =
+        payload.query === "NodeJS"
+          ? ["NodeJS", "Node.js"]
+          : payload.query === "嵌入式 SQL 数据库"
+            ? [payload.query, "SQLite", "SQLite3"]
+            : payload.query === "文章"
+              ? ["文章"]
+              : [];
+      return Response.json({
+        choices: [{ finish_reason: "stop", message: { content: JSON.stringify({ queries }) } }],
+      });
+    });
+    const source = process.env.DB_PATH;
+    const index = process.env.SEARCH_INDEX_PATH;
+    const run = await startSearchValidation("rewrite");
+    while (run.status === "running") await Bun.sleep(5);
+    expect(run.status).toBe("passed");
+    expect(run.completed).toBe(4);
+    expect(requests).toHaveLength(4);
+    expect(process.env.DB_PATH).toBe(source);
+    expect(process.env.SEARCH_INDEX_PATH).toBe(index);
+    expect((await resolveSearchPolicy("rewrite")).reason).toBeUndefined();
+  });
+  test("concurrent quality grants preserve both independent mode results", async () => {
+    const rag = await resolveSearchPolicy("rag");
+    const rewrite = await resolveSearchPolicy("rewrite");
+    expect(
+      await Promise.all([
+        recordSearchQuality("rag", rag.fingerprint ?? "", true),
+        recordSearchQuality("rewrite", rewrite.fingerprint ?? "", true),
+      ])
+    ).toEqual([true, true]);
+    expect((await resolveSearchPolicy("rag")).reason).toBeUndefined();
+    expect((await resolveSearchPolicy("rewrite")).reason).toBeUndefined();
+  });
+  test("a saved configuration change makes an in-flight validation stale", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    globalThis.fetch = fakeFetch(async (_url, init) => {
+      await gate;
+      const q = JSON.parse(JSON.parse(String(init?.body)).messages[1].content).query;
+      const queries =
+        q === "NodeJS"
+          ? ["Node.js"]
+          : q === "文章"
+            ? ["文章"]
+            : q.includes("SQL")
+              ? ["SQLite3"]
+              : [];
+      return Response.json({
+        choices: [{ finish_reason: "stop", message: { content: JSON.stringify({ queries }) } }],
+      });
+    });
+    const run = await startSearchValidation("rewrite");
+    const policy = (await readSearchSettings()).policy;
+    policy.rewrite.maxQueries = 2;
+    await saveSearchPolicy(policy);
+    release();
+    for (let i = 0; i < 100 && run.status === "running"; i++) await Bun.sleep(10);
+    expect(getSearchValidationRun(run.id)?.status).toBe("stale");
+    expect((await resolveSearchPolicy("rewrite")).reason).toBe("unvalidated");
+  });
+  test("filesystem clipping visibility is checked before AI and again before returning", async () => {
+    const memoId = "Memos/search-clipping.md";
+    const file = path.join(process.env.LOCAL_CONTENT_BASE_PATH ?? "", memoId);
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, "---\npublic: true\n---\nSQLite clipping");
+    await db.insert(posts).values(
+      fixture(memoId, "SQLite clipping", {
+        slug: "search-clipping",
+        type: "memo",
+        metadata: JSON.stringify({ authoredClipping: true }),
+      })
+    );
+    await enable("rag");
+    globalThis.fetch = fakeFetch(async (_url, init) => {
+      const payload = JSON.parse(JSON.parse(String(init?.body)).messages[1].content);
+      writeFileSync(file, "---\npublic: false\n---\nSQLite clipping");
+      return Response.json({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: {
+              content: JSON.stringify({
+                items: payload.candidates.map((item: { id: string; content: string }) => ({
+                  id: item.id,
+                  relevant: true,
+                  rank: 0,
+                  evidence: item.content,
+                })),
+              }),
+            },
+          },
+        ],
+      });
+    });
+    await expect(executeContentModes({ q: "SQLite", mode: "rag" })).rejects.toThrow(
+      "search-content-changed"
+    );
+    expect((await executeContentModes({ q: "SQLite", mode: "keyword" })).results).toEqual([]);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+  test("failed generation creation leaves the previous durable generation selected", async () => {
+    const index = await contentSearchIndex();
+    const previous = (await index.status()).state?.generation;
+    chmodSync(index.directory, 0o500);
+    try {
+      await expect(index.prepare(true)).rejects.toThrow();
+      expect((await index.status()).state?.generation).toBe(previous);
+    } finally {
+      chmodSync(index.directory, 0o700);
+    }
+    await db.insert(posts).values(fixture("after-fault", "SQLite"));
+    expect(
+      (await executeContentModes({ q: "SQLite", mode: "keyword" })).results.map((x) => x.slug)
+    ).toEqual(["after-fault"]);
+    expect(await index.check()).toMatchObject({ ok: true });
+  });
+  test("a commit I/O failure cannot advance checkpoint and an explicit rebuild repairs it", async () => {
+    const index = await contentSearchIndex();
+    const state = (await index.status()).state;
+    const active = path.join(index.directory, state?.generation ?? "");
+    await db.insert(posts).values(fixture("commit-fault", "SQLite"));
+    chmodSync(active, 0o500);
+    try {
+      await expect(index.synchronize()).rejects.toThrow("search-index-commit-failed");
+      expect((await index.status()).state?.checkpoint).toBe(state?.checkpoint);
+    } finally {
+      chmodSync(active, 0o700);
+    }
+    await index.prepare(true);
+    expect(
+      (await executeContentModes({ q: "SQLite", mode: "keyword" })).results.map((x) => x.slug)
+    ).toEqual(["commit-fault"]);
+    expect(await index.check()).toMatchObject({ ok: true });
+  });
+  test("HTTP arrays expose actual execution metadata and tRPC returns the same envelope", async () => {
+    await db.insert(posts).values(fixture("http", "SQLite"));
+    const response = await handlePublicApiRequest(
+      new Request("http://localhost/api/public/search?q=SQLite&mode=keyword"),
+      "/search"
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Search-Effective-Mode")).toBe("keyword");
+    expect(response.headers.get("access-control-expose-headers")).toContain("Search-Reason");
+    const caller = appRouter.createCaller({
+      req: new Request("http://localhost"),
+      resHeaders: new Headers(),
+      isAdmin: false,
+    });
+    expect(await response.json()).toEqual(
+      (await caller.search.content({ q: "SQLite", mode: "keyword" })).results
+    );
+    const invalid = await handlePublicApiRequest(
+      new Request("http://localhost/api/public/search?q=SQLite&mode=unknown"),
+      "/search"
+    );
+    expect(invalid.status).toBe(400);
+    const status = await (await contentSearchIndex()).status();
+    expect(status.watermark).toBeGreaterThan(0);
+  });
+  test("MCP uses the common executor, enforces capacity and denies unpublished access", async () => {
+    await db
+      .insert(posts)
+      .values([
+        fixture("mcp-public", "SQLite"),
+        fixture("mcp-private", "SQLite", { public: false }),
+      ]);
+    const headers = {
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+      "mcp-protocol-version": "2025-03-26",
+    };
+    const init = await handleMcpHttpRequest(
+      new Request("http://localhost/mcp", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-03-26",
+            capabilities: {},
+            clientInfo: { name: "search-contract", version: "1" },
+          },
+        }),
+      })
+    );
+    const session = init.headers.get("mcp-session-id") ?? "";
+    expect(session).not.toBe("");
+    await init.text();
+    async function call(name: string, args: unknown) {
+      const response = await handleMcpHttpRequest(
+        new Request("http://localhost/mcp", {
+          method: "POST",
+          headers: { ...headers, "mcp-session-id": session },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            method: "tools/call",
+            params: { name, arguments: args },
+          }),
+        })
+      );
+      const raw = await response.text();
+      const data =
+        raw
+          .split("\n")
+          .find((line) => line.startsWith("data: "))
+          ?.slice(6) ?? raw;
+      return JSON.parse(data);
+    }
+    try {
+      const fresh = await call("search_content", { q: "SQLite", mode: "keyword" });
+      expect(JSON.parse(fresh.result.content[0].text)).toMatchObject({
+        requestedMode: "keyword",
+        effectiveMode: "keyword",
+        results: [{ slug: "mcp-public" }],
+      });
+      const legacy = await call("search_enhanced", { q: "SQLite", rerank: false });
+      expect(JSON.parse(legacy.result.content[0].text)).toEqual(
+        (await executeContentModes({ q: "SQLite", mode: "keyword" })).results
+      );
+      const privateCall = await call("search_content", {
+        q: "SQLite",
+        mode: "keyword",
+        publishedOnly: false,
+      });
+      expect(privateCall.result.isError).toBe(true);
+      const capacity = await call("search_content", { q: "SQLite", mode: "keyword", topK: 51 });
+      expect(Boolean(capacity.error || capacity.result?.isError)).toBe(true);
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+    } finally {
+      await handleMcpHttpRequest(
+        new Request("http://localhost/mcp", {
+          method: "DELETE",
+          headers: { "mcp-session-id": session, "mcp-protocol-version": "2025-03-26" },
+        })
+      );
+    }
+  });
+});

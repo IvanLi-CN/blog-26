@@ -1,3 +1,4 @@
+import type { SearchHighlightTerm } from "@/lib/search/highlights";
 export type SearchResultType = "post" | "memo" | "topic" | "experience" | "policy";
 
 export type SearchDisplayType = SearchResultType | "clipping";
@@ -12,8 +13,10 @@ export type SearchResultItem = {
   isClipping?: boolean;
   href?: string;
   source?: "playbook";
+  highlightTerms?: SearchHighlightTerm[];
   final?: number;
   cosine?: number;
+  searchOrigin?: "keyword" | "ai";
 };
 
 export type SearchSectionResult = {

@@ -6,6 +6,7 @@ import path from "node:path";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { db, initializeDB } from "@/lib/db";
+import { contentSearchIndex } from "@/server/services/content-search-index";
 import { postEmbeddings, posts } from "../schema";
 import { float32ArrayToBlobBuffer } from "./embeddings";
 import { enhanced, semantic } from "./search";
@@ -86,6 +87,8 @@ describe("AI search fallback boundaries", () => {
     migrate(drizzle(sqlite), { migrationsFolder: MIGRATIONS_PATH });
     sqlite.close();
     await initializeDB(true);
+    fs.rmSync(`${TEST_DB_PATH}.search`, { recursive: true, force: true });
+    await (await contentSearchIndex()).prepare();
   });
 
   beforeEach(async () => {
@@ -106,6 +109,7 @@ describe("AI search fallback boundaries", () => {
   });
 
   afterAll(() => {
+    delete process.env.CHAT_COMPLETION_MODEL;
     if (originalEnv.embeddingModel) process.env.EMBEDDING_MODEL_NAME = originalEnv.embeddingModel;
     else delete process.env.EMBEDDING_MODEL_NAME;
     if (originalEnv.rerankerModel) process.env.RERANKER_MODEL_NAME = originalEnv.rerankerModel;
@@ -126,7 +130,7 @@ describe("AI search fallback boundaries", () => {
     expect(results.find((item) => item.slug === "ordinary-post")?.isClipping).toBeUndefined();
   });
 
-  test("uses uncached FTS for semantic and enhanced requests without vectors", async () => {
+  test("keeps legacy semantic and keyword fallback current without vectors", async () => {
     if (!db) throw new Error("Database has not been initialised");
     await db.insert(posts).values({
       id: "fts-fallback-post",
@@ -303,68 +307,38 @@ describe("AI search fallback boundaries", () => {
     ]);
   });
 
-  test("returns the semantic base when reranking fails", async () => {
+  test("enhanced uses original keyword fallback when current RAG quality is not validated", async () => {
     await seedPost();
     process.env.EMBEDDING_MODEL_NAME = "test-embedding";
-    process.env.RERANKER_MODEL_NAME = "test-reranker";
+    process.env.CHAT_COMPLETION_MODEL = "test-chat";
     process.env.OPENAI_API_KEY = "search-test-key";
     process.env.OPENAI_API_BASE_URL = "https://search.example.test";
-
-    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
-      if (String(input).endsWith("/embeddings")) {
-        return Response.json({ data: [{ embedding: [1, 0] }] });
-      }
-      return new Response("rerank unavailable", { status: 503 });
-    }) as unknown as typeof fetch;
-
-    const base = await semantic({ q: "SQLite", topK: 5 });
+    const fetcher = mock(async () => {
+      throw new Error("No AI request expected");
+    });
+    globalThis.fetch = fetcher as unknown as typeof fetch;
     const result = await enhanced({ q: "SQLite", topK: 5, rerank: true });
-
-    expect(result).toEqual(base);
-    expect(result[0]?.final).toBeUndefined();
+    expect(result.map((item) => item.slug)).toEqual(["semantic-post"]);
+    expect(fetcher).not.toHaveBeenCalled();
   });
 
-  test("returns the semantic base and logs when reranking is not configured", async () => {
+  test("rerank false ignores legacy reranker options and uses zero-AI keyword execution", async () => {
     await seedPost();
-    process.env.EMBEDDING_MODEL_NAME = "test-embedding";
-    process.env.OPENAI_API_KEY = "search-test-key";
-    process.env.OPENAI_API_BASE_URL = "https://search.example.test";
-
-    globalThis.fetch = mock(async () =>
-      Response.json({ data: [{ embedding: [1, 0] }] })
-    ) as unknown as typeof fetch;
-
-    const base = await semantic({ q: "SQLite", topK: 5 });
-    const result = await enhanced({ q: "SQLite", topK: 5, rerank: true });
-
-    expect(result).toEqual(base);
-    expect(console.warn).toHaveBeenCalledWith(
-      "[search] reranker unavailable; using semantic results",
-      {
-        code: "RERANKER_NOT_CONFIGURED",
-      }
-    );
-  });
-
-  test("returns the semantic base when rerank indexes are invalid", async () => {
-    await seedPost();
-    process.env.EMBEDDING_MODEL_NAME = "test-embedding";
-    process.env.RERANKER_MODEL_NAME = "test-reranker";
-    process.env.OPENAI_API_KEY = "search-test-key";
-    process.env.OPENAI_API_BASE_URL = "https://search.example.test";
-
-    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
-      if (String(input).endsWith("/embeddings")) {
-        return Response.json({ data: [{ embedding: [1, 0] }] });
-      }
-      return Response.json({ results: [{ index: 1, relevance_score: 0.9 }] });
-    }) as unknown as typeof fetch;
-
-    const base = await semantic({ q: "SQLite", topK: 5 });
-    const result = await enhanced({ q: "SQLite", topK: 5, rerank: true });
-
-    expect(result).toEqual(base);
-    expect(result[0]?.final).toBeUndefined();
+    const fetcher = mock(async () => {
+      throw new Error("No AI request expected");
+    });
+    globalThis.fetch = fetcher as unknown as typeof fetch;
+    const result = await enhanced({
+      q: "SQLite",
+      rerank: false,
+      rerankerModel: "legacy-inert",
+      rerankTopK: 1,
+    });
+    expect(result.map((item) => item.slug)).toEqual(["semantic-post"]);
+    expect(fetcher).not.toHaveBeenCalled();
+    await expect(
+      enhanced({ q: "SQLite", rerank: true, rerankerModel: "unsupported" })
+    ).rejects.toThrow("unsupported-parameter");
   });
 
   test("routes valid and invalid advanced syntax through FTS with vectors available", async () => {

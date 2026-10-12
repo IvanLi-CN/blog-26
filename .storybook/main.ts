@@ -16,6 +16,8 @@ const config: StorybookConfig = {
   viteFinal: async (baseConfig) =>
     mergeConfig(baseConfig, {
       plugins: [tailwindcss()],
+      // Base64 hashes can accidentally contain URL patterns blocked by browser content filters.
+      build: { rollupOptions: { output: { hashCharacters: "hex" } } },
       resolve: {
         alias: {
           "@": resolve(repoRoot, "src"),

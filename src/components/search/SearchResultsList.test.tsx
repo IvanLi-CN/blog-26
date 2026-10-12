@@ -100,7 +100,10 @@ describe("content groups and highlight text", () => {
   test("multiple highlights retain punctuation and text exactly without spacing classes", () => {
     const text = "最新版本，并更新 package.json 中的版本。";
     const { container } = render(
-      <SearchResultsList results={[{ slug: "text", snippet: text }]} query="版本" />
+      <SearchResultsList
+        results={[{ slug: "text", snippet: text, highlightTerms: [{ value: "版本" }] }]}
+        query="版本"
+      />
     );
     expect(container.querySelector("[data-search-snippet]")?.textContent).toBe(text);
     expect(container.querySelectorAll("mark")).toHaveLength(2);

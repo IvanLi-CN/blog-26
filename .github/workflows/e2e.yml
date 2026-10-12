@@ -66,6 +66,12 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Build embedded search engine
+        run: |
+          rustup toolchain install 1.91.0 --profile minimal
+          RUSTUP_TOOLCHAIN=1.91.0 bun run search:native:build
+          bun run search:native:verify
+
       - name: Run E2E tests
         run: bun run test:e2e:project -- ${{ matrix.project }}
         env:

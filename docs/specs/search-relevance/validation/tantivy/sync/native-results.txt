@@ -1,0 +1,16 @@
+ENV probe=0.1.0 tantivy=0.26.2 (workspace exact dependency pin) rusqlite=0.40.2 (bundled) sqlite_runtime=3.53.2
+PASS insert; manual reader reload controls visibility
+PASS SQLite rollback removes transaction-local outbox event
+PASS body/tag/slug/type projection updates replace stable id
+PASS stale stored index version detected; authoritative pre-return/pre-LLM visibility+version guard rejects candidate
+PASS aborted pre-commit batch cannot advance checkpoint
+PASS process exit after commit before checkpoint: committed version persists and replay is idempotent
+PASS duplicate upsert replay remains one live document
+PASS private-to-public restoration reaches requested watermark
+PASS same slug across types retains separate stable ids
+PASS second writer rejected by engine directory lock
+PASS delete and duplicate delete replay
+PASS bulk clear publishes all deletions
+PASS full rebuild from authoritative current projection
+PASS process termination before commit preserves only previously committed documents and releases writer lock
+NOT_TESTED machine-power-loss durability; production multiprocess ownership; genuine commit IO failure injection; filesystem/SQLite atomicity; real clipping permission implementation; performance SLA

@@ -24,12 +24,20 @@ import type {
   AdminSecretState,
 } from "@/lib/llm-settings";
 import { rebasePersistedLocalLinks, rebasePersistedLocalReferences } from "@/lib/persisted-paths";
+import {
+  type AdminSearchSettings,
+  aiSearchModeSchema,
+  DEFAULT_SEARCH_POLICY,
+  type SearchValidationRun,
+  searchPolicySchema,
+} from "@/lib/search/settings";
 import { combineAbortSignals } from "@/lib/web-demo-fetch";
 import {
   assertWebDemoRequestAvailable,
   getWebDemoEnvironment,
   getWebDemoRequestSignal,
   getWebDemoState,
+  recordWebDemoMutation,
   type WebDemoEnvironment,
   waitForWebDemoRequest,
 } from "@/lib/web-demo-runtime";
@@ -668,6 +676,17 @@ function normalizeRequest(input: RequestInfo | URL, init?: RequestInit) {
   }
 }
 
+const demoSearchSettings: AdminSearchSettings = {
+  policy: structuredClone(DEFAULT_SEARCH_POLICY),
+  quality: {},
+  status: {
+    rag: { available: false, reason: "unvalidated" },
+    rewrite: { available: false, reason: "unvalidated" },
+  },
+};
+const demoSearchRuns = new Map<string, SearchValidationRun>();
+const demoSearchRevision = { rag: 0, rewrite: 0 };
+
 async function handleAdminRequest(
   url: URL,
   method: string,
@@ -775,8 +794,76 @@ async function handleAdminRequest(
       categoryIcons: {},
     });
   if (path.startsWith("/api/admin/tag-icons/")) return json({ success: true });
+  if (path === "/api/admin/search-settings") {
+    if (method === "PUT") {
+      const parsed = searchPolicySchema.safeParse(body);
+      if (!parsed.success)
+        return json({ error: { code: "BAD_REQUEST", message: "预算格式不正确" } }, 400);
+      for (const mode of ["rag", "rewrite"] as const)
+        if (JSON.stringify(parsed.data[mode]) !== JSON.stringify(demoSearchSettings.policy[mode])) {
+          demoSearchRevision[mode]++;
+          delete demoSearchSettings.quality[mode];
+          demoSearchSettings.status[mode] = {
+            available: false,
+            reason: parsed.data[mode].enabled ? "unvalidated" : "disabled",
+          };
+        }
+      demoSearchSettings.policy = parsed.data;
+      recordWebDemoMutation("保存搜索设置", "仅更新演示内存配置");
+    }
+    return json(demoSearchSettings);
+  }
+  if (path === "/api/admin/search-settings/validate" && method === "POST") {
+    const mode = aiSearchModeSchema.safeParse(body?.mode);
+    if (!mode.success)
+      return json({ error: { code: "BAD_REQUEST", message: "不支持的搜索模式" } }, 400);
+    const revision = demoSearchRevision[mode.data];
+    const run: SearchValidationRun = {
+      id: crypto.randomUUID(),
+      mode: mode.data,
+      fingerprint: `demo-${revision}`,
+      status: "running",
+      completed: 0,
+      total: 4,
+      startedAt: Date.now(),
+    };
+    demoSearchRuns.set(run.id, run);
+    recordWebDemoMutation("启动搜索验证", `${mode.data} 固定合成样例（模拟）`);
+    return json(run, 202);
+  }
+  if (path.startsWith("/api/admin/search-settings/validation/")) {
+    const run = demoSearchRuns.get(path.split("/").at(-1) ?? "");
+    if (!run) return json({ error: { code: "NOT_FOUND", message: "验证记录不存在" } }, 404);
+    if (run.status === "running") {
+      run.completed = Math.min(4, Math.floor((Date.now() - run.startedAt) / 500));
+      if (run.completed === 4) {
+        run.finishedAt = Date.now();
+        run.status =
+          run.fingerprint === `demo-${demoSearchRevision[run.mode]}` ? "passed" : "stale";
+        if (run.status === "passed") {
+          demoSearchSettings.quality[run.mode] = {
+            fingerprint: run.fingerprint,
+            passed: true,
+            validatedAt: run.finishedAt,
+          };
+          demoSearchSettings.status[run.mode] = { available: true };
+        }
+      }
+    }
+    return json(run);
+  }
   if (path === "/api/admin/llm-settings") {
-    if (method === "PUT") applyDemoLlmSettingsUpdate(body as AdminLlmSettingsUpdateInput);
+    if (method === "PUT") {
+      applyDemoLlmSettingsUpdate(body as AdminLlmSettingsUpdateInput);
+      for (const mode of ["rag", "rewrite"] as const) {
+        demoSearchRevision[mode]++;
+        delete demoSearchSettings.quality[mode];
+        demoSearchSettings.status[mode] = {
+          available: false,
+          reason: demoSearchSettings.policy[mode].enabled ? "unvalidated" : "disabled",
+        };
+      }
+    }
     return json(llmSettings);
   }
   if (path === "/api/admin/llm-settings/test") {

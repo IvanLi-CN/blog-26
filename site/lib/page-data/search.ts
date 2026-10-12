@@ -26,5 +26,9 @@ export async function loadsearch(context: PageContext) {
               : toPublicSitePath(`${playbookVersionPath(edition.edition)}search-documents.json`),
         }
       : undefined;
-  return { playbook, query: context.url.searchParams.get("q") ?? "" };
+  return {
+    playbook,
+    query: context.url.searchParams.get("q") ?? "",
+    mode: context.url.searchParams.get("mode") ?? "keyword",
+  };
 }

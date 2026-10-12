@@ -1,0 +1,83 @@
+Connected to the SQLite database at /tmp/blog-search-empirical-I31DPq/content.sqlite
+Drizzle ORM initialized.
+{"isolatedArtifacts":"/tmp/blog-search-empirical-I31DPq","policy":{"rag":{"enabled":true,"model":null,"timeoutMs":30000,"maxInputTokens":16384,"maxOutputTokens":4096,"candidateLimit":20,"contentCodePoints":2048},"rewrite":{"enabled":true,"model":null,"timeoutMs":30000,"maxInputTokens":4096,"maxOutputTokens":4096,"maxQueries":3}}}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":254}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":201}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":122}
+{"syntheticModelOutput":"{\"items\":[{\"id\":\"sqlite3\",\"relevant\":true,\"rank\":0,\"evidence\":\"SQLite3 is the current embedded SQL database. Covers SQL queries, transactions, and database persistence.\"},{\"id\":\"sqlite-mention\",\"relevant\":true,\"rank\":50,\"evidence\":\"A list of unrelated tools, including SQLite.\"},{\"id\":\"random\",\"relevant\":false,\"rank\":100,\"evidence\":\"Plant tomatoes in spring.\"}]}","finishReason":"stop","usage":{"prompt_tokens":537,"completion_tokens":1156,"total_tokens":1693,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":0},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":1064,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":13480}
+{"syntheticModelOutput":"{\"items\":[{\"id\":\"runtime\",\"relevant\":true,\"rank\":0,\"evidence\":\"Use the Node JavaScript runtime to run server applications and npm packages.\"},{\"id\":\"graph\",\"relevant\":false,\"rank\":100,\"evidence\":\"A graph node is a vertex in a mathematical network.\"},{\"id\":\"cluster\",\"relevant\":false,\"rank\":100,\"evidence\":\"A cluster node is a physical machine running orchestration agents.\"}]}","finishReason":"stop","usage":{"prompt_tokens":382,"completion_tokens":552,"total_tokens":934,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":128},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":465,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":2857}
+{"syntheticModelOutput":"{\"items\":[{\"id\":\"article\",\"relevant\":true,\"rank\":0,\"evidence\":\"这篇文章介绍如何写文章并整理段落。\"},{\"id\":\"split\",\"relevant\":false,\"rank\":100,\"evidence\":\"文隔开章只是几个不连续的字符。\"}]}","finishReason":"stop","usage":{"prompt_tokens":351,"completion_tokens":382,"total_tokens":733,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":128},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":327,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":2596}
+{"syntheticModelOutput":"{\"items\":[{\"id\":\"sql\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"},{\"id\":\"node\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"}]}","finishReason":"stop","usage":{"prompt_tokens":495,"completion_tokens":748,"total_tokens":1243,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":0},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":710,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":8970}
+{"validation":{"id":"511ee7f6-cfb3-4111-a7b9-4d1f23934b51","mode":"rag","fingerprint":"220b0bcb7223f0769e73a55f163eae497bf12117c4e44df32c66fbff47a9a8de","status":"passed","completed":4,"total":4,"startedAt":1791550396215,"finishedAt":1791550424712}}
+{"syntheticModelOutput":"{\"queries\":[\"NodeJS\",\"\\\"Node.js\\\"\"]}","finishReason":"stop","usage":{"prompt_tokens":261,"completion_tokens":475,"total_tokens":736,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":127},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":460,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":2725}
+{"syntheticModelOutput":"{\"queries\":[\"嵌入式 SQL 数据库\",\"嵌入式数据库\",\"嵌入式数据库 SQLite\"]}","finishReason":"stop","usage":{"prompt_tokens":411,"completion_tokens":369,"total_tokens":780,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":0},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":349,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":5811}
+{"syntheticModelOutput":"{\"queries\":[\"文章\",\"article\",\"essay\"]}","finishReason":"stop","usage":{"prompt_tokens":260,"completion_tokens":343,"total_tokens":603,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":126},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":329,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":2247}
+{"syntheticModelOutput":"{\"queries\":[]}","finishReason":"stop","usage":{"prompt_tokens":265,"completion_tokens":43,"total_tokens":308,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":128},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":36,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":514}
+{"validation":{"id":"db486151-58f4-40ad-aa69-716691843010","mode":"rewrite","fingerprint":"3328d224a38d03eb7295c3872d625476eb41544ed4df7b4e5f56f878f5b1a720","status":"passed","completed":4,"total":4,"startedAt":1791550424740,"finishedAt":1791550436041}}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":127}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":140}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":128}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":128}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":120}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":118}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":116}
+{"syntheticModelOutput":"{\"items\":[{\"id\":\"sqlite3\",\"relevant\":true,\"rank\":0,\"evidence\":\"SQLite3 is the embedded SQL database. Covers database transactions and SQL queries.\"},{\"id\":\"keyword\",\"relevant\":true,\"rank\":80,\"evidence\":\"SQLite mention in a reading list.\"},{\"id\":\"runtime\",\"relevant\":false,\"rank\":100,\"evidence\":\"Node JavaScript runtime for server applications and npm packages.\"},{\"id\":\"article\",\"relevant\":false,\"rank\":100,\"evidence\":\"这篇文章介绍写作与段落组织。\"},{\"id\":\"garden\",\"relevant\":false,\"rank\":100,\"evidence\":\"Plant tomatoes in a garden in spring.\"},{\"id\":\"graph\",\"relevant\":false,\"rank\":100,\"evidence\":\"Graph node is a vertex in a mathematical network.\"}]}","finishReason":"stop","usage":{"prompt_tokens":454,"completion_tokens":2497,"total_tokens":2951,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":256},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":2338,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":12093}
+{"execution":{"q":"SQLite","requestedMode":"rag","effectiveMode":"rag","ids":["sqlite3","keyword"]}}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":117}
+{"syntheticModelOutput":"{\"items\":[{\"id\":\"graph\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"},{\"id\":\"runtime\",\"relevant\":true,\"rank\":0,\"evidence\":\"Node JavaScript runtime for server applications and npm packages.\"},{\"id\":\"keyword\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"},{\"id\":\"article\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"},{\"id\":\"sqlite3\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"},{\"id\":\"garden\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"}]}","finishReason":"stop","usage":{"prompt_tokens":602,"completion_tokens":639,"total_tokens":1241,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":0},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":525,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":7131}
+{"execution":{"q":"Node.js","requestedMode":"rag","effectiveMode":"rag","ids":["runtime"]}}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":121}
+{"syntheticModelOutput":"{\"items\":[{\"id\":\"article\",\"relevant\":true,\"rank\":0,\"evidence\":\"这篇文章介绍写作与段落组织。\"},{\"id\":\"keyword\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"},{\"id\":\"runtime\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"},{\"id\":\"garden\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"},{\"id\":\"graph\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"},{\"id\":\"sqlite3\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"}]}","finishReason":"stop","usage":{"prompt_tokens":601,"completion_tokens":217,"total_tokens":818,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":0},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":106,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":4036}
+{"execution":{"q":"文章","requestedMode":"rag","effectiveMode":"rag","ids":["article"]}}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":126}
+{"syntheticModelOutput":"{\"items\":[{\"id\":\"keyword\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"},{\"id\":\"garden\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"},{\"id\":\"article\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"},{\"id\":\"graph\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"},{\"id\":\"runtime\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"},{\"id\":\"sqlite3\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"}]}","finishReason":"stop","usage":{"prompt_tokens":606,"completion_tokens":424,"total_tokens":1030,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":0},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":319,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":5926}
+{"execution":{"q":"长颈鹿骑宇宙自行车","requestedMode":"rag","effectiveMode":"rag","ids":[]}}
+{"endpoint":"/v1/embeddings","model":"BAAI/bge-m3","status":200,"ms":121}
+{"syntheticModelOutput":"{\"items\":[{\"id\":\"sqlite3\",\"relevant\":true,\"rank\":0,\"evidence\":\"SQLite3 is the embedded SQL database.\"},{\"id\":\"keyword\",\"relevant\":true,\"rank\":1,\"evidence\":\"SQLite mention in a reading list.\"},{\"id\":\"runtime\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"},{\"id\":\"article\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"},{\"id\":\"graph\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"},{\"id\":\"garden\",\"relevant\":false,\"rank\":100,\"evidence\":\"\"}]}","finishReason":"stop","usage":{"prompt_tokens":604,"completion_tokens":1152,"total_tokens":1756,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":0},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":1032,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":12643}
+{"execution":{"q":"嵌入式 SQL 数据库","requestedMode":"rag","effectiveMode":"rag","ids":["sqlite3","keyword"]}}
+{"syntheticModelOutput":"{\"queries\":[\"SQLite\",\"\\\"SQLite database\\\"\",\"SQLite3\"]}","finishReason":"stop","usage":{"prompt_tokens":409,"completion_tokens":159,"total_tokens":568,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":0},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":139,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":3623}
+{"execution":{"q":"SQLite","requestedMode":"rewrite","effectiveMode":"rewrite","ids":["keyword","sqlite3"]}}
+{"syntheticModelOutput":"{\"queries\":[\"Node.js\",\"NodeJS\"]}","finishReason":"stop","usage":{"prompt_tokens":409,"completion_tokens":137,"total_tokens":546,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":0},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":124,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":3158}
+{"execution":{"q":"Node.js","requestedMode":"rewrite","effectiveMode":"rewrite","ids":[]}}
+{"syntheticModelOutput":"{\"queries\":[\"文章\",\"article\",\"essay\"]}","finishReason":"stop","usage":{"prompt_tokens":260,"completion_tokens":326,"total_tokens":586,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":126},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":312,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":2240}
+{"execution":{"q":"文章","requestedMode":"rewrite","effectiveMode":"rewrite","ids":["article"]}}
+{"syntheticModelOutput":"{\"queries\":[]}","finishReason":"stop","usage":{"prompt_tokens":413,"completion_tokens":59,"total_tokens":472,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":0},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":52,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":1968}
+{"execution":{"q":"长颈鹿骑宇宙自行车","requestedMode":"rewrite","effectiveMode":"rewrite","ids":[]}}
+{"syntheticModelOutput":"{\"queries\":[\"嵌入式 SQL 数据库\",\"嵌入式数据库\",\"SQLite\"]}","finishReason":"stop","usage":{"prompt_tokens":411,"completion_tokens":535,"total_tokens":946,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":0},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":517,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+{"endpoint":"/v1/chat/completions","model":"deepseek-v4-flash","status":200,"ms":7305}
+{"execution":{"q":"嵌入式 SQL 数据库","requestedMode":"rewrite","effectiveMode":"rewrite","ids":["keyword"]}}
+164 |       assert.ok(!ids.includes("graph"));
+165 |       if (mode === "rag") assert.ok(ids.includes("runtime"));
+166 |     }
+167 |     if (q === "文章") assert.ok(ids.includes("article"));
+168 |     if (q === "长颈鹿骑宇宙自行车") assert.deepEqual(ids, []);
+169 |     if (q === "嵌入式 SQL 数据库") assert.ok(ids.includes("sqlite3"), "useful concept discovery");
+                                          ^
+AssertionError: useful concept discovery
+ generatedMessage: false,
+     actual: false,
+   expected: true,
+   operator: "==",
+       diff: "simple",
+       code: "ERR_ASSERTION"
+
+      at /workspace/worktrees/search-modes/src/scripts/verify-search-empirical.ts:169:37
+
+Bun v1.4.2 (Linux x64)

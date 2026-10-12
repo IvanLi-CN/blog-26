@@ -128,3 +128,7 @@ web-demo-admin-dist/
 .astro-web-demo/
 .astro-web-demo-dev/
 web-demo-site-dev-dist/
+
+# Embedded search native build outputs
+/native/search/target/
+/native/search/*.node

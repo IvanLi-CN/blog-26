@@ -4,6 +4,8 @@ import { expect, userEvent, within } from "storybook/test";
 import "@/styles/globals.css";
 import "@/styles/nature-restored.css";
 import type { SearchSuggestionItem } from "@/lib/ai/search-suggestions";
+import { positiveSearchTerms } from "@/lib/search/highlights";
+import { planNativeQuery } from "@/lib/search/native-query";
 import PublicSearchPage from "./PublicSearchPage";
 import { groupedSearchFixture } from "./search-fixture";
 import type { SearchFilter, SearchResultItem } from "./search-model";
@@ -70,7 +72,7 @@ type SearchStoryProps = {
   items?: SearchResultItem[];
   isLoading?: boolean;
   isLoadingRecommendations?: boolean;
-  recommendedTerms?: SearchSuggestionItem[];
+  recommendedTerms?: Array<string | SearchSuggestionItem>;
   error?: string | null;
   theme?: "light" | "dark";
 };
@@ -164,7 +166,10 @@ function SearchStory({
       <PublicSearchPage
         query={query}
         searchedQuery={activeQuery}
-        results={items}
+        results={items.map((item) => ({
+          ...item,
+          highlightTerms: positiveSearchTerms(planNativeQuery(activeQuery).ast),
+        }))}
         isLoading={isLoading}
         isLoadingRecommendations={isLoadingRecommendations}
         recommendedSearchTerms={recommendedTerms}
@@ -199,7 +204,7 @@ export const Results: Story = {
   parameters: {
     docs: {
       description: {
-        story: "搜索完成后的结果列表，展示文章、闪念、相关度、关键词摘录和高亮。",
+        story: "搜索完成后的结果列表，展示文章、闪念、关键词摘录和实际命中高亮。",
       },
     },
   },
@@ -211,7 +216,7 @@ export const Results: Story = {
     await expect(canvas.getByRole("button", { name: "搜索" })).toBeVisible();
     await expect(canvas.getByRole("link", { name: /Arch Linux on Apple Silicon/ })).toBeVisible();
     await expect(canvasElement.querySelectorAll("mark").length).toBeGreaterThan(0);
-    await expect(canvas.getAllByText(/相关度/)[0]).toHaveClass(/text-xs/);
+    await expect(canvas.queryByText(/相关度/)).not.toBeInTheDocument();
     await expect(canvas.queryByText("打开内容")).not.toBeInTheDocument();
   },
 };
@@ -742,7 +747,6 @@ const verifyGrouped: Story["play"] = async ({ canvasElement }) => {
     const operations = within(canvas.getByRole("region", { name: "搜索操作" }));
     await expect(operations.getByRole("textbox", { name: "搜索关键词" })).toBeVisible();
     await expect(operations.getByRole("group", { name: "结果类型筛选" })).toBeVisible();
-    await expect(operations.getByRole("region", { name: "建议搜索词" })).toBeVisible();
   } else if (window.innerWidth >= 640) {
     const queryPanel = canvasElement.querySelector<HTMLElement>("[data-search-query-panel]");
     const panelBounds = queryPanel?.getBoundingClientRect();
@@ -778,49 +782,67 @@ const verifyGrouped: Story["play"] = async ({ canvasElement }) => {
     "false"
   );
   await expect(canvasElement.querySelector("a a, a button")).toBeNull();
-  if (window.innerWidth >= 1024) {
-    const suggestions = within(canvas.getByRole("region", { name: "建议搜索词" }));
-    await userEvent.click(suggestions.getByRole("button", { name: "SQLite" }));
-    await expect(canvas.getByRole("textbox", { name: "搜索关键词" })).toHaveValue("SQLite");
-    await expect(canvas.getByRole("button", { name: "展开更多匹配（2）" })).toHaveAttribute(
-      "aria-expanded",
-      "false"
-    );
-  }
 };
 export const GroupedContent: Story = {
   ...searchDesktopViewport,
   name: "按内容聚合",
-  render: () => <SearchStory initialQuery="版本" items={groupedItems} />,
+  render: () => (
+    <SearchStory initialQuery="版本" items={groupedItems} recommendedTerms={["版本发布"]} />
+  ),
   play: verifyGrouped,
 };
 export const DarkGroupedContent: Story = {
   ...searchDesktopViewport,
   name: "深色内容聚合",
-  render: () => <SearchStory initialQuery="版本" items={groupedItems} theme="dark" />,
+  render: () => (
+    <SearchStory
+      initialQuery="版本"
+      items={groupedItems}
+      recommendedTerms={["版本发布"]}
+      theme="dark"
+    />
+  ),
   play: verifyGrouped,
 };
 export const MobileGroupedContent: Story = {
   ...searchMobileViewport,
   name: "移动内容聚合",
-  render: () => <SearchStory initialQuery="版本" items={groupedItems} />,
+  render: () => (
+    <SearchStory initialQuery="版本" items={groupedItems} recommendedTerms={["版本发布"]} />
+  ),
   play: verifyGrouped,
 };
 export const MobileDarkGroupedContent: Story = {
   ...searchMobileViewport,
   name: "移动深色内容聚合",
-  render: () => <SearchStory initialQuery="版本" items={groupedItems} theme="dark" />,
+  render: () => (
+    <SearchStory
+      initialQuery="版本"
+      items={groupedItems}
+      recommendedTerms={["版本发布"]}
+      theme="dark"
+    />
+  ),
   play: verifyGrouped,
 };
 export const NarrowGroupedContent: Story = {
   ...searchNarrowMobileViewport,
   name: "窄屏内容聚合",
-  render: () => <SearchStory initialQuery="版本" items={groupedItems} />,
+  render: () => (
+    <SearchStory initialQuery="版本" items={groupedItems} recommendedTerms={["版本发布"]} />
+  ),
   play: verifyGrouped,
 };
 export const NarrowDarkGroupedContent: Story = {
   ...searchNarrowMobileViewport,
   name: "窄屏深色内容聚合",
-  render: () => <SearchStory initialQuery="版本" items={groupedItems} theme="dark" />,
+  render: () => (
+    <SearchStory
+      initialQuery="版本"
+      items={groupedItems}
+      recommendedTerms={["版本发布"]}
+      theme="dark"
+    />
+  ),
   play: verifyGrouped,
 };
