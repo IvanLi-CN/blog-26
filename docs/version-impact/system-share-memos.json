@@ -19,11 +19,13 @@
     "src/lib/__tests__/system-share.test.ts": "a3d671414f327f9c2d253895455d57c1a90151d8",
     "src/lib/memo-clipping.ts": "14552d3a84d21e29c4e634449131ce8799eea84a",
     "src/lib/system-share.ts": "92e8b0e6ce788cda1105890adb247f2fffb8547e",
+    "src/lib/release/github.ts": "83efd17d224f9c914d09a21398e062dc193749b7",
     ".github/workflows/recover-release-ledger.yml": "4804b74c8f34a7ae6b5c2eb1582ffee8d9fdaec6",
     "scripts/prepare-edgeone-pwa-config.ts": "85fea154809e81cecf2e5fa763a99d7c5c3a700b",
     "src/server/routers/memos.ts": "434d15573c0ec5013e8f334cc80c98ec35bd12f1",
     "tests/lib/public-pwa-assets.test.ts": "c37b4b2755de5d224dda565ff7ea4b1505022ba8",
     "tests/lib/public-pwa-edgeone-config.test.ts": "082f5f4a7f71d755611bc6ac9112d72041f27f4c",
+    "tests/lib/manual-release-ledger.test.ts": "f261cabef857a626f8ce2030b3730bc7d0dfacd3",
     "tests/server/system-share-api.test.ts": "f4d02796951df0c459abd6647262d708848bf4a0"
   },
   "change": {
