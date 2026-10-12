@@ -237,6 +237,23 @@ Ordinary clicks and mobile taps on all three runtime panels, including cells, gr
 
 ## Visual Evidence
 
+### Fixed viewport public atmosphere
+
+- Evidence bound to implementation commit `97d970bc1a3093163be9fc88992a3e587d38aab5`; source type `ui_demo`, target program `Ego Browser`, capture scope `browser-viewport`, viewport strategy `devtools-emulate`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`.
+- The owner confirmed these six current captures after reviewing the local public preview. Home, article, and project routes were checked across light/dark themes, desktop/mobile viewports (`1440px × 1000px` and `393px × 852px`), and top/middle/bottom scroll positions. The computed atmosphere remained identical at every scroll position with `position: fixed`, `inset: 0`, shell `isolation: isolate`, content above the atmosphere, and AmbientScene between them.
+
+![Fixed viewport atmosphere desktop home light](./assets/fixed-viewport-background-desktop-home-light.png)
+
+![Fixed viewport atmosphere desktop article dark](./assets/fixed-viewport-background-desktop-post-dark.png)
+
+![Fixed viewport atmosphere desktop project light](./assets/fixed-viewport-background-desktop-project-light.png)
+
+![Fixed viewport atmosphere mobile home dark](./assets/fixed-viewport-background-mobile-home-dark.png)
+
+![Fixed viewport atmosphere mobile article light](./assets/fixed-viewport-background-mobile-post-light.png)
+
+![Fixed viewport atmosphere mobile project dark](./assets/fixed-viewport-background-mobile-project-dark.png)
+
 ### Homepage featured project cards
 
 - Evidence bound to implementation commit `f01d504142a1a454ccf7a3b62d9509f0c3968665`; source type `ui_demo`, target program `Ego Browser`, capture scope `browser-viewport`, viewport strategy `devtools-emulate`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`.
