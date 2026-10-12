@@ -7,6 +7,7 @@
 ## Related Changes
 
 - 基础清理与合同提交：`260692f8be487574ee6227c81f65be4a576a2f6a`。
+- 迁移边界：该提交删除旧的 PR-label/label-gate/release workflow 与文档；当前入口为 `.github/workflows/manual-product-release.yml`，`.github/workflows/product-release.yml` 只消费已登记的发布身份。
 - 手动发布实现引入独立签名登记分支、原运行冻结产物、只读版本端点及统一静态/GHCR 发布链路；内置令牌签名探针已核验，最终候选验证与审查记录由实现 PR 承载。
 - [PR #171](https://github.com/IvanLi-CN/blog-26/pull/171) 将原生令牌的正式版手动发布实现合并至 main，合并提交为 `8bfc0b602fd849bc129763c97c46821afc9749be`；该实现合并不触发产品发布，合并本身不构成真实发版验收。
 - 产品预发布需求讨论确认 alpha/beta/rc 与正式版共享两种产物及单一版本请求入口，预发布不部署站点、不推进正式 latest；相应解析、分配及完成条件仍待实现和真实发布验收。
