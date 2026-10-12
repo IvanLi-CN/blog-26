@@ -9,7 +9,7 @@
     "docs/specs/public-csr-navigation/assets/csr-tags-mobile-light-reduced.png": "3d3add4333c8ee60514805932200fa90f5299aba",
     "site/components/PublicRouteSkeleton.tsx": "7a8ae6e9b0d986393afb91f9a9c9c323e8c017ec",
     "site/styles/public-pages.css": "48b6f718c993acaef3d96ef7945122d80acfa19c",
-    "tests/e2e/web-demo/public-csr.spec.ts": "4c85fa02c7777761443c8e8f46ecb42aff45698f",
+    "tests/e2e/web-demo/public-csr.spec.ts": "32d4b95a4c0009b4628d04a5ead4425e1838b51e",
     "site/components/SiteHeader.tsx": "56f07d4356a51f4a4de6c098b5e6331e8e054972",
     "src/styles/nature-restored.css": "d229dd05da7c7ea176101cec098592c9145a6c61",
     "tests/lib/public-csr-route.test.ts": "7216901d8d686be2a80c0ea54592c6b97af38f4c"
@@ -27,7 +27,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/public-csr.spec.ts",
-          "blob": "4c85fa02c7777761443c8e8f46ecb42aff45698f",
+          "blob": "32d4b95a4c0009b4628d04a5ead4425e1838b51e",
           "command": "Official Web Demo tags navigation skeleton geometry and 1200px/1280px/1440px/1600px Inspector header regressions pass"
         },
         {
@@ -44,7 +44,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/public-csr.spec.ts",
-          "blob": "4c85fa02c7777761443c8e8f46ecb42aff45698f",
+          "blob": "32d4b95a4c0009b4628d04a5ead4425e1838b51e",
           "command": "Official Web Demo verifies grouped tags geometry and the Inspector-open header stays on one row at 1200px and 1600px viewports"
         },
         {
@@ -75,7 +75,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/public-csr.spec.ts",
-          "blob": "4c85fa02c7777761443c8e8f46ecb42aff45698f",
+          "blob": "32d4b95a4c0009b4628d04a5ead4425e1838b51e",
           "command": "Official Web Demo tags skeleton and 1200px/1600px Inspector-open header regressions pass"
         },
         {
@@ -112,7 +112,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/public-csr.spec.ts",
-          "blob": "4c85fa02c7777761443c8e8f46ecb42aff45698f",
+          "blob": "32d4b95a4c0009b4628d04a5ead4425e1838b51e",
           "command": "Official Web Demo navigation reads remain unchanged while tags pending presentation is corrected"
         }
       ]
