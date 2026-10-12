@@ -20,7 +20,6 @@ const HTML_ROUTE_PATTERNS = [
   "/",
   "/about/",
   "/search/",
-  "/share/",
   "/tags/*",
   "/posts/*",
   "/projects/*",
@@ -49,6 +48,9 @@ const HTML_FILE_ROUTE_PATTERNS = [
   "/memos/",
   "/memos/:slug/",
 ] as const;
+
+const SKIPPED_PUBLIC_HTML_ROUTE_PATTERNS = ["/share/"] as const;
+const SKIPPED_PUBLIC_ASSET_PATHS = new Set(["share-target-sw.js"]);
 
 const PLAYBOOK_POLICY_SOURCE = "/_content/playbook/:version/:digest/policies/*";
 
@@ -175,6 +177,7 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
   const tagFeedSources = new Set<string>();
 
   for (const path of unversionedFiles) {
+    if (SKIPPED_PUBLIC_ASSET_PATHS.has(path)) continue;
     const parent = dirname(path).replaceAll("\\", "/");
     const exactSource = scopedPath(basePath, `/${path}`);
 
@@ -361,6 +364,12 @@ function validateHtmlFiles(staticFiles: readonly string[], basePath: string) {
           ? `/${file.slice(0, -"/index.html".length)}/`
           : `/${file}`;
     const scoped = scopedPath(normalizedBase, urlPath);
+    if (
+      SKIPPED_PUBLIC_HTML_ROUTE_PATTERNS.some((source) =>
+        edgeoneSourceMatches(scopedPath(normalizedBase, source), scoped)
+      )
+    )
+      continue;
     const represented = HTML_FILE_ROUTE_PATTERNS.some((source) =>
       edgeoneSourceMatches(scopedPath(normalizedBase, source), scoped)
     );

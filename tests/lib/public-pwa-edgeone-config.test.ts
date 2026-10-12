@@ -54,6 +54,7 @@ describe("EdgeOne public PWA cache config", () => {
       "site-assets/favicon.ico",
       "site-assets/favicon-dark.ico",
       "favicon.ico",
+      "share-target-sw.js",
       "feed.json",
       "atom.xml",
       "feed.xml",
@@ -73,9 +74,8 @@ describe("EdgeOne public PWA cache config", () => {
     expect(findEdgeoneCacheRule(config, "/blog-26/posts/example/")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.html
     );
-    expect(findEdgeoneCacheRule(config, "/blog-26/share/")?.headers[0]?.value).toBe(
-      EDGEONE_PUBLIC_CACHE_CONTROL.html
-    );
+    expect(findEdgeoneCacheRule(config, "/blog-26/share/")?.headers[0]?.value).toBe(undefined);
+    expect(findEdgeoneCacheRule(config, "/blog-26/share-target-sw.js")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/blog-26/projects/blog-26/")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.html
     );
