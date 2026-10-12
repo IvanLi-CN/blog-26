@@ -18,7 +18,7 @@
     "package.json": "b597bb4bd8104023e160bd76740c54774d90e922",
     "scripts/run-precommit-tests.ts": null,
     "scripts/run-test-suite.ts": "5c5f93a47213070eb6c28ca0d8497b43c524cde0",
-    "scripts/verify-native-search.ts": "787bbf883a26b1b6414e76934d220951ac06d454",
+    "scripts/verify-native-search.ts": "77233b601836c68817a3a50ae16828c6c92c4c51",
     "src/lib/ai/search-fallback.test.ts": "fe8e292f36657686399df1d8a30066e007f7c8e2",
     "src/lib/ai/search.ts": "80d6e6d00291475b715a995e66f25099208f23cb",
     "src/lib/search/content-search.ts": "71768f7c27091aaa8cbf424d0f5b73ec52332457",

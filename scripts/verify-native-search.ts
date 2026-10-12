@@ -132,7 +132,7 @@ await index.apply(
 await index.apply(
   JSON.stringify([
     {
-      id: "old-date",
+      id: "a-old-date",
       version: "1",
       body: "dateprobe",
       type: "post",
@@ -140,7 +140,7 @@ await index.apply(
       publish_date: 1,
     },
     {
-      id: "new-date",
+      id: "z-new-date",
       version: "1",
       body: "dateprobe",
       type: "post",
@@ -156,7 +156,7 @@ const dateTied = JSON.parse(
 );
 assert.deepEqual(
   dateTied.map((hit: { id: string }) => hit.id),
-  ["new-date", "old-date"],
+  ["z-new-date", "a-old-date"],
   "same-score ties retain newer-first order for caller truncation"
 );
 console.log("PASS stable same-score date order survives the native result adapter");
