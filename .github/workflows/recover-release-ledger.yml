@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-        ref: main
+          ref: main
           fetch-depth: 0
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
