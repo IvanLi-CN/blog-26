@@ -161,8 +161,8 @@
   },
   "classification": {
     "planned": {
-      "impact": "major",
-      "reasoning": "Embedded Tantivy and independent AI modes add capabilities, but enhanced search now deliberately rejects NEAR and unsupported reranker-model overrides; these externally observable compatibility breaks require a Major. SQLite upgrades are additive and preserve source content and the legacy reader. The current candidate also widens the Playbook detail description to the existing header content column without changing public data or state contracts.",
+      "impact": "minor",
+      "reasoning": "Embedded Tantivy and independent AI modes add compatible capabilities. Legacy NEAR queries continue through SQLite FTS5, enhanced rerankerModel overrides remain accepted, and rerank=false retains its historical semantic-search behavior. SQLite upgrades are additive and Tantivy is a rebuildable projection. The current candidate also keeps the Playbook and system-share changes compatible.",
       "assessed_at": "2026-10-12T04:38:00+00:00",
       "evidence": [
         {
@@ -173,7 +173,7 @@
         {
           "path": "src/lib/search/native-query.test.ts",
           "blob": "a18783f93fd3d6f1792a28da8eec1c8e87f4121f",
-          "command": "bun run test:precommit"
+          "command": "bun run test:unit"
         },
         {
           "path": "src/server/services/search-migration.test.ts",
@@ -183,13 +183,13 @@
         {
           "path": "src/server/services/search-index-recovery.test.ts",
           "blob": "18ab31a2f3acc78dcc2796dbe50b06212c213f04",
-          "command": "bun run test:precommit"
+          "command": "bun run test:unit"
         }
       ]
     },
     "current": {
-      "impact": "major",
-      "reasoning": "Embedded Tantivy and independent AI modes add capabilities, but enhanced search now deliberately rejects NEAR and unsupported reranker-model overrides; these externally observable compatibility breaks require a Major. SQLite upgrades are additive and preserve source content and the legacy reader.",
+      "impact": "minor",
+      "reasoning": "Embedded Tantivy and independent AI modes add compatible capabilities. Legacy NEAR queries continue through SQLite FTS5, enhanced rerankerModel overrides remain accepted, and rerank=false retains its historical semantic-search behavior. SQLite upgrades are additive and Tantivy is a rebuildable projection.",
       "assessed_at": "2026-10-09T12:08:24.266643+00:00",
       "evidence": [
         {
@@ -200,7 +200,7 @@
         {
           "path": "src/lib/search/native-query.test.ts",
           "blob": "a18783f93fd3d6f1792a28da8eec1c8e87f4121f",
-          "command": "bun run test:precommit"
+          "command": "bun run test:unit"
         },
         {
           "path": "src/server/services/search-migration.test.ts",
@@ -210,7 +210,7 @@
         {
           "path": "src/server/services/search-index-recovery.test.ts",
           "blob": "18ab31a2f3acc78dcc2796dbe50b06212c213f04",
-          "command": "bun run test:precommit"
+          "command": "bun run test:unit"
         }
       ],
       "scope_drift": {
@@ -219,8 +219,8 @@
       }
     },
     "verified": {
-      "impact": "major",
-      "reasoning": "Embedded Tantivy and independent AI modes add capabilities, but enhanced search now deliberately rejects NEAR and unsupported reranker-model overrides; these externally observable compatibility breaks require a Major. SQLite upgrades are additive and preserve source content and the legacy reader. The Playbook detail width repair and shared system-share schema/API adjustments are covered candidate changes and do not alter the search compatibility conclusion.",
+      "impact": "minor",
+      "reasoning": "Embedded Tantivy and independent AI modes add compatible capabilities. Legacy NEAR queries continue through SQLite FTS5, enhanced rerankerModel overrides remain accepted, and rerank=false retains its historical semantic-search behavior. SQLite upgrades are additive and Tantivy is a rebuildable projection. The Playbook detail width repair and shared system-share changes remain compatible.",
       "assessed_at": "2026-10-12T04:38:00+00:00",
       "evidence": [
         {
@@ -231,7 +231,7 @@
         {
           "path": "src/lib/search/native-query.test.ts",
           "blob": "a18783f93fd3d6f1792a28da8eec1c8e87f4121f",
-          "command": "bun run test:precommit"
+          "command": "bun run test:unit"
         },
         {
           "path": "src/server/services/search-migration.test.ts",
@@ -241,7 +241,7 @@
         {
           "path": "src/server/services/search-index-recovery.test.ts",
           "blob": "18ab31a2f3acc78dcc2796dbe50b06212c213f04",
-          "command": "bun run test:precommit"
+          "command": "bun run test:unit"
         },
         {
           "path": "src/components/playbook/PlaybookPage.tsx",
@@ -253,8 +253,8 @@
   },
   "compatibility_evidence": {
     "public_api": {
-      "impact": "major",
-      "change": "breaking",
+      "impact": "minor",
+      "change": "compatible",
       "supported_consumer_versions": ["2.12.0"],
       "evidence": [
         {
@@ -265,7 +265,7 @@
         {
           "path": "src/lib/search/native-query.test.ts",
           "blob": "a18783f93fd3d6f1792a28da8eec1c8e87f4121f",
-          "command": "bun run test:precommit"
+          "command": "bun run test:unit"
         }
       ]
     },
@@ -284,7 +284,7 @@
         {
           "path": "src/server/services/search-index-recovery.test.ts",
           "blob": "18ab31a2f3acc78dcc2796dbe50b06212c213f04",
-          "command": "bun run test:precommit"
+          "command": "bun run test:unit"
         }
       ]
     }

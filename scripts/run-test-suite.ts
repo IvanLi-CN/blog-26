@@ -2,7 +2,7 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { validateDrizzleJournal } from "./validate-drizzle-journal";
 
-// Pre-commit test runner: run unit tests excluding the `old/` directory
+// CI test runner: run unit and integration tests excluding the `old/` directory
 // This script discovers test files under common roots and invokes `bun test` with explicit file paths.
 // It avoids running any tests under the `old/` directory.
 
