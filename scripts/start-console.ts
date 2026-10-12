@@ -3,6 +3,7 @@ import { stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, resolve } from "node:path";
 import { extractAuthFromRequest } from "@/lib/auth-utils";
+import { withForwardedProtocol } from "@/lib/forwarded-protocol";
 import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
 import { startClippingRuntime, stopClippingRuntime } from "@/server/clipping/runtime";
 import {
@@ -233,7 +234,10 @@ const server = createServer(async (request, response) => {
 
   if (await serveConsoleStatic(request, response, url.pathname)) return;
 
-  astro.handler(request, response);
+  // Traefik terminates TLS before this Node server, while Astro derives the URL protocol from the socket.
+  await withForwardedProtocol(request.socket, request.headers["x-forwarded-proto"], () =>
+    astro.handler(request, response)
+  );
 });
 
 async function shutdown() {

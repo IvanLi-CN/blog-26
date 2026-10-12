@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "a35f56e4b1116cfc168e1cfda67b7fe5fb8dc9f1",
+  "covered_files": {
+    "scripts/start-console.ts": "ffbcce7f14138291a9f24b05c7cea471b63158b4",
+    "src/lib/forwarded-protocol.ts": "cb90a7d567c39abcefdae3e501826e95ac1eaa15",
+    "src/lib/__tests__/forwarded-protocol.test.ts": "648b1677478607d5dceeda2a334cac67f0a49660"
+  },
+  "change": {
+    "description": "Honor the forwarded HTTPS protocol in the Console SSR server so multipart system-share submissions pass Astro's origin check behind the TLS-terminating reverse proxy.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change only corrects reverse-proxy protocol reconstruction in the Console server. It does not change endpoint schemas, authentication rules, persistence, or public-site behavior.",
+      "assessed_at": "2026-10-13T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/__tests__/forwarded-protocol.test.ts",
+          "blob": "648b1677478607d5dceeda2a334cac67f0a49660",
+          "command": "bun test src/lib/__tests__/forwarded-protocol.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The runtime wrapper temporarily exposes the first trusted forwarded protocol to Astro and restores the socket immediately after request construction. The system-share API remains administrator-only and otherwise unchanged.",
+      "assessed_at": "2026-10-13T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "scripts/start-console.ts",
+          "blob": "ffbcce7f14138291a9f24b05c7cea471b63158b4",
+          "command": "bun run check"
+        },
+        {
+          "path": "src/lib/forwarded-protocol.ts",
+          "blob": "cb90a7d567c39abcefdae3e501826e95ac1eaa15",
+          "command": "bun test src/lib/__tests__/forwarded-protocol.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to reverse-proxy protocol handling and its focused regression test; no feature scope or persistence contract changed."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused protocol tests, system-share API tests, static checks, the full precommit suite, and a local multipart request with HTTPS origin plus forwarded protocol all pass. The local request reaches the business route and returns its expected invalid-submission 400 instead of Astro's cross-site 403.",
+      "assessed_at": "2026-10-13T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/__tests__/forwarded-protocol.test.ts",
+          "blob": "648b1677478607d5dceeda2a334cac67f0a49660",
+          "command": "bun test src/lib/__tests__/forwarded-protocol.test.ts"
+        },
+        {
+          "path": "tests/server/system-share-api.test.ts",
+          "blob": "f4d02796951df0c459abd6647262d708848bf4a0",
+          "command": "bun test src/lib/__tests__/system-share.test.ts tests/server/system-share-api.test.ts"
+        },
+        {
+          "path": "scripts/start-console.ts",
+          "blob": "ffbcce7f14138291a9f24b05c7cea471b63158b4",
+          "command": "bun run check"
+        },
+        {
+          "path": "src/lib/__tests__/forwarded-protocol.test.ts",
+          "blob": "648b1677478607d5dceeda2a334cac67f0a49660",
+          "command": "bun run test:precommit"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": ["3.0.3"],
+      "evidence": [
+        {
+          "path": "tests/server/system-share-api.test.ts",
+          "blob": "f4d02796951df0c459abd6647262d708848bf4a0",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "src/lib/__tests__/forwarded-protocol.test.ts",
+          "blob": "648b1677478607d5dceeda2a334cac67f0a49660",
+          "command": "bun run test:precommit"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The change adds no migration, file format, content data, or browser storage state.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "scripts/start-console.ts",
+          "blob": "ffbcce7f14138291a9f24b05c7cea471b63158b4",
+          "command": "bun run test:precommit"
+        }
+      ]
+    }
+  }
+}
