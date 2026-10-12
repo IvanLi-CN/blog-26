@@ -6,6 +6,8 @@
 
 DeepSeek 的结构化搜索请求关闭 thinking 后，代码候选 `4588af29f14d4dadfea8cad64123c9d2e403ddfe` 上 RAG 与改写各通过 4/4 固定质量样例及 5/5 实际搜索。其后只有验证记录和版本影响记录变化。输出、指纹和断言边界见 [非思考模式证据](./validation/product/empirical-search-model-nonthinking.txt)。
 
+当前候选 `e1a2c3fc348f27607f624eb50f876d2c1bcd678f` 在修复 native event-loop 验证夹具后重新执行真实模型验收。deepseek-v4-flash 与 BAAI/bge-m3 的 RAG 和改写各通过 4/4 固定质量样例及 5/5 实际搜索；概念查询 `嵌入式 SQL 数据库` 找到 SQLite3 专题，RAG 将专题排在顺带提及之前；Node.js 返回运行时并排除图节点，`文章` 返回文章，无关查询返回空结果。两种模式的实际检索均保全关键词结果，原断言未改变。固定合成样例外无内容发送，未发生模型自动重试。RAG 指纹 `220b0bcb7223f0769e73a55f163eae497bf12117c4e44df32c66fbff47a9a8de`，改写指纹 `b085e8e6a6c99a0612b72e5183b7cf62b100fa00da2a432752747cdbbc37a95f`；完整响应与请求元数据见 [当前候选证据](./validation/product/empirical-search-model-current.txt)。
+
 原始搜索实现通过 PR #214 合入主线。该 PR 的 CI、Web Demo 和视觉结果是原始功能候选的历史证据，不代表后续兼容修复的当前头状态，也不能替代后续候选自己的 CI、审查或模型验证。本 Spec 不据此宣称搜索实现已部署生产。
 
 ## 改写概念发现修复

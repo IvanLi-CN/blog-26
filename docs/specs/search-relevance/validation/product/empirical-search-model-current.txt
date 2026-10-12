@@ -1,0 +1,9 @@
+Candidate validation for `e1a2c3fc348f27607f624eb50f876d2c1bcd678f`, completed in the Linux Agent VM at `2026-10-12T18:46Z`.
+
+Command: `bun scripts/verify-search-empirical.ts --rag-timeout-ms 30000 --rag-output-tokens 4096 --rewrite-timeout-ms 30000 --rewrite-output-tokens 4096 --capture-judgments`
+
+Only the fixed synthetic rows in `scripts/verify-search-empirical.ts` were sent to the configured provider. Credentials and production content were not logged or sent.
+
+The RAG quality run passed 4/4 cases with fingerprint `220b0bcb7223f0769e73a55f163eae497bf12117c4e44df32c66fbff47a9a8de`. The rewrite quality run passed 4/4 cases with fingerprint `b085e8e6a6c99a0612b72e5183b7cf62b100fa00da2a432752747cdbbc37a95f`.
+
+Both actual search chains passed 5/5 fixed queries. `SQLite` preserved the literal match and returned the SQLite3 topic; `嵌入式 SQL 数据库` found the SQLite3 topic; `Node.js` returned the JavaScript runtime and rejected graph/cluster nodes; `文章` returned the article; and `长颈鹿骑宇宙自行车` returned no results. The model was called for both RAG judgment and query rewrite, with no automatic retries.
