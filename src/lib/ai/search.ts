@@ -353,6 +353,7 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
 }
 
 async function getSemanticExecution(input: SemanticSearchInput): Promise<SemanticExecution> {
+  if (!input.q.trim()) return { results: [], source: "fts" };
   const cacheInput = await buildSearchCacheInput("semantic", input);
   const execution = await getCachedSearchExecution("semantic", cacheInput, async () => {
     const execution = await computeSemantic(input);

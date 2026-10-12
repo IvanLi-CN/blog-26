@@ -652,6 +652,28 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     expect((await executeContentModes({ q: "SQLite", mode: "keyword" })).results).toEqual([]);
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
   });
+  test("NEAR compatibility honors canonical clipping visibility", async () => {
+    const memoId = "Memos/private-near-search.md";
+    const file = path.join(process.env.LOCAL_CONTENT_BASE_PATH ?? "", memoId);
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, "---\ntitle: Private clipping\npublic: false\n---\nprivate marker");
+    await db.insert(posts).values(
+      fixture(memoId, "private marker", {
+        slug: "private-near-search",
+        type: "memo",
+        tags: JSON.stringify(["剪藏"]),
+        metadata: JSON.stringify({ authoredClipping: true }),
+        title: "Stale public clipping title",
+      })
+    );
+
+    const result = await executeContentModes({
+      q: "NEAR(private marker, 3)",
+      mode: "keyword",
+    });
+
+    expect(result.results.some((item) => item.slug === "private-near-search")).toBe(false);
+  });
   test("failed generation creation leaves the previous durable generation selected", async () => {
     const index = await contentSearchIndex();
     const previous = (await index.status()).state?.generation;

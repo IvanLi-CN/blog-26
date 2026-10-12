@@ -213,13 +213,38 @@ export async function executeContentModes(
   const publishedOnly = context.publishedOnly !== false;
   // Preserve the legacy SQLite query contract for callers that still use NEAR.
   // Tantivy remains the default engine for the new simple-query surface.
-  if (/(?:^|[\s(:])NEAR\s*\(/iu.test(input.q.replace(/"(?:\\.|[^"\\])*"/gu, ""))) {
+  if (
+    /(?:^|[\s(:])NEAR\s*\(/iu.test(input.q.normalize("NFKC").replace(/"(?:\\.|[^"\\])*"/gu, ""))
+  ) {
     const legacy = await searchContent({
       q: input.q,
       topK: input.topK,
       type: input.type,
       publishedOnly,
     });
+    const memoSlugs = [
+      ...new Set(legacy.filter((item) => item.type === "memo").map((x) => x.slug)),
+    ];
+    if (publishedOnly && memoSlugs.length) {
+      const rows = await db
+        .select()
+        .from(posts)
+        .where(and(eq(posts.type, "memo"), inArray(posts.slug, memoSlugs)));
+      const visible = new Map(
+        await Promise.all(
+          rows.map(async (row) => [row.slug, await authorizeContent(row, true)] as const)
+        )
+      );
+      const results = legacy
+        .filter((item) => item.type !== "memo" || visible.get(item.slug) === true)
+        .map((item) => ({ ...item, searchOrigin: "keyword" as const }));
+      return {
+        results,
+        requestedMode: input.mode,
+        effectiveMode: "keyword",
+        reason: "explicit-query",
+      };
+    }
     return {
       results: legacy.map((item) => ({ ...item, searchOrigin: "keyword" as const })),
       requestedMode: input.mode,

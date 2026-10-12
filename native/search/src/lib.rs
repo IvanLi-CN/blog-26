@@ -445,7 +445,7 @@ impl Task for SearchTask {
                         .as_ref()
                         .and_then(|field| field.first(doc))
                         .unwrap_or(0);
-                    (score, std::cmp::Reverse(publish_date), std::cmp::Reverse(id))
+                    (score, publish_date, std::cmp::Reverse(id))
                 }
             });
         let top = searcher

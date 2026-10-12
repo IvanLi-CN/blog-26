@@ -103,6 +103,17 @@ describe.skipIf(process.platform !== "linux")("AI search fallback boundaries", (
     console.warn = mock(() => undefined) as unknown as typeof console.warn;
   });
 
+  test("blank semantic queries return without an embedding request", async () => {
+    await seedPost();
+    const fetchMock = mock(async () => {
+      throw new Error("blank query must not call an AI provider");
+    });
+    globalThis.fetch = Object.assign(fetchMock, { preconnect: originalFetch.preconnect });
+
+    expect(await semantic({ q: "   ", publishedOnly: true })).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   afterEach(() => {
     globalThis.fetch = originalFetch;
     console.warn = originalWarn;

@@ -96,7 +96,7 @@ assert.deepEqual(await ids("Arch"), [1, 2, 3]);
 console.log("PASS committed update/delete and reader reload");
 let ticks = 0;
 const timer = setInterval(() => ticks++, 1);
-await Promise.all(Array.from({ length: 100 }, () => ids("NodeJS")));
+await Promise.all(Array.from({ length: 1000 }, () => ids("NodeJS")));
 clearInterval(timer);
 assert.ok(ticks > 0, "native queries allow the event loop to progress");
 console.log(`PASS asynchronous search; timer ticks=${ticks}`);
@@ -111,6 +111,33 @@ await index.apply(
     }))
   )
 );
+await index.apply(
+  JSON.stringify([
+    {
+      id: "old-date",
+      version: "1",
+      body: "dateprobe",
+      type: "post",
+      published: true,
+      publish_date: 1,
+    },
+    {
+      id: "new-date",
+      version: "1",
+      body: "dateprobe",
+      type: "post",
+      published: true,
+      publish_date: 2,
+    },
+  ])
+);
+const dateTied = JSON.parse(
+  await index.search(
+    JSON.stringify({ ast: planNativeQuery("dateprobe").ast, limit: 1, published_only: true })
+  )
+);
+assert.equal(dateTied[0]?.id, "new-date", "same-score ties prefer newer content before truncation");
+console.log("PASS stable same-score date ordering before truncation");
 const tied = JSON.parse(
   await index.search(
     JSON.stringify({ ast: planNativeQuery("equalword").ast, limit: 10, published_only: true })
