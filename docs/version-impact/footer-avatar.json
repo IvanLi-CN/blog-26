@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "4001a2df221914b8777670bbfb49798f7c0e7500",
+  "covered_files": {
+    "public/site-assets/avatar.jpg": "77fbf3da40f827b2d8869036d5ed79f6b3ca1e4c",
+    "site/components/SiteFooter.tsx": "aacac6714abad8bfad8139cdac7f6e93df8a3acd"
+  },
+  "change": {
+    "description": "Replace the public footer placeholder avatar with the supplied image and remove the decorative outer ring while preserving the footer layout.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a compatible public visual asset and presentation change; no endpoint, persistence, content, or release protocol changes are introduced.",
+      "assessed_at": "2026-10-12T12:35:00+08:00",
+      "evidence": [
+        {
+          "path": "site/components/SiteFooter.tsx",
+          "blob": "aacac6714abad8bfad8139cdac7f6e93df8a3acd",
+          "command": "bun run check"
+        },
+        {
+          "path": "public/site-assets/avatar.jpg",
+          "blob": "77fbf3da40f827b2d8869036d5ed79f6b3ca1e4c",
+          "command": "bun run web-demo:build"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The footer now renders the supplied avatar in a fixed circular crop without the previous ring, while all public routes and durable state remain unchanged.",
+      "assessed_at": "2026-10-12T12:35:00+08:00",
+      "evidence": [
+        {
+          "path": "site/components/SiteFooter.tsx",
+          "blob": "aacac6714abad8bfad8139cdac7f6e93df8a3acd",
+          "command": "bun run check"
+        },
+        {
+          "path": "public/site-assets/avatar.jpg",
+          "blob": "77fbf3da40f827b2d8869036d5ed79f6b3ca1e4c",
+          "command": "bun run web-demo:build"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains limited to the supplied footer avatar asset and its public footer presentation."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Repository checks, Web Demo build, and desktop/mobile visual verification confirm a compatible footer presentation change without API, persistence, or release-state changes.",
+      "assessed_at": "2026-10-12T12:35:00+08:00",
+      "evidence": [
+        {
+          "path": "site/components/SiteFooter.tsx",
+          "blob": "aacac6714abad8bfad8139cdac7f6e93df8a3acd",
+          "command": "bun run check"
+        },
+        {
+          "path": "public/site-assets/avatar.jpg",
+          "blob": "77fbf3da40f827b2d8869036d5ed79f6b3ca1e4c",
+          "command": "bun run web-demo:build"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0"
+      ],
+      "evidence": [
+        {
+          "path": "site/components/SiteFooter.tsx",
+          "blob": "aacac6714abad8bfad8139cdac7f6e93df8a3acd",
+          "command": "desktop/mobile Web Demo visual verification"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local content, browser persistence, or durable release state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "site/components/SiteFooter.tsx",
+          "blob": "aacac6714abad8bfad8139cdac7f6e93df8a3acd",
+          "command": "bun run check"
+        }
+      ]
+    }
+  }
+}
