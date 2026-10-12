@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "4001a2df221914b8777670bbfb49798f7c0e7500",
+  "covered_files": {
+    "docs/adr/0008-ci-dependency-freshness-policy.md": "a7bd615e08f9a13ff3469987dc5da7685747ada4",
+    "docs/adr/0015-manual-version-release-delivery.md": "2b55a3460f72c74080730d5f4c27f0983ce3b015",
+    "docs/runbooks/manual-version-release.md": "519a1c71571f7690a99ddebe851dc00c37382fcb",
+    "docs/specs/manual-version-release/HISTORY.md": "3390e3b74098ea237dda297a6e7ae824ff169fad",
+    "docs/specs/manual-version-release/SPEC.md": "a4038ab67cdb97e0faa34d45b30aa5fd6076b45a"
+  },
+  "change": {
+    "description": "Align the manual release documentation with the current workflow entrypoint, registered-release consumer, and Style Playbook contract while preserving retired label flow as historical evidence.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The candidate changes release documentation and evidence references only; it does not change product APIs, persistent state, workflow behavior, credentials, or production state.",
+      "assessed_at": "2026-10-12T07:27:40Z",
+      "evidence": [
+        {
+          "path": "docs/specs/manual-version-release/SPEC.md",
+          "blob": "a4038ab67cdb97e0faa34d45b30aa5fd6076b45a",
+          "command": "bun run check"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The current entrypoint, registered-release consumer, historical migration boundary, and Style Playbook reference are now explicit without changing the implemented release workflow.",
+      "assessed_at": "2026-10-12T07:27:40Z",
+      "evidence": [
+        {
+          "path": "docs/runbooks/manual-version-release.md",
+          "blob": "519a1c71571f7690a99ddebe851dc00c37382fcb",
+          "command": "bun run check"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "84ad0ffda08e0c836a03c76000ea7f5c725245dc",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains limited to release documentation and version-impact evidence; no runtime release behavior or product contract changed."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Repository checks, targeted manual release tests, and the full pre-commit suite pass for documentation-only alignment with the existing manual release implementation.",
+      "assessed_at": "2026-10-12T07:27:40Z",
+      "evidence": [
+        {
+          "path": "docs/adr/0015-manual-version-release-delivery.md",
+          "blob": "2b55a3460f72c74080730d5f4c27f0983ce3b015",
+          "command": "bun run check"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "84ad0ffda08e0c836a03c76000ea7f5c725245dc",
+          "command": "bun test tests/lib/manual-release-policy.test.ts tests/lib/manual-release-provenance.test.ts tests/lib/manual-release-source.test.ts tests/lib/manual-release-ledger.test.ts tests/lib/manual-release-recovery.test.ts tests/lib/manual-release-publication.test.ts tests/ci/product-prerelease-workflow.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0"
+      ],
+      "evidence": [
+        {
+          "path": "docs/specs/manual-version-release/SPEC.md",
+          "blob": "a4038ab67cdb97e0faa34d45b30aa5fd6076b45a",
+          "command": "bun run check"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local content, browser persistence, or durable release state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "docs/runbooks/manual-version-release.md",
+          "blob": "519a1c71571f7690a99ddebe851dc00c37382fcb",
+          "command": "bun run check"
+        }
+      ]
+    }
+  }
+}
