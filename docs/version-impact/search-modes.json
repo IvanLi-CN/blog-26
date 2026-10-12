@@ -20,7 +20,7 @@
     "scripts/verify-native-search.ts": "da4a6d8a694917282e42134f11fed1d30b76671c",
     "src/lib/ai/search-fallback.test.ts": "fe8e292f36657686399df1d8a30066e007f7c8e2",
     "src/lib/ai/search.ts": "4081300eb553ff19877eb808290479a74f7208e9",
-    "src/server/http-compat-api.test.ts": "18c83b36770bf38bd563d974983e88d197097733",
+    "src/server/http-compat-api.test.ts": "77d070da9fa6b499b7e0729bf1ac2efe4955609a",
     "src/server/services/content-search.test.ts": "70ce8939e050be3686295e0dcc5f830757a39e3f",
     "src/server/services/content-search.ts": "206af05398ba38363d097562b7891f2e5e0071a4",
     "src/server/services/search-model.test.ts": "c648968fb7ca8880d932db29ef02c7b48bccb0a9",
@@ -35,7 +35,7 @@
     "planned": {
       "impact": "minor",
       "reasoning": "Embedded Tantivy and independent AI modes add compatible capabilities. Legacy NEAR queries continue through SQLite FTS5, enhanced rerankerModel overrides remain accepted, and rerank=false retains its historical semantic-search behavior. SQLite upgrades are additive and Tantivy is a rebuildable projection. The current candidate also keeps the Playbook and system-share changes compatible.",
-      "assessed_at": "2026-10-12T17:50:14.177Z",
+      "assessed_at": "2026-10-12T18:20:25.353Z",
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
@@ -62,7 +62,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "Embedded Tantivy and independent AI modes add compatible capabilities. Legacy NEAR queries continue through SQLite FTS5, enhanced rerankerModel overrides remain accepted, and rerank=false retains its historical semantic-search behavior. SQLite upgrades are additive and Tantivy is a rebuildable projection.",
-      "assessed_at": "2026-10-12T17:50:14.177Z",
+      "assessed_at": "2026-10-12T18:20:25.353Z",
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
@@ -84,12 +84,16 @@
           "blob": "18ab31a2f3acc78dcc2796dbe50b06212c213f04",
           "command": "bun run test:unit"
         }
-      ]
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is reclassified against the current published baseline; every changed source file is covered by this record. The compatibility boundary and release impact remain unchanged."
+      }
     },
     "verified": {
       "impact": "minor",
       "reasoning": "Embedded Tantivy and independent AI modes add compatible capabilities. Legacy NEAR queries continue through SQLite FTS5, enhanced rerankerModel overrides remain accepted, and rerank=false retains its historical semantic-search behavior. SQLite upgrades are additive and Tantivy is a rebuildable projection. DeepSeek-only reasoning controls preserve the existing JSON search contract and leave other OpenAI-compatible providers unchanged. The Playbook detail width repair and shared system-share changes remain compatible.",
-      "assessed_at": "2026-10-12T17:50:14.177Z",
+      "assessed_at": "2026-10-12T18:20:25.353Z",
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
