@@ -94,9 +94,27 @@ await index.apply(
 );
 assert.deepEqual(await ids("Arch"), [1, 2, 3]);
 console.log("PASS committed update/delete and reader reload");
+for (let offset = 0; offset < 10_000; offset += 256) {
+  await index.apply(
+    JSON.stringify(
+      Array.from({ length: Math.min(256, 10_000 - offset) }, (_, i) => ({
+        id: `event-loop-${String(offset + i).padStart(5, "0")}`,
+        version: "1",
+        body: "eventloopprobe",
+        type: "post",
+        published: true,
+      }))
+    )
+  );
+}
 let ticks = 0;
 const timer = setInterval(() => ticks++, 1);
-await Promise.all(Array.from({ length: 20_000 }, () => ids("NodeJS")));
+const eventLoopQuery = JSON.stringify({
+  ast: planNativeQuery("eventloopprobe").ast,
+  limit: 1,
+  published_only: true,
+});
+await Promise.all(Array.from({ length: 32 }, () => index.search(eventLoopQuery)));
 clearInterval(timer);
 assert.ok(ticks > 0, "native queries allow the event loop to progress");
 console.log(`PASS asynchronous search; timer ticks=${ticks}`);
