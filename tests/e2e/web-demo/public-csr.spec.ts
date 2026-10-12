@@ -141,8 +141,27 @@ test("public header stays on one row beside the open Web Demo Inspector", async 
   await ready(page);
 
   await expect(page.locator('body[data-web-demo-inspector-open="true"]')).toHaveCount(1);
-  for (const width of [1200, 1280, 1440, 1600]) {
+  for (const { width, compactHeader } of [
+    { width: 1200, compactHeader: true },
+    { width: 1280, compactHeader: true },
+    { width: 1440, compactHeader: true },
+    { width: 1555, compactHeader: true },
+    { width: 1561, compactHeader: true },
+    { width: 1580, compactHeader: true },
+    { width: 1589, compactHeader: true },
+    { width: 1590, compactHeader: false },
+    { width: 1600, compactHeader: false },
+  ]) {
     await page.setViewportSize({ width, height: 1000 });
+    await expect
+      .poll(
+        () =>
+          page
+            .locator(".nature-header-search-form")
+            .evaluate((node) => getComputedStyle(node).display),
+        { message: `${width}px desktop header layout settles` }
+      )
+      .toBe(compactHeader ? "none" : "flex");
     const headerSurface = page.locator(".nature-site-header .nature-surface");
     const navigation = page.getByRole("navigation", { name: "Main navigation" });
     const tools = page.locator(".nature-header-tools");
@@ -160,7 +179,6 @@ test("public header stays on one row beside the open Web Demo Inspector", async 
       `${width}px navigation and tools stay on one row`
     ).toBeLessThanOrEqual(2);
     expect(headerBounds?.height ?? 0, `${width}px header height`).toBeLessThan(96);
-    const compactHeader = width < 1600;
     expect(
       await page
         .locator(".nature-header-search-form")
@@ -180,6 +198,22 @@ test("public header stays on one row beside the open Web Demo Inspector", async 
       `${width}px page has no horizontal overflow`
     ).toBe(true);
   }
+});
+
+test("public header keeps the full search form without the Web Demo Inspector", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("web-demo-inspector-open", "false");
+  });
+  await page.goto("/posts/?d_connection=online&d_delay=normal");
+  await ready(page);
+  await expect
+    .poll(() => page.locator("body").getAttribute("data-web-demo-inspector-open"))
+    .toBe("false");
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await expect(page.locator(".nature-header-search-form")).toBeVisible();
+  await expect(page.locator(".nature-header-search-link")).toBeHidden();
 });
 
 test("SSR content hydrates without repeating its page read", async ({ page, request }) => {

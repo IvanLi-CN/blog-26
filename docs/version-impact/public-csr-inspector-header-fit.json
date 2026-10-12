@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "8c21953f755c1413fb918db4d23fda613422f5c0",
+  "covered_files": {
+    "src/styles/nature-restored.css": "a3b8e41bf40cf95dc79c34421584bc6381a5cb57",
+    "tests/e2e/web-demo/public-csr.spec.ts": "3d417e817ee801785d2c42535f66785257d88c6c"
+  },
+  "change": {
+    "description": "Keep the public header on one row across the Inspector-narrowed desktop content-column boundary without changing the normal public header.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a compatible public frontend presentation repair. It changes no endpoint, payload, database, local-content, or release-state format.",
+      "assessed_at": "2026-10-12T17:49:00Z",
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/public-csr.spec.ts",
+          "blob": "3d417e817ee801785d2c42535f66785257d88c6c",
+          "command": "Official Web Demo header regression covers 1200px, 1280px, 1440px, 1555px, and 1600px Inspector viewports"
+        },
+        {
+          "path": "src/styles/nature-restored.css",
+          "blob": "a3b8e41bf40cf95dc79c34421584bc6381a5cb57",
+          "command": "Nature container query scopes compact header controls to the narrowed Inspector content column"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate scopes the 1253px compact-header breakpoint to an open Web Demo Inspector, keeping the normal 1280px public header full-search layout while the Inspector-open header stays on one row through the measured 1249px content column and resumes the full search form at 1254px. Route reads, SSR hydration, URL/history behavior, themes, and page-local loading remain unchanged.",
+      "assessed_at": "2026-10-12T17:49:00Z",
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/public-csr.spec.ts",
+          "blob": "3d417e817ee801785d2c42535f66785257d88c6c",
+          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:16460 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-csr.spec.ts -g \"public header\"; passed Inspector-open boundary widths 1200px, 1280px, 1440px, 1555px, 1561px, 1580px, 1589px, 1590px, 1600px and normal 1280px full-search layout"
+        },
+        {
+          "path": "src/styles/nature-restored.css",
+          "blob": "a3b8e41bf40cf95dc79c34421584bc6381a5cb57",
+          "command": "The 1253px container threshold is scoped to body[data-web-demo-inspector-open=\"true\"], covering Inspector content columns through 1249px without hiding the full search form in the normal 1232px public column."
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to the public header container breakpoint and its Web Demo regression evidence; no route, API, persistence, or VERSION contract drift was found."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The current-head targeted Web Demo header test, successful Web Demo build, and live local preview geometry verify a compatible public frontend presentation repair without data or persistence changes.",
+      "assessed_at": "2026-10-12T17:49:00Z",
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/public-csr.spec.ts",
+          "blob": "3d417e817ee801785d2c42535f66785257d88c6c",
+          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:16460 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-csr.spec.ts -g \"public header\"; 2 passed"
+        },
+        {
+          "path": "src/styles/nature-restored.css",
+          "blob": "a3b8e41bf40cf95dc79c34421584bc6381a5cb57",
+          "command": "bun run web-demo:build; successful official Web Demo site and admin build"
+        },
+        {
+          "path": "src/styles/nature-restored.css",
+          "blob": "a3b8e41bf40cf95dc79c34421584bc6381a5cb57",
+          "command": "Live preview http://127.0.0.1:16460/tags/?d_connection=online&d_delay=normal observed with the Inspector open; header navigation and tools share one row at the reproduced desktop viewport"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4"
+      ],
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/public-csr.spec.ts",
+          "blob": "3d417e817ee801785d2c42535f66785257d88c6c",
+          "command": "Header-only presentation change leaves public route reads and API payloads unchanged"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local-content format, browser persistence, or durable release-ledger state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/styles/nature-restored.css",
+          "blob": "a3b8e41bf40cf95dc79c34421584bc6381a5cb57",
+          "command": "CSS-only container breakpoint change has no persistent-state surface"
+        }
+      ]
+    }
+  }
+}

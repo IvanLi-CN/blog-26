@@ -791,39 +791,39 @@
  * the Web Demo Inspector). Select the compact header from that column's width,
  * while preserving the existing mobile and tablet layout. */
 @media (min-width: 1024px) {
-  @container nature-header (max-width: 1199px) {
-    .nature-site-header-frame > .nature-surface {
+  @container nature-header (max-width: 1253px) {
+    body[data-web-demo-inspector-open="true"] .nature-site-header-frame > .nature-surface {
       flex-wrap: nowrap;
       gap: 0.5rem;
     }
 
-    .nature-site-header-frame .nature-brand-link {
+    body[data-web-demo-inspector-open="true"] .nature-site-header-frame .nature-brand-link {
       flex: 0 1 auto;
     }
 
-    .nature-site-header-frame nav {
+    body[data-web-demo-inspector-open="true"] .nature-site-header-frame nav {
       flex: 0 1 auto;
       min-width: 0;
       margin-left: 0;
     }
 
-    .nature-site-header-frame nav ul {
+    body[data-web-demo-inspector-open="true"] .nature-site-header-frame nav ul {
       gap: 0;
     }
 
-    .nature-site-header-frame .nature-nav-link {
+    body[data-web-demo-inspector-open="true"] .nature-site-header-frame .nature-nav-link {
       padding-inline: 0.45rem;
     }
 
-    .nature-site-header-frame .nature-header-search-form {
+    body[data-web-demo-inspector-open="true"] .nature-site-header-frame .nature-header-search-form {
       display: none;
     }
 
-    .nature-site-header-frame .nature-header-search-link {
+    body[data-web-demo-inspector-open="true"] .nature-site-header-frame .nature-header-search-link {
       display: inline-flex;
     }
 
-    .nature-site-header-frame .nature-header-tools {
+    body[data-web-demo-inspector-open="true"] .nature-site-header-frame .nature-header-tools {
       flex: 0 0 auto;
       gap: 0.25rem;
       margin-left: auto;
