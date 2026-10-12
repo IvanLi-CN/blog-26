@@ -11,8 +11,15 @@ export default function SiteFooter(_props: Record<string, unknown>) {
           <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3">
-                <div className="nature-avatar-ring flex h-12 w-12 items-center justify-center bg-[radial-gradient(circle_at_30%_30%,rgba(var(--nature-accent-rgb),0.45),rgba(var(--nature-secondary-rgb),0.7))] text-lg font-semibold text-white">
-                  I
+                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full">
+                  <span
+                    role="img"
+                    aria-label="Ivan Li"
+                    className="block h-full w-full rounded-full bg-cover bg-center"
+                    style={{
+                      backgroundImage: `url("${toPublicSitePath("/site-assets/avatar.jpg")}")`,
+                    }}
+                  />
                 </div>
                 <div>
                   <div className="font-heading text-xl font-semibold tracking-[-0.04em]">
