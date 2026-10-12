@@ -54,6 +54,36 @@ async function expectThemeState(
     });
 }
 
+async function readPageAtmosphere(page: Page) {
+  return page.evaluate(() => {
+    const shell = document.querySelector<HTMLElement>('[data-testid="public-site-shell"]');
+    const content = document.querySelector<HTMLElement>(".nature-content-layer");
+    const ambient = document.querySelector<HTMLElement>(".nature-ambient");
+    if (!shell || !content || !ambient) throw new Error("Public atmosphere layers are missing");
+
+    const rootStyles = getComputedStyle(document.documentElement);
+    const shellStyles = getComputedStyle(shell);
+    const atmosphereStyles = getComputedStyle(shell, "::before");
+    return {
+      htmlBackgroundImage: rootStyles.backgroundImage,
+      htmlBackgroundColor: rootStyles.backgroundColor,
+      shellIsolation: shellStyles.isolation,
+      atmospherePosition: atmosphereStyles.position,
+      atmosphereInset: [
+        atmosphereStyles.top,
+        atmosphereStyles.right,
+        atmosphereStyles.bottom,
+        atmosphereStyles.left,
+      ],
+      atmosphereZIndex: atmosphereStyles.zIndex,
+      atmosphereImage: atmosphereStyles.backgroundImage,
+      contentZIndex: getComputedStyle(content).zIndex,
+      ambientZIndex: getComputedStyle(ambient).zIndex,
+      maxScroll: Math.max(0, document.documentElement.scrollHeight - window.innerHeight),
+    };
+  });
+}
+
 test.describe("Astro public front (phase 1)", () => {
   test("renders migrated public routes and islands", async ({ page }) => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
@@ -242,6 +272,51 @@ test.describe("Astro public front (phase 1)", () => {
     await expectThemeState(page, "dark", "dark");
 
     expect(pageErrors).not.toContain("UI is not defined");
+  });
+
+  test("keeps the A atmosphere fixed across route length, theme, and scroll position", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    const samples = new Map<string, Awaited<ReturnType<typeof readPageAtmosphere>>>();
+
+    for (const theme of ["light", "dark"] as const) {
+      await gotoWithTheme(page, "/", theme);
+      const home = await readPageAtmosphere(page);
+      expect(home.htmlBackgroundImage).not.toContain("gradient");
+      expect(home.shellIsolation).toBe("isolate");
+      expect(home.atmospherePosition).toBe("fixed");
+      expect(home.atmosphereInset).toEqual(["0px", "0px", "0px", "0px"]);
+      expect(home.atmosphereZIndex).toBe("-1");
+      expect(home.contentZIndex).toBe("1");
+      expect(home.ambientZIndex).toBe("0");
+      expect(home.atmosphereImage).toContain("gradient");
+      samples.set(`${theme}:home`, home);
+
+      await page.goto("/posts/hello-world", { waitUntil: "domcontentloaded" });
+      await expect(page.getByRole("heading", { name: "Hello World" }).first()).toBeVisible();
+      const longPage = await readPageAtmosphere(page);
+      expect(longPage.maxScroll).toBeGreaterThan(0);
+      expect(longPage.atmosphereImage).toBe(home.atmosphereImage);
+
+      for (const ratio of [0, 0.5, 1]) {
+        await page.evaluate((scrollRatio) => {
+          const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+          window.scrollTo(0, Math.round(maxScroll * scrollRatio));
+        }, ratio);
+        const scrolled = await readPageAtmosphere(page);
+        expect(scrolled.atmosphereImage).toBe(home.atmosphereImage);
+        expect(scrolled.atmospherePosition).toBe("fixed");
+      }
+      samples.set(`${theme}:long`, longPage);
+    }
+
+    expect(samples.get("light:home")?.atmosphereImage).not.toBe(
+      samples.get("dark:home")?.atmosphereImage
+    );
+    expect(samples.get("light:long")?.atmosphereImage).not.toBe(
+      samples.get("dark:long")?.atmosphereImage
+    );
   });
 
   test.describe("system theme follows dark OS across Astro public page navigation", () => {

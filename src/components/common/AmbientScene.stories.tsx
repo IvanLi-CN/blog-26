@@ -13,8 +13,7 @@ type SceneArgs = {
   animated: boolean;
 };
 const dimensions = { desktop: [1440, 900], mobile: [393, 852], narrow: [320, 780] } as const;
-const background =
-  "radial-gradient(circle at top, rgba(var(--nature-accent-rgb), .18), transparent 32%), radial-gradient(circle at 80% 10%, rgba(var(--nature-highlight-rgb), .42), transparent 30%), linear-gradient(180deg, var(--nature-bg), var(--nature-bg-deep))";
+const background = "var(--nature-page-atmosphere)";
 
 function ReadingScene({ theme, renderer, viewport, animated }: SceneArgs) {
   useEffect(() => {
@@ -147,6 +146,7 @@ const ready: Story["play"] = async ({ canvasElement, args }) => {
   const target = canvasElement.querySelector<HTMLElement>("[data-visual-evidence-target]");
   expect(target?.getBoundingClientRect().width).toBe(dimensions[args.viewport][0]);
   expect(target?.getBoundingClientRect().height).toBe(dimensions[args.viewport][1]);
+  expect(getComputedStyle(target as HTMLElement).backgroundImage).toContain("gradient");
   await expect(
     within(canvasElement).getByRole("heading", { name: "让想法慢慢生长" })
   ).toBeVisible();

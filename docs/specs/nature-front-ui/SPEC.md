@@ -48,6 +48,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 ### 4.3 Visual language
 
 - The public shell uses soft gradients, translucent surfaces, organic radii, and low-frequency ambient motion.
+- The public shell's base atmosphere is a fixed viewport layer (`.nature-app-shell::before`) using the existing Nature theme tokens. The `html` element provides only the flat theme base color; gradient coordinates are viewport-bound and MUST NOT interpolate against document height or change with scroll position. Route kind and content length may change existing content surfaces, but they MUST NOT change the base layer's geometry or brightness baseline.
 - The 环境背景层 provides atmosphere. Primary reading content uses a theme-aware 阅读承载层 so text remains readable over the moving background: translucent white in light mode and an equivalently legible dark surface in dark mode. Normal-sized reading text maintains at least a 4.5:1 contrast ratio against the composited surface.
 - Reading-heavy pages keep motion density lower than index/list pages.
 - Reduced-motion users receive the same layout and hierarchy with heavily reduced animation and particle effects.
@@ -217,6 +218,7 @@ Ordinary clicks and mobile taps on all three runtime panels, including cells, gr
 
 ## 6. Validation
 
+- `BASE_URL=http://localhost:30090 PLAYWRIGHT_REUSE_APP=true bunx playwright test tests/e2e/guest/astro-front-phase1.spec.ts --project=guest --grep "fixed.*atmosphere"`
 - `bun run check:public-no-daisy`
 - `git diff --name-only -- '*.ts' '*.tsx' '*.css' '*.json' '*.md' | xargs bunx biome check`
 - `bun test src/lib/__tests__/theme.test.ts`

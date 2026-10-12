@@ -37,6 +37,10 @@
     --nature-danger: #b35c62;
     --nature-shadow: 0 24px 60px rgba(95, 122, 108, 0.14);
     --nature-shadow-strong: 0 24px 70px rgba(74, 98, 86, 0.2);
+    --nature-page-atmosphere:
+      radial-gradient(circle at top, rgba(var(--nature-accent-rgb), 0.18), transparent 32%),
+      radial-gradient(circle at 80% 10%, rgba(var(--nature-highlight-rgb), 0.42), transparent 30%),
+      linear-gradient(180deg, var(--nature-bg) 0%, var(--nature-bg-deep) 100%);
     --nature-radius-lg: 32px 38px 28px 36px / 30px 34px 40px 28px;
     --nature-radius-md: 24px 28px 22px 30px / 24px 24px 32px 24px;
     --nature-radius-sm: 18px 20px 16px 22px / 18px 18px 22px 18px;
@@ -97,10 +101,7 @@
 
   html {
     scrollbar-gutter: auto;
-    background:
-      radial-gradient(circle at top, rgba(var(--nature-accent-rgb), 0.18), transparent 32%),
-      radial-gradient(circle at 80% 10%, rgba(var(--nature-highlight-rgb), 0.42), transparent 30%),
-      linear-gradient(180deg, var(--nature-bg) 0%, var(--nature-bg-deep) 100%);
+    background: var(--nature-bg);
   }
 
   body {
@@ -138,6 +139,16 @@
     position: relative;
     min-height: 100vh;
     overflow-x: clip;
+    isolation: isolate;
+  }
+
+  .nature-app-shell::before {
+    position: fixed;
+    z-index: -1;
+    inset: 0;
+    pointer-events: none;
+    content: "";
+    background: var(--nature-page-atmosphere);
   }
 
   .nature-content-layer {
