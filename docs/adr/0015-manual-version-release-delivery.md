@@ -6,6 +6,8 @@ status: accepted
 
 发版人通过一次 `workflow_dispatch` 启动产品发布。产品版本是可选输入：留空时系统自动递增；填写时系统仅接受向前的指定。发版前由独立 Version Policy 校验版本、可信基线、来源身份、版本预留和冲突规则。
 
+在仓库实现中，`.github/workflows/manual-product-release.yml` 是唯一的手动入口，仅接受可选 `version` 输入并要求从 `main` 发起；`.github/workflows/product-release.yml` 不提供第二个人工入口，而是消费已登记、且通过确切 main 检查的发布身份。
+
 准备流程创建只修改根目录 `VERSION` 的发布 PR，并开启 GitHub 原生自动合并。PR 满足 required checks、审查及分支保护规则后合并；整个流程通过正常 PR 路径完成。
 
 实际 Release 阶段绑定发布 PR 的确切 merge SHA，发布同一产品版本的静态前台和完整功能 Docker 镜像。系统在不可逆发布动作前建立持久预留；竞争请求不能为同一版本建立不同身份。
