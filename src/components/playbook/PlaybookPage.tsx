@@ -372,9 +372,7 @@ function PlaybookDetail({
             {title}
           </h1>
           {description && (
-            <p className="nature-muted mt-5 max-w-3xl text-base leading-8 sm:text-lg">
-              {description}
-            </p>
+            <p className="nature-muted mt-5 w-full text-base leading-8 sm:text-lg">{description}</p>
           )}
           {labels.length > 0 && (
             <ul className="mt-5 flex list-none flex-wrap gap-2 p-0" aria-label="内容标签">
