@@ -141,7 +141,7 @@ test("public header stays on one row beside the open Web Demo Inspector", async 
   await ready(page);
 
   await expect(page.locator('body[data-web-demo-inspector-open="true"]')).toHaveCount(1);
-  for (const width of [1200, 1600]) {
+  for (const width of [1200, 1280, 1440, 1600]) {
     await page.setViewportSize({ width, height: 1000 });
     const headerSurface = page.locator(".nature-site-header .nature-surface");
     const navigation = page.getByRole("navigation", { name: "Main navigation" });
@@ -160,18 +160,19 @@ test("public header stays on one row beside the open Web Demo Inspector", async 
       `${width}px navigation and tools stay on one row`
     ).toBeLessThanOrEqual(2);
     expect(headerBounds?.height ?? 0, `${width}px header height`).toBeLessThan(96);
+    const compactHeader = width < 1600;
     expect(
       await page
         .locator(".nature-header-search-form")
         .evaluate((node) => getComputedStyle(node).display),
-      `${width}px desktop search input is compacted`
-    ).toBe("none");
+      `${width}px desktop search input display`
+    ).toBe(compactHeader ? "none" : "flex");
     expect(
       await page
         .locator(".nature-header-search-link")
         .evaluate((node) => getComputedStyle(node).display),
-      `${width}px search action is visible`
-    ).toBe("flex");
+      `${width}px search action display`
+    ).toBe(compactHeader ? "flex" : "none");
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= document.documentElement.clientWidth

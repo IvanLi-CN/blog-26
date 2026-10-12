@@ -149,7 +149,7 @@
     "src/components/WebDemoInspector.tsx": "ab2f1d0ea0b0f58338d2a63a1701a387e10287a1",
     "src/components/playbook/PlaybookPage.tsx": "26bb3682a2b8164d268423b39bf282d97188bd49",
     "tests/e2e/guest/public-csr-navigation.spec.ts": "ad366b51afad990cdb7c9520d85957d96be2e6e0",
-    "tests/e2e/web-demo/public-csr.spec.ts": "c982f7efe33136615e8e2af545deb5bc0f0ac06e",
+    "tests/e2e/web-demo/public-csr.spec.ts": "4c85fa02c7777761443c8e8f46ecb42aff45698f",
     "tests/lib/public-csr-route.test.ts": "7216901d8d686be2a80c0ea54592c6b97af38f4c",
     "tests/lib/web-demo-inspector-layout.test.ts": "9e6874c480bd272b2c3295d85aecfbc4b7fc7a65",
     "tests/e2e/guest/nature-front-coverage.spec.ts": "d71525950e6095ca5dd396b723fa27eb3b54ea38"

@@ -791,7 +791,7 @@
  * the Web Demo Inspector). Select the compact header from that column's width,
  * while preserving the existing mobile and tablet layout. */
 @media (min-width: 1024px) {
-  @container nature-header (max-width: 1279px) {
+  @container nature-header (max-width: 1199px) {
     .nature-site-header-frame > .nature-surface {
       flex-wrap: nowrap;
       gap: 0.5rem;
