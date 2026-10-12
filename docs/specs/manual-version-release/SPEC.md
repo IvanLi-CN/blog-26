@@ -10,7 +10,7 @@
 - 产品版本请求：一次发布的输入意图，可要求系统自动分配正式版或预发布版本，也可指定完整产品版本。
 - Version Policy：校验版本格式、自动递增、单调性、可信基线、预留、冲突与恢复的独立策略。
 - 发布身份：产品版本、来源提交、策略、预留及产物校验值的绑定。
-- 入口：从 main 发起一次 `workflow_dispatch`；唯一自定义输入 `version` 是可选文本。
+- 入口：从 main 发起一次 `workflow_dispatch`；`.github/workflows/manual-product-release.yml` 是唯一的手动入口，唯一自定义输入 `version` 是可选文本；`.github/workflows/product-release.yml` 消费已登记的发布身份。
 - 输入值：留空或 `stable` 表示自动正式版；`alpha`、`beta`、`rc` 表示对应阶段自动分配；完整产品版本表示向前的精确指定。
 - 产品预发布：产品版本包含预发布标识的统一产品发布，包含 alpha、beta、rc；发布两种产物，不部署站点或推进正式 latest。
 - 正式语义基线：可信已发布正式产品版本及其来源，用于计算整个待发布区间的兼容性升级要求。
@@ -174,5 +174,6 @@
 ## References
 
 - [Semantic Versioning 2.0.0](https://semver.org/)
+- [Style Playbook: Manual version release delivery](https://github.com/IvanLi-CN/style-playbook-skills/blob/745edab21fbe8b8a2f9f13c13c34498a9d3945cb/skills/style-playbook/references/topics/manual-version-release-delivery/TOPIC.md)
 - [实现状态](./IMPLEMENTATION.md)
 - [主题记录](./HISTORY.md)

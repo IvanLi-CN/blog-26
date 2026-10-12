@@ -14,9 +14,11 @@
 
 ## 输入与流程
 
-从 main 手动运行 **Manual Product Release**。唯一可选文本输入 `version` 接受留空、`stable`、`alpha`、`beta`、`rc` 或完整 SemVer。留空等同 `stable`，不接受 `auto`。快捷值按整个待发布区间的最高 verified API/state 影响自动分配；完整版本精确指定，必须满足必要核心版本并高于全部已发布、预留与废弃版本。原始大小写与 metadata 保留，但 metadata 不改变排序，不能仅换 metadata 创建新身份。
+从 main 手动运行 **Manual Product Release**（`.github/workflows/manual-product-release.yml`）。它是唯一的手动 release 入口，唯一可选文本输入 `version` 接受留空、`stable`、`alpha`、`beta`、`rc` 或完整 SemVer。留空等同 `stable`，不接受 `auto`。快捷值按整个待发布区间的最高 verified API/state 影响自动分配；完整版本精确指定，必须满足必要核心版本并高于全部已发布、预留与废弃版本。原始大小写与 metadata 保留，但 metadata 不改变排序，不能仅换 metadata 创建新身份。
 
-版本准备先写持久预留，再创建仅修改 VERSION 的 PR 并启用自动合并。GitHub 等全部 required checks 通过后合并。**Product Release** 核验同一合并提交的 main CI/E2E、机器人来源及预留，构建并冻结两种产物，发布 GitHub Release 和 GHCR 镜像。正式版随后将同一静态产物部署到 EdgeOne，验证后推进 latest；所有带预发布标识的版本仅发布产物，Release 标记 prerelease，不部署站点、不推进正式 latest，也不接收 EdgeOne 部署密钥。
+版本准备先写持久预留，再创建仅修改 VERSION 的 PR 并启用自动合并。GitHub 等全部 required checks 通过后合并。**Product Release**（`.github/workflows/product-release.yml`）不接受第二个人工版本输入，而是消费已登记且通过确切 main CI/E2E 检查的 release identity，构建并冻结两种产物，发布 GitHub Release 和 GHCR 镜像。正式版随后将同一静态产物部署到 EdgeOne，验证后推进 latest；所有带预发布标识的版本仅发布产物，Release 标记 prerelease，不部署站点、不推进正式 latest，也不接收 EdgeOne 部署密钥。
+
+旧的 PR-label/label-gate/release workflow 只作为迁移历史保留，不是当前操作入口；当前发布真相是手动 `version` 请求、登记身份和 Product Release 的消费边界。
 
 例如正式基线为 `2.7.0`、verified impact 为 minor，连续新请求可分配 `2.8.0-alpha.1` → `2.8.0-alpha.2` → `2.8.0-beta.1` → `2.8.0-rc.1` → `2.8.0`，允许跳过阶段。同核心进入 beta 后再请求 alpha 会停止；可显式填写更高的完整目标，例如 `2.9.0-alpha.1`。每个完整版本有独立身份、发布 PR、确切合并来源及冻结字节，不能将预发布产物直接改标正式版。Git tag 为 `v` 加完整版本；镜像 tag 同样带 `v`，仅将 metadata 分隔符 `+` 映射为 `_`，长度超出 registry 限制时预留前拒绝。
 
