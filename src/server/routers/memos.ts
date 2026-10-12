@@ -414,23 +414,32 @@ const getMemoSchema = z.object({
   slug: z.string(),
 });
 
-const createMemoSchema = z.object({
-  content: z.string().min(1, "内容不能为空"),
-  title: z.string().optional(),
-  isPublic: z.boolean().default(true),
-  tags: z.array(z.string()).default([]),
-  attachments: z
-    .array(
-      z.object({
-        filename: z.string(),
-        path: z.string(),
-        contentType: z.string().optional(),
-        size: z.number().optional(),
-        isImage: z.boolean(),
-      })
-    )
-    .default([]),
-});
+const createMemoSchema = z
+  .object({
+    content: z.string(),
+    title: z.string().optional(),
+    isPublic: z.boolean().default(true),
+    tags: z.array(z.string()).default([]),
+    attachments: z
+      .array(
+        z.object({
+          filename: z.string(),
+          path: z.string(),
+          contentType: z.string().optional(),
+          size: z.number().optional(),
+          isImage: z.boolean(),
+        })
+      )
+      .default([]),
+    systemShare: z
+      .object({ source: z.literal("system-share"), targetUrl: z.string().url().optional() })
+      .optional(),
+  })
+  .superRefine((value, context) => {
+    if (!value.systemShare && value.content.trim().length === 0) {
+      context.addIssue({ code: "custom", path: ["content"], message: "内容不能为空" });
+    }
+  });
 
 const updateMemoSchema = z.object({
   id: z.string(),
@@ -797,7 +806,7 @@ export const memosRouter = router({
 
   // 创建新 memo（仅管理员）
   create: adminProcedure.input(createMemoSchema).mutation(async ({ input, ctx }) => {
-    const { content: rawContent, title, isPublic, tags, attachments } = input;
+    const { content: rawContent, title, isPublic, tags, attachments, systemShare } = input;
     const inputAttachments = Array.isArray(attachments) ? attachments : [];
     const inputTags = Array.isArray(tags) ? tags : [];
 
@@ -879,6 +888,7 @@ export const memosRouter = router({
           attachments: normalizedAttachments,
           authorEmail: ctx.user?.email || "admin@example.com",
           publishDate: nowIso,
+          ...(systemShare ? { systemShare } : {}),
         };
         await attachClippingReference(
           normalizedContent,

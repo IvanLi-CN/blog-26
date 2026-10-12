@@ -168,6 +168,30 @@ _Avoid_: 实时 Memo 列表 + 公开时间线, 管理卡片列表
 The administrator-only authoring surface on the console Memos page. It remains separate from the 管理 Memo 列表 and does not count as another list.
 _Avoid_: 编辑器列表, 管理列表
 
+**系统分享**:
+Content handed to the installed console PWA by the operating system's share sheet. It can contain a title, text, URL, and files, and remains an input event until the administrator confirms a Memo.
+_Avoid_: 页面分享, 分享链接
+
+**系统分享目标**:
+The installed console PWA entry registered through Web Share Target so the operating system can offer the console as a receiver. It belongs to `console.ivanli.cc`; the public static site is not a write target.
+_Avoid_: 公开站点分享入口, 原生分享应用
+
+**待处理分享**:
+A system-share payload held temporarily in the current browser while it awaits authentication or confirmation. Unauthenticated payloads remain only in browser IndexedDB, occupy one replaceable slot, expire after 15 minutes, and are removed after creation, cancellation, or expiry.
+_Avoid_: 分享草稿, 服务端分享队列
+
+**分享确认页**:
+The administrator-facing review surface that displays and edits a pending system share before creating a Memo. It is the authority for the final title, body, URL, attachments, visibility, and resulting content classification.
+_Avoid_: 分享预览弹窗, 自动发布页
+
+**分享分类**:
+The final classification of a pending system share as 剪藏 or 闪念. A valid HTTP(S) URL takes precedence over files and text; without a valid URL, the payload is an ordinary 闪念.
+_Avoid_: 分享类型标签, 发布模式
+
+**分享剪藏**:
+A 剪藏闪念 created from a confirmed system share. Its clipping identity is recorded as internal share-origin metadata and does not add a visible `#剪藏` tag to the author's content.
+_Avoid_: 分享文章, 自动剪藏文章
+
 **剪藏闪念**:
 A Memo marked with `#剪藏` whose first non-empty authored line, whether a title or body line, identifies one external article for capture. It remains a Memo while gaining a captured source, generated summary, translation, and article conversation. Reading interfaces call this content type 剪藏, alongside 闪念, and present its marker as a content identity rather than an ordinary visible tag.
 _Avoid_: 剪藏文章, 导入文章

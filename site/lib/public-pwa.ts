@@ -59,7 +59,8 @@ export async function getPublicPwaAssetPaths(root = process.cwd()): Promise<Publ
 
 export function createPublicWebManifest(
   assets: PublicPwaAssetPaths,
-  toPublicSitePath: (path: string) => string | null | undefined
+  toPublicSitePath: (path: string) => string | null | undefined,
+  options: { consoleRuntime?: boolean } = {}
 ) {
   const resolvePath = (path: string) => {
     const resolved = toPublicSitePath(path);
@@ -95,5 +96,20 @@ export function createPublicWebManifest(
         purpose: "maskable",
       },
     ],
+    ...(options.consoleRuntime
+      ? {
+          share_target: {
+            action: resolvePath("/share-target").replace(/\/$/u, "") || "/",
+            method: "POST",
+            enctype: "multipart/form-data",
+            params: {
+              title: "title",
+              text: "text",
+              url: "url",
+              files: [{ name: "files", accept: ["*/*"] }],
+            },
+          },
+        }
+      : {}),
   } as const;
 }

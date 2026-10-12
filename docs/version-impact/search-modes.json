@@ -20,7 +20,7 @@
     "apps/admin/src/styles.css": "6ca074f8dbbfab7928051a65a04002b36ac3faba",
     "docs/adr/0020-keyword-first-hybrid-search.md": "0e15254ee5a163f668d7851c3333e942d886218d",
     "docs/adr/0021-embedded-tantivy-search.md": "16dc3f1c3e93962112d5af163224bd26ed01ae25",
-    "docs/specs/README.md": "acea87e7bac8ea62d45471ad109e2d6f1f8bc8f0",
+    "docs/specs/README.md": "b98cd34d5348b136d7b3bda5583ad3dff3d393c0",
     "docs/specs/admin-llm-settings/IMPLEMENTATION.md": "2da704a9282f231d65b2aded22a18876b89cf83e",
     "docs/specs/search-full-text-fallback/HISTORY.md": "77ec01a31e45226ea4ebb041bd69ea1395e5a90d",
     "docs/specs/search-full-text-fallback/IMPLEMENTATION.md": "cc10e6ce17a530dcb3c4f4c2dc4a1e07f8a92202",
@@ -64,7 +64,7 @@
     "docs/specs/search-relevance/validation/tantivy/sync/persistence-report.md": "bfb213296de7cd7b960df3aeb8cb1db300946889",
     "docs/specs/search-relevance/validation/tantivy/sync/src/main.rs": "775a433d014d077ac5e7b04930723b17691b9b48",
     "drizzle/0012_search_modes.sql": "010d9d51f608f010700ccca5b39d01532fac67b2",
-    "drizzle/meta/_journal.json": "b540fcdc977cc191a3bcba125ada2d375de2f06e",
+    "drizzle/meta/_journal.json": "16f1cfd949d323f95797dd8919481cc040b46557",
     "native/search/Cargo.lock": "3b1eb7017f0b1a3a4480e4a510b07444168f7b75",
     "native/search/Cargo.toml": "6238ac37116b14c44378e12caa2833ed82d32e66",
     "native/search/build.rs": "89c974efa3ad0c70abd19826ceaf2fb9b041b15a",
@@ -97,7 +97,7 @@
     "src/lib/ai/search-snippet.ts": "330211b26dcfc83f85c86c9d402d4bffc5f9dbd5",
     "src/lib/ai/search.ts": "410643c45c457423b634b66199d8209dd2421551",
     "src/lib/release/products.ts": "45ee9d794ddc5fc7f9bd9420cc212da49713fd4b",
-    "src/lib/schema.ts": "181d94c63abb284068b80f4f0a871e6c56f2ae14",
+    "src/lib/schema.ts": "0e9c1d8dcc7406d9652b4dfaed22277dc8cbfe8b",
     "src/lib/search/highlights.test.ts": "d8d3b49053e915d4542c776fcaa628a1a216d9e5",
     "src/lib/search/highlights.ts": "9de8d99fa8d7f9d54314b1886ee4835349f4f967",
     "src/lib/search/native-index.ts": "484c5236a4317622b622b4a3298f2a26a358b256",
@@ -111,7 +111,7 @@
     "src/server/admin-api/router.ts": "b5ad40e700cac10bfa6ce6cb0b2592bb0ae67539",
     "src/server/http-compat-api.test.ts": "affa808a821b8a5319da9c1abadeb6f60a4da17e",
     "src/server/mcp.ts": "897817e8ffd82336f33ae2712fc3bdb02ffbe2a6",
-    "src/server/public-api/router.ts": "ef49f46ece1aee633599d9ba67c5e4e9b09be882",
+    "src/server/public-api/router.ts": "593eeae425c291f77f59b7cf8ef92818457f35f0",
     "src/server/routers/search.ts": "17d4169e418c2b1bede78af2ada2f7c265e39067",
     "src/server/services/content-search-index.ts": "e5f9734b3440d67e42eb4a049bee7fbf319a48d2",
     "src/server/services/content-search.test.ts": "bdd9189c273315d8e523a0d3a7852caac907231e",
@@ -215,12 +215,12 @@
       ],
       "scope_drift": {
         "detected": true,
-        "description": "The current candidate includes a Playbook detail header width repair in an already covered renderer. The layout-only adjustment preserves the approved search, public API, and persistent-state contracts; its current blob and verification are updated here."
+        "description": "The current candidate includes a Playbook detail header width repair and the system-share integration updates shared schema and public API files already covered by this record. Both additions preserve the approved search compatibility contract; current blobs and verification remain bound to the candidate."
       }
     },
     "verified": {
       "impact": "major",
-      "reasoning": "Embedded Tantivy and independent AI modes add capabilities, but enhanced search now deliberately rejects NEAR and unsupported reranker-model overrides; these externally observable compatibility breaks require a Major. SQLite upgrades are additive and preserve source content and the legacy reader. The Playbook detail width repair is a compatible presentation-only adjustment within the covered renderer.",
+      "reasoning": "Embedded Tantivy and independent AI modes add capabilities, but enhanced search now deliberately rejects NEAR and unsupported reranker-model overrides; these externally observable compatibility breaks require a Major. SQLite upgrades are additive and preserve source content and the legacy reader. The Playbook detail width repair and shared system-share schema/API adjustments are covered candidate changes and do not alter the search compatibility conclusion.",
       "assessed_at": "2026-10-12T04:38:00+00:00",
       "evidence": [
         {

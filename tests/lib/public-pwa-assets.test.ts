@@ -90,4 +90,25 @@ describe("public PWA assets", () => {
       "maskable",
     ]);
   });
+
+  it("keeps the public manifest read-only and adds a multipart target only for console builds", async () => {
+    const assets = await getPublicPwaAssetPaths(repoRoot);
+    const publicManifest = createPublicWebManifest(assets, (path) => scopePath("", path));
+    const consoleManifest = createPublicWebManifest(assets, (path) => scopePath("", path), {
+      consoleRuntime: true,
+    });
+
+    expect("share_target" in publicManifest).toBe(false);
+    expect(consoleManifest.share_target).toMatchObject({
+      action: "/share-target",
+      method: "POST",
+      enctype: "multipart/form-data",
+      params: {
+        title: "title",
+        text: "text",
+        url: "url",
+        files: [{ name: "files", accept: ["*/*"] }],
+      },
+    });
+  });
 });

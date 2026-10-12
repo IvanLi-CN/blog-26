@@ -6,7 +6,9 @@ export const prerender = true;
 
 export const GET: APIRoute = async () => {
   const assets = await getPublicPwaAssetPaths();
-  const manifest = createPublicWebManifest(assets, toPublicSitePath);
+  const manifest = createPublicWebManifest(assets, toPublicSitePath, {
+    consoleRuntime: process.env.CONSOLE_RUNTIME === "true",
+  });
   return new Response(`${JSON.stringify(manifest, null, 2)}\n`, {
     headers: { "content-type": "application/manifest+json; charset=utf-8" },
   });

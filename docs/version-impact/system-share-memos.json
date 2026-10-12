@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "4001a2df221914b8777670bbfb49798f7c0e7500",
+  "covered_files": {
+    "CONTEXT.md": "6e07cc4ff24ef5734371534b88f7e352dfdee2e9",
+    "docs/adr/0020-console-pwa-system-share-target.md": "31d5b8e5833e80735756301478a4589db149814b",
+    "docs/specs/system-share-memos/HISTORY.md": "9a085fb9bc2af7a41c217d057690ea0a3d1e7231",
+    "docs/specs/system-share-memos/IMPLEMENTATION.md": "a1b4c4a013f8eb0fdb05410ab23e3fa0ffd9d138",
+    "docs/specs/system-share-memos/SPEC.md": "a67e8d54bb9b76c49c1db92cfc78438f232566da",
+    "drizzle/0013_system_share_submissions.sql": "d7fe3307bcf1dc0a66c4b22a2c98cbfe3acedafd",
+    "public/share-target-sw.js": "df4fc54b43e1cb53b2ec3e848301775f80414956",
+    "site/components/SystemShareConfirmation.tsx": "a079e6dba453674e104872b7adc001877c1b288b",
+    "site/layouts/BaseLayout.astro": "0a5985e0a387321d0684f39ad0acbd698ca8e10b",
+    "site/lib/public-pwa.ts": "61f9f940d0a755d50bddb3aef33982015358df0d",
+    "site/lib/system-share-store.ts": "11895561ac97a11a23c6bde9cfd9fc7dba2b014c",
+    "site/pages/share.astro": "566895b853c91d81db9463476e887beddb1aa907",
+    "site/pages/site.webmanifest.ts": "e4570cfa914d71633443252e4a99a9f9838cdcef",
+    "src/lib/__tests__/system-share.test.ts": "a3d671414f327f9c2d253895455d57c1a90151d8",
+    "src/lib/memo-clipping.ts": "14552d3a84d21e29c4e634449131ce8799eea84a",
+    "src/lib/system-share.ts": "92e8b0e6ce788cda1105890adb247f2fffb8547e",
+    "src/server/routers/memos.ts": "434d15573c0ec5013e8f334cc80c98ec35bd12f1",
+    "tests/lib/public-pwa-assets.test.ts": "c37b4b2755de5d224dda565ff7ea4b1505022ba8",
+    "tests/server/system-share-api.test.ts": "f4d02796951df0c459abd6647262d708848bf4a0"
+  },
+  "change": {
+    "description": "Add console-only Web Share Target ingestion with browser-local unauthenticated holding, administrator confirmation, server-side URL classification, private-by-default Memo creation, attachment limits, and idempotent submission recovery.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "The console receives a new multipart system-share endpoint and a new additive submission table. Existing public routes, ordinary Memo creation, manual clipping tags, and prior SQLite rows remain compatible.",
+      "assessed_at": "2026-10-12T13:50:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/__tests__/system-share.test.ts",
+          "blob": "a3d671414f327f9c2d253895455d57c1a90151d8",
+          "command": "bun test --isolate src/lib/__tests__/system-share.test.ts"
+        },
+        {
+          "path": "tests/server/system-share-api.test.ts",
+          "blob": "f4d02796951df0c459abd6647262d708848bf4a0",
+          "command": "bun test --isolate tests/server/system-share-api.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "The implementation is additive: console-only manifest and Service Worker handling feed an administrator-only multipart API, while URL clipping and ordinary Memo semantics remain unchanged.",
+      "assessed_at": "2026-10-12T13:50:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/__tests__/system-share.test.ts",
+          "blob": "a3d671414f327f9c2d253895455d57c1a90151d8",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/server/system-share-api.test.ts",
+          "blob": "f4d02796951df0c459abd6647262d708848bf4a0",
+          "command": "bun run test:precommit"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate matches the approved system-share memo scope; installed-PWA system-share-sheet acceptance remains an explicit production follow-up."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "Pure classification, manifest, authentication, attachment, clipping projection, idempotency, and migration checks pass. The feature adds no breaking public behavior and keeps the existing content and database readers compatible.",
+      "assessed_at": "2026-10-12T13:50:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/__tests__/system-share.test.ts",
+          "blob": "a3d671414f327f9c2d253895455d57c1a90151d8",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/server/system-share-api.test.ts",
+          "blob": "f4d02796951df0c459abd6647262d708848bf4a0",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/lib/public-pwa-assets.test.ts",
+          "blob": "c37b4b2755de5d224dda565ff7ea4b1505022ba8",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "drizzle/meta/_journal.json",
+          "blob": "16f1cfd949d323f95797dd8919481cc040b46557",
+          "command": "bun run db:migrations:validate"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0"
+      ],
+      "evidence": [
+        {
+          "path": "tests/server/system-share-api.test.ts",
+          "blob": "f4d02796951df0c459abd6647262d708848bf4a0",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/lib/public-pwa-assets.test.ts",
+          "blob": "c37b4b2755de5d224dda565ff7ea4b1505022ba8",
+          "command": "bun run test:precommit"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "minor",
+      "applicable": true,
+      "state_description": "Migration 0013 adds an additive idempotency table. Existing Memo rows, content files, attachments, and prior migrations remain readable; older readers ignore the extra table and do not need system-share data.",
+      "readable_by_prior_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0"
+      ],
+      "upgrade_from_versions": ["2.7.0", "2.8.3", "2.9.0", "2.10.0", "2.11.2", "2.12.0", "2.13.0"],
+      "evidence": [
+        {
+          "path": "tests/server/system-share-api.test.ts",
+          "blob": "f4d02796951df0c459abd6647262d708848bf4a0",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "drizzle/meta/_journal.json",
+          "blob": "16f1cfd949d323f95797dd8919481cc040b46557",
+          "command": "bun run db:migrations:validate"
+        }
+      ]
+    }
+  }
+}
