@@ -67,7 +67,7 @@ export default function SiteHeader(props: Props) {
                 <form
                   action={toPublicSitePath("/search")}
                   method="get"
-                  className="hidden xl:flex items-center w-auto"
+                  className="nature-header-search-form hidden w-auto items-center xl:flex"
                 >
                   <label className="nature-input-shell nature-header-search min-w-[18rem] 2xl:min-w-[20rem]">
                     <Icon
@@ -84,7 +84,7 @@ export default function SiteHeader(props: Props) {
                 </form>
                 <a
                   href={toPublicSitePath("/search")}
-                  className="nature-icon-button inline-flex xl:hidden"
+                  className="nature-header-search-link nature-icon-button inline-flex xl:hidden"
                   aria-label="搜索"
                 >
                   <Icon name="tabler:search" className="nature-header-tool-icon h-5 w-5" />

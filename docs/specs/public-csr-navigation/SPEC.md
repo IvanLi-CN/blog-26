@@ -119,11 +119,13 @@
 ### VER-PCSR-006 — Destination Skeleton and Error States
 
 - Method: 对全部异步目标路由执行客户端导航，在可控延迟期间记录 URL、`main[aria-busy]`、目标骨架标识、源页正文缺失、取消和最新响应；再分别注入失败、重试和恢复。
+- covers: REQ-PCSR-007、REQ-PCSR-008
 - Pass condition: 每个目标路由先显示对应页面族骨架，About/404 不显示骨架；旧请求不能覆盖新目标；失败时只显示目标 URL 下的统一错误面板，重试原位恢复目标页面。
 
 ### VER-PCSR-007 — Skeleton Visual Evidence
 
 - Method: 使用正式路径的 Web Demo 取首页、列表、详情、标签/聚合、Playbook、搜索六类页面族的桌面与移动证据，并分别检查浅色、深色和 reduced-motion；在请求延迟期间截取骨架，在失败期间截取统一错误面板。
+- covers: REQ-PCSR-007、REQ-PCSR-008
 - Pass condition: 骨架的容器、阅读宽度、列数、媒体比例、主要间距和移动内容流与对应目标页一致；占位不泄露业务数据；浅深色对比度、触控尺寸和 reduced-motion 行为符合 Nature 规范。
 
 ## Visual Evidence
@@ -147,6 +149,12 @@ Playbook 分类入口在可用宽度足够时显示已有图标，窄屏保留�
 ![Mobile clipping](./assets/csr-clipping-mobile-dark.png)
 
 ![Mobile Playbook](./assets/csr-playbook-mobile-dark.png)
+
+标签列表导航骨架保持目标页的标题/统计、分组承载层和标签卡片网格；桌面深色与移动浅色 reduced-motion 取图确认分组不会退化为通用横向卡片流，Inspector 打开时页头仍保持单行并收起搜索输入，移动端没有横向溢出。
+
+![Desktop tags skeleton](./assets/csr-tags-desktop-dark.png)
+
+![Mobile tags skeleton](./assets/csr-tags-mobile-light-reduced.png)
 
 ## Related ADRs
 

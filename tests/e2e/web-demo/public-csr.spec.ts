@@ -82,6 +82,106 @@ test("client navigation renders the destination skeleton for every async route f
   await expect(page.locator("main")).toContainText("404");
 });
 
+test("tags navigation skeleton keeps the grouped tag index geometry", async ({ page }) => {
+  await page.goto("/posts/?d_connection=online&d_delay=normal");
+  await ready(page);
+
+  let release = () => {
+    /* Assigned synchronously by the Promise constructor. */
+  };
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let held = false;
+  const routeHandler = async (route: import("@playwright/test").Route) => {
+    const requestPath = new URL(route.request().url()).searchParams.get("path") ?? "";
+    if (!held && requestPath.startsWith("/tags/")) {
+      held = true;
+      await gate;
+    }
+    await route.continue();
+  };
+  await page.route("**/api/public/page**", routeHandler);
+  try {
+    await clickRoute(page, "/tags/");
+    await expect.poll(() => held, { message: "expected a gated tags read" }).toBe(true);
+    await expect(page.locator('main [data-public-route-skeleton="tags"]')).toBeVisible();
+
+    const geometry = await page
+      .locator('main [data-public-route-skeleton="tags"]')
+      .evaluate((root) => {
+        const pageSkeleton = root.querySelector<HTMLElement>(".public-skeleton-tags-page");
+        const groups = [...root.querySelectorAll<HTMLElement>(".public-skeleton-tag-group")];
+        const grids = [...root.querySelectorAll<HTMLElement>(".public-skeleton-tag-grid")];
+        return {
+          pageDisplay: pageSkeleton ? getComputedStyle(pageSkeleton).display : null,
+          groupDisplays: groups.map((group) => getComputedStyle(group).display),
+          gridColumnCounts: grids.map(
+            (grid) => getComputedStyle(grid).gridTemplateColumns.split(" ").length
+          ),
+          cardCounts: grids.map((grid) => grid.children.length),
+        };
+      });
+    expect(geometry.pageDisplay).toBe("grid");
+    expect(geometry.groupDisplays).toEqual(["grid", "grid", "grid"]);
+    expect(geometry.gridColumnCounts.every((count) => count >= 2)).toBe(true);
+    expect(geometry.cardCounts).toEqual([6, 6, 6]);
+  } finally {
+    release();
+  }
+  await expect(page.locator("main.nature-main")).toHaveAttribute("aria-busy", "false");
+  await page.unroute("**/api/public/page**", routeHandler);
+});
+
+test("public header stays on one row beside the open Web Demo Inspector", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("web-demo-inspector-open", "true");
+  });
+  await page.goto("/posts/?d_connection=online&d_delay=normal");
+  await ready(page);
+
+  await expect(page.locator('body[data-web-demo-inspector-open="true"]')).toHaveCount(1);
+  for (const width of [1200, 1280, 1440, 1600]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const headerSurface = page.locator(".nature-site-header .nature-surface");
+    const navigation = page.getByRole("navigation", { name: "Main navigation" });
+    const tools = page.locator(".nature-header-tools");
+    const [headerBounds, navigationBounds, toolsBounds] = await Promise.all([
+      headerSurface.boundingBox(),
+      navigation.boundingBox(),
+      tools.boundingBox(),
+    ]);
+
+    expect(headerBounds, `${width}px header surface`).not.toBeNull();
+    expect(navigationBounds, `${width}px navigation`).not.toBeNull();
+    expect(toolsBounds, `${width}px header tools`).not.toBeNull();
+    expect(
+      Math.abs((navigationBounds?.y ?? 0) - (toolsBounds?.y ?? 0)),
+      `${width}px navigation and tools stay on one row`
+    ).toBeLessThanOrEqual(2);
+    expect(headerBounds?.height ?? 0, `${width}px header height`).toBeLessThan(96);
+    const compactHeader = width < 1600;
+    expect(
+      await page
+        .locator(".nature-header-search-form")
+        .evaluate((node) => getComputedStyle(node).display),
+      `${width}px desktop search input display`
+    ).toBe(compactHeader ? "none" : "flex");
+    expect(
+      await page
+        .locator(".nature-header-search-link")
+        .evaluate((node) => getComputedStyle(node).display),
+      `${width}px search action display`
+    ).toBe(compactHeader ? "flex" : "none");
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
+      ),
+      `${width}px page has no horizontal overflow`
+    ).toBe(true);
+  }
+});
+
 test("SSR content hydrates without repeating its page read", async ({ page, request }) => {
   const hydrationErrors: string[] = [];
   page.on("console", (message) => {

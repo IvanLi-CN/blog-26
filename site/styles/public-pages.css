@@ -2312,12 +2312,18 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
   gap: 0.35rem;
   padding: 0.9rem 1.1rem;
 }
+.public-skeleton-tags-page {
+  align-content: start;
+}
 .public-skeleton-tag-group {
   display: grid;
   gap: 0.75rem;
 }
 .public-skeleton-tag-grid {
   grid-template-columns: repeat(auto-fill, minmax(min(14rem, 100%), 1fr));
+}
+.public-skeleton-tag-surface {
+  padding: 0.75rem;
 }
 .public-skeleton-tag-card {
   display: grid;
@@ -2517,6 +2523,9 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
   .public-skeleton-tag-heading {
     align-items: stretch;
     flex-direction: column;
+  }
+  .public-skeleton-tag-surface {
+    padding: 0.75rem 0;
   }
   .public-skeleton-tag-detail-header {
     grid-template-columns: 1fr;
