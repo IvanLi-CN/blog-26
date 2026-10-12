@@ -20,7 +20,6 @@ const HTML_ROUTE_PATTERNS = [
   "/",
   "/about/",
   "/search/",
-  "/share/",
   "/tags/*",
   "/posts/*",
   "/projects/*",
@@ -49,6 +48,8 @@ const HTML_FILE_ROUTE_PATTERNS = [
   "/memos/",
   "/memos/:slug/",
 ] as const;
+
+const SKIPPED_PUBLIC_HTML_ROUTE_PATTERNS = ["/share/"] as const;
 
 const PLAYBOOK_POLICY_SOURCE = "/_content/playbook/:version/:digest/policies/*";
 
@@ -361,6 +362,12 @@ function validateHtmlFiles(staticFiles: readonly string[], basePath: string) {
           ? `/${file.slice(0, -"/index.html".length)}/`
           : `/${file}`;
     const scoped = scopedPath(normalizedBase, urlPath);
+    if (
+      SKIPPED_PUBLIC_HTML_ROUTE_PATTERNS.some((source) =>
+        edgeoneSourceMatches(scopedPath(normalizedBase, source), scoped)
+      )
+    )
+      continue;
     const represented = HTML_FILE_ROUTE_PATTERNS.some((source) =>
       edgeoneSourceMatches(scopedPath(normalizedBase, source), scoped)
     );
