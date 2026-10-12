@@ -1,11 +1,11 @@
 # 三种搜索模式的实现
 
-内嵌 Tantivy、独立 RAG、独立查询改写和关键词回退已接入产品运行时。长期行为以 [SPEC](./SPEC.md) 为准；固定合成模型样例、原生集成、接口、恢复和 UI 自动化结果见 [验证证据](./VALIDATION.md)。当前候选已完成 Web Demo 视觉确认，精确头的 CI 正在刷新；不代表已部署生产。
+内嵌 Tantivy、独立 RAG、独立查询改写和关键词回退已接入主线产品运行时。长期行为以 [SPEC](./SPEC.md) 为准；固定合成模型样例、原生集成、接口、恢复和 UI 自动化结果见 [验证证据](./VALIDATION.md)。
 
 ## Current Status
 
 - Lifecycle: active
-- Implementation: candidate-complete，运行时与管理页已实现，PR #214 当前头已通过前序功能验证，新的 CI 正在刷新，等待 PR 合并。
+- Implementation: complete，运行时与管理页已实现；原始功能 PR #214 已合入主线。后续兼容修复按当前候选独立验证。
 - 排序回归和生产 bundle 的 writer 冲突已修复。重新验收发现改写遗漏 SQLite3 专题，旧质量检查仅检查文字而未证明实际检索；改写提示词与固定合成检索验证已修正，两条实际 AI 链保持原断言通过验收。当前候选的完整证据见验证报告；历史候选只作为诊断记录，不替代当前候选。
 - HTTP、tRPC、MCP 与旧 enhanced 共用执行器，默认关闭智能搜索并执行关键词全文检索；Playbook、旧内容列表及独立 semantic 保留自身职责。
 - 支持平台为 linux/amd64；本次不提供 macOS 原生后端，本机前端连接 Linux 开发后端。
