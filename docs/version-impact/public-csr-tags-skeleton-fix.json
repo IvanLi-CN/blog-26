@@ -3,16 +3,18 @@
   "kind": "version-impact-record",
   "base_sha": "4001a2df221914b8777670bbfb49798f7c0e7500",
   "covered_files": {
-    "docs/specs/public-csr-navigation/IMPLEMENTATION.md": "17a4e06c8cf1cdbdf9f074f820e91fd34192872e",
-    "docs/specs/public-csr-navigation/SPEC.md": "1add9cc3035171689f1bed2870792f16daf3dbc6",
-    "docs/specs/public-csr-navigation/assets/csr-tags-desktop-dark.png": "27785f88e8e18a2e07efee7d2189c6410e8937df",
-    "docs/specs/public-csr-navigation/assets/csr-tags-mobile-light-reduced.png": "3d3add4333c8ee60514805932200fa90f5299aba",
-    "site/components/PublicRouteSkeleton.tsx": "7a8ae6e9b0d986393afb91f9a9c9c323e8c017ec",
-    "site/styles/public-pages.css": "48b6f718c993acaef3d96ef7945122d80acfa19c",
-    "tests/e2e/web-demo/public-csr.spec.ts": "793e44d7bf3cffe02194b771669528eab2b9f08d"
+    "docs/specs/public-csr-navigation/IMPLEMENTATION.md": "7828ca1d08ab062da117a5540911a2dc6fd379c7",
+    "docs/specs/public-csr-navigation/SPEC.md": "bbe85b87541eb36c8bcc23bdfd37b4de1758ae90",
+    "docs/specs/public-csr-navigation/assets/csr-tags-desktop-dark.png": "06f67cb6e55044605d5c87eeee69ddc812d4341d",
+    "docs/specs/public-csr-navigation/assets/csr-tags-mobile-light-reduced.png": "54415ffd4e9190a3657b56ebc66eb66dff6c5c58",
+    "site/components/PublicRouteSkeleton.tsx": "27a5e42101960b484f1863e13673b466f646ca6d",
+    "site/styles/public-pages.css": "1c5aa7749c637ef2710607b513a9a4745ba3449f",
+    "tests/e2e/web-demo/public-csr.spec.ts": "e61130994e2e838565b2f0efb8615f002c17cdf8",
+    "site/components/SiteHeader.tsx": "8607e747a6bc08e8ef79bda289f406b07a104c8d",
+    "src/styles/nature-restored.css": "255724f45e5b89deda4915ba74b6ab4b2727250d"
   },
   "change": {
-    "description": "Correct the tags destination skeleton so grouped tag sections retain page-level grid geometry and framed responsive tag tiles during public client-side navigation.",
+    "description": "Correct the tags destination skeleton geometry and keep the public header compact when the Web Demo Inspector side rail narrows the available content column.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api"]
   },
@@ -36,18 +38,28 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The candidate only corrects tags skeleton container geometry, responsive tile framing, and the associated Web Demo/spec evidence. Existing route reads, SSR hydration, URL/history behavior, themes, and page-local loading remain unchanged.",
-      "assessed_at": "2026-10-11T19:05:53Z",
+      "reasoning": "The candidate corrects tags skeleton geometry, keeps the Inspector-open public header on one row through a scoped container rule, and updates the associated Web Demo/spec evidence. Existing route reads, SSR hydration, URL/history behavior, themes, and page-local loading remain unchanged.",
+      "assessed_at": "2026-10-12T03:04:50Z",
       "evidence": [
         {
           "path": "tests/e2e/web-demo/public-csr.spec.ts",
-          "blob": "793e44d7bf3cffe02194b771669528eab2b9f08d",
-          "command": "Official Web Demo tags route verifies grouped structural surfaces, responsive card columns, and six-card groups"
+          "blob": "e61130994e2e838565b2f0efb8615f002c17cdf8",
+          "command": "Official Web Demo verifies grouped tags geometry and the Inspector-open header stays on one row"
+        },
+        {
+          "path": "site/components/SiteHeader.tsx",
+          "blob": "8607e747a6bc08e8ef79bda289f406b07a104c8d",
+          "command": "Public header exposes scoped selectors for compact Inspector-open search behavior"
+        },
+        {
+          "path": "src/styles/nature-restored.css",
+          "blob": "255724f45e5b89deda4915ba74b6ab4b2727250d",
+          "command": "Nature container query keeps header controls on one row within the narrowed content column"
         },
         {
           "path": "docs/specs/public-csr-navigation/SPEC.md",
-          "blob": "1add9cc3035171689f1bed2870792f16daf3dbc6",
-          "command": "Accepted public CSR skeleton contract and tags visual evidence are synchronized"
+          "blob": "bbe85b87541eb36c8bcc23bdfd37b4de1758ae90",
+          "command": "Accepted public CSR skeleton contract and refreshed Inspector-open visual evidence are synchronized"
         }
       ],
       "scope_drift": {
@@ -57,23 +69,28 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Focused unit checks, full check, official Web Demo tags geometry coverage, and desktop/mobile light/dark/reduced-motion evidence verify a compatible public frontend presentation repair without data or persistence changes.",
-      "assessed_at": "2026-10-11T19:05:53Z",
+      "reasoning": "Focused unit checks, official Web Demo geometry and header coverage, targeted formatting, and desktop/mobile skeleton evidence verify a compatible public frontend presentation repair without data or persistence changes.",
+      "assessed_at": "2026-10-12T03:04:50Z",
       "evidence": [
         {
           "path": "tests/e2e/web-demo/public-csr.spec.ts",
-          "blob": "793e44d7bf3cffe02194b771669528eab2b9f08d",
-          "command": "Official Web Demo tags geometry regression passes on desktop and mobile skeleton states"
+          "blob": "e61130994e2e838565b2f0efb8615f002c17cdf8",
+          "command": "Official Web Demo tags skeleton and Inspector-open header regression pass"
         },
         {
-          "path": "site/styles/public-pages.css",
-          "blob": "48b6f718c993acaef3d96ef7945122d80acfa19c",
-          "command": "Nature UI tags structural surfaces preserve responsive grid geometry and reduced-motion styling"
+          "path": "src/styles/nature-restored.css",
+          "blob": "255724f45e5b89deda4915ba74b6ab4b2727250d",
+          "command": "Nature container query preserves compact one-row header geometry at 1440x1000 with Inspector open"
+        },
+        {
+          "path": "docs/specs/public-csr-navigation/assets/csr-tags-desktop-dark.png",
+          "blob": "06f67cb6e55044605d5c87eeee69ddc812d4341d",
+          "command": "Official Web Demo pending tags skeleton screenshot shows a single-row public header"
         },
         {
           "path": "docs/specs/public-csr-navigation/SPEC.md",
-          "blob": "1add9cc3035171689f1bed2870792f16daf3dbc6",
-          "command": "Spec contract check and visual evidence references pass"
+          "blob": "bbe85b87541eb36c8bcc23bdfd37b4de1758ae90",
+          "command": "Spec contract and visual evidence references pass"
         }
       ]
     }
@@ -94,7 +111,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/public-csr.spec.ts",
-          "blob": "793e44d7bf3cffe02194b771669528eab2b9f08d",
+          "blob": "e61130994e2e838565b2f0efb8615f002c17cdf8",
           "command": "Official Web Demo navigation reads remain unchanged while tags pending presentation is corrected"
         }
       ]
@@ -108,7 +125,7 @@
       "evidence": [
         {
           "path": "tests/lib/public-csr-route.test.ts",
-          "blob": "7216901d8d686be2a80c0ea54592c6b97af38f4c",
+          "blob": "9b59fee18081301ca5d21350d147b7ce21487f3c",
           "command": "Route classification and payload isolation tests pass without persistence changes"
         }
       ]

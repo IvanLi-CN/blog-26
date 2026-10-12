@@ -150,7 +150,7 @@ Playbook 分类入口在可用宽度足够时显示已有图标，窄屏保留�
 
 ![Mobile Playbook](./assets/csr-playbook-mobile-dark.png)
 
-标签列表导航骨架保持目标页的标题/统计、分组承载层和标签卡片网格；桌面深色与移动浅色 reduced-motion 取图确认分组不会退化为通用横向卡片流，移动端没有横向溢出。
+标签列表导航骨架保持目标页的标题/统计、分组承载层和标签卡片网格；桌面深色与移动浅色 reduced-motion 取图确认分组不会退化为通用横向卡片流，Inspector 打开时页头仍保持单行并收起搜索输入，移动端没有横向溢出。
 
 ![Desktop tags skeleton](./assets/csr-tags-desktop-dark.png)
 

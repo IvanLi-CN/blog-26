@@ -153,6 +153,7 @@
 
   .nature-site-header-frame {
     position: relative;
+    container: nature-header / inline-size;
   }
 
   .nature-site-header[data-public-header] {
@@ -783,6 +784,48 @@
       min-width: 2rem;
       padding: 0.3rem 0.55rem;
     }
+  }
+}
+
+/* The Web Demo Inspector reserves a side rail without changing the viewport
+ * breakpoint. Keep the public header in one compact row when its own content
+ * column is narrower than the full desktop viewport. */
+@container nature-header (min-width: 1024px) and (max-width: 1120px) {
+  .nature-site-header-frame > .nature-surface {
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+  }
+
+  .nature-site-header-frame .nature-brand-link {
+    flex: 0 1 auto;
+  }
+
+  .nature-site-header-frame nav {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin-left: 0;
+  }
+
+  .nature-site-header-frame nav ul {
+    gap: 0;
+  }
+
+  .nature-site-header-frame .nature-nav-link {
+    padding-inline: 0.45rem;
+  }
+
+  .nature-site-header-frame .nature-header-search-form {
+    display: none;
+  }
+
+  .nature-site-header-frame .nature-header-search-link {
+    display: inline-flex;
+  }
+
+  .nature-site-header-frame .nature-header-tools {
+    flex: 0 0 auto;
+    gap: 0.25rem;
+    margin-left: auto;
   }
 }
 

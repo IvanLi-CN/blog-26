@@ -133,6 +133,45 @@ test("tags navigation skeleton keeps the grouped tag index geometry", async ({ p
   await page.unroute("**/api/public/page**", routeHandler);
 });
 
+test("public header stays on one row beside the open Web Demo Inspector", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("web-demo-inspector-open", "true");
+  });
+  await page.goto("/posts/?d_connection=online&d_delay=normal");
+  await ready(page);
+
+  await expect(page.locator('body[data-web-demo-inspector-open="true"]')).toHaveCount(1);
+  const headerSurface = page.locator(".nature-site-header .nature-surface");
+  const navigation = page.getByRole("navigation", { name: "Main navigation" });
+  const tools = page.locator(".nature-header-tools");
+  const [headerBounds, navigationBounds, toolsBounds] = await Promise.all([
+    headerSurface.boundingBox(),
+    navigation.boundingBox(),
+    tools.boundingBox(),
+  ]);
+
+  expect(headerBounds).not.toBeNull();
+  expect(navigationBounds).not.toBeNull();
+  expect(toolsBounds).not.toBeNull();
+  expect(Math.abs((navigationBounds?.y ?? 0) - (toolsBounds?.y ?? 0))).toBeLessThanOrEqual(2);
+  expect(headerBounds?.height ?? 0).toBeLessThan(96);
+  expect(
+    await page
+      .locator(".nature-header-search-form")
+      .evaluate((node) => getComputedStyle(node).display)
+  ).toBe("none");
+  expect(
+    await page
+      .locator(".nature-header-search-link")
+      .evaluate((node) => getComputedStyle(node).display)
+  ).toBe("flex");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
+    )
+  ).toBe(true);
+});
+
 test("SSR content hydrates without repeating its page read", async ({ page, request }) => {
   const hydrationErrors: string[] = [];
   page.on("console", (message) => {
