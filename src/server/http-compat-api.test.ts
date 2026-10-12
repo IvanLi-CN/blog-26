@@ -2199,6 +2199,16 @@ public: false
       expect(response.status).toBe(200);
       const payload = (await response.json()) as Array<{ slug: string }>;
       expect(payload.some((result) => result.slug === "private-search-clipping")).toBe(false);
+
+      const nearResponse = await handlePublicApiRequest(
+        buildRequest(
+          `/api/public/search?q=${encodeURIComponent("NEAR(private marker, 5)")}&topK=20`
+        ),
+        "/search"
+      );
+      expect(nearResponse.status).toBe(200);
+      const nearPayload = (await nearResponse.json()) as Array<{ slug: string }>;
+      expect(nearPayload.some((result) => result.slug === "private-search-clipping")).toBe(false);
     }
   );
 
