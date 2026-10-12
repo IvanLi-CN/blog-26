@@ -14,16 +14,17 @@
     "docs/specs/search-relevance/validation/product/empirical-search-model-current.txt": "18da8d07f5f5df3896db3ea1471e2fef6ad84678",
     "docs/specs/search-relevance/validation/product/empirical-search-model-nonthinking.txt": "9b2dcb5e8a69a3ea7796831dfc3d96323ccad02a",
     "lefthook.yml": "f4efb8182ef70cc48f63c374ebb77dd453869578",
-    "native/search/src/lib.rs": "a883cbd50eb34fe3b79e6da0d4c69e6ad4fb639b",
+    "native/search/src/lib.rs": "0557f9b419d2332a2ac415dfc575af71de97e72b",
     "package.json": "b597bb4bd8104023e160bd76740c54774d90e922",
     "scripts/run-precommit-tests.ts": null,
     "scripts/run-test-suite.ts": "5c5f93a47213070eb6c28ca0d8497b43c524cde0",
-    "scripts/verify-native-search.ts": "ca6cd8d5bf9834dce9b286708bc00c387e56c2ba",
+    "scripts/verify-native-search.ts": "787bbf883a26b1b6414e76934d220951ac06d454",
     "src/lib/ai/search-fallback.test.ts": "fe8e292f36657686399df1d8a30066e007f7c8e2",
-    "src/lib/ai/search.ts": "4081300eb553ff19877eb808290479a74f7208e9",
+    "src/lib/ai/search.ts": "80d6e6d00291475b715a995e66f25099208f23cb",
+    "src/lib/search/content-search.ts": "71768f7c27091aaa8cbf424d0f5b73ec52332457",
     "src/server/http-compat-api.test.ts": "77d070da9fa6b499b7e0729bf1ac2efe4955609a",
-    "src/server/services/content-search.test.ts": "70ce8939e050be3686295e0dcc5f830757a39e3f",
-    "src/server/services/content-search.ts": "206af05398ba38363d097562b7891f2e5e0071a4",
+    "src/server/services/content-search.test.ts": "7d59fffa6a15cf081d9929a7cbfeb6148d710314",
+    "src/server/services/content-search.ts": "2acf38643fdf3816dfc4e14a019b6bdc307833eb",
     "src/server/services/search-model.test.ts": "c648968fb7ca8880d932db29ef02c7b48bccb0a9",
     "src/server/services/search-model.ts": "43621c3d6a55434f1e50781e810b4380188bb868"
   },
@@ -40,7 +41,7 @@
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
-          "blob": "70ce8939e050be3686295e0dcc5f830757a39e3f",
+          "blob": "7d59fffa6a15cf081d9929a7cbfeb6148d710314",
           "command": "bun test --timeout 30000 src/server/services/content-search.test.ts src/server/services/search-ranking.test.ts"
         },
         {
@@ -67,7 +68,7 @@
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
-          "blob": "70ce8939e050be3686295e0dcc5f830757a39e3f",
+          "blob": "7d59fffa6a15cf081d9929a7cbfeb6148d710314",
           "command": "bun test --timeout 30000 src/server/services/content-search.test.ts src/server/services/search-ranking.test.ts"
         },
         {
@@ -98,7 +99,7 @@
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
-          "blob": "70ce8939e050be3686295e0dcc5f830757a39e3f",
+          "blob": "7d59fffa6a15cf081d9929a7cbfeb6148d710314",
           "command": "bun test --timeout 30000 src/server/services/content-search.test.ts src/server/services/search-ranking.test.ts"
         },
         {
@@ -146,7 +147,7 @@
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
-          "blob": "70ce8939e050be3686295e0dcc5f830757a39e3f",
+          "blob": "7d59fffa6a15cf081d9929a7cbfeb6148d710314",
           "command": "bun test --timeout 30000 src/server/services/content-search.test.ts src/server/services/search-ranking.test.ts"
         },
         {
