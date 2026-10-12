@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "7906881fd802cf0198047b28daa6760506e29b01",
+  "base_sha": "8c21953f755c1413fb918db4d23fda613422f5c0",
   "covered_files": {
     ".github/workflows/ci.yml": "e64b81833b14841257120a5bad19f07c8ae393df",
     "docs/adr/0021-embedded-tantivy-search.md": "05c9dff6296fd23eefa966d67f5db65f556e18b5",
