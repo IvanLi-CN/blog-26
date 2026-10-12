@@ -96,7 +96,7 @@ assert.deepEqual(await ids("Arch"), [1, 2, 3]);
 console.log("PASS committed update/delete and reader reload");
 let ticks = 0;
 const timer = setInterval(() => ticks++, 1);
-await Promise.all(Array.from({ length: 1000 }, () => ids("NodeJS")));
+await Promise.all(Array.from({ length: 20_000 }, () => ids("NodeJS")));
 clearInterval(timer);
 assert.ok(ticks > 0, "native queries allow the event loop to progress");
 console.log(`PASS asynchronous search; timer ticks=${ticks}`);
