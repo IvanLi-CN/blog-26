@@ -18,6 +18,7 @@ import MarkdownRenderer from "../common/MarkdownRenderer";
 import Icon from "../ui/Icon";
 import { PlaybookContents, PlaybookMobileNavigation } from "./PlaybookNavigation";
 import PlaybookResourceBrowser from "./PlaybookResourceBrowser";
+import PlaybookTechStack from "./PlaybookTechStack";
 
 const groups = [
   {
@@ -438,18 +439,7 @@ function PlaybookDetail({
           className="nature-panel nature-hover-lift nature-mobile-reading-surface min-w-0 px-4 py-5 sm:px-8 sm:py-7 lg:col-start-1 lg:row-start-2"
           data-playbook-body
         >
-          {project && project.stack != null && (
-            <details className="mb-8 border-b border-[color:var(--nature-line)] pb-6">
-              <summary className="min-h-11 cursor-pointer py-2.5 font-medium text-[color:var(--nature-text-soft)]">
-                技术栈
-              </summary>
-              <pre className="mt-3 max-w-full overflow-x-auto whitespace-pre-wrap break-all text-sm leading-7">
-                {typeof project.stack === "string"
-                  ? project.stack
-                  : JSON.stringify(project.stack, null, 2)}
-              </pre>
-            </details>
-          )}
+          {project && project.stack != null && <PlaybookTechStack value={project.stack} />}
           {policy ? (
             <PolicyContent policy={policy} edition={edition} versioned={versioned} />
           ) : (
