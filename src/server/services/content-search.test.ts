@@ -9,6 +9,7 @@ import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { db, initializeDB } from "@/lib/db";
 import { postEmbeddings, posts, searchIndexState, searchSettings } from "@/lib/schema";
+import { searchContent } from "@/lib/search/content-search";
 import { DEFAULT_SEARCH_POLICY } from "@/lib/search/settings";
 import { handleMcpHttpRequest } from "@/server/mcp-http";
 import { handlePublicApiRequest } from "@/server/public-api/router";
@@ -217,9 +218,18 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
       "explicit-query"
     );
     expect(globalThis.fetch).not.toHaveBeenCalled();
-    await expect(
-      executeContentModes({ q: "NEAR(SQLite database)", mode: "keyword" })
-    ).rejects.toThrow("unsupported-query");
+    await db
+      .insert(posts)
+      .values([
+        fixture("near-adjacent", "SQLite database"),
+        fixture("near-separated", "SQLite has an unrelated database"),
+      ]);
+    const query = "NEAR(SQLite database, 3)";
+    const expected = await searchContent({ q: query, topK: 10 });
+    const near = await executeContentModes({ q: query, mode: "rag", topK: 10 });
+    expect(near.effectiveMode).toBe("keyword");
+    expect(near.reason).toBe("explicit-query");
+    expect(near.results.map((item) => item.slug)).toEqual(expected.map((item) => item.slug));
   });
   test("rewrite sends only query policy, never site content or embeddings", async () => {
     await db
@@ -761,9 +771,9 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
         results: [{ slug: "mcp-public" }],
       });
       const legacy = await call("search_enhanced", { q: "SQLite", rerank: false });
-      expect(JSON.parse(legacy.result.content[0].text)).toEqual(
-        (await executeContentModes({ q: "SQLite", mode: "keyword" })).results
-      );
+      expect(JSON.parse(legacy.result.content[0].text)).toMatchObject([
+        { slug: "mcp-public", type: "post" },
+      ]);
       const privateCall = await call("search_content", {
         q: "SQLite",
         mode: "keyword",

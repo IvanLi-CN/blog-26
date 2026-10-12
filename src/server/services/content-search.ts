@@ -4,6 +4,7 @@ import { z } from "zod";
 import { buildEmbeddingInput, cosineSimilarity, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { db } from "@/lib/db";
 import { postEmbeddings, posts } from "@/lib/schema";
+import { searchContent } from "@/lib/search/content-search";
 import { ContentSearchError, planNativeQuery } from "@/lib/search/native-query";
 import { type SearchReason, searchModeSchema } from "@/lib/search/settings";
 import {
@@ -209,8 +210,24 @@ export async function executeContentModes(
       reason: "empty-query",
     };
   }
-  const plan = planNativeQuery(input.q);
   const publishedOnly = context.publishedOnly !== false;
+  // Preserve the legacy SQLite query contract for callers that still use NEAR.
+  // Tantivy remains the default engine for the new simple-query surface.
+  if (/(?:^|[\s(:])NEAR\s*\(/iu.test(input.q.replace(/"(?:\\.|[^"\\])*"/gu, ""))) {
+    const legacy = await searchContent({
+      q: input.q,
+      topK: input.topK,
+      type: input.type,
+      publishedOnly,
+    });
+    return {
+      results: legacy.map((item) => ({ ...item, searchOrigin: "keyword" as const })),
+      requestedMode: input.mode,
+      effectiveMode: "keyword",
+      reason: "explicit-query",
+    };
+  }
+  const plan = planNativeQuery(input.q);
   const index = await contentSearchIndex();
   const keyword = await index.search(input.q, {
     limit: input.topK,

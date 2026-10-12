@@ -193,7 +193,9 @@ describe("HTTP compatibility APIs", () => {
 
     await initializeDB(true);
     fs.rmSync(`${TEST_DB_PATH}.search`, { recursive: true, force: true });
-    await (await contentSearchIndex()).prepare();
+    if (process.platform === "linux") {
+      await (await contentSearchIndex()).prepare();
+    }
   }, 20_000);
 
   afterAll(async () => {
@@ -2140,169 +2142,179 @@ public: false
     expect(payload.suggestions.some((term: string) => /react|hooks/i.test(term))).toBe(true);
   });
 
-  it("keeps the public search array available when embeddings are unavailable", async () => {
-    await seedPost({
-      slug: "fts-public-search",
-      type: "post",
-      title: "FTS public search",
-      body: "This result is available without an embedding provider.",
-      public: true,
-      draft: false,
-    });
+  it.skipIf(process.platform !== "linux")(
+    "keeps the public search array available when embeddings are unavailable",
+    async () => {
+      await seedPost({
+        slug: "fts-public-search",
+        type: "post",
+        title: "FTS public search",
+        body: "This result is available without an embedding provider.",
+        public: true,
+        draft: false,
+      });
 
-    const response = await handlePublicApiRequest(
-      buildRequest("/api/public/search?q=embedding%20provider"),
-      "/search"
-    );
-
-    expect(response.status).toBe(200);
-    const payload = await response.json();
-    expect(Array.isArray(payload)).toBe(true);
-    expect(payload).toEqual(
-      expect.arrayContaining([expect.objectContaining({ slug: "fts-public-search" })])
-    );
-  });
-
-  it("rechecks canonical clipping visibility before returning public search results", async () => {
-    const relativePath = "Memos/private-search-clipping.md";
-    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos"), { recursive: true });
-    fs.writeFileSync(
-      path.join(LOCAL_CONTENT_BASE_PATH, relativePath),
-      "---\ntitle: Private clipping\npublic: false\ntags:\n  - 剪藏\n---\n\nhttps://example.com/private-search\n\nprivate-clipping-search-marker",
-      "utf8"
-    );
-    await seedPost({
-      id: relativePath,
-      filePath: relativePath,
-      slug: "private-search-clipping",
-      type: "memo",
-      title: "Stale public clipping title",
-      body: "https://example.com/private-search\n\nprivate-clipping-search-marker",
-      tags: JSON.stringify(["剪藏"]),
-      metadata: null,
-      public: true,
-      draft: false,
-    });
-
-    const response = await handlePublicApiRequest(
-      buildRequest("/api/public/search?q=private-clipping-search-marker&topK=20"),
-      "/search"
-    );
-
-    expect(response.status).toBe(200);
-    const payload = (await response.json()) as Array<{ slug: string }>;
-    expect(payload.some((result) => result.slug === "private-search-clipping")).toBe(false);
-  });
-
-  it("normalizes legacy memo titles across search, list, detail, and snapshot reads", async () => {
-    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos"), { recursive: true });
-    fs.writeFileSync(
-      path.join(LOCAL_CONTENT_BASE_PATH, "Memos", "20260615_xayc4b0t.md"),
-      "---\ntitle: Source-derived memo title\n---\n\nneedle-public-search-marker",
-      "utf8"
-    );
-    fs.writeFileSync(
-      path.join(LOCAL_CONTENT_BASE_PATH, "Memos", "20260615_notitle1.md"),
-      "A prose-only memo\n\n#### A detail heading",
-      "utf8"
-    );
-    await seedPost({
-      id: "Memos/20260615_xayc4b0t.md",
-      filePath: "Memos/20260615_xayc4b0t.md",
-      slug: "legacy-title-with-source",
-      type: "memo",
-      title: "20260615 xayc4b0t",
-      body: "needle-public-search-marker",
-    });
-    await seedPost({
-      id: "Memos/20260615_notitle1.md",
-      filePath: "Memos/20260615_notitle1.md",
-      slug: "legacy-title-without-heading",
-      type: "memo",
-      title: "20260615 notitle1",
-      body: "A prose-only memo\n\n#### A detail heading",
-    });
-    await seedPost({
-      id: "Memos/20260615_missin12.md",
-      filePath: "Memos/20260615_missin12.md",
-      slug: "legacy-title-without-source",
-      type: "memo",
-      title: "20260615 missin12",
-      body: "needle-public-search-marker",
-    });
-
-    const response = await handlePublicApiRequest(
-      buildRequest("/api/public/search?q=needle-public-search-marker&topK=20"),
-      "/search"
-    );
-
-    expect(response.status).toBe(200);
-    const payload = (await response.json()) as Array<{ slug: string; title: string | null }>;
-    expect(payload).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          slug: "legacy-title-with-source",
-          title: "Source-derived memo title",
-        }),
-        expect.objectContaining({
-          slug: "legacy-title-without-source",
-          title: "20260615 missin12",
-        }),
-      ])
-    );
-
-    const snapshotResponse = await handlePublicApiRequest(
-      buildRequest("/api/public/snapshot"),
-      "/snapshot"
-    );
-    const snapshot = await readJson(snapshotResponse);
-    expect(snapshot.memos).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          slug: "legacy-title-with-source",
-          title: "Source-derived memo title",
-        }),
-        expect.objectContaining({ slug: "legacy-title-without-heading", title: null }),
-        expect.objectContaining({
-          slug: "legacy-title-without-source",
-          title: "20260615 missin12",
-        }),
-      ])
-    );
-
-    const listResponse = await handlePublicApiRequest(
-      buildRequest("/api/public/memos?publicOnly=false&limit=20", {}, ADMIN_EMAIL),
-      "/memos"
-    );
-    expect(listResponse.status).toBe(200);
-    const listPayload = await readJson(listResponse);
-    expect(listPayload.memos).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          slug: "legacy-title-with-source",
-          title: "Source-derived memo title",
-        }),
-        expect.objectContaining({ slug: "legacy-title-without-heading", title: null }),
-        expect.objectContaining({
-          slug: "legacy-title-without-source",
-          title: "20260615 missin12",
-        }),
-      ])
-    );
-
-    for (const [slug, title] of [
-      ["legacy-title-with-source", "Source-derived memo title"],
-      ["legacy-title-without-heading", null],
-      ["legacy-title-without-source", "20260615 missin12"],
-    ] as const) {
-      const detailResponse = await handlePublicApiRequest(
-        buildRequest(`/api/public/memos/${slug}`, {}, ADMIN_EMAIL),
-        `/memos/${slug}`
+      const response = await handlePublicApiRequest(
+        buildRequest("/api/public/search?q=embedding%20provider"),
+        "/search"
       );
-      expect(detailResponse.status).toBe(200);
-      expect(await readJson(detailResponse)).toEqual(expect.objectContaining({ title }));
+
+      expect(response.status).toBe(200);
+      const payload = await response.json();
+      expect(Array.isArray(payload)).toBe(true);
+      expect(payload).toEqual(
+        expect.arrayContaining([expect.objectContaining({ slug: "fts-public-search" })])
+      );
     }
-  }, 15_000);
+  );
+
+  it.skipIf(process.platform !== "linux")(
+    "rechecks canonical clipping visibility before returning public search results",
+    async () => {
+      const relativePath = "Memos/private-search-clipping.md";
+      fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos"), { recursive: true });
+      fs.writeFileSync(
+        path.join(LOCAL_CONTENT_BASE_PATH, relativePath),
+        "---\ntitle: Private clipping\npublic: false\ntags:\n  - 剪藏\n---\n\nhttps://example.com/private-search\n\nprivate-clipping-search-marker",
+        "utf8"
+      );
+      await seedPost({
+        id: relativePath,
+        filePath: relativePath,
+        slug: "private-search-clipping",
+        type: "memo",
+        title: "Stale public clipping title",
+        body: "https://example.com/private-search\n\nprivate-clipping-search-marker",
+        tags: JSON.stringify(["剪藏"]),
+        metadata: null,
+        public: true,
+        draft: false,
+      });
+
+      const response = await handlePublicApiRequest(
+        buildRequest("/api/public/search?q=private-clipping-search-marker&topK=20"),
+        "/search"
+      );
+
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as Array<{ slug: string }>;
+      expect(payload.some((result) => result.slug === "private-search-clipping")).toBe(false);
+    }
+  );
+
+  it.skipIf(process.platform !== "linux")(
+    "normalizes legacy memo titles across search, list, detail, and snapshot reads",
+    async () => {
+      fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos"), { recursive: true });
+      fs.writeFileSync(
+        path.join(LOCAL_CONTENT_BASE_PATH, "Memos", "20260615_xayc4b0t.md"),
+        "---\ntitle: Source-derived memo title\n---\n\nneedle-public-search-marker",
+        "utf8"
+      );
+      fs.writeFileSync(
+        path.join(LOCAL_CONTENT_BASE_PATH, "Memos", "20260615_notitle1.md"),
+        "A prose-only memo\n\n#### A detail heading",
+        "utf8"
+      );
+      await seedPost({
+        id: "Memos/20260615_xayc4b0t.md",
+        filePath: "Memos/20260615_xayc4b0t.md",
+        slug: "legacy-title-with-source",
+        type: "memo",
+        title: "20260615 xayc4b0t",
+        body: "needle-public-search-marker",
+      });
+      await seedPost({
+        id: "Memos/20260615_notitle1.md",
+        filePath: "Memos/20260615_notitle1.md",
+        slug: "legacy-title-without-heading",
+        type: "memo",
+        title: "20260615 notitle1",
+        body: "A prose-only memo\n\n#### A detail heading",
+      });
+      await seedPost({
+        id: "Memos/20260615_missin12.md",
+        filePath: "Memos/20260615_missin12.md",
+        slug: "legacy-title-without-source",
+        type: "memo",
+        title: "20260615 missin12",
+        body: "needle-public-search-marker",
+      });
+
+      const response = await handlePublicApiRequest(
+        buildRequest("/api/public/search?q=needle-public-search-marker&topK=20"),
+        "/search"
+      );
+
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as Array<{ slug: string; title: string | null }>;
+      expect(payload).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            slug: "legacy-title-with-source",
+            title: "Source-derived memo title",
+          }),
+          expect.objectContaining({
+            slug: "legacy-title-without-source",
+            title: "20260615 missin12",
+          }),
+        ])
+      );
+
+      const snapshotResponse = await handlePublicApiRequest(
+        buildRequest("/api/public/snapshot"),
+        "/snapshot"
+      );
+      const snapshot = await readJson(snapshotResponse);
+      expect(snapshot.memos).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            slug: "legacy-title-with-source",
+            title: "Source-derived memo title",
+          }),
+          expect.objectContaining({ slug: "legacy-title-without-heading", title: null }),
+          expect.objectContaining({
+            slug: "legacy-title-without-source",
+            title: "20260615 missin12",
+          }),
+        ])
+      );
+
+      const listResponse = await handlePublicApiRequest(
+        buildRequest("/api/public/memos?publicOnly=false&limit=20", {}, ADMIN_EMAIL),
+        "/memos"
+      );
+      expect(listResponse.status).toBe(200);
+      const listPayload = await readJson(listResponse);
+      expect(listPayload.memos).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            slug: "legacy-title-with-source",
+            title: "Source-derived memo title",
+          }),
+          expect.objectContaining({ slug: "legacy-title-without-heading", title: null }),
+          expect.objectContaining({
+            slug: "legacy-title-without-source",
+            title: "20260615 missin12",
+          }),
+        ])
+      );
+
+      for (const [slug, title] of [
+        ["legacy-title-with-source", "Source-derived memo title"],
+        ["legacy-title-without-heading", null],
+        ["legacy-title-without-source", "20260615 missin12"],
+      ] as const) {
+        const detailResponse = await handlePublicApiRequest(
+          buildRequest(`/api/public/memos/${slug}`, {}, ADMIN_EMAIL),
+          `/memos/${slug}`
+        );
+        expect(detailResponse.status).toBe(200);
+        expect(await readJson(detailResponse)).toEqual(expect.objectContaining({ title }));
+      }
+    },
+    15_000
+  );
 
   it("paginates memo IDs containing underscores without repeating the first page", async () => {
     await seedPost({

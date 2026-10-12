@@ -1,6 +1,5 @@
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { uniqueRankedContent } from "@/lib/search/content-identity";
-import { ContentSearchError } from "@/lib/search/native-query";
 import { isClippingRowPublic } from "@/server/clipping/projection";
 import { executeContentModes } from "@/server/services/content-search";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
@@ -9,6 +8,7 @@ import { postEmbeddings, posts } from "../schema";
 import { isClippingSearchMemo, searchContent } from "../search/content-search";
 import { parseSearchQuery } from "../search/query";
 import { cosineSimilarity, createEmbedding, hashEmbeddingInput } from "./embeddings";
+import { rerank as rerankApi } from "./rerank";
 import { getCachedSearchExecution } from "./search-cache";
 import { buildSearchSnippet } from "./search-snippet";
 
@@ -397,26 +397,53 @@ export async function semantic(input: SemanticSearchInput): Promise<SearchResult
 export async function enhanced(
   input: SemanticSearchInput & { rerankTopK?: number; rerank?: boolean; rerankerModel?: string }
 ): Promise<SearchResult[]> {
-  if (input.rerank !== false && input.rerankerModel !== undefined) {
-    throw new ContentSearchError(
-      "BAD_REQUEST",
-      "unsupported-parameter: configure the RAG chat model in search settings"
-    );
-  }
+  // Keep the historical override accepted. The new RAG path owns its model
+  // policy, while legacy callers may still supply a reranker model directly.
+  if (input.rerank !== false && input.rerankerModel !== undefined)
+    return legacyEnhancedWithReranker(input);
+  if (input.rerank === false) return (await getSemanticExecution(input)).results;
   return (
     await executeContentModes(
       {
         q: input.q,
-        mode: input.rerank === false ? "keyword" : "rag",
+        mode: "rag",
         topK: input.topK ?? 50,
         type: input.type ?? "all",
       },
       {
         publishedOnly: input.publishedOnly,
-        ...(input.rerank !== false
-          ? { embeddingModel: input.model, candidateLimit: input.rerankTopK }
-          : {}),
+        embeddingModel: input.model,
+        candidateLimit: input.rerankTopK,
       }
     )
   ).results;
+}
+
+async function legacyEnhancedWithReranker(
+  input: SemanticSearchInput & { rerankTopK?: number; rerank?: boolean; rerankerModel?: string }
+): Promise<SearchResult[]> {
+  const base = await getSemanticExecution(input);
+  if (base.source === "fts" || !base.results.length) return base.results;
+  const docs = base.results
+    .slice(0, input.rerankTopK ?? 20)
+    .map((result) => `${result.title || result.slug}\n\n${result.excerpt || ""}`);
+  try {
+    const items = await rerankApi(input.q, docs, {
+      model: input.rerankerModel,
+      topN: docs.length,
+    });
+    const max = Math.max(...items.map((item) => item.score));
+    const min = Math.min(...items.map((item) => item.score));
+    const normalize = (score: number) => (max === min ? 0 : (score - min) / (max - min));
+    const beta = Number(process.env.RERANKER_WEIGHT || 0.7);
+    return base.results
+      .map((result, index) => {
+        const score = items.find((item) => item.index === index)?.score ?? 0;
+        const final = (0.3 * ((result.cosine ?? 0) + 1)) / 2 + beta * normalize(score);
+        return { ...result, rerank: score, final };
+      })
+      .sort((a, b) => (b.final ?? 0) - (a.final ?? 0));
+  } catch {
+    return base.results;
+  }
 }

@@ -22,6 +22,7 @@ const EXCLUDE_DIRS = new Set([
 ]);
 
 const ROOTS = ["src", "tests", "tests/integration", "tests/lib", "tests/server"];
+const LINUX_ONLY_TESTS = new Set(["src/lib/ai/search-fallback.test.ts"]);
 
 function isTestFile(filePath: string): boolean {
   return /(\.test|\.spec)\.(ts|tsx|js|jsx)$/.test(filePath);
@@ -77,7 +78,13 @@ async function main() {
   }
 
   // Ensure stable ordering and avoid re-running nested roots for reproducibility.
-  const uniqueFiles = [...new Set(files)].sort();
+  const uniqueFiles = [...new Set(files)]
+    .filter((file) => process.platform === "linux" || !LINUX_ONLY_TESTS.has(file))
+    .sort();
+
+  if (process.platform !== "linux") {
+    console.log("Skipping Linux-native search integration tests on this platform.");
+  }
 
   // Search/database tests use process-level DB_PATH state; isolate each file's module graph.
   const cmd = ["bun", "test", "--isolate", "--timeout=15000", ...uniqueFiles];
