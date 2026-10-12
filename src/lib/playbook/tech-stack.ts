@@ -70,18 +70,6 @@ const fieldLabels: Record<string, string> = {
   checks: "检查项",
 };
 
-const compactListKeys = new Set([
-  "markers_present",
-  "ci_workflows",
-  "configs_root",
-  "scripts",
-  "dependencies",
-  "dev_dependencies",
-  "deps_dev",
-  "deps_prod",
-  "tools",
-]);
-
 // These keys describe publishing and agent-maintenance state rather than the
 // technology a visitor needs to understand.
 const maintenanceKeys = new Set([
@@ -210,8 +198,8 @@ export function techStackArrayMode(items: TechStackNode[]) {
   return "chips" as const;
 }
 
-export function shouldCollapseTechStackList(key: string, itemCount: number) {
-  return itemCount > TECH_STACK_MAX_VISIBLE_ITEMS || compactListKeys.has(keyForLookup(key));
+export function shouldCollapseTechStackList(_key: string, itemCount: number) {
+  return itemCount > TECH_STACK_MAX_VISIBLE_ITEMS;
 }
 
 export function formatTechStackRaw(value: unknown) {

@@ -57,7 +57,7 @@ describe("playbook technology stack presentation", () => {
     expect(workflows?.kind).toBe("list");
     if (dependencies?.kind === "list") expect(techStackArrayMode(dependencies.items)).toBe("chips");
     if (workflows?.kind === "list") expect(techStackArrayMode(workflows.items)).toBe("chips");
-    expect(shouldCollapseTechStackList("ci_workflows", 5)).toBe(true);
+    expect(shouldCollapseTechStackList("ci_workflows", 5)).toBe(false);
     expect(shouldCollapseTechStackList("frameworks", 5)).toBe(false);
     expect(shouldCollapseTechStackList("frameworks", 9)).toBe(true);
   });
@@ -106,8 +106,9 @@ describe("playbook technology stack presentation", () => {
     );
     expect(html).toContain("运行与交付");
     expect(html).toContain("框架");
-    expect(html).toContain("共 5 项");
     expect(html).toContain("共 9 项");
+    expect(html).toContain('role="tablist"');
+    expect(html).toContain('role="tabpanel"');
     expect(html).toContain("查看原始数据");
     expect(html).not.toContain("cargo");
     expect(html).not.toContain("暂无可展示的公开字段");
