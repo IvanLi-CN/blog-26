@@ -3,15 +3,15 @@
   "kind": "version-impact-record",
   "base_sha": "4001a2df221914b8777670bbfb49798f7c0e7500",
   "covered_files": {
-    "docs/specs/public-csr-navigation/IMPLEMENTATION.md": "536ec63b4b3d13a4a6bf9577da0179d7c3e0adb1",
+    "docs/specs/public-csr-navigation/IMPLEMENTATION.md": "e83eb4df97a6d74ad145a833496b82cf3f675eb3",
     "docs/specs/public-csr-navigation/SPEC.md": "b973822b3d0e077314d84da8a620e6d2dcf23b5d",
     "docs/specs/public-csr-navigation/assets/csr-tags-desktop-dark.png": "63a6f372dc8dd8e95efbe48b054c864c502a1c78",
     "docs/specs/public-csr-navigation/assets/csr-tags-mobile-light-reduced.png": "3d3add4333c8ee60514805932200fa90f5299aba",
     "site/components/PublicRouteSkeleton.tsx": "7a8ae6e9b0d986393afb91f9a9c9c323e8c017ec",
     "site/styles/public-pages.css": "48b6f718c993acaef3d96ef7945122d80acfa19c",
-    "tests/e2e/web-demo/public-csr.spec.ts": "07eb679ac08aec81504dff86f372211b7295be37",
+    "tests/e2e/web-demo/public-csr.spec.ts": "c982f7efe33136615e8e2af545deb5bc0f0ac06e",
     "site/components/SiteHeader.tsx": "56f07d4356a51f4a4de6c098b5e6331e8e054972",
-    "src/styles/nature-restored.css": "214759cf89d2ea5071dbf2a53d86d1f66e36704f",
+    "src/styles/nature-restored.css": "bf9260c293bbb2800dcf9893c80888d13172f48c",
     "tests/lib/public-csr-route.test.ts": "7216901d8d686be2a80c0ea54592c6b97af38f4c"
   },
   "change": {
@@ -27,8 +27,8 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/public-csr.spec.ts",
-          "blob": "07eb679ac08aec81504dff86f372211b7295be37",
-          "command": "Official Web Demo tags navigation skeleton geometry regression passes"
+          "blob": "c982f7efe33136615e8e2af545deb5bc0f0ac06e",
+          "command": "Official Web Demo tags navigation skeleton geometry and 1200px/1600px Inspector header regressions pass"
         },
         {
           "path": "site/components/PublicRouteSkeleton.tsx",
@@ -40,12 +40,12 @@
     "current": {
       "impact": "patch",
       "reasoning": "The candidate corrects tags skeleton geometry, keeps the Inspector-open public header on one row through a scoped container rule, and updates the associated Web Demo/spec evidence. Existing route reads, SSR hydration, URL/history behavior, themes, and page-local loading remain unchanged.",
-      "assessed_at": "2026-10-12T03:04:50Z",
+      "assessed_at": "2026-10-12T07:58:00Z",
       "evidence": [
         {
           "path": "tests/e2e/web-demo/public-csr.spec.ts",
-          "blob": "07eb679ac08aec81504dff86f372211b7295be37",
-          "command": "Official Web Demo verifies grouped tags geometry and the Inspector-open header stays on one row"
+          "blob": "c982f7efe33136615e8e2af545deb5bc0f0ac06e",
+          "command": "Official Web Demo verifies grouped tags geometry and the Inspector-open header stays on one row at 1200px and 1600px viewports"
         },
         {
           "path": "site/components/SiteHeader.tsx",
@@ -54,8 +54,8 @@
         },
         {
           "path": "src/styles/nature-restored.css",
-          "blob": "214759cf89d2ea5071dbf2a53d86d1f66e36704f",
-          "command": "Nature container query keeps header controls on one row within the narrowed content column"
+          "blob": "bf9260c293bbb2800dcf9893c80888d13172f48c",
+          "command": "Nature container query keeps header controls on one row within narrowed desktop content columns while preserving tablet layout"
         },
         {
           "path": "docs/specs/public-csr-navigation/SPEC.md",
@@ -71,17 +71,17 @@
     "verified": {
       "impact": "patch",
       "reasoning": "Focused unit checks, official Web Demo geometry and header coverage, targeted formatting, and desktop/mobile skeleton evidence verify a compatible public frontend presentation repair without data or persistence changes.",
-      "assessed_at": "2026-10-12T03:04:50Z",
+      "assessed_at": "2026-10-12T07:58:00Z",
       "evidence": [
         {
           "path": "tests/e2e/web-demo/public-csr.spec.ts",
-          "blob": "07eb679ac08aec81504dff86f372211b7295be37",
-          "command": "Official Web Demo tags skeleton and Inspector-open header regression pass"
+          "blob": "c982f7efe33136615e8e2af545deb5bc0f0ac06e",
+          "command": "Official Web Demo tags skeleton and 1200px/1600px Inspector-open header regressions pass"
         },
         {
           "path": "src/styles/nature-restored.css",
-          "blob": "214759cf89d2ea5071dbf2a53d86d1f66e36704f",
-          "command": "Nature container query preserves compact one-row header geometry at 1440x1000 with Inspector open"
+          "blob": "bf9260c293bbb2800dcf9893c80888d13172f48c",
+          "command": "Nature container query preserves compact one-row header geometry at 1200x1000 and 1600x1000 with Inspector open"
         },
         {
           "path": "docs/specs/public-csr-navigation/assets/csr-tags-desktop-dark.png",
@@ -90,8 +90,8 @@
         },
         {
           "path": "docs/specs/public-csr-navigation/SPEC.md",
-          "blob": "b973822b3d0e077314d84da8a620e6d2dcf23b5d",
-          "command": "Spec contract and visual evidence references pass"
+          "blob": "e83eb4df97a6d74ad145a833496b82cf3f675eb3",
+          "command": "Implementation record and visual evidence references document the 1200px/1600px header regression coverage"
         }
       ]
     }

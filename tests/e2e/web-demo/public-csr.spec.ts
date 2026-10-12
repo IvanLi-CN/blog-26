@@ -141,35 +141,44 @@ test("public header stays on one row beside the open Web Demo Inspector", async 
   await ready(page);
 
   await expect(page.locator('body[data-web-demo-inspector-open="true"]')).toHaveCount(1);
-  const headerSurface = page.locator(".nature-site-header .nature-surface");
-  const navigation = page.getByRole("navigation", { name: "Main navigation" });
-  const tools = page.locator(".nature-header-tools");
-  const [headerBounds, navigationBounds, toolsBounds] = await Promise.all([
-    headerSurface.boundingBox(),
-    navigation.boundingBox(),
-    tools.boundingBox(),
-  ]);
+  for (const width of [1200, 1600]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const headerSurface = page.locator(".nature-site-header .nature-surface");
+    const navigation = page.getByRole("navigation", { name: "Main navigation" });
+    const tools = page.locator(".nature-header-tools");
+    const [headerBounds, navigationBounds, toolsBounds] = await Promise.all([
+      headerSurface.boundingBox(),
+      navigation.boundingBox(),
+      tools.boundingBox(),
+    ]);
 
-  expect(headerBounds).not.toBeNull();
-  expect(navigationBounds).not.toBeNull();
-  expect(toolsBounds).not.toBeNull();
-  expect(Math.abs((navigationBounds?.y ?? 0) - (toolsBounds?.y ?? 0))).toBeLessThanOrEqual(2);
-  expect(headerBounds?.height ?? 0).toBeLessThan(96);
-  expect(
-    await page
-      .locator(".nature-header-search-form")
-      .evaluate((node) => getComputedStyle(node).display)
-  ).toBe("none");
-  expect(
-    await page
-      .locator(".nature-header-search-link")
-      .evaluate((node) => getComputedStyle(node).display)
-  ).toBe("flex");
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
-    )
-  ).toBe(true);
+    expect(headerBounds, `${width}px header surface`).not.toBeNull();
+    expect(navigationBounds, `${width}px navigation`).not.toBeNull();
+    expect(toolsBounds, `${width}px header tools`).not.toBeNull();
+    expect(
+      Math.abs((navigationBounds?.y ?? 0) - (toolsBounds?.y ?? 0)),
+      `${width}px navigation and tools stay on one row`
+    ).toBeLessThanOrEqual(2);
+    expect(headerBounds?.height ?? 0, `${width}px header height`).toBeLessThan(96);
+    expect(
+      await page
+        .locator(".nature-header-search-form")
+        .evaluate((node) => getComputedStyle(node).display),
+      `${width}px desktop search input is compacted`
+    ).toBe("none");
+    expect(
+      await page
+        .locator(".nature-header-search-link")
+        .evaluate((node) => getComputedStyle(node).display),
+      `${width}px search action is visible`
+    ).toBe("flex");
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
+      ),
+      `${width}px page has no horizontal overflow`
+    ).toBe(true);
+  }
 });
 
 test("SSR content hydrates without repeating its page read", async ({ page, request }) => {

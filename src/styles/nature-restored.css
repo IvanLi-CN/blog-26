@@ -787,45 +787,47 @@
   }
 }
 
-/* The Web Demo Inspector reserves a side rail without changing the viewport
- * breakpoint. Keep the public header in one compact row when its own content
- * column is narrower than the full desktop viewport. */
-@container nature-header (min-width: 1024px) and (max-width: 1120px) {
-  .nature-site-header-frame > .nature-surface {
-    flex-wrap: nowrap;
-    gap: 0.5rem;
-  }
+/* A desktop viewport may have a narrower content column (for example beside
+ * the Web Demo Inspector). Select the compact header from that column's width,
+ * while preserving the existing mobile and tablet layout. */
+@media (min-width: 1024px) {
+  @container nature-header (max-width: 1279px) {
+    .nature-site-header-frame > .nature-surface {
+      flex-wrap: nowrap;
+      gap: 0.5rem;
+    }
 
-  .nature-site-header-frame .nature-brand-link {
-    flex: 0 1 auto;
-  }
+    .nature-site-header-frame .nature-brand-link {
+      flex: 0 1 auto;
+    }
 
-  .nature-site-header-frame nav {
-    flex: 0 1 auto;
-    min-width: 0;
-    margin-left: 0;
-  }
+    .nature-site-header-frame nav {
+      flex: 0 1 auto;
+      min-width: 0;
+      margin-left: 0;
+    }
 
-  .nature-site-header-frame nav ul {
-    gap: 0;
-  }
+    .nature-site-header-frame nav ul {
+      gap: 0;
+    }
 
-  .nature-site-header-frame .nature-nav-link {
-    padding-inline: 0.45rem;
-  }
+    .nature-site-header-frame .nature-nav-link {
+      padding-inline: 0.45rem;
+    }
 
-  .nature-site-header-frame .nature-header-search-form {
-    display: none;
-  }
+    .nature-site-header-frame .nature-header-search-form {
+      display: none;
+    }
 
-  .nature-site-header-frame .nature-header-search-link {
-    display: inline-flex;
-  }
+    .nature-site-header-frame .nature-header-search-link {
+      display: inline-flex;
+    }
 
-  .nature-site-header-frame .nature-header-tools {
-    flex: 0 0 auto;
-    gap: 0.25rem;
-    margin-left: auto;
+    .nature-site-header-frame .nature-header-tools {
+      flex: 0 0 auto;
+      gap: 0.25rem;
+      margin-left: auto;
+    }
   }
 }
 

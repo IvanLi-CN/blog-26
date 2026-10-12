@@ -11,7 +11,7 @@
 - Memo 列表 DTO 在序列化前投影为既有卡片字段，公开列表不携带未打开详情的正文；授权作者编辑仍保留完整记录。历史恢复尚未完成时再次导航保留历史条目原有阅读位置，不用加载界面的位置覆盖它。
 - 闪念作者的身份、读取和写请求绑定组件生命周期，路由开始切换或卸载即取消；响应解码后再次检查取消状态，已离开页面的保存或删除不能跳转覆盖新路由。
 - 页面级导航状态由 `site/components/PublicRouteSkeleton.tsx` 统一选择：所有异步 `PublicRouteKind` 使用目标页面族的纯 shimmer 结构，About 与 notFound 直接复用本地 payload；失败时使用同一 Nature UI 错误面板并保留原位重试。`site/lib/public-route-skeleton.ts` 提供无 UI 依赖的路由分类，供路由和单元测试共享。
-- Web Demo Inspector 打开时，页头按自身可用内容列宽启用紧凑容器规则：搜索输入收为搜索按钮，导航间距收紧，品牌、导航和工具栏保持同一行；该规则只修正侧栏占用视口后的响应式表现，不改变 Inspector 几何或正式页面断点。
+- 桌面视口（至少 1024px）中，页头内容列不宽于 1279px 时启用紧凑容器规则：搜索输入收为搜索按钮，导航间距收紧，品牌、导航和工具栏保持同一行；较宽内容列保留完整搜索框，移动/平板两行布局不变。Inspector 打开后的窄内容列是该规则的主要回归场景，Inspector 几何不变。
 
 ## Implementation Coverage
 
@@ -30,7 +30,7 @@
 
 - Agent VM 预提交套件通过，包含组件 Story 边界、构建隔离、路由匹配、公开接口、请求取消及未访问正文的载荷隔离。命令：`bun run test:precommit`，提交 hook 保持启用。Playbook 搜索正文隔离另有回归断言。
 - Demo 导航：`tests/e2e/web-demo/public-csr.spec.ts` 16 项全部通过，覆盖 SSR 离线首屏、12 类离线目标及恢复、历史、主题、取消、静态页面和 404，并断言没有 hydration 错误。命令：`WEB_DEMO_TEST_URL=<demo-origin> bun x playwright test --config tests/e2e/web-demo/playwright.config.ts`。
-- 目标页骨架回归：`tests/lib/public-csr-route.test.ts` 的路由分类断言通过；Web Demo 逐一挂起全部 12 个异步目标的骨架、busy 状态、About/404 旁路断言，并额外断言标签列表的页面根布局、分组面板与多列卡片几何、Inspector 打开时页头单行几何，连同既有错误重试和生命周期场景共 19 项通过。命令：`WEB_DEMO_TEST_URL=<demo-origin> bunx playwright test -c tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-csr.spec.ts`。
+- 目标页骨架回归：`tests/lib/public-csr-route.test.ts` 的路由分类断言通过；本次改动直接覆盖的 Web Demo 用例确认全部异步目标骨架映射、标签列表的页面根布局/分组面板/多列卡片几何，以及 Inspector 打开时页头在 1200px 与 1600px 视口下的单行几何。命令：`WEB_DEMO_TEST_URL=<demo-origin> bunx playwright test -c tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-csr.spec.ts -g 'client navigation renders the destination skeleton|tags navigation skeleton keeps the grouped tag index geometry|public header stays on one row beside the open Web Demo Inspector'`。
 - 视觉证据：官方 Web Demo 以 1440×1000 与 393×852 CSS 视口覆盖首页、文章详情、项目列表、标签详情、标签列表、Memos 列表、Playbook 详情和搜索骨架；浅色、深色与 reduced-motion 均检查，`main` 无横向溢出，reduced-motion 下占位动画计算值为 `none`。标签列表截图确认标题/统计、分组承载层和标签卡片网格保持目标页几何；失败态截图确认 `role="alert"` 面板替换完整骨架并保留 `重试`。
 - 正式静态站：`tests/e2e/guest/public-csr-navigation.spec.ts` 覆盖结构化导航、目标错误与原位重试、搜索参数、hydration 交接、直接入口及跨页片段历史滚动、延迟 MDX 正文的锚点定位、列表 DTO 正文隔离，以及历史恢复期间的新导航。console 的首屏与主题、窄屏交互及作者隔离测试通过；共享 CSR 回归覆盖相同正式页面。
 - console 作者界面与公共主机隔离：同步后的 `tests/e2e/admin/public-csr-authoring.spec.ts` 通过。CSR 请求保留 `private, no-store`，管理员看到私密记录，公共主机即使携带身份也不能得到这些记录。测试身份使用 runtime 配置的 `ADMIN_EMAIL`，无代理鉴权捷径。
