@@ -203,6 +203,14 @@ export const sessions = sqliteTable("sessions", {
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true), // 是否活跃
 });
 
+export const systemShareSubmissions = sqliteTable("system_share_submissions", {
+  submissionId: text("submission_id").primaryKey(),
+  memoId: text("memo_id"),
+  state: text("state", { enum: ["processing", "completed"] }).notNull(),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
 export const personalAccessTokens = sqliteTable(
   "personal_access_tokens",
   {
@@ -340,6 +348,8 @@ export type NewJobRun = typeof jobRuns.$inferInsert;
 // Posts 类型导出
 export type Post = typeof posts.$inferSelect;
 export type NewPost = typeof posts.$inferInsert;
+
+export type SystemShareSubmission = typeof systemShareSubmissions.$inferSelect;
 
 export type PersonalAccessToken = typeof personalAccessTokens.$inferSelect;
 export type NewPersonalAccessToken = typeof personalAccessTokens.$inferInsert;

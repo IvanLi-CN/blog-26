@@ -1,10 +1,16 @@
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { basename, join } from "node:path";
 import { TRPCError } from "@trpc/server";
 import { and, eq, inArray } from "drizzle-orm";
+import { getActiveLocalBasePath } from "@/config/paths";
 import type { SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import { db } from "@/lib/db";
+import { getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
 import { appendPublicCorsHeaders, createPublicCorsPreflightResponse } from "@/lib/public-cors";
-import { posts } from "@/lib/schema";
+import { resolveRuntimeContext } from "@/lib/runtime-context";
+import { posts, systemShareSubmissions } from "@/lib/schema";
+import { normalizeSystemShare, validateSystemShareFiles } from "@/lib/system-share";
 import { buildPublicSnapshot, resolvePublicMemoTitle } from "@/public-site/snapshot";
 import { handleClippingRequest } from "@/server/clipping/api";
 import { isClippingRowPublic } from "@/server/clipping/projection";
@@ -22,6 +28,7 @@ const SEARCH_SUGGESTION_REASONS = new Set<SearchSuggestionReason>([
   "error",
   "filtered_empty",
 ]);
+const SYSTEM_SHARE_PROCESSING_TTL_MS = 15 * 60 * 1000;
 
 function json(request: Request, data: unknown, init: ResponseInit = {}, extraHeaders?: Headers) {
   const headers = new Headers(init.headers);
@@ -86,6 +93,156 @@ function normalizeSuggestionReason(value: string | null): SearchSuggestionReason
   return SEARCH_SUGGESTION_REASONS.has(value as SearchSuggestionReason)
     ? (value as SearchSuggestionReason)
     : "empty";
+}
+
+async function handleSystemShareRequest(
+  request: Request,
+  caller: ReturnType<typeof appRouter.createCaller>,
+  ctx: Awaited<ReturnType<typeof createContext>>,
+  resHeaders: Headers
+) {
+  if (request.method !== "POST") return methodNotAllowed(request, request.method);
+  if (resolveRuntimeContext(request).mode !== "console") {
+    return json(request, { error: "Not found" }, { status: 404 });
+  }
+  if (!ctx.isAdmin)
+    throw new TRPCError({ code: "FORBIDDEN", message: "只有管理员可以发布分享内容。" });
+
+  const form = await request.formData();
+  const submissionId = String(form.get("submissionId") || "").trim();
+  if (!/^[0-9a-f-]{16,80}$/iu.test(submissionId)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "分享提交标识无效。" });
+  }
+
+  const now = Date.now();
+  const existing = await db
+    .select()
+    .from(systemShareSubmissions)
+    .where(eq(systemShareSubmissions.submissionId, submissionId))
+    .limit(1)
+    .then((rows) => rows[0]);
+  if (existing?.state === "completed" && existing.memoId) {
+    return json(
+      request,
+      { ok: true, duplicate: true, memoId: existing.memoId },
+      { status: 200 },
+      resHeaders
+    );
+  }
+  if (existing && now - existing.updatedAt < SYSTEM_SHARE_PROCESSING_TTL_MS) {
+    throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
+  }
+  if (existing)
+    await db
+      .delete(systemShareSubmissions)
+      .where(eq(systemShareSubmissions.submissionId, submissionId));
+  try {
+    await db.insert(systemShareSubmissions).values({
+      submissionId,
+      memoId: null,
+      state: "processing",
+      createdAt: now,
+      updatedAt: now,
+    });
+  } catch {
+    throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
+  }
+
+  const files = form.getAll("files").filter((value): value is File => value instanceof File);
+  const fileDescriptors = files.map((file) => ({
+    name: file.name,
+    type: file.type,
+    size: file.size,
+    lastModified: file.lastModified,
+  }));
+  const fileValidation = validateSystemShareFiles(fileDescriptors);
+  if (!fileValidation.ok) {
+    await db
+      .delete(systemShareSubmissions)
+      .where(eq(systemShareSubmissions.submissionId, submissionId));
+    throw new TRPCError({ code: "BAD_REQUEST", message: fileValidation.error });
+  }
+
+  const rawTags = String(form.get("tags") || "[]");
+  let tags: string[] = [];
+  try {
+    const parsed = JSON.parse(rawTags);
+    tags = Array.isArray(parsed)
+      ? parsed.filter((tag): tag is string => typeof tag === "string")
+      : [];
+  } catch {
+    await db
+      .delete(systemShareSubmissions)
+      .where(eq(systemShareSubmissions.submissionId, submissionId));
+    throw new TRPCError({ code: "BAD_REQUEST", message: "标签格式无效。" });
+  }
+
+  const normalized = normalizeSystemShare({
+    title: String(form.get("title") || ""),
+    text: String(form.get("text") || ""),
+    url: String(form.get("url") || ""),
+    tags,
+    isPublic: String(form.get("isPublic") || "false") === "true",
+    files: fileDescriptors,
+  });
+  const basePath = getActiveLocalBasePath();
+  if (!basePath) {
+    await db
+      .delete(systemShareSubmissions)
+      .where(eq(systemShareSubmissions.submissionId, submissionId));
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "本地内容源未启用。" });
+  }
+
+  const stagedPaths: string[] = [];
+  try {
+    const memoRoot = getServerLocalMemoRootPath();
+    const attachments = [];
+    for (const [index, file] of files.entries()) {
+      const originalName = basename(file.name || `file-${index + 1}`);
+      const safeName = originalName.replace(/[^a-z0-9._-]+/giu, "_") || `file-${index + 1}`;
+      const filename = `system-share-${submissionId.slice(0, 8)}-${index + 1}-${safeName}`;
+      const persistedPath = `${memoRoot.replace(/^\/+/, "")}/assets/system-share/${filename}`;
+      const fullPath = join(basePath, persistedPath);
+      await mkdir(join(basePath, memoRoot.replace(/^\/+/, ""), "assets", "system-share"), {
+        recursive: true,
+      });
+      await writeFile(fullPath, new Uint8Array(await file.arrayBuffer()), { flag: "wx" });
+      stagedPaths.push(fullPath);
+      attachments.push({
+        filename: file.name || filename,
+        path: `./assets/system-share/${filename}`,
+        contentType: file.type || "application/octet-stream",
+        size: file.size,
+        isImage: file.type.startsWith("image/"),
+      });
+    }
+
+    const result = await caller.memos.create({
+      content: normalized.classification === "clipping" ? normalized.remarks : normalized.text,
+      title: normalized.title || undefined,
+      isPublic: normalized.isPublic,
+      tags: normalized.tags,
+      attachments,
+      systemShare: {
+        source: "system-share" as const,
+        ...(normalized.url ? { targetUrl: normalized.url } : {}),
+      },
+    });
+    const memoId = typeof result === "object" && result && "id" in result ? String(result.id) : "";
+    if (!memoId) throw new Error("Memo 创建结果缺少 id");
+    await db
+      .update(systemShareSubmissions)
+      .set({ memoId, state: "completed", updatedAt: Date.now() })
+      .where(eq(systemShareSubmissions.submissionId, submissionId));
+    return json(request, { ok: true, memo: result }, { status: 201 }, resHeaders);
+  } catch (error) {
+    await Promise.all(stagedPaths.map((path) => rm(path, { force: true }).catch(() => undefined)));
+    await db
+      .delete(systemShareSubmissions)
+      .where(eq(systemShareSubmissions.submissionId, submissionId));
+    if (error instanceof TRPCError) throw error;
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "分享内容创建失败，请重试。" });
+  }
 }
 
 async function normalizePublicSearchTitles<
@@ -162,6 +319,9 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
     }
 
     const { caller, resHeaders, ctx } = await createCallerForRequest(request);
+    if (pathname === "/system-share") {
+      return await handleSystemShareRequest(request, caller, ctx, resHeaders);
+    }
     const clippingMatch = pathname.match(
       /^\/memos\/([^/]+)\/clipping(?:\/(status|reprocess|chat(?:\/events)?))?$/
     );

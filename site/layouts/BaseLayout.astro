@@ -27,6 +27,7 @@ const canonical = getCanonicalUrl(pathname);
 const isConsoleRuntime = process.env.CONSOLE_RUNTIME === "true";
 const isWebDemoBuild = process.env.WEB_DEMO_BUILD === "true";
 const pwaAssets = await getPublicPwaAssetPaths();
+const shareTargetServiceWorker = toPublicSitePath("/share-target-sw.js");
 const resolvedImage =
   image.startsWith("http") || image.startsWith("data:")
     ? image
@@ -219,6 +220,15 @@ const resolvedImage =
     <script>
       import "@/lib/public-reading-viewport";
     </script>
+    {isConsoleRuntime && shareTargetServiceWorker ? (
+      <script define:vars={{ shareTargetServiceWorker }}>
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.register(shareTargetServiceWorker, { scope: "/" }).catch(() => {
+            // The confirmation route reports local-storage failures explicitly.
+          });
+        }
+      </script>
+    ) : null}
   </head>
   <body>
     <IconifyBoot client:load />

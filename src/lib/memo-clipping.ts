@@ -1,5 +1,6 @@
 import remarkParse from "remark-parse";
 import { unified } from "unified";
+import { normalizeHttpUrl } from "./system-share";
 
 type MarkdownNode = {
   type: string;
@@ -106,12 +107,22 @@ export function recognizeMemoClipping(
       : [];
   const enabled = tags.some((tag) => tag === "剪藏" || tag === "#剪藏") || ranges.length > 0;
   const title = typeof frontmatter.title === "string" ? frontmatter.title.trim() : "";
+  const systemShare =
+    frontmatter.systemShare && typeof frontmatter.systemShare === "object"
+      ? (frontmatter.systemShare as Record<string, unknown>)
+      : null;
+  const internalTarget = normalizeHttpUrl(
+    typeof systemShare?.targetUrl === "string" ? systemShare.targetUrl : undefined
+  );
+  const systemShareClipping = Boolean(internalTarget);
   const titleTarget = title ? recognizeClippingTarget(title) : null;
   const line = /^(?:[^\S\n]*\n)*([^\n]*\S[^\n]*)(?:\n|$)/u.exec(body);
   const bodyTarget = line ? recognizeClippingTarget(line[1]) : null;
-  const target = titleTarget ?? bodyTarget;
+  const target = internalTarget
+    ? { url: internalTarget, label: null }
+    : (titleTarget ?? bodyTarget);
   const authorTitle = title && !titleTarget ? title : null;
-  if (!enabled) {
+  if (!enabled && !systemShareClipping) {
     return {
       enabled: false,
       targetUrl: null,
@@ -131,7 +142,7 @@ export function recognizeMemoClipping(
       error: "请将第一条非空正文行改为完整的 HTTP(S) 链接或 Markdown 链接。也可使用纯链接标题。",
     };
   }
-  if (line && bodyTarget && bodyTarget.url === target.url) {
+  if (!systemShareClipping && line && bodyTarget && bodyTarget.url === target.url) {
     const offset = line[0].indexOf(line[1]);
     ranges.push([offset, offset + line[1].length]);
   }
