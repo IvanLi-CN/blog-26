@@ -4,7 +4,7 @@
 
 ## 候选级模型请求证据
 
-DeepSeek 的结构化搜索请求关闭 thinking 后，RAG 与改写各通过 4/4 固定质量样例及 5/5 实际搜索。输出、指纹和断言边界见 [非思考模式证据](./validation/product/empirical-search-model-nonthinking.txt)。此记录证明该次模型质量验证；后续候选的合并门禁仍须绑定实际 PR 头。
+DeepSeek 的结构化搜索请求关闭 thinking 后，代码候选 `4588af29f14d4dadfea8cad64123c9d2e403ddfe` 上 RAG 与改写各通过 4/4 固定质量样例及 5/5 实际搜索。其后只有验证记录和版本影响记录变化。输出、指纹和断言边界见 [非思考模式证据](./validation/product/empirical-search-model-nonthinking.txt)。
 
 原始搜索实现通过 PR #214 合入主线。该 PR 的 CI、Web Demo 和视觉结果是原始功能候选的历史证据，不代表后续兼容修复的当前头状态，也不能替代后续候选自己的 CI、审查或模型验证。本 Spec 不据此宣称搜索实现已部署生产。
 

@@ -1,5 +1,7 @@
 Candidate validation for the bounded DeepSeek request-contract repair. The run used only the fixed synthetic rows in `scripts/verify-search-empirical.ts`; no production content or credentials were sent to the model.
 
+Validated candidate: `4588af29f14d4dadfea8cad64123c9d2e403ddfe` after rebasing onto `origin/main` (`a35f56e4b1116cfc168e1cfda67b7fe5fb8dc9f1`). Validation completed at `2026-10-12T16:55:34Z` in the Linux Agent VM.
+
 Command: `bun scripts/verify-search-empirical.ts --rag-timeout-ms 30000 --rag-output-tokens 4096 --rewrite-timeout-ms 30000 --rewrite-output-tokens 4096 --capture-judgments`
 
 Request contract: DeepSeek chat requests include `thinking: {"type":"disabled"}` and `reasoning_effort: "none"`; other model names do not receive provider-specific fields. The provider returned HTTP 200 with `finishReason: "stop"` for every chat request and `reasoning_tokens: 0`.
