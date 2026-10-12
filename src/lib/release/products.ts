@@ -74,6 +74,7 @@ export async function buildProducts(
     PUBLIC_STATIC_MEDIA_ORIGIN: config.env.PUBLIC_API_BASE_URL,
   };
   await mkdir(root, { recursive: true });
+  await buildCommand(["bun", "run", "search:native:build"], env);
   await buildCommand(["bun", "scripts/generate-version.ts"], env);
   await buildCommand(["bun", "run", "build:compiled"], env);
   for (const command of ["scripts/verify-playbook-artifact.ts", "scripts/verify-pages-build.ts"])

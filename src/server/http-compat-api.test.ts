@@ -12,6 +12,8 @@ import { computePostContentHash } from "@/lib/post-body-contract-server";
 import { buildPublicMediaHash } from "@/lib/public-media";
 import { llmSettings, postEmbeddings, posts, sessions, users, vectorizedFiles } from "@/lib/schema";
 import { SEARCH_QUERY_LIMITS } from "@/lib/search/query";
+import { DEFAULT_SEARCH_POLICY } from "@/lib/search/settings";
+import { contentSearchIndex } from "@/server/services/content-search-index";
 import { buildPublicMemoStaticPages } from "../../site/lib/memo-pagination";
 
 const TEST_DB_PATH = path.join(process.cwd(), "tmp/http-compat-api-test.sqlite");
@@ -190,6 +192,8 @@ describe("HTTP compatibility APIs", () => {
     ));
 
     await initializeDB(true);
+    fs.rmSync(`${TEST_DB_PATH}.search`, { recursive: true, force: true });
+    await (await contentSearchIndex()).prepare();
   }, 20_000);
 
   afterAll(async () => {
@@ -223,6 +227,76 @@ describe("HTTP compatibility APIs", () => {
     const { resetContentSourceManager } = await import("@/lib/content-sources");
     await resetContentSourceManager();
   }, 10_000);
+
+  it("protects search settings and validates only saved mode policies", async () => {
+    for (const [method, route] of [
+      ["GET", "/api/admin/search-settings"],
+      ["PUT", "/api/admin/search-settings"],
+      ["POST", "/api/admin/search-settings/validate"],
+      ["GET", "/api/admin/search-settings/validation/00000000-0000-0000-0000-000000000000"],
+    ] as const) {
+      const anonymous = await handleAdminApiRequest(
+        buildRequest(route, { method }),
+        route.replace("/api/admin", "")
+      );
+      expect(anonymous.status).toBe(401);
+      const member = await handleAdminApiRequest(
+        buildRequest(route, { method }, USER_EMAIL),
+        route.replace("/api/admin", "")
+      );
+      expect(member.status).toBe(403);
+    }
+    const policy = structuredClone(DEFAULT_SEARCH_POLICY);
+    policy.rag.enabled = false;
+    policy.rewrite.timeoutMs = 4500;
+    const saved = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/search-settings",
+        {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(policy),
+        },
+        ADMIN_EMAIL
+      ),
+      "/search-settings"
+    );
+    expect(saved.status).toBe(200);
+    expect(await saved.json()).toMatchObject({
+      policy,
+      status: { rag: { available: false, reason: "disabled" } },
+    });
+    const invalid = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/search-settings",
+        { method: "PUT", body: JSON.stringify({ ...policy, apiKey: "unexpected-credential" }) },
+        ADMIN_EMAIL
+      ),
+      "/search-settings"
+    );
+    expect(invalid.status).toBe(400);
+    const requested = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/search-settings/validate",
+        { method: "POST", body: '{"mode":"rewrite"}' },
+        ADMIN_EMAIL
+      ),
+      "/search-settings/validate"
+    );
+    expect(requested.status).toBe(202);
+    const run = await requested.json();
+    const polled = await handleAdminApiRequest(
+      buildRequest(`/api/admin/search-settings/validation/${run.id}`, {}, ADMIN_EMAIL),
+      `/search-settings/validation/${run.id}`
+    );
+    expect(polled.status).toBe(200);
+    expect(await polled.json()).toMatchObject({ mode: "rewrite", total: 4 });
+    const settings = await handleAdminApiRequest(
+      buildRequest("/api/admin/search-settings", {}, ADMIN_EMAIL),
+      "/search-settings"
+    );
+    expect(JSON.stringify(await settings.json())).not.toContain("apiKey");
+  });
 
   it("returns masked LLM settings, persists overrides, and can clear saved keys", async () => {
     const initial = await handleAdminApiRequest(

@@ -602,11 +602,14 @@ function limitExceededPlan(query: string, error: string): SearchQueryPlan {
   };
 }
 
-function invalidPlan(query: string, error: string): SearchQueryPlan {
+function invalidPlan(query: string, error: string, native = false): SearchQueryPlan {
   const literalTerms = collectLiteralTerms(query);
   const ast = buildAndAst(literalTerms);
   if (ast) {
-    const budgetError = getSearchBudgetError(measureSearchAstBudget(ast));
+    const budgetError = getSearchBudgetError({
+      ...measureSearchAstBudget(ast),
+      ...(native ? { sqlParameters: 0 } : {}),
+    });
     if (budgetError) return limitExceededPlan(query, budgetError);
   }
   return {
@@ -620,7 +623,7 @@ function invalidPlan(query: string, error: string): SearchQueryPlan {
   };
 }
 
-export function parseSearchQuery(input: string): SearchQueryPlan {
+export function parseSearchQuery(input: string, options?: { native?: boolean }): SearchQueryPlan {
   const query = normalizeQuery(input);
   if (Array.from(query).length > SEARCH_QUERY_LIMITS.maxCodePoints) {
     return limitExceededPlan(
@@ -645,15 +648,22 @@ export function parseSearchQuery(input: string): SearchQueryPlan {
     return limitExceededPlan(query, scan.error ?? "Search query exceeds parser limits");
   }
   if (scan.error || scan.tokens.some((token) => token.kind === "unsupported")) {
-    return invalidPlan(query, scan.error ?? "Unsupported advanced syntax");
+    return invalidPlan(query, scan.error ?? "Unsupported advanced syntax", options?.native);
   }
 
   try {
     const ast = new QueryParser(scan.tokens).parse();
     if (hasShortNearOperand(ast)) {
-      return invalidPlan(query, "NEAR operands must contain at least three Unicode code points");
+      return invalidPlan(
+        query,
+        "NEAR operands must contain at least three Unicode code points",
+        options?.native
+      );
     }
-    const budgetError = getSearchBudgetError(measureSearchAstBudget(ast));
+    const budget = measureSearchAstBudget(ast);
+    const budgetError = getSearchBudgetError(
+      options?.native ? { ...budget, sqlParameters: 0 } : budget
+    );
     if (budgetError) return limitExceededPlan(query, budgetError);
     const literalTerms = getSearchLiteralTerms(ast);
     const mode: SearchQueryMode = scan.hasAdvancedMarker ? "advanced-valid" : "simple";
@@ -669,7 +679,7 @@ export function parseSearchQuery(input: string): SearchQueryPlan {
     const message = error instanceof Error ? error.message : "Invalid search syntax";
     return message.startsWith("Search query exceeds")
       ? limitExceededPlan(query, message)
-      : invalidPlan(query, message);
+      : invalidPlan(query, message, options?.native);
   }
 }
 

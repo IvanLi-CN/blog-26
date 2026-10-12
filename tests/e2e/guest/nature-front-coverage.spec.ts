@@ -1466,7 +1466,8 @@ test.describe("Nature frontend public coverage", () => {
 
     const bounds = await firstResult.boundingBox();
     expect(bounds).not.toBeNull();
-    expect(bounds?.y ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(426);
+    // The three-way search mode control adds one compact row before results.
+    expect(bounds?.y ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(520);
   });
 
   test("mobile search avoids repeating its page purpose", async ({ page }) => {

@@ -66,8 +66,12 @@ const storyFiles = new Set([
   "./src/components/projects/RuntimeCellGrid.stories.tsx",
   "./src/components/search/PublicSearchPage.stories.tsx",
   "./src/components/search/SearchResultsList.stories.tsx",
+  "./src/components/search/SearchModeControl.stories.tsx",
+  "./apps/admin/src/components/search-policy-card.stories.tsx",
 ]);
 const expectedStoryIds = new Set([
+  "public-search-mode--switching",
+  "admin-search-policy--editing",
   "public-native-tag-link--default",
   "public-native-tag-link--dark",
   "public-native-tag-link--mobile",

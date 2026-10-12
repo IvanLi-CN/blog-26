@@ -42,6 +42,13 @@ if [[ -f "${ROOT_DIR}/site/generated/playbook-edition.json" ]]; then
   copy_file "site/generated/playbook-edition.json" "${DIST_DIR}/site/generated"
 fi
 
+copy_file "scripts/search-index.ts" "${DIST_DIR}/scripts"
+if [[ ! -f "${ROOT_DIR}/native/search/search.linux-x64.node" ]]; then
+  echo "Missing embedded search module; run bun run search:native:build on linux/amd64 first." >&2
+  exit 1
+fi
+copy_file "native/search/search.linux-x64.node" "${DIST_DIR}/native/search"
+
 chmod +x "${DIST_DIR}/docker-entrypoint.sh"
 
 echo "Prepared backend runtime bundle at ${DIST_DIR}"

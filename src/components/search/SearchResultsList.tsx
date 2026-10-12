@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 import Icon from "@/components/ui/Icon";
+import { type SearchHighlightTerm, searchHighlightSpans } from "@/lib/search/highlights";
 import { cn } from "@/lib/utils";
 import {
   getSearchResultHref,
@@ -13,46 +14,29 @@ import {
 
 export type { SearchResultItem } from "./search-model";
 
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+export const DEFAULT_AI_MARKER_ICON = "tabler:sparkles-2";
 
-function getHighlightTerms(query?: string) {
-  const trimmed = query?.trim();
-  if (!trimmed) return [];
-
-  const terms = trimmed
-    .split(/\s+/)
-    .map((term) => term.trim())
-    .filter(Boolean);
-
-  if (terms.length <= 1) return [trimmed];
-  return Array.from(new Set([...terms, trimmed])).sort((a, b) => b.length - a.length);
-}
-
-function renderHighlightedText(text: string, query?: string, keyPrefix = "highlight") {
-  const terms = getHighlightTerms(query);
-  if (terms.length === 0) return text;
-
-  const pattern = new RegExp(`(${terms.map(escapeRegExp).join("|")})`, "gi");
+function renderHighlightedText(
+  text: string,
+  terms: SearchHighlightTerm[] = [],
+  keyPrefix = "highlight"
+) {
+  const spans = searchHighlightSpans(text, terms);
+  if (!spans.length) return text;
   const parts = [];
   let cursor = 0;
-
-  for (const match of text.matchAll(pattern)) {
-    const index = match.index ?? 0;
-    const value = match[0];
-    if (index > cursor) parts.push(text.slice(cursor, index));
+  for (const span of spans) {
+    if (span.start > cursor) parts.push(text.slice(cursor, span.start));
     parts.push(
       <mark
-        key={`${keyPrefix}-${index}-${value}`}
-        className="inline m-0 border-0 bg-[rgba(var(--nature-accent-rgb),0.2)] p-0 [font:inherit] [letter-spacing:inherit] [word-spacing:inherit] [white-space:inherit] text-[color:var(--nature-accent-strong)]"
+        key={`${keyPrefix}-${span.start}`}
+        className="inline m-0 border-0 bg-[rgba(var(--nature-accent-rgb),0.2)] p-0 [font:inherit] text-[color:var(--nature-accent-strong)]"
       >
-        {value}
+        {text.slice(span.start, span.end)}
       </mark>
     );
-    cursor = index + value.length;
+    cursor = span.end;
   }
-
   if (cursor < text.length) parts.push(text.slice(cursor));
   return parts;
 }
@@ -103,7 +87,7 @@ function getSnippetBlocks(snippet: string) {
 
 function renderSnippet(
   snippet: string,
-  query?: string,
+  terms: SearchHighlightTerm[],
   proseLines?: 1 | 2,
   limitToParagraph = false
 ) {
@@ -115,7 +99,7 @@ function renderSnippet(
           key={block.key}
           className="my-1.5 max-w-full overflow-x-auto whitespace-pre-wrap break-words rounded-md border border-[rgba(var(--nature-accent-rgb),0.18)] bg-[rgba(var(--nature-accent-rgb),0.08)] px-3 py-1.5 font-mono text-[0.82rem] leading-5 text-[color:var(--nature-text-soft)]"
         >
-          <code>{renderHighlightedText(code, query, block.key)}</code>
+          <code>{renderHighlightedText(code, terms, block.key)}</code>
         </pre>
       );
     }
@@ -135,7 +119,7 @@ function renderSnippet(
         {lines.map((line) =>
           line.value.trim() ? (
             <span key={line.key} className="block">
-              {renderHighlightedText(line.value, query, line.key)}
+              {renderHighlightedText(line.value, terms, line.key)}
             </span>
           ) : (
             <span key={line.key} aria-hidden="true" className="block h-1.5" />
@@ -146,10 +130,6 @@ function renderSnippet(
   });
 }
 
-function formatScore(score: number) {
-  return Math.max(0, Math.min(100, Math.round(score * 100)));
-}
-
 export function SearchResultCard({
   result: r,
   query,
@@ -157,6 +137,7 @@ export function SearchResultCard({
   onToggle,
   linkClassName,
   resolveHref = getSearchResultHref,
+  aiMarkerIcon = DEFAULT_AI_MARKER_ICON,
 }: {
   result: SearchResultGroup;
   query?: string;
@@ -164,16 +145,19 @@ export function SearchResultCard({
   onToggle: () => void;
   linkClassName?: string;
   resolveHref?: (result: SearchResultItem) => string;
+  aiMarkerIcon?: string;
 }) {
   const sectionsId = useId();
   const type = getSearchResultType(r);
   const snippet = r.snippet || r.excerpt;
-  const score =
-    typeof r.final === "number"
-      ? r.final
-      : typeof r.cosine === "number"
-        ? (r.cosine + 1) / 2
-        : null;
+  const terms =
+    r.highlightTerms ??
+    (r.source === "playbook"
+      ? (query
+          ?.split(/\s+/u)
+          .filter(Boolean)
+          .map((value) => ({ value })) ?? [])
+      : []);
   const isMemo = type === "memo" || type === "clipping";
   const displayTitle = isMemo ? r.title?.trim() || "" : r.title || r.slug;
   const accessibleTitle = isMemo
@@ -197,10 +181,25 @@ export function SearchResultCard({
           data-search-result-card
         >
           <div data-search-result-content className="px-4 py-4 sm:px-5 sm:py-5">
+            {r.searchOrigin === "ai" && (
+              <span
+                role="img"
+                aria-label="AI 补充结果"
+                className="absolute right-4 top-4 inline-flex h-7 w-7 items-center justify-center text-[color:var(--nature-accent-strong)]"
+                title="AI 补充结果"
+              >
+                <Icon name={aiMarkerIcon} className="h-5 w-5" />
+              </span>
+            )}
             <div className="flex items-baseline gap-3">
               {displayTitle ? (
-                <h2 className="min-w-0 line-clamp-2 font-heading text-lg font-semibold leading-7 text-[color:var(--nature-accent-strong)] underline-offset-4 group-hover:underline sm:text-xl">
-                  {displayTitle}
+                <h2
+                  className={cn(
+                    "min-w-0 line-clamp-2 font-heading text-lg font-semibold leading-7 text-[color:var(--nature-accent-strong)] underline-offset-4 group-hover:underline sm:text-xl",
+                    r.searchOrigin === "ai" && "pr-8"
+                  )}
+                >
+                  {renderHighlightedText(displayTitle, terms)}
                 </h2>
               ) : null}
               <span className="nature-content-type-chip inline-flex shrink-0 items-center gap-1 py-1 text-xs text-[color:var(--nature-text-soft)]">
@@ -213,15 +212,7 @@ export function SearchResultCard({
             </div>
             {query && (
               <span className="sr-only" data-search-match-meta>
-                匹配 {query}
-              </span>
-            )}
-            {r.source !== "playbook" && score !== null && Number.isFinite(score) && (
-              <span
-                className="mt-1 block text-xs text-[color:var(--nature-text-faint)]"
-                data-search-relevance-meta
-              >
-                相关度 {formatScore(score)}%
+                搜索 {query}
               </span>
             )}
             {snippet && (
@@ -232,7 +223,7 @@ export function SearchResultCard({
                   showSections ? "max-h-12" : "max-h-48"
                 )}
               >
-                {renderSnippet(snippet, query, 2, r.source === "playbook")}
+                {renderSnippet(snippet, terms, 2, r.source === "playbook")}
               </div>
             )}
           </div>
@@ -258,7 +249,7 @@ export function SearchResultCard({
                       data-search-snippet
                       className="mt-1 max-h-36 max-w-[75ch] overflow-hidden break-words text-sm leading-6"
                     >
-                      {renderSnippet(section.snippet, query, 2, true)}
+                      {renderSnippet(section.snippet, terms, 2, true)}
                     </div>
                   </a>
                 </li>
@@ -294,6 +285,7 @@ export default function SearchResultsList({
   resolveHref = getSearchResultHref,
   expandedContentKeys,
   onToggleContent,
+  aiMarkerIcon = DEFAULT_AI_MARKER_ICON,
 }: {
   results: Array<SearchResultItem | SearchResultGroup>;
   containerClassName?: string;
@@ -302,6 +294,7 @@ export default function SearchResultsList({
   resolveHref?: (result: SearchResultItem) => string;
   expandedContentKeys?: ReadonlySet<string>;
   onToggleContent?: (key: string) => void;
+  aiMarkerIcon?: string;
 }) {
   const [localExpanded, setLocalExpanded] = useState(new Set<string>());
   const expanded = expandedContentKeys ?? localExpanded;
@@ -330,6 +323,7 @@ export default function SearchResultsList({
           onToggle={() => toggle(result.contentKey)}
           resolveHref={resolveHref}
           linkClassName={linkClassName}
+          aiMarkerIcon={aiMarkerIcon}
         />
       ))}
     </ul>

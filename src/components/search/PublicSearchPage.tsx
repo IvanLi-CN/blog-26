@@ -1,10 +1,20 @@
 "use client";
 
-import { type FormEvent, type ReactNode, type RefObject, useMemo, useState } from "react";
+import {
+  type FormEvent,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { SearchSuggestionItem, SearchSuggestionStrategy } from "@/lib/ai/search-suggestions";
+import type { SearchMode, SearchReason } from "@/lib/search/settings";
 import { cn } from "@/lib/utils";
+import { isWebDemoBuildEnabled } from "@/lib/web-demo-runtime";
 import SearchHydrationSafeIcon from "./SearchHydrationSafeIcon";
-import SearchResultsList from "./SearchResultsList";
+import SearchModeControl from "./SearchModeControl";
+import SearchResultsList, { DEFAULT_AI_MARKER_ICON } from "./SearchResultsList";
 import {
   countSearchResultsByType,
   filterSearchResults,
@@ -16,6 +26,10 @@ import {
 } from "./search-model";
 
 export type PublicSearchPageProps = {
+  mode?: SearchMode;
+  effectiveMode?: SearchMode;
+  reason?: SearchReason;
+  onModeChange?: (mode: SearchMode) => void;
   query: string;
   searchedQuery?: string;
   results: Array<SearchResultItem | SearchResultGroup>;
@@ -30,6 +44,7 @@ export type PublicSearchPageProps = {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   recommendedSearchTerms?: Array<string | SearchSuggestionItem>;
   isLoadingRecommendations?: boolean;
+  aiSupplementLoading?: boolean;
   inputRef?: RefObject<HTMLInputElement | null>;
   inputId?: string;
   isBootstrap?: boolean;
@@ -278,7 +293,50 @@ function SearchSecondaryButton({
   );
 }
 
+const aiMarkerIconCandidates = [
+  { icon: "material-symbols:auto-awesome", label: "单四角星" },
+  { icon: "tabler:sparkles-2", label: "双星" },
+  { icon: "tabler:sparkles", label: "星簇" },
+] as const;
+
+function AiMarkerIconPrototypeBar({
+  selected,
+  onSelect,
+}: {
+  selected: string;
+  onSelect: (icon: string) => void;
+}) {
+  return (
+    <nav
+      aria-label="AI 图标候选"
+      className="mx-auto mt-4 flex w-fit items-center gap-2 rounded-full border border-slate-300 bg-slate-950 px-3 py-2 text-white shadow-2xl shadow-slate-950/30"
+    >
+      <span className="px-1 text-xs font-medium">AI 图标候选</span>
+      {aiMarkerIconCandidates.map((candidate, index) => (
+        <button
+          key={candidate.icon}
+          type="button"
+          aria-label={`候选 ${index + 1}：${candidate.label}`}
+          aria-pressed={selected === candidate.icon}
+          title={candidate.label}
+          onClick={() => onSelect(candidate.icon)}
+          className={cn(
+            "inline-flex h-9 w-9 items-center justify-center rounded-full text-white/70 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white",
+            selected === candidate.icon && "bg-white/15 text-white"
+          )}
+        >
+          <SearchHydrationSafeIcon name={candidate.icon} className="h-5 w-5" />
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 export default function PublicSearchPage({
+  mode = "keyword",
+  effectiveMode,
+  reason,
+  onModeChange,
   query,
   searchedQuery,
   results,
@@ -293,6 +351,7 @@ export default function PublicSearchPage({
   onSubmit,
   recommendedSearchTerms = [],
   isLoadingRecommendations = false,
+  aiSupplementLoading = false,
   inputRef,
   inputId = "public-search-input",
   isBootstrap = false,
@@ -317,6 +376,24 @@ export default function PublicSearchPage({
   const counts = countSearchResultsByType(groupedResults);
   const filteredResults = filterSearchResults(groupedResults, filter);
   const hasResults = groupedResults.length > 0;
+  const [aiMarkerIcon, setAiMarkerIcon] = useState(DEFAULT_AI_MARKER_ICON);
+  const [showAiIconPrototype, setShowAiIconPrototype] = useState(false);
+  useEffect(() => {
+    if (!isWebDemoBuildEnabled()) return;
+    const params = new URL(window.location.href).searchParams;
+    if (params.get("prototype") !== "ai-icon") return;
+    setShowAiIconPrototype(true);
+    const requested = params.get("icon");
+    if (aiMarkerIconCandidates.some((candidate) => candidate.icon === requested))
+      setAiMarkerIcon(requested ?? DEFAULT_AI_MARKER_ICON);
+  }, []);
+  const selectAiMarkerIcon = (icon: string) => {
+    setAiMarkerIcon(icon);
+    const url = new URL(window.location.href);
+    url.searchParams.set("prototype", "ai-icon");
+    url.searchParams.set("icon", icon);
+    window.history.replaceState(window.history.state, "", url);
+  };
   const runRecommendedSearch = onRecommendedSearch ?? onQueryChange;
   const hideNoResultsSummaryOnMobile = activeQuery.length > 0 && !isLoading && !hasResults;
 
@@ -383,25 +460,30 @@ export default function PublicSearchPage({
                     <SearchHydrationSafeIcon name="tabler:x" className="h-4 w-4" />
                   </button>
                 )}
-                {isLoading ? (
-                  <span
-                    className="nature-spinner ml-1 shrink-0"
-                    role="status"
-                    aria-label="正在搜索"
+                <button
+                  type="submit"
+                  disabled={!canSearch || isLoading}
+                  aria-label={isLoading ? "正在搜索" : "搜索"}
+                  className="nature-search-submit inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-full text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-65 sm:w-auto sm:px-4 lg:w-11 lg:px-0"
+                >
+                  <SearchHydrationSafeIcon
+                    name={isLoading ? "tabler:loader-2" : "tabler:arrow-right"}
+                    className={cn("h-4 w-4", isLoading && "animate-spin")}
                   />
-                ) : (
-                  <button
-                    type="submit"
-                    disabled={!canSearch}
-                    aria-label="搜索"
-                    className="nature-search-submit inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-full text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto sm:px-4 lg:w-11 lg:px-0"
-                  >
-                    <SearchHydrationSafeIcon name="tabler:arrow-right" className="h-4 w-4" />
-                    <span className="hidden sm:inline lg:hidden">搜索</span>
-                  </button>
-                )}
+                  <span className="hidden sm:inline lg:hidden">
+                    {isLoading ? "搜索中" : "搜索"}
+                  </span>
+                </button>
               </div>
             </form>
+            <SearchModeControl
+              mode={mode}
+              effectiveMode={effectiveMode}
+              reason={reason}
+              onModeChange={onModeChange}
+              disabled={isBootstrap}
+              isLoading={isLoading}
+            />
           </div>
 
           <div className="border-t border-[color:var(--nature-line)] bg-[rgba(var(--nature-surface-rgb),0.52)] px-4 py-1.5 sm:px-7 sm:py-4 lg:px-5 lg:py-5">
@@ -449,20 +531,20 @@ export default function PublicSearchPage({
               </fieldset>
             </div>
           </div>
-          <section
-            aria-label="建议搜索词"
-            className="hidden border-t border-[color:var(--nature-line)] px-5 py-5 lg:block"
-          >
-            <h2 className="mb-3 text-sm font-semibold">建议搜索词</h2>
-            <RecommendedSearchTerms
-              compact
-              terms={
-                recommendedSearchTerms.length ? recommendedSearchTerms : ["Arch", "React", "SQLite"]
-              }
-              isLoading={isLoadingRecommendations}
-              onSearch={runRecommendedSearch}
-            />
-          </section>
+          {!hasResults && (isLoadingRecommendations || recommendedSearchTerms.length > 0) && (
+            <section
+              aria-label="建议搜索词"
+              className="hidden border-t border-[color:var(--nature-line)] px-5 py-5 lg:block"
+            >
+              <h2 className="mb-3 text-sm font-semibold">建议搜索词</h2>
+              <RecommendedSearchTerms
+                compact
+                terms={recommendedSearchTerms}
+                isLoading={isLoadingRecommendations}
+                onSearch={runRecommendedSearch}
+              />
+            </section>
+          )}
         </div>
       </section>
 
@@ -565,6 +647,20 @@ export default function PublicSearchPage({
           </SearchPromptPanel>
         )}
 
+        {!isLoading && activeQuery && !errorMessage && aiSupplementLoading && hasResults && (
+          <div
+            role="status"
+            aria-live="polite"
+            data-search-ai-phase="waiting"
+            className="mb-3 flex items-center gap-2 rounded-[var(--nature-radius-sm)] border border-[rgba(var(--nature-accent-rgb),0.18)] bg-[rgba(var(--nature-accent-rgb),0.08)] px-4 py-3 text-sm text-[color:var(--nature-text-soft)]"
+          >
+            <SearchHydrationSafeIcon name="tabler:loader-2" className="h-4 w-4 animate-spin" />
+            <span>
+              {`全文结果已到，正在等待 ${effectiveMode === "rewrite" ? "AI 改写查询补充" : "AI 补充"}相关内容…`}
+            </span>
+          </div>
+        )}
+
         {!isLoading && filteredResults.length > 0 && (
           <SearchResultsList
             results={filteredResults}
@@ -572,7 +668,11 @@ export default function PublicSearchPage({
             onToggleContent={toggleContent}
             query={activeQuery}
             resolveHref={resolveHref}
+            aiMarkerIcon={aiMarkerIcon}
           />
+        )}
+        {showAiIconPrototype && filteredResults.length > 0 && (
+          <AiMarkerIconPrototypeBar selected={aiMarkerIcon} onSelect={selectAiMarkerIcon} />
         )}
       </section>
     </div>

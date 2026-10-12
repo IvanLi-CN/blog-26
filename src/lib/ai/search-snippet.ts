@@ -1,3 +1,5 @@
+import { type SearchHighlightTerm, searchHighlightSpans } from "@/lib/search/highlights";
+
 type SnippetSource = {
   title?: string | null;
   excerpt?: string | null;
@@ -85,7 +87,11 @@ function cropSnippet(text: string, index: number, termLength: number) {
   return `${prefix}${text.slice(start, end).trim()}${suffix}`;
 }
 
-export function buildSearchSnippet(query: string, source: SnippetSource) {
+export function buildSearchSnippet(
+  query: string,
+  source: SnippetSource,
+  actualTerms?: SearchHighlightTerm[]
+) {
   const terms = getQueryTerms(query);
   const body = cleanSearchText(source.body);
   const excerpt = cleanSearchText(source.excerpt);
@@ -93,7 +99,10 @@ export function buildSearchSnippet(query: string, source: SnippetSource) {
 
   for (const text of [body, excerpt, title]) {
     if (!text) continue;
-    const match = findFirstMatch(text, terms);
+    const span = actualTerms ? searchHighlightSpans(text, actualTerms)[0] : undefined;
+    const match = actualTerms
+      ? { index: span?.start ?? -1, term: span ? text.slice(span.start, span.end) : "" }
+      : findFirstMatch(text, terms);
     if (match.index !== -1) return cropSnippet(text, match.index, match.term.length);
   }
 

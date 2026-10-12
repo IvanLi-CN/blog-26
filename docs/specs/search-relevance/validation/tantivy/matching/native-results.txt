@@ -1,0 +1,613 @@
+tantivy=0.26.2; document ids are zero-based
+DOC 0 "Arch Linux"
+DOC 1 "Arch-Linux"
+DOC 2 "中文Arch中文"
+DOC 3 "archive"
+DOC 4 "search"
+DOC 5 "aarch64"
+DOC 6 "ArchLinux"
+DOC 7 "arch_linux"
+DOC 8 "architecture"
+DOC 9 "这篇文章"
+DOC 10 "文隔开章"
+DOC 11 "C"
+DOC 12 "C++"
+DOC 13 "C#"
+DOC 14 "C++17"
+DOC 15 "Node.js"
+DOC 16 "Node js"
+DOC 17 "SQLite"
+DOC 18 "SQLite3"
+DOC 19 "ESP32-C3"
+DOC 20 "archive then Arch"
+DOC 21 "alpha beta"
+DOC 22 "beta alpha"
+DOC 23 "alpha x beta"
+DOC 24 "alpha enormousgap beta"
+DOC 25 "abcXYZdef"
+DOC 26 "defXYZabc"
+DOC 27 "abc def"
+DOC 28 "abcXdef"
+DOC 29 "abcXXdef"
+DOC 30 "甲乙丙丁戊己"
+DOC 31 "甲乙丙中间丁戊己"
+DOC 32 "丁戊己甲乙丙"
+DOC 33 "中文Arch-中文SQLite"
+DOC 34 "中文Arch......SQLite"
+DOC 35 "Arch中文SQLite"
+DOC 36 "甲乙丙。丁戊己"
+DOC 37 "archive archive archive archive archive"
+DOC 38 "archive archive archive archive"
+DOC 39 "archive archive archive"
+DOC 40 "archive archive"
+DOC 41 "Arch"
+DOC 42 "文。章"
+DOC 43 "文 章"
+DOC 44 "文-章"
+DOC 45 "alpha"
+DOC 46 "beta"
+DOC 47 "gamma"
+TOKENS default "中文Arch中文" ["中文arch中文@0:0..16"]
+TOKENS default "arch_linux" ["arch@0:0..4", "linux@1:5..10"]
+TOKENS default "C C++ C# C++17" ["c@0:0..1", "c@1:2..3", "c@2:6..7", "c@3:9..10", "17@4:12..14"]
+TOKENS default "Node.js Node js" ["node@0:0..4", "js@1:5..7", "node@2:8..12", "js@3:13..15"]
+TOKENS default "这篇文章" ["这篇文章@0:0..12"]
+TOKENS default "abcXYZdef" ["abcxyzdef@0:0..9"]
+QUERY default "Arch" [0, 1, 7, 20, 41] AST TermQuery(Term(field=0, type=Str, "arch"))
+TRUNCATION default top3=[41, 0, 1] valid_in_top3=[41, 0, 1] full_expected=[0, 1, 2, 20, 33, 34, 35, 41]; this intersection is diagnostic only, not an implementation
+ASSERT default "Arch" expected=[0, 1, 2, 20, 33, 34, 35, 41] actual=[0, 1, 7, 20, 41] FAIL
+QUERY default "\"Arch\"" [0, 1, 7, 20, 41] AST TermQuery(Term(field=0, type=Str, "arch"))
+ASSERT default "\"Arch\"" expected=[0, 1, 2, 20, 33, 34, 35, 41] actual=[0, 1, 7, 20, 41] FAIL
+QUERY default "body:Arch" [0, 1, 7, 20, 41] AST TermQuery(Term(field=0, type=Str, "arch"))
+ASSERT default "body:Arch" expected=[0, 1, 2, 20, 33, 34, 35, 41] actual=[0, 1, 7, 20, 41] FAIL
+QUERY default "arch*" [0, 1, 7, 20, 41] AST TermQuery(Term(field=0, type=Str, "arch"))
+QUERY_ERROR default "\"arch\"*" The phrase '"arch"' does not produce at least two terms using the tokenizer '"default"'
+QUERY default "文章" [] AST TermQuery(Term(field=0, type=Str, "文章"))
+ASSERT default "文章" expected=[9] actual=[] FAIL
+QUERY default "\"文章\"" [] AST TermQuery(Term(field=0, type=Str, "文章"))
+ASSERT default "\"文章\"" expected=[9] actual=[] FAIL
+QUERY default "C" [11, 12, 13, 14] AST TermQuery(Term(field=0, type=Str, "c"))
+ASSERT default "C" expected=[11] actual=[11, 12, 13, 14] FAIL
+QUERY default "C++" [11, 12, 13, 14] AST TermQuery(Term(field=0, type=Str, "c"))
+ASSERT default "C++" expected=[12] actual=[11, 12, 13, 14] FAIL
+QUERY default "C#" [11, 12, 13, 14] AST TermQuery(Term(field=0, type=Str, "c"))
+ASSERT default "C#" expected=[13] actual=[11, 12, 13, 14] FAIL
+QUERY default "\"C++\"" [11, 12, 13, 14] AST TermQuery(Term(field=0, type=Str, "c"))
+ASSERT default "\"C++\"" expected=[12] actual=[11, 12, 13, 14] FAIL
+QUERY default "Node.js" [15, 16] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "node")), (1, Term(field=0, type=Str, "js"))], slop: 0 }
+ASSERT default "Node.js" expected=[15] actual=[15, 16] FAIL
+QUERY default "\"Node.js\"" [15, 16] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "node")), (1, Term(field=0, type=Str, "js"))], slop: 0 }
+ASSERT default "\"Node.js\"" expected=[15] actual=[15, 16] FAIL
+QUERY default "Node" [15, 16] AST TermQuery(Term(field=0, type=Str, "node"))
+ASSERT default "Node" expected=[15, 16] actual=[15, 16] PASS
+QUERY default "SQLite" [17, 34] AST TermQuery(Term(field=0, type=Str, "sqlite"))
+ASSERT default "SQLite" expected=[17, 33, 34, 35] actual=[17, 34] FAIL
+QUERY default "SQLite3" [18] AST TermQuery(Term(field=0, type=Str, "sqlite3"))
+ASSERT default "SQLite3" expected=[18] actual=[18] PASS
+QUERY default "C++17" [14] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "c")), (1, Term(field=0, type=Str, "17"))], slop: 0 }
+ASSERT default "C++17" expected=[14] actual=[14] PASS
+QUERY default "ESP32" [19] AST TermQuery(Term(field=0, type=Str, "esp32"))
+ASSERT default "ESP32" expected=[19] actual=[19] PASS
+QUERY default "title:Arch" [] AST TermQuery(Term(field=1, type=Str, "arch"))
+ASSERT default "title:Arch" expected=[] actual=[] PASS
+QUERY default "body:\"文章\"" [] AST TermQuery(Term(field=0, type=Str, "文章"))
+ASSERT default "body:\"文章\"" expected=[9] actual=[] FAIL
+QUERY default "\"alpha beta\"" [21] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "alpha")), (1, Term(field=0, type=Str, "beta"))], slop: 0 }
+ASSERT default "\"alpha beta\"" expected=[21] actual=[21] PASS
+QUERY default "alpha beta" [21, 22, 23, 24] AST BooleanQuery { subqueries: [(Must, TermQuery(Term(field=0, type=Str, "alpha"))), (Must, TermQuery(Term(field=0, type=Str, "beta")))], minimum_number_should_match: 0 }
+ASSERT default "alpha beta" expected=[21, 22, 23, 24] actual=[21, 22, 23, 24] PASS
+QUERY default "alpha AND beta" [21, 22, 23, 24] AST BooleanQuery { subqueries: [(Must, TermQuery(Term(field=0, type=Str, "alpha"))), (Must, TermQuery(Term(field=0, type=Str, "beta")))], minimum_number_should_match: 0 }
+ASSERT default "alpha AND beta" expected=[21, 22, 23, 24] actual=[21, 22, 23, 24] PASS
+QUERY default "alpha OR beta" [21, 22, 23, 24, 45, 46] AST BooleanQuery { subqueries: [(Should, TermQuery(Term(field=0, type=Str, "alpha"))), (Should, TermQuery(Term(field=0, type=Str, "beta")))], minimum_number_should_match: 1 }
+ASSERT default "alpha OR beta" expected=[21, 22, 23, 24, 45, 46] actual=[21, 22, 23, 24, 45, 46] PASS
+QUERY default "alpha NOT beta" [45] AST BooleanQuery { subqueries: [(Must, TermQuery(Term(field=0, type=Str, "alpha"))), (MustNot, TermQuery(Term(field=0, type=Str, "beta")))], minimum_number_should_match: 0 }
+ASSERT default "alpha NOT beta" expected=[45] actual=[45] PASS
+QUERY default "title:title-only" [0] AST PhraseQuery { field: Field(1), phrase_terms: [(0, Term(field=1, type=Str, "title")), (1, Term(field=1, type=Str, "only"))], slop: 0 }
+ASSERT default "title:title-only" expected=[0] actual=[0] PASS
+QUERY_ERROR default "NEAR(alpha beta, 1)" Syntax Error: NEAR(alpha beta, 1)
+BUILTIN_REGEX_PREFIX default expected=[0,1,2,3,6,7,8,20,33,34,35,37,38,39,40,41] actual=[0, 1, 3, 6, 7, 8, 20, 35, 37, 38, 39, 40, 41]
+PHRASE default alpha/beta slop=0 [21]
+PHRASE default alpha/beta slop=1 [21, 23, 24]
+PHRASE default alpha/beta slop=2 [21, 22, 23, 24]
+PHRASE default alpha/beta slop=3 [21, 22, 23, 24]
+PHRASE default alpha/beta slop=4 [21, 22, 23, 24]
+PHRASE default alpha/beta slop=8 [21, 22, 23, 24]
+PHRASE default alpha/beta slop=16 [21, 22, 23, 24]
+PHRASE default abc/def slop=0 [27]
+PHRASE default abc/def slop=1 [27]
+PHRASE default abc/def slop=2 [27]
+PHRASE default abc/def slop=3 [27]
+PHRASE default abc/def slop=4 [27]
+PHRASE default abc/def slop=8 [27]
+PHRASE default abc/def slop=16 [27]
+PHRASE default 甲乙丙/丁戊己 slop=0 [36]
+PHRASE default 甲乙丙/丁戊己 slop=1 [36]
+PHRASE default 甲乙丙/丁戊己 slop=2 [36]
+PHRASE default 甲乙丙/丁戊己 slop=3 [36]
+PHRASE default 甲乙丙/丁戊己 slop=4 [36]
+PHRASE default 甲乙丙/丁戊己 slop=8 [36]
+PHRASE default 甲乙丙/丁戊己 slop=16 [36]
+PHRASE default arch/sqlite slop=0 []
+PHRASE default arch/sqlite slop=1 []
+PHRASE default arch/sqlite slop=2 []
+PHRASE default arch/sqlite slop=3 []
+PHRASE default arch/sqlite slop=4 []
+PHRASE default arch/sqlite slop=8 []
+PHRASE default arch/sqlite slop=16 []
+PHRASE default 文/章 slop=0 [42, 43, 44]
+PHRASE default 文/章 slop=1 [42, 43, 44]
+PHRASE default 文/章 slop=2 [42, 43, 44]
+PHRASE default 文/章 slop=3 [42, 43, 44]
+PHRASE default 文/章 slop=4 [42, 43, 44]
+PHRASE default 文/章 slop=8 [42, 43, 44]
+PHRASE default 文/章 slop=16 [42, 43, 44]
+TOKENS regex "中文Arch中文" ["中@0:0..3", "文@1:3..6", "arch@2:6..10", "中@3:10..13", "文@4:13..16"]
+TOKENS regex "arch_linux" ["arch_linux@0:0..10"]
+TOKENS regex "C C++ C# C++17" ["c@0:0..1", "c++@1:2..5", "c#@2:6..8", "c++17@3:9..14"]
+TOKENS regex "Node.js Node js" ["node.js@0:0..7", "node@1:8..12", "js@2:13..15"]
+TOKENS regex "这篇文章" ["这@0:0..3", "篇@1:3..6", "文@2:6..9", "章@3:9..12"]
+TOKENS regex "abcXYZdef" ["abcxyzdef@0:0..9"]
+QUERY regex "Arch" [0, 1, 2, 20, 33, 34, 35, 41] AST TermQuery(Term(field=0, type=Str, "arch"))
+TRUNCATION regex top3=[41, 0, 1] valid_in_top3=[41, 0, 1] full_expected=[0, 1, 2, 20, 33, 34, 35, 41]; this intersection is diagnostic only, not an implementation
+ASSERT regex "Arch" expected=[0, 1, 2, 20, 33, 34, 35, 41] actual=[0, 1, 2, 20, 33, 34, 35, 41] PASS
+QUERY regex "\"Arch\"" [0, 1, 2, 20, 33, 34, 35, 41] AST TermQuery(Term(field=0, type=Str, "arch"))
+ASSERT regex "\"Arch\"" expected=[0, 1, 2, 20, 33, 34, 35, 41] actual=[0, 1, 2, 20, 33, 34, 35, 41] PASS
+QUERY regex "body:Arch" [0, 1, 2, 20, 33, 34, 35, 41] AST TermQuery(Term(field=0, type=Str, "arch"))
+ASSERT regex "body:Arch" expected=[0, 1, 2, 20, 33, 34, 35, 41] actual=[0, 1, 2, 20, 33, 34, 35, 41] PASS
+QUERY regex "arch*" [0, 1, 2, 20, 33, 34, 35, 41] AST TermQuery(Term(field=0, type=Str, "arch"))
+QUERY_ERROR regex "\"arch\"*" The phrase '"arch"' does not produce at least two terms using the tokenizer '"regex"'
+QUERY regex "文章" [9, 42, 43, 44] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "文")), (1, Term(field=0, type=Str, "章"))], slop: 0 }
+ASSERT regex "文章" expected=[9] actual=[9, 42, 43, 44] FAIL
+QUERY regex "\"文章\"" [9, 42, 43, 44] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "文")), (1, Term(field=0, type=Str, "章"))], slop: 0 }
+ASSERT regex "\"文章\"" expected=[9] actual=[9, 42, 43, 44] FAIL
+QUERY regex "C" [11] AST TermQuery(Term(field=0, type=Str, "c"))
+ASSERT regex "C" expected=[11] actual=[11] PASS
+QUERY regex "C++" [12] AST TermQuery(Term(field=0, type=Str, "c++"))
+ASSERT regex "C++" expected=[12] actual=[12] PASS
+QUERY regex "C#" [13] AST TermQuery(Term(field=0, type=Str, "c#"))
+ASSERT regex "C#" expected=[13] actual=[13] PASS
+QUERY regex "\"C++\"" [12] AST TermQuery(Term(field=0, type=Str, "c++"))
+ASSERT regex "\"C++\"" expected=[12] actual=[12] PASS
+QUERY regex "Node.js" [15] AST TermQuery(Term(field=0, type=Str, "node.js"))
+ASSERT regex "Node.js" expected=[15] actual=[15] PASS
+QUERY regex "\"Node.js\"" [15] AST TermQuery(Term(field=0, type=Str, "node.js"))
+ASSERT regex "\"Node.js\"" expected=[15] actual=[15] PASS
+QUERY regex "Node" [16] AST TermQuery(Term(field=0, type=Str, "node"))
+ASSERT regex "Node" expected=[15, 16] actual=[16] FAIL
+QUERY regex "SQLite" [17, 33, 34, 35] AST TermQuery(Term(field=0, type=Str, "sqlite"))
+ASSERT regex "SQLite" expected=[17, 33, 34, 35] actual=[17, 33, 34, 35] PASS
+QUERY regex "SQLite3" [18] AST TermQuery(Term(field=0, type=Str, "sqlite3"))
+ASSERT regex "SQLite3" expected=[18] actual=[18] PASS
+QUERY regex "C++17" [14] AST TermQuery(Term(field=0, type=Str, "c++17"))
+ASSERT regex "C++17" expected=[14] actual=[14] PASS
+QUERY regex "ESP32" [19] AST TermQuery(Term(field=0, type=Str, "esp32"))
+ASSERT regex "ESP32" expected=[19] actual=[19] PASS
+QUERY regex "title:Arch" [] AST TermQuery(Term(field=1, type=Str, "arch"))
+ASSERT regex "title:Arch" expected=[] actual=[] PASS
+QUERY regex "body:\"文章\"" [9, 42, 43, 44] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "文")), (1, Term(field=0, type=Str, "章"))], slop: 0 }
+ASSERT regex "body:\"文章\"" expected=[9] actual=[9, 42, 43, 44] FAIL
+QUERY regex "\"alpha beta\"" [21] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "alpha")), (1, Term(field=0, type=Str, "beta"))], slop: 0 }
+ASSERT regex "\"alpha beta\"" expected=[21] actual=[21] PASS
+QUERY regex "alpha beta" [21, 22, 23, 24] AST BooleanQuery { subqueries: [(Must, TermQuery(Term(field=0, type=Str, "alpha"))), (Must, TermQuery(Term(field=0, type=Str, "beta")))], minimum_number_should_match: 0 }
+ASSERT regex "alpha beta" expected=[21, 22, 23, 24] actual=[21, 22, 23, 24] PASS
+QUERY regex "alpha AND beta" [21, 22, 23, 24] AST BooleanQuery { subqueries: [(Must, TermQuery(Term(field=0, type=Str, "alpha"))), (Must, TermQuery(Term(field=0, type=Str, "beta")))], minimum_number_should_match: 0 }
+ASSERT regex "alpha AND beta" expected=[21, 22, 23, 24] actual=[21, 22, 23, 24] PASS
+QUERY regex "alpha OR beta" [21, 22, 23, 24, 45, 46] AST BooleanQuery { subqueries: [(Should, TermQuery(Term(field=0, type=Str, "alpha"))), (Should, TermQuery(Term(field=0, type=Str, "beta")))], minimum_number_should_match: 1 }
+ASSERT regex "alpha OR beta" expected=[21, 22, 23, 24, 45, 46] actual=[21, 22, 23, 24, 45, 46] PASS
+QUERY regex "alpha NOT beta" [45] AST BooleanQuery { subqueries: [(Must, TermQuery(Term(field=0, type=Str, "alpha"))), (MustNot, TermQuery(Term(field=0, type=Str, "beta")))], minimum_number_should_match: 0 }
+ASSERT regex "alpha NOT beta" expected=[45] actual=[45] PASS
+QUERY regex "title:title-only" [0] AST PhraseQuery { field: Field(1), phrase_terms: [(0, Term(field=1, type=Str, "title")), (1, Term(field=1, type=Str, "only"))], slop: 0 }
+ASSERT regex "title:title-only" expected=[0] actual=[0] PASS
+QUERY_ERROR regex "NEAR(alpha beta, 1)" Syntax Error: NEAR(alpha beta, 1)
+BUILTIN_REGEX_PREFIX regex expected=[0,1,2,3,6,7,8,20,33,34,35,37,38,39,40,41] actual=[0, 1, 2, 3, 6, 7, 8, 20, 33, 34, 35, 37, 38, 39, 40, 41]
+PHRASE regex alpha/beta slop=0 [21]
+PHRASE regex alpha/beta slop=1 [21, 23, 24]
+PHRASE regex alpha/beta slop=2 [21, 22, 23, 24]
+PHRASE regex alpha/beta slop=3 [21, 22, 23, 24]
+PHRASE regex alpha/beta slop=4 [21, 22, 23, 24]
+PHRASE regex alpha/beta slop=8 [21, 22, 23, 24]
+PHRASE regex alpha/beta slop=16 [21, 22, 23, 24]
+PHRASE regex abc/def slop=0 [27]
+PHRASE regex abc/def slop=1 [27]
+PHRASE regex abc/def slop=2 [27]
+PHRASE regex abc/def slop=3 [27]
+PHRASE regex abc/def slop=4 [27]
+PHRASE regex abc/def slop=8 [27]
+PHRASE regex abc/def slop=16 [27]
+PHRASE regex 甲乙丙/丁戊己 slop=0 []
+PHRASE regex 甲乙丙/丁戊己 slop=1 []
+PHRASE regex 甲乙丙/丁戊己 slop=2 []
+PHRASE regex 甲乙丙/丁戊己 slop=3 []
+PHRASE regex 甲乙丙/丁戊己 slop=4 []
+PHRASE regex 甲乙丙/丁戊己 slop=8 []
+PHRASE regex 甲乙丙/丁戊己 slop=16 []
+PHRASE regex arch/sqlite slop=0 [34]
+PHRASE regex arch/sqlite slop=1 [34]
+PHRASE regex arch/sqlite slop=2 [33, 34, 35]
+PHRASE regex arch/sqlite slop=3 [33, 34, 35]
+PHRASE regex arch/sqlite slop=4 [33, 34, 35]
+PHRASE regex arch/sqlite slop=8 [33, 34, 35]
+PHRASE regex arch/sqlite slop=16 [33, 34, 35]
+PHRASE regex 文/章 slop=0 [9, 42, 43, 44]
+PHRASE regex 文/章 slop=1 [9, 42, 43, 44]
+PHRASE regex 文/章 slop=2 [9, 10, 42, 43, 44]
+PHRASE regex 文/章 slop=3 [9, 10, 42, 43, 44]
+PHRASE regex 文/章 slop=4 [9, 10, 42, 43, 44]
+PHRASE regex 文/章 slop=8 [9, 10, 42, 43, 44]
+PHRASE regex 文/章 slop=16 [9, 10, 42, 43, 44]
+TOKENS regexSplitDot "中文Arch中文" ["中@0:0..3", "文@1:3..6", "arch@2:6..10", "中@3:10..13", "文@4:13..16"]
+TOKENS regexSplitDot "arch_linux" ["arch_linux@0:0..10"]
+TOKENS regexSplitDot "C C++ C# C++17" ["c@0:0..1", "c++@1:2..5", "c#@2:6..8", "c++17@3:9..14"]
+TOKENS regexSplitDot "Node.js Node js" ["node@0:0..4", "js@1:5..7", "node@2:8..12", "js@3:13..15"]
+TOKENS regexSplitDot "这篇文章" ["这@0:0..3", "篇@1:3..6", "文@2:6..9", "章@3:9..12"]
+TOKENS regexSplitDot "abcXYZdef" ["abcxyzdef@0:0..9"]
+QUERY regexSplitDot "Arch" [0, 1, 2, 20, 33, 34, 35, 41] AST TermQuery(Term(field=0, type=Str, "arch"))
+TRUNCATION regexSplitDot top3=[41, 0, 1] valid_in_top3=[41, 0, 1] full_expected=[0, 1, 2, 20, 33, 34, 35, 41]; this intersection is diagnostic only, not an implementation
+ASSERT regexSplitDot "Arch" expected=[0, 1, 2, 20, 33, 34, 35, 41] actual=[0, 1, 2, 20, 33, 34, 35, 41] PASS
+QUERY regexSplitDot "\"Arch\"" [0, 1, 2, 20, 33, 34, 35, 41] AST TermQuery(Term(field=0, type=Str, "arch"))
+ASSERT regexSplitDot "\"Arch\"" expected=[0, 1, 2, 20, 33, 34, 35, 41] actual=[0, 1, 2, 20, 33, 34, 35, 41] PASS
+QUERY regexSplitDot "body:Arch" [0, 1, 2, 20, 33, 34, 35, 41] AST TermQuery(Term(field=0, type=Str, "arch"))
+ASSERT regexSplitDot "body:Arch" expected=[0, 1, 2, 20, 33, 34, 35, 41] actual=[0, 1, 2, 20, 33, 34, 35, 41] PASS
+QUERY regexSplitDot "arch*" [0, 1, 2, 20, 33, 34, 35, 41] AST TermQuery(Term(field=0, type=Str, "arch"))
+QUERY_ERROR regexSplitDot "\"arch\"*" The phrase '"arch"' does not produce at least two terms using the tokenizer '"regexSplitDot"'
+QUERY regexSplitDot "文章" [9, 42, 43, 44] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "文")), (1, Term(field=0, type=Str, "章"))], slop: 0 }
+ASSERT regexSplitDot "文章" expected=[9] actual=[9, 42, 43, 44] FAIL
+QUERY regexSplitDot "\"文章\"" [9, 42, 43, 44] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "文")), (1, Term(field=0, type=Str, "章"))], slop: 0 }
+ASSERT regexSplitDot "\"文章\"" expected=[9] actual=[9, 42, 43, 44] FAIL
+QUERY regexSplitDot "C" [11] AST TermQuery(Term(field=0, type=Str, "c"))
+ASSERT regexSplitDot "C" expected=[11] actual=[11] PASS
+QUERY regexSplitDot "C++" [12] AST TermQuery(Term(field=0, type=Str, "c++"))
+ASSERT regexSplitDot "C++" expected=[12] actual=[12] PASS
+QUERY regexSplitDot "C#" [13] AST TermQuery(Term(field=0, type=Str, "c#"))
+ASSERT regexSplitDot "C#" expected=[13] actual=[13] PASS
+QUERY regexSplitDot "\"C++\"" [12] AST TermQuery(Term(field=0, type=Str, "c++"))
+ASSERT regexSplitDot "\"C++\"" expected=[12] actual=[12] PASS
+QUERY regexSplitDot "Node.js" [15, 16] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "node")), (1, Term(field=0, type=Str, "js"))], slop: 0 }
+ASSERT regexSplitDot "Node.js" expected=[15] actual=[15, 16] FAIL
+QUERY regexSplitDot "\"Node.js\"" [15, 16] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "node")), (1, Term(field=0, type=Str, "js"))], slop: 0 }
+ASSERT regexSplitDot "\"Node.js\"" expected=[15] actual=[15, 16] FAIL
+QUERY regexSplitDot "Node" [15, 16] AST TermQuery(Term(field=0, type=Str, "node"))
+ASSERT regexSplitDot "Node" expected=[15, 16] actual=[15, 16] PASS
+QUERY regexSplitDot "SQLite" [17, 33, 34, 35] AST TermQuery(Term(field=0, type=Str, "sqlite"))
+ASSERT regexSplitDot "SQLite" expected=[17, 33, 34, 35] actual=[17, 33, 34, 35] PASS
+QUERY regexSplitDot "SQLite3" [18] AST TermQuery(Term(field=0, type=Str, "sqlite3"))
+ASSERT regexSplitDot "SQLite3" expected=[18] actual=[18] PASS
+QUERY regexSplitDot "C++17" [14] AST TermQuery(Term(field=0, type=Str, "c++17"))
+ASSERT regexSplitDot "C++17" expected=[14] actual=[14] PASS
+QUERY regexSplitDot "ESP32" [19] AST TermQuery(Term(field=0, type=Str, "esp32"))
+ASSERT regexSplitDot "ESP32" expected=[19] actual=[19] PASS
+QUERY regexSplitDot "title:Arch" [] AST TermQuery(Term(field=1, type=Str, "arch"))
+ASSERT regexSplitDot "title:Arch" expected=[] actual=[] PASS
+QUERY regexSplitDot "body:\"文章\"" [9, 42, 43, 44] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "文")), (1, Term(field=0, type=Str, "章"))], slop: 0 }
+ASSERT regexSplitDot "body:\"文章\"" expected=[9] actual=[9, 42, 43, 44] FAIL
+QUERY regexSplitDot "\"alpha beta\"" [21] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "alpha")), (1, Term(field=0, type=Str, "beta"))], slop: 0 }
+ASSERT regexSplitDot "\"alpha beta\"" expected=[21] actual=[21] PASS
+QUERY regexSplitDot "alpha beta" [21, 22, 23, 24] AST BooleanQuery { subqueries: [(Must, TermQuery(Term(field=0, type=Str, "alpha"))), (Must, TermQuery(Term(field=0, type=Str, "beta")))], minimum_number_should_match: 0 }
+ASSERT regexSplitDot "alpha beta" expected=[21, 22, 23, 24] actual=[21, 22, 23, 24] PASS
+QUERY regexSplitDot "alpha AND beta" [21, 22, 23, 24] AST BooleanQuery { subqueries: [(Must, TermQuery(Term(field=0, type=Str, "alpha"))), (Must, TermQuery(Term(field=0, type=Str, "beta")))], minimum_number_should_match: 0 }
+ASSERT regexSplitDot "alpha AND beta" expected=[21, 22, 23, 24] actual=[21, 22, 23, 24] PASS
+QUERY regexSplitDot "alpha OR beta" [21, 22, 23, 24, 45, 46] AST BooleanQuery { subqueries: [(Should, TermQuery(Term(field=0, type=Str, "alpha"))), (Should, TermQuery(Term(field=0, type=Str, "beta")))], minimum_number_should_match: 1 }
+ASSERT regexSplitDot "alpha OR beta" expected=[21, 22, 23, 24, 45, 46] actual=[21, 22, 23, 24, 45, 46] PASS
+QUERY regexSplitDot "alpha NOT beta" [45] AST BooleanQuery { subqueries: [(Must, TermQuery(Term(field=0, type=Str, "alpha"))), (MustNot, TermQuery(Term(field=0, type=Str, "beta")))], minimum_number_should_match: 0 }
+ASSERT regexSplitDot "alpha NOT beta" expected=[45] actual=[45] PASS
+QUERY regexSplitDot "title:title-only" [0] AST PhraseQuery { field: Field(1), phrase_terms: [(0, Term(field=1, type=Str, "title")), (1, Term(field=1, type=Str, "only"))], slop: 0 }
+ASSERT regexSplitDot "title:title-only" expected=[0] actual=[0] PASS
+QUERY_ERROR regexSplitDot "NEAR(alpha beta, 1)" Syntax Error: NEAR(alpha beta, 1)
+BUILTIN_REGEX_PREFIX regexSplitDot expected=[0,1,2,3,6,7,8,20,33,34,35,37,38,39,40,41] actual=[0, 1, 2, 3, 6, 7, 8, 20, 33, 34, 35, 37, 38, 39, 40, 41]
+PHRASE regexSplitDot alpha/beta slop=0 [21]
+PHRASE regexSplitDot alpha/beta slop=1 [21, 23, 24]
+PHRASE regexSplitDot alpha/beta slop=2 [21, 22, 23, 24]
+PHRASE regexSplitDot alpha/beta slop=3 [21, 22, 23, 24]
+PHRASE regexSplitDot alpha/beta slop=4 [21, 22, 23, 24]
+PHRASE regexSplitDot alpha/beta slop=8 [21, 22, 23, 24]
+PHRASE regexSplitDot alpha/beta slop=16 [21, 22, 23, 24]
+PHRASE regexSplitDot abc/def slop=0 [27]
+PHRASE regexSplitDot abc/def slop=1 [27]
+PHRASE regexSplitDot abc/def slop=2 [27]
+PHRASE regexSplitDot abc/def slop=3 [27]
+PHRASE regexSplitDot abc/def slop=4 [27]
+PHRASE regexSplitDot abc/def slop=8 [27]
+PHRASE regexSplitDot abc/def slop=16 [27]
+PHRASE regexSplitDot 甲乙丙/丁戊己 slop=0 []
+PHRASE regexSplitDot 甲乙丙/丁戊己 slop=1 []
+PHRASE regexSplitDot 甲乙丙/丁戊己 slop=2 []
+PHRASE regexSplitDot 甲乙丙/丁戊己 slop=3 []
+PHRASE regexSplitDot 甲乙丙/丁戊己 slop=4 []
+PHRASE regexSplitDot 甲乙丙/丁戊己 slop=8 []
+PHRASE regexSplitDot 甲乙丙/丁戊己 slop=16 []
+PHRASE regexSplitDot arch/sqlite slop=0 [34]
+PHRASE regexSplitDot arch/sqlite slop=1 [34]
+PHRASE regexSplitDot arch/sqlite slop=2 [33, 34, 35]
+PHRASE regexSplitDot arch/sqlite slop=3 [33, 34, 35]
+PHRASE regexSplitDot arch/sqlite slop=4 [33, 34, 35]
+PHRASE regexSplitDot arch/sqlite slop=8 [33, 34, 35]
+PHRASE regexSplitDot arch/sqlite slop=16 [33, 34, 35]
+PHRASE regexSplitDot 文/章 slop=0 [9, 42, 43, 44]
+PHRASE regexSplitDot 文/章 slop=1 [9, 42, 43, 44]
+PHRASE regexSplitDot 文/章 slop=2 [9, 10, 42, 43, 44]
+PHRASE regexSplitDot 文/章 slop=3 [9, 10, 42, 43, 44]
+PHRASE regexSplitDot 文/章 slop=4 [9, 10, 42, 43, 44]
+PHRASE regexSplitDot 文/章 slop=8 [9, 10, 42, 43, 44]
+PHRASE regexSplitDot 文/章 slop=16 [9, 10, 42, 43, 44]
+TOKENS regexKeepSeparators "中文Arch中文" ["中@0:0..3", "文@1:3..6", "arch@2:6..10", "中@3:10..13", "文@4:13..16"]
+TOKENS regexKeepSeparators "arch_linux" ["arch_linux@0:0..10"]
+TOKENS regexKeepSeparators "C C++ C# C++17" ["c@0:0..1", " @1:1..2", "c++@2:2..5", " @3:5..6", "c#@4:6..8", " @5:8..9", "c++17@6:9..14"]
+TOKENS regexKeepSeparators "Node.js Node js" ["node@0:0..4", ".@1:4..5", "js@2:5..7", " @3:7..8", "node@4:8..12", " @5:12..13", "js@6:13..15"]
+TOKENS regexKeepSeparators "这篇文章" ["这@0:0..3", "篇@1:3..6", "文@2:6..9", "章@3:9..12"]
+TOKENS regexKeepSeparators "abcXYZdef" ["abcxyzdef@0:0..9"]
+QUERY regexKeepSeparators "Arch" [0, 1, 2, 20, 33, 34, 35, 41] AST TermQuery(Term(field=0, type=Str, "arch"))
+TRUNCATION regexKeepSeparators top3=[41, 0, 1] valid_in_top3=[41, 0, 1] full_expected=[0, 1, 2, 20, 33, 34, 35, 41]; this intersection is diagnostic only, not an implementation
+ASSERT regexKeepSeparators "Arch" expected=[0, 1, 2, 20, 33, 34, 35, 41] actual=[0, 1, 2, 20, 33, 34, 35, 41] PASS
+QUERY regexKeepSeparators "\"Arch\"" [0, 1, 2, 20, 33, 34, 35, 41] AST TermQuery(Term(field=0, type=Str, "arch"))
+ASSERT regexKeepSeparators "\"Arch\"" expected=[0, 1, 2, 20, 33, 34, 35, 41] actual=[0, 1, 2, 20, 33, 34, 35, 41] PASS
+QUERY regexKeepSeparators "body:Arch" [0, 1, 2, 20, 33, 34, 35, 41] AST TermQuery(Term(field=0, type=Str, "arch"))
+ASSERT regexKeepSeparators "body:Arch" expected=[0, 1, 2, 20, 33, 34, 35, 41] actual=[0, 1, 2, 20, 33, 34, 35, 41] PASS
+QUERY regexKeepSeparators "arch*" [] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "arch")), (1, Term(field=0, type=Str, "*"))], slop: 0 }
+QUERY_ERROR regexKeepSeparators "\"arch\"*" The phrase '"arch"' does not produce at least two terms using the tokenizer '"regexKeepSeparators"'
+QUERY regexKeepSeparators "文章" [9] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "文")), (1, Term(field=0, type=Str, "章"))], slop: 0 }
+ASSERT regexKeepSeparators "文章" expected=[9] actual=[9] PASS
+QUERY regexKeepSeparators "\"文章\"" [9] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "文")), (1, Term(field=0, type=Str, "章"))], slop: 0 }
+ASSERT regexKeepSeparators "\"文章\"" expected=[9] actual=[9] PASS
+QUERY regexKeepSeparators "C" [11] AST TermQuery(Term(field=0, type=Str, "c"))
+ASSERT regexKeepSeparators "C" expected=[11] actual=[11] PASS
+QUERY regexKeepSeparators "C++" [12] AST TermQuery(Term(field=0, type=Str, "c++"))
+ASSERT regexKeepSeparators "C++" expected=[12] actual=[12] PASS
+QUERY regexKeepSeparators "C#" [13] AST TermQuery(Term(field=0, type=Str, "c#"))
+ASSERT regexKeepSeparators "C#" expected=[13] actual=[13] PASS
+QUERY regexKeepSeparators "\"C++\"" [12] AST TermQuery(Term(field=0, type=Str, "c++"))
+ASSERT regexKeepSeparators "\"C++\"" expected=[12] actual=[12] PASS
+QUERY regexKeepSeparators "Node.js" [15] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "node")), (1, Term(field=0, type=Str, ".")), (2, Term(field=0, type=Str, "js"))], slop: 0 }
+ASSERT regexKeepSeparators "Node.js" expected=[15] actual=[15] PASS
+QUERY regexKeepSeparators "\"Node.js\"" [15] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "node")), (1, Term(field=0, type=Str, ".")), (2, Term(field=0, type=Str, "js"))], slop: 0 }
+ASSERT regexKeepSeparators "\"Node.js\"" expected=[15] actual=[15] PASS
+QUERY regexKeepSeparators "Node" [15, 16] AST TermQuery(Term(field=0, type=Str, "node"))
+ASSERT regexKeepSeparators "Node" expected=[15, 16] actual=[15, 16] PASS
+QUERY regexKeepSeparators "SQLite" [17, 33, 34, 35] AST TermQuery(Term(field=0, type=Str, "sqlite"))
+ASSERT regexKeepSeparators "SQLite" expected=[17, 33, 34, 35] actual=[17, 33, 34, 35] PASS
+QUERY regexKeepSeparators "SQLite3" [18] AST TermQuery(Term(field=0, type=Str, "sqlite3"))
+ASSERT regexKeepSeparators "SQLite3" expected=[18] actual=[18] PASS
+QUERY regexKeepSeparators "C++17" [14] AST TermQuery(Term(field=0, type=Str, "c++17"))
+ASSERT regexKeepSeparators "C++17" expected=[14] actual=[14] PASS
+QUERY regexKeepSeparators "ESP32" [19] AST TermQuery(Term(field=0, type=Str, "esp32"))
+ASSERT regexKeepSeparators "ESP32" expected=[19] actual=[19] PASS
+QUERY regexKeepSeparators "title:Arch" [] AST TermQuery(Term(field=1, type=Str, "arch"))
+ASSERT regexKeepSeparators "title:Arch" expected=[] actual=[] PASS
+QUERY regexKeepSeparators "body:\"文章\"" [9] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "文")), (1, Term(field=0, type=Str, "章"))], slop: 0 }
+ASSERT regexKeepSeparators "body:\"文章\"" expected=[9] actual=[9] PASS
+QUERY regexKeepSeparators "\"alpha beta\"" [21] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "alpha")), (1, Term(field=0, type=Str, " ")), (2, Term(field=0, type=Str, "beta"))], slop: 0 }
+ASSERT regexKeepSeparators "\"alpha beta\"" expected=[21] actual=[21] PASS
+QUERY regexKeepSeparators "alpha beta" [21, 22, 23, 24] AST BooleanQuery { subqueries: [(Must, TermQuery(Term(field=0, type=Str, "alpha"))), (Must, TermQuery(Term(field=0, type=Str, "beta")))], minimum_number_should_match: 0 }
+ASSERT regexKeepSeparators "alpha beta" expected=[21, 22, 23, 24] actual=[21, 22, 23, 24] PASS
+QUERY regexKeepSeparators "alpha AND beta" [21, 22, 23, 24] AST BooleanQuery { subqueries: [(Must, TermQuery(Term(field=0, type=Str, "alpha"))), (Must, TermQuery(Term(field=0, type=Str, "beta")))], minimum_number_should_match: 0 }
+ASSERT regexKeepSeparators "alpha AND beta" expected=[21, 22, 23, 24] actual=[21, 22, 23, 24] PASS
+QUERY regexKeepSeparators "alpha OR beta" [21, 22, 23, 24, 45, 46] AST BooleanQuery { subqueries: [(Should, TermQuery(Term(field=0, type=Str, "alpha"))), (Should, TermQuery(Term(field=0, type=Str, "beta")))], minimum_number_should_match: 1 }
+ASSERT regexKeepSeparators "alpha OR beta" expected=[21, 22, 23, 24, 45, 46] actual=[21, 22, 23, 24, 45, 46] PASS
+QUERY regexKeepSeparators "alpha NOT beta" [45] AST BooleanQuery { subqueries: [(Must, TermQuery(Term(field=0, type=Str, "alpha"))), (MustNot, TermQuery(Term(field=0, type=Str, "beta")))], minimum_number_should_match: 0 }
+ASSERT regexKeepSeparators "alpha NOT beta" expected=[45] actual=[45] PASS
+QUERY regexKeepSeparators "title:title-only" [0] AST PhraseQuery { field: Field(1), phrase_terms: [(0, Term(field=1, type=Str, "title")), (1, Term(field=1, type=Str, "-")), (2, Term(field=1, type=Str, "only"))], slop: 0 }
+ASSERT regexKeepSeparators "title:title-only" expected=[0] actual=[0] PASS
+QUERY_ERROR regexKeepSeparators "NEAR(alpha beta, 1)" Syntax Error: NEAR(alpha beta, 1)
+BUILTIN_REGEX_PREFIX regexKeepSeparators expected=[0,1,2,3,6,7,8,20,33,34,35,37,38,39,40,41] actual=[0, 1, 2, 3, 6, 7, 8, 20, 33, 34, 35, 37, 38, 39, 40, 41]
+PHRASE regexKeepSeparators alpha/beta slop=0 []
+PHRASE regexKeepSeparators alpha/beta slop=1 [21]
+PHRASE regexKeepSeparators alpha/beta slop=2 [21]
+PHRASE regexKeepSeparators alpha/beta slop=3 [21, 22, 23, 24]
+PHRASE regexKeepSeparators alpha/beta slop=4 [21, 22, 23, 24]
+PHRASE regexKeepSeparators alpha/beta slop=8 [21, 22, 23, 24]
+PHRASE regexKeepSeparators alpha/beta slop=16 [21, 22, 23, 24]
+PHRASE regexKeepSeparators abc/def slop=0 []
+PHRASE regexKeepSeparators abc/def slop=1 [27]
+PHRASE regexKeepSeparators abc/def slop=2 [27]
+PHRASE regexKeepSeparators abc/def slop=3 [27]
+PHRASE regexKeepSeparators abc/def slop=4 [27]
+PHRASE regexKeepSeparators abc/def slop=8 [27]
+PHRASE regexKeepSeparators abc/def slop=16 [27]
+PHRASE regexKeepSeparators 甲乙丙/丁戊己 slop=0 []
+PHRASE regexKeepSeparators 甲乙丙/丁戊己 slop=1 []
+PHRASE regexKeepSeparators 甲乙丙/丁戊己 slop=2 []
+PHRASE regexKeepSeparators 甲乙丙/丁戊己 slop=3 []
+PHRASE regexKeepSeparators 甲乙丙/丁戊己 slop=4 []
+PHRASE regexKeepSeparators 甲乙丙/丁戊己 slop=8 []
+PHRASE regexKeepSeparators 甲乙丙/丁戊己 slop=16 []
+PHRASE regexKeepSeparators arch/sqlite slop=0 []
+PHRASE regexKeepSeparators arch/sqlite slop=1 []
+PHRASE regexKeepSeparators arch/sqlite slop=2 [35]
+PHRASE regexKeepSeparators arch/sqlite slop=3 [33, 35]
+PHRASE regexKeepSeparators arch/sqlite slop=4 [33, 35]
+PHRASE regexKeepSeparators arch/sqlite slop=8 [33, 34, 35]
+PHRASE regexKeepSeparators arch/sqlite slop=16 [33, 34, 35]
+PHRASE regexKeepSeparators 文/章 slop=0 [9]
+PHRASE regexKeepSeparators 文/章 slop=1 [9, 42, 43, 44]
+PHRASE regexKeepSeparators 文/章 slop=2 [9, 10, 42, 43, 44]
+PHRASE regexKeepSeparators 文/章 slop=3 [9, 10, 42, 43, 44]
+PHRASE regexKeepSeparators 文/章 slop=4 [9, 10, 42, 43, 44]
+PHRASE regexKeepSeparators 文/章 slop=8 [9, 10, 42, 43, 44]
+PHRASE regexKeepSeparators 文/章 slop=16 [9, 10, 42, 43, 44]
+TOKENS ngram1 "中文Arch中文" ["中@0:0..3", "文@0:3..6", "a@0:6..7", "r@0:7..8", "c@0:8..9", "h@0:9..10", "中@0:10..13", "文@0:13..16"]
+TOKENS ngram1 "arch_linux" ["a@0:0..1", "r@0:1..2", "c@0:2..3", "h@0:3..4", "_@0:4..5", "l@0:5..6", "i@0:6..7", "n@0:7..8", "u@0:8..9", "x@0:9..10"]
+TOKENS ngram1 "C C++ C# C++17" ["c@0:0..1", " @0:1..2", "c@0:2..3", "+@0:3..4", "+@0:4..5", " @0:5..6", "c@0:6..7", "#@0:7..8", " @0:8..9", "c@0:9..10", "+@0:10..11", "+@0:11..12", "1@0:12..13", "7@0:13..14"]
+TOKENS ngram1 "Node.js Node js" ["n@0:0..1", "o@0:1..2", "d@0:2..3", "e@0:3..4", ".@0:4..5", "j@0:5..6", "s@0:6..7", " @0:7..8", "n@0:8..9", "o@0:9..10", "d@0:10..11", "e@0:11..12", " @0:12..13", "j@0:13..14", "s@0:14..15"]
+TOKENS ngram1 "这篇文章" ["这@0:0..3", "篇@0:3..6", "文@0:6..9", "章@0:9..12"]
+TOKENS ngram1 "abcXYZdef" ["a@0:0..1", "b@0:1..2", "c@0:2..3", "x@0:3..4", "y@0:4..5", "z@0:5..6", "d@0:6..7", "e@0:7..8", "f@0:8..9"]
+QUERY ngram1 "Arch" [0, 1, 2, 3, 4, 5, 6, 7, 8, 20, 33, 34, 35, 37, 38, 39, 40, 41] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "a")), (0, Term(field=0, type=Str, "r")), (0, Term(field=0, type=Str, "c")), (0, Term(field=0, type=Str, "h"))], slop: 0 }
+TRUNCATION ngram1 top3=[41, 37, 38] valid_in_top3=[41] full_expected=[0, 1, 2, 20, 33, 34, 35, 41]; this intersection is diagnostic only, not an implementation
+ASSERT ngram1 "Arch" expected=[0, 1, 2, 20, 33, 34, 35, 41] actual=[0, 1, 2, 3, 4, 5, 6, 7, 8, 20, 33, 34, 35, 37, 38, 39, 40, 41] FAIL
+QUERY ngram1 "\"Arch\"" [0, 1, 2, 3, 4, 5, 6, 7, 8, 20, 33, 34, 35, 37, 38, 39, 40, 41] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "a")), (0, Term(field=0, type=Str, "r")), (0, Term(field=0, type=Str, "c")), (0, Term(field=0, type=Str, "h"))], slop: 0 }
+ASSERT ngram1 "\"Arch\"" expected=[0, 1, 2, 20, 33, 34, 35, 41] actual=[0, 1, 2, 3, 4, 5, 6, 7, 8, 20, 33, 34, 35, 37, 38, 39, 40, 41] FAIL
+QUERY ngram1 "body:Arch" [0, 1, 2, 3, 4, 5, 6, 7, 8, 20, 33, 34, 35, 37, 38, 39, 40, 41] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "a")), (0, Term(field=0, type=Str, "r")), (0, Term(field=0, type=Str, "c")), (0, Term(field=0, type=Str, "h"))], slop: 0 }
+ASSERT ngram1 "body:Arch" expected=[0, 1, 2, 20, 33, 34, 35, 41] actual=[0, 1, 2, 3, 4, 5, 6, 7, 8, 20, 33, 34, 35, 37, 38, 39, 40, 41] FAIL
+QUERY ngram1 "arch*" [] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "a")), (0, Term(field=0, type=Str, "r")), (0, Term(field=0, type=Str, "c")), (0, Term(field=0, type=Str, "h")), (0, Term(field=0, type=Str, "*"))], slop: 0 }
+QUERY ngram1 "\"arch\"*" [] AST PhrasePrefixQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "a")), (0, Term(field=0, type=Str, "r")), (0, Term(field=0, type=Str, "c"))], prefix: (0, Term(field=0, type=Str, "h")), max_expansions: 50 }
+QUERY ngram1 "文章" [9, 10, 42, 43, 44] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "文")), (0, Term(field=0, type=Str, "章"))], slop: 0 }
+ASSERT ngram1 "文章" expected=[9] actual=[9, 10, 42, 43, 44] FAIL
+QUERY ngram1 "\"文章\"" [9, 10, 42, 43, 44] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "文")), (0, Term(field=0, type=Str, "章"))], slop: 0 }
+ASSERT ngram1 "\"文章\"" expected=[9] actual=[9, 10, 42, 43, 44] FAIL
+QUERY ngram1 "C" [0, 1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 19, 20, 25, 26, 27, 28, 29, 33, 34, 35, 37, 38, 39, 40, 41] AST TermQuery(Term(field=0, type=Str, "c"))
+ASSERT ngram1 "C" expected=[11] actual=[0, 1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 19, 20, 25, 26, 27, 28, 29, 33, 34, 35, 37, 38, 39, 40, 41] FAIL
+QUERY ngram1 "C++" [12, 14] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "c")), (0, Term(field=0, type=Str, "+")), (0, Term(field=0, type=Str, "+"))], slop: 0 }
+ASSERT ngram1 "C++" expected=[12] actual=[12, 14] FAIL
+QUERY ngram1 "C#" [13] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "c")), (0, Term(field=0, type=Str, "#"))], slop: 0 }
+ASSERT ngram1 "C#" expected=[13] actual=[13] PASS
+QUERY ngram1 "\"C++\"" [12, 14] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "c")), (0, Term(field=0, type=Str, "+")), (0, Term(field=0, type=Str, "+"))], slop: 0 }
+ASSERT ngram1 "\"C++\"" expected=[12] actual=[12, 14] FAIL
+QUERY ngram1 "Node.js" [15] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "n")), (0, Term(field=0, type=Str, "o")), (0, Term(field=0, type=Str, "d")), (0, Term(field=0, type=Str, "e")), (0, Term(field=0, type=Str, ".")), (0, Term(field=0, type=Str, "j")), (0, Term(field=0, type=Str, "s"))], slop: 0 }
+ASSERT ngram1 "Node.js" expected=[15] actual=[15] PASS
+QUERY ngram1 "\"Node.js\"" [15] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "n")), (0, Term(field=0, type=Str, "o")), (0, Term(field=0, type=Str, "d")), (0, Term(field=0, type=Str, "e")), (0, Term(field=0, type=Str, ".")), (0, Term(field=0, type=Str, "j")), (0, Term(field=0, type=Str, "s"))], slop: 0 }
+ASSERT ngram1 "\"Node.js\"" expected=[15] actual=[15] PASS
+QUERY ngram1 "Node" [15, 16] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "n")), (0, Term(field=0, type=Str, "o")), (0, Term(field=0, type=Str, "d")), (0, Term(field=0, type=Str, "e"))], slop: 0 }
+ASSERT ngram1 "Node" expected=[15, 16] actual=[15, 16] PASS
+QUERY ngram1 "SQLite" [17, 18, 33, 34, 35] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "s")), (0, Term(field=0, type=Str, "q")), (0, Term(field=0, type=Str, "l")), (0, Term(field=0, type=Str, "i")), (0, Term(field=0, type=Str, "t")), (0, Term(field=0, type=Str, "e"))], slop: 0 }
+ASSERT ngram1 "SQLite" expected=[17, 33, 34, 35] actual=[17, 18, 33, 34, 35] FAIL
+QUERY ngram1 "SQLite3" [18] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "s")), (0, Term(field=0, type=Str, "q")), (0, Term(field=0, type=Str, "l")), (0, Term(field=0, type=Str, "i")), (0, Term(field=0, type=Str, "t")), (0, Term(field=0, type=Str, "e")), (0, Term(field=0, type=Str, "3"))], slop: 0 }
+ASSERT ngram1 "SQLite3" expected=[18] actual=[18] PASS
+QUERY ngram1 "C++17" [14] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "c")), (0, Term(field=0, type=Str, "+")), (0, Term(field=0, type=Str, "+")), (0, Term(field=0, type=Str, "1")), (0, Term(field=0, type=Str, "7"))], slop: 0 }
+ASSERT ngram1 "C++17" expected=[14] actual=[14] PASS
+QUERY ngram1 "ESP32" [19] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "e")), (0, Term(field=0, type=Str, "s")), (0, Term(field=0, type=Str, "p")), (0, Term(field=0, type=Str, "3")), (0, Term(field=0, type=Str, "2"))], slop: 0 }
+ASSERT ngram1 "ESP32" expected=[19] actual=[19] PASS
+QUERY ngram1 "title:Arch" [] AST PhraseQuery { field: Field(1), phrase_terms: [(0, Term(field=1, type=Str, "a")), (0, Term(field=1, type=Str, "r")), (0, Term(field=1, type=Str, "c")), (0, Term(field=1, type=Str, "h"))], slop: 0 }
+ASSERT ngram1 "title:Arch" expected=[] actual=[] PASS
+QUERY ngram1 "body:\"文章\"" [9, 10, 42, 43, 44] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "文")), (0, Term(field=0, type=Str, "章"))], slop: 0 }
+ASSERT ngram1 "body:\"文章\"" expected=[9] actual=[9, 10, 42, 43, 44] FAIL
+QUERY ngram1 "\"alpha beta\"" [21, 22, 23, 24] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "a")), (0, Term(field=0, type=Str, "l")), (0, Term(field=0, type=Str, "p")), (0, Term(field=0, type=Str, "h")), (0, Term(field=0, type=Str, "a")), (0, Term(field=0, type=Str, " ")), (0, Term(field=0, type=Str, "b")), (0, Term(field=0, type=Str, "e")), (0, Term(field=0, type=Str, "t")), (0, Term(field=0, type=Str, "a"))], slop: 0 }
+ASSERT ngram1 "\"alpha beta\"" expected=[21] actual=[21, 22, 23, 24] FAIL
+QUERY ngram1 "alpha beta" [21, 22, 23, 24] AST BooleanQuery { subqueries: [(Must, PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "a")), (0, Term(field=0, type=Str, "l")), (0, Term(field=0, type=Str, "p")), (0, Term(field=0, type=Str, "h")), (0, Term(field=0, type=Str, "a"))], slop: 0 }), (Must, PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "b")), (0, Term(field=0, type=Str, "e")), (0, Term(field=0, type=Str, "t")), (0, Term(field=0, type=Str, "a"))], slop: 0 })], minimum_number_should_match: 0 }
+ASSERT ngram1 "alpha beta" expected=[21, 22, 23, 24] actual=[21, 22, 23, 24] PASS
+QUERY ngram1 "alpha AND beta" [21, 22, 23, 24] AST BooleanQuery { subqueries: [(Must, PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "a")), (0, Term(field=0, type=Str, "l")), (0, Term(field=0, type=Str, "p")), (0, Term(field=0, type=Str, "h")), (0, Term(field=0, type=Str, "a"))], slop: 0 }), (Must, PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "b")), (0, Term(field=0, type=Str, "e")), (0, Term(field=0, type=Str, "t")), (0, Term(field=0, type=Str, "a"))], slop: 0 })], minimum_number_should_match: 0 }
+ASSERT ngram1 "alpha AND beta" expected=[21, 22, 23, 24] actual=[21, 22, 23, 24] PASS
+QUERY ngram1 "alpha OR beta" [21, 22, 23, 24, 45, 46] AST BooleanQuery { subqueries: [(Should, PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "a")), (0, Term(field=0, type=Str, "l")), (0, Term(field=0, type=Str, "p")), (0, Term(field=0, type=Str, "h")), (0, Term(field=0, type=Str, "a"))], slop: 0 }), (Should, PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "b")), (0, Term(field=0, type=Str, "e")), (0, Term(field=0, type=Str, "t")), (0, Term(field=0, type=Str, "a"))], slop: 0 })], minimum_number_should_match: 1 }
+ASSERT ngram1 "alpha OR beta" expected=[21, 22, 23, 24, 45, 46] actual=[21, 22, 23, 24, 45, 46] PASS
+QUERY ngram1 "alpha NOT beta" [45] AST BooleanQuery { subqueries: [(Must, PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "a")), (0, Term(field=0, type=Str, "l")), (0, Term(field=0, type=Str, "p")), (0, Term(field=0, type=Str, "h")), (0, Term(field=0, type=Str, "a"))], slop: 0 }), (MustNot, PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "b")), (0, Term(field=0, type=Str, "e")), (0, Term(field=0, type=Str, "t")), (0, Term(field=0, type=Str, "a"))], slop: 0 })], minimum_number_should_match: 0 }
+ASSERT ngram1 "alpha NOT beta" expected=[45] actual=[45] PASS
+QUERY ngram1 "title:title-only" [0] AST PhraseQuery { field: Field(1), phrase_terms: [(0, Term(field=1, type=Str, "t")), (0, Term(field=1, type=Str, "i")), (0, Term(field=1, type=Str, "t")), (0, Term(field=1, type=Str, "l")), (0, Term(field=1, type=Str, "e")), (0, Term(field=1, type=Str, "-")), (0, Term(field=1, type=Str, "o")), (0, Term(field=1, type=Str, "n")), (0, Term(field=1, type=Str, "l")), (0, Term(field=1, type=Str, "y"))], slop: 0 }
+ASSERT ngram1 "title:title-only" expected=[0] actual=[0] PASS
+QUERY_ERROR ngram1 "NEAR(alpha beta, 1)" Syntax Error: NEAR(alpha beta, 1)
+BUILTIN_REGEX_PREFIX ngram1 expected=[0,1,2,3,6,7,8,20,33,34,35,37,38,39,40,41] actual=[]
+PHRASE ngram1 alpha/beta slop=0 []
+PHRASE ngram1 alpha/beta slop=1 []
+PHRASE ngram1 alpha/beta slop=2 []
+PHRASE ngram1 alpha/beta slop=3 []
+PHRASE ngram1 alpha/beta slop=4 []
+PHRASE ngram1 alpha/beta slop=8 []
+PHRASE ngram1 alpha/beta slop=16 []
+PHRASE ngram1 abc/def slop=0 []
+PHRASE ngram1 abc/def slop=1 []
+PHRASE ngram1 abc/def slop=2 []
+PHRASE ngram1 abc/def slop=3 []
+PHRASE ngram1 abc/def slop=4 []
+PHRASE ngram1 abc/def slop=8 []
+PHRASE ngram1 abc/def slop=16 []
+PHRASE ngram1 甲乙丙/丁戊己 slop=0 []
+PHRASE ngram1 甲乙丙/丁戊己 slop=1 []
+PHRASE ngram1 甲乙丙/丁戊己 slop=2 []
+PHRASE ngram1 甲乙丙/丁戊己 slop=3 []
+PHRASE ngram1 甲乙丙/丁戊己 slop=4 []
+PHRASE ngram1 甲乙丙/丁戊己 slop=8 []
+PHRASE ngram1 甲乙丙/丁戊己 slop=16 []
+PHRASE ngram1 arch/sqlite slop=0 []
+PHRASE ngram1 arch/sqlite slop=1 []
+PHRASE ngram1 arch/sqlite slop=2 []
+PHRASE ngram1 arch/sqlite slop=3 []
+PHRASE ngram1 arch/sqlite slop=4 []
+PHRASE ngram1 arch/sqlite slop=8 []
+PHRASE ngram1 arch/sqlite slop=16 []
+PHRASE ngram1 文/章 slop=0 []
+PHRASE ngram1 文/章 slop=1 [9, 10, 42, 43, 44]
+PHRASE ngram1 文/章 slop=2 [9, 10, 42, 43, 44]
+PHRASE ngram1 文/章 slop=3 [9, 10, 42, 43, 44]
+PHRASE ngram1 文/章 slop=4 [9, 10, 42, 43, 44]
+PHRASE ngram1 文/章 slop=8 [9, 10, 42, 43, 44]
+PHRASE ngram1 文/章 slop=16 [9, 10, 42, 43, 44]
+TOKENS trigram "中文Arch中文" ["中文a@0:0..7", "文ar@0:3..8", "arc@0:6..9", "rch@0:7..10", "ch中@0:8..13", "h中文@0:9..16"]
+TOKENS trigram "arch_linux" ["arc@0:0..3", "rch@0:1..4", "ch_@0:2..5", "h_l@0:3..6", "_li@0:4..7", "lin@0:5..8", "inu@0:6..9", "nux@0:7..10"]
+TOKENS trigram "C C++ C# C++17" ["c c@0:0..3", " c+@0:1..4", "c++@0:2..5", "++ @0:3..6", "+ c@0:4..7", " c#@0:5..8", "c# @0:6..9", "# c@0:7..10", " c+@0:8..11", "c++@0:9..12", "++1@0:10..13", "+17@0:11..14"]
+TOKENS trigram "Node.js Node js" ["nod@0:0..3", "ode@0:1..4", "de.@0:2..5", "e.j@0:3..6", ".js@0:4..7", "js @0:5..8", "s n@0:6..9", " no@0:7..10", "nod@0:8..11", "ode@0:9..12", "de @0:10..13", "e j@0:11..14", " js@0:12..15"]
+TOKENS trigram "这篇文章" ["这篇文@0:0..9", "篇文章@0:3..12"]
+TOKENS trigram "abcXYZdef" ["abc@0:0..3", "bcx@0:1..4", "cxy@0:2..5", "xyz@0:3..6", "yzd@0:4..7", "zde@0:5..8", "def@0:6..9"]
+QUERY trigram "Arch" [0, 1, 2, 3, 4, 5, 6, 7, 8, 20, 33, 34, 35, 37, 38, 39, 40, 41] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "arc")), (0, Term(field=0, type=Str, "rch"))], slop: 0 }
+TRUNCATION trigram top3=[41, 4, 3] valid_in_top3=[41] full_expected=[0, 1, 2, 20, 33, 34, 35, 41]; this intersection is diagnostic only, not an implementation
+ASSERT trigram "Arch" expected=[0, 1, 2, 20, 33, 34, 35, 41] actual=[0, 1, 2, 3, 4, 5, 6, 7, 8, 20, 33, 34, 35, 37, 38, 39, 40, 41] FAIL
+QUERY trigram "\"Arch\"" [0, 1, 2, 3, 4, 5, 6, 7, 8, 20, 33, 34, 35, 37, 38, 39, 40, 41] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "arc")), (0, Term(field=0, type=Str, "rch"))], slop: 0 }
+ASSERT trigram "\"Arch\"" expected=[0, 1, 2, 20, 33, 34, 35, 41] actual=[0, 1, 2, 3, 4, 5, 6, 7, 8, 20, 33, 34, 35, 37, 38, 39, 40, 41] FAIL
+QUERY trigram "body:Arch" [0, 1, 2, 3, 4, 5, 6, 7, 8, 20, 33, 34, 35, 37, 38, 39, 40, 41] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "arc")), (0, Term(field=0, type=Str, "rch"))], slop: 0 }
+ASSERT trigram "body:Arch" expected=[0, 1, 2, 20, 33, 34, 35, 41] actual=[0, 1, 2, 3, 4, 5, 6, 7, 8, 20, 33, 34, 35, 37, 38, 39, 40, 41] FAIL
+QUERY trigram "arch*" [] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "arc")), (0, Term(field=0, type=Str, "rch")), (0, Term(field=0, type=Str, "ch*"))], slop: 0 }
+QUERY trigram "\"arch\"*" [0, 1, 2, 3, 4, 5, 6, 7, 8, 20, 33, 34, 35, 37, 38, 39, 40, 41] AST PhrasePrefixQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "arc"))], prefix: (0, Term(field=0, type=Str, "rch")), max_expansions: 50 }
+QUERY trigram "文章" [] AST EmptyQuery
+ASSERT trigram "文章" expected=[9] actual=[] FAIL
+QUERY trigram "\"文章\"" [] AST EmptyQuery
+ASSERT trigram "\"文章\"" expected=[9] actual=[] FAIL
+QUERY trigram "C" [] AST EmptyQuery
+ASSERT trigram "C" expected=[11] actual=[] FAIL
+QUERY trigram "C++" [12, 14] AST TermQuery(Term(field=0, type=Str, "c++"))
+ASSERT trigram "C++" expected=[12] actual=[12, 14] FAIL
+QUERY trigram "C#" [] AST EmptyQuery
+ASSERT trigram "C#" expected=[13] actual=[] FAIL
+QUERY trigram "\"C++\"" [12, 14] AST TermQuery(Term(field=0, type=Str, "c++"))
+ASSERT trigram "\"C++\"" expected=[12] actual=[12, 14] FAIL
+QUERY trigram "Node.js" [15] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "nod")), (0, Term(field=0, type=Str, "ode")), (0, Term(field=0, type=Str, "de.")), (0, Term(field=0, type=Str, "e.j")), (0, Term(field=0, type=Str, ".js"))], slop: 0 }
+ASSERT trigram "Node.js" expected=[15] actual=[15] PASS
+QUERY trigram "\"Node.js\"" [15] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "nod")), (0, Term(field=0, type=Str, "ode")), (0, Term(field=0, type=Str, "de.")), (0, Term(field=0, type=Str, "e.j")), (0, Term(field=0, type=Str, ".js"))], slop: 0 }
+ASSERT trigram "\"Node.js\"" expected=[15] actual=[15] PASS
+QUERY trigram "Node" [15, 16] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "nod")), (0, Term(field=0, type=Str, "ode"))], slop: 0 }
+ASSERT trigram "Node" expected=[15, 16] actual=[15, 16] PASS
+QUERY trigram "SQLite" [17, 18, 33, 34, 35] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "sql")), (0, Term(field=0, type=Str, "qli")), (0, Term(field=0, type=Str, "lit")), (0, Term(field=0, type=Str, "ite"))], slop: 0 }
+ASSERT trigram "SQLite" expected=[17, 33, 34, 35] actual=[17, 18, 33, 34, 35] FAIL
+QUERY trigram "SQLite3" [18] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "sql")), (0, Term(field=0, type=Str, "qli")), (0, Term(field=0, type=Str, "lit")), (0, Term(field=0, type=Str, "ite")), (0, Term(field=0, type=Str, "te3"))], slop: 0 }
+ASSERT trigram "SQLite3" expected=[18] actual=[18] PASS
+QUERY trigram "C++17" [14] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "c++")), (0, Term(field=0, type=Str, "++1")), (0, Term(field=0, type=Str, "+17"))], slop: 0 }
+ASSERT trigram "C++17" expected=[14] actual=[14] PASS
+QUERY trigram "ESP32" [19] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "esp")), (0, Term(field=0, type=Str, "sp3")), (0, Term(field=0, type=Str, "p32"))], slop: 0 }
+ASSERT trigram "ESP32" expected=[19] actual=[19] PASS
+QUERY trigram "title:Arch" [] AST PhraseQuery { field: Field(1), phrase_terms: [(0, Term(field=1, type=Str, "arc")), (0, Term(field=1, type=Str, "rch"))], slop: 0 }
+ASSERT trigram "title:Arch" expected=[] actual=[] PASS
+QUERY trigram "body:\"文章\"" [] AST EmptyQuery
+ASSERT trigram "body:\"文章\"" expected=[9] actual=[] FAIL
+QUERY trigram "\"alpha beta\"" [21] AST PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "alp")), (0, Term(field=0, type=Str, "lph")), (0, Term(field=0, type=Str, "pha")), (0, Term(field=0, type=Str, "ha ")), (0, Term(field=0, type=Str, "a b")), (0, Term(field=0, type=Str, " be")), (0, Term(field=0, type=Str, "bet")), (0, Term(field=0, type=Str, "eta"))], slop: 0 }
+ASSERT trigram "\"alpha beta\"" expected=[21] actual=[21] PASS
+QUERY trigram "alpha beta" [21, 22, 23, 24] AST BooleanQuery { subqueries: [(Must, PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "alp")), (0, Term(field=0, type=Str, "lph")), (0, Term(field=0, type=Str, "pha"))], slop: 0 }), (Must, PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "bet")), (0, Term(field=0, type=Str, "eta"))], slop: 0 })], minimum_number_should_match: 0 }
+ASSERT trigram "alpha beta" expected=[21, 22, 23, 24] actual=[21, 22, 23, 24] PASS
+QUERY trigram "alpha AND beta" [21, 22, 23, 24] AST BooleanQuery { subqueries: [(Must, PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "alp")), (0, Term(field=0, type=Str, "lph")), (0, Term(field=0, type=Str, "pha"))], slop: 0 }), (Must, PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "bet")), (0, Term(field=0, type=Str, "eta"))], slop: 0 })], minimum_number_should_match: 0 }
+ASSERT trigram "alpha AND beta" expected=[21, 22, 23, 24] actual=[21, 22, 23, 24] PASS
+QUERY trigram "alpha OR beta" [21, 22, 23, 24, 45, 46] AST BooleanQuery { subqueries: [(Should, PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "alp")), (0, Term(field=0, type=Str, "lph")), (0, Term(field=0, type=Str, "pha"))], slop: 0 }), (Should, PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "bet")), (0, Term(field=0, type=Str, "eta"))], slop: 0 })], minimum_number_should_match: 1 }
+ASSERT trigram "alpha OR beta" expected=[21, 22, 23, 24, 45, 46] actual=[21, 22, 23, 24, 45, 46] PASS
+QUERY trigram "alpha NOT beta" [45] AST BooleanQuery { subqueries: [(Must, PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "alp")), (0, Term(field=0, type=Str, "lph")), (0, Term(field=0, type=Str, "pha"))], slop: 0 }), (MustNot, PhraseQuery { field: Field(0), phrase_terms: [(0, Term(field=0, type=Str, "bet")), (0, Term(field=0, type=Str, "eta"))], slop: 0 })], minimum_number_should_match: 0 }
+ASSERT trigram "alpha NOT beta" expected=[45] actual=[45] PASS
+QUERY trigram "title:title-only" [0] AST PhraseQuery { field: Field(1), phrase_terms: [(0, Term(field=1, type=Str, "tit")), (0, Term(field=1, type=Str, "itl")), (0, Term(field=1, type=Str, "tle")), (0, Term(field=1, type=Str, "le-")), (0, Term(field=1, type=Str, "e-o")), (0, Term(field=1, type=Str, "-on")), (0, Term(field=1, type=Str, "onl")), (0, Term(field=1, type=Str, "nly"))], slop: 0 }
+ASSERT trigram "title:title-only" expected=[0] actual=[0] PASS
+QUERY_ERROR trigram "NEAR(alpha beta, 1)" Syntax Error: NEAR(alpha beta, 1)
+BUILTIN_REGEX_PREFIX trigram expected=[0,1,2,3,6,7,8,20,33,34,35,37,38,39,40,41] actual=[]
+PHRASE trigram alpha/beta slop=0 []
+PHRASE trigram alpha/beta slop=1 []
+PHRASE trigram alpha/beta slop=2 []
+PHRASE trigram alpha/beta slop=3 []
+PHRASE trigram alpha/beta slop=4 []
+PHRASE trigram alpha/beta slop=8 []
+PHRASE trigram alpha/beta slop=16 []
+PHRASE trigram abc/def slop=0 []
+PHRASE trigram abc/def slop=1 [25, 26, 27, 28, 29]
+PHRASE trigram abc/def slop=2 [25, 26, 27, 28, 29]
+PHRASE trigram abc/def slop=3 [25, 26, 27, 28, 29]
+PHRASE trigram abc/def slop=4 [25, 26, 27, 28, 29]
+PHRASE trigram abc/def slop=8 [25, 26, 27, 28, 29]
+PHRASE trigram abc/def slop=16 [25, 26, 27, 28, 29]
+PHRASE trigram 甲乙丙/丁戊己 slop=0 []
+PHRASE trigram 甲乙丙/丁戊己 slop=1 [30, 31, 32, 36]
+PHRASE trigram 甲乙丙/丁戊己 slop=2 [30, 31, 32, 36]
+PHRASE trigram 甲乙丙/丁戊己 slop=3 [30, 31, 32, 36]
+PHRASE trigram 甲乙丙/丁戊己 slop=4 [30, 31, 32, 36]
+PHRASE trigram 甲乙丙/丁戊己 slop=8 [30, 31, 32, 36]
+PHRASE trigram 甲乙丙/丁戊己 slop=16 [30, 31, 32, 36]
+PHRASE trigram arch/sqlite slop=0 []
+PHRASE trigram arch/sqlite slop=1 []
+PHRASE trigram arch/sqlite slop=2 []
+PHRASE trigram arch/sqlite slop=3 []
+PHRASE trigram arch/sqlite slop=4 []
+PHRASE trigram arch/sqlite slop=8 []
+PHRASE trigram arch/sqlite slop=16 []
+PHRASE trigram 文/章 slop=0 []
+PHRASE trigram 文/章 slop=1 []
+PHRASE trigram 文/章 slop=2 []
+PHRASE trigram 文/章 slop=3 []
+PHRASE trigram 文/章 slop=4 []
+PHRASE trigram 文/章 slop=8 []
+PHRASE trigram 文/章 slop=16 []

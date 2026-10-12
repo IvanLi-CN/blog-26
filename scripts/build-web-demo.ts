@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 
-import { mkdir, rm, stat } from "node:fs/promises";
+import { mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
+import { SEARCH_DEMO_DOCUMENTS } from "../src/lib/search/web-demo-fixtures";
 
 const repoRoot = resolve(import.meta.dir, "..");
 const generatedRoot = resolve(process.env.WEB_DEMO_DATA_DIR || "dev-data/web-demo");
@@ -83,6 +84,11 @@ export async function prepareWebDemoInputs() {
   await run("prepare deterministic local content", ["run", "migrate"], env);
   await run("seed deterministic local content", ["run", "seed"], env);
   await run("write deterministic local fixtures", ["scripts/generate-test-data.ts", "--dev"], env);
+  for (const document of SEARCH_DEMO_DOCUMENTS)
+    await writeFile(
+      join(generatedRoot, "local", "blog", `${document.slug}.md`),
+      `---\ntitle: ${JSON.stringify(document.title)}\nexcerpt: ${JSON.stringify(document.excerpt)}\npublic: true\npublishDate: 2026-01-01\n---\n\n${document.body}\n`
+    );
   await run("sync deterministic local fixtures", ["run", "dev-sync:trigger"], env);
   await run("generate public snapshot", ["run", "public:export"], env);
   await run(

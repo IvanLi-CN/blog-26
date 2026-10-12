@@ -1,9 +1,14 @@
 import { projectRuntimeMetricsBySlug } from "../../site/lib/project-runtime-metrics";
+import { positiveSearchTerms, searchHighlightSpans } from "./search/highlights";
+import { planNativeQuery } from "./search/native-query";
+import { searchModeSchema } from "./search/settings";
+import { SEARCH_DEMO_DENSE_DOCUMENTS, SEARCH_DEMO_DOCUMENTS } from "./search/web-demo-fixtures";
 import {
   assertWebDemoRequestAvailable,
   getWebDemoEnvironment,
   getWebDemoRequestSignal,
   getWebDemoSceneState,
+  getWebDemoState,
   isWebDemoBuildEnabled,
   type WebDemoApp,
   type WebDemoEnvironment,
@@ -100,6 +105,23 @@ function demoRuntimeMetrics(slug: string, dataMode: "fixture" | "dense" | "empty
   return { ...payload, deduplicatedRepositories: nextRepositories, freshness: nextFreshness };
 }
 
+function demoSearchRelevance(
+  item: { title: string; excerpt: string; body?: string },
+  query: string,
+  origin: "keyword" | "ai",
+  aiRank: number
+) {
+  if (origin === "ai") return 72 - aiRank * 7;
+  const normalizedQuery = query.trim().toLowerCase();
+  const title = item.title.toLowerCase();
+  const excerpt = item.excerpt.toLowerCase();
+  const body = item.body?.toLowerCase() ?? "";
+  const titleMatches = title.split(normalizedQuery).length - 1;
+  const excerptMatches = excerpt.split(normalizedQuery).length - 1;
+  const bodyMatches = body.split(normalizedQuery).length - 1;
+  return 12 + titleMatches * 100 + excerptMatches * 35 + bodyMatches * 8;
+}
+
 function getDemoPublicResponse(
   url: URL,
   method: string,
@@ -144,6 +166,21 @@ function getDemoPublicResponse(
 
   if (url.pathname === "/api/public/search" && method === "GET") {
     const query = (url.searchParams.get("q") ?? "").trim().toLowerCase();
+    const selected = searchModeSchema.safeParse(url.searchParams.get("mode") ?? "keyword");
+    if (!selected.success) return jsonResponse({ error: "不支持的搜索模式" }, 400);
+    let plan: ReturnType<typeof planNativeQuery>;
+    try {
+      plan = planNativeQuery(query);
+    } catch {
+      return jsonResponse({ error: "不支持的搜索语法" }, 400);
+    }
+    const state = getWebDemoState(window.location, "public");
+    if (state.scene === "search-index-unavailable")
+      return jsonResponse({ error: "搜索索引暂不可用，请稍后重试" }, 503);
+    const effectiveMode =
+      !query || plan.mode !== "simple" || state.scene === "search-ai-unavailable"
+        ? "keyword"
+        : selected.data;
     const results = [
       {
         slug: "code-block-fixture",
@@ -163,20 +200,107 @@ function getDemoPublicResponse(
         excerpt: "A memo fixture stored in the local content tree.",
         type: "memo",
       },
+      ...SEARCH_DEMO_DOCUMENTS,
+      ...(dataMode === "dense" ? SEARCH_DEMO_DENSE_DOCUMENTS : []),
     ];
-    return jsonResponse(
-      query
-        ? results.filter((item) => `${item.title} ${item.excerpt}`.toLowerCase().includes(query))
+    const terms = positiveSearchTerms(plan.ast);
+    const literalMatched = results.filter((item) =>
+      plan.literalTerms.every(
+        (term) =>
+          searchHighlightSpans(`${item.title} ${item.excerpt} ${"body" in item ? item.body : ""}`, [
+            { value: term },
+          ]).length > 0
+      )
+    );
+    const matched = [...literalMatched];
+    const literalSlugs = new Set(literalMatched.map((item) => item.slug));
+    const aiSlugs = new Set<string>();
+    const semanticSqliteSlugs = [
+      SEARCH_DEMO_DOCUMENTS[0].slug,
+      ...(dataMode === "dense"
+        ? SEARCH_DEMO_DENSE_DOCUMENTS.slice(2).map((document) => document.slug)
+        : []),
+    ];
+    const aiRankBySlug = new Map(semanticSqliteSlugs.map((slug, index) => [slug, index]));
+    if ((effectiveMode === "rag" || effectiveMode === "rewrite") && query === "sqlite") {
+      for (const slug of semanticSqliteSlugs) {
+        const document = results.find((item) => item.slug === slug);
+        if (!document || literalSlugs.has(slug)) continue;
+        matched.unshift(document);
+        aiSlugs.add(slug);
+      }
+    }
+    if (
+      effectiveMode === "rag" &&
+      /^(?:nodejs|node\.js)$/iu.test(query) &&
+      !literalSlugs.has(SEARCH_DEMO_DOCUMENTS[2].slug)
+    ) {
+      matched.unshift(SEARCH_DEMO_DOCUMENTS[2]);
+      aiSlugs.add(SEARCH_DEMO_DOCUMENTS[2].slug);
+    }
+    if (effectiveMode === "rewrite" && /嵌入式.*数据库/u.test(query)) {
+      const document = results.find((item) => item.slug === SEARCH_DEMO_DOCUMENTS[0].slug);
+      if (document && !literalSlugs.has(document.slug)) {
+        matched.unshift(document);
+        aiSlugs.add(document.slug);
+      }
+    }
+    const rankedMatched = [...new Map(matched.map((item) => [item.slug, item])).values()].sort(
+      (a, b) => {
+        const aOrigin = aiSlugs.has(a.slug) ? "ai" : "keyword";
+        const bOrigin = aiSlugs.has(b.slug) ? "ai" : "keyword";
+        const scoreDiff =
+          demoSearchRelevance(b, query, bOrigin, aiRankBySlug.get(b.slug) ?? 0) -
+          demoSearchRelevance(a, query, aOrigin, aiRankBySlug.get(a.slug) ?? 0);
+        return scoreDiff || a.slug.localeCompare(b.slug);
+      }
+    );
+    const response = jsonResponse(
+      query && state.data !== "empty"
+        ? rankedMatched.map((item) => {
+            const { slug, title, excerpt, type } = item;
+            const body = "body" in item ? item.body : "";
+            const searchOrigin = aiSlugs.has(slug) ? "ai" : "keyword";
+            return {
+              slug,
+              title,
+              excerpt,
+              type,
+              highlightTerms: terms,
+              searchOrigin,
+              final: demoSearchRelevance(
+                { title, excerpt, body },
+                query,
+                searchOrigin,
+                aiRankBySlug.get(slug) ?? 0
+              ),
+            };
+          })
         : []
     );
+    response.headers.set("Search-Requested-Mode", selected.data);
+    response.headers.set("Search-Effective-Mode", effectiveMode);
+    if (!query) response.headers.set("Search-Reason", "empty-query");
+    else if (plan.mode !== "simple") response.headers.set("Search-Reason", "explicit-query");
+    else if (effectiveMode !== selected.data) response.headers.set("Search-Reason", "unavailable");
+    return response;
   }
 
   if (url.pathname === "/api/public/search/suggestions" && method === "GET") {
+    const query = (url.searchParams.get("q") ?? "").trim().toLowerCase();
+    const items = query.includes("sqlite")
+      ? [
+          { term: "SQLite3", strategy: "alternative_label" },
+          { term: "SQLite 索引", strategy: "related" },
+          { term: "SQLite 迁移", strategy: "sibling" },
+        ]
+      : query.includes("fixture")
+        ? [{ term: "Code Block Fixture", strategy: "related" }]
+        : query.includes("react")
+          ? [{ term: "React Hooks", strategy: "related" }]
+          : [];
     return jsonResponse({
-      items: [
-        { term: "fixture", strategy: "related" },
-        { term: "Memo", strategy: "related" },
-      ],
+      items,
     });
   }
 

@@ -18,6 +18,7 @@ import { isSearchQueryWithinBudget } from "@/lib/search/query";
 import { clippingProjectionForRow, isClippingRowPublic } from "@/server/clipping/projection";
 import { notifyClippingChange } from "@/server/clipping/runtime";
 import { attachClippingReference } from "@/server/clipping/store";
+import { contentSearchInputSchema, executeContentModes } from "@/server/services/content-search";
 import { getPostsByTag, getTagSummaries, groupPostsByTag } from "@/server/services/tag-service";
 import { getMcpAuthContext, requireAdmin } from "./mcp-auth-context";
 
@@ -374,6 +375,7 @@ const semanticInput = z.object({
   publishedOnly: z.boolean().default(true),
 });
 const enhancedInput = semanticInput.extend({
+  q: z.string().min(1).max(8192),
   rerankTopK: z.number().int().min(1).max(50).default(20),
   rerank: z.boolean().default(true),
 });
@@ -851,19 +853,38 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       return { content: [{ type: "text", text: JSON.stringify(items, null, 2) }] };
     }
   );
-  server.tool("search_enhanced", "Semantic+rerank search", enhancedInput.shape, async (args) => {
-    const input = args as z.infer<typeof enhancedInput>;
-    requireAdminForUnpublished(input.publishedOnly);
-    const items = await enhancedSearch({
-      q: input.q,
-      topK: input.topK,
-      type: input.type,
-      publishedOnly: input.publishedOnly,
-      rerankTopK: input.rerankTopK,
-      rerank: input.rerank,
-    });
-    return { content: [{ type: "text", text: JSON.stringify(items, null, 2) }] };
-  });
+  server.tool(
+    "search_content",
+    "Search site content with rag, rewrite, or keyword mode",
+    contentSearchInputSchema.extend({
+      topK: z.number().int().min(1).max(50).default(20),
+      publishedOnly: z.boolean().default(true),
+    }).shape,
+    async (args) => {
+      const { publishedOnly, ...input } = args;
+      requireAdminForUnpublished(publishedOnly);
+      const result = await executeContentModes(input, { publishedOnly });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  );
+  server.tool(
+    "search_enhanced",
+    "RAG search with protected keyword fallback",
+    enhancedInput.shape,
+    async (args) => {
+      const input = args as z.infer<typeof enhancedInput>;
+      requireAdminForUnpublished(input.publishedOnly);
+      const items = await enhancedSearch({
+        q: input.q,
+        topK: input.topK,
+        type: input.type,
+        publishedOnly: input.publishedOnly,
+        rerankTopK: input.rerankTopK,
+        rerank: input.rerank,
+      });
+      return { content: [{ type: "text", text: JSON.stringify(items, null, 2) }] };
+    }
+  );
 
   await server.connect(nextTransport as any);
   return { server, transport: nextTransport };

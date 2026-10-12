@@ -89,7 +89,9 @@ jobs:
         uses: docker/setup-buildx-action@v4
       - name: Build the static frontend and full-feature image
         if: steps.restore.outputs.need_products == 'true'
-        run: bun scripts/product-release.ts build-products
+        run: |
+          rustup toolchain install 1.91.0 --profile minimal
+          RUSTUP_TOOLCHAIN=1.91.0 bun scripts/product-release.ts build-products
       - name: Verify production-mode frozen products
         if: steps.restore.outputs.need_products == 'true'
         run: |

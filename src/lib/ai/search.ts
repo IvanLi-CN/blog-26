@@ -1,14 +1,15 @@
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { uniqueRankedContent } from "@/lib/search/content-identity";
+import { ContentSearchError } from "@/lib/search/native-query";
 import { isClippingRowPublic } from "@/server/clipping/projection";
+import { executeContentModes } from "@/server/services/content-search";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../db";
 import { postEmbeddings, posts } from "../schema";
 import { isClippingSearchMemo, searchContent } from "../search/content-search";
 import { parseSearchQuery } from "../search/query";
 import { cosineSimilarity, createEmbedding, hashEmbeddingInput } from "./embeddings";
-import { rerank as rerankApi } from "./rerank";
-import { getCachedSearchExecution, type SearchCacheLoadResult } from "./search-cache";
+import { getCachedSearchExecution } from "./search-cache";
 import { buildSearchSnippet } from "./search-snippet";
 
 export type SemanticSearchInput = {
@@ -29,6 +30,7 @@ export type SearchResult = {
   cosine?: number;
   rerank?: number;
   final?: number;
+  searchOrigin?: "keyword" | "ai";
 };
 
 type KeywordSearchCandidate = {
@@ -391,78 +393,30 @@ export async function semantic(input: SemanticSearchInput): Promise<SearchResult
   return (await getSemanticExecution(input)).results;
 }
 
-async function computeEnhanced(
-  input: SemanticSearchInput & { rerankTopK?: number; rerank?: boolean; rerankerModel?: string }
-): Promise<SearchCacheLoadResult> {
-  const semanticExecution = await getSemanticExecution(input);
-  const base = semanticExecution.results;
-  if (semanticExecution.source === "fts") {
-    return { results: base, source: "fts", cacheable: false };
-  }
-
-  let resolved: Awaited<ReturnType<typeof getResolvedLlmConfig>>;
-  try {
-    resolved = await getResolvedLlmConfig();
-  } catch {
-    console.warn("[search] reranker unavailable; using semantic results", {
-      code: "RERANKER_CONFIG_UNAVAILABLE",
-    });
-    return { results: base, source: "semantic", cacheable: false };
-  }
-
-  const rerankModel = input.rerankerModel || resolved.rerank.model;
-  const shouldRerank = input.rerank !== false && Boolean(rerankModel);
-  if (input.rerank !== false && !rerankModel) {
-    console.warn("[search] reranker unavailable; using semantic results", {
-      code: "RERANKER_NOT_CONFIGURED",
-    });
-  }
-  if (!shouldRerank) return { results: base, source: "semantic", cacheable: true };
-
-  const docs = base
-    .slice(0, input.rerankTopK ?? 20)
-    .map((r) => `${r.title || r.slug}\n\n${r.excerpt || ""}`);
-  try {
-    const items = await rerankApi(input.q, docs, {
-      model: rerankModel || undefined,
-      topN: docs.length,
-    });
-    const maxR = Math.max(...items.map((i) => i.score));
-    const minR = Math.min(...items.map((i) => i.score));
-    const norm = (x: number) => (maxR === minR ? 0 : (x - minR) / (maxR - minR));
-
-    const alpha = 0.3;
-    const beta = Number(process.env.RERANKER_WEIGHT || 0.7);
-
-    return {
-      results: base
-        .map((r, i) => {
-          const rr = items.find((it) => it.index === i)?.score ?? 0;
-          const final = (alpha * ((r.cosine ?? 0) + 1)) / 2 + beta * norm(rr);
-          return { ...r, rerank: rr, final };
-        })
-        .sort((a, b) => (b.final ?? 0) - (a.final ?? 0)),
-      source: "enhanced",
-      cacheable: true,
-    };
-  } catch (err: unknown) {
-    const code =
-      err && typeof err === "object" && "code" in err
-        ? (err as { code?: unknown }).code
-        : "unknown";
-    console.warn("[search] reranker unavailable; using semantic results", { code });
-    return { results: base, source: "semantic", cacheable: false };
-  }
-}
-
+/** Legacy array contract; model retains its embedding meaning. */
 export async function enhanced(
   input: SemanticSearchInput & { rerankTopK?: number; rerank?: boolean; rerankerModel?: string }
-) {
-  const cacheInput = await buildSearchCacheInput("enhanced", input);
-  const execution = await getCachedSearchExecution("enhanced", cacheInput, () =>
-    computeEnhanced(input)
-  );
-  return input.publishedOnly === true
-    ? await filterPublishedClippingResults(execution.results)
-    : execution.results;
+): Promise<SearchResult[]> {
+  if (input.rerank !== false && input.rerankerModel !== undefined) {
+    throw new ContentSearchError(
+      "BAD_REQUEST",
+      "unsupported-parameter: configure the RAG chat model in search settings"
+    );
+  }
+  return (
+    await executeContentModes(
+      {
+        q: input.q,
+        mode: input.rerank === false ? "keyword" : "rag",
+        topK: input.topK ?? 50,
+        type: input.type ?? "all",
+      },
+      {
+        publishedOnly: input.publishedOnly,
+        ...(input.rerank !== false
+          ? { embeddingModel: input.model, candidateLimit: input.rerankTopK }
+          : {}),
+      }
+    )
+  ).results;
 }

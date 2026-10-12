@@ -1,0 +1,24 @@
+   Compiling tantivy-bun-probe v0.1.0 (/workspace/tantivy-validation/tantivy/bun-bridge)
+   Compiling tantivy-sync-validation v0.1.0 (/workspace/tantivy-validation/tantivy/sync)
+warning: variable does not need to be mutable
+  --> sync/src/main.rs:51:35
+   |
+51 |         let s=index.schema(); let mut w:IndexWriter=index.writer(15_000_000).unwrap();
+   |                                   ----^
+   |                                   |
+   |                                   help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+   Compiling tantivy-matching-validation v0.1.0 (/workspace/tantivy-validation/tantivy/matching)
+warning: `tantivy-sync-validation` (bin "tantivy-sync-validation") generated 1 warning (run `cargo fix --bin "tantivy-sync-validation"` to apply 1 suggestion)
+warning: unused import: `Tokenizer`
+ --> matching/src/main.rs:1:207
+  |
+1 | ...r, NgramTokenizer, RegexTokenizer, TextAnalyzer, TokenStream, Tokenizer}, Index, Term};
+  |                                                                  ^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `tantivy-matching-validation` (bin "tantivy-matching-validation") generated 1 warning
+    Finished `dev` profile [unoptimized] target(s) in 2.99s

@@ -301,15 +301,29 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
 
     if (pathname === "/search") {
       if (request.method !== "GET") return methodNotAllowed(request, request.method);
-      const q = (url.searchParams.get("q") || "").trim();
-      if (!q) {
-        return json(request, [], { status: 200 }, resHeaders);
-      }
-      const result = await caller.search.ai.enhanced({
-        q,
-        topK: Number(url.searchParams.get("topK") || 20),
+      const allowed = new Set(["q", "mode", "topK", "type"]);
+      if ([...url.searchParams.keys()].some((key) => !allowed.has(key)))
+        throw new TRPCError({ code: "BAD_REQUEST", message: "unsupported-parameter" });
+      const result = await caller.search.content({
+        q: (url.searchParams.get("q") || "").trim(),
+        mode: (url.searchParams.get("mode") ?? "keyword") as "rag" | "rewrite" | "keyword",
+        topK: Number(url.searchParams.get("topK") ?? 20),
+        type: (url.searchParams.get("type") ?? "all") as "all" | "post" | "memo",
       });
-      return json(request, await normalizePublicSearchTitles(result), { status: 200 }, resHeaders);
+      resHeaders.set("Search-Requested-Mode", result.requestedMode);
+      resHeaders.set("Search-Effective-Mode", result.effectiveMode);
+      if (result.reason) resHeaders.set("Search-Reason", result.reason);
+      resHeaders.set(
+        "access-control-expose-headers",
+        "Search-Requested-Mode, Search-Effective-Mode, Search-Reason"
+      );
+      resHeaders.set("cache-control", "no-store");
+      return json(
+        request,
+        await normalizePublicSearchTitles(result.results),
+        { status: 200 },
+        resHeaders
+      );
     }
 
     if (pathname === "/search/suggestions") {
@@ -331,7 +345,10 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
           resHeaders
         );
       }
-      const result = await suggestPublicSearchTerms({ query: q, reason, limit });
+      const strategy = url.searchParams.get("strategy") ?? "auto";
+      if (strategy !== "auto" && strategy !== "deterministic")
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid suggestion strategy" });
+      const result = await suggestPublicSearchTerms({ query: q, reason, limit, strategy });
       return json(
         request,
         result,

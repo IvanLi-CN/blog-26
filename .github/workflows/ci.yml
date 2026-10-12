@@ -65,8 +65,9 @@ jobs:
         run: bun run test-env:reset-fs-only && bun run public:export
       - name: Exercise the frozen two-product build and production runtime
         run: |
+          rustup toolchain install 1.91.0 --profile minimal
           bun tests/ci/prepare-release-fixture.ts
-          bun scripts/product-release.ts build-products
+          RUSTUP_TOOLCHAIN=1.91.0 bun scripts/product-release.ts build-products
           bun scripts/smoke-product-release.ts
       - name: Save candidate identity and product digest evidence
         uses: actions/upload-artifact@v7
@@ -173,6 +174,11 @@ jobs:
             ${{ runner.os }}-bun-
       - name: Install dependencies
         run: bun install --frozen-lockfile
+      - name: Build embedded search engine
+        run: |
+          rustup toolchain install 1.91.0 --profile minimal
+          RUSTUP_TOOLCHAIN=1.91.0 bun run search:native:build
+          bun run search:native:verify
       - name: Run unit tests
         run: bun ./scripts/run-precommit-tests.ts
 
@@ -229,6 +235,11 @@ jobs:
             ${{ runner.os }}-bun-
       - name: Install dependencies
         run: bun install --frozen-lockfile
+      - name: Build embedded search engine
+        run: |
+          rustup toolchain install 1.91.0 --profile minimal
+          RUSTUP_TOOLCHAIN=1.91.0 bun run search:native:build
+          bun run search:native:verify
       - name: Prepare local-only fixture data
         run: bun run test-env:reset-fs-only
         env:

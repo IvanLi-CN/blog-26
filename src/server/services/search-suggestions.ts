@@ -26,6 +26,7 @@ type SuggestPublicSearchTermsInput = {
   query: string;
   reason: SearchSuggestionReason;
   limit?: number;
+  strategy?: "auto" | "deterministic";
 };
 
 function parseTags(value: string | null): string[] {
@@ -199,6 +200,7 @@ export async function suggestPublicSearchTerms(
       ? validatedFallbackItems
       : rawFallbackItems.slice(0, input.limit ?? 5);
   const fallback = buildFallbackResult({ ...input, query }, fallbackItems);
+  if (input.strategy === "deterministic") return fallback;
   const resolved = await getResolvedLlmConfig();
   const apiKey = resolved.chat.apiKey || "";
   if (!apiKey) return fallback;

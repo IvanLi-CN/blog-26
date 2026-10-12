@@ -1,0 +1,28 @@
+{
+  "corpusSha256": "bd707f35c4d1983fb1220f36dca7227f3f7c08e1753bd8d25acdb071d9bde336",
+  "generatedAt": "2026-10-09T09:34:50.947Z",
+  "documents": 296,
+  "posts": 20,
+  "memos": 276,
+  "indexedUtf8Bytes": 474907,
+  "indexBytes": 509694,
+  "buildMs": 211.442868,
+  "queries": 200,
+  "p50Ms": 0.24062800000001516,
+  "p95Ms": 0.8134280000000444,
+  "startRss": 53215232,
+  "peakRss": 89116672,
+  "endRss": 72400896,
+  "eventLoopTicks": 56,
+  "matches": {
+    "文章": 4,
+    "SQLite": 2,
+    "Arch": 7,
+    "Node": 22,
+    "Node.js": 8,
+    "C++": 0,
+    "sqlite*": 2,
+    "不存在的关键词": 0
+  },
+  "path": "../corpus-index-mFdUu1"
+}
