@@ -147,7 +147,7 @@
     "site/lib/public-route-skeleton.ts": "345ce7f375c30f2f27b940a70e37965fbf995468",
     "site/styles/public-pages.css": "2a6830fdea929861b4cb581bb9bb5fe713f2be51",
     "src/components/WebDemoInspector.tsx": "ab2f1d0ea0b0f58338d2a63a1701a387e10287a1",
-    "src/components/playbook/PlaybookPage.tsx": "749c488212c1e024a53006013031edfc7f01362a",
+    "src/components/playbook/PlaybookPage.tsx": "26bb3682a2b8164d268423b39bf282d97188bd49",
     "tests/e2e/guest/public-csr-navigation.spec.ts": "ad366b51afad990cdb7c9520d85957d96be2e6e0",
     "tests/e2e/web-demo/public-csr.spec.ts": "e5d1397a81984bbafa33a6807e6dfcc4a971d6f8",
     "tests/lib/public-csr-route.test.ts": "7216901d8d686be2a80c0ea54592c6b97af38f4c",
@@ -162,8 +162,8 @@
   "classification": {
     "planned": {
       "impact": "major",
-      "reasoning": "Embedded Tantivy and independent AI modes add capabilities, but enhanced search now deliberately rejects NEAR and unsupported reranker-model overrides; these externally observable compatibility breaks require a Major. SQLite upgrades are additive and preserve source content and the legacy reader.",
-      "assessed_at": "2026-10-09T12:08:24.266643+00:00",
+      "reasoning": "Embedded Tantivy and independent AI modes add capabilities, but enhanced search now deliberately rejects NEAR and unsupported reranker-model overrides; these externally observable compatibility breaks require a Major. SQLite upgrades are additive and preserve source content and the legacy reader. The current candidate also widens the Playbook detail description to the existing header content column without changing public data or state contracts.",
+      "assessed_at": "2026-10-12T04:38:00+00:00",
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
@@ -214,14 +214,14 @@
         }
       ],
       "scope_drift": {
-        "detected": false,
-        "description": "The final scope follows the approved three-mode and administrator settings contract; empirical ranking repairs preserve the accepted relevance requirements."
+        "detected": true,
+        "description": "The current candidate includes a Playbook detail header width repair in an already covered renderer. The layout-only adjustment preserves the approved search, public API, and persistent-state contracts; its current blob and verification are updated here."
       }
     },
     "verified": {
       "impact": "major",
-      "reasoning": "Embedded Tantivy and independent AI modes add capabilities, but enhanced search now deliberately rejects NEAR and unsupported reranker-model overrides; these externally observable compatibility breaks require a Major. SQLite upgrades are additive and preserve source content and the legacy reader.",
-      "assessed_at": "2026-10-09T12:08:24.266643+00:00",
+      "reasoning": "Embedded Tantivy and independent AI modes add capabilities, but enhanced search now deliberately rejects NEAR and unsupported reranker-model overrides; these externally observable compatibility breaks require a Major. SQLite upgrades are additive and preserve source content and the legacy reader. The Playbook detail width repair is a compatible presentation-only adjustment within the covered renderer.",
+      "assessed_at": "2026-10-12T04:38:00+00:00",
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
@@ -242,6 +242,11 @@
           "path": "src/server/services/search-index-recovery.test.ts",
           "blob": "18ab31a2f3acc78dcc2796dbe50b06212c213f04",
           "command": "bun run test:precommit"
+        },
+        {
+          "path": "src/components/playbook/PlaybookPage.tsx",
+          "blob": "26bb3682a2b8164d268423b39bf282d97188bd49",
+          "command": "bunx biome check src/components/playbook/PlaybookPage.tsx; bun run web-demo:build"
         }
       ]
     }
