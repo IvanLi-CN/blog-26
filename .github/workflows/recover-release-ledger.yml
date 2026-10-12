@@ -2,6 +2,11 @@ name: Recover Release Ledger
 
 on:
   workflow_dispatch:
+    inputs:
+      release_id:
+        description: Abandoned failed release identity without frozen products
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -12,13 +17,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: th/recover-release-ledger
+        ref: main
           fetch-depth: 0
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
-      - run: RELEASE_ID=e2035ed1ab07a9b26ffd7ec00cbef5e1c22cc8b7fb4887139b58d1ab4ade7808 bun scripts/product-release.ts repair-ledger
+      - run: RELEASE_ID="${{ inputs.release_id }}" bun scripts/product-release.ts repair-ledger
         env:
           GH_TOKEN: ${{ github.token }}
