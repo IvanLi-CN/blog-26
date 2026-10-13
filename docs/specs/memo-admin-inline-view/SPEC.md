@@ -59,6 +59,13 @@ On wide screens, each card reserves a stable area for actions beside its content
 
 - The view MUST preserve the established Memo title, visibility, public snapshot, storage, and existing Memo API field meanings. The list API MAY add the optional `direction` request parameter (`older` or `newer`), which defaults to `older` when omitted, and the additive `previousCursor` and `hasPrevious` response fields needed for bidirectional pagination. Existing callers that omit `direction` MUST retain the established older-page ordering, cursor progression, `nextCursor`, `hasMore`, and Memo item fields; clients MUST tolerate the additive response fields. This contract MUST NOT introduce a new title fallback, publication step, content source, or administrator permission shortcut.
 
+### REQ-MAIV-008
+
+- The existing quick edit dialog MUST expose the accessible name `编辑 Memo`. A titled Memo MUST show `正在编辑：{Memo 标题}` as its context, while a titleless Memo MUST show `正在编辑当前 Memo`; the dialog MUST NOT expose a slug or filename as title context.
+- When open, the dialog backdrop MUST cover the full viewport and dim and soften the public page behind it without changing the public header's normal closed state. The dialog MUST use a regular Nature panel radius, bounded desktop width and height, and three continuous regions for the header, editor body, and footer.
+- The editor body MUST share the dialog's Nature surface. It MUST NOT render as a nested green card or add an independent rounded card shell, MUST retain a usable minimum writing height, and MUST scroll internally when content exceeds the available viewport. The footer MUST retain the character count, save shortcut hint, visibility control, cancel action, save action, loading state, and error state without creating a large empty gap; the character count and shortcut hint MUST appear as compact footer metadata rather than a separate status band below the editor. A short-content desktop dialog MUST reserve at least 25rem of panel height so the editor does not acquire an incidental scrollbar.
+- The dialog MUST preserve existing save semantics, visibility behavior, editor capability, focus management, Escape and backdrop dismissal, and focus trapping. Desktop controls MUST retain a 36px minimum target; narrow layouts MUST use 44px targets, keep at least 16px viewport margins, and avoid horizontal overflow at 393px, 375px, 360px, and 320px widths. A successful save MUST close the dialog and restore focus to its trigger.
+
 ## Verification
 
 ### VER-MAIV-001
@@ -90,6 +97,12 @@ On wide screens, each card reserves a stable area for actions beside its content
 - Method: keyboard, focus, theme, and viewport checks at desktop, 393px, and 320px.
 - covers: `REQ-MAIV-004`, `REQ-MAIV-006`
 - Pass condition: focus can move from the editor to visibility and submit controls; the editor action labels remain intact on one line at narrow widths; the full-size editor surface has no internal horizontal scroll; actions remain reachable and legible; no horizontal page overflow or clipped editor content occurs; light, dark, system, and reduced-motion states preserve meaning and contrast.
+
+### VER-MAIV-005
+
+- Method: Storybook component states for titled and titleless dialogs in light and dark themes, plus long-content captures at 393px and 320px, followed by the authenticated administrator edit flow.
+- covers: `REQ-MAIV-008`
+- Pass condition: the dialog exposes the approved title and context text; the backdrop covers the viewport; the panel presents a regular three-part layout with one continuous editor surface and a compact footer; long content scrolls inside the body without horizontal overflow; controls meet the desktop and narrow touch-target contracts; and existing save, visibility, dismissal, focus, loading, and error behavior remains intact.
 
 ## Visual Evidence
 
