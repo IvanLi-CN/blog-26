@@ -149,6 +149,7 @@ export default function PublicRouter({
     position: { top: number; left: number } | null;
     restore: boolean;
     userPosition: { top: number; left: number } | null;
+    userScrollIntent: boolean;
     restorationAttempted: boolean;
     programmaticPosition: { top: number; left: number } | null;
   } | null>(null);
@@ -173,8 +174,11 @@ export default function PublicRouter({
     document.dispatchEvent(new Event("astro:before-swap"));
     if (mode === "push") {
       const pending = pendingScroll.current;
-      const persistedPosition = pending?.userPosition ??
-        window.history.state?.publicCsrScroll ?? { top: window.scrollY, left: window.scrollX };
+      const persistedPosition =
+        pending?.userPosition ??
+        window.history.state?.publicCsrScroll ??
+        pending?.position ??
+        (pending ? { top: 0, left: 0 } : { top: window.scrollY, left: window.scrollX });
       window.history.replaceState(
         {
           ...window.history.state,
@@ -189,6 +193,7 @@ export default function PublicRouter({
         mode === "pop" ? (restoredScroll ?? window.history.state?.publicCsrScroll ?? null) : null,
       restore: mode === "pop",
       userPosition: null,
+      userScrollIntent: false,
       restorationAttempted: false,
       programmaticPosition: null,
     };
@@ -251,6 +256,7 @@ export default function PublicRouter({
           position: restoredScroll,
           restore: true,
           userPosition: null,
+          userScrollIntent: false,
           restorationAttempted: false,
           programmaticPosition: null,
         };
@@ -293,24 +299,46 @@ export default function PublicRouter({
     };
     const previousScrollRestoration = window.history.scrollRestoration;
     window.history.scrollRestoration = "manual";
+    const markUserScrollIntent = (event: Event) => {
+      const pending = pendingScroll.current;
+      if (!pending) return;
+      if (
+        event instanceof KeyboardEvent &&
+        !["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End", " ", "Spacebar"].includes(
+          event.key
+        )
+      )
+        return;
+      if (
+        typeof PointerEvent !== "undefined" &&
+        event instanceof PointerEvent &&
+        event.buttons === 0
+      )
+        return;
+      pending.userScrollIntent = true;
+    };
     const saveScroll = () => {
       const current = { top: window.scrollY, left: window.scrollX };
       const pending = pendingScroll.current;
       if (pending) {
         // Ignore route-swap geometry and the router's own restore scroll. A
-        // user scroll during settling becomes the position saved for a later push.
+        // scroll following real user input becomes the position saved for a later push.
         const expected = pending.programmaticPosition;
-        if (
-          pending.restorationAttempted &&
-          (!expected || current.top !== expected.top || current.left !== expected.left)
-        )
-          pending.userPosition = current;
+        if (pending.restorationAttempted && pending.userScrollIntent) {
+          if (!expected || current.top !== expected.top || current.left !== expected.left)
+            pending.userPosition = current;
+          pending.userScrollIntent = false;
+        }
         return;
       }
       window.history.replaceState({ ...window.history.state, publicCsrScroll: current }, "");
     };
     saveScroll();
     window.addEventListener("scroll", saveScroll, { passive: true });
+    window.addEventListener("wheel", markUserScrollIntent, { passive: true });
+    window.addEventListener("touchmove", markUserScrollIntent, { passive: true });
+    window.addEventListener("pointermove", markUserScrollIntent, { passive: true });
+    window.addEventListener("keydown", markUserScrollIntent);
     document.addEventListener("click", click);
     window.addEventListener("popstate", pop);
     document.addEventListener("submit", submit);
@@ -322,6 +350,10 @@ export default function PublicRouter({
       request.current?.abort();
       window.history.scrollRestoration = previousScrollRestoration;
       window.removeEventListener("scroll", saveScroll);
+      window.removeEventListener("wheel", markUserScrollIntent);
+      window.removeEventListener("touchmove", markUserScrollIntent);
+      window.removeEventListener("pointermove", markUserScrollIntent);
+      window.removeEventListener("keydown", markUserScrollIntent);
       document.removeEventListener("click", click);
       window.removeEventListener("popstate", pop);
       document.removeEventListener("submit", submit);
@@ -384,16 +416,22 @@ export default function PublicRouter({
         cancelAnimationFrame(frame);
         frame = requestAnimationFrame(restoreScroll);
       };
-      const finishRestore = (persistPosition = false) => {
+      const finishRestore = (
+        persistPosition = false,
+        position?: { top: number; left: number } | null
+      ) => {
+        const persistedPosition = persistPosition
+          ? (position ?? { top: window.scrollY, left: window.scrollX })
+          : null;
         pendingScroll.current = null;
         if (settleTimer !== undefined) window.clearTimeout(settleTimer);
         observer?.disconnect();
         resizeObserver?.disconnect();
-        if (persistPosition) {
+        if (persistedPosition) {
           window.history.replaceState(
             {
               ...window.history.state,
-              publicCsrScroll: { top: window.scrollY, left: window.scrollX },
+              publicCsrScroll: persistedPosition,
             },
             ""
           );
@@ -417,7 +455,7 @@ export default function PublicRouter({
             settleTimer = window.setTimeout(scheduleRestore, 120);
             return;
           }
-          finishRestore();
+          finishRestore(scroll.userPosition !== null, scroll.userPosition);
           return;
         }
         main?.focus({ preventScroll: true });
