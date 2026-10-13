@@ -8,6 +8,8 @@ import {
   techStackArrayMode,
 } from "@/lib/playbook/tech-stack";
 
+const TECH_STACK_PREVIEW_ITEMS = 4;
+
 function ScalarValue({ value }: { value: string | number | boolean }) {
   return (
     <code className="max-w-full break-words font-mono text-sm font-medium text-[color:var(--nature-accent-strong)]">
@@ -18,46 +20,53 @@ function ScalarValue({ value }: { value: string | number | boolean }) {
 
 function ListItems({ entry, items }: { entry: TechStackEntry; items: TechStackNode[] }) {
   const mode = techStackArrayMode(items);
-  const keys = new Map<string, number>();
-  const content = (
-    <ul className={mode === "chips" ? "flex flex-wrap gap-1.5" : "space-y-1"}>
-      {items.map((item) => {
-        const baseKey = `${entry.key}-${item.kind === "scalar" ? String(item.value) : JSON.stringify(item)}`;
-        const occurrence = keys.get(baseKey) ?? 0;
-        keys.set(baseKey, occurrence + 1);
-        return (
-          <li key={`${baseKey}-${occurrence}`} className="min-w-0">
-            {item.kind === "scalar" ? (
-              mode === "chips" ? (
-                <span className="inline-flex max-w-full break-words rounded-full border border-[rgba(var(--nature-accent-rgb),0.24)] bg-[rgba(var(--nature-accent-rgb),0.1)] px-2 py-0.5 font-mono text-[11px] font-medium leading-4 text-[color:var(--nature-accent-strong)]">
-                  {String(item.value)}
-                </span>
+  const renderItems = (visibleItems: TechStackNode[]) => {
+    const keys = new Map<string, number>();
+    return (
+      <ul className={mode === "chips" ? "flex flex-wrap gap-1.5" : "space-y-1"}>
+        {visibleItems.map((item) => {
+          const baseKey = `${entry.key}-${item.kind === "scalar" ? String(item.value) : JSON.stringify(item)}`;
+          const occurrence = keys.get(baseKey) ?? 0;
+          keys.set(baseKey, occurrence + 1);
+          return (
+            <li key={`${baseKey}-${occurrence}`} className="min-w-0">
+              {item.kind === "scalar" ? (
+                mode === "chips" ? (
+                  <span className="inline-flex max-w-full break-words rounded-full border border-[rgba(var(--nature-accent-rgb),0.24)] bg-[rgba(var(--nature-accent-rgb),0.1)] px-2 py-0.5 font-mono text-[11px] font-medium leading-4 text-[color:var(--nature-accent-strong)]">
+                    {String(item.value)}
+                  </span>
+                ) : (
+                  <span className="flex min-w-0 items-baseline gap-2 break-words font-mono text-sm leading-6 text-[color:var(--nature-text-soft)]">
+                    <span
+                      aria-hidden="true"
+                      className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--nature-accent)]"
+                    />
+                    {String(item.value)}
+                  </span>
+                )
               ) : (
-                <span className="flex min-w-0 items-baseline gap-2 break-words font-mono text-sm leading-6 text-[color:var(--nature-text-soft)]">
-                  <span
-                    aria-hidden="true"
-                    className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--nature-accent)]"
-                  />
-                  {String(item.value)}
-                </span>
-              )
-            ) : (
-              <NodeValue entry={entry} value={item} />
-            )}
-          </li>
-        );
-      })}
-    </ul>
-  );
+                <NodeValue entry={entry} value={item} />
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    );
+  };
 
-  if (!shouldCollapseTechStackList(entry.key, items.length)) return content;
+  if (!shouldCollapseTechStackList(entry.key, items.length)) return renderItems(items);
+  const visibleItems = items.slice(0, TECH_STACK_PREVIEW_ITEMS);
+  const remainingItems = items.slice(TECH_STACK_PREVIEW_ITEMS);
   return (
-    <details>
-      <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-[color:var(--nature-accent-strong)] underline decoration-[color:var(--nature-line-strong)] underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--nature-accent)]">
-        共 {items.length} 项
-      </summary>
-      <div className="mt-2">{content}</div>
-    </details>
+    <div className="space-y-1.5">
+      {renderItems(visibleItems)}
+      <details>
+        <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-[color:var(--nature-accent-strong)] underline decoration-[color:var(--nature-line-strong)] underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--nature-accent)]">
+          共 {items.length} 项，展开其余 {remainingItems.length} 项
+        </summary>
+        <div className="mt-2">{renderItems(remainingItems)}</div>
+      </details>
+    </div>
   );
 }
 
