@@ -1,12 +1,12 @@
 import { useState } from "react";
 import {
-  formatTechStackRaw,
   parsePlaybookTechStack,
   shouldCollapseTechStackList,
   type TechStackEntry,
   type TechStackNode,
   techStackArrayMode,
 } from "@/lib/playbook/tech-stack";
+import PlaybookTechStackRaw from "./PlaybookTechStackRaw";
 
 const TECH_STACK_PREVIEW_ITEMS = 4;
 
@@ -171,9 +171,9 @@ export default function PlaybookTechStack({ value }: { value: unknown }) {
         <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-[color:var(--nature-accent-strong)] underline decoration-[color:var(--nature-line-strong)] underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--nature-accent)]">
           查看原始数据
         </summary>
-        <pre className="mt-2 max-h-80 max-w-full overflow-auto whitespace-pre-wrap break-all rounded-md bg-[rgba(var(--nature-accent-rgb),0.07)] p-2.5 text-xs leading-5 text-[color:var(--nature-text-soft)]">
-          {formatTechStackRaw(value)}
-        </pre>
+        <div className="mt-2">
+          <PlaybookTechStackRaw value={value} />
+        </div>
       </details>
     </section>
   );

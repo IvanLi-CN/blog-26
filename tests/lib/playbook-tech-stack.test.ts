@@ -110,6 +110,10 @@ describe("playbook technology stack presentation", () => {
     expect(html).toContain('role="tablist"');
     expect(html).toContain('role="tabpanel"');
     expect(html).toContain("查看原始数据");
+    expect(html).toContain("复制原始数据");
+    expect(html).toContain("全屏查看原始数据");
+    expect(html).toContain("var(--nature-code-function)");
+    expect(html).toContain('aria-label="原始技术栈 JSON"');
     expect(html).not.toContain("cargo");
     expect(html).not.toContain("暂无可展示的公开字段");
     expect(html).not.toContain("sm:grid-cols-2");
