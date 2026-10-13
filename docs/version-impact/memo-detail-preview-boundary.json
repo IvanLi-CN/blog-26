@@ -32,7 +32,7 @@
     "planned": {
       "impact": "patch",
       "reasoning": "The change preserves public API payload shapes, database and local-content formats, public snapshot generation, and deployment host resolution. It adds compatible Console navigation and server-rendered administrator detail projection while making unauthorized private reads indistinguishable from missing resources.",
-      "assessed_at": "2026-10-14T05:07:13+08:00",
+      "assessed_at": "2026-10-14T04:35:51+08:00",
       "evidence": [
         {
           "path": "docs/adr/0024-memo-detail-preview-boundary.md",
@@ -75,7 +75,7 @@
     "verified": {
       "impact": "patch",
       "reasoning": "Focused component, clipping, HTTP compatibility, build, production Console, admin E2E, guest navigation, and clipping Web Demo checks pass. The implementation preserves existing public payload shapes and persistent state while enforcing the same-origin detail/preview boundary and private-resource non-disclosure; the 403-to-404 status change is an intentional compatible privacy hardening because private and missing resources share the documented not-found response.",
-      "assessed_at": "2026-10-14T04:35:51+08:00",
+      "assessed_at": "2026-10-14T05:13:48+08:00",
       "evidence": [
         {
           "path": "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts",
