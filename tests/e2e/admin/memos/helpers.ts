@@ -39,6 +39,15 @@ export async function openAdminMemoDetail(page: Page, slug: string) {
   await openAdminMemoPreview(page, slug);
 }
 
+export async function openConsoleMemoDetail(page: Page, slug: string) {
+  await page.goto(`/memos/${encodeURIComponent(slug)}`, {
+    waitUntil: "domcontentloaded",
+    timeout: 60_000,
+  });
+  await page.waitForURL(new RegExp(`/memos/${encodeURIComponent(slug)}$`), { timeout: 60_000 });
+  await expect(page.getByTestId("public-memo-detail-heading")).toBeVisible({ timeout: 60_000 });
+}
+
 export async function waitForAdminPreviewMemoBody(page: Page, timeout = 60_000) {
   const previewBody = page.getByTestId("admin-preview-memo-body");
   const previewError = page.getByText("预览加载失败");
@@ -187,7 +196,7 @@ export async function openMemoEditDialog(page: Page, trigger: Locator) {
 }
 
 export async function openMemoDetailFromCard(page: Page, card: Locator) {
-  const detailLink = card.getByRole("link", { name: "预览" }).first();
+  const detailLink = card.getByRole("link", { name: "查看详情" }).first();
   await expect(detailLink).toBeVisible({ timeout: 60_000 });
   await detailLink.scrollIntoViewIfNeeded();
 
@@ -196,5 +205,5 @@ export async function openMemoDetailFromCard(page: Page, card: Locator) {
   if (!slug) {
     throw new Error("Expected memo card detail link to include a slug");
   }
-  await openAdminMemoDetail(page, slug);
+  await openConsoleMemoDetail(page, slug);
 }

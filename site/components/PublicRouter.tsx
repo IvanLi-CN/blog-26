@@ -150,12 +150,18 @@ export default function PublicRouter({
     restore: boolean;
   } | null>(null);
   const navigationStarted = useRef(false);
-  const navigateRef = useRef<(target: URL, mode: "push" | "pop" | "retry") => void>(() => {
+  const navigateRef = useRef<
+    (
+      target: URL,
+      mode: "push" | "pop" | "retry",
+      restoredScroll?: { top: number; left: number } | null
+    ) => void
+  >(() => {
     /* Assigned on each render. */
   });
   const route = matchPublicRoute(new URL(url, "https://public.invalid").pathname);
 
-  navigateRef.current = (target, mode) => {
+  navigateRef.current = (target, mode, restoredScroll) => {
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
@@ -174,7 +180,8 @@ export default function PublicRouter({
       window.history.pushState({ publicCsr: true }, "", target);
     }
     pendingScroll.current = {
-      position: mode === "pop" ? (window.history.state?.publicCsrScroll ?? null) : null,
+      position:
+        mode === "pop" ? (restoredScroll ?? window.history.state?.publicCsrScroll ?? null) : null,
       restore: mode === "pop",
     };
     setUrl(target.pathname + target.search + target.hash);
@@ -222,8 +229,9 @@ export default function PublicRouter({
       event.preventDefault();
       navigateRef.current(new URL(anchor.href), "push");
     };
-    const pop = () => {
+    const pop = (event: PopStateEvent) => {
       const target = new URL(window.location.href);
+      const restoredScroll = event.state?.publicCsrScroll ?? null;
       if (
         publicRouteIdentity(target) ===
           publicRouteIdentity(new URL(urlRef.current, target.origin)) &&
@@ -232,14 +240,14 @@ export default function PublicRouter({
         setUrl(target.pathname + target.search + target.hash);
         navigationStarted.current = true;
         pendingScroll.current = {
-          position: window.history.state?.publicCsrScroll ?? null,
+          position: restoredScroll,
           restore: true,
         };
         // Distinct history entries can share the same URL but reading positions.
         setScrollRevision((revision) => revision + 1);
         return;
       }
-      navigateRef.current(target, "pop");
+      navigateRef.current(target, "pop", restoredScroll);
     };
     const environment = (event: Event) => {
       const detail = (event as CustomEvent<WebDemoStateChangeDetail>).detail;
@@ -340,13 +348,34 @@ export default function PublicRouter({
     if (payload || error) document.dispatchEvent(new Event("astro:page-load"));
     if ((payload || error) && navigationStarted.current && pendingScroll.current) {
       let observer: MutationObserver | undefined;
+      let resizeObserver: ResizeObserver | undefined;
       let frame = 0;
+      let settleTimer: number | undefined;
+      let stableChecks = 0;
+      const scheduleRestore = () => {
+        if (settleTimer !== undefined) {
+          window.clearTimeout(settleTimer);
+          settleTimer = undefined;
+        }
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(restoreScroll);
+      };
+      const finishRestore = () => {
+        pendingScroll.current = null;
+        if (settleTimer !== undefined) window.clearTimeout(settleTimer);
+        observer?.disconnect();
+        resizeObserver?.disconnect();
+      };
       const restoreScroll = () => {
+        const scroll = pendingScroll.current;
+        if (!scroll) return;
         const main = document.querySelector<HTMLElement>("main.nature-main");
         // MDX is route-specific and may resolve after the page DTO. Wait for
         // its real headings and height before restoring a fragment or history.
-        if (main?.querySelector("[data-public-body-pending]")) return;
-        observer?.disconnect();
+        if (main?.querySelector("[data-public-body-pending]")) {
+          settleTimer = window.setTimeout(scheduleRestore, 120);
+          return;
+        }
         main?.focus({ preventScroll: true });
         const hash = new URL(url, "https://public.invalid").hash;
         let anchor: HTMLElement | null = null;
@@ -355,25 +384,41 @@ export default function PublicRouter({
         } catch {
           /* Invalid fragment has no matching anchor. */
         }
-        const scroll = pendingScroll.current;
-        if (scroll?.restore && scroll.position)
+        if (scroll.restore && scroll.position) {
           window.scrollTo({ ...scroll.position, behavior: "instant" });
-        else if (anchor) anchor.scrollIntoView();
-        else window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-        pendingScroll.current = null;
+          const reachedTarget =
+            Math.abs(window.scrollY - scroll.position.top) <= 1 &&
+            Math.abs(window.scrollX - scroll.position.left) <= 1;
+          stableChecks = reachedTarget ? stableChecks + 1 : 0;
+          // Virtualized rows can finish measuring several frames after the
+          // route payload is ready. Keep enforcing the browser's saved
+          // position across that settling window before releasing the guard.
+          if (stableChecks < 12) {
+            settleTimer = window.setTimeout(scheduleRestore, 120);
+            return;
+          }
+        } else if (anchor) {
+          anchor.scrollIntoView();
+        } else {
+          window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+        }
+        finishRestore();
       };
       const main = document.querySelector<HTMLElement>("main.nature-main");
       if (main) {
-        observer = new MutationObserver(() => {
-          cancelAnimationFrame(frame);
-          frame = requestAnimationFrame(restoreScroll);
-        });
+        observer = new MutationObserver(scheduleRestore);
         observer.observe(main, { childList: true, subtree: true });
+        if (typeof ResizeObserver !== "undefined") {
+          resizeObserver = new ResizeObserver(scheduleRestore);
+          resizeObserver.observe(main);
+        }
       }
-      frame = requestAnimationFrame(restoreScroll);
+      scheduleRestore();
       return () => {
         cancelAnimationFrame(frame);
+        if (settleTimer !== undefined) window.clearTimeout(settleTimer);
         observer?.disconnect();
+        resizeObserver?.disconnect();
       };
     }
   }, [payload, error, url, route?.path, scrollRevision]);

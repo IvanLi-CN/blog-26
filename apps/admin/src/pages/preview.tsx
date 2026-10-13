@@ -22,6 +22,8 @@ export type PreviewPublicPageState = {
   href: string;
   enabled: boolean;
   disabledReason?: string;
+  label?: string;
+  openInNewTab?: boolean;
 };
 
 export function PreviewChrome({
@@ -48,9 +50,14 @@ export function PreviewChrome({
           <>
             {publicPage?.enabled ? (
               <Button asChild variant="outline">
-                <a href={publicPage.href} target="_blank" rel="noreferrer">
+                <a
+                  href={publicPage.href}
+                  {...(publicPage.openInNewTab === false
+                    ? {}
+                    : { target: "_blank", rel: "noreferrer" })}
+                >
                   <ArrowUpRight className="size-4" />
-                  打开公开页
+                  {publicPage.label ?? "打开公开页"}
                 </a>
               </Button>
             ) : publicPage ? (
@@ -155,6 +162,7 @@ export function PostPreviewArticle({ post }: { post: AdminPreviewPost }) {
 export function MemoPreviewArticle({ memo }: { memo: AdminPreviewMemo }) {
   const body = stripMatchingLeadingTitleHeading(memo.content || "", memo.title || memo.slug);
   const presentation = getMemoPresentation(memo);
+  const clipping = memo.clipping;
 
   return (
     <PreviewArticleShell
@@ -173,15 +181,15 @@ export function MemoPreviewArticle({ memo }: { memo: AdminPreviewMemo }) {
       bodyTestId="admin-preview-memo-body"
       body={body}
       bodyContent={
-        memo.clipping
-          ? (header) => (
+        clipping
+          ? (header: React.ReactNode) => (
               <ClippingDetail
                 key={memo.slug}
                 slug={memo.slug}
                 surface="admin"
                 memoContent={body}
                 header={header}
-                initialArticle={{ reading: memo.clipping, source: null, translation: null }}
+                initialArticle={{ reading: clipping, source: null, translation: null }}
                 live
                 initialCanDiscuss
               />
@@ -251,7 +259,12 @@ export function MemoPreviewPage() {
     <PreviewChrome
       title="Memo 预览"
       description="检查 Memo 在公开站中的阅读效果。"
-      publicPage={{ href: `/memos/${slug}`, enabled: true }}
+      publicPage={{
+        href: `/memos/${slug}`,
+        enabled: true,
+        label: "打开详情",
+        openInNewTab: false,
+      }}
       onRefresh={() => void query.refetch()}
       refreshing={query.isFetching}
     >

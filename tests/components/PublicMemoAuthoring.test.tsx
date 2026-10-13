@@ -143,3 +143,24 @@ describe("Administrator Memo pagination", () => {
     });
   }
 });
+
+describe("Memo detail boundary", () => {
+  test("points the eye action to the same-origin Console detail route", async () => {
+    globalThis.fetch = (async (input) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/auth/me") return Response.json({ isAdmin: true });
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    }) as typeof fetch;
+
+    const view = render(
+      <PublicMemoComposerIsland
+        initialIsAdmin
+        initialMemos={[memo("memo-detail")]}
+        localSourceEnabled={false}
+      />
+    );
+
+    const eye = await waitFor(() => view.getByRole("link", { name: "查看详情" }));
+    expect(eye.getAttribute("href")).toBe("/memos/memo-detail");
+  });
+});

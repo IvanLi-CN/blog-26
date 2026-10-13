@@ -14,6 +14,8 @@ export default function MemoPage(data: Awaited<ReturnType<typeof loadmemo>>) {
     publicMediaContext,
     memoDetailContent,
     clippingArticle,
+    initialMemo,
+    initialIsAdmin,
     structuredData,
   } = data;
   const heading = (
@@ -36,7 +38,12 @@ export default function MemoPage(data: Awaited<ReturnType<typeof loadmemo>>) {
       <section className="nature-detail-container memo-detail-layout px-2 py-8 sm:px-6 sm:py-10">
         <article className="nature-reading-measure space-y-8">
           {process.env.CONSOLE_RUNTIME === "true" ? (
-            <PublicMemoDetailControlsIsland slug={memo.slug} />
+            <PublicMemoDetailControlsIsland
+              slug={memo.slug}
+              initialMemo={initialMemo}
+              initialIsAdmin={initialIsAdmin}
+              initialClippingArticle={clippingArticle}
+            />
           ) : null}
           <div data-public-memo-static-shell="">
             {clippingArticle ? (

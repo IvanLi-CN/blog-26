@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
-import { ClippingDetail } from "@/components/memos/ClippingDetail";
+import { type ClippingArticle, ClippingDetail } from "@/components/memos/ClippingDetail";
 import { MemoTypeBadge } from "@/components/memos/MemoTypeBadge";
 import { QuickMemoEditModal } from "@/components/memos/QuickMemoEditModal";
 import { type QuickMemoData, QuickMemoEditor } from "@/components/memos/QuickMemoEditor";
@@ -30,6 +30,9 @@ type PublicMemoRecord = {
   canDiscuss?: boolean;
   authoredContent?: string;
   authoredTitle?: string;
+  createdAt?: string;
+  publishedAt?: string | null;
+  updatedAt?: string | null;
 };
 
 type PublicMemoListResponse = {
@@ -157,7 +160,11 @@ function usePublicAuth(initialIsAdmin = false) {
 }
 
 function buildPreviewHref(slug: string) {
-  return toPublicApiUrl(`/admin/preview/memos/${encodeURIComponent(slug)}`);
+  return `/admin/preview/memos/${encodeURIComponent(slug)}`;
+}
+
+function buildMemoDetailHref(slug: string) {
+  return `/memos/${encodeURIComponent(slug)}`;
 }
 
 function useHideStaticSnapshot(selector: string, active: boolean) {
@@ -259,9 +266,9 @@ function PublicMemoCard({
             >
               <a
                 className="nature-icon-button inline-flex min-h-11 min-w-11 shrink-0 p-0"
-                href={buildPreviewHref(memo.slug)}
-                aria-label="预览"
-                title={presentation.kind === "clipping" ? "预览剪藏" : "预览 Memo"}
+                href={buildMemoDetailHref(memo.slug)}
+                aria-label="查看详情"
+                title={presentation.kind === "clipping" ? "查看剪藏详情" : "查看 Memo 详情"}
               >
                 <Icon name="tabler:eye" className="h-5 w-5" />
               </a>
@@ -753,16 +760,30 @@ export function PublicMemoComposerIsland({
   );
 }
 
-export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
+export function PublicMemoDetailControlsIsland({
+  slug,
+  initialMemo,
+  initialIsAdmin = false,
+  initialClippingArticle,
+}: {
+  slug: string;
+  initialMemo?: PublicMemoRecord;
+  initialIsAdmin?: boolean;
+  initialClippingArticle?: ClippingArticle | null;
+}) {
   const readJson = useMemoRequest();
-  const { user, isAdmin, isLoading } = usePublicAuth();
-  const [memo, setMemo] = useState<PublicMemoRecord | null>(null);
+  const { user, isAdmin, isLoading } = usePublicAuth(initialIsAdmin);
+  const [memo, setMemo] = useState<PublicMemoRecord | null>(initialMemo ?? null);
   const [isFetching, setIsFetching] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useHideStaticSnapshot("[data-public-memo-static-shell]", isAdmin || Boolean(memo?.canDiscuss));
+  const effectiveIsAdmin = isAdmin || (initialIsAdmin && Boolean(memo));
+  useHideStaticSnapshot(
+    "[data-public-memo-static-shell]",
+    effectiveIsAdmin || Boolean(memo?.canDiscuss)
+  );
 
   const loadMemo = useCallback(async () => {
     setIsFetching(true);
@@ -773,12 +794,12 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
       );
       setMemo(result);
     } catch (error) {
-      setMemo(null);
+      if (!initialMemo) setMemo(null);
       setErrorMessage(error instanceof Error ? error.message : String(error));
     } finally {
       setIsFetching(false);
     }
-  }, [readJson, slug]);
+  }, [initialMemo, readJson, slug]);
 
   useEffect(() => {
     if (!user) return;
@@ -807,7 +828,6 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
           }
         );
         setMemo(updated);
-        window.location.href = buildPreviewHref(updated.slug);
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : String(error));
         throw error;
@@ -864,13 +884,13 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
     </header>
   ) : null;
 
-  if (isLoading || (!isAdmin && !memo?.canDiscuss)) {
+  if ((isLoading && !memo) || (!effectiveIsAdmin && !memo?.canDiscuss)) {
     return null;
   }
 
   return (
     <section className="mb-6 space-y-4" data-testid="public-memo-detail-controls">
-      {isAdmin ? (
+      {effectiveIsAdmin ? (
         <div className="nature-panel flex flex-wrap items-center justify-between gap-3 px-5 py-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
@@ -932,9 +952,15 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
                 slug={memo.slug}
                 memoContent={detailBody}
                 header={detailHeader}
-                initialArticle={{ reading: memo.clipping, source: null, translation: null }}
+                initialArticle={
+                  initialClippingArticle ?? {
+                    reading: memo.clipping,
+                    source: null,
+                    translation: null,
+                  }
+                }
                 live
-                initialCanDiscuss={Boolean(memo.canDiscuss || isAdmin)}
+                initialCanDiscuss={Boolean(memo.canDiscuss || effectiveIsAdmin)}
                 onTitleChange={(title) =>
                   setMemo((current) =>
                     current && current.title !== title ? { ...current, title } : current
@@ -966,7 +992,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
         </div>
       ) : null}
 
-      {isAdmin ? (
+      {effectiveIsAdmin ? (
         <QuickMemoEditModal
           open={modalOpen}
           onClose={() => setModalOpen(false)}
