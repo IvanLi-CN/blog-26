@@ -12,7 +12,7 @@
     "docs/specs/nature-front-ui/assets/fixed-viewport-background-mobile-project-dark.png": "63ae266730d33dc89ad65928601b6b7d13c118a8",
     "src/components/common/AmbientScene.stories.tsx": "9743fe3ac3e752ebec6a57c571be2fa75bd69315",
     "src/styles/globals.css": "4cfd1caf6affea04091c90cb4d12f2def4cd1932",
-    "src/styles/nature-restored.css": "0fb65a3835f493c90bc10a86d032274a40b52767",
+    "src/styles/nature-restored.css": "e7b1d48f4e41b1f16e341e4c8fe8540d4d390d64",
     "tests/e2e/guest/astro-front-phase1.spec.ts": "afd59aab42a4e1abedde50834557ae6c55825f7e"
   },
   "change": {
@@ -76,7 +76,7 @@
         },
         {
           "path": "src/styles/nature-restored.css",
-          "blob": "0fb65a3835f493c90bc10a86d032274a40b52767",
+          "blob": "e7b1d48f4e41b1f16e341e4c8fe8540d4d390d64",
           "command": "Duplicated public stylesheet entry point passes Biome and retains the same fixed-layer token implementation"
         }
       ]
