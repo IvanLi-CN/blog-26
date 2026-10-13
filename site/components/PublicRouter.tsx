@@ -406,6 +406,9 @@ export default function PublicRouter({
         // MDX is route-specific and may resolve after the page DTO. Wait for
         // its real headings and height before restoring a fragment or history.
         if (main?.querySelector("[data-public-body-pending]")) {
+          // The body may stay pending for several seconds. Treat scroll events
+          // after this first check as user input so a subsequent push keeps it.
+          scroll.restorationAttempted = true;
           restoreAttempts += 1;
           if (
             performance.now() - restoreStartedAt < maxRestoreDurationMs &&
