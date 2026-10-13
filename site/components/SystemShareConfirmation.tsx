@@ -113,8 +113,13 @@ export default function SystemShareConfirmation() {
         );
       }
       await readJson(toPublicApiUrl("/api/public/system-share"), { method: "POST", body: form });
-      await clearPendingSystemShare();
-      window.location.assign("/memos");
+      try {
+        await clearPendingSystemShare();
+      } catch (cleanupError) {
+        // The server commit is authoritative; a local cleanup failure must not hide success.
+        console.warn("[system-share] failed to clear the local pending share", cleanupError);
+      }
+      window.location.replace("/memos");
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "发布失败，请重试。");
     } finally {
