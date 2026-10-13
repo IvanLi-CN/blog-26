@@ -388,7 +388,15 @@ export default function PublicRouter({
         // MDX is route-specific and may resolve after the page DTO. Wait for
         // its real headings and height before restoring a fragment or history.
         if (main?.querySelector("[data-public-body-pending]")) {
-          settleTimer = window.setTimeout(scheduleRestore, 120);
+          restoreAttempts += 1;
+          if (
+            performance.now() - restoreStartedAt < maxRestoreDurationMs &&
+            restoreAttempts < maxRestoreAttempts
+          ) {
+            settleTimer = window.setTimeout(scheduleRestore, 120);
+            return;
+          }
+          finishRestore();
           return;
         }
         main?.focus({ preventScroll: true });

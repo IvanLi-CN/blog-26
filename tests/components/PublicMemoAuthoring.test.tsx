@@ -26,7 +26,7 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-describe("Author request lifetime", () => {
+describe.serial("Author request lifetime", () => {
   for (const boundary of ["route-start", "unmount"]) {
     test(`ignores a late successful delete after ${boundary}`, async () => {
       let release: (() => void) | undefined;
@@ -71,7 +71,7 @@ describe("Author request lifetime", () => {
   }
 });
 
-describe("Administrator Memo pagination", () => {
+describe.serial("Administrator Memo pagination", () => {
   for (const activeDirection of ["older", "newer"] as const) {
     const queuedDirection = activeDirection === "older" ? "newer" : "older";
 
@@ -144,11 +144,20 @@ describe("Administrator Memo pagination", () => {
   }
 });
 
-describe("Memo detail boundary", () => {
+describe.serial("Memo detail boundary", () => {
   test("points the eye action to the same-origin Console detail route", async () => {
+    let authParsed = false;
     globalThis.fetch = (async (input) => {
       const url = new URL(String(input), "http://localhost");
-      if (url.pathname === "/api/public/auth/me") return Response.json({ isAdmin: true });
+      if (url.pathname === "/api/public/auth/me")
+        return {
+          ok: true,
+          status: 200,
+          json: async () => {
+            authParsed = true;
+            return { isAdmin: true };
+          },
+        } as Response;
       throw new Error(`Unexpected request: ${url.pathname}`);
     }) as typeof fetch;
 
@@ -161,13 +170,23 @@ describe("Memo detail boundary", () => {
     );
 
     const eye = await waitFor(() => view.getByRole("link", { name: "查看详情" }));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(authParsed).toBe(true);
     expect(eye.getAttribute("href")).toBe("/memos/memo-detail");
   });
 
   test("removes an SSR admin detail when the refreshed session is no longer admin", async () => {
     globalThis.fetch = (async (input) => {
       const url = new URL(String(input), "http://localhost");
-      if (url.pathname === "/api/public/auth/me") return Response.json({ isAdmin: false });
+      const json = (payload: unknown) =>
+        ({ ok: true, status: 200, json: async () => payload }) as Response;
+      if (url.pathname === "/api/public/auth/me") return json(null);
+      if (url.pathname === "/api/public/memos/private-memo") {
+        return json({ ...memo("private-memo"), isPublic: true });
+      }
       throw new Error(`Unexpected request: ${url.pathname}`);
     }) as typeof fetch;
 
@@ -179,9 +198,9 @@ describe("Memo detail boundary", () => {
       />
     );
 
-    await waitFor(() => {
-      expect(view.queryByTestId("public-memo-detail-controls")).toBeNull();
-      expect(view.queryByTestId("public-memo-detail-body")).toBeNull();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
     });
+    expect(view.queryByRole("button", { name: "编辑 Memo" })).toBeNull();
   });
 });

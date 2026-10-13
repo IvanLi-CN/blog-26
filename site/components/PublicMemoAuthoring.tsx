@@ -777,6 +777,7 @@ export function PublicMemoDetailControlsIsland({
   const readJson = useMemoRequest();
   const { user, isAdmin, isLoading, isResolved } = usePublicAuth(initialIsAdmin);
   const [memo, setMemo] = useState<PublicMemoRecord | null>(initialMemo ?? null);
+  const [isPublicFallback, setIsPublicFallback] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -793,8 +794,30 @@ export function PublicMemoDetailControlsIsland({
 
   useEffect(() => {
     if (!initialIsAdmin || !isResolved || isAdmin) return;
+    const controller = new AbortController();
+    let active = true;
+    const cancel = () => controller.abort();
+    document.addEventListener("astro:before-swap", cancel);
     setMemo(null);
-  }, [initialIsAdmin, isAdmin, isResolved]);
+    setIsPublicFallback(false);
+    void requestJson<PublicMemoRecord>(
+      toPublicApiUrl(`/api/public/memos/${encodeURIComponent(slug)}`),
+      { signal: controller.signal }
+    )
+      .then((publicMemo) => {
+        if (!active) return;
+        setMemo(publicMemo);
+        setIsPublicFallback(true);
+      })
+      .catch(() => {
+        // Private and draft Memos remain absent from the public projection.
+      });
+    return () => {
+      active = false;
+      document.removeEventListener("astro:before-swap", cancel);
+      controller.abort();
+    };
+  }, [initialIsAdmin, isAdmin, isResolved, slug]);
 
   const loadMemo = useCallback(async () => {
     setIsFetching(true);
@@ -813,9 +836,9 @@ export function PublicMemoDetailControlsIsland({
   }, [initialMemo, readJson, slug]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!isResolved || !user) return;
     void loadMemo();
-  }, [user, loadMemo]);
+  }, [isResolved, user, loadMemo]);
 
   const handleSave = useCallback(
     async (values: { content: string; isPublic: boolean }) => {
@@ -895,7 +918,7 @@ export function PublicMemoDetailControlsIsland({
     </header>
   ) : null;
 
-  if ((isLoading && !memo) || (!effectiveIsAdmin && !memo?.canDiscuss)) {
+  if ((isLoading && !memo) || (!effectiveIsAdmin && !memo?.canDiscuss && !isPublicFallback)) {
     return null;
   }
 
@@ -964,11 +987,13 @@ export function PublicMemoDetailControlsIsland({
                 memoContent={detailBody}
                 header={detailHeader}
                 initialArticle={
-                  initialClippingArticle ?? {
-                    reading: memo.clipping,
-                    source: null,
-                    translation: null,
-                  }
+                  isPublicFallback
+                    ? { reading: memo.clipping, source: null, translation: null }
+                    : (initialClippingArticle ?? {
+                        reading: memo.clipping,
+                        source: null,
+                        translation: null,
+                      })
                 }
                 live
                 initialCanDiscuss={Boolean(memo.canDiscuss || effectiveIsAdmin)}
