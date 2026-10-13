@@ -20,16 +20,20 @@ function ScalarValue({ value }: { value: string | number | boolean }) {
 
 function ListItems({ entry, items }: { entry: TechStackEntry; items: TechStackNode[] }) {
   const mode = techStackArrayMode(items);
-  const renderItems = (visibleItems: TechStackNode[]) => {
+  const [expanded, setExpanded] = useState(false);
+  const renderItems = (visibleItems: TechStackNode[], className?: string) => {
     const keys = new Map<string, number>();
     return (
-      <ul className={mode === "chips" ? "flex flex-wrap gap-1.5" : "space-y-1"}>
+      <ul className={className ?? (mode === "chips" ? "flex flex-wrap gap-1.5" : "space-y-1")}>
         {visibleItems.map((item) => {
           const baseKey = `${entry.key}-${item.kind === "scalar" ? String(item.value) : JSON.stringify(item)}`;
           const occurrence = keys.get(baseKey) ?? 0;
           keys.set(baseKey, occurrence + 1);
           return (
-            <li key={`${baseKey}-${occurrence}`} className="min-w-0">
+            <li
+              key={`${baseKey}-${occurrence}`}
+              className={mode === "chips" ? "min-w-0 shrink-0" : "min-w-0"}
+            >
               {item.kind === "scalar" ? (
                 mode === "chips" ? (
                   <span className="inline-flex max-w-full break-words rounded-full border border-[rgba(var(--nature-accent-rgb),0.24)] bg-[rgba(var(--nature-accent-rgb),0.1)] px-2 py-0.5 font-mono text-[11px] font-medium leading-4 text-[color:var(--nature-accent-strong)]">
@@ -57,18 +61,51 @@ function ListItems({ entry, items }: { entry: TechStackEntry; items: TechStackNo
   if (!shouldCollapseTechStackList(entry.key, items.length)) return renderItems(items);
   const visibleItems = items.slice(0, TECH_STACK_PREVIEW_ITEMS);
   const remainingItems = items.slice(TECH_STACK_PREVIEW_ITEMS);
+  const overflowId = `tech-stack-list-${entry.key}`;
+  const toggleLabel = expanded
+    ? `收起其余 ${remainingItems.length} 项`
+    : `展开其余 ${remainingItems.length} 项`;
+  const overflowChip = (
+    <button
+      type="button"
+      aria-expanded={expanded}
+      aria-controls={overflowId}
+      aria-label={toggleLabel}
+      title={toggleLabel}
+      onClick={() => setExpanded(!expanded)}
+      style={{ lineHeight: "1rem" }}
+      className="inline-flex shrink-0 items-center rounded-full border border-[rgba(var(--nature-accent-rgb),0.24)] bg-[rgba(var(--nature-accent-rgb),0.1)] px-2 py-0.5 font-mono text-[11px] font-medium leading-4 text-[color:var(--nature-accent-strong)] transition-colors hover:bg-[rgba(var(--nature-accent-rgb),0.16)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--nature-accent)]"
+    >
+      {expanded ? `−${remainingItems.length}` : `+${remainingItems.length}`}
+    </button>
+  );
+
+  if (mode === "chips") {
+    return (
+      <div className="min-w-0">
+        {expanded ? (
+          <div id={overflowId} className="flex flex-wrap items-center gap-1.5">
+            {renderItems(items, "contents")}
+            {overflowChip}
+          </div>
+        ) : (
+          <div className="relative min-w-0 pr-9">
+            {renderItems(visibleItems, "flex min-w-0 flex-nowrap gap-1.5 overflow-hidden")}
+            <span className="absolute inset-y-0 right-0 z-10 flex items-start bg-[color:var(--nature-surface)] pl-1">
+              {overflowChip}
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-1">
-      {renderItems(visibleItems)}
-      <details className="mt-0.5">
-        <summary
-          aria-label={`展开其余 ${remainingItems.length} 项`}
-          className="inline-flex min-h-0 cursor-pointer list-none items-center rounded-full border border-[rgba(var(--nature-accent-rgb),0.24)] bg-[rgba(var(--nature-accent-rgb),0.1)] px-2 py-0.5 font-mono text-[11px] font-medium leading-4 text-[color:var(--nature-accent-strong)] marker:hidden focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--nature-accent)]"
-        >
-          +{remainingItems.length}
-        </summary>
-        <div className="pt-1">{renderItems(remainingItems)}</div>
-      </details>
+      {renderItems(expanded ? items : visibleItems)}
+      <div id={overflowId} className="pt-0.5">
+        {overflowChip}
+      </div>
     </div>
   );
 }
