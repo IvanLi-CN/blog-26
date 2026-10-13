@@ -163,4 +163,25 @@ describe("Memo detail boundary", () => {
     const eye = await waitFor(() => view.getByRole("link", { name: "查看详情" }));
     expect(eye.getAttribute("href")).toBe("/memos/memo-detail");
   });
+
+  test("removes an SSR admin detail when the refreshed session is no longer admin", async () => {
+    globalThis.fetch = (async (input) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/auth/me") return Response.json({ isAdmin: false });
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    }) as typeof fetch;
+
+    const view = render(
+      <PublicMemoDetailControlsIsland
+        slug="private-memo"
+        initialIsAdmin
+        initialMemo={{ ...memo("private-memo"), isPublic: false }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(view.queryByTestId("public-memo-detail-controls")).toBeNull();
+      expect(view.queryByTestId("public-memo-detail-body")).toBeNull();
+    });
+  });
 });

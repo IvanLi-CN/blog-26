@@ -352,6 +352,12 @@ export default function PublicRouter({
       let frame = 0;
       let settleTimer: number | undefined;
       let stableChecks = 0;
+      let stableGeometryChecks = 0;
+      let previousMaxScrollTop: number | null = null;
+      let restoreAttempts = 0;
+      const restoreStartedAt = performance.now();
+      const maxRestoreAttempts = 40;
+      const maxRestoreDurationMs = 5_000;
       const scheduleRestore = () => {
         if (settleTimer !== undefined) {
           window.clearTimeout(settleTimer);
@@ -360,11 +366,20 @@ export default function PublicRouter({
         cancelAnimationFrame(frame);
         frame = requestAnimationFrame(restoreScroll);
       };
-      const finishRestore = () => {
+      const finishRestore = (persistPosition = false) => {
         pendingScroll.current = null;
         if (settleTimer !== undefined) window.clearTimeout(settleTimer);
         observer?.disconnect();
         resizeObserver?.disconnect();
+        if (persistPosition) {
+          window.history.replaceState(
+            {
+              ...window.history.state,
+              publicCsrScroll: { top: window.scrollY, left: window.scrollX },
+            },
+            ""
+          );
+        }
       };
       const restoreScroll = () => {
         const scroll = pendingScroll.current;
@@ -385,18 +400,40 @@ export default function PublicRouter({
           /* Invalid fragment has no matching anchor. */
         }
         if (scroll.restore && scroll.position) {
-          window.scrollTo({ ...scroll.position, behavior: "instant" });
+          restoreAttempts += 1;
+          const maxScrollTop = Math.max(
+            0,
+            document.documentElement.scrollHeight - (window.innerHeight || 0)
+          );
+          const maxScrollLeft = Math.max(
+            0,
+            document.documentElement.scrollWidth - (window.innerWidth || 0)
+          );
+          const targetTop = Math.min(Math.max(0, scroll.position.top), maxScrollTop);
+          const targetLeft = Math.min(Math.max(0, scroll.position.left), maxScrollLeft);
+          window.scrollTo({ top: targetTop, left: targetLeft, behavior: "instant" });
           const reachedTarget =
-            Math.abs(window.scrollY - scroll.position.top) <= 1 &&
-            Math.abs(window.scrollX - scroll.position.left) <= 1;
-          stableChecks = reachedTarget ? stableChecks + 1 : 0;
+            Math.abs(window.scrollY - targetTop) <= 1 && Math.abs(window.scrollX - targetLeft) <= 1;
+          const targetReachable = maxScrollTop >= scroll.position.top - 1;
+          stableChecks = reachedTarget && targetReachable ? stableChecks + 1 : 0;
+          stableGeometryChecks =
+            previousMaxScrollTop === maxScrollTop ? stableGeometryChecks + 1 : 0;
+          previousMaxScrollTop = maxScrollTop;
           // Virtualized rows can finish measuring several frames after the
           // route payload is ready. Keep enforcing the browser's saved
           // position across that settling window before releasing the guard.
-          if (stableChecks < 12) {
+          const settled = targetReachable
+            ? stableChecks >= 12
+            : reachedTarget && stableGeometryChecks >= 12;
+          const timedOut =
+            restoreAttempts >= maxRestoreAttempts ||
+            performance.now() - restoreStartedAt >= maxRestoreDurationMs;
+          if (!settled && !timedOut) {
             settleTimer = window.setTimeout(scheduleRestore, 120);
             return;
           }
+          finishRestore(true);
+          return;
         } else if (anchor) {
           anchor.scrollIntoView();
         } else {

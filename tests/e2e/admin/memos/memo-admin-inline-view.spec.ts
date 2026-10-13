@@ -239,7 +239,7 @@ test.describe("Inline memo admin view", () => {
     await page.goto("/memos", { waitUntil: "domcontentloaded" });
     const card = await waitForAdminLiveMemoCard(page, marker);
     const detailLink = card.getByRole("link", { name: "查看详情" });
-    await detailLink.scrollIntoViewIfNeeded();
+    await expect(detailLink).toBeAttached();
     await page.evaluate(() => window.scrollTo({ top: 280, left: 0, behavior: "instant" }));
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(280);
 
@@ -284,7 +284,8 @@ test.describe("Inline memo admin view", () => {
     const card = await waitForAdminLiveMemoCard(page, title);
     const editButton = card.getByTestId("admin-live-memo-edit");
     await expect(editButton).toBeVisible();
-    await editButton.scrollIntoViewIfNeeded();
+    await expect(editButton).toBeAttached();
+    await editButton.evaluate((element) => element.scrollIntoView({ block: "center" }));
     await page.evaluate(
       () => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()))
     );

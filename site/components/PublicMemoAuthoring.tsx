@@ -132,6 +132,7 @@ function usePublicAuth(initialIsAdmin = false) {
       : null
   );
   const [isLoading, setIsLoading] = useState(!initialIsAdmin);
+  const [isResolved, setIsResolved] = useState(false);
 
   const refetch = useCallback(() => {
     setIsLoading(true);
@@ -144,6 +145,7 @@ function usePublicAuth(initialIsAdmin = false) {
       })
       .finally(() => {
         setIsLoading(false);
+        setIsResolved(true);
       });
   }, [readJson]);
 
@@ -155,6 +157,7 @@ function usePublicAuth(initialIsAdmin = false) {
     user,
     isAdmin: user?.isAdmin || false,
     isLoading,
+    isResolved,
     refetch,
   };
 }
@@ -772,18 +775,26 @@ export function PublicMemoDetailControlsIsland({
   initialClippingArticle?: ClippingArticle | null;
 }) {
   const readJson = useMemoRequest();
-  const { user, isAdmin, isLoading } = usePublicAuth(initialIsAdmin);
+  const { user, isAdmin, isLoading, isResolved } = usePublicAuth(initialIsAdmin);
   const [memo, setMemo] = useState<PublicMemoRecord | null>(initialMemo ?? null);
   const [isFetching, setIsFetching] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const effectiveIsAdmin = isAdmin || (initialIsAdmin && Boolean(memo));
+  // Trust the server-rendered admin state only while the client auth check is
+  // still in flight. Once it resolves, a logout or session downgrade must
+  // remove the live private view instead of leaving the SSR snapshot visible.
+  const effectiveIsAdmin = isAdmin || (initialIsAdmin && !isResolved);
   useHideStaticSnapshot(
     "[data-public-memo-static-shell]",
-    effectiveIsAdmin || Boolean(memo?.canDiscuss)
+    initialIsAdmin || Boolean(memo?.canDiscuss)
   );
+
+  useEffect(() => {
+    if (!initialIsAdmin || !isResolved || isAdmin) return;
+    setMemo(null);
+  }, [initialIsAdmin, isAdmin, isResolved]);
 
   const loadMemo = useCallback(async () => {
     setIsFetching(true);

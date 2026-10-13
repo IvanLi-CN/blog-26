@@ -116,6 +116,35 @@ test("fragment history restores reading positions on direct and cross-page entri
   await expect.poll(() => page.evaluate(() => Math.abs(window.scrollY - 1100))).toBeLessThan(2);
 });
 
+test("bounds stale history scroll after the destination content shrinks", async ({ page }) => {
+  await page.goto("/projects/xp/");
+  await ready(page);
+  await page.evaluate(() => {
+    history.replaceState(
+      { publicCsr: true, publicCsrScroll: { top: 999999, left: 0 } },
+      "",
+      window.location.href
+    );
+    history.pushState({ publicCsr: true }, "", "/posts/");
+  });
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/projects\/xp\/?$/);
+  await expect(page.locator("#raft-期望状态")).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => history.state?.publicCsrScroll?.top ?? -1))
+    .toBeLessThan(999999);
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Math.abs(
+          window.scrollY - Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+        )
+      )
+    )
+    .toBeLessThan(2);
+});
+
 test("a cross-page fragment waits for the route-specific MDX module", async ({ page }) => {
   await page.goto("/posts/");
   await ready(page);
