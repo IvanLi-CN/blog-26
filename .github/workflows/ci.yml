@@ -180,7 +180,7 @@ jobs:
           RUSTUP_TOOLCHAIN=1.91.0 bun run search:native:build
           bun run search:native:verify
       - name: Run unit tests
-        run: bun ./scripts/run-precommit-tests.ts
+        run: bun run test:unit
 
   worktree-bootstrap:
     name: Worktree Bootstrap Smoke

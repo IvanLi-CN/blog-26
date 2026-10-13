@@ -7,8 +7,11 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
+import { enhanced } from "@/lib/ai/search";
+import { clearSearchCache } from "@/lib/ai/search-cache";
 import { db, initializeDB } from "@/lib/db";
 import { postEmbeddings, posts, searchIndexState, searchSettings } from "@/lib/schema";
+import { searchContent } from "@/lib/search/content-search";
 import { DEFAULT_SEARCH_POLICY } from "@/lib/search/settings";
 import { handleMcpHttpRequest } from "@/server/mcp-http";
 import { handlePublicApiRequest } from "@/server/public-api/router";
@@ -74,6 +77,7 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     await (await contentSearchIndex()).prepare();
   });
   beforeEach(async () => {
+    clearSearchCache();
     await db.delete(postEmbeddings);
     await db.delete(posts);
     await db.delete(searchSettings);
@@ -217,9 +221,96 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
       "explicit-query"
     );
     expect(globalThis.fetch).not.toHaveBeenCalled();
+    await db
+      .insert(posts)
+      .values([
+        fixture("near-adjacent", "SQLite database"),
+        fixture("near-separated", "SQLite has an unrelated database"),
+      ]);
+    const query = "NEAR(SQLite database, 3)";
+    const expected = await searchContent({ q: query, topK: 10 });
+    const near = await executeContentModes({ q: query, mode: "rag", topK: 10 });
+    expect(near.effectiveMode).toBe("keyword");
+    expect(near.reason).toBe("explicit-query");
+    expect(near.results.map((item) => item.slug)).toEqual(expected.map((item) => item.slug));
+  });
+  test("NEAR budget overflow is an error rather than a successful empty list", async () => {
     await expect(
-      executeContentModes({ q: "NEAR(SQLite database)", mode: "keyword" })
-    ).rejects.toThrow("unsupported-query");
+      executeContentModes({
+        q: `NEAR(alpha beta,3) ${Array.from({ length: 140 }, (_, i) => `term${i}`).join(" ")}`,
+        mode: "keyword",
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST", message: "query-budget-exceeded" });
+  });
+  test("legacy enhanced authorizes exact memo identity before reranking and on cache hits", async () => {
+    const privateId = "Memos/private-enhanced.md";
+    const file = path.join(process.env.LOCAL_CONTENT_BASE_PATH ?? "", privateId);
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, "---\npublic: false\n---\nprivate marker");
+    const privateRow = fixture(privateId, "private marker", {
+      slug: "shared-enhanced",
+      type: "memo",
+      tags: JSON.stringify(["剪藏"]),
+      metadata: JSON.stringify({ authoredClipping: true }),
+      excerpt: "private marker",
+      title: "Private marker",
+    });
+    const publicRow = fixture("Memos/public-enhanced.md", "public marker", {
+      slug: "shared-enhanced",
+      type: "memo",
+      excerpt: "public marker",
+      title: "Public marker",
+    });
+    await db.insert(posts).values([privateRow, publicRow]);
+    for (const row of [privateRow, publicRow])
+      await db.insert(postEmbeddings).values({
+        id: `${row.id}-vector`,
+        postId: row.id,
+        slug: row.slug,
+        type: "memo",
+        modelName: "synthetic-embedding",
+        dim: 2,
+        contentHash: "synthetic",
+        vector: Buffer.from(new Float32Array([1, 0]).buffer),
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    const rerankDocuments: string[][] = [];
+    globalThis.fetch = fakeFetch(async (url, init) => {
+      if (String(url).endsWith("/rerank")) {
+        rerankDocuments.push(JSON.parse(String(init?.body)).documents);
+        return Response.json({ results: [{ index: 0, relevance_score: 0.9 }] });
+      }
+      return Response.json({ data: [{ embedding: [1, 0] }] });
+    });
+    for (const options of [{ rerank: false }, { rerankerModel: "synthetic-reranker" }]) {
+      const result = await enhanced({ q: "marker", publishedOnly: true, ...options });
+      expect(result.map((row) => row.title)).toEqual(["Public marker"]);
+      expect(JSON.stringify(result)).not.toContain("private marker");
+      expect(Object.keys(result[0] ?? {})).not.toContain("id");
+    }
+    expect(rerankDocuments).toHaveLength(1);
+    expect(rerankDocuments[0]).toEqual(["Public marker\n\npublic marker"]);
+    // Force the private row to win semantic deduplication before authorization.
+    await db.update(posts).set({ publishDate: 2 }).where(eq(posts.id, privateId));
+    clearSearchCache();
+    for (const options of [{ rerank: false }, { rerankerModel: "synthetic-reranker" }]) {
+      expect(await enhanced({ q: "marker", publishedOnly: true, ...options })).toEqual([]);
+    }
+    expect(rerankDocuments).toHaveLength(1);
+    // A public candidate withdrawn while the reranker is running cannot escape.
+    await db.update(posts).set({ publishDate: 0 }).where(eq(posts.id, privateId));
+    clearSearchCache();
+    globalThis.fetch = fakeFetch(async (url) => {
+      if (String(url).endsWith("/rerank")) {
+        await db.update(posts).set({ public: false }).where(eq(posts.id, publicRow.id));
+        return Response.json({ results: [{ index: 0, relevance_score: 0.9 }] });
+      }
+      return Response.json({ data: [{ embedding: [1, 0] }] });
+    });
+    expect(
+      await enhanced({ q: "marker", publishedOnly: true, rerankerModel: "synthetic-reranker" })
+    ).toEqual([]);
   });
   test("rewrite sends only query policy, never site content or embeddings", async () => {
     await db
@@ -642,6 +733,33 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     expect((await executeContentModes({ q: "SQLite", mode: "keyword" })).results).toEqual([]);
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
   });
+  test("NEAR compatibility honors canonical clipping visibility", async () => {
+    const memoId = "Memos/private-near-search.md";
+    const file = path.join(process.env.LOCAL_CONTENT_BASE_PATH ?? "", memoId);
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, "---\ntitle: Private clipping\npublic: false\n---\nprivate marker");
+    await db.insert(posts).values([
+      fixture(memoId, "private marker", {
+        slug: "shared-near-search",
+        type: "memo",
+        tags: JSON.stringify(["剪藏"]),
+        metadata: JSON.stringify({ authoredClipping: true }),
+        title: "Stale public clipping title",
+      }),
+      fixture("Memos/public-near-search.md", "unrelated public content", {
+        slug: "shared-near-search",
+        type: "memo",
+        title: "Public memo sharing the slug",
+      }),
+    ]);
+
+    const result = await executeContentModes({
+      q: "NEAR(private marker, 3)",
+      mode: "keyword",
+    });
+
+    expect(result.results.some((item) => item.slug === "shared-near-search")).toBe(false);
+  });
   test("failed generation creation leaves the previous durable generation selected", async () => {
     const index = await contentSearchIndex();
     const previous = (await index.status()).state?.generation;
@@ -761,9 +879,9 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
         results: [{ slug: "mcp-public" }],
       });
       const legacy = await call("search_enhanced", { q: "SQLite", rerank: false });
-      expect(JSON.parse(legacy.result.content[0].text)).toEqual(
-        (await executeContentModes({ q: "SQLite", mode: "keyword" })).results
-      );
+      expect(JSON.parse(legacy.result.content[0].text)).toMatchObject([
+        { slug: "mcp-public", type: "post" },
+      ]);
       const privateCall = await call("search_content", {
         q: "SQLite",
         mode: "keyword",

@@ -1,6 +1,5 @@
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { uniqueRankedContent } from "@/lib/search/content-identity";
-import { ContentSearchError } from "@/lib/search/native-query";
 import { isClippingRowPublic } from "@/server/clipping/projection";
 import { executeContentModes } from "@/server/services/content-search";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
@@ -9,6 +8,7 @@ import { postEmbeddings, posts } from "../schema";
 import { isClippingSearchMemo, searchContent } from "../search/content-search";
 import { parseSearchQuery } from "../search/query";
 import { cosineSimilarity, createEmbedding, hashEmbeddingInput } from "./embeddings";
+import { rerank as rerankApi } from "./rerank";
 import { getCachedSearchExecution } from "./search-cache";
 import { buildSearchSnippet } from "./search-snippet";
 
@@ -21,6 +21,8 @@ export type SemanticSearchInput = {
 };
 
 export type SearchResult = {
+  /** Internal row identity; defined as non-enumerable on FTS results. */
+  id?: string;
   slug: string;
   title?: string | null;
   excerpt?: string | null;
@@ -348,11 +350,15 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
 
   const results: SearchResult[] = uniqueRankedContent(rankedResults)
     .slice(0, input.topK ?? 50)
-    .map(({ id: _id, publishDate: _publishDate, ...result }) => result);
+    .map(({ id, publishDate: _publishDate, ...result }) => {
+      Object.defineProperty(result, "id", { value: id });
+      return result;
+    });
   return { results, source: "semantic" };
 }
 
 async function getSemanticExecution(input: SemanticSearchInput): Promise<SemanticExecution> {
+  if (!input.q.trim()) return { results: [], source: "fts" };
   const cacheInput = await buildSearchCacheInput("semantic", input);
   const execution = await getCachedSearchExecution("semantic", cacheInput, async () => {
     const execution = await computeSemantic(input);
@@ -363,7 +369,7 @@ async function getSemanticExecution(input: SemanticSearchInput): Promise<Semanti
     };
   });
   const results =
-    input.publishedOnly === true
+    input.publishedOnly !== false
       ? await filterPublishedClippingResults(execution.results)
       : execution.results;
   return {
@@ -373,19 +379,32 @@ async function getSemanticExecution(input: SemanticSearchInput): Promise<Semanti
 }
 
 export async function filterPublishedClippingResults(results: SearchResult[]) {
-  const memoSlugs = Array.from(
-    new Set(results.filter((result) => result.type === "memo").map((result) => result.slug))
+  const memoIds = Array.from(
+    new Set(
+      results
+        .filter((result) => result.type === "memo")
+        .flatMap((result) => (result.id ? [result.id] : []))
+    )
   );
-  if (memoSlugs.length === 0) return results;
-  const rows = await db
-    .select()
-    .from(posts)
-    .where(and(eq(posts.type, "memo"), inArray(posts.slug, memoSlugs)));
-  const publicBySlug = new Map(
-    await Promise.all(rows.map(async (row) => [row.slug, await isClippingRowPublic(row)] as const))
+  if (!results.some((result) => result.type === "memo")) return results;
+  const rows = memoIds.length
+    ? await db
+        .select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.type, "memo"),
+            inArray(posts.id, memoIds),
+            eq(posts.draft, false),
+            eq(posts.public, true)
+          )
+        )
+    : [];
+  const publicById = new Map(
+    await Promise.all(rows.map(async (row) => [row.id, await isClippingRowPublic(row)] as const))
   );
   return results.filter(
-    (result) => result.type !== "memo" || (publicBySlug.get(result.slug) ?? false)
+    (result) => result.type !== "memo" || publicById.get(result.id ?? "") === true
   );
 }
 
@@ -397,26 +416,58 @@ export async function semantic(input: SemanticSearchInput): Promise<SearchResult
 export async function enhanced(
   input: SemanticSearchInput & { rerankTopK?: number; rerank?: boolean; rerankerModel?: string }
 ): Promise<SearchResult[]> {
-  if (input.rerank !== false && input.rerankerModel !== undefined) {
-    throw new ContentSearchError(
-      "BAD_REQUEST",
-      "unsupported-parameter: configure the RAG chat model in search settings"
-    );
-  }
+  // Keep the historical override accepted. The new RAG path owns its model
+  // policy, while legacy callers may still supply a reranker model directly.
+  if (input.rerank !== false && input.rerankerModel !== undefined)
+    return legacyEnhancedWithReranker(input);
+  if (input.rerank === false) return (await getSemanticExecution(input)).results;
   return (
     await executeContentModes(
       {
         q: input.q,
-        mode: input.rerank === false ? "keyword" : "rag",
+        mode: "rag",
         topK: input.topK ?? 50,
         type: input.type ?? "all",
       },
       {
         publishedOnly: input.publishedOnly,
-        ...(input.rerank !== false
-          ? { embeddingModel: input.model, candidateLimit: input.rerankTopK }
-          : {}),
+        embeddingModel: input.model,
+        candidateLimit: input.rerankTopK,
       }
     )
   ).results;
+}
+
+async function legacyEnhancedWithReranker(
+  input: SemanticSearchInput & { rerankTopK?: number; rerank?: boolean; rerankerModel?: string }
+): Promise<SearchResult[]> {
+  const base = await getSemanticExecution(input);
+  if (base.source === "fts" || !base.results.length) return base.results;
+  const docs = base.results
+    .slice(0, input.rerankTopK ?? 20)
+    .map((result) => `${result.title || result.slug}\n\n${result.excerpt || ""}`);
+  try {
+    const items = await rerankApi(input.q, docs, {
+      model: input.rerankerModel,
+      topN: docs.length,
+    });
+    const max = Math.max(...items.map((item) => item.score));
+    const min = Math.min(...items.map((item) => item.score));
+    const normalize = (score: number) => (max === min ? 0 : (score - min) / (max - min));
+    const beta = Number(process.env.RERANKER_WEIGHT || 0.7);
+    const ranked = base.results
+      .map((result, index) => {
+        const score = items.find((item) => item.index === index)?.score ?? 0;
+        const final = (0.3 * ((result.cosine ?? 0) + 1)) / 2 + beta * normalize(score);
+        const rankedResult = { ...result, rerank: score, final };
+        if (result.id) Object.defineProperty(rankedResult, "id", { value: result.id });
+        return rankedResult;
+      })
+      .sort((a, b) => (b.final ?? 0) - (a.final ?? 0));
+    return input.publishedOnly !== false ? filterPublishedClippingResults(ranked) : ranked;
+  } catch {
+    return input.publishedOnly !== false
+      ? filterPublishedClippingResults(base.results)
+      : base.results;
+  }
 }

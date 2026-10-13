@@ -2,9 +2,13 @@
 
 本报告区分产品集成与独立组件探针，覆盖范围见 [实现](./IMPLEMENTATION.md)。以下产品结果与后文组件探针分别保留，不将探针能力当作运行时验收。
 
-## 当前候选交付证据
+## 候选级模型请求证据
 
-PR #214 的当前头（基线 `0d101aa7c259c0e7b675a8c0f4dfe05162489430`）继承并保留已通过的 GitHub Actions Lint、Unit、Build、Docker、Worktree Bootstrap、Admin/User/Guest/MCP E2E 与 Release Policy 结果；新的 CI 会对每个当前头重新执行。正式 Web Demo 已验证关闭、RAG、AI 改写三种模式、渐进补充、回退、场景切换和管理员策略页，受控视觉证据保存在 PR 的 Visual Evidence 区域及本 Spec 的管理页截图资产中。当前候选仍未部署生产，合并后需以实际 merge SHA 重新绑定发行产物和发布记录。
+DeepSeek 的结构化搜索请求关闭 thinking 后，代码候选 `4588af29f14d4dadfea8cad64123c9d2e403ddfe` 上 RAG 与改写各通过 4/4 固定质量样例及 5/5 实际搜索。其后只有验证记录和版本影响记录变化。输出、指纹和断言边界见 [非思考模式证据](./validation/product/empirical-search-model-nonthinking.txt)。
+
+当前候选 `e1a2c3fc348f27607f624eb50f876d2c1bcd678f` 在修复 native event-loop 验证夹具后重新执行真实模型验收。deepseek-v4-flash 与 BAAI/bge-m3 的 RAG 和改写各通过 4/4 固定质量样例及 5/5 实际搜索；概念查询 `嵌入式 SQL 数据库` 找到 SQLite3 专题，RAG 将专题排在顺带提及之前；Node.js 返回运行时并排除图节点，`文章` 返回文章，无关查询返回空结果。两种模式的实际检索均保全关键词结果，原断言未改变。固定合成样例外无内容发送，未发生模型自动重试。RAG 指纹 `220b0bcb7223f0769e73a55f163eae497bf12117c4e44df32c66fbff47a9a8de`，改写指纹 `b085e8e6a6c99a0612b72e5183b7cf62b100fa00da2a432752747cdbbc37a95f`；完整响应与请求元数据见 [当前候选证据](./validation/product/empirical-search-model-current.txt)。
+
+原始搜索实现通过 PR #214 合入主线。该 PR 的 CI、Web Demo 和视觉结果是原始功能候选的历史证据，不代表后续兼容修复的当前头状态，也不能替代后续候选自己的 CI、审查或模型验证。本 Spec 不据此宣称搜索实现已部署生产。
 
 ## 改写概念发现修复
 
@@ -78,7 +82,7 @@ writer 修复候选 `5f3a4462590580fdc369c412aaa216f57177f770` 的源码构建�
 
 ## 独立组件探针
 
-以下记录对应内嵌引擎选型时的独立验证，不替代上文产品结果。三个子代理在同一会话的 Linux VM 中分别完成 Bun 接入、匹配语法、同步恢复验证。原生接入和合成数据同步恢复可行，内置配置存在满足本批文字规则的方案；据此采用 Tantivy。旧 NEAR 不兼容的证据保留，但新模式已明确不支持它，不再作为选型阻碍；完整支持语法及产品集成仍未通过，不能称为可直接替换的生产实现。
+以下记录对应内嵌引擎选型时的独立验证，不替代上文产品结果。三个子代理在同一会话的 Linux VM 中分别完成 Bun 接入、匹配语法、同步恢复验证。原生接入和合成数据同步恢复可行，内置配置存在满足本批文字规则的方案；据此采用 Tantivy。旧 NEAR 不由 Tantivy 原生 parser 兼容的证据保留；产品适配层把该语法委托给 SQLite FTS5，因此不要求 Tantivy 直接实现位置查询。完整支持语法及产品集成仍须按当前候选验证，不能称为可直接替换的生产实现。
 
 ## 实际结果
 
@@ -115,3 +119,7 @@ writer 修复候选 `5f3a4462590580fdc369c412aaa216f57177f770` 的源码构建�
 采用 Tantivy 的依据包括实际 Bun 接入、有限匹配配置和恢复证据，选型理由与 NEAR 范围见 [ADR 0021](../../adr/0021-embedded-tantivy-search.md)。产品集成仍须独立完成支持的受控 AST：字段、布尔、短语、前缀、短查询、非法文字重试与预算适配，以及 NEAR 的明确拒绝路径。旧列表和独立 semantic 保留 SQLite NEAR，不实现 Tantivy 位置兼容；不能直接使用原生 QueryParser 替换产品 parser，也不能把旧距离换成词距后宣称兼容。
 
 SQLite 事务 outbox、成功索引提交后 checkpoint、单 writer 和当前权限校验可以作为集成方向；探针只证明合成流程，未证明请求开始快照、真实文件权限或生产调用点已实现。还需验证实际发行镜像、完整 corpus 的延迟/内存/索引大小及上线重建。三种搜索模式的需求保持不变，当前验证没有让产品中的三种模式变为可用。
+
+## Legacy permission and query-budget regression
+
+旧 enhanced 的 semantic、`rerank:false` 与显式 reranker 分支以不可枚举的记录 ID 重新核对 memo 当前公开状态及剪藏文件权限，缓存复制保留该身份；reranker 等待期间撤回的内容在返回前再次排除。Linux 回归覆盖同 slug 公开与私有记录、私有记录获得更高排名、缓存命中和模型请求期间撤回权限。NEAR 兼容入口在 SQLite 查询前拒绝旧解析器的预算超限，受控错误与成功空列表分开；旧独立列表与 semantic 的查询语法保持不变。

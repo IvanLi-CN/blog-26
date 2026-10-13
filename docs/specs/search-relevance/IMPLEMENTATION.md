@@ -1,11 +1,11 @@
 # 三种搜索模式的实现
 
-内嵌 Tantivy、独立 RAG、独立查询改写和关键词回退已接入产品运行时。长期行为以 [SPEC](./SPEC.md) 为准；固定合成模型样例、原生集成、接口、恢复和 UI 自动化结果见 [验证证据](./VALIDATION.md)。当前候选已完成 Web Demo 视觉确认，精确头的 CI 正在刷新；不代表已部署生产。
+内嵌 Tantivy、独立 RAG、独立查询改写和关键词回退已接入主线产品运行时。长期行为以 [SPEC](./SPEC.md) 为准；固定合成模型样例、原生集成、接口、恢复和 UI 自动化结果见 [验证证据](./VALIDATION.md)。
 
 ## Current Status
 
 - Lifecycle: active
-- Implementation: candidate-complete，运行时与管理页已实现，PR #214 当前头已通过前序功能验证，新的 CI 正在刷新，等待 PR 合并。
+- Implementation: complete，运行时与管理页已实现；原始功能 PR #214 已合入主线。后续兼容修复按当前候选独立验证。
 - 排序回归和生产 bundle 的 writer 冲突已修复。重新验收发现改写遗漏 SQLite3 专题，旧质量检查仅检查文字而未证明实际检索；改写提示词与固定合成检索验证已修正，两条实际 AI 链保持原断言通过验收。当前候选的完整证据见验证报告；历史候选只作为诊断记录，不替代当前候选。
 - HTTP、tRPC、MCP 与旧 enhanced 共用执行器，默认关闭智能搜索并执行关键词全文检索；Playbook、旧内容列表及独立 semantic 保留自身职责。
 - 支持平台为 linux/amd64；本次不提供 macOS 原生后端，本机前端连接 Linux 开发后端。
@@ -18,7 +18,7 @@ RAG 独立进行向量检索和候选判断。向量新鲜度使用现有 `build
 
 改写模型只接收查询与静态策略，一次最多生成 3 个受控表达；不接收目录、正文或检索反馈，不调用向量及 RAG 判断。原始与改写查询分别由引擎排序，再以 RRF 融合有限排名，不直接比较不同查询的 BM25 分数。确定名称别名在关键词层完成，NodeJS/Node.js 不允许改写为无条件 Node。
 
-关键词没有 AI 依赖。`native/search` 使用锁定 Tantivy 0.26.2 和 NAPI-RS，内置 RegexTokenizer 保留 ASCII 名称与其余字符的位置；受控 AST 编译为引擎 Term/Phrase/Boolean 查询及受限词首扩展。引擎在截断前完成匹配，稳定同分排序按 ID；前缀超过 256 个扩展词明确报错，不静默漏掉命中。普通中文连续片段、技术符号、名称边界与 Node 别名由原生一致性程序覆盖。新入口拒绝 NEAR，旧 SQLite 查询行为保留。
+关键词没有 AI 依赖。`native/search` 使用锁定 Tantivy 0.26.2 和 NAPI-RS，内置 RegexTokenizer 保留 ASCII 名称与其余字符的位置；受控 AST 编译为引擎 Term/Phrase/Boolean 查询及受限词首扩展。引擎在截断前完成匹配，稳定同分排序按 ID；前缀超过 256 个扩展词明确报错，不静默漏掉命中。普通中文连续片段、技术符号、名称边界与 Node 别名由原生一致性程序覆盖。新搜索入口把 NEAR 位置语法委托给旧 SQLite FTS5 执行器，保留既有查询行为。
 
 ## 持久投影
 
@@ -36,7 +36,7 @@ prepare/rebuild 构建独立 generation，写入并同步 manifest，原子选�
 
 改写验证通过独立临时 Tantivy 索引执行生成的表达及原始查询，检查专题内容能被检索、无关节点和泛化 JavaScript 结果被排除；与实际执行器共用受控表达校验。SQLite 与 SQLite3 的字面边界保持不变，概念改写可分别查询相关版本。固定合成正文只进入本地探针，模型仍只接收查询与静态策略，不接收内容或检索反馈。验证结束清理探针目录，不修改生产数据库、索引或进程环境；改写测试集版本独立改变，不撤销有效的 RAG 质量依据。
 
-公开页面使用关闭、RAG、AI 改写三个可访问控件，选择保存在 URL，支持刷新、分享和历史导航；迟到请求不能覆盖新选择。AI 补充与关键词命中统一排序，同时保全合法关键词命中；HTTP 保持数组并通过 Search-Requested-Mode、Search-Effective-Mode、Search-Reason 暴露实际执行状态。新 tRPC/MCP 返回 envelope，旧 enhanced 保持数组；rerank=false 使用关键词，显式旧 rerankerModel 在相应路径返回迁移错误。HTTP/new tRPC 缺省 20、上限 100，MCP 缺省 20、上限 50，旧 enhanced/semantic 缺省 50，页面请求 50。
+公开页面使用关闭、RAG、AI 改写三个可访问控件，选择保存在 URL，支持刷新、分享和历史导航；迟到请求不能覆盖新选择。AI 补充与关键词命中统一排序，同时保全合法关键词命中；HTTP 保持数组并通过 Search-Requested-Mode、Search-Effective-Mode、Search-Reason 暴露实际执行状态。新 tRPC/MCP 返回 envelope，旧 enhanced 保持数组及历史参数语义：`rerank=false` 关闭重排但保留语义检索，显式 `rerankerModel` 继续用于旧重排路径。HTTP/new tRPC 缺省 20、上限 100，MCP 缺省 20、上限 50，旧 enhanced/semantic 缺省 50，页面请求 50。
 
 去除相关度百分比，只有实际命中词及其原文位置可高亮。关键词、回退、明确语法和错误空态使用确定性建议。页面证据来自正式路由 Web Demo，组件状态及交互来自 Storybook；Demo 构建与正式构建隔离，不能由正式页面的浏览器开关开启。
 
@@ -65,7 +65,7 @@ status 只读持久元信息。独立进程执行 prepare、check 或 rebuild �
 | 契约 | 当前覆盖 |
 | --- | --- |
 | REQ-SREL-001 / 002 | K 容量保全、RRF、原文依据、无关拒绝及修复后的真实专题优先排序已验证。 |
-| REQ-SREL-003 / 009 / 013 | 原生匹配矩阵、受控查询测试、NEAR 拒绝及 Node 名称规则已验证。 |
+| REQ-SREL-003 / 009 / 013 | 原生匹配矩阵、受控查询测试、SQLite NEAR 兼容及 Node 名称规则已验证。 |
 | REQ-SREL-004 / 015 | URL、历史、迟到响应、实际高亮和移动键盘交互通过；视觉确认待完成。 |
 | REQ-SREL-005 / 006 | 当前文件权限、模型前/返回前校验、来源回归与 54 个组件交互通过。 |
 | REQ-SREL-007 / 008 / 014 | 三链独立、原始回退、HTTP/tRPC/MCP 契约及管理员限制通过。 |
@@ -81,4 +81,4 @@ status 只读持久元信息。独立进程执行 prepare、check 或 rebuild �
 - [验证证据](./VALIDATION.md)
 - [独立 AI 搜索与关键词回退](../../adr/0020-keyword-first-hybrid-search.md)
 - [关键词默认与混合结果统一排序](../../adr/0022-keyword-default-unified-ranking.md)
-- [内嵌 Tantivy 与 NEAR 范围](../../adr/0021-embedded-tantivy-search.md)
+- [搜索引擎升级保留既有查询兼容性](../../adr/0023-search-legacy-compatibility.md)

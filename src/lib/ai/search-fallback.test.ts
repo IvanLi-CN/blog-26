@@ -77,7 +77,7 @@ async function seedPost(
   });
 }
 
-describe("AI search fallback boundaries", () => {
+describe.skipIf(process.platform !== "linux")("AI search fallback boundaries", () => {
   beforeAll(async () => {
     process.env.DB_PATH = TEST_DB_PATH;
     fs.mkdirSync(path.dirname(TEST_DB_PATH), { recursive: true });
@@ -103,6 +103,17 @@ describe("AI search fallback boundaries", () => {
     console.warn = mock(() => undefined) as unknown as typeof console.warn;
   });
 
+  test("blank semantic queries return without an embedding request", async () => {
+    await seedPost();
+    const fetchMock = mock(async () => {
+      throw new Error("blank query must not call an AI provider");
+    });
+    globalThis.fetch = Object.assign(fetchMock, { preconnect: originalFetch.preconnect });
+
+    expect(await semantic({ q: "   ", publishedOnly: true })).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   afterEach(() => {
     globalThis.fetch = originalFetch;
     console.warn = originalWarn;
@@ -122,12 +133,28 @@ describe("AI search fallback boundaries", () => {
   });
 
   test("exposes clipping identity from stored tags without changing Memo routes", async () => {
-    await seedPost({ id: "clipping-search", type: "memo", tags: ["剪藏", "search"] });
+    const previousRoot = process.env.LOCAL_CONTENT_BASE_PATH;
+    const contentRoot = fs.mkdtempSync(path.join(process.cwd(), "tmp/public-clipping-"));
+    process.env.LOCAL_CONTENT_BASE_PATH = contentRoot;
+    fs.mkdirSync(path.join(contentRoot, "Memos"));
+    fs.writeFileSync(
+      path.join(contentRoot, "Memos/clipping-search.md"),
+      "---\npublic: true\n---\nSQLite"
+    );
+    await seedPost({
+      id: "Memos/clipping-search.md",
+      slug: "clipping-search",
+      type: "memo",
+      tags: ["剪藏", "search"],
+    });
     await seedPost({ id: "ordinary-post", type: "post", tags: ["剪藏"] });
     const results = await semantic({ q: "SQLite" });
     expect(results.find((item) => item.slug === "clipping-search")?.isClipping).toBe(true);
     expect(results.find((item) => item.slug === "clipping-search")?.type).toBe("memo");
     expect(results.find((item) => item.slug === "ordinary-post")?.isClipping).toBeUndefined();
+    if (previousRoot === undefined) delete process.env.LOCAL_CONTENT_BASE_PATH;
+    else process.env.LOCAL_CONTENT_BASE_PATH = previousRoot;
+    fs.rmSync(contentRoot, { recursive: true, force: true });
   });
 
   test("keeps legacy semantic and keyword fallback current without vectors", async () => {
@@ -322,11 +349,12 @@ describe("AI search fallback boundaries", () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
-  test("rerank false ignores legacy reranker options and uses zero-AI keyword execution", async () => {
+  test("rerank false ignores reranker overrides and retains semantic search", async () => {
     await seedPost();
-    const fetcher = mock(async () => {
-      throw new Error("No AI request expected");
-    });
+    process.env.EMBEDDING_MODEL_NAME = "test-embedding";
+    process.env.OPENAI_API_KEY = "search-test-key";
+    process.env.OPENAI_API_BASE_URL = "https://search.example.test";
+    const fetcher = mock(async () => Response.json({ data: [{ embedding: [1, 0] }] }));
     globalThis.fetch = fetcher as unknown as typeof fetch;
     const result = await enhanced({
       q: "SQLite",
@@ -335,10 +363,39 @@ describe("AI search fallback boundaries", () => {
       rerankTopK: 1,
     });
     expect(result.map((item) => item.slug)).toEqual(["semantic-post"]);
-    expect(fetcher).not.toHaveBeenCalled();
-    await expect(
-      enhanced({ q: "SQLite", rerank: true, rerankerModel: "unsupported" })
-    ).rejects.toThrow("unsupported-parameter");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    const legacyOverride = await enhanced({
+      q: "SQLite",
+      rerank: true,
+      rerankerModel: "unsupported",
+    });
+    expect(legacyOverride.map((item) => item.slug)).toEqual(["semantic-post"]);
+  });
+
+  test("enhanced preserves the explicit legacy reranker model override", async () => {
+    await seedPost();
+    process.env.EMBEDDING_MODEL_NAME = "test-embedding";
+    process.env.RERANKER_MODEL_NAME = "configured-reranker";
+    process.env.OPENAI_API_KEY = "search-test-key";
+    process.env.OPENAI_API_BASE_URL = "https://search.example.test";
+    let requestedReranker = "";
+    globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith("/rerank")) {
+        requestedReranker = JSON.parse(String(init?.body)).model;
+        return Response.json({ results: [{ index: 0, relevance_score: 0.9 }] });
+      }
+      return Response.json({ data: [{ embedding: [1, 0] }] });
+    }) as unknown as typeof fetch;
+
+    const result = await enhanced({
+      q: "SQLite",
+      topK: 5,
+      rerank: true,
+      rerankerModel: "legacy-reranker-override",
+    });
+
+    expect(requestedReranker).toBe("legacy-reranker-override");
+    expect(result.map((item) => item.slug)).toEqual(["semantic-post"]);
   });
 
   test("routes valid and invalid advanced syntax through FTS with vectors available", async () => {

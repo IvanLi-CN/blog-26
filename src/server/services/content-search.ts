@@ -4,7 +4,9 @@ import { z } from "zod";
 import { buildEmbeddingInput, cosineSimilarity, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { db } from "@/lib/db";
 import { postEmbeddings, posts } from "@/lib/schema";
+import { searchContent } from "@/lib/search/content-search";
 import { ContentSearchError, planNativeQuery } from "@/lib/search/native-query";
+import { parseSearchQuery } from "@/lib/search/query";
 import { type SearchReason, searchModeSchema } from "@/lib/search/settings";
 import {
   authorizeContent,
@@ -209,8 +211,60 @@ export async function executeContentModes(
       reason: "empty-query",
     };
   }
-  const plan = planNativeQuery(input.q);
   const publishedOnly = context.publishedOnly !== false;
+  // Preserve the legacy SQLite query contract for callers that still use NEAR.
+  // Tantivy remains the default engine for the new simple-query surface.
+  if (
+    /(?:^|[\s(:])NEAR\s*\(/iu.test(input.q.normalize("NFKC").replace(/"(?:\\.|[^"\\])*"/gu, ""))
+  ) {
+    if (parseSearchQuery(input.q).limitExceeded)
+      throw new ContentSearchError("BAD_REQUEST", "query-budget-exceeded");
+    const legacy = await searchContent({
+      q: input.q,
+      topK: input.topK,
+      type: input.type,
+      publishedOnly,
+    });
+    const memoIds = [
+      ...new Set(
+        legacy
+          .filter((item) => item.type === "memo")
+          .map((item) => (item as typeof item & { id?: string }).id)
+          .filter((id): id is string => Boolean(id))
+      ),
+    ];
+    if (publishedOnly && memoIds.length) {
+      const rows = await db
+        .select()
+        .from(posts)
+        .where(and(eq(posts.type, "memo"), inArray(posts.id, memoIds)));
+      const visible = new Map(
+        await Promise.all(
+          rows.map(async (row) => [row.id, await authorizeContent(row, true)] as const)
+        )
+      );
+      const results = legacy
+        .filter(
+          (item) =>
+            item.type !== "memo" ||
+            visible.get((item as typeof item & { id?: string }).id ?? "") === true
+        )
+        .map((item) => ({ ...item, searchOrigin: "keyword" as const }));
+      return {
+        results,
+        requestedMode: input.mode,
+        effectiveMode: "keyword",
+        reason: "explicit-query",
+      };
+    }
+    return {
+      results: legacy.map((item) => ({ ...item, searchOrigin: "keyword" as const })),
+      requestedMode: input.mode,
+      effectiveMode: "keyword",
+      reason: "explicit-query",
+    };
+  }
+  const plan = planNativeQuery(input.q);
   const index = await contentSearchIndex();
   const keyword = await index.search(input.q, {
     limit: input.topK,

@@ -81,6 +81,6 @@ The old implementation had no intermediate query representation. It passed some 
 - `src/lib/ai/search.ts`
 - `src/server/services/search-suggestions.ts`
 - `package.json`
-- `scripts/run-precommit-tests.ts`
+- `scripts/run-test-suite.ts`
 - `scripts/db-tools.ts`
 - [SQLite FTS5 documentation](https://www.sqlite.org/fts5.html)

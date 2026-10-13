@@ -57,6 +57,9 @@ export async function callSearchModel<T>(
         temperature: 0,
         response_format: { type: "json_object" },
         max_tokens: budget.maxOutputTokens,
+        ...(chat.model.toLowerCase().includes("deepseek")
+          ? { thinking: { type: "disabled" }, reasoning_effort: "none" }
+          : {}),
         messages: [
           { role: "system", content: system },
           { role: "user", content },
