@@ -58,13 +58,13 @@ function ListItems({ entry, items }: { entry: TechStackEntry; items: TechStackNo
   const visibleItems = items.slice(0, TECH_STACK_PREVIEW_ITEMS);
   const remainingItems = items.slice(TECH_STACK_PREVIEW_ITEMS);
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1">
       {renderItems(visibleItems)}
-      <details>
-        <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-[color:var(--nature-accent-strong)] underline decoration-[color:var(--nature-line-strong)] underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--nature-accent)]">
-          共 {items.length} 项，展开其余 {remainingItems.length} 项
+      <details className="mt-0.5">
+        <summary className="inline-flex min-h-0 cursor-pointer py-0.5 text-xs font-medium text-[color:var(--nature-accent-strong)] underline decoration-[color:var(--nature-line-strong)] underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--nature-accent)]">
+          已显示 {visibleItems.length} 项，展开其余 {remainingItems.length} 项
         </summary>
-        <div className="mt-2">{renderItems(remainingItems)}</div>
+        <div className="pt-1">{renderItems(remainingItems)}</div>
       </details>
     </div>
   );
@@ -167,14 +167,7 @@ export default function PlaybookTechStack({ value }: { value: unknown }) {
           </dl>
         </section>
       ))}
-      <details className="mt-4 border-t border-[color:var(--nature-line)] pt-2">
-        <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-[color:var(--nature-accent-strong)] underline decoration-[color:var(--nature-line-strong)] underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--nature-accent)]">
-          查看原始数据
-        </summary>
-        <div className="mt-2">
-          <PlaybookTechStackRaw value={value} />
-        </div>
-      </details>
+      <PlaybookTechStackRaw value={value} />
     </section>
   );
 }

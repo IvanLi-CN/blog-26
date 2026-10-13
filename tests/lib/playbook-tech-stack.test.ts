@@ -106,7 +106,7 @@ describe("playbook technology stack presentation", () => {
     );
     expect(html).toContain("运行与交付");
     expect(html).toContain("框架");
-    expect(html).toContain("共 9 项");
+    expect(html).toContain("已显示 4 项，展开其余 5 项");
     expect(html).toContain('role="tablist"');
     expect(html).toContain('role="tabpanel"');
     expect(html).toContain("查看原始数据");
