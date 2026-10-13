@@ -112,17 +112,18 @@ function ListItems({ entry, items }: { entry: TechStackEntry; items: TechStackNo
 
 function RecordValue({ entries }: { entries: TechStackEntry[] }) {
   return (
-    <dl className="mt-1 min-w-0 space-y-1.5">
-      {entries.map((entry) => (
-        <div key={entry.key} className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-          <dt className="text-xs font-semibold tracking-wide text-[color:var(--nature-text-soft)]">
-            {entry.label}
-          </dt>
-          <dd className="min-w-0 flex-1">
-            <NodeValue entry={entry} value={entry.value} />
-          </dd>
-        </div>
-      ))}
+    <dl className="mt-1 grid min-w-0 grid-cols-[max-content_minmax(0,1fr)] items-baseline gap-x-2 gap-y-1.5">
+      {entries.flatMap((entry) => [
+        <dt
+          key={`${entry.key}-label`}
+          className="text-xs font-semibold tracking-wide text-[color:var(--nature-text-soft)]"
+        >
+          {entry.label}
+        </dt>,
+        <dd key={`${entry.key}-value`} className="min-w-0">
+          <NodeValue entry={entry} value={entry.value} />
+        </dd>,
+      ])}
     </dl>
   );
 }
@@ -190,20 +191,18 @@ export default function PlaybookTechStack({ value }: { value: unknown }) {
           className="min-w-0 pt-3"
         >
           <h3 className="sr-only">{group.label}</h3>
-          <dl className="min-w-0 space-y-2.5">
-            {group.entries.map((entry) => (
-              <div
-                key={entry.key}
-                className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"
+          <dl className="grid min-w-0 grid-cols-[max-content_minmax(0,1fr)] items-baseline gap-x-2.5 gap-y-2.5">
+            {group.entries.flatMap((entry) => [
+              <dt
+                key={`${entry.key}-label`}
+                className="text-xs font-semibold tracking-wide text-[color:var(--nature-text-soft)]"
               >
-                <dt className="text-xs font-semibold tracking-wide text-[color:var(--nature-text-soft)]">
-                  {entry.label}
-                </dt>
-                <dd className="min-w-0 flex-1">
-                  <NodeValue entry={entry} value={entry.value} />
-                </dd>
-              </div>
-            ))}
+                {entry.label}
+              </dt>,
+              <dd key={`${entry.key}-value`} className="min-w-0">
+                <NodeValue entry={entry} value={entry.value} />
+              </dd>,
+            ])}
           </dl>
         </section>
       ))}

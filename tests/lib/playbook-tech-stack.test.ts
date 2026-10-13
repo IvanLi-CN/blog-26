@@ -113,6 +113,10 @@ describe("playbook technology stack presentation", () => {
     expect(html).toContain("查看原始数据");
     expect(html).toContain("复制原始数据");
     expect(html).toContain("全屏查看原始数据");
+    expect(html).toContain('data-state="closed"');
+    expect(html).toContain("grid-cols-[max-content_minmax(0,1fr)]");
+    expect(html).not.toContain(">复制</span>");
+    expect(html).not.toContain(">全屏</button>");
     expect(html).toContain("var(--nature-code-function)");
     expect(html).toContain('aria-label="原始技术栈 JSON"');
     expect(html).not.toContain("cargo");

@@ -1,5 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type Ref, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Icon from "@/components/ui/Icon";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatTechStackRaw } from "@/lib/playbook/tech-stack";
 
 const tokenColors = {
@@ -42,8 +43,50 @@ function HighlightedJson({ source }: { source: string }) {
   );
 }
 
-const buttonClassName =
-  "inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-[color:var(--nature-text-soft)] transition-colors hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--nature-accent)] lg:min-h-9";
+const iconButtonClassName =
+  "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-0 text-[color:var(--nature-text-soft)] transition-colors hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--nature-accent)] lg:min-h-9 lg:min-w-9";
+
+function IconAction({
+  label,
+  icon,
+  onClick,
+  buttonRef,
+  expanded,
+  status,
+}: {
+  label: string;
+  icon: string;
+  onClick: () => void;
+  buttonRef?: Ref<HTMLButtonElement>;
+  expanded?: boolean;
+  status?: string;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          ref={buttonRef}
+          type="button"
+          onClick={onClick}
+          className={iconButtonClassName}
+          aria-label={label}
+          aria-expanded={expanded}
+          title={label}
+        >
+          <Icon name={icon} className="h-4 w-4 shrink-0" aria-hidden="true" />
+          {status ? (
+            <span className="sr-only" role="status">
+              {status}
+            </span>
+          ) : null}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" align="end">
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 export default function PlaybookTechStackRaw({ value }: { value: unknown }) {
   const raw = formatTechStackRaw(value);
@@ -138,38 +181,29 @@ export default function PlaybookTechStackRaw({ value }: { value: unknown }) {
 
   const copyLabel =
     copyState === "copied" ? "已复制" : copyState === "failed" ? "复制失败，请手动复制" : "复制";
+  const copyAction = (
+    <IconAction
+      label="复制原始数据"
+      icon={copyState === "copied" ? "tabler:check" : "tabler:copy"}
+      onClick={copyRaw}
+      status={copyState === "idle" ? undefined : copyLabel}
+    />
+  );
+  const fullscreenAction = (
+    <IconAction
+      buttonRef={expandButtonRef}
+      label={expanded ? "退出全屏" : "全屏查看原始数据"}
+      icon={expanded ? "tabler:arrows-minimize" : "tabler:arrows-maximize"}
+      onClick={() => setFullscreen(!expanded)}
+      expanded={expanded}
+    />
+  );
   const viewerToolbar = (
     <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[color:var(--nature-line)] px-3">
       <span className="font-mono text-xs text-[color:var(--nature-text-soft)]">JSON</span>
       <div className="flex items-center gap-1">
-        <button
-          type="button"
-          onClick={copyRaw}
-          className={buttonClassName}
-          aria-label="复制原始数据"
-          title="复制原始数据"
-        >
-          <Icon
-            name={copyState === "copied" ? "tabler:check" : "tabler:copy"}
-            className="h-4 w-4 shrink-0"
-          />
-          <span role="status">{copyLabel}</span>
-        </button>
-        <button
-          ref={expandButtonRef}
-          type="button"
-          onClick={() => setFullscreen(!expanded)}
-          className={buttonClassName}
-          aria-label={expanded ? "退出全屏" : "全屏查看原始数据"}
-          aria-expanded={expanded}
-          title={expanded ? "退出全屏 (Esc)" : "全屏查看原始数据"}
-        >
-          <Icon
-            name={expanded ? "tabler:arrows-minimize" : "tabler:arrows-maximize"}
-            className="h-4 w-4 shrink-0"
-          />
-          {expanded ? "退出全屏" : "全屏"}
-        </button>
+        {copyAction}
+        {fullscreenAction}
       </div>
     </div>
   );
@@ -197,7 +231,7 @@ export default function PlaybookTechStackRaw({ value }: { value: unknown }) {
   );
 
   return (
-    <>
+    <TooltipProvider>
       <div className="mt-3 overflow-hidden rounded-md border border-[color:var(--nature-line)] bg-[rgba(var(--nature-accent-rgb),0.045)]">
         <div className="flex min-h-11 items-center gap-2 border-b border-[color:var(--nature-line)] px-2 lg:min-h-9 lg:px-3">
           <button
@@ -218,34 +252,8 @@ export default function PlaybookTechStackRaw({ value }: { value: unknown }) {
             JSON
           </span>
           <div className="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              onClick={copyRaw}
-              className={buttonClassName}
-              aria-label="复制原始数据"
-              title="复制原始数据"
-            >
-              <Icon
-                name={copyState === "copied" ? "tabler:check" : "tabler:copy"}
-                className="h-4 w-4 shrink-0"
-              />
-              <span role="status">{copyLabel}</span>
-            </button>
-            <button
-              ref={expandButtonRef}
-              type="button"
-              onClick={() => setFullscreen(!expanded)}
-              className={buttonClassName}
-              aria-label={expanded ? "退出全屏" : "全屏查看原始数据"}
-              aria-expanded={expanded}
-              title={expanded ? "退出全屏 (Esc)" : "全屏查看原始数据"}
-            >
-              <Icon
-                name={expanded ? "tabler:arrows-minimize" : "tabler:arrows-maximize"}
-                className="h-4 w-4 shrink-0"
-              />
-              {expanded ? "退出全屏" : "全屏"}
-            </button>
+            {copyAction}
+            {fullscreenAction}
           </div>
         </div>
         <div id="playbook-tech-stack-raw-content" hidden={!open && !expanded}>
@@ -260,6 +268,6 @@ export default function PlaybookTechStackRaw({ value }: { value: unknown }) {
       >
         {expanded ? viewer : null}
       </dialog>
-    </>
+    </TooltipProvider>
   );
 }
