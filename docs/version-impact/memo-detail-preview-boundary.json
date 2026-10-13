@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "ceecf5ed867ee849fce6d8e5d8225e9e5505923a",
+  "covered_files": {
+    "GLOSSARY.md": "2407170b0e887241d1e0367411700871e35823de",
+    "apps/admin/src/pages/preview.tsx": "6f99762924bb4c77750268ad835cec6a7f77cc03",
+    "docs/adr/0024-memo-detail-preview-boundary.md": "181d067980d444f265ac62443fc3d824077f7e61",
+    "docs/specs/memo-admin-inline-view/SPEC.md": "88e82dcfe4e4f00e84ea4d291428e10d6615cb21",
+    "site/components/PublicMemoAuthoring.public.tsx": "f2d5178a4f6ef032b2b42e10fa51cc87bb920d63",
+    "site/components/PublicMemoAuthoring.tsx": "d454f471b1d3899ee6e7c870e99d7c0e6d32b7cc",
+    "site/components/PublicRouter.tsx": "b55be96f8aff64be5b8044acb8d62e94007a7510",
+    "site/components/VirtualizedMemoList.tsx": "107f3d0d36b640fc780a3554098f421cbfaac07c",
+    "site/components/pages/memo.tsx": "b4072d58fc79c1960e8c732ba072869e5143f71e",
+    "site/lib/page-data/memo.ts": "5ae318f97ca68c378910f59bc03048a8befe99a8",
+    "src/server/clipping/api.test.ts": "c49f19bb824e1534886fbb47cdbd0898e70e133d",
+    "src/server/clipping/api.ts": "c9f16d2ced4b0f248ad5a53d5e1f3f21a434b82e",
+    "src/server/http-compat-api.test.ts": "aa055bf98c2b7f090380189b34356ec9839a096a",
+    "src/server/routers/memos.ts": "dae1d2f73077b47bd3cbe7fc65c309aacdbc4183",
+    "tests/components/PublicMemoAuthoring.test.tsx": "54f9b8e751c25a0b00880e90561984e4ae0d7749",
+    "tests/e2e/admin/memos-admin.spec.ts": "173c142fa9274f0bba70c7181b0547bb09dd01c2",
+    "tests/e2e/admin/memos/helpers.ts": "20c88f3ef2026ae4a1af491e9cdea409fd62d201",
+    "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts": "b3bc146fcb4990a174afc398eadfde98ca0bb210",
+    "tests/e2e/guest/public-csr-navigation.spec.ts": "8d5beebd8d7ec674ff4289cf3119d67a3fed7868"
+  },
+  "change": {
+    "description": "Separate Console Memo detail navigation from the dedicated author preview, load the current Memo projection server-side with the existing identity and media boundaries, preserve same-route editing and public route history, and hide unauthorized private Memo and clipping reads behind the existing missing-resource boundary.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change preserves public API payload shapes, database and local-content formats, public snapshot generation, and deployment host resolution. It adds compatible Console navigation and server-rendered administrator detail projection while making unauthorized private reads indistinguishable from missing resources.",
+      "assessed_at": "2026-10-14T04:35:51+08:00",
+      "evidence": [
+        {
+          "path": "docs/adr/0024-memo-detail-preview-boundary.md",
+          "blob": "181d067980d444f265ac62443fc3d824077f7e61",
+          "command": "Locked Memo detail/preview boundary and same-origin navigation decision"
+        },
+        {
+          "path": "docs/specs/memo-admin-inline-view/SPEC.md",
+          "blob": "88e82dcfe4e4f00e84ea4d291428e10d6615cb21",
+          "command": "Memo admin inline-view specification records the SSR, preview, save, and privacy contracts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate changes only the Console Memo detail/preview boundary, request-scoped initial projection, unauthorized read status mapping, and shared route history state. Public API wire shapes, persistent state, snapshot publishing, and deployment host configuration remain unchanged.",
+      "assessed_at": "2026-10-14T04:35:51+08:00",
+      "evidence": [
+        {
+          "path": "site/lib/page-data/memo.ts",
+          "blob": "5ae318f97ca68c378910f59bc03048a8befe99a8",
+          "command": "Current page loader supplies request-scoped public or administrator Memo detail projection"
+        },
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "aa055bf98c2b7f090380189b34356ec9839a096a",
+          "command": "HTTP compatibility tests cover generic missing-resource responses for unauthorized private Memo reads"
+        },
+        {
+          "path": "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts",
+          "blob": "b3bc146fcb4990a174afc398eadfde98ca0bb210",
+          "command": "Admin Memo detail E2E covers eye navigation, SSR privacy, preview separation, save, clipping, and responsive states"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains within the locked Memo detail/preview, SSR authorization, media/clipping projection, and shared history scope; no schema, public payload, snapshot, host configuration, or VERSION change was introduced."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused component, clipping, HTTP compatibility, build, production Console, admin E2E, guest navigation, and clipping Web Demo checks pass. The implementation preserves existing public payload shapes and persistent state while enforcing the same-origin detail/preview boundary and private-resource non-disclosure.",
+      "assessed_at": "2026-10-14T04:35:51+08:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts",
+          "blob": "b3bc146fcb4990a174afc398eadfde98ca0bb210",
+          "command": "Admin Memo E2E: 13 passed on the current production Console build"
+        },
+        {
+          "path": "tests/e2e/guest/public-csr-navigation.spec.ts",
+          "blob": "8d5beebd8d7ec674ff4289cf3119d67a3fed7868",
+          "command": "Guest public CSR navigation E2E: 9 passed, including history restoration and scroll bounds"
+        },
+        {
+          "path": "src/server/clipping/api.test.ts",
+          "blob": "c49f19bb824e1534886fbb47cdbd0898e70e133d",
+          "command": "Clipping API authorization tests: 9 passed"
+        },
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "aa055bf98c2b7f090380189b34356ec9839a096a",
+          "command": "HTTP compatibility tests: 93 passed and 3 skipped"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2"
+      ],
+      "evidence": [
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "aa055bf98c2b7f090380189b34356ec9839a096a",
+          "command": "Existing HTTP compatibility suite passes while public Memo and clipping response shapes remain unchanged"
+        },
+        {
+          "path": "src/server/clipping/api.test.ts",
+          "blob": "c49f19bb824e1534886fbb47cdbd0898e70e133d",
+          "command": "Clipping read and discussion authorization regression suite passes"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local-content format, browser persistence, or durable release-ledger state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/components/PublicMemoAuthoring.test.tsx",
+          "blob": "54f9b8e751c25a0b00880e90561984e4ae0d7749",
+          "command": "Component regression suite covers same-route editing and state updates without introducing persisted state"
+        }
+      ]
+    }
+  }
+}
