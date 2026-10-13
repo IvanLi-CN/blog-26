@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "2a5e0cc7792ce64fc19fc9edc91d47f09b4f5a5f",
+  "base_sha": "f8f611fa77462091ab891efc172a8fc3bd47fd74",
   "covered_files": {
     "docs/specs/nature-front-ui/SPEC.md": "ed82d5f5503f09bc1f3d5038148b2489c52b75c6",
     "docs/specs/nature-front-ui/assets/fixed-viewport-background-desktop-home-light.png": "661511010889da10593cf1cb487fca925d9bb94b",
