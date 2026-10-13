@@ -61,8 +61,11 @@ function ListItems({ entry, items }: { entry: TechStackEntry; items: TechStackNo
     <div className="space-y-1">
       {renderItems(visibleItems)}
       <details className="mt-0.5">
-        <summary className="inline-flex min-h-0 cursor-pointer py-0.5 text-xs font-medium text-[color:var(--nature-accent-strong)] underline decoration-[color:var(--nature-line-strong)] underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--nature-accent)]">
-          已显示 {visibleItems.length} 项，展开其余 {remainingItems.length} 项
+        <summary
+          aria-label={`展开其余 ${remainingItems.length} 项`}
+          className="inline-flex min-h-0 cursor-pointer list-none items-center rounded-full border border-[rgba(var(--nature-accent-rgb),0.24)] bg-[rgba(var(--nature-accent-rgb),0.1)] px-2 py-0.5 font-mono text-[11px] font-medium leading-4 text-[color:var(--nature-accent-strong)] marker:hidden focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--nature-accent)]"
+        >
+          +{remainingItems.length}
         </summary>
         <div className="pt-1">{renderItems(remainingItems)}</div>
       </details>
