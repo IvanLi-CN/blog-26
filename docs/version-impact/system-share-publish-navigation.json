@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "2a5e0cc7792ce64fc19fc9edc91d47f09b4f5a5f",
+  "covered_files": {
+    "site/components/SystemShareConfirmation.tsx": "5bc5e1b0cc407e647db31aa69e1cdbc5c41c4196",
+    "site/lib/system-share-store.ts": "a6bbb4f1df9cc76e18f58dd1c85fdf54d4d42237"
+  },
+  "change": {
+    "description": "Ensure a successfully committed system-share Memo navigates away from the confirmation page even when local IndexedDB cleanup fails, and complete cleanup only after its transaction commits.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change preserves the system-share endpoint and Memo contract while making the existing browser confirmation flow resilient to local cleanup errors.",
+      "assessed_at": "2026-10-13T12:00:00+08:00",
+      "evidence": [
+        {
+          "path": "site/components/SystemShareConfirmation.tsx",
+          "blob": "5bc5e1b0cc407e647db31aa69e1cdbc5c41c4196",
+          "command": "bun run check"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The client treats a successful server response as authoritative, replaces the confirmation history entry with the Memo list, and handles IndexedDB transaction completion, errors, and aborts without changing the server API or stored Memo format.",
+      "assessed_at": "2026-10-13T12:00:00+08:00",
+      "evidence": [
+        {
+          "path": "site/components/SystemShareConfirmation.tsx",
+          "blob": "5bc5e1b0cc407e647db31aa69e1cdbc5c41c4196",
+          "command": "bun run check"
+        },
+        {
+          "path": "site/lib/system-share-store.ts",
+          "blob": "a6bbb4f1df9cc76e18f58dd1c85fdf54d4d42237",
+          "command": "bun run test:precommit"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains limited to post-commit navigation and browser pending-share cleanup behavior."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused system-share API tests, repository checks, and the complete precommit suite pass. The existing idempotent server submission remains the authoritative commit boundary while client cleanup failures no longer keep the user on the confirmation page.",
+      "assessed_at": "2026-10-13T12:00:00+08:00",
+      "evidence": [
+        {
+          "path": "site/components/SystemShareConfirmation.tsx",
+          "blob": "5bc5e1b0cc407e647db31aa69e1cdbc5c41c4196",
+          "command": "bun run check"
+        },
+        {
+          "path": "site/lib/system-share-store.ts",
+          "blob": "a6bbb4f1df9cc76e18f58dd1c85fdf54d4d42237",
+          "command": "bun run test:precommit"
+        },
+        {
+          "path": "tests/server/system-share-api.test.ts",
+          "blob": "f4d02796951df0c459abd6647262d708848bf4a0",
+          "command": "bun test src/lib/__tests__/system-share.test.ts tests/server/system-share-api.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5"
+      ],
+      "evidence": [
+        {
+          "path": "tests/server/system-share-api.test.ts",
+          "blob": "f4d02796951df0c459abd6647262d708848bf4a0",
+          "command": "bun run test:precommit"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The change does not add a migration, file format, content data, or browser storage schema; it only makes deletion of the existing pending-share slot transactional.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "site/lib/system-share-store.ts",
+          "blob": "a6bbb4f1df9cc76e18f58dd1c85fdf54d4d42237",
+          "command": "bun run test:precommit"
+        }
+      ]
+    }
+  }
+}
