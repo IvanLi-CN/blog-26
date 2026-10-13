@@ -87,7 +87,7 @@ async function access(slug: string, ctx: TRPCContext, discussion = false) {
       authored.frontmatter.public === false ||
       authored.frontmatter.draft === true)
   ) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "无权阅读此闪念" });
+    throw new TRPCError({ code: "NOT_FOUND", message: "闪念不存在" });
   }
   return { row, authored, manifest, participant, recognition };
 }

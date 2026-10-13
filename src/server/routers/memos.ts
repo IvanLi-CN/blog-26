@@ -707,8 +707,8 @@ export const memosRouter = router({
       // 权限检查：非管理员只能查看已公开且非草稿的 memo
       if ((!memo.public || memo.draft || !(await isClippingRowPublic(memo))) && !ctx.isAdmin) {
         throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "无权访问此 memo",
+          code: "NOT_FOUND",
+          message: "Memo 不存在",
         });
       }
 
@@ -733,7 +733,7 @@ export const memosRouter = router({
           clipping.authored.frontmatter.draft === true) &&
         !ctx.isAdmin
       )
-        throw new TRPCError({ code: "FORBIDDEN", message: "无权访问此闪念" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "Memo 不存在" });
       const title = clipping ? clipping.title : await resolvePublicMemoTitle(memo);
 
       const base = {

@@ -148,6 +148,9 @@ export default function PublicRouter({
   const pendingScroll = useRef<{
     position: { top: number; left: number } | null;
     restore: boolean;
+    userPosition: { top: number; left: number } | null;
+    restorationAttempted: boolean;
+    programmaticPosition: { top: number; left: number } | null;
   } | null>(null);
   const navigationStarted = useRef(false);
   const navigateRef = useRef<
@@ -169,20 +172,25 @@ export default function PublicRouter({
     navigationStarted.current = true;
     document.dispatchEvent(new Event("astro:before-swap"));
     if (mode === "push") {
-      if (!pendingScroll.current)
-        window.history.replaceState(
-          {
-            ...window.history.state,
-            publicCsrScroll: { top: window.scrollY, left: window.scrollX },
-          },
-          ""
-        );
+      const pending = pendingScroll.current;
+      const persistedPosition = pending?.userPosition ??
+        window.history.state?.publicCsrScroll ?? { top: window.scrollY, left: window.scrollX };
+      window.history.replaceState(
+        {
+          ...window.history.state,
+          publicCsrScroll: persistedPosition,
+        },
+        ""
+      );
       window.history.pushState({ publicCsr: true }, "", target);
     }
     pendingScroll.current = {
       position:
         mode === "pop" ? (restoredScroll ?? window.history.state?.publicCsrScroll ?? null) : null,
       restore: mode === "pop",
+      userPosition: null,
+      restorationAttempted: false,
+      programmaticPosition: null,
     };
     setUrl(target.pathname + target.search + target.hash);
     setError(null);
@@ -242,6 +250,9 @@ export default function PublicRouter({
         pendingScroll.current = {
           position: restoredScroll,
           restore: true,
+          userPosition: null,
+          restorationAttempted: false,
+          programmaticPosition: null,
         };
         // Distinct history entries can share the same URL but reading positions.
         setScrollRevision((revision) => revision + 1);
@@ -283,13 +294,20 @@ export default function PublicRouter({
     const previousScrollRestoration = window.history.scrollRestoration;
     window.history.scrollRestoration = "manual";
     const saveScroll = () => {
-      // A pending route still has the previous page's geometry. Do not overwrite
-      // the destination history entry before its own content has settled.
-      if (pendingScroll.current) return;
-      window.history.replaceState(
-        { ...window.history.state, publicCsrScroll: { top: window.scrollY, left: window.scrollX } },
-        ""
-      );
+      const current = { top: window.scrollY, left: window.scrollX };
+      const pending = pendingScroll.current;
+      if (pending) {
+        // Ignore route-swap geometry and the router's own restore scroll. A
+        // user scroll during settling becomes the position saved for a later push.
+        const expected = pending.programmaticPosition;
+        if (
+          pending.restorationAttempted &&
+          (!expected || current.top !== expected.top || current.left !== expected.left)
+        )
+          pending.userPosition = current;
+        return;
+      }
+      window.history.replaceState({ ...window.history.state, publicCsrScroll: current }, "");
     };
     saveScroll();
     window.addEventListener("scroll", saveScroll, { passive: true });
@@ -400,6 +418,7 @@ export default function PublicRouter({
           return;
         }
         main?.focus({ preventScroll: true });
+        scroll.restorationAttempted = true;
         const hash = new URL(url, "https://public.invalid").hash;
         let anchor: HTMLElement | null = null;
         try {
@@ -419,6 +438,7 @@ export default function PublicRouter({
           );
           const targetTop = Math.min(Math.max(0, scroll.position.top), maxScrollTop);
           const targetLeft = Math.min(Math.max(0, scroll.position.left), maxScrollLeft);
+          scroll.programmaticPosition = { top: targetTop, left: targetLeft };
           window.scrollTo({ top: targetTop, left: targetLeft, behavior: "instant" });
           const reachedTarget =
             Math.abs(window.scrollY - targetTop) <= 1 && Math.abs(window.scrollX - targetLeft) <= 1;
@@ -444,7 +464,9 @@ export default function PublicRouter({
           return;
         } else if (anchor) {
           anchor.scrollIntoView();
+          scroll.programmaticPosition = { top: window.scrollY, left: window.scrollX };
         } else {
+          scroll.programmaticPosition = { top: 0, left: 0 };
           window.scrollTo({ top: 0, left: 0, behavior: "instant" });
         }
         finishRestore();

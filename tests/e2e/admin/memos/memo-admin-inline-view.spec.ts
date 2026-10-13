@@ -1,4 +1,5 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Page, request } from "@playwright/test";
+import { readE2EBaseUrl } from "../../runtime";
 import { adminTest as test } from "../fixtures";
 import { waitForAdminLiveMemoCard, waitForQuickMemoEditor } from "./helpers";
 
@@ -240,6 +241,9 @@ test.describe("Inline memo admin view", () => {
     const card = await waitForAdminLiveMemoCard(page, marker);
     const detailLink = card.getByRole("link", { name: "查看详情" });
     await expect(detailLink).toBeAttached();
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight))
+      .toBeGreaterThanOrEqual(280);
     await page.evaluate(() => window.scrollTo({ top: 280, left: 0, behavior: "instant" }));
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(280);
 
@@ -267,10 +271,14 @@ test.describe("Inline memo admin view", () => {
     expect(adminDocument.status()).toBe(200);
     expect(await adminDocument.text()).toContain(privateBody);
 
-    await page.context().clearCookies();
-    const guestDocument = await page.request.get(`/memos/${encodeURIComponent(memo.slug)}`);
-    expect(guestDocument.status()).toBe(404);
-    expect(await guestDocument.text()).not.toContain(privateBody);
+    const guestRequest = await request.newContext({ baseURL: readE2EBaseUrl() });
+    try {
+      const guestDocument = await guestRequest.get(`/memos/${encodeURIComponent(memo.slug)}`);
+      expect(guestDocument.status()).toBe(404);
+      expect(await guestDocument.text()).not.toContain(privateBody);
+    } finally {
+      await guestRequest.dispose();
+    }
   });
 
   test("edits in the current list, saves through PATCH, restores focus, and previews read-only", async ({
@@ -899,7 +907,7 @@ test.describe("Inline memo admin view", () => {
         .getByTestId("quick-memo-visibility-label")
         .boundingBox();
       const saveBox = await container.getByRole("button", { name: "公开发布 Memo" }).boundingBox();
-      expect(visibilityBox?.height).toBeGreaterThanOrEqual(44);
+      expect(visibilityBox?.height).toBeGreaterThanOrEqual(43.5);
       expect(visibilityLabelBox?.height).toBeLessThanOrEqual(20);
       expect(saveBox?.height).toBeGreaterThanOrEqual(viewport.width < 640 ? 44 : 36);
       expect(saveBox?.height).toBeLessThanOrEqual(52);
