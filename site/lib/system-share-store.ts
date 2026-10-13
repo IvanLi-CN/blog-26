@@ -51,13 +51,34 @@ export async function readPendingSystemShare(now = Date.now()): Promise<PendingS
 export async function clearPendingSystemShare() {
   if (typeof indexedDB === "undefined") return;
   const db = await openDatabase();
-  await new Promise<void>((resolve, reject) => {
-    const request = db
-      .transaction(STORE_NAME, "readwrite")
-      .objectStore(STORE_NAME)
-      .delete(CURRENT_KEY);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error || new Error("Could not clear pending share"));
-  });
-  db.close();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, "readwrite");
+      const request = transaction.objectStore(STORE_NAME).delete(CURRENT_KEY);
+      let settled = false;
+      const resolveOnce = () => {
+        if (!settled) {
+          settled = true;
+          resolve();
+        }
+      };
+      const rejectOnce = (error: unknown) => {
+        if (!settled) {
+          settled = true;
+          reject(error instanceof Error ? error : new Error("Could not clear pending share"));
+        }
+      };
+      transaction.oncomplete = resolveOnce;
+      transaction.onerror = () =>
+        rejectOnce(
+          transaction.error || request.error || new Error("Could not clear pending share")
+        );
+      transaction.onabort = () =>
+        rejectOnce(transaction.error || new Error("Could not clear pending share"));
+      request.onerror = () =>
+        rejectOnce(request.error || new Error("Could not clear pending share"));
+    });
+  } finally {
+    db.close();
+  }
 }
