@@ -10,7 +10,7 @@
     "docs/specs/search-relevance/HISTORY.md": "6aebd99661ff5560c9c29ae840fca98f7060b3e3",
     "docs/specs/search-relevance/IMPLEMENTATION.md": "c1292624befdba7fb8280290366d35cfb8e69371",
     "docs/specs/search-relevance/SPEC.md": "aef764de43d7277f09d30f0f4f617d5e63b61d99",
-    "docs/specs/search-relevance/VALIDATION.md": "173da0061e3ca3958893888b7b3dfbfc86527b7a",
+    "docs/specs/search-relevance/VALIDATION.md": "fc62cebb657ffc3c353920adfb20ed111e6c7de7",
     "docs/specs/search-relevance/validation/product/empirical-search-model-current.txt": "18da8d07f5f5df3896db3ea1471e2fef6ad84678",
     "docs/specs/search-relevance/validation/product/empirical-search-model-nonthinking.txt": "9b2dcb5e8a69a3ea7796831dfc3d96323ccad02a",
     "lefthook.yml": "f4efb8182ef70cc48f63c374ebb77dd453869578",
@@ -19,14 +19,15 @@
     "scripts/run-precommit-tests.ts": null,
     "scripts/run-test-suite.ts": "5c5f93a47213070eb6c28ca0d8497b43c524cde0",
     "scripts/verify-native-search.ts": "77233b601836c68817a3a50ae16828c6c92c4c51",
-    "src/lib/ai/search-fallback.test.ts": "fe8e292f36657686399df1d8a30066e007f7c8e2",
-    "src/lib/ai/search.ts": "80d6e6d00291475b715a995e66f25099208f23cb",
+    "src/lib/ai/search-fallback.test.ts": "ff95598d9edf5a6ed5c223e62aee7529c4b0873b",
+    "src/lib/ai/search.ts": "543cca5875bb118464251fa10c9e36b0be21b4a9",
     "src/lib/search/content-search.ts": "71768f7c27091aaa8cbf424d0f5b73ec52332457",
     "src/server/http-compat-api.test.ts": "77d070da9fa6b499b7e0729bf1ac2efe4955609a",
-    "src/server/services/content-search.test.ts": "7d59fffa6a15cf081d9929a7cbfeb6148d710314",
-    "src/server/services/content-search.ts": "2acf38643fdf3816dfc4e14a019b6bdc307833eb",
+    "src/server/services/content-search.test.ts": "82d59c507016f1c3f55c1dac12ca14a1450c7ab4",
+    "src/server/services/content-search.ts": "709f927d8f6e172e590f54650687d7a3e196a1db",
     "src/server/services/search-model.test.ts": "c648968fb7ca8880d932db29ef02c7b48bccb0a9",
-    "src/server/services/search-model.ts": "43621c3d6a55434f1e50781e810b4380188bb868"
+    "src/server/services/search-model.ts": "43621c3d6a55434f1e50781e810b4380188bb868",
+    "src/lib/ai/search-cache.ts": "14186af5209f7ab61085e24d1df7063e72b5006e"
   },
   "change": {
     "description": "Introduce embedded Tantivy keyword search, independently configurable RAG and query-rewrite modes, direct original-query fallback, mode-aware public/API/MCP behavior, existing administrator model-page search controls, and bounded non-thinking DeepSeek JSON requests.",
@@ -41,7 +42,7 @@
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
-          "blob": "7d59fffa6a15cf081d9929a7cbfeb6148d710314",
+          "blob": "82d59c507016f1c3f55c1dac12ca14a1450c7ab4",
           "command": "bun test --timeout 30000 src/server/services/content-search.test.ts src/server/services/search-ranking.test.ts"
         },
         {
@@ -68,7 +69,7 @@
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
-          "blob": "7d59fffa6a15cf081d9929a7cbfeb6148d710314",
+          "blob": "82d59c507016f1c3f55c1dac12ca14a1450c7ab4",
           "command": "bun test --timeout 30000 src/server/services/content-search.test.ts src/server/services/search-ranking.test.ts"
         },
         {
@@ -99,7 +100,7 @@
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
-          "blob": "7d59fffa6a15cf081d9929a7cbfeb6148d710314",
+          "blob": "82d59c507016f1c3f55c1dac12ca14a1450c7ab4",
           "command": "bun test --timeout 30000 src/server/services/content-search.test.ts src/server/services/search-ranking.test.ts"
         },
         {
@@ -149,7 +150,7 @@
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
-          "blob": "7d59fffa6a15cf081d9929a7cbfeb6148d710314",
+          "blob": "82d59c507016f1c3f55c1dac12ca14a1450c7ab4",
           "command": "bun test --timeout 30000 src/server/services/content-search.test.ts src/server/services/search-ranking.test.ts"
         },
         {

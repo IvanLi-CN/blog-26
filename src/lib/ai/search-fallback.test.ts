@@ -133,12 +133,28 @@ describe.skipIf(process.platform !== "linux")("AI search fallback boundaries", (
   });
 
   test("exposes clipping identity from stored tags without changing Memo routes", async () => {
-    await seedPost({ id: "clipping-search", type: "memo", tags: ["剪藏", "search"] });
+    const previousRoot = process.env.LOCAL_CONTENT_BASE_PATH;
+    const contentRoot = fs.mkdtempSync(path.join(process.cwd(), "tmp/public-clipping-"));
+    process.env.LOCAL_CONTENT_BASE_PATH = contentRoot;
+    fs.mkdirSync(path.join(contentRoot, "Memos"));
+    fs.writeFileSync(
+      path.join(contentRoot, "Memos/clipping-search.md"),
+      "---\npublic: true\n---\nSQLite"
+    );
+    await seedPost({
+      id: "Memos/clipping-search.md",
+      slug: "clipping-search",
+      type: "memo",
+      tags: ["剪藏", "search"],
+    });
     await seedPost({ id: "ordinary-post", type: "post", tags: ["剪藏"] });
     const results = await semantic({ q: "SQLite" });
     expect(results.find((item) => item.slug === "clipping-search")?.isClipping).toBe(true);
     expect(results.find((item) => item.slug === "clipping-search")?.type).toBe("memo");
     expect(results.find((item) => item.slug === "ordinary-post")?.isClipping).toBeUndefined();
+    if (previousRoot === undefined) delete process.env.LOCAL_CONTENT_BASE_PATH;
+    else process.env.LOCAL_CONTENT_BASE_PATH = previousRoot;
+    fs.rmSync(contentRoot, { recursive: true, force: true });
   });
 
   test("keeps legacy semantic and keyword fallback current without vectors", async () => {

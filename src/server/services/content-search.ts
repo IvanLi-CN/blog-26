@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { postEmbeddings, posts } from "@/lib/schema";
 import { searchContent } from "@/lib/search/content-search";
 import { ContentSearchError, planNativeQuery } from "@/lib/search/native-query";
+import { parseSearchQuery } from "@/lib/search/query";
 import { type SearchReason, searchModeSchema } from "@/lib/search/settings";
 import {
   authorizeContent,
@@ -216,6 +217,8 @@ export async function executeContentModes(
   if (
     /(?:^|[\s(:])NEAR\s*\(/iu.test(input.q.normalize("NFKC").replace(/"(?:\\.|[^"\\])*"/gu, ""))
   ) {
+    if (parseSearchQuery(input.q).limitExceeded)
+      throw new ContentSearchError("BAD_REQUEST", "query-budget-exceeded");
     const legacy = await searchContent({
       q: input.q,
       topK: input.topK,

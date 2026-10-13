@@ -350,7 +350,10 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
 
   const results: SearchResult[] = uniqueRankedContent(rankedResults)
     .slice(0, input.topK ?? 50)
-    .map(({ id: _id, publishDate: _publishDate, ...result }) => result);
+    .map(({ id, publishDate: _publishDate, ...result }) => {
+      Object.defineProperty(result, "id", { value: id });
+      return result;
+    });
   return { results, source: "semantic" };
 }
 
@@ -366,7 +369,7 @@ async function getSemanticExecution(input: SemanticSearchInput): Promise<Semanti
     };
   });
   const results =
-    input.publishedOnly === true
+    input.publishedOnly !== false
       ? await filterPublishedClippingResults(execution.results)
       : execution.results;
   return {
@@ -376,19 +379,32 @@ async function getSemanticExecution(input: SemanticSearchInput): Promise<Semanti
 }
 
 export async function filterPublishedClippingResults(results: SearchResult[]) {
-  const memoSlugs = Array.from(
-    new Set(results.filter((result) => result.type === "memo").map((result) => result.slug))
+  const memoIds = Array.from(
+    new Set(
+      results
+        .filter((result) => result.type === "memo")
+        .flatMap((result) => (result.id ? [result.id] : []))
+    )
   );
-  if (memoSlugs.length === 0) return results;
-  const rows = await db
-    .select()
-    .from(posts)
-    .where(and(eq(posts.type, "memo"), inArray(posts.slug, memoSlugs)));
-  const publicBySlug = new Map(
-    await Promise.all(rows.map(async (row) => [row.slug, await isClippingRowPublic(row)] as const))
+  if (!results.some((result) => result.type === "memo")) return results;
+  const rows = memoIds.length
+    ? await db
+        .select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.type, "memo"),
+            inArray(posts.id, memoIds),
+            eq(posts.draft, false),
+            eq(posts.public, true)
+          )
+        )
+    : [];
+  const publicById = new Map(
+    await Promise.all(rows.map(async (row) => [row.id, await isClippingRowPublic(row)] as const))
   );
   return results.filter(
-    (result) => result.type !== "memo" || (publicBySlug.get(result.slug) ?? false)
+    (result) => result.type !== "memo" || publicById.get(result.id ?? "") === true
   );
 }
 
@@ -439,14 +455,19 @@ async function legacyEnhancedWithReranker(
     const min = Math.min(...items.map((item) => item.score));
     const normalize = (score: number) => (max === min ? 0 : (score - min) / (max - min));
     const beta = Number(process.env.RERANKER_WEIGHT || 0.7);
-    return base.results
+    const ranked = base.results
       .map((result, index) => {
         const score = items.find((item) => item.index === index)?.score ?? 0;
         const final = (0.3 * ((result.cosine ?? 0) + 1)) / 2 + beta * normalize(score);
-        return { ...result, rerank: score, final };
+        const rankedResult = { ...result, rerank: score, final };
+        if (result.id) Object.defineProperty(rankedResult, "id", { value: result.id });
+        return rankedResult;
       })
       .sort((a, b) => (b.final ?? 0) - (a.final ?? 0));
+    return input.publishedOnly !== false ? filterPublishedClippingResults(ranked) : ranked;
   } catch {
-    return base.results;
+    return input.publishedOnly !== false
+      ? filterPublishedClippingResults(base.results)
+      : base.results;
   }
 }

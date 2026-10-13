@@ -49,6 +49,12 @@ function buildSearchCacheKey(mode: SearchCacheMode, input: SearchCacheInput) {
   });
 }
 
+function cloneSearchResult(result: SearchResult): SearchResult {
+  const copy = { ...result };
+  if (result.id) Object.defineProperty(copy, "id", { value: result.id });
+  return copy;
+}
+
 export async function getCachedSearchExecution(
   mode: SearchCacheMode,
   input: SearchCacheInput,
@@ -60,7 +66,7 @@ export async function getCachedSearchExecution(
 
   if (cached && cached.expiresAt > now) {
     return {
-      results: cached.results.map((result) => ({ ...result })),
+      results: cached.results.map(cloneSearchResult),
       source: cached.source,
     };
   }
@@ -86,7 +92,7 @@ export async function getCachedSearchExecution(
   if (normalized.cacheable) {
     searchCache.set(key, {
       expiresAt: now + getSearchCacheTtlMs(),
-      results: normalized.results.map((result) => ({ ...result })),
+      results: normalized.results.map(cloneSearchResult),
       source: normalized.source,
     });
   }
