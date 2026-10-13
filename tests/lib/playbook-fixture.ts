@@ -9,6 +9,7 @@ import {
   publicReadingFixtureSearch,
 } from "../../src/lib/playbook/reading-fixture";
 import type { PlaybookManifest } from "../../src/lib/playbook/types";
+import { webDemoCatalog, webDemoSearch } from "../../src/lib/playbook/web-demo-fixture";
 
 export function makeArchive(files: { path: string; content: string; kind?: string }[]) {
   const parts: Buffer[] = [];
@@ -66,9 +67,11 @@ export function makePublicBundle(
 
 if (import.meta.main) {
   const root = resolve(process.argv[2] || ".tmp/playbook-fixture");
-  const bundle = process.argv.includes("--long")
-    ? makePublicBundle("v3.0.0", "100", publicReadingFixtureCatalog, publicReadingFixtureSearch)
-    : makePublicBundle();
+  const bundle = process.argv.includes("--web-demo")
+    ? makePublicBundle("v3.1.2", "240", webDemoCatalog, webDemoSearch)
+    : process.argv.includes("--long")
+      ? makePublicBundle("v3.0.0", "100", publicReadingFixtureCatalog, publicReadingFixtureSearch)
+      : makePublicBundle();
   await mkdir(root, { recursive: true });
   await writeFile(resolve(root, "playbook-public-manifest.json"), encodeJson(bundle.manifest));
   await writeFile(resolve(root, "playbook-public.tar.gz"), bundle.archive);
