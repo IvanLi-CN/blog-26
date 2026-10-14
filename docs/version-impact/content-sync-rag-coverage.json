@@ -10,8 +10,8 @@
     "apps/admin/src/pages/content-sync.test.tsx": "b2ad7004d15db18e8f548e33ce16ea011071e030",
     "apps/admin/src/pages/content-sync.tsx": "bb36dbd81e0f6d5213b186ffe350eb5d63988a09",
     "docs/runbooks/style-playbook-publishing.md": "4fddba53a78d07ae4238345a218df1d58a9e3f0f",
-    "docs/specs/search-relevance/HISTORY.md": "a19c5377fdeab5f20548c7735b26925c9222286b",
-    "docs/specs/search-relevance/IMPLEMENTATION.md": "168d1b1f76fe4600740de16a959fd6772670c09d",
+    "docs/specs/search-relevance/HISTORY.md": "0650118155a0ece94ec011ab470836f612cf3feb",
+    "docs/specs/search-relevance/IMPLEMENTATION.md": "7607b18c360c8b4823d1a3c5200245a38396d1af",
     "docs/specs/search-relevance/SPEC.md": "151a53557fad22a3e945753c310096e9545c3f1b",
     "docs/specs/search-relevance/assets/playbook-sync-admin-desktop.png": "cf51b36100373b7a45fa7780cb972eb40c0074e6",
     "docs/specs/search-relevance/assets/playbook-sync-admin-mobile.png": "073e57937dab2a947ba68a7d24754519b1847f18",
@@ -21,7 +21,7 @@
     "docs/specs/style-playbook-integration/SPEC.md": "f58b86ab2a4558bd8c7406eafbd6d7fa8a62e2c8",
     "docs/specs/style-playbook-integration/VALIDATION.md": "7b2451fda57a4b3d2e5a2ddd06899c1cd2d54140",
     "docs/specs/style-playbook-integration/assets/content-sync-rag-tablet-unconfigured.png": "c54f67dbe154970fb3afa994a380e3101f0b3a6b",
-    "docs/specs/style-playbook-integration/contracts/content-sync-status.md": "7b933ce457f191a9eff025a7f1efdcc84fce96de",
+    "docs/specs/style-playbook-integration/contracts/content-sync-status.md": "435c57e0670f27e60e162a901e1d1e655575138b",
     "drizzle/0015_content_sync_rag_coverage.sql": "08d4369122e2cd4afb9c4c84527387447b2488c1",
     "drizzle/meta/0015_snapshot.json": "12edaa01c2988df93b15f6b5ccb2a0b0fa63a98f",
     "drizzle/meta/_journal.json": "7857aaa1708ecdfa13595f9cca175d4faf810a42",
@@ -40,8 +40,8 @@
     "src/server/admin-api/router.ts": "c04dd56f4b88df6831d7fb80c1c59b771d7ec9b8",
     "src/server/routers/admin/content-sync.ts": "86e118adf0f02a257e164066a8b6703611b9b124",
     "src/server/routers/admin/vectorize.ts": "4d8ce2ce95aae60be1fd855cbabfab99bc29cf2f",
-    "src/server/services/content-search.test.ts": "182b46bdd47436a02832013d42f1bc46f31a4202",
-    "src/server/services/content-search.ts": "654c9aa345bcd5f9a847555cc89d9ac2111932af",
+    "src/server/services/content-search.test.ts": "8720ccfbadaf8ba73e8841174918015127f1ff1d",
+    "src/server/services/content-search.ts": "1d898b2cbbe352f12d4f5ed147c4e7322abdde93",
     "src/server/services/content-sync-runtime.ts": "b4ab00e66251a728b68419ad744a13b20c9a413d",
     "src/server/services/content-sync-status.ts": "eabfca64f53a5d2c7b9e10e610512694918443f8",
     "src/server/services/content-tasks.ts": "cb3660ca39a94a48e5d65112a6b1773afd1f1f65",
@@ -78,7 +78,7 @@
         },
         {
           "path": "src/server/services/content-search.test.ts",
-          "blob": "182b46bdd47436a02832013d42f1bc46f31a4202",
+          "blob": "8720ccfbadaf8ba73e8841174918015127f1ff1d",
           "command": "Legacy-compatible search scope and incomplete-source regressions"
         },
         {
@@ -110,7 +110,7 @@
         },
         {
           "path": "src/server/services/content-search.test.ts",
-          "blob": "182b46bdd47436a02832013d42f1bc46f31a4202",
+          "blob": "8720ccfbadaf8ba73e8841174918015127f1ff1d",
           "command": "Legacy-compatible search scope and incomplete-source regressions"
         },
         {
@@ -146,7 +146,7 @@
         },
         {
           "path": "src/server/services/content-search.test.ts",
-          "blob": "182b46bdd47436a02832013d42f1bc46f31a4202",
+          "blob": "8720ccfbadaf8ba73e8841174918015127f1ff1d",
           "command": "Legacy-compatible search scope and incomplete-source regressions"
         },
         {
@@ -185,7 +185,7 @@
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
-          "blob": "182b46bdd47436a02832013d42f1bc46f31a4202",
+          "blob": "8720ccfbadaf8ba73e8841174918015127f1ff1d",
           "command": "Legacy-compatible search scope and incomplete-source regressions"
         }
       ]

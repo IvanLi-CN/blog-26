@@ -510,7 +510,22 @@ export async function executeContentModes(
   };
   let ragIncompleteSources: string[] = [];
   let coverageIdentity: unknown;
+  const captureRagCoverage = async (config?: ResolvedTierConfig) => {
+    const coverage = await ragCoverage({
+      source: input.source,
+      type: input.type,
+      publishedOnly,
+      playbook: edition ?? null,
+      config,
+    });
+    ragIncompleteSources = coverage.status.incompleteSources;
+    coverageIdentity = {
+      identity: coverage.status.identity,
+      targets: coverage.status.details.map((row) => [row.id, row.state, row.indexedAt]),
+    };
+  };
   const keywordEnvelope = async (reason?: SearchReason): Promise<ContentSearchEnvelope> => {
+    if (input.mode === "rag" && coverageIdentity === undefined) await captureRagCoverage();
     const state = await keywordState();
     return {
       results: state.merged
@@ -531,26 +546,23 @@ export async function executeContentModes(
   ) {
     if (parseSearchQuery(input.q).limitExceeded)
       throw new ContentSearchError("BAD_REQUEST", "query-budget-exceeded");
-    return keywordNearEnvelope(input, publishedOnly, edition, metadata.playbook, incompleteSources);
+    if (input.mode === "rag") await captureRagCoverage();
+    return {
+      ...(await keywordNearEnvelope(
+        input,
+        publishedOnly,
+        edition,
+        metadata.playbook,
+        incompleteSources
+      )),
+      ...(ragIncompleteSources.length ? { ragIncompleteSources } : {}),
+    };
   }
   const plan = planNativeQuery(input.q);
   if (plan.mode !== "simple") return keywordEnvelope("explicit-query");
   if (input.mode === "keyword") return keywordEnvelope();
   const resolved = await resolveSearchPolicy(input.mode);
-  if (input.mode === "rag") {
-    const coverage = await ragCoverage({
-      source: input.source,
-      type: input.type,
-      publishedOnly,
-      playbook: edition ?? null,
-      config: resolved.resolved?.embedding,
-    });
-    ragIncompleteSources = coverage.status.incompleteSources;
-    coverageIdentity = {
-      identity: coverage.status.identity,
-      targets: coverage.status.details.map((row) => [row.id, row.state, row.indexedAt]),
-    };
-  }
+  if (input.mode === "rag") await captureRagCoverage(resolved.resolved?.embedding);
   if (resolved.reason) return keywordEnvelope(resolved.reason);
   if (!resolved.chat || !resolved.fingerprint || !resolved.resolved)
     return keywordEnvelope("unconfigured");

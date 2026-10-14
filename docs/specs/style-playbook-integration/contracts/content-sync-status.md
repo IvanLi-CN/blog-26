@@ -33,3 +33,5 @@ Historical chunk status is matched by parent and chunk identity; never-indexed s
 Playbook 的最终同步 rename 与 adopted 阶段提交在同一个同步 SQLite 取消围栏中进行，检查持久取消、执行 token 与租约；文件采用 checkpoint 用于数据库提交中断后的前向恢复。本地全量同步先持久化清单并逐项写入，在所有项目成功且仍持有任务时才原子清理所属启用源的过期内容，取消或失败保留原有未处理内容与成功分块/内容。
 
 兼容取消接口仍接受无参数请求：无活跃内容任务返回 idle，仅一个任务时精确取消该任务；同时存在两个内容来源任务时返回冲突并要求 taskId，不取消任何任务。传入 taskId 仅接受内容任务；RAG 使用既有任务级取消接口。终态取消是幂等只读，不修改 cancelRequested。
+
+mode=rag 使用 NEAR、字段或布尔语法沿既有规则回退到 keyword 时，仍返回同范围覆盖不足元信息；完整覆盖时省略该不足字段。查询与状态读取均不启动投影补建，也不因报告覆盖而调用提供方。

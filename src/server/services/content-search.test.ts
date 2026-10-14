@@ -299,6 +299,39 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     expect(near.reason).toBe("explicit-query");
     expect(near.results.map((item) => item.slug)).toEqual(expected.map((item) => item.slug));
   });
+  for (const q of ["body:SQLite", "NEAR(SQLite database, 3)"]) {
+    test(`RAG explicit fallback reports selected coverage for ${q}`, async () => {
+      await db.insert(posts).values(fixture("fallback-coverage", "SQLite database"));
+      const input = {
+        q,
+        mode: "rag" as const,
+        source: "blog" as const,
+        type: "post" as const,
+        topK: 1,
+      };
+      const incomplete = await executeContentModes(input);
+      expect(incomplete).toMatchObject({
+        requestedMode: "rag",
+        effectiveMode: "keyword",
+        reason: "explicit-query",
+        ragIncompleteSources: ["blog"],
+      });
+      expect(incomplete.results.map((row) => row.slug)).toEqual(["fallback-coverage"]);
+      const response = await handlePublicApiRequest(
+        new Request(
+          `http://localhost/api/public/search?${new URLSearchParams({ q, mode: "rag", source: "blog", type: "post", topK: "1" })}`
+        ),
+        "/search"
+      );
+      expect(response?.headers.get("Search-RAG-Incomplete-Sources")).toBe("blog");
+      await seedVerifiedBlog("fallback-coverage");
+      expect((await executeContentModes(input)).ragIncompleteSources).toBeUndefined();
+      expect(
+        (await executeContentModes({ ...input, mode: "keyword" })).ragIncompleteSources
+      ).toBeUndefined();
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+  }
   test("NEAR budget overflow is an error rather than a successful empty list", async () => {
     await expect(
       executeContentModes({
