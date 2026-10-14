@@ -3,10 +3,10 @@
   "kind": "version-impact-record",
   "base_sha": "14c7e30522aecc3f356196968683cb3ab8f87272",
   "covered_files": {
-    ".github/quality-gates.json": "b344117ce393945e73ab2d4c498eb50eb1467610",
+    ".github/quality-gates.json": "1a3e713708baaf265adce051b8b613b3a525bb4f",
     ".github/release-contract.json": "b019adfd2969ca868d58ed7014692c9fade8ee8a",
     ".github/workflows/ci.yml": "d0ce015111ffb8d71e11ad8e3d1650d2b6c44548",
-    ".github/workflows/e2e.yml": "a5da1b0077a0c533f5ff96308829abdd1443e8d8",
+    ".github/workflows/e2e.yml": "c7b256ae4b3d1b6d4614393fa06fa30439eeded",
     ".github/workflows/manual-product-release.yml": "ea9a5c86fe62d31bf5949ee7c9684c507c7aaecd",
     ".github/workflows/notify-release-failure.yml": "7f7aa566abd39c485756b939822c04b1d0c9f40f",
     ".github/workflows/product-release.yml": "be25706242df623b5362363d27846a865e9a6e5d",

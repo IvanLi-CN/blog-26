@@ -132,4 +132,14 @@ describe("clipping Web Demo on the official route", () => {
     model.reset(admin);
     expect(model.getArticle().content).not.toContain("新增的备注");
   });
+
+  it("does not apply delayed reprocessing after the Inspector resets the model", async () => {
+    const model = createClippingWebDemoModel({ ...admin, network: "slow" });
+    const pending = model.transport.request("reprocess", {});
+
+    model.reset(admin);
+
+    await expect(pending).resolves.toMatchObject({ ok: false, cancelled: true });
+    expect(model.getArticle().reading.status).toBe("completed");
+  });
 });

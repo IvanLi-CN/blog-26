@@ -24,7 +24,8 @@
     "Playwright E2E (guest)",
     "Playwright E2E (admin)",
     "Playwright E2E (user)",
-    "Playwright E2E (mcp)"
+    "Playwright E2E (mcp)",
+    "Playwright E2E (web-demo)"
   ],
   "main_required_checks": [
     "Lint & Format Check",
@@ -35,7 +36,8 @@
     "Playwright E2E (guest)",
     "Playwright E2E (admin)",
     "Playwright E2E (user)",
-    "Playwright E2E (mcp)"
+    "Playwright E2E (mcp)",
+    "Playwright E2E (web-demo)"
   ],
   "informational_checks": [
     "Release Token Probe",
@@ -63,7 +65,8 @@
         "Playwright E2E (guest)",
         "Playwright E2E (admin)",
         "Playwright E2E (user)",
-        "Playwright E2E (mcp)"
+        "Playwright E2E (mcp)",
+        "Playwright E2E (web-demo)"
       ]
     }
   ]
