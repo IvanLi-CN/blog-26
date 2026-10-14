@@ -15,6 +15,7 @@ import "./clipping-admin.css";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import Icon from "@/components/ui/Icon";
 import type { ClippingReading } from "@/lib/memo-clipping";
+import type { PublicMediaContext } from "@/lib/public-media";
 import { toPublicApiUrl } from "@/lib/public-runtime-url";
 
 export type ClippingChat = {
@@ -224,6 +225,7 @@ export function ClippingDetail({
   onTitleChange,
   surface = "public",
   header,
+  publicMediaContext,
 }: {
   slug: string;
   memoContent: string;
@@ -234,6 +236,7 @@ export function ClippingDetail({
   onTitleChange?: (title: string | null) => void;
   surface?: "public" | "admin";
   header?: ReactNode;
+  publicMediaContext?: PublicMediaContext;
 }) {
   const [transport] = useState(() => providedTransport ?? createTransport(slug));
   const [article, setArticle] = useState(initialArticle);
@@ -247,6 +250,7 @@ export function ClippingDetail({
   const [chatError, setChatError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const scroll = useRef(0);
+  const previousMemoContent = useRef(memoContent);
   const titleChanged = useRef(onTitleChange);
   titleChanged.current = onTitleChange;
   const readingPositions = useRef<Partial<Record<"source" | "translation", number>>>({});
@@ -256,6 +260,13 @@ export function ClippingDetail({
   articleRef.current = article;
   const desktop = useSyncExternalStore(subscribeDesktop, desktopSnapshot, serverSnapshot);
   const reading = article.reading;
+  const memoContentChanged = previousMemoContent.current !== memoContent;
+  const displayedMemoContent = memoContentChanged ? memoContent : (article.content ?? memoContent);
+  useEffect(() => {
+    if (!memoContentChanged) return;
+    previousMemoContent.current = memoContent;
+    setArticle((current) => (current.content ? { ...current, content: undefined } : current));
+  }, [memoContent, memoContentChanged]);
   const reload = useCallback(async () => {
     const next = await transport.request<ClippingArticle>("");
     setArticle(next);
@@ -443,15 +454,16 @@ export function ClippingDetail({
               </a>
             </p>
           ) : null}
-          {(article.content ?? memoContent) ? (
-            <div>
+          {displayedMemoContent ? (
+            <div data-testid="clipping-memo-content">
               <MarkdownRenderer
                 surface={surface}
-                content={article.content ?? memoContent}
+                content={displayedMemoContent}
                 variant="article"
                 removeTags
                 nofollowExternalLinks
                 enableMermaid={false}
+                publicMediaContext={publicMediaContext}
               />
             </div>
           ) : null}
@@ -512,6 +524,7 @@ export function ClippingDetail({
               variant="article"
               nofollowExternalLinks
               enableMermaid={false}
+              publicMediaContext={publicMediaContext}
             />
           </div>
           <div data-testid="clipping-article-translation" hidden={activeLanguage !== "translation"}>
@@ -521,6 +534,7 @@ export function ClippingDetail({
               variant="article"
               nofollowExternalLinks
               enableMermaid={false}
+              publicMediaContext={publicMediaContext}
             />
           </div>
         </article>

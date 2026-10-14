@@ -1328,8 +1328,13 @@ public: false
       buildRequest("/api/public/memos/public-draft-detail"),
       "/memos/public-draft-detail"
     );
+    const missingResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/memos/missing-public-draft-detail"),
+      "/memos/missing-public-draft-detail"
+    );
 
-    expect(guestResponse.status).toBe(403);
+    expect(guestResponse.status).toBe(missingResponse.status);
+    expect(guestResponse.status).toBe(404);
     expect(await guestResponse.text()).not.toContain("SECRET DRAFT BODY");
 
     const adminResponse = await handlePublicApiRequest(

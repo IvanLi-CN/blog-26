@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import { isLocalContentEnabled } from "@/config/paths";
+import { createConsoleWebDemoStore, getConsoleWebDemoPersona } from "@/lib/console-web-demo";
 import { getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
 import {
@@ -20,7 +21,8 @@ import { getSnapshot } from "../public-site";
 import type { PageContext } from "../route-data-utils";
 import { trimRouteSnapshot } from "../route-data-utils";
 export async function loadmemos(Astro: PageContext) {
-  const isMemoListWebDemo = process.env.WEB_DEMO_BUILD === "true";
+  const isConsoleWebDemo = process.env.CONSOLE_WEB_DEMO_BUILD === "true";
+  const isMemoListWebDemo = process.env.WEB_DEMO_BUILD === "true" && !isConsoleWebDemo;
   const webDemoSceneState = isMemoListWebDemo
     ? getWebDemoSceneState(Astro.url, "public")
     : undefined;
@@ -50,7 +52,21 @@ export async function loadmemos(Astro: PageContext) {
       webDemoSceneState ?? { scene: "memo-middle", data: "fixture" }
     );
     initialMemos = demoPage.memos;
-    if (isWebDemoAdmin) initialAuthorMemos = demoPage.memos;
+    if (isWebDemoAdmin) {
+      initialAuthorMemos = demoPage.memos.map((memo) => adminMemoRecordSchema.parse(memo));
+    }
+    initialMemosHasMore = demoPage.hasMore;
+    initialMemosNextCursor = demoPage.nextCursor;
+    initialMemosHasNewer = demoPage.hasPrevious;
+    initialMemosPreviousCursor = demoPage.previousCursor;
+  } else if (isConsoleWebDemo) {
+    const persona = getConsoleWebDemoPersona(Astro.url);
+    const demoPage = createConsoleWebDemoStore({
+      cookieHeader: Astro.request.headers.get("cookie") ?? undefined,
+    }).list(persona);
+    initialIsAdmin = persona === "admin";
+    if (initialIsAdmin) initialAuthorMemos = demoPage.memos;
+    else initialMemos = demoPage.memos;
     initialMemosHasMore = demoPage.hasMore;
     initialMemosNextCursor = demoPage.nextCursor;
     initialMemosHasNewer = demoPage.hasPrevious;
@@ -102,6 +118,7 @@ export async function loadmemos(Astro: PageContext) {
         ? "2"
         : null;
   return {
+    isConsoleWebDemo,
     isMemoListWebDemo,
     webDemoSceneState,
     snapshot: trimRouteSnapshot(snapshot, "memos", Astro.url.pathname),

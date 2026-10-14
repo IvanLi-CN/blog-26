@@ -4,11 +4,22 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { ArrowUpRight, CircleSlash, RefreshCcw } from "lucide-react";
 import type React from "react";
+import { useEffect, useState } from "react";
 import { ClippingDetail } from "@/components/memos/ClippingDetail";
 import { MemoTypeBadge } from "@/components/memos/MemoTypeBadge";
 import { type AdminPreviewMemo, type AdminPreviewPost, adminApi } from "@/lib/admin-api-client";
+import { createClippingWebDemoModel } from "@/lib/clipping-web-demo";
 import { stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
 import { getMemoPresentation } from "@/lib/memo-presentation";
+import {
+  getWebDemoState,
+  recordWebDemoMutation,
+  WEB_DEMO_ACTION_EVENT,
+  WEB_DEMO_CLIPPING_SLUG,
+  WEB_DEMO_STATE_EVENT,
+  type WebDemoActionDetail,
+  type WebDemoState,
+} from "@/lib/web-demo-runtime";
 import {
   buildMemoPreviewMeta,
   buildPostPreviewMeta,
@@ -22,7 +33,124 @@ export type PreviewPublicPageState = {
   href: string;
   enabled: boolean;
   disabledReason?: string;
+  label?: string;
+  openInNewTab?: boolean;
 };
+
+const isAdminWebDemoBuild = import.meta.env.VITE_WEB_DEMO_BUILD === "true";
+
+function getAdminPreviewWebDemoState(): WebDemoState {
+  const state = getWebDemoState(
+    { pathname: `/memos/${WEB_DEMO_CLIPPING_SLUG}`, search: window.location.search },
+    "public"
+  );
+  return { ...state, persona: "admin" };
+}
+
+function AdminPreviewClippingWebDemo({
+  slug,
+  memoContent,
+  header,
+  publicMediaContext,
+}: {
+  slug: string;
+  memoContent: string;
+  header: React.ReactNode;
+  publicMediaContext: Parameters<typeof ClippingDetail>[0]["publicMediaContext"];
+}) {
+  const [model] = useState(() =>
+    createClippingWebDemoModel(getAdminPreviewWebDemoState(), recordWebDemoMutation)
+  );
+  const [revision, setRevision] = useState(0);
+
+  useEffect(() => {
+    const sync = () => {
+      model.setState(getAdminPreviewWebDemoState());
+      setRevision((current) => current + 1);
+    };
+    const stateChanged = () => sync();
+    const locationChanged = () => sync();
+    const action = (event: Event) => {
+      const detail = (event as CustomEvent<WebDemoActionDetail>).detail;
+      const next = getAdminPreviewWebDemoState();
+      if (detail?.action === "reset-state") model.reset(next);
+      if (detail?.action === "simulate-save") model.simulateSave();
+      if (
+        detail?.action === "reset-state" ||
+        detail?.action === "refresh-data" ||
+        detail?.action === "simulate-save"
+      ) {
+        sync();
+      }
+    };
+    window.addEventListener(WEB_DEMO_STATE_EVENT, stateChanged);
+    window.addEventListener(WEB_DEMO_ACTION_EVENT, action);
+    window.addEventListener("popstate", locationChanged);
+    return () => {
+      window.removeEventListener(WEB_DEMO_STATE_EVENT, stateChanged);
+      window.removeEventListener(WEB_DEMO_ACTION_EVENT, action);
+      window.removeEventListener("popstate", locationChanged);
+    };
+  }, [model]);
+
+  const article = model.getArticle();
+  return (
+    <ClippingDetail
+      key={revision}
+      slug={slug}
+      surface="admin"
+      memoContent={memoContent}
+      header={header}
+      initialArticle={article}
+      live
+      transport={model.transport}
+      initialCanDiscuss={Boolean(article.canDiscuss)}
+      publicMediaContext={publicMediaContext}
+    />
+  );
+}
+
+function MemoPreviewClippingDetail({
+  memo,
+  body,
+  header,
+}: {
+  memo: AdminPreviewMemo;
+  body: string;
+  header: React.ReactNode;
+}) {
+  const clipping = memo.clipping;
+  if (!clipping) return null;
+  const publicMediaContext = {
+    kind: "memo" as const,
+    slug: memo.slug,
+    filePath: memo.filePath || memo.slug,
+    assetScope: "admin-preview" as const,
+  };
+  if (isAdminWebDemoBuild) {
+    return (
+      <AdminPreviewClippingWebDemo
+        slug={memo.slug}
+        memoContent={body}
+        header={header}
+        publicMediaContext={publicMediaContext}
+      />
+    );
+  }
+  return (
+    <ClippingDetail
+      key={memo.slug}
+      slug={memo.slug}
+      surface="admin"
+      memoContent={body}
+      header={header}
+      initialArticle={{ reading: clipping, source: null, translation: null }}
+      live
+      initialCanDiscuss
+      publicMediaContext={publicMediaContext}
+    />
+  );
+}
 
 export function PreviewChrome({
   title,
@@ -48,9 +176,14 @@ export function PreviewChrome({
           <>
             {publicPage?.enabled ? (
               <Button asChild variant="outline">
-                <a href={publicPage.href} target="_blank" rel="noreferrer">
+                <a
+                  href={publicPage.href}
+                  {...(publicPage.openInNewTab === false
+                    ? {}
+                    : { target: "_blank", rel: "noreferrer" })}
+                >
                   <ArrowUpRight className="size-4" />
-                  打开公开页
+                  {publicPage.label ?? "打开公开页"}
                 </a>
               </Button>
             ) : publicPage ? (
@@ -155,6 +288,7 @@ export function PostPreviewArticle({ post }: { post: AdminPreviewPost }) {
 export function MemoPreviewArticle({ memo }: { memo: AdminPreviewMemo }) {
   const body = stripMatchingLeadingTitleHeading(memo.content || "", memo.title || memo.slug);
   const presentation = getMemoPresentation(memo);
+  const clipping = memo.clipping;
 
   return (
     <PreviewArticleShell
@@ -173,18 +307,9 @@ export function MemoPreviewArticle({ memo }: { memo: AdminPreviewMemo }) {
       bodyTestId="admin-preview-memo-body"
       body={body}
       bodyContent={
-        memo.clipping
-          ? (header) => (
-              <ClippingDetail
-                key={memo.slug}
-                slug={memo.slug}
-                surface="admin"
-                memoContent={body}
-                header={header}
-                initialArticle={{ reading: memo.clipping, source: null, translation: null }}
-                live
-                initialCanDiscuss
-              />
+        clipping
+          ? (header: React.ReactNode) => (
+              <MemoPreviewClippingDetail memo={memo} body={body} header={header} />
             )
           : undefined
       }
@@ -251,7 +376,12 @@ export function MemoPreviewPage() {
     <PreviewChrome
       title="Memo 预览"
       description="检查 Memo 在公开站中的阅读效果。"
-      publicPage={{ href: `/memos/${slug}`, enabled: true }}
+      publicPage={{
+        href: `/memos/${slug}`,
+        enabled: true,
+        label: "打开详情",
+        openInNewTab: false,
+      }}
       onRefresh={() => void query.refetch()}
       refreshing={query.isFetching}
     >

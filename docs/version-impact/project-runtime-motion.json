@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "16909131a5ec50a4815aa0f1b6f189b1987284ee",
   "covered_files": {
-    "GLOSSARY.md": "f2bbb34688fd9e3789a415631e8fda8de469224d",
+    "GLOSSARY.md": "eba55bb725a4d26e2bca1d56b65f4bb32ec5e83f",
     "docs/project-runtime-motion-design.md": "ecfffc00066244e124b7dc68a47e17829f392f5e",
     "docs/specs/nature-front-ui/HISTORY.md": "f57c6157bbc6304bf64bb3a7a2e38ee506d34271",
     "docs/specs/nature-front-ui/IMPLEMENTATION.md": "d2b91cec14d7874b1f3285eaebecaf1e180dc9f9",
