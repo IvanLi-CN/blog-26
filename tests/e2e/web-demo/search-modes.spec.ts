@@ -50,7 +50,7 @@ test("RAG returns Playbook results with edition-bound links and source filters",
   await expect(results).toContainText("交付工作流");
   await expect(results.getByRole("link", { name: "打开Topic：交付工作流" })).toHaveAttribute(
     "href",
-    "/playbook/editions/v3.0.0/100/16a8b0657c998acc8e7c6371b4a74983a52dd1da61da4ceb9d31e7124d88fdce/topics/delivery"
+    "/playbook/editions/v3.0.0/100/16a8b0657c998acc8e7c6371b4a74983a52dd1da61da4ceb9d31e7124d88fdce/topics/delivery/"
   );
   await page.getByRole("button", { name: /Policy Skill/ }).click();
   await expect(page).toHaveURL(/filter=policy/);
