@@ -20,7 +20,7 @@
     "site/lib/public-page-behaviors.ts": "1fa48ebd00e89ada16463ef67f8509508237232d",
     "site/styles/public-pages.css": "27869e020e4f10d1510917381721f80868e6990f",
     "src/components/projects/RuntimeCellGrid.stories.tsx": "c51fe54277455f9e5e714681796715473e2c5f17",
-    "tests/e2e/web-demo/project-runtime-motion.spec.ts": "b57c2dc0f6abc15e5a9ab8be309e31470f1291df",
+    "tests/e2e/web-demo/project-runtime-motion.spec.ts": "aa02e0fbf77ec0586e9ed2c4bfa64c5994e88602",
     "tests/lib/project-runtime-channel.test.ts": "e1f22873cc9d951bd0e569cad81ee2ab30fd2bbc",
     "tests/lib/project-runtime-motion.test.ts": "8344818df6ca6c30b821fdc409c97cc4742c4337"
   },
@@ -47,7 +47,7 @@
         },
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "b57c2dc0f6abc15e5a9ab8be309e31470f1291df",
+          "blob": "aa02e0fbf77ec0586e9ed2c4bfa64c5994e88602",
           "command": "Agent VM: project-runtime-motion.spec.ts report has six passing scenarios; the HTTP scenario passes in a separate --grep \"HTTP failures\" run after its adapter-readiness precondition is added (seven scenarios combined)."
         },
         {
@@ -74,7 +74,7 @@
         },
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "b57c2dc0f6abc15e5a9ab8be309e31470f1291df",
+          "blob": "aa02e0fbf77ec0586e9ed2c4bfa64c5994e88602",
           "command": "Agent VM: project-runtime-motion.spec.ts report has six passing scenarios; the HTTP scenario passes in a separate --grep \"HTTP failures\" run after its adapter-readiness precondition is added (seven scenarios combined)."
         },
         {
@@ -105,7 +105,7 @@
         },
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "b57c2dc0f6abc15e5a9ab8be309e31470f1291df",
+          "blob": "aa02e0fbf77ec0586e9ed2c4bfa64c5994e88602",
           "command": "Agent VM: project-runtime-motion.spec.ts report has six passing scenarios; the HTTP scenario passes in a separate --grep \"HTTP failures\" run after its adapter-readiness precondition is added (seven scenarios combined)."
         },
         {
@@ -134,7 +134,7 @@
         },
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "b57c2dc0f6abc15e5a9ab8be309e31470f1291df",
+          "blob": "aa02e0fbf77ec0586e9ed2c4bfa64c5994e88602",
           "command": "Agent VM: project-runtime-motion.spec.ts report has six passing scenarios; the HTTP scenario passes in a separate --grep \"HTTP failures\" run after its adapter-readiness precondition is added (seven scenarios combined)."
         },
         {
