@@ -29,3 +29,5 @@
 
 - `./SPEC.md`
 - `./HISTORY.md`
+
+Playbook edition-qualified category indexes and detail pages are classified with the same short-lived HTML policy as their current-edition counterparts. The artifact validator inherits the mainline edition namespace classification. Root and base-path regression checks verify that this adds no EdgeOne header rules and preserves the 30-rule limit.

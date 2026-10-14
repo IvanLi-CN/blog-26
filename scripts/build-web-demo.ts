@@ -93,7 +93,7 @@ export async function prepareWebDemoInputs() {
   await run("generate public snapshot", ["run", "public:export"], env);
   await run(
     "generate Playbook fixture",
-    ["tests/lib/playbook-fixture.ts", playbookBundleDir, "--long"],
+    ["tests/lib/playbook-fixture.ts", playbookBundleDir, "--web-demo"],
     env
   );
   await run("prepare Playbook edition", ["run", "playbook:prepare"], env);
