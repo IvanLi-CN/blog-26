@@ -1,3 +1,9 @@
+import {
+  beginContentTask,
+  finishContentTask,
+  taskControllers,
+  updateContentTask,
+} from "@/server/services/content-tasks";
 /**
  * 内容源管理器
  *
@@ -62,6 +68,7 @@ export class ContentSourceManager {
   private currentSync: SyncProgress | null = null;
   private syncHistory: SyncResult[] = [];
 
+  private persistentTaskId: string | undefined;
   constructor(config: ContentSourceManagerConfig = {}) {
     this.config = {
       maxConcurrentSyncs: config.maxConcurrentSyncs || 3,
@@ -146,11 +153,28 @@ export class ContentSourceManager {
    * 执行同步操作
    * @param isFullSync 是否为全量同步。true: 清空数据库后重新同步所有内容；false: 增量同步，只处理变更内容
    */
-  async syncAll(isFullSync: boolean = false): Promise<SyncResult> {
+  async syncAll(isFullSync: boolean = false, resumeId?: string): Promise<SyncResult> {
     if (this.currentSync && this.currentSync.status === "running") {
       throw new Error("同步正在进行中，请等待完成");
     }
 
+    const { task, reused } = await beginContentTask({
+      kind: "sync",
+      source: "local",
+      requestKey: isFullSync ? "full" : "incremental",
+      origin: "runtime",
+      target: "local-content",
+      resumeId,
+    });
+    if (reused) throw new Error(`Task conflict: ${task.id}`);
+    taskControllers.get(task.id)?.signal.addEventListener(
+      "abort",
+      () => {
+        void this.cancelSync();
+      },
+      { once: true }
+    );
+    this.persistentTaskId = task.id;
     const startTime = Date.now();
     const syncId = nanoid();
     const syncType = isFullSync ? "全量同步" : "增量同步";
@@ -209,6 +233,7 @@ export class ContentSourceManager {
       if (isFullSync) {
         this.currentSync.currentStep = "清空数据库";
         await this.logSync("info", "🗑️ 开始清空数据库中的所有内容");
+        if (this.currentSync.status === "cancelled") throw new Error("Sync cancelled");
         await this.clearAllContent();
         await this.logSync("info", "✅ 数据库清空完成");
       }
@@ -247,7 +272,8 @@ export class ContentSourceManager {
       result.logs = applyResult.logs;
       result.success = applyResult.errors.length === 0;
 
-      this.currentSync.status = result.success ? "success" : "error";
+      if (this.currentSync.status !== "cancelled")
+        this.currentSync.status = result.success ? "success" : "error";
       this.currentSync.progress = 100;
       this.currentSync.currentStep = result.success ? "同步完成" : "同步失败";
 
@@ -263,7 +289,7 @@ export class ContentSourceManager {
         timestamp: Date.now(),
       });
 
-      this.currentSync.status = "error";
+      if (this.currentSync.status !== "cancelled") this.currentSync.status = "error";
       this.currentSync.error = errorMessage;
 
       await this.logSync("error", `全量同步失败: ${errorMessage}`, undefined, { syncId });
@@ -280,7 +306,8 @@ export class ContentSourceManager {
           const hasError = sourceErrors.length > 0;
 
           // 设置状态和错误信息
-          const status = hasError ? "error" : "success";
+          const status =
+            this.currentSync?.status === "cancelled" ? "cancelled" : hasError ? "error" : "success";
           const errorMessage = hasError ? sourceErrors[0].message : undefined;
           const currentStep = hasError ? "同步失败" : "同步完成";
 
@@ -312,8 +339,20 @@ export class ContentSourceManager {
     }
 
     // 完成推送会话
+    if (this.currentSync?.status === "cancelled") result.success = false;
     syncEventManager.completeSyncSession(result.success, result.stats);
 
+    await updateContentTask(task.id, {
+      total: result.stats.totalProcessed,
+      processed: result.stats.totalProcessed,
+    });
+    finishContentTask(
+      task.id,
+      this.currentSync?.status === "cancelled" ? "cancelled" : result.success ? "success" : "failed"
+    );
+    void import("@/server/services/rag-index")
+      .then((m) => m.triggerRagIndex("blog", "repair", "content-sync"))
+      .catch(() => undefined);
     return result;
   }
 
@@ -539,10 +578,15 @@ export class ContentSourceManager {
     const errors: SyncError[] = [];
     const logs: SyncLogEntry[] = [];
     const totalChanges = changeSet.changes.length;
+    if (this.persistentTaskId)
+      await updateContentTask(this.persistentTaskId, { phase: "applying", total: totalChanges });
 
     await this.logSync("info", `📝 开始应用变更，共 ${totalChanges} 个项目`);
 
     for (const [index, change] of changeSet.changes.entries()) {
+      if (this.currentSync?.status === "cancelled") break;
+      if (this.persistentTaskId)
+        await updateContentTask(this.persistentTaskId, { processed: index });
       try {
         stats.totalProcessed++;
 
@@ -561,6 +605,7 @@ export class ContentSourceManager {
               : null;
           const readingBody = clipping?.content ?? authoredBody;
           const readingTitle = clipping ? (clipping.title ?? "") : change.item.title;
+          if (this.currentSync?.status === "cancelled") break;
           // 插入或更新内容
           await db
             .insert(posts)

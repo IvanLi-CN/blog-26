@@ -40,7 +40,14 @@ export type WebDemoScene =
   | "search-ai-unavailable"
   | "search-index-unavailable"
   | "admin-dashboard"
-  | "admin-editor";
+  | "admin-editor"
+  | "admin-sync-unindexed"
+  | "admin-sync-partial"
+  | "admin-sync-outdated"
+  | "admin-sync-failed"
+  | "admin-sync-unconfigured"
+  | "admin-sync-disabled"
+  | "admin-sync-history";
 
 export type WebDemoSceneState = {
   scene: WebDemoScene;
@@ -150,6 +157,13 @@ const scenes = [
   "search-index-unavailable",
   "admin-dashboard",
   "admin-editor",
+  "admin-sync-unindexed",
+  "admin-sync-partial",
+  "admin-sync-outdated",
+  "admin-sync-failed",
+  "admin-sync-unconfigured",
+  "admin-sync-disabled",
+  "admin-sync-history",
 ] as const satisfies readonly WebDemoScene[];
 const personas = ["guest", "user", "admin"] as const satisfies readonly WebDemoPersona[];
 const connections = ["online", "offline"] as const satisfies readonly WebDemoConnection[];
@@ -442,6 +456,23 @@ export function getWebDemoSceneOptions(pathname: string, app: WebDemoApp): WebDe
         label: "后台 · 编辑器",
         description: "文件树、编辑器和模拟保存反馈。",
       },
+      ...(pathname.startsWith("/admin/content-sync")
+        ? (
+            [
+              "unindexed",
+              "partial",
+              "outdated",
+              "failed",
+              "unconfigured",
+              "disabled",
+              "history",
+            ] as const
+          ).map((state) => ({
+            value: `admin-sync-${state}` as WebDemoScene,
+            label: `内容同步 · ${state}`,
+            description: "公开 RAG 双单位覆盖与持久任务场景。",
+          }))
+        : []),
     ];
   }
 

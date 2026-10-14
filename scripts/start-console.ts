@@ -211,11 +211,8 @@ await startClippingRuntime();
 await startSearchIndexRuntime();
 const playbook = getRuntimePlaybookStore();
 await playbook.load();
-if (
-  process.env.PLAYBOOK_SYNC_ENABLED === "true" ||
-  (process.env.NODE_ENV === "production" && process.env.PLAYBOOK_SYNC_ENABLED !== "false")
-)
-  playbook.start();
+const { startContentSyncRuntime } = await import("../src/server/services/content-sync-runtime");
+await startContentSyncRuntime();
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
   if (url.pathname === "/api/version") {

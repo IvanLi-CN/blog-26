@@ -277,6 +277,31 @@ function chunksForEdition(edition: PlaybookEdition) {
   const pages = createPlaybookSearchPages(edition.catalog);
   const pageMap = new Map(pages.map((page) => [page.href, page]));
   const normalized = normalizePlaybookSearch(edition.catalog, edition.search);
+  // The adopted catalog is authoritative; an incomplete search payload must not
+  // silently remove a public parent from coverage or its expected target list.
+  const represented = new Set(
+    normalized.documents.map((document) => parseRoute(document.route)?.canonicalRoute)
+  );
+  for (const detail of [...edition.catalog.topic_details, ...edition.catalog.project_details]) {
+    const type = "policy_skills" in detail ? "topics" : "projects";
+    const route = `/${type}/${detail.item.slug}/`;
+    if (represented.has(playbookHref(route))) continue;
+    const title = "title" in detail ? detail.title : detail.item.token;
+    const sections = detail.sections.length
+      ? detail.sections
+      : [{ id: "", title, markdown: detail.item.description ?? "" }];
+    for (const section of sections)
+      normalized.documents.push({
+        id: `catalog:${type}:${detail.item.slug}:${section.id || "page"}`,
+        kind: section.id ? "section" : "page",
+        title,
+        subtitle: detail.item.description ?? null,
+        body: section.markdown,
+        keywords: [],
+        route,
+        ...(section.id ? { section_id: section.id } : {}),
+      });
+  }
   const chunks: PlaybookChunk[] = [];
   for (const document of normalized.documents) {
     const parsed = parseRoute(document.route);

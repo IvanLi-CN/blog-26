@@ -74,8 +74,19 @@ status 只读持久元信息。独立进程执行 prepare、check 或 rebuild �
 | REQ-SREL-017 | 真实事务回滚、SIGKILL、checkpoint 重放、I/O 故障和 generation 切换通过。 |
 | REQ-SREL-018 | 管理接口、独立保存、并发质量授予及旧任务失效通过。 |
 | REQ-SREL-019 / 020 / 021 | 已接入跨来源 RRF、全局 topK、截断前筛选、统一 HTTP/tRPC/MCP 契约、完整 edition 绑定和范围不可用元信息；当前 Candidate 的 Playbook 语义召回、模型输入隔离和版本边界已由 VM 固定合成 provider 实证，root chmod 故障注入限制保留在验证证据中。 |
+| REQ-SREL-022 / 023 | 未完成。当前博客统计为历史向量行数，过时固定为零；Playbook 只统计已有行，未建立合格语料和预期分块的覆盖基数。生成与增量跳过须使用一致的 embedding 输入摘要，旧、孤立、多余及缺失记录须正确分类。 |
 
 既有验证只证明文章/Memo 搜索与浏览器 Playbook 边界；本 Candidate 新增的 adapter、导航、服务端筛选和固定合成 provider 证据已通过，root 来宾无法触发 chmod I/O 故障注入，真实生产 provider 与发行镜像仍不在本次证据范围内。同步管理缺口由 [Playbook 实现状态](../style-playbook-integration/IMPLEMENTATION.md) 记录。
+
+## 语义覆盖统计与准备缺口
+
+目前博客 `EmbeddingsRepository.stats` 按模型统计 post_embeddings 行，无错误信息即计为 indexed；管理路由的 outdated 固定为零，unindexed 仅计算已有行的差额。既有 521 条记录代表历史分块/整篇记录混合的物理数量，不能据此宣称 521 个当前内容已经索引。现代 RAG 向量候选按当前父内容 ID、类型、访问范围、有效向量与当前 embedding 输入摘要筛选，统计未复用这些边界，导致管理摘要与实际检索不一致。
+
+博客全量准备使用 `hashEmbeddingInput(buildEmbeddingInput(post))` 保存摘要，但增量跳过使用源内容的 `post.contentHash` 判断；两种摘要没有相同语义，可能造成已完成内容无法正确跳过。分块与整篇模式切换、正文缩短及分块策略改变后的旧记录也需要依据当前预期目标判定，不能仅要求所有既有行存在向量。
+
+Playbook 状态按当前完整 edition 和模型查询已有行，缺失目标没有记录时无法显示未索引总量；ready 行也没有依据当前目标验证向量和摘要。准备器只在手动检查回调使用，自动采用、seed 和重启恢复未接通；未遍历分块不会出现在 pending 行计数中。管理页面没有统一 RAG 总量、内容/分块双口径、真实过时或覆盖率，按来源的补建与重建也未覆盖全部现代 RAG 语料。
+
+`ragIncompleteSources` 目前只在关键词不足 topK 且没有 Playbook 向量候选时报告，不能识别有少量候选但语料部分缺失、失败或过时的情况。`REQ-SREL-022` 要求按所选范围的实际覆盖判断，既有词法命中保全、模型失败回退和完整 edition 绑定保持有效。相关管理、任务持久性和启动恢复缺口见 [Playbook 实现状态](../style-playbook-integration/IMPLEMENTATION.md#内容同步统计与语义准备缺口)。以上均为已确认项目缺口，需求整理不代表修复或验证通过。
 
 ## References
 
@@ -87,3 +98,7 @@ status 只读持久元信息。独立进程执行 prepare、check 或 rebuild �
 - [搜索引擎升级保留既有查询兼容性](../../adr/0023-search-legacy-compatibility.md)
 - [统一搜索接口与范围](./contracts/unified-search.md)
 - [统一搜索排序与独立 Playbook 同步管理](../../adr/0024-unified-search-and-playbook-sync-management.md)
+
+## 内容同步与 RAG 覆盖修复验收边界
+
+REQ-SREL-022/023 通过共享目标目录将准备、覆盖和现代候选消费绑定到相同输入、配置、维度与 edition；旧向量缺少可验证配置身份时保留并列为过时。本次验收仅使用确定性 Mock chat/embedding，不执行真实提供方调用或读取、转移其凭据。Mock 验证生成、持久化、进程重启、覆盖统计、现代 RAG 消费、取消和配置变化；不宣称外部服务可用性或真实语义质量已验证。此边界按主人明确要求取代计划 A6 中的真实提供方实证前置条件，其他权限、兼容、视觉和交付门禁继续适用。

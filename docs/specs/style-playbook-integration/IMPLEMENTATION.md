@@ -3,7 +3,7 @@
 ## Current Status
 
 - Lifecycle: active
-- Implementation: candidate complete；原生阅读、公开资源浏览、发布链和 console 持久快照已有实现；统一服务端搜索、公开资源正文检索、现代 RAG 版本绑定、异步语义投影与管理员内容同步状态已接入。重型恢复、真实 provider 实证、视觉确认和交付门禁尚待完成。
+- Implementation: candidate complete；原生阅读、公开资源浏览、发布链和 console 持久快照已有实现；统一服务端搜索、公开资源正文检索、现代 RAG 版本绑定、异步语义投影与管理员内容同步状态已接入。重型恢复、Mock 投影链路验证、视觉确认和交付门禁尚待完成。
 - Catalog note: 原生 Playbook、内容 workflow 和 console 持久快照已落地，生产公开指针已有可校验内容；生产 console 的实际采用版本和运行时同步配置尚未在本工作区核实。
 - `REQ-PBI-012`、`REQ-PBI-013`、`REQ-PBI-015` 的既有章节聚合、展开和高亮已实现；统一适配器现在聚合章节与公开资源并返回同版定位，服务端共同排名与全局容量已接入。既有自动化与视觉证据不替代当前 Candidate 的重型验证。
 - `REQ-PBI-016` 已在博客消费端实现：详情与索引移除自动生成的内容版本和维护字段，明确异常状态使用中文提示。针对性 SSR、纯函数、静态 smoke、浏览器视觉与格式检查已通过，交付门禁待完成。
@@ -63,7 +63,7 @@ Policy 公开资源使用 SSR 文件浏览器：可收起的原生目录树、�
 
 ## Remaining Gaps
 
-- 统一服务端入口、跨来源共同排名、全局 topK、截断前范围筛选与现代搜索版本元信息已接入，详见 [统一搜索接口](../search-relevance/contracts/unified-search.md)；当前 Candidate 仍需重型和真实配置实证。
+- 统一服务端入口、跨来源共同排名、全局 topK、截断前范围筛选与现代搜索版本元信息已接入，详见 [统一搜索接口](../search-relevance/contracts/unified-search.md)；当前 Candidate 仍需重型验证；本次模型和 embedding 提供方均使用 Mock，不调用真实外部服务。
 - Policy 公开资源文件已由同版公开 catalog 准备检索候选并返回安全路径，语义投影按 edition/model/content hash 异步去重；完整崩溃恢复与无 JavaScript 定位验收待验证，现有发布包无需读取私有源文件。
 - 管理员内容同步页已纳入 Playbook 来源、按来源刷新和独立语义状态；持久任务历史、取消与采用边界需要在 Agent VM 故障注入中验证。
 - 当前候选的 Playbook 纯函数、SSR、静态/Web Demo/console 构建、视觉证据和格式检查已完成；新增页面截图为 current-only，待 owner 确认后才能冻结候选，受影响的独立审查与 live PR 当前 head 门禁仍待完成。实现覆盖不等同于交付完成。
@@ -71,6 +71,18 @@ Policy 公开资源使用 SSR 文件浏览器：可收起的原生目录树、�
 - `PLAYBOOK_SOURCE_TOKEN` 提供上游只读访问；生产更新仍须在首次应用部署验证指针后手动启用。首次引导自动选择最高的就绪稳定 SemVer，不需要固定 Release ID。
 - 真实 EdgeOne 原子发布、生产指针及 console 五分钟跟随由两仓合并后的上线阶段验证；模拟适配器与本地 HTTP 结果不替代生产验收。
 - 本任务停在 merge-ready，不合并、不触发真实 Release、不配置远端凭据。上线顺序和暂停/回滚流程见 [发布 runbook](../../runbooks/style-playbook-publishing.md)。
+
+## 内容同步统计与语义准备缺口
+
+只读页面与管理接口核对确认，当前 local 有 324 个内容对象、当前 Playbook 有 80 个独立内容对象；来源列表同时返回两者，但来源摘要返回 registeredSources=1、enabledSources=1，总内容量仍为 324。按 `REQ-PBI-018` 的当前已采用唯一内容口径，此数据集合的总量应为 404；章节、资源、分块和 previous edition 不再次累计。这是项目实现漏统计，不能以运行时缓存或部署版本解释。
+
+`getManagerStats` 直接使用本地 `ContentSourceManager`，Playbook 仅在 `getSourcesStatus` 中追加；`getContentStats` 只统计 posts。管理器的累计次数与最近时间来自有长度上限的进程内历史，重启归零，历史截断还会减少“累计”数。Playbook 行固定 enabled=true，以有采用快照冒充 online，并将包生成时间用作最近同步时间；已有快照、实际启停、远端可达性、最近检查与最近采用必须分开核对。自动轮询未进入手动检查的持久日志，两个已知 edition 配合零条检查历史不能证明从未同步。
+
+博客向量摘要的 indexed 统计当前模型的 post_embeddings 行数，仅判断无错误信息；outdated 固定为 0，unindexed 只以已有记录数减 indexed。分块数量没有标明单位，未建记录、失去父内容、内容变化、模型变化、空向量和损坏向量均不能由该摘要正确表达。Playbook 状态只统计当前完整 edition/model 下已有的 search_semantic_embeddings 行，没有从已采用语料建立预期总量；无记录时 total/ready/pending/failed 同为零，UI 又不显示 total。因此该摘要不满足真实语义覆盖要求。
+
+自动轮询和 Console 启动恢复没有调用 Playbook 语义准备器，准备器目前只在手动 Playbook 检查回调使用；全量向量化只处理 post/memo。准备器逐块创建 pending 行，未遍历分块没有持久待补状态，启动也不恢复准备进度。自动采用、首次 seed、相同版本补建、取消或退出重启以及有效模型改变的语义准备需要同一恢复边界。查询路径仍不得触发全量生成。
+
+上述项目缺陷已由源代码核对确认，尚未修复。本次仅进行只读诊断及需求整理，没有执行生产同步、向量生成、数据清理或部署。观察到的旧向量与 Playbook 空投影属于运行数据现状，不能据此推断提供方故障；它们也不改变统计代码及恢复路径存在缺陷的结论。具体语义统计与覆盖标记由搜索主题定义。
 
 ## References
 
@@ -98,3 +110,9 @@ PR #172 的首轮自动 CI 中九项必需检查通过，guest E2E 暴露旧卡�
 ![技术栈原始数据移动展开](./assets/tech-stack-raw-mobile-open-dark.png)
 
 禁用 JavaScript 的静态页面提供原生 details 入口读取完整筛选 JSON。复制 API 与旧式复制同时失败时清理临时 textarea、显示失败反馈并展开内容供手动复制；组件交互场景覆盖异常清理与文本选择。Web Demo 搜索链接在构建时绑定同一准备产物的 edition 身份，避免现实项目 fixture 更新后跳入不存在的旧版本页面。
+
+## 内容同步与 RAG 修复实现
+
+REQ-PBI-018/019/020 的实现使用统一状态接口、共享目标目录、0015 前向迁移和持久来源任务。四张摘要卡纳入 local 与 Playbook，收录量按当前唯一父内容；RAG 主卡按公开父内容、详情按预期分块。生成和消费复核同一配置指纹、输入与完整 edition，任务取消持久记录，向量与凭据同事务提交。当前候选正在验证，尚未达到交付 Ready；生产历史向量和空 Playbook 投影仍需另行授权补建，不能以本地通过代替生产完成。接口细节见 [统一同步状态](./contracts/content-sync-status.md)。
+
+本次内容同步与 RAG 缺陷修复的验收以确定性 Mock 提供方覆盖生成、持久化、重启、覆盖统计和现代 RAG 消费链路，以及超时、取消、维度变化与迟到写入。按主人明确约束，不执行真实 chat/embedding 调用、不读取或转移真实提供方凭据；原计划 A6 的真实提供方实证要求由此替换。Mock 结果只证明项目链路与契约，不声称验证外部提供方可用性或真实语义质量。

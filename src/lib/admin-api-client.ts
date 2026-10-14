@@ -1,3 +1,7 @@
+import type { UnifiedContentSyncStatus } from "@/server/services/content-sync-status";
+
+export type { UnifiedContentSyncStatus };
+
 import type {
   AdminLlmCatalogResponse,
   AdminLlmSettingsPayload,
@@ -118,12 +122,12 @@ export type ActivityItem = {
 export type VectorizationStatus = "indexed" | "unindexed" | "outdated";
 
 export interface VectorizationStats {
-  indexed: number;
-  outdated: number;
-  unindexed: number;
+  indexed: number | null;
+  outdated: number | null;
+  unindexed: number | null;
   lastIndexedAt: number | string | null;
   model: string;
-  dim: number;
+  dim: number | null;
 }
 
 export interface AdminPost {
@@ -594,6 +598,22 @@ export const adminApi = {
     ),
   getContentSyncSystemConfig: () =>
     adminRequest<Record<string, unknown>>("/api/admin/content-sync/system-config"),
+  getContentSyncStatus: (
+    params: { source?: "all" | "blog" | "playbook"; edition?: "current" | "previous" } = {}
+  ) =>
+    adminRequest<UnifiedContentSyncStatus>(`/api/admin/content-sync/status${buildSearch(params)}`),
+  triggerRagIndex: (source: "all" | "blog" | "playbook", mode: "repair" | "rebuild") =>
+    adminRequest<{
+      taskIds: string[];
+      results: { source: string; taskId?: string; error?: string }[];
+    }>("/api/admin/content-sync/rag/trigger", {
+      method: "POST",
+      body: JSON.stringify({ source, mode }),
+    }),
+  cancelContentTask: (taskId: string) =>
+    adminRequest(`/api/admin/content-sync/tasks/${encodeURIComponent(taskId)}/cancel`, {
+      method: "POST",
+    }),
   getContentSyncManagerStats: () =>
     adminRequest<Record<string, unknown>>("/api/admin/content-sync/manager-stats"),
   getContentSyncContentStats: () =>

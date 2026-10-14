@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { encodeJson, parseEditionIdentity, samePlaybookEdition, verifyFile } from "./manifest";
 import { validatePlaybookSearchRoute } from "./navigation";
@@ -9,6 +9,7 @@ import type { PlaybookEdition, PlaybookEditionIdentity } from "./types";
 export interface PlaybookCacheState {
   current?: PlaybookEdition;
   previous?: PlaybookEdition;
+  adoption?: { taskId: string; at: number; edition?: string };
 }
 export type PlaybookFetcher = (url: string, init?: RequestInit) => Promise<Response>;
 export const PLAYBOOK_POLL_INTERVAL_MS = 300_000;
@@ -79,6 +80,10 @@ export class PlaybookStore {
     private readonly scheduler: PlaybookSchedule = schedule
   ) {}
 
+  get adoption() {
+    return this.state.adoption;
+  }
+
   get current() {
     return this.state.current;
   }
@@ -105,6 +110,15 @@ export class PlaybookStore {
         string,
         unknown
       >;
+      if (raw.adoption && typeof raw.adoption === "object") {
+        const a = raw.adoption as Record<string, unknown>;
+        if (typeof a.taskId === "string" && typeof a.at === "number")
+          this.state.adoption = {
+            taskId: a.taskId,
+            at: a.at,
+            edition: typeof a.edition === "string" ? a.edition : undefined,
+          };
+      }
       for (const key of ["current", "previous"] as const) {
         try {
           this.state[key] = freezeEdition(validatePlaybookEdition(raw[key]));
@@ -113,6 +127,8 @@ export class PlaybookStore {
         }
       }
       if (!this.state.current && this.state.previous) this.state.current = this.state.previous;
+      if (this.state.adoption?.edition !== this.state.current?.edition.editionDigest)
+        this.state.adoption = undefined;
     } catch {
       /* First boot may have only an image seed. */
     }
@@ -127,10 +143,19 @@ export class PlaybookStore {
     }
   }
 
-  async adopt(value: PlaybookEdition) {
+  async adopt(
+    value: PlaybookEdition,
+    adoption?: { taskId: string; at: number; edition?: string },
+    signal?: AbortSignal
+  ) {
     const edition = freezeEdition(validatePlaybookEdition(value));
     const next = {
       current: edition,
+      adoption: adoption
+        ? { ...adoption, edition: edition.edition.editionDigest }
+        : this.state.current && samePlaybookEdition(this.state.current.edition, edition.edition)
+          ? this.state.adoption
+          : undefined,
       previous:
         this.state.current && samePlaybookEdition(this.state.current.edition, edition.edition)
           ? this.state.previous
@@ -139,6 +164,10 @@ export class PlaybookStore {
     await mkdir(this.root, { recursive: true });
     const staging = join(this.root, `.state-${randomUUID()}.tmp`);
     await writeFile(staging, encodeJson(next), { mode: 0o600 });
+    if (signal?.aborted) {
+      await unlink(staging);
+      throw signal.reason;
+    }
     await rename(staging, join(this.root, "state.json"));
     this.state = next;
   }
@@ -147,7 +176,7 @@ export class PlaybookStore {
     manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL,
     externalSignal?: AbortSignal,
     prepare?: PlaybookEditionPreparer
-  ) {
+  ): Promise<void> {
     if (this.flight) {
       linkAbortSignal(externalSignal, this.flight.controller);
       if (!prepare || this.flight.prepare) return this.flight.promise;

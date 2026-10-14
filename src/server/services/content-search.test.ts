@@ -6,6 +6,7 @@ import path from "node:path";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import { projectionDigest } from "@/lib/ai/embedding-target";
 import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { enhanced } from "@/lib/ai/search";
 import { clearSearchCache } from "@/lib/ai/search-cache";
@@ -14,6 +15,8 @@ import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
 import {
   postEmbeddings,
   posts,
+  ragIndexConfigs,
+  ragIndexTargets,
   searchIndexState,
   searchSemanticEmbeddings,
   searchSettings,
@@ -26,6 +29,7 @@ import { appRouter } from "@/server/router";
 import { makePublicBundle } from "../../../tests/lib/playbook-fixture";
 import { executeContentModes } from "./content-search";
 import { contentSearchIndex } from "./content-search-index";
+import { ragCatalog } from "./rag-index";
 import {
   readSearchSettings,
   recordSearchQuality,
@@ -69,6 +73,55 @@ function fakeFetch(
 ): typeof fetch {
   return Object.assign(mock(handler), { preconnect: originalFetch.preconnect });
 }
+async function seedVerifiedBlog(postId: string) {
+  const catalog = await ragCatalog({ source: "blog" });
+  const blob = Buffer.from(new Float32Array([1, 0]).buffer);
+  await db
+    .insert(ragIndexConfigs)
+    .values({ fingerprint: catalog.identity.fingerprint, dim: 2, updatedAt: 1 })
+    .onConflictDoNothing();
+  for (const target of catalog.targets.filter((row) => row.parentId === postId)) {
+    const id = `verified-${target.id}`;
+    await db
+      .insert(postEmbeddings)
+      .values({
+        id,
+        postId,
+        slug: target.slug,
+        type: target.type,
+        modelName: target.model,
+        dim: 2,
+        contentHash: target.documentHash,
+        chunkIndex: target.chunkIndex,
+        vector: blob,
+        createdAt: 1,
+        updatedAt: 1,
+      })
+      .onConflictDoNothing();
+    await db
+      .insert(ragIndexTargets)
+      .values({
+        id: target.id,
+        source: "blog",
+        parentId: postId,
+        status: "ready",
+        vectorId: id,
+        vectorDigest: projectionDigest(Array.from(blob)),
+        dim: 2,
+        updatedAt: 1,
+      })
+      .onConflictDoUpdate({
+        target: ragIndexTargets.id,
+        set: {
+          status: "ready",
+          vectorId: id,
+          vectorDigest: projectionDigest(Array.from(blob)),
+          dim: 2,
+          updatedAt: 1,
+        },
+      });
+  }
+}
 async function enable(mode: "rag" | "rewrite") {
   const resolved = await resolveSearchPolicy(mode);
   if (!resolved.fingerprint) throw new Error("test policy must be configured");
@@ -89,6 +142,8 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
   beforeEach(async () => {
     clearSearchCache();
     await db.delete(postEmbeddings);
+    await db.delete(ragIndexTargets);
+    await db.delete(ragIndexConfigs);
     await db.delete(posts);
     await db.delete(searchSettings);
     await saveSearchPolicy(structuredClone(DEFAULT_SEARCH_POLICY));
@@ -405,6 +460,7 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
       createdAt: 1,
       updatedAt: 1,
     });
+    await seedVerifiedBlog("concept");
     await enable("rag");
     const urls: string[] = [];
     globalThis.fetch = fakeFetch(async (url) => {
@@ -475,6 +531,7 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
         createdAt: 1,
         updatedAt: 1,
       });
+    await seedVerifiedBlog("concept");
     await enable("rag");
     globalThis.fetch = fakeFetch(async (url, init) => {
       if (String(url).endsWith("/embeddings"))
@@ -538,6 +595,7 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
       createdAt: 1,
       updatedAt: 1,
     });
+    await seedVerifiedBlog("concept");
     await enable("rag");
     globalThis.fetch = fakeFetch(async (url, init) => {
       if (String(url).endsWith("/embeddings"))

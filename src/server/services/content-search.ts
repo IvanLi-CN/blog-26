@@ -28,6 +28,7 @@ import {
   playbookSearchResult,
   searchPlaybookCandidates,
 } from "./playbook-search";
+import { ragCoverage } from "./rag-index";
 import {
   embedSearchQuery,
   judgeSearchCandidates,
@@ -109,9 +110,16 @@ async function vectorCandidates(
   embeddingConfig: ResolvedTierConfig,
   limit: number,
   publishedOnly: boolean,
-  type: "all" | "post" | "memo"
+  type: "all" | "post" | "memo" | "clipping"
 ): Promise<IndexedContent[]> {
-  const targetTypes = type === "all" ? ["post", "memo"] : [type];
+  const { eligibleVectorIds } = await ragCoverage({
+    source: "blog",
+    type,
+    publishedOnly,
+    config: embeddingConfig,
+  });
+  if (!eligibleVectorIds.size) return [];
+  const targetTypes = type === "all" ? ["post", "memo"] : [type === "clipping" ? "memo" : type];
   const conditions = [
     eq(postEmbeddings.modelName, embeddingConfig.model ?? ""),
     inArray(posts.type, targetTypes),
@@ -157,7 +165,7 @@ async function vectorCandidates(
       scannedBytes += row.vector instanceof Uint8Array ? row.vector.byteLength : 0;
       if (scanned > 10000 || scannedBytes > 64 * 1024 * 1024)
         throw new SearchModelError("budget-exceeded");
-      if (!(row.vector instanceof Uint8Array)) continue;
+      if (!eligibleVectorIds.has(row.id) || !(row.vector instanceof Uint8Array)) continue;
       const bytes = Buffer.from(row.vector);
       if (bytes.length !== vector.length * 4 || row.dim !== vector.length) continue;
       const stored = Array.from({ length: vector.length }, (_, i) => bytes.readFloatLE(i * 4));
@@ -500,10 +508,9 @@ export async function executeContentModes(
     await currentUnified(merged, publishedOnly, edition);
     return { ...state, merged };
   };
-  const keywordEnvelope = async (
-    reason?: SearchReason,
-    ragIncomplete = false
-  ): Promise<ContentSearchEnvelope> => {
+  let ragIncompleteSources: string[] = [];
+  let coverageIdentity: unknown;
+  const keywordEnvelope = async (reason?: SearchReason): Promise<ContentSearchEnvelope> => {
     const state = await keywordState();
     return {
       results: state.merged
@@ -514,7 +521,7 @@ export async function executeContentModes(
       ...(reason ? { reason } : {}),
       ...(metadata.playbook ? { playbook: metadata.playbook } : {}),
       ...(incompleteSources.length ? { incompleteSources } : {}),
-      ...(ragIncomplete ? { ragIncompleteSources: ["playbook"] } : {}),
+      ...(ragIncompleteSources.length ? { ragIncompleteSources } : {}),
     };
   };
   // Preserve the legacy SQLite query contract for callers that still use NEAR.
@@ -530,18 +537,29 @@ export async function executeContentModes(
   if (plan.mode !== "simple") return keywordEnvelope("explicit-query");
   if (input.mode === "keyword") return keywordEnvelope();
   const resolved = await resolveSearchPolicy(input.mode);
-  const ragNeedsPlaybookCoverage =
-    input.mode === "rag" && input.source !== "blog" && wantsPlaybook(input.type);
-  if (resolved.reason) return keywordEnvelope(resolved.reason, ragNeedsPlaybookCoverage);
+  if (input.mode === "rag") {
+    const coverage = await ragCoverage({
+      source: input.source,
+      type: input.type,
+      publishedOnly,
+      playbook: edition ?? null,
+      config: resolved.resolved?.embedding,
+    });
+    ragIncompleteSources = coverage.status.incompleteSources;
+    coverageIdentity = {
+      identity: coverage.status.identity,
+      targets: coverage.status.details.map((row) => [row.id, row.state, row.indexedAt]),
+    };
+  }
+  if (resolved.reason) return keywordEnvelope(resolved.reason);
   if (!resolved.chat || !resolved.fingerprint || !resolved.resolved)
-    return keywordEnvelope("unconfigured", ragNeedsPlaybookCoverage);
+    return keywordEnvelope("unconfigured");
   if (context.embeddingModel && context.embeddingModel !== resolved.resolved.embedding.model)
     return keywordEnvelope("unvalidated");
   try {
     const keyword = await keywordState();
     const literal = keyword.merged;
     let result: UnifiedCandidate[];
-    let semanticCoverageIncomplete = false;
     const snippetQueries = new Map<string, string>();
     if (input.mode === "rewrite") {
       const policy = resolved.policy;
@@ -592,7 +610,7 @@ export async function executeContentModes(
               resolved.resolved.embedding,
               candidateLimit,
               publishedOnly,
-              blogInputType
+              input.type === "clipping" ? "clipping" : blogInputType
             );
       const playbookVectors =
         edition &&
@@ -607,11 +625,6 @@ export async function executeContentModes(
               playbookType(input.type)
             )
           : [];
-      semanticCoverageIncomplete =
-        input.source !== "blog" &&
-        wantsPlaybook(input.type) &&
-        literal.length < input.topK &&
-        playbookVectors.length === 0;
       const candidates: UnifiedCandidate[] = [...literal];
       const seen = new Set(literal.map(unifiedId));
       for (const item of vectors)
@@ -676,6 +689,7 @@ export async function executeContentModes(
       const key = digest({
         query: plan.query,
         fingerprint: resolved.fingerprint,
+        coverageIdentity,
         windows: windows.map((x) => [unifiedId(x), unifiedVersion(x)]),
         payload,
       });
@@ -713,13 +727,6 @@ export async function executeContentModes(
       return keywordEnvelope("unvalidated");
     await currentUnified(result, publishedOnly, edition);
     const keywordIds = new Set(literal.map(unifiedId));
-    const ragIncompleteSources =
-      input.mode === "rag" &&
-      input.source !== "blog" &&
-      wantsPlaybook(input.type) &&
-      (semanticCoverageIncomplete || !edition)
-        ? ["playbook"]
-        : [];
     return {
       results: result.map((x) =>
         resultForCandidate(
@@ -736,9 +743,6 @@ export async function executeContentModes(
     };
   } catch (error) {
     if (error instanceof ContentSearchError) throw error;
-    return keywordEnvelope(
-      error instanceof SearchModelError ? error.reason : "unavailable",
-      ragNeedsPlaybookCoverage
-    );
+    return keywordEnvelope(error instanceof SearchModelError ? error.reason : "unavailable");
   }
 }

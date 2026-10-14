@@ -4,6 +4,7 @@ import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db, initializeDB } from "../db";
 import { posts } from "../schema";
 import { syncEventManager } from "../sync-events";
+import { embeddingChunks } from "./embedding-target";
 import {
   buildEmbeddingInput,
   createEmbedding,
@@ -19,17 +20,8 @@ export type VectorizeMode = "full" | "incremental";
 type Chunk = { index: number; text: string };
 
 function chunkText(text: string, size: number, overlap: number): Chunk[] {
-  if (size <= 0) return [{ index: 0, text }];
-  const chunks: Chunk[] = [];
-  let start = 0;
-  let idx = 0;
-  while (start < text.length) {
-    const end = Math.min(text.length, start + size);
-    chunks.push({ index: idx++, text: text.slice(start, end) });
-    if (end === text.length) break;
-    start = Math.max(0, end - overlap);
-  }
-  return chunks;
+  if (size <= 0 || overlap < 0 || overlap >= size) throw new Error("Invalid chunk policy");
+  return embeddingChunks(text, true).map((chunk) => ({ index: chunk.index, text: chunk.text }));
 }
 
 async function mapWithConcurrency<T, R>(
@@ -110,7 +102,7 @@ export async function vectorizeAll(params: {
       const status = await EmbeddingsRepository.getVectorizationStatus(
         p.id,
         modelName,
-        p.contentHash
+        hashEmbeddingInput(buildEmbeddingInput(p))
       );
       if (!params.isFull && status === "indexed") {
         syncEventManager.pushLog({

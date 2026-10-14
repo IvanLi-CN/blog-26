@@ -1,27 +1,28 @@
+import { checkPlaybook, playbookSyncEnabled } from "../../services/content-sync-runtime";
+import { contentSyncStatus } from "../../services/content-sync-status";
+import {
+  cancelContentTask,
+  contentSyncTotals,
+  getContentTask,
+  listContentTasks,
+} from "../../services/content-tasks";
+import { listPlaybookCandidates } from "../../services/playbook-search";
+import { triggerRagIndex } from "../../services/rag-index";
 /**
  * 内容同步管理 tRPC 路由
  *
  * 提供内容源管理和同步控制的 API 接口
  */
 
-import { randomUUID } from "node:crypto";
 import { EventEmitter, on } from "node:events";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { SYSTEM_CONFIG } from "../../../config/paths";
 import { getContentSourceManager, LocalContentSource } from "../../../lib/content-sources";
-import { db } from "../../../lib/db";
 import { getRuntimePlaybookStore } from "../../../lib/playbook/cache";
-import { samePlaybookEdition } from "../../../lib/playbook/manifest";
-import type { PlaybookEdition } from "../../../lib/playbook/types";
-import { contentSyncLogs } from "../../../lib/schema";
 import { syncEventManager } from "../../../lib/sync-events";
-import { getResolvedLlmConfig } from "../../services/llm-settings";
-import {
-  getPlaybookContentSyncStatus,
-  preparePlaybookSemanticProjection,
-} from "../../services/search-semantic-projection";
-import { adminProcedure, createTRPCRouter, publicProcedure } from "../../trpc";
+import { getPlaybookContentSyncStatus } from "../../services/search-semantic-projection";
+import { adminProcedure, createTRPCRouter } from "../../trpc";
 
 // 输入验证 Schema
 const syncConfigSchema = z.object({
@@ -48,165 +49,66 @@ type PlaybookSyncResult = {
   adopted?: boolean;
 };
 
-let activePlaybookSync: {
-  promise: Promise<PlaybookSyncResult>;
-  controller: AbortController;
-} | null = null;
-
-function runPlaybookSync(): Promise<PlaybookSyncResult> {
-  if (activePlaybookSync) return activePlaybookSync.promise;
-
-  const taskId = randomUUID();
-  const controller = new AbortController();
-  const task = (async () => {
-    const createdAt = Date.now();
-    let store: ReturnType<typeof getRuntimePlaybookStore> | undefined;
-    let stagedEdition: PlaybookEdition | undefined;
-    let initialEdition: PlaybookEdition | undefined;
-    let adopted = false;
-    await db.insert(contentSyncLogs).values({
-      id: taskId,
-      sourceType: "playbook",
-      sourceName: "playbook",
-      operation: "sync",
-      status: "warning",
-      message: "Playbook 检查已开始",
-      filePath: null,
-      data: JSON.stringify({ taskId, phase: "checking" }),
-      createdAt,
-    });
-
-    try {
-      store = getRuntimePlaybookStore();
-      await store.load();
-      initialEdition = store.current;
-      await store.sync(undefined, controller.signal, async (edition, signal) => {
-        stagedEdition = edition;
-        const config = await getResolvedLlmConfig().catch(() => undefined);
-        if (!config?.embedding.model) return;
-
-        try {
-          const projection = await preparePlaybookSemanticProjection(edition, config.embedding, {
-            signal,
-          });
-          await db.insert(contentSyncLogs).values({
-            id: randomUUID(),
-            sourceType: "playbook",
-            sourceName: "playbook",
-            operation: "semantic-projection",
-            status: projection.failed ? "warning" : "success",
-            message: projection.failed
-              ? `Playbook 语义投影部分待补（${projection.failed}/${projection.total}）`
-              : "Playbook 语义投影准备完成",
-            filePath: null,
-            data: JSON.stringify({ taskId, phase: "semantic", ...projection }),
-            createdAt: Date.now(),
-          });
-        } catch (error) {
-          if (signal.aborted) return;
-          console.warn(
-            "[playbook] semantic projection pending:",
-            error instanceof Error ? error.message : String(error)
-          );
-          await db.insert(contentSyncLogs).values({
-            id: randomUUID(),
-            sourceType: "playbook",
-            sourceName: "playbook",
-            operation: "semantic-projection",
-            status: "error",
-            message: error instanceof Error ? error.message : String(error),
-            filePath: null,
-            data: JSON.stringify({ taskId, phase: "semantic" }),
-            createdAt: Date.now(),
-          });
-        }
-      });
-
-      const edition = stagedEdition ?? store.current;
-      adopted = Boolean(
-        stagedEdition &&
-          (!initialEdition ||
-            !samePlaybookEdition(stagedEdition.edition, initialEdition.edition)) &&
-          store.current &&
-          samePlaybookEdition(store.current.edition, stagedEdition.edition)
-      );
-      if (controller.signal.aborted) {
-        return {
-          success: true as const,
-          cancelled: true,
-          adopted,
-          status: await getPlaybookContentSyncStatus(),
-        };
-      }
-
-      await db.insert(contentSyncLogs).values({
-        id: randomUUID(),
-        sourceType: "playbook",
-        sourceName: "playbook",
-        operation: "sync",
-        status: "success",
-        message: "Playbook 内容检查完成",
-        filePath: null,
-        data: JSON.stringify({
-          taskId,
-          phase: adopted ? "adopted" : "unchanged",
-          edition: edition?.edition.editionDigest,
-        }),
-        createdAt: Date.now(),
-      });
-      return { success: true as const, adopted, status: await getPlaybookContentSyncStatus() };
-    } catch (error) {
-      adopted = Boolean(
-        stagedEdition &&
-          (!initialEdition ||
-            !samePlaybookEdition(stagedEdition.edition, initialEdition.edition)) &&
-          store?.current &&
-          samePlaybookEdition(store.current.edition, stagedEdition.edition)
-      );
-      if (controller.signal.aborted) {
-        await db.insert(contentSyncLogs).values({
-          id: randomUUID(),
-          sourceType: "playbook",
-          sourceName: "playbook",
-          operation: "sync",
-          status: "warning",
-          message: "Playbook 同步已取消",
-          filePath: null,
-          data: JSON.stringify({ taskId, phase: "cancelled" }),
-          createdAt: Date.now(),
-        });
-        return {
-          success: true as const,
-          cancelled: true,
-          adopted,
-          status: await getPlaybookContentSyncStatus(),
-        };
-      }
-      await db.insert(contentSyncLogs).values({
-        id: randomUUID(),
-        sourceType: "playbook",
-        sourceName: "playbook",
-        operation: "sync",
-        status: "error",
-        message: error instanceof Error ? error.message : "Playbook 同步失败",
-        filePath: null,
-        data: JSON.stringify({ taskId, phase: "failed" }),
-        createdAt: Date.now(),
-      });
-      throw error;
-    }
-  })().finally(() => {
-    activePlaybookSync = null;
-  });
-  activePlaybookSync = { promise: task, controller };
-
-  return task;
+async function runPlaybookSync(): Promise<PlaybookSyncResult> {
+  return {
+    success: true,
+    ...(await checkPlaybook()),
+    status: await getPlaybookContentSyncStatus(),
+  };
 }
 
 /**
  * 内容同步管理路由
  */
 export const adminContentSyncRouter = createTRPCRouter({
+  getStatus: adminProcedure
+    .input(
+      z
+        .object({
+          source: z.enum(["all", "blog", "playbook"]).default("all"),
+          type: z
+            .enum(["all", "post", "memo", "clipping", "topic", "experience", "policy"])
+            .default("all"),
+          edition: z.enum(["current", "previous"]).default("current"),
+        })
+        .optional()
+    )
+    .query(async ({ input }) => {
+      if (input?.edition === "previous" && input.source !== "playbook")
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Previous edition requires Playbook scope",
+        });
+      await ensureContentSourcesRegistered(getContentSourceManager());
+      return contentSyncStatus(input);
+    }),
+  triggerRagIndex: adminProcedure
+    .input(
+      z.object({ source: z.enum(["all", "blog", "playbook"]), mode: z.enum(["repair", "rebuild"]) })
+    )
+    .mutation(({ input }) => triggerRagIndex(input.source, input.mode)),
+  getTasks: adminProcedure
+    .input(
+      z
+        .object({
+          source: z.enum(["all", "local", "playbook"]).optional(),
+          kind: z.enum(["sync", "rag"]).optional(),
+          offset: z.number().int().min(0).default(0),
+          limit: z.number().int().min(1).max(100).default(20),
+        })
+        .optional()
+    )
+    .query(({ input }) => listContentTasks(input)),
+  getTask: adminProcedure
+    .input(z.object({ taskId: z.string().uuid() }))
+    .query(async ({ input }) => {
+      const task = await getContentTask(input.taskId);
+      if (!task) throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
+      return task;
+    }),
+  cancelTask: adminProcedure
+    .input(z.object({ taskId: z.string().uuid() }))
+    .mutation(({ input }) => cancelContentTask(input.taskId)),
   // ============================================================================
   // 同步操作
   // ============================================================================
@@ -226,6 +128,11 @@ export const adminContentSyncRouter = createTRPCRouter({
       // 检查是否有正在进行的同步
       const currentSync = manager.getCurrentSyncProgress();
       if (currentSync && currentSync.status === "running") {
+        const active = (
+          await listContentTasks({ source: "local", kind: "sync", limit: 100 })
+        ).items.find((task) => task.finishedAt === null);
+        if (active?.requestKey === (isFullSync ? "full" : "incremental"))
+          return { success: true, taskId: active.id, reused: true };
         throw new TRPCError({
           code: "CONFLICT",
           message: "同步正在进行中，请等待完成",
@@ -236,7 +143,19 @@ export const adminContentSyncRouter = createTRPCRouter({
       await ensureContentSourcesRegistered(manager);
 
       // 执行同步（传入同步类型）
-      const result = await manager.syncAll(isFullSync);
+      let result: Awaited<ReturnType<typeof manager.syncAll>>;
+      try {
+        result = await manager.syncAll(isFullSync);
+      } catch (error) {
+        if (source === "local") throw error;
+        const playbook = playbookSyncEnabled()
+          ? await runPlaybookSync().catch(() => ({
+              success: false,
+              error: "Playbook check failed",
+            }))
+          : { enabled: false };
+        return { success: false, local: { success: false, error: "Local sync failed" }, playbook };
+      }
 
       const resultPayload = {
         success: result.success,
@@ -254,9 +173,12 @@ export const adminContentSyncRouter = createTRPCRouter({
       };
       if (source === "local") return resultPayload;
 
-      const playbook = await runPlaybookSync();
+      const playbook = playbookSyncEnabled()
+        ? await runPlaybookSync().catch(() => ({ success: false, error: "Playbook check failed" }))
+        : { enabled: false };
       return { ...resultPayload, playbook };
     } catch (error) {
+      if (error instanceof TRPCError) throw error;
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: error instanceof Error ? error.message : "同步失败",
@@ -271,9 +193,8 @@ export const adminContentSyncRouter = createTRPCRouter({
     try {
       const manager = getContentSourceManager();
       await manager.cancelSync();
-      activePlaybookSync?.controller.abort(
-        new DOMException("Playbook sync cancelled", "AbortError")
-      );
+      for (const task of (await listContentTasks({ limit: 100 })).items)
+        if (task.finishedAt === null) await cancelContentTask(task.id);
       getRuntimePlaybookStore().cancelSync();
 
       return { success: true, message: "同步已取消" };
@@ -320,7 +241,15 @@ export const adminContentSyncRouter = createTRPCRouter({
         .groupBy(posts.type, posts.source);
 
       // 使用 posts 表的统计结果
-      const allStats = postsStats;
+      const current = getRuntimePlaybookStore();
+      await current.load();
+      const pbCounts = new Map<string, number>();
+      for (const row of current.current ? listPlaybookCandidates(current.current) : [])
+        pbCounts.set(row.type, (pbCounts.get(row.type) ?? 0) + 1);
+      const allStats = [
+        ...postsStats,
+        ...[...pbCounts].map(([type, count]) => ({ type, source: "playbook", count })),
+      ];
 
       // 获取所有已知的内容源和类型
       const knownSources = ["local"]; // 已知的内容源
@@ -439,12 +368,10 @@ export const adminContentSyncRouter = createTRPCRouter({
           name: playbook.name,
           type: playbook.type,
           priority: 0,
-          enabled: true,
+          enabled: playbookSyncEnabled(),
           online: playbook.adopted,
           totalItems: playbook.lexical.count,
-          lastSync: playbook.current?.generatedAt
-            ? Date.parse(playbook.current.generatedAt)
-            : undefined,
+          lastSync: getRuntimePlaybookStore().adoption?.at,
           error: playbook.semantic.lastError,
           metadata: playbook,
         },
@@ -467,13 +394,15 @@ export const adminContentSyncRouter = createTRPCRouter({
       // Ensure default sources are registered so first-time stats reflect reality
       await ensureContentSourcesRegistered(manager);
       const stats = manager.getManagerStats();
+      const totals = await contentSyncTotals();
 
       return {
-        registeredSources: stats.registeredSources,
-        enabledSources: stats.enabledSources,
+        registeredSources: stats.registeredSources + 1,
+        enabledSources: stats.enabledSources + (playbookSyncEnabled() ? 1 : 0),
         currentSyncStatus: stats.currentSyncStatus,
-        lastSyncTime: stats.lastSyncTime,
-        totalSyncs: stats.totalSyncs,
+        lastSyncTime: totals.lastSyncTime,
+        totalSyncs: totals.totalSyncs,
+        trackingSince: totals.trackingSince,
       };
     } catch (error) {
       console.error("Failed to get manager stats:", error);
@@ -561,17 +490,19 @@ export const adminContentSyncRouter = createTRPCRouter({
     )
     .query(async ({ input }) => {
       try {
-        const manager = getContentSourceManager();
-        const history = manager.getSyncHistory();
-
-        return history.slice(-input.limit).map((result) => ({
-          success: result.success,
-          startTime: result.startTime,
-          endTime: result.endTime,
-          duration: result.endTime - result.startTime,
-          sources: result.sources,
-          stats: result.stats,
-          errorCount: result.errors.length,
+        const history = (await listContentTasks({ kind: "sync", limit: input.limit })).items.filter(
+          (task) => task.finishedAt !== null
+        );
+        return history.map((task) => ({
+          success: ["success", "unchanged"].includes(task.status),
+          startTime: task.startedAt,
+          endTime: task.finishedAt ?? task.startedAt,
+          duration: (task.finishedAt ?? task.startedAt) - task.startedAt,
+          sources: [task.source],
+          stats: { totalProcessed: task.processed, added: 0, updated: 0, deleted: 0, skipped: 0 },
+          errorCount: task.failed || (task.status === "failed" ? 1 : 0),
+          taskId: task.id,
+          status: task.status,
         }));
       } catch (error) {
         console.error("Failed to fetch sync history:", error);
@@ -601,7 +532,7 @@ export const adminContentSyncRouter = createTRPCRouter({
   /**
    * 订阅同步日志推送 (SSE)
    */
-  subscribeSyncLogs: publicProcedure.subscription(async function* (opts) {
+  subscribeSyncLogs: adminProcedure.subscription(async function* (opts) {
     console.log(
       `🔗 SSE 连接建立 instance=${syncEventManager.constructor.name} id=${
         (syncEventManager as any)._instanceId || "undefined"
