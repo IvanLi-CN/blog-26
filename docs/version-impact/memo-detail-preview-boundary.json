@@ -16,7 +16,7 @@
     "scripts/build-web-demo.ts": "840522042ea0e6a348b05aa0f0ff4c53c35e26b4",
     "scripts/preview-web-demo.ts": "5d92e6c3d65147497a6a215fe27393571f6f43b3",
     "site/components/PublicMemoAuthoring.public.tsx": "f2d5178a4f6ef032b2b42e10fa51cc87bb920d63",
-    "site/components/PublicMemoAuthoring.tsx": "2db4dc8690d30db1eb9d690f56fc90a3d25b0f76",
+    "site/components/PublicMemoAuthoring.tsx": "c62e21cfac6ce21b986fdeaee4de6df75f170b9d",
     "site/components/PublicRouter.tsx": "528da86451956f2a4585b570241ff3034309f372",
     "site/components/VirtualizedMemoList.tsx": "107f3d0d36b640fc780a3554098f421cbfaac07c",
     "site/components/pages/memo.tsx": "b19ddde06df9b0b761dd1369c0a4f9fbe26f2a9b",
@@ -34,12 +34,12 @@
     "src/server/clipping/api.ts": "c9f16d2ced4b0f248ad5a53d5e1f3f21a434b82e",
     "src/server/http-compat-api.test.ts": "aa055bf98c2b7f090380189b34356ec9839a096a",
     "src/server/routers/memos.ts": "dae1d2f73077b47bd3cbe7fc65c309aacdbc4183",
-    "tests/components/PublicMemoAuthoring.test.tsx": "0e581cd9a8b9075457573dfe40787552e311401a",
+    "tests/components/PublicMemoAuthoring.test.tsx": "4a98b92b2a2d619acf61acb29e777ece80697725",
     "tests/e2e/admin/memos-admin.spec.ts": "173c142fa9274f0bba70c7181b0547bb09dd01c2",
     "tests/e2e/admin/memos/helpers.ts": "d858b41e327d7570fbed70c7f3481611209e0dde",
     "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts": "8f2abe570c343db4e6634c6e5335ca53428bd988",
     "tests/e2e/guest/public-csr-navigation.spec.ts": "7df417873f7586d4f6eeaab787b521d156de746b",
-    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "e79e104a7eefea02cd47e10ca4c48b7f900eefdc",
+    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "5bcc84766c3e825f616b50a4c689007f59f93d71",
     "tests/e2e/web-demo/playwright.config.ts": "8dc2e45e799abdb4c24e390702f471283042e63d",
     "tests/lib/console-memo-page-data.test.ts": "369c2c4d5c3dadd25c0a3f42afeca870aa2404f1",
     "tests/lib/console-web-demo.test.ts": "0a46e5f6573701c12e9dc66b8d3f52030338add5",
@@ -73,7 +73,7 @@
     "current": {
       "impact": "patch",
       "reasoning": "The candidate changes only the Console Memo detail/preview boundary, request-scoped initial projection, unauthorized read status mapping, shared route history state, and the official build-time Web Demo evidence surface. Public API payload shapes, persistent state, snapshot publishing, and deployment host configuration remain unchanged; the deliberate 403-to-404 mapping for unauthorized private reads makes them indistinguishable from missing resources, while the Demo uses an explicit guest projection that omits authoring-only fields. Console guests now use the current request-scoped public API projection and cannot fall back to a lagging public snapshot after a Memo becomes private or draft. The current candidate also keeps administrator tools inside the Memo detail reading surface on desktop and mobile.",
-      "assessed_at": "2026-10-14T20:20:00+08:00",
+      "assessed_at": "2026-10-14T20:38:08+08:00",
       "evidence": [
         {
           "path": "apps/admin/src/pages/preview.tsx",
@@ -102,8 +102,8 @@
         },
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "e79e104a7eefea02cd47e10ca4c48b7f900eefdc",
-          "command": "Official Console Web Demo E2E covers navigation, history, preview boundary, SSR privacy, persona transitions, clipping, Admin preview clipping materials, same-route save, saved-content preview sync, deletion, and mobile bottom-sheet interaction"
+          "blob": "5bcc84766c3e825f616b50a4c689007f59f93d71",
+          "command": "Official Console Web Demo E2E covers navigation, history, preview boundary, SSR privacy for private and draft records before hydration, persona transitions, clipping, Admin preview clipping materials, same-route save, saved-content preview sync, deletion, reload freshness, and mobile bottom-sheet interaction"
         },
         {
           "path": "tests/e2e/web-demo/playwright.config.ts",
@@ -149,7 +149,7 @@
     "verified": {
       "impact": "patch",
       "reasoning": "Focused component, Console projection, page-data source selection, clipping, HTTP compatibility, official Web Demo build, and Console browser acceptance checks pass at desktop and mobile viewports. The implementation preserves existing public payload shapes and persistent state while enforcing the same-origin detail/preview boundary and private-resource non-disclosure; the 403-to-404 status change is an intentional compatible privacy hardening because private and missing resources share the documented not-found response. Console runtime now refuses snapshot fallback when the current request has no authorized Memo projection. The focused Web Demo evidence additionally asserts that the administrator toolbar is contained by the visible detail card and that the mobile Inspector control does not occlude the discussion action.",
-      "assessed_at": "2026-10-14T20:20:00+08:00",
+      "assessed_at": "2026-10-14T20:38:08+08:00",
       "evidence": [
         {
           "path": "apps/admin/src/pages/preview.tsx",
@@ -158,8 +158,8 @@
         },
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "e79e104a7eefea02cd47e10ca4c48b7f900eefdc",
-          "command": "Official Console Web Demo E2E: 10 desktop passed and 10 mobile passed"
+          "blob": "5bcc84766c3e825f616b50a4c689007f59f93d71",
+          "command": "Official Console Web Demo E2E: 12 desktop passed and 12 mobile passed"
         },
         {
           "path": "tests/e2e/web-demo/playwright.config.ts",
@@ -198,13 +198,13 @@
         },
         {
           "path": "tests/components/PublicMemoAuthoring.test.tsx",
-          "blob": "0e581cd9a8b9075457573dfe40787552e311401a",
-          "command": "Component regression: 8 passed, including public timeline recovery after SSR admin auth downgrade and detail auth refresh support"
+          "blob": "4a98b92b2a2d619acf61acb29e777ece80697725",
+          "command": "Component regression: 9 passed, including public timeline recovery after SSR admin auth downgrade, detail auth refresh support, and stale persona response rejection"
         },
         {
           "path": "src/lib/web-demo-fetch.ts",
           "blob": "05da9fc2fe4fd9fbb5178dc0cb89aad0ab635a7a",
-          "command": "bun test tests/lib/console-web-demo.test.ts tests/lib/console-memo-page-data.test.ts tests/components/PublicMemoAuthoring.test.tsx tests/components/ClippingDetail.test.tsx: 15 passed; Web Demo admin/preview mutation bridge covered by 10 desktop and 10 mobile E2E cases"
+          "command": "bun test tests/lib/console-web-demo.test.ts tests/lib/console-memo-page-data.test.ts tests/components/PublicMemoAuthoring.test.tsx tests/components/ClippingDetail.test.tsx src/lib/__tests__/admin-demo-file-tree.test.ts src/lib/__tests__/admin-demo-file-paste-selection.test.ts src/lib/__tests__/admin-demo-llm-settings.test.ts: 20 passed; Web Demo admin/preview mutation bridge covered by 12 desktop and 12 mobile E2E cases"
         },
         {
           "path": "scripts/build-web-demo.ts",
@@ -260,7 +260,7 @@
       "evidence": [
         {
           "path": "tests/components/PublicMemoAuthoring.test.tsx",
-          "blob": "0e581cd9a8b9075457573dfe40787552e311401a",
+          "blob": "4a98b92b2a2d619acf61acb29e777ece80697725",
           "command": "Component regression suite covers same-route editing, auth downgrade timeline recovery, and state updates without introducing persisted state"
         }
       ]

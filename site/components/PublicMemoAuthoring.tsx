@@ -54,6 +54,16 @@ type PublicMemoListResponse = {
   previousCursor?: string | null;
 };
 
+class PublicRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message);
+    this.name = "PublicRequestError";
+  }
+}
+
 function withMemoExcerpt(memo: PublicMemoRecord): PublicMemoRecord {
   return {
     ...memo,
@@ -110,7 +120,7 @@ async function requestJson<T>(input: RequestInfo | URL, init?: RequestInit): Pro
             typeof errorPayload.error.message === "string"
           ? errorPayload.error.message
           : `Request failed with status ${response.status}`;
-    throw new Error(message);
+    throw new PublicRequestError(message, response.status);
   }
   return payload as T;
 }
@@ -136,6 +146,7 @@ function useMemoRequest() {
 
 function usePublicAuth(initialIsAdmin = false) {
   const readJson = useMemoRequest();
+  const requestGeneration = useRef(0);
   const [user, setUser] = useState<PublicAuthUser | null>(
     initialIsAdmin
       ? { id: "ssr-admin", nickname: "admin", email: "", avatarUrl: "", isAdmin: true }
@@ -145,16 +156,20 @@ function usePublicAuth(initialIsAdmin = false) {
   const [isResolved, setIsResolved] = useState(false);
 
   const refetch = useCallback(() => {
+    const generation = ++requestGeneration.current;
     setIsLoading(true);
     setIsResolved(false);
     void readJson<PublicAuthUser | null>(toPublicApiUrl("/api/public/auth/me"))
       .then((nextUser) => {
+        if (generation !== requestGeneration.current) return;
         setUser(nextUser);
       })
       .catch(() => {
+        if (generation !== requestGeneration.current) return;
         setUser(null);
       })
       .finally(() => {
+        if (generation !== requestGeneration.current) return;
         setIsLoading(false);
         setIsResolved(true);
       });
@@ -934,7 +949,12 @@ export function PublicMemoDetailControlsIsland({
       );
       setMemo(result);
     } catch (error) {
-      if (!initialMemo) setMemo(null);
+      if (error instanceof PublicRequestError && error.status === 404) {
+        setMemo(null);
+        setIsPublicFallback(false);
+      } else if (!initialMemo) {
+        setMemo(null);
+      }
       setErrorMessage(error instanceof Error ? error.message : String(error));
     } finally {
       setIsFetching(false);
@@ -945,6 +965,13 @@ export function PublicMemoDetailControlsIsland({
     if (!isResolved || !user) return;
     void loadMemo();
   }, [isResolved, user, loadMemo]);
+
+  useEffect(() => {
+    if (!effectiveIsAdmin || !isResolved || isFetching || memo) return;
+    document.querySelectorAll<HTMLElement>("[data-public-memo-static-shell]").forEach((element) => {
+      element.remove();
+    });
+  }, [effectiveIsAdmin, isFetching, isResolved, memo]);
 
   const handleSave = useCallback(
     async (values: { content: string; isPublic: boolean }) => {

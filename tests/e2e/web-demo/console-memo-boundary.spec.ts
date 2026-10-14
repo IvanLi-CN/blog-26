@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const privateSlug = "console-demo-private-release-notes";
+const draftSlug = "console-demo-draft-reading-list";
 const clippingSlug = "console-demo-clipping-durable-workflows";
 const isMobileViewport = process.env.WEB_DEMO_VIEWPORT === "mobile";
 
@@ -84,6 +85,18 @@ test.describe("Console Memo Web Demo", () => {
     await expect(page.locator("body")).not.toContainText(
       "管理员可以在详情首屏看到尚未进入公开快照的正文"
     );
+  });
+
+  test("keeps draft detail unavailable to a guest before hydration", async ({ browser }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+    const response = await page.goto(`/memos/${draftSlug}/?d_persona=guest`, {
+      waitUntil: "domcontentloaded",
+    });
+    expect(response?.status()).toBe(404);
+    await expect(page).toHaveTitle("页面未找到 - Ivan's Blog");
+    await expect(page.locator("body")).not.toContainText("待确认的阅读清单");
+    await context.close();
   });
 
   test("rechecks the detail boundary when the Web Demo persona changes", async ({ page }) => {
@@ -258,5 +271,25 @@ test.describe("Console Memo Web Demo", () => {
     await expect(page.getByText("发布窗口后的内部复盘", { exact: true })).toHaveCount(0);
     await page.getByTestId("web-demo-inspector-trigger").click();
     await expect(page.locator(".web-demo-inspector-mutations")).toContainText("删除 Memo");
+  });
+
+  test("does not restore a deleted detail from its SSR seed on reload", async ({ page }) => {
+    await page.goto(`/memos/?d_persona=admin&d_delay=normal`, { waitUntil: "domcontentloaded" });
+    await page
+      .locator(`[data-testid="admin-live-memo-card"][data-slug="${privateSlug}"]`)
+      .getByRole("link", { name: "查看详情" })
+      .click();
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByTestId("admin-live-memo-delete").click();
+    await expect(page).toHaveURL(/\/memos\/?(?:\?.*)?$/);
+
+    await page.goto(`/memos/${privateSlug}/?d_persona=admin&d_delay=normal`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator('[data-testid="public-memo-detail-card"]:visible')).toHaveCount(0);
+    await expect(page.locator('[data-testid="public-memo-detail-body"]:visible')).toHaveCount(0);
+    await expect(page.locator("body")).not.toContainText(
+      "管理员可以在详情首屏看到尚未进入公开快照的正文"
+    );
   });
 });

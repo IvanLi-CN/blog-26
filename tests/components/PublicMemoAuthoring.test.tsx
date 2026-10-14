@@ -6,6 +6,7 @@ if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register({ url: "http://l
 const { PublicMemoComposerIsland, PublicMemoDetailControlsIsland } = await import(
   "../../site/components/PublicMemoAuthoring"
 );
+const { WEB_DEMO_STATE_EVENT } = await import("../../src/lib/web-demo-runtime");
 
 const originalFetch = globalThis.fetch;
 const originalConfirm = window.confirm;
@@ -225,6 +226,53 @@ describe.serial("Memo detail boundary", () => {
 
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+    expect(view.queryByRole("button", { name: "编辑 Memo" })).toBeNull();
+  });
+
+  test("ignores a late auth response from the previous Web Demo persona", async () => {
+    let authRequests = 0;
+    let resolveFirst: ((response: Response) => void) | undefined;
+    let resolveSecond: ((response: Response) => void) | undefined;
+    const firstResponse = new Promise<Response>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const secondResponse = new Promise<Response>((resolve) => {
+      resolveSecond = resolve;
+    });
+    globalThis.fetch = (async (input) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/auth/me") {
+        authRequests += 1;
+        return authRequests === 1 ? firstResponse : secondResponse;
+      }
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    }) as typeof fetch;
+
+    const view = render(
+      <PublicMemoDetailControlsIsland
+        slug="persona-race"
+        initialIsAdmin
+        initialMemo={{ ...memo("persona-race"), isPublic: false }}
+      />
+    );
+    await waitFor(() => expect(authRequests).toBe(1));
+    await act(async () => {
+      window.dispatchEvent(
+        new CustomEvent(WEB_DEMO_STATE_EVENT, { detail: { changed: ["persona"] } })
+      );
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(authRequests).toBe(2));
+
+    await act(async () => {
+      resolveSecond?.(Response.json(null));
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(view.queryByRole("button", { name: "编辑 Memo" })).toBeNull());
+    await act(async () => {
+      resolveFirst?.(Response.json({ isAdmin: true }));
+      await Promise.resolve();
     });
     expect(view.queryByRole("button", { name: "编辑 Memo" })).toBeNull();
   });
