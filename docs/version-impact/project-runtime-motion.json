@@ -5,9 +5,9 @@
   "covered_files": {
     "GLOSSARY.md": "e7e7f45a536a9588fa90361cda6879cd516c3bb9",
     "docs/project-runtime-motion-design.md": "c573024b88c764e498b081ee5c70d8ca05cf3e45",
-    "docs/specs/nature-front-ui/HISTORY.md": "0836ede8e4ba068d6e0930d8e8928d8d03cd2801",
-    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "2f6b9024873d80b9259e3a2ace38400775b26ac6",
-    "docs/specs/nature-front-ui/SPEC.md": "07f8d555d4087aa4d37b454f443cf0a2b9a7b693",
+    "docs/specs/nature-front-ui/HISTORY.md": "f57c6157bbc6304bf64bb3a7a2e38ee506d34271",
+    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "d2b91cec14d7874b1f3285eaebecaf1e180dc9f9",
+    "docs/specs/nature-front-ui/SPEC.md": "247599e60516fda88cb6573ec1e7517b2db5161f",
     "docs/specs/nature-front-ui/assets/runtime-motion-desktop-dark.png": "54f7dd72bf4a195a002cfc2031b94e4e50186104",
     "docs/specs/nature-front-ui/assets/runtime-motion-desktop-light.png": "d68200ac5faabab47522735d4cc533d868f27e36",
     "docs/specs/nature-front-ui/assets/runtime-motion-mobile-dark.png": "317da472a4d31c7809d3d27397ea352d201703f5",
@@ -20,7 +20,7 @@
     "site/lib/public-page-behaviors.ts": "1fa48ebd00e89ada16463ef67f8509508237232d",
     "site/styles/public-pages.css": "27869e020e4f10d1510917381721f80868e6990f",
     "src/components/projects/RuntimeCellGrid.stories.tsx": "c51fe54277455f9e5e714681796715473e2c5f17",
-    "tests/e2e/web-demo/project-runtime-motion.spec.ts": "af345f4f1832da1226ed01c0e8fba3cb0372fc45",
+    "tests/e2e/web-demo/project-runtime-motion.spec.ts": "b57c2dc0f6abc15e5a9ab8be309e31470f1291df",
     "tests/lib/project-runtime-channel.test.ts": "e1f22873cc9d951bd0e569cad81ee2ab30fd2bbc",
     "tests/lib/project-runtime-motion.test.ts": "8344818df6ca6c30b821fdc409c97cc4742c4337"
   },
@@ -47,7 +47,7 @@
         },
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "af345f4f1832da1226ed01c0e8fba3cb0372fc45",
+          "blob": "b57c2dc0f6abc15e5a9ab8be309e31470f1291df",
           "command": "Agent VM: bun run test:e2e:web-demo project-runtime-motion.spec.ts (7/7 passed)"
         },
         {
@@ -74,7 +74,7 @@
         },
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "af345f4f1832da1226ed01c0e8fba3cb0372fc45",
+          "blob": "b57c2dc0f6abc15e5a9ab8be309e31470f1291df",
           "command": "Agent VM: bun run test:e2e:web-demo project-runtime-motion.spec.ts (7/7 passed)"
         },
         {
@@ -105,7 +105,7 @@
         },
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "af345f4f1832da1226ed01c0e8fba3cb0372fc45",
+          "blob": "b57c2dc0f6abc15e5a9ab8be309e31470f1291df",
           "command": "Agent VM: bun run test:e2e:web-demo project-runtime-motion.spec.ts (7/7 passed)"
         },
         {
@@ -134,7 +134,7 @@
         },
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "af345f4f1832da1226ed01c0e8fba3cb0372fc45",
+          "blob": "b57c2dc0f6abc15e5a9ab8be309e31470f1291df",
           "command": "Agent VM: bun run test:e2e:web-demo project-runtime-motion.spec.ts (7/7 passed)"
         },
         {

@@ -63,3 +63,5 @@
 - The ambient leaf geometry now shares the approved broad/willow vector paths across SVG and a theme-independent WebGPU atlas. ADR 0011 replaces ADR 0007’s outline-omission detail policy with secondary-vein omission.
 
 - 2026-10-14: The project wall implements the approved layered poster/runtime-panel transitions with 140ms card staggering, revision-bound render readiness, immediate active retargeting, fallback inspection cleanup, hidden-page settlement, and system/Inspector reduced motion. Focused unit checks, four reusable-grid Storybook plays, the Web Demo build, seven official-route browser checks, and four owner-confirmed desktop/mobile light/dark captures pass. The responsive contract and ADR 0003 remain unchanged.
+
+- 2026-10-14: Browser validation separates adapter/render readiness from playback timing and holds a real intermediate native-animation frame for deterministic recovery checks on the software-rendered Agent VM; the approved production timing and acceptance contract remain unchanged.

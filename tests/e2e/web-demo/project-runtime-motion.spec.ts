@@ -1,7 +1,28 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 const slots = '[data-runtime-motion="true"]';
 const panels = `${slots} > [data-project-runtime-panel]`;
+
+async function waitForRender(page: Page, minimumCommits = 3) {
+  // Cold software rendering in the Agent VM includes chart construction and
+  // text fitting. Keep that data/render precondition separate from playback.
+  await page.waitForFunction(
+    (minimumCommits) =>
+      (window as unknown as { runtimeGridCommits: string[] }).runtimeGridCommits.length >=
+        minimumCommits &&
+      [
+        ...(
+          window as unknown as { runtimeRenderParts: Map<string, Set<string>> }
+        ).runtimeRenderParts.values(),
+      ].filter((parts) => parts.size === 3).length === 3,
+    minimumCommits,
+    { timeout: 30_000 }
+  );
+}
+
+// The budget includes three cold chart/typography renders on a software-only VM.
+// Playback assertions and the production 420ms/140ms contract keep their own bounds.
+test.setTimeout(120_000);
 
 test.use({
   viewport: { width: 1780, height: 1071 },
@@ -18,9 +39,22 @@ test.beforeEach(async ({ page }) => {
       finishedAt?: number;
     }[] = [];
     const commits: string[] = [];
-    Object.assign(window, { runtimeMotionRecords: records, runtimeGridCommits: commits });
+    const parts = new Map<string, Set<string>>();
+    Object.assign(window, {
+      runtimeMotionRecords: records,
+      runtimeGridCommits: commits,
+      runtimeRenderParts: parts,
+    });
+    for (const event of ["project-runtime-metrics-updated", "project-runtime-metrics-fallback"]) {
+      window.addEventListener(event, (event) => {
+        parts.delete((event as CustomEvent).detail.panel.dataset.runtimeKind);
+      });
+    }
     window.addEventListener("project-runtime-render-progress", (event) => {
       const { part, panel } = (event as CustomEvent).detail;
+      const rendered = parts.get(panel.dataset.runtimeKind) ?? new Set<string>();
+      rendered.add(part);
+      parts.set(panel.dataset.runtimeKind, rendered);
       if (part === "grid") commits.push(panel.dataset.runtimeKind);
     });
     const animate = Element.prototype.animate;
@@ -61,6 +95,7 @@ test("the official project route staggers both directions and keeps its geometry
   page,
 }) => {
   await page.goto("/projects/?d_delay=normal&d_connection=online&d_motion=system#developer-tools");
+  await waitForRender(page);
   await expect(page.locator(`${slots}[data-runtime-visual-state="panel"]`)).toHaveCount(3);
   await page.getByRole("button", { name: "打开 Web Demo 调试控制面板", exact: true }).click();
   const before = await page.locator(slots).evaluateAll((elements) =>
@@ -90,6 +125,7 @@ test("the official project route staggers both directions and keeps its geometry
     () => (window as unknown as { runtimeGridCommits: unknown[] }).runtimeGridCommits.length
   );
   await page.getByRole("button", { name: "刷新数据", exact: true }).click();
+  await waitForRender(page, commits + 3);
   await expect
     .poll(() =>
       page.evaluate(
@@ -120,6 +156,7 @@ test("the official project route staggers both directions and keeps its geometry
   );
   expect(after).toEqual(before);
   await page.getByTestId("web-demo-connection-online").click();
+  await waitForRender(page);
   await expect(page.locator(`${slots}[data-runtime-visual-state="panel"]`)).toHaveCount(3);
   await test.info().attach("project-runtime-motion-timing.json", {
     body: JSON.stringify(
@@ -140,6 +177,7 @@ test("a fallback and recovery during playback continue toward the latest content
     "/projects/?d_delay=custom&d_delay_ms=100&d_connection=online&d_motion=system#developer-tools"
   );
   const first = page.locator(slots).first();
+  await waitForRender(page);
   await expect(page.locator(`${slots}[data-runtime-visual-state="panel"]`)).toHaveCount(3);
   await page.getByRole("button", { name: "打开 Web Demo 调试控制面板", exact: true }).click();
   // Observe the actual playback in the browser's turn, without locator polling
@@ -153,11 +191,15 @@ test("a fallback and recovery during playback continue toward the latest content
           if (seen.at(-1) === state) return;
           seen.push(state);
           if (state === "entering-poster") {
-            requestAnimationFrame(() =>
-              document
-                .querySelector<HTMLElement>('[data-testid="web-demo-connection-online"]')
-                ?.click()
-            );
+            // Hold a real intermediate frame while the next payload renders;
+            // software chart construction must not turn this into two settled transitions.
+            element.getAnimations({ subtree: true }).forEach((animation) => {
+              animation.pause();
+              animation.currentTime = 160;
+            });
+            document
+              .querySelector<HTMLElement>('[data-testid="web-demo-connection-online"]')
+              ?.click();
           }
           if (state === "entering-panel") {
             observer.disconnect();
@@ -189,6 +231,7 @@ for (const preference of ["system", "inspector"]) {
     await page.goto(
       "/projects/?d_delay=custom&d_delay_ms=300&d_connection=online&d_motion=system#developer-tools"
     );
+    await waitForRender(page);
     await expect(page.locator(`${slots}[data-runtime-visual-state="panel"]`)).toHaveCount(3);
     await page.getByRole("button", { name: "打开 Web Demo 调试控制面板", exact: true }).click();
     if (preference === "inspector") {
@@ -203,6 +246,10 @@ for (const preference of ["system", "inspector"]) {
           new Promise<void>((resolve) => {
             const observer = new MutationObserver(() => {
               if ((element as HTMLElement).dataset.runtimeVisualState !== "entering-poster") return;
+              element.getAnimations({ subtree: true }).forEach((animation) => {
+                animation.pause();
+                animation.currentTime = 160;
+              });
               observer.disconnect();
               resolve();
             });
@@ -232,6 +279,7 @@ for (const preference of ["system", "inspector"]) {
         )
     ).toBe(0);
     await page.getByTestId("web-demo-connection-online").click();
+    await waitForRender(page);
     await expect(page.locator(`${slots}[data-runtime-visual-state="panel"]`)).toHaveCount(3);
   });
 }
@@ -259,6 +307,14 @@ test("HTTP failures and invalid models keep posters and immediately close inspec
     };
   });
   await page.goto("/projects/?d_connection=online&d_delay=normal&d_motion=system#developer-tools");
+  // Wait for the initial adapter result before inspecting its immediate fallback effects.
+  await page.waitForFunction(
+    () =>
+      document.querySelectorAll('[data-project-runtime-panel][data-runtime-error="true"]')
+        .length === 3,
+    undefined,
+    { timeout: 30_000 }
+  );
   await expect(page.locator(`${panels}[data-runtime-error="true"]`)).toHaveCount(3);
   await expect(page.locator(`${slots}[data-runtime-visual-state="poster"]`)).toHaveCount(3);
   await page.getByRole("button", { name: "打开 Web Demo 调试控制面板", exact: true }).click();
@@ -268,6 +324,7 @@ test("HTTP failures and invalid models keep posters and immediately close inspec
       "valid";
   });
   await page.getByRole("button", { name: "刷新数据", exact: true }).click();
+  await waitForRender(page);
   await expect(page.locator(`${slots}[data-runtime-visual-state="panel"]`)).toHaveCount(3);
   await page.getByRole("gridcell").first().getByRole("link").focus();
   await expect(page.getByRole("tooltip")).toBeVisible();
@@ -294,6 +351,7 @@ for (const theme of ["light", "dark"]) {
     await page.goto(
       `/projects/?d_delay=normal&d_connection=online&d_theme=${theme}&d_motion=system#developer-tools`
     );
+    await waitForRender(page);
     await expect(page.locator(`${slots}[data-runtime-visual-state="panel"]`)).toHaveCount(3);
     await page.getByRole("button", { name: "打开 Web Demo 调试控制面板", exact: true }).click();
     const count = await page.locator(`${panels} [data-runtime-cell]`).count();
@@ -320,6 +378,7 @@ for (const theme of ["light", "dark"]) {
       )
     ).toEqual(bounds);
     await page.getByTestId("web-demo-connection-online").click();
+    await waitForRender(page);
     await expect(page.locator(`${slots}[data-runtime-visual-state="panel"]`)).toHaveCount(3);
     const collapse = page.getByRole("button", { name: "收起 Web Demo 控制面板" });
     if (await collapse.isVisible()) await collapse.click();
