@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "ceecf5ed867ee849fce6d8e5d8225e9e5505923a",
+  "base_sha": "16909131a5ec50a4815aa0f1b6f189b1987284ee",
   "covered_files": {
-    "GLOSSARY.md": "7baafbd48fa89696faefd66709c5a8a159a6b511",
-    "apps/admin/src/demo/mock-admin-api.ts": "22b8ff8d5f68667cdb54655a4fbaef91ae7dd0af",
+    "GLOSSARY.md": "eba55bb725a4d26e2bca1d56b65f4bb32ec5e83f",
+    "apps/admin/src/demo/mock-admin-api.ts": "51ee39963bad553972dfee4b576e7da0e44a5d6e",
     "apps/admin/src/pages/content-sync.test.tsx": "3cb88012229270290bf7d5f4db6fe0a6a825523b",
     "apps/admin/src/pages/content-sync.tsx": "e4a9c6934e2ef92c944f7c36fe3aced0ef6aacbe",
     "docs/adr/0024-unified-search-and-playbook-sync-management.md": "5a56409474a704e30699cd93ad81a800b75f85fa",
@@ -44,7 +44,7 @@
     "src/lib/schema.ts": "4da5492592b8ffc901065d97c6ab12c899bd1321",
     "src/lib/search/native-query.ts": "7a866db5554b2060bb9fe172cb62d810da97d442",
     "src/lib/search/web-demo-fixtures.ts": "7138647d74c36935833183a88b4ffc6e048fbd0b",
-    "src/lib/web-demo-fetch.ts": "3462ac0c2ddcfd4a8e6039afafb17a5b9e626320",
+    "src/lib/web-demo-fetch.ts": "05da9fc2fe4fd9fbb5178dc0cb89aad0ab635a7a",
     "src/server/admin-api/router.ts": "17715636b6eeccf305d1c92d877c1c2ffb758cdc",
     "src/server/mcp.ts": "3ae77be0a97545c114c550955d3232958a550e61",
     "src/server/public-api/playbook.ts": "df4a67a133e4585534f30c670f3bdf766e213a94",
@@ -204,7 +204,7 @@
     "public_api": {
       "impact": "minor",
       "change": "compatible",
-      "supported_consumer_versions": ["3.0.3", "3.0.4", "3.0.5", "3.1.1", "3.1.2"],
+      "supported_consumer_versions": ["3.0.3", "3.0.4", "3.0.5", "3.1.1", "3.1.2", "3.2.1"],
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
@@ -248,7 +248,8 @@
         "3.0.3",
         "3.0.4",
         "3.0.5",
-        "3.1.1"
+        "3.1.1",
+        "3.2.1"
       ],
       "upgrade_from_versions": [
         "2.7.0",
@@ -262,7 +263,8 @@
         "3.0.4",
         "3.0.5",
         "3.1.1",
-        "3.1.2"
+        "3.1.2",
+        "3.2.1"
       ],
       "evidence": [
         {

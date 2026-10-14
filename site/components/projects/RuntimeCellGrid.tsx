@@ -5,7 +5,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../../../src/components/ui/tooltip";
-import { readLatestProjectRuntimeMetrics } from "../../lib/project-runtime-channel";
+import {
+  markProjectRuntimeRendered,
+  readLatestProjectRuntimeMetrics,
+  readProjectRuntimeRevision,
+} from "../../lib/project-runtime-channel";
 import type {
   ProjectRuntimeMetrics,
   RuntimeActivityPoint,
@@ -239,6 +243,10 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
   > | null>(null);
   const [activityPoints, setActivityPoints] = React.useState(points);
   const [freshnessValues, setFreshnessValues] = React.useState(freshness);
+  const [renderedMetrics, setRenderedMetrics] = React.useState<{
+    metrics: ProjectRuntimeMetrics;
+    revision: number;
+  } | null>(null);
   const [activeCell, setActiveCell] = React.useState<RuntimeCellData | null>(null);
   const [open, setOpen] = React.useState(false);
   const [touchAnchor, setTouchAnchor] = React.useState<{ left: number; top: number } | null>(null);
@@ -261,6 +269,13 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
     cells.find((cell) => (isFreshness ? true : cell.value !== undefined && cell.value !== null))
       ?.index ?? 0;
   const currentCellText = activeCell ? formatRuntimeCellText(kind, activeCell) : "";
+
+  React.useLayoutEffect(() => {
+    const panel = gridRef.current?.closest<HTMLElement>("[data-project-runtime-panel]");
+    if (panel && renderedMetrics) {
+      markProjectRuntimeRendered(panel, renderedMetrics.metrics, "grid", renderedMetrics.revision);
+    }
+  }, [renderedMetrics]);
 
   React.useEffect(() => {
     if (!isFreshness) {
@@ -394,6 +409,8 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
 
   const applyMetrics = React.useCallback(
     (metrics: ProjectRuntimeMetrics) => {
+      const panel = gridRef.current?.closest<HTMLElement>("[data-project-runtime-panel]");
+      setRenderedMetrics({ metrics, revision: panel ? readProjectRuntimeRevision(panel) : 0 });
       const nextCells =
         metrics.kind === "octo-rill"
           ? Array.from(metrics.freshness, (statusCode, index) => ({ index, statusCode }))
@@ -885,6 +902,7 @@ function RuntimeCellGrid({ kind, label, points = [], freshness = [], navigationU
   return (
     <section
       className={rootClass}
+      data-runtime-motion-layer="activity"
       data-runtime-chart={!isFreshness || undefined}
       data-runtime-empty={isFreshness && cells.length === 0 ? "true" : "false"}
       aria-label={label}

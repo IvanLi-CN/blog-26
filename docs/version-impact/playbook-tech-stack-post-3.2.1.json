@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "16909131a5ec50a4815aa0f1b6f189b1987284ee",
   "covered_files": {
-    "GLOSSARY.md": "7fd89eca9838b4c6f2390870afe9c71986e8ea7a",
+    "GLOSSARY.md": "eba55bb725a4d26e2bca1d56b65f4bb32ec5e83f",
     "astro.config.mjs": "61c059bdbc8d98e19af1b01c7b5dda8b521b6c0d",
     "docs/adr/0023-human-readable-playbook-tech-stack.md": "0df85865768c55042b2482712bb51bed3cc84995",
     "docs/specs/public-pwa/IMPLEMENTATION.md": "90f31a0a5f012dd612240527ad2d4a24cc5edd18",

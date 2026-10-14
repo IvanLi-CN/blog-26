@@ -657,6 +657,14 @@ html[data-ui-theme="dark"] .project-poster {
   display: none;
 }
 
+[data-runtime-motion="true"] > .project-runtime-panel[data-runtime-state="pending"] {
+  display: grid;
+}
+
+[data-runtime-inspection-disabled="true"] [role="grid"] {
+  pointer-events: none;
+}
+
 .runtime-panel-body {
   display: contents;
 }

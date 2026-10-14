@@ -6,7 +6,7 @@
     ".github/quality-gates.json": "1a3e713708baaf265adce051b8b613b3a525bb4f",
     ".github/workflows/e2e.yml": "5ee75c8aee10c7fbfe968321f17c32189c717905",
     ".gitignore": "ce64803d3963e4668cd644c7ef465dd36e266eba",
-    "GLOSSARY.md": "7fd89eca9838b4c6f2390870afe9c71986e8ea7a",
+    "GLOSSARY.md": "eba55bb725a4d26e2bca1d56b65f4bb32ec5e83f",
     "apps/admin/src/demo/mock-admin-api.ts": "51ee39963bad553972dfee4b576e7da0e44a5d6e",
     "apps/admin/src/pages/preview.tsx": "a2f09e3a0559da1d8369412f9037a172550d7719",
     "astro.config.mjs": "61c059bdbc8d98e19af1b01c7b5dda8b521b6c0d",
