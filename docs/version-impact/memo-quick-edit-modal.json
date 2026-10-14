@@ -4,7 +4,7 @@
   "base_sha": "ceecf5ed867ee849fce6d8e5d8225e9e5505923a",
   "covered_files": {
     "README.md": "89ceebade20e1c1672d1bbab18a3098a8e13a050",
-    "astro.config.mjs": "d6f4734eb9bedfa50a1fa5e1285a5041fe2a125d",
+    "astro.config.mjs": "06710645e12de832945ac14d1c0b0a21482b8107",
     "docs/specs/memo-admin-inline-view/SPEC.md": "1b5851f6f9a402a8d870ff0125d81f13d35e02fc",
     "site/components/PublicMemoAuthoring.tsx": "5cda44c9635186490f9d26199835a34edc83ab3e",
     "site/components/pages/memo.tsx": "5a9bb315e2787c8daeef97613679dd6484513a71",
