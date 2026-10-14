@@ -29,7 +29,6 @@ import {
   type PublicMediaItem,
   rewritePublicContentMediaUrls,
 } from "@/lib/public-media";
-import { toPublicSitePath } from "@/lib/public-runtime-url";
 import { rebuildSnapshotTags } from "@/lib/snapshot-tags";
 import type {
   PublicPostRecord,

@@ -74,6 +74,9 @@ export class PlaybookStore {
   get current() {
     return this.state.current;
   }
+  get previous() {
+    return this.state.previous;
+  }
   getEdition(digest: string, sourceReleaseId: string, sourceTag: string) {
     return [this.state.current, this.state.previous].find(
       (entry) =>

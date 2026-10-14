@@ -8,7 +8,7 @@ export class ContentSearchError extends Error {
     return value instanceof Error && Reflect.get(value, errorBrand) === true;
   }
   constructor(
-    public readonly code: "BAD_REQUEST" | "SERVICE_UNAVAILABLE",
+    public readonly code: "BAD_REQUEST" | "CONFLICT" | "SERVICE_UNAVAILABLE",
     message: string
   ) {
     super(message);

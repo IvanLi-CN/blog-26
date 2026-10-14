@@ -121,6 +121,50 @@ export const postEmbeddings = sqliteTable(
   })
 );
 
+// Modern RAG projections share one identity model across blog and Playbook.
+// Legacy post_embeddings remains untouched for search.ai.semantic compatibility.
+export const searchSemanticEmbeddings = sqliteTable(
+  "search_semantic_embeddings",
+  {
+    id: text("id").primaryKey(),
+    source: text("source").notNull(), // blog | playbook
+    contentId: text("content_id").notNull(),
+    parentId: text("parent_id").notNull(),
+    type: text("type").notNull(),
+    slug: text("slug").notNull(),
+    editionDigest: text("edition_digest"),
+    sourceReleaseId: text("source_release_id"),
+    sourceTag: text("source_tag"),
+    location: text("location"),
+    chunkIndex: integer("chunk_index").notNull().default(0),
+    modelName: text("model_name").notNull(),
+    dim: integer("dim").notNull(),
+    contentHash: text("content_hash").notNull(),
+    vector: blob("vector"),
+    status: text("status").notNull().default("pending"), // pending | ready | failed
+    errorMessage: text("error_message"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => ({
+    identity: uniqueIndex("search_semantic_embeddings_identity").on(
+      t.source,
+      t.parentId,
+      t.editionDigest,
+      t.sourceReleaseId,
+      t.sourceTag,
+      t.modelName,
+      t.chunkIndex
+    ),
+    sourceModel: index("search_semantic_embeddings_source_model_idx").on(t.source, t.modelName),
+    edition: index("search_semantic_embeddings_edition_idx").on(
+      t.editionDigest,
+      t.sourceReleaseId,
+      t.sourceTag
+    ),
+  })
+);
+
 // 标签元数据表（面向单个完整标签路径）
 export const tags = sqliteTable("tags", {
   id: text("id").primaryKey(), // 完整标签（包含 / 分隔）
@@ -332,6 +376,8 @@ export type NewTagRecord = typeof tags.$inferInsert;
 
 export type PostEmbedding = typeof postEmbeddings.$inferSelect;
 export type NewPostEmbedding = typeof postEmbeddings.$inferInsert;
+export type SearchSemanticEmbedding = typeof searchSemanticEmbeddings.$inferSelect;
+export type NewSearchSemanticEmbedding = typeof searchSemanticEmbeddings.$inferInsert;
 
 export type LlmSettingsRow = typeof llmSettings.$inferSelect;
 export type NewLlmSettingsRow = typeof llmSettings.$inferInsert;

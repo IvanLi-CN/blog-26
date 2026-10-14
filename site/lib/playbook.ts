@@ -23,6 +23,27 @@ export async function getPlaybookEdition() {
   return staticEdition;
 }
 
+export async function getPlaybookEditionForIdentity(
+  editionDigest: string | undefined,
+  sourceReleaseId: string | undefined,
+  sourceTag: string | undefined
+) {
+  if (!editionDigest || !sourceReleaseId || !sourceTag) return getPlaybookEdition();
+  if (!/^[a-f0-9]{64}$/u.test(editionDigest) || !/^[1-9]\d*$/u.test(sourceReleaseId))
+    return undefined;
+  if (process.env.CONSOLE_RUNTIME === "true") {
+    const store = getRuntimePlaybookStore();
+    await store.load();
+    return store.getEdition(editionDigest, sourceReleaseId, sourceTag);
+  }
+  const current = await getPlaybookEdition();
+  return current?.edition.editionDigest === editionDigest &&
+    current.edition.source.releaseId === sourceReleaseId &&
+    current.edition.source.tag === sourceTag
+    ? current
+    : undefined;
+}
+
 export async function getPlaybookStaticPaths() {
   const edition = await getPlaybookEdition();
   const paths = ["topics", "projects", "policies"];
@@ -31,6 +52,12 @@ export async function getPlaybookStaticPaths() {
     paths.push(...edition.catalog.project_details.map((item) => `projects/${item.item.slug}`));
     paths.push(
       ...getPlaybookPolicies(edition.catalog).map((item) => `policies/${item.summary.slug}`)
+    );
+    const prefix = `editions/${encodeURIComponent(edition.edition.source.tag)}/${edition.edition.source.releaseId}/${edition.edition.editionDigest}`;
+    paths.push(
+      ...paths
+        .filter((path) => /^(topics|projects|policies)(?:\/|$)/u.test(path))
+        .map((path) => `${prefix}/${path}`)
     );
   }
   return paths.map((path) => ({ params: { path } }));

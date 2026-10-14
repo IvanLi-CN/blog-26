@@ -6,8 +6,8 @@
 
 站内搜索提供一个“智能搜索”三选一控件：关闭、LLM + RAG、LLM 查询改写。未指定时默认关闭智能搜索，由关键词全文检索快速返回基础结果；选择任一 AI 模式时，AI 补充与基础结果统一参与相关性排序，同时保护合法关键词命中不被删除。两种 AI 模式独立执行，不互相串联或接管故障；任一不可用时，以用户原始查询直接回退到关键词搜索。三者都返回实际站内内容列表，不生成问答。原始关键词命中不能被模型删除，结果数量不要求填满，内部排名值不作为可信百分比。三种模式共用内嵌 Tantivy 全文检索。
 
-- In scope: 公共搜索页面、公共 HTTP、tRPC 与 MCP 中的模式选择、文章与 Memo 搜索、结果排序与截断、回退和搜索元信息。
-- Out of scope: 生成式问答、内容发布权限的改变、文章与 Memo 列表的既有排序、Playbook 发布及章节索引的替换。
+- In scope: 公共搜索页面、公共 HTTP、tRPC 与 MCP 中的模式选择，文章、Memo、剪藏及已发布 Playbook 的确定性检索，跨来源排序、范围筛选与截断，回退和搜索元信息。
+- Out of scope: 生成式问答、内容发布权限的改变、文章与 Memo 列表的既有排序、私有 Playbook 内容、legacy semantic 的 Playbook 扩展，以及 Playbook 上游发布流程的改变。
 
 ## Terms and Interfaces
 
@@ -18,6 +18,7 @@
 - 返回上限限制唯一内容搜索结果的数量，不表示索引命中总量，也不要求填满。
 - `/api/public/search` 的数组响应及公开权限继承 [搜索语法与全文回退契约](../search-full-text-fallback/SPEC.md)。
 - 各入口共用三种模式，已有 enhanced 兼容入口路由到 RAG；独立 semantic 仍表示显式底层语义检索，不是页面中的第四种模式。
+- 现代统一入口为 `/api/public/search`、tRPC `search.content` 和 MCP `search_content`；跨来源输入、结果与版本元信息见 [统一搜索接口契约](./contracts/unified-search.md)。来源、类型、查询模式是三个独立维度。
 
 | 页面名称 | 模式 | LLM 能读取的信息 | 结果排序 | AI 不可用时 |
 | --- | --- | --- | --- | --- |
@@ -53,7 +54,9 @@ RAG 补充必须通过有效上下文判断，不得把向量前 N 名、本批�
 
 ### REQ-SREL-006 — Playbook 来源边界
 
-Playbook 继续使用页面绑定的公开 edition、确定性搜索和章节聚合，不进入文章与 Memo 的 AI 链；模式切换只影响相应内容来源。保留各来源顺序、独立上限、唯一内容计数及既有单一连续列表，不直接比较跨来源原始分数。
+Playbook 必须在关键词、RAG、查询改写以及 AI 回退时参与原始查询的确定性检索，并与文章/Memo 在同一返回范围内综合排序；不得按来源固定拼接、独立分配显示名额或通过前端补取形成不同入口的搜索语义。目录、指令、章节和公开资源命中属于页面绑定的已发布 edition，并按规范内容身份聚合。
+
+RAG 的模型上下文、向量候选和相关性判断可以包含同一已采用公开 edition 的 Playbook 标题、正文、章节和资源，但必须把资源正文作为不可信证据隔离传入，不能执行其中指令；查询改写仍只作用于文章/Memo，不能读取或改写 Playbook。仅搜索 Playbook 时可以执行 RAG 候选判断，但没有语义投影时应以同版词法候选继续并报告覆盖不足。向量化、LLM 配置与质量验证都不得成为 Playbook 发布或内容采用的前置条件。
 
 ### REQ-SREL-007 — AI 不可用时直接关键词回退
 
@@ -119,9 +122,29 @@ Tantivy 索引是可重建投影，不替代现有文件内容与 SQLite 的存�
 
 ### REQ-SREL-018 — 独立配置与有效可用性
 
-两种 AI 模式分别拥有启用状态、模型配置引用、提示词与输出策略、时间与 token 预算、质量依据及缓存身份；允许引用同一现有 chat 提供方，不要求额外购买或配置不同模型。RAG 另外依赖 embedding 和向量状态，改写及关键词不依赖它们；既有 rerank 提供方不能自动当作候选内容判断用的 chat 模型。未验证的配置不能静默启用 AI 补充。
+两种 AI 模式分别拥有启用状态、模型配置引用、提示词与输出策略、时间与 token 预算、质量依据及缓存身份；允许引用同一现有 chat 提供方，不要求额外购买或配置不同模型。RAG 另外依赖 embedding 和向量状态，但缺失时仍可用同版词法候选进入模型判断并报告覆盖不足；改写及关键词不依赖 Playbook 向量，既有 rerank 提供方不能自动当作候选内容判断用的 chat 模型。未验证的配置不能静默启用 AI 补充。
 
 模型、有效端点、凭据、提示词、名称策略或质量依据变化使受影响模式的旧可用性结论与缓存失效；一条链的失效不污染另一条链。调用者只收到受控状态，运维可定位实际模式、回退原因和各阶段成本，日志不包含密钥或未经授权的内容。
+
+### REQ-SREL-019 — 跨来源相关性与统一容量
+
+选择全部时，所有来源的合格内容必须通过共同、确定性的相关性规则综合排序。不得固定文章优先、Playbook 优先、按来源分段或轮流交错；Tantivy、MiniSearch 等独立引擎的原始分数和各批次归一化分数不能直接比较。共同排名必须能区分标题或主题中的直接命中与仅在参考链接中的弱命中，且同等匹配证据不因来源改变而受到优先或降权。沿用成熟全文引擎的检索职责，不以新增自制通用评分引擎替代现有职责边界。
+
+先校验查询与权限、限定来源和类型、完成内容身份聚合，再按共同排名选择最多 `topK` 个唯一内容；上限为整个结果集的上限，不是每个来源各自的上限。章节和文件的重复命中不得累计提高所属内容的排名。同分先沿用原有内容时间语义，再按来源、类型及规范内容身份形成稳定顺序；不存在作者内容时间的 Playbook 不以下载或采用时间冒充新内容。同一输入身份下结果必须可复现。
+
+原始查询在当前范围内的全局前 `topK` 个合法关键词内容构成受保护集合，其中包含 Playbook。AI 补充可以参加综合排序，但不能挤掉该集合；当关键词不足上限时才使用剩余容量。AI 不可用时重新按原始查询的确定性共同排名返回，不要求填满。
+
+### REQ-SREL-020 — 全入口与截断前筛选
+
+网页、console、HTTP、现代 tRPC 与 MCP 必须使用同一个服务端结果契约，覆盖文章、Memo、剪藏、Topic、项目实践和 Policy Skill。网页不得继续独立拼接 Playbook 排名。来源筛选与内容类型筛选必须作用于合格语料，发生在排名与容量选择之前；仅过滤已返回的全部前 N 条不满足筛选要求。保留 `all`、`post`、`memo` 的输入兼容；剪藏仍是 Memo 的显示子类型。互不匹配的来源和类型返回空集合，不扩大范围。
+
+HTTP 保持 JSON 数组；现代 tRPC/MCP 保持结果与所选/实际模式的 envelope。文章/Memo 既有字段和规范路由继续有效，Playbook 增加明确类型、来源、目标 URL 及可用的章节或资源位置；内部版本与不完整范围状态通过独立元信息传递，不显示成访客版本文案或概率。各入口保留默认值与最大 `topK`，相同查询、模式、范围、可用版本和上限下的内容身份及顺序必须一致。旧 enhanced 的数组、模型覆盖与 `rerank=false` 语义继续兼容；独立 semantic 不自动变为统一全文检索。
+
+### REQ-SREL-021 — 搜索版本与范围可用性
+
+网页必须将其绑定的 Playbook edition digest、Release ID 和 tag 交给统一检索；未显式绑定的程序化入口在请求开始时固定当前采用快照。请求期间只能使用这一版的标题、正文、资源、索引和锚点；缓存身份同时包含完整来源版本、搜索投影策略、范围及模式。相同 digest、不同 Release 身份不能互相冒充。服务端只能使用已验证且已准备的本地内容，不在页面或搜索请求中下载上游或进行全量重建。
+
+指定版本超出保留范围时，HTTP 返回 409，tRPC/MCP 提供等价受控版本错误，要求刷新而不自动替换为当前版本。没有可用 Playbook 时，仅 Playbook 范围为受控不可用；全部范围可保留文章/Memo 结果，但必须报告 Playbook 范围不完整，不能以空结果冒充已完成检索。有效旧快照仍可查询时，同步失败本身不使搜索失败。Playbook 故障不得改变文章/Memo 的权限检查和原始内容水位要求。
 
 ## Verification
 
@@ -153,9 +176,9 @@ Tantivy 索引是可重建投影，不替代现有文件内容与 SQLite 的存�
 
 ### VER-SREL-005 — 多来源内容
 
-- Method: 使用包含文章、Memo、剪藏和 Playbook 多章节命中的固定集合，检查来源顺序、独立上限、绑定 edition、展开收起和类型计数。
+- Method: 使用文章、Memo、剪藏、Topic、项目实践和 Policy Skill 的固定集合，互换标题直接命中与参考链接弱命中的来源，加入同一对象的 60 个章节/资源命中和更强单命中；覆盖原始关键词满额、不满额与 AI 故障，检查共同排名、全局上限、绑定 edition、展开收起和内容计数。
 - covers: `REQ-SREL-005`, `REQ-SREL-006`
-- Pass condition: 不比较跨来源分数、不改变来源输入顺序，不混用 edition，不重复计算章节或跨类型合并内容。
+- Pass condition: 全部结果按相关性综合排序，强命中可以位于另一来源的弱命中之前；无固定来源优先和章节累积分数。RAG 可以判断同版 Playbook 候选，rewrite 只处理文章/Memo；关键词集合包含 Playbook 且不被补充挤掉，资源证据不执行；模式回退保留 Playbook，不混用 edition，不重复计算章节或跨类型合并内容。
 
 ### VER-SREL-006 — AI 不可用与关键词回退
 
@@ -223,13 +246,30 @@ Tantivy 索引是可重建投影，不替代现有文件内容与 SQLite 的存�
 - covers: `REQ-SREL-007`, `REQ-SREL-010`, `REQ-SREL-011`, `REQ-SREL-014`, `REQ-SREL-018`
 - Pass condition: 每条 AI 链依据自己的有效配置决定可用性并直接回退关键词；chat 与 rerank 角色不混淆，共用提供方不造成链间调用，过期配置依据及缓存失效，读者和日志不暴露密钥或越权内容。
 
+### VER-SREL-017 — 综合排名与全局容量
+
+- Method: 对每种来源构造标题直接命中、正文专题命中与仅参考链接命中的受控相关性对照；互换来源但保留匹配证据，重复同一章节与文件，覆盖 `topK=1/2/20`、缺少内容时间、关键词满额/未满额及 AI 补充。
+- covers: `REQ-SREL-001`, `REQ-SREL-006`, `REQ-SREL-019`
+- Pass condition: 直接专题命中排在弱参考命中前，非同分结果不因互换来源改变相对次序，全部返回数不超过一个全局上限；同分按稳定规则处理、重复命中不涨分，合法关键词受保护，RAG 只读取同版公开 Playbook 候选并隔离资源证据，rewrite 不读取 Playbook。
+
+### VER-SREL-018 — 入口、范围与筛选
+
+- Method: 用相同输入比较网页、console、HTTP、tRPC 和 MCP；令全部前 20 条均为文章，同时保留 21 位之后的 Policy 命中，再单独筛选 Policy 与 Playbook。覆盖来源/类型交叉、剪藏、旧字段与旧 enhanced/semantic 参数。
+- covers: `REQ-SREL-005`, `REQ-SREL-008`, `REQ-SREL-020`
+- Pass condition: 同版本同上限结果身份和顺序一致；单独筛选能发现全部截断范围之外的合法内容；数组/envelope、旧参数与权限保持兼容，计数只计算返回的唯一内容，客户端不另行拼接排名。
+
+### VER-SREL-019 — 绑定版本与局部故障
+
+- Method: 搜索过程中采用新快照，分别请求当前、上一版、超出保留范围及相同 digest 不同 Release 的版本；注入无快照、索引未准备、同步失败和断网，检查缓存、资源目标及元信息。
+- covers: `REQ-SREL-011`, `REQ-SREL-017`, `REQ-SREL-021`
+- Pass condition: 每次成功检索与其请求绑定版本一致，无有效版本时明确报告；未知绑定不静默替换。全部范围的局部不可用可辨认，仅 Playbook 范围不返回成功空列表；有效旧版继续可查询，请求不访问源仓库或进行全量构建。
+
 ## Related ADRs
 
 - [公开 Playbook 读取模型](../../adr/0011-published-playbook-read-model.md)
-- [独立 AI 搜索与关键词回退](../../adr/0020-keyword-first-hybrid-search.md)
 - [关键词默认与混合结果统一排序](../../adr/0022-keyword-default-unified-ranking.md)
-- [内嵌 Tantivy 与 NEAR 兼容范围](../../adr/0021-embedded-tantivy-search.md)
 - [搜索引擎升级保留既有查询兼容性](../../adr/0023-search-legacy-compatibility.md)
+- [统一搜索排序与独立 Playbook 同步管理](../../adr/0024-unified-search-and-playbook-sync-management.md)
 
 ## Visual Evidence
 
@@ -238,6 +278,12 @@ Tantivy 索引是可重建投影，不替代现有文件内容与 SQLite 的存�
   - state: inherited model with both switches enabled
   - evidence_note: confirms the switch thumb keeps an even inset from the track edge after removing the duplicate desktop/mobile translation rules
   - image: ![Search policy switch spacing](./assets/admin-search-policy-switch-fix.png)
+- source_type: `ui_demo`
+  - surface: public search page and content-sync admin page
+  - requested_viewports: `1280x900` and `393x852` CSS px
+  - scenario: RAG search for `发布` returns one unified list containing a Policy Skill and Topic with edition-bound routes; content sync shows Playbook adoption, lexical count, semantic ready/pending/failed counts, model, and edition history.
+  - evidence_note: current Candidate screenshots are current-only against the locked base because these surfaces are new; owner confirmation is required before PR publication.
+  - images: ![Unified Playbook search desktop](./assets/unified-playbook-search-desktop.png), ![Unified Playbook search mobile](./assets/unified-playbook-search-mobile.png), ![Playbook sync desktop](./assets/playbook-sync-admin-desktop.png), ![Playbook sync mobile](./assets/playbook-sync-admin-mobile.png)
 
 ## References
 

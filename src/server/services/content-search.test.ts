@@ -10,12 +10,20 @@ import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { enhanced } from "@/lib/ai/search";
 import { clearSearchCache } from "@/lib/ai/search-cache";
 import { db, initializeDB } from "@/lib/db";
-import { postEmbeddings, posts, searchIndexState, searchSettings } from "@/lib/schema";
+import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
+import {
+  postEmbeddings,
+  posts,
+  searchIndexState,
+  searchSemanticEmbeddings,
+  searchSettings,
+} from "@/lib/schema";
 import { searchContent } from "@/lib/search/content-search";
 import { DEFAULT_SEARCH_POLICY } from "@/lib/search/settings";
 import { handleMcpHttpRequest } from "@/server/mcp-http";
 import { handlePublicApiRequest } from "@/server/public-api/router";
 import { appRouter } from "@/server/router";
+import { makePublicBundle } from "../../../tests/lib/playbook-fixture";
 import { executeContentModes } from "./content-search";
 import { contentSearchIndex } from "./content-search-index";
 import {
@@ -24,6 +32,7 @@ import {
   resolveSearchPolicy,
   saveSearchPolicy,
 } from "./search-policy";
+import { preparePlaybookSemanticProjection } from "./search-semantic-projection";
 import { getSearchValidationRun, startSearchValidation } from "./search-validation";
 
 const originalFetch = globalThis.fetch;
@@ -35,6 +44,7 @@ const envNames = [
   "CHAT_COMPLETION_MODEL",
   "EMBEDDING_MODEL_NAME",
   "LOCAL_CONTENT_BASE_PATH",
+  "PLAYBOOK_CACHE_DIR",
 ] as const;
 const oldEnv = Object.fromEntries(envNames.map((key) => [key, process.env[key]]));
 let directory: string;
@@ -899,5 +909,81 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
         })
       );
     }
+  });
+  test("RAG joins a same-edition Playbook semantic candidate with untrusted evidence", async () => {
+    const bundle = makePublicBundle("v3.0.0", "100");
+    process.env.PLAYBOOK_CACHE_DIR = path.join(directory, "playbook-cache");
+    await getRuntimePlaybookStore().adopt(bundle.edition);
+    await db.delete(searchSemanticEmbeddings);
+    const embedding = [1, 0];
+    const resolved = await resolveSearchPolicy("rag");
+    expect(resolved.resolved?.embedding.model).toBe("synthetic-embedding");
+    expect(resolved.fingerprint).toBeTruthy();
+    expect(await recordSearchQuality("rag", resolved.fingerprint ?? "", true)).toBe(true);
+    const embeddingConfig = resolved.resolved?.embedding;
+    if (!embeddingConfig) throw new Error("synthetic embedding config is unavailable");
+    const modelInputs: Array<{ url: string; payload: unknown }> = [];
+    globalThis.fetch = fakeFetch(async (input, init) => {
+      const url = String(input);
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      modelInputs.push({ url, payload: body });
+      if (url.endsWith("/embeddings")) {
+        const text = String(body.input ?? "");
+        return Response.json({
+          data: [
+            {
+              embedding:
+                text.includes("semantic-only") || text.includes("Safe Release")
+                  ? embedding
+                  : [0, 1],
+            },
+          ],
+        });
+      }
+      const payload = JSON.parse(body.messages[1].content) as {
+        candidates: Array<{ id: string; content: string }>;
+      };
+      return Response.json({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: {
+              content: JSON.stringify({
+                items: payload.candidates.map((candidate, rank) => ({
+                  id: candidate.id,
+                  relevant: true,
+                  rank,
+                  evidence: candidate.content.slice(0, 32),
+                })),
+              }),
+            },
+          },
+        ],
+      });
+    });
+    const projection = await preparePlaybookSemanticProjection(bundle.edition, embeddingConfig);
+    expect(projection.failed).toBe(0);
+    expect(projection.prepared).toBeGreaterThan(0);
+    const result = await executeContentModes({
+      q: "semantic-only",
+      mode: "rag",
+      source: "all",
+      type: "policy",
+      topK: 3,
+    });
+    expect(result.effectiveMode).toBe("rag");
+    expect(result.ragIncompleteSources).toBeUndefined();
+    expect(result.results.some((item) => item.source === "playbook")).toBe(true);
+    const chatPayload = modelInputs.find((entry) => entry.url.endsWith("/chat/completions"))
+      ?.payload as {
+      messages?: Array<{ content?: string }>;
+    };
+    const candidateContent = chatPayload.messages?.[1]?.content ?? "";
+    expect(candidateContent).toContain("<untrusted-playbook-evidence");
+    expect(candidateContent).toContain(bundle.edition.edition.editionDigest);
+    expect(candidateContent).toContain(bundle.edition.edition.source.releaseId);
+    expect(candidateContent).toContain(bundle.edition.edition.source.tag);
+    expect(candidateContent).not.toContain("private");
+    expect(result.results.every((item) => item.source === "playbook")).toBe(true);
   });
 });

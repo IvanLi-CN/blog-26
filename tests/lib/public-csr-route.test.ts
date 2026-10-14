@@ -66,11 +66,23 @@ describe("public client routes", () => {
       "/search/": "search",
       "/playbook/": "playbook",
       "/playbook/policies/safe-release/": "playbookDetail",
+      "/playbook/editions/v3.0.0/100/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/policies/safe-release/":
+        "playbookDetail",
       "/about/": "about",
       "/missing/": "notFound",
     } as const;
     for (const [path, kind] of Object.entries(routes))
       expect(matchPublicRoute(path)?.kind).toBe(kind);
+    expect(
+      matchPublicRoute(
+        "/playbook/editions/v3.0.0/100/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/policies/safe-release/"
+      )?.params
+    ).toMatchObject({
+      path: "policies/safe-release",
+      editionTag: "v3.0.0",
+      editionReleaseId: "100",
+      editionDigest: "a".repeat(64),
+    });
     for (const path of [
       "/api/public/page",
       "/admin/posts",

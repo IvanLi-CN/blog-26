@@ -2,6 +2,16 @@
 
 本报告区分产品集成与独立组件探针，覆盖范围见 [实现](./IMPLEMENTATION.md)。以下产品结果与后文组件探针分别保留，不将探针能力当作运行时验收。
 
+## 当前 Playbook 统一搜索候选
+
+当前工作区候选以远端基线 `ceecf5ed867ee849fce6d8e5d8225e9e5505923a` 为基准，覆盖 Playbook 公开正文、Policy 公开资源、同版语义投影、统一来源过滤和版本绑定。Agent VM 中 `bun run search:native:verify` 的 23 项 native 契约通过，`bun run db:migrations:validate` 通过，`PLAYBOOK_RENDERER_COMMIT=ceecf5ed867ee849fce6d8e5d8225e9e5505923a bun run web-demo:build` 的 public 与 admin Web Demo 均构建成功；构建保留 Astro 路由和大 chunk 的既有 warning。
+
+定向 VM 套件 `bun test --isolate src/components/search/search-navigation.test.ts src/server/services/content-search.test.ts src/server/services/playbook-search.test.ts tests/lib/public-csr-route.test.ts` 为 43 pass / 2 fail，45 tests、241 assertions。通过项覆盖 native 持久索引、NEAR 剪藏权限复核、HTTP/tRPC/MCP 契约、Playbook 候选聚合、同版语义 RAG 和完整 edition URL 导航；2 个失败来自 root 来宾无法通过 `chmod` 注入目录及 commit I/O 错误，非 root 故障注入仍需在后续发布验证中运行，不能记作产品逻辑通过。
+
+固定合成 provider 的 Playbook RAG 实证通过：公开 `v3.0.0` edition 先原子采用，再为同一 edition 生成 semantic projection；无字面重合的 `semantic-only` 查询在 `source=all,type=policy` 下召回 Playbook，模型请求只收到带完整 edition 身份的候选和 `<untrusted-playbook-evidence>` 分隔内容，`source=playbook` 不混入博客，语义覆盖元信息保持完整。该实证不使用生产凭据，也不替代真实提供方验收。
+
+本候选的本机 `bun run check` 退出码为 0，保留仓库既有 24 个 warning 和 1 个 info；本机内容模式因缺少 Linux native ABI 而跳过，native 与集成结果以 Agent VM 证据为准。
+
 ## 候选级模型请求证据
 
 DeepSeek 的结构化搜索请求关闭 thinking 后，代码候选 `4588af29f14d4dadfea8cad64123c9d2e403ddfe` 上 RAG 与改写各通过 4/4 固定质量样例及 5/5 实际搜索。其后只有验证记录和版本影响记录变化。输出、指纹和断言边界见 [非思考模式证据](./validation/product/empirical-search-model-nonthinking.txt)。

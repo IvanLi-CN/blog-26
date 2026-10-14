@@ -3,9 +3,9 @@
 ## Current Status
 
 - Lifecycle: active
-- Implementation: 博客消费端已实现，正在完成交付验证与独立审查；上游公开资产与通知由独立任务实现。
-- Catalog note: 原生Playbook、内容 workflow 和 console 持久快照已落地，生产接入及自动更新默认关闭。
-- `REQ-PBI-012` 至 `REQ-PBI-015` 已实现内容聚合、章节展开和零占位高亮；主线同步后的自动验证通过，搜索视觉确认与正式审查待完成。
+- Implementation: candidate complete；原生阅读、公开资源浏览、发布链和 console 持久快照已有实现；统一服务端搜索、公开资源正文检索、现代 RAG 版本绑定、异步语义投影与管理员内容同步状态已接入。重型恢复、真实 provider 实证、视觉确认和交付门禁尚待完成。
+- Catalog note: 原生 Playbook、内容 workflow 和 console 持久快照已落地，生产公开指针已有可校验内容；生产 console 的实际采用版本和运行时同步配置尚未在本工作区核实。
+- `REQ-PBI-012`、`REQ-PBI-013`、`REQ-PBI-015` 的既有章节聚合、展开和高亮已实现；统一适配器现在聚合章节与公开资源并返回同版定位，服务端共同排名与全局容量已接入。既有自动化与视觉证据不替代当前 Candidate 的重型验证。
 - `REQ-PBI-016` 已在博客消费端实现：详情与索引移除自动生成的内容版本和维护字段，明确异常状态使用中文提示。针对性 SSR、纯函数、静态 smoke、浏览器视觉与格式检查已通过，交付门禁待完成。
 
 ## Implementation Coverage
@@ -16,13 +16,16 @@
 | `REQ-PBI-003`、`REQ-PBI-004` | 固定 Release 元数据复核、tag commit 核对；首次引导与每小时补漏都选择最高就绪稳定 SemVer，手动入口默认 reconcile | 模拟 GitHub reader 检查 draft、prerelease、身份不符与最高就绪稳定 SemVer |
 | `REQ-PBI-005`、`REQ-PBI-006` | 内容刷新复用已部署 renderer 和独立文章/Memo 快照；正常前端与内容/回滚 job 共享排队锁，锁内重建 | 部署适配器检查幂等、迟到、变化后重建、失败不采用及显式暂停回滚；workflow 结构测试 |
 | `REQ-PBI-007` | edition 包含 renderer、来源包和完整公开文件摘要；同批指针、页面、搜索、资源及原始包，保留前一版 | 静态产物校验、身份重算、旧文件保留、不可变与重新验证缓存策略测试 |
-| `REQ-PBI-008`、`REQ-PBI-009` | console 启动加载持久缓存/固定 seed，立即和每 300 秒单任务同步；完整验证后原子采用 | 可控时钟、断网/损坏/schema 不兼容、重启、缓存优先、首次 HTTP SSR 及指定 edition 搜索 |
-| `REQ-PBI-010`、`REQ-PBI-011` | MiniSearch 中英文分词、Policy 独立文档、五类过滤、跨来源统一列表；请求/采用身份记录和整体回滚入口 | 确定性检索、API 409、正式 `/search` Web Demo 路由、搜索组件 Storybook 场景及构建/部署适配器测试 |
+| `REQ-PBI-008`、`REQ-PBI-009` | console 启动加载持久缓存/固定 seed，立即和每 300 秒单任务同步；统一搜索使用 current/previous edition；语义投影按同版异步准备，失败不撤销内容采用 | 既有缓存、断网/损坏/schema 不兼容、重启、首次 HTTP SSR 及指定 edition 搜索已验证；共同投影失败恢复待 Agent VM 验证 |
+| `REQ-PBI-010` | `src/server/services/playbook-search.ts` 将 Topic、项目实践、Policy 正文与公开资源聚合为 edition-bound 候选；现代执行器按 source/type 过滤并用共同 RRF 排名，搜索页发起单一服务端请求 | 适配器、导航、入口回归和正式 Web Demo 的 Topic/Policy 统一列表已通过；跨来源 RAG、真实模型输入隔离仍待当前 Candidate VM 验证 |
+| `REQ-PBI-011` | 请求/采用身份记录和整体回滚入口已有实现 | 既有 API 409 与构建/部署适配器测试；现代统一搜索身份与管理员持久历史待验证 |
 | `REQ-PBI-012` | 展示层 SearchResultGroup 按来源、类型和规范路由归组；同 edition catalog 提供权威标题与章节位置，单章节直接作为主入口 | Playbook 身份、标题、锚点、Policy/栏目及缺失公开对象测试；文章/Memo 跨类型身份回归 |
 | `REQ-PBI-013` | 独立主链接、章节链接和展开按钮；紧凑主摘要与缩进章节附属链接，默认三章节，查询重置、类型筛选保留展开 | 0/1/2/3/5 章节组件测试；1280/393/320px 明暗主题的展开、筛选、查询、键盘与触控 Storybook 断言 |
-| `REQ-PBI-014` | 全部合格命中先聚合后限制内容数；最高命中排名，独立来源上限与内容计数；v5 edition 缓存 | 60 个同页 Playbook 命中、250 个同路由全文命中、语义去重、缓存恢复及旧缓存拒绝回归 |
+| `REQ-PBI-014` | 统一执行器使用来源无关的 RRF(k=60)、全局 topK、截断前 source/type 筛选和父内容去重；RAG 判断列表按约定权重参与排序 | Playbook adapter、导航和现有搜索回归已通过；跨来源排序边界待 Agent VM 实证 |
 | `REQ-PBI-015` | 主片段与章节共用内联 mark；仅颜色和背景强调，零 padding/margin/border，继承字体、字重与断行属性 | 字体加载后的逐字符几何、换行、容器尺寸、复制及代码缩进对比；六组视口/主题场景 |
 | `REQ-PBI-016` | `src/lib/playbook/visitor-reading.ts` 提供消费端纯函数；`PlaybookPage` 仅呈现明确影响适用性的状态提示并移除版本行；入口和分类索引不生成维护字段 | `playbook-visitor-reading.test.ts`、`playbook-contract.test.ts`、静态构建、console 首次响应、无 JavaScript、Web Demo 桌面/移动明暗视觉证据与格式检查通过 |
+| `REQ-PBI-017` | 公开 catalog 的 Policy Skill、生成的 `SKILL.md` 和附带资源进入统一词法候选；命中返回同版安全路径与下载/阅读目标 | `playbook-search.test.ts`、公开资源契约回归、正式 Web Demo 资源结果夹具已通过；无 JS 资源定位与完整资源覆盖待 Agent VM 验证 |
+| `REQ-PBI-018`、`REQ-PBI-019`、`REQ-PBI-020` | 管理员来源状态增加 Playbook 采用、词法、语义 ready/pending/failed、current/previous 历史；增加按来源 Playbook 刷新动作，语义准备异步且失败独立显示 | 路由、客户端和页面编译检查已接入；持久历史、崩溃恢复与取消边界待 Agent VM 验证 |
 
 ## 访客元信息实现
 
@@ -38,11 +41,13 @@
 
 高亮保留原文字切片，并通过普通内联 mark 继承上下文排版。代码块保留既有 Markdown 展示缩进规则；高亮开关不改变复制文本或字符位置。浏览器验收包含重复中文、紧邻标点、中英文、部分连字、长行及代码。
 
-搜索展示使用单一结果列表，直接消费筛选后的内容结果，不生成来源标题、分区或按来源重排。来源身份只服务检索、内容去重、独立上限及故障处理；各来源分数不直接比较。
+当前搜索展示使用单一服务端结果列表；来源、类型、模式和完整 Playbook 身份进入请求与 URL，分类筛选在候选和全局 topK 之前执行。Playbook 正文、章节、Policy `SKILL.md` 及公开资源按父内容聚合，现代 RAG 可读取同版候选并把资源作为不可信证据传给模型；rewrite 仍只为博客生成查询。语义投影缺失时保留同版词法候选并报告 `ragIncompleteSources`，未知 edition 返回版本冲突，不能跨版复用向量。
 
 搜索输入外框采用 Nature 胶囊轮廓，与图标搜索按钮的正圆匹配；按钮直径 44px，右侧与上下内缩一致。平板保留带文字的胶囊按钮，悬停使用颜色反馈而不改变按钮位置；加载状态保持输入外框高度。主人认可圆角协调，并要求降低搜索框高度、加宽桌面左栏。当前搜索候选同步最新主线后的仓库 823 项测试、32 个搜索交互场景及 Storybook、Web Demo、静态站和 console 构建通过。浏览器实测输入外框高 54px，图标按钮为 44px 正圆，上、下、右三侧内缩均为 5px；1280、393、320px 明暗主题及 768、1024、1536px 无横向溢出，悬停和聚焦不移动按钮，加载状态外框高度仍为 54px。桌面左栏在 1024px 实测 320px，在 1280、1536px 实测 352px，栏间距均为 32px。明暗主题截图已刷新并由主人确认，已保存为正式搜索视觉证据。
 
 ## Validation Evidence
+
+以下保留既有功能的候选验证记录，不据此推断当前生产 console 的同步状态，也不把这些证据计为统一服务端搜索、公开资源正文检索或内容同步管理的验收。
 
 搜索聚合候选同步到主线 `8bfc0b602fd849bc129763c97c46821afc9749be` 后，在会话 Agent VM 使用 Bun 1.4.2、Node 22.12.0 与 Playwright Chromium 执行验证：双栏、统一列表及控件比例候选 `b1539460c196c544fa0e5bf84216ff2a89acad31` 的 `bun run test:precommit` 为 823 pass、0 fail，32 个搜索 Storybook play 场景通过，包含两栏边缘对齐、操作区筛选与建议词启动新查询，以及跨来源交错结果的输入顺序、单一列表和来源标题缺席断言。`bun run check` 无失败，仅有三条既有告警。文件权限回滚测试在移除 VM root 的 DAC 绕过能力后执行，保持只读文件的真实权限语义。
 
@@ -58,7 +63,10 @@ Policy 公开资源使用 SSR 文件浏览器：可收起的原生目录树、�
 
 ## Remaining Gaps
 
-- 当前候选的 Playbook 纯函数、SSR、静态/Web Demo/console 构建、视觉证据和格式检查已完成；变更截图待 owner 确认，受影响的独立审查与 live PR 当前 head 门禁仍待完成。实现覆盖不等同于交付完成。
+- 统一服务端入口、跨来源共同排名、全局 topK、截断前范围筛选与现代搜索版本元信息已接入，详见 [统一搜索接口](../search-relevance/contracts/unified-search.md)；当前 Candidate 仍需重型和真实配置实证。
+- Policy 公开资源文件已由同版公开 catalog 准备检索候选并返回安全路径，语义投影按 edition/model/content hash 异步去重；完整崩溃恢复与无 JavaScript 定位验收待验证，现有发布包无需读取私有源文件。
+- 管理员内容同步页已纳入 Playbook 来源、按来源刷新和独立语义状态；持久任务历史、取消与采用边界需要在 Agent VM 故障注入中验证。
+- 当前候选的 Playbook 纯函数、SSR、静态/Web Demo/console 构建、视觉证据和格式检查已完成；新增页面截图为 current-only，待 owner 确认后才能冻结候选，受影响的独立审查与 live PR 当前 head 门禁仍待完成。实现覆盖不等同于交付完成。
 - 上游原生 Release 负责发布可重复公开包，并在数据包之后最后上传 manifest；博客通过每小时补漏读取最新就绪稳定版，不要求上游调用博客 Actions API。见 [公开包契约](./contracts/public-package.md) 和 [触发契约](./contracts/release-trigger.md)。
 - `PLAYBOOK_SOURCE_TOKEN` 提供上游只读访问；生产更新仍须在首次应用部署验证指针后手动启用。首次引导自动选择最高的就绪稳定 SemVer，不需要固定 Release ID。
 - 真实 EdgeOne 原子发布、生产指针及 console 五分钟跟随由两仓合并后的上线阶段验证；模拟适配器与本地 HTTP 结果不替代生产验收。
@@ -71,6 +79,7 @@ Policy 公开资源使用 SSR 文件浏览器：可收起的原生目录树、�
 - [Release 触发契约](./contracts/release-trigger.md)
 - [研究基线与主题历史](./HISTORY.md)
 - [ADR 0011](../../adr/0011-published-playbook-read-model.md)
+- [ADR 0024](../../adr/0024-unified-search-and-playbook-sync-management.md)
 
 交付遵循主线的手动产品发布合同。普通实现 PR 不改 VERSION、不自动发布；Release Policy 的兼容性证据覆盖当前搜索代码、测试和文档 blob。搜索修复保持公开数组 API、权限和持久 SQLite/local content 格式兼容，属于 patch 影响；整个可信基线后的未发布区间仍包含主线已有 minor 能力，保留区间级 minor 分类。
 

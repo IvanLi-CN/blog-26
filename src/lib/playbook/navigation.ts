@@ -1,4 +1,8 @@
-import type { PlaybookPublicCatalog, PlaybookSearchPayload } from "./types";
+import type {
+  PlaybookEditionIdentity,
+  PlaybookPublicCatalog,
+  PlaybookSearchPayload,
+} from "./types";
 
 export function playbookHref(route: string, sectionId?: string | null) {
   const [pathname, anchor] = route.split("#");
@@ -8,6 +12,19 @@ export function playbookHref(route: string, sectionId?: string | null) {
   if (!match) throw new Error(`Unsupported public playbook route: ${route}`);
   const id = sectionId || (anchor ? decodeURIComponent(anchor) : undefined);
   return `/playbook/${match[1]}/${match[2] ? `${match[2]}/` : ""}${id ? `#${encodeURIComponent(id)}` : ""}`;
+}
+
+/** Build a reading URL that remains bound to one published Playbook edition. */
+export function playbookVersionHref(
+  edition: Pick<PlaybookEditionIdentity, "source" | "editionDigest">,
+  route: string,
+  sectionId?: string | null
+) {
+  const canonical = playbookHref(route, sectionId);
+  const [pathname, hash] = canonical.split("#");
+  const suffix = pathname.replace(/^\/playbook\//u, "");
+  const base = `/playbook/editions/${encodeURIComponent(edition.source.tag)}/${encodeURIComponent(edition.source.releaseId)}/${edition.editionDigest}/${suffix}`;
+  return `${base}${hash ? `#${hash}` : ""}`;
 }
 
 export function normalizePlaybookSearch(

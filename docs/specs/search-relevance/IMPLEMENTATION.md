@@ -5,16 +5,16 @@
 ## Current Status
 
 - Lifecycle: active
-- Implementation: complete，运行时与管理页已实现；原始功能 PR #214 已合入主线。后续兼容修复按当前候选独立验证。
+- Implementation: candidate complete；文章/Memo 的三种模式与管理策略已实现，跨来源统一检索、截断前筛选、综合排序、Playbook 正文/资源 RAG 候选、版本元信息、异步语义投影和按来源同步管理已接入。当前 Candidate 的 VM 全套验证、视觉确认、审查和 PR 交付门禁仍待完成。
 - 排序回归和生产 bundle 的 writer 冲突已修复。重新验收发现改写遗漏 SQLite3 专题，旧质量检查仅检查文字而未证明实际检索；改写提示词与固定合成检索验证已修正，两条实际 AI 链保持原断言通过验收。当前候选的完整证据见验证报告；历史候选只作为诊断记录，不替代当前候选。
-- HTTP、tRPC、MCP 与旧 enhanced 共用执行器，默认关闭智能搜索并执行关键词全文检索；Playbook、旧内容列表及独立 semantic 保留自身职责。
+- HTTP、tRPC、MCP 与旧 enhanced 的现代分支共用统一执行器，默认关闭智能搜索并执行关键词全文检索；Playbook 通过 edition-bound 服务端适配器进入关键词和现代 RAG，rewrite 仍只为博客补充。旧内容列表及独立 semantic 保留自身职责。
 - 支持平台为 linux/amd64；本次不提供 macOS 原生后端，本机前端连接 Linux 开发后端。
 
 ## 运行时边界
 
 `src/server/services/content-search.ts` 是模式执行边界。每次请求先取得原始查询的合法关键词集合 K，再决定是否执行独立 AI 链；所有 AI 故障直接使用原始关键词集合返回，索引故障则为受控错误。K 在上限内完整保留，上限已满时补充不能替换它。两条 AI 链分别缓存有效改写或判断，不缓存最终结果集合；每次重新检索并校验当前权限与内容版本。
 
-RAG 独立进行向量检索和候选判断。向量新鲜度使用现有 `buildEmbeddingInput` 摘要，不能将文件源摘要当作嵌入摘要。向量扫描限制为 10,000 行和 64 MiB，每页 200 行，维度、有限数及当前正文再次核验。候选窗口用有界 RRF 排名融合；关键词集合即使未进入判断窗口仍保全。正文窗口优先实际命中周围，没有文字命中时取开头、中间和末尾的有界原文片段，不能只用正文开头代表长文。相关判断必须包含窗口内准确引用，候选 ID、唯一性及原文依据均校验；未判断补充不返回。
+RAG 独立进行向量检索和候选判断。博客继续读取兼容的 `post_embeddings`，Playbook 使用 `search_semantic_embeddings` 的 source/parent/edition/model/content hash 身份；两者在统一执行器中按同一 RRF 规则合并。Playbook 资源正文使用不可信证据分隔传入模型，模型只能返回已提供候选的相关性、排名和证据；查询改写不读取 Playbook。向量新鲜度使用现有 `buildEmbeddingInput` 或同版公开候选摘要，不能将文件源摘要当作跨版嵌入摘要。向量扫描限制为 10,000 行和 64 MiB，每页 200 行，维度、有限数及当前正文再次核验。关键词集合即使未进入判断窗口仍保全；同版语义投影不足时保留词法命中并报告来源覆盖不足。
 
 改写模型只接收查询与静态策略，一次最多生成 3 个受控表达；不接收目录、正文或检索反馈，不调用向量及 RAG 判断。原始与改写查询分别由引擎排序，再以 RRF 融合有限排名，不直接比较不同查询的 BM25 分数。确定名称别名在关键词层完成，NodeJS/Node.js 不允许改写为无条件 Node。
 
@@ -36,7 +36,7 @@ prepare/rebuild 构建独立 generation，写入并同步 manifest，原子选�
 
 改写验证通过独立临时 Tantivy 索引执行生成的表达及原始查询，检查专题内容能被检索、无关节点和泛化 JavaScript 结果被排除；与实际执行器共用受控表达校验。SQLite 与 SQLite3 的字面边界保持不变，概念改写可分别查询相关版本。固定合成正文只进入本地探针，模型仍只接收查询与静态策略，不接收内容或检索反馈。验证结束清理探针目录，不修改生产数据库、索引或进程环境；改写测试集版本独立改变，不撤销有效的 RAG 质量依据。
 
-公开页面使用关闭、RAG、AI 改写三个可访问控件，选择保存在 URL，支持刷新、分享和历史导航；迟到请求不能覆盖新选择。AI 补充与关键词命中统一排序，同时保全合法关键词命中；HTTP 保持数组并通过 Search-Requested-Mode、Search-Effective-Mode、Search-Reason 暴露实际执行状态。新 tRPC/MCP 返回 envelope，旧 enhanced 保持数组及历史参数语义：`rerank=false` 关闭重排但保留语义检索，显式 `rerankerModel` 继续用于旧重排路径。HTTP/new tRPC 缺省 20、上限 100，MCP 缺省 20、上限 50，旧 enhanced/semantic 缺省 50，页面请求 50。
+公开页面使用关闭、RAG、AI 改写三个可访问控件，选择保存在 URL，支持刷新、分享和历史导航；迟到请求不能覆盖新选择。页面现在只发一个带 source/type/mode/edition 的服务端请求，直接渲染统一顺序。AI 补充与关键词命中统一排序，同时保全合法关键词命中；HTTP 保持数组并通过 Search-Requested-Mode、Search-Effective-Mode、Search-Reason、Playbook edition 与来源不完整响应头暴露实际执行状态。新 tRPC/MCP 返回 envelope，旧 enhanced 保持数组及历史参数语义：`rerank=false` 关闭重排但保留语义检索，显式 `rerankerModel` 继续用于旧重排路径。HTTP/new tRPC 缺省 20、上限 100，MCP 缺省 20、上限 50，旧 enhanced/semantic 缺省 50，页面请求 50。
 
 去除相关度百分比，只有实际命中词及其原文位置可高亮。关键词、回退、明确语法和错误空态使用确定性建议。页面证据来自正式路由 Web Demo，组件状态及交互来自 Storybook；Demo 构建与正式构建隔离，不能由正式页面的浏览器开关开启。
 
@@ -67,12 +67,15 @@ status 只读持久元信息。独立进程执行 prepare、check 或 rebuild �
 | REQ-SREL-001 / 002 | K 容量保全、RRF、原文依据、无关拒绝及修复后的真实专题优先排序已验证。 |
 | REQ-SREL-003 / 009 / 013 | 原生匹配矩阵、受控查询测试、SQLite NEAR 兼容及 Node 名称规则已验证。 |
 | REQ-SREL-004 / 015 | URL、历史、迟到响应、实际高亮和移动键盘交互通过；视觉确认待完成。 |
-| REQ-SREL-005 / 006 | 当前文件权限、模型前/返回前校验、来源回归与 54 个组件交互通过。 |
+| REQ-SREL-005 / 006 | 当前文件权限、模型前/返回前校验、Playbook 公开 catalog/资源边界与来源回归已接入；Web Demo 与 VM 合成 provider 已实测 Topic/Policy 统一结果、同版模型输入和权限隔离。 |
 | REQ-SREL-007 / 008 / 014 | 三链独立、原始回退、HTTP/tRPC/MCP 契约及管理员限制通过。 |
 | REQ-SREL-010 / 011 / 012 | 修复后的实际模型分别通过 4 个质量样例和 5 类搜索；策略缓存与预算有界，关键词无 AI。 |
 | REQ-SREL-016 | linux/amd64 原生编译与异步查询、296 条公开内容成本通过；两种发行镜像仍待验收。 |
 | REQ-SREL-017 | 真实事务回滚、SIGKILL、checkpoint 重放、I/O 故障和 generation 切换通过。 |
 | REQ-SREL-018 | 管理接口、独立保存、并发质量授予及旧任务失效通过。 |
+| REQ-SREL-019 / 020 / 021 | 已接入跨来源 RRF、全局 topK、截断前筛选、统一 HTTP/tRPC/MCP 契约、完整 edition 绑定和范围不可用元信息；当前 Candidate 的 Playbook 语义召回、模型输入隔离和版本边界已由 VM 固定合成 provider 实证，root chmod 故障注入限制保留在验证证据中。 |
+
+既有验证只证明文章/Memo 搜索与浏览器 Playbook 边界；本 Candidate 新增的 adapter、导航、服务端筛选和固定合成 provider 证据已通过，root 来宾无法触发 chmod I/O 故障注入，真实生产 provider 与发行镜像仍不在本次证据范围内。同步管理缺口由 [Playbook 实现状态](../style-playbook-integration/IMPLEMENTATION.md) 记录。
 
 ## References
 
@@ -82,3 +85,5 @@ status 只读持久元信息。独立进程执行 prepare、check 或 rebuild �
 - [独立 AI 搜索与关键词回退](../../adr/0020-keyword-first-hybrid-search.md)
 - [关键词默认与混合结果统一排序](../../adr/0022-keyword-default-unified-ranking.md)
 - [搜索引擎升级保留既有查询兼容性](../../adr/0023-search-legacy-compatibility.md)
+- [统一搜索接口与范围](./contracts/unified-search.md)
+- [统一搜索排序与独立 Playbook 同步管理](../../adr/0024-unified-search-and-playbook-sync-management.md)

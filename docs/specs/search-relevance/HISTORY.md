@@ -10,7 +10,11 @@
 
 组件采用内嵌 Tantivy，经受控原生绑定接入 Bun。组件探针与产品集成证据分别记录；产品运行时已覆盖受控查询、当前权限、事务恢复、三种模式、管理员策略和公开内容集成本。发行与交付状态见实现覆盖。选型不改变文件内容来源、SQLite 运行投影、公开权限及管理员边界，不新增独立服务部署。
 
-新搜索入口遇到 NEAR 位置语法时委托既有 SQLite FTS5 执行器，保持其计量和距离语义；不把 NEAR 静默重解释为普通关键词。旧内容列表与独立 semantic 继续由 search-full-text-fallback 拥有，不能为新引擎删除共享解析器能力。它们不变为新的页面模式。style-playbook-integration 继续拥有 Playbook 的公开 edition、来源顺序与章节聚合，不纳入文章与 Memo 的 AI 执行链。
+新搜索入口遇到 NEAR 位置语法时委托既有 SQLite FTS5 执行器，保持其计量和距离语义；不把 NEAR 静默重解释为普通关键词。旧内容列表与独立 semantic 继续由 search-full-text-fallback 拥有，不能为新引擎删除共享解析器能力。它们不变为新的页面模式。style-playbook-integration 继续拥有 Playbook 的公开 edition、内容与命中位置聚合，不纳入文章与 Memo 的 AI 执行链；共同排名和现代搜索入口由本主题拥有。
+
+## 跨来源搜索边界
+
+浏览器曾独立检索 Playbook，再与文章/Memo 结果拼接；单一展示列表不等于共同排名，现代 HTTP、tRPC 与 MCP 也没有相同的 Playbook 覆盖。需求确认选择全部时必须按相关性综合排序，来源或类型筛选必须先于截断。因此原有来源独立排名与显示上限不再是长期契约；同一服务端边界负责共同排名和全局容量，旧 semantic 与 enhanced 历史参数保持兼容。该决定见 [ADR 0024](../../adr/0024-unified-search-and-playbook-sync-management.md)，实现缺口见 [IMPLEMENTATION.md](./IMPLEMENTATION.md)。
 
 ## Related Changes
 
