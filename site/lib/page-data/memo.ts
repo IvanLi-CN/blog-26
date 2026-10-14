@@ -45,6 +45,27 @@ type ConsoleClippingArticle = {
   processorEnabled?: boolean;
 };
 
+function isConsoleRuntimeRequest(Astro: PageContext) {
+  return (
+    process.env.CONSOLE_RUNTIME === "true" &&
+    resolveRuntimeContext(Astro.request).mode === "console"
+  );
+}
+
+export function selectMemoForRender(input: {
+  consoleWebDemoMemo?: PublicMemoRecord | ConsoleWebDemoPublicMemo | null;
+  consoleMemo?: { memo: PublicMemoRecord } | null;
+  memoFromProps?: PublicMemoRecord;
+  snapshotMemo?: PublicMemoRecord;
+  isConsoleRuntime: boolean;
+}) {
+  return (
+    input.consoleWebDemoMemo ??
+    input.consoleMemo?.memo ??
+    (input.isConsoleRuntime ? undefined : (input.memoFromProps ?? input.snapshotMemo))
+  );
+}
+
 async function loadConsoleMemo(Astro: PageContext, slug: string) {
   if (process.env.CONSOLE_RUNTIME !== "true") return null;
   if (resolveRuntimeContext(Astro.request).mode !== "console") return null;
@@ -66,7 +87,6 @@ async function loadConsoleMemo(Astro: PageContext, slug: string) {
     import("@/server/public-api/router"),
   ]);
   const auth = await extractAuthFromRequest(Astro.request);
-  if (!auth.isAdmin) return null;
   const encodedSlug = encodeURIComponent(slug);
   const headers = new Headers(Astro.request.headers);
   headers.delete("x-admin-preview");
@@ -110,18 +130,22 @@ export async function loadmemo(Astro: PageContext) {
   const memoFromProps = isConsoleWebDemo
     ? undefined
     : (Astro.props as { memo?: PublicMemoRecord }).memo;
+  const isConsoleRuntime = isConsoleRuntimeRequest(Astro);
   const consoleMemo = await loadConsoleMemo(Astro, Astro.params.slug ?? "");
   const snapshot = await getSnapshot();
   const consoleWebDemoMemo = isConsoleWebDemo
     ? getConsoleWebDemoMemo(Astro.params.slug ?? "", getConsoleWebDemoPersona(Astro.url))
     : null;
-  const memo =
-    consoleWebDemoMemo ??
-    consoleMemo?.memo ??
-    memoFromProps ??
-    (process.env.WEB_DEMO_BUILD === "true"
-      ? getMemoListWebDemoRecord(Astro.params.slug ?? "")
-      : getMemoBySlug(snapshot, Astro.params.slug ?? ""));
+  const memo = selectMemoForRender({
+    consoleWebDemoMemo,
+    consoleMemo,
+    memoFromProps,
+    snapshotMemo:
+      process.env.WEB_DEMO_BUILD === "true"
+        ? getMemoListWebDemoRecord(Astro.params.slug ?? "")
+        : getMemoBySlug(snapshot, Astro.params.slug ?? ""),
+    isConsoleRuntime,
+  });
   if (!memo) throw new PublicRouteNotFound();
   const renderMemo = normalizeMemoForRender(memo);
   const displayDate = renderMemo.publishedAt ?? renderMemo.createdAt;
