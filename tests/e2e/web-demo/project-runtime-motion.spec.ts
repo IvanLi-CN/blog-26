@@ -5,13 +5,11 @@ const panels = `${slots} > [data-project-runtime-panel]`;
 
 test.use({
   viewport: { width: 1780, height: 1071 },
-  video: { mode: "on", size: { width: 1780, height: 1071 } },
 });
 
 test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.addInitScript(() => {
-    localStorage.setItem("web-demo-inspector-open", "true");
     const records: {
       kind: string;
       at: number;
@@ -64,6 +62,7 @@ test("the official project route staggers both directions and keeps its geometry
 }) => {
   await page.goto("/projects/?d_delay=normal&d_connection=online&d_motion=system#developer-tools");
   await expect(page.locator(`${slots}[data-runtime-visual-state="panel"]`)).toHaveCount(3);
+  await page.getByRole("button", { name: "打开 Web Demo 调试控制面板", exact: true }).click();
   const before = await page.locator(slots).evaluateAll((elements) =>
     elements.map((element) => {
       const bounds = element.getBoundingClientRect();
@@ -142,6 +141,7 @@ test("a fallback and recovery during playback continue toward the latest content
   );
   const first = page.locator(slots).first();
   await expect(page.locator(`${slots}[data-runtime-visual-state="panel"]`)).toHaveCount(3);
+  await page.getByRole("button", { name: "打开 Web Demo 调试控制面板", exact: true }).click();
   // Observe the actual playback in the browser's turn, without locator polling
   // racing a 420ms transition or waiting for the initial document's images.
   const states = await first.evaluate(
@@ -190,6 +190,7 @@ for (const preference of ["system", "inspector"]) {
       "/projects/?d_delay=custom&d_delay_ms=300&d_connection=online&d_motion=system#developer-tools"
     );
     await expect(page.locator(`${slots}[data-runtime-visual-state="panel"]`)).toHaveCount(3);
+    await page.getByRole("button", { name: "打开 Web Demo 调试控制面板", exact: true }).click();
     if (preference === "inspector") {
       await page.locator('button[aria-controls="web-demo-inspector-advanced-content"]').click();
       await expect(page.getByRole("radio", { name: "减少动效", exact: true })).toBeAttached();
@@ -260,6 +261,7 @@ test("HTTP failures and invalid models keep posters and immediately close inspec
   await page.goto("/projects/?d_connection=online&d_delay=normal&d_motion=system#developer-tools");
   await expect(page.locator(`${panels}[data-runtime-error="true"]`)).toHaveCount(3);
   await expect(page.locator(`${slots}[data-runtime-visual-state="poster"]`)).toHaveCount(3);
+  await page.getByRole("button", { name: "打开 Web Demo 调试控制面板", exact: true }).click();
   await expect(page.getByRole("grid")).toHaveCount(0);
   await page.evaluate(() => {
     (window as unknown as { metricsResponseState: { mode: string } }).metricsResponseState.mode =
@@ -293,6 +295,7 @@ for (const theme of ["light", "dark"]) {
       `/projects/?d_delay=normal&d_connection=online&d_theme=${theme}&d_motion=system#developer-tools`
     );
     await expect(page.locator(`${slots}[data-runtime-visual-state="panel"]`)).toHaveCount(3);
+    await page.getByRole("button", { name: "打开 Web Demo 调试控制面板", exact: true }).click();
     const count = await page.locator(`${panels} [data-runtime-cell]`).count();
     expect(count).toBeGreaterThan(180);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(

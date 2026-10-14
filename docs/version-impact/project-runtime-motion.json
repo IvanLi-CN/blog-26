@@ -20,7 +20,7 @@
     "site/lib/public-page-behaviors.ts": "1fa48ebd00e89ada16463ef67f8509508237232d",
     "site/styles/public-pages.css": "27869e020e4f10d1510917381721f80868e6990f",
     "src/components/projects/RuntimeCellGrid.stories.tsx": "c51fe54277455f9e5e714681796715473e2c5f17",
-    "tests/e2e/web-demo/project-runtime-motion.spec.ts": "5270880f4f1bbd9f8ea9b879bb2321aea6d42bb9",
+    "tests/e2e/web-demo/project-runtime-motion.spec.ts": "af345f4f1832da1226ed01c0e8fba3cb0372fc45",
     "tests/lib/project-runtime-channel.test.ts": "e1f22873cc9d951bd0e569cad81ee2ab30fd2bbc",
     "tests/lib/project-runtime-motion.test.ts": "8344818df6ca6c30b821fdc409c97cc4742c4337"
   },
@@ -47,7 +47,7 @@
         },
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "5270880f4f1bbd9f8ea9b879bb2321aea6d42bb9",
+          "blob": "af345f4f1832da1226ed01c0e8fba3cb0372fc45",
           "command": "Agent VM: bun run test:e2e:web-demo project-runtime-motion.spec.ts (7/7 passed)"
         },
         {
@@ -74,7 +74,7 @@
         },
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "5270880f4f1bbd9f8ea9b879bb2321aea6d42bb9",
+          "blob": "af345f4f1832da1226ed01c0e8fba3cb0372fc45",
           "command": "Agent VM: bun run test:e2e:web-demo project-runtime-motion.spec.ts (7/7 passed)"
         },
         {
@@ -105,7 +105,7 @@
         },
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "5270880f4f1bbd9f8ea9b879bb2321aea6d42bb9",
+          "blob": "af345f4f1832da1226ed01c0e8fba3cb0372fc45",
           "command": "Agent VM: bun run test:e2e:web-demo project-runtime-motion.spec.ts (7/7 passed)"
         },
         {
@@ -134,7 +134,7 @@
         },
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "5270880f4f1bbd9f8ea9b879bb2321aea6d42bb9",
+          "blob": "af345f4f1832da1226ed01c0e8fba3cb0372fc45",
           "command": "Agent VM: bun run test:e2e:web-demo project-runtime-motion.spec.ts (7/7 passed)"
         },
         {
