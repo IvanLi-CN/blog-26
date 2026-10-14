@@ -1,0 +1,284 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "ceecf5ed867ee849fce6d8e5d8225e9e5505923a",
+  "covered_files": {
+    "GLOSSARY.md": "5d34d83ce5d4c0716ed266e63ce98ef40af61d44",
+    "apps/admin/src/demo/mock-admin-api.ts": "22b8ff8d5f68667cdb54655a4fbaef91ae7dd0af",
+    "apps/admin/src/pages/content-sync.test.tsx": "3cb88012229270290bf7d5f4db6fe0a6a825523b",
+    "apps/admin/src/pages/content-sync.tsx": "e4a9c6934e2ef92c944f7c36fe3aced0ef6aacbe",
+    "docs/adr/0024-unified-search-and-playbook-sync-management.md": "5a56409474a704e30699cd93ad81a800b75f85fa",
+    "docs/specs/README.md": "dcce1683b9517c92bd2eae1530b82ac22e3904b9",
+    "docs/specs/search-relevance/HISTORY.md": "ff0f0518b2719f9b470ed56ff261488ca9952956",
+    "docs/specs/search-relevance/IMPLEMENTATION.md": "14b77bf57cd9986069aee00b9f657d4a4a093566",
+    "docs/specs/search-relevance/SPEC.md": "690c7cbc2526c3aab9bf4c165792275d197b6e31",
+    "docs/specs/search-relevance/VALIDATION.md": "7baa50de08e847402d285bcbbc4685faf62103e1",
+    "docs/specs/search-relevance/assets/playbook-sync-admin-desktop.png": "6f57632148ebc98aff468e652195aeaeed68a0e1",
+    "docs/specs/search-relevance/assets/playbook-sync-admin-mobile.png": "b09c510da0338429b8614d988dfc24ee6fa56d0f",
+    "docs/specs/search-relevance/assets/unified-playbook-search-desktop.png": "7705ebed4ead739684f7306dd365491b8a240031",
+    "docs/specs/search-relevance/assets/unified-playbook-search-mobile.png": "91057c51319b0b0d803a8dc8e6713d2654fb307e",
+    "docs/specs/search-relevance/contracts/unified-search.md": "78511dd9e56107a7d35d1065ce4db635ed665e1c",
+    "docs/specs/style-playbook-integration/HISTORY.md": "6f6ef7aa5168b3a65fc5e4f877630192f0a45c44",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "4776dae948005f73c1dee78db8ef99c971e8485d",
+    "docs/specs/style-playbook-integration/SPEC.md": "fa9533a834b867ca998309a1533dd5810fe6daf7",
+    "docs/specs/style-playbook-integration/contracts/public-package.md": "ade2fd2cc73d114c324334ca4694246e60f1bd15",
+    "drizzle/0014_unified_playbook_search.sql": "f55a42f088bfa5bcff0980b535c5c9f0bbeed054",
+    "drizzle/meta/0014_snapshot.json": "5c983dec2f8586bc9a0b11ed8259a15340e3a8ec",
+    "drizzle/meta/_journal.json": "1f7981eca9eaf12a1aa19fb1a7e64da3245208a0",
+    "site/components/SearchPageIsland.tsx": "445588c2c6f49ea10884e3d0b44c3fe0315423d6",
+    "site/components/pages/playbookDetail.tsx": "28a6f46fa332539e8d970bfa4eb4357e18b8da31",
+    "site/lib/page-data/playbookDetail.ts": "86d05039dbc1947f579d36aaf2b57b6dc63a6367",
+    "site/lib/page-data/search.ts": "ff647b82568fc9006faa938ee1b58b2caa0eb87d",
+    "site/lib/playbook.ts": "3044524c5f2e14c3f37d745f22bf8ec4f63e65bd",
+    "site/lib/public-route.ts": "844dd046ffa7c9fd796bed31b93bf611beba0e06",
+    "site/lib/public-site.ts": "02abfb9bbd0634d5903fa2a0826c9f9385f17b2f",
+    "src/components/playbook/PlaybookPage.tsx": "ef1bc709ec790eb8c70d6774466f1b44ee223081",
+    "src/components/search/search-model.ts": "039a788718a49f33db28fafc1d00556237388b0f",
+    "src/components/search/search-navigation.test.ts": "97bd3ce1dc987f9318a235deaf5872f9ab749a36",
+    "src/components/search/search-navigation.ts": "4bac7269cc3c6aec725b937cb34d1dc4f7427e1f",
+    "src/lib/admin-api-client.ts": "4fc20033388fadcc8d594ff41a3ced77fe21428d",
+    "src/lib/playbook/cache.ts": "a8d2f5b096e4511ac7852af1ef863c6dbc6a7f71",
+    "src/lib/playbook/navigation.ts": "8ceda2eea07a00202e82e8bebb53a5330dd7ce21",
+    "src/lib/schema.ts": "4da5492592b8ffc901065d97c6ab12c899bd1321",
+    "src/lib/search/native-query.ts": "7a866db5554b2060bb9fe172cb62d810da97d442",
+    "src/lib/search/web-demo-fixtures.ts": "b85205ca9484d052298379e863bd337a49f070d3",
+    "src/lib/web-demo-fetch.ts": "c646a2a652c90d55e3a16e0aed776320c7bfd186",
+    "src/server/admin-api/router.ts": "17715636b6eeccf305d1c92d877c1c2ffb758cdc",
+    "src/server/mcp.ts": "3ae77be0a97545c114c550955d3232958a550e61",
+    "src/server/public-api/playbook.ts": "df4a67a133e4585534f30c670f3bdf766e213a94",
+    "src/server/public-api/router.ts": "00433789abc0906f79843e8ca440a60c8b958c24",
+    "src/server/routers/admin/content-sync.ts": "f3fdc4d736f67787c6b2b2ad891e9247b63de1a2",
+    "src/server/services/content-search.test.ts": "18425472d93a670c7874a4aec082f821d324ebe3",
+    "src/server/services/content-search.ts": "3f1bb0f298f103fc10fd5ac4a99eee61d6e6cdd5",
+    "src/server/services/playbook-search.test.ts": "cbf78b59eb254eef3a0dd2a44b363fa94e003595",
+    "src/server/services/playbook-search.ts": "8088e0394a4034a550397c99a9eda4d43f8bf654",
+    "src/server/services/search-migration.test.ts": "b4a7bb44bf85ec38a395d31140c1214ea1bf33ea",
+    "src/server/services/search-model.test.ts": "07a7b8422296ae7c8137a20354fa4c045de3fb1b",
+    "src/server/services/search-model.ts": "0b0fcf734f5d63cb97283ab74870d8dea1c6448b",
+    "src/server/services/search-semantic-projection.ts": "fc53ba2c181bb67fe7f985897aea2bca775c872e",
+    "tests/e2e/web-demo/search-modes.spec.ts": "e7c16418009ed9341bc9d474bec3981298123196",
+    "tests/lib/public-csr-route.test.ts": "3b37883bed30e54f2afd3d5dd212b951ea2930ac",
+    "tests/lib/playbook-contract.test.ts": "0b66684c10afbc0bdf0fe524d32f9a5ef1f9794f",
+    "tests/lib/playbook-workflows.test.ts": "4827ff3dfe84984bc42e9d2ef48d3ccb7d088361"
+  },
+  "change": {
+    "description": "Unify public Playbook topics, project practices, Policy instructions and public resources with blog keyword search and modern RAG, while adding edition-bound semantic projections, recoverable content sync, versioned reading routes and the corresponding admin status surface.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "Playbook search and RAG are additive compatible capabilities. Existing blog and legacy semantic interfaces remain available, Playbook content stays edition-bound to adopted public snapshots, and the new semantic projection table and cache state are forward-only and rebuildable.",
+      "assessed_at": "2026-10-14T03:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "18425472d93a670c7874a4aec082f821d324ebe3",
+          "command": "bun test src/server/services/content-search.test.ts"
+        },
+        {
+          "path": "src/server/services/search-migration.test.ts",
+          "blob": "b4a7bb44bf85ec38a395d31140c1214ea1bf33ea",
+          "command": "bun test src/server/services/search-migration.test.ts"
+        },
+        {
+          "path": "src/server/services/search-model.test.ts",
+          "blob": "07a7b8422296ae7c8137a20354fa4c045de3fb1b",
+          "command": "bun test src/server/services/search-model.test.ts"
+        },
+        {
+          "path": "apps/admin/src/pages/content-sync.test.tsx",
+          "blob": "3cb88012229270290bf7d5f4db6fe0a6a825523b",
+          "command": "bun test apps/admin/src/pages/content-sync.test.tsx"
+        },
+        {
+          "path": "src/server/services/playbook-search.test.ts",
+          "blob": "cbf78b59eb254eef3a0dd2a44b363fa94e003595",
+          "command": "bun test src/server/services/playbook-search.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "Targeted unit, migration, model-input isolation, Playbook adapter, admin status, atomic adoption, sync singleflight/cancellation and cross-entrypoint contract tests pass; the non-root Agent VM suite reports 88 tests and 496 assertions, native verification reports 23/23, Web Demo search E2E reports 9/9, and the isolated synthetic Playbook RAG evidence passes. External provider availability remains an environment boundary.",
+      "assessed_at": "2026-10-14T13:16:14+08:00",
+      "evidence": [
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "18425472d93a670c7874a4aec082f821d324ebe3",
+          "command": "bun test src/server/services/content-search.test.ts"
+        },
+        {
+          "path": "src/server/services/search-migration.test.ts",
+          "blob": "b4a7bb44bf85ec38a395d31140c1214ea1bf33ea",
+          "command": "bun test src/server/services/search-migration.test.ts"
+        },
+        {
+          "path": "src/server/services/search-model.test.ts",
+          "blob": "07a7b8422296ae7c8137a20354fa4c045de3fb1b",
+          "command": "bun test src/server/services/search-model.test.ts"
+        },
+        {
+          "path": "apps/admin/src/pages/content-sync.test.tsx",
+          "blob": "3cb88012229270290bf7d5f4db6fe0a6a825523b",
+          "command": "bun test apps/admin/src/pages/content-sync.test.tsx"
+        },
+        {
+          "path": "src/server/services/playbook-search.test.ts",
+          "blob": "cbf78b59eb254eef3a0dd2a44b363fa94e003595",
+          "command": "bun test src/server/services/playbook-search.test.ts"
+        },
+        {
+          "path": "tests/e2e/web-demo/search-modes.spec.ts",
+          "command": "Agent VM Web Demo Playwright: 9/9 passed",
+          "blob": "e7c16418009ed9341bc9d474bec3981298123196"
+        },
+        {
+          "path": "docs/specs/search-relevance/VALIDATION.md",
+          "command": "Agent VM native 23/23, targeted 88 tests/496 assertions, Web Demo 9/9, synthetic Playbook RAG 1 pass/14 assertions",
+          "blob": "7baa50de08e847402d285bcbbc4685faf62103e1"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is covered against the published 3.1.2 baseline; all changed source files are listed in covered_files and the current review evidence is bound to the current candidate."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "Targeted unit, migration, model-input isolation, Playbook adapter, admin status, atomic adoption, sync singleflight/cancellation and cross-entrypoint contract tests pass; the non-root Agent VM suite reports 88 tests and 496 assertions, native verification reports 23/23, Web Demo search E2E reports 9/9, and the isolated synthetic Playbook RAG evidence passes. External provider availability remains an environment boundary.",
+      "assessed_at": "2026-10-14T13:16:14+08:00",
+      "evidence": [
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "18425472d93a670c7874a4aec082f821d324ebe3",
+          "command": "bun test src/server/services/content-search.test.ts"
+        },
+        {
+          "path": "src/server/services/search-migration.test.ts",
+          "blob": "b4a7bb44bf85ec38a395d31140c1214ea1bf33ea",
+          "command": "bun test src/server/services/search-migration.test.ts"
+        },
+        {
+          "path": "src/server/services/search-model.test.ts",
+          "blob": "07a7b8422296ae7c8137a20354fa4c045de3fb1b",
+          "command": "bun test src/server/services/search-model.test.ts"
+        },
+        {
+          "path": "apps/admin/src/pages/content-sync.test.tsx",
+          "blob": "3cb88012229270290bf7d5f4db6fe0a6a825523b",
+          "command": "bun test apps/admin/src/pages/content-sync.test.tsx"
+        },
+        {
+          "path": "src/server/services/playbook-search.test.ts",
+          "blob": "cbf78b59eb254eef3a0dd2a44b363fa94e003595",
+          "command": "bun test src/server/services/playbook-search.test.ts"
+        },
+        {
+          "path": "tests/e2e/web-demo/search-modes.spec.ts",
+          "command": "Agent VM Web Demo Playwright: 9/9 passed",
+          "blob": "e7c16418009ed9341bc9d474bec3981298123196"
+        },
+        {
+          "path": "docs/specs/search-relevance/VALIDATION.md",
+          "command": "Agent VM native 23/23, targeted 88 tests/496 assertions, Web Demo 9/9, synthetic Playbook RAG 1 pass/14 assertions",
+          "blob": "7baa50de08e847402d285bcbbc4685faf62103e1"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": ["3.0.3", "3.0.4", "3.0.5", "3.1.1", "3.1.2"],
+      "evidence": [
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "18425472d93a670c7874a4aec082f821d324ebe3",
+          "command": "bun test src/server/services/content-search.test.ts"
+        },
+        {
+          "path": "src/server/services/search-migration.test.ts",
+          "blob": "b4a7bb44bf85ec38a395d31140c1214ea1bf33ea",
+          "command": "bun test src/server/services/search-migration.test.ts"
+        },
+        {
+          "path": "src/server/services/search-model.test.ts",
+          "blob": "07a7b8422296ae7c8137a20354fa4c045de3fb1b",
+          "command": "bun test src/server/services/search-model.test.ts"
+        },
+        {
+          "path": "apps/admin/src/pages/content-sync.test.tsx",
+          "blob": "3cb88012229270290bf7d5f4db6fe0a6a825523b",
+          "command": "bun test apps/admin/src/pages/content-sync.test.tsx"
+        },
+        {
+          "path": "src/server/services/playbook-search.test.ts",
+          "blob": "cbf78b59eb254eef3a0dd2a44b363fa94e003595",
+          "command": "bun test src/server/services/playbook-search.test.ts"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "minor",
+      "applicable": true,
+      "state_description": "Migration 0014 adds edition-bound semantic projection rows and indexes. Existing posts, search indexes and Playbook current/previous cache state remain readable; semantic rows are rebuildable and never cross edition or model identities.",
+      "readable_by_prior_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1"
+      ],
+      "upgrade_from_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2"
+      ],
+      "evidence": [
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "18425472d93a670c7874a4aec082f821d324ebe3",
+          "command": "bun test src/server/services/content-search.test.ts"
+        },
+        {
+          "path": "src/server/services/search-migration.test.ts",
+          "blob": "b4a7bb44bf85ec38a395d31140c1214ea1bf33ea",
+          "command": "bun test src/server/services/search-migration.test.ts"
+        },
+        {
+          "path": "src/server/services/search-model.test.ts",
+          "blob": "07a7b8422296ae7c8137a20354fa4c045de3fb1b",
+          "command": "bun test src/server/services/search-model.test.ts"
+        },
+        {
+          "path": "apps/admin/src/pages/content-sync.test.tsx",
+          "blob": "3cb88012229270290bf7d5f4db6fe0a6a825523b",
+          "command": "bun test apps/admin/src/pages/content-sync.test.tsx"
+        },
+        {
+          "path": "src/server/services/playbook-search.test.ts",
+          "blob": "cbf78b59eb254eef3a0dd2a44b363fa94e003595",
+          "command": "bun test src/server/services/playbook-search.test.ts"
+        }
+      ]
+    }
+  }
+}

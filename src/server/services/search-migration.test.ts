@@ -50,6 +50,37 @@ test.each([10, 11])(
       });
       expect(sqlite.query("SELECT count(*) AS n FROM search_outbox").get()).toEqual({ n: 0 });
       expect(sqlite.query("SELECT count(*) AS n FROM search_index_state").get()).toEqual({ n: 0 });
+      const semanticColumns = sqlite
+        .query("PRAGMA table_info(search_semantic_embeddings)")
+        .all()
+        .map((column: { name: string }) => column.name);
+      expect(semanticColumns).toEqual(
+        expect.arrayContaining([
+          "source",
+          "parent_id",
+          "edition_digest",
+          "source_release_id",
+          "source_tag",
+          "model_name",
+          "chunk_index",
+          "content_hash",
+          "status",
+        ])
+      );
+      expect(
+        sqlite
+          .query(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'search_semantic_embeddings_%'"
+          )
+          .all()
+          .map((index: { name: string }) => index.name)
+      ).toEqual(
+        expect.arrayContaining([
+          "search_semantic_embeddings_identity",
+          "search_semantic_embeddings_source_model_idx",
+          "search_semantic_embeddings_edition_idx",
+        ])
+      );
       expect(
         sqlite
           .query("SELECT count(*) AS n FROM posts_search_fts WHERE posts_search_fts MATCH 'Arch'")

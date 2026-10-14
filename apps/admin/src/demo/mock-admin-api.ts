@@ -7,6 +7,7 @@ import type {
   JobOverview,
   JobRun,
   PersonalAccessTokenListRow,
+  PlaybookContentSyncStatus,
   SyncHistoryEntry,
   SyncLog,
   SyncProgress,
@@ -1720,6 +1721,44 @@ function pathParam(url: URL) {
 }
 
 function sourceStatuses(): ContentSyncSourceStatus[] {
+  const playbookStatus = {
+    name: "playbook" as const,
+    type: "playbook" as const,
+    adopted: true,
+    current: {
+      edition: "16a8b0657c998acc8e7c6371b4a74983a52dd1da61da4ceb9d31e7124d88fdce",
+      sourceReleaseId: "100",
+      sourceTag: "v3.0.0",
+      generatedAt: new Date(now - 600_000).toISOString(),
+    },
+    previous: null,
+    lexical: { status: "ready", count: 3 },
+    semantic: {
+      model: "text-embedding-3-small",
+      total: 5,
+      ready: 4,
+      pending: 1,
+      failed: 0,
+    },
+    history: [
+      {
+        id: "playbook-log-1",
+        status: "success",
+        operation: "sync",
+        message: "Playbook 内容检查完成",
+        data: { phase: "adopted" },
+        createdAt: now - 600_000,
+      },
+    ],
+    editions: [
+      {
+        edition: "16a8b0657c998acc8e7c6371b4a74983a52dd1da61da4ceb9d31e7124d88fdce",
+        sourceReleaseId: "100",
+        sourceTag: "v3.0.0",
+        generatedAt: new Date(now - 600_000).toISOString(),
+      },
+    ],
+  } satisfies PlaybookContentSyncStatus;
   return [
     {
       name: "local",
@@ -1729,6 +1768,16 @@ function sourceStatuses(): ContentSyncSourceStatus[] {
       online: true,
       totalItems: 128,
       lastSync: now - 900_000,
+    },
+    {
+      name: "playbook",
+      type: "playbook",
+      priority: 20,
+      enabled: true,
+      online: true,
+      totalItems: 3,
+      lastSync: now - 600_000,
+      metadata: playbookStatus,
     },
   ];
 }

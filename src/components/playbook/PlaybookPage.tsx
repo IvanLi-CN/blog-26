@@ -1,4 +1,9 @@
-import { getPlaybookPolicies, playbookHref, rewritePlaybookUrl } from "@/lib/playbook/navigation";
+import {
+  getPlaybookPolicies,
+  playbookHref,
+  playbookVersionHref,
+  rewritePlaybookUrl,
+} from "@/lib/playbook/navigation";
 import { createPlaybookContents } from "@/lib/playbook/outline";
 import type {
   PlaybookDocSection,
@@ -91,7 +96,15 @@ export function resolvePlaybookTitle(edition: PlaybookEdition | undefined, path:
     .name;
 }
 
-function Sections({ sections }: { sections: PlaybookDocSection[] }) {
+function Sections({
+  sections,
+  edition,
+  versioned,
+}: {
+  sections: PlaybookDocSection[];
+  edition?: PlaybookEdition;
+  versioned?: boolean;
+}) {
   return (
     <div className="grid min-w-0 grid-cols-1 gap-10 sm:gap-12">
       {sections.map((section) => (
@@ -103,7 +116,11 @@ function Sections({ sections }: { sections: PlaybookDocSection[] }) {
             content={section.markdown}
             headingAnchorPrefix={section.id}
             variant="article"
-            mapContentUrl={rewritePlaybookUrl}
+            mapContentUrl={(url) =>
+              edition && versioned
+                ? versionedContentUrl(edition, rewritePlaybookUrl(url))
+                : rewritePlaybookUrl(url)
+            }
             rewritePublicSitePaths
             enableCodeFolding={false}
             enableMermaid={false}
@@ -112,6 +129,10 @@ function Sections({ sections }: { sections: PlaybookDocSection[] }) {
       ))}
     </div>
   );
+}
+
+function versionedContentUrl(edition: PlaybookEdition, url: string) {
+  return url.startsWith("/playbook/") ? playbookVersionHref(edition.edition, url) : url;
 }
 
 function policyResourceLinks(policy: PlaybookPolicySkillDetail, edition: PlaybookEdition) {
@@ -127,9 +148,11 @@ function policyResourceLinks(policy: PlaybookPolicySkillDetail, edition: Playboo
 function PolicyContent({
   policy,
   edition,
+  versioned,
 }: {
   policy: PlaybookPolicySkillDetail;
   edition: PlaybookEdition;
+  versioned: boolean;
 }) {
   const { base, resourceHref } = policyResourceLinks(policy, edition);
 
@@ -140,7 +163,9 @@ function PolicyContent({
           content={policy.instruction_markdown}
           headingAnchorPrefix="instructions"
           variant="article"
-          mapContentUrl={(url) => rewritePlaybookUrl(url, base, resourceHref)}
+          mapContentUrl={(url) =>
+            versionedContentUrl(edition, rewritePlaybookUrl(url, base, resourceHref))
+          }
           rewritePublicSitePaths
           enableCodeFolding={false}
           enableMermaid={false}
@@ -167,7 +192,11 @@ function PolicyContent({
               <li key={slug}>
                 <a
                   className="text-sm text-[color:var(--nature-accent-strong)] transition-colors hover:text-[color:var(--nature-text)]"
-                  href={href(playbookHref(`/policies/${slug}`))}
+                  href={href(
+                    versioned
+                      ? playbookVersionHref(edition.edition, `/policies/${slug}`)
+                      : playbookHref(`/policies/${slug}`)
+                  )}
                 >
                   {slug}
                 </a>
@@ -282,6 +311,7 @@ function PlaybookDetail({
   topic,
   project,
   policy,
+  versioned,
 }: {
   edition: PlaybookEdition;
   group: (typeof groups)[number];
@@ -290,6 +320,7 @@ function PlaybookDetail({
   topic?: PlaybookPublicTopicDetail;
   project?: PlaybookPublicProjectDetail;
   policy?: PlaybookPolicySkillDetail;
+  versioned: boolean;
 }) {
   const sections = topic?.sections ?? project?.sections ?? [];
   const statusNotice = getPlaybookStatusNotice(topic?.doc_metadata ?? project?.doc_metadata);
@@ -332,6 +363,12 @@ function PlaybookDetail({
           labels: [],
           group: "topics" as const,
         }));
+  const readHref = (route: string, sectionId?: string) =>
+    href(
+      versioned
+        ? playbookVersionHref(edition.edition, route, sectionId)
+        : playbookHref(route, sectionId)
+    );
 
   return (
     <article
@@ -354,7 +391,7 @@ function PlaybookDetail({
         </span>
         <a
           className="inline-flex min-h-11 items-center transition-colors hover:text-[color:var(--nature-accent-strong)]"
-          href={href(`/playbook/${group.key}/`)}
+          href={readHref(`/playbook/${group.key}/`)}
         >
           {group.title}
         </a>
@@ -414,9 +451,9 @@ function PlaybookDetail({
             </details>
           )}
           {policy ? (
-            <PolicyContent policy={policy} edition={edition} />
+            <PolicyContent policy={policy} edition={edition} versioned={versioned} />
           ) : (
-            <Sections sections={sections} />
+            <Sections sections={sections} edition={edition} versioned={versioned} />
           )}
         </div>
 
@@ -466,7 +503,7 @@ function PlaybookDetail({
                     className="nature-hover-hitbox group nature-mobile-reading-row min-w-0"
                   >
                     <a
-                      href={href(`/playbook/${item.group}/${item.slug}/`)}
+                      href={readHref(`/playbook/${item.group}/${item.slug}/`)}
                       aria-label={item.title}
                       className="nature-panel nature-panel-soft nature-hover-lift nature-hover-surface nature-mobile-reading-surface block px-5 py-5 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--nature-accent-strong)] [--nature-hover-lift-offset:0rem] sm:px-6 sm:[--nature-hover-lift-offset:-0.125rem]"
                     >
@@ -504,9 +541,11 @@ function PlaybookDetail({
 export default function PlaybookPage({
   edition,
   path,
+  versioned = false,
 }: {
   edition?: PlaybookEdition;
   path: string;
+  versioned?: boolean;
 }) {
   const [group, slug] = path.replace(/\/$/u, "").split("/");
   const title = resolvePlaybookTitle(edition, path);
@@ -558,6 +597,7 @@ export default function PlaybookPage({
               topic={topic}
               project={project}
               policy={policy || undefined}
+              versioned={versioned}
             />
           ) : null
         ) : (

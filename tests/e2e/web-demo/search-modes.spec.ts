@@ -19,11 +19,14 @@ test("mode selection survives refresh and history and shows genuine mode-specifi
   await expect(page).toHaveURL(/mode=rag/);
   await expect(results).toContainText("SQLite3：嵌入式数据库实践");
   await page.reload();
+  await expect(page.locator("astro-island[data-search-ready='true']")).toHaveCount(1);
   await expect(page.getByRole("button", { name: "RAG", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true"
   );
-  await page.getByRole("button", { name: "AI 改写", exact: true }).click();
+  const rewriteButton = page.getByRole("button", { name: "AI 改写", exact: true });
+  await expect(rewriteButton).toBeEnabled({ timeout: 10_000 });
+  await rewriteButton.click();
   await expect(page).toHaveURL(/mode=rewrite/);
   await page.goBack();
   await expect(page.getByRole("button", { name: "RAG", exact: true })).toHaveAttribute(
@@ -32,54 +35,47 @@ test("mode selection survives refresh and history and shows genuine mode-specifi
   );
   await expect(results).not.toContainText(/相关度|\d+%/);
 });
-test("RAG shows keyword results before the AI supplement arrives", async ({ page }) => {
-  await page.goto("/search/?q=SQLite&mode=rag&d_scene=search-ready&d_delay=slow");
+test("RAG waits for the unified server result before rendering", async ({ page }) => {
+  await page.goto("/search/?q=SQLite&mode=rag&d_scene=search-ready&d_delay=custom&d_delay_ms=3000");
   await hideInspector(page);
   const results = page.getByRole("region", { name: "搜索结果" });
-  await expect(results).toContainText("开发工具阅读清单");
   await expect(page.getByRole("region", { name: "建议搜索词" })).toHaveCount(0);
-  await expect(results.locator('[data-search-ai-phase="waiting"]')).toContainText(
-    "全文结果已到，正在等待 AI 补充"
-  );
-  await expect(results.getByRole("img", { name: "AI 补充结果" })).toHaveCount(0);
+  await expect(results).toContainText("正在搜索", { timeout: 2_000 });
   await expect(results).toContainText("SQLite3：嵌入式数据库实践", { timeout: 10_000 });
-  await expect(results.getByRole("img", { name: "AI 补充结果" })).toHaveCount(1, {
-    timeout: 10_000,
-  });
-  await expect(results.locator('[data-search-ai-phase="complete"]')).toHaveCount(0);
+  await expect(results.locator("[data-search-ai-phase]")).toHaveCount(0);
 });
-test("rewrite shows keyword results before the rewritten supplement arrives", async ({ page }) => {
+test("RAG returns Playbook results with edition-bound links and source filters", async ({
+  page,
+}) => {
+  await page.goto("/search/?q=发布&mode=rag&d_delay=normal");
+  await hideInspector(page);
+  const results = page.getByRole("region", { name: "搜索结果" });
+  await expect(results).toContainText("交付工作流");
+  await expect(results.getByRole("link", { name: "打开Topic：交付工作流" })).toHaveAttribute(
+    "href",
+    "/playbook/editions/v3.0.0/100/16a8b0657c998acc8e7c6371b4a74983a52dd1da61da4ceb9d31e7124d88fdce/topics/delivery/"
+  );
+  await page.getByRole("button", { name: /Policy Skill/ }).click();
+  await expect(page).toHaveURL(/filter=policy/);
+  await expect(results).toContainText("安全发布 Policy Skill");
+  await expect(results).not.toContainText("交付工作流");
+});
+test("rewrite waits for the unified server result", async ({ page }) => {
   await page.goto(
     "/search/?q=SQLite&mode=rewrite&d_scene=search-rewrite-ready&d_data=dense&d_delay=slow"
   );
   await hideInspector(page);
   const results = page.getByRole("region", { name: "搜索结果" });
-  await expect(results).toContainText("开发工具阅读清单");
-  await expect(results.locator('[data-search-ai-phase="waiting"]')).toContainText(
-    "正在等待 AI 改写查询补充"
-  );
-  await expect(results.getByRole("img", { name: "AI 补充结果" })).toHaveCount(0);
+  await expect(results).toContainText("正在搜索", { timeout: 2_000 });
   await expect(results).toContainText("SQLite 性能调优清单");
-  await expect(results.getByRole("img", { name: "AI 补充结果" })).toHaveCount(5, {
-    timeout: 10_000,
-  });
-  await expect(results.locator('[data-search-ai-phase="complete"]')).toHaveCount(0);
-  const cards = results.locator("[data-search-result-card]");
-  const origins = await cards.evaluateAll((elements) =>
-    elements.map((element) =>
-      element.querySelector('[aria-label="AI 补充结果"]') ? "ai" : "keyword"
-    )
-  );
-  const firstAi = origins.indexOf("ai");
-  expect(firstAi).toBeGreaterThan(0);
-  expect(
-    origins.some((origin, index) => origin === "ai" && origins.slice(index + 1).includes("keyword"))
-  ).toBe(true);
+  await expect(results.locator("[data-search-ai-phase]")).toHaveCount(0);
 });
 test("switching the Web Demo scene reloads the search behavior", async ({ page }) => {
   await page.goto("/search/?q=SQLite&mode=rag&d_scene=search-ready&d_delay=normal");
+  const inspectorTrigger = page.getByTestId("web-demo-inspector-trigger");
+  if (await inspectorTrigger.isVisible()) await inspectorTrigger.click();
   const scene = page.getByTestId("web-demo-inspector-scene-select");
-  await expect(scene).toContainText("搜索 · RAG 补充");
+  await expect(scene).toContainText("搜索 · RAG 补充", { timeout: 10_000 });
   await scene.click();
   await page.getByRole("option", { name: "搜索 · AI 不可用" }).click();
   await expect(page).toHaveURL(/d_scene=search-ai-unavailable/);
@@ -109,11 +105,10 @@ test("AI failure preserves the chosen mode while an index failure is not a succe
 test("delayed obsolete searches cannot overwrite the latest mode", async ({ page }) => {
   await page.goto("/search/?q=SQLite&mode=rag&d_delay=custom&d_delay_ms=800");
   await hideInspector(page);
-  await page.getByRole("button", { name: "关闭", exact: true }).click();
-  await expect(page.getByRole("button", { name: "关闭", exact: true })).toHaveAttribute(
-    "aria-pressed",
-    "true"
-  );
+  const keywordButton = page.getByRole("button", { name: "关闭", exact: true });
+  await expect(keywordButton).toBeEnabled({ timeout: 10_000 });
+  await keywordButton.click();
+  await expect(keywordButton).toHaveAttribute("aria-pressed", "true");
   const results = page.getByRole("region", { name: "搜索结果" });
   await expect(results).toContainText("开发工具阅读清单");
   await expect(results).not.toContainText("SQLite3：嵌入式数据库实践");
@@ -125,7 +120,9 @@ test("mobile mode controls remain keyboard accessible without horizontal overflo
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto("/search/?q=SQLite&mode=keyword&d_theme=dark&d_delay=normal");
   await hideInspector(page);
+  await expect(page.locator("astro-island[data-search-ready='true']")).toHaveCount(1);
   const button = page.getByRole("button", { name: "RAG", exact: true });
+  await expect(button).toBeEnabled({ timeout: 10_000 });
   await button.focus();
   await page.keyboard.press("Enter");
   await expect(button).toHaveAttribute("aria-pressed", "true");

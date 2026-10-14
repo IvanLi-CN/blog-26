@@ -10,12 +10,20 @@ import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { enhanced } from "@/lib/ai/search";
 import { clearSearchCache } from "@/lib/ai/search-cache";
 import { db, initializeDB } from "@/lib/db";
-import { postEmbeddings, posts, searchIndexState, searchSettings } from "@/lib/schema";
+import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
+import {
+  postEmbeddings,
+  posts,
+  searchIndexState,
+  searchSemanticEmbeddings,
+  searchSettings,
+} from "@/lib/schema";
 import { searchContent } from "@/lib/search/content-search";
 import { DEFAULT_SEARCH_POLICY } from "@/lib/search/settings";
 import { handleMcpHttpRequest } from "@/server/mcp-http";
 import { handlePublicApiRequest } from "@/server/public-api/router";
 import { appRouter } from "@/server/router";
+import { makePublicBundle } from "../../../tests/lib/playbook-fixture";
 import { executeContentModes } from "./content-search";
 import { contentSearchIndex } from "./content-search-index";
 import {
@@ -24,6 +32,7 @@ import {
   resolveSearchPolicy,
   saveSearchPolicy,
 } from "./search-policy";
+import { preparePlaybookSemanticProjection } from "./search-semantic-projection";
 import { getSearchValidationRun, startSearchValidation } from "./search-validation";
 
 const originalFetch = globalThis.fetch;
@@ -35,6 +44,7 @@ const envNames = [
   "CHAT_COMPLETION_MODEL",
   "EMBEDDING_MODEL_NAME",
   "LOCAL_CONTENT_BASE_PATH",
+  "PLAYBOOK_CACHE_DIR",
 ] as const;
 const oldEnv = Object.fromEntries(envNames.map((key) => [key, process.env[key]]));
 let directory: string;
@@ -891,6 +901,192 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
       const capacity = await call("search_content", { q: "SQLite", mode: "keyword", topK: 51 });
       expect(Boolean(capacity.error || capacity.result?.isError)).toBe(true);
       expect(globalThis.fetch).not.toHaveBeenCalled();
+    } finally {
+      await handleMcpHttpRequest(
+        new Request("http://localhost/mcp", {
+          method: "DELETE",
+          headers: { "mcp-session-id": session, "mcp-protocol-version": "2025-03-26" },
+        })
+      );
+    }
+  });
+  test("RAG joins a same-edition Playbook semantic candidate with untrusted evidence", async () => {
+    const bundle = makePublicBundle("v3.0.0", "100");
+    process.env.PLAYBOOK_CACHE_DIR = path.join(directory, "playbook-cache");
+    await getRuntimePlaybookStore().adopt(bundle.edition);
+    await db.delete(searchSemanticEmbeddings);
+    const embedding = [1, 0];
+    const resolved = await resolveSearchPolicy("rag");
+    expect(resolved.resolved?.embedding.model).toBe("synthetic-embedding");
+    expect(resolved.fingerprint).toBeTruthy();
+    expect(await recordSearchQuality("rag", resolved.fingerprint ?? "", true)).toBe(true);
+    const embeddingConfig = resolved.resolved?.embedding;
+    if (!embeddingConfig) throw new Error("synthetic embedding config is unavailable");
+    const modelInputs: Array<{ url: string; payload: unknown }> = [];
+    globalThis.fetch = fakeFetch(async (input, init) => {
+      const url = String(input);
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      modelInputs.push({ url, payload: body });
+      if (url.endsWith("/embeddings")) {
+        const text = String(body.input ?? "");
+        return Response.json({
+          data: [
+            {
+              embedding:
+                text.includes("semantic-only") || text.includes("Safe Release")
+                  ? embedding
+                  : [0, 1],
+            },
+          ],
+        });
+      }
+      const payload = JSON.parse(body.messages[1].content) as {
+        candidates: Array<{ id: string; content: string }>;
+      };
+      return Response.json({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: {
+              content: JSON.stringify({
+                items: payload.candidates.map((candidate, rank) => ({
+                  id: candidate.id,
+                  relevant: true,
+                  rank,
+                  evidence: candidate.content.slice(0, 32),
+                })),
+              }),
+            },
+          },
+        ],
+      });
+    });
+    const projection = await preparePlaybookSemanticProjection(bundle.edition, embeddingConfig);
+    expect(projection.failed).toBe(0);
+    expect(projection.prepared).toBeGreaterThan(0);
+    const result = await executeContentModes({
+      q: "semantic-only",
+      mode: "rag",
+      source: "all",
+      type: "policy",
+      topK: 3,
+    });
+    expect(result.effectiveMode).toBe("rag");
+    expect(result.ragIncompleteSources).toBeUndefined();
+    expect(result.results.some((item) => item.source === "playbook")).toBe(true);
+    const chatPayload = modelInputs.find((entry) => entry.url.endsWith("/chat/completions"))
+      ?.payload as {
+      messages?: Array<{ content?: string }>;
+    };
+    const candidateContent = chatPayload.messages?.[1]?.content ?? "";
+    expect(candidateContent).toContain("<untrusted-playbook-evidence");
+    expect(candidateContent).toContain(bundle.edition.edition.editionDigest);
+    expect(candidateContent).toContain(bundle.edition.edition.source.releaseId);
+    expect(candidateContent).toContain(bundle.edition.edition.source.tag);
+    expect(candidateContent).not.toContain("private");
+    expect(result.results.every((item) => item.source === "playbook")).toBe(true);
+  });
+
+  test("HTTP, tRPC, and MCP expose the same adopted Playbook edition", async () => {
+    const bundle = makePublicBundle("v3.0.0", "100");
+    await getRuntimePlaybookStore().adopt(bundle.edition);
+    const identity = new URLSearchParams({
+      edition: bundle.edition.edition.editionDigest,
+      sourceReleaseId: bundle.edition.edition.source.releaseId,
+      sourceTag: bundle.edition.edition.source.tag,
+    });
+
+    const http = await handlePublicApiRequest(
+      new Request(
+        `http://localhost/api/public/search?q=verify&mode=keyword&source=playbook&type=policy&${identity}`
+      ),
+      "/search"
+    );
+    expect(http.status).toBe(200);
+    expect(http.headers.get("Search-Playbook-Edition")).toBe(bundle.edition.edition.editionDigest);
+    expect(http.headers.get("Search-Playbook-Source-Release-Id")).toBe("100");
+    expect((await http.json()) as Array<{ source: string }>).toEqual(
+      expect.arrayContaining([expect.objectContaining({ source: "playbook" })])
+    );
+
+    const trpc = await appRouter
+      .createCaller({
+        req: new Request("http://localhost"),
+        resHeaders: new Headers(),
+        isAdmin: false,
+      })
+      .search.content({
+        q: "verify",
+        mode: "keyword",
+        source: "playbook",
+        type: "policy",
+        edition: bundle.edition.edition.editionDigest,
+        sourceReleaseId: bundle.edition.edition.source.releaseId,
+        sourceTag: bundle.edition.edition.source.tag,
+      });
+    expect(trpc.playbook?.sourceTag).toBe("v3.0.0");
+    expect(trpc.results.every((item) => item.source === "playbook")).toBe(true);
+
+    const headers = {
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+      "mcp-protocol-version": "2025-03-26",
+    };
+    const init = await handleMcpHttpRequest(
+      new Request("http://localhost/mcp", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-03-26",
+            capabilities: {},
+            clientInfo: { name: "playbook-contract", version: "1" },
+          },
+        }),
+      })
+    );
+    const session = init.headers.get("mcp-session-id") ?? "";
+    await init.text();
+    try {
+      const response = await handleMcpHttpRequest(
+        new Request("http://localhost/mcp", {
+          method: "POST",
+          headers: { ...headers, "mcp-session-id": session },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            method: "tools/call",
+            params: {
+              name: "search_content",
+              arguments: {
+                q: "verify",
+                mode: "keyword",
+                source: "playbook",
+                type: "policy",
+                edition: bundle.edition.edition.editionDigest,
+                sourceReleaseId: bundle.edition.edition.source.releaseId,
+                sourceTag: bundle.edition.edition.source.tag,
+              },
+            },
+          }),
+        })
+      );
+      const raw = await response.text();
+      const payload = JSON.parse(
+        raw
+          .split("\n")
+          .find((line) => line.startsWith("data: "))
+          ?.slice(6) ?? raw
+      );
+      const result = JSON.parse(payload.result.content[0].text) as {
+        playbook?: { sourceTag: string };
+        results: Array<{ source: string }>;
+      };
+      expect(result.playbook?.sourceTag).toBe("v3.0.0");
+      expect(result.results.every((item) => item.source === "playbook")).toBe(true);
     } finally {
       await handleMcpHttpRequest(
         new Request("http://localhost/mcp", {

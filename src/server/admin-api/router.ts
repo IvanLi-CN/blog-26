@@ -707,6 +707,15 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
       return json(await caller.admin.contentSync.cancelSync(), { status: 200 }, resHeaders);
     }
 
+    if (pathname === "/content-sync/playbook/trigger") {
+      if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
+      return json(
+        await caller.admin.contentSync.triggerPlaybookSync(),
+        { status: 200 },
+        resHeaders
+      );
+    }
+
     if (pathname === "/content-sync/vectorize") {
       if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
       const body = (await parseJsonBody(request)) as {

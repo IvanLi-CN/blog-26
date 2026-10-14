@@ -10,18 +10,19 @@ export async function handlePlaybookRequest(request: Request, path: string, stor
   const digest = digestSchema.safeParse(url.searchParams.get("edition"));
   const sourceReleaseId = url.searchParams.get("sourceReleaseId");
   const sourceTag = url.searchParams.get("sourceTag");
+  const parsedTag = stableTagSchema.safeParse(sourceTag);
   if (
     !digest.success ||
     !sourceReleaseId ||
     !/^[1-9]\d*$/u.test(sourceReleaseId) ||
-    !stableTagSchema.safeParse(sourceTag).success
+    !parsedTag.success
   )
     return Response.json(
       { error: "A valid edition, sourceReleaseId and sourceTag are required" },
       { status: 400 }
     );
   await store.load();
-  const edition = store.getEdition(digest.data, sourceReleaseId, sourceTag);
+  const edition = store.getEdition(digest.data, sourceReleaseId, parsedTag.data);
   if (!edition)
     return Response.json({ error: "Edition unavailable; refresh the page" }, { status: 409 });
   if (path === "/playbook/search-index")

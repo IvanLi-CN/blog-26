@@ -461,21 +461,56 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
 
     if (pathname === "/search") {
       if (request.method !== "GET") return methodNotAllowed(request, request.method);
-      const allowed = new Set(["q", "mode", "topK", "type"]);
+      const allowed = new Set([
+        "q",
+        "mode",
+        "topK",
+        "source",
+        "type",
+        "edition",
+        "sourceReleaseId",
+        "sourceTag",
+      ]);
       if ([...url.searchParams.keys()].some((key) => !allowed.has(key)))
         throw new TRPCError({ code: "BAD_REQUEST", message: "unsupported-parameter" });
       const result = await caller.search.content({
         q: (url.searchParams.get("q") || "").trim(),
         mode: (url.searchParams.get("mode") ?? "keyword") as "rag" | "rewrite" | "keyword",
         topK: Number(url.searchParams.get("topK") ?? 20),
-        type: (url.searchParams.get("type") ?? "all") as "all" | "post" | "memo",
+        source: (url.searchParams.get("source") ?? "all") as "all" | "blog" | "playbook",
+        type: (url.searchParams.get("type") ?? "all") as
+          | "all"
+          | "post"
+          | "memo"
+          | "clipping"
+          | "topic"
+          | "experience"
+          | "policy",
+        ...(url.searchParams.get("edition")
+          ? { edition: url.searchParams.get("edition") ?? undefined }
+          : {}),
+        ...(url.searchParams.get("sourceReleaseId")
+          ? { sourceReleaseId: url.searchParams.get("sourceReleaseId") ?? undefined }
+          : {}),
+        ...(url.searchParams.get("sourceTag")
+          ? { sourceTag: url.searchParams.get("sourceTag") ?? undefined }
+          : {}),
       });
       resHeaders.set("Search-Requested-Mode", result.requestedMode);
       resHeaders.set("Search-Effective-Mode", result.effectiveMode);
       if (result.reason) resHeaders.set("Search-Reason", result.reason);
+      if (result.playbook) {
+        resHeaders.set("Search-Playbook-Edition", result.playbook.edition);
+        resHeaders.set("Search-Playbook-Source-Release-Id", result.playbook.sourceReleaseId);
+        resHeaders.set("Search-Playbook-Source-Tag", result.playbook.sourceTag);
+      }
+      if (result.incompleteSources?.length)
+        resHeaders.set("Search-Incomplete-Sources", result.incompleteSources.join(","));
+      if (result.ragIncompleteSources?.length)
+        resHeaders.set("Search-RAG-Incomplete-Sources", result.ragIncompleteSources.join(","));
       resHeaders.set(
         "access-control-expose-headers",
-        "Search-Requested-Mode, Search-Effective-Mode, Search-Reason"
+        "Search-Requested-Mode, Search-Effective-Mode, Search-Reason, Search-Playbook-Edition, Search-Playbook-Source-Release-Id, Search-Playbook-Source-Tag, Search-Incomplete-Sources, Search-RAG-Incomplete-Sources"
       );
       resHeaders.set("cache-control", "no-store");
       return json(

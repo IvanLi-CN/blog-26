@@ -40,4 +40,23 @@ describe("search navigation", () => {
       shouldPushSearchHref("http://example.test/search?q=Node&mode=keyword", "Node", "keyword")
     ).toBe(false);
   });
+
+  test("keeps the full Playbook edition identity in shareable URLs", () => {
+    const playbook = {
+      edition: "a".repeat(64),
+      sourceReleaseId: "42",
+      sourceTag: "v3.0.0",
+    };
+    const href = buildSearchHref(
+      "http://example.test/search?q=Node",
+      "SQLite",
+      "rag",
+      "all",
+      playbook
+    );
+    expect(new URL(href).searchParams.get("edition")).toBe(playbook.edition);
+    expect(new URL(href).searchParams.get("sourceReleaseId")).toBe("42");
+    expect(new URL(href).searchParams.get("sourceTag")).toBe("v3.0.0");
+    expect(shouldPushSearchHref(href, "SQLite", "rag", "all", playbook)).toBe(false);
+  });
 });

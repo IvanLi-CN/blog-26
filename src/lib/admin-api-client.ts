@@ -241,6 +241,47 @@ export interface ContentSyncSourceStatus {
   metadata?: unknown;
 }
 
+export interface PlaybookContentSyncStatus {
+  name: "playbook";
+  type: "playbook";
+  adopted: boolean;
+  current: {
+    edition: string;
+    sourceReleaseId: string;
+    sourceTag: string;
+    generatedAt: string;
+  } | null;
+  previous: {
+    edition: string;
+    sourceReleaseId: string;
+    sourceTag: string;
+    generatedAt: string;
+  } | null;
+  lexical: { status: string; count: number };
+  semantic: {
+    model: string;
+    total: number;
+    ready: number;
+    pending: number;
+    failed: number;
+    lastError?: string;
+  };
+  history: Array<{
+    id: string;
+    status: string;
+    operation: string;
+    message: string;
+    data: unknown;
+    createdAt: number;
+  }>;
+  editions: Array<{
+    edition: string;
+    sourceReleaseId: string;
+    sourceTag: string;
+    generatedAt: string;
+  }>;
+}
+
 export interface SyncProgress {
   status: string;
   progress: number;
@@ -571,6 +612,10 @@ export const adminApi = {
     adminRequest<Record<string, unknown>>("/api/admin/content-sync/trigger", {
       method: "POST",
       body: JSON.stringify(input),
+    }),
+  triggerPlaybookSync: () =>
+    adminRequest<Record<string, unknown>>("/api/admin/content-sync/playbook/trigger", {
+      method: "POST",
     }),
   cancelContentSync: () =>
     adminRequest<{ success: boolean; message: string }>("/api/admin/content-sync/cancel", {

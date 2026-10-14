@@ -2,7 +2,11 @@ import { projectRuntimeMetricsBySlug } from "../../site/lib/project-runtime-metr
 import { positiveSearchTerms, searchHighlightSpans } from "./search/highlights";
 import { planNativeQuery } from "./search/native-query";
 import { searchModeSchema } from "./search/settings";
-import { SEARCH_DEMO_DENSE_DOCUMENTS, SEARCH_DEMO_DOCUMENTS } from "./search/web-demo-fixtures";
+import {
+  PLAYBOOK_SEARCH_DEMO_DOCUMENTS,
+  SEARCH_DEMO_DENSE_DOCUMENTS,
+  SEARCH_DEMO_DOCUMENTS,
+} from "./search/web-demo-fixtures";
 import {
   assertWebDemoRequestAvailable,
   getWebDemoEnvironment,
@@ -181,6 +185,8 @@ function getDemoPublicResponse(
       !query || plan.mode !== "simple" || state.scene === "search-ai-unavailable"
         ? "keyword"
         : selected.data;
+    const requestedSource = url.searchParams.get("source") ?? "all";
+    const requestedType = url.searchParams.get("type") ?? "all";
     const results = [
       {
         slug: "code-block-fixture",
@@ -202,7 +208,13 @@ function getDemoPublicResponse(
       },
       ...SEARCH_DEMO_DOCUMENTS,
       ...(dataMode === "dense" ? SEARCH_DEMO_DENSE_DOCUMENTS : []),
-    ];
+      ...PLAYBOOK_SEARCH_DEMO_DOCUMENTS,
+    ].filter((item) => {
+      const isPlaybook = "href" in item;
+      if (requestedSource === "blog" && isPlaybook) return false;
+      if (requestedSource === "playbook" && !isPlaybook) return false;
+      return requestedType === "all" || item.type === requestedType;
+    });
     const terms = positiveSearchTerms(plan.ast);
     const literalMatched = results.filter((item) =>
       plan.literalTerms.every(
@@ -245,6 +257,18 @@ function getDemoPublicResponse(
         aiSlugs.add(document.slug);
       }
     }
+    if (effectiveMode === "rag" && /版本|发布|权限|恢复/u.test(query)) {
+      for (const document of PLAYBOOK_SEARCH_DEMO_DOCUMENTS) {
+        if (
+          requestedSource === "blog" ||
+          (requestedType !== "all" && document.type !== requestedType)
+        )
+          continue;
+        if (literalSlugs.has(document.slug)) continue;
+        matched.unshift(document);
+        aiSlugs.add(document.slug);
+      }
+    }
     const rankedMatched = [...new Map(matched.map((item) => [item.slug, item])).values()].sort(
       (a, b) => {
         const aOrigin = aiSlugs.has(a.slug) ? "ai" : "keyword";
@@ -266,6 +290,9 @@ function getDemoPublicResponse(
               title,
               excerpt,
               type,
+              ...("href" in item
+                ? { source: "playbook", href: item.href, sections: item.sections }
+                : {}),
               highlightTerms: terms,
               searchOrigin,
               final: demoSearchRelevance(

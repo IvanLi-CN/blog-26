@@ -17,6 +17,8 @@ export type SearchResultItem = {
   final?: number;
   cosine?: number;
   searchOrigin?: "keyword" | "ai";
+  kind?: "section" | "resource";
+  resourcePath?: string;
 };
 
 export type SearchSectionResult = {
@@ -25,6 +27,8 @@ export type SearchSectionResult = {
   snippet: string;
   score: number;
   order: number;
+  kind?: "section" | "resource";
+  resourcePath?: string;
 };
 
 /** Display model only; public search responses retain their original array shape. */
@@ -68,6 +72,8 @@ export function isSearchResultGroup(value: unknown): value is SearchResultGroup 
     nullableText(result.snippet) &&
     (result.href === undefined || typeof result.href === "string") &&
     (result.source === undefined || result.source === "playbook") &&
+    (result.kind === undefined || result.kind === "section" || result.kind === "resource") &&
+    (result.resourcePath === undefined || typeof result.resourcePath === "string") &&
     (result.type === undefined ||
       ["post", "memo", "topic", "experience", "policy"].includes(result.type)) &&
     optionalNumber(result.final) &&
@@ -82,7 +88,9 @@ export function isSearchResultGroup(value: unknown): value is SearchResultGroup 
         typeof section.title === "string" &&
         typeof section.snippet === "string" &&
         Number.isFinite(section.score) &&
-        Number.isFinite(section.order)
+        Number.isFinite(section.order) &&
+        (section.kind === undefined || section.kind === "section" || section.kind === "resource") &&
+        (section.resourcePath === undefined || typeof section.resourcePath === "string")
     )
   );
 }

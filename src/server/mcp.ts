@@ -18,7 +18,10 @@ import { isSearchQueryWithinBudget } from "@/lib/search/query";
 import { clippingProjectionForRow, isClippingRowPublic } from "@/server/clipping/projection";
 import { notifyClippingChange } from "@/server/clipping/runtime";
 import { attachClippingReference } from "@/server/clipping/store";
-import { contentSearchInputSchema, executeContentModes } from "@/server/services/content-search";
+import {
+  contentSearchInputObjectSchema,
+  executeContentModes,
+} from "@/server/services/content-search";
 import { getPostsByTag, getTagSummaries, groupPostsByTag } from "@/server/services/tag-service";
 import { getMcpAuthContext, requireAdmin } from "./mcp-auth-context";
 
@@ -856,7 +859,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
   server.tool(
     "search_content",
     "Search site content with rag, rewrite, or keyword mode",
-    contentSearchInputSchema.extend({
+    contentSearchInputObjectSchema.extend({
       topK: z.number().int().min(1).max(50).default(20),
       publishedOnly: z.boolean().default(true),
     }).shape,

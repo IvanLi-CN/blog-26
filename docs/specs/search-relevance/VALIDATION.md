@@ -2,11 +2,23 @@
 
 本报告区分产品集成与独立组件探针，覆盖范围见 [实现](./IMPLEMENTATION.md)。以下产品结果与后文组件探针分别保留，不将探针能力当作运行时验收。
 
+## 当前 Playbook 统一搜索候选
+
+当前工作区候选以远端基线 `ceecf5ed867ee849fce6d8e5d8225e9e5505923a` 为基准，覆盖 Playbook 公开正文、Policy 公开资源、同版语义投影、统一来源过滤和版本绑定。Agent VM 中 `bun run search:native:build && bun run search:native:verify` 的 23 项 native 契约通过，`bun run db:migrations:validate` 通过，`PLAYBOOK_RENDERER_COMMIT=ceecf5ed867ee849fce6d8e5d8225e9e5505923a bun run web-demo:build` 的 public 与 admin Web Demo 均构建成功；构建保留 Astro 路由和大 chunk 的既有 warning。
+
+非 root Agent VM 定向套件 `bun test --isolate src/components/search/search-navigation.test.ts src/server/services/content-search.test.ts src/server/services/playbook-search.test.ts src/server/services/search-migration.test.ts src/server/services/search-model.test.ts tests/lib/playbook-contract.test.ts tests/lib/public-csr-route.test.ts apps/admin/src/pages/content-sync.test.tsx` 为 88 pass / 0 fail，496 assertions。通过项覆盖 native 持久索引、NEAR 剪藏权限复核、HTTP/tRPC/MCP 契约、Playbook 候选聚合、同版语义 RAG、原子采用恢复、管理同步状态和完整 edition URL 导航；新增回归确认手动与轮询 staged download 共用 singleflight，旧 operation 完成后取消不会丢失当前 controller，采用完成后语义准备失败仍保留已采用 edition。
+
+Web Demo `tests/e2e/web-demo/search-modes.spec.ts` 在同一构建产物上为 9/9 通过，包含统一搜索等待、Playbook RAG 结果、Policy 来源过滤、edition-bound 阅读链接、AI 回退、场景切换、迟到请求、移动键盘交互和模型设置保存；场景面板显式打开，搜索水合就绪后再执行键盘与模式切换断言，异步断言使用固定合成延迟以避免瞬态时序抖动。
+
+固定合成 provider 的 Playbook RAG 实证通过：公开 `v3.0.0` edition 先原子采用，再为同一 edition 生成 semantic projection；无字面重合的 `semantic-only` 查询在 `source=all,type=policy` 下召回 Playbook，模型请求只收到带完整 edition 身份的候选和 `<untrusted-playbook-evidence>` 分隔内容，`source=playbook` 不混入博客，语义覆盖元信息保持完整。当前用例为 1 pass、14 assertions、32 filtered tests；该实证不使用生产凭据，也不替代真实提供方验收。
+
+本候选的本机 `bun run check` 退出码为 0，保留仓库既有 24 个 warning 和 1 个 info；本机内容模式因缺少 Linux native ABI 而跳过，native、集成和 Web Demo 结果以 Agent VM 证据为准。
+
 ## 候选级模型请求证据
 
 DeepSeek 的结构化搜索请求关闭 thinking 后，代码候选 `4588af29f14d4dadfea8cad64123c9d2e403ddfe` 上 RAG 与改写各通过 4/4 固定质量样例及 5/5 实际搜索。其后只有验证记录和版本影响记录变化。输出、指纹和断言边界见 [非思考模式证据](./validation/product/empirical-search-model-nonthinking.txt)。
 
-当前候选 `e1a2c3fc348f27607f624eb50f876d2c1bcd678f` 在修复 native event-loop 验证夹具后重新执行真实模型验收。deepseek-v4-flash 与 BAAI/bge-m3 的 RAG 和改写各通过 4/4 固定质量样例及 5/5 实际搜索；概念查询 `嵌入式 SQL 数据库` 找到 SQLite3 专题，RAG 将专题排在顺带提及之前；Node.js 返回运行时并排除图节点，`文章` 返回文章，无关查询返回空结果。两种模式的实际检索均保全关键词结果，原断言未改变。固定合成样例外无内容发送，未发生模型自动重试。RAG 指纹 `220b0bcb7223f0769e73a55f163eae497bf12117c4e44df32c66fbff47a9a8de`，改写指纹 `b085e8e6a6c99a0612b72e5183b7cf62b100fa00da2a432752747cdbbc37a95f`；完整响应与请求元数据见 [当前候选证据](./validation/product/empirical-search-model-current.txt)。
+历史候选 `e1a2c3fc348f27607f624eb50f876d2c1bcd678f` 在修复 native event-loop 验证夹具后重新执行真实模型验收。deepseek-v4-flash 与 BAAI/bge-m3 的 RAG 和改写各通过 4/4 固定质量样例及 5/5 实际搜索；概念查询 `嵌入式 SQL 数据库` 找到 SQLite3 专题，RAG 将专题排在顺带提及之前；Node.js 返回运行时并排除图节点，`文章` 返回文章，无关查询返回空结果。两种模式的实际检索均保全关键词结果，原断言未改变。固定合成样例外无内容发送，未发生模型自动重试。RAG 指纹 `220b0bcb7223f0769e73a55f163eae497bf12117c4e44df32c66fbff47a9a8de`，改写指纹 `b085e8e6a6c99a0612b72e5183b7cf62b100fa00da2a432752747cdbbc37a95f`；完整响应与请求元数据见 [历史候选证据](./validation/product/empirical-search-model-current.txt)。该结果不绑定当前 Playbook 候选；当前候选未重新调用真实提供方，仅保留上一段固定合成 provider 实证，外部提供方可用性仍是环境边界。
 
 原始搜索实现通过 PR #214 合入主线。该 PR 的 CI、Web Demo 和视觉结果是原始功能候选的历史证据，不代表后续兼容修复的当前头状态，也不能替代后续候选自己的 CI、审查或模型验证。本 Spec 不据此宣称搜索实现已部署生产。
 

@@ -64,6 +64,27 @@ export function matchPublicRoute(pathname: string): PublicRoute | null {
   }
   if (path.startsWith("/tags/"))
     return { kind: "tag", path, params: { tagSegments: path.slice(6) } };
+  const versionedPlaybook =
+    /^\/playbook\/editions\/([^/]+)\/([1-9]\d*)\/([a-f0-9]{64})\/(topics|projects|policies)(?:\/([^/]+))?$/u.exec(
+      path
+    );
+  if (versionedPlaybook) {
+    try {
+      const [, editionTag, releaseId, editionDigest, group, slug] = versionedPlaybook;
+      return {
+        kind: "playbookDetail",
+        path,
+        params: {
+          path: `${group}${slug ? `/${decodeURIComponent(slug)}` : ""}`,
+          editionTag: decodeURIComponent(editionTag),
+          editionReleaseId: releaseId,
+          editionDigest,
+        },
+      };
+    } catch {
+      return { kind: "notFound", path, params: {} };
+    }
+  }
   if (path.startsWith("/playbook/"))
     return { kind: "playbookDetail", path, params: { path: path.slice(10) } };
   if (/\.[a-z0-9]+$/i.test(path)) return null;

@@ -4,16 +4,28 @@
  * 提供内容源管理和同步控制的 API 接口
  */
 
+import { randomUUID } from "node:crypto";
 import { EventEmitter, on } from "node:events";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { SYSTEM_CONFIG } from "../../../config/paths";
 import { getContentSourceManager, LocalContentSource } from "../../../lib/content-sources";
+import { db } from "../../../lib/db";
+import { getRuntimePlaybookStore } from "../../../lib/playbook/cache";
+import { samePlaybookEdition } from "../../../lib/playbook/manifest";
+import type { PlaybookEdition } from "../../../lib/playbook/types";
+import { contentSyncLogs } from "../../../lib/schema";
 import { syncEventManager } from "../../../lib/sync-events";
+import { getResolvedLlmConfig } from "../../services/llm-settings";
+import {
+  getPlaybookContentSyncStatus,
+  preparePlaybookSemanticProjection,
+} from "../../services/search-semantic-projection";
 import { adminProcedure, createTRPCRouter, publicProcedure } from "../../trpc";
 
 // 输入验证 Schema
 const syncConfigSchema = z.object({
+  source: z.enum(["all", "local", "playbook"]).optional(),
   maxConcurrentSyncs: z.number().min(1).max(10).optional(),
   syncTimeout: z.number().min(10000).max(600000).optional(), // 10秒到10分钟
   enableTransactions: z.boolean().optional(),
@@ -26,8 +38,170 @@ const _contentSourceConfigSchema = z.object({
   priority: z.number().min(0).max(1000),
   enabled: z.boolean(),
   type: z.enum(["local"]),
-  options: z.record(z.unknown()),
+  options: z.record(z.string(), z.unknown()),
 });
+
+type PlaybookSyncResult = {
+  success: true;
+  status: Awaited<ReturnType<typeof getPlaybookContentSyncStatus>>;
+  cancelled?: boolean;
+  adopted?: boolean;
+};
+
+let activePlaybookSync: {
+  promise: Promise<PlaybookSyncResult>;
+  controller: AbortController;
+} | null = null;
+
+function runPlaybookSync(): Promise<PlaybookSyncResult> {
+  if (activePlaybookSync) return activePlaybookSync.promise;
+
+  const taskId = randomUUID();
+  const controller = new AbortController();
+  const task = (async () => {
+    const createdAt = Date.now();
+    let store: ReturnType<typeof getRuntimePlaybookStore> | undefined;
+    let stagedEdition: PlaybookEdition | undefined;
+    let initialEdition: PlaybookEdition | undefined;
+    let adopted = false;
+    await db.insert(contentSyncLogs).values({
+      id: taskId,
+      sourceType: "playbook",
+      sourceName: "playbook",
+      operation: "sync",
+      status: "warning",
+      message: "Playbook 检查已开始",
+      filePath: null,
+      data: JSON.stringify({ taskId, phase: "checking" }),
+      createdAt,
+    });
+
+    try {
+      store = getRuntimePlaybookStore();
+      await store.load();
+      initialEdition = store.current;
+      await store.sync(undefined, controller.signal, async (edition, signal) => {
+        stagedEdition = edition;
+        const config = await getResolvedLlmConfig().catch(() => undefined);
+        if (!config?.embedding.model) return;
+
+        try {
+          const projection = await preparePlaybookSemanticProjection(edition, config.embedding, {
+            signal,
+          });
+          await db.insert(contentSyncLogs).values({
+            id: randomUUID(),
+            sourceType: "playbook",
+            sourceName: "playbook",
+            operation: "semantic-projection",
+            status: projection.failed ? "warning" : "success",
+            message: projection.failed
+              ? `Playbook 语义投影部分待补（${projection.failed}/${projection.total}）`
+              : "Playbook 语义投影准备完成",
+            filePath: null,
+            data: JSON.stringify({ taskId, phase: "semantic", ...projection }),
+            createdAt: Date.now(),
+          });
+        } catch (error) {
+          if (signal.aborted) return;
+          console.warn(
+            "[playbook] semantic projection pending:",
+            error instanceof Error ? error.message : String(error)
+          );
+          await db.insert(contentSyncLogs).values({
+            id: randomUUID(),
+            sourceType: "playbook",
+            sourceName: "playbook",
+            operation: "semantic-projection",
+            status: "error",
+            message: error instanceof Error ? error.message : String(error),
+            filePath: null,
+            data: JSON.stringify({ taskId, phase: "semantic" }),
+            createdAt: Date.now(),
+          });
+        }
+      });
+
+      const edition = stagedEdition ?? store.current;
+      adopted = Boolean(
+        stagedEdition &&
+          (!initialEdition ||
+            !samePlaybookEdition(stagedEdition.edition, initialEdition.edition)) &&
+          store.current &&
+          samePlaybookEdition(store.current.edition, stagedEdition.edition)
+      );
+      if (controller.signal.aborted) {
+        return {
+          success: true as const,
+          cancelled: true,
+          adopted,
+          status: await getPlaybookContentSyncStatus(),
+        };
+      }
+
+      await db.insert(contentSyncLogs).values({
+        id: randomUUID(),
+        sourceType: "playbook",
+        sourceName: "playbook",
+        operation: "sync",
+        status: "success",
+        message: "Playbook 内容检查完成",
+        filePath: null,
+        data: JSON.stringify({
+          taskId,
+          phase: adopted ? "adopted" : "unchanged",
+          edition: edition?.edition.editionDigest,
+        }),
+        createdAt: Date.now(),
+      });
+      return { success: true as const, adopted, status: await getPlaybookContentSyncStatus() };
+    } catch (error) {
+      adopted = Boolean(
+        stagedEdition &&
+          (!initialEdition ||
+            !samePlaybookEdition(stagedEdition.edition, initialEdition.edition)) &&
+          store?.current &&
+          samePlaybookEdition(store.current.edition, stagedEdition.edition)
+      );
+      if (controller.signal.aborted) {
+        await db.insert(contentSyncLogs).values({
+          id: randomUUID(),
+          sourceType: "playbook",
+          sourceName: "playbook",
+          operation: "sync",
+          status: "warning",
+          message: "Playbook 同步已取消",
+          filePath: null,
+          data: JSON.stringify({ taskId, phase: "cancelled" }),
+          createdAt: Date.now(),
+        });
+        return {
+          success: true as const,
+          cancelled: true,
+          adopted,
+          status: await getPlaybookContentSyncStatus(),
+        };
+      }
+      await db.insert(contentSyncLogs).values({
+        id: randomUUID(),
+        sourceType: "playbook",
+        sourceName: "playbook",
+        operation: "sync",
+        status: "error",
+        message: error instanceof Error ? error.message : "Playbook 同步失败",
+        filePath: null,
+        data: JSON.stringify({ taskId, phase: "failed" }),
+        createdAt: Date.now(),
+      });
+      throw error;
+    }
+  })().finally(() => {
+    activePlaybookSync = null;
+  });
+  activePlaybookSync = { promise: task, controller };
+
+  return task;
+}
 
 /**
  * 内容同步管理路由
@@ -42,7 +216,11 @@ export const adminContentSyncRouter = createTRPCRouter({
    */
   triggerSync: adminProcedure.input(syncConfigSchema.optional()).mutation(async ({ input }) => {
     try {
-      const { isFullSync = false, ...managerConfig } = input || {};
+      const { source = "all", isFullSync = false, ...managerConfig } = input || {};
+      if (source === "playbook") {
+        return await runPlaybookSync();
+      }
+
       const manager = getContentSourceManager(managerConfig);
 
       // 检查是否有正在进行的同步
@@ -60,7 +238,7 @@ export const adminContentSyncRouter = createTRPCRouter({
       // 执行同步（传入同步类型）
       const result = await manager.syncAll(isFullSync);
 
-      return {
+      const resultPayload = {
         success: result.success,
         syncId: `sync_${Date.now()}`,
         startTime: result.startTime,
@@ -74,6 +252,10 @@ export const adminContentSyncRouter = createTRPCRouter({
           filePath: error.filePath,
         })),
       };
+      if (source === "local") return resultPayload;
+
+      const playbook = await runPlaybookSync();
+      return { ...resultPayload, playbook };
     } catch (error) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
@@ -89,12 +271,27 @@ export const adminContentSyncRouter = createTRPCRouter({
     try {
       const manager = getContentSourceManager();
       await manager.cancelSync();
+      activePlaybookSync?.controller.abort(
+        new DOMException("Playbook sync cancelled", "AbortError")
+      );
+      getRuntimePlaybookStore().cancelSync();
 
       return { success: true, message: "同步已取消" };
     } catch (error) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: error instanceof Error ? error.message : "取消同步失败",
+      });
+    }
+  }),
+
+  triggerPlaybookSync: adminProcedure.mutation(async () => {
+    try {
+      return await runPlaybookSync();
+    } catch (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: error instanceof Error ? error.message : "Playbook 同步失败",
       });
     }
   }),
@@ -224,7 +421,7 @@ export const adminContentSyncRouter = createTRPCRouter({
         countMap.set(row.source || "unknown", Number(row.count) || 0);
       }
 
-      return sourcesStatus.map(({ source, status, lastSync }) => ({
+      const localSources = sourcesStatus.map(({ source, status, lastSync }) => ({
         name: source.name,
         type: source.type,
         priority: source.priority,
@@ -235,6 +432,23 @@ export const adminContentSyncRouter = createTRPCRouter({
         error: status.error,
         metadata: status.metadata,
       }));
+      const playbook = await getPlaybookContentSyncStatus();
+      return [
+        ...localSources,
+        {
+          name: playbook.name,
+          type: playbook.type,
+          priority: 0,
+          enabled: true,
+          online: playbook.adopted,
+          totalItems: playbook.lexical.count,
+          lastSync: playbook.current?.generatedAt
+            ? Date.parse(playbook.current.generatedAt)
+            : undefined,
+          error: playbook.semantic.lastError,
+          metadata: playbook,
+        },
+      ];
     } catch (error) {
       console.error("Failed to fetch content source status:", error);
       throw new TRPCError({

@@ -13,6 +13,7 @@ export interface PlaybookCacheState {
 export type PlaybookFetcher = (url: string, init?: RequestInit) => Promise<Response>;
 export const PLAYBOOK_POLL_INTERVAL_MS = 300_000;
 export type PlaybookSchedule = (run: () => void, intervalMs: number) => () => void;
+type PlaybookEditionPreparer = (edition: PlaybookEdition, signal: AbortSignal) => Promise<void>;
 const schedule: PlaybookSchedule = (run, intervalMs) => {
   const timer = setInterval(run, intervalMs);
   timer.unref?.();
@@ -61,9 +62,16 @@ function freezeEdition(edition: PlaybookEdition) {
 export class PlaybookStore {
   private state: PlaybookCacheState = {};
   private loaded?: Promise<void>;
-  private flight?: Promise<void>;
+  private flight?: {
+    promise: Promise<void>;
+    controller: AbortController;
+    prepare?: PlaybookEditionPreparer;
+  };
+  private downloadFlight?: {
+    promise: Promise<PlaybookEdition | undefined>;
+    controller: AbortController;
+  };
   private stopPolling?: () => void;
-  private controller?: AbortController;
   private stopped = false;
   constructor(
     public readonly root = playbookCacheDirectory(),
@@ -73,6 +81,9 @@ export class PlaybookStore {
 
   get current() {
     return this.state.current;
+  }
+  get previous() {
+    return this.state.previous;
   }
   getEdition(digest: string, sourceReleaseId: string, sourceTag: string) {
     return [this.state.current, this.state.previous].find(
@@ -132,65 +143,110 @@ export class PlaybookStore {
     this.state = next;
   }
 
-  sync(manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL) {
-    if (!this.flight)
-      this.flight = this.download(manifestUrl).finally(() => {
-        this.flight = undefined;
-      });
-    return this.flight;
+  sync(
+    manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL,
+    externalSignal?: AbortSignal,
+    prepare?: PlaybookEditionPreparer
+  ) {
+    if (this.flight) {
+      linkAbortSignal(externalSignal, this.flight.controller);
+      if (!prepare || this.flight.prepare) return this.flight.promise;
+      return this.flight.promise.then(() => this.sync(manifestUrl, externalSignal, prepare));
+    }
+    const controller = new AbortController();
+    linkAbortSignal(externalSignal, controller);
+    const signal = AbortSignal.any(
+      [controller.signal, externalSignal].filter((value): value is AbortSignal => Boolean(value))
+    );
+    const promise = (async () => {
+      const edition = await this.downloadEdition(manifestUrl, signal);
+      if (!edition || this.stopped || signal.aborted) return;
+      if (edition !== this.current) await this.adopt(edition);
+      if (prepare && !this.stopped && !signal.aborted) await prepare(edition, signal);
+    })();
+    const flight = {
+      promise: promise.finally(() => {
+        if (this.flight === flight) this.flight = undefined;
+      }),
+      controller,
+      prepare,
+    };
+    this.flight = flight;
+    return flight.promise;
   }
 
-  private async download(manifestUrl: string) {
-    if (this.stopped) return;
-    this.controller = new AbortController();
-    const signal = AbortSignal.any([this.controller.signal, AbortSignal.timeout(30_000)]);
-    const pointer = parseEditionIdentity(
-      JSON.parse(
-        Buffer.from(await fetchBounded(this.fetcher, manifestUrl, 64 * 1024, signal)).toString(
-          "utf8"
-        )
+  cancelSync() {
+    const reason = new DOMException("Playbook sync cancelled", "AbortError");
+    this.flight?.controller.abort(reason);
+    this.downloadFlight?.controller.abort(reason);
+  }
+
+  downloadEdition(manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL, externalSignal?: AbortSignal) {
+    if (this.downloadFlight) {
+      linkAbortSignal(externalSignal, this.downloadFlight.controller);
+      return this.downloadFlight.promise;
+    }
+    if (this.stopped || externalSignal?.aborted) return;
+    const controller = new AbortController();
+    linkAbortSignal(externalSignal, controller);
+    const signal = AbortSignal.any(
+      [controller.signal, externalSignal, AbortSignal.timeout(30_000)].filter(
+        (value): value is AbortSignal => Boolean(value)
       )
     );
-    if (this.current && samePlaybookEdition(pointer, this.current.edition)) return;
-    const base = new URL(
-      `./${encodeURIComponent(pointer.source.tag)}/${pointer.editionDigest}/`,
-      manifestUrl
-    );
-    const results = await Promise.all(
-      pointer.files
-        .filter((file) => file.path !== "public-snapshot.json")
-        .map(async (file) => {
-          const bytes = await fetchBounded(
-            this.fetcher,
-            new URL(file.path, base).toString(),
-            file.size,
-            signal
-          );
-          verifyFile(bytes, file);
-          return [file.path, JSON.parse(Buffer.from(bytes).toString("utf8"))] as const;
-        })
-    );
-    const snapshot = pointer.files.find((file) => file.path === "public-snapshot.json");
-    if (!snapshot) throw new Error("Article/Memo snapshot record is missing");
-    const publicSnapshot = await fetchBounded(
-      this.fetcher,
-      new URL(snapshot.path, base).toString(),
-      snapshot.size,
-      signal
-    );
-    validatePlaybookEdition({
-      edition: pointer,
-      catalog: new Map(results).get("catalog.json"),
-      search: new Map(results).get("search-documents.json"),
-      publicSnapshot,
-    });
-    if (this.stopped) return;
-    const files = new Map(results);
-    await this.adopt({
-      edition: pointer,
-      catalog: files.get("catalog.json"),
-      search: files.get("search-documents.json"),
-    } as PlaybookEdition);
+    const promise = (async () => {
+      const pointer = parseEditionIdentity(
+        JSON.parse(
+          Buffer.from(await fetchBounded(this.fetcher, manifestUrl, 64 * 1024, signal)).toString(
+            "utf8"
+          )
+        )
+      );
+      if (this.current && samePlaybookEdition(pointer, this.current.edition)) return this.current;
+      const base = new URL(
+        `./${encodeURIComponent(pointer.source.tag)}/${pointer.editionDigest}/`,
+        manifestUrl
+      );
+      const results = await Promise.all(
+        pointer.files
+          .filter((file) => file.path !== "public-snapshot.json")
+          .map(async (file) => {
+            const bytes = await fetchBounded(
+              this.fetcher,
+              new URL(file.path, base).toString(),
+              file.size,
+              signal
+            );
+            verifyFile(bytes, file);
+            return [file.path, JSON.parse(Buffer.from(bytes).toString("utf8"))] as const;
+          })
+      );
+      const snapshot = pointer.files.find((file) => file.path === "public-snapshot.json");
+      if (!snapshot) throw new Error("Article/Memo snapshot record is missing");
+      const publicSnapshot = await fetchBounded(
+        this.fetcher,
+        new URL(snapshot.path, base).toString(),
+        snapshot.size,
+        signal
+      );
+      const files = new Map(results);
+      const edition = validatePlaybookEdition({
+        edition: pointer,
+        catalog: files.get("catalog.json"),
+        search: files.get("search-documents.json"),
+        publicSnapshot,
+      });
+      if (this.stopped || signal.aborted) return;
+      return freezeEdition(edition);
+    })();
+    const flight = {
+      promise: promise.finally(() => {
+        if (this.downloadFlight === flight) this.downloadFlight = undefined;
+      }),
+      controller,
+    };
+    this.downloadFlight = flight;
+    return flight.promise;
   }
 
   start(manifestUrl?: string) {
@@ -212,8 +268,16 @@ export class PlaybookStore {
     this.stopped = true;
     this.stopPolling?.();
     this.stopPolling = undefined;
-    this.controller?.abort();
+    this.flight?.controller.abort();
+    this.downloadFlight?.controller.abort();
   }
+}
+
+function linkAbortSignal(signal: AbortSignal | undefined, controller: AbortController) {
+  if (!signal) return;
+  const abort = () => controller.abort(signal.reason);
+  if (signal.aborted) abort();
+  else signal.addEventListener("abort", abort, { once: true });
 }
 
 export async function fetchBounded(

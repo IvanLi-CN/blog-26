@@ -2,9 +2,12 @@ import { createHash } from "node:crypto";
 import { and, asc, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { buildEmbeddingInput, cosineSimilarity, hashEmbeddingInput } from "@/lib/ai/embeddings";
+import type { SearchResult } from "@/lib/ai/search";
 import { db } from "@/lib/db";
+import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
+import type { PlaybookEdition } from "@/lib/playbook/types";
 import { postEmbeddings, posts } from "@/lib/schema";
-import { searchContent } from "@/lib/search/content-search";
+import { isClippingSearchMemo, searchContent } from "@/lib/search/content-search";
 import { ContentSearchError, planNativeQuery } from "@/lib/search/native-query";
 import { parseSearchQuery } from "@/lib/search/query";
 import { type SearchReason, searchModeSchema } from "@/lib/search/settings";
@@ -18,6 +21,14 @@ import {
 } from "./content-search-index";
 import type { ResolvedTierConfig } from "./llm-settings";
 import {
+  type PlaybookSearchCandidate,
+  type PlaybookSearchType,
+  playbookCandidateContext,
+  playbookCandidateKey,
+  playbookSearchResult,
+  searchPlaybookCandidates,
+} from "./playbook-search";
+import {
   embedSearchQuery,
   judgeSearchCandidates,
   rewriteSearchQuery,
@@ -28,21 +39,50 @@ import {
 import { resolveSearchPolicy } from "./search-policy";
 import { reciprocalRanks, searchContext } from "./search-ranking";
 import { planSearchRewrites } from "./search-rewrite";
+import { semanticPlaybookCandidates } from "./search-semantic-projection";
 
-export const contentSearchInputSchema = z
+export const contentSearchInputObjectSchema = z
   .object({
     q: z.string().max(8192),
     mode: searchModeSchema.default("keyword"),
     topK: z.number().int().min(1).max(100).default(20),
-    type: z.enum(["all", "post", "memo"]).default("all"),
+    source: z.enum(["all", "blog", "playbook"]).default("all"),
+    type: z
+      .enum(["all", "post", "memo", "clipping", "topic", "experience", "policy"])
+      .default("all"),
+    edition: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/u)
+      .optional(),
+    sourceReleaseId: z
+      .string()
+      .regex(/^[1-9]\d*$/u)
+      .optional(),
+    sourceTag: z
+      .string()
+      .regex(/^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/u)
+      .optional(),
   })
   .strict();
+export const contentSearchInputSchema = contentSearchInputObjectSchema.refine(
+  (value) =>
+    (value.edition === undefined &&
+      value.sourceReleaseId === undefined &&
+      value.sourceTag === undefined) ||
+    (value.edition !== undefined &&
+      value.sourceReleaseId !== undefined &&
+      value.sourceTag !== undefined),
+  { message: "edition, sourceReleaseId and sourceTag must be provided together" }
+);
 export type ContentSearchInput = z.infer<typeof contentSearchInputSchema>;
 export type ContentSearchEnvelope = {
-  results: ReturnType<typeof contentResult>[];
+  results: Array<ReturnType<typeof contentResult> | ReturnType<typeof playbookSearchResult>>;
   requestedMode: ContentSearchInput["mode"];
   effectiveMode: ContentSearchInput["mode"];
   reason?: SearchReason;
+  playbook?: { edition: string; sourceReleaseId: string; sourceTag: string };
+  incompleteSources?: string[];
+  ragIncompleteSources?: string[];
 };
 type CacheEntry<T> = { value: T; until: number };
 const rewriteCache = new Map<string, CacheEntry<SearchRewrite>>();
@@ -69,7 +109,7 @@ async function vectorCandidates(
   embeddingConfig: ResolvedTierConfig,
   limit: number,
   publishedOnly: boolean,
-  type: ContentSearchInput["type"]
+  type: "all" | "post" | "memo"
 ): Promise<IndexedContent[]> {
   const targetTypes = type === "all" ? ["post", "memo"] : [type];
   const conditions = [
@@ -164,18 +204,61 @@ async function current(candidates: IndexedContent[], publishedOnly: boolean) {
   }
   return candidates;
 }
-function mergeProtected(
-  keyword: IndexedContent[],
-  supplements: IndexedContent[],
-  limit: number,
-  order: (a: IndexedContent, b: IndexedContent) => number
+
+type UnifiedCandidate = IndexedContent | PlaybookSearchCandidate;
+function isPlaybookCandidate(candidate: UnifiedCandidate): candidate is PlaybookSearchCandidate {
+  return "source" in candidate && candidate.source === "playbook";
+}
+function unifiedId(candidate: UnifiedCandidate) {
+  return isPlaybookCandidate(candidate) ? playbookCandidateKey(candidate) : candidate.row.id;
+}
+function unifiedRoute(candidate: UnifiedCandidate) {
+  return isPlaybookCandidate(candidate)
+    ? `${candidate.type}:${candidate.slug}`
+    : `${candidate.row.type}:${candidate.row.slug}`;
+}
+function unifiedVersion(candidate: UnifiedCandidate) {
+  return isPlaybookCandidate(candidate) ? candidate.version : candidate.version;
+}
+function unifiedTitle(candidate: UnifiedCandidate) {
+  return isPlaybookCandidate(candidate) ? candidate.title : candidate.row.title;
+}
+function unifiedPublishDate(candidate: UnifiedCandidate) {
+  return isPlaybookCandidate(candidate) ? 0 : candidate.row.publishDate;
+}
+async function currentUnified(
+  candidates: UnifiedCandidate[],
+  publishedOnly: boolean,
+  edition?: PlaybookEdition
 ) {
-  const protectedIds = new Set(keyword.map((x) => x.row.id));
-  const protectedRoutes = new Set(keyword.map((x) => `${x.row.type}:${x.row.slug}`));
+  const blog = candidates.filter(
+    (candidate): candidate is IndexedContent => !isPlaybookCandidate(candidate)
+  );
+  if (blog.length) await current(blog, publishedOnly);
+  for (const candidate of candidates) {
+    if (!isPlaybookCandidate(candidate)) continue;
+    if (
+      !edition ||
+      candidate.edition.edition !== edition.edition.editionDigest ||
+      candidate.edition.sourceReleaseId !== edition.edition.source.releaseId ||
+      candidate.edition.sourceTag !== edition.edition.source.tag
+    )
+      throw new ContentSearchError("SERVICE_UNAVAILABLE", "search-playbook-changed");
+  }
+  return candidates;
+}
+function mergeProtected(
+  keyword: UnifiedCandidate[],
+  supplements: UnifiedCandidate[],
+  limit: number,
+  order: (a: UnifiedCandidate, b: UnifiedCandidate) => number
+) {
+  const protectedIds = new Set(keyword.map(unifiedId));
+  const protectedRoutes = new Set(keyword.map(unifiedRoute));
   const candidates = [...keyword];
   for (const candidate of supplements) {
-    const key = `${candidate.row.type}:${candidate.row.slug}`;
-    if (protectedIds.has(candidate.row.id) || protectedRoutes.has(key)) continue;
+    const key = unifiedRoute(candidate);
+    if (protectedIds.has(unifiedId(candidate)) || protectedRoutes.has(key)) continue;
     protectedRoutes.add(key);
     candidates.push(candidate);
   }
@@ -186,16 +269,211 @@ function mergeProtected(
   // slot back to any omitted literal result.
   const ranked = candidates.sort(order);
   const selected = ranked.slice(0, limit);
-  const selectedIds = new Set(selected.map((x) => x.row.id));
+  const selectedIds = new Set(selected.map(unifiedId));
   for (const literal of keyword) {
-    if (selectedIds.has(literal.row.id)) continue;
-    const replaceIndex = selected.findIndex((candidate) => !protectedIds.has(candidate.row.id));
+    if (selectedIds.has(unifiedId(literal))) continue;
+    const replaceIndex = selected.findIndex((candidate) => !protectedIds.has(unifiedId(candidate)));
     if (replaceIndex < 0) break;
-    selectedIds.delete(selected[replaceIndex]?.row.id ?? "");
+    selectedIds.delete(selected[replaceIndex] ? unifiedId(selected[replaceIndex]) : "");
     selected[replaceIndex] = literal;
-    selectedIds.add(literal.row.id);
+    selectedIds.add(unifiedId(literal));
   }
   return selected.sort(order);
+}
+
+function wantsBlog(type: ContentSearchInput["type"]) {
+  return type === "all" || type === "post" || type === "memo" || type === "clipping";
+}
+function wantsPlaybook(type: ContentSearchInput["type"]) {
+  return type === "all" || type === "topic" || type === "experience" || type === "policy";
+}
+function blogType(type: ContentSearchInput["type"]): "all" | "post" | "memo" {
+  return type === "post" ? "post" : type === "memo" || type === "clipping" ? "memo" : "all";
+}
+function playbookType(type: ContentSearchInput["type"]): "all" | PlaybookSearchType {
+  return type === "topic" || type === "experience" || type === "policy" ? type : "all";
+}
+
+async function resolvePlaybookEdition(input: ContentSearchInput) {
+  if (!wantsPlaybook(input.type) || input.source === "blog") return undefined;
+  const store = getRuntimePlaybookStore();
+  await store.load();
+  const selected =
+    input.edition && input.sourceReleaseId && input.sourceTag
+      ? store.getEdition(input.edition, input.sourceReleaseId, input.sourceTag)
+      : store.current;
+  if (selected) return selected;
+  if (input.edition) throw new ContentSearchError("CONFLICT", "search-playbook-edition-unknown");
+  if (input.source === "playbook") {
+    throw new ContentSearchError("SERVICE_UNAVAILABLE", "search-playbook-edition-unavailable");
+  }
+  return undefined;
+}
+
+function playbookMetadata(edition?: PlaybookEdition) {
+  return edition
+    ? {
+        edition: edition.edition.editionDigest,
+        sourceReleaseId: edition.edition.source.releaseId,
+        sourceTag: edition.edition.source.tag,
+      }
+    : undefined;
+}
+
+async function keywordCandidates(
+  input: ContentSearchInput,
+  query: string,
+  publishedOnly: boolean,
+  edition?: PlaybookEdition,
+  limit = Math.min(1000, Math.max(100, input.topK * 5))
+) {
+  const blog: IndexedContent[] = [];
+  const playbook: PlaybookSearchCandidate[] = [];
+  if (input.source !== "playbook" && wantsBlog(input.type)) {
+    const index = await contentSearchIndex();
+    const rows = await index.search(query, {
+      limit,
+      type: blogType(input.type),
+      publishedOnly,
+    });
+    blog.push(
+      ...rows.filter(
+        (candidate) =>
+          input.type !== "clipping" || isClippingSearchMemo(candidate.row.type, candidate.row.tags)
+      )
+    );
+  }
+  if (input.source !== "blog" && wantsPlaybook(input.type) && edition)
+    playbook.push(
+      ...searchPlaybookCandidates(edition, query, { limit, type: playbookType(input.type) })
+    );
+  return { blog, playbook };
+}
+
+function mergeKeywordCandidates(
+  blog: IndexedContent[],
+  playbook: PlaybookSearchCandidate[],
+  limit: number
+): UnifiedCandidate[] {
+  const lists: UnifiedCandidate[][] = [blog, playbook];
+  if (!blog.length) return playbook.slice(0, limit);
+  if (!playbook.length) return blog.slice(0, limit);
+  const ranks = reciprocalRanks(lists, unifiedId);
+  const candidates = [...blog, ...playbook];
+  const seen = new Set<string>();
+  return candidates
+    .filter((candidate) => {
+      const id = unifiedId(candidate);
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    })
+    .sort(
+      (a, b) =>
+        (ranks.get(unifiedId(b)) ?? 0) - (ranks.get(unifiedId(a)) ?? 0) ||
+        unifiedId(a).localeCompare(unifiedId(b))
+    )
+    .slice(0, limit);
+}
+
+function resultForCandidate(candidate: UnifiedCandidate, query: string, origin: "keyword" | "ai") {
+  return isPlaybookCandidate(candidate)
+    ? playbookSearchResult(candidate, query, origin)
+    : contentResult(candidate, query, origin);
+}
+
+type NearCandidate = SearchResult | PlaybookSearchCandidate;
+function isPlaybookNearCandidate(candidate: NearCandidate): candidate is PlaybookSearchCandidate {
+  return "source" in candidate && candidate.source === "playbook";
+}
+function nearCandidateKey(candidate: NearCandidate) {
+  return isPlaybookNearCandidate(candidate)
+    ? playbookCandidateKey(candidate)
+    : `blog:${candidate.type ?? "post"}:${candidate.slug}`;
+}
+
+async function keywordNearEnvelope(
+  input: ContentSearchInput,
+  publishedOnly: boolean,
+  edition: PlaybookEdition | undefined,
+  metadata: ContentSearchEnvelope["playbook"],
+  incompleteSources: string[]
+): Promise<ContentSearchEnvelope> {
+  const limit = Math.min(1000, Math.max(100, input.topK * 5));
+  const blog =
+    input.source !== "playbook" && wantsBlog(input.type)
+      ? await searchContent({
+          q: input.q,
+          topK: limit,
+          type: blogType(input.type),
+          publishedOnly,
+        })
+      : [];
+  const filteredBlog =
+    input.type === "clipping"
+      ? blog.filter((item) => item.type === "memo" && item.isClipping)
+      : blog;
+  const visibleBlog =
+    publishedOnly && filteredBlog.length
+      ? await (async () => {
+          const memoIds = [
+            ...new Set(
+              filteredBlog
+                .filter((item) => item.type === "memo")
+                .map((item) => item.id)
+                .filter((id): id is string => Boolean(id))
+            ),
+          ];
+          if (!memoIds.length) return filteredBlog;
+          const rows = await db
+            .select()
+            .from(posts)
+            .where(and(eq(posts.type, "memo"), inArray(posts.id, memoIds)));
+          const visible = new Map(
+            await Promise.all(
+              rows.map(async (row) => [row.id, await authorizeContent(row, true)] as const)
+            )
+          );
+          return filteredBlog.filter(
+            (item) => item.type !== "memo" || visible.get(item.id ?? "") === true
+          );
+        })()
+      : filteredBlog;
+  const playbook =
+    input.source !== "blog" && wantsPlaybook(input.type) && edition
+      ? searchPlaybookCandidates(edition, input.q, {
+          limit,
+          type: playbookType(input.type),
+        })
+      : [];
+  const lists: NearCandidate[][] = [visibleBlog, playbook];
+  const ranks = reciprocalRanks(lists, nearCandidateKey);
+  const seen = new Set<string>();
+  const merged = [...visibleBlog, ...playbook]
+    .filter((candidate) => {
+      const key = nearCandidateKey(candidate);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort(
+      (a, b) =>
+        (ranks.get(nearCandidateKey(b)) ?? 0) - (ranks.get(nearCandidateKey(a)) ?? 0) ||
+        nearCandidateKey(a).localeCompare(nearCandidateKey(b))
+    )
+    .slice(0, input.topK);
+  return {
+    results: merged.map((candidate) =>
+      isPlaybookNearCandidate(candidate)
+        ? playbookSearchResult(candidate, input.q, "keyword")
+        : { ...candidate, searchOrigin: "keyword" as const }
+    ),
+    requestedMode: input.mode,
+    effectiveMode: "keyword",
+    reason: "explicit-query",
+    ...(metadata ? { playbook: metadata } : {}),
+    ...(incompleteSources.length ? { incompleteSources } : {}),
+  };
 }
 
 export async function executeContentModes(
@@ -212,6 +490,33 @@ export async function executeContentModes(
     };
   }
   const publishedOnly = context.publishedOnly !== false;
+  const edition = await resolvePlaybookEdition(input);
+  const incompleteSources =
+    input.source !== "playbook" && wantsPlaybook(input.type) && !edition ? ["playbook"] : [];
+  const metadata = edition ? { playbook: playbookMetadata(edition) } : {};
+  const keywordState = async (query = input.q) => {
+    const state = await keywordCandidates(input, query, publishedOnly, edition);
+    const merged = mergeKeywordCandidates(state.blog, state.playbook, input.topK * 5);
+    await currentUnified(merged, publishedOnly, edition);
+    return { ...state, merged };
+  };
+  const keywordEnvelope = async (
+    reason?: SearchReason,
+    ragIncomplete = false
+  ): Promise<ContentSearchEnvelope> => {
+    const state = await keywordState();
+    return {
+      results: state.merged
+        .slice(0, input.topK)
+        .map((candidate) => resultForCandidate(candidate, input.q, "keyword")),
+      requestedMode: input.mode,
+      effectiveMode: "keyword",
+      ...(reason ? { reason } : {}),
+      ...(metadata.playbook ? { playbook: metadata.playbook } : {}),
+      ...(incompleteSources.length ? { incompleteSources } : {}),
+      ...(ragIncomplete ? { ragIncompleteSources: ["playbook"] } : {}),
+    };
+  };
   // Preserve the legacy SQLite query contract for callers that still use NEAR.
   // Tantivy remains the default engine for the new simple-query surface.
   if (
@@ -219,76 +524,24 @@ export async function executeContentModes(
   ) {
     if (parseSearchQuery(input.q).limitExceeded)
       throw new ContentSearchError("BAD_REQUEST", "query-budget-exceeded");
-    const legacy = await searchContent({
-      q: input.q,
-      topK: input.topK,
-      type: input.type,
-      publishedOnly,
-    });
-    const memoIds = [
-      ...new Set(
-        legacy
-          .filter((item) => item.type === "memo")
-          .map((item) => (item as typeof item & { id?: string }).id)
-          .filter((id): id is string => Boolean(id))
-      ),
-    ];
-    if (publishedOnly && memoIds.length) {
-      const rows = await db
-        .select()
-        .from(posts)
-        .where(and(eq(posts.type, "memo"), inArray(posts.id, memoIds)));
-      const visible = new Map(
-        await Promise.all(
-          rows.map(async (row) => [row.id, await authorizeContent(row, true)] as const)
-        )
-      );
-      const results = legacy
-        .filter(
-          (item) =>
-            item.type !== "memo" ||
-            visible.get((item as typeof item & { id?: string }).id ?? "") === true
-        )
-        .map((item) => ({ ...item, searchOrigin: "keyword" as const }));
-      return {
-        results,
-        requestedMode: input.mode,
-        effectiveMode: "keyword",
-        reason: "explicit-query",
-      };
-    }
-    return {
-      results: legacy.map((item) => ({ ...item, searchOrigin: "keyword" as const })),
-      requestedMode: input.mode,
-      effectiveMode: "keyword",
-      reason: "explicit-query",
-    };
+    return keywordNearEnvelope(input, publishedOnly, edition, metadata.playbook, incompleteSources);
   }
   const plan = planNativeQuery(input.q);
-  const index = await contentSearchIndex();
-  const keyword = await index.search(input.q, {
-    limit: input.topK,
-    type: input.type,
-    publishedOnly,
-  });
-  const keywordResult = async (reason?: SearchReason): Promise<ContentSearchEnvelope> => ({
-    results: (await current(keyword, publishedOnly)).map((x) =>
-      contentResult(x, input.q, "keyword")
-    ),
-    requestedMode: input.mode,
-    effectiveMode: "keyword",
-    ...(reason ? { reason } : {}),
-  });
-  if (plan.mode !== "simple") return keywordResult("explicit-query");
-  if (input.mode === "keyword") return keywordResult();
+  if (plan.mode !== "simple") return keywordEnvelope("explicit-query");
+  if (input.mode === "keyword") return keywordEnvelope();
   const resolved = await resolveSearchPolicy(input.mode);
-  if (resolved.reason) return keywordResult(resolved.reason);
+  const ragNeedsPlaybookCoverage =
+    input.mode === "rag" && input.source !== "blog" && wantsPlaybook(input.type);
+  if (resolved.reason) return keywordEnvelope(resolved.reason, ragNeedsPlaybookCoverage);
   if (!resolved.chat || !resolved.fingerprint || !resolved.resolved)
-    return keywordResult("unconfigured");
+    return keywordEnvelope("unconfigured", ragNeedsPlaybookCoverage);
   if (context.embeddingModel && context.embeddingModel !== resolved.resolved.embedding.model)
-    return keywordResult("unvalidated");
+    return keywordEnvelope("unvalidated");
   try {
-    let result: IndexedContent[];
+    const keyword = await keywordState();
+    const literal = keyword.merged;
+    let result: UnifiedCandidate[];
+    let semanticCoverageIncomplete = false;
     const snippetQueries = new Map<string, string>();
     if (input.mode === "rewrite") {
       const policy = resolved.policy;
@@ -299,93 +552,138 @@ export async function executeContentModes(
       }
       const maxQueries = "maxQueries" in policy ? policy.maxQueries : 3;
       const supplements: IndexedContent[] = [];
-      const lists = [keyword];
+      const lists: UnifiedCandidate[][] = [literal];
       for (const { query } of planSearchRewrites(plan.query, output.queries, maxQueries)) {
-        const matches = await index.search(query, {
-          limit: input.topK,
-          type: input.type,
+        if (input.source === "playbook" || !wantsBlog(input.type)) continue;
+        const matches = await keywordCandidates(
+          { ...input, source: "blog" },
+          query,
           publishedOnly,
-          aliases: false,
-        });
-        lists.push(matches);
-        for (const item of matches) {
+          undefined,
+          Math.min(1000, Math.max(100, input.topK * 5))
+        );
+        lists.push(matches.blog);
+        for (const item of matches.blog) {
           snippetQueries.set(item.row.id, query);
           supplements.push(item);
         }
       }
       cacheSet(rewriteCache, key, output);
-      const ranks = reciprocalRanks(lists, (item) => item.row.id);
+      const ranks = reciprocalRanks(lists, unifiedId);
       result = mergeProtected(
-        keyword,
+        literal,
         supplements,
         input.topK,
         (a, b) =>
-          (ranks.get(b.row.id) ?? 0) - (ranks.get(a.row.id) ?? 0) ||
-          a.row.id.localeCompare(b.row.id)
+          (ranks.get(unifiedId(b)) ?? 0) - (ranks.get(unifiedId(a)) ?? 0) ||
+          unifiedId(a).localeCompare(unifiedId(b))
       );
     } else {
       const policy = resolved.policy;
       const candidateLimit =
         context.candidateLimit ?? ("candidateLimit" in policy ? policy.candidateLimit : 20);
       const contentCodePoints = "contentCodePoints" in policy ? policy.contentCodePoints : 2048;
+      const blogInputType = blogType(input.type);
       const vectors =
-        keyword.length >= input.topK
+        literal.length >= input.topK || input.source === "playbook" || !wantsBlog(input.type)
           ? []
           : await vectorCandidates(
               plan.query,
               resolved.resolved.embedding,
               candidateLimit,
               publishedOnly,
-              input.type
+              blogInputType
             );
-      const candidates = [...keyword];
-      const seen = new Set(keyword.map((x) => x.row.id));
+      const playbookVectors =
+        edition &&
+        input.source !== "blog" &&
+        wantsPlaybook(input.type) &&
+        literal.length < input.topK
+          ? await semanticPlaybookCandidates(
+              plan.query,
+              resolved.resolved.embedding,
+              edition,
+              candidateLimit,
+              playbookType(input.type)
+            )
+          : [];
+      semanticCoverageIncomplete =
+        input.source !== "blog" &&
+        wantsPlaybook(input.type) &&
+        literal.length < input.topK &&
+        playbookVectors.length === 0;
+      const candidates: UnifiedCandidate[] = [...literal];
+      const seen = new Set(literal.map(unifiedId));
       for (const item of vectors)
-        if (!seen.has(item.row.id)) {
-          seen.add(item.row.id);
+        if (!seen.has(unifiedId(item))) {
+          seen.add(unifiedId(item));
+          candidates.push(item);
+        }
+      for (const item of playbookVectors)
+        if (!seen.has(unifiedId(item))) {
+          seen.add(unifiedId(item));
           candidates.push(item);
         }
       const contextual: IndexedContent[] = [];
       // Runtime-only Node is a contextual supplement. Retrieval broadening is RAG-only.
-      if (/^(?:nodejs|node\.js)$/iu.test(plan.query) && keyword.length < input.topK) {
-        for (const item of await index.search("Node", {
-          limit: candidateLimit,
-          type: input.type,
+      if (
+        /^(?:nodejs|node\.js)$/iu.test(plan.query) &&
+        literal.length < input.topK &&
+        wantsBlog(input.type)
+      ) {
+        const contextualMatches = await keywordCandidates(
+          { ...input, source: "blog" },
+          "Node",
           publishedOnly,
-          aliases: false,
-        })) {
-          if (!seen.has(item.row.id)) {
-            seen.add(item.row.id);
+          undefined,
+          candidateLimit
+        );
+        for (const item of contextualMatches.blog) {
+          if (!seen.has(unifiedId(item))) {
+            seen.add(unifiedId(item));
             candidates.push(item);
           }
           contextual.push(item);
         }
       }
-      const candidateRanks = reciprocalRanks([keyword, vectors, contextual], (item) => item.row.id);
+      const candidateRanks = reciprocalRanks(
+        [literal, vectors, playbookVectors, contextual],
+        unifiedId
+      );
       const windows = candidates
         .sort(
           (a, b) =>
-            (candidateRanks.get(b.row.id) ?? 0) - (candidateRanks.get(a.row.id) ?? 0) ||
-            a.row.id.localeCompare(b.row.id)
+            (candidateRanks.get(unifiedId(b)) ?? 0) - (candidateRanks.get(unifiedId(a)) ?? 0) ||
+            unifiedId(a).localeCompare(unifiedId(b))
         )
         .slice(0, candidateLimit);
-      await current(windows, publishedOnly);
+      await currentUnified(windows, publishedOnly, edition);
       const payload = windows.map((x) => ({
-        id: x.row.id,
-        title: x.row.title,
-        content: searchContext(plan.query, x.row, contentCodePoints),
+        id: unifiedId(x),
+        title: unifiedTitle(x),
+        content: isPlaybookCandidate(x)
+          ? playbookCandidateContext(x, plan.query, contentCodePoints).content
+          : searchContext(plan.query, x.row, contentCodePoints),
+        ...(isPlaybookCandidate(x)
+          ? playbookCandidateContext(x, plan.query, contentCodePoints)
+          : {
+              source: "blog",
+              type: x.row.type,
+              path: `${x.row.type}/${x.row.slug}`,
+              location: "content",
+            }),
       }));
       const key = digest({
         query: plan.query,
         fingerprint: resolved.fingerprint,
-        windows: windows.map((x) => [x.row.id, x.version]),
+        windows: windows.map((x) => [unifiedId(x), unifiedVersion(x)]),
         payload,
       });
       let output = cacheGet(judgementCache, key);
       if (!output) {
         output = await judgeSearchCandidates(resolved.chat, policy, plan.query, payload);
       }
-      const supplied = new Set(windows.map((x) => x.row.id));
+      const supplied = new Set(windows.map(unifiedId));
       if (
         output.items.length !== windows.length ||
         new Set(output.items.map((x) => x.id)).size !== supplied.size ||
@@ -394,34 +692,53 @@ export async function executeContentModes(
         throw new SearchModelError("invalid-output");
       cacheSet(judgementCache, key, output);
       const judgments = new Map(output.items.map((x) => [x.id, x]));
-      const supplements = windows.filter((x) => judgments.get(x.row.id)?.relevant);
+      const supplements = windows.filter((x) => judgments.get(unifiedId(x))?.relevant);
+      const judged = [...supplements].sort(
+        (a, b) =>
+          (judgments.get(unifiedId(a))?.rank ?? 101) - (judgments.get(unifiedId(b))?.rank ?? 101)
+      );
+      const judgedRanks = reciprocalRanks([judged], unifiedId);
       result = mergeProtected(
-        keyword,
+        literal,
         supplements,
         input.topK,
         (a, b) =>
-          (judgments.get(a.row.id)?.rank ?? 101) - (judgments.get(b.row.id)?.rank ?? 101) ||
-          (b.row.publishDate ?? 0) - (a.row.publishDate ?? 0) ||
-          a.row.id.localeCompare(b.row.id)
+          (judgedRanks.get(unifiedId(b)) ?? 0) * 2 - (judgedRanks.get(unifiedId(a)) ?? 0) * 2 ||
+          (candidateRanks.get(unifiedId(b)) ?? 0) - (candidateRanks.get(unifiedId(a)) ?? 0) ||
+          unifiedPublishDate(b) - unifiedPublishDate(a) ||
+          unifiedId(a).localeCompare(unifiedId(b))
       );
     }
     if ((await resolveSearchPolicy(input.mode)).fingerprint !== resolved.fingerprint)
-      return keywordResult("unvalidated");
-    await current(result, publishedOnly);
-    const keywordIds = new Set(keyword.map((x) => x.row.id));
+      return keywordEnvelope("unvalidated");
+    await currentUnified(result, publishedOnly, edition);
+    const keywordIds = new Set(literal.map(unifiedId));
+    const ragIncompleteSources =
+      input.mode === "rag" &&
+      input.source !== "blog" &&
+      wantsPlaybook(input.type) &&
+      (semanticCoverageIncomplete || !edition)
+        ? ["playbook"]
+        : [];
     return {
       results: result.map((x) =>
-        contentResult(
+        resultForCandidate(
           x,
-          snippetQueries.get(x.row.id) ?? input.q,
-          keywordIds.has(x.row.id) ? "keyword" : "ai"
+          isPlaybookCandidate(x) ? input.q : (snippetQueries.get(x.row.id) ?? input.q),
+          keywordIds.has(unifiedId(x)) ? "keyword" : "ai"
         )
       ),
       requestedMode: input.mode,
       effectiveMode: input.mode,
+      ...(metadata.playbook ? { playbook: metadata.playbook } : {}),
+      ...(incompleteSources.length ? { incompleteSources } : {}),
+      ...(ragIncompleteSources.length ? { ragIncompleteSources } : {}),
     };
   } catch (error) {
     if (error instanceof ContentSearchError) throw error;
-    return keywordResult(error instanceof SearchModelError ? error.reason : "unavailable");
+    return keywordEnvelope(
+      error instanceof SearchModelError ? error.reason : "unavailable",
+      ragNeedsPlaybookCoverage
+    );
   }
 }
