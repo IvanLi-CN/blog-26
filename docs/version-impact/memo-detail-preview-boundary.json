@@ -4,7 +4,7 @@
   "base_sha": "ceecf5ed867ee849fce6d8e5d8225e9e5505923a",
   "covered_files": {
     ".github/quality-gates.json": "1a3e713708baaf265adce051b8b613b3a525bb4f",
-    ".github/workflows/e2e.yml": "5521a14a31315cb296dfff4798515161b15d5751",
+    ".github/workflows/e2e.yml": "5ee75c8aee10c7fbfe968321f17c32189c717905",
     ".gitignore": "ce64803d3963e4668cd644c7ef465dd36e266eba",
     "GLOSSARY.md": "d123cb3d82eabceaf2260468391ff5dc3ad23f46",
     "apps/admin/src/demo/mock-admin-api.ts": "51ee39963bad553972dfee4b576e7da0e44a5d6e",
@@ -39,7 +39,7 @@
     "tests/e2e/admin/memos/helpers.ts": "d858b41e327d7570fbed70c7f3481611209e0dde",
     "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts": "8f2abe570c343db4e6634c6e5335ca53428bd988",
     "tests/e2e/guest/public-csr-navigation.spec.ts": "7df417873f7586d4f6eeaab787b521d156de746b",
-    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "0ca06c6941f2e2d80692b15cac7128c2363614df",
+    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "ce1f6c898028577c405b0c696c9f0548a4fbd5b4",
     "tests/e2e/web-demo/playwright.config.ts": "8dc2e45e799abdb4c24e390702f471283042e63d",
     "tests/lib/console-memo-page-data.test.ts": "369c2c4d5c3dadd25c0a3f42afeca870aa2404f1",
     "tests/lib/console-web-demo.test.ts": "922bc22e3cbb5d30b94378929ceaa56202366090",
