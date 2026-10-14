@@ -6,7 +6,7 @@
     ".gitignore": "ce64803d3963e4668cd644c7ef465dd36e266eba",
     "GLOSSARY.md": "d123cb3d82eabceaf2260468391ff5dc3ad23f46",
     "apps/admin/src/demo/mock-admin-api.ts": "51ee39963bad553972dfee4b576e7da0e44a5d6e",
-    "apps/admin/src/pages/preview.tsx": "6f99762924bb4c77750268ad835cec6a7f77cc03",
+    "apps/admin/src/pages/preview.tsx": "3d11d28eb5559e8c32096c1cc8cd5a4741e2cd4a",
     "astro.config.mjs": "cf1b94ec1c122ce5ea2f87f5f6e03d6021d85724",
     "docs/adr/0024-memo-detail-preview-boundary.md": "181d067980d444f265ac62443fc3d824077f7e61",
     "docs/specs/memo-admin-inline-view/SPEC.md": "88e82dcfe4e4f00e84ea4d291428e10d6615cb21",
@@ -14,10 +14,10 @@
     "scripts/build-web-demo.ts": "3ecde93da63683fe6c34cda3ea5f9085f48f8c76",
     "scripts/preview-web-demo.ts": "5d92e6c3d65147497a6a215fe27393571f6f43b3",
     "site/components/PublicMemoAuthoring.public.tsx": "f2d5178a4f6ef032b2b42e10fa51cc87bb920d63",
-    "site/components/PublicMemoAuthoring.tsx": "570d6bb5ec58731e610195dd1ca4626f0d5b13a9",
+    "site/components/PublicMemoAuthoring.tsx": "6a165ffa4aae66d0d395019f748f546c156ece69",
     "site/components/PublicRouter.tsx": "528da86451956f2a4585b570241ff3034309f372",
     "site/components/VirtualizedMemoList.tsx": "107f3d0d36b640fc780a3554098f421cbfaac07c",
-    "site/components/pages/memo.tsx": "54d23a805810930665ccfb196e63f4259aecd705",
+    "site/components/pages/memo.tsx": "0589fe14018ec2c3310c4fe5944abfcfb54ff806",
     "site/lib/page-data/memo.ts": "9cfaa69697910998b7ec4502d664d4ebda797ac2",
     "site/lib/page-data/memos.ts": "66a2343fa2fe3c7e5ac4870603a9d9eaba1e9627",
     "site/pages/memos/[slug].astro": "c19abf54d59fd88cc31a59e32ba14355e23799b5",
@@ -30,7 +30,7 @@
     "src/server/clipping/api.ts": "c9f16d2ced4b0f248ad5a53d5e1f3f21a434b82e",
     "src/server/http-compat-api.test.ts": "aa055bf98c2b7f090380189b34356ec9839a096a",
     "src/server/routers/memos.ts": "dae1d2f73077b47bd3cbe7fc65c309aacdbc4183",
-    "tests/components/PublicMemoAuthoring.test.tsx": "f12852d73e81e1cc87788496c52f936688d3339d",
+    "tests/components/PublicMemoAuthoring.test.tsx": "0e581cd9a8b9075457573dfe40787552e311401a",
     "tests/e2e/admin/memos-admin.spec.ts": "173c142fa9274f0bba70c7181b0547bb09dd01c2",
     "tests/e2e/admin/memos/helpers.ts": "d858b41e327d7570fbed70c7f3481611209e0dde",
     "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts": "2027256d9932aa3d030863770a2f6f4beca287c6",
@@ -67,7 +67,7 @@
     "current": {
       "impact": "patch",
       "reasoning": "The candidate changes only the Console Memo detail/preview boundary, request-scoped initial projection, unauthorized read status mapping, shared route history state, and the official build-time Web Demo evidence surface. Public API payload shapes, persistent state, snapshot publishing, and deployment host configuration remain unchanged; the deliberate 403-to-404 mapping for unauthorized private reads makes them indistinguishable from missing resources, while the Demo uses an explicit guest projection that omits authoring-only fields. Console guests now use the current request-scoped public API projection and cannot fall back to a lagging public snapshot after a Memo becomes private or draft. The current candidate also keeps administrator tools inside the Memo detail reading surface on desktop and mobile.",
-      "assessed_at": "2026-10-14T07:13:28.080Z",
+      "assessed_at": "2026-10-14T15:27:03+08:00",
       "evidence": [
         {
           "path": "site/lib/page-data/memo.ts",
@@ -113,7 +113,7 @@
     "verified": {
       "impact": "patch",
       "reasoning": "Focused component, Console projection, page-data source selection, clipping, HTTP compatibility, official Web Demo build, and Console browser acceptance checks pass. The implementation preserves existing public payload shapes and persistent state while enforcing the same-origin detail/preview boundary and private-resource non-disclosure; the 403-to-404 status change is an intentional compatible privacy hardening because private and missing resources share the documented not-found response. Console runtime now refuses snapshot fallback when the current request has no authorized Memo projection. The focused Web Demo evidence additionally asserts that the administrator toolbar is contained by the visible detail card.",
-      "assessed_at": "2026-10-14T07:13:28.080Z",
+      "assessed_at": "2026-10-14T15:27:03+08:00",
       "evidence": [
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
@@ -132,8 +132,8 @@
         },
         {
           "path": "tests/components/PublicMemoAuthoring.test.tsx",
-          "blob": "f12852d73e81e1cc87788496c52f936688d3339d",
-          "command": "Component regression: 7 passed in the focused suite"
+          "blob": "0e581cd9a8b9075457573dfe40787552e311401a",
+          "command": "Component regression: 8 passed, including public timeline recovery after SSR admin auth downgrade"
         },
         {
           "path": "src/lib/web-demo-fetch.ts",
@@ -193,8 +193,8 @@
       "evidence": [
         {
           "path": "tests/components/PublicMemoAuthoring.test.tsx",
-          "blob": "f12852d73e81e1cc87788496c52f936688d3339d",
-          "command": "Component regression suite covers same-route editing and state updates without introducing persisted state"
+          "blob": "0e581cd9a8b9075457573dfe40787552e311401a",
+          "command": "Component regression suite covers same-route editing, auth downgrade timeline recovery, and state updates without introducing persisted state"
         }
       ]
     }

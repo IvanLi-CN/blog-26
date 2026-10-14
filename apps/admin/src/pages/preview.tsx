@@ -192,6 +192,12 @@ export function MemoPreviewArticle({ memo }: { memo: AdminPreviewMemo }) {
                 initialArticle={{ reading: clipping, source: null, translation: null }}
                 live
                 initialCanDiscuss
+                publicMediaContext={{
+                  kind: "memo",
+                  slug: memo.slug,
+                  filePath: memo.filePath || memo.slug,
+                  assetScope: "admin-preview",
+                }}
               />
             )
           : undefined

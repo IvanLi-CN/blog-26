@@ -53,6 +53,7 @@ export default function MemoPage(data: Awaited<ReturnType<typeof loadmemo>>) {
                 memoContent={memoDetailContent}
                 initialArticle={clippingArticle}
                 header={heading}
+                publicMediaContext={publicMediaContext}
               />
             ) : (
               <div

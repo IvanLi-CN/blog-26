@@ -13,9 +13,16 @@ import type { ClippingReading } from "@/lib/memo-clipping";
 import { getMemoPresentation } from "@/lib/memo-presentation";
 import type { PublicMediaContext } from "@/lib/public-media";
 import { webDemoFetch } from "@/lib/web-demo-fetch";
-import { adminMemoRecordSchema, parseMemoPage } from "../lib/memo-pagination";
+import {
+  adminMemoRecordSchema,
+  parseMemoPage,
+  publicMemoCardSchema,
+  toMemoCardRecord,
+} from "../lib/memo-pagination";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
+import type { MemoCardRecord } from "./MemoCard";
 import { MEMO_PAGE_SIZE } from "./MemoPagination";
+import MemoTimeline from "./MemoTimeline";
 import VirtualizedMemoList from "./VirtualizedMemoList";
 
 type PublicMemoRecord = {
@@ -360,6 +367,44 @@ export function PublicMemoComposerIsland({
     | null
   >(null);
   const [listErrorPhase, setListErrorPhase] = useState<"initial" | "append" | null>(null);
+  const [publicFallbackMemos, setPublicFallbackMemos] = useState<MemoCardRecord[]>([]);
+  const [publicFallbackHasMore, setPublicFallbackHasMore] = useState(false);
+  const [publicFallbackNextCursor, setPublicFallbackNextCursor] = useState<string | null>(null);
+  const [publicFallbackHasNewer, setPublicFallbackHasNewer] = useState(false);
+  const [publicFallbackPreviousCursor, setPublicFallbackPreviousCursor] = useState<string | null>(
+    null
+  );
+  const [publicFallbackLoading, setPublicFallbackLoading] = useState(initialIsAdmin);
+  const [publicFallbackError, setPublicFallbackError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!initialIsAdmin || isLoading || isAdmin) return;
+    let active = true;
+    setPublicFallbackLoading(true);
+    setPublicFallbackError(null);
+    void readJson<PublicMemoListResponse>(
+      toPublicApiUrl("/api/public/memos?publicOnly=true&limit=10")
+    )
+      .then((result) => {
+        if (!active) return;
+        const page = parseMemoPage(result, "older", publicMemoCardSchema);
+        setPublicFallbackMemos(page.memos.map(toMemoCardRecord));
+        setPublicFallbackHasMore(page.hasMore);
+        setPublicFallbackNextCursor(page.nextCursor);
+        setPublicFallbackHasNewer(page.hasPrevious);
+        setPublicFallbackPreviousCursor(page.previousCursor);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setPublicFallbackError(error instanceof Error ? error.message : String(error));
+      })
+      .finally(() => {
+        if (active) setPublicFallbackLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [initialIsAdmin, isAdmin, isLoading, readJson]);
 
   const requestMemoPage = useCallback(
     async ({
@@ -652,8 +697,29 @@ export function PublicMemoComposerIsland({
     }
   }, [previousCursor, requestMemoPage]);
 
-  if (isLoading || !isAdmin) {
-    return null;
+  if (isLoading) return null;
+
+  if (!isAdmin) {
+    if (publicFallbackLoading) {
+      return (
+        <p className="nature-muted mb-8" role="status">
+          正在加载公开 Memo…
+        </p>
+      );
+    }
+    return (
+      <MemoTimeline
+        source="database"
+        initialMemos={publicFallbackMemos}
+        initialHasMore={publicFallbackHasMore}
+        initialNextCursor={publicFallbackNextCursor}
+        initialHasNewer={publicFallbackHasNewer}
+        initialPreviousCursor={publicFallbackPreviousCursor}
+        initialError={publicFallbackError}
+        iconMap={{}}
+        iconSvgMap={{}}
+      />
+    );
   }
 
   return (
@@ -1028,6 +1094,7 @@ export function PublicMemoDetailControlsIsland({
                 live
                 initialCanDiscuss={Boolean(memo.canDiscuss || effectiveIsAdmin)}
                 surface={effectiveIsAdmin ? "admin" : "public"}
+                publicMediaContext={publicMediaContext}
                 onTitleChange={(title) =>
                   setMemo((current) =>
                     current && current.title !== title ? { ...current, title } : current

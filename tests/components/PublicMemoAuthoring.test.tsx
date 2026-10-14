@@ -228,4 +228,44 @@ describe.serial("Memo detail boundary", () => {
     });
     expect(view.queryByRole("button", { name: "编辑 Memo" })).toBeNull();
   });
+
+  test("restores the public timeline after an SSR admin session downgrades", async () => {
+    globalThis.fetch = (async (input) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/auth/me") return Response.json(null);
+      if (url.pathname === "/api/public/memos") {
+        expect(url.searchParams.get("publicOnly")).toBe("true");
+        return Response.json({
+          memos: [
+            {
+              id: "public-after-downgrade",
+              slug: "public-after-downgrade",
+              title: "公开 Memo",
+              excerpt: "公开内容",
+              isPublic: true,
+              tags: [],
+              createdAt: "2026-10-14T00:00:00.000Z",
+              publishedAt: "2026-10-14T00:00:00.000Z",
+            },
+          ],
+          hasMore: false,
+          hasPrevious: false,
+          nextCursor: null,
+          previousCursor: null,
+        });
+      }
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    }) as typeof fetch;
+
+    const view = render(
+      <PublicMemoComposerIsland
+        initialIsAdmin
+        initialMemos={[{ ...memo("private-ssr"), isPublic: false }]}
+        localSourceEnabled={false}
+      />
+    );
+
+    await waitFor(() => expect(view.getByText("公开 Memo")).toBeTruthy());
+    expect(view.queryByText("private-ssr")).toBeNull();
+  });
 });
