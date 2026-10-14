@@ -1,10 +1,6 @@
 import type { z } from "zod";
 import { isLocalContentEnabled } from "@/config/paths";
-import {
-  getConsoleWebDemoMemos,
-  getConsoleWebDemoPersona,
-  getConsoleWebDemoPublicMemos,
-} from "@/lib/console-web-demo";
+import { createConsoleWebDemoStore, getConsoleWebDemoPersona } from "@/lib/console-web-demo";
 import { getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
 import {
@@ -65,15 +61,9 @@ export async function loadmemos(Astro: PageContext) {
     initialMemosPreviousCursor = demoPage.previousCursor;
   } else if (isConsoleWebDemo) {
     const persona = getConsoleWebDemoPersona(Astro.url);
-    const demoMemos =
-      persona === "admin" ? getConsoleWebDemoMemos() : getConsoleWebDemoPublicMemos();
-    const demoPage = {
-      memos: demoMemos,
-      hasMore: false,
-      nextCursor: null,
-      hasPrevious: false,
-      previousCursor: null,
-    };
+    const demoPage = createConsoleWebDemoStore({
+      cookieHeader: Astro.request.headers.get("cookie") ?? undefined,
+    }).list(persona);
     initialIsAdmin = persona === "admin";
     if (initialIsAdmin) initialAuthorMemos = demoPage.memos;
     else initialMemos = demoPage.memos;

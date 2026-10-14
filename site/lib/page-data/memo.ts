@@ -1,7 +1,7 @@
 import type { ConsoleWebDemoPublicMemo } from "@/lib/console-web-demo";
 import {
+  createConsoleWebDemoStore,
   getConsoleWebDemoClippingArticle,
-  getConsoleWebDemoMemo,
   getConsoleWebDemoPersona,
 } from "@/lib/console-web-demo";
 import { extractTextSummary, stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
@@ -85,7 +85,9 @@ async function loadConsoleMemo(Astro: PageContext, slug: string) {
   if (process.env.CONSOLE_WEB_DEMO_BUILD === "true") {
     const persona = getConsoleWebDemoPersona(Astro.url);
     if (persona !== "admin") return null;
-    const memo = getConsoleWebDemoMemo(slug, persona);
+    const memo = createConsoleWebDemoStore({
+      cookieHeader: Astro.request.headers.get("cookie") ?? undefined,
+    }).get(slug, persona);
     if (!memo) throw new PublicRouteNotFound();
     return {
       memo,
@@ -146,15 +148,20 @@ export async function loadmemo(Astro: PageContext) {
   const consoleMemo = await loadConsoleMemo(Astro, Astro.params.slug ?? "");
   const snapshot = await getSnapshot();
   const consoleWebDemoPersona = isConsoleWebDemo ? getConsoleWebDemoPersona(Astro.url) : null;
+  const consoleWebDemoStore = isConsoleWebDemo
+    ? createConsoleWebDemoStore({
+        cookieHeader: Astro.request.headers.get("cookie") ?? undefined,
+      })
+    : null;
   const consoleWebDemoMemo =
     consoleWebDemoPersona === null
       ? null
       : consoleWebDemoPersona === "admin"
-        ? getConsoleWebDemoMemo(Astro.params.slug ?? "", "admin")
-        : getConsoleWebDemoMemo(Astro.params.slug ?? "", consoleWebDemoPersona);
+        ? (consoleWebDemoStore?.get(Astro.params.slug ?? "", "admin") ?? null)
+        : (consoleWebDemoStore?.get(Astro.params.slug ?? "", consoleWebDemoPersona) ?? null);
   const consoleWebDemoAdminMemo =
     consoleWebDemoPersona === "admin"
-      ? getConsoleWebDemoMemo(Astro.params.slug ?? "", "admin")
+      ? (consoleWebDemoStore?.get(Astro.params.slug ?? "", "admin") ?? null)
       : null;
   const memo = selectMemoForRender({
     consoleWebDemoMemo,

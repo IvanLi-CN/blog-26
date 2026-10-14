@@ -264,6 +264,7 @@ describe.serial("Memo detail boundary", () => {
       await Promise.resolve();
     });
     await waitFor(() => expect(authRequests).toBe(2));
+    expect(view.queryByRole("button", { name: "编辑 Memo" })).toBeNull();
 
     await act(async () => {
       resolveSecond?.(Response.json(null));

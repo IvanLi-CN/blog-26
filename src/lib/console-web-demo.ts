@@ -121,29 +121,43 @@ const seedMemos: ConsoleWebDemoMemo[] = [
 ];
 
 const CONSOLE_WEB_DEMO_STORE_KEY = "console-web-demo-memos-v2";
+const CONSOLE_WEB_DEMO_MUTATION_COOKIE = "console_web_demo_mutations_v1";
+const CONSOLE_WEB_DEMO_COOKIE_LIMIT = 3800;
 
-function readPersistedStore(storageKey: string) {
-  if (typeof window === "undefined") return null;
+type ConsoleWebDemoMutationUpdate = {
+  s: string;
+  c: string;
+  p: boolean;
+  t: string[];
+  u: string;
+  v: string | null;
+};
+
+type ConsoleWebDemoMutationJournal = {
+  sequence: number;
+  deleted: string[];
+  created: ConsoleWebDemoMemo[];
+  updated: ConsoleWebDemoMutationUpdate[];
+};
+
+function isConsoleWebDemoMemo(value: unknown): value is ConsoleWebDemoMemo {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      typeof (value as { id?: unknown }).id === "string" &&
+      typeof (value as { slug?: unknown }).slug === "string" &&
+      typeof (value as { content?: unknown }).content === "string" &&
+      typeof (value as { isPublic?: unknown }).isPublic === "boolean"
+  );
+}
+
+function parsePersistedStore(raw: string | null) {
+  if (!raw) return null;
   try {
-    const raw = window.sessionStorage.getItem(storageKey);
-    if (!raw) return null;
     const parsed = JSON.parse(raw) as { memos?: unknown; sequence?: unknown };
-    if (
-      !parsed ||
-      !Array.isArray(parsed.memos) ||
-      !parsed.memos.every(
-        (memo) =>
-          memo &&
-          typeof memo === "object" &&
-          typeof (memo as { id?: unknown }).id === "string" &&
-          typeof (memo as { slug?: unknown }).slug === "string" &&
-          typeof (memo as { content?: unknown }).content === "string" &&
-          typeof (memo as { isPublic?: unknown }).isPublic === "boolean"
-      )
-    )
-      return null;
+    if (!Array.isArray(parsed.memos) || !parsed.memos.every(isConsoleWebDemoMemo)) return null;
     return {
-      memos: parsed.memos as ConsoleWebDemoMemo[],
+      memos: parsed.memos,
       sequence:
         typeof parsed.sequence === "number" && Number.isSafeInteger(parsed.sequence)
           ? parsed.sequence
@@ -154,12 +168,160 @@ function readPersistedStore(storageKey: string) {
   }
 }
 
+function readCookieValue(cookieHeader: string | undefined, name: string) {
+  if (!cookieHeader) return null;
+  for (const part of cookieHeader.split(";")) {
+    const separator = part.indexOf("=");
+    if (separator < 0 || part.slice(0, separator).trim() !== name) continue;
+    try {
+      return decodeURIComponent(part.slice(separator + 1).trim());
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function readPersistedStore(storageKey: string) {
+  if (typeof window === "undefined") return null;
+  try {
+    return parsePersistedStore(window.sessionStorage.getItem(storageKey));
+  } catch {
+    return null;
+  }
+}
+
+function readMutationJournal(cookieHeader?: string) {
+  const cookieSource =
+    cookieHeader ?? (typeof document === "undefined" ? undefined : document.cookie);
+  const raw = readCookieValue(cookieSource, CONSOLE_WEB_DEMO_MUTATION_COOKIE);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<ConsoleWebDemoMutationJournal>;
+    if (
+      !parsed ||
+      !Array.isArray(parsed.deleted) ||
+      !parsed.deleted.every((slug) => typeof slug === "string") ||
+      !Array.isArray(parsed.created) ||
+      !parsed.created.every(isConsoleWebDemoMemo) ||
+      !Array.isArray(parsed.updated)
+    )
+      return null;
+    return {
+      sequence:
+        typeof parsed.sequence === "number" && Number.isSafeInteger(parsed.sequence)
+          ? parsed.sequence
+          : 0,
+      deleted: parsed.deleted,
+      created: parsed.created,
+      updated: parsed.updated.filter((update): update is ConsoleWebDemoMutationUpdate =>
+        Boolean(
+          update &&
+            typeof update === "object" &&
+            typeof update.s === "string" &&
+            typeof update.c === "string" &&
+            typeof update.p === "boolean" &&
+            Array.isArray(update.t) &&
+            update.t.every((tag) => typeof tag === "string") &&
+            typeof update.u === "string" &&
+            (typeof update.v === "string" || update.v === null)
+        )
+      ),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function titleFromContent(content: string, fallback: string) {
+  return content.match(/^#\s+([^\n]+)/u)?.[1]?.trim() || fallback || "未命名 Memo";
+}
+
+function excerptFromContent(content: string) {
+  return content
+    .replace(/^#\s+[^\n]+\n*/u, "")
+    .trim()
+    .slice(0, 180);
+}
+
+function applyMutationJournal(seed: ConsoleWebDemoMemo[], journal: ConsoleWebDemoMutationJournal) {
+  const deleted = new Set(journal.deleted);
+  const updates = new Map(journal.updated.map((update) => [update.s, update]));
+  const memos = seed
+    .filter((memo) => !deleted.has(memo.slug))
+    .map((memo) => {
+      const update = updates.get(memo.slug);
+      if (!update) return memo;
+      const title = titleFromContent(update.c, memo.title);
+      return {
+        ...memo,
+        title,
+        authoredTitle: title,
+        authoredContent: update.c,
+        content: update.c,
+        excerpt: excerptFromContent(update.c),
+        isPublic: update.p,
+        draft: !update.p,
+        tags: update.t,
+        publishedAt: update.p ? (update.v ?? memo.publishedAt ?? update.u) : null,
+        updatedAt: update.u,
+      };
+    });
+  return [...journal.created.map(cloneMemo), ...memos];
+}
+
+function buildMutationJournal(memos: ConsoleWebDemoMemo[], sequence: number) {
+  const seed = getConsoleWebDemoMemos();
+  const seedBySlug = new Map(seed.map((memo) => [memo.slug, memo]));
+  const currentBySlug = new Map(memos.map((memo) => [memo.slug, memo]));
+  const deleted = seed.filter((memo) => !currentBySlug.has(memo.slug)).map((memo) => memo.slug);
+  const created = memos.filter((memo) => !seedBySlug.has(memo.slug)).map(cloneMemo);
+  const updated = memos.flatMap((memo) => {
+    const original = seedBySlug.get(memo.slug);
+    if (
+      !original ||
+      (original.content === memo.content &&
+        original.isPublic === memo.isPublic &&
+        original.draft === memo.draft &&
+        original.title === memo.title &&
+        JSON.stringify(original.tags) === JSON.stringify(memo.tags) &&
+        original.publishedAt === memo.publishedAt)
+    )
+      return [];
+    return [
+      {
+        s: memo.slug,
+        c: memo.content,
+        p: memo.isPublic,
+        t: memo.tags,
+        u: memo.updatedAt,
+        v: memo.publishedAt,
+      },
+    ];
+  });
+  return { sequence, deleted, created, updated } satisfies ConsoleWebDemoMutationJournal;
+}
+
 function persistStore(storageKey: string, memos: ConsoleWebDemoMemo[], sequence: number) {
   if (typeof window === "undefined") return;
   try {
     window.sessionStorage.setItem(storageKey, JSON.stringify({ memos, sequence }));
   } catch {
     // Session storage is an optional bridge between the Console and preview bundles.
+  }
+  try {
+    const encoded = encodeURIComponent(JSON.stringify(buildMutationJournal(memos, sequence)));
+    if (encoded.length > CONSOLE_WEB_DEMO_COOKIE_LIMIT) return;
+    if (
+      encoded ===
+      encodeURIComponent(JSON.stringify({ sequence, deleted: [], created: [], updated: [] }))
+    ) {
+      document.cookie = `${CONSOLE_WEB_DEMO_MUTATION_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`;
+    } else {
+      document.cookie = `${CONSOLE_WEB_DEMO_MUTATION_COOKIE}=${encoded}; Path=/; SameSite=Lax`;
+    }
+  } catch {
+    // The cookie is an optional SSR bridge for the in-memory Web Demo state.
   }
 }
 
@@ -245,11 +407,18 @@ export function getConsoleWebDemoClippingArticle(slug: string, persona: WebDemoP
   };
 }
 
-export function createConsoleWebDemoStore(options: { storageKey?: string } = {}) {
+export function createConsoleWebDemoStore(
+  options: { storageKey?: string; cookieHeader?: string } = {}
+) {
   const storageKey = options.storageKey ?? CONSOLE_WEB_DEMO_STORE_KEY;
   const persisted = readPersistedStore(storageKey);
-  let memos = persisted?.memos ?? getConsoleWebDemoMemos();
-  let sequence = persisted?.sequence ?? 0;
+  const cookieJournal = readMutationJournal(options.cookieHeader);
+  let memos =
+    persisted?.memos ??
+    (cookieJournal
+      ? applyMutationJournal(getConsoleWebDemoMemos(), cookieJournal)
+      : getConsoleWebDemoMemos());
+  let sequence = persisted?.sequence ?? cookieJournal?.sequence ?? 0;
 
   const visible = (persona: WebDemoPersona) =>
     memos
@@ -292,6 +461,7 @@ export function createConsoleWebDemoStore(options: { storageKey?: string } = {})
       if (!current) return null;
       const title =
         input.content.match(/^#\s+([^\n]+)/u)?.[1]?.trim() || current.title || "未命名 Memo";
+      const now = new Date().toISOString();
       const updated = {
         ...current,
         title,
@@ -305,7 +475,8 @@ export function createConsoleWebDemoStore(options: { storageKey?: string } = {})
         isPublic: input.isPublic,
         draft: !input.isPublic,
         tags: input.tags ?? current.tags,
-        updatedAt: new Date().toISOString(),
+        publishedAt: input.isPublic ? (current.publishedAt ?? now) : null,
+        updatedAt: now,
       };
       memos = memos.map((memo) => (memo.slug === slug ? updated : memo));
       persistStore(storageKey, memos, sequence);

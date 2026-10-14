@@ -36,6 +36,47 @@ describe("Console Web Demo persona projections", () => {
     expect(store.get(CONSOLE_WEB_DEMO_SLUGS.draft, "guest")).toBeNull();
   });
 
+  test("admin-to-public updates retain a published timestamp for the guest projection", () => {
+    const store = createConsoleWebDemoStore({ storageKey: "console-web-demo-published-at-test" });
+    const updated = store.update(CONSOLE_WEB_DEMO_SLUGS.private, {
+      content: "# Now public\n\nThe current Console content is visible.",
+      isPublic: true,
+    });
+
+    expect(updated?.publishedAt).toBeString();
+    expect(store.get(CONSOLE_WEB_DEMO_SLUGS.private, "guest")?.publishedAt).toBe(
+      updated?.publishedAt
+    );
+  });
+
+  test("server-side store reconstruction applies the ephemeral mutation cookie", () => {
+    const mutation = encodeURIComponent(
+      JSON.stringify({
+        sequence: 0,
+        deleted: [],
+        created: [],
+        updated: [
+          {
+            s: CONSOLE_WEB_DEMO_SLUGS.public,
+            c: "# Refreshed weekly notes\n\nSSR reads the current demo state.",
+            p: true,
+            t: ["公开", "刷新"],
+            u: "2026-10-14T12:00:00.000Z",
+            v: "2026-10-14T12:00:00.000Z",
+          },
+        ],
+      })
+    );
+    const store = createConsoleWebDemoStore({
+      cookieHeader: `console_web_demo_mutations_v1=${mutation}`,
+    });
+
+    expect(store.get(CONSOLE_WEB_DEMO_SLUGS.public, "guest")).toMatchObject({
+      content: "# Refreshed weekly notes\n\nSSR reads the current demo state.",
+      publishedAt: "2026-10-14T12:00:00.000Z",
+    });
+  });
+
   test("guest clipping detail keeps source and translation without discussion access", () => {
     const article = getConsoleWebDemoClippingArticle(CONSOLE_WEB_DEMO_SLUGS.clipping, "guest");
 

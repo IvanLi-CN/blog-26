@@ -154,9 +154,15 @@ function usePublicAuth(initialIsAdmin = false) {
   );
   const [isLoading, setIsLoading] = useState(!initialIsAdmin);
   const [isResolved, setIsResolved] = useState(false);
+  const [isInitialAuthPending, setIsInitialAuthPending] = useState(true);
 
   const refetch = useCallback(() => {
+    const isInitialRequest = requestGeneration.current === 0;
     const generation = ++requestGeneration.current;
+    if (!isInitialRequest) {
+      setUser(null);
+      setIsInitialAuthPending(false);
+    }
     setIsLoading(true);
     setIsResolved(false);
     void readJson<PublicAuthUser | null>(toPublicApiUrl("/api/public/auth/me"))
@@ -170,6 +176,7 @@ function usePublicAuth(initialIsAdmin = false) {
       })
       .finally(() => {
         if (generation !== requestGeneration.current) return;
+        setIsInitialAuthPending(false);
         setIsLoading(false);
         setIsResolved(true);
       });
@@ -193,6 +200,7 @@ function usePublicAuth(initialIsAdmin = false) {
     isAdmin: user?.isAdmin || false,
     isLoading,
     isResolved,
+    isInitialAuthPending,
     refetch,
   };
 }
@@ -896,7 +904,8 @@ export function PublicMemoDetailControlsIsland({
   publicMediaContext?: PublicMediaContext;
 }) {
   const readJson = useMemoRequest();
-  const { user, isAdmin, isLoading, isResolved } = usePublicAuth(initialIsAdmin);
+  const { user, isAdmin, isLoading, isResolved, isInitialAuthPending } =
+    usePublicAuth(initialIsAdmin);
   const [memo, setMemo] = useState<PublicMemoRecord | null>(initialMemo ?? null);
   const [isPublicFallback, setIsPublicFallback] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
@@ -907,7 +916,7 @@ export function PublicMemoDetailControlsIsland({
   // Trust the server-rendered admin state only while the client auth check is
   // still in flight. Once it resolves, a logout or session downgrade must
   // remove the live private view instead of leaving the SSR snapshot visible.
-  const effectiveIsAdmin = isAdmin || (initialIsAdmin && !isResolved);
+  const effectiveIsAdmin = isAdmin || (initialIsAdmin && isInitialAuthPending);
   useHideStaticSnapshot(
     "[data-public-memo-static-shell]",
     initialIsAdmin || effectiveIsAdmin || Boolean(memo?.canDiscuss)

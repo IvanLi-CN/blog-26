@@ -73,12 +73,25 @@ test.describe("Console Memo Web Demo", () => {
 
   test("keeps private SSR content for admin and returns a guest 404 without disclosure", async ({
     page,
+    browser,
     request: pageRequest,
   }) => {
     const adminResponse = await pageRequest.get(`/memos/${privateSlug}/?d_persona=admin`);
     expect(adminResponse.status()).toBe(200);
     const adminBody = await adminResponse.text();
     expect(adminBody).toContain("管理员可以在详情首屏看到尚未进入公开快照的正文");
+
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const noScriptPage = await context.newPage();
+    const noScriptResponse = await noScriptPage.goto(`/memos/${privateSlug}/?d_persona=guest`, {
+      waitUntil: "domcontentloaded",
+    });
+    expect(noScriptResponse?.status()).toBe(404);
+    await expect(noScriptPage).toHaveTitle("页面未找到 - Ivan's Blog");
+    await expect(noScriptPage.locator("body")).not.toContainText(
+      "管理员可以在详情首屏看到尚未进入公开快照的正文"
+    );
+    await context.close();
 
     await page.goto(`/memos/${privateSlug}/?d_persona=guest`, { waitUntil: "domcontentloaded" });
     await expect(page).toHaveTitle("页面未找到 - Ivan's Blog");
