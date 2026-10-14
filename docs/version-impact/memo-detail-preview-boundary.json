@@ -64,7 +64,7 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The candidate changes only the Console Memo detail/preview boundary, request-scoped initial projection, unauthorized read status mapping, shared route history state, and the official build-time Web Demo evidence surface. Public API payload shapes, persistent state, snapshot publishing, and deployment host configuration remain unchanged; the deliberate 403-to-404 mapping for unauthorized private reads makes them indistinguishable from missing resources, while the Demo uses an explicit guest projection that omits authoring-only fields.",
+      "reasoning": "The candidate changes only the Console Memo detail/preview boundary, request-scoped initial projection, unauthorized read status mapping, shared route history state, and the official build-time Web Demo evidence surface. Public API payload shapes, persistent state, snapshot publishing, and deployment host configuration remain unchanged; the deliberate 403-to-404 mapping for unauthorized private reads makes them indistinguishable from missing resources, while the Demo uses an explicit guest projection that omits authoring-only fields. The current candidate also keeps administrator tools inside the Memo detail reading surface on desktop and mobile.",
       "assessed_at": "2026-10-14T13:15:55+08:00",
       "evidence": [
         {
@@ -84,7 +84,7 @@
         },
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "f8509f342fbb73a9c7d86c7b5360522580acf057",
+          "blob": "0ecb26c27960e2027465122fb81238a706df1672",
           "command": "Official Console Web Demo E2E covers navigation, history, preview boundary, SSR privacy, clipping, and same-route save"
         },
         {
@@ -100,12 +100,12 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Focused component, Console projection, clipping, HTTP compatibility, official Web Demo build, and Console browser acceptance checks pass. The implementation preserves existing public payload shapes and persistent state while enforcing the same-origin detail/preview boundary and private-resource non-disclosure; the 403-to-404 status change is an intentional compatible privacy hardening because private and missing resources share the documented not-found response.",
+      "reasoning": "Focused component, Console projection, clipping, HTTP compatibility, official Web Demo build, and Console browser acceptance checks pass. The implementation preserves existing public payload shapes and persistent state while enforcing the same-origin detail/preview boundary and private-resource non-disclosure; the 403-to-404 status change is an intentional compatible privacy hardening because private and missing resources share the documented not-found response. The focused Web Demo evidence additionally asserts that the administrator toolbar is contained by the visible detail card.",
       "assessed_at": "2026-10-14T13:15:55+08:00",
       "evidence": [
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "f8509f342fbb73a9c7d86c7b5360522580acf057",
+          "blob": "0ecb26c27960e2027465122fb81238a706df1672",
           "command": "Official Console Web Demo E2E: 5 passed"
         },
         {
