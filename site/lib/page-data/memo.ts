@@ -35,7 +35,7 @@ function normalizeMemoForRender(
   };
 }
 
-type ConsoleClippingArticle = {
+export type ConsoleClippingArticle = {
   reading: NonNullable<ConsoleMemoRecord["clipping"]>;
   source: string | null;
   translation: string | null;
@@ -44,6 +44,18 @@ type ConsoleClippingArticle = {
   canDiscuss?: boolean;
   processorEnabled?: boolean;
 };
+
+export function selectClippingArticleForRender(input: {
+  consoleArticle?: ConsoleClippingArticle | null;
+  snapshotArticle?: ConsoleClippingArticle | null;
+  fallback: ConsoleClippingArticle;
+  isConsoleRuntime: boolean;
+}) {
+  return (
+    input.consoleArticle ??
+    (input.isConsoleRuntime ? input.fallback : (input.snapshotArticle ?? input.fallback))
+  );
+}
 
 function isConsoleRuntimeRequest(Astro: PageContext) {
   return (
@@ -192,11 +204,15 @@ export async function loadmemo(Astro: PageContext) {
     memoDescription,
     memoDetailContent,
     clippingArticle: renderMemo.clipping
-      ? (consoleMemo?.clippingArticle ??
-        snapshot.clippingArticles?.[renderMemo.slug] ?? {
-          reading: renderMemo.clipping,
-          source: null,
-          translation: null,
+      ? selectClippingArticleForRender({
+          consoleArticle: consoleMemo?.clippingArticle,
+          snapshotArticle: snapshot.clippingArticles?.[renderMemo.slug],
+          fallback: {
+            reading: renderMemo.clipping,
+            source: null,
+            translation: null,
+          },
+          isConsoleRuntime,
         })
       : null,
     structuredData,

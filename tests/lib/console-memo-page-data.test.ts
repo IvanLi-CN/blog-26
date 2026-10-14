@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { selectMemoForRender } from "../../site/lib/page-data/memo";
+import { selectClippingArticleForRender, selectMemoForRender } from "../../site/lib/page-data/memo";
 import type { PublicMemoRecord } from "../../src/public-site/snapshot";
 
 describe("Console Memo page data source selection", () => {
@@ -31,5 +31,33 @@ describe("Console Memo page data source selection", () => {
         snapshotMemo: publicSnapshotMemo,
       })
     ).toBe(publicSnapshotMemo);
+  });
+
+  test("does not use a stale clipping snapshot in Console runtime", () => {
+    const fallback = {
+      reading: { status: "pending" } as never,
+      source: null,
+      translation: null,
+    };
+    const staleSnapshot = {
+      ...fallback,
+      source: "滞后的公开原文",
+      translation: "滞后的公开译文",
+    };
+
+    expect(
+      selectClippingArticleForRender({
+        isConsoleRuntime: true,
+        fallback,
+        snapshotArticle: staleSnapshot,
+      })
+    ).toBe(fallback);
+    expect(
+      selectClippingArticleForRender({
+        isConsoleRuntime: false,
+        fallback,
+        snapshotArticle: staleSnapshot,
+      })
+    ).toBe(staleSnapshot);
   });
 });

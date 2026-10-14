@@ -250,6 +250,7 @@ export function ClippingDetail({
   const [chatError, setChatError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const scroll = useRef(0);
+  const previousMemoContent = useRef(memoContent);
   const titleChanged = useRef(onTitleChange);
   titleChanged.current = onTitleChange;
   const readingPositions = useRef<Partial<Record<"source" | "translation", number>>>({});
@@ -259,6 +260,13 @@ export function ClippingDetail({
   articleRef.current = article;
   const desktop = useSyncExternalStore(subscribeDesktop, desktopSnapshot, serverSnapshot);
   const reading = article.reading;
+  const memoContentChanged = previousMemoContent.current !== memoContent;
+  const displayedMemoContent = memoContentChanged ? memoContent : (article.content ?? memoContent);
+  useEffect(() => {
+    if (!memoContentChanged) return;
+    previousMemoContent.current = memoContent;
+    setArticle((current) => (current.content ? { ...current, content: undefined } : current));
+  }, [memoContent, memoContentChanged]);
   const reload = useCallback(async () => {
     const next = await transport.request<ClippingArticle>("");
     setArticle(next);
@@ -446,11 +454,11 @@ export function ClippingDetail({
               </a>
             </p>
           ) : null}
-          {(article.content ?? memoContent) ? (
-            <div>
+          {displayedMemoContent ? (
+            <div data-testid="clipping-memo-content">
               <MarkdownRenderer
                 surface={surface}
-                content={article.content ?? memoContent}
+                content={displayedMemoContent}
                 variant="article"
                 removeTags
                 nofollowExternalLinks

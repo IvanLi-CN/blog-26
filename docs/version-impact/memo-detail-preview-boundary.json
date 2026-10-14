@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "b52bef25db6923dbd7869ea7d9f0882e2cdd9393",
+  "base_sha": "ceecf5ed867ee849fce6d8e5d8225e9e5505923a",
   "covered_files": {
     ".gitignore": "ce64803d3963e4668cd644c7ef465dd36e266eba",
     "GLOSSARY.md": "d123cb3d82eabceaf2260468391ff5dc3ad23f46",
@@ -18,11 +18,11 @@
     "site/components/PublicRouter.tsx": "528da86451956f2a4585b570241ff3034309f372",
     "site/components/VirtualizedMemoList.tsx": "107f3d0d36b640fc780a3554098f421cbfaac07c",
     "site/components/pages/memo.tsx": "54d23a805810930665ccfb196e63f4259aecd705",
-    "site/lib/page-data/memo.ts": "ad940bf80a9fa6cd3c6a29e983b1329e285c90fa",
+    "site/lib/page-data/memo.ts": "9cfaa69697910998b7ec4502d664d4ebda797ac2",
     "site/lib/page-data/memos.ts": "66a2343fa2fe3c7e5ac4870603a9d9eaba1e9627",
     "site/pages/memos/[slug].astro": "c19abf54d59fd88cc31a59e32ba14355e23799b5",
     "src/components/WebDemoInspector.tsx": "07a071d09a48a33545742e0ea91beeb89eb88988",
-    "src/components/memos/ClippingDetail.tsx": "f59beff8df10d4f03a021082b0350345a3376a1b",
+    "src/components/memos/ClippingDetail.tsx": "9b97dbcb1f343525f43b813b361adb6a74586e37",
     "src/components/memos/PublicMemoAuthoring.stories.tsx": "cd37f8e64e65e5fbe7b24617c1a41149e0e6f0b1",
     "src/lib/console-web-demo.ts": "6095169185d90e3b27874d1915b672cf23f158e0",
     "src/lib/web-demo-fetch.ts": "a96dbba58a439f4828c8887c59724be96528916d",
@@ -36,9 +36,10 @@
     "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts": "2027256d9932aa3d030863770a2f6f4beca287c6",
     "tests/e2e/guest/public-csr-navigation.spec.ts": "7df417873f7586d4f6eeaab787b521d156de746b",
     "tests/e2e/web-demo/console-memo-boundary.spec.ts": "0ecb26c27960e2027465122fb81238a706df1672",
-    "tests/lib/console-memo-page-data.test.ts": "3bcb7fdcd455f4907044fff823f837dd20c46aef",
+    "tests/lib/console-memo-page-data.test.ts": "369c2c4d5c3dadd25c0a3f42afeca870aa2404f1",
     "tests/lib/console-web-demo.test.ts": "922bc22e3cbb5d30b94378929ceaa56202366090",
-    "tsconfig.json": "676a7f22b8020a9b9fe1eeeafd06c72625abafcc"
+    "tsconfig.json": "676a7f22b8020a9b9fe1eeeafd06c72625abafcc",
+    "tests/components/ClippingDetail.test.tsx": "6b38f8d4c315cc7dbd1c7c1e8a250958050e0a85"
   },
   "change": {
     "description": "Separate Console Memo detail navigation from the dedicated author preview, load the current Memo projection server-side with the existing identity and media boundaries, preserve same-route editing and public route history, hide unauthorized private Memo and clipping reads behind the existing missing-resource boundary, and ship a complete official Web Demo covering admin, guest, private, draft, public, clipping, preview, history, and Inspector mutation states.",
@@ -66,11 +67,11 @@
     "current": {
       "impact": "patch",
       "reasoning": "The candidate changes only the Console Memo detail/preview boundary, request-scoped initial projection, unauthorized read status mapping, shared route history state, and the official build-time Web Demo evidence surface. Public API payload shapes, persistent state, snapshot publishing, and deployment host configuration remain unchanged; the deliberate 403-to-404 mapping for unauthorized private reads makes them indistinguishable from missing resources, while the Demo uses an explicit guest projection that omits authoring-only fields. Console guests now use the current request-scoped public API projection and cannot fall back to a lagging public snapshot after a Memo becomes private or draft. The current candidate also keeps administrator tools inside the Memo detail reading surface on desktop and mobile.",
-      "assessed_at": "2026-10-14T14:49:27+08:00",
+      "assessed_at": "2026-10-14T07:13:28.080Z",
       "evidence": [
         {
           "path": "site/lib/page-data/memo.ts",
-          "blob": "ad940bf80a9fa6cd3c6a29e983b1329e285c90fa",
+          "blob": "9cfaa69697910998b7ec4502d664d4ebda797ac2",
           "command": "Current page loader supplies request-scoped public or administrator Memo detail projection and safe guest render defaults"
         },
         {
@@ -85,8 +86,8 @@
         },
         {
           "path": "tests/lib/console-memo-page-data.test.ts",
-          "blob": "3bcb7fdcd455f4907044fff823f837dd20c46aef",
-          "command": "Console runtime source selection regression: 2 passed"
+          "blob": "369c2c4d5c3dadd25c0a3f42afeca870aa2404f1",
+          "command": "bun test tests/lib/console-memo-page-data.test.ts: 3 passed"
         },
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
@@ -97,6 +98,11 @@
           "path": "scripts/build-web-demo.ts",
           "blob": "3ecde93da63683fe6c34cda3ea5f9085f48f8c76",
           "command": "Build script produces public site, Console site, and admin preview Web Demo artifacts"
+        },
+        {
+          "path": "tests/components/ClippingDetail.test.tsx",
+          "blob": "6b38f8d4c315cc7dbd1c7c1e8a250958050e0a85",
+          "command": "bun test tests/components/ClippingDetail.test.tsx: 1 passed"
         }
       ],
       "scope_drift": {
@@ -107,7 +113,7 @@
     "verified": {
       "impact": "patch",
       "reasoning": "Focused component, Console projection, page-data source selection, clipping, HTTP compatibility, official Web Demo build, and Console browser acceptance checks pass. The implementation preserves existing public payload shapes and persistent state while enforcing the same-origin detail/preview boundary and private-resource non-disclosure; the 403-to-404 status change is an intentional compatible privacy hardening because private and missing resources share the documented not-found response. Console runtime now refuses snapshot fallback when the current request has no authorized Memo projection. The focused Web Demo evidence additionally asserts that the administrator toolbar is contained by the visible detail card.",
-      "assessed_at": "2026-10-14T14:49:27+08:00",
+      "assessed_at": "2026-10-14T07:13:28.080Z",
       "evidence": [
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
@@ -121,8 +127,8 @@
         },
         {
           "path": "tests/lib/console-memo-page-data.test.ts",
-          "blob": "3bcb7fdcd455f4907044fff823f837dd20c46aef",
-          "command": "Console runtime source selection regression: 2 passed"
+          "blob": "369c2c4d5c3dadd25c0a3f42afeca870aa2404f1",
+          "command": "bun test tests/lib/console-memo-page-data.test.ts: 3 passed"
         },
         {
           "path": "tests/components/PublicMemoAuthoring.test.tsx",
@@ -132,12 +138,17 @@
         {
           "path": "src/lib/web-demo-fetch.ts",
           "blob": "a96dbba58a439f4828c8887c59724be96528916d",
-          "command": "Focused Web Demo boundary and fetch suite: 34 tests passed across 6 files"
+          "command": "bun test tests/lib/console-web-demo.test.ts tests/lib/console-memo-page-data.test.ts tests/components/PublicMemoAuthoring.test.tsx tests/components/ClippingDetail.test.tsx: 15 passed"
         },
         {
           "path": "scripts/build-web-demo.ts",
           "blob": "3ecde93da63683fe6c34cda3ea5f9085f48f8c76",
           "command": "bun run web-demo:build: public, Console, and admin artifacts built successfully"
+        },
+        {
+          "path": "tests/components/ClippingDetail.test.tsx",
+          "blob": "6b38f8d4c315cc7dbd1c7c1e8a250958050e0a85",
+          "command": "bun test tests/components/ClippingDetail.test.tsx: 1 passed"
         }
       ]
     }
