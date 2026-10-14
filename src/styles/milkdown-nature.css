@@ -132,7 +132,10 @@ body:has(.quick-memo-edit-modal) .nature-site-header {
 .quick-memo-edit-body {
   min-height: 0;
   flex: 1;
-  overflow-y: auto;
+  /* Milkdown's block handle is positioned outside the editor gutter while the
+   * pointer is inside the editor. Clip that transient control instead of
+   * exposing a horizontal scrollbar for the modal body. */
+  overflow: hidden auto;
   padding: 1rem 1.25rem 1.25rem;
   overscroll-behavior: contain;
 }
