@@ -141,6 +141,18 @@ test("the official project route staggers both directions and keeps its geometry
   await page.getByTestId("web-demo-connection-offline").click();
   await expect(page.locator(`${slots}[data-runtime-visual-state="poster"]`)).toHaveCount(3);
   await expect(page.locator(`${panels}[aria-hidden="true"]`)).toHaveCount(3);
+  const reverseRecords = await page.evaluate(() =>
+    (
+      window as unknown as {
+        runtimeMotionRecords: { kind: string; at: number; duration: number }[];
+      }
+    ).runtimeMotionRecords.slice(3)
+  );
+  expect(reverseRecords).toHaveLength(3);
+  expect(reverseRecords.every((record) => record.duration === 420)).toBe(true);
+  expect(new Set(reverseRecords.map((record) => record.kind)).size).toBe(3);
+  expect(reverseRecords[1].at - reverseRecords[0].at).toBeGreaterThanOrEqual(139);
+  expect(reverseRecords[2].at - reverseRecords[1].at).toBeGreaterThanOrEqual(139);
   const after = await page.locator(slots).evaluateAll((elements) =>
     elements.map((element) => {
       const bounds = element.getBoundingClientRect();
