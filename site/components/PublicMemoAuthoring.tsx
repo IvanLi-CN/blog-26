@@ -926,65 +926,66 @@ export function PublicMemoDetailControlsIsland({
     return null;
   }
 
-  return (
-    <section className="mb-6 space-y-4" data-testid="public-memo-detail-controls">
-      {effectiveIsAdmin ? (
-        <div
-          className="flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--nature-line)] pb-4"
-          data-testid="public-memo-detail-status"
-        >
-          <div className="min-w-0 space-y-1">
-            <div className="flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
-              <Icon
-                name="tabler:shield-check"
-                className="h-4 w-4 text-[color:var(--nature-accent-strong)]"
-              />
-              <span>Console Memo 详情</span>
-            </div>
-            <p className="text-sm text-[color:var(--nature-text-soft)]">
-              当前身份：管理员；显示最新保存内容，公开页面显示最近发布版本。
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="nature-button nature-button-outline"
-              onClick={() => void loadMemo()}
-              disabled={isFetching}
-            >
-              刷新当前内容
-            </button>
-            <a className="nature-button nature-button-outline" href={buildPreviewHref(slug)}>
-              打开专用预览
-            </a>
-            <button
-              type="button"
-              className="nature-button"
-              onClick={() => setModalOpen(true)}
-              disabled={!memo || isFetching}
-            >
-              编辑 {detailPresentation.kind === "clipping" ? "剪藏" : "Memo"}
-            </button>
-            <button
-              type="button"
-              className="nature-button nature-button-danger"
-              data-testid="admin-live-memo-delete"
-              onClick={() => void handleDelete()}
-              disabled={!memo || isDeleting}
-            >
-              删除 {detailPresentation.kind === "clipping" ? "剪藏" : "Memo"}
-            </button>
-          </div>
+  const adminToolbar = effectiveIsAdmin ? (
+    <div
+      className="mb-7 flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--nature-line)] pb-5"
+      data-testid="public-memo-detail-status"
+    >
+      <div className="min-w-0 space-y-1">
+        <div className="flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
+          <Icon
+            name="tabler:shield-check"
+            className="h-4 w-4 text-[color:var(--nature-accent-strong)]"
+          />
+          <span>Console Memo 详情</span>
         </div>
-      ) : null}
+        <p className="text-sm text-[color:var(--nature-text-soft)]">
+          当前身份：管理员；显示最新保存内容，公开页面显示最近发布版本。
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="nature-button nature-button-outline"
+          onClick={() => void loadMemo()}
+          disabled={isFetching}
+        >
+          刷新当前内容
+        </button>
+        <a className="nature-button nature-button-outline" href={buildPreviewHref(slug)}>
+          打开专用预览
+        </a>
+        <button
+          type="button"
+          className="nature-button"
+          onClick={() => setModalOpen(true)}
+          disabled={!memo || isFetching}
+        >
+          编辑 {detailPresentation.kind === "clipping" ? "剪藏" : "Memo"}
+        </button>
+        <button
+          type="button"
+          className="nature-button nature-button-danger"
+          data-testid="admin-live-memo-delete"
+          onClick={() => void handleDelete()}
+          disabled={!memo || isDeleting}
+        >
+          删除 {detailPresentation.kind === "clipping" ? "剪藏" : "Memo"}
+        </button>
+      </div>
+    </div>
+  ) : null;
 
+  return (
+    <section className="mb-6 space-y-6" data-testid="public-memo-detail-controls">
       {memo ? (
-        <article className="space-y-6">
+        <article>
           {!memo.clipping ? (
             <div
               className="nature-panel nature-mobile-reading-surface memo-detail-card px-4 py-7 sm:px-8"
               data-testid="public-memo-detail-card"
             >
+              {adminToolbar}
               {detailHeader}
               <div className="mt-6" data-testid="public-memo-detail-body">
                 <MarkdownRenderer
@@ -1009,7 +1010,12 @@ export function PublicMemoDetailControlsIsland({
                 key={memo.slug}
                 slug={memo.slug}
                 memoContent={detailBody}
-                header={detailHeader}
+                header={
+                  <>
+                    {adminToolbar}
+                    {detailHeader}
+                  </>
+                }
                 initialArticle={
                   isPublicFallback
                     ? { reading: memo.clipping, source: null, translation: null }

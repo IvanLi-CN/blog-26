@@ -28,6 +28,8 @@ test.describe("Console Memo Web Demo", () => {
     await detailLink.click();
     await expect(page).toHaveURL(new RegExp(`/memos/${privateSlug}/?$`));
     await expect(page.getByTestId("public-memo-detail-controls")).toBeVisible();
+    const detailCard = page.locator('[data-testid="public-memo-detail-card"]:visible');
+    await expect(detailCard.getByTestId("public-memo-detail-status")).toBeVisible();
     await expect(page.getByTestId("public-memo-detail-body")).toContainText(
       "管理员可以在详情首屏看到尚未进入公开快照的正文"
     );
