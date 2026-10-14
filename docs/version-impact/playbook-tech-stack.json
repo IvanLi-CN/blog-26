@@ -4,7 +4,7 @@
   "base_sha": "ceecf5ed867ee849fce6d8e5d8225e9e5505923a",
   "covered_files": {
     "GLOSSARY.md": "7baafbd48fa89696faefd66709c5a8a159a6b511",
-    "astro.config.mjs": "ecce6dd524b4703e607c9389a3f40e56fc1945b7",
+    "astro.config.mjs": "06710645e12de832945ac14d1c0b0a21482b8107",
     "docs/adr/0023-human-readable-playbook-tech-stack.md": "0df85865768c55042b2482712bb51bed3cc84995",
     "docs/specs/style-playbook-integration/HISTORY.md": "01e2c85619b0f30fbd2c6e1cc07228aab93f39e4",
     "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "1f394073a6d9a0c9acd075509a2b564ac9d7b2cd",
