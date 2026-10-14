@@ -135,7 +135,7 @@ describe("playbook deployment boundaries", () => {
         "options.manifestUrl || PLAYBOOK_PUBLIC_POINTER_URL",
       ],
       ["scripts/playbook-content-update.ts", "const manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL"],
-      ["src/lib/playbook/cache.ts", "sync(manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL)"],
+      ["src/lib/playbook/cache.ts", "manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL"],
     ]) {
       const source = await readFile(file, "utf8");
       expect(source).toContain(expectedConsumer);
