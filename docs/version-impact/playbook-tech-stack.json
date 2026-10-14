@@ -13,26 +13,28 @@
     "docs/specs/style-playbook-integration/SPEC.md": "c32aebac0d7ee18817b87ae79ad93a56ec0654c6",
     "docs/specs/style-playbook-integration/assets/tech-stack-raw-desktop-open-dark.png": "705a3f9b51eed64e8e00ca3ffc9707c6e3bfd784",
     "docs/specs/style-playbook-integration/assets/tech-stack-raw-mobile-open-dark.png": "6908d067c35a8b654c2b1ae88860a3d1080ca9cf",
+    "package.json": "02cd455e1499cd41004c114f64d81f66ecc55b3c",
     "scripts/build-web-demo.ts": "dbda185c287cd10ec6a638fde7a2e88f1e820a97",
     "scripts/prepare-edgeone-pwa-config.ts": "45f2cf8f04dba0d7504c85de83d570c108d15894",
     "src/components/playbook/PlaybookPage.tsx": "b0d05112c62bd495f93edd1b759066f15d409c39",
     "src/components/playbook/PlaybookTechStack.stories.tsx": "c12ecb55dcd97efeb4d50050fa31e8feb90c3fcb",
-    "src/components/playbook/PlaybookTechStack.tsx": "f56bc179801c652ccf19bf0f09740f82faf25e3a",
+    "src/components/playbook/PlaybookTechStack.tsx": "ec652c99a237f7030609f256005dc0e1f6998056",
     "src/components/playbook/PlaybookTechStackChips.tsx": "15633059a9705434d51614ffa1d67ea408247bd1",
     "src/components/playbook/PlaybookTechStackRaw.tsx": "664c2c312a911a32a74efefecb6c3ee7e4fa73d1",
     "src/lib/playbook/fixture.ts": "dd465aa9852b4a5694d55751adf14018fff53712",
-    "src/lib/playbook/tech-stack.ts": "f528cc843f75da6d38a73b77f44c4fc4a0198364",
+    "src/lib/playbook/tech-stack.ts": "9a3ef78f299ab10780ce76d2c919d8e8c0800ff0",
     "src/lib/playbook/web-demo-fixture.ts": "3fafa57e7421e5ee986dda7f10e4322d6cbcc437",
     "src/lib/search/web-demo-fixtures.ts": "7138647d74c36935833183a88b4ffc6e048fbd0b",
     "tests/e2e/web-demo/search-modes.spec.ts": "efa94452dfc0162ed5aa1966102972a77d8cdeb4",
     "tests/lib/playbook-fixture.ts": "f2848852e07c474bcf349dde63b4498a7718189d",
-    "tests/lib/playbook-tech-stack.test.ts": "17ab2eac328f2929489303bf602a42f91c2335a0",
+    "tests/lib/playbook-tech-stack.test.ts": "4887b21a20471a5e8b3c3af271597390e066bfbe",
     "tests/lib/playbook-web-demo-fixture.test.ts": "0cef5636efac20275d9d26e2fa542ff070810cc3",
     "tests/lib/public-pwa-edgeone-config.test.ts": "264fd4ecf7c348bf6a0488a63d87d60462755e47",
-    "tests/storybook/playbook-interactions.ts": "63c52be5ac568c3d08a06585357be8325295f1ef"
+    "tests/storybook/playbook-interactions.ts": "63c52be5ac568c3d08a06585357be8325295f1ef",
+    "tests/storybook/story-boundary.test.ts": "dd0e0c67627ae653cd4ec2df4a2fb435c5c8611a"
   },
   "change": {
-    "description": "Present existing Playbook project technology stacks as compact semantic tabs and responsive chips, with a highlighted copyable fullscreen JSON viewer and realistic Web Demo data. Restore edition-qualified Playbook HTML classification in the EdgeOne artifact validator without changing cache headers.",
+    "description": "Present existing Playbook project technology stacks as compact semantic tabs and responsive chips, with a highlighted copyable fullscreen JSON viewer and realistic Web Demo data. Restore edition-qualified Playbook HTML classification in the EdgeOne artifact validator without changing cache headers. Keep unknown prototype-named fields renderable, nested object disclosure IDs unique, and the dev entry on its existing prepared-input launcher.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api"]
   },
@@ -44,7 +46,7 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-tech-stack.test.ts",
-          "blob": "17ab2eac328f2929489303bf602a42f91c2335a0",
+          "blob": "4887b21a20471a5e8b3c3af271597390e066bfbe",
           "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
         },
         {
@@ -61,12 +63,12 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change. The release-blocking validator omission is repaired without changing existing cache policies.",
-      "assessed_at": "2026-10-14T08:38:22.789524+00:00",
+      "reasoning": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change. The release-blocking validator omission is repaired without changing existing cache policies. Bounded parser, disclosure identity and dev-entry corrections retain approved behavior.",
+      "assessed_at": "2026-10-14T09:29:54.935045+00:00",
       "evidence": [
         {
           "path": "tests/lib/playbook-tech-stack.test.ts",
-          "blob": "17ab2eac328f2929489303bf602a42f91c2335a0",
+          "blob": "4887b21a20471a5e8b3c3af271597390e066bfbe",
           "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
         },
         {
@@ -83,21 +85,26 @@
           "path": "tests/lib/public-pwa-edgeone-config.test.ts",
           "blob": "264fd4ecf7c348bf6a0488a63d87d60462755e47",
           "command": "bun test tests/lib/public-pwa-edgeone-config.test.ts: edition indexes/details at root and base path pass; unknown/deeper HTML remains rejected and header count stays within 30"
+        },
+        {
+          "path": "tests/storybook/story-boundary.test.ts",
+          "blob": "dd0e0c67627ae653cd4ec2df4a2fb435c5c8611a",
+          "command": "bun test tests/storybook/story-boundary.test.ts: Web Demo dev entry invokes the existing launcher and prepares inputs before Astro startup"
         }
       ],
       "scope_drift": {
         "detected": true,
-        "description": "Owner authorized the bounded edition-route classification repair needed to unblock formal product publication; no cache-policy or version-allocation behavior changes."
+        "description": "Owner authorized the bounded edition-route classification repair needed to unblock formal product publication; no cache-policy or version-allocation behavior changes. Owner authorized the three demonstrated parser/disclosure/dev-entry corrections."
       }
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change. The release-blocking validator omission is repaired without changing existing cache policies.",
-      "assessed_at": "2026-10-14T08:38:22.789678+00:00",
+      "reasoning": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change. The release-blocking validator omission is repaired without changing existing cache policies. Bounded parser, disclosure identity and dev-entry corrections retain approved behavior.",
+      "assessed_at": "2026-10-14T09:29:54.935184+00:00",
       "evidence": [
         {
           "path": "tests/lib/playbook-tech-stack.test.ts",
-          "blob": "17ab2eac328f2929489303bf602a42f91c2335a0",
+          "blob": "4887b21a20471a5e8b3c3af271597390e066bfbe",
           "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
         },
         {
@@ -114,6 +121,11 @@
           "path": "tests/lib/public-pwa-edgeone-config.test.ts",
           "blob": "264fd4ecf7c348bf6a0488a63d87d60462755e47",
           "command": "bun test tests/lib/public-pwa-edgeone-config.test.ts: edition indexes/details at root and base path pass; unknown/deeper HTML remains rejected and header count stays within 30"
+        },
+        {
+          "path": "tests/storybook/story-boundary.test.ts",
+          "blob": "dd0e0c67627ae653cd4ec2df4a2fb435c5c8611a",
+          "command": "bun test tests/storybook/story-boundary.test.ts: Web Demo dev entry invokes the existing launcher and prepares inputs before Astro startup"
         }
       ]
     }
@@ -126,7 +138,7 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-tech-stack.test.ts",
-          "blob": "17ab2eac328f2929489303bf602a42f91c2335a0",
+          "blob": "4887b21a20471a5e8b3c3af271597390e066bfbe",
           "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
         },
         {
@@ -150,7 +162,7 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-tech-stack.test.ts",
-          "blob": "17ab2eac328f2929489303bf602a42f91c2335a0",
+          "blob": "4887b21a20471a5e8b3c3af271597390e066bfbe",
           "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
         },
         {

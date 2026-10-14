@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   formatTechStackRaw,
   parsePlaybookTechStack,
@@ -21,6 +21,7 @@ function ScalarValue({ value }: { value: string | number | boolean }) {
 }
 
 function ListItems({ entry, items }: { entry: TechStackEntry; items: TechStackNode[] }) {
+  const disclosureId = useId();
   const mode = techStackArrayMode(items);
   const [expanded, setExpanded] = useState(false);
   if (mode === "chips") return <PlaybookTechStackChips entry={entry} items={items} />;
@@ -55,7 +56,7 @@ function ListItems({ entry, items }: { entry: TechStackEntry; items: TechStackNo
   if (!shouldCollapseTechStackList(entry.key, items.length)) return renderItems(items);
   const visibleItems = items.slice(0, TECH_STACK_PREVIEW_ITEMS);
   const remainingItems = items.slice(TECH_STACK_PREVIEW_ITEMS);
-  const overflowId = `tech-stack-list-${entry.key}`;
+  const overflowId = `tech-stack-list-${disclosureId}`;
   const toggleLabel = expanded
     ? `收起其余 ${remainingItems.length} 项`
     : `展开其余 ${remainingItems.length} 项`;

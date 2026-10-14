@@ -28,6 +28,36 @@ describe("playbook technology stack presentation", () => {
     expect(controls).toEqual(ids);
   });
 
+  test("gives repeated nested object lists unique disclosure targets", () => {
+    const tools = Array.from({ length: 9 }, (_, index) => ({ name: `tool-${index}` }));
+    const html = renderToStaticMarkup(
+      createElement(PlaybookTechStack, {
+        value: { runtime: { first: { tools }, second: { tools } } },
+      })
+    );
+    const ids = Array.from(html.matchAll(/id="(tech-stack-list-[^"]+)"/g), (match) => match[1]);
+    const controls = Array.from(
+      html.matchAll(/aria-controls="(tech-stack-list-[^"]+)"/g),
+      (match) => match[1]
+    );
+    expect(ids.length).toBe(2);
+    expect(new Set(ids).size).toBe(2);
+    expect(controls).toEqual(ids);
+  });
+
+  test("renders prototype-named unknown fields as ordinary readable labels", () => {
+    const value = JSON.parse(
+      '{"__proto__":"custom runtime","constructor":"custom tool","toString":"custom config"}'
+    );
+    const entries = parsePlaybookTechStack(value).flatMap((group) => group.entries);
+    expect(entries.map((entry) => typeof entry.label)).toEqual(["string", "string", "string"]);
+    const html = renderToStaticMarkup(createElement(PlaybookTechStack, { value }));
+    expect(html).toContain("custom runtime");
+    expect(html).toContain("Constructor");
+    expect(html).toContain("To String");
+    expect(JSON.parse(formatTechStackRaw(value))).toEqual(value);
+  });
+
   test("preserves a complete native disclosure when JavaScript is disabled", () => {
     const html = renderToStaticMarkup(
       createElement(PlaybookTechStack, {

@@ -107,7 +107,7 @@ const keyForLookup = (key: string) =>
 
 function humanizeKey(key: string) {
   const lookupKey = keyForLookup(key);
-  const known = fieldLabels[lookupKey];
+  const known = Object.hasOwn(fieldLabels, lookupKey) ? fieldLabels[lookupKey] : undefined;
   if (known) return known;
   const spaced = key
     .replace(/([a-z0-9])([A-Z])/gu, "$1 $2")
