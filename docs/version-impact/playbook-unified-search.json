@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "ceecf5ed867ee849fce6d8e5d8225e9e5505923a",
   "covered_files": {
-    "GLOSSARY.md": "5d34d83ce5d4c0716ed266e63ce98ef40af61d44",
+    "GLOSSARY.md": "e7e7f45a536a9588fa90361cda6879cd516c3bb9",
     "apps/admin/src/demo/mock-admin-api.ts": "22b8ff8d5f68667cdb54655a4fbaef91ae7dd0af",
     "apps/admin/src/pages/content-sync.test.tsx": "3cb88012229270290bf7d5f4db6fe0a6a825523b",
     "apps/admin/src/pages/content-sync.tsx": "e4a9c6934e2ef92c944f7c36fe3aced0ef6aacbe",
@@ -149,7 +149,7 @@
       ],
       "scope_drift": {
         "detected": false,
-        "description": "The candidate is covered against the published 3.1.2 baseline; all changed source files are listed in covered_files and the current review evidence is bound to the current candidate."
+        "description": "The candidate is covered against the published 3.1.2 baseline. Subsequent project-motion terminology updates refresh only the shared GLOSSARY.md blob binding; search implementation, compatibility classification and validation witnesses are unchanged."
       }
     },
     "verified": {

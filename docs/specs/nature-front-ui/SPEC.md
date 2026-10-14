@@ -241,6 +241,19 @@ Ordinary clicks and mobile taps on all three runtime panels, including cells, gr
 
 ## Visual Evidence
 
+### Project visual-slot motion
+
+- Source type `ui_demo`, target program `Ego Browser`, official route `/projects/`, capture scope `browser-viewport`, viewport strategy `devtools-emulate`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`. The owner confirmed these four screenshots after the 1780×1071 desktop and 393×852 mobile light/dark playback checks. Page normalization retained the existing image bounds.
+- Both directions retain the 4:5 slots and copy positions. The [official-route playback recording](./assets/runtime-motion-playback.mp4) shows the native staggered transitions through the shared Inspector; deterministic examples are Web Demo fixtures.
+
+![Runtime motion desktop light](./assets/runtime-motion-desktop-light.png)
+
+![Runtime motion desktop dark](./assets/runtime-motion-desktop-dark.png)
+
+![Runtime motion mobile light](./assets/runtime-motion-mobile-light.png)
+
+![Runtime motion mobile dark](./assets/runtime-motion-mobile-dark.png)
+
 ### Fixed viewport public atmosphere
 
 - Evidence bound to implementation commit `97d970bc1a3093163be9fc88992a3e587d38aab5`; source type `ui_demo`, target program `Ego Browser`, capture scope `browser-viewport`, viewport strategy `devtools-emulate`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`.

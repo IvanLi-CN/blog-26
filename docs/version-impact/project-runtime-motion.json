@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "ceecf5ed867ee849fce6d8e5d8225e9e5505923a",
+  "covered_files": {
+    "GLOSSARY.md": "e7e7f45a536a9588fa90361cda6879cd516c3bb9",
+    "README.md": "d8b6af318d6a097dc09ffeb0f7499b74adfdb1ca",
+    "astro.config.mjs": "98e54eb4b6d401c14a2fb448778926acc85a690e",
+    "docs/project-runtime-motion-design.md": "c573024b88c764e498b081ee5c70d8ca05cf3e45",
+    "docs/specs/memo-admin-inline-view/SPEC.md": "2a5474ca4ebafda679047831a0332c2f7436c65f",
+    "docs/specs/nature-front-ui/HISTORY.md": "0836ede8e4ba068d6e0930d8e8928d8d03cd2801",
+    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "2f6b9024873d80b9259e3a2ace38400775b26ac6",
+    "docs/specs/nature-front-ui/SPEC.md": "bcf138b34aab4a3ab3dd6f7098d06b0310b3c66f",
+    "docs/specs/nature-front-ui/assets/runtime-motion-desktop-dark.png": "54f7dd72bf4a195a002cfc2031b94e4e50186104",
+    "docs/specs/nature-front-ui/assets/runtime-motion-desktop-light.png": "d68200ac5faabab47522735d4cc533d868f27e36",
+    "docs/specs/nature-front-ui/assets/runtime-motion-mobile-dark.png": "317da472a4d31c7809d3d27397ea352d201703f5",
+    "docs/specs/nature-front-ui/assets/runtime-motion-mobile-light.png": "fd86b6caaa2099a3cfef0faf6ad9164873ea60be",
+    "docs/specs/nature-front-ui/assets/runtime-motion-playback.mp4": "6d6052ab195189aa2465e12d2f5d04fe80ec00a9",
+    "site/components/PublicMemoAuthoring.tsx": "d58d56f8fc9c8291b4890d2c51aee13d2bdc7d78",
+    "site/components/pages/memo.tsx": "9b9b241b72b8a89447084ca919bc50ca564325e9",
+    "site/components/pages/memos.tsx": "f9a312bd5c41802cdc763924558f8d7e846743fd",
+    "site/components/projects/RuntimeCellGrid.tsx": "cc7a99e2e42ad174e93768835ed9ae929d01e5cf",
+    "site/lib/page-data/memos.ts": "b3b9995bc0f24dfc33e6cd5a458a44b948a1c0ec",
+    "site/lib/project-runtime-channel.ts": "0d881441d10f79a0728b8e86e3df8344dda6f070",
+    "site/lib/project-runtime-live.ts": "7c3ce3190e6cee05782509500cdf32dedef52c50",
+    "site/lib/project-runtime-motion.ts": "14c66c2e8c59b81f617def36abb7b5198e1f0265",
+    "site/lib/public-page-behaviors.ts": "1fa48ebd00e89ada16463ef67f8509508237232d",
+    "site/styles/public-pages.css": "27869e020e4f10d1510917381721f80868e6990f",
+    "src/components/memos/PublicMemoAuthoring.stories.tsx": "0a42f41dffd8c090416c464a301f2afdb14f235a",
+    "src/components/memos/QuickMemoEditModal.tsx": "dc9e9f53d441bc263a2dd6b3fd0bf382b280f4aa",
+    "src/components/projects/RuntimeCellGrid.stories.tsx": "c51fe54277455f9e5e714681796715473e2c5f17",
+    "src/lib/web-demo-fetch.ts": "c646a2a652c90d55e3a16e0aed776320c7bfd186",
+    "src/lib/web-demo-runtime.ts": "c1893d22c02cabd282bb66e7dae31ff8873b8172",
+    "src/styles/milkdown-nature.css": "41d4ccfd6cb20b87ed2e8fa8f82daf38119929c9",
+    "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts": "e2ea405c4c82ff7e8a70c0d96e0cf3ae3850af6b",
+    "tests/e2e/web-demo/project-runtime-motion.spec.ts": "5270880f4f1bbd9f8ea9b879bb2321aea6d42bb9",
+    "tests/lib/project-runtime-channel.test.ts": "e1f22873cc9d951bd0e569cad81ee2ab30fd2bbc",
+    "tests/lib/project-runtime-motion.test.ts": "8344818df6ca6c30b821fdc409c97cc4742c4337",
+    "tests/lib/web-demo-runtime.test.ts": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb"
+  },
+  "change": {
+    "description": "Animate transitions between project posters and runtime panels with layered content and staggered card launches, including interruption, failure, accessibility and reduced-motion lifecycle handling.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The approved scope changes presentation and transient coordination only; metric protocols, public routes, configuration and persistent state retain their existing contracts.",
+      "assessed_at": "2026-10-14T07:19:22+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/project-runtime-motion.test.ts",
+          "blob": "8344818df6ca6c30b821fdc409c97cc4742c4337",
+          "command": "bun test tests/lib/project-runtime-motion.test.ts"
+        },
+        {
+          "path": "tests/lib/project-runtime-channel.test.ts",
+          "blob": "e1f22873cc9d951bd0e569cad81ee2ab30fd2bbc",
+          "command": "bun test tests/lib/project-runtime-channel.test.ts"
+        },
+        {
+          "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
+          "blob": "5270880f4f1bbd9f8ea9b879bb2321aea6d42bb9",
+          "command": "Agent VM: bun run test:e2e:web-demo project-runtime-motion.spec.ts (7/7 passed)"
+        },
+        {
+          "path": "src/components/projects/RuntimeCellGrid.stories.tsx",
+          "blob": "c51fe54277455f9e5e714681796715473e2c5f17",
+          "command": "Agent VM: STORYBOOK_STORY_PREFIX=public-projects-runtime-cell-grid bun run test:storybook-interactions (4/4 passed)"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Presentation-only poster/runtime-panel transitions preserve metric payloads, polling, project navigation and the existing 4:5 layout. The render acknowledgements and animation coordinator are internal page-lifetime state; no public endpoint, configuration, storage or migration is added. Focused unit checks, four Storybook plays, seven official-route browser checks and owner-confirmed responsive captures verify the preserved contracts.",
+      "assessed_at": "2026-10-14T07:19:22+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/project-runtime-motion.test.ts",
+          "blob": "8344818df6ca6c30b821fdc409c97cc4742c4337",
+          "command": "bun test tests/lib/project-runtime-motion.test.ts"
+        },
+        {
+          "path": "tests/lib/project-runtime-channel.test.ts",
+          "blob": "e1f22873cc9d951bd0e569cad81ee2ab30fd2bbc",
+          "command": "bun test tests/lib/project-runtime-channel.test.ts"
+        },
+        {
+          "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
+          "blob": "5270880f4f1bbd9f8ea9b879bb2321aea6d42bb9",
+          "command": "Agent VM: bun run test:e2e:web-demo project-runtime-motion.spec.ts (7/7 passed)"
+        },
+        {
+          "path": "src/components/projects/RuntimeCellGrid.stories.tsx",
+          "blob": "c51fe54277455f9e5e714681796715473e2c5f17",
+          "command": "Agent VM: STORYBOOK_STORY_PREFIX=public-projects-runtime-cell-grid bun run test:storybook-interactions (4/4 passed)"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "Implementation stays within the approved three-card project-wall motion and its focused tests, design documentation and visual evidence."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Presentation-only poster/runtime-panel transitions preserve metric payloads, polling, project navigation and the existing 4:5 layout. The render acknowledgements and animation coordinator are internal page-lifetime state; no public endpoint, configuration, storage or migration is added. Focused unit checks, four Storybook plays, seven official-route browser checks and owner-confirmed responsive captures verify the preserved contracts.",
+      "assessed_at": "2026-10-14T07:19:22+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/project-runtime-motion.test.ts",
+          "blob": "8344818df6ca6c30b821fdc409c97cc4742c4337",
+          "command": "bun test tests/lib/project-runtime-motion.test.ts"
+        },
+        {
+          "path": "tests/lib/project-runtime-channel.test.ts",
+          "blob": "e1f22873cc9d951bd0e569cad81ee2ab30fd2bbc",
+          "command": "bun test tests/lib/project-runtime-channel.test.ts"
+        },
+        {
+          "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
+          "blob": "5270880f4f1bbd9f8ea9b879bb2321aea6d42bb9",
+          "command": "Agent VM: bun run test:e2e:web-demo project-runtime-motion.spec.ts (7/7 passed)"
+        },
+        {
+          "path": "src/components/projects/RuntimeCellGrid.stories.tsx",
+          "blob": "c51fe54277455f9e5e714681796715473e2c5f17",
+          "command": "Agent VM: STORYBOOK_STORY_PREFIX=public-projects-runtime-cell-grid bun run test:storybook-interactions (4/4 passed)"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": ["3.0.3", "3.0.4", "3.0.5", "3.1.1", "3.1.2"],
+      "evidence": [
+        {
+          "path": "tests/lib/project-runtime-motion.test.ts",
+          "blob": "8344818df6ca6c30b821fdc409c97cc4742c4337",
+          "command": "bun test tests/lib/project-runtime-motion.test.ts"
+        },
+        {
+          "path": "tests/lib/project-runtime-channel.test.ts",
+          "blob": "e1f22873cc9d951bd0e569cad81ee2ab30fd2bbc",
+          "command": "bun test tests/lib/project-runtime-channel.test.ts"
+        },
+        {
+          "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
+          "blob": "5270880f4f1bbd9f8ea9b879bb2321aea6d42bb9",
+          "command": "Agent VM: bun run test:e2e:web-demo project-runtime-motion.spec.ts (7/7 passed)"
+        },
+        {
+          "path": "src/components/projects/RuntimeCellGrid.stories.tsx",
+          "blob": "c51fe54277455f9e5e714681796715473e2c5f17",
+          "command": "Agent VM: STORYBOOK_STORY_PREFIX=public-projects-runtime-cell-grid bun run test:storybook-interactions (4/4 passed)"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The coordinator, revision counters and readiness notifications exist only in browser memory. This change adds no persistent fields, migrations or durable formats.",
+      "readable_by_prior_versions": ["3.1.1", "3.1.2"],
+      "upgrade_from_versions": ["3.1.1", "3.1.2"],
+      "evidence": [
+        {
+          "path": "tests/lib/project-runtime-motion.test.ts",
+          "blob": "8344818df6ca6c30b821fdc409c97cc4742c4337",
+          "command": "bun test tests/lib/project-runtime-motion.test.ts"
+        },
+        {
+          "path": "tests/lib/project-runtime-channel.test.ts",
+          "blob": "e1f22873cc9d951bd0e569cad81ee2ab30fd2bbc",
+          "command": "bun test tests/lib/project-runtime-channel.test.ts"
+        }
+      ]
+    }
+  }
+}

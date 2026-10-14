@@ -61,3 +61,5 @@
 - 2026-10-09: Runtime activity Tooltips now use the existing compact K/M/B/T representation for long values, avoiding multiple grouping separators while retaining raw values in the runtime model; the official route regression covers the scaled display.
 
 - The ambient leaf geometry now shares the approved broad/willow vector paths across SVG and a theme-independent WebGPU atlas. ADR 0011 replaces ADR 0007’s outline-omission detail policy with secondary-vein omission.
+
+- 2026-10-14: The project wall implements the approved layered poster/runtime-panel transitions with 140ms card staggering, revision-bound render readiness, immediate active retargeting, fallback inspection cleanup, hidden-page settlement, and system/Inspector reduced motion. Focused unit checks, four reusable-grid Storybook plays, the Web Demo build, seven official-route browser checks, and four owner-confirmed desktop/mobile light/dark captures pass. The responsive contract and ADR 0003 remain unchanged.
