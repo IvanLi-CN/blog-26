@@ -122,7 +122,8 @@ const seedMemos: ConsoleWebDemoMemo[] = [
 
 const CONSOLE_WEB_DEMO_STORE_KEY = "console-web-demo-memos-v2";
 const CONSOLE_WEB_DEMO_MUTATION_COOKIE = "console_web_demo_mutations_v1";
-const CONSOLE_WEB_DEMO_COOKIE_LIMIT = 3800;
+const CONSOLE_WEB_DEMO_COOKIE_CHUNK_SIZE = 3000;
+const CONSOLE_WEB_DEMO_COOKIE_MAX_CHUNKS = 64;
 
 type ConsoleWebDemoMutationUpdate = {
   s: string;
@@ -168,18 +169,24 @@ function parsePersistedStore(raw: string | null) {
   }
 }
 
-function readCookieValue(cookieHeader: string | undefined, name: string) {
+function readRawCookieValue(cookieHeader: string | undefined, name: string) {
   if (!cookieHeader) return null;
   for (const part of cookieHeader.split(";")) {
     const separator = part.indexOf("=");
     if (separator < 0 || part.slice(0, separator).trim() !== name) continue;
-    try {
-      return decodeURIComponent(part.slice(separator + 1).trim());
-    } catch {
-      return null;
-    }
+    return part.slice(separator + 1).trim();
   }
   return null;
+}
+
+function readCookieValue(cookieHeader: string | undefined, name: string) {
+  const raw = readRawCookieValue(cookieHeader, name);
+  if (!raw) return null;
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
 }
 
 function readPersistedStore(storageKey: string) {
@@ -194,7 +201,25 @@ function readPersistedStore(storageKey: string) {
 function readMutationJournal(cookieHeader?: string) {
   const cookieSource =
     cookieHeader ?? (typeof document === "undefined" ? undefined : document.cookie);
-  const raw = readCookieValue(cookieSource, CONSOLE_WEB_DEMO_MUTATION_COOKIE);
+  const raw =
+    readCookieValue(cookieSource, CONSOLE_WEB_DEMO_MUTATION_COOKIE) ??
+    (() => {
+      const chunks: string[] = [];
+      for (let index = 0; index < CONSOLE_WEB_DEMO_COOKIE_MAX_CHUNKS; index += 1) {
+        const chunk = readRawCookieValue(
+          cookieSource,
+          `${CONSOLE_WEB_DEMO_MUTATION_COOKIE}_${index}`
+        );
+        if (chunk === null) break;
+        chunks.push(chunk);
+      }
+      if (chunks.length === 0) return null;
+      try {
+        return decodeURIComponent(chunks.join(""));
+      } catch {
+        return null;
+      }
+    })();
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as Partial<ConsoleWebDemoMutationJournal>;
@@ -311,14 +336,28 @@ function persistStore(storageKey: string, memos: ConsoleWebDemoMemo[], sequence:
   }
   try {
     const encoded = encodeURIComponent(JSON.stringify(buildMutationJournal(memos, sequence)));
-    if (encoded.length > CONSOLE_WEB_DEMO_COOKIE_LIMIT) return;
+    const clearCookie = (name: string) => {
+      document.cookie = `${name}=; Max-Age=0; Path=/; SameSite=Lax`;
+    };
+    clearCookie(CONSOLE_WEB_DEMO_MUTATION_COOKIE);
+    for (let index = 0; index < CONSOLE_WEB_DEMO_COOKIE_MAX_CHUNKS; index += 1) {
+      clearCookie(`${CONSOLE_WEB_DEMO_MUTATION_COOKIE}_${index}`);
+    }
     if (
-      encoded ===
+      encoded !==
       encodeURIComponent(JSON.stringify({ sequence, deleted: [], created: [], updated: [] }))
     ) {
-      document.cookie = `${CONSOLE_WEB_DEMO_MUTATION_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`;
-    } else {
-      document.cookie = `${CONSOLE_WEB_DEMO_MUTATION_COOKIE}=${encoded}; Path=/; SameSite=Lax`;
+      if (encoded.length <= CONSOLE_WEB_DEMO_COOKIE_CHUNK_SIZE) {
+        document.cookie = `${CONSOLE_WEB_DEMO_MUTATION_COOKIE}=${encoded}; Path=/; SameSite=Lax`;
+      } else {
+        for (
+          let offset = 0, index = 0;
+          offset < encoded.length;
+          offset += CONSOLE_WEB_DEMO_COOKIE_CHUNK_SIZE, index += 1
+        ) {
+          document.cookie = `${CONSOLE_WEB_DEMO_MUTATION_COOKIE}_${index}=${encoded.slice(offset, offset + CONSOLE_WEB_DEMO_COOKIE_CHUNK_SIZE)}; Path=/; SameSite=Lax`;
+        }
+      }
     }
   } catch {
     // The cookie is an optional SSR bridge for the in-memory Web Demo state.

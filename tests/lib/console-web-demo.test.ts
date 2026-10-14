@@ -77,6 +77,36 @@ describe("Console Web Demo persona projections", () => {
     });
   });
 
+  test("server-side store reconstruction joins oversized mutation-cookie chunks", () => {
+    const content = `# Long memo\n\n${"长内容 ".repeat(500)}`;
+    const encoded = encodeURIComponent(
+      JSON.stringify({
+        sequence: 0,
+        deleted: [],
+        created: [],
+        updated: [
+          {
+            s: CONSOLE_WEB_DEMO_SLUGS.public,
+            c: content,
+            p: true,
+            t: ["公开"],
+            u: "2026-10-14T12:00:00.000Z",
+            v: "2026-10-14T12:00:00.000Z",
+          },
+        ],
+      })
+    );
+    const chunkSize = 3000;
+    const cookieHeader = Array.from(
+      { length: Math.ceil(encoded.length / chunkSize) },
+      (_, index) =>
+        `console_web_demo_mutations_v1_${index}=${encoded.slice(index * chunkSize, (index + 1) * chunkSize)}`
+    ).join("; ");
+    const store = createConsoleWebDemoStore({ cookieHeader });
+
+    expect(store.get(CONSOLE_WEB_DEMO_SLUGS.public, "guest")?.content).toBe(content);
+  });
+
   test("guest clipping detail keeps source and translation without discussion access", () => {
     const article = getConsoleWebDemoClippingArticle(CONSOLE_WEB_DEMO_SLUGS.clipping, "guest");
 

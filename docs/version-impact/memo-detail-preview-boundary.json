@@ -29,7 +29,7 @@
     "src/components/WebDemoInspector.css": "d7c0f572527944d9f1ec7d3ad74002d0df0783cd",
     "src/components/WebDemoInspector.tsx": "07a071d09a48a33545742e0ea91beeb89eb88988",
     "src/lib/clipping-web-demo.ts": "ba7a3c371ac77c91aa6a7513635cd8aeafe691ce",
-    "src/lib/console-web-demo.ts": "cb2a48f6a7057b3f64d12b0648abf6e80a3b55bb",
+    "src/lib/console-web-demo.ts": "af38d11bfda640406d5a3a8ecbeeb0f9978dc102",
     "src/lib/web-demo-fetch.ts": "05da9fc2fe4fd9fbb5178dc0cb89aad0ab635a7a",
     "src/server/clipping/api.test.ts": "c49f19bb824e1534886fbb47cdbd0898e70e133d",
     "src/server/clipping/api.ts": "c9f16d2ced4b0f248ad5a53d5e1f3f21a434b82e",
@@ -45,7 +45,7 @@
     "tests/e2e/web-demo/playwright.config.ts": "8dc2e45e799abdb4c24e390702f471283042e63d",
     "tests/lib/clipping-web-demo.test.ts": "7b2a9ec797882d3249437825746d74b846825681",
     "tests/lib/console-memo-page-data.test.ts": "369c2c4d5c3dadd25c0a3f42afeca870aa2404f1",
-    "tests/lib/console-web-demo.test.ts": "19fde3a381335cdb284d50a6f328caf53b5b3aef",
+    "tests/lib/console-web-demo.test.ts": "a0cd59169874ba1089027e31859acdde79b8d9e3",
     "tsconfig.json": "676a7f22b8020a9b9fe1eeeafd06c72625abafcc"
   },
   "change": {
@@ -74,7 +74,7 @@
     "current": {
       "impact": "patch",
       "reasoning": "The candidate changes only the Console Memo detail/preview boundary, request-scoped initial projection, unauthorized read status mapping, shared route history state, and the official build-time Web Demo evidence surface. Public API payload shapes, durable application state, snapshot publishing, and deployment host configuration remain unchanged; unauthorized private reads remain indistinguishable from missing resources, while the Demo uses explicit guest projections that omit authoring-only fields. Console Web Demo mutations now use a compact same-origin ephemeral cookie journal as an SSR bridge in addition to sessionStorage, so list/detail reloads read the current tab state without introducing durable persistence. The current candidate also hides administrator tools immediately during persona downgrade and retains publication timestamps when a Memo becomes public.",
-      "assessed_at": "2026-10-14T20:56:00+08:00",
+      "assessed_at": "2026-10-14T21:16:32+08:00",
       "evidence": [
         {
           "path": "apps/admin/src/pages/preview.tsx",
@@ -88,13 +88,13 @@
         },
         {
           "path": "src/lib/console-web-demo.ts",
-          "blob": "cb2a48f6a7057b3f64d12b0648abf6e80a3b55bb",
+          "blob": "af38d11bfda640406d5a3a8ecbeeb0f9978dc102",
           "command": "Console Web Demo fixtures expose separate administrator and guest projections and an ephemeral sessionStorage plus same-origin mutation-cookie bridge for SSR and the dedicated preview"
         },
         {
           "path": "tests/lib/console-web-demo.test.ts",
-          "blob": "19fde3a381335cdb284d50a6f328caf53b5b3aef",
-          "command": "Console projection regression: 5 passed, including published timestamp retention and server-side mutation-cookie reconstruction"
+          "blob": "a0cd59169874ba1089027e31859acdde79b8d9e3",
+          "command": "Console projection regression: 6 passed, including published timestamp retention and server-side mutation-cookie reconstruction"
         },
         {
           "path": "tests/lib/console-memo-page-data.test.ts",
@@ -150,7 +150,7 @@
     "verified": {
       "impact": "patch",
       "reasoning": "Focused component, Console projection, SSR page-data source selection, clipping, HTTP compatibility, official Web Demo build, and Console browser acceptance checks pass at desktop and mobile viewports. The implementation preserves existing public API payload shapes and durable state while enforcing the same-origin detail/preview boundary and private-resource non-disclosure; the 403-to-404 mapping is an intentional privacy hardening because private and missing resources share the documented not-found response. Console Web Demo SSR now reconstructs mutations from the ephemeral same-origin cookie journal, and persona downgrade clears stale admin state before the replacement auth response settles. Official Console boundary E2E passes 12 desktop and 12 mobile cases, including private and draft JS-disabled guest navigation, same-route save, preview sync, deletion, reload freshness, clipping, and mobile bottom-sheet interaction.",
-      "assessed_at": "2026-10-14T20:56:00+08:00",
+      "assessed_at": "2026-10-14T21:16:32+08:00",
       "evidence": [
         {
           "path": "apps/admin/src/pages/preview.tsx",
@@ -189,8 +189,8 @@
         },
         {
           "path": "tests/lib/console-web-demo.test.ts",
-          "blob": "19fde3a381335cdb284d50a6f328caf53b5b3aef",
-          "command": "Console projection regression: 5 passed, including published timestamp retention and server-side mutation-cookie reconstruction"
+          "blob": "a0cd59169874ba1089027e31859acdde79b8d9e3",
+          "command": "Console projection regression: 6 passed, including published timestamp retention and server-side mutation-cookie reconstruction"
         },
         {
           "path": "tests/lib/console-memo-page-data.test.ts",
@@ -205,7 +205,7 @@
         {
           "path": "src/lib/web-demo-fetch.ts",
           "blob": "05da9fc2fe4fd9fbb5178dc0cb89aad0ab635a7a",
-          "command": "bun test tests/lib/console-web-demo.test.ts tests/lib/console-memo-page-data.test.ts tests/components/PublicMemoAuthoring.test.tsx tests/components/ClippingDetail.test.tsx src/lib/__tests__/admin-demo-file-tree.test.ts src/lib/__tests__/admin-demo-file-paste-selection.test.ts src/lib/__tests__/admin-demo-llm-settings.test.ts: 20 passed; Web Demo admin/preview mutation bridge covered by 12 desktop and 12 mobile E2E cases"
+          "command": "bun test tests/lib/console-web-demo.test.ts tests/lib/console-memo-page-data.test.ts tests/components/PublicMemoAuthoring.test.tsx tests/components/ClippingDetail.test.tsx src/lib/__tests__/admin-demo-file-tree.test.ts src/lib/__tests__/admin-demo-file-paste-selection.test.ts src/lib/__tests__/admin-demo-llm-settings.test.ts: 23 passed; Web Demo admin/preview mutation bridge covered by 12 desktop and 12 mobile E2E cases"
         },
         {
           "path": "scripts/build-web-demo.ts",
