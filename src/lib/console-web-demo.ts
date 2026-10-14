@@ -120,6 +120,49 @@ const seedMemos: ConsoleWebDemoMemo[] = [
   ),
 ];
 
+const CONSOLE_WEB_DEMO_STORE_KEY = "console-web-demo-memos-v2";
+
+function readPersistedStore(storageKey: string) {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(storageKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { memos?: unknown; sequence?: unknown };
+    if (
+      !parsed ||
+      !Array.isArray(parsed.memos) ||
+      !parsed.memos.every(
+        (memo) =>
+          memo &&
+          typeof memo === "object" &&
+          typeof (memo as { id?: unknown }).id === "string" &&
+          typeof (memo as { slug?: unknown }).slug === "string" &&
+          typeof (memo as { content?: unknown }).content === "string" &&
+          typeof (memo as { isPublic?: unknown }).isPublic === "boolean"
+      )
+    )
+      return null;
+    return {
+      memos: parsed.memos as ConsoleWebDemoMemo[],
+      sequence:
+        typeof parsed.sequence === "number" && Number.isSafeInteger(parsed.sequence)
+          ? parsed.sequence
+          : 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function persistStore(storageKey: string, memos: ConsoleWebDemoMemo[], sequence: number) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(storageKey, JSON.stringify({ memos, sequence }));
+  } catch {
+    // Session storage is an optional bridge between the Console and preview bundles.
+  }
+}
+
 function cloneMemo(memo: ConsoleWebDemoMemo): ConsoleWebDemoMemo {
   return structuredClone(memo);
 }
@@ -202,9 +245,11 @@ export function getConsoleWebDemoClippingArticle(slug: string, persona: WebDemoP
   };
 }
 
-export function createConsoleWebDemoStore() {
-  let memos = getConsoleWebDemoMemos();
-  let sequence = 0;
+export function createConsoleWebDemoStore(options: { storageKey?: string } = {}) {
+  const storageKey = options.storageKey ?? CONSOLE_WEB_DEMO_STORE_KEY;
+  const persisted = readPersistedStore(storageKey);
+  let memos = persisted?.memos ?? getConsoleWebDemoMemos();
+  let sequence = persisted?.sequence ?? 0;
 
   const visible = (persona: WebDemoPersona) =>
     memos
@@ -239,6 +284,7 @@ export function createConsoleWebDemoStore() {
       memo.createdAt = now;
       memo.updatedAt = now;
       memos = [memo, ...memos];
+      persistStore(storageKey, memos, sequence);
       return cloneMemo(memo);
     },
     update(slug: string, input: { content: string; isPublic: boolean; tags?: string[] }) {
@@ -262,11 +308,13 @@ export function createConsoleWebDemoStore() {
         updatedAt: new Date().toISOString(),
       };
       memos = memos.map((memo) => (memo.slug === slug ? updated : memo));
+      persistStore(storageKey, memos, sequence);
       return cloneMemo(updated);
     },
     remove(slug: string) {
       const existed = memos.some((memo) => memo.slug === slug);
       memos = memos.filter((memo) => memo.slug !== slug);
+      if (existed) persistStore(storageKey, memos, sequence);
       return existed;
     },
   };

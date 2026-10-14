@@ -18,7 +18,7 @@ import {
   getAdminFileContentKind,
   getAdminFileExtension,
 } from "@/lib/admin-file-content";
-import { getConsoleWebDemoMemo } from "@/lib/console-web-demo";
+import { createConsoleWebDemoStore } from "@/lib/console-web-demo";
 import type {
   AdminLlmSettingsPayload,
   AdminLlmSettingsTestRequest,
@@ -47,6 +47,7 @@ import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
 
 const now = Date.now();
+const consoleWebDemoPreviewStore = createConsoleWebDemoStore();
 
 const postBodies = {
   hooks: `---
@@ -722,7 +723,7 @@ async function handleAdminRequest(
   if (path === "/api/admin/dashboard/recent-activity") return json(recentActivity());
   if (path.startsWith("/api/admin/preview/memos/") && method === "GET") {
     const slug = decodeURIComponent(path.split("/").at(-1) ?? "");
-    const memo = getConsoleWebDemoMemo(slug, "admin");
+    const memo = consoleWebDemoPreviewStore.get(slug, "admin");
     if (!memo) return json({ error: { code: "NOT_FOUND", message: "Memo 不存在" } }, 404);
     return json({ kind: "memo", ...memo });
   }

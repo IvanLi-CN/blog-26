@@ -86,6 +86,27 @@ test.describe("Console Memo Web Demo", () => {
     );
   });
 
+  test("rechecks the detail boundary when the Web Demo persona changes", async ({ page }) => {
+    await page.goto(`/memos/${privateSlug}/?d_persona=admin&d_delay=normal`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.getByTestId("public-memo-detail-controls")).toBeVisible();
+    await expect(page.getByTestId("public-memo-detail-body")).toContainText(
+      "管理员可以在详情首屏看到尚未进入公开快照的正文"
+    );
+
+    await page.getByTestId("web-demo-inspector-trigger").click();
+    await page.getByTestId("web-demo-persona-guest").click();
+    await expect(page.getByTestId("public-memo-detail-controls")).toHaveCount(0);
+    await expect(page.locator('[data-testid="public-memo-detail-card"]:visible')).toHaveCount(0);
+
+    await page.getByTestId("web-demo-persona-admin").click();
+    await expect(page.getByTestId("public-memo-detail-controls")).toBeVisible();
+    await expect(page.locator('[data-testid="public-memo-detail-body"]:visible')).toContainText(
+      "管理员可以在详情首屏看到尚未进入公开快照的正文"
+    );
+  });
+
   test("keeps private and draft rows out of the guest list", async ({ page }) => {
     await page.goto("/memos/?d_persona=guest&d_delay=normal", { waitUntil: "domcontentloaded" });
     await expect(page.getByText("本周公开笔记", { exact: true })).toBeVisible();
@@ -199,13 +220,34 @@ test.describe("Console Memo Web Demo", () => {
     await expect(page.locator(".web-demo-inspector-mutations")).toContainText("保存 Memo 详情");
   });
 
+  test("opens the dedicated preview with the saved Console Web Demo content", async ({ page }) => {
+    await page.goto(`/memos/?d_persona=admin&d_delay=normal`, { waitUntil: "domcontentloaded" });
+    await page
+      .getByTestId("admin-live-memo-card")
+      .filter({ hasText: "发布窗口后的内部复盘" })
+      .getByRole("link", { name: "查看详情" })
+      .click();
+    await page.getByRole("button", { name: "编辑 Memo" }).click();
+    const modal = page.getByTestId("quick-memo-edit-modal");
+    await expect(modal).toBeVisible();
+    await modal
+      .locator(".ProseMirror")
+      .fill("# 预览同步验收\n\n专用预览必须读取当前 Console Web Demo 保存的正文。");
+    await modal.getByRole("button", { name: "保存更改" }).click();
+    await expect(modal).toHaveCount(0);
+    await page.getByRole("link", { name: "打开专用预览" }).click();
+    await expect(page).toHaveURL(new RegExp(`/admin/preview/memos/${privateSlug}$`));
+    await expect(page.getByTestId("admin-preview-memo-body")).toContainText(
+      "专用预览必须读取当前 Console Web Demo 保存的正文"
+    );
+  });
+
   test("keeps a deleted Web Demo Memo out of the list after client navigation", async ({
     page,
   }) => {
     await page.goto(`/memos/?d_persona=admin&d_delay=normal`, { waitUntil: "domcontentloaded" });
     await page
-      .getByTestId("admin-live-memo-card")
-      .filter({ hasText: "发布窗口后的内部复盘" })
+      .locator(`[data-testid="admin-live-memo-card"][data-slug="${privateSlug}"]`)
       .getByRole("link", { name: "查看详情" })
       .click();
     await expect(page.getByTestId("admin-live-memo-delete")).toBeEnabled();

@@ -13,6 +13,7 @@ import type { ClippingReading } from "@/lib/memo-clipping";
 import { getMemoPresentation } from "@/lib/memo-presentation";
 import type { PublicMediaContext } from "@/lib/public-media";
 import { webDemoFetch } from "@/lib/web-demo-fetch";
+import { WEB_DEMO_STATE_EVENT } from "@/lib/web-demo-runtime";
 import {
   adminMemoRecordSchema,
   parseMemoPage,
@@ -145,6 +146,7 @@ function usePublicAuth(initialIsAdmin = false) {
 
   const refetch = useCallback(() => {
     setIsLoading(true);
+    setIsResolved(false);
     void readJson<PublicAuthUser | null>(toPublicApiUrl("/api/public/auth/me"))
       .then((nextUser) => {
         setUser(nextUser);
@@ -160,6 +162,15 @@ function usePublicAuth(initialIsAdmin = false) {
 
   useEffect(() => {
     refetch();
+  }, [refetch]);
+
+  useEffect(() => {
+    const handleWebDemoStateChange = (event: Event) => {
+      const changed = (event as CustomEvent<{ changed?: string[] }>).detail?.changed ?? [];
+      if (changed.includes("persona")) refetch();
+    };
+    window.addEventListener(WEB_DEMO_STATE_EVENT, handleWebDemoStateChange);
+    return () => window.removeEventListener(WEB_DEMO_STATE_EVENT, handleWebDemoStateChange);
   }, [refetch]);
 
   return {
@@ -884,7 +895,7 @@ export function PublicMemoDetailControlsIsland({
   const effectiveIsAdmin = isAdmin || (initialIsAdmin && !isResolved);
   useHideStaticSnapshot(
     "[data-public-memo-static-shell]",
-    initialIsAdmin || Boolean(memo?.canDiscuss)
+    initialIsAdmin || effectiveIsAdmin || Boolean(memo?.canDiscuss)
   );
 
   useEffect(() => {
