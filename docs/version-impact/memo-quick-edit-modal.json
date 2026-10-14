@@ -14,7 +14,7 @@
     "src/components/memos/QuickMemoEditModal.tsx": "57401bd03d9099d9a51abb7bd4543ac0e6303eb2",
     "src/lib/web-demo-fetch.ts": "3462ac0c2ddcfd4a8e6039afafb17a5b9e626320",
     "src/lib/web-demo-runtime.ts": "4a6d973a273d194d58732b58f5e691bb4b4fb2d2",
-    "src/styles/milkdown-nature.css": "4384f58bfa88993b2b5788f6acf795a508a9e0e3",
+    "src/styles/milkdown-nature.css": "fe81a47f977fdda2dcc6360e1e35ba59a9fae694",
     "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts": "c06a3686c458a58c793338816ae9b902d11e59e4",
     "tests/lib/web-demo-runtime.test.ts": "2193c8ffa640872bdaf15d267c0170d13fa7e3d5"
   },
@@ -53,7 +53,7 @@
         },
         {
           "path": "src/styles/milkdown-nature.css",
-          "blob": "4384f58bfa88993b2b5788f6acf795a508a9e0e3",
+          "blob": "fe81a47f977fdda2dcc6360e1e35ba59a9fae694",
           "command": "Inspect the quick-edit Nature surface and responsive editor gutter rules"
         }
       ],
@@ -79,7 +79,7 @@
         },
         {
           "path": "src/styles/milkdown-nature.css",
-          "blob": "4384f58bfa88993b2b5788f6acf795a508a9e0e3",
+          "blob": "fe81a47f977fdda2dcc6360e1e35ba59a9fae694",
           "command": "Web Demo captures at desktop, 393px, and 320px verify overlay, compact spacing, and zero horizontal overflow"
         }
       ]

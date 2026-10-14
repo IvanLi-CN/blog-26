@@ -152,12 +152,27 @@ body:has(.quick-memo-edit-modal) .nature-site-header {
 }
 
 .quick-memo-edit-editor .milkdown {
-  --crepe-color-background: transparent;
-  --crepe-color-surface: transparent;
-  --crepe-color-surface-low: transparent;
-  --crepe-color-inline-area: transparent;
+  --crepe-color-background: var(--nature-surface-inset);
+  --crepe-color-on-background: var(--nature-text);
+  --crepe-color-surface: var(--nature-surface-strong);
+  --crepe-color-surface-low: var(--nature-surface-muted);
+  --crepe-color-on-surface: var(--nature-text);
+  --crepe-color-on-surface-variant: var(--nature-text-soft);
+  --crepe-color-outline: var(--nature-line-strong);
+  --crepe-color-primary: var(--nature-accent-strong);
+  --crepe-color-secondary: var(--nature-secondary);
+  --crepe-color-on-secondary: var(--nature-bg);
+  --crepe-color-inverse: var(--nature-text);
+  --crepe-color-on-inverse: var(--nature-bg);
+  --crepe-color-inline-code: var(--nature-code-string);
+  --crepe-color-error: var(--nature-danger);
+  --crepe-color-hover: var(--nature-accent-soft);
+  --crepe-color-selected: var(--nature-accent-soft);
+  --crepe-color-inline-area: var(--nature-accent-soft);
+  --crepe-shadow-1: var(--nature-shadow);
+  --crepe-shadow-2: var(--nature-shadow-strong);
   min-height: 12rem;
-  background: transparent;
+  background: var(--crepe-color-background);
 }
 
 .quick-memo-edit-editor .milkdown .editor,
