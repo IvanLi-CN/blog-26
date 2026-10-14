@@ -63,7 +63,7 @@
         },
         {
           "path": "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts",
-          "blob": "12f2a0f8dd111a6847fdb0703606189dbf4c4ae0",
+          "blob": "2027256d9932aa3d030863770a2f6f4beca287c6",
           "command": "Admin Memo detail E2E covers eye navigation, SSR privacy, preview separation, same-route save, single-card structure, and responsive states"
         }
       ],
@@ -79,7 +79,7 @@
       "evidence": [
         {
           "path": "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts",
-          "blob": "12f2a0f8dd111a6847fdb0703606189dbf4c4ae0",
+          "blob": "2027256d9932aa3d030863770a2f6f4beca287c6",
           "command": "Admin Memo E2E: 13 passed on the current production Console build"
         },
         {
