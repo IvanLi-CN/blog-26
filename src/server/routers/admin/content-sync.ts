@@ -79,72 +79,61 @@ function runPlaybookSync(): Promise<PlaybookSyncResult> {
     try {
       store = getRuntimePlaybookStore();
       await store.load();
-      stagedEdition = await store.downloadEdition(undefined, controller.signal);
-      if (controller.signal.aborted) {
-        return {
-          success: true as const,
-          cancelled: true,
-          status: await getPlaybookContentSyncStatus(),
-        };
-      }
-      const edition = stagedEdition ?? store.current;
-      const isNewEdition = Boolean(stagedEdition && stagedEdition !== store.current);
-      if (edition) {
+      const initialEdition = store.current;
+      let preparationFailed = false;
+      await store.sync(undefined, controller.signal, async (edition, signal) => {
+        stagedEdition = edition;
+        const isNewEdition = edition !== initialEdition;
         const config = await getResolvedLlmConfig().catch(() => undefined);
-        if (config?.embedding.model) {
-          projectionModel = config.embedding.model;
-          try {
-            const projection = await preparePlaybookSemanticProjection(edition, config.embedding, {
-              signal: controller.signal,
-            });
-            await db.insert(contentSyncLogs).values({
-              id: randomUUID(),
-              sourceType: "playbook",
-              sourceName: "playbook",
-              operation: "semantic-projection",
-              status: projection.failed ? "warning" : "success",
-              message: projection.failed
-                ? `Playbook 语义投影部分待补（${projection.failed}/${projection.total}）`
-                : "Playbook 语义投影准备完成",
-              filePath: null,
-              data: JSON.stringify({ taskId, phase: "semantic", ...projection }),
-              createdAt: Date.now(),
-            });
-          } catch (error) {
-            if (isNewEdition && stagedEdition && projectionModel)
-              await discardPlaybookSemanticProjection(stagedEdition, projectionModel);
-            if (controller.signal.aborted)
-              return {
-                success: true as const,
-                cancelled: true,
-                status: await getPlaybookContentSyncStatus(),
-              };
-            console.warn(
-              "[playbook] semantic projection pending:",
-              error instanceof Error ? error.message : String(error)
-            );
-            await db.insert(contentSyncLogs).values({
-              id: randomUUID(),
-              sourceType: "playbook",
-              sourceName: "playbook",
-              operation: "semantic-projection",
-              status: "error",
-              message: error instanceof Error ? error.message : String(error),
-              filePath: null,
-              data: JSON.stringify({ taskId, phase: "semantic" }),
-              createdAt: Date.now(),
-            });
-            return {
-              success: true as const,
-              adopted: false,
-              status: await getPlaybookContentSyncStatus(),
-            };
-          }
-        }
-      }
+        if (!config?.embedding.model) return true;
 
+        projectionModel = config.embedding.model;
+        try {
+          const projection = await preparePlaybookSemanticProjection(edition, config.embedding, {
+            signal,
+          });
+          await db.insert(contentSyncLogs).values({
+            id: randomUUID(),
+            sourceType: "playbook",
+            sourceName: "playbook",
+            operation: "semantic-projection",
+            status: projection.failed ? "warning" : "success",
+            message: projection.failed
+              ? `Playbook 语义投影部分待补（${projection.failed}/${projection.total}）`
+              : "Playbook 语义投影准备完成",
+            filePath: null,
+            data: JSON.stringify({ taskId, phase: "semantic", ...projection }),
+            createdAt: Date.now(),
+          });
+          return true;
+        } catch (error) {
+          preparationFailed = true;
+          if (isNewEdition && projectionModel)
+            await discardPlaybookSemanticProjection(edition, projectionModel);
+          if (signal.aborted) return false;
+          console.warn(
+            "[playbook] semantic projection pending:",
+            error instanceof Error ? error.message : String(error)
+          );
+          await db.insert(contentSyncLogs).values({
+            id: randomUUID(),
+            sourceType: "playbook",
+            sourceName: "playbook",
+            operation: "semantic-projection",
+            status: "error",
+            message: error instanceof Error ? error.message : String(error),
+            filePath: null,
+            data: JSON.stringify({ taskId, phase: "semantic" }),
+            createdAt: Date.now(),
+          });
+          return false;
+        }
+      });
+
+      const edition = stagedEdition ?? store.current;
+      const isNewEdition = Boolean(stagedEdition && stagedEdition !== initialEdition);
       if (controller.signal.aborted) {
-        if (stagedEdition && projectionModel && stagedEdition !== store.current)
+        if (stagedEdition && projectionModel && isNewEdition)
           await discardPlaybookSemanticProjection(stagedEdition, projectionModel);
         return {
           success: true as const,
@@ -152,11 +141,13 @@ function runPlaybookSync(): Promise<PlaybookSyncResult> {
           status: await getPlaybookContentSyncStatus(),
         };
       }
-
-      if (stagedEdition && stagedEdition !== store.current) {
-        await store.adopt(stagedEdition);
-        adopted = true;
-      }
+      if (preparationFailed)
+        return {
+          success: true as const,
+          adopted: false,
+          status: await getPlaybookContentSyncStatus(),
+        };
+      adopted = Boolean(isNewEdition && store.current === stagedEdition);
 
       await db.insert(contentSyncLogs).values({
         id: randomUUID(),

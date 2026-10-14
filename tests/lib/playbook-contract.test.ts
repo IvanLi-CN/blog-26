@@ -885,6 +885,39 @@ describe("playbook-cache-http-ssr", () => {
     expect(store.current?.edition.source.tag).toBe("v3.1.0");
     expect(PLAYBOOK_POLL_INTERVAL_MS).toBe(300_000);
   });
+  test("shares staged downloads and cancels the active operation without a stale controller", async () => {
+    const root = await temp();
+    const next = makePublicBundle("v3.1.0", "101");
+    let catalogStarted = false;
+    let manifestRequests = 0;
+    const store = new PlaybookStore(root, async (url, init) => {
+      if (url.endsWith("manifest.json")) {
+        manifestRequests++;
+        return Response.json(next.edition.edition);
+      }
+      if (url.endsWith("catalog.json")) {
+        catalogStarted = true;
+        await new Promise<never>((_, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(init?.signal?.reason), {
+            once: true,
+          });
+        });
+      }
+      if (url.endsWith("search-documents.json"))
+        return new Response(encodeJson(next.edition.search));
+      return new Response("{}\n");
+    });
+
+    const first = store.downloadEdition();
+    while (!catalogStarted) await Bun.sleep(0);
+    const second = store.downloadEdition();
+    expect(second).toBe(first);
+    expect(manifestRequests).toBe(1);
+
+    store.cancelSync();
+    await expect(first).rejects.toThrow();
+    await expect(second).rejects.toThrow();
+  });
   test("stages a verified edition without replacing the current edition until adoption", async () => {
     const root = await temp();
     const current = makePublicBundle("v3.0.0", "100");
