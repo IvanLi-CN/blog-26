@@ -6,12 +6,15 @@
     "GLOSSARY.md": "7baafbd48fa89696faefd66709c5a8a159a6b511",
     "astro.config.mjs": "06710645e12de832945ac14d1c0b0a21482b8107",
     "docs/adr/0023-human-readable-playbook-tech-stack.md": "0df85865768c55042b2482712bb51bed3cc84995",
+    "docs/specs/public-pwa/IMPLEMENTATION.md": "5dc4d4b029457c26c933f39292d75c6c3b435065",
+    "docs/specs/public-pwa/SPEC.md": "d4beab2dfe721ac2b0da641988871decdbe87500",
     "docs/specs/style-playbook-integration/HISTORY.md": "01e2c85619b0f30fbd2c6e1cc07228aab93f39e4",
     "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "1f394073a6d9a0c9acd075509a2b564ac9d7b2cd",
     "docs/specs/style-playbook-integration/SPEC.md": "c32aebac0d7ee18817b87ae79ad93a56ec0654c6",
     "docs/specs/style-playbook-integration/assets/tech-stack-raw-desktop-open-dark.png": "705a3f9b51eed64e8e00ca3ffc9707c6e3bfd784",
     "docs/specs/style-playbook-integration/assets/tech-stack-raw-mobile-open-dark.png": "6908d067c35a8b654c2b1ae88860a3d1080ca9cf",
     "scripts/build-web-demo.ts": "dbda185c287cd10ec6a638fde7a2e88f1e820a97",
+    "scripts/prepare-edgeone-pwa-config.ts": "45f2cf8f04dba0d7504c85de83d570c108d15894",
     "src/components/playbook/PlaybookPage.tsx": "b0d05112c62bd495f93edd1b759066f15d409c39",
     "src/components/playbook/PlaybookTechStack.stories.tsx": "c12ecb55dcd97efeb4d50050fa31e8feb90c3fcb",
     "src/components/playbook/PlaybookTechStack.tsx": "f56bc179801c652ccf19bf0f09740f82faf25e3a",
@@ -25,10 +28,11 @@
     "tests/lib/playbook-fixture.ts": "f2848852e07c474bcf349dde63b4498a7718189d",
     "tests/lib/playbook-tech-stack.test.ts": "17ab2eac328f2929489303bf602a42f91c2335a0",
     "tests/lib/playbook-web-demo-fixture.test.ts": "0cef5636efac20275d9d26e2fa542ff070810cc3",
+    "tests/lib/public-pwa-edgeone-config.test.ts": "264fd4ecf7c348bf6a0488a63d87d60462755e47",
     "tests/storybook/playbook-interactions.ts": "63c52be5ac568c3d08a06585357be8325295f1ef"
   },
   "change": {
-    "description": "Present existing Playbook project technology stacks as compact semantic tabs and responsive chips, with a highlighted copyable fullscreen JSON viewer and realistic Web Demo data.",
+    "description": "Present existing Playbook project technology stacks as compact semantic tabs and responsive chips, with a highlighted copyable fullscreen JSON viewer and realistic Web Demo data. Restore edition-qualified Playbook HTML classification in the EdgeOne artifact validator without changing cache headers.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api"]
   },
@@ -57,8 +61,8 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change.",
-      "assessed_at": "2026-10-14T06:16:16.556783+00:00",
+      "reasoning": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change. The release-blocking validator omission is repaired without changing existing cache policies.",
+      "assessed_at": "2026-10-14T08:38:22.789524+00:00",
       "evidence": [
         {
           "path": "tests/lib/playbook-tech-stack.test.ts",
@@ -74,17 +78,22 @@
           "path": "src/components/playbook/PlaybookTechStack.stories.tsx",
           "blob": "c12ecb55dcd97efeb4d50050fa31e8feb90c3fcb",
           "command": "Storybook browser play: tabs, narrow chips, stable JSON toolbar, fullscreen and empty/nested states pass"
+        },
+        {
+          "path": "tests/lib/public-pwa-edgeone-config.test.ts",
+          "blob": "264fd4ecf7c348bf6a0488a63d87d60462755e47",
+          "command": "bun test tests/lib/public-pwa-edgeone-config.test.ts: edition indexes/details at root and base path pass; unknown/deeper HTML remains rejected and header count stays within 30"
         }
       ],
       "scope_drift": {
-        "detected": false,
-        "description": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change."
+        "detected": true,
+        "description": "Owner authorized the bounded edition-route classification repair needed to unblock formal product publication; no cache-policy or version-allocation behavior changes."
       }
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change.",
-      "assessed_at": "2026-10-14T06:16:16.556783+00:00",
+      "reasoning": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change. The release-blocking validator omission is repaired without changing existing cache policies.",
+      "assessed_at": "2026-10-14T08:38:22.789678+00:00",
       "evidence": [
         {
           "path": "tests/lib/playbook-tech-stack.test.ts",
@@ -100,6 +109,11 @@
           "path": "src/components/playbook/PlaybookTechStack.stories.tsx",
           "blob": "c12ecb55dcd97efeb4d50050fa31e8feb90c3fcb",
           "command": "Storybook browser play: tabs, narrow chips, stable JSON toolbar, fullscreen and empty/nested states pass"
+        },
+        {
+          "path": "tests/lib/public-pwa-edgeone-config.test.ts",
+          "blob": "264fd4ecf7c348bf6a0488a63d87d60462755e47",
+          "command": "bun test tests/lib/public-pwa-edgeone-config.test.ts: edition indexes/details at root and base path pass; unknown/deeper HTML remains rejected and header count stays within 30"
         }
       ]
     }
@@ -119,6 +133,11 @@
           "path": "tests/lib/playbook-web-demo-fixture.test.ts",
           "blob": "0cef5636efac20275d9d26e2fa542ff070810cc3",
           "command": "bun test tests/lib/playbook-web-demo-fixture.test.ts: realistic project context passes"
+        },
+        {
+          "path": "tests/lib/public-pwa-edgeone-config.test.ts",
+          "blob": "264fd4ecf7c348bf6a0488a63d87d60462755e47",
+          "command": "bun test tests/lib/public-pwa-edgeone-config.test.ts: edition indexes/details at root and base path pass; unknown/deeper HTML remains rejected and header count stays within 30"
         }
       ]
     },

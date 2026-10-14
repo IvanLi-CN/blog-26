@@ -19,6 +19,30 @@ afterEach(async () => {
 });
 
 describe("EdgeOne public PWA cache config", () => {
+  it("accepts edition-bound Playbook indexes and details with existing HTML cache policy", () => {
+    const edition = `playbook/editions/v2.4.3/412441399/${"a".repeat(64)}`;
+    const files = ["topics", "projects", "policies"].flatMap((category) => [
+      `${edition}/${category}/index.html`,
+      `${edition}/${category}/worktree-bootstrap/index.html`,
+    ]);
+    for (const basePath of ["", "/blog-26"]) {
+      const config = createEdgeoneCacheConfig(basePath, ["index.html", ...files]);
+      for (const file of files) {
+        const route = `${basePath}/${file.slice(0, -"index.html".length)}`;
+        expect(findEdgeoneCacheRule(config, route)?.headers[0]?.value).toBe(
+          EDGEONE_PUBLIC_CACHE_CONTROL.html
+        );
+      }
+      expect(config.headers.length).toBeLessThanOrEqual(30);
+      expect(() =>
+        createEdgeoneCacheConfig(basePath, [`${edition}/policies/example/private/index.html`])
+      ).toThrow("Public HTML route has no EdgeOne HTML cache rule");
+      expect(() => createEdgeoneCacheConfig(basePath, [`${edition}/unknown/index.html`])).toThrow(
+        "Public HTML route has no EdgeOne HTML cache rule"
+      );
+    }
+  });
+
   it("covers public pages and assets at a base path without matching API, admin, or gateway", () => {
     const config = createEdgeoneCacheConfig("/blog-26", [
       "index.html",
