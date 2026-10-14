@@ -170,6 +170,10 @@ function getLocation(location?: Pick<Location, "pathname" | "search">) {
   return window.location;
 }
 
+export function getWebDemoEditSlug(location?: Pick<Location, "pathname" | "search">) {
+  return new URLSearchParams(getLocation(location).search).get("d_edit")?.trim() || null;
+}
+
 function clampDelayMs(value: number) {
   return Math.min(30_000, Math.max(0, Math.trunc(value)));
 }

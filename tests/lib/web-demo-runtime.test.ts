@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   assertWebDemoRequestAvailable,
   getDefaultWebDemoState,
+  getWebDemoEditSlug,
   getWebDemoEnvironment,
   getWebDemoRequestDelayMs,
   getWebDemoSceneOptions,
@@ -13,6 +14,13 @@ import {
 } from "../../src/lib/web-demo-runtime";
 
 describe("Web Demo runtime state", () => {
+  it("reads the optional quick-edit slug from shareable route state", () => {
+    expect(getWebDemoEditSlug({ pathname: "/memos/", search: "?d_edit=memo-web-demo-1182" })).toBe(
+      "memo-web-demo-1182"
+    );
+    expect(getWebDemoEditSlug({ pathname: "/memos/", search: "?d_edit=%20" })).toBeNull();
+  });
+
   it("reads inspector state from shareable d_* parameters", () => {
     const environment = getWebDemoEnvironment({
       pathname: "/memos/",

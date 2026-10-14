@@ -3,6 +3,7 @@ import { isLocalContentEnabled } from "@/config/paths";
 import { getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
 import {
+  getWebDemoEditSlug,
   getWebDemoEnvironment,
   getWebDemoSceneState,
   WEB_DEMO_QUICK_EDIT_SLUG,
@@ -27,9 +28,7 @@ export async function loadmemos(Astro: PageContext) {
   const isConsoleBuild = !isMemoListWebDemo && process.env.CONSOLE_RUNTIME === "true";
   const isWebDemoAdmin =
     isMemoListWebDemo && getWebDemoEnvironment(Astro.url, "public").persona === "admin";
-  const requestedEditSlug = isMemoListWebDemo
-    ? Astro.url.searchParams.get("d_edit")?.trim() || null
-    : null;
+  const requestedEditSlug = isMemoListWebDemo ? getWebDemoEditSlug(Astro.url) : null;
   const initialEditSlug =
     isWebDemoAdmin && (requestedEditSlug || webDemoSceneState?.scene === "memo-quick-edit")
       ? (requestedEditSlug ?? WEB_DEMO_QUICK_EDIT_SLUG)

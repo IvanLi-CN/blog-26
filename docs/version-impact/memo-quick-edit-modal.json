@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "b52bef25db6923dbd7869ea7d9f0882e2cdd9393",
+  "covered_files": {
+    "README.md": "89ceebade20e1c1672d1bbab18a3098a8e13a050",
+    "astro.config.mjs": "d6f4734eb9bedfa50a1fa5e1285a5041fe2a125d",
+    "docs/specs/memo-admin-inline-view/SPEC.md": "1b5851f6f9a402a8d870ff0125d81f13d35e02fc",
+    "site/components/PublicMemoAuthoring.tsx": "5cda44c9635186490f9d26199835a34edc83ab3e",
+    "site/components/pages/memo.tsx": "5a9bb315e2787c8daeef97613679dd6484513a71",
+    "site/components/pages/memos.tsx": "fd454fef3137760faf621095cf6d2e674b596777",
+    "site/lib/page-data/memos.ts": "398165e035e623c917159538e56114200005e01c",
+    "src/components/memos/PublicMemoAuthoring.stories.tsx": "d59416037aa27663ef15f6bb9a3dd70861099446",
+    "src/components/memos/QuickMemoEditModal.tsx": "57401bd03d9099d9a51abb7bd4543ac0e6303eb2",
+    "src/lib/web-demo-fetch.ts": "3462ac0c2ddcfd4a8e6039afafb17a5b9e626320",
+    "src/lib/web-demo-runtime.ts": "4a6d973a273d194d58732b58f5e691bb4b4fb2d2",
+    "src/styles/milkdown-nature.css": "4384f58bfa88993b2b5788f6acf795a508a9e0e3",
+    "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts": "c06a3686c458a58c793338816ae9b902d11e59e4",
+    "tests/lib/web-demo-runtime.test.ts": "2193c8ffa640872bdaf15d267c0170d13fa7e3d5"
+  },
+  "change": {
+    "description": "Polish the Memo quick-edit modal into a compact continuous Nature editor surface, preserve the existing save and visibility behavior, and provide a deterministic administrator Web Demo fixture for responsive verification.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The candidate changes presentation structure, editor spacing, and deterministic Web Demo state only. Memo APIs, persistence, permissions, and route contracts remain unchanged.",
+      "assessed_at": "2026-10-14T14:15:00+08:00",
+      "evidence": [
+        {
+          "path": "src/components/memos/QuickMemoEditModal.tsx",
+          "blob": "57401bd03d9099d51abb7bd4543ac0e6303eb2",
+          "command": "Review the quick-edit modal structure and preserved save/visibility handlers"
+        },
+        {
+          "path": "tests/lib/web-demo-runtime.test.ts",
+          "blob": "2193c8ffa640872bdaf15d267c0170d13fa7e3d5",
+          "command": "bun test --isolate tests/lib/web-demo-runtime.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The implementation is limited to the existing Memo authoring surface, its Web Demo fixture/runtime state, focused browser coverage, and Nature editor styling. No API, persistence, permission, or public-header contract drift was introduced.",
+      "assessed_at": "2026-10-14T14:15:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts",
+          "blob": "c06a3686c458a58c793338816ae9b902d11e59e4",
+          "command": "bunx playwright test tests/e2e/admin/memos/memo-admin-inline-view.spec.ts"
+        },
+        {
+          "path": "src/styles/milkdown-nature.css",
+          "blob": "4384f58bfa88993b2b5788f6acf795a508a9e0e3",
+          "command": "Inspect the quick-edit Nature surface and responsive editor gutter rules"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The current candidate remains within the quick-edit modal, its deterministic Web Demo evidence path, and focused tests; no API, persistence, permission, or route behavior drift was found."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Repository checks, focused authoring/runtime tests, Storybook interactions, Web Demo build, and controlled desktop/mobile browser evidence verify a compatible presentation-only correction with no persistent-state changes.",
+      "assessed_at": "2026-10-14T14:15:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/web-demo-runtime.test.ts",
+          "blob": "2193c8ffa640872bdaf15d267c0170d13fa7e3d5",
+          "command": "bun test --isolate tests/lib/web-demo-runtime.test.ts"
+        },
+        {
+          "path": "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts",
+          "blob": "c06a3686c458a58c793338816ae9b902d11e59e4",
+          "command": "Focused administrator Memo edit flow and responsive assertions pass"
+        },
+        {
+          "path": "src/styles/milkdown-nature.css",
+          "blob": "4384f58bfa88993b2b5788f6acf795a508a9e0e3",
+          "command": "Web Demo captures at desktop, 393px, and 320px verify overlay, compact spacing, and zero horizontal overflow"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": ["3.0.3", "3.0.4", "3.0.5", "3.1.1", "3.1.2"],
+      "evidence": [
+        {
+          "path": "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts",
+          "blob": "c06a3686c458a58c793338816ae9b902d11e59e4",
+          "command": "Administrator edit flow verifies the existing Memo API request and visibility payload"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local content format, browser persistence, Memo storage format, or durable release-ledger state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/web-demo-runtime.test.ts",
+          "blob": "2193c8ffa640872bdaf15d267c0170d13fa7e3d5",
+          "command": "Runtime state coverage exercises shareable Web Demo query state without persistence changes"
+        }
+      ]
+    }
+  }
+}
