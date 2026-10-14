@@ -49,7 +49,7 @@
     "current": {
       "impact": "patch",
       "reasoning": "The candidate changes only the Console Memo detail/preview boundary, request-scoped initial projection, unauthorized read status mapping, and shared route history state. Public API payload shapes, persistent state, snapshot publishing, and deployment host configuration remain unchanged; the deliberate 403-to-404 mapping for unauthorized private reads makes them indistinguishable from missing resources so callers receive the same absence contract without exposing record existence.",
-      "assessed_at": "2026-10-14T10:25:21+08:00",
+      "assessed_at": "2026-10-14T10:30:40+08:00",
       "evidence": [
         {
           "path": "site/lib/page-data/memo.ts",
@@ -75,7 +75,7 @@
     "verified": {
       "impact": "patch",
       "reasoning": "Focused component, production Console clipping, HTTP compatibility, build, admin E2E, and guest navigation checks pass. The implementation preserves existing public payload shapes and persistent state while enforcing the same-origin detail/preview boundary and private-resource non-disclosure; the 403-to-404 status change is an intentional compatible privacy hardening because private and missing resources share the documented not-found response.",
-      "assessed_at": "2026-10-14T10:25:21+08:00",
+      "assessed_at": "2026-10-14T10:30:40+08:00",
       "evidence": [
         {
           "path": "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts",
@@ -100,7 +100,7 @@
         {
           "path": "tests/e2e/clipping-detail.ts",
           "blob": "1a16934b457fca6a09aff6484760cd802f983750",
-          "command": "bun run test:clipping-console: production Console clipping smoke passes source/translation, authenticated discussion, guest boundary, private media, and 320-768px responsive checks"
+          "command": "bun run test:clipping-console: production Console clipping smoke passes public source/translation, authenticated discussion, guest boundary, and 320-768px responsive checks"
         }
       ]
     }
