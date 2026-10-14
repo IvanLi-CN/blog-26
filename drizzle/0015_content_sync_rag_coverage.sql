@@ -3,7 +3,8 @@ CREATE TABLE content_tasks (
  request_key text NOT NULL, origin text NOT NULL, target text NOT NULL, result text,
  status text NOT NULL, phase text NOT NULL, total integer NOT NULL DEFAULT 0,
  processed integer NOT NULL DEFAULT 0, failed integer NOT NULL DEFAULT 0,
- error text, started_at integer NOT NULL, finished_at integer, cancel_requested integer NOT NULL DEFAULT 0
+ error text, started_at integer NOT NULL, finished_at integer, cancel_requested integer NOT NULL DEFAULT 0,
+ owner_token text, owner_host text, owner_pid integer, lease_until integer
 );
 --> statement-breakpoint
 CREATE INDEX content_tasks_source_time ON content_tasks(source, started_at);

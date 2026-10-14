@@ -148,7 +148,8 @@ export class PlaybookStore {
     value: PlaybookEdition,
     adoption?: { taskId: string; at: number; edition?: string },
     signal?: AbortSignal,
-    expectedBase?: PlaybookEditionIdentity | null
+    expectedBase?: PlaybookEditionIdentity | null,
+    commitFence?: (commit: () => void) => void
   ) {
     const edition = freezeEdition(validatePlaybookEdition(value));
     const next = {
@@ -176,8 +177,17 @@ export class PlaybookStore {
       throw signal?.aborted ? signal.reason : new Error("Adoption base changed");
     }
     // No asynchronous gap between the final cancellation check and the commit.
-    renameSync(staging, join(this.root, "state.json"));
-    this.state = next;
+    try {
+      const commit = () => {
+        renameSync(staging, join(this.root, "state.json"));
+        this.state = next;
+      };
+      if (commitFence) commitFence(commit);
+      else commit();
+    } catch (error) {
+      await unlink(staging).catch(() => undefined);
+      throw error;
+    }
   }
 
   sync(

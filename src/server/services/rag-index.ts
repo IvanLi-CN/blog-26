@@ -18,6 +18,7 @@ import {
 import { isClippingSearchMemo } from "@/lib/search/content-search";
 import { authorizeContent, contentVersion, readSearchRows } from "./content-search-index";
 import {
+  assertContentTaskOwner,
   beginContentTask,
   finishContentTask,
   taskControllers,
@@ -409,7 +410,8 @@ async function ensureRagManifest(
   catalog: Awaited<ReturnType<typeof ragCatalog>>,
   source: RagSource,
   taskId: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  ownerToken?: string | null
 ) {
   const id = projectionDigest({
     identity: catalog.identity,
@@ -430,8 +432,7 @@ async function ensureRagManifest(
     if (signal?.aborted) throw signal.reason;
     db.transaction((tx) => {
       const owner = tx.select().from(contentTasks).where(eq(contentTasks.id, taskId)).get();
-      if (owner?.status !== "running" || owner.cancelRequested)
-        throw new DOMException("Manifest task cancelled", "AbortError");
+      assertContentTaskOwner(owner, ownerToken);
       for (const target of catalog.targets.slice(offset, offset + 100))
         tx.insert(ragIndexTargets)
           .values({
@@ -553,10 +554,16 @@ export async function runRagIndex(
     resumeId,
   });
   if (reused) return { taskId: task.id, reused: true };
-  await updateContentTask(task.id, { total: catalog.targets.length });
+  await updateContentTask(task.id, { total: catalog.targets.length }, task.ownerToken ?? undefined);
   const controller = taskControllers.get(task.id);
   void (async () => {
-    await ensureRagManifest(catalog, scope.source as RagSource, task.id, controller?.signal);
+    await ensureRagManifest(
+      catalog,
+      scope.source as RagSource,
+      task.id,
+      controller?.signal,
+      task.ownerToken
+    );
     const coverage = await ragCoverage(scope);
     let processed = 0,
       failed = 0,
@@ -569,7 +576,11 @@ export async function runRagIndex(
         .get()
     )?.dim;
     dim ??= bound ?? null;
-    await updateContentTask(task.id, { phase: "embedding", total: catalog.targets.length });
+    await updateContentTask(
+      task.id,
+      { phase: "embedding", total: catalog.targets.length },
+      task.ownerToken ?? undefined
+    );
     for (const target of catalog.targets) {
       if (controller?.signal.aborted) throw controller.signal.reason;
       if (
@@ -577,13 +588,19 @@ export async function runRagIndex(
         coverage.status.details.find((x) => x.id === target.id)?.state === "indexed"
       ) {
         processed++;
-        await updateContentTask(task.id, { processed });
+        await updateContentTask(task.id, { processed }, task.ownerToken ?? undefined);
         continue;
       }
       try {
         db.transaction((tx) => {
           const owner = tx.select().from(contentTasks).where(eq(contentTasks.id, task.id)).get();
-          if (owner?.status !== "running" || owner.cancelRequested)
+          if (
+            owner?.status !== "running" ||
+            owner.cancelRequested ||
+            owner.ownerToken !== task.ownerToken ||
+            !owner.leaseUntil ||
+            owner.leaseUntil <= Date.now()
+          )
             throw new DOMException("Task no longer owns target", "AbortError");
           tx.update(ragIndexTargets)
             .set({
@@ -602,7 +619,13 @@ export async function runRagIndex(
           controller?.signal,
           async () => {
             const owner = db.select().from(contentTasks).where(eq(contentTasks.id, task.id)).get();
-            if (owner?.status !== "running" || owner.cancelRequested)
+            if (
+              owner?.status !== "running" ||
+              owner.cancelRequested ||
+              owner.ownerToken !== task.ownerToken ||
+              !owner.leaseUntil ||
+              owner.leaseUntil <= Date.now()
+            )
               throw new DOMException("Task no longer owns attempt", "AbortError");
             return targetStillCurrent(target, scope);
           }
@@ -620,7 +643,14 @@ export async function runRagIndex(
             .from(ragIndexTargets)
             .where(eq(ragIndexTargets.id, target.id))
             .get();
-          if (owner?.status !== "running" || owner.cancelRequested || claim?.taskId !== task.id)
+          if (
+            owner?.status !== "running" ||
+            owner.cancelRequested ||
+            owner.ownerToken !== task.ownerToken ||
+            !owner.leaseUntil ||
+            owner.leaseUntil <= Date.now() ||
+            claim?.taskId !== task.id
+          )
             throw new DOMException("Task no longer owns target", "AbortError");
           tx.insert(ragIndexConfigs)
             .values({ fingerprint: target.fingerprint, dim: vector.length, updatedAt: Date.now() })
@@ -738,7 +768,13 @@ export async function runRagIndex(
           throw error;
         db.transaction((tx) => {
           const owner = tx.select().from(contentTasks).where(eq(contentTasks.id, task.id)).get();
-          if (owner?.status !== "running" || owner.cancelRequested)
+          if (
+            owner?.status !== "running" ||
+            owner.cancelRequested ||
+            owner.ownerToken !== task.ownerToken ||
+            !owner.leaseUntil ||
+            owner.leaseUntil <= Date.now()
+          )
             throw new DOMException("Task no longer owns failure", "AbortError");
           const owned = tx
             .select()
@@ -763,12 +799,13 @@ export async function runRagIndex(
         failed++;
       }
       processed++;
-      await updateContentTask(task.id, { processed, failed });
+      await updateContentTask(task.id, { processed, failed }, task.ownerToken ?? undefined);
     }
     finishContentTask(
       task.id,
       failed ? "failed" : "success",
-      failed ? "Some embedding targets failed" : undefined
+      failed ? "Some embedding targets failed" : undefined,
+      task.ownerToken ?? undefined
     );
   })().catch((error) =>
     finishContentTask(
@@ -776,7 +813,8 @@ export async function runRagIndex(
       controller?.signal.aborted ? "cancelled" : "failed",
       error instanceof DOMException && error.name === "AbortError"
         ? "Target interrupted"
-        : "Index preparation interrupted"
+        : "Index preparation interrupted",
+      task.ownerToken ?? undefined
     )
   );
   return { taskId: task.id, reused: false };

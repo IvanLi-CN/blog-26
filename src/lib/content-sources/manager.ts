@@ -1,8 +1,10 @@
 import {
+  assertContentTaskOwner,
   beginContentTask,
   finishContentTask,
   taskControllers,
   updateContentTask,
+  waitContentTask,
 } from "@/server/services/content-tasks";
 /**
  * 内容源管理器
@@ -10,7 +12,7 @@ import {
  * 统一管理多个内容源，处理内容合并、冲突解决和同步协调
  */
 
-import { desc, eq, lt, sql } from "drizzle-orm";
+import { desc, eq, inArray, lt, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { clearSearchCache } from "@/lib/ai/search-cache";
 import { notifyClippingChange } from "@/server/clipping/runtime";
@@ -30,6 +32,19 @@ import type {
   SyncResult,
   SyncStatus,
 } from "./types";
+
+function parseSyncCheckpoint(value: string) {
+  const parsed = JSON.parse(value);
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    ["cursor", "totalProcessed", "created", "updated", "deleted", "skipped", "errors"].some(
+      (key) => !Number.isInteger(parsed[key]) || parsed[key] < 0
+    )
+  )
+    throw new Error("Invalid local recovery checkpoint");
+  return parsed as Record<string, number>;
+}
 
 /**
  * 内容源管理器配置
@@ -70,6 +85,7 @@ export class ContentSourceManager {
 
   private persistentTaskId: string | undefined;
   private workCursor = 0;
+  private ownerToken: string | null = null;
   private flight?: { full: boolean; resumeId?: string; promise: Promise<SyncResult> };
   constructor(config: ContentSourceManagerConfig = {}) {
     this.config = {
@@ -153,7 +169,7 @@ export class ContentSourceManager {
 
   /**
    * 执行同步操作
-   * @param isFullSync 是否为全量同步。true: 清空数据库后重新同步所有内容；false: 增量同步，只处理变更内容
+   * @param isFullSync 是否为全量同步。true: 同步所有内容，完成后清理已移除的源内容；false: 增量同步，只处理变更内容
    */
   syncAll(isFullSync: boolean = false, resumeId?: string): Promise<SyncResult> {
     if (this.flight) {
@@ -181,7 +197,21 @@ export class ContentSourceManager {
       target: "local-content",
       resumeId,
     });
-    if (reused) throw new Error(`Task conflict: ${task.id}`);
+    if (reused) {
+      const completed = await waitContentTask(task.id, this.config.syncTimeout);
+      const { cursor: _cursor, ...stats } = JSON.parse(completed.result ?? "{}");
+      return {
+        taskId: completed.id,
+        success: ["success", "unchanged"].includes(completed.status),
+        startTime: completed.startedAt,
+        endTime: completed.finishedAt ?? Date.now(),
+        sources: ["local"],
+        stats,
+        errors: [],
+        logs: [],
+      };
+    }
+    this.ownerToken = task.ownerToken;
     this.persistentTaskId = task.id;
     const startTime = Date.now();
     const syncId = nanoid();
@@ -222,15 +252,7 @@ export class ContentSourceManager {
     let checkpointError: Error | null = null;
     if (resumeId && task.result) {
       try {
-        const parsed = JSON.parse(task.result);
-        if (
-          !parsed ||
-          typeof parsed !== "object" ||
-          !Number.isInteger(parsed.cursor) ||
-          parsed.cursor < 0
-        )
-          throw new Error("Invalid local recovery checkpoint");
-        savedResult = parsed;
+        savedResult = parseSyncCheckpoint(task.result);
       } catch (error) {
         checkpointError = error instanceof Error ? error : new Error(String(error));
       }
@@ -281,12 +303,10 @@ export class ContentSourceManager {
         for (const source of enabledSources) await source.initialize();
         const changeSets = await this.collectChanges(enabledSources, isFullSync);
         mergedChanges = await this.mergeChanges(changeSets);
-        // The complete work list and full-reset commit share one transaction.
+        // Persist the complete work list without removing existing content.
         db.transaction((tx) => {
           const owner = tx.select().from(contentTasks).where(eq(contentTasks.id, task.id)).get();
-          if (owner?.status !== "running" || owner.cancelRequested)
-            throw new Error("Sync cancelled");
-          if (isFullSync) tx.delete(posts).run();
+          assertContentTaskOwner(owner, task.ownerToken);
           tx.update(contentTasks)
             .set({
               target: JSON.stringify({ version: 1, changeSet: mergedChanges }),
@@ -297,7 +317,6 @@ export class ContentSourceManager {
             .where(eq(contentTasks.id, task.id))
             .run();
         });
-        if (isFullSync) clearSearchCache();
       }
 
       // 应用变更到数据库
@@ -308,7 +327,46 @@ export class ContentSourceManager {
       result.stats = applyResult.stats;
       result.errors = applyResult.errors;
       result.logs = applyResult.logs;
-      result.success = applyResult.errors.length === 0 && result.stats.errors === 0;
+      result.success =
+        applyResult.errors.length === 0 &&
+        result.stats.errors === 0 &&
+        this.workCursor === mergedChanges.changes.length;
+      if (result.success && this.currentSync.status !== "cancelled") {
+        db.transaction((tx) => {
+          const owner = tx.select().from(contentTasks).where(eq(contentTasks.id, task.id)).get();
+          assertContentTaskOwner(owner, task.ownerToken);
+          if (isFullSync) {
+            const keep = mergedChanges.changes
+              .filter((change) => change.operation !== "delete")
+              .map((change) => change.item.id);
+            const obsolete = tx
+              .select({ id: posts.id })
+              .from(posts)
+              .where(inArray(posts.dataSource, result.sources))
+              .all()
+              .filter((row) => !keep.includes(row.id));
+            if (obsolete.length) {
+              tx.delete(posts)
+                .where(
+                  inArray(
+                    posts.id,
+                    obsolete.map((row) => row.id)
+                  )
+                )
+                .run();
+              result.stats.deleted += obsolete.length;
+            }
+          }
+          tx.update(contentTasks)
+            .set({
+              phase: "adopted",
+              result: JSON.stringify({ ...result.stats, cursor: this.workCursor }),
+            })
+            .where(eq(contentTasks.id, task.id))
+            .run();
+        });
+        if (isFullSync) clearSearchCache();
+      }
       if (
         db.select().from(contentTasks).where(eq(contentTasks.id, task.id)).get()?.cancelRequested
       ) {
@@ -328,7 +386,7 @@ export class ContentSourceManager {
       const persisted = db.select().from(contentTasks).where(eq(contentTasks.id, task.id)).get();
       if (persisted?.result) {
         try {
-          const parsed = JSON.parse(persisted.result);
+          const parsed = parseSyncCheckpoint(persisted.result);
           if (parsed && typeof parsed === "object") {
             const { cursor, ...stats } = parsed;
             result.stats = stats;
@@ -360,6 +418,11 @@ export class ContentSourceManager {
         const enabledSources = Array.from(this.sources.values()).filter((source) => source.enabled);
 
         for (const source of enabledSources) {
+          if (
+            db.select().from(contentTasks).where(eq(contentTasks.id, task.id)).get()?.ownerToken !==
+            task.ownerToken
+          )
+            break;
           // 检查该源是否有错误
           const sourceErrors = result.errors.filter((error) => error.source === source.name);
           const hasError = sourceErrors.length > 0 || !result.success;
@@ -403,11 +466,15 @@ export class ContentSourceManager {
     if (this.currentSync?.status === "cancelled") result.success = false;
     syncEventManager.completeSyncSession(result.success, result.stats);
 
-    await updateContentTask(task.id, {
-      processed: result.stats.totalProcessed,
-      failed: result.stats.errors,
-      result: JSON.stringify({ ...result.stats, cursor: this.workCursor }),
-    });
+    await updateContentTask(
+      task.id,
+      {
+        processed: result.stats.totalProcessed,
+        failed: result.stats.errors,
+        result: JSON.stringify({ ...result.stats, cursor: this.workCursor }),
+      },
+      task.ownerToken ?? undefined
+    );
     finishContentTask(
       task.id,
       this.currentSync?.status === "cancelled"
@@ -419,7 +486,8 @@ export class ContentSourceManager {
           : "failed",
       result.success || this.currentSync?.status === "cancelled"
         ? undefined
-        : "Local synchronization failed"
+        : "Local synchronization failed",
+      task.ownerToken ?? undefined
     );
     void import("@/server/services/rag-index")
       .then((m) => m.triggerRagIndex("blog", "repair", "content-sync"))
@@ -638,7 +706,7 @@ export class ContentSourceManager {
     const taskId = this.persistentTaskId;
     if (!taskId) throw new Error("Local task identity missing");
     const total = changeSet.changes.length;
-    await updateContentTask(taskId, { phase: "applying", total });
+    await updateContentTask(taskId, { phase: "applying", total }, this.ownerToken ?? undefined);
     for (let index = this.workCursor; index < total; index++) {
       const change = changeSet.changes[index];
       if (this.currentSync?.status === "cancelled" || taskControllers.get(taskId)?.signal.aborted)
@@ -656,8 +724,7 @@ export class ContentSourceManager {
         const next = { ...stats, totalProcessed: stats.totalProcessed + 1 };
         const operation = db.transaction((tx) => {
           const owner = tx.select().from(contentTasks).where(eq(contentTasks.id, taskId)).get();
-          if (owner?.status !== "running" || owner.cancelRequested)
-            throw new Error("Sync cancelled");
+          assertContentTaskOwner(owner, this.ownerToken);
           const prior = tx.select().from(posts).where(eq(posts.id, change.item.id)).get();
           let operation: "create" | "update" | "delete" | "skip" = "skip";
           if (change.operation === "create" || change.operation === "update") {
@@ -755,7 +822,12 @@ export class ContentSourceManager {
         );
       } catch {
         const owner = db.select().from(contentTasks).where(eq(contentTasks.id, taskId)).get();
-        if (owner?.cancelRequested || owner?.status !== "running") break;
+        if (
+          owner?.cancelRequested ||
+          owner?.status !== "running" ||
+          owner.ownerToken !== this.ownerToken
+        )
+          break;
         // A notification/log failure cannot replay an already committed item.
         if (committed) continue;
         const next = {
@@ -765,8 +837,7 @@ export class ContentSourceManager {
         };
         db.transaction((tx) => {
           const owner = tx.select().from(contentTasks).where(eq(contentTasks.id, taskId)).get();
-          if (owner?.status !== "running" || owner.cancelRequested)
-            throw new Error("Sync cancelled");
+          assertContentTaskOwner(owner, this.ownerToken);
           tx.update(contentTasks)
             .set({
               processed: next.totalProcessed,

@@ -102,14 +102,14 @@ export const adminContentSyncRouter = createTRPCRouter({
     )
     .query(({ input }) => listContentTasks(input)),
   getTask: adminProcedure
-    .input(z.object({ taskId: z.string().uuid() }))
+    .input(z.object({ taskId: z.string().uuid() }).optional())
     .query(async ({ input }) => {
       const task = await getContentTask(input.taskId);
       if (!task) throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
       return task;
     }),
   cancelTask: adminProcedure
-    .input(z.object({ taskId: z.string().uuid() }))
+    .input(z.object({ taskId: z.string().uuid() }).optional())
     .mutation(({ input }) => cancelContentTask(input.taskId)),
   // ============================================================================
   // 同步操作
@@ -185,17 +185,28 @@ export const adminContentSyncRouter = createTRPCRouter({
    * 取消当前同步
    */
   cancelSync: adminProcedure
-    .input(z.object({ taskId: z.string().uuid() }))
+    .input(z.object({ taskId: z.string().uuid() }).optional())
     .mutation(async ({ input }) => {
       try {
-        const task = await getContentTask(input.taskId);
-        if (!task || task.kind !== "sync")
+        const active = input?.taskId
+          ? []
+          : (await listContentTasks({ kind: "sync", limit: 100 })).items.filter(
+              (task) => task.finishedAt === null
+            );
+        if (!input?.taskId && active.length > 1)
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Multiple sync tasks active; taskId required",
+          });
+        const taskId = input?.taskId ?? active[0]?.id;
+        if (!taskId) return { success: true, status: "idle" };
+        const task = await getContentTask(taskId);
+        if (task?.kind !== "sync")
           throw new TRPCError({ code: "BAD_REQUEST", message: "同步任务 ID 无效" });
-        const result = await cancelContentTask(input.taskId);
-        if (task.source === "local") await getContentSourceManager().cancelSync();
-        if (task.source === "playbook") getRuntimePlaybookStore().cancelSync();
+        const result = await cancelContentTask(taskId);
         return { success: true, ...result };
       } catch (error) {
+        if (error instanceof TRPCError) throw error;
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: error instanceof Error ? error.message : "取消同步失败",

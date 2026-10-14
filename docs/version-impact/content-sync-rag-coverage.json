@@ -16,14 +16,14 @@
     "docs/specs/search-relevance/assets/playbook-sync-admin-desktop.png": "cf51b36100373b7a45fa7780cb972eb40c0074e6",
     "docs/specs/search-relevance/assets/playbook-sync-admin-mobile.png": "073e57937dab2a947ba68a7d24754519b1847f18",
     "docs/specs/search-relevance/contracts/unified-search.md": "635b2d863cd8fd474c12f3ac7caae0a56c4c2026",
-    "docs/specs/style-playbook-integration/HISTORY.md": "c941a290e779be6a0996906744f4c661a351a380",
-    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "5a35f849d404ea52b173b752d854fcae9960e49c",
+    "docs/specs/style-playbook-integration/HISTORY.md": "d353880178f12debe4e0371bfb7707eaf705090d",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "168f5e990fbae3206d924e3a37064b69486a19e1",
     "docs/specs/style-playbook-integration/SPEC.md": "f58b86ab2a4558bd8c7406eafbd6d7fa8a62e2c8",
-    "docs/specs/style-playbook-integration/VALIDATION.md": "3683d7b5acb659163021cd7a47b4fab0bcaac3de",
+    "docs/specs/style-playbook-integration/VALIDATION.md": "7b2451fda57a4b3d2e5a2ddd06899c1cd2d54140",
     "docs/specs/style-playbook-integration/assets/content-sync-rag-tablet-unconfigured.png": "c54f67dbe154970fb3afa994a380e3101f0b3a6b",
-    "docs/specs/style-playbook-integration/contracts/content-sync-status.md": "d5cab51c11c59d0f71c7bedeccb1603aeb9e492b",
-    "drizzle/0015_content_sync_rag_coverage.sql": "f0cd56b1f77634c40ab959dc66a7241b27649f4d",
-    "drizzle/meta/0015_snapshot.json": "76b2fd49f4dc2d94edd8c7465cdeb338f1f59edf",
+    "docs/specs/style-playbook-integration/contracts/content-sync-status.md": "7b933ce457f191a9eff025a7f1efdcc84fce96de",
+    "drizzle/0015_content_sync_rag_coverage.sql": "08d4369122e2cd4afb9c4c84527387447b2488c1",
+    "drizzle/meta/0015_snapshot.json": "12edaa01c2988df93b15f6b5ccb2a0b0fa63a98f",
     "drizzle/meta/_journal.json": "7857aaa1708ecdfa13595f9cca175d4faf810a42",
     "scripts/start-console.ts": "33431cd602f522b6cc5a75dbc277ebc556415ff7",
     "src/lib/admin-api-client.ts": "cae217fb6b32ec386a999b14e9d978aea0ba7307",
@@ -31,25 +31,27 @@
     "src/lib/ai/embeddings.ts": "b93e0f46f39b1156346955758190264c84aea075",
     "src/lib/ai/vectorization.ts": "8384555503d84d9361d85ebfa3a2e8d3ce2a79e8",
     "src/lib/content-sources/local.ts": "181995114e5f6d9610f8b01834308bb23266ef01",
-    "src/lib/content-sources/manager.ts": "10482b19eb8ff4c13e9a40fa764c6dbb37f1c9a1",
+    "src/lib/content-sources/manager.ts": "c002fa05eca7d0d58792ce09f8f83283b92c308c",
     "src/lib/content-sources/register.ts": "002ac26833d4902558542ef4b8b54c5c4b43a8ba",
     "src/lib/content-sources/types.ts": "f0ccb4d6065388c7161ed3cbcea4f3f41c102191",
-    "src/lib/playbook/cache.ts": "d43212a8649d0629231d52b89bfe8bdc47c533be",
-    "src/lib/schema.ts": "f5b943c25cdaeddb5863a37974736cfd4b321047",
+    "src/lib/playbook/cache.ts": "f932d5a608fa8edb54572105862a8c7c88163d5b",
+    "src/lib/schema.ts": "f2250a9655f578b44be81beb03f4ae01006f293b",
     "src/lib/web-demo-runtime.ts": "e4e39562b595bbce1e2cae92d5572e847bd4216c",
     "src/server/admin-api/router.ts": "c04dd56f4b88df6831d7fb80c1c59b771d7ec9b8",
-    "src/server/routers/admin/content-sync.ts": "8dd4cde7c9b5a24c5e0394858b280abe5d9c3031",
+    "src/server/routers/admin/content-sync.ts": "86e118adf0f02a257e164066a8b6703611b9b124",
     "src/server/routers/admin/vectorize.ts": "4d8ce2ce95aae60be1fd855cbabfab99bc29cf2f",
     "src/server/services/content-search.test.ts": "182b46bdd47436a02832013d42f1bc46f31a4202",
     "src/server/services/content-search.ts": "654c9aa345bcd5f9a847555cc89d9ac2111932af",
-    "src/server/services/content-sync-runtime.ts": "ce7b4759fc6c7fa913368144417b46d767d4c5c3",
+    "src/server/services/content-sync-runtime.ts": "b4ab00e66251a728b68419ad744a13b20c9a413d",
     "src/server/services/content-sync-status.ts": "eabfca64f53a5d2c7b9e10e610512694918443f8",
-    "src/server/services/content-tasks.ts": "49d25b038f8254643a29f1a03fc0fb31b299ef23",
+    "src/server/services/content-tasks.ts": "cb3660ca39a94a48e5d65112a6b1773afd1f1f65",
     "src/server/services/playbook-search.ts": "de3b3b569d94ae0bcea223e10c922a86af0f5469",
-    "src/server/services/rag-index.test.ts": "c2816e2acbcab789eb8602aa4dc94cffffc40e3a",
-    "src/server/services/rag-index.ts": "3b97b09587c13db160e4bb35cd78c0b15ac3c55a",
+    "src/server/services/rag-index.test.ts": "da13f19d12f67fc174213fecf8032628af7ac87b",
+    "src/server/services/rag-index.ts": "bc97e15e9cc99c5f12c109ddbdcf89ed246dcbc5",
     "src/server/services/search-semantic-projection.ts": "de2be6f33aefedf504d49890fff2b1c210e0f58b",
     "tests/e2e/web-demo/content-sync.spec.ts": "d1ccd325729acac76798b913be3fafb3c4711d5b",
+    "tests/lib/content-task-lease-fixture.ts": "0b4e75bd73ec8f3065bc9c53cd60ef606ffbf324",
+    "tests/lib/content-task-lease.test.ts": "b3ed6e07f1beb3feedd6d9310778bca2ae535173",
     "tests/lib/rag-index-restart-fixture.ts": "08d586fb22808a118a056464f7531fd31ca1f91b",
     "tests/lib/rag-index-restart.test.ts": "8a5fb2ba95d95ee7d14e9eb53b179f44d3b1c10b"
   },
@@ -71,7 +73,7 @@
         },
         {
           "path": "src/server/services/rag-index.test.ts",
-          "blob": "c2816e2acbcab789eb8602aa4dc94cffffc40e3a",
+          "blob": "da13f19d12f67fc174213fecf8032628af7ac87b",
           "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
         },
         {
@@ -81,7 +83,7 @@
         },
         {
           "path": "drizzle/0015_content_sync_rag_coverage.sql",
-          "blob": "f0cd56b1f77634c40ab959dc66a7241b27649f4d",
+          "blob": "08d4369122e2cd4afb9c4c84527387447b2488c1",
           "command": "Forward schema preserves legacy tables; actual v3.3.0 source reads and writes candidate data"
         },
         {
@@ -94,7 +96,7 @@
     "current": {
       "impact": "patch",
       "reasoning": "Compatible defect repair of unique content counts, target-bound coverage and durable recovery. Additive admin APIs preserve legacy response shapes and v3.3.0 data read/write compatibility.",
-      "assessed_at": "2026-10-15T01:14:10+08:00",
+      "assessed_at": "2026-10-15T04:52:35+08:00",
       "evidence": [
         {
           "path": "tests/lib/rag-index-restart.test.ts",
@@ -103,7 +105,7 @@
         },
         {
           "path": "src/server/services/rag-index.test.ts",
-          "blob": "c2816e2acbcab789eb8602aa4dc94cffffc40e3a",
+          "blob": "da13f19d12f67fc174213fecf8032628af7ac87b",
           "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
         },
         {
@@ -113,7 +115,7 @@
         },
         {
           "path": "drizzle/0015_content_sync_rag_coverage.sql",
-          "blob": "f0cd56b1f77634c40ab959dc66a7241b27649f4d",
+          "blob": "08d4369122e2cd4afb9c4c84527387447b2488c1",
           "command": "Forward schema preserves legacy tables; actual v3.3.0 source reads and writes candidate data"
         },
         {
@@ -130,7 +132,7 @@
     "verified": {
       "impact": "patch",
       "reasoning": "Compatible defect repair of unique content counts, target-bound coverage and durable recovery. Additive admin APIs preserve legacy response shapes and v3.3.0 data read/write compatibility.",
-      "assessed_at": "2026-10-15T01:14:10+08:00",
+      "assessed_at": "2026-10-15T04:52:35+08:00",
       "evidence": [
         {
           "path": "tests/lib/rag-index-restart.test.ts",
@@ -139,7 +141,7 @@
         },
         {
           "path": "src/server/services/rag-index.test.ts",
-          "blob": "c2816e2acbcab789eb8602aa4dc94cffffc40e3a",
+          "blob": "da13f19d12f67fc174213fecf8032628af7ac87b",
           "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
         },
         {
@@ -149,7 +151,7 @@
         },
         {
           "path": "drizzle/0015_content_sync_rag_coverage.sql",
-          "blob": "f0cd56b1f77634c40ab959dc66a7241b27649f4d",
+          "blob": "08d4369122e2cd4afb9c4c84527387447b2488c1",
           "command": "Forward schema preserves legacy tables; actual v3.3.0 source reads and writes candidate data"
         },
         {
@@ -202,12 +204,12 @@
         },
         {
           "path": "src/server/services/rag-index.test.ts",
-          "blob": "c2816e2acbcab789eb8602aa4dc94cffffc40e3a",
+          "blob": "da13f19d12f67fc174213fecf8032628af7ac87b",
           "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
         },
         {
           "path": "drizzle/0015_content_sync_rag_coverage.sql",
-          "blob": "f0cd56b1f77634c40ab959dc66a7241b27649f4d",
+          "blob": "08d4369122e2cd4afb9c4c84527387447b2488c1",
           "command": "Forward schema preserves legacy tables; actual v3.3.0 source reads and writes candidate data"
         }
       ]

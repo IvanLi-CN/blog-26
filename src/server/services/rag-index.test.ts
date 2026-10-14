@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import { projectionDigest } from "@/lib/ai/embedding-target";
 import {
   getContentSourceManager,
   LocalContentSource,
@@ -31,11 +32,13 @@ import { makePublicBundle } from "../../../tests/lib/playbook-fixture";
 import { checkPlaybook, startContentSyncRuntime } from "./content-sync-runtime";
 import { contentSyncStatus } from "./content-sync-status";
 import {
+  assertContentTaskOwner,
   beginContentTask,
   cancelContentTask,
   contentSyncTotals,
   finishContentTask,
   getContentTask,
+  updateContentTask,
 } from "./content-tasks";
 import { ragCoverage, runRagIndex, summarizeCoverage, triggerRagIndex } from "./rag-index";
 
@@ -281,7 +284,16 @@ test("cancelled manifests are not resumed automatically; interrupted tasks keep 
   const previous = await beginContentTask({
     kind: "rag",
     source: "local",
-    requestKey: "interrupted",
+    requestKey: projectionDigest({
+      targetKey: projectionDigest({
+        source: "blog",
+        type: "all",
+        targets: catalog.catalog.targets.map((row) => row.id),
+        fingerprint: catalog.status.identity.fingerprint,
+        playbook: catalog.status.identity.playbook,
+      }),
+      mode: "repair",
+    }),
     origin: "test",
     target: JSON.stringify({
       source: "blog",
@@ -395,7 +407,7 @@ test("a committed adoption checkpoint outranks a stale cancellation on restart",
   });
   await db
     .update(contentTasks)
-    .set({ phase: "adopting", cancelRequested: true })
+    .set({ phase: "adopting", cancelRequested: true, leaseUntil: 0 })
     .where(eq(contentTasks.id, task.id));
   await getRuntimePlaybookStore().adopt(makePublicBundle("v9.0.1", "901").edition, {
     taskId: task.id,
@@ -860,6 +872,7 @@ test("cold local recovery registers configured source and keeps the original tas
     origin: "test",
     target: "local-content",
   });
+  await db.update(contentTasks).set({ leaseUntil: 0 }).where(eq(contentTasks.id, task.id));
   try {
     const stop = await startContentSyncRuntime();
     stop();
@@ -1178,4 +1191,159 @@ test("corrupt local recovery checkpoint reaches a durable failed terminal state"
     finishedAt: expect.any(Number),
     error: "Local synchronization failed",
   });
+});
+
+test("a new execution token fences old progress, completion and cancellation of terminal rows", async () => {
+  const input = {
+    kind: "sync" as const,
+    source: "local" as const,
+    requestKey: "incremental",
+    origin: "test",
+    target: "local-content",
+  };
+  const first = await beginContentTask(input);
+  await db.update(contentTasks).set({ leaseUntil: 0 }).where(eq(contentTasks.id, first.task.id));
+  const resumed = await beginContentTask({ ...input, resumeId: first.task.id });
+  expect(resumed.reused).toBe(false);
+  expect(resumed.task.ownerToken).not.toBe(first.task.ownerToken);
+  await updateContentTask(first.task.id, { processed: 99 }, first.task.ownerToken ?? undefined);
+  finishContentTask(first.task.id, "failed", "Old worker", first.task.ownerToken ?? undefined);
+  expect(await getContentTask(first.task.id)).toMatchObject({ status: "running", processed: 0 });
+  expect(() => assertContentTaskOwner(resumed.task, first.task.ownerToken)).toThrow("ownership");
+  finishContentTask(resumed.task.id, "success", undefined, resumed.task.ownerToken ?? undefined);
+  await cancelContentTask(resumed.task.id);
+  expect(await getContentTask(resumed.task.id)).toMatchObject({
+    status: "success",
+    cancelRequested: false,
+  });
+  expect((await contentSyncTotals()).totalSyncs).toBe(1);
+});
+
+test("runtime startup does not interrupt a live owner", async () => {
+  const key = process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  const active = await beginContentTask({
+    kind: "sync",
+    source: "local",
+    requestKey: "incremental",
+    origin: "test",
+    target: "local-content",
+  });
+  try {
+    const stop = await startContentSyncRuntime();
+    stop();
+    expect(await getContentTask(active.task.id)).toMatchObject({
+      status: "running",
+      ownerToken: active.task.ownerToken,
+    });
+  } finally {
+    finishContentTask(active.task.id, "success");
+    process.env.OPENAI_API_KEY = key;
+  }
+});
+
+test("full sync cancellation after a committed item preserves old content and skips obsolete cleanup", async () => {
+  const key = process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  await db.insert(posts).values([fixture("old-a"), fixture("old-b")]);
+  const manager = new ContentSourceManager();
+  const source = new LocalContentSource(
+    LocalContentSource.createDefaultConfig("local", 50, { contentPath: root })
+  );
+  source.listContent = async () =>
+    Array.from({ length: 3 }, (_, i) => ({
+      ...fixture(`replacement-${i}`),
+      type: "post" as const,
+      source: "local",
+      filePath: `${i}.md`,
+      lastModified: 1,
+      tags: [],
+      metadata: { content: "Public synthetic content" },
+    }));
+  await manager.registerSource(source);
+  const listener = () => {
+    const task = db.select().from(contentTasks).where(eq(contentTasks.source, "local")).get();
+    if (task?.processed === 1 && !task.cancelRequested) void cancelContentTask(task.id);
+  };
+  syncEventManager.on("sync:log", listener);
+  try {
+    const result = await manager.syncAll(true);
+    expect(result.success).toBe(false);
+    expect(result.stats).toMatchObject({ created: 1, deleted: 0, totalProcessed: 1 });
+    expect(
+      db
+        .select()
+        .from(posts)
+        .all()
+        .map((row) => row.id)
+        .sort()
+    ).toEqual(["old-a", "old-b", "replacement-0"]);
+    expect((await getContentTask(result.taskId ?? ""))?.status).toBe("cancelled");
+  } finally {
+    syncEventManager.off("sync:log", listener);
+    process.env.OPENAI_API_KEY = key;
+  }
+});
+
+test("legacy cancellation requires an exact task when two sync sources are active", async () => {
+  const { appRouter } = await import("@/server/router");
+  const caller = appRouter.createCaller({
+    req: new Request("http://localhost"),
+    resHeaders: new Headers(),
+    isAdmin: true,
+    user: { id: "synthetic-admin", email: "synthetic@example.test", nickname: "Synthetic" },
+  });
+  const local = await beginContentTask({
+    kind: "sync",
+    source: "local",
+    requestKey: "incremental",
+    origin: "test",
+    target: "local-content",
+  });
+  const playbook = await beginContentTask({
+    kind: "sync",
+    source: "playbook",
+    requestKey: "public-deployment-pointer",
+    origin: "test",
+    target: "null",
+  });
+  await expect(caller.admin.contentSync.cancelSync()).rejects.toThrow("Multiple sync tasks");
+  await caller.admin.contentSync.cancelSync({ taskId: local.task.id });
+  expect((await getContentTask(local.task.id))?.cancelRequested).toBe(true);
+  expect((await getContentTask(playbook.task.id))?.cancelRequested).toBe(false);
+  finishContentTask(local.task.id, "cancelled");
+  finishContentTask(playbook.task.id, "success");
+});
+
+test("durable remote cancellation fences Playbook adoption without a local abort", async () => {
+  const enabled = process.env.PLAYBOOK_SYNC_ENABLED;
+  const key = process.env.OPENAI_API_KEY;
+  process.env.PLAYBOOK_SYNC_ENABLED = "true";
+  delete process.env.OPENAI_API_KEY;
+  const store = getRuntimePlaybookStore();
+  const old = makePublicBundle("v7.0.0", "700").edition;
+  await store.adopt(old);
+  store.downloadEdition = async () => makePublicBundle("v7.0.1", "701").edition;
+  const adopt = store.adopt.bind(store);
+  store.adopt = async (value, checkpoint, signal, base, fence) =>
+    adopt(value, checkpoint, signal, base, (commit) => {
+      if (!checkpoint || !fence) throw new Error("Missing task commit fence");
+      db.update(contentTasks)
+        .set({ cancelRequested: true })
+        .where(eq(contentTasks.id, checkpoint.taskId))
+        .run();
+      fence(commit);
+    });
+  try {
+    expect(await checkPlaybook()).toEqual({ cancelled: true, adopted: false });
+    expect(store.current?.edition.source.releaseId).toBe("700");
+    expect(db.select().from(contentTasks).where(eq(contentTasks.kind, "sync")).get()?.status).toBe(
+      "cancelled"
+    );
+  } finally {
+    store.adopt = adopt;
+    process.env.OPENAI_API_KEY = key;
+    if (enabled === undefined) delete process.env.PLAYBOOK_SYNC_ENABLED;
+    else process.env.PLAYBOOK_SYNC_ENABLED = enabled;
+  }
 });

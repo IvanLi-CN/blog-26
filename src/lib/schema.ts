@@ -418,6 +418,10 @@ export const contentTasks = sqliteTable(
     startedAt: integer("started_at").notNull(),
     finishedAt: integer("finished_at"),
     cancelRequested: integer("cancel_requested", { mode: "boolean" }).notNull().default(false),
+    ownerToken: text("owner_token"),
+    ownerHost: text("owner_host"),
+    ownerPid: integer("owner_pid"),
+    leaseUntil: integer("lease_until"),
   },
   (t) => ({
     sourceTime: index("content_tasks_source_time").on(t.source, t.startedAt),

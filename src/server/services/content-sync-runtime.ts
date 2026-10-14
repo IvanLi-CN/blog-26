@@ -7,10 +7,13 @@ import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
 import { parseEditionIdentity, samePlaybookEdition } from "@/lib/playbook/manifest";
 import { contentTasks } from "@/lib/schema";
 import {
+  assertContentTaskOwner,
   beginContentTask,
   finishContentTask,
   taskControllers,
+  taskOwnerIsLive,
   updateContentTask,
+  waitContentTask,
 } from "./content-tasks";
 import { listPlaybookCandidates } from "./playbook-search";
 import { ragCatalog, ragCoverage, runRagIndex, triggerRagIndex } from "./rag-index";
@@ -18,9 +21,14 @@ import { ragCatalog, ragCoverage, runRagIndex, triggerRagIndex } from "./rag-ind
 export const playbookSyncEnabled = () =>
   process.env.PLAYBOOK_SYNC_ENABLED === "true" ||
   (process.env.NODE_ENV === "production" && process.env.PLAYBOOK_SYNC_ENABLED !== "false");
+let flightResumeId: string | undefined;
 let flight: Promise<{ cancelled: boolean; adopted: boolean }> | undefined;
 export function checkPlaybook(origin = "manual", resumeId?: string) {
-  if (flight) return flight;
+  if (flight)
+    return resumeId && resumeId !== flightResumeId
+      ? Promise.reject(new Error("Recovery task already active"))
+      : flight;
+  flightResumeId = resumeId;
   flight = (async () => {
     if (!playbookSyncEnabled()) throw new Error("Playbook synchronization disabled");
     const store = getRuntimePlaybookStore();
@@ -34,11 +42,17 @@ export function checkPlaybook(origin = "manual", resumeId?: string) {
       target: "null",
       resumeId,
     });
-    if (reused) throw new Error(`Task conflict: ${task.id}`);
+    if (reused) {
+      const completed = await waitContentTask(task.id);
+      return {
+        cancelled: completed.status === "cancelled",
+        adopted: completed.status === "success",
+      };
+    }
     const controller = taskControllers.get(task.id);
     let adopted = false;
     try {
-      await updateContentTask(task.id, { phase: "checking" });
+      await updateContentTask(task.id, { phase: "checking" }, task.ownerToken ?? undefined);
       const savedTarget = resumeId ? JSON.parse(task.target) : null;
       const retained = resumeId
         ? parseEditionIdentity(
@@ -65,12 +79,16 @@ export function checkPlaybook(origin = "manual", resumeId?: string) {
       const edition = await store.downloadEdition(undefined, controller?.signal, retained);
       if (controller?.signal.aborted) throw controller.signal.reason;
       if (!edition) throw new Error("Public snapshot unavailable");
-      await updateContentTask(task.id, {
-        phase: "adopting",
-        ...(!resumeId
-          ? { target: JSON.stringify({ ...edition.edition, recoveryBase: adoptionBase }) }
-          : {}),
-      });
+      await updateContentTask(
+        task.id,
+        {
+          phase: "adopting",
+          ...(!resumeId
+            ? { target: JSON.stringify({ ...edition.edition, recoveryBase: adoptionBase }) }
+            : {}),
+        },
+        task.ownerToken ?? undefined
+      );
       adopted = !store.current || !samePlaybookEdition(store.current.edition, edition.edition);
       if (controller?.signal.aborted) throw controller.signal.reason;
       if (adopted && !resumeId && !sameBase(adoptionBase)) throw new Error("Adoption base changed");
@@ -89,41 +107,71 @@ export function checkPlaybook(origin = "manual", resumeId?: string) {
           previous.has(JSON.stringify([row.type, row.slug])) &&
           previous.get(JSON.stringify([row.type, row.slug]))?.contentHash !== row.contentHash
       ).length;
-      await updateContentTask(task.id, {
-        total: after.length,
-        processed: after.length,
-        result: JSON.stringify({
-          before: before.length,
-          after: after.length,
-          created,
-          updated,
-          deleted,
-          skipped: after.length - created - updated,
-          errors: 0,
-        }),
-      });
+      await updateContentTask(
+        task.id,
+        {
+          total: after.length,
+          processed: after.length,
+          result: JSON.stringify({
+            before: before.length,
+            after: after.length,
+            created,
+            updated,
+            deleted,
+            skipped: after.length - created - updated,
+            errors: 0,
+          }),
+        },
+        task.ownerToken ?? undefined
+      );
       if (adopted)
         await store.adopt(
           edition,
           { taskId: task.id, at: Date.now() },
           controller?.signal,
-          adoptionBase
+          adoptionBase,
+          (commit) =>
+            db.transaction((tx) => {
+              const owner = tx
+                .select()
+                .from(contentTasks)
+                .where(eq(contentTasks.id, task.id))
+                .get();
+              assertContentTaskOwner(owner, task.ownerToken);
+              commit();
+              tx.update(contentTasks)
+                .set({ phase: "adopted" })
+                .where(eq(contentTasks.id, task.id))
+                .run();
+            })
         );
-      await updateContentTask(task.id, { phase: "adopted" });
-      finishContentTask(task.id, adopted ? "success" : "unchanged");
+      await updateContentTask(task.id, { phase: "adopted" }, task.ownerToken ?? undefined);
+      finishContentTask(
+        task.id,
+        adopted ? "success" : "unchanged",
+        undefined,
+        task.ownerToken ?? undefined
+      );
       if (adopted || origin === "manual") void triggerRagIndex("playbook", "repair", origin);
       return { cancelled: false, adopted };
     } catch (error) {
+      const cancelled = Boolean(
+        controller?.signal.aborted ||
+          db.select().from(contentTasks).where(eq(contentTasks.id, task.id)).get()?.cancelRequested
+      );
+      adopted = store.adoption?.taskId === task.id;
       finishContentTask(
         task.id,
-        controller?.signal.aborted ? "cancelled" : "failed",
-        controller?.signal.aborted ? "Check cancelled" : "Public snapshot check failed"
+        cancelled ? "cancelled" : "failed",
+        cancelled ? "Check cancelled" : "Public snapshot check failed",
+        task.ownerToken ?? undefined
       );
-      if (controller?.signal.aborted) return { cancelled: true, adopted };
+      if (cancelled) return { cancelled: true, adopted };
       throw error;
     }
   })().finally(() => {
     flight = undefined;
+    flightResumeId = undefined;
   });
   return flight;
 }
@@ -131,65 +179,90 @@ export async function startContentSyncRuntime() {
   const store = getRuntimePlaybookStore();
   await store.load();
   await ensureContentSourcesRegistered(getContentSourceManager());
-  const unfinished = await db
-    .select()
-    .from(contentTasks)
-    .where(inArray(contentTasks.status, ["queued", "running", "interrupted"]));
-  for (const task of unfinished) {
-    if (task.kind === "sync" && task.source === "playbook" && store.adoption?.taskId === task.id) {
-      finishContentTask(task.id, "success");
-      continue;
-    }
-    if (task.cancelRequested) {
-      finishContentTask(task.id, "cancelled");
-      continue;
-    }
-    await db
-      .update(contentTasks)
-      .set({ status: "interrupted", phase: "interrupted" })
-      .where(eq(contentTasks.id, task.id));
-    if (task.kind === "rag") {
-      try {
-        const target = JSON.parse(task.target) as {
-          source: "blog" | "playbook";
-          mode: "repair" | "rebuild";
-          edition: "current" | "previous";
-          type?: string;
-          targetKey?: string;
-          identity: { playbook?: { edition: string; sourceReleaseId: string; sourceTag: string } };
-        };
-        const identity = target.identity.playbook;
-        const playbook = identity
-          ? store.getEdition(identity.edition, identity.sourceReleaseId, identity.sourceTag)
-          : undefined;
-        if (identity && !playbook) throw new Error("Edition expired");
-        const recoveredScope = {
-          source: target.source,
-          edition: target.edition,
-          playbook,
-          type: target.type,
-        };
-        const recovered = await ragCatalog(recoveredScope);
-        const recoveredKey = projectionDigest({
-          source: target.source,
-          type: target.type ?? "all",
-          targets: recovered.targets.map((row) => row.id),
-          fingerprint: recovered.identity.fingerprint,
-          playbook: recovered.identity.playbook,
+  let recoveryFlight: Promise<void> | undefined;
+  const recover = () => {
+    if (recoveryFlight) return recoveryFlight;
+    recoveryFlight = (async () => {
+      const unfinished = await db
+        .select()
+        .from(contentTasks)
+        .where(inArray(contentTasks.status, ["queued", "running", "interrupted"]));
+      for (const task of unfinished) {
+        if (taskOwnerIsLive(task)) continue;
+        if (
+          task.kind === "sync" &&
+          task.source === "playbook" &&
+          store.adoption?.taskId === task.id
+        ) {
+          finishContentTask(task.id, "success");
+          continue;
+        }
+        if (task.cancelRequested) {
+          finishContentTask(task.id, "cancelled");
+          continue;
+        }
+        const recoverable = db.transaction((tx) => {
+          const current = tx.select().from(contentTasks).where(eq(contentTasks.id, task.id)).get();
+          if (!current || current.finishedAt !== null || taskOwnerIsLive(current)) return false;
+          tx.update(contentTasks)
+            .set({ status: "interrupted", phase: "interrupted" })
+            .where(eq(contentTasks.id, task.id))
+            .run();
+          return true;
         });
-        if (target.targetKey && target.targetKey !== recoveredKey)
-          throw new Error("Recovery target changed");
-        await runRagIndex(recoveredScope, target.mode, "recovery", task.id);
-      } catch {
-        finishContentTask(task.id, "failed", "Recovery target unavailable");
+        if (!recoverable) continue;
+        if (task.kind === "rag") {
+          try {
+            const target = JSON.parse(task.target) as {
+              source: "blog" | "playbook";
+              mode: "repair" | "rebuild";
+              edition: "current" | "previous";
+              type?: string;
+              targetKey?: string;
+              identity: {
+                playbook?: { edition: string; sourceReleaseId: string; sourceTag: string };
+              };
+            };
+            const identity = target.identity.playbook;
+            const playbook = identity
+              ? store.getEdition(identity.edition, identity.sourceReleaseId, identity.sourceTag)
+              : undefined;
+            if (identity && !playbook) throw new Error("Edition expired");
+            const recoveredScope = {
+              source: target.source,
+              edition: target.edition,
+              playbook,
+              type: target.type,
+            };
+            const recovered = await ragCatalog(recoveredScope);
+            const recoveredKey = projectionDigest({
+              source: target.source,
+              type: target.type ?? "all",
+              targets: recovered.targets.map((row) => row.id),
+              fingerprint: recovered.identity.fingerprint,
+              playbook: recovered.identity.playbook,
+            });
+            if (target.targetKey && target.targetKey !== recoveredKey)
+              throw new Error("Recovery target changed");
+            await runRagIndex(recoveredScope, target.mode, "recovery", task.id);
+          } catch {
+            finishContentTask(task.id, "failed", "Recovery target unavailable");
+          }
+        } else if (task.source === "playbook")
+          await checkPlaybook("recovery", task.id).catch(() =>
+            finishContentTask(task.id, "failed", "Playbook recovery unavailable")
+          );
+        else
+          await getContentSourceManager()
+            .syncAll(task.requestKey === "full", task.id)
+            .catch(() => finishContentTask(task.id, "failed", "Local recovery failed"));
       }
-    } else if (task.source === "playbook")
-      void checkPlaybook("recovery", task.id).catch(() => undefined);
-    else
-      void getContentSourceManager()
-        .syncAll(task.requestKey === "full", task.id)
-        .catch(() => finishContentTask(task.id, "failed", "Local recovery failed"));
-  }
+    })().finally(() => {
+      recoveryFlight = undefined;
+    });
+    return recoveryFlight;
+  };
+  await recover();
   const prepare = async () => {
     for (const source of ["blog", "playbook"] as const) {
       for (const edition of (source === "playbook" && store.previous
@@ -236,7 +309,9 @@ export async function startContentSyncRuntime() {
   if (playbookSyncEnabled()) void checkPlaybook("automatic").catch(() => undefined);
   const timer = setInterval(() => {
     if (playbookSyncEnabled()) void checkPlaybook("automatic").catch(() => undefined);
-    void prepare().catch(() => undefined);
+    void recover()
+      .then(prepare)
+      .catch(() => undefined);
   }, 300000);
   timer.unref?.();
   return () => clearInterval(timer);
