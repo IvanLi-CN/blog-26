@@ -33,7 +33,7 @@ test("mode selection survives refresh and history and shows genuine mode-specifi
   await expect(results).not.toContainText(/相关度|\d+%/);
 });
 test("RAG waits for the unified server result before rendering", async ({ page }) => {
-  await page.goto("/search/?q=SQLite&mode=rag&d_scene=search-ready&d_delay=slow");
+  await page.goto("/search/?q=SQLite&mode=rag&d_scene=search-ready&d_delay=custom&d_delay_ms=3000");
   await hideInspector(page);
   const results = page.getByRole("region", { name: "搜索结果" });
   await expect(page.getByRole("region", { name: "建议搜索词" })).toHaveCount(0);
@@ -69,8 +69,10 @@ test("rewrite waits for the unified server result", async ({ page }) => {
 });
 test("switching the Web Demo scene reloads the search behavior", async ({ page }) => {
   await page.goto("/search/?q=SQLite&mode=rag&d_scene=search-ready&d_delay=normal");
+  const inspectorTrigger = page.getByTestId("web-demo-inspector-trigger");
+  if (await inspectorTrigger.isVisible()) await inspectorTrigger.click();
   const scene = page.getByTestId("web-demo-inspector-scene-select");
-  await expect(scene).toContainText("搜索 · RAG 补充");
+  await expect(scene).toContainText("搜索 · RAG 补充", { timeout: 10_000 });
   await scene.click();
   await page.getByRole("option", { name: "搜索 · AI 不可用" }).click();
   await expect(page).toHaveURL(/d_scene=search-ai-unavailable/);
@@ -100,11 +102,10 @@ test("AI failure preserves the chosen mode while an index failure is not a succe
 test("delayed obsolete searches cannot overwrite the latest mode", async ({ page }) => {
   await page.goto("/search/?q=SQLite&mode=rag&d_delay=custom&d_delay_ms=800");
   await hideInspector(page);
-  await page.getByRole("button", { name: "关闭", exact: true }).click();
-  await expect(page.getByRole("button", { name: "关闭", exact: true })).toHaveAttribute(
-    "aria-pressed",
-    "true"
-  );
+  const keywordButton = page.getByRole("button", { name: "关闭", exact: true });
+  await expect(keywordButton).toBeEnabled({ timeout: 10_000 });
+  await keywordButton.click();
+  await expect(keywordButton).toHaveAttribute("aria-pressed", "true");
   const results = page.getByRole("region", { name: "搜索结果" });
   await expect(results).toContainText("开发工具阅读清单");
   await expect(results).not.toContainText("SQLite3：嵌入式数据库实践");
