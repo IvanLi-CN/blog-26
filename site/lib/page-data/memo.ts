@@ -1,3 +1,4 @@
+import type { ConsoleWebDemoPublicMemo } from "@/lib/console-web-demo";
 import {
   getConsoleWebDemoClippingArticle,
   getConsoleWebDemoMemo,
@@ -5,6 +6,7 @@ import {
 } from "@/lib/console-web-demo";
 import { extractTextSummary, stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
 import { getMemoPresentation } from "@/lib/memo-presentation";
+import { createEmptyPublicMediaCollection } from "@/lib/public-media";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
 import type { PublicMemoRecord } from "@/public-site/snapshot";
 import { getMemoListWebDemoRecord } from "../memo-list-web-demo";
@@ -18,6 +20,20 @@ type ConsoleMemoRecord = PublicMemoRecord & {
   authoredTitle?: string;
   source?: string;
 };
+
+function normalizeMemoForRender(
+  memo: PublicMemoRecord | ConsoleWebDemoPublicMemo
+): PublicMemoRecord {
+  if ("filePath" in memo && "media" in memo && "dataSource" in memo) {
+    return memo;
+  }
+  return {
+    ...memo,
+    dataSource: null,
+    filePath: "",
+    media: createEmptyPublicMediaCollection(),
+  };
+}
 
 type ConsoleClippingArticle = {
   reading: NonNullable<ConsoleMemoRecord["clipping"]>;
@@ -107,21 +123,22 @@ export async function loadmemo(Astro: PageContext) {
       ? getMemoListWebDemoRecord(Astro.params.slug ?? "")
       : getMemoBySlug(snapshot, Astro.params.slug ?? ""));
   if (!memo) throw new PublicRouteNotFound();
-  const displayDate = memo.publishedAt ?? memo.createdAt;
+  const renderMemo = normalizeMemoForRender(memo);
+  const displayDate = renderMemo.publishedAt ?? renderMemo.createdAt;
   const metadataTitle = getMemoMetadataTitle(
-    memo.title,
+    renderMemo.title,
     displayDate,
-    getMemoPresentation(memo).label
+    getMemoPresentation(renderMemo).label
   );
   const contentSource = "local" as const;
   const publicMediaContext = {
     kind: "memo" as const,
-    slug: memo.slug,
-    filePath: memo.filePath,
+    slug: renderMemo.slug,
+    filePath: renderMemo.filePath,
     ...(consoleMemo?.isAdmin ? { assetScope: "admin-preview" as const } : {}),
   };
-  const memoDescription = extractTextSummary(memo.content, 180) || snapshot.site.description;
-  const memoDetailContent = stripMatchingLeadingTitleHeading(memo.content, memo.title);
+  const memoDescription = extractTextSummary(renderMemo.content, 180) || snapshot.site.description;
+  const memoDetailContent = stripMatchingLeadingTitleHeading(renderMemo.content, renderMemo.title);
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
@@ -135,13 +152,13 @@ export async function loadmemo(Astro: PageContext) {
     },
     mainEntityOfPage: {
       "@type": "WebPage",
-      "@id": getCanonicalUrl(`/memos/${memo.slug}`),
+      "@id": getCanonicalUrl(`/memos/${renderMemo.slug}`),
     },
   };
   return {
     snapshot: trimRouteSnapshot(snapshot, "memo", Astro.url.pathname),
     memoFromProps,
-    memo,
+    memo: renderMemo,
     initialMemo: consoleMemo?.isAdmin ? consoleMemo.memo : undefined,
     initialIsAdmin: consoleMemo?.isAdmin ?? false,
     displayDate,
@@ -150,10 +167,10 @@ export async function loadmemo(Astro: PageContext) {
     publicMediaContext,
     memoDescription,
     memoDetailContent,
-    clippingArticle: memo.clipping
+    clippingArticle: renderMemo.clipping
       ? (consoleMemo?.clippingArticle ??
-        snapshot.clippingArticles?.[memo.slug] ?? {
-          reading: memo.clipping,
+        snapshot.clippingArticles?.[renderMemo.slug] ?? {
+          reading: renderMemo.clipping,
           source: null,
           translation: null,
         })

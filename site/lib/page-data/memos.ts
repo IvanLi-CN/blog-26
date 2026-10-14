@@ -1,6 +1,10 @@
 import type { z } from "zod";
 import { isLocalContentEnabled } from "@/config/paths";
-import { getConsoleWebDemoMemos, getConsoleWebDemoPersona } from "@/lib/console-web-demo";
+import {
+  getConsoleWebDemoMemos,
+  getConsoleWebDemoPersona,
+  getConsoleWebDemoPublicMemos,
+} from "@/lib/console-web-demo";
 import { getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
 import { getWebDemoSceneState } from "@/lib/web-demo-runtime";
@@ -46,9 +50,8 @@ export async function loadmemos(Astro: PageContext) {
     initialMemosPreviousCursor = demoPage.previousCursor;
   } else if (isConsoleWebDemo) {
     const persona = getConsoleWebDemoPersona(Astro.url);
-    const demoMemos = getConsoleWebDemoMemos().filter(
-      (memo) => persona === "admin" || (memo.isPublic && !memo.draft)
-    );
+    const demoMemos =
+      persona === "admin" ? getConsoleWebDemoMemos() : getConsoleWebDemoPublicMemos();
     const demoPage = {
       memos: demoMemos,
       hasMore: false,

@@ -19,6 +19,11 @@ export type ConsoleWebDemoMemo = PublicMemoRecord & {
   draft?: boolean;
 };
 
+export type ConsoleWebDemoPublicMemo = Omit<
+  ConsoleWebDemoMemo,
+  "authoredContent" | "authoredTitle" | "source" | "draft" | "dataSource" | "filePath" | "media"
+>;
+
 const fixtureTime = Date.UTC(2026, 9, 13, 8);
 
 function makeMemo(
@@ -130,17 +135,53 @@ export function getConsoleWebDemoMemos(): ConsoleWebDemoMemo[] {
   return seedMemos.map(cloneMemo);
 }
 
+export function getConsoleWebDemoPublicMemos(): ConsoleWebDemoPublicMemo[] {
+  return seedMemos.filter((memo) => memo.isPublic && !memo.draft).map(toPublicMemo);
+}
+
+function toPublicMemo(memo: ConsoleWebDemoMemo): ConsoleWebDemoPublicMemo {
+  const {
+    authoredContent: _authoredContent,
+    authoredTitle: _authoredTitle,
+    source: _source,
+    draft: _draft,
+    dataSource: _dataSource,
+    filePath: _filePath,
+    media: _media,
+    ...publicMemo
+  } = cloneMemo(memo);
+  return {
+    ...publicMemo,
+    canDiscuss: false,
+  };
+}
+
+function toMemoForPersona(
+  memo: ConsoleWebDemoMemo,
+  persona: WebDemoPersona
+): ConsoleWebDemoMemo | ConsoleWebDemoPublicMemo {
+  if (persona === "admin") {
+    return {
+      ...cloneMemo(memo),
+      canDiscuss: Boolean(memo.clipping),
+    };
+  }
+  return toPublicMemo(memo);
+}
+
+export function getConsoleWebDemoMemo(slug: string, persona: "admin"): ConsoleWebDemoMemo | null;
+export function getConsoleWebDemoMemo(
+  slug: string,
+  persona: Exclude<WebDemoPersona, "admin">
+): ConsoleWebDemoPublicMemo | null;
 export function getConsoleWebDemoMemo(
   slug: string,
   persona: WebDemoPersona
-): ConsoleWebDemoMemo | null {
+): ConsoleWebDemoMemo | ConsoleWebDemoPublicMemo | null {
   const memo = seedMemos.find((candidate) => candidate.slug === slug);
   if (!memo) return null;
   if (persona !== "admin" && (!memo.isPublic || memo.draft)) return null;
-  return {
-    ...cloneMemo(memo),
-    canDiscuss: Boolean(memo.clipping && persona === "admin"),
-  };
+  return toMemoForPersona(memo, persona);
 }
 
 export function getConsoleWebDemoClippingArticle(slug: string, persona: WebDemoPersona) {
@@ -164,10 +205,7 @@ export function createConsoleWebDemoStore() {
   const visible = (persona: WebDemoPersona) =>
     memos
       .filter((memo) => persona === "admin" || (memo.isPublic && !memo.draft))
-      .map((memo) => ({
-        ...cloneMemo(memo),
-        canDiscuss: Boolean(memo.clipping && persona === "admin"),
-      }));
+      .map((memo) => toMemoForPersona(memo, persona));
 
   return {
     list(persona: WebDemoPersona) {
@@ -183,10 +221,7 @@ export function createConsoleWebDemoStore() {
     get(slug: string, persona: WebDemoPersona) {
       const memo = memos.find((candidate) => candidate.slug === slug);
       if (!memo || (persona !== "admin" && (!memo.isPublic || memo.draft))) return null;
-      return {
-        ...cloneMemo(memo),
-        canDiscuss: Boolean(memo.clipping && persona === "admin"),
-      };
+      return toMemoForPersona(memo, persona);
     },
     create(input: { content: string; isPublic: boolean; tags?: string[] }) {
       const slug = `console-demo-created-${++sequence}`;
