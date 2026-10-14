@@ -167,13 +167,6 @@ export class ContentSourceManager {
       resumeId,
     });
     if (reused) throw new Error(`Task conflict: ${task.id}`);
-    taskControllers.get(task.id)?.signal.addEventListener(
-      "abort",
-      () => {
-        void this.cancelSync();
-      },
-      { once: true }
-    );
     this.persistentTaskId = task.id;
     const startTime = Date.now();
     const syncId = nanoid();
@@ -200,6 +193,15 @@ export class ContentSourceManager {
       totalItems: 0,
       startTime,
     };
+
+    taskControllers.get(task.id)?.signal.addEventListener(
+      "abort",
+      () => {
+        void this.cancelSync();
+      },
+      { once: true }
+    );
+    if (taskControllers.get(task.id)?.signal.aborted) await this.cancelSync();
 
     const result: SyncResult = {
       success: false,
@@ -233,7 +235,8 @@ export class ContentSourceManager {
       if (isFullSync) {
         this.currentSync.currentStep = "清空数据库";
         await this.logSync("info", "🗑️ 开始清空数据库中的所有内容");
-        if (this.currentSync.status === "cancelled") throw new Error("Sync cancelled");
+        if (this.currentSync.status === "cancelled" || taskControllers.get(task.id)?.signal.aborted)
+          throw new Error("Sync cancelled");
         await this.clearAllContent();
         await this.logSync("info", "✅ 数据库清空完成");
       }

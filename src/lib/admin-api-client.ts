@@ -599,7 +599,11 @@ export const adminApi = {
   getContentSyncSystemConfig: () =>
     adminRequest<Record<string, unknown>>("/api/admin/content-sync/system-config"),
   getContentSyncStatus: (
-    params: { source?: "all" | "blog" | "playbook"; edition?: "current" | "previous" } = {}
+    params: {
+      source?: "all" | "blog" | "playbook";
+      type?: "all" | "post" | "memo" | "clipping" | "topic" | "experience" | "policy";
+      edition?: "current" | "previous";
+    } = {}
   ) =>
     adminRequest<UnifiedContentSyncStatus>(`/api/admin/content-sync/status${buildSearch(params)}`),
   triggerRagIndex: (source: "all" | "blog" | "playbook", mode: "repair" | "rebuild") =>

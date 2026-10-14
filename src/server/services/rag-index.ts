@@ -388,36 +388,48 @@ export async function ragCoverage(scope: RagScope = {}) {
     },
   };
 }
-export async function ensureRagManifest(scope: RagScope = {}) {
-  const catalog = await ragCatalog(scope);
+async function ensureRagManifest(
+  catalog: Awaited<ReturnType<typeof ragCatalog>>,
+  source: RagSource,
+  taskId: string,
+  signal?: AbortSignal
+) {
   const id = projectionDigest({
     identity: catalog.identity,
     targets: catalog.targets.map((x) => x.id),
   });
-  db.transaction((tx) => {
-    tx.insert(ragIndexManifests)
-      .values({
-        id,
-        source: scope.source ?? "all",
-        identity: JSON.stringify(catalog.identity),
-        targets: JSON.stringify(catalog.targets.map(({ input, edition, ...t }) => t)),
-        createdAt: Date.now(),
-      })
-      .onConflictDoNothing()
-      .run();
-    for (const target of catalog.targets)
-      tx.insert(ragIndexTargets)
-        .values({
-          id: target.id,
-          source: target.source,
-          parentId: target.parentId,
-          status: "pending",
-          updatedAt: Date.now(),
-        })
-        .onConflictDoNothing()
-        .run();
-  });
-  return { ...catalog, manifestId: id };
+  // Persist the complete expected list first; target completion is resumable in bounded batches.
+  db.insert(ragIndexManifests)
+    .values({
+      id,
+      source,
+      identity: JSON.stringify(catalog.identity),
+      targets: JSON.stringify(catalog.targets.map(({ input, edition, ...t }) => t)),
+      createdAt: Date.now(),
+    })
+    .onConflictDoNothing()
+    .run();
+  for (let offset = 0; offset < catalog.targets.length; offset += 100) {
+    if (signal?.aborted) throw signal.reason;
+    db.transaction((tx) => {
+      const owner = tx.select().from(contentTasks).where(eq(contentTasks.id, taskId)).get();
+      if (owner?.status !== "running" || owner.cancelRequested)
+        throw new DOMException("Manifest task cancelled", "AbortError");
+      for (const target of catalog.targets.slice(offset, offset + 100))
+        tx.insert(ragIndexTargets)
+          .values({
+            id: target.id,
+            source: target.source,
+            parentId: target.parentId,
+            status: "pending",
+            updatedAt: Date.now(),
+          })
+          .onConflictDoNothing()
+          .run();
+    });
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+  return id;
 }
 async function targetStillCurrent(target: RagTarget, scope: RagScope) {
   const config = (await getResolvedLlmConfig()).embedding;
@@ -441,7 +453,7 @@ async function targetStillCurrent(target: RagTarget, scope: RagScope) {
   );
 }
 async function prepareEmbedding(
-  config: ResolvedTierConfig,
+  fingerprint: string,
   input: string,
   signal: AbortSignal | undefined,
   stillCurrent: () => Promise<boolean>
@@ -450,6 +462,14 @@ async function prepareEmbedding(
     for (let attempt = 0; ; attempt++) {
       if (signal?.aborted) throw signal.reason;
       if (!(await stillCurrent())) throw new Error("Embedding target changed");
+      const config = (await getResolvedLlmConfig()).embedding;
+      if (
+        !config.apiKeyAvailable ||
+        !config.apiKey ||
+        embeddingIdentity(config).fingerprint !== fingerprint
+      )
+        throw new Error("Embedding configuration unavailable or changed");
+      if (signal?.aborted) throw signal.reason;
       try {
         return await embedSearchQuery(config, input, 10000, { signal });
       } catch (error) {
@@ -485,7 +505,7 @@ export async function runRagIndex(
   resumeId?: string
 ) {
   if (scope.source === "all" || !scope.source) throw new Error("Run one RAG source per task");
-  const catalog = await ensureRagManifest(scope);
+  const catalog = await ragCatalog(scope);
   if (!catalog.available) throw new Error("Embedding provider is not configured");
   if (catalog.missingSources.length) throw new Error("Playbook snapshot unavailable");
   const targetKey = projectionDigest({
@@ -506,7 +526,10 @@ export async function runRagIndex(
       mode,
       edition: scope.edition ?? "current",
       identity: catalog.identity,
-      manifestId: catalog.manifestId,
+      manifestId: projectionDigest({
+        identity: catalog.identity,
+        targets: catalog.targets.map((x) => x.id),
+      }),
       targetKey,
       type: scope.type ?? "all",
     }),
@@ -516,6 +539,7 @@ export async function runRagIndex(
   await updateContentTask(task.id, { total: catalog.targets.length });
   const controller = taskControllers.get(task.id);
   void (async () => {
+    await ensureRagManifest(catalog, scope.source as RagSource, task.id, controller?.signal);
     const coverage = await ragCoverage(scope);
     let processed = 0,
       failed = 0,
@@ -550,7 +574,7 @@ export async function runRagIndex(
             .run();
         });
         const vector = await prepareEmbedding(
-          catalog.config,
+          target.fingerprint,
           target.input,
           controller?.signal,
           () => targetStillCurrent(target, scope)
@@ -725,7 +749,7 @@ export async function triggerRagIndex(
   for (const item of sources) {
     try {
       if (origin === "automatic" || origin === "content-sync") {
-        const catalog = await ensureRagManifest({ source: item });
+        const catalog = await ragCatalog({ source: item });
         const targetKey = projectionDigest({
           source: item,
           type: "all",

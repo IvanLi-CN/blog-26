@@ -3,7 +3,7 @@ import { projectionDigest } from "@/lib/ai/embedding-target";
 import { getContentSourceManager } from "@/lib/content-sources";
 import { db } from "@/lib/db";
 import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
-import { samePlaybookEdition } from "@/lib/playbook/manifest";
+import { parseEditionIdentity, samePlaybookEdition } from "@/lib/playbook/manifest";
 import { contentTasks } from "@/lib/schema";
 import {
   beginContentTask,
@@ -11,7 +11,7 @@ import {
   taskControllers,
   updateContentTask,
 } from "./content-tasks";
-import { ensureRagManifest, ragCoverage, runRagIndex, triggerRagIndex } from "./rag-index";
+import { ragCatalog, ragCoverage, runRagIndex, triggerRagIndex } from "./rag-index";
 
 export const playbookSyncEnabled = () =>
   process.env.PLAYBOOK_SYNC_ENABLED === "true" ||
@@ -28,7 +28,7 @@ export function checkPlaybook(origin = "manual", resumeId?: string) {
       source: "playbook",
       requestKey: "public-deployment-pointer",
       origin,
-      target: JSON.stringify(store.current?.edition ?? null),
+      target: "null",
       resumeId,
     });
     if (reused) throw new Error(`Task conflict: ${task.id}`);
@@ -36,12 +36,13 @@ export function checkPlaybook(origin = "manual", resumeId?: string) {
     let adopted = false;
     try {
       await updateContentTask(task.id, { phase: "checking" });
-      const edition = await store.downloadEdition(undefined, controller?.signal);
+      const retained = resumeId ? parseEditionIdentity(JSON.parse(task.target)) : undefined;
+      const edition = await store.downloadEdition(undefined, controller?.signal, retained);
       if (controller?.signal.aborted) throw controller.signal.reason;
       if (!edition) throw new Error("Public snapshot unavailable");
       await updateContentTask(task.id, {
         phase: "adopting",
-        target: JSON.stringify(edition.edition),
+        ...(!resumeId ? { target: JSON.stringify(edition.edition) } : {}),
       });
       adopted = !store.current || !samePlaybookEdition(store.current.edition, edition.edition);
       if (controller?.signal.aborted) throw controller.signal.reason;
@@ -73,12 +74,12 @@ export async function startContentSyncRuntime() {
     .from(contentTasks)
     .where(inArray(contentTasks.status, ["queued", "running"]));
   for (const task of unfinished) {
-    if (task.cancelRequested) {
-      finishContentTask(task.id, "cancelled");
-      continue;
-    }
     if (task.kind === "sync" && task.source === "playbook" && store.adoption?.taskId === task.id) {
       finishContentTask(task.id, "success");
+      continue;
+    }
+    if (task.cancelRequested) {
+      finishContentTask(task.id, "cancelled");
       continue;
     }
     await db
@@ -106,7 +107,7 @@ export async function startContentSyncRuntime() {
           playbook,
           type: target.type,
         };
-        const recovered = await ensureRagManifest(recoveredScope);
+        const recovered = await ragCatalog(recoveredScope);
         const recoveredKey = projectionDigest({
           source: target.source,
           type: target.type ?? "all",
@@ -127,15 +128,12 @@ export async function startContentSyncRuntime() {
         .syncAll(task.requestKey === "full", task.id)
         .catch(() => finishContentTask(task.id, "failed", "Local recovery failed"));
   }
-  await ensureRagManifest({ source: "blog" });
-  await ensureRagManifest({ source: "playbook" });
-  if (store.previous) await ensureRagManifest({ source: "playbook", edition: "previous" });
   const prepare = async () => {
     for (const source of ["blog", "playbook"] as const) {
       for (const edition of (source === "playbook" && store.previous
         ? ["current", "previous"]
         : ["current"]) as ("current" | "previous")[]) {
-        const manifest = await ensureRagManifest({ source, edition });
+        const manifest = await ragCatalog({ source, edition });
         if (!manifest.available || manifest.missingSources.length) continue;
         const coverage = await ragCoverage({ source, edition });
         if (!coverage.status.incompleteSources.length) continue;

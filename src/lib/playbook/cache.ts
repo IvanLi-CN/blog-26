@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { renameSync } from "node:fs";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { encodeJson, parseEditionIdentity, samePlaybookEdition, verifyFile } from "./manifest";
 import { validatePlaybookSearchRoute } from "./navigation";
@@ -168,7 +169,8 @@ export class PlaybookStore {
       await unlink(staging);
       throw signal.reason;
     }
-    await rename(staging, join(this.root, "state.json"));
+    // No asynchronous gap between the final cancellation check and the commit.
+    renameSync(staging, join(this.root, "state.json"));
     this.state = next;
   }
 
@@ -210,7 +212,11 @@ export class PlaybookStore {
     this.downloadFlight?.controller.abort(reason);
   }
 
-  downloadEdition(manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL, externalSignal?: AbortSignal) {
+  downloadEdition(
+    manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL,
+    externalSignal?: AbortSignal,
+    retainedIdentity?: PlaybookEditionIdentity
+  ) {
     if (this.downloadFlight) {
       linkAbortSignal(externalSignal, this.downloadFlight.controller);
       return this.downloadFlight.promise;
@@ -224,14 +230,18 @@ export class PlaybookStore {
       )
     );
     const promise = (async () => {
-      const pointer = parseEditionIdentity(
-        JSON.parse(
-          Buffer.from(await fetchBounded(this.fetcher, manifestUrl, 64 * 1024, signal)).toString(
-            "utf8"
+      const pointer =
+        retainedIdentity ??
+        parseEditionIdentity(
+          JSON.parse(
+            Buffer.from(await fetchBounded(this.fetcher, manifestUrl, 64 * 1024, signal)).toString(
+              "utf8"
+            )
           )
-        )
-      );
+        );
       if (this.current && samePlaybookEdition(pointer, this.current.edition)) return this.current;
+      if (retainedIdentity && this.previous && samePlaybookEdition(pointer, this.previous.edition))
+        return this.previous;
       const base = new URL(
         `./${encodeURIComponent(pointer.source.tag)}/${pointer.editionDigest}/`,
         manifestUrl

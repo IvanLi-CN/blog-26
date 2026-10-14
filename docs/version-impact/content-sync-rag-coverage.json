@@ -19,19 +19,19 @@
     "docs/specs/style-playbook-integration/HISTORY.md": "c941a290e779be6a0996906744f4c661a351a380",
     "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "5cd9db9ab8877af20e20e30e75dd46b100d6afb3",
     "docs/specs/style-playbook-integration/SPEC.md": "f58b86ab2a4558bd8c7406eafbd6d7fa8a62e2c8",
-    "docs/specs/style-playbook-integration/VALIDATION.md": "4eb657b899263ca6e97e213300e72edd850b180c",
+    "docs/specs/style-playbook-integration/VALIDATION.md": "0676c8f46855097cb2a8797b1e8bb6732dd9b778",
     "docs/specs/style-playbook-integration/assets/content-sync-rag-tablet-unconfigured.png": "c54f67dbe154970fb3afa994a380e3101f0b3a6b",
-    "docs/specs/style-playbook-integration/contracts/content-sync-status.md": "fb4a8a0594dae9d0167c3ac89991932c64a25102",
+    "docs/specs/style-playbook-integration/contracts/content-sync-status.md": "c14db7f19020826f7cb626f28c8453423683c79c",
     "drizzle/0015_content_sync_rag_coverage.sql": "746b9c509c2142848bd8e47e549b8c065869d7a0",
     "drizzle/meta/0015_snapshot.json": "997637a432a4c3be9f30506394e8a1081064c866",
     "drizzle/meta/_journal.json": "7857aaa1708ecdfa13595f9cca175d4faf810a42",
     "scripts/start-console.ts": "33431cd602f522b6cc5a75dbc277ebc556415ff7",
-    "src/lib/admin-api-client.ts": "628871c4200b5fce2945908c230aa023282e792d",
+    "src/lib/admin-api-client.ts": "cae217fb6b32ec386a999b14e9d978aea0ba7307",
     "src/lib/ai/embedding-target.ts": "8473f83fef0473d4bc967b068ac130bb1b576caf",
     "src/lib/ai/embeddings.ts": "b93e0f46f39b1156346955758190264c84aea075",
     "src/lib/ai/vectorization.ts": "8384555503d84d9361d85ebfa3a2e8d3ce2a79e8",
-    "src/lib/content-sources/manager.ts": "9d0a315a3da46d1923b82a891a8f897548640a1f",
-    "src/lib/playbook/cache.ts": "cf1f1f3267ddb3917067209f1cbed15b9285a095",
+    "src/lib/content-sources/manager.ts": "487392663faa2a8e2ddebf26947d0b2f07d11274",
+    "src/lib/playbook/cache.ts": "a968f1a28ee8f1f5745729f6aad6401a228785e3",
     "src/lib/schema.ts": "a2113771c6701ea55eb0533dc2195353bff23d2d",
     "src/lib/web-demo-runtime.ts": "e4e39562b595bbce1e2cae92d5572e847bd4216c",
     "src/server/admin-api/router.ts": "c04dd56f4b88df6831d7fb80c1c59b771d7ec9b8",
@@ -39,16 +39,16 @@
     "src/server/routers/admin/vectorize.ts": "4d8ce2ce95aae60be1fd855cbabfab99bc29cf2f",
     "src/server/services/content-search.test.ts": "182b46bdd47436a02832013d42f1bc46f31a4202",
     "src/server/services/content-search.ts": "654c9aa345bcd5f9a847555cc89d9ac2111932af",
-    "src/server/services/content-sync-runtime.ts": "699163c8887c374d647e213965f1a6e2ba155492",
+    "src/server/services/content-sync-runtime.ts": "72e8dd29701c573a6de845df911f79dcd7a4728f",
     "src/server/services/content-sync-status.ts": "23bbd9d0b13274ac434051e07793faa837e47fd1",
-    "src/server/services/content-tasks.ts": "95e682dad4d287e998ff07ba71d33d795afd076c",
+    "src/server/services/content-tasks.ts": "8a2015d8fa89f2829c8f9e5665f7014db121e6ea",
     "src/server/services/playbook-search.ts": "de3b3b569d94ae0bcea223e10c922a86af0f5469",
-    "src/server/services/rag-index.test.ts": "49cd11856d4bcbbc3f24698f0f353684d2d31fec",
-    "src/server/services/rag-index.ts": "dbe36c9a0b89bf935754235c19081ac47685d168",
+    "src/server/services/rag-index.test.ts": "90719dddf5a31184de5ecb999682d179c42244db",
+    "src/server/services/rag-index.ts": "386b0435b4e5f76797458f6ccba55b7ac7bdcf49",
     "src/server/services/search-semantic-projection.ts": "de2be6f33aefedf504d49890fff2b1c210e0f58b",
     "tests/e2e/web-demo/content-sync.spec.ts": "d1ccd325729acac76798b913be3fafb3c4711d5b",
-    "tests/lib/rag-index-restart-fixture.ts": "be92706112a0a141e13dd6bc26df30b85fd3c393",
-    "tests/lib/rag-index-restart.test.ts": "c80095021944da97634931ffdcff5c0d65fad6d6"
+    "tests/lib/rag-index-restart-fixture.ts": "e45c30295897b70122fe6a5e7f214efec94055ec",
+    "tests/lib/rag-index-restart.test.ts": "24e9fe1a1e38cb4cdf3a37527c8edf318d31878e"
   },
   "change": {
     "description": "Repair content summary and public RAG coverage with persistent asynchronous task recovery and admin scope chips.",
@@ -63,12 +63,12 @@
       "evidence": [
         {
           "path": "tests/lib/rag-index-restart.test.ts",
-          "blob": "c80095021944da97634931ffdcff5c0d65fad6d6",
+          "blob": "24e9fe1a1e38cb4cdf3a37527c8edf318d31878e",
           "command": "Independent Mock write/read processes: generation, persistence, restart, coverage and modern RAG consumption"
         },
         {
           "path": "src/server/services/rag-index.test.ts",
-          "blob": "49cd11856d4bcbbc3f24698f0f353684d2d31fec",
+          "blob": "90719dddf5a31184de5ecb999682d179c42244db",
           "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
         },
         {
@@ -95,12 +95,12 @@
       "evidence": [
         {
           "path": "tests/lib/rag-index-restart.test.ts",
-          "blob": "c80095021944da97634931ffdcff5c0d65fad6d6",
+          "blob": "24e9fe1a1e38cb4cdf3a37527c8edf318d31878e",
           "command": "Independent Mock write/read processes: generation, persistence, restart, coverage and modern RAG consumption"
         },
         {
           "path": "src/server/services/rag-index.test.ts",
-          "blob": "49cd11856d4bcbbc3f24698f0f353684d2d31fec",
+          "blob": "90719dddf5a31184de5ecb999682d179c42244db",
           "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
         },
         {
@@ -131,12 +131,12 @@
       "evidence": [
         {
           "path": "tests/lib/rag-index-restart.test.ts",
-          "blob": "c80095021944da97634931ffdcff5c0d65fad6d6",
+          "blob": "24e9fe1a1e38cb4cdf3a37527c8edf318d31878e",
           "command": "Independent Mock write/read processes: generation, persistence, restart, coverage and modern RAG consumption"
         },
         {
           "path": "src/server/services/rag-index.test.ts",
-          "blob": "49cd11856d4bcbbc3f24698f0f353684d2d31fec",
+          "blob": "90719dddf5a31184de5ecb999682d179c42244db",
           "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
         },
         {
@@ -194,12 +194,12 @@
       "evidence": [
         {
           "path": "tests/lib/rag-index-restart.test.ts",
-          "blob": "c80095021944da97634931ffdcff5c0d65fad6d6",
+          "blob": "24e9fe1a1e38cb4cdf3a37527c8edf318d31878e",
           "command": "Independent Mock write/read processes: generation, persistence, restart, coverage and modern RAG consumption"
         },
         {
           "path": "src/server/services/rag-index.test.ts",
-          "blob": "49cd11856d4bcbbc3f24698f0f353684d2d31fec",
+          "blob": "90719dddf5a31184de5ecb999682d179c42244db",
           "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
         },
         {

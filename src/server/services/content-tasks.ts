@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
 import { contentTaskCounters, contentTasks } from "@/lib/schema";
 
 export type ContentTask = typeof contentTasks.$inferSelect;
@@ -40,8 +41,8 @@ export async function beginContentTask(input: {
         throw new Error("Task is not resumable");
       tx.update(contentTasks)
         .set({
-          requestKey: input.requestKey,
-          target: input.target,
+          requestKey: previous.requestKey,
+          target: previous.target,
           status: "running",
           phase: "recovering",
         })
@@ -50,8 +51,8 @@ export async function beginContentTask(input: {
       return {
         task: {
           ...previous,
-          requestKey: input.requestKey,
-          target: input.target,
+          requestKey: previous.requestKey,
+          target: previous.target,
           status: "running",
           phase: "recovering",
         },
@@ -99,7 +100,15 @@ export function finishContentTask(
   db.transaction((tx) => {
     const task = tx.select().from(contentTasks).where(eq(contentTasks.id, id)).get();
     if (!task || task.finishedAt !== null) return;
-    const terminal = task.cancelRequested && task.phase !== "adopted" ? "cancelled" : status;
+    const committed =
+      task.kind === "sync" &&
+      task.source === "playbook" &&
+      getRuntimePlaybookStore().adoption?.taskId === id;
+    const terminal = committed
+      ? "success"
+      : task.cancelRequested && task.phase !== "adopted"
+        ? "cancelled"
+        : status;
     tx.update(contentTasks)
       .set({ status: terminal, phase: terminal, error: error ?? null, finishedAt: Date.now() })
       .where(eq(contentTasks.id, id))
@@ -154,11 +163,20 @@ export async function contentSyncTotals() {
   };
 }
 export async function cancelContentTask(id: string) {
-  const task = await getContentTask(id);
+  // Resolve and persist cancellation synchronously with the cache commit fence.
+  const task = db.select().from(contentTasks).where(eq(contentTasks.id, id)).get();
   if (!task) throw new Error("Task not found");
   if (task.finishedAt !== null) return { taskId: id, status: task.status };
-  if (task.phase === "adopted") return { taskId: id, status: "completed" };
-  await db.update(contentTasks).set({ cancelRequested: true }).where(eq(contentTasks.id, id));
+  if (
+    task.phase === "adopted" ||
+    (task.kind === "sync" &&
+      task.source === "playbook" &&
+      getRuntimePlaybookStore().adoption?.taskId === id)
+  ) {
+    finishContentTask(id, "success");
+    return { taskId: id, status: "completed" };
+  }
+  db.update(contentTasks).set({ cancelRequested: true }).where(eq(contentTasks.id, id)).run();
   taskControllers.get(id)?.abort(new DOMException("Task cancelled", "AbortError"));
   if (!taskControllers.has(id)) finishContentTask(id, "cancelled");
   return { taskId: id, status: "cancelling" };
