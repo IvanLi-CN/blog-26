@@ -3,6 +3,7 @@ import type { loadmemos } from "../../lib/page-data/memos";
 import MemoTimeline from "../MemoTimeline";
 export default function memosPage(data: Awaited<ReturnType<typeof loadmemos>>) {
   const {
+    isConsoleWebDemo,
     isMemoListWebDemo,
     snapshot,
     isConsoleRuntime,
@@ -39,6 +40,7 @@ export default function memosPage(data: Awaited<ReturnType<typeof loadmemos>>) {
         <PublicMemoComposerIsland
           initialIsAdmin={initialIsAdmin}
           initialMemos={initialAuthorMemos}
+          refreshOnMount={isConsoleWebDemo}
           initialEditSlug={initialEditSlug}
           initialHasMore={initialMemosHasMore}
           initialNextCursor={initialMemosNextCursor}

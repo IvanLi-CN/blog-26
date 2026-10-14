@@ -177,6 +177,10 @@ export function getConsoleWebDemoMemo(
 export function getConsoleWebDemoMemo(
   slug: string,
   persona: WebDemoPersona
+): ConsoleWebDemoMemo | ConsoleWebDemoPublicMemo | null;
+export function getConsoleWebDemoMemo(
+  slug: string,
+  persona: WebDemoPersona
 ): ConsoleWebDemoMemo | ConsoleWebDemoPublicMemo | null {
   const memo = seedMemos.find((candidate) => candidate.slug === slug);
   if (!memo) return null;

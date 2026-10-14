@@ -307,6 +307,7 @@ export function PublicMemoComposerIsland({
   localMemoRootPath,
   initialIsAdmin = false,
   initialMemos = [],
+  refreshOnMount = false,
   initialEditSlug = null,
   initialHasMore = false,
   initialNextCursor = null,
@@ -317,6 +318,7 @@ export function PublicMemoComposerIsland({
   localMemoRootPath?: string;
   initialIsAdmin?: boolean;
   initialMemos?: PublicMemoRecord[];
+  refreshOnMount?: boolean;
   initialEditSlug?: string | null;
   initialHasMore?: boolean;
   initialNextCursor?: string | null;
@@ -539,12 +541,12 @@ export function PublicMemoComposerIsland({
 
   useEffect(() => {
     if (!isAdmin) return;
-    if (initialIsAdmin && initialMemos.length > 0) return;
+    if (!refreshOnMount && initialIsAdmin && initialMemos.length > 0) return;
     void requestMemoPage({});
     return () => {
       listRequestId.current += 1;
     };
-  }, [initialIsAdmin, initialMemos.length, isAdmin, requestMemoPage]);
+  }, [initialIsAdmin, initialMemos.length, isAdmin, refreshOnMount, requestMemoPage]);
 
   const refreshList = useCallback(() => {
     void requestMemoPage({});

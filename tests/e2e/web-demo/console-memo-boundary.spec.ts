@@ -164,6 +164,13 @@ test.describe("Console Memo Web Demo", () => {
       "保存后仍停留在当前详情路由"
     );
 
+    await page.goBack({ waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/memos\/?(?:\?.*)?$/);
+    await expect(page.getByTestId("admin-live-memo-list-items")).toBeVisible();
+    await expect(
+      page.getByTestId("admin-live-memo-card").filter({ hasText: "Console Web Demo 保存验收" })
+    ).toBeVisible();
+
     await page.getByTestId("web-demo-inspector-trigger").click();
     await expect(page.locator(".web-demo-inspector-mutations")).toContainText("保存 Memo 详情");
   });

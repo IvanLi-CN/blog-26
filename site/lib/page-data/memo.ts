@@ -67,8 +67,8 @@ function isConsoleRuntimeRequest(Astro: PageContext) {
 export function selectMemoForRender(input: {
   consoleWebDemoMemo?: PublicMemoRecord | ConsoleWebDemoPublicMemo | null;
   consoleMemo?: { memo: PublicMemoRecord } | null;
-  memoFromProps?: PublicMemoRecord;
-  snapshotMemo?: PublicMemoRecord;
+  memoFromProps?: PublicMemoRecord | null;
+  snapshotMemo?: PublicMemoRecord | null;
   isConsoleRuntime: boolean;
 }) {
   return (

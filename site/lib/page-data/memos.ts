@@ -56,7 +56,9 @@ export async function loadmemos(Astro: PageContext) {
       webDemoSceneState ?? { scene: "memo-middle", data: "fixture" }
     );
     initialMemos = demoPage.memos;
-    if (isWebDemoAdmin) initialAuthorMemos = demoPage.memos;
+    if (isWebDemoAdmin) {
+      initialAuthorMemos = demoPage.memos.map((memo) => adminMemoRecordSchema.parse(memo));
+    }
     initialMemosHasMore = demoPage.hasMore;
     initialMemosNextCursor = demoPage.nextCursor;
     initialMemosHasNewer = demoPage.hasPrevious;
@@ -126,6 +128,7 @@ export async function loadmemos(Astro: PageContext) {
         ? "2"
         : null;
   return {
+    isConsoleWebDemo,
     isMemoListWebDemo,
     webDemoSceneState,
     snapshot: trimRouteSnapshot(snapshot, "memos", Astro.url.pathname),
