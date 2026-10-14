@@ -25,6 +25,8 @@
     "drizzle/0014_unified_playbook_search.sql": "f55a42f088bfa5bcff0980b535c5c9f0bbeed054",
     "drizzle/meta/0014_snapshot.json": "5c983dec2f8586bc9a0b11ed8259a15340e3a8ec",
     "drizzle/meta/_journal.json": "1f7981eca9eaf12a1aa19fb1a7e64da3245208a0",
+    "scripts/prepare-edgeone-pwa-config.test.ts": "8f8c3a78d244f6a845c3c5d170633937df9c790e",
+    "scripts/prepare-edgeone-pwa-config.ts": "c9398c2f7cb3f00c7c112543a74231a90d6a957f",
     "site/components/SearchPageIsland.tsx": "445588c2c6f49ea10884e3d0b44c3fe0315423d6",
     "site/components/pages/playbookDetail.tsx": "28a6f46fa332539e8d970bfa4eb4357e18b8da31",
     "site/lib/page-data/playbookDetail.ts": "86d05039dbc1947f579d36aaf2b57b6dc63a6367",
@@ -102,7 +104,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "Targeted unit, migration, model-input isolation, Playbook adapter, admin status, atomic adoption, sync singleflight/cancellation and cross-entrypoint contract tests pass; the non-root Agent VM suite reports 88 tests and 496 assertions, native verification reports 23/23, Web Demo search E2E reports 9/9, and the isolated synthetic Playbook RAG evidence passes. External provider availability remains an environment boundary.",
-      "assessed_at": "2026-10-14T13:16:14+08:00",
+      "assessed_at": "2026-10-14T16:28:14+08:00",
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
@@ -138,6 +140,11 @@
           "path": "docs/specs/search-relevance/VALIDATION.md",
           "command": "Agent VM native 23/23, targeted 88 tests/496 assertions, Web Demo 9/9, synthetic Playbook RAG 1 pass/14 assertions",
           "blob": "7baa50de08e847402d285bcbbc4685faf62103e1"
+        },
+        {
+          "path": "scripts/prepare-edgeone-pwa-config.test.ts",
+          "command": "bun test scripts/prepare-edgeone-pwa-config.test.ts",
+          "blob": "8f8c3a78d244f6a845c3c5d170633937df9c790e"
         }
       ],
       "scope_drift": {
@@ -148,7 +155,7 @@
     "verified": {
       "impact": "minor",
       "reasoning": "Targeted unit, migration, model-input isolation, Playbook adapter, admin status, atomic adoption, sync singleflight/cancellation and cross-entrypoint contract tests pass; the non-root Agent VM suite reports 88 tests and 496 assertions, native verification reports 23/23, Web Demo search E2E reports 9/9, and the isolated synthetic Playbook RAG evidence passes. External provider availability remains an environment boundary.",
-      "assessed_at": "2026-10-14T13:16:14+08:00",
+      "assessed_at": "2026-10-14T16:28:14+08:00",
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
@@ -184,6 +191,11 @@
           "path": "docs/specs/search-relevance/VALIDATION.md",
           "command": "Agent VM native 23/23, targeted 88 tests/496 assertions, Web Demo 9/9, synthetic Playbook RAG 1 pass/14 assertions",
           "blob": "7baa50de08e847402d285bcbbc4685faf62103e1"
+        },
+        {
+          "path": "scripts/prepare-edgeone-pwa-config.test.ts",
+          "command": "bun test scripts/prepare-edgeone-pwa-config.test.ts",
+          "blob": "8f8c3a78d244f6a845c3c5d170633937df9c790e"
         }
       ]
     }

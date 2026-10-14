@@ -39,6 +39,7 @@ const HTML_FILE_ROUTE_PATTERNS = [
   "/projects/",
   "/projects/:slug/",
   "/playbook/",
+  "/playbook/editions/*",
   "/playbook/topics/",
   "/playbook/topics/:slug/",
   "/playbook/projects/",
