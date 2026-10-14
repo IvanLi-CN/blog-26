@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "ceecf5ed867ee849fce6d8e5d8225e9e5505923a",
+  "base_sha": "43531195ad3da594b182c550994db4496d7988f9",
   "covered_files": {
     "GLOSSARY.md": "f2bbb34688fd9e3789a415631e8fda8de469224d",
     "docs/project-runtime-motion-design.md": "ecfffc00066244e124b7dc68a47e17829f392f5e",
