@@ -134,7 +134,7 @@
     "public_api": {
       "impact": "patch",
       "change": "compatible",
-      "supported_consumer_versions": ["3.0.3", "3.0.4", "3.0.5", "3.1.1", "3.1.2"],
+      "supported_consumer_versions": ["3.0.3", "3.0.4", "3.0.5", "3.1.1", "3.1.2", "3.2.1"],
       "evidence": [
         {
           "path": "tests/lib/playbook-tech-stack.test.ts",
