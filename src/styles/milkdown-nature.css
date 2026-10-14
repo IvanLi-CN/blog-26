@@ -44,8 +44,17 @@
 
 /* The quick edit dialog keeps the editor and its actions on one continuous surface. */
 .quick-memo-edit-modal {
-  z-index: 80;
+  /* Web Demo keeps its Inspector above the page shell; an open modal must
+   * remain the active surface at every viewport width. */
+  z-index: 120;
   padding: 1.5rem;
+}
+
+/* The Web Demo Inspector is mounted beside the app shell. Raise the shell's
+ * stacking context while this modal is open so the backdrop can cover it on
+ * narrow viewports too. */
+body:has(.quick-memo-edit-modal) .nature-app-shell {
+  z-index: 120;
 }
 
 .quick-memo-edit-modal .nature-modal-backdrop {
@@ -57,7 +66,7 @@
   box-sizing: border-box;
   display: flex;
   width: min(100%, 42rem);
-  min-height: 25rem;
+  min-height: 0;
   max-height: min(85vh, 56rem);
   flex-direction: column;
   overflow: hidden;
@@ -253,7 +262,7 @@
 
   .quick-memo-edit-panel {
     width: 100%;
-    min-height: 25rem;
+    min-height: 0;
     max-height: calc(100vh - 2 * max(1rem, 2vh));
     border-radius: 1rem;
   }
