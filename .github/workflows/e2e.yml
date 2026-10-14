@@ -135,6 +135,13 @@ jobs:
           WEB_DEMO_TEST_URL: http://127.0.0.1:38210
           WEB_DEMO_TEST_REPORT: test-results/web-demo-console-boundary.json
 
+      - name: Run Console Web Demo boundary tests on mobile
+        run: bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/console-memo-boundary.spec.ts
+        env:
+          WEB_DEMO_TEST_URL: http://127.0.0.1:38210
+          WEB_DEMO_VIEWPORT: mobile
+          WEB_DEMO_TEST_REPORT: test-results/web-demo-console-boundary-mobile.json
+
       - name: Stop Console Web Demo preview
         if: always()
         run: |

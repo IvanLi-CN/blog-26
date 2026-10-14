@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 const privateSlug = "console-demo-private-release-notes";
 const clippingSlug = "console-demo-clipping-durable-workflows";
+const isMobileViewport = process.env.WEB_DEMO_VIEWPORT === "mobile";
 
 test.describe("Console Memo Web Demo", () => {
   test.describe.configure({ timeout: 60_000 });
@@ -96,7 +97,9 @@ test.describe("Console Memo Web Demo", () => {
     await expect(
       page.locator('[data-testid="clipping-article-source"]:visible').last()
     ).toContainText("Durable article workflows");
+    if (isMobileViewport) await page.getByTestId("clipping-open-chat").last().click();
     await expect(page.locator('[data-testid="clipping-chat"]:visible').last()).toBeVisible();
+    if (isMobileViewport) await page.getByRole("button", { name: "关闭" }).click();
     await page.getByRole("button", { name: "简体中文译文" }).click();
     await expect(
       page.locator('[data-testid="clipping-article-translation"]:visible').last()
@@ -119,7 +122,9 @@ test.describe("Console Memo Web Demo", () => {
     await expect(page.locator('[data-testid="clipping-article-source"]:visible')).toContainText(
       "Durable article workflows"
     );
+    if (isMobileViewport) await page.getByTestId("clipping-open-chat").click();
     await expect(page.locator('[data-testid="clipping-chat"]:visible')).toBeVisible();
+    if (isMobileViewport) await page.getByRole("button", { name: "关闭" }).click();
     await page.getByRole("button", { name: "简体中文译文" }).click();
     await expect(
       page.locator('[data-testid="clipping-article-translation"]:visible')
