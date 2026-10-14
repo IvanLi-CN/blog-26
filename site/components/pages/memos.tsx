@@ -8,6 +8,7 @@ export default function memosPage(data: Awaited<ReturnType<typeof loadmemos>>) {
     isConsoleRuntime,
     initialIsAdmin,
     initialAuthorMemos,
+    initialEditSlug,
     initialMemosHasMore,
     initialMemosNextCursor,
     initialMemosHasNewer,
@@ -34,10 +35,11 @@ export default function memosPage(data: Awaited<ReturnType<typeof loadmemos>>) {
         </p>
       </div>
 
-      {isConsoleRuntime && initialIsAdmin ? (
+      {(isConsoleRuntime || isMemoListWebDemo) && initialIsAdmin ? (
         <PublicMemoComposerIsland
           initialIsAdmin={initialIsAdmin}
           initialMemos={initialAuthorMemos}
+          initialEditSlug={initialEditSlug}
           initialHasMore={initialMemosHasMore}
           initialNextCursor={initialMemosNextCursor}
           initialHasNewer={initialMemosHasNewer}
@@ -47,7 +49,7 @@ export default function memosPage(data: Awaited<ReturnType<typeof loadmemos>>) {
         />
       ) : null}
 
-      {!isConsoleRuntime || !initialIsAdmin ? (
+      {(!isConsoleRuntime && !isMemoListWebDemo) || !initialIsAdmin ? (
         <MemoTimeline
           source={isMemoListWebDemo ? "demo" : isConsoleRuntime ? "database" : "snapshot"}
           initialMemos={renderedMemos}

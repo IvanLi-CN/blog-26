@@ -68,6 +68,10 @@ On wide screens, each card reserves a stable area for actions beside its content
 - A non-administrator or unauthenticated request for a private or draft Console detail MUST not disclose the record's existence, title, visibility, or content; it MUST resolve to the ordinary public not-found or unavailable surface while the underlying API may retain its existing forbidden response.
 - Saving from the Console detail MUST keep the same `/memos/:slug` route and immediately reflect the saved body and visibility state. It MUST NOT redirect to author preview, and it MUST NOT force publication-snapshot synchronization.
 - `/admin/preview/memos/:slug` MUST remain an independent management-interface read-only author-preview route. Detail links MUST use the current deployed Console origin at runtime, without a hard-coded host or a new host configuration option.
+- The existing quick edit dialog MUST expose the accessible name `编辑 Memo`. A titled Memo MUST show `正在编辑：{Memo 标题}` as its context, while a titleless Memo MUST show `正在编辑当前 Memo`; the dialog MUST NOT expose a slug or filename as title context.
+- When open, the dialog backdrop MUST cover the full viewport and dim and soften the public page behind it without changing the public header's normal closed state. The dialog MUST use a regular Nature panel radius, bounded desktop width and height, and three continuous regions for the header, editor body, and footer.
+- The editor body MUST share the dialog's Nature surface. It MUST NOT render as a nested green card or add an independent rounded card shell, MUST retain a usable minimum writing height, and MUST scroll internally when content exceeds the available viewport. The footer MUST retain the character count, save shortcut hint, visibility control, cancel action, save action, loading state, and error state without creating a large empty gap; the character count and shortcut hint MUST appear as compact footer metadata rather than a separate status band below the editor. A short-content desktop dialog MUST reserve at least 25rem of panel height so the editor does not acquire an incidental scrollbar.
+- The dialog MUST preserve existing save semantics, visibility behavior, editor capability, focus management, Escape and backdrop dismissal, and focus trapping. Desktop controls MUST retain a 36px minimum target; narrow layouts MUST use 44px targets, keep at least 16px viewport margins, and avoid horizontal overflow at 393px, 375px, 360px, and 320px widths. A successful save MUST close the dialog and restore focus to its trigger.
 
 ## Verification
 
@@ -106,6 +110,12 @@ On wide screens, each card reserves a stable area for actions beside its content
 - Method: authenticated administrator, authenticated non-admin, and guest direct-navigation checks on Console `/memos/:slug` for public, private, draft, ordinary, and clipping Memos, with JavaScript disabled for the initial document where the browser harness permits it.
 - covers: `REQ-MAIV-004`, `REQ-MAIV-008`
 - Pass condition: the management eye action reaches Console detail and browser back restores the list position; administrator SSR contains current private/draft content and media; clipping reading materials and administrator discussion remain available; guests receive only published content; unauthorized private/draft requests disclose no record details; detail save stays on the same route and updates visibility; the dedicated `/admin/preview/memos/:slug` route remains read-only and separate; no URL contains a hard-coded deployment host.
+
+### VER-MAIV-007
+
+- Method: Storybook component states for titled and titleless dialogs in light and dark themes, plus long-content captures at 393px and 320px, followed by the authenticated administrator edit flow.
+- covers: `REQ-MAIV-008`
+- Pass condition: the dialog exposes the approved title and context text; the backdrop covers the viewport; the panel presents a regular three-part layout with one continuous editor surface and a compact footer; long content scrolls inside the body without horizontal overflow; controls meet the desktop and narrow touch-target contracts; and existing save, visibility, dismissal, focus, loading, and error behavior remains intact.
 
 ## Visual Evidence
 

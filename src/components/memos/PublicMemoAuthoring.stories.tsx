@@ -234,56 +234,72 @@ function TitlelessLiveMemoDetailStory() {
 function QuickEditModalStory({
   theme = "light",
   compact = true,
+  longContent = false,
+  requestedViewport,
 }: {
   theme?: "light" | "dark";
   compact?: boolean;
+  longContent?: boolean;
+  requestedViewport?: string;
 }) {
   const [open, setOpen] = useState(true);
   const [saved, setSaved] = useState(false);
 
   return (
-    <PublicShell compact={compact} theme={theme}>
-      <div className="nature-panel px-5 py-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-[color:var(--nature-text-strong)]">
-              Quick memo modal
-            </h2>
-            <p className="text-sm text-[color:var(--nature-text-soft)]">
-              This story keeps the modal open on a public-surface shell so spacing and controls stay
-              reviewable.
-            </p>
+    <div
+      className="min-h-screen bg-[color:var(--nature-bg)]"
+      data-visual-evidence-surface
+      data-requested-viewport={requestedViewport}
+    >
+      <PublicShell compact={compact} theme={theme}>
+        <div className="nature-panel px-5 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-[color:var(--nature-text-strong)]">
+                Quick memo modal
+              </h2>
+              <p className="text-sm text-[color:var(--nature-text-soft)]">
+                This story keeps the modal open on a public-surface shell so spacing and controls
+                stay reviewable.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="nature-button nature-button-outline"
+              onClick={() => setOpen(true)}
+            >
+              打开编辑器
+            </button>
           </div>
-          <button
-            type="button"
-            className="nature-button nature-button-outline"
-            onClick={() => setOpen(true)}
-          >
-            打开编辑器
-          </button>
         </div>
-      </div>
 
-      {saved ? (
-        <div className="nature-alert nature-alert-success">
-          <span>Mock save completed for the quick memo modal state.</span>
-        </div>
-      ) : null}
+        {saved ? (
+          <div className="nature-alert nature-alert-success">
+            <span>Mock save completed for the quick memo modal state.</span>
+          </div>
+        ) : null}
 
-      <QuickMemoEditModal
-        open={open}
-        onClose={() => setOpen(false)}
-        memoTitle="Admin live detail shell"
-        initialContent={
-          "# Admin live detail shell\n\nThis quick edit modal keeps the current memo content in place while editing."
-        }
-        initialIsPublic={false}
-        onSave={async () => {
-          setSaved(true);
-          setOpen(false);
-        }}
-      />
-    </PublicShell>
+        <QuickMemoEditModal
+          open={open}
+          onClose={() => setOpen(false)}
+          memoTitle="Admin live detail shell"
+          initialContent={
+            longContent
+              ? `# Admin live detail shell\n\n${Array.from(
+                  { length: 18 },
+                  (_, index) =>
+                    `第 ${index + 1} 段内容用于验证长文本在窄屏编辑区内自然增长，并由主体区域承担滚动。`
+                ).join("\n\n")}`
+              : "# Admin live detail shell\n\nThis quick edit modal keeps the current memo content in place while editing."
+          }
+          initialIsPublic={false}
+          onSave={async () => {
+            setSaved(true);
+            setOpen(false);
+          }}
+        />
+      </PublicShell>
+    </div>
   );
 }
 
@@ -362,7 +378,8 @@ export const TitlelessLiveDetailControls: Story = {
     await expect(canvas.queryByText("titleless-detail-story")).not.toBeInTheDocument();
 
     await userEvent.click(within(controls).getByRole("button", { name: "编辑 Memo" }));
-    const dialog = await canvas.findByRole("dialog", { name: "快速编辑 Memo" });
+    const dialog = await canvas.findByRole("dialog", { name: "编辑 Memo" });
+    await expect(dialog).toHaveTextContent("正在编辑当前 Memo");
     await expect(dialog).not.toHaveTextContent("titleless-detail-story");
   },
 };
@@ -372,10 +389,15 @@ export const QuickEditModal: Story = {
   render: () => <QuickEditModalStory />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const dialog = canvas.getByRole("dialog");
+    const dialog = canvas.getByRole("dialog", { name: "编辑 Memo" });
     await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveTextContent("正在编辑：Admin live detail shell");
     await expect(within(dialog).getByTestId("quick-memo-visibility-switch")).toBeVisible();
-    await userEvent.click(within(dialog).getByRole("button", { name: "关闭快速编辑" }));
+    await userEvent.click(
+      within(within(dialog).getByTestId("quick-memo-edit-header")).getByRole("button", {
+        name: "关闭快速编辑",
+      })
+    );
     await userEvent.click(canvas.getByRole("button", { name: "打开编辑器" }));
     await expect(canvas.getByRole("dialog")).toBeVisible();
   },
@@ -384,13 +406,66 @@ export const QuickEditModal: Story = {
 export const QuickEditModalDark: Story = {
   name: "快速编辑弹窗（暗色）",
   render: () => <QuickEditModalStory theme="dark" compact={false} />,
+  globals: { viewport: { value: "memoDesktop", isRotated: false } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const dialog = canvas.getByRole("dialog");
+    const dialog = canvas.getByRole("dialog", { name: "编辑 Memo" });
     await expect(dialog).toBeVisible();
     await expect(within(dialog).getByTestId("quick-memo-edit-editor")).toBeVisible();
     expect(dialog.querySelector(".milkdown")).not.toBeNull();
     await expect(within(dialog).getByTestId("quick-memo-visibility-switch")).toBeVisible();
+  },
+};
+
+async function assertQuickEditModalLayout(canvasElement: HTMLElement) {
+  const viewport = canvasElement.ownerDocument.defaultView;
+  if (!viewport) throw new Error("Storybook viewport is unavailable");
+
+  const dialog = within(canvasElement).getByRole("dialog", { name: "编辑 Memo" });
+  const panel = dialog.querySelector<HTMLElement>("[data-testid='quick-memo-edit-panel']");
+  const backdrop = dialog.querySelector<HTMLElement>(".nature-modal-backdrop");
+  const body = dialog.querySelector<HTMLElement>("[data-testid='quick-memo-edit-body']");
+  const container = dialog.querySelector<HTMLElement>("[data-testid='quick-memo-edit-container']");
+  if (!panel || !backdrop || !body || !container) {
+    throw new Error("Quick edit modal evidence nodes are missing");
+  }
+
+  const panelBox = panel.getBoundingClientRect();
+  const viewportWidth = viewport.innerWidth;
+  expect(panelBox.left).toBeGreaterThanOrEqual(16);
+  expect(panelBox.right).toBeLessThanOrEqual(viewportWidth - 16);
+  expect(backdrop.getBoundingClientRect().width).toBe(viewportWidth);
+  expect(backdrop.getBoundingClientRect().height).toBe(viewport.innerHeight);
+  expect(viewport.document.documentElement.scrollWidth).toBeLessThanOrEqual(viewportWidth);
+  expect(getComputedStyle(container).borderRadius).toBe("0px");
+  expect(body.scrollHeight).toBeGreaterThan(body.clientHeight);
+
+  for (const control of Array.from(
+    panel.querySelectorAll<HTMLElement>(
+      "button, input[type='checkbox'], [data-testid='quick-memo-edit-switch-hitbox']"
+    )
+  ).filter((element) => element.getClientRects().length > 0)) {
+    expect(control.getBoundingClientRect().height).toBeGreaterThanOrEqual(
+      viewportWidth < 640 ? 44 : 36
+    );
+  }
+}
+
+export const QuickEditModalMobile: Story = {
+  name: "快速编辑弹窗（393px 长内容）",
+  render: () => <QuickEditModalStory longContent compact={false} requestedViewport="393x852" />,
+  globals: { viewport: { value: "memo393", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    await assertQuickEditModalLayout(canvasElement);
+  },
+};
+
+export const QuickEditModalNarrow: Story = {
+  name: "快速编辑弹窗（320px 长内容）",
+  render: () => <QuickEditModalStory longContent compact={false} requestedViewport="320x780" />,
+  globals: { viewport: { value: "memo320", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    await assertQuickEditModalLayout(canvasElement);
   },
 };
 

@@ -152,7 +152,10 @@ export default defineConfig({
         { find: "@", replacement: resolve("./src") },
         {
           find: memoAuthoringModule,
-          replacement: consoleRuntime ? memoAuthoringImplementation : memoAuthoringPublicStub,
+          replacement:
+            consoleRuntime || webDemoRuntime
+              ? memoAuthoringImplementation
+              : memoAuthoringPublicStub,
         },
       ],
     },

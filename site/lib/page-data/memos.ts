@@ -7,7 +7,12 @@ import {
 } from "@/lib/console-web-demo";
 import { getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
-import { getWebDemoSceneState } from "@/lib/web-demo-runtime";
+import {
+  getWebDemoEditSlug,
+  getWebDemoEnvironment,
+  getWebDemoSceneState,
+  WEB_DEMO_QUICK_EDIT_SLUG,
+} from "@/lib/web-demo-runtime";
 import type { MemoCardRecord } from "../../components/MemoCard";
 import { getMemoListWebDemoInitialPageForState } from "../memo-list-web-demo";
 import {
@@ -26,12 +31,19 @@ export async function loadmemos(Astro: PageContext) {
     ? getWebDemoSceneState(Astro.url, "public")
     : undefined;
   const snapshot = isMemoListWebDemo ? null : await getSnapshot();
-  const isConsoleBuild = process.env.CONSOLE_RUNTIME === "true";
+  const isConsoleBuild = !isMemoListWebDemo && process.env.CONSOLE_RUNTIME === "true";
+  const isWebDemoAdmin =
+    isMemoListWebDemo && getWebDemoEnvironment(Astro.url, "public").persona === "admin";
+  const requestedEditSlug = isMemoListWebDemo ? getWebDemoEditSlug(Astro.url) : null;
+  const initialEditSlug =
+    isWebDemoAdmin && (requestedEditSlug || webDemoSceneState?.scene === "memo-quick-edit")
+      ? (requestedEditSlug ?? WEB_DEMO_QUICK_EDIT_SLUG)
+      : null;
   const runtimeContext = isConsoleBuild
     ? resolveRuntimeContext(Astro.request)
     : { mode: "public" as const };
   const isConsoleRuntime = isConsoleBuild && runtimeContext.mode === "console";
-  let initialIsAdmin = false;
+  let initialIsAdmin = isWebDemoAdmin;
   let initialMemos: MemoCardRecord[] = snapshot?.memos.slice(0, 10) ?? [];
   let initialAuthorMemos: z.infer<typeof adminMemoRecordSchema>[] = [];
   let initialMemosHasMore = false;
@@ -44,6 +56,7 @@ export async function loadmemos(Astro: PageContext) {
       webDemoSceneState ?? { scene: "memo-middle", data: "fixture" }
     );
     initialMemos = demoPage.memos;
+    if (isWebDemoAdmin) initialAuthorMemos = demoPage.memos;
     initialMemosHasMore = demoPage.hasMore;
     initialMemosNextCursor = demoPage.nextCursor;
     initialMemosHasNewer = demoPage.hasPrevious;
@@ -122,6 +135,7 @@ export async function loadmemos(Astro: PageContext) {
     initialIsAdmin,
     initialMemos: initialMemos.map(toMemoCardRecord),
     initialAuthorMemos,
+    initialEditSlug,
     initialMemosHasMore,
     initialMemosNextCursor,
     initialMemosHasNewer,

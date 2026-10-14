@@ -307,6 +307,7 @@ export function PublicMemoComposerIsland({
   localMemoRootPath,
   initialIsAdmin = false,
   initialMemos = [],
+  initialEditSlug = null,
   initialHasMore = false,
   initialNextCursor = null,
   initialHasNewer = false,
@@ -316,6 +317,7 @@ export function PublicMemoComposerIsland({
   localMemoRootPath?: string;
   initialIsAdmin?: boolean;
   initialMemos?: PublicMemoRecord[];
+  initialEditSlug?: string | null;
   initialHasMore?: boolean;
   initialNextCursor?: string | null;
   initialHasNewer?: boolean;
@@ -349,6 +351,7 @@ export function PublicMemoComposerIsland({
   const deferredMemos = useRef<PublicMemoRecord[]>([]);
   const editRequestId = useRef(0);
   const editReturnScrollY = useRef<number | null>(null);
+  const autoOpenedEditSlug = useRef<string | null>(null);
   const loadingAppendCursor = useRef<string | null>(null);
   const pageRequestInFlight = useRef(false);
   const inFlightPageDirection = useRef<"newer" | "older" | null>(null);
@@ -602,6 +605,26 @@ export function PublicMemoComposerIsland({
     },
     [readJson]
   );
+
+  useEffect(() => {
+    if (!initialEditSlug) {
+      autoOpenedEditSlug.current = null;
+      return;
+    }
+    if (!isAdmin || autoOpenedEditSlug.current === initialEditSlug) return;
+
+    autoOpenedEditSlug.current = initialEditSlug;
+    const memo =
+      memos.find((item) => item.slug === initialEditSlug) ??
+      ({
+        id: initialEditSlug,
+        slug: initialEditSlug,
+        content: "",
+        isPublic: true,
+        tags: [],
+      } satisfies PublicMemoRecord);
+    void handleEdit(memo);
+  }, [handleEdit, initialEditSlug, isAdmin, memos]);
 
   const closeEdit = useCallback(() => {
     const returnScrollY = editReturnScrollY.current;

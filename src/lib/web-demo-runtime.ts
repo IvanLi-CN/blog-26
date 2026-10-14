@@ -6,6 +6,7 @@ export const WEB_DEMO_MOTION_EVENT = "web-demo:motion-change";
 export const WEB_DEMO_ROUTE_EVENT = "web-demo:route-change";
 export const WEB_DEMO_MUTATION_EVENT = "web-demo:mutation";
 export const WEB_DEMO_CLIPPING_SLUG = "memo-web-demo-1181";
+export const WEB_DEMO_QUICK_EDIT_SLUG = "memo-web-demo-1182";
 
 const WEB_DEMO_SESSION_KEY = "web-demo-global-environment";
 
@@ -23,6 +24,7 @@ export type WebDemoDataMode = "fixture" | "dense" | "empty";
 export type WebDemoScene =
   | "public-reading"
   | "memo-middle"
+  | "memo-quick-edit"
   | "memo-newest"
   | "memo-oldest"
   | "memo-network-fault"
@@ -131,6 +133,7 @@ const defaultEnvironment: WebDemoEnvironment = {
 const scenes = [
   "public-reading",
   "memo-middle",
+  "memo-quick-edit",
   "memo-newest",
   "memo-oldest",
   "memo-network-fault",
@@ -165,6 +168,10 @@ function isValue<T extends string>(
 function getLocation(location?: Pick<Location, "pathname" | "search">) {
   if (location) return location;
   return window.location;
+}
+
+export function getWebDemoEditSlug(location?: Pick<Location, "pathname" | "search">) {
+  return new URLSearchParams(getLocation(location).search).get("d_edit")?.trim() || null;
 }
 
 function clampDelayMs(value: number) {
@@ -499,6 +506,11 @@ export function getWebDemoSceneOptions(pathname: string, app: WebDemoApp): WebDe
         value: "memo-middle",
         label: "Memos · 中段窗口",
         description: "从中间游标开始，向两端连续加载。",
+      },
+      {
+        value: "memo-quick-edit",
+        label: "Memos · 快速编辑",
+        description: "以管理员身份直接打开一条 Memo 的快速编辑弹窗。",
       },
       {
         value: "memo-newest",

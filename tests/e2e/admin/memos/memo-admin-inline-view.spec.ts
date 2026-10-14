@@ -1,7 +1,7 @@
 import { expect, type Page, request } from "@playwright/test";
 import { readE2EBaseUrl } from "../../runtime";
 import { adminTest as test } from "../fixtures";
-import { waitForAdminLiveMemoCard, waitForQuickMemoEditor } from "./helpers";
+import { openMemoEditDialog, waitForAdminLiveMemoCard, waitForQuickMemoEditor } from "./helpers";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 const END_OF_DOCUMENT_KEY = process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End";
@@ -360,6 +360,105 @@ test.describe("Inline memo admin view", () => {
     await expect(page).toHaveURL(new RegExp(`/admin/preview/memos/${memo.slug}$`));
     await expect(page.getByTestId("admin-preview-memo-body")).toBeVisible();
     await expect(page.getByTestId("public-memo-detail-controls")).toHaveCount(0);
+  });
+
+  test("keeps the quick edit modal continuous and touch-safe on narrow viewports", async ({
+    page,
+  }) => {
+    await loginAsAdmin(page);
+    const title = `inline-edit-responsive-${Date.now()}`;
+    const longContent = [
+      `# ${title}`,
+      ...Array.from(
+        { length: 22 },
+        (_, index) => `第 ${index + 1} 段内容用于验证快速编辑弹窗在窄屏下的自然增长与主体滚动。`
+      ),
+    ].join("\n\n");
+    await createMemo(page, title, true, longContent);
+
+    for (const viewport of [
+      { width: 393, height: 852 },
+      { width: 320, height: 780 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/memos", { waitUntil: "domcontentloaded" });
+      const card = await waitForAdminLiveMemoCard(page, title);
+      const editButton = card.getByTestId("admin-live-memo-edit");
+      const modal = await openMemoEditDialog(page, editButton);
+      const panel = modal.getByTestId("quick-memo-edit-panel");
+      const body = modal.getByTestId("quick-memo-edit-body");
+      const container = modal.getByTestId("quick-memo-edit-container");
+      await expect(modal).toBeVisible();
+      await expect(body).toBeVisible();
+      await expect(container).toBeVisible();
+      await expect(modal.locator(".ProseMirror")).toBeFocused();
+
+      const geometry = await modal.evaluate((dialog) => {
+        const panel = dialog.querySelector<HTMLElement>("[data-testid='quick-memo-edit-panel']");
+        const backdrop = dialog.querySelector<HTMLElement>(".nature-modal-backdrop");
+        const body = dialog.querySelector<HTMLElement>("[data-testid='quick-memo-edit-body']");
+        const footer = dialog.querySelector<HTMLElement>("[data-testid='quick-memo-edit-footer']");
+        const container = dialog.querySelector<HTMLElement>(
+          "[data-testid='quick-memo-edit-container']"
+        );
+        if (!panel || !backdrop || !body || !footer || !container) {
+          throw new Error("Quick edit modal geometry nodes did not render");
+        }
+        const panelBox = panel.getBoundingClientRect();
+        const backdropBox = backdrop.getBoundingClientRect();
+        const panelStyle = getComputedStyle(panel);
+        const containerStyle = getComputedStyle(container);
+        return {
+          panel: {
+            left: panelBox.left,
+            right: panelBox.right,
+            topLeftRadius: panelStyle.borderTopLeftRadius,
+            topRightRadius: panelStyle.borderTopRightRadius,
+            bottomRightRadius: panelStyle.borderBottomRightRadius,
+            bottomLeftRadius: panelStyle.borderBottomLeftRadius,
+          },
+          backdrop: {
+            left: backdropBox.left,
+            top: backdropBox.top,
+            width: backdropBox.width,
+            height: backdropBox.height,
+          },
+          bodyScrolls: body.scrollHeight > body.clientHeight,
+          footerHeight: footer.getBoundingClientRect().height,
+          containerBorderWidth: containerStyle.borderWidth,
+          containerRadius: containerStyle.borderRadius,
+          documentWidth: document.documentElement.scrollWidth,
+        };
+      });
+
+      expect(geometry.panel.left).toBeGreaterThanOrEqual(16);
+      expect(geometry.panel.right).toBeLessThanOrEqual(viewport.width - 16);
+      expect(geometry.backdrop).toEqual({
+        left: 0,
+        top: 0,
+        width: viewport.width,
+        height: viewport.height,
+      });
+      expect(geometry.panel.topLeftRadius).toBe(geometry.panel.topRightRadius);
+      expect(geometry.panel.topRightRadius).toBe(geometry.panel.bottomRightRadius);
+      expect(geometry.panel.bottomRightRadius).toBe(geometry.panel.bottomLeftRadius);
+      expect(geometry.bodyScrolls).toBe(true);
+      expect(geometry.footerHeight).toBeLessThan(140);
+      expect(geometry.containerBorderWidth).toBe("0px");
+      expect(geometry.containerRadius).toBe("0px");
+      expect(geometry.documentWidth).toBeLessThanOrEqual(viewport.width);
+
+      for (const control of await panel
+        .locator("button:visible, input[type='checkbox']:visible")
+        .all()) {
+        const box = await control.boundingBox();
+        expect(box?.height).toBeGreaterThanOrEqual(44);
+      }
+
+      await page.keyboard.press("Escape");
+      await expect(modal).toHaveCount(0);
+      await expect(editButton).toBeFocused();
+    }
   });
 
   test("does not let a list response started before PATCH overwrite the saved card", async ({
