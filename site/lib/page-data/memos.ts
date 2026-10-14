@@ -2,7 +2,11 @@ import type { z } from "zod";
 import { isLocalContentEnabled } from "@/config/paths";
 import { getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
-import { getWebDemoEnvironment, getWebDemoSceneState } from "@/lib/web-demo-runtime";
+import {
+  getWebDemoEnvironment,
+  getWebDemoSceneState,
+  WEB_DEMO_QUICK_EDIT_SLUG,
+} from "@/lib/web-demo-runtime";
 import type { MemoCardRecord } from "../../components/MemoCard";
 import { getMemoListWebDemoInitialPageForState } from "../memo-list-web-demo";
 import {
@@ -23,6 +27,13 @@ export async function loadmemos(Astro: PageContext) {
   const isConsoleBuild = !isMemoListWebDemo && process.env.CONSOLE_RUNTIME === "true";
   const isWebDemoAdmin =
     isMemoListWebDemo && getWebDemoEnvironment(Astro.url, "public").persona === "admin";
+  const requestedEditSlug = isMemoListWebDemo
+    ? Astro.url.searchParams.get("d_edit")?.trim() || null
+    : null;
+  const initialEditSlug =
+    isWebDemoAdmin && (requestedEditSlug || webDemoSceneState?.scene === "memo-quick-edit")
+      ? (requestedEditSlug ?? WEB_DEMO_QUICK_EDIT_SLUG)
+      : null;
   const runtimeContext = isConsoleBuild
     ? resolveRuntimeContext(Astro.request)
     : { mode: "public" as const };
@@ -101,6 +112,7 @@ export async function loadmemos(Astro: PageContext) {
     initialIsAdmin,
     initialMemos: initialMemos.map(toMemoCardRecord),
     initialAuthorMemos,
+    initialEditSlug,
     initialMemosHasMore,
     initialMemosNextCursor,
     initialMemosHasNewer,

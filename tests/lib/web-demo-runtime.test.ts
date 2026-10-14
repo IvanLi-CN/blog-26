@@ -85,6 +85,9 @@ describe("Web Demo runtime state", () => {
     expect(getWebDemoSceneOptions("/memos/", "public").map((option) => option.value)).toContain(
       "memo-network-fault"
     );
+    expect(getWebDemoSceneOptions("/memos/", "public").map((option) => option.value)).toContain(
+      "memo-quick-edit"
+    );
     expect(
       getWebDemoSceneOptions("/admin/dashboard", "admin").map((option) => option.value)
     ).toEqual(["admin-dashboard", "admin-editor"]);
