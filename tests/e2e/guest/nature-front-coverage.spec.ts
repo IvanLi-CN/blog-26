@@ -1193,7 +1193,12 @@ test.describe("Nature frontend public coverage", () => {
     await expect(headerSurface).toBeVisible();
     await expect(mainContainer).toBeVisible();
     await expect(mobileNavigation).toBeVisible();
-    await expect(mobileNavigation.getByRole("link", { name: "文章", exact: true })).toBeVisible();
+    const articleNavigationLink = mobileNavigation.getByRole("link", {
+      name: "文章",
+      exact: true,
+    });
+    await expect(articleNavigationLink).toBeVisible();
+    await expect(articleNavigationLink.locator("svg")).toHaveCount(1);
     await expect(page.locator('summary[aria-label="打开导航"]')).toHaveCount(0);
 
     const [headerBounds, mainBounds, navigationBounds, brandBounds] = await Promise.all([
@@ -1217,7 +1222,7 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.getByRole("link", { name: "RSS Feed" })).toBeVisible();
   });
 
-  test("medium header keeps navigation left-aligned with compact gaps", async ({ page }) => {
+  test("medium header distributes navigation across the available row", async ({ page }) => {
     for (const width of [640, 772, 1023]) {
       await page.setViewportSize({ width, height: width === 772 ? 599 : 800 });
       await gotoWithTheme(page, "/posts/code-block-fixture", "dark");
@@ -1272,7 +1277,17 @@ test.describe("Nature frontend public coverage", () => {
       expect(navigationBounds?.y ?? 0).toBeGreaterThan(
         (brandBounds?.y ?? 0) + (brandBounds?.height ?? 0)
       );
-      expect(Math.abs((listBounds?.x ?? 0) - (navigationBounds?.x ?? 0))).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs((listBounds?.x ?? 0) - ((navigationBounds?.x ?? 0) + 16))
+      ).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs(
+          (navigationBounds?.x ?? 0) +
+            (navigationBounds?.width ?? 0) -
+            ((listBounds?.x ?? 0) + (listBounds?.width ?? 0)) -
+            16
+        )
+      ).toBeLessThanOrEqual(1);
       expect(listBounds?.width ?? 0).toBeLessThan(navigationBounds?.width ?? 0);
       const headerRight = (headerBounds?.x ?? 0) + (headerBounds?.width ?? 0);
       const toolsRight = (toolsBounds?.x ?? 0) + (toolsBounds?.width ?? 0);
@@ -1283,15 +1298,44 @@ test.describe("Nature frontend public coverage", () => {
       const averageContentWidth = navMetrics?.averageContentWidth ?? 0;
       expect(gaps).toHaveLength(4);
       expect(averageContentWidth).toBeGreaterThan(0);
+      expect(gaps[0] ?? 0).toBeGreaterThanOrEqual(16);
       for (const gap of gaps) {
-        expect(gap).toBeCloseTo(16, 0);
-        expect(gap).toBeLessThanOrEqual(averageContentWidth);
+        expect(gap).toBeCloseTo(gaps[0] ?? 0, 0);
       }
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth > document.documentElement.clientWidth
         )
       ).toBe(false);
+    }
+  });
+
+  test("desktop header tools share a 36px visual frame", async ({ page }) => {
+    for (const width of [1024, 1280]) {
+      await page.setViewportSize({ width, height: 800 });
+      await gotoWithTheme(page, "/posts/code-block-fixture", "dark");
+
+      const toolHeights = await page.evaluate(() =>
+        [
+          ".nature-header-search",
+          ".nature-header-tools > .nature-icon-button",
+          ".nature-header-tools .nature-header-theme-toggle",
+          ".nature-header-tools .nature-mobile-theme-trigger",
+        ].flatMap((selector) =>
+          [...document.querySelectorAll<HTMLElement>(selector)]
+            .map((element) => ({
+              element,
+              height: element.getBoundingClientRect().height,
+            }))
+            .filter(
+              ({ element, height }) => getComputedStyle(element).display !== "none" && height > 0
+            )
+            .map(({ height }) => height)
+        )
+      );
+
+      expect(toolHeights.length).toBeGreaterThanOrEqual(3);
+      for (const height of toolHeights) expect(height).toBeCloseTo(36, 0);
     }
   });
 
@@ -1553,7 +1597,7 @@ test.describe("Nature frontend public coverage", () => {
   });
 
   test("public mobile density stays compact without shrinking touch targets", async ({ page }) => {
-    for (const width of [393, 375, 360, 320]) {
+    for (const width of [393, 375, 360, 359, 320]) {
       await page.setViewportSize({
         width,
         height: width === 393 ? 852 : width === 320 ? 700 : 800,
@@ -1621,6 +1665,10 @@ test.describe("Nature frontend public coverage", () => {
                   right: navBounds.right - navTargets[navTargets.length - 1].right,
                 }
               : null,
+          navListOverflow: nav
+            ? (nav.querySelector("ul")?.scrollWidth ?? 0) -
+              (nav.querySelector("ul")?.clientWidth ?? 0)
+            : 0,
         };
       });
 
@@ -1637,12 +1685,22 @@ test.describe("Nature frontend public coverage", () => {
         expect(target.height).toBeGreaterThanOrEqual(44);
       }
 
-      if (width === 320) {
+      expect(metrics.navSpacing).not.toBeNull();
+      expect(metrics.navListOverflow).toBeLessThanOrEqual(1);
+      const navSpacing = metrics.navSpacing;
+      if (width >= 360) {
+        expect(navSpacing?.left ?? 0).toBeCloseTo(16, 0);
+        expect(navSpacing?.right ?? 0).toBeCloseTo(16, 0);
+      } else {
+        expect(navSpacing?.left ?? 0).toBeCloseTo(navSpacing?.right ?? 0, 0);
+        expect(navSpacing?.left ?? 0).toBeGreaterThanOrEqual(12);
+      }
+
+      if (width < 360) {
         expect(metrics.visibleNavLabels).toBe(0);
         expect(metrics.typeIconWidth).toBeGreaterThanOrEqual(20);
         expect(metrics.cardWidth).toBeGreaterThanOrEqual(250);
-        expect(metrics.navSpacing).not.toBeNull();
-        const spacing = metrics.navSpacing;
+        const spacing = navSpacing;
         const reference = spacing?.left ?? 0;
         expect(Math.abs((spacing?.right ?? reference) - reference)).toBeLessThanOrEqual(1);
         for (const gap of spacing?.between ?? []) {
