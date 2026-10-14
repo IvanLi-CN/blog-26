@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "43531195ad3da594b182c550994db4496d7988f9",
+  "base_sha": "16909131a5ec50a4815aa0f1b6f189b1987284ee",
   "covered_files": {
     "GLOSSARY.md": "f2bbb34688fd9e3789a415631e8fda8de469224d",
     "astro.config.mjs": "06710645e12de832945ac14d1c0b0a21482b8107",
