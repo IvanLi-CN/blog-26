@@ -167,7 +167,8 @@ body:has(.quick-memo-edit-modal) .nature-site-header {
 }
 
 .quick-memo-edit-editor .milkdown .ProseMirror {
-  padding: 1rem 1.25rem;
+  /* The modal body owns the horizontal gutter; keep the editor surface continuous. */
+  padding: 1rem 0;
 }
 
 /* Keep the contextual formatting toolbar readable above the continuous editor
@@ -347,7 +348,7 @@ body:has(.quick-memo-edit-modal) .nature-site-header {
   }
 
   .quick-memo-edit-editor .milkdown .ProseMirror {
-    padding: 1rem;
+    padding: 1rem 0;
   }
 
   .quick-memo-edit-footer {
