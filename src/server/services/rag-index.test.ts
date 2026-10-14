@@ -1152,3 +1152,30 @@ test("a persisted read failure is not converted into an empty successful sync", 
   if (!result.taskId) throw new Error("Missing task");
   expect(await getContentTask(result.taskId)).toMatchObject({ status: "failed", failed: 1 });
 });
+
+test("corrupt local recovery checkpoint reaches a durable failed terminal state", async () => {
+  const { task } = await beginContentTask({
+    kind: "sync",
+    source: "local",
+    requestKey: "incremental",
+    origin: "test",
+    target: "local-content",
+  });
+  await db
+    .update(contentTasks)
+    .set({ status: "interrupted", result: "{not-json" })
+    .where(eq(contentTasks.id, task.id));
+  const manager = new ContentSourceManager();
+  const source = new LocalContentSource(
+    LocalContentSource.createDefaultConfig("local", 50, { contentPath: root })
+  );
+  await manager.registerSource(source);
+  const recovered = await manager.syncAll(false, task.id);
+  expect(recovered.success).toBe(false);
+  const failed = await getContentTask(task.id);
+  expect(failed).toMatchObject({
+    status: "failed",
+    finishedAt: expect.any(Number),
+    error: "Local synchronization failed",
+  });
+});
