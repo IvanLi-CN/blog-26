@@ -252,6 +252,19 @@ test.describe("Inline memo admin view", () => {
     });
     await expect(page).toHaveURL(new RegExp(`/memos/${memo.slug}$`));
     await expect(page.getByTestId("public-memo-detail-controls")).toBeVisible();
+    const detailCard = page.locator('[data-testid="public-memo-detail-card"]:visible');
+    await expect(detailCard).toHaveCount(1);
+    await expect(detailCard.getByTestId("public-memo-detail-heading")).toBeVisible();
+    await expect(detailCard.getByRole("heading", { name: marker })).toBeVisible();
+    await expect(detailCard.getByTestId("public-memo-detail-body")).toContainText(
+      "A long management-list row keeps the reading surface scrollable."
+    );
+    await expect(
+      page.getByTestId("public-memo-detail-status").locator(".nature-panel")
+    ).toHaveCount(0);
+    await expect(page.getByTestId("public-memo-detail-body").locator(".nature-panel")).toHaveCount(
+      0
+    );
 
     await page.goBack({ waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(/\/memos\/?$/);

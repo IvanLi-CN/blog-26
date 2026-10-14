@@ -925,17 +925,20 @@ export function PublicMemoDetailControlsIsland({
   return (
     <section className="mb-6 space-y-4" data-testid="public-memo-detail-controls">
       {effectiveIsAdmin ? (
-        <div className="nature-panel flex flex-wrap items-center justify-between gap-3 px-5 py-4">
-          <div className="space-y-1">
+        <div
+          className="flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--nature-line)] pb-4"
+          data-testid="public-memo-detail-status"
+        >
+          <div className="min-w-0 space-y-1">
             <div className="flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
               <Icon
                 name="tabler:shield-check"
                 className="h-4 w-4 text-[color:var(--nature-accent-strong)]"
               />
-              <span>管理员模式</span>
+              <span>Console Memo 详情</span>
             </div>
             <p className="text-sm text-[color:var(--nature-text-soft)]">
-              当前显示最新管理员内容；公开页面显示最近发布版本。
+              当前身份：管理员；显示最新保存内容，公开页面显示最近发布版本。
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -974,8 +977,24 @@ export function PublicMemoDetailControlsIsland({
       {memo ? (
         <article className="space-y-6">
           {!memo.clipping ? (
-            <div className="nature-panel px-4 py-7 sm:px-8" data-testid="public-memo-detail-card">
+            <div
+              className="nature-panel nature-mobile-reading-surface memo-detail-card px-4 py-7 sm:px-8"
+              data-testid="public-memo-detail-card"
+            >
               {detailHeader}
+              <div className="mt-6" data-testid="public-memo-detail-body">
+                <MarkdownRenderer
+                  content={detailBody}
+                  variant="article"
+                  enableMath={true}
+                  enableMermaid={true}
+                  enableCodeFolding={true}
+                  removeTags={true}
+                  rewritePublicSitePaths={true}
+                  articlePath={memo.filePath ?? ""}
+                  contentSource="local"
+                />
+              </div>
             </div>
           ) : null}
 
@@ -1004,21 +1023,7 @@ export function PublicMemoDetailControlsIsland({
                 }
               />
             </div>
-          ) : (
-            <div className="nature-panel px-4 py-7 sm:px-8" data-testid="public-memo-detail-body">
-              <MarkdownRenderer
-                content={detailBody}
-                variant="article"
-                enableMath={true}
-                enableMermaid={true}
-                enableCodeFolding={true}
-                removeTags={true}
-                rewritePublicSitePaths={true}
-                articlePath={memo.filePath ?? ""}
-                contentSource="local"
-              />
-            </div>
-          )}
+          ) : null}
         </article>
       ) : null}
 
