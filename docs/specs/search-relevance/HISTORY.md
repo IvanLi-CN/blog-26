@@ -35,3 +35,7 @@
 - [内嵌 Tantivy 与 NEAR 兼容范围](../../adr/0021-embedded-tantivy-search.md)
 - [搜索引擎升级保留既有查询兼容性](../../adr/0023-search-legacy-compatibility.md)
 - [组件验证证据](./VALIDATION.md)
+
+## 内容同步数量与 RAG 覆盖缺陷修复
+
+主人确认按唯一公开父内容统计 RAG 主卡、按预期分块统计详情，来源收录包含当前 local 与公开 Playbook；持久来源任务保留历史与恢复边界。主人随后禁止真实 embedding 实证，明确改用 Mock 或不执行，本次验收因此以隔离 Mock 链路和确定性故障注入为准，不再要求真实提供方配置或凭据。来源下拉选择器改为“全部 / 博客 / Playbook”单选 chip；移动证据改为 393×852 的真实移动模拟单屏，主人确认展示正常并授权继续到 PR 合并。

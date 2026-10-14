@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "f726db08e4046cd4f905a6d680e3aa37247321bc",
+  "covered_files": {
+    ".github/workflows/e2e.yml": "1d7d44ddf153a4c470faf837daeb63c5e139dbd2",
+    "GLOSSARY.md": "9df28e51dafe94aadad4d8de7fa968d8333c07e8",
+    "apps/admin/src/components/rag-coverage.stories.tsx": "d21358e8a5075fd039245ba3a75db1eae29a481d",
+    "apps/admin/src/demo/mock-admin-api.ts": "15d244249b2d83414ed9e54749c3647f69532713",
+    "apps/admin/src/pages/content-sync.test.tsx": "b2ad7004d15db18e8f548e33ce16ea011071e030",
+    "apps/admin/src/pages/content-sync.tsx": "bb36dbd81e0f6d5213b186ffe350eb5d63988a09",
+    "docs/runbooks/style-playbook-publishing.md": "4fddba53a78d07ae4238345a218df1d58a9e3f0f",
+    "docs/specs/search-relevance/HISTORY.md": "b99cad287621b9dee93c58cf9df57b46f807bf57",
+    "docs/specs/search-relevance/IMPLEMENTATION.md": "3f3b3a5f663eb731f2f63a62f00849ff95f5f9a4",
+    "docs/specs/search-relevance/SPEC.md": "151a53557fad22a3e945753c310096e9545c3f1b",
+    "docs/specs/search-relevance/assets/playbook-sync-admin-desktop.png": "cf51b36100373b7a45fa7780cb972eb40c0074e6",
+    "docs/specs/search-relevance/assets/playbook-sync-admin-mobile.png": "073e57937dab2a947ba68a7d24754519b1847f18",
+    "docs/specs/search-relevance/contracts/unified-search.md": "635b2d863cd8fd474c12f3ac7caae0a56c4c2026",
+    "docs/specs/style-playbook-integration/HISTORY.md": "c941a290e779be6a0996906744f4c661a351a380",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "5cd9db9ab8877af20e20e30e75dd46b100d6afb3",
+    "docs/specs/style-playbook-integration/SPEC.md": "f58b86ab2a4558bd8c7406eafbd6d7fa8a62e2c8",
+    "docs/specs/style-playbook-integration/VALIDATION.md": "4eb657b899263ca6e97e213300e72edd850b180c",
+    "docs/specs/style-playbook-integration/assets/content-sync-rag-tablet-unconfigured.png": "c54f67dbe154970fb3afa994a380e3101f0b3a6b",
+    "docs/specs/style-playbook-integration/contracts/content-sync-status.md": "fb4a8a0594dae9d0167c3ac89991932c64a25102",
+    "drizzle/0015_content_sync_rag_coverage.sql": "746b9c509c2142848bd8e47e549b8c065869d7a0",
+    "drizzle/meta/0015_snapshot.json": "997637a432a4c3be9f30506394e8a1081064c866",
+    "drizzle/meta/_journal.json": "7857aaa1708ecdfa13595f9cca175d4faf810a42",
+    "scripts/start-console.ts": "33431cd602f522b6cc5a75dbc277ebc556415ff7",
+    "src/lib/admin-api-client.ts": "628871c4200b5fce2945908c230aa023282e792d",
+    "src/lib/ai/embedding-target.ts": "8473f83fef0473d4bc967b068ac130bb1b576caf",
+    "src/lib/ai/embeddings.ts": "b93e0f46f39b1156346955758190264c84aea075",
+    "src/lib/ai/vectorization.ts": "8384555503d84d9361d85ebfa3a2e8d3ce2a79e8",
+    "src/lib/content-sources/manager.ts": "9d0a315a3da46d1923b82a891a8f897548640a1f",
+    "src/lib/playbook/cache.ts": "cf1f1f3267ddb3917067209f1cbed15b9285a095",
+    "src/lib/schema.ts": "a2113771c6701ea55eb0533dc2195353bff23d2d",
+    "src/lib/web-demo-runtime.ts": "e4e39562b595bbce1e2cae92d5572e847bd4216c",
+    "src/server/admin-api/router.ts": "c04dd56f4b88df6831d7fb80c1c59b771d7ec9b8",
+    "src/server/routers/admin/content-sync.ts": "577aa0fb033bebec6f1a1dc96331107356aa3553",
+    "src/server/routers/admin/vectorize.ts": "4d8ce2ce95aae60be1fd855cbabfab99bc29cf2f",
+    "src/server/services/content-search.test.ts": "182b46bdd47436a02832013d42f1bc46f31a4202",
+    "src/server/services/content-search.ts": "654c9aa345bcd5f9a847555cc89d9ac2111932af",
+    "src/server/services/content-sync-runtime.ts": "699163c8887c374d647e213965f1a6e2ba155492",
+    "src/server/services/content-sync-status.ts": "23bbd9d0b13274ac434051e07793faa837e47fd1",
+    "src/server/services/content-tasks.ts": "95e682dad4d287e998ff07ba71d33d795afd076c",
+    "src/server/services/playbook-search.ts": "de3b3b569d94ae0bcea223e10c922a86af0f5469",
+    "src/server/services/rag-index.test.ts": "49cd11856d4bcbbc3f24698f0f353684d2d31fec",
+    "src/server/services/rag-index.ts": "dbe36c9a0b89bf935754235c19081ac47685d168",
+    "src/server/services/search-semantic-projection.ts": "de2be6f33aefedf504d49890fff2b1c210e0f58b",
+    "tests/e2e/web-demo/content-sync.spec.ts": "d1ccd325729acac76798b913be3fafb3c4711d5b",
+    "tests/lib/rag-index-restart-fixture.ts": "be92706112a0a141e13dd6bc26df30b85fd3c393",
+    "tests/lib/rag-index-restart.test.ts": "c80095021944da97634931ffdcff5c0d65fad6d6"
+  },
+  "change": {
+    "description": "Repair content summary and public RAG coverage with persistent asynchronous task recovery and admin scope chips.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "Compatible defect repair of unique content counts, target-bound coverage and durable recovery. Additive admin APIs preserve legacy response shapes and v3.3.0 data read/write compatibility.",
+      "assessed_at": "2026-10-15T01:14:10+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/rag-index-restart.test.ts",
+          "blob": "c80095021944da97634931ffdcff5c0d65fad6d6",
+          "command": "Independent Mock write/read processes: generation, persistence, restart, coverage and modern RAG consumption"
+        },
+        {
+          "path": "src/server/services/rag-index.test.ts",
+          "blob": "49cd11856d4bcbbc3f24698f0f353684d2d31fec",
+          "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
+        },
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "182b46bdd47436a02832013d42f1bc46f31a4202",
+          "command": "Legacy-compatible search scope and incomplete-source regressions"
+        },
+        {
+          "path": "drizzle/0015_content_sync_rag_coverage.sql",
+          "blob": "746b9c509c2142848bd8e47e549b8c065869d7a0",
+          "command": "Forward schema preserves legacy tables; actual v3.3.0 source reads and writes candidate data"
+        },
+        {
+          "path": "tests/e2e/web-demo/content-sync.spec.ts",
+          "blob": "d1ccd325729acac76798b913be3fafb3c4711d5b",
+          "command": "Official Mock route: desktop/mobile 8 passed; chip scope, previous edition, repair/cancel, unknown and cached disabled counts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Compatible defect repair of unique content counts, target-bound coverage and durable recovery. Additive admin APIs preserve legacy response shapes and v3.3.0 data read/write compatibility.",
+      "assessed_at": "2026-10-15T01:14:10+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/rag-index-restart.test.ts",
+          "blob": "c80095021944da97634931ffdcff5c0d65fad6d6",
+          "command": "Independent Mock write/read processes: generation, persistence, restart, coverage and modern RAG consumption"
+        },
+        {
+          "path": "src/server/services/rag-index.test.ts",
+          "blob": "49cd11856d4bcbbc3f24698f0f353684d2d31fec",
+          "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
+        },
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "182b46bdd47436a02832013d42f1bc46f31a4202",
+          "command": "Legacy-compatible search scope and incomplete-source regressions"
+        },
+        {
+          "path": "drizzle/0015_content_sync_rag_coverage.sql",
+          "blob": "746b9c509c2142848bd8e47e549b8c065869d7a0",
+          "command": "Forward schema preserves legacy tables; actual v3.3.0 source reads and writes candidate data"
+        },
+        {
+          "path": "tests/e2e/web-demo/content-sync.spec.ts",
+          "blob": "d1ccd325729acac76798b913be3fafb3c4711d5b",
+          "command": "Official Mock route: desktop/mobile 8 passed; chip scope, previous edition, repair/cancel, unknown and cached disabled counts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "Owner-approved defect scope; real-provider empirical acceptance replaced by Mock-only verification."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Compatible defect repair of unique content counts, target-bound coverage and durable recovery. Additive admin APIs preserve legacy response shapes and v3.3.0 data read/write compatibility.",
+      "assessed_at": "2026-10-15T01:14:10+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/rag-index-restart.test.ts",
+          "blob": "c80095021944da97634931ffdcff5c0d65fad6d6",
+          "command": "Independent Mock write/read processes: generation, persistence, restart, coverage and modern RAG consumption"
+        },
+        {
+          "path": "src/server/services/rag-index.test.ts",
+          "blob": "49cd11856d4bcbbc3f24698f0f353684d2d31fec",
+          "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
+        },
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "182b46bdd47436a02832013d42f1bc46f31a4202",
+          "command": "Legacy-compatible search scope and incomplete-source regressions"
+        },
+        {
+          "path": "drizzle/0015_content_sync_rag_coverage.sql",
+          "blob": "746b9c509c2142848bd8e47e549b8c065869d7a0",
+          "command": "Forward schema preserves legacy tables; actual v3.3.0 source reads and writes candidate data"
+        },
+        {
+          "path": "tests/e2e/web-demo/content-sync.spec.ts",
+          "blob": "d1ccd325729acac76798b913be3fafb3c4711d5b",
+          "command": "Official Mock route: desktop/mobile 8 passed; chip scope, previous edition, repair/cancel, unknown and cached disabled counts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0"
+      ],
+      "evidence": [
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "182b46bdd47436a02832013d42f1bc46f31a4202",
+          "command": "Legacy-compatible search scope and incomplete-source regressions"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": true,
+      "state_description": "0015 adds five tables; old post embeddings, public cache and Playbook projections remain intact. Historical unknown provenance becomes stale without deletion.",
+      "readable_by_prior_versions": ["3.3.0"],
+      "upgrade_from_versions": ["3.3.0"],
+      "evidence": [
+        {
+          "path": "tests/lib/rag-index-restart.test.ts",
+          "blob": "c80095021944da97634931ffdcff5c0d65fad6d6",
+          "command": "Independent Mock write/read processes: generation, persistence, restart, coverage and modern RAG consumption"
+        },
+        {
+          "path": "src/server/services/rag-index.test.ts",
+          "blob": "49cd11856d4bcbbc3f24698f0f353684d2d31fec",
+          "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
+        },
+        {
+          "path": "drizzle/0015_content_sync_rag_coverage.sql",
+          "blob": "746b9c509c2142848bd8e47e549b8c065869d7a0",
+          "command": "Forward schema preserves legacy tables; actual v3.3.0 source reads and writes candidate data"
+        }
+      ]
+    }
+  }
+}

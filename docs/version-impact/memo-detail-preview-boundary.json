@@ -4,14 +4,14 @@
   "base_sha": "f726db08e4046cd4f905a6d680e3aa37247321bc",
   "covered_files": {
     ".github/quality-gates.json": "1a3e713708baaf265adce051b8b613b3a525bb4f",
-    ".github/workflows/e2e.yml": "b4d787e8c28031aa81ce0f90a76657ffb271ddaf",
+    ".github/workflows/e2e.yml": "1d7d44ddf153a4c470faf837daeb63c5e139dbd2",
     ".gitignore": "ce64803d3963e4668cd644c7ef465dd36e266eba",
-    "apps/admin/src/demo/mock-admin-api.ts": "93664ea43d55109946508664d4d101411c18ab3d",
+    "apps/admin/src/demo/mock-admin-api.ts": "15d244249b2d83414ed9e54749c3647f69532713",
     "apps/admin/src/pages/preview.tsx": "a2f09e3a0559da1d8369412f9037a172550d7719",
     "astro.config.mjs": "61c059bdbc8d98e19af1b01c7b5dda8b521b6c0d",
     "docs/adr/0024-memo-detail-preview-boundary.md": "181d067980d444f265ac62443fc3d824077f7e61",
     "docs/specs/memo-admin-inline-view/SPEC.md": "4500d02d44f3f5cd72db314f49adad6cfb55c549",
-    "GLOSSARY.md": "eba55bb725a4d26e2bca1d56b65f4bb32ec5e83f",
+    "GLOSSARY.md": "9df28e51dafe94aadad4d8de7fa968d8333c07e8",
     "package.json": "b70913ecc7e6f53c2e1a77658e1bee9e7ca072b4",
     "scripts/build-web-demo.ts": "840522042ea0e6a348b05aa0f0ff4c53c35e26b4",
     "scripts/preview-web-demo.ts": "5d92e6c3d65147497a6a215fe27393571f6f43b3",
@@ -126,7 +126,7 @@
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "b4d787e8c28031aa81ce0f90a76657ffb271ddaf",
+          "blob": "1d7d44ddf153a4c470faf837daeb63c5e139dbd2",
           "command": "Required Web Demo CI job builds the official artifacts, runs 24 Console boundary cases at desktop/mobile, and runs 36 public/project/search route cases against the public artifact"
         },
         {
@@ -182,7 +182,7 @@
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "b4d787e8c28031aa81ce0f90a76657ffb271ddaf",
+          "blob": "1d7d44ddf153a4c470faf837daeb63c5e139dbd2",
           "command": "Required Web Demo CI job builds the official artifacts, runs 24 Console boundary cases at desktop/mobile, and runs 36 public/project/search route cases against the public artifact"
         },
         {

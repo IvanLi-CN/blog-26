@@ -309,11 +309,18 @@ RAG 语义覆盖、后台任务 idle/running、RAG 策略启用和模型质量�
   - evidence_note: confirms the switch thumb keeps an even inset from the track edge after removing the duplicate desktop/mobile translation rules
   - image: ![Search policy switch spacing](./assets/admin-search-policy-switch-fix.png)
 - source_type: `ui_demo`
-  - surface: public search page and content-sync admin page
+  - surface: public search page
   - requested_viewports: `1280x900` and `393x852` CSS px
   - scenario: RAG search for `发布` returns one unified list containing a Policy Skill and Topic with edition-bound routes; content sync shows Playbook adoption, lexical count, semantic ready/pending/failed counts, model, and edition history.
   - evidence_note: current Candidate screenshots are current-only against the locked base because these surfaces are new; owner confirmation is required before PR publication.
-  - images: ![Unified Playbook search desktop](./assets/unified-playbook-search-desktop.png), ![Unified Playbook search mobile](./assets/unified-playbook-search-mobile.png), ![Playbook sync desktop](./assets/playbook-sync-admin-desktop.png), ![Playbook sync mobile](./assets/playbook-sync-admin-mobile.png)
+  - images: ![Unified Playbook search desktop](./assets/unified-playbook-search-desktop.png), ![Unified Playbook search mobile](./assets/unified-playbook-search-mobile.png)
+
+内容同步 RAG 覆盖页使用正式 Web Demo `/admin/content-sync?d_scene=admin-sync-partial&d_theme=dark`，桌面视口 1440×1100，移动端模拟视口 393×852。移动证据为滚动到 RAG 卡片的单屏截图，避免整页采集改变模拟设置或压缩长图。主卡为唯一公开内容六项指标，范围由“全部 / 博客 / Playbook”chip 选择；截图已由主人确认。
+
+![内容同步桌面覆盖](./assets/playbook-sync-admin-desktop.png)
+
+![内容同步移动 RAG 覆盖](./assets/playbook-sync-admin-mobile.png)
+
 
 ## References
 

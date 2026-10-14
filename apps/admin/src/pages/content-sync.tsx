@@ -358,22 +358,30 @@ export function ContentSyncPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 text-sm">
-                来源
-                <select
-                  aria-label="RAG 来源"
-                  className="rounded-lg border bg-background p-2"
-                  value={source}
-                  onChange={(event) => {
-                    setSource(event.target.value as typeof source);
-                    setEdition("current");
-                  }}
-                >
-                  <option value="all">全部来源</option>
-                  <option value="blog">博客</option>
-                  <option value="playbook">Playbook</option>
-                </select>
-              </label>
+              <fieldset aria-label="RAG 范围" className="flex flex-wrap gap-2">
+                {(
+                  [
+                    ["all", "全部"],
+                    ["blog", "博客"],
+                    ["playbook", "Playbook"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    size="sm"
+                    variant={source === value ? "default" : "outline"}
+                    className="rounded-full!"
+                    aria-pressed={source === value}
+                    onClick={() => {
+                      setSource(value);
+                      setEdition("current");
+                    }}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </fieldset>
               {source === "playbook" && (
                 <label className="flex items-center gap-2 text-sm">
                   版本

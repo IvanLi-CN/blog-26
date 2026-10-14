@@ -392,3 +392,7 @@ REQ-PBI-016 的访客阅读证据使用 Web Demo 正式 `/playbook/topics/delive
 章节展开组件证据使用 Storybook `public-search-results--expanded` Canvas，视口 1280 × 900，捕获组件声明的 832 × 513 自然主题表面；目标四侧边距均为 32px。组件以五个去重章节展示展开状态，包含代码片段高亮，已由 owner 确认。
 
 ![章节展开组件](./assets/search-children-expanded.png)
+
+内容同步统一摘要与公开 RAG 覆盖采用正式 Web Demo 管理路由；未配置 embedding 的平板浅色场景显示未知指标而非真实零值，视口为 768×1024。截图已由主人确认。
+
+![未配置 embedding 的平板内容同步](./assets/content-sync-rag-tablet-unconfigured.png)
