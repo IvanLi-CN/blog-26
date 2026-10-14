@@ -256,14 +256,18 @@ function readMutationJournal(cookieHeader?: string) {
   }
 }
 
-function applyMutationJournal(seed: ConsoleWebDemoMemo[], journal: ConsoleWebDemoMutationJournal) {
+function applyMutationJournal(
+  seed: ConsoleWebDemoMemo[],
+  journal: ConsoleWebDemoMutationJournal,
+  allowPrivatePromotion = true
+) {
   const deleted = new Set(journal.deleted);
   const updates = new Map(journal.updated.map((update) => [update.s, update]));
   const memos = seed
     .filter((memo) => !deleted.has(memo.slug))
     .map((memo) => {
       const update = updates.get(memo.slug);
-      if (!update) return memo;
+      if (!update || (!allowPrivatePromotion && (!memo.isPublic || memo.draft))) return memo;
       return {
         ...memo,
         isPublic: update.p,
@@ -422,15 +426,15 @@ export function createConsoleWebDemoStore(
   const storageKey = options.storageKey ?? CONSOLE_WEB_DEMO_STORE_KEY;
   const persisted = readPersistedStore(storageKey);
   const cookieJournal = readMutationJournal(options.cookieHeader);
-  let memos =
-    persisted?.memos ??
-    (cookieJournal
-      ? applyMutationJournal(getConsoleWebDemoMemos(), cookieJournal)
-      : getConsoleWebDemoMemos());
+  const seed = getConsoleWebDemoMemos();
+  const cookieMemos = cookieJournal ? applyMutationJournal(seed, cookieJournal) : seed;
+  const guestCookieMemos = cookieJournal ? applyMutationJournal(seed, cookieJournal, false) : seed;
+  let memos = persisted?.memos ?? cookieMemos;
   let sequence = persisted?.sequence ?? cookieJournal?.sequence ?? 0;
 
+  const serverGuestMemos = options.cookieHeader === undefined ? null : guestCookieMemos;
   const visible = (persona: WebDemoPersona) =>
-    memos
+    (persona === "admin" || serverGuestMemos === null ? memos : serverGuestMemos)
       .filter((memo) => persona === "admin" || (memo.isPublic && !memo.draft))
       .map((memo) => toMemoForPersona(memo, persona));
 
@@ -446,7 +450,8 @@ export function createConsoleWebDemoStore(
       };
     },
     get(slug: string, persona: WebDemoPersona) {
-      const memo = memos.find((candidate) => candidate.slug === slug);
+      const source = persona === "admin" || serverGuestMemos === null ? memos : serverGuestMemos;
+      const memo = source.find((candidate) => candidate.slug === slug);
       if (!memo || (persona !== "admin" && (!memo.isPublic || memo.draft))) return null;
       return toMemoForPersona(memo, persona);
     },

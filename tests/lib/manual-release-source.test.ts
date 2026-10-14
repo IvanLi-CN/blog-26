@@ -109,4 +109,77 @@ describe("business evidence across VERSION-only releases", () => {
       }
     }
   });
+
+  test("ignores a merge commit that carries the already-published version", () => {
+    const root = mkdtempSync(join(tmpdir(), "release-source-merge-"));
+    const gitEnv = { ...process.env };
+    for (const key of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX"]) {
+      delete gitEnv[key];
+    }
+    const git = (...args: string[]) =>
+      execFileSync("git", ["-c", "core.hooksPath=/dev/null", ...args], {
+        cwd: root,
+        env: gitEnv,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      }).trim();
+    git("init");
+    git("config", "user.name", "Release Fixture");
+    git("config", "user.email", "fixture@example.test");
+    function commit(message: string) {
+      git("add", ".");
+      git("-c", "commit.gpgsign=false", "commit", "-m", message);
+      return git("rev-parse", "HEAD");
+    }
+    writeFileSync(join(root, "VERSION"), "2.7.0\n");
+    writeFileSync(join(root, "business.txt"), "baseline");
+    const base = commit("baseline");
+    const contract = contractSchema.parse({
+      ...contractJson,
+      bootstrap: { version: "2.7.0", sourceSha: base },
+    });
+    git("checkout", "-b", "feature");
+    writeFileSync(join(root, "business.txt"), "feature change");
+    commit("business change");
+    git("checkout", "-b", "release", base);
+    writeFileSync(join(root, "VERSION"), "2.8.0\n");
+    const release = commit("registered release preparation");
+    git("checkout", "feature");
+    git("-c", "merge.autoEdit=no", "merge", "--no-ff", release, "-m", "sync published release");
+    const candidate = git("rev-parse", "HEAD");
+
+    const reservation = reserveRelease(initialLedger(contract), {
+      sourceSha: release,
+      actor: "owner",
+      policyDigest: "c".repeat(64),
+      evidenceDigest: "d".repeat(64),
+      impact: "minor",
+      preparationRunId: 1,
+      version: "2.8.0",
+    });
+    const ledger = {
+      ...reservation.ledger,
+      entries: [{ ...reservation.entry, stage: "complete" as const, mergeSha: release }],
+    };
+    const originalCwd = process.cwd();
+    const originalGitEnv = new Map(
+      ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX"].map((key) => [
+        key,
+        process.env[key],
+      ])
+    );
+    try {
+      for (const key of originalGitEnv.keys()) delete process.env[key];
+      process.chdir(root);
+      const result = semanticSourceBlobs(ledger, candidate);
+      expect(result.changed["business.txt"]).toBeString();
+      expect(result.changed.VERSION).toBeUndefined();
+    } finally {
+      process.chdir(originalCwd);
+      for (const [key, value] of originalGitEnv) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  });
 });

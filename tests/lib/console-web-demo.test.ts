@@ -103,6 +103,28 @@ describe("Console Web Demo persona projections", () => {
     );
   });
 
+  test("server-side guest projection rejects forged private-to-public cookie updates", () => {
+    const mutation = encodeURIComponent(
+      JSON.stringify({
+        sequence: 0,
+        deleted: [],
+        updated: [
+          {
+            s: CONSOLE_WEB_DEMO_SLUGS.private,
+            p: true,
+            v: "2026-10-14T12:00:00.000Z",
+          },
+        ],
+      })
+    );
+    const store = createConsoleWebDemoStore({
+      cookieHeader: `console_web_demo_mutations_v2=${mutation}`,
+    });
+
+    expect(store.get(CONSOLE_WEB_DEMO_SLUGS.private, "guest")).toBeNull();
+    expect(store.get(CONSOLE_WEB_DEMO_SLUGS.private, "admin")?.isPublic).toBe(true);
+  });
+
   test("server-side store ignores mutation-cookie journals beyond the chunk cap", () => {
     const cookieHeader = Array.from(
       { length: 65 },
