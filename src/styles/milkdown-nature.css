@@ -167,6 +167,46 @@ body:has(.quick-memo-edit-modal) .nature-site-header {
   padding: 1rem 1.25rem;
 }
 
+/* Keep the contextual formatting toolbar readable above the continuous editor
+ * surface. The editor body stays transparent; only this transient control gets
+ * its own surface so it does not visually merge into the memo text. */
+.quick-memo-edit-editor .milkdown .milkdown-toolbar {
+  border: 1px solid var(--nature-line-strong);
+  border-radius: 0.75rem;
+  background: rgb(var(--nature-surface-rgb));
+  box-shadow: var(--nature-shadow);
+  color: var(--nature-text);
+}
+
+.quick-memo-edit-editor .milkdown .milkdown-toolbar .toolbar-item {
+  color: var(--nature-text-soft);
+}
+
+.quick-memo-edit-editor .milkdown .milkdown-toolbar .toolbar-item svg {
+  color: var(--nature-text-soft);
+  fill: currentColor;
+}
+
+.quick-memo-edit-editor .milkdown .milkdown-toolbar .toolbar-item:hover,
+.quick-memo-edit-editor .milkdown .milkdown-toolbar .toolbar-item:focus-visible {
+  background: var(--nature-accent-soft);
+  color: var(--nature-text);
+}
+
+.quick-memo-edit-editor .milkdown .milkdown-toolbar .toolbar-item:focus-visible {
+  outline: 2px solid var(--nature-accent-strong);
+  outline-offset: -2px;
+}
+
+.quick-memo-edit-editor .milkdown .milkdown-toolbar .toolbar-item.active {
+  background: var(--nature-accent-soft);
+}
+
+.quick-memo-edit-editor .milkdown .milkdown-toolbar .toolbar-item.active svg {
+  color: var(--nature-accent-strong);
+  fill: currentColor;
+}
+
 /* Milkdown keeps the block handle mounted even when it is not shown. Park it
  * inside the editor so its hidden menu cannot create scrollbars in the modal. */
 .quick-memo-edit-editor .milkdown-block-handle {
