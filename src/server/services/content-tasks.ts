@@ -41,6 +41,19 @@ export async function beginContentTask(input: {
         .get();
       if (!previous || previous.finishedAt !== null || previous.cancelRequested)
         throw new Error("Task is not resumable");
+      if (
+        previous.kind !== input.kind ||
+        previous.source !== input.source ||
+        previous.requestKey !== input.requestKey
+      )
+        throw new Error("Recovery task identity mismatch");
+      if (
+        input.target &&
+        input.target !== previous.target &&
+        input.target !== "local-content" &&
+        input.target !== "null"
+      )
+        throw new Error("Recovery target mismatch");
       tx.update(contentTasks)
         .set({
           requestKey: previous.requestKey,

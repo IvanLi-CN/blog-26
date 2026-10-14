@@ -184,22 +184,24 @@ export const adminContentSyncRouter = createTRPCRouter({
   /**
    * 取消当前同步
    */
-  cancelSync: adminProcedure.mutation(async () => {
-    try {
-      const manager = getContentSourceManager();
-      await manager.cancelSync();
-      for (const task of (await listContentTasks({ kind: "sync", limit: 100 })).items)
-        if (task.finishedAt === null) await cancelContentTask(task.id);
-      getRuntimePlaybookStore().cancelSync();
-
-      return { success: true, message: "同步已取消" };
-    } catch (error) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: error instanceof Error ? error.message : "取消同步失败",
-      });
-    }
-  }),
+  cancelSync: adminProcedure
+    .input(z.object({ taskId: z.string().uuid() }))
+    .mutation(async ({ input }) => {
+      try {
+        const task = await getContentTask(input.taskId);
+        if (!task || task.kind !== "sync")
+          throw new TRPCError({ code: "BAD_REQUEST", message: "同步任务 ID 无效" });
+        const result = await cancelContentTask(input.taskId);
+        if (task.source === "local") await getContentSourceManager().cancelSync();
+        if (task.source === "playbook") getRuntimePlaybookStore().cancelSync();
+        return { success: true, ...result };
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "取消同步失败",
+        });
+      }
+    }),
 
   triggerPlaybookSync: adminProcedure.mutation(async () => {
     try {
