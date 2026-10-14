@@ -4,7 +4,7 @@
   "base_sha": "ceecf5ed867ee849fce6d8e5d8225e9e5505923a",
   "covered_files": {
     "GLOSSARY.md": "e7e7f45a536a9588fa90361cda6879cd516c3bb9",
-    "docs/project-runtime-motion-design.md": "c573024b88c764e498b081ee5c70d8ca05cf3e45",
+    "docs/project-runtime-motion-design.md": "ecfffc00066244e124b7dc68a47e17829f392f5e",
     "docs/specs/nature-front-ui/HISTORY.md": "f57c6157bbc6304bf64bb3a7a2e38ee506d34271",
     "docs/specs/nature-front-ui/IMPLEMENTATION.md": "d2b91cec14d7874b1f3285eaebecaf1e180dc9f9",
     "docs/specs/nature-front-ui/SPEC.md": "247599e60516fda88cb6573ec1e7517b2db5161f",
@@ -48,7 +48,7 @@
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
           "blob": "b57c2dc0f6abc15e5a9ab8be309e31470f1291df",
-          "command": "Agent VM: bun run test:e2e:web-demo project-runtime-motion.spec.ts (7/7 passed)"
+          "command": "Agent VM: project-runtime-motion.spec.ts report has six passing scenarios; the HTTP scenario passes in a separate --grep \"HTTP failures\" run after its adapter-readiness precondition is added (seven scenarios combined)."
         },
         {
           "path": "src/components/projects/RuntimeCellGrid.stories.tsx",
@@ -75,7 +75,7 @@
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
           "blob": "b57c2dc0f6abc15e5a9ab8be309e31470f1291df",
-          "command": "Agent VM: bun run test:e2e:web-demo project-runtime-motion.spec.ts (7/7 passed)"
+          "command": "Agent VM: project-runtime-motion.spec.ts report has six passing scenarios; the HTTP scenario passes in a separate --grep \"HTTP failures\" run after its adapter-readiness precondition is added (seven scenarios combined)."
         },
         {
           "path": "src/components/projects/RuntimeCellGrid.stories.tsx",
@@ -106,7 +106,7 @@
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
           "blob": "b57c2dc0f6abc15e5a9ab8be309e31470f1291df",
-          "command": "Agent VM: bun run test:e2e:web-demo project-runtime-motion.spec.ts (7/7 passed)"
+          "command": "Agent VM: project-runtime-motion.spec.ts report has six passing scenarios; the HTTP scenario passes in a separate --grep \"HTTP failures\" run after its adapter-readiness precondition is added (seven scenarios combined)."
         },
         {
           "path": "src/components/projects/RuntimeCellGrid.stories.tsx",
@@ -135,7 +135,7 @@
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
           "blob": "b57c2dc0f6abc15e5a9ab8be309e31470f1291df",
-          "command": "Agent VM: bun run test:e2e:web-demo project-runtime-motion.spec.ts (7/7 passed)"
+          "command": "Agent VM: project-runtime-motion.spec.ts report has six passing scenarios; the HTTP scenario passes in a separate --grep \"HTTP failures\" run after its adapter-readiness precondition is added (seven scenarios combined)."
         },
         {
           "path": "src/components/projects/RuntimeCellGrid.stories.tsx",
