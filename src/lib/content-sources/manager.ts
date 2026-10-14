@@ -218,7 +218,23 @@ export class ContentSourceManager {
     );
     if (taskControllers.get(task.id)?.signal.aborted) await this.cancelSync();
 
-    const savedResult = resumeId && task.result ? JSON.parse(task.result) : null;
+    let savedResult: Record<string, number> | null = null;
+    let checkpointError: Error | null = null;
+    if (resumeId && task.result) {
+      try {
+        const parsed = JSON.parse(task.result);
+        if (
+          !parsed ||
+          typeof parsed !== "object" ||
+          !Number.isInteger(parsed.cursor) ||
+          parsed.cursor < 0
+        )
+          throw new Error("Invalid local recovery checkpoint");
+        savedResult = parsed;
+      } catch (error) {
+        checkpointError = error instanceof Error ? error : new Error(String(error));
+      }
+    }
     this.workCursor = savedResult?.cursor ?? 0;
     const { cursor: _cursor, ...savedStats } = savedResult ?? {};
     const result: SyncResult = {
@@ -241,6 +257,7 @@ export class ContentSourceManager {
     };
 
     try {
+      if (checkpointError) throw checkpointError;
       await this.logSync("info", `开始${syncType}`, undefined, { syncId, isFullSync });
 
       // 获取启用的内容源
@@ -310,9 +327,16 @@ export class ContentSourceManager {
     } catch (error) {
       const persisted = db.select().from(contentTasks).where(eq(contentTasks.id, task.id)).get();
       if (persisted?.result) {
-        const { cursor, ...stats } = JSON.parse(persisted.result);
-        result.stats = stats;
-        this.workCursor = cursor ?? this.workCursor;
+        try {
+          const parsed = JSON.parse(persisted.result);
+          if (parsed && typeof parsed === "object") {
+            const { cursor, ...stats } = parsed;
+            result.stats = stats;
+            this.workCursor = Number.isInteger(cursor) ? cursor : this.workCursor;
+          }
+        } catch {
+          result.stats.errors++;
+        }
       }
       if (persisted?.cancelRequested) this.currentSync.status = "cancelled";
       const errorMessage = error instanceof Error ? error.message : String(error);
