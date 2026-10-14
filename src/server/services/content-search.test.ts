@@ -986,4 +986,114 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     expect(candidateContent).not.toContain("private");
     expect(result.results.every((item) => item.source === "playbook")).toBe(true);
   });
+
+  test("HTTP, tRPC, and MCP expose the same adopted Playbook edition", async () => {
+    const bundle = makePublicBundle("v3.0.0", "100");
+    await getRuntimePlaybookStore().adopt(bundle.edition);
+    const identity = new URLSearchParams({
+      edition: bundle.edition.edition.editionDigest,
+      sourceReleaseId: bundle.edition.edition.source.releaseId,
+      sourceTag: bundle.edition.edition.source.tag,
+    });
+
+    const http = await handlePublicApiRequest(
+      new Request(
+        `http://localhost/api/public/search?q=verify&mode=keyword&source=playbook&type=policy&${identity}`
+      ),
+      "/search"
+    );
+    expect(http.status).toBe(200);
+    expect(http.headers.get("Search-Playbook-Edition")).toBe(bundle.edition.edition.editionDigest);
+    expect(http.headers.get("Search-Playbook-Source-Release-Id")).toBe("100");
+    expect((await http.json()) as Array<{ source: string }>).toEqual(
+      expect.arrayContaining([expect.objectContaining({ source: "playbook" })])
+    );
+
+    const trpc = await appRouter
+      .createCaller({
+        req: new Request("http://localhost"),
+        resHeaders: new Headers(),
+        isAdmin: false,
+      })
+      .search.content({
+        q: "verify",
+        mode: "keyword",
+        source: "playbook",
+        type: "policy",
+        edition: bundle.edition.edition.editionDigest,
+        sourceReleaseId: bundle.edition.edition.source.releaseId,
+        sourceTag: bundle.edition.edition.source.tag,
+      });
+    expect(trpc.playbook?.sourceTag).toBe("v3.0.0");
+    expect(trpc.results.every((item) => item.source === "playbook")).toBe(true);
+
+    const headers = {
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+      "mcp-protocol-version": "2025-03-26",
+    };
+    const init = await handleMcpHttpRequest(
+      new Request("http://localhost/mcp", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-03-26",
+            capabilities: {},
+            clientInfo: { name: "playbook-contract", version: "1" },
+          },
+        }),
+      })
+    );
+    const session = init.headers.get("mcp-session-id") ?? "";
+    await init.text();
+    try {
+      const response = await handleMcpHttpRequest(
+        new Request("http://localhost/mcp", {
+          method: "POST",
+          headers: { ...headers, "mcp-session-id": session },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            method: "tools/call",
+            params: {
+              name: "search_content",
+              arguments: {
+                q: "verify",
+                mode: "keyword",
+                source: "playbook",
+                type: "policy",
+                edition: bundle.edition.edition.editionDigest,
+                sourceReleaseId: bundle.edition.edition.source.releaseId,
+                sourceTag: bundle.edition.edition.source.tag,
+              },
+            },
+          }),
+        })
+      );
+      const raw = await response.text();
+      const payload = JSON.parse(
+        raw
+          .split("\n")
+          .find((line) => line.startsWith("data: "))
+          ?.slice(6) ?? raw
+      );
+      const result = JSON.parse(payload.result.content[0].text) as {
+        playbook?: { sourceTag: string };
+        results: Array<{ source: string }>;
+      };
+      expect(result.playbook?.sourceTag).toBe("v3.0.0");
+      expect(result.results.every((item) => item.source === "playbook")).toBe(true);
+    } finally {
+      await handleMcpHttpRequest(
+        new Request("http://localhost/mcp", {
+          method: "DELETE",
+          headers: { "mcp-session-id": session, "mcp-protocol-version": "2025-03-26" },
+        })
+      );
+    }
+  });
 });

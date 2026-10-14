@@ -32,6 +32,96 @@ function compactEdition(value?: string | null) {
   return value.length > 24 ? `${value.slice(0, 12)}…${value.slice(-8)}` : value;
 }
 
+export function PlaybookStatusDetails({ playbook }: { playbook: PlaybookContentSyncStatus }) {
+  return (
+    <dl className="grid min-w-0 gap-x-5 gap-y-3 text-sm text-muted-foreground sm:grid-cols-2">
+      <div className="min-w-0 space-y-1">
+        <dt className="text-xs">内容采用</dt>
+        <dd className="font-medium text-foreground">{playbook.adopted ? "已采用" : "未采用"}</dd>
+      </div>
+      <div className="min-w-0 space-y-1">
+        <dt className="text-xs">词法索引</dt>
+        <dd className="font-medium text-foreground">
+          {playbook.lexical.status} · {formatCount(playbook.lexical.count)} 项
+        </dd>
+      </div>
+      <div className="min-w-0 space-y-1">
+        <dt className="text-xs">语义投影</dt>
+        <dd className="flex flex-wrap gap-x-2 gap-y-1 font-medium text-foreground">
+          <span>{formatCount(playbook.semantic.ready)} ready</span>
+          <span>{formatCount(playbook.semantic.pending)} pending</span>
+          <span>{formatCount(playbook.semantic.failed)} failed</span>
+        </dd>
+      </div>
+      <div className="min-w-0 space-y-1">
+        <dt className="text-xs">模型</dt>
+        <dd className="truncate font-medium text-foreground" title={playbook.semantic.model}>
+          {playbook.semantic.model}
+        </dd>
+      </div>
+      <div className="min-w-0 space-y-1 sm:col-span-2">
+        <dt className="text-xs">当前 edition</dt>
+        <dd
+          className="truncate font-mono text-xs font-medium text-foreground"
+          title={playbook.current?.edition ?? undefined}
+        >
+          {compactEdition(playbook.current?.edition)}
+        </dd>
+      </div>
+      <div className="min-w-0 space-y-1 sm:col-span-2">
+        <dt className="text-xs">历史</dt>
+        <dd className="font-medium text-foreground">
+          {formatCount(playbook.editions.length)} 个已知 edition ·{" "}
+          {formatCount(playbook.history.length)} 条记录
+        </dd>
+      </div>
+    </dl>
+  );
+}
+
+export function ContentSyncActions({
+  busy,
+  syncing,
+  playbookSyncing,
+  vectorizing,
+  cancelling,
+  onSync,
+  onPlaybookSync,
+  onVectorize,
+  onCancel,
+}: {
+  busy: boolean;
+  syncing: boolean;
+  playbookSyncing: boolean;
+  vectorizing: boolean;
+  cancelling: boolean;
+  onSync: () => void;
+  onPlaybookSync: () => void;
+  onVectorize: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <>
+      <Button variant="outline" onClick={onSync} disabled={busy}>
+        {syncing ? <Spinner /> : <PlayCircle className="size-4" />}
+        触发同步
+      </Button>
+      <Button variant="outline" onClick={onPlaybookSync} disabled={busy}>
+        {playbookSyncing ? <Spinner /> : <BookOpen className="size-4" />}
+        刷新 Playbook
+      </Button>
+      <Button variant="secondary" onClick={onVectorize} disabled={busy}>
+        {vectorizing ? <Spinner /> : <Sparkles className="size-4" />}
+        全量向量化
+      </Button>
+      <Button variant="destructive" onClick={onCancel} disabled={busy}>
+        {cancelling ? <Spinner /> : <PauseCircle className="size-4" />}
+        取消
+      </Button>
+    </>
+  );
+}
+
 export function ContentSyncPage() {
   const queryClient = useQueryClient();
 
@@ -123,22 +213,17 @@ export function ContentSyncPage() {
               <RefreshCcw className="size-4" />
               刷新
             </Button>
-            <Button onClick={() => syncMutation.mutate()} disabled={busy}>
-              {syncMutation.isPending ? <Spinner /> : <PlayCircle className="size-4" />}
-              触发同步
-            </Button>
-            <Button variant="outline" onClick={() => playbookSyncMutation.mutate()} disabled={busy}>
-              {playbookSyncMutation.isPending ? <Spinner /> : <BookOpen className="size-4" />}
-              刷新 Playbook
-            </Button>
-            <Button variant="secondary" onClick={() => vectorizeMutation.mutate()} disabled={busy}>
-              {vectorizeMutation.isPending ? <Spinner /> : <Sparkles className="size-4" />}
-              全量向量化
-            </Button>
-            <Button variant="destructive" onClick={() => cancelMutation.mutate()} disabled={busy}>
-              {cancelMutation.isPending ? <Spinner /> : <PauseCircle className="size-4" />}
-              取消
-            </Button>
+            <ContentSyncActions
+              busy={busy}
+              syncing={syncMutation.isPending}
+              playbookSyncing={playbookSyncMutation.isPending}
+              vectorizing={vectorizeMutation.isPending}
+              cancelling={cancelMutation.isPending}
+              onSync={() => syncMutation.mutate()}
+              onPlaybookSync={() => playbookSyncMutation.mutate()}
+              onVectorize={() => vectorizeMutation.mutate()}
+              onCancel={() => cancelMutation.mutate()}
+            />
           </>
         }
       />
@@ -236,53 +321,7 @@ export function ContentSyncPage() {
                       </Badge>
                     </div>
                     {playbook ? (
-                      <dl className="grid min-w-0 gap-x-5 gap-y-3 text-sm text-muted-foreground sm:grid-cols-2">
-                        <div className="min-w-0 space-y-1">
-                          <dt className="text-xs">内容采用</dt>
-                          <dd className="font-medium text-foreground">
-                            {playbook.adopted ? "已采用" : "未采用"}
-                          </dd>
-                        </div>
-                        <div className="min-w-0 space-y-1">
-                          <dt className="text-xs">词法索引</dt>
-                          <dd className="font-medium text-foreground">
-                            {playbook.lexical.status} · {formatCount(playbook.lexical.count)} 项
-                          </dd>
-                        </div>
-                        <div className="min-w-0 space-y-1">
-                          <dt className="text-xs">语义投影</dt>
-                          <dd className="flex flex-wrap gap-x-2 gap-y-1 font-medium text-foreground">
-                            <span>{formatCount(playbook.semantic.ready)} ready</span>
-                            <span>{formatCount(playbook.semantic.pending)} pending</span>
-                            <span>{formatCount(playbook.semantic.failed)} failed</span>
-                          </dd>
-                        </div>
-                        <div className="min-w-0 space-y-1">
-                          <dt className="text-xs">模型</dt>
-                          <dd
-                            className="truncate font-medium text-foreground"
-                            title={playbook.semantic.model}
-                          >
-                            {playbook.semantic.model}
-                          </dd>
-                        </div>
-                        <div className="min-w-0 space-y-1 sm:col-span-2">
-                          <dt className="text-xs">当前 edition</dt>
-                          <dd
-                            className="truncate font-mono text-xs font-medium text-foreground"
-                            title={playbook.current?.edition ?? undefined}
-                          >
-                            {compactEdition(playbook.current?.edition)}
-                          </dd>
-                        </div>
-                        <div className="min-w-0 space-y-1 sm:col-span-2">
-                          <dt className="text-xs">历史</dt>
-                          <dd className="font-medium text-foreground">
-                            {formatCount(playbook.editions.length)} 个已知 edition ·{" "}
-                            {formatCount(playbook.history.length)} 条记录
-                          </dd>
-                        </div>
-                      </dl>
+                      <PlaybookStatusDetails playbook={playbook} />
                     ) : (
                       <>
                         <div className="text-sm text-muted-foreground">

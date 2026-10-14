@@ -32,49 +32,24 @@ test("mode selection survives refresh and history and shows genuine mode-specifi
   );
   await expect(results).not.toContainText(/相关度|\d+%/);
 });
-test("RAG shows keyword results before the AI supplement arrives", async ({ page }) => {
+test("RAG waits for the unified server result before rendering", async ({ page }) => {
   await page.goto("/search/?q=SQLite&mode=rag&d_scene=search-ready&d_delay=slow");
   await hideInspector(page);
   const results = page.getByRole("region", { name: "搜索结果" });
-  await expect(results).toContainText("开发工具阅读清单");
   await expect(page.getByRole("region", { name: "建议搜索词" })).toHaveCount(0);
-  await expect(results.locator('[data-search-ai-phase="waiting"]')).toContainText(
-    "全文结果已到，正在等待 AI 补充"
-  );
-  await expect(results.getByRole("img", { name: "AI 补充结果" })).toHaveCount(0);
+  await expect(results).toContainText("正在搜索", { timeout: 2_000 });
   await expect(results).toContainText("SQLite3：嵌入式数据库实践", { timeout: 10_000 });
-  await expect(results.getByRole("img", { name: "AI 补充结果" })).toHaveCount(1, {
-    timeout: 10_000,
-  });
-  await expect(results.locator('[data-search-ai-phase="complete"]')).toHaveCount(0);
+  await expect(results.locator("[data-search-ai-phase]")).toHaveCount(0);
 });
-test("rewrite shows keyword results before the rewritten supplement arrives", async ({ page }) => {
+test("rewrite waits for the unified server result", async ({ page }) => {
   await page.goto(
     "/search/?q=SQLite&mode=rewrite&d_scene=search-rewrite-ready&d_data=dense&d_delay=slow"
   );
   await hideInspector(page);
   const results = page.getByRole("region", { name: "搜索结果" });
-  await expect(results).toContainText("开发工具阅读清单");
-  await expect(results.locator('[data-search-ai-phase="waiting"]')).toContainText(
-    "正在等待 AI 改写查询补充"
-  );
-  await expect(results.getByRole("img", { name: "AI 补充结果" })).toHaveCount(0);
+  await expect(results).toContainText("正在搜索", { timeout: 2_000 });
   await expect(results).toContainText("SQLite 性能调优清单");
-  await expect(results.getByRole("img", { name: "AI 补充结果" })).toHaveCount(5, {
-    timeout: 10_000,
-  });
-  await expect(results.locator('[data-search-ai-phase="complete"]')).toHaveCount(0);
-  const cards = results.locator("[data-search-result-card]");
-  const origins = await cards.evaluateAll((elements) =>
-    elements.map((element) =>
-      element.querySelector('[aria-label="AI 补充结果"]') ? "ai" : "keyword"
-    )
-  );
-  const firstAi = origins.indexOf("ai");
-  expect(firstAi).toBeGreaterThan(0);
-  expect(
-    origins.some((origin, index) => origin === "ai" && origins.slice(index + 1).includes("keyword"))
-  ).toBe(true);
+  await expect(results.locator("[data-search-ai-phase]")).toHaveCount(0);
 });
 test("switching the Web Demo scene reloads the search behavior", async ({ page }) => {
   await page.goto("/search/?q=SQLite&mode=rag&d_scene=search-ready&d_delay=normal");

@@ -231,7 +231,9 @@ export async function preparePlaybookSemanticProjection(
     try {
       const vector = await embedSearchQuery(
         config,
-        `${chunk.title}\n${chunk.excerpt ?? ""}\n${chunk.body}`
+        `${chunk.title}\n${chunk.excerpt ?? ""}\n${chunk.body}`,
+        10000,
+        { signal: options.signal }
       );
       await db
         .update(searchSemanticEmbeddings)
@@ -244,6 +246,7 @@ export async function preparePlaybookSemanticProjection(
         })
         .where(eq(searchSemanticEmbeddings.id, rowId));
     } catch (error) {
+      if (options.signal?.aborted) throw error;
       failed++;
       await db
         .update(searchSemanticEmbeddings)

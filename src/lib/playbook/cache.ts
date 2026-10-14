@@ -135,18 +135,26 @@ export class PlaybookStore {
     this.state = next;
   }
 
-  sync(manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL) {
+  sync(manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL, externalSignal?: AbortSignal) {
     if (!this.flight)
-      this.flight = this.download(manifestUrl).finally(() => {
+      this.flight = this.download(manifestUrl, externalSignal).finally(() => {
         this.flight = undefined;
       });
     return this.flight;
   }
 
-  private async download(manifestUrl: string) {
+  cancelSync() {
+    this.controller?.abort(new DOMException("Playbook sync cancelled", "AbortError"));
+  }
+
+  private async download(manifestUrl: string, externalSignal?: AbortSignal) {
     if (this.stopped) return;
     this.controller = new AbortController();
-    const signal = AbortSignal.any([this.controller.signal, AbortSignal.timeout(30_000)]);
+    const signal = AbortSignal.any(
+      [this.controller.signal, externalSignal, AbortSignal.timeout(30_000)].filter(
+        (value): value is AbortSignal => Boolean(value)
+      )
+    );
     const pointer = parseEditionIdentity(
       JSON.parse(
         Buffer.from(await fetchBounded(this.fetcher, manifestUrl, 64 * 1024, signal)).toString(
@@ -187,7 +195,7 @@ export class PlaybookStore {
       search: new Map(results).get("search-documents.json"),
       publicSnapshot,
     });
-    if (this.stopped) return;
+    if (this.stopped || signal.aborted) return;
     const files = new Map(results);
     await this.adopt({
       edition: pointer,

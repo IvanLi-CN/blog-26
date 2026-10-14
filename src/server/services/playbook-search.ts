@@ -536,8 +536,25 @@ export function playbookCandidateContext(
   query: string,
   limit: number
 ) {
+  const escapeXml = (value: string) =>
+    value.replace(/[&<>"']/gu, (character) => {
+      switch (character) {
+        case "&":
+          return "&amp;";
+        case "<":
+          return "&lt;";
+        case ">":
+          return "&gt;";
+        case '"':
+          return "&quot;";
+        default:
+          return "&apos;";
+      }
+    });
   const terms = positiveSearchTerms(parseSearchQuery(query).ast);
   const location = candidate.locations[0];
+  const path = location?.resourcePath ?? candidate.route;
+  const evidence = snippet(candidate.body, query, terms).slice(0, limit);
   return {
     id: candidate.id,
     source: candidate.source,
@@ -545,10 +562,10 @@ export function playbookCandidateContext(
     edition: candidate.edition.edition,
     sourceReleaseId: candidate.edition.sourceReleaseId,
     sourceTag: candidate.edition.sourceTag,
-    path: location?.resourcePath ?? candidate.route,
+    path,
     location: location?.title ?? "content",
     title: candidate.title,
-    content: `<untrusted-playbook-evidence source="public-edition" path="${location?.resourcePath ?? candidate.route}">\n${snippet(candidate.body, query, terms).slice(0, limit)}\n</untrusted-playbook-evidence>`,
+    content: `<untrusted-playbook-evidence source="public-edition" path="${escapeXml(path)}">\n${escapeXml(evidence)}\n</untrusted-playbook-evidence>`,
   };
 }
 

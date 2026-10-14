@@ -141,14 +141,21 @@ export async function judgeSearchCandidates(
 export async function embedSearchQuery(
   config: ResolvedTierConfig,
   input: string,
-  timeoutMs = 10000
+  timeoutMs = 10000,
+  options?: { signal?: AbortSignal }
 ): Promise<number[]> {
   if (!config.baseUrl || !config.apiKey || !config.model)
     throw new SearchModelError("unconfigured");
+  if (Buffer.byteLength(input, "utf8") > 64 * 1024) throw new SearchModelError("budget-exceeded");
+  const signal = AbortSignal.any(
+    [AbortSignal.timeout(timeoutMs), options?.signal].filter((value): value is AbortSignal =>
+      Boolean(value)
+    )
+  );
   try {
     const response = await fetch(`${config.baseUrl.replace(/\/$/u, "")}/embeddings`, {
       method: "POST",
-      signal: AbortSignal.timeout(timeoutMs),
+      signal,
       headers: { "content-type": "application/json", authorization: `Bearer ${config.apiKey}` },
       body: JSON.stringify({ model: config.model, input }),
     });
@@ -183,6 +190,7 @@ export async function embedSearchQuery(
     return parsed.data.data[0].embedding;
   } catch (error) {
     if (error instanceof SearchModelError) throw error;
+    if (options?.signal?.aborted) throw options.signal.reason ?? error;
     throw new SearchModelError(
       error instanceof Error && ["TimeoutError", "AbortError"].includes(error.name)
         ? "timeout"

@@ -42,14 +42,19 @@ const _contentSourceConfigSchema = z.object({
 type PlaybookSyncResult = {
   success: true;
   status: Awaited<ReturnType<typeof getPlaybookContentSyncStatus>>;
+  cancelled?: boolean;
 };
 
-let activePlaybookSync: Promise<PlaybookSyncResult> | null = null;
+let activePlaybookSync: {
+  promise: Promise<PlaybookSyncResult>;
+  controller: AbortController;
+} | null = null;
 
 function runPlaybookSync(): Promise<PlaybookSyncResult> {
-  if (activePlaybookSync) return activePlaybookSync;
+  if (activePlaybookSync) return activePlaybookSync.promise;
 
   const taskId = randomUUID();
+  const controller = new AbortController();
   const task = (async () => {
     const createdAt = Date.now();
     await db.insert(contentSyncLogs).values({
@@ -67,45 +72,67 @@ function runPlaybookSync(): Promise<PlaybookSyncResult> {
     try {
       const store = getRuntimePlaybookStore();
       await store.load();
-      await store.sync();
+      await store.sync(undefined, controller.signal);
+      if (controller.signal.aborted) {
+        return {
+          success: true as const,
+          cancelled: true,
+          status: await getPlaybookContentSyncStatus(),
+        };
+      }
       const edition = store.current;
       if (edition) {
         const config = await getResolvedLlmConfig().catch(() => undefined);
         if (config?.embedding.model) {
-          void preparePlaybookSemanticProjection(edition, config.embedding)
-            .then((projection) =>
-              db.insert(contentSyncLogs).values({
-                id: randomUUID(),
-                sourceType: "playbook",
-                sourceName: "playbook",
-                operation: "semantic-projection",
-                status: projection.failed ? "warning" : "success",
-                message: projection.failed
-                  ? `Playbook 语义投影部分待补（${projection.failed}/${projection.total}）`
-                  : "Playbook 语义投影准备完成",
-                filePath: null,
-                data: JSON.stringify({ taskId, phase: "semantic", ...projection }),
-                createdAt: Date.now(),
-              })
-            )
-            .catch((error) => {
-              console.warn(
-                "[playbook] semantic projection pending:",
-                error instanceof Error ? error.message : String(error)
-              );
-              return db.insert(contentSyncLogs).values({
-                id: randomUUID(),
-                sourceType: "playbook",
-                sourceName: "playbook",
-                operation: "semantic-projection",
-                status: "error",
-                message: error instanceof Error ? error.message : String(error),
-                filePath: null,
-                data: JSON.stringify({ taskId, phase: "semantic" }),
-                createdAt: Date.now(),
-              });
+          try {
+            const projection = await preparePlaybookSemanticProjection(edition, config.embedding, {
+              signal: controller.signal,
             });
+            await db.insert(contentSyncLogs).values({
+              id: randomUUID(),
+              sourceType: "playbook",
+              sourceName: "playbook",
+              operation: "semantic-projection",
+              status: projection.failed ? "warning" : "success",
+              message: projection.failed
+                ? `Playbook 语义投影部分待补（${projection.failed}/${projection.total}）`
+                : "Playbook 语义投影准备完成",
+              filePath: null,
+              data: JSON.stringify({ taskId, phase: "semantic", ...projection }),
+              createdAt: Date.now(),
+            });
+          } catch (error) {
+            if (controller.signal.aborted)
+              return {
+                success: true as const,
+                cancelled: true,
+                status: await getPlaybookContentSyncStatus(),
+              };
+            console.warn(
+              "[playbook] semantic projection pending:",
+              error instanceof Error ? error.message : String(error)
+            );
+            await db.insert(contentSyncLogs).values({
+              id: randomUUID(),
+              sourceType: "playbook",
+              sourceName: "playbook",
+              operation: "semantic-projection",
+              status: "error",
+              message: error instanceof Error ? error.message : String(error),
+              filePath: null,
+              data: JSON.stringify({ taskId, phase: "semantic" }),
+              createdAt: Date.now(),
+            });
+          }
         }
+      }
+
+      if (controller.signal.aborted) {
+        return {
+          success: true as const,
+          cancelled: true,
+          status: await getPlaybookContentSyncStatus(),
+        };
       }
 
       await db.insert(contentSyncLogs).values({
@@ -121,6 +148,24 @@ function runPlaybookSync(): Promise<PlaybookSyncResult> {
       });
       return { success: true as const, status: await getPlaybookContentSyncStatus() };
     } catch (error) {
+      if (controller.signal.aborted) {
+        await db.insert(contentSyncLogs).values({
+          id: randomUUID(),
+          sourceType: "playbook",
+          sourceName: "playbook",
+          operation: "sync",
+          status: "warning",
+          message: "Playbook 同步已取消",
+          filePath: null,
+          data: JSON.stringify({ taskId, phase: "cancelled" }),
+          createdAt: Date.now(),
+        });
+        return {
+          success: true as const,
+          cancelled: true,
+          status: await getPlaybookContentSyncStatus(),
+        };
+      }
       await db.insert(contentSyncLogs).values({
         id: randomUUID(),
         sourceType: "playbook",
@@ -137,7 +182,7 @@ function runPlaybookSync(): Promise<PlaybookSyncResult> {
   })().finally(() => {
     activePlaybookSync = null;
   });
-  activePlaybookSync = task;
+  activePlaybookSync = { promise: task, controller };
 
   return task;
 }
@@ -210,6 +255,10 @@ export const adminContentSyncRouter = createTRPCRouter({
     try {
       const manager = getContentSourceManager();
       await manager.cancelSync();
+      activePlaybookSync?.controller.abort(
+        new DOMException("Playbook sync cancelled", "AbortError")
+      );
+      getRuntimePlaybookStore().cancelSync();
 
       return { success: true, message: "同步已取消" };
     } catch (error) {

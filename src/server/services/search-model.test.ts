@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { z } from "zod";
-import { callSearchModel } from "./search-model";
+import { callSearchModel, embedSearchQuery, type SearchModelError } from "./search-model";
 
 const originalFetch = globalThis.fetch;
 const output = z.object({ ok: z.boolean() });
@@ -57,5 +57,18 @@ describe("search model request contract", () => {
 
     expect(request).not.toHaveProperty("thinking");
     expect(request).not.toHaveProperty("reasoning_effort");
+  });
+
+  test("bounds embedding input before contacting the provider", async () => {
+    let called = false;
+    globalThis.fetch = (async () => {
+      called = true;
+      return Response.json({ data: [{ embedding: [1] }] });
+    }) as typeof fetch;
+
+    await expect(embedSearchQuery(chat, "x".repeat(64 * 1024 + 1))).rejects.toMatchObject({
+      reason: "budget-exceeded",
+    } satisfies Partial<SearchModelError>);
+    expect(called).toBe(false);
   });
 });
