@@ -31,7 +31,7 @@
       "evidence": [
         {
           "path": "src/components/memos/QuickMemoEditModal.tsx",
-          "blob": "57401bd03d9099d51abb7bd4543ac0e6303eb2",
+          "blob": "57401bd03d9099d9a51abb7bd4543ac0e6303eb2",
           "command": "Review the quick-edit modal structure and preserved save/visibility handlers"
         },
         {
