@@ -82,7 +82,7 @@ function IconAction({
         </button>
       </TooltipTrigger>
       <TooltipContent side="top" align="end">
-        {label}
+        {status ?? label}
       </TooltipContent>
     </Tooltip>
   );
@@ -161,13 +161,24 @@ export default function PlaybookTechStackRaw({ value }: { value: unknown }) {
     textarea.style.opacity = "0";
     document.body.appendChild(textarea);
     textarea.select();
-    const copied = document.execCommand("copy");
-    textarea.remove();
+    let copied = false;
+    try {
+      copied = document.execCommand("copy");
+    } catch {
+      // Some browsers reject legacy copying as well as the Clipboard API.
+    } finally {
+      textarea.remove();
+    }
     if (copied) {
       setCopyState("copied");
       return;
     }
     setCopyState("failed");
+    setOpen(true);
+  };
+
+  useLayoutEffect(() => {
+    if (copyState !== "failed") return;
     scrollerRef.current?.focus({ preventScroll: true });
     const selection = window.getSelection();
     const code = scrollerRef.current?.querySelector("code");
@@ -177,14 +188,20 @@ export default function PlaybookTechStackRaw({ value }: { value: unknown }) {
       selection.removeAllRanges();
       selection.addRange(range);
     }
-  };
+  }, [copyState]);
 
   const copyLabel =
     copyState === "copied" ? "已复制" : copyState === "failed" ? "复制失败，请手动复制" : "复制";
   const copyAction = (
     <IconAction
       label="复制原始数据"
-      icon={copyState === "copied" ? "tabler:check" : "tabler:copy"}
+      icon={
+        copyState === "copied"
+          ? "tabler:check"
+          : copyState === "failed"
+            ? "tabler:alert-triangle"
+            : "tabler:copy"
+      }
       onClick={copyRaw}
       status={copyState === "idle" ? undefined : copyLabel}
     />

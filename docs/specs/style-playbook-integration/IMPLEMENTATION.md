@@ -96,3 +96,5 @@ PR #172 的首轮自动 CI 中九项必需检查通过，guest E2E 暴露旧卡�
 ![技术栈原始数据桌面展开](./assets/tech-stack-raw-desktop-open-dark.png)
 
 ![技术栈原始数据移动展开](./assets/tech-stack-raw-mobile-open-dark.png)
+
+禁用 JavaScript 的静态页面提供原生 details 入口读取完整筛选 JSON。复制 API 与旧式复制同时失败时清理临时 textarea、显示失败反馈并展开内容供手动复制；组件交互场景覆盖异常清理与文本选择。Web Demo 搜索链接在构建时绑定同一准备产物的 edition 身份，避免现实项目 fixture 更新后跳入不存在的旧版本页面。

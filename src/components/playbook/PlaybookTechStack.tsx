@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  formatTechStackRaw,
   parsePlaybookTechStack,
   shouldCollapseTechStackList,
   type TechStackEntry,
@@ -203,6 +204,14 @@ export default function PlaybookTechStack({ value }: { value: unknown }) {
         </section>
       ))}
       <PlaybookTechStackRaw value={value} />
+      <noscript>
+        <details className="mt-2">
+          <summary>技术栈完整数据（无需 JavaScript）</summary>
+          <pre className="max-w-full overflow-auto whitespace-pre-wrap px-3 py-2.5 [overflow-wrap:anywhere]">
+            {formatTechStackRaw(value)}
+          </pre>
+        </details>
+      </noscript>
     </section>
   );
 }

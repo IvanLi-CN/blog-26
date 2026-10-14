@@ -75,6 +75,7 @@ const expectedStoryIds = new Set([
   "public-playbook-technology-stack--narrow-chips",
   "public-playbook-technology-stack--raw-expanded",
   "public-playbook-technology-stack--fullscreen",
+  "public-playbook-technology-stack--copy-failure",
   "public-search-mode--switching",
   "admin-search-policy--editing",
   "public-native-tag-link--default",

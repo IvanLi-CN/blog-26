@@ -11,6 +11,19 @@ import {
 } from "../../src/lib/playbook/tech-stack";
 
 describe("playbook technology stack presentation", () => {
+  test("preserves a complete native disclosure when JavaScript is disabled", () => {
+    const html = renderToStaticMarkup(
+      createElement(PlaybookTechStack, {
+        value: { runtime: "Bun", dependencies: ["React"], configs_root: ["astro.config.mjs"] },
+      })
+    );
+    const fallback = html.match(/<noscript>([\s\S]*?)<\/noscript>/)?.[1];
+    expect(fallback).toContain("<details");
+    expect(fallback).toContain("React");
+    expect(fallback).toContain("astro.config.mjs");
+    expect(fallback).not.toContain("hidden");
+  });
+
   test("fits complete chips on one line while reserving the actual overflow count", () => {
     const widths = [40, 60, 50, 70];
     expect(fitTechStackChips(widths, 238, 6, [24])).toBe(4);

@@ -83,6 +83,10 @@ export const SEARCH_DEMO_DENSE_DOCUMENTS = [
   },
 ] as const;
 
+const playbookDemoBase =
+  process.env.PUBLIC_WEB_DEMO_PLAYBOOK_BASE ||
+  "/playbook/editions/v3.0.0/100/16a8b0657c998acc8e7c6371b4a74983a52dd1da61da4ceb9d31e7124d88fdce";
+
 /** Version-bound Playbook rows used by the official Web Demo search flow. */
 export const PLAYBOOK_SEARCH_DEMO_DOCUMENTS = [
   {
@@ -91,10 +95,10 @@ export const PLAYBOOK_SEARCH_DEMO_DOCUMENTS = [
     excerpt: "把实现、验证、审查与发布组织成可追踪的交付流程。",
     body: "交付工作流要求先锁定范围，再完成验证、审查和可回滚发布。",
     type: "topic" as const,
-    href: "/playbook/editions/v3.0.0/100/16a8b0657c998acc8e7c6371b4a74983a52dd1da61da4ceb9d31e7124d88fdce/topics/delivery",
+    href: `${playbookDemoBase}/topics/delivery`,
     sections: [
       {
-        href: "/playbook/editions/v3.0.0/100/16a8b0657c998acc8e7c6371b4a74983a52dd1da61da4ceb9d31e7124d88fdce/topics/delivery#section-release",
+        href: `${playbookDemoBase}/topics/delivery#section-release`,
         title: "发布与回滚",
         snippet: "发布必须保留验证证据与回滚入口。",
         score: 14,
@@ -109,10 +113,10 @@ export const PLAYBOOK_SEARCH_DEMO_DOCUMENTS = [
     excerpt: "发布前检查权限、版本身份和恢复路径。",
     body: "安全发布要求检查权限、版本身份、恢复路径和审查证据。",
     type: "policy" as const,
-    href: "/playbook/editions/v3.0.0/100/16a8b0657c998acc8e7c6371b4a74983a52dd1da61da4ceb9d31e7124d88fdce/policies/safe-release",
+    href: `${playbookDemoBase}/policies/safe-release`,
     sections: [
       {
-        href: "/playbook/editions/v3.0.0/100/16a8b0657c998acc8e7c6371b4a74983a52dd1da61da4ceb9d31e7124d88fdce/policies/safe-release#policy-safe-release-resources-file-1",
+        href: `${playbookDemoBase}/policies/safe-release#policy-safe-release-resources-file-1`,
         title: "references/release-checklist.md",
         snippet: "发布检查清单：权限、版本、验证和恢复。",
         score: 16,

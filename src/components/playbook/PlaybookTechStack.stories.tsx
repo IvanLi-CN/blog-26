@@ -150,6 +150,40 @@ export const Fullscreen: Story = {
     await expect(opener).toHaveFocus();
   },
 };
+export const CopyFailure: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const descriptor = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    const originalExec = document.execCommand;
+    const originalTextareas = document.querySelectorAll("textarea").length;
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async () => {
+          throw new Error("Clipboard denied");
+        },
+      },
+    });
+    document.execCommand = () => {
+      throw new Error("Legacy copy denied");
+    };
+    try {
+      await userEvent.click(canvas.getByRole("button", { name: "复制原始数据" }));
+      await expect(canvas.getByRole("button", { name: "查看原始数据" })).toHaveAttribute(
+        "aria-expanded",
+        "true"
+      );
+      await expect(canvas.getByRole("status")).toHaveTextContent("复制失败，请手动复制");
+      await expect(document.querySelectorAll("textarea").length).toBe(originalTextareas);
+      await expect(window.getSelection()?.toString()).toContain('"ci_workflows"');
+    } finally {
+      document.execCommand = originalExec;
+      if (descriptor) Object.defineProperty(navigator, "clipboard", descriptor);
+      else Reflect.deleteProperty(navigator, "clipboard");
+    }
+  },
+};
+
 export const Empty: Story = {
   args: { value: { runtime: null, dependencies: [], status: "current" } },
 };
