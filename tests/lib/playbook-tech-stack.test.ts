@@ -11,6 +11,23 @@ import {
 } from "../../src/lib/playbook/tech-stack";
 
 describe("playbook technology stack presentation", () => {
+  test("gives repeated nested chip lists unique disclosure targets", () => {
+    const dependencies = Array.from({ length: 12 }, (_, index) => `package-${index}`);
+    const html = renderToStaticMarkup(
+      createElement(PlaybookTechStack, {
+        value: { tools: [{ dependencies }, { dependencies }] },
+      })
+    );
+    const ids = Array.from(html.matchAll(/id="(tech-stack-list-[^"]+)"/g), (match) => match[1]);
+    const controls = Array.from(
+      html.matchAll(/aria-controls="(tech-stack-list-[^"]+)"/g),
+      (match) => match[1]
+    );
+    expect(ids.length).toBe(2);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(controls).toEqual(ids);
+  });
+
   test("preserves a complete native disclosure when JavaScript is disabled", () => {
     const html = renderToStaticMarkup(
       createElement(PlaybookTechStack, {

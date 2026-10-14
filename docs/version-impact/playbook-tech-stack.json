@@ -15,7 +15,7 @@
     "src/components/playbook/PlaybookPage.tsx": "b0d05112c62bd495f93edd1b759066f15d409c39",
     "src/components/playbook/PlaybookTechStack.stories.tsx": "c12ecb55dcd97efeb4d50050fa31e8feb90c3fcb",
     "src/components/playbook/PlaybookTechStack.tsx": "f56bc179801c652ccf19bf0f09740f82faf25e3a",
-    "src/components/playbook/PlaybookTechStackChips.tsx": "4ecd1583462e8b6ec373d768ffd3306df6117dbc",
+    "src/components/playbook/PlaybookTechStackChips.tsx": "15633059a9705434d51614ffa1d67ea408247bd1",
     "src/components/playbook/PlaybookTechStackRaw.tsx": "664c2c312a911a32a74efefecb6c3ee7e4fa73d1",
     "src/lib/playbook/fixture.ts": "dd465aa9852b4a5694d55751adf14018fff53712",
     "src/lib/playbook/tech-stack.ts": "f528cc843f75da6d38a73b77f44c4fc4a0198364",
@@ -23,7 +23,7 @@
     "src/lib/search/web-demo-fixtures.ts": "7138647d74c36935833183a88b4ffc6e048fbd0b",
     "tests/e2e/web-demo/search-modes.spec.ts": "efa94452dfc0162ed5aa1966102972a77d8cdeb4",
     "tests/lib/playbook-fixture.ts": "f2848852e07c474bcf349dde63b4498a7718189d",
-    "tests/lib/playbook-tech-stack.test.ts": "f7f7b224081e9198d495e8603ba1e7282926fdce",
+    "tests/lib/playbook-tech-stack.test.ts": "17ab2eac328f2929489303bf602a42f91c2335a0",
     "tests/lib/playbook-web-demo-fixture.test.ts": "0cef5636efac20275d9d26e2fa542ff070810cc3",
     "tests/storybook/playbook-interactions.ts": "63c52be5ac568c3d08a06585357be8325295f1ef"
   },
@@ -40,7 +40,7 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-tech-stack.test.ts",
-          "blob": "f7f7b224081e9198d495e8603ba1e7282926fdce",
+          "blob": "17ab2eac328f2929489303bf602a42f91c2335a0",
           "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
         },
         {
@@ -62,7 +62,7 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-tech-stack.test.ts",
-          "blob": "f7f7b224081e9198d495e8603ba1e7282926fdce",
+          "blob": "17ab2eac328f2929489303bf602a42f91c2335a0",
           "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
         },
         {
@@ -88,7 +88,7 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-tech-stack.test.ts",
-          "blob": "f7f7b224081e9198d495e8603ba1e7282926fdce",
+          "blob": "17ab2eac328f2929489303bf602a42f91c2335a0",
           "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
         },
         {
@@ -112,7 +112,7 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-tech-stack.test.ts",
-          "blob": "f7f7b224081e9198d495e8603ba1e7282926fdce",
+          "blob": "17ab2eac328f2929489303bf602a42f91c2335a0",
           "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
         },
         {
@@ -131,7 +131,7 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-tech-stack.test.ts",
-          "blob": "f7f7b224081e9198d495e8603ba1e7282926fdce",
+          "blob": "17ab2eac328f2929489303bf602a42f91c2335a0",
           "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
         },
         {

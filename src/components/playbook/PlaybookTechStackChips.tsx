@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import {
   fitTechStackChips,
   shouldCollapseTechStackList,
@@ -16,6 +16,7 @@ export default function PlaybookTechStackChips({
   entry: TechStackEntry;
   items: TechStackNode[];
 }) {
+  const listId = useId();
   const [expanded, setExpanded] = useState(false);
   const [visibleCount, setVisibleCount] = useState(
     shouldCollapseTechStackList(entry.key, items.length) ? 4 : items.length
@@ -56,7 +57,7 @@ export default function PlaybookTechStackChips({
   const count = Math.min(visibleCount, items.length);
   const remaining = items.length - count;
   const toggleLabel = expanded ? `收起其余 ${remaining} 项` : `展开其余 ${remaining} 项`;
-  const overflowId = `tech-stack-list-${entry.key}`;
+  const overflowId = `tech-stack-list-${listId}`;
   const renderItem = (item: TechStackNode, index: number) => (
     <li key={`${entry.key}-${index}`} className="min-w-0 max-w-full shrink">
       <span className={chipClassName} title={item.kind === "scalar" ? String(item.value) : ""}>
