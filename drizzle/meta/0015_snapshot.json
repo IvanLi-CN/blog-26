@@ -376,6 +376,13 @@
           "notNull": true,
           "autoincrement": false,
           "default": false
+        },
+        "result": {
+          "name": "result",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {

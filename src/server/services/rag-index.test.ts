@@ -6,7 +6,11 @@ import { join } from "node:path";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
-import { getContentSourceManager, LocalContentSource } from "@/lib/content-sources";
+import {
+  getContentSourceManager,
+  LocalContentSource,
+  resetContentSourceManager,
+} from "@/lib/content-sources";
 import { ContentSourceManager } from "@/lib/content-sources/manager";
 import { db, initializeDB } from "@/lib/db";
 import { getRuntimePlaybookStore, PlaybookStore } from "@/lib/playbook/cache";
@@ -702,6 +706,7 @@ test("cancelled local sync retains discovered total and unprocessed remainder", 
     expect(task?.status).toBe("cancelled");
     expect(task?.total).toBe(10);
     expect(task?.processed).toBe(2);
+    expect(JSON.parse(task?.result ?? "null")).toMatchObject({ created: 2, totalProcessed: 2 });
     expect(task?.failed).toBe(0);
     expect(db.select().from(posts).all().length).toBe(2);
   } finally {
@@ -761,4 +766,187 @@ test("cache adoption commit fence rejects a changed base without replacing curre
   await reloaded.load();
   expect(reloaded.current?.edition.source.tag).toBe("v9.2.1");
   expect(reloaded.adoption?.taskId).not.toBe("superseded");
+});
+
+test("all-source parent aggregation retains colliding source identities", () => {
+  const coverage = summarizeCoverage([
+    { source: "blog", parentId: "same", state: "indexed" },
+    { source: "playbook", parentId: "same", state: "failed" },
+    { source: "blog", parentId: "same", state: "indexed" },
+  ]);
+  expect(coverage.contents).toMatchObject({ total: 2, indexed: 1, failed: 1 });
+  expect(coverage.chunks).toMatchObject({ total: 3, indexed: 2, failed: 1 });
+});
+
+for (const outcome of ["cancel", "fail"] as const) {
+  test(`rebuild ${outcome} retains previously committed valid coverage`, async () => {
+    await db.insert(posts).values(fixture(`rebuild-${outcome}`));
+    await completed((await runRagIndex({ source: "blog" }, "repair")).taskId);
+    const before = await ragCoverage({ source: "blog" });
+    let release: ((response: Response) => void) | undefined;
+    globalThis.fetch = Object.assign(
+      async () => {
+        if (release) return new Response("bad", { status: 400 });
+        return new Promise<Response>((resolve) => {
+          release = resolve;
+        });
+      },
+      { preconnect: originalFetch.preconnect }
+    );
+    const { taskId } = await runRagIndex({ source: "blog" }, "rebuild");
+    while (!release) await Bun.sleep(5);
+    expect((await ragCoverage({ source: "blog" })).status.contents.indexed).toBe(1);
+    if (outcome === "cancel") await cancelContentTask(taskId);
+    release(
+      outcome === "fail"
+        ? new Response("bad", { status: 400 })
+        : Response.json({ data: [{ embedding: [0, 1] }] })
+    );
+    expect((await completed(taskId)).status).toBe(outcome === "cancel" ? "cancelled" : "failed");
+    const after = await ragCoverage({ source: "blog" });
+    expect(after.status.contents.indexed).toBe(1);
+    expect([...after.eligibleVectorIds]).toEqual([...before.eligibleVectorIds]);
+  });
+}
+
+test("equivalent local requests share one operation and preserve durable actual history", async () => {
+  const manager = new ContentSourceManager();
+  const source = new LocalContentSource(
+    LocalContentSource.createDefaultConfig("local", 50, { contentPath: root })
+  );
+  let scans = 0;
+  let release: (() => void) | undefined;
+  source.detectChanges = async () => {
+    scans++;
+    await new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return {
+      sourceName: "local",
+      changes: [],
+      detectedAt: 1,
+      stats: { total: 0, created: 0, updated: 0, deleted: 0, skipped: 0 },
+    };
+  };
+  await manager.registerSource(source);
+  const first = manager.syncAll();
+  const second = manager.syncAll();
+  expect(first).toBe(second);
+  await expect(manager.syncAll(true)).rejects.toThrow("Task conflict");
+  while (!release) await Bun.sleep(5);
+  release();
+  const result = await first;
+  expect(scans).toBe(1);
+  expect(result.taskId).toBeDefined();
+  if (!result.taskId) throw new Error("Missing durable ID");
+  const task = await getContentTask(result.taskId);
+  if (!task?.result) throw new Error("Missing durable result");
+  expect(JSON.parse(task.result)).toEqual(result.stats);
+  expect((await contentSyncTotals()).totalSyncs).toBe(1);
+});
+
+test("cold local recovery registers configured source and keeps the original task identity", async () => {
+  resetContentSourceManager();
+  const oldPath = process.env.LOCAL_CONTENT_BASE_PATH;
+  const key = process.env.OPENAI_API_KEY;
+  const enabled = process.env.PLAYBOOK_SYNC_ENABLED;
+  process.env.LOCAL_CONTENT_BASE_PATH = root;
+  delete process.env.OPENAI_API_KEY;
+  process.env.PLAYBOOK_SYNC_ENABLED = "false";
+  const { task } = await beginContentTask({
+    kind: "sync",
+    source: "local",
+    requestKey: "incremental",
+    origin: "test",
+    target: "local-content",
+  });
+  try {
+    await db
+      .update(contentTasks)
+      .set({
+        processed: 2,
+        result: JSON.stringify({
+          totalProcessed: 2,
+          created: 2,
+          updated: 0,
+          deleted: 0,
+          skipped: 0,
+          errors: 0,
+        }),
+      })
+      .where(eq(contentTasks.id, task.id));
+    const stop = await startContentSyncRuntime();
+    stop();
+    const recovered = await completed(task.id);
+    expect(recovered.status).toBe("success");
+    expect(recovered.processed).toBe(2);
+    expect(JSON.parse(recovered.result ?? "null")).toMatchObject({ created: 2, totalProcessed: 2 });
+    expect(getContentSourceManager().getSource("local")).toBeDefined();
+    expect((await contentSyncTotals()).totalSyncs).toBe(1);
+  } finally {
+    if (oldPath === undefined) delete process.env.LOCAL_CONTENT_BASE_PATH;
+    else process.env.LOCAL_CONTENT_BASE_PATH = oldPath;
+    process.env.OPENAI_API_KEY = key;
+    if (enabled === undefined) delete process.env.PLAYBOOK_SYNC_ENABLED;
+    else process.env.PLAYBOOK_SYNC_ENABLED = enabled;
+    resetContentSourceManager();
+  }
+});
+
+test("all-source trigger continues Playbook while sharing an active local task", async () => {
+  resetContentSourceManager();
+  const { appRouter } = await import("@/server/router");
+  const caller = appRouter.createCaller({
+    req: new Request("http://localhost"),
+    resHeaders: new Headers(),
+    isAdmin: true,
+    user: { id: "synthetic-admin", email: "synthetic@example.test", nickname: "Synthetic" },
+  });
+  const manager = getContentSourceManager();
+  const source = new LocalContentSource(
+    LocalContentSource.createDefaultConfig("local", 50, { contentPath: root })
+  );
+  let release: (() => void) | undefined;
+  source.detectChanges = async () => {
+    await new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return {
+      sourceName: "local",
+      changes: [],
+      detectedAt: 1,
+      stats: { total: 0, created: 0, updated: 0, deleted: 0, skipped: 0 },
+    };
+  };
+  await manager.registerSource(source);
+  const oldEnabled = process.env.PLAYBOOK_SYNC_ENABLED;
+  const key = process.env.OPENAI_API_KEY;
+  process.env.PLAYBOOK_SYNC_ENABLED = "true";
+  delete process.env.OPENAI_API_KEY;
+  const store = getRuntimePlaybookStore();
+  const bundle = makePublicBundle("v3.1.0", "102");
+  store.downloadEdition = async () => bundle.edition;
+  try {
+    const local = manager.syncAll();
+    while (!release) await Bun.sleep(5);
+    await expect(
+      caller.admin.contentSync.triggerSync({ source: "all", isFullSync: true })
+    ).rejects.toThrow("Task conflict");
+    const all = caller.admin.contentSync.triggerSync({ source: "all" });
+    release();
+    await local;
+    const result = await all;
+    expect(result).toHaveProperty("playbook");
+    expect(store.current?.edition.source.releaseId).toBe("102");
+    const history = await caller.admin.contentSync.getSyncHistory({ limit: 20 });
+    const playbook = history.find((row) => row.sources[0] === "playbook");
+    expect(playbook?.stats.created).toBeGreaterThan(0);
+    expect(playbook?.stats.added).toBe(playbook?.stats.created);
+    expect((await contentSyncTotals()).totalSyncs).toBe(2);
+  } finally {
+    process.env.OPENAI_API_KEY = key;
+    if (oldEnabled === undefined) delete process.env.PLAYBOOK_SYNC_ENABLED;
+    else process.env.PLAYBOOK_SYNC_ENABLED = oldEnabled;
+    resetContentSourceManager();
+  }
 });

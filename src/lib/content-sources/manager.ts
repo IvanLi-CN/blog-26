@@ -69,6 +69,7 @@ export class ContentSourceManager {
   private syncHistory: SyncResult[] = [];
 
   private persistentTaskId: string | undefined;
+  private flight?: { full: boolean; resumeId?: string; promise: Promise<SyncResult> };
   constructor(config: ContentSourceManagerConfig = {}) {
     this.config = {
       maxConcurrentSyncs: config.maxConcurrentSyncs || 3,
@@ -153,7 +154,20 @@ export class ContentSourceManager {
    * 执行同步操作
    * @param isFullSync 是否为全量同步。true: 清空数据库后重新同步所有内容；false: 增量同步，只处理变更内容
    */
-  async syncAll(isFullSync: boolean = false, resumeId?: string): Promise<SyncResult> {
+  syncAll(isFullSync: boolean = false, resumeId?: string): Promise<SyncResult> {
+    if (this.flight) {
+      if (this.flight.full !== isFullSync || (resumeId && resumeId !== this.flight.resumeId))
+        return Promise.reject(new Error(`Task conflict: ${this.persistentTaskId ?? "local"}`));
+      return this.flight.promise;
+    }
+    const promise = this.executeSync(isFullSync, resumeId).finally(() => {
+      this.flight = undefined;
+    });
+    this.flight = { full: isFullSync, resumeId, promise };
+    return promise;
+  }
+
+  private async executeSync(isFullSync: boolean, resumeId?: string): Promise<SyncResult> {
     if (this.currentSync && this.currentSync.status === "running") {
       throw new Error("同步正在进行中，请等待完成");
     }
@@ -204,6 +218,7 @@ export class ContentSourceManager {
     if (taskControllers.get(task.id)?.signal.aborted) await this.cancelSync();
 
     const result: SyncResult = {
+      taskId: task.id,
       success: false,
       startTime,
       endTime: 0,
@@ -215,6 +230,7 @@ export class ContentSourceManager {
         deleted: 0,
         skipped: 0,
         errors: 0,
+        ...(resumeId && task.result ? JSON.parse(task.result) : {}),
       },
       errors: [],
       logs: [],
@@ -267,7 +283,7 @@ export class ContentSourceManager {
 
       // 应用变更到数据库
       this.currentSync.currentStep = "应用变更";
-      const applyResult = await this.applyChanges(mergedChanges);
+      const applyResult = await this.applyChanges(mergedChanges, result.stats);
 
       // 更新统计信息
       result.stats = applyResult.stats;
@@ -348,6 +364,7 @@ export class ContentSourceManager {
     await updateContentTask(task.id, {
       processed: result.stats.totalProcessed,
       failed: result.stats.errors,
+      result: JSON.stringify(result.stats),
     });
     finishContentTask(
       task.id,
@@ -572,24 +589,38 @@ export class ContentSourceManager {
   /**
    * 应用变更到数据库
    */
-  private async applyChanges(changeSet: ChangeSet): Promise<{
+  private async applyChanges(
+    changeSet: ChangeSet,
+    baseline?: SyncResult["stats"]
+  ): Promise<{
     stats: SyncResult["stats"];
     errors: SyncError[];
     logs: SyncLogEntry[];
   }> {
-    const stats = { totalProcessed: 0, created: 0, updated: 0, deleted: 0, skipped: 0, errors: 0 };
+    const stats = {
+      totalProcessed: 0,
+      created: 0,
+      updated: 0,
+      deleted: 0,
+      skipped: 0,
+      errors: 0,
+      ...baseline,
+    };
     const errors: SyncError[] = [];
     const logs: SyncLogEntry[] = [];
     const totalChanges = changeSet.changes.length;
     if (this.persistentTaskId)
-      await updateContentTask(this.persistentTaskId, { phase: "applying", total: totalChanges });
+      await updateContentTask(this.persistentTaskId, {
+        phase: "applying",
+        total: totalChanges + stats.totalProcessed,
+      });
 
     await this.logSync("info", `📝 开始应用变更，共 ${totalChanges} 个项目`);
 
     for (const [index, change] of changeSet.changes.entries()) {
       if (this.currentSync?.status === "cancelled") break;
       if (this.persistentTaskId)
-        await updateContentTask(this.persistentTaskId, { processed: index });
+        await updateContentTask(this.persistentTaskId, { processed: stats.totalProcessed });
       try {
         stats.totalProcessed++;
 
@@ -763,6 +794,12 @@ export class ContentSourceManager {
           timestamp: Date.now(),
         });
       }
+      if (this.persistentTaskId)
+        await updateContentTask(this.persistentTaskId, {
+          processed: stats.totalProcessed,
+          failed: stats.errors,
+          result: JSON.stringify(stats),
+        });
     }
 
     if (stats.created > 0 || stats.updated > 0 || stats.deleted > 0) {

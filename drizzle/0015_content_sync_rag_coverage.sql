@@ -1,6 +1,6 @@
 CREATE TABLE content_tasks (
  id text PRIMARY KEY NOT NULL, kind text NOT NULL, source text NOT NULL,
- request_key text NOT NULL, origin text NOT NULL, target text NOT NULL,
+ request_key text NOT NULL, origin text NOT NULL, target text NOT NULL, result text,
  status text NOT NULL, phase text NOT NULL, total integer NOT NULL DEFAULT 0,
  processed integer NOT NULL DEFAULT 0, failed integer NOT NULL DEFAULT 0,
  error text, started_at integer NOT NULL, finished_at integer, cancel_requested integer NOT NULL DEFAULT 0

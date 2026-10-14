@@ -232,14 +232,17 @@ const emptyCounts = () => ({
   failed: 0,
   coverage: null as number | null,
 });
-export function summarizeCoverage(entries: { parentId: string; state: CoverageState }[]) {
+export function summarizeCoverage(
+  entries: { source?: string; parentId: string; state: CoverageState }[]
+) {
   const chunks = emptyCounts(),
     contents = emptyCounts(),
     parents = new Map<string, CoverageState[]>();
   for (const row of entries) {
     chunks.total++;
     chunks[row.state]++;
-    parents.set(row.parentId, [...(parents.get(row.parentId) ?? []), row.state]);
+    const key = JSON.stringify([row.source ?? null, row.parentId]);
+    parents.set(key, [...(parents.get(key) ?? []), row.state]);
   }
   for (const states of parents.values()) {
     contents.total++;
@@ -583,7 +586,13 @@ export async function runRagIndex(
           if (owner?.status !== "running" || owner.cancelRequested)
             throw new DOMException("Task no longer owns target", "AbortError");
           tx.update(ragIndexTargets)
-            .set({ taskId: task.id, status: "pending", error: null, updatedAt: Date.now() })
+            .set({
+              taskId: task.id,
+              ...(coverage.status.details.find((row) => row.id === target.id)?.state === "indexed"
+                ? {}
+                : { status: "pending", error: null }),
+              updatedAt: Date.now(),
+            })
             .where(eq(ragIndexTargets.id, target.id))
             .run();
         });
@@ -740,7 +749,10 @@ export async function runRagIndex(
             throw new DOMException("Target no longer owned", "AbortError");
           tx.update(ragIndexTargets)
             .set({
-              status: "failed",
+              status:
+                coverage.status.details.find((row) => row.id === target.id)?.state === "indexed"
+                  ? "ready"
+                  : "failed",
               taskId: task.id,
               error: "Embedding preparation failed",
               updatedAt: Date.now(),

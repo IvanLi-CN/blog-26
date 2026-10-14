@@ -408,6 +408,7 @@ export const contentTasks = sqliteTable(
     requestKey: text("request_key").notNull(),
     origin: text("origin").notNull(),
     target: text("target").notNull(),
+    result: text("result"),
     status: text("status").notNull(),
     phase: text("phase").notNull(),
     total: integer("total").notNull().default(0),

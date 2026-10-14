@@ -68,6 +68,7 @@ export async function beginContentTask(input: {
       requestKey: input.requestKey,
       origin: input.origin,
       target: input.target,
+      result: null,
       status: "running",
       phase: "preparing",
       total: 0,
@@ -87,7 +88,9 @@ export async function beginContentTask(input: {
 
 export async function updateContentTask(
   id: string,
-  values: Partial<Pick<ContentTask, "phase" | "total" | "processed" | "failed" | "target">>
+  values: Partial<
+    Pick<ContentTask, "phase" | "total" | "processed" | "failed" | "target" | "result">
+  >
 ) {
   await db
     .update(contentTasks)

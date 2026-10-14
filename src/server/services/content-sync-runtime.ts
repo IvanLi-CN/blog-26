@@ -1,6 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { projectionDigest } from "@/lib/ai/embedding-target";
 import { getContentSourceManager } from "@/lib/content-sources";
+import { ensureContentSourcesRegistered } from "@/lib/content-sources/register";
 import { db } from "@/lib/db";
 import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
 import { parseEditionIdentity, samePlaybookEdition } from "@/lib/playbook/manifest";
@@ -11,6 +12,7 @@ import {
   taskControllers,
   updateContentTask,
 } from "./content-tasks";
+import { listPlaybookCandidates } from "./playbook-search";
 import { ragCatalog, ragCoverage, runRagIndex, triggerRagIndex } from "./rag-index";
 
 export const playbookSyncEnabled = () =>
@@ -72,6 +74,34 @@ export function checkPlaybook(origin = "manual", resumeId?: string) {
       adopted = !store.current || !samePlaybookEdition(store.current.edition, edition.edition);
       if (controller?.signal.aborted) throw controller.signal.reason;
       if (adopted && !resumeId && !sameBase(adoptionBase)) throw new Error("Adoption base changed");
+      const before = store.current ? listPlaybookCandidates(store.current) : [];
+      const after = listPlaybookCandidates(edition);
+      const previous = new Map(before.map((row) => [JSON.stringify([row.type, row.slug]), row]));
+      const next = new Map(after.map((row) => [JSON.stringify([row.type, row.slug]), row]));
+      const created = after.filter(
+        (row) => !previous.has(JSON.stringify([row.type, row.slug]))
+      ).length;
+      const deleted = before.filter(
+        (row) => !next.has(JSON.stringify([row.type, row.slug]))
+      ).length;
+      const updated = after.filter(
+        (row) =>
+          previous.has(JSON.stringify([row.type, row.slug])) &&
+          previous.get(JSON.stringify([row.type, row.slug]))?.contentHash !== row.contentHash
+      ).length;
+      await updateContentTask(task.id, {
+        total: after.length,
+        processed: after.length,
+        result: JSON.stringify({
+          before: before.length,
+          after: after.length,
+          created,
+          updated,
+          deleted,
+          skipped: after.length - created - updated,
+          errors: 0,
+        }),
+      });
       if (adopted)
         await store.adopt(
           edition,
@@ -100,6 +130,7 @@ export function checkPlaybook(origin = "manual", resumeId?: string) {
 export async function startContentSyncRuntime() {
   const store = getRuntimePlaybookStore();
   await store.load();
+  await ensureContentSourcesRegistered(getContentSourceManager());
   const unfinished = await db
     .select()
     .from(contentTasks)

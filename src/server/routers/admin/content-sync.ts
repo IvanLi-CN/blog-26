@@ -8,6 +8,7 @@ import {
 } from "../../services/content-tasks";
 import { listPlaybookCandidates } from "../../services/playbook-search";
 import { triggerRagIndex } from "../../services/rag-index";
+
 /**
  * 内容同步管理 tRPC 路由
  *
@@ -17,8 +18,9 @@ import { triggerRagIndex } from "../../services/rag-index";
 import { EventEmitter, on } from "node:events";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { ensureContentSourcesRegistered } from "@/lib/content-sources/register";
 import { SYSTEM_CONFIG } from "../../../config/paths";
-import { getContentSourceManager, LocalContentSource } from "../../../lib/content-sources";
+import { getContentSourceManager } from "../../../lib/content-sources";
 import { getRuntimePlaybookStore } from "../../../lib/playbook/cache";
 import { syncEventManager } from "../../../lib/sync-events";
 import { getPlaybookContentSyncStatus } from "../../services/search-semantic-projection";
@@ -125,20 +127,6 @@ export const adminContentSyncRouter = createTRPCRouter({
 
       const manager = getContentSourceManager(managerConfig);
 
-      // 检查是否有正在进行的同步
-      const currentSync = manager.getCurrentSyncProgress();
-      if (currentSync && currentSync.status === "running") {
-        const active = (
-          await listContentTasks({ source: "local", kind: "sync", limit: 100 })
-        ).items.find((task) => task.finishedAt === null);
-        if (active?.requestKey === (isFullSync ? "full" : "incremental"))
-          return { success: true, taskId: active.id, reused: true };
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "同步正在进行中，请等待完成",
-        });
-      }
-
       // 确保有注册的内容源
       await ensureContentSourcesRegistered(manager);
 
@@ -147,7 +135,11 @@ export const adminContentSyncRouter = createTRPCRouter({
       try {
         result = await manager.syncAll(isFullSync);
       } catch (error) {
-        if (source === "local") throw error;
+        if (
+          source === "local" ||
+          (error instanceof Error && error.message.startsWith("Task conflict:"))
+        )
+          throw error;
         const playbook = playbookSyncEnabled()
           ? await runPlaybookSync().catch(() => ({
               success: false,
@@ -159,6 +151,7 @@ export const adminContentSyncRouter = createTRPCRouter({
 
       const resultPayload = {
         success: result.success,
+        taskId: result.taskId,
         syncId: `sync_${Date.now()}`,
         startTime: result.startTime,
         endTime: result.endTime,
@@ -179,6 +172,8 @@ export const adminContentSyncRouter = createTRPCRouter({
       return { ...resultPayload, playbook };
     } catch (error) {
       if (error instanceof TRPCError) throw error;
+      if (error instanceof Error && error.message.startsWith("Task conflict:"))
+        throw new TRPCError({ code: "CONFLICT", message: error.message });
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: error instanceof Error ? error.message : "同步失败",
@@ -493,17 +488,32 @@ export const adminContentSyncRouter = createTRPCRouter({
         const history = (await listContentTasks({ kind: "sync", limit: input.limit })).items.filter(
           (task) => task.finishedAt !== null
         );
-        return history.map((task) => ({
-          success: ["success", "unchanged"].includes(task.status),
-          startTime: task.startedAt,
-          endTime: task.finishedAt ?? task.startedAt,
-          duration: (task.finishedAt ?? task.startedAt) - task.startedAt,
-          sources: [task.source],
-          stats: { totalProcessed: task.processed, added: 0, updated: 0, deleted: 0, skipped: 0 },
-          errorCount: task.failed || (task.status === "failed" ? 1 : 0),
-          taskId: task.id,
-          status: task.status,
-        }));
+        return history.map((task) => {
+          const stats =
+            task.result &&
+            (task.source !== "playbook" || ["success", "unchanged"].includes(task.status))
+              ? JSON.parse(task.result)
+              : null;
+          return {
+            success: ["success", "unchanged"].includes(task.status),
+            startTime: task.startedAt,
+            endTime: task.finishedAt ?? task.startedAt,
+            duration: (task.finishedAt ?? task.startedAt) - task.startedAt,
+            sources: [task.source],
+            stats: {
+              totalProcessed: task.processed,
+              created: stats ? stats.created : null,
+              added: stats ? stats.created : null,
+              updated: stats ? stats.updated : null,
+              deleted: stats ? stats.deleted : null,
+              skipped: stats ? stats.skipped : null,
+              errors: task.failed,
+            },
+            errorCount: task.failed || (task.status === "failed" ? 1 : 0),
+            taskId: task.id,
+            status: task.status,
+          };
+        });
       } catch (error) {
         console.error("Failed to fetch sync history:", error);
         throw new TRPCError({
@@ -615,29 +625,3 @@ export const adminContentSyncRouter = createTRPCRouter({
 // ============================================================================
 // 辅助函数
 // ============================================================================
-
-/**
- * 确保内容源已注册
- */
-async function ensureContentSourcesRegistered(manager: ReturnType<typeof getContentSourceManager>) {
-  const sources = manager.getSources();
-
-  // 如果没有注册的内容源，自动注册默认的内容源
-  if (sources.length === 0) {
-    // 仅当存在 LOCAL_CONTENT_BASE_PATH 且非空时注册本地源
-    const basePathEnv = process.env.LOCAL_CONTENT_BASE_PATH;
-    const configuredBasePath =
-      typeof basePathEnv === "string" && basePathEnv.trim().length > 0
-        ? basePathEnv.trim()
-        : SYSTEM_CONFIG.local.basePath;
-    const localEnabled = typeof configuredBasePath === "string" && configuredBasePath.length > 0;
-
-    if (localEnabled) {
-      const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
-        contentPath: configuredBasePath,
-      });
-      const localSource = new LocalContentSource(localConfig);
-      await manager.registerSource(localSource);
-    }
-  }
-}

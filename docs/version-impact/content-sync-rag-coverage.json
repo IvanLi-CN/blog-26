@@ -11,40 +11,42 @@
     "apps/admin/src/pages/content-sync.tsx": "bb36dbd81e0f6d5213b186ffe350eb5d63988a09",
     "docs/runbooks/style-playbook-publishing.md": "4fddba53a78d07ae4238345a218df1d58a9e3f0f",
     "docs/specs/search-relevance/HISTORY.md": "b99cad287621b9dee93c58cf9df57b46f807bf57",
-    "docs/specs/search-relevance/IMPLEMENTATION.md": "9a9f71a8bf4ddec308f09dad97f29f8f48e4977c",
+    "docs/specs/search-relevance/IMPLEMENTATION.md": "2d0a45ec7927c9410327abc8ce242fbe03ef94fa",
     "docs/specs/search-relevance/SPEC.md": "151a53557fad22a3e945753c310096e9545c3f1b",
     "docs/specs/search-relevance/assets/playbook-sync-admin-desktop.png": "cf51b36100373b7a45fa7780cb972eb40c0074e6",
     "docs/specs/search-relevance/assets/playbook-sync-admin-mobile.png": "073e57937dab2a947ba68a7d24754519b1847f18",
     "docs/specs/search-relevance/contracts/unified-search.md": "635b2d863cd8fd474c12f3ac7caae0a56c4c2026",
     "docs/specs/style-playbook-integration/HISTORY.md": "c941a290e779be6a0996906744f4c661a351a380",
-    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "5cd9db9ab8877af20e20e30e75dd46b100d6afb3",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "86019ad84cb8240bd0f8c02a53cd496777604e88",
     "docs/specs/style-playbook-integration/SPEC.md": "f58b86ab2a4558bd8c7406eafbd6d7fa8a62e2c8",
-    "docs/specs/style-playbook-integration/VALIDATION.md": "be26408503cc70bf095e4482a1028057c06457db",
+    "docs/specs/style-playbook-integration/VALIDATION.md": "4e0f9003350b8424e62970ec29939ff1bd81fc10",
     "docs/specs/style-playbook-integration/assets/content-sync-rag-tablet-unconfigured.png": "c54f67dbe154970fb3afa994a380e3101f0b3a6b",
-    "docs/specs/style-playbook-integration/contracts/content-sync-status.md": "626064ed6c2402ec2c7a1dd27c990b3c9b902511",
-    "drizzle/0015_content_sync_rag_coverage.sql": "746b9c509c2142848bd8e47e549b8c065869d7a0",
-    "drizzle/meta/0015_snapshot.json": "997637a432a4c3be9f30506394e8a1081064c866",
+    "docs/specs/style-playbook-integration/contracts/content-sync-status.md": "b998443928c49c3febcc5888c3b31ecf8ab2f5b4",
+    "drizzle/0015_content_sync_rag_coverage.sql": "f0cd56b1f77634c40ab959dc66a7241b27649f4d",
+    "drizzle/meta/0015_snapshot.json": "76b2fd49f4dc2d94edd8c7465cdeb338f1f59edf",
     "drizzle/meta/_journal.json": "7857aaa1708ecdfa13595f9cca175d4faf810a42",
     "scripts/start-console.ts": "33431cd602f522b6cc5a75dbc277ebc556415ff7",
     "src/lib/admin-api-client.ts": "cae217fb6b32ec386a999b14e9d978aea0ba7307",
     "src/lib/ai/embedding-target.ts": "8473f83fef0473d4bc967b068ac130bb1b576caf",
     "src/lib/ai/embeddings.ts": "b93e0f46f39b1156346955758190264c84aea075",
     "src/lib/ai/vectorization.ts": "8384555503d84d9361d85ebfa3a2e8d3ce2a79e8",
-    "src/lib/content-sources/manager.ts": "d0de9272f1d5a5749a9f993178830ce11a07460e",
+    "src/lib/content-sources/manager.ts": "aa96e313cf972dd390c0a5f557e00c094ad58c00",
+    "src/lib/content-sources/register.ts": "002ac26833d4902558542ef4b8b54c5c4b43a8ba",
+    "src/lib/content-sources/types.ts": "f0ccb4d6065388c7161ed3cbcea4f3f41c102191",
     "src/lib/playbook/cache.ts": "d43212a8649d0629231d52b89bfe8bdc47c533be",
-    "src/lib/schema.ts": "a2113771c6701ea55eb0533dc2195353bff23d2d",
+    "src/lib/schema.ts": "f5b943c25cdaeddb5863a37974736cfd4b321047",
     "src/lib/web-demo-runtime.ts": "e4e39562b595bbce1e2cae92d5572e847bd4216c",
     "src/server/admin-api/router.ts": "c04dd56f4b88df6831d7fb80c1c59b771d7ec9b8",
-    "src/server/routers/admin/content-sync.ts": "577aa0fb033bebec6f1a1dc96331107356aa3553",
+    "src/server/routers/admin/content-sync.ts": "fb43d5998d5e0f1ad440452faaacdafa5f6073af",
     "src/server/routers/admin/vectorize.ts": "4d8ce2ce95aae60be1fd855cbabfab99bc29cf2f",
     "src/server/services/content-search.test.ts": "182b46bdd47436a02832013d42f1bc46f31a4202",
     "src/server/services/content-search.ts": "654c9aa345bcd5f9a847555cc89d9ac2111932af",
-    "src/server/services/content-sync-runtime.ts": "c313f2c84f733885df202a0eac12797e929c82db",
+    "src/server/services/content-sync-runtime.ts": "ce7b4759fc6c7fa913368144417b46d767d4c5c3",
     "src/server/services/content-sync-status.ts": "eabfca64f53a5d2c7b9e10e610512694918443f8",
-    "src/server/services/content-tasks.ts": "537c381e0e8c654f08ea27deec01698c70001e5f",
+    "src/server/services/content-tasks.ts": "49d25b038f8254643a29f1a03fc0fb31b299ef23",
     "src/server/services/playbook-search.ts": "de3b3b569d94ae0bcea223e10c922a86af0f5469",
-    "src/server/services/rag-index.test.ts": "1393da3ffd9273b85582ccd7b43be749dfd56f8a",
-    "src/server/services/rag-index.ts": "d2d982f05d0765adea95b9e14a4585aa29690bf5",
+    "src/server/services/rag-index.test.ts": "8dbd18876a21db3b30d1d3ac109f1fcd0e7fc0af",
+    "src/server/services/rag-index.ts": "3b97b09587c13db160e4bb35cd78c0b15ac3c55a",
     "src/server/services/search-semantic-projection.ts": "de2be6f33aefedf504d49890fff2b1c210e0f58b",
     "tests/e2e/web-demo/content-sync.spec.ts": "d1ccd325729acac76798b913be3fafb3c4711d5b",
     "tests/lib/rag-index-restart-fixture.ts": "65ea0596470140d19271829591deee13919b90b4",
@@ -68,7 +70,7 @@
         },
         {
           "path": "src/server/services/rag-index.test.ts",
-          "blob": "1393da3ffd9273b85582ccd7b43be749dfd56f8a",
+          "blob": "8dbd18876a21db3b30d1d3ac109f1fcd0e7fc0af",
           "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
         },
         {
@@ -78,7 +80,7 @@
         },
         {
           "path": "drizzle/0015_content_sync_rag_coverage.sql",
-          "blob": "746b9c509c2142848bd8e47e549b8c065869d7a0",
+          "blob": "f0cd56b1f77634c40ab959dc66a7241b27649f4d",
           "command": "Forward schema preserves legacy tables; actual v3.3.0 source reads and writes candidate data"
         },
         {
@@ -100,7 +102,7 @@
         },
         {
           "path": "src/server/services/rag-index.test.ts",
-          "blob": "1393da3ffd9273b85582ccd7b43be749dfd56f8a",
+          "blob": "8dbd18876a21db3b30d1d3ac109f1fcd0e7fc0af",
           "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
         },
         {
@@ -110,7 +112,7 @@
         },
         {
           "path": "drizzle/0015_content_sync_rag_coverage.sql",
-          "blob": "746b9c509c2142848bd8e47e549b8c065869d7a0",
+          "blob": "f0cd56b1f77634c40ab959dc66a7241b27649f4d",
           "command": "Forward schema preserves legacy tables; actual v3.3.0 source reads and writes candidate data"
         },
         {
@@ -136,7 +138,7 @@
         },
         {
           "path": "src/server/services/rag-index.test.ts",
-          "blob": "1393da3ffd9273b85582ccd7b43be749dfd56f8a",
+          "blob": "8dbd18876a21db3b30d1d3ac109f1fcd0e7fc0af",
           "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
         },
         {
@@ -146,7 +148,7 @@
         },
         {
           "path": "drizzle/0015_content_sync_rag_coverage.sql",
-          "blob": "746b9c509c2142848bd8e47e549b8c065869d7a0",
+          "blob": "f0cd56b1f77634c40ab959dc66a7241b27649f4d",
           "command": "Forward schema preserves legacy tables; actual v3.3.0 source reads and writes candidate data"
         },
         {
@@ -199,12 +201,12 @@
         },
         {
           "path": "src/server/services/rag-index.test.ts",
-          "blob": "1393da3ffd9273b85582ccd7b43be749dfd56f8a",
+          "blob": "8dbd18876a21db3b30d1d3ac109f1fcd0e7fc0af",
           "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
         },
         {
           "path": "drizzle/0015_content_sync_rag_coverage.sql",
-          "blob": "746b9c509c2142848bd8e47e549b8c065869d7a0",
+          "blob": "f0cd56b1f77634c40ab959dc66a7241b27649f4d",
           "command": "Forward schema preserves legacy tables; actual v3.3.0 source reads and writes candidate data"
         }
       ]
