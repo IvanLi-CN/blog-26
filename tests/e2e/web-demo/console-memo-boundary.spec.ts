@@ -106,6 +106,26 @@ test.describe("Console Memo Web Demo", () => {
     ).toContainText("持久文章工作流");
   });
 
+  test("keeps clipping materials and discussion inside the Admin preview Web Demo", async ({
+    page,
+  }) => {
+    await page.goto(`/admin/preview/memos/${clippingSlug}?d_persona=admin&d_scene=clipping-ready`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.getByRole("heading", { name: "Memo 预览" })).toBeVisible();
+    await expect(
+      page.locator('[data-testid="clipping-detail"][data-clipping-surface="admin"]')
+    ).toBeVisible();
+    await expect(page.locator('[data-testid="clipping-article-source"]:visible')).toContainText(
+      "Durable article workflows"
+    );
+    await expect(page.locator('[data-testid="clipping-chat"]:visible')).toBeVisible();
+    await page.getByRole("button", { name: "简体中文译文" }).click();
+    await expect(
+      page.locator('[data-testid="clipping-article-translation"]:visible')
+    ).toContainText("持久文章工作流");
+  });
+
   test("saves in place and records the in-memory Web Demo mutation", async ({ page }) => {
     await page.goto(`/memos/${privateSlug}/?d_persona=admin&d_delay=normal`, {
       waitUntil: "domcontentloaded",

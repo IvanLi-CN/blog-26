@@ -6,7 +6,7 @@
     ".gitignore": "ce64803d3963e4668cd644c7ef465dd36e266eba",
     "GLOSSARY.md": "d123cb3d82eabceaf2260468391ff5dc3ad23f46",
     "apps/admin/src/demo/mock-admin-api.ts": "51ee39963bad553972dfee4b576e7da0e44a5d6e",
-    "apps/admin/src/pages/preview.tsx": "3d11d28eb5559e8c32096c1cc8cd5a4741e2cd4a",
+    "apps/admin/src/pages/preview.tsx": "a2f09e3a0559da1d8369412f9037a172550d7719",
     "astro.config.mjs": "ad1280529c2702869c7392ffe27f65845b9122a1",
     "docs/adr/0024-memo-detail-preview-boundary.md": "181d067980d444f265ac62443fc3d824077f7e61",
     "docs/specs/memo-admin-inline-view/SPEC.md": "4500d02d44f3f5cd72db314f49adad6cfb55c549",
@@ -35,7 +35,7 @@
     "tests/e2e/admin/memos/helpers.ts": "d858b41e327d7570fbed70c7f3481611209e0dde",
     "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts": "8f2abe570c343db4e6634c6e5335ca53428bd988",
     "tests/e2e/guest/public-csr-navigation.spec.ts": "7df417873f7586d4f6eeaab787b521d156de746b",
-    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "0ecb26c27960e2027465122fb81238a706df1672",
+    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "22e87fe2fef1cd3ca863d2b2da461df402a6ec90",
     "tests/lib/console-memo-page-data.test.ts": "369c2c4d5c3dadd25c0a3f42afeca870aa2404f1",
     "tests/lib/console-web-demo.test.ts": "922bc22e3cbb5d30b94378929ceaa56202366090",
     "tsconfig.json": "676a7f22b8020a9b9fe1eeeafd06c72625abafcc",
@@ -67,8 +67,13 @@
     "current": {
       "impact": "patch",
       "reasoning": "The candidate changes only the Console Memo detail/preview boundary, request-scoped initial projection, unauthorized read status mapping, shared route history state, and the official build-time Web Demo evidence surface. Public API payload shapes, persistent state, snapshot publishing, and deployment host configuration remain unchanged; the deliberate 403-to-404 mapping for unauthorized private reads makes them indistinguishable from missing resources, while the Demo uses an explicit guest projection that omits authoring-only fields. Console guests now use the current request-scoped public API projection and cannot fall back to a lagging public snapshot after a Memo becomes private or draft. The current candidate also keeps administrator tools inside the Memo detail reading surface on desktop and mobile.",
-      "assessed_at": "2026-10-14T15:27:03+08:00",
+      "assessed_at": "2026-10-14T15:57:44+08:00",
       "evidence": [
+        {
+          "path": "apps/admin/src/pages/preview.tsx",
+          "blob": "a2f09e3a0559da1d8369412f9037a172550d7719",
+          "command": "Admin preview Web Demo uses the closed clipping adapter for source, translation, discussion, and state mutations without public API fallback"
+        },
         {
           "path": "site/lib/page-data/memo.ts",
           "blob": "9cfaa69697910998b7ec4502d664d4ebda797ac2",
@@ -91,8 +96,8 @@
         },
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "0ecb26c27960e2027465122fb81238a706df1672",
-          "command": "Official Console Web Demo E2E covers navigation, history, preview boundary, SSR privacy, clipping, and same-route save"
+          "blob": "22e87fe2fef1cd3ca863d2b2da461df402a6ec90",
+          "command": "Official Console Web Demo E2E covers navigation, history, preview boundary, SSR privacy, clipping, Admin preview clipping materials, and same-route save"
         },
         {
           "path": "scripts/build-web-demo.ts",
@@ -113,12 +118,17 @@
     "verified": {
       "impact": "patch",
       "reasoning": "Focused component, Console projection, page-data source selection, clipping, HTTP compatibility, official Web Demo build, and Console browser acceptance checks pass. The implementation preserves existing public payload shapes and persistent state while enforcing the same-origin detail/preview boundary and private-resource non-disclosure; the 403-to-404 status change is an intentional compatible privacy hardening because private and missing resources share the documented not-found response. Console runtime now refuses snapshot fallback when the current request has no authorized Memo projection. The focused Web Demo evidence additionally asserts that the administrator toolbar is contained by the visible detail card.",
-      "assessed_at": "2026-10-14T15:27:03+08:00",
+      "assessed_at": "2026-10-14T15:57:44+08:00",
       "evidence": [
         {
+          "path": "apps/admin/src/pages/preview.tsx",
+          "blob": "a2f09e3a0559da1d8369412f9037a172550d7719",
+          "command": "Admin preview Web Demo adapter test path keeps clipping source, translation, and discussion on the closed in-memory transport"
+        },
+        {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "0ecb26c27960e2027465122fb81238a706df1672",
-          "command": "Official Console Web Demo E2E: 5 passed"
+          "blob": "22e87fe2fef1cd3ca863d2b2da461df402a6ec90",
+          "command": "Official Console Web Demo E2E: 6 passed"
         },
         {
           "path": "tests/lib/console-web-demo.test.ts",
