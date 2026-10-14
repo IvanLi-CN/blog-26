@@ -57,6 +57,8 @@ Open the official route:
 http://127.0.0.1:${SITE_PORT}/memos/
 ```
 
+To exercise the administrator Memo composer and quick-edit modal in the same Web Demo, append `?d_persona=admin` to the route. In the Inspector, choose `Memos · 快速编辑` to open the modal directly, or use `?d_scene=memo-quick-edit&d_persona=admin` as a shareable entry URL. Memo creates and edits are in-memory Demo mutations and reset when the page is refreshed.
+
 For the Admin Demo, start the separately configured Vite Demo build:
 
 ```text
