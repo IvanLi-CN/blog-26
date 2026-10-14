@@ -909,6 +909,26 @@ describe("playbook-cache-http-ssr", () => {
     expect(observedCurrent).toBe(true);
     expect(store.current?.edition.source.tag).toBe("v3.1.0");
   });
+  test("keeps an adopted edition when semantic preparation fails afterwards", async () => {
+    const root = await temp();
+    const current = makePublicBundle();
+    const next = makePublicBundle("v3.1.0", "101");
+    const store = new PlaybookStore(root, async (url) => {
+      if (url.endsWith("manifest.json")) return Response.json(next.edition.edition);
+      if (url.endsWith("catalog.json")) return new Response(encodeJson(next.edition.catalog));
+      if (url.endsWith("search-documents.json"))
+        return new Response(encodeJson(next.edition.search));
+      return new Response("{}\n");
+    });
+    await store.adopt(current.edition);
+
+    await expect(
+      store.sync(undefined, undefined, async () => {
+        throw new Error("embedding unavailable");
+      })
+    ).rejects.toThrow("embedding unavailable");
+    expect(store.current?.edition.source.tag).toBe("v3.1.0");
+  });
   test("shares staged downloads and cancels the active operation without a stale controller", async () => {
     const root = await temp();
     const next = makePublicBundle("v3.1.0", "101");

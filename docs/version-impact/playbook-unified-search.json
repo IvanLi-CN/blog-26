@@ -12,7 +12,7 @@
     "docs/specs/search-relevance/HISTORY.md": "ff0f0518b2719f9b470ed56ff261488ca9952956",
     "docs/specs/search-relevance/IMPLEMENTATION.md": "14b77bf57cd9986069aee00b9f657d4a4a093566",
     "docs/specs/search-relevance/SPEC.md": "ef2e181c0ac3be7d5638d637d7df57f4916437ef",
-    "docs/specs/search-relevance/VALIDATION.md": "df508cf48e8a412583be957ca53a39bf465855cc",
+    "docs/specs/search-relevance/VALIDATION.md": "7baa50de08e847402d285bcbbc4685faf62103e1",
     "docs/specs/search-relevance/assets/playbook-sync-admin-desktop.png": "6f57632148ebc98aff468e652195aeaeed68a0e1",
     "docs/specs/search-relevance/assets/playbook-sync-admin-mobile.png": "b09c510da0338429b8614d988dfc24ee6fa56d0f",
     "docs/specs/search-relevance/assets/unified-playbook-search-desktop.png": "7705ebed4ead739684f7306dd365491b8a240031",
@@ -37,7 +37,7 @@
     "src/components/search/search-navigation.test.ts": "97bd3ce1dc987f9318a235deaf5872f9ab749a36",
     "src/components/search/search-navigation.ts": "4bac7269cc3c6aec725b937cb34d1dc4f7427e1f",
     "src/lib/admin-api-client.ts": "4fc20033388fadcc8d594ff41a3ced77fe21428d",
-    "src/lib/playbook/cache.ts": "e3bfdeefeebb625f8867a54e7ffad93b36b5ec82",
+    "src/lib/playbook/cache.ts": "a8d2f5b096e4511ac7852af1ef863c6dbc6a7f71",
     "src/lib/playbook/navigation.ts": "8ceda2eea07a00202e82e8bebb53a5330dd7ce21",
     "src/lib/schema.ts": "4da5492592b8ffc901065d97c6ab12c899bd1321",
     "src/lib/search/native-query.ts": "7a866db5554b2060bb9fe172cb62d810da97d442",
@@ -47,7 +47,7 @@
     "src/server/mcp.ts": "3ae77be0a97545c114c550955d3232958a550e61",
     "src/server/public-api/playbook.ts": "df4a67a133e4585534f30c670f3bdf766e213a94",
     "src/server/public-api/router.ts": "00433789abc0906f79843e8ca440a60c8b958c24",
-    "src/server/routers/admin/content-sync.ts": "5f2c0dbd583652ba6f9446cb58b689c65c4e0bc7",
+    "src/server/routers/admin/content-sync.ts": "f3fdc4d736f67787c6b2b2ad891e9247b63de1a2",
     "src/server/services/content-search.test.ts": "18425472d93a670c7874a4aec082f821d324ebe3",
     "src/server/services/content-search.ts": "3f1bb0f298f103fc10fd5ac4a99eee61d6e6cdd5",
     "src/server/services/playbook-search.test.ts": "cbf78b59eb254eef3a0dd2a44b363fa94e003595",
@@ -56,9 +56,9 @@
     "src/server/services/search-model.test.ts": "07a7b8422296ae7c8137a20354fa4c045de3fb1b",
     "src/server/services/search-model.ts": "0b0fcf734f5d63cb97283ab74870d8dea1c6448b",
     "src/server/services/search-semantic-projection.ts": "fc53ba2c181bb67fe7f985897aea2bca775c872e",
-    "tests/e2e/web-demo/search-modes.spec.ts": "76d6eb907635f9ca222014d98b3257c905468e36",
+    "tests/e2e/web-demo/search-modes.spec.ts": "e7c16418009ed9341bc9d474bec3981298123196",
     "tests/lib/public-csr-route.test.ts": "3b37883bed30e54f2afd3d5dd212b951ea2930ac",
-    "tests/lib/playbook-contract.test.ts": "9863384dc5c6239996e722f3d5af1058859f89f0"
+    "tests/lib/playbook-contract.test.ts": "0b66684c10afbc0bdf0fe524d32f9a5ef1f9794f"
   },
   "change": {
     "description": "Unify public Playbook topics, project practices, Policy instructions and public resources with blog keyword search and modern RAG, while adding edition-bound semantic projections, recoverable content sync, versioned reading routes and the corresponding admin status surface.",
@@ -100,8 +100,8 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "Targeted unit, migration, model-input isolation, Playbook adapter, admin status, atomic adoption, sync singleflight/cancellation and cross-entrypoint contract tests pass; the non-root Agent VM suite reports 86 tests and 491 assertions, native verification reports 23/23, Web Demo search E2E reports 9/9, and the isolated synthetic Playbook RAG evidence passes. External provider availability remains an environment boundary.",
-      "assessed_at": "2026-10-14T03:00:00+08:00",
+      "reasoning": "Targeted unit, migration, model-input isolation, Playbook adapter, admin status, atomic adoption, sync singleflight/cancellation and cross-entrypoint contract tests pass; the non-root Agent VM suite reports 88 tests and 496 assertions, native verification reports 23/23, Web Demo search E2E reports 9/9, and the isolated synthetic Playbook RAG evidence passes. External provider availability remains an environment boundary.",
+      "assessed_at": "2026-10-14T13:16:14+08:00",
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
@@ -131,12 +131,12 @@
         {
           "path": "tests/e2e/web-demo/search-modes.spec.ts",
           "command": "Agent VM Web Demo Playwright: 9/9 passed",
-          "blob": "76d6eb907635f9ca222014d98b3257c905468e36"
+          "blob": "e7c16418009ed9341bc9d474bec3981298123196"
         },
         {
           "path": "docs/specs/search-relevance/VALIDATION.md",
-          "command": "Agent VM native 23/23, targeted 86 tests/491 assertions, Web Demo 9/9, synthetic Playbook RAG 1 pass/14 assertions",
-          "blob": "df508cf48e8a412583be957ca53a39bf465855cc"
+          "command": "Agent VM native 23/23, targeted 88 tests/496 assertions, Web Demo 9/9, synthetic Playbook RAG 1 pass/14 assertions",
+          "blob": "7baa50de08e847402d285bcbbc4685faf62103e1"
         }
       ],
       "scope_drift": {
@@ -146,8 +146,8 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "Targeted unit, migration, model-input isolation, Playbook adapter, admin status, atomic adoption, sync singleflight/cancellation and cross-entrypoint contract tests pass; the non-root Agent VM suite reports 86 tests and 491 assertions, native verification reports 23/23, Web Demo search E2E reports 9/9, and the isolated synthetic Playbook RAG evidence passes. External provider availability remains an environment boundary.",
-      "assessed_at": "2026-10-14T03:00:00+08:00",
+      "reasoning": "Targeted unit, migration, model-input isolation, Playbook adapter, admin status, atomic adoption, sync singleflight/cancellation and cross-entrypoint contract tests pass; the non-root Agent VM suite reports 88 tests and 496 assertions, native verification reports 23/23, Web Demo search E2E reports 9/9, and the isolated synthetic Playbook RAG evidence passes. External provider availability remains an environment boundary.",
+      "assessed_at": "2026-10-14T13:16:14+08:00",
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
@@ -177,12 +177,12 @@
         {
           "path": "tests/e2e/web-demo/search-modes.spec.ts",
           "command": "Agent VM Web Demo Playwright: 9/9 passed",
-          "blob": "76d6eb907635f9ca222014d98b3257c905468e36"
+          "blob": "e7c16418009ed9341bc9d474bec3981298123196"
         },
         {
           "path": "docs/specs/search-relevance/VALIDATION.md",
-          "command": "Agent VM native 23/23, targeted 86 tests/491 assertions, Web Demo 9/9, synthetic Playbook RAG 1 pass/14 assertions",
-          "blob": "df508cf48e8a412583be957ca53a39bf465855cc"
+          "command": "Agent VM native 23/23, targeted 88 tests/496 assertions, Web Demo 9/9, synthetic Playbook RAG 1 pass/14 assertions",
+          "blob": "7baa50de08e847402d285bcbbc4685faf62103e1"
         }
       ]
     }

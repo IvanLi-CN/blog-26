@@ -19,11 +19,14 @@ test("mode selection survives refresh and history and shows genuine mode-specifi
   await expect(page).toHaveURL(/mode=rag/);
   await expect(results).toContainText("SQLite3：嵌入式数据库实践");
   await page.reload();
+  await expect(page.locator("astro-island[data-search-ready='true']")).toHaveCount(1);
   await expect(page.getByRole("button", { name: "RAG", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true"
   );
-  await page.getByRole("button", { name: "AI 改写", exact: true }).click();
+  const rewriteButton = page.getByRole("button", { name: "AI 改写", exact: true });
+  await expect(rewriteButton).toBeEnabled({ timeout: 10_000 });
+  await rewriteButton.click();
   await expect(page).toHaveURL(/mode=rewrite/);
   await page.goBack();
   await expect(page.getByRole("button", { name: "RAG", exact: true })).toHaveAttribute(
@@ -117,7 +120,9 @@ test("mobile mode controls remain keyboard accessible without horizontal overflo
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto("/search/?q=SQLite&mode=keyword&d_theme=dark&d_delay=normal");
   await hideInspector(page);
+  await expect(page.locator("astro-island[data-search-ready='true']")).toHaveCount(1);
   const button = page.getByRole("button", { name: "RAG", exact: true });
+  await expect(button).toBeEnabled({ timeout: 10_000 });
   await button.focus();
   await page.keyboard.press("Enter");
   await expect(button).toHaveAttribute("aria-pressed", "true");

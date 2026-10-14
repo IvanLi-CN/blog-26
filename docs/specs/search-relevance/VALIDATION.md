@@ -6,9 +6,9 @@
 
 当前工作区候选以远端基线 `ceecf5ed867ee849fce6d8e5d8225e9e5505923a` 为基准，覆盖 Playbook 公开正文、Policy 公开资源、同版语义投影、统一来源过滤和版本绑定。Agent VM 中 `bun run search:native:build && bun run search:native:verify` 的 23 项 native 契约通过，`bun run db:migrations:validate` 通过，`PLAYBOOK_RENDERER_COMMIT=ceecf5ed867ee849fce6d8e5d8225e9e5505923a bun run web-demo:build` 的 public 与 admin Web Demo 均构建成功；构建保留 Astro 路由和大 chunk 的既有 warning。
 
-非 root Agent VM 定向套件 `bun test --isolate src/components/search/search-navigation.test.ts src/server/services/content-search.test.ts src/server/services/playbook-search.test.ts src/server/services/search-migration.test.ts src/server/services/search-model.test.ts tests/lib/playbook-contract.test.ts tests/lib/public-csr-route.test.ts apps/admin/src/pages/content-sync.test.tsx` 为 86 pass / 0 fail，491 assertions。通过项覆盖 native 持久索引、NEAR 剪藏权限复核、HTTP/tRPC/MCP 契约、Playbook 候选聚合、同版语义 RAG、原子采用恢复、管理同步状态和完整 edition URL 导航；新增回归确认手动与轮询 staged download 共用 singleflight，旧 operation 完成后取消不会丢失当前 controller。
+非 root Agent VM 定向套件 `bun test --isolate src/components/search/search-navigation.test.ts src/server/services/content-search.test.ts src/server/services/playbook-search.test.ts src/server/services/search-migration.test.ts src/server/services/search-model.test.ts tests/lib/playbook-contract.test.ts tests/lib/public-csr-route.test.ts apps/admin/src/pages/content-sync.test.tsx` 为 88 pass / 0 fail，496 assertions。通过项覆盖 native 持久索引、NEAR 剪藏权限复核、HTTP/tRPC/MCP 契约、Playbook 候选聚合、同版语义 RAG、原子采用恢复、管理同步状态和完整 edition URL 导航；新增回归确认手动与轮询 staged download 共用 singleflight，旧 operation 完成后取消不会丢失当前 controller，采用完成后语义准备失败仍保留已采用 edition。
 
-Web Demo `tests/e2e/web-demo/search-modes.spec.ts` 在同一构建产物上为 9/9 通过，包含统一搜索等待、Playbook RAG 结果、Policy 来源过滤、edition-bound 阅读链接、AI 回退、场景切换、迟到请求、移动键盘交互和模型设置保存；场景面板显式打开，异步断言使用固定合成延迟以避免瞬态时序抖动。
+Web Demo `tests/e2e/web-demo/search-modes.spec.ts` 在同一构建产物上为 9/9 通过，包含统一搜索等待、Playbook RAG 结果、Policy 来源过滤、edition-bound 阅读链接、AI 回退、场景切换、迟到请求、移动键盘交互和模型设置保存；场景面板显式打开，搜索水合就绪后再执行键盘与模式切换断言，异步断言使用固定合成延迟以避免瞬态时序抖动。
 
 固定合成 provider 的 Playbook RAG 实证通过：公开 `v3.0.0` edition 先原子采用，再为同一 edition 生成 semantic projection；无字面重合的 `semantic-only` 查询在 `source=all,type=policy` 下召回 Playbook，模型请求只收到带完整 edition 身份的候选和 `<untrusted-playbook-evidence>` 分隔内容，`source=playbook` 不混入博客，语义覆盖元信息保持完整。当前用例为 1 pass、14 assertions、32 filtered tests；该实证不使用生产凭据，也不替代真实提供方验收。
 
