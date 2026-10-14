@@ -141,6 +141,20 @@ export async function getPlaybookSemanticStatus(
   };
 }
 
+export async function discardPlaybookSemanticProjection(edition: PlaybookEdition, model: string) {
+  await db
+    .delete(searchSemanticEmbeddings)
+    .where(
+      and(
+        eq(searchSemanticEmbeddings.source, "playbook"),
+        eq(searchSemanticEmbeddings.editionDigest, edition.edition.editionDigest),
+        eq(searchSemanticEmbeddings.sourceReleaseId, edition.edition.source.releaseId),
+        eq(searchSemanticEmbeddings.sourceTag, edition.edition.source.tag),
+        eq(searchSemanticEmbeddings.modelName, model)
+      )
+    );
+}
+
 /** Prepare stable edition-bound chunks without making adoption depend on embeddings. */
 export async function preparePlaybookSemanticProjection(
   edition: PlaybookEdition,

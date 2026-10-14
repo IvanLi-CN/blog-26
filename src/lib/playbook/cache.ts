@@ -137,7 +137,11 @@ export class PlaybookStore {
 
   sync(manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL, externalSignal?: AbortSignal) {
     if (!this.flight)
-      this.flight = this.download(manifestUrl, externalSignal).finally(() => {
+      this.flight = (async () => {
+        const edition = await this.downloadEdition(manifestUrl, externalSignal);
+        if (edition && edition !== this.current && !this.stopped && !externalSignal?.aborted)
+          await this.adopt(edition);
+      })().finally(() => {
         this.flight = undefined;
       });
     return this.flight;
@@ -147,61 +151,61 @@ export class PlaybookStore {
     this.controller?.abort(new DOMException("Playbook sync cancelled", "AbortError"));
   }
 
-  private async download(manifestUrl: string, externalSignal?: AbortSignal) {
-    if (this.stopped) return;
+  async downloadEdition(manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL, externalSignal?: AbortSignal) {
+    if (this.stopped || externalSignal?.aborted) return;
     this.controller = new AbortController();
     const signal = AbortSignal.any(
       [this.controller.signal, externalSignal, AbortSignal.timeout(30_000)].filter(
         (value): value is AbortSignal => Boolean(value)
       )
     );
-    const pointer = parseEditionIdentity(
-      JSON.parse(
-        Buffer.from(await fetchBounded(this.fetcher, manifestUrl, 64 * 1024, signal)).toString(
-          "utf8"
+    try {
+      const pointer = parseEditionIdentity(
+        JSON.parse(
+          Buffer.from(await fetchBounded(this.fetcher, manifestUrl, 64 * 1024, signal)).toString(
+            "utf8"
+          )
         )
-      )
-    );
-    if (this.current && samePlaybookEdition(pointer, this.current.edition)) return;
-    const base = new URL(
-      `./${encodeURIComponent(pointer.source.tag)}/${pointer.editionDigest}/`,
-      manifestUrl
-    );
-    const results = await Promise.all(
-      pointer.files
-        .filter((file) => file.path !== "public-snapshot.json")
-        .map(async (file) => {
-          const bytes = await fetchBounded(
-            this.fetcher,
-            new URL(file.path, base).toString(),
-            file.size,
-            signal
-          );
-          verifyFile(bytes, file);
-          return [file.path, JSON.parse(Buffer.from(bytes).toString("utf8"))] as const;
-        })
-    );
-    const snapshot = pointer.files.find((file) => file.path === "public-snapshot.json");
-    if (!snapshot) throw new Error("Article/Memo snapshot record is missing");
-    const publicSnapshot = await fetchBounded(
-      this.fetcher,
-      new URL(snapshot.path, base).toString(),
-      snapshot.size,
-      signal
-    );
-    validatePlaybookEdition({
-      edition: pointer,
-      catalog: new Map(results).get("catalog.json"),
-      search: new Map(results).get("search-documents.json"),
-      publicSnapshot,
-    });
-    if (this.stopped || signal.aborted) return;
-    const files = new Map(results);
-    await this.adopt({
-      edition: pointer,
-      catalog: files.get("catalog.json"),
-      search: files.get("search-documents.json"),
-    } as PlaybookEdition);
+      );
+      if (this.current && samePlaybookEdition(pointer, this.current.edition)) return this.current;
+      const base = new URL(
+        `./${encodeURIComponent(pointer.source.tag)}/${pointer.editionDigest}/`,
+        manifestUrl
+      );
+      const results = await Promise.all(
+        pointer.files
+          .filter((file) => file.path !== "public-snapshot.json")
+          .map(async (file) => {
+            const bytes = await fetchBounded(
+              this.fetcher,
+              new URL(file.path, base).toString(),
+              file.size,
+              signal
+            );
+            verifyFile(bytes, file);
+            return [file.path, JSON.parse(Buffer.from(bytes).toString("utf8"))] as const;
+          })
+      );
+      const snapshot = pointer.files.find((file) => file.path === "public-snapshot.json");
+      if (!snapshot) throw new Error("Article/Memo snapshot record is missing");
+      const publicSnapshot = await fetchBounded(
+        this.fetcher,
+        new URL(snapshot.path, base).toString(),
+        snapshot.size,
+        signal
+      );
+      const files = new Map(results);
+      const edition = validatePlaybookEdition({
+        edition: pointer,
+        catalog: files.get("catalog.json"),
+        search: files.get("search-documents.json"),
+        publicSnapshot,
+      });
+      if (this.stopped || signal.aborted) return;
+      return freezeEdition(edition);
+    } finally {
+      this.controller = undefined;
+    }
   }
 
   start(manifestUrl?: string) {

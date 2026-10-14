@@ -12,10 +12,12 @@ import { SYSTEM_CONFIG } from "../../../config/paths";
 import { getContentSourceManager, LocalContentSource } from "../../../lib/content-sources";
 import { db } from "../../../lib/db";
 import { getRuntimePlaybookStore } from "../../../lib/playbook/cache";
+import type { PlaybookEdition } from "../../../lib/playbook/types";
 import { contentSyncLogs } from "../../../lib/schema";
 import { syncEventManager } from "../../../lib/sync-events";
 import { getResolvedLlmConfig } from "../../services/llm-settings";
 import {
+  discardPlaybookSemanticProjection,
   getPlaybookContentSyncStatus,
   preparePlaybookSemanticProjection,
 } from "../../services/search-semantic-projection";
@@ -43,6 +45,7 @@ type PlaybookSyncResult = {
   success: true;
   status: Awaited<ReturnType<typeof getPlaybookContentSyncStatus>>;
   cancelled?: boolean;
+  adopted?: boolean;
 };
 
 let activePlaybookSync: {
@@ -57,6 +60,10 @@ function runPlaybookSync(): Promise<PlaybookSyncResult> {
   const controller = new AbortController();
   const task = (async () => {
     const createdAt = Date.now();
+    let store: ReturnType<typeof getRuntimePlaybookStore> | undefined;
+    let stagedEdition: PlaybookEdition | undefined;
+    let projectionModel: string | undefined;
+    let adopted = false;
     await db.insert(contentSyncLogs).values({
       id: taskId,
       sourceType: "playbook",
@@ -70,9 +77,9 @@ function runPlaybookSync(): Promise<PlaybookSyncResult> {
     });
 
     try {
-      const store = getRuntimePlaybookStore();
+      store = getRuntimePlaybookStore();
       await store.load();
-      await store.sync(undefined, controller.signal);
+      stagedEdition = await store.downloadEdition(undefined, controller.signal);
       if (controller.signal.aborted) {
         return {
           success: true as const,
@@ -80,10 +87,12 @@ function runPlaybookSync(): Promise<PlaybookSyncResult> {
           status: await getPlaybookContentSyncStatus(),
         };
       }
-      const edition = store.current;
+      const edition = stagedEdition ?? store.current;
+      const isNewEdition = Boolean(stagedEdition && stagedEdition !== store.current);
       if (edition) {
         const config = await getResolvedLlmConfig().catch(() => undefined);
         if (config?.embedding.model) {
+          projectionModel = config.embedding.model;
           try {
             const projection = await preparePlaybookSemanticProjection(edition, config.embedding, {
               signal: controller.signal,
@@ -102,6 +111,8 @@ function runPlaybookSync(): Promise<PlaybookSyncResult> {
               createdAt: Date.now(),
             });
           } catch (error) {
+            if (isNewEdition && stagedEdition && projectionModel)
+              await discardPlaybookSemanticProjection(stagedEdition, projectionModel);
             if (controller.signal.aborted)
               return {
                 success: true as const,
@@ -123,16 +134,28 @@ function runPlaybookSync(): Promise<PlaybookSyncResult> {
               data: JSON.stringify({ taskId, phase: "semantic" }),
               createdAt: Date.now(),
             });
+            return {
+              success: true as const,
+              adopted: false,
+              status: await getPlaybookContentSyncStatus(),
+            };
           }
         }
       }
 
       if (controller.signal.aborted) {
+        if (stagedEdition && projectionModel && stagedEdition !== store.current)
+          await discardPlaybookSemanticProjection(stagedEdition, projectionModel);
         return {
           success: true as const,
           cancelled: true,
           status: await getPlaybookContentSyncStatus(),
         };
+      }
+
+      if (stagedEdition && stagedEdition !== store.current) {
+        await store.adopt(stagedEdition);
+        adopted = true;
       }
 
       await db.insert(contentSyncLogs).values({
@@ -143,11 +166,17 @@ function runPlaybookSync(): Promise<PlaybookSyncResult> {
         status: "success",
         message: "Playbook 内容检查完成",
         filePath: null,
-        data: JSON.stringify({ taskId, phase: "adopted", edition: edition?.edition.editionDigest }),
+        data: JSON.stringify({
+          taskId,
+          phase: adopted ? "adopted" : "unchanged",
+          edition: edition?.edition.editionDigest,
+        }),
         createdAt: Date.now(),
       });
-      return { success: true as const, status: await getPlaybookContentSyncStatus() };
+      return { success: true as const, adopted, status: await getPlaybookContentSyncStatus() };
     } catch (error) {
+      if (stagedEdition && projectionModel && !adopted && stagedEdition !== store?.current)
+        await discardPlaybookSemanticProjection(stagedEdition, projectionModel);
       if (controller.signal.aborted) {
         await db.insert(contentSyncLogs).values({
           id: randomUUID(),
@@ -163,6 +192,7 @@ function runPlaybookSync(): Promise<PlaybookSyncResult> {
         return {
           success: true as const,
           cancelled: true,
+          adopted: false,
           status: await getPlaybookContentSyncStatus(),
         };
       }

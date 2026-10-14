@@ -885,6 +885,27 @@ describe("playbook-cache-http-ssr", () => {
     expect(store.current?.edition.source.tag).toBe("v3.1.0");
     expect(PLAYBOOK_POLL_INTERVAL_MS).toBe(300_000);
   });
+  test("stages a verified edition without replacing the current edition until adoption", async () => {
+    const root = await temp();
+    const current = makePublicBundle("v3.0.0", "100");
+    const next = makePublicBundle("v3.1.0", "101");
+    const store = new PlaybookStore(root, async (url) => {
+      if (url.endsWith("manifest.json")) return Response.json(next.edition.edition);
+      if (url.endsWith("catalog.json")) return new Response(encodeJson(next.edition.catalog));
+      if (url.endsWith("search-documents.json"))
+        return new Response(encodeJson(next.edition.search));
+      return new Response("{}\n");
+    });
+    await store.adopt(current.edition);
+
+    const staged = await store.downloadEdition();
+
+    expect(staged?.edition.source.tag).toBe("v3.1.0");
+    expect(store.current?.edition.source.tag).toBe("v3.0.0");
+    if (!staged) throw new Error("expected a staged edition");
+    await store.adopt(staged);
+    expect(store.current?.edition.source.tag).toBe("v3.1.0");
+  });
   test("keeps the current edition when the published article snapshot fails integrity", async () => {
     const root = await temp();
     const current = makePublicBundle("v3.0.0", "100");
