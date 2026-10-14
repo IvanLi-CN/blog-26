@@ -25,6 +25,7 @@ import {
   computeEditionDigest,
   encodeJson,
   parseManifest,
+  samePlaybookEdition,
   sha256,
 } from "../../src/lib/playbook/manifest";
 import {
@@ -885,6 +886,29 @@ describe("playbook-cache-http-ssr", () => {
     expect(store.current?.edition.source.tag).toBe("v3.1.0");
     expect(PLAYBOOK_POLL_INTERVAL_MS).toBe(300_000);
   });
+  test("runs edition preparation only after the edition is atomically adopted", async () => {
+    const root = await temp();
+    const current = makePublicBundle();
+    const next = makePublicBundle("v3.1.0", "101");
+    const store = new PlaybookStore(root, async (url) => {
+      if (url.endsWith("manifest.json")) return Response.json(next.edition.edition);
+      if (url.endsWith("catalog.json")) return new Response(encodeJson(next.edition.catalog));
+      if (url.endsWith("search-documents.json"))
+        return new Response(encodeJson(next.edition.search));
+      return new Response("{}\n");
+    });
+    await store.adopt(current.edition);
+
+    let observedCurrent = false;
+    await store.sync(undefined, undefined, async (edition) => {
+      observedCurrent = Boolean(
+        store.current && samePlaybookEdition(store.current.edition, edition.edition)
+      );
+    });
+
+    expect(observedCurrent).toBe(true);
+    expect(store.current?.edition.source.tag).toBe("v3.1.0");
+  });
   test("shares staged downloads and cancels the active operation without a stale controller", async () => {
     const root = await temp();
     const next = makePublicBundle("v3.1.0", "101");
@@ -951,7 +975,13 @@ describe("playbook-cache-http-ssr", () => {
       return new Response("x}\n");
     });
     await store.adopt(current.edition);
-    await expect(store.sync()).rejects.toThrow("integrity");
+    let preparationCalls = 0;
+    await expect(
+      store.sync(undefined, undefined, async () => {
+        preparationCalls++;
+      })
+    ).rejects.toThrow("integrity");
+    expect(preparationCalls).toBe(0);
     expect(store.current?.edition.source.tag).toBe("v3.0.0");
   });
   test("console follows a verified published rollback pointer and persists both editions", async () => {

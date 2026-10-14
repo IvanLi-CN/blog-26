@@ -12,12 +12,12 @@ import { SYSTEM_CONFIG } from "../../../config/paths";
 import { getContentSourceManager, LocalContentSource } from "../../../lib/content-sources";
 import { db } from "../../../lib/db";
 import { getRuntimePlaybookStore } from "../../../lib/playbook/cache";
+import { samePlaybookEdition } from "../../../lib/playbook/manifest";
 import type { PlaybookEdition } from "../../../lib/playbook/types";
 import { contentSyncLogs } from "../../../lib/schema";
 import { syncEventManager } from "../../../lib/sync-events";
 import { getResolvedLlmConfig } from "../../services/llm-settings";
 import {
-  discardPlaybookSemanticProjection,
   getPlaybookContentSyncStatus,
   preparePlaybookSemanticProjection,
 } from "../../services/search-semantic-projection";
@@ -62,7 +62,7 @@ function runPlaybookSync(): Promise<PlaybookSyncResult> {
     const createdAt = Date.now();
     let store: ReturnType<typeof getRuntimePlaybookStore> | undefined;
     let stagedEdition: PlaybookEdition | undefined;
-    let projectionModel: string | undefined;
+    let initialEdition: PlaybookEdition | undefined;
     let adopted = false;
     await db.insert(contentSyncLogs).values({
       id: taskId,
@@ -79,15 +79,12 @@ function runPlaybookSync(): Promise<PlaybookSyncResult> {
     try {
       store = getRuntimePlaybookStore();
       await store.load();
-      const initialEdition = store.current;
-      let preparationFailed = false;
+      initialEdition = store.current;
       await store.sync(undefined, controller.signal, async (edition, signal) => {
         stagedEdition = edition;
-        const isNewEdition = edition !== initialEdition;
         const config = await getResolvedLlmConfig().catch(() => undefined);
-        if (!config?.embedding.model) return true;
+        if (!config?.embedding.model) return;
 
-        projectionModel = config.embedding.model;
         try {
           const projection = await preparePlaybookSemanticProjection(edition, config.embedding, {
             signal,
@@ -105,12 +102,8 @@ function runPlaybookSync(): Promise<PlaybookSyncResult> {
             data: JSON.stringify({ taskId, phase: "semantic", ...projection }),
             createdAt: Date.now(),
           });
-          return true;
         } catch (error) {
-          preparationFailed = true;
-          if (isNewEdition && projectionModel)
-            await discardPlaybookSemanticProjection(edition, projectionModel);
-          if (signal.aborted) return false;
+          if (signal.aborted) return;
           console.warn(
             "[playbook] semantic projection pending:",
             error instanceof Error ? error.message : String(error)
@@ -126,28 +119,25 @@ function runPlaybookSync(): Promise<PlaybookSyncResult> {
             data: JSON.stringify({ taskId, phase: "semantic" }),
             createdAt: Date.now(),
           });
-          return false;
         }
       });
 
       const edition = stagedEdition ?? store.current;
-      const isNewEdition = Boolean(stagedEdition && stagedEdition !== initialEdition);
+      adopted = Boolean(
+        stagedEdition &&
+          (!initialEdition ||
+            !samePlaybookEdition(stagedEdition.edition, initialEdition.edition)) &&
+          store.current &&
+          samePlaybookEdition(store.current.edition, stagedEdition.edition)
+      );
       if (controller.signal.aborted) {
-        if (stagedEdition && projectionModel && isNewEdition)
-          await discardPlaybookSemanticProjection(stagedEdition, projectionModel);
         return {
           success: true as const,
           cancelled: true,
+          adopted,
           status: await getPlaybookContentSyncStatus(),
         };
       }
-      if (preparationFailed)
-        return {
-          success: true as const,
-          adopted: false,
-          status: await getPlaybookContentSyncStatus(),
-        };
-      adopted = Boolean(isNewEdition && store.current === stagedEdition);
 
       await db.insert(contentSyncLogs).values({
         id: randomUUID(),
@@ -166,8 +156,13 @@ function runPlaybookSync(): Promise<PlaybookSyncResult> {
       });
       return { success: true as const, adopted, status: await getPlaybookContentSyncStatus() };
     } catch (error) {
-      if (stagedEdition && projectionModel && !adopted && stagedEdition !== store?.current)
-        await discardPlaybookSemanticProjection(stagedEdition, projectionModel);
+      adopted = Boolean(
+        stagedEdition &&
+          (!initialEdition ||
+            !samePlaybookEdition(stagedEdition.edition, initialEdition.edition)) &&
+          store?.current &&
+          samePlaybookEdition(store.current.edition, stagedEdition.edition)
+      );
       if (controller.signal.aborted) {
         await db.insert(contentSyncLogs).values({
           id: randomUUID(),
@@ -183,7 +178,7 @@ function runPlaybookSync(): Promise<PlaybookSyncResult> {
         return {
           success: true as const,
           cancelled: true,
-          adopted: false,
+          adopted,
           status: await getPlaybookContentSyncStatus(),
         };
       }

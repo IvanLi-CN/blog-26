@@ -13,10 +13,7 @@ export interface PlaybookCacheState {
 export type PlaybookFetcher = (url: string, init?: RequestInit) => Promise<Response>;
 export const PLAYBOOK_POLL_INTERVAL_MS = 300_000;
 export type PlaybookSchedule = (run: () => void, intervalMs: number) => () => void;
-type PlaybookEditionPreparer = (
-  edition: PlaybookEdition,
-  signal: AbortSignal
-) => Promise<boolean | undefined>;
+type PlaybookEditionPreparer = (edition: PlaybookEdition, signal: AbortSignal) => Promise<void>;
 const schedule: PlaybookSchedule = (run, intervalMs) => {
   const timer = setInterval(run, intervalMs);
   timer.unref?.();
@@ -164,9 +161,8 @@ export class PlaybookStore {
     const promise = (async () => {
       const edition = await this.downloadEdition(manifestUrl, signal);
       if (!edition || this.stopped || signal.aborted) return;
-      const shouldAdopt = prepare ? await prepare(edition, signal) : true;
-      if (shouldAdopt === false || this.stopped || signal.aborted) return;
       if (edition !== this.current) await this.adopt(edition);
+      if (prepare && !this.stopped && !signal.aborted) await prepare(edition, signal);
     })();
     const flight = {
       promise: promise.finally(() => {
