@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "ceecf5ed867ee849fce6d8e5d8225e9e5505923a",
+  "base_sha": "16909131a5ec50a4815aa0f1b6f189b1987284ee",
   "covered_files": {
     ".github/quality-gates.json": "1a3e713708baaf265adce051b8b613b3a525bb4f",
     ".github/workflows/e2e.yml": "5ee75c8aee10c7fbfe968321f17c32189c717905",
@@ -235,7 +235,8 @@
         "3.0.4",
         "3.0.5",
         "3.1.1",
-        "3.1.2"
+        "3.1.2",
+        "3.2.1"
       ],
       "evidence": [
         {
