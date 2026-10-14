@@ -18,10 +18,21 @@ test.describe("Console Memo Web Demo", () => {
     });
     const detailLink = card.getByRole("link", { name: "查看详情" });
     await expect(detailLink).toHaveAttribute("href", `/memos/${privateSlug}/`);
+    let previousDocumentHeight = 0;
+    let stableHeightSamples = 0;
     await expect
-      .poll(() =>
-        page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight + 240)
-      )
+      .poll(async () => {
+        const { height, viewportHeight } = await page.evaluate(() => ({
+          height: document.documentElement.scrollHeight,
+          viewportHeight: window.innerHeight,
+        }));
+        if (height === previousDocumentHeight) stableHeightSamples += 1;
+        else {
+          previousDocumentHeight = height;
+          stableHeightSamples = 0;
+        }
+        return height > viewportHeight + 240 && stableHeightSamples >= 2;
+      })
       .toBe(true);
     await page.evaluate(() => window.scrollTo({ top: 240, left: 0, behavior: "instant" }));
     await expect.poll(() => page.evaluate(() => Math.round(window.scrollY))).toBe(240);

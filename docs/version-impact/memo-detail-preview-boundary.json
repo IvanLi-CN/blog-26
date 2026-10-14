@@ -4,7 +4,7 @@
   "base_sha": "ceecf5ed867ee849fce6d8e5d8225e9e5505923a",
   "covered_files": {
     ".github/quality-gates.json": "1a3e713708baaf265adce051b8b613b3a525bb4f",
-    ".github/workflows/e2e.yml": "5ee75c8aee10c7fbfe968321f17c32189c717905",
+    ".github/workflows/e2e.yml": "5521a14a31315cb296dfff4798515161b15d5751",
     ".gitignore": "ce64803d3963e4668cd644c7ef465dd36e266eba",
     "GLOSSARY.md": "d123cb3d82eabceaf2260468391ff5dc3ad23f46",
     "apps/admin/src/demo/mock-admin-api.ts": "51ee39963bad553972dfee4b576e7da0e44a5d6e",
