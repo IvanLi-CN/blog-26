@@ -161,6 +161,20 @@ body:has(.quick-memo-edit-modal) .nature-app-shell {
   padding: 1rem 1.25rem;
 }
 
+/* Milkdown keeps the block handle mounted even when it is not shown. Park it
+ * inside the editor so its hidden menu cannot create scrollbars in the modal. */
+.quick-memo-edit-editor .milkdown-block-handle {
+  transition: opacity 0.2s;
+}
+
+.quick-memo-edit-editor .milkdown-block-handle[data-show="false"] {
+  visibility: hidden;
+  /* biome-ignore lint/complexity/noImportantStyles: Milkdown retains inline coordinates when hiding the handle. */
+  left: 0 !important;
+  /* biome-ignore lint/complexity/noImportantStyles: Milkdown retains inline coordinates when hiding the handle. */
+  top: 0 !important;
+}
+
 .quick-memo-edit-error {
   margin-top: 1rem;
 }
