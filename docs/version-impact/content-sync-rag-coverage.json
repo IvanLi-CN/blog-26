@@ -11,7 +11,7 @@
     "apps/admin/src/pages/content-sync.tsx": "bb36dbd81e0f6d5213b186ffe350eb5d63988a09",
     "docs/runbooks/style-playbook-publishing.md": "4fddba53a78d07ae4238345a218df1d58a9e3f0f",
     "docs/specs/search-relevance/HISTORY.md": "b99cad287621b9dee93c58cf9df57b46f807bf57",
-    "docs/specs/search-relevance/IMPLEMENTATION.md": "3f3b3a5f663eb731f2f63a62f00849ff95f5f9a4",
+    "docs/specs/search-relevance/IMPLEMENTATION.md": "9a9f71a8bf4ddec308f09dad97f29f8f48e4977c",
     "docs/specs/search-relevance/SPEC.md": "151a53557fad22a3e945753c310096e9545c3f1b",
     "docs/specs/search-relevance/assets/playbook-sync-admin-desktop.png": "cf51b36100373b7a45fa7780cb972eb40c0074e6",
     "docs/specs/search-relevance/assets/playbook-sync-admin-mobile.png": "073e57937dab2a947ba68a7d24754519b1847f18",
@@ -19,9 +19,9 @@
     "docs/specs/style-playbook-integration/HISTORY.md": "c941a290e779be6a0996906744f4c661a351a380",
     "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "5cd9db9ab8877af20e20e30e75dd46b100d6afb3",
     "docs/specs/style-playbook-integration/SPEC.md": "f58b86ab2a4558bd8c7406eafbd6d7fa8a62e2c8",
-    "docs/specs/style-playbook-integration/VALIDATION.md": "0676c8f46855097cb2a8797b1e8bb6732dd9b778",
+    "docs/specs/style-playbook-integration/VALIDATION.md": "be26408503cc70bf095e4482a1028057c06457db",
     "docs/specs/style-playbook-integration/assets/content-sync-rag-tablet-unconfigured.png": "c54f67dbe154970fb3afa994a380e3101f0b3a6b",
-    "docs/specs/style-playbook-integration/contracts/content-sync-status.md": "c14db7f19020826f7cb626f28c8453423683c79c",
+    "docs/specs/style-playbook-integration/contracts/content-sync-status.md": "626064ed6c2402ec2c7a1dd27c990b3c9b902511",
     "drizzle/0015_content_sync_rag_coverage.sql": "746b9c509c2142848bd8e47e549b8c065869d7a0",
     "drizzle/meta/0015_snapshot.json": "997637a432a4c3be9f30506394e8a1081064c866",
     "drizzle/meta/_journal.json": "7857aaa1708ecdfa13595f9cca175d4faf810a42",
@@ -30,8 +30,8 @@
     "src/lib/ai/embedding-target.ts": "8473f83fef0473d4bc967b068ac130bb1b576caf",
     "src/lib/ai/embeddings.ts": "b93e0f46f39b1156346955758190264c84aea075",
     "src/lib/ai/vectorization.ts": "8384555503d84d9361d85ebfa3a2e8d3ce2a79e8",
-    "src/lib/content-sources/manager.ts": "487392663faa2a8e2ddebf26947d0b2f07d11274",
-    "src/lib/playbook/cache.ts": "a968f1a28ee8f1f5745729f6aad6401a228785e3",
+    "src/lib/content-sources/manager.ts": "d0de9272f1d5a5749a9f993178830ce11a07460e",
+    "src/lib/playbook/cache.ts": "d43212a8649d0629231d52b89bfe8bdc47c533be",
     "src/lib/schema.ts": "a2113771c6701ea55eb0533dc2195353bff23d2d",
     "src/lib/web-demo-runtime.ts": "e4e39562b595bbce1e2cae92d5572e847bd4216c",
     "src/server/admin-api/router.ts": "c04dd56f4b88df6831d7fb80c1c59b771d7ec9b8",
@@ -39,15 +39,15 @@
     "src/server/routers/admin/vectorize.ts": "4d8ce2ce95aae60be1fd855cbabfab99bc29cf2f",
     "src/server/services/content-search.test.ts": "182b46bdd47436a02832013d42f1bc46f31a4202",
     "src/server/services/content-search.ts": "654c9aa345bcd5f9a847555cc89d9ac2111932af",
-    "src/server/services/content-sync-runtime.ts": "72e8dd29701c573a6de845df911f79dcd7a4728f",
-    "src/server/services/content-sync-status.ts": "23bbd9d0b13274ac434051e07793faa837e47fd1",
-    "src/server/services/content-tasks.ts": "8a2015d8fa89f2829c8f9e5665f7014db121e6ea",
+    "src/server/services/content-sync-runtime.ts": "c313f2c84f733885df202a0eac12797e929c82db",
+    "src/server/services/content-sync-status.ts": "eabfca64f53a5d2c7b9e10e610512694918443f8",
+    "src/server/services/content-tasks.ts": "537c381e0e8c654f08ea27deec01698c70001e5f",
     "src/server/services/playbook-search.ts": "de3b3b569d94ae0bcea223e10c922a86af0f5469",
-    "src/server/services/rag-index.test.ts": "90719dddf5a31184de5ecb999682d179c42244db",
-    "src/server/services/rag-index.ts": "386b0435b4e5f76797458f6ccba55b7ac7bdcf49",
+    "src/server/services/rag-index.test.ts": "1393da3ffd9273b85582ccd7b43be749dfd56f8a",
+    "src/server/services/rag-index.ts": "d2d982f05d0765adea95b9e14a4585aa29690bf5",
     "src/server/services/search-semantic-projection.ts": "de2be6f33aefedf504d49890fff2b1c210e0f58b",
     "tests/e2e/web-demo/content-sync.spec.ts": "d1ccd325729acac76798b913be3fafb3c4711d5b",
-    "tests/lib/rag-index-restart-fixture.ts": "e45c30295897b70122fe6a5e7f214efec94055ec",
+    "tests/lib/rag-index-restart-fixture.ts": "65ea0596470140d19271829591deee13919b90b4",
     "tests/lib/rag-index-restart.test.ts": "24e9fe1a1e38cb4cdf3a37527c8edf318d31878e"
   },
   "change": {
@@ -68,7 +68,7 @@
         },
         {
           "path": "src/server/services/rag-index.test.ts",
-          "blob": "90719dddf5a31184de5ecb999682d179c42244db",
+          "blob": "1393da3ffd9273b85582ccd7b43be749dfd56f8a",
           "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
         },
         {
@@ -100,7 +100,7 @@
         },
         {
           "path": "src/server/services/rag-index.test.ts",
-          "blob": "90719dddf5a31184de5ecb999682d179c42244db",
+          "blob": "1393da3ffd9273b85582ccd7b43be749dfd56f8a",
           "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
         },
         {
@@ -136,7 +136,7 @@
         },
         {
           "path": "src/server/services/rag-index.test.ts",
-          "blob": "90719dddf5a31184de5ecb999682d179c42244db",
+          "blob": "1393da3ffd9273b85582ccd7b43be749dfd56f8a",
           "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
         },
         {
@@ -199,7 +199,7 @@
         },
         {
           "path": "src/server/services/rag-index.test.ts",
-          "blob": "90719dddf5a31184de5ecb999682d179c42244db",
+          "blob": "1393da3ffd9273b85582ccd7b43be749dfd56f8a",
           "command": "Target/configuration/permission/cancellation/retry/stale-write coverage regressions"
         },
         {

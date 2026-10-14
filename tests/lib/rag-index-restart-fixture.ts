@@ -156,6 +156,12 @@ if (phase === "recover" || phase === "cancel-read") {
     if ((await getContentTask(receipt.taskId))?.status !== "cancelled")
       throw new Error("Cancelled task resumed");
   } else {
+    const { contentTasks } = await import("../../src/lib/schema");
+    const { eq } = await import("drizzle-orm");
+    await db
+      .update(contentTasks)
+      .set({ status: "interrupted", phase: "interrupted" })
+      .where(eq(contentTasks.id, receipt.taskId));
     const stop = await (
       await import("../../src/server/services/content-sync-runtime")
     ).startContentSyncRuntime();

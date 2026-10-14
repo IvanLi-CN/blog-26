@@ -337,8 +337,22 @@ export async function ragCoverage(scope: RagScope = {}) {
     } else {
       const historical =
         target.source === "blog"
-          ? blogRows.some((row) => row.postId === target.parentId)
-          : pbRows.some((row) => row.parentId === target.parentId);
+          ? blogRows.some(
+              (row) =>
+                row.postId === target.parentId &&
+                row.chunkIndex === target.chunkIndex &&
+                row.type === target.type
+            )
+          : pbRows.some(
+              (row) =>
+                row.parentId === target.parentId &&
+                row.chunkIndex === target.chunkIndex &&
+                row.location === target.location &&
+                row.type === target.type &&
+                row.editionDigest === target.edition?.edition.editionDigest &&
+                row.sourceReleaseId === target.edition?.edition.source.releaseId &&
+                row.sourceTag === target.edition?.edition.source.tag
+            );
       state = historical ? "outdated" : "unindexed";
     }
     return {
@@ -577,7 +591,12 @@ export async function runRagIndex(
           target.fingerprint,
           target.input,
           controller?.signal,
-          () => targetStillCurrent(target, scope)
+          async () => {
+            const owner = db.select().from(contentTasks).where(eq(contentTasks.id, task.id)).get();
+            if (owner?.status !== "running" || owner.cancelRequested)
+              throw new DOMException("Task no longer owns attempt", "AbortError");
+            return targetStillCurrent(target, scope);
+          }
         );
         const blob = Buffer.from(new Float32Array(vector).buffer);
         if (!validEmbedding(blob, vector.length, dim))
@@ -708,16 +727,28 @@ export async function runRagIndex(
           (error instanceof DOMException && error.name === "AbortError")
         )
           throw error;
+        db.transaction((tx) => {
+          const owner = tx.select().from(contentTasks).where(eq(contentTasks.id, task.id)).get();
+          if (owner?.status !== "running" || owner.cancelRequested)
+            throw new DOMException("Task no longer owns failure", "AbortError");
+          const owned = tx
+            .select()
+            .from(ragIndexTargets)
+            .where(eq(ragIndexTargets.id, target.id))
+            .get();
+          if (owned?.taskId !== task.id)
+            throw new DOMException("Target no longer owned", "AbortError");
+          tx.update(ragIndexTargets)
+            .set({
+              status: "failed",
+              taskId: task.id,
+              error: "Embedding preparation failed",
+              updatedAt: Date.now(),
+            })
+            .where(eq(ragIndexTargets.id, target.id))
+            .run();
+        });
         failed++;
-        await db
-          .update(ragIndexTargets)
-          .set({
-            status: "failed",
-            taskId: task.id,
-            error: "Embedding preparation failed",
-            updatedAt: Date.now(),
-          })
-          .where(and(eq(ragIndexTargets.id, target.id), eq(ragIndexTargets.taskId, task.id)));
       }
       processed++;
       await updateContentTask(task.id, { processed, failed });

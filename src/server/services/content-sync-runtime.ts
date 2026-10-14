@@ -23,6 +23,7 @@ export function checkPlaybook(origin = "manual", resumeId?: string) {
     if (!playbookSyncEnabled()) throw new Error("Playbook synchronization disabled");
     const store = getRuntimePlaybookStore();
     await store.load();
+    const adoptionBase = store.current?.edition ?? null;
     const { task, reused } = await beginContentTask({
       kind: "sync",
       source: "playbook",
@@ -36,18 +37,48 @@ export function checkPlaybook(origin = "manual", resumeId?: string) {
     let adopted = false;
     try {
       await updateContentTask(task.id, { phase: "checking" });
-      const retained = resumeId ? parseEditionIdentity(JSON.parse(task.target)) : undefined;
+      const savedTarget = resumeId ? JSON.parse(task.target) : null;
+      const retained = resumeId
+        ? parseEditionIdentity(
+            Object.fromEntries(
+              Object.entries(savedTarget ?? {}).filter(([key]) => key !== "recoveryBase")
+            )
+          )
+        : undefined;
+      const sameBase = (base: typeof adoptionBase) =>
+        base
+          ? Boolean(store.current && samePlaybookEdition(base, store.current.edition))
+          : !store.current;
+      if (
+        retained &&
+        store.current &&
+        !samePlaybookEdition(retained, store.current.edition) &&
+        ((Object.hasOwn(savedTarget, "recoveryBase") && !sameBase(savedTarget.recoveryBase)) ||
+          (store.previous && samePlaybookEdition(retained, store.previous.edition)) ||
+          (store.adoption &&
+            store.adoption.taskId !== task.id &&
+            store.adoption.at > task.startedAt))
+      )
+        throw new Error("Recovery adoption superseded");
       const edition = await store.downloadEdition(undefined, controller?.signal, retained);
       if (controller?.signal.aborted) throw controller.signal.reason;
       if (!edition) throw new Error("Public snapshot unavailable");
       await updateContentTask(task.id, {
         phase: "adopting",
-        ...(!resumeId ? { target: JSON.stringify(edition.edition) } : {}),
+        ...(!resumeId
+          ? { target: JSON.stringify({ ...edition.edition, recoveryBase: adoptionBase }) }
+          : {}),
       });
       adopted = !store.current || !samePlaybookEdition(store.current.edition, edition.edition);
       if (controller?.signal.aborted) throw controller.signal.reason;
+      if (adopted && !resumeId && !sameBase(adoptionBase)) throw new Error("Adoption base changed");
       if (adopted)
-        await store.adopt(edition, { taskId: task.id, at: Date.now() }, controller?.signal);
+        await store.adopt(
+          edition,
+          { taskId: task.id, at: Date.now() },
+          controller?.signal,
+          adoptionBase
+        );
       await updateContentTask(task.id, { phase: "adopted" });
       finishContentTask(task.id, adopted ? "success" : "unchanged");
       if (adopted || origin === "manual") void triggerRagIndex("playbook", "repair", origin);
@@ -72,7 +103,7 @@ export async function startContentSyncRuntime() {
   const unfinished = await db
     .select()
     .from(contentTasks)
-    .where(inArray(contentTasks.status, ["queued", "running"]));
+    .where(inArray(contentTasks.status, ["queued", "running", "interrupted"]));
   for (const task of unfinished) {
     if (task.kind === "sync" && task.source === "playbook" && store.adoption?.taskId === task.id) {
       finishContentTask(task.id, "success");

@@ -91,6 +91,10 @@ async function readStatus(scope: RagScope = {}) {
   });
   const rag = {
     ...coverage,
+    details: coverage.details.map((row) => {
+      const known = coverage.bySource.find((source) => source.source === row.source)?.available;
+      return { ...row, state: known ? row.state : null, reason: known ? null : coverage.reason };
+    }),
     contents: metrics(coverage.contents, unavailable),
     chunks: metrics(coverage.chunks, unavailable),
     bySource: coverage.bySource.map((row) => ({

@@ -346,8 +346,8 @@ export class ContentSourceManager {
     syncEventManager.completeSyncSession(result.success, result.stats);
 
     await updateContentTask(task.id, {
-      total: result.stats.totalProcessed,
       processed: result.stats.totalProcessed,
+      failed: result.stats.errors,
     });
     finishContentTask(
       task.id,

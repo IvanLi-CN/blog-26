@@ -27,6 +27,8 @@ export async function beginContentTask(input: {
       )
       .get();
     if (active) {
+      if (input.resumeId && active.id !== input.resumeId)
+        throw new Error(`Task conflict: ${active.id}`);
       if (active.requestKey !== input.requestKey) throw new Error(`Task conflict: ${active.id}`);
       return { task: active, reused: true };
     }

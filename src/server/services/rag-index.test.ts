@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { getContentSourceManager, LocalContentSource } from "@/lib/content-sources";
+import { ContentSourceManager } from "@/lib/content-sources/manager";
 import { db, initializeDB } from "@/lib/db";
 import { getRuntimePlaybookStore, PlaybookStore } from "@/lib/playbook/cache";
 import { publicFixtureCatalog, publicFixtureSearch } from "@/lib/playbook/fixture";
@@ -21,6 +22,7 @@ import {
   searchSemanticEmbeddings,
   users,
 } from "@/lib/schema";
+import { syncEventManager } from "@/lib/sync-events";
 import { makePublicBundle } from "../../../tests/lib/playbook-fixture";
 import { checkPlaybook, startContentSyncRuntime } from "./content-sync-runtime";
 import { contentSyncStatus } from "./content-sync-status";
@@ -143,6 +145,7 @@ test("history vectors without provenance remain stale, isolated rows add no cont
   await db.insert(posts).values(fixture("legacy"));
   await db.insert(postEmbeddings).values({
     id: "old",
+    chunkIndex: 0,
     postId: "legacy",
     slug: "legacy",
     type: "post",
@@ -283,6 +286,10 @@ test("cancelled manifests are not resumed automatically; interrupted tasks keep 
       identity: catalog.status.identity,
     }),
   });
+  await db
+    .update(contentTasks)
+    .set({ status: "interrupted", phase: "interrupted" })
+    .where(eq(contentTasks.id, previous.task.id));
   const stop = await startContentSyncRuntime();
   expect((await completed(previous.task.id)).status).toBe("success");
   stop();
@@ -422,6 +429,7 @@ for (const change of ["rotate", "remove"] as const) {
   test(`embedding retry observes credential ${change} without changing target fingerprint`, async () => {
     await db.insert(posts).values(fixture(`credential-${change}`));
     const originalKey = process.env.OPENAI_API_KEY;
+    const fingerprint = (await ragCoverage({ source: "blog" })).status.identity.fingerprint;
     const authorizations: (string | null)[] = [];
     globalThis.fetch = Object.assign(
       async (_input: RequestInfo | URL, init?: RequestInit) => {
@@ -440,6 +448,10 @@ for (const change of ["rotate", "remove"] as const) {
       expect((await completed(task.taskId)).status).toBe(
         change === "rotate" ? "success" : "failed"
       );
+      expect((await ragCoverage({ source: "blog" })).status.identity.fingerprint).toBe(fingerprint);
+      expect(
+        JSON.parse((await getContentTask(task.taskId))?.target ?? "{}").identity.fingerprint
+      ).toBe(fingerprint);
       expect(authorizations).toEqual(
         change === "rotate"
           ? [`Bearer ${originalKey}`, "Bearer synthetic-rotated"]
@@ -544,7 +556,7 @@ test("authenticated HTTP status filters and durable task operations match their 
   }
 });
 
-test("content recovery uses the persisted Playbook edition rather than the deployment pointer", async () => {
+test("superseded content recovery preserves the later adopted edition", async () => {
   const store = getRuntimePlaybookStore();
   const retained = makePublicBundle("v9.0.3", "903").edition;
   await store.adopt(retained);
@@ -573,14 +585,180 @@ test("content recovery uses the persisted Playbook edition rather than the deplo
     { preconnect: originalFetch.preconnect }
   );
   try {
-    await checkPlaybook("recovery", task.id);
-    expect((await getContentTask(task.id))?.status).toBe("success");
+    await expect(checkPlaybook("recovery", task.id)).rejects.toThrow(
+      "Recovery adoption superseded"
+    );
+    expect((await getContentTask(task.id))?.status).toBe("failed");
     expect((await getContentTask(task.id))?.target).toBe(JSON.stringify(retained.edition));
-    expect(store.current?.edition.editionDigest).toBe(retained.edition.editionDigest);
+    expect(store.current?.edition.source.tag).toBe("v9.0.4");
     expect(requests).toBe(0);
   } finally {
     if (enabled === undefined) delete process.env.PLAYBOOK_SYNC_ENABLED;
     else process.env.PLAYBOOK_SYNC_ENABLED = enabled;
     process.env.OPENAI_API_KEY = key;
   }
+});
+
+test("historical chunks do not mark never-indexed sibling chunks outdated", async () => {
+  await db.insert(posts).values(fixture("partial-history", "synthetic long body ".repeat(40)));
+  await db.insert(postEmbeddings).values({
+    id: "partial-old",
+    postId: "partial-history",
+    slug: "partial-history",
+    type: "post",
+    modelName: "old-model",
+    dim: 2,
+    contentHash: "old",
+    chunkIndex: 0,
+    vector: Buffer.from(new Float32Array([1, 0]).buffer),
+    createdAt: 1,
+    updatedAt: 1,
+  });
+  const coverage = (await ragCoverage({ source: "blog" })).status;
+  expect(coverage.chunks.total).toBeGreaterThan(1);
+  expect(coverage.chunks.outdated).toBe(1);
+  expect(coverage.chunks.unindexed).toBe(coverage.chunks.total - 1);
+  expect(coverage.contents.outdated).toBe(1);
+});
+
+test("unavailable admin coverage keeps totals but nulls every target classification", async () => {
+  await db.insert(posts).values(fixture("unknown-details"));
+  const key = process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  try {
+    const status = await contentSyncStatus({ source: "blog" });
+    expect(status.rag.contents.total).toBe(1);
+    expect(status.rag.contents.unindexed).toBeNull();
+    expect(status.rag.details.length).toBeGreaterThan(0);
+    for (const detail of status.rag.details) {
+      expect(detail.state).toBeNull();
+      expect(detail.reason).toBe("embedding-unconfigured");
+    }
+  } finally {
+    process.env.OPENAI_API_KEY = key;
+  }
+});
+
+test("a failure arriving after durable cancellation cannot mutate target provenance", async () => {
+  await db.insert(posts).values(fixture("durable-cancel-failure"));
+  let release: ((response: Response) => void) | undefined;
+  globalThis.fetch = Object.assign(
+    async () =>
+      new Promise<Response>((resolve) => {
+        release = resolve;
+      }),
+    { preconnect: originalFetch.preconnect }
+  );
+  const { taskId } = await runRagIndex({ source: "blog" }, "repair");
+  while (!release) await Bun.sleep(5);
+  const target = (
+    await db.select().from(ragIndexTargets).where(eq(ragIndexTargets.taskId, taskId))
+  )[0];
+  // Another process can persist cancellation without aborting this process's controller.
+  await db.update(contentTasks).set({ cancelRequested: true }).where(eq(contentTasks.id, taskId));
+  release(new Response("invalid vector response", { status: 400 }));
+  expect((await completed(taskId)).status).toBe("cancelled");
+  expect(
+    await db.select().from(ragIndexTargets).where(eq(ragIndexTargets.id, target.id)).get()
+  ).toEqual(target);
+});
+
+test("cancelled local sync retains discovered total and unprocessed remainder", async () => {
+  const manager = new ContentSourceManager();
+  const source = new LocalContentSource(
+    LocalContentSource.createDefaultConfig("local", 50, { contentPath: root })
+  );
+  const items = Array.from({ length: 10 }, (_, i) => ({
+    ...fixture(`local-remainder-${i}`),
+    type: "post" as const,
+    source: "local",
+    filePath: `synthetic/${i}.md`,
+    lastModified: 1,
+    tags: [],
+    metadata: { content: "synthetic" },
+  }));
+  source.detectChanges = async () => ({
+    sourceName: "local",
+    changes: items.map((item) => ({ item, operation: "create" as const })),
+    detectedAt: 1,
+    stats: { total: 10, created: 10, updated: 0, deleted: 0, skipped: 0 },
+  });
+  await manager.registerSource(source);
+  const key = process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  let cancelled = false;
+  const onLog = () => {
+    const count = db.select().from(posts).all().length;
+    if (!cancelled && count >= 2) {
+      cancelled = true;
+      const task = db.select().from(contentTasks).where(eq(contentTasks.kind, "sync")).get();
+      if (task) void cancelContentTask(task.id);
+    }
+  };
+  syncEventManager.on("sync:log", onLog);
+  try {
+    await manager.syncAll();
+    const task = db.select().from(contentTasks).where(eq(contentTasks.kind, "sync")).get();
+    expect(task?.status).toBe("cancelled");
+    expect(task?.total).toBe(10);
+    expect(task?.processed).toBe(2);
+    expect(task?.failed).toBe(0);
+    expect(db.select().from(posts).all().length).toBe(2);
+  } finally {
+    syncEventManager.off("sync:log", onLog);
+    process.env.OPENAI_API_KEY = key;
+  }
+});
+
+test("an interrupted unadopted target can commit when its adoption base is unchanged", async () => {
+  const store = getRuntimePlaybookStore();
+  await store.adopt(makePublicBundle("v9.1.0", "910").edition);
+  const next = makePublicBundle("v9.1.1", "911").edition;
+  const target = JSON.stringify({ ...next.edition, recoveryBase: store.current?.edition });
+  const { task } = await beginContentTask({
+    kind: "sync",
+    source: "playbook",
+    requestKey: "public-deployment-pointer",
+    origin: "test",
+    target,
+  });
+  await db
+    .update(contentTasks)
+    .set({ status: "interrupted", phase: "interrupted" })
+    .where(eq(contentTasks.id, task.id));
+  const download = store.downloadEdition;
+  store.downloadEdition = async (_url, _signal, retained) => {
+    expect(retained?.editionDigest).toBe(next.edition.editionDigest);
+    return next;
+  };
+  const enabled = process.env.PLAYBOOK_SYNC_ENABLED;
+  const key = process.env.OPENAI_API_KEY;
+  process.env.PLAYBOOK_SYNC_ENABLED = "true";
+  delete process.env.OPENAI_API_KEY;
+  try {
+    await checkPlaybook("recovery", task.id);
+    expect((await getContentTask(task.id))?.status).toBe("success");
+    expect((await getContentTask(task.id))?.target).toBe(target);
+    expect(store.current?.edition.source.tag).toBe("v9.1.1");
+  } finally {
+    store.downloadEdition = download;
+    if (enabled === undefined) delete process.env.PLAYBOOK_SYNC_ENABLED;
+    else process.env.PLAYBOOK_SYNC_ENABLED = enabled;
+    process.env.OPENAI_API_KEY = key;
+  }
+});
+
+test("cache adoption commit fence rejects a changed base without replacing current", async () => {
+  const store = getRuntimePlaybookStore();
+  const old = makePublicBundle("v9.2.0", "920").edition;
+  const newer = makePublicBundle("v9.2.1", "921").edition;
+  await store.adopt(old);
+  await store.adopt(newer);
+  await expect(
+    store.adopt(old, { taskId: "superseded", at: Date.now() }, undefined, old.edition)
+  ).rejects.toThrow("Adoption base changed");
+  const reloaded = new PlaybookStore(store.root);
+  await reloaded.load();
+  expect(reloaded.current?.edition.source.tag).toBe("v9.2.1");
+  expect(reloaded.adoption?.taskId).not.toBe("superseded");
 });

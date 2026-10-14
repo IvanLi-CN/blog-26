@@ -147,7 +147,8 @@ export class PlaybookStore {
   async adopt(
     value: PlaybookEdition,
     adoption?: { taskId: string; at: number; edition?: string },
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    expectedBase?: PlaybookEditionIdentity | null
   ) {
     const edition = freezeEdition(validatePlaybookEdition(value));
     const next = {
@@ -165,9 +166,14 @@ export class PlaybookStore {
     await mkdir(this.root, { recursive: true });
     const staging = join(this.root, `.state-${randomUUID()}.tmp`);
     await writeFile(staging, encodeJson(next), { mode: 0o600 });
-    if (signal?.aborted) {
+    const baseMatches =
+      expectedBase === undefined ||
+      (expectedBase
+        ? Boolean(this.current && samePlaybookEdition(expectedBase, this.current.edition))
+        : !this.current);
+    if (signal?.aborted || !baseMatches) {
       await unlink(staging);
-      throw signal.reason;
+      throw signal?.aborted ? signal.reason : new Error("Adoption base changed");
     }
     // No asynchronous gap between the final cancellation check and the commit.
     renameSync(staging, join(this.root, "state.json"));
