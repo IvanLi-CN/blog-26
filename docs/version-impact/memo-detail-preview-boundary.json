@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "16909131a5ec50a4815aa0f1b6f189b1987284ee",
+  "base_sha": "f726db08e4046cd4f905a6d680e3aa37247321bc",
   "covered_files": {
     ".github/quality-gates.json": "1a3e713708baaf265adce051b8b613b3a525bb4f",
-    ".github/workflows/e2e.yml": "5ee75c8aee10c7fbfe968321f17c32189c717905",
+    ".github/workflows/e2e.yml": "b4d787e8c28031aa81ce0f90a76657ffb271ddaf",
     ".gitignore": "ce64803d3963e4668cd644c7ef465dd36e266eba",
     "apps/admin/src/demo/mock-admin-api.ts": "93664ea43d55109946508664d4d101411c18ab3d",
     "apps/admin/src/pages/preview.tsx": "a2f09e3a0559da1d8369412f9037a172550d7719",
@@ -29,7 +29,8 @@
     "src/components/WebDemoInspector.css": "d7c0f572527944d9f1ec7d3ad74002d0df0783cd",
     "src/components/WebDemoInspector.tsx": "07a071d09a48a33545742e0ea91beeb89eb88988",
     "src/lib/clipping-web-demo.ts": "ba7a3c371ac77c91aa6a7513635cd8aeafe691ce",
-    "src/lib/console-web-demo.ts": "b3122aacf3b9239e87380a5839c63d86836731b7",
+    "src/lib/console-web-demo.ts": "bd8439e4c3ab0d5b31ab9b5e250a3cd96230bac1",
+    "src/lib/release/source.ts": "7725ab841f59bcd490d9caaba415deabc2aa5a3b",
     "src/lib/web-demo-fetch.ts": "05da9fc2fe4fd9fbb5178dc0cb89aad0ab635a7a",
     "src/server/clipping/api.test.ts": "c49f19bb824e1534886fbb47cdbd0898e70e133d",
     "src/server/clipping/api.ts": "c9f16d2ced4b0f248ad5a53d5e1f3f21a434b82e",
@@ -43,9 +44,11 @@
     "tests/e2e/guest/public-csr-navigation.spec.ts": "7df417873f7586d4f6eeaab787b521d156de746b",
     "tests/e2e/web-demo/console-memo-boundary.spec.ts": "f87c7502ba45a27b70a32cab3a59cf5920fefc32",
     "tests/e2e/web-demo/playwright.config.ts": "8dc2e45e799abdb4c24e390702f471283042e63d",
+    "tests/e2e/web-demo/public-csr.spec.ts": "0b68e7fadc9e3cc4d2ccc2efdaa4eb67c386c238",
     "tests/lib/clipping-web-demo.test.ts": "7b2a9ec797882d3249437825746d74b846825681",
     "tests/lib/console-memo-page-data.test.ts": "369c2c4d5c3dadd25c0a3f42afeca870aa2404f1",
-    "tests/lib/console-web-demo.test.ts": "207ef302156098dad17b1dcfc0a92a72f1bf073a",
+    "tests/lib/console-web-demo.test.ts": "33077ba6e33d131ea14c2a66a330436c2eb387c4",
+    "tests/lib/manual-release-source.test.ts": "111bbba24f28fac6c31a846261e316b9cd3854d6",
     "tsconfig.json": "676a7f22b8020a9b9fe1eeeafd06c72625abafcc"
   },
   "change": {
@@ -73,8 +76,8 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The candidate changes only the Console Memo detail/preview boundary, request-scoped initial projection, unauthorized read status mapping, shared route history state, and the official build-time Web Demo evidence surface. Public API payload shapes, durable application state, snapshot publishing, and deployment host configuration remain unchanged; unauthorized private reads remain indistinguishable from missing resources, while the Demo uses explicit guest projections that omit authoring-only fields. Console Web Demo mutations use tab-scoped sessionStorage for the full in-browser edit state and a short-lived same-origin cookie containing only deletion and visibility metadata for SSR boundary continuity; the cookie never carries authored Memo bodies and does not introduce durable application persistence. The current candidate also hides administrator tools immediately during persona downgrade and retains publication timestamps when a Memo becomes public.",
-      "assessed_at": "2026-10-14T21:29:01+08:00",
+      "reasoning": "The candidate changes only the Console Memo detail/preview boundary, request-scoped initial projection, unauthorized read status mapping, shared route history state, and the complete official build-time Web Demo evidence surface. Public API payload shapes, durable application state, snapshot publishing, and deployment host configuration remain unchanged; unauthorized private reads remain indistinguishable from missing resources, while the Demo uses explicit guest projections that omit authoring-only fields. Console Web Demo mutations use tab-scoped sessionStorage for the full in-browser edit state and a short-lived same-origin cookie containing only deletion and visibility metadata for SSR boundary continuity; the cookie never carries authored Memo bodies and cannot promote private or draft seed records in guest SSR.",
+      "assessed_at": "2026-10-14T14:00:41.763Z",
       "evidence": [
         {
           "path": "apps/admin/src/pages/preview.tsx",
@@ -88,13 +91,13 @@
         },
         {
           "path": "src/lib/console-web-demo.ts",
-          "blob": "b3122aacf3b9239e87380a5839c63d86836731b7",
-          "command": "Console Web Demo fixtures expose separate administrator and guest projections, keep full edits in tab-scoped sessionStorage, and use a short-lived same-origin metadata cookie for SSR deletion/visibility continuity"
+          "blob": "bd8439e4c3ab0d5b31ab9b5e250a3cd96230bac1",
+          "command": "Console Web Demo fixtures keep full edits in tab-scoped sessionStorage, use deletion/visibility-only SSR metadata, and reject forged guest promotion of private or draft seed records"
         },
         {
           "path": "tests/lib/console-web-demo.test.ts",
-          "blob": "207ef302156098dad17b1dcfc0a92a72f1bf073a",
-          "command": "Console projection regression: 7 passed, including published timestamp retention and server-side mutation-cookie reconstruction"
+          "blob": "33077ba6e33d131ea14c2a66a330436c2eb387c4",
+          "command": "Console projection regression: 8 passed, including metadata-only mutation reconstruction, published timestamp retention, chunk limits, and forged guest promotion rejection"
         },
         {
           "path": "tests/lib/console-memo-page-data.test.ts",
@@ -109,7 +112,7 @@
         {
           "path": "tests/e2e/web-demo/playwright.config.ts",
           "blob": "8dc2e45e799abdb4c24e390702f471283042e63d",
-          "command": "Console Web Demo E2E runs at desktop 1440x1000 and mobile 393x852 viewports"
+          "command": "Web Demo browser configuration covers the 24-case Console boundary suite at desktop/mobile and the public official route suites"
         },
         {
           "path": "src/components/WebDemoInspector.css",
@@ -123,8 +126,8 @@
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "5ee75c8aee10c7fbfe968321f17c32189c717905",
-          "command": "Required Web Demo E2E job builds the official artifacts and runs desktop/mobile boundary checks"
+          "blob": "b4d787e8c28031aa81ce0f90a76657ffb271ddaf",
+          "command": "Required Web Demo CI job builds the official artifacts, runs 24 Console boundary cases at desktop/mobile, and runs 36 public/project/search route cases against the public artifact"
         },
         {
           "path": ".github/quality-gates.json",
@@ -134,7 +137,7 @@
         {
           "path": "scripts/build-web-demo.ts",
           "blob": "840522042ea0e6a348b05aa0f0ff4c53c35e26b4",
-          "command": "Build script produces public site, Console site, and admin preview Web Demo artifacts"
+          "command": "Build script produces public site, Console site, and admin preview Web Demo artifacts consumed by the complete official CI job"
         },
         {
           "path": "tests/components/ClippingDetail.test.tsx",
@@ -149,8 +152,8 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Focused component, Console projection, SSR page-data source selection, clipping, HTTP compatibility, official Web Demo build, and Console browser acceptance checks pass at desktop and mobile viewports. The implementation preserves existing public API payload shapes and durable state while enforcing the same-origin detail/preview boundary and private-resource non-disclosure; the 403-to-404 mapping is an intentional privacy hardening because private and missing resources share the documented not-found response. Console Web Demo SSR now reconstructs only non-sensitive deletion and visibility metadata from the short-lived same-origin cookie journal, while the browser-only edit body remains in sessionStorage, and persona downgrade clears stale admin state before the replacement auth response settles. Official Console boundary E2E passes 12 desktop and 12 mobile cases, including private and draft JS-disabled guest navigation, same-route save, preview sync, deletion, reload freshness, clipping, and mobile bottom-sheet interaction.",
-      "assessed_at": "2026-10-14T21:29:01+08:00",
+      "reasoning": "Focused component, release-policy source, Console projection, SSR page-data source selection, clipping, HTTP compatibility, official Web Demo build, and browser acceptance checks pass. The implementation preserves existing public API payload shapes and durable state while enforcing the same-origin detail/preview boundary and private-resource non-disclosure; the 403-to-404 mapping is an intentional privacy hardening because private and missing resources share the documented not-found response. Console Web Demo SSR reconstructs only non-sensitive deletion and visibility metadata from the short-lived same-origin cookie journal, rejects forged guest promotion of private or draft seed records, and keeps browser-only authored edits in sessionStorage. The official Web Demo job now validates 24 Console boundary cases plus 36 public, project, and search route cases.",
+      "assessed_at": "2026-10-14T14:00:41.763Z",
       "evidence": [
         {
           "path": "apps/admin/src/pages/preview.tsx",
@@ -165,7 +168,7 @@
         {
           "path": "tests/e2e/web-demo/playwright.config.ts",
           "blob": "8dc2e45e799abdb4c24e390702f471283042e63d",
-          "command": "Desktop and mobile viewport configuration for the required Web Demo browser evidence"
+          "command": "Web Demo browser configuration covers the 24-case Console boundary suite at desktop/mobile and the public official route suites"
         },
         {
           "path": "src/components/WebDemoInspector.css",
@@ -179,8 +182,8 @@
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "5ee75c8aee10c7fbfe968321f17c32189c717905",
-          "command": "Required Web Demo CI job runs the official Console boundary suite at desktop and mobile viewports"
+          "blob": "b4d787e8c28031aa81ce0f90a76657ffb271ddaf",
+          "command": "Required Web Demo CI job builds the official artifacts, runs 24 Console boundary cases at desktop/mobile, and runs 36 public/project/search route cases against the public artifact"
         },
         {
           "path": ".github/quality-gates.json",
@@ -189,8 +192,8 @@
         },
         {
           "path": "tests/lib/console-web-demo.test.ts",
-          "blob": "207ef302156098dad17b1dcfc0a92a72f1bf073a",
-          "command": "Console projection regression: 7 passed, including published timestamp retention and server-side mutation-cookie reconstruction"
+          "blob": "33077ba6e33d131ea14c2a66a330436c2eb387c4",
+          "command": "Console projection regression: 8 passed, including metadata-only mutation reconstruction, published timestamp retention, chunk limits, and forged guest promotion rejection"
         },
         {
           "path": "tests/lib/console-memo-page-data.test.ts",
@@ -205,12 +208,12 @@
         {
           "path": "src/lib/web-demo-fetch.ts",
           "blob": "05da9fc2fe4fd9fbb5178dc0cb89aad0ab635a7a",
-          "command": "bun test tests/lib/console-web-demo.test.ts tests/lib/console-memo-page-data.test.ts tests/components/PublicMemoAuthoring.test.tsx tests/components/ClippingDetail.test.tsx src/lib/__tests__/admin-demo-file-tree.test.ts src/lib/__tests__/admin-demo-file-paste-selection.test.ts src/lib/__tests__/admin-demo-llm-settings.test.ts: 24 passed; Web Demo admin/preview mutation bridge covered by 12 desktop and 12 mobile E2E cases"
+          "command": "Focused unit/component suite: 27 passed; Web Demo admin/preview mutation bridge and public route behavior are covered by 24 Console plus 36 public browser cases"
         },
         {
           "path": "scripts/build-web-demo.ts",
           "blob": "840522042ea0e6a348b05aa0f0ff4c53c35e26b4",
-          "command": "bun run web-demo:build: public, Console, and admin artifacts built successfully"
+          "command": "Build script produces public site, Console site, and admin preview Web Demo artifacts consumed by the complete official CI job"
         },
         {
           "path": "tests/components/ClippingDetail.test.tsx",
@@ -237,7 +240,8 @@
         "3.0.5",
         "3.1.1",
         "3.1.2",
-        "3.2.1"
+        "3.2.1",
+        "3.3.0"
       ],
       "evidence": [
         {
