@@ -65,7 +65,12 @@ test("page evidence mode is selected at build time", async () => {
     "PUBLIC_SNAPSHOT_PATH=./dev-data/web-demo/public-snapshot.json"
   );
   expect(webDemoSiteScript).toContain("PLAYBOOK_BUNDLE_DIR=./dev-data/web-demo/playbook-fixture");
-  expect(webDemoSiteScript).toContain("bun --bun node_modules/astro/bin/astro.mjs dev");
+  expect(webDemoSiteScript).toContain("exec bun scripts/start-web-demo-site.ts");
+  const demoEntry = await readFile(resolve(repoRoot, "scripts/start-web-demo-site.ts"), "utf8");
+  expect(demoEntry.indexOf("await prepareWebDemoInputs()")).toBeGreaterThan(-1);
+  expect(demoEntry.indexOf("await prepareWebDemoInputs()")).toBeLessThan(
+    demoEntry.indexOf("Bun.spawn(")
+  );
   expect(webDemoSiteScript).toContain("ASTRO_CACHE_DIR=.astro-web-demo-dev");
   expect(webDemoSiteScript).toContain("VITE_CACHE_DIR=node_modules/.vite-web-demo-dev");
   expect(webDemoSiteScript).toContain("ASTRO_OUT_DIR=web-demo-site-dev-dist");
