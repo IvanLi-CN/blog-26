@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { CONSOLE_WEB_DEMO_SLUGS, createConsoleWebDemoStore } from "../../src/lib/console-web-demo";
+import {
+  CONSOLE_WEB_DEMO_SLUGS,
+  createConsoleWebDemoStore,
+  getConsoleWebDemoClippingArticle,
+} from "../../src/lib/console-web-demo";
 
 describe("Console Web Demo persona projections", () => {
   test("guest list and detail omit authoring-only fields", () => {
@@ -30,5 +34,13 @@ describe("Console Web Demo persona projections", () => {
 
     expect(store.get(CONSOLE_WEB_DEMO_SLUGS.private, "guest")).toBeNull();
     expect(store.get(CONSOLE_WEB_DEMO_SLUGS.draft, "guest")).toBeNull();
+  });
+
+  test("guest clipping detail keeps source and translation without discussion access", () => {
+    const article = getConsoleWebDemoClippingArticle(CONSOLE_WEB_DEMO_SLUGS.clipping, "guest");
+
+    expect(article?.source).toContain("Durable article workflows");
+    expect(article?.translation).toContain("持久文章工作流");
+    expect(article?.canDiscuss).toBe(false);
   });
 });

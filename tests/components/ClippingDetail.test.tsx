@@ -20,6 +20,7 @@ const article: ClippingArticle = {
     error: null,
     warning: null,
     usingPreviousVersion: false,
+    versionId: null,
     sourceUrl: null,
     targetUrl: "https://example.com/article",
   },
@@ -29,7 +30,7 @@ const article: ClippingArticle = {
 };
 
 const transport: ClippingTransport = {
-  request: async () => article,
+  request: async <T,>() => article as T,
   subscribe: () => () => undefined,
 };
 

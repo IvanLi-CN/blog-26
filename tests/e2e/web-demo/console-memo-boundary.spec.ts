@@ -120,6 +120,27 @@ test.describe("Console Memo Web Demo", () => {
     ).toContainText("持久文章工作流");
   });
 
+  test("renders guest clipping materials without exposing discussion controls", async ({
+    page,
+  }) => {
+    await page.goto(`/memos/${clippingSlug}/?d_persona=guest&d_delay=normal`, {
+      waitUntil: "domcontentloaded",
+    });
+    const clipping = page.locator(
+      '[data-testid="clipping-detail"][data-clipping-surface="public"]'
+    );
+    await expect(clipping).toBeVisible();
+    await expect(
+      page.locator('[data-testid="clipping-article-source"]:visible').last()
+    ).toContainText("Durable article workflows");
+    await page.getByRole("button", { name: "简体中文译文" }).click();
+    await expect(
+      page.locator('[data-testid="clipping-article-translation"]:visible').last()
+    ).toContainText("持久文章工作流");
+    await expect(page.getByTestId("clipping-open-chat")).toHaveCount(0);
+    await expect(page.locator('[data-testid="clipping-chat"]:visible')).toHaveCount(0);
+  });
+
   test("keeps clipping materials and discussion inside the Admin preview Web Demo", async ({
     page,
   }) => {
@@ -143,9 +164,12 @@ test.describe("Console Memo Web Demo", () => {
   });
 
   test("saves in place and records the in-memory Web Demo mutation", async ({ page }) => {
-    await page.goto(`/memos/${privateSlug}/?d_persona=admin&d_delay=normal`, {
-      waitUntil: "domcontentloaded",
-    });
+    await page.goto(`/memos/?d_persona=admin&d_delay=normal`, { waitUntil: "domcontentloaded" });
+    await page
+      .getByTestId("admin-live-memo-card")
+      .filter({ hasText: "发布窗口后的内部复盘" })
+      .getByRole("link", { name: "查看详情" })
+      .click();
     const detailUrl = new RegExp(`/memos/${privateSlug}/?(?:\\?.*)?$`);
     const editButton = page.getByRole("button", { name: "编辑 Memo" });
     await expect(editButton).toBeEnabled({ timeout: 15_000 });
@@ -173,5 +197,24 @@ test.describe("Console Memo Web Demo", () => {
 
     await page.getByTestId("web-demo-inspector-trigger").click();
     await expect(page.locator(".web-demo-inspector-mutations")).toContainText("保存 Memo 详情");
+  });
+
+  test("keeps a deleted Web Demo Memo out of the list after client navigation", async ({
+    page,
+  }) => {
+    await page.goto(`/memos/?d_persona=admin&d_delay=normal`, { waitUntil: "domcontentloaded" });
+    await page
+      .getByTestId("admin-live-memo-card")
+      .filter({ hasText: "发布窗口后的内部复盘" })
+      .getByRole("link", { name: "查看详情" })
+      .click();
+    await expect(page.getByTestId("admin-live-memo-delete")).toBeEnabled();
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByTestId("admin-live-memo-delete").click();
+    await expect(page).toHaveURL(/\/memos\/?(?:\?.*)?$/);
+    await expect(page.getByTestId("admin-live-memo-list-items")).toBeVisible();
+    await expect(page.getByText("发布窗口后的内部复盘", { exact: true })).toHaveCount(0);
+    await page.getByTestId("web-demo-inspector-trigger").click();
+    await expect(page.locator(".web-demo-inspector-mutations")).toContainText("删除 Memo");
   });
 });

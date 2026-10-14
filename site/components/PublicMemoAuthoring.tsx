@@ -978,7 +978,9 @@ export function PublicMemoDetailControlsIsland({
           method: "DELETE",
         }
       );
-      window.location.href = toPublicSitePath("/memos") ?? "/memos";
+      const target = new URL(toPublicSitePath("/memos") ?? "/memos", window.location.href);
+      window.history.pushState({ publicCsr: true }, "", target);
+      window.dispatchEvent(new PopStateEvent("popstate"));
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : String(error));
     } finally {

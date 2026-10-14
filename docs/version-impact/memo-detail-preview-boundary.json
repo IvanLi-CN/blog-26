@@ -20,7 +20,7 @@
     "site/components/PublicRouter.tsx": "528da86451956f2a4585b570241ff3034309f372",
     "site/components/VirtualizedMemoList.tsx": "107f3d0d36b640fc780a3554098f421cbfaac07c",
     "site/components/pages/memo.tsx": "b19ddde06df9b0b761dd1369c0a4f9fbe26f2a9b",
-    "site/lib/page-data/memo.ts": "06eb4f23ddf31d9b5ffafe8cbe24611517acdcc1",
+    "site/lib/page-data/memo.ts": "fc89f2ff99bf1214ea72b4df367e9486746193f7",
     "site/lib/page-data/memos.ts": "4468f799b278ae394c6f2ad3cc0e3fd6a2485380",
     "site/pages/memos/[slug].astro": "c19abf54d59fd88cc31a59e32ba14355e23799b5",
     "src/components/WebDemoInspector.tsx": "07a071d09a48a33545742e0ea91beeb89eb88988",
@@ -39,13 +39,13 @@
     "tests/e2e/admin/memos/helpers.ts": "d858b41e327d7570fbed70c7f3481611209e0dde",
     "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts": "8f2abe570c343db4e6634c6e5335ca53428bd988",
     "tests/e2e/guest/public-csr-navigation.spec.ts": "7df417873f7586d4f6eeaab787b521d156de746b",
-    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "573b7e2729d65a2d95174faff2e16d97cab1ad7d",
+    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "2e28a9219207b354200437140e99095f083f2799",
     "tests/e2e/web-demo/playwright.config.ts": "8dc2e45e799abdb4c24e390702f471283042e63d",
     "tests/lib/console-memo-page-data.test.ts": "369c2c4d5c3dadd25c0a3f42afeca870aa2404f1",
-    "tests/lib/console-web-demo.test.ts": "922bc22e3cbb5d30b94378929ceaa56202366090",
+    "tests/lib/console-web-demo.test.ts": "0a46e5f6573701c12e9dc66b8d3f52030338add5",
     "tests/lib/clipping-web-demo.test.ts": "7b2a9ec797882d3249437825746d74b846825681",
     "tsconfig.json": "676a7f22b8020a9b9fe1eeeafd06c72625abafcc",
-    "tests/components/ClippingDetail.test.tsx": "6b38f8d4c315cc7dbd1c7c1e8a250958050e0a85"
+    "tests/components/ClippingDetail.test.tsx": "7a811cdcbcb8a39502f2365fdbf9de70fe47e7cc"
   },
   "change": {
     "description": "Separate Console Memo detail navigation from the dedicated author preview, load the current Memo projection server-side with the existing identity and media boundaries, preserve same-route editing and public route history, hide unauthorized private Memo and clipping reads behind the existing missing-resource boundary, and ship a complete official Web Demo covering admin, guest, private, draft, public, clipping, preview, history, and Inspector mutation states.",
@@ -82,17 +82,17 @@
         },
         {
           "path": "site/lib/page-data/memo.ts",
-          "blob": "9cfaa69697910998b7ec4502d664d4ebda797ac2",
+          "blob": "fc89f2ff99bf1214ea72b4df367e9486746193f7",
           "command": "Current page loader supplies request-scoped public or administrator Memo detail projection and safe guest render defaults"
         },
         {
           "path": "src/lib/console-web-demo.ts",
-          "blob": "6095169185d90e3b27874d1915b672cf23f158e0",
+          "blob": "c7390e66b6cb31b5280d147acd86c2d3f71fbfec",
           "command": "Console Web Demo fixtures expose separate administrator and guest projections"
         },
         {
           "path": "tests/lib/console-web-demo.test.ts",
-          "blob": "922bc22e3cbb5d30b94378929ceaa56202366090",
+          "blob": "0a46e5f6573701c12e9dc66b8d3f52030338add5",
           "command": "Guest Demo projection tests omit authoring-only fields and hide private/draft records"
         },
         {
@@ -102,7 +102,7 @@
         },
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "ce1f6c898028577c405b0c696c9f0548a4fbd5b4",
+          "blob": "2e28a9219207b354200437140e99095f083f2799",
           "command": "Official Console Web Demo E2E covers navigation, history, preview boundary, SSR privacy, clipping, Admin preview clipping materials, same-route save, and mobile bottom-sheet interaction"
         },
         {
@@ -137,7 +137,7 @@
         },
         {
           "path": "tests/components/ClippingDetail.test.tsx",
-          "blob": "6b38f8d4c315cc7dbd1c7c1e8a250958050e0a85",
+          "blob": "7a811cdcbcb8a39502f2365fdbf9de70fe47e7cc",
           "command": "bun test tests/components/ClippingDetail.test.tsx: 1 passed"
         }
       ],
@@ -158,8 +158,8 @@
         },
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "ce1f6c898028577c405b0c696c9f0548a4fbd5b4",
-          "command": "Official Console Web Demo E2E: 6 desktop passed and 6 mobile passed"
+          "blob": "2e28a9219207b354200437140e99095f083f2799",
+          "command": "Official Console Web Demo E2E: 8 desktop passed and 8 mobile passed"
         },
         {
           "path": "tests/e2e/web-demo/playwright.config.ts",
@@ -188,7 +188,7 @@
         },
         {
           "path": "tests/lib/console-web-demo.test.ts",
-          "blob": "922bc22e3cbb5d30b94378929ceaa56202366090",
+          "blob": "0a46e5f6573701c12e9dc66b8d3f52030338add5",
           "command": "Guest projection regression: 2 passed"
         },
         {
@@ -213,7 +213,7 @@
         },
         {
           "path": "tests/components/ClippingDetail.test.tsx",
-          "blob": "6b38f8d4c315cc7dbd1c7c1e8a250958050e0a85",
+          "blob": "7a811cdcbcb8a39502f2365fdbf9de70fe47e7cc",
           "command": "bun test tests/components/ClippingDetail.test.tsx: 1 passed"
         }
       ]

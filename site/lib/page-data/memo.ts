@@ -145,9 +145,17 @@ export async function loadmemo(Astro: PageContext) {
   const isConsoleRuntime = isConsoleRuntimeRequest(Astro);
   const consoleMemo = await loadConsoleMemo(Astro, Astro.params.slug ?? "");
   const snapshot = await getSnapshot();
-  const consoleWebDemoMemo = isConsoleWebDemo
-    ? getConsoleWebDemoMemo(Astro.params.slug ?? "", getConsoleWebDemoPersona(Astro.url))
-    : null;
+  const consoleWebDemoPersona = isConsoleWebDemo ? getConsoleWebDemoPersona(Astro.url) : null;
+  const consoleWebDemoMemo =
+    consoleWebDemoPersona === null
+      ? null
+      : consoleWebDemoPersona === "admin"
+        ? getConsoleWebDemoMemo(Astro.params.slug ?? "", "admin")
+        : getConsoleWebDemoMemo(Astro.params.slug ?? "", consoleWebDemoPersona);
+  const consoleWebDemoAdminMemo =
+    consoleWebDemoPersona === "admin"
+      ? getConsoleWebDemoMemo(Astro.params.slug ?? "", "admin")
+      : null;
   const memo = selectMemoForRender({
     consoleWebDemoMemo,
     consoleMemo,
@@ -167,11 +175,12 @@ export async function loadmemo(Astro: PageContext) {
     getMemoPresentation(renderMemo).label
   );
   const contentSource = "local" as const;
+  const isAdminDetail = consoleMemo?.isAdmin ?? consoleWebDemoPersona === "admin";
   const publicMediaContext = {
     kind: "memo" as const,
     slug: renderMemo.slug,
     filePath: renderMemo.filePath,
-    ...(consoleMemo?.isAdmin ? { assetScope: "admin-preview" as const } : {}),
+    ...(isAdminDetail ? { assetScope: "admin-preview" as const } : {}),
   };
   const memoDescription = extractTextSummary(renderMemo.content, 180) || snapshot.site.description;
   const memoDetailContent = stripMatchingLeadingTitleHeading(renderMemo.content, renderMemo.title);
@@ -195,8 +204,8 @@ export async function loadmemo(Astro: PageContext) {
     snapshot: trimRouteSnapshot(snapshot, "memo", Astro.url.pathname),
     memoFromProps,
     memo: renderMemo,
-    initialMemo: consoleMemo?.isAdmin ? consoleMemo.memo : undefined,
-    initialIsAdmin: consoleMemo?.isAdmin ?? false,
+    initialMemo: consoleMemo?.isAdmin ? consoleMemo.memo : (consoleWebDemoAdminMemo ?? undefined),
+    initialIsAdmin: consoleMemo?.isAdmin ?? consoleWebDemoPersona === "admin",
     displayDate,
     metadataTitle,
     contentSource,
@@ -205,7 +214,11 @@ export async function loadmemo(Astro: PageContext) {
     memoDetailContent,
     clippingArticle: renderMemo.clipping
       ? selectClippingArticleForRender({
-          consoleArticle: consoleMemo?.clippingArticle,
+          consoleArticle:
+            consoleMemo?.clippingArticle ??
+            (consoleWebDemoMemo?.clipping
+              ? getConsoleWebDemoClippingArticle(renderMemo.slug, consoleWebDemoPersona ?? "guest")
+              : null),
           snapshotArticle: snapshot.clippingArticles?.[renderMemo.slug],
           fallback: {
             reading: renderMemo.clipping,
