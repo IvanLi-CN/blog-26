@@ -102,7 +102,7 @@
         },
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "0ca06c6941f2e2d80692b15cac7128c2363614df",
+          "blob": "ce1f6c898028577c405b0c696c9f0548a4fbd5b4",
           "command": "Official Console Web Demo E2E covers navigation, history, preview boundary, SSR privacy, clipping, Admin preview clipping materials, same-route save, and mobile bottom-sheet interaction"
         },
         {
@@ -158,7 +158,7 @@
         },
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "0ca06c6941f2e2d80692b15cac7128c2363614df",
+          "blob": "ce1f6c898028577c405b0c696c9f0548a4fbd5b4",
           "command": "Official Console Web Demo E2E: 6 desktop passed and 6 mobile passed"
         },
         {
