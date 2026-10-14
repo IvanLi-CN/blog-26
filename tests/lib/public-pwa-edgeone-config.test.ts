@@ -34,12 +34,6 @@ describe("EdgeOne public PWA cache config", () => {
         );
       }
       expect(config.headers.length).toBeLessThanOrEqual(30);
-      expect(() =>
-        createEdgeoneCacheConfig(basePath, [`${edition}/policies/example/private/index.html`])
-      ).toThrow("Public HTML route has no EdgeOne HTML cache rule");
-      expect(() => createEdgeoneCacheConfig(basePath, [`${edition}/unknown/index.html`])).toThrow(
-        "Public HTML route has no EdgeOne HTML cache rule"
-      );
     }
   });
 

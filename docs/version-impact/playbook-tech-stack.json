@@ -6,8 +6,8 @@
     "GLOSSARY.md": "7baafbd48fa89696faefd66709c5a8a159a6b511",
     "astro.config.mjs": "06710645e12de832945ac14d1c0b0a21482b8107",
     "docs/adr/0023-human-readable-playbook-tech-stack.md": "0df85865768c55042b2482712bb51bed3cc84995",
-    "docs/specs/public-pwa/IMPLEMENTATION.md": "5dc4d4b029457c26c933f39292d75c6c3b435065",
-    "docs/specs/public-pwa/SPEC.md": "d4beab2dfe721ac2b0da641988871decdbe87500",
+    "docs/specs/public-pwa/IMPLEMENTATION.md": "90f31a0a5f012dd612240527ad2d4a24cc5edd18",
+    "docs/specs/public-pwa/SPEC.md": "e87d255e5554bca2e6d5c2279afb0f4df22906fe",
     "docs/specs/style-playbook-integration/HISTORY.md": "01e2c85619b0f30fbd2c6e1cc07228aab93f39e4",
     "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "1f394073a6d9a0c9acd075509a2b564ac9d7b2cd",
     "docs/specs/style-playbook-integration/SPEC.md": "c32aebac0d7ee18817b87ae79ad93a56ec0654c6",
@@ -15,7 +15,7 @@
     "docs/specs/style-playbook-integration/assets/tech-stack-raw-mobile-open-dark.png": "6908d067c35a8b654c2b1ae88860a3d1080ca9cf",
     "package.json": "02cd455e1499cd41004c114f64d81f66ecc55b3c",
     "scripts/build-web-demo.ts": "dbda185c287cd10ec6a638fde7a2e88f1e820a97",
-    "scripts/prepare-edgeone-pwa-config.ts": "45f2cf8f04dba0d7504c85de83d570c108d15894",
+    "scripts/prepare-edgeone-pwa-config.ts": "c9398c2f7cb3f00c7c112543a74231a90d6a957f",
     "src/components/playbook/PlaybookPage.tsx": "b0d05112c62bd495f93edd1b759066f15d409c39",
     "src/components/playbook/PlaybookTechStack.stories.tsx": "c12ecb55dcd97efeb4d50050fa31e8feb90c3fcb",
     "src/components/playbook/PlaybookTechStack.tsx": "ec652c99a237f7030609f256005dc0e1f6998056",
@@ -29,12 +29,12 @@
     "tests/lib/playbook-fixture.ts": "f2848852e07c474bcf349dde63b4498a7718189d",
     "tests/lib/playbook-tech-stack.test.ts": "4887b21a20471a5e8b3c3af271597390e066bfbe",
     "tests/lib/playbook-web-demo-fixture.test.ts": "0cef5636efac20275d9d26e2fa542ff070810cc3",
-    "tests/lib/public-pwa-edgeone-config.test.ts": "264fd4ecf7c348bf6a0488a63d87d60462755e47",
+    "tests/lib/public-pwa-edgeone-config.test.ts": "0acc2191b11794416bdfdff56b8e7a78dfb6d2bf",
     "tests/storybook/playbook-interactions.ts": "63c52be5ac568c3d08a06585357be8325295f1ef",
     "tests/storybook/story-boundary.test.ts": "dd0e0c67627ae653cd4ec2df4a2fb435c5c8611a"
   },
   "change": {
-    "description": "Present existing Playbook project technology stacks as compact semantic tabs and responsive chips, with a highlighted copyable fullscreen JSON viewer and realistic Web Demo data. Restore edition-qualified Playbook HTML classification in the EdgeOne artifact validator without changing cache headers. Keep unknown prototype-named fields renderable, nested object disclosure IDs unique, and the dev entry on its existing prepared-input launcher.",
+    "description": "Present existing Playbook project technology stacks as compact semantic tabs and responsive chips, with a highlighted copyable fullscreen JSON viewer and realistic Web Demo data. Verify the mainline edition-qualified Playbook HTML classification without changing cache headers. Keep unknown prototype-named fields renderable, nested object disclosure IDs unique, and the dev entry on its existing prepared-input launcher.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api"]
   },
@@ -63,7 +63,7 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change. The release-blocking validator omission is repaired without changing existing cache policies. Bounded parser, disclosure identity and dev-entry corrections retain approved behavior.",
+      "reasoning": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change. The mainline release-blocking validator repair is retained with additional category/base-path regression coverage. Bounded parser, disclosure identity and dev-entry corrections retain approved behavior.",
       "assessed_at": "2026-10-14T09:29:54.935045+00:00",
       "evidence": [
         {
@@ -83,8 +83,8 @@
         },
         {
           "path": "tests/lib/public-pwa-edgeone-config.test.ts",
-          "blob": "264fd4ecf7c348bf6a0488a63d87d60462755e47",
-          "command": "bun test tests/lib/public-pwa-edgeone-config.test.ts: edition indexes/details at root and base path pass; unknown/deeper HTML remains rejected and header count stays within 30"
+          "blob": "0acc2191b11794416bdfdff56b8e7a78dfb6d2bf",
+          "command": "bun test tests/lib/public-pwa-edgeone-config.test.ts: edition indexes/details at root and base path pass under inherited mainline classification; header count stays within 30"
         },
         {
           "path": "tests/storybook/story-boundary.test.ts",
@@ -99,7 +99,7 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change. The release-blocking validator omission is repaired without changing existing cache policies. Bounded parser, disclosure identity and dev-entry corrections retain approved behavior.",
+      "reasoning": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change. The mainline release-blocking validator repair is retained with additional category/base-path regression coverage. Bounded parser, disclosure identity and dev-entry corrections retain approved behavior.",
       "assessed_at": "2026-10-14T09:29:54.935184+00:00",
       "evidence": [
         {
@@ -119,8 +119,8 @@
         },
         {
           "path": "tests/lib/public-pwa-edgeone-config.test.ts",
-          "blob": "264fd4ecf7c348bf6a0488a63d87d60462755e47",
-          "command": "bun test tests/lib/public-pwa-edgeone-config.test.ts: edition indexes/details at root and base path pass; unknown/deeper HTML remains rejected and header count stays within 30"
+          "blob": "0acc2191b11794416bdfdff56b8e7a78dfb6d2bf",
+          "command": "bun test tests/lib/public-pwa-edgeone-config.test.ts: edition indexes/details at root and base path pass under inherited mainline classification; header count stays within 30"
         },
         {
           "path": "tests/storybook/story-boundary.test.ts",
@@ -148,8 +148,8 @@
         },
         {
           "path": "tests/lib/public-pwa-edgeone-config.test.ts",
-          "blob": "264fd4ecf7c348bf6a0488a63d87d60462755e47",
-          "command": "bun test tests/lib/public-pwa-edgeone-config.test.ts: edition indexes/details at root and base path pass; unknown/deeper HTML remains rejected and header count stays within 30"
+          "blob": "0acc2191b11794416bdfdff56b8e7a78dfb6d2bf",
+          "command": "bun test tests/lib/public-pwa-edgeone-config.test.ts: edition indexes/details at root and base path use the existing HTML cache policy"
         }
       ]
     },

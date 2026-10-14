@@ -46,12 +46,6 @@ const HTML_FILE_ROUTE_PATTERNS = [
   "/playbook/projects/:slug/",
   "/playbook/policies/",
   "/playbook/policies/:slug/",
-  "/playbook/editions/:version/:releaseId/:digest/topics/",
-  "/playbook/editions/:version/:releaseId/:digest/topics/:slug/",
-  "/playbook/editions/:version/:releaseId/:digest/projects/",
-  "/playbook/editions/:version/:releaseId/:digest/projects/:slug/",
-  "/playbook/editions/:version/:releaseId/:digest/policies/",
-  "/playbook/editions/:version/:releaseId/:digest/policies/:slug/",
   "/memos/",
   "/memos/:slug/",
 ] as const;

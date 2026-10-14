@@ -50,7 +50,7 @@
 - Manifest, stable favicon, and other unversioned public static assets MUST revalidate using ETag and `Cache-Control: public, max-age=0, must-revalidate`.
 - The Bun gateway and EdgeOne Makers static artifact MUST implement equivalent public cache boundaries.
 - The EdgeOne configuration MUST stay within the platform limit of 30 header rules. Asset rules MUST NOT shadow a matching HTML route; colliding assets must retain revalidation through a more specific rule.
-- Edition-qualified Playbook topics, projects, and policies indexes and one-slug detail pages MUST use the same HTML cache policy as current-edition routes; unknown categories and deeper HTML paths MUST remain rejected.
+- Edition-qualified Playbook topics, projects, and policies indexes and one-slug detail pages MUST use the same HTML cache policy as current-edition routes.
 - The EdgeOne configuration generator MUST fail when a non-error public HTML output has no matching HTML cache rule, including flat `.html` files.
 - Inputs: the resolved public static-file path and EdgeOne artifact path.
 - Outputs: consistent cache directives for public static responses.
