@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "b52bef25db6923dbd7869ea7d9f0882e2cdd9393",
+  "covered_files": {
+    "GLOSSARY.md": "7baafbd48fa89696faefd66709c5a8a159a6b511",
+    "docs/adr/0023-human-readable-playbook-tech-stack.md": "0df85865768c55042b2482712bb51bed3cc84995",
+    "docs/specs/style-playbook-integration/HISTORY.md": "01e2c85619b0f30fbd2c6e1cc07228aab93f39e4",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "d272e6b73ae886cdf5e41ffe86998ca885fb3112",
+    "docs/specs/style-playbook-integration/SPEC.md": "423ce522375469b21f78f65b69f53a0d59baeb17",
+    "docs/specs/style-playbook-integration/assets/tech-stack-raw-desktop-open-dark.png": "705a3f9b51eed64e8e00ca3ffc9707c6e3bfd784",
+    "docs/specs/style-playbook-integration/assets/tech-stack-raw-mobile-open-dark.png": "6908d067c35a8b654c2b1ae88860a3d1080ca9cf",
+    "scripts/build-web-demo.ts": "dbda185c287cd10ec6a638fde7a2e88f1e820a97",
+    "src/components/playbook/PlaybookPage.tsx": "b0d05112c62bd495f93edd1b759066f15d409c39",
+    "src/components/playbook/PlaybookTechStack.stories.tsx": "8556d635e82323b5cfd9808d7b3cb399a7fe03c5",
+    "src/components/playbook/PlaybookTechStack.tsx": "bbfabbf882f1129ca2f81ebc22f036986eda4267",
+    "src/components/playbook/PlaybookTechStackChips.tsx": "4ecd1583462e8b6ec373d768ffd3306df6117dbc",
+    "src/components/playbook/PlaybookTechStackRaw.tsx": "e64c3bd2f615a91e285db8bdd00f6e9e9cfb339b",
+    "src/lib/playbook/fixture.ts": "dd465aa9852b4a5694d55751adf14018fff53712",
+    "src/lib/playbook/tech-stack.ts": "f528cc843f75da6d38a73b77f44c4fc4a0198364",
+    "src/lib/playbook/web-demo-fixture.ts": "3fafa57e7421e5ee986dda7f10e4322d6cbcc437",
+    "tests/lib/playbook-fixture.ts": "f2848852e07c474bcf349dde63b4498a7718189d",
+    "tests/lib/playbook-tech-stack.test.ts": "fe442acd7242bacf6b336bdcb82a0395a8880975",
+    "tests/lib/playbook-web-demo-fixture.test.ts": "0cef5636efac20275d9d26e2fa542ff070810cc3",
+    "tests/storybook/playbook-interactions.ts": "26f3b5a27fa57b08166244945e5af555460c0291"
+  },
+  "change": {
+    "description": "Present existing Playbook project technology stacks as compact semantic tabs and responsive chips, with a highlighted copyable fullscreen JSON viewer and realistic Web Demo data.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change.",
+      "assessed_at": "2026-10-14T06:16:16.556783+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-tech-stack.test.ts",
+          "blob": "fe442acd7242bacf6b336bdcb82a0395a8880975",
+          "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
+        },
+        {
+          "path": "tests/lib/playbook-web-demo-fixture.test.ts",
+          "blob": "0cef5636efac20275d9d26e2fa542ff070810cc3",
+          "command": "bun test tests/lib/playbook-web-demo-fixture.test.ts: realistic project context passes"
+        },
+        {
+          "path": "src/components/playbook/PlaybookTechStack.stories.tsx",
+          "blob": "8556d635e82323b5cfd9808d7b3cb399a7fe03c5",
+          "command": "Storybook browser play: tabs, narrow chips, stable JSON toolbar, fullscreen and empty/nested states pass"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change.",
+      "assessed_at": "2026-10-14T06:16:16.556783+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-tech-stack.test.ts",
+          "blob": "fe442acd7242bacf6b336bdcb82a0395a8880975",
+          "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
+        },
+        {
+          "path": "tests/lib/playbook-web-demo-fixture.test.ts",
+          "blob": "0cef5636efac20275d9d26e2fa542ff070810cc3",
+          "command": "bun test tests/lib/playbook-web-demo-fixture.test.ts: realistic project context passes"
+        },
+        {
+          "path": "src/components/playbook/PlaybookTechStack.stories.tsx",
+          "blob": "8556d635e82323b5cfd9808d7b3cb399a7fe03c5",
+          "command": "Storybook browser play: tabs, narrow chips, stable JSON toolbar, fullscreen and empty/nested states pass"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change.",
+      "assessed_at": "2026-10-14T06:16:16.556783+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-tech-stack.test.ts",
+          "blob": "fe442acd7242bacf6b336bdcb82a0395a8880975",
+          "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
+        },
+        {
+          "path": "tests/lib/playbook-web-demo-fixture.test.ts",
+          "blob": "0cef5636efac20275d9d26e2fa542ff070810cc3",
+          "command": "bun test tests/lib/playbook-web-demo-fixture.test.ts: realistic project context passes"
+        },
+        {
+          "path": "src/components/playbook/PlaybookTechStack.stories.tsx",
+          "blob": "8556d635e82323b5cfd9808d7b3cb399a7fe03c5",
+          "command": "Storybook browser play: tabs, narrow chips, stable JSON toolbar, fullscreen and empty/nested states pass"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": ["3.1.2"],
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-tech-stack.test.ts",
+          "blob": "fe442acd7242bacf6b336bdcb82a0395a8880975",
+          "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
+        },
+        {
+          "path": "tests/lib/playbook-web-demo-fixture.test.ts",
+          "blob": "0cef5636efac20275d9d26e2fa542ff070810cc3",
+          "command": "bun test tests/lib/playbook-web-demo-fixture.test.ts: realistic project context passes"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "Presentation and deterministic Web Demo fixtures only; no durable data format changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-tech-stack.test.ts",
+          "blob": "fe442acd7242bacf6b336bdcb82a0395a8880975",
+          "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
+        },
+        {
+          "path": "tests/lib/playbook-web-demo-fixture.test.ts",
+          "blob": "0cef5636efac20275d9d26e2fa542ff070810cc3",
+          "command": "bun test tests/lib/playbook-web-demo-fixture.test.ts: realistic project context passes"
+        }
+      ]
+    }
+  }
+}
