@@ -77,7 +77,7 @@
     "current": {
       "impact": "patch",
       "reasoning": "The candidate changes only the Console Memo detail/preview boundary, request-scoped initial projection, unauthorized read status mapping, shared route history state, and the complete official build-time Web Demo evidence surface. Public API payload shapes, durable application state, snapshot publishing, and deployment host configuration remain unchanged; unauthorized private reads remain indistinguishable from missing resources, while the Demo uses explicit guest projections that omit authoring-only fields. Console Web Demo mutations use tab-scoped sessionStorage for the full in-browser edit state and a short-lived same-origin cookie containing only deletion and visibility metadata for SSR boundary continuity; the cookie never carries authored Memo bodies and cannot promote private or draft seed records in guest SSR.",
-      "assessed_at": "2026-10-14T14:00:41.763Z",
+      "assessed_at": "2026-10-14T22:12:33+08:00",
       "evidence": [
         {
           "path": "apps/admin/src/pages/preview.tsx",
@@ -153,7 +153,7 @@
     "verified": {
       "impact": "patch",
       "reasoning": "Focused component, release-policy source, Console projection, SSR page-data source selection, clipping, HTTP compatibility, official Web Demo build, and browser acceptance checks pass. The implementation preserves existing public API payload shapes and durable state while enforcing the same-origin detail/preview boundary and private-resource non-disclosure; the 403-to-404 mapping is an intentional privacy hardening because private and missing resources share the documented not-found response. Console Web Demo SSR reconstructs only non-sensitive deletion and visibility metadata from the short-lived same-origin cookie journal, rejects forged guest promotion of private or draft seed records, and keeps browser-only authored edits in sessionStorage. The official Web Demo job now validates 24 Console boundary cases plus 36 public, project, and search route cases.",
-      "assessed_at": "2026-10-14T14:00:41.763Z",
+      "assessed_at": "2026-10-14T22:12:33+08:00",
       "evidence": [
         {
           "path": "apps/admin/src/pages/preview.tsx",
