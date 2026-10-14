@@ -17,6 +17,17 @@ const configuredSiteBasePath = process.env.PUBLIC_SITE_BASE_PATH ?? "";
 const consoleRuntime = process.env.CONSOLE_RUNTIME === "true";
 const webDemoRuntime = process.env.WEB_DEMO_BUILD === "true";
 const serverRuntime = consoleRuntime || webDemoRuntime;
+const webDemoEdition = webDemoRuntime
+  ? JSON.parse(
+      await readFile(
+        resolve(process.env.PLAYBOOK_SEED_PATH || "site/generated/playbook-edition.json"),
+        "utf8"
+      )
+    ).edition
+  : undefined;
+const webDemoPlaybookBase = webDemoEdition
+  ? `/playbook/editions/${encodeURIComponent(webDemoEdition.source.tag)}/${webDemoEdition.source.releaseId}/${webDemoEdition.editionDigest}`
+  : "";
 const astroOutDir =
   process.env.ASTRO_OUT_DIR ||
   (consoleRuntime ? "./console-dist" : webDemoRuntime ? "./web-demo-site-dist" : "./site-dist");
@@ -160,6 +171,7 @@ export default defineConfig({
       ],
     },
     define: {
+      "process.env.PUBLIC_WEB_DEMO_PLAYBOOK_BASE": JSON.stringify(webDemoPlaybookBase),
       "process.env.PUBLIC_LUOSIMAO_SITE_KEY": JSON.stringify(
         process.env.PUBLIC_LUOSIMAO_SITE_KEY ?? ""
       ),

@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "16909131a5ec50a4815aa0f1b6f189b1987284ee",
+  "covered_files": {
+    "GLOSSARY.md": "7fd89eca9838b4c6f2390870afe9c71986e8ea7a",
+    "astro.config.mjs": "61c059bdbc8d98e19af1b01c7b5dda8b521b6c0d",
+    "docs/adr/0023-human-readable-playbook-tech-stack.md": "0df85865768c55042b2482712bb51bed3cc84995",
+    "docs/specs/public-pwa/IMPLEMENTATION.md": "90f31a0a5f012dd612240527ad2d4a24cc5edd18",
+    "docs/specs/public-pwa/SPEC.md": "e87d255e5554bca2e6d5c2279afb0f4df22906fe",
+    "docs/specs/style-playbook-integration/HISTORY.md": "01e2c85619b0f30fbd2c6e1cc07228aab93f39e4",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "1f394073a6d9a0c9acd075509a2b564ac9d7b2cd",
+    "docs/specs/style-playbook-integration/SPEC.md": "c32aebac0d7ee18817b87ae79ad93a56ec0654c6",
+    "docs/specs/style-playbook-integration/assets/tech-stack-raw-desktop-open-dark.png": "705a3f9b51eed64e8e00ca3ffc9707c6e3bfd784",
+    "docs/specs/style-playbook-integration/assets/tech-stack-raw-mobile-open-dark.png": "6908d067c35a8b654c2b1ae88860a3d1080ca9cf",
+    "package.json": "b70913ecc7e6f53c2e1a77658e1bee9e7ca072b4",
+    "scripts/build-web-demo.ts": "840522042ea0e6a348b05aa0f0ff4c53c35e26b4",
+    "src/components/playbook/PlaybookPage.tsx": "b0d05112c62bd495f93edd1b759066f15d409c39",
+    "src/components/playbook/PlaybookTechStack.stories.tsx": "c12ecb55dcd97efeb4d50050fa31e8feb90c3fcb",
+    "src/components/playbook/PlaybookTechStack.tsx": "ec652c99a237f7030609f256005dc0e1f6998056",
+    "src/components/playbook/PlaybookTechStackChips.tsx": "15633059a9705434d51614ffa1d67ea408247bd1",
+    "src/components/playbook/PlaybookTechStackRaw.tsx": "664c2c312a911a32a74efefecb6c3ee7e4fa73d1",
+    "src/lib/playbook/fixture.ts": "dd465aa9852b4a5694d55751adf14018fff53712",
+    "src/lib/playbook/tech-stack.ts": "9a3ef78f299ab10780ce76d2c919d8e8c0800ff0",
+    "src/lib/playbook/web-demo-fixture.ts": "3fafa57e7421e5ee986dda7f10e4322d6cbcc437",
+    "src/lib/search/web-demo-fixtures.ts": "7138647d74c36935833183a88b4ffc6e048fbd0b",
+    "tests/e2e/web-demo/search-modes.spec.ts": "efa94452dfc0162ed5aa1966102972a77d8cdeb4",
+    "tests/lib/playbook-fixture.ts": "f2848852e07c474bcf349dde63b4498a7718189d",
+    "tests/lib/playbook-tech-stack.test.ts": "4887b21a20471a5e8b3c3af271597390e066bfbe",
+    "tests/lib/playbook-web-demo-fixture.test.ts": "0cef5636efac20275d9d26e2fa542ff070810cc3",
+    "tests/lib/public-pwa-edgeone-config.test.ts": "0acc2191b11794416bdfdff56b8e7a78dfb6d2bf",
+    "tests/storybook/playbook-interactions.ts": "63c52be5ac568c3d08a06585357be8325295f1ef",
+    "tests/storybook/story-boundary.test.ts": "dd0e0c67627ae653cd4ec2df4a2fb435c5c8611a"
+  },
+  "change": {
+    "description": "Present existing Playbook project technology stacks as compact semantic tabs and responsive chips, with a highlighted copyable fullscreen JSON viewer and realistic Web Demo data. Verify the mainline edition-qualified Playbook HTML classification without changing cache headers. Keep unknown prototype-named fields renderable, nested object disclosure IDs unique, and the dev entry on its existing prepared-input launcher.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change.",
+      "assessed_at": "2026-10-14T06:16:16.556783+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-tech-stack.test.ts",
+          "blob": "4887b21a20471a5e8b3c3af271597390e066bfbe",
+          "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
+        },
+        {
+          "path": "tests/lib/playbook-web-demo-fixture.test.ts",
+          "blob": "0cef5636efac20275d9d26e2fa542ff070810cc3",
+          "command": "bun test tests/lib/playbook-web-demo-fixture.test.ts: realistic project context passes"
+        },
+        {
+          "path": "src/components/playbook/PlaybookTechStack.stories.tsx",
+          "blob": "c12ecb55dcd97efeb4d50050fa31e8feb90c3fcb",
+          "command": "Storybook browser play: tabs, narrow chips, stable JSON toolbar, fullscreen and empty/nested states pass"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change. The mainline release-blocking validator repair is retained with additional category/base-path regression coverage. Bounded parser, disclosure identity and dev-entry corrections retain approved behavior.",
+      "assessed_at": "2026-10-14T09:29:54.935045+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-tech-stack.test.ts",
+          "blob": "4887b21a20471a5e8b3c3af271597390e066bfbe",
+          "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
+        },
+        {
+          "path": "tests/lib/playbook-web-demo-fixture.test.ts",
+          "blob": "0cef5636efac20275d9d26e2fa542ff070810cc3",
+          "command": "bun test tests/lib/playbook-web-demo-fixture.test.ts: realistic project context passes"
+        },
+        {
+          "path": "src/components/playbook/PlaybookTechStack.stories.tsx",
+          "blob": "c12ecb55dcd97efeb4d50050fa31e8feb90c3fcb",
+          "command": "Storybook browser play: tabs, narrow chips, stable JSON toolbar, fullscreen and empty/nested states pass"
+        },
+        {
+          "path": "tests/lib/public-pwa-edgeone-config.test.ts",
+          "blob": "0acc2191b11794416bdfdff56b8e7a78dfb6d2bf",
+          "command": "bun test tests/lib/public-pwa-edgeone-config.test.ts: edition indexes/details at root and base path pass under inherited mainline classification; header count stays within 30"
+        },
+        {
+          "path": "tests/storybook/story-boundary.test.ts",
+          "blob": "dd0e0c67627ae653cd4ec2df4a2fb435c5c8611a",
+          "command": "bun test tests/storybook/story-boundary.test.ts: Web Demo dev entry invokes the existing launcher and prepares inputs before Astro startup"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The same approved candidate is assessed relative to the immutable 3.2.1 preparation merge, so its compatibility evidence remains valid when that concurrent release becomes the published baseline."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Compatible frontend presentation improvement for existing public project stack data. No endpoint, published payload, SQLite schema, persistent state, or VERSION change. The mainline release-blocking validator repair is retained with additional category/base-path regression coverage. Bounded parser, disclosure identity and dev-entry corrections retain approved behavior.",
+      "assessed_at": "2026-10-14T09:29:54.935184+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-tech-stack.test.ts",
+          "blob": "4887b21a20471a5e8b3c3af271597390e066bfbe",
+          "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
+        },
+        {
+          "path": "tests/lib/playbook-web-demo-fixture.test.ts",
+          "blob": "0cef5636efac20275d9d26e2fa542ff070810cc3",
+          "command": "bun test tests/lib/playbook-web-demo-fixture.test.ts: realistic project context passes"
+        },
+        {
+          "path": "src/components/playbook/PlaybookTechStack.stories.tsx",
+          "blob": "c12ecb55dcd97efeb4d50050fa31e8feb90c3fcb",
+          "command": "Storybook browser play: tabs, narrow chips, stable JSON toolbar, fullscreen and empty/nested states pass"
+        },
+        {
+          "path": "tests/lib/public-pwa-edgeone-config.test.ts",
+          "blob": "0acc2191b11794416bdfdff56b8e7a78dfb6d2bf",
+          "command": "bun test tests/lib/public-pwa-edgeone-config.test.ts: edition indexes/details at root and base path pass under inherited mainline classification; header count stays within 30"
+        },
+        {
+          "path": "tests/storybook/story-boundary.test.ts",
+          "blob": "dd0e0c67627ae653cd4ec2df4a2fb435c5c8611a",
+          "command": "bun test tests/storybook/story-boundary.test.ts: Web Demo dev entry invokes the existing launcher and prepares inputs before Astro startup"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": ["3.0.3", "3.0.4", "3.0.5", "3.1.1", "3.1.2", "3.2.1"],
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-tech-stack.test.ts",
+          "blob": "4887b21a20471a5e8b3c3af271597390e066bfbe",
+          "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
+        },
+        {
+          "path": "tests/lib/playbook-web-demo-fixture.test.ts",
+          "blob": "0cef5636efac20275d9d26e2fa542ff070810cc3",
+          "command": "bun test tests/lib/playbook-web-demo-fixture.test.ts: realistic project context passes"
+        },
+        {
+          "path": "tests/lib/public-pwa-edgeone-config.test.ts",
+          "blob": "0acc2191b11794416bdfdff56b8e7a78dfb6d2bf",
+          "command": "bun test tests/lib/public-pwa-edgeone-config.test.ts: edition indexes/details at root and base path use the existing HTML cache policy"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "Presentation and deterministic Web Demo fixtures only; no durable data format changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-tech-stack.test.ts",
+          "blob": "4887b21a20471a5e8b3c3af271597390e066bfbe",
+          "command": "bun test tests/lib/playbook-tech-stack.test.ts: parser, filtering, SSR and width fitting pass"
+        },
+        {
+          "path": "tests/lib/playbook-web-demo-fixture.test.ts",
+          "blob": "0cef5636efac20275d9d26e2fa542ff070810cc3",
+          "command": "bun test tests/lib/playbook-web-demo-fixture.test.ts: realistic project context passes"
+        }
+      ]
+    }
+  }
+}

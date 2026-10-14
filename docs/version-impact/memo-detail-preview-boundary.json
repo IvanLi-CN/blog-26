@@ -6,14 +6,14 @@
     ".github/quality-gates.json": "1a3e713708baaf265adce051b8b613b3a525bb4f",
     ".github/workflows/e2e.yml": "5ee75c8aee10c7fbfe968321f17c32189c717905",
     ".gitignore": "ce64803d3963e4668cd644c7ef465dd36e266eba",
-    "GLOSSARY.md": "d123cb3d82eabceaf2260468391ff5dc3ad23f46",
+    "GLOSSARY.md": "7fd89eca9838b4c6f2390870afe9c71986e8ea7a",
     "apps/admin/src/demo/mock-admin-api.ts": "51ee39963bad553972dfee4b576e7da0e44a5d6e",
     "apps/admin/src/pages/preview.tsx": "a2f09e3a0559da1d8369412f9037a172550d7719",
-    "astro.config.mjs": "ad1280529c2702869c7392ffe27f65845b9122a1",
+    "astro.config.mjs": "61c059bdbc8d98e19af1b01c7b5dda8b521b6c0d",
     "docs/adr/0024-memo-detail-preview-boundary.md": "181d067980d444f265ac62443fc3d824077f7e61",
     "docs/specs/memo-admin-inline-view/SPEC.md": "4500d02d44f3f5cd72db314f49adad6cfb55c549",
-    "package.json": "b66755954d4cc1bbe2019f5588b8b51a9f92949c",
-    "scripts/build-web-demo.ts": "3ecde93da63683fe6c34cda3ea5f9085f48f8c76",
+    "package.json": "b70913ecc7e6f53c2e1a77658e1bee9e7ca072b4",
+    "scripts/build-web-demo.ts": "840522042ea0e6a348b05aa0f0ff4c53c35e26b4",
     "scripts/preview-web-demo.ts": "5d92e6c3d65147497a6a215fe27393571f6f43b3",
     "site/components/PublicMemoAuthoring.public.tsx": "f2d5178a4f6ef032b2b42e10fa51cc87bb920d63",
     "site/components/PublicMemoAuthoring.tsx": "7d6c23027f8abefbd9238321fa93861441842fd3",
@@ -132,7 +132,7 @@
         },
         {
           "path": "scripts/build-web-demo.ts",
-          "blob": "3ecde93da63683fe6c34cda3ea5f9085f48f8c76",
+          "blob": "840522042ea0e6a348b05aa0f0ff4c53c35e26b4",
           "command": "Build script produces public site, Console site, and admin preview Web Demo artifacts"
         },
         {
@@ -208,7 +208,7 @@
         },
         {
           "path": "scripts/build-web-demo.ts",
-          "blob": "3ecde93da63683fe6c34cda3ea5f9085f48f8c76",
+          "blob": "840522042ea0e6a348b05aa0f0ff4c53c35e26b4",
           "command": "bun run web-demo:build: public, Console, and admin artifacts built successfully"
         },
         {
