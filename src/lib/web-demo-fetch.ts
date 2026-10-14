@@ -1,4 +1,10 @@
+import {
+  getMemoListWebDemoCursorPage,
+  getMemoListWebDemoInitialPageForState,
+  getMemoListWebDemoRecord,
+} from "../../site/lib/memo-list-web-demo";
 import { projectRuntimeMetricsBySlug } from "../../site/lib/project-runtime-metrics";
+import type { PublicMemoRecord } from "../public-site/snapshot";
 import { positiveSearchTerms, searchHighlightSpans } from "./search/highlights";
 import { planNativeQuery } from "./search/native-query";
 import { searchModeSchema } from "./search/settings";
@@ -14,6 +20,7 @@ import {
   getWebDemoSceneState,
   getWebDemoState,
   isWebDemoBuildEnabled,
+  recordWebDemoMutation,
   type WebDemoApp,
   type WebDemoEnvironment,
   waitForWebDemoRequest,
@@ -63,6 +70,105 @@ function demoPublicUser(environment: WebDemoEnvironment) {
     avatarUrl: "",
     isAdmin: environment.persona === "admin",
   };
+}
+
+const demoMemoOverrides = new Map<string, PublicMemoRecord>();
+let demoMemoSequence = 2401;
+
+function demoMemoExcerpt(content: string) {
+  return content
+    .replaceAll("#", "")
+    .replaceAll("*", "")
+    .replaceAll("_", "")
+    .replaceAll("`", "")
+    .replaceAll(">", "")
+    .replaceAll("[", "")
+    .replaceAll("]", "")
+    .replaceAll("(", "")
+    .replaceAll(")", "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 180);
+}
+
+function getDemoMemo(slug: string) {
+  return demoMemoOverrides.get(slug) ?? getMemoListWebDemoRecord(slug);
+}
+
+function applyDemoMemoOverrides(memos: PublicMemoRecord[]) {
+  return memos.map((memo) => demoMemoOverrides.get(memo.slug) ?? memo);
+}
+
+function readDemoRequestBody(init?: RequestInit) {
+  if (typeof init?.body !== "string") return {} as Record<string, unknown>;
+  try {
+    const parsed: unknown = JSON.parse(init.body);
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {} as Record<string, unknown>;
+  }
+}
+
+function demoMemoPage(url: URL) {
+  const sceneState = getWebDemoSceneState(window.location, "public");
+  const direction = url.searchParams.get("direction") === "newer" ? "newer" : "older";
+  const cursor = url.searchParams.get("cursor");
+  const page = cursor
+    ? getMemoListWebDemoCursorPage(cursor, direction)
+    : getMemoListWebDemoInitialPageForState(sceneState);
+  const memos = applyDemoMemoOverrides(page.memos);
+
+  return direction === "newer"
+    ? {
+        memos,
+        hasMore: page.hasMore,
+        hasPrevious: page.hasMore,
+        previousCursor: page.previousCursor ?? null,
+        nextCursor: null,
+      }
+    : {
+        memos,
+        hasMore: page.hasMore,
+        hasPrevious: "hasPrevious" in page ? page.hasPrevious : false,
+        previousCursor: "previousCursor" in page ? (page.previousCursor ?? null) : null,
+        nextCursor: "nextCursor" in page ? (page.nextCursor ?? null) : null,
+      };
+}
+
+function requireDemoAdmin(environment: WebDemoEnvironment) {
+  if (environment.persona === "guest") return jsonResponse({ error: "UNAUTHORIZED" }, 401);
+  if (environment.persona !== "admin") return jsonResponse({ error: "FORBIDDEN" }, 403);
+  return null;
+}
+
+function createDemoMemo(body: Record<string, unknown>) {
+  const content = typeof body.content === "string" ? body.content.trim() : "";
+  const title = typeof body.title === "string" ? body.title.trim() : "";
+  const isPublic = body.isPublic !== false;
+  const tags = Array.isArray(body.tags)
+    ? body.tags.filter((tag): tag is string => typeof tag === "string")
+    : [];
+  const suffix = String(demoMemoSequence++).padStart(4, "0");
+  const now = new Date().toISOString();
+  const memo: PublicMemoRecord = {
+    id: `memo-web-demo-${suffix}`,
+    slug: `memo-web-demo-${suffix}`,
+    title: title || null,
+    excerpt: demoMemoExcerpt(content),
+    content,
+    tags,
+    inlineTags: tags,
+    isPublic,
+    createdAt: now,
+    publishedAt: isPublic ? now : null,
+    updatedAt: now,
+    dataSource: "web-demo",
+    filePath: `demo/memos/${suffix}.md`,
+    image: null,
+    media: { primary: null, cover: null, content: [], attachments: [] },
+  };
+  demoMemoOverrides.set(memo.slug, memo);
+  return memo;
 }
 
 function demoRuntimeMetrics(slug: string, dataMode: "fixture" | "dense" | "empty") {
@@ -130,13 +236,69 @@ function getDemoPublicResponse(
   url: URL,
   method: string,
   environment: WebDemoEnvironment,
-  dataMode: "fixture" | "dense" | "empty"
+  dataMode: "fixture" | "dense" | "empty",
+  init?: RequestInit
 ) {
   // The Demo build's server supplies route-scoped fixture data after the
   // common connection/delay/abort policy has admitted this actual read.
   if (url.pathname === "/api/public/page" && method === "GET") return null;
   if (url.pathname === "/api/public/auth/me" && method === "GET") {
     return jsonResponse(demoPublicUser(environment));
+  }
+
+  if (url.pathname === "/api/public/memos" && method === "GET") {
+    const authError = requireDemoAdmin(environment);
+    if (authError) return authError;
+    return jsonResponse(demoMemoPage(url));
+  }
+
+  if (url.pathname === "/api/public/memos" && method === "POST") {
+    const authError = requireDemoAdmin(environment);
+    if (authError) return authError;
+    const memo = createDemoMemo(readDemoRequestBody(init));
+    recordWebDemoMutation("创建 Memo", memo.title || memo.slug);
+    return jsonResponse(memo);
+  }
+
+  const memoMatch = url.pathname.match(/^\/api\/public\/memos\/([^/]+)$/);
+  if (memoMatch) {
+    const slug = decodeURIComponent(memoMatch[1] ?? "");
+    const authError = requireDemoAdmin(environment);
+    if (authError) return authError;
+    const memo = getDemoMemo(slug);
+    if (!memo) return jsonResponse({ error: "Memo 不存在" }, 404);
+    if (method === "GET") return jsonResponse(memo);
+    if (method === "PATCH") {
+      const body = readDemoRequestBody(init);
+      const content = typeof body.content === "string" ? body.content.trim() : memo.content;
+      const title = typeof body.title === "string" ? body.title.trim() : memo.title;
+      const isPublic = typeof body.isPublic === "boolean" ? body.isPublic : memo.isPublic;
+      const tags = Array.isArray(body.tags)
+        ? body.tags.filter((tag): tag is string => typeof tag === "string")
+        : memo.tags;
+      const updated: PublicMemoRecord = {
+        ...memo,
+        title: title || null,
+        content,
+        excerpt: demoMemoExcerpt(content),
+        tags,
+        inlineTags: tags,
+        isPublic,
+        publishedAt: isPublic ? (memo.publishedAt ?? new Date().toISOString()) : null,
+        updatedAt: new Date().toISOString(),
+      };
+      demoMemoOverrides.set(slug, updated);
+      recordWebDemoMutation(
+        "保存 Memo",
+        `${updated.title || updated.slug} · ${updated.isPublic ? "公开" : "私有"}`
+      );
+      return jsonResponse(updated);
+    }
+    if (method === "DELETE") {
+      demoMemoOverrides.delete(slug);
+      recordWebDemoMutation("删除 Memo", memo.title || memo.slug);
+      return jsonResponse({ success: true });
+    }
   }
 
   if (url.pathname === "/api/public/auth/logout" && method === "POST") {
@@ -367,7 +529,7 @@ export async function webDemoFetch(
     const method = (
       init?.method ?? (input instanceof Request ? input.method : "GET")
     ).toUpperCase();
-    const mockResponse = getDemoPublicResponse(url, method, environment, sceneState.data);
+    const mockResponse = getDemoPublicResponse(url, method, environment, sceneState.data, init);
     if (mockResponse) return mockResponse;
   }
 

@@ -2,7 +2,7 @@ import type { z } from "zod";
 import { isLocalContentEnabled } from "@/config/paths";
 import { getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
-import { getWebDemoSceneState } from "@/lib/web-demo-runtime";
+import { getWebDemoEnvironment, getWebDemoSceneState } from "@/lib/web-demo-runtime";
 import type { MemoCardRecord } from "../../components/MemoCard";
 import { getMemoListWebDemoInitialPageForState } from "../memo-list-web-demo";
 import {
@@ -21,11 +21,13 @@ export async function loadmemos(Astro: PageContext) {
     : undefined;
   const snapshot = isMemoListWebDemo ? null : await getSnapshot();
   const isConsoleBuild = !isMemoListWebDemo && process.env.CONSOLE_RUNTIME === "true";
+  const isWebDemoAdmin =
+    isMemoListWebDemo && getWebDemoEnvironment(Astro.url, "public").persona === "admin";
   const runtimeContext = isConsoleBuild
     ? resolveRuntimeContext(Astro.request)
     : { mode: "public" as const };
   const isConsoleRuntime = isConsoleBuild && runtimeContext.mode === "console";
-  let initialIsAdmin = false;
+  let initialIsAdmin = isWebDemoAdmin;
   let initialMemos: MemoCardRecord[] = snapshot?.memos.slice(0, 10) ?? [];
   let initialAuthorMemos: z.infer<typeof adminMemoRecordSchema>[] = [];
   let initialMemosHasMore = false;
@@ -38,6 +40,7 @@ export async function loadmemos(Astro: PageContext) {
       webDemoSceneState ?? { scene: "memo-middle", data: "fixture" }
     );
     initialMemos = demoPage.memos;
+    if (isWebDemoAdmin) initialAuthorMemos = demoPage.memos;
     initialMemosHasMore = demoPage.hasMore;
     initialMemosNextCursor = demoPage.nextCursor;
     initialMemosHasNewer = demoPage.hasPrevious;

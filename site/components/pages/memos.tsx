@@ -34,7 +34,7 @@ export default function memosPage(data: Awaited<ReturnType<typeof loadmemos>>) {
         </p>
       </div>
 
-      {isConsoleRuntime && initialIsAdmin ? (
+      {(isConsoleRuntime || isMemoListWebDemo) && initialIsAdmin ? (
         <PublicMemoComposerIsland
           initialIsAdmin={initialIsAdmin}
           initialMemos={initialAuthorMemos}
@@ -47,7 +47,7 @@ export default function memosPage(data: Awaited<ReturnType<typeof loadmemos>>) {
         />
       ) : null}
 
-      {!isConsoleRuntime || !initialIsAdmin ? (
+      {(!isConsoleRuntime && !isMemoListWebDemo) || !initialIsAdmin ? (
         <MemoTimeline
           source={isMemoListWebDemo ? "demo" : isConsoleRuntime ? "database" : "snapshot"}
           initialMemos={renderedMemos}
