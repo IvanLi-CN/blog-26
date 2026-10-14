@@ -3,6 +3,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import PlaybookTechStack from "../../src/components/playbook/PlaybookTechStack";
 import {
+  fitTechStackChips,
   formatTechStackRaw,
   parsePlaybookTechStack,
   shouldCollapseTechStackList,
@@ -10,6 +11,17 @@ import {
 } from "../../src/lib/playbook/tech-stack";
 
 describe("playbook technology stack presentation", () => {
+  test("fits complete chips on one line while reserving the actual overflow count", () => {
+    const widths = [40, 60, 50, 70];
+    expect(fitTechStackChips(widths, 238, 6, [24])).toBe(4);
+    expect(fitTechStackChips(widths, 237, 6, [24])).toBe(3);
+    expect(fitTechStackChips(widths, 191, 6, [24])).toBe(2);
+    expect(fitTechStackChips(Array(12).fill(20), 76, 6, [24, 30])).toBe(1);
+    expect(fitTechStackChips(Array(12).fill(20), 82, 6, [24, 30])).toBe(2);
+    expect(fitTechStackChips([500, 30], 120, 6, [24])).toBe(1);
+    expect(fitTechStackChips([], 120, 6, [24])).toBe(0);
+  });
+
   test("groups known fields and preserves unknown fields with readable labels", () => {
     const groups = parsePlaybookTechStack({
       markers_present: ["bun_lock"],

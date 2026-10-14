@@ -6,6 +6,7 @@ import {
   type TechStackNode,
   techStackArrayMode,
 } from "@/lib/playbook/tech-stack";
+import PlaybookTechStackChips from "./PlaybookTechStackChips";
 import PlaybookTechStackRaw from "./PlaybookTechStackRaw";
 
 const TECH_STACK_PREVIEW_ITEMS = 4;
@@ -21,33 +22,25 @@ function ScalarValue({ value }: { value: string | number | boolean }) {
 function ListItems({ entry, items }: { entry: TechStackEntry; items: TechStackNode[] }) {
   const mode = techStackArrayMode(items);
   const [expanded, setExpanded] = useState(false);
-  const renderItems = (visibleItems: TechStackNode[], className?: string) => {
+  if (mode === "chips") return <PlaybookTechStackChips entry={entry} items={items} />;
+  const renderItems = (visibleItems: TechStackNode[]) => {
     const keys = new Map<string, number>();
     return (
-      <ul className={className ?? (mode === "chips" ? "flex flex-wrap gap-1.5" : "space-y-1")}>
+      <ul className="space-y-1">
         {visibleItems.map((item) => {
           const baseKey = `${entry.key}-${item.kind === "scalar" ? String(item.value) : JSON.stringify(item)}`;
           const occurrence = keys.get(baseKey) ?? 0;
           keys.set(baseKey, occurrence + 1);
           return (
-            <li
-              key={`${baseKey}-${occurrence}`}
-              className={mode === "chips" ? "min-w-0 shrink-0" : "min-w-0"}
-            >
+            <li key={`${baseKey}-${occurrence}`} className="min-w-0">
               {item.kind === "scalar" ? (
-                mode === "chips" ? (
-                  <span className="inline-flex max-w-full break-words rounded-full border border-[rgba(var(--nature-accent-rgb),0.24)] bg-[rgba(var(--nature-accent-rgb),0.1)] px-2 py-0.5 font-mono text-[11px] font-medium leading-4 text-[color:var(--nature-accent-strong)]">
-                    {String(item.value)}
-                  </span>
-                ) : (
-                  <span className="flex min-w-0 items-baseline gap-2 break-words font-mono text-sm leading-6 text-[color:var(--nature-text-soft)]">
-                    <span
-                      aria-hidden="true"
-                      className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--nature-accent)]"
-                    />
-                    {String(item.value)}
-                  </span>
-                )
+                <span className="flex min-w-0 items-baseline gap-2 break-words font-mono text-sm leading-6 text-[color:var(--nature-text-soft)]">
+                  <span
+                    aria-hidden="true"
+                    className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--nature-accent)]"
+                  />
+                  {String(item.value)}
+                </span>
               ) : (
                 <NodeValue entry={entry} value={item} />
               )}
@@ -79,26 +72,6 @@ function ListItems({ entry, items }: { entry: TechStackEntry; items: TechStackNo
       {expanded ? `−${remainingItems.length}` : `+${remainingItems.length}`}
     </button>
   );
-
-  if (mode === "chips") {
-    return (
-      <div className="min-w-0">
-        {expanded ? (
-          <div id={overflowId} className="flex flex-wrap items-center gap-1.5">
-            {renderItems(items, "contents")}
-            {overflowChip}
-          </div>
-        ) : (
-          <div className="relative min-w-0 pr-9">
-            {renderItems(visibleItems, "flex min-w-0 flex-nowrap gap-1.5 overflow-hidden")}
-            <span className="absolute inset-y-0 right-0 z-10 flex items-start bg-[color:var(--nature-surface)] pl-1">
-              {overflowChip}
-            </span>
-          </div>
-        )}
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-1">
@@ -159,9 +132,9 @@ export default function PlaybookTechStack({ value }: { value: unknown }) {
         id={tabsId}
         role="tablist"
         aria-label="技术栈分类"
-        className="mt-2 flex max-w-full gap-1 overflow-x-auto border-b border-[color:var(--nature-line)] pb-1"
+        className="mt-1 flex max-w-full gap-0.5 overflow-x-auto border-b border-[color:var(--nature-line)]"
       >
-        {groups.map((group) => (
+        {groups.map((group, index) => (
           <button
             key={group.id}
             type="button"
@@ -171,13 +144,36 @@ export default function PlaybookTechStack({ value }: { value: unknown }) {
             aria-controls={`playbook-tech-stack-panel-${group.id}`}
             tabIndex={selectedGroupId === group.id ? 0 : -1}
             onClick={() => setActiveGroupId(group.id)}
-            className={`min-h-11 shrink-0 rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--nature-accent)] ${
-              selectedGroupId === group.id
-                ? "bg-[rgba(var(--nature-accent-rgb),0.12)] text-[color:var(--nature-accent-strong)]"
-                : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.06)] hover:text-[color:var(--nature-text)]"
-            }`}
+            onKeyDown={(event) => {
+              if (event.altKey || event.ctrlKey || event.metaKey) return;
+              const nextIndex =
+                event.key === "ArrowRight"
+                  ? (index + 1) % groups.length
+                  : event.key === "ArrowLeft"
+                    ? (index - 1 + groups.length) % groups.length
+                    : event.key === "Home"
+                      ? 0
+                      : event.key === "End"
+                        ? groups.length - 1
+                        : undefined;
+              if (nextIndex === undefined) return;
+              event.preventDefault();
+              setActiveGroupId(groups[nextIndex].id);
+              event.currentTarget.parentElement
+                ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
+                [nextIndex]?.focus({ preventScroll: true });
+            }}
+            className="nature-link-action group inline-flex shrink-0 items-center rounded focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--nature-accent)]"
           >
-            {group.label}
+            <span
+              className={`rounded px-2 py-1 text-xs leading-4 transition-colors ${
+                selectedGroupId === group.id
+                  ? "bg-[rgba(var(--nature-accent-rgb),0.12)] font-semibold text-[color:color-mix(in_srgb,var(--nature-accent-strong)_80%,var(--nature-text))]"
+                  : "font-medium text-[color:var(--nature-text-soft)] group-hover:bg-[rgba(var(--nature-accent-rgb),0.06)] group-hover:text-[color:var(--nature-text)] group-focus-visible:text-[color:var(--nature-text)]"
+              }`}
+            >
+              {group.label}
+            </span>
           </button>
         ))}
       </div>
@@ -188,7 +184,7 @@ export default function PlaybookTechStack({ value }: { value: unknown }) {
           role="tabpanel"
           aria-labelledby={`${tabsId}-tab-${group.id}`}
           hidden={selectedGroupId !== group.id}
-          className="min-w-0 pt-3"
+          className="min-w-0 pt-2"
         >
           <h3 className="sr-only">{group.label}</h3>
           <dl className="grid min-w-0 grid-cols-[max-content_minmax(0,1fr)] items-baseline gap-x-2.5 gap-y-2.5">

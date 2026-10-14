@@ -202,6 +202,28 @@ export function shouldCollapseTechStackList(_key: string, itemCount: number) {
   return itemCount > TECH_STACK_MAX_VISIBLE_ITEMS;
 }
 
+export function fitTechStackChips(
+  widths: number[],
+  availableWidth: number,
+  gap: number,
+  overflowWidths: number[]
+) {
+  if (widths.length === 0) return 0;
+  const totalWidth = widths.reduce((total, width) => total + width, 0);
+  if (totalWidth + gap * (widths.length - 1) <= availableWidth) return widths.length;
+
+  let usedWidth = 0;
+  let visibleCount = 0;
+  for (let count = 1; count < widths.length; count++) {
+    usedWidth += widths[count - 1] ?? 0;
+    const remaining = widths.length - count;
+    const overflowWidth = overflowWidths[String(remaining).length - 1] ?? 0;
+    if (usedWidth + gap * count + overflowWidth <= availableWidth) visibleCount = count;
+  }
+  // Keep the first value readable with ellipsis when even one complete chip cannot fit.
+  return Math.max(1, visibleCount);
+}
+
 export function formatTechStackRaw(value: unknown) {
   try {
     const normalized = normalizeNode(value, new WeakSet<object>());

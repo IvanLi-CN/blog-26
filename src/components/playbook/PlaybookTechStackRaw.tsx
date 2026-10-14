@@ -44,7 +44,7 @@ function HighlightedJson({ source }: { source: string }) {
 }
 
 const iconButtonClassName =
-  "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-0 text-[color:var(--nature-text-soft)] transition-colors hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--nature-accent)] lg:min-h-9 lg:min-w-9";
+  "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-0 text-[color:var(--nature-text-soft)] transition-colors hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-text)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--nature-accent)] lg:min-h-9 lg:min-w-9";
 
 function IconAction({
   label,
@@ -232,14 +232,22 @@ export default function PlaybookTechStackRaw({ value }: { value: unknown }) {
 
   return (
     <TooltipProvider>
-      <div className="mt-3 overflow-hidden rounded-md border border-[color:var(--nature-line)] bg-[rgba(var(--nature-accent-rgb),0.045)]">
-        <div className="flex min-h-11 items-center gap-2 border-b border-[color:var(--nature-line)] px-2 lg:min-h-9 lg:px-3">
+      <div
+        data-tech-stack-raw-disclosure
+        data-state={open ? "open" : "closed"}
+        className={`mt-2 ${open ? "overflow-hidden rounded-md outline-1 outline-solid -outline-offset-1 outline-[color:var(--nature-line)] bg-[rgba(var(--nature-accent-rgb),0.045)]" : ""}`}
+      >
+        <div
+          data-tech-stack-raw-toolbar
+          className={`relative flex min-h-11 items-center gap-2 px-3 lg:min-h-9 ${open ? "after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-[color:var(--nature-line)]" : ""}`}
+        >
           <button
             type="button"
             aria-expanded={open}
             aria-controls="playbook-tech-stack-raw-content"
             onClick={() => setOpen(!open)}
-            className="flex min-h-11 min-w-0 flex-1 items-center gap-1.5 text-left text-sm font-medium text-[color:var(--nature-accent-strong)] underline decoration-[color:var(--nature-line-strong)] underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--nature-accent)] lg:min-h-9"
+            className="flex min-h-11 min-w-0 flex-1 items-center gap-1.5 text-left font-normal [color:var(--nature-text-soft)] hover:[color:var(--nature-text)] focus-visible:[color:var(--nature-text)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--nature-accent)] lg:min-h-9"
+            style={{ fontSize: "14px" }}
           >
             <Icon
               name={open ? "tabler:chevron-down" : "tabler:chevron-right"}
