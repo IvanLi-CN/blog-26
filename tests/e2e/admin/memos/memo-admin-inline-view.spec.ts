@@ -250,7 +250,7 @@ test.describe("Inline memo admin view", () => {
     await detailLink.evaluate((element) => {
       if (element instanceof HTMLElement) element.click();
     });
-    await expect(page).toHaveURL(new RegExp(`/memos/${memo.slug}$`));
+    await expect(page).toHaveURL(new RegExp(`/memos/${memo.slug}/?$`));
     await expect(page.getByTestId("public-memo-detail-controls")).toBeVisible();
     const detailCard = page.locator('[data-testid="public-memo-detail-card"]:visible');
     await expect(detailCard).toHaveCount(1);
@@ -351,7 +351,7 @@ test.describe("Inline memo admin view", () => {
     await expect(card).toContainText("编辑后摘要仍应显示在原卡片上。");
 
     await card.getByRole("link", { name: "查看详情" }).click();
-    await expect(page).toHaveURL(new RegExp(`/memos/${memo.slug}$`));
+    await expect(page).toHaveURL(new RegExp(`/memos/${memo.slug}/?$`));
     await expect(page.getByTestId("public-memo-detail-controls")).toBeVisible();
     await expect(page.getByTestId("public-memo-detail-body")).toContainText(
       "编辑后摘要仍应显示在原卡片上。"

@@ -19,8 +19,8 @@
     "src/server/routers/memos.ts": "dae1d2f73077b47bd3cbe7fc65c309aacdbc4183",
     "tests/components/PublicMemoAuthoring.test.tsx": "f12852d73e81e1cc87788496c52f936688d3339d",
     "tests/e2e/admin/memos-admin.spec.ts": "173c142fa9274f0bba70c7181b0547bb09dd01c2",
-    "tests/e2e/admin/memos/helpers.ts": "20c88f3ef2026ae4a1af491e9cdea409fd62d201",
-    "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts": "12f2a0f8dd111a6847fdb0703606189dbf4c4ae0",
+    "tests/e2e/admin/memos/helpers.ts": "d858b41e327d7570fbed70c7f3481611209e0dde",
+    "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts": "2027256d9932aa3d030863770a2f6f4beca287c6",
     "tests/e2e/guest/public-csr-navigation.spec.ts": "7df417873f7586d4f6eeaab787b521d156de746b"
   },
   "change": {
@@ -49,7 +49,7 @@
     "current": {
       "impact": "patch",
       "reasoning": "The candidate changes only the Console Memo detail/preview boundary, request-scoped initial projection, unauthorized read status mapping, and shared route history state. Public API payload shapes, persistent state, snapshot publishing, and deployment host configuration remain unchanged; the deliberate 403-to-404 mapping for unauthorized private reads makes them indistinguishable from missing resources so callers receive the same absence contract without exposing record existence.",
-      "assessed_at": "2026-10-14T10:30:40+08:00",
+      "assessed_at": "2026-10-14T10:44:20+08:00",
       "evidence": [
         {
           "path": "site/lib/page-data/memo.ts",
@@ -75,7 +75,7 @@
     "verified": {
       "impact": "patch",
       "reasoning": "Focused component, production Console clipping, HTTP compatibility, build, admin E2E, and guest navigation checks pass. The implementation preserves existing public payload shapes and persistent state while enforcing the same-origin detail/preview boundary and private-resource non-disclosure; the 403-to-404 status change is an intentional compatible privacy hardening because private and missing resources share the documented not-found response.",
-      "assessed_at": "2026-10-14T10:30:40+08:00",
+      "assessed_at": "2026-10-14T10:44:20+08:00",
       "evidence": [
         {
           "path": "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts",

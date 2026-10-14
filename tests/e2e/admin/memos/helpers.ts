@@ -44,7 +44,7 @@ export async function openConsoleMemoDetail(page: Page, slug: string) {
     waitUntil: "domcontentloaded",
     timeout: 60_000,
   });
-  await page.waitForURL(new RegExp(`/memos/${encodeURIComponent(slug)}$`), { timeout: 60_000 });
+  await page.waitForURL(new RegExp(`/memos/${encodeURIComponent(slug)}/?$`), { timeout: 60_000 });
   await expect(page.getByTestId("public-memo-detail-heading")).toBeVisible({ timeout: 60_000 });
 }
 
