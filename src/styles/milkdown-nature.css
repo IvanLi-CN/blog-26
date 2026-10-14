@@ -46,7 +46,7 @@
 .quick-memo-edit-modal {
   /* Web Demo keeps its Inspector above the page shell; an open modal must
    * remain the active surface at every viewport width. */
-  z-index: 120;
+  z-index: 140;
   padding: 1.5rem;
 }
 
@@ -55,6 +55,12 @@
  * narrow viewports too. */
 body:has(.quick-memo-edit-modal) .nature-app-shell {
   z-index: 120;
+}
+
+/* The public header is a sibling stacking context above the memo stream. Drop
+ * it below the modal's main-content layer only while the modal is present. */
+body:has(.quick-memo-edit-modal) .nature-site-header {
+  z-index: 0;
 }
 
 .quick-memo-edit-modal .nature-modal-backdrop {
