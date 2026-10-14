@@ -17,7 +17,13 @@ test.describe("Console Memo Web Demo", () => {
     });
     const detailLink = card.getByRole("link", { name: "查看详情" });
     await expect(detailLink).toHaveAttribute("href", `/memos/${privateSlug}/`);
+    await expect
+      .poll(() =>
+        page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight + 240)
+      )
+      .toBe(true);
     await page.evaluate(() => window.scrollTo({ top: 240, left: 0, behavior: "instant" }));
+    await expect.poll(() => page.evaluate(() => Math.round(window.scrollY))).toBe(240);
     const listScrollY = await page.evaluate(() => Math.round(window.scrollY));
     await detailLink.click();
     await expect(page).toHaveURL(new RegExp(`/memos/${privateSlug}/?$`));
