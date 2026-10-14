@@ -108,6 +108,88 @@ if (phase === "upgrade") {
   );
   process.exit(0);
 }
+if (phase.startsWith("local-")) {
+  delete process.env.OPENAI_API_KEY;
+  const { getContentSourceManager, LocalContentSource } = await import(
+    "../../src/lib/content-sources"
+  );
+  const { contentTasks } = await import("../../src/lib/schema");
+  const { eq } = await import("drizzle-orm");
+  const { syncEventManager } = await import("../../src/lib/sync-events");
+  const receiptPath = join(dirname(dbPath), "local-task.json");
+  const mode = phase.includes("full") ? "full" : "incremental";
+  if (phase.endsWith("write")) {
+    const manager = getContentSourceManager();
+    const path = process.env.LOCAL_CONTENT_BASE_PATH;
+    if (!path) throw new Error("Local path required");
+    mkdirSync(path, { recursive: true });
+    const source = new LocalContentSource(
+      LocalContentSource.createDefaultConfig("local", 50, { contentPath: path })
+    );
+    const items = Array.from({ length: 10 }, (_, i) => ({
+      id: `local-${i}`,
+      slug: `local-${i}`,
+      type: "post" as const,
+      title: `Item ${i}`,
+      body: "Synthetic",
+      publishDate: 1,
+      public: true,
+      draft: false,
+      source: "local",
+      filePath: `${i}.md`,
+      lastModified: 1,
+      tags: [],
+      metadata: { content: "Synthetic" },
+      contentHash: `hash-${i}`,
+    }));
+    source.listContent = async () => items;
+    source.detectChanges = async () => ({
+      sourceName: "local",
+      changes: items.map((item) => ({ item, operation: "create" as const })),
+      detectedAt: 1,
+      stats: { total: 10, created: 10, updated: 0, deleted: 0, skipped: 0 },
+    });
+    await manager.registerSource(source);
+    syncEventManager.on("sync:log", () => {
+      const task = db.select().from(contentTasks).where(eq(contentTasks.source, "local")).get();
+      if (task?.processed === 2) {
+        if (db.select().from(posts).all().length !== 2)
+          throw new Error("Content/checkpoint not atomic");
+        writeFileSync(receiptPath, JSON.stringify({ taskId: task.id }));
+        console.log(JSON.stringify({ phase, mock: true, taskId: task.id, processed: 2 }));
+        process.exit(0); // Real process exit while original task is still running.
+      }
+    });
+    await manager.syncAll(mode === "full");
+    throw new Error("Expected process termination");
+  } else {
+    const { taskId } = JSON.parse(readFileSync(receiptPath, "utf8"));
+    const { startContentSyncRuntime } = await import(
+      "../../src/server/services/content-sync-runtime"
+    );
+    const stop = await startContentSyncRuntime();
+    stop();
+    for (let attempt = 0; attempt < 1000; attempt++) {
+      const task = await getContentTask(taskId);
+      if (task?.finishedAt) {
+        const result = JSON.parse(task.result ?? "null");
+        if (
+          task.status !== "success" ||
+          task.total !== 10 ||
+          task.processed !== 10 ||
+          result.created !== 10 ||
+          result.cursor !== 10 ||
+          db.select().from(posts).all().length !== 10
+        )
+          throw new Error(`Invalid local recovery: ${JSON.stringify(task)}`);
+        console.log(JSON.stringify({ phase, mock: true, taskId, processed: 10, created: 10 }));
+        process.exit(0);
+      }
+      await Bun.sleep(10);
+    }
+    throw new Error("Local recovery timeout");
+  }
+}
 const restartReceipt = join(dirname(dbPath), "interrupted.json");
 if (phase === "interrupt-write" || phase === "cancel-write") {
   const { makePublicBundle } = await import("./playbook-fixture");
