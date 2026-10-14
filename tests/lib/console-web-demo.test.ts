@@ -54,43 +54,36 @@ describe("Console Web Demo persona projections", () => {
       JSON.stringify({
         sequence: 0,
         deleted: [],
-        created: [],
         updated: [
           {
             s: CONSOLE_WEB_DEMO_SLUGS.public,
-            c: "# Refreshed weekly notes\n\nSSR reads the current demo state.",
             p: true,
-            t: ["公开", "刷新"],
-            u: "2026-10-14T12:00:00.000Z",
             v: "2026-10-14T12:00:00.000Z",
           },
         ],
       })
     );
     const store = createConsoleWebDemoStore({
-      cookieHeader: `console_web_demo_mutations_v1=${mutation}`,
+      cookieHeader: `console_web_demo_mutations_v2=${mutation}`,
     });
 
     expect(store.get(CONSOLE_WEB_DEMO_SLUGS.public, "guest")).toMatchObject({
-      content: "# Refreshed weekly notes\n\nSSR reads the current demo state.",
+      content: expect.stringContaining("公开 Memo 的当前正文"),
       publishedAt: "2026-10-14T12:00:00.000Z",
     });
   });
 
-  test("server-side store reconstruction joins oversized mutation-cookie chunks", () => {
-    const content = `# Long memo\n\n${"长内容 ".repeat(500)}`;
+  test("server-side store reconstruction ignores authored content in mutation cookies", () => {
+    const content = `# Private body\n\n${"长内容 ".repeat(500)}`;
     const encoded = encodeURIComponent(
       JSON.stringify({
         sequence: 0,
         deleted: [],
-        created: [],
         updated: [
           {
             s: CONSOLE_WEB_DEMO_SLUGS.public,
             c: content,
             p: true,
-            t: ["公开"],
-            u: "2026-10-14T12:00:00.000Z",
             v: "2026-10-14T12:00:00.000Z",
           },
         ],
@@ -100,11 +93,26 @@ describe("Console Web Demo persona projections", () => {
     const cookieHeader = Array.from(
       { length: Math.ceil(encoded.length / chunkSize) },
       (_, index) =>
-        `console_web_demo_mutations_v1_${index}=${encoded.slice(index * chunkSize, (index + 1) * chunkSize)}`
+        `console_web_demo_mutations_v2_${index}=${encoded.slice(index * chunkSize, (index + 1) * chunkSize)}`
     ).join("; ");
     const store = createConsoleWebDemoStore({ cookieHeader });
 
-    expect(store.get(CONSOLE_WEB_DEMO_SLUGS.public, "guest")?.content).toBe(content);
+    expect(store.get(CONSOLE_WEB_DEMO_SLUGS.public, "guest")?.content).not.toBe(content);
+    expect(store.get(CONSOLE_WEB_DEMO_SLUGS.public, "guest")?.publishedAt).toBe(
+      "2026-10-14T12:00:00.000Z"
+    );
+  });
+
+  test("server-side store ignores mutation-cookie journals beyond the chunk cap", () => {
+    const cookieHeader = Array.from(
+      { length: 65 },
+      (_, index) => `console_web_demo_mutations_v2_${index}=chunk`
+    ).join("; ");
+    const store = createConsoleWebDemoStore({ cookieHeader });
+
+    expect(store.get(CONSOLE_WEB_DEMO_SLUGS.private, "admin")?.content).toContain(
+      "管理员可以在详情首屏看到尚未进入公开快照的正文"
+    );
   });
 
   test("guest clipping detail keeps source and translation without discussion access", () => {

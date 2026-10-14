@@ -121,23 +121,20 @@ const seedMemos: ConsoleWebDemoMemo[] = [
 ];
 
 const CONSOLE_WEB_DEMO_STORE_KEY = "console-web-demo-memos-v2";
-const CONSOLE_WEB_DEMO_MUTATION_COOKIE = "console_web_demo_mutations_v1";
+const CONSOLE_WEB_DEMO_MUTATION_COOKIE = "console_web_demo_mutations_v2";
+const CONSOLE_WEB_DEMO_LEGACY_MUTATION_COOKIE = "console_web_demo_mutations_v1";
 const CONSOLE_WEB_DEMO_COOKIE_CHUNK_SIZE = 3000;
 const CONSOLE_WEB_DEMO_COOKIE_MAX_CHUNKS = 64;
 
 type ConsoleWebDemoMutationUpdate = {
   s: string;
-  c: string;
   p: boolean;
-  t: string[];
-  u: string;
   v: string | null;
 };
 
 type ConsoleWebDemoMutationJournal = {
   sequence: number;
   deleted: string[];
-  created: ConsoleWebDemoMemo[];
   updated: ConsoleWebDemoMutationUpdate[];
 };
 
@@ -214,6 +211,14 @@ function readMutationJournal(cookieHeader?: string) {
         chunks.push(chunk);
       }
       if (chunks.length === 0) return null;
+      if (
+        chunks.length === CONSOLE_WEB_DEMO_COOKIE_MAX_CHUNKS &&
+        readRawCookieValue(
+          cookieSource,
+          `${CONSOLE_WEB_DEMO_MUTATION_COOKIE}_${CONSOLE_WEB_DEMO_COOKIE_MAX_CHUNKS}`
+        ) !== null
+      )
+        return null;
       try {
         return decodeURIComponent(chunks.join(""));
       } catch {
@@ -227,8 +232,6 @@ function readMutationJournal(cookieHeader?: string) {
       !parsed ||
       !Array.isArray(parsed.deleted) ||
       !parsed.deleted.every((slug) => typeof slug === "string") ||
-      !Array.isArray(parsed.created) ||
-      !parsed.created.every(isConsoleWebDemoMemo) ||
       !Array.isArray(parsed.updated)
     )
       return null;
@@ -238,17 +241,12 @@ function readMutationJournal(cookieHeader?: string) {
           ? parsed.sequence
           : 0,
       deleted: parsed.deleted,
-      created: parsed.created,
       updated: parsed.updated.filter((update): update is ConsoleWebDemoMutationUpdate =>
         Boolean(
           update &&
             typeof update === "object" &&
             typeof update.s === "string" &&
-            typeof update.c === "string" &&
             typeof update.p === "boolean" &&
-            Array.isArray(update.t) &&
-            update.t.every((tag) => typeof tag === "string") &&
-            typeof update.u === "string" &&
             (typeof update.v === "string" || update.v === null)
         )
       ),
@@ -256,17 +254,6 @@ function readMutationJournal(cookieHeader?: string) {
   } catch {
     return null;
   }
-}
-
-function titleFromContent(content: string, fallback: string) {
-  return content.match(/^#\s+([^\n]+)/u)?.[1]?.trim() || fallback || "未命名 Memo";
-}
-
-function excerptFromContent(content: string) {
-  return content
-    .replace(/^#\s+[^\n]+\n*/u, "")
-    .trim()
-    .slice(0, 180);
 }
 
 function applyMutationJournal(seed: ConsoleWebDemoMemo[], journal: ConsoleWebDemoMutationJournal) {
@@ -277,22 +264,14 @@ function applyMutationJournal(seed: ConsoleWebDemoMemo[], journal: ConsoleWebDem
     .map((memo) => {
       const update = updates.get(memo.slug);
       if (!update) return memo;
-      const title = titleFromContent(update.c, memo.title);
       return {
         ...memo,
-        title,
-        authoredTitle: title,
-        authoredContent: update.c,
-        content: update.c,
-        excerpt: excerptFromContent(update.c),
         isPublic: update.p,
         draft: !update.p,
-        tags: update.t,
-        publishedAt: update.p ? (update.v ?? memo.publishedAt ?? update.u) : null,
-        updatedAt: update.u,
+        publishedAt: update.p ? (update.v ?? memo.publishedAt) : null,
       };
     });
-  return [...journal.created.map(cloneMemo), ...memos];
+  return memos;
 }
 
 function buildMutationJournal(memos: ConsoleWebDemoMemo[], sequence: number) {
@@ -300,31 +279,22 @@ function buildMutationJournal(memos: ConsoleWebDemoMemo[], sequence: number) {
   const seedBySlug = new Map(seed.map((memo) => [memo.slug, memo]));
   const currentBySlug = new Map(memos.map((memo) => [memo.slug, memo]));
   const deleted = seed.filter((memo) => !currentBySlug.has(memo.slug)).map((memo) => memo.slug);
-  const created = memos.filter((memo) => !seedBySlug.has(memo.slug)).map(cloneMemo);
   const updated = memos.flatMap((memo) => {
     const original = seedBySlug.get(memo.slug);
     if (
       !original ||
-      (original.content === memo.content &&
-        original.isPublic === memo.isPublic &&
-        original.draft === memo.draft &&
-        original.title === memo.title &&
-        JSON.stringify(original.tags) === JSON.stringify(memo.tags) &&
-        original.publishedAt === memo.publishedAt)
+      (original.isPublic === memo.isPublic && original.publishedAt === memo.publishedAt)
     )
       return [];
     return [
       {
         s: memo.slug,
-        c: memo.content,
         p: memo.isPublic,
-        t: memo.tags,
-        u: memo.updatedAt,
         v: memo.publishedAt,
       },
     ];
   });
-  return { sequence, deleted, created, updated } satisfies ConsoleWebDemoMutationJournal;
+  return { sequence, deleted, updated } satisfies ConsoleWebDemoMutationJournal;
 }
 
 function persistStore(storageKey: string, memos: ConsoleWebDemoMemo[], sequence: number) {
@@ -337,25 +307,25 @@ function persistStore(storageKey: string, memos: ConsoleWebDemoMemo[], sequence:
   try {
     const encoded = encodeURIComponent(JSON.stringify(buildMutationJournal(memos, sequence)));
     const clearCookie = (name: string) => {
-      document.cookie = `${name}=; Max-Age=0; Path=/; SameSite=Lax`;
+      document.cookie = `${name}=; Max-Age=0; Path=/memos/; SameSite=Lax`;
     };
     clearCookie(CONSOLE_WEB_DEMO_MUTATION_COOKIE);
+    document.cookie = `${CONSOLE_WEB_DEMO_LEGACY_MUTATION_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`;
     for (let index = 0; index < CONSOLE_WEB_DEMO_COOKIE_MAX_CHUNKS; index += 1) {
       clearCookie(`${CONSOLE_WEB_DEMO_MUTATION_COOKIE}_${index}`);
     }
-    if (
-      encoded !==
-      encodeURIComponent(JSON.stringify({ sequence, deleted: [], created: [], updated: [] }))
-    ) {
+    if (encoded !== encodeURIComponent(JSON.stringify({ sequence, deleted: [], updated: [] }))) {
+      const chunkCount = Math.ceil(encoded.length / CONSOLE_WEB_DEMO_COOKIE_CHUNK_SIZE);
+      if (chunkCount > CONSOLE_WEB_DEMO_COOKIE_MAX_CHUNKS) return;
       if (encoded.length <= CONSOLE_WEB_DEMO_COOKIE_CHUNK_SIZE) {
-        document.cookie = `${CONSOLE_WEB_DEMO_MUTATION_COOKIE}=${encoded}; Path=/; SameSite=Lax`;
+        document.cookie = `${CONSOLE_WEB_DEMO_MUTATION_COOKIE}=${encoded}; Max-Age=3600; Path=/memos/; SameSite=Lax`;
       } else {
         for (
           let offset = 0, index = 0;
           offset < encoded.length;
           offset += CONSOLE_WEB_DEMO_COOKIE_CHUNK_SIZE, index += 1
         ) {
-          document.cookie = `${CONSOLE_WEB_DEMO_MUTATION_COOKIE}_${index}=${encoded.slice(offset, offset + CONSOLE_WEB_DEMO_COOKIE_CHUNK_SIZE)}; Path=/; SameSite=Lax`;
+          document.cookie = `${CONSOLE_WEB_DEMO_MUTATION_COOKIE}_${index}=${encoded.slice(offset, offset + CONSOLE_WEB_DEMO_COOKIE_CHUNK_SIZE)}; Max-Age=3600; Path=/memos/; SameSite=Lax`;
         }
       }
     }
