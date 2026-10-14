@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "ceecf5ed867ee849fce6d8e5d8225e9e5505923a",
+  "base_sha": "16909131a5ec50a4815aa0f1b6f189b1987284ee",
   "covered_files": {
     "README.md": "89ceebade20e1c1672d1bbab18a3098a8e13a050",
     "astro.config.mjs": "06710645e12de832945ac14d1c0b0a21482b8107",
@@ -89,7 +89,7 @@
     "public_api": {
       "impact": "patch",
       "change": "unchanged",
-      "supported_consumer_versions": ["3.0.3", "3.0.4", "3.0.5", "3.1.1", "3.1.2"],
+      "supported_consumer_versions": ["3.0.3", "3.0.4", "3.0.5", "3.1.1", "3.1.2", "3.2.1"],
       "evidence": [
         {
           "path": "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts",

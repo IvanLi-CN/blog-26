@@ -125,7 +125,11 @@ The 项目视觉槽位 owns the fixed 4:5 border-box geometry of every project-w
 
 All approved metric labels and values remain readable. Decorative material may be clipped; activity data may not be omitted. OctoRill count changes at a fixed viewport leave its logo, metric-region structure, typography, and allocated upper-region height stable. Only the lower freshness heatmap adapts its density. Every status byte remains represented in received order without sorting, aggregation, folding, pagination, internal scrolling, or clipping of data cells. The freshness title and actual cell grid form one bottom-aligned group: the last populated row reaches the bottom of the available heatmap region, the title remains `0.55rem` above the first populated row, and unused vertical space belongs above the title. All cells remain equal-sized squares with consistent spacing. Every complete row fills the available content width from left to right; unused horizontal space must not form a strip beside all populated rows. An incomplete final row remains left-aligned and may leave trailing space, including when a sparse repository count produces only one incomplete row; it must not be stretched or filled with synthetic cells. Zero repositories retain the lower region and title without creating data cells. Dense samples may produce very small cells; preserving the fixed slot and complete ordered data takes precedence over guaranteeing individually distinguishable pixels at unbounded repository counts. A different representation for such extreme counts requires a separate product decision.
 
-An unconfigured source shows the poster. While the first request is pending, or a request fails HTTP or response validation, the slot presents its original poster without diagnostic text. A later valid refresh can replace it with the runtime panel. Successful refreshes, fallback transitions, theme changes, resizing, and tooltips leave the slot geometry stable for a fixed card width. A short in-slot opacity transition is optional and respects reduced motion; height animation is excluded.
+An unconfigured source shows the poster. While the first request is pending, or a request fails HTTP or response validation, the slot presents its original poster without diagnostic text. A later valid refresh can replace it with the runtime panel. Successful refreshes, fallback transitions, theme changes, resizing, and tooltips leave the slot geometry stable for a fixed card width. Height animation is excluded.
+
+Poster/runtime transitions use a layered reveal inside the fixed slot. The incoming panel background fades over 420ms while the outgoing content fades over 320ms. The project logo, metric region, and activity region each fade and move upward from 6px over 320ms, starting at 0ms, 50ms, and 100ms with `cubic-bezier(.22,1,.36,1)`. Returning to the poster fades and moves the entire incoming poster over 420ms. Cards in the same group start at least 140ms apart and may overlap: cards ready within one animation frame use DOM order; later responses join in readiness order without blocking ready cards. Only validated data whose grid, chart, and sizing updates have committed may reveal a panel; ordinary successful refreshes update data without replaying the entrance.
+
+Queued transitions keep only each card's latest target. A playing card retargets immediately from its current rendered opacity and transform without resetting its position or waiting in the queue. Stale completion callbacks never restore an obsolete target. Poster fallback immediately clears Tooltip and inspection gestures; exiting content is inert and hidden from assistive technology, while project-detail navigation remains available. Focus leaving a disappearing layer returns to the project title link. Hidden pages cancel the queue and settle every card to its latest target; route exit destroys pending work. System reduced-motion and the Web Demo Inspector's reduced-motion preference settle immediately without animation or stagger delays, including when enabled during playback. Unsupported animation APIs use the same immediate switch.
 
 Valid zero metrics remain runtime data. Missing CVM history uses the protocol's 90 dated positions with permitted null values; Hikari still requires 90 valid daily points, including zero values. OctoRill may have zero repositories and an empty freshness array. An empty array or incomplete payload is not made valid where the existing response contract rejects it.
 
@@ -236,6 +240,19 @@ Ordinary clicks and mobile taps on all three runtime panels, including cells, gr
 - `BASE_URL=http://localhost:30090 PLAYWRIGHT_REUSE_APP=true bunx playwright test tests/e2e/guest/nature-front-coverage.spec.ts --project=guest --grep "public header scroll|mobile header"
 
 ## Visual Evidence
+
+### Project visual-slot motion
+
+- Source type `ui_demo`, target program `Ego Browser`, official route `/projects/`, capture scope `browser-viewport`, viewport strategy `devtools-emulate`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`. The owner confirmed these four screenshots after the 1780×1071 desktop and 393×852 mobile light/dark playback checks. Page normalization retained the existing image bounds.
+- Both directions retain the 4:5 slots and copy positions. The [official-route playback recording](./assets/runtime-motion-playback.mp4) shows the native staggered transitions through the shared Inspector; deterministic examples are Web Demo fixtures.
+
+![Runtime motion desktop light](./assets/runtime-motion-desktop-light.png)
+
+![Runtime motion desktop dark](./assets/runtime-motion-desktop-dark.png)
+
+![Runtime motion mobile light](./assets/runtime-motion-mobile-light.png)
+
+![Runtime motion mobile dark](./assets/runtime-motion-mobile-dark.png)
 
 ### Fixed viewport public atmosphere
 
@@ -492,6 +509,8 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 
 ## Requirements
 
+- `REQ-NATURE-PROJECT-RUNTIME-MOTION`: The three configured project-wall runtime cards MUST follow the layered durations, readiness, 140ms launch spacing, latest-target retargeting, accessibility, lifecycle, and reduced-motion contracts in §4.7. Refreshing an already visible panel MUST update its content without replaying its entrance.
+
 - `REQ-NATURE-MOBILE-READING-SURFACE`: Below `640px`, primary public reading content MUST use a theme-aware 阅读承载层 instead of placing prose directly on the 环境背景层. Normal-sized text MUST maintain at least 4.5:1 contrast against its composited surface. Continuous streams MUST share one edge-to-edge translucent surface with inset content and separators; the grouped project index MUST use one such surface around its categories while preserving horizontal poster browsing and individual poster frames. Touch and focus feedback MUST preserve content insets and match the actual interactive region's width. Interactive control hover and focus feedback MUST NOT move the control's own hitbox; compact category selectors MUST keep a stable outer hitbox, and any visual lift MUST apply to a non-interactive child or a stable outer hitbox. The homepage introduction and Article, Memo, project-detail, and About prose MUST have an equivalent readable surface. Media and distinct standalone modules MAY keep their own framing.
 
 - `REQ-NATURE-MEMO-TITLE`: Public memo surfaces MUST omit an absent resolved title without substituting a slug, while preserving the date, type, tags, available excerpt or body, and detail navigation; resolution and protocol metadata rules are owned by the [memo-title-semantics Spec](../memo-title-semantics/SPEC.md).
@@ -507,6 +526,8 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 - `REQ-NATURE-RUNTIME-CELL-NAVIGATION`: Ordinary clicks and mobile taps on CVM, Hikari, and OctoRill runtime panels, including cells, gaps, and non-chart visual regions, MUST retain their project detail destination. Mobile taps that are not recognized as long presses MUST NOT open a Tooltip or select a cell. Project titles and summaries, and external shortcuts MUST retain their existing destinations. Only the follow-up click from a recognized long press MUST be consumed; a later independent link click MUST remain functional. Chart focus and navigation MUST use valid independent HTML semantics.
 
 ## Verification
+
+- `VER-NATURE-PROJECT-RUNTIME-MOTION`: covers: `REQ-NATURE-PROJECT-RUNTIME-MOTION`; the scheduler and replay-channel unit tests MUST cover same-frame DOM ordering, slow arrivals, queued cancellation, sampled active reversal, stale revisions, focus, hidden pages, disposal, unsupported APIs, and immediate reduction. The focused official-route Web Demo browser suite MUST record native launch timing and verify both directions, refresh without replay, active recovery, system/Inspector reduction during playback, invalid-response inspection cleanup, and light/dark mobile navigation. Data and render readiness are preconditions to playback assertions; controlled interruption checks retain an intermediate native-animation frame until the replacement data is ready. Observe the shipped `/projects/` route at 1780×1071 and 393×852 in both themes, retaining playback evidence and stable slot/copy geometry.
 
 - `VER-NATURE-MOBILE-READING-SURFACE`: covers: `REQ-NATURE-MOBILE-READING-SURFACE`; browser checks at `393px`, `375px`, `360px`, and `320px` MUST cover the homepage introduction and timeline, Article and Memo lists and details, tag detail, search results, the grouped project index, project-detail prose, and About prose in light and dark themes. Inspect composited text contrast over ambient motion, exact surface and feedback edges, content insets, long text, touch press, keyboard focus, theme changes, desktop framing, and horizontal overflow.
 
