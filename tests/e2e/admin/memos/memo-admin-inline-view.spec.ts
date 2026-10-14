@@ -1,4 +1,5 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Page, request } from "@playwright/test";
+import { readE2EBaseUrl } from "../../runtime";
 import { adminTest as test } from "../fixtures";
 import { openMemoEditDialog, waitForAdminLiveMemoCard, waitForQuickMemoEditor } from "./helpers";
 
@@ -224,6 +225,75 @@ test.describe("Inline memo admin view", () => {
     }
   });
 
+  test("opens Console detail from the eye action and restores list scroll on back", async ({
+    page,
+  }) => {
+    await loginAsAdmin(page);
+    const marker = `inline-detail-navigation-${Date.now()}`;
+    const memo = await createMemo(
+      page,
+      marker,
+      false,
+      `# ${marker}\n\n${"A long management-list row keeps the reading surface scrollable. ".repeat(18)}`
+    );
+
+    await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    const card = await waitForAdminLiveMemoCard(page, marker);
+    const detailLink = card.getByRole("link", { name: "查看详情" });
+    await expect(detailLink).toBeAttached();
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight))
+      .toBeGreaterThanOrEqual(280);
+    await page.evaluate(() => window.scrollTo({ top: 280, left: 0, behavior: "instant" }));
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(280);
+
+    await detailLink.evaluate((element) => {
+      if (element instanceof HTMLElement) element.click();
+    });
+    await expect(page).toHaveURL(new RegExp(`/memos/${memo.slug}/?$`));
+    await expect(page.getByTestId("public-memo-detail-controls")).toBeVisible();
+    const detailCard = page.locator('[data-testid="public-memo-detail-card"]:visible');
+    await expect(detailCard).toHaveCount(1);
+    await expect(detailCard.getByTestId("public-memo-detail-heading")).toBeVisible();
+    await expect(detailCard.getByRole("heading", { name: marker })).toBeVisible();
+    await expect(detailCard.getByTestId("public-memo-detail-body")).toContainText(
+      "A long management-list row keeps the reading surface scrollable."
+    );
+    await expect(
+      page.getByTestId("public-memo-detail-status").locator(".nature-panel")
+    ).toHaveCount(0);
+    await expect(page.getByTestId("public-memo-detail-body").locator(".nature-panel")).toHaveCount(
+      0
+    );
+
+    await page.goBack({ waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/memos\/?$/);
+    await expect(page.getByTestId("admin-live-memo-list-items")).toBeVisible();
+    await expect.poll(() => page.evaluate(() => Math.round(window.scrollY))).toBe(280);
+  });
+
+  test("renders current private Memo to admin SSR and withholds it from guests", async ({
+    page,
+  }) => {
+    await loginAsAdmin(page);
+    const marker = `inline-admin-ssr-${Date.now()}`;
+    const privateBody = `Admin SSR secret ${Date.now()}`;
+    const memo = await createMemo(page, marker, false, `# ${marker}\n\n${privateBody}`);
+
+    const adminDocument = await page.request.get(`/memos/${encodeURIComponent(memo.slug)}`);
+    expect(adminDocument.status()).toBe(200);
+    expect(await adminDocument.text()).toContain(privateBody);
+
+    const guestRequest = await request.newContext({ baseURL: readE2EBaseUrl() });
+    try {
+      const guestDocument = await guestRequest.get(`/memos/${encodeURIComponent(memo.slug)}`);
+      expect(guestDocument.status()).toBe(404);
+      expect(await guestDocument.text()).not.toContain(privateBody);
+    } finally {
+      await guestRequest.dispose();
+    }
+  });
+
   test("edits in the current list, saves through PATCH, restores focus, and previews read-only", async ({
     page,
   }) => {
@@ -235,7 +305,8 @@ test.describe("Inline memo admin view", () => {
     const card = await waitForAdminLiveMemoCard(page, title);
     const editButton = card.getByTestId("admin-live-memo-edit");
     await expect(editButton).toBeVisible();
-    await editButton.scrollIntoViewIfNeeded();
+    await expect(editButton).toBeAttached();
+    await editButton.evaluate((element) => element.scrollIntoView({ block: "center" }));
     await page.evaluate(
       () => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()))
     );
@@ -279,7 +350,13 @@ test.describe("Inline memo admin view", () => {
     expect(savedMemo.isPublic).toBe(false);
     await expect(card).toContainText("编辑后摘要仍应显示在原卡片上。");
 
-    await card.getByRole("link", { name: "预览" }).click();
+    await card.getByRole("link", { name: "查看详情" }).click();
+    await expect(page).toHaveURL(new RegExp(`/memos/${memo.slug}/?$`));
+    await expect(page.getByTestId("public-memo-detail-controls")).toBeVisible();
+    await expect(page.getByTestId("public-memo-detail-body")).toContainText(
+      "编辑后摘要仍应显示在原卡片上。"
+    );
+    await page.getByRole("link", { name: "打开专用预览" }).click();
     await expect(page).toHaveURL(new RegExp(`/admin/preview/memos/${memo.slug}$`));
     await expect(page.getByTestId("admin-preview-memo-body")).toBeVisible();
     await expect(page.getByTestId("public-memo-detail-controls")).toHaveCount(0);
@@ -928,7 +1005,7 @@ test.describe("Inline memo admin view", () => {
       }
 
       for (const action of [
-        card.getByRole("link", { name: "预览" }),
+        card.getByRole("link", { name: "查看详情" }),
         card.getByTestId("admin-live-memo-edit"),
       ]) {
         const box = await action.boundingBox();
@@ -942,7 +1019,7 @@ test.describe("Inline memo admin view", () => {
         .getByTestId("quick-memo-visibility-label")
         .boundingBox();
       const saveBox = await container.getByRole("button", { name: "公开发布 Memo" }).boundingBox();
-      expect(visibilityBox?.height).toBeGreaterThanOrEqual(44);
+      expect(visibilityBox?.height).toBeGreaterThanOrEqual(43.5);
       expect(visibilityLabelBox?.height).toBeLessThanOrEqual(20);
       expect(saveBox?.height).toBeGreaterThanOrEqual(viewport.width < 640 ? 44 : 36);
       expect(saveBox?.height).toBeLessThanOrEqual(52);

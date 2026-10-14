@@ -116,6 +116,35 @@ test("fragment history restores reading positions on direct and cross-page entri
   await expect.poll(() => page.evaluate(() => Math.abs(window.scrollY - 1100))).toBeLessThan(2);
 });
 
+test("bounds stale history scroll after the destination content shrinks", async ({ page }) => {
+  await page.goto("/projects/xp/");
+  await ready(page);
+  await page.evaluate(() => {
+    history.replaceState(
+      { publicCsr: true, publicCsrScroll: { top: 999999, left: 0 } },
+      "",
+      window.location.href
+    );
+    history.pushState({ publicCsr: true }, "", "/posts/");
+  });
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/projects\/xp\/?$/);
+  await expect(page.locator("#raft-期望状态")).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => history.state?.publicCsrScroll?.top ?? -1))
+    .toBeLessThan(999999);
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Math.abs(
+          window.scrollY - Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+        )
+      )
+    )
+    .toBeLessThan(2);
+});
+
 test("a cross-page fragment waits for the route-specific MDX module", async ({ page }) => {
   await page.goto("/posts/");
   await ready(page);
@@ -142,6 +171,88 @@ test("a cross-page fragment waits for the route-specific MDX module", async ({ p
     )
     .toBeLessThan(250);
   await expect(page.locator("main.nature-main")).toBeFocused();
+});
+
+test("ignores programmatic pending-body scroll when saving a pushed history entry", async ({
+  page,
+}) => {
+  await page.goto("/posts/");
+  await ready(page);
+  await page.evaluate(() => {
+    document.body.style.minHeight = "2400px";
+  });
+  let releaseScripts = () => {
+    /* Assigned synchronously by the Promise constructor. */
+  };
+  const released = new Promise<void>((resolve) => {
+    releaseScripts = resolve;
+  });
+  await page.route("**/*", async (route) => {
+    if (route.request().resourceType() === "script") await released;
+    await route.continue();
+  });
+  try {
+    await linkTo(page, "/projects/xp/#raft-期望状态");
+    await expect(page.locator("[data-public-body-pending]")).toBeVisible();
+    await page.evaluate(() => window.scrollTo({ top: 300, behavior: "instant" }));
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(300);
+    await linkTo(page, "/posts/");
+    await expect(page.locator("main.nature-main h1")).toHaveText("文章");
+    await page.evaluate(() => {
+      (window as typeof window & { __capturedScroll?: number | null }).__capturedScroll = null;
+      window.addEventListener(
+        "popstate",
+        (event) => {
+          (window as typeof window & { __capturedScroll?: number | null }).__capturedScroll =
+            event.state?.publicCsrScroll?.top ?? null;
+        },
+        { once: true }
+      );
+    });
+    await page.evaluate(() => history.back());
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (window as typeof window & { __capturedScroll?: number | null }).__capturedScroll
+        )
+      )
+      .toBe(0);
+  } finally {
+    releaseScripts();
+  }
+});
+
+test("persists a real user scroll when pending-body restoration times out", async ({ page }) => {
+  await page.goto("/posts/");
+  await ready(page);
+  await page.evaluate(() => {
+    document.body.style.minHeight = "2400px";
+  });
+  let releaseScripts = () => {
+    /* Assigned synchronously by the Promise constructor. */
+  };
+  const released = new Promise<void>((resolve) => {
+    releaseScripts = resolve;
+  });
+  await page.route("**/*", async (route) => {
+    if (route.request().resourceType() === "script") await released;
+    await route.continue();
+  });
+  try {
+    await linkTo(page, "/projects/xp/#raft-期望状态");
+    await expect(page.locator("[data-public-body-pending]")).toBeVisible();
+    await page.mouse.wheel(0, 400);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+    const userPosition = await page.evaluate(() => window.scrollY);
+    await expect
+      .poll(() => page.evaluate(() => history.state?.publicCsrScroll?.top ?? -1), {
+        timeout: 8_000,
+        intervals: [250, 500, 1_000],
+      })
+      .toBe(userPosition);
+  } finally {
+    releaseScripts();
+  }
 });
 
 test("public navigation renders structured data without document exchange", async ({ page }) => {

@@ -1,0 +1,269 @@
+import type { ClippingReading } from "@/lib/memo-clipping";
+import { createEmptyPublicMediaCollection } from "@/lib/public-media";
+import type { PublicMemoRecord } from "@/public-site/snapshot";
+import { getClippingWebDemoArticle } from "./clipping-web-demo";
+import type { WebDemoPersona, WebDemoState } from "./web-demo-runtime";
+
+export const CONSOLE_WEB_DEMO_SLUGS = {
+  private: "console-demo-private-release-notes",
+  draft: "console-demo-draft-reading-list",
+  clipping: "console-demo-clipping-durable-workflows",
+  public: "console-demo-public-weekly-notes",
+} as const;
+
+export type ConsoleWebDemoMemo = PublicMemoRecord & {
+  canDiscuss?: boolean;
+  authoredContent?: string;
+  authoredTitle?: string;
+  source?: string;
+  draft?: boolean;
+};
+
+export type ConsoleWebDemoPublicMemo = Omit<
+  ConsoleWebDemoMemo,
+  "authoredContent" | "authoredTitle" | "source" | "draft" | "dataSource" | "filePath" | "media"
+>;
+
+const fixtureTime = Date.UTC(2026, 9, 13, 8);
+
+function makeMemo(
+  slug: string,
+  title: string,
+  content: string,
+  options: {
+    isPublic: boolean;
+    draft?: boolean;
+    tags: string[];
+    createdOffsetHours: number;
+    clipping?: ClippingReading;
+  }
+): ConsoleWebDemoMemo {
+  const createdAt = new Date(
+    fixtureTime - options.createdOffsetHours * 60 * 60 * 1000
+  ).toISOString();
+  return {
+    id: slug,
+    slug,
+    title,
+    excerpt: content
+      .replace(/^#\s+[^\n]+\n*/u, "")
+      .trim()
+      .slice(0, 180),
+    content,
+    clipping: options.clipping,
+    tags: options.tags,
+    inlineTags: [],
+    isPublic: options.isPublic,
+    createdAt,
+    publishedAt: options.isPublic && !options.draft ? createdAt : null,
+    updatedAt: createdAt,
+    dataSource: "console-web-demo",
+    filePath: `demo/console-memos/${slug}.md`,
+    image: null,
+    media: createEmptyPublicMediaCollection(),
+    authoredContent: content,
+    authoredTitle: title,
+    source: "local",
+    draft: options.draft ?? !options.isPublic,
+  };
+}
+
+const clippingArticle = getClippingWebDemoArticle({
+  scene: "clipping-ready",
+  persona: "admin",
+  network: "healthy",
+  data: "fixture",
+});
+
+const seedMemos: ConsoleWebDemoMemo[] = [
+  makeMemo(
+    CONSOLE_WEB_DEMO_SLUGS.private,
+    "发布窗口后的内部复盘",
+    "# 发布窗口后的内部复盘\n\n这是一条当前 Console 内容：管理员可以在详情首屏看到尚未进入公开快照的正文。\n\n## 检查结果\n\n- 私有媒体仍使用管理员可读的资源边界。\n- 保存正文后停留在当前详情地址。\n- 公开站仍只显示最近发布的快照。\n\n![管理员可见的发布记录](/site-assets/favicon.svg)",
+    {
+      isPublic: false,
+      tags: ["发布", "内部复盘"],
+      createdOffsetHours: 1,
+    }
+  ),
+  makeMemo(
+    CONSOLE_WEB_DEMO_SLUGS.draft,
+    "待确认的阅读清单",
+    "# 待确认的阅读清单\n\n这条草稿用于验证管理员详情可以读取尚未公开的当前内容。\n\n下一步是确认来源、翻译和讨论权限，再决定是否公开。",
+    {
+      isPublic: false,
+      draft: true,
+      tags: ["草稿", "阅读"],
+      createdOffsetHours: 3,
+    }
+  ),
+  makeMemo(
+    CONSOLE_WEB_DEMO_SLUGS.clipping,
+    clippingArticle.title ?? "可恢复的文章工作流",
+    "# 可恢复的文章工作流\n\n这是一条剪藏 Memo。详情同时展示作者摘要、原文、译文和管理员讨论入口。",
+    {
+      isPublic: true,
+      tags: ["剪藏", "工作流"],
+      createdOffsetHours: 5,
+      clipping: clippingArticle.reading,
+    }
+  ),
+  makeMemo(
+    CONSOLE_WEB_DEMO_SLUGS.public,
+    "本周公开笔记",
+    "# 本周公开笔记\n\n公开 Memo 的当前正文和公开快照都可以从详情边界观察。管理员保存后不会强制同步发布快照。\n\n## 阅读提示\n\n请从管理列表的眼睛按钮进入详情，再使用浏览器返回验证列表位置。",
+    {
+      isPublic: true,
+      tags: ["公开", "周记"],
+      createdOffsetHours: 8,
+    }
+  ),
+];
+
+function cloneMemo(memo: ConsoleWebDemoMemo): ConsoleWebDemoMemo {
+  return structuredClone(memo);
+}
+
+export function getConsoleWebDemoPersona(
+  location: Pick<Location, "search"> | Pick<URL, "search">
+): WebDemoPersona {
+  const persona = new URLSearchParams(location.search).get("d_persona");
+  return persona === "user" || persona === "guest" || persona === "admin" ? persona : "admin";
+}
+
+export function getConsoleWebDemoMemos(): ConsoleWebDemoMemo[] {
+  return seedMemos.map(cloneMemo);
+}
+
+export function getConsoleWebDemoPublicMemos(): ConsoleWebDemoPublicMemo[] {
+  return seedMemos.filter((memo) => memo.isPublic && !memo.draft).map(toPublicMemo);
+}
+
+function toPublicMemo(memo: ConsoleWebDemoMemo): ConsoleWebDemoPublicMemo {
+  const {
+    authoredContent: _authoredContent,
+    authoredTitle: _authoredTitle,
+    source: _source,
+    draft: _draft,
+    dataSource: _dataSource,
+    filePath: _filePath,
+    media: _media,
+    ...publicMemo
+  } = cloneMemo(memo);
+  return {
+    ...publicMemo,
+    canDiscuss: false,
+  };
+}
+
+function toMemoForPersona(
+  memo: ConsoleWebDemoMemo,
+  persona: WebDemoPersona
+): ConsoleWebDemoMemo | ConsoleWebDemoPublicMemo {
+  if (persona === "admin") {
+    return {
+      ...cloneMemo(memo),
+      canDiscuss: Boolean(memo.clipping),
+    };
+  }
+  return toPublicMemo(memo);
+}
+
+export function getConsoleWebDemoMemo(slug: string, persona: "admin"): ConsoleWebDemoMemo | null;
+export function getConsoleWebDemoMemo(
+  slug: string,
+  persona: Exclude<WebDemoPersona, "admin">
+): ConsoleWebDemoPublicMemo | null;
+export function getConsoleWebDemoMemo(
+  slug: string,
+  persona: WebDemoPersona
+): ConsoleWebDemoMemo | ConsoleWebDemoPublicMemo | null {
+  const memo = seedMemos.find((candidate) => candidate.slug === slug);
+  if (!memo) return null;
+  if (persona !== "admin" && (!memo.isPublic || memo.draft)) return null;
+  return toMemoForPersona(memo, persona);
+}
+
+export function getConsoleWebDemoClippingArticle(slug: string, persona: WebDemoPersona) {
+  if (slug !== CONSOLE_WEB_DEMO_SLUGS.clipping) return null;
+  const article = getClippingWebDemoArticle({
+    scene: "clipping-ready",
+    persona,
+    network: "healthy",
+    data: "fixture",
+  } satisfies WebDemoState);
+  return {
+    ...article,
+    canDiscuss: persona === "admin",
+  };
+}
+
+export function createConsoleWebDemoStore() {
+  let memos = getConsoleWebDemoMemos();
+  let sequence = 0;
+
+  const visible = (persona: WebDemoPersona) =>
+    memos
+      .filter((memo) => persona === "admin" || (memo.isPublic && !memo.draft))
+      .map((memo) => toMemoForPersona(memo, persona));
+
+  return {
+    list(persona: WebDemoPersona) {
+      const items = visible(persona);
+      return {
+        memos: items,
+        hasMore: false,
+        nextCursor: null,
+        hasPrevious: false,
+        previousCursor: null,
+      };
+    },
+    get(slug: string, persona: WebDemoPersona) {
+      const memo = memos.find((candidate) => candidate.slug === slug);
+      if (!memo || (persona !== "admin" && (!memo.isPublic || memo.draft))) return null;
+      return toMemoForPersona(memo, persona);
+    },
+    create(input: { content: string; isPublic: boolean; tags?: string[] }) {
+      const slug = `console-demo-created-${++sequence}`;
+      const now = new Date().toISOString();
+      const title = input.content.match(/^#\s+([^\n]+)/u)?.[1]?.trim() || "未命名 Memo";
+      const memo = makeMemo(slug, title, input.content, {
+        isPublic: input.isPublic,
+        tags: input.tags ?? [],
+        createdOffsetHours: 0,
+      });
+      memo.createdAt = now;
+      memo.updatedAt = now;
+      memos = [memo, ...memos];
+      return cloneMemo(memo);
+    },
+    update(slug: string, input: { content: string; isPublic: boolean; tags?: string[] }) {
+      const current = memos.find((memo) => memo.slug === slug);
+      if (!current) return null;
+      const title =
+        input.content.match(/^#\s+([^\n]+)/u)?.[1]?.trim() || current.title || "未命名 Memo";
+      const updated = {
+        ...current,
+        title,
+        authoredTitle: title,
+        authoredContent: input.content,
+        content: input.content,
+        excerpt: input.content
+          .replace(/^#\s+[^\n]+\n*/u, "")
+          .trim()
+          .slice(0, 180),
+        isPublic: input.isPublic,
+        draft: !input.isPublic,
+        tags: input.tags ?? current.tags,
+        updatedAt: new Date().toISOString(),
+      };
+      memos = memos.map((memo) => (memo.slug === slug ? updated : memo));
+      return cloneMemo(updated);
+    },
+    remove(slug: string) {
+      const existed = memos.some((memo) => memo.slug === slug);
+      memos = memos.filter((memo) => memo.slug !== slug);
+      return existed;
+    },
+  };
+}

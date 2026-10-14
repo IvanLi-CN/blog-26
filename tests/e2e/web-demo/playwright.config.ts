@@ -8,7 +8,10 @@ export default defineConfig({
   use: {
     baseURL: process.env.WEB_DEMO_TEST_URL ?? "http://127.0.0.1:38210",
     headless: true,
-    viewport: { width: 1440, height: 1000 },
+    viewport:
+      process.env.WEB_DEMO_VIEWPORT === "mobile"
+        ? { width: 393, height: 852 }
+        : { width: 1440, height: 1000 },
   },
   reporter: [
     ["list"],

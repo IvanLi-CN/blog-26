@@ -144,6 +144,7 @@ export function createClippingWebDemoModel(
 ) {
   let state = { ...initialState };
   let article = getClippingWebDemoArticle(state);
+  let generation = 0;
   let sequence = 0;
   let processingStep = 0;
   const requests = new Set<string>();
@@ -172,11 +173,23 @@ export function createClippingWebDemoModel(
   };
   const transport: ClippingTransport = {
     async request<T>(operation: string, body?: unknown): Promise<T> {
+      const requestGeneration = generation;
       if (state.network === "offline")
         throw new Error("模拟网络故障：请求没有发送到真实服务。请选择正常网络后重试。");
       if (state.network === "slow") await new Promise((resolve) => setTimeout(resolve, 900));
       if (state.network === "offline") throw new Error("模拟网络连接已中断。");
       if (operation !== "" && operation !== "status") permitted();
+      if (requestGeneration !== generation) {
+        if (operation === "chat" || operation === "reprocess") {
+          return structuredClone({ ok: false, cancelled: true }) as T;
+        }
+        if (operation === "" || operation === "status") {
+          return structuredClone({
+            ...article,
+            canDiscuss: state.persona === "admin" && Boolean(article.source),
+          }) as T;
+        }
+      }
       const input = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
       let result: unknown;
       if (operation === "" || operation === "status") {
@@ -236,6 +249,7 @@ export function createClippingWebDemoModel(
         canDiscuss: state.persona === "admin" && Boolean(article.source),
       }),
     setState(next: WebDemoState) {
+      generation += 1;
       if (next.scene !== state.scene || next.data !== state.data) {
         article = getClippingWebDemoArticle(next);
         processingStep = 0;
@@ -246,6 +260,7 @@ export function createClippingWebDemoModel(
       article.content = `${notes}\n\n模拟保存：新增的备注仅存在于当前演示内存。${article.source ? `\n\n---\n\n${summary}` : ""}`;
     },
     reset(next: WebDemoState) {
+      generation += 1;
       state = { ...next };
       article = getClippingWebDemoArticle(next);
       processingStep = 0;

@@ -1,0 +1,268 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "ceecf5ed867ee849fce6d8e5d8225e9e5505923a",
+  "covered_files": {
+    ".github/quality-gates.json": "1a3e713708baaf265adce051b8b613b3a525bb4f",
+    ".github/workflows/e2e.yml": "5ee75c8aee10c7fbfe968321f17c32189c717905",
+    ".gitignore": "ce64803d3963e4668cd644c7ef465dd36e266eba",
+    "GLOSSARY.md": "d123cb3d82eabceaf2260468391ff5dc3ad23f46",
+    "apps/admin/src/demo/mock-admin-api.ts": "51ee39963bad553972dfee4b576e7da0e44a5d6e",
+    "apps/admin/src/pages/preview.tsx": "a2f09e3a0559da1d8369412f9037a172550d7719",
+    "astro.config.mjs": "ad1280529c2702869c7392ffe27f65845b9122a1",
+    "docs/adr/0024-memo-detail-preview-boundary.md": "181d067980d444f265ac62443fc3d824077f7e61",
+    "docs/specs/memo-admin-inline-view/SPEC.md": "4500d02d44f3f5cd72db314f49adad6cfb55c549",
+    "package.json": "b66755954d4cc1bbe2019f5588b8b51a9f92949c",
+    "scripts/build-web-demo.ts": "3ecde93da63683fe6c34cda3ea5f9085f48f8c76",
+    "scripts/preview-web-demo.ts": "5d92e6c3d65147497a6a215fe27393571f6f43b3",
+    "site/components/PublicMemoAuthoring.public.tsx": "f2d5178a4f6ef032b2b42e10fa51cc87bb920d63",
+    "site/components/PublicMemoAuthoring.tsx": "7d6c23027f8abefbd9238321fa93861441842fd3",
+    "site/components/PublicRouter.tsx": "528da86451956f2a4585b570241ff3034309f372",
+    "site/components/VirtualizedMemoList.tsx": "107f3d0d36b640fc780a3554098f421cbfaac07c",
+    "site/components/pages/memo.tsx": "b19ddde06df9b0b761dd1369c0a4f9fbe26f2a9b",
+    "site/lib/page-data/memo.ts": "9cfaa69697910998b7ec4502d664d4ebda797ac2",
+    "site/lib/page-data/memos.ts": "a598b295b45982bf7d65992386b3af95e38b6004",
+    "site/pages/memos/[slug].astro": "c19abf54d59fd88cc31a59e32ba14355e23799b5",
+    "src/components/WebDemoInspector.tsx": "07a071d09a48a33545742e0ea91beeb89eb88988",
+    "src/components/WebDemoInspector.css": "d7c0f572527944d9f1ec7d3ad74002d0df0783cd",
+    "src/components/memos/ClippingDetail.tsx": "9b97dbcb1f343525f43b813b361adb6a74586e37",
+    "src/components/memos/PublicMemoAuthoring.stories.tsx": "0f135c87ecb4755ff78a768c6ac43aaf4c359c22",
+    "src/lib/console-web-demo.ts": "6095169185d90e3b27874d1915b672cf23f158e0",
+    "src/lib/clipping-web-demo.ts": "ba7a3c371ac77c91aa6a7513635cd8aeafe691ce",
+    "src/lib/web-demo-fetch.ts": "05da9fc2fe4fd9fbb5178dc0cb89aad0ab635a7a",
+    "src/server/clipping/api.test.ts": "c49f19bb824e1534886fbb47cdbd0898e70e133d",
+    "src/server/clipping/api.ts": "c9f16d2ced4b0f248ad5a53d5e1f3f21a434b82e",
+    "src/server/http-compat-api.test.ts": "aa055bf98c2b7f090380189b34356ec9839a096a",
+    "src/server/routers/memos.ts": "dae1d2f73077b47bd3cbe7fc65c309aacdbc4183",
+    "tests/components/PublicMemoAuthoring.test.tsx": "0e581cd9a8b9075457573dfe40787552e311401a",
+    "tests/e2e/admin/memos-admin.spec.ts": "173c142fa9274f0bba70c7181b0547bb09dd01c2",
+    "tests/e2e/admin/memos/helpers.ts": "d858b41e327d7570fbed70c7f3481611209e0dde",
+    "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts": "8f2abe570c343db4e6634c6e5335ca53428bd988",
+    "tests/e2e/guest/public-csr-navigation.spec.ts": "7df417873f7586d4f6eeaab787b521d156de746b",
+    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "ce1f6c898028577c405b0c696c9f0548a4fbd5b4",
+    "tests/e2e/web-demo/playwright.config.ts": "8dc2e45e799abdb4c24e390702f471283042e63d",
+    "tests/lib/console-memo-page-data.test.ts": "369c2c4d5c3dadd25c0a3f42afeca870aa2404f1",
+    "tests/lib/console-web-demo.test.ts": "922bc22e3cbb5d30b94378929ceaa56202366090",
+    "tests/lib/clipping-web-demo.test.ts": "7b2a9ec797882d3249437825746d74b846825681",
+    "tsconfig.json": "676a7f22b8020a9b9fe1eeeafd06c72625abafcc",
+    "tests/components/ClippingDetail.test.tsx": "6b38f8d4c315cc7dbd1c7c1e8a250958050e0a85"
+  },
+  "change": {
+    "description": "Separate Console Memo detail navigation from the dedicated author preview, load the current Memo projection server-side with the existing identity and media boundaries, preserve same-route editing and public route history, hide unauthorized private Memo and clipping reads behind the existing missing-resource boundary, and ship a complete official Web Demo covering admin, guest, private, draft, public, clipping, preview, history, and Inspector mutation states.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change preserves public API payload shapes, database and local-content formats, public snapshot generation, and deployment host resolution. It adds compatible Console navigation and server-rendered administrator detail projection while making unauthorized private reads indistinguishable from missing resources.",
+      "assessed_at": "2026-10-14T04:35:51+08:00",
+      "evidence": [
+        {
+          "path": "docs/adr/0024-memo-detail-preview-boundary.md",
+          "blob": "181d067980d444f265ac62443fc3d824077f7e61",
+          "command": "Locked Memo detail/preview boundary and same-origin navigation decision"
+        },
+        {
+          "path": "docs/specs/memo-admin-inline-view/SPEC.md",
+          "blob": "4500d02d44f3f5cd72db314f49adad6cfb55c549",
+          "command": "Memo admin inline-view specification records the SSR, preview, save, and privacy contracts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate changes only the Console Memo detail/preview boundary, request-scoped initial projection, unauthorized read status mapping, shared route history state, and the official build-time Web Demo evidence surface. Public API payload shapes, persistent state, snapshot publishing, and deployment host configuration remain unchanged; the deliberate 403-to-404 mapping for unauthorized private reads makes them indistinguishable from missing resources, while the Demo uses an explicit guest projection that omits authoring-only fields. Console guests now use the current request-scoped public API projection and cannot fall back to a lagging public snapshot after a Memo becomes private or draft. The current candidate also keeps administrator tools inside the Memo detail reading surface on desktop and mobile.",
+      "assessed_at": "2026-10-14T16:26:17+08:00",
+      "evidence": [
+        {
+          "path": "apps/admin/src/pages/preview.tsx",
+          "blob": "a2f09e3a0559da1d8369412f9037a172550d7719",
+          "command": "Admin preview Web Demo uses the closed clipping adapter for source, translation, discussion, and state mutations without public API fallback"
+        },
+        {
+          "path": "site/lib/page-data/memo.ts",
+          "blob": "9cfaa69697910998b7ec4502d664d4ebda797ac2",
+          "command": "Current page loader supplies request-scoped public or administrator Memo detail projection and safe guest render defaults"
+        },
+        {
+          "path": "src/lib/console-web-demo.ts",
+          "blob": "6095169185d90e3b27874d1915b672cf23f158e0",
+          "command": "Console Web Demo fixtures expose separate administrator and guest projections"
+        },
+        {
+          "path": "tests/lib/console-web-demo.test.ts",
+          "blob": "922bc22e3cbb5d30b94378929ceaa56202366090",
+          "command": "Guest Demo projection tests omit authoring-only fields and hide private/draft records"
+        },
+        {
+          "path": "tests/lib/console-memo-page-data.test.ts",
+          "blob": "369c2c4d5c3dadd25c0a3f42afeca870aa2404f1",
+          "command": "bun test tests/lib/console-memo-page-data.test.ts: 3 passed"
+        },
+        {
+          "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
+          "blob": "ce1f6c898028577c405b0c696c9f0548a4fbd5b4",
+          "command": "Official Console Web Demo E2E covers navigation, history, preview boundary, SSR privacy, clipping, Admin preview clipping materials, same-route save, and mobile bottom-sheet interaction"
+        },
+        {
+          "path": "tests/e2e/web-demo/playwright.config.ts",
+          "blob": "8dc2e45e799abdb4c24e390702f471283042e63d",
+          "command": "Console Web Demo E2E runs at desktop 1440x1000 and mobile 393x852 viewports"
+        },
+        {
+          "path": "src/components/WebDemoInspector.css",
+          "blob": "d7c0f572527944d9f1ec7d3ad74002d0df0783cd",
+          "command": "Mobile Web Demo Inspector bubble is placed clear of fixed reader actions"
+        },
+        {
+          "path": "src/lib/clipping-web-demo.ts",
+          "blob": "ba7a3c371ac77c91aa6a7513635cd8aeafe691ce",
+          "command": "Delayed clipping Demo mutations are cancelled after state reset or scene changes"
+        },
+        {
+          "path": ".github/workflows/e2e.yml",
+          "blob": "5ee75c8aee10c7fbfe968321f17c32189c717905",
+          "command": "Required Web Demo E2E job builds the official artifacts and runs desktop/mobile boundary checks"
+        },
+        {
+          "path": ".github/quality-gates.json",
+          "blob": "1a3e713708baaf265adce051b8b613b3a525bb4f",
+          "command": "Playwright E2E (web-demo) is registered as a required PR and main check"
+        },
+        {
+          "path": "scripts/build-web-demo.ts",
+          "blob": "3ecde93da63683fe6c34cda3ea5f9085f48f8c76",
+          "command": "Build script produces public site, Console site, and admin preview Web Demo artifacts"
+        },
+        {
+          "path": "tests/components/ClippingDetail.test.tsx",
+          "blob": "6b38f8d4c315cc7dbd1c7c1e8a250958050e0a85",
+          "command": "bun test tests/components/ClippingDetail.test.tsx: 1 passed"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains within the locked Memo detail/preview, SSR authorization, media/clipping projection, and shared history scope; no schema, public payload, snapshot, host configuration, or VERSION change was introduced."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused component, Console projection, page-data source selection, clipping, HTTP compatibility, official Web Demo build, and Console browser acceptance checks pass at desktop and mobile viewports. The implementation preserves existing public payload shapes and persistent state while enforcing the same-origin detail/preview boundary and private-resource non-disclosure; the 403-to-404 status change is an intentional compatible privacy hardening because private and missing resources share the documented not-found response. Console runtime now refuses snapshot fallback when the current request has no authorized Memo projection. The focused Web Demo evidence additionally asserts that the administrator toolbar is contained by the visible detail card and that the mobile Inspector control does not occlude the discussion action.",
+      "assessed_at": "2026-10-14T16:26:17+08:00",
+      "evidence": [
+        {
+          "path": "apps/admin/src/pages/preview.tsx",
+          "blob": "a2f09e3a0559da1d8369412f9037a172550d7719",
+          "command": "Admin preview Web Demo adapter test path keeps clipping source, translation, and discussion on the closed in-memory transport"
+        },
+        {
+          "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
+          "blob": "ce1f6c898028577c405b0c696c9f0548a4fbd5b4",
+          "command": "Official Console Web Demo E2E: 6 desktop passed and 6 mobile passed"
+        },
+        {
+          "path": "tests/e2e/web-demo/playwright.config.ts",
+          "blob": "8dc2e45e799abdb4c24e390702f471283042e63d",
+          "command": "Desktop and mobile viewport configuration for the required Web Demo browser evidence"
+        },
+        {
+          "path": "src/components/WebDemoInspector.css",
+          "blob": "d7c0f572527944d9f1ec7d3ad74002d0df0783cd",
+          "command": "Mobile Inspector bubble layout regression: Demo control no longer overlaps discussion trigger"
+        },
+        {
+          "path": "src/lib/clipping-web-demo.ts",
+          "blob": "ba7a3c371ac77c91aa6a7513635cd8aeafe691ce",
+          "command": "Clipping Demo cancellation regression: 7 focused tests passed"
+        },
+        {
+          "path": ".github/workflows/e2e.yml",
+          "blob": "5ee75c8aee10c7fbfe968321f17c32189c717905",
+          "command": "Required Web Demo CI job runs the official Console boundary suite at desktop and mobile viewports"
+        },
+        {
+          "path": ".github/quality-gates.json",
+          "blob": "1a3e713708baaf265adce051b8b613b3a525bb4f",
+          "command": "Required check identity includes Playwright E2E (web-demo)"
+        },
+        {
+          "path": "tests/lib/console-web-demo.test.ts",
+          "blob": "922bc22e3cbb5d30b94378929ceaa56202366090",
+          "command": "Guest projection regression: 2 passed"
+        },
+        {
+          "path": "tests/lib/console-memo-page-data.test.ts",
+          "blob": "369c2c4d5c3dadd25c0a3f42afeca870aa2404f1",
+          "command": "bun test tests/lib/console-memo-page-data.test.ts: 3 passed"
+        },
+        {
+          "path": "tests/components/PublicMemoAuthoring.test.tsx",
+          "blob": "0e581cd9a8b9075457573dfe40787552e311401a",
+          "command": "Component regression: 8 passed, including public timeline recovery after SSR admin auth downgrade"
+        },
+        {
+          "path": "src/lib/web-demo-fetch.ts",
+          "blob": "05da9fc2fe4fd9fbb5178dc0cb89aad0ab635a7a",
+          "command": "bun test tests/lib/console-web-demo.test.ts tests/lib/console-memo-page-data.test.ts tests/components/PublicMemoAuthoring.test.tsx tests/components/ClippingDetail.test.tsx: 15 passed"
+        },
+        {
+          "path": "scripts/build-web-demo.ts",
+          "blob": "3ecde93da63683fe6c34cda3ea5f9085f48f8c76",
+          "command": "bun run web-demo:build: public, Console, and admin artifacts built successfully"
+        },
+        {
+          "path": "tests/components/ClippingDetail.test.tsx",
+          "blob": "6b38f8d4c315cc7dbd1c7c1e8a250958050e0a85",
+          "command": "bun test tests/components/ClippingDetail.test.tsx: 1 passed"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2"
+      ],
+      "evidence": [
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "aa055bf98c2b7f090380189b34356ec9839a096a",
+          "command": "Existing HTTP compatibility suite passes while public Memo and clipping payload shapes remain unchanged and missing/private reads intentionally share HTTP 404"
+        },
+        {
+          "path": "src/server/clipping/api.test.ts",
+          "blob": "c49f19bb824e1534886fbb47cdbd0898e70e133d",
+          "command": "Clipping read and discussion authorization regression suite passes"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local-content format, browser persistence, or durable release-ledger state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/components/PublicMemoAuthoring.test.tsx",
+          "blob": "0e581cd9a8b9075457573dfe40787552e311401a",
+          "command": "Component regression suite covers same-route editing, auth downgrade timeline recovery, and state updates without introducing persisted state"
+        }
+      ]
+    }
+  }
+}

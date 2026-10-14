@@ -60,7 +60,7 @@
     "src/lib/ai/search-fallback.test.ts": "7ad10d1d7e640abb86bf702015111d870f8d5040",
     "src/lib/ai/search.ts": "6b384e8a884224f618d75c33f0474a9b073c957d",
     "src/lib/clipping-feed.ts": "7524d8715ce53802aa6742061e50d90feabb9ee4",
-    "src/lib/clipping-web-demo.ts": "a15b87855de24ce38df08bf37f281738e44d3032",
+    "src/lib/clipping-web-demo.ts": "ba7a3c371ac77c91aa6a7513635cd8aeafe691ce",
     "src/lib/content-sources/manager.ts": "e45efefccfe05e190037ed8c3d3c8bb57a8759a9",
     "src/lib/content-sources/utils.ts": "788229e85ebe789d3a713a0bbe0743ce8fd5a59e",
     "src/lib/memo-clipping.ts": "cd69e7f4252eb9201eb9ccba3ceaf05eb8ad395f",
@@ -102,7 +102,7 @@
     "src/server/services/tag-content.ts": "c55a89dae44ca99d2bfccc7b91eb79a910490edd",
     "tests/e2e/clipping-detail.ts": "1a16934b457fca6a09aff6484760cd802f983750",
     "tests/e2e/clipping-web-demo.ts": "46747d74b4822499921a3ea5e3925ee104d33e15",
-    "tests/lib/clipping-web-demo.test.ts": "e5b6d938f65df12897ac82b92e76775b53960921",
+    "tests/lib/clipping-web-demo.test.ts": "7b2a9ec797882d3249437825746d74b846825681",
     "src/server/routers/search.test.ts": "627b836e4bbedaf3509f365947b26c4836571568",
     "src/server/services/search-suggestions.ts": "07eff12db05dd57034f01669f05a2276447edc09"
   },

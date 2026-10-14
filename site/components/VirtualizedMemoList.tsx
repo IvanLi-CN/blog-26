@@ -45,6 +45,8 @@ export default function VirtualizedMemoList<T>({
     getItemKey,
     overscan: 8,
     scrollMargin,
+    initialOffset: () =>
+      typeof window === "undefined" ? 0 : (window.history.state?.publicCsrScroll?.top ?? 0),
     anchorTo: "end",
     // Keep append measurements from pinning the reader to the end; retain key anchoring for prepends.
     scrollEndThreshold: -1,

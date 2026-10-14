@@ -14,7 +14,8 @@
     "jsx": "react-jsx",
     "incremental": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@clipping-reader": ["./src/components/memos/ClippingDetail.tsx"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx"],

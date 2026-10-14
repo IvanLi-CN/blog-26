@@ -4,18 +4,18 @@
   "base_sha": "ceecf5ed867ee849fce6d8e5d8225e9e5505923a",
   "covered_files": {
     "README.md": "89ceebade20e1c1672d1bbab18a3098a8e13a050",
-    "astro.config.mjs": "d6f4734eb9bedfa50a1fa5e1285a5041fe2a125d",
-    "docs/specs/memo-admin-inline-view/SPEC.md": "1b5851f6f9a402a8d870ff0125d81f13d35e02fc",
-    "site/components/PublicMemoAuthoring.tsx": "5cda44c9635186490f9d26199835a34edc83ab3e",
-    "site/components/pages/memo.tsx": "5a9bb315e2787c8daeef97613679dd6484513a71",
+    "astro.config.mjs": "ad1280529c2702869c7392ffe27f65845b9122a1",
+    "docs/specs/memo-admin-inline-view/SPEC.md": "4500d02d44f3f5cd72db314f49adad6cfb55c549",
+    "site/components/PublicMemoAuthoring.tsx": "7d6c23027f8abefbd9238321fa93861441842fd3",
+    "site/components/pages/memo.tsx": "b19ddde06df9b0b761dd1369c0a4f9fbe26f2a9b",
     "site/components/pages/memos.tsx": "fd454fef3137760faf621095cf6d2e674b596777",
-    "site/lib/page-data/memos.ts": "398165e035e623c917159538e56114200005e01c",
-    "src/components/memos/PublicMemoAuthoring.stories.tsx": "d59416037aa27663ef15f6bb9a3dd70861099446",
+    "site/lib/page-data/memos.ts": "a598b295b45982bf7d65992386b3af95e38b6004",
+    "src/components/memos/PublicMemoAuthoring.stories.tsx": "0f135c87ecb4755ff78a768c6ac43aaf4c359c22",
     "src/components/memos/QuickMemoEditModal.tsx": "57401bd03d9099d9a51abb7bd4543ac0e6303eb2",
-    "src/lib/web-demo-fetch.ts": "3462ac0c2ddcfd4a8e6039afafb17a5b9e626320",
+    "src/lib/web-demo-fetch.ts": "05da9fc2fe4fd9fbb5178dc0cb89aad0ab635a7a",
     "src/lib/web-demo-runtime.ts": "4a6d973a273d194d58732b58f5e691bb4b4fb2d2",
     "src/styles/milkdown-nature.css": "fe81a47f977fdda2dcc6360e1e35ba59a9fae694",
-    "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts": "c06a3686c458a58c793338816ae9b902d11e59e4",
+    "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts": "8f2abe570c343db4e6634c6e5335ca53428bd988",
     "tests/lib/web-demo-runtime.test.ts": "2193c8ffa640872bdaf15d267c0170d13fa7e3d5"
   },
   "change": {
@@ -48,7 +48,7 @@
       "evidence": [
         {
           "path": "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts",
-          "blob": "c06a3686c458a58c793338816ae9b902d11e59e4",
+          "blob": "8f2abe570c343db4e6634c6e5335ca53428bd988",
           "command": "bunx playwright test tests/e2e/admin/memos/memo-admin-inline-view.spec.ts"
         },
         {
@@ -74,7 +74,7 @@
         },
         {
           "path": "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts",
-          "blob": "c06a3686c458a58c793338816ae9b902d11e59e4",
+          "blob": "8f2abe570c343db4e6634c6e5335ca53428bd988",
           "command": "Focused administrator Memo edit flow and responsive assertions pass"
         },
         {
@@ -93,7 +93,7 @@
       "evidence": [
         {
           "path": "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts",
-          "blob": "c06a3686c458a58c793338816ae9b902d11e59e4",
+          "blob": "8f2abe570c343db4e6634c6e5335ca53428bd988",
           "command": "Administrator edit flow verifies the existing Memo API request and visibility payload"
         }
       ]
