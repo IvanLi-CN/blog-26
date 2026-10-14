@@ -167,7 +167,7 @@ function buildPreviewHref(slug: string) {
 }
 
 function buildMemoDetailHref(slug: string) {
-  return `/memos/${encodeURIComponent(slug)}`;
+  return toPublicSitePath(`/memos/${encodeURIComponent(slug)}`) ?? "/memos";
 }
 
 function useHideStaticSnapshot(selector: string, active: boolean) {

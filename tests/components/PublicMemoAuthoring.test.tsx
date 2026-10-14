@@ -9,6 +9,7 @@ const { PublicMemoComposerIsland, PublicMemoDetailControlsIsland } = await impor
 
 const originalFetch = globalThis.fetch;
 const originalConfirm = window.confirm;
+const originalPublicSiteBasePath = process.env.PUBLIC_SITE_BASE_PATH;
 const memo = (id: string) => ({
   id,
   slug: id,
@@ -22,6 +23,8 @@ afterEach(() => {
   cleanup();
   globalThis.fetch = originalFetch;
   window.confirm = originalConfirm;
+  if (originalPublicSiteBasePath === undefined) delete process.env.PUBLIC_SITE_BASE_PATH;
+  else process.env.PUBLIC_SITE_BASE_PATH = originalPublicSiteBasePath;
   window.history.replaceState(null, "", "/");
   document.body.replaceChildren();
 });
@@ -175,7 +178,29 @@ describe.serial("Memo detail boundary", () => {
       await Promise.resolve();
     });
     expect(authParsed).toBe(true);
-    expect(eye.getAttribute("href")).toBe("/memos/memo-detail");
+    expect(eye.getAttribute("href")).toBe("/memos/memo-detail/");
+  });
+
+  test("keeps the configured public site base path on the detail route", async () => {
+    process.env.PUBLIC_SITE_BASE_PATH = "/console";
+    globalThis.fetch = (async (input) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/auth/me") {
+        return Response.json({ isAdmin: true });
+      }
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    }) as typeof fetch;
+
+    const view = render(
+      <PublicMemoComposerIsland
+        initialIsAdmin
+        initialMemos={[memo("memo-base-path")]}
+        localSourceEnabled={false}
+      />
+    );
+
+    const eye = await waitFor(() => view.getByRole("link", { name: "查看详情" }));
+    expect(eye.getAttribute("href")).toBe("/console/memos/memo-base-path/");
   });
 
   test("removes an SSR admin detail when the refreshed session is no longer admin", async () => {

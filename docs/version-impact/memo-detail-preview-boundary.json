@@ -8,7 +8,7 @@
     "docs/adr/0024-memo-detail-preview-boundary.md": "181d067980d444f265ac62443fc3d824077f7e61",
     "docs/specs/memo-admin-inline-view/SPEC.md": "88e82dcfe4e4f00e84ea4d291428e10d6615cb21",
     "site/components/PublicMemoAuthoring.public.tsx": "f2d5178a4f6ef032b2b42e10fa51cc87bb920d63",
-    "site/components/PublicMemoAuthoring.tsx": "b98fbfcc8f596e6a5f209a7061d3005bc9db4ade",
+    "site/components/PublicMemoAuthoring.tsx": "c8bade6f3ab87d92ce32617b71f60fe5609b09ad",
     "site/components/PublicRouter.tsx": "528da86451956f2a4585b570241ff3034309f372",
     "site/components/VirtualizedMemoList.tsx": "107f3d0d36b640fc780a3554098f421cbfaac07c",
     "site/components/pages/memo.tsx": "b4072d58fc79c1960e8c732ba072869e5143f71e",
@@ -17,7 +17,7 @@
     "src/server/clipping/api.ts": "c9f16d2ced4b0f248ad5a53d5e1f3f21a434b82e",
     "src/server/http-compat-api.test.ts": "aa055bf98c2b7f090380189b34356ec9839a096a",
     "src/server/routers/memos.ts": "dae1d2f73077b47bd3cbe7fc65c309aacdbc4183",
-    "tests/components/PublicMemoAuthoring.test.tsx": "54f9b8e751c25a0b00880e90561984e4ae0d7749",
+    "tests/components/PublicMemoAuthoring.test.tsx": "f12852d73e81e1cc87788496c52f936688d3339d",
     "tests/e2e/admin/memos-admin.spec.ts": "173c142fa9274f0bba70c7181b0547bb09dd01c2",
     "tests/e2e/admin/memos/helpers.ts": "20c88f3ef2026ae4a1af491e9cdea409fd62d201",
     "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts": "12f2a0f8dd111a6847fdb0703606189dbf4c4ae0",
@@ -49,7 +49,7 @@
     "current": {
       "impact": "patch",
       "reasoning": "The candidate changes only the Console Memo detail/preview boundary, request-scoped initial projection, unauthorized read status mapping, and shared route history state. Public API payload shapes, persistent state, snapshot publishing, and deployment host configuration remain unchanged; the deliberate 403-to-404 mapping for unauthorized private reads makes them indistinguishable from missing resources so callers receive the same absence contract without exposing record existence.",
-      "assessed_at": "2026-10-14T10:03:47+08:00",
+      "assessed_at": "2026-10-14T10:25:21+08:00",
       "evidence": [
         {
           "path": "site/lib/page-data/memo.ts",
@@ -64,7 +64,7 @@
         {
           "path": "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts",
           "blob": "12f2a0f8dd111a6847fdb0703606189dbf4c4ae0",
-          "command": "Admin Memo detail E2E covers eye navigation, SSR privacy, preview separation, save, clipping, and responsive states"
+          "command": "Admin Memo detail E2E covers eye navigation, SSR privacy, preview separation, same-route save, single-card structure, and responsive states"
         }
       ],
       "scope_drift": {
@@ -74,8 +74,8 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Focused component, clipping, HTTP compatibility, build, production Console, admin E2E, guest navigation, and clipping Web Demo checks pass. The implementation preserves existing public payload shapes and persistent state while enforcing the same-origin detail/preview boundary and private-resource non-disclosure; the 403-to-404 status change is an intentional compatible privacy hardening because private and missing resources share the documented not-found response.",
-      "assessed_at": "2026-10-14T10:03:47+08:00",
+      "reasoning": "Focused component, production Console clipping, HTTP compatibility, build, admin E2E, and guest navigation checks pass. The implementation preserves existing public payload shapes and persistent state while enforcing the same-origin detail/preview boundary and private-resource non-disclosure; the 403-to-404 status change is an intentional compatible privacy hardening because private and missing resources share the documented not-found response.",
+      "assessed_at": "2026-10-14T10:25:21+08:00",
       "evidence": [
         {
           "path": "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts",
@@ -96,6 +96,11 @@
           "path": "src/server/http-compat-api.test.ts",
           "blob": "aa055bf98c2b7f090380189b34356ec9839a096a",
           "command": "HTTP compatibility tests: 93 passed and 3 skipped"
+        },
+        {
+          "path": "tests/e2e/clipping-detail.ts",
+          "blob": "1a16934b457fca6a09aff6484760cd802f983750",
+          "command": "bun run test:clipping-console: production Console clipping smoke passes source/translation, authenticated discussion, guest boundary, private media, and 320-768px responsive checks"
         }
       ]
     }
@@ -140,7 +145,7 @@
       "evidence": [
         {
           "path": "tests/components/PublicMemoAuthoring.test.tsx",
-          "blob": "54f9b8e751c25a0b00880e90561984e4ae0d7749",
+          "blob": "f12852d73e81e1cc87788496c52f936688d3339d",
           "command": "Component regression suite covers same-route editing and state updates without introducing persisted state"
         }
       ]
