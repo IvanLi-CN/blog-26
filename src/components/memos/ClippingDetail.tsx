@@ -15,6 +15,7 @@ import "./clipping-admin.css";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import Icon from "@/components/ui/Icon";
 import type { ClippingReading } from "@/lib/memo-clipping";
+import type { PublicMediaContext } from "@/lib/public-media";
 import { toPublicApiUrl } from "@/lib/public-runtime-url";
 
 export type ClippingChat = {
@@ -224,6 +225,7 @@ export function ClippingDetail({
   onTitleChange,
   surface = "public",
   header,
+  publicMediaContext,
 }: {
   slug: string;
   memoContent: string;
@@ -234,6 +236,7 @@ export function ClippingDetail({
   onTitleChange?: (title: string | null) => void;
   surface?: "public" | "admin";
   header?: ReactNode;
+  publicMediaContext?: PublicMediaContext;
 }) {
   const [transport] = useState(() => providedTransport ?? createTransport(slug));
   const [article, setArticle] = useState(initialArticle);
@@ -452,6 +455,7 @@ export function ClippingDetail({
                 removeTags
                 nofollowExternalLinks
                 enableMermaid={false}
+                publicMediaContext={publicMediaContext}
               />
             </div>
           ) : null}
@@ -512,6 +516,7 @@ export function ClippingDetail({
               variant="article"
               nofollowExternalLinks
               enableMermaid={false}
+              publicMediaContext={publicMediaContext}
             />
           </div>
           <div data-testid="clipping-article-translation" hidden={activeLanguage !== "translation"}>
@@ -521,6 +526,7 @@ export function ClippingDetail({
               variant="article"
               nofollowExternalLinks
               enableMermaid={false}
+              publicMediaContext={publicMediaContext}
             />
           </div>
         </article>

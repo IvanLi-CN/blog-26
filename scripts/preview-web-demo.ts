@@ -3,10 +3,15 @@ import { extname, resolve, sep } from "node:path";
 
 export async function createWebDemoPreviewServer({
   siteRoot = resolve(process.env.WEB_DEMO_SITE_DIST_DIR || "web-demo-site-dist"),
+  consoleSiteRoot = resolve(
+    process.env.WEB_DEMO_CONSOLE_SITE_DIST_DIR || "web-demo-console-site-dist"
+  ),
   adminRoot = resolve(process.env.WEB_DEMO_ADMIN_DIST_DIR || "web-demo-admin-dist"),
   port = Number(process.env.WEB_DEMO_PORT || 25095),
+  mode = process.env.WEB_DEMO_MODE === "console" ? "console" : "public",
 } = {}) {
-  const ssrEntry = resolve(siteRoot, "server", "entry.mjs");
+  const activeSiteRoot = mode === "console" ? consoleSiteRoot : siteRoot;
+  const ssrEntry = resolve(activeSiteRoot, "server", "entry.mjs");
   if (await Bun.file(ssrEntry).exists()) {
     const dataRoot = resolve(process.env.WEB_DEMO_DATA_DIR || "dev-data/web-demo");
     const upstreamProbe = Bun.serve({
@@ -22,8 +27,9 @@ export async function createWebDemoPreviewServer({
         HOST: "127.0.0.1",
         PORT: String(upstreamPort),
         WEB_DEMO_BUILD: "true",
-        PUBLIC_WEB_DEMO_BUILD: "true",
-        CONSOLE_RUNTIME: "false",
+        PUBLIC_WEB_DEMO_BUILD: mode === "public" ? "true" : "false",
+        CONSOLE_RUNTIME: mode === "console" ? "true" : "false",
+        CONSOLE_WEB_DEMO_BUILD: mode === "console" ? "true" : "false",
         CONTENT_SOURCES: "local",
         PUBLIC_SNAPSHOT_PATH:
           process.env.PUBLIC_SNAPSHOT_PATH || resolve(dataRoot, "public-snapshot.json"),
@@ -81,6 +87,15 @@ export async function createWebDemoPreviewServer({
             : new Response("Not found", { status: 404 });
         }
         const routeData = url.pathname === "/api/public/page" && request.method === "GET";
+        if (
+          url.pathname.startsWith("/api/admin/preview/assets/") ||
+          url.pathname.startsWith("/api/public/assets/")
+        ) {
+          const asset = Bun.file(resolve(activeSiteRoot, "client", "site-assets", "favicon.svg"));
+          return (await asset.exists())
+            ? new Response(asset)
+            : new Response("Demo asset not found", { status: 404 });
+        }
         if ((url.pathname === "/api" || url.pathname.startsWith("/api/")) && !routeData)
           return new Response("No live API in Web Demo", { status: 404 });
         const upstream = new URL(url.pathname + url.search, `http://127.0.0.1:${upstreamPort}`);
@@ -97,7 +112,7 @@ export async function createWebDemoPreviewServer({
     };
   }
 
-  const siteEntry = Bun.file(resolve(siteRoot, "index.html"));
+  const siteEntry = Bun.file(resolve(activeSiteRoot, "index.html"));
   if (
     !(await siteEntry.exists()) ||
     !(await siteEntry.text()).includes("data-web-demo-inspector-root")
@@ -117,7 +132,7 @@ export async function createWebDemoPreviewServer({
       if (pathname === "/api" || pathname.startsWith("/api/"))
         return new Response("No live API in Web Demo", { status: 404 });
       const admin = pathname === "/admin" || pathname.startsWith("/admin/");
-      const root = resolve(admin ? adminRoot : siteRoot);
+      const root = resolve(admin ? adminRoot : activeSiteRoot);
       const relativePath = admin ? pathname.slice("/admin".length) || "/" : pathname;
       const candidate = resolve(
         root,
@@ -138,7 +153,8 @@ export async function createWebDemoPreviewServer({
 
 if (import.meta.main) {
   const server = await createWebDemoPreviewServer();
-  console.log(`Web Demo: http://127.0.0.1:${server.port}/memos/`);
+  const label = process.env.WEB_DEMO_MODE === "console" ? "Console Web Demo" : "Web Demo";
+  console.log(`${label}: http://127.0.0.1:${server.port}/memos/`);
   console.log(
     `Clipping: http://127.0.0.1:${server.port}/memos/memo-web-demo-1181/?d_persona=admin`
   );

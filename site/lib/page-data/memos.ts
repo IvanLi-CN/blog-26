@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import { isLocalContentEnabled } from "@/config/paths";
+import { getConsoleWebDemoMemos, getConsoleWebDemoPersona } from "@/lib/console-web-demo";
 import { getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
 import { getWebDemoSceneState } from "@/lib/web-demo-runtime";
@@ -15,12 +16,13 @@ import { getSnapshot } from "../public-site";
 import type { PageContext } from "../route-data-utils";
 import { trimRouteSnapshot } from "../route-data-utils";
 export async function loadmemos(Astro: PageContext) {
-  const isMemoListWebDemo = process.env.WEB_DEMO_BUILD === "true";
+  const isConsoleWebDemo = process.env.CONSOLE_WEB_DEMO_BUILD === "true";
+  const isMemoListWebDemo = process.env.WEB_DEMO_BUILD === "true" && !isConsoleWebDemo;
   const webDemoSceneState = isMemoListWebDemo
     ? getWebDemoSceneState(Astro.url, "public")
     : undefined;
   const snapshot = isMemoListWebDemo ? null : await getSnapshot();
-  const isConsoleBuild = !isMemoListWebDemo && process.env.CONSOLE_RUNTIME === "true";
+  const isConsoleBuild = process.env.CONSOLE_RUNTIME === "true";
   const runtimeContext = isConsoleBuild
     ? resolveRuntimeContext(Astro.request)
     : { mode: "public" as const };
@@ -38,6 +40,25 @@ export async function loadmemos(Astro: PageContext) {
       webDemoSceneState ?? { scene: "memo-middle", data: "fixture" }
     );
     initialMemos = demoPage.memos;
+    initialMemosHasMore = demoPage.hasMore;
+    initialMemosNextCursor = demoPage.nextCursor;
+    initialMemosHasNewer = demoPage.hasPrevious;
+    initialMemosPreviousCursor = demoPage.previousCursor;
+  } else if (isConsoleWebDemo) {
+    const persona = getConsoleWebDemoPersona(Astro.url);
+    const demoMemos = getConsoleWebDemoMemos().filter(
+      (memo) => persona === "admin" || (memo.isPublic && !memo.draft)
+    );
+    const demoPage = {
+      memos: demoMemos,
+      hasMore: false,
+      nextCursor: null,
+      hasPrevious: false,
+      previousCursor: null,
+    };
+    initialIsAdmin = persona === "admin";
+    if (initialIsAdmin) initialAuthorMemos = demoPage.memos;
+    else initialMemos = demoPage.memos;
     initialMemosHasMore = demoPage.hasMore;
     initialMemosNextCursor = demoPage.nextCursor;
     initialMemosHasNewer = demoPage.hasPrevious;

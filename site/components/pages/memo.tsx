@@ -43,6 +43,7 @@ export default function MemoPage(data: Awaited<ReturnType<typeof loadmemo>>) {
               initialMemo={initialMemo}
               initialIsAdmin={initialIsAdmin}
               initialClippingArticle={clippingArticle}
+              publicMediaContext={publicMediaContext}
             />
           ) : null}
           <div data-public-memo-static-shell="">

@@ -1,3 +1,8 @@
+import {
+  getConsoleWebDemoClippingArticle,
+  getConsoleWebDemoMemo,
+  getConsoleWebDemoPersona,
+} from "@/lib/console-web-demo";
 import { extractTextSummary, stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
 import { getMemoPresentation } from "@/lib/memo-presentation";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
@@ -27,6 +32,18 @@ type ConsoleClippingArticle = {
 async function loadConsoleMemo(Astro: PageContext, slug: string) {
   if (process.env.CONSOLE_RUNTIME !== "true") return null;
   if (resolveRuntimeContext(Astro.request).mode !== "console") return null;
+
+  if (process.env.CONSOLE_WEB_DEMO_BUILD === "true") {
+    const persona = getConsoleWebDemoPersona(Astro.url);
+    if (persona !== "admin") return null;
+    const memo = getConsoleWebDemoMemo(slug, persona);
+    if (!memo) throw new PublicRouteNotFound();
+    return {
+      memo,
+      isAdmin: true,
+      clippingArticle: memo.clipping ? getConsoleWebDemoClippingArticle(slug, persona) : null,
+    };
+  }
 
   const [{ extractAuthFromRequest }, { handlePublicApiRequest }] = await Promise.all([
     import("@/lib/auth-utils"),
@@ -73,10 +90,17 @@ async function loadConsoleMemo(Astro: PageContext, slug: string) {
 }
 
 export async function loadmemo(Astro: PageContext) {
-  const memoFromProps = (Astro.props as { memo?: PublicMemoRecord }).memo;
+  const isConsoleWebDemo = process.env.CONSOLE_WEB_DEMO_BUILD === "true";
+  const memoFromProps = isConsoleWebDemo
+    ? undefined
+    : (Astro.props as { memo?: PublicMemoRecord }).memo;
   const consoleMemo = await loadConsoleMemo(Astro, Astro.params.slug ?? "");
   const snapshot = await getSnapshot();
+  const consoleWebDemoMemo = isConsoleWebDemo
+    ? getConsoleWebDemoMemo(Astro.params.slug ?? "", getConsoleWebDemoPersona(Astro.url))
+    : null;
   const memo =
+    consoleWebDemoMemo ??
     consoleMemo?.memo ??
     memoFromProps ??
     (process.env.WEB_DEMO_BUILD === "true"

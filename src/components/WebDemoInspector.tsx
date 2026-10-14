@@ -44,6 +44,7 @@ import {
   recordWebDemoMutation,
   setWebDemoRuntimeState,
   WEB_DEMO_ACTION_EVENT,
+  WEB_DEMO_MUTATION_EVENT,
   WEB_DEMO_ROUTE_EVENT,
   WEB_DEMO_STATE_EVENT,
   type WebDemoActionDetail,
@@ -256,6 +257,7 @@ export default function WebDemoInspector({
       }
       setMutations(readWebDemoMutations());
     };
+    const handleMutation = () => setMutations(readWebDemoMutations());
     const handlePageLoad = () => syncFromLocation();
     const handleRouteChange = () => syncFromLocation();
 
@@ -264,11 +266,13 @@ export default function WebDemoInspector({
     window.addEventListener(WEB_DEMO_STATE_EVENT, handleState);
     window.addEventListener(WEB_DEMO_ROUTE_EVENT, handleRouteChange);
     window.addEventListener(WEB_DEMO_ACTION_EVENT, handleAction);
+    window.addEventListener(WEB_DEMO_MUTATION_EVENT, handleMutation);
     document.addEventListener("astro:page-load", handlePageLoad);
     return () => {
       window.removeEventListener(WEB_DEMO_STATE_EVENT, handleState);
       window.removeEventListener(WEB_DEMO_ROUTE_EVENT, handleRouteChange);
       window.removeEventListener(WEB_DEMO_ACTION_EVENT, handleAction);
+      window.removeEventListener(WEB_DEMO_MUTATION_EVENT, handleMutation);
       window.removeEventListener("popstate", handlePopState);
       document.removeEventListener("astro:page-load", handlePageLoad);
     };

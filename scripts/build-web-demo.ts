@@ -7,6 +7,9 @@ import { SEARCH_DEMO_DOCUMENTS } from "../src/lib/search/web-demo-fixtures";
 const repoRoot = resolve(import.meta.dir, "..");
 const generatedRoot = resolve(process.env.WEB_DEMO_DATA_DIR || "dev-data/web-demo");
 const siteDist = resolve(process.env.WEB_DEMO_SITE_DIST_DIR || "web-demo-site-dist");
+const consoleSiteDist = resolve(
+  process.env.WEB_DEMO_CONSOLE_SITE_DIST_DIR || "web-demo-console-site-dist"
+);
 const adminDist = resolve(process.env.WEB_DEMO_ADMIN_DIST_DIR || "web-demo-admin-dist");
 const publicSnapshotPath = resolve(generatedRoot, "public-snapshot.json");
 const playbookBundleDir = resolve(generatedRoot, "playbook-fixture");
@@ -75,6 +78,7 @@ export async function prepareWebDemoInputs() {
     ASTRO_CACHE_DIR: ".astro-web-demo",
     VITE_CACHE_DIR: "node_modules/.vite-web-demo",
     CONSOLE_RUNTIME: "false",
+    CONSOLE_WEB_DEMO_BUILD: "false",
     PUBLIC_API_BASE_URL: "",
     PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: "https://metrics.example.test",
     PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL: "https://metrics.example.test",
@@ -107,13 +111,25 @@ async function main() {
   assertGeneratedPath(siteDist, "WEB_DEMO_SITE_DIST_DIR", [
     resolve(repoRoot, "web-demo-site-dist"),
   ]);
+  assertGeneratedPath(consoleSiteDist, "WEB_DEMO_CONSOLE_SITE_DIST_DIR", [
+    resolve(repoRoot, "web-demo-console-site-dist"),
+  ]);
   assertGeneratedPath(adminDist, "WEB_DEMO_ADMIN_DIST_DIR", [
     resolve(repoRoot, "web-demo-admin-dist"),
   ]);
   await rm(siteDist, { recursive: true, force: true });
+  await rm(consoleSiteDist, { recursive: true, force: true });
   await rm(adminDist, { recursive: true, force: true });
   const env = await prepareWebDemoInputs();
   await run("build public Web Demo", ["x", "astro", "build"], env);
+  await run("build Console Web Demo", ["x", "astro", "build"], {
+    ...env,
+    ASTRO_OUT_DIR: relative(repoRoot, consoleSiteDist),
+    ASTRO_CACHE_DIR: ".astro-web-demo-console",
+    CONSOLE_RUNTIME: "true",
+    CONSOLE_WEB_DEMO_BUILD: "true",
+    PUBLIC_WEB_DEMO_BUILD: "false",
+  });
   await run(
     "build admin Web Demo",
     ["x", "vite", "build", "--config", "apps/admin/vite.config.ts", "--configLoader", "runner"],
@@ -122,11 +138,13 @@ async function main() {
 
   await Promise.all([
     assertFile(join(siteDist, "server", "entry.mjs")),
+    assertFile(join(consoleSiteDist, "server", "entry.mjs")),
     assertDirectory(join(siteDist, "client")),
+    assertDirectory(join(consoleSiteDist, "client")),
     assertFile(join(adminDist, "index.html")),
   ]);
   console.log(
-    `\nWeb Demo build ready: ${relative(repoRoot, siteDist)} + ${relative(repoRoot, adminDist)}`
+    `\nWeb Demo build ready: ${relative(repoRoot, siteDist)} + ${relative(repoRoot, consoleSiteDist)} + ${relative(repoRoot, adminDist)}`
   );
 }
 

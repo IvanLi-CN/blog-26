@@ -1,8 +1,9 @@
 "use client";
 
+import { ClippingDetail } from "@clipping-reader";
 import { useCallback, useEffect, useRef, useState } from "react";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
-import { type ClippingArticle, ClippingDetail } from "@/components/memos/ClippingDetail";
+import type { ClippingArticle } from "@/components/memos/ClippingDetail";
 import { MemoTypeBadge } from "@/components/memos/MemoTypeBadge";
 import { QuickMemoEditModal } from "@/components/memos/QuickMemoEditModal";
 import { type QuickMemoData, QuickMemoEditor } from "@/components/memos/QuickMemoEditor";
@@ -10,6 +11,7 @@ import Icon from "@/components/ui/Icon";
 import { extractTextSummary, stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
 import type { ClippingReading } from "@/lib/memo-clipping";
 import { getMemoPresentation } from "@/lib/memo-presentation";
+import type { PublicMediaContext } from "@/lib/public-media";
 import { webDemoFetch } from "@/lib/web-demo-fetch";
 import { adminMemoRecordSchema, parseMemoPage } from "../lib/memo-pagination";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
@@ -768,11 +770,13 @@ export function PublicMemoDetailControlsIsland({
   initialMemo,
   initialIsAdmin = false,
   initialClippingArticle,
+  publicMediaContext,
 }: {
   slug: string;
   initialMemo?: PublicMemoRecord;
   initialIsAdmin?: boolean;
   initialClippingArticle?: ClippingArticle | null;
+  publicMediaContext?: PublicMediaContext;
 }) {
   const readJson = useMemoRequest();
   const { user, isAdmin, isLoading, isResolved } = usePublicAuth(initialIsAdmin);
@@ -993,6 +997,7 @@ export function PublicMemoDetailControlsIsland({
                   rewritePublicSitePaths={true}
                   articlePath={memo.filePath ?? ""}
                   contentSource="local"
+                  publicMediaContext={publicMediaContext}
                 />
               </div>
             </div>
@@ -1016,6 +1021,7 @@ export function PublicMemoDetailControlsIsland({
                 }
                 live
                 initialCanDiscuss={Boolean(memo.canDiscuss || effectiveIsAdmin)}
+                surface={effectiveIsAdmin ? "admin" : "public"}
                 onTitleChange={(title) =>
                   setMemo((current) =>
                     current && current.title !== title ? { ...current, title } : current
