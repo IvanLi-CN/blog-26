@@ -179,7 +179,7 @@ test("public exports omit identities, runtime data, private conversation and sta
   expect(JSON.stringify(exported)).not.toContain('"proof"');
   expect(await Bun.file(join(root, "export", "clippings", "clip.json")).exists()).toBe(true);
   await writeFile(join(root, "authored", id), matter.stringify(body, { ...fm, public: false }));
-  await expect(request("", "guest")).rejects.toMatchObject({ code: "FORBIDDEN" });
+  await expect(request("", "guest")).rejects.toMatchObject({ code: "NOT_FOUND" });
   const hidden = await writePublicSnapshot(output);
   expect(hidden.memos).toHaveLength(0);
   expect(hidden.clippingArticles).toEqual({});
@@ -227,14 +227,10 @@ test("memo detail rejects stale public clipping rows after private tag removal",
     );
     await expect(
       memosRouter.createCaller(context("guest")).bySlug({ slug: "clip" })
-    ).rejects.toMatchObject({
-      code: "FORBIDDEN",
-    });
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
     await expect(
       memosRouter.createCaller(context("other")).bySlug({ slug: "clip" })
-    ).rejects.toMatchObject({
-      code: "FORBIDDEN",
-    });
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
   } finally {
     await writeFile(join(root, "authored", id), raw);
   }

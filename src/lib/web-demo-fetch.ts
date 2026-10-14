@@ -5,6 +5,11 @@ import {
 } from "../../site/lib/memo-list-web-demo";
 import { projectRuntimeMetricsBySlug } from "../../site/lib/project-runtime-metrics";
 import type { PublicMemoRecord } from "../public-site/snapshot";
+import {
+  createConsoleWebDemoStore,
+  getConsoleWebDemoClippingArticle,
+  getConsoleWebDemoPersona,
+} from "./console-web-demo";
 import { positiveSearchTerms, searchHighlightSpans } from "./search/highlights";
 import { planNativeQuery } from "./search/native-query";
 import { searchModeSchema } from "./search/settings";
@@ -25,6 +30,8 @@ import {
   type WebDemoEnvironment,
   waitForWebDemoRequest,
 } from "./web-demo-runtime";
+
+const consoleWebDemoStore = createConsoleWebDemoStore();
 
 export function combineAbortSignals(...signals: Array<AbortSignal | null | undefined>) {
   const activeSignals = signals.filter((signal): signal is AbortSignal => Boolean(signal));
@@ -232,16 +239,80 @@ function demoSearchRelevance(
   return 12 + titleMatches * 100 + excerptMatches * 35 + bodyMatches * 8;
 }
 
-function getDemoPublicResponse(
+function isConsoleWebDemoBuild() {
+  return process.env.CONSOLE_WEB_DEMO_BUILD === "true";
+}
+
+async function getConsoleWebDemoResponse(url: URL, method: string, body: Record<string, unknown>) {
+  const persona = getConsoleWebDemoPersona(window.location);
+  if (url.pathname === "/api/public/memos" && method === "GET") {
+    const page = consoleWebDemoStore.list(persona);
+    return jsonResponse(page);
+  }
+
+  if (url.pathname === "/api/public/memos" && method === "POST") {
+    if (persona !== "admin") return jsonResponse({ error: "需要管理员权限" }, 403);
+    const created = consoleWebDemoStore.create({
+      content: String(body.content ?? ""),
+      isPublic: Boolean(body.isPublic),
+      tags: Array.isArray(body.tags)
+        ? body.tags.filter((tag): tag is string => typeof tag === "string")
+        : undefined,
+    });
+    recordWebDemoMutation("创建 Memo", "仅在当前 Console Web Demo 内存中创建内容。");
+    return jsonResponse(created);
+  }
+
+  const detailMatch = url.pathname.match(/^\/api\/public\/memos\/([^/]+)(\/clipping)?$/u);
+  if (!detailMatch) return null;
+  const slug = decodeURIComponent(detailMatch[1] ?? "");
+  if (detailMatch[2] && method === "GET") {
+    const memo = consoleWebDemoStore.get(slug, persona);
+    const article = memo?.clipping ? getConsoleWebDemoClippingArticle(slug, persona) : null;
+    return article ? jsonResponse(article) : jsonResponse({ error: "Memo 不存在" }, 404);
+  }
+
+  if (method === "GET") {
+    const memo = consoleWebDemoStore.get(slug, persona);
+    return memo ? jsonResponse(memo) : jsonResponse({ error: "Memo 不存在" }, 404);
+  }
+  if (persona !== "admin") return jsonResponse({ error: "需要管理员权限" }, 403);
+
+  if (method === "PATCH") {
+    const updated = consoleWebDemoStore.update(slug, {
+      content: String(body.content ?? ""),
+      isPublic: Boolean(body.isPublic),
+      tags: Array.isArray(body.tags)
+        ? body.tags.filter((tag): tag is string => typeof tag === "string")
+        : undefined,
+    });
+    if (!updated) return jsonResponse({ error: "Memo 不存在" }, 404);
+    recordWebDemoMutation("保存 Memo 详情", `仅更新 ${slug} 的浏览器内存内容。`);
+    return jsonResponse(updated);
+  }
+  if (method === "DELETE") {
+    if (!consoleWebDemoStore.remove(slug)) return jsonResponse({ error: "Memo 不存在" }, 404);
+    recordWebDemoMutation("删除 Memo", `仅从当前演示内存移除 ${slug}。`);
+    return jsonResponse({ success: true });
+  }
+  return jsonResponse({ error: "不支持的 Memo 操作" }, 405);
+}
+
+async function getDemoPublicResponse(
   url: URL,
   method: string,
   environment: WebDemoEnvironment,
   dataMode: "fixture" | "dense" | "empty",
   init?: RequestInit
 ) {
+  const body = readDemoRequestBody(init);
   // The Demo build's server supplies route-scoped fixture data after the
   // common connection/delay/abort policy has admitted this actual read.
   if (url.pathname === "/api/public/page" && method === "GET") return null;
+  if (isConsoleWebDemoBuild()) {
+    const consoleResponse = await getConsoleWebDemoResponse(url, method, body);
+    if (consoleResponse) return consoleResponse;
+  }
   if (url.pathname === "/api/public/auth/me" && method === "GET") {
     return jsonResponse(demoPublicUser(environment));
   }
@@ -529,7 +600,13 @@ export async function webDemoFetch(
     const method = (
       init?.method ?? (input instanceof Request ? input.method : "GET")
     ).toUpperCase();
-    const mockResponse = getDemoPublicResponse(url, method, environment, sceneState.data, init);
+    const mockResponse = await getDemoPublicResponse(
+      url,
+      method,
+      environment,
+      sceneState.data,
+      init
+    );
     if (mockResponse) return mockResponse;
   }
 

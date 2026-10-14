@@ -110,43 +110,45 @@ function PublicShell({
 function LiveMemoDetailStory() {
   return (
     <PublicShell>
-      <section className="mb-6 space-y-4" data-testid="public-memo-detail-controls">
-        <div className="nature-panel flex flex-wrap items-center justify-between gap-3 px-5 py-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
-              <span className="nature-chip nature-chip-info">Admin view</span>
-              <span>管理员作者视图</span>
-            </div>
-            <p className="text-sm text-[color:var(--nature-text-soft)]">
-              Current body comes from the live `/api/public/memos/:slug` response while the static
-              snapshot stays hidden.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="nature-button nature-button-outline">
-              刷新当前内容
-            </button>
-            <a
-              className="nature-button nature-button-outline"
-              href={`/admin/preview/memos/${detailMemo.slug}`}
-            >
-              打开专用预览
-            </a>
-            <button type="button" className="nature-button">
-              编辑 Memo
-            </button>
-            <button
-              type="button"
-              className="nature-button nature-button-danger"
-              data-testid="admin-live-memo-delete"
-            >
-              删除 Memo
-            </button>
-          </div>
-        </div>
-
+      <section className="mb-6 space-y-6" data-testid="public-memo-detail-controls">
         <article>
           <div className="nature-panel px-6 py-7 sm:px-8" data-testid="public-memo-detail-card">
+            <div
+              className="mb-7 flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--nature-line)] pb-5"
+              data-testid="public-memo-detail-status"
+            >
+              <div className="min-w-0 space-y-1">
+                <div className="flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
+                  <span className="nature-chip nature-chip-info">Admin view</span>
+                  <span>管理员作者视图</span>
+                </div>
+                <p className="text-sm text-[color:var(--nature-text-soft)]">
+                  Current body comes from the live `/api/public/memos/:slug` response while the
+                  static snapshot stays hidden.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="nature-button nature-button-outline">
+                  刷新当前内容
+                </button>
+                <a
+                  className="nature-button nature-button-outline"
+                  href={`/admin/preview/memos/${detailMemo.slug}`}
+                >
+                  打开专用预览
+                </a>
+                <button type="button" className="nature-button">
+                  编辑 Memo
+                </button>
+                <button
+                  type="button"
+                  className="nature-button nature-button-danger"
+                  data-testid="admin-live-memo-delete"
+                >
+                  删除 Memo
+                </button>
+              </div>
+            </div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--nature-text-soft)]">
               <span className="nature-chip nature-chip-warn">Draft / Private</span>
               <span className="nature-chip gap-1">Memo</span>

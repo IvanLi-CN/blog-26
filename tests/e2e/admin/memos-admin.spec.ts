@@ -25,7 +25,7 @@ test.describe("Memos 管理员权限", () => {
     if (cardCount > 0) {
       const firstCard = memoCards.first();
       await expect(firstCard.getByTestId("admin-live-memo-edit")).toBeVisible();
-      await expect(firstCard.getByRole("link", { name: "预览" })).toBeVisible();
+      await expect(firstCard.getByRole("link", { name: "查看详情" })).toBeVisible();
     }
   });
 

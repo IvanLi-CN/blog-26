@@ -3,14 +3,14 @@
 ## Context and Scope
 
 - Context: The static public Memos page renders the published snapshot. The Console Memos view serves live public Memos to visitors and exposes quick authoring plus one management list to authenticated administrators.
-- In scope: administrator-only layout and interaction in the Console Memos view, quick creation, the recent management list, preview and edit actions, bidirectional public Memo pagination on the published site and Console guest view, loading feedback, and responsive accessibility.
-- Out of scope: changing published snapshot content or timing, Console deployment boundaries, Memo storage and publication timing, breaking changes to the established Memo API fields or semantics, Memo detail redesign, and changes to the established Memo title contract. Bidirectional pagination may use the backward-compatible API extension defined in REQ-MAIV-007.
+- In scope: administrator-only layout and interaction in the Console Memos view, quick creation, the recent management list, Memo detail and author-preview boundaries, preview and edit actions, bidirectional public Memo pagination on the published site and Console guest view, loading feedback, and responsive accessibility.
+- Out of scope: changing published snapshot content or timing, Console deployment boundaries, Memo storage and publication timing, breaking changes to the established Memo API fields or semantics, unrelated Memo detail visual redesign, and changes to the established Memo title contract. Bidirectional pagination may use the backward-compatible API extension defined in REQ-MAIV-007.
 
 ## Terms and Interfaces
 
 - Real-time Memo: the administrator's current saved Memo, whether public or private.
 - Public Memo timeline: the published reader-facing Memo snapshot, which can lag behind current saved content.
-- Interface: the public site and Console use the `/memos` path on separate hosts and runtime modes. The public site uses its published snapshot; Console visitors receive live public Memos, and administrators use the existing Memo API and preview and edit capabilities.
+- Interface: the public site and Console use the `/memos` path on separate hosts and runtime modes. The public site uses its published snapshot; Console visitors receive live public Memos, and administrators use the existing Memo API, Console detail, author preview, and edit capabilities. The Console origin is determined by the deployment serving the request; it is neither hard-coded nor exposed as a new domain configuration option.
 
 ## Composition
 
@@ -43,7 +43,8 @@ On wide screens, each card reserves a stable area for actions beside its content
 ### REQ-MAIV-004
 
 - Each management card MUST keep its information and actions in stable positions when titles, excerpts, or tags vary in length. Wide layouts MUST reserve a stable action area beside content; narrow layouts MUST place actions below content in a consistent order without clipped text or horizontal page overflow.
-- “Preview” MUST open the read-only preview destination. “Edit Memo” MUST open the existing edit dialog in the current list context, retaining the list position and item identity when the dialog closes.
+- The eye action MUST be named and announced as “查看详情” and MUST open the current Console origin's `/memos/:slug` Memo detail in the same tab. Browser back navigation MUST restore the management list's reading position.
+- “打开专用预览” MUST remain a separate action that opens the read-only `/admin/preview/memos/:slug` author-preview destination. “Edit Memo” MUST open the existing edit dialog in the current list context, retaining the list position and item identity when the dialog closes.
 
 ### REQ-MAIV-005
 
@@ -61,6 +62,12 @@ On wide screens, each card reserves a stable area for actions beside its content
 
 ### REQ-MAIV-008
 
+- The Console `/memos/:slug` detail MUST resolve the current live Memo during an administrator's server-rendered request, including private and draft records; the initial response MUST contain the authorized reading surface without requiring client-side recovery from a public-snapshot miss.
+- An administrator's Console detail MUST render local images, attachments, and videos for private or draft Memos through the administrator-readable media boundary. Public visitors and the public site MUST retain the existing published-only media boundary.
+- An administrator's detail for a clipping Memo MUST include the currently available Memo text, summary, source, and translation materials, and MUST retain the existing administrator discussion access. Clipping discussion MUST remain limited to the creator and administrators even when the Memo is public.
+- A non-administrator or unauthenticated request for a private or draft Console detail MUST not disclose the record's existence, title, visibility, or content; it MUST resolve to the ordinary public not-found or unavailable surface while the underlying API may retain its existing forbidden response.
+- Saving from the Console detail MUST keep the same `/memos/:slug` route and immediately reflect the saved body and visibility state. It MUST NOT redirect to author preview, and it MUST NOT force publication-snapshot synchronization.
+- `/admin/preview/memos/:slug` MUST remain an independent management-interface read-only author-preview route. Detail links MUST use the current deployed Console origin at runtime, without a hard-coded host or a new host configuration option.
 - The existing quick edit dialog MUST expose the accessible name `编辑 Memo`. A titled Memo MUST show `正在编辑：{Memo 标题}` as its context, while a titleless Memo MUST show `正在编辑当前 Memo`; the dialog MUST NOT expose a slug or filename as title context.
 - When open, the dialog backdrop MUST cover the full viewport and dim and soften the public page behind it without changing the public header's normal closed state. The dialog MUST use a regular Nature panel radius, bounded desktop width and height, and three continuous regions for the header, editor body, and footer.
 - The editor body MUST share the dialog's Nature surface. It MUST NOT render as a nested green card or add an independent rounded card shell, MUST retain a usable minimum writing height, and MUST scroll internally when content exceeds the available viewport. The footer MUST retain the character count, save shortcut hint, visibility control, cancel action, save action, loading state, and error state without creating a large empty gap; the character count and shortcut hint MUST appear as compact footer metadata rather than a separate status band below the editor. A short-content desktop dialog MUST reserve at least 25rem of panel height so the editor does not acquire an incidental scrollbar.
@@ -98,7 +105,13 @@ On wide screens, each card reserves a stable area for actions beside its content
 - covers: `REQ-MAIV-004`, `REQ-MAIV-006`
 - Pass condition: focus can move from the editor to visibility and submit controls; the editor action labels remain intact on one line at narrow widths; the full-size editor surface has no internal horizontal scroll; actions remain reachable and legible; no horizontal page overflow or clipped editor content occurs; light, dark, system, and reduced-motion states preserve meaning and contrast.
 
-### VER-MAIV-005
+### VER-MAIV-006
+
+- Method: authenticated administrator, authenticated non-admin, and guest direct-navigation checks on Console `/memos/:slug` for public, private, draft, ordinary, and clipping Memos, with JavaScript disabled for the initial document where the browser harness permits it.
+- covers: `REQ-MAIV-004`, `REQ-MAIV-008`
+- Pass condition: the management eye action reaches Console detail and browser back restores the list position; administrator SSR contains current private/draft content and media; clipping reading materials and administrator discussion remain available; guests receive only published content; unauthorized private/draft requests disclose no record details; detail save stays on the same route and updates visibility; the dedicated `/admin/preview/memos/:slug` route remains read-only and separate; no URL contains a hard-coded deployment host.
+
+### VER-MAIV-007
 
 - Method: Storybook component states for titled and titleless dialogs in light and dark themes, plus long-content captures at 393px and 320px, followed by the authenticated administrator edit flow.
 - covers: `REQ-MAIV-008`
@@ -161,6 +174,7 @@ source_type=ui_demo; target_program=mock-only; capture_scope=page; requested_vie
 ## Related ADRs
 
 - [Use a Self-Contained SSR Console Beside the Static Public Site](../../adr/0010-self-contained-console-runtime.md)
+- [Keep Memo Details on Console and Author Preview in Admin](../../adr/0024-memo-detail-preview-boundary.md)
 
 ## References
 

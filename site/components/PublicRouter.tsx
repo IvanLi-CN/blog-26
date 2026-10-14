@@ -148,14 +148,24 @@ export default function PublicRouter({
   const pendingScroll = useRef<{
     position: { top: number; left: number } | null;
     restore: boolean;
+    userPosition: { top: number; left: number } | null;
+    userScrollIntent: boolean;
+    restorationAttempted: boolean;
+    programmaticPosition: { top: number; left: number } | null;
   } | null>(null);
   const navigationStarted = useRef(false);
-  const navigateRef = useRef<(target: URL, mode: "push" | "pop" | "retry") => void>(() => {
+  const navigateRef = useRef<
+    (
+      target: URL,
+      mode: "push" | "pop" | "retry",
+      restoredScroll?: { top: number; left: number } | null
+    ) => void
+  >(() => {
     /* Assigned on each render. */
   });
   const route = matchPublicRoute(new URL(url, "https://public.invalid").pathname);
 
-  navigateRef.current = (target, mode) => {
+  navigateRef.current = (target, mode, restoredScroll) => {
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
@@ -163,19 +173,29 @@ export default function PublicRouter({
     navigationStarted.current = true;
     document.dispatchEvent(new Event("astro:before-swap"));
     if (mode === "push") {
-      if (!pendingScroll.current)
-        window.history.replaceState(
-          {
-            ...window.history.state,
-            publicCsrScroll: { top: window.scrollY, left: window.scrollX },
-          },
-          ""
-        );
+      const pending = pendingScroll.current;
+      const persistedPosition =
+        pending?.userPosition ??
+        window.history.state?.publicCsrScroll ??
+        pending?.position ??
+        (pending ? { top: 0, left: 0 } : { top: window.scrollY, left: window.scrollX });
+      window.history.replaceState(
+        {
+          ...window.history.state,
+          publicCsrScroll: persistedPosition,
+        },
+        ""
+      );
       window.history.pushState({ publicCsr: true }, "", target);
     }
     pendingScroll.current = {
-      position: mode === "pop" ? (window.history.state?.publicCsrScroll ?? null) : null,
+      position:
+        mode === "pop" ? (restoredScroll ?? window.history.state?.publicCsrScroll ?? null) : null,
       restore: mode === "pop",
+      userPosition: null,
+      userScrollIntent: false,
+      restorationAttempted: false,
+      programmaticPosition: null,
     };
     setUrl(target.pathname + target.search + target.hash);
     setError(null);
@@ -222,8 +242,9 @@ export default function PublicRouter({
       event.preventDefault();
       navigateRef.current(new URL(anchor.href), "push");
     };
-    const pop = () => {
+    const pop = (event: PopStateEvent) => {
       const target = new URL(window.location.href);
+      const restoredScroll = event.state?.publicCsrScroll ?? null;
       if (
         publicRouteIdentity(target) ===
           publicRouteIdentity(new URL(urlRef.current, target.origin)) &&
@@ -232,14 +253,18 @@ export default function PublicRouter({
         setUrl(target.pathname + target.search + target.hash);
         navigationStarted.current = true;
         pendingScroll.current = {
-          position: window.history.state?.publicCsrScroll ?? null,
+          position: restoredScroll,
           restore: true,
+          userPosition: null,
+          userScrollIntent: false,
+          restorationAttempted: false,
+          programmaticPosition: null,
         };
         // Distinct history entries can share the same URL but reading positions.
         setScrollRevision((revision) => revision + 1);
         return;
       }
-      navigateRef.current(target, "pop");
+      navigateRef.current(target, "pop", restoredScroll);
     };
     const environment = (event: Event) => {
       const detail = (event as CustomEvent<WebDemoStateChangeDetail>).detail;
@@ -274,17 +299,46 @@ export default function PublicRouter({
     };
     const previousScrollRestoration = window.history.scrollRestoration;
     window.history.scrollRestoration = "manual";
+    const markUserScrollIntent = (event: Event) => {
+      const pending = pendingScroll.current;
+      if (!pending) return;
+      if (
+        event instanceof KeyboardEvent &&
+        !["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End", " ", "Spacebar"].includes(
+          event.key
+        )
+      )
+        return;
+      if (
+        typeof PointerEvent !== "undefined" &&
+        event instanceof PointerEvent &&
+        event.buttons === 0
+      )
+        return;
+      pending.userScrollIntent = true;
+    };
     const saveScroll = () => {
-      // A pending route still has the previous page's geometry. Do not overwrite
-      // the destination history entry before its own content has settled.
-      if (pendingScroll.current) return;
-      window.history.replaceState(
-        { ...window.history.state, publicCsrScroll: { top: window.scrollY, left: window.scrollX } },
-        ""
-      );
+      const current = { top: window.scrollY, left: window.scrollX };
+      const pending = pendingScroll.current;
+      if (pending) {
+        // Ignore route-swap geometry and the router's own restore scroll. A
+        // scroll following real user input becomes the position saved for a later push.
+        const expected = pending.programmaticPosition;
+        if (pending.restorationAttempted && pending.userScrollIntent) {
+          if (!expected || current.top !== expected.top || current.left !== expected.left)
+            pending.userPosition = current;
+          pending.userScrollIntent = false;
+        }
+        return;
+      }
+      window.history.replaceState({ ...window.history.state, publicCsrScroll: current }, "");
     };
     saveScroll();
     window.addEventListener("scroll", saveScroll, { passive: true });
+    window.addEventListener("wheel", markUserScrollIntent, { passive: true });
+    window.addEventListener("touchmove", markUserScrollIntent, { passive: true });
+    window.addEventListener("pointermove", markUserScrollIntent, { passive: true });
+    window.addEventListener("keydown", markUserScrollIntent);
     document.addEventListener("click", click);
     window.addEventListener("popstate", pop);
     document.addEventListener("submit", submit);
@@ -296,6 +350,10 @@ export default function PublicRouter({
       request.current?.abort();
       window.history.scrollRestoration = previousScrollRestoration;
       window.removeEventListener("scroll", saveScroll);
+      window.removeEventListener("wheel", markUserScrollIntent);
+      window.removeEventListener("touchmove", markUserScrollIntent);
+      window.removeEventListener("pointermove", markUserScrollIntent);
+      window.removeEventListener("keydown", markUserScrollIntent);
       document.removeEventListener("click", click);
       window.removeEventListener("popstate", pop);
       document.removeEventListener("submit", submit);
@@ -340,14 +398,68 @@ export default function PublicRouter({
     if (payload || error) document.dispatchEvent(new Event("astro:page-load"));
     if ((payload || error) && navigationStarted.current && pendingScroll.current) {
       let observer: MutationObserver | undefined;
+      let resizeObserver: ResizeObserver | undefined;
       let frame = 0;
+      let settleTimer: number | undefined;
+      let stableChecks = 0;
+      let stableGeometryChecks = 0;
+      let previousMaxScrollTop: number | null = null;
+      let restoreAttempts = 0;
+      const restoreStartedAt = performance.now();
+      const maxRestoreAttempts = 40;
+      const maxRestoreDurationMs = 5_000;
+      const scheduleRestore = () => {
+        if (settleTimer !== undefined) {
+          window.clearTimeout(settleTimer);
+          settleTimer = undefined;
+        }
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(restoreScroll);
+      };
+      const finishRestore = (
+        persistPosition = false,
+        position?: { top: number; left: number } | null
+      ) => {
+        const persistedPosition = persistPosition
+          ? (position ?? { top: window.scrollY, left: window.scrollX })
+          : null;
+        pendingScroll.current = null;
+        if (settleTimer !== undefined) window.clearTimeout(settleTimer);
+        observer?.disconnect();
+        resizeObserver?.disconnect();
+        if (persistedPosition) {
+          window.history.replaceState(
+            {
+              ...window.history.state,
+              publicCsrScroll: persistedPosition,
+            },
+            ""
+          );
+        }
+      };
       const restoreScroll = () => {
+        const scroll = pendingScroll.current;
+        if (!scroll) return;
         const main = document.querySelector<HTMLElement>("main.nature-main");
         // MDX is route-specific and may resolve after the page DTO. Wait for
         // its real headings and height before restoring a fragment or history.
-        if (main?.querySelector("[data-public-body-pending]")) return;
-        observer?.disconnect();
+        if (main?.querySelector("[data-public-body-pending]")) {
+          // The body may stay pending for several seconds. Treat scroll events
+          // after this first check as user input so a subsequent push keeps it.
+          scroll.restorationAttempted = true;
+          restoreAttempts += 1;
+          if (
+            performance.now() - restoreStartedAt < maxRestoreDurationMs &&
+            restoreAttempts < maxRestoreAttempts
+          ) {
+            settleTimer = window.setTimeout(scheduleRestore, 120);
+            return;
+          }
+          finishRestore(scroll.userPosition !== null, scroll.userPosition);
+          return;
+        }
         main?.focus({ preventScroll: true });
+        scroll.restorationAttempted = true;
         const hash = new URL(url, "https://public.invalid").hash;
         let anchor: HTMLElement | null = null;
         try {
@@ -355,25 +467,66 @@ export default function PublicRouter({
         } catch {
           /* Invalid fragment has no matching anchor. */
         }
-        const scroll = pendingScroll.current;
-        if (scroll?.restore && scroll.position)
-          window.scrollTo({ ...scroll.position, behavior: "instant" });
-        else if (anchor) anchor.scrollIntoView();
-        else window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-        pendingScroll.current = null;
+        if (scroll.restore && scroll.position) {
+          restoreAttempts += 1;
+          const maxScrollTop = Math.max(
+            0,
+            document.documentElement.scrollHeight - (window.innerHeight || 0)
+          );
+          const maxScrollLeft = Math.max(
+            0,
+            document.documentElement.scrollWidth - (window.innerWidth || 0)
+          );
+          const targetTop = Math.min(Math.max(0, scroll.position.top), maxScrollTop);
+          const targetLeft = Math.min(Math.max(0, scroll.position.left), maxScrollLeft);
+          scroll.programmaticPosition = { top: targetTop, left: targetLeft };
+          window.scrollTo({ top: targetTop, left: targetLeft, behavior: "instant" });
+          const reachedTarget =
+            Math.abs(window.scrollY - targetTop) <= 1 && Math.abs(window.scrollX - targetLeft) <= 1;
+          const targetReachable = maxScrollTop >= scroll.position.top - 1;
+          stableChecks = reachedTarget && targetReachable ? stableChecks + 1 : 0;
+          stableGeometryChecks =
+            previousMaxScrollTop === maxScrollTop ? stableGeometryChecks + 1 : 0;
+          previousMaxScrollTop = maxScrollTop;
+          // Virtualized rows can finish measuring several frames after the
+          // route payload is ready. Keep enforcing the browser's saved
+          // position across that settling window before releasing the guard.
+          const settled = targetReachable
+            ? stableChecks >= 12
+            : reachedTarget && stableGeometryChecks >= 12;
+          const timedOut =
+            restoreAttempts >= maxRestoreAttempts ||
+            performance.now() - restoreStartedAt >= maxRestoreDurationMs;
+          if (!settled && !timedOut) {
+            settleTimer = window.setTimeout(scheduleRestore, 120);
+            return;
+          }
+          finishRestore(true);
+          return;
+        } else if (anchor) {
+          anchor.scrollIntoView();
+          scroll.programmaticPosition = { top: window.scrollY, left: window.scrollX };
+        } else {
+          scroll.programmaticPosition = { top: 0, left: 0 };
+          window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+        }
+        finishRestore();
       };
       const main = document.querySelector<HTMLElement>("main.nature-main");
       if (main) {
-        observer = new MutationObserver(() => {
-          cancelAnimationFrame(frame);
-          frame = requestAnimationFrame(restoreScroll);
-        });
+        observer = new MutationObserver(scheduleRestore);
         observer.observe(main, { childList: true, subtree: true });
+        if (typeof ResizeObserver !== "undefined") {
+          resizeObserver = new ResizeObserver(scheduleRestore);
+          resizeObserver.observe(main);
+        }
       }
-      frame = requestAnimationFrame(restoreScroll);
+      scheduleRestore();
       return () => {
         cancelAnimationFrame(frame);
+        if (settleTimer !== undefined) window.clearTimeout(settleTimer);
         observer?.disconnect();
+        resizeObserver?.disconnect();
       };
     }
   }, [payload, error, url, route?.path, scrollRevision]);

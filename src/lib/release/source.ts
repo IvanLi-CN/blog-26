@@ -122,6 +122,7 @@ export function semanticSourceBlobs(
       proveRelease(entry);
     } else {
       const parent = gitOutput(["rev-parse", `${sha}^`]).trim();
+      if (businessVersion !== null && treeBlobs(sha).VERSION === businessVersion) continue;
       if (
         businessVersion !== null ||
         gitFile(parent, "VERSION") !== undefined ||

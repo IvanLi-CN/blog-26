@@ -20,6 +20,11 @@ async function clickRoute(page: Page, path: string) {
   await page.locator("a[data-csr-test-link]").evaluate((node) => node.remove());
 }
 
+async function openInspector(page: Page) {
+  const trigger = page.getByRole("button", { name: "打开 Web Demo 调试控制面板", exact: true });
+  if (await trigger.isVisible()) await trigger.click();
+}
+
 const asyncSkeletonRoutes = [
   ["/", "home"],
   ["/posts/", "posts"],
@@ -265,6 +270,7 @@ for (const path of [
     await expect(page.locator("main .post-detail-body")).toHaveCount(0);
     await expect(page.locator("main")).not.toContainText("Inspector");
     expect(documents).toEqual([]);
+    await openInspector(page);
     const recovered = page.waitForResponse((response) => routeApi(response.url()));
     await page.getByRole("radio", { name: "在线", exact: true }).click();
     expect((await (await recovered).json()).kind).not.toBe("notFound");
@@ -279,6 +285,7 @@ test("online CSR fetches structured data, keeps theme and uses fresh reads on hi
 }) => {
   await page.goto("/posts/?d_connection=online&d_theme=dark&d_persona=admin&d_delay=normal");
   await ready(page);
+  await openInspector(page);
   const requests: string[] = [];
   const documents: string[] = [];
   page.on("request", (r) => {

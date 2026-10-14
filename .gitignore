@@ -124,10 +124,13 @@ admin-dist/
 backend-dist/
 console-dist/
 web-demo-site-dist/
+web-demo-console-site-dist/
 web-demo-admin-dist/
 .astro-web-demo/
 .astro-web-demo-dev/
+.astro-web-demo-console/
 web-demo-site-dev-dist/
+/tests/e2e/web-demo/test-results/
 
 # Embedded search native build outputs
 /native/search/target/

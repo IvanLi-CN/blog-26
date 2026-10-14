@@ -177,6 +177,9 @@ export default defineConfig({
       ),
       "process.env.PUBLIC_API_BASE_URL": JSON.stringify(process.env.PUBLIC_API_BASE_URL ?? ""),
       "process.env.CONSOLE_RUNTIME": JSON.stringify(process.env.CONSOLE_RUNTIME ?? ""),
+      "process.env.CONSOLE_WEB_DEMO_BUILD": JSON.stringify(
+        process.env.CONSOLE_WEB_DEMO_BUILD ?? ""
+      ),
       "process.env.WEB_DEMO_BUILD": JSON.stringify(process.env.WEB_DEMO_BUILD ?? ""),
       "process.env.PUBLIC_WEB_DEMO_BUILD": JSON.stringify(process.env.PUBLIC_WEB_DEMO_BUILD ?? ""),
       "process.env.PUBLIC_SITE_URL": JSON.stringify(process.env.PUBLIC_SITE_URL ?? ""),

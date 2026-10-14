@@ -6,7 +6,11 @@ import {loadabout} from '../../lib/page-data/about';
 import {publicRouteMetadata} from '../../lib/route-metadata';
 import {getSnapshot} from '../../lib/public-site';
 import {getMemoListWebDemoRecords} from '../../lib/memo-list-web-demo';
+import {getConsoleWebDemoMemos} from '@/lib/console-web-demo';
 export async function getStaticPaths() {
+  if (process.env.CONSOLE_WEB_DEMO_BUILD === "true") {
+    return getConsoleWebDemoMemos().map((memo) => ({ params: { slug: memo.slug } }));
+  }
   if (process.env.WEB_DEMO_BUILD === "true") {
     return getMemoListWebDemoRecords().map((memo) => ({ params: { slug: memo.slug }, props: { memo } }));
   }

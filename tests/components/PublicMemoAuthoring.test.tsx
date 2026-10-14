@@ -6,9 +6,11 @@ if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register({ url: "http://l
 const { PublicMemoComposerIsland, PublicMemoDetailControlsIsland } = await import(
   "../../site/components/PublicMemoAuthoring"
 );
+const { WEB_DEMO_STATE_EVENT } = await import("../../src/lib/web-demo-runtime");
 
 const originalFetch = globalThis.fetch;
 const originalConfirm = window.confirm;
+const originalPublicSiteBasePath = process.env.PUBLIC_SITE_BASE_PATH;
 const memo = (id: string) => ({
   id,
   slug: id,
@@ -22,11 +24,13 @@ afterEach(() => {
   cleanup();
   globalThis.fetch = originalFetch;
   window.confirm = originalConfirm;
+  if (originalPublicSiteBasePath === undefined) delete process.env.PUBLIC_SITE_BASE_PATH;
+  else process.env.PUBLIC_SITE_BASE_PATH = originalPublicSiteBasePath;
   window.history.replaceState(null, "", "/");
   document.body.replaceChildren();
 });
 
-describe("Author request lifetime", () => {
+describe.serial("Author request lifetime", () => {
   for (const boundary of ["route-start", "unmount"]) {
     test(`ignores a late successful delete after ${boundary}`, async () => {
       let release: (() => void) | undefined;
@@ -71,7 +75,7 @@ describe("Author request lifetime", () => {
   }
 });
 
-describe("Administrator Memo pagination", () => {
+describe.serial("Administrator Memo pagination", () => {
   for (const activeDirection of ["older", "newer"] as const) {
     const queuedDirection = activeDirection === "older" ? "newer" : "older";
 
@@ -142,4 +146,175 @@ describe("Administrator Memo pagination", () => {
       }
     });
   }
+});
+
+describe.serial("Memo detail boundary", () => {
+  test("points the eye action to the same-origin Console detail route", async () => {
+    let authParsed = false;
+    globalThis.fetch = (async (input) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/auth/me")
+        return {
+          ok: true,
+          status: 200,
+          json: async () => {
+            authParsed = true;
+            return { isAdmin: true };
+          },
+        } as Response;
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    }) as typeof fetch;
+
+    const view = render(
+      <PublicMemoComposerIsland
+        initialIsAdmin
+        initialMemos={[memo("memo-detail")]}
+        localSourceEnabled={false}
+      />
+    );
+
+    const eye = await waitFor(() => view.getByRole("link", { name: "查看详情" }));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(authParsed).toBe(true);
+    expect(eye.getAttribute("href")).toBe("/memos/memo-detail/");
+  });
+
+  test("keeps the configured public site base path on the detail route", async () => {
+    process.env.PUBLIC_SITE_BASE_PATH = "/console";
+    globalThis.fetch = (async (input) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/auth/me") {
+        return Response.json({ isAdmin: true });
+      }
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    }) as typeof fetch;
+
+    const view = render(
+      <PublicMemoComposerIsland
+        initialIsAdmin
+        initialMemos={[memo("memo-base-path")]}
+        localSourceEnabled={false}
+      />
+    );
+
+    const eye = await waitFor(() => view.getByRole("link", { name: "查看详情" }));
+    expect(eye.getAttribute("href")).toBe("/console/memos/memo-base-path/");
+  });
+
+  test("removes an SSR admin detail when the refreshed session is no longer admin", async () => {
+    globalThis.fetch = (async (input) => {
+      const url = new URL(String(input), "http://localhost");
+      const json = (payload: unknown) =>
+        ({ ok: true, status: 200, json: async () => payload }) as Response;
+      if (url.pathname === "/api/public/auth/me") return json(null);
+      if (url.pathname === "/api/public/memos/private-memo") {
+        return json({ ...memo("private-memo"), isPublic: true });
+      }
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    }) as typeof fetch;
+
+    const view = render(
+      <PublicMemoDetailControlsIsland
+        slug="private-memo"
+        initialIsAdmin
+        initialMemo={{ ...memo("private-memo"), isPublic: false }}
+      />
+    );
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+    expect(view.queryByRole("button", { name: "编辑 Memo" })).toBeNull();
+  });
+
+  test("ignores a late auth response from the previous Web Demo persona", async () => {
+    let authRequests = 0;
+    let resolveFirst: ((response: Response) => void) | undefined;
+    let resolveSecond: ((response: Response) => void) | undefined;
+    const firstResponse = new Promise<Response>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const secondResponse = new Promise<Response>((resolve) => {
+      resolveSecond = resolve;
+    });
+    globalThis.fetch = (async (input) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/auth/me") {
+        authRequests += 1;
+        return authRequests === 1 ? firstResponse : secondResponse;
+      }
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    }) as typeof fetch;
+
+    const view = render(
+      <PublicMemoDetailControlsIsland
+        slug="persona-race"
+        initialIsAdmin
+        initialMemo={{ ...memo("persona-race"), isPublic: false }}
+      />
+    );
+    await waitFor(() => expect(authRequests).toBe(1));
+    await act(async () => {
+      window.dispatchEvent(
+        new CustomEvent(WEB_DEMO_STATE_EVENT, { detail: { changed: ["persona"] } })
+      );
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(authRequests).toBe(2));
+    expect(view.queryByRole("button", { name: "编辑 Memo" })).toBeNull();
+
+    await act(async () => {
+      resolveSecond?.(Response.json(null));
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(view.queryByRole("button", { name: "编辑 Memo" })).toBeNull());
+    await act(async () => {
+      resolveFirst?.(Response.json({ isAdmin: true }));
+      await Promise.resolve();
+    });
+    expect(view.queryByRole("button", { name: "编辑 Memo" })).toBeNull();
+  });
+
+  test("restores the public timeline after an SSR admin session downgrades", async () => {
+    globalThis.fetch = (async (input) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/auth/me") return Response.json(null);
+      if (url.pathname === "/api/public/memos") {
+        expect(url.searchParams.get("publicOnly")).toBe("true");
+        return Response.json({
+          memos: [
+            {
+              id: "public-after-downgrade",
+              slug: "public-after-downgrade",
+              title: "公开 Memo",
+              excerpt: "公开内容",
+              isPublic: true,
+              tags: [],
+              createdAt: "2026-10-14T00:00:00.000Z",
+              publishedAt: "2026-10-14T00:00:00.000Z",
+            },
+          ],
+          hasMore: false,
+          hasPrevious: false,
+          nextCursor: null,
+          previousCursor: null,
+        });
+      }
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    }) as typeof fetch;
+
+    const view = render(
+      <PublicMemoComposerIsland
+        initialIsAdmin
+        initialMemos={[{ ...memo("private-ssr"), isPublic: false }]}
+        localSourceEnabled={false}
+      />
+    );
+
+    await waitFor(() => expect(view.getByText("公开 Memo")).toBeTruthy());
+    expect(view.queryByText("private-ssr")).toBeNull();
+  });
 });
