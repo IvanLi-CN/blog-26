@@ -119,3 +119,41 @@ export const KeyboardInspection: Story = {
     await expect(grid).toBeVisible();
   },
 };
+
+export const LiveRefreshReadiness: Story = {
+  name: "Live grid commits before revealing the panel",
+  render: () => (
+    <Surface>
+      <div data-project-runtime-panel="" data-runtime-kind="codex-vibe-monitor">
+        <RuntimeCellGrid
+          kind="tokens"
+          label="最近 90 天 Token 消耗量活动图"
+          points={activityPoints}
+        />
+      </div>
+    </Surface>
+  ),
+  play: async ({ canvasElement }) => {
+    const { publishProjectRuntimeMetrics } = await import(
+      "../../../site/lib/project-runtime-channel"
+    );
+    const panel = canvasElement.querySelector<HTMLElement>("[data-project-runtime-panel]");
+    if (!panel) throw new Error("runtime panel is missing");
+    const metrics = projectRuntimeMetricsBySlug["codex-vibe-monitor"];
+    const committed = new Promise<void>((resolve) => {
+      const listener = (event: Event) => {
+        const detail = (event as CustomEvent<{ panel: HTMLElement; part: string }>).detail;
+        if (detail.panel !== panel || detail.part !== "grid") return;
+        window.removeEventListener("project-runtime-render-progress", listener);
+        resolve();
+      };
+      window.addEventListener("project-runtime-render-progress", listener);
+    });
+    publishProjectRuntimeMetrics(panel, metrics);
+    await committed;
+    const cells = panel.querySelectorAll("[data-runtime-cell]");
+    await expect(cells).toHaveLength(
+      metrics.tokenActivity90d.filter((point) => point.value !== null).length
+    );
+  },
+};

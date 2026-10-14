@@ -119,3 +119,9 @@ decision.
 The co-located ambient Storybook gallery uses the production coordinator with
 internal fixed-frame and renderer-tier inputs. Viewport-bound desktop/mobile
 stories supply deterministic browser evidence independently of backend data.
+
+## Project visual-slot motion
+
+The live adapter delegates poster/panel presentation to one native Web Animations API coordinator per project rail. Each card retains only its latest target, starts through a frame-batched 140ms launch queue, and samples active transforms and opacity when retargeted. Data availability remains separate from presentation state; revision-bound grid, sparkline, and sizing acknowledgements prevent an entrance from exposing structural fixtures or stale render work. Hidden pages settle targets, route cleanup unregisters cards, and system/Inspector reduced motion flushes both playing and queued work. Focus exits disappearing content through the existing project title link; data inspection stops immediately on fallback.
+
+Focused scheduler and channel tests cover launch ordering, overlap, slow arrivals, queue cancellation, retarget sampling, stale acknowledgements, reduced motion, focus, and disposal. Official-route Web Demo browser tests and visual evidence require execution before PR readiness.

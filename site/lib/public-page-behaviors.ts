@@ -1,6 +1,10 @@
 import uPlot from "uplot";
 import "@/lib/public-header-scroll";
 import "@/lib/public-scrollbar";
+import {
+  markProjectRuntimeRendered,
+  readLatestProjectRuntimeMetrics,
+} from "./project-runtime-channel";
 import { initializeProjectRuntimeLiveData } from "./project-runtime-live";
 import "@/lib/public-playbook-outline";
 import "@/lib/public-playbook-resources";
@@ -545,6 +549,10 @@ import "@/lib/public-playbook-resources";
       resizeObserver.observe(element);
       sparklineInstances.set(element, { plot, resizeObserver });
       element.dataset.runtimeSparklineBound = "true";
+    });
+    document.querySelectorAll<HTMLElement>("[data-runtime-source-url]").forEach((panel) => {
+      const metrics = readLatestProjectRuntimeMetrics(panel);
+      if (metrics) markProjectRuntimeRendered(panel, metrics, "sparklines");
     });
   };
   const scheduleBind = () => window.requestAnimationFrame(() => bindSparklines());
