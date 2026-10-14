@@ -49,6 +49,8 @@ for (const phases of [
   ["interrupt-write", "recover"],
   ["cancel-write", "cancel-read"],
   ["upgrade"],
+  ["local-full-write", "local-full-read"],
+  ["local-incremental-write", "local-incremental-read"],
 ]) {
   test.skipIf(process.platform !== "linux")(
     `Mock independent-process ${phases.join(" / ")}`,

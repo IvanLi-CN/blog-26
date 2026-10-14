@@ -25,3 +25,5 @@ The cache commit fence has no asynchronous gap between its final cancellation ch
 Historical chunk status is matched by parent and chunk identity; never-indexed siblings remain unindexed. Unavailable per-target classifications are null with a reason. Late failure writes obey the same durable ownership/cancellation fence as successful writes. New content tasks retain their adoption base alongside the edition; recovery and the atomic commit fence reject a changed base. Recovery of a superseded content-adoption target fails without moving current backwards; cancelled local tasks retain their discovered total and remaining work.
 
 来源任务 result 持久记录本地实际变化数及 Playbook 采用前后数量，无法还原的旧历史变化为 null；兼容接口保留 created、added 别名和 errors。本地等价请求复用同一运行 Promise/任务 ID，全部来源在复用本地后仍检查 Playbook。启动恢复先注册配置的本地源。重建的尝试所有权独立于已提交有效状态，失败和取消不撤销未变化的已有有效覆盖。
+
+本地任务 target 保存完整原始变更清单，result 保存实际统计和游标；逐项内容变更、统计与游标在同一 SQLite 事务提交。全量清空与初始清单同事务提交，恢复不再重复清空或重扫，原任务只处理余项。新增/更新/跳过按数据库实际状态判断；无可靠逐项检查点的旧部分任务受控失败，不猜测重放。初始化、采集和文件读取失败持久记录为失败，无错误且无实际变化为 unchanged。兼容取消同步只取消 kind=sync，RAG 保持按任务 ID 取消。

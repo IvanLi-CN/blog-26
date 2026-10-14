@@ -188,7 +188,7 @@ export const adminContentSyncRouter = createTRPCRouter({
     try {
       const manager = getContentSourceManager();
       await manager.cancelSync();
-      for (const task of (await listContentTasks({ limit: 100 })).items)
+      for (const task of (await listContentTasks({ kind: "sync", limit: 100 })).items)
         if (task.finishedAt === null) await cancelContentTask(task.id);
       getRuntimePlaybookStore().cancelSync();
 

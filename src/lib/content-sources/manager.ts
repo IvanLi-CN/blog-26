@@ -17,7 +17,7 @@ import { notifyClippingChange } from "@/server/clipping/runtime";
 import { projectClippingMemo } from "@/server/clipping/store";
 import { db, initializeDB } from "../db";
 import type { ContentSyncLog } from "../schema";
-import { contentSyncLogs, contentSyncStatus, posts } from "../schema";
+import { contentSyncLogs, contentSyncStatus, contentTasks, posts } from "../schema";
 import { syncEventManager } from "../sync-events";
 import type {
   ChangeSet,
@@ -69,6 +69,7 @@ export class ContentSourceManager {
   private syncHistory: SyncResult[] = [];
 
   private persistentTaskId: string | undefined;
+  private workCursor = 0;
   private flight?: { full: boolean; resumeId?: string; promise: Promise<SyncResult> };
   constructor(config: ContentSourceManagerConfig = {}) {
     this.config = {
@@ -217,6 +218,9 @@ export class ContentSourceManager {
     );
     if (taskControllers.get(task.id)?.signal.aborted) await this.cancelSync();
 
+    const savedResult = resumeId && task.result ? JSON.parse(task.result) : null;
+    this.workCursor = savedResult?.cursor ?? 0;
+    const { cursor: _cursor, ...savedStats } = savedResult ?? {};
     const result: SyncResult = {
       taskId: task.id,
       success: false,
@@ -230,7 +234,7 @@ export class ContentSourceManager {
         deleted: 0,
         skipped: 0,
         errors: 0,
-        ...(resumeId && task.result ? JSON.parse(task.result) : {}),
+        ...savedStats,
       },
       errors: [],
       logs: [],
@@ -247,39 +251,37 @@ export class ContentSourceManager {
         throw new Error("没有启用的内容源");
       }
 
-      // 如果是全量同步，先清空数据库
-      if (isFullSync) {
-        this.currentSync.currentStep = "清空数据库";
-        await this.logSync("info", "🗑️ 开始清空数据库中的所有内容");
-        if (this.currentSync.status === "cancelled" || taskControllers.get(task.id)?.signal.aborted)
-          throw new Error("Sync cancelled");
-        await this.clearAllContent();
-        await this.logSync("info", "✅ 数据库清空完成");
+      let mergedChanges: ChangeSet;
+      const savedWork = resumeId && task.target.startsWith("{") ? JSON.parse(task.target) : null;
+      if (savedWork?.version === 1) {
+        mergedChanges = savedWork.changeSet;
+      } else {
+        // A partially completed legacy task without item identities cannot be replayed safely.
+        if (resumeId && task.processed > 0)
+          throw new Error("Local recovery checkpoint unavailable");
+        this.currentSync.totalItems = enabledSources.length;
+        this.currentSync.currentStep = "收集内容变更";
+        for (const source of enabledSources) await source.initialize();
+        const changeSets = await this.collectChanges(enabledSources, isFullSync);
+        mergedChanges = await this.mergeChanges(changeSets);
+        // The complete work list and full-reset commit share one transaction.
+        db.transaction((tx) => {
+          const owner = tx.select().from(contentTasks).where(eq(contentTasks.id, task.id)).get();
+          if (owner?.status !== "running" || owner.cancelRequested)
+            throw new Error("Sync cancelled");
+          if (isFullSync) tx.delete(posts).run();
+          tx.update(contentTasks)
+            .set({
+              target: JSON.stringify({ version: 1, changeSet: mergedChanges }),
+              total: mergedChanges.changes.length,
+              result: JSON.stringify({ ...result.stats, cursor: 0 }),
+              phase: "applying",
+            })
+            .where(eq(contentTasks.id, task.id))
+            .run();
+        });
+        if (isFullSync) clearSearchCache();
       }
-
-      // 更新同步状态
-      this.currentSync.totalItems = enabledSources.length;
-      this.currentSync.currentStep = "收集内容变更";
-
-      // 先确保内容源完成轻量初始化（不触发扫描/网络开销）
-      for (const source of enabledSources) {
-        try {
-          // initialize() 设计为轻量操作，不进行目录扫描/网络遍历
-          await source.initialize();
-        } catch (e) {
-          await this.logSync(
-            "warn",
-            `内容源 ${source.name} 轻量初始化失败: ${e instanceof Error ? e.message : String(e)}`
-          );
-        }
-      }
-
-      // 并行收集所有内容源的变更（在 listContent/detectChanges 内部执行真实扫描）
-      const changeSets = await this.collectChanges(enabledSources, isFullSync);
-
-      // 合并和解决冲突
-      this.currentSync.currentStep = "合并内容";
-      const mergedChanges = await this.mergeChanges(changeSets);
 
       // 应用变更到数据库
       this.currentSync.currentStep = "应用变更";
@@ -289,7 +291,13 @@ export class ContentSourceManager {
       result.stats = applyResult.stats;
       result.errors = applyResult.errors;
       result.logs = applyResult.logs;
-      result.success = applyResult.errors.length === 0;
+      result.success = applyResult.errors.length === 0 && result.stats.errors === 0;
+      if (
+        db.select().from(contentTasks).where(eq(contentTasks.id, task.id)).get()?.cancelRequested
+      ) {
+        this.currentSync.status = "cancelled";
+        result.success = false;
+      }
 
       if (this.currentSync.status !== "cancelled")
         this.currentSync.status = result.success ? "success" : "error";
@@ -300,7 +308,15 @@ export class ContentSourceManager {
         syncId,
       });
     } catch (error) {
+      const persisted = db.select().from(contentTasks).where(eq(contentTasks.id, task.id)).get();
+      if (persisted?.result) {
+        const { cursor, ...stats } = JSON.parse(persisted.result);
+        result.stats = stats;
+        this.workCursor = cursor ?? this.workCursor;
+      }
+      if (persisted?.cancelRequested) this.currentSync.status = "cancelled";
       const errorMessage = error instanceof Error ? error.message : String(error);
+      if (this.currentSync.status !== "cancelled") result.stats.errors++;
       result.errors.push({
         source: "manager",
         type: "unknown",
@@ -322,12 +338,14 @@ export class ContentSourceManager {
         for (const source of enabledSources) {
           // 检查该源是否有错误
           const sourceErrors = result.errors.filter((error) => error.source === source.name);
-          const hasError = sourceErrors.length > 0;
+          const hasError = sourceErrors.length > 0 || !result.success;
 
           // 设置状态和错误信息
           const status =
             this.currentSync?.status === "cancelled" ? "cancelled" : hasError ? "error" : "success";
-          const errorMessage = hasError ? sourceErrors[0].message : undefined;
+          const errorMessage = hasError
+            ? (sourceErrors[0]?.message ?? "Local synchronization failed")
+            : undefined;
           const currentStep = hasError ? "同步失败" : "同步完成";
 
           // 更新数据库状态
@@ -364,11 +382,20 @@ export class ContentSourceManager {
     await updateContentTask(task.id, {
       processed: result.stats.totalProcessed,
       failed: result.stats.errors,
-      result: JSON.stringify(result.stats),
+      result: JSON.stringify({ ...result.stats, cursor: this.workCursor }),
     });
     finishContentTask(
       task.id,
-      this.currentSync?.status === "cancelled" ? "cancelled" : result.success ? "success" : "failed"
+      this.currentSync?.status === "cancelled"
+        ? "cancelled"
+        : result.success
+          ? result.stats.created + result.stats.updated + result.stats.deleted > 0
+            ? "success"
+            : "unchanged"
+          : "failed",
+      result.success || this.currentSync?.status === "cancelled"
+        ? undefined
+        : "Local synchronization failed"
     );
     void import("@/server/services/rag-index")
       .then((m) => m.triggerRagIndex("blog", "repair", "content-sync"))
@@ -404,24 +431,6 @@ export class ContentSourceManager {
   // ============================================================================
   // 私有方法
   // ============================================================================
-
-  /**
-   * 清空数据库中的所有内容（全量同步时使用）
-   */
-  private async clearAllContent(): Promise<void> {
-    try {
-      // 清空 posts 表中的所有内容
-      await db.delete(posts);
-      clearSearchCache();
-      await this.logSync("info", "🗑️ 已清空 posts 表");
-
-      await this.logSync("info", "✅ 数据库内容清空完成");
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      await this.logSync("error", `❌ 清空数据库失败: ${errorMessage}`);
-      throw error;
-    }
-  }
 
   /**
    * 收集所有内容源的变更
@@ -498,13 +507,7 @@ export class ContentSourceManager {
           source.name
         );
 
-        // 创建空的变更集，避免中断整个同步过程
-        changeSets.push({
-          sourceName: source.name,
-          changes: [],
-          detectedAt: Date.now(),
-          stats: { total: 0, created: 0, updated: 0, deleted: 0, skipped: 0 },
-        });
+        throw new Error("Local content collection failed");
       }
     }
 
@@ -597,7 +600,7 @@ export class ContentSourceManager {
     errors: SyncError[];
     logs: SyncLogEntry[];
   }> {
-    const stats = {
+    let stats = {
       totalProcessed: 0,
       created: 0,
       updated: 0,
@@ -606,206 +609,161 @@ export class ContentSourceManager {
       errors: 0,
       ...baseline,
     };
-    const errors: SyncError[] = [];
-    const logs: SyncLogEntry[] = [];
-    const totalChanges = changeSet.changes.length;
-    if (this.persistentTaskId)
-      await updateContentTask(this.persistentTaskId, {
-        phase: "applying",
-        total: totalChanges + stats.totalProcessed,
-      });
-
-    await this.logSync("info", `📝 开始应用变更，共 ${totalChanges} 个项目`);
-
-    for (const [index, change] of changeSet.changes.entries()) {
-      if (this.currentSync?.status === "cancelled") break;
-      if (this.persistentTaskId)
-        await updateContentTask(this.persistentTaskId, { processed: stats.totalProcessed });
+    const errors: SyncError[] = [],
+      logs: SyncLogEntry[] = [];
+    const taskId = this.persistentTaskId;
+    if (!taskId) throw new Error("Local task identity missing");
+    const total = changeSet.changes.length;
+    await updateContentTask(taskId, { phase: "applying", total });
+    for (let index = this.workCursor; index < total; index++) {
+      const change = changeSet.changes[index];
+      if (this.currentSync?.status === "cancelled" || taskControllers.get(taskId)?.signal.aborted)
+        break;
+      let committed = false;
       try {
-        stats.totalProcessed++;
-
-        // 更新进度
-        if (this.currentSync) {
-          this.currentSync.progress = Math.round((index / totalChanges) * 100);
-          this.currentSync.currentStep = `处理 ${change.item.title || change.item.slug} (${index + 1}/${totalChanges})`;
-        }
-
-        if (change.operation === "create" || change.operation === "update") {
-          const authoredBody = (change.item.metadata.content as string) || "";
-          const clipping =
-            change.item.type === "memo" &&
-            (change.item.metadata.authoredClipping || change.item.metadata.clipping)
-              ? await projectClippingMemo(change.item.id)
-              : null;
-          const readingBody = clipping?.content ?? authoredBody;
-          const readingTitle = clipping ? (clipping.title ?? "") : change.item.title;
-          if (this.currentSync?.status === "cancelled") break;
-          // 插入或更新内容
-          await db
-            .insert(posts)
-            .values({
-              id: change.item.id,
-              slug: change.item.slug,
-              type: change.item.type,
-              title: readingTitle,
-              excerpt: clipping ? readingBody.slice(0, 200) : change.item.excerpt || "",
-              body: readingBody,
-              publishDate: change.item.publishDate,
-              updateDate: change.item.updateDate,
-              draft: change.item.draft,
-              public: change.item.public,
-              category: change.item.category,
-              tags: JSON.stringify(change.item.tags),
-              author: change.item.author,
-              image: change.item.image,
-              metadata: JSON.stringify(change.item.metadata),
-              dataSource: change.item.source,
-              createdVia: change.item.createdVia,
-              contentHash: change.item.contentHash,
-              lastModified: change.item.lastModified,
-              source: change.item.source,
-              filePath: change.item.id, // 使用 id 作为文件路径
-            })
-            .onConflictDoUpdate({
-              target: posts.id,
-              set: {
-                slug: change.item.slug,
-                type: change.item.type,
-                title: readingTitle,
-                excerpt: clipping ? readingBody.slice(0, 200) : change.item.excerpt || "",
-                body: readingBody,
-                publishDate: change.item.publishDate,
-                updateDate: change.item.updateDate || Date.now(),
-                draft: change.item.draft,
-                public: change.item.public,
-                category: change.item.category,
-                tags: JSON.stringify(change.item.tags),
-                author: change.item.author,
-                image: change.item.image,
-                metadata: JSON.stringify(change.item.metadata),
-                dataSource: change.item.source,
-                createdVia: change.item.createdVia,
-                contentHash: change.item.contentHash,
-                lastModified: change.item.lastModified,
-                source: change.item.source,
-                filePath: change.item.id, // 使用 id 作为文件路径
-              },
-            });
-
-          if (change.item.type === "memo") notifyClippingChange(change.item.id);
-          if (change.operation === "create") {
-            stats.created++;
-            // 记录创建成功的日志
-            await this.logSync(
-              "info",
-              `✅ 创建内容: ${change.item.title}`,
-              change.item.id,
-              {
-                operation: "create",
-                source: change.item.source,
-                type: change.item.type,
-                slug: change.item.slug,
-              },
-              change.item.source
-            );
-          } else {
-            stats.updated++;
-            // 记录更新成功的日志
-            await this.logSync(
-              "info",
-              `🔄 更新内容: ${change.item.title}`,
-              change.item.id,
-              {
-                operation: "update",
-                source: change.item.source,
-                type: change.item.type,
-                slug: change.item.slug,
-              },
-              change.item.source
-            );
+        const authoredBody = (change.item.metadata.content as string) || "";
+        const clipping =
+          change.item.type === "memo" &&
+          (change.item.metadata.authoredClipping || change.item.metadata.clipping)
+            ? await projectClippingMemo(change.item.id)
+            : null;
+        const readingBody = clipping?.content ?? authoredBody;
+        const readingTitle = clipping ? (clipping.title ?? "") : change.item.title;
+        const next = { ...stats, totalProcessed: stats.totalProcessed + 1 };
+        const operation = db.transaction((tx) => {
+          const owner = tx.select().from(contentTasks).where(eq(contentTasks.id, taskId)).get();
+          if (owner?.status !== "running" || owner.cancelRequested)
+            throw new Error("Sync cancelled");
+          const prior = tx.select().from(posts).where(eq(posts.id, change.item.id)).get();
+          let operation: "create" | "update" | "delete" | "skip" = "skip";
+          if (change.operation === "create" || change.operation === "update") {
+            if (
+              !prior ||
+              prior.contentHash !== change.item.contentHash ||
+              prior.body !== readingBody ||
+              prior.title !== readingTitle
+            ) {
+              tx.insert(posts)
+                .values({
+                  id: change.item.id,
+                  slug: change.item.slug,
+                  type: change.item.type,
+                  title: readingTitle,
+                  excerpt: clipping ? readingBody.slice(0, 200) : change.item.excerpt || "",
+                  body: readingBody,
+                  publishDate: change.item.publishDate,
+                  updateDate: change.item.updateDate,
+                  draft: change.item.draft,
+                  public: change.item.public,
+                  category: change.item.category,
+                  tags: JSON.stringify(change.item.tags),
+                  author: change.item.author,
+                  image: change.item.image,
+                  metadata: JSON.stringify(change.item.metadata),
+                  dataSource: change.item.source,
+                  createdVia: change.item.createdVia,
+                  contentHash: change.item.contentHash,
+                  lastModified: change.item.lastModified,
+                  source: change.item.source,
+                  filePath: change.item.id, // 使用 id 作为文件路径
+                })
+                .onConflictDoUpdate({
+                  target: posts.id,
+                  set: {
+                    slug: change.item.slug,
+                    type: change.item.type,
+                    title: readingTitle,
+                    excerpt: clipping ? readingBody.slice(0, 200) : change.item.excerpt || "",
+                    body: readingBody,
+                    publishDate: change.item.publishDate,
+                    updateDate: change.item.updateDate || Date.now(),
+                    draft: change.item.draft,
+                    public: change.item.public,
+                    category: change.item.category,
+                    tags: JSON.stringify(change.item.tags),
+                    author: change.item.author,
+                    image: change.item.image,
+                    metadata: JSON.stringify(change.item.metadata),
+                    dataSource: change.item.source,
+                    createdVia: change.item.createdVia,
+                    contentHash: change.item.contentHash,
+                    lastModified: change.item.lastModified,
+                    source: change.item.source,
+                    filePath: change.item.id, // 使用 id 作为文件路径
+                  },
+                })
+                .run();
+              operation = prior ? "update" : "create";
+            }
+          } else if (change.operation === "delete" && prior) {
+            tx.delete(posts).where(eq(posts.id, change.item.id)).run();
+            operation = "delete";
           }
-        } else if (change.operation === "delete") {
-          await db.delete(posts).where(eq(posts.id, change.item.id));
-          if (change.item.type === "memo") notifyClippingChange(change.item.id);
-          stats.deleted++;
-          // 记录删除成功的日志
-          await this.logSync(
-            "info",
-            `🗑️ 删除内容: ${change.item.title}`,
-            change.item.id,
-            {
-              operation: "delete",
-              source: change.item.source,
-              type: change.item.type,
-              slug: change.item.slug,
-            },
-            change.item.source
-          );
-        } else {
-          stats.skipped++;
-          // 记录跳过的日志
-          await this.logSync(
-            "info",
-            `⏭️ 跳过内容: ${change.item.title}`,
-            change.item.id,
-            {
-              operation: "skip",
-              source: change.item.source,
-              type: change.item.type,
-              slug: change.item.slug,
-              reason: change.reason,
-            },
-            change.item.source
-          );
+          if (operation === "create") next.created++;
+          else if (operation === "update") next.updated++;
+          else if (operation === "delete") next.deleted++;
+          else next.skipped++;
+          tx.update(contentTasks)
+            .set({
+              processed: next.totalProcessed,
+              failed: next.errors,
+              result: JSON.stringify({ ...next, cursor: index + 1 }),
+            })
+            .where(eq(contentTasks.id, taskId))
+            .run();
+          return operation;
+        });
+        stats = next;
+        this.workCursor = index + 1;
+        committed = true;
+        if (change.item.type === "memo" && operation !== "skip")
+          notifyClippingChange(change.item.id);
+        if (this.currentSync) {
+          this.currentSync.progress = Math.round((this.workCursor / total) * 100);
+          this.currentSync.currentStep = `处理 ${change.item.title || change.item.slug} (${this.workCursor}/${total})`;
         }
-      } catch (error) {
-        stats.errors++;
-        const errorMessage = error instanceof Error ? error.message : String(error);
-
+        await this.logSync(
+          "info",
+          `内容处理完成: ${change.item.title}`,
+          change.item.id,
+          { operation, source: change.item.source },
+          change.item.source
+        );
+      } catch {
+        const owner = db.select().from(contentTasks).where(eq(contentTasks.id, taskId)).get();
+        if (owner?.cancelRequested || owner?.status !== "running") break;
+        // A notification/log failure cannot replay an already committed item.
+        if (committed) continue;
+        const next = {
+          ...stats,
+          totalProcessed: stats.totalProcessed + 1,
+          errors: stats.errors + 1,
+        };
+        db.transaction((tx) => {
+          const owner = tx.select().from(contentTasks).where(eq(contentTasks.id, taskId)).get();
+          if (owner?.status !== "running" || owner.cancelRequested)
+            throw new Error("Sync cancelled");
+          tx.update(contentTasks)
+            .set({
+              processed: next.totalProcessed,
+              failed: next.errors,
+              result: JSON.stringify({ ...next, cursor: index + 1 }),
+            })
+            .where(eq(contentTasks.id, taskId))
+            .run();
+        });
+        stats = next;
+        this.workCursor = index + 1;
         errors.push({
           source: change.item.source,
           type: "database",
-          message: errorMessage,
+          message: "Local content mutation failed",
           filePath: change.item.id,
-          timestamp: Date.now(),
-        });
-
-        // 记录详细的错误日志
-        await this.logSync(
-          "error",
-          `❌ ${change.operation} 失败: ${change.item.title} - ${errorMessage}`,
-          change.item.id,
-          {
-            operation: change.operation,
-            source: change.item.source,
-            type: change.item.type,
-            slug: change.item.slug,
-            error: errorMessage,
-          },
-          change.item.source
-        );
-
-        logs.push({
-          level: "error",
-          message: `应用变更失败: ${change.item.id}`,
-          source: change.item.source,
-          filePath: change.item.id,
-          data: { error: errorMessage },
           timestamp: Date.now(),
         });
       }
-      if (this.persistentTaskId)
-        await updateContentTask(this.persistentTaskId, {
-          processed: stats.totalProcessed,
-          failed: stats.errors,
-          result: JSON.stringify(stats),
-        });
     }
-
-    if (stats.created > 0 || stats.updated > 0 || stats.deleted > 0) {
-      clearSearchCache();
-    }
-
+    if (stats.created + stats.updated + stats.deleted > 0) clearSearchCache();
     return { stats, errors, logs };
   }
 

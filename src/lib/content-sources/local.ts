@@ -146,6 +146,7 @@ export class LocalContentSource extends ContentSourceBase {
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.log("error", `处理文件失败: ${fileInfo.path}`, fileInfo.path, { error: errorMessage });
+        throw new Error("Local content file read or parse failed");
       }
     }
 
@@ -263,6 +264,16 @@ export class LocalContentSource extends ContentSourceBase {
         }
         await this.scanDirectory(absoluteRoot);
       } catch (error) {
+        if (
+          !(
+            rootDir &&
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "ENOENT"
+          )
+        )
+          throw error;
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.log("debug", `跳过不存在的本地内容根目录: ${rootDir || "/"}`, undefined, {
           error: errorMessage,
@@ -320,6 +331,7 @@ export class LocalContentSource extends ContentSourceBase {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.log("warn", `扫描目录失败: ${dirPath}`, undefined, { error: errorMessage });
+      throw error;
     }
   }
 

@@ -3,7 +3,7 @@ import { afterAll, beforeAll, beforeEach, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import {
@@ -841,12 +841,12 @@ test("equivalent local requests share one operation and preserve durable actual 
   if (!result.taskId) throw new Error("Missing durable ID");
   const task = await getContentTask(result.taskId);
   if (!task?.result) throw new Error("Missing durable result");
-  expect(JSON.parse(task.result)).toEqual(result.stats);
+  expect(JSON.parse(task.result)).toMatchObject(result.stats);
   expect((await contentSyncTotals()).totalSyncs).toBe(1);
 });
 
 test("cold local recovery registers configured source and keeps the original task identity", async () => {
-  resetContentSourceManager();
+  await resetContentSourceManager();
   const oldPath = process.env.LOCAL_CONTENT_BASE_PATH;
   const key = process.env.OPENAI_API_KEY;
   const enabled = process.env.PLAYBOOK_SYNC_ENABLED;
@@ -861,26 +861,11 @@ test("cold local recovery registers configured source and keeps the original tas
     target: "local-content",
   });
   try {
-    await db
-      .update(contentTasks)
-      .set({
-        processed: 2,
-        result: JSON.stringify({
-          totalProcessed: 2,
-          created: 2,
-          updated: 0,
-          deleted: 0,
-          skipped: 0,
-          errors: 0,
-        }),
-      })
-      .where(eq(contentTasks.id, task.id));
     const stop = await startContentSyncRuntime();
     stop();
     const recovered = await completed(task.id);
-    expect(recovered.status).toBe("success");
-    expect(recovered.processed).toBe(2);
-    expect(JSON.parse(recovered.result ?? "null")).toMatchObject({ created: 2, totalProcessed: 2 });
+    expect(recovered.status).toBe("unchanged");
+    expect(recovered.processed).toBe(0);
     expect(getContentSourceManager().getSource("local")).toBeDefined();
     expect((await contentSyncTotals()).totalSyncs).toBe(1);
   } finally {
@@ -889,12 +874,12 @@ test("cold local recovery registers configured source and keeps the original tas
     process.env.OPENAI_API_KEY = key;
     if (enabled === undefined) delete process.env.PLAYBOOK_SYNC_ENABLED;
     else process.env.PLAYBOOK_SYNC_ENABLED = enabled;
-    resetContentSourceManager();
+    await resetContentSourceManager();
   }
 });
 
 test("all-source trigger continues Playbook while sharing an active local task", async () => {
-  resetContentSourceManager();
+  await resetContentSourceManager();
   const { appRouter } = await import("@/server/router");
   const caller = appRouter.createCaller({
     req: new Request("http://localhost"),
@@ -947,6 +932,223 @@ test("all-source trigger continues Playbook while sharing an active local task",
     process.env.OPENAI_API_KEY = key;
     if (oldEnabled === undefined) delete process.env.PLAYBOOK_SYNC_ENABLED;
     else process.env.PLAYBOOK_SYNC_ENABLED = oldEnabled;
-    resetContentSourceManager();
+    await resetContentSourceManager();
   }
+});
+
+for (const mode of ["full", "incremental"] as const) {
+  test(`${mode} local recovery resumes the original ten-item work list exactly once`, async () => {
+    const manager = new ContentSourceManager();
+    const source = new LocalContentSource(
+      LocalContentSource.createDefaultConfig("local", 50, { contentPath: root })
+    );
+    source.detectChanges = async () => {
+      throw new Error("Recovery must not rescan");
+    };
+    source.listContent = async () => {
+      throw new Error("Recovery must not clear and rescan");
+    };
+    await manager.registerSource(source);
+    const items = Array.from({ length: 10 }, (_, i) => ({
+      ...fixture(`resume-${mode}-${i}`),
+      type: "post" as const,
+      source: "local",
+      filePath: `${i}.md`,
+      lastModified: 1,
+      tags: [],
+      metadata: { content: "Public synthetic content" },
+    }));
+    const changeSet = {
+      sourceName: "local",
+      changes: items.map((item) => ({ item, operation: "create" as const })),
+      detectedAt: 1,
+      stats: { total: 10, created: 10, updated: 0, deleted: 0, skipped: 0 },
+    };
+    const { task } = await beginContentTask({
+      kind: "sync",
+      source: "local",
+      requestKey: mode,
+      origin: "test",
+      target: JSON.stringify({ version: 1, changeSet }),
+    });
+    const initialStats = {
+      totalProcessed: 2,
+      created: 2,
+      updated: 0,
+      deleted: 0,
+      skipped: 0,
+      errors: 0,
+      cursor: 2,
+    };
+    db.transaction((tx) => {
+      for (const item of items.slice(0, 2)) tx.insert(posts).values(fixture(item.id)).run();
+      tx.update(contentTasks)
+        .set({
+          status: "interrupted",
+          total: 10,
+          processed: 2,
+          result: JSON.stringify(initialStats),
+        })
+        .where(eq(contentTasks.id, task.id))
+        .run();
+    });
+    const key = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    try {
+      const result = await manager.syncAll(mode === "full", task.id);
+      expect(result.success).toBe(true);
+      expect(result.stats).toMatchObject({
+        totalProcessed: 10,
+        created: 10,
+        updated: 0,
+        errors: 0,
+      });
+      const final = await getContentTask(task.id);
+      expect(final).toMatchObject({ total: 10, processed: 10, status: "success" });
+      expect(JSON.parse(final?.result ?? "null").cursor).toBe(10);
+      expect(db.select().from(posts).all().length).toBe(10);
+      expect((await contentSyncTotals()).totalSyncs).toBe(1);
+    } finally {
+      process.env.OPENAI_API_KEY = key;
+    }
+  });
+}
+
+test("actual writes classify a new update-labelled item as created and unchanged replay as skipped", async () => {
+  const manager = new ContentSourceManager();
+  const source = new LocalContentSource(
+    LocalContentSource.createDefaultConfig("local", 50, { contentPath: root })
+  );
+  const item = {
+    ...fixture("actual-new"),
+    type: "post" as const,
+    source: "local",
+    filePath: "new.md",
+    lastModified: 1,
+    tags: [],
+    metadata: { content: "Public synthetic content" },
+  };
+  source.detectChanges = async () => ({
+    sourceName: "local",
+    changes: [{ item, operation: "update" }],
+    detectedAt: 1,
+    stats: { total: 1, created: 0, updated: 1, deleted: 0, skipped: 0 },
+  });
+  await manager.registerSource(source);
+  const first = await manager.syncAll();
+  expect(first.stats).toMatchObject({ created: 1, updated: 0 });
+  const second = await manager.syncAll();
+  expect(second.stats).toMatchObject({ created: 0, updated: 0, skipped: 1 });
+  if (!second.taskId) throw new Error("Missing task");
+  expect((await getContentTask(second.taskId))?.status).toBe("unchanged");
+});
+
+for (const stage of ["initialize", "collect"] as const) {
+  test(`local ${stage} failure is durable failure rather than a successful zero`, async () => {
+    const manager = new ContentSourceManager();
+    const source = new LocalContentSource(
+      LocalContentSource.createDefaultConfig("local", 50, { contentPath: root })
+    );
+    if (stage === "initialize")
+      source.initialize = async () => {
+        throw new Error("Synthetic initialization failure");
+      };
+    else
+      source.detectChanges = async () => {
+        throw new Error("Synthetic collection failure");
+      };
+    await manager.registerSource(source);
+    const result = await manager.syncAll();
+    expect(result.success).toBe(false);
+    if (!result.taskId) throw new Error("Missing task");
+    expect(await getContentTask(result.taskId)).toMatchObject({
+      status: "failed",
+      failed: 1,
+      error: "Local synchronization failed",
+    });
+  });
+}
+
+test("legacy sync cancellation leaves independent RAG tasks running", async () => {
+  const { appRouter } = await import("@/server/router");
+  const caller = appRouter.createCaller({
+    req: new Request("http://localhost"),
+    resHeaders: new Headers(),
+    isAdmin: true,
+    user: { id: "synthetic-admin", email: "synthetic@example.test", nickname: "Synthetic" },
+  });
+  const rag = await beginContentTask({
+    kind: "rag",
+    source: "playbook",
+    requestKey: "test",
+    origin: "test",
+    target: "{}",
+  });
+  const sync = await beginContentTask({
+    kind: "sync",
+    source: "playbook",
+    requestKey: "test",
+    origin: "test",
+    target: "{}",
+  });
+  await caller.admin.contentSync.cancelSync();
+  expect((await getContentTask(rag.task.id))?.cancelRequested).toBe(false);
+  expect((await getContentTask(sync.task.id))?.cancelRequested).toBe(true);
+  finishContentTask(rag.task.id, "success");
+  finishContentTask(sync.task.id, "cancelled");
+});
+
+test("a checkpoint failure rolls back its content mutation in the same transaction", async () => {
+  const manager = new ContentSourceManager();
+  const source = new LocalContentSource(
+    LocalContentSource.createDefaultConfig("local", 50, { contentPath: root })
+  );
+  const item = {
+    ...fixture("atomic-checkpoint"),
+    type: "post" as const,
+    source: "local",
+    filePath: "atomic.md",
+    lastModified: 1,
+    tags: [],
+    metadata: { content: "Public synthetic content" },
+  };
+  source.detectChanges = async () => ({
+    sourceName: "local",
+    changes: [{ item, operation: "create" }],
+    detectedAt: 1,
+    stats: { total: 1, created: 1, updated: 0, deleted: 0, skipped: 0 },
+  });
+  await manager.registerSource(source);
+  db.run(
+    sql`CREATE TRIGGER synthetic_checkpoint_failure BEFORE UPDATE OF processed ON content_tasks WHEN NEW.processed = 1 AND NEW.failed = 0 BEGIN SELECT RAISE(ABORT,'Synthetic checkpoint failure'); END`
+  );
+  try {
+    const result = await manager.syncAll();
+    expect(result.success).toBe(false);
+    expect(result.stats).toMatchObject({ created: 0, totalProcessed: 1, errors: 1 });
+    expect(db.select().from(posts).where(eq(posts.id, item.id)).get()).toBeUndefined();
+    if (!result.taskId) throw new Error("Missing task");
+    expect(await getContentTask(result.taskId)).toMatchObject({
+      status: "failed",
+      processed: 1,
+      failed: 1,
+    });
+  } finally {
+    db.run(sql`DROP TRIGGER synthetic_checkpoint_failure`);
+  }
+});
+
+test("a persisted read failure is not converted into an empty successful sync", async () => {
+  const manager = new ContentSourceManager();
+  const source = new LocalContentSource(
+    LocalContentSource.createDefaultConfig("local", 50, { contentPath: root })
+  );
+  source.detectChanges = async () => {
+    throw new Error("Synthetic file read failure");
+  };
+  await manager.registerSource(source);
+  const result = await manager.syncAll();
+  expect(result.success).toBe(false);
+  if (!result.taskId) throw new Error("Missing task");
+  expect(await getContentTask(result.taskId)).toMatchObject({ status: "failed", failed: 1 });
 });
