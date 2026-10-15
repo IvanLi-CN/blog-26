@@ -70,6 +70,7 @@ const storyFiles = new Set([
   "./src/components/search/SearchModeControl.stories.tsx",
   "./apps/admin/src/components/search-policy-card.stories.tsx",
   "./apps/admin/src/components/admin-soft-ui.stories.tsx",
+  "./apps/admin/src/components/llm-model-picker-focus.stories.tsx",
 ]);
 const expectedStoryIds = new Set([
   "public-playbook-technology-stack--default",
@@ -82,6 +83,7 @@ const expectedStoryIds = new Set([
   "admin-soft-ui-system--primitives",
   "admin-soft-ui-system--resizable-sidebar-handle",
   "admin-soft-ui-system--editor-tab-overflow",
+  "admin-llm-model-picker-focus--external-control",
   "public-native-tag-link--default",
   "public-native-tag-link--dark",
   "public-native-tag-link--mobile",

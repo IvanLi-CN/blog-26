@@ -53,7 +53,7 @@ export function SearchPolicyCard({
   dirty: boolean;
   validating: boolean;
   onChange: (values: Partial<SearchPolicy[AiSearchMode]>) => void;
-  onChooseModel: () => void;
+  onChooseModel: (trigger: HTMLElement) => void;
   onValidate: () => void;
   validationStatus?: ReactNode;
 }) {
@@ -109,7 +109,7 @@ export function SearchPolicyCard({
               value={policy.model}
               onChange={(event) => onChange({ model: event.target.value })}
             />
-            <Button variant="outline" onClick={onChooseModel}>
+            <Button variant="outline" onClick={(event) => onChooseModel(event.currentTarget)}>
               选择模型
             </Button>
           </div>

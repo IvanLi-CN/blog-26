@@ -32,6 +32,7 @@ export interface LlmModelPickerProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   hideTrigger?: boolean;
+  returnFocusElement?: HTMLElement | null;
   preferredCapability?: LlmModelCapability;
 }
 
@@ -49,6 +50,7 @@ export function LlmModelPicker({
   open: controlledOpen,
   onOpenChange,
   hideTrigger = false,
+  returnFocusElement,
   preferredCapability,
 }: LlmModelPickerProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
@@ -122,7 +124,15 @@ export function LlmModelPicker({
         </div>
       )}
 
-      <DialogContent showClose={false} className="w-[min(calc(100vw-2rem),42rem)] max-w-2xl p-0">
+      <DialogContent
+        showClose={false}
+        className="w-[min(calc(100vw-2rem),42rem)] max-w-2xl p-0"
+        onCloseAutoFocus={(event) => {
+          if (!returnFocusElement) return;
+          event.preventDefault();
+          returnFocusElement.focus();
+        }}
+      >
         <DialogHeader className="flex-row items-start justify-between gap-4 border-b border-border/58 p-5">
           <div>
             <DialogTitle>选择模型</DialogTitle>

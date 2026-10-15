@@ -279,7 +279,7 @@ function TierCard({
   editor: SettingsEditor;
   settings: AdminLlmSettingsPayload["settings"];
   resolved: AdminLlmSettingsPayload["resolved"];
-  onOpenPicker: (tier: LlmTier) => void;
+  onOpenPicker: (tier: LlmTier, trigger: HTMLElement) => void;
   onChange: (next: SettingsEditor) => void;
 }) {
   const meta = TIER_META[tier];
@@ -345,7 +345,10 @@ function TierCard({
             />
           </div>
           <div className="flex items-end gap-2">
-            <Button onClick={() => onOpenPicker(tier)} aria-label={`选择${meta.title}`}>
+            <Button
+              onClick={(event) => onOpenPicker(tier, event.currentTarget)}
+              aria-label={`选择${meta.title}`}
+            >
               <WandSparkles className="size-4" />
               选择模型
             </Button>
@@ -469,6 +472,7 @@ export function LlmSettingsPage() {
   const [editor, setEditor] = useState<SettingsEditor | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [picker, setPicker] = useState<PickerState>({ open: false, tier: "chat" });
+  const [pickerReturnFocus, setPickerReturnFocus] = useState<HTMLElement | null>(null);
   const [pickerSource, setPickerSource] = useState<LlmModelSource>("upstream");
   const builtinModelOptions = useMemo(() => toBuiltinLlmModelOptions(), []);
   const savedEditor = useMemo(
@@ -604,8 +608,9 @@ export function LlmSettingsPage() {
         editor={editor}
         settings={payload.settings}
         resolved={payload.resolved}
-        onOpenPicker={(tier) => {
+        onOpenPicker={(tier, trigger) => {
           setPickerSource("upstream");
+          setPickerReturnFocus(trigger);
           setPicker({ open: true, tier });
         }}
         onChange={setEditor}
@@ -615,8 +620,9 @@ export function LlmSettingsPage() {
         editor={editor}
         settings={payload.settings}
         resolved={payload.resolved}
-        onOpenPicker={(tier) => {
+        onOpenPicker={(tier, trigger) => {
           setPickerSource("upstream");
+          setPickerReturnFocus(trigger);
           setPicker({ open: true, tier });
         }}
         onChange={setEditor}
@@ -626,8 +632,9 @@ export function LlmSettingsPage() {
         editor={editor}
         settings={payload.settings}
         resolved={payload.resolved}
-        onOpenPicker={(tier) => {
+        onOpenPicker={(tier, trigger) => {
           setPickerSource("upstream");
+          setPickerReturnFocus(trigger);
           setPicker({ open: true, tier });
         }}
         onChange={setEditor}
@@ -667,6 +674,7 @@ export function LlmSettingsPage() {
         open={picker.open}
         onOpenChange={(open) => setPicker((current) => ({ ...current, open }))}
         hideTrigger
+        returnFocusElement={pickerReturnFocus}
         preferredCapability={pickerPreferredCapability}
       />
     </div>
