@@ -6,9 +6,9 @@
     "GLOSSARY.md": "4b30682351d935c65c025814d924f2c6c4180c78",
     "docs/adr/0025-display-selected-watermark-renditions.md": "42033be0d22d67fc20d46ec43501191968e2ac67",
     "docs/public-media-watermark-design.md": "ff8851d5f17877459ec5824e31bf9fd827b69248",
-    "docs/specs/public-media-assets-facade/HISTORY.md": "2099de0c21d13b1f4f71504c2d7987e6d0ce1ed3",
-    "docs/specs/public-media-assets-facade/IMPLEMENTATION.md": "468ab3c8a1460aa7758b9f8e0a6b128633e7ee6e",
-    "docs/specs/public-media-assets-facade/SPEC.md": "da3f39d55ea8b8825b2bc010c05f652fa1685293",
+    "docs/specs/public-media-assets-facade/HISTORY.md": "035ca2eabea839a633b3a44531c44fce5f3c3510",
+    "docs/specs/public-media-assets-facade/IMPLEMENTATION.md": "526a9a2528ed87d56f287652f233f979072da062",
+    "docs/specs/public-media-assets-facade/SPEC.md": "352c7a4c6662c8bf61f8c7a939591b9d06f96be4",
     "docs/specs/public-media-assets-facade/assets/logo-watermark-desktop-1440.png": "83deadbc76348de40d4d55d2687cbd154f00088a",
     "docs/specs/public-media-assets-facade/assets/logo-watermark-lightbox-desktop.png": "a1e50ee9a5bd55297f6dd91cf245833217173851",
     "docs/specs/public-media-assets-facade/assets/logo-watermark-mobile-393.png": "028eeb9396ecbed5506ac478336166df0aa40698",
@@ -55,7 +55,7 @@
       "evidence": [
         {
           "path": "docs/specs/public-media-assets-facade/SPEC.md",
-          "blob": "da3f39d55ea8b8825b2bc010c05f652fa1685293",
+          "blob": "352c7a4c6662c8bf61f8c7a939591b9d06f96be4",
           "command": "Public media SPEC records the A/B render contract, legacy compatibility and 600 CSS px boundary"
         },
         {

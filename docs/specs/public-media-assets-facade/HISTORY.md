@@ -53,6 +53,7 @@
 - 新增 `PublicMediaItem.presentations` 与 `/api/public/assets/:kind/:slug/:mediaHash/:renderId/:variant.:ext`，登记 `wm-a-v1` / `wm-b-v1`；旧路径、旧 variants 和管理员默认 URL 保留历史语义。
 - A/B 合成采用 7%/18% 最终宽度、2% 右下边距、白色主体/细暗边/64% 不透明度；imagor `alpha=36`，方向校正、缩放/取帧后按 240×160/80,000px² 门槛豁免，公开媒体失败保持 fail-fast。
 - 静态构建与 manifest 纳入结构化、HTML、hydration 与灯箱 A/B 候选，并校验版本化水印 SVG、路径身份和 20 MiB / 20,000 文件 / 5 GiB 限制。
+- 收紧版本化路由边界：`play` 受控播放只允许无 renderId 的历史路径，带 A/B 或未知身份的播放地址统一返回 404。
 
 ## 2026-06-21
 

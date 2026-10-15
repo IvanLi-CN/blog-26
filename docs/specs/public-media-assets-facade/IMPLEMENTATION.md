@@ -82,6 +82,7 @@
 29. 列表、时间线、相关推荐、详情封面、正文和灯箱在现有图框中使用 contain；图片自身 hover 放大已移除。灯箱独立选择 `full` 候选，静态和 hydration 输出保留 A/B 候选闭包。
 30. 版本化派生使用 7%/18% Logo 宽度、2% 右下边距、64% 可见不透明度（imagor alpha 36），方向校正/缩放/取帧后按 240×160/80,000px² 门槛豁免；视频使用同配方的签名 imagor `/meta` 读取 poster 尺寸，oversized 图片用同一规则的 sharp 合成。
 31. `verify-pages-build` 与静态媒体打包识别带 renderId 的路径并校验 A/B SVG 静态资源；候选 URL 带 snapshot 版本戳，缺失候选、下载失败和 artifact 限额继续阻止发布。
+32. 路由会拒绝带 renderId 的 `play` 播放地址，避免把登记的 A/B 身份误用于原始视频透传；未知身份和非法 renderId 继续返回 404。
 
 ## 本地开发与故障语义
 

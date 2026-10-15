@@ -62,7 +62,7 @@
   - `GET /api/public/assets/:kind/:slug/:mediaHash/:renderId/:variant.:ext`
 - 旧的 `GET /api/public/assets/:kind/:slug/:mediaHash/:variant.:ext` 保留历史语义；新快照和页面使用版本化路径。
 - `kind` 只允许 `post | memo`。
-- `renderId` 只允许登记值 `wm-a-v1 | wm-b-v1`，不得接受任意处理表达式、关闭水印参数或未知身份。
+- `renderId` 只允许登记值 `wm-a-v1 | wm-b-v1`，不得接受任意处理表达式、关闭水印参数或未知身份；`play` 受控播放变体不接受任何 renderId。
 - `variant` 固定为：
   - `card`
   - `cover`
