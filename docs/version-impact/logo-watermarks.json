@@ -4,16 +4,16 @@
   "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
   "covered_files": {
     "GLOSSARY.md": "4b30682351d935c65c025814d924f2c6c4180c78",
-    "docs/adr/0025-display-selected-watermark-renditions.md": "80c89c1b00bf98be2b98daa231555837433484bf",
-    "docs/public-media-watermark-design.md": "f2cb18368ab3f1383b0b56de0fa1d8d582ea887a",
-    "docs/specs/public-media-assets-facade/HISTORY.md": "506c74808543ebc7f86282151b51706d0ad3f023",
+    "docs/adr/0025-display-selected-watermark-renditions.md": "9f5fb9ef35af6abc307c94431f479b33942f1aa1",
+    "docs/public-media-watermark-design.md": "d795ebf120d37df84965e15dabed457de5a5b8ea",
+    "docs/specs/public-media-assets-facade/HISTORY.md": "942203b82e35b6765bdce53a7dfc136a856319a2",
     "docs/specs/public-media-assets-facade/IMPLEMENTATION.md": "526a9a2528ed87d56f287652f233f979072da062",
-    "docs/specs/public-media-assets-facade/SPEC.md": "352c7a4c6662c8bf61f8c7a939591b9d06f96be4",
-    "docs/specs/public-media-assets-facade/assets/logo-watermark-desktop-1440.png": "db9173a059a403fe2756323b2f16e7ecaa39b883",
-    "docs/specs/public-media-assets-facade/assets/logo-watermark-lightbox-desktop.png": "b16633188d482c35f50d0dbe1f062b7b52236de3",
-    "docs/specs/public-media-assets-facade/assets/logo-watermark-mobile-393.png": "e57c49ca1e8e9f3a81ffa4bdd0ab7ea6e0758904",
+    "docs/specs/public-media-assets-facade/SPEC.md": "04bf68fbeade763178eeb80073b7a0f188d304ad",
+    "docs/specs/public-media-assets-facade/assets/logo-watermark-desktop-1440.png": "ff14a66d40afec52b02b5668cc301350da9791de",
+    "docs/specs/public-media-assets-facade/assets/logo-watermark-lightbox-desktop.png": "281a0f4fc9f58c55dcd8ab7d3e7468c92063fb80",
+    "docs/specs/public-media-assets-facade/assets/logo-watermark-mobile-393.png": "350bd770806dbf25fdecde38a57601a705bee083",
     "public/watermark-ivanli-a.v1.svg": "b60ecce684456a1ddfbef362233204824d634de0",
-    "public/watermark-ivanli-b.v1.svg": "566fae8e0f9b8d2f825409769adb00d0186b0492",
+    "public/watermark-ivanli-b.v1.svg": "24d66c1bff279f8b91699300b709e7ba8fa05900",
     "scripts/package-public-media.test.ts": "b6f39ed62e16276d25f192ce548b9808d8680011",
     "scripts/verify-pages-build.test.ts": "77ab52a3ff50ee83f1920fcf907aa6856b461d2e",
     "scripts/verify-pages-build.ts": "66046c75bc25903e7d839cbff9f3bc0484606785",
@@ -51,16 +51,16 @@
     "planned": {
       "impact": "minor",
       "reasoning": "The candidate adds a compatible public media presentations field and registered A/B render identities, plus a public frontend selection behavior; legacy paths and consumers remain readable.",
-      "assessed_at": "2026-10-15T21:50:30+08:00",
+      "assessed_at": "2026-10-15T22:32:58+08:00",
       "evidence": [
         {
           "path": "docs/specs/public-media-assets-facade/SPEC.md",
-          "blob": "352c7a4c6662c8bf61f8c7a939591b9d06f96be4",
+          "blob": "04bf68fbeade763178eeb80073b7a0f188d304ad",
           "command": "Public media SPEC records the A/B render contract, legacy compatibility and 600 CSS px boundary"
         },
         {
           "path": "docs/adr/0025-display-selected-watermark-renditions.md",
-          "blob": "80c89c1b00bf98be2b98daa231555837433484bf",
+          "blob": "9f5fb9ef35af6abc307c94431f479b33942f1aa1",
           "command": "ADR records the resolved contain, threshold, render identity and migration decisions"
         }
       ]
@@ -68,7 +68,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "The implementation exposes finite wm-a-v1 and wm-b-v1 candidates, selects them by visible CSS width, applies the shared watermark recipe through imagor and sharp, rejects render identities on controlled play URLs, and keeps old URLs, snapshots and admin authorization compatible.",
-      "assessed_at": "2026-10-15T21:50:30+08:00",
+      "assessed_at": "2026-10-15T22:32:58+08:00",
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
@@ -89,7 +89,7 @@
     "verified": {
       "impact": "minor",
       "reasoning": "Targeted tests, repository checks, Web Demo build/runtime observations and owner-facing mobile, desktop and lightbox evidence verify a compatible public media capability addition without a database or local-content migration.",
-      "assessed_at": "2026-10-15T21:50:30+08:00",
+      "assessed_at": "2026-10-15T22:32:58+08:00",
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
@@ -98,18 +98,18 @@
         },
         {
           "path": "docs/specs/public-media-assets-facade/assets/logo-watermark-mobile-393.png",
-          "blob": "e57c49ca1e8e9f3a81ffa4bdd0ab7ea6e0758904",
-          "command": "Official Web Demo at 393x852 CSS px shows complete A renditions; refreshed B asset has no dark separator"
+          "blob": "350bd770806dbf25fdecde38a57601a705bee083",
+          "command": "Official Web Demo at 393x852 CSS px shows complete A renditions; refreshed B asset has no dark separator or domain text outline"
         },
         {
           "path": "docs/specs/public-media-assets-facade/assets/logo-watermark-desktop-1440.png",
-          "blob": "db9173a059a403fe2756323b2f16e7ecaa39b883",
-          "command": "Official Web Demo at 1440x900 CSS px shows complete B rendition with a white separator, equal gaps and readable ivanli.cc"
+          "blob": "ff14a66d40afec52b02b5668cc301350da9791de",
+          "command": "Official Web Demo at 1440x900 CSS px shows complete B rendition with a white separator, equal gaps and clean readable ivanli.cc"
         },
         {
           "path": "docs/specs/public-media-assets-facade/assets/logo-watermark-lightbox-desktop.png",
-          "blob": "b16633188d482c35f50d0dbe1f062b7b52236de3",
-          "command": "Official Web Demo lightbox independently selects full B rendition without distortion or a dark separator"
+          "blob": "281a0f4fc9f58c55dcd8ab7d3e7468c92063fb80",
+          "command": "Official Web Demo lightbox independently selects full B rendition without distortion, dark separator or domain text outline"
         }
       ]
     }
