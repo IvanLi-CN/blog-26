@@ -8,7 +8,7 @@ const TRAILING_SLASH = /\/+$/;
 const SITE_DIST_DIR = "site-dist";
 const FEED_FILES = ["site-dist/feed.xml", "site-dist/atom.xml", "site-dist/feed.json"] as const;
 const BUILD_TIME_PUBLIC_ASSET_PATTERN =
-  /(?:https?:\/\/[^"'`\s]+)?\/api\/public\/assets\/[^"'`\s?#]+\/(?:card|cover|content|full|social|poster|play)\.[^"'`\s?#)]+(?:\?[^"'`\s)]*)?/g;
+  /(?:https?:\/\/[^"'`\s]+)?\/api\/public\/assets\/[^"'`\s?#]+\/(?:[a-z0-9-]+\/)?(?:card|cover|content|full|social|poster|play)\.[^"'`\s?#)]+(?:\?[^"'`\s)]*)?/giu;
 
 type FileCheck = {
   file: string;
@@ -127,7 +127,7 @@ export function extractBuildTimePublicAssetUrls(content: string) {
 }
 
 function requiresBuildTimeAssetVersion(url: string) {
-  return /\/(?:card|cover)\.[^/?#]+(?:[?#]|$)/u.test(url);
+  return /\/(?:[a-z0-9-]+\/)?(?:card|cover)\.[^/?#]+(?:[?#]|$)/u.test(url);
 }
 
 function listBuildFiles(
@@ -241,6 +241,16 @@ function buildDynamicChecks(
     {
       file: "site-dist/watermark-ivanli.svg",
       includes: ["<svg", "ivanli.cc"],
+      excludes: [],
+    },
+    {
+      file: "site-dist/watermark-ivanli-a.v1.svg",
+      includes: ["<svg", "viewBox"],
+      excludes: [],
+    },
+    {
+      file: "site-dist/watermark-ivanli-b.v1.svg",
+      includes: ["<svg", "ivanli.cc", "viewBox"],
       excludes: [],
     },
     {

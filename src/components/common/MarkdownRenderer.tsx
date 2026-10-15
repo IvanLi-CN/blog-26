@@ -26,6 +26,7 @@ import {
   mergeClassNames,
   publicSiteUrlTransform,
 } from "./markdown/utils";
+import ResponsiveWatermarkedVideo from "./ResponsiveWatermarkedVideo";
 
 // 基于默认配置扩展允许的 HTML 标签，用于支持受限的原始 HTML 渲染
 const markdownSanitizeSchema = {
@@ -108,6 +109,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
     articlePath,
     contentSource = "local",
     publicMediaContext,
+    publicAssetVersion,
     removeTags = false,
     rewritePublicSitePaths = false,
     mapContentUrl,
@@ -186,6 +188,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
           articlePath,
           contentSource,
           publicMediaContext,
+          publicAssetVersion,
         },
       ]);
 
@@ -208,7 +211,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
       // 因此这里不再注入 rehypeCollapsibleCode。
 
       return plugins;
-    }, [config, articlePath, contentSource, publicMediaContext]);
+    }, [config, articlePath, contentSource, publicMediaContext, publicAssetVersion]);
 
     const urlTransform = useMemo(() => {
       const safeTransform = rewritePublicSitePaths ? publicSiteUrlTransform : defaultUrlTransform;
@@ -262,6 +265,28 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
               enableLightbox={config.enableImageLightbox}
               {...props}
             />
+          );
+        },
+
+        video({ poster, children, ...props }) {
+          const rawProps = props as Record<string, unknown>;
+          return (
+            <ResponsiveWatermarkedVideo
+              poster={typeof poster === "string" ? poster : undefined}
+              posterA={
+                typeof rawProps["data-watermark-poster-a"] === "string"
+                  ? rawProps["data-watermark-poster-a"]
+                  : undefined
+              }
+              posterB={
+                typeof rawProps["data-watermark-poster-b"] === "string"
+                  ? rawProps["data-watermark-poster-b"]
+                  : undefined
+              }
+              {...props}
+            >
+              {children}
+            </ResponsiveWatermarkedVideo>
           );
         },
 

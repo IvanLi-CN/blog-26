@@ -100,6 +100,28 @@ describe("packagePublicMedia", () => {
     ).resolves.toMatchObject({ fileCount: expect.any(Number) });
   });
 
+  test("packages render-id candidates without collapsing their path identity", async () => {
+    const cwd = await fixture();
+    const candidateUrl = "/api/public/assets/post/logo/hash/wm-a-v1/card.webp?v=2026-10-15";
+    await writeFile(join(cwd, "site-dist", "index.html"), `<img src="${candidateUrl}">`);
+
+    const requestedUrls: string[] = [];
+    await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      fetchImpl: async (input) => {
+        requestedUrls.push(String(input));
+        return response("image");
+      },
+    });
+
+    expect(requestedUrls).toEqual([`https://api.example${candidateUrl}`]);
+    expect(await readFile(join(cwd, "site-dist", "index.html"), "utf8")).toContain(
+      "/_content/assets/post/logo/hash/wm-a-v1/card.webp?v=2026-10-15"
+    );
+  });
+
   test("does not exempt non-stable or malformed Playbook edition paths", async () => {
     const cwd = await fixture();
     const invalidTagPath = join(

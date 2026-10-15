@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { and, eq } from "drizzle-orm";
 import sharp from "sharp";
 import { getLocalPath, isLocalContentEnabled } from "@/config/paths";
@@ -13,11 +13,13 @@ import {
   buildInternalAssetSourcePath,
   buildPublicAssetPath,
   buildPublicMediaHash,
+  buildPublicMediaPresentations,
   createEmptyPublicMediaCollection,
   detectPublicMediaKind,
   inferPublicMediaMimeType,
   isExternalMediaUrl,
   isPublicContentKind,
+  isPublicMediaRenderId,
   isPublicMediaVariant,
   normalizePublicMediaExt,
   type PublicContentKind,
@@ -26,8 +28,10 @@ import {
   type PublicMediaContext,
   type PublicMediaItem,
   type PublicMediaKind,
+  type PublicMediaRenderId,
   type PublicMediaRole,
   type PublicMediaSourceDescriptor,
+  type PublicMediaVariant,
   pickPublicMediaExt,
   resolveContentMediaPath,
 } from "@/lib/public-media";
@@ -352,6 +356,14 @@ function pickRasterFallbackExt(ref: MediaReference) {
   return "jpg";
 }
 
+function getPublicMediaRenderId(
+  context: PublicMediaContext,
+  variant: Exclude<PublicMediaVariant, "play">
+): PublicMediaRenderId | undefined {
+  if (context.assetScope === "admin-preview") return undefined;
+  return variant === "card" ? "wm-a-v1" : "wm-b-v1";
+}
+
 function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference) {
   const descriptors: PublicMediaSourceDescriptor[] = [];
 
@@ -363,6 +375,7 @@ function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference
           kind: context.kind,
           slug: context.slug,
           mediaHash: ref.hash,
+          renderId: getPublicMediaRenderId(context, variant),
           variant,
           ext: format,
         });
@@ -389,6 +402,7 @@ function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference
         kind: context.kind,
         slug: context.slug,
         mediaHash: ref.hash,
+        renderId: getPublicMediaRenderId(context, variant),
         variant,
         ext: format,
       });
@@ -408,6 +422,7 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
   const variants: Partial<
     Record<"card" | "cover" | "content" | "full" | "social" | "poster", string>
   > = {};
+  const presentations: NonNullable<PublicMediaItem["presentations"]> = {};
   if (ref.kind === "video") {
     for (const variant of VIDEO_DISPLAY_VARIANTS) {
       variants[variant] = buildPublicAssetPath({
@@ -415,9 +430,18 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
         kind: context.kind,
         slug: context.slug,
         mediaHash: ref.hash,
+        renderId: getPublicMediaRenderId(context, variant),
         variant,
         ext: variant === "social" ? "jpg" : pickPublicMediaExt("video", ref.sourcePath, variant),
       });
+      const candidate = buildPublicMediaPresentations({
+        context,
+        mediaPath: ref.sourcePath,
+        sourcePath: ref.sourcePath,
+        role: ref.role,
+        variant,
+      });
+      if (candidate) presentations[variant] = candidate;
     }
   } else {
     for (const variant of IMAGE_DISPLAY_VARIANTS) {
@@ -426,9 +450,18 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
         kind: context.kind,
         slug: context.slug,
         mediaHash: ref.hash,
+        renderId: getPublicMediaRenderId(context, variant),
         variant,
         ext: pickPublicMediaExt(ref.kind, ref.sourcePath, variant),
       });
+      const candidate = buildPublicMediaPresentations({
+        context,
+        mediaPath: ref.sourcePath,
+        sourcePath: ref.sourcePath,
+        role: ref.role,
+        variant,
+      });
+      if (candidate) presentations[variant] = candidate;
     }
   }
 
@@ -451,6 +484,7 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
           kind: context.kind,
           slug: context.slug,
           mediaHash: ref.hash,
+          renderId: getPublicMediaRenderId(context, "poster"),
           variant: "poster",
           ext: "jpg",
         })
@@ -463,6 +497,7 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
     alt: ref.alt,
     sourcePath: ref.sourcePath,
     variants,
+    presentations: Object.keys(presentations).length > 0 ? presentations : undefined,
     poster,
     playback,
     sources: buildSourceDescriptors(context, ref),
@@ -561,7 +596,7 @@ async function readImageDimensions(sourcePath: string) {
   }
 }
 
-async function shouldApplyWatermark(
+async function shouldApplyLegacyWatermark(
   ref: MediaReference,
   variant: keyof typeof IMAGE_VARIANT_RECIPES
 ) {
@@ -580,6 +615,73 @@ async function shouldApplyWatermark(
   const height =
     dimensions.height || IMAGE_VARIANT_RECIPES[variant].height || Math.floor(width * 0.75);
   return width >= 240 && height >= 160 && width * height >= 80000;
+}
+
+type DerivedDimensions = { width: number; height: number };
+
+type DerivedDimensionsRequest = {
+  request: Request;
+  context: PublicMediaContext;
+};
+
+function isQuarterTurn(orientation: number | undefined) {
+  return orientation === 5 || orientation === 6 || orientation === 7 || orientation === 8;
+}
+
+async function readDerivedDimensions(
+  ref: MediaReference,
+  variant: keyof typeof IMAGE_VARIANT_RECIPES,
+  params?: DerivedDimensionsRequest
+): Promise<DerivedDimensions | null> {
+  const recipe = IMAGE_VARIANT_RECIPES[variant];
+  if (ref.kind === "video") {
+    return params ? readImagorDerivedDimensions({ ...params, ref, variant }) : null;
+  }
+
+  try {
+    const metadata = await sharp(getLocalPath(ref.sourcePath), {
+      animated: ref.kind === "gif",
+      limitInputPixels: false,
+    }).metadata();
+    let width = metadata.width ?? 0;
+    let height = metadata.pageHeight ?? metadata.height ?? 0;
+    if (isQuarterTurn(metadata.orientation)) [width, height] = [height, width];
+    if (!width || !height) return null;
+
+    const scales = [1];
+    if (recipe.width > 0) scales.push(recipe.width / width);
+    if (recipe.height > 0) scales.push(recipe.height / height);
+    const scale = Math.min(...scales);
+    return {
+      width: Math.max(1, Math.round(width * scale)),
+      height: Math.max(1, Math.round(height * scale)),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function shouldApplyVersionedWatermark(
+  ref: MediaReference,
+  variant: keyof typeof IMAGE_VARIANT_RECIPES
+) {
+  const dimensions = await readDerivedDimensions(ref, variant);
+  if (!dimensions) {
+    throw new Error(`Unable to determine derived media dimensions: ${ref.sourcePath}`);
+  }
+  return (
+    dimensions.width >= 240 &&
+    dimensions.height >= 160 &&
+    dimensions.width * dimensions.height >= 80000
+  );
+}
+
+function meetsVersionedWatermarkThreshold(dimensions: DerivedDimensions) {
+  return (
+    dimensions.width >= 240 &&
+    dimensions.height >= 160 &&
+    dimensions.width * dimensions.height >= 80000
+  );
 }
 
 function getImagorBaseUrl() {
@@ -701,9 +803,72 @@ function encodeImagorFilterString(value: string) {
   return `b64:${Buffer.from(value).toString("base64url")}`;
 }
 
-function getWatermarkFilter(request: Request) {
-  const watermarkUrl = `${getInternalSourceBaseUrl(request)}/watermark-ivanli.svg`;
-  return `watermark(${encodeImagorFilterString(watermarkUrl)},-24,-24,18,22,22)`;
+function buildImagorSourceUrl(request: Request, context: PublicMediaContext, ref: MediaReference) {
+  return encodeImagorSourceUrl(
+    appendInternalSourceSecret(
+      `${getInternalSourceBaseUrl(request)}${buildInternalAssetSourcePath({
+        kind: context.kind,
+        slug: context.slug,
+        mediaHash: ref.hash,
+        scope: context.assetScope,
+      })}`
+    )
+  );
+}
+
+function getImagorFrameFilters(
+  ref: MediaReference,
+  variant: Exclude<keyof typeof VARIANT_RECIPES, "play">
+) {
+  if (ref.kind === "video") return ["frame(0)"];
+  if (ref.kind === "gif" && variant !== "content" && variant !== "full") {
+    return ["frame(0)"];
+  }
+  return [];
+}
+
+async function readImagorDerivedDimensions(params: {
+  request: Request;
+  context: PublicMediaContext;
+  ref: MediaReference;
+  variant: Exclude<keyof typeof VARIANT_RECIPES, "play">;
+}): Promise<DerivedDimensions | null> {
+  const recipe = IMAGE_VARIANT_RECIPES[params.variant];
+  if (recipe.width <= 0) return null;
+  const frameFilters = getImagorFrameFilters(params.ref, params.variant);
+  const filterSegment = frameFilters.length > 0 ? `/filters:${frameFilters.join(":")}` : "";
+  const path = `meta/fit-in/${recipe.width}x${recipe.height}${filterSegment}/${buildImagorSourceUrl(
+    params.request,
+    params.context,
+    params.ref
+  )}`;
+  const response = await fetch(`${getImagorBaseUrl()}/${signImagorPath(path)}`, {
+    method: "GET",
+    headers: { accept: "application/json" },
+  });
+  if (!response.ok) return null;
+  const payload = (await response.json().catch(() => null)) as {
+    width?: number;
+    height?: number;
+  } | null;
+  const width = Number(payload?.width);
+  const height = Number(payload?.height);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return null;
+  }
+  return { width: Math.round(width), height: Math.round(height) };
+}
+
+function getWatermarkFilter(request: Request, renderId?: PublicMediaRenderId) {
+  if (!renderId) {
+    const watermarkUrl = `${getInternalSourceBaseUrl(request)}/watermark-ivanli.svg`;
+    return `watermark(${encodeImagorFilterString(watermarkUrl)},-24,-24,18,22,22)`;
+  }
+
+  const asset = renderId === "wm-a-v1" ? "watermark-ivanli-a.v1.svg" : "watermark-ivanli-b.v1.svg";
+  const ratio = renderId === "wm-a-v1" ? 7 : 18;
+  const watermarkUrl = `${getInternalSourceBaseUrl(request)}/${asset}`;
+  return `watermark(${encodeImagorFilterString(watermarkUrl)},-2p,-2p,36,${ratio},${ratio})`;
 }
 
 async function buildImagorPath(params: {
@@ -712,34 +877,29 @@ async function buildImagorPath(params: {
   ref: MediaReference;
   variant: Exclude<keyof typeof VARIANT_RECIPES, "play">;
   ext: string;
+  renderId?: PublicMediaRenderId;
 }) {
   const recipe = IMAGE_VARIANT_RECIPES[params.variant];
   const format =
     normalizePublicMediaExt(params.ext) ||
     pickPublicMediaExt(params.ref.kind, params.ref.sourcePath, params.variant);
-  const sourceUrl = encodeImagorSourceUrl(
-    appendInternalSourceSecret(
-      `${getInternalSourceBaseUrl(params.request)}${buildInternalAssetSourcePath({
-        kind: params.context.kind,
-        slug: params.context.slug,
-        mediaHash: params.ref.hash,
-        scope: params.context.assetScope,
-      })}`
-    )
-  );
+  const sourceUrl = buildImagorSourceUrl(params.request, params.context, params.ref);
 
-  const filters: string[] = [];
-  if (params.ref.kind === "video") {
-    filters.push("frame(0)");
-  } else if (
-    params.ref.kind === "gif" &&
-    params.variant !== "content" &&
-    params.variant !== "full"
-  ) {
-    filters.push("frame(0)");
-  }
+  const filters: string[] = getImagorFrameFilters(params.ref, params.variant);
   filters.push(`format(${format})`);
-  if (await shouldApplyWatermark(params.ref, params.variant)) {
+  if (params.renderId) {
+    const dimensions = await readDerivedDimensions(params.ref, params.variant, {
+      request: params.request,
+      context: params.context,
+    });
+    if (!dimensions) {
+      throw new Error(`Unable to determine derived media dimensions: ${params.ref.sourcePath}`);
+    }
+    if (meetsVersionedWatermarkThreshold(dimensions)) {
+      filters.push(getWatermarkFilter(params.request, params.renderId));
+    }
+    filters.push("strip_exif()");
+  } else if (await shouldApplyLegacyWatermark(params.ref, params.variant)) {
     filters.push(getWatermarkFilter(params.request));
   }
 
@@ -851,7 +1011,11 @@ async function streamLocalMediaFile(request: Request, ref: MediaReference) {
 async function renderLocalMediaVariant(
   request: Request,
   resolved: NonNullable<Awaited<ReturnType<typeof resolveMediaReferenceFromRequest>>>,
-  params: { variant: Exclude<keyof typeof VARIANT_RECIPES, "play">; ext: string }
+  params: {
+    variant: Exclude<keyof typeof VARIANT_RECIPES, "play">;
+    ext: string;
+    renderId?: PublicMediaRenderId;
+  }
 ) {
   if (!isLocalContentEnabled() || resolved.ref.kind === "video") return null;
 
@@ -859,15 +1023,54 @@ async function renderLocalMediaVariant(
   const format = normalizePublicMediaExt(params.ext) || "webp";
   const animated =
     resolved.ref.kind === "gif" && (params.variant === "content" || params.variant === "full");
+  const sourceMetadata = animated
+    ? await sharp(getLocalPath(resolved.ref.sourcePath), {
+        animated: true,
+        limitInputPixels: false,
+      }).metadata()
+    : null;
+  const animationOptions = animated
+    ? {
+        loop: sourceMetadata?.loop ?? 0,
+        delay: sourceMetadata?.delay?.length ? sourceMetadata.delay : 100,
+      }
+    : undefined;
   let pipeline = sharp(getLocalPath(resolved.ref.sourcePath), {
     animated,
     limitInputPixels: false,
-  }).resize({
-    width: recipe.width || undefined,
-    height: recipe.height || undefined,
-    fit: "inside",
-    withoutEnlargement: true,
-  });
+  })
+    .rotate()
+    .resize({
+      width: recipe.width || undefined,
+      height: recipe.height || undefined,
+      fit: "inside",
+      withoutEnlargement: true,
+    });
+
+  if (params.renderId && (await shouldApplyVersionedWatermark(resolved.ref, params.variant))) {
+    const dimensions = await readDerivedDimensions(resolved.ref, params.variant);
+    if (!dimensions) throw new Error("Unable to determine local derivative dimensions");
+    const ratio = params.renderId === "wm-a-v1" ? 0.07 : 0.18;
+    const margin = Math.max(1, Math.round(dimensions.width * 0.02));
+    const overlayWidth = Math.max(1, Math.round(dimensions.width * ratio));
+    const watermarkFile =
+      params.renderId === "wm-a-v1" ? "watermark-ivanli-a.v1.svg" : "watermark-ivanli-b.v1.svg";
+    const watermarkSvg = await readFile(`${process.cwd()}/public/${watermarkFile}`, "utf8");
+    const overlayResult = await sharp(
+      Buffer.from(watermarkSvg.replace("<svg ", '<svg opacity="0.64" '))
+    )
+      .resize({ width: overlayWidth, fit: "inside" })
+      .png()
+      .toBuffer({ resolveWithObject: true });
+    pipeline = pipeline.composite([
+      {
+        input: overlayResult.data,
+        left: Math.max(0, dimensions.width - overlayWidth - margin),
+        top: Math.max(0, dimensions.height - margin - overlayResult.info.height),
+        blend: "over",
+      },
+    ]);
+  }
 
   switch (format) {
     case "avif":
@@ -881,10 +1084,10 @@ async function renderLocalMediaVariant(
       pipeline = pipeline.png();
       break;
     case "gif":
-      pipeline = pipeline.gif();
+      pipeline = pipeline.gif({ ...animationOptions, progressive: false });
       break;
     default:
-      pipeline = pipeline.webp();
+      pipeline = pipeline.webp(animated ? { ...animationOptions, effort: 4 } : undefined);
       break;
   }
 
@@ -973,7 +1176,12 @@ async function resolveMediaReferenceFromRequest(
 async function proxyResolvedMediaVariant(
   request: Request,
   resolved: Awaited<ReturnType<typeof resolveMediaReferenceFromRequest>>,
-  params: { variant: string; ext: string; allowOriginalFallback?: boolean }
+  params: {
+    variant: PublicMediaVariant;
+    ext: string;
+    renderId?: PublicMediaRenderId;
+    allowOriginalFallback?: boolean;
+  }
 ) {
   if (!resolved) {
     return new Response("Not Found", { status: 404 });
@@ -986,13 +1194,23 @@ async function proxyResolvedMediaVariant(
     return streamLocalMediaFile(request, resolved.ref);
   }
 
-  const imagorPath = await buildImagorPath({
-    request,
-    context: resolved.context,
-    ref: resolved.ref,
-    variant: params.variant,
-    ext: params.ext,
-  });
+  let imagorPath: string;
+  try {
+    imagorPath = await buildImagorPath({
+      request,
+      context: resolved.context,
+      ref: resolved.ref,
+      variant: params.variant,
+      ext: params.ext,
+      renderId: params.renderId,
+    });
+  } catch (error) {
+    console.error("[public-media] unable to determine derived media dimensions:", {
+      sourcePath: resolved.ref.sourcePath,
+      error,
+    });
+    return createMediaProcessorUnavailableResponse(request);
+  }
   const imagorUrl = `${getImagorBaseUrl()}/${signImagorPath(imagorPath)}`;
   let upstream: Response;
   try {
@@ -1034,6 +1252,7 @@ async function proxyResolvedMediaVariant(
         const fallback = await renderLocalMediaVariant(request, resolved, {
           variant: params.variant as Exclude<keyof typeof VARIANT_RECIPES, "play">,
           ext: params.ext,
+          renderId: params.renderId,
         });
         if (fallback) return fallback;
       } catch (error) {
@@ -1054,7 +1273,14 @@ async function proxyResolvedMediaVariant(
 
 export async function handlePublicAssetFacadeRequest(
   request: Request,
-  params: { kind: string; slug: string; mediaHash: string; variant: string; ext: string }
+  params: {
+    kind: string;
+    slug: string;
+    mediaHash: string;
+    renderId?: string;
+    variant: string;
+    ext: string;
+  }
 ) {
   if (
     (request.method !== "GET" && request.method !== "HEAD") ||
@@ -1063,6 +1289,9 @@ export async function handlePublicAssetFacadeRequest(
     return new Response("Not Found", { status: 404 });
   }
   if (!isPublicMediaVariant(params.variant)) {
+    return new Response("Not Found", { status: 404 });
+  }
+  if (params.renderId && !isPublicMediaRenderId(params.renderId)) {
     return new Response("Not Found", { status: 404 });
   }
 
@@ -1071,12 +1300,23 @@ export async function handlePublicAssetFacadeRequest(
     slug: params.slug,
     mediaHash: params.mediaHash,
   });
-  return proxyResolvedMediaVariant(request, resolved, params);
+  return proxyResolvedMediaVariant(request, resolved, {
+    ...params,
+    variant: params.variant as PublicMediaVariant,
+    renderId: params.renderId as PublicMediaRenderId | undefined,
+  });
 }
 
 export async function handleAdminPreviewAssetRequest(
   request: Request,
-  params: { kind: string; slug: string; mediaHash: string; variant: string; ext: string }
+  params: {
+    kind: string;
+    slug: string;
+    mediaHash: string;
+    renderId?: string;
+    variant: string;
+    ext: string;
+  }
 ) {
   if (
     (request.method !== "GET" && request.method !== "HEAD") ||
@@ -1085,6 +1325,9 @@ export async function handleAdminPreviewAssetRequest(
     return new Response("Not Found", { status: 404 });
   }
   if (!isPublicMediaVariant(params.variant)) {
+    return new Response("Not Found", { status: 404 });
+  }
+  if (params.renderId && !isPublicMediaRenderId(params.renderId)) {
     return new Response("Not Found", { status: 404 });
   }
 
@@ -1109,6 +1352,8 @@ export async function handleAdminPreviewAssetRequest(
   );
   return proxyResolvedMediaVariant(request, resolved, {
     ...params,
+    variant: params.variant as PublicMediaVariant,
+    renderId: params.renderId as PublicMediaRenderId | undefined,
     allowOriginalFallback: true,
   });
 }

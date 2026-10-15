@@ -289,15 +289,16 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
     const pathname = subPath.replace(/\/+/g, "/").replace(/\/$/, "") || "/";
 
     const assetMatch = pathname.match(
-      /^\/assets\/(post|memo)\/([^/]+)\/([0-9a-f]+)\/(card|cover|content|full|social|poster|play)\.([a-z0-9]+)$/iu
+      /^\/assets\/(post|memo)\/([^/]+)\/([0-9a-f]+)(?:\/([a-z0-9-]+))?\/(card|cover|content|full|social|poster|play)\.([a-z0-9]+)$/iu
     );
     if (assetMatch) {
       return handlePublicAssetFacadeRequest(request, {
         kind: assetMatch[1],
         slug: decodeURIComponent(assetMatch[2]),
         mediaHash: assetMatch[3],
-        variant: assetMatch[4],
-        ext: assetMatch[5],
+        renderId: assetMatch[4],
+        variant: assetMatch[5],
+        ext: assetMatch[6],
       });
     }
 

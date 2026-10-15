@@ -12,11 +12,13 @@ export const PUBLIC_MEDIA_VARIANTS = [
   "poster",
   "play",
 ] as const;
+export const PUBLIC_MEDIA_RENDER_IDS = ["wm-a-v1", "wm-b-v1"] as const;
 export const PUBLIC_MEDIA_ROLES = ["cover", "content", "attachment", "playback"] as const;
 
 export type PublicContentKind = (typeof PUBLIC_CONTENT_KINDS)[number];
 export type PublicMediaAssetScope = (typeof PUBLIC_MEDIA_ASSET_SCOPES)[number];
 export type PublicMediaVariant = (typeof PUBLIC_MEDIA_VARIANTS)[number];
+export type PublicMediaRenderId = (typeof PUBLIC_MEDIA_RENDER_IDS)[number];
 export type PublicMediaRole = (typeof PUBLIC_MEDIA_ROLES)[number];
 export type PublicMediaKind = "image" | "gif" | "video";
 
@@ -34,6 +36,11 @@ export interface PublicMediaSourceDescriptor {
   mimeType: string;
 }
 
+export interface PublicMediaPresentations {
+  a: string;
+  b: string;
+}
+
 export interface PublicMediaItem {
   hash: string;
   kind: PublicMediaKind;
@@ -41,6 +48,7 @@ export interface PublicMediaItem {
   alt: string | null;
   sourcePath: string;
   variants: Partial<Record<PublicMediaVariant, string>>;
+  presentations?: Partial<Record<Exclude<PublicMediaVariant, "play">, PublicMediaPresentations>>;
   poster: string | null;
   playback: string | null;
   sources: PublicMediaSourceDescriptor[];
@@ -161,6 +169,16 @@ export function isPublicContentKind(value: string): value is PublicContentKind {
 
 export function isPublicMediaVariant(value: string): value is PublicMediaVariant {
   return (PUBLIC_MEDIA_VARIANTS as readonly string[]).includes(value);
+}
+
+export function isPublicMediaRenderId(value: string): value is PublicMediaRenderId {
+  return (PUBLIC_MEDIA_RENDER_IDS as readonly string[]).includes(value);
+}
+
+export function getDefaultPublicMediaRenderId(
+  variant: Exclude<PublicMediaVariant, "play">
+): PublicMediaRenderId {
+  return variant === "card" ? "wm-a-v1" : "wm-b-v1";
 }
 
 export function normalizePublicMediaExt(value: string) {
@@ -293,6 +311,7 @@ export function buildPublicAssetPath(params: {
   kind: PublicContentKind;
   slug: string;
   mediaHash: string;
+  renderId?: PublicMediaRenderId;
   variant: PublicMediaVariant;
   ext: string;
 }) {
@@ -300,7 +319,8 @@ export function buildPublicAssetPath(params: {
   const ext = normalizePublicMediaExt(params.ext) || "bin";
   const prefix =
     params.scope === "admin-preview" ? ADMIN_PREVIEW_ASSETS_PREFIX : PUBLIC_ASSETS_PREFIX;
-  return `${prefix}${params.kind}/${slug}/${params.mediaHash}/${params.variant}.${ext}`;
+  const renderSegment = params.renderId ? `/${params.renderId}` : "";
+  return `${prefix}${params.kind}/${slug}/${params.mediaHash}${renderSegment}/${params.variant}.${ext}`;
 }
 
 export function buildInternalAssetSourcePath(params: {
@@ -318,6 +338,7 @@ export function buildPublicMediaAssetUrl(params: {
   mediaPath: string;
   role: PublicMediaRole;
   variant: PublicMediaVariant;
+  renderId?: PublicMediaRenderId;
 }) {
   const sourcePath = resolveContentMediaPath(params.mediaPath, params.context.filePath);
   if (!sourcePath) return null;
@@ -332,9 +353,43 @@ export function buildPublicMediaAssetUrl(params: {
     kind: params.context.kind,
     slug: params.context.slug,
     mediaHash,
+    renderId:
+      params.renderId ??
+      (params.context.assetScope === "admin-preview" || params.variant === "play"
+        ? undefined
+        : getDefaultPublicMediaRenderId(params.variant)),
     variant: params.variant,
     ext,
   });
+}
+
+export function buildPublicMediaPresentations(params: {
+  context: PublicMediaContext;
+  mediaPath: string;
+  sourcePath?: string;
+  role: PublicMediaRole;
+  variant: Exclude<PublicMediaVariant, "play">;
+}) {
+  const buildCandidate = (renderId: PublicMediaRenderId) => {
+    if (params.sourcePath) {
+      const mediaKind = detectPublicMediaKind(params.sourcePath);
+      if (!mediaKind) return null;
+      return buildPublicAssetPath({
+        scope: params.context.assetScope,
+        kind: params.context.kind,
+        slug: params.context.slug,
+        mediaHash: buildPublicMediaHash(params.sourcePath, params.role),
+        renderId,
+        variant: params.variant,
+        ext: pickPublicMediaExt(mediaKind, params.sourcePath, params.variant),
+      });
+    }
+    return buildPublicMediaAssetUrl({ ...params, renderId });
+  };
+  const a = buildCandidate("wm-a-v1");
+  const b = buildCandidate("wm-b-v1");
+  if (!a || !b) return null;
+  return { a, b } satisfies PublicMediaPresentations;
 }
 
 function restoreAngleBrackets(original: string, rewritten: string) {

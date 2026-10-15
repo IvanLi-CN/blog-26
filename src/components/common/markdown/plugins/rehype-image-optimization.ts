@@ -1,10 +1,16 @@
 import type { Element, Root } from "hast";
 import { visit } from "unist-util-visit";
 import {
+  buildPublicAssetPath,
   buildPublicMediaAssetUrl,
+  buildPublicMediaPresentations,
   detectPublicMediaKind,
   isPublicAssetFacadeUrl,
+  isPublicContentKind,
+  isPublicMediaRenderId,
+  isPublicMediaVariant,
   type PublicMediaContext,
+  type PublicMediaPresentations,
 } from "@/lib/public-media";
 import type { ImageOptimizationOptions } from "../types";
 import {
@@ -30,7 +36,21 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
     articlePath = "",
     contentSource = "local",
     publicMediaContext,
+    publicAssetVersion,
   } = options;
+
+  function appendPublicAssetVersion(url: string, version: string | null | undefined) {
+    if (!version || !url.includes("/api/public/assets/")) return url;
+    try {
+      const parsed = new URL(url, "https://public.invalid");
+      parsed.searchParams.set("v", version);
+      return url.startsWith("/")
+        ? `${parsed.pathname}${parsed.search}${parsed.hash}`
+        : parsed.toString();
+    } catch {
+      return url;
+    }
+  }
 
   return (tree: Root, file: unknown) => {
     // 获取文章的原始路径信息
@@ -76,6 +96,50 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
       return generateOptimizedImageUrl(resolveRelativePath(mediaPath, articleDir), contentSource);
     }
 
+    function buildPresentationsFromVersionedFacadeUrl(
+      mediaPath: string,
+      targetVariant: "content" | "full"
+    ): PublicMediaPresentations | null {
+      if (!publicMediaContext || !isPublicAssetFacadeUrl(mediaPath)) return null;
+
+      let pathname: string;
+      try {
+        pathname = new URL(mediaPath, "https://public.invalid").pathname;
+      } catch {
+        return null;
+      }
+
+      const match =
+        /^\/api\/public\/assets\/(post|memo)\/([^/]+)\/([^/]+)\/(wm-a-v1|wm-b-v1)\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu.exec(
+          pathname
+        );
+      if (!match) return null;
+
+      const [, kind, encodedSlug, mediaHash, renderId, sourceVariant, ext] = match;
+      if (
+        !isPublicContentKind(kind) ||
+        !isPublicMediaRenderId(renderId) ||
+        !isPublicMediaVariant(sourceVariant) ||
+        kind !== publicMediaContext.kind ||
+        decodeURIComponent(encodedSlug) !== publicMediaContext.slug
+      ) {
+        return null;
+      }
+
+      const buildCandidate = (candidateRenderId: "wm-a-v1" | "wm-b-v1") =>
+        buildPublicAssetPath({
+          scope: publicMediaContext.assetScope,
+          kind,
+          slug: publicMediaContext.slug,
+          mediaHash,
+          renderId: candidateRenderId,
+          variant: targetVariant,
+          ext,
+        });
+
+      return { a: buildCandidate("wm-a-v1"), b: buildCandidate("wm-b-v1") };
+    }
+
     visit(tree, "element", (node: Element) => {
       // 处理 img 标签
       if (node.tagName === "img" && node.properties && node.properties.src) {
@@ -84,13 +148,56 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
           !isExternalUrl(originalSrc) &&
           !originalSrc.startsWith("data:") &&
           !isPublicAssetFacadeUrl(originalSrc);
-        const rewrittenSrc = shouldRewrite
-          ? buildFacadeOrOptimizedUrl(originalSrc, "content", "content")
-          : originalSrc;
+        const rewrittenSrc = appendPublicAssetVersion(
+          shouldRewrite
+            ? buildFacadeOrOptimizedUrl(originalSrc, "content", "content")
+            : originalSrc,
+          publicAssetVersion
+        );
 
         // 首先保存原始 src 用于灯箱功能（在任何处理之前）
         if (enableLightbox) {
           node.properties["data-original-src"] = rewrittenSrc;
+        }
+
+        if (publicMediaContext) {
+          const inlinePresentations = shouldRewrite
+            ? buildPublicMediaPresentations({
+                context: publicMediaContext,
+                mediaPath: originalSrc,
+                role: "content",
+                variant: "content",
+              })
+            : buildPresentationsFromVersionedFacadeUrl(originalSrc, "content");
+          const fullPresentations = shouldRewrite
+            ? buildPublicMediaPresentations({
+                context: publicMediaContext,
+                mediaPath: originalSrc,
+                role: "content",
+                variant: "full",
+              })
+            : buildPresentationsFromVersionedFacadeUrl(originalSrc, "full");
+          if (inlinePresentations) {
+            node.properties["data-watermark-a"] = appendPublicAssetVersion(
+              inlinePresentations.a,
+              publicAssetVersion
+            );
+            node.properties["data-watermark-b"] = appendPublicAssetVersion(
+              inlinePresentations.b,
+              publicAssetVersion
+            );
+          }
+          if (fullPresentations) {
+            node.properties["data-watermark-full-a"] = appendPublicAssetVersion(
+              fullPresentations.a,
+              publicAssetVersion
+            );
+            node.properties["data-watermark-full-b"] = appendPublicAssetVersion(
+              fullPresentations.b,
+              publicAssetVersion
+            );
+          }
+          node.properties["data-watermark-fallback"] = "b";
         }
 
         if (shouldRewrite) {
@@ -126,7 +233,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
               mediaKind === "video"
                 ? buildFacadeOrOptimizedUrl(href, "playback", "play")
                 : buildFacadeOrOptimizedUrl(href, "content", "content");
-            node.properties.href = finalPath;
+            node.properties.href = appendPublicAssetVersion(finalPath, publicAssetVersion);
           }
         }
       }
@@ -134,18 +241,44 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
       if ((node.tagName === "video" || node.tagName === "source") && node.properties?.src) {
         const src = String(node.properties.src);
         if (!isExternalUrl(src) && !isPublicAssetFacadeUrl(src) && !src.startsWith("data:")) {
-          node.properties.src = buildFacadeOrOptimizedUrl(src, "playback", "play");
+          node.properties.src = appendPublicAssetVersion(
+            buildFacadeOrOptimizedUrl(src, "playback", "play"),
+            publicAssetVersion
+          );
         }
       }
 
       if (node.tagName === "video" && node.properties?.poster) {
         const poster = String(node.properties.poster);
+        if (publicMediaContext) {
+          const posterPresentations = !isPublicAssetFacadeUrl(poster)
+            ? buildPublicMediaPresentations({
+                context: publicMediaContext,
+                mediaPath: poster,
+                role: "content",
+                variant: "content",
+              })
+            : buildPresentationsFromVersionedFacadeUrl(poster, "content");
+          if (posterPresentations) {
+            node.properties["data-watermark-poster-a"] = appendPublicAssetVersion(
+              posterPresentations.a,
+              publicAssetVersion
+            );
+            node.properties["data-watermark-poster-b"] = appendPublicAssetVersion(
+              posterPresentations.b,
+              publicAssetVersion
+            );
+          }
+        }
         if (
           !isExternalUrl(poster) &&
           !isPublicAssetFacadeUrl(poster) &&
           !poster.startsWith("data:")
         ) {
-          node.properties.poster = buildFacadeOrOptimizedUrl(poster, "content", "content");
+          node.properties.poster = appendPublicAssetVersion(
+            buildFacadeOrOptimizedUrl(poster, "content", "content"),
+            publicAssetVersion
+          );
         }
       }
     });

@@ -209,6 +209,7 @@ export async function loadmemo(Astro: PageContext) {
   };
   return {
     snapshot: trimRouteSnapshot(snapshot, "memo", Astro.url.pathname),
+    assetVersion: snapshot.generatedAt,
     memoFromProps,
     memo: renderMemo,
     initialMemo: consoleMemo?.isAdmin ? consoleMemo.memo : (consoleWebDemoAdminMemo ?? undefined),

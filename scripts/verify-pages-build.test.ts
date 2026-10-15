@@ -109,6 +109,12 @@ describe("verify-pages-build", () => {
     );
     writeBuildFile(cwd, "site-dist/site-assets/default-avatar.svg", "<svg></svg>");
     writeBuildFile(cwd, "site-dist/watermark-ivanli.svg", "<svg>ivanli.cc</svg>");
+    writeBuildFile(cwd, "site-dist/watermark-ivanli-a.v1.svg", "<svg viewBox='0 0 1 1'></svg>");
+    writeBuildFile(
+      cwd,
+      "site-dist/watermark-ivanli-b.v1.svg",
+      "<svg viewBox='0 0 1 1'>ivanli.cc</svg>"
+    );
     writeBuildFile(
       cwd,
       "site-dist/robots.txt",
@@ -187,6 +193,12 @@ describe("verify-pages-build", () => {
     );
     writeBuildFile(cwd, "site-dist/site-assets/default-avatar.svg", "<svg></svg>");
     writeBuildFile(cwd, "site-dist/watermark-ivanli.svg", "<svg>ivanli.cc</svg>");
+    writeBuildFile(cwd, "site-dist/watermark-ivanli-a.v1.svg", "<svg viewBox='0 0 1 1'></svg>");
+    writeBuildFile(
+      cwd,
+      "site-dist/watermark-ivanli-b.v1.svg",
+      "<svg viewBox='0 0 1 1'>ivanli.cc</svg>"
+    );
     writeBuildFile(
       cwd,
       "site-dist/robots.txt",
@@ -266,6 +278,12 @@ describe("verify-pages-build", () => {
     );
     writeBuildFile(cwd, "site-dist/site-assets/default-avatar.svg", "<svg></svg>");
     writeBuildFile(cwd, "site-dist/watermark-ivanli.svg", "<svg>ivanli.cc</svg>");
+    writeBuildFile(cwd, "site-dist/watermark-ivanli-a.v1.svg", "<svg viewBox='0 0 1 1'></svg>");
+    writeBuildFile(
+      cwd,
+      "site-dist/watermark-ivanli-b.v1.svg",
+      "<svg viewBox='0 0 1 1'>ivanli.cc</svg>"
+    );
     writeBuildFile(
       cwd,
       "site-dist/robots.txt",
@@ -343,6 +361,12 @@ describe("verify-pages-build", () => {
     );
     writeBuildFile(cwd, "site-dist/site-assets/default-avatar.svg", "<svg></svg>");
     writeBuildFile(cwd, "site-dist/watermark-ivanli.svg", "<svg>ivanli.cc</svg>");
+    writeBuildFile(cwd, "site-dist/watermark-ivanli-a.v1.svg", "<svg viewBox='0 0 1 1'></svg>");
+    writeBuildFile(
+      cwd,
+      "site-dist/watermark-ivanli-b.v1.svg",
+      "<svg viewBox='0 0 1 1'>ivanli.cc</svg>"
+    );
     writeBuildFile(
       cwd,
       "site-dist/robots.txt",
