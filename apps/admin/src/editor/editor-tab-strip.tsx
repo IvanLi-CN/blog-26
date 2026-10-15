@@ -163,11 +163,15 @@ export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: Edito
   useLayoutEffect(() => {
     const previousTabIds = previousTabIdsRef.current;
     const nextTabIds = tabs.map((tab) => tab.id);
-    const closedTabId = lastClosedTabIdRef.current;
+    const removedTabIds = previousTabIds.filter((tabId) => !nextTabIds.includes(tabId));
+    const closedTabId =
+      lastClosedTabIdRef.current ?? (removedTabIds.length === 1 ? removedTabIds[0] : null);
 
     if (closedTabId && previousTabIds.includes(closedTabId) && !nextTabIds.includes(closedTabId)) {
       const closedIndex = previousTabIds.indexOf(closedTabId);
-      const nextFocusId = nextTabIds[closedIndex] ?? nextTabIds[closedIndex - 1];
+      const nextFocusId = nextTabIds.includes(activeTabId)
+        ? activeTabId
+        : (nextTabIds[closedIndex] ?? nextTabIds[closedIndex - 1]);
       if (nextFocusId) {
         requestAnimationFrame(() => tabTriggerRefs.current.get(nextFocusId)?.focus());
       }
@@ -175,7 +179,7 @@ export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: Edito
     }
 
     previousTabIdsRef.current = nextTabIds;
-  }, [tabs]);
+  }, [tabs, activeTabId]);
 
   const renderTab = (tab: EditorTabStripItem) => {
     const active = tab.id === activeTabId;
