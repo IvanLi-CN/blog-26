@@ -7,7 +7,7 @@
     "DESIGN.md": "31c1ee56e7b0c3f54f89263273d6ab881c527f4b",
     "apps/admin/src/components/admin-soft-ui.stories.tsx": "a8f895fe49b34448028e29ae37873caf1e5d5769",
     "apps/admin/src/components/admin-toast.tsx": "35c4da89daee9049fe6348e2364847f319d7f78f",
-    "apps/admin/src/components/editor-file-browser.tsx": "33fb04d39f3fbf5cf77122b60b2e1cd999dacffe",
+    "apps/admin/src/components/editor-file-browser.tsx": "c40da0115c3ced60e8934f515e9b7cd4be0ed17e",
     "apps/admin/src/components/llm-model-picker-focus.stories.tsx": "17033c90953fd663f249c8df23627a4ddd4f68fd",
     "apps/admin/src/components/llm-model-picker.tsx": "d9efd0aa4fd84046c57cf9bc5a9873289c7c976b",
     "apps/admin/src/components/search-policy-card.tsx": "3e9cb5933cae9af567cb972eb41fde6ff3d54ea7",
