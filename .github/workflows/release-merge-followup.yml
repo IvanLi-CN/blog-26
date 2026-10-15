@@ -24,7 +24,6 @@ jobs:
     concurrency:
       group: release-merge-followup
       cancel-in-progress: false
-      queue: max
     permissions:
       contents: read
       pull-requests: read

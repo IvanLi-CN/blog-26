@@ -7,6 +7,7 @@ import contractJson from "../../.github/release-contract.json";
 import { assertRunSource, mainChecksPassed, qualitySchema } from "../../src/lib/release/completion";
 import { GitHubRelease, type GitHubTransport } from "../../src/lib/release/github";
 import { contractSchema } from "../../src/lib/release/policy";
+import { assertPolicyIdentity, policyIdentity } from "../../src/lib/release/source";
 
 const contract = contractSchema.parse(contractJson);
 const quality = qualitySchema.parse(qualityJson);
@@ -33,6 +34,14 @@ function transport(request: GitHubTransport["request"]): GitHubTransport {
 }
 
 describe("trusted release evaluation", () => {
+  test("followup rejects a release identity from a different policy", () => {
+    const identity = policyIdentity(contract, quality);
+    expect(() => assertPolicyIdentity(contract, quality, identity)).not.toThrow();
+    expect(() => assertPolicyIdentity(contract, quality, "0".repeat(64))).toThrow(
+      "Release policy changed"
+    );
+  });
+
   test("candidate signature probes never execute with a repository write token", () => {
     const workflow = z
       .object({

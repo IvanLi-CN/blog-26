@@ -30,6 +30,7 @@ const followup = z
       followup: z.object({
         if: z.string(),
         "timeout-minutes": z.number(),
+        concurrency: z.object({ group: z.string(), "cancel-in-progress": z.boolean() }).strict(),
         permissions: z.record(z.string(), z.string()),
       }),
     }),
@@ -80,6 +81,10 @@ describe("prerelease workflow deployment boundary", () => {
     });
     expect(followup.jobs.followup["timeout-minutes"]).toBe(90);
     expect(followup.jobs.followup.if).toBe("github.event_name == 'workflow_dispatch'");
+    expect(followup.jobs.followup.concurrency).toEqual({
+      group: "release-merge-followup",
+      "cancel-in-progress": false,
+    });
     expect(followup.jobs.followup.permissions).toMatchObject({
       actions: "write",
       checks: "write",

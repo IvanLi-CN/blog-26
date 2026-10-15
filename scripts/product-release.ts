@@ -29,7 +29,7 @@ import {
   publishProducts,
   readProductionPointers,
 } from "../src/lib/release/publication";
-import { readContract } from "../src/lib/release/source";
+import { assertPolicyIdentity, readContract } from "../src/lib/release/source";
 import { isPrerelease } from "../src/lib/release/version";
 
 const contract = readContract();
@@ -197,11 +197,15 @@ if (command === "notification") {
           : item.id === payload.inputs.release_id)
     );
     if (!entry?.prNumber) throw new Error("Registered release preparation was not found");
+    assertPolicyIdentity(contract, quality, entry.policyDigest);
     const evaluationDeadline = Date.now() + 75 * 60_000;
     while (true) {
       const pull = app.pull(entry.prNumber);
       assertReleasePull(app, entry, pull);
       if (evaluationChecksPassed(app, sourceSha, quality.required_checks, releaseBranch(entry))) {
+        if (app.reference("heads/main") !== entry.sourceSha)
+          throw new Error("Preparation source changed before release checks were published");
+        assertPolicyIdentity(contract, quality, entry.policyDigest);
         app.publishReleaseChecks(entry.id, sourceSha, entry.prNumber, quality.required_checks);
         break;
       }

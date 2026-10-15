@@ -10,7 +10,7 @@
     ".github/workflows/manual-product-release.yml": "ea9a5c86fe62d31bf5949ee7c9684c507c7aaecd",
     ".github/workflows/notify-release-failure.yml": "7f7aa566abd39c485756b939822c04b1d0c9f40f",
     ".github/workflows/product-release.yml": "57d5dbbe84f8292882ee715dab354d02fcdb8699",
-    ".github/workflows/release-merge-followup.yml": "572037b35578fa2a2f74d5719ff86aeaee615966",
+    ".github/workflows/release-merge-followup.yml": "1bf7166bf6e678e561a3e6eb8053bd86885442c3",
     ".gitignore": "ce64803d3963e4668cd644c7ef465dd36e266eba",
     "AGENTS.md": "043a300f5054f4b889e8992dd98209c4dfe2143d",
     "CONTEXT.md": "6e07cc4ff24ef5734371534b88f7e352dfdee2e9",
@@ -75,7 +75,7 @@
     "scripts/playbook-content-update.ts": "469d45c21ce339ca139469ed43b151e7c80b9200",
     "scripts/prepare-playbook-edition.ts": "6e8ff021a4c5d29d63b122203cf644c55246ca7a",
     "scripts/prepare-edgeone-pwa-config.ts": "c9398c2f7cb3f00c7c112543a74231a90d6a957f",
-    "scripts/product-release.ts": "9212644d5bfbc081d72ab8dd58ddece69f93697e",
+    "scripts/product-release.ts": "0d34708f9f10e6601cf38d1f96dbd0bd51984fe8",
     "scripts/run-precommit-tests.ts": null,
     "scripts/release-settings.ts": "4e64a816dd0e45697fa26f0c8b457ccf6bee046b",
     "scripts/smoke-product-release.ts": "7285e6021b7074facbceb921ff9171d684758fff",
@@ -121,7 +121,7 @@
     "src/lib/playbook/search.ts": "c0b0ed70c641609c94e5fde7286ba76c4f47bce7",
     "src/lib/project-catalog.ts": "0a3960a0bd5189eb8e8da0441db4e19d8a5769da",
     "src/lib/release/artifacts.ts": "97fcc6e5ee851fef3a6e54610a24ba04c3d705b8",
-    "src/lib/release/completion.ts": "58320f7177db69c242590111b9ac2222c3decd03",
+    "src/lib/release/completion.ts": "e9673b2a7752fe6ec3cb34dca845cbb8a2a0ba5c",
     "src/lib/release/deployment.ts": "8125665bd69a1e631f599ff61d01e2a95c5c907f",
     "src/lib/release/github.ts": "cf62b0b46e8b892169b582c977472d23125a4348",
     "src/lib/release/inputs.ts": "ecc5419981da74a3fd2f54b332ed6e3fe315af26",
@@ -130,7 +130,7 @@
     "src/lib/release/preparation.ts": "ed114e55ef9ca6c3ec3f70aeb75b3c4e2afb3294",
     "src/lib/release/products.ts": "45ee9d794ddc5fc7f9bd9420cc212da49713fd4b",
     "src/lib/release/publication.ts": "f76d8aa146bb3f20bc83091857bd09c81edba02f",
-    "src/lib/release/source.ts": "7725ab841f59bcd490d9caaba415deabc2aa5a3b",
+    "src/lib/release/source.ts": "62a4e9e5c50fd142dde5938720212b94a2b24fbb",
     "src/lib/search/content-identity.ts": "5a3fa2a1eaae29fb03d72e75bb8b7982f6dec177",
     "src/lib/search/content-search.test.ts": "2149f97140b3797b477952559b9e3bae40257a16",
     "src/lib/search/content-search.ts": "71768f7c27091aaa8cbf424d0f5b73ec52332457",
@@ -150,7 +150,7 @@
     "tests/lib/manual-release-ledger.test.ts": "f261cabef857a626f8ce2030b3730bc7d0dfacd3",
     "tests/lib/manual-release-media.test.ts": "57488e7a228793d57a632eaa78bfa93e7cf9fcf8",
     "tests/lib/manual-release-policy.test.ts": "2435afe5a32a75d263c5757709c9c4db976b2f95",
-    "tests/lib/manual-release-provenance.test.ts": "a94eef682470518b228546bbb249ef260f3453a9",
+    "tests/lib/manual-release-provenance.test.ts": "ae3f992fc70f29a96a28651f466abe63e6709ee2",
     "tests/lib/manual-release-recovery.test.ts": "8da7d35f101b78c81fc755e251538b50164b7e78",
     "tests/lib/public-pwa-edgeone-config.test.ts": "0acc2191b11794416bdfdff56b8e7a78dfb6d2bf",
     "tests/lib/memo-list-web-demo.test.ts": "38f0f87d65565abfa3b35e9b2b5f60e2d561bddd",
@@ -171,7 +171,7 @@
     "docs/adr/0018-product-prerelease-version-allocation.md": "2b058a5898d06d4526d4c97894e3a5b3fa3183d3",
     "docs/adr/0025-release-pr-check-attestation.md": "534efd366ea0700ecc385ebdbda3141341f0975d",
     "src/lib/release/version.ts": "ee820d89fba837618243554a16e9d931e8e90189",
-    "tests/ci/product-prerelease-workflow.test.ts": "39eda8748a221de78aa09872becefc9e00eacd8a",
+    "tests/ci/product-prerelease-workflow.test.ts": "88c31c1b8cb27b8c2ab39a7c29630e23ff512645",
     "tests/lib/manual-release-publication.test.ts": "fb861f2597ce10183b20575ec7f1ea61aac8da94",
     "tests/lib/manual-release-source.test.ts": "111bbba24f28fac6c31a846261e316b9cd3854d6"
   },
@@ -193,7 +193,7 @@
         },
         {
           "path": "tests/lib/manual-release-provenance.test.ts",
-          "blob": "a94eef682470518b228546bbb249ef260f3453a9",
+          "blob": "ae3f992fc70f29a96a28651f466abe63e6709ee2",
           "command": "bun test tests/lib/manual-release-provenance.test.ts tests/ci/product-prerelease-workflow.test.ts"
         },
         {
@@ -225,8 +225,8 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The complete interval from the signed 2.7.0 baseline adds compatible version metadata, product SemVer requests, prerelease completion state, and a protected exact-head release-check attestation; application SQLite and local-content formats remain unchanged. Release provenance and workflow-contract tests cover the attestation boundary; the existing full-suite timeout remains an unrelated environment-sensitive test result.",
-      "assessed_at": "2026-10-15T07:45:17Z",
+      "reasoning": "The complete interval from the signed 2.7.0 baseline adds compatible version metadata, product SemVer requests, prerelease completion state, and a protected exact-head release-check attestation; application SQLite and local-content formats remain unchanged. Release provenance, policy-identity and workflow-contract tests cover the attestation boundary; the existing full-suite timeout remains an unrelated environment-sensitive test result.",
+      "assessed_at": "2026-10-15T07:58:20Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -235,7 +235,7 @@
         },
         {
           "path": "tests/lib/manual-release-provenance.test.ts",
-          "blob": "a94eef682470518b228546bbb249ef260f3453a9",
+          "blob": "ae3f992fc70f29a96a28651f466abe63e6709ee2",
           "command": "bun test tests/lib/manual-release-provenance.test.ts tests/ci/product-prerelease-workflow.test.ts"
         },
         {
@@ -332,7 +332,7 @@
     "verified": {
       "impact": "minor",
       "reasoning": "The unpublished interval remains minor for compatible product metadata, build-time Web Demo capabilities, and the release followup attestation. The followup only publishes a derived PR check after exact-head CI/E2E success and changes no public API, SQLite schema, or local content format. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded.",
-      "assessed_at": "2026-10-15T07:45:17Z",
+      "assessed_at": "2026-10-15T07:58:20Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -341,7 +341,7 @@
         },
         {
           "path": "tests/lib/manual-release-provenance.test.ts",
-          "blob": "a94eef682470518b228546bbb249ef260f3453a9",
+          "blob": "ae3f992fc70f29a96a28651f466abe63e6709ee2",
           "command": "bun test tests/lib/manual-release-provenance.test.ts tests/ci/product-prerelease-workflow.test.ts"
         },
         {
@@ -445,7 +445,7 @@
         },
         {
           "path": "tests/lib/manual-release-provenance.test.ts",
-          "blob": "a94eef682470518b228546bbb249ef260f3453a9",
+          "blob": "ae3f992fc70f29a96a28651f466abe63e6709ee2",
           "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {

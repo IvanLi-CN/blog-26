@@ -60,6 +60,15 @@ export function policyIdentity(contract: unknown, quality: unknown): string {
   return policyFingerprint(contract, quality, treeBlobs(gitOutput(["rev-parse", "HEAD"]).trim()));
 }
 
+export function assertPolicyIdentity(
+  contract: unknown,
+  quality: unknown,
+  expectedDigest: string
+): void {
+  if (expectedDigest !== policyIdentity(contract, quality))
+    throw new Error("Release policy changed; cannot reinterpret the original identity");
+}
+
 export function gitFile(sha: string, path: string): string | undefined {
   try {
     return gitOutput(["show", `${shaSchema.parse(sha)}:${path}`]);

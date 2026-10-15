@@ -16,7 +16,7 @@ import {
   assessReleaseSource,
   verifyTrustedTags,
 } from "./preparation";
-import { changedBlobs, gitFile, gitOutput, policyIdentity } from "./source";
+import { assertPolicyIdentity, changedBlobs, gitFile, gitOutput } from "./source";
 import { isPrerelease } from "./version";
 
 export const qualitySchema = z
@@ -188,8 +188,7 @@ export async function resolveCompletedRelease(
     }
   }
   if (!matched || matched.stage === "complete") return undefined;
-  if (matched.policyDigest !== policyIdentity(github.contract, quality))
-    throw new Error("Release policy changed; cannot reinterpret the original identity");
+  assertPolicyIdentity(github.contract, quality, matched.policyDigest);
   if (matched.releaseRunId && matched.releaseRunId !== releaseRunId) return undefined;
   verifyTrustedTags(github, current.ledger);
   if (!matched.prNumber) throw new Error("Release PR proof is missing");
@@ -268,8 +267,8 @@ export async function validateCandidatePolicy(
         }
       }
     }
-    if (!entry?.prNumber || entry.policyDigest !== policyIdentity(github.contract, quality))
-      throw new Error("VERSION-only change has no valid durable preparation");
+    if (!entry?.prNumber) throw new Error("VERSION-only change has no valid durable preparation");
+    assertPolicyIdentity(github.contract, quality, entry.policyDigest);
     const linked = pull || github.pull(entry.prNumber);
     if (pull) {
       assertReleasePull(github, entry, linked);
