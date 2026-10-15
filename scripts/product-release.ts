@@ -29,7 +29,7 @@ import {
   publishProducts,
   readProductionPointers,
 } from "../src/lib/release/publication";
-import { readContract } from "../src/lib/release/source";
+import { assertPolicyIdentity, readContract } from "../src/lib/release/source";
 import { isPrerelease } from "../src/lib/release/version";
 
 const contract = readContract();
@@ -156,53 +156,84 @@ if (command === "notification") {
   const app = github();
   const payload = z
     .object({
-      workflow_run: z.object({
-        head_sha: z.string(),
-        head_branch: z.string(),
-        event: z.string(),
-        path: z.string(),
-        head_repository: z.object({ full_name: z.string() }),
-      }),
+      inputs: z
+        .object({
+          release_id: z.string().min(1),
+          pr_number: z.coerce.number().int().positive(),
+          head_sha: z.string().regex(/^[a-f0-9]{40}$/),
+        })
+        .optional(),
+      workflow_run: z
+        .object({
+          head_sha: z.string().regex(/^[a-f0-9]{40}$/),
+          head_branch: z.string(),
+          event: z.string(),
+          path: z.string(),
+          head_repository: z.object({ full_name: z.string() }),
+        })
+        .optional(),
     })
     .parse(await event());
   const run = payload.workflow_run;
   if (
-    run.head_repository.full_name !== contract.repository ||
-    !["workflow_dispatch", "pull_request"].includes(run.event) ||
-    ![".github/workflows/ci.yml", ".github/workflows/e2e.yml"].includes(run.path)
+    !payload.inputs &&
+    (!run ||
+      run.head_repository.full_name !== contract.repository ||
+      !["workflow_dispatch", "pull_request"].includes(run.event) ||
+      ![".github/workflows/ci.yml", ".github/workflows/e2e.yml"].includes(run.path))
   )
     throw new Error("Untrusted preparation evaluation event");
+  const sourceSha = payload.inputs?.head_sha || run?.head_sha;
+  if (!sourceSha) throw new Error("Release followup is missing its preparation head");
   const store = new GitHubLedgerStore(app);
   if (app.reference(`heads/${contract.ledgerBranch}`)) {
     const entry = (await store.read()).ledger.entries.find(
       (item) =>
-        item.preparationHead === run.head_sha &&
-        releaseBranch(item) === run.head_branch &&
-        item.prNumber &&
-        item.stage !== "abandoned"
+        item.stage === "pr_open" &&
+        item.preparationHead === sourceSha &&
+        item.prNumber === (payload.inputs?.pr_number || item.prNumber) &&
+        (!payload.inputs?.release_id
+          ? releaseBranch(item) === run?.head_branch
+          : item.id === payload.inputs.release_id)
     );
-    if (
-      entry?.prNumber &&
-      evaluationChecksPassed(app, run.head_sha, quality.required_checks, run.head_branch)
-    ) {
-      const deadline = Date.now() + 20 * 60_000;
-      while (true) {
-        const pull = app.pull(entry.prNumber);
-        assertReleasePull(app, entry, pull);
-        if (pull.merged && pull.merge_commit_sha) {
-          assertMerge(app, entry, pull, pull.merge_commit_sha);
-          for (const workflow of ["ci.yml", "e2e.yml"] as const)
-            app.dispatchEvaluation(workflow, "main", pull.merge_commit_sha);
-          break;
-        }
-        if (pull.state !== "open" || app.reference("heads/main") !== entry.sourceSha)
-          throw new Error("Preparation source changed before merge");
-        if (Date.now() >= deadline)
-          throw new Error(
-            "Auto-merge has not completed; rerun this same followup after resolving the protected gate"
-          );
-        await new Promise((done) => setTimeout(done, 10_000));
+    if (!entry?.prNumber) throw new Error("Registered release preparation was not found");
+    assertPolicyIdentity(contract, quality, entry.policyDigest);
+    const evaluationDeadline = Date.now() + 75 * 60_000;
+    while (true) {
+      const pull = app.pull(entry.prNumber);
+      assertReleasePull(app, entry, pull);
+      if (evaluationChecksPassed(app, sourceSha, quality.required_checks, releaseBranch(entry))) {
+        if (app.reference("heads/main") !== entry.sourceSha)
+          throw new Error("Preparation source changed before release checks were published");
+        assertPolicyIdentity(contract, quality, entry.policyDigest);
+        app.publishReleaseChecks(entry.id, sourceSha, entry.prNumber, quality.required_checks);
+        break;
       }
+      if (pull.state !== "open" || app.reference("heads/main") !== entry.sourceSha)
+        throw new Error("Preparation source changed before release checks completed");
+      if (Date.now() >= evaluationDeadline)
+        throw new Error(
+          "Exact-head release evaluations did not complete before the followup deadline"
+        );
+      await new Promise((done) => setTimeout(done, 10_000));
+    }
+    const mergeDeadline = Date.now() + 20 * 60_000;
+    while (true) {
+      const pull = app.pull(entry.prNumber);
+      assertReleasePull(app, entry, pull);
+      if (pull.merged && pull.merge_commit_sha) {
+        assertMerge(app, entry, pull, pull.merge_commit_sha);
+        for (const workflow of ["ci.yml", "e2e.yml"] as const)
+          app.dispatchEvaluation(workflow, "main", pull.merge_commit_sha);
+        break;
+      }
+      if (pull.state !== "open" || app.reference("heads/main") !== entry.sourceSha)
+        throw new Error("Preparation source changed before merge");
+      if (Date.now() >= mergeDeadline)
+        throw new Error(
+          "Auto-merge has not completed; rerun this same followup after resolving the protected gate"
+        );
+      await new Promise((done) => setTimeout(done, 10_000));
     }
   }
 } else if (command === "resolve") {

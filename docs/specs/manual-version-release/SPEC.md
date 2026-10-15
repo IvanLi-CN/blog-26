@@ -63,7 +63,7 @@
 
 ### REQ-MVR-010
 
-准备 MUST 显式 dispatch 确切 preparation head 的 CI/E2E；合并衔接 MUST 核验全部 PR 检查、观察受保护的自动合并并显式 dispatch 同一 merge SHA 的 main CI/E2E。发布 MUST 由 CI/E2E 的 main push 或已验证 dispatch 完成事件自动衔接，核验确切 merge SHA 的全部 main required checks。普通实现提交 MUST 跳过产品发布。PR 可取消过期运行；main 和发布评估 MUST 保留必需运行。重跑 MUST 使用原运行身份及策略。
+准备 MUST 显式 dispatch 确切 preparation head 的 CI/E2E；合并衔接 MUST 核验全部确切 SHA 的评估作业，并由同一内置 `GITHUB_TOKEN` 通过 Checks API 发布带有发布身份和 PR 关联的成功检查见证，使保护规则能够识别该评估结果。该见证 MUST 只在确切 CI/E2E 成功、登记身份、PR 编号、PR head 和来源仍一致时发布；不得调用审批接口或绕过 main 保护。随后合并衔接 MUST 观察受保护的自动合并并显式 dispatch 同一 merge SHA 的 main CI/E2E。发布 MUST 由 CI/E2E 的 main push 或已验证 dispatch 完成事件自动衔接，核验确切 merge SHA 的全部 main required checks。普通实现提交 MUST 跳过产品发布。PR 可取消过期运行；main 和发布评估 MUST 保留必需运行。重跑 MUST 使用原运行身份及策略。
 
 ### REQ-MVR-011
 
@@ -87,7 +87,7 @@
 
 ### REQ-MVR-012
 
-仓库 MUST 启用自动合并、main PR-only、严格 up-to-date、Verified commits、禁止 force/delete 和管理员受约束规则，不新增人工审批人数。发布身份 MUST 使用内置 `GITHUB_TOKEN` 与 `github-actions[bot]`，不得要求新增 App、私钥或 PAT。仓库 MUST 允许 Actions 创建 PR；代码 MUST NOT 调用审批接口或绕过 main 保护。准备和衔接按 job 声明必需的 contents/pull-requests/actions 权限，GHCR 采用 job 级 packages:write，默认 Actions 只读，Playbook 来源 token 独立。实际配置、机器人 Verified 提交及非生产 Candidate Actions 运行 MUST 提供验收证据。
+仓库 MUST 启用自动合并、main PR-only、严格 up-to-date、Verified commits、禁止 force/delete 和管理员受约束规则，不新增人工审批人数。发布身份 MUST 使用内置 `GITHUB_TOKEN` 与 `github-actions[bot]`，不得要求新增 App、私钥或 PAT。仓库 MUST 允许 Actions 创建 PR；代码 MUST NOT 调用审批接口或绕过 main 保护。准备和衔接按 job 声明必需的 contents/pull-requests/actions/checks 权限，GHCR 采用 job 级 packages:write，默认 Actions 只读，Playbook 来源 token 独立。实际配置、机器人 Verified 提交及非生产 Candidate Actions 运行 MUST 提供验收证据。
 
 ## Verification
 
@@ -129,9 +129,9 @@
 
 ### VER-MVR-007
 
-- Method: 核验完成事件、同 SHA main 检查和原运行恢复测试。
+- Method: 核验确切 preparation head 的 CI/E2E、PR 关联检查见证、完成事件、同 SHA main 检查和原运行恢复测试。
 - covers: `REQ-MVR-010`, `REQ-MVR-011`
-- Pass condition: 普通提交跳过、错误来源或 skipped 必需检查不能发布；静态和 OCI 产物来源一致，恢复仅补齐缺失步骤，丢失/摘要冲突阻断；预发布的部署和正式 latest 操作为不适用，较旧身份不回退生产指针。
+- Pass condition: 普通提交跳过、错误来源或 skipped 必需检查不能发布；未通过确切评估不得发布 PR 检查见证；静态和 OCI 产物来源一致，恢复仅补齐缺失步骤，丢失/摘要冲突阻断；预发布的部署和正式 latest 操作为不适用，较旧身份不回退生产指针。
 
 ### VER-MVR-009
 
@@ -170,6 +170,7 @@
 - [ADR 0016](../../adr/0016-signed-release-ledger-and-frozen-products.md)
 - [ADR 0017](../../adr/0017-product-prerelease-publication-boundary.md)
 - [ADR 0018](../../adr/0018-product-prerelease-version-allocation.md)
+- [ADR 0025](../../adr/0025-release-pr-check-attestation.md)
 
 ## References
 

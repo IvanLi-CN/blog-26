@@ -25,6 +25,14 @@ const repositoryCommitSchema = z.object({
     verification: z.object({ verified: z.boolean(), reason: z.string() }),
   }),
 });
+const checkRunSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+  status: z.string(),
+  conclusion: z.string().nullable(),
+  external_id: z.string().nullable().optional(),
+  app: z.object({ slug: z.string() }).nullable().optional(),
+});
 export const pullSchema = z.object({
   number: z.number().int().positive(),
   node_id: z.string(),
@@ -228,6 +236,56 @@ export class GitHubRelease {
     if (this.reference(`heads/${branch}`) !== expectedHead)
       throw new Error("Evaluation source moved before dispatch");
     this.api(`${this.root}/actions/workflows/${workflow}/dispatches`, "POST", { ref: branch });
+  }
+
+  dispatchReleaseFollowup(releaseId: string, prNumber: number, headSha: string): void {
+    this.api(`${this.root}/actions/workflows/release-merge-followup.yml/dispatches`, "POST", {
+      ref: this.contract.branch,
+      inputs: {
+        release_id: releaseId,
+        pr_number: String(prNumber),
+        head_sha: shaSchema.parse(headSha),
+      },
+    });
+  }
+
+  publishReleaseChecks(
+    releaseId: string,
+    headSha: string,
+    pullNumber: number,
+    required: string[]
+  ): void {
+    const checks = this.pages(
+      `${this.root}/commits/${shaSchema.parse(headSha)}/check-runs?per_page=100`,
+      "check_runs"
+    ).map((raw) => checkRunSchema.parse(raw));
+    for (const name of required) {
+      const externalId = `release/${releaseId}/${name}`;
+      const payload = {
+        name,
+        head_sha: shaSchema.parse(headSha),
+        external_id: externalId,
+        status: "completed",
+        conclusion: "success",
+        details_url: `https://github.com/${this.contract.repository}/pull/${pullNumber}`,
+        output: {
+          title: "Verified exact-head release gate",
+          summary: `Exact-head CI/E2E workflow_dispatch runs passed for ${headSha}.`,
+        },
+      };
+      const existing = checks.find(
+        (check) =>
+          check.name === name &&
+          check.external_id === externalId &&
+          check.app?.slug === "github-actions"
+      );
+      if (existing) {
+        if (existing.status !== "completed" || existing.conclusion !== "success")
+          this.api(`${this.root}/check-runs/${existing.id}`, "PATCH", payload);
+        continue;
+      }
+      this.api(`${this.root}/check-runs`, "POST", payload);
+    }
   }
 
   file(path: string, sha: string): string {

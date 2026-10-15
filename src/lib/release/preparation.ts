@@ -288,5 +288,6 @@ export async function prepareRelease(
     throw new Error("Native auto-merge was not enabled");
   for (const workflow of ["ci.yml", "e2e.yml"] as const)
     github.dispatchEvaluation(workflow, branch, actual.head.sha);
+  github.dispatchReleaseFollowup(opened.id, actual.number, actual.head.sha);
   return opened;
 }

@@ -1,24 +1,33 @@
 name: Release Merge Followup
 on:
-  workflow_run:
-    workflows: [CI/CD Pipeline, E2E Tests]
-    types: [completed]
-    branches: ['th/release-*']
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: Registered release identity
+        required: true
+        type: string
+      pr_number:
+        description: Prepared release pull request number
+        required: true
+        type: string
+      head_sha:
+        description: Exact prepared release head
+        required: true
+        type: string
 permissions:
   contents: read
 jobs:
   followup:
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
     concurrency:
       group: release-merge-followup
       cancel-in-progress: false
-      queue: max
     permissions:
       contents: read
       pull-requests: read
-      checks: read
+      checks: write
       actions: write
     steps:
       - uses: actions/checkout@v7
@@ -30,7 +39,7 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
-      - name: Verify registered PR gates, observe protected auto-merge and dispatch exact-main checks
+      - name: Verify registered PR gates, publish protected checks and observe auto-merge
         run: bun scripts/product-release.ts followup
         env:
           GH_TOKEN: ${{ github.token }}

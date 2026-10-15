@@ -5,23 +5,23 @@
   "covered_files": {
     ".github/quality-gates.json": "1a3e713708baaf265adce051b8b613b3a525bb4f",
     ".github/release-contract.json": "b019adfd2969ca868d58ed7014692c9fade8ee8a",
-    ".github/workflows/ci.yml": "d0ce015111ffb8d71e11ad8e3d1650d2b6c44548",
-    ".github/workflows/e2e.yml": "a5da1b0077a0c533f5ff96308829abdd1443e8d8",
+    ".github/workflows/ci.yml": "e64b81833b14841257120a5bad19f07c8ae393df",
+    ".github/workflows/e2e.yml": "1d7d44ddf153a4c470faf837daeb63c5e139dbd2",
     ".github/workflows/manual-product-release.yml": "ea9a5c86fe62d31bf5949ee7c9684c507c7aaecd",
     ".github/workflows/notify-release-failure.yml": "7f7aa566abd39c485756b939822c04b1d0c9f40f",
-    ".github/workflows/product-release.yml": "be25706242df623b5362363d27846a865e9a6e5d",
-    ".github/workflows/release-merge-followup.yml": "4b73c92f1d880835a2193a9b0e93826717b028ca",
-    ".gitignore": "8a2342e4ffaa79d57673a41b07ba3fed6c34bb13",
+    ".github/workflows/product-release.yml": "57d5dbbe84f8292882ee715dab354d02fcdb8699",
+    ".github/workflows/release-merge-followup.yml": "1bf7166bf6e678e561a3e6eb8053bd86885442c3",
+    ".gitignore": "ce64803d3963e4668cd644c7ef465dd36e266eba",
     "AGENTS.md": "043a300f5054f4b889e8992dd98209c4dfe2143d",
-    "CONTEXT.md": "aa1054a4c7bbee8555ba201c33c4989de49f720e",
-    "Dockerfile": "6e1616b4117589937ce07ce06e8c7b8627ef639a",
-    "VERSION": "c8e38b614057b7e417c63fde44726a4143de9da0",
+    "CONTEXT.md": "6e07cc4ff24ef5734371534b88f7e352dfdee2e9",
+    "Dockerfile": "d4db524b8afd2d6b278bfd802aa4de5cb377930a",
+    "VERSION": "4772543317946fcd286c6d5f8e39a61dc241df07",
     "apps/admin/src/components/admin-soft-ui.stories.tsx": "9a9e6b9ecceaa5c5351940d47c12e83f72adff11",
     "apps/admin/src/components/app-shell.tsx": "5adc074871a85045314bce8f87e3f55168d1f5d8",
     "apps/admin/src/components/theme-provider.tsx": "c1d0ee657c054716960bfe48f7779f1c566ab0ab",
-    "apps/admin/src/demo/mock-admin-api.ts": "7bd04da752e63143cba38b5ac9e04c6e011bc59e",
+    "apps/admin/src/demo/mock-admin-api.ts": "15d244249b2d83414ed9e54749c3647f69532713",
     "apps/admin/src/main.tsx": "ec4e63191752aee907fce65285976c04e6cd6709",
-    "apps/admin/src/styles.css": "26273d29016b1bcc47992aeef36404f3ade3ec3f",
+    "apps/admin/src/styles.css": "6ca074f8dbbfab7928051a65a04002b36ac3faba",
     "apps/admin/vite.config.ts": "0cf2af30d157cc5594b925de44a67b129232ec38",
     "docs/adr/0008-ci-dependency-freshness-policy.md": "a7bd615e08f9a13ff3469987dc5da7685747ada4",
     "docs/adr/0013-build-time-web-demo-and-story-boundary.md": "732cb449c350a8e85110ca762f7b3ed320073e7f",
@@ -31,18 +31,18 @@
     "docs/adr/0015-manual-version-release-delivery.md": "2b55a3460f72c74080730d5f4c27f0983ce3b015",
     "docs/adr/0016-signed-release-ledger-and-frozen-products.md": "2710d983808215da32faed6b37fc1dc6900e0795",
     "docs/runbooks/fs-only-migration.md": "5959459a1a36f52d1e460c6aa4264ae5bd52cd31",
-    "docs/runbooks/manual-version-release.md": "519a1c71571f7690a99ddebe851dc00c37382fcb",
-    "docs/solutions/search/sqlite-fts5-fallback.md": "d9cc4bc78fe95f3038e6cc600219969c76b909fe",
+    "docs/runbooks/manual-version-release.md": "824935874dff2595d42122cc5920abe242483eb6",
+    "docs/solutions/search/sqlite-fts5-fallback.md": "12d6ac08ede207d96d44acda075b97ecd416f6c8",
     "docs/specs/admin-soft-ui-redesign/IMPLEMENTATION.md": "097ee9cb37ef2857fe916affdcb6ea9e9255ee3e",
     "docs/specs/admin-soft-ui-redesign/SPEC.md": "cd7ce30b8508cf30e1938e78b4cf82fcb385b654",
     "docs/specs/manual-version-release/HISTORY.md": "3390e3b74098ea237dda297a6e7ae824ff169fad",
-    "docs/specs/manual-version-release/IMPLEMENTATION.md": "1b11b98ce5cb2bdcdb452a2be3ea020007340b31",
-    "docs/specs/manual-version-release/SPEC.md": "a4038ab67cdb97e0faa34d45b30aa5fd6076b45a",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "1306d95d097a802c8513cdf109d39aeaddcb0861",
+    "docs/specs/manual-version-release/SPEC.md": "334e45a47d38709288d44a55a506b997233b7134",
     "docs/specs/memo-admin-inline-view/IMPLEMENTATION.md": "0badd808c41606c734b690564146261a730473ba",
-    "docs/specs/memo-admin-inline-view/SPEC.md": "2a5474ca4ebafda679047831a0332c2f7436c65f",
-    "docs/specs/nature-front-ui/HISTORY.md": "8fb4d930b5b34a4e20ecfbbb2ea51502a9dd0193",
-    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "a6f956ede52f82609afb91a60fa4f7f3caffd3c8",
-    "docs/specs/nature-front-ui/SPEC.md": "07b2a3b19b3c3c8b8bc1e97aa127ab7ddada285d",
+    "docs/specs/memo-admin-inline-view/SPEC.md": "4500d02d44f3f5cd72db314f49adad6cfb55c549",
+    "docs/specs/nature-front-ui/HISTORY.md": "f57c6157bbc6304bf64bb3a7a2e38ee506d34271",
+    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "d2b91cec14d7874b1f3285eaebecaf1e180dc9f9",
+    "docs/specs/nature-front-ui/SPEC.md": "247599e60516fda88cb6573ec1e7517b2db5161f",
     "docs/specs/nature-front-ui/assets/projects-oidrune-operations-desktop-dark.png": "7ccb20804a65e7304c784083158a708dc743d4a4",
     "docs/specs/nature-front-ui/assets/projects-oidrune-operations-desktop-light.png": "0b24122e037a85bf967026c2103497041fb4df4f",
     "docs/specs/nature-front-ui/assets/projects-oidrune-operations-mobile-dark.png": "3c72a9eb6f41d7cd37a5c7efed70a00706ea9b8b",
@@ -53,9 +53,9 @@
     "docs/specs/release-failure-telegram-alerts/HISTORY.md": "83c05243b415749850534d5b0e206ff86213d2ce",
     "docs/specs/release-failure-telegram-alerts/IMPLEMENTATION.md": "5b06386d180120b55a7740037459aa3e07eb7aec",
     "docs/specs/release-failure-telegram-alerts/SPEC.md": "439b85a711bed3ac7f18cc686ec6b312899fd713",
-    "docs/specs/style-playbook-integration/HISTORY.md": "ad9c2cbc5e4fe33de28b47221390890cd860164d",
-    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "127c8e2ae23588949b0defb148598d92bf009f70",
-    "docs/specs/style-playbook-integration/SPEC.md": "2ebfc806f7fe5310181719f298da9ffdb6398d05",
+    "docs/specs/style-playbook-integration/HISTORY.md": "d353880178f12debe4e0371bfb7707eaf705090d",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "168f5e990fbae3206d924e3a37064b69486a19e1",
+    "docs/specs/style-playbook-integration/SPEC.md": "f58b86ab2a4558bd8c7406eafbd6d7fa8a62e2c8",
     "docs/specs/style-playbook-integration/assets/playbook-desktop-card-copy-full-width-dark-1280.png": "e5072fa8838fca87fdc113dfc4b13ace93a157ea",
     "docs/specs/style-playbook-integration/assets/playbook-mobile-card-copy-full-width-dark-393.png": "3c6368ca34d8ba1192fd0363cd34248f29f41c4b",
     "docs/specs/style-playbook-integration/assets/search-children-expanded.png": "3187f95764fa508012c64b9088ea3a7472b8722a",
@@ -69,37 +69,37 @@
     "docs/specs/web-demo-global-controls/assets/inspector-desktop.png": "fa5fc685751e29f8cb49791023879b20037964d3",
     "docs/specs/web-demo-global-controls/assets/inspector-mobile.png": "4f1048e5aae50ab0a10f75cf747da2a6be8a1992",
     "playwright.config.ts": "fd5bb1beff25d5b94949fe3988fd9b5c2007b457",
-    "scripts/build-web-demo.ts": "6db4e050ed4596c2565763d187adac49d40eac2e",
+    "scripts/build-web-demo.ts": "840522042ea0e6a348b05aa0f0ff4c53c35e26b4",
     "scripts/capture-admin-text-editor-evidence.mjs": "12bb8ad506f8836142a4d8ba51f01fd188605978",
     "scripts/generate-version.ts": "540261910827ab73f674c741cc3e7404fc97809e",
     "scripts/playbook-content-update.ts": "469d45c21ce339ca139469ed43b151e7c80b9200",
     "scripts/prepare-playbook-edition.ts": "6e8ff021a4c5d29d63b122203cf644c55246ca7a",
-    "scripts/prepare-edgeone-pwa-config.ts": "4bdc36cc620b9c191218070f6b77dd74ad7d73b8",
-    "scripts/product-release.ts": "2ecf4a6c77c9e2def993585023a47b8bd22a48f5",
-    "scripts/run-precommit-tests.ts": "c192558538cce7a40bca519ad3fad0891f821679",
+    "scripts/prepare-edgeone-pwa-config.ts": "c9398c2f7cb3f00c7c112543a74231a90d6a957f",
+    "scripts/product-release.ts": "0d34708f9f10e6601cf38d1f96dbd0bd51984fe8",
+    "scripts/run-precommit-tests.ts": null,
     "scripts/release-settings.ts": "4e64a816dd0e45697fa26f0c8b457ccf6bee046b",
     "scripts/smoke-product-release.ts": "7285e6021b7074facbceb921ff9171d684758fff",
-    "scripts/start-console.ts": "a21424aeec65e25373ccf4056cf7f64142a1e89d",
-    "scripts/start-gateway.ts": "769637de516d2f1978b7a24c00286c206b24f9f0",
+    "scripts/start-console.ts": "33431cd602f522b6cc5a75dbc277ebc556415ff7",
+    "scripts/start-gateway.ts": "6e67f0d8df26470593b690ef2e2ee18c2b095e31",
     "site/content/projects/oidrune.mdx": "d06c8bdefe268af76fa0de8ad377598ffbc2c377",
     "site/lib/memo-list-web-demo.ts": "ed6591bebc2b7052ebec2a1488f8a6c3f48b1c90",
-    "site/lib/project-runtime-live.ts": "76b4bf7c273219d7f4e895f48e998731a9e03b7d",
+    "site/lib/project-runtime-live.ts": "7c3ce3190e6cee05782509500cdf32dedef52c50",
     "site/pages/[...path].ts": "91d608285c2efbce78fe4a181147207e5e9be4d9",
     "site/pages/mcp.ts": "0922d70e909d23bfbe37ac8505adce82249aa423",
-    "src/components/WebDemoInspector.css": "ccb8ae61e758025ed90fa59228632fb2858af0b0",
+    "src/components/WebDemoInspector.css": "d7c0f572527944d9f1ec7d3ad74002d0df0783cd",
     "src/components/WebDemoInspector.disabled.tsx": "162be29cadd806f39a293b2ca4f7115bee8f08d2",
-    "src/components/WebDemoInspector.tsx": "8f59d31219690168e15efbf09ab969ae2aebfd5e",
+    "src/components/WebDemoInspector.tsx": "07a071d09a48a33545742e0ea91beeb89eb88988",
     "src/components/blog/Reactions.tsx": "2307d0f2c5fc09ed192ea01b8afbe048f7ed347a",
     "src/components/comments/hooks.ts": "1c383710e1d4c451c05b89f53589c9bc27cfc456",
     "src/components/common/AmbientScene.tsx": "01417ceda1fff9f7d840c1de1c49c2a75f15db73",
     "src/components/common/ThemeToggle.tsx": "4d6da82f96742e13e06be24d24cef0cbc247a03a",
-    "src/components/search/PublicSearchPage.stories.tsx": "b169f645f97fa49ac0762827f2a2e1f9c9ce0471",
-    "src/components/search/PublicSearchPage.tsx": "f254637e52b1854710df4b6055122672a8197727",
+    "src/components/search/PublicSearchPage.stories.tsx": "fc7db24142b12e88965a7ff3425b43d803813af5",
+    "src/components/search/PublicSearchPage.tsx": "5d30791c101c9147df80e2f36c11e06b66ce3642",
     "src/components/search/SearchResultsList.stories.tsx": "a41e487bd6a71055e47596156237ca533ee0a443",
-    "src/components/search/SearchResultsList.test.tsx": "552681e47d3bcda703a3d6a0040da081311a7239",
-    "src/components/search/SearchResultsList.tsx": "6d8e97d16c032777654b710e29a2d8e839ff35b0",
+    "src/components/search/SearchResultsList.test.tsx": "9b5ce4a213a9d975ab967d2ccb798cafd4c092e2",
+    "src/components/search/SearchResultsList.tsx": "2fb0277db6c6457338995a43951a9d7c804a1cbf",
     "src/components/search/search-fixture.ts": "74cfeaaf5bb50095a332555c46ea0b50986a7d83",
-    "src/components/search/search-model.ts": "d158a6577685a118ce1d4392b3ccbfbcaf8ad53b",
+    "src/components/search/search-model.ts": "039a788718a49f33db28fafc1d00556237388b0f",
     "src/components/search/search-results-cache.test.ts": "c880240d6e36b988897ea65a63d6fd1863805300",
     "src/components/search/search-results-cache.ts": "c76faf7253a268b1e47d26fee220acb5bc8291c3",
     "src/components/ui/Icon.tsx": "2b0e444bdf2ab66c24b69a5b1106ac93373e5ac7",
@@ -112,34 +112,34 @@
     "src/lib/__tests__/admin-demo-file-tree.test.ts": "fa39e7f23dde7126e24c43eb25dd388dbab124ba",
     "src/lib/__tests__/admin-demo-llm-settings.test.ts": "f925fbf36e2717aff8f1b4159fce36dea6098d44",
     "src/lib/__tests__/tag-directory.test.ts": "44baf67d30585b89c679216cac02812284311319",
-    "src/lib/admin-api-client.ts": "10565f7bf042831a24beb5ef52ce84aa2be6928e",
-    "src/lib/ai/search-fallback.test.ts": "7ad10d1d7e640abb86bf702015111d870f8d5040",
-    "src/lib/ai/search.ts": "6b384e8a884224f618d75c33f0474a9b073c957d",
+    "src/lib/admin-api-client.ts": "cae217fb6b32ec386a999b14e9d978aea0ba7307",
+    "src/lib/ai/search-fallback.test.ts": "ff95598d9edf5a6ed5c223e62aee7529c4b0873b",
+    "src/lib/ai/search.ts": "543cca5875bb118464251fa10c9e36b0be21b4a9",
     "src/lib/playbook/child-env.ts": "d6f344e6439869d39b0e363ea735e5f5888fe6ad",
-    "src/lib/playbook/fixture.ts": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
+    "src/lib/playbook/fixture.ts": "dd465aa9852b4a5694d55751adf14018fff53712",
     "src/lib/playbook/search.test.ts": "9d58afc7b6c44d99e9b22e4297dc384a71647221",
     "src/lib/playbook/search.ts": "c0b0ed70c641609c94e5fde7286ba76c4f47bce7",
     "src/lib/project-catalog.ts": "0a3960a0bd5189eb8e8da0441db4e19d8a5769da",
     "src/lib/release/artifacts.ts": "97fcc6e5ee851fef3a6e54610a24ba04c3d705b8",
-    "src/lib/release/completion.ts": "93c8e78b5dedac4f8155a8db18b9d65818b17354",
+    "src/lib/release/completion.ts": "e9673b2a7752fe6ec3cb34dca845cbb8a2a0ba5c",
     "src/lib/release/deployment.ts": "8125665bd69a1e631f599ff61d01e2a95c5c907f",
-    "src/lib/release/github.ts": "676bd7adb753ffb5126ce1e6d79e96123ff0a786",
+    "src/lib/release/github.ts": "cf62b0b46e8b892169b582c977472d23125a4348",
     "src/lib/release/inputs.ts": "ecc5419981da74a3fd2f54b332ed6e3fe315af26",
     "src/lib/release/ledger.ts": "f0dafd749a599f1979d6feb0f9e597ed1831c27d",
     "src/lib/release/policy.ts": "8ba02e8fd5cd7e832ea8a3d0de4c2099415851c6",
-    "src/lib/release/preparation.ts": "75421405bd7dd05e566332f49eb03ad97c7e3f7f",
-    "src/lib/release/products.ts": "12cabc6977b020e231afb94b090950d66195dcc9",
+    "src/lib/release/preparation.ts": "ed114e55ef9ca6c3ec3f70aeb75b3c4e2afb3294",
+    "src/lib/release/products.ts": "45ee9d794ddc5fc7f9bd9420cc212da49713fd4b",
     "src/lib/release/publication.ts": "f76d8aa146bb3f20bc83091857bd09c81edba02f",
-    "src/lib/release/source.ts": "1795f3bdde6f794fadfcd1899cef3e6d1713d8dc",
+    "src/lib/release/source.ts": "62a4e9e5c50fd142dde5938720212b94a2b24fbb",
     "src/lib/search/content-identity.ts": "5a3fa2a1eaae29fb03d72e75bb8b7982f6dec177",
     "src/lib/search/content-search.test.ts": "2149f97140b3797b477952559b9e3bae40257a16",
-    "src/lib/search/content-search.ts": "f23117e387a0e4396a5ead499ce62a0cc3b36511",
+    "src/lib/search/content-search.ts": "71768f7c27091aaa8cbf424d0f5b73ec52332457",
     "src/lib/theme.ts": "5db5adffa88525df15f2029d4e636e9d82715616",
     "src/lib/version-info.ts": "de25d694341bab26f2ecbdaeea43bef72d3f7cba",
-    "src/lib/web-demo-runtime.ts": "128468be2d35c9a169f10d7dd3303bef3506b36c",
+    "src/lib/web-demo-runtime.ts": "e4e39562b595bbce1e2cae92d5572e847bd4216c",
     "src/server/version-api.ts": "9bfb712fdf25caef06d30d7fa27aa2380bb10bac",
-    "src/styles/globals.css": "bbe9715ac942db32c5cd08aab0afd94ada7d5577",
-    "src/styles/nature-restored.css": "ea4f64836f02212969a73481faa6d0dad23c920e",
+    "src/styles/globals.css": "4cfd1caf6affea04091c90cb4d12f2def4cd1932",
+    "src/styles/nature-restored.css": "e7b1d48f4e41b1f16e341e4c8fe8540d4d390d64",
     "tests/ci/notify-release-failure-workflow.test.ts": "ebc8c239f28b412691a469b816dc799c64106b39",
     "tests/ci/prepare-release-fixture.ts": "79a621ec55014121d9a772882aa345cf6d58fde7",
     "tests/components/MemoTimeline.test.tsx": "215902ac3164c99063cdb5ca83ed48a80d942f2f",
@@ -147,32 +147,33 @@
     "tests/e2e/admin/post-editor-markdown-modes.spec.ts": "15e2e2fa4f0335204aec44ccadce6ac385fe171e",
     "tests/fixtures/project-content.ts": "a1bfdc7a0b39c1a84275e4cfb8562407f5d458c4",
     "tests/lib/manual-release-inputs.test.ts": "4797f03b7fe9cb15915ef3f6a6cca4ccd258a17b",
-    "tests/lib/manual-release-ledger.test.ts": "1f68d8e74176630889a4880fcca1dcbfe462f4c4",
+    "tests/lib/manual-release-ledger.test.ts": "f261cabef857a626f8ce2030b3730bc7d0dfacd3",
     "tests/lib/manual-release-media.test.ts": "57488e7a228793d57a632eaa78bfa93e7cf9fcf8",
     "tests/lib/manual-release-policy.test.ts": "2435afe5a32a75d263c5757709c9c4db976b2f95",
-    "tests/lib/manual-release-provenance.test.ts": "01496353150171b571e007bb11cbd354d9ff7d7b",
+    "tests/lib/manual-release-provenance.test.ts": "ae3f992fc70f29a96a28651f466abe63e6709ee2",
     "tests/lib/manual-release-recovery.test.ts": "8da7d35f101b78c81fc755e251538b50164b7e78",
-    "tests/lib/public-pwa-edgeone-config.test.ts": "29ae1cfbfd649e731121069048cd85a6e86e8c7e",
+    "tests/lib/public-pwa-edgeone-config.test.ts": "0acc2191b11794416bdfdff56b8e7a78dfb6d2bf",
     "tests/lib/memo-list-web-demo.test.ts": "38f0f87d65565abfa3b35e9b2b5f60e2d561bddd",
-    "tests/lib/playbook-contract.test.ts": "fb45d06f75ca42b0b5ff5447e0202b863e01590d",
-    "tests/lib/playbook-workflows.test.ts": "2921115a0b6629d9f7e10f6e7c80b5ee43403a2b",
-    "tests/lib/web-demo-inspector-layout.test.ts": "6b85d36d695d904d4cc9070689430bdc7bc79118",
+    "tests/lib/playbook-contract.test.ts": "0b66684c10afbc0bdf0fe524d32f9a5ef1f9794f",
+    "tests/lib/playbook-workflows.test.ts": "4827ff3dfe84984bc42e9d2ef48d3ccb7d088361",
+    "tests/lib/web-demo-inspector-layout.test.ts": "9e6874c480bd272b2c3295d85aecfbc4b7fc7a65",
     "tests/lib/web-demo-motion.test.ts": "7981d306cac819189bd01e2740b70a2b4dd5a620",
-    "tests/lib/web-demo-runtime.test.ts": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb",
+    "tests/lib/web-demo-runtime.test.ts": "2193c8ffa640872bdaf15d267c0170d13fa7e3d5",
     "tests/server/version-api.test.ts": "c86011cb95db3b9f8358570c62e22630af004ac0",
-    "tests/storybook/playbook-interactions.ts": "b7f34f03fbdc81ae4d6b8d5c80860dd90e81a8c9",
+    "tests/storybook/playbook-interactions.ts": "63c52be5ac568c3d08a06585357be8325295f1ef",
     "tests/components/Reactions.test.tsx": "88aa3ab1eba18c70962c6f0a74e159c07a2134af",
     ".impeccable/design.json": "304d41d82f7ffca7b9e1b80f0373a70723ee5038",
     "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-desktop-dark.png": "fb4c38f8823b8618ad5e2169192bd06a32c931ab",
     "docs/specs/style-playbook-integration/assets/playbook-index-filter-dots-mobile-dark.png": "b35703d4469a45750b341a86b0f7730f2d72155f",
     "scripts/content-migrate-api-links.ts": "1e9927a7b26be419f974f9d745744d1272f561ea",
-    "src/server/services/search-suggestions.ts": "07eff12db05dd57034f01669f05a2276447edc09",
+    "src/server/services/search-suggestions.ts": "70dae530f395a3b0f1637b436d3c654de85f6049",
     "docs/adr/0017-product-prerelease-publication-boundary.md": "f49a2f664db0d3cf75e3fb800ce7fb5962909fcb",
     "docs/adr/0018-product-prerelease-version-allocation.md": "2b058a5898d06d4526d4c97894e3a5b3fa3183d3",
+    "docs/adr/0025-release-pr-check-attestation.md": "534efd366ea0700ecc385ebdbda3141341f0975d",
     "src/lib/release/version.ts": "ee820d89fba837618243554a16e9d931e8e90189",
-    "tests/ci/product-prerelease-workflow.test.ts": "84ad0ffda08e0c836a03c76000ea7f5c725245dc",
+    "tests/ci/product-prerelease-workflow.test.ts": "88c31c1b8cb27b8c2ab39a7c29630e23ff512645",
     "tests/lib/manual-release-publication.test.ts": "fb861f2597ce10183b20575ec7f1ea61aac8da94",
-    "tests/lib/manual-release-source.test.ts": "bbca05771b3f44228b82a14fcae5b0c1ebc0baa1"
+    "tests/lib/manual-release-source.test.ts": "111bbba24f28fac6c31a846261e316b9cd3854d6"
   },
   "change": {
     "description": "Cover the complete unpublished interval: compatible version metadata, manual two-product delivery, transient snapshot retry and artifact-safe recovery, search fixes, inherited Playbook presentation and design metadata, and build-time Web Demo global controls. CSR-owned changes are reclassified in public-csr-navigation.json; this record retains the unchanged release, search and Demo foundation scope.",
@@ -192,8 +193,8 @@
         },
         {
           "path": "tests/lib/manual-release-provenance.test.ts",
-          "blob": "01496353150171b571e007bb11cbd354d9ff7d7b",
-          "command": "bun run test:precommit"
+          "blob": "ae3f992fc70f29a96a28651f466abe63e6709ee2",
+          "command": "bun test tests/lib/manual-release-provenance.test.ts tests/ci/product-prerelease-workflow.test.ts"
         },
         {
           "path": "tests/lib/manual-release-recovery.test.ts",
@@ -212,7 +213,7 @@
         },
         {
           "path": "tests/lib/web-demo-runtime.test.ts",
-          "blob": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb",
+          "blob": "2193c8ffa640872bdaf15d267c0170d13fa7e3d5",
           "command": "bun run test:precommit"
         },
         {
@@ -224,8 +225,8 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The complete interval from the signed 2.7.0 baseline adds compatible version metadata, product SemVer requests, and prerelease completion state; application SQLite and local-content formats remain unchanged. Full unit coverage, stable/alpha/beta/rc two-product smoke fixtures, and platform E2E evidence cover the approved scope.",
-      "assessed_at": "2026-10-08T08:33:00Z",
+      "reasoning": "The complete interval from the signed 2.7.0 baseline adds compatible version metadata, product SemVer requests, prerelease completion state, and a protected exact-head release-check attestation; application SQLite and local-content formats remain unchanged. Release provenance, policy-identity and workflow-contract tests cover the attestation boundary; the existing full-suite timeout remains an unrelated environment-sensitive test result.",
+      "assessed_at": "2026-10-15T07:58:20Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -234,8 +235,8 @@
         },
         {
           "path": "tests/lib/manual-release-provenance.test.ts",
-          "blob": "01496353150171b571e007bb11cbd354d9ff7d7b",
-          "command": "bun run test:precommit"
+          "blob": "ae3f992fc70f29a96a28651f466abe63e6709ee2",
+          "command": "bun test tests/lib/manual-release-provenance.test.ts tests/ci/product-prerelease-workflow.test.ts"
         },
         {
           "path": "tests/lib/manual-release-recovery.test.ts",
@@ -254,7 +255,7 @@
         },
         {
           "path": "tests/lib/web-demo-runtime.test.ts",
-          "blob": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb",
+          "blob": "2193c8ffa640872bdaf15d267c0170d13fa7e3d5",
           "command": "bun run test:precommit"
         },
         {
@@ -264,7 +265,7 @@
         },
         {
           "path": "src/lib/ai/search-fallback.test.ts",
-          "blob": "7ad10d1d7e640abb86bf702015111d870f8d5040",
+          "blob": "ff95598d9edf5a6ed5c223e62aee7529c4b0873b",
           "command": "bun run test:precommit"
         },
         {
@@ -279,12 +280,12 @@
         },
         {
           "path": "src/components/search/SearchResultsList.test.tsx",
-          "blob": "552681e47d3bcda703a3d6a0040da081311a7239",
+          "blob": "9b5ce4a213a9d975ab967d2ccb798cafd4c092e2",
           "command": "bun run test:precommit"
         },
         {
           "path": "docs/specs/style-playbook-integration/SPEC.md",
-          "blob": "2ebfc806f7fe5310181719f298da9ffdb6398d05",
+          "blob": "f58b86ab2a4558bd8c7406eafbd6d7fa8a62e2c8",
           "command": "git diff --check"
         },
         {
@@ -299,7 +300,7 @@
         },
         {
           "path": "src/lib/playbook/fixture.ts",
-          "blob": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
+          "blob": "dd465aa9852b4a5694d55751adf14018fff53712",
           "command": "bun test tests/lib/playbook-contract.test.ts"
         },
         {
@@ -330,8 +331,8 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "The unpublished interval remains minor for compatible product metadata and build-time Web Demo capabilities. Shared request policy, cancellation, simulated permissions and Inspector controls do not change live API contracts or SQLite/local content formats. The repair adds mounted reaction request recovery and separates Admin Vite caches without changing public contracts. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded.",
-      "assessed_at": "2026-10-07T17:36:00Z",
+      "reasoning": "The unpublished interval remains minor for compatible product metadata, build-time Web Demo capabilities, and the release followup attestation. The followup only publishes a derived PR check after exact-head CI/E2E success and changes no public API, SQLite schema, or local content format. Existing product fixes remain patch-compatible. Public full-page CSR navigation is excluded.",
+      "assessed_at": "2026-10-15T07:58:20Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-policy.test.ts",
@@ -340,8 +341,8 @@
         },
         {
           "path": "tests/lib/manual-release-provenance.test.ts",
-          "blob": "01496353150171b571e007bb11cbd354d9ff7d7b",
-          "command": "bun run test:precommit"
+          "blob": "ae3f992fc70f29a96a28651f466abe63e6709ee2",
+          "command": "bun test tests/lib/manual-release-provenance.test.ts tests/ci/product-prerelease-workflow.test.ts"
         },
         {
           "path": "tests/lib/manual-release-recovery.test.ts",
@@ -360,7 +361,7 @@
         },
         {
           "path": "tests/lib/web-demo-runtime.test.ts",
-          "blob": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb",
+          "blob": "2193c8ffa640872bdaf15d267c0170d13fa7e3d5",
           "command": "bun run test:precommit"
         },
         {
@@ -370,7 +371,7 @@
         },
         {
           "path": "src/lib/ai/search-fallback.test.ts",
-          "blob": "7ad10d1d7e640abb86bf702015111d870f8d5040",
+          "blob": "ff95598d9edf5a6ed5c223e62aee7529c4b0873b",
           "command": "bun run test:precommit"
         },
         {
@@ -385,12 +386,12 @@
         },
         {
           "path": "src/components/search/SearchResultsList.test.tsx",
-          "blob": "552681e47d3bcda703a3d6a0040da081311a7239",
+          "blob": "9b5ce4a213a9d975ab967d2ccb798cafd4c092e2",
           "command": "bun run test:precommit"
         },
         {
           "path": "docs/specs/style-playbook-integration/SPEC.md",
-          "blob": "2ebfc806f7fe5310181719f298da9ffdb6398d05",
+          "blob": "f58b86ab2a4558bd8c7406eafbd6d7fa8a62e2c8",
           "command": "git diff --check"
         },
         {
@@ -405,7 +406,7 @@
         },
         {
           "path": "src/lib/playbook/fixture.ts",
-          "blob": "ccdcf5b952f33a8ff378176f239e2d57a13f92c3",
+          "blob": "dd465aa9852b4a5694d55751adf14018fff53712",
           "command": "bun test tests/lib/playbook-contract.test.ts"
         },
         {
@@ -444,7 +445,7 @@
         },
         {
           "path": "tests/lib/manual-release-provenance.test.ts",
-          "blob": "01496353150171b571e007bb11cbd354d9ff7d7b",
+          "blob": "ae3f992fc70f29a96a28651f466abe63e6709ee2",
           "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {
@@ -459,7 +460,7 @@
         },
         {
           "path": "tests/lib/web-demo-runtime.test.ts",
-          "blob": "a3cb2f8551a10881550c3b79b8e6cc8c8dd644bb",
+          "blob": "2193c8ffa640872bdaf15d267c0170d13fa7e3d5",
           "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {
@@ -469,7 +470,7 @@
         },
         {
           "path": "src/lib/ai/search-fallback.test.ts",
-          "blob": "7ad10d1d7e640abb86bf702015111d870f8d5040",
+          "blob": "ff95598d9edf5a6ed5c223e62aee7529c4b0873b",
           "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         },
         {
@@ -508,7 +509,7 @@
         },
         {
           "path": "src/components/search/SearchResultsList.test.tsx",
-          "blob": "552681e47d3bcda703a3d6a0040da081311a7239",
+          "blob": "9b5ce4a213a9d975ab967d2ccb798cafd4c092e2",
           "command": "bun ./scripts/run-precommit-tests.ts (current candidate; 981 passed; real model calls disabled)"
         }
       ]
