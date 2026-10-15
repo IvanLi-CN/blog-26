@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { blob, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 // 适配实际数据库结构
@@ -398,4 +398,69 @@ export type NewPost = typeof posts.$inferInsert;
 export type SystemShareSubmission = typeof systemShareSubmissions.$inferSelect;
 
 export type PersonalAccessToken = typeof personalAccessTokens.$inferSelect;
+
+export const contentTasks = sqliteTable(
+  "content_tasks",
+  {
+    id: text("id").primaryKey(),
+    kind: text("kind").notNull(),
+    source: text("source").notNull(),
+    requestKey: text("request_key").notNull(),
+    origin: text("origin").notNull(),
+    target: text("target").notNull(),
+    result: text("result"),
+    status: text("status").notNull(),
+    phase: text("phase").notNull(),
+    total: integer("total").notNull().default(0),
+    processed: integer("processed").notNull().default(0),
+    failed: integer("failed").notNull().default(0),
+    error: text("error"),
+    startedAt: integer("started_at").notNull(),
+    finishedAt: integer("finished_at"),
+    cancelRequested: integer("cancel_requested", { mode: "boolean" }).notNull().default(false),
+    ownerToken: text("owner_token"),
+    ownerHost: text("owner_host"),
+    ownerPid: integer("owner_pid"),
+    leaseUntil: integer("lease_until"),
+  },
+  (t) => ({
+    sourceTime: index("content_tasks_source_time").on(t.source, t.startedAt),
+    active: uniqueIndex("content_tasks_active_source")
+      .on(t.kind, t.source)
+      .where(sql`${t.status} IN ('queued','running')`),
+  })
+);
+export const contentTaskCounters = sqliteTable("content_task_counters", {
+  source: text("source").primaryKey(),
+  total: integer("total").notNull().default(0),
+  trackingSince: integer("tracking_since").notNull(),
+});
+export const ragIndexManifests = sqliteTable("rag_index_manifests", {
+  id: text("id").primaryKey(),
+  source: text("source").notNull(),
+  identity: text("identity").notNull(),
+  targets: text("targets").notNull(),
+  createdAt: integer("created_at").notNull(),
+});
+export const ragIndexTargets = sqliteTable(
+  "rag_index_targets",
+  {
+    id: text("id").primaryKey(),
+    source: text("source").notNull(),
+    parentId: text("parent_id").notNull(),
+    status: text("status").notNull(),
+    taskId: text("task_id"),
+    vectorId: text("vector_id"),
+    vectorDigest: text("vector_digest"),
+    dim: integer("dim"),
+    error: text("error"),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [index("rag_index_targets_parent").on(table.source, table.parentId)]
+);
+export const ragIndexConfigs = sqliteTable("rag_index_configs", {
+  fingerprint: text("fingerprint").primaryKey(),
+  dim: integer("dim").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
 export type NewPersonalAccessToken = typeof personalAccessTokens.$inferInsert;

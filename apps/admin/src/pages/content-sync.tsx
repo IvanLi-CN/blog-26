@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Info, PauseCircle, PlayCircle, RefreshCcw, Sparkles } from "lucide-react";
+import { BookOpen, PauseCircle, PlayCircle, RefreshCcw, Sparkles } from "lucide-react";
+import { useState } from "react";
 import {
   adminApi,
   type PlaybookContentSyncStatus,
+  type UnifiedContentSyncStatus,
   type VectorizationStats,
 } from "@/lib/admin-api-client";
 import {
@@ -14,9 +16,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   Spinner,
   Table,
   TableBody,
@@ -122,379 +121,457 @@ export function ContentSyncActions({
   );
 }
 
+export function RagCoverageGrid({
+  stats,
+  available = true,
+}: {
+  stats: UnifiedContentSyncStatus["rag"]["contents"];
+  available?: boolean;
+}) {
+  const metrics = [
+    ["总量", stats.total],
+    ["已索引", available ? stats.indexed : null],
+    ["未索引", available ? stats.unindexed : null],
+    ["过时", available ? stats.outdated : null],
+    ["失败", available ? stats.failed : null],
+    [
+      "覆盖率",
+      available && stats.coverage !== null ? `${(stats.coverage * 100).toFixed(1)}%` : null,
+    ],
+  ] as const;
+  return (
+    <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3" data-testid="rag-coverage">
+      {metrics.map(([label, value]) => (
+        <div className="min-w-0 rounded-2xl bg-muted/46 p-3" key={label}>
+          <dt className="text-xs text-muted-foreground">{label}</dt>
+          <dd className="mt-1 text-xl font-semibold tabular-nums">
+            {value === null ? "—" : typeof value === "number" ? formatCount(value) : value}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 export function ContentSyncPage() {
   const queryClient = useQueryClient();
-
-  const managerStatsQuery = useQuery({
-    queryKey: ["content-sync-manager-stats"],
-    queryFn: adminApi.getContentSyncManagerStats,
-  });
-  const contentStatsQuery = useQuery({
-    queryKey: ["content-sync-content-stats"],
-    queryFn: adminApi.getContentSyncContentStats,
-  });
-  const sourcesQuery = useQuery({
-    queryKey: ["content-sync-sources"],
-    queryFn: adminApi.getContentSyncSourcesStatus,
-  });
-  const progressQuery = useQuery({
-    queryKey: ["content-sync-progress"],
-    queryFn: adminApi.getContentSyncProgress,
-    refetchInterval: 5_000,
+  const [source, setSource] = useState<"all" | "blog" | "playbook">("all");
+  const [edition, setEdition] = useState<"current" | "previous">("current");
+  const statusQuery = useQuery({
+    queryKey: ["content-sync", source, edition],
+    queryFn: () => adminApi.getContentSyncStatus({ source, edition }),
+    refetchInterval: 5000,
   });
   const logsQuery = useQuery({
-    queryKey: ["content-sync-logs"],
+    queryKey: ["content-sync", "logs"],
     queryFn: () => adminApi.getContentSyncLogs({ limit: 20 }),
   });
-  const historyQuery = useQuery({
-    queryKey: ["content-sync-history"],
-    queryFn: () => adminApi.getContentSyncHistory({ limit: 10 }),
-  });
-  const vectorStatsQuery = useQuery({
-    queryKey: ["content-sync-vector-stats"],
-    queryFn: adminApi.getVectorizationStats,
-  });
-
-  const refreshAll = () => {
-    queryClient.invalidateQueries({ queryKey: ["content-sync"] });
-    managerStatsQuery.refetch();
-    contentStatsQuery.refetch();
-    sourcesQuery.refetch();
-    progressQuery.refetch();
-    logsQuery.refetch();
-    historyQuery.refetch();
-    vectorStatsQuery.refetch();
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ["content-sync"] });
   };
-
-  const syncMutation = useMutation({
-    mutationFn: () => adminApi.triggerContentSync({}),
-    onSuccess: refreshAll,
+  const sync = useMutation({
+    mutationFn: (target: "local" | "playbook") => adminApi.triggerContentSync({ source: target }),
+    onSuccess: refresh,
   });
-  const playbookSyncMutation = useMutation({
-    mutationFn: adminApi.triggerPlaybookSync,
-    onSuccess: refreshAll,
+  const index = useMutation({
+    mutationFn: (mode: "repair" | "rebuild") => adminApi.triggerRagIndex(source, mode),
+    onSuccess: refresh,
   });
-  const cancelMutation = useMutation({
-    mutationFn: adminApi.cancelContentSync,
-    onSuccess: refreshAll,
-  });
-  const vectorizeMutation = useMutation({
-    mutationFn: () => adminApi.triggerVectorizeAll({ isFull: true }),
-    onSuccess: refreshAll,
-  });
-
-  const managerStats = (managerStatsQuery.data ?? {}) as {
-    registeredSources?: number;
-    enabledSources?: number;
-    currentSyncStatus?: string;
-    lastSyncTime?: number;
-    totalSyncs?: number;
-  };
-  const contentStats = (contentStatsQuery.data ?? {}) as {
-    total?: number;
-    byType?: Record<string, { total: number; sources?: Record<string, number> }>;
-  };
-  const vectorStats = vectorStatsQuery.data;
-  const progress = progressQuery.data;
-  const busy =
-    syncMutation.isPending ||
-    playbookSyncMutation.isPending ||
-    cancelMutation.isPending ||
-    vectorizeMutation.isPending;
-
+  const cancel = useMutation({ mutationFn: adminApi.cancelContentTask, onSuccess: refresh });
+  const data = statusQuery.data;
+  const active = data?.tasks.items.filter((task) => task.finishedAt === null) ?? [];
+  const count = (value?: number | null) =>
+    value === undefined || value === null ? "—" : formatCount(value);
   return (
     <div className="space-y-6">
       <PageHeader
         title="内容同步"
-        description="统一查看内容源健康、同步进度与向量化任务。"
+        description="查看已收录内容、公开 RAG 覆盖与持久任务。"
         actions={
           <>
-            <Button variant="outline" onClick={refreshAll}>
+            <Button variant="outline" onClick={refresh}>
               <RefreshCcw className="size-4" />
               刷新
             </Button>
-            <ContentSyncActions
-              busy={busy}
-              syncing={syncMutation.isPending}
-              playbookSyncing={playbookSyncMutation.isPending}
-              vectorizing={vectorizeMutation.isPending}
-              cancelling={cancelMutation.isPending}
-              onSync={() => syncMutation.mutate()}
-              onPlaybookSync={() => playbookSyncMutation.mutate()}
-              onVectorize={() => vectorizeMutation.mutate()}
-              onCancel={() => cancelMutation.mutate()}
-            />
+            <Button
+              variant="outline"
+              disabled={
+                sync.isPending ||
+                active.some((task) => task.kind === "sync" && task.source === "local")
+              }
+              onClick={() => sync.mutate("local")}
+            >
+              <PlayCircle className="size-4" />
+              同步本地内容
+            </Button>
+            <Button
+              variant="outline"
+              disabled={
+                sync.isPending ||
+                active.some((task) => task.kind === "sync" && task.source === "playbook") ||
+                data?.sources.find((item) => item.name === "playbook")?.enabled === false
+              }
+              onClick={() => sync.mutate("playbook")}
+            >
+              <BookOpen className="size-4" />
+              刷新 Playbook
+            </Button>
           </>
         }
       />
-
-      {syncMutation.error ? (
-        <Alert tone="danger">{getErrorMessage(syncMutation.error)}</Alert>
-      ) : null}
-      {playbookSyncMutation.error ? (
-        <Alert tone="danger">{getErrorMessage(playbookSyncMutation.error)}</Alert>
-      ) : null}
-      {cancelMutation.error ? (
-        <Alert tone="danger">{getErrorMessage(cancelMutation.error)}</Alert>
-      ) : null}
-      {vectorizeMutation.error ? (
-        <Alert tone="danger">{getErrorMessage(vectorizeMutation.error)}</Alert>
-      ) : null}
-
-      {progress ? (
-        <Alert
-          tone={progress.status === "running" ? "warning" : progress.error ? "danger" : "success"}
-        >
-          <div className="flex flex-wrap gap-x-2 gap-y-1">
-            <span>当前状态：{progress.status}</span>
-            <span>步骤：{progress.currentStep}</span>
-            <span>进度：{Math.round(progress.progress)}%</span>
-            <span>
-              处理：{progress.processedItems}/{progress.totalItems}
-            </span>
-            {progress.error ? <span>错误：{progress.error}</span> : null}
-          </div>
+      {statusQuery.isLoading ? (
+        <Alert>
+          <Spinner /> 读取内容与索引状态…
         </Alert>
-      ) : (
-        <Alert>当前没有活跃中的同步任务。</Alert>
-      )}
-
-      <div className="grid gap-4 lg:grid-cols-4">
+      ) : statusQuery.error ? (
+        <Alert tone="danger">
+          状态读取失败：{getErrorMessage(statusQuery.error)}。数值不可得，请重试刷新。
+        </Alert>
+      ) : null}
+      {[
+        { key: "sync", error: sync.error },
+        { key: "index", error: index.error },
+        { key: "cancel", error: cancel.error },
+      ]
+        .filter((item) => item.error)
+        .map(({ key, error }) => (
+          <Alert key={key} tone="danger">
+            {getErrorMessage(error)}
+          </Alert>
+        ))}
+      {index.data?.results
+        .filter((result) => result.error)
+        .map((result) => (
+          <Alert key={result.source} tone="danger">
+            {result.source}：{result.error}
+          </Alert>
+        ))}
+      {data && !active.length ? <Alert>当前没有活跃任务；刷新只读取状态。</Alert> : null}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           title="已注册源"
-          value={formatCount(managerStats.registeredSources ?? 0)}
-          description="当前内容源总数"
+          value={count(data?.summary.registeredSources)}
+          description="local 与 Playbook"
         />
         <MetricCard
           title="启用源"
-          value={formatCount(managerStats.enabledSources ?? 0)}
-          description="参与同步的源"
+          value={count(data?.summary.enabledSources)}
+          description="实际同步配置；停用保留缓存"
         />
         <MetricCard
           title="总内容量"
-          value={formatCount(contentStats.total ?? 0)}
-          description="当前已收录内容"
+          value={count(data?.summary.total)}
+          description="当前采用的唯一内容，含本地 project"
         />
         <MetricCard
           title="累计同步"
-          value={formatCount(managerStats.totalSyncs ?? 0)}
-          description={`最近一次 ${formatDateTime(managerStats.lastSyncTime)}`}
+          value={count(data?.summary.totalSyncs)}
+          description={
+            data?.summary.trackingSince
+              ? `自 ${formatDateTime(data.summary.trackingSince)} 记录；此前未知`
+              : "累计记录起点未知"
+          }
         />
       </div>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid items-start gap-6 xl:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>内容源状态</CardTitle>
-            <CardDescription>来源在线状态、优先级与最近同步时间。</CardDescription>
-          </CardHeader>
-          <CardContent className="grid items-start gap-4 md:grid-cols-2">
-            {sourcesQuery.isLoading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Spinner /> 读取中…
-              </div>
-            ) : sourcesQuery.error ? (
-              <Alert tone="danger">{getErrorMessage(sourcesQuery.error)}</Alert>
-            ) : (
-              (sourcesQuery.data ?? []).map((source) => {
-                const playbook =
-                  source.name === "playbook" &&
-                  source.metadata &&
-                  typeof source.metadata === "object" &&
-                  (source.metadata as { name?: unknown }).name === "playbook"
-                    ? (source.metadata as PlaybookContentSyncStatus)
-                    : null;
-                return (
-                  <div
-                    key={source.name}
-                    className="min-w-0 space-y-4 rounded-3xl bg-muted/46 p-4 shadow-inner shadow-shadow-inset"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="truncate font-medium">{source.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {source.type} · priority {source.priority}
-                        </div>
-                      </div>
-                      <Badge tone={source.online ? "success" : "danger"}>
-                        {source.online ? "online" : "offline"}
-                      </Badge>
-                    </div>
-                    {playbook ? (
-                      <PlaybookStatusDetails playbook={playbook} />
-                    ) : (
-                      <>
-                        <div className="text-sm text-muted-foreground">
-                          已同步 {formatCount(source.totalItems)} 项
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          最近同步：{formatDateTime(source.lastSync)}
-                        </div>
-                      </>
-                    )}
-                    {source.error ? <Alert tone="danger">{source.error}</Alert> : null}
-                  </div>
-                );
-              })
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-1">
-                <CardTitle>向量化状态</CardTitle>
-                <CardDescription>检查内容是否已建立搜索索引。</CardDescription>
-              </div>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button type="button" variant="ghost" size="icon" aria-label="查看向量化详情">
-                    <Info className="size-4" aria-hidden="true" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-72 text-sm">
-                  <div className="space-y-3">
-                    <p className="font-medium">向量化详情</p>
-                    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-muted-foreground">
-                      <dt>模型</dt>
-                      <dd className="break-all text-right text-foreground">
-                        {vectorStats?.model ?? "未提供"}
-                      </dd>
-                      <dt>维度</dt>
-                      <dd className="text-right text-foreground">{vectorStats?.dim ?? "未提供"}</dd>
-                    </dl>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
+            <CardDescription>
+              收录数量与 RAG 总量不同；章节、资源和上一版不重复收录。
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Badge tone="outline">{managerStats.currentSyncStatus ?? "idle"}</Badge>
-            {vectorStatsQuery.isLoading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Spinner /> 读取向量化状态中…
-              </div>
-            ) : vectorStatsQuery.error ? (
-              <Alert tone="danger">
-                读取向量化状态失败：{getErrorMessage(vectorStatsQuery.error)}
+            {data?.sources.map((item) => {
+              const ragSource = data.rag.bySource.find(
+                (row) => row.source === (item.name === "local" ? "blog" : "playbook")
+              );
+              return (
+                <div key={item.name} className="min-w-0 space-y-3 rounded-2xl bg-muted/46 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium">{item.name}</span>
+                    <Badge tone={item.enabled ? "success" : "outline"}>
+                      {item.enabled ? "同步启用" : "同步停用"}
+                    </Badge>
+                  </div>
+                  <div className="text-sm">
+                    已收录 {count(item.total)} 项
+                    {item.name === "playbook"
+                      ? ` · ${data.playbook.adopted ? "内容已采用 · 词法就绪" : "未采用"}`
+                      : ""}
+                  </div>
+                  {ragSource && source !== "all" && source === ragSource.source && (
+                    <p className="text-sm text-muted-foreground">
+                      本次 RAG 范围：{count(ragSource.contents.indexed)}/
+                      {count(ragSource.contents.total)} 项完整索引
+                    </p>
+                  )}
+                  <details className="text-sm text-muted-foreground">
+                    <summary className="cursor-pointer">身份与最近记录</summary>
+                    <dl className="mt-3 space-y-2">
+                      <div>
+                        <dt>最近检查</dt>
+                        <dd>{formatDateTime(item.lastCheckAt)}</dd>
+                      </div>
+                      <div>
+                        <dt>最近成功同步</dt>
+                        <dd>{formatDateTime(item.lastSuccessAt)}</dd>
+                      </div>
+                      {item.name === "playbook" && (
+                        <>
+                          <div>
+                            <dt>采用时间</dt>
+                            <dd>
+                              {data.playbook.adoptedAt
+                                ? formatDateTime(data.playbook.adoptedAt)
+                                : "未知"}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt>当前 edition</dt>
+                            <dd className="break-all font-mono text-xs">
+                              {data.playbook.current?.editionDigest ?? "不可用"}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt>Release / tag</dt>
+                            <dd className="break-all">
+                              {data.playbook.current?.source.releaseId} /{" "}
+                              {data.playbook.current?.source.tag}
+                            </dd>
+                          </div>
+                        </>
+                      )}
+                    </dl>
+                  </details>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>RAG 索引覆盖</CardTitle>
+            <CardDescription>
+              主卡按唯一公开内容；全部预期分块有效才算已索引。本地 project 不计入。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <fieldset aria-label="RAG 范围" className="flex flex-wrap gap-2">
+                {(
+                  [
+                    ["all", "全部"],
+                    ["blog", "博客"],
+                    ["playbook", "Playbook"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    size="sm"
+                    variant={source === value ? "default" : "outline"}
+                    className="rounded-full!"
+                    aria-pressed={source === value}
+                    onClick={() => {
+                      setSource(value);
+                      setEdition("current");
+                    }}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </fieldset>
+              {source === "playbook" && (
+                <label className="flex items-center gap-2 text-sm">
+                  版本
+                  <select
+                    aria-label="Playbook 版本"
+                    className="rounded-lg border bg-background p-2"
+                    value={edition}
+                    onChange={(event) => setEdition(event.target.value as typeof edition)}
+                  >
+                    <option value="current">当前版</option>
+                    <option value="previous">上一版详情</option>
+                  </select>
+                </label>
+              )}
+            </div>
+            {data?.rag.reason && (
+              <Alert tone="warning">
+                {data.rag.reason === "embedding-unconfigured"
+                  ? "Embedding 未配置；覆盖状态不可得。"
+                  : "所选 Playbook 快照不可用。"}
               </Alert>
-            ) : vectorStats ? (
-              <VectorizationStatsGrid stats={vectorStats} />
-            ) : (
-              <Alert>暂无向量化状态。</Alert>
+            )}
+            {data && (
+              <>
+                <RagCoverageGrid
+                  stats={data.rag.contents}
+                  available={data.rag.available && !data.rag.missingSources.length}
+                />
+                <details className="text-sm">
+                  <summary className="cursor-pointer text-muted-foreground">分块与投影详情</summary>
+                  <div className="mt-4 space-y-3">
+                    <RagCoverageGrid
+                      stats={data.rag.chunks}
+                      available={data.rag.available && !data.rag.missingSources.length}
+                    />
+                    <dl className="space-y-2 text-muted-foreground">
+                      <div>
+                        <dt>模型</dt>
+                        <dd className="break-all">{data.rag.identity.model || "未配置"}</dd>
+                      </div>
+                      <div>
+                        <dt>配置指纹</dt>
+                        <dd className="break-all font-mono text-xs">
+                          {data.rag.identity.fingerprint}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>最近索引</dt>
+                        <dd>{formatDateTime(data.rag.lastIndexedAt)}</dd>
+                      </div>
+                      <div>
+                        <dt>绑定 edition</dt>
+                        <dd className="break-all font-mono text-xs">
+                          {data.rag.identity.playbook?.edition ?? "不适用"}
+                        </dd>
+                      </div>
+                    </dl>
+                    {data.rag.details
+                      .filter((row) => row.error)
+                      .map((row) => (
+                        <p key={row.id} className="break-words text-danger">
+                          {row.slug}：{row.error}
+                        </p>
+                      ))}
+                  </div>
+                </details>
+              </>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                disabled={index.isPending || !data?.rag.available || edition === "previous"}
+                onClick={() => index.mutate("repair")}
+              >
+                <Sparkles className="size-4" />
+                补建缺失 / 过时 / 失败
+              </Button>
+              <Button
+                variant="outline"
+                disabled={index.isPending || !data?.rag.available || edition === "previous"}
+                onClick={() => index.mutate("rebuild")}
+              >
+                重建所选来源全部分块
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              内容采用无需等待索引完成；补建保留有效分块。任务取消保留已成功部分。
+            </p>
+            {data && (
+              <p className="text-xs text-muted-foreground">
+                搜索策略状态：
+                {data.policy.rag.available ? "RAG 可用" : (data.policy.rag.reason ?? "未知")}
+              </p>
             )}
           </CardContent>
         </Card>
       </div>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
-        <Card>
-          <CardHeader>
-            <CardTitle>按类型统计</CardTitle>
-            <CardDescription>按内容类型汇总当前收录情况。</CardDescription>
-          </CardHeader>
-          <CardContent className="overflow-x-auto admin-scrollbar">
+      <Card>
+        <CardHeader>
+          <CardTitle>任务与历史</CardTitle>
+          <CardDescription>持久来源任务；内容同步与 RAG 准备分别记录。</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {data?.tasks.items.map((task) => (
+            <div key={task.id} className="min-w-0 rounded-2xl bg-muted/46 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">
+                    {task.source} · {task.kind === "rag" ? "RAG 索引" : "内容同步"}
+                  </span>
+                  <Badge tone={task.status === "failed" ? "danger" : "outline"}>
+                    {task.status}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">
+                    {task.phase} · {task.processed}/{task.total} · 失败 {task.failed}
+                  </span>
+                </div>
+                {task.finishedAt === null && (
+                  <Button
+                    variant="destructive"
+                    disabled={cancel.isPending || task.cancelRequested}
+                    onClick={() => cancel.mutate(task.id)}
+                  >
+                    <PauseCircle className="size-4" />
+                    {task.cancelRequested ? "取消中" : "取消此任务"}
+                  </Button>
+                )}
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {formatDateTime(task.startedAt)} · {task.origin}
+              </p>
+              {task.error && <p className="mt-2 text-sm text-danger">{task.error}</p>}
+              <details className="mt-2 text-xs text-muted-foreground">
+                <summary className="cursor-pointer">任务身份</summary>
+                <p className="mt-2 break-all font-mono">{task.id}</p>
+              </details>
+            </div>
+          ))}
+          {data && !data.tasks.items.length && (
+            <p className="text-sm text-muted-foreground">暂无持久任务记录；此前累计未知。</p>
+          )}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>按类型统计</CardTitle>
+          <CardDescription>当前采用的唯一内容。</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {Object.entries(data?.content.byType ?? {}).map(([type, total]) => (
+              <div key={type}>
+                <dt className="text-sm text-muted-foreground">{type}</dt>
+                <dd className="font-semibold">{count(total)}</dd>
+              </div>
+            ))}
+          </dl>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>最近日志</CardTitle>
+          <CardDescription>日志不计入累计同步。</CardDescription>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          {logsQuery.error ? (
+            <Alert tone="danger">日志读取失败</Alert>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>类型</TableHead>
-                  <TableHead>总数</TableHead>
-                  <TableHead>来源分布</TableHead>
+                  <TableHead>时间</TableHead>
+                  <TableHead>来源</TableHead>
+                  <TableHead>操作</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead>消息</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {Object.entries(contentStats.byType ?? {}).map(([type, item]) => (
-                  <TableRow key={type}>
-                    <TableCell className="font-medium">{type}</TableCell>
-                    <TableCell>{formatCount(item.total)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {Object.entries(item.sources ?? {})
-                        .map(([name, count]) => `${name}: ${count}`)
-                        .join(" · ") || "-"}
-                    </TableCell>
+                {logsQuery.data?.map((log) => (
+                  <TableRow key={log.id}>
+                    <TableCell>{formatDateTime(log.createdAt)}</TableCell>
+                    <TableCell>{log.sourceName}</TableCell>
+                    <TableCell>{log.operation}</TableCell>
+                    <TableCell>{log.status}</TableCell>
+                    <TableCell>{log.message}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>最近历史</CardTitle>
-            <CardDescription>最近 10 次同步。</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {(historyQuery.data ?? []).map((entry) => (
-              <div
-                key={`${entry.startTime}-${entry.success}-${entry.duration}-${entry.sources.join("|")}`}
-                className="rounded-3xl bg-muted/50 p-4 shadow-inner shadow-shadow-inset"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <Badge tone={entry.success ? "success" : "danger"}>
-                    {entry.success ? "success" : "error"}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {formatDateTime(entry.startTime)}
-                  </span>
-                </div>
-                <div className="mt-2 text-sm text-muted-foreground">
-                  来源：{entry.sources.join(", ") || "-"}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  耗时：{formatCount(entry.duration)} ms · 错误 {entry.errorCount}
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>最近日志</CardTitle>
-          <CardDescription>最近 20 条同步记录。</CardDescription>
-        </CardHeader>
-        <CardContent className="overflow-x-auto admin-scrollbar">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>时间</TableHead>
-                <TableHead>来源</TableHead>
-                <TableHead>操作</TableHead>
-                <TableHead>状态</TableHead>
-                <TableHead>消息</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(logsQuery.data ?? []).map((log) => (
-                <TableRow key={log.id}>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {formatDateTime(log.createdAt)}
-                  </TableCell>
-                  <TableCell>{log.sourceName}</TableCell>
-                  <TableCell>{log.operation}</TableCell>
-                  <TableCell>
-                    <Badge
-                      tone={
-                        log.status === "success"
-                          ? "success"
-                          : log.status === "error"
-                            ? "danger"
-                            : "outline"
-                      }
-                    >
-                      {log.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="max-w-[520px] text-sm text-muted-foreground">
-                    {log.message}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          )}
         </CardContent>
       </Card>
     </div>

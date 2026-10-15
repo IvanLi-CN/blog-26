@@ -690,6 +690,127 @@ const demoSearchSettings: AdminSearchSettings = {
 const demoSearchRuns = new Map<string, SearchValidationRun>();
 const demoSearchRevision = { rag: 0, rewrite: 0 };
 
+let demoIndexCancelled = false;
+let demoIndexStarted = false;
+function unifiedSyncStatus(url: URL) {
+  const scene = getWebDemoState(window.location, "admin").scene;
+  const source = url.searchParams.get("source") ?? "all";
+  const previous = url.searchParams.get("edition") === "previous";
+  const available = scene !== "admin-sync-unconfigured";
+  const total = source === "blog" ? 299 : source === "playbook" ? 80 : 379;
+  const metrics = (count: number) => {
+    const indexed = scene === "admin-sync-unindexed" ? 0 : Math.floor(count * 0.6);
+    const outdated =
+      scene === "admin-sync-unindexed"
+        ? 0
+        : scene === "admin-sync-outdated"
+          ? count - indexed
+          : Math.floor(count * 0.1);
+    const failed = scene === "admin-sync-failed" ? Math.floor(count * 0.1) : 0;
+    return {
+      total: count,
+      indexed: available ? indexed : null,
+      unindexed: available ? count - indexed - outdated - failed : null,
+      outdated: available ? outdated : null,
+      failed: available ? failed : null,
+      coverage: available && count ? indexed / count : null,
+    };
+  };
+  const chunkMetrics = (counts: ReturnType<typeof metrics>) =>
+    Object.fromEntries(
+      Object.entries(counts).map(([key, value]) => [
+        key,
+        key === "coverage" || value === null ? value : value * 3,
+      ])
+    );
+  const contents = metrics(total);
+  const chunks = chunkMetrics(contents);
+  const edition = {
+    editionDigest: (previous ? "b" : "a").repeat(64),
+    source: { releaseId: "100", tag: "v2.4.3" },
+    generatedAt: new Date(now - 600000).toISOString(),
+  };
+  const task = {
+    id: "550e8400-e29b-41d4-a716-446655440000",
+    kind: "rag",
+    source: source === "blog" ? "local" : "playbook",
+    origin: "manual",
+    requestKey: "demo",
+    target: "{}",
+    status: demoIndexCancelled ? "cancelled" : demoIndexStarted ? "running" : "success",
+    phase: demoIndexStarted ? "embedding" : "success",
+    total: 240,
+    processed: demoIndexStarted || demoIndexCancelled ? 144 : 240,
+    failed: 0,
+    error: null,
+    startedAt: now - 600000,
+    finishedAt: demoIndexStarted && !demoIndexCancelled ? null : now - 1000,
+    cancelRequested: demoIndexCancelled,
+  };
+  return {
+    observedAt: now,
+    summary: {
+      registeredSources: 2,
+      enabledSources: scene === "admin-sync-disabled" ? 1 : 2,
+      total: 404,
+      totalSyncs: scene === "admin-sync-history" ? 12 : 2,
+      trackingSince: now - 86400000,
+      lastSyncTime: now - 600000,
+    },
+    content: {
+      byType: { post: 27, memo: 292, project: 5, topic: 40, experience: 20, policy: 20 },
+      bySource: { local: 324, playbook: 80 },
+    },
+    sources: [
+      { name: "local", type: "local", enabled: true, total: 324 },
+      { name: "playbook", type: "playbook", enabled: scene !== "admin-sync-disabled", total: 80 },
+    ],
+    playbook: {
+      adopted: true,
+      adoptedAt: now - 600000,
+      current: { ...edition, editionDigest: "a".repeat(64) },
+      previous: { ...edition, editionDigest: "b".repeat(64) },
+    },
+    rag: {
+      contents,
+      chunks,
+      available,
+      reason: available ? null : "embedding-unconfigured",
+      missingSources: [],
+      identity: {
+        source,
+        type: "all",
+        access: "public",
+        blogWatermark: 1,
+        playbook: { edition: edition.editionDigest, sourceReleaseId: "100", sourceTag: "v2.4.3" },
+        fingerprint: "d".repeat(64),
+        model: "BAAI/bge-m3",
+        configuredDim: null,
+        policy: { version: 1, chunking: true, size: 1400, overlap: 200 },
+      },
+      bySource: [
+        {
+          source: "blog",
+          contents: metrics(source === "playbook" ? 0 : 299),
+          chunks: chunkMetrics(metrics(source === "playbook" ? 0 : 299)),
+          available,
+        },
+        {
+          source: "playbook",
+          contents: metrics(source === "blog" ? 0 : 80),
+          chunks: chunkMetrics(metrics(source === "blog" ? 0 : 80)),
+          available,
+        },
+      ],
+      details: [],
+      incompleteSources: source === "all" ? ["blog", "playbook"] : [source],
+      lastIndexedAt: now - 600000,
+    },
+    tasks: { items: [task], total: 1 },
+    policy: { rag: { available: true }, rewrite: { available: true } },
+  };
+}
+
 async function handleAdminRequest(
   url: URL,
   method: string,
@@ -745,6 +866,24 @@ async function handleAdminRequest(
     return json({ comments, pagination: pagination(comments.length) });
   if (path.startsWith("/api/admin/comments/"))
     return json({ success: true, message: "评论状态已更新" });
+  if (path === "/api/admin/content-sync/status") return json(unifiedSyncStatus(url));
+  if (path === "/api/admin/content-sync/rag/trigger") {
+    demoIndexStarted = true;
+    demoIndexCancelled = false;
+    recordWebDemoMutation("启动 RAG 索引", `${String(body.source)} · ${String(body.mode)}（模拟）`);
+    return json(
+      {
+        taskIds: ["550e8400-e29b-41d4-a716-446655440000"],
+        results: [{ source: body.source, taskId: "550e8400-e29b-41d4-a716-446655440000" }],
+      },
+      202
+    );
+  }
+  if (path.startsWith("/api/admin/content-sync/tasks/") && path.endsWith("/cancel")) {
+    demoIndexCancelled = true;
+    recordWebDemoMutation("取消 RAG 任务", "保留已成功的模拟分块");
+    return json({ taskId: "550e8400-e29b-41d4-a716-446655440000", status: "cancelled" });
+  }
   if (path === "/api/admin/content-sync/manager-stats")
     return json({ registeredSources: 2, enabledSources: 2, activeJobs: 1 });
   if (path === "/api/admin/content-sync/content-stats")

@@ -146,6 +146,24 @@ HTTP 保持 JSON 数组；现代 tRPC/MCP 保持结果与所选/实际模式的 
 
 指定版本超出保留范围时，HTTP 返回 409，tRPC/MCP 提供等价受控版本错误，要求刷新而不自动替换为当前版本。没有可用 Playbook 时，仅 Playbook 范围为受控不可用；全部范围可保留文章/Memo 结果，但必须报告 Playbook 范围不完整，不能以空结果冒充已完成检索。有效旧快照仍可查询时，同步失败本身不使搜索失败。Playbook 故障不得改变文章/Memo 的权限检查和原始内容水位要求。
 
+### REQ-SREL-022 — 真实 RAG 语义索引覆盖
+
+管理员必须能够查询现代 RAG 的全部、博客与 Playbook 范围，明确区分当前 RAG 语料中的唯一内容对象和预期语义分块。管理统计默认反映公开检索的实际准入规则；已授权的非公开范围若提供统计，必须显式标注且单独计算，不能混入公开覆盖。总量从当前合格语料与有效分块规则得到，不从已有向量记录反推；没有任何 embedding 行的合格内容仍计入总量与未索引。博客使用当前内容身份和水位，Playbook 绑定完整 edition/Release ID/tag；current 与 previous 分开，过期版本、无当前父内容的历史记录和不准入类型不增加当前总量。收录总量与 RAG 总量不得互相冒充。
+
+两种单位均须报告总量、已索引、未索引、过时、失败及覆盖率，并标明来源、访问范围、有效 embedding 配置与统计身份。分块仅在属于当前预期集合、输入摘要与有效模型/配置匹配、向量存在且维度与数值有效时计为已索引；存在旧索引但不符合当前要求计为过时，从未建立有效索引的预期分块计为未索引，当前目标的最新准备失败单列失败。失败优先于过时，过时优先于未索引，每个分块只进入一个当前状态。排队与运行属于任务进度，不替代索引状态，pending 行不能证明整个未处理集合已经被列出。
+
+RAG 主卡以唯一内容对象为展示单位，直接呈现总量、已索引、未索引、过时、失败及内容覆盖率；分块总量、分块状态和分块覆盖率放入详情并明确标注单位。同一文章、Memo、Topic、项目实践或 Policy Skill 的多个分块不能放大主卡计数，所属资源也不独立计为内容。来源切换时主卡和详情使用同一范围与版本，详情可解释部分覆盖及其失败或过时分块；不以历史向量记录数替代主卡内容数。
+
+内容对象只有全部预期分块均为已索引时才计为已索引；部分覆盖须可辨认且不能计为完整。未完整覆盖的对象按失败、过时、未索引的顺序归入一个摘要状态，并在详情保留各分块事实。内容状态和分块状态分别满足“总量 = 已索引 + 未索引 + 过时 + 失败”；覆盖率分别为已索引除以同单位总量，空语料显示不适用而非未经验证的 100%。模型未配置、内容或统计不可用与真实零值区分，孤立或已撤权记录只可作为管理员诊断信息，不成为有效覆盖。
+
+RAG 语义覆盖、后台任务 idle/running、RAG 策略启用和模型质量验证是独立状态。管理页须显示按来源的内容与分块指标、最近索引时间、任务进度及受控错误；接口、页面与搜索元信息必须使用相同的目标身份和新鲜度判定。`ragIncompleteSources` 依据当前请求所选范围的实际语义覆盖是否完整，不能依据本次是否有向量候选、命中多少结果或关键词是否已满 topK 推断完整；部分未索引、失败或过时须报告对应来源。覆盖不足时继续保留同版词法候选与现有模型失败回退，不改变实际模式兼容或触发查询内补建。
+
+### REQ-SREL-023 — 语义准备与现有索引兼容
+
+博客与 Playbook 的语义补建必须按照统计所用的目标集合、摘要与配置生成索引，确保任务完成后相同目标能够被判为有效覆盖；源文件摘要、embedding 输入摘要和分块摘要不能混用。目标变化使旧任务结果对当前覆盖失效，重试失败或缺失目标不能重复放大数量。语义分块规则改变或内容缩短后的多余旧分块不计入当前覆盖，切换分块/整篇模式的旧记录不冒充当前预期集合。
+
+现代 RAG 继续兼容既有博客 post_embeddings，legacy semantic 和 enhanced 的既有参数、数组/envelope、访问范围及权限边界保持有效。旧记录只在身份、输入和配置均与当前目标匹配时计入有效覆盖；不能仅因无错误信息或有非空向量而认定完成。不以统计修复为由自动清空历史索引、扫描私有来源、改动上游发布流程或变更 RAG 排名规则。
+
 ## Verification
 
 管理员在现有模型管理页分别管理 RAG 与改写的启停、继承 chat 或覆盖模型及有界高级预算。策略独立持久化，复用现有提供方与密钥；仅已保存配置可异步执行固定合成样例的质量验证，显示进度与失败原因。配置改变使旧任务结果及质量依据失效，非管理员不得读写策略或启动验证。接口为 GET/PUT `/api/admin/search-settings`、POST `/api/admin/search-settings/validate` 和 GET `/api/admin/search-settings/validation/:runId`。
@@ -264,6 +282,18 @@ HTTP 保持 JSON 数组；现代 tRPC/MCP 保持结果与所选/实际模式的 
 - covers: `REQ-SREL-011`, `REQ-SREL-017`, `REQ-SREL-021`
 - Pass condition: 每次成功检索与其请求绑定版本一致，无有效版本时明确报告；未知绑定不静默替换。全部范围的局部不可用可辨认，仅 Playbook 范围不返回成功空列表；有效旧版继续可查询，请求不访问源仓库或进行全量构建。
 
+### VER-SREL-020 — 两种单位与真实覆盖
+
+- Method: 构造多个内容及重复章节、资源和不同分块数，覆盖完全无记录、部分完成、内容/模型/配置变化、空向量、错误维度、非有限数、失败、孤立记录、草稿/私有/剪藏权限与 current/previous；比较管理接口、页面、全来源和单来源指标，并注入接口读取失败。
+- covers: `REQ-SREL-022`, `REQ-SREL-023`
+- Pass condition: 两种单位的总量均来自合格目标集合，各状态互斥且可加总；主卡按唯一内容对象显示六项指标，分块数量和覆盖率只在标明单位的详情中展示。一个 Policy Skill 的 50 个分块及附带文件仍只计一个内容对象，部分缺失时主卡不能计为已索引；切换来源后主卡和详情的范围、版本一致。全无记录仍显示正的总量及未索引数，旧记录、无父内容、权限不符及旧版不算已索引，部分准备、失败与过时不冒充完整，读取失败不伪装为零；模型配置或空语料的不可用/不适用状态明确。
+
+### VER-SREL-021 — 补建、兼容与覆盖元信息
+
+- Method: 按当前输入摘要准备博客和同版 Playbook，覆盖增量跳过、失败重试、内容缩短、分块规则与整篇模式切换、重启、模型切换和迟到任务；分别在零/一个/多个语义候选与关键词满 topK 时执行现代 RAG，比较管理覆盖和响应元信息，并回归 legacy semantic/enhanced。
+- covers: `REQ-SREL-006`, `REQ-SREL-007`, `REQ-SREL-008`, `REQ-SREL-021`, `REQ-SREL-022`, `REQ-SREL-023`
+- Pass condition: 准备与统计使用同一目标/摘要/有效配置，完成后对应目标判为已索引；重复补建不增量膨胀、旧或多余记录不冒充完整。任何所选来源覆盖不全均报告 ragIncompleteSources，包括仍有语义候选或关键词满额的情况；词法集合保全、模型失败回退和同版绑定继续成立，旧接口与授权边界兼容，统计与查询不隐式启动生成。
+
 ## Related ADRs
 
 - [公开 Playbook 读取模型](../../adr/0011-published-playbook-read-model.md)
@@ -279,11 +309,18 @@ HTTP 保持 JSON 数组；现代 tRPC/MCP 保持结果与所选/实际模式的 
   - evidence_note: confirms the switch thumb keeps an even inset from the track edge after removing the duplicate desktop/mobile translation rules
   - image: ![Search policy switch spacing](./assets/admin-search-policy-switch-fix.png)
 - source_type: `ui_demo`
-  - surface: public search page and content-sync admin page
+  - surface: public search page
   - requested_viewports: `1280x900` and `393x852` CSS px
   - scenario: RAG search for `发布` returns one unified list containing a Policy Skill and Topic with edition-bound routes; content sync shows Playbook adoption, lexical count, semantic ready/pending/failed counts, model, and edition history.
   - evidence_note: current Candidate screenshots are current-only against the locked base because these surfaces are new; owner confirmation is required before PR publication.
-  - images: ![Unified Playbook search desktop](./assets/unified-playbook-search-desktop.png), ![Unified Playbook search mobile](./assets/unified-playbook-search-mobile.png), ![Playbook sync desktop](./assets/playbook-sync-admin-desktop.png), ![Playbook sync mobile](./assets/playbook-sync-admin-mobile.png)
+  - images: ![Unified Playbook search desktop](./assets/unified-playbook-search-desktop.png), ![Unified Playbook search mobile](./assets/unified-playbook-search-mobile.png)
+
+内容同步 RAG 覆盖页使用正式 Web Demo `/admin/content-sync?d_scene=admin-sync-partial&d_theme=dark`，桌面视口 1440×1100，移动端模拟视口 393×852。移动证据为滚动到 RAG 卡片的单屏截图，避免整页采集改变模拟设置或压缩长图。主卡为唯一公开内容六项指标，范围由“全部 / 博客 / Playbook”chip 选择；截图已由主人确认。
+
+![内容同步桌面覆盖](./assets/playbook-sync-admin-desktop.png)
+
+![内容同步移动 RAG 覆盖](./assets/playbook-sync-admin-mobile.png)
+
 
 ## References
 

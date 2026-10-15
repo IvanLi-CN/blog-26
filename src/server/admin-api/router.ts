@@ -635,6 +635,53 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
       return methodNotAllowed(request.method, resHeaders);
     }
 
+    if (pathname === "/content-sync/status") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      return json(
+        await caller.admin.contentSync.getStatus({
+          source: url.searchParams.get("source") ?? "all",
+          type: url.searchParams.get("type") ?? "all",
+          edition: url.searchParams.get("edition") ?? "current",
+        } as never),
+        { status: 200 },
+        resHeaders
+      );
+    }
+    if (pathname === "/content-sync/rag/trigger") {
+      if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
+      return json(
+        await caller.admin.contentSync.triggerRagIndex((await parseJsonBody(request)) as never),
+        { status: 202 },
+        resHeaders
+      );
+    }
+    if (pathname === "/content-sync/tasks") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      return json(
+        await caller.admin.contentSync.getTasks({
+          source: url.searchParams.get("source") ?? undefined,
+          kind: url.searchParams.get("kind") ?? undefined,
+          offset: getNumber(url.searchParams.get("offset"), 0),
+          limit: getNumber(url.searchParams.get("limit"), 20),
+        } as never),
+        { status: 200 },
+        resHeaders
+      );
+    }
+    const taskRoute = pathname.match(/^\/content-sync\/tasks\/([^/]+)(\/cancel)?$/);
+    if (taskRoute) {
+      if (request.method !== (taskRoute[2] ? "POST" : "GET"))
+        return methodNotAllowed(request.method, resHeaders);
+      const input = { taskId: taskRoute[1] };
+      return json(
+        taskRoute[2]
+          ? await caller.admin.contentSync.cancelTask(input)
+          : await caller.admin.contentSync.getTask(input),
+        { status: 200 },
+        resHeaders
+      );
+    }
+
     if (pathname === "/content-sync/system-config") {
       if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
       return json(await caller.admin.contentSync.getSystemConfig(), { status: 200 }, resHeaders);

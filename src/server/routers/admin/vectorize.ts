@@ -1,8 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
 import { vectorizeAll, vectorizeOneBySlug } from "@/lib/ai/vectorization";
-import { getResolvedLlmConfig } from "@/server/services/llm-settings";
+import { ragCoverage } from "@/server/services/rag-index";
 import { adminProcedure, createTRPCRouter } from "../../trpc";
 
 type Progress = {
@@ -78,16 +77,16 @@ export const adminVectorizeRouter = createTRPCRouter({
   }),
 
   getVectorizationStats: adminProcedure.query(async () => {
-    const resolved = await getResolvedLlmConfig();
-    const model = resolved.embedding.model || "BAAI/bge-m3";
-    const stats = await EmbeddingsRepository.stats(model);
+    const { status } = await ragCoverage({ source: "blog" });
     return {
-      indexed: stats.indexed,
-      outdated: 0,
-      unindexed: Math.max(0, stats.total - stats.indexed),
-      lastIndexedAt: stats.lastUpdatedAt,
-      model: stats.model,
-      dim: Number(process.env.EMBEDDING_DIMENSION || 1024),
+      indexed: status.available ? status.contents.indexed : null,
+      outdated: status.available ? status.contents.outdated : null,
+      unindexed: status.available ? status.contents.unindexed + status.contents.failed : null,
+      lastIndexedAt: status.lastIndexedAt,
+      model: status.identity.model ?? "",
+      dim: status.identity.configuredDim,
+      available: status.available,
+      reason: status.reason,
     };
   }),
 });

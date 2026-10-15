@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { cleanup, fireEvent, render } from "@testing-library/react";
-import { ContentSyncActions, PlaybookStatusDetails, VectorizationStatsGrid } from "./content-sync";
+import {
+  ContentSyncActions,
+  PlaybookStatusDetails,
+  RagCoverageGrid,
+  VectorizationStatsGrid,
+} from "./content-sync";
 
 GlobalRegistrator.register();
 
@@ -110,5 +115,33 @@ describe("Playbook sync controls", () => {
       />
     );
     expect(getByRole("button", { name: /刷新 Playbook/ }).hasAttribute("disabled")).toBe(true);
+  });
+});
+
+describe("RAG coverage", () => {
+  test("shows six parent metrics, differentiates unavailable and true zero", () => {
+    const { getByText, rerender } = render(
+      <RagCoverageGrid
+        stats={{ total: 1, indexed: 0, unindexed: 1, outdated: 0, failed: 0, coverage: 0 }}
+      />
+    );
+    expect(getByText("总量")).toBeTruthy();
+    expect(getByText("未索引")).toBeTruthy();
+    expect(getByText("失败")).toBeTruthy();
+    expect(getByText("0.0%")).toBeTruthy();
+    rerender(
+      <RagCoverageGrid
+        available={false}
+        stats={{
+          total: 1,
+          indexed: null,
+          unindexed: null,
+          outdated: null,
+          failed: null,
+          coverage: null,
+        }}
+      />
+    );
+    expect(getByText("覆盖率").nextElementSibling?.textContent).toBe("—");
   });
 });

@@ -287,6 +287,7 @@ export interface SyncProgress {
  * 同步结果
  */
 export interface SyncResult {
+  taskId?: string;
   /** 是否成功 */
   success: boolean;
 

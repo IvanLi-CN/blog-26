@@ -7,10 +7,10 @@ import { contentSyncLogs, searchSemanticEmbeddings } from "@/lib/schema";
 import { getResolvedLlmConfig, type ResolvedTierConfig } from "./llm-settings";
 import {
   listPlaybookCandidates,
-  listPlaybookSearchChunks,
   type PlaybookSearchCandidate,
   type PlaybookSearchType,
 } from "./playbook-search";
+import { ragCoverage, runRagIndex } from "./rag-index";
 import { embedSearchQuery } from "./search-model";
 
 export type SemanticProjectionStatus = {
@@ -33,7 +33,17 @@ export async function getPlaybookContentSyncStatus() {
   const editions = [store.current, store.previous].filter(Boolean) as PlaybookEdition[];
   const previous = store.previous;
   const state = store.current;
-  const semantic = await getPlaybookSemanticStatus(state, model);
+  const coverage = await ragCoverage({ source: "playbook" });
+  const semantic = {
+    source: "playbook" as const,
+    edition: state?.edition.editionDigest,
+    model,
+    total: coverage.status.chunks.total,
+    ready: coverage.status.chunks.indexed,
+    pending: coverage.status.chunks.unindexed + coverage.status.chunks.outdated,
+    failed: coverage.status.chunks.failed,
+    lastError: coverage.status.details.find((row) => row.error)?.error ?? undefined,
+  };
   const lexicalCount = state ? listPlaybookCandidates(state).length : 0;
   const history = await db
     .select()
@@ -161,119 +171,28 @@ export async function preparePlaybookSemanticProjection(
   config: ResolvedTierConfig,
   options: { type?: "all" | PlaybookSearchType; signal?: AbortSignal } = {}
 ) {
-  const model = config.model;
-  if (!model) throw new Error("Embedding model is not configured");
-  const chunks = listPlaybookSearchChunks(edition, options);
-  const now = Date.now();
-  let prepared = 0;
-  let failed = 0;
-  for (const chunk of chunks) {
-    if (options.signal?.aborted)
-      throw new DOMException("Projection preparation cancelled", "AbortError");
-    const existing = await db
-      .select({
-        id: searchSemanticEmbeddings.id,
-        contentHash: searchSemanticEmbeddings.contentHash,
-        status: searchSemanticEmbeddings.status,
-      })
-      .from(searchSemanticEmbeddings)
-      .where(
-        and(
-          eq(searchSemanticEmbeddings.source, "playbook"),
-          eq(searchSemanticEmbeddings.parentId, chunk.parentId),
-          eq(searchSemanticEmbeddings.editionDigest, edition.edition.editionDigest),
-          eq(searchSemanticEmbeddings.sourceReleaseId, edition.edition.source.releaseId),
-          eq(searchSemanticEmbeddings.sourceTag, edition.edition.source.tag),
-          eq(searchSemanticEmbeddings.modelName, model),
-          eq(searchSemanticEmbeddings.chunkIndex, chunk.chunkIndex)
-        )
-      )
-      .limit(1);
-    const id = semanticProjectionId({
-      source: "playbook",
-      parentId: chunk.parentId,
-      edition: edition.edition.editionDigest,
-      sourceReleaseId: edition.edition.source.releaseId,
-      sourceTag: edition.edition.source.tag,
-      model,
-      chunkIndex: chunk.chunkIndex,
-    });
-    if (existing[0]?.contentHash === chunk.contentHash && existing[0].status === "ready") {
-      prepared++;
-      continue;
+  const { taskId } = await runRagIndex(
+    { source: "playbook", playbook: edition, type: options.type ?? "all", config },
+    "repair",
+    "compatibility"
+  );
+  const { getContentTask, cancelContentTask } = await import("./content-tasks");
+  while (true) {
+    if (options.signal?.aborted) {
+      await cancelContentTask(taskId);
+      throw options.signal.reason;
     }
-    const rowId = existing[0]?.id ?? id;
-    if (existing.length && existing[0]?.id) {
-      await db
-        .update(searchSemanticEmbeddings)
-        .set({
-          contentId: chunk.id,
-          type: chunk.type,
-          slug: chunk.slug,
-          location: chunk.location?.resourcePath ?? chunk.location?.id ?? chunk.route,
-          contentHash: chunk.contentHash,
-          dim: 0,
-          vector: null,
-          updatedAt: now,
-          status: "pending",
-          errorMessage: null,
-        })
-        .where(eq(searchSemanticEmbeddings.id, existing[0].id));
-    } else {
-      await db.insert(searchSemanticEmbeddings).values({
-        id,
-        source: "playbook",
-        contentId: chunk.id,
-        parentId: chunk.parentId,
-        type: chunk.type,
-        slug: chunk.slug,
-        editionDigest: edition.edition.editionDigest,
-        sourceReleaseId: edition.edition.source.releaseId,
-        sourceTag: edition.edition.source.tag,
-        location: chunk.location?.resourcePath ?? chunk.location?.id ?? chunk.route,
-        chunkIndex: chunk.chunkIndex,
-        modelName: model,
-        dim: 0,
-        contentHash: chunk.contentHash,
-        vector: null,
-        status: "pending",
-        errorMessage: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-    try {
-      const vector = await embedSearchQuery(
-        config,
-        `${chunk.title}\n${chunk.excerpt ?? ""}\n${chunk.body}`,
-        10000,
-        { signal: options.signal }
-      );
-      await db
-        .update(searchSemanticEmbeddings)
-        .set({
-          dim: vector.length,
-          vector: Buffer.from(new Float32Array(vector).buffer),
-          status: "ready",
-          errorMessage: null,
-          updatedAt: Date.now(),
-        })
-        .where(eq(searchSemanticEmbeddings.id, rowId));
-    } catch (error) {
-      if (options.signal?.aborted) throw error;
-      failed++;
-      await db
-        .update(searchSemanticEmbeddings)
-        .set({
-          status: "failed",
-          errorMessage: error instanceof Error ? error.message : String(error),
-          updatedAt: Date.now(),
-        })
-        .where(eq(searchSemanticEmbeddings.id, rowId));
-    }
-    prepared++;
+    const task = await getContentTask(taskId);
+    if (task?.finishedAt !== null && task)
+      return {
+        prepared: task.processed - task.failed,
+        total: task.total,
+        failed: task.failed,
+        edition: edition.edition.editionDigest,
+        model: config.model,
+      };
+    await Bun.sleep(20);
   }
-  return { prepared, total: chunks.length, failed, edition: edition.edition.editionDigest, model };
 }
 
 export async function semanticPlaybookCandidates(
@@ -285,6 +204,13 @@ export async function semanticPlaybookCandidates(
 ): Promise<PlaybookSearchCandidate[]> {
   const model = config.model;
   if (!model) return [];
+  const { eligibleVectorIds } = await ragCoverage({
+    source: "playbook",
+    type,
+    playbook: edition,
+    config,
+  });
+  if (!eligibleVectorIds.size) return [];
   const rows = await db
     .select()
     .from(searchSemanticEmbeddings)
@@ -306,7 +232,12 @@ export async function semanticPlaybookCandidates(
   const vector = await embedSearchQuery(config, query);
   const scoreByParent = new Map<string, number>();
   for (const row of rows) {
-    if (!(row.vector instanceof Uint8Array) || row.dim !== vector.length) continue;
+    if (
+      !eligibleVectorIds.has(row.id) ||
+      !(row.vector instanceof Uint8Array) ||
+      row.dim !== vector.length
+    )
+      continue;
     const bytes = Buffer.from(row.vector);
     if (bytes.length !== row.dim * 4) continue;
     const stored = Array.from({ length: row.dim }, (_, index) => bytes.readFloatLE(index * 4));

@@ -54,6 +54,16 @@ async function acquireGlobalSlot(): Promise<void> {
   });
 }
 
+/** Use the existing process-wide embedding admission budget for background targets. */
+export async function withEmbeddingSlot<T>(work: () => Promise<T>): Promise<T> {
+  await acquireGlobalSlot();
+  try {
+    return await work();
+  } finally {
+    releaseGlobalSlot();
+  }
+}
+
 function releaseGlobalSlot() {
   GLOBAL_LIMITS.inflight = Math.max(0, GLOBAL_LIMITS.inflight - 1);
   notifyNext();
