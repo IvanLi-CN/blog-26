@@ -1291,6 +1291,9 @@ export async function handlePublicAssetFacadeRequest(
   if (!isPublicMediaVariant(params.variant)) {
     return new Response("Not Found", { status: 404 });
   }
+  if (params.variant === "play" && params.renderId) {
+    return new Response("Not Found", { status: 404 });
+  }
   if (params.renderId && !isPublicMediaRenderId(params.renderId)) {
     return new Response("Not Found", { status: 404 });
   }
@@ -1325,6 +1328,9 @@ export async function handleAdminPreviewAssetRequest(
     return new Response("Not Found", { status: 404 });
   }
   if (!isPublicMediaVariant(params.variant)) {
+    return new Response("Not Found", { status: 404 });
+  }
+  if (params.variant === "play" && params.renderId) {
     return new Response("Not Found", { status: 404 });
   }
   if (params.renderId && !isPublicMediaRenderId(params.renderId)) {

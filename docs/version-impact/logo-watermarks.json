@@ -36,11 +36,11 @@
     "src/lib/__tests__/public-media.test.ts": "bbca6aac464df8ffa8ec1d2d1739911167b26b11",
     "src/lib/public-media.ts": "0a113b8031e67c7c6a9e99a3a2c39ebaca824a78",
     "src/server/admin-api/router.ts": "3de0949125a249717c3a3326c1782e288edd0396",
-    "src/server/http-compat-api.test.ts": "8fb607962aa0d5f8dc8bd4a2c73c29c47e9f9ccd",
+    "src/server/http-compat-api.test.ts": "3a4d1c8b88bfb80850d3a776c0e24f07de002404",
     "src/server/public-api/router.ts": "8a1df27781c0a046f5c28bb76c8266cdba4fb7ac",
     "src/server/public-media-watermark.prototype.html": "3ffaaf9eea0f0feb4d136442e918b7d32f308dfe",
     "src/server/public-media-watermark.prototype.ts": "a611cf7c009ffdbf1b8a6f4368fca548272befed",
-    "src/server/public-media.ts": "0f9436a72e7a2a7b1b2f4452be95c57793a97c3d"
+    "src/server/public-media.ts": "1f369148071713641bed67a6e04a564d2546fcb2"
   },
   "change": {
     "description": "Add versioned Logo A/B media renditions selected by the image's visible CSS width while preserving legacy media URLs and administrator authorization.",
@@ -72,7 +72,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "8fb607962aa0d5f8dc8bd4a2c73c29c47e9f9ccd",
+          "blob": "3a4d1c8b88bfb80850d3a776c0e24f07de002404",
           "command": "Focused HTTP, imagor metadata, threshold, orientation and animated GIF regression coverage"
         },
         {
@@ -93,7 +93,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "8fb607962aa0d5f8dc8bd4a2c73c29c47e9f9ccd",
+          "blob": "3a4d1c8b88bfb80850d3a776c0e24f07de002404",
           "command": "bun test targeted public-media, selector, static packaging and HTTP compatibility files; 153 passed, 3 skipped"
         },
         {
@@ -146,7 +146,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "8fb607962aa0d5f8dc8bd4a2c73c29c47e9f9ccd",
+          "blob": "3a4d1c8b88bfb80850d3a776c0e24f07de002404",
           "command": "HTTP compatibility tests cover old routes, authorization boundaries and new render identities without state migration"
         }
       ]

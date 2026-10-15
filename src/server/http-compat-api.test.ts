@@ -1812,6 +1812,14 @@ public: false
     expect(response.status).toBe(404);
   });
 
+  it("rejects render identities on controlled playback URLs", async () => {
+    const response = await handlePublicApiRequest(
+      buildRequest("/api/public/assets/post/any-slug/abc123/wm-a-v1/play.mp4"),
+      "/assets/post/any-slug/abc123/wm-a-v1/play.mp4"
+    );
+    expect(response.status).toBe(404);
+  });
+
   it("never serves draft memos through the public asset facade", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos/assets"), { recursive: true });
     fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos/assets/draft-cover.png"), "cover");
