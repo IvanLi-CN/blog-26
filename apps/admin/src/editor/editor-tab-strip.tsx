@@ -2,6 +2,7 @@ import { MoreHorizontal, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
+  Button,
   Drawer,
   DrawerContent,
   DrawerHandle,
@@ -10,6 +11,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
+  TabsList,
+  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -133,6 +136,9 @@ export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: Edito
   const [stripRef, stripWidth] = useElementWidth<HTMLDivElement>();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
+  const tabTriggerRefs = useRef(new Map<string, HTMLButtonElement>());
+  const previousTabIdsRef = useRef(tabs.map((tab) => tab.id));
+  const lastClosedTabIdRef = useRef<string | null>(null);
   const isMobile = useIsMobile();
   const visibleTabIds = useMemo(
     () => computeVisibleTabIds(tabs, activeTabId, stripWidth),
@@ -148,10 +154,32 @@ export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: Edito
   };
 
   const closeTab = (tabId: string) => {
+    lastClosedTabIdRef.current = tabId;
     onClose(tabId);
     setDrawerOpen(false);
     setDesktopMenuOpen(false);
   };
+
+  useLayoutEffect(() => {
+    const previousTabIds = previousTabIdsRef.current;
+    const nextTabIds = tabs.map((tab) => tab.id);
+    const removedTabIds = previousTabIds.filter((tabId) => !nextTabIds.includes(tabId));
+    const closedTabId =
+      lastClosedTabIdRef.current ?? (removedTabIds.length === 1 ? removedTabIds[0] : null);
+
+    if (closedTabId && previousTabIds.includes(closedTabId) && !nextTabIds.includes(closedTabId)) {
+      const closedIndex = previousTabIds.indexOf(closedTabId);
+      const nextFocusId = nextTabIds.includes(activeTabId)
+        ? activeTabId
+        : (nextTabIds[closedIndex] ?? nextTabIds[closedIndex - 1]);
+      if (nextFocusId) {
+        requestAnimationFrame(() => tabTriggerRefs.current.get(nextFocusId)?.focus());
+      }
+      lastClosedTabIdRef.current = null;
+    }
+
+    previousTabIdsRef.current = nextTabIds;
+  }, [tabs, activeTabId]);
 
   const renderTab = (tab: EditorTabStripItem) => {
     const active = tab.id === activeTabId;
@@ -171,32 +199,36 @@ export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: Edito
       >
         <Tooltip>
           <TooltipTrigger asChild>
-            <button
-              type="button"
-              role="tab"
+            <TabsTrigger
+              ref={(node) => {
+                if (node) tabTriggerRefs.current.set(tab.id, node);
+                else tabTriggerRefs.current.delete(tab.id);
+              }}
+              value={tab.id}
               aria-selected={active}
               aria-label={tabDescription(tab)}
-              className="inline-flex min-w-0 flex-1 items-center gap-1.5 text-left leading-none"
-              onClick={() => onActivate(tab.id)}
+              className="inline-flex min-w-0 flex-1 items-center justify-start gap-1.5 rounded-lg px-1 text-left leading-none font-normal text-inherit shadow-none hover:bg-transparent data-[state=active]:bg-transparent data-[state=active]:text-inherit data-[state=active]:shadow-none"
             >
               <DirtyDot dirty={tab.dirty} />
               <span className={cn("min-w-0 flex-1 truncate", tab.temporary && "italic")}>
                 {tab.label || "未命名文章"}
               </span>
-            </button>
+            </TabsTrigger>
           </TooltipTrigger>
           <TooltipContent side="bottom" align="start">
             {tabDescription(tab)}
           </TooltipContent>
         </Tooltip>
-        <button
+        <Button
           type="button"
+          variant="bare"
+          size="icon"
           className={closeButtonClassName}
-          onClick={() => onClose(tab.id)}
+          onClick={() => closeTab(tab.id)}
           aria-label={`关闭 ${tab.label || "未命名文章"}`}
         >
           <X className="size-3" />
-        </button>
+        </Button>
       </div>
     );
   };
@@ -218,8 +250,9 @@ export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: Edito
           >
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
-                  type="button"
+                <Button
+                  variant="bare"
+                  size="content"
                   className="inline-flex min-w-0 flex-1 items-center gap-2 text-left"
                   onClick={() => activateTab(tab.id)}
                   aria-label={tabDescription(tab)}
@@ -228,20 +261,22 @@ export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: Edito
                   <span className={cn("truncate text-sm font-medium", tab.temporary && "italic")}>
                     {tab.label || "未命名文章"}
                   </span>
-                </button>
+                </Button>
               </TooltipTrigger>
               <TooltipContent side="left" align="center">
                 {tabDescription(tab)}
               </TooltipContent>
             </Tooltip>
-            <button
+            <Button
               type="button"
+              variant="bare"
+              size="icon"
               className={closeButtonClassName}
               onClick={() => closeTab(tab.id)}
               aria-label={`关闭 ${tab.label || "未命名文章"}`}
             >
               <X className="size-3" />
-            </button>
+            </Button>
           </div>
         );
       })}
@@ -250,57 +285,60 @@ export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: Edito
 
   return (
     <TooltipProvider delayDuration={240}>
-      <div
-        ref={stripRef}
-        role="tablist"
-        data-testid="editor-tab-strip"
-        className="admin-editor-tab-strip flex h-12 shrink-0 items-center gap-1.5 overflow-hidden whitespace-nowrap border-b border-border/58 px-3"
-      >
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-          {visibleTabs.map(renderTab)}
+      <TabsList asChild>
+        <div
+          ref={stripRef}
+          data-testid="editor-tab-strip"
+          className="admin-editor-tab-strip flex h-12 shrink-0 items-center gap-1.5 overflow-hidden whitespace-nowrap border-b border-border/58 px-3"
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+            {visibleTabs.map(renderTab)}
+          </div>
+          {hasOverflow ? (
+            isMobile ? (
+              <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+                <DrawerTrigger asChild>
+                  <Button
+                    variant="bare"
+                    size="icon"
+                    className={overflowButtonClassName}
+                    data-testid="editor-tabs-overflow"
+                    aria-label="展开已打开文件列表"
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </Button>
+                </DrawerTrigger>
+                <DrawerContent className="p-0">
+                  <div className="px-4 pt-2">
+                    <DrawerHandle />
+                  </div>
+                  <DrawerTitle className="border-b border-border/58 px-4 pb-2.5 pt-2 text-sm font-semibold">
+                    已打开文件
+                  </DrawerTitle>
+                  {renderTabList()}
+                </DrawerContent>
+              </Drawer>
+            ) : (
+              <DropdownMenu open={desktopMenuOpen} onOpenChange={setDesktopMenuOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="bare"
+                    size="icon"
+                    className={overflowButtonClassName}
+                    data-testid="editor-tabs-overflow"
+                    aria-label="展开已打开文件列表"
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80 p-1">
+                  {renderTabList()}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
+          ) : null}
         </div>
-        {hasOverflow ? (
-          isMobile ? (
-            <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-              <DrawerTrigger asChild>
-                <button
-                  type="button"
-                  className={overflowButtonClassName}
-                  data-testid="editor-tabs-overflow"
-                  aria-label="展开已打开文件列表"
-                >
-                  <MoreHorizontal className="size-4" />
-                </button>
-              </DrawerTrigger>
-              <DrawerContent className="p-0">
-                <div className="px-4 pt-2">
-                  <DrawerHandle />
-                </div>
-                <DrawerTitle className="border-b border-border/58 px-4 pb-2.5 pt-2 text-sm font-semibold">
-                  已打开文件
-                </DrawerTitle>
-                {renderTabList()}
-              </DrawerContent>
-            </Drawer>
-          ) : (
-            <DropdownMenu open={desktopMenuOpen} onOpenChange={setDesktopMenuOpen}>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className={overflowButtonClassName}
-                  data-testid="editor-tabs-overflow"
-                  aria-label="展开已打开文件列表"
-                >
-                  <MoreHorizontal className="size-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80 p-1">
-                {renderTabList()}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )
-        ) : null}
-      </div>
+      </TabsList>
     </TooltipProvider>
   );
 }

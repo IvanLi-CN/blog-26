@@ -14,13 +14,15 @@ test.describe("Content sync RAG coverage Web Demo", () => {
     await expect(coverage.locator("dd").first()).toHaveText("299");
     await scope.getByRole("button", { name: "Playbook", exact: true }).click();
     await expect(coverage.locator("dd").first()).toHaveText("80");
-    await page.getByLabel("Playbook 版本").selectOption("previous");
+    const edition = page.getByRole("combobox", { name: "Playbook 版本" });
+    await edition.click();
+    await page.getByRole("option", { name: "上一版详情" }).click();
     await expect(page.getByRole("button", { name: "补建缺失 / 过时 / 失败" })).toBeDisabled();
     await scope.getByRole("button", { name: "全部", exact: true }).focus();
     await page.keyboard.press("Enter");
     await expect(page.getByLabel("Playbook 版本")).toHaveCount(0);
     await scope.getByRole("button", { name: "Playbook", exact: true }).click();
-    await expect(page.getByLabel("Playbook 版本")).toHaveValue("current");
+    await expect(page.getByRole("combobox", { name: "Playbook 版本" })).toHaveText("当前版");
     await expect(scope.locator('[aria-pressed="true"]')).toHaveCount(1);
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
@@ -49,8 +51,9 @@ test.describe("Content sync RAG coverage Web Demo", () => {
 
   test("unconfigured coverage stays unknown and disables projection actions", async ({ page }) => {
     await page.goto("/admin/content-sync?d_scene=admin-sync-unconfigured&d_theme=light");
-    await expect(page.getByText("Embedding 未配置；覆盖状态不可得。")).toBeVisible();
     const values = page.getByTestId("rag-coverage").first().locator("dd");
+    await expect(values.first()).toHaveText("379");
+    await expect(page.getByText("Embedding 未配置；覆盖状态不可得。")).toBeVisible();
     await expect(values).toHaveText(["379", "—", "—", "—", "—", "—"]);
     await expect(page.getByRole("button", { name: "补建缺失 / 过时 / 失败" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "重建所选来源全部分块" })).toBeDisabled();

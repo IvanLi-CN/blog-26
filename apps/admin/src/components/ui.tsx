@@ -40,8 +40,17 @@ import { cn } from "@/lib/utils";
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   asChild?: boolean;
-  variant?: "default" | "secondary" | "outline" | "ghost" | "destructive" | "quiet";
-  size?: "default" | "sm" | "lg" | "icon";
+  variant?:
+    | "default"
+    | "secondary"
+    | "outline"
+    | "ghost"
+    | "destructive"
+    | "quiet"
+    | "field"
+    | "row"
+    | "bare";
+  size?: "default" | "sm" | "lg" | "icon" | "content";
 };
 
 export function Button({
@@ -57,7 +66,7 @@ export function Button({
     <Comp
       className={cn(
         "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-2xl text-sm font-medium transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45 lg:rounded-[0.75rem] [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-        "active:scale-[0.98]",
+        variant !== "row" && variant !== "bare" && "active:scale-[0.98]",
         variant === "default" &&
           "bg-primary text-primary-foreground shadow-lg shadow-primary/18 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/24",
         variant === "secondary" &&
@@ -69,11 +78,18 @@ export function Button({
           "bg-muted/54 text-muted-foreground hover:bg-muted/78 hover:text-foreground",
         variant === "destructive" &&
           "bg-destructive text-destructive-foreground shadow-lg shadow-destructive/16 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-destructive/22",
+        variant === "field" &&
+          "admin-field-control min-h-11 w-full justify-between rounded-2xl border-0 bg-input-surface px-4 py-3 text-left font-normal text-foreground shadow-inner shadow-shadow-inset hover:bg-card focus-visible:bg-card lg:rounded-[0.75rem]",
+        variant === "row" &&
+          "w-full justify-start rounded-2xl bg-transparent px-2 py-2 text-left font-normal text-foreground hover:bg-muted/60 hover:text-foreground",
+        variant === "bare" &&
+          "rounded-xl bg-transparent px-2 py-2 font-normal text-muted-foreground hover:bg-muted/60 hover:text-foreground",
         "admin-button",
         size === "default" && "h-11 px-5 py-2.5",
         size === "sm" && "admin-button-sm h-11 rounded-2xl px-3.5 text-xs",
         size === "lg" && "admin-button-lg h-11 px-6 text-base",
         size === "icon" && "admin-button-icon size-11 p-0",
+        size === "content" && "admin-button-content h-auto min-h-11 whitespace-normal py-2",
         className
       )}
       {...props}
@@ -170,17 +186,19 @@ export const Label = forwardRef<
 ));
 Label.displayName = LabelPrimitive.Root.displayName;
 
-export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
-  return (
+export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
+  ({ className, ...props }, ref) => (
     <input
+      ref={ref}
       className={cn(
         "admin-field-control flex h-11 w-full rounded-2xl border-0 bg-input-surface px-4 py-3 text-sm text-foreground shadow-inner shadow-shadow-inset transition-all duration-200 placeholder:text-muted-foreground/72 focus-visible:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55 disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}
     />
-  );
-}
+  )
+);
+Input.displayName = "Input";
 
 type SelectOption = {
   value: string;
@@ -262,7 +280,11 @@ export function Select({
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
-        <SelectPrimitive.Content className="z-50 overflow-hidden rounded-3xl border border-border/64 bg-popover text-popover-foreground shadow-2xl shadow-shadow-strong lg:rounded-[1rem]">
+        <SelectPrimitive.Content
+          position="popper"
+          sideOffset={6}
+          className="z-50 overflow-hidden rounded-3xl border border-border/64 bg-popover text-popover-foreground shadow-2xl shadow-shadow-strong lg:rounded-[1rem]"
+        >
           <SelectPrimitive.ScrollUpButton className="admin-select-scroll-button flex h-11 min-h-11 items-center justify-center text-muted-foreground">
             <ChevronUp className="size-4" />
           </SelectPrimitive.ScrollUpButton>
@@ -349,13 +371,16 @@ Switch.displayName = SwitchPrimitive.Root.displayName;
 
 export const Textarea = forwardRef<
   HTMLTextAreaElement,
-  TextareaHTMLAttributes<HTMLTextAreaElement>
->(({ className, ...props }, ref) => {
+  TextareaHTMLAttributes<HTMLTextAreaElement> & { variant?: "default" | "editor" }
+>(({ className, variant = "default", ...props }, ref) => {
   return (
     <textarea
       ref={ref}
       className={cn(
-        "flex min-h-32 w-full rounded-3xl border-0 bg-input-surface px-4 py-3 text-sm leading-6 text-foreground shadow-inner shadow-shadow-inset transition-all placeholder:text-muted-foreground/72 focus-visible:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55 disabled:cursor-not-allowed disabled:opacity-50 lg:rounded-[1rem] lg:px-3.5 lg:py-2.5",
+        variant === "default" &&
+          "flex min-h-32 w-full rounded-3xl border-0 bg-input-surface px-4 py-3 text-sm leading-6 text-foreground shadow-inner shadow-shadow-inset transition-all placeholder:text-muted-foreground/72 focus-visible:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55 disabled:cursor-not-allowed disabled:opacity-50 lg:rounded-[1rem] lg:px-3.5 lg:py-2.5",
+        variant === "editor" &&
+          "admin-scrollbar h-full min-h-0 w-full resize-none overflow-y-auto border-0 bg-transparent px-4 py-3 font-mono text-sm leading-6 text-foreground focus:outline-none",
         className
       )}
       {...props}
@@ -370,6 +395,34 @@ export function FieldLabel({ className, ...props }: HTMLAttributes<HTMLDivElemen
       className={cn("mb-2 inline-flex text-sm font-medium text-muted-foreground", className)}
       {...props}
     />
+  );
+}
+
+export function Disclosure({
+  className,
+  summary,
+  summaryClassName,
+  children,
+  defaultOpen,
+}: {
+  className?: string;
+  summary: ReactNode;
+  summaryClassName?: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  return (
+    <details className={cn(className)} open={defaultOpen}>
+      <summary
+        className={cn(
+          "cursor-pointer list-none text-sm text-muted-foreground marker:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+          summaryClassName
+        )}
+      >
+        {summary}
+      </summary>
+      <div className="mt-4">{children}</div>
+    </details>
   );
 }
 

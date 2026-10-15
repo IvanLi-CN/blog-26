@@ -44,6 +44,12 @@ Source lives under `src/`, shared UI under `src/components/`, libraries under `s
 - Existing page Stories do not establish precedent. Do not recreate the deleted page Stories; update the Web Demo route and its browser evidence instead.
 - Any exceptional fallback must be documented in the owning Spec and ADR before code is added, and is only valid when no stable Web Demo source exists.
 
+## Admin UI Library
+
+- All shipped `apps/admin/src` product code must use the local primitives exported by `apps/admin/src/components/ui.tsx` for basic interactions, including buttons, fields, selectors, dialogs, tabs, disclosure, menus, and related controls. Extend the local layer before adding a missing capability.
+- Product pages and business components must not declare equivalent native controls, hand-written interaction roles, or direct `@radix-ui/*`/`vaul` imports. Native DOM for these controls belongs in the shared implementation module; third-party editor internals remain the dependency's responsibility.
+- `bun run check` runs `scripts/check-admin-ui-controls.ts`; use `bun run test:admin-ui` for the focused boundary regression suite. Do not weaken the scan with broad production-directory exemptions.
+
 ## Commits
 
 - Use Conventional Commits in English.

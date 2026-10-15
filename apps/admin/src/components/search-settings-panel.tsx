@@ -68,6 +68,7 @@ export function SearchSettingsPanel({ providerDirty = false }: { providerDirty?:
   const [editor, setEditor] = useState<SearchPolicy | null>(null);
   const [runIds, setRunIds] = useState<Partial<Record<AiSearchMode, string>>>({});
   const [picker, setPicker] = useState<AiSearchMode | null>(null);
+  const [pickerReturnFocus, setPickerReturnFocus] = useState<HTMLElement | null>(null);
   const [source, setSource] = useState<LlmModelSource>("upstream");
   const models = useQuery({
     queryKey: ["admin-llm-models", "upstream", "chat"],
@@ -140,8 +141,9 @@ export function SearchSettingsPanel({ providerDirty = false }: { providerDirty?:
             dirty={dirty || providerDirty}
             validating={validate.isPending}
             onChange={(values) => change(mode, values)}
-            onChooseModel={() => {
+            onChooseModel={(trigger) => {
               setSource("upstream");
+              setPickerReturnFocus(trigger);
               setPicker(mode);
             }}
             onValidate={() => validate.mutate(mode)}
@@ -155,6 +157,7 @@ export function SearchSettingsPanel({ providerDirty = false }: { providerDirty?:
         onOpenChange={(open) => {
           if (!open) setPicker(null);
         }}
+        returnFocusElement={pickerReturnFocus}
         source={source}
         onSourceChange={setSource}
         onRefreshUpstream={() => {

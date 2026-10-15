@@ -51,7 +51,16 @@ import {
   type TreeSelection,
   toDirectoryRequestPath,
 } from "~/components/editor-file-browser";
-import { Badge, Button, ConfirmDialog, EmptyState, Spinner } from "~/components/ui";
+import {
+  Badge,
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  Input,
+  Spinner,
+  Tabs,
+  TabsContent,
+} from "~/components/ui";
 import { EditorTabStrip } from "~/editor/editor-tab-strip";
 import { UniversalEditor, type UniversalEditorRef } from "~/editor/universal-editor";
 import { getErrorMessage, PageHeader } from "~/pages/helpers";
@@ -1731,7 +1740,7 @@ export function EditorPage() {
         }
       />
 
-      <input
+      <Input
         ref={uploadInputRef}
         id="admin-editor-attachment-upload"
         name="admin-editor-attachment-upload"
@@ -1746,7 +1755,14 @@ export function EditorPage() {
         }}
       />
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-border/58 bg-card/80 shadow-xl shadow-shadow-soft">
+      <Tabs
+        value={activeTabId ?? "__empty__"}
+        activationMode="manual"
+        onValueChange={(value) => {
+          if (value !== "__empty__") setActiveTabId(value);
+        }}
+        className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-border/58 bg-card/80 shadow-xl shadow-shadow-soft"
+      >
         <EditorTabStrip
           tabs={tabs}
           activeTabId={activeTabId}
@@ -1754,123 +1770,127 @@ export function EditorPage() {
           onClose={requestCloseTab}
         />
 
-        <section className="min-h-0 flex-1 p-0" data-testid="editor">
-          {!activeTab ? (
-            <div className="p-4 lg:p-6">
-              <EmptyState
-                title={editorHeaderCopy.emptyTitle}
-                description={editorHeaderCopy.emptyDescription}
-                action={
-                  editorHeaderCopy.emptyActionLabel ? (
-                    <Button onClick={createEmptyDraft}>
-                      <FilePlus2 className="size-4" />
-                      {editorHeaderCopy.emptyActionLabel}
-                    </Button>
-                  ) : undefined
-                }
-              />
-            </div>
-          ) : (
-            <div className="flex h-full min-h-0 flex-col">
-              <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/58 px-4 py-4">
-                <div>
-                  <div className="text-base font-semibold" data-testid="editor-active-title">
-                    {activeTab.label || editorHeaderCopy.untitledLabel}
-                  </div>
-                  <div
-                    className="mt-0.5 text-sm text-muted-foreground"
-                    data-testid="editor-active-slug"
-                  >
-                    {activeTab.kind === "database"
-                      ? activeTab.database?.slug || editorHeaderCopy.inlineDraftLabel
-                      : `${activeTab.file?.source}:${activeTab.file?.path}`}
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-muted/36 p-1 shadow-inner shadow-shadow-inset">
-                  {activeEditorModes.includes("wysiwyg") ? (
-                    <Button
-                      size="sm"
-                      variant={activeTab.mode === "wysiwyg" ? "default" : "outline"}
-                      onClick={() => {
-                        syncActiveTabFromEditor({ markDirty: activeTab.dirty });
-                        updateActiveTab((tab) => ({ ...tab, mode: "wysiwyg" }));
-                      }}
-                    >
-                      <PenSquare className="size-4" />
-                      WYSIWYG
-                    </Button>
-                  ) : null}
-                  <Button
-                    size="sm"
-                    variant={activeTab.mode === "source" ? "default" : "outline"}
-                    onClick={() => {
-                      syncActiveTabFromEditor({ markDirty: activeTab.dirty });
-                      updateActiveTab((tab) => ({ ...tab, mode: "source" }));
-                    }}
-                  >
-                    <Code2 className="size-4" />
-                    Source
-                  </Button>
-                  {activeEditorModes.includes("compare") ? (
-                    <Button
-                      size="sm"
-                      variant={activeTab.mode === "compare" ? "default" : "outline"}
-                      onClick={() => {
-                        syncActiveTabFromEditor({ markDirty: activeTab.dirty });
-                        updateActiveTab((tab) => ({ ...tab, mode: "compare" }));
-                      }}
-                    >
-                      <Columns2 className="size-4" />
-                      对照
-                    </Button>
-                  ) : null}
-                  {activeTab.kind === "file" && isTextFileDraft(activeTab.file) ? (
-                    <Badge tone="outline">纯文本</Badge>
-                  ) : null}
-                  <Badge
-                    tone={activeTab.dirty ? "warning" : "muted"}
-                    data-testid="editor-status-badge"
-                  >
-                    {activeTab.dirty ? "未保存" : "已保存"}
-                  </Badge>
-                </div>
+        <TabsContent value={activeTabId ?? "__empty__"} forceMount asChild>
+          <section className="min-h-0 flex-1 p-0" data-testid="editor">
+            {!activeTab ? (
+              <div className="p-4 lg:p-6">
+                <EmptyState
+                  title={editorHeaderCopy.emptyTitle}
+                  description={editorHeaderCopy.emptyDescription}
+                  action={
+                    editorHeaderCopy.emptyActionLabel ? (
+                      <Button onClick={createEmptyDraft}>
+                        <FilePlus2 className="size-4" />
+                        {editorHeaderCopy.emptyActionLabel}
+                      </Button>
+                    ) : undefined
+                  }
+                />
               </div>
+            ) : (
+              <div className="flex h-full min-h-0 flex-col">
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/58 px-4 py-4">
+                  <div>
+                    <div className="text-base font-semibold" data-testid="editor-active-title">
+                      {activeTab.label || editorHeaderCopy.untitledLabel}
+                    </div>
+                    <div
+                      className="mt-0.5 text-sm text-muted-foreground"
+                      data-testid="editor-active-slug"
+                    >
+                      {activeTab.kind === "database"
+                        ? activeTab.database?.slug || editorHeaderCopy.inlineDraftLabel
+                        : `${activeTab.file?.source}:${activeTab.file?.path}`}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-muted/36 p-1 shadow-inner shadow-shadow-inset">
+                    {activeEditorModes.includes("wysiwyg") ? (
+                      <Button
+                        size="sm"
+                        variant={activeTab.mode === "wysiwyg" ? "default" : "outline"}
+                        onClick={() => {
+                          syncActiveTabFromEditor({ markDirty: activeTab.dirty });
+                          updateActiveTab((tab) => ({ ...tab, mode: "wysiwyg" }));
+                        }}
+                      >
+                        <PenSquare className="size-4" />
+                        WYSIWYG
+                      </Button>
+                    ) : null}
+                    <Button
+                      size="sm"
+                      variant={activeTab.mode === "source" ? "default" : "outline"}
+                      onClick={() => {
+                        syncActiveTabFromEditor({ markDirty: activeTab.dirty });
+                        updateActiveTab((tab) => ({ ...tab, mode: "source" }));
+                      }}
+                    >
+                      <Code2 className="size-4" />
+                      Source
+                    </Button>
+                    {activeEditorModes.includes("compare") ? (
+                      <Button
+                        size="sm"
+                        variant={activeTab.mode === "compare" ? "default" : "outline"}
+                        onClick={() => {
+                          syncActiveTabFromEditor({ markDirty: activeTab.dirty });
+                          updateActiveTab((tab) => ({ ...tab, mode: "compare" }));
+                        }}
+                      >
+                        <Columns2 className="size-4" />
+                        对照
+                      </Button>
+                    ) : null}
+                    {activeTab.kind === "file" && isTextFileDraft(activeTab.file) ? (
+                      <Badge tone="outline">纯文本</Badge>
+                    ) : null}
+                    <Badge
+                      tone={activeTab.dirty ? "warning" : "muted"}
+                      data-testid="editor-status-badge"
+                    >
+                      {activeTab.dirty ? "未保存" : "已保存"}
+                    </Badge>
+                  </div>
+                </div>
 
-              <UniversalEditor
-                ref={editorRef}
-                key={activeTab.id}
-                editorId={activeTab.id}
-                initialContent={activeContent}
-                onFrontmatterDiagnosticsChange={(diagnostics) => {
-                  frontmatterDiagnosticsRef.current = diagnostics;
-                }}
-                onContentChange={(nextContent: string, meta?: EditorChangeMeta) =>
-                  updateActiveTabContent(nextContent, {
-                    markDirty: meta?.source !== "programmatic",
-                  })
-                }
-                placeholder={
-                  activeTab.kind === "file" && isTextFileDraft(activeTab.file)
-                    ? editorHeaderCopy.placeholder
-                    : editorHeaderCopy.placeholder
-                }
-                attachmentBasePath={buildAttachmentUploadPath(
-                  activeEditorContext?.articlePath ?? "/__unknown__.md",
-                  "placeholder.bin"
-                ).replace(/\/placeholder\.bin$/, "")}
-                articlePath={activeEditorContext?.articlePath ?? "/__unknown__.md"}
-                contentSource={activeEditorContext?.contentSource ?? "local"}
-                contentKind={
-                  activeTab.kind === "file" && isTextFileDraft(activeTab.file) ? "text" : "markdown"
-                }
-                mode={activeTab.mode}
-                frontmatterSuggestions={frontmatterSuggestions}
-                className="min-h-0 flex-1"
-              />
-            </div>
-          )}
-        </section>
-      </div>
+                <UniversalEditor
+                  ref={editorRef}
+                  key={activeTab.id}
+                  editorId={activeTab.id}
+                  initialContent={activeContent}
+                  onFrontmatterDiagnosticsChange={(diagnostics) => {
+                    frontmatterDiagnosticsRef.current = diagnostics;
+                  }}
+                  onContentChange={(nextContent: string, meta?: EditorChangeMeta) =>
+                    updateActiveTabContent(nextContent, {
+                      markDirty: meta?.source !== "programmatic",
+                    })
+                  }
+                  placeholder={
+                    activeTab.kind === "file" && isTextFileDraft(activeTab.file)
+                      ? editorHeaderCopy.placeholder
+                      : editorHeaderCopy.placeholder
+                  }
+                  attachmentBasePath={buildAttachmentUploadPath(
+                    activeEditorContext?.articlePath ?? "/__unknown__.md",
+                    "placeholder.bin"
+                  ).replace(/\/placeholder\.bin$/, "")}
+                  articlePath={activeEditorContext?.articlePath ?? "/__unknown__.md"}
+                  contentSource={activeEditorContext?.contentSource ?? "local"}
+                  contentKind={
+                    activeTab.kind === "file" && isTextFileDraft(activeTab.file)
+                      ? "text"
+                      : "markdown"
+                  }
+                  mode={activeTab.mode}
+                  frontmatterSuggestions={frontmatterSuggestions}
+                  className="min-h-0 flex-1"
+                />
+              </div>
+            )}
+          </section>
+        </TabsContent>
+      </Tabs>
       <ConfirmDialog
         open={closeTargetTabId !== null}
         onOpenChange={(open) => {

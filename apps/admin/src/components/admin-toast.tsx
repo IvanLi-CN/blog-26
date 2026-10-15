@@ -9,6 +9,7 @@ import {
 } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { cn } from "@/lib/utils";
+import { Button } from "~/components/ui";
 
 const ADMIN_TOAST_CONTAINER_ID = "admin-toast-viewport";
 
@@ -59,18 +60,20 @@ function AdminToastContent({
       </span>
       <div className="min-w-0 flex-1 text-pretty">{children}</div>
       {closeToast ? (
-        <button
+        <Button
           type="button"
+          variant="bare"
+          size="icon"
           aria-label="关闭通知"
           onClick={(event) => {
             event.stopPropagation();
             closeToast(event);
           }}
-          className="-mr-1 -mt-1 pointer-events-auto inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/78 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+          className="pointer-events-auto -mr-1 -mt-1 size-8 rounded-full"
           data-testid="admin-toast-close"
         >
           <X className="size-4" aria-hidden />
-        </button>
+        </Button>
       ) : null}
     </div>
   );

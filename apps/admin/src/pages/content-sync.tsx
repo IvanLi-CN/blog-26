@@ -16,6 +16,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Disclosure,
+  Select,
   Spinner,
   Table,
   TableBody,
@@ -306,8 +308,7 @@ export function ContentSyncPage() {
                       {count(ragSource.contents.total)} 项完整索引
                     </p>
                   )}
-                  <details className="text-sm text-muted-foreground">
-                    <summary className="cursor-pointer">身份与最近记录</summary>
+                  <Disclosure className="text-sm text-muted-foreground" summary="身份与最近记录">
                     <dl className="mt-3 space-y-2">
                       <div>
                         <dt>最近检查</dt>
@@ -343,7 +344,7 @@ export function ContentSyncPage() {
                         </>
                       )}
                     </dl>
-                  </details>
+                  </Disclosure>
                 </div>
               );
             })}
@@ -383,17 +384,20 @@ export function ContentSyncPage() {
                 ))}
               </fieldset>
               {source === "playbook" && (
-                <label className="flex items-center gap-2 text-sm">
+                <label
+                  htmlFor="content-sync-playbook-edition"
+                  className="flex items-center gap-2 text-sm"
+                >
                   版本
-                  <select
+                  <Select
+                    id="content-sync-playbook-edition"
                     aria-label="Playbook 版本"
-                    className="rounded-lg border bg-background p-2"
                     value={edition}
-                    onChange={(event) => setEdition(event.target.value as typeof edition)}
+                    onValueChange={(value) => setEdition(value as typeof edition)}
                   >
                     <option value="current">当前版</option>
                     <option value="previous">上一版详情</option>
-                  </select>
+                  </Select>
                 </label>
               )}
             </div>
@@ -410,8 +414,7 @@ export function ContentSyncPage() {
                   stats={data.rag.contents}
                   available={data.rag.available && !data.rag.missingSources.length}
                 />
-                <details className="text-sm">
-                  <summary className="cursor-pointer text-muted-foreground">分块与投影详情</summary>
+                <Disclosure summary="分块与投影详情" className="text-sm">
                   <div className="mt-4 space-y-3">
                     <RagCoverageGrid
                       stats={data.rag.chunks}
@@ -447,7 +450,7 @@ export function ContentSyncPage() {
                         </p>
                       ))}
                   </div>
-                </details>
+                </Disclosure>
               </>
             )}
             <div className="flex flex-wrap gap-2">
@@ -513,10 +516,9 @@ export function ContentSyncPage() {
                 {formatDateTime(task.startedAt)} · {task.origin}
               </p>
               {task.error && <p className="mt-2 text-sm text-danger">{task.error}</p>}
-              <details className="mt-2 text-xs text-muted-foreground">
-                <summary className="cursor-pointer">任务身份</summary>
+              <Disclosure className="mt-2 text-xs text-muted-foreground" summary="任务身份">
                 <p className="mt-2 break-all font-mono">{task.id}</p>
-              </details>
+              </Disclosure>
             </div>
           ))}
           {data && !data.tasks.items.length && (

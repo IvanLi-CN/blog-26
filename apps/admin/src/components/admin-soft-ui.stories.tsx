@@ -503,20 +503,22 @@ function EditorTabOverflowFrame() {
       data-testid="admin-editor-tab-overflow-frame"
       className="mx-auto max-w-[880px] overflow-hidden rounded-3xl border border-border/58 bg-card/80 shadow-xl shadow-shadow-soft"
     >
-      <EditorTabStrip
-        tabs={tabs}
-        activeTabId={activeTabId}
-        onActivate={setActiveTabId}
-        onClose={(tabId) => {
-          setTabs((current) => current.filter((tab) => tab.id !== tabId));
-          if (activeTabId === tabId) {
-            setActiveTabId(tabs.find((tab) => tab.id !== tabId)?.id ?? null);
-          }
-        }}
-      />
-      <div className="p-5 text-sm text-muted-foreground">
-        {tabs.find((tab) => tab.id === activeTabId)?.label ?? "未选择文件"}
-      </div>
+      <Tabs value={activeTabId} onValueChange={setActiveTabId} activationMode="manual">
+        <EditorTabStrip
+          tabs={tabs}
+          activeTabId={activeTabId}
+          onActivate={setActiveTabId}
+          onClose={(tabId) => {
+            setTabs((current) => current.filter((tab) => tab.id !== tabId));
+            if (activeTabId === tabId) {
+              setActiveTabId(tabs.find((tab) => tab.id !== tabId)?.id ?? "");
+            }
+          }}
+        />
+        <TabsContent value={activeTabId} forceMount className="p-5 text-sm text-muted-foreground">
+          {tabs.find((tab) => tab.id === activeTabId)?.label ?? "未选择文件"}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
@@ -572,12 +574,22 @@ export const EditorTabOverflow: Story = {
     await expect(strip).toBeInTheDocument();
     await expect(strip).toHaveClass("admin-editor-tab-strip");
     expect(strip.getBoundingClientRect().height).toBe(40);
-    await userEvent.hover(canvas.getByRole("tab", { name: /电子负载开发笔记/ }));
-    await expect(await canvas.findByRole("tooltip")).toHaveTextContent("电子负载开发笔记，未保存");
-    await userEvent.click(canvas.getByRole("button", { name: "展开已打开文件列表" }));
-    await expect(await canvas.findByTestId("editor-tab-overflow-list")).toHaveTextContent(
-      "通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新"
+    await expect(canvas.getByRole("tab", { name: /电子负载开发笔记/ })).toHaveAttribute(
+      "aria-label",
+      "电子负载开发笔记，未保存"
     );
+    const firstTabClose = canvas.getByRole("button", { name: "关闭 React Hooks 深度解析" });
+    const activeTab = canvas.getByRole("tab", { name: /电子负载开发笔记/ });
+    firstTabClose.focus();
+    await userEvent.click(firstTabClose);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await expect(activeTab).toHaveFocus();
+    const activeTabClose = canvas.getByRole("button", { name: "关闭 电子负载开发笔记" });
+    const nextActiveTab = canvas.getByRole("tab", { name: /使用 CH335F/ });
+    activeTabClose.focus();
+    await userEvent.click(activeTabClose);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await expect(nextActiveTab).toHaveFocus();
   },
 };
 

@@ -4,6 +4,10 @@
 - Status: `in-progress`
 - Owner: `main-agent`
 
+## Related ADRs
+
+None
+
 ## 1. Background
 
 The admin SPA is functionally complete but visually hard to trust for repeated author and operator work. This redesign replaces the admin visual system with a Soft UI direction while keeping the existing `/admin/*` SPA ownership, browser-visible API contracts, auth semantics, and editor capabilities.
@@ -17,7 +21,8 @@ The existing admin code is only a source of route, data, and behavior truth. Its
 3. Cap the primary workspace near `1440px` on wide screens while keeping navigation and workflows efficient.
 4. Provide mobile-compatible navigation, tables, forms, and editor surfaces.
 5. Wrap approved Radix primitives behind local admin components instead of scattering primitive imports through pages.
-6. Capture deterministic Storybook and browser visual evidence before PR handoff.
+6. Treat `apps/admin/src/components/ui.tsx` as the only product-facing boundary for admin basic interactions: pages and business components must use its Button, Input, Select, Disclosure, Tabs, Dialog, menu, field, and related wrappers instead of declaring equivalent native controls, interaction roles, or direct Radix/vaul imports. When a capability is missing, extend the local layer first.
+7. Capture deterministic Storybook and browser visual evidence before PR handoff.
 
 ## 3. Non-goals
 
@@ -71,25 +76,28 @@ Out of scope:
 4. Main admin content is constrained to approximately `1440px` on wide screens.
 5. Light and dark themes both render complete Soft UI surfaces with clear focus, hover, disabled, loading, empty, warning, success, and destructive states.
 6. Shared controls use local wrappers over Radix primitives where approved.
-7. Shipped admin files do not introduce DaisyUI classes.
-8. Storybook covers the redesigned primitives and reusable states; page-level evidence uses the build-time Web Demo on the shipped Admin routes instead of maintaining page-level Stories.
-9. Visual evidence covers desktop, tablet, and mobile views for key admin workflows before PR handoff.
-10. Demo mode is selected at build time. The Web Demo reuses real `/admin/*` URLs and starts the in-memory API mock before the router renders; the live artifact has no URL or `localStorage` Demo switch.
-11. Demo-specific code is limited to API mocking and the tiny bootstrap needed to enable that mock layer; no standalone demo route exists, and the shell, pages, router, editor, navigation, and shared components are the shipped admin implementation.
-12. The demo editor preserves the shipped editor interaction model: real file-tree and navigation modes share the left sidebar, opening content creates or activates editor tabs, tab state is independent per file, Markdown content keeps WYSIWYG / Source / 对照, and plain-text files are constrained to Source-only mode. 对照 mode uses a read-only Milkdown rendered pane beside the editable Markdown source pane.
-13. The editor renders Markdown syntax consistently across modes: Source mode keeps raw Markdown syntax visible, while WYSIWYG and the read-only compare preview render headings, lists, blockquotes, inline code, fenced code blocks, and syntax highlighting.
-14. The desktop admin left sidebar is resizable with a visible drag handle embedded inside the right edge of the sidebar card, persists its width in `localStorage`, supports keyboard adjustment, exposes an accessible vertical separator with current width values, provides a discoverability tooltip, supports double-click reset to the default width, and uses the shell grid so widening the sidebar reduces the main workspace width instead of overlapping content. The sidebar keeps its outer card effect, while route-specific panels and user/build details render as lightweight sections instead of nested cards.
-15. The WYSIWYG frontmatter block upgrades from a plain textarea to a local YAML editor that keeps the same visual shell, preserves unknown keys, offers field-name completion, boolean/date/category/tag value completion, shows real-time diagnostics directly inside the block, and auto-grows with its YAML content instead of trapping metadata behind an inner scrollbar.
-16. Frontmatter validation treats `publishDate` as the preferred publish date field, recognizes `date` only as a compatibility field, keeps unknown keys as warnings, blocks save actions only when diagnostics contain errors, and auto-fixes `tags` list indentation style during save without changing the author's data.
-17. Database-backed post editing uses the same authoring-document shape as file-backed Markdown only at the editor boundary: opening a DB post reconstructs a temporary frontmatter document from structured fields plus clean body, while saving splits it back into structured metadata plus body-only canonical storage.
-18. Admin preview routes surface publication state clearly inside the Soft UI chrome: published posts keep the public-page action, while draft or non-public posts show a disabled explanatory control instead of a broken public CTA.
-19. The Soft UI admin preview surface must remain visually complete even when a draft post is not publicly reachable: hero and inline media still render for admins, and image failure in the public assets chain must not collapse authoring preview readability.
-20. At `min-width: 1024px` with a fine pointer, standard admin actions and fields use `32px`, compact tools, icons, checkboxes, radios, switches, and tabs use `28px`, and explicit large actions use `36px`; every interactive control uses at least `44px` outside that condition.
-21. Admin previews pass `surface="admin"` to the shared Markdown renderer. Their fenced code blocks use the admin dark blue-gray code surface, scoped syntax tokens, `10px × 12px` desktop padding, a `10px` radius, and at least `12px` padding on touch layouts.
+7. The AST boundary check covers all shipped `apps/admin/src` product code, excludes only test/story fixtures and the shared implementation module, and fails with file/line diagnostics for native basic controls, hand-written interaction roles, or direct primitive imports. `bun run check` and the default unit-test job execute the guard.
+8. Shipped admin files do not introduce DaisyUI classes.
+9. Storybook covers the redesigned primitives and reusable states; page-level evidence uses the build-time Web Demo on the shipped Admin routes instead of maintaining page-level Stories.
+10. Visual evidence covers desktop, tablet, and mobile views for key admin workflows before PR handoff.
+11. Demo mode is selected at build time. The Web Demo reuses real `/admin/*` URLs and starts the in-memory API mock before the router renders; the live artifact has no URL or `localStorage` Demo switch.
+12. Demo-specific code is limited to API mocking and the tiny bootstrap needed to enable that mock layer; no standalone demo route exists, and the shell, pages, router, editor, navigation, and shared components are the shipped admin implementation.
+13. The demo editor preserves the shipped editor interaction model: real file-tree and navigation modes share the left sidebar, opening content creates or activates editor tabs, tab state is independent per file, Markdown content keeps WYSIWYG / Source / 对照, and plain-text files are constrained to Source-only mode. 对照 mode uses a read-only Milkdown rendered pane beside the editable Markdown source pane.
+14. The editor renders Markdown syntax consistently across modes: Source mode keeps raw Markdown syntax visible, while WYSIWYG and the read-only compare preview render headings, lists, blockquotes, inline code, fenced code blocks, and syntax highlighting.
+15. The desktop admin left sidebar is resizable with a visible drag handle embedded inside the right edge of the sidebar card, persists its width in `localStorage`, supports keyboard adjustment, exposes an accessible vertical separator with current width values, provides a discoverability tooltip, supports double-click reset to the default width, and uses the shell grid so widening the sidebar reduces the main workspace width instead of overlapping content. The sidebar keeps its outer card effect, while route-specific panels and user/build details render as lightweight sections instead of nested cards.
+16. The WYSIWYG frontmatter block upgrades from a plain textarea to a local YAML editor that keeps the same visual shell, preserves unknown keys, offers field-name completion, boolean/date/category/tag value completion, shows real-time diagnostics directly inside the block, and auto-grows with its YAML content instead of trapping metadata behind an inner scrollbar.
+17. Frontmatter validation treats `publishDate` as the preferred publish date field, recognizes `date` only as a compatibility field, keeps unknown keys as warnings, blocks save actions only when diagnostics contain errors, and auto-fixes `tags` list indentation style during save without changing the author's data.
+18. Database-backed post editing uses the same authoring-document shape as file-backed Markdown only at the editor boundary: opening a DB post reconstructs a temporary frontmatter document from structured fields plus clean body, while saving splits it back into structured metadata plus body-only canonical storage.
+19. Admin preview routes surface publication state clearly inside the Soft UI chrome: published posts keep the public-page action, while draft or non-public posts show a disabled explanatory control instead of a broken public CTA.
+20. The Soft UI admin preview surface must remain visually complete even when a draft post is not publicly reachable: hero and inline media still render for admins, and image failure in the public assets chain must not collapse authoring preview readability.
+21. At `min-width: 1024px` with a fine pointer, standard admin actions and fields use `32px`, compact tools, icons, checkboxes, radios, switches, and tabs use `28px`, and explicit large actions use `36px`; every interactive control uses at least `44px` outside that condition.
+22. Admin previews pass `surface="admin"` to the shared Markdown renderer. Their fenced code blocks use the admin dark blue-gray code surface, scoped syntax tokens, `10px × 12px` desktop padding, a `10px` radius, and at least `12px` padding on touch layouts.
 
 ## 7. Validation
 
 - `bun run check`
+- `bun run check:admin-ui`
+- `bun run test:admin-ui`
 - `bun run check:public-no-daisy`
 - `bun run build`
 - `bun run build-storybook`
@@ -130,6 +138,19 @@ Shared capture contexts:
 - The current mobile shell keeps the navigation trigger and dashboard cards within the compact admin layout without horizontal overflow.
 
 ![Admin mobile density current](./assets/admin-mobile-density-current.png)
+
+### UI Library Boundary Refresh
+
+- Evidence binding `24a74b9f`; source type `mock_ui`, target program `local test preview app`, capture scope `browser-viewport` plus `storybook_canvas`, viewport strategy `playwright-viewport`, sensitive exclusion `N/A`, owner confirmation received after the Select positioning fix.
+- The content-sync route uses the local Select with popper positioning so the Playbook edition menu stays below its trigger, and the mobile route has no page-level horizontal overflow. The editor tab story verifies the local Tabs and sibling close controls after the admin-wide primitive boundary check.
+
+![Admin UI library content sync desktop](./assets/admin-ui-library-content-sync-desktop.png)
+
+![Admin UI library content sync mobile](./assets/admin-ui-library-content-sync-mobile.png)
+
+![Admin UI library content sync Select](./assets/admin-ui-library-content-sync-select.png)
+
+![Admin UI library editor tabs](./assets/admin-ui-library-editor-tabs.png)
 
 ### Route Baseline
 

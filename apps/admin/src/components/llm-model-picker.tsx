@@ -3,7 +3,20 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import type { LlmModelCapability, LlmModelOption, LlmModelSource } from "@/lib/llm-models";
 import { cn } from "@/lib/utils";
-import { Alert, Button, FieldLabel, Input, Spinner } from "~/components/ui";
+import {
+  Alert,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  FieldLabel,
+  Input,
+  Spinner,
+} from "~/components/ui";
 
 export interface LlmModelPickerProps {
   source: LlmModelSource;
@@ -19,6 +32,7 @@ export interface LlmModelPickerProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   hideTrigger?: boolean;
+  returnFocusElement?: HTMLElement | null;
   preferredCapability?: LlmModelCapability;
 }
 
@@ -36,6 +50,7 @@ export function LlmModelPicker({
   open: controlledOpen,
   onOpenChange,
   hideTrigger = false,
+  returnFocusElement,
   preferredCapability,
 }: LlmModelPickerProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
@@ -85,227 +100,216 @@ export function LlmModelPicker({
   }, [open, preferredCapability]);
 
   return (
-    <>
+    <Dialog open={open} onOpenChange={setOpen}>
       {hideTrigger ? null : (
         <div className="space-y-2">
           <FieldLabel>模型</FieldLabel>
-          <button
-            type="button"
-            className="admin-field-control flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl border-0 bg-input-surface px-4 py-3 text-left text-sm shadow-inner shadow-shadow-inset transition-all hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55"
-            onClick={() => setOpen(true)}
-          >
-            <span className="min-w-0">
-              <span className="block truncate font-medium">
-                {displayedModel?.name ?? "留空则用默认模型"}
-              </span>
-              {displayedModel ? (
-                <span className="block truncate font-mono text-xs text-muted-foreground">
-                  {displayedModel.id}
+          <DialogTrigger asChild>
+            <Button type="button" variant="field" size="content">
+              <span className="min-w-0">
+                <span className="block truncate font-medium">
+                  {displayedModel?.name ?? "留空则用默认模型"}
                 </span>
-              ) : null}
-            </span>
-            <span className="shrink-0 rounded-full bg-muted/72 px-2.5 py-1 text-xs text-muted-foreground">
-              选择模型
-            </span>
-          </button>
+                {displayedModel ? (
+                  <span className="block truncate font-mono text-xs text-muted-foreground">
+                    {displayedModel.id}
+                  </span>
+                ) : null}
+              </span>
+              <span className="shrink-0 rounded-full bg-muted/72 px-2.5 py-1 text-xs text-muted-foreground">
+                选择模型
+              </span>
+            </Button>
+          </DialogTrigger>
         </div>
       )}
 
-      {open ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/72 p-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="llm-model-picker-title"
-        >
-          <button
+      <DialogContent
+        showClose={false}
+        className="w-[min(calc(100vw-2rem),42rem)] max-w-2xl p-0"
+        onCloseAutoFocus={(event) => {
+          if (!returnFocusElement) return;
+          event.preventDefault();
+          returnFocusElement.focus();
+        }}
+      >
+        <DialogHeader className="flex-row items-start justify-between gap-4 border-b border-border/58 p-5">
+          <div>
+            <DialogTitle>选择模型</DialogTitle>
+            <DialogDescription className="mt-1">
+              默认从上游获取模型名，并用内置模型数据库补充展示信息。
+            </DialogDescription>
+          </div>
+          <Button
             type="button"
-            className="absolute inset-0 cursor-default"
+            variant="bare"
+            size="icon"
             aria-label="关闭模型选择"
             onClick={() => setOpen(false)}
-          />
-          <div className="relative z-10 flex max-h-[min(760px,calc(100vh-2rem))] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-border/60 bg-card text-card-foreground shadow-2xl shadow-shadow-strong">
-            <div className="flex items-start justify-between gap-4 border-b border-border/58 p-5">
-              <div>
-                <h2 id="llm-model-picker-title" className="text-lg font-semibold">
-                  选择模型
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  默认从上游获取模型名，并用内置模型数据库补充展示信息。
-                </p>
-              </div>
-              <Button type="button" variant="ghost" size="icon" onClick={() => setOpen(false)}>
-                <X className="size-4" />
-              </Button>
-            </div>
+          >
+            <X className="size-4" />
+          </Button>
+        </DialogHeader>
 
-            <div className="space-y-3 overflow-y-auto p-5">
-              <div className="space-y-2" aria-busy={isLoading}>
-                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                  <div className="relative">
-                    <Input
-                      value={filter}
-                      onChange={(event) => setFilter(event.target.value)}
-                      placeholder="搜索模型，或输入自定义模型 ID"
-                      aria-label="过滤模型"
-                      className={isLoading ? "pr-24" : undefined}
-                    />
-                    {isLoading ? (
-                      <span className="absolute right-3 top-1/2 inline-flex -translate-y-1/2 items-center gap-2 text-xs text-muted-foreground">
-                        <Spinner />
-                        加载中
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="flex justify-start gap-1.5 sm:justify-end">
-                    <SourceButton
-                      active={source === "upstream"}
-                      disabled={isLoading}
-                      icon={
-                        isLoading && source === "upstream" ? (
-                          <Spinner className="size-3.5" />
-                        ) : (
-                          <Server className="size-3.5" />
-                        )
-                      }
-                      label={isLoading && source === "upstream" ? "获取中" : "获取"}
-                      onClick={() => {
-                        onSourceChange("upstream");
-                        onRefreshUpstream?.();
-                      }}
-                    />
-                    <SourceButton
-                      active={source === "builtin"}
-                      disabled={isLoading}
-                      icon={<Database className="size-3.5" />}
-                      label="预设"
-                      onClick={() => onSourceChange("builtin")}
-                    />
-                  </div>
-                </div>
-                <fieldset className="flex flex-wrap gap-2" aria-label="模型能力筛选">
-                  {capabilityFilters.map((item) => (
-                    <button
-                      key={item.key}
-                      type="button"
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-                        item.key === activeCapabilityFilter
-                          ? "border-primary bg-primary/15 text-primary"
-                          : "border-border bg-background/60 text-muted-foreground hover:bg-accent"
-                      )}
-                      onClick={() => setCapabilityFilter(item.key)}
-                    >
-                      <span>{item.label}</span>
-                      <span className="font-mono text-[10px] opacity-70">{item.count}</span>
-                    </button>
-                  ))}
-                </fieldset>
-                {filteredModels.map((model) => (
-                  <ModelRow
-                    key={model.id}
-                    model={model}
-                    selected={model.id === value}
-                    onSelect={() => onValueChange(model.id)}
-                    fallbackCapability={fallbackCapability}
-                  />
-                ))}
-                {displayedCustomModel ? (
-                  <ModelRow
-                    model={displayedCustomModel}
-                    selected={displayedCustomModel.id === value}
-                    onSelect={() => onValueChange(displayedCustomModel.id)}
-                    fallbackCapability={fallbackCapability}
-                  />
+        <div className="space-y-3 overflow-y-auto p-5">
+          <div className="space-y-2" aria-busy={isLoading}>
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="relative">
+                <Input
+                  value={filter}
+                  onChange={(event) => setFilter(event.target.value)}
+                  placeholder="搜索模型，或输入自定义模型 ID"
+                  aria-label="过滤模型"
+                  className={isLoading ? "pr-24" : undefined}
+                />
+                {isLoading ? (
+                  <span className="absolute right-3 top-1/2 inline-flex -translate-y-1/2 items-center gap-2 text-xs text-muted-foreground">
+                    <Spinner />
+                    加载中
+                  </span>
                 ) : null}
-                {isLoading && !hasModels ? <LoadingRows /> : null}
-                {showInitialPrompt ? (
-                  <ModelPickerEmptyState
-                    title="还没有获取上游模型"
-                    description="点击获取从当前提供方读取模型列表，也可以直接输入自定义模型 ID。"
-                    action={
-                      <Button type="button" size="sm" onClick={onRefreshUpstream}>
-                        <RefreshCw className="size-3.5" />
-                        获取模型
+              </div>
+              <div className="flex justify-start gap-1.5 sm:justify-end">
+                <SourceButton
+                  active={source === "upstream"}
+                  disabled={isLoading}
+                  icon={
+                    isLoading && source === "upstream" ? (
+                      <Spinner className="size-3.5" />
+                    ) : (
+                      <Server className="size-3.5" />
+                    )
+                  }
+                  label={isLoading && source === "upstream" ? "获取中" : "获取"}
+                  onClick={() => {
+                    onSourceChange("upstream");
+                    onRefreshUpstream?.();
+                  }}
+                />
+                <SourceButton
+                  active={source === "builtin"}
+                  disabled={isLoading}
+                  icon={<Database className="size-3.5" />}
+                  label="预设"
+                  onClick={() => onSourceChange("builtin")}
+                />
+              </div>
+            </div>
+            <fieldset className="flex flex-wrap gap-2" aria-label="模型能力筛选">
+              {capabilityFilters.map((item) => (
+                <Button
+                  key={item.key}
+                  type="button"
+                  size="sm"
+                  variant={item.key === activeCapabilityFilter ? "default" : "outline"}
+                  className="rounded-full! px-2.5 text-xs"
+                  aria-pressed={item.key === activeCapabilityFilter}
+                  onClick={() => setCapabilityFilter(item.key)}
+                >
+                  <span>{item.label}</span>
+                  <span className="font-mono text-[10px] opacity-70">{item.count}</span>
+                </Button>
+              ))}
+            </fieldset>
+            {filteredModels.map((model) => (
+              <ModelRow
+                key={model.id}
+                model={model}
+                selected={model.id === value}
+                onSelect={() => onValueChange(model.id)}
+                fallbackCapability={fallbackCapability}
+              />
+            ))}
+            {displayedCustomModel ? (
+              <ModelRow
+                model={displayedCustomModel}
+                selected={displayedCustomModel.id === value}
+                onSelect={() => onValueChange(displayedCustomModel.id)}
+                fallbackCapability={fallbackCapability}
+              />
+            ) : null}
+            {isLoading && !hasModels ? <LoadingRows /> : null}
+            {showInitialPrompt ? (
+              <ModelPickerEmptyState
+                title="还没有获取上游模型"
+                description="点击获取从当前提供方读取模型列表，也可以直接输入自定义模型 ID。"
+                action={
+                  <Button type="button" size="sm" onClick={onRefreshUpstream}>
+                    <RefreshCw className="size-3.5" />
+                    获取模型
+                  </Button>
+                }
+              />
+            ) : null}
+            {showEmptySource ? (
+              <ModelPickerEmptyState
+                title={source === "upstream" ? "上游返回 0 个模型" : "当前来源没有可选择模型"}
+                description={
+                  source === "upstream"
+                    ? "请检查提供方 /models 是否返回列表，或切换预设、输入自定义模型 ID。"
+                    : "可以切换到上游获取，或直接输入自定义模型 ID。"
+                }
+                action={
+                  <div className="flex flex-wrap gap-2">
+                    {source === "upstream" ? (
+                      <>
+                        <Button type="button" size="sm" onClick={onRefreshUpstream}>
+                          <RefreshCw className="size-3.5" />
+                          重试获取
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onSourceChange("builtin")}
+                        >
+                          <Database className="size-3.5" />
+                          使用预设
+                        </Button>
+                      </>
+                    ) : (
+                      <Button type="button" size="sm" onClick={() => onSourceChange("upstream")}>
+                        <Server className="size-3.5" />
+                        获取上游
                       </Button>
-                    }
-                  />
-                ) : null}
-                {showEmptySource ? (
-                  <ModelPickerEmptyState
-                    title={source === "upstream" ? "上游返回 0 个模型" : "当前来源没有可选择模型"}
-                    description={
-                      source === "upstream"
-                        ? "请检查提供方 /models 是否返回列表，或切换预设、输入自定义模型 ID。"
-                        : "可以切换到上游获取，或直接输入自定义模型 ID。"
-                    }
-                    action={
-                      <div className="flex flex-wrap gap-2">
-                        {source === "upstream" ? (
-                          <>
-                            <Button type="button" size="sm" onClick={onRefreshUpstream}>
-                              <RefreshCw className="size-3.5" />
-                              重试获取
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => onSourceChange("builtin")}
-                            >
-                              <Database className="size-3.5" />
-                              使用预设
-                            </Button>
-                          </>
-                        ) : (
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => onSourceChange("upstream")}
-                          >
-                            <Server className="size-3.5" />
-                            获取上游
-                          </Button>
-                        )}
-                      </div>
-                    }
-                  />
-                ) : null}
-                {showFilteredEmpty ? (
-                  <ModelPickerEmptyState
-                    title="没有匹配的模型"
-                    description="换一个关键词，或使用当前输入作为自定义模型 ID。"
-                  />
-                ) : null}
-              </div>
-
-              {error ? (
-                <Alert tone="danger" className="flex items-start gap-2">
-                  <AlertCircle className="mt-0.5 size-4 shrink-0" />
-                  <span>{error}</span>
-                </Alert>
-              ) : null}
-
-              {displayedModel ? null : (
-                <div className="rounded-3xl border border-dashed border-border/70 bg-muted/36 p-3 text-sm text-muted-foreground">
-                  <Sparkles className="mr-2 inline size-4 align-[-2px]" />
-                  未选择模型时，服务端会使用当前默认模型。
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-2 border-t border-border p-4">
-              <Button type="button" variant="outline" onClick={() => onValueChange("")}>
-                使用默认
-              </Button>
-              <Button type="button" onClick={() => setOpen(false)}>
-                完成
-              </Button>
-            </div>
+                    )}
+                  </div>
+                }
+              />
+            ) : null}
+            {showFilteredEmpty ? (
+              <ModelPickerEmptyState
+                title="没有匹配的模型"
+                description="换一个关键词，或使用当前输入作为自定义模型 ID。"
+              />
+            ) : null}
           </div>
+
+          {error ? (
+            <Alert tone="danger" className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 size-4 shrink-0" />
+              <span>{error}</span>
+            </Alert>
+          ) : null}
+
+          {displayedModel ? null : (
+            <div className="rounded-3xl border border-dashed border-border/70 bg-muted/36 p-3 text-sm text-muted-foreground">
+              <Sparkles className="mr-2 inline size-4 align-[-2px]" />
+              未选择模型时，服务端会使用当前默认模型。
+            </div>
+          )}
         </div>
-      ) : null}
-    </>
+
+        <DialogFooter className="border-t border-border p-4">
+          <Button type="button" variant="outline" onClick={() => onValueChange("")}>
+            使用默认
+          </Button>
+          <Button type="button" onClick={() => setOpen(false)}>
+            完成
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -425,8 +429,10 @@ function ModelRow({
   fallbackCapability: LlmModelCapability;
 }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="row"
+      size="content"
       className={cn(
         "flex w-full items-start justify-between gap-3 rounded-3xl border p-3 text-left transition-colors",
         selected
@@ -453,7 +459,7 @@ function ModelRow({
         ) : null}
       </span>
       {selected ? <Check className="mt-0.5 size-4 shrink-0 text-primary" /> : null}
-    </button>
+    </Button>
   );
 }
 
