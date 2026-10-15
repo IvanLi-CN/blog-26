@@ -4,7 +4,12 @@ import { load } from "js-yaml";
 import { z } from "zod";
 import qualityJson from "../../.github/quality-gates.json";
 import contractJson from "../../.github/release-contract.json";
-import { assertRunSource, mainChecksPassed, qualitySchema } from "../../src/lib/release/completion";
+import {
+  assertRunSource,
+  classifyMergeFollowup,
+  mainChecksPassed,
+  qualitySchema,
+} from "../../src/lib/release/completion";
 import { GitHubRelease, type GitHubTransport } from "../../src/lib/release/github";
 import { contractSchema } from "../../src/lib/release/policy";
 import { assertPolicyIdentity, policyIdentity } from "../../src/lib/release/source";
@@ -67,6 +72,29 @@ describe("trusted release evaluation", () => {
       { ...run, head_repository: { full_name: "fork/blog-26" } },
     ])
       expect(() => assertRunSource(github, modified, sha, run.path)).toThrow("trusted");
+  });
+  test("merge followup treats an observed merge as authoritative over branch drift", () => {
+    const mergeSha = "b".repeat(40);
+    expect(
+      classifyMergeFollowup(
+        { state: "closed", merged: true, merge_commit_sha: mergeSha },
+        mergeSha,
+        sha
+      )
+    ).toBe("merged");
+    expect(
+      classifyMergeFollowup({ state: "open", merged: false, merge_commit_sha: null }, sha, sha)
+    ).toBe("pending");
+    expect(
+      classifyMergeFollowup({ state: "open", merged: false, merge_commit_sha: null }, mergeSha, sha)
+    ).toBe("merge_propagating");
+    expect(
+      classifyMergeFollowup(
+        { state: "closed", merged: true, merge_commit_sha: mergeSha },
+        "c".repeat(40),
+        sha
+      )
+    ).toBe("source_changed");
   });
   test("success on another SHA or a skipped required E2E job cannot publish", () => {
     let mode: "success" | "skipped" | "wrong-sha" = "success";

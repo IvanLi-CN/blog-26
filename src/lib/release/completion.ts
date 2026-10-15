@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { z } from "zod";
-import type { GitHubRelease } from "./github";
+import type { GitHubRelease, ReleasePull } from "./github";
 import {
   changeLedger,
   initialLedger,
@@ -152,6 +152,23 @@ export function evaluationChecksPassed(
     }
   }
   return required.every((name) => checks.get(name) === "success");
+}
+
+export type MergeFollowupState = "merged" | "pending" | "merge_propagating" | "source_changed";
+
+export function classifyMergeFollowup(
+  pull: Pick<ReleasePull, "state" | "merged" | "merge_commit_sha">,
+  mainSha: string | undefined,
+  sourceSha: string
+): MergeFollowupState {
+  if (pull.merged && pull.merge_commit_sha) {
+    if (mainSha === pull.merge_commit_sha) return "merged";
+    if (mainSha === sourceSha) return "pending";
+    return "source_changed";
+  }
+  if (pull.state !== "open") return "source_changed";
+  if (mainSha !== sourceSha) return "merge_propagating";
+  return "pending";
 }
 
 export async function resolveCompletedRelease(
