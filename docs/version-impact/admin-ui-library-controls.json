@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
+  "base_sha": "caf6687fc4f1e424374b9c535a2289ac73215e8c",
   "covered_files": {
     "AGENTS.md": "cd62b21be9653b77529b13056c38b1c3cca075d7",
     "DESIGN.md": "31c1ee56e7b0c3f54f89263273d6ab881c527f4b",
