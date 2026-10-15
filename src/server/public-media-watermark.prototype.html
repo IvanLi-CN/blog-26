@@ -43,11 +43,11 @@
 </main>
 <nav class="switcher" aria-label="方案切换"><button class="arrow" id="prev" type="button" aria-label="上一个方案"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button><span class="current" id="current-label">A · 纯 Logo</span><button class="arrow" id="next" type="button" aria-label="下一个方案"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button></nav>
 <script>
-const DATA = /* PROTOTYPE_DATA */ { paths: "", scenes: [] };
+const DATA = /* PROTOTYPE_DATA */ { paths: "", scenes: [], watermarkAssets: { A: "", B: "" } };
 const W = 1200, H = 630;
 const variants = {
-  A:{name:"纯 Logo",width:84,height:61,note:"建议优先试 A：视觉负担最小，品牌与页头一致。细边能帮助白色 Logo 从浅底中分离；缩小后仍需看实际图片，尤其是下缘有高光或文字的画面。"},
-  B:{name:"横排署名",width:180,height:48,note:"如果主要诉求是图片被转载后仍能找到博客，B 更合适。域名是辅助信息；在 320 px 缩图中小字会很细，不建议继续缩小组合。"},
+  A:{name:"纯 Logo",width:84,height:60,note:"A 只保留 Iv 标志，视觉负担最小；它使用产品实际烧录 SVG，细边帮助白色 Logo 从浅底中分离。"},
+  B:{name:"横排署名",width:180,height:54,note:"B 使用 Iv 标志、白色分隔线和 ivanli.cc；分隔线与两侧可见边界保持一致留白，适合大图和灯箱。"},
   C:{name:"方形底章",width:88,height:76,note:"C 更适合浅色照片、图表或高反差内容。底章提供稳定承托，也会挡住更多原图细节；它的观感更接近作者印章。"}
 };
 const $ = id => document.getElementById(id);
@@ -59,10 +59,16 @@ function imageFrom(url){return new Promise((resolve,reject)=>{const image=new Im
 function symbol(x,y,width,height,fill,edge=false){return `<svg x="${x}" y="${y}" width="${width}" height="${height}" viewBox="110 226 796 572" fill="${fill}"${edge?` stroke="${state.ink==="light"?"#14241c":"#ffffff"}" stroke-width="8" stroke-linejoin="round" paint-order="stroke fill"`:""}>${DATA.paths}</svg>`;}
 function watermark(key){
   const v=variants[key],s=state.size/100,w=Math.round(v.width*s),h=Math.round(v.height*s),light=state.ink==="light",fill=light?"#ffffff":"#24352d";
-  let body="";
-  if(key==="A") body=symbol(0,0,w,h,fill,true);
-  if(key==="B") body=`${symbol(0,4*s,57*s,41*s,fill,true)}<path d="M${70*s} ${11*s}V${38*s}" stroke="${fill}" stroke-width="${s}"/><text x="${81*s}" y="${32*s}" font-family="Arial,sans-serif" font-size="${23*s}" font-weight="500" fill="${fill}" stroke="${light?"#14241c":"#ffffff"}" stroke-width="${.7*s}" paint-order="stroke fill">ivanli.cc</text>`;
-  if(key==="C") body=`<rect x="0" y="0" width="${w}" height="${h}" rx="${12*s}" fill="${light?"#14241c":"#f7faf8"}" fill-opacity="0.88"/>${symbol(14*s,16*s,60*s,44*s,fill)}`;
+  if((key==="A"||key==="B")&&DATA.watermarkAssets?.[key]){
+    const asset=DATA.watermarkAssets[key]
+      .replaceAll("#fff",fill)
+      .replaceAll("#14241c",light?"#14241c":"#ffffff")
+      .replace("<svg ",`<svg width="${w}" height="${h}" `);
+    return {w,h,svg:asset};
+  }
+  const body=key==="C"
+    ? `<rect x="0" y="0" width="${w}" height="${h}" rx="${12*s}" fill="${light?"#14241c":"#f7faf8"}" fill-opacity="0.88"/>${symbol(14*s,16*s,60*s,44*s,fill)}`
+    : symbol(0,0,w,h,fill,true);
   return {w,h,svg:`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${body}</svg>`};
 }
 function sourceFor(key){return key==="custom"?customImage:images[key];}

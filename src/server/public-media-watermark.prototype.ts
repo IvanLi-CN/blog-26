@@ -11,6 +11,10 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dir, "../..");
 const outputDir = resolve(process.env.WATERMARK_PROTOTYPE_OUTPUT || "tmp/watermark-prototype");
 const source = await readFile(resolve(root, "site/assets/brand/source/ivan-blog-mark.svg"), "utf8");
+const watermarkAssets = {
+  A: await readFile(resolve(root, "public/watermark-ivanli-a.v1.svg"), "utf8"),
+  B: await readFile(resolve(root, "public/watermark-ivanli-b.v1.svg"), "utf8"),
+};
 const paths = source.match(/<path[^>]*\/>/gu)?.join("") || "";
 const scenes = await Promise.all(
   [
@@ -29,8 +33,8 @@ const template = await readFile(
   "utf8"
 );
 const html = template.replace(
-  'const DATA = /* PROTOTYPE_DATA */ { paths: "", scenes: [] };',
-  `const DATA = ${JSON.stringify({ paths, scenes }).replace(/</gu, "\\u003c")};`
+  'const DATA = /* PROTOTYPE_DATA */ { paths: "", scenes: [], watermarkAssets: { A: "", B: "" } };',
+  `const DATA = ${JSON.stringify({ paths, scenes, watermarkAssets }).replace(/</gu, "\\u003c")};`
 );
 await mkdir(outputDir, { recursive: true });
 await Bun.write(resolve(outputDir, "index.html"), html);
