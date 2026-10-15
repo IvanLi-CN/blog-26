@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
+  "covered_files": {
+    "AGENTS.md": "cd62b21be9653b77529b13056c38b1c3cca075d7",
+    "DESIGN.md": "31c1ee56e7b0c3f54f89263273d6ab881c527f4b",
+    "apps/admin/src/components/admin-soft-ui.stories.tsx": "a8f895fe49b34448028e29ae37873caf1e5d5769",
+    "apps/admin/src/components/admin-toast.tsx": "35c4da89daee9049fe6348e2364847f319d7f78f",
+    "apps/admin/src/components/editor-file-browser.tsx": "33fb04d39f3fbf5cf77122b60b2e1cd999dacffe",
+    "apps/admin/src/components/llm-model-picker-focus.stories.tsx": "17033c90953fd663f249c8df23627a4ddd4f68fd",
+    "apps/admin/src/components/llm-model-picker.tsx": "d9efd0aa4fd84046c57cf9bc5a9873289c7c976b",
+    "apps/admin/src/components/search-policy-card.tsx": "3e9cb5933cae9af567cb972eb41fde6ff3d54ea7",
+    "apps/admin/src/components/search-settings-panel.tsx": "fb95212a90b281b81b67777a27dba7739911ac3c",
+    "apps/admin/src/components/ui.tsx": "26615dd17c8b6c4d8441605ef980e1e98679271c",
+    "apps/admin/src/editor/editor-tab-strip.tsx": "1bf27ad8b500559f85b2fbc9b6584bdbe64685a0",
+    "apps/admin/src/editor/frontmatter-block.tsx": "e9750c779fa4e92e739b5f91368e4f3e27f5b4cd",
+    "apps/admin/src/editor/source-editor.tsx": "1c4e10d0f900f2defe248ed892abea616bc2162d",
+    "apps/admin/src/pages/content-sync.tsx": "0922d2c104ee68e7e0eb7afa1b8e6bb98333ae24",
+    "apps/admin/src/pages/editor.tsx": "b271c6466e1c30fe4be7a418111e3427105d047d",
+    "apps/admin/src/pages/llm-settings.tsx": "8482dc3aca7025b449d2b788fb9a1081e6080c75",
+    "apps/admin/src/styles.css": "ee9f64b1bf4a11e7687f680e2e68830c3aa87bfc",
+    "docs/specs/admin-soft-ui-redesign/HISTORY.md": "3e5d6e1b87c6902ad99207241b24679f3a0452f2",
+    "docs/specs/admin-soft-ui-redesign/IMPLEMENTATION.md": "5c55389b0be5f004e4b668242e4b17f8c5dd3237",
+    "docs/specs/admin-soft-ui-redesign/SPEC.md": "c8c9060bdf363b0bdadf91b7a0ec24b8fe77298c",
+    "docs/specs/admin-soft-ui-redesign/assets/admin-ui-library-content-sync-desktop.png": "a6feeda63bc15eed985f91e225a4caa6f3bc90e7",
+    "docs/specs/admin-soft-ui-redesign/assets/admin-ui-library-content-sync-mobile.png": "2a6a1b3f7657bfd6a1dd9829de02a1c9a571551b",
+    "docs/specs/admin-soft-ui-redesign/assets/admin-ui-library-content-sync-select.png": "c755dde4727cb613d81fad3708aefed4ae78a3bc",
+    "docs/specs/admin-soft-ui-redesign/assets/admin-ui-library-editor-tabs.png": "4a13f7cf2af33bb9726e64e5812f261c94744242",
+    "package.json": "8894796e5f45e5c9dbb3e57739bf10467d0cbe4a",
+    "scripts/check-admin-ui-controls.ts": "05ef54b5effc9989468231029f922c865a4c1df4",
+    "tests/e2e/web-demo/content-sync.spec.ts": "6776a80becb216e1f29ce580f1c63d06214a11fb",
+    "tests/lib/admin-ui-controls.test.ts": "2479a6354b9c7dfdee56a3bbb11f5c8543e7f361",
+    "tests/storybook/playbook-interactions.ts": "65ad16e7afd529cb4a4565396323e59579107f3f"
+  },
+  "change": {
+    "description": "Route shipped admin basic interactions through the local UI library, restore focus for externally controlled dialogs and editor tabs, and enforce the boundary with deterministic checks and Storybook coverage.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a compatible admin presentation and accessibility correction. It does not change public API payloads, persistent state, search behavior, editor data, or release inputs.",
+      "assessed_at": "2026-10-15T19:13:39+08:00",
+      "evidence": [
+        {
+          "path": "docs/specs/admin-soft-ui-redesign/SPEC.md",
+          "blob": "c8c9060bdf363b0bdadf91b7a0ec24b8fe77298c",
+          "command": "Admin UI specification records the local component boundary, focus contracts, and responsive evidence requirement"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The implementation keeps existing admin routes, API contracts, editor state, and data formats while routing controls through shared wrappers and adding focus and boundary regression coverage.",
+      "assessed_at": "2026-10-15T19:13:39+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/admin-ui-controls.test.ts",
+          "blob": "2479a6354b9c7dfdee56a3bbb11f5c8543e7f361",
+          "command": "bun run test:admin-ui: 3 tests pass"
+        },
+        {
+          "path": "tests/storybook/playbook-interactions.ts",
+          "blob": "65ad16e7afd529cb4a4565396323e59579107f3f",
+          "command": "bun run test:storybook-interactions: 64 Storybook play functions pass"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains limited to the approved admin UI library boundary, interaction focus behavior, documentation, and deterministic visual/interaction coverage."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Repository checks, admin boundary tests, focused admin tests, Storybook build and 64 interaction play functions, Web Demo evidence, and current-head Tier 4 review confirm a compatible UI-only correction with no public API or persistent-state change.",
+      "assessed_at": "2026-10-15T19:13:39+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/admin-ui-controls.test.ts",
+          "blob": "2479a6354b9c7dfdee56a3bbb11f5c8543e7f361",
+          "command": "bun run check && bun run test:admin-ui: check and 3 admin boundary tests pass"
+        },
+        {
+          "path": "apps/admin/src/components/llm-model-picker-focus.stories.tsx",
+          "blob": "17033c90953fd663f249c8df23627a4ddd4f68fd",
+          "command": "bun run build-storybook && bun run test:storybook-interactions: build and 64 play functions pass"
+        },
+        {
+          "path": "docs/specs/admin-soft-ui-redesign/SPEC.md",
+          "blob": "c8c9060bdf363b0bdadf91b7a0ec24b8fe77298c",
+          "command": "spec_drift_check.sh: Spec同步状态=通过, Spec漂移=不存在"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.3"
+      ],
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/content-sync.spec.ts",
+          "blob": "6776a80becb216e1f29ce580f1c63d06214a11fb",
+          "command": "Web Demo content-sync Playwright coverage passes with the shipped admin route and unchanged API contract"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local content format, editor document format, browser persistence, or durable release state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "apps/admin/src/components/ui.tsx",
+          "blob": "26615dd17c8b6c4d8441605ef980e1e98679271c",
+          "command": "Shared UI wrappers contain the control implementation; no persistence or API schema is changed"
+        }
+      ]
+    }
+  }
+}
