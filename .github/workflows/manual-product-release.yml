@@ -11,7 +11,6 @@ permissions:
 concurrency:
   group: manual-product-release
   cancel-in-progress: false
-  queue: max
 jobs:
   prepare:
     runs-on: ubuntu-latest
