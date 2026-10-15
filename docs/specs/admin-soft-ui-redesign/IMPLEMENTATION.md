@@ -54,6 +54,7 @@ Implementation state is tracked here while the `sftui` spec is active.
 - Tabs that do not fit move behind a right-aligned overflow trigger. Desktop renders a floating vertical list of all open files. Mobile uses the third-party `vaul` drawer primitive through the local UI wrapper, with `data-vaul-drawer-direction="bottom"`, fixed positioning, full viewport width, bottom edge pinned to the viewport, a drawer handle, and internal list scrolling when needed.
 - Storybook includes an `EditorTabOverflow` state gallery for the new tab strip behavior, including the desktop overflow list and mobile drawer surface.
 - The admin Soft UI primitive, sidebar-resize, and editor-tab play stories are included in the required Storybook interaction runner, so tab-focus regressions execute in CI instead of relying on build-only coverage.
+- The model picker accepts the external opening element as a return-focus target, so the search-settings and LLM-settings callers keep keyboard focus on their local trigger after the shared Dialog closes. A focused Storybook story runs this controlled-open path in the required interaction suite.
 - E2E coverage asserts opening frontmatter/image/table files stays saved until user edits, real edits show only the dirty dot in tabs, hover exposes status text, temporary tabs are italic, double-clicked tabs become permanent, tab rows do not wrap, and the mobile overflow surface is a bottom `vaul` drawer pinned to the viewport edges.
 
 ## Validation

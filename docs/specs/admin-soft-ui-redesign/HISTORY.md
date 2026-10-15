@@ -18,3 +18,4 @@
 - 2026-10-15: Routed admin content-sync, model-picker, editor tabs, file-tree, source-editor, attachment, diagnostics, and toast controls through the local UI layer; added ref/field/row/editor/disclosure variants and an AST boundary check wired into `bun run check` and focused admin tests.
 - 2026-10-15: Hardened the local editor tab contract so measured-out tabs do not enter the visible Tabs roving-focus set, and visible-tab close actions restore focus to the next surviving tab while preserving the overflow list as the access path for hidden tabs.
 - 2026-10-15: Added the Admin Soft UI interaction stories to the required Storybook CI runner and made the editor-tab focus assertions deterministic across static Storybook remounts.
+- 2026-10-15: Bound externally controlled model-picker dialogs to their opening buttons for deterministic focus return, with a dedicated Storybook interaction covering the close path.
