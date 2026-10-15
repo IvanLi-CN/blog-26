@@ -1837,7 +1837,7 @@ export function EditorFileBrowser({
                 data-cut-pending={isCutPending || undefined}
                 data-tree-row="true"
                 className={cn(
-                  "relative flex w-full min-w-0 items-center justify-between gap-2 overflow-hidden rounded-2xl border border-transparent px-3 py-2 text-left text-sm transition",
+                  "relative flex w-full min-w-0 items-center justify-between gap-2 overflow-hidden rounded-2xl border border-transparent px-3 py-1 text-left text-sm transition",
                   !isEditing && !isPending && "hover:bg-muted/40 hover:text-foreground",
                   isSelected && "border-primary/35 bg-primary/10 text-primary shadow-sm",
                   isCutPending && "saturate-75",
@@ -1895,14 +1895,7 @@ export function EditorFileBrowser({
                       <span className="block size-4 shrink-0" />
                     )}
                     {isDirectory ? (
-                      <Folder
-                        className={cn(
-                          "size-4 shrink-0",
-                          isActiveDirectory || isActiveBranch || isSelected
-                            ? "text-primary"
-                            : "text-primary"
-                        )}
-                      />
+                      <Folder className="size-4 shrink-0 text-primary" />
                     ) : (
                       <TreeFileTypeIcon
                         extension={item.extension}
