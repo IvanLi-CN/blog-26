@@ -217,4 +217,65 @@ describe("trusted release evaluation", () => {
     expect(() => github.dispatchEvaluation("e2e.yml", "main", sha)).toThrow("source moved");
     expect(dispatches).toBe(1);
   });
+
+  test("dispatches a release followup with the registered identity and exact head", () => {
+    const writes: { endpoint: string; payload: unknown }[] = [];
+    const github = new GitHubRelease(
+      contract,
+      "github-actions",
+      transport((endpoint, method, payload) => {
+        if (method === "POST") {
+          writes.push({ endpoint, payload });
+          return null;
+        }
+        throw new Error(`Unexpected read ${endpoint}`);
+      })
+    );
+    github.dispatchReleaseFollowup("release-id", 42, sha);
+    expect(writes).toEqual([
+      {
+        endpoint: "repos/IvanLi-CN/blog-26/actions/workflows/release-merge-followup.yml/dispatches",
+        payload: {
+          ref: "main",
+          inputs: { release_id: "release-id", pr_number: "42", head_sha: sha },
+        },
+      },
+    ]);
+  });
+
+  test("publishes exact-head release checks idempotently through the Actions app", () => {
+    const writes: { endpoint: string; payload: unknown }[] = [];
+    const runs: unknown[] = [];
+    const github = new GitHubRelease(
+      contract,
+      "github-actions",
+      transport((endpoint, method, payload) => {
+        if (endpoint.includes("/check-runs?")) return [{ check_runs: runs }];
+        if (method === "POST" && endpoint.endsWith("/check-runs")) {
+          writes.push({ endpoint, payload });
+          const body = payload as { name: string; external_id: string };
+          runs.push({
+            id: runs.length + 1,
+            name: body.name,
+            status: "completed",
+            conclusion: "success",
+            external_id: body.external_id,
+            app: { slug: "github-actions" },
+          });
+          return { id: runs.length };
+        }
+        throw new Error(`Unexpected write ${method} ${endpoint}`);
+      })
+    );
+    github.publishReleaseChecks("release-id", sha, 42, ["Lint", "Build"]);
+    github.publishReleaseChecks("release-id", sha, 42, ["Lint", "Build"]);
+    expect(writes).toHaveLength(2);
+    expect(writes[0]?.payload).toMatchObject({
+      name: "Lint",
+      head_sha: sha,
+      external_id: "release/release-id/Lint",
+      conclusion: "success",
+      details_url: "https://github.com/IvanLi-CN/blog-26/pull/42",
+    });
+  });
 });

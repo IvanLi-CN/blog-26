@@ -19,6 +19,22 @@ const release = z
     }),
   })
   .parse(load(readFileSync(".github/workflows/product-release.yml", "utf8")));
+const followup = z
+  .object({
+    on: z.object({
+      workflow_dispatch: z.object({
+        inputs: z.record(z.string(), z.object({ type: z.string(), required: z.boolean() })),
+      }),
+    }),
+    jobs: z.object({
+      followup: z.object({
+        if: z.string(),
+        "timeout-minutes": z.number(),
+        permissions: z.record(z.string(), z.string()),
+      }),
+    }),
+  })
+  .parse(load(readFileSync(".github/workflows/release-merge-followup.yml", "utf8")));
 
 describe("prerelease workflow deployment boundary", () => {
   test("manual release exposes only one optional text version request", () => {
@@ -53,6 +69,21 @@ describe("prerelease workflow deployment boundary", () => {
     expect(release.jobs.production.concurrency).toMatchObject({
       group: "blog26-edgeone-production",
       "cancel-in-progress": false,
+    });
+  });
+
+  test("release followup is explicitly dispatched with check publication permission", () => {
+    expect(followup.on.workflow_dispatch.inputs).toEqual({
+      release_id: { type: "string", required: true },
+      pr_number: { type: "string", required: true },
+      head_sha: { type: "string", required: true },
+    });
+    expect(followup.jobs.followup["timeout-minutes"]).toBe(90);
+    expect(followup.jobs.followup.if).toBe("github.event_name == 'workflow_dispatch'");
+    expect(followup.jobs.followup.permissions).toMatchObject({
+      actions: "write",
+      checks: "write",
+      "pull-requests": "read",
     });
   });
 });
