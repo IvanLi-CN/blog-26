@@ -51,7 +51,7 @@
     "planned": {
       "impact": "minor",
       "reasoning": "The candidate adds a compatible public media presentations field and registered A/B render identities, plus a public frontend selection behavior; legacy paths and consumers remain readable.",
-      "assessed_at": "2026-10-15T20:05:00+08:00",
+      "assessed_at": "2026-10-15T20:51:21+08:00",
       "evidence": [
         {
           "path": "docs/specs/public-media-assets-facade/SPEC.md",
@@ -67,8 +67,8 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The implementation exposes finite wm-a-v1 and wm-b-v1 candidates, selects them by visible CSS width, applies the shared watermark recipe through imagor and sharp, and keeps old URLs, snapshots and admin authorization compatible.",
-      "assessed_at": "2026-10-15T20:05:00+08:00",
+      "reasoning": "The implementation exposes finite wm-a-v1 and wm-b-v1 candidates, selects them by visible CSS width, applies the shared watermark recipe through imagor and sharp, rejects render identities on controlled play URLs, and keeps old URLs, snapshots and admin authorization compatible.",
+      "assessed_at": "2026-10-15T20:51:21+08:00",
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
@@ -89,12 +89,12 @@
     "verified": {
       "impact": "minor",
       "reasoning": "Targeted tests, repository checks, Web Demo build/runtime observations and owner-facing mobile, desktop and lightbox evidence verify a compatible public media capability addition without a database or local-content migration.",
-      "assessed_at": "2026-10-15T20:05:00+08:00",
+      "assessed_at": "2026-10-15T20:51:21+08:00",
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
           "blob": "3a4d1c8b88bfb80850d3a776c0e24f07de002404",
-          "command": "bun test targeted public-media, selector, static packaging and HTTP compatibility files; 153 passed, 3 skipped"
+          "command": "bun test targeted public-media, selector, static packaging and HTTP compatibility files; 154 passed, 3 skipped"
         },
         {
           "path": "docs/specs/public-media-assets-facade/assets/logo-watermark-mobile-393.png",
