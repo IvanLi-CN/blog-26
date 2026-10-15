@@ -68,7 +68,7 @@
     "public_api": {
       "impact": "patch",
       "change": "unchanged",
-      "supported_consumer_versions": ["3.3.3"],
+      "supported_consumer_versions": ["3.3.0", "3.3.2", "3.3.3"],
       "evidence": [
         {
           "path": "src/lib/release/completion.ts",
