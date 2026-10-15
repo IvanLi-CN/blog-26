@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "0a1d851afe1e31c2c1e50711fa0f3390f86b4a3a",
+  "covered_files": {
+    ".github/workflows/release-merge-followup.yml": "1bf7166bf6e678e561a3e6eb8053bd86885442c3",
+    "docs/adr/0025-release-pr-check-attestation.md": "534efd366ea0700ecc385ebdbda3141341f0975d",
+    "docs/runbooks/manual-version-release.md": "824935874dff2595d42122cc5920abe242483eb6",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "1306d95d097a802c8513cdf109d39aeaddcb0861",
+    "docs/specs/manual-version-release/SPEC.md": "334e45a47d38709288d44a55a506b997233b7134",
+    "scripts/product-release.ts": "0d34708f9f10e6601cf38d1f96dbd0bd51984fe8",
+    "src/lib/release/completion.ts": "e9673b2a7752fe6ec3cb34dca845cbb8a2a0ba5c",
+    "src/lib/release/github.ts": "cf62b0b46e8b892169b582c977472d23125a4348",
+    "src/lib/release/preparation.ts": "ed114e55ef9ca6c3ec3f70aeb75b3c4e2afb3294",
+    "src/lib/release/source.ts": "62a4e9e5c50fd142dde5938720212b94a2b24fbb",
+    "tests/ci/product-prerelease-workflow.test.ts": "88c31c1b8cb27b8c2ab39a7c29630e23ff512645",
+    "tests/lib/manual-release-provenance.test.ts": "ae3f992fc70f29a96a28651f466abe63e6709ee2"
+  },
+  "change": {
+    "description": "Bind the release followup's exact-head PR-check attestation to the current published 3.3.2 source baseline and fail closed on policy drift.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change hardens release workflow provenance and CI check publication without changing public API behavior, durable SQLite state, or local content formats.",
+      "assessed_at": "2026-10-15T08:09:37Z",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-provenance.test.ts",
+          "blob": "ae3f992fc70f29a96a28651f466abe63e6709ee2",
+          "command": "bun test tests/lib/manual-release-provenance.test.ts tests/ci/product-prerelease-workflow.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The repaired followup validates the registered policy identity and exact source before publishing checks; the workflow schema and regression tests cover the changed boundary without public API or persistent-state changes.",
+      "assessed_at": "2026-10-15T08:09:37Z",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-provenance.test.ts",
+          "blob": "ae3f992fc70f29a96a28651f466abe63e6709ee2",
+          "command": "bun test tests/lib/manual-release-provenance.test.ts tests/ci/product-prerelease-workflow.test.ts"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "88c31c1b8cb27b8c2ab39a7c29630e23ff512645",
+          "command": "actionlint .github/workflows/release-merge-followup.yml"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains within the release workflow trust-boundary scope established against the current published baseline."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Targeted provenance and workflow tests, actionlint, repository checks, and four fresh Tier 3 reviews verify the release followup boundary; no public API or persistent-state contract changes were introduced.",
+      "assessed_at": "2026-10-15T08:09:37Z",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-provenance.test.ts",
+          "blob": "ae3f992fc70f29a96a28651f466abe63e6709ee2",
+          "command": "bun test tests/lib/manual-release-provenance.test.ts tests/ci/product-prerelease-workflow.test.ts"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "88c31c1b8cb27b8c2ab39a7c29630e23ff512645",
+          "command": "actionlint .github/workflows/release-merge-followup.yml"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2"
+      ],
+      "evidence": [
+        {
+          "path": "src/lib/release/completion.ts",
+          "blob": "e9673b2a7752fe6ec3cb34dca845cbb8a2a0ba5c",
+          "command": "bun run check"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The release workflow changes do not alter SQLite schema, durable application state, or local content formats.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/lib/release/source.ts",
+          "blob": "62a4e9e5c50fd142dde5938720212b94a2b24fbb",
+          "command": "bun run check"
+        }
+      ]
+    }
+  }
+}
