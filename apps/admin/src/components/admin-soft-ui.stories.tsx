@@ -503,20 +503,22 @@ function EditorTabOverflowFrame() {
       data-testid="admin-editor-tab-overflow-frame"
       className="mx-auto max-w-[880px] overflow-hidden rounded-3xl border border-border/58 bg-card/80 shadow-xl shadow-shadow-soft"
     >
-      <EditorTabStrip
-        tabs={tabs}
-        activeTabId={activeTabId}
-        onActivate={setActiveTabId}
-        onClose={(tabId) => {
-          setTabs((current) => current.filter((tab) => tab.id !== tabId));
-          if (activeTabId === tabId) {
-            setActiveTabId(tabs.find((tab) => tab.id !== tabId)?.id ?? null);
-          }
-        }}
-      />
-      <div className="p-5 text-sm text-muted-foreground">
-        {tabs.find((tab) => tab.id === activeTabId)?.label ?? "未选择文件"}
-      </div>
+      <Tabs value={activeTabId} onValueChange={setActiveTabId} activationMode="manual">
+        <EditorTabStrip
+          tabs={tabs}
+          activeTabId={activeTabId}
+          onActivate={setActiveTabId}
+          onClose={(tabId) => {
+            setTabs((current) => current.filter((tab) => tab.id !== tabId));
+            if (activeTabId === tabId) {
+              setActiveTabId(tabs.find((tab) => tab.id !== tabId)?.id ?? "");
+            }
+          }}
+        />
+        <TabsContent value={activeTabId} forceMount className="p-5 text-sm text-muted-foreground">
+          {tabs.find((tab) => tab.id === activeTabId)?.label ?? "未选择文件"}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

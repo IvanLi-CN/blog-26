@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { Textarea } from "~/components/ui";
 
 type SourceEditorProps = {
   content: string;
@@ -114,7 +115,8 @@ export function SourceEditor({
       </div>
 
       <div className="relative flex-1">
-        <textarea
+        <Textarea
+          variant="editor"
           ref={textareaRef}
           value={content}
           onChange={(event) => onChange(event.target.value)}
@@ -126,7 +128,7 @@ export function SourceEditor({
           placeholder={placeholder}
           aria-label={textareaLabel}
           name={textareaName}
-          className={`admin-scrollbar h-full min-h-0 w-full resize-none overflow-y-auto border-0 bg-transparent px-4 py-3 font-mono text-sm leading-6 text-foreground focus:outline-none ${isDragOver ? "bg-primary/5" : ""}`}
+          className={isDragOver ? "bg-primary/5" : undefined}
           spellCheck={false}
         />
 

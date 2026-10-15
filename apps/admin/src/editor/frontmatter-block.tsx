@@ -36,6 +36,7 @@ import {
   splitFrontmatterDiagnosticMessage,
   validateFrontmatterText,
 } from "@/lib/frontmatter-document";
+import { Button } from "~/components/ui";
 
 type FrontmatterBlockProps = {
   value: string;
@@ -718,12 +719,14 @@ function DiagnosticMarker({
   const label = isError ? "错误" : "警告";
 
   return (
-    <button
+    <Button
       type="button"
-      className={`inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-medium transition-colors ${
+      variant={isError ? "destructive" : "outline"}
+      size="sm"
+      className={`h-7 rounded-full! px-2.5 text-[11px] ${
         isError
-          ? "border-destructive/35 bg-destructive/10 text-destructive"
-          : "border-amber-400/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+          ? "border-destructive/35 bg-destructive/10 text-destructive hover:bg-destructive/15"
+          : "border-amber-400/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/15 dark:text-amber-300"
       }`}
       aria-label={`${diagnostics.length} 个${label}`}
       data-testid={`frontmatter-diagnostics-${severity}`}
@@ -734,7 +737,7 @@ function DiagnosticMarker({
     >
       <TriangleAlert className="size-3.5 shrink-0" aria-hidden="true" />
       <span>{diagnostics.length}</span>
-    </button>
+    </Button>
   );
 }
 

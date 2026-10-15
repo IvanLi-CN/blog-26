@@ -42,6 +42,7 @@ Implementation state is tracked here while the `sftui` spec is active.
 - Frontmatter save handling now runs a non-destructive style auto-fix pass for `tags` list indentation before validation persists the document. The save path rewrites only inconsistent list indentation into standard YAML array form, surfaces a compact informational toast when a style fix was applied, and then pushes the normalized document back into the live `UniversalEditor` instance so the tab status returns to `已保存` instead of being re-dirtied by stale in-memory content.
 - The desktop AppShell sidebar width is controlled by `--admin-sidebar-width` in the shell grid, can be resized through a grip-style separator embedded in the sidebar card's right edge, exposes width values to assistive technology, shows a tooltip for discoverability, supports arrow-key/Home/End adjustment plus double-click reset to the default width, persists to `localStorage`, and reflows the main workspace instead of overlaying it.
 - The desktop sidebar intentionally keeps its outer Soft UI card effect. Route-specific panels and session state render as lightweight internal sections, not nested cards, to avoid card nesting while preserving the left panel's visual container.
+- Admin product code now consumes basic interactions exclusively through the local UI boundary in `apps/admin/src/components/ui.tsx`. The shared layer owns the native DOM and Radix/vaul primitives; page code uses Button, Input, Textarea, Select, Disclosure, Tabs, Dialog, and related wrappers. The boundary is enforced by `scripts/check-admin-ui-controls.ts`, which scans shipped product code and reports file/line diagnostics for native controls, hand-written interaction roles, and direct primitive imports while ignoring test/story fixtures and literal demo strings.
 - Editor content changes now carry `programmatic` versus `user` metadata from Milkdown through `UniversalEditor` into the editor page. Initial Milkdown serialization, image URL normalization, and readonly preview synchronization can update the controlled editor state without marking a tab dirty; frontmatter edits, Source edits, WYSIWYG input, attachment insertion, and other real user changes still mark the tab dirty immediately.
 - File-tree single click opens or reuses one replaceable temporary file tab. Double click promotes that file tab to permanent, and the first real edit also pins a temporary tab. Existing permanent or dirty tabs are activated rather than duplicated or replaced. Temporary tabs render their title in italic so preview state is visible without extra labels.
 - File-tree keyboard rename is intentionally separated from the double-click permanent-tab gesture: `Enter` enters inline rename for the focused file or directory, while `Space` preserves the primary open/expand action and directories also honor `ArrowRight` / `ArrowLeft` for explicit expand/collapse.
@@ -56,6 +57,8 @@ Implementation state is tracked here while the `sftui` spec is active.
 ## Validation
 
 - `bun run check`
+- `bun run check:admin-ui`
+- `bun run test:admin-ui`
 - `bun run admin:build`
 - `bun run check:public-no-daisy`
 - `DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local CONTENT_SOURCES=local bun run build`

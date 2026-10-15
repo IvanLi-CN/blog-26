@@ -153,7 +153,7 @@ components:
 
 公共站核心组件包括 app shell、ambient scene、site header、site footer、surface、panel、timeline、post card、memo card、related post card、tag badge、button、chip、input shell、alert 和 empty state。公共站组件应保持有机半径、柔和分层和清晰的继续阅读入口。
 
-后台核心组件包括 app shell、mobile navigation drawer、sidebar navigation、page header、card、button、badge、alert、table、input、select、checkbox、radio、tabs、dialog、dropdown menu、popover、tooltip、empty state、skeleton、spinner 和 editor surface。交互基础件应通过本地 Radix-backed components 暴露，页面不直接依赖 primitive 细节。
+后台核心组件包括 app shell、mobile navigation drawer、sidebar navigation、page header、card、button、badge、alert、table、input、select、checkbox、radio、tabs、dialog、dropdown menu、popover、tooltip、empty state、skeleton、spinner 和 editor surface。所有后台基础交互必须通过 `apps/admin/src/components/ui.tsx` 暴露的本地组件使用，页面和业务组件不得直接声明等价的原生控件、手写交互角色或导入 Radix/vaul primitive；组件库缺能力时先扩展本地层，再由页面消费。
 
 组件使用原则是避免卡片套卡片。复杂页面应先用页面结构和区域标题分组，再用 card 或 panel 承载可重复或可操作的信息块。
 

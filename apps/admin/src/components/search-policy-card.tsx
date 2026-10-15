@@ -14,6 +14,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Disclosure,
   FieldLabel,
   Input,
   Switch,
@@ -114,8 +115,10 @@ export function SearchPolicyCard({
           </div>
         ) : null}
         <p className="text-xs text-muted-foreground">端点与 API Key 使用现有对话提供方配置。</p>
-        <details>
-          <summary className="cursor-pointer py-2 text-sm font-medium">高级预算设置</summary>
+        <Disclosure
+          summary="高级预算设置"
+          summaryClassName="py-2 text-sm font-medium text-foreground"
+        >
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
             {fields.map(([key, label, min, max]) => (
               <label key={key} htmlFor={`search-${mode}-${key}`} className="space-y-1 text-sm">
@@ -139,7 +142,7 @@ export function SearchPolicyCard({
           <Button variant="ghost" onClick={() => onChange(DEFAULT_SEARCH_POLICY[mode])}>
             恢复此模式默认值
           </Button>
-        </details>
+        </Disclosure>
         <div className="rounded-xl bg-muted/40 p-3 text-sm" role="status">
           {status.available
             ? "当前配置已通过质量验证，可用于搜索。"

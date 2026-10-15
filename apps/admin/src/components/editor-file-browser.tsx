@@ -51,6 +51,7 @@ import {
   DropdownMenuDivider,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Input,
   Spinner,
   Tooltip,
   TooltipContent,
@@ -443,7 +444,7 @@ function InlineTreeNameInput({
 
   return (
     <div className="min-w-0 flex-1 self-center">
-      <input
+      <Input
         ref={inputRef}
         type="text"
         value={value}
@@ -523,8 +524,10 @@ function DirectoryPickerTree({
           const isDisabled = Boolean(disabledReason);
           const isLoadingBranch = loadingPathSet.has(normalizedPath);
           const directoryButton = (
-            <button
+            <Button
               type="button"
+              variant="row"
+              size="content"
               aria-disabled={isDisabled || undefined}
               title={disabledReason ? `${item.name}：${disabledReason}` : undefined}
               className={cn(
@@ -541,7 +544,7 @@ function DirectoryPickerTree({
             >
               <Folder className="size-4 shrink-0 text-primary" />
               <span className="truncate">{item.name}</span>
-            </button>
+            </Button>
           );
 
           return (
@@ -550,8 +553,10 @@ function DirectoryPickerTree({
                 className="flex items-center gap-2 rounded-2xl px-2 py-1.5"
                 style={{ paddingLeft: `${0.5 + depth * 0.75}rem` }}
               >
-                <button
+                <Button
                   type="button"
+                  variant="bare"
+                  size="icon"
                   className="shrink-0 text-muted-foreground"
                   onClick={() => onDirectoryExpand(item)}
                 >
@@ -560,7 +565,7 @@ function DirectoryPickerTree({
                   ) : (
                     <ChevronRight className="size-4" />
                   )}
-                </button>
+                </Button>
                 {disabledReason ? (
                   <Tooltip>
                     <TooltipTrigger asChild>{directoryButton}</TooltipTrigger>
@@ -614,8 +619,10 @@ function DirectoryPickerTree({
       >
         <Tooltip>
           <TooltipTrigger asChild>
-            <button
+            <Button
               type="button"
+              variant="row"
+              size="content"
               aria-disabled
               title={`根目录：${disabledReasons.get("") ?? getRootDestinationDisabledReason()}`}
               className={cn(
@@ -627,7 +634,7 @@ function DirectoryPickerTree({
             >
               <Folder className="size-4 shrink-0 text-primary" />
               <span>根目录</span>
-            </button>
+            </Button>
           </TooltipTrigger>
           <TooltipContent side="right" align="start" className="max-w-64 text-xs leading-5">
             {disabledReasons.get("") ?? getRootDestinationDisabledReason()}
@@ -1856,27 +1863,16 @@ export function EditorFileBrowser({
                   paddingLeft: `${0.65 + depth * 0.45}rem`,
                 }}
               >
-                {!isEditing ? (
-                  <button
-                    type="button"
-                    tabIndex={-1}
-                    aria-label={isDirectory ? `${item.name} 目录` : `${item.name} 文件`}
-                    className="absolute inset-0 z-0 rounded-2xl"
-                    disabled={isPending}
-                    onClick={(event) => handlePrimaryAction(item, event)}
-                    onDoubleClick={() => {
-                      if (!isDirectory) onFilePermanentOpen(item);
-                    }}
-                  />
-                ) : null}
                 <span
                   className={cn(
                     "relative z-10 flex min-w-0 flex-1 items-center gap-2",
                     !isEditing && "pointer-events-none"
                   )}
                 >
-                  <button
+                  <Button
                     type="button"
+                    variant="bare"
+                    size="content"
                     className="pointer-events-auto flex shrink-0 items-center gap-2"
                     tabIndex={isEditing ? -1 : 0}
                     aria-label={isDirectory ? `${item.name} 目录` : `${item.name} 文件`}
@@ -1898,14 +1894,7 @@ export function EditorFileBrowser({
                     ) : (
                       <span className="block size-4 shrink-0" />
                     )}
-                    {selectionMode ? (
-                      <Checkbox
-                        checked={isSelected}
-                        aria-label={`选择 ${item.name}`}
-                        onClick={(event) => event.stopPropagation()}
-                        onCheckedChange={() => handleToggleSelection(entry)}
-                      />
-                    ) : isDirectory ? (
+                    {isDirectory ? (
                       <Folder
                         className={cn(
                           "size-4 shrink-0",
@@ -1920,7 +1909,16 @@ export function EditorFileBrowser({
                         active={isSelected || (showActiveHighlight && isActiveFile)}
                       />
                     )}
-                  </button>
+                  </Button>
+                  {selectionMode ? (
+                    <Checkbox
+                      className="pointer-events-auto"
+                      checked={isSelected}
+                      aria-label={`选择 ${item.name}`}
+                      onClick={(event) => event.stopPropagation()}
+                      onCheckedChange={() => handleToggleSelection(entry)}
+                    />
+                  ) : null}
                   {isEditing && editingItem ? (
                     <InlineTreeNameInput
                       value={editingItem.value}
@@ -1931,8 +1929,10 @@ export function EditorFileBrowser({
                       onCancel={onEditingCancel}
                     />
                   ) : (
-                    <button
+                    <Button
                       type="button"
+                      variant="row"
+                      size="content"
                       className="pointer-events-auto min-w-0 flex-1 truncate text-left"
                       aria-busy={isPending ? "true" : undefined}
                       onFocus={() => updateFocusedAnchor(entry.path)}
@@ -1944,7 +1944,7 @@ export function EditorFileBrowser({
                       disabled={isPending}
                     >
                       {item.name}
-                    </button>
+                    </Button>
                   )}
                 </span>
                 <div className="relative z-10 pointer-events-none flex shrink-0 items-center gap-2">

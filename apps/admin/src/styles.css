@@ -604,6 +604,11 @@ html[data-ui-theme="light"] {
     padding: 0.45rem 1rem;
   }
 
+  .admin-button-content {
+    height: auto;
+    min-height: 2rem;
+  }
+
   .admin-button-icon,
   .admin-checkbox,
   .admin-radio-control {
