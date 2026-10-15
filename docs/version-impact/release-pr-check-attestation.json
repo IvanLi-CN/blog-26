@@ -3,6 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "0a1d851afe1e31c2c1e50711fa0f3390f86b4a3a",
   "covered_files": {
+    ".github/workflows/manual-product-release.yml": "b2ffa7549198139740a814ad3e79dc0b950fbf11",
     ".github/workflows/release-merge-followup.yml": "1bf7166bf6e678e561a3e6eb8053bd86885442c3",
     "docs/adr/0025-release-pr-check-attestation.md": "534efd366ea0700ecc385ebdbda3141341f0975d",
     "docs/runbooks/manual-version-release.md": "824935874dff2595d42122cc5920abe242483eb6",
@@ -17,15 +18,15 @@
     "tests/lib/manual-release-provenance.test.ts": "ae3f992fc70f29a96a28651f466abe63e6709ee2"
   },
   "change": {
-    "description": "Bind the release followup's exact-head PR-check attestation to the current published 3.3.2 source baseline and fail closed on policy drift.",
+    "description": "Bind release workflow changes to the current published 3.3.2 source baseline: exact-head PR-check attestation and removal of unsupported GitHub Actions concurrency syntax.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api", "persistent-state"]
   },
   "classification": {
     "planned": {
       "impact": "patch",
-      "reasoning": "The change hardens release workflow provenance and CI check publication without changing public API behavior, durable SQLite state, or local content formats.",
-      "assessed_at": "2026-10-15T08:09:37Z",
+      "reasoning": "The change hardens release workflow provenance and removes unsupported workflow syntax without changing public API behavior, durable SQLite state, or local content formats.",
+      "assessed_at": "2026-10-15T09:10:15Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-provenance.test.ts",
@@ -36,8 +37,8 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The repaired followup validates the registered policy identity and exact source before publishing checks; the workflow schema and regression tests cover the changed boundary without public API or persistent-state changes.",
-      "assessed_at": "2026-10-15T08:09:37Z",
+      "reasoning": "The repaired followup validates the registered policy identity and exact source, while the manual release workflow now passes actionlint; regression tests cover the changed boundary without public API or persistent-state changes.",
+      "assessed_at": "2026-10-15T09:10:15Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-provenance.test.ts",
@@ -48,6 +49,11 @@
           "path": "tests/ci/product-prerelease-workflow.test.ts",
           "blob": "88c31c1b8cb27b8c2ab39a7c29630e23ff512645",
           "command": "actionlint .github/workflows/release-merge-followup.yml"
+        },
+        {
+          "path": ".github/workflows/manual-product-release.yml",
+          "blob": "b2ffa7549198139740a814ad3e79dc0b950fbf11",
+          "command": "actionlint .github/workflows/manual-product-release.yml"
         }
       ],
       "scope_drift": {
@@ -57,8 +63,8 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Targeted provenance and workflow tests, actionlint, repository checks, and four fresh Tier 3 reviews verify the release followup boundary; no public API or persistent-state contract changes were introduced.",
-      "assessed_at": "2026-10-15T08:09:37Z",
+      "reasoning": "Targeted provenance and workflow tests, actionlint for both release workflows, repository checks, and four fresh Tier 3 reviews verify the release boundary; no public API or persistent-state contract changes were introduced.",
+      "assessed_at": "2026-10-15T09:10:15Z",
       "evidence": [
         {
           "path": "tests/lib/manual-release-provenance.test.ts",
@@ -69,6 +75,11 @@
           "path": "tests/ci/product-prerelease-workflow.test.ts",
           "blob": "88c31c1b8cb27b8c2ab39a7c29630e23ff512645",
           "command": "actionlint .github/workflows/release-merge-followup.yml"
+        },
+        {
+          "path": ".github/workflows/manual-product-release.yml",
+          "blob": "b2ffa7549198139740a814ad3e79dc0b950fbf11",
+          "command": "actionlint .github/workflows/manual-product-release.yml"
         }
       ]
     }
