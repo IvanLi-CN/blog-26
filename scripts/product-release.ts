@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { z } from "zod";
 import { findArtifact, restoreArtifact, verifyDirectory } from "../src/lib/release/artifacts";
 import {
+  classifyMergeFollowup,
   evaluationChecksPassed,
   readQuality,
   resolveCompletedRelease,
@@ -218,17 +219,25 @@ if (command === "notification") {
       await new Promise((done) => setTimeout(done, 10_000));
     }
     const mergeDeadline = Date.now() + 20 * 60_000;
+    let mergePropagationDeadline: number | undefined;
     while (true) {
+      // Main can advance before the PR API exposes merged=true; allow the two observations to converge briefly.
+      const mainSha = app.reference("heads/main");
       const pull = app.pull(entry.prNumber);
       assertReleasePull(app, entry, pull);
-      if (pull.merged && pull.merge_commit_sha) {
+      const state = classifyMergeFollowup(pull, mainSha, entry.sourceSha);
+      if (state === "merged" && pull.merge_commit_sha) {
         assertMerge(app, entry, pull, pull.merge_commit_sha);
         for (const workflow of ["ci.yml", "e2e.yml"] as const)
           app.dispatchEvaluation(workflow, "main", pull.merge_commit_sha);
         break;
       }
-      if (pull.state !== "open" || app.reference("heads/main") !== entry.sourceSha)
-        throw new Error("Preparation source changed before merge");
+      if (state === "source_changed") throw new Error("Preparation source changed before merge");
+      if (state === "merge_propagating") {
+        mergePropagationDeadline ??= Date.now() + 60_000;
+        if (Date.now() >= mergePropagationDeadline)
+          throw new Error("Preparation source changed before merge");
+      } else mergePropagationDeadline = undefined;
       if (Date.now() >= mergeDeadline)
         throw new Error(
           "Auto-merge has not completed; rerun this same followup after resolving the protected gate"

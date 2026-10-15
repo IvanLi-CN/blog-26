@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c2",
+  "covered_files": {
+    "scripts/product-release.ts": "bf11ea47aa89f8300a12855a6b54bd22790267bf",
+    "src/lib/release/completion.ts": "6fa3ab55814aa09c7d7962918a917977391b9824",
+    "tests/lib/manual-release-provenance.test.ts": "1f12effff7b933b0ef07e11485e49a88ca1dcb83"
+  },
+  "change": {
+    "description": "Make release followup tolerate the GitHub merge propagation race while retaining fail-closed source-drift detection.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change only hardens release orchestration and adds regression coverage; public API, application data, and persistent formats remain unchanged.",
+      "assessed_at": "2026-10-15T11:00:00Z",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-provenance.test.ts",
+          "blob": "1f12effff7b933b0ef07e11485e49a88ca1dcb83",
+          "command": "bun test tests/lib/manual-release-provenance.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The followup observes main before the PR state, treats an explicit merge as authoritative, and continues to reject a persistent unrelated source move.",
+      "assessed_at": "2026-10-15T11:00:00Z",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-provenance.test.ts",
+          "blob": "1f12effff7b933b0ef07e11485e49a88ca1dcb83",
+          "command": "bun test tests/lib/manual-release-provenance.test.ts"
+        },
+        {
+          "path": "scripts/product-release.ts",
+          "blob": "bf11ea47aa89f8300a12855a6b54bd22790267bf",
+          "command": "bunx biome check scripts/product-release.ts src/lib/release/completion.ts tests/lib/manual-release-provenance.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to release followup race handling and its focused regression test."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused provenance tests and Biome checks pass; no public API, database schema, content format, or deployment contract changes are introduced.",
+      "assessed_at": "2026-10-15T11:00:00Z",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-provenance.test.ts",
+          "blob": "1f12effff7b933b0ef07e11485e49a88ca1dcb83",
+          "command": "bun test tests/lib/manual-release-provenance.test.ts"
+        },
+        {
+          "path": "src/lib/release/completion.ts",
+          "blob": "6fa3ab55814aa09c7d7962918a917977391b9824",
+          "command": "bunx biome check scripts/product-release.ts src/lib/release/completion.ts tests/lib/manual-release-provenance.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": ["3.3.3"],
+      "evidence": [
+        {
+          "path": "src/lib/release/completion.ts",
+          "blob": "6fa3ab55814aa09c7d7962918a917977391b9824",
+          "command": "bunx biome check src/lib/release/completion.ts"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The release orchestration change does not alter SQLite schema, durable application state, or local content formats.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "scripts/product-release.ts",
+          "blob": "bf11ea47aa89f8300a12855a6b54bd22790267bf",
+          "command": "bunx biome check scripts/product-release.ts"
+        }
+      ]
+    }
+  }
+}
