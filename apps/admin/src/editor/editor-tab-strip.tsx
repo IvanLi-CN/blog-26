@@ -136,6 +136,9 @@ export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: Edito
   const [stripRef, stripWidth] = useElementWidth<HTMLDivElement>();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
+  const tabTriggerRefs = useRef(new Map<string, HTMLButtonElement>());
+  const previousTabIdsRef = useRef(tabs.map((tab) => tab.id));
+  const lastClosedTabIdRef = useRef<string | null>(null);
   const isMobile = useIsMobile();
   const visibleTabIds = useMemo(
     () => computeVisibleTabIds(tabs, activeTabId, stripWidth),
@@ -151,10 +154,28 @@ export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: Edito
   };
 
   const closeTab = (tabId: string) => {
+    lastClosedTabIdRef.current = tabId;
     onClose(tabId);
     setDrawerOpen(false);
     setDesktopMenuOpen(false);
   };
+
+  useLayoutEffect(() => {
+    const previousTabIds = previousTabIdsRef.current;
+    const nextTabIds = tabs.map((tab) => tab.id);
+    const closedTabId = lastClosedTabIdRef.current;
+
+    if (closedTabId && previousTabIds.includes(closedTabId) && !nextTabIds.includes(closedTabId)) {
+      const closedIndex = previousTabIds.indexOf(closedTabId);
+      const nextFocusId = nextTabIds[closedIndex] ?? nextTabIds[closedIndex - 1];
+      if (nextFocusId) {
+        requestAnimationFrame(() => tabTriggerRefs.current.get(nextFocusId)?.focus());
+      }
+      lastClosedTabIdRef.current = null;
+    }
+
+    previousTabIdsRef.current = nextTabIds;
+  }, [tabs]);
 
   const renderTab = (tab: EditorTabStripItem) => {
     const active = tab.id === activeTabId;
@@ -175,6 +196,10 @@ export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: Edito
         <Tooltip>
           <TooltipTrigger asChild>
             <TabsTrigger
+              ref={(node) => {
+                if (node) tabTriggerRefs.current.set(tab.id, node);
+                else tabTriggerRefs.current.delete(tab.id);
+              }}
               value={tab.id}
               aria-selected={active}
               aria-label={tabDescription(tab)}
@@ -195,7 +220,7 @@ export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: Edito
           variant="bare"
           size="icon"
           className={closeButtonClassName}
-          onClick={() => onClose(tab.id)}
+          onClick={() => closeTab(tab.id)}
           aria-label={`关闭 ${tab.label || "未命名文章"}`}
         >
           <X className="size-3" />
@@ -264,13 +289,6 @@ export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: Edito
         >
           <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
             {visibleTabs.map(renderTab)}
-            {tabs
-              .filter((tab) => !visibleTabIds.has(tab.id))
-              .map((tab) => (
-                <TabsTrigger key={tab.id} value={tab.id} className="sr-only" tabIndex={-1}>
-                  {tab.label || "未命名文章"}
-                </TabsTrigger>
-              ))}
           </div>
           {hasOverflow ? (
             isMobile ? (

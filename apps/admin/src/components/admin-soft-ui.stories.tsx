@@ -580,6 +580,11 @@ export const EditorTabOverflow: Story = {
     await expect(await canvas.findByTestId("editor-tab-overflow-list")).toHaveTextContent(
       "通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新"
     );
+    const firstTabClose = canvas.getByRole("button", { name: "关闭 React Hooks 深度解析" });
+    const activeTab = canvas.getByRole("tab", { name: /电子负载开发笔记/ });
+    firstTabClose.focus();
+    await userEvent.click(firstTabClose);
+    await expect(activeTab).toHaveFocus();
   },
 };
 
