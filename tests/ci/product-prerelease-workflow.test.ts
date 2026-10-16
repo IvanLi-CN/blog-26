@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { load } from "js-yaml";
 import { z } from "zod";
+import releaseContract from "../../.github/release-contract.json";
 
 const stepSchema = z.object({
   name: z.string().optional(),
@@ -13,6 +14,7 @@ const release = z
   .object({
     jobs: z.object({
       production: z.object({
+        "timeout-minutes": z.number(),
         concurrency: z.object({ group: z.string(), "cancel-in-progress": z.boolean() }),
         steps: z.array(stepSchema),
       }),
@@ -36,8 +38,37 @@ const followup = z
     }),
   })
   .parse(load(readFileSync(".github/workflows/release-merge-followup.yml", "utf8")));
+const cancelledRecovery = z
+  .object({
+    on: z.object({
+      workflow_dispatch: z.object({
+        inputs: z.object({
+          release_id: z.object({ type: z.string(), required: z.boolean() }),
+        }),
+      }),
+    }),
+    jobs: z.object({
+      abandon: z.object({
+        "timeout-minutes": z.number(),
+        permissions: z.record(z.string(), z.string()),
+      }),
+    }),
+  })
+  .parse(load(readFileSync(".github/workflows/abandon-cancelled-release.yml", "utf8")));
 
 describe("prerelease workflow deployment boundary", () => {
+  test("production release timeout matches the signed contract", () => {
+    expect(release.jobs.production["timeout-minutes"]).toBe(releaseContract.releaseTimeoutMinutes);
+    expect(release.jobs.production["timeout-minutes"]).toBe(360);
+  });
+
+  test("production freeze uses bounded parallel media downloads", () => {
+    const freeze = release.jobs.production.steps.find(
+      (step) => step.run === "bun scripts/product-release.ts freeze-inputs"
+    );
+    expect(freeze?.env?.PUBLIC_STATIC_MEDIA_DOWNLOAD_CONCURRENCY).toBe("8");
+  });
+
   test("manual release exposes only one optional text version request", () => {
     const manual = z
       .object({
@@ -89,6 +120,17 @@ describe("prerelease workflow deployment boundary", () => {
       actions: "write",
       checks: "write",
       "pull-requests": "read",
+    });
+  });
+
+  test("cancelled release recovery is explicitly scoped to one release identity", () => {
+    expect(cancelledRecovery.on.workflow_dispatch.inputs).toEqual({
+      release_id: { type: "string", required: true },
+    });
+    expect(cancelledRecovery.jobs.abandon["timeout-minutes"]).toBe(20);
+    expect(cancelledRecovery.jobs.abandon.permissions).toMatchObject({
+      actions: "read",
+      contents: "write",
     });
   });
 });

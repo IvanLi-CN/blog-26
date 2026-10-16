@@ -305,6 +305,27 @@ describe("durable product release reservations", () => {
     const abandoned = updateRelease(merged, first.entry.id, { stage: "abandoned" });
     expect(abandoned.entries[0]?.stage).toBe("abandoned");
   });
+  test("cancelled merged releases can record cancellation and be abandoned", () => {
+    const first = reserveRelease(initialLedger(contract), request);
+    let merged = updateRelease(first.ledger, first.entry.id, {
+      stage: "pr_open",
+      preparationHead: "e".repeat(40),
+      prNumber: 4,
+    });
+    merged = updateRelease(merged, first.entry.id, {
+      stage: "merged",
+      mergeSha: "f".repeat(40),
+      releaseRunId: 7,
+    });
+    const abandoned = updateRelease(merged, first.entry.id, {
+      stage: "abandoned",
+      failure: { phase: "merged", runId: "7", attempt: 1 },
+    });
+    expect(abandoned.entries[0]).toMatchObject({
+      stage: "abandoned",
+      failure: { phase: "merged", runId: "7", attempt: 1 },
+    });
+  });
   test("failed merged releases can abandon a frozen input before products exist", () => {
     const first = reserveRelease(initialLedger(contract), request);
     let merged = updateRelease(first.ledger, first.entry.id, {
