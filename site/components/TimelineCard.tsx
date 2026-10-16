@@ -1,3 +1,4 @@
+import ResponsiveWatermarkedImage from "@/components/common/ResponsiveWatermarkedImage";
 import Icon from "@/components/ui/Icon";
 import { extractTextSummary } from "@/lib/markdown-utils";
 import { getMemoPresentation } from "@/lib/memo-presentation";
@@ -40,6 +41,10 @@ export default function TimelineCard(props: Props) {
     item.media?.primary?.variants.card ?? item.media?.cover?.variants.card ?? item.image ?? null,
     assetVersion
   );
+  const imagePresentations =
+    item.media?.primary?.presentations?.card ?? item.media?.cover?.presentations?.card;
+  const watermarkA = appendPublicAssetVersion(imagePresentations?.a, assetVersion);
+  const watermarkB = appendPublicAssetVersion(imagePresentations?.b, assetVersion);
   return (
     <article
       className="nature-timeline-item nature-mobile-reading-row"
@@ -92,10 +97,13 @@ export default function TimelineCard(props: Props) {
                   href={href}
                   className="block overflow-hidden rounded-[var(--nature-radius-sm)] md:w-48"
                 >
-                  <img
+                  <ResponsiveWatermarkedImage
                     src={imageSrc}
+                    watermarkA={watermarkA}
+                    watermarkB={watermarkB}
+                    fallback="a"
                     alt={item.title || item.slug}
-                    className="h-32 w-full object-cover md:h-full"
+                    className="h-32 w-full object-contain md:h-full"
                     loading="lazy"
                   />
                 </a>

@@ -1,9 +1,11 @@
 import PostReactions from "@/components/blog/PostReactions";
 import CommentSectionWithProvider from "@/components/comments/CommentSectionWithProvider";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
+import ResponsiveWatermarkedImage from "@/components/common/ResponsiveWatermarkedImage";
 import Icon from "@/components/ui/Icon";
 import { formatAbsoluteDate, formatDateTime } from "../../lib/format";
 import type { loadpost } from "../../lib/page-data/post";
+import { appendPublicAssetVersion } from "../../lib/public-site-client";
 import RelatedPostCard from "../RelatedPostCard";
 import TagBadge from "../TagBadge";
 export default function postPage(data: Awaited<ReturnType<typeof loadpost>>) {
@@ -18,6 +20,14 @@ export default function postPage(data: Awaited<ReturnType<typeof loadpost>>) {
     readingTime,
     structuredData,
   } = data;
+  const coverWatermarkA = appendPublicAssetVersion(
+    post.media.cover?.presentations?.cover?.a,
+    assetVersion
+  );
+  const coverWatermarkB = appendPublicAssetVersion(
+    post.media.cover?.presentations?.cover?.b,
+    assetVersion
+  );
 
   return (
     <>
@@ -81,8 +91,11 @@ export default function postPage(data: Awaited<ReturnType<typeof loadpost>>) {
 
             {imageSrc ? (
               <div className="post-detail-cover overflow-hidden rounded-[var(--nature-radius-lg)] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.78)] p-2.5 shadow-[0_18px_40px_rgba(8,21,16,0.12)] sm:p-3">
-                <img
+                <ResponsiveWatermarkedImage
                   src={imageSrc}
+                  watermarkA={coverWatermarkA}
+                  watermarkB={coverWatermarkB}
+                  fallback="b"
                   className="max-h-[60vh] w-full rounded-[var(--nature-radius-md)] object-contain"
                   alt={post.title}
                   loading="lazy"
@@ -104,6 +117,7 @@ export default function postPage(data: Awaited<ReturnType<typeof loadpost>>) {
               articlePath={post.filePath}
               contentSource={contentSource}
               publicMediaContext={publicMediaContext}
+              publicAssetVersion={assetVersion}
             />
           </div>
 

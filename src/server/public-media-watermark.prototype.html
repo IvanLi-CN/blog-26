@@ -1,0 +1,128 @@
+<!doctype html>
+<!-- THROWAWAY MEDIA ARTIFACT. Question: which composition preserves the Iv brand without obscuring images? Not a product page or Web Demo route. -->
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Logo 水印 · A/B 方案</title>
+  <style>
+    :root{color-scheme:light;--paper:#edf4ef;--ink:#24352d;--muted:#50685a;--line:#cbd9cf;--accent:#365d45;font-family:"PingFang SC","Hiragino Sans GB",sans-serif;color:var(--ink);background:var(--paper);font-size:14px}
+    *{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button,select,.file-label{min-height:44px}button,select{border:1px solid var(--line);background:#fcfdfb;color:var(--ink);border-radius:10px;padding:8px 13px}button,.file-label,select{cursor:pointer}button:hover,.file-label:hover{background:#e1ece4}button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}button:focus-visible,input:focus-visible,select:focus-visible,.file-label:focus-within{outline:3px solid #538363;outline-offset:3px}::selection{background:#b7d3c0;color:#172d20}
+    main{max-width:1320px;margin:auto;padding:32px 32px 140px}header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;border-bottom:1px solid var(--line);padding-bottom:24px}h1{font-family:"Songti SC","Noto Serif SC",serif;font-size:34px;font-weight:600;margin:0 0 10px;letter-spacing:-.02em}p{line-height:1.7;margin:0;color:var(--muted)}.brand{width:46px;height:34px;margin-top:8px}.status{display:inline-block;font-size:12px;border:1px solid var(--line);padding:5px 9px;border-radius:6px;margin-left:10px;vertical-align:middle;font-family:"PingFang SC",sans-serif;font-weight:400;letter-spacing:0}
+    .controls{display:flex;align-items:center;gap:14px 24px;flex-wrap:wrap;margin:24px 0 14px}.control{display:flex;align-items:center;gap:9px;white-space:nowrap}.control input[type="range"]{width:112px;accent-color:var(--accent)}.file-label{border-bottom:1px solid var(--line);display:flex;align-items:center;padding:8px 2px}.file-label input{position:absolute;opacity:0;width:1px;height:1px}.reset{margin-left:auto}.readout{display:block;font-size:12px;color:var(--muted);line-height:1.8;font-variant-numeric:tabular-nums;min-height:22px}
+    .comparison{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin-top:28px}.proposal{min-width:0;cursor:pointer;outline-offset:5px}.proposal h2{font-size:18px;margin:0 0 6px;font-weight:600}.proposal p{font-size:13px;min-height:45px}.proposal.active h2{color:#376a48}.proposal.active .candidate{outline:2px solid #598267;outline-offset:4px}.candidate{display:block;width:100%;height:auto;margin:15px 0 9px;border-radius:4px;background:#fff}.caption{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:12px}.pill{color:#376a48;font-weight:500}.preview-area{margin-top:40px;padding-top:26px;border-top:1px solid var(--line)}.section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}.section-head h2{font-size:20px;margin:0;font-weight:600}.view-toggle{display:flex;gap:6px}.detail{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:28px;align-items:start}.detail figure{margin:0;min-width:0}.detail canvas{width:100%;height:auto;display:block;border-radius:4px;background:white}.detail figcaption{font-size:12px;color:var(--muted);margin:10px 0;line-height:1.6}.mobile-preview{width:320px}.note{margin-top:16px;font-size:13px;line-height:1.8}.downloads{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.diagnostics{margin-top:26px;border-top:1px solid var(--line);padding-top:18px}.diagnostics summary{cursor:pointer;min-height:44px;display:flex;align-items:center}.diagnostics pre{white-space:pre-wrap;font-size:12px;color:var(--muted);line-height:1.6}.sample-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:24px}.sample-strip figure{margin:0;min-width:0}.sample-strip canvas{width:100%;height:auto;display:block}.sample-strip figcaption{color:var(--muted);font-size:12px;margin-top:8px}
+    .choose{border:0;padding:0;background:transparent;font:inherit;text-align:left}.view-toggle{border:0;padding:0;margin:0}.proposal .choose[aria-pressed="true"]{background:transparent;color:#376a48;border-color:transparent}
+    .switcher{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#24352d;color:white;padding:6px;display:flex;align-items:center;gap:5px;border-radius:15px;box-shadow:0 9px 28px #12281b26;max-width:calc(100% - 24px);z-index:4}.switcher button{border:0;background:transparent;color:white;flex:none}.switcher button:hover{background:#40574a}.switcher .current{min-width:162px;text-align:center;font-size:13px}.arrow{width:44px;display:grid;place-items:center;padding:0}.arrow svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8}
+    @media(max-width:850px){main{padding:24px 20px 130px}.detail{grid-template-columns:1fr}.mobile-preview{max-width:100%}.comparison{gap:14px}.proposal p{min-height:68px}.sample-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.reset{margin-left:0}}@media(max-width:600px){main{padding:22px 16px 130px}h1{font-size:28px}.status{display:block;margin:10px 0 0;width:max-content}header{padding-bottom:20px}.brand{width:38px;flex:none}.controls{gap:12px 18px}.control input[type="range"]{width:94px}.comparison{grid-template-columns:1fr;gap:26px}.proposal p{min-height:0}.candidate{margin-top:12px}.section-head{align-items:flex-start;flex-direction:column}.readout{font-size:11px}.sample-strip{gap:12px}.caption{font-size:12px}.downloads button{flex:1}.switcher{bottom:12px}}
+  </style>
+</head>
+<body>
+<main>
+  <header><div><h1>让 Logo 留在画面里<span class="status">水印探索原型 · A/B 方案</span></h1><p>沿用现有 Iv 标志。比较小图 A 与大图 B 在图片中的存在感、归属感和遮挡程度。</p></div><svg class="brand" aria-label="现有 Iv 品牌标志" role="img" viewBox="110 226 796 572" id="brand"></svg></header>
+  <section class="controls" aria-label="原型参数">
+    <label class="control">背景<select id="scene"><option value="light">浅色产品图</option><option value="dark" selected>深色产品图</option><option value="busy">复杂背景</option><option value="flat">纯白 / 纯黑压力测试</option></select></label>
+    <label class="control">不透明度<input id="alpha" type="range" min="15" max="100" value="64"><output id="alpha-value">64%</output></label>
+    <label class="control">尺寸<input id="size" type="range" min="65" max="150" value="100"><output id="size-value">100%</output></label>
+    <label class="control">用色<select id="ink"><option value="auto">自动对比</option><option value="light">白色</option><option value="dark">墨绿</option></select></label>
+    <label class="control">阴影<select id="shadow"><option value="none">无阴影</option><option value="soft">柔和阴影</option></select></label>
+    <label class="file-label">换成自己的图片<input id="file" type="file" accept="image/*"></label>
+    <button id="reset" class="reset" type="button">重置</button>
+  </section>
+  <output class="readout" id="readout" aria-live="polite"></output>
+  <section class="comparison" aria-label="A/B 水印构图">
+    <article class="proposal" data-variant="A"><h2><button type="button" class="choose" data-select="A" aria-label="选择 A 纯 Logo">A · 纯 Logo</button> <span class="pill">推荐</span></h2><p>保留标志的完整轮廓。最安静，适合文章图片和日常记录。</p><canvas id="candidate-A" class="candidate" width="1200" height="630" aria-label="A 纯 Logo 叠加效果"></canvas><div class="caption"><span>只保留品牌符号</span><span>标志宽 84 px</span></div></article>
+    <article class="proposal" data-variant="B"><h2><button type="button" class="choose" data-select="B" aria-label="选择 B Logo 加域名">B · 横排署名</button></h2><p>Logo 后跟 ivanli.cc。转载后更容易找到来源，占用更长的画面。</p><canvas id="candidate-B" class="candidate" width="1200" height="630" aria-label="B Logo 加域名叠加效果"></canvas><div class="caption"><span>标志 + 来源地址</span><span>组合宽 216 px</span></div></article>
+  </section>
+  <section class="preview-area" aria-label="尺寸与现状对照">
+    <div class="section-head"><h2 id="detail-title">A · 纯 Logo，放进内容里</h2><fieldset class="view-toggle" aria-label="对照模式"><button type="button" data-view="chosen" aria-pressed="true">当前方案</button><button type="button" data-view="current" aria-pressed="false">现有文字</button><button type="button" data-view="none" aria-pressed="false">原图</button></fieldset></div>
+    <div class="detail"><figure><canvas id="large" width="1200" height="630" aria-label="内容图中的水印"></canvas><figcaption>内容图预览 · 所有方案在同一张 1200 × 630 原图上合成，再随图片一起缩放。</figcaption></figure><figure class="mobile-preview"><canvas id="mobile" width="1200" height="630" aria-label="缩至 320 像素后的水印"></canvas><figcaption>手机信息流 · 显示宽度 320 px<br>请留意 Logo 细节与域名小字是否还可辨认。</figcaption><div class="downloads"><button type="button" id="download-png">下载效果 PNG</button><button type="button" id="download-svg">下载水印 SVG</button></div></figure></div>
+    <p class="note" id="tradeoff"></p>
+    <section class="sample-strip" id="sample-strip" aria-label="同一方案跨背景对照"></section>
+    <details class="diagnostics"><summary>查看参数与素材来源</summary><pre id="state"></pre></details>
+  </section>
+</main>
+<nav class="switcher" aria-label="方案切换"><button class="arrow" id="prev" type="button" aria-label="上一个方案"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button><span class="current" id="current-label">A · 纯 Logo</span><button class="arrow" id="next" type="button" aria-label="下一个方案"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button></nav>
+<script>
+const DATA = /* PROTOTYPE_DATA */ { paths: "", scenes: [], watermarkAssets: { A: "", B: "" } };
+const W = 1200, H = 630;
+const variants = {
+  A:{name:"纯 Logo",width:84,height:60,note:"A 只保留 Iv 标志，使用纯色与短距阴影建立水印感，不用描边制造对比。"},
+  B:{name:"横排署名",width:216,height:65,note:"B 使用 Iv 标志、白色分隔线和 ivanli.cc；按背景选择明暗色，并使用统一短距阴影。"},
+};
+const $ = id => document.getElementById(id);
+const query = new URLSearchParams(location.search);
+const numeric = (key, fallback, min, max) => {const value=Number(query.get(key) ?? fallback);return Number.isFinite(value)?Math.max(min,Math.min(max,value)):fallback;};
+const requestedInk=query.get("ink");
+const state={variant:variants[query.get("variant")]?query.get("variant"):"A",scene:DATA.scenes.some(s=>s.key===query.get("scene"))||query.get("scene")==="flat"?query.get("scene"):"dark",alpha:numeric("alpha",64,15,100),size:numeric("size",100,65,150),ink:["auto","light","dark"].includes(requestedInk)?requestedInk:"auto",shadow:query.get("shadow")==="none"?"none":"soft",view:["current","none"].includes(query.get("view"))?query.get("view"):"chosen"};
+const images={};let customImage=null;let customName="";let renderVersion=0;
+function imageFrom(url){return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=reject;image.src=url;});}
+function inkForScene(scene){if(state.ink!=="auto")return state.ink;return ["dark"].includes(scene)?"light":"dark";}
+function symbol(x,y,width,height,fill){return `<svg x="${x}" y="${y}" width="${width}" height="${height}" viewBox="110 226 796 572" fill="${fill}">${DATA.paths}</svg>`;}
+function watermark(key,scene=state.scene){
+  const v=variants[key],s=state.size/100,w=Math.round(v.width*s),h=Math.round(v.height*s),light=inkForScene(scene)==="light",fill=light?"#ffffff":"#24352d";
+  if((key==="A"||key==="B")&&DATA.watermarkAssets?.[key]){
+    const asset=DATA.watermarkAssets[key]
+      .replaceAll("#fff",fill)
+      .replaceAll("#14241c",light?"#14241c":"#ffffff")
+      .replace("<svg ",`<svg width="${w}" height="${h}" `);
+    return {w,h,svg:asset};
+  }
+  const body=symbol(0,0,w,h,fill);
+  return {w,h,svg:`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${body}</svg>`};
+}
+function sourceFor(key){return key==="custom"?customImage:images[key];}
+async function paint(canvas,key,scene=state.scene){
+  const version=renderVersion,context=canvas.getContext("2d"),background=sourceFor(scene);
+  const drawBackground=()=>{const ratio=Math.max(W/background.naturalWidth,H/background.naturalHeight),width=background.naturalWidth*ratio,height=background.naturalHeight*ratio;context.clearRect(0,0,W,H);context.drawImage(background,(W-width)/2,(H-height)/2,width,height);};
+  if(key==="none"){drawBackground();return;}
+  let svg,alpha,w,h;
+  if(key==="current"){
+    // Current imagor filter: 22% bounding box, 18% opacity; source text fill alpha=.82.
+    w=264;h=53;alpha=.18;svg=`<svg xmlns="http://www.w3.org/2000/svg" width="264" height="53" viewBox="0 0 480 96"><text x="240" y="60" text-anchor="middle" font-family="Arial,sans-serif" font-size="56" fill="rgba(255,255,255,0.82)">ivanli.cc</text></svg>`;
+  }else{const mark=watermark(key,scene);({w,h,svg}=mark);alpha=state.alpha/100;}
+  const mark=await imageFrom("data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg));
+  if(version!==renderVersion)return;
+  drawBackground();context.globalAlpha=alpha;
+  if(state.shadow==="soft"){
+    context.shadowColor=inkForScene(scene)==="light"?"rgba(20,36,28,.55)":"rgba(255,255,255,.42)";
+    context.shadowBlur=2;context.shadowOffsetX=0;context.shadowOffsetY=1;
+  }
+  context.drawImage(mark,W-w-24,H-h-24,w,h);
+  context.globalAlpha=1;context.shadowColor="transparent";context.shadowBlur=0;context.shadowOffsetX=0;context.shadowOffsetY=0;
+}
+function syncUrl(){const url=new URL(location.href);for(const [key,value] of Object.entries(state)){if(key==="scene"&&value==="custom")url.searchParams.delete(key);else url.searchParams.set(key,String(value));}history.replaceState(null,"",url);}
+async function render(){
+  const version=++renderVersion;document.documentElement.dataset.ready="false";
+  for(const key of ["scene","alpha","size","ink","shadow"])$(key).value=state[key];
+  $("alpha-value").textContent=state.alpha+"%";$("size-value").textContent=state.size+"%";
+  const v=variants[state.variant],mark=watermark(state.variant,state.scene);
+  $("current-label").textContent=state.variant+" · "+v.name;$("detail-title").textContent=state.variant+" · "+v.name+"，放进内容里";$("tradeoff").textContent=v.note;
+  $("readout").textContent=`${state.variant} · ${v.name} ｜ 不透明度 ${state.alpha}% ｜ 用色 ${state.ink==="auto"?"自动对比":state.ink==="light"?"白色":"墨绿"} ｜ 阴影 ${state.shadow==="soft"?"柔和":"无"} ｜ 水印 ${mark.w} × ${mark.h} px ｜ 右 / 下边距 24 px ｜ 原图 1200 × 630 px${state.scene==="custom"?" ｜ 本地图片："+customName:""}`;
+  document.querySelectorAll(".proposal").forEach(node=>{node.classList.toggle("active",node.dataset.variant===state.variant);node.querySelector(".choose").setAttribute("aria-pressed",String(node.dataset.variant===state.variant));});
+  document.querySelectorAll("[data-view]").forEach(node=>{node.setAttribute("aria-pressed",String(node.dataset.view===state.view));});
+  const key=state.view==="chosen"?state.variant:state.view;
+  const jobs=Object.keys(variants).map(k=>paint($("candidate-"+k),k));jobs.push(paint($("large"),key),paint($("mobile"),key));
+  for(const scene of [...DATA.scenes,{key:"flat",label:"纯白 / 纯黑"}])jobs.push(paint($("sample-"+scene.key),state.variant,scene.key));
+  $("state").textContent=JSON.stringify({...state,watermark:{width:mark.w,height:mark.h,right:24,bottom:24},canvas:{width:W,height:H},source:state.scene==="custom"?customName:DATA.scenes.find(s=>s.key===state.scene)?.source||"Authored flat contrast test",sourceMark:"site/assets/brand/source/ivan-blog-mark.svg",currentTextPreview:"Visual approximation of current imagor settings; no live imagor verification",persistence:"URL parameters only; custom file stays in this browser",status:"THROWAWAY / pending owner selection"},null,2);
+  syncUrl();await Promise.all(jobs);if(version===renderVersion)document.documentElement.dataset.ready="true";
+}
+function cycle(delta){const keys=Object.keys(variants);state.variant=keys[(keys.indexOf(state.variant)+delta+keys.length)%keys.length];render();}
+function download(url,name){const a=document.createElement("a");a.href=url;a.download=name;a.click();}
+$("brand").innerHTML=DATA.paths;
+for(const scene of [...DATA.scenes,{key:"flat",label:"纯白 / 纯黑"}]){const figure=document.createElement("figure"),canvas=document.createElement("canvas"),caption=document.createElement("figcaption");canvas.width=W;canvas.height=H;canvas.id="sample-"+scene.key;canvas.setAttribute("aria-label",scene.label+"水印效果");caption.textContent=scene.label;figure.append(canvas,caption);$("sample-strip").append(figure);}
+Promise.all(DATA.scenes.map(async scene=>{images[scene.key]=await imageFrom(scene.url);})).then(async()=>{
+  images.flat=await imageFrom("data:image/svg+xml;charset=utf-8,"+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><rect width="1200" height="630" fill="#fff"/><rect x="600" width="600" height="630" fill="#101714"/><rect x="600" y="460" width="600" height="170" fill="#fff"/><rect y="460" width="600" height="170" fill="#101714"/><text x="40" y="70" fill="#24352d" font-family="Arial,sans-serif" font-size="24">LIGHT</text><text x="640" y="70" fill="#e9f1eb" font-family="Arial,sans-serif" font-size="24">DARK</text></svg>`));
+  await render();
+});
+document.querySelectorAll("[data-select]").forEach(node=>{node.addEventListener("click",()=>{state.variant=node.dataset.select;render();});});
+for(const key of ["scene","alpha","size","ink","shadow"])$(key).addEventListener("input",()=>{state[key]=["alpha","size"].includes(key)?Number($(key).value):$(key).value;render();});
+$("prev").onclick=()=>cycle(-1);$("next").onclick=()=>cycle(1);
+document.addEventListener("keydown",event=>{if(event.target.closest("input,textarea,select,[contenteditable]"))return;if(event.key==="ArrowLeft"||event.key==="ArrowRight"){event.preventDefault();cycle(event.key==="ArrowLeft"?-1:1);}});
+document.querySelectorAll("[data-view]").forEach(node=>{node.onclick=()=>{state.view=node.dataset.view;render();};});
+$("reset").onclick=()=>{Object.assign(state,{variant:"A",scene:"dark",alpha:64,size:100,ink:"auto",shadow:"soft",view:"chosen"});render();};
+$("file").onchange=event=>{const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=async()=>{customImage=await imageFrom(reader.result);customName=file.name;if(!$("scene").querySelector('[value="custom"]'))$("scene").add(new Option("自己的图片（仅本地）","custom"));state.scene="custom";render();};reader.readAsDataURL(file);};
+$("download-png").onclick=()=>download($("large").toDataURL("image/png"),`watermark-${state.variant}-${state.scene}-${state.view}.png`);
+$("download-svg").onclick=()=>{const mark=watermark(state.variant,state.scene);const svg=mark.svg.replace('<svg xmlns=',`<svg opacity="${state.alpha/100}" xmlns=`);download("data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg),`watermark-${state.variant}.prototype.svg`);};
+</script>
+</body>
+</html>

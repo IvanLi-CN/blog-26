@@ -3,6 +3,7 @@
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useResponsiveWatermark } from "../../useResponsiveWatermark";
 import type { ImageLightboxProps } from "../types";
 import { mergeClassNames } from "../utils";
 
@@ -16,9 +17,35 @@ export function ImageLightbox({
   enableLightbox = true,
   ...props
 }: ImageLightboxProps & React.ImgHTMLAttributes<HTMLImageElement>) {
+  const rawProps = props as Record<string, unknown>;
+  const watermarkA =
+    typeof rawProps["data-watermark-a"] === "string" ? rawProps["data-watermark-a"] : undefined;
+  const watermarkB =
+    typeof rawProps["data-watermark-b"] === "string" ? rawProps["data-watermark-b"] : undefined;
+  const fullWatermarkA =
+    typeof rawProps["data-watermark-full-a"] === "string"
+      ? rawProps["data-watermark-full-a"]
+      : undefined;
+  const fullWatermarkB =
+    typeof rawProps["data-watermark-full-b"] === "string"
+      ? rawProps["data-watermark-full-b"]
+      : undefined;
+  const mainImage = useResponsiveWatermark({
+    source: src,
+    watermarkA,
+    watermarkB,
+    fallback: "b",
+  });
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [_isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const lightboxImage = useResponsiveWatermark({
+    source: fullWatermarkB || src,
+    watermarkA: fullWatermarkA,
+    watermarkB: fullWatermarkB,
+    fallback: "b",
+    enabled: isLightboxOpen,
+  });
 
   // 打开灯箱
   const openLightbox = useCallback(() => {
@@ -85,7 +112,8 @@ export function ImageLightbox({
       <span className="inline-block my-4 w-full">
         {/* biome-ignore lint/performance/noImgElement: This lightbox uses native <img> for simplicity and performance */}
         <img
-          src={src}
+          ref={mainImage.imageRef}
+          src={mainImage.source}
           alt={alt}
           className={mergeClassNames(
             "h-auto max-w-full rounded-[var(--nature-radius-sm)] border border-[rgba(var(--nature-border-rgb),0.72)] shadow-[0_12px_24px_rgba(8,21,16,0.08)]",
@@ -103,9 +131,10 @@ export function ImageLightbox({
           tabIndex={enableLightbox && !hasError ? 0 : undefined}
           onLoad={handleImageLoad}
           onError={handleImageError}
-          data-lightbox={enableLightbox ? "true" : "false"}
-          data-original-src={src}
           {...props}
+          data-lightbox={enableLightbox ? "true" : "false"}
+          data-watermark-variant={mainImage.variant}
+          data-original-src={mainImage.source}
         />
 
         {/* 错误状态显示 */}
@@ -166,12 +195,13 @@ export function ImageLightbox({
               aria-label="关闭图片预览"
               onClick={closeLightbox}
             />
-            <div className="relative z-10 max-h-[90vh] max-w-[90vw] p-4">
+            <div className="relative z-10 flex max-h-[90vh] w-[min(90vw,1200px)] items-center justify-center p-4">
               {/* biome-ignore lint/performance/noImgElement: Lightbox uses native img intentionally */}
               <img
-                src={src}
+                ref={lightboxImage.imageRef}
+                src={lightboxImage.source}
                 alt={alt}
-                className="max-h-full max-w-full rounded-[var(--nature-radius-sm)] object-contain shadow-2xl"
+                className="block h-auto max-h-[calc(90vh-2rem)] max-w-full rounded-[var(--nature-radius-sm)] object-contain shadow-2xl"
               />
 
               {/* 图片标题 */}

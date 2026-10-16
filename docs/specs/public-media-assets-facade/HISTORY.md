@@ -46,6 +46,18 @@
 - 前台稳定发布开始按 `site-dist` 实际引用打包公开派生媒体：处理后的文件进入 `/_content/assets/`，并由 `_content/media-manifest.json` 记录来源、大小与超限例外。
 - 20 MiB 及以上媒体保留为 `console.ivanli.cc` 直连；媒体源不可达或 EdgeOne artifact 达到 20,000 文件 / 5 GiB 限额时，发布在 EdgeOne 部署前失败。
 
+## 2026-10-15
+
+- 定案公开媒体 Logo 水印合同：按实际显示宽度（CSS px）选择 A/B，`<600` 用 Iv 标志 A，`>=600` 用 Iv 标志与 `ivanli.cc` 的 B；DPR 不改变构图，无法测量的用途沿用 card A / 其他图片用途 B 默认。
+- 定案列表、时间线、相关推荐、详情封面、正文与灯箱保留现有图框并使用 contain 完整显示，允许留白；图片自身 hover 放大移除，灯箱独立选择 `full` 候选。
+- 新增 `PublicMediaItem.presentations` 与 `/api/public/assets/:kind/:slug/:mediaHash/:renderId/:variant.:ext`，登记 `wm-a-v1` / `wm-b-v1`；旧路径、旧 variants 和管理员默认 URL 保留历史语义。
+- A/B 合成采用 7%/18% 最终宽度、2% 右下边距、无描边白色主体/64% 不透明度，并使用短距暗色柔和阴影；B 的分隔线和 `ivanli.cc` 文字与 Iv 标志保持同一主体处理；imagor `alpha=36`，方向校正、缩放/取帧后按 240×160/80,000px² 门槛豁免，公开媒体失败保持 fail-fast。
+- 静态构建与 manifest 纳入结构化、HTML、hydration 与灯箱 A/B 候选，并校验版本化水印 SVG、路径身份和 20 MiB / 20,000 文件 / 5 GiB 限制。
+- 收紧版本化路由边界：`play` 受控播放只允许无 renderId 的历史路径，带 A/B 或未知身份的播放地址统一返回 404。
+- 修正 B 版 Logo 素材的视觉排版：分隔线改为白色主体，不再出现深色孤立线条；按可见 Logo 边界将两侧间距统一，避免缩放后署名组合左右失衡。
+- 修正 B 版域名文字的视觉样式：移除 `ivanli.cc` 字形与 Iv 标志的深色描边，避免小尺寸文字发黑。
+- 统一 A/B 版 Logo 的视觉边缘：移除 Iv 标志残留的深色描边，改用短距暗色柔和阴影；GIF 派生把同一透明 Logo 画布逐帧复用，保留原有时序并确保每帧都带水印。
+
 ## 2026-06-21
 
 - 固定数据库文章的 `body-only canonical` 预览合同：`/admin/preview/posts/:slug` 会在读时剥离 `posts.body` 中历史混入的整篇 frontmatter 文档，只把纯正文传给作者态正文区域。

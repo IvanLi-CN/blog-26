@@ -6,7 +6,7 @@
 
 ## Related ADRs
 
-None
+- [ADR 0025: 按显示尺寸选择媒体水印派生](../../adr/0025-display-selected-watermark-renditions.md)
 
 ## 1. 背景
 
@@ -38,7 +38,7 @@ None
 ### In scope
 
 - `post` / `memo` 公开内容的媒体解析、稳定键计算、门面 URL 生成与公开响应序列化。
-- `GET /api/public/assets/:kind/:slug/:mediaHash/:variant.:ext` 公开门面路由。
+- `GET /api/public/assets/:kind/:slug/:mediaHash/:renderId/:variant.:ext` 公开版本化门面路由；旧的 `.../:mediaHash/:variant.:ext` 继续保留历史语义。
 - `GET /_internal/assets/source/:kind/:slug/:mediaHash` 内部稳定回源路由。
 - 公开详情页、列表页、timeline、feed、OG/Twitter、JSON-LD、public snapshot、`/admin/preview/*` 的媒体消费方式。
 - 101 上 `imagorvideo` 与 `blog` 的 compose / 部署卡片对齐说明。
@@ -58,9 +58,11 @@ None
 
 ### 5.2 公开门面 URL
 
-- 公开媒体唯一允许暴露的 URL 形状固定为：
-  - `GET /api/public/assets/:kind/:slug/:mediaHash/:variant.:ext`
+- 公开媒体版本化 URL 形状固定为：
+  - `GET /api/public/assets/:kind/:slug/:mediaHash/:renderId/:variant.:ext`
+- 旧的 `GET /api/public/assets/:kind/:slug/:mediaHash/:variant.:ext` 保留历史语义；新快照和页面使用版本化路径。
 - `kind` 只允许 `post | memo`。
+- `renderId` 只允许登记值 `wm-a-v1 | wm-b-v1`，不得接受任意处理表达式、关闭水印参数或未知身份；`play` 受控播放变体不接受任何 renderId。
 - `variant` 固定为：
   - `card`
   - `cover`
@@ -96,7 +98,10 @@ None
   - raw 原图 URL
   - raw 原视频 URL
 - 公开图片、GIF 派生帧、视频 poster 必须 strip metadata / EXIF。
-- 图片宽 `<240`、高 `<160`、或面积 `<80000px` 时跳过水印；其他公开派生图默认加右下角 `ivanli.cc` 透明文本水印。
+- 图片、GIF 单帧或视频 poster 派生结果宽 `<240px`、高 `<160px`、或面积 `<80,000px²` 时跳过水印；尺寸必须在方向校正、缩放/取帧之后判断。
+- `wm-a-v1` 为 Iv 标志，最终宽度 7%；`wm-b-v1` 为 Iv 标志与 `ivanli.cc`，最终宽度 18%；两者右/下边距均为最终图像宽度 2%。A/B 都使用无描边白色主体与短距暗色柔和阴影，整体不透明度 64%；B 的分隔线与域名文字保持同一白色主体。imagor filter 的 `alpha` 使用 36。
+- 公开页面与灯箱按实际 CSS 可见宽度独立选择：`<600` 用 A，`>=600` 用 B；DPR 不改变构图。card 默认 A，其余图片用途默认 B；正常页面测量后校正，无法测量的 RSS/分享/禁用 JS 输出按用途默认。
+- 列表、时间线、相关推荐、详情封面、正文和灯箱保留现有图框但使用 `contain` 完整显示，允许留白；移除图片自身 hover 放大。
 
 ### 5.5 内容媒体路径规范化
 
@@ -137,6 +142,7 @@ None
 - `kind`
 - `alt`
 - `variants`
+- 可选 `presentations`：非 `play` 用途的 `{ a: URL, b: URL }` 有限候选
 - `poster`
 - `playback`
 - `sources`
@@ -207,8 +213,8 @@ None
   - `IMAGOR_AUTO_AVIF=1`（官方文档标注 experimental）
   - `IMAGOR_AUTO_JPEG=1`
   - `VIPS_STRIP_METADATA=1`
-- 水印使用 imagor `watermark(...)` filter，且 watermark image 固定回源 blog 自己提供的静态 SVG 文件（例如 `/watermark-ivanli.svg`）；禁止使用内联 `data:` URL watermark。视频 poster 使用 `frame(...)` filter。
-- `/watermark-ivanli.svg` 必须作为公开静态产物随 `site-dist` 一起落盘，并由 blog 同源公开入口直接提供；不得依赖独立对象存储、运行时生成、或 internal source 路由来承接 watermark 文件。
+- 水印使用 imagor `watermark(...)` filter，且 watermark image 固定回源 blog 自己提供的版本化静态 SVG 文件 `/watermark-ivanli-a.v1.svg` 或 `/watermark-ivanli-b.v1.svg`；禁止使用内联 `data:` URL watermark。视频 poster 使用 `frame(0)`，视频 A/B 尺寸用相同配方的签名 `/meta` 读取。
+- 版本化 Logo SVG 与兼容的 `/watermark-ivanli.svg` 必须作为公开静态产物随 `site-dist` 一起落盘，并由 blog 同源公开入口直接提供；不得依赖独立对象存储、运行时生成、或 internal source 路由来承接 watermark 文件。
 - 公开媒体链路不允许运行时 fallback；`imagorvideo` 不可用、配置错误、或 internal source 回源失败时，门面必须直接返回错误，由部署/监控暴露故障。
 - blog 服务需要知道 imagor 的访问基址与签名配置，才能生成代理请求 URL；前台不可见 imagor 真实地址。
 
@@ -216,7 +222,7 @@ None
 
 1. 公开 HTML、snapshot JSON、`/api/public/*`、feed、OG/Twitter、JSON-LD 中不再出现相对路径、宿主路径、`/api/files/*` 或 raw 媒体 URL。
 2. 公开内容媒体统一改为 `assets` 门面 URL，覆盖文章封面、正文内联媒体、Memo 附件、timeline 代表图、视频 poster 与详情页视频播放 URL。
-3. `GET /api/public/assets/:kind/:slug/:mediaHash/:variant.:ext` 始终代理处理结果，不重定向到 imagor 域名。
+3. `GET /api/public/assets/:kind/:slug/:mediaHash/:renderId/:variant.:ext` 对已登记 A/B 身份代理处理结果，不重定向到 imagor 域名；旧路径保留历史语义。
 4. `GET /_internal/assets/source/:kind/:slug/:mediaHash` 能稳定回源，并支持 `Range`。
 5. `/admin/preview/*` 与真实公开页使用同一套公开媒体语义；编辑器内嵌 preview/raw authoring 语义保持不变。
 6. `/admin/preview/posts/:slug` 与 `/admin/preview/memos/:slug` 保持后台 Soft UI 壳，但信息节奏分别符合文章/ Memo 详情预览合同；Memo 预览不显示摘要位。
@@ -225,7 +231,7 @@ None
 9. `draft: true` 或 `public: false` 的文章在后台预览中，其 hero 与正文图片必须可见；不得出现“文字可预览但图片 404/空白”的作者态分裂。
 9. 小图不加水印；公开派生结果不带敏感 metadata。
 10. 101 上 `imagorvideo` / `blog` 所需 compose 与部署卡片改动、验证命令与回退说明具备可执行口径。
-11. 公开入口可直接返回 `/watermark-ivanli.svg`，且 E2E / smoke 覆盖至少有一条真实请求命中该文件与一个 `/api/public/assets/*` 媒体 URL。
+11. 公开入口可直接返回兼容的 `/watermark-ivanli.svg` 与版本化 A/B SVG，且 E2E / smoke 覆盖至少有一条真实请求命中版本化水印文件与一个 `/api/public/assets/*` 媒体 URL。
 12. 公开媒体路径解析会拒绝编码 separator、编码 dot-segment 与越过内容根的 traversal；这类输入不得被解析成可访问文件路径。
 13. 公开 HTML 中所有 build-time 直接输出的 `card` / `cover` facade URL 都必须携带稳定 `?v=<public-snapshot.generatedAt>` 查询参数；缺失时视为静态发布不合格，而不是运行时容错场景。
 
@@ -238,6 +244,9 @@ None
 - Storybook memo detail rhythm keeps a single content title with no hero or excerpt slot: [storybook-admin-preview-memo-detail.png](./assets/storybook-admin-preview-memo-detail.png)
 - Admin post preview renders facade hero between header metadata and body content: [admin-preview-post-detail.png](./assets/admin-preview-post-detail.png)
 - Admin memo preview keeps the public memo detail shell rhythm without a hero or excerpt slot: [admin-preview-memo-detail.png](./assets/admin-preview-memo-detail.png)
+- Responsive Logo A at 393 CSS px keeps the full image inside the existing frame: [logo-watermark-mobile-393.png](./assets/logo-watermark-mobile-393.png) (`需确认`)
+- Responsive Logo B at 1440 CSS px includes the domain while preserving the existing frame: [logo-watermark-desktop-1440.png](./assets/logo-watermark-desktop-1440.png) (`需确认`)
+- Desktop lightbox independently selects the full Logo B rendition and keeps the image undistorted: [logo-watermark-lightbox-desktop.png](./assets/logo-watermark-lightbox-desktop.png) (`需确认`)
 
 ## 10. 参考
 

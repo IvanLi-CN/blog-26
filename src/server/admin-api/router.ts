@@ -424,15 +424,16 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
     }
 
     const previewAssetMatch = pathname.match(
-      /^\/preview\/assets\/(post|memo)\/([^/]+)\/([0-9a-f]+)\/(card|cover|content|full|social|poster|play)\.([a-z0-9]+)$/iu
+      /^\/preview\/assets\/(post|memo)\/([^/]+)\/([0-9a-f]+)(?:\/([a-z0-9-]+))?\/(card|cover|content|full|social|poster|play)\.([a-z0-9]+)$/iu
     );
     if (previewAssetMatch) {
       return handleAdminPreviewAssetRequest(request, {
         kind: previewAssetMatch[1],
         slug: decodeURIComponent(previewAssetMatch[2]),
         mediaHash: previewAssetMatch[3],
-        variant: previewAssetMatch[4],
-        ext: previewAssetMatch[5],
+        renderId: previewAssetMatch[4],
+        variant: previewAssetMatch[5],
+        ext: previewAssetMatch[6],
       });
     }
 

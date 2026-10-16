@@ -39,6 +39,8 @@ export interface MarkdownRendererProps {
   contentSource?: "local";
   /** 公开媒体上下文，用于将正文媒体改写为 assets facade URL */
   publicMediaContext?: PublicMediaContext;
+  /** 静态发布版本戳，用于让所有公开候选共享同一缓存身份 */
+  publicAssetVersion?: string | null;
   /** 是否移除内容中的标签 */
   removeTags?: boolean;
   /** 是否为 GitHub Pages 公开前台改写站内根路径 */
@@ -111,6 +113,8 @@ export interface ImageOptimizationOptions {
   contentSource?: "local";
   /** 公开媒体上下文，用于生成 facade URL */
   publicMediaContext?: PublicMediaContext;
+  /** 静态发布版本戳，用于让所有公开候选共享同一缓存身份 */
+  publicAssetVersion?: string | null;
 }
 
 /**

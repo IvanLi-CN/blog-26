@@ -1,5 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import { resolveContentMediaPath, rewritePublicContentMediaUrls } from "@/lib/public-media";
+import {
+  buildPublicMediaAssetUrl,
+  buildPublicMediaPresentations,
+  resolveContentMediaPath,
+  rewritePublicContentMediaUrls,
+} from "@/lib/public-media";
 
 describe("public-media", () => {
   describe("resolveContentMediaPath", () => {
@@ -122,6 +127,80 @@ describe("public-media", () => {
       expect(rewritten).toContain("/play.mp4");
       expect(rewritten).not.toContain("./assets/photo.png");
       expect(rewritten).not.toContain("./assets/clip.mp4#watch");
+    });
+  });
+
+  describe("watermark presentations", () => {
+    const context = {
+      kind: "post" as const,
+      slug: "demo-post",
+      filePath: "blog/demo-post.md",
+    };
+
+    it("uses A for cards and B for larger usage defaults", () => {
+      expect(
+        buildPublicMediaAssetUrl({
+          context,
+          mediaPath: "./assets/photo.png",
+          role: "content",
+          variant: "card",
+        })
+      ).toContain("/wm-a-v1/card.webp");
+      expect(
+        buildPublicMediaAssetUrl({
+          context,
+          mediaPath: "./assets/photo.png",
+          role: "content",
+          variant: "content",
+        })
+      ).toContain("/wm-b-v1/content.webp");
+    });
+
+    it("enumerates A/B candidates from an already normalized source path", () => {
+      const presentations = buildPublicMediaPresentations({
+        context,
+        mediaPath: "blog/assets/photo.png",
+        sourcePath: "blog/assets/photo.png",
+        role: "content",
+        variant: "content",
+      });
+
+      expect(presentations).toEqual({
+        a: expect.stringContaining("/demo-post/"),
+        b: expect.stringContaining("/demo-post/"),
+      });
+      expect(presentations?.a).toContain("/wm-a-v1/content.webp");
+      expect(presentations?.b).toContain("/wm-b-v1/content.webp");
+      expect(presentations?.a).not.toContain("/blog/blog/");
+    });
+
+    it("keeps admin defaults on the legacy path while accepting explicit candidates", () => {
+      const adminContext = { ...context, assetScope: "admin-preview" as const };
+      expect(
+        buildPublicMediaAssetUrl({
+          context: adminContext,
+          mediaPath: "./assets/photo.png",
+          role: "content",
+          variant: "content",
+        })
+      ).toContain("/content.webp");
+      expect(
+        buildPublicMediaAssetUrl({
+          context: adminContext,
+          mediaPath: "./assets/photo.png",
+          role: "content",
+          variant: "content",
+        })
+      ).not.toContain("/wm-");
+      expect(
+        buildPublicMediaAssetUrl({
+          context: adminContext,
+          mediaPath: "./assets/photo.png",
+          role: "content",
+          variant: "content",
+          renderId: "wm-b-v1",
+        })
+      ).toContain("/wm-b-v1/content.webp");
     });
   });
 });

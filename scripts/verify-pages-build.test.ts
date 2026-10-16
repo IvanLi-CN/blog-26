@@ -109,6 +109,12 @@ describe("verify-pages-build", () => {
     );
     writeBuildFile(cwd, "site-dist/site-assets/default-avatar.svg", "<svg></svg>");
     writeBuildFile(cwd, "site-dist/watermark-ivanli.svg", "<svg>ivanli.cc</svg>");
+    writeBuildFile(cwd, "site-dist/watermark-ivanli-a.v1.svg", "<svg viewBox='0 0 1 1'></svg>");
+    writeBuildFile(
+      cwd,
+      "site-dist/watermark-ivanli-b.v1.svg",
+      "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0L1 1'/></g></svg>"
+    );
     writeBuildFile(
       cwd,
       "site-dist/robots.txt",
@@ -187,6 +193,12 @@ describe("verify-pages-build", () => {
     );
     writeBuildFile(cwd, "site-dist/site-assets/default-avatar.svg", "<svg></svg>");
     writeBuildFile(cwd, "site-dist/watermark-ivanli.svg", "<svg>ivanli.cc</svg>");
+    writeBuildFile(cwd, "site-dist/watermark-ivanli-a.v1.svg", "<svg viewBox='0 0 1 1'></svg>");
+    writeBuildFile(
+      cwd,
+      "site-dist/watermark-ivanli-b.v1.svg",
+      "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0L1 1'/></g></svg>"
+    );
     writeBuildFile(
       cwd,
       "site-dist/robots.txt",
@@ -266,6 +278,12 @@ describe("verify-pages-build", () => {
     );
     writeBuildFile(cwd, "site-dist/site-assets/default-avatar.svg", "<svg></svg>");
     writeBuildFile(cwd, "site-dist/watermark-ivanli.svg", "<svg>ivanli.cc</svg>");
+    writeBuildFile(cwd, "site-dist/watermark-ivanli-a.v1.svg", "<svg viewBox='0 0 1 1'></svg>");
+    writeBuildFile(
+      cwd,
+      "site-dist/watermark-ivanli-b.v1.svg",
+      "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0L1 1'/></g></svg>"
+    );
     writeBuildFile(
       cwd,
       "site-dist/robots.txt",
@@ -343,6 +361,12 @@ describe("verify-pages-build", () => {
     );
     writeBuildFile(cwd, "site-dist/site-assets/default-avatar.svg", "<svg></svg>");
     writeBuildFile(cwd, "site-dist/watermark-ivanli.svg", "<svg>ivanli.cc</svg>");
+    writeBuildFile(cwd, "site-dist/watermark-ivanli-a.v1.svg", "<svg viewBox='0 0 1 1'></svg>");
+    writeBuildFile(
+      cwd,
+      "site-dist/watermark-ivanli-b.v1.svg",
+      "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0L1 1'/></g></svg>"
+    );
     writeBuildFile(
       cwd,
       "site-dist/robots.txt",
@@ -368,5 +392,44 @@ describe("verify-pages-build", () => {
         siteUrl,
       })
     ).toThrow("version build-time public asset URL with ?v=");
+  });
+
+  it("fails when the outlined watermark domain group has no drawable paths", () => {
+    const cwd = makeTempBuildRoot();
+    const siteUrl = "https://pages.example.test/blog-26";
+
+    writeBuildFile(
+      cwd,
+      "site-dist/index.html",
+      [
+        `<link rel="canonical" href="${siteUrl}/">`,
+        `href="/blog-26/posts/"`,
+        `href="/blog-26/memos/"`,
+        `href="/blog-26/projects/"`,
+        `action="/blog-26/search/"`,
+        `href="/blog-26/feed.xml"`,
+      ].join("\n")
+    );
+    writeBuildFile(cwd, "site-dist/404.html", 'href="/blog-26/"');
+    writeBuildFile(cwd, "site-dist/feed.xml", "<rss></rss>");
+    writeBuildFile(cwd, "site-dist/atom.xml", "<feed></feed>");
+    writeBuildFile(cwd, "site-dist/feed.json", "{}");
+    writeBuildFile(cwd, "site-dist/site-assets/default-avatar.svg", "<svg></svg>");
+    writeBuildFile(cwd, "site-dist/watermark-ivanli.svg", "<svg>ivanli.cc</svg>");
+    writeBuildFile(cwd, "site-dist/watermark-ivanli-a.v1.svg", "<svg viewBox='0 0 1 1'></svg>");
+    writeBuildFile(
+      cwd,
+      "site-dist/watermark-ivanli-b.v1.svg",
+      "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0M4 4'/><path d='M0 0Z'/><path d='M4 4L4 4'/><path d='M0 0A1 1 0 0 0 0 0'/></g></svg>"
+    );
+    writeBuildFile(
+      cwd,
+      "site-dist/robots.txt",
+      `Host: https://pages.example.test\nSitemap: ${siteUrl}/sitemap.xml`
+    );
+
+    expect(() => verifyPagesBuild({ cwd, siteUrl })).toThrow(
+      "a drawable path in g.watermark-domain"
+    );
   });
 });

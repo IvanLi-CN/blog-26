@@ -8,12 +8,13 @@ const TRAILING_SLASH = /\/+$/;
 const SITE_DIST_DIR = "site-dist";
 const FEED_FILES = ["site-dist/feed.xml", "site-dist/atom.xml", "site-dist/feed.json"] as const;
 const BUILD_TIME_PUBLIC_ASSET_PATTERN =
-  /(?:https?:\/\/[^"'`\s]+)?\/api\/public\/assets\/[^"'`\s?#]+\/(?:card|cover|content|full|social|poster|play)\.[^"'`\s?#)]+(?:\?[^"'`\s)]*)?/g;
+  /(?:https?:\/\/[^"'`\s]+)?\/api\/public\/assets\/[^"'`\s?#]+\/(?:[a-z0-9-]+\/)?(?:card|cover|content|full|social|poster|play)\.[^"'`\s?#)]+(?:\?[^"'`\s)]*)?/giu;
 
 type FileCheck = {
   file: string;
   includes: string[];
   excludes: string[];
+  validate?: (content: string, file: string) => void;
 };
 
 export type VerifyPagesBuildOptions = {
@@ -56,6 +57,122 @@ function escapeRegExp(value: string) {
 function assertIncludesOneOf(content: string, needles: readonly string[], file: string) {
   if (!needles.some((needle) => content.includes(needle))) {
     throw new Error(`Expected ${file} to include one of: ${needles.join(", ")}`);
+  }
+}
+
+type Point = { x: number; y: number };
+
+const PATH_NUMBER = /[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[-+]?\d+)?/giu;
+
+// Validate generated outline geometry without relying on browser-only SVG APIs.
+function pathDefinitionHasVisibleGeometry(definition: string) {
+  const commands = [...definition.matchAll(/([a-z])([^a-z]*)/giu)];
+  let current: Point = { x: 0, y: 0 };
+  let start: Point = { x: 0, y: 0 };
+  let hasMove = false;
+
+  const pointChanged = (point: Point, previous: Point) =>
+    point.x !== previous.x || point.y !== previous.y;
+  const pointFrom = (x: number, y: number, relative: boolean): Point =>
+    relative ? { x: current.x + x, y: current.y + y } : { x, y };
+  const numbersFrom = (value: string) =>
+    [...value.matchAll(PATH_NUMBER)].map(([number]) => Number(number));
+
+  for (const [, rawCommand, rawArguments] of commands) {
+    const command = rawCommand.toUpperCase();
+    const relative = rawCommand === rawCommand.toLowerCase();
+    const numbers = numbersFrom(rawArguments);
+    let index = 0;
+
+    if (command === "M") {
+      if (numbers.length < 2) return false;
+      current = pointFrom(numbers[0], numbers[1], relative);
+      start = current;
+      hasMove = true;
+      index = 2;
+      while (index + 1 < numbers.length) {
+        const point = pointFrom(numbers[index], numbers[index + 1], relative);
+        index += 2;
+        if (pointChanged(point, current)) return true;
+        current = point;
+      }
+      continue;
+    }
+
+    if (!hasMove) return false;
+    if (command === "Z") {
+      if (pointChanged(start, current)) return true;
+      current = start;
+      continue;
+    }
+
+    while (index < numbers.length) {
+      if (command === "L" || command === "T") {
+        if (index + 1 >= numbers.length) return false;
+        const point = pointFrom(numbers[index], numbers[index + 1], relative);
+        index += 2;
+        if (pointChanged(point, current)) return true;
+        current = point;
+        continue;
+      }
+      if (command === "H") {
+        const x = relative ? current.x + numbers[index] : numbers[index];
+        index += 1;
+        if (x !== current.x) return true;
+        current = { x, y: current.y };
+        continue;
+      }
+      if (command === "V") {
+        const y = relative ? current.y + numbers[index] : numbers[index];
+        index += 1;
+        if (y !== current.y) return true;
+        current = { x: current.x, y };
+        continue;
+      }
+      if (command === "C" || command === "S" || command === "Q") {
+        const size = command === "C" ? 6 : 4;
+        if (index + size - 1 >= numbers.length) return false;
+        const values = numbers.slice(index, index + size);
+        index += size;
+        const endpoint = pointFrom(values[size - 2], values[size - 1], relative);
+        if (pointChanged(endpoint, current)) return true;
+        for (let controlIndex = 0; controlIndex < size - 2; controlIndex += 2) {
+          if (
+            pointChanged(
+              pointFrom(values[controlIndex], values[controlIndex + 1], relative),
+              current
+            )
+          ) {
+            return true;
+          }
+        }
+        current = endpoint;
+        continue;
+      }
+      if (command === "A") {
+        if (index + 6 >= numbers.length) return false;
+        const values = numbers.slice(index, index + 7);
+        index += 7;
+        const endpoint = pointFrom(values[5], values[6], relative);
+        if (pointChanged(endpoint, current)) return true;
+        current = endpoint;
+        continue;
+      }
+      return false;
+    }
+  }
+
+  return false;
+}
+
+function assertWatermarkDomainPaths(content: string, file: string) {
+  const document = JSDOM.fragment(content);
+  const hasDrawablePath = [...document.querySelectorAll("g.watermark-domain path")].some((path) => {
+    const definition = path.getAttribute("d") ?? "";
+    return pathDefinitionHasVisibleGeometry(definition);
+  });
+  if (!hasDrawablePath) {
+    throw new Error(`Expected ${file} to contain a drawable path in g.watermark-domain`);
   }
 }
 
@@ -127,7 +244,7 @@ export function extractBuildTimePublicAssetUrls(content: string) {
 }
 
 function requiresBuildTimeAssetVersion(url: string) {
-  return /\/(?:card|cover)\.[^/?#]+(?:[?#]|$)/u.test(url);
+  return /\/(?:[a-z0-9-]+\/)?(?:card|cover)\.[^/?#]+(?:[?#]|$)/u.test(url);
 }
 
 function listBuildFiles(
@@ -244,6 +361,17 @@ function buildDynamicChecks(
       excludes: [],
     },
     {
+      file: "site-dist/watermark-ivanli-a.v1.svg",
+      includes: ["<svg", "viewBox"],
+      excludes: [],
+    },
+    {
+      file: "site-dist/watermark-ivanli-b.v1.svg",
+      includes: ["<svg", "watermark-domain", "viewBox"],
+      excludes: [],
+      validate: assertWatermarkDomainPaths,
+    },
+    {
       file: "site-dist/robots.txt",
       includes: [`Host: ${siteOrigin}`, `Sitemap: ${siteUrl}/sitemap.xml`],
       excludes: siteOrigin === siteUrl ? [] : [`Host: ${siteUrl}`],
@@ -315,6 +443,7 @@ export function verifyPagesBuild(options: VerifyPagesBuildOptions) {
     for (const needle of check.excludes) {
       assertExcludes(content, needle, check.file);
     }
+    check.validate?.(content, check.file);
   }
 
   if (apiBaseUrl) {

@@ -17,6 +17,7 @@ export default function MemoPage(data: Awaited<ReturnType<typeof loadmemo>>) {
     initialMemo,
     initialIsAdmin,
     structuredData,
+    assetVersion,
   } = data;
   const heading = (
     <MemoDetailHeading
@@ -54,6 +55,7 @@ export default function MemoPage(data: Awaited<ReturnType<typeof loadmemo>>) {
                 initialArticle={clippingArticle}
                 header={heading}
                 publicMediaContext={publicMediaContext}
+                publicAssetVersion={assetVersion}
               />
             ) : (
               <div
@@ -73,6 +75,7 @@ export default function MemoPage(data: Awaited<ReturnType<typeof loadmemo>>) {
                     articlePath={memo.filePath}
                     contentSource={contentSource}
                     publicMediaContext={publicMediaContext}
+                    publicAssetVersion={assetVersion}
                   />
                 </div>
               </div>

@@ -94,6 +94,7 @@ function ChatPanel({
   error,
   surface,
   scroll,
+  publicAssetVersion,
 }: {
   snapshot: ClippingChat;
   draft: string;
@@ -103,6 +104,7 @@ function ChatPanel({
   error: string | null;
   surface: "public" | "admin";
   scroll: MutableRefObject<number>;
+  publicAssetVersion?: string | null;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const pinned = useRef(scroll.current === 0);
@@ -145,6 +147,7 @@ function ChatPanel({
               variant="memo"
               nofollowExternalLinks
               enableMermaid={false}
+              publicAssetVersion={publicAssetVersion}
             />
           </div>
         ))}
@@ -157,6 +160,7 @@ function ChatPanel({
               variant="memo"
               nofollowExternalLinks
               enableMermaid={false}
+              publicAssetVersion={publicAssetVersion}
             />
           </div>
         ) : null}
@@ -226,6 +230,7 @@ export function ClippingDetail({
   surface = "public",
   header,
   publicMediaContext,
+  publicAssetVersion,
 }: {
   slug: string;
   memoContent: string;
@@ -237,6 +242,7 @@ export function ClippingDetail({
   surface?: "public" | "admin";
   header?: ReactNode;
   publicMediaContext?: PublicMediaContext;
+  publicAssetVersion?: string | null;
 }) {
   const [transport] = useState(() => providedTransport ?? createTransport(slug));
   const [article, setArticle] = useState(initialArticle);
@@ -371,6 +377,7 @@ export function ClippingDetail({
       error={chatError}
       surface={surface}
       scroll={scroll}
+      publicAssetVersion={publicAssetVersion}
     />
   );
   const managementActions =
@@ -464,6 +471,7 @@ export function ClippingDetail({
                 nofollowExternalLinks
                 enableMermaid={false}
                 publicMediaContext={publicMediaContext}
+                publicAssetVersion={publicAssetVersion}
               />
             </div>
           ) : null}
@@ -525,6 +533,7 @@ export function ClippingDetail({
               nofollowExternalLinks
               enableMermaid={false}
               publicMediaContext={publicMediaContext}
+              publicAssetVersion={publicAssetVersion}
             />
           </div>
           <div data-testid="clipping-article-translation" hidden={activeLanguage !== "translation"}>
@@ -535,6 +544,7 @@ export function ClippingDetail({
               nofollowExternalLinks
               enableMermaid={false}
               publicMediaContext={publicMediaContext}
+              publicAssetVersion={publicAssetVersion}
             />
           </div>
         </article>
