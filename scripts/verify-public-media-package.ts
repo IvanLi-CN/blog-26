@@ -104,7 +104,7 @@ function parseManifest(value: unknown): PublicMediaManifest {
   }
   const entries = value.entries.map((candidate, index) => {
     if (!isRecord(candidate)) throw new Error(`Invalid public media manifest entry ${index}`);
-    const { sourcePath, outputPath, bytes, status, reason } = candidate;
+    const { sourcePath, outputPath, bytes, status, reason, aliasOf } = candidate;
     if (
       typeof sourcePath !== "string" ||
       !sourcePath ||
@@ -112,11 +112,12 @@ function parseManifest(value: unknown): PublicMediaManifest {
       !Number.isSafeInteger(bytes) ||
       (bytes as number) < 0 ||
       (status !== "packaged" && status !== "external") ||
-      (reason !== null && typeof reason !== "string")
+      (reason !== null && typeof reason !== "string") ||
+      (aliasOf !== undefined && (typeof aliasOf !== "string" || !aliasOf))
     ) {
       throw new Error(`Invalid public media manifest entry ${index}`);
     }
-    return { sourcePath, outputPath, bytes, status, reason };
+    return { sourcePath, outputPath, bytes, status, reason, ...(aliasOf ? { aliasOf } : {}) };
   });
   const { maxBytes, packagedCount, packagedBytes, externalCount } = value;
   if (
@@ -184,8 +185,12 @@ export async function verifyPublicMediaPackage(
   const entryByKey = new Map(
     manifest.entries.map((entry) => [normalizeReferenceKey(entry.sourcePath, siteUrl), entry])
   );
-  const packagedEntries = manifest.entries.filter((entry) => entry.status === "packaged");
-  const externalEntries = manifest.entries.filter((entry) => entry.status === "external");
+  const packagedEntries = manifest.entries.filter(
+    (entry) => entry.status === "packaged" && !entry.aliasOf
+  );
+  const externalEntries = manifest.entries.filter(
+    (entry) => entry.status === "external" && !entry.aliasOf
+  );
   const packagedBytes = packagedEntries.reduce((total, entry) => total + entry.bytes, 0);
   if (manifest.packagedCount !== packagedEntries.length) {
     throw new Error("Public media manifest packagedCount does not match its entries");
@@ -199,6 +204,21 @@ export async function verifyPublicMediaPackage(
 
   const expectedStaticFiles = new Set<string>();
   for (const entry of manifest.entries) {
+    if (entry.aliasOf) {
+      const canonical = entryByKey.get(normalizeReferenceKey(entry.aliasOf, siteUrl));
+      if (
+        !canonical ||
+        canonical.aliasOf ||
+        canonical.status !== entry.status ||
+        canonical.outputPath !== entry.outputPath ||
+        canonical.bytes !== entry.bytes
+      ) {
+        throw new Error(
+          `Media manifest alias does not match its canonical entry: ${entry.sourcePath}`
+        );
+      }
+      continue;
+    }
     if (entry.status === "external") {
       if (entry.outputPath !== null) {
         throw new Error(

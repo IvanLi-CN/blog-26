@@ -151,6 +151,58 @@ describe("packagePublicMedia", () => {
     ]);
   });
 
+  test("falls back legacy derived watermark URLs to one canonical base asset", async () => {
+    const cwd = await fixture();
+    const watermarkA = "/api/public/assets/post/logo/hash/wm-a-v1/content.webp?v=2026-10-15";
+    const watermarkB = "/api/public/assets/post/logo/hash/wm-b-v1/content.webp?v=2026-10-15";
+    await writeFile(
+      join(cwd, "site-dist", "snapshot.json"),
+      JSON.stringify({ media: [watermarkA, watermarkB] })
+    );
+
+    const requestedUrls: string[] = [];
+    const manifest = await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      downloadAttempts: 1,
+      includeDerivedWatermarkVariants: true,
+      fetchImpl: async (input) => {
+        const url = String(input);
+        requestedUrls.push(url);
+        if (url.includes("/wm-a-v1/") || url.includes("/wm-b-v1/")) {
+          return new Response("missing", { status: 404 });
+        }
+        return response("base-image");
+      },
+    });
+
+    expect(manifest.packagedCount).toBe(1);
+    expect(manifest.entries.filter((entry) => entry.aliasOf)).toHaveLength(2);
+    expect(
+      manifest.entries
+        .filter((entry) => entry.aliasOf)
+        .every((entry) => entry.outputPath === "/_content/assets/post/logo/hash/content.webp")
+    ).toBe(true);
+    expect(await readFile(join(cwd, "site-dist", "snapshot.json"), "utf8")).toContain(
+      '"/_content/assets/post/logo/hash/content.webp?v=2026-10-15"'
+    );
+    await expect(
+      verifyPublicMediaPackage({
+        cwd,
+        mediaOrigin: "https://api.example",
+        maxFiles: 100,
+        maxProjectBytes: 1024 * 1024,
+      })
+    ).resolves.toMatchObject({ fileCount: expect.any(Number) });
+    expect(
+      requestedUrls.filter(
+        (url) =>
+          url === "https://api.example/api/public/assets/post/logo/hash/content.webp?v=2026-10-15"
+      )
+    ).toHaveLength(2);
+  });
+
   test("does not exempt non-stable or malformed Playbook edition paths", async () => {
     const cwd = await fixture();
     const invalidTagPath = join(
