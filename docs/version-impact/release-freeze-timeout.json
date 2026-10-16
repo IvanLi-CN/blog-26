@@ -15,7 +15,7 @@
     "src/lib/release/policy.ts": "b3abb4cacedebc506e2bfc5e9361700f8f63ab51",
     "src/lib/release/completion.ts": "67a7b020d19ce4114775b472382785968b2db2ea",
     "src/lib/release/source.ts": "78d8a7aba2db9591d0ddf899aac8c9b850cf71ed",
-    "tests/ci/product-prerelease-workflow.test.ts": "56a4acea7bcd040f005b1a7d8ec7951db59688ed",
+    "tests/ci/product-prerelease-workflow.test.ts": "b0cf3d9802707455038e327b000584517db24124",
     "tests/lib/manual-release-completion.test.ts": "5b72c8db670ade11bdbf450e1bd6c6306d0c834d",
     "tests/lib/manual-release-inputs.test.ts": "dc6b0305cecd7e023f69b7e8071b9fc0784277e9",
     "tests/lib/manual-release-ledger.test.ts": "835db879e99d8280d5db6778fc2b4eab299ddaec"
