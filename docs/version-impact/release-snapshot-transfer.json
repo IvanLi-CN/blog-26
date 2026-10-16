@@ -4,7 +4,7 @@
   "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
   "covered_files": {
     "docs/specs/manual-version-release/HISTORY.md": "d974057f8333c47926293cebf4810efa7a547221",
-    "docs/specs/manual-version-release/IMPLEMENTATION.md": "1341da3f005c2f4ee566d8a116d53e2e69f08026",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "f4b722fae56aa1d81904a6512866e438b913d2db",
     "scripts/package-public-media.test.ts": "7142f095cb378dafacf01ab92c5a891010fadbe3",
     "scripts/package-public-media.ts": "1c92ee2377adfe2446d467d38edc3a3aba44b0be",
     "src/lib/release/inputs.ts": "51adb012fd6f764d2e7814688ff3d49bd6a9bf5f",
@@ -62,7 +62,7 @@
         },
         {
           "path": "docs/specs/manual-version-release/SPEC.md",
-          "blob": "334e45a47d38709288d44a55a506b997233b7134",
+          "blob": "73a26106dae908a2974a27965fda6553f24120cb",
           "command": "spec_drift_check.sh: manual version release specification remains synchronized"
         }
       ]
