@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 export type WatermarkVariant = "a" | "b";
+
+const useWatermarkLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 export function chooseWatermarkVariant(visibleWidth: number): WatermarkVariant {
   return visibleWidth >= 600 ? "b" : "a";
@@ -28,31 +30,34 @@ export function useResponsiveWatermark(params: {
   const imageRef = useRef<HTMLImageElement>(null);
   const [variant, setVariant] = useState<WatermarkVariant>(fallback);
 
-  useEffect(() => {
+  useWatermarkLayoutEffect(() => {
     if (!source) return;
     setVariant(fallback);
   }, [fallback, source]);
 
-  useEffect(() => {
+  useWatermarkLayoutEffect(() => {
     if (!source) return;
     if (!enabled) return;
     const image = imageRef.current;
     if (!image) return;
 
     let frame = 0;
+    const applyMeasurement = () => {
+      const visibleWidth = getVisibleImageWidth(image);
+      if (visibleWidth > 0) {
+        const nextVariant = chooseWatermarkVariant(visibleWidth);
+        setVariant((current) => (current === nextVariant ? current : nextVariant));
+      }
+    };
     const measure = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const visibleWidth = getVisibleImageWidth(image);
-        if (visibleWidth > 0) {
-          setVariant(chooseWatermarkVariant(visibleWidth));
-        }
-      });
+      frame = requestAnimationFrame(applyMeasurement);
     };
 
     const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
     observer?.observe(image);
     image.addEventListener("load", measure);
+    applyMeasurement();
     measure();
 
     return () => {
