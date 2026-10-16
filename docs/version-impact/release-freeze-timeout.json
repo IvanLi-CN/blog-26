@@ -5,23 +5,23 @@
   "covered_files": {
     ".github/release-contract.json": "fe8185c3c18a4f334df17242e9dd3604d17a7f49",
     ".github/workflows/abandon-cancelled-release.yml": "7e20b45b52a25c324b9bc07fe9f4daa2af8c024e",
-    ".github/workflows/product-release.yml": "e00c5451cc3638ad510d820a18b99d552f42c485",
+    ".github/workflows/product-release.yml": "e6e2dbd8654aa3e5123321980182e5d389002e4a",
     "docs/runbooks/manual-version-release.md": "0c9682e8fe528b229d32e7ccc233810148efc6dc",
     "docs/specs/manual-version-release/IMPLEMENTATION.md": "f4b722fae56aa1d81904a6512866e438b913d2db",
     "docs/specs/manual-version-release/SPEC.md": "73a26106dae908a2974a27965fda6553f24120cb",
     "scripts/product-release.ts": "dfd8636f953d1ca9cc30ebaf0311c13da159af61",
     "src/lib/release/inputs.ts": "51adb012fd6f764d2e7814688ff3d49bd6a9bf5f",
-    "src/lib/release/ledger.ts": "d56d9f77ac2119e834e8effe0802a09f1b8be85a",
+    "src/lib/release/ledger.ts": "0d5d6a4b1cee97572e90d8b7323bd84876cc1bd0",
     "src/lib/release/policy.ts": "b3abb4cacedebc506e2bfc5e9361700f8f63ab51",
-    "src/lib/release/completion.ts": "67a7b020d19ce4114775b472382785968b2db2ea",
+    "src/lib/release/completion.ts": "800db0b57aeb278468f4c77a656a7e8c167b75e3",
     "src/lib/release/source.ts": "78d8a7aba2db9591d0ddf899aac8c9b850cf71ed",
-    "tests/ci/product-prerelease-workflow.test.ts": "56a4acea7bcd040f005b1a7d8ec7951db59688ed",
-    "tests/lib/manual-release-completion.test.ts": "5b72c8db670ade11bdbf450e1bd6c6306d0c834d",
+    "tests/ci/product-prerelease-workflow.test.ts": "b0cf3d9802707455038e327b000584517db24124",
+    "tests/lib/manual-release-completion.test.ts": "a3c29658a871b73c7005fc775751406b92863e1d",
     "tests/lib/manual-release-inputs.test.ts": "dc6b0305cecd7e023f69b7e8071b9fc0784277e9",
-    "tests/lib/manual-release-ledger.test.ts": "835db879e99d8280d5db6778fc2b4eab299ddaec"
+    "tests/lib/manual-release-ledger.test.ts": "2be87736b3388ff30851502090464ce64b53feeb"
   },
   "change": {
-    "description": "Prevent Product Release input freezing from timing out on large public media snapshots and add a fail-closed no-input recovery trigger when Actions-token merges suppress the normal Product Release handoff.",
+    "description": "Prevent Product Release input freezing from timing out on large public media snapshots, add fail-closed no-input recovery, and allow a new manual run to take over only an unfrozen failed manual run.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api", "persistent-state"]
   },
@@ -40,7 +40,7 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "Product Release now passes an explicit concurrency of 8 to the public media freezer, validates the bound in the release input layer, and extends only the signed production release timeout to 360 minutes; it also supports a no-input recovery dispatch that resolves one registered merged identity and validates the original source policy tree. Content deployment remains at one worker.",
+      "reasoning": "Product Release now passes an explicit concurrency of 8 to the public media freezer, validates the bound in the release input layer, and extends only the signed production release timeout to 360 minutes; it also supports a no-input recovery dispatch that resolves one registered merged identity, validates the original source policy tree, and can rebind only an unfrozen failed manual run. Content deployment remains at one worker.",
       "assessed_at": "2026-10-17T04:37:31+08:00",
       "evidence": [
         {
@@ -50,7 +50,7 @@
         },
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "e00c5451cc3638ad510d820a18b99d552f42c485",
+          "blob": "e6e2dbd8654aa3e5123321980182e5d389002e4a",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         },
         {
@@ -60,7 +60,7 @@
         },
         {
           "path": "src/lib/release/completion.ts",
-          "blob": "67a7b020d19ce4114775b472382785968b2db2ea",
+          "blob": "800db0b57aeb278468f4c77a656a7e8c167b75e3",
           "command": "bun test tests/lib/manual-release-completion.test.ts tests/ci/product-prerelease-workflow.test.ts"
         },
         {
@@ -76,12 +76,12 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Focused release input, workflow, ledger recovery, media packaging, and manual recovery tests pass; targeted Biome checks pass. The full repository check still reports pre-existing public-page lint warnings outside this change, and the broader CI workflow simulation still has two unrelated five-second cancellation-fixture timeouts.",
+      "reasoning": "Focused release input, workflow, ledger rebinding, media packaging, and manual recovery tests pass; targeted Biome checks pass. The full repository check still reports pre-existing public-page lint warnings outside this change, and the broader CI workflow simulation still has two unrelated five-second cancellation-fixture timeouts.",
       "assessed_at": "2026-10-17T04:37:31+08:00",
       "evidence": [
         {
           "path": "tests/lib/manual-release-completion.test.ts",
-          "blob": "5b72c8db670ade11bdbf450e1bd6c6306d0c834d",
+          "blob": "a3c29658a871b73c7005fc775751406b92863e1d",
           "command": "bun test tests/lib/manual-release-ledger.test.ts tests/lib/manual-release-inputs.test.ts tests/lib/manual-release-completion.test.ts tests/ci/product-prerelease-workflow.test.ts scripts/package-public-media.test.ts"
         },
         {
@@ -91,7 +91,7 @@
         },
         {
           "path": "src/lib/release/ledger.ts",
-          "blob": "d56d9f77ac2119e834e8effe0802a09f1b8be85a",
+          "blob": "0d5d6a4b1cee97572e90d8b7323bd84876cc1bd0",
           "command": "bun test tests/lib/manual-release-ledger.test.ts: cancelled merged releases can record cancellation and be abandoned"
         }
       ]
@@ -129,7 +129,7 @@
       "evidence": [
         {
           "path": "src/lib/release/ledger.ts",
-          "blob": "d56d9f77ac2119e834e8effe0802a09f1b8be85a",
+          "blob": "0d5d6a4b1cee97572e90d8b7323bd84876cc1bd0",
           "command": "Cancellation recovery only records an existing run failure marker before abandonment; it does not change ledger schema or retain artifacts"
         }
       ]

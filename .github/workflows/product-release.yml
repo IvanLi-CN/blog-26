@@ -46,6 +46,12 @@ jobs:
         run: bun scripts/product-release.ts resolve
         env:
           GH_TOKEN: ${{ github.token }}
+      - name: Restore immutable artifacts from the original run
+        if: steps.identify.outputs.active == 'true'
+        id: restore
+        run: bun scripts/product-release.ts restore
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Checkout the verified merged source
         if: steps.identify.outputs.active == 'true'
         uses: actions/checkout@v7
@@ -55,12 +61,6 @@ jobs:
           persist-credentials: false
       - if: steps.identify.outputs.active == 'true'
         run: bun install --frozen-lockfile
-      - name: Restore immutable artifacts from the original run
-        if: steps.identify.outputs.active == 'true'
-        id: restore
-        run: bun scripts/product-release.ts restore
-        env:
-          GH_TOKEN: ${{ github.token }}
       - name: Freeze public build inputs under the production lock
         if: steps.restore.outputs.need_inputs == 'true'
         run: bun scripts/product-release.ts freeze-inputs
