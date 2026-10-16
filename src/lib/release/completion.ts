@@ -16,7 +16,13 @@ import {
   assessReleaseSource,
   verifyTrustedTags,
 } from "./preparation";
-import { assertPolicyIdentity, changedBlobs, gitFile, gitOutput } from "./source";
+import {
+  assertPolicyIdentity,
+  assertPolicyIdentityAtSource,
+  changedBlobs,
+  gitFile,
+  gitOutput,
+} from "./source";
 import { isPrerelease } from "./version";
 
 export const qualitySchema = z
@@ -154,6 +160,40 @@ export function evaluationChecksPassed(
   return required.every((name) => checks.get(name) === "success");
 }
 
+export function manualReleaseWorkflowRun(
+  github: GitHubRelease,
+  ledger: ReleaseLedger,
+  runId: number,
+  runAttempt = 1
+): WorkflowRun | undefined {
+  const candidates = ledger.entries.flatMap((entry) => {
+    if (entry.stage === "reserved" || entry.stage === "complete" || entry.stage === "abandoned")
+      return [];
+    if (!entry.prNumber) return [];
+    const pull = github.pull(entry.prNumber);
+    if (!pull.merged || !pull.merge_commit_sha) return [];
+    if (entry.mergeSha && entry.mergeSha !== pull.merge_commit_sha)
+      throw new Error("Registered release merge SHA differs from its pull request");
+    return [{ mergeSha: pull.merge_commit_sha }];
+  });
+  if (candidates.length > 1)
+    throw new Error("Manual Product Release requires exactly one active merged identity");
+  const candidate = candidates[0];
+  if (!candidate) return undefined;
+  return {
+    id: runId,
+    workflow_id: 1,
+    run_attempt: runAttempt,
+    head_sha: candidate.mergeSha,
+    head_branch: github.contract.branch,
+    event: "workflow_dispatch",
+    status: "completed",
+    conclusion: "success",
+    path: ".github/workflows/ci.yml",
+    head_repository: { full_name: github.contract.repository },
+  };
+}
+
 export type MergeFollowupState = "merged" | "pending" | "merge_propagating" | "source_changed";
 
 export function classifyMergeFollowup(
@@ -205,7 +245,7 @@ export async function resolveCompletedRelease(
     }
   }
   if (!matched || matched.stage === "complete") return undefined;
-  assertPolicyIdentity(github.contract, quality, matched.policyDigest);
+  assertPolicyIdentityAtSource(github.contract, quality, matched.policyDigest, run.head_sha);
   if (matched.releaseRunId && matched.releaseRunId !== releaseRunId) return undefined;
   verifyTrustedTags(github, current.ledger);
   if (!matched.prNumber) throw new Error("Release PR proof is missing");
@@ -234,6 +274,20 @@ async function readPolicyLedger(github: GitHubRelease, store: LedgerStore): Prom
     if (!recovered.legacySha) throw error;
     return recovered.ledger;
   }
+}
+
+function observeMergedReleaseMerges(github: GitHubRelease, ledger: ReleaseLedger): ReleaseLedger {
+  return {
+    ...ledger,
+    entries: ledger.entries.map((entry) => {
+      if (entry.stage !== "pr_open" || !entry.prNumber) return entry;
+      const pull = github.pull(entry.prNumber);
+      if (!pull.merged || !pull.merge_commit_sha) return entry;
+      if (entry.mergeSha && entry.mergeSha !== pull.merge_commit_sha)
+        throw new Error("Registered release merge SHA differs from its pull request");
+      return { ...entry, mergeSha: pull.merge_commit_sha };
+    }),
+  };
 }
 
 export async function validateCandidatePolicy(
@@ -318,6 +372,10 @@ export async function validateCandidatePolicy(
     )
       throw new Error("Ordinary changes cannot modify VERSION; use Manual Product Release");
   }
-  const assessment = assessReleaseSource(github, await readPolicyLedger(github, store), head);
+  const assessment = assessReleaseSource(
+    github,
+    observeMergedReleaseMerges(github, await readPolicyLedger(github, store)),
+    head
+  );
   return `Verified ${assessment.impact} impact for ${Object.keys(assessment.changed).length} source changes`;
 }

@@ -10,7 +10,7 @@
 
 配置读回使用 `bun scripts/release-settings.ts`；已获仓库配置授权时使用 `--apply` 对齐声明。从实现候选分支运行 CI/CD Pipeline 的 `workflow_dispatch`，其中 **Release Token Probe** 使用只读令牌核验已初始化的签名登记并展示 commit URL。签名登记的初始化和更新属于 main 的正式准备流程；候选探针不创建登记、产品版本 tag，不上传 GHCR 或部署生产。
 
-内置令牌产生的事件不能作为自动触发下一条工作流的可靠前提。准备阶段显式 dispatch 同一 preparation head 的 CI/E2E；Release Merge Followup 先核验这些确切 SHA 的所有作业，再使用同一 `GITHUB_TOKEN` 通过 Checks API 发布带发布身份、外部 ID 和 PR 链接的成功检查见证，使 required checks 能识别已完成的评估。见证发布前必须再次核验登记身份、PR 编号、PR head、来源和 PR 仍可合并，不能调用审批接口或绕过保护规则。随后衔接观察受保护的 squash 自动合并，再显式 dispatch 同一 main merge SHA 的 CI/E2E。Product Release 只消费登记过且检查通过的 merge identity；后续衔接不需要第二次人工触发。来源移动、检查失败或无法观察合并时停止，并保持原身份供对应运行重试。
+内置令牌产生的事件不能作为自动触发下一条工作流的可靠前提。准备阶段显式 dispatch 同一 preparation head 的 CI/E2E；Release Merge Followup 先核验这些确切 SHA 的所有作业，再使用同一 `GITHUB_TOKEN` 通过 Checks API 发布带发布身份、外部 ID 和 PR 链接的成功检查见证，使 required checks 能识别已完成的评估。见证发布前必须再次核验登记身份、PR 编号、PR head、来源和 PR 仍可合并，不能调用审批接口或绕过保护规则。随后衔接观察受保护的 squash 自动合并，再显式 dispatch 同一 main merge SHA 的 CI/E2E。Product Release 默认消费登记过且检查通过的 merge identity；如果 Actions 机器人合并抑制了主线 push 的 `workflow_run` 衔接，可直接从 main 无输入 dispatch Product Release，入口会从 release-ledger 自动解析唯一仍有效的已合并身份，并重新核验确切 main CI/E2E，不能提供版本、来源或产物参数。没有身份、身份不唯一、来源不一致或检查未通过时必须安全退出。来源移动、检查失败或无法观察合并时停止，并保持原身份供对应运行重试。
 
 ## 输入与流程
 

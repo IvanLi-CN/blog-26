@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "d870ef2223291211cb91c19bcefc1f4aaeb8bf6b",
+  "covered_files": {
+    ".github/workflows/product-release.yml": "e00c5451cc3638ad510d820a18b99d552f42c485",
+    "docs/runbooks/manual-version-release.md": "0c9682e8fe528b229d32e7ccc233810148efc6dc",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "f4b722fae56aa1d81904a6512866e438b913d2db",
+    "docs/specs/manual-version-release/SPEC.md": "73a26106dae908a2974a27965fda6553f24120cb",
+    "scripts/product-release.ts": "dfd8636f953d1ca9cc30ebaf0311c13da159af61",
+    "src/lib/release/completion.ts": "67a7b020d19ce4114775b472382785968b2db2ea",
+    "src/lib/release/source.ts": "78d8a7aba2db9591d0ddf899aac8c9b850cf71ed",
+    "tests/ci/product-prerelease-workflow.test.ts": "56a4acea7bcd040f005b1a7d8ec7951db59688ed",
+    "tests/lib/manual-release-completion.test.ts": "5b72c8db670ade11bdbf450e1bd6c6306d0c834d"
+  },
+  "change": {
+    "description": "Add a fail-closed, no-input Product Release recovery dispatch that resolves the unique registered merged identity after Actions-token event suppression.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a backward-compatible release orchestration fix. It adds a controlled recovery trigger and does not change product endpoints, artifact formats, or application persistence.",
+      "assessed_at": "2026-10-17T00:00:00Z",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-completion.test.ts",
+          "blob": "5b72c8db670ade11bdbf450e1bd6c6306d0c834d",
+          "command": "bun test tests/lib/manual-release-completion.test.ts tests/ci/product-prerelease-workflow.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Product Release accepts an empty workflow dispatch, derives one active merged release identity from the signed ledger and pull request, and reuses the existing exact main-check verification. Ambiguous or absent identities are inactive and cannot publish.",
+      "assessed_at": "2026-10-17T00:00:00Z",
+      "evidence": [
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "e00c5451cc3638ad510d820a18b99d552f42c485",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
+        },
+        {
+          "path": "src/lib/release/completion.ts",
+          "blob": "67a7b020d19ce4114775b472382785968b2db2ea",
+          "command": "bun test tests/lib/manual-release-completion.test.ts"
+        },
+        {
+          "path": "src/lib/release/source.ts",
+          "blob": "78d8a7aba2db9591d0ddf899aac8c9b850cf71ed",
+          "command": "The release resolver validates the original policy tree at the exact source SHA"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to Product Release event recovery, release resolution, documentation, and focused regression coverage."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused workflow and resolver tests pass, and targeted Biome validation passes. The remote exact-head CI and E2E gates for the merged release source also passed before this recovery-only change.",
+      "assessed_at": "2026-10-17T00:00:00Z",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-completion.test.ts",
+          "blob": "5b72c8db670ade11bdbf450e1bd6c6306d0c834d",
+          "command": "bun test tests/lib/manual-release-completion.test.ts tests/ci/product-prerelease-workflow.test.ts"
+        },
+        {
+          "path": "scripts/product-release.ts",
+          "blob": "dfd8636f953d1ca9cc30ebaf0311c13da159af61",
+          "command": "bunx biome check scripts/product-release.ts src/lib/release/completion.ts tests/lib/manual-release-completion.test.ts tests/ci/product-prerelease-workflow.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3"
+      ],
+      "evidence": [
+        {
+          "path": "scripts/product-release.ts",
+          "blob": "dfd8636f953d1ca9cc30ebaf0311c13da159af61",
+          "command": "The change does not alter public HTTP/tRPC/MCP response contracts or product artifact contents."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The change reads existing release-ledger entries and does not alter ledger schema, application persistence, or frozen artifact identity fields.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/lib/release/completion.ts",
+          "blob": "67a7b020d19ce4114775b472382785968b2db2ea",
+          "command": "The recovery resolver only synthesizes a workflow event from existing ledger and pull request state."
+        },
+        {
+          "path": "src/lib/release/source.ts",
+          "blob": "78d8a7aba2db9591d0ddf899aac8c9b850cf71ed",
+          "command": "Source-bound policy verification reads only the exact release commit policy tree."
+        }
+      ]
+    }
+  }
+}

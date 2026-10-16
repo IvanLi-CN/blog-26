@@ -1,5 +1,6 @@
 name: Product Release
 on:
+  workflow_dispatch: {}
   workflow_run:
     workflows: [CI/CD Pipeline, E2E Tests]
     types: [completed]
@@ -9,7 +10,7 @@ permissions:
   actions: read
 jobs:
   production:
-    if: (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') && github.event.workflow_run.head_repository.full_name == github.repository
+    if: github.event_name == 'workflow_dispatch' || ((github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') && github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 360
     permissions:

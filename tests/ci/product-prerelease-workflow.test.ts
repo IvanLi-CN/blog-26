@@ -12,8 +12,17 @@ const stepSchema = z.object({
 });
 const release = z
   .object({
+    on: z.object({
+      workflow_dispatch: z.record(z.string(), z.unknown()),
+      workflow_run: z.object({
+        workflows: z.array(z.string()),
+        types: z.array(z.string()),
+        branches: z.array(z.string()),
+      }),
+    }),
     jobs: z.object({
       production: z.object({
+        if: z.string(),
         "timeout-minutes": z.number(),
         concurrency: z.object({ group: z.string(), "cancel-in-progress": z.boolean() }),
         steps: z.array(stepSchema),
@@ -57,6 +66,16 @@ const cancelledRecovery = z
   .parse(load(readFileSync(".github/workflows/abandon-cancelled-release.yml", "utf8")));
 
 describe("prerelease workflow deployment boundary", () => {
+  test("product release can be resumed from the uniquely registered merged identity", () => {
+    expect(release.on.workflow_dispatch).toEqual({});
+    expect(release.on.workflow_run).toEqual({
+      workflows: ["CI/CD Pipeline", "E2E Tests"],
+      types: ["completed"],
+      branches: ["main"],
+    });
+    expect(release.jobs.production.if).toContain("github.event_name == 'workflow_dispatch'");
+  });
+
   test("production release timeout matches the signed contract", () => {
     expect(release.jobs.production["timeout-minutes"]).toBe(releaseContract.releaseTimeoutMinutes);
     expect(release.jobs.production["timeout-minutes"]).toBe(360);

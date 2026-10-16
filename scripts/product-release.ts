@@ -5,6 +5,7 @@ import { findArtifact, restoreArtifact, verifyDirectory } from "../src/lib/relea
 import {
   classifyMergeFollowup,
   evaluationChecksPassed,
+  manualReleaseWorkflowRun,
   readQuality,
   resolveCompletedRelease,
   validateCandidatePolicy,
@@ -247,22 +248,36 @@ if (command === "notification") {
   }
 } else if (command === "resolve") {
   const app = github();
-  const payload = z.object({ workflow_run: z.unknown() }).parse(await event());
-  const entry = await resolveCompletedRelease(
-    app,
-    new GitHubLedgerStore(app),
-    quality,
-    payload.workflow_run,
-    Number(process.env.GITHUB_RUN_ID),
-    !process.argv.includes("--read-only")
-  );
-  await output({
-    active: String(Boolean(entry)),
-    source_sha: entry?.mergeSha || "",
-    identity: entry?.id || "",
-    prerelease: entry ? String(isPrerelease(entry.version)) : "false",
-  });
-  if (entry) await save(entry);
+  const store = new GitHubLedgerStore(app);
+  const payload = await event();
+  const triggeringRun =
+    process.env.GITHUB_EVENT_NAME === "workflow_dispatch"
+      ? manualReleaseWorkflowRun(
+          app,
+          (await store.read()).ledger,
+          Number(process.env.GITHUB_RUN_ID),
+          Number(process.env.GITHUB_RUN_ATTEMPT || "1")
+        )
+      : z.object({ workflow_run: z.unknown() }).parse(payload).workflow_run;
+  if (!triggeringRun) {
+    await output({ active: "false", source_sha: "", identity: "", prerelease: "false" });
+  } else {
+    const entry = await resolveCompletedRelease(
+      app,
+      store,
+      quality,
+      triggeringRun,
+      Number(process.env.GITHUB_RUN_ID),
+      !process.argv.includes("--read-only")
+    );
+    await output({
+      active: String(Boolean(entry)),
+      source_sha: entry?.mergeSha || "",
+      identity: entry?.id || "",
+      prerelease: entry ? String(isPrerelease(entry.version)) : "false",
+    });
+    if (entry) await save(entry);
+  }
 } else if (command === "restore") {
   const { app, store, entry } = await fresh();
   const frozenInputs = await restoreArtifact(app, entry, "inputs", inputs);
