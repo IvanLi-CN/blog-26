@@ -224,9 +224,7 @@ export function manualRecoveryRunCanTakeOver(
       !entry.products &&
       !entry.publication &&
       !entry.deployment &&
-      entry.mergeSha &&
       previousRun.id === entry.releaseRunId &&
-      previousRun.head_sha === entry.mergeSha &&
       previousRun.head_repository.full_name === repository &&
       previousRun.head_branch === "main" &&
       previousRun.event === "workflow_dispatch" &&
