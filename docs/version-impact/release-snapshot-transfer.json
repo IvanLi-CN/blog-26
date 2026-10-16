@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
+  "covered_files": {
+    "docs/specs/manual-version-release/HISTORY.md": "d974057f8333c47926293cebf4810efa7a547221",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "1341da3f005c2f4ee566d8a116d53e2e69f08026",
+    "src/lib/release/inputs.ts": "eb94a98d00f28dbfaafb161437b7f27a75c966f0",
+    "tests/lib/manual-release-inputs.test.ts": "ceb00ebba22f87a6f0110f285ef2f8a34401569e"
+  },
+  "change": {
+    "description": "Retry public snapshot response-body reads during release input freezing so transient mid-stream failures do not abort an otherwise valid release.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a compatible release-input reliability fix. It preserves the public snapshot endpoint, frozen input shape, validation rules, and product state.",
+      "assessed_at": "2026-10-16T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "eb94a98d00f28dbfaafb161437b7f27a75c966f0",
+          "command": "bun test tests/lib/manual-release-inputs.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate only moves complete response-body consumption inside the existing retry boundary and adds deterministic coverage; release inputs and compatibility contracts remain unchanged.",
+      "assessed_at": "2026-10-16T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-inputs.test.ts",
+          "blob": "ceb00ebba22f87a6f0110f285ef2f8a34401569e",
+          "command": "bun test tests/lib/manual-release-inputs.test.ts: body-read failure retries with existing backoff"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to public snapshot acquisition retry handling, its focused test, and release documentation."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused release-input tests, the full repository check, and CI policy validation confirm a compatible retry-boundary correction with no endpoint, payload, persistent-state, or product behavior change.",
+      "assessed_at": "2026-10-16T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-inputs.test.ts",
+          "blob": "ceb00ebba22f87a6f0110f285ef2f8a34401569e",
+          "command": "bun test tests/lib/manual-release-inputs.test.ts tests/ci/fetch-public-content-bundle.test.ts: 16 tests pass"
+        },
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "eb94a98d00f28dbfaafb161437b7f27a75c966f0",
+          "command": "bun run check: release input implementation passes Biome and type checks"
+        },
+        {
+          "path": "docs/specs/manual-version-release/SPEC.md",
+          "blob": "334e45a47d38709288d44a55a506b997233b7134",
+          "command": "spec_drift_check.sh: manual version release specification remains synchronized"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3"
+      ],
+      "evidence": [
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "eb94a98d00f28dbfaafb161437b7f27a75c966f0",
+          "command": "The public snapshot URL, response contract, and frozen input schema are unchanged"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The change only retries an in-memory HTTP response read before release input validation and writes no persistent state.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "eb94a98d00f28dbfaafb161437b7f27a75c966f0",
+          "command": "No database, cache, artifact, or release ledger format changes"
+        }
+      ]
+    }
+  }
+}
