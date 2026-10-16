@@ -252,7 +252,7 @@ export const systemShareSubmissions = sqliteTable("system_share_submissions", {
   memoId: text("memo_id"),
   memoSlug: text("memo_slug"),
   classification: text("classification", { enum: ["clipping", "memo"] }),
-  state: text("state", { enum: ["processing", "completed"] }).notNull(),
+  state: text("state", { enum: ["processing", "committing", "completed"] }).notNull(),
   leaseToken: text("lease_token"),
   leaseExpiresAt: integer("lease_expires_at"),
   createdAt: integer("created_at").notNull(),

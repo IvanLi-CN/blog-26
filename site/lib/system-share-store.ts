@@ -114,6 +114,47 @@ export async function replacePendingSystemShare(value: PendingSystemShare) {
   }
 }
 
+export async function ensurePendingSystemShareOriginal(
+  value: PendingSystemShare
+): Promise<PendingSystemShare | null> {
+  if (typeof indexedDB === "undefined") throw new Error("当前浏览器不支持本地待处理分享。");
+  const db = await openDatabase();
+  try {
+    return await new Promise<PendingSystemShare | null>((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, "readwrite");
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(CURRENT_KEY);
+      let result: PendingSystemShare | null = null;
+      request.onsuccess = () => {
+        const current = request.result as PendingSystemShare | undefined;
+        if (!current || current.submissionId !== value.submissionId) {
+          result = current ? normalizePending(current) : null;
+          return;
+        }
+        const normalized = normalizePending(current);
+        if (!normalized.original) {
+          const migrated = {
+            ...normalized,
+            original: normalizeSnapshot(value.original ?? value),
+          } satisfies PendingSystemShare;
+          store.put(migrated, CURRENT_KEY);
+          result = migrated;
+        } else {
+          result = normalized;
+        }
+      };
+      request.onerror = () => reject(request.error || new Error("Could not read pending share"));
+      transaction.oncomplete = () => resolve(result);
+      transaction.onerror = () =>
+        reject(transaction.error || new Error("Could not migrate pending share"));
+      transaction.onabort = () =>
+        reject(transaction.error || new Error("Could not migrate pending share"));
+    });
+  } finally {
+    db.close();
+  }
+}
+
 export async function updatePendingSystemShare(
   submissionId: string,
   patch: PendingSystemSharePatch

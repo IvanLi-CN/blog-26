@@ -3,7 +3,7 @@ import type { Dirent } from "node:fs";
 import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { TRPCError } from "@trpc/server";
-import { and, eq, inArray, isNull, lt, lte, or } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, lt, lte, or } from "drizzle-orm";
 import { getActiveLocalBasePath } from "@/config/paths";
 import type { SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import { generateSlugFromPath } from "@/lib/content-sources/utils";
@@ -320,6 +320,7 @@ async function handleSystemShareRequest(
   const now = Date.now();
   const leaseToken = randomUUID();
   let reclaimedExpiredLease = false;
+  let reclaimedState: "processing" | "committing" | null = null;
   let existing = await db
     .select()
     .from(systemShareSubmissions)
@@ -362,10 +363,12 @@ async function handleSystemShareRequest(
   if (existing) {
     const leaseExpiresAt =
       existing.leaseExpiresAt ?? existing.updatedAt + SYSTEM_SHARE_PROCESSING_TTL_MS;
-    if (existing.state === "processing" && leaseExpiresAt > now) {
+    const leaseState = existing.state === "processing" || existing.state === "committing";
+    if (leaseState && leaseExpiresAt > now) {
       throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
     }
-    reclaimedExpiredLease = existing.state === "processing" && leaseExpiresAt <= now;
+    reclaimedExpiredLease = leaseState && leaseExpiresAt <= now;
+    reclaimedState = reclaimedExpiredLease ? existing.state : null;
     await db
       .update(systemShareSubmissions)
       .set({
@@ -378,7 +381,10 @@ async function handleSystemShareRequest(
       .where(
         and(
           eq(systemShareSubmissions.submissionId, submissionId),
-          eq(systemShareSubmissions.state, "processing"),
+          or(
+            eq(systemShareSubmissions.state, "processing"),
+            eq(systemShareSubmissions.state, "committing")
+          ),
           or(
             lte(systemShareSubmissions.leaseExpiresAt, now),
             and(
@@ -476,6 +482,38 @@ async function handleSystemShareRequest(
       throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
     }
 
+    const commitStartedAt = Date.now();
+    await db
+      .update(systemShareSubmissions)
+      .set({
+        state: "committing",
+        leaseExpiresAt: commitStartedAt + SYSTEM_SHARE_PROCESSING_TTL_MS,
+        updatedAt: commitStartedAt,
+      })
+      .where(
+        and(
+          eq(systemShareSubmissions.submissionId, submissionId),
+          eq(systemShareSubmissions.state, "processing"),
+          eq(systemShareSubmissions.leaseToken, leaseToken),
+          gt(systemShareSubmissions.leaseExpiresAt, commitStartedAt)
+        )
+      );
+    const committingLease = await db
+      .select({ leaseToken: systemShareSubmissions.leaseToken })
+      .from(systemShareSubmissions)
+      .where(
+        and(
+          eq(systemShareSubmissions.submissionId, submissionId),
+          eq(systemShareSubmissions.state, "committing"),
+          eq(systemShareSubmissions.leaseToken, leaseToken)
+        )
+      )
+      .limit(1)
+      .then((rows) => rows[0]);
+    if (!committingLease) {
+      throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
+    }
+
     const result = await caller.memos.create({
       content: composeSystemShareMemoContent(normalized),
       title: normalized.title || undefined,
@@ -485,6 +523,7 @@ async function handleSystemShareRequest(
       systemShare: {
         source: "system-share" as const,
         submissionId,
+        leaseToken,
         ...(normalized.url ? { targetUrl: normalized.url } : {}),
       },
     });
@@ -496,7 +535,7 @@ async function handleSystemShareRequest(
     // Only reclaim an expired lease after the deterministic Memo file exists.
     // An older request may still be finishing its filesystem commit; deleting
     // its staging directory before that point could publish missing attachments.
-    if (reclaimedExpiredLease) {
+    if (reclaimedExpiredLease && reclaimedState === "processing") {
       await cleanupAbandonedSystemShareStaging({
         basePath,
         memoRoot,

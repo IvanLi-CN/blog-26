@@ -1,7 +1,7 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, like, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, like, sql } from "drizzle-orm";
 import { z } from "zod";
 import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
@@ -32,7 +32,7 @@ import { isLocalContentEnabled, LOCAL_PATHS } from "../../config/paths";
 import { getContentSourceManager, LocalContentSource } from "../../lib/content-sources";
 import { generateMemoFilename, generateSlugFromPath } from "../../lib/content-sources/utils";
 import { db } from "../../lib/db";
-import { posts } from "../../lib/schema";
+import { posts, systemShareSubmissions } from "../../lib/schema";
 import { buildContentSearchCondition } from "../../lib/search/content-search";
 import { isSearchQueryWithinBudget } from "../../lib/search/query";
 import { toMsTimestamp } from "../../lib/utils";
@@ -436,6 +436,7 @@ const createMemoSchema = z
         source: z.literal("system-share"),
         targetUrl: z.string().url().optional(),
         submissionId: z.string().uuid(),
+        leaseToken: z.string().uuid(),
       })
       .optional(),
   })
@@ -938,6 +939,25 @@ export const memosRouter = router({
         const basePath = getLocalBasePathOrThrow();
         const fullPath = join(basePath, createdId);
         await mkdir(dirname(fullPath), { recursive: true });
+
+        if (systemShare) {
+          const committingLease = await db
+            .select({ leaseToken: systemShareSubmissions.leaseToken })
+            .from(systemShareSubmissions)
+            .where(
+              and(
+                eq(systemShareSubmissions.submissionId, systemShare.submissionId),
+                eq(systemShareSubmissions.state, "committing"),
+                eq(systemShareSubmissions.leaseToken, systemShare.leaseToken),
+                gt(systemShareSubmissions.leaseExpiresAt, Date.now())
+              )
+            )
+            .limit(1)
+            .then((rows) => rows[0]);
+          if (!committingLease) {
+            throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
+          }
+        }
 
         await writeFile(fullPath, markdownContent, {
           encoding: "utf-8",

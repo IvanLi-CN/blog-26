@@ -15,6 +15,7 @@ import { webDemoFetch } from "@/lib/web-demo-fetch";
 import { toPublicApiUrl } from "../lib/runtime-urls";
 import {
   clearPendingSystemShare,
+  ensurePendingSystemShareOriginal,
   type PendingSystemShare,
   readPendingSystemShare,
   replacePendingSystemShare,
@@ -167,8 +168,8 @@ export default function SystemShareConfirmation() {
         }
       }
       if (nextPending && !nextPending.original) {
-        await replacePendingSystemShare({ ...nextPending, original: nextPending });
-        nextPending = { ...nextPending, original: nextPending };
+        const migrated = await ensurePendingSystemShareOriginal(nextPending);
+        nextPending = migrated ?? nextPending;
       }
       const rawPending = nextPending?.original
         ? { ...nextPending, ...nextPending.original, original: nextPending.original }
@@ -280,8 +281,17 @@ export default function SystemShareConfirmation() {
     persistPatch({ files: pending.files.filter((_, fileIndex) => fileIndex !== index) });
   }
 
+  function releaseSubmitLock() {
+    submitLock.current = false;
+    setSubmitting(false);
+  }
+
   async function submitCurrent() {
     if (!pending || !user?.isAdmin || successLocked || submitLock.current) return;
+    submitLock.current = true;
+    setSubmitting(true);
+    setError(null);
+    showSystemShareProgress();
     let currentPending: PendingSystemShare | null;
     try {
       currentPending = await readPendingSystemShare();
@@ -289,22 +299,21 @@ export default function SystemShareConfirmation() {
       const message =
         nextError instanceof Error ? nextError.message : "无法确认当前分享，请刷新后重试。";
       showSystemShareError(message, () => window.location.reload(), "刷新");
+      releaseSubmitLock();
       return;
     }
     if (!currentPending || currentPending.submissionId !== pending.submissionId) {
       const message = "这条分享已被新的系统分享替换，请刷新页面后继续。";
       showSystemShareError(message, () => window.location.reload(), "刷新");
+      releaseSubmitLock();
       return;
     }
     const validation = validateSystemShareFiles(pending.files);
     if (!validation.ok) {
       showSystemShareError(validation.error, () => void submitRef.current());
+      releaseSubmitLock();
       return;
     }
-    submitLock.current = true;
-    setSubmitting(true);
-    setError(null);
-    showSystemShareProgress();
     try {
       const editorContent = memoEditorRef.current?.getMarkdown() ?? text;
       const editorNormalized = normalizeSystemShareEditor({
@@ -354,8 +363,7 @@ export default function SystemShareConfirmation() {
       const message = nextError instanceof Error ? nextError.message : "发布失败，请重试。";
       showSystemShareError(message, () => void submitRef.current());
     } finally {
-      submitLock.current = false;
-      setSubmitting(false);
+      releaseSubmitLock();
     }
   }
 

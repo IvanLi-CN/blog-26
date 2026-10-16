@@ -123,6 +123,7 @@ test.describe("Console system share Web Demo", () => {
       .getByRole("button", { name: "重试" })
       .click();
     await expect(page.getByTestId("system-share-toast-progress")).toBeVisible();
+    await expect(page.getByTestId("system-share-toast-progress")).toBeFocused();
     await expect(page.getByTestId("system-share-toast-success")).toBeVisible();
     await expect(page).toHaveURL(/\/memos\/console-demo-created-\d+$/);
     await expect(page.locator("body")).toContainText("重试后仍然保留的编辑内容");

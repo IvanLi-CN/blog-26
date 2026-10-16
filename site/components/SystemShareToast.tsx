@@ -28,12 +28,19 @@ function ToastBody({
   function handleRetry() {
     onRetry?.();
     if (typeof window !== "undefined") {
-      window.setTimeout(() => {
+      let attempts = 0;
+      const focusProgress = () => {
         const progress = document.querySelector<HTMLElement>(
           '[data-testid="system-share-toast-progress"]'
         );
-        progress?.focus();
-      }, 0);
+        if (progress) {
+          progress.focus();
+          return;
+        }
+        attempts += 1;
+        if (attempts < 20) window.setTimeout(focusProgress, 16);
+      };
+      window.setTimeout(focusProgress, 0);
     }
   }
 
@@ -41,8 +48,6 @@ function ToastBody({
     <div
       className="system-share-toast-body"
       data-testid={`system-share-toast-${tone}`}
-      role={tone === "error" ? "alert" : "status"}
-      aria-live={tone === "error" ? "assertive" : "polite"}
       tabIndex={tone === "progress" ? -1 : undefined}
     >
       <Icon
