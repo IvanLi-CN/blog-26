@@ -27,6 +27,8 @@ export interface PublicMediaContext {
   slug: string;
   filePath: string;
   assetScope?: PublicMediaAssetScope;
+  /** Whether the bound snapshot provides complete responsive watermark candidates. */
+  supportsResponsiveWatermark?: boolean;
 }
 
 export interface PublicMediaSourceDescriptor {
@@ -338,7 +340,7 @@ export function buildPublicMediaAssetUrl(params: {
   mediaPath: string;
   role: PublicMediaRole;
   variant: PublicMediaVariant;
-  renderId?: PublicMediaRenderId;
+  renderId?: PublicMediaRenderId | null;
 }) {
   const sourcePath = resolveContentMediaPath(params.mediaPath, params.context.filePath);
   if (!sourcePath) return null;
@@ -354,13 +356,35 @@ export function buildPublicMediaAssetUrl(params: {
     slug: params.context.slug,
     mediaHash,
     renderId:
-      params.renderId ??
-      (params.context.assetScope === "admin-preview" || params.variant === "play"
+      params.renderId === null
         ? undefined
-        : getDefaultPublicMediaRenderId(params.variant)),
+        : (params.renderId ??
+          (params.context.assetScope === "admin-preview" ||
+          params.variant === "play" ||
+          params.context.supportsResponsiveWatermark === false
+            ? undefined
+            : getDefaultPublicMediaRenderId(params.variant))),
     variant: params.variant,
     ext,
   });
+}
+
+/**
+ * A snapshot can only opt into responsive watermark URLs when every inline
+ * content item has both content and full A/B candidates. Partial metadata is
+ * treated as legacy so a static build never emits a candidate the snapshot
+ * cannot serve.
+ */
+export function supportsPublicMediaPresentations(media: PublicMediaCollection | null | undefined) {
+  const contentItems = media?.content ?? [];
+  if (contentItems.length === 0) return false;
+
+  return contentItems.every((item) =>
+    (["content", "full"] as const).every((variant) => {
+      const presentations = item.presentations?.[variant];
+      return Boolean(presentations?.a && presentations?.b);
+    })
+  );
 }
 
 export function buildPublicMediaPresentations(params: {

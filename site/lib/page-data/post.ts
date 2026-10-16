@@ -1,3 +1,4 @@
+import { supportsPublicMediaPresentations } from "@/lib/public-media";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import type { PublicPostRecord } from "@/public-site/snapshot";
 import {
@@ -19,7 +20,12 @@ export async function loadpost(Astro: PageContext) {
   const relatedPosts = getRelatedPosts(snapshot, post.slug).map(postPreview);
   const assetVersion = snapshot.generatedAt;
   const contentSource = "local" as const;
-  const publicMediaContext = { kind: "post" as const, slug: post.slug, filePath: post.filePath };
+  const publicMediaContext = {
+    kind: "post" as const,
+    slug: post.slug,
+    filePath: post.filePath,
+    supportsResponsiveWatermark: supportsPublicMediaPresentations(post.media),
+  };
   const imageSrc = appendPublicAssetVersion(
     post.media.cover?.variants.cover ?? toPublicAssetUrl(post.image),
     assetVersion
