@@ -122,6 +122,35 @@ describe("packagePublicMedia", () => {
     );
   });
 
+  test("can freeze both derived watermark variants for a base public asset", async () => {
+    const cwd = await fixture();
+    const candidateUrl = "/api/public/assets/post/logo/hash/content.webp?v=2026-10-15";
+    await writeFile(join(cwd, "site-dist", "snapshot.json"), `{"media":"${candidateUrl}"}`);
+
+    const requestedUrls: string[] = [];
+    const manifest = await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      includeDerivedWatermarkVariants: true,
+      fetchImpl: async (input) => {
+        requestedUrls.push(String(input));
+        return response("image");
+      },
+    });
+
+    expect(requestedUrls).toEqual([
+      `https://api.example${candidateUrl}`,
+      "https://api.example/api/public/assets/post/logo/hash/wm-a-v1/content.webp?v=2026-10-15",
+      "https://api.example/api/public/assets/post/logo/hash/wm-b-v1/content.webp?v=2026-10-15",
+    ]);
+    expect(manifest.entries.map((entry) => entry.sourcePath)).toEqual([
+      "/api/public/assets/post/logo/hash/content.webp?v=2026-10-15",
+      "/api/public/assets/post/logo/hash/wm-a-v1/content.webp?v=2026-10-15",
+      "/api/public/assets/post/logo/hash/wm-b-v1/content.webp?v=2026-10-15",
+    ]);
+  });
+
   test("does not exempt non-stable or malformed Playbook edition paths", async () => {
     const cwd = await fixture();
     const invalidTagPath = join(

@@ -201,6 +201,7 @@ export async function freezeInputs(entry: ReleaseEntry, root: string): Promise<v
     mediaOrigin: env.PUBLIC_API_BASE_URL,
     siteUrl: env.PUBLIC_SITE_URL,
     siteBasePath: env.PUBLIC_SITE_BASE_PATH,
+    includeDerivedWatermarkVariants: true,
   });
   if (media.externalCount)
     throw new Error(
