@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import { MilkdownEditor, type MilkdownEditorRef } from "@/components/memos/MilkdownEditor";
 import {
   composeSystemShareMemoContent,
-  normalizeSystemShare,
   normalizeSystemShareEditor,
   SYSTEM_SHARE_TTL_MS,
   type SystemShareFile,
@@ -64,7 +63,8 @@ async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 function demoPending(search: string): PendingSystemShare | null {
-  const mode = new URLSearchParams(search).get("d_share");
+  const params = new URLSearchParams(search);
+  const mode = params.get("d_share");
   if (!mode) return null;
   const now = Date.now();
   const submissionIds: Record<string, string> = {
@@ -76,7 +76,7 @@ function demoPending(search: string): PendingSystemShare | null {
   };
   const pending: PendingSystemShare = {
     version: 2,
-    submissionId: submissionIds[mode] ?? submissionIds.text,
+    submissionId: params.get("d_submission") || submissionIds[mode] || submissionIds.text,
     createdAt: now,
     expiresAt: now + SYSTEM_SHARE_TTL_MS,
     title: mode === "file" ? "会议记录附件" : "从系统分享来的灵感",
@@ -124,7 +124,7 @@ function rawShareValue(value: string) {
 }
 
 function projectPendingForEditor(value: PendingSystemShare): PendingSystemShare {
-  const normalized = normalizeSystemShare(value);
+  const normalized = normalizeSystemShareEditor(value);
   return {
     ...value,
     // The editor receives one canonical Memo field. A clipping keeps its target
@@ -486,6 +486,16 @@ export default function SystemShareConfirmation() {
           </dl>
         </div>
       </details>
+
+      {error ? (
+        <div
+          className="nature-chip-danger mb-3 block rounded-[var(--nature-radius-md)] px-4 py-3 text-sm leading-6"
+          role="alert"
+          data-testid="system-share-inline-error"
+        >
+          {error}
+        </div>
+      ) : null}
 
       <form
         className="nature-panel overflow-hidden"

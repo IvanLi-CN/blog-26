@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
 async function clearPendingShare(page: import("@playwright/test").Page) {
@@ -101,13 +102,19 @@ test.describe("Console system share Web Demo", () => {
 
   test("keeps a failed submission in place and retries from the global toast", async ({ page }) => {
     await clearPendingShare(page);
+    const submissionId = randomUUID();
     await page.goto(
-      "/share?d_persona=admin&d_share=error&d_scene=system-share-error&d_delay=slow",
+      `/share?d_persona=admin&d_share=error&d_submission=${submissionId}&d_scene=system-share-error&d_delay=slow`,
       {
         waitUntil: "domcontentloaded",
       }
     );
     await expect(page.getByTestId("system-share-page")).toBeVisible();
+    const editor = page.getByTestId("system-share-memo-editor").locator(".ProseMirror");
+    await editor.click();
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.insertText("重试后仍然保留的编辑内容");
+    await page.waitForTimeout(500);
     await page.getByTestId("system-share-submit").click();
     await expect(page.getByTestId("system-share-toast-error")).toBeVisible();
     await expect(page.getByTestId("system-share-toast-error")).toHaveCount(1);
@@ -118,5 +125,6 @@ test.describe("Console system share Web Demo", () => {
     await expect(page.getByTestId("system-share-toast-progress")).toBeVisible();
     await expect(page.getByTestId("system-share-toast-success")).toBeVisible();
     await expect(page).toHaveURL(/\/memos\/console-demo-created-\d+$/);
+    await expect(page.locator("body")).toContainText("重试后仍然保留的编辑内容");
   });
 });

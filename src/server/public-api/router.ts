@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import type { Dirent } from "node:fs";
+import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { TRPCError } from "@trpc/server";
 import { and, eq, inArray, isNull, lt, lte, or } from "drizzle-orm";
@@ -89,12 +90,20 @@ async function parseBody(request: Request) {
 }
 
 async function parseSystemShareForm(request: Request) {
+  const readFormData = async (candidate: Request) => {
+    try {
+      return await candidate.formData();
+    } catch (error) {
+      if (error instanceof TRPCError) throw error;
+      throw new TRPCError({ code: "BAD_REQUEST", message: "分享请求格式无效。" });
+    }
+  };
   const declaredLength = Number(request.headers.get("content-length"));
   if (Number.isFinite(declaredLength) && declaredLength > SYSTEM_SHARE_MAX_REQUEST_BYTES) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "分享请求过大。" });
   }
 
-  if (!request.body) return request.formData();
+  if (!request.body) return readFormData(request);
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
   let total = 0;
@@ -119,11 +128,67 @@ async function parseSystemShareForm(request: Request) {
     body.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return new Request(request.url, {
-    method: request.method,
-    headers: request.headers,
-    body,
-  }).formData();
+  return readFormData(
+    new Request(request.url, {
+      method: request.method,
+      headers: request.headers,
+      body,
+    })
+  );
+}
+
+async function cleanupAbandonedSystemShareStaging(input: {
+  basePath: string;
+  memoRoot: string;
+  submissionId: string;
+  keepLeaseToken: string;
+  memoId: string;
+}) {
+  const root = join(
+    input.basePath,
+    input.memoRoot.replace(/^\/+/, ""),
+    "assets",
+    "system-share",
+    input.submissionId
+  );
+  let entries: Dirent[] = [];
+  try {
+    entries = await readdir(root, { withFileTypes: true });
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return;
+    return;
+  }
+
+  const referencedLeaseTokens = new Set<string>();
+  try {
+    const authored = await readAuthoredMemo(input.memoId);
+    const attachments = authored.frontmatter.attachments;
+    if (Array.isArray(attachments)) {
+      for (const attachment of attachments) {
+        if (!attachment || typeof attachment !== "object" || !("path" in attachment)) continue;
+        const attachmentPath = String(attachment.path).replace(/^\.\//u, "");
+        const prefix = `assets/system-share/${input.submissionId}/`;
+        if (!attachmentPath.startsWith(prefix)) continue;
+        const leaseToken = attachmentPath.slice(prefix.length).split("/", 1)[0];
+        if (leaseToken) referencedLeaseTokens.add(leaseToken);
+      }
+    }
+  } catch (error) {
+    if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT")) {
+      return;
+    }
+  }
+
+  await Promise.all(
+    entries
+      .filter((entry) => entry.isDirectory())
+      .filter(
+        (entry) => entry.name !== input.keepLeaseToken && !referencedLeaseTokens.has(entry.name)
+      )
+      .map((entry) =>
+        rm(join(root, entry.name), { recursive: true, force: true }).catch(() => undefined)
+      )
+  );
 }
 
 async function createCallerForRequest(request: Request) {
@@ -215,6 +280,11 @@ async function handleSystemShareRequest(
       .where(eq(posts.id, memoId))
       .limit(1)
       .then((rows) => rows[0]);
+    try {
+      await readAuthoredMemo(memoId);
+    } catch {
+      return null;
+    }
     const slug = memoSlug || row?.slug || generateSlugFromPath(memoId, undefined, "memo");
     if (!slug) return null;
     try {
@@ -249,6 +319,7 @@ async function handleSystemShareRequest(
 
   const now = Date.now();
   const leaseToken = randomUUID();
+  let reclaimedExpiredLease = false;
   let existing = await db
     .select()
     .from(systemShareSubmissions)
@@ -294,6 +365,7 @@ async function handleSystemShareRequest(
     if (existing.state === "processing" && leaseExpiresAt > now) {
       throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
     }
+    reclaimedExpiredLease = existing.state === "processing" && leaseExpiresAt <= now;
     await db
       .update(systemShareSubmissions)
       .set({
@@ -349,6 +421,23 @@ async function handleSystemShareRequest(
   let createdMemoSlug: string | null = null;
   const memoRoot = getServerLocalMemoRootPath();
   const deterministicMemoId = buildMemoRelativePath(`system-share/${submissionId}.md`, memoRoot);
+  const stagedDirectory = join(
+    basePath,
+    memoRoot.replace(/^\/+/, ""),
+    "assets",
+    "system-share",
+    submissionId,
+    leaseToken
+  );
+  if (reclaimedExpiredLease) {
+    await cleanupAbandonedSystemShareStaging({
+      basePath,
+      memoRoot,
+      submissionId,
+      keepLeaseToken: leaseToken,
+      memoId: deterministicMemoId,
+    });
+  }
   try {
     const attachments = [];
     const stagedAttachmentRefs: Array<{ persistedPath: string; fullPath: string }> = [];
@@ -358,19 +447,7 @@ async function handleSystemShareRequest(
       const filename = `system-share/${submissionId}/${leaseToken}/${index + 1}-${safeName}`;
       const persistedPath = `${memoRoot.replace(/^\/+/, "")}/assets/${filename}`;
       const fullPath = join(basePath, persistedPath);
-      await mkdir(
-        join(
-          basePath,
-          memoRoot.replace(/^\/+/, ""),
-          "assets",
-          "system-share",
-          submissionId,
-          leaseToken
-        ),
-        {
-          recursive: true,
-        }
-      );
+      await mkdir(stagedDirectory, { recursive: true });
       await writeFile(fullPath, new Uint8Array(await file.arrayBuffer()), { flag: "wx" });
       stagedPaths.push(fullPath);
       stagedAttachmentRefs.push({ persistedPath: `./assets/${filename}`, fullPath });
@@ -438,6 +515,13 @@ async function handleSystemShareRequest(
         .filter(({ persistedPath }) => !referencedAttachmentPaths.has(persistedPath))
         .map(({ fullPath }) => rm(fullPath, { force: true }).catch(() => undefined))
     );
+    if (
+      !stagedAttachmentRefs.some(({ persistedPath }) =>
+        referencedAttachmentPaths.has(persistedPath)
+      )
+    ) {
+      await rm(stagedDirectory, { recursive: true, force: true }).catch(() => undefined);
+    }
     await db
       .update(systemShareSubmissions)
       .set({
@@ -480,6 +564,7 @@ async function handleSystemShareRequest(
       await Promise.all(
         stagedPaths.map((path) => rm(path, { force: true }).catch(() => undefined))
       );
+      await rm(stagedDirectory, { recursive: true, force: true }).catch(() => undefined);
       await db
         .delete(systemShareSubmissions)
         .where(

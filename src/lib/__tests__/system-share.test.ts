@@ -136,5 +136,8 @@ test("system share file limits are enforced", () => {
       ok: false,
     }
   );
+  expect(
+    validateSystemShareFiles(new Array(3).fill({ name: "a", type: "", size: 17 * 1024 * 1024 }))
+  ).toMatchObject({ ok: false });
   expect(validateSystemShareFiles([{ name: "a", type: "", size: 1 }])).toEqual({ ok: true });
 });
