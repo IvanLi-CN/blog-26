@@ -7,9 +7,18 @@ on:
         description: Abandoned failed release identity without frozen products
         required: true
         type: string
+      operation:
+        description: Ledger recovery operation
+        required: true
+        type: choice
+        options:
+          - repair-ledger
+          - abandon-failed
+          - abandon-failed-inputs
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   repair:
@@ -24,6 +33,18 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
-      - run: RELEASE_ID="${{ inputs.release_id }}" bun scripts/product-release.ts repair-ledger
+      - name: Apply ledger recovery operation
         env:
+          RELEASE_ID: ${{ inputs.release_id }}
+          OPERATION: ${{ inputs.operation }}
           GH_TOKEN: ${{ github.token }}
+        run: |
+          case "$OPERATION" in
+            repair-ledger|abandon-failed|abandon-failed-inputs)
+              bun scripts/product-release.ts "$OPERATION"
+              ;;
+            *)
+              echo "Unsupported recovery operation: $OPERATION" >&2
+              exit 1
+              ;;
+          esac
