@@ -7,6 +7,7 @@ import {
   type LedgerStore,
   type ReleaseEntry,
   type ReleaseLedger,
+  rebindReleaseRun,
   updateRelease,
 } from "./ledger";
 import { compareVersions, shaSchema } from "./policy";
@@ -211,6 +212,30 @@ export function classifyMergeFollowup(
   return "pending";
 }
 
+export function manualRecoveryRunCanTakeOver(
+  entry: ReleaseEntry,
+  previousRun: WorkflowRun,
+  repository: string
+): boolean {
+  return Boolean(
+    entry.stage === "merged" &&
+      entry.releaseRunId &&
+      !entry.inputs &&
+      !entry.products &&
+      !entry.publication &&
+      !entry.deployment &&
+      entry.mergeSha &&
+      previousRun.id === entry.releaseRunId &&
+      previousRun.head_sha === entry.mergeSha &&
+      previousRun.head_repository.full_name === repository &&
+      previousRun.head_branch === "main" &&
+      previousRun.event === "workflow_dispatch" &&
+      previousRun.path === ".github/workflows/product-release.yml" &&
+      previousRun.status === "completed" &&
+      ["failure", "cancelled"].includes(previousRun.conclusion || "")
+  );
+}
+
 export async function resolveCompletedRelease(
   github: GitHubRelease,
   store: LedgerStore,
@@ -246,12 +271,30 @@ export async function resolveCompletedRelease(
   }
   if (!matched || matched.stage === "complete") return undefined;
   assertPolicyIdentityAtSource(github.contract, quality, matched.policyDigest, run.head_sha);
-  if (matched.releaseRunId && matched.releaseRunId !== releaseRunId) return undefined;
+  let canRebind = false;
+  if (matched.releaseRunId && matched.releaseRunId !== releaseRunId) {
+    if (run.event !== "workflow_dispatch") return undefined;
+    const previous = github.optional(`${github.root}/actions/runs/${matched.releaseRunId}`);
+    const parsed = previous ? runSchema.safeParse(previous) : undefined;
+    canRebind = Boolean(
+      parsed?.success &&
+        manualRecoveryRunCanTakeOver(matched, parsed.data, github.contract.repository)
+    );
+    if (!canRebind) return undefined;
+  }
   verifyTrustedTags(github, current.ledger);
   if (!matched.prNumber) throw new Error("Release PR proof is missing");
   assertMerge(github, matched, github.pull(matched.prNumber), run.head_sha);
   if (!mainChecksPassed(github, run.head_sha, quality)) return undefined;
-  if (matched.stage !== "pr_open") return matched;
+  if (matched.stage !== "pr_open") {
+    if (!canRebind) return matched;
+    if (!bind) return { ...matched, releaseRunId };
+    const original = matched;
+    return changeLedger(store, (ledger) => ({
+      ledger: rebindReleaseRun(ledger, original.id, releaseRunId),
+      result: null,
+    })).then(() => ({ ...original, releaseRunId, failure: undefined }));
+  }
   if (!bind) return { ...matched, stage: "merged", mergeSha: run.head_sha, releaseRunId };
   const original = matched;
   return changeLedger(store, (ledger) => {

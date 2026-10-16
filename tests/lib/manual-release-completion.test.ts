@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import contractJson from "../../.github/release-contract.json";
-import { manualReleaseWorkflowRun } from "../../src/lib/release/completion";
+import {
+  manualRecoveryRunCanTakeOver,
+  manualReleaseWorkflowRun,
+} from "../../src/lib/release/completion";
 import { GitHubRelease } from "../../src/lib/release/github";
 import { initialLedger, reserveRelease, updateRelease } from "../../src/lib/release/ledger";
 import { contractSchema } from "../../src/lib/release/policy";
@@ -79,5 +82,34 @@ describe("manual product release resolution", () => {
     expect(() => manualReleaseWorkflowRun(githubFor([4, 5]), fixture([4, 5]), 99)).toThrow(
       "exactly one active merged identity"
     );
+  });
+
+  test("allows a new manual run to take over an unfrozen failed manual run", () => {
+    const current = fixture([4]);
+    const merged = updateRelease(current, current.entries[0]?.id || "", {
+      stage: "merged",
+      mergeSha,
+      releaseRunId: 98,
+      failure: { phase: "merged", runId: "98", attempt: 2 },
+    }).entries[0];
+    if (!merged) throw new Error("Missing merged fixture");
+    expect(
+      manualRecoveryRunCanTakeOver(
+        merged,
+        {
+          id: 98,
+          workflow_id: 123,
+          run_attempt: 2,
+          head_sha: mergeSha,
+          head_branch: "main",
+          event: "workflow_dispatch",
+          status: "completed",
+          conclusion: "failure",
+          path: ".github/workflows/product-release.yml",
+          head_repository: { full_name: contract.repository },
+        },
+        contract.repository
+      )
+    ).toBe(true);
   });
 });

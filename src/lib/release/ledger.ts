@@ -434,6 +434,36 @@ export function updateRelease(
   return { ...ledger, entries: ledger.entries.map((entry) => (entry.id === id ? next : entry)) };
 }
 
+export function rebindReleaseRun(
+  ledger: ReleaseLedger,
+  id: string,
+  releaseRunId: number,
+  now = new Date().toISOString()
+): ReleaseLedger {
+  const original = ledger.entries.find((entry) => entry.id === id);
+  if (!original) throw new Error("Unknown release identity");
+  if (
+    original.stage !== "merged" ||
+    !original.releaseRunId ||
+    original.inputs ||
+    original.products ||
+    original.publication ||
+    original.deployment ||
+    (original.failure && original.failure.runId !== String(original.releaseRunId))
+  )
+    throw new Error("Only an unfrozen failed merged release can rebind its run");
+  if (!Number.isInteger(releaseRunId) || releaseRunId <= 0)
+    throw new Error("Release run identity is invalid");
+  const next = entrySchema.parse({
+    ...original,
+    releaseRunId,
+    failure: undefined,
+    updatedAt: now,
+  });
+  validateEntry(next);
+  return { ...ledger, entries: ledger.entries.map((entry) => (entry.id === id ? next : entry)) };
+}
+
 export function newerDeploymentExists(ledger: ReleaseLedger, entry: ReleaseEntry): boolean {
   return ledger.entries.some(
     (other) =>

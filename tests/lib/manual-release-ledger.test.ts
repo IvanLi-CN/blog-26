@@ -5,6 +5,7 @@ import {
   changeLedger,
   initialLedger,
   type LedgerStore,
+  rebindReleaseRun,
   reserveRelease,
   updateRelease,
   validateLedger,
@@ -304,6 +305,35 @@ describe("durable product release reservations", () => {
     });
     const abandoned = updateRelease(merged, first.entry.id, { stage: "abandoned" });
     expect(abandoned.entries[0]?.stage).toBe("abandoned");
+  });
+  test("rebinds only an unfrozen failed merged release and clears its old failure", () => {
+    const first = reserveRelease(initialLedger(contract), request);
+    let merged = updateRelease(first.ledger, first.entry.id, {
+      stage: "pr_open",
+      preparationHead: "e".repeat(40),
+      prNumber: 4,
+    });
+    merged = updateRelease(merged, first.entry.id, {
+      stage: "merged",
+      mergeSha: "f".repeat(40),
+      releaseRunId: 7,
+      failure: { phase: "merged", runId: "7", attempt: 1 },
+    });
+    const rebound = rebindReleaseRun(merged, first.entry.id, 8);
+    expect(rebound.entries[0]).toMatchObject({ stage: "merged", releaseRunId: 8 });
+    expect(rebound.entries[0]?.failure).toBeUndefined();
+    const withInputs = updateRelease(rebound, first.entry.id, {
+      inputs: {
+        runId: 8,
+        artifactId: 10,
+        artifactName: `release-${first.entry.id}-inputs`,
+        archiveDigest: `sha256:${"1".repeat(64)}`,
+        manifestDigest: "2".repeat(64),
+      },
+    });
+    expect(() => rebindReleaseRun(withInputs, first.entry.id, 9)).toThrow(
+      "Only an unfrozen failed merged release can rebind its run"
+    );
   });
   test("cancelled merged releases can record cancellation and be abandoned", () => {
     const first = reserveRelease(initialLedger(contract), request);
