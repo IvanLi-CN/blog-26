@@ -41,7 +41,8 @@
     "src/server/public-media-watermark.prototype.html": "947d78d4049dc818a1955b08efa7bcfc25987f24",
     "src/server/public-media-watermark.prototype.ts": "9e7b0002e939850c2121d82029d02e80ee5cdea0",
     "src/server/public-media-watermark-assets.test.ts": "094cd7246dc88bcf27edeec3a45cfcec1b5638ba",
-    "src/server/public-media.ts": "180d1113d986d1912afb1a493bf43bbec0231b65"
+    "src/server/public-media.ts": "180d1113d986d1912afb1a493bf43bbec0231b65",
+    "tests/e2e/guest/posts-cover-fallback.spec.ts": "998770d66eb272b70933d7632f080f094c325a10"
   },
   "change": {
     "description": "Add versioned Logo A/B media renditions selected by the image's visible CSS width while preserving legacy media URLs and administrator authorization.",
