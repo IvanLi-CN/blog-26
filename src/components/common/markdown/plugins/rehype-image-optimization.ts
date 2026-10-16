@@ -89,6 +89,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
             mediaPath,
             role,
             variant,
+            renderId: publicMediaContext.supportsResponsiveWatermark === false ? null : undefined,
           }) ?? mediaPath
         );
       }
@@ -100,7 +101,12 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
       mediaPath: string,
       targetVariant: "content" | "full"
     ): PublicMediaPresentations | null {
-      if (!publicMediaContext || !isPublicAssetFacadeUrl(mediaPath)) return null;
+      if (
+        !publicMediaContext ||
+        publicMediaContext.supportsResponsiveWatermark === false ||
+        !isPublicAssetFacadeUrl(mediaPath)
+      )
+        return null;
 
       let pathname: string;
       try {
@@ -162,20 +168,24 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
 
         if (publicMediaContext) {
           const inlinePresentations = shouldRewrite
-            ? buildPublicMediaPresentations({
-                context: publicMediaContext,
-                mediaPath: originalSrc,
-                role: "content",
-                variant: "content",
-              })
+            ? publicMediaContext.supportsResponsiveWatermark === false
+              ? null
+              : buildPublicMediaPresentations({
+                  context: publicMediaContext,
+                  mediaPath: originalSrc,
+                  role: "content",
+                  variant: "content",
+                })
             : buildPresentationsFromVersionedFacadeUrl(originalSrc, "content");
           const fullPresentations = shouldRewrite
-            ? buildPublicMediaPresentations({
-                context: publicMediaContext,
-                mediaPath: originalSrc,
-                role: "content",
-                variant: "full",
-              })
+            ? publicMediaContext.supportsResponsiveWatermark === false
+              ? null
+              : buildPublicMediaPresentations({
+                  context: publicMediaContext,
+                  mediaPath: originalSrc,
+                  role: "content",
+                  variant: "full",
+                })
             : buildPresentationsFromVersionedFacadeUrl(originalSrc, "full");
           if (inlinePresentations) {
             node.properties["data-watermark-a"] = appendPublicAssetVersion(
@@ -251,14 +261,17 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
       if (node.tagName === "video" && node.properties?.poster) {
         const poster = String(node.properties.poster);
         if (publicMediaContext) {
-          const posterPresentations = !isPublicAssetFacadeUrl(poster)
-            ? buildPublicMediaPresentations({
-                context: publicMediaContext,
-                mediaPath: poster,
-                role: "content",
-                variant: "content",
-              })
-            : buildPresentationsFromVersionedFacadeUrl(poster, "content");
+          const posterPresentations =
+            publicMediaContext.supportsResponsiveWatermark === false
+              ? null
+              : !isPublicAssetFacadeUrl(poster)
+                ? buildPublicMediaPresentations({
+                    context: publicMediaContext,
+                    mediaPath: poster,
+                    role: "content",
+                    variant: "content",
+                  })
+                : buildPresentationsFromVersionedFacadeUrl(poster, "content");
           if (posterPresentations) {
             node.properties["data-watermark-poster-a"] = appendPublicAssetVersion(
               posterPresentations.a,

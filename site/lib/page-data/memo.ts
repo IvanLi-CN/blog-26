@@ -6,7 +6,10 @@ import {
 } from "@/lib/console-web-demo";
 import { extractTextSummary, stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
 import { getMemoPresentation } from "@/lib/memo-presentation";
-import { createEmptyPublicMediaCollection } from "@/lib/public-media";
+import {
+  createEmptyPublicMediaCollection,
+  supportsPublicMediaPresentations,
+} from "@/lib/public-media";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
 import type { PublicMemoRecord } from "@/public-site/snapshot";
 import { getMemoListWebDemoRecord } from "../memo-list-web-demo";
@@ -187,6 +190,7 @@ export async function loadmemo(Astro: PageContext) {
     kind: "memo" as const,
     slug: renderMemo.slug,
     filePath: renderMemo.filePath,
+    supportsResponsiveWatermark: supportsPublicMediaPresentations(renderMemo.media),
     ...(isAdminDetail ? { assetScope: "admin-preview" as const } : {}),
   };
   const memoDescription = extractTextSummary(renderMemo.content, 180) || snapshot.site.description;

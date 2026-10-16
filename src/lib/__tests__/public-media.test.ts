@@ -202,5 +202,24 @@ describe("public-media", () => {
         })
       ).toContain("/wm-b-v1/content.webp");
     });
+
+    it("keeps a legacy snapshot on the base facade path", () => {
+      expect(
+        buildPublicMediaAssetUrl({
+          context: { ...context, supportsResponsiveWatermark: false },
+          mediaPath: "./assets/photo.png",
+          role: "content",
+          variant: "content",
+        })
+      ).toContain("/content.webp");
+      expect(
+        buildPublicMediaAssetUrl({
+          context: { ...context, supportsResponsiveWatermark: false },
+          mediaPath: "./assets/photo.png",
+          role: "content",
+          variant: "content",
+        })
+      ).not.toContain("/wm-");
+    });
   });
 });
