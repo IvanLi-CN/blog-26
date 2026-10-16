@@ -5,6 +5,7 @@ import {
   normalizeSystemShare,
   normalizeSystemShareEditor,
   SYSTEM_SHARE_CLIPPING_MARKER,
+  stripSystemShareClippingMarker,
   validateSystemShareFiles,
 } from "../system-share";
 
@@ -103,6 +104,15 @@ describe("system share normalization", () => {
       classification: "clipping",
       url: "https://example.com/article",
     });
+  });
+
+  test("removes the generated clipping marker after an edit becomes a memo", () => {
+    expect(
+      stripSystemShareClippingMarker(
+        `https://example.com/article\n\n已改成普通闪念\n\n${SYSTEM_SHARE_CLIPPING_MARKER}`
+      )
+    ).toBe("https://example.com/article\n\n已改成普通闪念");
+    expect(stripSystemShareClippingMarker("普通闪念")).toBe("普通闪念");
   });
 
   test("preserves files and defaults visibility to private", () => {

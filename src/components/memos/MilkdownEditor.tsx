@@ -29,7 +29,9 @@ const initializingEditors = new Set<string>();
 // 调试开关与轻量日志函数
 // removed development-only logging helpers
 
-function labelCrepeInternalFields(root: HTMLElement, editorId: string) {
+function labelCrepeInternalFields(root: HTMLElement, editorId: string, ariaLabel?: string) {
+  const editor = root.querySelector<HTMLElement>('[contenteditable="true"]');
+  if (editor && ariaLabel) editor.setAttribute("aria-label", ariaLabel);
   const linkInput = root.querySelector<HTMLInputElement>(
     'input.input-area[placeholder="Paste link..."]'
   );
@@ -118,6 +120,7 @@ interface MilkdownEditorProps {
   contentSource?: "local";
   readOnly?: boolean;
   frontmatterHandling?: FrontmatterHandlingMode;
+  ariaLabel?: string;
 }
 
 // 转换图片路径用于编辑器显示
@@ -184,6 +187,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       contentSource = "local",
       readOnly = false,
       frontmatterHandling = "body-only",
+      ariaLabel,
     },
     ref
   ) => {
@@ -480,11 +484,11 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           crepeRef.current = crepe;
           lastContentRef.current = initialContentRef.current;
           isEditorReadyRef.current = true;
-          labelCrepeInternalFields(editorRef.current, editorId);
+          labelCrepeInternalFields(editorRef.current, editorId, ariaLabel);
           accessibilityObserverRef.current?.disconnect();
           accessibilityObserverRef.current = new MutationObserver(() => {
             if (editorRef.current) {
-              labelCrepeInternalFields(editorRef.current, editorId);
+              labelCrepeInternalFields(editorRef.current, editorId, ariaLabel);
             }
           });
           accessibilityObserverRef.current.observe(editorRef.current, {
@@ -528,7 +532,15 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
         // 从实例管理器中移除
         editorInstances.delete(editorId);
       };
-    }, [articlePath, editorId, contentSource, placeholder, readOnly, frontmatterHandling]);
+    }, [
+      articlePath,
+      editorId,
+      contentSource,
+      placeholder,
+      readOnly,
+      frontmatterHandling,
+      ariaLabel,
+    ]);
 
     useEffect(() => {
       crepeRef.current?.setReadonly(readOnly);

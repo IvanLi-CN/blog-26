@@ -5,6 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, inArray, isNull, lt, lte, or } from "drizzle-orm";
 import { getActiveLocalBasePath } from "@/config/paths";
 import type { SearchSuggestionReason } from "@/lib/ai/search-suggestions";
+import { generateSlugFromPath } from "@/lib/content-sources/utils";
 import { db } from "@/lib/db";
 import { buildMemoRelativePath, getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
@@ -14,6 +15,7 @@ import { posts, systemShareSubmissions } from "@/lib/schema";
 import {
   composeSystemShareMemoContent,
   normalizeSystemShareEditor,
+  SYSTEM_SHARE_MAX_REQUEST_BYTES,
   validateSystemShareFiles,
 } from "@/lib/system-share";
 import { buildPublicSnapshot, resolvePublicMemoTitle } from "@/public-site/snapshot";
@@ -86,6 +88,44 @@ async function parseBody(request: Request) {
   }
 }
 
+async function parseSystemShareForm(request: Request) {
+  const declaredLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > SYSTEM_SHARE_MAX_REQUEST_BYTES) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "分享请求过大。" });
+  }
+
+  if (!request.body) return request.formData();
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > SYSTEM_SHARE_MAX_REQUEST_BYTES) {
+        await reader.cancel();
+        throw new TRPCError({ code: "BAD_REQUEST", message: "分享请求过大。" });
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new Request(request.url, {
+    method: request.method,
+    headers: request.headers,
+    body,
+  }).formData();
+}
+
 async function createCallerForRequest(request: Request) {
   const resHeaders = new Headers();
   const ctx = await createContext({ req: request, resHeaders });
@@ -119,7 +159,7 @@ async function handleSystemShareRequest(
   if (!ctx.isAdmin)
     throw new TRPCError({ code: "FORBIDDEN", message: "只有管理员可以发布分享内容。" });
 
-  const form = await request.formData();
+  const form = await parseSystemShareForm(request);
   const submissionId = String(form.get("submissionId") || "").trim();
   if (
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
@@ -175,14 +215,30 @@ async function handleSystemShareRequest(
       .where(eq(posts.id, memoId))
       .limit(1)
       .then((rows) => rows[0]);
-    if (!row) return null;
-    const slug = memoSlug || row?.slug;
+    const slug = memoSlug || row?.slug || generateSlugFromPath(memoId, undefined, "memo");
     if (!slug) return null;
     try {
       const memo = await caller.memos.bySlug({ slug });
       return { memoId, memoSlug: slug, memo };
     } catch (error) {
-      if (error instanceof TRPCError && error.code === "NOT_FOUND") return null;
+      if (error instanceof TRPCError && error.code === "NOT_FOUND") {
+        try {
+          const authored = await readAuthoredMemo(memoId);
+          return {
+            memoId,
+            memoSlug: slug,
+            memo: {
+              id: memoId,
+              slug,
+              title:
+                typeof authored.frontmatter.title === "string" ? authored.frontmatter.title : null,
+              isPublic: authored.frontmatter.public !== false,
+            },
+          };
+        } catch {
+          return null;
+        }
+      }
       return {
         memoId,
         memoSlug: slug,

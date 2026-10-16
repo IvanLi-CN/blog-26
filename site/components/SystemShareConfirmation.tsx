@@ -9,6 +9,7 @@ import {
   normalizeSystemShareEditor,
   SYSTEM_SHARE_TTL_MS,
   type SystemShareFile,
+  stripSystemShareClippingMarker,
   validateSystemShareFiles,
 } from "@/lib/system-share";
 import { webDemoFetch } from "@/lib/web-demo-fetch";
@@ -227,9 +228,30 @@ export default function SystemShareConfirmation() {
   }
 
   function setMemoContent(value: string) {
-    setText(value);
+    if (!pending) return;
+    const previous = normalizeSystemShareEditor({
+      title: pending.title,
+      text: pending.text,
+      url: pending.url,
+      tags: pending.tags,
+      isPublic: pending.isPublic,
+      files: pending.files,
+    });
+    const next = normalizeSystemShareEditor({
+      title: pending.title,
+      text: value,
+      url: "",
+      tags: pending.tags,
+      isPublic,
+      files: pending.files,
+    });
+    const nextText =
+      previous.classification === "clipping" && next.classification === "memo"
+        ? stripSystemShareClippingMarker(value)
+        : value;
+    setText(nextText);
     setError(null);
-    persistPatch({ text: value });
+    persistPatch({ text: nextText, url: next.url ?? "" });
   }
 
   async function cancel() {
@@ -504,6 +526,7 @@ export default function SystemShareConfirmation() {
                   contentSource="local"
                   editorId="system-share-memo-editor"
                   className="quick-memo-edit-editor system-share-memo-editor"
+                  ariaLabel="Memo 内容"
                 />
               </div>
               <div className="mt-1 flex flex-wrap justify-between gap-2 px-1 text-xs text-[color:var(--nature-text-soft)]">
@@ -543,7 +566,7 @@ export default function SystemShareConfirmation() {
                   <li className="nature-muted text-sm">无附件</li>
                 )}
               </ul>
-              <label className="nature-button nature-button-outline mt-3 inline-flex min-h-11 cursor-pointer items-center gap-2">
+              <label className="system-share-file-picker nature-button nature-button-outline mt-3 inline-flex min-h-11 cursor-pointer items-center gap-2">
                 <Paperclip aria-hidden="true" />
                 添加附件
                 <input

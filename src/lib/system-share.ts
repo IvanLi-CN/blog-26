@@ -2,6 +2,9 @@ export const SYSTEM_SHARE_TTL_MS = 15 * 60 * 1000;
 export const SYSTEM_SHARE_MAX_FILES = 10;
 export const SYSTEM_SHARE_MAX_FILE_BYTES = 20 * 1024 * 1024;
 export const SYSTEM_SHARE_MAX_TOTAL_BYTES = 50 * 1024 * 1024;
+// Leave bounded room for multipart headers and field values while keeping the
+// request parser from accepting an unbounded upload body.
+export const SYSTEM_SHARE_MAX_REQUEST_BYTES = SYSTEM_SHARE_MAX_TOTAL_BYTES + 1024 * 1024;
 export const SYSTEM_SHARE_CLIPPING_MARKER = "#剪藏";
 
 const SYSTEM_SHARE_CLIPPING_MARKER_RE = /(^|\s)\\?#剪藏(?=$|[\s,.!?，。；：！？）)])/u;
@@ -52,6 +55,15 @@ function appendSystemShareClippingMarker(content: string): string {
   return SYSTEM_SHARE_CLIPPING_MARKER_RE.test(trimmed)
     ? trimmed
     : `${trimmed}\n\n${SYSTEM_SHARE_CLIPPING_MARKER}`;
+}
+
+/** Remove the generated marker when an edited share is no longer a clipping. */
+export function stripSystemShareClippingMarker(content: string): string {
+  const trimmed = content.trim();
+  if (!trimmed) return "";
+  return trimmed
+    .replace(new RegExp(`\\n?\\s*${SYSTEM_SHARE_CLIPPING_MARKER}\\s*$`, "u"), "")
+    .trim();
 }
 
 /**

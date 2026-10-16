@@ -25,7 +25,12 @@ function ToastBody({
 }) {
   const Icon = tone === "progress" ? LoaderCircle : tone === "success" ? Check : TriangleAlert;
   return (
-    <div className="system-share-toast-body" data-testid={`system-share-toast-${tone}`}>
+    <div
+      className="system-share-toast-body"
+      data-testid={`system-share-toast-${tone}`}
+      role={tone === "error" ? "alert" : "status"}
+      aria-live={tone === "error" ? "assertive" : "polite"}
+    >
       <Icon
         className={`system-share-toast-icon system-share-toast-icon-${tone}`}
         aria-hidden="true"
@@ -79,13 +84,21 @@ export function SystemShareToastViewport() {
 }
 
 export function showSystemShareProgress(message = "正在发布…") {
-  return toast.loading(<ToastBody tone="progress" message={message} />, {
+  const options: ToastOptions = {
     containerId: SYSTEM_SHARE_TOAST_ID,
     toastId: SYSTEM_SHARE_TOAST_ID,
     closeButton: false,
     autoClose: false,
     closeOnClick: false,
-  });
+    role: "status",
+    isLoading: true,
+  };
+  const render = <ToastBody tone="progress" message={message} />;
+  if (toast.isActive(SYSTEM_SHARE_TOAST_ID)) {
+    toast.update(SYSTEM_SHARE_TOAST_ID, { ...options, render, type: "default" });
+    return SYSTEM_SHARE_TOAST_ID;
+  }
+  return toast.loading(render, options);
 }
 
 export function showSystemShareSuccess(message = "发布成功") {
@@ -96,6 +109,7 @@ export function showSystemShareSuccess(message = "发布成功") {
     autoClose: false,
     closeOnClick: false,
     type: "success",
+    role: "status",
   };
   if (toast.isActive(SYSTEM_SHARE_TOAST_ID)) {
     toast.update(SYSTEM_SHARE_TOAST_ID, {
@@ -115,6 +129,7 @@ export function showSystemShareError(message: string, onRetry: () => void, actio
     autoClose: false,
     closeOnClick: false,
     type: "error",
+    role: "alert",
   };
   const render = (
     <ToastBody

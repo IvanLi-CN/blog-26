@@ -114,6 +114,11 @@
   height: 0.95rem;
 }
 
+.system-share-file-picker:focus-within {
+  outline: 2px solid var(--nature-accent-strong);
+  outline-offset: 2px;
+}
+
 @keyframes system-share-toast-spin {
   to {
     transform: rotate(360deg);
@@ -140,7 +145,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .system-share-toast-icon-progress {
+  .system-share-toast-icon-progress,
+  .system-share-toast-container .Toastify__toast,
+  .system-share-toast-container .Toastify__toast--animate,
+  .system-share-toast-container .Toastify__slide-enter--top-right,
+  .system-share-toast-container .Toastify__slide-exit--top-right {
     animation: none;
+    transition: none;
   }
 }

@@ -8,6 +8,7 @@ import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { db, initializeDB } from "@/lib/db";
 import { posts, systemShareSubmissions, users } from "@/lib/schema";
+import { SYSTEM_SHARE_MAX_REQUEST_BYTES } from "@/lib/system-share";
 
 const testId = randomUUID();
 const dbPath = path.join(process.cwd(), "tmp", `system-share-${testId}.sqlite`);
@@ -200,6 +201,15 @@ describe("system share API", () => {
       "/system-share"
     );
     const firstPayload = (await first.json()) as { memoId?: string };
+    const firstRow = await db
+      ?.select()
+      .from(posts)
+      .where(eq(posts.id, firstPayload.memoId ?? ""))
+      .limit(1)
+      .then((rows) => rows[0]);
+    if (firstRow?.filePath) {
+      fs.rmSync(path.join(contentRoot, firstRow.filePath), { force: true });
+    }
     await db?.delete(posts).where(eq(posts.id, firstPayload.memoId ?? ""));
 
     const replay = await handlePublicApiRequest(
@@ -208,6 +218,56 @@ describe("system share API", () => {
     );
     expect(replay.status).toBe(404);
     expect(await db?.select().from(posts)).toHaveLength(0);
+  });
+
+  test("replays a completed submission while indexing has not produced its row", async () => {
+    const submissionId = randomUUID();
+    const memoId = `Memos/system-share/${submissionId}.md`;
+    const memoSlug = submissionId;
+    fs.mkdirSync(path.dirname(path.join(contentRoot, memoId)), { recursive: true });
+    fs.writeFileSync(
+      path.join(contentRoot, memoId),
+      "---\ntitle: Recovered authored memo\npublic: false\n---\n\nrecoverable authored memo\n"
+    );
+    const now = Date.now();
+    await db?.insert(systemShareSubmissions).values({
+      submissionId,
+      memoId,
+      memoSlug,
+      classification: "memo",
+      state: "completed",
+      leaseToken: null,
+      leaseExpiresAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const replay = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "recoverable authored memo")),
+      "/system-share"
+    );
+    expect(replay.status).toBe(200);
+    expect(await replay.json()).toMatchObject({
+      ok: true,
+      duplicate: true,
+      memoId,
+      memo: { slug: memoSlug },
+    });
+  });
+
+  test("rejects an oversized multipart body before parsing files", async () => {
+    const request = new Request("https://console.ivanli.cc/api/public/system-share", {
+      method: "POST",
+      headers: {
+        "Remote-Email": adminEmail,
+        "content-type": "multipart/form-data; boundary=share-test",
+        "content-length": String(SYSTEM_SHARE_MAX_REQUEST_BYTES + 1),
+      },
+      body: "--share-test--",
+    });
+    const response = await handlePublicApiRequest(request, "/system-share");
+    expect(response.status).toBe(400);
+    expect(await db?.select().from(systemShareSubmissions)).toHaveLength(0);
   });
 
   test("classifies a URL share with a parser marker and no frontmatter tag", async () => {

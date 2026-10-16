@@ -75,11 +75,38 @@ test.describe("Console system share Web Demo", () => {
     await expect(page.getByTestId("system-share-memo-editor-surface")).toContainText("#剪藏");
   });
 
-  test("keeps a failed submission in place and retries from the global toast", async ({ page }) => {
+  test("persists an edited clipping URL and keeps a memo edit after refresh", async ({ page }) => {
     await clearPendingShare(page);
-    await page.goto("/share?d_persona=admin&d_share=error&d_scene=system-share-error", {
+    await page.goto("/share?d_persona=admin&d_share=url", {
       waitUntil: "domcontentloaded",
     });
+    const editor = page.getByTestId("system-share-memo-editor").locator(".ProseMirror");
+    await editor.click();
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.insertText("https://example.com/changed\n\n换成新的剪藏备注");
+    await page.waitForTimeout(500);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(editor).toContainText("https://example.com/changed");
+    await expect(editor).toContainText("换成新的剪藏备注");
+    await expect(editor).not.toContainText("https://example.com/reading-note");
+
+    await editor.click();
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.insertText("已经改成普通闪念");
+    await page.waitForTimeout(500);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(editor).toContainText("已经改成普通闪念");
+    await expect(editor).not.toContainText("#剪藏");
+  });
+
+  test("keeps a failed submission in place and retries from the global toast", async ({ page }) => {
+    await clearPendingShare(page);
+    await page.goto(
+      "/share?d_persona=admin&d_share=error&d_scene=system-share-error&d_delay=slow",
+      {
+        waitUntil: "domcontentloaded",
+      }
+    );
     await expect(page.getByTestId("system-share-page")).toBeVisible();
     await page.getByTestId("system-share-submit").click();
     await expect(page.getByTestId("system-share-toast-error")).toBeVisible();
@@ -88,6 +115,7 @@ test.describe("Console system share Web Demo", () => {
       .getByTestId("system-share-toast-error")
       .getByRole("button", { name: "重试" })
       .click();
+    await expect(page.getByTestId("system-share-toast-progress")).toBeVisible();
     await expect(page.getByTestId("system-share-toast-success")).toBeVisible();
     await expect(page).toHaveURL(/\/memos\/console-demo-created-\d+$/);
   });
