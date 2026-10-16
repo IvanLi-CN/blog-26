@@ -322,6 +322,7 @@ describe("durable product release reservations", () => {
     const rebound = rebindReleaseRun(merged, first.entry.id, 8);
     expect(rebound.entries[0]).toMatchObject({ stage: "merged", releaseRunId: 8 });
     expect(rebound.entries[0]?.failure).toBeUndefined();
+    expect(() => canonicalJson(rebound)).not.toThrow();
     const withInputs = updateRelease(rebound, first.entry.id, {
       inputs: {
         runId: 8,

@@ -291,7 +291,10 @@ export async function resolveCompletedRelease(
     return changeLedger(store, (ledger) => ({
       ledger: rebindReleaseRun(ledger, original.id, releaseRunId),
       result: null,
-    })).then(() => ({ ...original, releaseRunId, failure: undefined }));
+    })).then(() => {
+      const { failure: _failure, ...withoutFailure } = original;
+      return { ...withoutFailure, releaseRunId };
+    });
   }
   if (!bind) return { ...matched, stage: "merged", mergeSha: run.head_sha, releaseRunId };
   const original = matched;
