@@ -2116,6 +2116,30 @@ public: false
       expect(gifMetadata.pages).toBe(2);
       expect(gifMetadata.pageHeight).toBe(gifHeight);
       expect(gifMetadata.delay).toEqual([100, 200]);
+
+      const { data: gifPixels, info: gifInfo } = await sharp(gifBuffer, { animated: true })
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      const pageHeight = gifInfo.pageHeight ?? gifInfo.height;
+      const pageCount = gifInfo.pages ?? Math.max(1, Math.floor(gifInfo.height / pageHeight));
+      for (let page = 0; page < pageCount; page += 1) {
+        let brightPixels = 0;
+        const pageTop = page * pageHeight;
+        for (let y = Math.max(0, pageHeight - 45); y < pageHeight; y += 1) {
+          for (let x = Math.max(0, gifInfo.width - 60); x < gifInfo.width; x += 1) {
+            const offset = ((pageTop + y) * gifInfo.width + x) * gifInfo.channels;
+            if (
+              gifPixels[offset] > 120 &&
+              gifPixels[offset + 1] > 120 &&
+              gifPixels[offset + 2] > 120
+            ) {
+              brightPixels += 1;
+            }
+          }
+        }
+        expect(brightPixels).toBeGreaterThan(0);
+      }
     } finally {
       delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
       globalThis.fetch = originalFetch;

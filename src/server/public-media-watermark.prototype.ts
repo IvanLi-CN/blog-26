@@ -1,6 +1,6 @@
 /**
  * THROWAWAY: Does the approved Iv mark work as a media watermark?
- * Three compositions on one local artifact, switched by ?variant=A|B|C.
+ * Two compositions on one local artifact, switched by ?variant=A|B.
  * Run: bun src/server/public-media-watermark.prototype.ts
  * This script is outside the product router and is never imported by production.
  */
@@ -11,9 +11,14 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dir, "../..");
 const outputDir = resolve(process.env.WATERMARK_PROTOTYPE_OUTPUT || "tmp/watermark-prototype");
 const source = await readFile(resolve(root, "site/assets/brand/source/ivan-blog-mark.svg"), "utf8");
+const removeStroke = (svg: string) =>
+  svg.replaceAll(
+    ' stroke="#14241c" stroke-width="14" stroke-linejoin="round" paint-order="stroke fill"',
+    ""
+  );
 const watermarkAssets = {
-  A: await readFile(resolve(root, "public/watermark-ivanli-a.v1.svg"), "utf8"),
-  B: await readFile(resolve(root, "public/watermark-ivanli-b.v1.svg"), "utf8"),
+  A: removeStroke(await readFile(resolve(root, "public/watermark-ivanli-a.v1.svg"), "utf8")),
+  B: removeStroke(await readFile(resolve(root, "public/watermark-ivanli-b.v1.svg"), "utf8")),
 };
 const paths = source.match(/<path[^>]*\/>/gu)?.join("") || "";
 const scenes = await Promise.all(

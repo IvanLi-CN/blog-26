@@ -1062,11 +1062,47 @@ async function renderLocalMediaVariant(
       .resize({ width: overlayWidth, fit: "inside" })
       .png()
       .toBuffer({ resolveWithObject: true });
+    const overlayFrame = await sharp({
+      create: {
+        width: dimensions.width,
+        height: dimensions.height,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+    })
+      .composite([
+        {
+          input: overlayResult.data,
+          left: Math.max(0, dimensions.width - overlayWidth - margin),
+          top: Math.max(0, dimensions.height - margin - overlayResult.info.height),
+          blend: "over",
+        },
+      ])
+      .png()
+      .toBuffer();
+    // Sharp composites a one-page overlay onto only the first animation frame, so repeat the
+    // transparent frame canvas through the stacked animation before compositing.
+    const overlayFramePixels = await sharp(overlayFrame).ensureAlpha().raw().toBuffer();
+    const frameCount = animated ? Math.max(1, sourceMetadata?.pages ?? 1) : 1;
+    const overlayPixels = Buffer.alloc(overlayFramePixels.byteLength * frameCount);
+    for (let page = 0; page < frameCount; page += 1) {
+      overlayFramePixels.copy(overlayPixels, page * overlayFramePixels.byteLength);
+    }
+    const overlayInput = await sharp(overlayPixels, {
+      raw: {
+        width: dimensions.width,
+        height: dimensions.height * frameCount,
+        channels: 4,
+        pageHeight: dimensions.height,
+      },
+    })
+      .png()
+      .toBuffer();
     pipeline = pipeline.composite([
       {
-        input: overlayResult.data,
-        left: Math.max(0, dimensions.width - overlayWidth - margin),
-        top: Math.max(0, dimensions.height - margin - overlayResult.info.height),
+        input: overlayInput,
+        left: 0,
+        top: 0,
         blend: "over",
       },
     ]);

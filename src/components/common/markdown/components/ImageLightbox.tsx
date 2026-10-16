@@ -195,13 +195,13 @@ export function ImageLightbox({
               aria-label="关闭图片预览"
               onClick={closeLightbox}
             />
-            <div className="relative z-10 max-h-[90vh] max-w-[90vw] p-4">
+            <div className="relative z-10 flex max-h-[90vh] w-[min(90vw,1200px)] items-center justify-center p-4">
               {/* biome-ignore lint/performance/noImgElement: Lightbox uses native img intentionally */}
               <img
                 ref={lightboxImage.imageRef}
                 src={lightboxImage.source}
                 alt={alt}
-                className="max-h-full max-w-full rounded-[var(--nature-radius-sm)] object-contain shadow-2xl"
+                className="block h-auto max-h-[calc(90vh-2rem)] max-w-full rounded-[var(--nature-radius-sm)] object-contain shadow-2xl"
               />
 
               {/* 图片标题 */}
