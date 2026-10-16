@@ -5,6 +5,7 @@ import { z } from "zod";
 import releaseContract from "../../.github/release-contract.json";
 
 const stepSchema = z.object({
+  id: z.string().optional(),
   name: z.string().optional(),
   if: z.string().optional(),
   run: z.string().optional(),
@@ -79,6 +80,19 @@ describe("prerelease workflow deployment boundary", () => {
   test("production release timeout matches the signed contract", () => {
     expect(release.jobs.production["timeout-minutes"]).toBe(releaseContract.releaseTimeoutMinutes);
     expect(release.jobs.production["timeout-minutes"]).toBe(360);
+  });
+
+  test("recovers artifacts before checking out the verified product source", () => {
+    const steps = release.jobs.production.steps;
+    const restoreIndex = steps.findIndex(
+      (step) => step.run === "bun scripts/product-release.ts restore"
+    );
+    const sourceIndex = steps.findIndex(
+      (step) => step.name === "Checkout the verified merged source"
+    );
+    expect(restoreIndex).toBeGreaterThanOrEqual(0);
+    expect(sourceIndex).toBeGreaterThan(restoreIndex);
+    expect(steps[restoreIndex]?.id).toBe("restore");
   });
 
   test("production freeze uses bounded parallel media downloads", () => {
