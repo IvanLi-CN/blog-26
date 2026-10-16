@@ -1691,7 +1691,7 @@ public: false
       expect(init?.method).toBe("GET");
       expect(url).toContain("/fit-in/1600x900/");
       expect(url).toContain(
-        `watermark(b64:${Buffer.from("http://blog:25090/watermark-ivanli-b.v1.svg").toString("base64url")},-2p,-2p,36,18,18)`
+        `watermark(b64:${Buffer.from("http://blog:25090/watermark-ivanli-b.v1.svg").toString("base64url")},-16,-16,36,18)`
       );
       return new Response("versioned-image", {
         status: 200,
@@ -1747,6 +1747,9 @@ public: false
       expect(url).toContain("/fit-in/1600x900/filters:frame(0):format(webp):watermark(");
       expect(url).toContain(
         Buffer.from("http://blog:25090/watermark-ivanli-b.v1.svg").toString("base64url")
+      );
+      expect(url).toContain(
+        `watermark(b64:${Buffer.from("http://blog:25090/watermark-ivanli-b.v1.svg").toString("base64url")},-32,-32,36,18)`
       );
       expect(url).toContain(":strip_exif()/");
       return new Response("versioned-video-poster", {

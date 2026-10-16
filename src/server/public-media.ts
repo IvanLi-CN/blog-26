@@ -859,7 +859,11 @@ async function readImagorDerivedDimensions(params: {
   return { width: Math.round(width), height: Math.round(height) };
 }
 
-function getWatermarkFilter(request: Request, renderId?: PublicMediaRenderId) {
+function getWatermarkFilter(
+  request: Request,
+  renderId?: PublicMediaRenderId,
+  dimensions?: DerivedDimensions
+) {
   if (!renderId) {
     const watermarkUrl = `${getInternalSourceBaseUrl(request)}/watermark-ivanli.svg`;
     return `watermark(${encodeImagorFilterString(watermarkUrl)},-24,-24,18,22,22)`;
@@ -867,8 +871,12 @@ function getWatermarkFilter(request: Request, renderId?: PublicMediaRenderId) {
 
   const asset = renderId === "wm-a-v1" ? "watermark-ivanli-a.v1.svg" : "watermark-ivanli-b.v1.svg";
   const ratio = renderId === "wm-a-v1" ? 7 : 18;
+  if (!dimensions) {
+    throw new Error(`Missing derived dimensions for versioned watermark: ${renderId}`);
+  }
+  const margin = Math.max(1, Math.round(dimensions.width * 0.02));
   const watermarkUrl = `${getInternalSourceBaseUrl(request)}/${asset}`;
-  return `watermark(${encodeImagorFilterString(watermarkUrl)},-2p,-2p,36,${ratio},${ratio})`;
+  return `watermark(${encodeImagorFilterString(watermarkUrl)},-${margin},-${margin},36,${ratio})`;
 }
 
 async function buildImagorPath(params: {
@@ -896,7 +904,7 @@ async function buildImagorPath(params: {
       throw new Error(`Unable to determine derived media dimensions: ${params.ref.sourcePath}`);
     }
     if (meetsVersionedWatermarkThreshold(dimensions)) {
-      filters.push(getWatermarkFilter(params.request, params.renderId));
+      filters.push(getWatermarkFilter(params.request, params.renderId, dimensions));
     }
     filters.push("strip_exif()");
   } else if (await shouldApplyLegacyWatermark(params.ref, params.variant)) {

@@ -34,12 +34,6 @@ export function useResponsiveWatermark(params: {
   }, [fallback, source]);
 
   useEffect(() => {
-    if (enabled) {
-      setVariant(fallback);
-    }
-  }, [enabled, fallback]);
-
-  useEffect(() => {
     if (!source) return;
     if (!enabled) return;
     const image = imageRef.current;
