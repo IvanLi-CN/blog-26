@@ -91,7 +91,7 @@
         },
         {
           "path": "src/lib/release/ledger.ts",
-          "blob": "d56d9f77ac2119e834e8effe0802a09f1b8be85a",
+          "blob": "0d5d6a4b1cee97572e90d8b7323bd84876cc1bd0",
           "command": "bun test tests/lib/manual-release-ledger.test.ts: cancelled merged releases can record cancellation and be abandoned"
         }
       ]
