@@ -113,7 +113,7 @@ describe("verify-pages-build", () => {
     writeBuildFile(
       cwd,
       "site-dist/watermark-ivanli-b.v1.svg",
-      "<svg viewBox='0 0 1 1'>ivanli.cc</svg>"
+      "<svg viewBox='0 0 1 1'><g class='watermark-domain'></g></svg>"
     );
     writeBuildFile(
       cwd,
@@ -197,7 +197,7 @@ describe("verify-pages-build", () => {
     writeBuildFile(
       cwd,
       "site-dist/watermark-ivanli-b.v1.svg",
-      "<svg viewBox='0 0 1 1'>ivanli.cc</svg>"
+      "<svg viewBox='0 0 1 1'><g class='watermark-domain'></g></svg>"
     );
     writeBuildFile(
       cwd,
@@ -282,7 +282,7 @@ describe("verify-pages-build", () => {
     writeBuildFile(
       cwd,
       "site-dist/watermark-ivanli-b.v1.svg",
-      "<svg viewBox='0 0 1 1'>ivanli.cc</svg>"
+      "<svg viewBox='0 0 1 1'><g class='watermark-domain'></g></svg>"
     );
     writeBuildFile(
       cwd,
@@ -365,7 +365,7 @@ describe("verify-pages-build", () => {
     writeBuildFile(
       cwd,
       "site-dist/watermark-ivanli-b.v1.svg",
-      "<svg viewBox='0 0 1 1'>ivanli.cc</svg>"
+      "<svg viewBox='0 0 1 1'><g class='watermark-domain'></g></svg>"
     );
     writeBuildFile(
       cwd,

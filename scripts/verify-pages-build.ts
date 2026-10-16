@@ -250,7 +250,7 @@ function buildDynamicChecks(
     },
     {
       file: "site-dist/watermark-ivanli-b.v1.svg",
-      includes: ["<svg", "ivanli.cc", "viewBox"],
+      includes: ["<svg", "watermark-domain", "viewBox"],
       excludes: [],
     },
     {
