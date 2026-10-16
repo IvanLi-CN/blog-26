@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "6e6e0ffbbbd01083140cfa46d805d73ec199cd0f",
+  "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
   "covered_files": {
     "scripts/package-public-media.test.ts": "7142f095cb378dafacf01ab92c5a891010fadbe3",
     "scripts/package-public-media.ts": "1c92ee2377adfe2446d467d38edc3a3aba44b0be",
@@ -68,7 +68,17 @@
     "public_api": {
       "impact": "patch",
       "change": "unchanged",
-      "supported_consumer_versions": ["3.3.0", "3.3.2", "3.3.3", "3.4.2", "3.4.3"],
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3"
+      ],
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
