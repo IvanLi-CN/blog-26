@@ -73,7 +73,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "c4adb47559bbee590119d4639128f4280499163e",
+          "blob": "ae5553b839bf307992cf1baf882ee97d7c32d341",
           "command": "Focused HTTP, imagor metadata, threshold, orientation and every-frame animated GIF regression coverage"
         },
         {
@@ -94,7 +94,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "c4adb47559bbee590119d4639128f4280499163e",
+          "blob": "ae5553b839bf307992cf1baf882ee97d7c32d341",
           "command": "bun test targeted public-media, selector, static packaging and HTTP compatibility files; 157 passed, 3 skipped"
         },
         {
@@ -147,7 +147,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "c4adb47559bbee590119d4639128f4280499163e",
+          "blob": "ae5553b839bf307992cf1baf882ee97d7c32d341",
           "command": "HTTP compatibility tests cover old routes, authorization boundaries and new render identities without state migration"
         }
       ]
