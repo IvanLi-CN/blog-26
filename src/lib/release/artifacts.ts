@@ -109,7 +109,7 @@ export function assertNeverFrozen(
     .object({
       id: z.number().int().positive(),
       run_attempt: z.number().int().positive(),
-      event: z.literal("workflow_run"),
+      event: z.enum(["workflow_run", "workflow_dispatch"]),
       path: z.literal(".github/workflows/product-release.yml"),
       head_branch: z.literal("main"),
       head_repository: z.object({ full_name: z.literal(github.contract.repository) }),
