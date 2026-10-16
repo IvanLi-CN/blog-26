@@ -113,7 +113,7 @@ describe("verify-pages-build", () => {
     writeBuildFile(
       cwd,
       "site-dist/watermark-ivanli-b.v1.svg",
-      "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0'/></g></svg>"
+      "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0L1 1'/></g></svg>"
     );
     writeBuildFile(
       cwd,
@@ -197,7 +197,7 @@ describe("verify-pages-build", () => {
     writeBuildFile(
       cwd,
       "site-dist/watermark-ivanli-b.v1.svg",
-      "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0'/></g></svg>"
+      "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0L1 1'/></g></svg>"
     );
     writeBuildFile(
       cwd,
@@ -282,7 +282,7 @@ describe("verify-pages-build", () => {
     writeBuildFile(
       cwd,
       "site-dist/watermark-ivanli-b.v1.svg",
-      "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0'/></g></svg>"
+      "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0L1 1'/></g></svg>"
     );
     writeBuildFile(
       cwd,
@@ -365,7 +365,7 @@ describe("verify-pages-build", () => {
     writeBuildFile(
       cwd,
       "site-dist/watermark-ivanli-b.v1.svg",
-      "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0'/></g></svg>"
+      "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0L1 1'/></g></svg>"
     );
     writeBuildFile(
       cwd,
@@ -394,7 +394,7 @@ describe("verify-pages-build", () => {
     ).toThrow("version build-time public asset URL with ?v=");
   });
 
-  it("fails when the outlined watermark domain group has no paths", () => {
+  it("fails when the outlined watermark domain group has no drawable paths", () => {
     const cwd = makeTempBuildRoot();
     const siteUrl = "https://pages.example.test/blog-26";
 
@@ -420,7 +420,7 @@ describe("verify-pages-build", () => {
     writeBuildFile(
       cwd,
       "site-dist/watermark-ivanli-b.v1.svg",
-      "<svg viewBox='0 0 1 1'><g class='watermark-domain'></g></svg>"
+      "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0'/></g></svg>"
     );
     writeBuildFile(
       cwd,
@@ -429,7 +429,7 @@ describe("verify-pages-build", () => {
     );
 
     expect(() => verifyPagesBuild({ cwd, siteUrl })).toThrow(
-      "at least one path in g.watermark-domain"
+      "a drawable path in g.watermark-domain"
     );
   });
 });

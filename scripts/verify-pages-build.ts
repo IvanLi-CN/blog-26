@@ -62,8 +62,12 @@ function assertIncludesOneOf(content: string, needles: readonly string[], file: 
 
 function assertWatermarkDomainPaths(content: string, file: string) {
   const document = JSDOM.fragment(content);
-  if (!document.querySelector("g.watermark-domain path")) {
-    throw new Error(`Expected ${file} to contain at least one path in g.watermark-domain`);
+  const hasDrawablePath = [...document.querySelectorAll("g.watermark-domain path")].some((path) => {
+    const definition = path.getAttribute("d") ?? "";
+    return /[lhvcsqtaz]/iu.test(definition);
+  });
+  if (!hasDrawablePath) {
+    throw new Error(`Expected ${file} to contain a drawable path in g.watermark-domain`);
   }
 }
 
