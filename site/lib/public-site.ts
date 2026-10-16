@@ -153,7 +153,10 @@ function getSnapshotPath() {
 }
 
 export async function getSnapshot() {
-  if (process.env.CONSOLE_RUNTIME === "true") {
+  // Console Web Demo runs through Astro's Node SSR loader. Keep it on the
+  // generated fixture snapshot so detail routes do not import the Bun-only
+  // database runtime used by the real console server.
+  if (process.env.CONSOLE_RUNTIME === "true" && process.env.CONSOLE_WEB_DEMO_BUILD !== "true") {
     const { buildPublicSnapshot } = await import("@/public-site/snapshot");
     return normalizeSnapshotPaths(await buildPublicSnapshot(), true);
   }

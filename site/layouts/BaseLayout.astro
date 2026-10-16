@@ -6,6 +6,7 @@ import AmbientScene from "@/components/common/AmbientScene";
 import WebDemoInspector from "@/components/WebDemoInspector";
 import { SITE, UI } from "@/config/site";
 import IconifyBoot from "../components/IconifyBoot";
+import { SystemShareToastViewport } from "../components/SystemShareToast";
 import { getPublicPwaAssetPaths } from "../lib/public-pwa";
 import { getCanonicalUrl, toAbsoluteSiteUrl } from "../lib/public-site";
 import { toPublicSitePath } from "../lib/runtime-urls";
@@ -36,6 +37,7 @@ const resolvedImage =
 <html
   lang="zh-CN"
   data-web-demo-build={isWebDemoBuild ? "true" : undefined}
+  data-console-web-demo-build={process.env.CONSOLE_WEB_DEMO_BUILD === "true" ? "true" : undefined}
   data-ui-theme="light"
   data-ui-preference="system"
   data-theme="light"
@@ -238,8 +240,13 @@ const resolvedImage =
         <slot />
       </div>
     </div>
+    {isConsoleRuntime ? <SystemShareToastViewport client:load /> : null}
     {isWebDemoBuild ? (
-      <WebDemoInspector client:load app="public" initialPathname={Astro.url.pathname} />
+      <WebDemoInspector
+        client:load
+        app={isConsoleRuntime ? "admin" : "public"}
+        initialPathname={Astro.url.pathname}
+      />
     ) : null}
   </body>
 </html>

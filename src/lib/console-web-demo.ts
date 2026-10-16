@@ -136,6 +136,7 @@ type ConsoleWebDemoMutationJournal = {
   sequence: number;
   deleted: string[];
   updated: ConsoleWebDemoMutationUpdate[];
+  created?: ConsoleWebDemoMemo[];
 };
 
 function isConsoleWebDemoMemo(value: unknown): value is ConsoleWebDemoMemo {
@@ -250,6 +251,9 @@ function readMutationJournal(cookieHeader?: string) {
             (typeof update.v === "string" || update.v === null)
         )
       ),
+      created: Array.isArray(parsed.created)
+        ? parsed.created.filter(isConsoleWebDemoMemo).map(cloneMemo)
+        : [],
     };
   } catch {
     return null;
@@ -275,7 +279,10 @@ function applyMutationJournal(
         publishedAt: update.p ? (update.v ?? memo.publishedAt) : null,
       };
     });
-  return memos;
+  const created = (journal.created ?? []).filter(
+    (memo) => allowPrivatePromotion || (memo.isPublic && !memo.draft)
+  );
+  return [...created.map(cloneMemo), ...memos];
 }
 
 function buildMutationJournal(memos: ConsoleWebDemoMemo[], sequence: number) {
@@ -298,7 +305,8 @@ function buildMutationJournal(memos: ConsoleWebDemoMemo[], sequence: number) {
       },
     ];
   });
-  return { sequence, deleted, updated } satisfies ConsoleWebDemoMutationJournal;
+  const created = memos.filter((memo) => !seedBySlug.has(memo.slug)).map(cloneMemo);
+  return { sequence, deleted, updated, created } satisfies ConsoleWebDemoMutationJournal;
 }
 
 function persistStore(storageKey: string, memos: ConsoleWebDemoMemo[], sequence: number) {
@@ -311,25 +319,28 @@ function persistStore(storageKey: string, memos: ConsoleWebDemoMemo[], sequence:
   try {
     const encoded = encodeURIComponent(JSON.stringify(buildMutationJournal(memos, sequence)));
     const clearCookie = (name: string) => {
-      document.cookie = `${name}=; Max-Age=0; Path=/memos/; SameSite=Lax`;
+      document.cookie = `${name}=; Max-Age=0; Path=/; SameSite=Lax`;
     };
     clearCookie(CONSOLE_WEB_DEMO_MUTATION_COOKIE);
     document.cookie = `${CONSOLE_WEB_DEMO_LEGACY_MUTATION_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`;
     for (let index = 0; index < CONSOLE_WEB_DEMO_COOKIE_MAX_CHUNKS; index += 1) {
       clearCookie(`${CONSOLE_WEB_DEMO_MUTATION_COOKIE}_${index}`);
     }
-    if (encoded !== encodeURIComponent(JSON.stringify({ sequence, deleted: [], updated: [] }))) {
+    if (
+      encoded !==
+      encodeURIComponent(JSON.stringify({ sequence, deleted: [], updated: [], created: [] }))
+    ) {
       const chunkCount = Math.ceil(encoded.length / CONSOLE_WEB_DEMO_COOKIE_CHUNK_SIZE);
       if (chunkCount > CONSOLE_WEB_DEMO_COOKIE_MAX_CHUNKS) return;
       if (encoded.length <= CONSOLE_WEB_DEMO_COOKIE_CHUNK_SIZE) {
-        document.cookie = `${CONSOLE_WEB_DEMO_MUTATION_COOKIE}=${encoded}; Max-Age=3600; Path=/memos/; SameSite=Lax`;
+        document.cookie = `${CONSOLE_WEB_DEMO_MUTATION_COOKIE}=${encoded}; Max-Age=3600; Path=/; SameSite=Lax`;
       } else {
         for (
           let offset = 0, index = 0;
           offset < encoded.length;
           offset += CONSOLE_WEB_DEMO_COOKIE_CHUNK_SIZE, index += 1
         ) {
-          document.cookie = `${CONSOLE_WEB_DEMO_MUTATION_COOKIE}_${index}=${encoded.slice(offset, offset + CONSOLE_WEB_DEMO_COOKIE_CHUNK_SIZE)}; Max-Age=3600; Path=/memos/; SameSite=Lax`;
+          document.cookie = `${CONSOLE_WEB_DEMO_MUTATION_COOKIE}_${index}=${encoded.slice(offset, offset + CONSOLE_WEB_DEMO_COOKIE_CHUNK_SIZE)}; Max-Age=3600; Path=/; SameSite=Lax`;
         }
       }
     }

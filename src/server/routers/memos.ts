@@ -432,7 +432,11 @@ const createMemoSchema = z
       )
       .default([]),
     systemShare: z
-      .object({ source: z.literal("system-share"), targetUrl: z.string().url().optional() })
+      .object({
+        source: z.literal("system-share"),
+        targetUrl: z.string().url().optional(),
+        submissionId: z.string().uuid(),
+      })
       .optional(),
   })
   .superRefine((value, context) => {
@@ -876,8 +880,41 @@ export const memosRouter = router({
         const now = Date.now();
         const nowIso = new Date(now).toISOString();
 
-        const fileName = generateMemoFilename(normalizedContent, title, now);
+        const fileName = systemShare
+          ? `system-share/${systemShare.submissionId}.md`
+          : generateMemoFilename(normalizedContent, title, now);
         createdId = buildMemoRelativePath(fileName, getLocalMemoRootPath()).replace(/\\+/g, "/");
+
+        // A deterministic system-share path is the filesystem commit point. Read
+        // it before rebuilding clipping projections so a retry cannot apply newer
+        // request values to an already-published Memo.
+        if (systemShare) {
+          try {
+            const existing = await readAuthoredMemo(createdId);
+            normalizedContent = existing.body;
+            const existingAttachments = existing.frontmatter.attachments;
+            normalizedAttachments = Array.isArray(existingAttachments)
+              ? existingAttachments
+              : normalizedAttachments;
+            createdSource = source;
+            if (isTestEnv) {
+              createdMemo = await db
+                .select()
+                .from(posts)
+                .where(and(eq(posts.type, "memo"), eq(posts.id, createdId)))
+                .limit(1)
+                .then((rows) => rows[0]);
+            }
+            lastError = null;
+            break;
+          } catch (error) {
+            if (
+              !(error && typeof error === "object" && "code" in error && error.code === "ENOENT")
+            ) {
+              throw error;
+            }
+          }
+        }
 
         const frontmatter: Record<string, unknown> = {
           title: recognizeMemoClipping(normalizedContent, { title, tags: inputTags }).enabled
@@ -901,7 +938,11 @@ export const memosRouter = router({
         const basePath = getLocalBasePathOrThrow();
         const fullPath = join(basePath, createdId);
         await mkdir(dirname(fullPath), { recursive: true });
-        await writeFile(fullPath, markdownContent, "utf-8");
+
+        await writeFile(fullPath, markdownContent, {
+          encoding: "utf-8",
+          flag: systemShare ? "wx" : "w",
+        });
 
         createdSource = source;
 

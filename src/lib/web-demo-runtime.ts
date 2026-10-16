@@ -47,7 +47,11 @@ export type WebDemoScene =
   | "admin-sync-failed"
   | "admin-sync-unconfigured"
   | "admin-sync-disabled"
-  | "admin-sync-history";
+  | "admin-sync-history"
+  | "system-share-confirmation"
+  | "system-share-publishing"
+  | "system-share-success"
+  | "system-share-error";
 
 export type WebDemoSceneState = {
   scene: WebDemoScene;
@@ -164,6 +168,10 @@ const scenes = [
   "admin-sync-unconfigured",
   "admin-sync-disabled",
   "admin-sync-history",
+  "system-share-confirmation",
+  "system-share-publishing",
+  "system-share-success",
+  "system-share-error",
 ] as const satisfies readonly WebDemoScene[];
 const personas = ["guest", "user", "admin"] as const satisfies readonly WebDemoPersona[];
 const connections = ["online", "offline"] as const satisfies readonly WebDemoConnection[];
@@ -232,6 +240,8 @@ function environmentToLegacyNetwork(environment: WebDemoEnvironment): WebDemoNet
 }
 
 export function getDefaultWebDemoSceneState(pathname = ""): WebDemoSceneState {
+  if (pathname.startsWith("/share"))
+    return { ...defaultSceneState, scene: "system-share-confirmation" };
   if (pathname.startsWith("/admin")) return { ...defaultSceneState, scene: "admin-dashboard" };
   if (pathname.startsWith("/playbook/topics/"))
     return { ...defaultSceneState, scene: "playbook-topic" };
@@ -444,6 +454,30 @@ function runtimeFromLegacyState(
 }
 
 export function getWebDemoSceneOptions(pathname: string, app: WebDemoApp): WebDemoSceneOption[] {
+  if (pathname.startsWith("/share")) {
+    return [
+      {
+        value: "system-share-confirmation",
+        label: "系统分享 · 确认",
+        description: "可编辑的系统分享确认表单，默认私有。",
+      },
+      {
+        value: "system-share-publishing",
+        label: "系统分享 · 发布中",
+        description: "全局 Toast 告知正在提交，操作区暂时锁定。",
+      },
+      {
+        value: "system-share-success",
+        label: "系统分享 · 发布成功",
+        description: "成功提示保留一秒后进入新 Memo 详情。",
+      },
+      {
+        value: "system-share-error",
+        label: "系统分享 · 失败重试",
+        description: "失败提示保留重试与关闭操作。",
+      },
+    ];
+  }
   if (app === "admin") {
     return [
       {

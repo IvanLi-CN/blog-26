@@ -186,6 +186,64 @@ body:has(.quick-memo-edit-modal) .nature-site-header {
   padding: 1rem 0;
 }
 
+/* The standalone system-share page does not have the modal's inner gutter.
+ * Keep Memo text away from the editor edge while preserving the continuous surface. */
+.system-share-memo-editor .milkdown .ProseMirror {
+  padding-inline: 1rem;
+}
+
+.system-share-memo-editor .milkdown .ProseMirror-focused {
+  --prosemirror-virtual-cursor-color: var(--nature-accent-strong);
+}
+
+.system-share-memo-editor .milkdown {
+  --crepe-color-selected: color-mix(in srgb, var(--nature-accent-strong) 42%, transparent);
+}
+
+.system-share-memo-editor .milkdown .ProseMirror::selection,
+.system-share-memo-editor .milkdown .ProseMirror *::selection {
+  background: var(--crepe-color-selected);
+  color: var(--nature-text);
+}
+
+@supports selector(details::details-content) {
+  .system-share-original {
+    interpolate-size: allow-keywords;
+  }
+
+  .system-share-original::details-content {
+    block-size: 0;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-0.35rem);
+    transition:
+      block-size 260ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 180ms ease,
+      transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+      content-visibility 260ms allow-discrete;
+  }
+
+  .system-share-original[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+    transform: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .system-share-original::details-content,
+    .system-share-original[open]::details-content {
+      transition: none;
+      transform: none;
+    }
+  }
+
+  html[data-web-demo-motion="reduce"] .system-share-original::details-content,
+  html[data-web-demo-motion="reduce"] .system-share-original[open]::details-content {
+    transition: none;
+    transform: none;
+  }
+}
+
 /* Keep the contextual formatting toolbar readable above the continuous editor
  * surface. The editor body stays transparent; only this transient control gets
  * its own surface so it does not visually merge into the memo text. */
@@ -321,6 +379,25 @@ body:has(.quick-memo-edit-modal) .nature-site-header {
   font-size: 0.875rem;
 }
 
+.system-share-memo-footer-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.system-share-memo-footer-row .quick-memo-edit-visibility {
+  flex: 0 0 auto;
+  justify-content: flex-start;
+}
+
+.system-share-memo-footer-row .quick-memo-edit-actions {
+  margin-left: auto;
+}
+
+.system-share-memo-footer-note {
+  line-height: 1.35;
+}
+
 .quick-memo-edit-skeleton {
   min-height: 12rem;
   background: linear-gradient(
@@ -364,6 +441,10 @@ body:has(.quick-memo-edit-modal) .nature-site-header {
 
   .quick-memo-edit-editor .milkdown .ProseMirror {
     padding: 1rem 0;
+  }
+
+  .system-share-memo-editor .milkdown .ProseMirror {
+    padding-inline: 1rem;
   }
 
   .quick-memo-edit-footer {
@@ -413,5 +494,34 @@ body:has(.quick-memo-edit-modal) .nature-site-header {
 
   .quick-memo-edit-action {
     flex: 1;
+  }
+
+  .system-share-memo-footer-row {
+    gap: 0.5rem;
+  }
+
+  .system-share-memo-footer-row .quick-memo-edit-actions {
+    width: auto;
+    gap: 0.375rem;
+  }
+
+  .system-share-memo-footer-row .quick-memo-edit-action {
+    flex: 0 0 auto;
+    padding-inline: 0.75rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .system-share-memo-footer-row {
+    flex-wrap: wrap;
+  }
+
+  .system-share-memo-footer-row .quick-memo-edit-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .system-share-memo-footer-row .quick-memo-edit-action {
+    flex: 1 1 0;
   }
 }

@@ -1,16 +1,21 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { TRPCError } from "@trpc/server";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, lte, or } from "drizzle-orm";
 import { getActiveLocalBasePath } from "@/config/paths";
 import type { SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import { db } from "@/lib/db";
-import { getServerLocalMemoRootPath } from "@/lib/memo-paths";
+import { buildMemoRelativePath, getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
 import { appendPublicCorsHeaders, createPublicCorsPreflightResponse } from "@/lib/public-cors";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
 import { posts, systemShareSubmissions } from "@/lib/schema";
-import { normalizeSystemShare, validateSystemShareFiles } from "@/lib/system-share";
+import {
+  composeSystemShareMemoContent,
+  normalizeSystemShareEditor,
+  validateSystemShareFiles,
+} from "@/lib/system-share";
 import { buildPublicSnapshot, resolvePublicMemoTitle } from "@/public-site/snapshot";
 import { handleClippingRequest } from "@/server/clipping/api";
 import { isClippingRowPublic } from "@/server/clipping/projection";
@@ -29,6 +34,12 @@ const SEARCH_SUGGESTION_REASONS = new Set<SearchSuggestionReason>([
   "filtered_empty",
 ]);
 const SYSTEM_SHARE_PROCESSING_TTL_MS = 15 * 60 * 1000;
+
+type SystemShareResult = {
+  memoId: string;
+  memoSlug: string;
+  memo: unknown;
+};
 
 function json(request: Request, data: unknown, init: ResponseInit = {}, extraHeaders?: Headers) {
   const headers = new Headers(init.headers);
@@ -110,42 +121,12 @@ async function handleSystemShareRequest(
 
   const form = await request.formData();
   const submissionId = String(form.get("submissionId") || "").trim();
-  if (!/^[0-9a-f-]{16,80}$/iu.test(submissionId)) {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+      submissionId
+    )
+  ) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "分享提交标识无效。" });
-  }
-
-  const now = Date.now();
-  const existing = await db
-    .select()
-    .from(systemShareSubmissions)
-    .where(eq(systemShareSubmissions.submissionId, submissionId))
-    .limit(1)
-    .then((rows) => rows[0]);
-  if (existing?.state === "completed" && existing.memoId) {
-    return json(
-      request,
-      { ok: true, duplicate: true, memoId: existing.memoId },
-      { status: 200 },
-      resHeaders
-    );
-  }
-  if (existing && now - existing.updatedAt < SYSTEM_SHARE_PROCESSING_TTL_MS) {
-    throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
-  }
-  if (existing)
-    await db
-      .delete(systemShareSubmissions)
-      .where(eq(systemShareSubmissions.submissionId, submissionId));
-  try {
-    await db.insert(systemShareSubmissions).values({
-      submissionId,
-      memoId: null,
-      state: "processing",
-      createdAt: now,
-      updatedAt: now,
-    });
-  } catch {
-    throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
   }
 
   const files = form.getAll("files").filter((value): value is File => value instanceof File);
@@ -157,9 +138,6 @@ async function handleSystemShareRequest(
   }));
   const fileValidation = validateSystemShareFiles(fileDescriptors);
   if (!fileValidation.ok) {
-    await db
-      .delete(systemShareSubmissions)
-      .where(eq(systemShareSubmissions.submissionId, submissionId));
     throw new TRPCError({ code: "BAD_REQUEST", message: fileValidation.error });
   }
 
@@ -171,13 +149,10 @@ async function handleSystemShareRequest(
       ? parsed.filter((tag): tag is string => typeof tag === "string")
       : [];
   } catch {
-    await db
-      .delete(systemShareSubmissions)
-      .where(eq(systemShareSubmissions.submissionId, submissionId));
     throw new TRPCError({ code: "BAD_REQUEST", message: "标签格式无效。" });
   }
 
-  const normalized = normalizeSystemShare({
+  const normalized = normalizeSystemShareEditor({
     title: String(form.get("title") || ""),
     text: String(form.get("text") || ""),
     url: String(form.get("url") || ""),
@@ -187,59 +162,291 @@ async function handleSystemShareRequest(
   });
   const basePath = getActiveLocalBasePath();
   if (!basePath) {
-    await db
-      .delete(systemShareSubmissions)
-      .where(eq(systemShareSubmissions.submissionId, submissionId));
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "本地内容源未启用。" });
   }
 
+  async function resolveMemo(
+    memoId: string,
+    memoSlug?: string | null
+  ): Promise<SystemShareResult | null> {
+    const row = await db
+      .select({ id: posts.id, slug: posts.slug })
+      .from(posts)
+      .where(eq(posts.id, memoId))
+      .limit(1)
+      .then((rows) => rows[0]);
+    if (!row) return null;
+    const slug = memoSlug || row?.slug;
+    if (!slug) return null;
+    try {
+      const memo = await caller.memos.bySlug({ slug });
+      return { memoId, memoSlug: slug, memo };
+    } catch (error) {
+      if (error instanceof TRPCError && error.code === "NOT_FOUND") return null;
+      return {
+        memoId,
+        memoSlug: slug,
+        memo: { id: memoId, slug, title: null, isPublic: false },
+      };
+    }
+  }
+
+  const now = Date.now();
+  const leaseToken = randomUUID();
+  let existing = await db
+    .select()
+    .from(systemShareSubmissions)
+    .where(eq(systemShareSubmissions.submissionId, submissionId))
+    .limit(1)
+    .then((rows) => rows[0]);
+
+  if (existing?.memoId) {
+    const recovered = await resolveMemo(existing.memoId, existing.memoSlug);
+    if (recovered) {
+      await db
+        .update(systemShareSubmissions)
+        .set({
+          memoSlug: recovered.memoSlug,
+          state: "completed",
+          leaseToken: null,
+          leaseExpiresAt: null,
+          updatedAt: now,
+        })
+        .where(eq(systemShareSubmissions.submissionId, submissionId));
+      return json(
+        request,
+        {
+          ok: true,
+          duplicate: true,
+          memoId: recovered.memoId,
+          memo: recovered.memo,
+          classification: existing.classification ?? normalized.classification,
+        },
+        { status: 200 },
+        resHeaders
+      );
+    }
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "该分享对应的 Memo 已被删除，不能重新创建。",
+    });
+  }
+
+  if (existing) {
+    const leaseExpiresAt =
+      existing.leaseExpiresAt ?? existing.updatedAt + SYSTEM_SHARE_PROCESSING_TTL_MS;
+    if (existing.state === "processing" && leaseExpiresAt > now) {
+      throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
+    }
+    await db
+      .update(systemShareSubmissions)
+      .set({
+        state: "processing",
+        leaseToken,
+        leaseExpiresAt: now + SYSTEM_SHARE_PROCESSING_TTL_MS,
+        updatedAt: now,
+        classification: normalized.classification,
+      })
+      .where(
+        and(
+          eq(systemShareSubmissions.submissionId, submissionId),
+          eq(systemShareSubmissions.state, "processing"),
+          or(
+            lte(systemShareSubmissions.leaseExpiresAt, now),
+            and(
+              isNull(systemShareSubmissions.leaseExpiresAt),
+              lt(systemShareSubmissions.updatedAt, now - SYSTEM_SHARE_PROCESSING_TTL_MS)
+            )
+          )
+        )
+      );
+  } else {
+    try {
+      await db.insert(systemShareSubmissions).values({
+        submissionId,
+        memoId: null,
+        memoSlug: null,
+        classification: normalized.classification,
+        state: "processing",
+        leaseToken,
+        leaseExpiresAt: now + SYSTEM_SHARE_PROCESSING_TTL_MS,
+        createdAt: now,
+        updatedAt: now,
+      });
+    } catch {
+      throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
+    }
+  }
+
+  existing = await db
+    .select()
+    .from(systemShareSubmissions)
+    .where(eq(systemShareSubmissions.submissionId, submissionId))
+    .limit(1)
+    .then((rows) => rows[0]);
+  if (!existing || existing.leaseToken !== leaseToken) {
+    throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
+  }
+
   const stagedPaths: string[] = [];
+  let createdMemoId: string | null = null;
+  let createdMemoSlug: string | null = null;
+  const memoRoot = getServerLocalMemoRootPath();
+  const deterministicMemoId = buildMemoRelativePath(`system-share/${submissionId}.md`, memoRoot);
   try {
-    const memoRoot = getServerLocalMemoRootPath();
     const attachments = [];
+    const stagedAttachmentRefs: Array<{ persistedPath: string; fullPath: string }> = [];
     for (const [index, file] of files.entries()) {
       const originalName = basename(file.name || `file-${index + 1}`);
       const safeName = originalName.replace(/[^a-z0-9._-]+/giu, "_") || `file-${index + 1}`;
-      const filename = `system-share-${submissionId.slice(0, 8)}-${index + 1}-${safeName}`;
-      const persistedPath = `${memoRoot.replace(/^\/+/, "")}/assets/system-share/${filename}`;
+      const filename = `system-share/${submissionId}/${leaseToken}/${index + 1}-${safeName}`;
+      const persistedPath = `${memoRoot.replace(/^\/+/, "")}/assets/${filename}`;
       const fullPath = join(basePath, persistedPath);
-      await mkdir(join(basePath, memoRoot.replace(/^\/+/, ""), "assets", "system-share"), {
-        recursive: true,
-      });
+      await mkdir(
+        join(
+          basePath,
+          memoRoot.replace(/^\/+/, ""),
+          "assets",
+          "system-share",
+          submissionId,
+          leaseToken
+        ),
+        {
+          recursive: true,
+        }
+      );
       await writeFile(fullPath, new Uint8Array(await file.arrayBuffer()), { flag: "wx" });
       stagedPaths.push(fullPath);
+      stagedAttachmentRefs.push({ persistedPath: `./assets/${filename}`, fullPath });
       attachments.push({
         filename: file.name || filename,
-        path: `./assets/system-share/${filename}`,
+        path: `./assets/${filename}`,
         contentType: file.type || "application/octet-stream",
         size: file.size,
         isImage: file.type.startsWith("image/"),
       });
     }
 
+    const activeLease = await db
+      .select({
+        leaseToken: systemShareSubmissions.leaseToken,
+        leaseExpiresAt: systemShareSubmissions.leaseExpiresAt,
+      })
+      .from(systemShareSubmissions)
+      .where(
+        and(
+          eq(systemShareSubmissions.submissionId, submissionId),
+          eq(systemShareSubmissions.state, "processing"),
+          eq(systemShareSubmissions.leaseToken, leaseToken)
+        )
+      )
+      .limit(1)
+      .then((rows) => rows[0]);
+    if (!activeLease || (activeLease.leaseExpiresAt ?? 0) <= Date.now()) {
+      throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
+    }
+
     const result = await caller.memos.create({
-      content: normalized.classification === "clipping" ? normalized.remarks : normalized.text,
+      content: composeSystemShareMemoContent(normalized),
       title: normalized.title || undefined,
       isPublic: normalized.isPublic,
       tags: normalized.tags,
       attachments,
       systemShare: {
         source: "system-share" as const,
+        submissionId,
         ...(normalized.url ? { targetUrl: normalized.url } : {}),
       },
     });
-    const memoId = typeof result === "object" && result && "id" in result ? String(result.id) : "";
-    if (!memoId) throw new Error("Memo 创建结果缺少 id");
+    createdMemoId = typeof result === "object" && result && "id" in result ? String(result.id) : "";
+    createdMemoSlug =
+      typeof result === "object" && result && "slug" in result ? String(result.slug) : null;
+    if (!createdMemoId || !createdMemoSlug) throw new Error("Memo 创建结果缺少详情身份");
+
+    const referencedAttachmentPaths = new Set(
+      typeof result === "object" &&
+        result &&
+        "attachments" in result &&
+        Array.isArray(result.attachments)
+        ? result.attachments
+            .map((attachment) =>
+              attachment && typeof attachment === "object" && "path" in attachment
+                ? String(attachment.path)
+                : ""
+            )
+            .filter(Boolean)
+        : []
+    );
+    await Promise.all(
+      stagedAttachmentRefs
+        .filter(({ persistedPath }) => !referencedAttachmentPaths.has(persistedPath))
+        .map(({ fullPath }) => rm(fullPath, { force: true }).catch(() => undefined))
+    );
     await db
       .update(systemShareSubmissions)
-      .set({ memoId, state: "completed", updatedAt: Date.now() })
-      .where(eq(systemShareSubmissions.submissionId, submissionId));
-    return json(request, { ok: true, memo: result }, { status: 201 }, resHeaders);
+      .set({
+        memoId: createdMemoId,
+        memoSlug: createdMemoSlug,
+        state: "completed",
+        leaseToken: null,
+        leaseExpiresAt: null,
+        updatedAt: Date.now(),
+      })
+      .where(
+        and(
+          eq(systemShareSubmissions.submissionId, submissionId),
+          eq(systemShareSubmissions.leaseToken, leaseToken)
+        )
+      );
+    return json(
+      request,
+      {
+        ok: true,
+        duplicate: false,
+        memoId: createdMemoId,
+        memo: result,
+        classification: normalized.classification,
+      },
+      { status: 201 },
+      resHeaders
+    );
   } catch (error) {
-    await Promise.all(stagedPaths.map((path) => rm(path, { force: true }).catch(() => undefined)));
-    await db
-      .delete(systemShareSubmissions)
-      .where(eq(systemShareSubmissions.submissionId, submissionId));
+    let committedMemoFile = Boolean(createdMemoId);
+    if (!committedMemoFile) {
+      try {
+        await readAuthoredMemo(deterministicMemoId);
+        committedMemoFile = true;
+      } catch {
+        committedMemoFile = false;
+      }
+    }
+    if (!committedMemoFile) {
+      await Promise.all(
+        stagedPaths.map((path) => rm(path, { force: true }).catch(() => undefined))
+      );
+      await db
+        .delete(systemShareSubmissions)
+        .where(
+          and(
+            eq(systemShareSubmissions.submissionId, submissionId),
+            eq(systemShareSubmissions.leaseToken, leaseToken)
+          )
+        );
+    } else if (createdMemoId) {
+      await db
+        .update(systemShareSubmissions)
+        .set({
+          memoId: createdMemoId,
+          memoSlug: createdMemoSlug,
+          updatedAt: Date.now(),
+        })
+        .where(
+          and(
+            eq(systemShareSubmissions.submissionId, submissionId),
+            eq(systemShareSubmissions.leaseToken, leaseToken)
+          )
+        );
+    }
     if (error instanceof TRPCError) throw error;
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "分享内容创建失败，请重试。" });
   }

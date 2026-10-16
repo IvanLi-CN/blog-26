@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } fr
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { db, initializeDB } from "@/lib/db";
@@ -83,31 +84,141 @@ describe("system share API", () => {
       "/system-share"
     );
     expect(first.status).toBe(201);
-    const firstPayload = (await first.json()) as { memo?: { id?: string } };
+    const firstPayload = (await first.json()) as { memo?: { id?: string; slug?: string } };
     expect(firstPayload.memo?.id).toBeTruthy();
+    expect(firstPayload.memo?.slug).toBeTruthy();
+    expect(firstPayload).toMatchObject({ ok: true, duplicate: false, classification: "memo" });
 
     const replay = await handlePublicApiRequest(
       buildRequest(createForm(submissionId, "a thought")),
       "/system-share"
     );
     expect(replay.status).toBe(200);
-    expect(await replay.json()).toMatchObject({
+    const replayPayload = await replay.json();
+    expect(replayPayload).toMatchObject({
       ok: true,
       duplicate: true,
       memoId: firstPayload.memo?.id,
     });
+    expect((replayPayload as { memo: { slug: string } }).memo.slug).toBe(firstPayload.memo?.slug);
     if (!db) throw new Error("Database has not been initialised");
     expect(await db.select().from(posts)).toHaveLength(1);
     expect((await db.select().from(systemShareSubmissions))[0]?.state).toBe("completed");
   });
 
-  test("classifies a URL share as clipping without adding a visible tag", async () => {
+  test("allows only one concurrent creator for the same temporary submission id", async () => {
+    const submissionId = randomUUID();
+    const responses = await Promise.all(
+      Array.from({ length: 2 }, () =>
+        handlePublicApiRequest(
+          buildRequest(createForm(submissionId, "concurrent thought")),
+          "/system-share"
+        )
+      )
+    );
+    const statuses = responses.map((response) => response.status).sort();
+    expect(statuses).toContain(201);
+    expect(statuses.every((status) => status === 200 || status === 201 || status === 409)).toBe(
+      true
+    );
+    if (!db) throw new Error("Database has not been initialised");
+    const memos = await db.select().from(posts);
+    expect(memos).toHaveLength(1);
+    const successfulPayloads = await Promise.all(
+      responses
+        .filter((response) => response.status === 200 || response.status === 201)
+        .map((response) => response.json())
+    );
+    expect(new Set(successfulPayloads.map((payload) => payload.memoId)).size).toBe(1);
+  });
+
+  test("reclaims a processing submission when its lease has expired", async () => {
+    const submissionId = randomUUID();
+    const now = Date.now();
+    await db?.insert(systemShareSubmissions).values({
+      submissionId,
+      memoId: null,
+      memoSlug: null,
+      classification: "memo",
+      state: "processing",
+      leaseToken: randomUUID(),
+      leaseExpiresAt: now - 1,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const response = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "reclaimed thought")),
+      "/system-share"
+    );
+    expect(response.status).toBe(201);
+    expect(await db?.select().from(posts)).toHaveLength(1);
+  });
+
+  test("keeps distinct temporary submission ids independent", async () => {
+    const first = await handlePublicApiRequest(
+      buildRequest(createForm(randomUUID(), "same content")),
+      "/system-share"
+    );
+    const second = await handlePublicApiRequest(
+      buildRequest(createForm(randomUUID(), "same content")),
+      "/system-share"
+    );
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+    expect(await db?.select().from(posts)).toHaveLength(2);
+  });
+
+  test("reconstructs the detail slug for a legacy completed submission row", async () => {
+    const submissionId = randomUUID();
+    const first = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "legacy replay")),
+      "/system-share"
+    );
+    const firstPayload = (await first.json()) as { memo?: { id?: string; slug?: string } };
+    await db
+      ?.update(systemShareSubmissions)
+      .set({ memoSlug: null })
+      .where(eq(systemShareSubmissions.submissionId, submissionId));
+
+    const replay = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "legacy replay")),
+      "/system-share"
+    );
+    expect(replay.status).toBe(200);
+    expect(await replay.json()).toMatchObject({
+      duplicate: true,
+      memoId: firstPayload.memo?.id,
+      memo: { slug: firstPayload.memo?.slug },
+    });
+  });
+
+  test("does not recreate a completed submission after its Memo was deleted", async () => {
+    const submissionId = randomUUID();
+    const first = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "deleted memo")),
+      "/system-share"
+    );
+    const firstPayload = (await first.json()) as { memoId?: string };
+    await db?.delete(posts).where(eq(posts.id, firstPayload.memoId ?? ""));
+
+    const replay = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "deleted memo")),
+      "/system-share"
+    );
+    expect(replay.status).toBe(404);
+    expect(await db?.select().from(posts)).toHaveLength(0);
+  });
+
+  test("classifies a URL share with a parser marker and no frontmatter tag", async () => {
     const form = createForm(randomUUID(), "https://example.com/article");
     const response = await handlePublicApiRequest(buildRequest(form), "/system-share");
     expect(response.status).toBe(201);
     const rows = await db?.select().from(posts);
     expect(rows).toHaveLength(1);
     expect(rows?.[0]?.tags).toBe("[]");
+    expect(rows?.[0]?.body).toContain("https://example.com/article");
+    expect(rows?.[0]?.body).toContain("#剪藏");
     expect(rows?.[0]?.metadata).toContain('"systemShare"');
   });
 
