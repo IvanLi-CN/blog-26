@@ -15,8 +15,8 @@
     "public/watermark-ivanli-a.v1.svg": "3c2867d74a3455b9d4678e0c3339af9b51848aeb",
     "public/watermark-ivanli-b.v1.svg": "c081fcf6aa44c81db5c410a6c288a1e39263a997",
     "scripts/package-public-media.test.ts": "b6f39ed62e16276d25f192ce548b9808d8680011",
-    "scripts/verify-pages-build.test.ts": "d4edb9afff12b7d3f97d32d55139ab5f44bf9460",
-    "scripts/verify-pages-build.ts": "c2bc1f1d9cad340b3d676b4160dd9b61a6f863a4",
+    "scripts/verify-pages-build.test.ts": "bc46c0d08ad4704f651701725ab5a922601dbebe",
+    "scripts/verify-pages-build.ts": "6567900dee259789af056e9c7c6842434a8f304e",
     "site/components/PostCard.tsx": "bda0ea1ef5d5c088b83bbf5073e6bc8a20d8efa6",
     "site/components/RelatedPostCard.tsx": "f75969cac01ea5d1c87d5d535fa0c1786f301fb5",
     "site/components/TimelineCard.tsx": "d388bf8200451fbae22ae08216b0754b1d434da5",
@@ -30,8 +30,8 @@
     "src/components/common/markdown/plugins/rehype-image-optimization.test.ts": "f58dc019f3e732e477dcc37e16fc49cb67c6ec39",
     "src/components/common/markdown/plugins/rehype-image-optimization.ts": "859c3ef9688b01e1503298c4bfd13453e2738f10",
     "src/components/common/markdown/types.ts": "b7ae801e9c674e40710bc544a5abb78faf2ab3af",
-    "src/components/common/useResponsiveWatermark.test.ts": "800d3913a493cea9d4ca672325a4bb1f7f2f77ac",
-    "src/components/common/useResponsiveWatermark.ts": "b18b65c974a8db8f60acb17b4ee124934bb3dadd",
+    "src/components/common/useResponsiveWatermark.test.ts": "5cb83bba33b66eb9b539bf4217f78326153c225a",
+    "src/components/common/useResponsiveWatermark.ts": "32ade5281fff59ca7dce32031561820a05b41d4b",
     "src/components/memos/ClippingDetail.tsx": "1536b1484b3128805179f77f1db18736c8230654",
     "src/lib/__tests__/public-media.test.ts": "bbca6aac464df8ffa8ec1d2d1739911167b26b11",
     "src/lib/public-media.ts": "0a113b8031e67c7c6a9e99a3a2c39ebaca824a78",
@@ -78,7 +78,7 @@
         },
         {
           "path": "src/components/common/useResponsiveWatermark.test.ts",
-          "blob": "800d3913a493cea9d4ca672325a4bb1f7f2f77ac",
+          "blob": "5cb83bba33b66eb9b539bf4217f78326153c225a",
           "command": "Focused CSS-width boundary and DPR-independent selector tests"
         }
       ],
@@ -95,7 +95,7 @@
         {
           "path": "src/server/http-compat-api.test.ts",
           "blob": "ae5553b839bf307992cf1baf882ee97d7c32d341",
-          "command": "bun test targeted public-media, selector, static packaging and HTTP compatibility files; 157 passed, 3 skipped"
+          "command": "bun test targeted public-media, selector, static packaging and HTTP compatibility files; 158 passed, 3 skipped"
         },
         {
           "path": "docs/specs/public-media-assets-facade/assets/logo-watermark-mobile-393.png",

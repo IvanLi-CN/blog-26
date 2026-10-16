@@ -14,6 +14,7 @@ type FileCheck = {
   file: string;
   includes: string[];
   excludes: string[];
+  validate?: (content: string, file: string) => void;
 };
 
 export type VerifyPagesBuildOptions = {
@@ -56,6 +57,13 @@ function escapeRegExp(value: string) {
 function assertIncludesOneOf(content: string, needles: readonly string[], file: string) {
   if (!needles.some((needle) => content.includes(needle))) {
     throw new Error(`Expected ${file} to include one of: ${needles.join(", ")}`);
+  }
+}
+
+function assertWatermarkDomainPaths(content: string, file: string) {
+  const document = JSDOM.fragment(content);
+  if (!document.querySelector("g.watermark-domain path")) {
+    throw new Error(`Expected ${file} to contain at least one path in g.watermark-domain`);
   }
 }
 
@@ -252,6 +260,7 @@ function buildDynamicChecks(
       file: "site-dist/watermark-ivanli-b.v1.svg",
       includes: ["<svg", "watermark-domain", "viewBox"],
       excludes: [],
+      validate: assertWatermarkDomainPaths,
     },
     {
       file: "site-dist/robots.txt",
@@ -325,6 +334,7 @@ export function verifyPagesBuild(options: VerifyPagesBuildOptions) {
     for (const needle of check.excludes) {
       assertExcludes(content, needle, check.file);
     }
+    check.validate?.(content, check.file);
   }
 
   if (apiBaseUrl) {

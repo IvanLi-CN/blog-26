@@ -10,13 +10,53 @@ export function chooseWatermarkVariant(visibleWidth: number): WatermarkVariant {
   return visibleWidth >= 600 ? "b" : "a";
 }
 
-function getVisibleImageWidth(image: HTMLImageElement) {
+type ImageBoxStyles = Pick<
+  CSSStyleDeclaration,
+  | "borderBottomWidth"
+  | "borderLeftWidth"
+  | "borderRightWidth"
+  | "borderTopWidth"
+  | "paddingBottom"
+  | "paddingLeft"
+  | "paddingRight"
+  | "paddingTop"
+>;
+
+function cssPixels(value: string) {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function getVisibleImageWidth(
+  image: Pick<HTMLImageElement, "getBoundingClientRect" | "naturalHeight" | "naturalWidth">,
+  styles?: ImageBoxStyles
+) {
   const rect = image.getBoundingClientRect();
   if (!rect.width || !rect.height) return 0;
+
+  const computedStyles =
+    styles ??
+    (typeof window === "undefined" ? undefined : window.getComputedStyle(image as Element));
+  const horizontalInsets = computedStyles
+    ? cssPixels(computedStyles.borderLeftWidth) +
+      cssPixels(computedStyles.borderRightWidth) +
+      cssPixels(computedStyles.paddingLeft) +
+      cssPixels(computedStyles.paddingRight)
+    : 0;
+  const verticalInsets = computedStyles
+    ? cssPixels(computedStyles.borderTopWidth) +
+      cssPixels(computedStyles.borderBottomWidth) +
+      cssPixels(computedStyles.paddingTop) +
+      cssPixels(computedStyles.paddingBottom)
+    : 0;
+  const contentWidth = Math.max(0, rect.width - horizontalInsets);
+  const contentHeight = Math.max(0, rect.height - verticalInsets);
+  if (!contentWidth || !contentHeight) return 0;
+
   const naturalWidth = image.naturalWidth;
   const naturalHeight = image.naturalHeight;
-  if (!naturalWidth || !naturalHeight) return rect.width;
-  return Math.min(rect.width, rect.height * (naturalWidth / naturalHeight));
+  if (!naturalWidth || !naturalHeight) return contentWidth;
+  return Math.min(contentWidth, contentHeight * (naturalWidth / naturalHeight));
 }
 
 export function useResponsiveWatermark(params: {
