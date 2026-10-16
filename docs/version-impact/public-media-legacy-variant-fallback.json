@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
+  "covered_files": {
+    "scripts/package-public-media.test.ts": "7142f095cb378dafacf01ab92c5a891010fadbe3",
+    "scripts/package-public-media.ts": "1c92ee2377adfe2446d467d38edc3a3aba44b0be",
+    "scripts/verify-public-media-package.ts": "c83c03c4e69782212fad1d09a5a41d2e5f351962"
+  },
+  "change": {
+    "description": "Fall back legacy wm-a-v1 and wm-b-v1 public media URLs to their canonical base assets when release packaging encounters a 404, while recording aliases for verification.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a backward-compatible release packaging reliability fix. It preserves the public media facade and only changes how legacy derived URLs are frozen when their origin representation is unavailable.",
+      "assessed_at": "2026-10-16T22:37:55+08:00",
+      "evidence": [
+        {
+          "path": "scripts/package-public-media.test.ts",
+          "blob": "7142f095cb378dafacf01ab92c5a891010fadbe3",
+          "command": "bun test scripts/package-public-media.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The packager now retries the canonical base asset only after a derived 404, preserves URL version parameters, and keeps one canonical packaged file with verifiable aliases; successful derived assets retain their existing path identity.",
+      "assessed_at": "2026-10-16T22:37:55+08:00",
+      "evidence": [
+        {
+          "path": "scripts/package-public-media.test.ts",
+          "blob": "7142f095cb378dafacf01ab92c5a891010fadbe3",
+          "command": "bun test scripts/package-public-media.test.ts"
+        },
+        {
+          "path": "scripts/verify-public-media-package.ts",
+          "blob": "c83c03c4e69782212fad1d09a5a41d2e5f351962",
+          "command": "The verifier validates canonical alias identity and excludes aliases from packaged counters"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to public media release packaging, manifest verification, and focused regression coverage."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused packaging and artifact verification tests cover legacy derived 404 fallback, successful derived downloads, query preservation, manifest aliases, retry behavior, and the existing packaging contract.",
+      "assessed_at": "2026-10-16T22:37:55+08:00",
+      "evidence": [
+        {
+          "path": "scripts/package-public-media.test.ts",
+          "blob": "7142f095cb378dafacf01ab92c5a891010fadbe3",
+          "command": "bun test scripts/package-public-media.test.ts (26 passed)"
+        },
+        {
+          "path": "scripts/package-public-media.ts",
+          "blob": "1c92ee2377adfe2446d467d38edc3a3aba44b0be",
+          "command": "bunx biome check scripts/package-public-media.ts scripts/package-public-media.test.ts scripts/verify-public-media-package.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3"
+      ],
+      "evidence": [
+        {
+          "path": "scripts/package-public-media.test.ts",
+          "blob": "7142f095cb378dafacf01ab92c5a891010fadbe3",
+          "command": "The facade URL contract remains unchanged; only release-time static rewriting gains a legacy fallback"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local content, browser persistence, or application release ledger format changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "scripts/package-public-media.ts",
+          "blob": "1c92ee2377adfe2446d467d38edc3a3aba44b0be",
+          "command": "The alias field is confined to the release artifact manifest and has no runtime persistence dependency"
+        }
+      ]
+    }
+  }
+}

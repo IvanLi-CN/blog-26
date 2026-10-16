@@ -3,8 +3,8 @@
   "kind": "version-impact-record",
   "base_sha": "e4a14c1e89f72b776ea122d2d767cdafb246f684",
   "covered_files": {
-    "scripts/package-public-media.test.ts": "1ba186d2e382f28808ef055eb62dc1346d701c2b",
-    "scripts/verify-public-media-package.ts": "2852f6e693bcc0ec4b5a31df72f012dc07c576b3"
+    "scripts/package-public-media.test.ts": "7142f095cb378dafacf01ab92c5a891010fadbe3",
+    "scripts/verify-public-media-package.ts": "c83c03c4e69782212fad1d09a5a41d2e5f351962"
   },
   "change": {
     "description": "Stop static media URL verification at encoded HTML entity suffixes so valid generated public snapshots pass release packaging.",
@@ -19,7 +19,7 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "1ba186d2e382f28808ef055eb62dc1346d701c2b",
+          "blob": "7142f095cb378dafacf01ab92c5a891010fadbe3",
           "command": "bun test scripts/package-public-media.test.ts"
         }
       ]
@@ -31,7 +31,7 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "1ba186d2e382f28808ef055eb62dc1346d701c2b",
+          "blob": "7142f095cb378dafacf01ab92c5a891010fadbe3",
           "command": "bun test scripts/package-public-media.test.ts"
         }
       ],
@@ -47,12 +47,12 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "1ba186d2e382f28808ef055eb62dc1346d701c2b",
+          "blob": "7142f095cb378dafacf01ab92c5a891010fadbe3",
           "command": "bun run test:precommit (1010 passed, 4575 assertions)"
         },
         {
           "path": "scripts/verify-public-media-package.ts",
-          "blob": "2852f6e693bcc0ec4b5a31df72f012dc07c576b3",
+          "blob": "c83c03c4e69782212fad1d09a5a41d2e5f351962",
           "command": "bun test scripts/package-public-media.test.ts"
         }
       ]
@@ -66,7 +66,7 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "1ba186d2e382f28808ef055eb62dc1346d701c2b",
+          "blob": "7142f095cb378dafacf01ab92c5a891010fadbe3",
           "command": "bun test scripts/package-public-media.test.ts"
         }
       ]
@@ -80,7 +80,7 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "1ba186d2e382f28808ef055eb62dc1346d701c2b",
+          "blob": "7142f095cb378dafacf01ab92c5a891010fadbe3",
           "command": "bun test scripts/package-public-media.test.ts"
         }
       ]
