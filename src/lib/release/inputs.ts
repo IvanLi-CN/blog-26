@@ -66,11 +66,29 @@ export async function fetchPublicSnapshot(
       await sleep(snapshotRetryDelaysMs[attempt] || 0);
       continue;
     }
-    if (response.ok) return response;
-    lastError = new Error(`Public snapshot acquisition failed (HTTP ${response.status})`);
-    if (!isRetryableSnapshotStatus(response.status) || attempt === snapshotRetryDelaysMs.length)
-      throw lastError;
-    await sleep(snapshotRetryDelaysMs[attempt] || 0);
+
+    if (!response.ok) {
+      lastError = new Error(`Public snapshot acquisition failed (HTTP ${response.status})`);
+      if (!isRetryableSnapshotStatus(response.status) || attempt === snapshotRetryDelaysMs.length)
+        throw lastError;
+      await sleep(snapshotRetryDelaysMs[attempt] || 0);
+      continue;
+    }
+
+    try {
+      // Consume the body inside the retry boundary. Edge failures can occur after
+      // the headers arrive, while the chunked response is being read.
+      const body = await response.text();
+      return new Response(body, {
+        headers: response.headers,
+        status: response.status,
+        statusText: response.statusText,
+      });
+    } catch (error) {
+      if (attempt === snapshotRetryDelaysMs.length) throw error;
+      lastError = error;
+      await sleep(snapshotRetryDelaysMs[attempt] || 0);
+    }
   }
   if (lastError instanceof Error) throw lastError;
   throw new Error("Public snapshot acquisition failed");

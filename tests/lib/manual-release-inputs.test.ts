@@ -51,4 +51,25 @@ describe("manual release snapshot acquisition", () => {
     ).rejects.toThrow("socket reset");
     expect(waits).toEqual([1_000, 3_000]);
   });
+
+  test("retries when reading a successful response body fails", async () => {
+    const waits: number[] = [];
+    let calls = 0;
+    const response = new Response("ok", { status: 200 });
+    response.text = async () => {
+      calls += 1;
+      if (calls === 1) throw new Error("socket reset while reading body");
+      return "ok";
+    };
+
+    const result = await fetchPublicSnapshot(
+      snapshotUrl,
+      async () => response,
+      async (delayMs) => waits.push(delayMs)
+    );
+
+    expect(await result.text()).toBe("ok");
+    expect(calls).toBe(2);
+    expect(waits).toEqual([1_000]);
+  });
 });
