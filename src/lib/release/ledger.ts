@@ -394,16 +394,17 @@ export function updateRelease(
   }
   const next = entrySchema.parse(merged);
   if (next.stage === "abandoned") {
+    const failure = original.failure || patch.failure;
     const failedBeforeArtifacts =
       original.stage === "merged" &&
-      Boolean(original.failure) &&
+      Boolean(failure) &&
       !original.inputs &&
       !original.products &&
       !original.publication &&
       !original.deployment;
     const abandonedFrozenInputs =
       original.stage === "merged" &&
-      Boolean(original.failure) &&
+      Boolean(failure) &&
       Boolean(original.inputs) &&
       !original.products &&
       !original.publication &&

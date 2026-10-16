@@ -36,11 +36,13 @@ GitHub 适配器固定 REST API `2022-11-28`，按该字段合同核验 PR 与�
 
 重跑失败的原工作流；不重新 dispatch 一个替代版本。恢复读取原 release-ledger 登记，复用版本、来源、输入和冻结产物，仅补齐缺失步骤。已存在 tag、发布资产或镜像的身份与摘要不同则停止，不能覆盖。
 
+如果 Product Release 在冻结输入前被 GitHub Actions 超时取消，原运行不会进入普通 failure 恢复路径。确认该运行结论为 `cancelled` 且 ledger 没有 inputs/products 后，手动运行 **Abandon Cancelled Product Release**（`.github/workflows/abandon-cancelled-release.yml`）并填写原 release identity；入口会再次核验原运行、拒绝已有冻结产物，并将该身份正式标记为 abandoned。随后重新运行 **Manual Product Release**，版本留空即可按已验证影响自动分配下一个可用版本，不复用已烧毁身份。
+
 同一准备 run 重跑复用原始请求与身份；前一身份完成后，新 run 可申请下一个版本。预发布两种产物发布成功后，记录共享锁内正式 GitHub latest、镜像 latest、生产版本与 Playbook 指针的前后读回；一致才能 complete，部署和晋升均记为 `not-applicable`。读取失败或变化不能当作不变证明。已完成预发布的幂等恢复不要求生产仍停留在历史指针。
 
 首次验收时，批准的 bootstrap renderer 可能尚无静态 `/version.json`。仅当明确读回 404 且 Playbook rendererCommit 与 bootstrap 来源一致时记录该端点不存在；未知 renderer、其他错误或解析失败会停止。该记录不能当作新正式版部署的验收证据。
 
-冻结产物保留 90 天。产物失效或缺失时报告恢复受阻，不联网重新生成同身份的新内容。关闭未合并的版本 PR 会废弃预留，已占用版本不会重新分配。较新版本已完成生产部署后，旧身份重跑不会回退生产指针。
+冻结产物保留 90 天。公开媒体冻结使用最多 8 个并发下载 worker，单请求仍受现有超时、重试和大小限制约束；Product Release 作业超时为 360 分钟，以覆盖大量静态媒体和外部网络抖动。产物失效或缺失时报告恢复受阻，不联网重新生成同身份的新内容。关闭未合并的版本 PR 会废弃预留，已占用版本不会重新分配。较新版本已完成生产部署后，旧身份重跑不会回退生产指针。
 
 若上传完成但登记绑定尚未完成，恢复会核验原 Actions 运行所有尝试的冻结、构建及上传步骤记录。已经完成冻结或上传却找不到对应产物时停止；原运行记录不可验证时也停止。只有原记录证明该类产物尚未冻结，才允许继续初次生成。
 

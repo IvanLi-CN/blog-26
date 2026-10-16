@@ -11,7 +11,7 @@ jobs:
   production:
     if: (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') && github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 360
     permissions:
       contents: write
       actions: read
@@ -69,6 +69,7 @@ jobs:
           PUBLIC_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL || 'https://console.ivanli.cc' }}
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://ivanli.cc' }}
           PUBLIC_SITE_BASE_PATH: ${{ vars.PUBLIC_SITE_BASE_PATH || '/' }}
+          PUBLIC_STATIC_MEDIA_DOWNLOAD_CONCURRENCY: "8"
           PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: ${{ vars.PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL }}
           PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL: ${{ vars.PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL }}
           PUBLIC_OCTO_RILL_METRICS_BASE_URL: ${{ vars.PUBLIC_OCTO_RILL_METRICS_BASE_URL }}

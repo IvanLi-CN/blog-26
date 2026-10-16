@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
   "covered_files": {
-    "scripts/product-release.ts": "bf11ea47aa89f8300a12855a6b54bd22790267bf",
+    "scripts/product-release.ts": "dc4633cf98d1918f18ec49c882dc51ac49c28be4",
     "src/lib/release/completion.ts": "6fa3ab55814aa09c7d7962918a917977391b9824",
     "tests/lib/manual-release-provenance.test.ts": "1f12effff7b933b0ef07e11485e49a88ca1dcb83"
   },
@@ -37,7 +37,7 @@
         },
         {
           "path": "scripts/product-release.ts",
-          "blob": "bf11ea47aa89f8300a12855a6b54bd22790267bf",
+          "blob": "dc4633cf98d1918f18ec49c882dc51ac49c28be4",
           "command": "bunx biome check scripts/product-release.ts src/lib/release/completion.ts tests/lib/manual-release-provenance.test.ts"
         }
       ],
@@ -96,7 +96,7 @@
       "evidence": [
         {
           "path": "scripts/product-release.ts",
-          "blob": "bf11ea47aa89f8300a12855a6b54bd22790267bf",
+          "blob": "dc4633cf98d1918f18ec49c882dc51ac49c28be4",
           "command": "bunx biome check scripts/product-release.ts"
         }
       ]
