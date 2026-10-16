@@ -14,7 +14,7 @@
     "docs/specs/public-media-assets-facade/assets/logo-watermark-mobile-393.png": "350bd770806dbf25fdecde38a57601a705bee083",
     "public/watermark-ivanli-a.v1.svg": "3c2867d74a3455b9d4678e0c3339af9b51848aeb",
     "public/watermark-ivanli-b.v1.svg": "c081fcf6aa44c81db5c410a6c288a1e39263a997",
-    "scripts/package-public-media.test.ts": "b6f39ed62e16276d25f192ce548b9808d8680011",
+    "scripts/package-public-media.test.ts": "dcf5dcdaeb97537dd8b3d44023b744354c002615",
     "scripts/verify-pages-build.test.ts": "eae55a042db3a2b7761c7befdead58dbe2dd47a7",
     "scripts/verify-pages-build.ts": "320906afd006d35e61e9ef583388a889a764a0f3",
     "site/components/PostCard.tsx": "bda0ea1ef5d5c088b83bbf5073e6bc8a20d8efa6",
