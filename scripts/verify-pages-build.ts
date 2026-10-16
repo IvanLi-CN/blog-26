@@ -86,17 +86,15 @@ function pathDefinitionHasVisibleGeometry(definition: string) {
 
     if (command === "M") {
       if (numbers.length < 2) return false;
+      current = pointFrom(numbers[0], numbers[1], relative);
+      start = current;
+      hasMove = true;
+      index = 2;
       while (index + 1 < numbers.length) {
         const point = pointFrom(numbers[index], numbers[index + 1], relative);
         index += 2;
-        if (!hasMove) {
-          current = point;
-          start = point;
-          hasMove = true;
-        } else {
-          if (pointChanged(point, current)) return true;
-          current = point;
-        }
+        if (pointChanged(point, current)) return true;
+        current = point;
       }
       continue;
     }
