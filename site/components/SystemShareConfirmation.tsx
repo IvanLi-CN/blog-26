@@ -557,6 +557,7 @@ export default function SystemShareConfirmation() {
                   editorId="system-share-memo-editor"
                   className="quick-memo-edit-editor system-share-memo-editor"
                   ariaLabel="Memo 内容"
+                  readOnly={submitting || successLocked}
                 />
               </div>
               <div className="mt-1 flex flex-wrap justify-between gap-2 px-1 text-xs text-[color:var(--nature-text-soft)]">

@@ -437,7 +437,11 @@
 }
 
 @media (max-width: 1023px) {
-  /* Keep the Demo control clear of the official route's editor and footer. */
+  /* Keep the Demo control clear of the official route's editor and feedback Toasts. */
+  .web-demo-inspector-host {
+    z-index: 80;
+  }
+
   .web-demo-inspector-bubble {
     top: max(0.75rem, env(safe-area-inset-top, 0px));
     right: max(0.75rem, env(safe-area-inset-right, 0px));

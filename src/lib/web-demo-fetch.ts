@@ -83,6 +83,7 @@ function demoPublicUser(environment: WebDemoEnvironment) {
 const demoMemoOverrides = new Map<string, PublicMemoRecord>();
 const consoleShareMemos = new Map<string, PublicMemoRecord>();
 const consoleShareFailures = new Set<string>();
+const consoleShareResponseLosses = new Set<string>();
 let demoMemoSequence = 2401;
 
 function demoMemoExcerpt(content: string) {
@@ -352,6 +353,10 @@ async function getConsoleWebDemoResponse(
       "发布系统分享",
       `${created.title || created.slug} · ${normalized.classification === "clipping" ? "剪藏" : "闪念"}`
     );
+    if (scene === "system-share-response-loss" && !consoleShareResponseLosses.has(submissionId)) {
+      consoleShareResponseLosses.add(submissionId);
+      throw new TypeError("演示中的发布响应丢失，请使用 Toast 内的重试。");
+    }
     return jsonResponse(
       {
         ok: true,

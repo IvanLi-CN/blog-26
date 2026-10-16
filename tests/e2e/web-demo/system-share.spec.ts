@@ -129,6 +129,26 @@ test.describe("Console system share Web Demo", () => {
     await expect(page.locator("body")).toContainText("重试后仍然保留的编辑内容");
   });
 
+  test("recovers a lost publish response through the same submission identity", async ({
+    page,
+  }) => {
+    await clearPendingShare(page);
+    const submissionId = randomUUID();
+    await page.goto(
+      `/share?d_persona=admin&d_share=text&d_submission=${submissionId}&d_scene=system-share-response-loss&d_delay=slow`,
+      { waitUntil: "domcontentloaded" }
+    );
+    await expect(page.getByTestId("system-share-page")).toBeVisible();
+    await page.getByTestId("system-share-submit").click();
+    await expect(page.getByTestId("system-share-toast-error")).toContainText("响应丢失");
+    await page
+      .getByTestId("system-share-toast-error")
+      .getByRole("button", { name: "重试" })
+      .click();
+    await expect(page.getByTestId("system-share-toast-success")).toContainText("恢复此前发布");
+    await expect(page).toHaveURL(/\/memos\/console-demo-created-\d+$/);
+  });
+
   test("does not publish a stale confirmation after another share replaces the slot", async ({
     page,
   }) => {

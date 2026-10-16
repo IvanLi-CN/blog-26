@@ -168,6 +168,40 @@ describe("system share API", () => {
     expect(fs.existsSync(orphanDirectory)).toBe(false);
   });
 
+  test("reclaims an expired committing lease and removes its orphaned staging tree", async () => {
+    const submissionId = randomUUID();
+    const now = Date.now();
+    const oldLeaseToken = randomUUID();
+    const orphanDirectory = path.join(
+      contentRoot,
+      "Memos",
+      "assets",
+      "system-share",
+      submissionId,
+      oldLeaseToken
+    );
+    fs.mkdirSync(orphanDirectory, { recursive: true });
+    fs.writeFileSync(path.join(orphanDirectory, "1-old.txt"), "orphan");
+    await db?.insert(systemShareSubmissions).values({
+      submissionId,
+      memoId: null,
+      memoSlug: null,
+      classification: "memo",
+      state: "committing",
+      leaseToken: oldLeaseToken,
+      leaseExpiresAt: now - 1,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const response = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "reclaimed committing thought")),
+      "/system-share"
+    );
+    expect(response.status).toBe(201);
+    expect(fs.existsSync(orphanDirectory)).toBe(false);
+  });
+
   test("recovers an authored Memo after the filesystem commit before completion recording", async () => {
     const submissionId = randomUUID();
     const oldLeaseToken = randomUUID();
@@ -501,5 +535,46 @@ describe("system share API", () => {
     expect(await db?.select().from(systemShareSubmissions)).toHaveLength(0);
     const stagingRoot = path.join(contentRoot, "Memos", "assets", "system-share", submissionId);
     expect(fs.existsSync(stagingRoot) ? fs.readdirSync(stagingRoot) : []).toHaveLength(0);
+  });
+
+  test("cleans reclaimed staging when a retry fails before Memo creation", async () => {
+    const submissionId = randomUUID();
+    const now = Date.now();
+    const oldLeaseToken = randomUUID();
+    const orphanDirectory = path.join(
+      contentRoot,
+      "Memos",
+      "assets",
+      "system-share",
+      submissionId,
+      oldLeaseToken
+    );
+    fs.mkdirSync(orphanDirectory, { recursive: true });
+    fs.writeFileSync(path.join(orphanDirectory, "1-old.txt"), "orphan");
+    await db?.insert(systemShareSubmissions).values({
+      submissionId,
+      memoId: null,
+      memoSlug: null,
+      classification: "memo",
+      state: "committing",
+      leaseToken: oldLeaseToken,
+      leaseExpiresAt: now - 1,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const form = createForm(submissionId, "reclaimed failure");
+    form.append("files", new File(["first"], "first.txt", { type: "text/plain" }));
+    const previousInjection = process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_FILES;
+    process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_FILES = "1";
+    try {
+      const response = await handlePublicApiRequest(buildRequest(form), "/system-share");
+      expect(response.status).toBe(500);
+    } finally {
+      if (previousInjection === undefined) delete process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_FILES;
+      else process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_FILES = previousInjection;
+    }
+    expect(fs.existsSync(orphanDirectory)).toBe(false);
+    expect(await db?.select().from(posts)).toHaveLength(0);
+    expect(await db?.select().from(systemShareSubmissions)).toHaveLength(0);
   });
 });

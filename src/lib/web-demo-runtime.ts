@@ -51,7 +51,8 @@ export type WebDemoScene =
   | "system-share-confirmation"
   | "system-share-publishing"
   | "system-share-success"
-  | "system-share-error";
+  | "system-share-error"
+  | "system-share-response-loss";
 
 export type WebDemoSceneState = {
   scene: WebDemoScene;
@@ -172,6 +173,7 @@ const scenes = [
   "system-share-publishing",
   "system-share-success",
   "system-share-error",
+  "system-share-response-loss",
 ] as const satisfies readonly WebDemoScene[];
 const personas = ["guest", "user", "admin"] as const satisfies readonly WebDemoPersona[];
 const connections = ["online", "offline"] as const satisfies readonly WebDemoConnection[];

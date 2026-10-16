@@ -320,7 +320,6 @@ async function handleSystemShareRequest(
   const now = Date.now();
   const leaseToken = randomUUID();
   let reclaimedExpiredLease = false;
-  let reclaimedState: "processing" | "committing" | null = null;
   let existing = await db
     .select()
     .from(systemShareSubmissions)
@@ -368,7 +367,6 @@ async function handleSystemShareRequest(
       throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
     }
     reclaimedExpiredLease = leaseState && leaseExpiresAt <= now;
-    reclaimedState = reclaimedExpiredLease ? existing.state : null;
     await db
       .update(systemShareSubmissions)
       .set({
@@ -535,7 +533,7 @@ async function handleSystemShareRequest(
     // Only reclaim an expired lease after the deterministic Memo file exists.
     // An older request may still be finishing its filesystem commit; deleting
     // its staging directory before that point could publish missing attachments.
-    if (reclaimedExpiredLease && reclaimedState === "processing") {
+    if (reclaimedExpiredLease) {
       await cleanupAbandonedSystemShareStaging({
         basePath,
         memoRoot,
@@ -622,6 +620,17 @@ async function handleSystemShareRequest(
             eq(systemShareSubmissions.leaseToken, leaseToken)
           )
         );
+      if (reclaimedExpiredLease) {
+        // The commit-state lease is fenced before Memo file publication, so a
+        // reclaimed owner cannot safely retain its unreferenced staging tree.
+        await cleanupAbandonedSystemShareStaging({
+          basePath,
+          memoRoot,
+          submissionId,
+          keepLeaseToken: leaseToken,
+          memoId: deterministicMemoId,
+        });
+      }
     } else if (createdMemoId) {
       await db
         .update(systemShareSubmissions)
