@@ -28,19 +28,26 @@ function ToastBody({
   function handleRetry() {
     onRetry?.();
     if (typeof window !== "undefined") {
-      let attempts = 0;
-      const focusProgress = () => {
+      const deadline = Date.now() + 5000;
+      let sawProgress = false;
+      const focusRetryLifecycle = () => {
         const progress = document.querySelector<HTMLElement>(
           '[data-testid="system-share-toast-progress"]'
         );
         if (progress) {
+          sawProgress = true;
           progress.focus();
+        }
+        const retry = document.querySelector<HTMLButtonElement>(
+          '[data-testid="system-share-toast-retry"]'
+        );
+        if (retry && sawProgress) {
+          retry.focus();
           return;
         }
-        attempts += 1;
-        if (attempts < 20) window.setTimeout(focusProgress, 16);
+        if (Date.now() < deadline) window.setTimeout(focusRetryLifecycle, 32);
       };
-      window.setTimeout(focusProgress, 0);
+      window.setTimeout(focusRetryLifecycle, 0);
     }
   }
 
@@ -57,7 +64,12 @@ function ToastBody({
       <div className="system-share-toast-copy">
         <span>{message}</span>
         {onRetry ? (
-          <button className="system-share-toast-retry" type="button" onClick={handleRetry}>
+          <button
+            className="system-share-toast-retry"
+            type="button"
+            data-testid="system-share-toast-retry"
+            onClick={handleRetry}
+          >
             {actionLabel === "登录" ? (
               <LogIn aria-hidden="true" />
             ) : (

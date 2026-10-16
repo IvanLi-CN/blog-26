@@ -4,7 +4,7 @@
 
 ## Current Status
 
-- Implementation: 系统分享接收、管理员确认、服务端重分类、幂等恢复、全局发布 Toast、失败重试和详情跳转已实现；发布期间编辑器保持当前内容并切换只读，失败重试不会丢失编辑；当前候选视觉证据已采集并获得主人确认，进入正式审查
+- Implementation: 系统分享接收、管理员确认、服务端重分类、幂等恢复、全局发布 Toast、失败重试和详情跳转已实现；发布期间编辑器保持当前内容并切换只读，失败重试不会丢失编辑；当前候选视觉证据已覆盖手机和桌面五个状态，正在进行修复后的正式复审
 - Lifecycle: active
 - Catalog note: 控制台 PWA 接收、浏览器本地待处理槽位、管理员确认、服务端分类与 Memo 写入已落地；Chromium Android/桌面已安装 PWA 的真实系统分享仍待部署环境验收。
 
@@ -23,14 +23,14 @@
 ## Remaining Gaps
 
 - 未在真实已安装 Chromium Android/桌面 PWA 上完成操作系统分享菜单验收；该项需要部署环境和设备行为证据。
-- 已从最新构建的正式 console `/share` 路由采集并确认当前候选：390x844 的填充、发布中、成功、失败重试和详情状态，以及 1440x1000 的填充状态，分别保存在 `docs/specs/system-share-memos/assets/system-share-mobile-populated.png`、`system-share-mobile-publishing.png`、`system-share-mobile-success.png`、`system-share-mobile-failure-retry.png`、`system-share-mobile-detail.png` 和 `system-share-desktop-populated.png`；截图显示唯一 Memo 内容框、全局 Toast、实色主按钮、默认私有和返回详情，窄屏无横向溢出。
+- 已从最新构建的正式 console `/share` 路由采集并确认当前候选：390x844 与 1440x1000 均覆盖填充、发布中、成功、失败重试和详情状态，分别保存在 `docs/specs/system-share-memos/assets/system-share-mobile-populated.png`、`system-share-mobile-publishing.png`、`system-share-mobile-success.png`、`system-share-mobile-failure-retry.png`、`system-share-mobile-detail.png`、`system-share-desktop-populated.png`、`system-share-desktop-publishing.png`、`system-share-desktop-success.png`、`system-share-desktop-failure-retry.png` 和 `system-share-desktop-detail.png`；截图显示唯一 Memo 内容框、全局 Toast、实色主按钮、默认私有和返回详情，移动端 Demo 控件避开 Toast 与发布操作，窄屏无横向溢出。
 - 生产环境 IndexedDB 配额、存储禁用和跨浏览器降级仍需在经验验收中记录实际结果。
 - Agent VM 已完成健康检查和资源分配，但来宾没有 `bun`、`node` 或 `npm`，因此重型命令使用本机项目运行时完成；该环境限制已记录，不影响本次本机验证结果。
 
 ## Visual Evidence
 
 - 证据源：正式 console Web Demo `/share` 路由，受控管理员 persona；`requested_viewport=390x844` 与 `1440x1000`，`viewport_strategy=devtools-emulate`，页面级证据采用 `trim_only`。
-- 状态覆盖：填充确认页、发布中 Toast、发布成功 Toast、失败 Toast 内重试、成功后的 Memo 详情；所有状态均来自同一正式路由和现有 Web Demo Inspector，不新增演示路由。
+- 状态覆盖：手机与桌面各自覆盖填充确认页、发布中 Toast、发布成功 Toast、失败 Toast 内重试和成功后的 Memo 详情；所有状态均来自同一正式路由和现有 Web Demo Inspector，不新增演示路由。
 - 主人已确认当前候选界面；真实已安装 Chromium Android/桌面 PWA 的系统分享菜单仍由部署环境经验验收完成。
 
 ## Related Changes

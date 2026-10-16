@@ -443,10 +443,9 @@
   }
 
   .web-demo-inspector-bubble {
-    top: max(0.75rem, env(safe-area-inset-top, 0px));
-    right: max(0.75rem, env(safe-area-inset-right, 0px));
-    bottom: auto;
-    left: auto;
+    right: auto;
+    bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+    left: max(0.75rem, env(safe-area-inset-left, 0px));
   }
 }
 

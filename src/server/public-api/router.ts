@@ -620,17 +620,10 @@ async function handleSystemShareRequest(
             eq(systemShareSubmissions.leaseToken, leaseToken)
           )
         );
-      if (reclaimedExpiredLease) {
-        // The commit-state lease is fenced before Memo file publication, so a
-        // reclaimed owner cannot safely retain its unreferenced staging tree.
-        await cleanupAbandonedSystemShareStaging({
-          basePath,
-          memoRoot,
-          submissionId,
-          keepLeaseToken: leaseToken,
-          memoId: deterministicMemoId,
-        });
-      }
+      // Keep staging owned by other lease tokens intact on failure. An older
+      // request may already have passed the commit fence and still be writing
+      // its attachment references; cleanup is deferred until a replacement
+      // lease has published a complete deterministic Memo.
     } else if (createdMemoId) {
       await db
         .update(systemShareSubmissions)

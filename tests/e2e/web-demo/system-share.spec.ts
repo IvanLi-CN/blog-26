@@ -54,6 +54,7 @@ test.describe("Console system share Web Demo", () => {
     await expect(page.getByTestId("system-share-original")).toContainText("会议记录附件");
     await page.getByTestId("system-share-submit").click();
     await expect(page.getByTestId("system-share-toast-progress")).toBeVisible();
+    await expect(editor).toHaveAttribute("contenteditable", "false");
     const successShownAt = Date.now();
     await expect(page.getByTestId("system-share-toast-success")).toBeVisible();
     await expect(page).toHaveURL(/\/memos\/console-demo-created-\d+$/);

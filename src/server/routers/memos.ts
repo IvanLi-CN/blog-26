@@ -1,4 +1,5 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { link, mkdir, rm, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, gt, like, sql } from "drizzle-orm";
@@ -152,6 +153,72 @@ function resolveMemoTimestamps(memo: MemoRow): {
 
 function normalizeFaultInjectionMarkers(content: string) {
   return content.replace(/\\(?=[[\]])/g, "");
+}
+
+type SystemShareCommit = {
+  submissionId: string;
+  leaseToken: string;
+};
+
+type AuthoredMemo = Awaited<ReturnType<typeof readAuthoredMemo>>;
+
+function isFileExistsError(error: unknown) {
+  return error && typeof error === "object" && "code" in error && error.code === "EEXIST";
+}
+
+function isMissingFileError(error: unknown) {
+  return error && typeof error === "object" && "code" in error && error.code === "ENOENT";
+}
+
+function isYamlParseError(error: unknown) {
+  return error instanceof Error && error.name === "YAMLException";
+}
+
+function belongsToSystemShare(memo: AuthoredMemo, submissionId: string) {
+  const marker = memo.frontmatter.systemShare;
+  return (
+    marker &&
+    typeof marker === "object" &&
+    "submissionId" in marker &&
+    marker.submissionId === submissionId
+  );
+}
+
+async function assertActiveSystemShareLease(commit: SystemShareCommit) {
+  const activeLease = await db
+    .select({ leaseToken: systemShareSubmissions.leaseToken })
+    .from(systemShareSubmissions)
+    .where(
+      and(
+        eq(systemShareSubmissions.submissionId, commit.submissionId),
+        eq(systemShareSubmissions.state, "committing"),
+        eq(systemShareSubmissions.leaseToken, commit.leaseToken),
+        gt(systemShareSubmissions.leaseExpiresAt, Date.now())
+      )
+    )
+    .limit(1)
+    .then((rows) => rows[0]);
+  if (!activeLease) {
+    throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
+  }
+}
+
+/**
+ * Publish a system-share Memo without exposing a partially written target.
+ * `link` is atomic and refuses to replace an existing deterministic path.
+ */
+async function writeSystemShareMemoAtomically(
+  fullPath: string,
+  markdownContent: string,
+  leaseToken: string
+) {
+  const temporaryPath = `${fullPath}.${leaseToken}.${randomUUID()}.tmp`;
+  await writeFile(temporaryPath, markdownContent, { encoding: "utf-8", flag: "wx" });
+  try {
+    await link(temporaryPath, fullPath);
+  } finally {
+    await unlink(temporaryPath).catch(() => undefined);
+  }
 }
 
 /**
@@ -886,83 +953,105 @@ export const memosRouter = router({
           : generateMemoFilename(normalizedContent, title, now);
         createdId = buildMemoRelativePath(fileName, getLocalMemoRootPath()).replace(/\\+/g, "/");
 
+        const basePath = getLocalBasePathOrThrow();
+        const fullPath = join(basePath, createdId);
+        await mkdir(dirname(fullPath), { recursive: true });
+
         // A deterministic system-share path is the filesystem commit point. Read
         // it before rebuilding clipping projections so a retry cannot apply newer
-        // request values to an already-published Memo.
+        // request values to an already-published Memo. A malformed or unmarked
+        // target is an interrupted system-share write and may be replaced while
+        // the current committing lease is still fenced.
+        let existingSystemShareMemo: AuthoredMemo | null = null;
         if (systemShare) {
+          await assertActiveSystemShareLease(systemShare);
           try {
             const existing = await readAuthoredMemo(createdId);
-            normalizedContent = existing.body;
-            const existingAttachments = existing.frontmatter.attachments;
-            normalizedAttachments = Array.isArray(existingAttachments)
-              ? existingAttachments
-              : normalizedAttachments;
-            createdSource = source;
-            if (isTestEnv) {
-              createdMemo = await db
-                .select()
-                .from(posts)
-                .where(and(eq(posts.type, "memo"), eq(posts.id, createdId)))
-                .limit(1)
-                .then((rows) => rows[0]);
+            if (belongsToSystemShare(existing, systemShare.submissionId)) {
+              existingSystemShareMemo = existing;
+              normalizedContent = existing.body;
+              const existingAttachments = existing.frontmatter.attachments;
+              normalizedAttachments = Array.isArray(existingAttachments)
+                ? existingAttachments
+                : normalizedAttachments;
+            } else {
+              await unlink(fullPath).catch(() => undefined);
             }
-            lastError = null;
-            break;
           } catch (error) {
-            if (
-              !(error && typeof error === "object" && "code" in error && error.code === "ENOENT")
-            ) {
+            if (isMissingFileError(error)) {
+              // The first publish has not reached the filesystem commit point.
+            } else if (isYamlParseError(error)) {
+              await unlink(fullPath).catch(() => undefined);
+            } else {
               throw error;
             }
           }
         }
 
-        const frontmatter: Record<string, unknown> = {
-          title: recognizeMemoClipping(normalizedContent, { title, tags: inputTags }).enabled
-            ? title || ""
-            : title || extractTitleFromContent(normalizedContent),
-          public: isPublic,
-          tags: inputTags,
-          attachments: normalizedAttachments,
-          authorEmail: ctx.user?.email || "admin@example.com",
-          publishDate: nowIso,
-          ...(systemShare ? { systemShare } : {}),
-        };
-        await attachClippingReference(
-          normalizedContent,
-          frontmatter,
-          ctx.user?.id ?? null,
-          createdId
-        );
-
-        const markdownContent = buildMemoMarkdownDocument(normalizedContent, frontmatter);
-        const basePath = getLocalBasePathOrThrow();
-        const fullPath = join(basePath, createdId);
-        await mkdir(dirname(fullPath), { recursive: true });
-
-        if (systemShare) {
-          const committingLease = await db
-            .select({ leaseToken: systemShareSubmissions.leaseToken })
-            .from(systemShareSubmissions)
-            .where(
-              and(
-                eq(systemShareSubmissions.submissionId, systemShare.submissionId),
-                eq(systemShareSubmissions.state, "committing"),
-                eq(systemShareSubmissions.leaseToken, systemShare.leaseToken),
-                gt(systemShareSubmissions.leaseExpiresAt, Date.now())
-              )
-            )
-            .limit(1)
-            .then((rows) => rows[0]);
-          if (!committingLease) {
-            throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
-          }
+        const frontmatter: Record<string, unknown> = existingSystemShareMemo
+          ? { ...existingSystemShareMemo.frontmatter }
+          : {
+              title: recognizeMemoClipping(normalizedContent, { title, tags: inputTags }).enabled
+                ? title || ""
+                : title || extractTitleFromContent(normalizedContent),
+              public: isPublic,
+              tags: inputTags,
+              attachments: normalizedAttachments,
+              authorEmail: ctx.user?.email || "admin@example.com",
+              publishDate: nowIso,
+              ...(systemShare ? { systemShare } : {}),
+            };
+        if (!existingSystemShareMemo) {
+          await attachClippingReference(
+            normalizedContent,
+            frontmatter,
+            ctx.user?.id ?? null,
+            createdId
+          );
         }
 
-        await writeFile(fullPath, markdownContent, {
-          encoding: "utf-8",
-          flag: systemShare ? "wx" : "w",
-        });
+        const markdownContent = buildMemoMarkdownDocument(normalizedContent, frontmatter);
+        if (systemShare && !existingSystemShareMemo) {
+          await assertActiveSystemShareLease(systemShare);
+          try {
+            await writeSystemShareMemoAtomically(fullPath, markdownContent, systemShare.leaseToken);
+          } catch (error) {
+            if (!isFileExistsError(error)) throw error;
+            const existing = await readAuthoredMemo(createdId).catch(async (readError) => {
+              if (!isYamlParseError(readError)) throw readError;
+              await unlink(fullPath).catch(() => undefined);
+              await assertActiveSystemShareLease(systemShare);
+              await writeSystemShareMemoAtomically(
+                fullPath,
+                markdownContent,
+                systemShare.leaseToken
+              );
+              return null;
+            });
+            if (existing && !belongsToSystemShare(existing, systemShare.submissionId)) {
+              await unlink(fullPath).catch(() => undefined);
+              await assertActiveSystemShareLease(systemShare);
+              await writeSystemShareMemoAtomically(
+                fullPath,
+                markdownContent,
+                systemShare.leaseToken
+              );
+            } else if (existing) {
+              existingSystemShareMemo = existing;
+              normalizedContent = existing.body;
+              const existingAttachments = existing.frontmatter.attachments;
+              normalizedAttachments = Array.isArray(existingAttachments)
+                ? existingAttachments
+                : normalizedAttachments;
+              Object.assign(frontmatter, existing.frontmatter);
+            }
+          }
+        } else if (!systemShare) {
+          await writeFile(fullPath, markdownContent, {
+            encoding: "utf-8",
+            flag: "w",
+          });
+        }
 
         createdSource = source;
 

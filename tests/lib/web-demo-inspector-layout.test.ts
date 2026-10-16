@@ -19,8 +19,9 @@ test("Web Demo Inspector uses a wide public rail without affecting normal deskto
   );
   expect(styles).toContain("padding-left: 18rem;");
   expect(styles).toContain("height: 100dvh;");
-  expect(styles).toContain("top: max(0.75rem, env(safe-area-inset-top, 0px));");
-  expect(styles).toContain("bottom: auto;");
+  expect(styles).toContain("bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));");
+  expect(styles).toContain("left: max(0.75rem, env(safe-area-inset-left, 0px));");
+  expect(styles).not.toContain("top: max(0.75rem, env(safe-area-inset-top, 0px));");
   expect(styles).toContain(".web-demo-inspector-host {\n    z-index: 80;");
   expect(styles).not.toContain("padding-left: min(22rem");
   expect(styles).not.toContain("padding-right: min(24rem");

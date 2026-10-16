@@ -241,6 +241,25 @@ describe("system share API", () => {
     expect(row).toMatchObject({ state: "completed", memoId });
   });
 
+  test("repairs an interrupted deterministic Memo file before retrying the same submission", async () => {
+    const submissionId = randomUUID();
+    const memoId = `Memos/system-share/${submissionId}.md`;
+    const memoPath = path.join(contentRoot, memoId);
+    fs.mkdirSync(path.dirname(memoPath), { recursive: true });
+    fs.writeFileSync(memoPath, "---\ntitle: [\n---\npartial write");
+
+    const response = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "repaired thought")),
+      "/system-share"
+    );
+    expect(response.status).toBe(201);
+    expect(fs.readFileSync(memoPath, "utf8")).toContain("repaired thought");
+    expect(await db?.select().from(posts)).toHaveLength(1);
+    expect(await db?.select().from(systemShareSubmissions)).toMatchObject([
+      { submissionId, state: "completed", memoId },
+    ]);
+  });
+
   test("keeps distinct temporary submission ids independent", async () => {
     const first = await handlePublicApiRequest(
       buildRequest(createForm(randomUUID(), "same content")),
@@ -537,7 +556,7 @@ describe("system share API", () => {
     expect(fs.existsSync(stagingRoot) ? fs.readdirSync(stagingRoot) : []).toHaveLength(0);
   });
 
-  test("cleans reclaimed staging when a retry fails before Memo creation", async () => {
+  test("retains another lease's staging when a reclaimed retry fails before Memo creation", async () => {
     const submissionId = randomUUID();
     const now = Date.now();
     const oldLeaseToken = randomUUID();
@@ -573,7 +592,7 @@ describe("system share API", () => {
       if (previousInjection === undefined) delete process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_FILES;
       else process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_FILES = previousInjection;
     }
-    expect(fs.existsSync(orphanDirectory)).toBe(false);
+    expect(fs.existsSync(orphanDirectory)).toBe(true);
     expect(await db?.select().from(posts)).toHaveLength(0);
     expect(await db?.select().from(systemShareSubmissions)).toHaveLength(0);
   });
