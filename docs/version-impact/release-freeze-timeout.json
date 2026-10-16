@@ -5,7 +5,7 @@
   "covered_files": {
     ".github/release-contract.json": "fe8185c3c18a4f334df17242e9dd3604d17a7f49",
     ".github/workflows/abandon-cancelled-release.yml": "7e20b45b52a25c324b9bc07fe9f4daa2af8c024e",
-    ".github/workflows/product-release.yml": "e00c5451cc3638ad510d820a18b99d552f42c485",
+    ".github/workflows/product-release.yml": "e6e2dbd8654aa3e5123321980182e5d389002e4a",
     "docs/runbooks/manual-version-release.md": "0c9682e8fe528b229d32e7ccc233810148efc6dc",
     "docs/specs/manual-version-release/IMPLEMENTATION.md": "f4b722fae56aa1d81904a6512866e438b913d2db",
     "docs/specs/manual-version-release/SPEC.md": "73a26106dae908a2974a27965fda6553f24120cb",
@@ -50,7 +50,7 @@
         },
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "e00c5451cc3638ad510d820a18b99d552f42c485",
+          "blob": "e6e2dbd8654aa3e5123321980182e5d389002e4a",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         },
         {
