@@ -58,3 +58,60 @@ test("frozen media reuse ignores cache-buster changes but rejects new content id
   );
   await expect(packageFrozenMedia(inputs, config, output)).rejects.toThrow("not covered");
 });
+
+test("frozen media reuse serves derived watermark variants from the sealed manifest", async () => {
+  const root = await mkdtemp(join(tmpdir(), "release-media-derived-"));
+  const inputs = join(root, "inputs");
+  const output = join(root, "site");
+  for (const renderId of ["wm-a-v1", "wm-b-v1"]) {
+    await mkdir(join(inputs, `media/_content/assets/post/test/${renderId}`), { recursive: true });
+    await writeFile(
+      join(inputs, `media/_content/assets/post/test/${renderId}/content.webp`),
+      `${renderId}-bytes`
+    );
+  }
+  await mkdir(output);
+  await writeFile(
+    join(inputs, "media/_content/media-manifest.json"),
+    JSON.stringify({
+      entries: [
+        {
+          sourcePath: "/api/public/assets/post/test/wm-a-v1/content.webp?v=1",
+          outputPath: "/_content/assets/post/test/wm-a-v1/content.webp",
+          status: "packaged",
+        },
+        {
+          sourcePath: "/api/public/assets/post/test/wm-b-v1/content.webp?v=1",
+          outputPath: "/_content/assets/post/test/wm-b-v1/content.webp",
+          status: "packaged",
+        },
+      ],
+    })
+  );
+  await writeFile(
+    join(output, "index.html"),
+    '<img src="/api/public/assets/post/test/wm-b-v1/content.webp?v=2">'
+  );
+  const config: FrozenConfig = {
+    schemaVersion: 1,
+    identity: "a".repeat(64),
+    productVersion: "2.8.0",
+    sourceSha: "b".repeat(40),
+    buildDate: "2026-10-07T00:00:00Z",
+    bunVersion: "1.4.2",
+    nodeVersion: "v22.23.2",
+    baseImages: {
+      build: `oven/bun@sha256:${"c".repeat(64)}`,
+      runtime: `oven/bun@sha256:${"d".repeat(64)}`,
+    },
+    env: {
+      PUBLIC_API_BASE_URL: "https://console.ivanli.cc",
+      PUBLIC_SITE_URL: "https://ivanli.cc",
+      PUBLIC_SITE_BASE_PATH: "/",
+    },
+  };
+  await packageFrozenMedia(inputs, config, output);
+  expect(
+    await readFile(join(output, "_content/assets/post/test/wm-b-v1/content.webp"), "utf8")
+  ).toBe("wm-b-v1-bytes");
+});

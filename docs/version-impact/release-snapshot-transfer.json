@@ -5,56 +5,59 @@
   "covered_files": {
     "docs/specs/manual-version-release/HISTORY.md": "d974057f8333c47926293cebf4810efa7a547221",
     "docs/specs/manual-version-release/IMPLEMENTATION.md": "1341da3f005c2f4ee566d8a116d53e2e69f08026",
-    "src/lib/release/inputs.ts": "eb94a98d00f28dbfaafb161437b7f27a75c966f0",
-    "tests/lib/manual-release-inputs.test.ts": "ceb00ebba22f87a6f0110f285ef2f8a34401569e"
+    "scripts/package-public-media.test.ts": "dcf5dcdaeb97537dd8b3d44023b744354c002615",
+    "scripts/package-public-media.ts": "9a5607772c1eae0d682b9e48ecd6329862918e37",
+    "src/lib/release/inputs.ts": "1644e7aada730b3c5188a98c4296201cdb50a79a",
+    "tests/lib/manual-release-inputs.test.ts": "ceb00ebba22f87a6f0110f285ef2f8a34401569e",
+    "tests/lib/manual-release-media.test.ts": "784b850bd71689f78f6d28a87dd18482d6643790"
   },
   "change": {
-    "description": "Retry public snapshot response-body reads during release input freezing so transient mid-stream failures do not abort an otherwise valid release.",
+    "description": "Make release input freezing retryable and seal the derived public watermark variants emitted by the static build.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api"]
   },
   "classification": {
     "planned": {
       "impact": "patch",
-      "reasoning": "This is a compatible release-input reliability fix. It preserves the public snapshot endpoint, frozen input shape, validation rules, and product state.",
+      "reasoning": "This is a compatible release packaging reliability fix. It preserves the public snapshot endpoint, frozen input shape, validation rules, and product state while sealing the build's existing watermark variants.",
       "assessed_at": "2026-10-16T00:00:00+08:00",
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "eb94a98d00f28dbfaafb161437b7f27a75c966f0",
-          "command": "bun test tests/lib/manual-release-inputs.test.ts"
+          "blob": "1644e7aada730b3c5188a98c4296201cdb50a79a",
+          "command": "bun test tests/lib/manual-release-inputs.test.ts tests/lib/manual-release-media.test.ts"
         }
       ]
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The candidate only moves complete response-body consumption inside the existing retry boundary and adds deterministic coverage; release inputs and compatibility contracts remain unchanged.",
+      "reasoning": "The candidate keeps response-body retry handling and extends the frozen media manifest with actual wm-a-v1 and wm-b-v1 bytes; release inputs, derived URL identity and compatibility contracts remain unchanged.",
       "assessed_at": "2026-10-16T00:00:00+08:00",
       "evidence": [
         {
-          "path": "tests/lib/manual-release-inputs.test.ts",
-          "blob": "ceb00ebba22f87a6f0110f285ef2f8a34401569e",
-          "command": "bun test tests/lib/manual-release-inputs.test.ts: body-read failure retries with existing backoff"
+          "path": "tests/lib/manual-release-media.test.ts",
+          "blob": "784b850bd71689f78f6d28a87dd18482d6643790",
+          "command": "bun test tests/lib/manual-release-media.test.ts: frozen media reuse serves derived watermark variants"
         }
       ],
       "scope_drift": {
         "detected": false,
-        "description": "The candidate is limited to public snapshot acquisition retry handling, its focused test, and release documentation."
+        "description": "The candidate is limited to release input retry handling, derived watermark media sealing, focused tests, and release evidence."
       }
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Focused release-input tests, the full repository check, and CI policy validation confirm a compatible retry-boundary correction with no endpoint, payload, persistent-state, or product behavior change.",
+      "reasoning": "Focused release-input and frozen-media tests, the full repository check, and CI policy validation confirm a compatible packaging correction with no endpoint, payload, persistent-state, or product behavior change.",
       "assessed_at": "2026-10-16T00:00:00+08:00",
       "evidence": [
         {
-          "path": "tests/lib/manual-release-inputs.test.ts",
-          "blob": "ceb00ebba22f87a6f0110f285ef2f8a34401569e",
-          "command": "bun test tests/lib/manual-release-inputs.test.ts tests/ci/fetch-public-content-bundle.test.ts: 16 tests pass"
+          "path": "scripts/package-public-media.test.ts",
+          "blob": "dcf5dcdaeb97537dd8b3d44023b744354c002615",
+          "command": "bun test scripts/package-public-media.test.ts tests/lib/manual-release-media.test.ts: derived watermark freeze and sealed reuse pass"
         },
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "eb94a98d00f28dbfaafb161437b7f27a75c966f0",
+          "blob": "1644e7aada730b3c5188a98c4296201cdb50a79a",
           "command": "bun run check: release input implementation passes Biome and type checks"
         },
         {
@@ -83,7 +86,7 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "eb94a98d00f28dbfaafb161437b7f27a75c966f0",
+          "blob": "1644e7aada730b3c5188a98c4296201cdb50a79a",
           "command": "The public snapshot URL, response contract, and frozen input schema are unchanged"
         }
       ]
@@ -97,7 +100,7 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "eb94a98d00f28dbfaafb161437b7f27a75c966f0",
+          "blob": "1644e7aada730b3c5188a98c4296201cdb50a79a",
           "command": "No database, cache, artifact, or release ledger format changes"
         }
       ]

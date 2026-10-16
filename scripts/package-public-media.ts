@@ -68,6 +68,7 @@ export type PublicMediaPackageOptions = {
   downloadConcurrency?: number;
   downloadAttempts?: number;
   retryDelayMs?: number;
+  includeDerivedWatermarkVariants?: boolean;
   fetchImpl?: PublicMediaFetcher;
 };
 
@@ -299,6 +300,9 @@ async function readResponseWithinLimit(
 }
 
 const MAX_MEDIA_REDIRECTS = 5;
+const PUBLIC_RENDER_VARIANT_RE =
+  /^\/api\/public\/assets\/(post|memo)\/([^/]+)\/([^/]+)\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu;
+const DERIVED_WATERMARK_RENDER_IDS = ["wm-a-v1", "wm-b-v1"] as const;
 
 async function fetchMediaWithinOrigin(
   url: string,
@@ -404,6 +408,31 @@ function fetchKey(reference: AssetReference) {
   const url = new URL(reference.fetchUrl);
   url.searchParams.delete("v");
   return `${url.pathname}${url.search}`;
+}
+
+function deriveWatermarkReference(
+  reference: AssetReference,
+  renderId: (typeof DERIVED_WATERMARK_RENDER_IDS)[number],
+  mediaOrigin: string,
+  basePath: string
+): AssetReference | null {
+  const match = PUBLIC_RENDER_VARIANT_RE.exec(reference.sourceUrl.pathname);
+  if (!match) return null;
+  const [, , , , variant, extension] = match;
+  const sourceUrl = new URL(reference.sourceUrl.href);
+  sourceUrl.pathname = `${sourceUrl.pathname.slice(0, sourceUrl.pathname.lastIndexOf("/"))}/${renderId}/${variant}.${extension}`;
+  const relativePath = assertSafeAssetPath(sourceUrl.pathname);
+  const sourcePath = `${sourceUrl.pathname}${sourceUrl.search}`;
+  const fetchUrl = `${mediaOrigin}${sourcePath}`;
+  const staticPath = sitePath(basePath, `${STATIC_MEDIA_PREFIX}${relativePath}`);
+  return {
+    raw: "",
+    sourcePath,
+    sourceUrl,
+    fetchUrl,
+    staticPath,
+    replacement: () => staticPath,
+  };
 }
 
 function writeOutput(key: string, value: string) {
@@ -512,6 +541,14 @@ export async function packagePublicMedia(
 
   const entriesByKey = new Map<string, PublicMediaManifestEntry>();
   const outputRoot = resolve(siteDistDir, ".");
+  if (options.includeDerivedWatermarkVariants) {
+    for (const reference of references) {
+      for (const renderId of DERIVED_WATERMARK_RENDER_IDS) {
+        const derived = deriveWatermarkReference(reference, renderId, mediaOrigin, basePath);
+        if (derived) uniqueReferences.set(fetchKey(derived), derived);
+      }
+    }
+  }
   const referenceEntries = [...uniqueReferences.entries()];
   let nextReferenceIndex = 0;
   const downloadWorker = async () => {
