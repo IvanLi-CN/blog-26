@@ -100,7 +100,7 @@ describe("manual product release resolution", () => {
           id: 98,
           workflow_id: 123,
           run_attempt: 2,
-          head_sha: mergeSha,
+          head_sha: "d".repeat(40),
           head_branch: "main",
           event: "workflow_dispatch",
           status: "completed",

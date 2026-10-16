@@ -13,10 +13,10 @@
     "src/lib/release/inputs.ts": "51adb012fd6f764d2e7814688ff3d49bd6a9bf5f",
     "src/lib/release/ledger.ts": "0d5d6a4b1cee97572e90d8b7323bd84876cc1bd0",
     "src/lib/release/policy.ts": "b3abb4cacedebc506e2bfc5e9361700f8f63ab51",
-    "src/lib/release/completion.ts": "800db0b57aeb278468f4c77a656a7e8c167b75e3",
+    "src/lib/release/completion.ts": "c3336cd6b15bfd8bca82d018a6719f9a3d1c816f",
     "src/lib/release/source.ts": "78d8a7aba2db9591d0ddf899aac8c9b850cf71ed",
     "tests/ci/product-prerelease-workflow.test.ts": "b0cf3d9802707455038e327b000584517db24124",
-    "tests/lib/manual-release-completion.test.ts": "a3c29658a871b73c7005fc775751406b92863e1d",
+    "tests/lib/manual-release-completion.test.ts": "a64d993efadc4dd639387ad5577a4a20ce713769",
     "tests/lib/manual-release-inputs.test.ts": "dc6b0305cecd7e023f69b7e8071b9fc0784277e9",
     "tests/lib/manual-release-ledger.test.ts": "2be87736b3388ff30851502090464ce64b53feeb"
   },
@@ -60,7 +60,7 @@
         },
         {
           "path": "src/lib/release/completion.ts",
-          "blob": "800db0b57aeb278468f4c77a656a7e8c167b75e3",
+          "blob": "c3336cd6b15bfd8bca82d018a6719f9a3d1c816f",
           "command": "bun test tests/lib/manual-release-completion.test.ts tests/ci/product-prerelease-workflow.test.ts"
         },
         {
@@ -81,7 +81,7 @@
       "evidence": [
         {
           "path": "tests/lib/manual-release-completion.test.ts",
-          "blob": "a3c29658a871b73c7005fc775751406b92863e1d",
+          "blob": "a64d993efadc4dd639387ad5577a4a20ce713769",
           "command": "bun test tests/lib/manual-release-ledger.test.ts tests/lib/manual-release-inputs.test.ts tests/lib/manual-release-completion.test.ts tests/ci/product-prerelease-workflow.test.ts scripts/package-public-media.test.ts"
         },
         {
