@@ -276,6 +276,20 @@ async function readPolicyLedger(github: GitHubRelease, store: LedgerStore): Prom
   }
 }
 
+function observeMergedReleaseMerges(github: GitHubRelease, ledger: ReleaseLedger): ReleaseLedger {
+  return {
+    ...ledger,
+    entries: ledger.entries.map((entry) => {
+      if (entry.stage !== "pr_open" || !entry.prNumber) return entry;
+      const pull = github.pull(entry.prNumber);
+      if (!pull.merged || !pull.merge_commit_sha) return entry;
+      if (entry.mergeSha && entry.mergeSha !== pull.merge_commit_sha)
+        throw new Error("Registered release merge SHA differs from its pull request");
+      return { ...entry, mergeSha: pull.merge_commit_sha };
+    }),
+  };
+}
+
 export async function validateCandidatePolicy(
   github: GitHubRelease,
   store: LedgerStore,
@@ -358,6 +372,10 @@ export async function validateCandidatePolicy(
     )
       throw new Error("Ordinary changes cannot modify VERSION; use Manual Product Release");
   }
-  const assessment = assessReleaseSource(github, await readPolicyLedger(github, store), head);
+  const assessment = assessReleaseSource(
+    github,
+    observeMergedReleaseMerges(github, await readPolicyLedger(github, store)),
+    head
+  );
   return `Verified ${assessment.impact} impact for ${Object.keys(assessment.changed).length} source changes`;
 }

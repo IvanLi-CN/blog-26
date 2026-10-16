@@ -8,7 +8,7 @@
     "docs/specs/manual-version-release/IMPLEMENTATION.md": "f4b722fae56aa1d81904a6512866e438b913d2db",
     "docs/specs/manual-version-release/SPEC.md": "73a26106dae908a2974a27965fda6553f24120cb",
     "scripts/product-release.ts": "dfd8636f953d1ca9cc30ebaf0311c13da159af61",
-    "src/lib/release/completion.ts": "98cc4ecc533d73fef4df39d4e5f08e680dbccc3f",
+    "src/lib/release/completion.ts": "67a7b020d19ce4114775b472382785968b2db2ea",
     "src/lib/release/source.ts": "78d8a7aba2db9591d0ddf899aac8c9b850cf71ed",
     "tests/ci/product-prerelease-workflow.test.ts": "56a4acea7bcd040f005b1a7d8ec7951db59688ed",
     "tests/lib/manual-release-completion.test.ts": "5b72c8db670ade11bdbf450e1bd6c6306d0c834d"
@@ -43,7 +43,7 @@
         },
         {
           "path": "src/lib/release/completion.ts",
-          "blob": "98cc4ecc533d73fef4df39d4e5f08e680dbccc3f",
+          "blob": "67a7b020d19ce4114775b472382785968b2db2ea",
           "command": "bun test tests/lib/manual-release-completion.test.ts"
         },
         {
@@ -107,7 +107,7 @@
       "evidence": [
         {
           "path": "src/lib/release/completion.ts",
-          "blob": "98cc4ecc533d73fef4df39d4e5f08e680dbccc3f",
+          "blob": "67a7b020d19ce4114775b472382785968b2db2ea",
           "command": "The recovery resolver only synthesizes a workflow event from existing ledger and pull request state."
         },
         {
