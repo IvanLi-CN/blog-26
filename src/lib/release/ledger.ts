@@ -454,12 +454,8 @@ export function rebindReleaseRun(
     throw new Error("Only an unfrozen failed merged release can rebind its run");
   if (!Number.isInteger(releaseRunId) || releaseRunId <= 0)
     throw new Error("Release run identity is invalid");
-  const next = entrySchema.parse({
-    ...original,
-    releaseRunId,
-    failure: undefined,
-    updatedAt: now,
-  });
+  const { failure: _failure, ...withoutFailure } = original;
+  const next = entrySchema.parse({ ...withoutFailure, releaseRunId, updatedAt: now });
   validateEntry(next);
   return { ...ledger, entries: ledger.entries.map((entry) => (entry.id === id ? next : entry)) };
 }

@@ -11,14 +11,14 @@
     "docs/specs/manual-version-release/SPEC.md": "73a26106dae908a2974a27965fda6553f24120cb",
     "scripts/product-release.ts": "dfd8636f953d1ca9cc30ebaf0311c13da159af61",
     "src/lib/release/inputs.ts": "51adb012fd6f764d2e7814688ff3d49bd6a9bf5f",
-    "src/lib/release/ledger.ts": "0d5d6a4b1cee97572e90d8b7323bd84876cc1bd0",
+    "src/lib/release/ledger.ts": "9dffde2186c4f419e1cd35b163ee7400c06df193",
     "src/lib/release/policy.ts": "b3abb4cacedebc506e2bfc5e9361700f8f63ab51",
-    "src/lib/release/completion.ts": "c3336cd6b15bfd8bca82d018a6719f9a3d1c816f",
+    "src/lib/release/completion.ts": "605e9f8bd4119b8106abc419f35a7fedace752b7",
     "src/lib/release/source.ts": "78d8a7aba2db9591d0ddf899aac8c9b850cf71ed",
     "tests/ci/product-prerelease-workflow.test.ts": "b0cf3d9802707455038e327b000584517db24124",
     "tests/lib/manual-release-completion.test.ts": "a64d993efadc4dd639387ad5577a4a20ce713769",
     "tests/lib/manual-release-inputs.test.ts": "dc6b0305cecd7e023f69b7e8071b9fc0784277e9",
-    "tests/lib/manual-release-ledger.test.ts": "2be87736b3388ff30851502090464ce64b53feeb"
+    "tests/lib/manual-release-ledger.test.ts": "8b14d7914490060aa9605048803eec9388dea69e"
   },
   "change": {
     "description": "Prevent Product Release input freezing from timing out on large public media snapshots, add fail-closed no-input recovery, and allow a new manual run to take over only an unfrozen failed manual run.",
@@ -60,7 +60,7 @@
         },
         {
           "path": "src/lib/release/completion.ts",
-          "blob": "c3336cd6b15bfd8bca82d018a6719f9a3d1c816f",
+          "blob": "605e9f8bd4119b8106abc419f35a7fedace752b7",
           "command": "bun test tests/lib/manual-release-completion.test.ts tests/ci/product-prerelease-workflow.test.ts"
         },
         {
@@ -91,7 +91,7 @@
         },
         {
           "path": "src/lib/release/ledger.ts",
-          "blob": "0d5d6a4b1cee97572e90d8b7323bd84876cc1bd0",
+          "blob": "9dffde2186c4f419e1cd35b163ee7400c06df193",
           "command": "bun test tests/lib/manual-release-ledger.test.ts: cancelled merged releases can record cancellation and be abandoned"
         }
       ]
@@ -129,7 +129,7 @@
       "evidence": [
         {
           "path": "src/lib/release/ledger.ts",
-          "blob": "0d5d6a4b1cee97572e90d8b7323bd84876cc1bd0",
+          "blob": "9dffde2186c4f419e1cd35b163ee7400c06df193",
           "command": "Cancellation recovery only records an existing run failure marker before abandonment; it does not change ledger schema or retain artifacts"
         }
       ]
