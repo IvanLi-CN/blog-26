@@ -24,12 +24,26 @@ function ToastBody({
   onClose?: () => void;
 }) {
   const Icon = tone === "progress" ? LoaderCircle : tone === "success" ? Check : TriangleAlert;
+
+  function handleRetry() {
+    onRetry?.();
+    if (typeof window !== "undefined") {
+      window.setTimeout(() => {
+        const progress = document.querySelector<HTMLElement>(
+          '[data-testid="system-share-toast-progress"]'
+        );
+        progress?.focus();
+      }, 0);
+    }
+  }
+
   return (
     <div
       className="system-share-toast-body"
       data-testid={`system-share-toast-${tone}`}
       role={tone === "error" ? "alert" : "status"}
       aria-live={tone === "error" ? "assertive" : "polite"}
+      tabIndex={tone === "progress" ? -1 : undefined}
     >
       <Icon
         className={`system-share-toast-icon system-share-toast-icon-${tone}`}
@@ -38,7 +52,7 @@ function ToastBody({
       <div className="system-share-toast-copy">
         <span>{message}</span>
         {onRetry ? (
-          <button className="system-share-toast-retry" type="button" onClick={onRetry}>
+          <button className="system-share-toast-retry" type="button" onClick={handleRetry}>
             {actionLabel === "登录" ? (
               <LogIn aria-hidden="true" />
             ) : (

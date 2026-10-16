@@ -198,6 +198,7 @@ describe("system share API", () => {
     expect(response.status).toBe(201);
     expect(await response.json()).toMatchObject({ ok: true, memoId });
     expect(fs.existsSync(memoPath)).toBe(true);
+    expect(fs.readFileSync(memoPath, "utf8")).toContain("recovered commit");
     const row = await db
       ?.select()
       .from(systemShareSubmissions)
@@ -328,6 +329,50 @@ describe("system share API", () => {
     });
   });
 
+  test("upgrades a legacy submission row without losing its identity", async () => {
+    const migrationRoot = fs.mkdtempSync(
+      path.join(process.cwd(), "tmp", "system-share-migrations-")
+    );
+    const legacyMigrationsPath = path.join(migrationRoot, "drizzle");
+    const legacyDbPath = path.join(migrationRoot, "legacy.sqlite");
+    fs.cpSync(migrationsPath, legacyMigrationsPath, { recursive: true });
+    fs.rmSync(path.join(legacyMigrationsPath, "0016_system_share_recovery.sql"));
+    const journalPath = path.join(legacyMigrationsPath, "meta", "_journal.json");
+    const journal = JSON.parse(fs.readFileSync(journalPath, "utf8")) as {
+      entries: Array<{ tag: string }>;
+    };
+    journal.entries = journal.entries.filter((entry) => entry.tag !== "0016_system_share_recovery");
+    fs.writeFileSync(journalPath, `${JSON.stringify(journal)}\n`);
+
+    const sqlite = new Database(legacyDbPath);
+    try {
+      migrate(drizzle(sqlite), { migrationsFolder: legacyMigrationsPath });
+      const submissionId = randomUUID();
+      sqlite
+        .query(
+          "INSERT INTO system_share_submissions (submission_id, memo_id, state, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
+        )
+        .run(submissionId, "Memos/legacy.md", "completed", 1, 2);
+      migrate(drizzle(sqlite), { migrationsFolder: migrationsPath });
+      const row = sqlite
+        .query(
+          "SELECT memo_id, state, memo_slug, classification, lease_token, lease_expires_at FROM system_share_submissions WHERE submission_id = ?"
+        )
+        .get(submissionId) as Record<string, unknown>;
+      expect(row).toMatchObject({
+        memo_id: "Memos/legacy.md",
+        state: "completed",
+        memo_slug: null,
+        classification: null,
+        lease_token: null,
+        lease_expires_at: null,
+      });
+    } finally {
+      sqlite.close();
+      fs.rmSync(migrationRoot, { recursive: true, force: true });
+    }
+  });
+
   test("rejects an oversized multipart body before parsing files", async () => {
     const request = new Request("https://console.ivanli.cc/api/public/system-share", {
       method: "POST",
@@ -436,5 +481,25 @@ describe("system share API", () => {
     expect(fs.existsSync(staged)).toBe(true);
     const markdown = fs.readFileSync(staged, "utf8");
     expect(markdown).toContain("assets/system-share/");
+  });
+
+  test("cleans staged files when attachment ingestion fails before Memo creation", async () => {
+    const submissionId = randomUUID();
+    const form = createForm(submissionId, "atomic attachment failure");
+    form.append("files", new File(["first"], "first.txt", { type: "text/plain" }));
+    form.append("files", new File(["second"], "broken.txt", { type: "text/plain" }));
+    const previousInjection = process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_FILES;
+    process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_FILES = "1";
+    try {
+      const response = await handlePublicApiRequest(buildRequest(form), "/system-share");
+      expect(response.status).toBe(500);
+    } finally {
+      if (previousInjection === undefined) delete process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_FILES;
+      else process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_FILES = previousInjection;
+    }
+    expect(await db?.select().from(posts)).toHaveLength(0);
+    expect(await db?.select().from(systemShareSubmissions)).toHaveLength(0);
+    const stagingRoot = path.join(contentRoot, "Memos", "assets", "system-share", submissionId);
+    expect(fs.existsSync(stagingRoot) ? fs.readdirSync(stagingRoot) : []).toHaveLength(0);
   });
 });

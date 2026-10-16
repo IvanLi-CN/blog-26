@@ -282,9 +282,22 @@ export default function SystemShareConfirmation() {
 
   async function submitCurrent() {
     if (!pending || !user?.isAdmin || successLocked || submitLock.current) return;
+    let currentPending: PendingSystemShare | null;
+    try {
+      currentPending = await readPendingSystemShare();
+    } catch (nextError) {
+      const message =
+        nextError instanceof Error ? nextError.message : "无法确认当前分享，请刷新后重试。";
+      showSystemShareError(message, () => window.location.reload(), "刷新");
+      return;
+    }
+    if (!currentPending || currentPending.submissionId !== pending.submissionId) {
+      const message = "这条分享已被新的系统分享替换，请刷新页面后继续。";
+      showSystemShareError(message, () => window.location.reload(), "刷新");
+      return;
+    }
     const validation = validateSystemShareFiles(pending.files);
     if (!validation.ok) {
-      setError(validation.error);
       showSystemShareError(validation.error, () => void submitRef.current());
       return;
     }
@@ -339,7 +352,6 @@ export default function SystemShareConfirmation() {
         return;
       }
       const message = nextError instanceof Error ? nextError.message : "发布失败，请重试。";
-      setError(message);
       showSystemShareError(message, () => void submitRef.current());
     } finally {
       submitLock.current = false;

@@ -127,4 +127,35 @@ test.describe("Console system share Web Demo", () => {
     await expect(page).toHaveURL(/\/memos\/console-demo-created-\d+$/);
     await expect(page.locator("body")).toContainText("重试后仍然保留的编辑内容");
   });
+
+  test("does not publish a stale confirmation after another share replaces the slot", async ({
+    page,
+  }) => {
+    await clearPendingShare(page);
+    await page.goto("/share?d_persona=admin&d_share=text", { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("system-share-page")).toBeVisible();
+
+    const replacement = await page.context().newPage();
+    await replacement.goto("/share?d_persona=admin&d_share=file", {
+      waitUntil: "domcontentloaded",
+    });
+    await replacement.evaluate(
+      () =>
+        new Promise<void>((resolve, reject) => {
+          const request = indexedDB.deleteDatabase("ivan-console-system-share");
+          request.onsuccess = () => resolve();
+          request.onerror = () => reject(request.error);
+          request.onblocked = () => resolve();
+        })
+    );
+    await replacement.reload({ waitUntil: "domcontentloaded" });
+    await expect(replacement.getByTestId("system-share-page")).toBeVisible();
+
+    await page.getByTestId("system-share-submit").click();
+    await expect(page.getByTestId("system-share-toast-error")).toContainText(
+      "已被新的系统分享替换"
+    );
+    await expect(page).toHaveURL(/\/share\?/);
+    await replacement.close();
+  });
 });

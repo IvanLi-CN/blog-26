@@ -429,15 +429,6 @@ async function handleSystemShareRequest(
     submissionId,
     leaseToken
   );
-  if (reclaimedExpiredLease) {
-    await cleanupAbandonedSystemShareStaging({
-      basePath,
-      memoRoot,
-      submissionId,
-      keepLeaseToken: leaseToken,
-      memoId: deterministicMemoId,
-    });
-  }
   try {
     const attachments = [];
     const stagedAttachmentRefs: Array<{ persistedPath: string; fullPath: string }> = [];
@@ -450,6 +441,12 @@ async function handleSystemShareRequest(
       await mkdir(stagedDirectory, { recursive: true });
       await writeFile(fullPath, new Uint8Array(await file.arrayBuffer()), { flag: "wx" });
       stagedPaths.push(fullPath);
+      if (
+        process.env.NODE_ENV === "test" &&
+        process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_FILES === String(index + 1)
+      ) {
+        throw new Error("system-share attachment staging failure (test injection)");
+      }
       stagedAttachmentRefs.push({ persistedPath: `./assets/${filename}`, fullPath });
       attachments.push({
         filename: file.name || filename,
@@ -495,6 +492,19 @@ async function handleSystemShareRequest(
     createdMemoSlug =
       typeof result === "object" && result && "slug" in result ? String(result.slug) : null;
     if (!createdMemoId || !createdMemoSlug) throw new Error("Memo 创建结果缺少详情身份");
+
+    // Only reclaim an expired lease after the deterministic Memo file exists.
+    // An older request may still be finishing its filesystem commit; deleting
+    // its staging directory before that point could publish missing attachments.
+    if (reclaimedExpiredLease) {
+      await cleanupAbandonedSystemShareStaging({
+        basePath,
+        memoRoot,
+        submissionId,
+        keepLeaseToken: leaseToken,
+        memoId: deterministicMemoId,
+      });
+    }
 
     const referencedAttachmentPaths = new Set(
       typeof result === "object" &&
