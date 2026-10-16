@@ -420,7 +420,7 @@ describe("verify-pages-build", () => {
     writeBuildFile(
       cwd,
       "site-dist/watermark-ivanli-b.v1.svg",
-      "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0'/></g></svg>"
+      "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0Z'/><path d='M4 4L4 4'/></g></svg>"
     );
     writeBuildFile(
       cwd,

@@ -60,11 +60,118 @@ function assertIncludesOneOf(content: string, needles: readonly string[], file: 
   }
 }
 
+type Point = { x: number; y: number };
+
+const PATH_NUMBER = /[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[-+]?\d+)?/giu;
+
+// Validate generated outline geometry without relying on browser-only SVG APIs.
+function pathDefinitionHasVisibleGeometry(definition: string) {
+  const commands = [...definition.matchAll(/([a-z])([^a-z]*)/giu)];
+  let current: Point = { x: 0, y: 0 };
+  let start: Point = { x: 0, y: 0 };
+  let hasMove = false;
+
+  const pointChanged = (point: Point, previous: Point) =>
+    point.x !== previous.x || point.y !== previous.y;
+  const pointFrom = (x: number, y: number, relative: boolean): Point =>
+    relative ? { x: current.x + x, y: current.y + y } : { x, y };
+  const numbersFrom = (value: string) =>
+    [...value.matchAll(PATH_NUMBER)].map(([number]) => Number(number));
+
+  for (const [, rawCommand, rawArguments] of commands) {
+    const command = rawCommand.toUpperCase();
+    const relative = rawCommand === rawCommand.toLowerCase();
+    const numbers = numbersFrom(rawArguments);
+    let index = 0;
+
+    if (command === "M") {
+      if (numbers.length < 2) return false;
+      while (index + 1 < numbers.length) {
+        const point = pointFrom(numbers[index], numbers[index + 1], relative);
+        index += 2;
+        if (!hasMove) {
+          current = point;
+          start = point;
+          hasMove = true;
+        } else {
+          if (pointChanged(point, current)) return true;
+          current = point;
+        }
+      }
+      continue;
+    }
+
+    if (!hasMove) return false;
+    if (command === "Z") {
+      if (pointChanged(start, current)) return true;
+      current = start;
+      continue;
+    }
+
+    while (index < numbers.length) {
+      if (command === "L" || command === "T") {
+        if (index + 1 >= numbers.length) return false;
+        const point = pointFrom(numbers[index], numbers[index + 1], relative);
+        index += 2;
+        if (pointChanged(point, current)) return true;
+        current = point;
+        continue;
+      }
+      if (command === "H") {
+        const x = relative ? current.x + numbers[index] : numbers[index];
+        index += 1;
+        if (x !== current.x) return true;
+        current = { x, y: current.y };
+        continue;
+      }
+      if (command === "V") {
+        const y = relative ? current.y + numbers[index] : numbers[index];
+        index += 1;
+        if (y !== current.y) return true;
+        current = { x: current.x, y };
+        continue;
+      }
+      if (command === "C" || command === "S" || command === "Q") {
+        const size = command === "C" ? 6 : 4;
+        if (index + size - 1 >= numbers.length) return false;
+        const values = numbers.slice(index, index + size);
+        index += size;
+        const endpoint = pointFrom(values[size - 2], values[size - 1], relative);
+        if (pointChanged(endpoint, current)) return true;
+        for (let controlIndex = 0; controlIndex < size - 2; controlIndex += 2) {
+          if (
+            pointChanged(
+              pointFrom(values[controlIndex], values[controlIndex + 1], relative),
+              current
+            )
+          ) {
+            return true;
+          }
+        }
+        current = endpoint;
+        continue;
+      }
+      if (command === "A") {
+        if (index + 6 >= numbers.length) return false;
+        const values = numbers.slice(index, index + 7);
+        index += 7;
+        const endpoint = pointFrom(values[5], values[6], relative);
+        if (values[0] > 0 || values[1] > 0 || pointChanged(endpoint, current)) return true;
+        current = endpoint;
+        continue;
+      }
+      return false;
+    }
+  }
+
+  return false;
+}
+
 function assertWatermarkDomainPaths(content: string, file: string) {
   const document = JSDOM.fragment(content);
   const hasDrawablePath = [...document.querySelectorAll("g.watermark-domain path")].some((path) => {
     const definition = path.getAttribute("d") ?? "";
-    return /[lhvcsqtaz]/iu.test(definition);
+    return pathDefinitionHasVisibleGeometry(definition);
   });
   if (!hasDrawablePath) {
     throw new Error(`Expected ${file} to contain a drawable path in g.watermark-domain`);
