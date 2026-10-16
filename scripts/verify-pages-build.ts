@@ -154,7 +154,7 @@ function pathDefinitionHasVisibleGeometry(definition: string) {
         const values = numbers.slice(index, index + 7);
         index += 7;
         const endpoint = pointFrom(values[5], values[6], relative);
-        if (values[0] > 0 || values[1] > 0 || pointChanged(endpoint, current)) return true;
+        if (pointChanged(endpoint, current)) return true;
         current = endpoint;
         continue;
       }
