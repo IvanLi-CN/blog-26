@@ -283,6 +283,7 @@ test.describe("Console Memo Web Demo", () => {
     page,
   }) => {
     await page.goto(`/memos/?d_persona=admin&d_delay=normal`, { waitUntil: "domcontentloaded" });
+    await waitForPublicRouterHydration(page);
     await page
       .locator(`[data-testid="admin-live-memo-card"][data-slug="${privateSlug}"]`)
       .getByRole("link", { name: "查看详情" })
