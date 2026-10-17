@@ -3,40 +3,58 @@
   "kind": "version-impact-record",
   "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
   "covered_files": {
-    "scripts/product-release.ts": "ad157d66c03bc543c11617158ab97405868119ec",
-    "tests/lib/manual-release-ledger.test.ts": "7617c2c9bdf6dba7f2f7f2587c762a98945ad790"
+    "scripts/product-release.ts": "ec6d4bb0c7df05493be98e694f25fb232b371c91",
+    "src/lib/release/github.ts": "e78921aef08136036179d4c7c5a68c951ad3923a",
+    "src/lib/release/ledger.ts": "a11289245293c0214d17b9522f200757a619a396",
+    "src/lib/release/preparation.ts": "972b0dec7139b19a490b2b6e6bf56704b92b7b60",
+    "tests/lib/manual-release-ledger.test.ts": "38a7add73dcf1902530501ecd38a48c96e1afd13"
   },
   "change": {
-    "description": "Recover failed frozen-input releases when the release ledger is headed by a valid legacy web-flow commit, and bind the signed recovery commit to that legacy head.",
+    "description": "Recover release preparation and failed frozen-input operations when the release ledger is headed by a valid legacy web-flow commit, and bind the signed recovery commit to that legacy head.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api", "persistent-state"]
   },
   "classification": {
     "planned": {
       "impact": "patch",
-      "reasoning": "This is a backward-compatible release recovery fix. It admits only a valid legacy signed ledger head for the existing abandon-failed-inputs operation and records an explicit recovery marker in the signed commit message.",
+      "reasoning": "This is a backward-compatible release recovery fix. It admits only a valid legacy signed ledger head for release preparation and the existing abandon-failed-inputs operation, then records an explicit recovery marker in the signed commit message.",
       "assessed_at": "2026-10-17T10:02:25+08:00",
       "evidence": [
         {
           "path": "tests/lib/manual-release-ledger.test.ts",
-          "blob": "7617c2c9bdf6dba7f2f7f2587c762a98945ad790",
+          "blob": "38a7add73dcf1902530501ecd38a48c96e1afd13",
           "command": "bun test tests/lib/manual-release-ledger.test.ts"
         }
       ]
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The cleanup command reads legacy heads only with the existing signed recovery checks, preserves the frozen-input guard, and uses the ledger compare-and-swap recovery marker without changing release identity or product artifacts.",
+      "reasoning": "Release preparation and cleanup read legacy heads only with the existing signed recovery checks, preserve their existing guards, and use the ledger compare-and-swap recovery marker without changing release identity or product artifacts.",
       "assessed_at": "2026-10-17T10:02:25+08:00",
       "evidence": [
         {
           "path": "scripts/product-release.ts",
-          "blob": "ad157d66c03bc543c11617158ab97405868119ec",
+          "blob": "ec6d4bb0c7df05493be98e694f25fb232b371c91",
           "command": "bunx biome check scripts/product-release.ts tests/lib/manual-release-ledger.test.ts"
         },
         {
+          "path": "src/lib/release/ledger.ts",
+          "blob": "a11289245293c0214d17b9522f200757a619a396",
+          "command": "bunx biome check src/lib/release/ledger.ts src/lib/release/github.ts src/lib/release/preparation.ts"
+        },
+        {
+          "path": "src/lib/release/github.ts",
+          "blob": "e78921aef08136036179d4c7c5a68c951ad3923a",
+          "command": "bunx biome check src/lib/release/ledger.ts src/lib/release/github.ts src/lib/release/preparation.ts"
+        },
+        {
+          "path": "src/lib/release/preparation.ts",
+          "blob": "972b0dec7139b19a490b2b6e6bf56704b92b7b60",
+          "command": "bunx biome check src/lib/release/ledger.ts src/lib/release/github.ts src/lib/release/preparation.ts"
+        },
+        {
           "path": "tests/lib/manual-release-ledger.test.ts",
-          "blob": "7617c2c9bdf6dba7f2f7f2587c762a98945ad790",
+          "blob": "38a7add73dcf1902530501ecd38a48c96e1afd13",
           "command": "bun test tests/lib/manual-release-ledger.test.ts tests/lib/manual-release-recovery.test.ts"
         }
       ],
@@ -52,13 +70,28 @@
       "evidence": [
         {
           "path": "tests/lib/manual-release-ledger.test.ts",
-          "blob": "7617c2c9bdf6dba7f2f7f2587c762a98945ad790",
+          "blob": "38a7add73dcf1902530501ecd38a48c96e1afd13",
           "command": "bun test tests/lib/manual-release-ledger.test.ts tests/lib/manual-release-provenance.test.ts tests/lib/manual-release-completion.test.ts tests/lib/manual-release-recovery.test.ts"
         },
         {
           "path": "scripts/product-release.ts",
-          "blob": "ad157d66c03bc543c11617158ab97405868119ec",
+          "blob": "ec6d4bb0c7df05493be98e694f25fb232b371c91",
           "command": "bunx biome check scripts/product-release.ts tests/lib/manual-release-ledger.test.ts"
+        },
+        {
+          "path": "src/lib/release/ledger.ts",
+          "blob": "a11289245293c0214d17b9522f200757a619a396",
+          "command": "bunx biome check src/lib/release/ledger.ts src/lib/release/github.ts src/lib/release/preparation.ts"
+        },
+        {
+          "path": "src/lib/release/github.ts",
+          "blob": "e78921aef08136036179d4c7c5a68c951ad3923a",
+          "command": "bunx biome check src/lib/release/ledger.ts src/lib/release/github.ts src/lib/release/preparation.ts"
+        },
+        {
+          "path": "src/lib/release/preparation.ts",
+          "blob": "972b0dec7139b19a490b2b6e6bf56704b92b7b60",
+          "command": "bunx biome check src/lib/release/ledger.ts src/lib/release/github.ts src/lib/release/preparation.ts"
         }
       ]
     }
@@ -81,8 +114,8 @@
       "evidence": [
         {
           "path": "scripts/product-release.ts",
-          "blob": "ad157d66c03bc543c11617158ab97405868119ec",
-          "command": "The recovery command is internal to Product Release and does not alter application endpoints."
+          "blob": "ec6d4bb0c7df05493be98e694f25fb232b371c91",
+          "command": "The recovery and preparation commands are internal to Product Release and do not alter application endpoints."
         }
       ]
     },
@@ -95,8 +128,8 @@
       "evidence": [
         {
           "path": "scripts/product-release.ts",
-          "blob": "ad157d66c03bc543c11617158ab97405868119ec",
-          "command": "The existing abandon-failed-inputs transition remains the only ledger JSON mutation."
+          "blob": "ec6d4bb0c7df05493be98e694f25fb232b371c91",
+          "command": "The existing ledger JSON transition remains the only durable state mutation; recovery provenance is carried in the signed commit message."
         }
       ]
     }

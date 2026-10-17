@@ -478,16 +478,16 @@ export interface LedgerStore {
   read(
     options?: LedgerReadOptions
   ): Promise<{ sha: string; ledger: ReleaseLedger; legacySha?: string }>;
-  compareAndSwap(expectedSha: string, ledger: ReleaseLedger): Promise<string>;
+  compareAndSwap(expectedSha: string, ledger: ReleaseLedger, recoverySha?: string): Promise<string>;
 }
 
 export async function changeLedger<T>(
   store: LedgerStore,
   change: (ledger: ReleaseLedger) => { ledger: ReleaseLedger; result: T }
 ): Promise<T> {
-  const current = await store.read();
+  const current = await store.read({ allowLegacyHead: true, allowLegacyAncestor: true });
   const next = change(current.ledger);
   if (canonicalJson(next.ledger) !== canonicalJson(current.ledger))
-    await store.compareAndSwap(current.sha, next.ledger);
+    await store.compareAndSwap(current.sha, next.ledger, current.legacySha);
   return next.result;
 }

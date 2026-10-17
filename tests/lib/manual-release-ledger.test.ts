@@ -182,6 +182,30 @@ describe("durable product release reservations", () => {
     expect(payloadText).toContain(`Ledger-Recovery: ${legacy}`);
   });
 
+  test("shared ledger changes carry legacy recovery provenance", async () => {
+    const legacy = "c".repeat(40);
+    const reserved = reserveRelease(initialLedger(contract), request);
+    let recoverySha = "";
+    let options: unknown;
+    const store: LedgerStore = {
+      async read(readOptions) {
+        options = readOptions;
+        return { sha: "a".repeat(40), ledger: reserved.ledger, legacySha: legacy };
+      },
+      async compareAndSwap(_expected, _next, recovery) {
+        recoverySha = recovery || "";
+        return "b".repeat(40);
+      },
+    };
+
+    await changeLedger(store, (ledger) => ({
+      ledger: updateRelease(ledger, reserved.entry.id, { stage: "abandoned" }),
+      result: null,
+    }));
+    expect(options).toEqual({ allowLegacyHead: true, allowLegacyAncestor: true });
+    expect(recoverySha).toBe(legacy);
+  });
+
   test("fresh preparation retires a stale unopened reservation without replacing or reusing its identity", async () => {
     const original = reserveRelease(initialLedger(contract), request);
     let ledger = original.ledger;
