@@ -48,6 +48,7 @@ type PublishResponse = {
 };
 
 const SYSTEM_SHARE_RETURN_PATH = "/share";
+const SYSTEM_SHARE_SUCCESS_HOLD_MS = 1250;
 
 function adminContinuationHref() {
   return `/admin/?returnTo=${encodeURIComponent(SYSTEM_SHARE_RETURN_PATH)}`;
@@ -368,7 +369,7 @@ export default function SystemShareConfirmation() {
             );
           }
           window.location.replace(`/memos/${encodeURIComponent(result.memo.slug)}`);
-        }, 1000);
+        }, SYSTEM_SHARE_SUCCESS_HOLD_MS);
       });
     } catch (nextError) {
       if (nextError instanceof SystemShareHttpError && [401, 403].includes(nextError.status)) {
