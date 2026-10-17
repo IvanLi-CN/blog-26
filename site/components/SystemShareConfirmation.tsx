@@ -47,6 +47,12 @@ type PublishResponse = {
   classification: "clipping" | "memo";
 };
 
+const SYSTEM_SHARE_RETURN_PATH = "/share";
+
+function adminContinuationHref() {
+  return `/admin/?returnTo=${encodeURIComponent(SYSTEM_SHARE_RETURN_PATH)}`;
+}
+
 async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await webDemoFetch(url, { credentials: "include", ...init }, "admin");
   const payload = await response.json().catch(() => null);
@@ -249,17 +255,24 @@ export default function SystemShareConfirmation() {
     const nextText =
       previous.classification === "clipping" && next.classification === "memo"
         ? stripSystemShareClippingMarker(value)
-        : value;
+        : next.classification === "clipping"
+          ? next.text
+          : value;
     setText(nextText);
     setError(null);
     persistPatch({ text: nextText, url: next.url ?? "" });
   }
 
   async function cancel() {
-    if (pending) await clearPendingSystemShare(pending.submissionId);
-    setOriginalPending(null);
-    setPending(null);
-    window.location.replace("/memos");
+    try {
+      if (pending) await clearPendingSystemShare(pending.submissionId);
+      setOriginalPending(null);
+      setPending(null);
+      window.location.replace("/memos");
+    } catch (nextError) {
+      const message = nextError instanceof Error ? nextError.message : "无法取消当前分享，请重试。";
+      showSystemShareError(`取消失败：${message}`, () => void cancel());
+    }
   }
 
   async function addFiles(event: React.ChangeEvent<HTMLInputElement>) {
@@ -324,10 +337,12 @@ export default function SystemShareConfirmation() {
         isPublic,
         files: pending.files,
       });
+      const submittedText =
+        editorNormalized.classification === "clipping" ? editorNormalized.text : editorContent;
       const form = new FormData();
       form.set("submissionId", pending.submissionId);
       form.set("title", pending.title);
-      form.set("text", editorContent);
+      form.set("text", submittedText);
       form.set("url", editorNormalized.url ?? "");
       form.set("tags", JSON.stringify(pending.tags));
       form.set("isPublic", String(isPublic));
@@ -343,10 +358,12 @@ export default function SystemShareConfirmation() {
       });
       setSuccessLocked(true);
       showSystemShareSuccess(result.duplicate ? "已恢复此前发布的内容" : "发布成功");
-      redirectTimer.current = window.setTimeout(() => {
-        void clearPendingSystemShare(pending.submissionId).catch((cleanupError) => {
+      redirectTimer.current = window.setTimeout(async () => {
+        try {
+          await clearPendingSystemShare(pending.submissionId);
+        } catch (cleanupError) {
           console.warn("[system-share] failed to clear the published pending share", cleanupError);
-        });
+        }
         window.location.replace(`/memos/${encodeURIComponent(result.memo.slug)}`);
       }, 1000);
     } catch (nextError) {
@@ -354,7 +371,7 @@ export default function SystemShareConfirmation() {
         showSystemShareError(
           "登录状态已失效，请进入控制台登录后继续。",
           () => {
-            window.location.replace("/admin/");
+            window.location.replace(adminContinuationHref());
           },
           "登录"
         );
@@ -404,7 +421,10 @@ export default function SystemShareConfirmation() {
         <h1 className="nature-title mt-3 text-3xl">登录后继续发布</h1>
         <p className="nature-muted mt-3">分享内容已保存在当前浏览器，登录控制台后可以继续确认。</p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <a className="nature-button nature-button-primary inline-flex" href="/admin/">
+          <a
+            className="nature-button nature-button-primary inline-flex"
+            href={adminContinuationHref()}
+          >
             打开控制台
           </a>
           <button
@@ -423,7 +443,7 @@ export default function SystemShareConfirmation() {
 
   return (
     <main
-      className="nature-container max-w-4xl px-4 py-6 sm:px-6 sm:py-10"
+      className="nature-container system-share-page max-w-4xl px-4 py-6 sm:px-6 sm:py-10"
       data-testid="system-share-page"
     >
       <header className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-5">

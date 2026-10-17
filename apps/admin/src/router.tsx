@@ -28,6 +28,12 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   beforeLoad: () => {
+    if (typeof window !== "undefined") {
+      const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+      if (returnTo === "/share") {
+        throw redirect({ href: returnTo });
+      }
+    }
     throw redirect({ to: "/dashboard" });
   },
 });

@@ -106,6 +106,31 @@ describe("system share normalization", () => {
     });
   });
 
+  test("normalizes the Markdown escape Milkdown adds before a clipping URL", () => {
+    expect(
+      normalizeSystemShareEditor({
+        text: "https\\://example.com/article\n\n编辑后的备注",
+      })
+    ).toMatchObject({
+      classification: "clipping",
+      text: "https://example.com/article\n\n编辑后的备注",
+      url: "https://example.com/article",
+    });
+  });
+
+  test("canonicalizes an escaped editor URL even when the dedicated URL is present", () => {
+    expect(
+      normalizeSystemShareEditor({
+        text: "https\\://example.com/article\n\n编辑后的备注",
+        url: "https://example.com/article",
+      })
+    ).toMatchObject({
+      classification: "clipping",
+      text: "https://example.com/article\n\n编辑后的备注",
+      url: "https://example.com/article",
+    });
+  });
+
   test("removes the generated clipping marker after an edit becomes a memo", () => {
     expect(
       stripSystemShareClippingMarker(

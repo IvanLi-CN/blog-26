@@ -130,13 +130,13 @@ jobs:
           exit 1
 
       - name: Run Console Web Demo boundary tests
-        run: bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/console-memo-boundary.spec.ts tests/e2e/web-demo/content-sync.spec.ts
+        run: bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/console-memo-boundary.spec.ts tests/e2e/web-demo/content-sync.spec.ts tests/e2e/web-demo/system-share.spec.ts
         env:
           WEB_DEMO_TEST_URL: http://127.0.0.1:38210
           WEB_DEMO_TEST_REPORT: test-results/web-demo-console-boundary.json
 
       - name: Run Console Web Demo boundary tests on mobile
-        run: bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/console-memo-boundary.spec.ts tests/e2e/web-demo/content-sync.spec.ts
+        run: bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/console-memo-boundary.spec.ts tests/e2e/web-demo/content-sync.spec.ts tests/e2e/web-demo/system-share.spec.ts
         env:
           WEB_DEMO_TEST_URL: http://127.0.0.1:38210
           WEB_DEMO_VIEWPORT: mobile

@@ -49,6 +49,10 @@ function isImageRequest(filePath: string, request: Request): boolean {
   return ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico"].includes(ext);
 }
 
+function isPrivateSystemShareFilePath(filePath: string) {
+  return /(^|\/)(?:assets|Memos)\/system-share(?:\/|$)/u.test(filePath);
+}
+
 function getContentType(filePath: string): string {
   const ext = filePath.split(".").pop()?.toLowerCase();
 
@@ -166,6 +170,12 @@ export async function handleFilesApiRequest(
 
   try {
     if (request.method === "GET" || request.method === "HEAD") {
+      if (isPrivateSystemShareFilePath(filePath)) {
+        const auth = await extractAuthFromRequest(request);
+        if (!auth.isAdmin) {
+          return json(request, { error: "需要管理员身份读取系统分享附件" }, { status: 403 });
+        }
+      }
       const content = await readLocalFile(filePath);
       return new Response(request.method === "HEAD" ? null : content, {
         status: 200,

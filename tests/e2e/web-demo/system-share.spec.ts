@@ -7,10 +7,30 @@ async function clearPendingShare(page: import("@playwright/test").Page) {
   await page.evaluate(
     () =>
       new Promise<void>((resolve, reject) => {
-        const request = indexedDB.deleteDatabase("ivan-console-system-share");
-        request.onsuccess = () => resolve();
+        const request = indexedDB.open("ivan-console-system-share", 2);
+        request.onupgradeneeded = () => {
+          if (!request.result.objectStoreNames.contains("pending")) {
+            request.result.createObjectStore("pending");
+          }
+        };
         request.onerror = () => reject(request.error);
-        request.onblocked = () => resolve();
+        request.onsuccess = () => {
+          const database = request.result;
+          const transaction = database.transaction("pending", "readwrite");
+          transaction.objectStore("pending").clear();
+          transaction.oncomplete = () => {
+            database.close();
+            resolve();
+          };
+          transaction.onerror = () => {
+            database.close();
+            reject(transaction.error);
+          };
+          transaction.onabort = () => {
+            database.close();
+            reject(transaction.error);
+          };
+        };
       })
   );
 }
@@ -34,6 +54,31 @@ async function readPendingIdentity(page: import("@playwright/test").Page) {
           read.onsuccess = () => {
             database.close();
             resolve(read.result?.submissionId ?? null);
+          };
+          read.onerror = () => {
+            database.close();
+            reject(read.error);
+          };
+        };
+      })
+  );
+}
+
+async function readPendingText(page: import("@playwright/test").Page) {
+  return page.evaluate(
+    () =>
+      new Promise<string | null>((resolve, reject) => {
+        const request = indexedDB.open("ivan-console-system-share", 2);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const read = database
+            .transaction("pending", "readonly")
+            .objectStore("pending")
+            .get("current");
+          read.onsuccess = () => {
+            database.close();
+            resolve(typeof read.result?.text === "string" ? read.result.text : null);
           };
           read.onerror = () => {
             database.close();
@@ -75,8 +120,11 @@ test.describe("Console system share Web Demo", () => {
     await editor.click();
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.insertText("刷新后仍然保留在唯一 Memo 编辑框内的内容。");
-    await page.waitForTimeout(500);
+    await expect
+      .poll(() => readPendingText(page), { timeout: 5_000 })
+      .toContain("刷新后仍然保留在唯一 Memo 编辑框内的内容。");
     await page.reload({ waitUntil: "domcontentloaded" });
+    await expectSharePage(page);
     await expect(page.getByTestId("system-share-memo-editor-surface")).toContainText(
       "刷新后仍然保留在唯一 Memo 编辑框内的内容。"
     );
@@ -85,10 +133,9 @@ test.describe("Console system share Web Demo", () => {
     await page.getByTestId("system-share-submit").click();
     await expect(page.getByTestId("system-share-toast-progress")).toBeVisible();
     await expect(editor).toHaveAttribute("contenteditable", "false");
-    const successShownAt = Date.now();
     await expect(page.getByTestId("system-share-toast-success")).toBeVisible();
-    await expect(page).toHaveURL(/\/memos\/console-demo-created-\d+$/);
-    expect(Date.now() - successShownAt).toBeGreaterThanOrEqual(850);
+    await expect(page).toHaveURL(/\/share\?/);
+    await expect(page).toHaveURL(/\/memos\/console-demo-created-\d+$/, { timeout: 5_000 });
     await expect(page.getByTestId("system-share-toast-success")).toHaveCount(0);
   });
 
@@ -97,6 +144,7 @@ test.describe("Console system share Web Demo", () => {
     await page.goto("/share?d_persona=admin&d_share=url", {
       waitUntil: "domcontentloaded",
     });
+    await expectSharePage(page);
     await expect(page.getByTestId("system-share-classification")).toHaveCount(0);
     await expect(page.getByTestId("system-share-memo-editor-surface")).toContainText(
       "https://example.com/reading-note"
@@ -115,16 +163,48 @@ test.describe("Console system share Web Demo", () => {
     await page.goto(`/share?d_persona=admin&d_share=url&d_submission=${submissionId}`, {
       waitUntil: "domcontentloaded",
     });
+    await expectSharePage(page);
     const editor = page.getByTestId("system-share-memo-editor").locator(".ProseMirror");
     await expect(editor).toContainText("#剪藏");
     expect(await readPendingIdentity(page)).toBe(submissionId);
+    await page.clock.install();
     await page.getByTestId("system-share-submit").click();
     await expect(page.getByTestId("system-share-toast-success")).toBeVisible();
     expect(await readPendingIdentity(page)).toBe(submissionId);
     await page.reload({ waitUntil: "domcontentloaded" });
+    await expectSharePage(page);
     await expect(editor).toContainText("https://example.com/reading-note");
     expect(await readPendingIdentity(page)).toBe(submissionId);
     await expect(page).toHaveURL(/\/share\?/);
+  });
+
+  test("holds the success notice for one second before navigating to detail", async ({ page }) => {
+    await clearPendingShare(page);
+    const submissionId = randomUUID();
+    await page.goto(`/share?d_persona=admin&d_share=text&d_submission=${submissionId}`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expectSharePage(page);
+    await page.clock.install();
+    await page.getByTestId("system-share-submit").click();
+    await expect(page.getByTestId("system-share-toast-success")).toBeVisible();
+    await expect(page).toHaveURL(/\/share\?/);
+    await page.clock.fastForward(999);
+    await expect(page).toHaveURL(/\/share\?/);
+    await page.clock.fastForward(1);
+    await expect(page).toHaveURL(/\/memos\/console-demo-created-\d+$/, { timeout: 5_000 });
+    await expect(page.getByTestId("system-share-toast-success")).toHaveCount(0);
+  });
+
+  test("keeps a guest share local and preserves the return path for login", async ({ page }) => {
+    await clearPendingShare(page);
+    await page.goto("/share?d_persona=guest&d_share=text", { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("system-share-auth-required")).toBeVisible();
+    await expect(page.getByTestId("system-share-auth-required").getByRole("link")).toHaveAttribute(
+      "href",
+      "/admin/?returnTo=%2Fshare"
+    );
+    expect(await readPendingIdentity(page)).toBe("00000000-0000-4000-8000-000000000005");
   });
 
   test("persists an edited clipping URL and keeps a memo edit after refresh", async ({ page }) => {
@@ -132,12 +212,16 @@ test.describe("Console system share Web Demo", () => {
     await page.goto("/share?d_persona=admin&d_share=url", {
       waitUntil: "domcontentloaded",
     });
+    await expectSharePage(page);
     const editor = page.getByTestId("system-share-memo-editor").locator(".ProseMirror");
     await editor.click();
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.insertText("https://example.com/changed\n\n换成新的剪藏备注");
-    await page.waitForTimeout(500);
+    await expect
+      .poll(() => readPendingText(page), { timeout: 5_000 })
+      .toContain("https://example.com/changed");
     await page.reload({ waitUntil: "domcontentloaded" });
+    await expectSharePage(page);
     await expect(editor).toContainText("https://example.com/changed");
     await expect(editor).toContainText("换成新的剪藏备注");
     await expect(editor).not.toContainText("https://example.com/reading-note");
@@ -145,8 +229,11 @@ test.describe("Console system share Web Demo", () => {
     await editor.click();
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.insertText("已经改成普通闪念");
-    await page.waitForTimeout(500);
+    await expect
+      .poll(() => readPendingText(page), { timeout: 5_000 })
+      .toContain("已经改成普通闪念");
     await page.reload({ waitUntil: "domcontentloaded" });
+    await expectSharePage(page);
     await expect(editor).toContainText("已经改成普通闪念");
     await expect(editor).not.toContainText("#剪藏");
   });
@@ -165,7 +252,9 @@ test.describe("Console system share Web Demo", () => {
     await editor.click();
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.insertText("重试后仍然保留的编辑内容");
-    await page.waitForTimeout(500);
+    await expect
+      .poll(() => readPendingText(page), { timeout: 5_000 })
+      .toContain("重试后仍然保留的编辑内容");
     await page.getByTestId("system-share-submit").click();
     await expect(page.getByTestId("system-share-toast-error")).toBeVisible();
     await expect(page.getByTestId("system-share-toast-error")).toHaveCount(1);
@@ -196,7 +285,9 @@ test.describe("Console system share Web Demo", () => {
       .getByTestId("system-share-toast-error")
       .getByRole("button", { name: "重试" })
       .click();
-    await expect(page.getByTestId("system-share-toast-success")).toContainText("恢复此前发布");
+    await expect(page.getByTestId("system-share-toast-success")).toContainText("恢复此前发布", {
+      timeout: 15_000,
+    });
     await expect(page).toHaveURL(/\/memos\/console-demo-created-\d+$/);
   });
 
@@ -208,19 +299,10 @@ test.describe("Console system share Web Demo", () => {
     await expectSharePage(page);
 
     const replacement = await page.context().newPage();
+    await clearPendingShare(replacement);
     await replacement.goto("/share?d_persona=admin&d_share=file", {
       waitUntil: "domcontentloaded",
     });
-    await replacement.evaluate(
-      () =>
-        new Promise<void>((resolve, reject) => {
-          const request = indexedDB.deleteDatabase("ivan-console-system-share");
-          request.onsuccess = () => resolve();
-          request.onerror = () => reject(request.error);
-          request.onblocked = () => resolve();
-        })
-    );
-    await replacement.reload({ waitUntil: "domcontentloaded" });
     await expectSharePage(replacement);
 
     await page.getByTestId("system-share-submit").click();

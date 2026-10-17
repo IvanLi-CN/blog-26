@@ -119,6 +119,12 @@
   outline-offset: 2px;
 }
 
+/* Toasts are global, so reserve their occupied area on the formal share page
+ * instead of allowing an error action to cover the page title or editor. */
+body:has(.system-share-toast-container .system-share-toast) .system-share-page {
+  padding-top: calc(var(--system-share-toast-height, 5.5rem) + 1rem + env(safe-area-inset-top));
+}
+
 @keyframes system-share-toast-spin {
   to {
     transform: rotate(360deg);
@@ -142,6 +148,24 @@
   .system-share-toast-retry {
     align-self: flex-start;
   }
+
+  body:has(.system-share-page) .web-demo-inspector-bubble {
+    right: max(0.75rem, env(safe-area-inset-right));
+    top: max(0.75rem, env(safe-area-inset-top));
+    bottom: auto;
+    left: auto;
+  }
+
+  body:has(.system-share-toast-container .system-share-toast) .system-share-page {
+    padding-top: calc(var(--system-share-toast-height, 8.5rem) + 1rem + env(safe-area-inset-top));
+  }
+
+  body:has(.system-share-page):has(.system-share-toast) .web-demo-inspector-bubble {
+    top: calc(var(--system-share-toast-height, 8.5rem) + 1rem + env(safe-area-inset-top));
+    right: max(0.75rem, env(safe-area-inset-right));
+    bottom: auto;
+    left: auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -149,8 +173,25 @@
   .system-share-toast-container .Toastify__toast,
   .system-share-toast-container .Toastify__toast--animate,
   .system-share-toast-container .Toastify__slide-enter--top-right,
-  .system-share-toast-container .Toastify__slide-exit--top-right {
+  .system-share-toast-container .Toastify__slide-exit--top-right,
+  .system-share-toast-container .Toastify__bounce-enter--top-right,
+  .system-share-toast-container .Toastify__bounce-exit--top-right {
     animation: none;
     transition: none;
   }
+}
+
+html[data-web-demo-motion="reduce"]
+  .system-share-toast-container
+  :is(
+    .system-share-toast-icon-progress,
+    .Toastify__toast,
+    .Toastify__toast--animate,
+    .Toastify__slide-enter--top-right,
+    .Toastify__slide-exit--top-right,
+    .Toastify__bounce-enter--top-right,
+    .Toastify__bounce-exit--top-right
+  ) {
+  animation: none;
+  transition: none;
 }

@@ -1,7 +1,19 @@
 import { randomUUID } from "node:crypto";
 import type { Dirent } from "node:fs";
-import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { constants as fsConstants } from "node:fs";
+import {
+  lstat,
+  mkdir,
+  open,
+  opendir,
+  readdir,
+  realpath,
+  rm,
+  rmdir,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { TRPCError } from "@trpc/server";
 import { and, eq, gt, inArray, isNull, lt, lte, or } from "drizzle-orm";
 import { getActiveLocalBasePath } from "@/config/paths";
@@ -26,6 +38,7 @@ import { readAuthoredMemo } from "@/server/clipping/store";
 import { createContext } from "@/server/context";
 import { handlePublicAssetFacadeRequest } from "@/server/public-media";
 import { appRouter } from "@/server/router";
+import { triggerIncrementalSync } from "@/server/routers/memos";
 import { suggestPublicSearchTerms } from "@/server/services/search-suggestions";
 import { handlePlaybookRequest } from "./playbook";
 
@@ -43,6 +56,178 @@ type SystemShareResult = {
   memoSlug: string;
   memo: unknown;
 };
+
+function isMissingPathError(error: unknown) {
+  return error && typeof error === "object" && "code" in error && error.code === "ENOENT";
+}
+
+function isExistingPathError(error: unknown) {
+  return error && typeof error === "object" && "code" in error && error.code === "EEXIST";
+}
+
+async function ensureSafeSystemShareDirectory(basePath: string, directory: string) {
+  const rootPath = resolve(basePath);
+  const targetPath = resolve(directory);
+  const targetRelativePath = relative(rootPath, targetPath);
+  if (targetRelativePath.startsWith("..") || isAbsolute(targetRelativePath)) {
+    throw new Error("Invalid system-share path");
+  }
+
+  const canonicalRoot = await realpath(basePath);
+  let currentPath = canonicalRoot;
+  for (const segment of targetRelativePath.split(/[\\/]+/u).filter(Boolean)) {
+    currentPath = join(currentPath, segment);
+    let stat: Awaited<ReturnType<typeof lstat>>;
+    try {
+      stat = await lstat(currentPath);
+    } catch (error) {
+      if (!isMissingPathError(error)) throw error;
+      try {
+        await mkdir(currentPath);
+      } catch (mkdirError) {
+        if (!isExistingPathError(mkdirError)) throw mkdirError;
+      }
+      stat = await lstat(currentPath);
+    }
+    if (!stat.isDirectory() || stat.isSymbolicLink()) {
+      throw new Error("Invalid system-share directory");
+    }
+  }
+}
+
+async function isSafeExistingSystemShareDirectory(basePath: string, directory: string) {
+  const rootPath = resolve(basePath);
+  const targetPath = resolve(directory);
+  const targetRelativePath = relative(rootPath, targetPath);
+  if (targetRelativePath.startsWith("..") || isAbsolute(targetRelativePath)) return false;
+
+  let currentPath: string;
+  try {
+    currentPath = await realpath(basePath);
+  } catch {
+    return false;
+  }
+  for (const segment of targetRelativePath.split(/[\\/]+/u).filter(Boolean)) {
+    currentPath = join(currentPath, segment);
+    try {
+      const stat = await lstat(currentPath);
+      if (!stat.isDirectory() || stat.isSymbolicLink()) return false;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+async function assertSafeSystemShareFile(basePath: string, filePath: string) {
+  const rootPath = await realpath(basePath);
+  const expectedPath = resolve(filePath);
+  const actualPath = await realpath(filePath);
+  const relativePath = relative(rootPath, actualPath);
+  if (
+    actualPath !== expectedPath ||
+    relativePath.startsWith("..") ||
+    isAbsolute(relativePath) ||
+    !(await lstat(actualPath)).isFile()
+  ) {
+    throw new Error("Invalid system-share file path");
+  }
+}
+
+async function openSafeSystemShareDirectory(basePath: string, directory: string) {
+  if (process.platform !== "linux") return null;
+  const rootPath = resolve(basePath);
+  const targetPath = resolve(directory);
+  const targetRelativePath = relative(rootPath, targetPath);
+  if (targetRelativePath.startsWith("..") || isAbsolute(targetRelativePath)) {
+    throw new Error("Invalid system-share path");
+  }
+
+  const flags = fsConstants.O_RDONLY | fsConstants.O_DIRECTORY | fsConstants.O_NOFOLLOW;
+  let handle = await open(await realpath(basePath), flags);
+  try {
+    for (const segment of targetRelativePath.split(/[\\/]+/u).filter(Boolean)) {
+      const next = await open(`/proc/self/fd/${handle.fd}/${segment}`, flags);
+      await handle.close();
+      handle = next;
+    }
+    return handle;
+  } catch (error) {
+    await handle.close().catch(() => undefined);
+    throw error;
+  }
+}
+
+type SystemShareDirectoryHandle = Awaited<ReturnType<typeof open>>;
+
+const SYSTEM_SHARE_DIRECTORY_FLAGS =
+  fsConstants.O_RDONLY | fsConstants.O_DIRECTORY | fsConstants.O_NOFOLLOW;
+
+async function removeSafeSystemShareDirectoryContents(handle: SystemShareDirectoryHandle) {
+  const directory = await opendir(`/proc/self/fd/${handle.fd}`);
+  try {
+    for await (const entry of directory) {
+      const childPath = `/proc/self/fd/${handle.fd}/${entry.name}`;
+      if (entry.isDirectory()) {
+        let childHandle: SystemShareDirectoryHandle | null = null;
+        try {
+          childHandle = await open(childPath, SYSTEM_SHARE_DIRECTORY_FLAGS);
+          await removeSafeSystemShareDirectoryContents(childHandle);
+        } catch {
+          // A replaced or inaccessible child is left in place rather than
+          // following a path outside the opened directory.
+        } finally {
+          await childHandle?.close().catch(() => undefined);
+        }
+        await rmdir(childPath).catch(() => undefined);
+      } else {
+        // unlink never follows a symlink, and the parent is an open fd.
+        await unlink(childPath).catch(() => undefined);
+      }
+    }
+  } finally {
+    await directory.close().catch(() => undefined);
+  }
+}
+
+async function removeSafeSystemSharePath(basePath: string, targetPath: string) {
+  if (process.platform !== "linux") {
+    if (!(await isSafeExistingSystemShareDirectory(basePath, dirname(targetPath)))) return;
+    await rm(targetPath, { recursive: true, force: true }).catch(() => undefined);
+    return;
+  }
+
+  let parentHandle: SystemShareDirectoryHandle | null = null;
+  try {
+    parentHandle = await openSafeSystemShareDirectory(basePath, dirname(targetPath));
+    if (!parentHandle) return;
+    const targetName = basename(targetPath);
+    const target = `/proc/self/fd/${parentHandle.fd}/${targetName}`;
+    let stat: Awaited<ReturnType<typeof lstat>>;
+    try {
+      stat = await lstat(target);
+    } catch (error) {
+      if (isMissingPathError(error)) return;
+      throw error;
+    }
+    if (stat.isDirectory() && !stat.isSymbolicLink()) {
+      let childHandle: SystemShareDirectoryHandle | null = null;
+      try {
+        childHandle = await open(target, SYSTEM_SHARE_DIRECTORY_FLAGS);
+        await removeSafeSystemShareDirectoryContents(childHandle);
+      } finally {
+        await childHandle?.close().catch(() => undefined);
+      }
+      await rmdir(target).catch(() => undefined);
+      return;
+    }
+    await unlink(target).catch(() => undefined);
+  } catch (error) {
+    if (!isMissingPathError(error)) throw error;
+  } finally {
+    await parentHandle?.close().catch(() => undefined);
+  }
+}
 
 function json(request: Request, data: unknown, init: ResponseInit = {}, extraHeaders?: Headers) {
   const headers = new Headers(init.headers);
@@ -151,6 +336,7 @@ async function cleanupAbandonedSystemShareStaging(input: {
     "system-share",
     input.submissionId
   );
+  if (!(await isSafeExistingSystemShareDirectory(input.basePath, root))) return;
   let entries: Dirent[] = [];
   try {
     entries = await readdir(root, { withFileTypes: true });
@@ -186,9 +372,180 @@ async function cleanupAbandonedSystemShareStaging(input: {
         (entry) => entry.name !== input.keepLeaseToken && !referencedLeaseTokens.has(entry.name)
       )
       .map((entry) =>
-        rm(join(root, entry.name), { recursive: true, force: true }).catch(() => undefined)
+        removeSafeSystemSharePath(input.basePath, join(root, entry.name)).catch(() => undefined)
       )
   );
+}
+
+async function cleanupSystemShareLeaseStaging(input: {
+  basePath: string;
+  memoRoot: string;
+  submissionId: string;
+  leaseToken: string;
+  memoId: string;
+}) {
+  const leaseDirectory = join(
+    input.basePath,
+    input.memoRoot.replace(/^\/+/, ""),
+    "assets",
+    "system-share",
+    input.submissionId,
+    input.leaseToken
+  );
+  if (!(await isSafeExistingSystemShareDirectory(input.basePath, leaseDirectory))) return;
+  let referenced = false;
+  try {
+    const authored = await readAuthoredMemo(input.memoId);
+    const attachments = authored.frontmatter.attachments;
+    const prefix = `assets/system-share/${input.submissionId}/${input.leaseToken}/`;
+    referenced =
+      Array.isArray(attachments) &&
+      attachments.some(
+        (attachment) =>
+          attachment &&
+          typeof attachment === "object" &&
+          "path" in attachment &&
+          String(attachment.path).replace(/^\.\//u, "").startsWith(prefix)
+      );
+  } catch (error) {
+    if (!isMissingPathError(error)) return;
+  }
+  if (!referenced) {
+    await removeSafeSystemSharePath(input.basePath, leaseDirectory).catch(() => undefined);
+  }
+}
+
+async function cleanupSystemShareMemoTemps(input: {
+  basePath: string;
+  memoRoot: string;
+  submissionId: string;
+}) {
+  const directory = join(input.basePath, input.memoRoot.replace(/^\/+/, ""), "system-share");
+  if (!(await isSafeExistingSystemShareDirectory(input.basePath, directory))) return;
+  let entries: Dirent[] = [];
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  const prefix = `${input.submissionId}.md.`;
+  await Promise.all(
+    entries
+      .filter(
+        (entry) => entry.isFile() && entry.name.startsWith(prefix) && entry.name.endsWith(".tmp")
+      )
+      .map((entry) =>
+        removeSafeSystemSharePath(input.basePath, join(directory, entry.name)).catch(
+          () => undefined
+        )
+      )
+  );
+}
+
+async function cleanupExpiredSystemShareStaging(input: { basePath: string; memoRoot: string }) {
+  const root = join(input.basePath, input.memoRoot.replace(/^\/+/, ""), "assets", "system-share");
+  if (!(await isSafeExistingSystemShareDirectory(input.basePath, root))) return;
+
+  const now = Date.now();
+  const cutoff = now - SYSTEM_SHARE_PROCESSING_TTL_MS;
+  let rows: Array<{
+    submissionId: string;
+    memoId: string | null;
+    state: string;
+    leaseToken: string | null;
+    leaseExpiresAt: number | null;
+  }> = [];
+  try {
+    rows = await db
+      .select({
+        submissionId: systemShareSubmissions.submissionId,
+        memoId: systemShareSubmissions.memoId,
+        state: systemShareSubmissions.state,
+        leaseToken: systemShareSubmissions.leaseToken,
+        leaseExpiresAt: systemShareSubmissions.leaseExpiresAt,
+      })
+      .from(systemShareSubmissions);
+  } catch {
+    return;
+  }
+
+  let submissions: Dirent[] = [];
+  try {
+    submissions = await readdir(root, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const submission of submissions) {
+    if (!submission.isDirectory()) continue;
+    const submissionRoot = join(root, submission.name);
+    if (!(await isSafeExistingSystemShareDirectory(input.basePath, submissionRoot))) continue;
+    let leases: Dirent[] = [];
+    try {
+      leases = await readdir(submissionRoot, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const lease of leases) {
+      if (!lease.isDirectory()) continue;
+      const leaseDirectory = join(submissionRoot, lease.name);
+      if (!(await isSafeExistingSystemShareDirectory(input.basePath, leaseDirectory))) continue;
+      let leaseStat: Awaited<ReturnType<typeof lstat>>;
+      try {
+        leaseStat = await lstat(leaseDirectory);
+      } catch {
+        continue;
+      }
+      if (leaseStat.mtimeMs > cutoff) continue;
+
+      const row = rows.find(
+        (candidate) =>
+          candidate.submissionId === submission.name && candidate.leaseToken === lease.name
+      );
+      if (
+        row &&
+        (row.state === "processing" || row.state === "committing") &&
+        (row.leaseExpiresAt ?? 0) > now
+      ) {
+        continue;
+      }
+      let committedMemoId: string | null = row?.memoId ?? null;
+      if (!committedMemoId) {
+        const candidateMemoId = buildMemoRelativePath(
+          `system-share/${submission.name}.md`,
+          input.memoRoot
+        );
+        try {
+          const authored = await readAuthoredMemo(candidateMemoId);
+          const marker = authored.frontmatter.systemShare;
+          if (
+            marker &&
+            typeof marker === "object" &&
+            "source" in marker &&
+            marker.source === "system-share" &&
+            "submissionId" in marker &&
+            marker.submissionId === submission.name
+          ) {
+            // The Memo file is the commit point. Preserve attachments even if
+            // the process stopped before recording memoId in SQLite.
+            committedMemoId = candidateMemoId;
+          }
+        } catch {
+          // No committed Memo is present; the stale lease can be removed.
+        }
+      }
+      if (committedMemoId) {
+        await cleanupSystemShareLeaseStaging({
+          basePath: input.basePath,
+          memoRoot: input.memoRoot,
+          submissionId: submission.name,
+          leaseToken: lease.name,
+          memoId: committedMemoId,
+        });
+        continue;
+      }
+      await removeSafeSystemSharePath(input.basePath, leaseDirectory).catch(() => undefined);
+    }
+  }
 }
 
 async function createCallerForRequest(request: Request) {
@@ -309,12 +666,54 @@ async function handleSystemShareRequest(
           return null;
         }
       }
-      return {
-        memoId,
-        memoSlug: slug,
-        memo: { id: memoId, slug, title: null, isPublic: false },
-      };
+      throw error;
     }
+  }
+
+  const memoRoot = getServerLocalMemoRootPath();
+  await cleanupExpiredSystemShareStaging({ basePath, memoRoot });
+  const deterministicMemoId = buildMemoRelativePath(`system-share/${submissionId}.md`, memoRoot);
+
+  async function resolveCommittedSystemShare(memoId: string, memoSlug?: string | null) {
+    try {
+      const authored = await readAuthoredMemo(memoId);
+      const marker = authored.frontmatter.systemShare;
+      if (
+        !marker ||
+        typeof marker !== "object" ||
+        !("source" in marker) ||
+        marker.source !== "system-share" ||
+        !("submissionId" in marker) ||
+        marker.submissionId !== submissionId
+      ) {
+        return null;
+      }
+    } catch {
+      return null;
+    }
+    const resolved = await resolveMemo(memoId, memoSlug);
+    if (!resolved) return null;
+
+    const indexed = await db
+      .select({ id: posts.id })
+      .from(posts)
+      .where(eq(posts.id, memoId))
+      .limit(1)
+      .then((rows) => rows[0]);
+    if (indexed) return resolved;
+
+    // A process can publish the authored file immediately before the content
+    // source sync writes its posts/projection row. Rebuild that projection
+    // before returning a detail URL that would otherwise 404.
+    await triggerIncrementalSync({ throwOnError: true });
+    const recovered = await db
+      .select({ id: posts.id })
+      .from(posts)
+      .where(eq(posts.id, memoId))
+      .limit(1)
+      .then((rows) => rows[0]);
+    if (!recovered) return null;
+    return resolveMemo(memoId, memoSlug);
   }
 
   const now = Date.now();
@@ -328,7 +727,9 @@ async function handleSystemShareRequest(
     .then((rows) => rows[0]);
 
   if (existing?.memoId) {
-    const recovered = await resolveMemo(existing.memoId, existing.memoSlug);
+    const recovered = existing.classification
+      ? await resolveCommittedSystemShare(existing.memoId, existing.memoSlug)
+      : await resolveMemo(existing.memoId, existing.memoSlug);
     if (recovered) {
       await db
         .update(systemShareSubmissions)
@@ -360,6 +761,46 @@ async function handleSystemShareRequest(
   }
 
   if (existing) {
+    // The filesystem publication is the commit point. If the process stopped
+    // after that point but before the SQLite row was completed, recover the
+    // authored Memo immediately even while the previous lease is unexpired.
+    const recoveredCommit = await resolveCommittedSystemShare(
+      deterministicMemoId,
+      existing.memoSlug
+    );
+    if (recoveredCommit) {
+      await db
+        .update(systemShareSubmissions)
+        .set({
+          memoId: recoveredCommit.memoId,
+          memoSlug: recoveredCommit.memoSlug,
+          state: "completed",
+          leaseToken: null,
+          leaseExpiresAt: null,
+          updatedAt: now,
+        })
+        .where(eq(systemShareSubmissions.submissionId, submissionId));
+      await cleanupAbandonedSystemShareStaging({
+        basePath,
+        memoRoot,
+        submissionId,
+        keepLeaseToken: "",
+        memoId: deterministicMemoId,
+      });
+      await cleanupSystemShareMemoTemps({ basePath, memoRoot, submissionId });
+      return json(
+        request,
+        {
+          ok: true,
+          duplicate: true,
+          memoId: recoveredCommit.memoId,
+          memo: recoveredCommit.memo,
+          classification: existing.classification ?? normalized.classification,
+        },
+        { status: 200 },
+        resHeaders
+      );
+    }
     const leaseExpiresAt =
       existing.leaseExpiresAt ?? existing.updatedAt + SYSTEM_SHARE_PROCESSING_TTL_MS;
     const leaseState = existing.state === "processing" || existing.state === "committing";
@@ -423,8 +864,6 @@ async function handleSystemShareRequest(
   const stagedPaths: string[] = [];
   let createdMemoId: string | null = null;
   let createdMemoSlug: string | null = null;
-  const memoRoot = getServerLocalMemoRootPath();
-  const deterministicMemoId = buildMemoRelativePath(`system-share/${submissionId}.md`, memoRoot);
   const stagedDirectory = join(
     basePath,
     memoRoot.replace(/^\/+/, ""),
@@ -433,7 +872,10 @@ async function handleSystemShareRequest(
     submissionId,
     leaseToken
   );
+  let stagingDirectorySafe = false;
   try {
+    await ensureSafeSystemShareDirectory(basePath, stagedDirectory);
+    stagingDirectorySafe = true;
     const attachments = [];
     const stagedAttachmentRefs: Array<{ persistedPath: string; fullPath: string }> = [];
     for (const [index, file] of files.entries()) {
@@ -442,8 +884,22 @@ async function handleSystemShareRequest(
       const filename = `system-share/${submissionId}/${leaseToken}/${index + 1}-${safeName}`;
       const persistedPath = `${memoRoot.replace(/^\/+/, "")}/assets/${filename}`;
       const fullPath = join(basePath, persistedPath);
-      await mkdir(stagedDirectory, { recursive: true });
-      await writeFile(fullPath, new Uint8Array(await file.arrayBuffer()), { flag: "wx" });
+      const directory = dirname(fullPath);
+      const directoryHandle = await openSafeSystemShareDirectory(basePath, directory);
+      const writePath = directoryHandle
+        ? `/proc/self/fd/${directoryHandle.fd}/${basename(fullPath)}`
+        : fullPath;
+      try {
+        await writeFile(writePath, new Uint8Array(await file.arrayBuffer()), { flag: "wx" });
+      } finally {
+        await directoryHandle?.close().catch(() => undefined);
+      }
+      try {
+        await assertSafeSystemShareFile(basePath, fullPath);
+      } catch (error) {
+        await removeSafeSystemSharePath(basePath, fullPath).catch(() => undefined);
+        throw error;
+      }
       stagedPaths.push(fullPath);
       if (
         process.env.NODE_ENV === "test" &&
@@ -560,14 +1016,14 @@ async function handleSystemShareRequest(
     await Promise.all(
       stagedAttachmentRefs
         .filter(({ persistedPath }) => !referencedAttachmentPaths.has(persistedPath))
-        .map(({ fullPath }) => rm(fullPath, { force: true }).catch(() => undefined))
+        .map(({ fullPath }) => removeSafeSystemSharePath(basePath, fullPath))
     );
     if (
       !stagedAttachmentRefs.some(({ persistedPath }) =>
         referencedAttachmentPaths.has(persistedPath)
       )
     ) {
-      await rm(stagedDirectory, { recursive: true, force: true }).catch(() => undefined);
+      await removeSafeSystemSharePath(basePath, stagedDirectory).catch(() => undefined);
     }
     await db
       .update(systemShareSubmissions)
@@ -608,10 +1064,17 @@ async function handleSystemShareRequest(
       }
     }
     if (!committedMemoFile) {
-      await Promise.all(
-        stagedPaths.map((path) => rm(path, { force: true }).catch(() => undefined))
-      );
-      await rm(stagedDirectory, { recursive: true, force: true }).catch(() => undefined);
+      if (
+        stagingDirectorySafe &&
+        (await isSafeExistingSystemShareDirectory(basePath, stagedDirectory))
+      ) {
+        await Promise.all(
+          stagedPaths.map((path) =>
+            removeSafeSystemSharePath(basePath, path).catch(() => undefined)
+          )
+        );
+        await removeSafeSystemSharePath(basePath, stagedDirectory).catch(() => undefined);
+      }
       if (reclaimedExpiredLease) {
         // Retain an expired recovery row as a cleanup sentinel. A later retry
         // must still know that an older lease's staging tree may exist.
@@ -657,6 +1120,16 @@ async function handleSystemShareRequest(
             eq(systemShareSubmissions.leaseToken, leaseToken)
           )
         );
+    } else {
+      // A stale request may discover that another lease already committed the
+      // deterministic Memo. Remove only this lease's unreferenced staging.
+      await cleanupSystemShareLeaseStaging({
+        basePath,
+        memoRoot,
+        submissionId,
+        leaseToken,
+        memoId: deterministicMemoId,
+      });
     }
     if (error instanceof TRPCError) throw error;
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "分享内容创建失败，请重试。" });

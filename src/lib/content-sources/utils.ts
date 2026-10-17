@@ -81,7 +81,16 @@ export function createContentItemFromParsed(
   const publishDate = extractPublishDate(frontmatter, filePath);
 
   // 提取标签与清理后的正文
-  const { tags: inlineTagDetails, cleanedContent } = parseContentTags(body);
+  const systemShare =
+    frontmatter.systemShare && typeof frontmatter.systemShare === "object"
+      ? (frontmatter.systemShare as Record<string, unknown>)
+      : null;
+  const isSystemShare = systemShare?.source === "system-share";
+  const parsedInlineTags = parseContentTags(body);
+  const inlineTagDetails = isSystemShare
+    ? parsedInlineTags.tags.filter((tag) => tag.name !== "剪藏")
+    : parsedInlineTags.tags;
+  const cleanedContent = parsedInlineTags.cleanedContent;
   const frontmatterTags = extractTags(frontmatter);
   const mergedTags = [...new Set([...frontmatterTags, ...inlineTagDetails.map((tag) => tag.name)])];
 

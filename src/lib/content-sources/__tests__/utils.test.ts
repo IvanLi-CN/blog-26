@@ -42,6 +42,17 @@ describe("Memo Utils", () => {
       expect(item.createdVia).toBe("mcp");
       expect(item.metadata.createdVia).toBeUndefined();
     });
+
+    it("does not project the generated system-share marker into frontmatter tags", () => {
+      const parsed = parseMarkdownContent(
+        `---\ntitle: "System share"\npublic: false\ntags: []\nsystemShare: {"source":"system-share","submissionId":"00000000-0000-4000-8000-000000000001"}\n---\n\nhttps://example.com/article\n\n#剪藏`,
+        "Memos/system-share.md"
+      );
+      const item = createContentItemFromParsed(parsed, "Memos/system-share.md", "local");
+
+      expect(item.tags).toEqual([]);
+      expect(item.metadata.inlineTagPositions).toEqual([]);
+    });
   });
 
   describe("generateNanoidSlug", () => {

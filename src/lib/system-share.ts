@@ -39,14 +39,28 @@ export type NormalizedSystemShare = {
 };
 
 function normalizeEditorTargetLine(line: string): string | null {
-  const plainUrl = normalizeHttpUrl(line);
+  const canonicalLine = line.replace(/^(https?)\\:\/\//iu, "$1://");
+  const plainUrl = normalizeHttpUrl(canonicalLine);
   if (plainUrl) return plainUrl;
 
-  const markdownLink = /^\[[^\]]*\]\((https?:\/\/[^\s)]+)\)$/iu.exec(line);
+  const markdownLink = /^\[[^\]]*\]\((https?:\/\/[^\s)]+)\)$/iu.exec(canonicalLine);
   if (markdownLink) return normalizeHttpUrl(markdownLink[1]);
 
-  const autolink = /^<(https?:\/\/[^\s>]+)>$/iu.exec(line);
+  const autolink = /^<(https?:\/\/[^\s>]+)>$/iu.exec(canonicalLine);
   return autolink ? normalizeHttpUrl(autolink[1]) : null;
+}
+
+function canonicalizeEditorTargetLine(text: string): string {
+  const lines = text.split(/\r?\n/u);
+  const firstLineIndex = lines.findIndex((line) => line.trim().length > 0);
+  if (firstLineIndex === -1) return text;
+
+  const line = lines[firstLineIndex];
+  const canonicalLine = line.replace(/^([ \t]*)(https?)\\:\/\//iu, "$1$2://");
+  if (canonicalLine === line) return text;
+
+  lines[firstLineIndex] = canonicalLine;
+  return lines.join("\n");
 }
 
 function appendSystemShareClippingMarker(content: string): string {
@@ -73,12 +87,19 @@ export function stripSystemShareClippingMarker(content: string): string {
  * preserve and edit the parsed URL without adding a second input.
  */
 export function normalizeSystemShareEditor(values: SystemShareValues): NormalizedSystemShare {
-  const normalized = normalizeSystemShare(values);
+  const canonicalText = canonicalizeEditorTargetLine(values.text?.trim() ?? "");
+  const normalized = normalizeSystemShare({ ...values, text: canonicalText });
   if (normalized.classification === "clipping") return normalized;
 
-  const firstLine = (values.text?.trim() ?? "").split(/\r?\n/u, 1)[0]?.trim() ?? "";
+  const firstLine = canonicalText.split(/\r?\n/u, 1)[0]?.trim() ?? "";
   const firstLineUrl = normalizeEditorTargetLine(firstLine);
-  return firstLineUrl ? normalizeSystemShare({ ...values, url: firstLineUrl }) : normalized;
+  return firstLineUrl
+    ? normalizeSystemShare({
+        ...values,
+        text: canonicalText,
+        url: firstLineUrl,
+      })
+    : normalized;
 }
 
 /** Keep the clipping target visible in the one editable Memo field. */

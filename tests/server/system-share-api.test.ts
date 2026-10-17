@@ -168,6 +168,30 @@ describe("system share API", () => {
     expect(fs.existsSync(orphanDirectory)).toBe(false);
   });
 
+  test("cleans abandoned staging from a process that exited before retry", async () => {
+    const submissionId = randomUUID();
+    const leaseToken = randomUUID();
+    const orphanDirectory = path.join(
+      contentRoot,
+      "Memos",
+      "assets",
+      "system-share",
+      submissionId,
+      leaseToken
+    );
+    fs.mkdirSync(orphanDirectory, { recursive: true });
+    fs.writeFileSync(path.join(orphanDirectory, "1-orphan.txt"), "orphan");
+    const expiredAt = new Date(Date.now() - 16 * 60 * 1000);
+    fs.utimesSync(orphanDirectory, expiredAt, expiredAt);
+
+    const response = await handlePublicApiRequest(
+      buildRequest(createForm(randomUUID(), "trigger stale staging cleanup")),
+      "/system-share"
+    );
+    expect(response.status).toBe(201);
+    expect(fs.existsSync(orphanDirectory)).toBe(false);
+  });
+
   test("reclaims an expired committing lease and removes its orphaned staging tree", async () => {
     const submissionId = randomUUID();
     const now = Date.now();
@@ -212,6 +236,8 @@ describe("system share API", () => {
       memoPath,
       `---\ntitle: Recovered commit\npublic: false\ntags: []\nattachments: []\nsystemShare: {"source":"system-share","submissionId":"${submissionId}"}\n---\n\nrecovered commit\n`
     );
+    const abandonedMemoTemp = `${memoPath}.${oldLeaseToken}.crashed.tmp`;
+    fs.writeFileSync(abandonedMemoTemp, "partial recovered commit");
     const now = Date.now();
     await db?.insert(systemShareSubmissions).values({
       submissionId,
@@ -229,10 +255,11 @@ describe("system share API", () => {
       buildRequest(createForm(submissionId, "new request after restart")),
       "/system-share"
     );
-    expect(response.status).toBe(201);
-    expect(await response.json()).toMatchObject({ ok: true, memoId });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true, duplicate: true, memoId });
     expect(fs.existsSync(memoPath)).toBe(true);
     expect(fs.readFileSync(memoPath, "utf8")).toContain("recovered commit");
+    expect(fs.existsSync(abandonedMemoTemp)).toBe(false);
     const row = await db
       ?.select()
       .from(systemShareSubmissions)
@@ -241,12 +268,131 @@ describe("system share API", () => {
     expect(row).toMatchObject({ state: "completed", memoId });
   });
 
+  test("preserves committed attachments when completion recording fails", async () => {
+    const submissionId = randomUUID();
+    const form = createForm(submissionId, "attachment commit recovery");
+    form.append("files", new File(["attachment body"], "recovered.txt", { type: "text/plain" }));
+    const previousInjection = process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_MEMO_LINK;
+    process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_MEMO_LINK = "1";
+    try {
+      const response = await handlePublicApiRequest(buildRequest(form), "/system-share");
+      expect(response.status).toBe(500);
+    } finally {
+      if (previousInjection === undefined)
+        delete process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_MEMO_LINK;
+      else process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_MEMO_LINK = previousInjection;
+    }
+
+    const memoPath = path.join(contentRoot, "Memos", "system-share", `${submissionId}.md`);
+    expect(fs.existsSync(memoPath)).toBe(true);
+    const row = await db
+      ?.select()
+      .from(systemShareSubmissions)
+      .where(eq(systemShareSubmissions.submissionId, submissionId))
+      .then((rows) => rows[0]);
+    expect(row).toMatchObject({ submissionId, memoId: null, state: "committing" });
+    if (!row?.leaseToken) throw new Error("expected an active recovery lease");
+    await db
+      ?.update(systemShareSubmissions)
+      .set({ leaseExpiresAt: Date.now() - 1, updatedAt: Date.now() - 1 })
+      .where(eq(systemShareSubmissions.submissionId, submissionId));
+    const stagingDirectory = path.join(
+      contentRoot,
+      "Memos",
+      "assets",
+      "system-share",
+      submissionId,
+      row.leaseToken
+    );
+    const expiredAt = new Date(Date.now() - 16 * 60 * 1000);
+    fs.utimesSync(stagingDirectory, expiredAt, expiredAt);
+    const attachmentPath = path.join(stagingDirectory, "1-recovered.txt");
+    expect(fs.existsSync(attachmentPath)).toBe(true);
+
+    const retry = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "retry after completion recording failure")),
+      "/system-share"
+    );
+    expect(retry.status).toBe(200);
+    expect(await retry.json()).toMatchObject({ ok: true, duplicate: true });
+    expect(fs.existsSync(attachmentPath)).toBe(true);
+  });
+
+  test("recovers an authored Memo before an unexpired lease blocks replay", async () => {
+    const submissionId = randomUUID();
+    const oldLeaseToken = randomUUID();
+    const memoId = `Memos/system-share/${submissionId}.md`;
+    const memoPath = path.join(contentRoot, memoId);
+    fs.mkdirSync(path.dirname(memoPath), { recursive: true });
+    fs.writeFileSync(
+      memoPath,
+      `---\ntitle: Recovered live lease\npublic: false\ntags: []\nattachments: []\nsystemShare: {"source":"system-share","submissionId":"${submissionId}"}\n---\n\nrecovered while lease was live\n`
+    );
+    const now = Date.now();
+    await db?.insert(systemShareSubmissions).values({
+      submissionId,
+      memoId: null,
+      memoSlug: null,
+      classification: "memo",
+      state: "committing",
+      leaseToken: oldLeaseToken,
+      leaseExpiresAt: now + 60_000,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const response = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "replay after process restart")),
+      "/system-share"
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true, duplicate: true, memoId });
+    expect(await db?.select().from(systemShareSubmissions)).toMatchObject([
+      { submissionId, state: "completed", memoId, leaseToken: null, leaseExpiresAt: null },
+    ]);
+  });
+
+  test("rebuilds the Memo projection before completing an authored-file recovery", async () => {
+    const submissionId = randomUUID();
+    const memoId = `Memos/system-share/${submissionId}.md`;
+    const memoPath = path.join(contentRoot, memoId);
+    fs.mkdirSync(path.dirname(memoPath), { recursive: true });
+    fs.writeFileSync(
+      memoPath,
+      `---\ntitle: Rebuild projection\npublic: false\ntags: []\nattachments: []\nsystemShare: {"source":"system-share","submissionId":"${submissionId}"}\n---\n\nrecover and index this Memo\n`
+    );
+    await db?.insert(systemShareSubmissions).values({
+      submissionId,
+      memoId: null,
+      memoSlug: null,
+      classification: "memo",
+      state: "committing",
+      leaseToken: randomUUID(),
+      leaseExpiresAt: Date.now() + 60_000,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    const response = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "replay and index")),
+      "/system-share"
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true, duplicate: true, memoId });
+    expect(await db?.select({ id: posts.id }).from(posts).where(eq(posts.id, memoId))).toHaveLength(
+      1
+    );
+  });
+
   test("repairs an interrupted deterministic Memo file before retrying the same submission", async () => {
     const submissionId = randomUUID();
     const memoId = `Memos/system-share/${submissionId}.md`;
     const memoPath = path.join(contentRoot, memoId);
     fs.mkdirSync(path.dirname(memoPath), { recursive: true });
-    fs.writeFileSync(memoPath, "---\ntitle: [\n---\npartial write");
+    fs.writeFileSync(
+      memoPath,
+      `---\ntitle: [\nsystemShare: {"source":"system-share","submissionId":"${submissionId}"}\n---\npartial write`
+    );
 
     const response = await handlePublicApiRequest(
       buildRequest(createForm(submissionId, "repaired thought")),
@@ -258,6 +404,88 @@ describe("system share API", () => {
     expect(await db?.select().from(systemShareSubmissions)).toMatchObject([
       { submissionId, state: "completed", memoId },
     ]);
+  });
+
+  test("preserves malformed deterministic content when its marker is outside frontmatter", async () => {
+    const submissionId = randomUUID();
+    const memoPath = path.join(contentRoot, "Memos", "system-share", `${submissionId}.md`);
+    const original = `---\ntitle: [\n---\nsystemShare: {"source":"system-share","submissionId":"${submissionId}"}\nprotected malformed content`;
+    fs.mkdirSync(path.dirname(memoPath), { recursive: true });
+    fs.writeFileSync(memoPath, original);
+
+    const response = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "must not replace malformed content")),
+      "/system-share"
+    );
+    expect(response.status).toBe(500);
+    expect(fs.readFileSync(memoPath, "utf8")).toBe(original);
+    expect(await db?.select().from(posts)).toHaveLength(0);
+  });
+
+  test("preserves malformed deterministic content with conflicting duplicate markers", async () => {
+    const submissionId = randomUUID();
+    const memoPath = path.join(contentRoot, "Memos", "system-share", `${submissionId}.md`);
+    const original = `---\nsystemShare: {"source":"system-share","submissionId":"${submissionId}"}\nsystemShare: {"source":"manual","submissionId":"${submissionId}"}\n---\nprotected ambiguous content`;
+    fs.mkdirSync(path.dirname(memoPath), { recursive: true });
+    fs.writeFileSync(memoPath, original);
+
+    const response = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "must not replace ambiguous content")),
+      "/system-share"
+    );
+    expect(response.status).toBe(500);
+    expect(fs.readFileSync(memoPath, "utf8")).toBe(original);
+    expect(await db?.select().from(posts)).toHaveLength(0);
+  });
+
+  test("preserves malformed deterministic content with duplicate marker properties", async () => {
+    const submissionId = randomUUID();
+    const memoPath = path.join(contentRoot, "Memos", "system-share", `${submissionId}.md`);
+    const original = `---\nsystemShare: {"source":"manual","source":"system-share","submissionId":"${submissionId}"}\n---\nprotected ambiguous content`;
+    fs.mkdirSync(path.dirname(memoPath), { recursive: true });
+    fs.writeFileSync(memoPath, original);
+
+    const response = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "must not replace duplicate property content")),
+      "/system-share"
+    );
+    expect(response.status).toBe(500);
+    expect(fs.readFileSync(memoPath, "utf8")).toBe(original);
+    expect(await db?.select().from(posts)).toHaveLength(0);
+  });
+
+  test("does not overwrite a deterministic Memo owned by another submission", async () => {
+    const submissionId = randomUUID();
+    const memoPath = path.join(contentRoot, "Memos", "system-share", `${submissionId}.md`);
+    fs.mkdirSync(path.dirname(memoPath), { recursive: true });
+    fs.writeFileSync(
+      memoPath,
+      `---\ntitle: Existing Memo\nsystemShare:\n  source: system-share\n  submissionId: ${randomUUID()}\n---\nprotected content\n`
+    );
+
+    const response = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "must not replace")),
+      "/system-share"
+    );
+    expect(response.status).toBe(500);
+    expect(fs.readFileSync(memoPath, "utf8")).toContain("protected content");
+    expect(await db?.select().from(posts)).toHaveLength(0);
+  });
+
+  test("does not adopt a deterministic Memo with a matching id but another source", async () => {
+    const submissionId = randomUUID();
+    const memoPath = path.join(contentRoot, "Memos", "system-share", `${submissionId}.md`);
+    const original = `---\nsystemShare: {"source":"manual","submissionId":"${submissionId}"}\n---\nprotected source-owned content\n`;
+    fs.mkdirSync(path.dirname(memoPath), { recursive: true });
+    fs.writeFileSync(memoPath, original);
+
+    const response = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "must not adopt another source")),
+      "/system-share"
+    );
+    expect(response.status).toBe(500);
+    expect(fs.readFileSync(memoPath, "utf8")).toBe(original);
+    expect(await db?.select().from(posts)).toHaveLength(0);
   });
 
   test("removes a partially written Memo temporary file before a retry", async () => {
@@ -291,7 +519,10 @@ describe("system share API", () => {
     const submissionId = randomUUID();
     const memoPath = path.join(contentRoot, "Memos", "system-share", `${submissionId}.md`);
     fs.mkdirSync(path.dirname(memoPath), { recursive: true });
-    fs.writeFileSync(memoPath, "---\ntitle: [\n---\npartial write");
+    fs.writeFileSync(
+      memoPath,
+      `---\ntitle: [\nsystemShare: {"source":"system-share","submissionId":"${submissionId}"}\n---\npartial write`
+    );
     const now = Date.now();
     await db?.insert(systemShareSubmissions).values({
       submissionId,
@@ -434,7 +665,7 @@ describe("system share API", () => {
       submissionId,
       memoId,
       memoSlug,
-      classification: "memo",
+      classification: null,
       state: "completed",
       leaseToken: null,
       leaseExpiresAt: null,
@@ -453,6 +684,39 @@ describe("system share API", () => {
       memoId,
       memo: { slug: memoSlug },
     });
+  });
+
+  test("does not replay a classified completed row after its Memo ownership marker changes", async () => {
+    const submissionId = randomUUID();
+    const first = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "owned completed memo")),
+      "/system-share"
+    );
+    const firstPayload = (await first.json()) as { memoId?: string };
+    if (!firstPayload.memoId) throw new Error("expected a Memo id");
+    const firstRow = await db
+      ?.select()
+      .from(posts)
+      .where(eq(posts.id, firstPayload.memoId))
+      .limit(1)
+      .then((rows) => rows[0]);
+    if (!firstRow?.filePath) throw new Error("expected an indexed Memo file");
+    const memoPath = path.join(contentRoot, firstRow.filePath);
+    const original = fs.readFileSync(memoPath, "utf8");
+    fs.writeFileSync(
+      memoPath,
+      original.replace(
+        /systemShare:\s*\{[^\n]+\}/u,
+        `systemShare: {"source":"manual","submissionId":"${submissionId}"}`
+      )
+    );
+
+    const replay = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "must not replay repurposed Memo")),
+      "/system-share"
+    );
+    expect(replay.status).toBe(404);
+    expect(fs.readFileSync(memoPath, "utf8")).toContain('"source":"manual"');
   });
 
   test("upgrades a legacy submission row without losing its identity", async () => {
@@ -567,7 +831,8 @@ describe("system share API", () => {
     expect(rows).toHaveLength(1);
     expect(rows?.[0]?.tags).toBe("[]");
     expect(rows?.[0]?.body).toContain("https://example.com/article");
-    expect(rows?.[0]?.body).toContain("#剪藏");
+    const authored = fs.readFileSync(path.join(contentRoot, rows?.[0]?.filePath || ""), "utf8");
+    expect(authored).toContain("#剪藏");
     expect(rows?.[0]?.metadata).toContain('"systemShare"');
   });
 
@@ -607,6 +872,39 @@ describe("system share API", () => {
     expect(fs.existsSync(staged)).toBe(true);
     const markdown = fs.readFileSync(staged, "utf8");
     expect(markdown).toContain("assets/system-share/");
+  });
+
+  test("rejects a symlinked attachment parent without writing outside the content root", async () => {
+    const outsideRoot = fs.mkdtempSync(path.join(process.cwd(), "tmp", "system-share-outside-"));
+    const memoRoot = path.join(contentRoot, "Memos");
+    fs.mkdirSync(memoRoot, { recursive: true });
+    fs.symlinkSync(outsideRoot, path.join(memoRoot, "assets"), "dir");
+    try {
+      const form = createForm(randomUUID(), "symlink attachment");
+      form.append("files", new File(["outside"], "outside.txt", { type: "text/plain" }));
+      const response = await handlePublicApiRequest(buildRequest(form), "/system-share");
+      expect(response.status).toBe(500);
+      expect(fs.readdirSync(outsideRoot)).toHaveLength(0);
+    } finally {
+      fs.rmSync(outsideRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("rejects a symlinked Memo parent without writing outside the content root", async () => {
+    const outsideRoot = fs.mkdtempSync(path.join(process.cwd(), "tmp", "system-share-outside-"));
+    const memoRoot = path.join(contentRoot, "Memos");
+    fs.mkdirSync(memoRoot, { recursive: true });
+    fs.symlinkSync(outsideRoot, path.join(memoRoot, "system-share"), "dir");
+    try {
+      const response = await handlePublicApiRequest(
+        buildRequest(createForm(randomUUID(), "symlink memo")),
+        "/system-share"
+      );
+      expect(response.status).toBe(500);
+      expect(fs.readdirSync(outsideRoot)).toHaveLength(0);
+    } finally {
+      fs.rmSync(outsideRoot, { recursive: true, force: true });
+    }
   });
 
   test("cleans staged files when attachment ingestion fails before Memo creation", async () => {

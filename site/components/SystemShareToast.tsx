@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, LoaderCircle, LogIn, RefreshCw, TriangleAlert, X } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { type Id, ToastContainer, type ToastOptions, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./SystemShareToast.css";
@@ -9,6 +9,20 @@ import "./SystemShareToast.css";
 export const SYSTEM_SHARE_TOAST_ID = "system-share-publish";
 
 type ToastTone = "progress" | "success" | "error";
+
+function focusToastTestId(testId: string) {
+  if (typeof document === "undefined") return;
+  const focus = () => {
+    const target = document.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
+    if (!target) return false;
+    target.focus();
+    return true;
+  };
+  queueMicrotask(() => {
+    if (focus()) return;
+    window.requestAnimationFrame(() => focus());
+  });
+}
 
 function ToastBody({
   tone,
@@ -94,6 +108,42 @@ function ToastBody({
 }
 
 export function SystemShareToastViewport() {
+  useEffect(() => {
+    if (typeof document === "undefined" || typeof ResizeObserver === "undefined") return;
+    const container = document.querySelector<HTMLElement>(".system-share-toast-container");
+    if (!container) return;
+
+    const root = document.documentElement;
+    let frame = 0;
+    const updateHeight = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const toastElement = container.querySelector<HTMLElement>(".system-share-toast");
+        if (!toastElement) {
+          root.style.removeProperty("--system-share-toast-height");
+          return;
+        }
+        root.style.setProperty(
+          "--system-share-toast-height",
+          `${Math.ceil(toastElement.getBoundingClientRect().height)}px`
+        );
+      });
+    };
+
+    const resizeObserver = new ResizeObserver(updateHeight);
+    const mutationObserver = new MutationObserver(updateHeight);
+    resizeObserver.observe(container);
+    mutationObserver.observe(container, { childList: true, subtree: true });
+    updateHeight();
+
+    return () => {
+      cancelAnimationFrame(frame);
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+      root.style.removeProperty("--system-share-toast-height");
+    };
+  }, []);
+
   return (
     <ToastContainer
       containerId={SYSTEM_SHARE_TOAST_ID}
@@ -127,9 +177,12 @@ export function showSystemShareProgress(message = "正在发布…") {
   const render = <ToastBody tone="progress" message={message} />;
   if (toast.isActive(SYSTEM_SHARE_TOAST_ID)) {
     toast.update(SYSTEM_SHARE_TOAST_ID, { ...options, render, type: "default" });
+    focusToastTestId("system-share-toast-progress");
     return SYSTEM_SHARE_TOAST_ID;
   }
-  return toast.loading(render, options);
+  const id = toast.loading(render, options);
+  focusToastTestId("system-share-toast-progress");
+  return id;
 }
 
 export function showSystemShareSuccess(message = "发布成功") {
@@ -141,6 +194,7 @@ export function showSystemShareSuccess(message = "发布成功") {
     closeOnClick: false,
     type: "success",
     role: "status",
+    delay: 0,
   };
   if (toast.isActive(SYSTEM_SHARE_TOAST_ID)) {
     toast.update(SYSTEM_SHARE_TOAST_ID, {
@@ -175,9 +229,12 @@ export function showSystemShareError(message: string, onRetry: () => void, actio
   );
   if (toast.isActive(SYSTEM_SHARE_TOAST_ID)) {
     toast.update(SYSTEM_SHARE_TOAST_ID, { ...options, render });
+    focusToastTestId("system-share-toast-retry");
     return SYSTEM_SHARE_TOAST_ID;
   }
-  return toast(render, options);
+  const id = toast(render, options);
+  focusToastTestId("system-share-toast-retry");
+  return id;
 }
 
 export function dismissSystemShareToast(id?: Id) {
