@@ -357,7 +357,7 @@ export class GitHubLedgerStore implements LedgerStore {
         `chore(release): initialize product ledger\n\nBootstrap-Source: ${contract.bootstrap.sourceSha}\nLedger-Digest: ${digest(ledger)}`
       );
     }
-    await this.read();
+    await this.read({ allowLegacyHead: true, allowLegacyAncestor: true });
   }
 
   async read(

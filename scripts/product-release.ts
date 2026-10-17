@@ -135,7 +135,7 @@ if (command === "notification") {
   verifyTrustedTags(
     app,
     ledgerHead && ledgerHead !== contract.bootstrap.sourceSha
-      ? (await store.read()).ledger
+      ? (await store.read({ allowLegacyHead: true, allowLegacyAncestor: true })).ledger
       : initialLedger(contract)
   );
   await store.initialize();
