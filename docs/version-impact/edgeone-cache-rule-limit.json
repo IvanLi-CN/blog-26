@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
+  "covered_files": {
+    "scripts/prepare-edgeone-pwa-config.ts": "351208942fe6e9618a7b4899aee446c66b2430a1",
+    "tests/lib/public-pwa-edgeone-config.test.ts": "3a3eff005d4768ad60ee4ac9b2dd81479bb5a8af"
+  },
+  "change": {
+    "description": "Compact the three bounded root watermark cache entries into one prefix rule so the generated EdgeOne policy remains within the platform rule limit without widening feed, dynamic, or unknown Playbook paths.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a backward-compatible public cache policy maintenance fix. It preserves the existing revalidation policy and route boundaries while reducing duplicate rules for the three versioned and compatibility watermark assets.",
+      "assessed_at": "2026-10-17T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/public-pwa-edgeone-config.test.ts",
+          "blob": "3a3eff005d4768ad60ee4ac9b2dd81479bb5a8af",
+          "command": "bun test scripts/prepare-edgeone-pwa-config.test.ts tests/lib/public-pwa-edgeone-config.test.ts tests/lib/playbook-workflows.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate changes only EdgeOne cache-rule generation and its regression fixture. Feed endpoints remain exact, dynamic roots remain excluded, and malformed or unknown Playbook edition paths continue to use the existing fallback policy.",
+      "assessed_at": "2026-10-17T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "scripts/prepare-edgeone-pwa-config.ts",
+          "blob": "351208942fe6e9618a7b4899aee446c66b2430a1",
+          "command": "bunx biome check scripts/prepare-edgeone-pwa-config.ts tests/lib/public-pwa-edgeone-config.test.ts"
+        },
+        {
+          "path": "tests/lib/public-pwa-edgeone-config.test.ts",
+          "blob": "3a3eff005d4768ad60ee4ac9b2dd81479bb5a8af",
+          "command": "bun test scripts/prepare-edgeone-pwa-config.test.ts tests/lib/public-pwa-edgeone-config.test.ts tests/lib/playbook-workflows.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The change is limited to the EdgeOne cache policy generator and its focused public PWA regression coverage."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused EdgeOne generator, artifact, Playbook workflow, and formatting checks pass. The generated policy stays within 30 rules and retains exact feed and dynamic-route boundaries.",
+      "assessed_at": "2026-10-17T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/public-pwa-edgeone-config.test.ts",
+          "blob": "3a3eff005d4768ad60ee4ac9b2dd81479bb5a8af",
+          "command": "bun test scripts/prepare-edgeone-pwa-config.test.ts tests/lib/public-pwa-edgeone-config.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "scripts/prepare-edgeone-pwa-config.ts",
+          "blob": "351208942fe6e9618a7b4899aee446c66b2430a1",
+          "command": "bunx biome check scripts/prepare-edgeone-pwa-config.ts tests/lib/public-pwa-edgeone-config.test.ts && git diff --check"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3"
+      ],
+      "evidence": [
+        {
+          "path": "scripts/prepare-edgeone-pwa-config.ts",
+          "blob": "351208942fe6e9618a7b4899aee446c66b2430a1",
+          "command": "The generated cache policy keeps the existing public response headers and route matching semantics."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The change does not alter SQLite schema, release ledger state, browser persistence, or published content formats.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/public-pwa-edgeone-config.test.ts",
+          "blob": "3a3eff005d4768ad60ee4ac9b2dd81479bb5a8af",
+          "command": "The focused artifact tests verify only generated cache configuration and static output matching."
+        }
+      ]
+    }
+  }
+}
