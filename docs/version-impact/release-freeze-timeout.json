@@ -6,7 +6,7 @@
     ".github/release-contract.json": "fe8185c3c18a4f334df17242e9dd3604d17a7f49",
     ".github/workflows/abandon-cancelled-release.yml": "7e20b45b52a25c324b9bc07fe9f4daa2af8c024e",
     ".github/workflows/product-release.yml": "e6e2dbd8654aa3e5123321980182e5d389002e4a",
-    "docs/runbooks/manual-version-release.md": "0c9682e8fe528b229d32e7ccc233810148efc6dc",
+    "docs/runbooks/manual-version-release.md": "a8ee22cb7a88e36c0934c470379ec7d465d73596",
     "docs/specs/manual-version-release/IMPLEMENTATION.md": "f4b722fae56aa1d81904a6512866e438b913d2db",
     "docs/specs/manual-version-release/SPEC.md": "73a26106dae908a2974a27965fda6553f24120cb",
     "scripts/product-release.ts": "ad1d69e8dad2af15bf70905bf96bbb617b1e48ca",
@@ -15,7 +15,7 @@
     "src/lib/release/policy.ts": "b3abb4cacedebc506e2bfc5e9361700f8f63ab51",
     "src/lib/release/completion.ts": "c62a8584ae694a830d6efc7a3f46118b41cf7f71",
     "src/lib/release/source.ts": "78d8a7aba2db9591d0ddf899aac8c9b850cf71ed",
-    "tests/ci/product-prerelease-workflow.test.ts": "b0cf3d9802707455038e327b000584517db24124",
+    "tests/ci/product-prerelease-workflow.test.ts": "8ca82eea17052ff532230c02f7e213c0ef0ad6c0",
     "tests/lib/manual-release-completion.test.ts": "791507100f8bd802ed3ae7e885ad7c8e5410e273",
     "tests/lib/manual-release-inputs.test.ts": "dc6b0305cecd7e023f69b7e8071b9fc0784277e9",
     "tests/lib/manual-release-ledger.test.ts": "8b14d7914490060aa9605048803eec9388dea69e"
