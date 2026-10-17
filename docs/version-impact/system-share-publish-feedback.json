@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "08defc534c0c0df15bf3d43b144dc785a44bef05",
+  "covered_files": {
+    ".github/workflows/e2e.yml": "ad2c75cd411a82d217cda66c2d72b4164c616d06",
+    "CONTEXT.md": "4452f9d1abd5f90cd35893ae9e2ae9a39776f7d3",
+    "GLOSSARY.md": "c7f8da3a0e4f8e26536103bb64cbeb2efaf1ba3d",
+    "apps/admin/src/router.tsx": "9f7c91403099e0bdf8862598df3de7bdb5fec43a",
+    "docs/adr/0020-console-pwa-system-share-target.md": "ccea210cbafd37917d341b61553ad14878eadb22",
+    "docs/specs/README.md": "cc332e821388ec818a390ffcf84ee4f2ac23207e",
+    "docs/specs/system-share-memos/HISTORY.md": "a0244ab09d6120a8b582a66e85759d0e04792932",
+    "docs/specs/system-share-memos/IMPLEMENTATION.md": "4527c17af239654e89467dd0d51291b3f922c1ba",
+    "docs/specs/system-share-memos/SPEC.md": "29413091c8004200be6edb073c73a5668632a1cf",
+    "docs/specs/system-share-memos/assets/system-share-desktop-detail.png": "2ef498c508a3cb43af6702cc7cc1835f690e214d",
+    "docs/specs/system-share-memos/assets/system-share-desktop-failure-retry.png": "eab9424bc78753d5a1ae92df8dd562cf5b7c0dd1",
+    "docs/specs/system-share-memos/assets/system-share-desktop-populated.png": "52ee9b0b78160c80aec637e708d38ef1ddd232c6",
+    "docs/specs/system-share-memos/assets/system-share-desktop-publishing.png": "89ac09366bc2bca7fe5a37fe0459488b53261768",
+    "docs/specs/system-share-memos/assets/system-share-desktop-success.png": "72065651189466ee4d43358855edd2c8a631b414",
+    "docs/specs/system-share-memos/assets/system-share-mobile-detail.png": "1dfba1b5d937a89d8f4c10b8ae8291a5bae85826",
+    "docs/specs/system-share-memos/assets/system-share-mobile-failure-retry.png": "3c3a16e4958876a8a8383d0870df6c89be3d4d1c",
+    "docs/specs/system-share-memos/assets/system-share-mobile-populated.png": "31f18c46b9b85b28aec023b8353584ea49c51ee9",
+    "docs/specs/system-share-memos/assets/system-share-mobile-publishing.png": "3cfaa1991524570086bb44a8a5a90ede736a7192",
+    "docs/specs/system-share-memos/assets/system-share-mobile-success.png": "00a81242bfe05fe537b0dd664b3e58d7a651bc52",
+    "drizzle/0016_system_share_recovery.sql": "e4dd55cedb0c32771a261aaa0b837d14c076f866",
+    "drizzle/meta/0016_snapshot.json": "49618ab6ec168270e4eee833d15b2fa1d40551fb",
+    "drizzle/meta/_journal.json": "4f4d6b99d9ff42f6ba123f0a72aec35ab1827b6b",
+    "public/share-target-sw.js": "d9c6f3cff63c6813d69c6a82bcec2e5ea1a8586c",
+    "site/components/SystemShareConfirmation.tsx": "41c658ba8246df52b56888549ee8d471159df184",
+    "site/components/SystemShareToast.css": "d3481b1c010f2c9a48052d59a7fa82f5678abd9e",
+    "site/components/SystemShareToast.tsx": "4a42142eb208121c760c6a0a795e5dfdffe58ec8",
+    "site/layouts/BaseLayout.astro": "af25f139c41fbb0afd95a2c1cc5b3b77cc92809a",
+    "site/lib/public-site.ts": "b0de0164f199528bef3f5c7faa5f716de1a9dcb5",
+    "site/lib/system-share-store.ts": "ed7610f9720852b46a5e4da1f3db1b756ff6d68c",
+    "src/components/WebDemoInspector.css": "f220aa85084d56bd42b07455f66fe54372bb28c1",
+    "src/components/memos/MilkdownEditor.tsx": "9f27b230c4899704f4053bcd4f77e48b91ad804e",
+    "src/lib/__tests__/system-share.test.ts": "5fdc5c106a3f05d8d826f490b40aae968477202d",
+    "src/lib/console-web-demo.ts": "72fbc7f8baeea3b421838d0b596fc6d289a9dadd",
+    "src/lib/content-sources/__tests__/utils.test.ts": "49cdbd0afce3277ace93283cc6946a79da435972",
+    "src/lib/content-sources/utils.ts": "06aee000241f7e9055ecc760c70b47f761c88fd8",
+    "src/lib/schema.ts": "ff8847d4f9a6d7c81f2be67748f990a8250e0346",
+    "src/lib/system-share.ts": "36d2d6ad38a0d5b24ecbcb15c59ee31b0af10646",
+    "src/lib/web-demo-fetch.ts": "b5d833b7db01d88e0b72476552def6c5f089d0fe",
+    "src/lib/web-demo-runtime.ts": "462aaebf181ae75ec14f4d5dd561fe9a9c99a18d",
+    "src/server/files-api/router.ts": "201bab0bfabb9606480cdf9074571e95a0938156",
+    "src/server/public-api/router.ts": "cd45de95540cd4576f997b3ae1d17793e988c2d9",
+    "src/server/routers/memos.ts": "0bfc0669abaeee3abc6042d6dbc093e93bef75d0",
+    "src/styles/milkdown-nature.css": "10f811a5bebf2f69884e0d59baee177b75756950",
+    "tests/e2e/web-demo/system-share.spec.ts": "e70c219b82b0e10192c9e0fa3cbfd2e6f5dcd32c",
+    "tests/lib/public-pwa-assets.test.ts": "babda4a2eb57de53c7d3377e021746f9b8e918bf",
+    "tests/lib/web-demo-inspector-layout.test.ts": "a17f835643925fdd1b33d110a3c1ade0786da90c",
+    "tests/server/console-api-route.test.ts": "8d2d99311d518cf3107d1ec3150996180a7e7be9",
+    "tests/server/system-share-api.test.ts": "d8ab3f6b45842335de200370452e70dbd8c1c32b"
+  },
+  "change": {
+    "description": "Complete console PWA system-share publishing with stable submission identity, crash-safe recovery, global publish feedback, confirmed navigation, and official Web Demo coverage.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "The candidate adds compatible system-share publishing behavior for the administrator console, extends the additive submission recovery state, and keeps ordinary Memo, clipping, public-site, and existing release contracts compatible.",
+      "assessed_at": "2026-10-18T13:00:00+08:00",
+      "evidence": [
+        {
+          "path": "docs/specs/system-share-memos/SPEC.md",
+          "blob": "29413091c8004200be6edb073c73a5668632a1cf",
+          "command": "Approved system-share contract and recovery boundaries"
+        },
+        {
+          "path": "src/lib/system-share.ts",
+          "blob": "36d2d6ad38a0d5b24ecbcb15c59ee31b0af10646",
+          "command": "System-share classification and normalization tests"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "The implementation keeps the administrator-only multipart boundary and existing Memo semantics, while adding fenced recovery, local feedback lifecycle, detail navigation, and official route tests. The new migration is additive and prior state remains readable.",
+      "assessed_at": "2026-10-18T13:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/server/public-api/router.ts",
+          "blob": "cd45de95540cd4576f997b3ae1d17793e988c2d9",
+          "command": "Crash recovery, lease fencing, and idempotent system-share submission"
+        },
+        {
+          "path": "site/components/SystemShareConfirmation.tsx",
+          "blob": "41c658ba8246df52b56888549ee8d471159df184",
+          "command": "Publish state, retry, and detail navigation behavior"
+        },
+        {
+          "path": ".github/workflows/e2e.yml",
+          "blob": "ad2c75cd411a82d217cda66c2d72b4164c616d06",
+          "command": "Official console Web Demo system-share coverage"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains within the approved system-share publishing and recovery scope; the neighboring watermark changes are covered by their separate aligned record."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "Focused system-share classification, API recovery, migration, and official console Web Demo tests pass; the local visual evidence covers mobile and desktop populated, publishing, success, failure, and detail states.",
+      "assessed_at": "2026-10-18T13:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/server/system-share-api.test.ts",
+          "blob": "d8ab3f6b45842335de200370452e70dbd8c1c32b",
+          "command": "System-share authentication, limits, idempotency, recovery, cleanup, and visibility tests"
+        },
+        {
+          "path": "tests/e2e/web-demo/system-share.spec.ts",
+          "blob": "e70c219b82b0e10192c9e0fa3cbfd2e6f5dcd32c",
+          "command": "Official console Web Demo mobile and desktop publishing feedback scenarios"
+        },
+        {
+          "path": "drizzle/meta/_journal.json",
+          "blob": "4f4d6b99d9ff42f6ba123f0a72aec35ab1827b6b",
+          "command": "Migration validation for the recovery schema"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6"
+      ],
+      "evidence": [
+        {
+          "path": "tests/server/system-share-api.test.ts",
+          "blob": "d8ab3f6b45842335de200370452e70dbd8c1c32b",
+          "command": "Existing administrator-only API contract remains compatible"
+        },
+        {
+          "path": "src/lib/system-share.ts",
+          "blob": "36d2d6ad38a0d5b24ecbcb15c59ee31b0af10646",
+          "command": "Classification and URL normalization preserve ordinary Memo semantics"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "minor",
+      "applicable": true,
+      "state_description": "Migration 0016 extends the additive system-share recovery state and authored-file markers. Existing Memo rows, ordinary attachments, prior migrations, and older readers remain readable; older versions ignore the extra system-share table and files.",
+      "readable_by_prior_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6"
+      ],
+      "upgrade_from_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6"
+      ],
+      "evidence": [
+        {
+          "path": "drizzle/meta/_journal.json",
+          "blob": "4f4d6b99d9ff42f6ba123f0a72aec35ab1827b6b",
+          "command": "Migration journal and snapshot validation"
+        },
+        {
+          "path": "tests/server/system-share-api.test.ts",
+          "blob": "d8ab3f6b45842335de200370452e70dbd8c1c32b",
+          "command": "Recovery and prior-state compatibility regression coverage"
+        }
+      ]
+    }
+  }
+}
