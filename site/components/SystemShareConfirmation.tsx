@@ -357,15 +357,19 @@ export default function SystemShareConfirmation() {
         body: form,
       });
       setSuccessLocked(true);
-      showSystemShareSuccess(result.duplicate ? "已恢复此前发布的内容" : "发布成功");
-      redirectTimer.current = window.setTimeout(async () => {
-        try {
-          await clearPendingSystemShare(pending.submissionId);
-        } catch (cleanupError) {
-          console.warn("[system-share] failed to clear the published pending share", cleanupError);
-        }
-        window.location.replace(`/memos/${encodeURIComponent(result.memo.slug)}`);
-      }, 1000);
+      showSystemShareSuccess(result.duplicate ? "已恢复此前发布的内容" : "发布成功", () => {
+        redirectTimer.current = window.setTimeout(async () => {
+          try {
+            await clearPendingSystemShare(pending.submissionId);
+          } catch (cleanupError) {
+            console.warn(
+              "[system-share] failed to clear the published pending share",
+              cleanupError
+            );
+          }
+          window.location.replace(`/memos/${encodeURIComponent(result.memo.slug)}`);
+        }, 1000);
+      });
     } catch (nextError) {
       if (nextError instanceof SystemShareHttpError && [401, 403].includes(nextError.status)) {
         showSystemShareError(

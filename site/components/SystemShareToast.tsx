@@ -30,14 +30,20 @@ function ToastBody({
   onRetry,
   actionLabel = "重试",
   onClose,
+  onMount,
 }: {
   tone: ToastTone;
   message: ReactNode;
   onRetry?: () => void;
   actionLabel?: string;
   onClose?: () => void;
+  onMount?: () => void;
 }) {
   const Icon = tone === "progress" ? LoaderCircle : tone === "success" ? Check : TriangleAlert;
+
+  useEffect(() => {
+    onMount?.();
+  }, [onMount]);
 
   function handleRetry() {
     onRetry?.();
@@ -185,7 +191,7 @@ export function showSystemShareProgress(message = "正在发布…") {
   return id;
 }
 
-export function showSystemShareSuccess(message = "发布成功") {
+export function showSystemShareSuccess(message = "发布成功", onMount?: () => void) {
   const options: ToastOptions = {
     containerId: SYSTEM_SHARE_TOAST_ID,
     toastId: SYSTEM_SHARE_TOAST_ID,
@@ -196,14 +202,15 @@ export function showSystemShareSuccess(message = "发布成功") {
     role: "status",
     delay: 0,
   };
+  const render = <ToastBody tone="success" message={message} onMount={onMount} />;
   if (toast.isActive(SYSTEM_SHARE_TOAST_ID)) {
     toast.update(SYSTEM_SHARE_TOAST_ID, {
       ...options,
-      render: <ToastBody tone="success" message={message} />,
+      render,
     });
     return SYSTEM_SHARE_TOAST_ID;
   }
-  return toast(<ToastBody tone="success" message={message} />, options);
+  return toast(render, options);
 }
 
 export function showSystemShareError(message: string, onRetry: () => void, actionLabel = "重试") {
