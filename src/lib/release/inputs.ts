@@ -11,6 +11,25 @@ import { sealDirectory, verifyDirectory } from "./artifacts";
 import type { ReleaseEntry } from "./ledger";
 import { canonicalJson, shaSchema, versionSchema } from "./policy";
 
+export const DEFAULT_RELEASE_MEDIA_DOWNLOAD_CONCURRENCY = 8;
+export const MAX_RELEASE_MEDIA_DOWNLOAD_CONCURRENCY = 8;
+
+export function resolveReleaseMediaDownloadConcurrency(
+  raw = process.env.PUBLIC_STATIC_MEDIA_DOWNLOAD_CONCURRENCY
+): number {
+  const value = Number(raw || DEFAULT_RELEASE_MEDIA_DOWNLOAD_CONCURRENCY);
+  if (
+    !Number.isSafeInteger(value) ||
+    value <= 0 ||
+    value > MAX_RELEASE_MEDIA_DOWNLOAD_CONCURRENCY
+  ) {
+    throw new Error(
+      `PUBLIC_STATIC_MEDIA_DOWNLOAD_CONCURRENCY must be an integer from 1 to ${MAX_RELEASE_MEDIA_DOWNLOAD_CONCURRENCY}`
+    );
+  }
+  return value;
+}
+
 export const frozenConfigSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -201,6 +220,8 @@ export async function freezeInputs(entry: ReleaseEntry, root: string): Promise<v
     mediaOrigin: env.PUBLIC_API_BASE_URL,
     siteUrl: env.PUBLIC_SITE_URL,
     siteBasePath: env.PUBLIC_SITE_BASE_PATH,
+    downloadConcurrency: resolveReleaseMediaDownloadConcurrency(),
+    includeDerivedWatermarkVariants: true,
   });
   if (media.externalCount)
     throw new Error(

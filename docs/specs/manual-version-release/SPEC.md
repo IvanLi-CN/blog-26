@@ -10,7 +10,7 @@
 - 产品版本请求：一次发布的输入意图，可要求系统自动分配正式版或预发布版本，也可指定完整产品版本。
 - Version Policy：校验版本格式、自动递增、单调性、可信基线、预留、冲突与恢复的独立策略。
 - 发布身份：产品版本、来源提交、策略、预留及产物校验值的绑定。
-- 入口：从 main 发起一次 `workflow_dispatch`；`.github/workflows/manual-product-release.yml` 是唯一的手动入口，唯一自定义输入 `version` 是可选文本；`.github/workflows/product-release.yml` 消费已登记的发布身份。
+- 入口：从 main 发起一次 `workflow_dispatch`；`.github/workflows/manual-product-release.yml` 是唯一的版本准备入口，唯一自定义输入 `version` 是可选文本；`.github/workflows/product-release.yml` 默认消费已登记的发布身份，并提供无输入恢复入口，从登记分支自动解析唯一仍有效的已合并身份，不接受版本、来源或产物参数。
 - 输入值：留空或 `stable` 表示自动正式版；`alpha`、`beta`、`rc` 表示对应阶段自动分配；完整产品版本表示向前的精确指定。
 - 产品预发布：产品版本包含预发布标识的统一产品发布，包含 alpha、beta、rc；发布两种产物，不部署站点或推进正式 latest。
 - 正式语义基线：可信已发布正式产品版本及其来源，用于计算整个待发布区间的兼容性升级要求。
@@ -63,7 +63,7 @@
 
 ### REQ-MVR-010
 
-准备 MUST 显式 dispatch 确切 preparation head 的 CI/E2E；合并衔接 MUST 核验全部确切 SHA 的评估作业，并由同一内置 `GITHUB_TOKEN` 通过 Checks API 发布带有发布身份和 PR 关联的成功检查见证，使保护规则能够识别该评估结果。该见证 MUST 只在确切 CI/E2E 成功、登记身份、PR 编号、PR head 和来源仍一致时发布；不得调用审批接口或绕过 main 保护。随后合并衔接 MUST 观察受保护的自动合并并显式 dispatch 同一 merge SHA 的 main CI/E2E。发布 MUST 由 CI/E2E 的 main push 或已验证 dispatch 完成事件自动衔接，核验确切 merge SHA 的全部 main required checks。普通实现提交 MUST 跳过产品发布。PR 可取消过期运行；main 和发布评估 MUST 保留必需运行。重跑 MUST 使用原运行身份及策略。
+准备 MUST 显式 dispatch 确切 preparation head 的 CI/E2E；合并衔接 MUST 核验全部确切 SHA 的评估作业，并由同一内置 `GITHUB_TOKEN` 通过 Checks API 发布带有发布身份和 PR 关联的成功检查见证，使保护规则能够识别该评估结果。该见证 MUST 只在确切 CI/E2E 成功、登记身份、PR 编号、PR head 和来源仍一致时发布；不得调用审批接口或绕过 main 保护。随后合并衔接 MUST 观察受保护的自动合并并显式 dispatch 同一 merge SHA 的 main CI/E2E。发布 MUST 由 CI/E2E 的 main push 或已验证 dispatch 完成事件自动衔接，核验确切 merge SHA 的全部 main required checks。为覆盖内置令牌抑制主线 push 事件的情况，Product Release MUST 提供无输入的受控 `workflow_dispatch` 恢复入口；该入口 MUST 从 release-ledger 自动解析唯一仍有效的已合并登记身份，重新核验 PR merge SHA 和确切 main required checks，身份缺失、不唯一、不一致或检查未通过时 MUST 安全退出，并 MUST NOT 接受或猜测版本、来源或产物输入。普通实现提交 MUST 跳过产品发布。PR 可取消过期运行；main 和发布评估 MUST 保留必需运行。重跑 MUST 使用原运行身份及策略。
 
 ### REQ-MVR-011
 

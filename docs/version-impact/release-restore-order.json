@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
+  "covered_files": {
+    ".github/workflows/product-release.yml": "e6e2dbd8654aa3e5123321980182e5d389002e4a",
+    "tests/ci/product-prerelease-workflow.test.ts": "8ca82eea17052ff532230c02f7e213c0ef0ad6c0"
+  },
+  "change": {
+    "description": "Restore a recovery run's immutable artifacts before checking out the verified product source so recovery tooling uses the current release implementation while products remain bound to the original source.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a backward-compatible workflow ordering fix. It changes only release-run preparation order and does not change product endpoints, artifact formats, or application persistence.",
+      "assessed_at": "2026-10-17T00:00:00Z",
+      "evidence": [
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "8ca82eea17052ff532230c02f7e213c0ef0ad6c0",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Product Release now restores or prepares immutable artifacts with the current workflow tooling before switching to the verified merged product source. All subsequent freeze, build, and publication steps still use that exact source.",
+      "assessed_at": "2026-10-17T00:00:00Z",
+      "evidence": [
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "e6e2dbd8654aa3e5123321980182e5d389002e4a",
+          "command": "The restore step is ordered before the verified-source checkout and retains its output for later freeze/build steps."
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "8ca82eea17052ff532230c02f7e213c0ef0ad6c0",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to Product Release recovery ordering and its workflow regression test."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused workflow and recovery tests pass, and the ordering keeps source-bound product construction separate from current release tooling recovery.",
+      "assessed_at": "2026-10-17T00:00:00Z",
+      "evidence": [
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "e6e2dbd8654aa3e5123321980182e5d389002e4a",
+          "command": "bunx biome check tests/ci/product-prerelease-workflow.test.ts"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "8ca82eea17052ff532230c02f7e213c0ef0ad6c0",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts tests/lib/manual-release-recovery.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3"
+      ],
+      "evidence": [
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "e6e2dbd8654aa3e5123321980182e5d389002e4a",
+          "command": "The workflow order does not alter HTTP, tRPC, MCP, or shipped product contracts."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The workflow reuses existing release ledger and artifact identities without changing their schema or persisted application state.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "e6e2dbd8654aa3e5123321980182e5d389002e4a",
+          "command": "Only the order of existing recovery and source-checkout steps changed."
+        }
+      ]
+    }
+  }
+}

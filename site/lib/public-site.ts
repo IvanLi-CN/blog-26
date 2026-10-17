@@ -28,6 +28,7 @@ import {
   type PublicMediaCollection,
   type PublicMediaItem,
   rewritePublicContentMediaUrls,
+  supportsPublicMediaPresentations,
 } from "@/lib/public-media";
 import { rebuildSnapshotTags } from "@/lib/snapshot-tags";
 import type {
@@ -124,6 +125,7 @@ function normalizeSnapshotPaths(
       kind: "post",
       slug: post.slug,
       filePath: getSnapshotRecordPath(post),
+      supportsResponsiveWatermark: supportsPublicMediaPresentations(post.media),
     }),
   }));
   const memos = snapshot.memos.map((memo) => ({
@@ -140,6 +142,7 @@ function normalizeSnapshotPaths(
       kind: "memo",
       slug: memo.slug,
       filePath: getSnapshotRecordPath(memo),
+      supportsResponsiveWatermark: supportsPublicMediaPresentations(memo.media),
     }),
   }));
   return rebuildSnapshotTags({ ...snapshot, posts, memos });

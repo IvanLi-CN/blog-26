@@ -5,7 +5,9 @@ import { findArtifact, restoreArtifact, verifyDirectory } from "../src/lib/relea
 import {
   classifyMergeFollowup,
   evaluationChecksPassed,
+  manualReleaseWorkflowRun,
   readQuality,
+  releaseRecoveryEventSchema,
   resolveCompletedRelease,
   validateCandidatePolicy,
 } from "../src/lib/release/completion";
@@ -133,7 +135,7 @@ if (command === "notification") {
   verifyTrustedTags(
     app,
     ledgerHead && ledgerHead !== contract.bootstrap.sourceSha
-      ? (await store.read()).ledger
+      ? (await store.read({ allowLegacyHead: true, allowLegacyAncestor: true })).ledger
       : initialLedger(contract)
   );
   await store.initialize();
@@ -247,22 +249,36 @@ if (command === "notification") {
   }
 } else if (command === "resolve") {
   const app = github();
-  const payload = z.object({ workflow_run: z.unknown() }).parse(await event());
-  const entry = await resolveCompletedRelease(
-    app,
-    new GitHubLedgerStore(app),
-    quality,
-    payload.workflow_run,
-    Number(process.env.GITHUB_RUN_ID),
-    !process.argv.includes("--read-only")
-  );
-  await output({
-    active: String(Boolean(entry)),
-    source_sha: entry?.mergeSha || "",
-    identity: entry?.id || "",
-    prerelease: entry ? String(isPrerelease(entry.version)) : "false",
-  });
-  if (entry) await save(entry);
+  const store = new GitHubLedgerStore(app);
+  const payload = await event();
+  const triggeringRun =
+    process.env.GITHUB_EVENT_NAME === "workflow_dispatch"
+      ? manualReleaseWorkflowRun(
+          app,
+          (await store.read()).ledger,
+          Number(process.env.GITHUB_RUN_ID),
+          Number(process.env.GITHUB_RUN_ATTEMPT || "1")
+        )
+      : z.object({ workflow_run: z.unknown() }).parse(payload).workflow_run;
+  if (!triggeringRun) {
+    await output({ active: "false", source_sha: "", identity: "", prerelease: "false" });
+  } else {
+    const entry = await resolveCompletedRelease(
+      app,
+      store,
+      quality,
+      triggeringRun,
+      Number(process.env.GITHUB_RUN_ID),
+      !process.argv.includes("--read-only")
+    );
+    await output({
+      active: String(Boolean(entry)),
+      source_sha: entry?.mergeSha || "",
+      identity: entry?.id || "",
+      prerelease: entry ? String(isPrerelease(entry.version)) : "false",
+    });
+    if (entry) await save(entry);
+  }
 } else if (command === "restore") {
   const { app, store, entry } = await fresh();
   const frozenInputs = await restoreArtifact(app, entry, "inputs", inputs);
@@ -396,8 +412,9 @@ if (command === "notification") {
   const run = z
     .object({
       id: z.number().int().positive(),
+      head_sha: z.string().regex(/^[a-f0-9]{40}$/),
       run_attempt: z.number().int().positive(),
-      event: z.literal("workflow_run"),
+      event: releaseRecoveryEventSchema,
       path: z.literal(".github/workflows/product-release.yml"),
       status: z.literal("completed"),
       conclusion: z.literal("failure"),
@@ -406,6 +423,7 @@ if (command === "notification") {
     })
     .parse(app.api(`${app.root}/actions/runs/${entry.releaseRunId}`));
   if (run.id !== entry.releaseRunId) throw new Error("Release run identity changed");
+  if (run.head_sha !== entry.mergeSha) throw new Error("Failed release source identity changed");
   if (entry.failure.attempt > run.run_attempt)
     throw new Error("Release failure attempt is newer than the registered run");
   const { findArtifact } = await import("../src/lib/release/artifacts");
@@ -418,12 +436,57 @@ if (command === "notification") {
     result: null,
   }));
   console.log(`Abandoned failed release ${entry.id}`);
-} else if (command === "abandon-failed-inputs") {
+} else if (command === "abandon-cancelled") {
   const app = github();
   const store = new GitHubLedgerStore(app);
   const requestedId = process.env.RELEASE_ID || "";
   if (!requestedId) throw new Error("RELEASE_ID is required");
   const current = await store.read();
+  const entry = current.ledger.entries.find((item) => item.id === requestedId);
+  if (!entry) throw new Error("Unknown release identity");
+  if (
+    entry.stage !== "merged" ||
+    entry.failure ||
+    entry.inputs ||
+    entry.products ||
+    entry.publication ||
+    entry.deployment
+  )
+    throw new Error("Only a cancelled merged release without frozen products can be abandoned");
+  if (!entry.releaseRunId) throw new Error("Cancelled release run is missing");
+  const run = z
+    .object({
+      id: z.number().int().positive(),
+      head_sha: z.string().regex(/^[a-f0-9]{40}$/),
+      run_attempt: z.number().int().positive(),
+      event: releaseRecoveryEventSchema,
+      path: z.literal(".github/workflows/product-release.yml"),
+      status: z.literal("completed"),
+      conclusion: z.literal("cancelled"),
+      head_branch: z.literal("main"),
+      head_repository: z.object({ full_name: z.literal(contract.repository) }),
+    })
+    .parse(app.api(`${app.root}/actions/runs/${entry.releaseRunId}`));
+  if (run.id !== entry.releaseRunId) throw new Error("Release run identity changed");
+  if (run.head_sha !== entry.mergeSha) throw new Error("Cancelled release source identity changed");
+  for (const kind of ["inputs", "products"] as const) {
+    if (findArtifact(app, entry, kind))
+      throw new Error(`Cannot abandon a cancelled release with frozen ${kind}`);
+  }
+  await changeLedger(store, (ledger) => ({
+    ledger: updateRelease(ledger, entry.id, {
+      stage: "abandoned",
+      failure: { phase: "merged", runId: String(run.id), attempt: run.run_attempt },
+    }),
+    result: null,
+  }));
+  console.log(`Abandoned cancelled release ${entry.id}`);
+} else if (command === "abandon-failed-inputs") {
+  const app = github();
+  const store = new GitHubLedgerStore(app);
+  const requestedId = process.env.RELEASE_ID || "";
+  if (!requestedId) throw new Error("RELEASE_ID is required");
+  const current = await store.read({ allowLegacyHead: true, allowLegacyAncestor: true });
   const entry = current.ledger.entries.find((item) => item.id === requestedId);
   if (!entry) throw new Error("Unknown release identity");
   if (
@@ -443,7 +506,7 @@ if (command === "notification") {
     .object({
       id: z.number().int().positive(),
       run_attempt: z.number().int().positive(),
-      event: z.literal("workflow_run"),
+      event: releaseRecoveryEventSchema,
       path: z.literal(".github/workflows/product-release.yml"),
       status: z.literal("completed"),
       conclusion: z.literal("failure"),
@@ -457,12 +520,11 @@ if (command === "notification") {
   const { findArtifact } = await import("../src/lib/release/artifacts");
   if (!findArtifact(app, entry, "inputs"))
     throw new Error("Cannot abandon a release whose frozen inputs artifact is missing");
-  await changeLedger(store, (ledger) => ({
-    ledger: updateRelease(ledger, entry.id, {
-      stage: "abandoned",
-      inputs: undefined,
-    }),
-    result: null,
-  }));
+  const next = updateRelease(current.ledger, entry.id, {
+    stage: "abandoned",
+    inputs: undefined,
+  });
+  if (canonicalJson(next) !== canonicalJson(current.ledger))
+    await store.compareAndSwap(current.sha, next, current.legacySha);
   console.log(`Abandoned failed release with frozen inputs ${entry.id}`);
 } else throw new Error("Unknown product release operation");

@@ -116,7 +116,7 @@ export async function retireStalePreparations(
   actor: string,
   preparationRunId: number
 ): Promise<void> {
-  const { ledger } = await store.read();
+  const { ledger } = await store.read({ allowLegacyHead: true, allowLegacyAncestor: true });
   for (const old of ledger.entries.filter(
     (entry) =>
       entry.stage === "reserved" &&
@@ -169,7 +169,7 @@ export async function prepareRelease(
 ): Promise<ReleaseEntry> {
   const sourceSha = github.reference(`heads/${github.contract.branch}`);
   if (!sourceSha) throw new Error("Default branch is missing");
-  const initial = await store.read();
+  const initial = await store.read({ allowLegacyHead: true, allowLegacyAncestor: true });
   verifyTrustedTags(github, initial.ledger);
   // Inspect closed PRs before reserving, so their versions are burned durably.
   for (const old of initial.ledger.entries.filter((entry) => entry.stage === "pr_open")) {
@@ -184,7 +184,7 @@ export async function prepareRelease(
   }
   // A fresh manual preparation retires stale unopened reservations; original retries never do.
   await retireStalePreparations(github, store, sourceSha, actor, preparationRunId);
-  const current = await store.read();
+  const current = await store.read({ allowLegacyHead: true, allowLegacyAncestor: true });
   const existingRun = current.ledger.entries.find(
     (entry) => entry.preparationRunId === preparationRunId
   );

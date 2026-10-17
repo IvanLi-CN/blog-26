@@ -5,6 +5,7 @@ import {
   changeLedger,
   initialLedger,
   type LedgerStore,
+  rebindReleaseRun,
   reserveRelease,
   updateRelease,
   validateLedger,
@@ -131,6 +132,78 @@ describe("durable product release reservations", () => {
     await expect(
       new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
     ).rejects.toThrow("github-actions[bot]");
+  });
+
+  test("compare-and-swap binds a legacy head to the signed recovery commit", async () => {
+    const head = "a".repeat(40);
+    const next = "b".repeat(40);
+    const legacy = "c".repeat(40);
+    const tree = "d".repeat(40);
+    let ref = head;
+    let payloadText = "";
+    const message = `chore(release): record product delivery state\n\nLedger-Digest: ${digest(initialLedger(contract))}\nLedger-Recovery: ${legacy}\nSigned-off-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>`;
+    const gitCommit = {
+      sha: next,
+      tree: { sha: tree },
+      parents: [{ sha: head }],
+      message,
+      verification: { verified: true, reason: "valid" },
+    };
+    const repositoryCommit = {
+      ...gitCommit,
+      author: { login: "github-actions[bot]" },
+      committer: { login: "web-flow" },
+      commit: {
+        message,
+        tree: { sha: tree },
+        verification: { verified: true, reason: "valid" },
+      },
+    };
+    const github = new GitHubRelease(contract, "github-actions", {
+      request(endpoint, method = "GET", payload) {
+        if (endpoint.startsWith("users/")) return { id: 41898282 };
+        if (endpoint === "graphql" && method === "POST") {
+          payloadText = JSON.stringify(payload);
+          ref = next;
+          return { data: { createCommitOnBranch: { commit: { oid: next } } } };
+        }
+        if (endpoint.endsWith(`/git/ref/heads/${contract.ledgerBranch}`))
+          return { object: { sha: ref, type: "commit" } };
+        if (endpoint.endsWith(`/git/commits/${next}`)) return gitCommit;
+        if (endpoint.endsWith(`/commits/${next}`)) return repositoryCommit;
+        throw new Error(`Unexpected write ${endpoint}`);
+      },
+      command() {
+        throw new Error("Ledger CAS must use the GitHub API");
+      },
+    });
+
+    await new GitHubLedgerStore(github).compareAndSwap(head, initialLedger(contract), legacy);
+    expect(payloadText).toContain(`Ledger-Recovery: ${legacy}`);
+  });
+
+  test("shared ledger changes carry legacy recovery provenance", async () => {
+    const legacy = "c".repeat(40);
+    const reserved = reserveRelease(initialLedger(contract), request);
+    let recoverySha = "";
+    let options: unknown;
+    const store: LedgerStore = {
+      async read(readOptions) {
+        options = readOptions;
+        return { sha: "a".repeat(40), ledger: reserved.ledger, legacySha: legacy };
+      },
+      async compareAndSwap(_expected, _next, recovery) {
+        recoverySha = recovery || "";
+        return "b".repeat(40);
+      },
+    };
+
+    await changeLedger(store, (ledger) => ({
+      ledger: updateRelease(ledger, reserved.entry.id, { stage: "abandoned" }),
+      result: null,
+    }));
+    expect(options).toEqual({ allowLegacyHead: true, allowLegacyAncestor: true });
+    expect(recoverySha).toBe(legacy);
   });
 
   test("fresh preparation retires a stale unopened reservation without replacing or reusing its identity", async () => {
@@ -304,6 +377,57 @@ describe("durable product release reservations", () => {
     });
     const abandoned = updateRelease(merged, first.entry.id, { stage: "abandoned" });
     expect(abandoned.entries[0]?.stage).toBe("abandoned");
+  });
+  test("rebinds only an unfrozen failed merged release and clears its old failure", () => {
+    const first = reserveRelease(initialLedger(contract), request);
+    let merged = updateRelease(first.ledger, first.entry.id, {
+      stage: "pr_open",
+      preparationHead: "e".repeat(40),
+      prNumber: 4,
+    });
+    merged = updateRelease(merged, first.entry.id, {
+      stage: "merged",
+      mergeSha: "f".repeat(40),
+      releaseRunId: 7,
+      failure: { phase: "merged", runId: "7", attempt: 1 },
+    });
+    const rebound = rebindReleaseRun(merged, first.entry.id, 8);
+    expect(rebound.entries[0]).toMatchObject({ stage: "merged", releaseRunId: 8 });
+    expect(rebound.entries[0]?.failure).toBeUndefined();
+    expect(() => canonicalJson(rebound)).not.toThrow();
+    const withInputs = updateRelease(rebound, first.entry.id, {
+      inputs: {
+        runId: 8,
+        artifactId: 10,
+        artifactName: `release-${first.entry.id}-inputs`,
+        archiveDigest: `sha256:${"1".repeat(64)}`,
+        manifestDigest: "2".repeat(64),
+      },
+    });
+    expect(() => rebindReleaseRun(withInputs, first.entry.id, 9)).toThrow(
+      "Only an unfrozen failed merged release can rebind its run"
+    );
+  });
+  test("cancelled merged releases can record cancellation and be abandoned", () => {
+    const first = reserveRelease(initialLedger(contract), request);
+    let merged = updateRelease(first.ledger, first.entry.id, {
+      stage: "pr_open",
+      preparationHead: "e".repeat(40),
+      prNumber: 4,
+    });
+    merged = updateRelease(merged, first.entry.id, {
+      stage: "merged",
+      mergeSha: "f".repeat(40),
+      releaseRunId: 7,
+    });
+    const abandoned = updateRelease(merged, first.entry.id, {
+      stage: "abandoned",
+      failure: { phase: "merged", runId: "7", attempt: 1 },
+    });
+    expect(abandoned.entries[0]).toMatchObject({
+      stage: "abandoned",
+      failure: { phase: "merged", runId: "7", attempt: 1 },
+    });
   });
   test("failed merged releases can abandon a frozen input before products exist", () => {
     const first = reserveRelease(initialLedger(contract), request);

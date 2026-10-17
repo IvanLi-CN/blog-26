@@ -67,7 +67,7 @@ export const contractSchema = z
     artifactRetentionDays: z.literal(90),
     productionConcurrency: z.literal("blog26-edgeone-production"),
     prepareTimeoutMinutes: z.literal(30),
-    releaseTimeoutMinutes: z.literal(180),
+    releaseTimeoutMinutes: z.literal(360),
   })
   .strict();
 export type ReleaseContract = z.infer<typeof contractSchema>;

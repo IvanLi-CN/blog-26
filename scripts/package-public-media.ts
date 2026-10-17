@@ -39,6 +39,8 @@ export type PublicMediaManifestEntry = {
   bytes: number;
   status: PublicMediaPackageStatus;
   reason: string | null;
+  /** A legacy derived URL that resolves to a canonical base asset. */
+  aliasOf?: string;
 };
 
 export type PublicMediaManifest = {
@@ -68,6 +70,7 @@ export type PublicMediaPackageOptions = {
   downloadConcurrency?: number;
   downloadAttempts?: number;
   retryDelayMs?: number;
+  includeDerivedWatermarkVariants?: boolean;
   fetchImpl?: PublicMediaFetcher;
 };
 
@@ -78,6 +81,7 @@ type AssetReference = {
   fetchUrl: string;
   staticPath: string;
   replacement: (status: PublicMediaPackageStatus) => string;
+  fallback?: AssetReference;
 };
 
 type DownloadResult = {
@@ -86,6 +90,13 @@ type DownloadResult = {
   body?: Uint8Array;
   reason: string | null;
 };
+
+class MediaNotFoundError extends Error {
+  constructor(url: string) {
+    super(`Media origin returned HTTP 404 for ${url}`);
+    this.name = "MediaNotFoundError";
+  }
+}
 
 function normalizeOrigin(value: string, name: string) {
   let parsed: URL;
@@ -188,7 +199,7 @@ function extractReferences(
     const outputPath = sitePath(basePath, `${STATIC_MEDIA_PREFIX}${relativePath}`);
     const suffix = `${sourceUrl.search}${sourceUrl.hash}`;
     const absolute = isAbsoluteHttpUrl(raw);
-    references.push({
+    const reference: AssetReference = {
       raw,
       sourcePath,
       sourceUrl,
@@ -201,7 +212,9 @@ function extractReferences(
         const path = `${outputPath}${suffix}`;
         return absolute ? `${new URL(siteUrl).origin}${path}` : path;
       },
-    });
+    };
+    reference.fallback = deriveBaseReference(reference, mediaOrigin, basePath) ?? undefined;
+    references.push(reference);
   }
   return references;
 }
@@ -299,6 +312,11 @@ async function readResponseWithinLimit(
 }
 
 const MAX_MEDIA_REDIRECTS = 5;
+const PUBLIC_RENDER_VARIANT_RE =
+  /^\/api\/public\/assets\/(post|memo)\/([^/]+)\/([^/]+)\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu;
+const PUBLIC_DERIVED_RENDER_VARIANT_RE =
+  /^\/api\/public\/assets\/(post|memo)\/([^/]+)\/([^/]+)\/(wm-a-v1|wm-b-v1)\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu;
+const DERIVED_WATERMARK_RENDER_IDS = ["wm-a-v1", "wm-b-v1"] as const;
 
 async function fetchMediaWithinOrigin(
   url: string,
@@ -374,6 +392,7 @@ async function downloadMedia(
         await new Promise((resolve) => setTimeout(resolve, retryDelayMs * attempt));
         continue;
       }
+      if (response.status === 404) throw new MediaNotFoundError(url);
       throw new Error(`Media origin returned HTTP ${response.status} for ${url}`);
     }
     const declaredLength = readContentLength(response);
@@ -404,6 +423,61 @@ function fetchKey(reference: AssetReference) {
   const url = new URL(reference.fetchUrl);
   url.searchParams.delete("v");
   return `${url.pathname}${url.search}`;
+}
+
+function deriveWatermarkReference(
+  reference: AssetReference,
+  renderId: (typeof DERIVED_WATERMARK_RENDER_IDS)[number],
+  mediaOrigin: string,
+  basePath: string
+): AssetReference | null {
+  const match = PUBLIC_RENDER_VARIANT_RE.exec(reference.sourceUrl.pathname);
+  if (!match) return null;
+  const [, , , , variant, extension] = match;
+  const sourceUrl = new URL(reference.sourceUrl.href);
+  sourceUrl.pathname = `${sourceUrl.pathname.slice(0, sourceUrl.pathname.lastIndexOf("/"))}/${renderId}/${variant}.${extension}`;
+  const relativePath = assertSafeAssetPath(sourceUrl.pathname);
+  const sourcePath = `${sourceUrl.pathname}${sourceUrl.search}`;
+  const fetchUrl = `${mediaOrigin}${sourcePath}`;
+  const staticPath = sitePath(basePath, `${STATIC_MEDIA_PREFIX}${relativePath}`);
+  const derived: AssetReference = {
+    raw: "",
+    sourcePath,
+    sourceUrl,
+    fetchUrl,
+    staticPath,
+    replacement: () => staticPath,
+  };
+  derived.fallback = deriveBaseReference(derived, mediaOrigin, basePath) ?? undefined;
+  return derived;
+}
+
+function deriveBaseReference(
+  reference: AssetReference,
+  mediaOrigin: string,
+  basePath: string
+): AssetReference | null {
+  const match = PUBLIC_DERIVED_RENDER_VARIANT_RE.exec(reference.sourceUrl.pathname);
+  if (!match) return null;
+  const [, kind, slug, hash, , variant, extension] = match;
+  const sourceUrl = new URL(reference.sourceUrl.href);
+  sourceUrl.pathname = `${PUBLIC_MEDIA_FACADE_PREFIX}${kind}/${slug}/${hash}/${variant}.${extension}`;
+  const relativePath = assertSafeAssetPath(sourceUrl.pathname);
+  const sourcePath = `${sourceUrl.pathname}${sourceUrl.search}`;
+  const fetchUrl = `${mediaOrigin}${sourcePath}`;
+  const staticPath = sitePath(basePath, `${STATIC_MEDIA_PREFIX}${relativePath}`);
+  return {
+    raw: "",
+    sourcePath,
+    sourceUrl,
+    fetchUrl,
+    staticPath,
+    replacement: (status) => {
+      const suffix = `${sourceUrl.search}${sourceUrl.hash}`;
+      if (status === "external") return `${mediaOrigin}${sourceUrl.pathname}${suffix}`;
+      return `${staticPath}${suffix}`;
+    },
+  };
 }
 
 function writeOutput(key: string, value: string) {
@@ -512,6 +586,17 @@ export async function packagePublicMedia(
 
   const entriesByKey = new Map<string, PublicMediaManifestEntry>();
   const outputRoot = resolve(siteDistDir, ".");
+  if (options.includeDerivedWatermarkVariants) {
+    for (const reference of references) {
+      for (const renderId of DERIVED_WATERMARK_RENDER_IDS) {
+        const derived = deriveWatermarkReference(reference, renderId, mediaOrigin, basePath);
+        if (derived) {
+          const derivedKey = fetchKey(derived);
+          if (!uniqueReferences.has(derivedKey)) uniqueReferences.set(derivedKey, derived);
+        }
+      }
+    }
+  }
   const referenceEntries = [...uniqueReferences.entries()];
   let nextReferenceIndex = 0;
   const downloadWorker = async () => {
@@ -519,25 +604,57 @@ export async function packagePublicMedia(
       const currentIndex = nextReferenceIndex;
       nextReferenceIndex += 1;
       const [key, reference] = referenceEntries[currentIndex];
-      const result = await downloadMedia(
-        reference.fetchUrl,
-        maxBytes,
-        mediaOrigin,
-        fetchImpl,
-        requestTimeoutMs,
-        downloadAttempts,
-        retryDelayMs
-      );
+      let resolvedReference = reference;
+      let result: DownloadResult;
+      try {
+        result = await downloadMedia(
+          reference.fetchUrl,
+          maxBytes,
+          mediaOrigin,
+          fetchImpl,
+          requestTimeoutMs,
+          downloadAttempts,
+          retryDelayMs
+        );
+      } catch (error) {
+        if (!(error instanceof MediaNotFoundError) || !reference.fallback) throw error;
+        resolvedReference = reference.fallback;
+        reference.replacement = resolvedReference.replacement;
+        result = await downloadMedia(
+          resolvedReference.fetchUrl,
+          maxBytes,
+          mediaOrigin,
+          fetchImpl,
+          requestTimeoutMs,
+          downloadAttempts,
+          retryDelayMs
+        );
+      }
       let outputPath: string | null = null;
       if (result.status === "packaged") {
-        if (!result.body) throw new Error(`Media origin returned no body: ${reference.sourcePath}`);
-        const relativeOutput = reference.staticPath.replace(basePath, "").replace(/^\/+/, "");
+        if (!result.body)
+          throw new Error(`Media origin returned no body: ${resolvedReference.sourcePath}`);
+        const relativeOutput = resolvedReference.staticPath
+          .replace(basePath, "")
+          .replace(/^\/+/, "");
         const destination = resolve(siteDistDir, relativeOutput);
         if (!destination.startsWith(`${outputRoot}/`))
           throw new Error("Static media path escapes site-dist");
         await mkdir(resolve(destination, ".."), { recursive: true });
         await writeFile(destination, result.body);
-        outputPath = reference.staticPath;
+        outputPath = resolvedReference.staticPath;
+      }
+      if (resolvedReference !== reference) {
+        const fallbackKey = fetchKey(resolvedReference);
+        if (!entriesByKey.has(fallbackKey)) {
+          entriesByKey.set(fallbackKey, {
+            sourcePath: resolvedReference.sourcePath,
+            outputPath,
+            bytes: result.bytes,
+            status: result.status,
+            reason: result.reason,
+          });
+        }
       }
       entriesByKey.set(key, {
         sourcePath: reference.sourcePath,
@@ -545,6 +662,7 @@ export async function packagePublicMedia(
         bytes: result.bytes,
         status: result.status,
         reason: result.reason,
+        ...(resolvedReference === reference ? {} : { aliasOf: resolvedReference.sourcePath }),
       });
     }
   };
@@ -571,8 +689,8 @@ export async function packagePublicMedia(
   const entries = [...entriesByKey.values()].sort((a, b) =>
     a.sourcePath.localeCompare(b.sourcePath)
   );
-  const packaged = entries.filter((entry) => entry.status === "packaged");
-  const external = entries.filter((entry) => entry.status === "external");
+  const packaged = entries.filter((entry) => entry.status === "packaged" && !entry.aliasOf);
+  const external = entries.filter((entry) => entry.status === "external" && !entry.aliasOf);
   const manifest: PublicMediaManifest = {
     schemaVersion: 1,
     maxBytes,

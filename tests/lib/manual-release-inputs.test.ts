@@ -1,9 +1,24 @@
 import { describe, expect, test } from "bun:test";
-import { fetchPublicSnapshot } from "../../src/lib/release/inputs";
+import {
+  DEFAULT_RELEASE_MEDIA_DOWNLOAD_CONCURRENCY,
+  fetchPublicSnapshot,
+  MAX_RELEASE_MEDIA_DOWNLOAD_CONCURRENCY,
+  resolveReleaseMediaDownloadConcurrency,
+} from "../../src/lib/release/inputs";
 
 const snapshotUrl = new URL("https://console.example.test/api/public/snapshot");
 
 describe("manual release snapshot acquisition", () => {
+  test("uses bounded parallelism for release media freezing", () => {
+    expect(DEFAULT_RELEASE_MEDIA_DOWNLOAD_CONCURRENCY).toBe(8);
+    expect(resolveReleaseMediaDownloadConcurrency("")).toBe(8);
+    expect(resolveReleaseMediaDownloadConcurrency("4")).toBe(4);
+    expect(
+      resolveReleaseMediaDownloadConcurrency(String(MAX_RELEASE_MEDIA_DOWNLOAD_CONCURRENCY))
+    ).toBe(8);
+    expect(() => resolveReleaseMediaDownloadConcurrency("9")).toThrow("integer from 1 to 8");
+  });
+
   test("retries transient edge failures before returning the snapshot", async () => {
     const statuses = [525, 503, 200];
     const waits: number[] = [];

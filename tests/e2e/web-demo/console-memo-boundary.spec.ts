@@ -1,9 +1,18 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 const privateSlug = "console-demo-private-release-notes";
 const draftSlug = "console-demo-draft-reading-list";
 const clippingSlug = "console-demo-clipping-durable-workflows";
 const isMobileViewport = process.env.WEB_DEMO_VIEWPORT === "mobile";
+
+async function waitForPublicRouterHydration(page: Page) {
+  await page.waitForFunction(() => {
+    const island = document.querySelector<HTMLElement>(
+      'astro-island[component-url*="PublicRouter"]'
+    );
+    return island instanceof HTMLElement && !island.hasAttribute("ssr");
+  });
+}
 
 test.describe("Console Memo Web Demo", () => {
   test.describe.configure({ timeout: 60_000 });
@@ -149,6 +158,7 @@ test.describe("Console Memo Web Demo", () => {
     await page.goto(`/memos/${clippingSlug}/?d_persona=admin&d_delay=normal`, {
       waitUntil: "domcontentloaded",
     });
+    await waitForPublicRouterHydration(page);
     await expect(
       page.locator('[data-testid="clipping-detail"][data-clipping-surface="admin"]')
     ).toBeVisible();
@@ -173,6 +183,7 @@ test.describe("Console Memo Web Demo", () => {
     await page.goto(`/memos/${clippingSlug}/?d_persona=guest&d_delay=normal`, {
       waitUntil: "domcontentloaded",
     });
+    await waitForPublicRouterHydration(page);
     const clipping = page.locator(
       '[data-testid="clipping-detail"][data-clipping-surface="public"]'
     );
@@ -272,6 +283,7 @@ test.describe("Console Memo Web Demo", () => {
     page,
   }) => {
     await page.goto(`/memos/?d_persona=admin&d_delay=normal`, { waitUntil: "domcontentloaded" });
+    await waitForPublicRouterHydration(page);
     await page
       .locator(`[data-testid="admin-live-memo-card"][data-slug="${privateSlug}"]`)
       .getByRole("link", { name: "查看详情" })

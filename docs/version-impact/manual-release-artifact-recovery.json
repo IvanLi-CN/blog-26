@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
+  "covered_files": {
+    "src/lib/release/artifacts.ts": "21e9aff5b6bb6c6b412d8ff31d46f2ce79d9e5b4",
+    "tests/lib/manual-release-recovery.test.ts": "61b92d1fcc503f203a40f25ac0852178f833187e"
+  },
+  "change": {
+    "description": "Allow the first trusted manual Product Release recovery run to prepare missing immutable artifacts while retaining the existing freeze-step loss audit.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a backward-compatible recovery validation fix. It changes only the accepted event type for an already trusted Product Release run and does not change product endpoints, artifact formats, or application persistence.",
+      "assessed_at": "2026-10-17T00:00:00Z",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "61b92d1fcc503f203a40f25ac0852178f833187e",
+          "command": "bun test tests/lib/manual-release-recovery.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Artifact recovery accepts workflow_run and workflow_dispatch Product Release runs from main, then applies the same job-step audit before allowing a missing artifact to be rebuilt. A completed freeze step still fails closed.",
+      "assessed_at": "2026-10-17T00:00:00Z",
+      "evidence": [
+        {
+          "path": "src/lib/release/artifacts.ts",
+          "blob": "21e9aff5b6bb6c6b412d8ff31d46f2ce79d9e5b4",
+          "command": "The recovery audit accepts only the two trusted Product Release event types and preserves the existing step history checks."
+        },
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "61b92d1fcc503f203a40f25ac0852178f833187e",
+          "command": "bun test tests/lib/manual-release-recovery.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to manual Product Release artifact recovery and its focused regression test."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused recovery, completion, provenance, workflow, and Biome checks pass. The new regression proves that an initial manual recovery run with no completed freeze steps can create artifacts, while existing loss and failure cases remain fail-closed.",
+      "assessed_at": "2026-10-17T00:00:00Z",
+      "evidence": [
+        {
+          "path": "src/lib/release/artifacts.ts",
+          "blob": "21e9aff5b6bb6c6b412d8ff31d46f2ce79d9e5b4",
+          "command": "bunx biome check src/lib/release/artifacts.ts tests/lib/manual-release-recovery.test.ts"
+        },
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "61b92d1fcc503f203a40f25ac0852178f833187e",
+          "command": "bun test tests/lib/manual-release-recovery.test.ts tests/lib/manual-release-completion.test.ts tests/lib/manual-release-provenance.test.ts tests/ci/product-prerelease-workflow.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3"
+      ],
+      "evidence": [
+        {
+          "path": "src/lib/release/artifacts.ts",
+          "blob": "21e9aff5b6bb6c6b412d8ff31d46f2ce79d9e5b4",
+          "command": "The recovery-only change does not alter HTTP, tRPC, MCP, or shipped product contracts."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The change reads existing release-run metadata and does not alter the release ledger schema, application persistence, or frozen artifact identity fields.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/lib/release/artifacts.ts",
+          "blob": "21e9aff5b6bb6c6b412d8ff31d46f2ce79d9e5b4",
+          "command": "Manual recovery only broadens the trusted event discriminator; persisted records remain unchanged."
+        }
+      ]
+    }
+  }
+}

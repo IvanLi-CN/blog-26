@@ -102,6 +102,40 @@ describe("rehypeImageOptimization", () => {
     );
   });
 
+  it("keeps legacy facade URLs when the snapshot has no responsive presentations", () => {
+    const tree: Root = {
+      type: "root",
+      children: [
+        {
+          type: "element",
+          tagName: "img",
+          properties: { src: "./assets/legacy.png" },
+          children: [],
+        } as Element,
+      ],
+    };
+
+    const plugin = rehypeImageOptimization({
+      articlePath: "blog/legacy-post.md",
+      contentSource: "local",
+      publicMediaContext: {
+        kind: "post",
+        slug: "legacy-post",
+        filePath: "blog/legacy-post.md",
+        supportsResponsiveWatermark: false,
+      },
+    });
+
+    plugin(tree, { path: "blog/legacy-post.md" } as any);
+
+    const img = tree.children[0] as Element;
+    expect(img.properties?.src).toContain("/api/public/assets/post/legacy-post/");
+    expect(img.properties?.src).toContain("/content.webp");
+    expect(img.properties?.src).not.toContain("/wm-");
+    expect(img.properties?.["data-watermark-a"]).toBeUndefined();
+    expect(img.properties?.["data-watermark-b"]).toBeUndefined();
+  });
+
   it("restores finite renditions for versioned facade urls in rewritten snapshots", () => {
     const tree: Root = {
       type: "root",

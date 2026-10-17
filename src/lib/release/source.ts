@@ -69,6 +69,16 @@ export function assertPolicyIdentity(
     throw new Error("Release policy changed; cannot reinterpret the original identity");
 }
 
+export function assertPolicyIdentityAtSource(
+  contract: unknown,
+  quality: unknown,
+  expectedDigest: string,
+  sourceSha: string
+): void {
+  if (expectedDigest !== policyFingerprint(contract, quality, treeBlobs(sourceSha)))
+    throw new Error("Release source policy changed; cannot reinterpret the original identity");
+}
+
 export function gitFile(sha: string, path: string): string | undefined {
   try {
     return gitOutput(["show", `${shaSchema.parse(sha)}:${path}`]);

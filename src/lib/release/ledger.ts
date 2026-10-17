@@ -394,16 +394,17 @@ export function updateRelease(
   }
   const next = entrySchema.parse(merged);
   if (next.stage === "abandoned") {
+    const failure = original.failure || patch.failure;
     const failedBeforeArtifacts =
       original.stage === "merged" &&
-      Boolean(original.failure) &&
+      Boolean(failure) &&
       !original.inputs &&
       !original.products &&
       !original.publication &&
       !original.deployment;
     const abandonedFrozenInputs =
       original.stage === "merged" &&
-      Boolean(original.failure) &&
+      Boolean(failure) &&
       Boolean(original.inputs) &&
       !original.products &&
       !original.publication &&
@@ -433,6 +434,32 @@ export function updateRelease(
   return { ...ledger, entries: ledger.entries.map((entry) => (entry.id === id ? next : entry)) };
 }
 
+export function rebindReleaseRun(
+  ledger: ReleaseLedger,
+  id: string,
+  releaseRunId: number,
+  now = new Date().toISOString()
+): ReleaseLedger {
+  const original = ledger.entries.find((entry) => entry.id === id);
+  if (!original) throw new Error("Unknown release identity");
+  if (
+    original.stage !== "merged" ||
+    !original.releaseRunId ||
+    original.inputs ||
+    original.products ||
+    original.publication ||
+    original.deployment ||
+    (original.failure && original.failure.runId !== String(original.releaseRunId))
+  )
+    throw new Error("Only an unfrozen failed merged release can rebind its run");
+  if (!Number.isInteger(releaseRunId) || releaseRunId <= 0)
+    throw new Error("Release run identity is invalid");
+  const { failure: _failure, ...withoutFailure } = original;
+  const next = entrySchema.parse({ ...withoutFailure, releaseRunId, updatedAt: now });
+  validateEntry(next);
+  return { ...ledger, entries: ledger.entries.map((entry) => (entry.id === id ? next : entry)) };
+}
+
 export function newerDeploymentExists(ledger: ReleaseLedger, entry: ReleaseEntry): boolean {
   return ledger.entries.some(
     (other) =>
@@ -451,16 +478,16 @@ export interface LedgerStore {
   read(
     options?: LedgerReadOptions
   ): Promise<{ sha: string; ledger: ReleaseLedger; legacySha?: string }>;
-  compareAndSwap(expectedSha: string, ledger: ReleaseLedger): Promise<string>;
+  compareAndSwap(expectedSha: string, ledger: ReleaseLedger, recoverySha?: string): Promise<string>;
 }
 
 export async function changeLedger<T>(
   store: LedgerStore,
   change: (ledger: ReleaseLedger) => { ledger: ReleaseLedger; result: T }
 ): Promise<T> {
-  const current = await store.read();
+  const current = await store.read({ allowLegacyHead: true, allowLegacyAncestor: true });
   const next = change(current.ledger);
   if (canonicalJson(next.ledger) !== canonicalJson(current.ledger))
-    await store.compareAndSwap(current.sha, next.ledger);
+    await store.compareAndSwap(current.sha, next.ledger, current.legacySha);
   return next.result;
 }

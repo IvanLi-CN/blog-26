@@ -25,5 +25,5 @@
   "artifactRetentionDays": 90,
   "productionConcurrency": "blog26-edgeone-production",
   "prepareTimeoutMinutes": 30,
-  "releaseTimeoutMinutes": 180
+  "releaseTimeoutMinutes": 360
 }

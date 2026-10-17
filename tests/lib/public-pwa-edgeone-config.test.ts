@@ -458,6 +458,8 @@ describe("EdgeOne public PWA cache config", () => {
       "site.webmanifest",
       "sitemap.xml",
       "watermark-ivanli.svg",
+      "watermark-ivanli-a.v1.svg",
+      "watermark-ivanli-b.v1.svg",
       "site-assets/default-avatar.svg",
       "site-assets/file.svg",
       "site-assets/globe.svg",
@@ -519,6 +521,14 @@ describe("EdgeOne public PWA cache config", () => {
     expect(config.headers.length).toBeLessThanOrEqual(30);
     expect(config.headers.some(({ source }) => source === "/atom.xml")).toBe(true);
     expect(config.headers.some(({ source }) => source === "/site-assets/*")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/watermark-ivanli*.svg")).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/watermark-ivanli.svg")).toBe(false);
+    expect(config.headers.some(({ source }) => source === "/watermark-ivanli-a.v1.svg")).toBe(
+      false
+    );
+    expect(config.headers.some(({ source }) => source === "/watermark-ivanli-b.v1.svg")).toBe(
+      false
+    );
     expect(config.headers.some(({ source }) => source === "/feed.json")).toBe(true);
     expect(config.headers.some(({ source }) => source === "/feed.xml")).toBe(true);
     expect(config.headers.some(({ source }) => source === "/tags/*/feed.xml")).toBe(true);
@@ -535,6 +545,7 @@ describe("EdgeOne public PWA cache config", () => {
         );
       }
     }
+    expect(findEdgeoneCacheRule(config, "/watermark-other.svg")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/posts/example/")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.html
     );

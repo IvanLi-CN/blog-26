@@ -14,7 +14,7 @@
     "docs/specs/public-media-assets-facade/assets/logo-watermark-mobile-393.png": "350bd770806dbf25fdecde38a57601a705bee083",
     "public/watermark-ivanli-a.v1.svg": "3c2867d74a3455b9d4678e0c3339af9b51848aeb",
     "public/watermark-ivanli-b.v1.svg": "c081fcf6aa44c81db5c410a6c288a1e39263a997",
-    "scripts/package-public-media.test.ts": "b6f39ed62e16276d25f192ce548b9808d8680011",
+    "scripts/package-public-media.test.ts": "7142f095cb378dafacf01ab92c5a891010fadbe3",
     "scripts/verify-pages-build.test.ts": "eae55a042db3a2b7761c7befdead58dbe2dd47a7",
     "scripts/verify-pages-build.ts": "320906afd006d35e61e9ef583388a889a764a0f3",
     "site/components/PostCard.tsx": "bda0ea1ef5d5c088b83bbf5073e6bc8a20d8efa6",
@@ -22,19 +22,21 @@
     "site/components/TimelineCard.tsx": "d388bf8200451fbae22ae08216b0754b1d434da5",
     "site/components/pages/memo.tsx": "fcf4a81991cede2ecff68f31e1987bfe32c6880e",
     "site/components/pages/post.tsx": "5e32682af3f5798546a39732f6979ec540a04b2b",
-    "site/lib/page-data/memo.ts": "a5446c30566224c489c00e8c30f08b940339244e",
+    "site/lib/page-data/memo.ts": "cb997935a6c26bbe492908f609b4da85e7313030",
+    "site/lib/page-data/post.ts": "36e7008942f15d2eea325665be1e573d6bf3c197",
+    "site/lib/public-site.ts": "db564a962daa56bf5d65e3676d84ab47883eb3f9",
     "src/components/common/MarkdownRenderer.tsx": "557614e1abc171328a222aef2ce2395b412be5f2",
     "src/components/common/ResponsiveWatermarkedImage.tsx": "7fbd79002fcd07291e647f7f1abd67e138ca61bd",
     "src/components/common/ResponsiveWatermarkedVideo.tsx": "200c6f0d1765bd89dbca2bc7366db62e9edc637e",
     "src/components/common/markdown/components/ImageLightbox.tsx": "734070917d824a29a082379c2310e093c32897f8",
-    "src/components/common/markdown/plugins/rehype-image-optimization.test.ts": "f58dc019f3e732e477dcc37e16fc49cb67c6ec39",
-    "src/components/common/markdown/plugins/rehype-image-optimization.ts": "859c3ef9688b01e1503298c4bfd13453e2738f10",
+    "src/components/common/markdown/plugins/rehype-image-optimization.test.ts": "0016d3ff9bafb438362ed73bda6a3044482ebe33",
+    "src/components/common/markdown/plugins/rehype-image-optimization.ts": "7ba6069573ce8a5c6f95a3d772bfe8b7a6db41c9",
     "src/components/common/markdown/types.ts": "b7ae801e9c674e40710bc544a5abb78faf2ab3af",
     "src/components/common/useResponsiveWatermark.test.ts": "5cb83bba33b66eb9b539bf4217f78326153c225a",
     "src/components/common/useResponsiveWatermark.ts": "32ade5281fff59ca7dce32031561820a05b41d4b",
     "src/components/memos/ClippingDetail.tsx": "1536b1484b3128805179f77f1db18736c8230654",
-    "src/lib/__tests__/public-media.test.ts": "bbca6aac464df8ffa8ec1d2d1739911167b26b11",
-    "src/lib/public-media.ts": "0a113b8031e67c7c6a9e99a3a2c39ebaca824a78",
+    "src/lib/__tests__/public-media.test.ts": "816a3ecd7a726fa5de225598aa1309b17ac22d8b",
+    "src/lib/public-media.ts": "d31c83dfa3a1d91e1b6200a07ae9fbcf27ecf2e7",
     "src/server/admin-api/router.ts": "3de0949125a249717c3a3326c1782e288edd0396",
     "src/server/http-compat-api.test.ts": "ae5553b839bf307992cf1baf882ee97d7c32d341",
     "src/server/public-api/router.ts": "8a1df27781c0a046f5c28bb76c8266cdba4fb7ac",
@@ -45,15 +47,15 @@
     "tests/e2e/guest/posts-cover-fallback.spec.ts": "998770d66eb272b70933d7632f080f094c325a10"
   },
   "change": {
-    "description": "Add versioned Logo A/B media renditions selected by the image's visible CSS width while preserving legacy media URLs and administrator authorization.",
+    "description": "Add versioned Logo A/B media renditions selected by the image's visible CSS width, while keeping legacy snapshots on the base facade until complete presentations are available.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api", "persistent-state"]
   },
   "classification": {
     "planned": {
       "impact": "minor",
-      "reasoning": "The candidate adds a compatible public media presentations field and registered A/B render identities, plus a public frontend selection behavior; legacy paths and consumers remain readable.",
-      "assessed_at": "2026-10-16T12:04:00+08:00",
+      "reasoning": "The candidate adds compatible public media presentations and registered A/B render identities, plus an explicit legacy-snapshot capability gate; legacy paths and consumers remain readable.",
+      "assessed_at": "2026-10-16T20:35:16+08:00",
       "evidence": [
         {
           "path": "docs/specs/public-media-assets-facade/SPEC.md",
@@ -69,8 +71,8 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The implementation exposes finite wm-a-v1 and wm-b-v1 candidates, selects them by visible CSS width, applies the shared watermark recipe through imagor and sharp, rejects render identities on controlled play URLs, and keeps old URLs, snapshots and admin authorization compatible.",
-      "assessed_at": "2026-10-16T12:04:00+08:00",
+      "reasoning": "The implementation exposes finite wm-a-v1 and wm-b-v1 candidates, selects them by visible CSS width, and gates candidate generation on complete snapshot presentations so old APIs keep serving base facade URLs without weakening missing-media validation.",
+      "assessed_at": "2026-10-16T20:35:16+08:00",
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
@@ -85,18 +87,23 @@
       ],
       "scope_drift": {
         "detected": false,
-        "description": "The current candidate stays within the approved public media, frontend selection, static packaging, documentation and migration scope; no unrelated route, persistence schema or release workflow behavior changed."
+        "description": "The current candidate stays within the approved public media, frontend selection, static packaging, documentation and compatibility scope; no unrelated route, persistence schema or release workflow behavior changed."
       }
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "Targeted tests, repository checks, Web Demo build/runtime observations and owner-facing mobile, desktop and lightbox evidence verify a compatible public media capability addition without a database or local-content migration.",
-      "assessed_at": "2026-10-16T12:04:00+08:00",
+      "reasoning": "Targeted URL, renderer and legacy-snapshot tests plus repository checks verify a compatible public media capability addition without a database or local-content migration; missing derived media remains a release error when the snapshot advertises it.",
+      "assessed_at": "2026-10-16T20:35:16+08:00",
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
           "blob": "ae5553b839bf307992cf1baf882ee97d7c32d341",
           "command": "bun test targeted public-media, selector, static packaging and HTTP compatibility files; 158 passed, 3 skipped"
+        },
+        {
+          "path": "src/components/common/markdown/plugins/rehype-image-optimization.test.ts",
+          "blob": "0016d3ff9bafb438362ed73bda6a3044482ebe33",
+          "command": "bun test src/components/common/markdown/plugins/rehype-image-optimization.test.ts src/lib/__tests__/public-media.test.ts: 22 tests pass"
         },
         {
           "path": "docs/specs/public-media-assets-facade/assets/logo-watermark-mobile-393.png",
@@ -134,8 +141,8 @@
       "evidence": [
         {
           "path": "src/lib/__tests__/public-media.test.ts",
-          "blob": "bbca6aac464df8ffa8ec1d2d1739911167b26b11",
-          "command": "Public media URL and presentation tests verify finite A/B identities and legacy defaults"
+          "blob": "816a3ecd7a726fa5de225598aa1309b17ac22d8b",
+          "command": "Public media URL tests verify finite A/B identities and base-facade fallback for snapshots without presentations"
         }
       ]
     },

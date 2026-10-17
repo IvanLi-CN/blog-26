@@ -265,6 +265,42 @@ describe("frozen release recovery", () => {
     previousStatus = "in_progress";
     expect(() => findArtifact(github, entry, "inputs")).toThrow("unavailable");
   });
+  test("allows a first manual recovery run to create its frozen artifacts", () => {
+    const { entry: original } = frozenStore();
+    const entry = { ...original, stage: "merged" as const, products: undefined, inputs: undefined };
+    const github = new GitHubRelease(contract, "github-actions", {
+      request(endpoint) {
+        if (endpoint.includes("/artifacts?")) return [{ artifacts: [] }];
+        if (endpoint.endsWith("/runs/7"))
+          return {
+            id: 7,
+            run_attempt: 1,
+            event: "workflow_dispatch",
+            path: ".github/workflows/product-release.yml",
+            head_branch: "main",
+            head_repository: { full_name: contract.repository },
+          };
+        if (endpoint.includes("/jobs?"))
+          return [
+            {
+              jobs: [
+                {
+                  name: "production",
+                  status: "in_progress",
+                  steps: [],
+                },
+              ],
+            },
+          ];
+        throw new Error(`Unexpected read ${endpoint}`);
+      },
+      command() {
+        throw new Error("Recovery validation cannot issue external writes");
+      },
+    });
+    expect(findArtifact(github, entry, "inputs")).toBeUndefined();
+    expect(findArtifact(github, entry, "products")).toBeUndefined();
+  });
   test("deployment failure resumes without republishing either immutable product", async () => {
     const { store, id, entry } = frozenStore();
     const proof = proofs(entry);
