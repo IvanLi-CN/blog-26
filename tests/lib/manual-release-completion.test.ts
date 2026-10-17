@@ -3,6 +3,7 @@ import contractJson from "../../.github/release-contract.json";
 import {
   manualRecoveryRunCanTakeOver,
   manualReleaseWorkflowRun,
+  releaseRecoveryEventSchema,
 } from "../../src/lib/release/completion";
 import { GitHubRelease } from "../../src/lib/release/github";
 import { initialLedger, reserveRelease, updateRelease } from "../../src/lib/release/ledger";
@@ -67,6 +68,11 @@ function githubFor(numbers: number[]) {
 }
 
 describe("manual product release resolution", () => {
+  test("release cleanup accepts both workflow-triggered run event types", () => {
+    expect(releaseRecoveryEventSchema.parse("workflow_run")).toBe("workflow_run");
+    expect(releaseRecoveryEventSchema.parse("workflow_dispatch")).toBe("workflow_dispatch");
+  });
+
   test("binds the one merged registered identity to a synthetic workflow run", () => {
     const run = manualReleaseWorkflowRun(githubFor([4]), fixture([4]), 99);
     expect(run).toMatchObject({

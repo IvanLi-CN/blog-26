@@ -57,6 +57,7 @@ export const qualitySchema = z
   })
   .strict();
 export type QualityPolicy = z.infer<typeof qualitySchema>;
+export const releaseRecoveryEventSchema = z.enum(["workflow_run", "workflow_dispatch"]);
 export function readQuality(path = ".github/quality-gates.json"): QualityPolicy {
   const quality = qualitySchema.parse(JSON.parse(readFileSync(path, "utf8")));
   const expected = quality.expected_pr_workflows.flatMap((workflow) => workflow.jobs);
