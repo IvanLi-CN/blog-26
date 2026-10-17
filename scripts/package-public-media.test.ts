@@ -141,13 +141,13 @@ describe("packagePublicMedia", () => {
 
     expect(requestedUrls).toEqual([
       `https://api.example${candidateUrl}`,
-      "https://api.example/api/public/assets/post/logo/hash/wm-a-v1/content.webp?v=2026-10-15",
-      "https://api.example/api/public/assets/post/logo/hash/wm-b-v1/content.webp?v=2026-10-15",
+      "https://api.example/api/public/assets/post/logo/hash/wm-a-v2/content.webp?v=2026-10-15",
+      "https://api.example/api/public/assets/post/logo/hash/wm-b-v2/content.webp?v=2026-10-15",
     ]);
     expect(manifest.entries.map((entry) => entry.sourcePath)).toEqual([
       "/api/public/assets/post/logo/hash/content.webp?v=2026-10-15",
-      "/api/public/assets/post/logo/hash/wm-a-v1/content.webp?v=2026-10-15",
-      "/api/public/assets/post/logo/hash/wm-b-v1/content.webp?v=2026-10-15",
+      "/api/public/assets/post/logo/hash/wm-a-v2/content.webp?v=2026-10-15",
+      "/api/public/assets/post/logo/hash/wm-b-v2/content.webp?v=2026-10-15",
     ]);
   });
 

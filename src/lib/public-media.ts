@@ -12,7 +12,7 @@ export const PUBLIC_MEDIA_VARIANTS = [
   "poster",
   "play",
 ] as const;
-export const PUBLIC_MEDIA_RENDER_IDS = ["wm-a-v1", "wm-b-v1"] as const;
+export const PUBLIC_MEDIA_RENDER_IDS = ["wm-a-v1", "wm-b-v1", "wm-a-v2", "wm-b-v2"] as const;
 export const PUBLIC_MEDIA_ROLES = ["cover", "content", "attachment", "playback"] as const;
 
 export type PublicContentKind = (typeof PUBLIC_CONTENT_KINDS)[number];
@@ -180,7 +180,7 @@ export function isPublicMediaRenderId(value: string): value is PublicMediaRender
 export function getDefaultPublicMediaRenderId(
   variant: Exclude<PublicMediaVariant, "play">
 ): PublicMediaRenderId {
-  return variant === "card" ? "wm-a-v1" : "wm-b-v1";
+  return variant === "card" ? "wm-a-v2" : "wm-b-v2";
 }
 
 export function normalizePublicMediaExt(value: string) {
@@ -410,8 +410,8 @@ export function buildPublicMediaPresentations(params: {
     }
     return buildPublicMediaAssetUrl({ ...params, renderId });
   };
-  const a = buildCandidate("wm-a-v1");
-  const b = buildCandidate("wm-b-v1");
+  const a = buildCandidate("wm-a-v2");
+  const b = buildCandidate("wm-b-v2");
   if (!a || !b) return null;
   return { a, b } satisfies PublicMediaPresentations;
 }

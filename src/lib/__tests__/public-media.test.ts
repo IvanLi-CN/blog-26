@@ -145,7 +145,7 @@ describe("public-media", () => {
           role: "content",
           variant: "card",
         })
-      ).toContain("/wm-a-v1/card.webp");
+      ).toContain("/wm-a-v2/card.webp");
       expect(
         buildPublicMediaAssetUrl({
           context,
@@ -153,7 +153,7 @@ describe("public-media", () => {
           role: "content",
           variant: "content",
         })
-      ).toContain("/wm-b-v1/content.webp");
+      ).toContain("/wm-b-v2/content.webp");
     });
 
     it("enumerates A/B candidates from an already normalized source path", () => {
@@ -169,8 +169,8 @@ describe("public-media", () => {
         a: expect.stringContaining("/demo-post/"),
         b: expect.stringContaining("/demo-post/"),
       });
-      expect(presentations?.a).toContain("/wm-a-v1/content.webp");
-      expect(presentations?.b).toContain("/wm-b-v1/content.webp");
+      expect(presentations?.a).toContain("/wm-a-v2/content.webp");
+      expect(presentations?.b).toContain("/wm-b-v2/content.webp");
       expect(presentations?.a).not.toContain("/blog/blog/");
     });
 

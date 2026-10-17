@@ -361,7 +361,7 @@ function getPublicMediaRenderId(
   variant: Exclude<PublicMediaVariant, "play">
 ): PublicMediaRenderId | undefined {
   if (context.assetScope === "admin-preview") return undefined;
-  return variant === "card" ? "wm-a-v1" : "wm-b-v1";
+  return variant === "card" ? "wm-a-v2" : "wm-b-v2";
 }
 
 function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference) {
@@ -869,16 +869,21 @@ function getWatermarkFilter(
     return `watermark(${encodeImagorFilterString(watermarkUrl)},-24,-24,18,22,22)`;
   }
 
-  const asset = renderId === "wm-a-v1" ? "watermark-ivanli-a.v1.svg" : "watermark-ivanli-b.v1.svg";
-  const ratio = renderId === "wm-a-v1" ? 7 : 18;
+  const isMarkOnly = renderId.startsWith("wm-a-");
+  const asset = isMarkOnly ? "watermark-ivanli-a.v1.svg" : "watermark-ivanli-b.v1.svg";
+  const ratio = isMarkOnly ? 7 : 18;
   if (!dimensions) {
     throw new Error(`Missing derived dimensions for versioned watermark: ${renderId}`);
   }
   const margin = Math.max(1, Math.round(dimensions.width * 0.02));
   const watermarkUrl = `${getInternalSourceBaseUrl(request)}/${asset}`;
-  // Pass both dimensions explicitly. Some deployed imagorvideo versions leave the
-  // watermark at its intrinsic SVG size when only w_ratio is provided.
-  return `watermark(${encodeImagorFilterString(watermarkUrl)},-${margin},-${margin},36,${ratio},${ratio})`;
+  // Some deployed imagorvideo versions leave the watermark at its intrinsic SVG
+  // size when only w_ratio is provided. v2 fixes that while keeping width as the
+  // authoritative dimension; v1 retains its historical filter for old snapshots.
+  const heightRatio = renderId.endsWith("-v2") ? 100 : null;
+  return heightRatio === null
+    ? `watermark(${encodeImagorFilterString(watermarkUrl)},-${margin},-${margin},36,${ratio})`
+    : `watermark(${encodeImagorFilterString(watermarkUrl)},-${margin},-${margin},36,${ratio},${heightRatio})`;
 }
 
 async function buildImagorPath(params: {
@@ -1060,11 +1065,12 @@ async function renderLocalMediaVariant(
   if (params.renderId && (await shouldApplyVersionedWatermark(resolved.ref, params.variant))) {
     const dimensions = await readDerivedDimensions(resolved.ref, params.variant);
     if (!dimensions) throw new Error("Unable to determine local derivative dimensions");
-    const ratio = params.renderId === "wm-a-v1" ? 0.07 : 0.18;
+    const ratio = params.renderId.startsWith("wm-a-") ? 0.07 : 0.18;
     const margin = Math.max(1, Math.round(dimensions.width * 0.02));
     const overlayWidth = Math.max(1, Math.round(dimensions.width * ratio));
-    const watermarkFile =
-      params.renderId === "wm-a-v1" ? "watermark-ivanli-a.v1.svg" : "watermark-ivanli-b.v1.svg";
+    const watermarkFile = params.renderId.startsWith("wm-a-")
+      ? "watermark-ivanli-a.v1.svg"
+      : "watermark-ivanli-b.v1.svg";
     const watermarkSvg = await readFile(`${process.cwd()}/public/${watermarkFile}`, "utf8");
     const overlayResult = await sharp(
       Buffer.from(watermarkSvg.replace("<svg ", '<svg opacity="0.64" '))

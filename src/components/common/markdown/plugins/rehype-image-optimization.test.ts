@@ -61,7 +61,7 @@ describe("rehypeImageOptimization", () => {
     const img = tree.children[0] as Element;
     const expectedHash = buildPublicMediaHash("blog/assets/hello-world.jpg", "content");
     expect(img.properties?.src).toBe(
-      `/api/public/assets/post/posts-cover-fallback/${expectedHash}/wm-b-v1/content.webp`
+      `/api/public/assets/post/posts-cover-fallback/${expectedHash}/wm-b-v2/content.webp`
     );
   });
 
@@ -95,10 +95,10 @@ describe("rehypeImageOptimization", () => {
     const img = tree.children[0] as Element;
     const expectedHash = buildPublicMediaHash("Memos/assets/inline-123.png", "content");
     expect(img.properties?.src).toBe(
-      `/api/public/assets/memo/demo-memo/${expectedHash}/wm-b-v1/content.webp`
+      `/api/public/assets/memo/demo-memo/${expectedHash}/wm-b-v2/content.webp`
     );
     expect(img.properties?.["data-original-src"]).toBe(
-      `/api/public/assets/memo/demo-memo/${expectedHash}/wm-b-v1/content.webp`
+      `/api/public/assets/memo/demo-memo/${expectedHash}/wm-b-v2/content.webp`
     );
   });
 
@@ -137,6 +137,46 @@ describe("rehypeImageOptimization", () => {
   });
 
   it("restores finite renditions for versioned facade urls in rewritten snapshots", () => {
+    const tree: Root = {
+      type: "root",
+      children: [
+        {
+          type: "element",
+          tagName: "img",
+          properties: {
+            src: "/api/public/assets/post/demo-post/abcd1234/wm-b-v2/content.webp",
+          },
+          children: [],
+        } as Element,
+      ],
+    };
+
+    const plugin = rehypeImageOptimization({
+      publicMediaContext: {
+        kind: "post",
+        slug: "demo-post",
+        filePath: "blog/demo-post.md",
+      },
+    });
+
+    plugin(tree, { path: "blog/demo-post.md" } as any);
+
+    const img = tree.children[0] as Element;
+    expect(img.properties?.["data-watermark-a"]).toBe(
+      "/api/public/assets/post/demo-post/abcd1234/wm-a-v2/content.webp"
+    );
+    expect(img.properties?.["data-watermark-b"]).toBe(
+      "/api/public/assets/post/demo-post/abcd1234/wm-b-v2/content.webp"
+    );
+    expect(img.properties?.["data-watermark-full-a"]).toBe(
+      "/api/public/assets/post/demo-post/abcd1234/wm-a-v2/full.webp"
+    );
+    expect(img.properties?.["data-watermark-full-b"]).toBe(
+      "/api/public/assets/post/demo-post/abcd1234/wm-b-v2/full.webp"
+    );
+  });
+
+  it("preserves the v1 candidate family for legacy snapshots", () => {
     const tree: Root = {
       type: "root",
       children: [
@@ -207,13 +247,13 @@ describe("rehypeImageOptimization", () => {
     const video = tree.children[0] as Element;
     const expectedHash = buildPublicMediaHash("blog/assets/preview.jpg", "content");
     expect(video.properties?.poster).toBe(
-      `/api/public/assets/post/demo-post/${expectedHash}/wm-b-v1/content.webp?v=snapshot-1`
+      `/api/public/assets/post/demo-post/${expectedHash}/wm-b-v2/content.webp?v=snapshot-1`
     );
     expect(video.properties?.["data-watermark-poster-a"]).toBe(
-      `/api/public/assets/post/demo-post/${expectedHash}/wm-a-v1/content.webp?v=snapshot-1`
+      `/api/public/assets/post/demo-post/${expectedHash}/wm-a-v2/content.webp?v=snapshot-1`
     );
     expect(video.properties?.["data-watermark-poster-b"]).toBe(
-      `/api/public/assets/post/demo-post/${expectedHash}/wm-b-v1/content.webp?v=snapshot-1`
+      `/api/public/assets/post/demo-post/${expectedHash}/wm-b-v2/content.webp?v=snapshot-1`
     );
   });
 });
