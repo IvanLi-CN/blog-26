@@ -486,7 +486,7 @@ if (command === "notification") {
   const store = new GitHubLedgerStore(app);
   const requestedId = process.env.RELEASE_ID || "";
   if (!requestedId) throw new Error("RELEASE_ID is required");
-  const current = await store.read();
+  const current = await store.read({ allowLegacyHead: true, allowLegacyAncestor: true });
   const entry = current.ledger.entries.find((item) => item.id === requestedId);
   if (!entry) throw new Error("Unknown release identity");
   if (
@@ -520,12 +520,11 @@ if (command === "notification") {
   const { findArtifact } = await import("../src/lib/release/artifacts");
   if (!findArtifact(app, entry, "inputs"))
     throw new Error("Cannot abandon a release whose frozen inputs artifact is missing");
-  await changeLedger(store, (ledger) => ({
-    ledger: updateRelease(ledger, entry.id, {
-      stage: "abandoned",
-      inputs: undefined,
-    }),
-    result: null,
-  }));
+  const next = updateRelease(current.ledger, entry.id, {
+    stage: "abandoned",
+    inputs: undefined,
+  });
+  if (canonicalJson(next) !== canonicalJson(current.ledger))
+    await store.compareAndSwap(current.sha, next, current.legacySha);
   console.log(`Abandoned failed release with frozen inputs ${entry.id}`);
 } else throw new Error("Unknown product release operation");

@@ -134,6 +134,54 @@ describe("durable product release reservations", () => {
     ).rejects.toThrow("github-actions[bot]");
   });
 
+  test("compare-and-swap binds a legacy head to the signed recovery commit", async () => {
+    const head = "a".repeat(40);
+    const next = "b".repeat(40);
+    const legacy = "c".repeat(40);
+    const tree = "d".repeat(40);
+    let ref = head;
+    let payloadText = "";
+    const message = `chore(release): record product delivery state\n\nLedger-Digest: ${digest(initialLedger(contract))}\nLedger-Recovery: ${legacy}\nSigned-off-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>`;
+    const gitCommit = {
+      sha: next,
+      tree: { sha: tree },
+      parents: [{ sha: head }],
+      message,
+      verification: { verified: true, reason: "valid" },
+    };
+    const repositoryCommit = {
+      ...gitCommit,
+      author: { login: "github-actions[bot]" },
+      committer: { login: "web-flow" },
+      commit: {
+        message,
+        tree: { sha: tree },
+        verification: { verified: true, reason: "valid" },
+      },
+    };
+    const github = new GitHubRelease(contract, "github-actions", {
+      request(endpoint, method = "GET", payload) {
+        if (endpoint.startsWith("users/")) return { id: 41898282 };
+        if (endpoint === "graphql" && method === "POST") {
+          payloadText = JSON.stringify(payload);
+          ref = next;
+          return { data: { createCommitOnBranch: { commit: { oid: next } } } };
+        }
+        if (endpoint.endsWith(`/git/ref/heads/${contract.ledgerBranch}`))
+          return { object: { sha: ref, type: "commit" } };
+        if (endpoint.endsWith(`/git/commits/${next}`)) return gitCommit;
+        if (endpoint.endsWith(`/commits/${next}`)) return repositoryCommit;
+        throw new Error(`Unexpected write ${endpoint}`);
+      },
+      command() {
+        throw new Error("Ledger CAS must use the GitHub API");
+      },
+    });
+
+    await new GitHubLedgerStore(github).compareAndSwap(head, initialLedger(contract), legacy);
+    expect(payloadText).toContain(`Ledger-Recovery: ${legacy}`);
+  });
+
   test("fresh preparation retires a stale unopened reservation without replacing or reusing its identity", async () => {
     const original = reserveRelease(initialLedger(contract), request);
     let ledger = original.ledger;
