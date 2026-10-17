@@ -267,7 +267,7 @@ describe("HTTP compatibility APIs", () => {
     expect(saved.status).toBe(200);
     expect(await saved.json()).toMatchObject({
       policy,
-      status: { rag: { available: false, reason: "disabled" } },
+      status: { rag: { available: false, reason: "disabled", qualityStatus: "not-run" } },
     });
     const invalid = await handleAdminApiRequest(
       buildRequest(

@@ -5,6 +5,7 @@ import {
   DEFAULT_SEARCH_POLICY,
   type SearchPolicy,
   type SearchQuality,
+  type SearchQualityStatus,
   type SearchReason,
 } from "@/lib/search/settings";
 import {
@@ -33,6 +34,12 @@ const reasons: Record<SearchReason, string> = {
   "empty-query": "查询为空",
   "explicit-query": "精确检索语法",
 };
+const qualityStatusLabels: Record<SearchQualityStatus, string> = {
+  "not-run": "尚未运行质量验证",
+  passed: "最近一次质量验证通过",
+  failed: "最近一次质量验证失败，运行时仍使用已保存配置",
+  stale: "质量验证针对旧配置，运行时仍使用当前已保存配置",
+};
 
 export function SearchPolicyCard({
   mode,
@@ -48,7 +55,11 @@ export function SearchPolicyCard({
 }: {
   mode: AiSearchMode;
   policy: SearchPolicy[AiSearchMode];
-  status: { available: boolean; reason?: SearchReason };
+  status: {
+    available: boolean;
+    reason?: SearchReason;
+    qualityStatus?: SearchQualityStatus;
+  };
   quality?: SearchQuality;
   dirty: boolean;
   validating: boolean;
@@ -145,7 +156,7 @@ export function SearchPolicyCard({
         </Disclosure>
         <div className="rounded-xl bg-muted/40 p-3 text-sm" role="status">
           {status.available
-            ? "当前配置已通过质量验证，可用于搜索。"
+            ? `当前已保存的 LLM 配置可用于搜索：${qualityStatusLabels[status.qualityStatus ?? "not-run"]}。`
             : `使用关键词回退：${reasons[status.reason ?? "unvalidated"]}`}{" "}
           {quality ? (
             <span className="block mt-1 text-xs text-muted-foreground">

@@ -683,8 +683,8 @@ const demoSearchSettings: AdminSearchSettings = {
   policy: structuredClone(DEFAULT_SEARCH_POLICY),
   quality: {},
   status: {
-    rag: { available: false, reason: "unvalidated" },
-    rewrite: { available: false, reason: "unvalidated" },
+    rag: { available: true, qualityStatus: "not-run" },
+    rewrite: { available: true, qualityStatus: "not-run" },
   },
 };
 const demoSearchRuns = new Map<string, SearchValidationRun>();
@@ -952,8 +952,9 @@ async function handleAdminRequest(
           demoSearchRevision[mode]++;
           delete demoSearchSettings.quality[mode];
           demoSearchSettings.status[mode] = {
-            available: false,
-            reason: parsed.data[mode].enabled ? "unvalidated" : "disabled",
+            available: parsed.data[mode].enabled,
+            ...(parsed.data[mode].enabled ? {} : { reason: "disabled" as const }),
+            qualityStatus: "not-run",
           };
         }
       demoSearchSettings.policy = parsed.data;
@@ -994,7 +995,10 @@ async function handleAdminRequest(
             passed: true,
             validatedAt: run.finishedAt,
           };
-          demoSearchSettings.status[run.mode] = { available: true };
+          demoSearchSettings.status[run.mode] = {
+            available: true,
+            qualityStatus: "passed",
+          };
         }
       }
     }
@@ -1007,8 +1011,9 @@ async function handleAdminRequest(
         demoSearchRevision[mode]++;
         delete demoSearchSettings.quality[mode];
         demoSearchSettings.status[mode] = {
-          available: false,
-          reason: demoSearchSettings.policy[mode].enabled ? "unvalidated" : "disabled",
+          available: demoSearchSettings.policy[mode].enabled,
+          ...(demoSearchSettings.policy[mode].enabled ? {} : { reason: "disabled" as const }),
+          qualityStatus: "stale",
         };
       }
     }

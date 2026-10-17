@@ -113,7 +113,7 @@ export function SearchSettingsPanel({ providerDirty = false }: { providerDirty?:
         <div>
           <h2 className="text-xl font-semibold">搜索模式</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            两种 AI 搜索独立配置。不可用时使用原始关键词全文搜索。
+            两种 AI 搜索独立配置，使用现有 LLM 提供方；服务不可用时回退原始关键词全文搜索。
           </p>
         </div>
         <Button disabled={!dirty || !valid || save.isPending} onClick={() => save.mutate(editor)}>
