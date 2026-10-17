@@ -82,7 +82,7 @@
       "evidence": [
         {
           "path": "src/lib/release/completion.ts",
-          "blob": "605e9f8bd4119b8106abc419f35a7fedace752b7",
+          "blob": "c62a8584ae694a830d6efc7a3f46118b41cf7f71",
           "command": "bunx biome check src/lib/release/completion.ts"
         }
       ]
@@ -96,7 +96,7 @@
       "evidence": [
         {
           "path": "scripts/product-release.ts",
-          "blob": "dfd8636f953d1ca9cc30ebaf0311c13da159af61",
+          "blob": "ad1d69e8dad2af15bf70905bf96bbb617b1e48ca",
           "command": "bunx biome check scripts/product-release.ts"
         }
       ]
