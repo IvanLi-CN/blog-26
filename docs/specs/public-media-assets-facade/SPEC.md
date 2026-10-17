@@ -62,7 +62,7 @@
   - `GET /api/public/assets/:kind/:slug/:mediaHash/:renderId/:variant.:ext`
 - 旧的 `GET /api/public/assets/:kind/:slug/:mediaHash/:variant.:ext` 保留历史语义；新快照和页面使用版本化路径。
 - `kind` 只允许 `post | memo`。
-- `renderId` 只允许登记值 `wm-a-v1 | wm-b-v1`，不得接受任意处理表达式、关闭水印参数或未知身份；`play` 受控播放变体不接受任何 renderId。
+- `renderId` 只允许登记值 `wm-a-v1 | wm-b-v1 | wm-a-v2 | wm-b-v2`，不得接受任意处理表达式、关闭水印参数或未知身份；`play` 受控播放变体不接受任何 renderId。v2 是当前默认身份，v1 保留旧快照兼容并不改写其历史字节语义。
 - `variant` 固定为：
   - `card`
   - `cover`
@@ -99,7 +99,7 @@
   - raw 原视频 URL
 - 公开图片、GIF 派生帧、视频 poster 必须 strip metadata / EXIF。
 - 图片、GIF 单帧或视频 poster 派生结果宽 `<240px`、高 `<160px`、或面积 `<80,000px²` 时跳过水印；尺寸必须在方向校正、缩放/取帧之后判断。
-- `wm-a-v1` 为 Iv 标志，最终宽度 7%；`wm-b-v1` 为 Iv 标志与 `ivanli.cc`，最终宽度 18%；两者右/下边距均为最终图像宽度 2%。A/B 都使用无描边白色主体与短距暗色柔和阴影，整体不透明度 64%；B 的分隔线与域名文字保持同一白色主体。imagor filter 的 `alpha` 使用 36。
+- `wm-a-v2` 为 Iv 标志，最终宽度 7%；`wm-b-v2` 为 Iv 标志与 `ivanli.cc`，最终宽度 18%；两者右/下边距均为最终图像宽度 2%。A/B 都使用无描边白色主体与短距暗色柔和阴影，整体不透明度 64%；B 的分隔线与域名文字保持同一白色主体。v2 的 imagor filter 显式传入宽度比例和非约束的 `h_ratio=100`，以最终输出宽度为唯一尺寸口径；本地 Sharp 路径保持相同宽度规则。v1 继续用于旧快照兼容。imagor filter 的 `alpha` 使用 36。
 - 公开页面与灯箱按实际 CSS 可见宽度独立选择：`<600` 用 A，`>=600` 用 B；DPR 不改变构图。card 默认 A，其余图片用途默认 B；正常页面测量后校正，无法测量的 RSS/分享/禁用 JS 输出按用途默认。
 - 列表、时间线、相关推荐、详情封面、正文和灯箱保留现有图框但使用 `contain` 完整显示，允许留白；移除图片自身 hover 放大。
 

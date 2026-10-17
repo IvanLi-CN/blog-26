@@ -11,6 +11,7 @@ import {
   isPublicMediaVariant,
   type PublicMediaContext,
   type PublicMediaPresentations,
+  type PublicMediaRenderId,
 } from "@/lib/public-media";
 import type { ImageOptimizationOptions } from "../types";
 import {
@@ -116,7 +117,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
       }
 
       const match =
-        /^\/api\/public\/assets\/(post|memo)\/([^/]+)\/([^/]+)\/(wm-a-v1|wm-b-v1)\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu.exec(
+        /^\/api\/public\/assets\/(post|memo)\/([^/]+)\/([^/]+)\/(wm-[ab]-v[12])\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu.exec(
           pathname
         );
       if (!match) return null;
@@ -132,7 +133,12 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
         return null;
       }
 
-      const buildCandidate = (candidateRenderId: "wm-a-v1" | "wm-b-v1") =>
+      const candidateRenderIds: [PublicMediaRenderId, PublicMediaRenderId] = renderId.endsWith(
+        "-v2"
+      )
+        ? ["wm-a-v2", "wm-b-v2"]
+        : ["wm-a-v1", "wm-b-v1"];
+      const buildCandidate = (candidateRenderId: (typeof candidateRenderIds)[number]) =>
         buildPublicAssetPath({
           scope: publicMediaContext.assetScope,
           kind,
@@ -143,7 +149,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
           ext,
         });
 
-      return { a: buildCandidate("wm-a-v1"), b: buildCandidate("wm-b-v1") };
+      return { a: buildCandidate(candidateRenderIds[0]), b: buildCandidate(candidateRenderIds[1]) };
     }
 
     visit(tree, "element", (node: Element) => {
