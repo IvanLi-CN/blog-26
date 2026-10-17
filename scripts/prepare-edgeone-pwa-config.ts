@@ -258,6 +258,16 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     assetRootSources.add(scopedPath(basePath, `/${root}/*`));
   }
 
+  const watermarkSources = [
+    scopedPath(basePath, "/watermark-ivanli.svg"),
+    scopedPath(basePath, "/watermark-ivanli-a.v1.svg"),
+    scopedPath(basePath, "/watermark-ivanli-b.v1.svg"),
+  ];
+  if (watermarkSources.every((source) => rootAssetSources.has(source))) {
+    for (const source of watermarkSources) rootAssetSources.delete(source);
+    rootAssetSources.add(scopedPath(basePath, "/watermark-ivanli*.svg"));
+  }
+
   const config: EdgeoneCacheConfig = {
     headers: [
       // Root assets precede HTML routes; route-specific assets and versioned rules follow.
