@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
+  "covered_files": {
+    ".github/workflows/abandon-failed-inputs-release.yml": "23e153103a01625c37a2752ee29fc2d7764a4375",
+    "docs/runbooks/manual-version-release.md": "a8ee22cb7a88e36c0934c470379ec7d465d73596",
+    "tests/ci/product-prerelease-workflow.test.ts": "8ca82eea17052ff532230c02f7e213c0ef0ad6c0"
+  },
+  "change": {
+    "description": "Add a signed GitHub Actions recovery entry point for failed Product Releases that already froze inputs but produced no products.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a backward-compatible release operations fix. It adds a narrowly scoped workflow that invokes the existing fail-closed recovery command without changing product endpoints, artifact formats, or application persistence.",
+      "assessed_at": "2026-10-17T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "8ca82eea17052ff532230c02f7e213c0ef0ad6c0",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The new workflow accepts only one release identity, checks out main, grants only job-scoped contents and actions permissions, and delegates all run, artifact, source, and ledger validation to abandon-failed-inputs.",
+      "assessed_at": "2026-10-17T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": ".github/workflows/abandon-failed-inputs-release.yml",
+          "blob": "23e153103a01625c37a2752ee29fc2d7764a4375",
+          "command": "Workflow contract inspection confirms main checkout, one identity input, actions:read, contents:write, and the existing fail-closed recovery command."
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "8ca82eea17052ff532230c02f7e213c0ef0ad6c0",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to the missing failed-input recovery workflow, its contract regression, and the corresponding release runbook procedure."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused workflow contract and formatting checks pass. The workflow cannot alter products or application state and uses the existing signed ledger update path through GitHub Actions.",
+      "assessed_at": "2026-10-17T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": ".github/workflows/abandon-failed-inputs-release.yml",
+          "blob": "23e153103a01625c37a2752ee29fc2d7764a4375",
+          "command": "bunx biome check tests/ci/product-prerelease-workflow.test.ts && git diff --check"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "8ca82eea17052ff532230c02f7e213c0ef0ad6c0",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3"
+      ],
+      "evidence": [
+        {
+          "path": ".github/workflows/abandon-failed-inputs-release.yml",
+          "blob": "23e153103a01625c37a2752ee29fc2d7764a4375",
+          "command": "The recovery workflow does not alter HTTP, tRPC, MCP, or shipped product contracts."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The workflow invokes the existing release ledger transition and does not change its schema, frozen artifact format, SQLite schema, or browser persistence.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": ".github/workflows/abandon-failed-inputs-release.yml",
+          "blob": "23e153103a01625c37a2752ee29fc2d7764a4375",
+          "command": "Only the existing abandon-failed-inputs command can update the ledger, using the Actions bot signing path."
+        }
+      ]
+    }
+  }
+}

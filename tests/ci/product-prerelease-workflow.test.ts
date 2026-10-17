@@ -65,6 +65,23 @@ const cancelledRecovery = z
     }),
   })
   .parse(load(readFileSync(".github/workflows/abandon-cancelled-release.yml", "utf8")));
+const failedInputsRecovery = z
+  .object({
+    on: z.object({
+      workflow_dispatch: z.object({
+        inputs: z.object({
+          release_id: z.object({ type: z.string(), required: z.boolean() }),
+        }),
+      }),
+    }),
+    jobs: z.object({
+      abandon: z.object({
+        "timeout-minutes": z.number(),
+        permissions: z.record(z.string(), z.string()),
+      }),
+    }),
+  })
+  .parse(load(readFileSync(".github/workflows/abandon-failed-inputs-release.yml", "utf8")));
 
 describe("prerelease workflow deployment boundary", () => {
   test("product release can be resumed from the uniquely registered merged identity", () => {
@@ -162,6 +179,17 @@ describe("prerelease workflow deployment boundary", () => {
     });
     expect(cancelledRecovery.jobs.abandon["timeout-minutes"]).toBe(20);
     expect(cancelledRecovery.jobs.abandon.permissions).toMatchObject({
+      actions: "read",
+      contents: "write",
+    });
+  });
+
+  test("failed frozen-input recovery is explicitly scoped to one release identity", () => {
+    expect(failedInputsRecovery.on.workflow_dispatch.inputs).toEqual({
+      release_id: { type: "string", required: true },
+    });
+    expect(failedInputsRecovery.jobs.abandon["timeout-minutes"]).toBe(20);
+    expect(failedInputsRecovery.jobs.abandon.permissions).toMatchObject({
       actions: "read",
       contents: "write",
     });

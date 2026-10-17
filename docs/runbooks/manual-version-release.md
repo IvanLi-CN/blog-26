@@ -38,6 +38,8 @@ GitHub 适配器固定 REST API `2022-11-28`，按该字段合同核验 PR 与�
 
 如果 Product Release 在冻结输入前被 GitHub Actions 超时取消，原运行不会进入普通 failure 恢复路径。确认该运行结论为 `cancelled` 且 ledger 没有 inputs/products 后，手动运行 **Abandon Cancelled Product Release**（`.github/workflows/abandon-cancelled-release.yml`）并填写原 release identity；入口会再次核验原运行、拒绝已有冻结产物，并将该身份正式标记为 abandoned。随后重新运行 **Manual Product Release**，版本留空即可按已验证影响自动分配下一个可用版本，不复用已烧毁身份。
 
+如果 Product Release 已冻结 inputs 但在生成 products 前失败，手动运行 **Abandon Failed Product Release Inputs**（`.github/workflows/abandon-failed-inputs-release.yml`）并填写原 release identity。入口会核验原失败 run、冻结 inputs artifact 和没有 products 的状态，只清除该身份的 inputs 并标记为 abandoned；随后重新运行 **Manual Product Release**，版本留空即可自动分配下一个可用版本。该操作必须在 GitHub Actions 中执行，以保留 release ledger 所需的 `github-actions[bot]` Verified 签名；本地用户令牌不能直接写入 ledger。
+
 同一准备 run 重跑复用原始请求与身份；前一身份完成后，新 run 可申请下一个版本。预发布两种产物发布成功后，记录共享锁内正式 GitHub latest、镜像 latest、生产版本与 Playbook 指针的前后读回；一致才能 complete，部署和晋升均记为 `not-applicable`。读取失败或变化不能当作不变证明。已完成预发布的幂等恢复不要求生产仍停留在历史指针。
 
 首次验收时，批准的 bootstrap renderer 可能尚无静态 `/version.json`。仅当明确读回 404 且 Playbook rendererCommit 与 bootstrap 来源一致时记录该端点不存在；未知 renderer、其他错误或解析失败会停止。该记录不能当作新正式版部署的验收证据。
