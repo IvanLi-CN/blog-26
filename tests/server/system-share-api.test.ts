@@ -260,6 +260,70 @@ describe("system share API", () => {
     ]);
   });
 
+  test("removes a partially written Memo temporary file before a retry", async () => {
+    const submissionId = randomUUID();
+    const previousInjection = process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_MEMO_TEMP_WRITE;
+    process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_MEMO_TEMP_WRITE = "1";
+    try {
+      const response = await handlePublicApiRequest(
+        buildRequest(createForm(submissionId, "temporary write failure")),
+        "/system-share"
+      );
+      expect(response.status).toBe(500);
+    } finally {
+      if (previousInjection === undefined)
+        delete process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_MEMO_TEMP_WRITE;
+      else process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_MEMO_TEMP_WRITE = previousInjection;
+    }
+
+    const memoDirectory = path.join(contentRoot, "Memos", "system-share");
+    expect(fs.existsSync(memoDirectory) ? fs.readdirSync(memoDirectory) : []).toHaveLength(0);
+
+    const retry = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "temporary write retry")),
+      "/system-share"
+    );
+    expect(retry.status).toBe(201);
+    expect(await db?.select().from(posts)).toHaveLength(1);
+  });
+
+  test("serializes concurrent recovery of a malformed deterministic Memo", async () => {
+    const submissionId = randomUUID();
+    const memoPath = path.join(contentRoot, "Memos", "system-share", `${submissionId}.md`);
+    fs.mkdirSync(path.dirname(memoPath), { recursive: true });
+    fs.writeFileSync(memoPath, "---\ntitle: [\n---\npartial write");
+    const now = Date.now();
+    await db?.insert(systemShareSubmissions).values({
+      submissionId,
+      memoId: null,
+      memoSlug: null,
+      classification: "memo",
+      state: "processing",
+      leaseToken: randomUUID(),
+      leaseExpiresAt: now - 1,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const responses = await Promise.all([
+      handlePublicApiRequest(
+        buildRequest(createForm(submissionId, "first recovery")),
+        "/system-share"
+      ),
+      handlePublicApiRequest(
+        buildRequest(createForm(submissionId, "second recovery")),
+        "/system-share"
+      ),
+    ]);
+    expect(responses.some((response) => response.status === 201)).toBe(true);
+    expect(responses.every((response) => [200, 201, 409].includes(response.status))).toBe(true);
+    expect(fs.readFileSync(memoPath, "utf8")).not.toContain("partial write");
+    expect(await db?.select().from(posts)).toHaveLength(1);
+    expect(await db?.select().from(systemShareSubmissions)).toMatchObject([
+      { submissionId, state: "completed" },
+    ]);
+  });
+
   test("keeps distinct temporary submission ids independent", async () => {
     const first = await handlePublicApiRequest(
       buildRequest(createForm(randomUUID(), "same content")),
@@ -271,7 +335,16 @@ describe("system share API", () => {
     );
     expect(first.status).toBe(201);
     expect(second.status).toBe(201);
-    expect(await db?.select().from(posts)).toHaveLength(2);
+    const firstPayload = (await first.json()) as { memoId?: string };
+    const secondPayload = (await second.json()) as { memoId?: string };
+    expect(firstPayload.memoId).toBeTruthy();
+    expect(secondPayload.memoId).toBeTruthy();
+    expect(firstPayload.memoId).not.toBe(secondPayload.memoId);
+    const createdIds = new Set([firstPayload.memoId, secondPayload.memoId]);
+    const createdMemos = (await db?.select().from(posts))?.filter((memo) =>
+      createdIds.has(memo.id)
+    );
+    expect(createdMemos).toHaveLength(2);
   });
 
   test("reconstructs the detail slug for a legacy completed submission row", async () => {
@@ -594,6 +667,21 @@ describe("system share API", () => {
     }
     expect(fs.existsSync(orphanDirectory)).toBe(true);
     expect(await db?.select().from(posts)).toHaveLength(0);
-    expect(await db?.select().from(systemShareSubmissions)).toHaveLength(0);
+    expect(await db?.select().from(systemShareSubmissions)).toMatchObject([
+      {
+        submissionId,
+        state: "processing",
+        leaseToken: expect.any(String),
+        leaseExpiresAt: expect.any(Number),
+      },
+    ]);
+
+    const retry = await handlePublicApiRequest(
+      buildRequest(createForm(submissionId, "reclaimed retry succeeds")),
+      "/system-share"
+    );
+    expect(retry.status).toBe(201);
+    expect(fs.existsSync(orphanDirectory)).toBe(false);
+    expect(await db?.select().from(posts)).toHaveLength(1);
   });
 });

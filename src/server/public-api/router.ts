@@ -612,14 +612,33 @@ async function handleSystemShareRequest(
         stagedPaths.map((path) => rm(path, { force: true }).catch(() => undefined))
       );
       await rm(stagedDirectory, { recursive: true, force: true }).catch(() => undefined);
-      await db
-        .delete(systemShareSubmissions)
-        .where(
-          and(
-            eq(systemShareSubmissions.submissionId, submissionId),
-            eq(systemShareSubmissions.leaseToken, leaseToken)
-          )
-        );
+      if (reclaimedExpiredLease) {
+        // Retain an expired recovery row as a cleanup sentinel. A later retry
+        // must still know that an older lease's staging tree may exist.
+        await db
+          .update(systemShareSubmissions)
+          .set({
+            state: "processing",
+            leaseToken,
+            leaseExpiresAt: Date.now() - 1,
+            updatedAt: Date.now(),
+          })
+          .where(
+            and(
+              eq(systemShareSubmissions.submissionId, submissionId),
+              eq(systemShareSubmissions.leaseToken, leaseToken)
+            )
+          );
+      } else {
+        await db
+          .delete(systemShareSubmissions)
+          .where(
+            and(
+              eq(systemShareSubmissions.submissionId, submissionId),
+              eq(systemShareSubmissions.leaseToken, leaseToken)
+            )
+          );
+      }
       // Keep staging owned by other lease tokens intact on failure. An older
       // request may already have passed the commit fence and still be writing
       // its attachment references; cleanup is deferred until a replacement

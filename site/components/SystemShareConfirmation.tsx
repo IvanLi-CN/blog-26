@@ -343,10 +343,10 @@ export default function SystemShareConfirmation() {
       });
       setSuccessLocked(true);
       showSystemShareSuccess(result.duplicate ? "已恢复此前发布的内容" : "发布成功");
-      void clearPendingSystemShare(pending.submissionId).catch((cleanupError) => {
-        console.warn("[system-share] failed to clear the local pending share", cleanupError);
-      });
       redirectTimer.current = window.setTimeout(() => {
+        void clearPendingSystemShare(pending.submissionId).catch((cleanupError) => {
+          console.warn("[system-share] failed to clear the published pending share", cleanupError);
+        });
         window.location.replace(`/memos/${encodeURIComponent(result.memo.slug)}`);
       }, 1000);
     } catch (nextError) {

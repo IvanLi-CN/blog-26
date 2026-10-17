@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 
 async function clearPendingShare(page: import("@playwright/test").Page) {
   await page.goto("/share?d_persona=admin&d_share=text", { waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("system-share-page")).toBeVisible({ timeout: 15_000 });
   await page.evaluate(
     () =>
       new Promise<void>((resolve, reject) => {
@@ -10,6 +11,35 @@ async function clearPendingShare(page: import("@playwright/test").Page) {
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
         request.onblocked = () => resolve();
+      })
+  );
+}
+
+async function expectSharePage(page: import("@playwright/test").Page) {
+  await expect(page.getByTestId("system-share-page")).toBeVisible({ timeout: 15_000 });
+}
+
+async function readPendingIdentity(page: import("@playwright/test").Page) {
+  return page.evaluate(
+    () =>
+      new Promise<string | null>((resolve, reject) => {
+        const request = indexedDB.open("ivan-console-system-share", 2);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const read = database
+            .transaction("pending", "readonly")
+            .objectStore("pending")
+            .get("current");
+          read.onsuccess = () => {
+            database.close();
+            resolve(read.result?.submissionId ?? null);
+          };
+          read.onerror = () => {
+            database.close();
+            reject(read.error);
+          };
+        };
       })
   );
 }
@@ -24,7 +54,7 @@ test.describe("Console system share Web Demo", () => {
     await page.goto("/share?d_persona=admin&d_share=file&d_delay=slow", {
       waitUntil: "domcontentloaded",
     });
-    await expect(page.getByTestId("system-share-page")).toBeVisible();
+    await expectSharePage(page);
     const originalShare = page.getByTestId("system-share-original");
     await expect(originalShare).toBeVisible();
     await expect(page.getByTestId("system-share-memo-editor")).toBeVisible();
@@ -77,6 +107,26 @@ test.describe("Console system share Web Demo", () => {
     await expect(page.getByTestId("system-share-memo-editor-surface")).toContainText("#剪藏");
   });
 
+  test("retains the submission identity when refreshed during the success notice", async ({
+    page,
+  }) => {
+    await clearPendingShare(page);
+    const submissionId = randomUUID();
+    await page.goto(`/share?d_persona=admin&d_share=url&d_submission=${submissionId}`, {
+      waitUntil: "domcontentloaded",
+    });
+    const editor = page.getByTestId("system-share-memo-editor").locator(".ProseMirror");
+    await expect(editor).toContainText("#剪藏");
+    expect(await readPendingIdentity(page)).toBe(submissionId);
+    await page.getByTestId("system-share-submit").click();
+    await expect(page.getByTestId("system-share-toast-success")).toBeVisible();
+    expect(await readPendingIdentity(page)).toBe(submissionId);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(editor).toContainText("https://example.com/reading-note");
+    expect(await readPendingIdentity(page)).toBe(submissionId);
+    await expect(page).toHaveURL(/\/share\?/);
+  });
+
   test("persists an edited clipping URL and keeps a memo edit after refresh", async ({ page }) => {
     await clearPendingShare(page);
     await page.goto("/share?d_persona=admin&d_share=url", {
@@ -110,7 +160,7 @@ test.describe("Console system share Web Demo", () => {
         waitUntil: "domcontentloaded",
       }
     );
-    await expect(page.getByTestId("system-share-page")).toBeVisible();
+    await expectSharePage(page);
     const editor = page.getByTestId("system-share-memo-editor").locator(".ProseMirror");
     await editor.click();
     await page.keyboard.press("ControlOrMeta+A");
@@ -139,7 +189,7 @@ test.describe("Console system share Web Demo", () => {
       `/share?d_persona=admin&d_share=text&d_submission=${submissionId}&d_scene=system-share-response-loss&d_delay=slow`,
       { waitUntil: "domcontentloaded" }
     );
-    await expect(page.getByTestId("system-share-page")).toBeVisible();
+    await expectSharePage(page);
     await page.getByTestId("system-share-submit").click();
     await expect(page.getByTestId("system-share-toast-error")).toContainText("响应丢失");
     await page
@@ -155,7 +205,7 @@ test.describe("Console system share Web Demo", () => {
   }) => {
     await clearPendingShare(page);
     await page.goto("/share?d_persona=admin&d_share=text", { waitUntil: "domcontentloaded" });
-    await expect(page.getByTestId("system-share-page")).toBeVisible();
+    await expectSharePage(page);
 
     const replacement = await page.context().newPage();
     await replacement.goto("/share?d_persona=admin&d_share=file", {
@@ -171,7 +221,7 @@ test.describe("Console system share Web Demo", () => {
         })
     );
     await replacement.reload({ waitUntil: "domcontentloaded" });
-    await expect(replacement.getByTestId("system-share-page")).toBeVisible();
+    await expectSharePage(replacement);
 
     await page.getByTestId("system-share-submit").click();
     await expect(page.getByTestId("system-share-toast-error")).toContainText(
