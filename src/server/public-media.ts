@@ -876,7 +876,9 @@ function getWatermarkFilter(
   }
   const margin = Math.max(1, Math.round(dimensions.width * 0.02));
   const watermarkUrl = `${getInternalSourceBaseUrl(request)}/${asset}`;
-  return `watermark(${encodeImagorFilterString(watermarkUrl)},-${margin},-${margin},36,${ratio})`;
+  // Pass both dimensions explicitly. Some deployed imagorvideo versions leave the
+  // watermark at its intrinsic SVG size when only w_ratio is provided.
+  return `watermark(${encodeImagorFilterString(watermarkUrl)},-${margin},-${margin},36,${ratio},${ratio})`;
 }
 
 async function buildImagorPath(params: {
