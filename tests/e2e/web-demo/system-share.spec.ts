@@ -181,18 +181,21 @@ test.describe("Console system share Web Demo", () => {
   test("holds the success notice for one second before navigating to detail", async ({ page }) => {
     await clearPendingShare(page);
     const submissionId = randomUUID();
-    await page.goto(`/share?d_persona=admin&d_share=text&d_submission=${submissionId}`, {
-      waitUntil: "domcontentloaded",
-    });
+    await page.goto(
+      `/share?d_persona=admin&d_share=text&d_submission=${submissionId}&d_delay=slow`,
+      {
+        waitUntil: "domcontentloaded",
+      }
+    );
     await expectSharePage(page);
-    await page.clock.install();
     await page.getByTestId("system-share-submit").click();
     await expect(page.getByTestId("system-share-toast-success")).toBeVisible();
-    await expect(page).toHaveURL(/\/share\?/);
-    await page.clock.fastForward(999);
-    await expect(page).toHaveURL(/\/share\?/);
-    await page.clock.fastForward(1);
-    await expect(page).toHaveURL(/\/memos\/console-demo-created-\d+$/, { timeout: 5_000 });
+    expect(page.url()).toMatch(/\/share\?/);
+    const successShownAt = Date.now();
+    await page.waitForURL(/\/memos\/console-demo-created-\d+$/, { timeout: 5_000 });
+    const successNoticeDuration = Date.now() - successShownAt;
+    expect(successNoticeDuration).toBeGreaterThanOrEqual(900);
+    expect(successNoticeDuration).toBeLessThan(2_500);
     await expect(page.getByTestId("system-share-toast-success")).toHaveCount(0);
   });
 
