@@ -213,7 +213,9 @@ function extractReferences(
         return absolute ? `${new URL(siteUrl).origin}${path}` : path;
       },
     };
-    reference.fallback = deriveBaseReference(reference, mediaOrigin, basePath) ?? undefined;
+    if (isLegacyDerivedWatermarkPath(sourceUrl.pathname)) {
+      reference.fallback = deriveBaseReference(reference, mediaOrigin, basePath) ?? undefined;
+    }
     references.push(reference);
   }
   return references;
@@ -448,8 +450,12 @@ function deriveWatermarkReference(
     staticPath,
     replacement: () => staticPath,
   };
-  derived.fallback = deriveBaseReference(derived, mediaOrigin, basePath) ?? undefined;
   return derived;
+}
+
+function isLegacyDerivedWatermarkPath(pathname: string) {
+  const match = PUBLIC_DERIVED_RENDER_VARIANT_RE.exec(pathname);
+  return match?.[4]?.endsWith("-v1") === true;
 }
 
 function deriveBaseReference(
