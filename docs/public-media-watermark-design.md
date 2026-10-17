@@ -105,7 +105,7 @@ contain 槽位须验证圆角、浅色/暗色背景和竖图留白；不再以�
 ```text
 /api/public/assets/:kind/:slug/:mediaHash/:renderId/:variant.:ext
 
-renderId = wm-a-v1 | wm-b-v1
+renderId = wm-a-v1 | wm-b-v1 | wm-a-v2 | wm-b-v2
            包含 A/B、contain 配方、Logo 素材指纹与合成参数
 ```
 

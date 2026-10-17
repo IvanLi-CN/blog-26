@@ -141,13 +141,40 @@ describe("packagePublicMedia", () => {
 
     expect(requestedUrls).toEqual([
       `https://api.example${candidateUrl}`,
-      "https://api.example/api/public/assets/post/logo/hash/wm-a-v1/content.webp?v=2026-10-15",
-      "https://api.example/api/public/assets/post/logo/hash/wm-b-v1/content.webp?v=2026-10-15",
+      "https://api.example/api/public/assets/post/logo/hash/wm-a-v2/content.webp?v=2026-10-15",
+      "https://api.example/api/public/assets/post/logo/hash/wm-b-v2/content.webp?v=2026-10-15",
     ]);
     expect(manifest.entries.map((entry) => entry.sourcePath)).toEqual([
       "/api/public/assets/post/logo/hash/content.webp?v=2026-10-15",
-      "/api/public/assets/post/logo/hash/wm-a-v1/content.webp?v=2026-10-15",
-      "/api/public/assets/post/logo/hash/wm-b-v1/content.webp?v=2026-10-15",
+      "/api/public/assets/post/logo/hash/wm-a-v2/content.webp?v=2026-10-15",
+      "/api/public/assets/post/logo/hash/wm-b-v2/content.webp?v=2026-10-15",
+    ]);
+  });
+
+  test("fails closed when a current derived watermark variant is missing", async () => {
+    const cwd = await fixture();
+    const candidateUrl = "/api/public/assets/post/logo/hash/content.webp?v=2026-10-15";
+    await writeFile(join(cwd, "site-dist", "snapshot.json"), `{"media":"${candidateUrl}"}`);
+
+    const requestedUrls: string[] = [];
+    await expect(
+      packagePublicMedia({
+        cwd,
+        mediaOrigin: "https://api.example",
+        siteUrl: "https://site.example",
+        downloadAttempts: 1,
+        includeDerivedWatermarkVariants: true,
+        fetchImpl: async (input) => {
+          const url = String(input);
+          requestedUrls.push(url);
+          if (url.includes("/wm-a-v2/")) return new Response("missing", { status: 404 });
+          return response("image");
+        },
+      })
+    ).rejects.toThrow("Media origin returned HTTP 404");
+    expect(requestedUrls).toEqual([
+      `https://api.example${candidateUrl}`,
+      "https://api.example/api/public/assets/post/logo/hash/wm-a-v2/content.webp?v=2026-10-15",
     ]);
   });
 

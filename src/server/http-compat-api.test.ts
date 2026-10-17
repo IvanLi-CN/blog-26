@@ -1378,8 +1378,8 @@ public: false
     expect(snapshotPost?.media?.cover?.variants?.cover).toContain(
       "/api/public/assets/post/public-media-post/"
     );
-    expect(snapshotPost?.media?.cover?.presentations?.cover?.a).toContain("/wm-a-v1/cover");
-    expect(snapshotPost?.media?.cover?.presentations?.cover?.b).toContain("/wm-b-v1/cover");
+    expect(snapshotPost?.media?.cover?.presentations?.cover?.a).toContain("/wm-a-v2/cover");
+    expect(snapshotPost?.media?.cover?.presentations?.cover?.b).toContain("/wm-b-v2/cover");
   }, 30_000);
 
   it("omits local public content whose media source is missing", async () => {
@@ -1691,7 +1691,7 @@ public: false
       expect(init?.method).toBe("GET");
       expect(url).toContain("/fit-in/1600x900/");
       expect(url).toContain(
-        `watermark(b64:${Buffer.from("http://blog:25090/watermark-ivanli-b.v1.svg").toString("base64url")},-16,-16,36,18)`
+        `watermark(b64:${Buffer.from("http://blog:25090/watermark-ivanli-b.v1.svg").toString("base64url")},-16,-16,36,18,100)`
       );
       return new Response("versioned-image", {
         status: 200,
@@ -1702,8 +1702,8 @@ public: false
     try {
       const mediaHash = buildPublicMediaHash("blog/assets/versioned-cover.png", "cover");
       const response = await handlePublicApiRequest(
-        buildRequest(`/api/public/assets/post/versioned-logo-post/${mediaHash}/wm-b-v1/cover.webp`),
-        `/assets/post/versioned-logo-post/${mediaHash}/wm-b-v1/cover.webp`
+        buildRequest(`/api/public/assets/post/versioned-logo-post/${mediaHash}/wm-b-v2/cover.webp`),
+        `/assets/post/versioned-logo-post/${mediaHash}/wm-b-v2/cover.webp`
       );
       expect(response.status).toBe(200);
       expect(await response.text()).toBe("versioned-image");
@@ -1749,7 +1749,7 @@ public: false
         Buffer.from("http://blog:25090/watermark-ivanli-b.v1.svg").toString("base64url")
       );
       expect(url).toContain(
-        `watermark(b64:${Buffer.from("http://blog:25090/watermark-ivanli-b.v1.svg").toString("base64url")},-32,-32,36,18)`
+        `watermark(b64:${Buffer.from("http://blog:25090/watermark-ivanli-b.v1.svg").toString("base64url")},-32,-32,36,18,100)`
       );
       expect(url).toContain(":strip_exif()/");
       return new Response("versioned-video-poster", {
@@ -1761,8 +1761,8 @@ public: false
     try {
       const mediaHash = buildPublicMediaHash("blog/assets/video-poster.mp4", "cover");
       const response = await handlePublicApiRequest(
-        buildRequest(`/api/public/assets/post/video-meta-post/${mediaHash}/wm-b-v1/cover.webp`),
-        `/assets/post/video-meta-post/${mediaHash}/wm-b-v1/cover.webp`
+        buildRequest(`/api/public/assets/post/video-meta-post/${mediaHash}/wm-b-v2/cover.webp`),
+        `/assets/post/video-meta-post/${mediaHash}/wm-b-v2/cover.webp`
       );
       expect(response.status).toBe(200);
       expect(await response.text()).toBe("versioned-video-poster");
@@ -2052,9 +2052,9 @@ public: false
         const mediaHash = buildPublicMediaHash(sourcePath, "content");
         const response = await handlePublicApiRequest(
           buildRequest(
-            `/api/public/assets/post/watermark-${item.name}/${mediaHash}/wm-a-v1/content.webp`
+            `/api/public/assets/post/watermark-${item.name}/${mediaHash}/wm-a-v2/content.webp`
           ),
-          `/assets/post/watermark-${item.name}/${mediaHash}/wm-a-v1/content.webp`
+          `/assets/post/watermark-${item.name}/${mediaHash}/wm-a-v2/content.webp`
         );
         expect(response.status).toBe(200);
         const { data, info } = await sharp(Buffer.from(await response.arrayBuffer()))
@@ -2110,8 +2110,8 @@ public: false
       });
       const gifHash = buildPublicMediaHash("blog/assets/animated.gif", "content");
       const gifResponse = await handlePublicApiRequest(
-        buildRequest(`/api/public/assets/post/animated-logo/${gifHash}/wm-a-v1/content.webp`),
-        `/assets/post/animated-logo/${gifHash}/wm-a-v1/content.webp`
+        buildRequest(`/api/public/assets/post/animated-logo/${gifHash}/wm-a-v2/content.webp`),
+        `/assets/post/animated-logo/${gifHash}/wm-a-v2/content.webp`
       );
       expect(gifResponse.status).toBe(200);
       const gifBuffer = Buffer.from(await gifResponse.arrayBuffer());

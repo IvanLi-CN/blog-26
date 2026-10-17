@@ -213,7 +213,9 @@ function extractReferences(
         return absolute ? `${new URL(siteUrl).origin}${path}` : path;
       },
     };
-    reference.fallback = deriveBaseReference(reference, mediaOrigin, basePath) ?? undefined;
+    if (isLegacyDerivedWatermarkPath(sourceUrl.pathname)) {
+      reference.fallback = deriveBaseReference(reference, mediaOrigin, basePath) ?? undefined;
+    }
     references.push(reference);
   }
   return references;
@@ -315,8 +317,8 @@ const MAX_MEDIA_REDIRECTS = 5;
 const PUBLIC_RENDER_VARIANT_RE =
   /^\/api\/public\/assets\/(post|memo)\/([^/]+)\/([^/]+)\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu;
 const PUBLIC_DERIVED_RENDER_VARIANT_RE =
-  /^\/api\/public\/assets\/(post|memo)\/([^/]+)\/([^/]+)\/(wm-a-v1|wm-b-v1)\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu;
-const DERIVED_WATERMARK_RENDER_IDS = ["wm-a-v1", "wm-b-v1"] as const;
+  /^\/api\/public\/assets\/(post|memo)\/([^/]+)\/([^/]+)\/(wm-[ab]-v[12])\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu;
+const DERIVED_WATERMARK_RENDER_IDS = ["wm-a-v2", "wm-b-v2"] as const;
 
 async function fetchMediaWithinOrigin(
   url: string,
@@ -448,8 +450,12 @@ function deriveWatermarkReference(
     staticPath,
     replacement: () => staticPath,
   };
-  derived.fallback = deriveBaseReference(derived, mediaOrigin, basePath) ?? undefined;
   return derived;
+}
+
+function isLegacyDerivedWatermarkPath(pathname: string) {
+  const match = PUBLIC_DERIVED_RENDER_VARIANT_RE.exec(pathname);
+  return match?.[4]?.endsWith("-v1") === true;
 }
 
 function deriveBaseReference(
