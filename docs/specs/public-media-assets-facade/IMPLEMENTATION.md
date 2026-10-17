@@ -81,7 +81,7 @@
 28. A/B 由页面实际可见 CSS 宽度选择：`<600` 使用 A，`>=600` 使用 B；共享选择器通过 `ResizeObserver`、图片加载、路由进入和灯箱打开测量 contain 可见矩形，DPR 不参与构图，卸载时释放监听。
 29. 列表、时间线、相关推荐、详情封面、正文和灯箱在现有图框中使用 contain；图片自身 hover 放大已移除。灯箱独立选择 `full` 候选，静态和 hydration 输出保留 A/B 候选闭包。
 30. 版本化派生使用 7%/18% Logo 宽度、2% 右下边距、64% 可见不透明度（imagor alpha 36），v2 显式使用非约束 `h_ratio=100` 保持宽度为主口径；方向校正/缩放/取帧后按 240×160/80,000px² 门槛豁免；视频使用同配方的签名 imagor `/meta` 读取 poster 尺寸，oversized 图片用同一规则的 sharp 合成。
-31. `verify-pages-build` 与静态媒体打包识别带 renderId 的路径并校验 A/B SVG 静态资源；候选 URL 带 snapshot 版本戳，缺失候选、下载失败和 artifact 限额继续阻止发布。
+31. `verify-pages-build` 与静态媒体打包识别带 renderId 的路径并校验 A/B SVG 静态资源；候选 URL 带 snapshot 版本戳，v2 缺失候选、下载失败和 artifact 限额阻止发布，只有旧 v1 快照保留基图 fallback。
 32. 路由会拒绝带 renderId 的 `play` 播放地址，避免把登记的 A/B 身份误用于原始视频透传；未知身份和非法 renderId 继续返回 404。
 33. A/B SVG 统一使用无描边白色主体与短距暗色柔和阴影；本地 sharp 在 GIF 输出时把单帧透明 Logo 画布按动画页数堆叠后合成，确保每一帧都保留水印与原有时序。
 34. 灯箱媒体槽位明确拥有 `90vw` 内的稳定宽度，full 候选仍独立按可见宽度选择，避免 `max-width: 100%` 在无宽度父层中塌缩为 0×0。
