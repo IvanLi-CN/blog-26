@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "08defc534c0c0df15bf3d43b144dc785a44bef05",
   "covered_files": {
-    ".github/workflows/e2e.yml": "ad2c75cd411a82d217cda66c2d72b4164c616d06",
+    ".github/workflows/e2e.yml": "47a791cee12d1dd0449f39e2a96dc97d05d94a85",
     "CONTEXT.md": "4452f9d1abd5f90cd35893ae9e2ae9a39776f7d3",
     "GLOSSARY.md": "c7f8da3a0e4f8e26536103bb64cbeb2efaf1ba3d",
     "apps/admin/src/router.tsx": "9f7c91403099e0bdf8862598df3de7bdb5fec43a",
