@@ -9,7 +9,7 @@
     "apps/admin/src/router.tsx": "9f7c91403099e0bdf8862598df3de7bdb5fec43a",
     "docs/adr/0020-console-pwa-system-share-target.md": "ccea210cbafd37917d341b61553ad14878eadb22",
     "docs/specs/README.md": "cc332e821388ec818a390ffcf84ee4f2ac23207e",
-    "docs/specs/system-share-memos/HISTORY.md": "6332163ad60981b8215c17629577c8de0a030534",
+    "docs/specs/system-share-memos/HISTORY.md": "b50b6ad503d958e029cab928a95b31e50a8b9176",
     "docs/specs/system-share-memos/IMPLEMENTATION.md": "c4d1f709be9456174e17e313433f1f240011e108",
     "docs/specs/system-share-memos/SPEC.md": "29413091c8004200be6edb073c73a5668632a1cf",
     "docs/specs/system-share-memos/assets/system-share-desktop-detail.png": "2ef498c508a3cb43af6702cc7cc1835f690e214d",
@@ -46,7 +46,7 @@
     "src/server/public-api/router.ts": "31e9857f2461d4d7826e7a1a0eae0f7379dcde43",
     "src/server/routers/memos.ts": "0bfc0669abaeee3abc6042d6dbc093e93bef75d0",
     "src/styles/milkdown-nature.css": "10f811a5bebf2f69884e0d59baee177b75756950",
-    "tests/e2e/web-demo/system-share.spec.ts": "b021e7cb04a8a87194bde07bc7820358b398a217",
+    "tests/e2e/web-demo/system-share.spec.ts": "4ca0694a6a79069d861f7cd0c7f47f7332bd15e5",
     "tests/lib/public-pwa-assets.test.ts": "babda4a2eb57de53c7d3377e021746f9b8e918bf",
     "tests/lib/web-demo-inspector-layout.test.ts": "a17f835643925fdd1b33d110a3c1ade0786da90c",
     "tests/server/console-api-route.test.ts": "8d2d99311d518cf3107d1ec3150996180a7e7be9",
@@ -113,7 +113,7 @@
         },
         {
           "path": "tests/e2e/web-demo/system-share.spec.ts",
-          "blob": "b021e7cb04a8a87194bde07bc7820358b398a217",
+          "blob": "4ca0694a6a79069d861f7cd0c7f47f7332bd15e5",
           "command": "Official console Web Demo mobile and desktop publishing feedback scenarios"
         },
         {
