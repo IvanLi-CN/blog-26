@@ -75,7 +75,7 @@ status 只读持久元信息。独立进程执行 prepare、check 或 rebuild �
 | REQ-SREL-018 | 管理接口、独立保存、并发质量授予及旧任务失效通过。 |
 | REQ-SREL-019 / 020 / 021 | 已接入跨来源 RRF、全局 topK、截断前筛选、统一 HTTP/tRPC/MCP 契约、完整 edition 绑定和范围不可用元信息；当前 Candidate 的 Playbook 语义召回、模型输入隔离和版本边界已由 VM 固定合成 provider 实证，root chmod 故障注入限制保留在验证证据中。 |
 | REQ-SREL-022 / 023 | 未完成。当前博客统计为历史向量行数，过时固定为零；Playbook 只统计已有行，未建立合格语料和预期分块的覆盖基数。生成与增量跳过须使用一致的 embedding 输入摘要，旧、孤立、多余及缺失记录须正确分类。 |
-| REQ-SREL-024 | 公共 AI 搜索流式入口、心跳、取消和 30 秒有界模型等待已接入；需要在 Linux VM 与正式 Web Demo 进一步验证慢 Mock、断开和旧入口兼容。 |
+| REQ-SREL-024 | 公共 AI 搜索流式入口、心跳、取消和 30 秒有界模型等待已接入；Web Demo 与生产入口保持 AI-only 及 started/progress/result 事件一致；慢 Mock 已遵守 AbortSignal，仍需要在 Linux VM 与正式 Web Demo 进一步验证断开和旧入口兼容。 |
 
 既有验证只证明文章/Memo 搜索与浏览器 Playbook 边界；本 Candidate 新增的 adapter、导航、服务端筛选和固定合成 provider 证据已通过，root 来宾无法触发 chmod I/O 故障注入，真实生产 provider 与发行镜像仍不在本次证据范围内。同步管理缺口由 [Playbook 实现状态](../style-playbook-integration/IMPLEMENTATION.md) 记录。
 
