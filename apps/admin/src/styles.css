@@ -603,6 +603,14 @@ html[data-ui-theme="light"] {
   z-index: 1;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .admin-switch,
+  .admin-switch::before,
+  .admin-switch-thumb {
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @media (min-width: 1024px) and (pointer: fine) {
   .admin-button {
     height: 2rem;

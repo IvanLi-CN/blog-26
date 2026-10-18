@@ -71,17 +71,26 @@ export const Stale: Story = {
 export const Editing: Story = {
   render: (args) => {
     const [policy, setPolicy] = useState(args.policy);
+    const [dirty, setDirty] = useState(args.dirty);
     return (
       <SearchPolicyCard
         {...args}
         policy={policy}
-        onChange={(values) => setPolicy((current) => ({ ...current, ...values }))}
+        dirty={dirty}
+        onChange={(values) => {
+          setDirty(true);
+          setPolicy((current) => ({ ...current, ...values }));
+        }}
       />
     );
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const enabled = canvas.getByRole("switch", { name: "启用AI 检索（RAG）" });
+    const enabled = canvas.getByRole("switch", { name: "启用此模式 AI 检索（RAG）" });
+    await expect(enabled).toHaveAttribute(
+      "aria-labelledby",
+      "search-rag-enabled-label search-rag-title"
+    );
     await userEvent.click(enabled);
     await expect(enabled).toHaveAttribute("aria-checked", "false");
     await expect(canvas.getByRole("button", { name: "验证已保存配置" })).toBeDisabled();

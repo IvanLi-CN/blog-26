@@ -16,8 +16,8 @@ import {
   CardHeader,
   CardTitle,
   Disclosure,
-  FieldLabel,
   Input,
+  Label,
   Switch,
 } from "~/components/ui";
 
@@ -85,7 +85,7 @@ export function SearchPolicyCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle id={`search-${mode}-title`} className="flex items-center gap-2">
           <ModeIcon className="size-5 text-primary" aria-hidden="true" />
           {labels[mode]}
         </CardTitle>
@@ -97,17 +97,31 @@ export function SearchPolicyCard({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <FieldLabel>启用此模式</FieldLabel>
+          <Label
+            htmlFor={`search-${mode}-enabled`}
+            id={`search-${mode}-enabled-label`}
+            className="mb-0"
+          >
+            启用此模式
+          </Label>
           <Switch
-            aria-label={`启用${labels[mode]}`}
+            id={`search-${mode}-enabled`}
+            aria-labelledby={`search-${mode}-enabled-label search-${mode}-title`}
             checked={policy.enabled}
             onCheckedChange={(enabled) => onChange({ enabled })}
           />
         </div>
         <div className="flex items-center justify-between gap-3">
-          <FieldLabel>继承对话模型</FieldLabel>
+          <Label
+            htmlFor={`search-${mode}-inherit`}
+            id={`search-${mode}-inherit-label`}
+            className="mb-0"
+          >
+            继承对话模型
+          </Label>
           <Switch
-            aria-label={`${labels[mode]}继承对话模型`}
+            id={`search-${mode}-inherit`}
+            aria-labelledby={`search-${mode}-inherit-label search-${mode}-title`}
             checked={policy.model === null}
             onCheckedChange={(inherit) => onChange({ model: inherit ? null : "" })}
           />
