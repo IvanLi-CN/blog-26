@@ -376,13 +376,13 @@ export class GitHubLedgerStore implements LedgerStore {
     const parsedCommits = commits.map((raw) => repositoryCommitSchema.parse(raw));
     let recoverySha: string | undefined;
     const recoveryTargets = new Set<string>();
-    for (const [index, commit] of parsedCommits.entries()) {
+    for (const commit of parsedCommits) {
       const recovered = commit.commit.message.match(/^Ledger-Recovery: ([a-f0-9]{40})$/m)?.[1];
       if (!recovered) continue;
-      // A recovery declaration is authority only when signed by the release bot.
-      this.github.verifyBotCommit(commit.sha, commits[index]);
-      recoverySha ||= recovered;
-      recoveryTargets.add(recovered);
+      // Defer authority checks until the ordered pass binds each target to its commit.
+      const target = shaSchema.parse(recovered);
+      recoverySha ||= target;
+      recoveryTargets.add(target);
     }
     for (const [index, commit] of parsedCommits.entries()) {
       const raw = commits[index];
