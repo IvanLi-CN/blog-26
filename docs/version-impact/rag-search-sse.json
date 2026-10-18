@@ -11,7 +11,7 @@
     "src/lib/web-demo-fetch.ts": "98afb1c60edb1677a37e1033dbb4864d3d90ad88",
     "src/server/public-api/router.ts": "6af5c20d8015a9932b2ebf695f955adeefc6c4cf",
     "src/server/public-api/search-stream.test.ts": "533f51c75d71924aec91caee159973137a8be00e",
-    "src/server/services/content-search.test.ts": "46ca52277d2b43b01123c6ca600e6711d5afb052",
+    "src/server/services/content-search.test.ts": "d6feb87c1383cba16bec14a45fa41580e70f7d96",
     "src/server/services/content-search.ts": "9d302f9c08b1432b81a0ec148716554d9ffbc130",
     "src/server/services/search-model.ts": "1994b6e0938b10025b490e666b682c130994cbe9",
     "src/server/services/search-semantic-projection.ts": "49cc67a3f6f009fec09a2cd84fe35283f3e45a44",
@@ -30,7 +30,7 @@
       "evidence": [
         {
           "path": "src/server/services/content-search.test.ts",
-          "blob": "46ca52277d2b43b01123c6ca600e6711d5afb052",
+          "blob": "d6feb87c1383cba16bec14a45fa41580e70f7d96",
           "command": "Slow-provider JSON fallback, SSE completion, and request cancellation regression"
         },
         {
