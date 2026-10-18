@@ -601,6 +601,16 @@ export async function packagePublicMedia(
           if (!uniqueReferences.has(derivedKey)) uniqueReferences.set(derivedKey, derived);
         }
       }
+      // Legacy snapshots can render the unversioned facade URL while still
+      // exposing v1 watermark candidates in their media metadata. Freeze the
+      // canonical asset proactively so the later static build can reuse it.
+      if (isLegacyDerivedWatermarkPath(reference.sourceUrl.pathname)) {
+        const base = deriveBaseReference(reference, mediaOrigin, basePath);
+        if (base) {
+          const baseKey = fetchKey(base);
+          if (!uniqueReferences.has(baseKey)) uniqueReferences.set(baseKey, base);
+        }
+      }
     }
   }
   const referenceEntries = [...uniqueReferences.entries()];

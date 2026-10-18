@@ -227,7 +227,35 @@ describe("packagePublicMedia", () => {
         (url) =>
           url === "https://api.example/api/public/assets/post/logo/hash/content.webp?v=2026-10-15"
       )
-    ).toHaveLength(2);
+    ).toHaveLength(3);
+  });
+
+  test("freezes the canonical asset for legacy watermark candidates", async () => {
+    const cwd = await fixture();
+    const watermark = "/api/public/assets/post/logo/hash/wm-b-v1/content.webp?v=2026-10-15";
+    await writeFile(join(cwd, "site-dist", "snapshot.json"), `{"media":"${watermark}"}`);
+
+    const requestedUrls: string[] = [];
+    const manifest = await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      includeDerivedWatermarkVariants: true,
+      fetchImpl: async (input) => {
+        requestedUrls.push(String(input));
+        return response("image");
+      },
+    });
+
+    expect(requestedUrls).toContain(
+      "https://api.example/api/public/assets/post/logo/hash/content.webp?v=2026-10-15"
+    );
+    expect(
+      manifest.entries.some(
+        (entry) =>
+          entry.sourcePath === "/api/public/assets/post/logo/hash/content.webp?v=2026-10-15"
+      )
+    ).toBe(true);
   });
 
   test("does not exempt non-stable or malformed Playbook edition paths", async () => {
