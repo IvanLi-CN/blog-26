@@ -92,17 +92,37 @@ export const PLAYBOOK_SEARCH_DEMO_DOCUMENTS = [
   {
     slug: "delivery",
     title: "交付工作流",
-    excerpt: "把实现、验证、审查与发布组织成可追踪的交付流程。",
-    body: "交付工作流要求先锁定范围，再完成验证、审查和可回滚发布。",
+    excerpt:
+      "Release 交付要把实现、验证、审查、版本身份、构建产物与可回滚发布组织成一条可追踪记录；发布前固定 source SHA 和 manifest，完成权限检查与部署验证，并保留能在异常时快速恢复的入口，同时明确负责人、触发条件、验证结果和最终状态。",
+    body: "Release 交付流程要求先锁定范围和 source SHA，再检查 manifest、构建产物、权限、部署验证与回滚入口。每个环节都应留下可追踪证据，避免发布结果只停留在页面上一行状态。",
     type: "topic" as const,
     href: `${playbookDemoBase}/topics/delivery`,
     sections: [
       {
         href: `${playbookDemoBase}/topics/delivery#section-release`,
         title: "发布与回滚",
-        snippet: "发布必须保留验证证据与回滚入口。",
+        snippet:
+          "Release 发布必须保留 source SHA、manifest、验证证据和回滚入口；当 release target、构建产物或部署环境发生变化时，重新确认版本身份，再把恢复路径写进同一条交付记录，并记录负责人、触发条件与恢复后的验证结果。",
         score: 14,
         order: 1,
+        kind: "section" as const,
+      },
+      {
+        href: `${playbookDemoBase}/topics/delivery#section-identity`,
+        title: "验证与版本身份",
+        snippet:
+          "验证完成后对照版本身份、构建产物和部署结果，确认当前 release 使用的内容、配置与权限都来自同一份已审查输入，避免旧版本或错误环境被误发布，并让审查者能够复现这次发布的判断依据。",
+        score: 13,
+        order: 2,
+        kind: "section" as const,
+      },
+      {
+        href: `${playbookDemoBase}/topics/delivery#section-recovery`,
+        title: "恢复路径",
+        snippet:
+          "回滚不是发布失败后的临时补丁，而是 release 设计的一部分；记录可执行的恢复命令、触发条件和验证结果，才能在异常时快速回到已知可用状态，并确认恢复后的版本身份仍然可追踪。",
+        score: 12,
+        order: 3,
         kind: "section" as const,
       },
     ],
@@ -110,19 +130,39 @@ export const PLAYBOOK_SEARCH_DEMO_DOCUMENTS = [
   {
     slug: "safe-release",
     title: "安全发布 Policy Skill",
-    excerpt: "发布前检查权限、版本身份和恢复路径。",
-    body: "安全发布要求检查权限、版本身份、恢复路径和审查证据。",
+    excerpt:
+      "Release 前检查权限、版本身份、构建产物、部署环境和恢复路径，把审查证据与最终结果绑定在同一条可追踪记录中；任何身份不一致都应在发布前阻断，而不是上线后再靠人工排查，并明确谁批准、谁执行以及如何验证恢复。",
+    body: "安全 Release 要求检查权限、版本身份、构建产物、恢复路径和审查证据，并确认最终部署环境与已验证输入一致。",
     type: "policy" as const,
     href: `${playbookDemoBase}/policies/safe-release`,
     sections: [
       {
         href: `${playbookDemoBase}/policies/safe-release#policy-safe-release-resources-file-1`,
         title: "references/release-checklist.md",
-        snippet: "发布检查清单：权限、版本、验证和恢复。",
+        snippet:
+          "Release 发布检查清单覆盖权限、版本、验证和恢复：先确认执行者能够发布，再核对 source SHA、manifest 与构建产物，最后记录部署结果和回滚入口，同时留下审批人、执行人和恢复验证结果。",
         score: 16,
         order: 1,
         kind: "resource" as const,
         resourcePath: "references/release-checklist.md",
+      },
+      {
+        href: `${playbookDemoBase}/policies/safe-release#policy-safe-release-identity`,
+        title: "版本与权限",
+        snippet:
+          "版本身份与权限必须在同一份 Release 记录中核对；如果 source SHA、目标环境或执行者发生变化，就要重新完成审查和验证，不能沿用上一轮发布的结论，并应保留变化原因和新的批准记录。",
+        score: 15,
+        order: 2,
+        kind: "section" as const,
+      },
+      {
+        href: `${playbookDemoBase}/policies/safe-release#policy-safe-release-recovery`,
+        title: "恢复证据",
+        snippet:
+          "恢复路径应包含触发条件、可执行命令、预期状态和验证证据；这样 Release 失败时可以快速回到已知可用版本，而不是临时猜测哪个产物仍然可信，并能在恢复后继续追踪责任和后续修复。",
+        score: 14,
+        order: 3,
+        kind: "section" as const,
       },
     ],
   },

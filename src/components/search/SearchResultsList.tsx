@@ -219,7 +219,7 @@ export function SearchResultCard({
               <div
                 data-search-snippet
                 className={cn(
-                  "nature-muted mt-2 max-w-[75ch] overflow-hidden break-words text-sm leading-6",
+                  "nature-muted mt-2 w-full max-w-none overflow-hidden break-words text-sm leading-6",
                   showSections ? "max-h-12" : "max-h-48"
                 )}
               >
@@ -247,7 +247,7 @@ export function SearchResultCard({
                     </h3>
                     <div
                       data-search-snippet
-                      className="mt-1 max-h-36 max-w-[75ch] overflow-hidden break-words text-sm leading-6"
+                      className="mt-1 max-h-36 w-full max-w-none overflow-hidden break-words text-sm leading-6"
                     >
                       {renderSnippet(section.snippet, terms, 2, true)}
                     </div>
