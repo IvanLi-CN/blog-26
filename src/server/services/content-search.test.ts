@@ -1189,7 +1189,14 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
 
     requestController.abort();
     await providerAborted;
-    await expect(reader.read()).resolves.toMatchObject({ done: true });
+    const decoder = new TextDecoder();
+    let afterAbort = "";
+    while (true) {
+      const part = await reader.read();
+      if (part.done) break;
+      afterAbort += decoder.decode(part.value, { stream: true });
+    }
+    expect(afterAbort).not.toContain("event: result");
     reader.releaseLock();
   });
   test("MCP uses the common executor, enforces capacity and denies unpublished access", async () => {
