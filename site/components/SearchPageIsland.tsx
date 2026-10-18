@@ -94,6 +94,54 @@ function requestScope(filter: SearchFilter) {
   return { source: "all", type: "all" } as const;
 }
 
+type SearchStreamEnvelope = {
+  results: SearchResultItem[];
+  effectiveMode: SearchMode;
+  reason?: SearchReason;
+  incompleteSources?: string[];
+  ragIncompleteSources?: string[];
+};
+
+async function readSearchStream(response: Response): Promise<SearchStreamEnvelope> {
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("搜索流不可用，请稍后重试");
+  const decoder = new TextDecoder();
+  let buffer = "";
+  try {
+    while (true) {
+      const part = await reader.read();
+      if (part.done) break;
+      buffer += decoder.decode(part.value, { stream: true });
+      const blocks = buffer.split("\n\n");
+      buffer = blocks.pop() ?? "";
+      for (const block of blocks) {
+        const event = block.match(/^event:\s*([^\n]+)$/mu)?.[1]?.trim();
+        const data = block
+          .split("\n")
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => line.slice(5).trimStart())
+          .join("\n");
+        if (!event || !data) continue;
+        if (event === "error") {
+          const payload = JSON.parse(data) as { error?: string };
+          throw new Error(payload.error || "搜索失败，请稍后重试");
+        }
+        if (event === "result") return JSON.parse(data) as SearchStreamEnvelope;
+      }
+    }
+    const finalBlock = `${buffer}\n\n`;
+    const data = finalBlock
+      .split("\n")
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice(5).trimStart())
+      .join("\n");
+    if (data) return JSON.parse(data) as SearchStreamEnvelope;
+  } finally {
+    reader.releaseLock();
+  }
+  throw new Error("搜索流未返回结果，请稍后重试");
+}
+
 function parseFilter(value: string | null): SearchFilter {
   return value === "post" ||
     value === "memo" ||
@@ -125,15 +173,27 @@ async function search(
     params.set("sourceReleaseId", playbook.sourceReleaseId);
     params.set("sourceTag", playbook.sourceTag);
   }
-  const response = await webDemoFetch(toPublicApiUrl(`/api/public/search?${params.toString()}`), {
+  const endpoint = mode === "keyword" ? "/api/public/search" : "/api/public/search/stream";
+  const response = await webDemoFetch(toPublicApiUrl(`${endpoint}?${params.toString()}`), {
     signal,
   });
-  const payload = await response.json().catch(() => []);
   if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
     const message =
       payload && typeof payload.error === "string" ? payload.error : "搜索失败，请稍后重试";
     throw new Error(message);
   }
+  if (mode !== "keyword") {
+    const envelope = await readSearchStream(response);
+    return {
+      results: envelope.results,
+      effectiveMode: envelope.effectiveMode,
+      reason: envelope.reason ?? null,
+      incompleteSources: envelope.incompleteSources ?? [],
+      ragIncompleteSources: envelope.ragIncompleteSources ?? [],
+    };
+  }
+  const payload = await response.json().catch(() => []);
   const effective = searchModeSchema.safeParse(response.headers.get("Search-Effective-Mode"));
   return {
     results: (payload ?? []) as SearchResultItem[],

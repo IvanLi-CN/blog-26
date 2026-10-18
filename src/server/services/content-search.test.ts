@@ -77,6 +77,29 @@ function fakeFetch(
 ): typeof fetch {
   return Object.assign(mock(handler), { preconnect: originalFetch.preconnect });
 }
+
+async function readSseText(response: Response, firstChunk?: (text: string) => void) {
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("missing SSE body");
+  const decoder = new TextDecoder();
+  let output = "";
+  let first = true;
+  try {
+    while (true) {
+      const part = await reader.read();
+      if (part.done) break;
+      const text = decoder.decode(part.value, { stream: true });
+      output += text;
+      if (first) {
+        first = false;
+        firstChunk?.(text);
+      }
+    }
+    return output + decoder.decode();
+  } finally {
+    reader.releaseLock();
+  }
+}
 async function seedVerifiedBlog(postId: string) {
   const catalog = await ragCatalog({ source: "blog" });
   const blob = Buffer.from(new Float32Array([1, 0]).buffer);
@@ -1039,6 +1062,65 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     expect(invalid.status).toBe(400);
     const status = await (await contentSearchIndex()).status();
     expect(status.watermark).toBeGreaterThan(0);
+  });
+  test("SSE sends progress before a slow RAG model and returns the AI result", async () => {
+    await db.insert(posts).values(fixture("sse-rag", "Semantic retrieval fixture"));
+    await seedVerifiedBlog("sse-rag");
+    const policy = structuredClone(DEFAULT_SEARCH_POLICY);
+    policy.rag.timeoutMs = 100;
+    await saveSearchPolicy(policy);
+    await enable("rag");
+
+    let chatCalls = 0;
+    globalThis.fetch = fakeFetch(async (url, init) => {
+      if (String(url).endsWith("/embeddings")) {
+        await Bun.sleep(120);
+        return Response.json({ data: [{ embedding: [1, 0] }] });
+      }
+      chatCalls += 1;
+      await Bun.sleep(120);
+      const request = JSON.parse(String(init?.body));
+      const payload = JSON.parse(request.messages[1].content);
+      return Response.json({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: {
+              content: JSON.stringify({
+                items: payload.candidates.map((candidate: { id: string; title: string }) => ({
+                  id: candidate.id,
+                  relevant: true,
+                  rank: 0,
+                  evidence: candidate.title,
+                })),
+              }),
+            },
+          },
+        ],
+      });
+    });
+
+    const response = await handlePublicApiRequest(
+      new Request(
+        "http://localhost/api/public/search/stream?q=semantic%20retrieval&mode=rag&source=blog&type=post&topK=10"
+      ),
+      "/search/stream"
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    let firstChunk = "";
+    const body = await readSseText(response, (text) => {
+      firstChunk = text;
+    });
+    expect(firstChunk).toContain("event: started");
+    expect(body).toContain("event: result");
+    const resultEvent = body.split("\n\n").find((event) => event.startsWith("event: result"));
+    expect(resultEvent).toBeDefined();
+    if (!resultEvent) throw new Error("missing result event");
+    const result = JSON.parse(resultEvent.split("\ndata: ")[1] ?? "{}");
+    expect(result).toMatchObject({ effectiveMode: "rag" });
+    expect(result.results.map((item: { slug: string }) => item.slug)).toEqual(["sse-rag"]);
+    expect(chatCalls).toBe(1);
   });
   test("MCP uses the common executor, enforces capacity and denies unpublished access", async () => {
     await db

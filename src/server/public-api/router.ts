@@ -39,6 +39,12 @@ import { createContext } from "@/server/context";
 import { handlePublicAssetFacadeRequest } from "@/server/public-media";
 import { appRouter } from "@/server/router";
 import { triggerIncrementalSync } from "@/server/routers/memos";
+import {
+  type ContentSearchInput,
+  contentSearchInputSchema,
+  executeContentModes,
+  type SearchProgressPhase,
+} from "@/server/services/content-search";
 import { suggestPublicSearchTerms } from "@/server/services/search-suggestions";
 import { handlePlaybookRequest } from "./playbook";
 
@@ -1163,6 +1169,106 @@ async function normalizePublicSearchTitles<
     .filter((result) => result.type !== "memo" || (publicBySlug.get(result.slug) ?? false));
 }
 
+function readPublicSearchInput(url: URL): unknown {
+  return {
+    q: (url.searchParams.get("q") || "").trim(),
+    mode: (url.searchParams.get("mode") ?? "keyword") as "rag" | "rewrite" | "keyword",
+    topK: Number(url.searchParams.get("topK") ?? 20),
+    source: (url.searchParams.get("source") ?? "all") as "all" | "blog" | "playbook",
+    type: (url.searchParams.get("type") ?? "all") as
+      | "all"
+      | "post"
+      | "memo"
+      | "clipping"
+      | "topic"
+      | "experience"
+      | "policy",
+    ...(url.searchParams.get("edition")
+      ? { edition: url.searchParams.get("edition") ?? undefined }
+      : {}),
+    ...(url.searchParams.get("sourceReleaseId")
+      ? { sourceReleaseId: url.searchParams.get("sourceReleaseId") ?? undefined }
+      : {}),
+    ...(url.searchParams.get("sourceTag")
+      ? { sourceTag: url.searchParams.get("sourceTag") ?? undefined }
+      : {}),
+  };
+}
+
+function sseEvent(encoder: TextEncoder, event: string, data: unknown) {
+  return encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+function searchStreamResponse(request: Request, input: ContentSearchInput, resHeaders: Headers) {
+  const encoder = new TextEncoder();
+  const executionController = new AbortController();
+  const executionSignal = AbortSignal.any([request.signal, executionController.signal]);
+  let cancelled = false;
+  let heartbeat: ReturnType<typeof setInterval> | undefined;
+  let abortHandler: (() => void) | undefined;
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const send = (event: string, data: unknown) => {
+        if (cancelled || request.signal.aborted) return;
+        controller.enqueue(sseEvent(encoder, event, data));
+      };
+      const finish = () => {
+        if (heartbeat) clearInterval(heartbeat);
+        if (abortHandler) request.signal.removeEventListener("abort", abortHandler);
+        try {
+          controller.close();
+        } catch {
+          // The client may have cancelled the stream between the final event and close.
+        }
+      };
+      const report = (phase: SearchProgressPhase) => send("progress", { phase });
+
+      send("started", { requestedMode: input.mode });
+      heartbeat = setInterval(() => {
+        if (cancelled || request.signal.aborted) return;
+        controller.enqueue(encoder.encode(": heartbeat\n\n"));
+      }, 2_000);
+      abortHandler = () => {
+        cancelled = true;
+        executionController.abort(request.signal.reason);
+        finish();
+      };
+      request.signal.addEventListener("abort", abortHandler, { once: true });
+
+      void executeContentModes(input, {
+        publishedOnly: true,
+        signal: executionSignal,
+        transport: "sse",
+        onProgress: report,
+      })
+        .then(async (result) => {
+          if (cancelled || request.signal.aborted) return;
+          const results = await normalizePublicSearchTitles(result.results);
+          send("result", { ...result, results });
+        })
+        .catch((error: unknown) => {
+          if (cancelled || request.signal.aborted) return;
+          const message = error instanceof Error ? error.message : "搜索失败";
+          const code = error instanceof TRPCError ? error.code : "INTERNAL_SERVER_ERROR";
+          send("error", { error: message, code });
+        })
+        .finally(finish);
+    },
+    cancel() {
+      cancelled = true;
+      executionController.abort(new DOMException("Search stream cancelled", "AbortError"));
+      if (heartbeat) clearInterval(heartbeat);
+      if (abortHandler) request.signal.removeEventListener("abort", abortHandler);
+    },
+  });
+  const headers = new Headers(resHeaders);
+  headers.set("content-type", "text/event-stream; charset=utf-8");
+  headers.set("cache-control", "no-store, no-transform");
+  headers.set("x-accel-buffering", "no");
+  appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
+  return new Response(stream, { status: 200, headers });
+}
+
 export async function handlePublicApiRequest(request: Request, subPath: string) {
   try {
     if (request.method === "OPTIONS") {
@@ -1404,6 +1510,44 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
         { status: 200 },
         resHeaders
       );
+    }
+
+    if (pathname === "/search/stream") {
+      if (request.method !== "GET") return methodNotAllowed(request, request.method);
+      const allowed = new Set([
+        "q",
+        "mode",
+        "topK",
+        "source",
+        "type",
+        "edition",
+        "sourceReleaseId",
+        "sourceTag",
+      ]);
+      if ([...url.searchParams.keys()].some((key) => !allowed.has(key)))
+        return json(
+          request,
+          { error: "unsupported-parameter", code: "BAD_REQUEST" },
+          { status: 400 },
+          resHeaders
+        );
+      const parsed = contentSearchInputSchema.safeParse(readPublicSearchInput(url));
+      if (!parsed.success)
+        return json(
+          request,
+          { error: "搜索参数无效", code: "BAD_REQUEST" },
+          { status: 400 },
+          resHeaders
+        );
+      if (parsed.data.mode === "keyword") {
+        return json(
+          request,
+          { error: "流式搜索仅支持 AI 模式", code: "BAD_REQUEST" },
+          { status: 400 },
+          resHeaders
+        );
+      }
+      return searchStreamResponse(request, parsed.data, resHeaders);
     }
 
     if (pathname === "/search/suggestions") {

@@ -43,16 +43,22 @@ export async function callSearchModel<T>(
   budget: { timeoutMs: number; maxInputTokens: number; maxOutputTokens: number },
   system: string,
   payload: unknown,
-  schema: z.ZodType<T>
+  schema: z.ZodType<T>,
+  options: { signal?: AbortSignal } = {}
 ): Promise<T> {
   if (!chat.baseUrl || !chat.apiKey || !chat.model) throw new SearchModelError("unconfigured");
   const content = JSON.stringify(payload);
   if (Buffer.byteLength(system + content, "utf8") > MAX_SEARCH_MODEL_INPUT_BYTES)
     throw new SearchModelError("budget-exceeded");
   try {
+    const signal = AbortSignal.any(
+      [AbortSignal.timeout(budget.timeoutMs), options.signal].filter(
+        (value): value is AbortSignal => Boolean(value)
+      )
+    );
     const response = await fetch(`${chat.baseUrl.replace(/\/$/u, "")}/chat/completions`, {
       method: "POST",
-      signal: AbortSignal.timeout(budget.timeoutMs),
+      signal,
       headers: { "content-type": "application/json", authorization: `Bearer ${chat.apiKey}` },
       body: JSON.stringify({
         model: chat.model,
@@ -100,6 +106,7 @@ export async function callSearchModel<T>(
     return parsed.data;
   } catch (error) {
     if (error instanceof SearchModelError) throw error;
+    if (options.signal?.aborted) throw options.signal.reason ?? error;
     if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError"))
       throw new SearchModelError("timeout");
     throw new SearchModelError(error instanceof SyntaxError ? "invalid-output" : "unavailable");
@@ -108,22 +115,32 @@ export async function callSearchModel<T>(
 export function rewriteSearchQuery(
   chat: ResolvedTierConfig,
   budget: Parameters<typeof callSearchModel>[1],
-  query: string
+  query: string,
+  options: { signal?: AbortSignal } = {}
 ) {
-  return callSearchModel(chat, budget, SEARCH_MODEL_PROMPTS.rewrite, { query }, rewriteOutput);
+  return callSearchModel(
+    chat,
+    budget,
+    SEARCH_MODEL_PROMPTS.rewrite,
+    { query },
+    rewriteOutput,
+    options
+  );
 }
 export async function judgeSearchCandidates(
   chat: ResolvedTierConfig,
   budget: Parameters<typeof callSearchModel>[1],
   query: string,
-  candidates: Array<{ id: string; title: string; content: string }>
+  candidates: Array<{ id: string; title: string; content: string }>,
+  options: { signal?: AbortSignal } = {}
 ) {
   const output = await callSearchModel(
     chat,
     budget,
     SEARCH_MODEL_PROMPTS.rag,
     { query, candidates },
-    judgementOutput
+    judgementOutput,
+    options
   );
   const byId = new Map(candidates.map((candidate) => [candidate.id, candidate]));
   for (const item of output.items) {

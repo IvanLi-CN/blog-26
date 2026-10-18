@@ -85,6 +85,22 @@ export type ContentSearchEnvelope = {
   incompleteSources?: string[];
   ragIncompleteSources?: string[];
 };
+export type SearchProgressPhase =
+  | "started"
+  | "retrieving"
+  | "embedding"
+  | "judging"
+  | "complete"
+  | "fallback";
+export type ContentSearchExecutionContext = {
+  publishedOnly?: boolean;
+  embeddingModel?: string;
+  candidateLimit?: number;
+  signal?: AbortSignal;
+  transport?: "json" | "sse";
+  onProgress?: (phase: SearchProgressPhase) => void;
+};
+export const SSE_SEARCH_MODEL_TIMEOUT_MS = 30_000;
 type CacheEntry<T> = { value: T; until: number };
 const rewriteCache = new Map<string, CacheEntry<SearchRewrite>>();
 const judgementCache = new Map<string, CacheEntry<SearchJudgement>>();
@@ -110,8 +126,11 @@ async function vectorCandidates(
   embeddingConfig: ResolvedTierConfig,
   limit: number,
   publishedOnly: boolean,
-  type: "all" | "post" | "memo" | "clipping"
+  type: "all" | "post" | "memo" | "clipping",
+  options: { timeoutMs?: number; signal?: AbortSignal; onProgress?: () => void } = {}
 ): Promise<IndexedContent[]> {
+  if (options.signal?.aborted)
+    throw options.signal.reason ?? new DOMException("Aborted", "AbortError");
   const { eligibleVectorIds } = await ragCoverage({
     source: "blog",
     type,
@@ -139,13 +158,21 @@ async function vectorCandidates(
   if ((count?.count ?? 0) > 10000 || (count?.bytes ?? 0) > 64 * 1024 * 1024)
     throw new SearchModelError("budget-exceeded");
   if (!count?.count) return [];
-  const vector = await embedSearchQuery(embeddingConfig, query);
+  options.onProgress?.();
+  const vector = await embedSearchQuery(
+    embeddingConfig,
+    query,
+    options.timeoutMs,
+    options.signal ? { signal: options.signal } : undefined
+  );
   const scores = new Map<string, number>();
   const hashes = new Map<string, string>();
   let after = "";
   let scanned = 0;
   let scannedBytes = 0;
   while (true) {
+    if (options.signal?.aborted)
+      throw options.signal.reason ?? new DOMException("Aborted", "AbortError");
     const rows = await db
       .select({
         id: postEmbeddings.id,
@@ -484,11 +511,26 @@ async function keywordNearEnvelope(
   };
 }
 
+function reportProgress(context: ContentSearchExecutionContext, phase: SearchProgressPhase) {
+  try {
+    context.onProgress?.(phase);
+  } catch {
+    // Progress consumers must not change search semantics.
+  }
+}
+
+function throwIfSearchAborted(context: ContentSearchExecutionContext) {
+  if (context.signal?.aborted)
+    throw context.signal.reason ?? new DOMException("Aborted", "AbortError");
+}
+
 export async function executeContentModes(
   raw: unknown,
-  context: { publishedOnly?: boolean; embeddingModel?: string; candidateLimit?: number } = {}
+  context: ContentSearchExecutionContext = {}
 ): Promise<ContentSearchEnvelope> {
   const input = contentSearchInputSchema.parse(raw);
+  throwIfSearchAborted(context);
+  reportProgress(context, "started");
   if (!input.q.trim()) {
     return {
       results: [],
@@ -525,6 +567,8 @@ export async function executeContentModes(
     };
   };
   const keywordEnvelope = async (reason?: SearchReason): Promise<ContentSearchEnvelope> => {
+    throwIfSearchAborted(context);
+    reportProgress(context, reason ? "fallback" : "retrieving");
     if (input.mode === "rag" && coverageIdentity === undefined) await captureRagCoverage();
     const state = await keywordState();
     return {
@@ -568,7 +612,14 @@ export async function executeContentModes(
     return keywordEnvelope("unconfigured");
   if (context.embeddingModel && context.embeddingModel !== resolved.resolved.embedding.model)
     return keywordEnvelope("unvalidated");
+  const modelTimeoutMs =
+    context.transport === "sse"
+      ? Math.max(resolved.policy.timeoutMs, SSE_SEARCH_MODEL_TIMEOUT_MS)
+      : resolved.policy.timeoutMs;
+  const modelPolicy = { ...resolved.policy, timeoutMs: modelTimeoutMs };
   try {
+    throwIfSearchAborted(context);
+    reportProgress(context, "retrieving");
     const keyword = await keywordState();
     const literal = keyword.merged;
     let result: UnifiedCandidate[];
@@ -578,7 +629,10 @@ export async function executeContentModes(
       const key = digest({ query: plan.query, fingerprint: resolved.fingerprint });
       let output = cacheGet(rewriteCache, key);
       if (!output) {
-        output = await rewriteSearchQuery(resolved.chat, policy, plan.query);
+        reportProgress(context, "judging");
+        output = await rewriteSearchQuery(resolved.chat, modelPolicy, plan.query, {
+          signal: context.signal,
+        });
       }
       const maxQueries = "maxQueries" in policy ? policy.maxQueries : 3;
       const supplements: IndexedContent[] = [];
@@ -622,7 +676,12 @@ export async function executeContentModes(
               resolved.resolved.embedding,
               candidateLimit,
               publishedOnly,
-              input.type === "clipping" ? "clipping" : blogInputType
+              input.type === "clipping" ? "clipping" : blogInputType,
+              {
+                timeoutMs: modelTimeoutMs,
+                signal: context.signal,
+                onProgress: () => reportProgress(context, "embedding"),
+              }
             );
       const playbookVectors =
         edition &&
@@ -634,7 +693,8 @@ export async function executeContentModes(
               resolved.resolved.embedding,
               edition,
               candidateLimit,
-              playbookType(input.type)
+              playbookType(input.type),
+              { timeoutMs: modelTimeoutMs, signal: context.signal }
             )
           : [];
       const candidates: UnifiedCandidate[] = [...literal];
@@ -707,7 +767,10 @@ export async function executeContentModes(
       });
       let output = cacheGet(judgementCache, key);
       if (!output) {
-        output = await judgeSearchCandidates(resolved.chat, policy, plan.query, payload);
+        reportProgress(context, "judging");
+        output = await judgeSearchCandidates(resolved.chat, modelPolicy, plan.query, payload, {
+          signal: context.signal,
+        });
       }
       const supplied = new Set(windows.map(unifiedId));
       if (
@@ -735,10 +798,12 @@ export async function executeContentModes(
           unifiedId(a).localeCompare(unifiedId(b))
       );
     }
+    throwIfSearchAborted(context);
     if ((await resolveSearchPolicy(input.mode)).fingerprint !== resolved.fingerprint)
       return keywordEnvelope("unvalidated");
     await currentUnified(result, publishedOnly, edition);
     const keywordIds = new Set(literal.map(unifiedId));
+    reportProgress(context, "complete");
     return {
       results: result.map((x) =>
         resultForCandidate(
@@ -754,6 +819,7 @@ export async function executeContentModes(
       ...(ragIncompleteSources.length ? { ragIncompleteSources } : {}),
     };
   } catch (error) {
+    if (context.signal?.aborted) throw context.signal.reason ?? error;
     if (error instanceof ContentSearchError) throw error;
     return keywordEnvelope(error instanceof SearchModelError ? error.reason : "unavailable");
   }

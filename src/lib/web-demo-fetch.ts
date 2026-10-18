@@ -529,7 +529,10 @@ async function getDemoPublicResponse(
     return payload ? jsonResponse(payload) : jsonResponse({ error: "指标不存在" }, 404);
   }
 
-  if (url.pathname === "/api/public/search" && method === "GET") {
+  if (
+    (url.pathname === "/api/public/search" || url.pathname === "/api/public/search/stream") &&
+    method === "GET"
+  ) {
     const query = (url.searchParams.get("q") ?? "").trim().toLowerCase();
     const selected = searchModeSchema.safeParse(url.searchParams.get("mode") ?? "keyword");
     if (!selected.success) return jsonResponse({ error: "不支持的搜索模式" }, 400);
@@ -671,6 +674,38 @@ async function getDemoPublicResponse(
     if (!query) response.headers.set("Search-Reason", "empty-query");
     else if (plan.mode !== "simple") response.headers.set("Search-Reason", "explicit-query");
     else if (effectiveMode !== selected.data) response.headers.set("Search-Reason", "unavailable");
+    if (url.pathname === "/api/public/search/stream") {
+      const payload = await response.clone().json();
+      const envelope = {
+        results: payload,
+        requestedMode: selected.data,
+        effectiveMode,
+        ...(response.headers.get("Search-Reason")
+          ? { reason: response.headers.get("Search-Reason") }
+          : {}),
+      };
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(
+            encoder.encode(
+              `event: started\ndata: ${JSON.stringify({ requestedMode: selected.data })}\n\n`
+            )
+          );
+          queueMicrotask(() => {
+            controller.enqueue(
+              encoder.encode(`event: result\ndata: ${JSON.stringify(envelope)}\n\n`)
+            );
+            controller.close();
+          });
+        },
+      });
+      const headers = new Headers(response.headers);
+      headers.set("content-type", "text/event-stream; charset=utf-8");
+      headers.set("cache-control", "no-store, no-transform");
+      headers.set("x-accel-buffering", "no");
+      return new Response(stream, { status: response.status, headers });
+    }
     return response;
   }
 
