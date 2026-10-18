@@ -78,7 +78,7 @@ function fakeFetch(
   return Object.assign(mock(handler), { preconnect: originalFetch.preconnect });
 }
 
-function waitWithAbort(ms: number, signal?: AbortSignal) {
+function waitWithAbort(ms: number, signal?: AbortSignal | null) {
   return new Promise<void>((resolve, reject) => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const onAbort = () => {
