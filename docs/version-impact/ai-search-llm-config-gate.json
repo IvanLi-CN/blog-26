@@ -20,7 +20,7 @@
     "src/server/services/content-search.test.ts": "19f65129826846267e623f487adb4f6778ad7a7e",
     "src/server/services/search-policy.ts": "1b693d709940fa78b73ed362cd0bc1fa78f5f921",
     "src/server/services/search-validation.ts": "7021b0c151611c7001779d014e11e57a477fee40",
-    "tests/e2e/web-demo/search-modes.spec.ts": "ec1b70314b99c66de813cb05a8905c77c18d42fc"
+    "tests/e2e/web-demo/search-modes.spec.ts": "c3bdd75285699925854be743eed12584a40b57f3"
   },
   "change": {
     "description": "Reuse the existing LLM provider configuration for AI search, separate runtime availability from quality diagnostics, coalesce validation starts, and preserve the admin search policy controls.",
@@ -83,7 +83,7 @@
         },
         {
           "path": "tests/e2e/web-demo/search-modes.spec.ts",
-          "blob": "ec1b70314b99c66de813cb05a8905c77c18d42fc",
+          "blob": "c3bdd75285699925854be743eed12584a40b57f3",
           "command": "Mock Web Demo search mode and quality state regression coverage"
         }
       ]

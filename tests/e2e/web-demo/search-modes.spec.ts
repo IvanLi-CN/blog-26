@@ -146,7 +146,7 @@ test("the official model page saves independent policy and validates only saved 
   await expect(panel).toBeVisible();
   const enabled = page.getByRole("switch", { name: "启用此模式 AI 检索（RAG）", exact: true });
   const track = await enabled.boundingBox();
-  const thumb = await enabled.locator("span").boundingBox();
+  const thumb = await enabled.locator(".admin-switch-thumb").boundingBox();
   expect(track).not.toBeNull();
   expect(thumb).not.toBeNull();
   if (!track || !thumb) throw new Error("Switch geometry was unavailable");
