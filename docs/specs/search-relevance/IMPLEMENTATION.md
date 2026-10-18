@@ -56,7 +56,7 @@ DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local bun run se
 
 status 只读持久元信息。独立进程执行 prepare、check 或 rebuild 前先停止 gateway/console writer；check 报告当前投影缺失、额外、重复或版本不符，确认故障后使用同一组准确 DB、内容和索引路径运行 `bun run search:index rebuild`，再启动服务。旧 SQLite 索引维护命令仍只维护列表及独立 semantic，不代替 Tantivy 修复。不要将多个服务进程配置为竞争同一个索引 writer。
 
-配置 chat/embedding 后，在现有管理页保存搜索设置并可验证两个模式。`llm_settings` 是搜索运行时读取模型、Base URL 和 API Key 的唯一提供方来源；`search_settings` 只保存模式策略、可选模型覆盖与预算。启用且提供方配置完整时，质量尚未运行、失败或针对旧配置都不会阻止模型执行；这些状态通过 `qualityStatus` 作为诊断信息展示。实际提供方超时、不可用或返回非法结果时仍按现有规则回退关键词。默认 RAG 超时 10 秒、输入/输出 16,384/2,048 token，窗口 20 个内容、每个 2,048 码点；改写超时 5 秒、输入/输出 4,096/1,024 token、最多 3 条表达。提供方需要更多预算时应显式保存并重新验证，不进行自动重试。
+配置 chat/embedding 后，在现有管理页保存搜索设置并可验证两个模式。`llm_settings` 是搜索运行时读取模型、Base URL 和 API Key 的唯一提供方来源；`search_settings` 只保存模式策略、可选模型覆盖与预算。启用且提供方配置完整时，质量尚未运行、失败或针对旧配置都不会阻止模型执行；这些状态通过 `qualityStatus` 作为诊断信息展示。实际提供方超时、不可用或返回非法结果时仍按现有规则回退关键词。默认 RAG 超时 10 秒、输入/输出 16,384/2,048 token，窗口 20 个内容、每个 2,048 码点；改写超时 5 秒、输入/输出 4,096/1,024 token、最多 3 条表达。模型输入的 token 预算由提供方返回的 usage 校验，序列化请求另受独立字节上限保护，不能用 UTF-8 字节数直接代替 token 数。提供方需要更多预算时应显式保存并重新验证，不进行自动重试。
 
 实际提供方的固定合成验收可通过 `bun scripts/verify-search-empirical.ts` 执行；它创建隔离临时 DB 和索引，只发送固定样例，保留日志和临时目录用于检查。可显式传 `--rag-timeout-ms 30000 --rag-output-tokens 4096 --rewrite-timeout-ms 30000 --rewrite-output-tokens 4096` 验证其他受支持预算；结果只支持这组策略，不证明默认 5 秒可靠性，不复制生产内容。不要将密钥放入命令行或提交文件。
 

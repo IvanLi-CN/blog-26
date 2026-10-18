@@ -598,6 +598,40 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
         .sort()
     ).toEqual(expected);
   });
+  test("keeps RAG enabled when the candidate context exceeds the token count in UTF-8 bytes", async () => {
+    await db
+      .insert(posts)
+      .values(Array.from({ length: 10 }, (_, i) => fixture(`long-${i}`, "发布".repeat(2048))));
+    await enable("rag");
+    let chatCalls = 0;
+    globalThis.fetch = fakeFetch(async (_url, init) => {
+      chatCalls += 1;
+      const payload = JSON.parse(JSON.parse(String(init?.body)).messages[1].content);
+      return Response.json({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: {
+              content: JSON.stringify({
+                items: payload.candidates.map((candidate: { id: string; title: string }) => ({
+                  id: candidate.id,
+                  relevant: true,
+                  rank: 0,
+                  evidence: candidate.title,
+                })),
+              }),
+            },
+          },
+        ],
+      });
+    });
+
+    const result = await executeContentModes({ q: "发布", mode: "rag", topK: 10 });
+
+    expect(result.effectiveMode).toBe("rag");
+    expect(result.results).toHaveLength(10);
+    expect(chatCalls).toBe(1);
+  });
   test("only fresh embedding-input hashes supply RAG context, including late body evidence", async () => {
     const concept = fixture("concept", `${"Introduction. ".repeat(500)}SQLite3 embedded database`);
     await db.insert(posts).values([concept, fixture("stale", "Unrelated old content")]);
