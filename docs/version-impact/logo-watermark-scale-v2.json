@@ -8,8 +8,8 @@
     "docs/specs/public-media-assets-facade/HISTORY.md": "85fcb1a15fb3553002df80d8bcd40e3ce95bbc3c",
     "docs/specs/public-media-assets-facade/IMPLEMENTATION.md": "2aa367d170025a57d972e8d4ac7a0a5e2a95af92",
     "docs/specs/public-media-assets-facade/SPEC.md": "904672ecb66fa6b9464a6c22482f8a3b1e89d1b6",
-    "scripts/package-public-media.test.ts": "307619b30db586ea1d4880cbb4e75dd6e57e1d4a",
-    "scripts/package-public-media.ts": "b357656f27107c31a03d033a478969ca53c3eb53",
+    "scripts/package-public-media.test.ts": "310a2d20bea713d6a61f44243641ad574867eacb",
+    "scripts/package-public-media.ts": "c24ae7403e2f7fbe5341694adc08adec0716e87f",
     "src/components/common/markdown/plugins/rehype-image-optimization.test.ts": "fdfd0ed27723751c111162bb8f0689f68bba7809",
     "src/components/common/markdown/plugins/rehype-image-optimization.ts": "2801fc01cc4e326fac1a2b12c630475793e15537",
     "src/lib/__tests__/public-media.test.ts": "dcbeafc9e85cae63f5f2e74b0d595dcb6716c83c",
@@ -44,7 +44,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "The implementation publishes wm-a-v2 and wm-b-v2 with explicit Imagor width and height bounds, keeps wm-*-v1 behavior unchanged, and only enables responsive selection when the bound snapshot explicitly contains the current v2 A/B candidates.",
-      "assessed_at": "2026-10-18T04:37:54+00:00",
+      "assessed_at": "2026-10-18T08:02:37+00:00",
       "evidence": [
         {
           "path": "src/server/public-media.ts",
@@ -53,8 +53,8 @@
         },
         {
           "path": "scripts/package-public-media.ts",
-          "blob": "b357656f27107c31a03d033a478969ca53c3eb53",
-          "command": "Static packaging recognizes v1/v2 identities and does not substitute an unwatermarked base for missing v2 candidates"
+          "blob": "c24ae7403e2f7fbe5341694adc08adec0716e87f",
+          "command": "Static packaging recognizes v1/v2 identities and proactively freezes the canonical base asset for legacy v1 candidates"
         }
       ],
       "scope_drift": {
@@ -65,12 +65,12 @@
     "verified": {
       "impact": "minor",
       "reasoning": "Focused media, markdown, packaging, and HTTP tests pass; the compatibility test confirms legacy v1 snapshots stay on the base facade instead of emitting unavailable v2 URLs. Repository-wide Biome check retains pre-existing diagnostics outside this change.",
-      "assessed_at": "2026-10-18T04:37:54+00:00",
+      "assessed_at": "2026-10-18T08:02:37+00:00",
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "307619b30db586ea1d4880cbb4e75dd6e57e1d4a",
-          "command": "bun test src/lib/__tests__/public-media.test.ts src/components/common/markdown/plugins/rehype-image-optimization.test.ts scripts/package-public-media.test.ts: 50 tests pass"
+          "blob": "310a2d20bea713d6a61f44243641ad574867eacb",
+          "command": "bun test scripts/package-public-media.test.ts tests/lib/manual-release-media.test.ts: 30 tests pass, including legacy v1 base-asset freezing"
         },
         {
           "path": "src/server/http-compat-api.test.ts",
