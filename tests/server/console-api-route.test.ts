@@ -50,6 +50,33 @@ describe("console file API route", () => {
     expect(await response.text()).toContain("公开测试");
   });
 
+  test("keeps system-share attachments behind the administrator boundary", async () => {
+    process.env.CONSOLE_RUNTIME = "true";
+    process.env.DB_PATH = "./dev-data/sqlite.db";
+    process.env.LOCAL_CONTENT_BASE_PATH = CONTENT_ROOT;
+    process.env.ADMIN_EMAIL = "admin-test@test.local";
+    const attachmentPath = "Memos/assets/system-share/submission/lease/1-note.txt";
+    mkdirSync(resolve(CONTENT_ROOT, "Memos/assets/system-share/submission/lease"), {
+      recursive: true,
+    });
+    writeFileSync(resolve(CONTENT_ROOT, attachmentPath), "private attachment", "utf8");
+
+    const anonymous = await ALL({
+      request: new Request(`https://console.ivanli.cc/api/files/local/${attachmentPath}`),
+      params: { path: `files/local/${attachmentPath}` },
+    });
+    expect(anonymous.status).toBe(404);
+
+    const administrator = await ALL({
+      request: new Request(`https://console.ivanli.cc/api/files/local/${attachmentPath}`, {
+        headers: { "Remote-Email": "admin-test@test.local" },
+      }),
+      params: { path: `files/local/${attachmentPath}` },
+    });
+    expect(administrator.status).toBe(200);
+    expect(await administrator.text()).toBe("private attachment");
+  });
+
   test("does not allow anonymous raw file writes through the console route", async () => {
     process.env.CONSOLE_RUNTIME = "true";
     process.env.DB_PATH = "./dev-data/sqlite.db";

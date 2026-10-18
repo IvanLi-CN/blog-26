@@ -1,16 +1,36 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { randomUUID } from "node:crypto";
+import type { Dirent } from "node:fs";
+import { constants as fsConstants } from "node:fs";
+import {
+  lstat,
+  mkdir,
+  open,
+  opendir,
+  readdir,
+  realpath,
+  rm,
+  rmdir,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { TRPCError } from "@trpc/server";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, lt, lte, or } from "drizzle-orm";
 import { getActiveLocalBasePath } from "@/config/paths";
 import type { SearchSuggestionReason } from "@/lib/ai/search-suggestions";
+import { generateSlugFromPath } from "@/lib/content-sources/utils";
 import { db } from "@/lib/db";
-import { getServerLocalMemoRootPath } from "@/lib/memo-paths";
+import { buildMemoRelativePath, getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
 import { appendPublicCorsHeaders, createPublicCorsPreflightResponse } from "@/lib/public-cors";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
 import { posts, systemShareSubmissions } from "@/lib/schema";
-import { normalizeSystemShare, validateSystemShareFiles } from "@/lib/system-share";
+import {
+  composeSystemShareMemoContent,
+  normalizeSystemShareEditor,
+  SYSTEM_SHARE_MAX_REQUEST_BYTES,
+  validateSystemShareFiles,
+} from "@/lib/system-share";
 import { buildPublicSnapshot, resolvePublicMemoTitle } from "@/public-site/snapshot";
 import { handleClippingRequest } from "@/server/clipping/api";
 import { isClippingRowPublic } from "@/server/clipping/projection";
@@ -18,6 +38,7 @@ import { readAuthoredMemo } from "@/server/clipping/store";
 import { createContext } from "@/server/context";
 import { handlePublicAssetFacadeRequest } from "@/server/public-media";
 import { appRouter } from "@/server/router";
+import { triggerIncrementalSync } from "@/server/routers/memos";
 import { suggestPublicSearchTerms } from "@/server/services/search-suggestions";
 import { handlePlaybookRequest } from "./playbook";
 
@@ -29,6 +50,184 @@ const SEARCH_SUGGESTION_REASONS = new Set<SearchSuggestionReason>([
   "filtered_empty",
 ]);
 const SYSTEM_SHARE_PROCESSING_TTL_MS = 15 * 60 * 1000;
+
+type SystemShareResult = {
+  memoId: string;
+  memoSlug: string;
+  memo: unknown;
+};
+
+function isMissingPathError(error: unknown) {
+  return error && typeof error === "object" && "code" in error && error.code === "ENOENT";
+}
+
+function isExistingPathError(error: unknown) {
+  return error && typeof error === "object" && "code" in error && error.code === "EEXIST";
+}
+
+async function ensureSafeSystemShareDirectory(basePath: string, directory: string) {
+  const rootPath = resolve(basePath);
+  const targetPath = resolve(directory);
+  const targetRelativePath = relative(rootPath, targetPath);
+  if (targetRelativePath.startsWith("..") || isAbsolute(targetRelativePath)) {
+    throw new Error("Invalid system-share path");
+  }
+
+  const canonicalRoot = await realpath(basePath);
+  let currentPath = canonicalRoot;
+  for (const segment of targetRelativePath.split(/[\\/]+/u).filter(Boolean)) {
+    currentPath = join(currentPath, segment);
+    let stat: Awaited<ReturnType<typeof lstat>>;
+    try {
+      stat = await lstat(currentPath);
+    } catch (error) {
+      if (!isMissingPathError(error)) throw error;
+      try {
+        await mkdir(currentPath);
+      } catch (mkdirError) {
+        if (!isExistingPathError(mkdirError)) throw mkdirError;
+      }
+      stat = await lstat(currentPath);
+    }
+    if (!stat.isDirectory() || stat.isSymbolicLink()) {
+      throw new Error("Invalid system-share directory");
+    }
+  }
+}
+
+async function isSafeExistingSystemShareDirectory(basePath: string, directory: string) {
+  const rootPath = resolve(basePath);
+  const targetPath = resolve(directory);
+  const targetRelativePath = relative(rootPath, targetPath);
+  if (targetRelativePath.startsWith("..") || isAbsolute(targetRelativePath)) return false;
+
+  let currentPath: string;
+  try {
+    currentPath = await realpath(basePath);
+  } catch {
+    return false;
+  }
+  for (const segment of targetRelativePath.split(/[\\/]+/u).filter(Boolean)) {
+    currentPath = join(currentPath, segment);
+    try {
+      const stat = await lstat(currentPath);
+      if (!stat.isDirectory() || stat.isSymbolicLink()) return false;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+async function assertSafeSystemShareFile(basePath: string, filePath: string) {
+  const rootPath = await realpath(basePath);
+  const expectedPath = resolve(filePath);
+  const actualPath = await realpath(filePath);
+  const relativePath = relative(rootPath, actualPath);
+  if (
+    actualPath !== expectedPath ||
+    relativePath.startsWith("..") ||
+    isAbsolute(relativePath) ||
+    !(await lstat(actualPath)).isFile()
+  ) {
+    throw new Error("Invalid system-share file path");
+  }
+}
+
+async function openSafeSystemShareDirectory(basePath: string, directory: string) {
+  if (process.platform !== "linux") return null;
+  const rootPath = resolve(basePath);
+  const targetPath = resolve(directory);
+  const targetRelativePath = relative(rootPath, targetPath);
+  if (targetRelativePath.startsWith("..") || isAbsolute(targetRelativePath)) {
+    throw new Error("Invalid system-share path");
+  }
+
+  const flags = fsConstants.O_RDONLY | fsConstants.O_DIRECTORY | fsConstants.O_NOFOLLOW;
+  let handle = await open(await realpath(basePath), flags);
+  try {
+    for (const segment of targetRelativePath.split(/[\\/]+/u).filter(Boolean)) {
+      const next = await open(`/proc/self/fd/${handle.fd}/${segment}`, flags);
+      await handle.close();
+      handle = next;
+    }
+    return handle;
+  } catch (error) {
+    await handle.close().catch(() => undefined);
+    throw error;
+  }
+}
+
+type SystemShareDirectoryHandle = Awaited<ReturnType<typeof open>>;
+
+const SYSTEM_SHARE_DIRECTORY_FLAGS =
+  fsConstants.O_RDONLY | fsConstants.O_DIRECTORY | fsConstants.O_NOFOLLOW;
+
+async function removeSafeSystemShareDirectoryContents(handle: SystemShareDirectoryHandle) {
+  const directory = await opendir(`/proc/self/fd/${handle.fd}`);
+  try {
+    for await (const entry of directory) {
+      const childPath = `/proc/self/fd/${handle.fd}/${entry.name}`;
+      if (entry.isDirectory()) {
+        let childHandle: SystemShareDirectoryHandle | null = null;
+        try {
+          childHandle = await open(childPath, SYSTEM_SHARE_DIRECTORY_FLAGS);
+          await removeSafeSystemShareDirectoryContents(childHandle);
+        } catch {
+          // A replaced or inaccessible child is left in place rather than
+          // following a path outside the opened directory.
+        } finally {
+          await childHandle?.close().catch(() => undefined);
+        }
+        await rmdir(childPath).catch(() => undefined);
+      } else {
+        // unlink never follows a symlink, and the parent is an open fd.
+        await unlink(childPath).catch(() => undefined);
+      }
+    }
+  } finally {
+    await directory.close().catch(() => undefined);
+  }
+}
+
+async function removeSafeSystemSharePath(basePath: string, targetPath: string) {
+  if (process.platform !== "linux") {
+    if (!(await isSafeExistingSystemShareDirectory(basePath, dirname(targetPath)))) return;
+    await rm(targetPath, { recursive: true, force: true }).catch(() => undefined);
+    return;
+  }
+
+  let parentHandle: SystemShareDirectoryHandle | null = null;
+  try {
+    parentHandle = await openSafeSystemShareDirectory(basePath, dirname(targetPath));
+    if (!parentHandle) return;
+    const targetName = basename(targetPath);
+    const target = `/proc/self/fd/${parentHandle.fd}/${targetName}`;
+    let stat: Awaited<ReturnType<typeof lstat>>;
+    try {
+      stat = await lstat(target);
+    } catch (error) {
+      if (isMissingPathError(error)) return;
+      throw error;
+    }
+    if (stat.isDirectory() && !stat.isSymbolicLink()) {
+      let childHandle: SystemShareDirectoryHandle | null = null;
+      try {
+        childHandle = await open(target, SYSTEM_SHARE_DIRECTORY_FLAGS);
+        await removeSafeSystemShareDirectoryContents(childHandle);
+      } finally {
+        await childHandle?.close().catch(() => undefined);
+      }
+      await rmdir(target).catch(() => undefined);
+      return;
+    }
+    await unlink(target).catch(() => undefined);
+  } catch (error) {
+    if (!isMissingPathError(error)) throw error;
+  } finally {
+    await parentHandle?.close().catch(() => undefined);
+  }
+}
 
 function json(request: Request, data: unknown, init: ResponseInit = {}, extraHeaders?: Headers) {
   const headers = new Headers(init.headers);
@@ -75,6 +274,280 @@ async function parseBody(request: Request) {
   }
 }
 
+async function parseSystemShareForm(request: Request) {
+  const readFormData = async (candidate: Request) => {
+    try {
+      return await candidate.formData();
+    } catch (error) {
+      if (error instanceof TRPCError) throw error;
+      throw new TRPCError({ code: "BAD_REQUEST", message: "分享请求格式无效。" });
+    }
+  };
+  const declaredLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > SYSTEM_SHARE_MAX_REQUEST_BYTES) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "分享请求过大。" });
+  }
+
+  if (!request.body) return readFormData(request);
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > SYSTEM_SHARE_MAX_REQUEST_BYTES) {
+        await reader.cancel();
+        throw new TRPCError({ code: "BAD_REQUEST", message: "分享请求过大。" });
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return readFormData(
+    new Request(request.url, {
+      method: request.method,
+      headers: request.headers,
+      body,
+    })
+  );
+}
+
+async function cleanupAbandonedSystemShareStaging(input: {
+  basePath: string;
+  memoRoot: string;
+  submissionId: string;
+  keepLeaseToken: string;
+  memoId: string;
+}) {
+  const root = join(
+    input.basePath,
+    input.memoRoot.replace(/^\/+/, ""),
+    "assets",
+    "system-share",
+    input.submissionId
+  );
+  if (!(await isSafeExistingSystemShareDirectory(input.basePath, root))) return;
+  let entries: Dirent[] = [];
+  try {
+    entries = await readdir(root, { withFileTypes: true });
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return;
+    return;
+  }
+
+  const referencedLeaseTokens = new Set<string>();
+  try {
+    const authored = await readAuthoredMemo(input.memoId);
+    const attachments = authored.frontmatter.attachments;
+    if (Array.isArray(attachments)) {
+      for (const attachment of attachments) {
+        if (!attachment || typeof attachment !== "object" || !("path" in attachment)) continue;
+        const attachmentPath = String(attachment.path).replace(/^\.\//u, "");
+        const prefix = `assets/system-share/${input.submissionId}/`;
+        if (!attachmentPath.startsWith(prefix)) continue;
+        const leaseToken = attachmentPath.slice(prefix.length).split("/", 1)[0];
+        if (leaseToken) referencedLeaseTokens.add(leaseToken);
+      }
+    }
+  } catch (error) {
+    if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT")) {
+      return;
+    }
+  }
+
+  await Promise.all(
+    entries
+      .filter((entry) => entry.isDirectory())
+      .filter(
+        (entry) => entry.name !== input.keepLeaseToken && !referencedLeaseTokens.has(entry.name)
+      )
+      .map((entry) =>
+        removeSafeSystemSharePath(input.basePath, join(root, entry.name)).catch(() => undefined)
+      )
+  );
+}
+
+async function cleanupSystemShareLeaseStaging(input: {
+  basePath: string;
+  memoRoot: string;
+  submissionId: string;
+  leaseToken: string;
+  memoId: string;
+}) {
+  const leaseDirectory = join(
+    input.basePath,
+    input.memoRoot.replace(/^\/+/, ""),
+    "assets",
+    "system-share",
+    input.submissionId,
+    input.leaseToken
+  );
+  if (!(await isSafeExistingSystemShareDirectory(input.basePath, leaseDirectory))) return;
+  let referenced = false;
+  try {
+    const authored = await readAuthoredMemo(input.memoId);
+    const attachments = authored.frontmatter.attachments;
+    const prefix = `assets/system-share/${input.submissionId}/${input.leaseToken}/`;
+    referenced =
+      Array.isArray(attachments) &&
+      attachments.some(
+        (attachment) =>
+          attachment &&
+          typeof attachment === "object" &&
+          "path" in attachment &&
+          String(attachment.path).replace(/^\.\//u, "").startsWith(prefix)
+      );
+  } catch (error) {
+    if (!isMissingPathError(error)) return;
+  }
+  if (!referenced) {
+    await removeSafeSystemSharePath(input.basePath, leaseDirectory).catch(() => undefined);
+  }
+}
+
+async function cleanupSystemShareMemoTemps(input: {
+  basePath: string;
+  memoRoot: string;
+  submissionId: string;
+}) {
+  const directory = join(input.basePath, input.memoRoot.replace(/^\/+/, ""), "system-share");
+  if (!(await isSafeExistingSystemShareDirectory(input.basePath, directory))) return;
+  let entries: Dirent[] = [];
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  const prefix = `${input.submissionId}.md.`;
+  await Promise.all(
+    entries
+      .filter(
+        (entry) => entry.isFile() && entry.name.startsWith(prefix) && entry.name.endsWith(".tmp")
+      )
+      .map((entry) =>
+        removeSafeSystemSharePath(input.basePath, join(directory, entry.name)).catch(
+          () => undefined
+        )
+      )
+  );
+}
+
+async function cleanupExpiredSystemShareStaging(input: { basePath: string; memoRoot: string }) {
+  const root = join(input.basePath, input.memoRoot.replace(/^\/+/, ""), "assets", "system-share");
+  if (!(await isSafeExistingSystemShareDirectory(input.basePath, root))) return;
+
+  const now = Date.now();
+  const cutoff = now - SYSTEM_SHARE_PROCESSING_TTL_MS;
+  let rows: Array<{
+    submissionId: string;
+    memoId: string | null;
+    state: string;
+    leaseToken: string | null;
+    leaseExpiresAt: number | null;
+  }> = [];
+  try {
+    rows = await db
+      .select({
+        submissionId: systemShareSubmissions.submissionId,
+        memoId: systemShareSubmissions.memoId,
+        state: systemShareSubmissions.state,
+        leaseToken: systemShareSubmissions.leaseToken,
+        leaseExpiresAt: systemShareSubmissions.leaseExpiresAt,
+      })
+      .from(systemShareSubmissions);
+  } catch {
+    return;
+  }
+
+  let submissions: Dirent[] = [];
+  try {
+    submissions = await readdir(root, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const submission of submissions) {
+    if (!submission.isDirectory()) continue;
+    const submissionRoot = join(root, submission.name);
+    if (!(await isSafeExistingSystemShareDirectory(input.basePath, submissionRoot))) continue;
+    let leases: Dirent[] = [];
+    try {
+      leases = await readdir(submissionRoot, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const lease of leases) {
+      if (!lease.isDirectory()) continue;
+      const leaseDirectory = join(submissionRoot, lease.name);
+      if (!(await isSafeExistingSystemShareDirectory(input.basePath, leaseDirectory))) continue;
+      let leaseStat: Awaited<ReturnType<typeof lstat>>;
+      try {
+        leaseStat = await lstat(leaseDirectory);
+      } catch {
+        continue;
+      }
+      if (leaseStat.mtimeMs > cutoff) continue;
+
+      const row = rows.find(
+        (candidate) =>
+          candidate.submissionId === submission.name && candidate.leaseToken === lease.name
+      );
+      if (
+        row &&
+        (row.state === "processing" || row.state === "committing") &&
+        (row.leaseExpiresAt ?? 0) > now
+      ) {
+        continue;
+      }
+      let committedMemoId: string | null = row?.memoId ?? null;
+      if (!committedMemoId) {
+        const candidateMemoId = buildMemoRelativePath(
+          `system-share/${submission.name}.md`,
+          input.memoRoot
+        );
+        try {
+          const authored = await readAuthoredMemo(candidateMemoId);
+          const marker = authored.frontmatter.systemShare;
+          if (
+            marker &&
+            typeof marker === "object" &&
+            "source" in marker &&
+            marker.source === "system-share" &&
+            "submissionId" in marker &&
+            marker.submissionId === submission.name
+          ) {
+            // The Memo file is the commit point. Preserve attachments even if
+            // the process stopped before recording memoId in SQLite.
+            committedMemoId = candidateMemoId;
+          }
+        } catch {
+          // No committed Memo is present; the stale lease can be removed.
+        }
+      }
+      if (committedMemoId) {
+        await cleanupSystemShareLeaseStaging({
+          basePath: input.basePath,
+          memoRoot: input.memoRoot,
+          submissionId: submission.name,
+          leaseToken: lease.name,
+          memoId: committedMemoId,
+        });
+        continue;
+      }
+      await removeSafeSystemSharePath(input.basePath, leaseDirectory).catch(() => undefined);
+    }
+  }
+}
+
 async function createCallerForRequest(request: Request) {
   const resHeaders = new Headers();
   const ctx = await createContext({ req: request, resHeaders });
@@ -108,44 +581,14 @@ async function handleSystemShareRequest(
   if (!ctx.isAdmin)
     throw new TRPCError({ code: "FORBIDDEN", message: "只有管理员可以发布分享内容。" });
 
-  const form = await request.formData();
+  const form = await parseSystemShareForm(request);
   const submissionId = String(form.get("submissionId") || "").trim();
-  if (!/^[0-9a-f-]{16,80}$/iu.test(submissionId)) {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+      submissionId
+    )
+  ) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "分享提交标识无效。" });
-  }
-
-  const now = Date.now();
-  const existing = await db
-    .select()
-    .from(systemShareSubmissions)
-    .where(eq(systemShareSubmissions.submissionId, submissionId))
-    .limit(1)
-    .then((rows) => rows[0]);
-  if (existing?.state === "completed" && existing.memoId) {
-    return json(
-      request,
-      { ok: true, duplicate: true, memoId: existing.memoId },
-      { status: 200 },
-      resHeaders
-    );
-  }
-  if (existing && now - existing.updatedAt < SYSTEM_SHARE_PROCESSING_TTL_MS) {
-    throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
-  }
-  if (existing)
-    await db
-      .delete(systemShareSubmissions)
-      .where(eq(systemShareSubmissions.submissionId, submissionId));
-  try {
-    await db.insert(systemShareSubmissions).values({
-      submissionId,
-      memoId: null,
-      state: "processing",
-      createdAt: now,
-      updatedAt: now,
-    });
-  } catch {
-    throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
   }
 
   const files = form.getAll("files").filter((value): value is File => value instanceof File);
@@ -157,9 +600,6 @@ async function handleSystemShareRequest(
   }));
   const fileValidation = validateSystemShareFiles(fileDescriptors);
   if (!fileValidation.ok) {
-    await db
-      .delete(systemShareSubmissions)
-      .where(eq(systemShareSubmissions.submissionId, submissionId));
     throw new TRPCError({ code: "BAD_REQUEST", message: fileValidation.error });
   }
 
@@ -171,13 +611,10 @@ async function handleSystemShareRequest(
       ? parsed.filter((tag): tag is string => typeof tag === "string")
       : [];
   } catch {
-    await db
-      .delete(systemShareSubmissions)
-      .where(eq(systemShareSubmissions.submissionId, submissionId));
     throw new TRPCError({ code: "BAD_REQUEST", message: "标签格式无效。" });
   }
 
-  const normalized = normalizeSystemShare({
+  const normalized = normalizeSystemShareEditor({
     title: String(form.get("title") || ""),
     text: String(form.get("text") || ""),
     url: String(form.get("url") || ""),
@@ -187,59 +624,506 @@ async function handleSystemShareRequest(
   });
   const basePath = getActiveLocalBasePath();
   if (!basePath) {
-    await db
-      .delete(systemShareSubmissions)
-      .where(eq(systemShareSubmissions.submissionId, submissionId));
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "本地内容源未启用。" });
   }
 
+  async function resolveMemo(
+    memoId: string,
+    memoSlug?: string | null
+  ): Promise<SystemShareResult | null> {
+    const row = await db
+      .select({ id: posts.id, slug: posts.slug })
+      .from(posts)
+      .where(eq(posts.id, memoId))
+      .limit(1)
+      .then((rows) => rows[0]);
+    try {
+      await readAuthoredMemo(memoId);
+    } catch {
+      return null;
+    }
+    const slug = memoSlug || row?.slug || generateSlugFromPath(memoId, undefined, "memo");
+    if (!slug) return null;
+    try {
+      const memo = await caller.memos.bySlug({ slug });
+      if (memo.id !== memoId) return null;
+      return { memoId, memoSlug: slug, memo };
+    } catch (error) {
+      if (error instanceof TRPCError && error.code === "NOT_FOUND") {
+        try {
+          await triggerIncrementalSync({ throwOnError: true });
+          const memo = await caller.memos.bySlug({ slug });
+          if (memo.id !== memoId) return null;
+          return { memoId, memoSlug: slug, memo };
+        } catch {
+          return null;
+        }
+      }
+      throw error;
+    }
+  }
+
+  const memoRoot = getServerLocalMemoRootPath();
+  await cleanupExpiredSystemShareStaging({ basePath, memoRoot });
+  const deterministicMemoId = buildMemoRelativePath(`system-share/${submissionId}.md`, memoRoot);
+
+  async function resolveCommittedSystemShare(memoId: string, memoSlug?: string | null) {
+    try {
+      const authored = await readAuthoredMemo(memoId);
+      const marker = authored.frontmatter.systemShare;
+      if (
+        !marker ||
+        typeof marker !== "object" ||
+        !("source" in marker) ||
+        marker.source !== "system-share" ||
+        !("submissionId" in marker) ||
+        marker.submissionId !== submissionId
+      ) {
+        return null;
+      }
+    } catch {
+      return null;
+    }
+    const resolved = await resolveMemo(memoId, memoSlug);
+    if (!resolved) return null;
+
+    const indexed = await db
+      .select({ id: posts.id })
+      .from(posts)
+      .where(eq(posts.id, memoId))
+      .limit(1)
+      .then((rows) => rows[0]);
+    if (indexed) return resolved;
+
+    // A process can publish the authored file immediately before the content
+    // source sync writes its posts/projection row. Rebuild that projection
+    // before returning a detail URL that would otherwise 404.
+    await triggerIncrementalSync({ throwOnError: true });
+    const recovered = await db
+      .select({ id: posts.id })
+      .from(posts)
+      .where(eq(posts.id, memoId))
+      .limit(1)
+      .then((rows) => rows[0]);
+    if (!recovered) return null;
+    return resolveMemo(memoId, memoSlug);
+  }
+
+  const now = Date.now();
+  const leaseToken = randomUUID();
+  let reclaimedExpiredLease = false;
+  let existing = await db
+    .select()
+    .from(systemShareSubmissions)
+    .where(eq(systemShareSubmissions.submissionId, submissionId))
+    .limit(1)
+    .then((rows) => rows[0]);
+
+  if (existing?.memoId) {
+    const recovered = existing.classification
+      ? await resolveCommittedSystemShare(existing.memoId, existing.memoSlug)
+      : await resolveMemo(existing.memoId, existing.memoSlug);
+    if (recovered) {
+      await db
+        .update(systemShareSubmissions)
+        .set({
+          memoSlug: recovered.memoSlug,
+          state: "completed",
+          leaseToken: null,
+          leaseExpiresAt: null,
+          updatedAt: now,
+        })
+        .where(eq(systemShareSubmissions.submissionId, submissionId));
+      return json(
+        request,
+        {
+          ok: true,
+          duplicate: true,
+          memoId: recovered.memoId,
+          memo: recovered.memo,
+          classification: existing.classification ?? normalized.classification,
+        },
+        { status: 200 },
+        resHeaders
+      );
+    }
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "该分享对应的 Memo 已被删除，不能重新创建。",
+    });
+  }
+
+  if (existing) {
+    // The filesystem publication is the commit point. If the process stopped
+    // after that point but before the SQLite row was completed, recover the
+    // authored Memo immediately even while the previous lease is unexpired.
+    const recoveredCommit = await resolveCommittedSystemShare(
+      deterministicMemoId,
+      existing.memoSlug
+    );
+    if (recoveredCommit) {
+      await db
+        .update(systemShareSubmissions)
+        .set({
+          memoId: recoveredCommit.memoId,
+          memoSlug: recoveredCommit.memoSlug,
+          state: "completed",
+          leaseToken: null,
+          leaseExpiresAt: null,
+          updatedAt: now,
+        })
+        .where(eq(systemShareSubmissions.submissionId, submissionId));
+      await cleanupAbandonedSystemShareStaging({
+        basePath,
+        memoRoot,
+        submissionId,
+        keepLeaseToken: "",
+        memoId: deterministicMemoId,
+      });
+      await cleanupSystemShareMemoTemps({ basePath, memoRoot, submissionId });
+      return json(
+        request,
+        {
+          ok: true,
+          duplicate: true,
+          memoId: recoveredCommit.memoId,
+          memo: recoveredCommit.memo,
+          classification: existing.classification ?? normalized.classification,
+        },
+        { status: 200 },
+        resHeaders
+      );
+    }
+    const leaseExpiresAt =
+      existing.leaseExpiresAt ?? existing.updatedAt + SYSTEM_SHARE_PROCESSING_TTL_MS;
+    const leaseState = existing.state === "processing" || existing.state === "committing";
+    if (leaseState && leaseExpiresAt > now) {
+      throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
+    }
+    reclaimedExpiredLease = leaseState && leaseExpiresAt <= now;
+    await db
+      .update(systemShareSubmissions)
+      .set({
+        state: "processing",
+        leaseToken,
+        leaseExpiresAt: now + SYSTEM_SHARE_PROCESSING_TTL_MS,
+        updatedAt: now,
+        classification: normalized.classification,
+      })
+      .where(
+        and(
+          eq(systemShareSubmissions.submissionId, submissionId),
+          or(
+            eq(systemShareSubmissions.state, "processing"),
+            eq(systemShareSubmissions.state, "committing")
+          ),
+          or(
+            lte(systemShareSubmissions.leaseExpiresAt, now),
+            and(
+              isNull(systemShareSubmissions.leaseExpiresAt),
+              lt(systemShareSubmissions.updatedAt, now - SYSTEM_SHARE_PROCESSING_TTL_MS)
+            )
+          )
+        )
+      );
+  } else {
+    try {
+      await db.insert(systemShareSubmissions).values({
+        submissionId,
+        memoId: null,
+        memoSlug: null,
+        classification: normalized.classification,
+        state: "processing",
+        leaseToken,
+        leaseExpiresAt: now + SYSTEM_SHARE_PROCESSING_TTL_MS,
+        createdAt: now,
+        updatedAt: now,
+      });
+    } catch {
+      throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
+    }
+  }
+
+  existing = await db
+    .select()
+    .from(systemShareSubmissions)
+    .where(eq(systemShareSubmissions.submissionId, submissionId))
+    .limit(1)
+    .then((rows) => rows[0]);
+  if (!existing || existing.leaseToken !== leaseToken) {
+    throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
+  }
+
   const stagedPaths: string[] = [];
+  let createdMemoId: string | null = null;
+  let createdMemoSlug: string | null = null;
+  const stagedDirectory = join(
+    basePath,
+    memoRoot.replace(/^\/+/, ""),
+    "assets",
+    "system-share",
+    submissionId,
+    leaseToken
+  );
+  let stagingDirectorySafe = false;
   try {
-    const memoRoot = getServerLocalMemoRootPath();
+    await ensureSafeSystemShareDirectory(basePath, stagedDirectory);
+    stagingDirectorySafe = true;
     const attachments = [];
+    const stagedAttachmentRefs: Array<{ persistedPath: string; fullPath: string }> = [];
     for (const [index, file] of files.entries()) {
       const originalName = basename(file.name || `file-${index + 1}`);
       const safeName = originalName.replace(/[^a-z0-9._-]+/giu, "_") || `file-${index + 1}`;
-      const filename = `system-share-${submissionId.slice(0, 8)}-${index + 1}-${safeName}`;
-      const persistedPath = `${memoRoot.replace(/^\/+/, "")}/assets/system-share/${filename}`;
+      const filename = `system-share/${submissionId}/${leaseToken}/${index + 1}-${safeName}`;
+      const persistedPath = `${memoRoot.replace(/^\/+/, "")}/assets/${filename}`;
       const fullPath = join(basePath, persistedPath);
-      await mkdir(join(basePath, memoRoot.replace(/^\/+/, ""), "assets", "system-share"), {
-        recursive: true,
-      });
-      await writeFile(fullPath, new Uint8Array(await file.arrayBuffer()), { flag: "wx" });
+      const directory = dirname(fullPath);
+      const directoryHandle = await openSafeSystemShareDirectory(basePath, directory);
+      const writePath = directoryHandle
+        ? `/proc/self/fd/${directoryHandle.fd}/${basename(fullPath)}`
+        : fullPath;
+      try {
+        await writeFile(writePath, new Uint8Array(await file.arrayBuffer()), { flag: "wx" });
+      } finally {
+        await directoryHandle?.close().catch(() => undefined);
+      }
+      try {
+        await assertSafeSystemShareFile(basePath, fullPath);
+      } catch (error) {
+        await removeSafeSystemSharePath(basePath, fullPath).catch(() => undefined);
+        throw error;
+      }
       stagedPaths.push(fullPath);
+      if (
+        process.env.NODE_ENV === "test" &&
+        process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_FILES === String(index + 1)
+      ) {
+        throw new Error("system-share attachment staging failure (test injection)");
+      }
+      stagedAttachmentRefs.push({ persistedPath: `./assets/${filename}`, fullPath });
       attachments.push({
         filename: file.name || filename,
-        path: `./assets/system-share/${filename}`,
+        path: `./assets/${filename}`,
         contentType: file.type || "application/octet-stream",
         size: file.size,
         isImage: file.type.startsWith("image/"),
       });
     }
 
+    const activeLease = await db
+      .select({
+        leaseToken: systemShareSubmissions.leaseToken,
+        leaseExpiresAt: systemShareSubmissions.leaseExpiresAt,
+      })
+      .from(systemShareSubmissions)
+      .where(
+        and(
+          eq(systemShareSubmissions.submissionId, submissionId),
+          eq(systemShareSubmissions.state, "processing"),
+          eq(systemShareSubmissions.leaseToken, leaseToken)
+        )
+      )
+      .limit(1)
+      .then((rows) => rows[0]);
+    if (!activeLease || (activeLease.leaseExpiresAt ?? 0) <= Date.now()) {
+      throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
+    }
+
+    const commitStartedAt = Date.now();
+    await db
+      .update(systemShareSubmissions)
+      .set({
+        state: "committing",
+        leaseExpiresAt: commitStartedAt + SYSTEM_SHARE_PROCESSING_TTL_MS,
+        updatedAt: commitStartedAt,
+      })
+      .where(
+        and(
+          eq(systemShareSubmissions.submissionId, submissionId),
+          eq(systemShareSubmissions.state, "processing"),
+          eq(systemShareSubmissions.leaseToken, leaseToken),
+          gt(systemShareSubmissions.leaseExpiresAt, commitStartedAt)
+        )
+      );
+    const committingLease = await db
+      .select({ leaseToken: systemShareSubmissions.leaseToken })
+      .from(systemShareSubmissions)
+      .where(
+        and(
+          eq(systemShareSubmissions.submissionId, submissionId),
+          eq(systemShareSubmissions.state, "committing"),
+          eq(systemShareSubmissions.leaseToken, leaseToken)
+        )
+      )
+      .limit(1)
+      .then((rows) => rows[0]);
+    if (!committingLease) {
+      throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
+    }
+
     const result = await caller.memos.create({
-      content: normalized.classification === "clipping" ? normalized.remarks : normalized.text,
+      content: composeSystemShareMemoContent(normalized),
       title: normalized.title || undefined,
       isPublic: normalized.isPublic,
       tags: normalized.tags,
       attachments,
       systemShare: {
         source: "system-share" as const,
+        submissionId,
+        leaseToken,
         ...(normalized.url ? { targetUrl: normalized.url } : {}),
       },
     });
-    const memoId = typeof result === "object" && result && "id" in result ? String(result.id) : "";
-    if (!memoId) throw new Error("Memo 创建结果缺少 id");
+    createdMemoId = typeof result === "object" && result && "id" in result ? String(result.id) : "";
+    createdMemoSlug =
+      typeof result === "object" && result && "slug" in result ? String(result.slug) : null;
+    if (!createdMemoId || !createdMemoSlug) throw new Error("Memo 创建结果缺少详情身份");
+
+    // Only reclaim an expired lease after the deterministic Memo file exists.
+    // An older request may still be finishing its filesystem commit; deleting
+    // its staging directory before that point could publish missing attachments.
+    if (reclaimedExpiredLease) {
+      await cleanupAbandonedSystemShareStaging({
+        basePath,
+        memoRoot,
+        submissionId,
+        keepLeaseToken: leaseToken,
+        memoId: deterministicMemoId,
+      });
+    }
+
+    const referencedAttachmentPaths = new Set(
+      typeof result === "object" &&
+        result &&
+        "attachments" in result &&
+        Array.isArray(result.attachments)
+        ? result.attachments
+            .map((attachment) =>
+              attachment && typeof attachment === "object" && "path" in attachment
+                ? String(attachment.path)
+                : ""
+            )
+            .filter(Boolean)
+        : []
+    );
+    await Promise.all(
+      stagedAttachmentRefs
+        .filter(({ persistedPath }) => !referencedAttachmentPaths.has(persistedPath))
+        .map(({ fullPath }) => removeSafeSystemSharePath(basePath, fullPath))
+    );
+    if (
+      !stagedAttachmentRefs.some(({ persistedPath }) =>
+        referencedAttachmentPaths.has(persistedPath)
+      )
+    ) {
+      await removeSafeSystemSharePath(basePath, stagedDirectory).catch(() => undefined);
+    }
     await db
       .update(systemShareSubmissions)
-      .set({ memoId, state: "completed", updatedAt: Date.now() })
-      .where(eq(systemShareSubmissions.submissionId, submissionId));
-    return json(request, { ok: true, memo: result }, { status: 201 }, resHeaders);
+      .set({
+        memoId: createdMemoId,
+        memoSlug: createdMemoSlug,
+        state: "completed",
+        leaseToken: null,
+        leaseExpiresAt: null,
+        updatedAt: Date.now(),
+      })
+      .where(
+        and(
+          eq(systemShareSubmissions.submissionId, submissionId),
+          eq(systemShareSubmissions.leaseToken, leaseToken)
+        )
+      );
+    return json(
+      request,
+      {
+        ok: true,
+        duplicate: false,
+        memoId: createdMemoId,
+        memo: result,
+        classification: normalized.classification,
+      },
+      { status: 201 },
+      resHeaders
+    );
   } catch (error) {
-    await Promise.all(stagedPaths.map((path) => rm(path, { force: true }).catch(() => undefined)));
-    await db
-      .delete(systemShareSubmissions)
-      .where(eq(systemShareSubmissions.submissionId, submissionId));
+    let committedMemoFile = Boolean(createdMemoId);
+    if (!committedMemoFile) {
+      try {
+        await readAuthoredMemo(deterministicMemoId);
+        committedMemoFile = true;
+      } catch {
+        committedMemoFile = false;
+      }
+    }
+    if (!committedMemoFile) {
+      if (
+        stagingDirectorySafe &&
+        (await isSafeExistingSystemShareDirectory(basePath, stagedDirectory))
+      ) {
+        await Promise.all(
+          stagedPaths.map((path) =>
+            removeSafeSystemSharePath(basePath, path).catch(() => undefined)
+          )
+        );
+        await removeSafeSystemSharePath(basePath, stagedDirectory).catch(() => undefined);
+      }
+      if (reclaimedExpiredLease) {
+        // Retain an expired recovery row as a cleanup sentinel. A later retry
+        // must still know that an older lease's staging tree may exist.
+        await db
+          .update(systemShareSubmissions)
+          .set({
+            state: "processing",
+            leaseToken,
+            leaseExpiresAt: Date.now() - 1,
+            updatedAt: Date.now(),
+          })
+          .where(
+            and(
+              eq(systemShareSubmissions.submissionId, submissionId),
+              eq(systemShareSubmissions.leaseToken, leaseToken)
+            )
+          );
+      } else {
+        await db
+          .delete(systemShareSubmissions)
+          .where(
+            and(
+              eq(systemShareSubmissions.submissionId, submissionId),
+              eq(systemShareSubmissions.leaseToken, leaseToken)
+            )
+          );
+      }
+      // Keep staging owned by other lease tokens intact on failure. An older
+      // request may already have passed the commit fence and still be writing
+      // its attachment references; cleanup is deferred until a replacement
+      // lease has published a complete deterministic Memo.
+    } else if (createdMemoId) {
+      await db
+        .update(systemShareSubmissions)
+        .set({
+          memoId: createdMemoId,
+          memoSlug: createdMemoSlug,
+          updatedAt: Date.now(),
+        })
+        .where(
+          and(
+            eq(systemShareSubmissions.submissionId, submissionId),
+            eq(systemShareSubmissions.leaseToken, leaseToken)
+          )
+        );
+    } else {
+      // A stale request may discover that another lease already committed the
+      // deterministic Memo. Remove only this lease's unreferenced staging.
+      await cleanupSystemShareLeaseStaging({
+        basePath,
+        memoRoot,
+        submissionId,
+        leaseToken,
+        memoId: deterministicMemoId,
+      });
+    }
     if (error instanceof TRPCError) throw error;
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "分享内容创建失败，请重试。" });
   }

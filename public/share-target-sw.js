@@ -1,5 +1,5 @@
 const DB_NAME = "ivan-console-system-share";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = "pending";
 const MAX_FILES = 10;
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
@@ -9,7 +9,11 @@ const TTL_MS = 15 * 60 * 1000;
 function openStore() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => request.result.createObjectStore(STORE_NAME);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(STORE_NAME)) {
+        request.result.createObjectStore(STORE_NAME);
+      }
+    };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error || new Error("IndexedDB unavailable"));
   });
@@ -57,14 +61,12 @@ self.addEventListener("fetch", (event) => {
         const total = files.reduce((sum, file) => sum + file.size, 0);
         if (total > MAX_TOTAL_BYTES) throw new Error("分享文件总大小超出限制。");
         const now = Date.now();
-        await putPending({
-          version: 1,
-          submissionId: crypto.randomUUID(),
-          createdAt: now,
-          expiresAt: now + TTL_MS,
+        const snapshot = {
           title: readString(form, "title"),
           text: readString(form, "text"),
           url: readString(form, "url"),
+          tags: [],
+          isPublic: false,
           files: files.map((file) => ({
             name: file.name,
             type: file.type,
@@ -72,6 +74,14 @@ self.addEventListener("fetch", (event) => {
             lastModified: file.lastModified,
             blob: file,
           })),
+        };
+        await putPending({
+          version: 2,
+          submissionId: crypto.randomUUID(),
+          createdAt: now,
+          expiresAt: now + TTL_MS,
+          ...snapshot,
+          original: snapshot,
         });
         return Response.redirect(new URL("/share", self.location.origin), 303);
       } catch {

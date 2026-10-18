@@ -2,6 +2,12 @@ export const SYSTEM_SHARE_TTL_MS = 15 * 60 * 1000;
 export const SYSTEM_SHARE_MAX_FILES = 10;
 export const SYSTEM_SHARE_MAX_FILE_BYTES = 20 * 1024 * 1024;
 export const SYSTEM_SHARE_MAX_TOTAL_BYTES = 50 * 1024 * 1024;
+// Leave bounded room for multipart headers and field values while keeping the
+// request parser from accepting an unbounded upload body.
+export const SYSTEM_SHARE_MAX_REQUEST_BYTES = SYSTEM_SHARE_MAX_TOTAL_BYTES + 1024 * 1024;
+export const SYSTEM_SHARE_CLIPPING_MARKER = "#剪藏";
+
+const SYSTEM_SHARE_CLIPPING_MARKER_RE = /(^|\s)\\?#剪藏(?=$|[\s,.!?，。；：！？）)])/u;
 
 export type SystemShareClassification = "clipping" | "memo";
 
@@ -31,6 +37,87 @@ export type NormalizedSystemShare = {
   isPublic: boolean;
   files: SystemShareFile[];
 };
+
+function normalizeEditorTargetLine(line: string): string | null {
+  const canonicalLine = line.replace(/^(https?)\\:\/\//iu, "$1://");
+  const plainUrl = normalizeHttpUrl(canonicalLine);
+  if (plainUrl) return plainUrl;
+
+  const markdownLink = /^\[[^\]]*\]\((https?:\/\/[^\s)]+)\)$/iu.exec(canonicalLine);
+  if (markdownLink) return normalizeHttpUrl(markdownLink[1]);
+
+  const autolink = /^<(https?:\/\/[^\s>]+)>$/iu.exec(canonicalLine);
+  return autolink ? normalizeHttpUrl(autolink[1]) : null;
+}
+
+function canonicalizeEditorTargetLine(text: string): string {
+  const lines = text.split(/\r?\n/u);
+  const firstLineIndex = lines.findIndex((line) => line.trim().length > 0);
+  if (firstLineIndex === -1) return text;
+
+  const line = lines[firstLineIndex];
+  const canonicalLine = line.replace(/^([ \t]*)(https?)\\:\/\//iu, "$1$2://");
+  if (canonicalLine === line) return text;
+
+  lines[firstLineIndex] = canonicalLine;
+  return lines.join("\n");
+}
+
+function appendSystemShareClippingMarker(content: string): string {
+  const trimmed = content.trim();
+  if (!trimmed) return SYSTEM_SHARE_CLIPPING_MARKER;
+  return SYSTEM_SHARE_CLIPPING_MARKER_RE.test(trimmed)
+    ? trimmed
+    : `${trimmed}\n\n${SYSTEM_SHARE_CLIPPING_MARKER}`;
+}
+
+/** Remove the generated marker when an edited share is no longer a clipping. */
+export function stripSystemShareClippingMarker(content: string): string {
+  const trimmed = content.trim();
+  if (!trimmed) return "";
+  return trimmed
+    .replace(new RegExp(`\\n?\\s*${SYSTEM_SHARE_CLIPPING_MARKER}\\s*$`, "u"), "")
+    .trim();
+}
+
+/**
+ * Reclassify the single editable Memo field using the canonical clipping shape:
+ * the first non-empty line is the target URL. The raw share contract keeps
+ * embedded URLs as ordinary text, but the confirmation editor needs a way to
+ * preserve and edit the parsed URL without adding a second input.
+ */
+export function normalizeSystemShareEditor(values: SystemShareValues): NormalizedSystemShare {
+  const canonicalText = canonicalizeEditorTargetLine(values.text?.trim() ?? "");
+  const normalized = normalizeSystemShare({ ...values, text: canonicalText });
+  if (normalized.classification === "clipping") return normalized;
+
+  const firstLine = canonicalText.split(/\r?\n/u, 1)[0]?.trim() ?? "";
+  const firstLineUrl = normalizeEditorTargetLine(firstLine);
+  return firstLineUrl
+    ? normalizeSystemShare({
+        ...values,
+        text: canonicalText,
+        url: firstLineUrl,
+      })
+    : normalized;
+}
+
+/** Keep the clipping target visible in the one editable Memo field. */
+export function composeSystemShareMemoContent(normalized: NormalizedSystemShare): string {
+  const text = normalized.text.trim();
+  if (normalized.classification !== "clipping") return text;
+
+  if (!normalized.url) return appendSystemShareClippingMarker(text);
+  if (!text) return appendSystemShareClippingMarker(normalized.url);
+
+  const lines = text.split(/\r?\n/u);
+  const firstLine = lines[0]?.trim() ?? "";
+  if (normalizeEditorTargetLine(firstLine) === normalized.url) {
+    const remarks = lines.slice(1).join("\n").trim();
+    return appendSystemShareClippingMarker(remarks ? `${firstLine}\n\n${remarks}` : firstLine);
+  }
+  return appendSystemShareClippingMarker(`${normalized.url}\n\n${text}`);
+}
 
 export function normalizeHttpUrl(value: string | undefined | null): string | null {
   const candidate = value?.trim() ?? "";

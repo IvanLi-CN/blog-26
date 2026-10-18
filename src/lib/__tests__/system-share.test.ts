@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { normalizeSystemShare, validateSystemShareFiles } from "../system-share";
+import { recognizeMemoClipping } from "../memo-clipping";
+import {
+  composeSystemShareMemoContent,
+  normalizeSystemShare,
+  normalizeSystemShareEditor,
+  SYSTEM_SHARE_CLIPPING_MARKER,
+  stripSystemShareClippingMarker,
+  validateSystemShareFiles,
+} from "../system-share";
 
 describe("system share normalization", () => {
   test("classifies a dedicated URL as clipping and removes duplicate text", () => {
@@ -44,6 +52,94 @@ describe("system share normalization", () => {
     });
   });
 
+  test("keeps the clipping target visible in the single Memo editor field", () => {
+    const normalized = normalizeSystemShare({
+      text: "来自分享的备注",
+      url: "https://example.com/article",
+    });
+    expect(composeSystemShareMemoContent(normalized)).toBe(
+      `https://example.com/article\n\n来自分享的备注\n\n${SYSTEM_SHARE_CLIPPING_MARKER}`
+    );
+  });
+
+  test("writes a parser marker so the composed body is self-identifying", () => {
+    const content = composeSystemShareMemoContent(
+      normalizeSystemShare({
+        text: "来自分享的备注",
+        url: "https://example.com/article",
+      })
+    );
+    const recognition = recognizeMemoClipping(content, {});
+    expect(recognition).toMatchObject({
+      enabled: true,
+      targetUrl: "https://example.com/article",
+      remarks: "来自分享的备注",
+    });
+  });
+
+  test("does not duplicate an existing parser marker", () => {
+    const content = composeSystemShareMemoContent(
+      normalizeSystemShare({
+        text: "已有备注\n\n#剪藏",
+        url: "https://example.com/article",
+      })
+    );
+    expect(content.match(/#剪藏/gu)).toHaveLength(1);
+  });
+
+  test("recognizes an edited canonical clipping body without a second URL field", () => {
+    expect(
+      normalizeSystemShareEditor({
+        text: "https://example.com/article\n\n编辑后的备注",
+      })
+    ).toMatchObject({
+      classification: "clipping",
+      url: "https://example.com/article",
+    });
+    expect(
+      normalizeSystemShareEditor({
+        text: "[阅读原文](https://example.com/article)\n\n编辑后的备注",
+      })
+    ).toMatchObject({
+      classification: "clipping",
+      url: "https://example.com/article",
+    });
+  });
+
+  test("normalizes the Markdown escape Milkdown adds before a clipping URL", () => {
+    expect(
+      normalizeSystemShareEditor({
+        text: "https\\://example.com/article\n\n编辑后的备注",
+      })
+    ).toMatchObject({
+      classification: "clipping",
+      text: "https://example.com/article\n\n编辑后的备注",
+      url: "https://example.com/article",
+    });
+  });
+
+  test("canonicalizes an escaped editor URL even when the dedicated URL is present", () => {
+    expect(
+      normalizeSystemShareEditor({
+        text: "https\\://example.com/article\n\n编辑后的备注",
+        url: "https://example.com/article",
+      })
+    ).toMatchObject({
+      classification: "clipping",
+      text: "https://example.com/article\n\n编辑后的备注",
+      url: "https://example.com/article",
+    });
+  });
+
+  test("removes the generated clipping marker after an edit becomes a memo", () => {
+    expect(
+      stripSystemShareClippingMarker(
+        `https://example.com/article\n\n已改成普通闪念\n\n${SYSTEM_SHARE_CLIPPING_MARKER}`
+      )
+    ).toBe("https://example.com/article\n\n已改成普通闪念");
+    expect(stripSystemShareClippingMarker("普通闪念")).toBe("普通闪念");
+  });
+
   test("preserves files and defaults visibility to private", () => {
     expect(
       normalizeSystemShare({
@@ -65,5 +161,8 @@ test("system share file limits are enforced", () => {
       ok: false,
     }
   );
+  expect(
+    validateSystemShareFiles(new Array(3).fill({ name: "a", type: "", size: 17 * 1024 * 1024 }))
+  ).toMatchObject({ ok: false });
   expect(validateSystemShareFiles([{ name: "a", type: "", size: 1 }])).toEqual({ ok: true });
 });
