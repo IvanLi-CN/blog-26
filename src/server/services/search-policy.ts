@@ -142,8 +142,7 @@ export async function recordSearchQuality(
   fingerprint: string,
   passed: boolean
 ) {
-  const current = await resolveSearchPolicy(mode);
-  if (current.fingerprint !== fingerprint) return false;
+  const settings = await readSearchSettings();
   const providerRevision = await db
     .select({ config: llmSettings.config, updatedAt: llmSettings.updatedAt })
     .from(llmSettings)
@@ -153,8 +152,9 @@ export async function recordSearchQuality(
     configHash: hash(providerRevision?.config ?? ""),
     updatedAt: providerRevision?.updatedAt ?? null,
   };
-  const settings = await readSearchSettings();
   const expectedPolicy = JSON.stringify(settings.policy);
+  const current = await resolveSearchPolicy(mode, settings);
+  if (current.fingerprint !== fingerprint) return false;
   const saved = db.transaction((tx) => {
     const latestProvider = tx
       .select({ config: llmSettings.config, updatedAt: llmSettings.updatedAt })
