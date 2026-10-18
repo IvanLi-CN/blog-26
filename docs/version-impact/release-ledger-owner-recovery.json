@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "08defc534c0c0df15bf3d43b144dc785a44bef05",
+  "covered_files": {
+    "src/lib/release/github.ts": "b82830a39b59db0baada2c72a8848aaeaa8fb8a9",
+    "tests/lib/manual-release-ledger.test.ts": "1496ff7bb5e4751e2e4da8f8db34a1ab89017bb3"
+  },
+  "change": {
+    "description": "Bind chained release-ledger recovery declarations during the ordered ancestry pass so valid signed legacy commits are accepted only when targeted by a bot-signed recovery commit.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This changes only internal release-ledger recovery validation. It preserves the ledger schema, release identity, product artifacts, and application endpoints.",
+      "assessed_at": "2026-10-18T05:39:59Z",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-ledger.test.ts",
+          "blob": "1496ff7bb5e4751e2e4da8f8db34a1ab89017bb3",
+          "command": "bun test tests/lib/manual-release-ledger.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Recovery targets are parsed first and authorized only in ordered ancestry where the existing signed owner or bot checks bind the target. No public media, persistence, or release identity contract changes.",
+      "assessed_at": "2026-10-18T05:39:59Z",
+      "evidence": [
+        {
+          "path": "src/lib/release/github.ts",
+          "blob": "b82830a39b59db0baada2c72a8848aaeaa8fb8a9",
+          "command": "bunx biome check src/lib/release/github.ts tests/lib/manual-release-ledger.test.ts"
+        },
+        {
+          "path": "tests/lib/manual-release-ledger.test.ts",
+          "blob": "1496ff7bb5e4751e2e4da8f8db34a1ab89017bb3",
+          "command": "bun test tests/lib/manual-release-ledger.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The change is limited to ordered recovery-marker validation and its ledger regression fixture."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused release-ledger tests cover bot-signed recovery commits, chained owner-authored legacy markers, invalid signatures, and broken ancestry. The ledger JSON shape and product contracts remain unchanged.",
+      "assessed_at": "2026-10-18T05:39:59Z",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-ledger.test.ts",
+          "blob": "1496ff7bb5e4751e2e4da8f8db34a1ab89017bb3",
+          "command": "bun test tests/lib/manual-release-ledger.test.ts tests/lib/manual-release-recovery.test.ts"
+        },
+        {
+          "path": "src/lib/release/github.ts",
+          "blob": "b82830a39b59db0baada2c72a8848aaeaa8fb8a9",
+          "command": "bunx biome check src/lib/release/github.ts tests/lib/manual-release-ledger.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6"
+      ],
+      "evidence": [
+        {
+          "path": "src/lib/release/github.ts",
+          "blob": "b82830a39b59db0baada2c72a8848aaeaa8fb8a9",
+          "command": "Recovery validation is internal to Product Release and does not alter application endpoints."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The release ledger JSON schema, SQLite schema, local content format, and browser persistence are unchanged; only signed recovery ancestry validation changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-ledger.test.ts",
+          "blob": "1496ff7bb5e4751e2e4da8f8db34a1ab89017bb3",
+          "command": "Ledger regression coverage confirms the existing JSON state and recovery marker contract remain readable."
+        }
+      ]
+    }
+  }
+}

@@ -67,13 +67,14 @@ describe("durable product release reservations", () => {
       commit(
         legacy,
         olderRecovery,
-        `chore(release): recover legacy ledger\n\n${digestLine}\n${signedOff}`,
+        `chore(release): recover legacy ledger\n\n${digestLine}\nLedger-Recovery: ${olderRecovery}\n${signedOff}`,
         contract.repository.split("/")[0]
       ),
       commit(
         olderRecovery,
         olderLegacy,
-        `chore(release): record product delivery state\n\n${digestLine}\nLedger-Recovery: ${olderLegacy}\n${signedOff}`
+        `chore(release): record product delivery state\n\n${digestLine}\nLedger-Recovery: ${olderLegacy}\n${signedOff}`,
+        contract.repository.split("/")[0]
       ),
       commit(
         olderLegacy,
