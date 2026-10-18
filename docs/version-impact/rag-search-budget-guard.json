@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "08defc534c0c0df15bf3d43b144dc785a44bef05",
+  "base_sha": "8f2fb9f59e5f0ac3b17a1c2af61fe80fdfc38ff8",
   "covered_files": {
     "docs/specs/search-relevance/HISTORY.md": "f987c129077695e1aa3804e1ae7381331e8aecc7",
     "docs/specs/search-relevance/IMPLEMENTATION.md": "aef9170da39e86ae2573ce2426d007407e69adfc",
@@ -97,7 +97,8 @@
         "3.3.0",
         "3.3.2",
         "3.3.3",
-        "3.4.6"
+        "3.4.6",
+        "3.5.3"
       ],
       "evidence": [
         {
