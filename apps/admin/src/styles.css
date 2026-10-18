@@ -575,7 +575,7 @@ html[data-ui-theme="light"] {
 }
 
 .admin-switch-thumb[data-state="checked"] {
-  transform: translateX(1.5rem);
+  transform: translateX(1.25rem);
 }
 
 .admin-switch {
@@ -660,7 +660,7 @@ html[data-ui-theme="light"] {
   .admin-switch {
     height: 1.75rem;
     width: 2.5rem;
-    padding: 0.125rem;
+    padding: 0.25rem;
   }
 
   .admin-switch::before {
@@ -673,7 +673,7 @@ html[data-ui-theme="light"] {
   }
 
   .admin-switch-thumb[data-state="checked"] {
-    transform: translateX(1rem);
+    transform: translateX(0.75rem);
   }
 
   .admin-tabs-trigger {
