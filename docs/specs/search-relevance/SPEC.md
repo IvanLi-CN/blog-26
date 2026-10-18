@@ -164,6 +164,10 @@ RAG 语义覆盖、后台任务 idle/running、RAG 策略启用和模型质量�
 
 现代 RAG 继续兼容既有博客 post_embeddings，legacy semantic 和 enhanced 的既有参数、数组/envelope、访问范围及权限边界保持有效。旧记录只在身份、输入和配置均与当前目标匹配时计入有效覆盖；不能仅因无错误信息或有非空向量而认定完成。不以统计修复为由自动清空历史索引、扫描私有来源、改动上游发布流程或变更 RAG 排名规则。
 
+### REQ-SREL-024 — AI 搜索的流式等待与兼容入口
+
+公共 JSON 搜索入口必须继续保持数组响应、响应头元信息和既有 10 秒策略预算，供兼容调用者使用。RAG 与查询改写的正式页面请求可以使用 `/api/public/search/stream`，服务端必须先发送 `started` 事件，再发送阶段进度或不超过 2 秒的 SSE 注释心跳，最终发送完整 envelope 的 `result` 或受控 `error` 事件。流式执行的 embedding 和模型判断单次等待上限不得超过 30 秒，必须把客户端取消传入 provider 请求；断开连接后不得发送迟到结果或继续无界执行。SSE 不改变候选、权限、版本、排序、关键词命中保全或模型失败回退，tRPC、MCP、legacy semantic/enhanced 保持原响应形状。
+
 ## Verification
 
 管理员在现有模型管理页分别管理 RAG 与改写的启停、继承 chat 或覆盖模型及有界高级预算。策略独立持久化，复用现有提供方与密钥；仅已保存配置可异步执行固定合成样例的质量验证，显示进度与失败原因。配置改变使旧任务结果及质量依据失效，非管理员不得读写策略或启动验证。接口为 GET/PUT `/api/admin/search-settings`、POST `/api/admin/search-settings/validate` 和 GET `/api/admin/search-settings/validation/:runId`。
@@ -294,6 +298,12 @@ RAG 语义覆盖、后台任务 idle/running、RAG 策略启用和模型质量�
 - covers: `REQ-SREL-006`, `REQ-SREL-007`, `REQ-SREL-008`, `REQ-SREL-021`, `REQ-SREL-022`, `REQ-SREL-023`
 - Pass condition: 准备与统计使用同一目标/摘要/有效配置，完成后对应目标判为已索引；重复补建不增量膨胀、旧或多余记录不冒充完整。任何所选来源覆盖不全均报告 ragIncompleteSources，包括仍有语义候选或关键词满额的情况；词法集合保全、模型失败回退和同版绑定继续成立，旧接口与授权边界兼容，统计与查询不隐式启动生成。
 
+### VER-SREL-022 — AI 搜索流式传输
+
+- Method: 使用确定性 Mock provider 延迟 embedding 和模型判断，比较 JSON 与 `/api/public/search/stream`，读取首个事件、心跳、最终 envelope，并在结果前取消请求；覆盖 RAG、改写、provider 超时、Web Demo fixture、URL 切换和旧 JSON 调用。
+- covers: `REQ-SREL-007`, `REQ-SREL-008`, `REQ-SREL-012`, `REQ-SREL-024`
+- Pass condition: 流式入口在模型完成前发送 `started`/进度或心跳，30 秒内的慢 provider 返回实际 AI envelope，取消后没有迟到写入；超过上限或实际 provider 故障仍受控回退关键词。旧 JSON、tRPC、MCP 和 legacy 入口的数组/envelope 与执行语义不变。
+
 ## Related ADRs
 
 - [公开 Playbook 读取模型](../../adr/0011-published-playbook-read-model.md)
@@ -301,6 +311,7 @@ RAG 语义覆盖、后台任务 idle/running、RAG 策略启用和模型质量�
 - [搜索引擎升级保留既有查询兼容性](../../adr/0023-search-legacy-compatibility.md)
 - [统一搜索排序与独立 Playbook 同步管理](../../adr/0024-unified-search-and-playbook-sync-management.md)
 - [AI 搜索提供方配置权威与质量状态](../../adr/0026-search-provider-config-authority.md)
+- [AI 搜索的 SSE 传输与长预算边界](../../adr/0027-sse-ai-search-transport.md)
 
 ## Visual Evidence
 

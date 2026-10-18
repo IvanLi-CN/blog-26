@@ -12,7 +12,7 @@
 
 ## 运行时边界
 
-`src/server/services/content-search.ts` 是模式执行边界。每次请求先取得原始查询的合法关键词集合 K，再决定是否执行独立 AI 链；所有 AI 故障直接使用原始关键词集合返回，索引故障则为受控错误。K 在上限内完整保留，上限已满时补充不能替换它。两条 AI 链分别缓存有效改写或判断，不缓存最终结果集合；每次重新检索并校验当前权限与内容版本。
+`src/server/services/content-search.ts` 是模式执行边界。每次请求先取得原始查询的合法关键词集合 K，再决定是否执行独立 AI 链；所有 AI 故障直接使用原始关键词集合返回，索引故障则为受控错误。K 在上限内完整保留，上限已满时补充不能替换它。两条 AI 链分别缓存有效改写或判断，不缓存最终结果集合；每次重新检索并校验当前权限与内容版本。公共 JSON 入口保持兼容预算；正式页面的 RAG/改写请求使用 `/api/public/search/stream`，首事件和 2 秒心跳保护连接，流式模型预算上限 30 秒，取消信号会传入 embedding/chat。
 
 RAG 独立进行向量检索和候选判断。博客继续读取兼容的 `post_embeddings`，Playbook 使用 `search_semantic_embeddings` 的 source/parent/edition/model/content hash 身份；两者在统一执行器中按同一 RRF 规则合并。Playbook 资源正文使用不可信证据分隔传入模型，模型只能返回已提供候选的相关性、排名和证据；查询改写不读取 Playbook。向量新鲜度使用现有 `buildEmbeddingInput` 或同版公开候选摘要，不能将文件源摘要当作跨版嵌入摘要。向量扫描限制为 10,000 行和 64 MiB，每页 200 行，维度、有限数及当前正文再次核验。关键词集合即使未进入判断窗口仍保全；同版语义投影不足时保留词法命中并报告来源覆盖不足。
 
@@ -75,6 +75,7 @@ status 只读持久元信息。独立进程执行 prepare、check 或 rebuild �
 | REQ-SREL-018 | 管理接口、独立保存、并发质量授予及旧任务失效通过。 |
 | REQ-SREL-019 / 020 / 021 | 已接入跨来源 RRF、全局 topK、截断前筛选、统一 HTTP/tRPC/MCP 契约、完整 edition 绑定和范围不可用元信息；当前 Candidate 的 Playbook 语义召回、模型输入隔离和版本边界已由 VM 固定合成 provider 实证，root chmod 故障注入限制保留在验证证据中。 |
 | REQ-SREL-022 / 023 | 未完成。当前博客统计为历史向量行数，过时固定为零；Playbook 只统计已有行，未建立合格语料和预期分块的覆盖基数。生成与增量跳过须使用一致的 embedding 输入摘要，旧、孤立、多余及缺失记录须正确分类。 |
+| REQ-SREL-024 | 公共 AI 搜索流式入口、心跳、取消和 30 秒有界模型等待已接入；需要在 Linux VM 与正式 Web Demo 进一步验证慢 Mock、断开和旧入口兼容。 |
 
 既有验证只证明文章/Memo 搜索与浏览器 Playbook 边界；本 Candidate 新增的 adapter、导航、服务端筛选和固定合成 provider 证据已通过，root 来宾无法触发 chmod I/O 故障注入，真实生产 provider 与发行镜像仍不在本次证据范围内。同步管理缺口由 [Playbook 实现状态](../style-playbook-integration/IMPLEMENTATION.md) 记录。
 
