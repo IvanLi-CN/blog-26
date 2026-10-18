@@ -12,8 +12,8 @@
     "scripts/package-public-media.ts": "b357656f27107c31a03d033a478969ca53c3eb53",
     "src/components/common/markdown/plugins/rehype-image-optimization.test.ts": "fdfd0ed27723751c111162bb8f0689f68bba7809",
     "src/components/common/markdown/plugins/rehype-image-optimization.ts": "2801fc01cc4e326fac1a2b12c630475793e15537",
-    "src/lib/__tests__/public-media.test.ts": "dca550034f61de4732b328bffcf394b2e347b5d9",
-    "src/lib/public-media.ts": "e77c6a7cc8f43df14436b99b6a27a01dab9d6463",
+    "src/lib/__tests__/public-media.test.ts": "dcbeafc9e85cae63f5f2e74b0d595dcb6716c83c",
+    "src/lib/public-media.ts": "d70f065a3fa4792de25d8475bc4d976793de6c38",
     "src/server/http-compat-api.test.ts": "4c7b32a85e91a2c00e65a01b136aa5c14adc41ad",
     "src/server/public-media.ts": "5f93390fefd44ee855f111430eaf7af68ffb1983",
     "tests/e2e/guest/posts-cover-fallback.spec.ts": "3a385f0dbc87d0ed6978330360d91cf80d50e970"
@@ -43,8 +43,8 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The implementation publishes wm-a-v2 and wm-b-v2 with explicit Imagor width and height bounds, keeps wm-*-v1 behavior unchanged, and fails closed when a current derived candidate is missing from a static package.",
-      "assessed_at": "2026-10-18T04:20:11+00:00",
+      "reasoning": "The implementation publishes wm-a-v2 and wm-b-v2 with explicit Imagor width and height bounds, keeps wm-*-v1 behavior unchanged, and only enables responsive selection when the bound snapshot explicitly contains the current v2 A/B candidates.",
+      "assessed_at": "2026-10-18T04:37:54+00:00",
       "evidence": [
         {
           "path": "src/server/public-media.ts",
@@ -64,8 +64,8 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "Focused media, markdown, packaging, and HTTP tests pass; repository checks and a real Agent VM Imagor render confirm the explicit width contract reduces the oversized watermark while preserving legacy URL handling.",
-      "assessed_at": "2026-10-18T04:20:11+00:00",
+      "reasoning": "Focused media, markdown, packaging, and HTTP tests pass; the compatibility test confirms legacy v1 snapshots stay on the base facade instead of emitting unavailable v2 URLs. Repository-wide Biome check retains pre-existing diagnostics outside this change.",
+      "assessed_at": "2026-10-18T04:37:54+00:00",
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
@@ -80,7 +80,12 @@
         {
           "path": "src/server/public-media.ts",
           "blob": "5f93390fefd44ee855f111430eaf7af68ffb1983",
-          "command": "bun run check: repository check passes; Agent VM Imagor fixture measures v1 at 32.31% width and v2 A/B at 6.88%/15.50% visible width"
+          "command": "Focused HTTP compatibility tests and the Agent VM Imagor fixture measure v1 at 32.31% width and v2 A/B at 6.88%/15.50% visible width; repository-wide check retains unrelated pre-existing diagnostics"
+        },
+        {
+          "path": "src/lib/__tests__/public-media.test.ts",
+          "blob": "dcbeafc9e85cae63f5f2e74b0d595dcb6716c83c",
+          "command": "bun test src/lib/__tests__/public-media.test.ts src/components/common/markdown/plugins/rehype-image-optimization.test.ts scripts/package-public-media.test.ts: 52 tests pass; legacy v1 candidate pairs are rejected for current v2 selection"
         },
         {
           "path": "docs/specs/public-media-assets-facade/SPEC.md",
@@ -116,8 +121,8 @@
       "evidence": [
         {
           "path": "src/lib/__tests__/public-media.test.ts",
-          "blob": "dca550034f61de4732b328bffcf394b2e347b5d9",
-          "command": "Public media tests verify finite v2 A/B identities, legacy v1 compatibility, and unchanged base-facade fallback for old snapshots"
+          "blob": "dcbeafc9e85cae63f5f2e74b0d595dcb6716c83c",
+          "command": "Public media tests verify finite v2 A/B identities, legacy v1 compatibility, and that old v1 snapshots do not opt into unavailable v2 candidates"
         }
       ]
     },

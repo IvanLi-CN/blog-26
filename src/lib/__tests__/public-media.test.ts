@@ -4,6 +4,7 @@ import {
   buildPublicMediaPresentations,
   resolveContentMediaPath,
   rewritePublicContentMediaUrls,
+  supportsPublicMediaPresentations,
 } from "@/lib/public-media";
 
 describe("public-media", () => {
@@ -220,6 +221,72 @@ describe("public-media", () => {
           variant: "content",
         })
       ).not.toContain("/wm-");
+    });
+
+    it("does not treat legacy v1 candidates as current responsive support", () => {
+      const item = {
+        hash: "abc123",
+        kind: "image" as const,
+        role: "content" as const,
+        alt: null,
+        sourcePath: "blog/assets/photo.png",
+        variants: {},
+        presentations: {
+          content: {
+            a: "/api/public/assets/post/demo-post/abc123/wm-a-v1/content.webp",
+            b: "/api/public/assets/post/demo-post/abc123/wm-b-v1/content.webp",
+          },
+          full: {
+            a: "/api/public/assets/post/demo-post/abc123/wm-a-v1/full.webp",
+            b: "/api/public/assets/post/demo-post/abc123/wm-b-v1/full.webp",
+          },
+        },
+        poster: null,
+        playback: null,
+        sources: [],
+      };
+
+      expect(
+        supportsPublicMediaPresentations({
+          primary: null,
+          cover: null,
+          content: [item],
+          attachments: [],
+        })
+      ).toBe(false);
+    });
+
+    it("accepts complete current v2 candidates", () => {
+      const item = {
+        hash: "abc123",
+        kind: "image" as const,
+        role: "content" as const,
+        alt: null,
+        sourcePath: "blog/assets/photo.png",
+        variants: {},
+        presentations: {
+          content: {
+            a: "/api/public/assets/post/demo-post/abc123/wm-a-v2/content.webp",
+            b: "/api/public/assets/post/demo-post/abc123/wm-b-v2/content.webp",
+          },
+          full: {
+            a: "/api/public/assets/post/demo-post/abc123/wm-a-v2/full.webp",
+            b: "/api/public/assets/post/demo-post/abc123/wm-b-v2/full.webp",
+          },
+        },
+        poster: null,
+        playback: null,
+        sources: [],
+      };
+
+      expect(
+        supportsPublicMediaPresentations({
+          primary: null,
+          cover: null,
+          content: [item],
+          attachments: [],
+        })
+      ).toBe(true);
     });
   });
 });
