@@ -130,12 +130,13 @@ async function readSearchStream(response: Response): Promise<SearchStreamEnvelop
       }
     }
     const finalBlock = `${buffer}\n\n`;
+    const finalEvent = finalBlock.match(/^event:\s*([^\n]+)$/mu)?.[1]?.trim();
     const data = finalBlock
       .split("\n")
       .filter((line) => line.startsWith("data:"))
       .map((line) => line.slice(5).trimStart())
       .join("\n");
-    if (data) return JSON.parse(data) as SearchStreamEnvelope;
+    if (finalEvent === "result" && data) return JSON.parse(data) as SearchStreamEnvelope;
   } finally {
     reader.releaseLock();
   }

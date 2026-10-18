@@ -165,6 +165,19 @@ describe("webDemoFetch", () => {
     expect((await reader?.read())?.done).toBe(true);
   });
 
+  it("closes the SSE fixture when its request signal aborts", async () => {
+    installBrowser("?d_connection=online");
+    const controller = new AbortController();
+    const response = await webDemoFetch("/api/public/search/stream?q=SQLite&mode=rag", {
+      signal: controller.signal,
+    });
+    const reader = response.body?.getReader();
+    expect(reader).toBeDefined();
+    expect(new TextDecoder().decode((await reader?.read())?.value)).toContain("event: started");
+    controller.abort();
+    expect((await reader?.read())?.done).toBe(true);
+  });
+
   it("keeps keyword mode on the JSON boundary instead of opening an SSE stream", async () => {
     installBrowser("?d_connection=online");
     const response = await webDemoFetch("/api/public/search/stream?q=SQLite&mode=keyword");

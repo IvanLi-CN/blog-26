@@ -687,9 +687,19 @@ async function getDemoPublicResponse(
           : {}),
       };
       const encoder = new TextEncoder();
+      const requestSignal = init?.signal;
       let closed = false;
       let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
       const timers = new Set<ReturnType<typeof setTimeout>>();
+      let abortListener: (() => void) | undefined;
+      const clearScheduledEvents = () => {
+        for (const timer of timers) clearTimeout(timer);
+        timers.clear();
+      };
+      const detachAbortListener = () => {
+        if (abortListener) requestSignal?.removeEventListener("abort", abortListener);
+        abortListener = undefined;
+      };
       const emit = (event: string) => {
         if (!closed) streamController?.enqueue(encoder.encode(event));
       };
@@ -703,6 +713,18 @@ async function getDemoPublicResponse(
       const stream = new ReadableStream<Uint8Array>({
         start(controller) {
           streamController = controller;
+          abortListener = () => {
+            if (closed) return;
+            closed = true;
+            clearScheduledEvents();
+            detachAbortListener();
+            controller.close();
+          };
+          requestSignal?.addEventListener("abort", abortListener, { once: true });
+          if (requestSignal?.aborted) {
+            abortListener();
+            return;
+          }
 
           emit(`event: started\ndata: ${JSON.stringify({ requestedMode: selected.data })}\n\n`);
           schedule(() => {
@@ -710,14 +732,15 @@ async function getDemoPublicResponse(
             schedule(() => {
               emit(`event: result\ndata: ${JSON.stringify(envelope)}\n\n`);
               closed = true;
+              detachAbortListener();
               controller.close();
             });
           });
         },
         cancel() {
           closed = true;
-          for (const timer of timers) clearTimeout(timer);
-          timers.clear();
+          clearScheduledEvents();
+          detachAbortListener();
         },
       });
       const headers = new Headers(response.headers);
@@ -788,7 +811,7 @@ export async function webDemoFetch(
       method,
       environment,
       sceneState.data,
-      init
+      signal ? { ...init, signal } : init
     );
     if (mockResponse) return mockResponse;
   }
