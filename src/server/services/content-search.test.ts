@@ -78,6 +78,22 @@ function fakeFetch(
   return Object.assign(mock(handler), { preconnect: originalFetch.preconnect });
 }
 
+function waitWithAbort(ms: number, signal?: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onAbort = () => {
+      if (timer) clearTimeout(timer);
+      reject(signal?.reason ?? new DOMException("Aborted", "AbortError"));
+    };
+    timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    if (signal?.aborted) onAbort();
+    else signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
 async function readSseText(response: Response, firstChunk?: (text: string) => void) {
   const reader = response.body?.getReader();
   if (!reader) throw new Error("missing SSE body");
@@ -1074,11 +1090,11 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     let chatCalls = 0;
     globalThis.fetch = fakeFetch(async (url, init) => {
       if (String(url).endsWith("/embeddings")) {
-        await Bun.sleep(120);
+        await waitWithAbort(120, init?.signal);
         return Response.json({ data: [{ embedding: [1, 0] }] });
       }
       chatCalls += 1;
-      await Bun.sleep(120);
+      await waitWithAbort(120, init?.signal);
       const request = JSON.parse(String(init?.body));
       const payload = JSON.parse(request.messages[1].content);
       return Response.json({
@@ -1100,6 +1116,12 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
       });
     });
 
+    const jsonFallback = await executeContentModes(
+      { q: "semantic retrieval", mode: "rag", source: "blog", type: "post", topK: 10 },
+      { transport: "json" }
+    );
+    expect(jsonFallback).toMatchObject({ effectiveMode: "keyword", reason: "timeout" });
+
     const response = await handlePublicApiRequest(
       new Request(
         "http://localhost/api/public/search/stream?q=semantic%20retrieval&mode=rag&source=blog&type=post&topK=10"
@@ -1113,6 +1135,7 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
       firstChunk = text;
     });
     expect(firstChunk).toContain("event: started");
+    expect(firstChunk).not.toContain("event: result");
     expect(body).toContain("event: result");
     const resultEvent = body.split("\n\n").find((event) => event.startsWith("event: result"));
     expect(resultEvent).toBeDefined();

@@ -536,6 +536,8 @@ async function getDemoPublicResponse(
     const query = (url.searchParams.get("q") ?? "").trim().toLowerCase();
     const selected = searchModeSchema.safeParse(url.searchParams.get("mode") ?? "keyword");
     if (!selected.success) return jsonResponse({ error: "不支持的搜索模式" }, 400);
+    if (url.pathname === "/api/public/search/stream" && selected.data === "keyword")
+      return jsonResponse({ error: "流式搜索仅支持 AI 模式", code: "BAD_REQUEST" }, 400);
     let plan: ReturnType<typeof planNativeQuery>;
     try {
       plan = planNativeQuery(query);

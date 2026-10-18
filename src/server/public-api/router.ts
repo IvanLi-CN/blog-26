@@ -1248,7 +1248,7 @@ function searchStreamResponse(request: Request, input: ContentSearchInput, resHe
         })
         .catch((error: unknown) => {
           if (cancelled || request.signal.aborted) return;
-          const message = error instanceof Error ? error.message : "搜索失败";
+          const message = error instanceof TRPCError ? error.message : "搜索失败，请稍后重试";
           const code = error instanceof TRPCError ? error.code : "INTERNAL_SERVER_ERROR";
           send("error", { error: message, code });
         })

@@ -152,6 +152,13 @@ describe("webDemoFetch", () => {
     expect(body).toContain("SQLite3：嵌入式数据库实践");
   });
 
+  it("keeps keyword mode on the JSON boundary instead of opening an SSE stream", async () => {
+    installBrowser("?d_connection=online");
+    const response = await webDemoFetch("/api/public/search/stream?q=SQLite&mode=keyword");
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "BAD_REQUEST" });
+  });
+
   it("keeps release previews long enough to exercise result width and section rendering", async () => {
     installBrowser("?d_connection=online&d_data=dense");
     const response = await webDemoFetch("/api/public/search?q=release&mode=keyword");
