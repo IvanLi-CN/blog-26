@@ -451,6 +451,13 @@ Ordinary clicks and mobile taps on all three runtime panels, including cells, gr
 
 ![Public mobile density current](./assets/public-mobile-density-current.png)
 
+### Search result preview width
+
+- Evidence bound to the current candidate; source type `ui_demo`, target program `mock-only Web Demo`, capture scope `browser-viewport`, requested viewport `1363px × 1276px`, viewport strategy `ui-demo-source`, margin policy `trim_only`, evidence surface `page`, query `release`, data mode `dense`, theme `dark`, sensitive exclusion `N/A`.
+- Long deterministic Release fixtures show that main result previews and nested section previews now use the available result column width instead of stopping at the unrelated `75ch` cap.
+
+![Search result previews full width](./assets/search-result-width-web-demo.png)
+
 ### Mobile content surface coverage
 
 - Evidence bound to candidate `e0321396`; source type `ui_demo`, target program `Ego Browser`, capture scope `browser-viewport`, requested viewports `393px × 852px` and `320px × 852px`, viewport strategy `devtools-emulate`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`.

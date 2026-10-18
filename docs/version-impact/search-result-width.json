@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "8f2fb9f59e5f0ac3b17a1c2af61fe80fdfc38ff8",
+  "covered_files": {
+    "docs/specs/nature-front-ui/SPEC.md": "00d02f7397e03be1ec8db7ddf9a48ce072ae186e",
+    "docs/specs/nature-front-ui/assets/search-result-width-web-demo.png": "f9396b387eef7600f6340f9d09e960ebf6d499c1",
+    "src/components/search/SearchResultsList.tsx": "5416bbdd70555a2b21ee2e8ce092e8e71e162e2c",
+    "src/lib/search/web-demo-fixtures.ts": "7318cb2182423f95a35f215558aca4db34ad7ab3",
+    "tests/lib/web-demo-fetch.test.ts": "60e63d09f9d051c4adc6be09eaf67234e875b909"
+  },
+  "change": {
+    "description": "Allow search result previews to use the full result column width, strengthen the Web Demo fixture with long release-related content, and record owner-confirmed UI evidence.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "Compatible user-visible defect repair. Search result and section previews no longer impose an unrelated 75ch width cap, while the Web Demo fixture and regression test make the intended long-content layout reproducible without changing API response shapes or persistence.",
+      "assessed_at": "2026-10-19T01:19:28+08:00",
+      "evidence": [
+        {
+          "path": "src/components/search/SearchResultsList.tsx",
+          "blob": "5416bbdd70555a2b21ee2e8ce092e8e71e162e2c",
+          "command": "bun test src/components/search/SearchResultsList.test.tsx"
+        },
+        {
+          "path": "tests/lib/web-demo-fetch.test.ts",
+          "blob": "60e63d09f9d051c4adc6be09eaf67234e875b909",
+          "command": "bun test tests/lib/web-demo-fetch.test.ts"
+        },
+        {
+          "path": "docs/specs/nature-front-ui/SPEC.md",
+          "blob": "00d02f7397e03be1ec8db7ddf9a48ce072ae186e",
+          "command": "Review the current Web Demo visual evidence binding"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate remains limited to rendering class changes, deterministic Web Demo search content, and focused regression coverage. The search API contract, result ranking, durable state, and production content sources remain unchanged.",
+      "assessed_at": "2026-10-19T01:19:28+08:00",
+      "evidence": [
+        {
+          "path": "src/components/search/SearchResultsList.tsx",
+          "blob": "5416bbdd70555a2b21ee2e8ce092e8e71e162e2c",
+          "command": "Review full-width main and section preview classes"
+        },
+        {
+          "path": "src/lib/search/web-demo-fixtures.ts",
+          "blob": "7318cb2182423f95a35f215558aca4db34ad7ab3",
+          "command": "Review long deterministic release search fixtures"
+        },
+        {
+          "path": "docs/specs/nature-front-ui/assets/search-result-width-web-demo.png",
+          "blob": "f9396b387eef7600f6340f9d09e960ebf6d499c1",
+          "command": "Inspect the owner-confirmed full-width search preview capture"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The current candidate remains within the reported search result width defect and its focused visual regression scope."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused component and Web Demo tests pass, Biome reports no issues in the changed files, and the owner-confirmed Web Demo screenshot shows main and section previews using the available result column width. No public response shape or durable state contract changes are introduced.",
+      "assessed_at": "2026-10-19T01:19:28+08:00",
+      "evidence": [
+        {
+          "path": "src/components/search/SearchResultsList.tsx",
+          "blob": "5416bbdd70555a2b21ee2e8ce092e8e71e162e2c",
+          "command": "bun test src/components/search/SearchResultsList.test.tsx"
+        },
+        {
+          "path": "tests/lib/web-demo-fetch.test.ts",
+          "blob": "60e63d09f9d051c4adc6be09eaf67234e875b909",
+          "command": "bun test tests/lib/web-demo-fetch.test.ts"
+        },
+        {
+          "path": "src/components/search/SearchResultsList.tsx",
+          "blob": "5416bbdd70555a2b21ee2e8ce092e8e71e162e2c",
+          "command": "bun run check"
+        },
+        {
+          "path": "docs/specs/nature-front-ui/assets/search-result-width-web-demo.png",
+          "blob": "f9396b387eef7600f6340f9d09e960ebf6d499c1",
+          "command": "Owner-confirmed ui_demo evidence shows main and section previews using the result column"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3"
+      ],
+      "evidence": [
+        {
+          "path": "tests/lib/web-demo-fetch.test.ts",
+          "blob": "60e63d09f9d051c4adc6be09eaf67234e875b909",
+          "command": "Web Demo search response shape and section rendering remain covered"
+        },
+        {
+          "path": "src/components/search/SearchResultsList.tsx",
+          "blob": "5416bbdd70555a2b21ee2e8ce092e8e71e162e2c",
+          "command": "Preview layout changes do not alter search response contracts"
+        },
+        {
+          "path": "docs/specs/nature-front-ui/SPEC.md",
+          "blob": "00d02f7397e03be1ec8db7ddf9a48ce072ae186e",
+          "command": "Spec records the ui_demo source, viewport, query, fixture mode, and visual scope"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, settings, vector data, cache identity, or durable task state changes are introduced.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/components/search/SearchResultsList.tsx",
+          "blob": "5416bbdd70555a2b21ee2e8ce092e8e71e162e2c",
+          "command": "The change is a presentation-only class update with no persistence writes"
+        },
+        {
+          "path": "docs/specs/nature-front-ui/SPEC.md",
+          "blob": "00d02f7397e03be1ec8db7ddf9a48ce072ae186e",
+          "command": "The visual evidence record changes documentation only and introduces no durable application state"
+        }
+      ]
+    }
+  }
+}

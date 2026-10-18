@@ -141,6 +141,18 @@ describe("webDemoFetch", () => {
     expect(await unrelated.json()).toEqual({ items: [] });
   });
 
+  it("keeps release previews long enough to exercise result width and section rendering", async () => {
+    installBrowser("?d_connection=online&d_data=dense");
+    const response = await webDemoFetch("/api/public/search?q=release&mode=keyword");
+    const results = await response.json();
+    const delivery = results.find((item: { slug: string }) => item.slug === "delivery");
+
+    expect(delivery).toBeDefined();
+    expect(delivery.excerpt.length).toBeGreaterThan(120);
+    expect(delivery.sections).toHaveLength(3);
+    expect(delivery.sections[0].snippet.length).toBeGreaterThan(120);
+  });
+
   it("rejects unauthenticated comment mutations and non-admin moderation", async () => {
     installBrowser("?d_persona=guest");
     expect((await webDemoFetch("/api/public/comments/missing", { method: "DELETE" })).status).toBe(
