@@ -148,6 +148,7 @@ describe("webDemoFetch", () => {
     expect(response.headers.get("content-type")).toContain("text/event-stream");
     const body = await response.text();
     expect(body).toContain("event: started");
+    expect(body).toContain('event: progress\ndata: {"phase":"complete"}');
     expect(body).toContain("event: result");
     expect(body).toContain("SQLite3：嵌入式数据库实践");
   });

@@ -695,10 +695,13 @@ async function getDemoPublicResponse(
             )
           );
           queueMicrotask(() => {
-            controller.enqueue(
-              encoder.encode(`event: result\ndata: ${JSON.stringify(envelope)}\n\n`)
-            );
-            controller.close();
+            controller.enqueue(encoder.encode('event: progress\ndata: {"phase":"complete"}\n\n'));
+            queueMicrotask(() => {
+              controller.enqueue(
+                encoder.encode(`event: result\ndata: ${JSON.stringify(envelope)}\n\n`)
+              );
+              controller.close();
+            });
           });
         },
       });
