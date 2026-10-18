@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "08defc534c0c0df15bf3d43b144dc785a44bef05",
+  "covered_files": {
+    ".github/workflows/bootstrap-release-ledger-recovery.yml": "1c93c9fb37e7a84720a0a5bfc42f6a2214a80954"
+  },
+  "change": {
+    "description": "Add a manually invoked, bot-signed recovery workflow for repairing a legacy release-ledger head.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is an operational recovery path that preserves the existing release ledger state and only creates a verified bot-signed provenance commit.",
+      "assessed_at": "2026-10-18T14:00:00+08:00",
+      "evidence": [
+        {
+          "path": ".github/workflows/bootstrap-release-ledger-recovery.yml",
+          "blob": "1c93c9fb37e7a84720a0a5bfc42f6a2214a80954",
+          "command": "bun run check"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The workflow is manually invoked, requires an explicit legacy SHA, and writes only a signed ledger recovery commit; it does not alter application endpoints or product artifacts.",
+      "assessed_at": "2026-10-18T14:00:00+08:00",
+      "evidence": [
+        {
+          "path": ".github/workflows/bootstrap-release-ledger-recovery.yml",
+          "blob": "1c93c9fb37e7a84720a0a5bfc42f6a2214a80954",
+          "command": "actionlint .github/workflows/bootstrap-release-ledger-recovery.yml"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The change is limited to an explicitly dispatched release-ledger recovery workflow."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The workflow was reviewed with actionlint and its successful recovery run produced a verified github-actions bot commit without changing ledger entries or product contents.",
+      "assessed_at": "2026-10-18T14:00:00+08:00",
+      "evidence": [
+        {
+          "path": ".github/workflows/bootstrap-release-ledger-recovery.yml",
+          "blob": "1c93c9fb37e7a84720a0a5bfc42f6a2214a80954",
+          "command": "actionlint .github/workflows/bootstrap-release-ledger-recovery.yml"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6"
+      ],
+      "evidence": [
+        {
+          "path": ".github/workflows/bootstrap-release-ledger-recovery.yml",
+          "blob": "1c93c9fb37e7a84720a0a5bfc42f6a2214a80954",
+          "command": "The recovery workflow does not alter public API behavior."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The workflow preserves the release ledger JSON schema and only records signed commit provenance.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": ".github/workflows/bootstrap-release-ledger-recovery.yml",
+          "blob": "1c93c9fb37e7a84720a0a5bfc42f6a2214a80954",
+          "command": "The workflow does not change the ledger schema."
+        }
+      ]
+    }
+  }
+}
