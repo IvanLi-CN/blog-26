@@ -12,7 +12,7 @@
 
 ## Delivered scope
 
-The same settings route also hosts independent RAG/rewrite search policy and saved-configuration quality validation. Those search-specific APIs, budgets, fingerprints, availability and fallback behavior are owned by [search-relevance](../search-relevance/SPEC.md); this topic continues to own provider configuration, secret storage, catalog and model selection.
+The same settings route also hosts independent RAG/rewrite search policy and saved-configuration quality validation. Those search-specific APIs, budgets, fingerprints, quality diagnostics and fallback behavior are owned by [search-relevance](../search-relevance/SPEC.md); this topic continues to own provider configuration, secret storage, catalog and model selection. Search runtime provider resolution remains authoritative from `llm_settings`; search policy records never copy or replace provider credentials.
 
 ### Persistence and secret handling
 

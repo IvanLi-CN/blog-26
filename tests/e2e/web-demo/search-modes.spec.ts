@@ -144,21 +144,20 @@ test("the official model page saves independent policy and validates only saved 
   await hideInspector(page);
   const panel = page.getByRole("region", { name: "搜索模式设置" });
   await expect(panel).toBeVisible();
-  const enabled = page.getByRole("switch", { name: "启用AI 检索（RAG）", exact: true });
+  const enabled = page.getByRole("switch", { name: "启用此模式 AI 检索（RAG）", exact: true });
   const track = await enabled.boundingBox();
-  const thumb = await enabled.locator("span").boundingBox();
+  const thumb = await enabled.locator(".admin-switch-thumb").boundingBox();
   expect(track).not.toBeNull();
   expect(thumb).not.toBeNull();
   if (!track || !thumb) throw new Error("Switch geometry was unavailable");
   expect(thumb.x + thumb.width).toBeLessThanOrEqual(track.x + track.width);
-  await page.getByRole("switch", { name: "启用AI 改写", exact: true }).click();
+  await page.getByRole("switch", { name: "启用此模式 AI 改写", exact: true }).click();
   await expect(panel.getByRole("button", { name: "验证已保存配置" }).first()).toBeDisabled();
   await panel.getByRole("button", { name: "保存搜索设置" }).click();
   await expect(panel).toContainText("搜索设置已保存");
   await panel.getByRole("button", { name: "验证已保存配置" }).first().click();
   await expect(panel).toContainText("固定样例验证通过");
-  await expect(page.getByRole("switch", { name: "启用AI 改写", exact: true })).toHaveAttribute(
-    "aria-checked",
-    "false"
-  );
+  await expect(
+    page.getByRole("switch", { name: "启用此模式 AI 改写", exact: true })
+  ).toHaveAttribute("aria-checked", "false");
 });

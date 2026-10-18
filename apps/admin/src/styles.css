@@ -574,8 +574,50 @@ html[data-ui-theme="light"] {
   margin: 1.5rem 0;
 }
 
+.admin-switch {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.admin-switch-track {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2.5rem;
+  height: 1.5rem;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 9999px;
+  background: var(--muted);
+  box-shadow: inset 0 1px 2px var(--shadow-inset);
+  transform: translate(-50%, -50%);
+  transition: background-color 160ms ease;
+}
+
+.admin-switch[data-state="checked"] .admin-switch-track {
+  background: var(--primary);
+}
+
+.admin-switch-thumb {
+  position: absolute;
+  top: 50%;
+  left: 0.5rem;
+  z-index: 1;
+  width: 1.25rem;
+  height: 1.25rem;
+  transform: translateY(-50%);
+}
+
 .admin-switch-thumb[data-state="checked"] {
-  transform: translateX(1.5rem);
+  transform: translate(0.75rem, -50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-switch,
+  .admin-switch-track,
+  .admin-switch-thumb {
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @media (min-width: 1024px) and (pointer: fine) {
@@ -635,16 +677,21 @@ html[data-ui-theme="light"] {
   .admin-switch {
     height: 1.75rem;
     width: 2.5rem;
-    padding: 0.125rem;
   }
 
-  .admin-switch-thumb {
-    width: 1.25rem;
+  .admin-switch-track {
+    width: 2rem;
     height: 1.25rem;
   }
 
+  .admin-switch-thumb {
+    left: 0.5rem;
+    width: 1rem;
+    height: 1rem;
+  }
+
   .admin-switch-thumb[data-state="checked"] {
-    transform: translateX(1rem);
+    transform: translate(0.5rem, -50%);
   }
 
   .admin-tabs-trigger {

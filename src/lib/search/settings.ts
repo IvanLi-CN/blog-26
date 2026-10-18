@@ -54,6 +54,7 @@ export type SearchReason =
   | "empty-query"
   | "explicit-query";
 export type SearchQuality = { fingerprint: string; validatedAt: number; passed: boolean };
+export type SearchQualityStatus = "not-run" | "passed" | "failed" | "stale";
 export type SearchSettings = {
   policy: SearchPolicy;
   quality: Partial<Record<AiSearchMode, SearchQuality>>;
@@ -70,5 +71,8 @@ export type SearchValidationRun = {
   finishedAt?: number;
 };
 export type AdminSearchSettings = SearchSettings & {
-  status: Record<AiSearchMode, { available: boolean; reason?: SearchReason }>;
+  status: Record<
+    AiSearchMode,
+    { available: boolean; reason?: SearchReason; qualityStatus: SearchQualityStatus }
+  >;
 };

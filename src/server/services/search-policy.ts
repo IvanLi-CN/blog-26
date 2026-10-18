@@ -1,13 +1,15 @@
 import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, initializeDB } from "@/lib/db";
-import { searchSettings } from "@/lib/schema";
+import { llmSettings, searchSettings } from "@/lib/schema";
 import { NAME_POLICY_VERSION } from "@/lib/search/native-query";
 import {
   type AdminSearchSettings,
   type AiSearchMode,
   DEFAULT_SEARCH_POLICY,
   type SearchPolicy,
+  type SearchQuality,
+  type SearchQualityStatus,
   type SearchReason,
   type SearchSettings,
   searchPolicySchema,
@@ -22,6 +24,14 @@ export const SEARCH_QUALITY_VERSION = {
   rewrite: "synthetic-retrieval-v3",
 };
 const hash = (text: string) => createHash("sha256").update(text).digest("hex");
+function getQualityStatus(
+  quality: SearchQuality | undefined,
+  fingerprint?: string
+): SearchQualityStatus {
+  if (!quality) return "not-run";
+  if (!fingerprint || quality.fingerprint !== fingerprint) return "stale";
+  return quality.passed ? "passed" : "failed";
+}
 export async function readSearchSettings(): Promise<SearchSettings> {
   await initializeDB();
   const row = await db.select().from(searchSettings).where(eq(searchSettings.id, "default")).get();
@@ -32,6 +42,7 @@ export async function readSearchSettings(): Promise<SearchSettings> {
 export type ResolvedSearchPolicy = {
   policy: SearchPolicy[AiSearchMode];
   reason?: SearchReason;
+  qualityStatus: SearchQualityStatus;
   chat?: ResolvedTierConfig;
   resolved?: Awaited<ReturnType<typeof getResolvedLlmConfig>>;
   fingerprint?: string;
@@ -42,21 +53,23 @@ export async function resolveSearchPolicy(
 ): Promise<ResolvedSearchPolicy> {
   const stored = settings ?? (await readSearchSettings());
   const policy = stored.policy[mode];
-  if (!policy.enabled) return { policy, reason: "disabled" as const };
+  const quality = stored.quality[mode];
+  if (!policy.enabled)
+    return { policy, reason: "disabled" as const, qualityStatus: getQualityStatus(quality) };
   let resolved: Awaited<ReturnType<typeof getResolvedLlmConfig>>;
   try {
     resolved = await getResolvedLlmConfig();
   } catch {
-    return { policy, reason: "unconfigured" as const };
+    return { policy, reason: "unconfigured" as const, qualityStatus: getQualityStatus(quality) };
   }
   const chat = { ...resolved.chat, model: policy.model ?? resolved.chat.model };
   if (!chat.apiKey || !chat.baseUrl || !chat.model)
-    return { policy, reason: "unconfigured" as const };
+    return { policy, reason: "unconfigured" as const, qualityStatus: getQualityStatus(quality) };
   if (
     mode === "rag" &&
     (!resolved.embedding.apiKey || !resolved.embedding.baseUrl || !resolved.embedding.model)
   )
-    return { policy, reason: "unconfigured" as const };
+    return { policy, reason: "unconfigured" as const, qualityStatus: getQualityStatus(quality) };
   const fingerprint = hash(
     JSON.stringify({
       mode,
@@ -77,15 +90,12 @@ export async function resolveSearchPolicy(
       retrieval: SEARCH_RETRIEVAL_VERSION,
     })
   );
-  const quality = stored.quality[mode];
   return {
     policy,
     chat,
     resolved,
     fingerprint,
-    ...(!quality?.passed || quality.fingerprint !== fingerprint
-      ? { reason: "unvalidated" as const }
-      : {}),
+    qualityStatus: getQualityStatus(quality, fingerprint),
   };
 }
 export async function getAdminSearchSettings(): Promise<AdminSearchSettings> {
@@ -97,8 +107,16 @@ export async function getAdminSearchSettings(): Promise<AdminSearchSettings> {
   return {
     ...settings,
     status: {
-      rag: { available: !rag.reason, reason: rag.reason },
-      rewrite: { available: !rewrite.reason, reason: rewrite.reason },
+      rag: {
+        available: !rag.reason,
+        reason: rag.reason,
+        qualityStatus: rag.qualityStatus,
+      },
+      rewrite: {
+        available: !rewrite.reason,
+        reason: rewrite.reason,
+        qualityStatus: rewrite.qualityStatus,
+      },
     },
   };
 }
@@ -118,17 +136,36 @@ export async function saveSearchPolicy(input: unknown) {
     });
   return getAdminSearchSettings();
 }
-/** Compare and save synchronously in the SQLite transaction, so a stale run cannot bless a new policy. */
+/** Compare and save synchronously in SQLite, so a stale run cannot bless new policy or provider settings. */
 export async function recordSearchQuality(
   mode: AiSearchMode,
   fingerprint: string,
   passed: boolean
 ) {
-  const current = await resolveSearchPolicy(mode);
-  if (current.fingerprint !== fingerprint) return false;
   const settings = await readSearchSettings();
+  const providerRevision = await db
+    .select({ config: llmSettings.config, updatedAt: llmSettings.updatedAt })
+    .from(llmSettings)
+    .where(eq(llmSettings.id, "default"))
+    .get();
+  const expectedProviderRevision = {
+    configHash: hash(providerRevision?.config ?? ""),
+    updatedAt: providerRevision?.updatedAt ?? null,
+  };
   const expectedPolicy = JSON.stringify(settings.policy);
+  const current = await resolveSearchPolicy(mode, settings);
+  if (current.fingerprint !== fingerprint) return false;
   const saved = db.transaction((tx) => {
+    const latestProvider = tx
+      .select({ config: llmSettings.config, updatedAt: llmSettings.updatedAt })
+      .from(llmSettings)
+      .where(eq(llmSettings.id, "default"))
+      .get();
+    if (
+      hash(latestProvider?.config ?? "") !== expectedProviderRevision.configHash ||
+      (latestProvider?.updatedAt ?? null) !== expectedProviderRevision.updatedAt
+    )
+      return false;
     const row = tx.select().from(searchSettings).where(eq(searchSettings.id, "default")).get();
     const latest: SearchSettings = row
       ? JSON.parse(row.config)

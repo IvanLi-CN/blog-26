@@ -20,6 +20,10 @@
 
 需求与设计提交为 `e6887ca09ab1ba0069314e0820f7f24650a3e23b`。运行时改造在 `th/search-modes` 中交付，保留三个子代理的独立原生探针与产品验证程序；当前尚无发布到生产或合并的事实。直接 PR 及最终审查引用在交付门禁完成后记录于本节。
 
+## Provider Configuration and Quality Diagnostics
+
+AI 搜索运行时继续复用既有 `llm_settings` 中的 chat、embedding、Base URL 和 API Key。`search_settings` 只保存搜索策略、预算和可选模型覆盖；缺少、失败或过期的质量记录通过 `qualityStatus` 展示为诊断状态，不再阻断完整提供方配置的 RAG 或改写执行。模式停用、提供方未配置、实际调用失败和 embedding 索引身份不匹配仍保留原有关键词回退或保护行为。
+
 ## 索引覆盖与管理统计的兼容范围
 
 真实语义覆盖补充定义当前合格内容及预期分块的双口径，保持 RAG、查询改写、关键词、权限、同版绑定和排名合同。旧博客向量存储及 legacy semantic/enhanced 继续兼容，其物理行数与旧模型数据不再作为当前现代 RAG 已索引总量。新增覆盖要求修正统计与准备路径的既有遗漏，不授权生产补建、旧数据清理、应用发布或部署。

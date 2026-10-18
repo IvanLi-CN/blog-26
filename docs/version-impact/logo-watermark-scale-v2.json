@@ -14,7 +14,7 @@
     "src/components/common/markdown/plugins/rehype-image-optimization.ts": "2801fc01cc4e326fac1a2b12c630475793e15537",
     "src/lib/__tests__/public-media.test.ts": "dcbeafc9e85cae63f5f2e74b0d595dcb6716c83c",
     "src/lib/public-media.ts": "d70f065a3fa4792de25d8475bc4d976793de6c38",
-    "src/server/http-compat-api.test.ts": "4c7b32a85e91a2c00e65a01b136aa5c14adc41ad",
+    "src/server/http-compat-api.test.ts": "d0b14b1a7749e6995655d2469d030bea268cbd62",
     "src/server/public-media.ts": "5f93390fefd44ee855f111430eaf7af68ffb1983",
     "tests/e2e/guest/posts-cover-fallback.spec.ts": "3a385f0dbc87d0ed6978330360d91cf80d50e970"
   },
@@ -74,7 +74,7 @@
         },
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "4c7b32a85e91a2c00e65a01b136aa5c14adc41ad",
+          "blob": "d0b14b1a7749e6995655d2469d030bea268cbd62",
           "command": "bun test src/server/http-compat-api.test.ts: 98 tests pass and 3 are skipped"
         },
         {
@@ -135,7 +135,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "4c7b32a85e91a2c00e65a01b136aa5c14adc41ad",
+          "blob": "d0b14b1a7749e6995655d2469d030bea268cbd62",
           "command": "HTTP compatibility coverage exercises old and new media paths without a state migration"
         }
       ]

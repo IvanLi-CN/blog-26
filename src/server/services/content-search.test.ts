@@ -13,6 +13,7 @@ import { clearSearchCache } from "@/lib/ai/search-cache";
 import { db, initializeDB } from "@/lib/db";
 import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
 import {
+  llmSettings,
   postEmbeddings,
   posts,
   ragIndexConfigs,
@@ -29,8 +30,10 @@ import { appRouter } from "@/server/router";
 import { makePublicBundle } from "../../../tests/lib/playbook-fixture";
 import { executeContentModes } from "./content-search";
 import { contentSearchIndex } from "./content-search-index";
+import { updateAdminLlmSettings } from "./llm-settings";
 import { ragCatalog } from "./rag-index";
 import {
+  getAdminSearchSettings,
   readSearchSettings,
   recordSearchQuality,
   resolveSearchPolicy,
@@ -49,6 +52,7 @@ const envNames = [
   "EMBEDDING_MODEL_NAME",
   "LOCAL_CONTENT_BASE_PATH",
   "PLAYBOOK_CACHE_DIR",
+  "LLM_SETTINGS_MASTER_KEY",
 ] as const;
 const oldEnv = Object.fromEntries(envNames.map((key) => [key, process.env[key]]));
 let directory: string;
@@ -144,6 +148,7 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     await db.delete(postEmbeddings);
     await db.delete(ragIndexTargets);
     await db.delete(ragIndexConfigs);
+    await db.delete(llmSettings);
     await db.delete(posts);
     await db.delete(searchSettings);
     await saveSearchPolicy(structuredClone(DEFAULT_SEARCH_POLICY));
@@ -151,6 +156,7 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     process.env.OPENAI_API_BASE_URL = "https://synthetic-search.example.test";
     process.env.CHAT_COMPLETION_MODEL = `synthetic-chat-${Date.now()}`;
     process.env.EMBEDDING_MODEL_NAME = "synthetic-embedding";
+    process.env.LLM_SETTINGS_MASTER_KEY = "synthetic-search-master-key";
     process.env.LOCAL_CONTENT_BASE_PATH = path.join(directory, "local");
     globalThis.fetch = fakeFetch(async () => {
       throw new Error("Unexpected AI request");
@@ -274,18 +280,63 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     );
     await index.prepare();
   });
-  test("unvalidated AI and advanced expressions fall back without model calls", async () => {
+  test("configured AI uses the existing provider before falling back", async () => {
     await db.insert(posts).values(fixture("literal", "SQLite"));
+    await updateAdminLlmSettings({
+      chat: {
+        model: "persisted-chat-model",
+        baseUrl: "https://persisted-search.example.test",
+        apiKeyInput: "persisted-search-key",
+      },
+      embedding: {
+        model: "persisted-embedding-model",
+        useCustomProvider: false,
+        baseUrlMode: "inherit",
+        baseUrl: "",
+        apiKeyMode: "inherit",
+        apiKeyInput: "",
+      },
+      rerank: {
+        model: "",
+        useCustomProvider: false,
+        baseUrlMode: "inherit",
+        baseUrl: "",
+        apiKeyMode: "inherit",
+        apiKeyInput: "",
+      },
+    });
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_BASE_URL;
+    delete process.env.CHAT_COMPLETION_MODEL;
+    delete process.env.EMBEDDING_MODEL_NAME;
+    const resolved = await resolveSearchPolicy("rag");
+    expect(resolved.reason).toBeUndefined();
+    expect(resolved.qualityStatus).toBe("not-run");
+    expect(resolved.chat).toMatchObject({
+      model: "persisted-chat-model",
+      baseUrl: "https://persisted-search.example.test/v1",
+      apiKey: "persisted-search-key",
+    });
+    expect(resolved.resolved?.embedding).toMatchObject({
+      model: "persisted-embedding-model",
+      baseUrl: "https://persisted-search.example.test/v1",
+      apiKey: "persisted-search-key",
+    });
+    expect((await getAdminSearchSettings()).status.rag).toMatchObject({
+      available: true,
+      qualityStatus: "not-run",
+    });
+    globalThis.fetch = fakeFetch(async () => new Response("unavailable", { status: 503 }));
     const result = await executeContentModes({ q: "SQLite", mode: "rag" });
     expect(result).toMatchObject({
       requestedMode: "rag",
       effectiveMode: "keyword",
-      reason: "unvalidated",
+      reason: "unavailable",
     });
     expect((await executeContentModes({ q: "body:SQLite", mode: "rewrite" })).reason).toBe(
       "explicit-query"
     );
-    expect(globalThis.fetch).not.toHaveBeenCalled();
+    expect(globalThis.fetch).toHaveBeenCalled();
     await db
       .insert(posts)
       .values([
@@ -686,7 +737,8 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     while (run.status === "running") await Bun.sleep(5);
     expect(run.status).toBe("failed");
     expect(run.completed).toBe(0);
-    expect((await resolveSearchPolicy("rag")).reason).toBe("unvalidated");
+    expect((await resolveSearchPolicy("rag")).reason).toBeUndefined();
+    expect((await resolveSearchPolicy("rag")).qualityStatus).toBe("failed");
   });
   test("policy changes invalidate only the changed mode and reject stale quality grants", async () => {
     await enable("rag");
@@ -695,7 +747,8 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     const policy = (await readSearchSettings()).policy;
     policy.rag.timeoutMs++;
     await saveSearchPolicy(policy);
-    expect((await resolveSearchPolicy("rag")).reason).toBe("unvalidated");
+    expect((await resolveSearchPolicy("rag")).reason).toBeUndefined();
+    expect((await resolveSearchPolicy("rag")).qualityStatus).toBe("not-run");
     expect((await resolveSearchPolicy("rewrite")).reason).toBeUndefined();
     expect(await recordSearchQuality("rag", old.fingerprint ?? "", true)).toBe(false);
   });
@@ -721,7 +774,8 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     expect(run.status).toBe("failed");
     expect(run.completed).toBe(completed);
     expect(run.reason).toBe("invalid-output");
-    expect((await resolveSearchPolicy("rewrite")).reason).toBe("unvalidated");
+    expect((await resolveSearchPolicy("rewrite")).reason).toBeUndefined();
+    expect((await resolveSearchPolicy("rewrite")).qualityStatus).toBe("failed");
   });
   test("rewrite quality proves positive and negative retrieval without sending documents", async () => {
     const requests: string[] = [];
@@ -752,6 +806,37 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     expect(process.env.DB_PATH).toBe(source);
     expect(process.env.SEARCH_INDEX_PATH).toBe(index);
     expect((await resolveSearchPolicy("rewrite")).reason).toBeUndefined();
+  });
+  test("coalesces concurrent validation requests for the same mode", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let requestCount = 0;
+    globalThis.fetch = fakeFetch(async (_url, init) => {
+      requestCount++;
+      await gate;
+      const payload = JSON.parse(JSON.parse(String(init?.body)).messages[1].content);
+      const queries =
+        payload.query === "NodeJS"
+          ? ["NodeJS", "Node.js"]
+          : payload.query === "文章"
+            ? ["文章"]
+            : payload.query.includes("SQL")
+              ? ["SQLite3"]
+              : [];
+      return Response.json({
+        choices: [{ finish_reason: "stop", message: { content: JSON.stringify({ queries }) } }],
+      });
+    });
+    const firstPromise = startSearchValidation("rewrite");
+    const secondPromise = startSearchValidation("rewrite");
+    const [first, second] = await Promise.all([firstPromise, secondPromise]);
+    expect(second.id).toBe(first.id);
+    release();
+    for (let i = 0; i < 100 && first.status === "running"; i++) await Bun.sleep(10);
+    expect(first.status).toBe("passed");
+    expect(requestCount).toBe(4);
   });
   test("concurrent quality grants preserve both independent mode results", async () => {
     const rag = await resolveSearchPolicy("rag");
@@ -792,7 +877,8 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     release();
     for (let i = 0; i < 100 && run.status === "running"; i++) await Bun.sleep(10);
     expect(getSearchValidationRun(run.id)?.status).toBe("stale");
-    expect((await resolveSearchPolicy("rewrite")).reason).toBe("unvalidated");
+    expect((await resolveSearchPolicy("rewrite")).reason).toBeUndefined();
+    expect((await resolveSearchPolicy("rewrite")).qualityStatus).toBe("not-run");
   });
   test("filesystem clipping visibility is checked before AI and again before returning", async () => {
     const memoId = "Memos/search-clipping.md";

@@ -359,12 +359,13 @@ export const Switch = forwardRef<
   <SwitchPrimitive.Root
     ref={ref}
     className={cn(
-      "admin-switch peer inline-flex h-11 w-14 shrink-0 cursor-pointer items-center rounded-full bg-muted px-1 shadow-inner shadow-shadow-inset transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary",
+      "admin-switch peer relative inline-flex h-11 w-12 shrink-0 cursor-pointer items-center justify-center rounded-full bg-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:cursor-not-allowed disabled:opacity-50",
       className
     )}
     {...props}
   >
-    <SwitchPrimitive.Thumb className="admin-switch-thumb pointer-events-none block size-6 rounded-full bg-card shadow-md shadow-shadow-soft transition-transform" />
+    <span aria-hidden="true" className="admin-switch-track" />
+    <SwitchPrimitive.Thumb className="admin-switch-thumb pointer-events-none block rounded-full bg-foreground shadow-md shadow-shadow-soft ring-1 ring-border/72 transition-[background-color,transform,box-shadow] data-[state=checked]:bg-primary-foreground" />
   </SwitchPrimitive.Root>
 ));
 Switch.displayName = SwitchPrimitive.Root.displayName;
