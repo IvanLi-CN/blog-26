@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "5ce59fcf92a0b202a0669c379d9b3e02d0508bee",
+  "base_sha": "f50565d38c4ac2e655dd2cc01d98478d6678ff24",
   "covered_files": {
     "docs/adr/0027-sse-ai-search-transport.md": "c349353325897371af509d946b3fc0274c8aa1a4",
     "docs/specs/search-relevance/HISTORY.md": "d383fe041dbe7cce0cb8d2e428b0d44d535e35b9",
