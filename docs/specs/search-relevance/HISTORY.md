@@ -30,7 +30,7 @@ AI 搜索运行时继续复用既有 `llm_settings` 中的 chat、embedding、Ba
 
 公共 JSON 搜索保留既有数组与预算，RAG/改写的正式页面请求新增 `/api/public/search/stream`。流式入口先发送开始事件和阶段/心跳，再发送完整结果；embedding 与模型判断使用有界 30 秒等待并接收客户端取消。该传输变化不改变候选、权限、edition、排序或关键词回退，也不改变 tRPC、MCP 和 legacy semantic/enhanced 的既有合同。
 
-Web Demo 与生产流保持相同的 AI-only 入口和 `started`、`progress`、`result` 事件顺序；慢 Mock 会响应 AbortSignal，测试同时证明 JSON 在短预算下回退、流式入口继续完成 AI 请求。
+Web Demo 与生产流保持相同的 AI-only 入口和 `started`、`progress`、`result` 事件顺序；慢 Mock 会响应 AbortSignal，Demo 夹具在 reader.cancel 后清理排队事件，测试同时证明 JSON 在短预算下回退、流式入口继续完成 AI 请求。
 
 ## 索引覆盖与管理统计的兼容范围
 

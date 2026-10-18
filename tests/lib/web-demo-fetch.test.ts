@@ -153,6 +153,18 @@ describe("webDemoFetch", () => {
     expect(body).toContain("SQLite3：嵌入式数据库实践");
   });
 
+  it("fences queued SSE fixture events after reader cancellation", async () => {
+    installBrowser("?d_connection=online");
+    const response = await webDemoFetch("/api/public/search/stream?q=SQLite&mode=rag");
+    const reader = response.body?.getReader();
+    expect(reader).toBeDefined();
+    const first = await reader?.read();
+    expect(new TextDecoder().decode(first?.value)).toContain("event: started");
+    await reader?.cancel();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect((await reader?.read())?.done).toBe(true);
+  });
+
   it("keeps keyword mode on the JSON boundary instead of opening an SSE stream", async () => {
     installBrowser("?d_connection=online");
     const response = await webDemoFetch("/api/public/search/stream?q=SQLite&mode=keyword");

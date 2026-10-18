@@ -687,22 +687,37 @@ async function getDemoPublicResponse(
           : {}),
       };
       const encoder = new TextEncoder();
+      let closed = false;
+      let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
+      const timers = new Set<ReturnType<typeof setTimeout>>();
+      const emit = (event: string) => {
+        if (!closed) streamController?.enqueue(encoder.encode(event));
+      };
+      const schedule = (callback: () => void) => {
+        const timer = setTimeout(() => {
+          timers.delete(timer);
+          if (!closed) callback();
+        }, 0);
+        timers.add(timer);
+      };
       const stream = new ReadableStream<Uint8Array>({
         start(controller) {
-          controller.enqueue(
-            encoder.encode(
-              `event: started\ndata: ${JSON.stringify({ requestedMode: selected.data })}\n\n`
-            )
-          );
-          queueMicrotask(() => {
-            controller.enqueue(encoder.encode('event: progress\ndata: {"phase":"complete"}\n\n'));
-            queueMicrotask(() => {
-              controller.enqueue(
-                encoder.encode(`event: result\ndata: ${JSON.stringify(envelope)}\n\n`)
-              );
+          streamController = controller;
+
+          emit(`event: started\ndata: ${JSON.stringify({ requestedMode: selected.data })}\n\n`);
+          schedule(() => {
+            emit('event: progress\ndata: {"phase":"complete"}\n\n');
+            schedule(() => {
+              emit(`event: result\ndata: ${JSON.stringify(envelope)}\n\n`);
+              closed = true;
               controller.close();
             });
           });
+        },
+        cancel() {
+          closed = true;
+          for (const timer of timers) clearTimeout(timer);
+          timers.clear();
         },
       });
       const headers = new Headers(response.headers);
