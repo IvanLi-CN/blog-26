@@ -1088,13 +1088,14 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     await enable("rag");
 
     let chatCalls = 0;
+    let slowChat = false;
     globalThis.fetch = fakeFetch(async (url, init) => {
       if (String(url).endsWith("/embeddings")) {
         await waitWithAbort(120, init?.signal);
         return Response.json({ data: [{ embedding: [1, 0] }] });
       }
       chatCalls += 1;
-      await waitWithAbort(120, init?.signal);
+      await waitWithAbort(slowChat ? 2_200 : 120, init?.signal);
       const request = JSON.parse(String(init?.body));
       const payload = JSON.parse(request.messages[1].content);
       return Response.json({
@@ -1121,6 +1122,7 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
       { transport: "json" }
     );
     expect(jsonFallback).toMatchObject({ effectiveMode: "keyword", reason: "timeout" });
+    slowChat = true;
 
     const response = await handlePublicApiRequest(
       new Request(
@@ -1136,6 +1138,7 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     });
     expect(firstChunk).toContain("event: started");
     expect(firstChunk).not.toContain("event: result");
+    expect(body).toContain(": heartbeat\n\n");
     expect(body).toContain("event: result");
     const resultEvent = body.split("\n\n").find((event) => event.startsWith("event: result"));
     expect(resultEvent).toBeDefined();
