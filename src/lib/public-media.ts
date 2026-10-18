@@ -382,9 +382,21 @@ export function supportsPublicMediaPresentations(media: PublicMediaCollection | 
   return contentItems.every((item) =>
     (["content", "full"] as const).every((variant) => {
       const presentations = item.presentations?.[variant];
-      return Boolean(presentations?.a && presentations?.b);
+      return isCurrentWatermarkPresentationPair(presentations);
     })
   );
+}
+
+function isCurrentWatermarkPresentationPair(presentations: PublicMediaPresentations | undefined) {
+  if (!presentations?.a || !presentations.b) return false;
+
+  try {
+    const aPath = new URL(presentations.a, "https://public.invalid").pathname;
+    const bPath = new URL(presentations.b, "https://public.invalid").pathname;
+    return /(?:^|\/)wm-a-v2\//u.test(aPath) && /(?:^|\/)wm-b-v2\//u.test(bPath);
+  } catch {
+    return false;
+  }
 }
 
 export function buildPublicMediaPresentations(params: {
