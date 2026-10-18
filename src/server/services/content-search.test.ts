@@ -807,6 +807,37 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     expect(process.env.SEARCH_INDEX_PATH).toBe(index);
     expect((await resolveSearchPolicy("rewrite")).reason).toBeUndefined();
   });
+  test("coalesces concurrent validation requests for the same mode", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let requestCount = 0;
+    globalThis.fetch = fakeFetch(async (_url, init) => {
+      requestCount++;
+      await gate;
+      const payload = JSON.parse(JSON.parse(String(init?.body)).messages[1].content);
+      const queries =
+        payload.query === "NodeJS"
+          ? ["NodeJS", "Node.js"]
+          : payload.query === "文章"
+            ? ["文章"]
+            : payload.query.includes("SQL")
+              ? ["SQLite3"]
+              : [];
+      return Response.json({
+        choices: [{ finish_reason: "stop", message: { content: JSON.stringify({ queries }) } }],
+      });
+    });
+    const firstPromise = startSearchValidation("rewrite");
+    const secondPromise = startSearchValidation("rewrite");
+    const [first, second] = await Promise.all([firstPromise, secondPromise]);
+    expect(second.id).toBe(first.id);
+    release();
+    for (let i = 0; i < 100 && first.status === "running"; i++) await Bun.sleep(10);
+    expect(first.status).toBe("passed");
+    expect(requestCount).toBe(4);
+  });
   test("concurrent quality grants preserve both independent mode results", async () => {
     const rag = await resolveSearchPolicy("rag");
     const rewrite = await resolveSearchPolicy("rewrite");
