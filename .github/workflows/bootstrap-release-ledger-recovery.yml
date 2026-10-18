@@ -1,0 +1,81 @@
+name: Bootstrap Release Ledger Recovery
+
+on:
+  workflow_dispatch:
+    inputs:
+      legacy_sha:
+        description: Existing user-authored ledger head to bind with a bot recovery commit
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Create bot-signed recovery commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LEGACY_SHA: ${{ inputs.legacy_sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          [[ "$LEGACY_SHA" =~ ^[a-f0-9]{40}$ ]]
+          HEAD_SHA="$(gh api "repos/${REPOSITORY}/git/ref/heads/release-ledger" --jq '.object.sha')"
+          LEDGER_MESSAGE="$(gh api "repos/${REPOSITORY}/commits/${HEAD_SHA}" --jq '.commit.message')"
+          LEDGER_DIGEST="$(printf '%s\n' "$LEDGER_MESSAGE" | sed -n 's/^Ledger-Digest: \([a-f0-9]\{64\}\)$/\1/p' | head -1)"
+          [[ "$LEDGER_DIGEST" =~ ^[a-f0-9]{64}$ ]]
+          gh api "repos/${REPOSITORY}/contents/ledger.json?ref=release-ledger" --jq '.content' | tr -d '\n' | base64 --decode > ledger.json
+          export HEAD_SHA LEDGER_DIGEST
+          node --input-type=module <<'NODE'
+          const fs = require("node:fs");
+
+          const token = process.env.GH_TOKEN;
+          const repository = process.env.REPOSITORY;
+          const headSha = process.env.HEAD_SHA;
+          const legacySha = process.env.LEGACY_SHA;
+          const ledgerDigest = process.env.LEDGER_DIGEST;
+          const ledger = fs.readFileSync("ledger.json").toString("base64");
+          const input = {
+            branch: { repositoryNameWithOwner: repository, branchName: "release-ledger" },
+            expectedHeadOid: headSha,
+            message: {
+              headline: "chore(release): bootstrap ledger recovery",
+              body: [
+                `Ledger-Digest: ${ledgerDigest}`,
+                `Ledger-Recovery: ${legacySha}`,
+                "",
+                "Signed-off-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>",
+              ].join("\n"),
+            },
+            fileChanges: { additions: [{ path: "ledger.json", contents: ledger }] },
+          };
+          const response = await fetch("https://api.github.com/graphql", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+              "User-Agent": "blog-26-release-ledger-recovery",
+            },
+            body: JSON.stringify({
+              query:
+                "mutation($input:CreateCommitOnBranchInput!){createCommitOnBranch(input:$input){commit{oid}}}",
+              variables: { input },
+            }),
+          });
+          const payload = await response.json();
+          if (!response.ok || payload.errors?.length || !payload.data?.createCommitOnBranch?.commit?.oid) {
+            console.error(JSON.stringify(payload));
+            process.exit(1);
+          }
+          console.log(`Created recovery commit ${payload.data.createCommitOnBranch.commit.oid}`);
+          NODE
