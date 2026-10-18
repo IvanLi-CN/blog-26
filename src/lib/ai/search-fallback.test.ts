@@ -334,19 +334,19 @@ describe.skipIf(process.platform !== "linux")("AI search fallback boundaries", (
     ]);
   });
 
-  test("enhanced uses original keyword fallback when current RAG quality is not validated", async () => {
+  test("enhanced uses original keyword fallback when the configured RAG provider fails", async () => {
     await seedPost();
     process.env.EMBEDDING_MODEL_NAME = "test-embedding";
     process.env.CHAT_COMPLETION_MODEL = "test-chat";
     process.env.OPENAI_API_KEY = "search-test-key";
     process.env.OPENAI_API_BASE_URL = "https://search.example.test";
     const fetcher = mock(async () => {
-      throw new Error("No AI request expected");
+      throw new Error("synthetic provider failure");
     });
     globalThis.fetch = fetcher as unknown as typeof fetch;
     const result = await enhanced({ q: "SQLite", topK: 5, rerank: true });
     expect(result.map((item) => item.slug)).toEqual(["semantic-post"]);
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
   test("rerank false ignores reranker overrides and retains semantic search", async () => {

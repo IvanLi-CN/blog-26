@@ -878,7 +878,7 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     for (let i = 0; i < 100 && run.status === "running"; i++) await Bun.sleep(10);
     expect(getSearchValidationRun(run.id)?.status).toBe("stale");
     expect((await resolveSearchPolicy("rewrite")).reason).toBeUndefined();
-    expect((await resolveSearchPolicy("rewrite")).qualityStatus).toBe("stale");
+    expect((await resolveSearchPolicy("rewrite")).qualityStatus).toBe("not-run");
   });
   test("filesystem clipping visibility is checked before AI and again before returning", async () => {
     const memoId = "Memos/search-clipping.md";
