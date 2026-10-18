@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, initializeDB } from "@/lib/db";
-import { searchSettings } from "@/lib/schema";
+import { llmSettings, searchSettings } from "@/lib/schema";
 import { NAME_POLICY_VERSION } from "@/lib/search/native-query";
 import {
   type AdminSearchSettings,
@@ -136,7 +136,7 @@ export async function saveSearchPolicy(input: unknown) {
     });
   return getAdminSearchSettings();
 }
-/** Compare and save synchronously in the SQLite transaction, so a stale run cannot bless a new policy. */
+/** Compare and save synchronously in SQLite, so a stale run cannot bless new policy or provider settings. */
 export async function recordSearchQuality(
   mode: AiSearchMode,
   fingerprint: string,
@@ -144,9 +144,28 @@ export async function recordSearchQuality(
 ) {
   const current = await resolveSearchPolicy(mode);
   if (current.fingerprint !== fingerprint) return false;
+  const providerRevision = await db
+    .select({ config: llmSettings.config, updatedAt: llmSettings.updatedAt })
+    .from(llmSettings)
+    .where(eq(llmSettings.id, "default"))
+    .get();
+  const expectedProviderRevision = {
+    configHash: hash(providerRevision?.config ?? ""),
+    updatedAt: providerRevision?.updatedAt ?? null,
+  };
   const settings = await readSearchSettings();
   const expectedPolicy = JSON.stringify(settings.policy);
   const saved = db.transaction((tx) => {
+    const latestProvider = tx
+      .select({ config: llmSettings.config, updatedAt: llmSettings.updatedAt })
+      .from(llmSettings)
+      .where(eq(llmSettings.id, "default"))
+      .get();
+    if (
+      hash(latestProvider?.config ?? "") !== expectedProviderRevision.configHash ||
+      (latestProvider?.updatedAt ?? null) !== expectedProviderRevision.updatedAt
+    )
+      return false;
     const row = tx.select().from(searchSettings).where(eq(searchSettings.id, "default")).get();
     const latest: SearchSettings = row
       ? JSON.parse(row.config)
