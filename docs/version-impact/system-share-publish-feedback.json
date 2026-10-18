@@ -9,8 +9,8 @@
     "apps/admin/src/router.tsx": "9f7c91403099e0bdf8862598df3de7bdb5fec43a",
     "docs/adr/0020-console-pwa-system-share-target.md": "ccea210cbafd37917d341b61553ad14878eadb22",
     "docs/specs/README.md": "cc332e821388ec818a390ffcf84ee4f2ac23207e",
-    "docs/specs/system-share-memos/HISTORY.md": "a0244ab09d6120a8b582a66e85759d0e04792932",
-    "docs/specs/system-share-memos/IMPLEMENTATION.md": "4527c17af239654e89467dd0d51291b3f922c1ba",
+    "docs/specs/system-share-memos/HISTORY.md": "6332163ad60981b8215c17629577c8de0a030534",
+    "docs/specs/system-share-memos/IMPLEMENTATION.md": "c4d1f709be9456174e17e313433f1f240011e108",
     "docs/specs/system-share-memos/SPEC.md": "29413091c8004200be6edb073c73a5668632a1cf",
     "docs/specs/system-share-memos/assets/system-share-desktop-detail.png": "2ef498c508a3cb43af6702cc7cc1835f690e214d",
     "docs/specs/system-share-memos/assets/system-share-desktop-failure-retry.png": "eab9424bc78753d5a1ae92df8dd562cf5b7c0dd1",
@@ -26,7 +26,7 @@
     "drizzle/meta/0016_snapshot.json": "49618ab6ec168270e4eee833d15b2fa1d40551fb",
     "drizzle/meta/_journal.json": "4f4d6b99d9ff42f6ba123f0a72aec35ab1827b6b",
     "public/share-target-sw.js": "d9c6f3cff63c6813d69c6a82bcec2e5ea1a8586c",
-    "site/components/SystemShareConfirmation.tsx": "f25c61146f268b4149cb5a519b3deaedf8e7219a",
+    "site/components/SystemShareConfirmation.tsx": "76e3492a64343eb8d900806efd9f4075cdfd5fd1",
     "site/components/SystemShareToast.css": "d3481b1c010f2c9a48052d59a7fa82f5678abd9e",
     "site/components/SystemShareToast.tsx": "d6e4d956b9fb9f0feb73764c890913581c7a323f",
     "site/layouts/BaseLayout.astro": "af25f139c41fbb0afd95a2c1cc5b3b77cc92809a",
@@ -43,14 +43,14 @@
     "src/lib/web-demo-fetch.ts": "b5d833b7db01d88e0b72476552def6c5f089d0fe",
     "src/lib/web-demo-runtime.ts": "462aaebf181ae75ec14f4d5dd561fe9a9c99a18d",
     "src/server/files-api/router.ts": "201bab0bfabb9606480cdf9074571e95a0938156",
-    "src/server/public-api/router.ts": "cd45de95540cd4576f997b3ae1d17793e988c2d9",
+    "src/server/public-api/router.ts": "31e9857f2461d4d7826e7a1a0eae0f7379dcde43",
     "src/server/routers/memos.ts": "0bfc0669abaeee3abc6042d6dbc093e93bef75d0",
     "src/styles/milkdown-nature.css": "10f811a5bebf2f69884e0d59baee177b75756950",
-    "tests/e2e/web-demo/system-share.spec.ts": "e70c219b82b0e10192c9e0fa3cbfd2e6f5dcd32c",
+    "tests/e2e/web-demo/system-share.spec.ts": "b021e7cb04a8a87194bde07bc7820358b398a217",
     "tests/lib/public-pwa-assets.test.ts": "babda4a2eb57de53c7d3377e021746f9b8e918bf",
     "tests/lib/web-demo-inspector-layout.test.ts": "a17f835643925fdd1b33d110a3c1ade0786da90c",
     "tests/server/console-api-route.test.ts": "8d2d99311d518cf3107d1ec3150996180a7e7be9",
-    "tests/server/system-share-api.test.ts": "d8ab3f6b45842335de200370452e70dbd8c1c32b"
+    "tests/server/system-share-api.test.ts": "cce718709bef7dda6b2e0785fee91e8ebd466319"
   },
   "change": {
     "description": "Complete console PWA system-share publishing with stable submission identity, crash-safe recovery, global publish feedback, confirmed navigation, and official Web Demo coverage.",
@@ -82,17 +82,17 @@
       "evidence": [
         {
           "path": "src/server/public-api/router.ts",
-          "blob": "cd45de95540cd4576f997b3ae1d17793e988c2d9",
+          "blob": "31e9857f2461d4d7826e7a1a0eae0f7379dcde43",
           "command": "Crash recovery, lease fencing, and idempotent system-share submission"
         },
         {
           "path": "site/components/SystemShareConfirmation.tsx",
-          "blob": "41c658ba8246df52b56888549ee8d471159df184",
+          "blob": "76e3492a64343eb8d900806efd9f4075cdfd5fd1",
           "command": "Publish state, retry, and detail navigation behavior"
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "ad2c75cd411a82d217cda66c2d72b4164c616d06",
+          "blob": "47a791cee12d1dd0449f39e2a96dc97d05d94a85",
           "command": "Official console Web Demo system-share coverage"
         }
       ],
@@ -108,12 +108,12 @@
       "evidence": [
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "d8ab3f6b45842335de200370452e70dbd8c1c32b",
+          "blob": "cce718709bef7dda6b2e0785fee91e8ebd466319",
           "command": "System-share authentication, limits, idempotency, recovery, cleanup, and visibility tests"
         },
         {
           "path": "tests/e2e/web-demo/system-share.spec.ts",
-          "blob": "e70c219b82b0e10192c9e0fa3cbfd2e6f5dcd32c",
+          "blob": "b021e7cb04a8a87194bde07bc7820358b398a217",
           "command": "Official console Web Demo mobile and desktop publishing feedback scenarios"
         },
         {
@@ -150,7 +150,7 @@
       "evidence": [
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "d8ab3f6b45842335de200370452e70dbd8c1c32b",
+          "blob": "cce718709bef7dda6b2e0785fee91e8ebd466319",
           "command": "Existing administrator-only API contract remains compatible"
         },
         {
@@ -210,7 +210,7 @@
         },
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "d8ab3f6b45842335de200370452e70dbd8c1c32b",
+          "blob": "cce718709bef7dda6b2e0785fee91e8ebd466319",
           "command": "Recovery and prior-state compatibility regression coverage"
         }
       ]

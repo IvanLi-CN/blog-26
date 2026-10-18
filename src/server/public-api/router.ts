@@ -646,22 +646,15 @@ async function handleSystemShareRequest(
     if (!slug) return null;
     try {
       const memo = await caller.memos.bySlug({ slug });
+      if (memo.id !== memoId) return null;
       return { memoId, memoSlug: slug, memo };
     } catch (error) {
       if (error instanceof TRPCError && error.code === "NOT_FOUND") {
         try {
-          const authored = await readAuthoredMemo(memoId);
-          return {
-            memoId,
-            memoSlug: slug,
-            memo: {
-              id: memoId,
-              slug,
-              title:
-                typeof authored.frontmatter.title === "string" ? authored.frontmatter.title : null,
-              isPublic: authored.frontmatter.public !== false,
-            },
-          };
+          await triggerIncrementalSync({ throwOnError: true });
+          const memo = await caller.memos.bySlug({ slug });
+          if (memo.id !== memoId) return null;
+          return { memoId, memoSlug: slug, memo };
         } catch {
           return null;
         }

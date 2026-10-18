@@ -48,7 +48,7 @@ type PublishResponse = {
 };
 
 const SYSTEM_SHARE_RETURN_PATH = "/share";
-const SYSTEM_SHARE_SUCCESS_HOLD_MS = 1250;
+const SYSTEM_SHARE_SUCCESS_HOLD_MS = 1150;
 
 function adminContinuationHref() {
   return `/admin/?returnTo=${encodeURIComponent(SYSTEM_SHARE_RETURN_PATH)}`;

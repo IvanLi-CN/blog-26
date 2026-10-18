@@ -684,6 +684,39 @@ describe("system share API", () => {
       memoId,
       memo: { slug: memoSlug },
     });
+    expect(await db?.select({ id: posts.id }).from(posts).where(eq(posts.id, memoId))).toHaveLength(
+      1
+    );
+  });
+
+  test("does not replay another Memo when a legacy slug is reused", async () => {
+    const firstSubmissionId = randomUUID();
+    const secondSubmissionId = randomUUID();
+    const first = await handlePublicApiRequest(
+      buildRequest(createForm(firstSubmissionId, "first memo")),
+      "/system-share"
+    );
+    const second = await handlePublicApiRequest(
+      buildRequest(createForm(secondSubmissionId, "second memo")),
+      "/system-share"
+    );
+    const firstPayload = (await first.json()) as { memo?: { slug?: string } };
+    const secondPayload = (await second.json()) as { memoId?: string };
+    if (!firstPayload.memo?.slug || !secondPayload.memoId) {
+      throw new Error("expected two created Memos");
+    }
+
+    await db
+      ?.update(systemShareSubmissions)
+      .set({ memoSlug: firstPayload.memo.slug })
+      .where(eq(systemShareSubmissions.submissionId, secondSubmissionId));
+
+    const replay = await handlePublicApiRequest(
+      buildRequest(createForm(secondSubmissionId, "second memo")),
+      "/system-share"
+    );
+    expect(replay.status).toBe(404);
+    expect(await db?.select({ id: posts.id }).from(posts)).toHaveLength(2);
   });
 
   test("does not replay a classified completed row after its Memo ownership marker changes", async () => {

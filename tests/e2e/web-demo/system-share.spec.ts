@@ -180,6 +180,20 @@ test.describe("Console system share Web Demo", () => {
 
   test("holds the success notice for one second before navigating to detail", async ({ page }) => {
     await clearPendingShare(page);
+    let successToastShownAt = 0;
+    await page.exposeFunction("recordSystemShareSuccessToast", () => {
+      successToastShownAt = performance.now();
+    });
+    await page.addInitScript(() => {
+      const observer = new MutationObserver(() => {
+        if (!document.querySelector('[data-testid="system-share-toast-success"]')) return;
+        void (
+          window as unknown as { recordSystemShareSuccessToast: () => void }
+        ).recordSystemShareSuccessToast();
+        observer.disconnect();
+      });
+      observer.observe(document, { childList: true, subtree: true });
+    });
     const submissionId = randomUUID();
     await page.goto(
       `/share?d_persona=admin&d_share=text&d_submission=${submissionId}&d_delay=slow`,
@@ -191,11 +205,11 @@ test.describe("Console system share Web Demo", () => {
     await page.getByTestId("system-share-submit").click();
     await expect(page.getByTestId("system-share-toast-success")).toBeVisible();
     expect(page.url()).toMatch(/\/share\?/);
-    const successShownAt = Date.now();
     await page.waitForURL(/\/memos\/console-demo-created-\d+$/, { timeout: 5_000 });
-    const successNoticeDuration = Date.now() - successShownAt;
-    expect(successNoticeDuration).toBeGreaterThanOrEqual(900);
-    expect(successNoticeDuration).toBeLessThan(2_500);
+    expect(successToastShownAt).toBeGreaterThan(0);
+    const successNoticeDuration = performance.now() - successToastShownAt;
+    expect(successNoticeDuration).toBeGreaterThanOrEqual(800);
+    expect(successNoticeDuration).toBeLessThan(1_400);
     await expect(page.getByTestId("system-share-toast-success")).toHaveCount(0);
   });
 
