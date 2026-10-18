@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "08defc534c0c0df15bf3d43b144dc785a44bef05",
+  "covered_files": {
+    "docs/specs/search-relevance/HISTORY.md": "f987c129077695e1aa3804e1ae7381331e8aecc7",
+    "docs/specs/search-relevance/IMPLEMENTATION.md": "aef9170da39e86ae2573ce2426d007407e69adfc",
+    "src/server/services/content-search.test.ts": "83c014a38bead2cecb6b729d1834bb18fbf80425",
+    "src/server/services/search-model.test.ts": "c59ff6b7933abb9617be84fa80cb19f470924f0d",
+    "src/server/services/search-model.ts": "c1a205553659814c9f02c71ec12ae77fa8f2148f"
+  },
+  "change": {
+    "description": "Keep provider token budgets separate from the UTF-8 transport guard so multilingual RAG requests do not fall back to keyword search at ordinary result limits.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "Compatible defect repair. The search model keeps provider-reported token validation, removes the incorrect UTF-8-byte versus token comparison, and preserves existing fallback behavior, response shapes, ranking, and persistence.",
+      "assessed_at": "2026-10-19T00:43:26+08:00",
+      "evidence": [
+        {
+          "path": "src/server/services/search-model.test.ts",
+          "blob": "c59ff6b7933abb9617be84fa80cb19f470924f0d",
+          "command": "bun test src/server/services/search-model.test.ts"
+        },
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "83c014a38bead2cecb6b729d1834bb18fbf80425",
+          "command": "bun test src/server/services/content-search.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate changes only model input preflight accounting and adds regression coverage and documentation; provider usage checks and all search contracts remain unchanged.",
+      "assessed_at": "2026-10-19T00:43:26+08:00",
+      "evidence": [
+        {
+          "path": "src/server/services/search-model.ts",
+          "blob": "c1a205553659814c9f02c71ec12ae77fa8f2148f",
+          "command": "Review model budget preflight and provider usage validation"
+        },
+        {
+          "path": "docs/specs/search-relevance/IMPLEMENTATION.md",
+          "blob": "aef9170da39e86ae2573ce2426d007407e69adfc",
+          "command": "Review documented token and transport byte budget contract"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The current candidate remains within the multilingual search model budget defect and its focused regression/documentation scope."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The fix preserves provider token usage enforcement while preventing false budget-exceeded fallbacks caused by UTF-8 byte length. Focused model and content-search regression tests pass, and repository checks pass without changing the public response contract or durable state.",
+      "assessed_at": "2026-10-19T00:43:26+08:00",
+      "evidence": [
+        {
+          "path": "src/server/services/search-model.test.ts",
+          "blob": "c59ff6b7933abb9617be84fa80cb19f470924f0d",
+          "command": "bun test src/server/services/search-model.test.ts"
+        },
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "83c014a38bead2cecb6b729d1834bb18fbf80425",
+          "command": "bun test src/server/services/content-search.test.ts"
+        },
+        {
+          "path": "src/server/services/search-model.ts",
+          "blob": "c1a205553659814c9f02c71ec12ae77fa8f2148f",
+          "command": "bun run check"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6"
+      ],
+      "evidence": [
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "83c014a38bead2cecb6b729d1834bb18fbf80425",
+          "command": "Content-search regression preserves result shape, ranking inputs, and keyword fallback"
+        },
+        {
+          "path": "src/server/services/search-model.test.ts",
+          "blob": "c59ff6b7933abb9617be84fa80cb19f470924f0d",
+          "command": "Model regression preserves provider usage budget errors and multilingual requests"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, settings, vector data, cache identity, or durable task state changes are introduced.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/server/services/search-model.ts",
+          "blob": "c1a205553659814c9f02c71ec12ae77fa8f2148f",
+          "command": "Model budget guard is an in-memory request validation change with no persistence writes"
+        }
+      ]
+    }
+  }
+}
