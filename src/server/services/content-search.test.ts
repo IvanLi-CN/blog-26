@@ -1145,6 +1145,53 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     expect(result.results.map((item: { slug: string }) => item.slug)).toEqual(["sse-rag"]);
     expect(chatCalls).toBe(1);
   });
+  test("aborting a public SSE request cancels in-flight provider work", async () => {
+    await db.insert(posts).values(fixture("sse-abort", "Semantic cancellation fixture"));
+    await seedVerifiedBlog("sse-abort");
+
+    let markProviderStarted!: () => void;
+    const providerStarted = new Promise<void>((resolve) => {
+      markProviderStarted = resolve;
+    });
+    let markProviderAborted!: () => void;
+    const providerAborted = new Promise<void>((resolve) => {
+      markProviderAborted = resolve;
+    });
+    globalThis.fetch = fakeFetch(async (url, init) => {
+      if (!String(url).endsWith("/embeddings")) {
+        return Response.json({ choices: [] });
+      }
+      markProviderStarted();
+      await new Promise<never>((_, reject) => {
+        const signal = init?.signal;
+        const onAbort = () => {
+          markProviderAborted();
+          reject(signal?.reason ?? new DOMException("Aborted", "AbortError"));
+        };
+        if (signal?.aborted) onAbort();
+        else signal?.addEventListener("abort", onAbort, { once: true });
+      });
+    });
+
+    const requestController = new AbortController();
+    const response = await handlePublicApiRequest(
+      new Request(
+        "http://localhost/api/public/search/stream?q=semantic%20cancellation&mode=rag&source=blog&type=post&topK=10",
+        { signal: requestController.signal }
+      ),
+      "/search/stream"
+    );
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("missing SSE body");
+    const first = await reader.read();
+    expect(new TextDecoder().decode(first.value)).toContain("event: started");
+    await providerStarted;
+
+    requestController.abort();
+    await providerAborted;
+    await expect(reader.read()).resolves.toMatchObject({ done: true });
+    reader.releaseLock();
+  });
   test("MCP uses the common executor, enforces capacity and denies unpublished access", async () => {
     await db
       .insert(posts)
