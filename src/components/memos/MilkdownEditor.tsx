@@ -29,7 +29,9 @@ const initializingEditors = new Set<string>();
 // 调试开关与轻量日志函数
 // removed development-only logging helpers
 
-function labelCrepeInternalFields(root: HTMLElement, editorId: string) {
+function labelCrepeInternalFields(root: HTMLElement, editorId: string, ariaLabel?: string) {
+  const editor = root.querySelector<HTMLElement>('[contenteditable="true"]');
+  if (editor && ariaLabel) editor.setAttribute("aria-label", ariaLabel);
   const linkInput = root.querySelector<HTMLInputElement>(
     'input.input-area[placeholder="Paste link..."]'
   );
@@ -118,6 +120,7 @@ interface MilkdownEditorProps {
   contentSource?: "local";
   readOnly?: boolean;
   frontmatterHandling?: FrontmatterHandlingMode;
+  ariaLabel?: string;
 }
 
 // 转换图片路径用于编辑器显示
@@ -184,6 +187,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       contentSource = "local",
       readOnly = false,
       frontmatterHandling = "body-only",
+      ariaLabel,
     },
     ref
   ) => {
@@ -193,6 +197,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     const initialContentRef = useRef<string>(content);
     const onImageUploadRef = useRef(onImageUpload);
     const onChangeRef = useRef(onChange);
+    const readOnlyRef = useRef(readOnly);
     const accessibilityObserverRef = useRef<MutationObserver | null>(null);
     const isUpdatingRef = useRef<boolean>(false); // 防止循环更新的标志
     const markdownUpdateVersionRef = useRef(0);
@@ -297,6 +302,10 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       onImageUploadRef.current = onImageUpload;
     }, [onImageUpload]);
 
+    useEffect(() => {
+      readOnlyRef.current = readOnly;
+    }, [readOnly]);
+
     // 同步最新的 onChange 到 ref（避免把 onChange 放入初始化副作用依赖）
     useEffect(() => {
       onChangeRef.current = onChange;
@@ -351,9 +360,9 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
               [CrepeFeature.ListItem]: true,
               [CrepeFeature.LinkTooltip]: true,
               [CrepeFeature.ImageBlock]: true,
-              [CrepeFeature.BlockEdit]: !readOnly,
+              [CrepeFeature.BlockEdit]: !readOnlyRef.current,
               [CrepeFeature.Placeholder]: true,
-              [CrepeFeature.Toolbar]: !readOnly,
+              [CrepeFeature.Toolbar]: !readOnlyRef.current,
               [CrepeFeature.CodeMirror]: true,
               [CrepeFeature.Table]: true,
               [CrepeFeature.Latex]: false, // 暂时禁用 LaTeX 以简化
@@ -449,7 +458,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
               lastContentRef.current = persistedMarkdown;
               const updateVersion = ++markdownUpdateVersionRef.current;
               const changeMeta =
-                isEditorReadyRef.current && !readOnly
+                isEditorReadyRef.current && !readOnlyRef.current
                   ? USER_EDITOR_CHANGE
                   : PROGRAMMATIC_EDITOR_CHANGE;
 
@@ -466,7 +475,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
           // 创建编辑器
           await crepe.create();
-          crepe.setReadonly(readOnly);
+          crepe.setReadonly(readOnlyRef.current);
 
           if (cancelled) {
             try {
@@ -480,11 +489,11 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           crepeRef.current = crepe;
           lastContentRef.current = initialContentRef.current;
           isEditorReadyRef.current = true;
-          labelCrepeInternalFields(editorRef.current, editorId);
+          labelCrepeInternalFields(editorRef.current, editorId, ariaLabel);
           accessibilityObserverRef.current?.disconnect();
           accessibilityObserverRef.current = new MutationObserver(() => {
             if (editorRef.current) {
-              labelCrepeInternalFields(editorRef.current, editorId);
+              labelCrepeInternalFields(editorRef.current, editorId, ariaLabel);
             }
           });
           accessibilityObserverRef.current.observe(editorRef.current, {
@@ -528,7 +537,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
         // 从实例管理器中移除
         editorInstances.delete(editorId);
       };
-    }, [articlePath, editorId, contentSource, placeholder, readOnly, frontmatterHandling]);
+    }, [articlePath, editorId, contentSource, placeholder, frontmatterHandling, ariaLabel]);
 
     useEffect(() => {
       crepeRef.current?.setReadonly(readOnly);

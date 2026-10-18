@@ -14,7 +14,10 @@
 - **Share target**: The installed console PWA entry declared by the Web App Manifest `share_target` member.
 - **Pending share**: One browser-local payload awaiting authentication or confirmation.
 - **Share classification**: The final `clipping` or `memo` result calculated from the editable confirmation-page values.
-- Interface: The console manifest, a share-target `POST` action, a minimal service worker, an IndexedDB pending-share store, and the existing Memo create path.
+- **Submission identity**: A browser-generated temporary UUID stored with one pending share and reused for edits, refreshes, retries, and response-loss recovery.
+- **Publish detail page**: The console `/memos/:slug` route for the Memo returned by a successful system-share submission.
+- **Global Toast**: The console-wide notification surface for publish progress, success, and retryable failure actions.
+- Interface: The console manifest, a share-target `POST` action, a minimal service worker, an IndexedDB pending-share store, the global Toast surface, and the existing Memo create path.
 
 ## Requirements
 
@@ -49,7 +52,7 @@
 ### REQ-SSM-005
 
 - Every system share MUST pass through the confirmation page before Memo creation.
-- The page MUST display and allow editing of title, text/remarks, URL, files, visibility, and tags, and MUST show the current share classification.
+- The page MUST expose the original share payload in an expandable read-only panel and provide exactly one editable Memo content field populated with the parsed content. For a clipping, that content MUST begin with the target URL, preserve any share remarks, and include one system-generated `#剪藏` parser marker in the same field; the share title and user tags remain submission metadata rather than separate Memo input fields, files MAY be added or removed as attachments, and visibility remains a publish control.
 - Visibility MUST default to private for every system share, even when the existing manual Memo composer defaults to public.
 - Inputs: normalized pending share.
 - Outputs: an administrator-confirmed Memo input or an explicit cancellation.
@@ -57,16 +60,16 @@
 ### REQ-SSM-006
 
 - The final classification MUST be recalculated from the edited confirmation values at confirmation time.
-- A valid HTTP(S) URL in the dedicated `url` field MUST classify as clipping. If that field is absent, a `text` value whose trimmed content is exactly one valid HTTP(S) URL MUST also classify as clipping.
-- A URL embedded alongside other text, an invalid URL, or no URL MUST classify as an ordinary Memo unless the administrator edits the payload into a valid clipping input.
+- A valid HTTP(S) URL in the dedicated `url` field MUST classify as clipping. If that field is absent, a `text` value whose trimmed content is exactly one valid HTTP(S) URL, or whose first non-empty line is a valid plain URL, Markdown link, or autolink, MUST classify as clipping.
+- A URL embedded in unrelated text, an invalid URL, or no URL MUST classify as an ordinary Memo. The editable Memo field MAY use a plain URL, Markdown link, or autolink as its first non-empty line to represent a clipping.
 - Inputs: edited confirmation values.
 - Outputs: `clipping` or `memo` classification.
 
 ### REQ-SSM-007
 
 - For a clipping, the dedicated URL MUST become the clipping target, the shared `title` MUST be treated as an author-provided title when non-empty, and shared `text` MUST become clipping remarks after removing a duplicate target-only text value.
-- The visible Memo body MUST not repeat the target URL; existing clipping processing MUST own source capture, summary, translation, and source-page presentation.
-- Share-origin clipping metadata MUST preserve clipping identity without automatically adding a visible `#剪藏` tag.
+- The visible Memo body MUST preserve the target URL as its first line so the authored content remains self-identifying; existing clipping processing MUST continue to own source capture, summary, translation, and source-page presentation.
+- Share-origin clipping content MUST preserve clipping identity with one system-generated `#剪藏` parser marker in the Memo body. The marker MUST NOT be added to the user-controlled frontmatter tag list or exposed as a separate tag input.
 - Inputs: confirmed URL share values.
 - Outputs: a share-origin 剪藏闪念 using existing clipping content boundaries.
 
@@ -86,9 +89,9 @@
 
 ### REQ-SSM-010
 
-- The confirmation page MUST allow an administrator to remove or edit a URL, and adding a valid URL MUST switch an ordinary Memo to clipping while removing the URL MUST switch it back to ordinary Memo.
-- Classification changes MUST not silently discard text, title, tags, or attachments.
-- Inputs: confirmation-page edits.
+- Editing the single Memo content field MUST preserve the accepted share metadata and attachments while the server recalculates the final classification from the stored URL and edited content.
+- The confirmation page MUST NOT render separate title, URL, or tag editors for the Memo.
+- Inputs: confirmation-page content edits and attachment/visibility controls.
 - Outputs: final classification and preserved user data consistent with the edits.
 
 ### REQ-SSM-011
@@ -115,8 +118,9 @@
 
 ### REQ-SSM-014
 
-- Every confirmation submission MUST create a new independent Memo; the system MUST NOT deduplicate by URL, file hash, title, or body.
-- A browser refresh or redirect MUST NOT create a second Memo for the same confirmation submission.
+- Every new Submission Identity MUST create at most one independent Memo; distinct system shares MUST remain independent even when their URL, file hash, title, or body match.
+- Concurrent requests, browser refresh, retry, lost responses, server restarts, and a failure between Memo creation and submission completion MUST NOT create a second Memo for the same Submission Identity.
+- Memo creation and completion of the Submission Identity MUST be atomic or recoverable so a retry can find the original Memo after any uncertain outcome.
 - Inputs: a confirmed pending share.
 - Outputs: at most one Memo for that submission.
 
@@ -136,7 +140,7 @@
 
 ### REQ-SSM-017
 
-- The system MUST record `system-share` as internal source metadata for diagnostics and audit without automatically adding a visible share tag or changing search classification.
+- The system MUST record `system-share` as internal source metadata for diagnostics and audit without automatically adding a separate share tag or changing search classification. The system-generated `#剪藏` parser marker remains part of the Memo body so existing clipping recognition works without internal metadata.
 - Inputs: a confirmed system share.
 - Outputs: internal source provenance and unchanged user-controlled tags.
 
@@ -153,6 +157,50 @@
 - Safari/iOS and Firefox MAY expose the ordinary web confirmation route, but the product MUST NOT promise system-share registration there until separately verified.
 - Inputs: browser and operating-system capability.
 - Outputs: capability-appropriate installation and a manual fallback where available.
+
+### REQ-SSM-020
+
+- The confirmation page MUST show publishing progress through the console-wide Global Toast immediately after submission begins.
+- The progress Toast MUST remain visible until the server request resolves and MUST not be represented only by disabled button text or an inline form message.
+- Inputs: an administrator submitting confirmed share values.
+- Outputs: a visible `正在发布` publish-state Toast while the request is active.
+
+### REQ-SSM-021
+
+- A successful submission MUST show a success Publish State Toast on the confirmation page before navigating to the Publish Detail Page.
+- The success Toast MUST remain visible for approximately 800-1200 ms before navigation so the administrator can perceive the confirmation.
+- The client MUST navigate to `/memos/:slug` using the returned Memo slug after the success Toast has been shown; it MUST NOT navigate only to the Memo list.
+- Inputs: a successful system-share response containing Memo detail identity.
+- Outputs: a success Toast followed by the created Memo's detail page.
+
+### REQ-SSM-022
+
+- A failed submission MUST keep the administrator on the confirmation page and show a failure Publish State Toast with an explicit `重试` action.
+- Activating `重试` MUST reuse the current edited values and the same Submission Identity, update the existing Toast to `正在发布`, and MUST NOT stack a second failure Toast for the same attempt.
+- Inputs: a retryable publish or attachment failure.
+- Outputs: an actionable failure Toast and an idempotent retry path.
+
+### REQ-SSM-023
+
+- The browser MUST generate the Submission Identity when the system share is first accepted and store it with the IndexedDB pending slot.
+- The identity MUST survive authentication, edits, page refresh, retry, and a lost HTTP response; a newly received system share MUST create a new identity and replace the single pending slot.
+- Inputs: a system share lifecycle in one browser.
+- Outputs: one stable client-owned identity per pending share.
+
+### REQ-SSM-024
+
+- A successful system-share response MUST include the Memo detail identity required for navigation, including its `slug` and enough detail metadata for the success state.
+- A replay using a completed Submission Identity MUST return the original Memo detail identity rather than creating a second Memo or returning an opaque duplicate-only result.
+- Inputs: first submission or idempotent replay.
+- Outputs: one navigable Memo detail target for both first success and response-loss recovery.
+
+### REQ-SSM-025
+
+- The confirmation page MUST render the submit action as the filled primary button defined by the Nature UI system, with visible hover, focus, disabled, and publishing states.
+- The official `/share` route MUST provide owner-reviewable visual evidence at mobile and desktop sizes for the populated confirmation state, publishing Toast, success Toast, retryable failure Toast, and the resulting detail navigation.
+- The evidence MUST come from the implementation candidate and MUST be presented to the owner for review before production release; production release MUST wait until the owner confirms the visual result.
+- Inputs: the shipped console confirmation flow.
+- Outputs: accessible, visually reviewable publish controls and state feedback without a separate page-level Demo route.
 
 ## Verification
 
@@ -186,13 +234,25 @@
 - covers: `REQ-SSM-014`, `REQ-SSM-015`, `REQ-SSM-017`, `REQ-SSM-018`
 - Pass condition: one confirmation creates one independent Memo, failed clipping remains retryable, source metadata is internal, and live/public visibility follows existing publication semantics.
 
+### VER-SSM-006
+
+- Method: browser interaction tests for publish state Toasts, retry actions, detail navigation, and completed-submission replay.
+- covers: `REQ-SSM-020`, `REQ-SSM-021`, `REQ-SSM-022`, `REQ-SSM-023`, `REQ-SSM-024`
+- Pass condition: progress and success are global Toasts, failures expose an in-Toast retry that reuses the same identity and edited values, first success and replay both navigate to one Memo detail page, and no duplicate Memo is created.
+
+### VER-SSM-007
+
+- Method: owner-reviewed visual evidence from the official `/share` route at mobile and desktop viewports.
+- covers: `REQ-SSM-025`
+- Pass condition: the filled primary button has sufficient contrast and stable dimensions, Toasts remain readable and actionable over the page, the populated form is scannable at both sizes, and the detail navigation result is captured.
+
 ## Related ADRs
 
 - [ADR 0020: Console PWA as the system-share write target](../../adr/0020-console-pwa-system-share-target.md)
 
 ## Visual Evidence
 
-- None
+- Required after candidate implementation and before production release: owner-reviewable captures from the official `/share` route at 390x844 and 1440x1000, covering populated, publishing, success, retryable failure, and resulting detail states. Production release waits for owner confirmation.
 
 ## References
 

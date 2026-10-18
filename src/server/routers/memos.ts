@@ -1,7 +1,22 @@
+import { randomUUID } from "node:crypto";
+import {
+  closeSync,
+  constants as fsConstants,
+  linkSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, like, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, like, sql } from "drizzle-orm";
+import matter from "gray-matter";
 import { z } from "zod";
 import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
@@ -32,7 +47,7 @@ import { isLocalContentEnabled, LOCAL_PATHS } from "../../config/paths";
 import { getContentSourceManager, LocalContentSource } from "../../lib/content-sources";
 import { generateMemoFilename, generateSlugFromPath } from "../../lib/content-sources/utils";
 import { db } from "../../lib/db";
-import { posts } from "../../lib/schema";
+import { posts, systemShareSubmissions } from "../../lib/schema";
 import { buildContentSearchCondition } from "../../lib/search/content-search";
 import { isSearchQueryWithinBudget } from "../../lib/search/query";
 import { toMsTimestamp } from "../../lib/utils";
@@ -154,6 +169,240 @@ function normalizeFaultInjectionMarkers(content: string) {
   return content.replace(/\\(?=[[\]])/g, "");
 }
 
+type SystemShareCommit = {
+  submissionId: string;
+  leaseToken: string;
+};
+
+type AuthoredMemo = Awaited<ReturnType<typeof readAuthoredMemo>>;
+
+function isFileExistsError(error: unknown) {
+  return error && typeof error === "object" && "code" in error && error.code === "EEXIST";
+}
+
+function isMissingFileError(error: unknown) {
+  return error && typeof error === "object" && "code" in error && error.code === "ENOENT";
+}
+
+function isExistingFileError(error: unknown) {
+  return error && typeof error === "object" && "code" in error && error.code === "EEXIST";
+}
+
+function isYamlParseError(error: unknown) {
+  return error instanceof Error && error.name === "YAMLException";
+}
+
+function invalidSystemShareFrontmatterError() {
+  const error = new Error("Invalid system-share Memo frontmatter");
+  error.name = "YAMLException";
+  return error;
+}
+
+function ensureSafeSystemShareDirectorySync(directory: string) {
+  const basePath = getLocalBasePathOrThrow();
+  const rootPath = resolve(basePath);
+  const targetPath = resolve(directory);
+  const targetRelativePath = relative(rootPath, targetPath);
+  if (targetRelativePath.startsWith("..") || isAbsolute(targetRelativePath)) {
+    throw new Error("Invalid system-share path");
+  }
+
+  const canonicalRoot = realpathSync(basePath);
+  let currentPath = canonicalRoot;
+  for (const segment of targetRelativePath.split(/[\\/]+/u).filter(Boolean)) {
+    currentPath = join(currentPath, segment);
+    let stat: ReturnType<typeof lstatSync>;
+    try {
+      stat = lstatSync(currentPath);
+    } catch (error) {
+      if (!isMissingFileError(error)) throw error;
+      try {
+        mkdirSync(currentPath);
+      } catch (mkdirError) {
+        if (!isExistingFileError(mkdirError)) throw mkdirError;
+      }
+      stat = lstatSync(currentPath);
+    }
+    if (!stat.isDirectory() || stat.isSymbolicLink()) {
+      throw new Error("Invalid system-share directory");
+    }
+  }
+}
+
+function assertSafeSystemShareFileSync(fullPath: string) {
+  const basePath = getLocalBasePathOrThrow();
+  const rootPath = realpathSync(basePath);
+  const expectedPath = resolve(fullPath);
+  const actualPath = realpathSync(fullPath);
+  const relativePath = relative(rootPath, actualPath);
+  if (
+    actualPath !== expectedPath ||
+    relativePath.startsWith("..") ||
+    isAbsolute(relativePath) ||
+    !lstatSync(actualPath).isFile()
+  ) {
+    throw new Error("Invalid system-share file path");
+  }
+}
+
+function openSafeSystemShareDirectorySync(basePath: string, directory: string) {
+  if (process.platform !== "linux") return null;
+  const rootPath = resolve(basePath);
+  const targetPath = resolve(directory);
+  const targetRelativePath = relative(rootPath, targetPath);
+  if (targetRelativePath.startsWith("..") || isAbsolute(targetRelativePath)) {
+    throw new Error("Invalid system-share path");
+  }
+
+  const flags = fsConstants.O_RDONLY | fsConstants.O_DIRECTORY | fsConstants.O_NOFOLLOW;
+  let fileDescriptor = openSync(realpathSync(basePath), flags);
+  try {
+    for (const segment of targetRelativePath.split(/[\\/]+/u).filter(Boolean)) {
+      const next = openSync(`/proc/self/fd/${fileDescriptor}/${segment}`, flags);
+      closeSync(fileDescriptor);
+      fileDescriptor = next;
+    }
+    return fileDescriptor;
+  } catch (error) {
+    closeSync(fileDescriptor);
+    throw error;
+  }
+}
+
+function readSystemShareMemoSync(fullPath: string): AuthoredMemo {
+  const root = realpathSync(getLocalBasePathOrThrow());
+  const actualPath = realpathSync(fullPath);
+  const relativePath = relative(root, actualPath);
+  if (relativePath.startsWith("..") || isAbsolute(relativePath)) {
+    throw new Error("Invalid memo content symlink");
+  }
+  const raw = readFileSync(actualPath, "utf8");
+  const parsed = matter(raw);
+  if (raw.startsWith("---") && Object.keys(parsed.data).length === 0 && parsed.content === raw) {
+    throw invalidSystemShareFrontmatterError();
+  }
+  return {
+    path: actualPath,
+    raw,
+    body: parsed.content,
+    frontmatter: parsed.data as Record<string, unknown>,
+  };
+}
+
+function rawSystemShareMarkerMatches(fullPath: string, submissionId: string) {
+  const raw = readFileSync(fullPath, "utf8");
+  const lines = raw.split(/\r?\n/u);
+  if (lines[0]?.trim() !== "---") return false;
+  const frontmatterEnd = lines.findIndex((line, index) => index > 0 && line.trim() === "---");
+  if (frontmatterEnd < 0) return false;
+  const markerLines = lines
+    .slice(1, frontmatterEnd)
+    .filter((line) => /^systemShare:\s*(.+)$/u.test(line))
+    .map((line) => line.replace(/^systemShare:\s*/u, "").trim());
+  if (markerLines.length !== 1) return false;
+  return markerLines[0] === JSON.stringify({ source: "system-share", submissionId });
+}
+
+function belongsToSystemShare(memo: AuthoredMemo, submissionId: string) {
+  const marker = memo.frontmatter.systemShare;
+  return (
+    marker &&
+    typeof marker === "object" &&
+    "source" in marker &&
+    marker.source === "system-share" &&
+    "submissionId" in marker &&
+    marker.submissionId === submissionId
+  );
+}
+
+function writeSystemShareMemoAtomicallySync(
+  fullPath: string,
+  markdownContent: string,
+  leaseToken: string
+) {
+  ensureSafeSystemShareDirectorySync(dirname(fullPath));
+  const temporaryPath = `${fullPath}.${leaseToken}.${randomUUID()}.tmp`;
+  const directory = dirname(fullPath);
+  const directoryFd = openSafeSystemShareDirectorySync(getLocalBasePathOrThrow(), directory);
+  const temporaryWritePath = directoryFd
+    ? `/proc/self/fd/${directoryFd}/${basename(temporaryPath)}`
+    : temporaryPath;
+  const publishedPath = directoryFd
+    ? `/proc/self/fd/${directoryFd}/${basename(fullPath)}`
+    : fullPath;
+  let linked = false;
+  try {
+    writeFileSync(temporaryWritePath, markdownContent, { encoding: "utf-8", flag: "wx" });
+    assertSafeSystemShareFileSync(temporaryPath);
+    if (
+      process.env.NODE_ENV === "test" &&
+      process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_MEMO_TEMP_WRITE === "1"
+    ) {
+      throw new Error("system-share memo temporary write failure (test injection)");
+    }
+    linkSync(temporaryWritePath, publishedPath);
+    linked = true;
+    assertSafeSystemShareFileSync(fullPath);
+  } catch (error) {
+    if (linked) {
+      try {
+        unlinkSync(fullPath);
+      } catch {
+        // The path may have been replaced by another owner after publication.
+      }
+    }
+    throw error;
+  } finally {
+    try {
+      unlinkSync(temporaryPath);
+    } catch {
+      // The temporary path may not have been created or may already be gone.
+    }
+    if (directoryFd !== null) closeSync(directoryFd);
+  }
+}
+
+function withSystemShareFileCommit<T>(
+  commit: SystemShareCommit,
+  fullPath: string,
+  operation: () => T
+) {
+  // Bun's SQLite transactions are synchronous. Keep every filesystem mutation
+  // in this short callback so another process cannot take over the lease while
+  // this owner repairs or publishes the deterministic path.
+  return db.transaction((tx) => {
+    const lease = tx
+      .update(systemShareSubmissions)
+      .set({ updatedAt: Date.now() })
+      .where(
+        and(
+          eq(systemShareSubmissions.submissionId, commit.submissionId),
+          eq(systemShareSubmissions.state, "committing"),
+          eq(systemShareSubmissions.leaseToken, commit.leaseToken),
+          gt(systemShareSubmissions.leaseExpiresAt, Date.now())
+        )
+      )
+      .run();
+    if (!lease.changes) {
+      throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
+    }
+
+    ensureSafeSystemShareDirectorySync(dirname(fullPath));
+    const directory = dirname(fullPath);
+    const filePrefix = `${basename(fullPath)}.`;
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (entry.isFile() && entry.name.startsWith(filePrefix) && entry.name.endsWith(".tmp")) {
+        try {
+          unlinkSync(join(directory, entry.name));
+        } catch {
+          // A stale temporary file is best effort; the current commit remains fenced.
+        }
+      }
+    }
+    return operation();
+  });
+}
+
 /**
  * 确保内容源已注册
  */
@@ -196,7 +445,9 @@ async function _ensureContentSourcesRegistered(manager: any): Promise<void> {
 /**
  * 触发增量数据同步并等待完成
  */
-async function triggerIncrementalSync(): Promise<void> {
+export async function triggerIncrementalSync(
+  options: { throwOnError?: boolean } = {}
+): Promise<void> {
   try {
     if (process.env.DEBUG_MEMOS === "1") {
       console.debug("🔄 [memo-sync] 开始触发增量数据同步...");
@@ -226,6 +477,7 @@ async function triggerIncrementalSync(): Promise<void> {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("❌ [memo-sync] 增量同步失败:", errorMessage);
+    if (options.throwOnError) throw error;
     // 同步失败不应该影响memo操作的成功响应，但需要记录错误
     // 注意：这里我们选择不抛出错误，因为memo操作已经成功完成
   }
@@ -432,7 +684,12 @@ const createMemoSchema = z
       )
       .default([]),
     systemShare: z
-      .object({ source: z.literal("system-share"), targetUrl: z.string().url().optional() })
+      .object({
+        source: z.literal("system-share"),
+        targetUrl: z.string().url().optional(),
+        submissionId: z.string().uuid(),
+        leaseToken: z.string().uuid(),
+      })
       .optional(),
   })
   .superRefine((value, context) => {
@@ -876,10 +1133,20 @@ export const memosRouter = router({
         const now = Date.now();
         const nowIso = new Date(now).toISOString();
 
-        const fileName = generateMemoFilename(normalizedContent, title, now);
+        const fileName = systemShare
+          ? `system-share/${systemShare.submissionId}.md`
+          : generateMemoFilename(normalizedContent, title, now);
         createdId = buildMemoRelativePath(fileName, getLocalMemoRootPath()).replace(/\\+/g, "/");
 
-        const frontmatter: Record<string, unknown> = {
+        const basePath = getLocalBasePathOrThrow();
+        const fullPath = join(basePath, createdId);
+        if (systemShare) {
+          ensureSafeSystemShareDirectorySync(dirname(fullPath));
+        } else {
+          await mkdir(dirname(fullPath), { recursive: true });
+        }
+
+        let frontmatter: Record<string, unknown> = {
           title: recognizeMemoClipping(normalizedContent, { title, tags: inputTags }).enabled
             ? title || ""
             : title || extractTitleFromContent(normalizedContent),
@@ -897,11 +1164,60 @@ export const memosRouter = router({
           createdId
         );
 
-        const markdownContent = buildMemoMarkdownDocument(normalizedContent, frontmatter);
-        const basePath = getLocalBasePathOrThrow();
-        const fullPath = join(basePath, createdId);
-        await mkdir(dirname(fullPath), { recursive: true });
-        await writeFile(fullPath, markdownContent, "utf-8");
+        if (systemShare) {
+          withSystemShareFileCommit(systemShare, fullPath, () => {
+            try {
+              const existing = readSystemShareMemoSync(fullPath);
+              if (belongsToSystemShare(existing, systemShare.submissionId)) {
+                normalizedContent = existing.body;
+                const existingAttachments = existing.frontmatter.attachments;
+                normalizedAttachments = Array.isArray(existingAttachments)
+                  ? existingAttachments
+                  : normalizedAttachments;
+                frontmatter = { ...existing.frontmatter };
+                return;
+              }
+              throw new Error("System-share Memo path is already owned by another submission");
+            } catch (error) {
+              if (isMissingFileError(error)) {
+                // The first publish has not reached the filesystem commit point.
+              } else if (isYamlParseError(error)) {
+                if (!rawSystemShareMarkerMatches(fullPath, systemShare.submissionId)) {
+                  throw new Error("System-share Memo path has unverified malformed content");
+                }
+                unlinkSync(fullPath);
+              } else {
+                throw error;
+              }
+            }
+            const markdownContent = buildMemoMarkdownDocument(normalizedContent, frontmatter);
+            try {
+              writeSystemShareMemoAtomicallySync(fullPath, markdownContent, systemShare.leaseToken);
+            } catch (error) {
+              if (!isFileExistsError(error)) throw error;
+              const existing = readSystemShareMemoSync(fullPath);
+              if (belongsToSystemShare(existing, systemShare.submissionId)) {
+                normalizedContent = existing.body;
+                const existingAttachments = existing.frontmatter.attachments;
+                normalizedAttachments = Array.isArray(existingAttachments)
+                  ? existingAttachments
+                  : normalizedAttachments;
+                frontmatter = { ...existing.frontmatter };
+                return;
+              }
+              throw new Error("System-share Memo path is already owned by another submission");
+            }
+          });
+          if (isTestEnv && process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_MEMO_LINK === "1") {
+            throw new Error("system-share post-commit failure (test injection)");
+          }
+        } else {
+          const markdownContent = buildMemoMarkdownDocument(normalizedContent, frontmatter);
+          await writeFile(fullPath, markdownContent, {
+            encoding: "utf-8",
+            flag: "w",
+          });
+        }
 
         createdSource = source;
 
@@ -942,6 +1258,7 @@ export const memosRouter = router({
         lastError = null;
         break;
       } catch (error) {
+        if (error instanceof TRPCError && error.code === "CONFLICT") throw error;
         lastError = error;
         if (process.env.DEBUG_MEMOS === "1") {
           console.debug(`🔍 [memos.create] ${source} 创建失败，尝试下一个内容源:`, error);

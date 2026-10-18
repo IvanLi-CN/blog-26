@@ -18,6 +18,7 @@ import {
   SEARCH_DEMO_DENSE_DOCUMENTS,
   SEARCH_DEMO_DOCUMENTS,
 } from "./search/web-demo-fixtures";
+import { composeSystemShareMemoContent, normalizeSystemShareEditor } from "./system-share";
 import {
   assertWebDemoRequestAvailable,
   getWebDemoEnvironment,
@@ -80,6 +81,9 @@ function demoPublicUser(environment: WebDemoEnvironment) {
 }
 
 const demoMemoOverrides = new Map<string, PublicMemoRecord>();
+const consoleShareMemos = new Map<string, PublicMemoRecord>();
+const consoleShareFailures = new Set<string>();
+const consoleShareResponseLosses = new Set<string>();
 let demoMemoSequence = 2401;
 
 function demoMemoExcerpt(content: string) {
@@ -114,6 +118,30 @@ function readDemoRequestBody(init?: RequestInit) {
   } catch {
     return {} as Record<string, unknown>;
   }
+}
+
+async function readSystemShareRequestBody(init?: RequestInit) {
+  if (!(init?.body instanceof FormData)) return {} as Record<string, unknown>;
+  const form = init.body;
+  const tags = (() => {
+    try {
+      const parsed = JSON.parse(String(form.get("tags") ?? "[]"));
+      return Array.isArray(parsed)
+        ? parsed.filter((tag): tag is string => typeof tag === "string")
+        : [];
+    } catch {
+      return [];
+    }
+  })();
+  return {
+    submissionId: String(form.get("submissionId") ?? ""),
+    title: String(form.get("title") ?? ""),
+    text: String(form.get("text") ?? ""),
+    url: String(form.get("url") ?? ""),
+    tags,
+    isPublic: String(form.get("isPublic") ?? "false") === "true",
+    files: form.getAll("files").filter((file): file is File => file instanceof File),
+  };
 }
 
 function demoMemoPage(url: URL) {
@@ -240,11 +268,111 @@ function demoSearchRelevance(
 }
 
 function isConsoleWebDemoBuild() {
-  return process.env.CONSOLE_WEB_DEMO_BUILD === "true";
+  return (
+    (typeof document !== "undefined" &&
+      document.documentElement.dataset.consoleWebDemoBuild === "true") ||
+    process.env.CONSOLE_WEB_DEMO_BUILD === "true"
+  );
 }
 
-async function getConsoleWebDemoResponse(url: URL, method: string, body: Record<string, unknown>) {
+async function getConsoleWebDemoResponse(
+  url: URL,
+  method: string,
+  body: Record<string, unknown>,
+  init?: RequestInit
+) {
   const persona = getConsoleWebDemoPersona(window.location);
+  if (url.pathname === "/api/public/auth/me" && method === "GET") {
+    return jsonResponse(
+      demoPublicUser({
+        ...getWebDemoEnvironment(window.location, "admin"),
+        persona,
+      })
+    );
+  }
+
+  if (url.pathname === "/api/public/system-share" && method === "POST") {
+    const authError = requireDemoAdmin({
+      ...getWebDemoEnvironment(window.location, "admin"),
+      persona,
+    });
+    if (authError) return authError;
+    const share = await readSystemShareRequestBody(init);
+    const submissionId = String(share.submissionId ?? "");
+    const normalized = normalizeSystemShareEditor({
+      title: String(share.title ?? ""),
+      text: String(share.text ?? ""),
+      url: String(share.url ?? ""),
+      tags: Array.isArray(share.tags)
+        ? share.tags.filter((tag): tag is string => typeof tag === "string")
+        : [],
+      isPublic: share.isPublic === true,
+      files: share.files.map((file) => ({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        lastModified: file.lastModified,
+      })),
+    });
+    const existing = consoleShareMemos.get(submissionId);
+    if (existing) {
+      return jsonResponse(
+        {
+          ok: true,
+          duplicate: true,
+          memoId: existing.id,
+          memo: {
+            id: existing.id,
+            slug: existing.slug,
+            title: existing.title,
+            isPublic: existing.isPublic,
+          },
+          classification: normalized.classification,
+        },
+        200
+      );
+    }
+    const scene = getWebDemoSceneState(window.location, "admin").scene;
+    if (scene === "system-share-error" && !consoleShareFailures.has(submissionId)) {
+      consoleShareFailures.add(submissionId);
+      return jsonResponse({ error: "演示中的发布失败，请使用 Toast 内的重试。" }, 503);
+    }
+    const content = [
+      normalized.title ? `# ${normalized.title}` : "# 系统分享闪念",
+      composeSystemShareMemoContent(normalized),
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    const created = consoleWebDemoStore.create({
+      content,
+      isPublic: normalized.isPublic,
+      tags: normalized.tags,
+    });
+    consoleShareMemos.set(submissionId, created);
+    recordWebDemoMutation(
+      "发布系统分享",
+      `${created.title || created.slug} · ${normalized.classification === "clipping" ? "剪藏" : "闪念"}`
+    );
+    if (scene === "system-share-response-loss" && !consoleShareResponseLosses.has(submissionId)) {
+      consoleShareResponseLosses.add(submissionId);
+      throw new TypeError("演示中的发布响应丢失，请使用 Toast 内的重试。");
+    }
+    return jsonResponse(
+      {
+        ok: true,
+        duplicate: false,
+        memoId: created.id,
+        memo: {
+          id: created.id,
+          slug: created.slug,
+          title: created.title,
+          isPublic: created.isPublic,
+        },
+        classification: normalized.classification,
+      },
+      201
+    );
+  }
   if (url.pathname === "/api/public/memos" && method === "GET") {
     const page = consoleWebDemoStore.list(persona);
     return jsonResponse(page);
@@ -310,7 +438,7 @@ async function getDemoPublicResponse(
   // common connection/delay/abort policy has admitted this actual read.
   if (url.pathname === "/api/public/page" && method === "GET") return null;
   if (isConsoleWebDemoBuild()) {
-    const consoleResponse = await getConsoleWebDemoResponse(url, method, body);
+    const consoleResponse = await getConsoleWebDemoResponse(url, method, body, init);
     if (consoleResponse) return consoleResponse;
   }
   if (url.pathname === "/api/public/auth/me" && method === "GET") {
@@ -596,7 +724,7 @@ export async function webDemoFetch(
   await waitForWebDemoRequest(environment, signal);
   assertWebDemoRequestAvailable(environment, signal);
 
-  if (app === "public" && url) {
+  if ((app === "public" || isConsoleWebDemoBuild()) && url) {
     const method = (
       init?.method ?? (input instanceof Request ? input.method : "GET")
     ).toUpperCase();

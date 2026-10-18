@@ -111,4 +111,11 @@ describe("public PWA assets", () => {
       },
     });
   });
+
+  it("keeps the console share worker aligned with the IndexedDB schema", async () => {
+    const serviceWorker = await readFile(resolve(repoRoot, "public/share-target-sw.js"), "utf8");
+    expect(serviceWorker).toContain("const DB_VERSION = 2;");
+    expect(serviceWorker).toContain("version: 2,");
+    expect(serviceWorker).toContain("objectStoreNames.contains(STORE_NAME)");
+  });
 });

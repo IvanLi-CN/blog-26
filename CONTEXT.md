@@ -181,7 +181,7 @@ A system-share payload held temporarily in the current browser while it awaits a
 _Avoid_: 分享草稿, 服务端分享队列
 
 **分享确认页**:
-The administrator-facing review surface that displays and edits a pending system share before creating a Memo. It is the authority for the final title, body, URL, attachments, visibility, and resulting content classification.
+The administrator-facing review surface that displays the original system share in an expandable read-only panel and provides one Memo content editor before creating a Memo. The accepted title, URL, and tags remain submission metadata; attachment and visibility controls remain separate publishing actions.
 _Avoid_: 分享预览弹窗, 自动发布页
 
 **分享分类**:
@@ -189,7 +189,7 @@ The final classification of a pending system share as 剪藏 or 闪念. A valid 
 _Avoid_: 分享类型标签, 发布模式
 
 **分享剪藏**:
-A 剪藏闪念 created from a confirmed system share. Its clipping identity is recorded as internal share-origin metadata and does not add a visible `#剪藏` tag to the author's content.
+A 剪藏闪念 created from a confirmed system share. Its Memo body keeps the target URL first and includes one system-generated `#剪藏` parser marker; the marker is not a separate user tag or frontmatter tag.
 _Avoid_: 分享文章, 自动剪藏文章
 
 **剪藏闪念**:
@@ -197,7 +197,7 @@ A Memo marked with `#剪藏` whose first non-empty authored line, whether a titl
 _Avoid_: 剪藏文章, 导入文章
 
 **剪藏目标链接**:
-The single HTTP(S) destination identified by the first non-empty authored line of a 剪藏闪念, either as plain text or a Markdown link. Its reader-facing representation is the source-page action rather than a repeated URL in the Memo body.
+The single HTTP(S) destination identified by the first non-empty authored line of a 剪藏闪念, either as plain text, a Markdown link, or an autolink. System-share authored content keeps this target as its first line and includes the system-generated `#剪藏` parser marker so the Memo remains self-identifying without internal metadata; clipping readers may additionally expose it as the source-page action.
 _Avoid_: 文章链接集合, 正文外链
 
 **剪藏备注**:
