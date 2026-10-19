@@ -1,4 +1,12 @@
 <p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./site/assets/brand/source/ivan-blog-wordmark-dark.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="./site/assets/brand/source/ivan-blog-wordmark-light.svg" />
+    <img src="./site/assets/brand/source/ivan-blog-wordmark-light.svg" width="420" alt="Ivan's Blog 完整文字标志" />
+  </picture>
+</p>
+
+<p align="center">
   <a href="./README.md">English</a> · <a href="./README.zh-CN.md">简体中文</a>
 </p>
 
@@ -15,14 +23,6 @@
 Ivan's Blog 是一个供人类与获授权 AI Agent 共同使用的个人知识库。它让记录、资料、项目经验和可复用规则能够跨越阅读、写作与实际工作持续使用；博客只是其中一个选择性发布入口，不是产品的全部。
 
 知识所有者决定保存什么、谁可以访问，以及哪些内容可以公开。面向人的界面与面向 Agent 的工具使用同一批知识，但交互方式和权限可以不同。当前实现状态为 `active / partial`。
-
-<table align="center" border="0" cellpadding="16" cellspacing="0">
-  <tr>
-    <td align="center" bgcolor="#f3f0e8">
-      <a href="./site/assets/brand/source/ivan-blog-mark.svg"><img src="./site/assets/brand/source/ivan-blog-mark.svg" width="96" alt="Ivan's Blog 产品主标记" /></a>
-    </td>
-  </tr>
-</table>
 
 <p align="center">
   <picture>
@@ -91,7 +91,8 @@ Memo 剪藏会先保存作者内容，再异步生成摘要和译文。管理端
 - `src/server/`：Bun 网关、HTTP API、tRPC、MCP 和内容服务。
 - `src/lib/`：共享模型、搜索、Playbook、版本和运行时库。
 - `drizzle/`：SQLite migrations 和数据库配置。
-- `site/assets/brand/source/ivan-blog-mark.svg`：README 和公开品牌使用的 canonical mark；PWA 安装专用变体单独派生。
+- `site/assets/brand/source/ivan-blog-mark.svg`：公开品牌使用的 canonical mark；PWA 安装专用变体单独派生。
+- `site/assets/brand/source/ivan-blog-wordmark-{light,dark}.svg`：按主题选择的 README 完整文字标志。
 - `tests/`：单元、集成、E2E 和可复用组件交互覆盖。
 - `docs/`：产品规格、实现记录、ADR、契约和运行手册。
 

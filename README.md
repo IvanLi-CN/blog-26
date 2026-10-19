@@ -1,4 +1,12 @@
 <p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./site/assets/brand/source/ivan-blog-wordmark-dark.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="./site/assets/brand/source/ivan-blog-wordmark-light.svg" />
+    <img src="./site/assets/brand/source/ivan-blog-wordmark-light.svg" width="420" alt="Ivan's Blog wordmark" />
+  </picture>
+</p>
+
+<p align="center">
   <a href="./README.md">English</a> · <a href="./README.zh-CN.md">简体中文</a>
 </p>
 
@@ -15,14 +23,6 @@
 Ivan's Blog is a personal knowledge base shared by humans and authorized AI Agents. It keeps notes, source material, project experience, and reusable rules available across reading, writing, and real work; the blog is one selective publishing surface, not the whole product.
 
 The knowledge owner controls what is kept, who can access it, and what can be published. Human interfaces and Agent tools work from the same knowledge with different interaction models and permissions. The current implementation is `active / partial`.
-
-<table align="center" border="0" cellpadding="16" cellspacing="0">
-  <tr>
-    <td align="center" bgcolor="#f3f0e8">
-      <a href="./site/assets/brand/source/ivan-blog-mark.svg"><img src="./site/assets/brand/source/ivan-blog-mark.svg" width="96" alt="Ivan's Blog canonical product mark" /></a>
-    </td>
-  </tr>
-</table>
 
 <p align="center">
   <picture>
@@ -91,7 +91,8 @@ Product releases use [Manual Product Release](./docs/runbooks/manual-version-rel
 - `src/server/`: Bun gateway, HTTP API, tRPC, MCP, and content services.
 - `src/lib/`: shared models, search, Playbook, version, and runtime libraries.
 - `drizzle/`: SQLite migrations and database configuration.
-- `site/assets/brand/source/ivan-blog-mark.svg`: canonical README and public brand mark; install-specific PWA variants are derived separately.
+- `site/assets/brand/source/ivan-blog-mark.svg`: canonical public brand mark; install-specific PWA variants are derived separately.
+- `site/assets/brand/source/ivan-blog-wordmark-{light,dark}.svg`: complete README wordmark variants selected by theme.
 - `tests/`: unit, integration, E2E, and reusable component interaction coverage.
 - `docs/`: product specs, implementation records, ADRs, contracts, and runbooks.
 
