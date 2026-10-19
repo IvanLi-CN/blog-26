@@ -671,6 +671,30 @@ async function getDemoPublicResponse(
           })
         : []
     );
+    const keywordEnvelope = {
+      results:
+        query && state.data !== "empty"
+          ? literalMatched.map((item) => {
+              const { slug, title, excerpt, type } = item;
+              const body = "body" in item ? item.body : "";
+              return {
+                slug,
+                title,
+                excerpt,
+                type,
+                ...("href" in item
+                  ? { source: "playbook", href: item.href, sections: item.sections }
+                  : {}),
+                highlightTerms: terms,
+                searchOrigin: "keyword" as const,
+                final: demoSearchRelevance({ title, excerpt, body }, query, "keyword", 0),
+              };
+            })
+          : [],
+      requestedMode: selected.data,
+      effectiveMode: selected.data,
+      phase: "keyword" as const,
+    };
     response.headers.set("Search-Requested-Mode", selected.data);
     response.headers.set("Search-Effective-Mode", effectiveMode);
     if (!query) response.headers.set("Search-Reason", "empty-query");
@@ -703,13 +727,14 @@ async function getDemoPublicResponse(
       const emit = (event: string) => {
         if (!closed) streamController?.enqueue(encoder.encode(event));
       };
-      const schedule = (callback: () => void) => {
+      const schedule = (callback: () => void, delayMs = 0) => {
         const timer = setTimeout(() => {
           timers.delete(timer);
           if (!closed) callback();
-        }, 0);
+        }, delayMs);
         timers.add(timer);
       };
+      const keywordToAiDelayMs = environment.delay === "slow" ? 1_200 : 0;
       const stream = new ReadableStream<Uint8Array>({
         start(controller) {
           streamController = controller;
@@ -728,13 +753,16 @@ async function getDemoPublicResponse(
 
           emit(`event: started\ndata: ${JSON.stringify({ requestedMode: selected.data })}\n\n`);
           schedule(() => {
-            emit('event: progress\ndata: {"phase":"complete"}\n\n');
+            emit(`event: keyword\ndata: ${JSON.stringify(keywordEnvelope)}\n\n`);
             schedule(() => {
-              emit(`event: result\ndata: ${JSON.stringify(envelope)}\n\n`);
-              closed = true;
-              detachAbortListener();
-              controller.close();
-            });
+              emit('event: progress\ndata: {"phase":"complete"}\n\n');
+              schedule(() => {
+                emit(`event: result\ndata: ${JSON.stringify(envelope)}\n\n`);
+                closed = true;
+                detachAbortListener();
+                controller.close();
+              }, keywordToAiDelayMs);
+            }, keywordToAiDelayMs);
           });
         },
         cancel() {

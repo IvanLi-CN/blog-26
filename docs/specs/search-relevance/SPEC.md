@@ -166,7 +166,7 @@ RAG 语义覆盖、后台任务 idle/running、RAG 策略启用和模型质量�
 
 ### REQ-SREL-024 — AI 搜索的流式等待与兼容入口
 
-公共 JSON 搜索入口必须继续保持数组响应、响应头元信息和既有 10 秒策略预算，供兼容调用者使用。RAG 与查询改写的正式页面请求可以使用 `/api/public/search/stream`，服务端必须先发送 `started` 事件，再发送阶段进度或不超过 2 秒的 SSE 注释心跳，最终发送完整 envelope 的 `result` 或受控 `error` 事件。流式执行的 embedding 和模型判断单次等待上限不得超过 30 秒，必须把客户端取消传入 provider 请求；断开连接后不得发送迟到结果或继续无界执行。SSE 不改变候选、权限、版本、排序、关键词命中保全或模型失败回退，tRPC、MCP、legacy semantic/enhanced 保持原响应形状。
+公共 JSON 搜索入口必须继续保持数组响应、响应头元信息和既有 10 秒策略预算，供兼容调用者使用。RAG 与查询改写的正式页面请求可以使用 `/api/public/search/stream`，服务端必须立即发送 `started`，在关键词检索完成后发送关键词首批结果，随后发送阶段进度或不超过 2 秒的 SSE 注释心跳，AI 完成后只发送一次最终统一结果或受控 `error` 事件。流式执行的 embedding 和模型判断单次等待上限不得超过 60 秒；首字节目标 P95 不超过 1 秒，客户端取消必须传入 provider 请求，断开连接后不得发送迟到结果或继续无界执行。SSE 不改变候选、权限、版本、排序、关键词命中保全或模型失败回退，tRPC、MCP、legacy semantic/enhanced 保持原响应形状。
 
 ## Verification
 
@@ -302,7 +302,7 @@ RAG 语义覆盖、后台任务 idle/running、RAG 策略启用和模型质量�
 
 - Method: 使用确定性 Mock provider 延迟 embedding 和模型判断，比较 JSON 与 `/api/public/search/stream`，读取首个事件、心跳、最终 envelope，并在结果前取消请求；覆盖 RAG、改写、provider 超时、Web Demo fixture、URL 切换和旧 JSON 调用。
 - covers: `REQ-SREL-007`, `REQ-SREL-008`, `REQ-SREL-012`, `REQ-SREL-024`
-- Pass condition: 流式入口在模型完成前发送 `started`/进度或心跳，30 秒内的慢 provider 返回实际 AI envelope，取消后没有迟到写入；超过上限或实际 provider 故障仍受控回退关键词。旧 JSON、tRPC、MCP 和 legacy 入口的数组/envelope 与执行语义不变。
+- Pass condition: 流式入口在 1 秒目标内发送首事件，关键词检索完成后先发送可用首批结果，模型完成前持续发送进度或心跳且最大间隔不超过 2 秒；60 秒内的慢 provider 返回最终 AI envelope，取消后没有迟到写入；超过上限或实际 provider 故障仍保留关键词结果并受控回退。旧 JSON、tRPC、MCP 和 legacy 入口的数组/envelope 与执行语义不变。
 
 ## Related ADRs
 
@@ -310,6 +310,7 @@ RAG 语义覆盖、后台任务 idle/running、RAG 策略启用和模型质量�
 - [关键词默认与混合结果统一排序](../../adr/0022-keyword-default-unified-ranking.md)
 - [搜索引擎升级保留既有查询兼容性](../../adr/0023-search-legacy-compatibility.md)
 - [统一搜索排序与独立 Playbook 同步管理](../../adr/0024-unified-search-and-playbook-sync-management.md)
+- [关键词优先的渐进式 AI 搜索结果](../../adr/0028-progressive-keyword-first-search-results.md)
 - [AI 搜索提供方配置权威与质量状态](../../adr/0026-search-provider-config-authority.md)
 - [AI 搜索的 SSE 传输与长预算边界](../../adr/0027-sse-ai-search-transport.md)
 

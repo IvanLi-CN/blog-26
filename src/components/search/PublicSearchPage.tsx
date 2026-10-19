@@ -395,7 +395,8 @@ export default function PublicSearchPage({
     window.history.replaceState(window.history.state, "", url);
   };
   const runRecommendedSearch = onRecommendedSearch ?? onQueryChange;
-  const hideNoResultsSummaryOnMobile = activeQuery.length > 0 && !isLoading && !hasResults;
+  const hideNoResultsSummaryOnMobile =
+    activeQuery.length > 0 && !isLoading && !aiSupplementLoading && !hasResults;
 
   return (
     <div
@@ -403,7 +404,7 @@ export default function PublicSearchPage({
         "public-search-layout w-full lg:mx-auto lg:grid lg:w-[var(--nature-content-width)] lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:gap-8 lg:py-8 xl:grid-cols-[22rem_minmax(0,1fr)]",
         className
       )}
-      aria-busy={isLoading || undefined}
+      aria-busy={isLoading || aiSupplementLoading || undefined}
     >
       <section
         aria-label="搜索操作"
@@ -498,6 +499,8 @@ export default function PublicSearchPage({
                   <>
                     正在搜索「<span data-search-query-text>{activeQuery}</span>」
                   </>
+                ) : aiSupplementLoading && activeQuery ? (
+                  "全文结果已到，正在等待 AI 补充"
                 ) : hasResults ? (
                   `关键词「${activeQuery}」 · 找到 ${groupedResults.length} 条内容`
                 ) : activeQuery ? (
@@ -628,7 +631,7 @@ export default function PublicSearchPage({
             />
           )}
 
-        {!isLoading && activeQuery && !errorMessage && !hasResults && (
+        {!isLoading && !aiSupplementLoading && activeQuery && !errorMessage && !hasResults && (
           <SearchPromptPanel
             tone="neutral"
             icon="tabler:leaf-off"
@@ -645,6 +648,19 @@ export default function PublicSearchPage({
               />
             </div>
           </SearchPromptPanel>
+        )}
+
+        {!isLoading && aiSupplementLoading && activeQuery && !hasResults && (
+          <SearchPromptPanel
+            role="status"
+            ariaLabel="正在等待语义搜索结果"
+            tone="accent"
+            icon="tabler:loader-2"
+            eyebrow="全文结果已到"
+            title="正在等待 AI 补充"
+            description="暂时没有全文命中，正在继续查找语义相关内容。"
+            watermark="AI"
+          />
         )}
 
         {!isLoading && activeQuery && !errorMessage && aiSupplementLoading && hasResults && (

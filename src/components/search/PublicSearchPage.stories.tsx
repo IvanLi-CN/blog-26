@@ -71,6 +71,7 @@ type SearchStoryProps = {
   searchedQuery?: string;
   items?: SearchResultItem[];
   isLoading?: boolean;
+  aiSupplementLoading?: boolean;
   isLoadingRecommendations?: boolean;
   recommendedTerms?: Array<string | SearchSuggestionItem>;
   error?: string | null;
@@ -131,6 +132,7 @@ function SearchStory({
   searchedQuery = initialQuery,
   items = results,
   isLoading = false,
+  aiSupplementLoading = false,
   isLoadingRecommendations = false,
   recommendedTerms = [],
   error = null,
@@ -171,6 +173,7 @@ function SearchStory({
           highlightTerms: positiveSearchTerms(planNativeQuery(activeQuery).ast),
         }))}
         isLoading={isLoading}
+        aiSupplementLoading={aiSupplementLoading}
         isLoadingRecommendations={isLoadingRecommendations}
         recommendedSearchTerms={recommendedTerms}
         error={error}
@@ -478,6 +481,25 @@ export const DarkLoading: Story = {
   },
   render: () => <SearchStory theme="dark" isLoading items={emptyResults} />,
   play: Loading.play,
+};
+
+export const KeywordFirstAiWaiting: Story = {
+  name: "全文首批 / AI 补充中",
+  parameters: {
+    docs: {
+      description: {
+        story: "全文命中先展示，AI 语义补充在同一结果列表中继续处理。",
+      },
+    },
+  },
+  render: () => <SearchStory aiSupplementLoading items={results.slice(0, 2)} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("status")).toBeInTheDocument();
+    await expect(canvas.getByText(/全文结果已到，正在等待 AI 补充/)).toBeInTheDocument();
+    await expect(canvas.getByRole("link", { name: /Arch Linux on Apple Silicon/ })).toBeVisible();
+    await expect(canvas.queryByText("没有找到相关内容")).not.toBeInTheDocument();
+  },
 };
 
 export const MobileLoading: Story = {

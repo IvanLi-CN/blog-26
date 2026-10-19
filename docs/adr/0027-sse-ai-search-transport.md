@@ -7,14 +7,14 @@
 ## Decision
 
 - 保留 `/api/public/search` 的 JSON 数组合同，供兼容调用者继续使用原有预算和响应头。
-- 为 `rag` 与 `rewrite` 增加 GET `/api/public/search/stream`。服务端立即发送 `started`，随后发送阶段 `progress` 事件，每 2 秒发送 SSE 注释心跳，最终发送包含完整搜索 envelope 的 `result` 或受控 `error` 事件。
-- 流式执行把 embedding 和模型判断的单次最长等待提升到有界的 30 秒上限，并把客户端取消信号传入所有模型请求；请求断开后不再发送结果，也不继续占用搜索工作。
+- 为 `rag` 与 `rewrite` 增加 GET `/api/public/search/stream`。服务端立即发送 `started`，随后发送阶段 `progress` 事件，每 2 秒发送 SSE 注释心跳；关键词首批结果和最终 AI 结果的增量语义由 [ADR 0028](./0028-progressive-keyword-first-search-results.md) 定义。
+- 流式执行把 embedding 和模型判断的单次最长等待提升到有界的 60 秒上限，并把客户端取消信号传入所有模型请求；请求断开后不再发送结果，也不继续占用搜索工作。
 - 正式搜索页只将 AI 模式切换到该流，关键词仍使用快速 JSON；Web Demo 对同一 URL 提供确定性 SSE fixture。tRPC、MCP、legacy semantic/enhanced 不改传输或响应形状。
 - SSE 只改善连接存活和等待预算，不改变候选范围、排序、权限、版本身份或关键词回退。模型实际失败仍返回关键词结果并携带原有执行原因。
 
 ## Consequences
 
-边缘代理在模型处理期间能够收到首字节和心跳，30 秒内完成的慢 provider 不会被固定 10 秒同步预算提前降级。长请求仍有明确上限，模型 provider 过慢或不可用时仍会受控回退。客户端需要解析事件流并在 URL 变化时取消旧请求；旧 API 消费者无需迁移。
+边缘代理在模型处理期间能够收到首字节和心跳，60 秒内完成的慢 provider 不会因固定 10 秒同步预算提前降级。长请求仍有明确上限，模型 provider 过慢或不可用时仍会受控回退。客户端需要解析增量事件流并在 URL 变化时取消旧请求；旧 API 消费者无需迁移。
 
 ## Rejected alternatives
 

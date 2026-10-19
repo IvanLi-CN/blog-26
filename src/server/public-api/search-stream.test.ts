@@ -52,6 +52,20 @@ describe("public search SSE transport", () => {
     expect(body).toContain('"effectiveMode":"keyword"');
   });
 
+  test("emits the keyword phase before the final AI result", async () => {
+    const response = await handlePublicApiRequest(
+      new Request("http://localhost/api/public/search/stream?q=NEAR(fixture)&mode=rag"),
+      "/search/stream"
+    );
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    const keywordOffset = body.indexOf("event: keyword");
+    const resultOffset = body.indexOf("event: result");
+    expect(keywordOffset).toBeGreaterThanOrEqual(0);
+    expect(resultOffset).toBeGreaterThan(keywordOffset);
+    expect(body).toContain('"phase":"keyword"');
+  });
+
   test("rejects keyword mode instead of opening an unnecessary stream", async () => {
     const response = await handlePublicApiRequest(
       new Request("http://localhost/api/public/search/stream?q=fixture&mode=keyword"),

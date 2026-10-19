@@ -1232,6 +1232,16 @@ function searchStreamResponse(request: Request, input: ContentSearchInput, resHe
         signal: executionSignal,
         transport: "sse",
         onProgress: report,
+        onKeywordResults: async (result) => {
+          if (cancelled || request.signal.aborted) return;
+          const results = await normalizePublicSearchTitles(result.results);
+          send("keyword", {
+            ...result,
+            phase: "keyword",
+            effectiveMode: input.mode,
+            results,
+          });
+        },
       })
         .then(async (result) => {
           if (cancelled || request.signal.aborted) return;
