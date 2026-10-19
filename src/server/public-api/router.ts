@@ -25,6 +25,7 @@ import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
 import { appendPublicCorsHeaders, createPublicCorsPreflightResponse } from "@/lib/public-cors";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
 import { posts, systemShareSubmissions } from "@/lib/schema";
+import { ContentSearchError } from "@/lib/search/native-query";
 import {
   composeSystemShareMemoContent,
   normalizeSystemShareEditor,
@@ -1239,8 +1240,14 @@ function searchStreamResponse(request: Request, input: ContentSearchInput, resHe
         })
         .catch((error: unknown) => {
           if (cancelled || request.signal.aborted) return;
-          const message = error instanceof TRPCError ? error.message : "搜索失败，请稍后重试";
-          const code = error instanceof TRPCError ? error.code : "INTERNAL_SERVER_ERROR";
+          const message =
+            error instanceof TRPCError || error instanceof ContentSearchError
+              ? error.message
+              : "搜索失败，请稍后重试";
+          const code =
+            error instanceof TRPCError || error instanceof ContentSearchError
+              ? error.code
+              : "INTERNAL_SERVER_ERROR";
           send("error", { error: message, code });
         })
         .finally(finish);

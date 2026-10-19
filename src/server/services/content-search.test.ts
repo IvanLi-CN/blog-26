@@ -1462,6 +1462,34 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
       };
       expect(result.playbook?.sourceTag).toBe("v3.0.0");
       expect(result.results.every((item) => item.source === "playbook")).toBe(true);
+
+      const unknownParameterResponse = await handleMcpHttpRequest(
+        new Request("http://localhost/mcp", {
+          method: "POST",
+          headers: { ...headers, "mcp-session-id": session },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 3,
+            method: "tools/call",
+            params: {
+              name: "search_content",
+              arguments: {
+                q: "verify",
+                mode: "keyword",
+                bogus: true,
+              },
+            },
+          }),
+        })
+      );
+      const unknownParameterRaw = await unknownParameterResponse.text();
+      const unknownParameterPayload = JSON.parse(
+        unknownParameterRaw
+          .split("\n")
+          .find((line) => line.startsWith("data: "))
+          ?.slice(6) ?? unknownParameterRaw
+      );
+      expect(unknownParameterPayload.error?.code).toBe(-32602);
     } finally {
       await handleMcpHttpRequest(
         new Request("http://localhost/mcp", {
