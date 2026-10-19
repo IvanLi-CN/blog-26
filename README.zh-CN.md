@@ -14,6 +14,8 @@
   <a href="https://github.com/IvanLi-CN/blog-26/releases"><img src="https://img.shields.io/github/v/release/IvanLi-CN/blog-26?display_name=tag&label=%E5%8F%91%E5%B8%83&style=flat-square" alt="最新发布" /></a>
   <a href="https://github.com/IvanLi-CN/blog-26/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/IvanLi-CN/blog-26/ci.yml?branch=main&label=CI&style=flat-square" alt="main 分支 CI 状态" /></a>
   <a href="https://github.com/IvanLi-CN/blog-26/actions/workflows/e2e.yml"><img src="https://img.shields.io/github/actions/workflow/status/IvanLi-CN/blog-26/e2e.yml?branch=main&label=E2E&style=flat-square" alt="main 分支 E2E 状态" /></a>
+  <a href="https://github.com/IvanLi-CN/blog-26/blob/main/docs/specs/remote-mcp/SPEC.md"><img src="https://img.shields.io/badge/AI%20Agents-MCP-0f766e?style=flat-square" alt="通过远程 MCP 接入 AI Agent" /></a>
+  <a href="https://github.com/IvanLi-CN/blog-26/blob/main/docs/specs/search-relevance/SPEC.md"><img src="https://img.shields.io/badge/AI%20Search-RAG%20%2B%20rewrite-0f766e?style=flat-square" alt="支持 RAG 与查询改写的 AI 检索" /></a>
   <a href="https://github.com/IvanLi-CN/blog-26/blob/main/package.json"><img src="https://img.shields.io/badge/Bun-%5E1.0.0-f9f1e1?logo=bun&logoColor=000000&style=flat-square" alt="Bun 运行时要求" /></a>
   <a href="https://github.com/IvanLi-CN/blog-26/blob/main/Dockerfile"><img src="https://img.shields.io/badge/Docker-image-2496ED?logo=docker&logoColor=white&style=flat-square" alt="Docker 镜像构建" /></a>
 </p>

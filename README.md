@@ -14,6 +14,8 @@
   <a href="https://github.com/IvanLi-CN/blog-26/releases"><img src="https://img.shields.io/github/v/release/IvanLi-CN/blog-26?display_name=tag&label=release&style=flat-square" alt="Latest release" /></a>
   <a href="https://github.com/IvanLi-CN/blog-26/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/IvanLi-CN/blog-26/ci.yml?branch=main&label=ci&style=flat-square" alt="CI status on main" /></a>
   <a href="https://github.com/IvanLi-CN/blog-26/actions/workflows/e2e.yml"><img src="https://img.shields.io/github/actions/workflow/status/IvanLi-CN/blog-26/e2e.yml?branch=main&label=e2e&style=flat-square" alt="E2E status on main" /></a>
+  <a href="https://github.com/IvanLi-CN/blog-26/blob/main/docs/specs/remote-mcp/SPEC.md"><img src="https://img.shields.io/badge/AI%20Agents-MCP-0f766e?style=flat-square" alt="AI Agents via remote MCP" /></a>
+  <a href="https://github.com/IvanLi-CN/blog-26/blob/main/docs/specs/search-relevance/SPEC.md"><img src="https://img.shields.io/badge/AI%20Search-RAG%20%2B%20rewrite-0f766e?style=flat-square" alt="AI-assisted search with RAG and query rewrite" /></a>
   <a href="https://github.com/IvanLi-CN/blog-26/blob/main/package.json"><img src="https://img.shields.io/badge/Bun-%5E1.0.0-f9f1e1?logo=bun&logoColor=000000&style=flat-square" alt="Bun runtime requirement" /></a>
   <a href="https://github.com/IvanLi-CN/blog-26/blob/main/Dockerfile"><img src="https://img.shields.io/badge/Docker-image-2496ED?logo=docker&logoColor=white&style=flat-square" alt="Docker image build" /></a>
 </p>
