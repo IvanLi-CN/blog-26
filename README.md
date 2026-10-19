@@ -1,124 +1,91 @@
 # Ivan's Blog
 
-Ivan's Blog is evolving into a personal knowledge base shared by humans and authorized AI Agents: a place to accumulate knowledge, retrieve and reuse it in real work, and contribute new findings back to the same knowledge base. The owner controls access and publication; the public blog is one publishing surface.
+Ivan's Blog 是一个由个人掌握、供人类与获授权 AI Agent 共同使用的个人知识库。它保存记录、资料、项目经验和可复用规则，让知识可以被找到、理解、引用、维护，并在需要时选择性公开。博客是它的一个发布入口，不是产品的全部。
 
-The current implementation combines an Astro public site, a Vite/React admin SPA, and a Bun gateway for a local-file-backed content system, with MCP tools for agent access.
+公开站点：[ivanli.cc](https://ivanli.cc)
 
-## Product Direction
+## 产品能力
 
-Ivan's Blog is being built as a personal knowledge base shared by its owner, humans, and authorized AI Agents.
+| 能力 | 当前入口 | 作用 |
+| --- | --- | --- |
+| 记录与整理 | Posts、Memos、Projects、Tags | 保存文章、短记录、资料剪藏、项目实践和组织标签。 |
+| 知识检索 | `/search`、后台搜索、MCP tools | 使用关键词、全文和可用的 AI 检索查找内容，并保留可见性边界。 |
+| 资料加工 | Memo clipping | 保存外部资料，生成摘要和译文，并保留原文与私有讨论边界。 |
+| 阅读与发布 | public site、RSS、Playbook | 阅读公开内容，把选定的文章、Memo、项目和 Playbook 内容发布给访客。 |
+| Agent 接入 | authenticated remote MCP `/mcp` | 让 Agent 在授权范围内读取、搜索、创建和更新内容。 |
+| 管理与维护 | React admin console | 编辑、预览、评论审核、计划任务、访问令牌、AI 配置和内容同步。 |
 
-- **Capture** notes, source material, project experience, and reusable rules.
-- **Find and reuse** knowledge with its source, context, and visibility boundary in reading, writing, and real tasks.
-- **Contribute** new findings back to the same knowledge base when authorized.
-- **Publish selectively** through the blog, Memos, projects, and Playbook.
+共享不等于公开。内容源、读取、写入和发布分别受权限控制；接入 MCP 或 Agent 不会自动开放私有内容，也不会自动发布贡献。
 
-The current repository provides the foundation for this direction: local Markdown content, public reading and publishing surfaces, search, admin management, Memo clipping, and authenticated MCP access. The complete shared-knowledge workflow is still being built; shared access does not make private content public or grant every Agent the same permissions. See [Product vision and goals](PRODUCT.md) for the goals, boundaries, current capability matrix, and success criteria.
+## 产品方向
 
-## Scope Boundaries
+产品愿景和边界以 [PRODUCT.md](PRODUCT.md) 为准：让人的长期积累成为 Agent 的工作依据，也让工作中形成的新认识回到同一知识库。当前仓库已经提供本地 Markdown 内容、公开阅读、管理控制台、搜索、Memo 剪藏、项目目录、Playbook 阅读和远程 MCP 基础；跨内容类型的一致知识身份、完整引用语义和可审阅的 Agent 贡献流程仍按专题逐步建设。
 
-- This is a personal knowledge system, not a general SaaS, multi-tenant workspace, or organization-wide governance product.
-- Agent support centers on authorized knowledge retrieval and contribution; general chat, arbitrary task execution, and fully autonomous takeover are not product prerequisites.
-- Saving content, accepting an Agent contribution, and publishing content are separate decisions with separate permissions.
-- The current implementation is an active foundation. Manual two-product release delivery is only partially validated; full platform validation and real alpha acceptance remain open.
+当前产品边界：
 
-## Documentation Map
+- 这是个人知识系统，不是默认的多租户 SaaS、企业知识治理或通用聊天产品。
+- Agent 能力以知识检索、引用和授权贡献为中心，不以任意任务执行或全自动接管为前提。
+- 保存内容、接受 Agent 贡献和公开发布是三个独立决定。
+- 当前实现状态为 active / partial；完整平台验证和真实 alpha 验收仍需单独完成。
 
-- [Product vision and goals](PRODUCT.md) defines product scope, users, goals, non-goals, current foundations, and success criteria.
-- [Context](CONTEXT.md) defines the domain language and operating context; [Glossary](GLOSSARY.md) records stable content and search terms.
-- [Specs index](docs/specs/README.md) is the canonical catalog for topic lifecycle and spec roles. Topic `SPEC.md` files define durable behavior and acceptance boundaries; `IMPLEMENTATION.md` files record implementation coverage and rollout evidence.
-- [Remote MCP Spec](docs/specs/remote-mcp/SPEC.md) defines the Agent-facing tool, authentication, and content-operation boundary; [Search implementation](docs/specs/search-relevance/IMPLEMENTATION.md) and [Memo clipping implementation](docs/specs/memo-clipping/IMPLEMENTATION.md) document representative cross-runtime behavior.
-- [Architecture decisions](docs/adr/) records irreversible technical decisions and trade-offs; [runbooks](docs/runbooks/) records operational procedures and recovery paths.
-- [Quality gates](.github/quality-gates.json) defines required checks and branch policy; [.github/release-contract.json](.github/release-contract.json) defines the product release boundary and artifact identity.
-- [MIT License](LICENSE) is the repository's license text.
+## Style Playbook Topics
 
-## Stack
+这些是当前仓库可以由代码、配置或文档直接核对的工程 Topic；它们描述实现边界，不是营销标签。
 
-- Astro public site in `site/`
-- Admin SPA in `apps/admin/`
-- Bun gateway and APIs in `src/server/`
-- SQLite via Drizzle ORM
-- Local Markdown content under `LOCAL_CONTENT_BASE_PATH`
+- `Astro site`：`site/` 和 `astro.config.mjs` 负责 public static site。
+- `React app`、`TypeScript web`：`apps/admin/` 负责管理控制台，公共页面复用共享 React renderer。
+- `MCP server`：`src/server/mcp-http.ts` 和 [Remote MCP Spec](docs/specs/remote-mcp/SPEC.md) 定义 `/mcp` transport、鉴权和工具契约。
+- `SQLite`：`drizzle/`、`drizzle.config.ts` 和内容同步服务提供索引与持久化基础。
+- `Progressive web app`：`public/site.webmanifest`、Share Target 和 Console 安装入口定义 PWA 边界。
+- `Web demo`：`web-demo:build` 生成复用正式路由的 mock-only、build-time Demo，不连接真实 API 或模型。
+- `Playwright e2e`：`playwright.config.ts`、`tests/e2e/` 和 E2E workflows 承担浏览器验收。
+- `Storybook component QA`：`.storybook/` 与 `tests/storybook/` 承担可复用组件状态和交互验证。
+- `Dockerized dev`：`Dockerfile`、`docker-compose.yml` 和 gateway/build scripts 定义容器运行边界。
+- `Worktree bootstrap`：`scripts/setup.sh`、`scripts/worktree-bootstrap.sh` 和 `bun run worktree:bootstrap` 恢复依赖、环境、端口和开发数据。
+- `Manual version release delivery`、`Release failure notification`：`.github/release-contract.json` 与对应 workflows 定义发布身份、双产品产物和失败通知边界。
 
-## Quick Start
+## 文档地图
 
-The repository requires Bun `^1.0.0` as declared in `package.json`. Web Demo builds additionally require Node.js 22.12 or newer for the Astro CLI.
+- [Product vision and goals](PRODUCT.md)：产品定位、用户、目标、边界、能力基础和成功标准。
+- [Context](CONTEXT.md) 与 [Glossary](GLOSSARY.md)：领域语言、内容身份、搜索和公开运行面的稳定术语。
+- [Specs index](docs/specs/README.md)：专题 `SPEC.md`、实现状态和生命周期的目录。
+- [Remote MCP Spec](docs/specs/remote-mcp/SPEC.md)：Agent 工具、鉴权和内容操作边界。
+- [Search Spec](docs/specs/search-relevance/SPEC.md)：AI 搜索模式、关键词保全、降级和覆盖范围。
+- [Memo clipping Spec](docs/specs/memo-clipping/SPEC.md)：资料剪藏、摘要、译文、讨论和公开性边界。
+- [Style Playbook integration](docs/specs/style-playbook-integration/SPEC.md)：Playbook 公开快照、版本、同步和搜索边界。
+- [Architecture decisions](docs/adr/)：不可逆技术决策和取舍。
+- [Runbooks](docs/runbooks/)：发布、部署、同步和恢复操作。
+- [Quality gates](.github/quality-gates.json)：required checks、分支策略和门禁声明。
+- [MIT License](LICENSE)：项目许可证。
+
+## 技术结构
+
+- `site/`：Astro public site，输出静态访客页面。
+- `apps/admin/`：Vite/React admin SPA，提供内容和运行管理。
+- `src/server/`：Bun gateway、HTTP API、tRPC、MCP 和内容服务。
+- `src/lib/`：共享模型、搜索、Playbook、版本和运行时库。
+- `drizzle/`：SQLite migrations 和数据库配置。
+- `tests/e2e/`、`tests/storybook/`：浏览器流程和组件交互验证。
+- `docs/`：专题规格、ADR、实现证据和运维手册。
+
+## 本地开发
+
+仓库使用 Bun `^1.0.0`。Web Demo 的 Astro CLI 需要 Node.js 22.12 或更新版本。首次 checkout 或新 worktree 先运行：
 
 ```bash
 bun run setup
+```
 
+`setup` 安装依赖和 hooks，创建 `.env.local`，租用 worktree-local ports，并准备开发数据。启动完整开发栈：
+
+```bash
 bun run dev-sync:trigger
 bun run dev
 ```
 
-`bun run setup` installs dependencies, installs hooks, creates `.env.local` when missing, leases worktree-local ports, and prepares dev data. `bun run dev` starts Astro, the admin SPA, and the Bun gateway.
+`dev` 同时启动 Astro、admin SPA 和 Bun gateway。应用只读取配置的本地内容根目录；当前运行时不启动远程内容源服务。
 
-For a deterministic browser demo using local fixtures and in-memory mutations, build and preview the separate Web Demo artifact:
-
-```bash
-bun run web-demo:build
-bun run web-demo:preview
-```
-
-The Web Demo does not require login, model calls, or a live gateway. Its preview serves local fixtures and simulated writes; only the Demo's controlled page-data and public-asset routes are served, while other API paths return 404.
-
-For linked worktrees, the first checkout triggers the same bootstrap automatically through `lefthook post-checkout`. If automatic bootstrap fails, checkout still succeeds and the recovery command is:
-
-```bash
-bun run worktree:bootstrap -- --force
-```
-
-## Web Demo
-
-A Web Demo is a separate build-time-selected runtime artifact of the shipped web application. Its public target uses Astro Node SSR and hydrates the shared product renderer and Inspector against deterministic fixtures or in-memory API mocks. Subsequent public navigation renders shared React pages from structured data through the same request boundary as the product; simulated offline and delay apply to those reads. The published static site retains prerendered first documents and provides route JSON for the same client router. The live artifact cannot be switched into Demo mode by a query string or browser storage.
-
-Build the public, console, and admin Demo artifacts with:
-
-```bash
-bun run web-demo:build
-```
-
-The command creates `web-demo-site-dist/`, `web-demo-console-site-dist/`, and `web-demo-admin-dist/` without replacing `site-dist/` or `admin-dist/`. It prepares deterministic local content, a public snapshot, and a Playbook fixture before building. The Admin mock API is installed before the real router renders, and all Demo mutations stay in memory.
-
-After building, lease a dedicated `WEB_DEMO_PORT` and run `bun run web-demo:preview` to serve the public and admin artifacts without the gateway or development server. The public preview has no live gateway; the Demo renderer handles only its controlled page-data and public-asset routes. Run `bun run test:e2e:clipping-web-demo` against the generated artifact for clipping interactions and responsive checks.
-
-Each Demo artifact includes the shared Inspector on the official route. It exposes the current scene, persona, network condition, data density, refresh/reset actions, simulated in-memory save, shareable `d_*` state, and recent simulated mutations. It is a control surface for the Demo build only; it does not grant permissions or send writes to a real backend.
-
-For an interactive public Demo during development, start the Demo build:
-
-```bash
-bun run web-demo:site
-```
-
-This starts the public Demo with Astro's SSR dev server and hot reload. To run the built public SSR artifact, use `bun run web-demo:start` after `bun run web-demo:build`.
-
-Open the official route:
-
-```text
-/memos/
-```
-
-To exercise the administrator Memo composer and quick-edit modal in the same Web Demo, append `?d_persona=admin` to the route. In the Inspector, choose `Memos · 快速编辑` to open the modal directly, or use `?d_scene=memo-quick-edit&d_persona=admin` as a shareable entry URL. Memo creates and edits are in-memory Demo mutations and reset when the page is refreshed.
-
-For the Admin Demo, start the separately configured Vite Demo build:
-
-```text
-bun run web-demo:admin
-```
-
-Open `/admin/dashboard` on the leased `ADMIN_PORT`.
-
-The public Memo list uses the same shipped Astro `/memos/` route and deterministic 2,400-record fixture in the Demo artifact. The build also emits the corresponding official Memo detail routes so sample links remain usable; the live build does not emit those Demo-only records. Storybook remains the component state gallery; it is not the page evidence source.
-
-The clipping sample is `/memos/memo-web-demo-1181/`. Its Inspector offers completed, translating, translation failure, previous-version fallback, and long-article scenes. Guest reads the captured Markdown and translation; Admin exercises the actual discussion card or mobile drawer and retry controls. Replies cite deterministic sample paragraphs and are explicitly simulated. No article fetch, model call, login, API request, or event stream is needed. Refreshing the browser discards simulated edits and messages.
-
-`web-demo:site` prepares its own database, content, clipping, and snapshot directories under `dev-data/web-demo/` (override with `WEB_DEMO_DATA_DIR`). The clipping processor stays disabled. The Demo dev server uses its separate Astro/Vite cache and supports running alongside the ordinary dev server; lease a distinct `SITE_PORT` before starting it.
-
-## Environment
-
-Required for normal local development:
-
-The recommended local development contract is `.env.local`, created on first bootstrap when missing. By default it contains:
+常用本地环境：
 
 ```bash
 DB_PATH=./dev-data/sqlite.db
@@ -129,31 +96,36 @@ SITE_PORT=<leased site port>
 ADMIN_PORT=<leased admin port>
 ```
 
-Useful optional variables:
-
-- `SITE_PORT`: Astro dev port; bootstrap leases a worktree-local value on first setup
-- `ADMIN_PORT`: admin SPA dev port; bootstrap leases a worktree-local value on first setup
-- `BASE_URL`: Playwright override
-- `ADMIN_EMAIL`: admin identity for dev/test verification
-
-The native `/playbook/` column consumes validated public Release assets. Production activation, content update inputs, console cache configuration and rollback are described in the [Style Playbook publishing runbook](docs/runbooks/style-playbook-publishing.md). Local builds stay offline unless explicitly configured.
-
-Product releases use **Manual Product Release** from main with one optional `version` input. Verified semantic impact allocates the version automatically when omitted; explicit versions must move forward. The protected VERSION-only PR starts publication of the static frontend and full-feature Docker image, followed by deployment of the same static archive. See the [manual release runbook](docs/runbooks/manual-version-release.md) for built-in token permissions, immutable artifact recovery and version endpoints.
-
-The app only reads content from the local content root. There is no remote content-source runtime.
-
-## Memo Clipping
-
-Save a memo whose first non-empty authored line is an HTTP(S) URL or Markdown link, with the exact `#剪藏` tag. The processor captures public HTML, appends a summary after your notes, translates the saved article into Simplified Chinese, and supports private creator/admin discussion in the console detail page. Public pages include only published reading materials.
-
-The chat model uses the existing admin LLM settings. `PI_DURABLE_DB_PATH` and `CLIPPING_CONTENT_BASE_PATH` default beside `DB_PATH` and must stay on a persistent volume outside the public content root. Run exactly one gateway/console processor; the 30-second lease must expire after a crash before a new owner starts. `CLIPPING_PROCESSOR_ENABLED=false` stops processing while retaining authored content and saved reading materials.
-
-Back up the authored Markdown, managed clipping directory (including `identity.key`), application database, and Pi database together while the processor is stopped. See [clipping operations and recovery](docs/specs/memo-clipping/IMPLEMENTATION.md#storage-and-deployment) for paths, migration, limitations, and troubleshooting.
-
-## Core Commands
+`.env.local` 是推荐入口，`bun run setup` 会在缺失时创建。不要直接抢用其他 worktree 的端口；需要手动恢复时运行：
 
 ```bash
-bun run dev
+bun run worktree:bootstrap -- --force
+```
+
+## Web Demo
+
+Web Demo 是正式 Web 应用的 build-time 运行产物，复用正式页面和路由，并用确定性 fixture、mock API 和内存状态演示产品行为。它不需要登录、模型调用或 live gateway；Demo 写入只更新内存中的 mock model，不能写入真实服务。
+
+构建并预览：
+
+```bash
+bun run web-demo:build
+bun run web-demo:preview
+```
+
+该命令生成 public、console 和 admin Demo artifacts，不替换 `site-dist/` 或 `admin-dist/`。公共 Demo 的官方入口是 `/memos/`；admin Demo 的入口是 `/admin/dashboard`。共享 Inspector 提供 scene、persona、network、data、simulated actions、share state 和 reset 控制。Demo 行为不能通过 query string 或 browser storage 注入 live artifact。
+
+需要交互开发时使用 `bun run web-demo:site`；构建后的 public SSR artifact 使用 `bun run web-demo:start`。Demo 预览必须使用独立的 `WEB_DEMO_PORT`、`SITE_PORT` 或 `ADMIN_PORT`。
+
+## 搜索与资料剪藏
+
+公开搜索支持 `keyword`、`rewrite` 和 `rag` 三种模式。关键词命中会被保全；AI 模式不可用时直接回退到关键词搜索。SQLite FTS5 和嵌入式 Tantivy 是可维护的索引投影，索引不替代本地 Markdown 权威内容。搜索的完整边界、可见性和修复命令见 [Search implementation](docs/specs/search-relevance/IMPLEMENTATION.md)。
+
+Memo 使用 `#剪藏` 和一个 HTTP(S) 目标链接触发资料剪藏。系统保存作者内容，异步生成摘要和简体中文译文，并把原文、译文和私有讨论保持在 Memo 的权限边界内。剪藏不自动发布，也不递归抓取链接。运维路径见 [Memo clipping implementation](docs/specs/memo-clipping/IMPLEMENTATION.md)。
+
+## 常用命令
+
+```bash
 bun run build
 bun run start
 
@@ -161,6 +133,7 @@ bun run check
 bun run fix
 bun run test
 bun run test:e2e
+bun run test:storybook-boundary
 
 bun run migrate
 bun run seed
@@ -169,81 +142,14 @@ bun run test-env:reset
 bun run test:worktree-bootstrap
 ```
 
-## Data Layout
+完整 Playwright 套件是 `bun run test:e2e`；它覆盖 guest、admin、user 和 mcp projects。页面级 Demo 证据使用正式 Web Demo route，Storybook 只承担可复用组件的状态和交互覆盖。
 
-- Dev DB: `./dev-data/sqlite.db`
-- Test DB: `./test-data/sqlite.db`
-- Dev content root: `./dev-data/local`
-- Test content root: `./test-data/local`
-- Docker DB default: `/app/data/sqlite.db`
+## 数据与发布
 
-Content sync imports Markdown from the configured local content root into SQLite caches and search indexes.
+开发数据库位于 `./dev-data/sqlite.db`，测试数据库位于 `./test-data/sqlite.db`，开发和测试内容根分别为 `./dev-data/local` 与 `./test-data/local`。Docker 默认使用 `/app/data/sqlite.db`；数据库、索引和缓存都是从本地内容源派生的运行数据。
 
-## Search Index Operations
+产品发布使用 Manual Product Release：它为 static frontend 和 full-feature Docker image 分配同一个 release identity，冻结输入并在受保护的 `VERSION`-only PR 后发布。稳定版和预发布版的差异、恢复步骤及失败通知见 [manual version release runbook](docs/runbooks/manual-version-release.md)。完整平台验证和真实 alpha 验收仍不能从单个绿色 workflow 推断完成。
 
-Public search supports `rag` (default), `rewrite`, and `keyword`, selected through the page controls or `mode` URL parameter. RAG reads retrieved content and ranks it; rewrite only reformulates the query before full-text search. Either unavailable AI mode falls back directly to the original keyword query. Search policy and fixed-sample quality validation live in the existing admin LLM settings page; enabling a mode alone does not mark its model quality as passed.
+## 验证原则
 
-The three modes and legacy enhanced search use embedded Tantivy on linux/amd64. Build its locked native module in a Linux development environment before preparing an index. `SEARCH_INDEX_PATH` defaults to `${DB_PATH}.search`; keep development, test, and production paths separate. Startup prepares the projection and follows the transactional SQLite outbox; requests never rebuild it implicitly.
-
-```bash
-bun run search:native:build
-bun run search:native:verify
-DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local bun run migrate
-DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local bun run search:index prepare
-DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local bun run search:index status
-DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local bun run search:index check
-```
-
-`status` reads durable metadata. Stop the gateway/console writer before running `prepare`, `check`, or `rebuild` from a separate process. After diagnosing index drift or corruption, explicitly run `bun run search:index rebuild` with the same paths, then restart the service. The index is a rebuildable projection; it never replaces source content. See [search implementation and maintenance](docs/specs/search-relevance/IMPLEMENTATION.md) for model budgets, validation, supported queries, and recovery.
-
-The `posts_search_fts` SQLite FTS5 `trigram` index remains for content list filters and independent semantic search, including their existing NEAR syntax. SQLite triggers keep that index synchronized; the following commands maintain only this legacy index:
-
-Check or explicitly rebuild the index with:
-
-```bash
-DB_PATH=./dev-data/sqlite.db bun scripts/db-tools.ts search-index check
-DB_PATH=./dev-data/sqlite.db bun scripts/db-tools.ts search-index rebuild
-```
-
-The check command is read-only and reports missing, extra, duplicate, or stale rows. The rebuild command is writable and should be used only when the check reports drift. Public search applies `draft=false AND public=true` at query time; administrator search keeps its existing visibility and status rules.
-
-## Testing
-
-```bash
-bun run test
-bun run test-env:reset
-bun run test:e2e
-bun run test:e2e:project -- admin
-bun run test:e2e:targeted
-bun run test:e2e:experimental
-```
-
-`bun run test:e2e` is the canonical full Playwright suite. It runs every `tests/e2e/**/*.spec.ts`
-except specs explicitly tagged `@targeted` or `@experimental`, and includes `guest`, `admin`,
-`user`, and `mcp` projects under the same taxonomy used by CI.
-
-Playwright uses the integrated local-only stack defined in `playwright.config.ts`. The full local
-runner resets fixtures once, builds once, then executes isolated per-project runs in parallel.
-
-## Worktree Bootstrap
-
-- Auto bootstrap runs only on the first branch checkout of a new linked worktree.
-- A missing linked-worktree `.env.local` inherits the primary worktree's local configuration when that source is usable; only `PORT`, `SITE_PORT`, and `ADMIN_PORT` are re-leased for the target.
-- If the primary source is unavailable or unusable, bootstrap falls back to the generated default environment without blocking checkout.
-- Existing `.env.local` files are never overwritten by bootstrap.
-- Older `.env.local` files without `SITE_PORT` / `ADMIN_PORT` stay valid; bootstrap derives those ports from `PORT` at runtime.
-- Later branch switches do not rerun full bootstrap automatically.
-- If `LOCAL_CONTENT_BASE_PATH` points outside `./dev-data`, bootstrap syncs that real content root but refuses to generate destructive dev fixtures into it.
-- Manual rerun path: `bun run worktree:bootstrap -- --force`
-- Preview-only path: `bun run worktree:bootstrap -- --force --dry-run`
-- Bootstrap failures print the failed phase plus one recovery command directly in the checkout terminal.
-- Smoke test: `bun run test:worktree-bootstrap`
-
-## Build and Run
-
-```bash
-bun run build
-bun run start
-```
-
-Production and container runs require a persistent `DB_PATH` and, when content sync is needed, a mounted `LOCAL_CONTENT_BASE_PATH`.
+公共站、admin、gateway、MCP 和 release 不是一个单独 build 可以代表的交付面。修改跨越这些边界时，至少运行与变更相关的 `bun run check`、单元测试、对应 Playwright project、Web Demo 或 Storybook 验证，并检查 [quality gates](.github/quality-gates.json) 和受影响的专题 Spec。

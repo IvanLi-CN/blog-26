@@ -4,7 +4,7 @@
   "base_sha": "f50565d38c4ac2e655dd2cc01d98478d6678ff24",
   "covered_files": {
     "PRODUCT.md": "064bd29cb5c712ac8bae91198af5a311121d72ef",
-    "README.md": "53055285a32dfbed4d694ae7ea554dcc18b8ce2f",
+    "README.md": "5d66f689bcb7f730fbcba9826bd842f5f1216262",
     "LICENSE": "fe27c2cc47c1654a75896852119522968b9881af",
     ".gitignore": "ad17ba72cc464f1574606f96b0fd811cf4c5d955",
     "site/assets/projects/posters-source/blog-26-dark.png": "ea274cabdbe68be3ec1a40d3e7f9545db1a5362f",
@@ -14,7 +14,7 @@
     "tests/e2e/guest/nature-front-coverage.spec.ts": "7d5188361074a13a98c66413f29fb2f7d5f1fec9"
   },
   "change": {
-    "description": "Add the approved Ivan's Blog poster and social-preview source artwork, product-positioning documentation, repository README contract, MIT license text, and matching public media coverage expectations for the shared knowledge base.",
+    "description": "Add the approved Ivan's Blog poster and social-preview source artwork, product-positioning documentation, a Topic-aligned repository README, MIT license text, and matching public media coverage expectations for the shared knowledge base.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api"]
   },
@@ -33,8 +33,8 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The candidate is limited to approved poster and social-preview source artwork, product direction and README documents, the repository MIT license text, the generated-output ignore rule, and the existing public media E2E count contract. No public endpoint, stored state, migration, or runtime implementation is changed.",
-      "assessed_at": "2026-10-19T02:25:32Z",
+      "reasoning": "The candidate is limited to approved poster and social-preview source artwork, product direction and a Topic-aligned README, the repository MIT license text, the generated-output ignore rule, and the existing public media E2E count contract. No public endpoint, stored state, migration, or runtime implementation is changed.",
+      "assessed_at": "2026-10-19T03:03:57Z",
       "evidence": [
         {
           "path": "site/assets/projects/posters-source/blog-26-light.png",
@@ -49,13 +49,13 @@
       ],
       "scope_drift": {
         "detected": false,
-        "description": "The candidate remains within the approved production media and product-positioning scope; no application behavior or contract implementation has been added."
+        "description": "The candidate remains within the approved production media, product-positioning, and repository documentation scope; no application behavior or contract implementation has been added."
       }
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "The project poster and social-preview generators and verifiers pass for the added source artwork, while the production media, product documentation, README contract, MIT license, and generated-output ignore rule remain static files with no API or persistence changes.",
-      "assessed_at": "2026-10-19T02:25:32Z",
+      "reasoning": "The project poster and social-preview generators and verifiers pass for the added source artwork, while the production media, product documentation, Topic-aligned README, MIT license, and generated-output ignore rule remain static files with no API or persistence changes.",
+      "assessed_at": "2026-10-19T03:03:57Z",
       "evidence": [
         {
           "path": "site/assets/projects/posters-source/blog-26-dark.png",
@@ -74,8 +74,8 @@
         },
         {
           "path": "README.md",
-          "blob": "53055285a32dfbed4d694ae7ea554dcc18b8ce2f",
-          "command": "git diff --check; README documentation contract and link checks"
+          "blob": "5d66f689bcb7f730fbcba9826bd842f5f1216262",
+          "command": "git diff --check; verify README local links, commands, product surfaces, and Style Playbook Topic evidence"
         },
         {
           "path": "LICENSE",
