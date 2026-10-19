@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1774 887" role="img" aria-labelledby="title description">
+  <title id="title">Ivan's Blog shared knowledge base for humans and AI Agents</title>
+  <desc id="description">A light product preview showing a knowledge note with a human annotation and an Agent citation.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f5faf7" />
+      <stop offset="0.52" stop-color="#e8f2ed" />
+      <stop offset="1" stop-color="#dcebe4" />
+    </linearGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#fffdf8" />
+      <stop offset="1" stop-color="#eee5d7" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1774" height="887" fill="url(#background)" />
+  <path d="M 82 102 H 1692" stroke="#b8cec3" stroke-width="2" opacity="0.68" />
+  <text x="92" y="82" fill="#20352d" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="28" font-weight="700">Ivan's Blog</text>
+  <text x="1588" y="82" fill="#557269" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="25" text-anchor="end">ivanli.cc</text>
+
+  <text x="82" y="336" fill="#112a20" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="74" font-weight="700">
+    <tspan x="82" dy="0">One knowledge base.</tspan>
+    <tspan x="82" dy="88">For you and your Agent.</tspan>
+  </text>
+  <text x="84" y="574" fill="#29463a" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="27" font-weight="600">Capture &amp; clip  &#183;  Knowledge search  &#183;  Agent read/write</text>
+
+  <g transform="rotate(-6 1300 420)">
+    <rect x="1038" y="154" width="530" height="600" rx="12" fill="#9bb3a7" opacity="0.25" />
+    <rect x="1015" y="132" width="530" height="600" rx="12" fill="url(#paper)" />
+    <path d="M 1068 228 H 1488" stroke="#6b746e" stroke-width="2" opacity="0.72" />
+    <text x="1068" y="208" fill="#24352d" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="23" font-weight="700" letter-spacing="1.5">KNOWLEDGE NOTE</text>
+    <text x="1478" y="208" fill="#24352d" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="22" text-anchor="end">01</text>
+    <text x="1088" y="332" fill="#59635d" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="28">Good knowledge should outlast</text>
+    <text x="1088" y="372" fill="#59635d" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="28">a single conversation.</text>
+    <path d="M 1088 415 Q 1122 390 1152 415 T 1222 415" fill="none" stroke="#6e8176" stroke-width="3" />
+    <path d="M 1088 469 H 1458" stroke="#b5c6b9" stroke-width="12" opacity="0.66" />
+    <text x="1088" y="464" fill="#152d23" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="31" font-weight="700">Knowledge should cross</text>
+    <text x="1088" y="508" fill="#152d23" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="31" font-weight="700">clients and models.</text>
+    <path d="M 1088 528 H 1370" stroke="#7c9e8d" stroke-width="5" />
+    <text x="1045" y="425" fill="#4e6057" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="22" transform="rotate(-90 1045 425)">Human note</text>
+  </g>
+
+  <path d="M 1398 438 C 1458 420 1493 442 1515 494" fill="none" stroke="#6aa7c5" stroke-width="4" />
+  <circle cx="1398" cy="438" r="8" fill="#6aa7c5" />
+  <circle cx="1515" cy="494" r="8" fill="#6aa7c5" />
+
+  <g transform="rotate(5 1580 594)">
+    <rect x="1440" y="502" width="312" height="190" rx="8" fill="#9bb3a7" opacity="0.25" />
+    <rect x="1430" y="490" width="312" height="190" rx="8" fill="#f6f0e6" />
+    <text x="1460" y="535" fill="#24352d" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="19" font-weight="700">AGENT CITATION [01]</text>
+    <path d="M 1460 556 H 1708" stroke="#98aaa0" stroke-width="2" />
+    <text x="1460" y="598" fill="#152d23" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="22" font-weight="700">&quot;Knowledge should</text>
+    <text x="1460" y="629" fill="#152d23" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="22" font-weight="700">outlast a single</text>
+    <text x="1460" y="660" fill="#152d23" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="22" font-weight="700">conversation.&quot;</text>
+  </g>
+
+  <path d="M 82 772 H 1692" stroke="#b8cec3" stroke-width="2" opacity="0.64" />
+  <text x="84" y="824" fill="#4e6b60" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="24">Local files  &#183;  Git repositories  &#183;  MCP  &#183;  SKILL</text>
+</svg>

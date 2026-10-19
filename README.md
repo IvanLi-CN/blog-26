@@ -26,9 +26,9 @@ The knowledge owner controls what is kept, who can access it, and what can be pu
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./site/assets/projects/social-source/blog-26-dark.png" />
-    <source media="(prefers-color-scheme: light)" srcset="./site/assets/projects/social-source/blog-26-light.png" />
-    <img src="./site/assets/projects/social-source/blog-26-light.png" width="100%" alt="Ivan's Blog shared knowledge base for humans and AI Agents" />
+    <source media="(prefers-color-scheme: dark)" srcset="./site/assets/projects/social-source/blog-26-en-dark.png" />
+    <source media="(prefers-color-scheme: light)" srcset="./site/assets/projects/social-source/blog-26-en-light.png" />
+    <img src="./site/assets/projects/social-source/blog-26-en-light.png" width="100%" alt="Ivan's Blog shared knowledge base for humans and AI Agents" />
   </picture>
 </p>
 
