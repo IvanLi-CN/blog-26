@@ -64,7 +64,7 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "The full local suite passes with 1208 tests passing and no failures, the focused SSE/Web Demo tests pass, and the repository check passes. Desktop and 393px mobile Web Demo evidence shows keyword results before AI completion without horizontal overflow. Linux-only native Tantivy tests remain platform-skipped on the macOS host and are covered by CI.",
+      "reasoning": "The full local suite passes with 1208 tests passing and no failures, the focused SSE/Web Demo tests pass, and the repository check passes. Desktop and 393px mobile Web Demo evidence shows keyword results before AI completion without horizontal overflow; owner visual confirmation remains a delivery gate. Linux-only native Tantivy tests remain platform-skipped on the macOS host and are covered by CI.",
       "assessed_at": "2026-10-20T04:35:02+08:00",
       "evidence": [
         {
@@ -80,7 +80,7 @@
         {
           "path": "site/components/SearchPageIsland.tsx",
           "blob": "dde088e6a1fdf284c185ee87db6f61a0b7856958",
-          "command": "Owner-confirmed Web Demo evidence shows keyword-first waiting state on desktop and 393px mobile"
+          "command": "Web Demo evidence shows keyword-first waiting state on desktop and 393px mobile; owner confirmation pending"
         },
         {
           "path": "src/server/services/content-search.ts",
