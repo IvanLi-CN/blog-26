@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "8753856a6342ed6b5c1d907e9093b27d7cdca9d9",
+  "covered_files": {
+    "GLOSSARY.md": "ce64e52c1e5f87609a848218ad48cd02090632a3",
+    "docs/adr/0022-keyword-default-unified-ranking.md": "8aa2531752c38830fb222df1ac4b8dd7b3fa6de9",
+    "docs/adr/0027-sse-ai-search-transport.md": "e2a9210658ee98268c8473cf5eedcea5528e454e",
+    "docs/adr/0028-progressive-keyword-first-search-results.md": "5920e06bf7296679d771ec1facd322d0f76dd5a7",
+    "docs/specs/search-relevance/SPEC.md": "d8d0092a772662f9a963dfd30962053c9a426f8c",
+    "site/components/SearchPageIsland.tsx": "dde088e6a1fdf284c185ee87db6f61a0b7856958",
+    "src/components/search/PublicSearchPage.stories.tsx": "1b00a4e94c147a6b29e58f56718f35b704d67124",
+    "src/components/search/PublicSearchPage.tsx": "e5dab259cd78ba98723408d800a34962fd86758d",
+    "src/lib/web-demo-fetch.ts": "5e457b6e4c4c6ba335c67cdd4356f31de65a0872",
+    "src/server/public-api/router.ts": "21831baf5a20ddd709ba58c90a6abc2b5c8579e0",
+    "src/server/public-api/search-stream.test.ts": "ff1de0bcd7e5c977d0cd1d19e52f0f3b1d50dc28",
+    "src/server/services/content-search.test.ts": "cade4feddab2000da1c6dffdf6a85acb7b257da3",
+    "src/server/services/content-search.ts": "293ea34f9681757eb668361912e183e5abd6d3fa",
+    "tests/lib/web-demo-fetch.test.ts": "11dc594d9f6506418392550ba424134a0afd7f41"
+  },
+  "change": {
+    "description": "Stream the first keyword result set before RAG or query-rewrite completion, keep the final AI result on the same server-ranked list, and preserve EdgeOne-safe heartbeats and cancellation semantics.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a backward-compatible search responsiveness repair. The JSON, tRPC, MCP, legacy semantic/enhanced, ranking, and persistence contracts remain unchanged while the formal web SSE adds a keyword-phase event and bounded progress behavior.",
+      "assessed_at": "2026-10-20T04:35:02+08:00",
+      "evidence": [
+        {
+          "path": "docs/adr/0028-progressive-keyword-first-search-results.md",
+          "blob": "5920e06bf7296679d771ec1facd322d0f76dd5a7",
+          "command": "Review the accepted progressive keyword-first SSE contract"
+        },
+        {
+          "path": "src/server/services/content-search.ts",
+          "blob": "293ea34f9681757eb668361912e183e5abd6d3fa",
+          "command": "Review the keyword callback and bounded SSE model timeout"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate is limited to progressive web SSE transport, the public search island waiting state, deterministic Web Demo coverage, and the associated search specification. Existing complete-response callers and durable search state are untouched.",
+      "assessed_at": "2026-10-20T04:35:02+08:00",
+      "evidence": [
+        {
+          "path": "src/server/public-api/search-stream.test.ts",
+          "blob": "ff1de0bcd7e5c977d0cd1d19e52f0f3b1d50dc28",
+          "command": "bun test src/server/public-api/search-stream.test.ts"
+        },
+        {
+          "path": "tests/lib/web-demo-fetch.test.ts",
+          "blob": "11dc594d9f6506418392550ba424134a0afd7f41",
+          "command": "bun test tests/lib/web-demo-fetch.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate changes only the approved speed-first web search flow, its deterministic fixture, and its durable documentation; no provider, ranking, permission, or storage scope was added."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The full local suite passes with 1208 tests passing and no failures, the focused SSE/Web Demo tests pass, and the repository check passes. Desktop and 393px mobile Web Demo evidence shows keyword results before AI completion without horizontal overflow. Linux-only native Tantivy tests remain platform-skipped on the macOS host and are covered by CI.",
+      "assessed_at": "2026-10-20T04:35:02+08:00",
+      "evidence": [
+        {
+          "path": "src/server/public-api/search-stream.test.ts",
+          "blob": "ff1de0bcd7e5c977d0cd1d19e52f0f3b1d50dc28",
+          "command": "bun test src/server/public-api/search-stream.test.ts tests/lib/web-demo-fetch.test.ts"
+        },
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "cade4feddab2000da1c6dffdf6a85acb7b257da3",
+          "command": "bun test --isolate src tests/integration tests/lib tests/server --exclude='tests/e2e/**/*' --exclude='backend-dist/**/*'"
+        },
+        {
+          "path": "site/components/SearchPageIsland.tsx",
+          "blob": "dde088e6a1fdf284c185ee87db6f61a0b7856958",
+          "command": "Owner-confirmed Web Demo evidence shows keyword-first waiting state on desktop and 393px mobile"
+        },
+        {
+          "path": "src/server/services/content-search.ts",
+          "blob": "293ea34f9681757eb668361912e183e5abd6d3fa",
+          "command": "bun run check"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.0",
+        "2.8.1",
+        "2.8.2",
+        "2.8.3",
+        "2.9.0",
+        "2.9.1",
+        "2.10.0",
+        "2.11.0",
+        "2.11.1",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.0",
+        "3.0.1",
+        "3.0.2",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.0",
+        "3.1.1",
+        "3.1.2",
+        "3.2.0",
+        "3.2.1",
+        "3.3.0",
+        "3.3.1",
+        "3.3.2",
+        "3.3.3",
+        "3.3.4",
+        "3.3.5",
+        "3.4.0",
+        "3.4.1",
+        "3.4.2",
+        "3.4.3",
+        "3.4.4",
+        "3.4.5",
+        "3.4.6",
+        "3.5.0",
+        "3.5.1",
+        "3.5.2",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6"
+      ],
+      "evidence": [
+        {
+          "path": "src/server/public-api/search-stream.test.ts",
+          "blob": "ff1de0bcd7e5c977d0cd1d19e52f0f3b1d50dc28",
+          "command": "HTTP SSE preserves the complete result event and adds keyword phase compatibility"
+        },
+        {
+          "path": "site/components/SearchPageIsland.tsx",
+          "blob": "dde088e6a1fdf284c185ee87db6f61a0b7856958",
+          "command": "The web client consumes the additive keyword event while retaining final envelope handling"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, search index generation, vector identity, cache identity, or durable task state changes are introduced.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/server/services/content-search.ts",
+          "blob": "293ea34f9681757eb668361912e183e5abd6d3fa",
+          "command": "The change only reports an in-memory keyword envelope and raises the SSE provider timeout"
+        }
+      ]
+    }
+  }
+}
