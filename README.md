@@ -1,6 +1,36 @@
 # Ivan's Blog
 
-Astro public site, Vite/React admin SPA, and Bun gateway for a local-file-backed content system.
+Ivan's Blog is evolving into a personal knowledge base shared by humans and authorized AI Agents: a place to accumulate knowledge, retrieve and reuse it in real work, and contribute new findings back to the same knowledge base. The owner controls access and publication; the public blog is one publishing surface.
+
+The current implementation combines an Astro public site, a Vite/React admin SPA, and a Bun gateway for a local-file-backed content system, with MCP tools for agent access.
+
+## Product Direction
+
+Ivan's Blog is being built as a personal knowledge base shared by its owner, humans, and authorized AI Agents.
+
+- **Capture** notes, source material, project experience, and reusable rules.
+- **Find and reuse** knowledge with its source, context, and visibility boundary in reading, writing, and real tasks.
+- **Contribute** new findings back to the same knowledge base when authorized.
+- **Publish selectively** through the blog, Memos, projects, and Playbook.
+
+The current repository provides the foundation for this direction: local Markdown content, public reading and publishing surfaces, search, admin management, Memo clipping, and authenticated MCP access. The complete shared-knowledge workflow is still being built; shared access does not make private content public or grant every Agent the same permissions. See [Product vision and goals](PRODUCT.md) for the goals, boundaries, current capability matrix, and success criteria.
+
+## Scope Boundaries
+
+- This is a personal knowledge system, not a general SaaS, multi-tenant workspace, or organization-wide governance product.
+- Agent support centers on authorized knowledge retrieval and contribution; general chat, arbitrary task execution, and fully autonomous takeover are not product prerequisites.
+- Saving content, accepting an Agent contribution, and publishing content are separate decisions with separate permissions.
+- The current implementation is an active foundation. Manual two-product release delivery is only partially validated; full platform validation and real alpha acceptance remain open.
+
+## Documentation Map
+
+- [Product vision and goals](PRODUCT.md) defines product scope, users, goals, non-goals, current foundations, and success criteria.
+- [Context](CONTEXT.md) defines the domain language and operating context; [Glossary](GLOSSARY.md) records stable content and search terms.
+- [Specs index](docs/specs/README.md) is the canonical catalog for topic lifecycle and spec roles. Topic `SPEC.md` files define durable behavior and acceptance boundaries; `IMPLEMENTATION.md` files record implementation coverage and rollout evidence.
+- [Remote MCP Spec](docs/specs/remote-mcp/SPEC.md) defines the Agent-facing tool, authentication, and content-operation boundary; [Search implementation](docs/specs/search-relevance/IMPLEMENTATION.md) and [Memo clipping implementation](docs/specs/memo-clipping/IMPLEMENTATION.md) document representative cross-runtime behavior.
+- [Architecture decisions](docs/adr/) records irreversible technical decisions and trade-offs; [runbooks](docs/runbooks/) records operational procedures and recovery paths.
+- [Quality gates](.github/quality-gates.json) defines required checks and branch policy; [.github/release-contract.json](.github/release-contract.json) defines the product release boundary and artifact identity.
+- [MIT License](LICENSE) is the repository's license text.
 
 ## Stack
 
@@ -12,6 +42,8 @@ Astro public site, Vite/React admin SPA, and Bun gateway for a local-file-backed
 
 ## Quick Start
 
+The repository requires Bun `^1.0.0` as declared in `package.json`. Web Demo builds additionally require Node.js 22.12 or newer for the Astro CLI.
+
 ```bash
 bun run setup
 
@@ -20,6 +52,15 @@ bun run dev
 ```
 
 `bun run setup` installs dependencies, installs hooks, creates `.env.local` when missing, leases worktree-local ports, and prepares dev data. `bun run dev` starts Astro, the admin SPA, and the Bun gateway.
+
+For a deterministic browser demo using local fixtures and in-memory mutations, build and preview the separate Web Demo artifact:
+
+```bash
+bun run web-demo:build
+bun run web-demo:preview
+```
+
+The Web Demo does not require login, model calls, or a live gateway. Its preview serves local fixtures and simulated writes; only the Demo's controlled page-data and public-asset routes are served, while other API paths return 404.
 
 For linked worktrees, the first checkout triggers the same bootstrap automatically through `lefthook post-checkout`. If automatic bootstrap fails, checkout still succeeds and the recovery command is:
 
@@ -31,15 +72,15 @@ bun run worktree:bootstrap -- --force
 
 A Web Demo is a separate build-time-selected runtime artifact of the shipped web application. Its public target uses Astro Node SSR and hydrates the shared product renderer and Inspector against deterministic fixtures or in-memory API mocks. Subsequent public navigation renders shared React pages from structured data through the same request boundary as the product; simulated offline and delay apply to those reads. The published static site retains prerendered first documents and provides route JSON for the same client router. The live artifact cannot be switched into Demo mode by a query string or browser storage.
 
-Build both public and admin Demo artifacts with:
+Build the public, console, and admin Demo artifacts with:
 
 ```bash
 bun run web-demo:build
 ```
 
-The command creates `web-demo-site-dist/` (standalone SSR server plus browser assets) and `web-demo-admin-dist/` without replacing `site-dist/` or `admin-dist/`. It prepares deterministic local content, a public snapshot, and a Playbook fixture before building. The Admin mock API is installed before the real router renders, and all Demo mutations stay in memory.
+The command creates `web-demo-site-dist/`, `web-demo-console-site-dist/`, and `web-demo-admin-dist/` without replacing `site-dist/` or `admin-dist/`. It prepares deterministic local content, a public snapshot, and a Playbook fixture before building. The Admin mock API is installed before the real router renders, and all Demo mutations stay in memory.
 
-The Astro CLI requires Node.js 22.12 or newer. After building, lease a dedicated `WEB_DEMO_PORT` and run `bun run web-demo:preview` to serve both artifacts without the gateway or development server. `/api/**` always returns 404. Run `bun run test:e2e:clipping-web-demo` against the generated artifact for clipping interactions and responsive checks.
+After building, lease a dedicated `WEB_DEMO_PORT` and run `bun run web-demo:preview` to serve the public and admin artifacts without the gateway or development server. The public preview has no live gateway; the Demo renderer handles only its controlled page-data and public-asset routes. Run `bun run test:e2e:clipping-web-demo` against the generated artifact for clipping interactions and responsive checks.
 
 Each Demo artifact includes the shared Inspector on the official route. It exposes the current scene, persona, network condition, data density, refresh/reset actions, simulated in-memory save, shareable `d_*` state, and recent simulated mutations. It is a control surface for the Demo build only; it does not grant permissions or send writes to a real backend.
 
@@ -54,7 +95,7 @@ This starts the public Demo with Astro's SSR dev server and hot reload. To run t
 Open the official route:
 
 ```text
-http://127.0.0.1:${SITE_PORT}/memos/
+/memos/
 ```
 
 To exercise the administrator Memo composer and quick-edit modal in the same Web Demo, append `?d_persona=admin` to the route. In the Inspector, choose `Memos · 快速编辑` to open the modal directly, or use `?d_scene=memo-quick-edit&d_persona=admin` as a shareable entry URL. Memo creates and edits are in-memory Demo mutations and reset when the page is refreshed.
@@ -63,8 +104,9 @@ For the Admin Demo, start the separately configured Vite Demo build:
 
 ```text
 bun run web-demo:admin
-http://127.0.0.1:${ADMIN_PORT}/admin/dashboard
 ```
+
+Open `/admin/dashboard` on the leased `ADMIN_PORT`.
 
 The public Memo list uses the same shipped Astro `/memos/` route and deterministic 2,400-record fixture in the Demo artifact. The build also emits the corresponding official Memo detail routes so sample links remain usable; the live build does not emit those Demo-only records. Storybook remains the component state gallery; it is not the page evidence source.
 
