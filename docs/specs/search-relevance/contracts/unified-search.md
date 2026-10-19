@@ -43,7 +43,7 @@ Playbook 普通查询、短语、字段、布尔组合、前缀和名称边界�
 
 现代 envelope 可增加 `playbook: { edition, sourceReleaseId, sourceTag }`、`incompleteSources` 和 `ragIncompleteSources`；HTTP 以 `Search-Playbook-Edition`、`Search-Playbook-Source-Release-Id`、`Search-Playbook-Source-Tag`、`Search-Incomplete-Sources` 与 `Search-RAG-Incomplete-Sources` 表达同等事实，并按既有跨域响应策略使调用客户端可读取。HTTP 继续使用 `Search-Requested-Mode`、`Search-Effective-Mode`、`Search-Reason` 表达模式，不用模式回退字段替代来源不可用。只有实际参与检索的快照才能报告为已使用版本。
 
-遗留版本字段无论值是否完整、未知或畸形都不能触发搜索版本冲突。仅 Playbook 且没有可查询快照时返回受控不可用。全部范围在没有 Playbook 时可返回博客结果，同时明确 `incompleteSources=["playbook"]`；用户可以区分结果不完整与完全检索后的正常零命中。缓存仍可查询但最近同步失败时，继续报告实际使用的旧版，不能将其误报为搜索故障。
+遗留版本字段无论值是否完整、未知或畸形都不能触发搜索版本冲突；除这三个字段外的未知输入由入口拒绝。仅 Playbook 且没有可查询快照时返回受控不可用，JSON 与 SSE 分别以响应状态或 error event 保留同一受控 code/message。全部范围在没有 Playbook 时可返回博客结果，同时明确 `incompleteSources=["playbook"]`；用户可以区分结果不完整与完全检索后的正常零命中。缓存仍可查询但最近同步失败时，继续报告实际使用的旧版，不能将其误报为搜索故障。
 
 版本、任务和错误详情在管理员视图与程序化元信息中可核对；公开页面只提供有行动意义的不可用/刷新提示，不增加自动生成的版本、digest 或内部引擎文案。响应不得暴露凭据、私有源路径或未经授权内容。
 
