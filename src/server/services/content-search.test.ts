@@ -1489,7 +1489,10 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
           .find((line) => line.startsWith("data: "))
           ?.slice(6) ?? unknownParameterRaw
       );
-      expect(unknownParameterPayload.error?.code).toBe(-32602);
+      expect(unknownParameterPayload.result?.isError).toBe(true);
+      expect(unknownParameterPayload.result?.content?.[0]?.text).toContain(
+        "Input validation error"
+      );
     } finally {
       await handleMcpHttpRequest(
         new Request("http://localhost/mcp", {
