@@ -200,8 +200,11 @@ export async function semanticPlaybookCandidates(
   config: ResolvedTierConfig,
   edition: PlaybookEdition,
   limit: number,
-  type: "all" | PlaybookSearchType = "all"
+  type: "all" | PlaybookSearchType = "all",
+  options: { timeoutMs?: number; signal?: AbortSignal } = {}
 ): Promise<PlaybookSearchCandidate[]> {
+  if (options.signal?.aborted)
+    throw options.signal.reason ?? new DOMException("Aborted", "AbortError");
   const model = config.model;
   if (!model) return [];
   const { eligibleVectorIds } = await ragCoverage({
@@ -229,9 +232,16 @@ export async function semanticPlaybookCandidates(
     .orderBy(asc(searchSemanticEmbeddings.id))
     .limit(10_000);
   if (!rows.length) return [];
-  const vector = await embedSearchQuery(config, query);
+  const vector = await embedSearchQuery(
+    config,
+    query,
+    options.timeoutMs,
+    options.signal ? { signal: options.signal } : undefined
+  );
   const scoreByParent = new Map<string, number>();
   for (const row of rows) {
+    if (options.signal?.aborted)
+      throw options.signal.reason ?? new DOMException("Aborted", "AbortError");
     if (
       !eligibleVectorIds.has(row.id) ||
       !(row.vector instanceof Uint8Array) ||

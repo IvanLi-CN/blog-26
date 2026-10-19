@@ -40,6 +40,7 @@ export function withoutIdentity(request: Request) {
   const init: RequestInit = {
     method: request.method,
     headers,
+    signal: request.signal,
   };
   if (request.method !== "GET" && request.method !== "HEAD") {
     init.body = request.body;

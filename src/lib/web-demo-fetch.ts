@@ -529,10 +529,15 @@ async function getDemoPublicResponse(
     return payload ? jsonResponse(payload) : jsonResponse({ error: "指标不存在" }, 404);
   }
 
-  if (url.pathname === "/api/public/search" && method === "GET") {
+  if (
+    (url.pathname === "/api/public/search" || url.pathname === "/api/public/search/stream") &&
+    method === "GET"
+  ) {
     const query = (url.searchParams.get("q") ?? "").trim().toLowerCase();
     const selected = searchModeSchema.safeParse(url.searchParams.get("mode") ?? "keyword");
     if (!selected.success) return jsonResponse({ error: "不支持的搜索模式" }, 400);
+    if (url.pathname === "/api/public/search/stream" && selected.data === "keyword")
+      return jsonResponse({ error: "流式搜索仅支持 AI 模式", code: "BAD_REQUEST" }, 400);
     let plan: ReturnType<typeof planNativeQuery>;
     try {
       plan = planNativeQuery(query);
@@ -671,6 +676,79 @@ async function getDemoPublicResponse(
     if (!query) response.headers.set("Search-Reason", "empty-query");
     else if (plan.mode !== "simple") response.headers.set("Search-Reason", "explicit-query");
     else if (effectiveMode !== selected.data) response.headers.set("Search-Reason", "unavailable");
+    if (url.pathname === "/api/public/search/stream") {
+      const payload = await response.clone().json();
+      const envelope = {
+        results: payload,
+        requestedMode: selected.data,
+        effectiveMode,
+        ...(response.headers.get("Search-Reason")
+          ? { reason: response.headers.get("Search-Reason") }
+          : {}),
+      };
+      const encoder = new TextEncoder();
+      const requestSignal = init?.signal;
+      let closed = false;
+      let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
+      const timers = new Set<ReturnType<typeof setTimeout>>();
+      let abortListener: (() => void) | undefined;
+      const clearScheduledEvents = () => {
+        for (const timer of timers) clearTimeout(timer);
+        timers.clear();
+      };
+      const detachAbortListener = () => {
+        if (abortListener) requestSignal?.removeEventListener("abort", abortListener);
+        abortListener = undefined;
+      };
+      const emit = (event: string) => {
+        if (!closed) streamController?.enqueue(encoder.encode(event));
+      };
+      const schedule = (callback: () => void) => {
+        const timer = setTimeout(() => {
+          timers.delete(timer);
+          if (!closed) callback();
+        }, 0);
+        timers.add(timer);
+      };
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          streamController = controller;
+          abortListener = () => {
+            if (closed) return;
+            closed = true;
+            clearScheduledEvents();
+            detachAbortListener();
+            controller.close();
+          };
+          requestSignal?.addEventListener("abort", abortListener, { once: true });
+          if (requestSignal?.aborted) {
+            abortListener();
+            return;
+          }
+
+          emit(`event: started\ndata: ${JSON.stringify({ requestedMode: selected.data })}\n\n`);
+          schedule(() => {
+            emit('event: progress\ndata: {"phase":"complete"}\n\n');
+            schedule(() => {
+              emit(`event: result\ndata: ${JSON.stringify(envelope)}\n\n`);
+              closed = true;
+              detachAbortListener();
+              controller.close();
+            });
+          });
+        },
+        cancel() {
+          closed = true;
+          clearScheduledEvents();
+          detachAbortListener();
+        },
+      });
+      const headers = new Headers(response.headers);
+      headers.set("content-type", "text/event-stream; charset=utf-8");
+      headers.set("cache-control", "no-store, no-transform");
+      headers.set("x-accel-buffering", "no");
+      return new Response(stream, { status: response.status, headers });
+    }
     return response;
   }
 
@@ -733,7 +811,7 @@ export async function webDemoFetch(
       method,
       environment,
       sceneState.data,
-      init
+      signal ? { ...init, signal } : init
     );
     if (mockResponse) return mockResponse;
   }

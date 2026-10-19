@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "f50565d38c4ac2e655dd2cc01d98478d6678ff24",
+  "covered_files": {
+    "docs/adr/0027-sse-ai-search-transport.md": "c349353325897371af509d946b3fc0274c8aa1a4",
+    "docs/specs/search-relevance/HISTORY.md": "d383fe041dbe7cce0cb8d2e428b0d44d535e35b9",
+    "docs/specs/search-relevance/IMPLEMENTATION.md": "7851af851f3f54f1c709c572273b86a0e6fdb88b",
+    "docs/specs/search-relevance/SPEC.md": "addc28f8242702ae35faa176a8001d1e45c54543",
+    "site/components/SearchPageIsland.tsx": "fb1c5126bf492e5e9087c9e69ead660eb24306a6",
+    "site/pages/api/[...path].ts": "f476a38298e08072381bab27f6ea57550d5d1918",
+    "src/lib/__tests__/runtime-context.test.ts": "2282d551498f1e63a0a0bdff2e06d71ede3a3919",
+    "src/lib/web-demo-fetch.ts": "98afb1c60edb1677a37e1033dbb4864d3d90ad88",
+    "src/server/public-api/router.ts": "6af5c20d8015a9932b2ebf695f955adeefc6c4cf",
+    "src/server/public-api/search-stream.test.ts": "533f51c75d71924aec91caee159973137a8be00e",
+    "src/server/services/content-search.test.ts": "07573d1db6a6802e80979877a302ffd6905ffdb6",
+    "src/server/services/content-search.ts": "9d302f9c08b1432b81a0ec148716554d9ffbc130",
+    "src/server/services/search-model.ts": "1994b6e0938b10025b490e666b682c130994cbe9",
+    "src/server/services/search-semantic-projection.ts": "49cc67a3f6f009fec09a2cd84fe35283f3e45a44",
+    "tests/lib/web-demo-fetch.test.ts": "d127f455b008d3b19a2f1f944974e5d04f1a79f6"
+  },
+  "change": {
+    "description": "Add a public AI-only SSE transport with immediate progress, bounded model waiting, request cancellation propagation, and compatibility-preserving JSON fallback for slow AI search.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "Compatible defect repair. The existing JSON search contract, ranking, permissions, provider configuration, and legacy interfaces remain unchanged; the new SSE endpoint is additive and the client falls back safely when AI work fails.",
+      "assessed_at": "2026-10-19T04:47:20+08:00",
+      "evidence": [
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "d6feb87c1383cba16bec14a45fa41580e70f7d96",
+          "command": "Slow-provider JSON fallback, SSE completion, and request cancellation regression"
+        },
+        {
+          "path": "src/server/public-api/search-stream.test.ts",
+          "blob": "533f51c75d71924aec91caee159973137a8be00e",
+          "command": "Public SSE event and keyword-rejection contract regression"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate adds an additive transport and abort-aware client fixture while retaining the JSON array route, search result envelope, fallback behavior, and all existing provider and compatibility boundaries.",
+      "assessed_at": "2026-10-19T04:47:20+08:00",
+      "evidence": [
+        {
+          "path": "src/server/public-api/router.ts",
+          "blob": "6af5c20d8015a9932b2ebf695f955adeefc6c4cf",
+          "command": "Review additive SSE route, heartbeat, cancellation, and generic error handling"
+        },
+        {
+          "path": "site/components/SearchPageIsland.tsx",
+          "blob": "fb1c5126bf492e5e9087c9e69ead660eb24306a6",
+          "command": "Review stream event parser and JSON/keyword boundary"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The current candidate remains within the slow AI search transport and cancellation repair scope; no provider, ranking, persistence, or release workflow behavior is changed."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused SSE, Web Demo, model-request, HTTP compatibility, repository check, and Spec drift validations pass. The new transport is additive, preserves public JSON compatibility, and carries cancellation into provider calls without changing durable state or search ranking.",
+      "assessed_at": "2026-10-19T04:47:20+08:00",
+      "evidence": [
+        {
+          "path": "src/server/public-api/search-stream.test.ts",
+          "blob": "533f51c75d71924aec91caee159973137a8be00e",
+          "command": "bun test src/server/public-api/search-stream.test.ts"
+        },
+        {
+          "path": "src/server/services/content-search.test.ts",
+          "blob": "07573d1db6a6802e80979877a302ffd6905ffdb6",
+          "command": "Slow-provider SSE first event, heartbeat, completion, and cancellation regression"
+        },
+        {
+          "path": "src/lib/__tests__/runtime-context.test.ts",
+          "blob": "2282d551498f1e63a0a0bdff2e06d71ede3a3919",
+          "command": "Public route identity sanitization preserves request cancellation signal"
+        },
+        {
+          "path": "tests/lib/web-demo-fetch.test.ts",
+          "blob": "d127f455b008d3b19a2f1f944974e5d04f1a79f6",
+          "command": "bun test tests/lib/web-demo-fetch.test.ts"
+        },
+        {
+          "path": "src/server/services/search-model.ts",
+          "blob": "1994b6e0938b10025b490e666b682c130994cbe9",
+          "command": "bun run check"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4"
+      ],
+      "evidence": [
+        {
+          "path": "src/server/public-api/search-stream.test.ts",
+          "blob": "533f51c75d71924aec91caee159973137a8be00e",
+          "command": "SSE endpoint preserves AI-only validation and result envelope while JSON remains unchanged"
+        },
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "d0b14b1a7749e6995655d2469d030bea268cbd62",
+          "command": "Existing public search array and compatibility parameter regression"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, settings, vector data, cache identity, or durable task state changes are introduced.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/server/public-api/router.ts",
+          "blob": "6af5c20d8015a9932b2ebf695f955adeefc6c4cf",
+          "command": "SSE execution is request-scoped and does not write persistent state"
+        }
+      ]
+    }
+  }
+}

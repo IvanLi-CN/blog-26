@@ -141,6 +141,50 @@ describe("webDemoFetch", () => {
     expect(await unrelated.json()).toEqual({ items: [] });
   });
 
+  it("returns the AI search fixture through the SSE boundary", async () => {
+    installBrowser("?d_connection=online");
+    const response = await webDemoFetch("/api/public/search/stream?q=SQLite&mode=rag");
+    expect(response.ok).toBe(true);
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    const body = await response.text();
+    expect(body).toContain("event: started");
+    expect(body).toContain('event: progress\ndata: {"phase":"complete"}');
+    expect(body).toContain("event: result");
+    expect(body).toContain("SQLite3：嵌入式数据库实践");
+  });
+
+  it("fences queued SSE fixture events after reader cancellation", async () => {
+    installBrowser("?d_connection=online");
+    const response = await webDemoFetch("/api/public/search/stream?q=SQLite&mode=rag");
+    const reader = response.body?.getReader();
+    expect(reader).toBeDefined();
+    const first = await reader?.read();
+    expect(new TextDecoder().decode(first?.value)).toContain("event: started");
+    await reader?.cancel();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect((await reader?.read())?.done).toBe(true);
+  });
+
+  it("closes the SSE fixture when its request signal aborts", async () => {
+    installBrowser("?d_connection=online");
+    const controller = new AbortController();
+    const response = await webDemoFetch("/api/public/search/stream?q=SQLite&mode=rag", {
+      signal: controller.signal,
+    });
+    const reader = response.body?.getReader();
+    expect(reader).toBeDefined();
+    expect(new TextDecoder().decode((await reader?.read())?.value)).toContain("event: started");
+    controller.abort();
+    expect((await reader?.read())?.done).toBe(true);
+  });
+
+  it("keeps keyword mode on the JSON boundary instead of opening an SSE stream", async () => {
+    installBrowser("?d_connection=online");
+    const response = await webDemoFetch("/api/public/search/stream?q=SQLite&mode=keyword");
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "BAD_REQUEST" });
+  });
+
   it("keeps release previews long enough to exercise result width and section rendering", async () => {
     installBrowser("?d_connection=online&d_data=dense");
     const response = await webDemoFetch("/api/public/search?q=release&mode=keyword");

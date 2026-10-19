@@ -62,8 +62,10 @@ describe("runtime context", () => {
 
   it("removes the configured SSO header from public API requests", () => {
     process.env.SSO_EMAIL_HEADER_NAME = "X-SSO-Email";
+    const controller = new AbortController();
     const sanitized = withoutIdentity(
       new Request("https://ivanli.cc/api/health", {
+        signal: controller.signal,
         headers: {
           "x-sso-email": "admin@example.com",
           "remote-email": "admin@example.com",
@@ -75,5 +77,8 @@ describe("runtime context", () => {
     expect(sanitized.headers.get("x-sso-email")).toBeNull();
     expect(sanitized.headers.get("remote-email")).toBeNull();
     expect(sanitized.headers.get("cookie")).toBeNull();
+    expect(sanitized.signal.aborted).toBe(false);
+    controller.abort();
+    expect(sanitized.signal.aborted).toBe(true);
   });
 });

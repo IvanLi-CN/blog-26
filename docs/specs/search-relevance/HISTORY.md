@@ -26,6 +26,12 @@ AI 搜索运行时继续复用既有 `llm_settings` 中的 chat、embedding、Ba
 
 模型请求的 token 预算由提供方返回的 usage 校验；序列化请求使用独立字节上限保护传输，避免把多字节 UTF-8 内容误判为超出 token 预算并错误回退关键词。
 
+## SSE Wait Boundary
+
+公共 JSON 搜索保留既有数组与预算，RAG/改写的正式页面请求新增 `/api/public/search/stream`。流式入口先发送开始事件和阶段/心跳，再发送完整结果；embedding 与模型判断使用有界 30 秒等待并接收客户端取消。该传输变化不改变候选、权限、edition、排序或关键词回退，也不改变 tRPC、MCP 和 legacy semantic/enhanced 的既有合同。
+
+Web Demo 与生产流保持相同的 AI-only 入口和 `started`、`progress`、`result` 事件顺序；慢 Mock 会响应 AbortSignal，Demo 夹具在 reader.cancel 或请求 AbortSignal 后清理排队事件，前端只接受带 `result` 事件的完整 EOF，测试同时证明 JSON 在短预算下回退、流式入口继续完成 AI 请求。
+
 ## 索引覆盖与管理统计的兼容范围
 
 真实语义覆盖补充定义当前合格内容及预期分块的双口径，保持 RAG、查询改写、关键词、权限、同版绑定和排名合同。旧博客向量存储及 legacy semantic/enhanced 继续兼容，其物理行数与旧模型数据不再作为当前现代 RAG 已索引总量。新增覆盖要求修正统计与准备路径的既有遗漏，不授权生产补建、旧数据清理、应用发布或部署。
