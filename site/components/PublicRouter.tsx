@@ -71,11 +71,7 @@ function Page({
         <>
           {searchBootstrap}
           <div data-search-island>
-            <SearchPageIsland
-              playbook={payload.data.playbook}
-              initialQuery={payload.data.query}
-              initialMode={payload.data.mode}
-            />
+            <SearchPageIsland initialQuery={payload.data.query} initialMode={payload.data.mode} />
           </div>
         </>
       );

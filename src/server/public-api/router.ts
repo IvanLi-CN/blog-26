@@ -1183,15 +1183,6 @@ function readPublicSearchInput(url: URL): unknown {
       | "topic"
       | "experience"
       | "policy",
-    ...(url.searchParams.get("edition")
-      ? { edition: url.searchParams.get("edition") ?? undefined }
-      : {}),
-    ...(url.searchParams.get("sourceReleaseId")
-      ? { sourceReleaseId: url.searchParams.get("sourceReleaseId") ?? undefined }
-      : {}),
-    ...(url.searchParams.get("sourceTag")
-      ? { sourceTag: url.searchParams.get("sourceTag") ?? undefined }
-      : {}),
   };
 }
 
@@ -1464,29 +1455,15 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
       ]);
       if ([...url.searchParams.keys()].some((key) => !allowed.has(key)))
         throw new TRPCError({ code: "BAD_REQUEST", message: "unsupported-parameter" });
-      const result = await caller.search.content({
-        q: (url.searchParams.get("q") || "").trim(),
-        mode: (url.searchParams.get("mode") ?? "keyword") as "rag" | "rewrite" | "keyword",
-        topK: Number(url.searchParams.get("topK") ?? 20),
-        source: (url.searchParams.get("source") ?? "all") as "all" | "blog" | "playbook",
-        type: (url.searchParams.get("type") ?? "all") as
-          | "all"
-          | "post"
-          | "memo"
-          | "clipping"
-          | "topic"
-          | "experience"
-          | "policy",
-        ...(url.searchParams.get("edition")
-          ? { edition: url.searchParams.get("edition") ?? undefined }
-          : {}),
-        ...(url.searchParams.get("sourceReleaseId")
-          ? { sourceReleaseId: url.searchParams.get("sourceReleaseId") ?? undefined }
-          : {}),
-        ...(url.searchParams.get("sourceTag")
-          ? { sourceTag: url.searchParams.get("sourceTag") ?? undefined }
-          : {}),
-      });
+      const parsed = contentSearchInputSchema.safeParse(readPublicSearchInput(url));
+      if (!parsed.success)
+        return json(
+          request,
+          { error: "搜索参数无效", code: "BAD_REQUEST" },
+          { status: 400 },
+          resHeaders
+        );
+      const result = await caller.search.content(parsed.data);
       resHeaders.set("Search-Requested-Mode", result.requestedMode);
       resHeaders.set("Search-Effective-Mode", result.effectiveMode);
       if (result.reason) resHeaders.set("Search-Reason", result.reason);

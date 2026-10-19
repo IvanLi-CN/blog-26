@@ -52,4 +52,28 @@ describe("public search SSE transport", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ code: "BAD_REQUEST" });
   });
+
+  test("ignores malformed legacy Playbook selectors", async () => {
+    const response = await handlePublicApiRequest(
+      new Request(
+        "http://localhost/api/public/search/stream?q=&mode=rag&edition=broken&sourceReleaseId=-1&sourceTag=old"
+      ),
+      "/search/stream"
+    );
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body).toContain("event: started");
+    expect(body).toContain("event: result");
+  });
+
+  test("JSON search keeps legacy selector compatibility without validating it", async () => {
+    const response = await handlePublicApiRequest(
+      new Request(
+        "http://localhost/api/public/search?q=&mode=keyword&edition=broken&sourceReleaseId=-1&sourceTag=old"
+      ),
+      "/search"
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual([]);
+  });
 });
