@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./site/assets/brand/source/ivan-blog-wordmark-dark.svg" />
     <source media="(prefers-color-scheme: light)" srcset="./site/assets/brand/source/ivan-blog-wordmark-light.svg" />
-    <img src="./site/assets/brand/source/ivan-blog-wordmark-light.svg" width="420" alt="Ivan's Blog wordmark" />
+    <img src="./site/assets/brand/source/ivan-blog-wordmark-light.svg" width="500" alt="Ivan's Blog wordmark" />
   </picture>
 </p>
 

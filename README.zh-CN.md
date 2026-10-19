@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./site/assets/brand/source/ivan-blog-wordmark-dark.svg" />
     <source media="(prefers-color-scheme: light)" srcset="./site/assets/brand/source/ivan-blog-wordmark-light.svg" />
-    <img src="./site/assets/brand/source/ivan-blog-wordmark-light.svg" width="420" alt="Ivan's Blog 完整文字标志" />
+    <img src="./site/assets/brand/source/ivan-blog-wordmark-light.svg" width="500" alt="Ivan's Blog 完整文字标志" />
   </picture>
 </p>
 
