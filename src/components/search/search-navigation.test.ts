@@ -41,22 +41,25 @@ describe("search navigation", () => {
     ).toBe(false);
   });
 
-  test("keeps the full Playbook edition identity in shareable URLs", () => {
-    const playbook = {
-      edition: "a".repeat(64),
-      sourceReleaseId: "42",
-      sourceTag: "v3.0.0",
-    };
+  test("removes legacy Playbook identity from shareable URLs", () => {
     const href = buildSearchHref(
-      "http://example.test/search?q=Node",
+      "http://example.test/search?q=Node&edition=stale&sourceReleaseId=42&sourceTag=unknown",
       "SQLite",
       "rag",
-      "all",
-      playbook
+      "all"
     );
-    expect(new URL(href).searchParams.get("edition")).toBe(playbook.edition);
-    expect(new URL(href).searchParams.get("sourceReleaseId")).toBe("42");
-    expect(new URL(href).searchParams.get("sourceTag")).toBe("v3.0.0");
-    expect(shouldPushSearchHref(href, "SQLite", "rag", "all", playbook)).toBe(false);
+    const params = new URL(href).searchParams;
+    expect(params.get("edition")).toBeNull();
+    expect(params.get("sourceReleaseId")).toBeNull();
+    expect(params.get("sourceTag")).toBeNull();
+    expect(
+      shouldPushSearchHref(
+        "http://example.test/search?q=SQLite&mode=rag&edition=stale&sourceReleaseId=42&sourceTag=unknown",
+        "SQLite",
+        "rag",
+        "all"
+      )
+    ).toBe(true);
+    expect(shouldPushSearchHref(href, "SQLite", "rag", "all")).toBe(false);
   });
 });
