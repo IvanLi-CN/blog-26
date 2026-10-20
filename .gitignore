@@ -75,6 +75,7 @@ old/
 # generated files
 src/generated/
 /public/version.json
+/output/imagegen/
 
 # logs
 *.log
