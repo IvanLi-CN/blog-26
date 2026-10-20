@@ -16,7 +16,7 @@
   <rect width="1774" height="887" fill="url(#background)" />
   <path d="M 82 102 H 1692" stroke="#b8cec3" stroke-width="2" opacity="0.68" />
   <text x="92" y="82" fill="#20352d" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="28" font-weight="700">Ivan's Blog</text>
-  <text x="1588" y="82" fill="#557269" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="25" text-anchor="end">ivanli.cc</text>
+  <text x="1682" y="82" fill="#557269" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="25" text-anchor="end">ivanli.cc</text>
 
   <text x="82" y="336" fill="#112a20" font-family="Avenir Next, Helvetica Neue, sans-serif" font-size="74" font-weight="700">
     <tspan x="82" dy="0">One knowledge base.</tspan>
