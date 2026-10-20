@@ -289,6 +289,7 @@ export class ClippingStore {
     const manifest = await this.manifest(id);
     const version = manifest?.versions.find((candidate) => candidate.id === versionId);
     if (version?.resources.some((resource) => resource.path === resourcePath)) return;
+    this.beforePublish?.();
     try {
       await rm(
         this.path(
@@ -309,6 +310,7 @@ export class ClippingStore {
     const manifest = await this.manifest(id);
     const version = manifest?.versions.find((candidate) => candidate.id === versionId);
     if (version?.sourceHash === sourceHash) return;
+    this.beforePublish?.();
     try {
       await rm(this.path(id, identitySchema.parse(versionId), "source.md"), { force: true });
     } catch {
@@ -339,6 +341,21 @@ export class ClippingStore {
       const version = manifest?.versions.find((candidate) => candidate.id === versionEntry.name);
       const versionPath = join(idPath, versionEntry.name);
       if (!version) {
+        await rm(versionPath, { recursive: true, force: true });
+        continue;
+      }
+      let sourceReferenced = false;
+      if (version.sourceHash) {
+        try {
+          const source = await readFile(join(versionPath, "source.md"));
+          sourceReferenced =
+            createHash("sha256").update(source).digest("hex") === version.sourceHash;
+        } catch (error) {
+          if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT"))
+            throw error;
+        }
+      }
+      if (version.sourceHash && !sourceReferenced) {
         await rm(join(versionPath, "source.md"), { force: true });
       }
       let assets: import("node:fs").Dirent[];

@@ -15,6 +15,7 @@ import { buildPublicSnapshot, writePublicSnapshot } from "@/public-site/snapshot
 import type { TRPCContext } from "@/server/context";
 import { runWithMcpAuth } from "@/server/mcp-auth-context";
 import { memosRouter } from "@/server/routers/memos";
+import { handlePublicApiRequest } from "../public-api/router";
 import { handleClippingRequest, handleClippingResourceRequest } from "./api";
 import { ClippingService } from "./service";
 import {
@@ -221,6 +222,18 @@ test("versioned clipping resources enforce ownership and public visibility", asy
   } finally {
     await writeFile(join(root, "authored", id), raw);
   }
+});
+
+test("public API router dispatches captured clipping resources", async () => {
+  const response = await handlePublicApiRequest(
+    new Request(
+      `http://localhost/api/public/memos/clip/clipping/assets/${versionId}/${resourceFilename}`
+    ),
+    `/memos/clip/clipping/assets/${versionId}/${resourceFilename}`
+  );
+  expect(response.status).toBe(200);
+  expect(response.headers.get("content-type")).toBe("image/png");
+  expect(await response.text()).toBe("captured image");
 });
 
 test("resource facade rejects an SVG path when the manifest MIME is missing", async () => {

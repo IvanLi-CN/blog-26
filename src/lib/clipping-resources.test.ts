@@ -30,3 +30,14 @@ test("removes uncaptured media from legacy public clipping prose", () => {
     )
   ).toBe("Hero 资源抓取失败：媒体 资源抓取失败：视频");
 });
+
+test("removes external markdown media with balanced URLs and references", () => {
+  const external = "https://cdn.example/image(1).png";
+  const output = stripUncapturedClippingMedia(
+    `![Parenthesized](${external})\n\n![Referenced][hero]\n\n[hero]: ${external}`
+  );
+  expect(output).toContain("Parenthesized");
+  expect(output).toContain("Referenced");
+  expect(output).not.toContain(external);
+  expect(output).not.toContain("[hero]:");
+});

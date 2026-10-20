@@ -1,3 +1,8 @@
+import type { Nodes, Root } from "mdast";
+import remarkParse from "remark-parse";
+import { unified } from "unified";
+import { visit } from "unist-util-visit";
+
 const CLIPPING_RESOURCE_REFERENCE_RE = /^(?:\.\/)?assets\/([a-f0-9]{64}\.[a-z0-9]+)([?#].*)?$/iu;
 export const CLIPPING_RESOURCE_MAX_BYTES = 20 * 1024 * 1024;
 export const CLIPPING_RESOURCE_MAX_TOTAL_BYTES = 128 * 1024 * 1024;
@@ -20,13 +25,53 @@ const SAFE_CLIPPING_RESOURCE_MIME_TYPES = new Set([
   "video/webm",
 ]);
 const CLIPPING_MARKDOWN_MEDIA_RE =
-  /!\[([^\]]*)\]\(\s*(?:https?:\/\/[^\s)]+|\.\/assets\/[a-f0-9]{64}\.[a-z0-9]+)(?:\s+"[^"]*")?\s*\)/giu;
+  /!\[([^\]]*)\]\(\s*(?:https?:\/\/[^\s)]+|(?:\.\/)?assets\/[a-f0-9]{64}\.[a-z0-9]+)(?:\s+"[^"]*")?\s*\)/giu;
 const CLIPPING_HTML_MEDIA_RE =
   /<(?<tag>img|source|video|audio|track)\b[^>]*>[\s\S]*?<\/\k<tag>\s*>|<(?<single>img|source|video|audio|track)\b[^>]*\/?>(?![\s\S]*<\/\k<single>\s*>)/giu;
+const clippingMarkdownParser = unified().use(remarkParse);
+
+function nodeRange(node: Nodes) {
+  const start = node.position?.start.offset;
+  const end = node.position?.end.offset;
+  return start === undefined || end === undefined ? null : { start, end };
+}
+
+function stripMarkdownMedia(markdown: string) {
+  const tree = clippingMarkdownParser.parse(markdown) as Root;
+  const definitions = new Map<string, Nodes>();
+  const replacements = new Map<number, { end: number; text: string }>();
+  visit(tree, "definition", (node) => {
+    if (node.type === "definition") definitions.set(node.identifier, node);
+  });
+  visit(tree, ["image", "imageReference"], (node) => {
+    if (node.type !== "image" && node.type !== "imageReference") return;
+    const definition =
+      node.type === "imageReference" ? definitions.get(node.identifier) : undefined;
+    const url =
+      node.type === "image" ? node.url : definition?.type === "definition" ? definition.url : null;
+    if (url && CLIPPING_RESOURCE_REFERENCE_RE.test(url.trim())) return;
+    const range = nodeRange(node);
+    if (!range) return;
+    replacements.set(range.start, {
+      end: range.end,
+      text: node.alt?.trim() || "资源抓取失败：图片",
+    });
+    const definitionRange = definition && nodeRange(definition);
+    if (definitionRange)
+      replacements.set(definitionRange.start, { end: definitionRange.end, text: "" });
+  });
+  return [...replacements.entries()]
+    .sort(([left], [right]) => right - left)
+    .reduce(
+      (value, [start, replacement]) =>
+        value.slice(0, start) + replacement.text + value.slice(replacement.end),
+      markdown
+    );
+}
 
 /** Keep legacy clipping prose readable without publishing uncaptured media URLs. */
 export function stripUncapturedClippingMedia(markdown: string) {
-  return markdown
+  return stripMarkdownMedia(markdown)
     .replace(
       CLIPPING_MARKDOWN_MEDIA_RE,
       (_match, alt: string) => alt.trim() || "资源抓取失败：图片"

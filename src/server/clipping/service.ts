@@ -506,18 +506,20 @@ export class ClippingService {
             stored.sourceHash = sourceHash;
           });
         } catch (error) {
-          const restoreSource =
-            committedSource === null
-              ? this.store
-                  .removeSourceIfUnreferenced(id, version.id, sourceHash)
-                  .catch(() => undefined)
-              : this.store.write(id, version.id, "source", committedSource).catch(() => undefined);
-          await Promise.all([
-            ...writtenResources.map((resourcePath) =>
-              this.store.removeResourceIfUnreferenced(id, version.id, resourcePath)
-            ),
-            restoreSource,
-          ]);
+          await this.runtime
+            .exclusive(async () => {
+              const restoreSource =
+                committedSource === null
+                  ? this.store.removeSourceIfUnreferenced(id, version.id, sourceHash)
+                  : this.store.write(id, version.id, "source", committedSource);
+              await Promise.all([
+                ...writtenResources.map((resourcePath) =>
+                  this.store.removeResourceIfUnreferenced(id, version.id, resourcePath)
+                ),
+                restoreSource,
+              ]);
+            })
+            .catch(() => undefined);
           throw error;
         }
       }

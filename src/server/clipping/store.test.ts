@@ -278,9 +278,77 @@ test("cleans source files left for removed versions", async () => {
       })
     );
     await store.write(id, version, "source", "orphan");
+    await store.write(id, version, "summary", "orphan summary");
+    await store.write(id, version, "translation", "orphan translation");
+    await store.write(id, version, 0, "orphan segment");
     await access(join(root, "materials", id, version, "source.md"));
     await store.cleanupUnreferencedResources(id);
     await expect(access(join(root, "materials", id, version, "source.md"))).rejects.toThrow();
+    await expect(access(join(root, "materials", id, version, "summary.md"))).rejects.toThrow();
+    await expect(access(join(root, "materials", id, version, "translation.md"))).rejects.toThrow();
+    await expect(access(join(root, "materials", id, version, "segments/0.md"))).rejects.toThrow();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cleans source files that are not referenced by the committed version hash", async () => {
+  const root = await fixture();
+  try {
+    const store = new ClippingStore();
+    const id = "11111111-1111-4111-8111-111111111111";
+    const version = "22222222-2222-4222-8222-222222222222";
+    const committed = "committed source";
+    await store.save(
+      clippingManifestSchema.parse({
+        schemaVersion: 1,
+        id,
+        memoId: "Memos/one.md",
+        creatorId: null,
+        revision: 1,
+        enabled: true,
+        deleted: false,
+        targetUrl: "https://example.com/article",
+        conversationId: null,
+        previousConversations: [],
+        currentVersionId: version,
+        activeVersionId: version,
+        versions: [
+          {
+            id: version,
+            revision: 1,
+            targetUrl: "https://example.com/article",
+            createdAt: 1,
+            sourceHash: createHash("sha256").update(committed).digest("hex"),
+          },
+        ],
+      })
+    );
+    await store.write(id, version, "source", "orphan source");
+    await store.cleanupUnreferencedResources(id);
+    await expect(access(join(root, "materials", id, version, "source.md"))).rejects.toThrow();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("does not delete unreferenced resources after ownership is lost", async () => {
+  const root = await fixture();
+  try {
+    const store = new ClippingStore();
+    const id = "11111111-1111-4111-8111-111111111111";
+    const version = "22222222-2222-4222-8222-222222222222";
+    const body = Buffer.from("orphan");
+    const hash = createHash("sha256").update(body).digest("hex");
+    const resourcePath = `assets/${hash}.png`;
+    await store.writeResource(id, version, resourcePath, body);
+    store.beforePublish = () => {
+      throw new Error("ownership lost");
+    };
+    await expect(store.removeResourceIfUnreferenced(id, version, resourcePath)).rejects.toThrow(
+      "ownership lost"
+    );
+    expect(await readFile(join(root, "materials", id, version, resourcePath))).toEqual(body);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
