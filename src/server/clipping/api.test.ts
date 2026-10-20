@@ -253,6 +253,30 @@ test("resource facade rejects an SVG path when the manifest MIME is missing", as
   }
 });
 
+test("resource facade rejects captured files from an incomplete version", async () => {
+  const manifest = await store.manifest(clippingId);
+  if (!manifest) throw new Error("Fixture manifest is missing");
+  const version = manifest.versions.find((candidate) => candidate.id === versionId);
+  if (!version) throw new Error("Fixture version is missing");
+  version.resourcesCaptured = false;
+  await store.save(manifest);
+  try {
+    const response = await handleClippingResourceRequest(
+      new Request(
+        `http://localhost/api/public/memos/clip/clipping/assets/${versionId}/${resourceFilename}`
+      ),
+      "clip",
+      versionId,
+      resourceFilename,
+      context("guest")
+    );
+    expect(response.status).toBe(404);
+  } finally {
+    version.resourcesCaptured = true;
+    await store.save(manifest);
+  }
+});
+
 test("public reading exposes only materials; conversation is restricted to creator and admin and history/restore are absent", async () => {
   const reading = await (await request("", "guest")).json();
   expect(reading.source).toContain("Source.");

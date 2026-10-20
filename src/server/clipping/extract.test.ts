@@ -244,15 +244,22 @@ describe("article extraction", () => {
                 status: 200,
                 contentType: "text/html",
                 body: Buffer.from(
-                  `<article><h1>Audio</h1><p>${prose}</p><audio src="/download.html"></audio></article>`
+                  `<article><h1>Audio</h1><p>${prose}</p><audio src="/download.html"></audio><video src="/film.html"></video></article>`
                 ),
               }
-            : { status: 200, contentType: "audio/mp4", body: Buffer.from("audio") },
+            : {
+                status: 200,
+                contentType: url.pathname === "/film.html" ? "video/mpeg" : "audio/mp4",
+                body: Buffer.from(url.pathname === "/film.html" ? "film" : "audio"),
+              },
       },
     });
 
-    expect(article.resources?.[0]?.path).toMatch(/\.mp4$/u);
-    expect(article.resources?.[0]?.path).not.toMatch(/\.html$/u);
+    expect(article.resources).toHaveLength(2);
+    expect(article.resources?.map((resource) => resource.path)).toEqual(
+      expect.arrayContaining([expect.stringMatching(/\.mp4$/u), expect.stringMatching(/\.mpeg$/u)])
+    );
+    expect(article.resources?.every((resource) => !resource.path?.endsWith(".html"))).toBe(true);
   });
 
   test("rejects active or unknown media formats and removes failed tracks", async () => {

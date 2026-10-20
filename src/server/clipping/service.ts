@@ -162,8 +162,6 @@ export class ClippingService {
           throw error;
       }
     }
-    for (const id of new Set(service.known.values()))
-      await service.store.cleanupUnreferencedResources(id);
     service.runtime = await AgentRuntimeFacade.open({
       path: options.runtimePath ?? clippingStoragePaths().runtime,
       resolveModel: options.resolveModel ?? resolveModel,
@@ -174,6 +172,7 @@ export class ClippingService {
     });
     service.store.beforePublish = () => service.runtime.assertOwnership();
     try {
+      await service.runtime.exclusive(() => service.store.cleanupAllUnreferencedResources());
       await service.scan(true);
       service.timer = setInterval(
         () =>

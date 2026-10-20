@@ -71,7 +71,8 @@ export async function handleClippingResourceRequest(
   if (!projection || projection.reading.versionId !== versionId)
     return new Response("Not Found", { status: 404 });
   const version = authorized.manifest.versions.find((candidate) => candidate.id === versionId);
-  const resource = version?.resources.find(
+  if (!version?.resourcesCaptured) return new Response("Not Found", { status: 404 });
+  const resource = version.resources.find(
     (candidate) => candidate.status === "captured" && candidate.path === `assets/${safeFilename}`
   );
   if (!resource) return new Response("Not Found", { status: 404 });

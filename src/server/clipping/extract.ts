@@ -419,6 +419,7 @@ function resourceExtension(resource: { mimeType: string | null }) {
     "audio/ogg": "ogg",
     "audio/wav": "wav",
     "video/mp4": "mp4",
+    "video/mpeg": "mpeg",
     "video/ogg": "ogv",
     "video/quicktime": "mov",
     "video/webm": "webm",

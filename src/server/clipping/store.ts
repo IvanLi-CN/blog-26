@@ -336,9 +336,14 @@ export class ClippingStore {
     for (const versionEntry of versions) {
       if (!versionEntry.isDirectory() || !identitySchema.safeParse(versionEntry.name).success)
         continue;
+      const version = manifest?.versions.find((candidate) => candidate.id === versionEntry.name);
+      const versionPath = join(idPath, versionEntry.name);
+      if (!version) {
+        await rm(join(versionPath, "source.md"), { force: true });
+      }
       let assets: import("node:fs").Dirent[];
       try {
-        assets = await readdir(join(idPath, versionEntry.name, "assets"), {
+        assets = await readdir(join(versionPath, "assets"), {
           withFileTypes: true,
         });
       } catch (error) {
@@ -355,9 +360,22 @@ export class ClippingStore {
         )
           continue;
         if (referenced.has(`${versionEntry.name}/${resourcePath}`)) continue;
-        await rm(join(idPath, versionEntry.name, resourcePath), { force: true });
+        await rm(join(versionPath, resourcePath), { force: true });
       }
     }
+  }
+
+  async cleanupAllUnreferencedResources() {
+    let entries: import("node:fs").Dirent[];
+    try {
+      entries = await readdir(this.root, { withFileTypes: true });
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return;
+      throw error;
+    }
+    for (const entry of entries)
+      if (entry.isDirectory() && identitySchema.safeParse(entry.name).success)
+        await this.cleanupUnreferencedResources(entry.name);
   }
 
   private async atomic(path: string, content: string | Uint8Array) {

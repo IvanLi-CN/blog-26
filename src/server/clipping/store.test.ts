@@ -254,6 +254,38 @@ test("cleans unreferenced assets left by a process crash", async () => {
   }
 });
 
+test("cleans source files left for removed versions", async () => {
+  const root = await fixture();
+  try {
+    const store = new ClippingStore();
+    const id = "11111111-1111-4111-8111-111111111111";
+    const version = "22222222-2222-4222-8222-222222222222";
+    await store.save(
+      clippingManifestSchema.parse({
+        schemaVersion: 1,
+        id,
+        memoId: "Memos/one.md",
+        creatorId: null,
+        revision: 1,
+        enabled: true,
+        deleted: false,
+        targetUrl: "https://example.com/article",
+        conversationId: null,
+        previousConversations: [],
+        currentVersionId: null,
+        activeVersionId: null,
+        versions: [],
+      })
+    );
+    await store.write(id, version, "source", "orphan");
+    await access(join(root, "materials", id, version, "source.md"));
+    await store.cleanupUnreferencedResources(id);
+    await expect(access(join(root, "materials", id, version, "source.md"))).rejects.toThrow();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("rejects oversized or truncated resource files before hashing", async () => {
   const root = await fixture();
   try {
