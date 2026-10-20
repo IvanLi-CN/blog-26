@@ -162,6 +162,8 @@ export class ClippingService {
           throw error;
       }
     }
+    for (const id of new Set(service.known.values()))
+      await service.store.cleanupUnreferencedResources(id);
     service.runtime = await AgentRuntimeFacade.open({
       path: options.runtimePath ?? clippingStoragePaths().runtime,
       resolveModel: options.resolveModel ?? resolveModel,
@@ -454,6 +456,7 @@ export class ClippingService {
         stored.error = null;
       });
       let source = await this.store.read(id, version.id, "source");
+      const committedSource = source;
       const needsCapture = !source || !version.sourceHash || !version.resourcesCaptured;
       if (
         needsCapture &&
@@ -504,11 +507,17 @@ export class ClippingService {
             stored.sourceHash = sourceHash;
           });
         } catch (error) {
+          const restoreSource =
+            committedSource === null
+              ? this.store
+                  .removeSourceIfUnreferenced(id, version.id, sourceHash)
+                  .catch(() => undefined)
+              : this.store.write(id, version.id, "source", committedSource).catch(() => undefined);
           await Promise.all([
             ...writtenResources.map((resourcePath) =>
               this.store.removeResourceIfUnreferenced(id, version.id, resourcePath)
             ),
-            this.store.removeSourceIfUnreferenced(id, version.id, sourceHash),
+            restoreSource,
           ]);
           throw error;
         }

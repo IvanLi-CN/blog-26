@@ -13,7 +13,12 @@ import ipaddr from "ipaddr.js";
 import { JSDOM } from "jsdom";
 import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
-import { isSafeClippingResourceMimeType } from "@/lib/clipping-resources";
+import {
+  CLIPPING_RESOURCE_MAX_BYTES,
+  CLIPPING_RESOURCE_MAX_COUNT,
+  CLIPPING_RESOURCE_MAX_TOTAL_BYTES,
+  isSafeClippingResourceMimeType,
+} from "@/lib/clipping-resources";
 
 export class ClippingFetchError extends Error {
   constructor(
@@ -277,9 +282,6 @@ export async function fetchArticleHtml(
   }
 }
 
-export const CLIPPING_RESOURCE_MAX_BYTES = 20 * 1024 * 1024;
-export const CLIPPING_RESOURCE_MAX_TOTAL_BYTES = 128 * 1024 * 1024;
-export const CLIPPING_RESOURCE_MAX_COUNT = 64;
 export const CLIPPING_CAPTURE_TIMEOUT_MS = 2 * 60 * 1000;
 
 type PreparedArticle = {
@@ -369,7 +371,7 @@ function convertArticleToMarkdown(content: string) {
   });
   converter.use(gfm);
   converter.addRule("articleMedia", {
-    filter: (node) => ["PICTURE", "VIDEO", "AUDIO"].includes(node.nodeName),
+    filter: (node) => ["IMG", "PICTURE", "VIDEO", "AUDIO"].includes(node.nodeName),
     replacement: (_content, node) => `\n\n${node.outerHTML}\n\n`,
   });
   converter.addRule("articleCode", {
@@ -404,14 +406,15 @@ function articleWarning(prepared: PreparedArticle, markdown: string, failedResou
   return warning ? `${warning} ${resourceWarning}` : resourceWarning;
 }
 
-function resourceExtension(resource: { finalUrl: string; mimeType: string | null }) {
+function resourceExtension(resource: { mimeType: string | null }) {
   const mimeExtensions: Record<string, string> = {
     "image/avif": "avif",
+    "image/apng": "apng",
     "image/gif": "gif",
     "image/jpeg": "jpg",
     "image/png": "png",
-    "image/svg+xml": "svg",
     "image/webp": "webp",
+    "audio/mp4": "mp4",
     "audio/mpeg": "mp3",
     "audio/ogg": "ogg",
     "audio/wav": "wav",
@@ -420,15 +423,9 @@ function resourceExtension(resource: { finalUrl: string; mimeType: string | null
     "video/quicktime": "mov",
     "video/webm": "webm",
   };
-  if (resource.mimeType && mimeExtensions[resource.mimeType])
-    return mimeExtensions[resource.mimeType];
-  try {
-    const extension = new URL(resource.finalUrl).pathname.match(/\.([a-z0-9]{1,8})$/iu)?.[1];
-    if (extension) return extension.toLowerCase();
-  } catch {
-    /* Fall back to a content-addressed binary extension. */
-  }
-  return "bin";
+  const extension = resource.mimeType ? mimeExtensions[resource.mimeType] : undefined;
+  if (!extension) throw new ClippingFetchError("正文资源格式无法安全保存。");
+  return extension;
 }
 
 function resourceError(error: unknown) {
@@ -498,6 +495,8 @@ async function fetchArticleResource(
           `正文资源返回 HTTP ${result.status}。`,
           result.status === 429 || result.status >= 500
         );
+      if (result.body.length > (options.maxResourceBytes ?? CLIPPING_RESOURCE_MAX_BYTES))
+        throw new ClippingFetchError("正文资源超过大小限制。");
       if (result.body.length === 0) throw new ClippingFetchError("正文资源为空。");
       const mimeType = result.contentType?.split(";", 1)[0]?.trim().toLowerCase() || null;
       if (!isSafeClippingResourceMimeType(mimeType))
@@ -555,22 +554,22 @@ async function localizeArticleResources(
           error: "正文资源总大小超过限制。",
         };
       } else {
+        const reservedBytes = Math.min(
+          options.maxResourceBytes ?? CLIPPING_RESOURCE_MAX_BYTES,
+          maxTotal - totalBytes
+        );
+        totalBytes += reservedBytes;
         try {
           const fetched = await fetchArticleResource(
             normalizedUrl,
             prepared.url,
             {
               ...options,
-              maxResourceBytes: Math.min(
-                options.maxResourceBytes ?? CLIPPING_RESOURCE_MAX_BYTES,
-                maxTotal - totalBytes
-              ),
+              maxResourceBytes: reservedBytes,
             },
             dependencies
           );
-          if (totalBytes + fetched.body.length > maxTotal)
-            throw new ClippingFetchError("正文资源总大小超过限制。");
-          totalBytes += fetched.body.length;
+          totalBytes += fetched.body.length - reservedBytes;
           const id = createHash("sha256").update(fetched.body).digest("hex");
           const extension = resourceExtension(fetched);
           record = {
@@ -585,7 +584,8 @@ async function localizeArticleResources(
             body: fetched.body,
           };
         } catch (error) {
-          if (options.signal?.aborted) throw error;
+          if (options.signal?.aborted || (error instanceof ClippingFetchError && error.retryable))
+            throw error;
           record = {
             id: failedId,
             originalUrl: normalizedUrl,

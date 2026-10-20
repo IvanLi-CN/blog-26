@@ -208,6 +208,53 @@ describe("article extraction", () => {
     ).toBe(true);
   });
 
+  test("preserves responsive candidates from standalone images", async () => {
+    const article = await fetchArticle("https://article.example/page", {
+      dependencies: {
+        resolve: async () => [{ address: "1.1.1.1", family: 4 }],
+        request: async (url) =>
+          url.pathname === "/page"
+            ? {
+                status: 200,
+                contentType: "text/html",
+                body: Buffer.from(
+                  `<article><h1>Responsive image</h1><p>${prose}</p><img src="/one.png" srcset="/two.png 2x"></article>`
+                ),
+              }
+            : {
+                status: 200,
+                contentType: "image/png",
+                body: Buffer.from(url.pathname === "/one.png" ? "one" : "two"),
+              },
+      },
+    });
+
+    expect(article.resources).toHaveLength(2);
+    expect(article.markdown).toContain("<img");
+    expect(article.markdown.match(/\.\/assets\/[a-f0-9]{64}\.png/gu)).toHaveLength(2);
+  });
+
+  test("uses a safe extension derived from the validated MIME type", async () => {
+    const article = await fetchArticle("https://article.example/page", {
+      dependencies: {
+        resolve: async () => [{ address: "1.1.1.1", family: 4 }],
+        request: async (url) =>
+          url.pathname === "/page"
+            ? {
+                status: 200,
+                contentType: "text/html",
+                body: Buffer.from(
+                  `<article><h1>Audio</h1><p>${prose}</p><audio src="/download.html"></audio></article>`
+                ),
+              }
+            : { status: 200, contentType: "audio/mp4", body: Buffer.from("audio") },
+      },
+    });
+
+    expect(article.resources?.[0]?.path).toMatch(/\.mp4$/u);
+    expect(article.resources?.[0]?.path).not.toMatch(/\.html$/u);
+  });
+
   test("rejects active or unknown media formats and removes failed tracks", async () => {
     const article = await fetchArticle("https://article.example/page", {
       dependencies: {
@@ -259,6 +306,32 @@ describe("article extraction", () => {
     expect(requests.filter((path) => path !== "/page")).toHaveLength(1);
     expect(article.resources?.filter((resource) => resource.status === "captured")).toHaveLength(1);
     expect(article.resources?.filter((resource) => resource.status === "failed")).toHaveLength(1);
+  });
+
+  test("charges failed resource attempts against the shared budget", async () => {
+    const requests: string[] = [];
+    const article = await fetchArticle("https://article.example/page", {
+      maxResourceBytes: 4,
+      maxResourceTotalBytes: 8,
+      dependencies: {
+        resolve: async () => [{ address: "1.1.1.1", family: 4 }],
+        request: async (url) => {
+          requests.push(url.pathname);
+          return url.pathname === "/page"
+            ? {
+                status: 200,
+                contentType: "text/html",
+                body: Buffer.from(
+                  `<article><h1>Failed resources</h1><p>${prose}</p><img src="/one.png"><img src="/two.png"><img src="/three.png"></article>`
+                ),
+              }
+            : { status: 200, contentType: "image/png", body: Buffer.alloc(5) };
+        },
+      },
+    });
+
+    expect(requests.filter((path) => path !== "/page")).toHaveLength(2);
+    expect(article.resources?.every((resource) => resource.status === "failed")).toBe(true);
   });
 
   test("removes failed media URLs and leaves an explicit placeholder", async () => {

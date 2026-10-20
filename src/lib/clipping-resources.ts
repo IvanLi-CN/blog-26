@@ -1,4 +1,7 @@
 const CLIPPING_RESOURCE_REFERENCE_RE = /^(?:\.\/)?assets\/([a-f0-9]{64}\.[a-z0-9]+)([?#].*)?$/iu;
+export const CLIPPING_RESOURCE_MAX_BYTES = 20 * 1024 * 1024;
+export const CLIPPING_RESOURCE_MAX_TOTAL_BYTES = 128 * 1024 * 1024;
+export const CLIPPING_RESOURCE_MAX_COUNT = 64;
 const SAFE_CLIPPING_RESOURCE_MIME_TYPES = new Set([
   "audio/mpeg",
   "audio/mp4",

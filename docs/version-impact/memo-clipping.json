@@ -16,7 +16,7 @@
     "docs/runbooks/fs-only-migration.md": "5959459a1a36f52d1e460c6aa4264ae5bd52cd31",
     "docs/specs/README.md": "cc332e821388ec818a390ffcf84ee4f2ac23207e",
     "docs/specs/memo-clipping/HISTORY.md": "8824f2a27fdd68133cc36b7646100714184dbb89",
-    "docs/specs/memo-clipping/IMPLEMENTATION.md": "0d21915b1d6217900e4dd95118f5904e8c552012",
+    "docs/specs/memo-clipping/IMPLEMENTATION.md": "548829bc16bf47da39b0be4da425f43d084cbb3d",
     "docs/specs/memo-clipping/SPEC.md": "a6fccdf990108fd4fc42f1b3fcb07cbc7a33a71c",
     "docs/specs/memo-clipping/assets/detail-dark-1440.png": "7c8842afbdc424ec726016c2cb0243794a184a30",
     "docs/specs/memo-clipping/assets/detail-light-393.png": "0253e14b8d3690a397ad917d4583c28c804af4f5",
@@ -69,7 +69,7 @@
     "src/lib/ai/search.ts": "543cca5875bb118464251fa10c9e36b0be21b4a9",
     "src/lib/clipping-feed.ts": "7524d8715ce53802aa6742061e50d90feabb9ee4",
     "src/lib/clipping-resources.test.ts": "c9e0335cdb0351426aa197978d10681075d5ae0c",
-    "src/lib/clipping-resources.ts": "60304276ed3ef7bfe4030c64e988dcc143a16c93",
+    "src/lib/clipping-resources.ts": "8487be7c33254dea219780a7d2e7f6f009e32945",
     "src/lib/clipping-web-demo.ts": "ba7a3c371ac77c91aa6a7513635cd8aeafe691ce",
     "src/lib/content-sources/manager.ts": "c002fa05eca7d0d58792ce09f8f83283b92c308c",
     "src/lib/content-sources/utils.ts": "06aee000241f7e9055ecc760c70b47f761c88fd8",
@@ -84,10 +84,10 @@
     "src/server/clipping/agent-runtime.ts": "a8ead68b7114cc989f5b8b2b7f639692d3c23bc5",
     "src/server/clipping/api.test.ts": "53fd89695086935039b01db6627928e2f0dc193b",
     "src/server/clipping/api.ts": "0746629368dca19f1d96e1677e3380926e852ce1",
-    "src/server/clipping/article-segments.test.ts": "318ca39bbf9f9da0cdd9820e2ea13ba92ecbb1ca",
-    "src/server/clipping/article-segments.ts": "dc1ff3c55326de419f920a40279f53f1c5d4c7f3",
-    "src/server/clipping/extract.test.ts": "f37e27231d7e2769e4c28901a7649a7a0e0fa0c6",
-    "src/server/clipping/extract.ts": "a8b80860f081345ae8169e6e3378c3012ac948e9",
+    "src/server/clipping/article-segments.test.ts": "77fde805095f3ebd2478e6c258190eae40a97df7",
+    "src/server/clipping/article-segments.ts": "7bf73b79a27d9a2d7b5fa067b74146e4b14c567e",
+    "src/server/clipping/extract.test.ts": "a62eab851f48d367685e5a2f6f98ba9602872806",
+    "src/server/clipping/extract.ts": "7abd0eacc26d59be34486583089e83f545948d66",
     "src/server/clipping/pi-interruption.fixture.ts": "003e264deacd47bf54abf4e239afa8c7026044d6",
     "src/server/clipping/pi-sqlite.test.ts": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
     "src/server/clipping/pi-sqlite.ts": "4d2d67bdfa1ecc7ced9822562a1c0da0e67cd35d",
@@ -96,10 +96,10 @@
     "src/server/clipping/runtime.ts": "5b9e51409ac7d33a94749e7ec901f5c58da0abdd",
     "src/server/clipping/service-interruption.fixture.ts": "60ab2a7561a566f2471accee16247a054dab7416",
     "src/server/clipping/service-recovery.test.ts": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-    "src/server/clipping/service.test.ts": "5e616a71fc0098eafb6d23560b5cb560ba5cf5d8",
-    "src/server/clipping/service.ts": "2e37f9f092dec3d9d14b7dc6e4074c6a4abe53c2",
-    "src/server/clipping/store.test.ts": "ddd9281063b4e28749284c21467583e9f624635d",
-    "src/server/clipping/store.ts": "9ccd36b70ddf35f8ffc87ce5963f272cba82eea4",
+    "src/server/clipping/service.test.ts": "bb30f3da94cb6c43022f790a025abd6ff309ef0e",
+    "src/server/clipping/service.ts": "1255c0e0cfb8dee84a4b70fa95f4286600a02a20",
+    "src/server/clipping/store.test.ts": "a22ecaa98807e91f5f5dd7d49c57e001ac36f3a4",
+    "src/server/clipping/store.ts": "96595b379f66f84b7d192f121df41fbc266f6373",
     "src/server/clipping/turndown-gfm.d.ts": "b42f4bb08636ac5e3ee6fe4d33370816878a7b06",
     "src/server/mcp-auth-context.ts": "7729c8ce062cd5cdd034ba835b45857d6a56fcbf",
     "src/server/mcp-http.test.ts": "2b71d09f04e21817231be4723822839ba940f655",
@@ -142,12 +142,12 @@
         },
         {
           "path": "src/server/clipping/store.test.ts",
-          "blob": "ddd9281063b4e28749284c21467583e9f624635d",
+          "blob": "a22ecaa98807e91f5f5dd7d49c57e001ac36f3a4",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
-          "blob": "5e616a71fc0098eafb6d23560b5cb560ba5cf5d8",
+          "blob": "bb30f3da94cb6c43022f790a025abd6ff309ef0e",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
         },
         {
@@ -170,32 +170,32 @@
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "53fd89695086935039b01db6627928e2f0dc193b",
-          "command": "bun test clipping and release focused suites (110 passed; real model calls disabled)"
+          "command": "bun run test (1227 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "bun test clipping and release focused suites (110 passed; real model calls disabled)"
+          "command": "bun run test (1227 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/store.test.ts",
-          "blob": "ddd9281063b4e28749284c21467583e9f624635d",
-          "command": "bun test clipping and release focused suites (110 passed; real model calls disabled)"
+          "blob": "a22ecaa98807e91f5f5dd7d49c57e001ac36f3a4",
+          "command": "bun run test (1227 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
-          "blob": "5e616a71fc0098eafb6d23560b5cb560ba5cf5d8",
-          "command": "bun test clipping and release focused suites (110 passed; real model calls disabled)"
+          "blob": "bb30f3da94cb6c43022f790a025abd6ff309ef0e",
+          "command": "bun run test (1227 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "bun test clipping and release focused suites (110 passed; real model calls disabled)"
+          "command": "bun run test (1227 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
-          "command": "bun test clipping and release focused suites (110 passed; real model calls disabled)"
+          "command": "bun run test (1227 passed, 67 skipped; real model calls disabled)"
         }
       ],
       "scope_drift": {
@@ -211,32 +211,32 @@
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "53fd89695086935039b01db6627928e2f0dc193b",
-          "command": "bun test clipping and release focused suites (110 passed; real model calls disabled)"
+          "command": "bun run test (1227 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "bun test clipping and release focused suites (110 passed; real model calls disabled)"
+          "command": "bun run test (1227 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/store.test.ts",
-          "blob": "ddd9281063b4e28749284c21467583e9f624635d",
-          "command": "bun test clipping and release focused suites (110 passed; real model calls disabled)"
+          "blob": "a22ecaa98807e91f5f5dd7d49c57e001ac36f3a4",
+          "command": "bun run test (1227 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
-          "blob": "5e616a71fc0098eafb6d23560b5cb560ba5cf5d8",
-          "command": "bun test clipping and release focused suites (110 passed; real model calls disabled)"
+          "blob": "bb30f3da94cb6c43022f790a025abd6ff309ef0e",
+          "command": "bun run test (1227 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "bun test clipping and release focused suites (110 passed; real model calls disabled)"
+          "command": "bun run test (1227 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
-          "command": "bun test clipping and release focused suites (110 passed; real model calls disabled)"
+          "command": "bun run test (1227 passed, 67 skipped; real model calls disabled)"
         }
       ]
     }
@@ -250,12 +250,12 @@
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "53fd89695086935039b01db6627928e2f0dc193b",
-          "command": "bun test clipping and release focused suites (110 passed; real model calls disabled)"
+          "command": "bun run test (1227 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "bun test clipping and release focused suites (110 passed; real model calls disabled)"
+          "command": "bun run test (1227 passed, 67 skipped; real model calls disabled)"
         }
       ]
     },
@@ -268,23 +268,23 @@
       "evidence": [
         {
           "path": "src/server/clipping/store.test.ts",
-          "blob": "ddd9281063b4e28749284c21467583e9f624635d",
-          "command": "bun test clipping and release focused suites (110 passed; real model calls disabled)"
+          "blob": "a22ecaa98807e91f5f5dd7d49c57e001ac36f3a4",
+          "command": "bun run test (1227 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
-          "blob": "5e616a71fc0098eafb6d23560b5cb560ba5cf5d8",
-          "command": "bun test clipping and release focused suites (110 passed; real model calls disabled)"
+          "blob": "bb30f3da94cb6c43022f790a025abd6ff309ef0e",
+          "command": "bun run test (1227 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "bun test clipping and release focused suites (110 passed; real model calls disabled)"
+          "command": "bun run test (1227 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
-          "command": "bun test clipping and release focused suites (110 passed; real model calls disabled)"
+          "command": "bun run test (1227 passed, 67 skipped; real model calls disabled)"
         }
       ]
     }

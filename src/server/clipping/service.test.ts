@@ -326,6 +326,52 @@ describe("clipping lifecycle and canonical content", () => {
     }
   });
 
+  test("restores the committed source when a recapture checkpoint fails", async () => {
+    const data = await fixture();
+    let service: ClippingService | undefined;
+    try {
+      service = await ClippingService.open(data.options);
+      await service.idle();
+      const clippingId = "11111111-1111-4111-8111-111111111111";
+      const before = await data.store.manifest(clippingId);
+      const committedVersionId = before?.activeVersionId;
+      if (!before || !committedVersionId) throw new Error("Missing committed clipping version");
+      const storedVersion = before.versions.find((version) => version.id === committedVersionId);
+      if (!storedVersion) throw new Error("Missing stored clipping version");
+      storedVersion.resourcesCaptured = false;
+      storedVersion.resources = [];
+      storedVersion.sourceHash = null;
+      storedVersion.status = "queued";
+      storedVersion.summaryState = "pending";
+      storedVersion.translationState = "pending";
+      await data.store.save(before);
+      await service.close();
+      service = undefined;
+      const originalCapture = data.options.capture;
+      const originalSave = data.store.save.bind(data.store);
+      let failCheckpoint = false;
+      data.options.capture = async (target, signal) => {
+        const article = await originalCapture(target, signal);
+        failCheckpoint = true;
+        return { ...article, markdown: `${article.markdown}\n\nNew capture content.` };
+      };
+      data.store.save = async (manifest) => {
+        if (failCheckpoint && manifest.versions.at(-1)?.resourcesCaptured)
+          throw new Error("checkpoint failed");
+        return originalSave(manifest);
+      };
+
+      service = await ClippingService.open(data.options);
+      await service.idle();
+      const after = await data.store.manifest(clippingId);
+      expect(after?.activeVersionId).toBe(committedVersionId);
+      expect(await data.store.read(clippingId, committedVersionId, "source")).toBe(data.source);
+    } finally {
+      await service?.close();
+      await data.cleanup();
+    }
+  });
+
   test("coalesces repeated reprocess requests while the active version is running", async () => {
     const data = await fixture();
     let service: ClippingService | undefined;

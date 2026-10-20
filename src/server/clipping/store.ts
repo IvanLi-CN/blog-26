@@ -1,10 +1,21 @@
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { renameSync } from "node:fs";
-import { link, mkdir, readFile, realpath, rm, unlink, writeFile } from "node:fs/promises";
+import {
+  link,
+  mkdir,
+  open,
+  readdir,
+  readFile,
+  realpath,
+  rm,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import matter from "gray-matter";
 import { z } from "zod";
 import { getActiveLocalBasePath } from "@/config/paths";
+import { CLIPPING_RESOURCE_MAX_BYTES } from "@/lib/clipping-resources";
 import {
   type ClippingReading,
   composeClippingMemo,
@@ -238,24 +249,28 @@ export class ClippingStore {
 
   async readResource(id: string, versionId: string, resource: ClippingResource) {
     if (resource.status !== "captured" || !resource.path) return null;
+    if (!Number.isSafeInteger(resource.bytes) || resource.bytes < 0) return null;
+    if (resource.bytes > CLIPPING_RESOURCE_MAX_BYTES) return null;
+    const path = this.path(
+      id,
+      identitySchema.parse(versionId),
+      clippingResourcePathSchema.parse(resource.path)
+    );
+    let handle: Awaited<ReturnType<typeof open>> | undefined;
     try {
-      const body = await readFile(
-        this.path(
-          id,
-          identitySchema.parse(versionId),
-          clippingResourcePathSchema.parse(resource.path)
-        )
-      );
-      if (
-        body.byteLength !== resource.bytes ||
-        createHash("sha256").update(body).digest("hex") !== resource.id
-      )
-        return null;
+      handle = await open(path, "r");
+      const buffer = Buffer.alloc(resource.bytes + 1);
+      const { bytesRead } = await handle.read(buffer, 0, buffer.byteLength, 0);
+      if (bytesRead !== resource.bytes) return null;
+      const body = buffer.subarray(0, bytesRead);
+      if (createHash("sha256").update(body).digest("hex") !== resource.id) return null;
       return body;
     } catch (error) {
       if (error && typeof error === "object" && "code" in error && error.code === "ENOENT")
         return null;
       throw error;
+    } finally {
+      if (handle) await handle.close().catch(() => undefined);
     }
   }
 
@@ -272,12 +287,8 @@ export class ClippingStore {
 
   async removeResourceIfUnreferenced(id: string, versionId: string, resourcePath: string) {
     const manifest = await this.manifest(id);
-    if (
-      manifest?.versions.some((version) =>
-        version.resources.some((resource) => resource.path === resourcePath)
-      )
-    )
-      return;
+    const version = manifest?.versions.find((candidate) => candidate.id === versionId);
+    if (version?.resources.some((resource) => resource.path === resourcePath)) return;
     try {
       await rm(
         this.path(
@@ -302,6 +313,50 @@ export class ClippingStore {
       await rm(this.path(id, identitySchema.parse(versionId), "source.md"), { force: true });
     } catch {
       /* Cleanup is best effort after a failed atomic checkpoint. */
+    }
+  }
+
+  async cleanupUnreferencedResources(id: string) {
+    const idPath = this.path(id);
+    const manifest = await this.manifest(id);
+    const referenced = new Set(
+      (manifest?.versions ?? []).flatMap((version) =>
+        version.resources
+          .filter((resource) => resource.status === "captured" && resource.path)
+          .map((resource) => `${version.id}/${resource.path}`)
+      )
+    );
+    let versions: import("node:fs").Dirent[];
+    try {
+      versions = await readdir(idPath, { withFileTypes: true });
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return;
+      throw error;
+    }
+    for (const versionEntry of versions) {
+      if (!versionEntry.isDirectory() || !identitySchema.safeParse(versionEntry.name).success)
+        continue;
+      let assets: import("node:fs").Dirent[];
+      try {
+        assets = await readdir(join(idPath, versionEntry.name, "assets"), {
+          withFileTypes: true,
+        });
+      } catch (error) {
+        if (error && typeof error === "object" && "code" in error && error.code === "ENOENT")
+          continue;
+        throw error;
+      }
+      for (const asset of assets) {
+        if (!asset.isFile()) continue;
+        const resourcePath = `assets/${asset.name}`;
+        if (
+          !resourcePath.endsWith(".tmp") &&
+          !clippingResourcePathSchema.safeParse(resourcePath).success
+        )
+          continue;
+        if (referenced.has(`${versionEntry.name}/${resourcePath}`)) continue;
+        await rm(join(idPath, versionEntry.name, resourcePath), { force: true });
+      }
     }
   }
 
