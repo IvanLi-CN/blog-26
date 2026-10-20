@@ -11,7 +11,7 @@
     "docs/specs/search-relevance/assets/progressive-search-waiting-desktop.png": "4f2c129a39bee71f61f7fbdc51735efbb3dc9f07",
     "docs/specs/search-relevance/assets/progressive-search-waiting-mobile.png": "5078c95e05cf2acb802b8cc6e57bc561c1eb3eb2",
     "site/components/SearchPageIsland.tsx": "dde088e6a1fdf284c185ee87db6f61a0b7856958",
-    "src/components/search/PublicSearchPage.stories.tsx": "1b00a4e94c147a6b29e58f56718f35b704d67124",
+    "src/components/search/PublicSearchPage.stories.tsx": "4e982094e4934b35136ef18b6520afa762575d89",
     "src/components/search/PublicSearchPage.tsx": "e5dab259cd78ba98723408d800a34962fd86758d",
     "src/lib/web-demo-fetch.ts": "5e457b6e4c4c6ba335c67cdd4356f31de65a0872",
     "src/server/public-api/router.ts": "21831baf5a20ddd709ba58c90a6abc2b5c8579e0",
