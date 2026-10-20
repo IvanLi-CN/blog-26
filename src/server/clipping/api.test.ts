@@ -331,12 +331,33 @@ test("legacy resource versions remain readable without a public resource facade"
   if (!manifest) throw new Error("Fixture manifest is missing");
   const version = manifest.versions.find((candidate) => candidate.id === versionId);
   if (!version) throw new Error("Fixture version is missing");
+  const originalSource = await store.read(clippingId, versionId, "source");
+  const originalTranslation = await store.read(clippingId, versionId, "translation");
+  const external = "https://cdn.example/image(1).png";
+  const referenced = "https://cdn.example/reference.png";
   version.resourcesCaptured = false;
   version.resources = [];
   await store.save(manifest);
+  await store.write(
+    clippingId,
+    versionId,
+    "source",
+    `${originalSource}\n\n![External](${external})\n\n![Referenced][hero]\n\n[hero]: ${referenced}`
+  );
+  await store.write(
+    clippingId,
+    versionId,
+    "translation",
+    `${originalTranslation}\n\n![Translated external](${external})`
+  );
   try {
     const reading = await (await request("", "guest")).json();
-    expect(reading.source).toContain("./assets/");
+    expect(reading.source).not.toContain("./assets/");
+    expect(reading.source).toContain("External");
+    expect(reading.source).not.toContain(external);
+    expect(reading.source).not.toContain(referenced);
+    expect(reading.translation).toContain("Translated external");
+    expect(reading.translation).not.toContain(external);
     expect(reading.resourceBaseUrl).toBeNull();
     expect(reading.reading.warning).toContain("外链");
     const exported = await writePublicSnapshot(join(root, "export", "legacy.json"));
@@ -358,6 +379,9 @@ test("legacy resource versions remain readable without a public resource facade"
       },
     ];
     await store.save(manifest);
+    if (originalSource !== null) await store.write(clippingId, versionId, "source", originalSource);
+    if (originalTranslation !== null)
+      await store.write(clippingId, versionId, "translation", originalTranslation);
   }
 });
 test("canonical files rebuild a deleted index without executing completed materials", async () => {

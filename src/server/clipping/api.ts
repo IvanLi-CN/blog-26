@@ -221,7 +221,7 @@ async function routeClippingRequest(
   const { row, manifest, participant } = authorized;
   if (operation === "" || operation === "status") {
     if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
-    const projection = await projectClippingMemo(row.id, store, operation === "");
+    const projection = await projectClippingMemo(row.id, store, operation === "", operation === "");
     if (!projection) throw new TRPCError({ code: "NOT_FOUND", message: "此闪念没有启用剪藏" });
     return response({
       reading: projection.reading,

@@ -15,7 +15,10 @@ import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import matter from "gray-matter";
 import { z } from "zod";
 import { getActiveLocalBasePath } from "@/config/paths";
-import { CLIPPING_RESOURCE_MAX_BYTES } from "@/lib/clipping-resources";
+import {
+  CLIPPING_RESOURCE_MAX_BYTES,
+  stripUncapturedClippingMedia,
+} from "@/lib/clipping-resources";
 import {
   type ClippingReading,
   composeClippingMemo,
@@ -420,7 +423,8 @@ export class ClippingStore {
 export async function projectClippingMemo(
   memoId: string,
   store = new ClippingStore(),
-  includeArticle = false
+  includeArticle = false,
+  publicProjection = false
 ) {
   const authored = await readAuthoredMemo(memoId);
   const recognition = recognizeMemoClipping(authored.body, authored.frontmatter);
@@ -439,6 +443,9 @@ export async function projectClippingMemo(
       : undefined;
   const summary = visible ? await store.read(id, visible.id, "summary") : null;
   const source = includeArticle && visible ? await store.read(id, visible.id, "source") : null;
+  const translation =
+    includeArticle && visible ? await store.read(id, visible.id, "translation") : null;
+  const sanitizeLegacyMedia = publicProjection && visible && !visible.resourcesCaptured;
   const reading: ClippingReading = {
     targetUrl: recognition.targetUrl,
     sourceUrl: visible?.targetUrl ?? recognition.targetUrl,
@@ -464,8 +471,11 @@ export async function projectClippingMemo(
     reading,
     content: composeClippingMemo(recognition.remarks, summary),
     title: recognition.authorTitle ?? visible?.pageTitle ?? recognition.linkLabel ?? null,
-    source,
-    translation: includeArticle && visible ? await store.read(id, visible.id, "translation") : null,
+    source: sanitizeLegacyMedia && source !== null ? stripUncapturedClippingMedia(source) : source,
+    translation:
+      sanitizeLegacyMedia && translation !== null
+        ? stripUncapturedClippingMedia(translation)
+        : translation,
     resourcesCaptured: Boolean(visible?.resourcesCaptured),
     resources: visible?.resources ?? [],
   };
