@@ -13,6 +13,7 @@ import ipaddr from "ipaddr.js";
 import { JSDOM } from "jsdom";
 import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
+import { isSafeClippingResourceMimeType } from "@/lib/clipping-resources";
 
 export class ClippingFetchError extends Error {
   constructor(
@@ -279,6 +280,7 @@ export async function fetchArticleHtml(
 export const CLIPPING_RESOURCE_MAX_BYTES = 20 * 1024 * 1024;
 export const CLIPPING_RESOURCE_MAX_TOTAL_BYTES = 128 * 1024 * 1024;
 export const CLIPPING_RESOURCE_MAX_COUNT = 64;
+export const CLIPPING_CAPTURE_TIMEOUT_MS = 2 * 60 * 1000;
 
 type PreparedArticle = {
   content: string;
@@ -288,6 +290,7 @@ type PreparedArticle = {
 };
 
 type ArticleFetchOptions = Parameters<typeof fetchArticleHtml>[1] & {
+  captureTimeoutMs?: number;
   maxResourceBytes?: number;
   maxResourceTotalBytes?: number;
   maxResourceCount?: number;
@@ -441,6 +444,14 @@ function resourcePlaceholderLabel(node: Element, fallback: string) {
   return label || fallback;
 }
 
+function resourceReferer(referer: string, target: URL) {
+  const source = new URL(referer);
+  source.search = "";
+  source.hash = "";
+  if (source.protocol === "https:" && target.protocol === "http:") return undefined;
+  return source.origin === target.origin ? source.href : source.origin;
+}
+
 async function fetchArticleResource(
   target: string,
   referer: string,
@@ -470,9 +481,8 @@ async function fetchArticleResource(
           options.maxResourceBytes ?? CLIPPING_RESOURCE_MAX_BYTES,
           {
             kind: "resource",
-            referer,
-            accept:
-              "image/avif,image/webp,image/apng,image/svg+xml,image/*,video/*,audio/*,application/octet-stream;q=0.8,*/*;q=0.1",
+            referer: resourceReferer(referer, url),
+            accept: "image/avif,image/webp,image/apng,image/*,video/*,audio/*,*/*;q=0.1",
           }
         ),
         controller.signal
@@ -490,8 +500,8 @@ async function fetchArticleResource(
         );
       if (result.body.length === 0) throw new ClippingFetchError("正文资源为空。");
       const mimeType = result.contentType?.split(";", 1)[0]?.trim().toLowerCase() || null;
-      if (mimeType && /^(?:text\/html|application\/xhtml\+xml)$/iu.test(mimeType))
-        throw new ClippingFetchError("资源地址返回了 HTML，而不是媒体文件。");
+      if (!isSafeClippingResourceMimeType(mimeType))
+        throw new ClippingFetchError("正文资源不是受支持的图片、音频或视频格式。");
       return { finalUrl: url.href, mimeType, body: result.body };
     }
     throw new ClippingFetchError("正文资源跳转次数超过限制。");
@@ -515,15 +525,16 @@ async function localizeArticleResources(
     const document = dom.window.document;
     const resources = new Map<string, ArticleResource>();
     let totalBytes = 0;
+    const maxTotal = options.maxResourceTotalBytes ?? CLIPPING_RESOURCE_MAX_TOTAL_BYTES;
     const loadResource = async (originalUrl: string): Promise<ArticleResource> => {
       const normalizedUrl = validateArticleUrl(originalUrl).href;
       const existing = resources.get(normalizedUrl);
       if (existing) return existing;
-      const id = createHash("sha256").update(normalizedUrl).digest("hex");
+      const failedId = createHash("sha256").update(normalizedUrl).digest("hex");
       let record: ArticleResource;
       if (resources.size >= (options.maxResourceCount ?? CLIPPING_RESOURCE_MAX_COUNT)) {
         record = {
-          id,
+          id: failedId,
           originalUrl: normalizedUrl,
           finalUrl: null,
           path: null,
@@ -532,18 +543,35 @@ async function localizeArticleResources(
           status: "failed",
           error: "正文资源数量超过限制。",
         };
+      } else if (totalBytes >= maxTotal) {
+        record = {
+          id: failedId,
+          originalUrl: normalizedUrl,
+          finalUrl: null,
+          path: null,
+          mimeType: null,
+          bytes: 0,
+          status: "failed",
+          error: "正文资源总大小超过限制。",
+        };
       } else {
         try {
           const fetched = await fetchArticleResource(
             normalizedUrl,
             prepared.url,
-            options,
+            {
+              ...options,
+              maxResourceBytes: Math.min(
+                options.maxResourceBytes ?? CLIPPING_RESOURCE_MAX_BYTES,
+                maxTotal - totalBytes
+              ),
+            },
             dependencies
           );
-          const maxTotal = options.maxResourceTotalBytes ?? CLIPPING_RESOURCE_MAX_TOTAL_BYTES;
           if (totalBytes + fetched.body.length > maxTotal)
             throw new ClippingFetchError("正文资源总大小超过限制。");
           totalBytes += fetched.body.length;
+          const id = createHash("sha256").update(fetched.body).digest("hex");
           const extension = resourceExtension(fetched);
           record = {
             id,
@@ -559,7 +587,7 @@ async function localizeArticleResources(
         } catch (error) {
           if (options.signal?.aborted) throw error;
           record = {
-            id,
+            id: failedId,
             originalUrl: normalizedUrl,
             finalUrl: null,
             path: null,
@@ -574,7 +602,7 @@ async function localizeArticleResources(
       return record;
     };
 
-    for (const node of [...document.querySelectorAll("img,source,video,audio")].reverse()) {
+    for (const node of [...document.querySelectorAll("img,source,video,audio,track")].reverse()) {
       const directAttributes = ["src", "poster"].filter((attribute) =>
         node.hasAttribute(attribute)
       );
@@ -621,6 +649,8 @@ async function localizeArticleResources(
         !node.getAttribute("srcset")
       ) {
         node.remove();
+      } else if (tagName === "track" && !node.getAttribute("src")) {
+        node.remove();
       }
     }
 
@@ -653,11 +683,29 @@ export function extractArticle(html: Buffer, url: string): ArticleMaterial {
 }
 
 export async function fetchArticle(target: string, options: ArticleFetchOptions = {}) {
-  const result = await fetchArticleHtml(target, options);
-  const dependencies: ExtractDependencies = {
-    resolve: (hostname) => lookup(hostname, { all: true }),
-    request: requestPage,
-    ...options.dependencies,
-  };
-  return localizeArticleResources(prepareArticle(result.html, result.url), options, dependencies);
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(new ClippingFetchError("剪藏资源抓取总时间超过限制。", true)),
+    options.captureTimeoutMs ?? CLIPPING_CAPTURE_TIMEOUT_MS
+  );
+  const externalAbort = () => controller.abort(options.signal?.reason);
+  options.signal?.addEventListener("abort", externalAbort, { once: true });
+  if (options.signal?.aborted) externalAbort();
+  try {
+    const captureOptions = { ...options, signal: controller.signal };
+    const result = await fetchArticleHtml(target, captureOptions);
+    const dependencies: ExtractDependencies = {
+      resolve: (hostname) => lookup(hostname, { all: true }),
+      request: requestPage,
+      ...options.dependencies,
+    };
+    return localizeArticleResources(
+      prepareArticle(result.html, result.url),
+      captureOptions,
+      dependencies
+    );
+  } finally {
+    clearTimeout(timeout);
+    options.signal?.removeEventListener("abort", externalAbort);
+  }
 }

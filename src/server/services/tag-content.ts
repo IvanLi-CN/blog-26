@@ -2,7 +2,10 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { and, desc, eq } from "drizzle-orm";
 import { getLocalPath, isLocalContentEnabled } from "@/config/paths";
-import { buildClippingResourceBaseUrl } from "@/lib/clipping-resources";
+import {
+  buildClippingResourceBaseUrl,
+  stripUncapturedClippingMedia,
+} from "@/lib/clipping-resources";
 import {
   extractMemoTitle,
   isGeneratedMemoTitle,
@@ -212,8 +215,16 @@ export async function readEligibleContent(options: ContentReadOptions = {}) {
             return null;
           if (clipping && options.includeClippingArticles)
             clippingArticles[row.slug] = {
-              source: clipping.resourcesCaptured ? clipping.source : null,
-              translation: clipping.resourcesCaptured ? clipping.translation : null,
+              source: clipping.source
+                ? clipping.resourcesCaptured
+                  ? clipping.source
+                  : stripUncapturedClippingMedia(clipping.source)
+                : null,
+              translation: clipping.translation
+                ? clipping.resourcesCaptured
+                  ? clipping.translation
+                  : stripUncapturedClippingMedia(clipping.translation)
+                : null,
               reading: clipping.reading,
               resourceBaseUrl:
                 clipping.resourcesCaptured && clipping.reading.versionId

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import {
   extractArticle,
   fetchArticle,
@@ -167,7 +168,7 @@ describe("article extraction", () => {
 
   test("downloads article media with the article referer and rewrites every responsive candidate", async () => {
     const requests: Array<{ url: string; referer?: string }> = [];
-    const article = await fetchArticle("https://article.example/page", {
+    const article = await fetchArticle("https://article.example/page?token=secret#section", {
       dependencies: {
         resolve: async () => [{ address: "1.1.1.1", family: 4 }],
         request: async (url, _destination, _signal, _limit, options) => {
@@ -200,8 +201,64 @@ describe("article extraction", () => {
     for (const resource of article.resources ?? [])
       if (resource.path) expect(article.markdown).toContain(`./${resource.path}`);
     expect(
+      article.resources?.find((resource) => resource.originalUrl.endsWith("/hero.webp"))?.id
+    ).toBe(createHash("sha256").update("hero").digest("hex"));
+    expect(
       requests.slice(1).every((request) => request.referer === "https://article.example/page")
     ).toBe(true);
+  });
+
+  test("rejects active or unknown media formats and removes failed tracks", async () => {
+    const article = await fetchArticle("https://article.example/page", {
+      dependencies: {
+        resolve: async () => [{ address: "1.1.1.1", family: 4 }],
+        request: async (url) =>
+          url.pathname === "/page"
+            ? {
+                status: 200,
+                contentType: "text/html",
+                body: Buffer.from(
+                  `<article><h1>Unsafe media</h1><p>${prose}</p><img alt="diagram" src="/diagram.svg"><video><track src="/captions.vtt"></video></article>`
+                ),
+              }
+            : url.pathname === "/diagram.svg"
+              ? { status: 200, contentType: "image/svg+xml", body: Buffer.from("<svg/>") }
+              : { status: 200, contentType: "text/vtt", body: Buffer.from("WEBVTT") },
+      },
+    });
+
+    expect(article.resources).toHaveLength(2);
+    expect(article.resources?.every((resource) => resource.status === "failed")).toBe(true);
+    expect(article.markdown).toContain("资源抓取失败：diagram");
+    expect(article.markdown).toContain("资源抓取失败：视频");
+    expect(article.markdown).not.toContain("captions.vtt");
+    expect(article.markdown).not.toContain("diagram.svg");
+  });
+
+  test("passes the remaining total budget to later resource requests", async () => {
+    const requests: string[] = [];
+    const article = await fetchArticle("https://article.example/page", {
+      maxResourceTotalBytes: 4,
+      dependencies: {
+        resolve: async () => [{ address: "1.1.1.1", family: 4 }],
+        request: async (url) => {
+          requests.push(url.pathname);
+          return url.pathname === "/page"
+            ? {
+                status: 200,
+                contentType: "text/html",
+                body: Buffer.from(
+                  `<article><h1>Budgeted media</h1><p>${prose}</p><img src="/one.png"><img src="/two.png"></article>`
+                ),
+              }
+            : { status: 200, contentType: "image/png", body: Buffer.from("1234") };
+        },
+      },
+    });
+
+    expect(requests.filter((path) => path !== "/page")).toHaveLength(1);
+    expect(article.resources?.filter((resource) => resource.status === "captured")).toHaveLength(1);
+    expect(article.resources?.filter((resource) => resource.status === "failed")).toHaveLength(1);
   });
 
   test("removes failed media URLs and leaves an explicit placeholder", async () => {

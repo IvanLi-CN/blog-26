@@ -78,6 +78,7 @@ export type PublicMediaPackageOptions = {
   downloadAttempts?: number;
   retryDelayMs?: number;
   includeDerivedWatermarkVariants?: boolean;
+  clippingResourceUrls?: string[];
   fetchImpl?: PublicMediaFetcher;
 };
 
@@ -614,6 +615,8 @@ export async function packagePublicMedia(
     if (isPlaybookEditionFilePath(artifactPath)) continue;
     references.push(...extractReferences(content, siteUrl, mediaOrigin, basePath));
   }
+  for (const url of options.clippingResourceUrls ?? [])
+    references.push(...extractReferences(url, siteUrl, mediaOrigin, basePath));
   const referenceByRaw = new Map(references.map((reference) => [reference.raw, reference]));
 
   const uniqueReferences = new Map<string, AssetReference>();

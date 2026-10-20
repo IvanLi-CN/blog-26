@@ -3,6 +3,7 @@ import {
   buildClippingResourceBaseUrl,
   clippingResourceFilename,
   mapClippingResourceUrl,
+  stripUncapturedClippingMedia,
 } from "./clipping-resources";
 
 const filename = `${"a".repeat(64)}.webp`;
@@ -18,4 +19,14 @@ test("maps version-relative clipping resources without touching ordinary links",
   );
   expect(clippingResourceFilename(filename)).toBe(filename);
   expect(clippingResourceFilename("../image.webp")).toBeNull();
+});
+
+test("removes uncaptured media from legacy public clipping prose", () => {
+  expect(
+    stripUncapturedClippingMedia(
+      '![Hero](https://cdn.example/hero.webp) <img src="https://cdn.example/hero.webp"> <video src="./assets/' +
+        filename +
+        '"></video>'
+    )
+  ).toBe("Hero 资源抓取失败：媒体 资源抓取失败：视频");
 });

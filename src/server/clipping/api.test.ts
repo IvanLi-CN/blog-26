@@ -32,7 +32,7 @@ const fm: Record<string, unknown> = { public: true, tags: ["剪藏"] };
 const prior = { ...process.env };
 let clippingId: string;
 const versionId = randomUUID();
-const resourceFilename = `${"a".repeat(64)}.png`;
+const resourceFilename = `${createHash("sha256").update("captured image").digest("hex")}.png`;
 let raw: string;
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), "clipping-api-"));
@@ -106,7 +106,7 @@ beforeAll(async () => {
   storedVersion.resourcesCaptured = true;
   storedVersion.resources = [
     {
-      id: "a".repeat(64),
+      id: createHash("sha256").update("captured image").digest("hex"),
       originalUrl: "https://article.example/image.png",
       finalUrl: "https://cdn.example/image.png",
       path: `assets/${resourceFilename}`,
@@ -191,6 +191,8 @@ test("versioned clipping resources enforce ownership and public visibility", asy
   );
   expect(response.status).toBe(200);
   expect(response.headers.get("content-type")).toBe("image/png");
+  expect(response.headers.get("cache-control")).toBe("no-store");
+  expect(response.headers.get("x-content-type-options")).toBe("nosniff");
   expect(await response.text()).toBe("captured image");
   expect(
     (
@@ -255,6 +257,40 @@ test("public exports omit identities, runtime data, private conversation and sta
   expect(hidden.clippingArticles).toEqual({});
   expect(await Bun.file(join(root, "export", "clippings", "clip.json")).exists()).toBe(false);
   await writeFile(join(root, "authored", id), raw);
+});
+test("legacy resource versions remain readable without a public resource facade", async () => {
+  const manifest = await store.manifest(clippingId);
+  if (!manifest) throw new Error("Fixture manifest is missing");
+  const version = manifest.versions.find((candidate) => candidate.id === versionId);
+  if (!version) throw new Error("Fixture version is missing");
+  version.resourcesCaptured = false;
+  version.resources = [];
+  await store.save(manifest);
+  try {
+    const reading = await (await request("", "guest")).json();
+    expect(reading.source).toContain("./assets/");
+    expect(reading.resourceBaseUrl).toBeNull();
+    expect(reading.reading.warning).toContain("外链");
+    const exported = await writePublicSnapshot(join(root, "export", "legacy.json"));
+    const article = exported.clippingArticles?.clip;
+    expect(article?.source).toContain("Asset");
+    expect(article?.source).not.toContain("./assets/");
+  } finally {
+    version.resourcesCaptured = true;
+    version.resources = [
+      {
+        id: createHash("sha256").update("captured image").digest("hex"),
+        originalUrl: "https://article.example/image.png",
+        finalUrl: "https://cdn.example/image.png",
+        path: `assets/${resourceFilename}`,
+        mimeType: "image/png",
+        bytes: "captured image".length,
+        status: "captured",
+        error: null,
+      },
+    ];
+    await store.save(manifest);
+  }
 });
 test("canonical files rebuild a deleted index without executing completed materials", async () => {
   await db.delete(memoClippings);

@@ -2,7 +2,11 @@ import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { extractAuthFromRequest } from "@/lib/auth-utils";
-import { buildClippingResourceBaseUrl, clippingResourceFilename } from "@/lib/clipping-resources";
+import {
+  buildClippingResourceBaseUrl,
+  clippingResourceFilename,
+  isSafeClippingResourceMimeType,
+} from "@/lib/clipping-resources";
 import { db } from "@/lib/db";
 import { recognizeMemoClipping } from "@/lib/memo-clipping";
 import { resolveRequestOrigin } from "@/lib/public-cors";
@@ -71,14 +75,17 @@ export async function handleClippingResourceRequest(
     (candidate) => candidate.status === "captured" && candidate.path === `assets/${safeFilename}`
   );
   if (!resource) return new Response("Not Found", { status: 404 });
+  if (resource.mimeType && !isSafeClippingResourceMimeType(resource.mimeType))
+    return new Response("Not Found", { status: 404 });
   const body = await store.readResource(authorized.manifest.id, versionId, resource);
   if (!body) return new Response("Not Found", { status: 404 });
   return new Response(request.method === "HEAD" ? null : body, {
     status: 200,
     headers: {
-      "cache-control": ctx.isAdmin ? "no-store" : "public, max-age=31536000, immutable",
+      "cache-control": "no-store",
       "content-length": String(body.byteLength),
       "content-type": resourceMimeType(resource),
+      "x-content-type-options": "nosniff",
       vary: "Cookie, Authorization",
     },
   });
@@ -218,8 +225,8 @@ async function routeClippingRequest(
       reading: projection.reading,
       ...(operation === ""
         ? {
-            source: projection.resourcesCaptured ? projection.source : null,
-            translation: projection.resourcesCaptured ? projection.translation : null,
+            source: projection.source,
+            translation: projection.translation,
             content: projection.content,
             title: projection.title,
             resourceBaseUrl:

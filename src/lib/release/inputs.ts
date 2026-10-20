@@ -3,6 +3,7 @@ import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { z } from "zod";
 import {
+  CLIPPING_RESOURCE_BASE_FACADE_RE,
   type PublicMediaManifest,
   packagePublicMedia,
 } from "../../../scripts/package-public-media";
@@ -59,6 +60,7 @@ const publicEnvNames = [
 ] as const;
 
 const snapshotRetryDelaysMs = [1_000, 3_000] as const;
+const clippingResourceReferenceRe = /\.\/assets\/[a-f0-9]{64}\.[a-z0-9]+(?:[?#][^"'`\s<>)]+)?/giu;
 type SnapshotFetcher = typeof fetch;
 type SnapshotSleep = (delayMs: number) => Promise<void>;
 
@@ -177,10 +179,36 @@ export async function freezeInputs(entry: ReleaseEntry, root: string): Promise<v
       generatedAt: z.string(),
       posts: z.array(z.unknown()),
       memos: z.array(z.unknown()),
+      clippingArticles: z
+        .record(
+          z.string(),
+          z.object({
+            source: z.string().nullable(),
+            translation: z.string().nullable(),
+            resourceBaseUrl: z.string().nullable().optional(),
+          })
+        )
+        .optional(),
       tags: z.object({ timelines: z.record(z.string(), z.unknown()) }),
     })
     .parse(JSON.parse(snapshot));
   if (!parsed.generatedAt) throw new Error("Public snapshot identity is missing");
+  const clippingResourceUrls = Object.values(parsed.clippingArticles ?? {}).flatMap((article) => {
+    if (!article.resourceBaseUrl) return [];
+    const base = new URL(article.resourceBaseUrl, env.PUBLIC_API_BASE_URL);
+    if (
+      base.origin !== new URL(env.PUBLIC_API_BASE_URL).origin ||
+      !CLIPPING_RESOURCE_BASE_FACADE_RE.test(base.pathname)
+    )
+      return [];
+    return [article.source, article.translation]
+      .filter((content): content is string => Boolean(content))
+      .flatMap((content) =>
+        [...content.matchAll(clippingResourceReferenceRe)].map(
+          (match) => new URL(match[0], base).href
+        )
+      );
+  });
   await writeFile(join(root, "public-snapshot.json"), snapshot);
   await mkdir("site/generated", { recursive: true });
   await writeFile("site/generated/public-snapshot.json", snapshot);
@@ -222,6 +250,7 @@ export async function freezeInputs(entry: ReleaseEntry, root: string): Promise<v
     siteBasePath: env.PUBLIC_SITE_BASE_PATH,
     downloadConcurrency: resolveReleaseMediaDownloadConcurrency(),
     includeDerivedWatermarkVariants: true,
+    clippingResourceUrls,
   });
   if (media.externalCount)
     throw new Error(

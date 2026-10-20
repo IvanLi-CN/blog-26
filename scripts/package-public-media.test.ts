@@ -75,6 +75,39 @@ describe("packagePublicMedia", () => {
     ).rejects.toThrow("Required clipping resource");
   });
 
+  test("freezes clipping resources discovered from snapshot-relative references", async () => {
+    const cwd = await fixture();
+    const filename = `${"b".repeat(64)}.webp`;
+    const candidateUrl = `/api/public/memos/clip/clipping/assets/version-1/${filename}`;
+    await writeFile(
+      join(cwd, "site-dist", "snapshot.json"),
+      JSON.stringify({
+        resourceBaseUrl: "/api/public/memos/clip/clipping/assets/version-1/",
+        source: `![Asset](./assets/${filename})`,
+      })
+    );
+
+    const requestedUrls: string[] = [];
+    const manifest = await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      clippingResourceUrls: [`https://api.example${candidateUrl}`],
+      fetchImpl: async (input) => {
+        requestedUrls.push(String(input));
+        return response("captured image");
+      },
+    });
+
+    expect(requestedUrls).toEqual([`https://api.example${candidateUrl}`]);
+    expect(manifest.entries).toContainEqual(
+      expect.objectContaining({
+        sourcePath: candidateUrl,
+        status: "packaged",
+      })
+    );
+  });
+
   test("preserves immutable Playbook edition files when page media URLs match", async () => {
     const cwd = await fixture();
     const candidateUrl = "/api/public/assets/post/candidate/hash/cover.webp";

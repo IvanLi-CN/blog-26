@@ -478,20 +478,31 @@ export class ClippingService {
         source = article.markdown;
         await this.checkpoint(id, version, async (_manifest, stored) => {
           const resources = article.resources ?? [];
-          for (const resource of resources) {
-            if (resource.status !== "captured") continue;
-            if (!resource.path || !resource.body)
-              throw new Error("剪藏资源已标记保存但缺少文件内容。");
-            await this.store.writeResource(id, version.id, resource.path, resource.body);
+          const writtenResources: string[] = [];
+          try {
+            for (const resource of resources) {
+              if (resource.status !== "captured") continue;
+              if (!resource.path || !resource.body)
+                throw new Error("剪藏资源已标记保存但缺少文件内容。");
+              await this.store.writeResource(id, version.id, resource.path, resource.body);
+              writtenResources.push(resource.path);
+            }
+            await this.store.write(id, version.id, "source", article.markdown);
+            stored.resources = resources.map(({ body: _body, ...resource }) => resource);
+            stored.resourcesCaptured = true;
+            stored.pageTitle = article.title;
+            stored.finalUrl = article.url;
+            stored.warning = article.warning;
+            stored.capturedAt = Date.now();
+            stored.sourceHash = createHash("sha256").update(article.markdown).digest("hex");
+          } catch (error) {
+            await Promise.all(
+              writtenResources.map((resourcePath) =>
+                this.store.removeResourceIfUnreferenced(id, version.id, resourcePath)
+              )
+            );
+            throw error;
           }
-          await this.store.write(id, version.id, "source", article.markdown);
-          stored.resources = resources.map(({ body: _body, ...resource }) => resource);
-          stored.resourcesCaptured = true;
-          stored.pageTitle = article.title;
-          stored.finalUrl = article.url;
-          stored.warning = article.warning;
-          stored.capturedAt = Date.now();
-          stored.sourceHash = createHash("sha256").update(article.markdown).digest("hex");
         });
       }
       if (!version.jobConversationId) {

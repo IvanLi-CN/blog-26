@@ -1,4 +1,42 @@
 const CLIPPING_RESOURCE_REFERENCE_RE = /^(?:\.\/)?assets\/([a-f0-9]{64}\.[a-z0-9]+)([?#].*)?$/iu;
+const SAFE_CLIPPING_RESOURCE_MIME_TYPES = new Set([
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/ogg",
+  "audio/wav",
+  "image/avif",
+  "image/apng",
+  "image/gif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "video/mp4",
+  "video/mpeg",
+  "video/ogg",
+  "video/quicktime",
+  "video/webm",
+]);
+const CLIPPING_MARKDOWN_MEDIA_RE =
+  /!\[([^\]]*)\]\(\s*(?:https?:\/\/[^\s)]+|\.\/assets\/[a-f0-9]{64}\.[a-z0-9]+)(?:\s+"[^"]*")?\s*\)/giu;
+const CLIPPING_HTML_MEDIA_RE =
+  /<(?<tag>img|source|video|audio|track)\b[^>]*>.*?<\/\k<tag>>|<(?<single>img|source|video|audio|track)\b[^>]*\/?>(?![\s\S]*<\/\k<single>>)/giu;
+
+/** Keep legacy clipping prose readable without publishing uncaptured media URLs. */
+export function stripUncapturedClippingMedia(markdown: string) {
+  return markdown
+    .replace(
+      CLIPPING_MARKDOWN_MEDIA_RE,
+      (_match, alt: string) => alt.trim() || "资源抓取失败：图片"
+    )
+    .replace(CLIPPING_HTML_MEDIA_RE, (match) => {
+      const tag = /<\s*(img|source|video|audio|track)\b/iu.exec(match)?.[1]?.toLowerCase();
+      return `资源抓取失败：${tag === "video" ? "视频" : tag === "audio" ? "音频" : "媒体"}`;
+    });
+}
+
+export function isSafeClippingResourceMimeType(value: string | null) {
+  return value !== null && SAFE_CLIPPING_RESOURCE_MIME_TYPES.has(value);
+}
 
 /** Build the live/public facade prefix for one immutable clipping version. */
 export function buildClippingResourceBaseUrl(slug: string, versionId: string) {

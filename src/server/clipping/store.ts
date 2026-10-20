@@ -1,6 +1,6 @@
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { renameSync } from "node:fs";
-import { link, mkdir, readFile, realpath, unlink, writeFile } from "node:fs/promises";
+import { link, mkdir, readFile, realpath, rm, unlink, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import matter from "gray-matter";
 import { z } from "zod";
@@ -239,13 +239,19 @@ export class ClippingStore {
   async readResource(id: string, versionId: string, resource: ClippingResource) {
     if (resource.status !== "captured" || !resource.path) return null;
     try {
-      return await readFile(
+      const body = await readFile(
         this.path(
           id,
           identitySchema.parse(versionId),
           clippingResourcePathSchema.parse(resource.path)
         )
       );
+      if (
+        body.byteLength !== resource.bytes ||
+        createHash("sha256").update(body).digest("hex") !== resource.id
+      )
+        return null;
+      return body;
     } catch (error) {
       if (error && typeof error === "object" && "code" in error && error.code === "ENOENT")
         return null;
@@ -264,19 +270,49 @@ export class ClippingStore {
     );
   }
 
+  async removeResourceIfUnreferenced(id: string, versionId: string, resourcePath: string) {
+    const manifest = await this.manifest(id);
+    if (
+      manifest?.versions.some((version) =>
+        version.resources.some((resource) => resource.path === resourcePath)
+      )
+    )
+      return;
+    try {
+      await rm(
+        this.path(
+          id,
+          identitySchema.parse(versionId),
+          clippingResourcePathSchema.parse(resourcePath)
+        ),
+        {
+          force: true,
+        }
+      );
+    } catch {
+      /* Cleanup is best effort after a failed atomic checkpoint. */
+    }
+  }
+
   private async atomic(path: string, content: string | Uint8Array) {
     await mkdir(dirname(path), { recursive: true });
     const temporary = `${path}.${randomUUID()}.tmp`;
-    this.beforePublish?.();
-    await writeFile(
-      temporary,
-      content,
-      typeof content === "string" ? { encoding: "utf8", mode: 0o600 } : { mode: 0o600 }
-    );
-    this.beforePublish?.();
-    // Do not yield between the final ownership check and publication. The runtime
-    // transaction still holds the owner-row write lock throughout this rename.
-    renameSync(temporary, path);
+    let published = false;
+    try {
+      this.beforePublish?.();
+      await writeFile(
+        temporary,
+        content,
+        typeof content === "string" ? { encoding: "utf8", mode: 0o600 } : { mode: 0o600 }
+      );
+      this.beforePublish?.();
+      // Do not yield between the final ownership check and publication. The runtime
+      // transaction still holds the owner-row write lock throughout this rename.
+      renameSync(temporary, path);
+      published = true;
+    } finally {
+      if (!published) await rm(temporary, { force: true }).catch(() => undefined);
+    }
   }
 }
 
