@@ -189,6 +189,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
           contentSource,
           publicMediaContext,
           publicAssetVersion,
+          mapContentUrl,
         },
       ]);
 
@@ -211,7 +212,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
       // 因此这里不再注入 rehypeCollapsibleCode。
 
       return plugins;
-    }, [config, articlePath, contentSource, publicMediaContext, publicAssetVersion]);
+    }, [config, articlePath, contentSource, publicMediaContext, publicAssetVersion, mapContentUrl]);
 
     const urlTransform = useMemo(() => {
       const safeTransform = rewritePublicSitePaths ? publicSiteUrlTransform : defaultUrlTransform;

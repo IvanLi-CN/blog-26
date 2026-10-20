@@ -15,6 +15,18 @@ const identitySchema = z
   .string()
   .regex(/^(?:[a-f0-9]{64}|[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})$/);
 const stepSchema = z.enum(["pending", "processing", "completed", "failed"]);
+const clippingResourcePathSchema = z.string().regex(/^assets\/[a-f0-9]{64}\.[a-z0-9]+$/i);
+export const clippingResourceSchema = z.object({
+  id: z.string().regex(/^[a-f0-9]{64}$/),
+  originalUrl: z.string().url(),
+  finalUrl: z.string().url().nullable().default(null),
+  path: clippingResourcePathSchema.nullable().default(null),
+  mimeType: z.string().nullable().default(null),
+  bytes: z.number().int().nonnegative().default(0),
+  status: z.enum(["captured", "failed"]),
+  error: z.string().nullable().default(null),
+});
+export type ClippingResource = z.infer<typeof clippingResourceSchema>;
 export const clippingVersionSchema = z.object({
   id: identitySchema,
   revision: z.number().int().positive(),
@@ -35,6 +47,8 @@ export const clippingVersionSchema = z.object({
   translatedSegments: z.number().int().nonnegative().default(0),
   attempts: z.number().int().nonnegative().default(0),
   error: z.string().nullable().default(null),
+  resourcesCaptured: z.boolean().default(false),
+  resources: z.array(clippingResourceSchema).default([]),
 });
 export type ClippingVersion = z.infer<typeof clippingVersionSchema>;
 
@@ -222,11 +236,43 @@ export class ClippingStore {
     await this.atomic(this.path(id, identitySchema.parse(versionId), name), content);
   }
 
-  private async atomic(path: string, content: string) {
+  async readResource(id: string, versionId: string, resource: ClippingResource) {
+    if (resource.status !== "captured" || !resource.path) return null;
+    try {
+      return await readFile(
+        this.path(
+          id,
+          identitySchema.parse(versionId),
+          clippingResourcePathSchema.parse(resource.path)
+        )
+      );
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT")
+        return null;
+      throw error;
+    }
+  }
+
+  async writeResource(id: string, versionId: string, resourcePath: string, content: Uint8Array) {
+    await this.atomic(
+      this.path(
+        id,
+        identitySchema.parse(versionId),
+        clippingResourcePathSchema.parse(resourcePath)
+      ),
+      content
+    );
+  }
+
+  private async atomic(path: string, content: string | Uint8Array) {
     await mkdir(dirname(path), { recursive: true });
     const temporary = `${path}.${randomUUID()}.tmp`;
     this.beforePublish?.();
-    await writeFile(temporary, content, { encoding: "utf8", mode: 0o600 });
+    await writeFile(
+      temporary,
+      content,
+      typeof content === "string" ? { encoding: "utf8", mode: 0o600 } : { mode: 0o600 }
+    );
     this.beforePublish?.();
     // Do not yield between the final ownership check and publication. The runtime
     // transaction still holds the owner-row write lock throughout this rename.
@@ -267,7 +313,10 @@ export async function projectClippingMemo(
     translatedSegments: latest?.translatedSegments ?? 0,
     segmentCount: latest?.segmentCount ?? 0,
     error: recognition.error ?? (pendingTarget ? null : latest?.error) ?? null,
-    warning: visible?.warning ?? null,
+    warning:
+      visible && !visible.resourcesCaptured
+        ? (visible.warning ?? "此阅读版本的正文资源仍为外链，请重新处理以保存到服务器。")
+        : (visible?.warning ?? null),
     usingPreviousVersion: Boolean(visible && (pendingTarget || visible.id !== latest?.id)),
   };
   return {
@@ -280,5 +329,7 @@ export async function projectClippingMemo(
     title: recognition.authorTitle ?? visible?.pageTitle ?? recognition.linkLabel ?? null,
     source,
     translation: includeArticle && visible ? await store.read(id, visible.id, "translation") : null,
+    resourcesCaptured: Boolean(visible?.resourcesCaptured),
+    resources: visible?.resources ?? [],
   };
 }

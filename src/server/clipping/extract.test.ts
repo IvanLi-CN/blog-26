@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { extractArticle, fetchArticleHtml, isPublicAddress, validateArticleUrl } from "./extract";
+import {
+  extractArticle,
+  fetchArticle,
+  fetchArticleHtml,
+  isPublicAddress,
+  validateArticleUrl,
+} from "./extract";
 
 describe("clipping fetch security", () => {
   for (const address of [
@@ -157,5 +163,70 @@ describe("article extraction", () => {
       "https://article.example"
     );
     expect(article.warning).toContain("部分正文");
+  });
+
+  test("downloads article media with the article referer and rewrites every responsive candidate", async () => {
+    const requests: Array<{ url: string; referer?: string }> = [];
+    const article = await fetchArticle("https://article.example/page", {
+      dependencies: {
+        resolve: async () => [{ address: "1.1.1.1", family: 4 }],
+        request: async (url, _destination, _signal, _limit, options) => {
+          requests.push({ url: url.href, referer: options?.referer });
+          if (url.pathname === "/page")
+            return {
+              status: 200,
+              contentType: "text/html; charset=utf-8",
+              body: Buffer.from(
+                `<article><h1>Media article</h1><p>${prose}</p><picture><source srcset="/hero.webp 1x, /hero@2x.webp 2x"><img src="/hero.webp" alt="Hero"></picture><video poster="/poster.jpg" src="/movie.mp4"></video></article>`
+              ),
+            };
+          const bodies: Record<string, { contentType: string; body: Buffer }> = {
+            "/hero.webp": { contentType: "image/webp", body: Buffer.from("hero") },
+            "/hero@2x.webp": { contentType: "image/webp", body: Buffer.from("hero2") },
+            "/poster.jpg": { contentType: "image/jpeg", body: Buffer.from("poster") },
+            "/movie.mp4": { contentType: "video/mp4", body: Buffer.from("movie") },
+          };
+          const media = bodies[url.pathname];
+          if (!media) return { status: 404, body: Buffer.alloc(0) };
+          return { status: 200, ...media };
+        },
+      },
+    });
+
+    expect(article.resources).toHaveLength(4);
+    expect(article.resources?.every((resource) => resource.status === "captured")).toBe(true);
+    expect(article.markdown).toMatch(/\.\/assets\/[a-f0-9]{64}\.webp/u);
+    expect(article.markdown).toContain("./assets/");
+    for (const resource of article.resources ?? [])
+      if (resource.path) expect(article.markdown).toContain(`./${resource.path}`);
+    expect(
+      requests.slice(1).every((request) => request.referer === "https://article.example/page")
+    ).toBe(true);
+  });
+
+  test("removes failed media URLs and leaves an explicit placeholder", async () => {
+    const article = await fetchArticle("https://article.example/page", {
+      dependencies: {
+        resolve: async () => [{ address: "1.1.1.1", family: 4 }],
+        request: async (url) =>
+          url.pathname === "/page"
+            ? {
+                status: 200,
+                contentType: "text/html",
+                body: Buffer.from(
+                  `<article><h1>Broken media</h1><p>${prose}</p><img src="/missing.png" alt="Missing chart https://cdn.example/missing.png"><video><source src="/missing.mp4"></video></article>`
+                ),
+              }
+            : { status: 404, body: Buffer.alloc(0) },
+      },
+    });
+
+    expect(article.resources).toHaveLength(2);
+    expect(article.resources?.every((resource) => resource.status === "failed")).toBe(true);
+    expect(article.markdown).toContain("资源抓取失败：Missing chart");
+    expect(article.markdown).toContain("资源抓取失败：视频");
+    expect(article.markdown).not.toContain("missing.png");
+    expect(article.markdown).not.toContain("cdn.example");
+    expect(article.warning).toContain("2 个正文资源");
   });
 });

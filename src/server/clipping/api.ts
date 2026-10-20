@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { extractAuthFromRequest } from "@/lib/auth-utils";
+import { buildClippingResourceBaseUrl, clippingResourceFilename } from "@/lib/clipping-resources";
 import { db } from "@/lib/db";
 import { recognizeMemoClipping } from "@/lib/memo-clipping";
 import { resolveRequestOrigin } from "@/lib/public-cors";
@@ -19,6 +20,67 @@ function response(data: unknown, status = 200) {
   return Response.json(data, {
     status,
     headers: { "cache-control": "no-store", vary: "Cookie, Authorization" },
+  });
+}
+
+function resourceMimeType(resource: { mimeType: string | null; path: string | null }) {
+  if (resource.mimeType && resource.mimeType !== "application/octet-stream")
+    return resource.mimeType;
+  const extension = resource.path?.split(".").at(-1)?.toLowerCase();
+  return (
+    (
+      {
+        avif: "image/avif",
+        gif: "image/gif",
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        png: "image/png",
+        svg: "image/svg+xml",
+        webp: "image/webp",
+        mp3: "audio/mpeg",
+        ogg: "audio/ogg",
+        wav: "audio/wav",
+        mp4: "video/mp4",
+        ogv: "video/ogg",
+        mov: "video/quicktime",
+        webm: "video/webm",
+      } as Record<string, string>
+    )[extension ?? ""] ?? "application/octet-stream"
+  );
+}
+
+export async function handleClippingResourceRequest(
+  request: Request,
+  slug: string,
+  versionId: string,
+  filename: string,
+  ctx: TRPCContext
+) {
+  if (request.method !== "GET" && request.method !== "HEAD")
+    return new Response("Not Found", { status: 404 });
+  const safeFilename = clippingResourceFilename(filename);
+  if (!safeFilename) return new Response("Not Found", { status: 404 });
+  const store = new ClippingStore();
+  const authorized = await access(slug, ctx);
+  if (!authorized.manifest) return new Response("Not Found", { status: 404 });
+  const projection = await projectClippingMemo(authorized.row.id, store);
+  if (!projection || projection.reading.versionId !== versionId)
+    return new Response("Not Found", { status: 404 });
+  const version = authorized.manifest.versions.find((candidate) => candidate.id === versionId);
+  const resource = version?.resources.find(
+    (candidate) => candidate.status === "captured" && candidate.path === `assets/${safeFilename}`
+  );
+  if (!resource) return new Response("Not Found", { status: 404 });
+  const body = await store.readResource(authorized.manifest.id, versionId, resource);
+  if (!body) return new Response("Not Found", { status: 404 });
+  return new Response(request.method === "HEAD" ? null : body, {
+    status: 200,
+    headers: {
+      "cache-control": ctx.isAdmin ? "no-store" : "public, max-age=31536000, immutable",
+      "content-length": String(body.byteLength),
+      "content-type": resourceMimeType(resource),
+      vary: "Cookie, Authorization",
+    },
   });
 }
 async function input(request: Request) {
@@ -156,10 +218,14 @@ async function routeClippingRequest(
       reading: projection.reading,
       ...(operation === ""
         ? {
-            source: projection.source,
-            translation: projection.translation,
+            source: projection.resourcesCaptured ? projection.source : null,
+            translation: projection.resourcesCaptured ? projection.translation : null,
             content: projection.content,
             title: projection.title,
+            resourceBaseUrl:
+              projection.resourcesCaptured && projection.reading.versionId
+                ? buildClippingResourceBaseUrl(slug, projection.reading.versionId)
+                : null,
           }
         : {}),
       canDiscuss: participant,

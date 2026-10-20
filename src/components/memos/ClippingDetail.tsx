@@ -14,6 +14,7 @@ import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import "./clipping-admin.css";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import Icon from "@/components/ui/Icon";
+import { mapClippingResourceUrl } from "@/lib/clipping-resources";
 import type { ClippingReading } from "@/lib/memo-clipping";
 import type { PublicMediaContext } from "@/lib/public-media";
 import { toPublicApiUrl } from "@/lib/public-runtime-url";
@@ -33,6 +34,7 @@ export type ClippingArticle = {
   title?: string | null;
   canDiscuss?: boolean;
   processorEnabled?: boolean;
+  resourceBaseUrl?: string | null;
 };
 export type ClippingTransport = {
   request: <T>(operation: string, body?: unknown) => Promise<T>;
@@ -264,6 +266,13 @@ export function ClippingDetail({
   const pending = useRef<{ requestId: string; text: string } | null>(null);
   const articleRef = useRef(article);
   articleRef.current = article;
+  const mapArticleUrl = useCallback(
+    (url: string) => {
+      const mapped = mapClippingResourceUrl(url, article.resourceBaseUrl);
+      return mapped.startsWith("/api/") ? toPublicApiUrl(mapped) : mapped;
+    },
+    [article.resourceBaseUrl]
+  );
   const desktop = useSyncExternalStore(subscribeDesktop, desktopSnapshot, serverSnapshot);
   const reading = article.reading;
   const memoContentChanged = previousMemoContent.current !== memoContent;
@@ -534,6 +543,7 @@ export function ClippingDetail({
               enableMermaid={false}
               publicMediaContext={publicMediaContext}
               publicAssetVersion={publicAssetVersion}
+              mapContentUrl={mapArticleUrl}
             />
           </div>
           <div data-testid="clipping-article-translation" hidden={activeLanguage !== "translation"}>
@@ -545,6 +555,7 @@ export function ClippingDetail({
               enableMermaid={false}
               publicMediaContext={publicMediaContext}
               publicAssetVersion={publicAssetVersion}
+              mapContentUrl={mapArticleUrl}
             />
           </div>
         </article>

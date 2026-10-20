@@ -33,7 +33,7 @@ import {
   validateSystemShareFiles,
 } from "@/lib/system-share";
 import { buildPublicSnapshot, resolvePublicMemoTitle } from "@/public-site/snapshot";
-import { handleClippingRequest } from "@/server/clipping/api";
+import { handleClippingRequest, handleClippingResourceRequest } from "@/server/clipping/api";
 import { isClippingRowPublic } from "@/server/clipping/projection";
 import { readAuthoredMemo } from "@/server/clipping/store";
 import { createContext } from "@/server/context";
@@ -1320,6 +1320,20 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
     const { caller, resHeaders, ctx } = await createCallerForRequest(request);
     if (pathname === "/system-share") {
       return await handleSystemShareRequest(request, caller, ctx, resHeaders);
+    }
+    const clippingResourceMatch = pathname.match(
+      /^\/memos\/([^/]+)\/clipping\/assets\/([^/]+)\/([^/]+)$/
+    );
+    if (clippingResourceMatch) {
+      const result = await handleClippingResourceRequest(
+        request,
+        decodeURIComponent(clippingResourceMatch[1]),
+        decodeURIComponent(clippingResourceMatch[2]),
+        decodeURIComponent(clippingResourceMatch[3]),
+        ctx
+      );
+      appendPublicCorsHeaders(result.headers, request, PUBLIC_API_ALLOWED_METHODS);
+      return result;
     }
     const clippingMatch = pathname.match(
       /^\/memos\/([^/]+)\/clipping(?:\/(status|reprocess|chat(?:\/events)?))?$/

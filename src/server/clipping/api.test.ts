@@ -15,7 +15,7 @@ import { buildPublicSnapshot, writePublicSnapshot } from "@/public-site/snapshot
 import type { TRPCContext } from "@/server/context";
 import { runWithMcpAuth } from "@/server/mcp-auth-context";
 import { memosRouter } from "@/server/routers/memos";
-import { handleClippingRequest } from "./api";
+import { handleClippingRequest, handleClippingResourceRequest } from "./api";
 import { ClippingService } from "./service";
 import {
   attachClippingReference,
@@ -32,6 +32,7 @@ const fm: Record<string, unknown> = { public: true, tags: ["剪藏"] };
 const prior = { ...process.env };
 let clippingId: string;
 const versionId = randomUUID();
+const resourceFilename = `${"a".repeat(64)}.png`;
 let raw: string;
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), "clipping-api-"));
@@ -92,8 +93,32 @@ beforeAll(async () => {
       ],
     })
   );
+  await store.writeResource(
+    clippingId,
+    versionId,
+    `assets/${resourceFilename}`,
+    Buffer.from("captured image")
+  );
+  const stored = await store.manifest(clippingId);
+  if (!stored) throw new Error("Fixture manifest is missing");
+  const storedVersion = stored.versions.find((version) => version.id === versionId);
+  if (!storedVersion) throw new Error("Fixture version is missing");
+  storedVersion.resourcesCaptured = true;
+  storedVersion.resources = [
+    {
+      id: "a".repeat(64),
+      originalUrl: "https://article.example/image.png",
+      finalUrl: "https://cdn.example/image.png",
+      path: `assets/${resourceFilename}`,
+      mimeType: "image/png",
+      bytes: "captured image".length,
+      status: "captured",
+      error: null,
+    },
+  ];
+  await store.save(stored);
   for (const [artifact, content] of Object.entries({
-    source: "# Article\n\nSource.",
+    source: `# Article\n\nSource.\n\n![Asset](./assets/${resourceFilename})`,
     summary: "摘要。",
     translation: "# 文章\n\n正文。",
   }))
@@ -153,10 +178,55 @@ test("reprocess rejects cross-origin cookie mutations", async () => {
     )
   ).rejects.toMatchObject({ code: "FORBIDDEN" });
 });
+
+test("versioned clipping resources enforce ownership and public visibility", async () => {
+  const response = await handleClippingResourceRequest(
+    new Request(
+      `http://localhost/api/public/memos/clip/clipping/assets/${versionId}/${resourceFilename}`
+    ),
+    "clip",
+    versionId,
+    resourceFilename,
+    context("guest")
+  );
+  expect(response.status).toBe(200);
+  expect(response.headers.get("content-type")).toBe("image/png");
+  expect(await response.text()).toBe("captured image");
+  expect(
+    (
+      await handleClippingResourceRequest(
+        new Request("http://localhost/api/public/memos/clip/clipping/assets/invalid/not-found.png"),
+        "clip",
+        versionId,
+        "not-found.png",
+        context("guest")
+      )
+    ).status
+  ).toBe(404);
+  await writeFile(join(root, "authored", id), matter.stringify(body, { ...fm, public: false }));
+  try {
+    await expect(
+      handleClippingResourceRequest(
+        new Request(
+          `http://localhost/api/public/memos/clip/clipping/assets/${versionId}/${resourceFilename}`
+        ),
+        "clip",
+        versionId,
+        resourceFilename,
+        context("guest")
+      )
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  } finally {
+    await writeFile(join(root, "authored", id), raw);
+  }
+});
 test("public reading exposes only materials; conversation is restricted to creator and admin and history/restore are absent", async () => {
   const reading = await (await request("", "guest")).json();
   expect(reading.source).toContain("Source.");
   expect(reading.content).toBe("备注\n\n---\n\n**Agent 摘要**\n\n摘要。");
+  expect(reading.resourceBaseUrl).toContain("/api/public/memos/clip/clipping/assets/");
+  expect(JSON.stringify(reading)).not.toContain("article.example/image.png");
+  expect(JSON.stringify(reading)).not.toContain("cdn.example/image.png");
   expect(JSON.stringify(reading)).not.toContain("private-conversation");
   expect(JSON.stringify(reading)).not.toContain("creator");
   for (const actor of ["guest", "other"] as const)

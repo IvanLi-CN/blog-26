@@ -18,7 +18,8 @@
 - 剪藏原文: the captured source article converted to safe, readable Markdown.
 - 剪藏译文: the captured article translated into Simplified Chinese Markdown.
 - 剪藏标题: the visible title resolved from explicit author title, page title, link text, or no title.
-- 剪藏处理版本: one source snapshot with its summary, translation, processing metadata, and result state.
+- 剪藏处理版本: one source snapshot with its summary, translation, captured resources, processing metadata, and result state.
+- 剪藏资源: a media file captured from the source article and owned by one processing version; it is not a general Memo attachment or an external URL fallback.
 - 剪藏处理状态: progress or outcome with distinguishable summary and translation completion.
 - 剪藏对话: the persistent, creator/admin-only conversation associated with a clipping's target; replacing the target creates a new conversation.
 - Validation boundary: pages MUST NOT be created in Storybook. Page layout and behavior verification MUST use actual application routes.
@@ -77,6 +78,8 @@ The reading header keeps author remarks and the generated summary visible. The o
 ### REQ-MCL-005
 
 - On successful extraction, the system MUST save a 剪藏原文 source snapshot as safe Markdown with preserved semantic headings, paragraphs, lists, quotes, tables, code blocks, resolvable content links, and safe body media where available.
+- During extraction, the system MUST capture `img`, `picture`/`source`, `video`, and `audio` media, including every safe `srcset` candidate and media poster. Resource requests MUST reuse the target validation and redirect boundary, send the article URL as `Referer` when needed, and MUST NOT send source cookies or credentials. A version MUST accept at most 64 resources, 20 MiB per resource, and 128 MiB in total.
+- Captured resources MUST be stored under the processing version as content-addressed `assets/<sha256>.<extension>` files and recorded in its manifest. Source and translation Markdown MUST reference version-local assets. A failed resource MUST be removed from the rendered Markdown, represented by a text placeholder, and included in an aggregate warning; the original external URL MUST NOT remain as a fallback.
 - The system MUST produce a Simplified Chinese 剪藏摘要 that is clearly attributable to the Agent and covers the article's main thesis, important points, and useful conclusions without claiming unsupported facts.
 - If the author supplied 剪藏备注, the visible Memo content MUST preserve it first, then append one horizontal separator and the generated summary. If no remark exists, the summary MUST appear without an empty remark section or leading separator.
 - The target URL MUST be removed from the visible Memo body and represented by an explicit source-page action that readers can invoke.
@@ -124,6 +127,7 @@ The reading header keeps author remarks and the generated summary visible. The o
 - The summary, source Markdown, and translation MUST inherit the parent Memo's public/private visibility and existing publication rules.
 - A private clipping MUST NOT appear in public lists, search, RSS, static snapshots, public media exports, or unauthenticated APIs.
 - A public clipping MAY appear in public exports only after the existing publication path includes the parent Memo. Processing completion MUST NOT imply automatic publication or deployment.
+- Live and public clipping projections MUST expose only a version-scoped resource base URL after resource capture completes. The resource route MUST enforce Memo visibility, current reading-version identity, a content-addressed filename, and manifest membership; it MUST NOT expose original URLs, fetch errors, or retained private diagnostics. Static publication MUST copy required clipping assets into the public artifact and fail closed when one is missing or exceeds the package limit.
 - The private conversation, conversation transcript, private identity metadata, Agent runtime records, credentials, raw processing logs, and unapproved historical artifacts MUST never enter public exports. Existing explicitly public author attribution remains governed by the Memo contract.
 - Conversation and private-artifact authorization MUST be enforced server-side; hidden controls, noindex, and cache headers MUST NOT be treated as authorization.
 - Visibility changes MUST apply to current and retained reading artifacts at the live authorization boundary. Public snapshots MUST follow the existing publication lifecycle rather than claim immediate revocation of already deployed public files.
@@ -135,6 +139,7 @@ The reading header keeps author remarks and the generated summary visible. The o
 - The product MUST NOT describe nofollow as an absolute crawler prohibition or guarantee about ranking credit. It expresses the outbound-link policy without making the whole public clipping unindexable.
 - The system MUST explain or expose a retry path when extraction, summary, translation, or persistence fails. A failed run MUST preserve author content and the source action and MUST NOT append a false or duplicate summary.
 - When a previous successful version exists, a failed reprocess MUST keep that version as the reader-visible fallback while exposing the failed attempt for recovery.
+- A version created before resource capture MUST remain readable with an external-resource warning, but its media MUST NOT become eligible for public publication until it is reprocessed successfully.
 
 ### REQ-MCL-012
 
@@ -206,6 +211,7 @@ Automated acceptance uses deterministic model doubles and isolated provider fixt
 - [ADR 0003: Public Mobile Content Stream](../../adr/0003-public-mobile-content-stream.md)
 - [ADR 0010: Use a Self-Contained SSR Console Beside the Static Public Site](../../adr/0010-self-contained-console-runtime.md)
 - [ADR 0012: Keep Clipping Attached to a Memo With a Private Conversation](../../adr/0012-memo-clipping-content-boundaries.md)
+- [ADR 0028: Versioned Clipping Resource Publication](../../adr/0028-versioned-clipping-resource-publication.md)
 
 ## Visual Evidence
 

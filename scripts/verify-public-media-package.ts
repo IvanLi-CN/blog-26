@@ -7,6 +7,7 @@ import {
   DEFAULT_MAX_PROJECT_BYTES,
   extractPublicMediaUrls,
   isPlaybookEditionFilePath,
+  isPublicMediaReferencePath,
   PUBLIC_MEDIA_FACADE_PREFIX,
   type PublicMediaManifest,
   STATIC_MEDIA_PREFIX,
@@ -290,7 +291,10 @@ export async function verifyPublicMediaPackage(
       if (entry.status === "packaged") {
         throw new Error(`Packaged media still uses facade URL: ${parsed.pathname}`);
       }
-      if (!raw.startsWith(`${mediaOrigin}${PUBLIC_MEDIA_FACADE_PREFIX}`)) {
+      if (
+        !raw.startsWith(`${mediaOrigin}${PUBLIC_MEDIA_FACADE_PREFIX}`) &&
+        !(raw.startsWith(mediaOrigin) && isPublicMediaReferencePath(parsed.pathname))
+      ) {
         throw new Error(
           `External media reference must use the configured origin: ${parsed.pathname}`
         );

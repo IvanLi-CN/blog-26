@@ -115,6 +115,8 @@ export interface ImageOptimizationOptions {
   publicMediaContext?: PublicMediaContext;
   /** 静态发布版本戳，用于让所有公开候选共享同一缓存身份 */
   publicAssetVersion?: string | null;
+  /** Map version-relative clipping resources before browser rendering. */
+  mapContentUrl?: (url: string) => string;
 }
 
 /**

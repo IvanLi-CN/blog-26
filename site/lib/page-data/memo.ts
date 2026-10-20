@@ -46,6 +46,7 @@ export type ConsoleClippingArticle = {
   title?: string | null;
   canDiscuss?: boolean;
   processorEnabled?: boolean;
+  resourceBaseUrl?: string | null;
 };
 
 export function selectClippingArticleForRender(input: {

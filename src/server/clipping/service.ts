@@ -454,7 +454,7 @@ export class ClippingService {
         stored.error = null;
       });
       let source = await this.store.read(id, version.id, "source");
-      if (!source || !version.sourceHash) {
+      if (!source || !version.sourceHash || !version.resourcesCaptured) {
         let article: ArticleMaterial;
         while (true) {
           try {
@@ -477,7 +477,16 @@ export class ClippingService {
         }
         source = article.markdown;
         await this.checkpoint(id, version, async (_manifest, stored) => {
+          const resources = article.resources ?? [];
+          for (const resource of resources) {
+            if (resource.status !== "captured") continue;
+            if (!resource.path || !resource.body)
+              throw new Error("剪藏资源已标记保存但缺少文件内容。");
+            await this.store.writeResource(id, version.id, resource.path, resource.body);
+          }
           await this.store.write(id, version.id, "source", article.markdown);
+          stored.resources = resources.map(({ body: _body, ...resource }) => resource);
+          stored.resourcesCaptured = true;
           stored.pageTitle = article.title;
           stored.finalUrl = article.url;
           stored.warning = article.warning;

@@ -38,6 +38,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
     contentSource = "local",
     publicMediaContext,
     publicAssetVersion,
+    mapContentUrl,
   } = options;
 
   function appendPublicAssetVersion(url: string, version: string | null | undefined) {
@@ -51,6 +52,23 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
     } catch {
       return url;
     }
+  }
+
+  function mapUrl(url: string) {
+    return mapContentUrl ? mapContentUrl(url) : url;
+  }
+
+  function mapSrcSet(value: string) {
+    return value
+      .split(",")
+      .map((candidate) => {
+        const match = /^\s*(?:<([^>]+)>|(\S+))(\s+.+?)?\s*$/u.exec(candidate);
+        const url = match?.[1] ?? match?.[2];
+        if (!url) return candidate;
+        const mapped = mapUrl(url);
+        return `${mapped}${match?.[3] ?? ""}`;
+      })
+      .join(", ");
   }
 
   return (tree: Root, file: unknown) => {
@@ -156,23 +174,29 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
       // 处理 img 标签
       if (node.tagName === "img" && node.properties && node.properties.src) {
         const originalSrc = node.properties.src as string;
+        const mappedOriginalSrc = mapUrl(originalSrc);
+        const hasMappedContentUrl = mappedOriginalSrc !== originalSrc;
         const shouldRewrite =
+          !hasMappedContentUrl &&
           !isExternalUrl(originalSrc) &&
           !originalSrc.startsWith("data:") &&
           !isPublicAssetFacadeUrl(originalSrc);
         const rewrittenSrc = appendPublicAssetVersion(
-          shouldRewrite
-            ? buildFacadeOrOptimizedUrl(originalSrc, "content", "content")
-            : originalSrc,
+          hasMappedContentUrl
+            ? mappedOriginalSrc
+            : shouldRewrite
+              ? buildFacadeOrOptimizedUrl(originalSrc, "content", "content")
+              : originalSrc,
           publicAssetVersion
         );
+        const mappedSrc = mapUrl(rewrittenSrc);
 
         // 首先保存原始 src 用于灯箱功能（在任何处理之前）
         if (enableLightbox) {
-          node.properties["data-original-src"] = rewrittenSrc;
+          node.properties["data-original-src"] = mappedSrc;
         }
 
-        if (publicMediaContext) {
+        if (publicMediaContext && !hasMappedContentUrl) {
           const inlinePresentations = shouldRewrite
             ? publicMediaContext.supportsResponsiveWatermark === false
               ? null
@@ -216,8 +240,8 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
           node.properties["data-watermark-fallback"] = "b";
         }
 
-        if (shouldRewrite) {
-          node.properties.src = rewrittenSrc;
+        if (shouldRewrite || hasMappedContentUrl) {
+          node.properties.src = mappedSrc;
         }
 
         // 添加懒加载
@@ -241,9 +265,12 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
       // 处理 a 标签中指向图片文件的链接
       if (node.tagName === "a" && node.properties && node.properties.href) {
         const href = node.properties.href as string;
+        const mappedHref = mapUrl(href);
 
         const mediaKind = href ? detectPublicMediaKind(href) : null;
-        if (href && (isImagePath(href) || mediaKind === "video")) {
+        if (mappedHref !== href) {
+          node.properties.href = mappedHref;
+        } else if (href && (isImagePath(href) || mediaKind === "video")) {
           if (!isExternalUrl(href) && !isPublicAssetFacadeUrl(href)) {
             const finalPath =
               mediaKind === "video"
@@ -254,19 +281,38 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
         }
       }
 
-      if ((node.tagName === "video" || node.tagName === "source") && node.properties?.src) {
+      if (
+        (node.tagName === "video" || node.tagName === "audio" || node.tagName === "source") &&
+        node.properties?.src
+      ) {
         const src = String(node.properties.src);
-        if (!isExternalUrl(src) && !isPublicAssetFacadeUrl(src) && !src.startsWith("data:")) {
-          node.properties.src = appendPublicAssetVersion(
-            buildFacadeOrOptimizedUrl(src, "playback", "play"),
-            publicAssetVersion
+        const mappedSrc = mapUrl(src);
+        if (mappedSrc !== src) {
+          node.properties.src = mappedSrc;
+        } else if (
+          !isExternalUrl(src) &&
+          !isPublicAssetFacadeUrl(src) &&
+          !src.startsWith("data:")
+        ) {
+          node.properties.src = mapUrl(
+            appendPublicAssetVersion(
+              buildFacadeOrOptimizedUrl(src, "playback", "play"),
+              publicAssetVersion
+            )
           );
         }
       }
 
+      if (typeof node.properties?.srcSet === "string")
+        node.properties.srcSet = mapSrcSet(node.properties.srcSet);
+      if (typeof node.properties?.srcset === "string")
+        node.properties.srcset = mapSrcSet(node.properties.srcset);
+
       if (node.tagName === "video" && node.properties?.poster) {
         const poster = String(node.properties.poster);
-        if (publicMediaContext) {
+        const mappedPoster = mapUrl(poster);
+        const hasMappedPoster = mappedPoster !== poster;
+        if (publicMediaContext && !hasMappedPoster) {
           const posterPresentations =
             publicMediaContext.supportsResponsiveWatermark === false
               ? null
@@ -289,14 +335,18 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
             );
           }
         }
-        if (
+        if (hasMappedPoster) {
+          node.properties.poster = mappedPoster;
+        } else if (
           !isExternalUrl(poster) &&
           !isPublicAssetFacadeUrl(poster) &&
           !poster.startsWith("data:")
         ) {
-          node.properties.poster = appendPublicAssetVersion(
-            buildFacadeOrOptimizedUrl(poster, "content", "content"),
-            publicAssetVersion
+          node.properties.poster = mapUrl(
+            appendPublicAssetVersion(
+              buildFacadeOrOptimizedUrl(poster, "content", "content"),
+              publicAssetVersion
+            )
           );
         }
       }
