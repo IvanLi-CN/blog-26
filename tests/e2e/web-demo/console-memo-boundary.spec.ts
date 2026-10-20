@@ -159,9 +159,9 @@ test.describe("Console Memo Web Demo", () => {
       waitUntil: "domcontentloaded",
     });
     await waitForPublicRouterHydration(page);
-    const clipping = page.locator(
-      '[data-testid="clipping-detail"][data-clipping-surface="public"]'
-    );
+    const clipping = page
+      .getByTestId("public-memo-detail-body")
+      .locator('[data-testid="clipping-detail"][data-clipping-surface="public"]');
     await expect(clipping).toBeVisible();
     const panelStyle = await clipping.locator(".clipping-memo-card").evaluate((element) => {
       const style = getComputedStyle(element);
@@ -202,9 +202,9 @@ test.describe("Console Memo Web Demo", () => {
       waitUntil: "domcontentloaded",
     });
     await waitForPublicRouterHydration(page);
-    const clipping = page.locator(
-      '[data-testid="clipping-detail"][data-clipping-surface="public"]'
-    );
+    const clipping = page
+      .getByTestId("public-memo-detail-body")
+      .locator('[data-testid="clipping-detail"][data-clipping-surface="public"]');
     await expect(clipping).toBeVisible();
     await expect(
       page.locator('[data-testid="clipping-article-source"]:visible').last()
