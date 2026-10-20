@@ -80,7 +80,7 @@
 
 ## Remaining Gates
 
-- Current-source full-suite tests pass locally with `1229 pass`, `67 skip`, and `0 fail`; repository checks and the admin UI boundary check also pass. The production build completes public, admin, and console artifacts, then stops at the existing `backend:dist` Linux native-search gate because `native/search/search.linux-x64.node` is not available on this macOS checkout. CI must still run the Linux/amd64 native build and Docker/package gates before release. The session Agent VM was provisioned but could not run validation because its image has no Bun runtime.
+- Current-source full-suite tests pass locally with `1230 pass`, `67 skip`, and `0 fail`; repository checks and the admin UI boundary check also pass. The production build completes public, admin, and console artifacts, then stops at the existing `backend:dist` Linux native-search gate because `native/search/search.linux-x64.node` is not available on this macOS checkout. CI must still run the Linux/amd64 native build and Docker/package gates before release. The session Agent VM was provisioned but could not run validation because its image has no Bun runtime.
 - Live-provider acceptance is deferred and unverified. Do not invoke the opt-in provider runner without separate explicit owner authorization.
 - Execute the required runtime review lanes and direct PR delivery gates after current automated validation and visual evidence.
 
