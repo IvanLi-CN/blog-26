@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "8753856a6342ed6b5c1d907e9093b27d7cdca9d9",
+  "covered_files": {
+    "PRODUCT.md": "064bd29cb5c712ac8bae91198af5a311121d72ef",
+    "README.md": "753e9f9422e18109ee9eb3c305672672e2608c50",
+    "README.zh-CN.md": "f268ab76a6738d4e2886bbe58bbd9a81f735cc2b",
+    "LICENSE": "fe27c2cc47c1654a75896852119522968b9881af",
+    ".gitignore": "ad17ba72cc464f1574606f96b0fd811cf4c5d955",
+    "site/assets/projects/posters-source/blog-26-dark.png": "ea274cabdbe68be3ec1a40d3e7f9545db1a5362f",
+    "site/assets/projects/posters-source/blog-26-light.png": "446fde705cfe5459bba54e7914574b30a896a8da",
+    "site/assets/brand/source/ivan-blog-wordmark-dark.svg": "d2646035fd236b930428ab13cbe8cbe69d1159bc",
+    "site/assets/brand/source/ivan-blog-wordmark-light.svg": "7baf1ec5aa942d73392c85b1428db08cd88ac380",
+    "site/assets/projects/social-source/blog-26-dark.png": "4bae621d1fec13e00533120f44530aa538f88a3f",
+    "site/assets/projects/social-source/blog-26-en-dark.png": "2e7ab7e1a45232529a636766b13c37f63c5675db",
+    "site/assets/projects/social-source/blog-26-en-dark.svg": "6b4614bed60c2023cf5904ecba5e21d4adf8139c",
+    "site/assets/projects/social-source/blog-26-en-light.png": "afd10f902293e19b48369ec9ca8a8d71eeb18c3d",
+    "site/assets/projects/social-source/blog-26-en-light.svg": "607f0d8770f79da633ac3f3a1bb67b10897356a8",
+    "site/assets/projects/social-source/blog-26-light.png": "ca446e99f5c41e3d469c7554f7aec1b01b35923c",
+    "tests/e2e/guest/nature-front-coverage.spec.ts": "7d5188361074a13a98c66413f29fb2f7d5f1fec9"
+  },
+  "change": {
+    "description": "Add the approved Ivan's Blog poster and social-preview source artwork, product-positioning documentation, a Topic-aligned repository README, MIT license text, and matching public media coverage expectations for the shared knowledge base.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The candidate adds static poster and social-preview source artwork plus product documentation only. It does not change public API shapes, persistence, application workflows, or runtime behavior.",
+      "assessed_at": "2026-10-19T02:25:32Z",
+      "evidence": [
+        {
+          "path": "PRODUCT.md",
+          "blob": "064bd29cb5c712ac8bae91198af5a311121d72ef",
+          "command": "Product positioning and scope are documented as static project metadata."
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate is limited to approved poster and social-preview source artwork, product direction and a Topic-aligned README, the repository MIT license text, the generated-output ignore rule, and the existing public media E2E count contract. No public endpoint, stored state, migration, or runtime implementation is changed.",
+      "assessed_at": "2026-10-19T03:03:57Z",
+      "evidence": [
+        {
+          "path": "site/assets/projects/posters-source/blog-26-light.png",
+          "blob": "446fde705cfe5459bba54e7914574b30a896a8da",
+          "command": "SHARP_CONCURRENCY=1 bun run verify:project-posters"
+        },
+        {
+          "path": "site/assets/projects/social-source/blog-26-light.png",
+          "blob": "ca446e99f5c41e3d469c7554f7aec1b01b35923c",
+          "command": "SHARP_CONCURRENCY=1 bun run verify:project-social-previews"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains within the approved production media, product-positioning, and repository documentation scope; no application behavior or contract implementation has been added."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The project poster and social-preview generators and verifiers pass for the added source artwork, while the production media, product documentation, Topic-aligned README, MIT license, and generated-output ignore rule remain static files with no API or persistence changes.",
+      "assessed_at": "2026-10-19T03:03:57Z",
+      "evidence": [
+        {
+          "path": "site/assets/projects/posters-source/blog-26-dark.png",
+          "blob": "ea274cabdbe68be3ec1a40d3e7f9545db1a5362f",
+          "command": "SHARP_CONCURRENCY=1 bun run generate:project-posters && SHARP_CONCURRENCY=1 bun run verify:project-posters"
+        },
+        {
+          "path": "tests/e2e/guest/nature-front-coverage.spec.ts",
+          "blob": "7d5188361074a13a98c66413f29fb2f7d5f1fec9",
+          "command": "bun run test:e2e:project -- guest: project poster count follows the added Ivan's Blog asset"
+        },
+        {
+          "path": "site/assets/projects/social-source/blog-26-dark.png",
+          "blob": "4bae621d1fec13e00533120f44530aa538f88a3f",
+          "command": "SHARP_CONCURRENCY=1 bun run generate:project-social-previews && SHARP_CONCURRENCY=1 bun run verify:project-social-previews"
+        },
+        {
+          "path": "README.md",
+          "blob": "753e9f9422e18109ee9eb3c305672672e2608c50",
+          "command": "git diff --check; verify README local links, commands, product surfaces, and Style Playbook Topic evidence"
+        },
+        {
+          "path": "LICENSE",
+          "blob": "fe27c2cc47c1654a75896852119522968b9881af",
+          "command": "MIT license text matches the package.json license declaration"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.0",
+        "3.5.1",
+        "3.5.2",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6"
+      ],
+      "evidence": [
+        {
+          "path": "site/assets/projects/posters-source/blog-26-light.png",
+          "blob": "446fde705cfe5459bba54e7914574b30a896a8da",
+          "command": "Static campaign artwork does not change HTTP, tRPC, MCP, or shipped product contracts."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The candidate adds no database schema, local content format, browser storage, cache, or durable release state.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "PRODUCT.md",
+          "blob": "064bd29cb5c712ac8bae91198af5a311121d72ef",
+          "command": "Product documentation and campaign assets do not write or alter persistent state."
+        }
+      ]
+    }
+  }
+}
