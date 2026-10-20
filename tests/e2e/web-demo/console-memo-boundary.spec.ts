@@ -173,17 +173,23 @@ test.describe("Console Memo Web Demo", () => {
       .locator('[data-testid="clipping-detail"][data-clipping-surface="public"]:visible')
       .last();
     await expect(clipping).toBeVisible();
-    const panelStyle = await clipping
-      .locator(".clipping-memo-card:visible")
-      .last()
-      .evaluate((element) => {
-        const style = getComputedStyle(element);
-        return {
-          backgroundImage: style.backgroundImage,
-          borderTopStyle: style.borderTopStyle,
-          borderTopWidth: style.borderTopWidth,
-        };
-      });
+    const panel = clipping.locator(".clipping-memo-card:visible").last();
+    await expect
+      .poll(async () =>
+        panel.evaluate((element) => {
+          const style = getComputedStyle(element);
+          return `${style.backgroundImage !== "none"}:${style.borderTopStyle}:${style.borderTopWidth}`;
+        })
+      )
+      .toBe(isMobileViewport ? "false:none:0px" : "true:solid:1px");
+    const panelStyle = await panel.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        backgroundImage: style.backgroundImage,
+        borderTopStyle: style.borderTopStyle,
+        borderTopWidth: style.borderTopWidth,
+      };
+    });
     if (isMobileViewport) {
       expect(panelStyle.backgroundImage).toBe("none");
       expect(panelStyle.borderTopStyle).toBe("none");
