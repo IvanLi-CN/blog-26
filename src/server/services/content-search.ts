@@ -94,8 +94,9 @@ export type ContentSearchExecutionContext = {
   signal?: AbortSignal;
   transport?: "json" | "sse";
   onProgress?: (phase: SearchProgressPhase) => void;
+  onKeywordResults?: (result: ContentSearchEnvelope) => Promise<void> | void;
 };
-export const SSE_SEARCH_MODEL_TIMEOUT_MS = 30_000;
+export const SSE_SEARCH_MODEL_TIMEOUT_MS = 60_000;
 type CacheEntry<T> = { value: T; until: number };
 const rewriteCache = new Map<string, CacheEntry<SearchRewrite>>();
 const judgementCache = new Map<string, CacheEntry<SearchJudgement>>();
@@ -543,6 +544,7 @@ export async function executeContentModes(
   };
   let ragIncompleteSources: string[] = [];
   let coverageIdentity: unknown;
+  let keywordResultReported = false;
   const captureRagCoverage = async (config?: ResolvedTierConfig) => {
     const coverage = await ragCoverage({
       source: input.source,
@@ -557,22 +559,37 @@ export async function executeContentModes(
       targets: coverage.status.details.map((row) => [row.id, row.state, row.indexedAt]),
     };
   };
+  const buildKeywordEnvelope = (
+    state: Awaited<ReturnType<typeof keywordState>>,
+    reason?: SearchReason
+  ): ContentSearchEnvelope => ({
+    results: state.merged
+      .slice(0, input.topK)
+      .map((candidate) => resultForCandidate(candidate, input.q, "keyword")),
+    requestedMode: input.mode,
+    effectiveMode: "keyword",
+    ...(reason ? { reason } : {}),
+    ...(metadata.playbook ? { playbook: metadata.playbook } : {}),
+    ...(incompleteSources.length ? { incompleteSources } : {}),
+    ...(ragIncompleteSources.length ? { ragIncompleteSources } : {}),
+  });
+  const reportKeywordResults = async (result: ContentSearchEnvelope) => {
+    if (input.mode === "keyword" || keywordResultReported) return;
+    keywordResultReported = true;
+    try {
+      await context.onKeywordResults?.(result);
+    } catch {
+      // Partial-result consumers must not change search semantics.
+    }
+  };
   const keywordEnvelope = async (reason?: SearchReason): Promise<ContentSearchEnvelope> => {
     throwIfSearchAborted(context);
     reportProgress(context, reason ? "fallback" : "retrieving");
     if (input.mode === "rag" && coverageIdentity === undefined) await captureRagCoverage();
     const state = await keywordState();
-    return {
-      results: state.merged
-        .slice(0, input.topK)
-        .map((candidate) => resultForCandidate(candidate, input.q, "keyword")),
-      requestedMode: input.mode,
-      effectiveMode: "keyword",
-      ...(reason ? { reason } : {}),
-      ...(metadata.playbook ? { playbook: metadata.playbook } : {}),
-      ...(incompleteSources.length ? { incompleteSources } : {}),
-      ...(ragIncompleteSources.length ? { ragIncompleteSources } : {}),
-    };
+    const envelope = buildKeywordEnvelope(state, reason);
+    await reportKeywordResults(envelope);
+    return envelope;
   };
   // Preserve the legacy SQLite query contract for callers that still use NEAR.
   // Tantivy remains the default engine for the new simple-query surface.
@@ -582,7 +599,7 @@ export async function executeContentModes(
     if (parseSearchQuery(input.q).limitExceeded)
       throw new ContentSearchError("BAD_REQUEST", "query-budget-exceeded");
     if (input.mode === "rag") await captureRagCoverage();
-    return {
+    const envelope = {
       ...(await keywordNearEnvelope(
         input,
         publishedOnly,
@@ -592,6 +609,8 @@ export async function executeContentModes(
       )),
       ...(ragIncompleteSources.length ? { ragIncompleteSources } : {}),
     };
+    await reportKeywordResults(envelope);
+    return envelope;
   }
   const plan = planNativeQuery(input.q);
   if (plan.mode !== "simple") return keywordEnvelope("explicit-query");
@@ -612,6 +631,7 @@ export async function executeContentModes(
     throwIfSearchAborted(context);
     reportProgress(context, "retrieving");
     const keyword = await keywordState();
+    await reportKeywordResults(buildKeywordEnvelope(keyword));
     const literal = keyword.merged;
     let result: UnifiedCandidate[];
     const snippetQueries = new Map<string, string>();

@@ -96,7 +96,12 @@ type SearchStreamEnvelope = {
   ragIncompleteSources?: string[];
 };
 
-async function readSearchStream(response: Response): Promise<SearchStreamEnvelope> {
+type SearchStreamKeywordHandler = (envelope: SearchStreamEnvelope) => void;
+
+async function readSearchStream(
+  response: Response,
+  onKeywordResults?: SearchStreamKeywordHandler
+): Promise<SearchStreamEnvelope> {
   const reader = response.body?.getReader();
   if (!reader) throw new Error("搜索流不可用，请稍后重试");
   const decoder = new TextDecoder();
@@ -119,6 +124,10 @@ async function readSearchStream(response: Response): Promise<SearchStreamEnvelop
         if (event === "error") {
           const payload = JSON.parse(data) as { error?: string };
           throw new Error(payload.error || "搜索失败，请稍后重试");
+        }
+        if (event === "keyword") {
+          onKeywordResults?.(JSON.parse(data) as SearchStreamEnvelope);
+          continue;
         }
         if (event === "result") return JSON.parse(data) as SearchStreamEnvelope;
       }
@@ -148,7 +157,13 @@ function parseFilter(value: string | null): SearchFilter {
     : "all";
 }
 
-async function search(query: string, mode: SearchMode, filter: SearchFilter, signal?: AbortSignal) {
+async function search(
+  query: string,
+  mode: SearchMode,
+  filter: SearchFilter,
+  signal?: AbortSignal,
+  onKeywordResults?: SearchStreamKeywordHandler
+) {
   const scope = requestScope(filter);
   const params = new URLSearchParams({
     q: query,
@@ -168,7 +183,7 @@ async function search(query: string, mode: SearchMode, filter: SearchFilter, sig
     throw new Error(message);
   }
   if (mode !== "keyword") {
-    const envelope = await readSearchStream(response);
+    const envelope = await readSearchStream(response, onKeywordResults);
     return {
       results: envelope.results,
       effectiveMode: envelope.effectiveMode,
@@ -244,6 +259,7 @@ export default function SearchPageIsland({
   const [filter, setFilter] = useState<SearchFilter>("all");
   const [results, setResults] = useState<SearchResultGroup[]>([]);
   const [isLoading, setIsLoading] = useState(Boolean(initialQuery.trim()));
+  const [aiSupplementLoading, setAiSupplementLoading] = useState(false);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [recommendedSearchTerms, setRecommendedSearchTerms] = useState<SearchSuggestionItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -265,6 +281,7 @@ export default function SearchPageIsland({
       setError("不支持的搜索模式，请重新选择。");
       setResults([]);
       setIsLoading(false);
+      setAiSupplementLoading(false);
       return;
     }
     setMode(selected.data);
@@ -276,23 +293,36 @@ export default function SearchPageIsland({
       setResults([]);
       setError(null);
       setIsLoading(false);
+      setAiSupplementLoading(false);
       return;
     }
     const controller = new AbortController();
     abortRef.current = controller;
     setIsLoading(true);
+    setAiSupplementLoading(false);
     setError(null);
-    void search(current.trim(), selected.data, selectedFilter, controller.signal)
+    let receivedKeywordResults = false;
+    void search(current.trim(), selected.data, selectedFilter, controller.signal, (partial) => {
+      if (requestIdRef.current !== requestId || controller.signal.aborted) return;
+      receivedKeywordResults = true;
+      setResults(groupSearchResults(partial.results));
+      setEffectiveMode(selected.data);
+      setReason(undefined);
+      setIsLoading(false);
+      setAiSupplementLoading(true);
+    })
       .then((response) => {
         if (requestIdRef.current !== requestId || controller.signal.aborted) return;
         setResults(groupSearchResults(response.results));
         setEffectiveMode(response.effectiveMode);
         setReason(response.reason ?? undefined);
+        setAiSupplementLoading(false);
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;
         if (requestIdRef.current !== requestId) return;
-        setResults([]);
+        if (!receivedKeywordResults) setResults([]);
+        setAiSupplementLoading(false);
         setError(err instanceof Error ? err.message : String(err));
       })
       .finally(() => {
@@ -434,6 +464,7 @@ export default function SearchPageIsland({
       searchedQuery={searchedQuery}
       results={results}
       isLoading={isLoading && canSearch}
+      aiSupplementLoading={aiSupplementLoading}
       error={error}
       filter={filter}
       onFilterChange={(nextFilter) => runSearchForQuery(searchedQuery || query, mode, nextFilter)}

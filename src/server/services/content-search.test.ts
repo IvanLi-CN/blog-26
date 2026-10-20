@@ -1139,6 +1139,10 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     expect(firstChunk).toContain("event: started");
     expect(firstChunk).not.toContain("event: result");
     expect(body).toContain(": heartbeat\n\n");
+    const keywordEventIndex = body.indexOf("event: keyword");
+    const resultEventIndex = body.indexOf("event: result");
+    expect(keywordEventIndex).toBeGreaterThanOrEqual(0);
+    expect(resultEventIndex).toBeGreaterThan(keywordEventIndex);
     expect(body).toContain("event: result");
     const resultEvent = body.split("\n\n").find((event) => event.startsWith("event: result"));
     expect(resultEvent).toBeDefined();
