@@ -294,6 +294,17 @@ export class ClippingStore {
     }
   }
 
+  async removeSourceIfUnreferenced(id: string, versionId: string, sourceHash: string) {
+    const manifest = await this.manifest(id);
+    const version = manifest?.versions.find((candidate) => candidate.id === versionId);
+    if (version?.sourceHash === sourceHash) return;
+    try {
+      await rm(this.path(id, identitySchema.parse(versionId), "source.md"), { force: true });
+    } catch {
+      /* Cleanup is best effort after a failed atomic checkpoint. */
+    }
+  }
+
   private async atomic(path: string, content: string | Uint8Array) {
     await mkdir(dirname(path), { recursive: true });
     const temporary = `${path}.${randomUUID()}.tmp`;

@@ -75,7 +75,8 @@ export async function handleClippingResourceRequest(
     (candidate) => candidate.status === "captured" && candidate.path === `assets/${safeFilename}`
   );
   if (!resource) return new Response("Not Found", { status: 404 });
-  if (resource.mimeType && !isSafeClippingResourceMimeType(resource.mimeType))
+  const contentType = resourceMimeType(resource);
+  if (!isSafeClippingResourceMimeType(contentType))
     return new Response("Not Found", { status: 404 });
   const body = await store.readResource(authorized.manifest.id, versionId, resource);
   if (!body) return new Response("Not Found", { status: 404 });
@@ -84,7 +85,7 @@ export async function handleClippingResourceRequest(
     headers: {
       "cache-control": "no-store",
       "content-length": String(body.byteLength),
-      "content-type": resourceMimeType(resource),
+      "content-type": contentType,
       "x-content-type-options": "nosniff",
       vary: "Cookie, Authorization",
     },

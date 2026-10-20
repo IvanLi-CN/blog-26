@@ -454,7 +454,13 @@ export class ClippingService {
         stored.error = null;
       });
       let source = await this.store.read(id, version.id, "source");
-      if (!source || !version.sourceHash || !version.resourcesCaptured) {
+      const needsCapture = !source || !version.sourceHash || !version.resourcesCaptured;
+      if (
+        needsCapture &&
+        (version.summaryState === "completed" || version.translationState === "completed")
+      )
+        throw new Error("已完成的旧剪藏版本缺少资源，请重新处理以创建完整版本。");
+      if (needsCapture) {
         let article: ArticleMaterial;
         while (true) {
           try {
@@ -476,10 +482,11 @@ export class ClippingService {
           }
         }
         source = article.markdown;
-        await this.checkpoint(id, version, async (_manifest, stored) => {
-          const resources = article.resources ?? [];
-          const writtenResources: string[] = [];
-          try {
+        const resources = article.resources ?? [];
+        const sourceHash = createHash("sha256").update(article.markdown).digest("hex");
+        const writtenResources: string[] = [];
+        try {
+          await this.checkpoint(id, version, async (_manifest, stored) => {
             for (const resource of resources) {
               if (resource.status !== "captured") continue;
               if (!resource.path || !resource.body)
@@ -494,16 +501,17 @@ export class ClippingService {
             stored.finalUrl = article.url;
             stored.warning = article.warning;
             stored.capturedAt = Date.now();
-            stored.sourceHash = createHash("sha256").update(article.markdown).digest("hex");
-          } catch (error) {
-            await Promise.all(
-              writtenResources.map((resourcePath) =>
-                this.store.removeResourceIfUnreferenced(id, version.id, resourcePath)
-              )
-            );
-            throw error;
-          }
-        });
+            stored.sourceHash = sourceHash;
+          });
+        } catch (error) {
+          await Promise.all([
+            ...writtenResources.map((resourcePath) =>
+              this.store.removeResourceIfUnreferenced(id, version.id, resourcePath)
+            ),
+            this.store.removeSourceIfUnreferenced(id, version.id, sourceHash),
+          ]);
+          throw error;
+        }
       }
       if (!version.jobConversationId) {
         if (signal.aborted || this.closing) return;

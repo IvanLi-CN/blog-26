@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  clippingResourceUrlsFromSnapshot,
   DEFAULT_RELEASE_MEDIA_DOWNLOAD_CONCURRENCY,
   fetchPublicSnapshot,
   MAX_RELEASE_MEDIA_DOWNLOAD_CONCURRENCY,
@@ -7,6 +8,24 @@ import {
 } from "../../src/lib/release/inputs";
 
 const snapshotUrl = new URL("https://console.example.test/api/public/snapshot");
+
+test("freezes captured clipping references from the public snapshot", () => {
+  const hash = "a".repeat(64);
+  expect(
+    clippingResourceUrlsFromSnapshot(
+      {
+        clip: {
+          source: `# Article\n\n![Image](./assets/${hash}.png)`,
+          translation: null,
+          resourceBaseUrl: "/api/public/memos/clip/clipping/assets/version-1/",
+        },
+      },
+      "https://console.example.test"
+    )
+  ).toEqual([
+    `https://console.example.test/api/public/memos/clip/clipping/assets/version-1/${hash}.png`,
+  ]);
+});
 
 describe("manual release snapshot acquisition", () => {
   test("uses bounded parallelism for release media freezing", () => {

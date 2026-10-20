@@ -222,6 +222,37 @@ test("versioned clipping resources enforce ownership and public visibility", asy
     await writeFile(join(root, "authored", id), raw);
   }
 });
+
+test("resource facade rejects an SVG path when the manifest MIME is missing", async () => {
+  const manifest = await store.manifest(clippingId);
+  if (!manifest) throw new Error("Fixture manifest is missing");
+  const version = manifest.versions.find((candidate) => candidate.id === versionId);
+  const resource = version?.resources[0];
+  if (!version || !resource) throw new Error("Fixture resource is missing");
+  const original = { path: resource.path, mimeType: resource.mimeType };
+  const svgFilename = `${resource.id}.svg`;
+  resource.path = `assets/${svgFilename}`;
+  resource.mimeType = null;
+  await store.writeResource(clippingId, versionId, resource.path, Buffer.from("captured image"));
+  await store.save(manifest);
+  try {
+    const response = await handleClippingResourceRequest(
+      new Request(
+        `http://localhost/api/public/memos/clip/clipping/assets/${versionId}/${svgFilename}`
+      ),
+      "clip",
+      versionId,
+      svgFilename,
+      context("guest")
+    );
+    expect(response.status).toBe(404);
+  } finally {
+    resource.path = original.path;
+    resource.mimeType = original.mimeType;
+    await store.save(manifest);
+  }
+});
+
 test("public reading exposes only materials; conversation is restricted to creator and admin and history/restore are absent", async () => {
   const reading = await (await request("", "guest")).json();
   expect(reading.source).toContain("Source.");

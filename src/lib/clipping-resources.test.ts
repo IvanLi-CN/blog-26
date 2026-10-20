@@ -26,7 +26,7 @@ test("removes uncaptured media from legacy public clipping prose", () => {
     stripUncapturedClippingMedia(
       '![Hero](https://cdn.example/hero.webp) <img src="https://cdn.example/hero.webp"> <video src="./assets/' +
         filename +
-        '"></video>'
+        '">\n  <source src="https://cdn.example/video.mp4">\n</video>'
     )
   ).toBe("Hero 资源抓取失败：媒体 资源抓取失败：视频");
 });

@@ -19,7 +19,7 @@ const SAFE_CLIPPING_RESOURCE_MIME_TYPES = new Set([
 const CLIPPING_MARKDOWN_MEDIA_RE =
   /!\[([^\]]*)\]\(\s*(?:https?:\/\/[^\s)]+|\.\/assets\/[a-f0-9]{64}\.[a-z0-9]+)(?:\s+"[^"]*")?\s*\)/giu;
 const CLIPPING_HTML_MEDIA_RE =
-  /<(?<tag>img|source|video|audio|track)\b[^>]*>.*?<\/\k<tag>>|<(?<single>img|source|video|audio|track)\b[^>]*\/?>(?![\s\S]*<\/\k<single>>)/giu;
+  /<(?<tag>img|source|video|audio|track)\b[^>]*>[\s\S]*?<\/\k<tag>\s*>|<(?<single>img|source|video|audio|track)\b[^>]*\/?>(?![\s\S]*<\/\k<single>\s*>)/giu;
 
 /** Keep legacy clipping prose readable without publishing uncaptured media URLs. */
 export function stripUncapturedClippingMedia(markdown: string) {
