@@ -18,6 +18,7 @@
     "src/server/public-api/search-stream.test.ts": "ff1de0bcd7e5c977d0cd1d19e52f0f3b1d50dc28",
     "src/server/services/content-search.test.ts": "cade4feddab2000da1c6dffdf6a85acb7b257da3",
     "src/server/services/content-search.ts": "293ea34f9681757eb668361912e183e5abd6d3fa",
+    "scripts/test-worktree-bootstrap.sh": "a0173f9703aa343fb42ab4e5b224b5c2896c2039",
     "tests/lib/web-demo-fetch.test.ts": "11dc594d9f6506418392550ba424134a0afd7f41"
   },
   "change": {
@@ -45,7 +46,7 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The candidate is limited to progressive web SSE transport, the public search island waiting state, deterministic Web Demo coverage, and the associated search specification. Existing complete-response callers and durable search state are untouched.",
+      "reasoning": "The candidate is limited to progressive web SSE transport, the public search island waiting state, deterministic Web Demo coverage, the associated search specification, and bounded cleanup in the existing worktree smoke test. Existing complete-response callers and durable search state are untouched.",
       "assessed_at": "2026-10-20T04:35:02+08:00",
       "evidence": [
         {
@@ -66,7 +67,7 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "The full local suite passes with 1208 tests passing and no failures, the focused SSE/Web Demo tests pass, and the repository check passes. Desktop and 393px mobile Web Demo evidence shows keyword results before AI completion without horizontal overflow; owner visual confirmation was received for both screenshots. Linux-only native Tantivy tests remain platform-skipped on the macOS host and are covered by CI.",
+      "reasoning": "The full local suite passes with 1208 tests passing and no failures, the focused SSE/Web Demo tests pass, the repository check passes, and the worktree bootstrap smoke suite passes after per-scenario cleanup prevents duplicate dependency trees from exhausting CI storage. Desktop and 393px mobile Web Demo evidence shows keyword results before AI completion without horizontal overflow; owner visual confirmation was received for both screenshots. Linux-only native Tantivy tests remain platform-skipped on the macOS host and are covered by CI.",
       "assessed_at": "2026-10-20T04:35:02+08:00",
       "evidence": [
         {
@@ -88,6 +89,11 @@
           "path": "src/server/services/content-search.ts",
           "blob": "293ea34f9681757eb668361912e183e5abd6d3fa",
           "command": "bun run check"
+        },
+        {
+          "path": "scripts/test-worktree-bootstrap.sh",
+          "blob": "a0173f9703aa343fb42ab4e5b224b5c2896c2039",
+          "command": "TMPDIR=$(mktemp -d) bash ./scripts/test-worktree-bootstrap.sh"
         }
       ]
     }

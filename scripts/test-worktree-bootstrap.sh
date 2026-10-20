@@ -42,6 +42,23 @@ cleanup() {
 }
 trap cleanup EXIT
 
+prune_snapshot_worktrees() {
+  [[ -d "$SNAPSHOT_REPO/.git" ]] || return 0
+
+  local worktree
+  while IFS= read -r worktree; do
+    [[ "$worktree" == "$SNAPSHOT_REPO" ]] && continue
+    git -C "$SNAPSHOT_REPO" worktree remove --force "$worktree" >/dev/null 2>&1 || true
+  done < <(git -C "$SNAPSHOT_REPO" worktree list --porcelain | sed -n 's/^worktree //p')
+
+  git -C "$SNAPSHOT_REPO" worktree prune >/dev/null 2>&1 || true
+}
+
+run_check() {
+  "$@"
+  prune_snapshot_worktrees
+}
+
 log() {
   printf '[test-worktree-bootstrap] %s\n' "$*"
 }
@@ -1159,6 +1176,12 @@ check_dry_run_is_read_only() {
 
 check_existing_env_rejects_occupied_port() {
   log "check existing .env.local still rejects occupied ports"
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$MANUAL_WORKTREE" >/dev/null 2>&1
+  )
+
   start_port_holder 34111
   cat >"$MANUAL_WORKTREE/.env.local" <<'EOF'
 PORT=34111
@@ -1255,6 +1278,12 @@ PY
 
 check_managed_custom_content_root_is_used() {
   log "check dev data generation respects managed custom LOCAL_CONTENT_BASE_PATH"
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$MANUAL_WORKTREE" >/dev/null 2>&1
+  )
+
   local custom_root="$MANUAL_WORKTREE/dev-data/local-fixtures"
   (
     cd "$MANUAL_WORKTREE"
@@ -1439,29 +1468,29 @@ check_failure_is_non_blocking() {
 
 create_snapshot_repo
 prepare_root_hooks
-check_auto_bootstrap
-check_primary_source_recovery
-check_manual_missing_target_recovery
-check_crlf_source_recovery
-check_source_without_final_newline_preserves_eof
-check_port_rewrite_boundaries
-check_existing_env_is_preserved
-check_legacy_env_is_accepted
-check_dry_run_is_read_only
-check_primary_source_fallback
-check_invalid_primary_source_fallback
-check_source_validation_matrix
-check_prunable_primary_falls_back
-check_damaged_target_is_preserved
-check_publish_failure_is_strict_and_non_blocking
-check_concurrent_publication_is_atomic
-check_existing_env_rejects_occupied_port
-check_atomic_block_allocation_skips_derived_port_conflict
-check_managed_custom_content_root_is_used
-check_public_export_uses_env_local
-check_test_env_reset_respects_custom_local_root
-check_stale_scope_port_block_is_revalidated
-check_dev_fixture_guardrail_for_real_root
-check_test_fixture_clean_removes_root_artifacts
-check_failure_is_non_blocking
+run_check check_auto_bootstrap
+run_check check_primary_source_recovery
+run_check check_manual_missing_target_recovery
+run_check check_crlf_source_recovery
+run_check check_source_without_final_newline_preserves_eof
+run_check check_port_rewrite_boundaries
+run_check check_existing_env_is_preserved
+run_check check_legacy_env_is_accepted
+run_check check_dry_run_is_read_only
+run_check check_primary_source_fallback
+run_check check_invalid_primary_source_fallback
+run_check check_source_validation_matrix
+run_check check_prunable_primary_falls_back
+run_check check_damaged_target_is_preserved
+run_check check_publish_failure_is_strict_and_non_blocking
+run_check check_concurrent_publication_is_atomic
+run_check check_existing_env_rejects_occupied_port
+run_check check_atomic_block_allocation_skips_derived_port_conflict
+run_check check_managed_custom_content_root_is_used
+run_check check_public_export_uses_env_local
+run_check check_test_env_reset_respects_custom_local_root
+run_check check_stale_scope_port_block_is_revalidated
+run_check check_dev_fixture_guardrail_for_real_root
+run_check check_test_fixture_clean_removes_root_artifacts
+run_check check_failure_is_non_blocking
 log "all worktree bootstrap checks passed"
