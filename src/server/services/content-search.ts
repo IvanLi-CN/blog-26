@@ -51,29 +51,24 @@ export const contentSearchInputObjectSchema = z
     type: z
       .enum(["all", "post", "memo", "clipping", "topic", "experience", "policy"])
       .default("all"),
-    edition: z
-      .string()
-      .regex(/^[a-f0-9]{64}$/u)
-      .optional(),
-    sourceReleaseId: z
-      .string()
-      .regex(/^[1-9]\d*$/u)
-      .optional(),
-    sourceTag: z
-      .string()
-      .regex(/^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/u)
-      .optional(),
+    // Kept as unknown compatibility fields for old callers. They are removed
+    // before search input validation and never select a Playbook snapshot.
+    edition: z.unknown().optional(),
+    sourceReleaseId: z.unknown().optional(),
+    sourceTag: z.unknown().optional(),
   })
   .strict();
-export const contentSearchInputSchema = contentSearchInputObjectSchema.refine(
-  (value) =>
-    (value.edition === undefined &&
-      value.sourceReleaseId === undefined &&
-      value.sourceTag === undefined) ||
-    (value.edition !== undefined &&
-      value.sourceReleaseId !== undefined &&
-      value.sourceTag !== undefined),
-  { message: "edition, sourceReleaseId and sourceTag must be provided together" }
+const SEARCH_PLAYBOOK_IDENTITY_KEYS = ["edition", "sourceReleaseId", "sourceTag"] as const;
+function stripSearchPlaybookIdentity(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const input = value as Record<string, unknown>;
+  const stripped = { ...input };
+  for (const key of SEARCH_PLAYBOOK_IDENTITY_KEYS) delete stripped[key];
+  return stripped;
+}
+export const contentSearchInputSchema = z.preprocess(
+  stripSearchPlaybookIdentity,
+  contentSearchInputObjectSchema
 );
 export type ContentSearchInput = z.infer<typeof contentSearchInputSchema>;
 export type ContentSearchEnvelope = {
@@ -333,12 +328,8 @@ async function resolvePlaybookEdition(input: ContentSearchInput) {
   if (!wantsPlaybook(input.type) || input.source === "blog") return undefined;
   const store = getRuntimePlaybookStore();
   await store.load();
-  const selected =
-    input.edition && input.sourceReleaseId && input.sourceTag
-      ? store.getEdition(input.edition, input.sourceReleaseId, input.sourceTag)
-      : store.current;
+  const selected = store.current;
   if (selected) return selected;
-  if (input.edition) throw new ContentSearchError("CONFLICT", "search-playbook-edition-unknown");
   if (input.source === "playbook") {
     throw new ContentSearchError("SERVICE_UNAVAILABLE", "search-playbook-edition-unavailable");
   }

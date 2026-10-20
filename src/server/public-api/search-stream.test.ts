@@ -11,12 +11,16 @@ import { handlePublicApiRequest } from "@/server/public-api/router";
 let directory: string;
 const oldDbPath = process.env.DB_PATH;
 const oldContentPath = process.env.LOCAL_CONTENT_BASE_PATH;
+const oldPlaybookCache = process.env.PLAYBOOK_CACHE_DIR;
+const oldPlaybookSeed = process.env.PLAYBOOK_SEED_PATH;
 
 describe("public search SSE transport", () => {
   beforeAll(async () => {
     directory = mkdtempSync(path.join(os.tmpdir(), "blog-search-stream-"));
     process.env.DB_PATH = path.join(directory, "content.sqlite");
     process.env.LOCAL_CONTENT_BASE_PATH = path.join(directory, "local");
+    process.env.PLAYBOOK_CACHE_DIR = path.join(directory, "playbook-cache");
+    process.env.PLAYBOOK_SEED_PATH = path.join(directory, "missing-playbook-seed.json");
     const sqlite = new Database(process.env.DB_PATH);
     migrate(drizzle(sqlite), { migrationsFolder: path.resolve("drizzle") });
     sqlite.close();
@@ -28,6 +32,10 @@ describe("public search SSE transport", () => {
     else process.env.DB_PATH = oldDbPath;
     if (oldContentPath === undefined) delete process.env.LOCAL_CONTENT_BASE_PATH;
     else process.env.LOCAL_CONTENT_BASE_PATH = oldContentPath;
+    if (oldPlaybookCache === undefined) delete process.env.PLAYBOOK_CACHE_DIR;
+    else process.env.PLAYBOOK_CACHE_DIR = oldPlaybookCache;
+    if (oldPlaybookSeed === undefined) delete process.env.PLAYBOOK_SEED_PATH;
+    else process.env.PLAYBOOK_SEED_PATH = oldPlaybookSeed;
     rmSync(directory, { recursive: true, force: true });
   });
 
@@ -51,5 +59,41 @@ describe("public search SSE transport", () => {
     );
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  test("ignores malformed legacy Playbook selectors", async () => {
+    const response = await handlePublicApiRequest(
+      new Request(
+        "http://localhost/api/public/search/stream?q=&mode=rag&edition=broken&sourceReleaseId=-1&sourceTag=old"
+      ),
+      "/search/stream"
+    );
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body).toContain("event: started");
+    expect(body).toContain("event: result");
+  });
+
+  test("preserves controlled Playbook availability errors in SSE", async () => {
+    const response = await handlePublicApiRequest(
+      new Request("http://localhost/api/public/search/stream?q=fixture&mode=rag&source=playbook"),
+      "/search/stream"
+    );
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body).toContain("event: started");
+    expect(body).toContain('"code":"SERVICE_UNAVAILABLE"');
+    expect(body).toContain('"error":"search-playbook-edition-unavailable"');
+  });
+
+  test("JSON search keeps legacy selector compatibility without validating it", async () => {
+    const response = await handlePublicApiRequest(
+      new Request(
+        "http://localhost/api/public/search?q=&mode=keyword&edition=broken&sourceReleaseId=-1&sourceTag=old"
+      ),
+      "/search"
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual([]);
   });
 });

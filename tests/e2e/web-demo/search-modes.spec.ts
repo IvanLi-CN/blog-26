@@ -62,6 +62,21 @@ test("RAG returns Playbook results with edition-bound links and source filters",
   await results.getByRole("link", { name: "打开Policy Skill：安全发布 Policy Skill" }).click();
   await expect(page.getByRole("heading", { name: "Safe Release", exact: true })).toBeVisible();
 });
+test("legacy Playbook version parameters are ignored and removed from search URLs", async ({
+  page,
+}) => {
+  await page.goto(
+    "/search/?q=%E5%8F%91%E5%B8%83&mode=rag&edition=broken&sourceReleaseId=-1&sourceTag=old&d_delay=normal"
+  );
+  await hideInspector(page);
+  await expect(page.getByRole("region", { name: "搜索结果" })).toContainText("交付工作流");
+  const url = new URL(page.url());
+  expect(url.searchParams.get("edition")).toBeNull();
+  expect(url.searchParams.get("sourceReleaseId")).toBeNull();
+  expect(url.searchParams.get("sourceTag")).toBeNull();
+  expect(url.searchParams.get("q")).toBe("发布");
+  expect(url.searchParams.get("mode")).toBe("rag");
+});
 test("rewrite waits for the unified server result", async ({ page }) => {
   await page.goto(
     "/search/?q=SQLite&mode=rewrite&d_scene=search-rewrite-ready&d_data=dense&d_delay=slow"

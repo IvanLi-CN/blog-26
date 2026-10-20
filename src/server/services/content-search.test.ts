@@ -1360,18 +1360,20 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     expect(result.results.every((item) => item.source === "playbook")).toBe(true);
   });
 
-  test("HTTP, tRPC, and MCP expose the same adopted Playbook edition", async () => {
+  test("HTTP, tRPC, and MCP ignore legacy Playbook selectors and use current", async () => {
+    const previous = makePublicBundle("v2.9.9", "99");
     const bundle = makePublicBundle("v3.0.0", "100");
+    await getRuntimePlaybookStore().adopt(previous.edition);
     await getRuntimePlaybookStore().adopt(bundle.edition);
-    const identity = new URLSearchParams({
-      edition: bundle.edition.edition.editionDigest,
-      sourceReleaseId: bundle.edition.edition.source.releaseId,
-      sourceTag: bundle.edition.edition.source.tag,
+    const legacyIdentity = new URLSearchParams({
+      edition: "not-a-digest",
+      sourceReleaseId: "not-a-release",
+      sourceTag: "not-a-tag",
     });
 
     const http = await handlePublicApiRequest(
       new Request(
-        `http://localhost/api/public/search?q=verify&mode=keyword&source=playbook&type=policy&${identity}`
+        `http://localhost/api/public/search?q=verify&mode=keyword&source=playbook&type=policy&${legacyIdentity}`
       ),
       "/search"
     );
@@ -1393,9 +1395,9 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
         mode: "keyword",
         source: "playbook",
         type: "policy",
-        edition: bundle.edition.edition.editionDigest,
-        sourceReleaseId: bundle.edition.edition.source.releaseId,
-        sourceTag: bundle.edition.edition.source.tag,
+        edition: "0".repeat(64),
+        sourceReleaseId: previous.edition.edition.source.releaseId,
+        sourceTag: previous.edition.edition.source.tag,
       });
     expect(trpc.playbook?.sourceTag).toBe("v3.0.0");
     expect(trpc.results.every((item) => item.source === "playbook")).toBe(true);
@@ -1439,9 +1441,9 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
                 mode: "keyword",
                 source: "playbook",
                 type: "policy",
-                edition: bundle.edition.edition.editionDigest,
-                sourceReleaseId: bundle.edition.edition.source.releaseId,
-                sourceTag: bundle.edition.edition.source.tag,
+                edition: "malformed",
+                sourceReleaseId: "-1",
+                sourceTag: "old",
               },
             },
           }),
@@ -1460,6 +1462,37 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
       };
       expect(result.playbook?.sourceTag).toBe("v3.0.0");
       expect(result.results.every((item) => item.source === "playbook")).toBe(true);
+
+      const unknownParameterResponse = await handleMcpHttpRequest(
+        new Request("http://localhost/mcp", {
+          method: "POST",
+          headers: { ...headers, "mcp-session-id": session },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 3,
+            method: "tools/call",
+            params: {
+              name: "search_content",
+              arguments: {
+                q: "verify",
+                mode: "keyword",
+                bogus: true,
+              },
+            },
+          }),
+        })
+      );
+      const unknownParameterRaw = await unknownParameterResponse.text();
+      const unknownParameterPayload = JSON.parse(
+        unknownParameterRaw
+          .split("\n")
+          .find((line) => line.startsWith("data: "))
+          ?.slice(6) ?? unknownParameterRaw
+      );
+      expect(unknownParameterPayload.result?.isError).toBe(true);
+      expect(unknownParameterPayload.result?.content?.[0]?.text).toContain(
+        "Input validation error"
+      );
     } finally {
       await handleMcpHttpRequest(
         new Request("http://localhost/mcp", {

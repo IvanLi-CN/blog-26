@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "c9ea30c1c60970b33aefb773003eb3a75d8a9b96",
+  "covered_files": {
+    "docs/adr/0024-unified-search-and-playbook-sync-management.md": "91d97741e855f3f8fd2c9598ae292b0b90004984",
+    "docs/specs/search-relevance/SPEC.md": "dacdb0abaaf6a372ff7451b0815e026597267a2b",
+    "docs/specs/search-relevance/contracts/unified-search.md": "f6af3d4b6a741885fd4330f5ad429b85dd886a22",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "a6ea8bedee3842b51f167405ba47c7dc356d6584",
+    "docs/specs/style-playbook-integration/SPEC.md": "ebb629abc42fd59477fc5b3e786e8cad2d3f962a",
+    "site/components/PublicRouter.tsx": "6d393677c17c9fe0ae122ce382df163965eb8be4",
+    "site/components/SearchPageIsland.tsx": "9bc5bd8d63de44428a1d69d446c201db223c0c7a",
+    "site/lib/page-data/search.ts": "5bea3a80e3fb8447c41b7c537870d42d1ab53d36",
+    "site/lib/route-data-utils.ts": "ad83d6c28a10a0817247de3fe2f45163c72b3ca1",
+    "src/components/search/search-navigation.test.ts": "4a1c91658cb1f595d186ca5b7b611a3b525f127f",
+    "src/components/search/search-navigation.ts": "d7b235114dfd8d3c7391ba44ba29844e7042c3f0",
+    "src/server/mcp.ts": "3ad34049ee92100398df79d1c74c4f7489f45d84",
+    "src/server/public-api/router.ts": "07ab7998ef1942c811ab1f50f5962c1800cdb55e",
+    "src/server/public-api/search-stream.test.ts": "871302580d2316edf983ce31e4ab69a5d1b3e49a",
+    "src/server/services/content-search-input.test.ts": "0671a1ce2fc0c26fee4098b845b1f03dbce85585",
+    "src/server/services/content-search.test.ts": "d168e5ad1660afe047f58e65bbb40638e4747642",
+    "src/server/services/content-search.ts": "6e97e14f3477808a299f3b597ed5e4f33a32ea8e",
+    "tests/e2e/web-demo/search-modes.spec.ts": "a457fcd7e83fc01609edd37810a90f64b19dd9af"
+  },
+  "change": {
+    "description": "Remove Playbook edition selectors from modern search requests while accepting legacy URL and API fields for compatibility, locking each request to the current adopted snapshot and preserving versioned reading and internal RAG identity boundaries.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a compatible search URL and input repair. It removes caller-controlled Playbook version selection, keeps the existing result shape and ranking, and does not change durable application state or versioned reading routes.",
+      "assessed_at": "2026-10-19T08:30:00+08:00",
+      "evidence": [
+        {
+          "path": "src/server/services/content-search.ts",
+          "blob": "6e97e14f3477808a299f3b597ed5e4f33a32ea8e",
+          "command": "Current-snapshot resolution and legacy selector stripping review"
+        },
+        {
+          "path": "site/components/SearchPageIsland.tsx",
+          "blob": "9bc5bd8d63de44428a1d69d446c201db223c0c7a",
+          "command": "Search URL normalization and replaceState compatibility review"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The implementation is limited to search transport input compatibility, current Playbook snapshot locking, strict MCP validation, SSE error parity, and URL cleanup. Versioned reading/resource APIs, RAG edition isolation, permissions, ranking, and persistent state remain unchanged.",
+      "assessed_at": "2026-10-19T08:30:00+08:00",
+      "evidence": [
+        {
+          "path": "src/server/public-api/search-stream.test.ts",
+          "blob": "871302580d2316edf983ce31e4ab69a5d1b3e49a",
+          "command": "bun test src/server/public-api/search-stream.test.ts"
+        },
+        {
+          "path": "src/components/search/search-navigation.test.ts",
+          "blob": "4a1c91658cb1f595d186ca5b7b611a3b525f127f",
+          "command": "bun test src/components/search/search-navigation.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains within the planned search URL and current-snapshot compatibility repair; no provider, ranking, persistence, or non-search Playbook route behavior was changed."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused JSON/SSE, input, navigation, route, and Web Demo tests pass; repository checks and formal review confirm legacy selectors are ignored, unknown inputs remain rejected, controlled errors retain code/message parity, and current snapshot identity is preserved.",
+      "assessed_at": "2026-10-19T08:30:00+08:00",
+      "evidence": [
+        {
+          "path": "src/server/public-api/search-stream.test.ts",
+          "blob": "871302580d2316edf983ce31e4ab69a5d1b3e49a",
+          "command": "bun test src/server/public-api/search-stream.test.ts src/server/services/content-search-input.test.ts"
+        },
+        {
+          "path": "tests/lib/web-demo-fetch.test.ts",
+          "blob": "d127f455b008d3b19a2f1f944974e5d04f1a79f6",
+          "command": "bun test tests/lib/public-csr-route.test.ts tests/lib/web-demo-fetch.test.ts"
+        },
+        {
+          "path": "src/server/services/content-search.ts",
+          "blob": "6e97e14f3477808a299f3b597ed5e4f33a32ea8e",
+          "command": "Four formal read-only review lanes at final candidate; current snapshot and edition isolation clear"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5"
+      ],
+      "evidence": [
+        {
+          "path": "src/server/public-api/search-stream.test.ts",
+          "blob": "871302580d2316edf983ce31e4ab69a5d1b3e49a",
+          "command": "JSON and SSE search preserve response shape while ignoring legacy Playbook selectors"
+        },
+        {
+          "path": "src/server/mcp.ts",
+          "blob": "3ad34049ee92100398df79d1c74c4f7489f45d84",
+          "command": "MCP strict schema accepts legacy fields and rejects other unknown inputs"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, Playbook cache format, semantic projection identity, durable task state, or browser persistence changes are introduced.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/server/services/content-search.ts",
+          "blob": "6e97e14f3477808a299f3b597ed5e4f33a32ea8e",
+          "command": "Search request compatibility changes are request-scoped and retain internal edition-bound projection reads"
+        }
+      ]
+    }
+  }
+}

@@ -856,13 +856,17 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       return { content: [{ type: "text", text: JSON.stringify(items, null, 2) }] };
     }
   );
-  server.tool(
+  server.registerTool(
     "search_content",
-    "Search site content with rag, rewrite, or keyword mode",
-    contentSearchInputObjectSchema.extend({
-      topK: z.number().int().min(1).max(50).default(20),
-      publishedOnly: z.boolean().default(true),
-    }).shape,
+    {
+      description: "Search site content with rag, rewrite, or keyword mode",
+      inputSchema: contentSearchInputObjectSchema
+        .extend({
+          topK: z.number().int().min(1).max(50).default(20),
+          publishedOnly: z.boolean().default(true),
+        })
+        .strict(),
+    },
     async (args) => {
       const { publishedOnly, ...input } = args;
       requireAdminForUnpublished(publishedOnly);

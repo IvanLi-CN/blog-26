@@ -9,8 +9,8 @@ import {
 } from "@/components/search/search-model";
 import {
   buildSearchHref,
-  readSearchPlaybookIdentity,
   shouldPushSearchHref,
+  stripLegacySearchPlaybookIdentity,
 } from "@/components/search/search-navigation";
 import type { SearchSuggestionItem, SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import { type SearchMode, type SearchReason, searchModeSchema } from "@/lib/search/settings";
@@ -21,12 +21,6 @@ const SEARCH_RESULTS_CACHE_TTL_MS = 5 * 60 * 1000;
 
 const SEARCH_SUGGESTIONS_CACHE_PREFIX = "blog25:public-search-suggestions:v4:";
 const useSafeLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
-
-export type PlaybookSearchSource = {
-  edition: string;
-  sourceReleaseId: string;
-  sourceTag: string;
-};
 
 type CachedSearchSuggestions = {
   expiresAt: number;
@@ -154,13 +148,7 @@ function parseFilter(value: string | null): SearchFilter {
     : "all";
 }
 
-async function search(
-  query: string,
-  mode: SearchMode,
-  filter: SearchFilter,
-  playbook?: PlaybookSearchSource,
-  signal?: AbortSignal
-) {
+async function search(query: string, mode: SearchMode, filter: SearchFilter, signal?: AbortSignal) {
   const scope = requestScope(filter);
   const params = new URLSearchParams({
     q: query,
@@ -169,11 +157,6 @@ async function search(
     source: scope.source,
     type: scope.type,
   });
-  if (playbook) {
-    params.set("edition", playbook.edition);
-    params.set("sourceReleaseId", playbook.sourceReleaseId);
-    params.set("sourceTag", playbook.sourceTag);
-  }
   const endpoint = mode === "keyword" ? "/api/public/search" : "/api/public/search/stream";
   const response = await webDemoFetch(toPublicApiUrl(`${endpoint}?${params.toString()}`), {
     signal,
@@ -240,11 +223,9 @@ async function loadSearchSuggestions(
 }
 
 export default function SearchPageIsland({
-  playbook,
   initialQuery = "",
   initialMode = "keyword",
 }: {
-  playbook?: PlaybookSearchSource;
   initialQuery?: string;
   initialMode?: string;
 }) {
@@ -271,7 +252,11 @@ export default function SearchPageIsland({
     abortRef.current?.abort();
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
-    const params = new URL(window.location.href).searchParams;
+    const location = new URL(window.location.href);
+    if (stripLegacySearchPlaybookIdentity(location)) {
+      window.history.replaceState(window.history.state, "", location.toString());
+    }
+    const params = location.searchParams;
     const current = params.get("q") || "";
     const selected = searchModeSchema.safeParse(params.get("mode") ?? "keyword");
     setEffectiveMode(undefined);
@@ -297,8 +282,7 @@ export default function SearchPageIsland({
     abortRef.current = controller;
     setIsLoading(true);
     setError(null);
-    const selectedPlaybook = readSearchPlaybookIdentity(new URL(window.location.href)) ?? playbook;
-    void search(current.trim(), selected.data, selectedFilter, selectedPlaybook, controller.signal)
+    void search(current.trim(), selected.data, selectedFilter, controller.signal)
       .then((response) => {
         if (requestIdRef.current !== requestId || controller.signal.aborted) return;
         setResults(groupSearchResults(response.results));
@@ -314,7 +298,7 @@ export default function SearchPageIsland({
       .finally(() => {
         if (requestIdRef.current === requestId) setIsLoading(false);
       });
-  }, [playbook]);
+  }, []);
 
   useSafeLayoutEffect(() => {
     syncFromLocation();
@@ -409,23 +393,8 @@ export default function SearchPageIsland({
       const nextQuery = value.trim();
       setQuery(nextQuery);
       const currentHref = window.location.href;
-      const selectedPlaybook = readSearchPlaybookIdentity(new URL(currentHref)) ?? playbook;
-      const nextHref = buildSearchHref(
-        currentHref,
-        nextQuery,
-        selectedMode,
-        selectedFilter,
-        selectedPlaybook
-      );
-      if (
-        !shouldPushSearchHref(
-          currentHref,
-          nextQuery,
-          selectedMode,
-          selectedFilter,
-          selectedPlaybook
-        )
-      ) {
+      const nextHref = buildSearchHref(currentHref, nextQuery, selectedMode, selectedFilter);
+      if (!shouldPushSearchHref(currentHref, nextQuery, selectedMode, selectedFilter)) {
         window.history.replaceState({ publicSearchQuery: nextQuery }, "", nextHref);
         syncFromLocation();
         return;
@@ -434,7 +403,7 @@ export default function SearchPageIsland({
       window.history.pushState({ publicSearchQuery: nextQuery }, "", nextHref);
       syncFromLocation();
     },
-    [filter, mode, playbook, syncFromLocation]
+    [filter, mode, syncFromLocation]
   );
 
   const clearSearch = useCallback(() => {

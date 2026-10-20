@@ -1,27 +1,15 @@
 import type { SearchMode } from "@/lib/search/settings";
 import type { SearchFilter } from "./search-model";
 
-type SearchPlaybookIdentity = {
-  edition: string;
-  sourceReleaseId: string;
-  sourceTag: string;
-};
+const LEGACY_PLAYBOOK_SEARCH_KEYS = ["edition", "sourceReleaseId", "sourceTag"] as const;
 
-function setPlaybookIdentity(url: URL, playbook?: SearchPlaybookIdentity) {
-  for (const key of ["edition", "sourceReleaseId", "sourceTag"]) url.searchParams.delete(key);
-  if (!playbook) return;
-  url.searchParams.set("edition", playbook.edition);
-  url.searchParams.set("sourceReleaseId", playbook.sourceReleaseId);
-  url.searchParams.set("sourceTag", playbook.sourceTag);
-}
-
-export function readSearchPlaybookIdentity(url: URL): SearchPlaybookIdentity | undefined {
-  const edition = url.searchParams.get("edition");
-  const sourceReleaseId = url.searchParams.get("sourceReleaseId");
-  const sourceTag = url.searchParams.get("sourceTag");
-  return edition && sourceReleaseId && sourceTag
-    ? { edition, sourceReleaseId, sourceTag }
-    : undefined;
+export function stripLegacySearchPlaybookIdentity(url: URL) {
+  let changed = false;
+  for (const key of LEGACY_PLAYBOOK_SEARCH_KEYS) {
+    if (url.searchParams.has(key)) changed = true;
+    url.searchParams.delete(key);
+  }
+  return changed;
 }
 
 export function readSearchQueryFromHref(href: string) {
@@ -32,8 +20,7 @@ export function buildSearchHref(
   currentHref: string,
   query: string,
   mode?: SearchMode,
-  filter?: SearchFilter,
-  playbook?: SearchPlaybookIdentity
+  filter?: SearchFilter
 ) {
   const nextQuery = query.trim();
   const nextUrl = new URL(currentHref);
@@ -42,7 +29,7 @@ export function buildSearchHref(
   if (mode) nextUrl.searchParams.set("mode", mode);
   if (filter && filter !== "all") nextUrl.searchParams.set("filter", filter);
   else nextUrl.searchParams.delete("filter");
-  setPlaybookIdentity(nextUrl, playbook);
+  stripLegacySearchPlaybookIdentity(nextUrl);
   return nextUrl.toString();
 }
 
@@ -50,14 +37,13 @@ export function shouldPushSearchHref(
   currentHref: string,
   query: string,
   mode?: SearchMode,
-  filter?: SearchFilter,
-  playbook?: SearchPlaybookIdentity
+  filter?: SearchFilter
 ) {
   const current = new URL(currentHref).searchParams;
   return (
     readSearchQueryFromHref(currentHref) !== query.trim() ||
     (mode !== undefined && (current.get("mode") ?? "keyword") !== mode) ||
     (filter !== undefined && (current.get("filter") ?? "all") !== filter) ||
-    JSON.stringify(readSearchPlaybookIdentity(new URL(currentHref))) !== JSON.stringify(playbook)
+    LEGACY_PLAYBOOK_SEARCH_KEYS.some((key) => current.has(key))
   );
 }
