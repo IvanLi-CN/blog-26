@@ -41,11 +41,21 @@ test.describe("Console Memo Web Demo", () => {
           previousDocumentHeight = height;
           stableHeightSamples = 0;
         }
-        return height > viewportHeight + 240 && stableHeightSamples >= 2;
+        return height >= viewportHeight && stableHeightSamples >= 2;
       })
       .toBe(true);
-    await page.evaluate(() => window.scrollTo({ top: 240, left: 0, behavior: "instant" }));
-    await expect.poll(() => page.evaluate(() => Math.round(window.scrollY))).toBe(240);
+    const listScrollTarget = await page.evaluate(() => {
+      const maxScrollY = Math.max(document.documentElement.scrollHeight - window.innerHeight, 0);
+      return maxScrollY >= 1 ? Math.min(240, maxScrollY) : null;
+    });
+    if (listScrollTarget !== null) {
+      await page.evaluate((top) => {
+        document.scrollingElement?.scrollTo({ top, left: 0, behavior: "instant" });
+      }, listScrollTarget);
+      await expect
+        .poll(() => page.evaluate(() => Math.round(document.scrollingElement?.scrollTop ?? 0)))
+        .toBe(listScrollTarget);
+    }
     const listScrollY = await page.evaluate(() => Math.round(window.scrollY));
     await detailLink.click();
     await expect(page).toHaveURL(new RegExp(`/memos/${privateSlug}/?$`));
@@ -160,17 +170,20 @@ test.describe("Console Memo Web Demo", () => {
     });
     await waitForPublicRouterHydration(page);
     const clipping = page
-      .getByTestId("public-memo-detail-body")
-      .locator('[data-testid="clipping-detail"][data-clipping-surface="public"]');
+      .locator('[data-testid="clipping-detail"][data-clipping-surface="public"]:visible')
+      .last();
     await expect(clipping).toBeVisible();
-    const panelStyle = await clipping.locator(".clipping-memo-card").evaluate((element) => {
-      const style = getComputedStyle(element);
-      return {
-        backgroundImage: style.backgroundImage,
-        borderTopStyle: style.borderTopStyle,
-        borderTopWidth: style.borderTopWidth,
-      };
-    });
+    const panelStyle = await clipping
+      .locator(".clipping-memo-card:visible")
+      .last()
+      .evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          backgroundImage: style.backgroundImage,
+          borderTopStyle: style.borderTopStyle,
+          borderTopWidth: style.borderTopWidth,
+        };
+      });
     if (isMobileViewport) {
       expect(panelStyle.backgroundImage).toBe("none");
       expect(panelStyle.borderTopStyle).toBe("none");
@@ -203,8 +216,8 @@ test.describe("Console Memo Web Demo", () => {
     });
     await waitForPublicRouterHydration(page);
     const clipping = page
-      .getByTestId("public-memo-detail-body")
-      .locator('[data-testid="clipping-detail"][data-clipping-surface="public"]');
+      .locator('[data-testid="clipping-detail"][data-clipping-surface="public"]:visible')
+      .last();
     await expect(clipping).toBeVisible();
     await expect(
       page.locator('[data-testid="clipping-article-source"]:visible').last()

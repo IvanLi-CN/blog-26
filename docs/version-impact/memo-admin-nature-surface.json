@@ -7,7 +7,7 @@
     "docs/specs/memo-admin-inline-view/IMPLEMENTATION.md": "723383e87f015be265a217058d4426ee74be9c7e",
     "docs/specs/memo-admin-inline-view/SPEC.md": "167e2b07fab0372f6a17e25bd26039089f1c41a1",
     "site/components/PublicMemoAuthoring.tsx": "e4b2d96c43b1b0d40d16569f2c8b06b62019e95b",
-    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "cfbb425ca715fdbfcc41e54ab2ff11d66b07cf6a"
+    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "8892cd723d58aca4d95564c9130db4e2f153154d"
   },
   "change": {
     "description": "Keep Console memo clipping details on the public Nature surface for administrators, scope the Web Demo regression selectors to the hydrated detail body, and record the restored memo boundary contract.",
@@ -27,7 +27,7 @@
         },
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "cfbb425ca715fdbfcc41e54ab2ff11d66b07cf6a",
+          "blob": "8892cd723d58aca4d95564c9130db4e2f153154d",
           "command": "Review the desktop/mobile surface and overflow regression contract"
         }
       ]
@@ -44,7 +44,7 @@
         },
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "cfbb425ca715fdbfcc41e54ab2ff11d66b07cf6a",
+          "blob": "8892cd723d58aca4d95564c9130db4e2f153154d",
           "command": "bunx playwright test tests/e2e/web-demo/console-memo-boundary.spec.ts"
         }
       ],
@@ -65,7 +65,7 @@
         },
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "cfbb425ca715fdbfcc41e54ab2ff11d66b07cf6a",
+          "blob": "8892cd723d58aca4d95564c9130db4e2f153154d",
           "command": "bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/console-memo-boundary.spec.ts"
         },
         {
@@ -110,7 +110,7 @@
         },
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "cfbb425ca715fdbfcc41e54ab2ff11d66b07cf6a",
+          "blob": "8892cd723d58aca4d95564c9130db4e2f153154d",
           "command": "Web Demo coverage verifies the public Console detail and Admin Preview boundary"
         }
       ]
