@@ -159,9 +159,27 @@ test.describe("Console Memo Web Demo", () => {
       waitUntil: "domcontentloaded",
     });
     await waitForPublicRouterHydration(page);
-    await expect(
-      page.locator('[data-testid="clipping-detail"][data-clipping-surface="admin"]')
-    ).toBeVisible();
+    const clipping = page.locator(
+      '[data-testid="clipping-detail"][data-clipping-surface="public"]'
+    );
+    await expect(clipping).toBeVisible();
+    const panelStyle = await clipping.locator(".clipping-memo-card").evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        backgroundImage: style.backgroundImage,
+        borderTopStyle: style.borderTopStyle,
+        borderTopWidth: style.borderTopWidth,
+      };
+    });
+    if (isMobileViewport) {
+      expect(panelStyle.backgroundImage).toBe("none");
+      expect(panelStyle.borderTopStyle).toBe("none");
+      expect(panelStyle.borderTopWidth).toBe("0px");
+    } else {
+      expect(panelStyle.backgroundImage).not.toBe("none");
+      expect(panelStyle.borderTopStyle).toBe("solid");
+      expect(panelStyle.borderTopWidth).toBe("1px");
+    }
     await expect(
       page.locator('[data-testid="clipping-article-source"]:visible').last()
     ).toContainText("Durable article workflows");

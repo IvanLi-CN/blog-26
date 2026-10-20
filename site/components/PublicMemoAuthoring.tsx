@@ -1167,7 +1167,8 @@ export function PublicMemoDetailControlsIsland({
                 }
                 live
                 initialCanDiscuss={Boolean(memo.canDiscuss || effectiveIsAdmin)}
-                surface={effectiveIsAdmin ? "admin" : "public"}
+                // Console details use the public Nature shell; Admin Preview owns admin styling.
+                surface="public"
                 publicMediaContext={publicMediaContext}
                 onTitleChange={(title) =>
                   setMemo((current) =>
