@@ -496,7 +496,9 @@ export const KeywordFirstAiWaiting: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("status")).toBeInTheDocument();
-    await expect(canvas.getByText(/全文结果已到，正在等待 AI 补充/)).toBeInTheDocument();
+    await expect(
+      canvas.getByText("全文结果已到，正在等待 AI 补充", { exact: true })
+    ).toBeInTheDocument();
     await expect(canvas.getByRole("link", { name: /Arch Linux on Apple Silicon/ })).toBeVisible();
     await expect(canvas.queryByText("没有找到相关内容")).not.toBeInTheDocument();
   },
