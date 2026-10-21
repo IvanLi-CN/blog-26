@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "9c22a4df2f34e9ac6bd88803996fb586e3da7b75",
+  "covered_files": {
+    "src/components/common/markdown/plugins/rehype-image-optimization.test.ts": "2269cf8d4e4ff8738eb3a11a2d5272ef062566c2",
+    "src/components/common/markdown/plugins/rehype-image-optimization.ts": "7ae7e011d53a1bac8a1ad3893e3d114156a61700",
+    "src/lib/__tests__/public-media.test.ts": "09db78d5c3de88b7ca8684d648f3b14d737a4767",
+    "src/lib/public-media.ts": "061e9d5e02164f7f8f8cbb7abd4ad1bf62c0788c"
+  },
+  "change": {
+    "description": "Preserve packaged static public-media URLs during client hydration so already-published assets are not hashed again into missing API facade paths.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a backward-compatible public media loading fix. It keeps the published static asset contract and prevents hydration from generating an invalid replacement URL.",
+      "assessed_at": "2026-10-21T19:14:19+08:00",
+      "evidence": [
+        {
+          "path": "src/components/common/markdown/plugins/rehype-image-optimization.test.ts",
+          "blob": "2269cf8d4e4ff8738eb3a11a2d5272ef062566c2",
+          "command": "bun test src/components/common/markdown/plugins/rehype-image-optimization.test.ts src/lib/__tests__/public-media.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The public media guards now treat packaged static paths as final assets, and responsive candidates retain the static prefix and query string while API facade URLs keep their existing behavior.",
+      "assessed_at": "2026-10-21T19:14:19+08:00",
+      "evidence": [
+        {
+          "path": "src/components/common/markdown/plugins/rehype-image-optimization.test.ts",
+          "blob": "2269cf8d4e4ff8738eb3a11a2d5272ef062566c2",
+          "command": "The regression test keeps packaged static image URLs stable during public hydration"
+        },
+        {
+          "path": "src/lib/public-media.ts",
+          "blob": "061e9d5e02164f7f8f8cbb7abd4ad1bf62c0788c",
+          "command": "The server rewrite regression keeps packaged static media links unchanged"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to public-media URL classification, hydration rewriting, and focused regression coverage."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused media tests, the full unit suite, repository checks, and the static site build verify that packaged assets remain loadable without changing the public API shape or persistent state.",
+      "assessed_at": "2026-10-21T19:14:19+08:00",
+      "evidence": [
+        {
+          "path": "src/components/common/markdown/plugins/rehype-image-optimization.test.ts",
+          "blob": "2269cf8d4e4ff8738eb3a11a2d5272ef062566c2",
+          "command": "bun test src/components/common/markdown/plugins/rehype-image-optimization.test.ts src/lib/__tests__/public-media.test.ts (28 passed)"
+        },
+        {
+          "path": "src/components/common/markdown/plugins/rehype-image-optimization.ts",
+          "blob": "7ae7e011d53a1bac8a1ad3893e3d114156a61700",
+          "command": "bun run check"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0"
+      ],
+      "evidence": [
+        {
+          "path": "src/components/common/markdown/plugins/rehype-image-optimization.ts",
+          "blob": "7ae7e011d53a1bac8a1ad3893e3d114156a61700",
+          "command": "Only final static URL recognition changes; public media facade paths and response contracts remain unchanged"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local content format, browser persistence, or durable release ledger state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/lib/public-media.ts",
+          "blob": "061e9d5e02164f7f8f8cbb7abd4ad1bf62c0788c",
+          "command": "The change only classifies and rewrites request URLs; it writes no persistent state"
+        }
+      ]
+    }
+  }
+}

@@ -216,6 +216,46 @@ describe("rehypeImageOptimization", () => {
     );
   });
 
+  it("keeps packaged static asset urls stable during public hydration", () => {
+    const staticAsset =
+      "/_content/assets/post/demo-post/abcd1234/wm-b-v2/content.webp?v=snapshot-1";
+    const tree: Root = {
+      type: "root",
+      children: [
+        {
+          type: "element",
+          tagName: "img",
+          properties: { src: staticAsset },
+          children: [],
+        } as Element,
+      ],
+    };
+
+    const plugin = rehypeImageOptimization({
+      publicMediaContext: {
+        kind: "post",
+        slug: "demo-post",
+        filePath: "blog/demo-post.md",
+      },
+    });
+
+    plugin(tree, { path: "blog/demo-post.md" } as any);
+
+    const img = tree.children[0] as Element;
+    expect(img.properties?.src).toBe(staticAsset);
+    expect(img.properties?.["data-original-src"]).toBe(staticAsset);
+    expect(img.properties?.["data-watermark-a"]).toBe(
+      "/_content/assets/post/demo-post/abcd1234/wm-a-v2/content.webp?v=snapshot-1"
+    );
+    expect(img.properties?.["data-watermark-b"]).toBe(staticAsset);
+    expect(img.properties?.["data-watermark-full-a"]).toBe(
+      "/_content/assets/post/demo-post/abcd1234/wm-a-v2/full.webp?v=snapshot-1"
+    );
+    expect(img.properties?.["data-watermark-full-b"]).toBe(
+      "/_content/assets/post/demo-post/abcd1234/wm-b-v2/full.webp?v=snapshot-1"
+    );
+  });
+
   it("adds finite A/B poster candidates for public videos", () => {
     const tree: Root = {
       type: "root",
