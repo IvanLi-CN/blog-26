@@ -78,6 +78,7 @@ const GIF_EXTENSIONS = new Set(["gif"]);
 const FILES_API_PREFIX = "/api/files/";
 const PUBLIC_ASSETS_PREFIX = "/api/public/assets/";
 const ADMIN_PREVIEW_ASSETS_PREFIX = "/api/admin/preview/assets/";
+const STATIC_PUBLIC_ASSETS_PREFIX = "/_content/assets/";
 const INLINE_MARKDOWN_LINK_RE =
   /(!?\[[^\]\n]*\]\()(\s*)(<[^>\n]+>|(?:[^\s()\\]+|\\.|\([^()\n]*\))+)([^)]*)(\))/g;
 
@@ -165,6 +166,14 @@ export function isPublicAssetFacadeUrl(value: string) {
   );
 }
 
+export function isStaticPublicAssetUrl(value: string) {
+  return value.trim().startsWith(STATIC_PUBLIC_ASSETS_PREFIX);
+}
+
+export function isPublishedPublicAssetUrl(value: string) {
+  return isPublicAssetFacadeUrl(value) || isStaticPublicAssetUrl(value);
+}
+
 export function isPublicContentKind(value: string): value is PublicContentKind {
   return (PUBLIC_CONTENT_KINDS as readonly string[]).includes(value);
 }
@@ -239,7 +248,7 @@ export function resolveContentMediaPath(
   markdownFilePath: string
 ): string | null {
   const raw = trimAngleBrackets(mediaPath);
-  if (!raw || isExternalMediaUrl(raw) || isDataMediaUrl(raw) || isPublicAssetFacadeUrl(raw)) {
+  if (!raw || isExternalMediaUrl(raw) || isDataMediaUrl(raw) || isPublishedPublicAssetUrl(raw)) {
     return null;
   }
 
@@ -439,7 +448,7 @@ function rewritePublicContentTarget(
   role: PublicMediaRole,
   variant: PublicMediaVariant
 ) {
-  if (isPublicAssetFacadeUrl(target)) {
+  if (isPublishedPublicAssetUrl(target)) {
     return target;
   }
   const rewritten = buildPublicMediaAssetUrl({

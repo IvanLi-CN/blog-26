@@ -129,6 +129,19 @@ describe("public-media", () => {
       expect(rewritten).not.toContain("./assets/photo.png");
       expect(rewritten).not.toContain("./assets/clip.mp4#watch");
     });
+
+    it("keeps packaged static media links unchanged", () => {
+      const content =
+        "![photo](/_content/assets/post/demo-post/abcd1234/wm-b-v2/content.webp?v=snapshot-1)";
+
+      expect(
+        rewritePublicContentMediaUrls(content, {
+          kind: "post",
+          slug: "demo-post",
+          filePath: "blog/demo-post.md",
+        })
+      ).toBe(content);
+    });
   });
 
   describe("watermark presentations", () => {

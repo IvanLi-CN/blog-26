@@ -9,6 +9,8 @@ import {
   isPublicContentKind,
   isPublicMediaRenderId,
   isPublicMediaVariant,
+  isPublishedPublicAssetUrl,
+  isStaticPublicAssetUrl,
   type PublicMediaContext,
   type PublicMediaPresentations,
   type PublicMediaRenderId,
@@ -123,24 +125,24 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
       if (
         !publicMediaContext ||
         publicMediaContext.supportsResponsiveWatermark === false ||
-        !isPublicAssetFacadeUrl(mediaPath)
+        (!isPublicAssetFacadeUrl(mediaPath) && !isStaticPublicAssetUrl(mediaPath))
       )
         return null;
 
-      let pathname: string;
+      let parsed: URL;
       try {
-        pathname = new URL(mediaPath, "https://public.invalid").pathname;
+        parsed = new URL(mediaPath, "https://public.invalid");
       } catch {
         return null;
       }
 
       const match =
-        /^\/api\/public\/assets\/(post|memo)\/([^/]+)\/([^/]+)\/(wm-[ab]-v[12])\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu.exec(
-          pathname
+        /^(\/api\/public\/assets|\/_content\/assets)\/(post|memo)\/([^/]+)\/([^/]+)\/(wm-[ab]-v[12])\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu.exec(
+          parsed.pathname
         );
       if (!match) return null;
 
-      const [, kind, encodedSlug, mediaHash, renderId, sourceVariant, ext] = match;
+      const [, assetPrefix, kind, encodedSlug, mediaHash, renderId, sourceVariant, ext] = match;
       if (
         !isPublicContentKind(kind) ||
         !isPublicMediaRenderId(renderId) ||
@@ -156,8 +158,12 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
       )
         ? ["wm-a-v2", "wm-b-v2"]
         : ["wm-a-v1", "wm-b-v1"];
-      const buildCandidate = (candidateRenderId: (typeof candidateRenderIds)[number]) =>
-        buildPublicAssetPath({
+      const buildCandidate = (candidateRenderId: (typeof candidateRenderIds)[number]) => {
+        if (assetPrefix === "/_content/assets") {
+          return `${assetPrefix}/${kind}/${encodedSlug}/${mediaHash}/${candidateRenderId}/${targetVariant}.${ext}${parsed.search}`;
+        }
+
+        return buildPublicAssetPath({
           scope: publicMediaContext.assetScope,
           kind,
           slug: publicMediaContext.slug,
@@ -166,6 +172,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
           variant: targetVariant,
           ext,
         });
+      };
 
       return { a: buildCandidate(candidateRenderIds[0]), b: buildCandidate(candidateRenderIds[1]) };
     }
@@ -180,7 +187,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
           !hasMappedContentUrl &&
           !isExternalUrl(originalSrc) &&
           !originalSrc.startsWith("data:") &&
-          !isPublicAssetFacadeUrl(originalSrc);
+          !isPublishedPublicAssetUrl(originalSrc);
         const rewrittenSrc = appendPublicAssetVersion(
           hasMappedContentUrl
             ? mappedOriginalSrc
@@ -271,7 +278,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
         if (mappedHref !== href) {
           node.properties.href = mappedHref;
         } else if (href && (isImagePath(href) || mediaKind === "video")) {
-          if (!isExternalUrl(href) && !isPublicAssetFacadeUrl(href)) {
+          if (!isExternalUrl(href) && !isPublishedPublicAssetUrl(href)) {
             const finalPath =
               mediaKind === "video"
                 ? buildFacadeOrOptimizedUrl(href, "playback", "play")
@@ -291,7 +298,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
           node.properties.src = mappedSrc;
         } else if (
           !isExternalUrl(src) &&
-          !isPublicAssetFacadeUrl(src) &&
+          !isPublishedPublicAssetUrl(src) &&
           !src.startsWith("data:")
         ) {
           node.properties.src = mapUrl(
@@ -316,7 +323,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
           const posterPresentations =
             publicMediaContext.supportsResponsiveWatermark === false
               ? null
-              : !isPublicAssetFacadeUrl(poster)
+              : !isPublishedPublicAssetUrl(poster)
                 ? buildPublicMediaPresentations({
                     context: publicMediaContext,
                     mediaPath: poster,
@@ -339,7 +346,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
           node.properties.poster = mappedPoster;
         } else if (
           !isExternalUrl(poster) &&
-          !isPublicAssetFacadeUrl(poster) &&
+          !isPublishedPublicAssetUrl(poster) &&
           !poster.startsWith("data:")
         ) {
           node.properties.poster = mapUrl(
