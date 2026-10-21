@@ -49,8 +49,11 @@ type AnalysisTask<T> = {
   run: (signal: AbortSignal) => Promise<T>;
   resolve: (value: T) => void;
   reject: (reason?: unknown) => void;
-  enqueuedAt: number;
   budgetMs: number;
+  started: boolean;
+  expired: boolean;
+  controller?: AbortController;
+  timer?: ReturnType<typeof setTimeout>;
 };
 
 const analysisQueue: Array<AnalysisTask<unknown>> = [];
@@ -62,27 +65,25 @@ function startNextAnalysis() {
   if (activeAnalyses >= ANALYSIS_CONCURRENCY) return;
   const next = analysisQueue.shift();
   if (!next) return;
+  if (next.expired) {
+    startNextAnalysis();
+    return;
+  }
 
   activeAnalyses += 1;
+  next.started = true;
   const controller = new AbortController();
-  const remaining = Math.max(1, next.budgetMs - (Date.now() - next.enqueuedAt));
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  next.controller = controller;
   let released = false;
   const release = () => {
     if (released) return;
     released = true;
-    if (timer) clearTimeout(timer);
+    if (next.timer) clearTimeout(next.timer);
     activeAnalyses = Math.max(0, activeAnalyses - 1);
     startNextAnalysis();
   };
   const work = Promise.resolve().then(() => next.run(controller.signal));
-  const deadline = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => {
-      controller.abort("watermark analysis deadline exceeded");
-      reject(new Error("watermark analysis deadline exceeded"));
-    }, remaining);
-  });
-  Promise.race([work, deadline]).then(next.resolve, next.reject);
+  work.then(next.resolve, next.reject);
   work.finally(release).catch(() => undefined);
 }
 
@@ -95,7 +96,31 @@ export function runWatermarkAnalysis<T>(
       reject(new Error("watermark analysis queue is full"));
       return;
     }
-    analysisQueue.push({ run, resolve, reject, enqueuedAt: Date.now(), budgetMs });
+    const task: AnalysisTask<T> = {
+      run,
+      resolve,
+      reject,
+      budgetMs,
+      started: false,
+      expired: false,
+    };
+    task.timer = setTimeout(
+      () => {
+        if (task.expired) return;
+        task.expired = true;
+        if (task.started) {
+          task.controller?.abort("watermark analysis deadline exceeded");
+          task.reject(new Error("watermark analysis deadline exceeded"));
+          return;
+        }
+        const index = analysisQueue.indexOf(task as AnalysisTask<unknown>);
+        if (index >= 0) analysisQueue.splice(index, 1);
+        task.reject(new Error("watermark analysis deadline exceeded"));
+        startNextAnalysis();
+      },
+      Math.max(1, budgetMs)
+    );
+    analysisQueue.push(task as AnalysisTask<unknown>);
     startNextAnalysis();
   });
 }

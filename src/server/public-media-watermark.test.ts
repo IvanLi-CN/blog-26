@@ -82,6 +82,30 @@ describe("public media watermark contrast", () => {
     resetWatermarkAnalysisStateForTests();
   });
 
+  it("counts queue wait against the analysis deadline", async () => {
+    let settleFirst: (() => void) | undefined;
+    let settleSecond: (() => void) | undefined;
+    const firstWork = new Promise<void>((resolve) => {
+      settleFirst = resolve;
+    });
+    const secondWork = new Promise<void>((resolve) => {
+      settleSecond = resolve;
+    });
+    const first = runWatermarkAnalysis(() => firstWork, 100);
+    const second = runWatermarkAnalysis(() => secondWork, 100);
+    let queuedStarted = false;
+    const queued = runWatermarkAnalysis(async () => {
+      queuedStarted = true;
+      return "queued";
+    }, 5);
+    await expect(queued).rejects.toThrow("watermark analysis deadline exceeded");
+    expect(queuedStarted).toBe(false);
+    settleFirst?.();
+    settleSecond?.();
+    await expect(Promise.all([first, second])).resolves.toEqual([undefined, undefined]);
+    resetWatermarkAnalysisStateForTests();
+  });
+
   it("renders a foreground-only mask without the SVG shadow", async () => {
     const svg =
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><defs><filter id="soft-shadow"><feDropShadow flood-color="#000"/></filter></defs><rect filter="url(#soft-shadow)" width="10" height="10" fill="#fff"/></svg>';

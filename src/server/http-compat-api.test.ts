@@ -2289,8 +2289,15 @@ public: false
       })
         .raw()
         .toBuffer();
+      const gifRaw = Buffer.concat([firstFrame, secondFrame]);
+      const encodeGif = (delay: [number, number]) =>
+        sharp(gifRaw, {
+          raw: { width: gifWidth, height: gifHeight * 2, channels: 3, pageHeight: gifHeight },
+        })
+          .gif({ loop: 0, delay })
+          .toBuffer();
       const gifPath = path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/animated.gif");
-      await sharp(Buffer.concat([firstFrame, secondFrame]), {
+      await sharp(gifRaw, {
         raw: { width: gifWidth, height: gifHeight * 2, channels: 3, pageHeight: gifHeight },
       })
         .gif({ loop: 0, delay: [100, 900] })
@@ -2326,15 +2333,25 @@ public: false
         .ensureAlpha()
         .raw()
         .toBuffer({ resolveWithObject: true });
+      const baselineGifBuffer = await encodeGif([100, 900]);
+      const { data: baselineGifPixels, info: baselineGifInfo } = await sharp(baselineGifBuffer, {
+        animated: true,
+      })
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
       const pageHeight = gifInfo.pageHeight ?? gifInfo.height;
       const pageCount = gifInfo.pages ?? Math.max(1, Math.floor(gifInfo.height / pageHeight));
       for (let page = 0; page < pageCount; page += 1) {
         let brightPixels = 0;
         let darkPixels = 0;
+        let changedPixels = 0;
         const pageTop = page * pageHeight;
         for (let y = Math.max(0, pageHeight - 45); y < pageHeight; y += 1) {
           for (let x = Math.max(0, gifInfo.width - 60); x < gifInfo.width; x += 1) {
             const offset = ((pageTop + y) * gifInfo.width + x) * gifInfo.channels;
+            const baselineOffset =
+              ((pageTop + y) * baselineGifInfo.width + x) * baselineGifInfo.channels;
             if (
               gifPixels[offset] > 120 &&
               gifPixels[offset + 1] > 120 &&
@@ -2349,9 +2366,17 @@ public: false
             ) {
               darkPixels += 1;
             }
+            if (
+              Math.abs(gifPixels[offset] - baselineGifPixels[baselineOffset]) > 8 ||
+              Math.abs(gifPixels[offset + 1] - baselineGifPixels[baselineOffset + 1]) > 8 ||
+              Math.abs(gifPixels[offset + 2] - baselineGifPixels[baselineOffset + 2]) > 8
+            ) {
+              changedPixels += 1;
+            }
           }
         }
         expect(brightPixels).toBeGreaterThan(0);
+        expect(changedPixels).toBeGreaterThan(0);
         if (page === 0) expect(darkPixels).toBe(0);
       }
 
@@ -2359,7 +2384,7 @@ public: false
         LOCAL_CONTENT_BASE_PATH,
         "blog/assets/animated-reversed.gif"
       );
-      await sharp(Buffer.concat([firstFrame, secondFrame]), {
+      await sharp(gifRaw, {
         raw: { width: gifWidth, height: gifHeight * 2, channels: 3, pageHeight: gifHeight },
       })
         .gif({ loop: 0, delay: [900, 100] })
@@ -2394,19 +2419,32 @@ public: false
         .ensureAlpha()
         .raw()
         .toBuffer({ resolveWithObject: true });
+      const reversedBaselineGifBuffer = await encodeGif([900, 100]);
+      const { data: reversedBaselineGifPixels, info: reversedBaselineGifInfo } = await sharp(
+        reversedBaselineGifBuffer,
+        { animated: true }
+      )
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
       const reversedPageHeight = reversedGifInfo.pageHeight ?? reversedGifInfo.height;
       const reversedPageCount =
         reversedGifInfo.pages ??
         Math.max(1, Math.floor(reversedGifInfo.height / reversedPageHeight));
       const reversedPageDarkPixels: number[] = [];
       const reversedPageBrightPixels: number[] = [];
+      const reversedPageChangedPixels: number[] = [];
       for (let page = 0; page < reversedPageCount; page += 1) {
         let darkPixels = 0;
         let brightPixels = 0;
+        let changedPixels = 0;
         const pageTop = page * reversedPageHeight;
         for (let y = Math.max(0, reversedPageHeight - 45); y < reversedPageHeight; y += 1) {
           for (let x = Math.max(0, reversedGifInfo.width - 60); x < reversedGifInfo.width; x += 1) {
             const offset = ((pageTop + y) * reversedGifInfo.width + x) * reversedGifInfo.channels;
+            const baselineOffset =
+              ((pageTop + y) * reversedBaselineGifInfo.width + x) *
+              reversedBaselineGifInfo.channels;
             if (
               reversedGifPixels[offset] < 170 &&
               reversedGifPixels[offset + 1] < 180 &&
@@ -2421,13 +2459,27 @@ public: false
             ) {
               brightPixels += 1;
             }
+            if (
+              Math.abs(reversedGifPixels[offset] - reversedBaselineGifPixels[baselineOffset]) > 8 ||
+              Math.abs(
+                reversedGifPixels[offset + 1] - reversedBaselineGifPixels[baselineOffset + 1]
+              ) > 8 ||
+              Math.abs(
+                reversedGifPixels[offset + 2] - reversedBaselineGifPixels[baselineOffset + 2]
+              ) > 8
+            ) {
+              changedPixels += 1;
+            }
           }
         }
         reversedPageDarkPixels.push(darkPixels);
         reversedPageBrightPixels.push(brightPixels);
+        reversedPageChangedPixels.push(changedPixels);
       }
       expect(reversedPageDarkPixels[0]).toBeGreaterThan(0);
       expect(reversedPageBrightPixels[1]).toBe(0);
+      expect(reversedPageChangedPixels[0]).toBeGreaterThan(0);
+      expect(reversedPageChangedPixels[1]).toBeGreaterThan(0);
 
       if (evidenceDir) {
         const complexPath = path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/complex.png");
