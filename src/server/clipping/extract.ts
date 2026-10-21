@@ -54,6 +54,7 @@ const RESOURCE_EXTENSION_MIME_TYPES: Record<string, string> = {
   mov: "video/quicktime",
   webm: "video/webm",
 };
+const RESOURCE_RETRY_ATTEMPTS = 2;
 
 export class ClippingFetchError extends Error {
   constructor(
@@ -587,15 +588,29 @@ async function localizeArticleResources(
         );
         totalBytes += reservedBytes;
         try {
-          const fetched = await fetchArticleResource(
-            normalizedUrl,
-            prepared.url,
-            {
-              ...options,
-              maxResourceBytes: reservedBytes,
-            },
-            dependencies
-          );
+          let fetched: Awaited<ReturnType<typeof fetchArticleResource>>;
+          for (let attempt = 0; ; attempt++) {
+            try {
+              fetched = await fetchArticleResource(
+                normalizedUrl,
+                prepared.url,
+                {
+                  ...options,
+                  maxResourceBytes: reservedBytes,
+                },
+                dependencies
+              );
+              break;
+            } catch (error) {
+              if (
+                options.signal?.aborted ||
+                !(error instanceof ClippingFetchError) ||
+                !error.retryable ||
+                attempt >= RESOURCE_RETRY_ATTEMPTS
+              )
+                throw error;
+            }
+          }
           totalBytes += fetched.body.length - reservedBytes;
           const id = createHash("sha256").update(fetched.body).digest("hex");
           const extension = resourceExtension(fetched);

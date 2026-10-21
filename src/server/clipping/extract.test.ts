@@ -302,6 +302,31 @@ describe("article extraction", () => {
     expect(article.markdown).toContain("资源抓取失败：视频");
   });
 
+  test("retries transient resource failures before recording a placeholder", async () => {
+    let attempts = 0;
+    const article = await fetchArticle("https://article.example/page", {
+      dependencies: {
+        resolve: async () => [{ address: "1.1.1.1", family: 4 }],
+        request: async (url) =>
+          url.pathname === "/page"
+            ? {
+                status: 200,
+                contentType: "text/html",
+                body: Buffer.from(
+                  `<article><h1>Retry media</h1><p>${prose}</p><img src="/flaky.png"></article>`
+                ),
+              }
+            : attempts++ === 0
+              ? { status: 503, body: Buffer.alloc(0) }
+              : { status: 200, contentType: "image/png", body: Buffer.from("recovered") },
+      },
+    });
+
+    expect(attempts).toBe(2);
+    expect(article.resources?.[0]).toMatchObject({ status: "captured", mimeType: "image/png" });
+    expect(article.markdown).toMatch(/\.\/assets\/[a-f0-9]{64}\.png/u);
+  });
+
   test("rejects active or unknown media formats and removes failed tracks", async () => {
     const article = await fetchArticle("https://article.example/page", {
       dependencies: {
