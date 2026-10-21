@@ -15,6 +15,7 @@
 - Browser acceptance now checks system-theme changes and reduced-motion behavior alongside the existing desktop and narrow-screen keyboard paths.
 - The Storybook page fallback now follows the production Nature mobile header offset; its 393px and 320px checks confirm the collapsed header does not cover the management heading or introduce horizontal overflow.
 - The owner approved a backward-compatible Memo pagination API extension for the bidirectional timeline. Omitting `direction` keeps the established older-page behavior and existing field semantics; reverse traversal uses the optional direction parameter and additive `previousCursor` and `hasPrevious` response fields. Breaking changes to existing API fields and semantics remain out of scope.
+- Console clipping detail rendering now preserves the public Nature surface for administrators while keeping discussion authorization separate and leaving the dedicated Admin Preview surface unchanged.
 
 ## References
 

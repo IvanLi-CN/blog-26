@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "9627a95f2483eb4641e64bef5edf5ab1c12185e4",
+  "covered_files": {
+    "docs/specs/memo-admin-inline-view/HISTORY.md": "d676529fa6fd43687bc75d625befa8b66e9df2e4",
+    "docs/specs/memo-admin-inline-view/IMPLEMENTATION.md": "723383e87f015be265a217058d4426ee74be9c7e",
+    "docs/specs/memo-admin-inline-view/SPEC.md": "167e2b07fab0372f6a17e25bd26039089f1c41a1",
+    "site/components/PublicMemoAuthoring.tsx": "e4b2d96c43b1b0d40d16569f2c8b06b62019e95b",
+    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "a4f273ab3ac4fd940bf17a017f44b9e383353954"
+  },
+  "change": {
+    "description": "Keep Console memo clipping details on the public Nature surface for administrators, scope the Web Demo regression selectors to the hydrated detail body, and record the restored memo boundary contract.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a compatible presentation defect repair. Console memo details no longer pass the Admin-only clipping surface, while discussion authorization remains independent and Admin Preview keeps its existing boundary.",
+      "assessed_at": "2026-10-21T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "site/components/PublicMemoAuthoring.tsx",
+          "blob": "e4b2d96c43b1b0d40d16569f2c8b06b62019e95b",
+          "command": "Review Console and Admin Preview clipping surface inputs"
+        },
+        {
+          "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
+          "blob": "a4f273ab3ac4fd940bf17a017f44b9e383353954",
+          "command": "Review the desktop/mobile surface and overflow regression contract"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate remains limited to the Console render-surface prop, a selector-scoped Web Demo regression, and synchronized memo detail documentation. API shapes, authorization decisions, persistence, and Admin Preview styling are unchanged.",
+      "assessed_at": "2026-10-21T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "site/components/PublicMemoAuthoring.tsx",
+          "blob": "e4b2d96c43b1b0d40d16569f2c8b06b62019e95b",
+          "command": "bun run check"
+        },
+        {
+          "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
+          "blob": "a4f273ab3ac4fd940bf17a017f44b9e383353954",
+          "command": "bunx playwright test tests/e2e/web-demo/console-memo-boundary.spec.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "Only the Console Memo surface boundary, its focused Web Demo contract, and the associated memo detail records are changed; no API, persistence, or release workflow behavior is modified."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Static checks, focused component tests, Web Demo builds, Spec drift validation, and the owner-confirmed desktop/mobile visual evidence cover the corrected Nature surface. The change introduces no breaking API or durable-state behavior.",
+      "assessed_at": "2026-10-21T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "site/components/PublicMemoAuthoring.tsx",
+          "blob": "e4b2d96c43b1b0d40d16569f2c8b06b62019e95b",
+          "command": "bun run check"
+        },
+        {
+          "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
+          "blob": "a4f273ab3ac4fd940bf17a017f44b9e383353954",
+          "command": "bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/console-memo-boundary.spec.ts"
+        },
+        {
+          "path": "site/components/PublicMemoAuthoring.tsx",
+          "blob": "e4b2d96c43b1b0d40d16569f2c8b06b62019e95b",
+          "command": "bun run web-demo:build"
+        },
+        {
+          "path": "docs/specs/memo-admin-inline-view/SPEC.md",
+          "blob": "167e2b07fab0372f6a17e25bd26039089f1c41a1",
+          "command": "spec_drift_check.sh --base-ref origin/main --spec-path docs/specs/memo-admin-inline-view/SPEC.md"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7"
+      ],
+      "evidence": [
+        {
+          "path": "site/components/PublicMemoAuthoring.tsx",
+          "blob": "e4b2d96c43b1b0d40d16569f2c8b06b62019e95b",
+          "command": "The Console detail route and discussion permission contract remain unchanged"
+        },
+        {
+          "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
+          "blob": "a4f273ab3ac4fd940bf17a017f44b9e383353954",
+          "command": "Web Demo coverage verifies the public Console detail and Admin Preview boundary"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The change adds no database migration, content format, cache identity, browser storage, or release ledger state.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "site/components/PublicMemoAuthoring.tsx",
+          "blob": "e4b2d96c43b1b0d40d16569f2c8b06b62019e95b",
+          "command": "No persistence or durable-state implementation is changed"
+        }
+      ]
+    }
+  }
+}
