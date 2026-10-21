@@ -98,6 +98,7 @@
   - raw 原图 URL
   - raw 原视频 URL
 - 公开图片、GIF 派生帧、视频 poster 必须 strip metadata / EXIF。
+- v3 选色逐帧累计水印覆盖区评分，不保留整段 GIF 的原始分析帧；视频首帧分析响应在流式读取时限制为 20 MiB，超限或分析超时返回受控处理器错误。
 - v3 选色逐帧累计覆盖区评分，不保留整段 GIF 的原始分析帧；视频首帧分析响应在流式读取时限制为 20 MiB，超限或分析超时返回受控处理器错误。
 - 图片、GIF 单帧或视频 poster 派生结果宽 `<240px`、高 `<160px`、或面积 `<80,000px²` 时跳过水印；尺寸必须在方向校正、缩放/取帧之后判断。
 - `wm-a-v2` / `wm-b-v2` 保持既有固定白色语义；v3 的 A 为 Iv 标志、B 为 Iv 标志与 `ivanli.cc`，最终宽度分别为 7% 与 18%，右/下边距均为最终图像宽度 2%。v3 在实际覆盖区的白色与墨绿主体中选择对比更强的一色，主体 alpha mask 排除 SVG 空白与柔影；整体不透明度仍为 64%，B 的分隔线与域名文字保持同一主体色。选色在方向校正、缩放或取帧后、烧录前进行，透明源按白底评分但输出保留透明度；保留动画 GIF 综合所有帧并按显示时长加权后固定一种颜色。v2/v3 的 imagor filter 显式传入宽度比例和非约束的 `h_ratio=100`，以最终输出宽度为唯一尺寸口径；本地 Sharp 路径保持相同宽度规则。v1/v2 继续用于旧快照兼容。imagor filter 的 `alpha` 使用 36。
@@ -248,10 +249,10 @@
 - Responsive Logo A at 393 CSS px keeps the full image inside the existing frame: [logo-watermark-mobile-393.png](./assets/logo-watermark-mobile-393.png) (`需确认`)
 - Responsive Logo B at 1440 CSS px includes the domain while preserving the existing frame: [logo-watermark-desktop-1440.png](./assets/logo-watermark-desktop-1440.png) (`需确认`)
 - Desktop lightbox independently selects the full Logo B rendition and keeps the image undistorted: [logo-watermark-lightbox-desktop.png](./assets/logo-watermark-lightbox-desktop.png) (`需确认`)
-- Current local Sharp oversized output on a dark background selects the white Logo A/B candidates: [watermark-regional-v3-dark-background-a.png](./assets/watermark-regional-v3-dark-background-a.png), [watermark-regional-v3-dark-background-b.png](./assets/watermark-regional-v3-dark-background-b.png) (`当前候选，待主人确认`)
-- Current local Sharp oversized output on a light background selects the dark-green Logo A/B candidates: [watermark-regional-v3-light-background-a.png](./assets/watermark-regional-v3-light-background-a.png), [watermark-regional-v3-light-background-b.png](./assets/watermark-regional-v3-light-background-b.png) (`当前候选，待主人确认`)
-- Current local Sharp output on a mixed background keeps the selected ink inside the actual right-bottom coverage area: [watermark-regional-v3-complex-a.png](./assets/watermark-regional-v3-complex-a.png), [watermark-regional-v3-complex-b.png](./assets/watermark-regional-v3-complex-b.png) (`当前候选，待主人确认`)
-- Current local Sharp animated output keeps one ink choice across both GIF frames while preserving the 100ms/200ms delays: [watermark-regional-v3-fixed-color.gif](./assets/watermark-regional-v3-fixed-color.gif), [watermark-regional-v3-gif-frame-0.png](./assets/watermark-regional-v3-gif-frame-0.png), [watermark-regional-v3-gif-frame-1.png](./assets/watermark-regional-v3-gif-frame-1.png) (`当前候选，待主人确认`)
+- Current local Sharp oversized output on a dark background selects the white Logo A/B candidates: [watermark-regional-v3-dark-background-a.png](./assets/watermark-regional-v3-dark-background-a.png), [watermark-regional-v3-dark-background-b.png](./assets/watermark-regional-v3-dark-background-b.png) (`已确认`)
+- Current local Sharp oversized output on a light background selects the dark-green Logo A/B candidates: [watermark-regional-v3-light-background-a.png](./assets/watermark-regional-v3-light-background-a.png), [watermark-regional-v3-light-background-b.png](./assets/watermark-regional-v3-light-background-b.png) (`已确认`)
+- Current local Sharp output on a mixed background keeps the selected ink inside the actual right-bottom coverage area: [watermark-regional-v3-complex-a.png](./assets/watermark-regional-v3-complex-a.png), [watermark-regional-v3-complex-b.png](./assets/watermark-regional-v3-complex-b.png) (`已确认`)
+- Current local Sharp animated output keeps one ink choice across both GIF frames while preserving the 100ms/900ms delays: [watermark-regional-v3-fixed-color.gif](./assets/watermark-regional-v3-fixed-color.gif), [watermark-regional-v3-gif-frame-0.png](./assets/watermark-regional-v3-gif-frame-0.png), [watermark-regional-v3-gif-frame-1.png](./assets/watermark-regional-v3-gif-frame-1.png) (`已确认`)
 
 ## 10. 参考
 

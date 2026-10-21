@@ -24,6 +24,9 @@ describe("public media watermark contrast", () => {
     expect(
       chooseWatermarkInk([{ data: Buffer.from([128, 128, 128, 255]), width: 1, height: 1 }], mask)
     ).toBe("light");
+    expect(
+      chooseWatermarkInk([{ data: Buffer.from([160, 160, 160, 255]), width: 1, height: 1 }], mask)
+    ).toBe("dark");
   });
 
   it("uses frame duration when combining animated backgrounds", () => {
@@ -47,6 +50,14 @@ describe("public media watermark contrast", () => {
     ).rejects.toThrow("watermark analysis deadline exceeded");
     await Bun.sleep(30);
     expect(lateWorkSettled).toBe(true);
+    await expect(runWatermarkAnalysis(async () => "next", 50)).resolves.toBe("next");
+    resetWatermarkAnalysisStateForTests();
+  });
+
+  it("releases the logical slot when an aborted analysis never settles", async () => {
+    await expect(runWatermarkAnalysis(() => new Promise(() => undefined), 5)).rejects.toThrow(
+      "watermark analysis deadline exceeded"
+    );
     await expect(runWatermarkAnalysis(async () => "next", 50)).resolves.toBe("next");
     resetWatermarkAnalysisStateForTests();
   });

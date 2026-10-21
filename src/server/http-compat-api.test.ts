@@ -2274,7 +2274,7 @@ public: false
           width: gifWidth,
           height: gifHeight,
           channels: 3,
-          background: { r: 40, g: 80, b: 60 },
+          background: { r: 246, g: 246, b: 246 },
         },
       })
         .raw()
@@ -2284,7 +2284,7 @@ public: false
           width: gifWidth,
           height: gifHeight,
           channels: 3,
-          background: { r: 60, g: 40, b: 80 },
+          background: { r: 40, g: 80, b: 60 },
         },
       })
         .raw()
@@ -2293,7 +2293,7 @@ public: false
       await sharp(Buffer.concat([firstFrame, secondFrame]), {
         raw: { width: gifWidth, height: gifHeight * 2, channels: 3, pageHeight: gifHeight },
       })
-        .gif({ loop: 0, delay: [100, 200] })
+        .gif({ loop: 0, delay: [100, 900] })
         .toFile(gifPath);
       await seedPost({
         id: "blog/animated-logo.md",
@@ -2320,7 +2320,7 @@ public: false
       const gifMetadata = await sharp(gifBuffer, { animated: true }).metadata();
       expect(gifMetadata.pages).toBe(2);
       expect(gifMetadata.pageHeight).toBe(gifHeight);
-      expect(gifMetadata.delay).toEqual([100, 200]);
+      expect(gifMetadata.delay).toEqual([100, 900]);
 
       const { data: gifPixels, info: gifInfo } = await sharp(gifBuffer, { animated: true })
         .ensureAlpha()
@@ -2345,6 +2345,59 @@ public: false
         }
         expect(brightPixels).toBeGreaterThan(0);
       }
+
+      const reversedGifPath = path.join(
+        LOCAL_CONTENT_BASE_PATH,
+        "blog/assets/animated-reversed.gif"
+      );
+      await sharp(Buffer.concat([firstFrame, secondFrame]), {
+        raw: { width: gifWidth, height: gifHeight * 2, channels: 3, pageHeight: gifHeight },
+      })
+        .gif({ loop: 0, delay: [900, 100] })
+        .toFile(reversedGifPath);
+      await seedPost({
+        id: "blog/animated-reversed-logo.md",
+        filePath: "blog/animated-reversed-logo.md",
+        slug: "animated-reversed-logo",
+        type: "post",
+        title: "Animated Reversed Logo",
+        body: "![animation](./assets/animated-reversed.gif)",
+        public: true,
+        draft: false,
+      });
+      const reversedGifHash = buildPublicMediaHash("blog/assets/animated-reversed.gif", "content");
+      const reversedGifResponse = await handlePublicApiRequest(
+        buildRequest(
+          `/api/public/assets/post/animated-reversed-logo/${reversedGifHash}/wm-a-v3/content.webp`
+        ),
+        `/assets/post/animated-reversed-logo/${reversedGifHash}/wm-a-v3/content.webp`
+      );
+      expect(reversedGifResponse.status).toBe(200);
+      const reversedGifBuffer = Buffer.from(await reversedGifResponse.arrayBuffer());
+      const reversedGifMetadata = await sharp(reversedGifBuffer, { animated: true }).metadata();
+      expect(reversedGifMetadata.pages).toBe(2);
+      expect(reversedGifMetadata.delay).toEqual([900, 100]);
+      const { data: reversedGifPixels, info: reversedGifInfo } = await sharp(reversedGifBuffer, {
+        animated: true,
+      })
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      const reversedPageHeight = reversedGifInfo.pageHeight ?? reversedGifInfo.height;
+      let darkPixels = 0;
+      for (let y = Math.max(0, reversedPageHeight - 45); y < reversedPageHeight; y += 1) {
+        for (let x = Math.max(0, reversedGifInfo.width - 60); x < reversedGifInfo.width; x += 1) {
+          const offset = (y * reversedGifInfo.width + x) * reversedGifInfo.channels;
+          if (
+            reversedGifPixels[offset] < 170 &&
+            reversedGifPixels[offset + 1] < 180 &&
+            reversedGifPixels[offset + 2] < 175
+          ) {
+            darkPixels += 1;
+          }
+        }
+      }
+      expect(darkPixels).toBeGreaterThan(0);
 
       if (evidenceDir) {
         const complexPath = path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/complex.png");

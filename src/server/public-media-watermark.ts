@@ -67,21 +67,24 @@ function startNextAnalysis() {
   const controller = new AbortController();
   const remaining = Math.max(1, next.budgetMs - (Date.now() - next.enqueuedAt));
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let released = false;
+  const release = () => {
+    if (released) return;
+    released = true;
+    if (timer) clearTimeout(timer);
+    activeAnalyses = Math.max(0, activeAnalyses - 1);
+    startNextAnalysis();
+  };
   const work = Promise.resolve().then(() => next.run(controller.signal));
   const deadline = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
       controller.abort("watermark analysis deadline exceeded");
       reject(new Error("watermark analysis deadline exceeded"));
+      release();
     }, remaining);
   });
   Promise.race([work, deadline]).then(next.resolve, next.reject);
-  work
-    .finally(() => {
-      if (timer) clearTimeout(timer);
-      activeAnalyses = Math.max(0, activeAnalyses - 1);
-      startNextAnalysis();
-    })
-    .catch(() => undefined);
+  work.finally(release).catch(() => undefined);
 }
 
 export function runWatermarkAnalysis<T>(
@@ -168,18 +171,29 @@ function relativeLuminance(rgb: readonly [number, number, number]) {
   );
 }
 
-function frameBackgroundLuminance(data: Buffer, offset: number) {
+function frameBackgroundRgb(data: Buffer, offset: number): [number, number, number] {
   const alpha = (data[offset + 3] ?? 255) / 255;
   const red = (data[offset] ?? 255) * alpha + 255 * (1 - alpha);
   const green = (data[offset + 1] ?? 255) * alpha + 255 * (1 - alpha);
   const blue = (data[offset + 2] ?? 255) * alpha + 255 * (1 - alpha);
-  return relativeLuminance([red, green, blue]);
+  return [red, green, blue];
 }
 
-function contrastLog(background: number, ink: readonly [number, number, number], coverage: number) {
-  const inkLuminance = relativeLuminance(ink);
-  const output = inkLuminance * coverage + background * (1 - coverage);
-  const ratio = (Math.max(background, output) + 0.05) / (Math.min(background, output) + 0.05);
+function contrastLog(
+  background: readonly [number, number, number],
+  ink: readonly [number, number, number],
+  coverage: number
+) {
+  const output: [number, number, number] = [
+    ink[0] * coverage + background[0] * (1 - coverage),
+    ink[1] * coverage + background[1] * (1 - coverage),
+    ink[2] * coverage + background[2] * (1 - coverage),
+  ];
+  const backgroundLuminance = relativeLuminance(background);
+  const outputLuminance = relativeLuminance(output);
+  const ratio =
+    (Math.max(backgroundLuminance, outputLuminance) + 0.05) /
+    (Math.min(backgroundLuminance, outputLuminance) + 0.05);
   return Math.log(ratio);
 }
 
@@ -199,7 +213,7 @@ export function accumulateWatermarkInkScore(
   for (let pixel = 0; pixel < mask.data.length; pixel += 1) {
     const maskAlpha = (mask.data[pixel] ?? 0) / 255;
     if (maskAlpha <= 0) continue;
-    const background = frameBackgroundLuminance(frame.data, pixel * 4);
+    const background = frameBackgroundRgb(frame.data, pixel * 4);
     const weight = durationWeight * maskAlpha;
     scores.lightScore +=
       weight * contrastLog(background, WATERMARK_LIGHT_RGB, maskAlpha * WATERMARK_OVERALL_OPACITY);
