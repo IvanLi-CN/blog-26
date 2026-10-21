@@ -35,6 +35,7 @@
     "src/server/public-media-watermark.test.ts": "c291e26cda237383021a43da7fc77be0a5aafca2",
     "src/server/public-media-watermark.ts": "3520a18f2256e40e57980233aa01f92d22ffc4a1",
     "src/server/public-media.ts": "c7824a36d5f2ef340d3aa4c8e3ca71b0704d58d6",
+    "tests/lib/public-pwa-edgeone-config.test.ts": "bb956f5963a045f6b63135c44e3bbe67c9e0d6df",
     "tests/e2e/guest/posts-cover-fallback.spec.ts": "e3c944c7bf300644e4f50da392aab21572b0a460"
   },
   "change": {
