@@ -170,12 +170,12 @@
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "72ec290acd97fc056ff9cd929ed1360c0e56a971",
-          "command": "bun run test (1242 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/extract.test.ts",
           "blob": "dcd5442c3949f4f41e7bdc398aa3441f169550f6",
-          "command": "bun test src/server/clipping/extract.test.ts (37 passed)"
+          "command": "bun test src/server/clipping/extract.test.ts (source candidate 136ab9f1; 37 passed)"
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
@@ -185,27 +185,27 @@
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "bun run test (1242 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/store.test.ts",
           "blob": "3aa26e543ba2911fbb6bfa1e7a4ad2f74215ec42",
-          "command": "bun run test (1242 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
           "blob": "edd5d7892d42be2ad5d1298d7675349d7fba02ba",
-          "command": "bun run test (1242 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "bun run test (1242 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
-          "command": "bun run test (1242 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         }
       ],
       "scope_drift": {
@@ -221,12 +221,12 @@
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "72ec290acd97fc056ff9cd929ed1360c0e56a971",
-          "command": "bun run test (1242 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/extract.test.ts",
           "blob": "dcd5442c3949f4f41e7bdc398aa3441f169550f6",
-          "command": "bun test src/server/clipping/extract.test.ts (37 passed)"
+          "command": "bun test src/server/clipping/extract.test.ts (source candidate 136ab9f1; 37 passed)"
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
@@ -236,27 +236,27 @@
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "bun run test (1242 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/store.test.ts",
           "blob": "3aa26e543ba2911fbb6bfa1e7a4ad2f74215ec42",
-          "command": "bun run test (1242 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
           "blob": "edd5d7892d42be2ad5d1298d7675349d7fba02ba",
-          "command": "bun run test (1242 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "bun run test (1242 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
-          "command": "bun run test (1242 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         }
       ]
     }
@@ -294,12 +294,12 @@
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "72ec290acd97fc056ff9cd929ed1360c0e56a971",
-          "command": "bun run test (1242 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "bun run test (1242 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         }
       ]
     },
@@ -361,22 +361,22 @@
         {
           "path": "src/server/clipping/store.test.ts",
           "blob": "3aa26e543ba2911fbb6bfa1e7a4ad2f74215ec42",
-          "command": "bun run test (1242 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
           "blob": "edd5d7892d42be2ad5d1298d7675349d7fba02ba",
-          "command": "bun run test (1242 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "bun run test (1242 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
-          "command": "bun run test (1242 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         }
       ]
     }
