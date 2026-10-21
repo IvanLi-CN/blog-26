@@ -52,6 +52,7 @@
     "src/components/common/markdown/plugins/rehype-image-optimization.ts": "ffdcad3ac3ded54063d48a4b84774dd2a72eae52",
     "src/components/common/markdown/utils.ts": "8902cb3e0519e31faf0d3dcf2294a5a21b8432df",
     "src/components/common/markdown/types.ts": "6d4226513de89a3ab2cf932e094568f2f5a4b782",
+    "src/components/playbook/PlaybookPage.tsx": "0f2b90c774648f2f36ff40052c7f6ed83421a834",
     "src/components/memos/ClippingDetail.tsx": "2677c532bcda21cfa4333a25804c18364c303110",
     "src/components/memos/MemoTypeBadge.tsx": "fe36401e4351c285300c2a0362a3fd1e76479802",
     "src/components/memos/clipping-admin.css": "349c60d5c1590b5c5a04a65e4d2b43276458f7c3",
@@ -111,6 +112,7 @@
     "tests/e2e/clipping-detail.ts": "1a16934b457fca6a09aff6484760cd802f983750",
     "tests/e2e/clipping-web-demo.ts": "996f804d348c184986bdf454963343f6470fd995",
     "tests/lib/clipping-web-demo.test.ts": "7b2a9ec797882d3249437825746d74b846825681",
+    "tests/lib/playbook-contract.test.ts": "f4fb4bf45f224a0b2b9c3bb645787e77a88fb357",
     "src/server/routers/search.test.ts": "627b836e4bbedaf3509f365947b26c4836571568",
     "src/server/services/search-suggestions.ts": "70dae530f395a3b0f1637b436d3c654de85f6049",
     "src/lib/release/inputs.ts": "b9f21e8ef06e376f6254606a9bb900b083babc9f",
@@ -163,37 +165,37 @@
     "current": {
       "impact": "minor",
       "reasoning": "Additive version-owned media capture and a clipping-specific resource facade preserve ordinary Memo behavior. Resource manifests and files are bounded, old source/translation projections remain readable, and static publication fails closed instead of returning external URLs.",
-      "assessed_at": "2026-10-21T11:40:01+08:00",
+      "assessed_at": "2026-10-21T04:36:01Z",
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "36e674ff6a42e5daaf5d269c669a2b4558f576f2",
-          "command": "bun run test (1236 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "bun run test (1236 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/store.test.ts",
           "blob": "eba556581acaedb133a6b35d83eb95e0e8c94859",
-          "command": "bun run test (1236 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
           "blob": "bb30f3da94cb6c43022f790a025abd6ff309ef0e",
-          "command": "bun run test (1236 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "bun run test (1236 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
-          "command": "bun run test (1236 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
         }
       ],
       "scope_drift": {
@@ -204,37 +206,37 @@
     "verified": {
       "impact": "minor",
       "reasoning": "Additive version-owned media capture and a clipping-specific resource facade preserve ordinary Memo behavior. Resource manifests and files are bounded, old source/translation projections remain readable, and static publication fails closed instead of returning external URLs.",
-      "assessed_at": "2026-10-21T11:40:01+08:00",
+      "assessed_at": "2026-10-21T04:36:01Z",
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "36e674ff6a42e5daaf5d269c669a2b4558f576f2",
-          "command": "bun run test (1236 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "bun run test (1236 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/store.test.ts",
           "blob": "eba556581acaedb133a6b35d83eb95e0e8c94859",
-          "command": "bun run test (1236 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
           "blob": "bb30f3da94cb6c43022f790a025abd6ff309ef0e",
-          "command": "bun run test (1236 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "bun run test (1236 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
-          "command": "bun run test (1236 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
         }
       ]
     }
@@ -272,12 +274,12 @@
         {
           "path": "src/server/clipping/api.test.ts",
           "blob": "36e674ff6a42e5daaf5d269c669a2b4558f576f2",
-          "command": "bun run test (1236 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "bun run test (1236 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
         }
       ]
     },
@@ -339,22 +341,22 @@
         {
           "path": "src/server/clipping/store.test.ts",
           "blob": "eba556581acaedb133a6b35d83eb95e0e8c94859",
-          "command": "bun run test (1236 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
           "blob": "bb30f3da94cb6c43022f790a025abd6ff309ef0e",
-          "command": "bun run test (1236 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "bun run test (1236 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
-          "command": "bun run test (1236 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
         }
       ]
     }
