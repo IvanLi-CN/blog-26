@@ -921,7 +921,7 @@ image: ./assets/cover.png
     const coverHash = buildPublicMediaHash("blog/assets/cover.png", "cover");
     const persistedCoverHash = buildPublicMediaHash("blog/assets/persisted-cover.png", "cover");
     expect(String(payload.image)).toContain(
-      `/api/admin/preview/assets/post/preview-contaminated-assets/${coverHash}/cover`
+      `/api/admin/preview/assets/post/preview-contaminated-assets/${coverHash}/wm-b-v3/cover`
     );
     expect(String(payload.image)).not.toContain(persistedCoverHash);
     expect(String(payload.body)).toContain(
@@ -1378,8 +1378,8 @@ public: false
     expect(snapshotPost?.media?.cover?.variants?.cover).toContain(
       "/api/public/assets/post/public-media-post/"
     );
-    expect(snapshotPost?.media?.cover?.presentations?.cover?.a).toContain("/wm-a-v2/cover");
-    expect(snapshotPost?.media?.cover?.presentations?.cover?.b).toContain("/wm-b-v2/cover");
+    expect(snapshotPost?.media?.cover?.presentations?.cover?.a).toContain("/wm-a-v3/cover");
+    expect(snapshotPost?.media?.cover?.presentations?.cover?.b).toContain("/wm-b-v3/cover");
   }, 30_000);
 
   it("omits local public content whose media source is missing", async () => {
@@ -2004,14 +2004,48 @@ public: false
   it("applies versioned local Logo watermarks after orientation and size thresholds", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
     const cases = [
-      { name: "narrow", width: 239, height: 400, expectedWatermark: false },
-      { name: "short", width: 400, height: 159, expectedWatermark: false },
-      { name: "small-area", width: 300, height: 200, expectedWatermark: false },
-      { name: "eligible", width: 400, height: 200, expectedWatermark: true },
+      {
+        name: "narrow",
+        width: 239,
+        height: 400,
+        background: { r: 40, g: 80, b: 60 },
+        expectedWatermark: false,
+      },
+      {
+        name: "short",
+        width: 400,
+        height: 159,
+        background: { r: 40, g: 80, b: 60 },
+        expectedWatermark: false,
+      },
+      {
+        name: "small-area",
+        width: 300,
+        height: 200,
+        background: { r: 40, g: 80, b: 60 },
+        expectedWatermark: false,
+      },
+      {
+        name: "eligible",
+        width: 400,
+        height: 200,
+        background: { r: 40, g: 80, b: 60 },
+        expectedWatermark: true,
+        expectedInk: "light",
+      },
+      {
+        name: "light-eligible",
+        width: 400,
+        height: 200,
+        background: { r: 245, g: 245, b: 245 },
+        expectedWatermark: true,
+        expectedInk: "dark",
+      },
       {
         name: "oriented-narrow",
         width: 400,
         height: 200,
+        background: { r: 40, g: 80, b: 60 },
         orientation: 6,
         expectedWatermark: false,
       },
@@ -2024,7 +2058,7 @@ public: false
           width: item.width,
           height: item.height,
           channels: 3,
-          background: { r: 40, g: 80, b: 60 },
+          background: item.background,
         },
       });
       if (item.orientation) image = image.withMetadata({ orientation: item.orientation });
@@ -2052,22 +2086,56 @@ public: false
         const mediaHash = buildPublicMediaHash(sourcePath, "content");
         const response = await handlePublicApiRequest(
           buildRequest(
-            `/api/public/assets/post/watermark-${item.name}/${mediaHash}/wm-a-v2/content.webp`
+            `/api/public/assets/post/watermark-${item.name}/${mediaHash}/wm-a-v3/content.webp`
           ),
-          `/assets/post/watermark-${item.name}/${mediaHash}/wm-a-v2/content.webp`
+          `/assets/post/watermark-${item.name}/${mediaHash}/wm-a-v3/content.webp`
         );
         expect(response.status).toBe(200);
-        const { data, info } = await sharp(Buffer.from(await response.arrayBuffer()))
+        const responseBuffer = Buffer.from(await response.arrayBuffer());
+        const evidenceDir = process.env.PUBLIC_MEDIA_EVIDENCE_DIR;
+        if (evidenceDir) {
+          fs.mkdirSync(evidenceDir, { recursive: true });
+          fs.writeFileSync(path.join(evidenceDir, `local-${item.name}.webp`), responseBuffer);
+          if (item.name === "eligible" || item.name === "light-eligible") {
+            const bResponse = await handlePublicApiRequest(
+              buildRequest(
+                `/api/public/assets/post/watermark-${item.name}/${mediaHash}/wm-b-v3/content.webp`
+              ),
+              `/assets/post/watermark-${item.name}/${mediaHash}/wm-b-v3/content.webp`
+            );
+            expect(bResponse.status).toBe(200);
+            fs.writeFileSync(
+              path.join(evidenceDir, `local-${item.name}-b.webp`),
+              Buffer.from(await bResponse.arrayBuffer())
+            );
+          }
+        }
+        const { data, info } = await sharp(responseBuffer)
           .removeAlpha()
           .raw()
           .toBuffer({ resolveWithObject: true });
         let brightPixels = 0;
-        for (let offset = 0; offset < data.length; offset += info.channels) {
-          if (data[offset] > 150 && data[offset + 1] > 150 && data[offset + 2] > 150) {
-            brightPixels += 1;
+        let darkPixels = 0;
+        const roiTop = Math.max(0, info.height - 45);
+        const roiLeft = Math.max(0, info.width - 60);
+        for (let y = roiTop; y < info.height; y += 1) {
+          for (let x = roiLeft; x < info.width; x += 1) {
+            const offset = (y * info.width + x) * info.channels;
+            if (data[offset] > 150 && data[offset + 1] > 150 && data[offset + 2] > 150) {
+              brightPixels += 1;
+            }
+            if (data[offset] < 170 && data[offset + 1] < 180 && data[offset + 2] < 175) {
+              darkPixels += 1;
+            }
           }
         }
-        expect(brightPixels > 0).toBe(item.expectedWatermark);
+        if (item.expectedInk === "light") {
+          expect(brightPixels).toBeGreaterThan(0);
+        } else if (item.expectedInk === "dark") {
+          expect(darkPixels).toBeGreaterThan(0);
+        } else {
+          expect(brightPixels > 0).toBe(item.expectedWatermark);
+        }
       }
 
       const gifWidth = 400;
@@ -2110,11 +2178,16 @@ public: false
       });
       const gifHash = buildPublicMediaHash("blog/assets/animated.gif", "content");
       const gifResponse = await handlePublicApiRequest(
-        buildRequest(`/api/public/assets/post/animated-logo/${gifHash}/wm-a-v2/content.webp`),
-        `/assets/post/animated-logo/${gifHash}/wm-a-v2/content.webp`
+        buildRequest(`/api/public/assets/post/animated-logo/${gifHash}/wm-a-v3/content.webp`),
+        `/assets/post/animated-logo/${gifHash}/wm-a-v3/content.webp`
       );
       expect(gifResponse.status).toBe(200);
       const gifBuffer = Buffer.from(await gifResponse.arrayBuffer());
+      const evidenceDir = process.env.PUBLIC_MEDIA_EVIDENCE_DIR;
+      if (evidenceDir) {
+        fs.mkdirSync(evidenceDir, { recursive: true });
+        fs.writeFileSync(path.join(evidenceDir, "local-animated.gif"), gifBuffer);
+      }
       const gifMetadata = await sharp(gifBuffer, { animated: true }).metadata();
       expect(gifMetadata.pages).toBe(2);
       expect(gifMetadata.pageHeight).toBe(gifHeight);
@@ -2142,6 +2215,51 @@ public: false
           }
         }
         expect(brightPixels).toBeGreaterThan(0);
+      }
+
+      if (evidenceDir) {
+        const complexPath = path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/complex.png");
+        await sharp({
+          create: {
+            width: 640,
+            height: 360,
+            channels: 3,
+            background: { r: 246, g: 246, b: 246 },
+          },
+        })
+          .composite([
+            {
+              input: Buffer.from(
+                '<svg width="640" height="360"><rect x="0" y="0" width="280" height="360" fill="#24352d"/><rect x="280" y="0" width="180" height="180" fill="#b8c6bf"/><circle cx="530" cy="115" r="82" fill="#e1b866"/></svg>'
+              ),
+            },
+          ])
+          .png()
+          .toFile(complexPath);
+        await seedPost({
+          id: "blog/complex-logo.md",
+          filePath: "blog/complex-logo.md",
+          slug: "complex-logo",
+          type: "post",
+          title: "Complex Logo",
+          body: "![image](./assets/complex.png)",
+          public: true,
+          draft: false,
+        });
+        const complexHash = buildPublicMediaHash("blog/assets/complex.png", "content");
+        for (const composition of ["a", "b"] as const) {
+          const complexResponse = await handlePublicApiRequest(
+            buildRequest(
+              `/api/public/assets/post/complex-logo/${complexHash}/wm-${composition}-v3/content.webp`
+            ),
+            `/assets/post/complex-logo/${complexHash}/wm-${composition}-v3/content.webp`
+          );
+          expect(complexResponse.status).toBe(200);
+          fs.writeFileSync(
+            path.join(evidenceDir, `local-complex-${composition}.webp`),
+            Buffer.from(await complexResponse.arrayBuffer())
+          );
+        }
       }
     } finally {
       delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;

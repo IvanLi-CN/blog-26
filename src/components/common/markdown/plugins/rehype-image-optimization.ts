@@ -137,7 +137,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
       }
 
       const match =
-        /^(\/api\/public\/assets|\/_content\/assets)\/(post|memo)\/([^/]+)\/([^/]+)\/(wm-[ab]-v[12])\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu.exec(
+        /^(\/api\/public\/assets|\/_content\/assets)\/(post|memo)\/([^/]+)\/([^/]+)\/(wm-[ab]-v[123])\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu.exec(
           parsed.pathname
         );
       if (!match) return null;
@@ -154,10 +154,12 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
       }
 
       const candidateRenderIds: [PublicMediaRenderId, PublicMediaRenderId] = renderId.endsWith(
-        "-v2"
+        "-v3"
       )
-        ? ["wm-a-v2", "wm-b-v2"]
-        : ["wm-a-v1", "wm-b-v1"];
+        ? ["wm-a-v3", "wm-b-v3"]
+        : renderId.endsWith("-v2")
+          ? ["wm-a-v2", "wm-b-v2"]
+          : ["wm-a-v1", "wm-b-v1"];
       const buildCandidate = (candidateRenderId: (typeof candidateRenderIds)[number]) => {
         if (assetPrefix === "/_content/assets") {
           return `${assetPrefix}/${kind}/${encodedSlug}/${mediaHash}/${candidateRenderId}/${targetVariant}.${ext}${parsed.search}`;

@@ -37,6 +37,17 @@ import {
 } from "@/lib/public-media";
 import { toPublicAssetUrl } from "@/lib/public-runtime-url";
 import { posts } from "@/lib/schema";
+import {
+  chooseWatermarkInk,
+  createWatermarkPlan,
+  getCachedWatermarkInk,
+  renderWatermarkMask,
+  type WatermarkFrame,
+  type WatermarkInk,
+  type WatermarkPlan,
+  watermarkAssetName,
+  watermarkCacheKey,
+} from "./public-media-watermark";
 
 type ContentRow = typeof posts.$inferSelect;
 
@@ -357,11 +368,10 @@ function pickRasterFallbackExt(ref: MediaReference) {
 }
 
 function getPublicMediaRenderId(
-  context: PublicMediaContext,
+  _context: PublicMediaContext,
   variant: Exclude<PublicMediaVariant, "play">
 ): PublicMediaRenderId | undefined {
-  if (context.assetScope === "admin-preview") return undefined;
-  return variant === "card" ? "wm-a-v2" : "wm-b-v2";
+  return variant === "card" ? "wm-a-v3" : "wm-b-v3";
 }
 
 function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference) {
@@ -827,6 +837,168 @@ function getImagorFrameFilters(
   return [];
 }
 
+function getWatermarkComposition(renderId: PublicMediaRenderId) {
+  return renderId.startsWith("wm-a-") ? ("a" as const) : ("b" as const);
+}
+
+function getWatermarkVersion(renderId: PublicMediaRenderId) {
+  return renderId.endsWith("-v3")
+    ? ("v3" as const)
+    : renderId.endsWith("-v2")
+      ? ("v2" as const)
+      : ("v1" as const);
+}
+
+function getWatermarkMargin(dimensions: DerivedDimensions) {
+  return Math.max(1, Math.round(dimensions.width * 0.02));
+}
+
+function getWatermarkWidth(dimensions: DerivedDimensions, composition: "a" | "b") {
+  return Math.max(1, Math.round(dimensions.width * (composition === "a" ? 0.07 : 0.18)));
+}
+
+async function readWatermarkSvg(asset: string) {
+  return readFile(`${process.cwd()}/public/${asset}`, "utf8");
+}
+
+async function readLocalWatermarkFrames(params: {
+  ref: MediaReference;
+  variant: keyof typeof IMAGE_VARIANT_RECIPES;
+  dimensions: DerivedDimensions;
+  mask: { width: number; height: number };
+  signal: AbortSignal;
+}) {
+  const sourcePath = getLocalPath(params.ref.sourcePath);
+  const animated =
+    params.ref.kind === "gif" && (params.variant === "content" || params.variant === "full");
+  const metadata = await sharp(sourcePath, {
+    animated,
+    limitInputPixels: false,
+  }).metadata();
+  const pageCount = animated ? Math.max(1, metadata.pages ?? 1) : 1;
+  const margin = getWatermarkMargin(params.dimensions);
+  const left = Math.max(0, params.dimensions.width - margin - params.mask.width);
+  const top = Math.max(0, params.dimensions.height - margin - params.mask.height);
+  const frames: WatermarkFrame[] = [];
+
+  for (let page = 0; page < pageCount; page += 1) {
+    if (params.signal.aborted) throw new Error("watermark analysis aborted");
+    const result = await sharp(sourcePath, {
+      animated,
+      page,
+      pages: 1,
+      limitInputPixels: false,
+    })
+      .rotate()
+      .resize({
+        width: params.dimensions.width,
+        height: params.dimensions.height,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .extract({ left, top, width: params.mask.width, height: params.mask.height })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    frames.push({
+      data: result.data,
+      width: result.info.width,
+      height: result.info.height,
+      delayMs: animated ? Math.max(1, metadata.delay?.[page] ?? 100) : 100,
+    });
+  }
+  return frames;
+}
+
+async function readVideoWatermarkFrame(params: {
+  request: Request;
+  context: PublicMediaContext;
+  ref: MediaReference;
+  variant: keyof typeof IMAGE_VARIANT_RECIPES;
+  dimensions: DerivedDimensions;
+  mask: { width: number; height: number };
+  signal: AbortSignal;
+}) {
+  const recipe = IMAGE_VARIANT_RECIPES[params.variant];
+  const sourceUrl = buildImagorSourceUrl(params.request, params.context, params.ref);
+  const path = `fit-in/${recipe.width}x${recipe.height}/filters:frame(0):format(png)/${sourceUrl}`;
+  const response = await fetch(`${getImagorBaseUrl()}/${signImagorPath(path)}`, {
+    headers: { accept: "image/png" },
+    signal: params.signal,
+  });
+  if (!response.ok) throw new Error(`video watermark analysis returned HTTP ${response.status}`);
+  const contentLength = Number(response.headers.get("content-length") || 0);
+  if (contentLength > 20 * 1024 * 1024)
+    throw new Error("video watermark analysis response is too large");
+  const body = Buffer.from(await response.arrayBuffer());
+  if (body.byteLength > 20 * 1024 * 1024)
+    throw new Error("video watermark analysis response is too large");
+  const margin = getWatermarkMargin(params.dimensions);
+  const result = await sharp(body)
+    .resize({ width: params.dimensions.width, height: params.dimensions.height, fit: "inside" })
+    .extract({
+      left: Math.max(0, params.dimensions.width - margin - params.mask.width),
+      top: Math.max(0, params.dimensions.height - margin - params.mask.height),
+      width: params.mask.width,
+      height: params.mask.height,
+    })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  return [
+    {
+      data: result.data,
+      width: result.info.width,
+      height: result.info.height,
+      delayMs: 100,
+    } satisfies WatermarkFrame,
+  ];
+}
+
+async function chooseAdaptiveWatermarkInk(params: {
+  request: Request;
+  context: PublicMediaContext;
+  ref: MediaReference;
+  variant: keyof typeof IMAGE_VARIANT_RECIPES;
+  dimensions: DerivedDimensions;
+  renderId: PublicMediaRenderId;
+}) {
+  const composition = getWatermarkComposition(params.renderId);
+  const info = await stat(getLocalPath(params.ref.sourcePath));
+  const key = watermarkCacheKey({
+    sourcePath: params.ref.sourcePath,
+    size: info.size,
+    mtimeMs: info.mtimeMs,
+    ctimeMs: info.ctimeMs,
+    variant: params.variant,
+    composition,
+  });
+  return getCachedWatermarkInk(key, async (signal) => {
+    const lightAsset = watermarkAssetName(composition, "v3", "light");
+    const svg = await readWatermarkSvg(lightAsset);
+    const mask = await renderWatermarkMask(svg, getWatermarkWidth(params.dimensions, composition));
+    const frames =
+      params.ref.kind === "video"
+        ? await readVideoWatermarkFrame({ ...params, mask, signal })
+        : await readLocalWatermarkFrames({ ...params, mask, signal });
+    return chooseWatermarkInk(frames, mask);
+  });
+}
+
+async function getWatermarkPlan(params: {
+  request: Request;
+  context: PublicMediaContext;
+  ref: MediaReference;
+  variant: keyof typeof IMAGE_VARIANT_RECIPES;
+  dimensions: DerivedDimensions;
+  renderId: PublicMediaRenderId;
+}): Promise<WatermarkPlan> {
+  const composition = getWatermarkComposition(params.renderId);
+  const version = getWatermarkVersion(params.renderId);
+  const ink: WatermarkInk = version === "v3" ? await chooseAdaptiveWatermarkInk(params) : "light";
+  return createWatermarkPlan({ composition, version, ink, dimensions: params.dimensions });
+}
+
 async function readImagorDerivedDimensions(params: {
   request: Request;
   context: PublicMediaContext;
@@ -859,8 +1031,11 @@ async function readImagorDerivedDimensions(params: {
   return { width: Math.round(width), height: Math.round(height) };
 }
 
-function getWatermarkFilter(
+async function getWatermarkFilter(
   request: Request,
+  context: PublicMediaContext,
+  ref: MediaReference,
+  variant: keyof typeof IMAGE_VARIANT_RECIPES,
   renderId?: PublicMediaRenderId,
   dimensions?: DerivedDimensions
 ) {
@@ -869,21 +1044,17 @@ function getWatermarkFilter(
     return `watermark(${encodeImagorFilterString(watermarkUrl)},-24,-24,18,22,22)`;
   }
 
-  const isMarkOnly = renderId.startsWith("wm-a-");
-  const asset = isMarkOnly ? "watermark-ivanli-a.v1.svg" : "watermark-ivanli-b.v1.svg";
-  const ratio = isMarkOnly ? 7 : 18;
   if (!dimensions) {
     throw new Error(`Missing derived dimensions for versioned watermark: ${renderId}`);
   }
-  const margin = Math.max(1, Math.round(dimensions.width * 0.02));
-  const watermarkUrl = `${getInternalSourceBaseUrl(request)}/${asset}`;
+  const plan = await getWatermarkPlan({ request, context, ref, variant, dimensions, renderId });
+  const watermarkUrl = `${getInternalSourceBaseUrl(request)}/${plan.asset}`;
   // Some deployed imagorvideo versions leave the watermark at its intrinsic SVG
   // size when only w_ratio is provided. v2 fixes that while keeping width as the
   // authoritative dimension; v1 retains its historical filter for old snapshots.
-  const heightRatio = renderId.endsWith("-v2") ? 100 : null;
-  return heightRatio === null
-    ? `watermark(${encodeImagorFilterString(watermarkUrl)},-${margin},-${margin},36,${ratio})`
-    : `watermark(${encodeImagorFilterString(watermarkUrl)},-${margin},-${margin},36,${ratio},${heightRatio})`;
+  return plan.heightRatio === null
+    ? `watermark(${encodeImagorFilterString(watermarkUrl)},-${plan.margin},-${plan.margin},36,${plan.widthRatio * 100})`
+    : `watermark(${encodeImagorFilterString(watermarkUrl)},-${plan.margin},-${plan.margin},36,${plan.widthRatio * 100},${plan.heightRatio})`;
 }
 
 async function buildImagorPath(params: {
@@ -911,11 +1082,22 @@ async function buildImagorPath(params: {
       throw new Error(`Unable to determine derived media dimensions: ${params.ref.sourcePath}`);
     }
     if (meetsVersionedWatermarkThreshold(dimensions)) {
-      filters.push(getWatermarkFilter(params.request, params.renderId, dimensions));
+      filters.push(
+        await getWatermarkFilter(
+          params.request,
+          params.context,
+          params.ref,
+          params.variant,
+          params.renderId,
+          dimensions
+        )
+      );
     }
     filters.push("strip_exif()");
   } else if (await shouldApplyLegacyWatermark(params.ref, params.variant)) {
-    filters.push(getWatermarkFilter(params.request));
+    filters.push(
+      await getWatermarkFilter(params.request, params.context, params.ref, params.variant)
+    );
   }
 
   const resizeSegment = `fit-in/${recipe.width}x${recipe.height}`;
@@ -1065,17 +1247,19 @@ async function renderLocalMediaVariant(
   if (params.renderId && (await shouldApplyVersionedWatermark(resolved.ref, params.variant))) {
     const dimensions = await readDerivedDimensions(resolved.ref, params.variant);
     if (!dimensions) throw new Error("Unable to determine local derivative dimensions");
-    const ratio = params.renderId.startsWith("wm-a-") ? 0.07 : 0.18;
-    const margin = Math.max(1, Math.round(dimensions.width * 0.02));
-    const overlayWidth = Math.max(1, Math.round(dimensions.width * ratio));
-    const watermarkFile = params.renderId.startsWith("wm-a-")
-      ? "watermark-ivanli-a.v1.svg"
-      : "watermark-ivanli-b.v1.svg";
-    const watermarkSvg = await readFile(`${process.cwd()}/public/${watermarkFile}`, "utf8");
+    const plan = await getWatermarkPlan({
+      request,
+      context: resolved.context,
+      ref: resolved.ref,
+      variant: params.variant,
+      dimensions,
+      renderId: params.renderId,
+    });
+    const watermarkSvg = await readWatermarkSvg(plan.asset);
     const overlayResult = await sharp(
-      Buffer.from(watermarkSvg.replace("<svg ", '<svg opacity="0.64" '))
+      Buffer.from(watermarkSvg.replace("<svg ", `<svg opacity="${plan.opacity}" `))
     )
-      .resize({ width: overlayWidth, fit: "inside" })
+      .resize({ width: plan.width, fit: "inside" })
       .png()
       .toBuffer({ resolveWithObject: true });
     const overlayFrame = await sharp({
@@ -1089,8 +1273,8 @@ async function renderLocalMediaVariant(
       .composite([
         {
           input: overlayResult.data,
-          left: Math.max(0, dimensions.width - overlayWidth - margin),
-          top: Math.max(0, dimensions.height - margin - overlayResult.info.height),
+          left: Math.max(0, dimensions.width - plan.width - plan.margin),
+          top: Math.max(0, dimensions.height - plan.margin - overlayResult.info.height),
           blend: "over",
         },
       ])

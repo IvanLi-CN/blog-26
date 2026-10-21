@@ -6,6 +6,10 @@ import sharp from "sharp";
 const watermarkFiles = [
   "public/watermark-ivanli-a.v1.svg",
   "public/watermark-ivanli-b.v1.svg",
+  "public/watermark-ivanli-a.light.v3.svg",
+  "public/watermark-ivanli-a.dark.v3.svg",
+  "public/watermark-ivanli-b.light.v3.svg",
+  "public/watermark-ivanli-b.dark.v3.svg",
 ] as const;
 
 describe("versioned Logo watermark assets", () => {
@@ -34,7 +38,11 @@ describe("versioned Logo watermark assets", () => {
 
       expect(opaquePixels).toBeGreaterThan(0);
       expect(shadowPixels).toBeGreaterThan(0);
-      expect(whitePixels).toBeGreaterThan(0);
+      if (relativePath.includes(".dark.")) {
+        expect(svg).toContain("#24352d");
+      } else {
+        expect(whitePixels).toBeGreaterThan(0);
+      }
     });
   }
 });

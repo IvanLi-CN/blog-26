@@ -68,3 +68,4 @@
 - 固定数据库文章的 `body-only canonical` 预览合同：`/admin/preview/posts/:slug` 会在读时剥离 `posts.body` 中历史混入的整篇 frontmatter 文档，只把纯正文传给作者态正文区域。
 - 修正数据库文章作者态预览标题漂移：标题优先回到 frontmatter / 结构化 metadata，不再被正文首行图片 Markdown 抢占。
 - 对 `draft: true` 或 `public: false` 的文章，后台预览把“打开公开页”改成禁用解释态，避免作者点击一个必然 404 的公开入口。
+- 2026-10-21: 收敛区域自适应用色合同：新增 v3 渲染身份，按实际水印覆盖区在白色与墨绿之间择优；透明源按白底评分，GIF 综合帧时长后固定颜色，保留 v1/v2 历史快照语义。

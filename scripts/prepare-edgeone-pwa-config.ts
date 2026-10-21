@@ -262,6 +262,10 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     scopedPath(basePath, "/watermark-ivanli.svg"),
     scopedPath(basePath, "/watermark-ivanli-a.v1.svg"),
     scopedPath(basePath, "/watermark-ivanli-b.v1.svg"),
+    scopedPath(basePath, "/watermark-ivanli-a.light.v3.svg"),
+    scopedPath(basePath, "/watermark-ivanli-a.dark.v3.svg"),
+    scopedPath(basePath, "/watermark-ivanli-b.light.v3.svg"),
+    scopedPath(basePath, "/watermark-ivanli-b.dark.v3.svg"),
   ];
   if (watermarkSources.every((source) => rootAssetSources.has(source))) {
     for (const source of watermarkSources) rootAssetSources.delete(source);
