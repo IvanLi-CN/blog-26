@@ -38,12 +38,14 @@ import {
 import { toPublicAssetUrl } from "@/lib/public-runtime-url";
 import { posts } from "@/lib/schema";
 import {
-  chooseWatermarkInk,
+  accumulateWatermarkInkScore,
+  chooseWatermarkInkFromScores,
+  createWatermarkInkScores,
   createWatermarkPlan,
   getCachedWatermarkInk,
   renderWatermarkMask,
-  type WatermarkFrame,
   type WatermarkInk,
+  type WatermarkInkScores,
   type WatermarkPlan,
   watermarkAssetName,
   watermarkCacheKey,
@@ -861,7 +863,7 @@ async function readWatermarkSvg(asset: string) {
   return readFile(`${process.cwd()}/public/${asset}`, "utf8");
 }
 
-async function readLocalWatermarkFrames(params: {
+async function scoreLocalWatermarkFrames(params: {
   ref: MediaReference;
   variant: keyof typeof IMAGE_VARIANT_RECIPES;
   dimensions: DerivedDimensions;
@@ -879,7 +881,7 @@ async function readLocalWatermarkFrames(params: {
   const margin = getWatermarkMargin(params.dimensions);
   const left = Math.max(0, params.dimensions.width - margin - params.mask.width);
   const top = Math.max(0, params.dimensions.height - margin - params.mask.height);
-  const frames: WatermarkFrame[] = [];
+  const scores = createWatermarkInkScores();
 
   for (let page = 0; page < pageCount; page += 1) {
     if (params.signal.aborted) throw new Error("watermark analysis aborted");
@@ -900,17 +902,61 @@ async function readLocalWatermarkFrames(params: {
       .ensureAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
-    frames.push({
-      data: result.data,
-      width: result.info.width,
-      height: result.info.height,
-      delayMs: animated ? Math.max(1, metadata.delay?.[page] ?? 100) : 100,
-    });
+    accumulateWatermarkInkScore(
+      scores,
+      {
+        data: result.data,
+        width: result.info.width,
+        height: result.info.height,
+        delayMs: animated ? Math.max(1, metadata.delay?.[page] ?? 100) : 100,
+      },
+      params.mask
+    );
   }
-  return frames;
+  return scores;
 }
 
-async function readVideoWatermarkFrame(params: {
+const MAX_VIDEO_ANALYSIS_BYTES = 20 * 1024 * 1024;
+
+async function readResponseBodyWithinLimit(response: Response, signal: AbortSignal) {
+  const contentLength = Number(response.headers.get("content-length") || 0);
+  if (Number.isFinite(contentLength) && contentLength > MAX_VIDEO_ANALYSIS_BYTES) {
+    throw new Error("video watermark analysis response is too large");
+  }
+
+  if (!response.body) {
+    const body = Buffer.from(await response.arrayBuffer());
+    if (body.byteLength > MAX_VIDEO_ANALYSIS_BYTES) {
+      throw new Error("video watermark analysis response is too large");
+    }
+    return body;
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Buffer[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      if (signal.aborted) throw new Error("watermark analysis aborted");
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > MAX_VIDEO_ANALYSIS_BYTES) {
+        await reader
+          .cancel("video watermark analysis response is too large")
+          .catch(() => undefined);
+        throw new Error("video watermark analysis response is too large");
+      }
+      chunks.push(Buffer.from(value));
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks, total);
+}
+
+async function scoreVideoWatermarkFrame(params: {
   request: Request;
   context: PublicMediaContext;
   ref: MediaReference;
@@ -927,12 +973,7 @@ async function readVideoWatermarkFrame(params: {
     signal: params.signal,
   });
   if (!response.ok) throw new Error(`video watermark analysis returned HTTP ${response.status}`);
-  const contentLength = Number(response.headers.get("content-length") || 0);
-  if (contentLength > 20 * 1024 * 1024)
-    throw new Error("video watermark analysis response is too large");
-  const body = Buffer.from(await response.arrayBuffer());
-  if (body.byteLength > 20 * 1024 * 1024)
-    throw new Error("video watermark analysis response is too large");
+  const body = await readResponseBodyWithinLimit(response, params.signal);
   const margin = getWatermarkMargin(params.dimensions);
   const result = await sharp(body)
     .resize({ width: params.dimensions.width, height: params.dimensions.height, fit: "inside" })
@@ -945,14 +986,18 @@ async function readVideoWatermarkFrame(params: {
     .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
-  return [
+  const scores = createWatermarkInkScores();
+  accumulateWatermarkInkScore(
+    scores,
     {
       data: result.data,
       width: result.info.width,
       height: result.info.height,
       delayMs: 100,
-    } satisfies WatermarkFrame,
-  ];
+    },
+    params.mask
+  );
+  return scores;
 }
 
 async function chooseAdaptiveWatermarkInk(params: {
@@ -977,11 +1022,11 @@ async function chooseAdaptiveWatermarkInk(params: {
     const lightAsset = watermarkAssetName(composition, "v3", "light");
     const svg = await readWatermarkSvg(lightAsset);
     const mask = await renderWatermarkMask(svg, getWatermarkWidth(params.dimensions, composition));
-    const frames =
+    const scores: WatermarkInkScores =
       params.ref.kind === "video"
-        ? await readVideoWatermarkFrame({ ...params, mask, signal })
-        : await readLocalWatermarkFrames({ ...params, mask, signal });
-    return chooseWatermarkInk(frames, mask);
+        ? await scoreVideoWatermarkFrame({ ...params, mask, signal })
+        : await scoreLocalWatermarkFrames({ ...params, mask, signal });
+    return chooseWatermarkInkFromScores(scores);
   });
 }
 

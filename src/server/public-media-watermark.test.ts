@@ -4,6 +4,7 @@ import {
   createWatermarkPlan,
   renderWatermarkMask,
   resetWatermarkAnalysisStateForTests,
+  runWatermarkAnalysis,
   type WatermarkFrame,
   watermarkAssetName,
 } from "./public-media-watermark";
@@ -33,6 +34,21 @@ describe("public media watermark contrast", () => {
     expect(chooseWatermarkInk([frame(255, 255, 255, 900), frame(20, 30, 25, 100)], mask)).toBe(
       "dark"
     );
+  });
+
+  it("rejects analysis after its deadline and releases the slot when work settles", async () => {
+    let lateWorkSettled = false;
+    await expect(
+      runWatermarkAnalysis(async () => {
+        await Bun.sleep(20);
+        lateWorkSettled = true;
+        return "late";
+      }, 5)
+    ).rejects.toThrow("watermark analysis deadline exceeded");
+    await Bun.sleep(30);
+    expect(lateWorkSettled).toBe(true);
+    await expect(runWatermarkAnalysis(async () => "next", 50)).resolves.toBe("next");
+    resetWatermarkAnalysisStateForTests();
   });
 
   it("renders a foreground-only mask without the SVG shadow", async () => {

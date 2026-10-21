@@ -20,6 +20,12 @@ export type WatermarkMask = {
   height: number;
 };
 
+export type WatermarkInkScores = {
+  lightScore: number;
+  darkScore: number;
+  totalWeight: number;
+};
+
 export type WatermarkPlan = {
   composition: "a" | "b";
   version: "v1" | "v2" | "v3";
@@ -44,6 +50,7 @@ type AnalysisTask<T> = {
   resolve: (value: T) => void;
   reject: (reason?: unknown) => void;
   enqueuedAt: number;
+  budgetMs: number;
 };
 
 const analysisQueue: Array<AnalysisTask<unknown>> = [];
@@ -58,28 +65,35 @@ function startNextAnalysis() {
 
   activeAnalyses += 1;
   const controller = new AbortController();
-  const remaining = Math.max(1, ANALYSIS_BUDGET_MS - (Date.now() - next.enqueuedAt));
-  const timer = setTimeout(
-    () => controller.abort("watermark analysis deadline exceeded"),
-    remaining
-  );
-  Promise.resolve()
-    .then(() => next.run(controller.signal))
-    .then(next.resolve, next.reject)
+  const remaining = Math.max(1, next.budgetMs - (Date.now() - next.enqueuedAt));
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const work = Promise.resolve().then(() => next.run(controller.signal));
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort("watermark analysis deadline exceeded");
+      reject(new Error("watermark analysis deadline exceeded"));
+    }, remaining);
+  });
+  Promise.race([work, deadline]).then(next.resolve, next.reject);
+  work
     .finally(() => {
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
       activeAnalyses = Math.max(0, activeAnalyses - 1);
       startNextAnalysis();
-    });
+    })
+    .catch(() => undefined);
 }
 
-export function runWatermarkAnalysis<T>(run: (signal: AbortSignal) => Promise<T>) {
+export function runWatermarkAnalysis<T>(
+  run: (signal: AbortSignal) => Promise<T>,
+  budgetMs = ANALYSIS_BUDGET_MS
+) {
   return new Promise<T>((resolve, reject) => {
     if (analysisQueue.length >= ANALYSIS_QUEUE_LIMIT && activeAnalyses >= ANALYSIS_CONCURRENCY) {
       reject(new Error("watermark analysis queue is full"));
       return;
     }
-    analysisQueue.push({ run, resolve, reject, enqueuedAt: Date.now() });
+    analysisQueue.push({ run, resolve, reject, enqueuedAt: Date.now(), budgetMs });
     startNextAnalysis();
   });
 }
@@ -169,34 +183,43 @@ function contrastLog(background: number, ink: readonly [number, number, number],
   return Math.log(ratio);
 }
 
-export function chooseWatermarkInk(frames: readonly WatermarkFrame[], mask: WatermarkMask) {
-  let lightScore = 0;
-  let darkScore = 0;
-  let totalWeight = 0;
+export function createWatermarkInkScores(): WatermarkInkScores {
+  return { lightScore: 0, darkScore: 0, totalWeight: 0 };
+}
 
-  for (const frame of frames) {
-    if (frame.width !== mask.width || frame.height !== mask.height) {
-      throw new Error("watermark analysis frame and mask dimensions differ");
-    }
-    const durationWeight = Math.max(1, frame.delayMs ?? 100);
-    for (let pixel = 0; pixel < mask.data.length; pixel += 1) {
-      const maskAlpha = (mask.data[pixel] ?? 0) / 255;
-      if (maskAlpha <= 0) continue;
-      const background = frameBackgroundLuminance(frame.data, pixel * 4);
-      const weight = durationWeight * maskAlpha;
-      lightScore +=
-        weight *
-        contrastLog(background, WATERMARK_LIGHT_RGB, maskAlpha * WATERMARK_OVERALL_OPACITY);
-      darkScore +=
-        weight * contrastLog(background, WATERMARK_DARK_RGB, maskAlpha * WATERMARK_OVERALL_OPACITY);
-      totalWeight += weight;
-    }
+export function accumulateWatermarkInkScore(
+  scores: WatermarkInkScores,
+  frame: WatermarkFrame,
+  mask: WatermarkMask
+) {
+  if (frame.width !== mask.width || frame.height !== mask.height) {
+    throw new Error("watermark analysis frame and mask dimensions differ");
   }
+  const durationWeight = Math.max(1, frame.delayMs ?? 100);
+  for (let pixel = 0; pixel < mask.data.length; pixel += 1) {
+    const maskAlpha = (mask.data[pixel] ?? 0) / 255;
+    if (maskAlpha <= 0) continue;
+    const background = frameBackgroundLuminance(frame.data, pixel * 4);
+    const weight = durationWeight * maskAlpha;
+    scores.lightScore +=
+      weight * contrastLog(background, WATERMARK_LIGHT_RGB, maskAlpha * WATERMARK_OVERALL_OPACITY);
+    scores.darkScore +=
+      weight * contrastLog(background, WATERMARK_DARK_RGB, maskAlpha * WATERMARK_OVERALL_OPACITY);
+    scores.totalWeight += weight;
+  }
+}
 
-  if (totalWeight <= 0) return "light" satisfies WatermarkInk;
-  return darkScore > lightScore + 1e-6
+export function chooseWatermarkInkFromScores(scores: WatermarkInkScores) {
+  if (scores.totalWeight <= 0) return "light" satisfies WatermarkInk;
+  return scores.darkScore > scores.lightScore + 1e-6
     ? ("dark" satisfies WatermarkInk)
     : ("light" satisfies WatermarkInk);
+}
+
+export function chooseWatermarkInk(frames: readonly WatermarkFrame[], mask: WatermarkMask) {
+  const scores = createWatermarkInkScores();
+  for (const frame of frames) accumulateWatermarkInkScore(scores, frame, mask);
+  return chooseWatermarkInkFromScores(scores);
 }
 
 export function watermarkAssetName(

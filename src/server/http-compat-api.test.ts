@@ -1688,7 +1688,7 @@ public: false
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url =
         typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-      expect(init?.method).toBe("GET");
+      expect(init?.method ?? "GET").toBe("GET");
       expect(url).toContain("/fit-in/1600x900/");
       expect(url).toContain(
         `watermark(b64:${Buffer.from("http://blog:25090/watermark-ivanli-b.v1.svg").toString("base64url")},-16,-16,36,18,100)`
@@ -1738,7 +1738,7 @@ public: false
       const url =
         typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       requests.push(url);
-      expect(init?.method).toBe("GET");
+      expect(init?.method ?? "GET").toBe("GET");
       if (requests.length === 1) {
         expect(url).toContain("/meta/fit-in/1600x900/filters:frame(0)/");
         expect(init?.headers).toMatchObject({ accept: "application/json" });
@@ -1767,6 +1767,135 @@ public: false
       expect(response.status).toBe(200);
       expect(await response.text()).toBe("versioned-video-poster");
       expect(requests).toHaveLength(2);
+    } finally {
+      delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("analyzes a signed video frame before selecting the v3 poster watermark", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/video-adaptive-poster.mp4"),
+      "video"
+    );
+
+    await seedPost({
+      id: "blog/video-adaptive-post.md",
+      filePath: "blog/video-adaptive-post.md",
+      slug: "video-adaptive-post",
+      type: "post",
+      title: "Video Adaptive Post",
+      image: "./assets/video-adaptive-poster.mp4",
+      body: "Body",
+      public: true,
+      draft: false,
+    });
+
+    const analysisPng = await sharp({
+      create: { width: 1600, height: 900, channels: 3, background: { r: 246, g: 246, b: 246 } },
+    })
+      .png()
+      .toBuffer();
+    const originalFetch = globalThis.fetch;
+    const requests: string[] = [];
+    process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL = "http://imagor.example.test";
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://blog:25090";
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      requests.push(url);
+      expect(init?.method ?? "GET").toBe("GET");
+      if (requests.length === 1) {
+        expect(url).toContain("/meta/fit-in/1600x900/filters:frame(0)/");
+        return Response.json({ width: 1600, height: 900 });
+      }
+      if (requests.length === 2) {
+        expect(url).toContain("/fit-in/1600x900/filters:frame(0):format(png)/");
+        expect(init?.headers).toMatchObject({ accept: "image/png" });
+        return new Response(analysisPng, { status: 200, headers: { "content-type": "image/png" } });
+      }
+      expect(url).toContain(
+        Buffer.from("http://blog:25090/watermark-ivanli-b.dark.v3.svg").toString("base64url")
+      );
+      expect(url).toContain("/fit-in/1600x900/filters:frame(0):format(webp):watermark(");
+      return new Response("versioned-video-poster", {
+        status: 200,
+        headers: { "content-type": "image/webp" },
+      });
+    }) as typeof fetch;
+
+    try {
+      const mediaHash = buildPublicMediaHash("blog/assets/video-adaptive-poster.mp4", "cover");
+      const response = await handlePublicApiRequest(
+        buildRequest(`/api/public/assets/post/video-adaptive-post/${mediaHash}/wm-b-v3/cover.webp`),
+        `/assets/post/video-adaptive-post/${mediaHash}/wm-b-v3/cover.webp`
+      );
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe("versioned-video-poster");
+      expect(requests).toHaveLength(3);
+    } finally {
+      delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("rejects an oversized video analysis stream before buffering the full body", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/video-oversized-analysis.mp4"),
+      "video"
+    );
+
+    await seedPost({
+      id: "blog/video-oversized-analysis.md",
+      filePath: "blog/video-oversized-analysis.md",
+      slug: "video-oversized-analysis",
+      type: "post",
+      title: "Video Oversized Analysis",
+      image: "./assets/video-oversized-analysis.mp4",
+      body: "Body",
+      public: true,
+      draft: false,
+    });
+
+    let chunks = 0;
+    const oversizedStream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        chunks += 1;
+        if (chunks > 3) {
+          controller.close();
+          return;
+        }
+        controller.enqueue(new Uint8Array(8 * 1024 * 1024));
+      },
+    });
+    const originalFetch = globalThis.fetch;
+    process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL = "http://imagor.example.test";
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://blog:25090";
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.includes("/meta/")) return Response.json({ width: 1600, height: 900 });
+      return new Response(oversizedStream, {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      });
+    }) as typeof fetch;
+
+    try {
+      const mediaHash = buildPublicMediaHash("blog/assets/video-oversized-analysis.mp4", "cover");
+      const response = await handlePublicApiRequest(
+        buildRequest(
+          `/api/public/assets/post/video-oversized-analysis/${mediaHash}/wm-b-v3/cover.webp`
+        ),
+        `/assets/post/video-oversized-analysis/${mediaHash}/wm-b-v3/cover.webp`
+      );
+      expect(response.status).toBe(502);
+      expect(await response.json()).toEqual({ error: "Public media processor unavailable" });
+      expect(chunks).toBeLessThanOrEqual(4);
     } finally {
       delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
       delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
