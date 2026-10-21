@@ -31,6 +31,7 @@ const identitySchema = z
   .regex(/^(?:[a-f0-9]{64}|[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})$/);
 const stepSchema = z.enum(["pending", "processing", "completed", "failed"]);
 const clippingResourcePathSchema = z.string().regex(/^assets\/[a-f0-9]{64}\.[a-z0-9]+$/i);
+const atomicTemporaryName = /\.[0-9a-f-]{36}\.tmp$/iu;
 export const clippingResourceSchema = z.object({
   id: z.string().regex(/^[a-f0-9]{64}$/),
   originalUrl: z.string().url(),
@@ -330,6 +331,7 @@ export class ClippingStore {
           .map((resource) => `${version.id}/${resource.path}`)
       )
     );
+    await this.cleanupAtomicTemporaryFiles(idPath);
     let versions: import("node:fs").Dirent[];
     try {
       versions = await readdir(idPath, { withFileTypes: true });
@@ -362,6 +364,8 @@ export class ClippingStore {
         this.beforePublish?.();
         await rm(join(versionPath, "source.md"), { force: true });
       }
+      await this.cleanupAtomicTemporaryFiles(versionPath);
+      await this.cleanupAtomicTemporaryFiles(join(versionPath, "segments"));
       let assets: import("node:fs").Dirent[];
       try {
         assets = await readdir(join(versionPath, "assets"), {
@@ -384,6 +388,21 @@ export class ClippingStore {
         this.beforePublish?.();
         await rm(join(versionPath, resourcePath), { force: true });
       }
+    }
+  }
+
+  private async cleanupAtomicTemporaryFiles(directory: string) {
+    let entries: import("node:fs").Dirent[];
+    try {
+      entries = await readdir(directory, { withFileTypes: true });
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return;
+      throw error;
+    }
+    for (const entry of entries) {
+      if (!entry.isFile() || !atomicTemporaryName.test(entry.name)) continue;
+      this.beforePublish?.();
+      await rm(join(directory, entry.name), { force: true });
     }
   }
 

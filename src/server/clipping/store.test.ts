@@ -333,6 +333,54 @@ test("cleans source files that are not referenced by the committed version hash"
   }
 });
 
+test("cleans atomic temporary files left in retained versions after a process crash", async () => {
+  const root = await fixture();
+  try {
+    const store = new ClippingStore();
+    const id = "11111111-1111-4111-8111-111111111111";
+    const version = "22222222-2222-4222-8222-222222222222";
+    const suffix = "33333333-3333-4333-8333-333333333333";
+    const versionPath = join(root, "materials", id, version);
+    const temporaryPaths = [
+      join(root, "materials", id, `manifest.json.${suffix}.tmp`),
+      join(versionPath, `source.md.${suffix}.tmp`),
+      join(versionPath, `summary.md.${suffix}.tmp`),
+      join(versionPath, "segments", `0.md.${suffix}.tmp`),
+    ];
+    await store.save(
+      clippingManifestSchema.parse({
+        schemaVersion: 1,
+        id,
+        memoId: "Memos/one.md",
+        creatorId: null,
+        revision: 1,
+        enabled: true,
+        deleted: false,
+        targetUrl: "https://example.com/article",
+        conversationId: null,
+        previousConversations: [],
+        currentVersionId: version,
+        activeVersionId: version,
+        versions: [
+          { id: version, revision: 1, targetUrl: "https://example.com/article", createdAt: 1 },
+        ],
+      })
+    );
+    await Promise.all(
+      temporaryPaths.map(async (path) => {
+        await mkdir(join(path, ".."), { recursive: true });
+        await writeFile(path, "stale");
+      })
+    );
+
+    await store.cleanupUnreferencedResources(id);
+
+    for (const path of temporaryPaths) await expect(access(path)).rejects.toThrow();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("does not delete unreferenced resources after ownership is lost", async () => {
   const root = await fixture();
   try {

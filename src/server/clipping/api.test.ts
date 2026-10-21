@@ -236,6 +236,46 @@ test("public API router dispatches captured clipping resources", async () => {
   expect(await response.text()).toBe("captured image");
 });
 
+test("resource facade resolves safe fallback MIME types for supported extensions", async () => {
+  const manifest = await store.manifest(clippingId);
+  if (!manifest) throw new Error("Fixture manifest is missing");
+  const version = manifest.versions.find((candidate) => candidate.id === versionId);
+  const resource = version?.resources[0];
+  if (!version || !resource) throw new Error("Fixture resource is missing");
+  const original = { path: resource.path, mimeType: resource.mimeType };
+  try {
+    for (const [extension, contentType] of [
+      ["apng", "image/apng"],
+      ["mpeg", "video/mpeg"],
+    ] as const) {
+      resource.path = `assets/${resource.id}.${extension}`;
+      resource.mimeType = null;
+      await store.writeResource(
+        clippingId,
+        versionId,
+        resource.path,
+        Buffer.from("captured image")
+      );
+      await store.save(manifest);
+      const response = await handleClippingResourceRequest(
+        new Request(
+          `http://localhost/api/public/memos/clip/clipping/assets/${versionId}/${resource.id}.${extension}`
+        ),
+        "clip",
+        versionId,
+        `${resource.id}.${extension}`,
+        context("guest")
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe(contentType);
+    }
+  } finally {
+    resource.path = original.path;
+    resource.mimeType = original.mimeType;
+    await store.save(manifest);
+  }
+});
+
 test("resource facade rejects an SVG path when the manifest MIME is missing", async () => {
   const manifest = await store.manifest(clippingId);
   if (!manifest) throw new Error("Fixture manifest is missing");

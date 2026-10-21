@@ -81,8 +81,8 @@
     "src/public-site/snapshot.ts": "344e805dd3eb5ced704bcbbd8b5ddcad71f51082",
     "src/server/clipping/agent-runtime.test.ts": "b9c6feeee3f66cde97853e583d522137dbed4c45",
     "src/server/clipping/agent-runtime.ts": "a8ead68b7114cc989f5b8b2b7f639692d3c23bc5",
-    "src/server/clipping/api.test.ts": "36e674ff6a42e5daaf5d269c669a2b4558f576f2",
-    "src/server/clipping/api.ts": "cbfc63d980ee11e35ef697535992b265622695bc",
+    "src/server/clipping/api.test.ts": "72ec290acd97fc056ff9cd929ed1360c0e56a971",
+    "src/server/clipping/api.ts": "8b336025dad0a2fe3e4d27cf7f30eb63295ad419",
     "src/server/clipping/article-segments.test.ts": "77fde805095f3ebd2478e6c258190eae40a97df7",
     "src/server/clipping/article-segments.ts": "7bf73b79a27d9a2d7b5fa067b74146e4b14c567e",
     "src/server/clipping/extract.test.ts": "c830e53b14cb852c308c4a43d9ddf8ecd0fc752e",
@@ -97,8 +97,8 @@
     "src/server/clipping/service-recovery.test.ts": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
     "src/server/clipping/service.test.ts": "bb30f3da94cb6c43022f790a025abd6ff309ef0e",
     "src/server/clipping/service.ts": "7718fc9bf8d668621837236e81c0615d85a5558f",
-    "src/server/clipping/store.test.ts": "eba556581acaedb133a6b35d83eb95e0e8c94859",
-    "src/server/clipping/store.ts": "3e0854b1b067dcb86cf137e876823da660901004",
+    "src/server/clipping/store.test.ts": "3aa26e543ba2911fbb6bfa1e7a4ad2f74215ec42",
+    "src/server/clipping/store.ts": "df583d627879ea56330fd459376adc2b12ad5612",
     "src/server/clipping/turndown-gfm.d.ts": "b42f4bb08636ac5e3ee6fe4d33370816878a7b06",
     "src/server/mcp-auth-context.ts": "7729c8ce062cd5cdd034ba835b45857d6a56fcbf",
     "src/server/mcp-http.test.ts": "2b71d09f04e21817231be4723822839ba940f655",
@@ -165,12 +165,12 @@
     "current": {
       "impact": "minor",
       "reasoning": "Additive version-owned media capture and a clipping-specific resource facade preserve ordinary Memo behavior. Resource manifests and files are bounded, old source/translation projections remain readable, static publication fails closed instead of returning external URLs, and the shared Markdown URL mapper remains idempotent for versioned Playbook routes.",
-      "assessed_at": "2026-10-21T05:05:43Z",
+      "assessed_at": "2026-10-21T05:52:57Z",
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "36e674ff6a42e5daaf5d269c669a2b4558f576f2",
-          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
+          "blob": "72ec290acd97fc056ff9cd929ed1360c0e56a971",
+          "command": "bun run test (1239 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
@@ -180,27 +180,27 @@
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1239 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/store.test.ts",
-          "blob": "eba556581acaedb133a6b35d83eb95e0e8c94859",
-          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
+          "blob": "3aa26e543ba2911fbb6bfa1e7a4ad2f74215ec42",
+          "command": "bun run test (1239 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
           "blob": "bb30f3da94cb6c43022f790a025abd6ff309ef0e",
-          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1239 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1239 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
-          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1239 passed, 67 skipped; real model calls disabled)"
         }
       ],
       "scope_drift": {
@@ -210,13 +210,13 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "Additive version-owned media capture and a clipping-specific resource facade preserve ordinary Memo behavior. Resource manifests and files are bounded, old source/translation projections remain readable, and static publication fails closed instead of returning external URLs.",
-      "assessed_at": "2026-10-21T05:05:43Z",
+      "reasoning": "Additive version-owned media capture and a clipping-specific resource facade preserve ordinary Memo behavior. Resource manifests and files are bounded, old source/translation projections remain readable, static publication fails closed instead of returning external URLs, and the shared Markdown URL mapper remains idempotent for versioned Playbook routes.",
+      "assessed_at": "2026-10-21T05:52:57Z",
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "36e674ff6a42e5daaf5d269c669a2b4558f576f2",
-          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
+          "blob": "72ec290acd97fc056ff9cd929ed1360c0e56a971",
+          "command": "bun run test (1239 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
@@ -226,27 +226,27 @@
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1239 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/store.test.ts",
-          "blob": "eba556581acaedb133a6b35d83eb95e0e8c94859",
-          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
+          "blob": "3aa26e543ba2911fbb6bfa1e7a4ad2f74215ec42",
+          "command": "bun run test (1239 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
           "blob": "bb30f3da94cb6c43022f790a025abd6ff309ef0e",
-          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1239 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1239 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
-          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1239 passed, 67 skipped; real model calls disabled)"
         }
       ]
     }
@@ -283,13 +283,13 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "36e674ff6a42e5daaf5d269c669a2b4558f576f2",
-          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
+          "blob": "72ec290acd97fc056ff9cd929ed1360c0e56a971",
+          "command": "bun run test (1239 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/lib/__tests__/memo-clipping.test.ts",
           "blob": "e86647b832f23e44e2bc36b1b54479bd24237d4c",
-          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1239 passed, 67 skipped; real model calls disabled)"
         }
       ]
     },
@@ -350,23 +350,23 @@
       "evidence": [
         {
           "path": "src/server/clipping/store.test.ts",
-          "blob": "eba556581acaedb133a6b35d83eb95e0e8c94859",
-          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
+          "blob": "3aa26e543ba2911fbb6bfa1e7a4ad2f74215ec42",
+          "command": "bun run test (1239 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
           "blob": "bb30f3da94cb6c43022f790a025abd6ff309ef0e",
-          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1239 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
           "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
-          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1239 passed, 67 skipped; real model calls disabled)"
         },
         {
           "path": "src/server/clipping/pi-sqlite.test.ts",
           "blob": "173a142b4844e52bb8ea880de736da78f9cfc6ed",
-          "command": "bun run test (1237 passed, 67 skipped; real model calls disabled)"
+          "command": "bun run test (1239 passed, 67 skipped; real model calls disabled)"
         }
       ]
     }

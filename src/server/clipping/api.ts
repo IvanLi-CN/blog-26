@@ -35,6 +35,7 @@ function resourceMimeType(resource: { mimeType: string | null; path: string | nu
     (
       {
         avif: "image/avif",
+        apng: "image/apng",
         gif: "image/gif",
         jpg: "image/jpeg",
         jpeg: "image/jpeg",
@@ -47,6 +48,7 @@ function resourceMimeType(resource: { mimeType: string | null; path: string | nu
         mp4: "video/mp4",
         ogv: "video/ogg",
         mov: "video/quicktime",
+        mpeg: "video/mpeg",
         webm: "video/webm",
       } as Record<string, string>
     )[extension ?? ""] ?? "application/octet-stream"
