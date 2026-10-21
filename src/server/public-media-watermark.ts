@@ -80,7 +80,6 @@ function startNextAnalysis() {
     timer = setTimeout(() => {
       controller.abort("watermark analysis deadline exceeded");
       reject(new Error("watermark analysis deadline exceeded"));
-      release();
     }, remaining);
   });
   Promise.race([work, deadline]).then(next.resolve, next.reject);

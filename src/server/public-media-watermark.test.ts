@@ -54,11 +54,31 @@ describe("public media watermark contrast", () => {
     resetWatermarkAnalysisStateForTests();
   });
 
-  it("releases the logical slot when an aborted analysis never settles", async () => {
-    await expect(runWatermarkAnalysis(() => new Promise(() => undefined), 5)).rejects.toThrow(
+  it("keeps timed-out work accounted until the underlying task settles", async () => {
+    let settleFirstTimedOutWork: (() => void) | undefined;
+    let settleSecondTimedOutWork: (() => void) | undefined;
+    const firstTimedOutWork = new Promise<void>((resolve) => {
+      settleFirstTimedOutWork = resolve;
+    });
+    const secondTimedOutWork = new Promise<void>((resolve) => {
+      settleSecondTimedOutWork = resolve;
+    });
+    let nextStarted = false;
+    const firstTimedOut = runWatermarkAnalysis(() => firstTimedOutWork, 5);
+    const secondTimedOut = runWatermarkAnalysis(() => secondTimedOutWork, 5);
+    await expect(Promise.all([firstTimedOut, secondTimedOut])).rejects.toThrow(
       "watermark analysis deadline exceeded"
     );
-    await expect(runWatermarkAnalysis(async () => "next", 50)).resolves.toBe("next");
+    const next = runWatermarkAnalysis(async () => {
+      nextStarted = true;
+      return "next";
+    }, 50);
+    await Bun.sleep(10);
+    expect(nextStarted).toBe(false);
+    settleFirstTimedOutWork?.();
+    await expect(next).resolves.toBe("next");
+    expect(nextStarted).toBe(true);
+    settleSecondTimedOutWork?.();
     resetWatermarkAnalysisStateForTests();
   });
 
