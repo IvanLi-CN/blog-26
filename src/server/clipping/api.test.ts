@@ -15,7 +15,8 @@ import { buildPublicSnapshot, writePublicSnapshot } from "@/public-site/snapshot
 import type { TRPCContext } from "@/server/context";
 import { runWithMcpAuth } from "@/server/mcp-auth-context";
 import { memosRouter } from "@/server/routers/memos";
-import { handleClippingRequest } from "./api";
+import { handlePublicApiRequest } from "../public-api/router";
+import { handleClippingRequest, handleClippingResourceRequest } from "./api";
 import { ClippingService } from "./service";
 import {
   attachClippingReference,
@@ -32,6 +33,7 @@ const fm: Record<string, unknown> = { public: true, tags: ["剪藏"] };
 const prior = { ...process.env };
 let clippingId: string;
 const versionId = randomUUID();
+const resourceFilename = `${createHash("sha256").update("captured image").digest("hex")}.png`;
 let raw: string;
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), "clipping-api-"));
@@ -92,8 +94,32 @@ beforeAll(async () => {
       ],
     })
   );
+  await store.writeResource(
+    clippingId,
+    versionId,
+    `assets/${resourceFilename}`,
+    Buffer.from("captured image")
+  );
+  const stored = await store.manifest(clippingId);
+  if (!stored) throw new Error("Fixture manifest is missing");
+  const storedVersion = stored.versions.find((version) => version.id === versionId);
+  if (!storedVersion) throw new Error("Fixture version is missing");
+  storedVersion.resourcesCaptured = true;
+  storedVersion.resources = [
+    {
+      id: createHash("sha256").update("captured image").digest("hex"),
+      originalUrl: "https://article.example/image.png",
+      finalUrl: "https://cdn.example/image.png",
+      path: `assets/${resourceFilename}`,
+      mimeType: "image/png",
+      bytes: "captured image".length,
+      status: "captured",
+      error: null,
+    },
+  ];
+  await store.save(stored);
   for (const [artifact, content] of Object.entries({
-    source: "# Article\n\nSource.",
+    source: `# Article\n\nSource.\n\n![Asset](./assets/${resourceFilename})`,
     summary: "摘要。",
     translation: "# 文章\n\n正文。",
   }))
@@ -153,10 +179,164 @@ test("reprocess rejects cross-origin cookie mutations", async () => {
     )
   ).rejects.toMatchObject({ code: "FORBIDDEN" });
 });
+
+test("versioned clipping resources enforce ownership and public visibility", async () => {
+  const response = await handleClippingResourceRequest(
+    new Request(
+      `http://localhost/api/public/memos/clip/clipping/assets/${versionId}/${resourceFilename}`
+    ),
+    "clip",
+    versionId,
+    resourceFilename,
+    context("guest")
+  );
+  expect(response.status).toBe(200);
+  expect(response.headers.get("content-type")).toBe("image/png");
+  expect(response.headers.get("cache-control")).toBe("no-store");
+  expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+  expect(await response.text()).toBe("captured image");
+  expect(
+    (
+      await handleClippingResourceRequest(
+        new Request("http://localhost/api/public/memos/clip/clipping/assets/invalid/not-found.png"),
+        "clip",
+        versionId,
+        "not-found.png",
+        context("guest")
+      )
+    ).status
+  ).toBe(404);
+  await writeFile(join(root, "authored", id), matter.stringify(body, { ...fm, public: false }));
+  try {
+    await expect(
+      handleClippingResourceRequest(
+        new Request(
+          `http://localhost/api/public/memos/clip/clipping/assets/${versionId}/${resourceFilename}`
+        ),
+        "clip",
+        versionId,
+        resourceFilename,
+        context("guest")
+      )
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  } finally {
+    await writeFile(join(root, "authored", id), raw);
+  }
+});
+
+test("public API router dispatches captured clipping resources", async () => {
+  const response = await handlePublicApiRequest(
+    new Request(
+      `http://localhost/api/public/memos/clip/clipping/assets/${versionId}/${resourceFilename}`
+    ),
+    `/memos/clip/clipping/assets/${versionId}/${resourceFilename}`
+  );
+  expect(response.status).toBe(200);
+  expect(response.headers.get("content-type")).toBe("image/png");
+  expect(await response.text()).toBe("captured image");
+});
+
+test("resource facade resolves safe fallback MIME types for supported extensions", async () => {
+  const manifest = await store.manifest(clippingId);
+  if (!manifest) throw new Error("Fixture manifest is missing");
+  const version = manifest.versions.find((candidate) => candidate.id === versionId);
+  const resource = version?.resources[0];
+  if (!version || !resource) throw new Error("Fixture resource is missing");
+  const original = { path: resource.path, mimeType: resource.mimeType };
+  try {
+    for (const [extension, contentType] of [
+      ["apng", "image/apng"],
+      ["mpeg", "video/mpeg"],
+    ] as const) {
+      resource.path = `assets/${resource.id}.${extension}`;
+      resource.mimeType = null;
+      await store.writeResource(
+        clippingId,
+        versionId,
+        resource.path,
+        Buffer.from("captured image")
+      );
+      await store.save(manifest);
+      const response = await handleClippingResourceRequest(
+        new Request(
+          `http://localhost/api/public/memos/clip/clipping/assets/${versionId}/${resource.id}.${extension}`
+        ),
+        "clip",
+        versionId,
+        `${resource.id}.${extension}`,
+        context("guest")
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe(contentType);
+    }
+  } finally {
+    resource.path = original.path;
+    resource.mimeType = original.mimeType;
+    await store.save(manifest);
+  }
+});
+
+test("resource facade rejects an SVG path when the manifest MIME is missing", async () => {
+  const manifest = await store.manifest(clippingId);
+  if (!manifest) throw new Error("Fixture manifest is missing");
+  const version = manifest.versions.find((candidate) => candidate.id === versionId);
+  const resource = version?.resources[0];
+  if (!version || !resource) throw new Error("Fixture resource is missing");
+  const original = { path: resource.path, mimeType: resource.mimeType };
+  const svgFilename = `${resource.id}.svg`;
+  resource.path = `assets/${svgFilename}`;
+  resource.mimeType = null;
+  await store.writeResource(clippingId, versionId, resource.path, Buffer.from("captured image"));
+  await store.save(manifest);
+  try {
+    const response = await handleClippingResourceRequest(
+      new Request(
+        `http://localhost/api/public/memos/clip/clipping/assets/${versionId}/${svgFilename}`
+      ),
+      "clip",
+      versionId,
+      svgFilename,
+      context("guest")
+    );
+    expect(response.status).toBe(404);
+  } finally {
+    resource.path = original.path;
+    resource.mimeType = original.mimeType;
+    await store.save(manifest);
+  }
+});
+
+test("resource facade rejects captured files from an incomplete version", async () => {
+  const manifest = await store.manifest(clippingId);
+  if (!manifest) throw new Error("Fixture manifest is missing");
+  const version = manifest.versions.find((candidate) => candidate.id === versionId);
+  if (!version) throw new Error("Fixture version is missing");
+  version.resourcesCaptured = false;
+  await store.save(manifest);
+  try {
+    const response = await handleClippingResourceRequest(
+      new Request(
+        `http://localhost/api/public/memos/clip/clipping/assets/${versionId}/${resourceFilename}`
+      ),
+      "clip",
+      versionId,
+      resourceFilename,
+      context("guest")
+    );
+    expect(response.status).toBe(404);
+  } finally {
+    version.resourcesCaptured = true;
+    await store.save(manifest);
+  }
+});
+
 test("public reading exposes only materials; conversation is restricted to creator and admin and history/restore are absent", async () => {
   const reading = await (await request("", "guest")).json();
   expect(reading.source).toContain("Source.");
   expect(reading.content).toBe("备注\n\n---\n\n**Agent 摘要**\n\n摘要。");
+  expect(reading.resourceBaseUrl).toContain("/api/public/memos/clip/clipping/assets/");
+  expect(JSON.stringify(reading)).not.toContain("article.example/image.png");
+  expect(JSON.stringify(reading)).not.toContain("cdn.example/image.png");
   expect(JSON.stringify(reading)).not.toContain("private-conversation");
   expect(JSON.stringify(reading)).not.toContain("creator");
   for (const actor of ["guest", "other"] as const)
@@ -185,6 +365,64 @@ test("public exports omit identities, runtime data, private conversation and sta
   expect(hidden.clippingArticles).toEqual({});
   expect(await Bun.file(join(root, "export", "clippings", "clip.json")).exists()).toBe(false);
   await writeFile(join(root, "authored", id), raw);
+});
+test("legacy resource versions remain readable without a public resource facade", async () => {
+  const manifest = await store.manifest(clippingId);
+  if (!manifest) throw new Error("Fixture manifest is missing");
+  const version = manifest.versions.find((candidate) => candidate.id === versionId);
+  if (!version) throw new Error("Fixture version is missing");
+  const originalSource = await store.read(clippingId, versionId, "source");
+  const originalTranslation = await store.read(clippingId, versionId, "translation");
+  const external = "https://cdn.example/image(1).png";
+  const referenced = "https://cdn.example/reference.png";
+  version.resourcesCaptured = false;
+  version.resources = [];
+  await store.save(manifest);
+  await store.write(
+    clippingId,
+    versionId,
+    "source",
+    `${originalSource}\n\n![External](${external})\n\n![Referenced][hero]\n\n[hero]: ${referenced}`
+  );
+  await store.write(
+    clippingId,
+    versionId,
+    "translation",
+    `${originalTranslation}\n\n![Translated external](${external})`
+  );
+  try {
+    const reading = await (await request("", "guest")).json();
+    expect(reading.source).not.toContain("./assets/");
+    expect(reading.source).toContain("External");
+    expect(reading.source).not.toContain(external);
+    expect(reading.source).not.toContain(referenced);
+    expect(reading.translation).toContain("Translated external");
+    expect(reading.translation).not.toContain(external);
+    expect(reading.resourceBaseUrl).toBeNull();
+    expect(reading.reading.warning).toContain("外链");
+    const exported = await writePublicSnapshot(join(root, "export", "legacy.json"));
+    const article = exported.clippingArticles?.clip;
+    expect(article?.source).toContain("Asset");
+    expect(article?.source).not.toContain("./assets/");
+  } finally {
+    version.resourcesCaptured = true;
+    version.resources = [
+      {
+        id: createHash("sha256").update("captured image").digest("hex"),
+        originalUrl: "https://article.example/image.png",
+        finalUrl: "https://cdn.example/image.png",
+        path: `assets/${resourceFilename}`,
+        mimeType: "image/png",
+        bytes: "captured image".length,
+        status: "captured",
+        error: null,
+      },
+    ];
+    await store.save(manifest);
+    if (originalSource !== null) await store.write(clippingId, versionId, "source", originalSource);
+    if (originalTranslation !== null)
+      await store.write(clippingId, versionId, "translation", originalTranslation);
+  }
 });
 test("canonical files rebuild a deleted index without executing completed materials", async () => {
   await db.delete(memoClippings);

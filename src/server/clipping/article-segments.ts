@@ -62,10 +62,26 @@ function links(markdown: string) {
   return destinations.sort();
 }
 
+function mediaAttributes(markdown: string) {
+  const attributes: string[] = [];
+  const tagPattern = /<\s*(img|source|video|audio|track)\b[^>]*>/giu;
+  const attributePattern = /\b(src|poster|srcset)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/giu;
+  for (const tag of markdown.matchAll(tagPattern)) {
+    for (const attribute of tag[0].matchAll(attributePattern)) {
+      attributes.push(
+        `${tag[1].toLowerCase()}:${attribute[1].toLowerCase()}:${attribute[2] ?? attribute[3] ?? attribute[4] ?? ""}`
+      );
+    }
+  }
+  return attributes.sort();
+}
+
 export function validateTranslation(source: string, translation: string) {
   if (!translation.trim()) throw new Error("译文区块为空，尚未完成全文翻译。");
   if (JSON.stringify(links(source)) !== JSON.stringify(links(translation)))
     throw new Error("译文未保留原文链接，已停止提交；可重试。");
+  if (JSON.stringify(mediaAttributes(source)) !== JSON.stringify(mediaAttributes(translation)))
+    throw new Error("译文未保留正文媒体资源，已停止提交；可重试。");
   const count = (text: string, type: string) => {
     let count = 0;
     const visit = (node: Node) => {

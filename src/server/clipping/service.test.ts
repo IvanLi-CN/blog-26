@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -320,6 +321,128 @@ describe("clipping lifecycle and canonical content", () => {
       expect(after?.reading.versionId).toBe(before.reading.versionId);
       expect(after?.content).toBe(before.content);
       expect(after?.translation).toBe(before.translation);
+    } finally {
+      await service?.close();
+      await data.cleanup();
+    }
+  });
+
+  test("restores the committed source when a recapture checkpoint fails", async () => {
+    const data = await fixture();
+    let service: ClippingService | undefined;
+    try {
+      service = await ClippingService.open(data.options);
+      await service.idle();
+      const clippingId = "11111111-1111-4111-8111-111111111111";
+      const before = await data.store.manifest(clippingId);
+      const committedVersionId = before?.activeVersionId;
+      if (!before || !committedVersionId) throw new Error("Missing committed clipping version");
+      const storedVersion = before.versions.find((version) => version.id === committedVersionId);
+      if (!storedVersion) throw new Error("Missing stored clipping version");
+      storedVersion.resourcesCaptured = false;
+      storedVersion.resources = [];
+      storedVersion.sourceHash = null;
+      storedVersion.status = "queued";
+      storedVersion.summaryState = "pending";
+      storedVersion.translationState = "pending";
+      await data.store.save(before);
+      await service.close();
+      service = undefined;
+      const originalCapture = data.options.capture;
+      const originalSave = data.store.save.bind(data.store);
+      let failCheckpoint = false;
+      data.options.capture = async (target, signal) => {
+        const article = await originalCapture(target, signal);
+        failCheckpoint = true;
+        return { ...article, markdown: `${article.markdown}\n\nNew capture content.` };
+      };
+      data.store.save = async (manifest) => {
+        if (failCheckpoint && manifest.versions.at(-1)?.resourcesCaptured)
+          throw new Error("checkpoint failed");
+        return originalSave(manifest);
+      };
+
+      service = await ClippingService.open(data.options);
+      await service.idle();
+      const after = await data.store.manifest(clippingId);
+      expect(after?.activeVersionId).toBe(committedVersionId);
+      expect(await data.store.read(clippingId, committedVersionId, "source")).toBe(data.source);
+    } finally {
+      await service?.close();
+      await data.cleanup();
+    }
+  });
+
+  test("restores the manifest when resource capture succeeds but index persistence fails", async () => {
+    const data = await fixture();
+    let service: ClippingService | undefined;
+    try {
+      service = await ClippingService.open(data.options);
+      await service.idle();
+      const clippingId = "11111111-1111-4111-8111-111111111111";
+      const before = await data.store.manifest(clippingId);
+      const committedVersionId = before?.activeVersionId;
+      if (!before || !committedVersionId) throw new Error("Missing committed clipping version");
+      const storedVersion = before.versions.find((version) => version.id === committedVersionId);
+      if (!storedVersion) throw new Error("Missing stored clipping version");
+      storedVersion.resourcesCaptured = false;
+      storedVersion.resources = [];
+      storedVersion.sourceHash = null;
+      storedVersion.status = "queued";
+      storedVersion.summaryState = "pending";
+      storedVersion.translationState = "pending";
+      await data.store.save(before);
+      await service.close();
+      service = undefined;
+
+      const body = Buffer.from("captured resource");
+      const resourceId = createHash("sha256").update(body).digest("hex");
+      const originalCapture = data.options.capture;
+      data.options.capture = async (target, signal) => ({
+        ...(await originalCapture(target, signal)),
+        resources: [
+          {
+            id: resourceId,
+            originalUrl: "https://article.example/image.png",
+            finalUrl: "https://article.example/image.png",
+            path: `assets/${resourceId}.png`,
+            mimeType: "image/png",
+            bytes: body.length,
+            status: "captured" as const,
+            error: null,
+            body,
+          },
+        ],
+      });
+      const originalIndex = data.options.index;
+      let failIndex = true;
+      data.options.index = async (manifest, projection) => {
+        if (failIndex && manifest.versions.at(-1)?.resourcesCaptured) {
+          failIndex = false;
+          throw new Error("index persistence failed");
+        }
+        return originalIndex(manifest, projection);
+      };
+
+      service = await ClippingService.open(data.options);
+      await service.idle();
+      const after = await data.store.manifest(clippingId);
+      const afterVersion = after?.versions.find((version) => version.id === committedVersionId);
+      expect(afterVersion?.resourcesCaptured).toBe(false);
+      expect(afterVersion?.resources).toEqual([]);
+      expect(await data.store.read(clippingId, committedVersionId, "source")).toBe(data.source);
+      expect(
+        await data.store.readResource(clippingId, committedVersionId, {
+          id: resourceId,
+          originalUrl: "https://article.example/image.png",
+          finalUrl: "https://article.example/image.png",
+          path: `assets/${resourceId}.png`,
+          mimeType: "image/png",
+          bytes: body.length,
+          status: "captured",
+          error: null,
+        })
+      ).toBeNull();
     } finally {
       await service?.close();
       await data.cleanup();

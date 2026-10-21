@@ -256,4 +256,64 @@ describe("rehypeImageOptimization", () => {
       `/api/public/assets/post/demo-post/${expectedHash}/wm-b-v2/content.webp?v=snapshot-1`
     );
   });
+
+  it("maps version-relative clipping media before generic public media optimization", () => {
+    const filename = `${"a".repeat(64)}.png`;
+    const tree: Root = {
+      type: "root",
+      children: [
+        {
+          type: "element",
+          tagName: "img",
+          properties: {
+            src: `./assets/${filename}`,
+            srcSet: `./assets/${filename} 1x`,
+          },
+          children: [],
+        } as Element,
+        {
+          type: "element",
+          tagName: "video",
+          properties: { poster: `./assets/${filename}` },
+          children: [
+            {
+              type: "element",
+              tagName: "source",
+              properties: { src: `./assets/${filename}` },
+              children: [],
+            } as Element,
+          ],
+        } as Element,
+        {
+          type: "element",
+          tagName: "audio",
+          properties: { src: `./assets/${filename}` },
+          children: [],
+        } as Element,
+      ],
+    };
+    const resourceBaseUrl = "/api/public/memos/clip/clipping/assets/version-1/";
+
+    rehypeImageOptimization({
+      articlePath: "Memos/clip.md",
+      contentSource: "local",
+      publicMediaContext: {
+        kind: "memo",
+        slug: "clip",
+        filePath: "Memos/clip.md",
+      },
+      mapContentUrl: (url) =>
+        url.startsWith("./assets/") ? `${resourceBaseUrl}${url.slice("./assets/".length)}` : url,
+    })(tree, { path: "Memos/clip.md" } as any);
+
+    const image = tree.children[0] as Element;
+    const video = tree.children[1] as Element;
+    const source = video.children[0] as Element;
+    const audio = tree.children[2] as Element;
+    expect(image.properties?.src).toBe(`${resourceBaseUrl}${filename}`);
+    expect(image.properties?.srcSet).toBe(`${resourceBaseUrl}${filename} 1x`);
+    expect(video.properties?.poster).toBe(`${resourceBaseUrl}${filename}`);
+    expect(source.properties?.src).toBe(`${resourceBaseUrl}${filename}`);
+    expect(audio.properties?.src).toBe(`${resourceBaseUrl}${filename}`);
+  });
 });

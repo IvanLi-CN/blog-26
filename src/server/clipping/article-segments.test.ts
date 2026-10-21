@@ -34,6 +34,17 @@ describe("article structure and complete segment coverage", () => {
     ).toThrow("链接");
     expect(() => validateTranslation(source, source.replace("\n| 1 | 2 |", ""))).toThrow("表格");
   });
+  test("rejects translations that change captured media attributes", () => {
+    const hash = "a".repeat(64);
+    const source = `<img src="./assets/${hash}.png" srcset="./assets/${hash}.png 1x">`;
+    expect(() => validateTranslation(source, source)).not.toThrow();
+    expect(() =>
+      validateTranslation(
+        source,
+        source.replace(`./assets/${hash}.png`, "https://cdn.example/image.png")
+      )
+    ).toThrow("媒体资源");
+  });
   test("returns stable numbered evidence for passages beyond the introduction", () => {
     const source =
       [...Array(9)].map((_, i) => `Intro ${i}`).join("\n\n") +

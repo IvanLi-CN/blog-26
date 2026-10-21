@@ -1,8 +1,10 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import matter from "gray-matter";
+import { CLIPPING_RESOURCE_MAX_BYTES } from "@/lib/clipping-resources";
 import { isClippingRowPublic } from "./projection";
 import {
   attachClippingReference,
@@ -10,6 +12,7 @@ import {
   clippingCreator,
   clippingIdForMemo,
   clippingManifestSchema,
+  readClippingResourceBody,
 } from "./store";
 
 const prior = {
@@ -149,4 +152,357 @@ test("losing ownership while staging an artifact preserves the committed materia
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("cleans failed resources only inside the target version", async () => {
+  const root = await fixture();
+  try {
+    const store = new ClippingStore();
+    const id = "11111111-1111-4111-8111-111111111111";
+    const firstVersion = "22222222-2222-4222-8222-222222222222";
+    const failedVersion = "33333333-3333-4333-8333-333333333333";
+    const body = Buffer.from("same bytes");
+    const hash = createHash("sha256").update(body).digest("hex");
+    const resourcePath = `assets/${hash}.png`;
+    const resource = {
+      id: hash,
+      originalUrl: "https://cdn.example/image.png",
+      finalUrl: "https://cdn.example/image.png",
+      path: resourcePath,
+      mimeType: "image/png",
+      bytes: body.length,
+      status: "captured" as const,
+      error: null,
+    };
+    await store.save(
+      clippingManifestSchema.parse({
+        schemaVersion: 1,
+        id,
+        memoId: "Memos/one.md",
+        creatorId: null,
+        revision: 1,
+        enabled: true,
+        deleted: false,
+        targetUrl: "https://example.com/article",
+        conversationId: null,
+        previousConversations: [],
+        currentVersionId: failedVersion,
+        activeVersionId: failedVersion,
+        versions: [
+          {
+            id: firstVersion,
+            revision: 1,
+            targetUrl: "https://example.com/article",
+            createdAt: 1,
+            resources: [resource],
+            resourcesCaptured: true,
+          },
+          {
+            id: failedVersion,
+            revision: 2,
+            targetUrl: "https://example.com/article",
+            createdAt: 2,
+          },
+        ],
+      })
+    );
+    await store.writeResource(id, firstVersion, resourcePath, body);
+    await store.writeResource(id, failedVersion, resourcePath, body);
+    await store.removeResourceIfUnreferenced(id, failedVersion, resourcePath);
+    await expect(
+      readFile(join(root, "materials", id, failedVersion, resourcePath))
+    ).rejects.toThrow();
+    expect(await readFile(join(root, "materials", id, firstVersion, resourcePath))).toEqual(body);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cleans unreferenced assets left by a process crash", async () => {
+  const root = await fixture();
+  try {
+    const store = new ClippingStore();
+    const id = "11111111-1111-4111-8111-111111111111";
+    const version = "22222222-2222-4222-8222-222222222222";
+    const body = Buffer.from("orphan");
+    const hash = createHash("sha256").update(body).digest("hex");
+    const path = `assets/${hash}.png`;
+    await store.save(
+      clippingManifestSchema.parse({
+        schemaVersion: 1,
+        id,
+        memoId: "Memos/one.md",
+        creatorId: null,
+        revision: 1,
+        enabled: true,
+        deleted: false,
+        targetUrl: "https://example.com/article",
+        conversationId: null,
+        previousConversations: [],
+        currentVersionId: version,
+        activeVersionId: version,
+        versions: [
+          { id: version, revision: 1, targetUrl: "https://example.com/article", createdAt: 1 },
+        ],
+      })
+    );
+    await store.writeResource(id, version, path, body);
+    await access(join(root, "materials", id, version, path));
+    await store.cleanupUnreferencedResources(id);
+    await expect(access(join(root, "materials", id, version, path))).rejects.toThrow();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cleans source files left for removed versions", async () => {
+  const root = await fixture();
+  try {
+    const store = new ClippingStore();
+    const id = "11111111-1111-4111-8111-111111111111";
+    const version = "22222222-2222-4222-8222-222222222222";
+    await store.save(
+      clippingManifestSchema.parse({
+        schemaVersion: 1,
+        id,
+        memoId: "Memos/one.md",
+        creatorId: null,
+        revision: 1,
+        enabled: true,
+        deleted: false,
+        targetUrl: "https://example.com/article",
+        conversationId: null,
+        previousConversations: [],
+        currentVersionId: null,
+        activeVersionId: null,
+        versions: [],
+      })
+    );
+    await store.write(id, version, "source", "orphan");
+    await store.write(id, version, "summary", "orphan summary");
+    await store.write(id, version, "translation", "orphan translation");
+    await store.write(id, version, 0, "orphan segment");
+    await access(join(root, "materials", id, version, "source.md"));
+    await store.cleanupUnreferencedResources(id);
+    await expect(access(join(root, "materials", id, version, "source.md"))).rejects.toThrow();
+    await expect(access(join(root, "materials", id, version, "summary.md"))).rejects.toThrow();
+    await expect(access(join(root, "materials", id, version, "translation.md"))).rejects.toThrow();
+    await expect(access(join(root, "materials", id, version, "segments/0.md"))).rejects.toThrow();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cleans source files that are not referenced by the committed version hash", async () => {
+  const root = await fixture();
+  try {
+    const store = new ClippingStore();
+    const id = "11111111-1111-4111-8111-111111111111";
+    const version = "22222222-2222-4222-8222-222222222222";
+    const committed = "committed source";
+    await store.save(
+      clippingManifestSchema.parse({
+        schemaVersion: 1,
+        id,
+        memoId: "Memos/one.md",
+        creatorId: null,
+        revision: 1,
+        enabled: true,
+        deleted: false,
+        targetUrl: "https://example.com/article",
+        conversationId: null,
+        previousConversations: [],
+        currentVersionId: version,
+        activeVersionId: version,
+        versions: [
+          {
+            id: version,
+            revision: 1,
+            targetUrl: "https://example.com/article",
+            createdAt: 1,
+            sourceHash: createHash("sha256").update(committed).digest("hex"),
+          },
+        ],
+      })
+    );
+    await store.write(id, version, "source", "orphan source");
+    await store.cleanupUnreferencedResources(id);
+    await expect(access(join(root, "materials", id, version, "source.md"))).rejects.toThrow();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cleans atomic temporary files left in retained versions after a process crash", async () => {
+  const root = await fixture();
+  try {
+    const store = new ClippingStore();
+    const id = "11111111-1111-4111-8111-111111111111";
+    const version = "22222222-2222-4222-8222-222222222222";
+    const suffix = "33333333-3333-4333-8333-333333333333";
+    const versionPath = join(root, "materials", id, version);
+    const temporaryPaths = [
+      join(root, "materials", id, `manifest.json.${suffix}.tmp`),
+      join(versionPath, `source.md.${suffix}.tmp`),
+      join(versionPath, `summary.md.${suffix}.tmp`),
+      join(versionPath, "segments", `0.md.${suffix}.tmp`),
+    ];
+    await store.save(
+      clippingManifestSchema.parse({
+        schemaVersion: 1,
+        id,
+        memoId: "Memos/one.md",
+        creatorId: null,
+        revision: 1,
+        enabled: true,
+        deleted: false,
+        targetUrl: "https://example.com/article",
+        conversationId: null,
+        previousConversations: [],
+        currentVersionId: version,
+        activeVersionId: version,
+        versions: [
+          { id: version, revision: 1, targetUrl: "https://example.com/article", createdAt: 1 },
+        ],
+      })
+    );
+    await Promise.all(
+      temporaryPaths.map(async (path) => {
+        await mkdir(join(path, ".."), { recursive: true });
+        await writeFile(path, "stale");
+      })
+    );
+
+    await store.cleanupUnreferencedResources(id);
+
+    for (const path of temporaryPaths) await expect(access(path)).rejects.toThrow();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("does not delete unreferenced resources after ownership is lost", async () => {
+  const root = await fixture();
+  try {
+    const store = new ClippingStore();
+    const id = "11111111-1111-4111-8111-111111111111";
+    const version = "22222222-2222-4222-8222-222222222222";
+    const body = Buffer.from("orphan");
+    const hash = createHash("sha256").update(body).digest("hex");
+    const resourcePath = `assets/${hash}.png`;
+    await store.writeResource(id, version, resourcePath, body);
+    store.beforePublish = () => {
+      throw new Error("ownership lost");
+    };
+    await expect(store.removeResourceIfUnreferenced(id, version, resourcePath)).rejects.toThrow(
+      "ownership lost"
+    );
+    expect(await readFile(join(root, "materials", id, version, resourcePath))).toEqual(body);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("stops cleanup before deleting when ownership is lost", async () => {
+  const root = await fixture();
+  try {
+    const store = new ClippingStore();
+    const id = "11111111-1111-4111-8111-111111111111";
+    const version = "22222222-2222-4222-8222-222222222222";
+    const body = Buffer.from("orphan");
+    const hash = createHash("sha256").update(body).digest("hex");
+    const resourcePath = `assets/${hash}.png`;
+    await store.save(
+      clippingManifestSchema.parse({
+        schemaVersion: 1,
+        id,
+        memoId: "Memos/one.md",
+        creatorId: null,
+        revision: 1,
+        enabled: true,
+        deleted: false,
+        targetUrl: "https://example.com/article",
+        conversationId: null,
+        previousConversations: [],
+        currentVersionId: version,
+        activeVersionId: version,
+        versions: [
+          { id: version, revision: 1, targetUrl: "https://example.com/article", createdAt: 1 },
+        ],
+      })
+    );
+    await store.writeResource(id, version, resourcePath, body);
+    store.beforePublish = () => {
+      throw new Error("ownership lost");
+    };
+    await expect(store.cleanupUnreferencedResources(id)).rejects.toThrow("ownership lost");
+    expect(await readFile(join(root, "materials", id, version, resourcePath))).toEqual(body);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects oversized or truncated resource files before hashing", async () => {
+  const root = await fixture();
+  try {
+    const store = new ClippingStore();
+    const id = "11111111-1111-4111-8111-111111111111";
+    const version = "22222222-2222-4222-8222-222222222222";
+    const body = Buffer.from("tiny");
+    const hash = createHash("sha256").update(body).digest("hex");
+    const path = `assets/${hash}.png`;
+    await store.writeResource(id, version, path, body);
+    expect(
+      await store.readResource(id, version, {
+        id: hash,
+        originalUrl: "https://cdn.example/image.png",
+        finalUrl: "https://cdn.example/image.png",
+        path,
+        mimeType: "image/png",
+        bytes: CLIPPING_RESOURCE_MAX_BYTES + 1,
+        status: "captured",
+        error: null,
+      })
+    ).toBeNull();
+    expect(
+      await store.readResource(id, version, {
+        id: hash,
+        originalUrl: "https://cdn.example/image.png",
+        finalUrl: "https://cdn.example/image.png",
+        path,
+        mimeType: "image/png",
+        bytes: body.length - 1,
+        status: "captured",
+        error: null,
+      })
+    ).toBeNull();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("reads resources across short reads and rejects trailing bytes", async () => {
+  const expected = Buffer.from("captured");
+  let calls = 0;
+  const reader = {
+    read: async (buffer: Uint8Array, offset: number, length: number, position: number) => {
+      calls++;
+      if (position >= expected.length) return { bytesRead: 0, buffer };
+      const count = Math.min(calls === 1 ? 2 : expected.length - position, length);
+      buffer.set(expected.subarray(position, position + count), offset);
+      return { bytesRead: count, buffer };
+    },
+  };
+  expect((await readClippingResourceBody(reader, expected.length))?.toString()).toBe("captured");
+  expect(calls).toBe(3);
+
+  const trailingReader = {
+    read: async (buffer: Uint8Array, offset: number, length: number, position: number) => {
+      if (position >= expected.length) return { bytesRead: 1, buffer };
+      const count = Math.min(expected.length - position, length);
+      buffer.set(expected.subarray(position, position + count), offset);
+      return { bytesRead: count, buffer };
+    },
+  };
+  expect(await readClippingResourceBody(trailingReader, expected.length)).toBeNull();
 });

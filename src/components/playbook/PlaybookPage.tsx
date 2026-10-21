@@ -133,6 +133,7 @@ function Sections({
 }
 
 function versionedContentUrl(edition: PlaybookEdition, url: string) {
+  if (url.startsWith("/playbook/editions/")) return url;
   return url.startsWith("/playbook/") ? playbookVersionHref(edition.edition, url) : url;
 }
 

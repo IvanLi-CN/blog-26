@@ -1,10 +1,25 @@
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { renameSync } from "node:fs";
-import { link, mkdir, readFile, realpath, unlink, writeFile } from "node:fs/promises";
+import {
+  type FileHandle,
+  link,
+  mkdir,
+  open,
+  readdir,
+  readFile,
+  realpath,
+  rm,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import matter from "gray-matter";
 import { z } from "zod";
 import { getActiveLocalBasePath } from "@/config/paths";
+import {
+  CLIPPING_RESOURCE_MAX_BYTES,
+  stripUncapturedClippingMedia,
+} from "@/lib/clipping-resources";
 import {
   type ClippingReading,
   composeClippingMemo,
@@ -15,6 +30,19 @@ const identitySchema = z
   .string()
   .regex(/^(?:[a-f0-9]{64}|[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})$/);
 const stepSchema = z.enum(["pending", "processing", "completed", "failed"]);
+const clippingResourcePathSchema = z.string().regex(/^assets\/[a-f0-9]{64}\.[a-z0-9]+$/i);
+const atomicTemporaryName = /\.[0-9a-f-]{36}\.tmp$/iu;
+export const clippingResourceSchema = z.object({
+  id: z.string().regex(/^[a-f0-9]{64}$/),
+  originalUrl: z.string().url(),
+  finalUrl: z.string().url().nullable().default(null),
+  path: clippingResourcePathSchema.nullable().default(null),
+  mimeType: z.string().nullable().default(null),
+  bytes: z.number().int().nonnegative().default(0),
+  status: z.enum(["captured", "failed"]),
+  error: z.string().nullable().default(null),
+});
+export type ClippingResource = z.infer<typeof clippingResourceSchema>;
 export const clippingVersionSchema = z.object({
   id: identitySchema,
   revision: z.number().int().positive(),
@@ -35,6 +63,8 @@ export const clippingVersionSchema = z.object({
   translatedSegments: z.number().int().nonnegative().default(0),
   attempts: z.number().int().nonnegative().default(0),
   error: z.string().nullable().default(null),
+  resourcesCaptured: z.boolean().default(false),
+  resources: z.array(clippingResourceSchema).default([]),
 });
 export type ClippingVersion = z.infer<typeof clippingVersionSchema>;
 
@@ -222,22 +252,218 @@ export class ClippingStore {
     await this.atomic(this.path(id, identitySchema.parse(versionId), name), content);
   }
 
-  private async atomic(path: string, content: string) {
+  async readResource(id: string, versionId: string, resource: ClippingResource) {
+    if (resource.status !== "captured" || !resource.path) return null;
+    if (!Number.isSafeInteger(resource.bytes) || resource.bytes < 0) return null;
+    if (resource.bytes > CLIPPING_RESOURCE_MAX_BYTES) return null;
+    const path = this.path(
+      id,
+      identitySchema.parse(versionId),
+      clippingResourcePathSchema.parse(resource.path)
+    );
+    let handle: Awaited<ReturnType<typeof open>> | undefined;
+    try {
+      handle = await open(path, "r");
+      const body = await readClippingResourceBody(handle, resource.bytes);
+      if (!body) return null;
+      if (createHash("sha256").update(body).digest("hex") !== resource.id) return null;
+      return body;
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT")
+        return null;
+      throw error;
+    } finally {
+      if (handle) await handle.close().catch(() => undefined);
+    }
+  }
+
+  async writeResource(id: string, versionId: string, resourcePath: string, content: Uint8Array) {
+    await this.atomic(
+      this.path(
+        id,
+        identitySchema.parse(versionId),
+        clippingResourcePathSchema.parse(resourcePath)
+      ),
+      content
+    );
+  }
+
+  async removeResourceIfUnreferenced(id: string, versionId: string, resourcePath: string) {
+    const manifest = await this.manifest(id);
+    const version = manifest?.versions.find((candidate) => candidate.id === versionId);
+    if (version?.resources.some((resource) => resource.path === resourcePath)) return;
+    this.beforePublish?.();
+    try {
+      await rm(
+        this.path(
+          id,
+          identitySchema.parse(versionId),
+          clippingResourcePathSchema.parse(resourcePath)
+        ),
+        {
+          force: true,
+        }
+      );
+    } catch {
+      /* Cleanup is best effort after a failed atomic checkpoint. */
+    }
+  }
+
+  async removeSourceIfUnreferenced(id: string, versionId: string, sourceHash: string) {
+    const manifest = await this.manifest(id);
+    const version = manifest?.versions.find((candidate) => candidate.id === versionId);
+    if (version?.sourceHash === sourceHash) return;
+    this.beforePublish?.();
+    try {
+      await rm(this.path(id, identitySchema.parse(versionId), "source.md"), { force: true });
+    } catch {
+      /* Cleanup is best effort after a failed atomic checkpoint. */
+    }
+  }
+
+  async cleanupUnreferencedResources(id: string) {
+    const idPath = this.path(id);
+    const manifest = await this.manifest(id);
+    const referenced = new Set(
+      (manifest?.versions ?? []).flatMap((version) =>
+        version.resources
+          .filter((resource) => resource.status === "captured" && resource.path)
+          .map((resource) => `${version.id}/${resource.path}`)
+      )
+    );
+    await this.cleanupAtomicTemporaryFiles(idPath);
+    let versions: import("node:fs").Dirent[];
+    try {
+      versions = await readdir(idPath, { withFileTypes: true });
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return;
+      throw error;
+    }
+    for (const versionEntry of versions) {
+      if (!versionEntry.isDirectory() || !identitySchema.safeParse(versionEntry.name).success)
+        continue;
+      const version = manifest?.versions.find((candidate) => candidate.id === versionEntry.name);
+      const versionPath = join(idPath, versionEntry.name);
+      if (!version) {
+        this.beforePublish?.();
+        await rm(versionPath, { recursive: true, force: true });
+        continue;
+      }
+      let sourceReferenced = false;
+      if (version.sourceHash) {
+        try {
+          const source = await readFile(join(versionPath, "source.md"));
+          sourceReferenced =
+            createHash("sha256").update(source).digest("hex") === version.sourceHash;
+        } catch (error) {
+          if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT"))
+            throw error;
+        }
+      }
+      if (version.sourceHash && !sourceReferenced) {
+        this.beforePublish?.();
+        await rm(join(versionPath, "source.md"), { force: true });
+      }
+      await this.cleanupAtomicTemporaryFiles(versionPath);
+      await this.cleanupAtomicTemporaryFiles(join(versionPath, "segments"));
+      let assets: import("node:fs").Dirent[];
+      try {
+        assets = await readdir(join(versionPath, "assets"), {
+          withFileTypes: true,
+        });
+      } catch (error) {
+        if (error && typeof error === "object" && "code" in error && error.code === "ENOENT")
+          continue;
+        throw error;
+      }
+      for (const asset of assets) {
+        if (!asset.isFile()) continue;
+        const resourcePath = `assets/${asset.name}`;
+        if (
+          !resourcePath.endsWith(".tmp") &&
+          !clippingResourcePathSchema.safeParse(resourcePath).success
+        )
+          continue;
+        if (referenced.has(`${versionEntry.name}/${resourcePath}`)) continue;
+        this.beforePublish?.();
+        await rm(join(versionPath, resourcePath), { force: true });
+      }
+    }
+  }
+
+  private async cleanupAtomicTemporaryFiles(directory: string) {
+    let entries: import("node:fs").Dirent[];
+    try {
+      entries = await readdir(directory, { withFileTypes: true });
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return;
+      throw error;
+    }
+    for (const entry of entries) {
+      if (!entry.isFile() || !atomicTemporaryName.test(entry.name)) continue;
+      this.beforePublish?.();
+      await rm(join(directory, entry.name), { force: true });
+    }
+  }
+
+  async cleanupAllUnreferencedResources() {
+    let entries: import("node:fs").Dirent[];
+    try {
+      entries = await readdir(this.root, { withFileTypes: true });
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return;
+      throw error;
+    }
+    for (const entry of entries)
+      if (entry.isDirectory() && identitySchema.safeParse(entry.name).success)
+        await this.cleanupUnreferencedResources(entry.name);
+  }
+
+  private async atomic(path: string, content: string | Uint8Array) {
     await mkdir(dirname(path), { recursive: true });
     const temporary = `${path}.${randomUUID()}.tmp`;
-    this.beforePublish?.();
-    await writeFile(temporary, content, { encoding: "utf8", mode: 0o600 });
-    this.beforePublish?.();
-    // Do not yield between the final ownership check and publication. The runtime
-    // transaction still holds the owner-row write lock throughout this rename.
-    renameSync(temporary, path);
+    let published = false;
+    try {
+      this.beforePublish?.();
+      await writeFile(
+        temporary,
+        content,
+        typeof content === "string" ? { encoding: "utf8", mode: 0o600 } : { mode: 0o600 }
+      );
+      this.beforePublish?.();
+      // Do not yield between the final ownership check and publication. The runtime
+      // transaction still holds the owner-row write lock throughout this rename.
+      renameSync(temporary, path);
+      published = true;
+    } finally {
+      if (!published) await rm(temporary, { force: true }).catch(() => undefined);
+    }
   }
+}
+
+type ClippingResourceReader = Pick<FileHandle, "read">;
+
+export async function readClippingResourceBody(
+  handle: ClippingResourceReader,
+  bytes: number
+): Promise<Buffer | null> {
+  const body = Buffer.alloc(bytes);
+  let offset = 0;
+  while (offset < body.length) {
+    const { bytesRead } = await handle.read(body, offset, body.length - offset, offset);
+    if (bytesRead <= 0) return null;
+    offset += bytesRead;
+  }
+  const trailing = Buffer.alloc(1);
+  const { bytesRead } = await handle.read(trailing, 0, trailing.length, bytes);
+  return bytesRead === 0 ? body : null;
 }
 
 export async function projectClippingMemo(
   memoId: string,
   store = new ClippingStore(),
-  includeArticle = false
+  includeArticle = false,
+  publicProjection = false
 ) {
   const authored = await readAuthoredMemo(memoId);
   const recognition = recognizeMemoClipping(authored.body, authored.frontmatter);
@@ -256,6 +482,9 @@ export async function projectClippingMemo(
       : undefined;
   const summary = visible ? await store.read(id, visible.id, "summary") : null;
   const source = includeArticle && visible ? await store.read(id, visible.id, "source") : null;
+  const translation =
+    includeArticle && visible ? await store.read(id, visible.id, "translation") : null;
+  const sanitizeLegacyMedia = publicProjection && visible && !visible.resourcesCaptured;
   const reading: ClippingReading = {
     targetUrl: recognition.targetUrl,
     sourceUrl: visible?.targetUrl ?? recognition.targetUrl,
@@ -267,7 +496,10 @@ export async function projectClippingMemo(
     translatedSegments: latest?.translatedSegments ?? 0,
     segmentCount: latest?.segmentCount ?? 0,
     error: recognition.error ?? (pendingTarget ? null : latest?.error) ?? null,
-    warning: visible?.warning ?? null,
+    warning:
+      visible && !visible.resourcesCaptured
+        ? (visible.warning ?? "此阅读版本的正文资源仍为外链，请重新处理以保存到服务器。")
+        : (visible?.warning ?? null),
     usingPreviousVersion: Boolean(visible && (pendingTarget || visible.id !== latest?.id)),
   };
   return {
@@ -278,7 +510,12 @@ export async function projectClippingMemo(
     reading,
     content: composeClippingMemo(recognition.remarks, summary),
     title: recognition.authorTitle ?? visible?.pageTitle ?? recognition.linkLabel ?? null,
-    source,
-    translation: includeArticle && visible ? await store.read(id, visible.id, "translation") : null,
+    source: sanitizeLegacyMedia && source !== null ? stripUncapturedClippingMedia(source) : source,
+    translation:
+      sanitizeLegacyMedia && translation !== null
+        ? stripUncapturedClippingMedia(translation)
+        : translation,
+    resourcesCaptured: Boolean(visible?.resourcesCaptured),
+    resources: visible?.resources ?? [],
   };
 }

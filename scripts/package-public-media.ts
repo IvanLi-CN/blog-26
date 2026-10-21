@@ -4,6 +4,10 @@ import { appendFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:
 import { extname, join, relative, resolve, sep } from "node:path";
 
 export const PUBLIC_MEDIA_FACADE_PREFIX = "/api/public/assets/";
+export const CLIPPING_RESOURCE_FACADE_RE =
+  /^\/api\/public\/memos\/[^/]+\/clipping\/assets\/[^/]+\/[a-f0-9]{64}\.[a-z0-9]+$/iu;
+export const CLIPPING_RESOURCE_BASE_FACADE_RE =
+  /^\/api\/public\/memos\/[^/]+\/clipping\/assets\/[^/]+\/$/u;
 export const STATIC_MEDIA_PREFIX = "/_content/assets/";
 export const DEFAULT_MAX_BYTES = 20 * 1024 * 1024;
 export const DEFAULT_MAX_FILES = 20_000;
@@ -28,7 +32,10 @@ const TEXT_EXTENSIONS = new Set([
   ".webmanifest",
   ".xml",
 ]);
-const PUBLIC_MEDIA_URL_RE = /(?:https?:\/\/[^"'`&\\\s<>]+)?\/api\/public\/assets\/[^"'`&\\\s<>]+/g;
+const PUBLIC_MEDIA_URL_RE =
+  /(?:https?:\/\/[^"'`&\\\s<>]+)?\/api\/public\/(?:assets\/[^"'`&\\\s<>]+|memos\/[^"'`&\\\s<>]+\/clipping\/assets\/[^"'`&\\\s<>]+)/g;
+const CLIPPING_RESOURCE_BASE_URL_RE =
+  /(?:https?:\/\/[^"'`&\\\s<>]+)?\/api\/public\/memos\/[^"'`&\\\s<>/]+\/clipping\/assets\/[^"'`&\\\s<>/]+\/(?=["'`&\\\s<>])/g;
 const TRAILING_URL_PUNCTUATION_RE = /[.,;:!?)}\]]+$/u;
 
 export type PublicMediaPackageStatus = "packaged" | "external";
@@ -71,6 +78,7 @@ export type PublicMediaPackageOptions = {
   downloadAttempts?: number;
   retryDelayMs?: number;
   includeDerivedWatermarkVariants?: boolean;
+  clippingResourceUrls?: string[];
   fetchImpl?: PublicMediaFetcher;
 };
 
@@ -81,6 +89,7 @@ type AssetReference = {
   fetchUrl: string;
   staticPath: string;
   replacement: (status: PublicMediaPackageStatus) => string;
+  required?: boolean;
   fallback?: AssetReference;
 };
 
@@ -142,7 +151,9 @@ export function isPlaybookEditionFilePath(path: string) {
 }
 
 function assertSafeAssetPath(pathname: string) {
-  const relativePath = pathname.slice(PUBLIC_MEDIA_FACADE_PREFIX.length);
+  const relativePath = pathname.startsWith(PUBLIC_MEDIA_FACADE_PREFIX)
+    ? pathname.slice(PUBLIC_MEDIA_FACADE_PREFIX.length)
+    : pathname.slice("/api/public/".length);
   if (
     !relativePath ||
     relativePath.split("/").some((segment) => {
@@ -160,6 +171,25 @@ function assertSafeAssetPath(pathname: string) {
     throw new Error(`Invalid public media path: ${pathname}`);
   }
   return relativePath;
+}
+
+export function isPublicMediaReferencePath(pathname: string) {
+  return (
+    pathname.startsWith(PUBLIC_MEDIA_FACADE_PREFIX) ||
+    CLIPPING_RESOURCE_FACADE_RE.test(pathname) ||
+    CLIPPING_RESOURCE_BASE_FACADE_RE.test(pathname)
+  );
+}
+
+function replaceClippingResourceBases(content: string, siteUrl: string, basePath: string) {
+  return content.replace(CLIPPING_RESOURCE_BASE_URL_RE, (token) => {
+    const raw = trimUrlToken(token);
+    const sourceUrl = new URL(raw, siteUrl);
+    if (!CLIPPING_RESOURCE_BASE_FACADE_RE.test(sourceUrl.pathname)) return token;
+    const relativePath = assertSafeAssetPath(sourceUrl.pathname.slice(0, -1));
+    const outputPath = sitePath(basePath, `${STATIC_MEDIA_PREFIX}${relativePath}/`);
+    return isAbsoluteHttpUrl(raw) ? `${new URL(siteUrl).origin}${outputPath}` : outputPath;
+  });
 }
 
 function getTextFiles(root: string) {
@@ -191,7 +221,8 @@ function extractReferences(
   const references: AssetReference[] = [];
   for (const raw of extractPublicMediaUrls(content)) {
     const sourceUrl = new URL(raw, siteUrl);
-    if (!sourceUrl.pathname.startsWith(PUBLIC_MEDIA_FACADE_PREFIX)) continue;
+    if (!isPublicMediaReferencePath(sourceUrl.pathname)) continue;
+    if (CLIPPING_RESOURCE_BASE_FACADE_RE.test(sourceUrl.pathname)) continue;
 
     const relativePath = assertSafeAssetPath(sourceUrl.pathname);
     const sourcePath = `${sourceUrl.pathname}${sourceUrl.search}`;
@@ -212,6 +243,7 @@ function extractReferences(
         const path = `${outputPath}${suffix}`;
         return absolute ? `${new URL(siteUrl).origin}${path}` : path;
       },
+      ...(CLIPPING_RESOURCE_FACADE_RE.test(sourceUrl.pathname) ? { required: true } : {}),
     };
     if (isLegacyDerivedWatermarkPath(sourceUrl.pathname)) {
       reference.fallback = deriveBaseReference(reference, mediaOrigin, basePath) ?? undefined;
@@ -583,6 +615,8 @@ export async function packagePublicMedia(
     if (isPlaybookEditionFilePath(artifactPath)) continue;
     references.push(...extractReferences(content, siteUrl, mediaOrigin, basePath));
   }
+  for (const url of options.clippingResourceUrls ?? [])
+    references.push(...extractReferences(url, siteUrl, mediaOrigin, basePath));
   const referenceByRaw = new Map(references.map((reference) => [reference.raw, reference]));
 
   const uniqueReferences = new Map<string, AssetReference>();
@@ -646,6 +680,11 @@ export async function packagePublicMedia(
           retryDelayMs
         );
       }
+      if (reference.required && result.status === "external") {
+        throw new Error(
+          `Required clipping resource exceeded the static media limit: ${reference.sourcePath}`
+        );
+      }
       let outputPath: string | null = null;
       if (result.status === "packaged") {
         if (!result.body)
@@ -690,7 +729,8 @@ export async function packagePublicMedia(
   for (const [file, content] of fileContents) {
     const artifactPath = relative(siteDistDir, file).split(sep).join("/");
     if (isPlaybookEditionFilePath(artifactPath)) continue;
-    const rewritten = content.replace(PUBLIC_MEDIA_URL_RE, (token) => {
+    const withStaticClippingBases = replaceClippingResourceBases(content, siteUrl, basePath);
+    const rewritten = withStaticClippingBases.replace(PUBLIC_MEDIA_URL_RE, (token) => {
       const raw = trimUrlToken(token);
       const reference = referenceByRaw.get(raw);
       if (!reference) return token;

@@ -55,6 +55,7 @@ export type PublicClippingArticle = {
   source: string | null;
   translation: string | null;
   reading: ClippingReading;
+  resourceBaseUrl?: string | null;
 };
 
 export type PublicTagSummary = TagSummary;

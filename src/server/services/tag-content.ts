@@ -3,6 +3,10 @@ import { readFile } from "node:fs/promises";
 import { and, desc, eq } from "drizzle-orm";
 import { getLocalPath, isLocalContentEnabled } from "@/config/paths";
 import {
+  buildClippingResourceBaseUrl,
+  stripUncapturedClippingMedia,
+} from "@/lib/clipping-resources";
+import {
   extractMemoTitle,
   isGeneratedMemoTitle,
   parseMarkdownContent,
@@ -211,9 +215,21 @@ export async function readEligibleContent(options: ContentReadOptions = {}) {
             return null;
           if (clipping && options.includeClippingArticles)
             clippingArticles[row.slug] = {
-              source: clipping.source,
-              translation: clipping.translation,
+              source: clipping.source
+                ? clipping.resourcesCaptured
+                  ? clipping.source
+                  : stripUncapturedClippingMedia(clipping.source)
+                : null,
+              translation: clipping.translation
+                ? clipping.resourcesCaptured
+                  ? clipping.translation
+                  : stripUncapturedClippingMedia(clipping.translation)
+                : null,
               reading: clipping.reading,
+              resourceBaseUrl:
+                clipping.resourcesCaptured && clipping.reading.versionId
+                  ? buildClippingResourceBaseUrl(row.slug, clipping.reading.versionId)
+                  : null,
             };
           const parsed = parseContentTags(clipping?.authored.body ?? row.body ?? "");
           const storedTags = normalizeTags(row.tags);

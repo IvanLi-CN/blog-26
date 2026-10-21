@@ -301,6 +301,18 @@ describe("playbook-public-contract", () => {
     expect(html).not.toContain("<script");
     expect(html).not.toContain("onerror");
   });
+  test("keeps versioned Playbook links stable when Markdown URL mapping runs twice", () => {
+    const catalog = structuredClone(publicFixtureCatalog);
+    catalog.topic_details[0].sections[0].markdown +=
+      "\n[Reference][project]\n\n[project]: /projects/sample-project#architecture";
+    const { edition } = makePublicBundle("v3.0.0", "100", catalog);
+    const html = renderToStaticMarkup(
+      createElement(PlaybookPage, { edition, path: "topics/delivery", versioned: true })
+    );
+    const versionedHref = `/playbook/editions/${edition.edition.source.tag}/${edition.edition.source.releaseId}/${edition.edition.editionDigest}/projects/sample-project/#architecture`;
+    expect(html).toContain(`href="${versionedHref}"`);
+    expect(html).not.toContain("Unsupported public playbook route");
+  });
   test("renders only useful visitor information and keeps edition identity out of Playbook UI", () => {
     const catalog = structuredClone(publicFixtureCatalog);
     catalog.topic_details[0].doc_metadata = [

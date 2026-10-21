@@ -172,6 +172,7 @@ export class ClippingService {
     });
     service.store.beforePublish = () => service.runtime.assertOwnership();
     try {
+      await service.runtime.exclusive(() => service.store.cleanupAllUnreferencedResources());
       await service.scan(true);
       service.timer = setInterval(
         () =>
@@ -454,7 +455,15 @@ export class ClippingService {
         stored.error = null;
       });
       let source = await this.store.read(id, version.id, "source");
-      if (!source || !version.sourceHash) {
+      const committedSource = source;
+      const needsCapture = !source || !version.sourceHash || !version.resourcesCaptured;
+      if (
+        needsCapture &&
+        (version.summaryState === "completed" || version.translationState === "completed")
+      )
+        throw new Error("已完成的旧剪藏版本缺少资源，请重新处理以创建完整版本。");
+      if (needsCapture) {
+        const committedManifest = await this.store.manifest(id);
         let article: ArticleMaterial;
         while (true) {
           try {
@@ -476,14 +485,48 @@ export class ClippingService {
           }
         }
         source = article.markdown;
-        await this.checkpoint(id, version, async (_manifest, stored) => {
-          await this.store.write(id, version.id, "source", article.markdown);
-          stored.pageTitle = article.title;
-          stored.finalUrl = article.url;
-          stored.warning = article.warning;
-          stored.capturedAt = Date.now();
-          stored.sourceHash = createHash("sha256").update(article.markdown).digest("hex");
-        });
+        const resources = article.resources ?? [];
+        const sourceHash = createHash("sha256").update(article.markdown).digest("hex");
+        const writtenResources: string[] = [];
+        let captureMutationStarted = false;
+        try {
+          await this.checkpoint(id, version, async (_manifest, stored) => {
+            captureMutationStarted = true;
+            for (const resource of resources) {
+              if (resource.status !== "captured") continue;
+              if (!resource.path || !resource.body)
+                throw new Error("剪藏资源已标记保存但缺少文件内容。");
+              await this.store.writeResource(id, version.id, resource.path, resource.body);
+              writtenResources.push(resource.path);
+            }
+            await this.store.write(id, version.id, "source", article.markdown);
+            stored.resources = resources.map(({ body: _body, ...resource }) => resource);
+            stored.resourcesCaptured = true;
+            stored.pageTitle = article.title;
+            stored.finalUrl = article.url;
+            stored.warning = article.warning;
+            stored.capturedAt = Date.now();
+            stored.sourceHash = sourceHash;
+          });
+        } catch (error) {
+          await this.runtime
+            .exclusive(async () => {
+              if (captureMutationStarted && committedManifest)
+                await this.store.save(committedManifest);
+              const restoreSource =
+                committedSource === null
+                  ? this.store.removeSourceIfUnreferenced(id, version.id, sourceHash)
+                  : this.store.write(id, version.id, "source", committedSource);
+              await Promise.all([
+                ...writtenResources.map((resourcePath) =>
+                  this.store.removeResourceIfUnreferenced(id, version.id, resourcePath)
+                ),
+                restoreSource,
+              ]);
+            })
+            .catch(() => undefined);
+          throw error;
+        }
       }
       if (!version.jobConversationId) {
         if (signal.aborted || this.closing) return;
