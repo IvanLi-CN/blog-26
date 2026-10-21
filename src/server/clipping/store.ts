@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { renameSync } from "node:fs";
 import {
+  type FileHandle,
   link,
   mkdir,
   open,
@@ -262,10 +263,8 @@ export class ClippingStore {
     let handle: Awaited<ReturnType<typeof open>> | undefined;
     try {
       handle = await open(path, "r");
-      const buffer = Buffer.alloc(resource.bytes + 1);
-      const { bytesRead } = await handle.read(buffer, 0, buffer.byteLength, 0);
-      if (bytesRead !== resource.bytes) return null;
-      const body = buffer.subarray(0, bytesRead);
+      const body = await readClippingResourceBody(handle, resource.bytes);
+      if (!body) return null;
       if (createHash("sha256").update(body).digest("hex") !== resource.id) return null;
       return body;
     } catch (error) {
@@ -344,6 +343,7 @@ export class ClippingStore {
       const version = manifest?.versions.find((candidate) => candidate.id === versionEntry.name);
       const versionPath = join(idPath, versionEntry.name);
       if (!version) {
+        this.beforePublish?.();
         await rm(versionPath, { recursive: true, force: true });
         continue;
       }
@@ -359,6 +359,7 @@ export class ClippingStore {
         }
       }
       if (version.sourceHash && !sourceReferenced) {
+        this.beforePublish?.();
         await rm(join(versionPath, "source.md"), { force: true });
       }
       let assets: import("node:fs").Dirent[];
@@ -380,6 +381,7 @@ export class ClippingStore {
         )
           continue;
         if (referenced.has(`${versionEntry.name}/${resourcePath}`)) continue;
+        this.beforePublish?.();
         await rm(join(versionPath, resourcePath), { force: true });
       }
     }
@@ -418,6 +420,24 @@ export class ClippingStore {
       if (!published) await rm(temporary, { force: true }).catch(() => undefined);
     }
   }
+}
+
+type ClippingResourceReader = Pick<FileHandle, "read">;
+
+export async function readClippingResourceBody(
+  handle: ClippingResourceReader,
+  bytes: number
+): Promise<Buffer | null> {
+  const body = Buffer.alloc(bytes);
+  let offset = 0;
+  while (offset < body.length) {
+    const { bytesRead } = await handle.read(body, offset, body.length - offset, offset);
+    if (bytesRead <= 0) return null;
+    offset += bytesRead;
+  }
+  const trailing = Buffer.alloc(1);
+  const { bytesRead } = await handle.read(trailing, 0, trailing.length, bytes);
+  return bytesRead === 0 ? body : null;
 }
 
 export async function projectClippingMemo(

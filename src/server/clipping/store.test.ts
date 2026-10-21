@@ -12,6 +12,7 @@ import {
   clippingCreator,
   clippingIdForMemo,
   clippingManifestSchema,
+  readClippingResourceBody,
 } from "./store";
 
 const prior = {
@@ -354,6 +355,45 @@ test("does not delete unreferenced resources after ownership is lost", async () 
   }
 });
 
+test("stops cleanup before deleting when ownership is lost", async () => {
+  const root = await fixture();
+  try {
+    const store = new ClippingStore();
+    const id = "11111111-1111-4111-8111-111111111111";
+    const version = "22222222-2222-4222-8222-222222222222";
+    const body = Buffer.from("orphan");
+    const hash = createHash("sha256").update(body).digest("hex");
+    const resourcePath = `assets/${hash}.png`;
+    await store.save(
+      clippingManifestSchema.parse({
+        schemaVersion: 1,
+        id,
+        memoId: "Memos/one.md",
+        creatorId: null,
+        revision: 1,
+        enabled: true,
+        deleted: false,
+        targetUrl: "https://example.com/article",
+        conversationId: null,
+        previousConversations: [],
+        currentVersionId: version,
+        activeVersionId: version,
+        versions: [
+          { id: version, revision: 1, targetUrl: "https://example.com/article", createdAt: 1 },
+        ],
+      })
+    );
+    await store.writeResource(id, version, resourcePath, body);
+    store.beforePublish = () => {
+      throw new Error("ownership lost");
+    };
+    await expect(store.cleanupUnreferencedResources(id)).rejects.toThrow("ownership lost");
+    expect(await readFile(join(root, "materials", id, version, resourcePath))).toEqual(body);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("rejects oversized or truncated resource files before hashing", async () => {
   const root = await fixture();
   try {
@@ -391,4 +431,30 @@ test("rejects oversized or truncated resource files before hashing", async () =>
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("reads resources across short reads and rejects trailing bytes", async () => {
+  const expected = Buffer.from("captured");
+  let calls = 0;
+  const reader = {
+    read: async (buffer: Uint8Array, offset: number, length: number, position: number) => {
+      calls++;
+      if (position >= expected.length) return { bytesRead: 0, buffer };
+      const count = Math.min(calls === 1 ? 2 : expected.length - position, length);
+      buffer.set(expected.subarray(position, position + count), offset);
+      return { bytesRead: count, buffer };
+    },
+  };
+  expect((await readClippingResourceBody(reader, expected.length))?.toString()).toBe("captured");
+  expect(calls).toBe(3);
+
+  const trailingReader = {
+    read: async (buffer: Uint8Array, offset: number, length: number, position: number) => {
+      if (position >= expected.length) return { bytesRead: 1, buffer };
+      const count = Math.min(expected.length - position, length);
+      buffer.set(expected.subarray(position, position + count), offset);
+      return { bytesRead: count, buffer };
+    },
+  };
+  expect(await readClippingResourceBody(trailingReader, expected.length)).toBeNull();
 });
