@@ -20,6 +20,41 @@ import {
   isSafeClippingResourceMimeType,
 } from "@/lib/clipping-resources";
 
+const RESOURCE_MIME_EXTENSIONS: Record<string, string> = {
+  "image/avif": "avif",
+  "image/apng": "apng",
+  "image/gif": "gif",
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "audio/mp4": "mp4",
+  "audio/mpeg": "mp3",
+  "audio/ogg": "ogg",
+  "audio/wav": "wav",
+  "video/mp4": "mp4",
+  "video/mpeg": "mpeg",
+  "video/ogg": "ogv",
+  "video/quicktime": "mov",
+  "video/webm": "webm",
+};
+const RESOURCE_EXTENSION_MIME_TYPES: Record<string, string> = {
+  avif: "image/avif",
+  apng: "image/apng",
+  gif: "image/gif",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  mp3: "audio/mpeg",
+  ogg: "audio/ogg",
+  wav: "audio/wav",
+  mp4: "video/mp4",
+  mpeg: "video/mpeg",
+  ogv: "video/ogg",
+  mov: "video/quicktime",
+  webm: "video/webm",
+};
+
 export class ClippingFetchError extends Error {
   constructor(
     message: string,
@@ -407,26 +442,17 @@ function articleWarning(prepared: PreparedArticle, markdown: string, failedResou
 }
 
 function resourceExtension(resource: { mimeType: string | null }) {
-  const mimeExtensions: Record<string, string> = {
-    "image/avif": "avif",
-    "image/apng": "apng",
-    "image/gif": "gif",
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/webp": "webp",
-    "audio/mp4": "mp4",
-    "audio/mpeg": "mp3",
-    "audio/ogg": "ogg",
-    "audio/wav": "wav",
-    "video/mp4": "mp4",
-    "video/mpeg": "mpeg",
-    "video/ogg": "ogv",
-    "video/quicktime": "mov",
-    "video/webm": "webm",
-  };
-  const extension = resource.mimeType ? mimeExtensions[resource.mimeType] : undefined;
+  const extension = resource.mimeType ? RESOURCE_MIME_EXTENSIONS[resource.mimeType] : undefined;
   if (!extension) throw new ClippingFetchError("正文资源格式无法安全保存。");
   return extension;
+}
+
+function resolveResourceMimeType(contentType: string | null, url: URL) {
+  if (isSafeClippingResourceMimeType(contentType)) return contentType;
+  if (contentType && contentType !== "application/octet-stream") return null;
+  const extension = url.pathname.split(".").at(-1)?.toLowerCase();
+  const fallback = extension ? RESOURCE_EXTENSION_MIME_TYPES[extension] : undefined;
+  return fallback && isSafeClippingResourceMimeType(fallback) ? fallback : null;
 }
 
 function resourceError(error: unknown) {
@@ -499,9 +525,9 @@ async function fetchArticleResource(
       if (result.body.length > (options.maxResourceBytes ?? CLIPPING_RESOURCE_MAX_BYTES))
         throw new ClippingFetchError("正文资源超过大小限制。");
       if (result.body.length === 0) throw new ClippingFetchError("正文资源为空。");
-      const mimeType = result.contentType?.split(";", 1)[0]?.trim().toLowerCase() || null;
-      if (!isSafeClippingResourceMimeType(mimeType))
-        throw new ClippingFetchError("正文资源不是受支持的图片、音频或视频格式。");
+      const declaredMimeType = result.contentType?.split(";", 1)[0]?.trim().toLowerCase() || null;
+      const mimeType = resolveResourceMimeType(declaredMimeType, url);
+      if (!mimeType) throw new ClippingFetchError("正文资源不是受支持的图片、音频或视频格式。");
       return { finalUrl: url.href, mimeType, body: result.body };
     }
     throw new ClippingFetchError("正文资源跳转次数超过限制。");
@@ -585,8 +611,7 @@ async function localizeArticleResources(
             body: fetched.body,
           };
         } catch (error) {
-          if (options.signal?.aborted || (error instanceof ClippingFetchError && error.retryable))
-            throw error;
+          if (options.signal?.aborted) throw error;
           record = {
             id: failedId,
             originalUrl: normalizedUrl,

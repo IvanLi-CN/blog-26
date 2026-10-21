@@ -262,6 +262,46 @@ describe("article extraction", () => {
     expect(article.resources?.every((resource) => !resource.path?.endsWith(".html"))).toBe(true);
   });
 
+  test("isolates transient resource failures and infers safe MIME types from extensions", async () => {
+    const article = await fetchArticle("https://article.example/page", {
+      dependencies: {
+        resolve: async () => [{ address: "1.1.1.1", family: 4 }],
+        request: async (url) =>
+          url.pathname === "/page"
+            ? {
+                status: 200,
+                contentType: "text/html",
+                body: Buffer.from(
+                  `<article><h1>Resilient media</h1><p>${prose}</p><img src="/hero.apng"><video src="/movie.mpeg"><source src="/missing.mp4"></video></article>`
+                ),
+              }
+            : url.pathname === "/hero.apng"
+              ? {
+                  status: 200,
+                  contentType: "application/octet-stream",
+                  body: Buffer.from("apng"),
+                }
+              : url.pathname === "/movie.mpeg"
+                ? { status: 503, body: Buffer.alloc(0) }
+                : { status: 404, body: Buffer.alloc(0) },
+      },
+    });
+
+    expect(
+      article.resources?.find((resource) => resource.originalUrl.endsWith("/hero.apng"))
+    ).toMatchObject({
+      path: expect.stringMatching(/\.apng$/u),
+      mimeType: "image/apng",
+      status: "captured",
+    });
+    expect(
+      article.resources?.find((resource) => resource.originalUrl.endsWith("/movie.mpeg"))
+    ).toMatchObject({
+      status: "failed",
+    });
+    expect(article.markdown).toContain("资源抓取失败：视频");
+  });
+
   test("rejects active or unknown media formats and removes failed tracks", async () => {
     const article = await fetchArticle("https://article.example/page", {
       dependencies: {
