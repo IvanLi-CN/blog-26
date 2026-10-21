@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "9627a95f2483eb4641e64bef5edf5ab1c12185e4",
+  "base_sha": "e91b8e1d790c156de5508e8da069abfd52880be3",
   "covered_files": {
     "CONTEXT.md": "4452f9d1abd5f90cd35893ae9e2ae9a39776f7d3",
     "GLOSSARY.md": "86e7d9fd21034f10aa6ef934a885f654c9d85b80",
@@ -265,7 +265,8 @@
         "3.5.4",
         "3.5.5",
         "3.5.6",
-        "3.5.7"
+        "3.5.7",
+        "3.5.8"
       ],
       "evidence": [
         {
@@ -305,7 +306,9 @@
         "3.5.3",
         "3.5.4",
         "3.5.5",
-        "3.5.6"
+        "3.5.6",
+        "3.5.7",
+        "3.5.8"
       ],
       "upgrade_from_versions": [
         "2.7.0",
@@ -329,7 +332,8 @@
         "3.5.4",
         "3.5.5",
         "3.5.6",
-        "3.5.7"
+        "3.5.7",
+        "3.5.8"
       ],
       "evidence": [
         {
