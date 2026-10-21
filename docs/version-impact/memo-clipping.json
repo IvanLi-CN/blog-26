@@ -37,7 +37,7 @@
     "site/components/ClippingWebDemo.tsx": "353900f5fd2a0f6e91629ed83f72ca4a42bd9a18",
     "site/components/MemoCard.tsx": "c82624114e5e6321feab2472b45126c1e0b3d3f2",
     "site/components/MemoTimeline.tsx": "d7f6e8060c4a7c6aec11ccc0fc7d381b3effea81",
-    "site/components/PublicMemoAuthoring.tsx": "3cd5b2c8f8a71f3b9e5ec94ea63726bffcb3af72",
+    "site/components/PublicMemoAuthoring.tsx": "e4b2d96c43b1b0d40d16569f2c8b06b62019e95b",
     "site/components/SearchPageIsland.tsx": "dde088e6a1fdf284c185ee87db6f61a0b7856958",
     "site/lib/feeds.ts": "5ca3af8739e47fbaeb7dfa9a3cf9f9b37be8a415",
     "site/lib/page-data/memo.ts": "4d7a448125072cb4e6785492d8de7d68699fd433",
