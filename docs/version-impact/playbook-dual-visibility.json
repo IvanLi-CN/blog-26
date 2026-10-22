@@ -120,7 +120,7 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "dfe34f75f4412df6922a84f2b2188c66bfa4e6a0",
+          "blob": "3bae7ee083198d90d381a5b769a97d786c766860",
           "command": "Public and supplement contract tests preserve shared Markdown bytes and validate actual Rust exporter fixture bytes"
         }
       ]
@@ -160,7 +160,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "36e8380ca37e648f7b2d40de8537521bd2dab089",
+          "blob": "b252539706f6ddc938be017a8d6c748ad81ad485",
           "command": "HTTP compatibility tests cover anonymous, authenticated user, and administrator Playbook access"
         }
       ]
