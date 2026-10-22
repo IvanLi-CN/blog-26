@@ -215,6 +215,10 @@ export interface PlaybookSupplementEnvelope extends PlaybookSupplement {
   manifest: PlaybookManifest;
 }
 
+export interface PlaybookSupplementSeed extends PlaybookSupplementEnvelope {
+  rawFiles: { catalog: string; search: string };
+}
+
 export type PlaybookAdminProjectListItem =
   | PlaybookPublicProjectListItem
   | PlaybookSupplementProjectListItem;

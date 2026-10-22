@@ -17,7 +17,7 @@ import {
   mergePlaybookSupplement,
   readPlaybookSupplement,
   samePlaybookSource,
-  validatePlaybookSupplement,
+  validatePlaybookSupplementSeed,
 } from "../src/lib/playbook/supplement";
 import type { PlaybookEditionIdentity } from "../src/lib/playbook/types";
 
@@ -49,7 +49,7 @@ if (process.env.PLAYBOOK_FROZEN_INPUT_DIR) {
     throw error;
   });
   if (frozenSupplement) {
-    const supplement = validatePlaybookSupplement(JSON.parse(frozenSupplement));
+    const supplement = validatePlaybookSupplementSeed(JSON.parse(frozenSupplement));
     if (!samePlaybookSource(seed.edition.source, supplement.manifest.source))
       throw new Error("Frozen Playbook supplement source does not match the public edition");
     await writeFile(supplementSeedPath, encodeJson(supplement));

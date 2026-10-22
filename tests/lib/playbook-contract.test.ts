@@ -29,6 +29,7 @@ import { readBounded } from "../../src/lib/playbook/github";
 import {
   computeEditionDigest,
   encodeJson,
+  encodePlaybookRawFiles,
   fileRecord,
   parseManifest,
   samePlaybookEdition,
@@ -1264,15 +1265,16 @@ describe("playbook-cache-http-ssr", () => {
     const supplementBundle = makeSupplementBundle();
     const publicSeed = join(root, "playbook-edition.json");
     const supplementSeed = join(root, "playbook-private-supplement.json");
+    const seedValue = (bundle: ReturnType<typeof makeSupplementBundle>) => ({
+      manifest: bundle.manifest,
+      catalog: JSON.parse(bundle.files[0].content),
+      search: JSON.parse(bundle.files[1].content),
+      rawFiles: encodePlaybookRawFiles(
+        new Map(bundle.files.map((file) => [file.path, Buffer.from(file.content)]))
+      ),
+    });
     await writeFile(publicSeed, encodeJson(publicBundle.edition));
-    await writeFile(
-      supplementSeed,
-      encodeJson({
-        manifest: supplementBundle.manifest,
-        catalog: JSON.parse(supplementBundle.files[0].content),
-        search: JSON.parse(supplementBundle.files[1].content),
-      })
-    );
+    await writeFile(supplementSeed, encodeJson(seedValue(supplementBundle)));
     const store = new PlaybookStore(root);
     await store.load(publicSeed, supplementSeed);
     expect(store.current?.catalog.snapshot.projects).toHaveLength(1);
@@ -1281,14 +1283,7 @@ describe("playbook-cache-http-ssr", () => {
       "playbook-private-supplement.tar.gz"
     );
     const mismatched = makeSupplementBundle("v3.1.0", "101");
-    await writeFile(
-      supplementSeed,
-      encodeJson({
-        manifest: mismatched.manifest,
-        catalog: JSON.parse(mismatched.files[0].content),
-        search: JSON.parse(mismatched.files[1].content),
-      })
-    );
+    await writeFile(supplementSeed, encodeJson(seedValue(mismatched)));
     const isolated = new PlaybookStore(await temp());
     await writeFile(join(isolated.root, "seed.json"), encodeJson(publicBundle.edition));
     await isolated.load(join(isolated.root, "seed.json"), supplementSeed);
@@ -1299,17 +1294,44 @@ describe("playbook-cache-http-ssr", () => {
     malformedSearch.documents[0].route = "/topics/missing-topic";
     await writeFile(
       supplementSeed,
-      encodeJson({
-        manifest: malformed.manifest,
-        catalog: JSON.parse(malformed.files[0].content),
-        search: malformedSearch,
-      })
+      encodeJson({ ...seedValue(malformed), search: malformedSearch })
     );
     const malformedStore = new PlaybookStore(await temp());
     await writeFile(join(malformedStore.root, "seed.json"), encodeJson(publicBundle.edition));
     await malformedStore.load(join(malformedStore.root, "seed.json"), supplementSeed);
     expect(malformedStore.adminEdition?.supplement).toBeUndefined();
     expect(malformedStore.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
+  });
+  test("rejects a supplement seed whose raw bytes do not match its manifest", async () => {
+    const root = await temp();
+    const publicBundle = makePublicBundle();
+    const supplementBundle = makeSupplementBundle();
+    const tamperedCatalog = Buffer.concat([
+      Buffer.from(supplementBundle.files[0].content),
+      Buffer.from("\n"),
+    ]);
+    const supplementSeed = join(root, "playbook-private-supplement.json");
+    await writeFile(join(root, "playbook-edition.json"), encodeJson(publicBundle.edition));
+    await writeFile(
+      supplementSeed,
+      encodeJson({
+        manifest: supplementBundle.manifest,
+        catalog: JSON.parse(supplementBundle.files[0].content),
+        search: JSON.parse(supplementBundle.files[1].content),
+        rawFiles: encodePlaybookRawFiles(
+          new Map([
+            ["catalog.json", tamperedCatalog],
+            ["search-documents.json", Buffer.from(supplementBundle.files[1].content)],
+          ])
+        ),
+      })
+    );
+
+    const store = new PlaybookStore(root);
+    await store.load(join(root, "playbook-edition.json"), supplementSeed);
+
+    expect(store.adminEdition?.supplement).toBeUndefined();
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
   });
   test("stages a supplement by source identity across public edition adoption", async () => {
     const root = await temp();

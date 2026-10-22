@@ -1,7 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseSupplementFiles, readSupplementArchive } from "./bundle";
-import { encodeJson, parseManifest, verifyFile } from "./manifest";
+import {
+  decodePlaybookRawFiles,
+  encodeJson,
+  encodePlaybookRawFiles,
+  parseManifest,
+  verifyFile,
+} from "./manifest";
 import { playbookHref } from "./navigation";
 import { assertSupplementCatalog, relationEdgeSchema, searchSchema } from "./schema";
 import type {
@@ -12,6 +18,7 @@ import type {
   PlaybookSearchDocument,
   PlaybookSupplement,
   PlaybookSupplementEnvelope,
+  PlaybookSupplementSeed,
 } from "./types";
 
 export function validatePlaybookSupplement(
@@ -23,11 +30,14 @@ export function validatePlaybookSupplement(
   const manifest = parseManifest(input.manifest, "supplement");
   const catalog = assertSupplementCatalog(input.catalog);
   const search = searchSchema.parse(input.search);
+  const embeddedRawFiles =
+    input.rawFiles === undefined ? undefined : decodePlaybookRawFiles(input.rawFiles);
+  const verifiedRawFiles = rawFiles ?? embeddedRawFiles;
   // Archive readers verify the original bytes. A parsed seed is a derived object
   // and must not be reserialized before comparing it with the upstream digest.
-  if (rawFiles) {
-    const catalogBytes = rawFiles.get("catalog.json");
-    const searchBytes = rawFiles.get("search-documents.json");
+  if (verifiedRawFiles) {
+    const catalogBytes = verifiedRawFiles.get("catalog.json");
+    const searchBytes = verifiedRawFiles.get("search-documents.json");
     if (!catalogBytes || !searchBytes) throw new Error("Supplement data files are incomplete");
     verifyFile(catalogBytes, manifest.files[0]);
     verifyFile(searchBytes, manifest.files[1]);
@@ -42,7 +52,16 @@ export function validatePlaybookSupplement(
   return { manifest, catalog, search };
 }
 
-export async function readPlaybookSupplement(root: string): Promise<PlaybookSupplementEnvelope> {
+export function validatePlaybookSupplementSeed(value: unknown): PlaybookSupplementSeed {
+  if (!value || typeof value !== "object") throw new Error("Invalid Playbook supplement seed");
+  const rawFiles = decodePlaybookRawFiles((value as Record<string, unknown>).rawFiles);
+  return {
+    ...validatePlaybookSupplement(value, rawFiles),
+    rawFiles: encodePlaybookRawFiles(rawFiles),
+  };
+}
+
+export async function readPlaybookSupplement(root: string): Promise<PlaybookSupplementSeed> {
   const manifest = parseManifest(
     JSON.parse(await readFile(join(root, "playbook-private-supplement-manifest.json"), "utf8")),
     "supplement"
@@ -50,7 +69,10 @@ export async function readPlaybookSupplement(root: string): Promise<PlaybookSupp
   const archive = await readFile(join(root, manifest.bundle.name));
   const files = readSupplementArchive(archive, manifest);
   const parsed: PlaybookSupplement = parseSupplementFiles(files);
-  return validatePlaybookSupplement({ manifest, ...parsed }, files);
+  return {
+    ...validatePlaybookSupplement({ manifest, ...parsed }, files),
+    rawFiles: encodePlaybookRawFiles(files),
+  };
 }
 
 export function mergePlaybookSupplement(
