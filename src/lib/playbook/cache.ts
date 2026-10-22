@@ -248,8 +248,14 @@ export class PlaybookStore {
     const validated = supplement ? validatePlaybookSupplement(supplement) : undefined;
     if (validated && !samePlaybookSource(parsedSource, validated.manifest.source))
       throw new Error("Playbook supplement source identity mismatch");
+    const isAdoptedRollback = Boolean(
+      this.state.current &&
+        this.state.previous &&
+        samePlaybookSource(this.state.current.edition.source, parsedSource) &&
+        compareStableTags(this.state.previous.edition.source.tag, parsedSource.tag) > 0
+    );
     for (const existing of [this.state.current?.edition.source, this.supplementSource]) {
-      if (!existing || samePlaybookSource(existing, parsedSource)) continue;
+      if (!existing || samePlaybookSource(existing, parsedSource) || isAdoptedRollback) continue;
       const order = compareStableTags(parsedSource.tag, existing.tag);
       if (order < 0) throw new Error("Playbook supplement source is older than the receiver state");
       if (order === 0) throw new Error("Playbook supplement source identity conflict");
@@ -267,6 +273,12 @@ export class PlaybookStore {
       samePlaybookSource(this.state.current.edition.source, parsedSource)
     )
       mergePlaybookSupplement(this.state.current, validated);
+    if (
+      !validated &&
+      this.supplement &&
+      samePlaybookSource(this.supplement.manifest.source, parsedSource)
+    )
+      return { source: parsedSource, supplementAvailable: true };
     const next: PlaybookSupplementState = {
       source: parsedSource,
       supplement: validated ?? null,

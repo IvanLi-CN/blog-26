@@ -98,7 +98,7 @@ GitHub API 接受人工请求仅代表 workflow 已提交排队，不能把 HTTP
 3. 对比已部署指针。相同 Release/digest 已生效时跳过；同一 Release 不同 digest 拒绝；较旧稳定版本跳过，不直接信任 API `latest` 作为版本顺序。
 4. 固定当前已发布的博客渲染器与文章/Memo 输入，构建并执行静态校验。
 5. 获取与正常前端部署相同的生产 job 并发组，再重新读取部署身份。若内容已被采用或已变旧则跳过；若当前渲染器已改变，则不得部署旧渲染器产物，需要重新构建后再核对。
-6. 部署完整公共页面及版本化数据，核对公开指针已生效，再把同一 source identity 的补充投影提交到受保护 console 接收入口；若 Release 没有补充包则提交明确的空 overlay。记录实际采用的公共/补充输入身份与下游 run URL。接收端先按来源身份暂存，console 的公共同步采用同一来源后才向管理员读模型合并；补充数据不能被静态站或匿名 API 读取。
+6. 部署完整公共页面及版本化数据，核对公开指针已生效，再把同一 source identity 的补充投影提交到受保护 console 接收入口；若 Release 没有补充包则提交明确的空 overlay，但同一 source identity 已接受的补充包不得被缺失资产或重试清除，只有 source 切换才会清理旧 overlay。显式 rollback 在公开指针已切换到旧 source 且 receiver 已持久化该回滚状态后，可以恢复该旧 source 的补充投影；普通乱序旧请求仍必须拒绝。记录实际采用的公共/补充输入身份与下游 run URL。接收端先按来源身份暂存，console 的公共同步采用同一来源后才向管理员读模型合并；补充数据不能被静态站或匿名 API 读取。
 
 生产 job 并发组使用 `blog26-edgeone-production` 与 `cancel-in-progress: false`，由内容和正常前端部署共同使用。GitHub Actions 原生并发只保留一个运行中的任务和一个待处理任务；两种流程之间需要同一个部署 job 边界。待处理任务仍必须执行版本与渲染器复核，不能依赖 dispatch 时间保证顺序。
 

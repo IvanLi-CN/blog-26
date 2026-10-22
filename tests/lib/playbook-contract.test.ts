@@ -1247,8 +1247,8 @@ describe("playbook-cache-http-ssr", () => {
     expect(restored.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
 
     await restored.updateSupplement(next.edition.edition.source);
-    expect(restored.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
-    expect(restored.adminEdition?.supplement).toBeUndefined();
+    expect(restored.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+    expect(restored.adminEdition?.supplement).toBeDefined();
   });
   test("serializes supplement updates so stale arrivals cannot replace a newer staged source", async () => {
     const root = await temp();
@@ -1275,6 +1275,53 @@ describe("playbook-cache-http-ssr", () => {
     await expect(olderUpdate).rejects.toThrow("older");
 
     await store.adopt(next.edition);
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+  });
+  test("restores an overlay after the public store adopts an explicit rollback", async () => {
+    const root = await temp();
+    const older = makePublicBundle("v3.0.0", "100");
+    const newer = makePublicBundle("v3.1.0", "101");
+    const olderSupplementBundle = makeSupplementBundle("v3.0.0", "100");
+    const newerSupplementBundle = makeSupplementBundle("v3.1.0", "101");
+    const olderSupplement = {
+      manifest: olderSupplementBundle.manifest,
+      catalog: JSON.parse(olderSupplementBundle.files[0].content),
+      search: JSON.parse(olderSupplementBundle.files[1].content),
+    };
+    const newerSupplement = {
+      manifest: newerSupplementBundle.manifest,
+      catalog: JSON.parse(newerSupplementBundle.files[0].content),
+      search: JSON.parse(newerSupplementBundle.files[1].content),
+    };
+    const store = new PlaybookStore(root);
+
+    await store.adopt(older.edition);
+    await store.updateSupplement(older.edition.edition.source, olderSupplement);
+    await store.adopt(newer.edition);
+    await store.updateSupplement(newer.edition.edition.source, newerSupplement);
+    expect(store.adminEdition?.supplement).toBeDefined();
+
+    await store.adopt(older.edition);
+    expect(store.adminEdition?.supplement).toBeUndefined();
+    await store.updateSupplement(older.edition.edition.source, olderSupplement);
+    expect(store.adminEdition?.supplement).toBeDefined();
+  });
+  test("does not clear an accepted overlay on a same-source absent retry", async () => {
+    const root = await temp();
+    const current = makePublicBundle();
+    const supplementBundle = makeSupplementBundle();
+    const supplement = {
+      manifest: supplementBundle.manifest,
+      catalog: JSON.parse(supplementBundle.files[0].content),
+      search: JSON.parse(supplementBundle.files[1].content),
+    };
+    const store = new PlaybookStore(root);
+
+    await store.adopt(current.edition);
+    await store.updateSupplement(current.edition.edition.source, supplement);
+    await store.updateSupplement(current.edition.edition.source);
+
+    expect(store.adminEdition?.supplement).toBeDefined();
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
   });
   test("rejects changed supplement content for an existing source identity", async () => {
