@@ -88,6 +88,7 @@ describe("playbook deployment boundaries", () => {
     expect(prepare).toContain("validatePlaybookEdition(JSON.parse");
     expect(prepare).toContain("downloadRetainedEdition(inputEdition, manifestUrl, destination)");
     expect(prepare).toContain("const edition = inputSeed");
+    expect(prepare).toContain("mergePlaybookSupplement(edition, supplement)");
 
     const initial = await readFile("scripts/fetch-initial-playbook.ts", "utf8");
     expect(initial).toContain("GITHUB_OUTPUT");

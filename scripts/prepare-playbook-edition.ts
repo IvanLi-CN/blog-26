@@ -14,6 +14,7 @@ import {
 } from "../src/lib/playbook/manifest";
 import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
 import {
+  mergePlaybookSupplement,
   readPlaybookSupplement,
   samePlaybookSource,
   validatePlaybookSupplement,
@@ -157,6 +158,7 @@ if (supplementRoot) {
   const supplement = await readPlaybookSupplement(supplementRoot);
   if (!samePlaybookSource(edition.edition.source, supplement.manifest.source))
     throw new Error("Playbook supplement source does not match the public edition");
+  mergePlaybookSupplement(edition, supplement);
   await writeFile(supplementSeedPath, encodeJson(supplement));
 } else if (process.env.PLAYBOOK_SUPPLEMENT_REQUIRED === "true") {
   throw new Error("Playbook supplement is required");

@@ -142,6 +142,7 @@ export function semanticSourceBlobs(
     } else {
       const parent = gitOutput(["rev-parse", `${sha}^`]).trim();
       const candidateVersion = treeBlobs(sha).VERSION;
+      const candidateVersionText = gitFile(sha, "VERSION")?.trim();
       const carriedRelease = gitOutput(["rev-list", "--parents", "-n", "1", sha])
         .trim()
         .split(" ")
@@ -158,6 +159,14 @@ export function semanticSourceBlobs(
         if (proveRelease) proveRelease(carriedRelease.entry);
         continue;
       }
+      const preparedRelease = ledger.entries.find(
+        (entry) =>
+          entry.stage === "pr_open" &&
+          entry.mergeSha === undefined &&
+          entry.sourceSha === parent &&
+          entry.version === candidateVersionText
+      );
+      if (preparedRelease) continue;
       if (businessVersion !== null && candidateVersion === businessVersion) continue;
       if (
         businessVersion !== null ||
