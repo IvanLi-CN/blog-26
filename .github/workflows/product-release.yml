@@ -24,24 +24,33 @@ jobs:
       cancel-in-progress: false
       queue: max
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout release workflow source
+        id: checkout-workflow
+        uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
+      - name: Install release Bun
+        id: setup-bun
+        uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
-      - uses: actions/setup-node@v7
+      - name: Install release Node
+        id: setup-node
+        uses: actions/setup-node@v7
         with:
           node-version: 22.23.2
-      - run: bun install --frozen-lockfile
+      - name: Install frozen dependencies
+        id: install-dependencies
+        run: bun install --frozen-lockfile
       - name: Resolve only registered release merges
         id: identify
         run: bun scripts/product-release.ts resolve --read-only
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Bind original release run
+        id: bind-release
         if: steps.identify.outputs.active == 'true'
         run: bun scripts/product-release.ts resolve
         env:
@@ -53,15 +62,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Checkout the verified merged source
+        id: checkout-source
         if: steps.identify.outputs.active == 'true'
         uses: actions/checkout@v7
         with:
           ref: ${{ steps.identify.outputs.source_sha }}
           fetch-depth: 0
           persist-credentials: false
-      - if: steps.identify.outputs.active == 'true'
+      - name: Install frozen product dependencies
+        id: install-product-dependencies
+        if: steps.identify.outputs.active == 'true'
         run: bun install --frozen-lockfile
       - name: Freeze public build inputs under the production lock
+        id: freeze-inputs
         if: steps.restore.outputs.need_inputs == 'true'
         run: bun scripts/product-release.ts freeze-inputs
         env:
@@ -75,6 +88,7 @@ jobs:
           PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL: ${{ vars.PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL }}
           PUBLIC_OCTO_RILL_METRICS_BASE_URL: ${{ vars.PUBLIC_OCTO_RILL_METRICS_BASE_URL }}
       - name: Retain frozen inputs for 90 days
+        id: retain-inputs
         if: steps.restore.outputs.need_inputs == 'true'
         uses: actions/upload-artifact@v7
         with:
@@ -83,23 +97,35 @@ jobs:
           retention-days: 90
           if-no-files-found: error
       - name: Bind frozen inputs
+        id: record-inputs
         if: steps.restore.outputs.need_inputs == 'true'
         run: bun scripts/product-release.ts record-inputs
         env:
           GH_TOKEN: ${{ github.token }}
-      - if: steps.restore.outputs.need_products == 'true'
-        uses: docker/setup-buildx-action@v4
-      - name: Build the static frontend and full-feature image
+      - name: Install release Rust toolchain
+        id: install-rust-toolchain
         if: steps.restore.outputs.need_products == 'true'
-        run: |
-          rustup toolchain install 1.91.0 --profile minimal
-          RUSTUP_TOOLCHAIN=1.91.0 bun scripts/product-release.ts build-products
+        run: rustup toolchain install 1.91.0 --profile minimal
+      - name: Preflight frozen media closure
+        id: preflight-media
+        if: steps.restore.outputs.need_products == 'true'
+        run: RUSTUP_TOOLCHAIN=1.91.0 bun scripts/product-release.ts preflight-frozen-media
+      - name: Prepare image builder
+        id: prepare-image-builder
+        if: steps.restore.outputs.need_products == 'true'
+        uses: docker/setup-buildx-action@v4
+      - name: Build the full-feature image from validated static output
+        id: build-products
+        if: steps.restore.outputs.need_products == 'true'
+        run: RUSTUP_TOOLCHAIN=1.91.0 bun scripts/product-release.ts build-products --use-preflight
       - name: Verify production-mode frozen products
+        id: verify-products
         if: steps.restore.outputs.need_products == 'true'
         run: |
           sudo apt-get update && sudo apt-get install -y skopeo
           bun scripts/smoke-product-release.ts
       - name: Retain both immutable products for 90 days
+        id: retain-products
         if: steps.restore.outputs.need_products == 'true'
         uses: actions/upload-artifact@v7
         with:
@@ -108,13 +134,17 @@ jobs:
           retention-days: 90
           if-no-files-found: error
       - name: Bind immutable products
+        id: record-products
         if: steps.restore.outputs.need_products == 'true'
         run: bun scripts/product-release.ts record-products
         env:
           GH_TOKEN: ${{ github.token }}
-      - if: steps.identify.outputs.active == 'true'
+      - name: Install publication inspection tools
+        id: install-publication-tools
+        if: steps.identify.outputs.active == 'true'
         run: sudo apt-get update && sudo apt-get install -y skopeo
       - name: Authenticate the job-scoped image publisher
+        id: authenticate-publisher
         if: steps.identify.outputs.active == 'true'
         uses: docker/login-action@v4
         with:
@@ -122,12 +152,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
       - name: Publish prerelease products without deployment or latest promotion
+        id: publish-prerelease
         if: steps.identify.outputs.active == 'true' && steps.identify.outputs.prerelease == 'true'
         run: bun scripts/product-release.ts publish-prerelease
         env:
           GH_TOKEN: ${{ github.token }}
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://ivanli.cc' }}
       - name: Publish stable products, deploy the same static archive, then promote latest
+        id: publish-stable
         if: steps.identify.outputs.active == 'true' && steps.identify.outputs.prerelease == 'false'
         run: bun scripts/product-release.ts publish-stable
         env:
@@ -136,6 +168,7 @@ jobs:
           EDGEONE_PROJECT_NAME: ${{ vars.EDGEONE_PROJECT_NAME }}
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://ivanli.cc' }}
       - name: Preserve failure location for original-run recovery
+        id: record-failure
         if: failure() && steps.identify.outputs.active == 'true'
         continue-on-error: true
         run: bun scripts/product-release.ts failure

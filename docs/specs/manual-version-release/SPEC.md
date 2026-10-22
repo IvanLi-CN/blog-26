@@ -18,6 +18,8 @@
 - 版本文件：根目录 `VERSION`，由发布准备 PR 修改。
 - 发布登记：独立 `release-ledger` 分支上的签名状态链。
 - 构建身份：`productVersion`、`buildVersion`、`sourceSha`；静态 `/version.json` 和只读 `GET /api/version` 暴露相同产品版本及来源。
+- Product Release recovery：通过 `.github/workflows/retry-product-release.yml` 以 `release_id` 指向原 Product Release run，并在原 run 上执行 GitHub rerun；它不创建 successor release identity。
+- Failure phase：`resolve`、`restore`、`freeze_inputs`、`retain_inputs`、`record_inputs`、`preflight_media`、`build_products`、`verify_products`、`retain_products`、`record_products`、`publish_prerelease`、`publish_stable` 或 `unknown`；历史 ledger 的旧字符串 phase 必须继续可读。
 
 ## Requirements
 
@@ -43,7 +45,7 @@
 
 ### REQ-MVR-006
 
-两种产物均发布成功后系统才能标记产物发布完成。产品预发布的完成条件是两种产物的实际发布证明，部署和正式 latest 晋升 MUST 明确标记为不适用，MUST NOT 伪造已部署或已晋升证明；正式发布完整流程的完成条件还包括既定部署和 latest 验证。部分失败后的恢复 MUST 复用原请求、版本、来源、预留、冻结输入和产物校验值；同一身份出现不同内容时 MUST 拒绝覆盖。
+两种产物均发布成功后系统才能标记产物发布完成。产品预发布的完成条件是两种产物的实际发布证明，部署和正式 latest 晋升 MUST 明确标记为不适用，MUST NOT 伪造已部署或已晋升证明；正式发布完整流程的完成条件还包括既定部署和 latest 验证。部分失败后的恢复 MUST 复用原请求、版本、来源、预留、冻结输入和产物校验值；同一身份出现不同内容时 MUST 拒绝覆盖。冻结 inputs 后的失败 MUST 默认重跑原 Product Release run，不得引导 abandon 或创建 successor identity。
 
 ### REQ-MVR-007
 
@@ -84,6 +86,18 @@
 ### REQ-MVR-016
 
 不同完整产品版本 MUST 建立各自的新发布身份，重新经过 VERSION-only PR、确切合并来源、质量门禁及对应版本的产物验证；正式版不是预发布身份的失败恢复。预发布转换为正式版 MUST NOT 重命名既有 tag、改变既有 Release 的版本/类型或将含预发布版本及来源的静态归档或镜像字节直接标为正式版。每个身份的输入和产品只冻结一次；同身份恢复复用冻结结果，不同身份的产品版本及来源证明必须对应其自身登记。
+
+### REQ-MVR-017
+
+Product Release 的 failure/cancelled recovery MUST 通过 `retry` workflow 只接受 `release_id`，严格核验原 run ID、repository、workflow path、main、merge SHA、未完成 stage 和 run conclusion，再调用原 run rerun；MUST NOT 接受 version/source/artifact 参数、创建 successor identity 或复制 artifact。新失败 MUST 记录固定 phase 与实际 step，成功推进或完成恢复 MUST 清除旧 failure。
+
+### REQ-MVR-018
+
+冻结 inputs 后、镜像构建前 MUST 执行 deterministic frozen-media preflight。预检 MUST 复用同一 frozen snapshot、media manifest 和 build config，不得访问变化中的远端媒体；MUST 验证静态构建的完整 media closure，并写入绑定 release identity、merge source SHA 和 inputs manifest digest 的静态输出证明。镜像构建 MUST 只消费匹配证明；identity、source 或 inputs digest 不匹配时 MUST 拒绝复用，预检失败 MUST 停在可重试阶段且不得绑定 products。
+
+### REQ-MVR-019
+
+未完成 Product Release 只有两类 abandon：没有任何 frozen artifact 的 pre-artifact failure/cancelled，或原 frozen artifact 已由 GitHub 证明不可恢复且 emergency workflow 同时提供人工确认与 incident reason。只要 frozen inputs artifact 可用，input-only abandon MUST 拒绝；abandoned identity MUST NOT revive or reallocate。
 
 ### REQ-MVR-012
 
@@ -163,6 +177,24 @@
 - covers: `REQ-MVR-012`
 - Pass condition: 保护设置与合同一致、默认令牌只读、写权限限定必要 job、无分支保护绕过，机器人提交 Verified，必需评估完整保留；不投放生产测试产物。
 
+### VER-MVR-013
+
+- Method: 运行 release ledger、原运行重试、失败分类、通知 metadata 与 abandon boundary 的 focused contract tests，并核对 retry workflow 只声明 `release_id`。
+- covers: `REQ-MVR-006`, `REQ-MVR-017`, `REQ-MVR-019`
+- Pass condition: frozen inputs 后的恢复保留原 release identity、版本、merge SHA、run ID 和已绑定摘要；成功推进清除旧 failure；可用 inputs artifact 拒绝 input-only abandon；只有无 artifact 或已证明 artifact 不可恢复且具备人工确认与 incident reason 时才允许 abandon。
+
+### VER-MVR-014
+
+- Method: 运行 frozen-media preflight、产品复用和 workflow 顺序 contract tests，并检查静态输出证明的 identity、source SHA 与 inputs manifest digest 绑定。
+- covers: `REQ-MVR-018`
+- Pass condition: media closure 缺口在 image packaging 前失败；同一 frozen snapshot、manifest 和 build config 的静态输出可被 image build 复用；identity、source 或 inputs digest 不匹配时拒绝复用，预检失败不绑定 products。
+
+### VER-MVR-015
+
+- Method: 在不改变 production/latest 或生产内容指针的 pre-completion release identity 上执行一次 GitHub Actions 原运行 rerun drill，并保存原 run URL、run attempt、ledger 与 artifact 证据。
+- covers: `REQ-MVR-017`, `REQ-MVR-018`
+- Pass condition: rerun 继续原 Product Release run，run ID、版本、merge SHA、冻结 inputs 和已验证 products 不变，`run_attempt` 递增，预检与后续边界实际执行；不得生成新版本、successor identity 或生产指针变化。
+
 ## Related ADRs
 
 - [ADR 0014](../../adr/0014-unified-product-release-version-scope.md)
@@ -171,10 +203,13 @@
 - [ADR 0017](../../adr/0017-product-prerelease-publication-boundary.md)
 - [ADR 0018](../../adr/0018-product-prerelease-version-allocation.md)
 - [ADR 0025](../../adr/0025-release-pr-check-attestation.md)
+- [ADR 0029](../../adr/0029-release-recovery-and-frozen-media-preflight.md)
 
 ## References
 
 - [Semantic Versioning 2.0.0](https://semver.org/)
 - [Style Playbook: Manual version release delivery](https://github.com/IvanLi-CN/style-playbook-skills/blob/745edab21fbe8b8a2f9f13c13c34498a9d3945cb/skills/style-playbook/references/topics/manual-version-release-delivery/TOPIC.md)
+- [Style Playbook: Release failure notification](https://github.com/IvanLi-CN/style-playbook-skills/blob/745edab21fbe8b8a2f9f13c13c34498a9d3945cb/skills/style-playbook/references/topics/release-failure-notification/TOPIC.md)
+- [Style Playbook: Quality gates](https://github.com/IvanLi-CN/style-playbook-skills/blob/745edab21fbe8b8a2f9f13c13c34498a9d3945cb/skills/style-playbook/references/topics/quality-gates/TOPIC.md)
 - [实现状态](./IMPLEMENTATION.md)
 - [主题记录](./HISTORY.md)

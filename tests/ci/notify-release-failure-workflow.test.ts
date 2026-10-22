@@ -8,6 +8,7 @@ type NotifyJob = {
   secrets?: unknown;
   uses?: string;
   with?: Record<string, string>;
+  outputs?: Record<string, string>;
 };
 
 type Workflow = {
@@ -39,5 +40,37 @@ describe("notify-release-failure.yml", () => {
 
     expect(smokeSummary).toContain("status: smoke test");
     expect(smokeSummary).toContain("note: manual notifier smoke test");
+  });
+
+  test("keeps the failure identity boundary read-only and forwards recovery context", () => {
+    const identity = workflow.jobs.failure_identity;
+    const summary = workflow.jobs.release_failure.with?.summary ?? "";
+
+    expect(identity.permissions).toEqual({ contents: "read", actions: "read" });
+    for (const output of [
+      "source_sha",
+      "merge_sha",
+      "identity",
+      "run_url",
+      "attempt",
+      "phase",
+      "step",
+      "recovery",
+      "recovery_url",
+    ])
+      expect(identity.outputs?.[output]).toBeDefined();
+    for (const field of [
+      "source sha:",
+      "merge sha:",
+      "identity:",
+      "attempt:",
+      "phase:",
+      "step:",
+      "recovery:",
+      "recovery url:",
+    ])
+      expect(summary).toContain(field);
+    expect(summary).toContain("same-identity retry");
+    expect(summary).toContain("incident reason");
   });
 });

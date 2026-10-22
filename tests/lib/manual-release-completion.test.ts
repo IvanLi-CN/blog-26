@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import contractJson from "../../.github/release-contract.json";
 import {
+  assertRetryableProductRelease,
   manualRecoveryRunCanTakeOver,
   manualReleaseWorkflowRun,
+  productReleaseWorkflowPath,
   releaseRecoveryEventSchema,
 } from "../../src/lib/release/completion";
 import { GitHubRelease } from "../../src/lib/release/github";
@@ -117,5 +119,118 @@ describe("manual product release resolution", () => {
         contract.repository
       )
     ).toBe(true);
+  });
+
+  test("does not allow a new manual run to take over frozen inputs", () => {
+    const current = fixture([4]);
+    const merged = updateRelease(current, current.entries[0]?.id || "", {
+      stage: "merged",
+      mergeSha,
+      releaseRunId: 98,
+      failure: { phase: "preflight_media", runId: "98", attempt: 1 },
+    }).entries[0];
+    if (!merged) throw new Error("Missing merged fixture");
+    const withInputs = updateRelease(
+      merged ? { ...current, entries: [merged] } : current,
+      merged.id,
+      {
+        inputs: {
+          runId: 98,
+          artifactId: 10,
+          artifactName: `release-${merged.id}-inputs`,
+          manifestDigest: "d".repeat(64),
+          archiveDigest: `sha256:${"e".repeat(64)}`,
+        },
+      }
+    ).entries[0];
+    if (!withInputs) throw new Error("Missing frozen fixture");
+    expect(
+      manualRecoveryRunCanTakeOver(
+        withInputs,
+        {
+          id: 98,
+          workflow_id: 123,
+          run_attempt: 1,
+          head_sha: mergeSha,
+          head_branch: "main",
+          event: "workflow_dispatch",
+          status: "completed",
+          conclusion: "failure",
+          path: productReleaseWorkflowPath,
+          head_repository: { full_name: contract.repository },
+        },
+        contract.repository
+      )
+    ).toBe(false);
+  });
+
+  test("validates retry against the original run identity and merge source", () => {
+    const current = fixture([4]);
+    const entry = updateRelease(current, current.entries[0]?.id || "", {
+      stage: "merged",
+      mergeSha,
+      releaseRunId: 98,
+      failure: {
+        phase: "preflight_media",
+        step: "Preflight frozen media closure",
+        runId: "98",
+        attempt: 2,
+      },
+    }).entries[0];
+    if (!entry) throw new Error("Missing retry fixture");
+    expect(() =>
+      assertRetryableProductRelease(
+        entry,
+        {
+          id: 98,
+          workflow_id: 123,
+          run_attempt: 2,
+          head_sha: mergeSha,
+          head_branch: "main",
+          event: "workflow_run",
+          status: "completed",
+          conclusion: "failure",
+          path: productReleaseWorkflowPath,
+          head_repository: { full_name: contract.repository },
+        },
+        contract.repository
+      )
+    ).not.toThrow();
+    expect(() =>
+      assertRetryableProductRelease(
+        entry,
+        {
+          id: 99,
+          workflow_id: 123,
+          run_attempt: 2,
+          head_sha: mergeSha,
+          head_branch: "main",
+          event: "workflow_run",
+          status: "completed",
+          conclusion: "failure",
+          path: productReleaseWorkflowPath,
+          head_repository: { full_name: contract.repository },
+        },
+        contract.repository
+      )
+    ).toThrow("original release run");
+  });
+
+  test("reruns the original GitHub Actions run without dispatching a successor", () => {
+    let request: { endpoint: string; method: string } | undefined;
+    const app = new GitHubRelease(contract, "github-actions", {
+      request(endpoint, method = "GET") {
+        request = { endpoint, method };
+        return null;
+      },
+      command() {
+        throw new Error("Rerun validation must use the GitHub API");
+      },
+    });
+    app.rerunWorkflowRun(98);
+    expect(request).toEqual({
+      endpoint: `${app.root}/actions/runs/98/rerun`,
+      method: "POST",
+    });
   });
 });
