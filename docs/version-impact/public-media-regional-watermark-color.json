@@ -21,8 +21,8 @@
     "public/watermark-ivanli-a.light.v3.svg": "3c2867d74a3455b9d4678e0c3339af9b51848aeb",
     "public/watermark-ivanli-b.dark.v3.svg": "6687f0d1dc010c6b39a673c49c087eac86723973",
     "public/watermark-ivanli-b.light.v3.svg": "c081fcf6aa44c81db5c410a6c288a1e39263a997",
-    "scripts/package-public-media.test.ts": "202c289d0e695261488bce663ea49df48e3e12fc",
-    "scripts/package-public-media.ts": "3d1ec676d03eabe82982c74033ca429746564244",
+    "scripts/package-public-media.test.ts": "33b6b8af18d638e8adf9eb08809e0f7ad75f67f7",
+    "scripts/package-public-media.ts": "62832d35c5687ea417ae9fa8f391b6c91a50e58a",
     "scripts/prepare-edgeone-pwa-config.ts": "9dd8b3af81d88ec05f13b84a3ed4d4ac28476cb1",
     "scripts/verify-pages-build.test.ts": "dd5eda445e9178aeae576dfcf89c43450e26279d",
     "scripts/verify-pages-build.ts": "ab0d379093911c3c44366d39b15a730fd5af3fd5",
@@ -63,7 +63,7 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The implementation selects ink from the rendered coverage ROI, shares a WatermarkPlan across Imagor and Sharp paths, weights animated frames by display duration, and exposes only complete v3 A/B pairs to new snapshots.",
+      "reasoning": "The implementation selects ink from the rendered coverage ROI, shares a WatermarkPlan across Imagor and Sharp paths, weights animated frames by display duration, and exposes only complete v3 A/B pairs to new snapshots and frozen static builds.",
       "assessed_at": "2026-10-22T03:05:42+08:00",
       "evidence": [
         {
@@ -99,8 +99,8 @@
         },
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "202c289d0e695261488bce663ea49df48e3e12fc",
-          "command": "Packaging and pages-build tests pass with complete v3 resource closure and historical candidate handling"
+          "blob": "33b6b8af18d638e8adf9eb08809e0f7ad75f67f7",
+          "command": "Packaging tests pass when a frozen snapshot references either a base asset or only one v3 watermark candidate, preserving complete A/B closure and historical candidate handling"
         },
         {
           "path": "docs/specs/public-media-assets-facade/assets/watermark-regional-v3-fixed-color.gif",
