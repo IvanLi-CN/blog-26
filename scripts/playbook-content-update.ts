@@ -18,6 +18,7 @@ import {
   hasSupplementAssetIdentity,
   type ReleaseTrigger,
   resolveRelease,
+  shouldSyncSupplement,
 } from "../src/lib/playbook/release";
 import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
 import type { PlaybookSupplementEnvelope } from "../src/lib/playbook/types";
@@ -298,7 +299,8 @@ try {
   throw error;
 }
 const current = await readPublicPointer(manifestUrl);
-await syncSupplementToConsole(selected.manifest.source);
-const summary = `Playbook result: ${result}\n\n${encodeJson({ adopted: current, upstreamRunId: input.source_run_id || null, supplement: supplementRoot ? (selected.supplement?.manifest ?? null) : null, downstreamRun: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` })}`;
+const supplementSynced = shouldSyncSupplement(current, selected.manifest);
+if (supplementSynced) await syncSupplementToConsole(selected.manifest.source);
+const summary = `Playbook result: ${result}\n\n${encodeJson({ adopted: current, upstreamRunId: input.source_run_id || null, supplement: supplementSynced && supplementRoot ? (selected.supplement?.manifest ?? null) : null, supplementSynced, downstreamRun: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` })}`;
 console.log(summary);
 if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, summary);

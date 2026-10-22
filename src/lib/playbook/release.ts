@@ -100,6 +100,13 @@ export function adoptionDecision(candidate: PlaybookManifest, current?: Playbook
     : ("update" as const);
 }
 
+export function shouldSyncSupplement(
+  current: PlaybookEditionIdentity | undefined,
+  candidate: PlaybookManifest
+) {
+  return Boolean(current && encodeJson(current.source) === encodeJson(candidate.source));
+}
+
 function uniqueAsset(
   release: SourceRelease,
   name: string,

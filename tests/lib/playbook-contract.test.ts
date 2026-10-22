@@ -39,6 +39,7 @@ import {
   type ReleaseReader,
   resolveRelease,
   type SourceRelease,
+  shouldSyncSupplement,
 } from "../../src/lib/playbook/release";
 import { assertPublicCatalog, PLAYBOOK_MAX_BUNDLE_BYTES } from "../../src/lib/playbook/schema";
 import {
@@ -765,6 +766,13 @@ describe("playbook-dispatch-and-reconcile", () => {
         current.edition.edition
       )
     ).toThrow();
+  });
+  test("only syncs a supplement for the adopted public source", () => {
+    const current = makePublicBundle("v3.0.0", "100");
+    const older = makePublicBundle("v2.9.0", "99");
+
+    expect(shouldSyncSupplement(current.edition.edition, current.manifest)).toBe(true);
+    expect(shouldSyncSupplement(current.edition.edition, older.manifest)).toBe(false);
   });
 });
 
