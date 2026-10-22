@@ -8,7 +8,11 @@ import {
 } from "../src/lib/playbook/bundle";
 import { githubReleaseReader } from "../src/lib/playbook/github";
 import { encodeJson } from "../src/lib/playbook/manifest";
-import { resolveRelease } from "../src/lib/playbook/release";
+import {
+  PlaybookSupplementUnavailableError,
+  readSupplementAsset,
+  resolveRelease,
+} from "../src/lib/playbook/release";
 import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
 
 const pointer = await readPublicPointer(PLAYBOOK_PUBLIC_POINTER_URL);
@@ -45,7 +49,7 @@ await mkdir(directory, { recursive: true });
 await rm(supplementDirectory, { recursive: true, force: true });
 if (!pointer) {
   const archive = await reader.asset(selected.bundleAssetId, selected.manifest.bundle.size);
-  readPublicArchive(archive, selected.manifest);
+  readPublicArchive(archive, selected.manifest, selected.sourceTimestamp);
   await writeFile(
     resolve(directory, "playbook-public-manifest.json"),
     encodeJson(selected.manifest)
@@ -54,13 +58,23 @@ if (!pointer) {
 }
 if (selected.supplementStatus === "invalid") {
   console.warn("Ignoring invalid optional Playbook supplement; public bundle remains usable");
+} else if (selected.supplementStatus === "unavailable") {
+  console.warn("Deferring optional Playbook supplement because its assets are unavailable");
 } else if (selected.supplement) {
   try {
-    const supplementArchive = await reader.asset(
+    const supplementArchive = await readSupplementAsset(
+      reader,
       selected.supplement.bundleAssetId,
-      selected.supplement.manifest.bundle.size
+      selected.supplement.manifest.bundle.size,
+      "Supplement bundle asset"
     );
-    parseSupplementFiles(readSupplementArchive(supplementArchive, selected.supplement.manifest));
+    parseSupplementFiles(
+      readSupplementArchive(
+        supplementArchive,
+        selected.supplement.manifest,
+        selected.sourceTimestamp
+      )
+    );
     await mkdir(supplementDirectory, { recursive: true });
     await writeFile(
       resolve(supplementDirectory, "playbook-private-supplement-manifest.json"),
@@ -70,8 +84,10 @@ if (selected.supplementStatus === "invalid") {
       resolve(supplementDirectory, "playbook-private-supplement.tar.gz"),
       supplementArchive
     );
-  } catch {
-    console.warn("Ignoring invalid optional Playbook supplement; public bundle remains usable");
+  } catch (error) {
+    console.warn(
+      `Ignoring ${error instanceof PlaybookSupplementUnavailableError ? "unavailable" : "invalid"} optional Playbook supplement; public bundle remains usable`
+    );
   }
 }
 if (process.env.GITHUB_ENV)

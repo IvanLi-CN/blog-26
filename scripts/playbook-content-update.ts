@@ -16,7 +16,9 @@ import {
 } from "../src/lib/playbook/manifest";
 import {
   deployContent,
+  PlaybookSupplementUnavailableError,
   type ReleaseTrigger,
+  readSupplementAsset,
   resolveRelease,
   shouldSyncSupplement,
 } from "../src/lib/playbook/release";
@@ -54,7 +56,7 @@ if (!selected) {
   process.exit(0);
 }
 const archive = await reader.asset(selected.bundleAssetId, selected.manifest.bundle.size);
-const publicFiles = readPublicArchive(archive, selected.manifest);
+const publicFiles = readPublicArchive(archive, selected.manifest, selected.sourceTimestamp);
 const taskRoot = resolve(
   process.env.RUNNER_TEMP || ".tmp",
   `playbook-${process.env.GITHUB_RUN_ID || "local"}`
@@ -72,11 +74,17 @@ let supplementFileBytes: Map<string, Uint8Array> | undefined;
 let supplementStatus = selected.supplementStatus;
 if (selected.supplement) {
   try {
-    const supplementArchive = await reader.asset(
+    const supplementArchive = await readSupplementAsset(
+      reader,
       selected.supplement.bundleAssetId,
-      selected.supplement.manifest.bundle.size
+      selected.supplement.manifest.bundle.size,
+      "Supplement bundle asset"
     );
-    const files = readSupplementArchive(supplementArchive, selected.supplement.manifest);
+    const files = readSupplementArchive(
+      supplementArchive,
+      selected.supplement.manifest,
+      selected.sourceTimestamp
+    );
     const parsedSupplement = parseSupplementFiles(files);
     supplementFileBytes = files;
     supplementEnvelope = {
@@ -96,9 +104,10 @@ if (selected.supplement) {
     supplementRoot = candidateRoot;
   } catch (error) {
     supplementFileBytes = undefined;
-    supplementStatus = "invalid";
+    supplementStatus =
+      error instanceof PlaybookSupplementUnavailableError ? "unavailable" : "invalid";
     console.warn(
-      `Ignoring invalid optional Playbook supplement: ${error instanceof Error ? error.message : String(error)}`
+      `Ignoring ${supplementStatus} optional Playbook supplement: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }
@@ -378,7 +387,11 @@ try {
 }
 let supplementSynced = false;
 let supplementStaged = false;
-if (current && shouldSyncSupplement(current, selected.manifest)) {
+if (supplementStatus === "unavailable") {
+  console.warn(
+    "Playbook supplement sync deferred because optional assets are unavailable; existing overlay remains deployed"
+  );
+} else if (current && shouldSyncSupplement(current, selected.manifest)) {
   try {
     const syncResult = await syncSupplementToConsole(selected.manifest.source);
     supplementStaged = true;

@@ -33,6 +33,7 @@ export async function readBounded(stream: ReadableStream<Uint8Array>, maxBytes: 
 
 export function githubReleaseReader(token = process.env.GH_TOKEN): ReleaseReader {
   if (!token) throw new Error("A source-read GitHub token is required");
+  const commitCache = new Map<string, Promise<{ sha: string; timestamp: number }>>();
   async function api(
     path: string,
     binary = false,
@@ -76,6 +77,19 @@ export function githubReleaseReader(token = process.env.GH_TOKEN): ReleaseReader
   }
   const json = async (path: string) => JSON.parse(new TextDecoder().decode(await api(path)));
   const prefix = `repos/${PLAYBOOK_REPOSITORY}`;
+  const commitInfo = (tag: string) => {
+    const cached = commitCache.get(tag);
+    if (cached) return cached;
+    const request = (async () => {
+      const value = await json(`${prefix}/commits/${encodeURIComponent(tag)}`);
+      const timestamp = Date.parse(value.commit?.committer?.date || "") / 1000;
+      if (!Number.isSafeInteger(timestamp) || timestamp < 0)
+        throw new Error("Source commit committer timestamp is invalid");
+      return { sha: value.sha, timestamp };
+    })();
+    commitCache.set(tag, request);
+    return request;
+  };
   return {
     async list() {
       const releases: SourceRelease[] = [];
@@ -87,7 +101,8 @@ export function githubReleaseReader(token = process.env.GH_TOKEN): ReleaseReader
       throw new Error("Release pagination exceeded the configured bound");
     },
     release: (id) => json(`${prefix}/releases/${encodeURIComponent(id)}`),
-    commit: async (tag) => (await json(`${prefix}/commits/${encodeURIComponent(tag)}`)).sha,
+    commit: async (tag) => (await commitInfo(tag)).sha,
+    commitTimestamp: async (tag) => (await commitInfo(tag)).timestamp,
     asset: (id, maxBytes = PLAYBOOK_MAX_BUNDLE_BYTES) =>
       api(`${prefix}/releases/assets/${id}`, true, maxBytes),
   };

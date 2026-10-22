@@ -38,7 +38,9 @@ import {
 import {
   adoptionDecision,
   deployContent,
+  PlaybookSupplementUnavailableError,
   type ReleaseReader,
+  readSupplementAsset,
   resolveRelease,
   type SourceRelease,
   shouldSyncSupplement,
@@ -372,6 +374,49 @@ describe("playbook-public-contract", () => {
         },
       })
     ).toThrow("ustar");
+  });
+  test("rejects non-deterministic archive metadata and mismatched source timestamps", () => {
+    const publicBundle = makePublicBundle();
+    const sourceTimestamp = 1_735_689_600;
+    const archive = makeArchive(publicBundle.files, sourceTimestamp);
+    const manifest = {
+      ...publicBundle.manifest,
+      bundle: { ...publicBundle.manifest.bundle, size: archive.length, sha256: sha256(archive) },
+    };
+    expect(readPublicArchive(archive, manifest, sourceTimestamp)).toBeInstanceOf(Map);
+    expect(() => readPublicArchive(archive, manifest, sourceTimestamp + 1)).toThrow("timestamp");
+
+    const supplement = makeSupplementBundle();
+    const supplementArchive = makeArchive(supplement.files, sourceTimestamp);
+    const supplementManifest = {
+      ...supplement.manifest,
+      bundle: {
+        ...supplement.manifest.bundle,
+        size: supplementArchive.length,
+        sha256: sha256(supplementArchive),
+      },
+    };
+    expect(
+      readSupplementArchive(supplementArchive, supplementManifest, sourceTimestamp)
+    ).toBeInstanceOf(Map);
+    const nonDeterministicArchive = makeArchive(
+      supplement.files.map((file) => ({ ...file, mode: "0000600\0" })),
+      sourceTimestamp
+    );
+    expect(() =>
+      readSupplementArchive(
+        nonDeterministicArchive,
+        {
+          ...supplementManifest,
+          bundle: {
+            ...supplementManifest.bundle,
+            size: nonDeterministicArchive.length,
+            sha256: sha256(nonDeterministicArchive),
+          },
+        },
+        sourceTimestamp
+      )
+    ).toThrow("metadata");
   });
   test("rejects nested internal key variants without excluding ordinary public fields", () => {
     for (const key of [
@@ -749,6 +794,7 @@ function sourceReader(
       return release;
     },
     commit: async () => "a".repeat(40),
+    commitTimestamp: async () => 0,
     asset: async (id) => {
       const asset = bytes.get(id);
       if (!asset) throw new Error(`Unknown fixture asset ${id}`);
@@ -952,6 +998,31 @@ describe("playbook-dispatch-and-reconcile", () => {
     });
     expect(selectedWithoutSupplementAssets?.supplement).toBeUndefined();
     expect(selectedWithoutSupplementAssets?.supplementStatus).toBe("invalid");
+  });
+  test("preserves the existing supplement when optional asset reads are temporarily unavailable", async () => {
+    const publicBundle = makePublicBundle();
+    const supplement = makeSupplementBundle();
+    const base = sourceReader([publicBundle], [supplement]);
+    const reader: ReleaseReader = {
+      ...base,
+      asset: async (id, maxBytes) => {
+        if (id === 3) throw new Error("temporary GitHub source failure");
+        return base.asset(id, maxBytes);
+      },
+    };
+    const selected = await resolveRelease(reader, {
+      mode: "release",
+      source_repository: publicBundle.manifest.source.repository,
+      source_release_id: publicBundle.manifest.source.releaseId,
+      source_tag: publicBundle.manifest.source.tag,
+      source_sha: publicBundle.manifest.source.commit,
+      bundle_sha256: publicBundle.manifest.bundle.sha256,
+    });
+    expect(selected.supplement).toBeUndefined();
+    expect(selected.supplementStatus).toBe("unavailable");
+    await expect(
+      readSupplementAsset(reader, 3, supplement.archive.length, "Supplement manifest asset")
+    ).rejects.toBeInstanceOf(PlaybookSupplementUnavailableError);
   });
   test("skips duplicates and late releases, rejects republished content", () => {
     const current = makePublicBundle();

@@ -16,17 +16,20 @@ import type {
 } from "../../src/lib/playbook/types";
 import { webDemoCatalog, webDemoSearch } from "../../src/lib/playbook/web-demo-fixture";
 
-export function makeArchive(files: { path: string; content: string; kind?: string }[]) {
+export function makeArchive(
+  files: { path: string; content: string; kind?: string; mode?: string }[],
+  sourceTimestamp = 0
+) {
   const parts: Buffer[] = [];
   for (const file of files) {
     const body = Buffer.from(file.content);
     const header = Buffer.alloc(512);
     header.write(file.path, 0, 100);
-    header.write("0000644\0", 100);
+    header.write(file.mode || "0000644\0", 100);
     header.write("0000000\0", 108);
     header.write("0000000\0", 116);
     header.write(`${body.length.toString(8).padStart(11, "0")}\0`, 124);
-    header.write("00000000000\0", 136);
+    header.write(`${sourceTimestamp.toString(8).padStart(11, "0")}\0`, 136);
     header.fill(32, 148, 156);
     header.write(file.kind || "0", 156);
     header.write("ustar\0", 257);
@@ -35,7 +38,9 @@ export function makeArchive(files: { path: string; content: string; kind?: strin
     header.write(`${checksum.toString(8).padStart(6, "0")}\0 `, 148);
     parts.push(header, body, Buffer.alloc((512 - (body.length % 512)) % 512));
   }
-  return gzipSync(Buffer.concat([...parts, Buffer.alloc(1024)]));
+  const archive = gzipSync(Buffer.concat([...parts, Buffer.alloc(1024)]));
+  archive.writeUInt32LE(sourceTimestamp, 4);
+  return archive;
 }
 
 export function makePublicBundle(

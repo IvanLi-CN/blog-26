@@ -32,6 +32,7 @@ export interface ReleaseReader {
   list(): Promise<SourceRelease[]>;
   release(id: string): Promise<SourceRelease>;
   commit(tag: string): Promise<string>;
+  commitTimestamp(tag: string): Promise<number>;
   asset(id: number, maxBytes?: number): Promise<Uint8Array>;
 }
 
@@ -60,7 +61,27 @@ export interface ReleaseTrigger {
   source_run_id?: string;
 }
 
-export type PlaybookSupplementStatus = "absent" | "valid" | "invalid";
+export type PlaybookSupplementStatus = "absent" | "valid" | "invalid" | "unavailable";
+
+export class PlaybookSupplementUnavailableError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "PlaybookSupplementUnavailableError";
+  }
+}
+
+export async function readSupplementAsset(
+  reader: ReleaseReader,
+  id: number,
+  maxBytes: number,
+  label: string
+) {
+  try {
+    return await reader.asset(id, maxBytes);
+  } catch (error) {
+    throw new PlaybookSupplementUnavailableError(`${label} could not be read`, { cause: error });
+  }
+}
 
 const SUPPLEMENT_IDENTITY_FIELDS = [
   "supplement_bundle_sha256",
@@ -150,6 +171,7 @@ async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
   const manifestBytes = await reader.asset(manifestAsset.id, manifestAsset.size);
   const manifest = parseManifest(parseJson(decodeUtf8(manifestBytes, "Public manifest")), "public");
   const commit = await reader.commit(release.tag_name);
+  const sourceTimestamp = await reader.commitTimestamp(release.tag_name);
   if (
     manifest.source.releaseId !== String(release.id) ||
     manifest.source.tag !== release.tag_name ||
@@ -184,9 +206,11 @@ async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
         supplementBundleAsset.size > PLAYBOOK_MAX_BUNDLE_BYTES
       )
         throw new Error("Release supplement assets are not ready");
-      const supplementManifestBytes = await reader.asset(
+      const supplementManifestBytes = await readSupplementAsset(
+        reader,
         supplementManifestAsset.id,
-        supplementManifestAsset.size
+        supplementManifestAsset.size,
+        "Supplement manifest asset"
       );
       const supplementManifest = parseManifest(
         parseJson(decodeUtf8(supplementManifestBytes, "Supplement manifest")),
@@ -221,14 +245,16 @@ async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
     }
   } catch (error) {
     // The supplement is an optional admin overlay; public adoption remains valid.
-    supplementStatus = "invalid";
+    supplementStatus =
+      error instanceof PlaybookSupplementUnavailableError ? "unavailable" : "invalid";
     console.warn(
-      "[playbook] ignoring invalid supplement assets:",
+      `[playbook] ignoring ${supplementStatus} supplement assets:`,
       error instanceof Error ? error.message : String(error)
     );
   }
   return {
     manifest,
+    sourceTimestamp,
     bundleAssetId: bundleAsset.id,
     bundleAssetSize: bundleAsset.size,
     bundleAssetDigest: bundleAsset.digest,
@@ -278,6 +304,13 @@ function assertOptionalAssetIdentity(
     input.supplement_manifest_asset_size,
   ];
   if (!resolved.supplement) {
+    if (resolved.supplementStatus === "unavailable") {
+      if (hasSupplementAssetIdentity(input))
+        console.warn(
+          "[playbook] supplement identity cannot be checked while assets are unavailable"
+        );
+      return true;
+    }
     if (hasSupplementAssetIdentity(input))
       console.warn(
         "[playbook] ignoring supplement identity because supplement assets are unavailable"

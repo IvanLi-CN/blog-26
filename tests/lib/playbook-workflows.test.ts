@@ -92,7 +92,10 @@ describe("playbook deployment boundaries", () => {
     expect(updateScript).toContain("/api/admin/playbook/supplement");
     expect(updateScript).toContain("PLAYBOOK_SUPPLEMENT_SYNC_TOKEN");
     expect(updateScript).toContain('supplementStatus = "invalid"');
+    expect(updateScript).toContain("supplementStatus =");
+    expect(updateScript).toContain('"unavailable"');
     expect(updateScript).toContain("Ignoring invalid optional Playbook supplement");
+    expect(updateScript).toContain("existing overlay remains deployed");
     expect(updateScript).not.toContain("Playbook supplement verification failed");
     expect(updateScript).toContain("shouldSyncSupplement(current, selected.manifest)");
     expect(updateScript).toContain('supplementStatus === "invalid"');
