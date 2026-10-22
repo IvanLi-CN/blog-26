@@ -1487,6 +1487,11 @@ describe("playbook-cache-http-ssr", () => {
     expect(store.adminEdition?.supplement).toBeUndefined();
     await store.updateSupplement(older.edition.edition.source, olderSupplement);
     expect(store.adminEdition?.supplement).toBeDefined();
+
+    await expect(
+      store.updateSupplement(newer.edition.edition.source, newerSupplement)
+    ).rejects.toThrow("adopted rollback");
+    expect(store.adminEdition?.supplement?.manifest.source.tag).toBe("v3.0.0");
   });
   test("stages a rollback overlay before the public store adopts an older edition", async () => {
     const root = await temp();

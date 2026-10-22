@@ -352,6 +352,20 @@ export class PlaybookStore {
         options.allowRollback &&
         compareStableTags(parsedSource.tag, this.state.current.edition.source.tag) < 0
     );
+    const isActiveRollback = Boolean(
+      this.state.current &&
+        this.state.previous &&
+        compareStableTags(
+          this.state.current.edition.source.tag,
+          this.state.previous.edition.source.tag
+        ) < 0
+    );
+    if (
+      isActiveRollback &&
+      this.state.current &&
+      compareStableTags(parsedSource.tag, this.state.current.edition.source.tag) > 0
+    )
+      throw new Error("Playbook supplement source is newer than the adopted rollback");
     const isRollbackSupplement = isAdoptedRollback || isPendingRollback;
     for (const existing of [this.state.current?.edition.source, this.supplementSource]) {
       if (!existing || samePlaybookSource(existing, parsedSource) || isRollbackSupplement) continue;
