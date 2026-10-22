@@ -25,6 +25,21 @@ function writeBuildFile(root: string, relativePath: string, content: string) {
   writeFileSync(absolutePath, content, "utf8");
 }
 
+function writeV3WatermarkFiles(root: string) {
+  writeBuildFile(root, "site-dist/watermark-ivanli-a.light.v3.svg", "<svg fill='#fff'></svg>");
+  writeBuildFile(root, "site-dist/watermark-ivanli-a.dark.v3.svg", "<svg fill='#24352d'></svg>");
+  writeBuildFile(
+    root,
+    "site-dist/watermark-ivanli-b.light.v3.svg",
+    "<svg fill='#fff'><g class='watermark-domain'><path d='M0 0L1 1'/></g></svg>"
+  );
+  writeBuildFile(
+    root,
+    "site-dist/watermark-ivanli-b.dark.v3.svg",
+    "<svg fill='#24352d'><g class='watermark-domain'><path d='M0 0L1 1'/></g></svg>"
+  );
+}
+
 describe("verify-pages-build", () => {
   it("checks browser media references independently of serialized island props", () => {
     const url = "/api/public/assets/post/hello/hash/cover.webp";
@@ -115,6 +130,7 @@ describe("verify-pages-build", () => {
       "site-dist/watermark-ivanli-b.v1.svg",
       "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0L1 1'/></g></svg>"
     );
+    writeV3WatermarkFiles(cwd);
     writeBuildFile(
       cwd,
       "site-dist/robots.txt",
@@ -199,6 +215,7 @@ describe("verify-pages-build", () => {
       "site-dist/watermark-ivanli-b.v1.svg",
       "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0L1 1'/></g></svg>"
     );
+    writeV3WatermarkFiles(cwd);
     writeBuildFile(
       cwd,
       "site-dist/robots.txt",
@@ -284,6 +301,7 @@ describe("verify-pages-build", () => {
       "site-dist/watermark-ivanli-b.v1.svg",
       "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0L1 1'/></g></svg>"
     );
+    writeV3WatermarkFiles(cwd);
     writeBuildFile(
       cwd,
       "site-dist/robots.txt",
@@ -367,6 +385,7 @@ describe("verify-pages-build", () => {
       "site-dist/watermark-ivanli-b.v1.svg",
       "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0L1 1'/></g></svg>"
     );
+    writeV3WatermarkFiles(cwd);
     writeBuildFile(
       cwd,
       "site-dist/robots.txt",
@@ -422,6 +441,7 @@ describe("verify-pages-build", () => {
       "site-dist/watermark-ivanli-b.v1.svg",
       "<svg viewBox='0 0 1 1'><g class='watermark-domain'><path d='M0 0M4 4'/><path d='M0 0Z'/><path d='M4 4L4 4'/><path d='M0 0A1 1 0 0 0 0 0'/></g></svg>"
     );
+    writeV3WatermarkFiles(cwd);
     writeBuildFile(
       cwd,
       "site-dist/robots.txt",

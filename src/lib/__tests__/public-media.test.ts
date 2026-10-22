@@ -159,7 +159,7 @@ describe("public-media", () => {
           role: "content",
           variant: "card",
         })
-      ).toContain("/wm-a-v2/card.webp");
+      ).toContain("/wm-a-v3/card.webp");
       expect(
         buildPublicMediaAssetUrl({
           context,
@@ -167,7 +167,7 @@ describe("public-media", () => {
           role: "content",
           variant: "content",
         })
-      ).toContain("/wm-b-v2/content.webp");
+      ).toContain("/wm-b-v3/content.webp");
     });
 
     it("enumerates A/B candidates from an already normalized source path", () => {
@@ -183,12 +183,12 @@ describe("public-media", () => {
         a: expect.stringContaining("/demo-post/"),
         b: expect.stringContaining("/demo-post/"),
       });
-      expect(presentations?.a).toContain("/wm-a-v2/content.webp");
-      expect(presentations?.b).toContain("/wm-b-v2/content.webp");
+      expect(presentations?.a).toContain("/wm-a-v3/content.webp");
+      expect(presentations?.b).toContain("/wm-b-v3/content.webp");
       expect(presentations?.a).not.toContain("/blog/blog/");
     });
 
-    it("keeps admin defaults on the legacy path while accepting explicit candidates", () => {
+    it("uses v3 defaults for admin previews while accepting explicit candidates", () => {
       const adminContext = { ...context, assetScope: "admin-preview" as const };
       expect(
         buildPublicMediaAssetUrl({
@@ -197,7 +197,7 @@ describe("public-media", () => {
           role: "content",
           variant: "content",
         })
-      ).toContain("/content.webp");
+      ).toContain("/wm-b-v3/content.webp");
       expect(
         buildPublicMediaAssetUrl({
           context: adminContext,
@@ -205,7 +205,7 @@ describe("public-media", () => {
           role: "content",
           variant: "content",
         })
-      ).not.toContain("/wm-");
+      ).toContain("/wm-b-v3/content.webp");
       expect(
         buildPublicMediaAssetUrl({
           context: adminContext,
@@ -285,6 +285,39 @@ describe("public-media", () => {
           full: {
             a: "/api/public/assets/post/demo-post/abc123/wm-a-v2/full.webp",
             b: "/api/public/assets/post/demo-post/abc123/wm-b-v2/full.webp",
+          },
+        },
+        poster: null,
+        playback: null,
+        sources: [],
+      };
+
+      expect(
+        supportsPublicMediaPresentations({
+          primary: null,
+          cover: null,
+          content: [item],
+          attachments: [],
+        })
+      ).toBe(true);
+    });
+
+    it("accepts complete current v3 candidates", () => {
+      const item = {
+        hash: "abc123",
+        kind: "image" as const,
+        role: "content" as const,
+        alt: null,
+        sourcePath: "blog/assets/photo.png",
+        variants: {},
+        presentations: {
+          content: {
+            a: "/api/public/assets/post/demo-post/abc123/wm-a-v3/content.webp",
+            b: "/api/public/assets/post/demo-post/abc123/wm-b-v3/content.webp",
+          },
+          full: {
+            a: "/api/public/assets/post/demo-post/abc123/wm-a-v3/full.webp",
+            b: "/api/public/assets/post/demo-post/abc123/wm-b-v3/full.webp",
           },
         },
         poster: null,

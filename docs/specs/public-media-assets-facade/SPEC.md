@@ -62,7 +62,7 @@
   - `GET /api/public/assets/:kind/:slug/:mediaHash/:renderId/:variant.:ext`
 - 旧的 `GET /api/public/assets/:kind/:slug/:mediaHash/:variant.:ext` 保留历史语义；新快照和页面使用版本化路径。
 - `kind` 只允许 `post | memo`。
-- `renderId` 只允许登记值 `wm-a-v1 | wm-b-v1 | wm-a-v2 | wm-b-v2`，不得接受任意处理表达式、关闭水印参数或未知身份；`play` 受控播放变体不接受任何 renderId。v2 是当前默认身份，v1 保留旧快照兼容并不改写其历史字节语义。
+- `renderId` 只允许登记值 `wm-a-v1 | wm-b-v1 | wm-a-v2 | wm-b-v2 | wm-a-v3 | wm-b-v3`，不得接受任意处理表达式、关闭水印参数或未知身份；`play` 受控播放变体不接受任何 renderId。v3 是当前默认身份，v2 与 v1 保留旧快照兼容并不改写其历史字节语义。
 - `variant` 固定为：
   - `card`
   - `cover`
@@ -98,8 +98,9 @@
   - raw 原图 URL
   - raw 原视频 URL
 - 公开图片、GIF 派生帧、视频 poster 必须 strip metadata / EXIF。
+- v3 选色逐帧累计覆盖区评分，不保留整段 GIF 的原始分析帧；视频首帧分析响应在流式读取时限制为 20 MiB，超限或分析超时返回受控处理器错误。分析总预算从入队开始计算，排队超时直接移除；已启动任务超时后仍由底层处理结束释放执行槽位。
 - 图片、GIF 单帧或视频 poster 派生结果宽 `<240px`、高 `<160px`、或面积 `<80,000px²` 时跳过水印；尺寸必须在方向校正、缩放/取帧之后判断。
-- `wm-a-v2` 为 Iv 标志，最终宽度 7%；`wm-b-v2` 为 Iv 标志与 `ivanli.cc`，最终宽度 18%；两者右/下边距均为最终图像宽度 2%。A/B 都使用无描边白色主体与短距暗色柔和阴影，整体不透明度 64%；B 的分隔线与域名文字保持同一白色主体。v2 的 imagor filter 显式传入宽度比例和非约束的 `h_ratio=100`，以最终输出宽度为唯一尺寸口径；本地 Sharp 路径保持相同宽度规则。v1 继续用于旧快照兼容。imagor filter 的 `alpha` 使用 36。
+- `wm-a-v2` / `wm-b-v2` 保持既有固定白色语义；v3 的 A 为 Iv 标志、B 为 Iv 标志与 `ivanli.cc`，最终宽度分别为 7% 与 18%，右/下边距均为最终图像宽度 2%。v3 在实际覆盖区的白色与墨绿主体中选择对比更强的一色，主体 alpha mask 排除 SVG 空白与柔影；整体不透明度仍为 64%，B 的分隔线与域名文字保持同一主体色。选色在方向校正、缩放或取帧后、烧录前进行，透明源按白底评分但输出保留透明度；保留动画 GIF 综合所有帧并按显示时长加权后固定一种颜色。v2/v3 的 imagor filter 显式传入宽度比例和非约束的 `h_ratio=100`，以最终输出宽度为唯一尺寸口径；本地 Sharp 路径保持相同宽度规则。v1/v2 继续用于旧快照兼容。imagor filter 的 `alpha` 使用 36。
 - 公开页面与灯箱按实际 CSS 可见宽度独立选择：`<600` 用 A，`>=600` 用 B；DPR 不改变构图。card 默认 A，其余图片用途默认 B；正常页面测量后校正，无法测量的 RSS/分享/禁用 JS 输出按用途默认。
 - 列表、时间线、相关推荐、详情封面、正文和灯箱保留现有图框但使用 `contain` 完整显示，允许留白；移除图片自身 hover 放大。
 
@@ -213,7 +214,7 @@
   - `IMAGOR_AUTO_AVIF=1`（官方文档标注 experimental）
   - `IMAGOR_AUTO_JPEG=1`
   - `VIPS_STRIP_METADATA=1`
-- 水印使用 imagor `watermark(...)` filter，且 watermark image 固定回源 blog 自己提供的版本化静态 SVG 文件 `/watermark-ivanli-a.v1.svg` 或 `/watermark-ivanli-b.v1.svg`；禁止使用内联 `data:` URL watermark。视频 poster 使用 `frame(0)`，视频 A/B 尺寸用相同配方的签名 `/meta` 读取。
+- 水印使用 imagor `watermark(...)` filter，且 watermark image 固定回源 blog 自己提供的版本化静态 SVG 文件；v1/v2 使用各自历史文件，v3 使用对应 A/B 的白色或墨绿候选文件，由服务端选色后选择一个。禁止使用内联 `data:` URL watermark。视频 poster 使用 `frame(0)`，视频 A/B 尺寸用相同配方的签名 `/meta` 读取并在烧录前取得无水印分析帧。
 - 版本化 Logo SVG 与兼容的 `/watermark-ivanli.svg` 必须作为公开静态产物随 `site-dist` 一起落盘，并由 blog 同源公开入口直接提供；不得依赖独立对象存储、运行时生成、或 internal source 路由来承接 watermark 文件。
 - 公开媒体链路不允许运行时 fallback；`imagorvideo` 不可用、配置错误、或 internal source 回源失败时，门面必须直接返回错误，由部署/监控暴露故障。
 - blog 服务需要知道 imagor 的访问基址与签名配置，才能生成代理请求 URL；前台不可见 imagor 真实地址。
@@ -247,6 +248,10 @@
 - Responsive Logo A at 393 CSS px keeps the full image inside the existing frame: [logo-watermark-mobile-393.png](./assets/logo-watermark-mobile-393.png) (`需确认`)
 - Responsive Logo B at 1440 CSS px includes the domain while preserving the existing frame: [logo-watermark-desktop-1440.png](./assets/logo-watermark-desktop-1440.png) (`需确认`)
 - Desktop lightbox independently selects the full Logo B rendition and keeps the image undistorted: [logo-watermark-lightbox-desktop.png](./assets/logo-watermark-lightbox-desktop.png) (`需确认`)
+- Current local Sharp oversized output on a dark background selects the white Logo A/B candidates: [watermark-regional-v3-dark-background-a.png](./assets/watermark-regional-v3-dark-background-a.png), [watermark-regional-v3-dark-background-b.png](./assets/watermark-regional-v3-dark-background-b.png) (`已确认`)
+- Current local Sharp oversized output on a light background selects the dark-green Logo A/B candidates: [watermark-regional-v3-light-background-a.png](./assets/watermark-regional-v3-light-background-a.png), [watermark-regional-v3-light-background-b.png](./assets/watermark-regional-v3-light-background-b.png) (`已确认`)
+- Current local Sharp output on a mixed background keeps the selected ink inside the actual right-bottom coverage area: [watermark-regional-v3-complex-a.png](./assets/watermark-regional-v3-complex-a.png), [watermark-regional-v3-complex-b.png](./assets/watermark-regional-v3-complex-b.png) (`已确认`)
+- Current local Sharp animated output keeps one ink choice across both GIF frames while preserving the 100ms/900ms delays: [watermark-regional-v3-fixed-color.gif](./assets/watermark-regional-v3-fixed-color.gif), [watermark-regional-v3-gif-frame-0.png](./assets/watermark-regional-v3-gif-frame-0.png), [watermark-regional-v3-gif-frame-1.png](./assets/watermark-regional-v3-gif-frame-1.png) (`已确认`)
 
 ## 10. 参考
 

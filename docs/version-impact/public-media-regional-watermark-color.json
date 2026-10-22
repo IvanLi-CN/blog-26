@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "8e15818aad5ebe923c6d7f43b37a6e0a05ec6af2",
+  "covered_files": {
+    "GLOSSARY.md": "e2f189d9fe249724a2b033699e52d5d5936f5fa3",
+    "docs/public-media-watermark-design.md": "ff0ae471041172778b4fe57d43749127e9eb491f",
+    "docs/specs/public-media-assets-facade/HISTORY.md": "a02e86f768ffa7a3476065e2a33f8a055bb62813",
+    "docs/specs/public-media-assets-facade/IMPLEMENTATION.md": "0a859d8d537025f0e05692799560eca3315d47c8",
+    "docs/specs/public-media-assets-facade/SPEC.md": "ebd692dfd61ca3c25dc563072f34bac44227ca44",
+    "docs/specs/public-media-assets-facade/assets/watermark-regional-v3-complex-a.png": "ea136e2326b8a27f6853037a707e556a41860ea2",
+    "docs/specs/public-media-assets-facade/assets/watermark-regional-v3-complex-b.png": "445afe7e259cdd7fdbf900a6366e7e04df30973f",
+    "docs/specs/public-media-assets-facade/assets/watermark-regional-v3-dark-background-a.png": "2bca88e9fe155e0d3fde657f962c22c335ffcea9",
+    "docs/specs/public-media-assets-facade/assets/watermark-regional-v3-dark-background-b.png": "d64bf1424f32ecc18e8b7d7511caddc01035d375",
+    "docs/specs/public-media-assets-facade/assets/watermark-regional-v3-fixed-color.gif": "b940ffe33a59fca97c104430fb578ebe75b6c85a",
+    "docs/specs/public-media-assets-facade/assets/watermark-regional-v3-gif-frame-0.png": "4175d86f1bbe4c0f76b726870c314b4328edf608",
+    "docs/specs/public-media-assets-facade/assets/watermark-regional-v3-gif-frame-1.png": "879e4ad94fa4d8579f7ca1b923cc2e6014ec2496",
+    "docs/specs/public-media-assets-facade/assets/watermark-regional-v3-light-background-a.png": "d14104063d7c55b16d5b3e6d2752159eb98291f2",
+    "docs/specs/public-media-assets-facade/assets/watermark-regional-v3-light-background-b.png": "71f9b48b492131d5343d0a4bddc50d06fc7bfac1",
+    "public/watermark-ivanli-a.dark.v3.svg": "f10485dbecda2f2d108e84e9a82e97fc78792dfe",
+    "public/watermark-ivanli-a.light.v3.svg": "3c2867d74a3455b9d4678e0c3339af9b51848aeb",
+    "public/watermark-ivanli-b.dark.v3.svg": "6687f0d1dc010c6b39a673c49c087eac86723973",
+    "public/watermark-ivanli-b.light.v3.svg": "c081fcf6aa44c81db5c410a6c288a1e39263a997",
+    "scripts/package-public-media.test.ts": "202c289d0e695261488bce663ea49df48e3e12fc",
+    "scripts/package-public-media.ts": "3d1ec676d03eabe82982c74033ca429746564244",
+    "scripts/prepare-edgeone-pwa-config.ts": "9dd8b3af81d88ec05f13b84a3ed4d4ac28476cb1",
+    "scripts/verify-pages-build.test.ts": "dd5eda445e9178aeae576dfcf89c43450e26279d",
+    "scripts/verify-pages-build.ts": "ab0d379093911c3c44366d39b15a730fd5af3fd5",
+    "src/components/common/markdown/plugins/rehype-image-optimization.test.ts": "9653608e785040ebc668397a39360a2c706a2425",
+    "src/components/common/markdown/plugins/rehype-image-optimization.ts": "234450b67811944641217af51270dcfc86a45200",
+    "src/lib/__tests__/public-media.test.ts": "43d43826303b492efef575e368be952ee51869c4",
+    "src/lib/public-media.ts": "cafb5b630d157f8618121ee65fee6b12412ceed5",
+    "src/server/http-compat-api.test.ts": "e9362d5553829935e7a27714cec7ad23ac9c0b64",
+    "src/server/public-media-watermark-assets.test.ts": "e2544c82793a1ea188db07101a0ad6205c97c78d",
+    "src/server/public-media-watermark.test.ts": "c291e26cda237383021a43da7fc77be0a5aafca2",
+    "src/server/public-media-watermark.ts": "3520a18f2256e40e57980233aa01f92d22ffc4a1",
+    "src/server/public-media.ts": "c7824a36d5f2ef340d3aa4c8e3ca71b0704d58d6",
+    "tests/lib/public-pwa-edgeone-config.test.ts": "bb956f5963a045f6b63135c44e3bbe67c9e0d6df",
+    "tests/e2e/guest/posts-cover-fallback.spec.ts": "e3c944c7bf300644e4f50da392aab21572b0a460"
+  },
+  "change": {
+    "description": "Choose white or dark-green public watermark ink from the actual coverage region, keep one duration-weighted choice across animated GIF frames, and publish complete wm-a-v3/wm-b-v3 asset pairs while preserving historical identities.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "The candidate adds compatible public media rendition behavior and versioned v3 assets while retaining v1/v2 URLs, geometry, authorization boundaries, and video playback semantics.",
+      "assessed_at": "2026-10-22T03:05:42+08:00",
+      "evidence": [
+        {
+          "path": "docs/specs/public-media-assets-facade/SPEC.md",
+          "blob": "ebd692dfd61ca3c25dc563072f34bac44227ca44",
+          "command": "Public media SPEC records regional coverage scoring, fixed GIF ink, v3 identities, and historical snapshot compatibility"
+        },
+        {
+          "path": "docs/adr/0025-display-selected-watermark-renditions.md",
+          "blob": "13580d50916339306815f61efdc2396c2d7f4161",
+          "command": "ADR records the existing A/B geometry and render identity boundary extended by this compatible v3 color selection"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "The implementation selects ink from the rendered coverage ROI, shares a WatermarkPlan across Imagor and Sharp paths, weights animated frames by display duration, and exposes only complete v3 A/B pairs to new snapshots.",
+      "assessed_at": "2026-10-22T03:05:42+08:00",
+      "evidence": [
+        {
+          "path": "src/server/public-media-watermark.ts",
+          "blob": "3520a18f2256e40e57980233aa01f92d22ffc4a1",
+          "command": "WatermarkPlan, alpha-mask scoring, cache/in-flight merge, and bounded analysis implementation"
+        },
+        {
+          "path": "src/server/public-media-watermark.test.ts",
+          "blob": "c291e26cda237383021a43da7fc77be0a5aafca2",
+          "command": "Focused scoring, transparent-background, duration weighting, timeout, queue deadline, and asset identity tests"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains limited to public media rendering, static asset identity, documentation, and their tests; no persistence schema, playback stream, or release workflow behavior changed."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "HTTP compatibility, watermark, packaging, build, and animation evidence pass; v1/v2 snapshots remain compatible and public analysis failures stay controlled without original-media fallback.",
+      "assessed_at": "2026-10-22T03:05:42+08:00",
+      "evidence": [
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "e9362d5553829935e7a27714cec7ad23ac9c0b64",
+          "command": "bun test src/server/http-compat-api.test.ts: 100 tests pass and 3 are skipped on the final candidate"
+        },
+        {
+          "path": "src/server/public-media-watermark.test.ts",
+          "blob": "c291e26cda237383021a43da7fc77be0a5aafca2",
+          "command": "Regional scoring and analysis lifecycle tests pass on the final candidate; real GIF evidence keeps one ink color with 100ms/900ms duration weighting"
+        },
+        {
+          "path": "scripts/package-public-media.test.ts",
+          "blob": "202c289d0e695261488bce663ea49df48e3e12fc",
+          "command": "Packaging and pages-build tests pass with complete v3 resource closure and historical candidate handling"
+        },
+        {
+          "path": "docs/specs/public-media-assets-facade/assets/watermark-regional-v3-fixed-color.gif",
+          "blob": "b940ffe33a59fca97c104430fb578ebe75b6c85a",
+          "command": "Owner-confirmed derived GIF output and decoded frame evidence show a fixed selected ink across animation"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1"
+      ],
+      "evidence": [
+        {
+          "path": "src/lib/__tests__/public-media.test.ts",
+          "blob": "43d43826303b492efef575e368be952ee51869c4",
+          "command": "Public media URL tests verify complete v3 A/B pairing, legacy v1/v2 identity, and CSS-width composition selection"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local content format, browser persistence, or durable release-ledger state changes; v3 candidates are regenerated from public snapshots and static artifacts.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "e9362d5553829935e7a27714cec7ad23ac9c0b64",
+          "command": "HTTP compatibility coverage exercises authorization, media transforms, GIFs, and video-cover boundaries without state migration"
+        }
+      ]
+    }
+  }
+}

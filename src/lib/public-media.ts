@@ -12,7 +12,14 @@ export const PUBLIC_MEDIA_VARIANTS = [
   "poster",
   "play",
 ] as const;
-export const PUBLIC_MEDIA_RENDER_IDS = ["wm-a-v1", "wm-b-v1", "wm-a-v2", "wm-b-v2"] as const;
+export const PUBLIC_MEDIA_RENDER_IDS = [
+  "wm-a-v1",
+  "wm-b-v1",
+  "wm-a-v2",
+  "wm-b-v2",
+  "wm-a-v3",
+  "wm-b-v3",
+] as const;
 export const PUBLIC_MEDIA_ROLES = ["cover", "content", "attachment", "playback"] as const;
 
 export type PublicContentKind = (typeof PUBLIC_CONTENT_KINDS)[number];
@@ -189,7 +196,7 @@ export function isPublicMediaRenderId(value: string): value is PublicMediaRender
 export function getDefaultPublicMediaRenderId(
   variant: Exclude<PublicMediaVariant, "play">
 ): PublicMediaRenderId {
-  return variant === "card" ? "wm-a-v2" : "wm-b-v2";
+  return variant === "card" ? "wm-a-v3" : "wm-b-v3";
 }
 
 export function normalizePublicMediaExt(value: string) {
@@ -368,9 +375,7 @@ export function buildPublicMediaAssetUrl(params: {
       params.renderId === null
         ? undefined
         : (params.renderId ??
-          (params.context.assetScope === "admin-preview" ||
-          params.variant === "play" ||
-          params.context.supportsResponsiveWatermark === false
+          (params.variant === "play" || params.context.supportsResponsiveWatermark === false
             ? undefined
             : getDefaultPublicMediaRenderId(params.variant))),
     variant: params.variant,
@@ -402,7 +407,9 @@ function isCurrentWatermarkPresentationPair(presentations: PublicMediaPresentati
   try {
     const aPath = new URL(presentations.a, "https://public.invalid").pathname;
     const bPath = new URL(presentations.b, "https://public.invalid").pathname;
-    return /(?:^|\/)wm-a-v2\//u.test(aPath) && /(?:^|\/)wm-b-v2\//u.test(bPath);
+    const aVersion = /(?:^|\/)wm-a-(v2|v3)\//u.exec(aPath)?.[1];
+    const bVersion = /(?:^|\/)wm-b-(v2|v3)\//u.exec(bPath)?.[1];
+    return Boolean(aVersion && bVersion && aVersion === bVersion);
   } catch {
     return false;
   }
@@ -431,8 +438,8 @@ export function buildPublicMediaPresentations(params: {
     }
     return buildPublicMediaAssetUrl({ ...params, renderId });
   };
-  const a = buildCandidate("wm-a-v2");
-  const b = buildCandidate("wm-b-v2");
+  const a = buildCandidate("wm-a-v3");
+  const b = buildCandidate("wm-b-v3");
   if (!a || !b) return null;
   return { a, b } satisfies PublicMediaPresentations;
 }
