@@ -368,6 +368,32 @@ describe("packagePublicMedia", () => {
     ).toBe(true);
   });
 
+  test("can prefetch v3 watermark variants when migrating a legacy candidate", async () => {
+    const cwd = await fixture();
+    const watermark = "/api/public/assets/post/logo/hash/wm-b-v1/content.webp?v=2026-10-15";
+    await writeFile(join(cwd, "site-dist", "snapshot.json"), `{"media":"${watermark}"}`);
+
+    const requestedUrls: string[] = [];
+    await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      includeDerivedWatermarkVariants: true,
+      includeMigratedWatermarkVariants: true,
+      fetchImpl: async (input) => {
+        requestedUrls.push(String(input));
+        return response("image");
+      },
+    });
+
+    expect(requestedUrls).toEqual([
+      `https://api.example${watermark}`,
+      "https://api.example/api/public/assets/post/logo/hash/content.webp?v=2026-10-15",
+      "https://api.example/api/public/assets/post/logo/hash/wm-a-v3/content.webp?v=2026-10-15",
+      "https://api.example/api/public/assets/post/logo/hash/wm-b-v3/content.webp?v=2026-10-15",
+    ]);
+  });
+
   test("does not exempt non-stable or malformed Playbook edition paths", async () => {
     const cwd = await fixture();
     const invalidTagPath = join(
