@@ -31,7 +31,7 @@
     "src/lib/__tests__/public-media.test.ts": "43d43826303b492efef575e368be952ee51869c4",
     "src/lib/public-media.ts": "cafb5b630d157f8618121ee65fee6b12412ceed5",
     "src/lib/release/inputs.ts": "bf8b586faad79bac129b2cedfdae19d8b5275230",
-    "src/server/http-compat-api.test.ts": "36e8380ca37e648f7b2d40de8537521bd2dab089",
+    "src/server/http-compat-api.test.ts": "b252539706f6ddc938be017a8d6c748ad81ad485",
     "src/server/public-media-watermark-assets.test.ts": "e2544c82793a1ea188db07101a0ad6205c97c78d",
     "src/server/public-media-watermark.test.ts": "c291e26cda237383021a43da7fc77be0a5aafca2",
     "src/server/public-media-watermark.ts": "3520a18f2256e40e57980233aa01f92d22ffc4a1",
