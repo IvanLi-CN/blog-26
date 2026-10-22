@@ -246,7 +246,7 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "45e67c5384793fa721b4b91beaaa0d495479078d",
+          "blob": "759da82ede1c52e17b8356d8251ca959ff1061ca",
           "command": "Supplement persistence and conflicting overlay adoption retain a public-only fallback"
         }
       ]
