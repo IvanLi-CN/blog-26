@@ -5,10 +5,17 @@ import { PLAYBOOK_MAX_BUNDLE_BYTES, sourceSchema } from "@/lib/playbook/schema";
 import { samePlaybookSource, validatePlaybookSupplement } from "@/lib/playbook/supplement";
 
 const MAX_REQUEST_BYTES = PLAYBOOK_MAX_BUNDLE_BYTES;
+const supplementFilesSchema = z
+  .object({
+    catalog: z.string(),
+    search: z.string(),
+  })
+  .strict();
 const inputSchema = z
   .object({
     source: sourceSchema,
     supplement: z.unknown().nullable(),
+    supplementFiles: supplementFilesSchema.optional(),
   })
   .strict();
 
@@ -27,6 +34,19 @@ function hasSyncToken(request: Request) {
   const actual = Buffer.from(authorization.slice("Bearer ".length));
   const wanted = Buffer.from(expected);
   return actual.length === wanted.length && timingSafeEqual(actual, wanted);
+}
+
+function decodeSupplementFiles(value: z.infer<typeof supplementFilesSchema>) {
+  const decode = (encoded: string, path: string) => {
+    const bytes = Buffer.from(encoded, "base64");
+    if (!encoded || bytes.toString("base64") !== encoded)
+      throw new Error(`Invalid supplement file encoding: ${path}`);
+    return bytes;
+  };
+  return new Map<string, Uint8Array>([
+    ["catalog.json", decode(value.catalog, "catalog.json")],
+    ["search-documents.json", decode(value.search, "search-documents.json")],
+  ]);
 }
 
 async function readJson(request: Request) {
@@ -72,10 +92,20 @@ export async function handlePlaybookSupplementSyncRequest(
 
   try {
     const input = inputSchema.parse(await readJson(request));
+    const rawFiles =
+      input.supplement === null
+        ? undefined
+        : input.supplementFiles
+          ? decodeSupplementFiles(input.supplementFiles)
+          : undefined;
+    if (input.supplement !== null && !rawFiles)
+      throw new Error("Supplement file bytes are required");
     const supplement =
-      input.supplement === null ? undefined : validatePlaybookSupplement(input.supplement);
+      input.supplement === null
+        ? undefined
+        : validatePlaybookSupplement(input.supplement, rawFiles);
     await store.load();
-    const result = await store.updateSupplement(input.source, supplement);
+    const result = await store.updateSupplement(input.source, supplement, rawFiles);
     const current = store.current?.edition.source;
     return json(
       {

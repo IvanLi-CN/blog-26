@@ -63,6 +63,13 @@ async function readJson(response: Response) {
   return (await response.json()) as Record<string, any>;
 }
 
+function supplementFiles(bundle: ReturnType<typeof makeSupplementBundle>) {
+  return {
+    catalog: Buffer.from(bundle.files[0].content).toString("base64"),
+    search: Buffer.from(bundle.files[1].content).toString("base64"),
+  };
+}
+
 function createSuccessfulSyncResult() {
   return {
     success: true,
@@ -369,6 +376,30 @@ describe("HTTP compatibility APIs", () => {
     await store.adopt(publicBundle.edition);
 
     process.env.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN = "receiver-test-token";
+    const tamperedRoot = path.join(PLAYBOOK_TEST_PATH, "receiver-tampered");
+    fs.mkdirSync(tamperedRoot, { recursive: true });
+    const tamperedStore = new PlaybookStore(tamperedRoot);
+    await tamperedStore.adopt(publicBundle.edition);
+    const tamperedCatalog = structuredClone(supplement.catalog);
+    tamperedCatalog.snapshot.projects[0].description = "Tampered supplement content";
+    const tampered = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          source: supplementBundle.manifest.source,
+          supplement: { ...supplement, catalog: tamperedCatalog },
+          supplementFiles: supplementFiles(supplementBundle),
+        }),
+      }),
+      tamperedStore
+    );
+    expect(tampered.status).toBe(400);
+    expect(tamperedStore.adminEdition?.supplement).toBeUndefined();
+
     const unauthorized = await handlePlaybookSupplementSyncRequest(
       new Request("http://localhost/api/admin/playbook/supplement", {
         method: "PUT",
@@ -386,7 +417,11 @@ describe("HTTP compatibility APIs", () => {
           authorization: "Bearer receiver-test-token",
           "content-type": "application/json",
         },
-        body: JSON.stringify({ source: supplementBundle.manifest.source, supplement }),
+        body: JSON.stringify({
+          source: supplementBundle.manifest.source,
+          supplement,
+          supplementFiles: supplementFiles(supplementBundle),
+        }),
       }),
       store
     );
@@ -413,6 +448,7 @@ describe("HTTP compatibility APIs", () => {
         body: JSON.stringify({
           source: olderSupplementBundle.manifest.source,
           supplement: olderSupplement,
+          supplementFiles: supplementFiles(olderSupplementBundle),
         }),
       }),
       store
@@ -423,6 +459,16 @@ describe("HTTP compatibility APIs", () => {
     const conflictingCatalog = structuredClone(supplement.catalog);
     conflictingCatalog.snapshot.projects[0].slug = "sample-project";
     conflictingCatalog.project_details[0].item.slug = "sample-project";
+    const conflictingBundle = makeSupplementBundle(
+      supplementBundle.manifest.source.tag,
+      supplementBundle.manifest.source.releaseId,
+      conflictingCatalog
+    );
+    const conflictingSupplement = {
+      manifest: conflictingBundle.manifest,
+      catalog: JSON.parse(conflictingBundle.files[0].content),
+      search: JSON.parse(conflictingBundle.files[1].content),
+    };
     const rejected = await handlePlaybookSupplementSyncRequest(
       new Request("http://localhost/api/admin/playbook/supplement", {
         method: "PUT",
@@ -431,8 +477,9 @@ describe("HTTP compatibility APIs", () => {
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          source: supplementBundle.manifest.source,
-          supplement: { ...supplement, catalog: conflictingCatalog },
+          source: conflictingBundle.manifest.source,
+          supplement: conflictingSupplement,
+          supplementFiles: supplementFiles(conflictingBundle),
         }),
       }),
       store

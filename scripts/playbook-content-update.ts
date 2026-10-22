@@ -63,6 +63,7 @@ await writeFile(
 await writeFile(resolve(bundleRoot, "playbook-public.tar.gz"), archive);
 let supplementRoot: string | undefined;
 let supplementEnvelope: PlaybookSupplementEnvelope | null = null;
+let supplementFileBytes: Map<string, Uint8Array> | undefined;
 let supplementStatus = selected.supplementStatus;
 if (selected.supplement) {
   try {
@@ -70,8 +71,9 @@ if (selected.supplement) {
       selected.supplement.bundleAssetId,
       selected.supplement.manifest.bundle.size
     );
-    const supplementFiles = readSupplementArchive(supplementArchive, selected.supplement.manifest);
-    const parsedSupplement = parseSupplementFiles(supplementFiles);
+    const files = readSupplementArchive(supplementArchive, selected.supplement.manifest);
+    const parsedSupplement = parseSupplementFiles(files);
+    supplementFileBytes = files;
     supplementEnvelope = {
       manifest: selected.supplement.manifest,
       ...parsedSupplement,
@@ -88,6 +90,7 @@ if (selected.supplement) {
     );
     supplementRoot = candidateRoot;
   } catch (error) {
+    supplementFileBytes = undefined;
     if (hasSupplementAssetIdentity(input)) {
       throw new Error(
         `Playbook supplement verification failed: ${error instanceof Error ? error.message : String(error)}`
@@ -101,6 +104,23 @@ if (selected.supplement) {
 }
 
 async function syncSupplementToConsole(source: PlaybookSupplementEnvelope["manifest"]["source"]) {
+  let payload: Record<string, unknown> = { source, supplement: null };
+  if (supplementEnvelope) {
+    if (!supplementFileBytes)
+      throw new Error("Playbook supplement data is unavailable for console sync");
+    const catalogBytes = supplementFileBytes.get("catalog.json");
+    const searchBytes = supplementFileBytes.get("search-documents.json");
+    if (!catalogBytes || !searchBytes)
+      throw new Error("Playbook supplement files are incomplete for console sync");
+    payload = {
+      source,
+      supplement: supplementEnvelope,
+      supplementFiles: {
+        catalog: Buffer.from(catalogBytes).toString("base64"),
+        search: Buffer.from(searchBytes).toString("base64"),
+      },
+    };
+  }
   const token = process.env.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN?.trim();
   if (!token) throw new Error("PLAYBOOK_SUPPLEMENT_SYNC_TOKEN is required");
   const endpoint =
@@ -116,7 +136,7 @@ async function syncSupplementToConsole(source: PlaybookSupplementEnvelope["manif
       "content-type": "application/json",
       accept: "application/json",
     },
-    body: encodeJson({ source, supplement: supplementEnvelope }),
+    body: encodeJson(payload),
     redirect: "error",
     signal: AbortSignal.timeout(30_000),
   });

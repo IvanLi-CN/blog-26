@@ -235,17 +235,24 @@ export class PlaybookStore {
     }
   }
 
-  async updateSupplement(source: PlaybookSourceIdentity, supplement?: PlaybookSupplementEnvelope) {
-    return this.enqueueStateMutation(() => this.updateSupplementLocked(source, supplement));
+  async updateSupplement(
+    source: PlaybookSourceIdentity,
+    supplement?: PlaybookSupplementEnvelope,
+    rawFiles?: ReadonlyMap<string, Uint8Array>
+  ) {
+    return this.enqueueStateMutation(() =>
+      this.updateSupplementLocked(source, supplement, rawFiles)
+    );
   }
 
   private async updateSupplementLocked(
     source: PlaybookSourceIdentity,
-    supplement?: PlaybookSupplementEnvelope
+    supplement?: PlaybookSupplementEnvelope,
+    rawFiles?: ReadonlyMap<string, Uint8Array>
   ) {
     await this.load();
     const parsedSource = sourceSchema.parse(source);
-    const validated = supplement ? validatePlaybookSupplement(supplement) : undefined;
+    const validated = supplement ? validatePlaybookSupplement(supplement, rawFiles) : undefined;
     if (validated && !samePlaybookSource(parsedSource, validated.manifest.source))
       throw new Error("Playbook supplement source identity mismatch");
     const isAdoptedRollback = Boolean(
