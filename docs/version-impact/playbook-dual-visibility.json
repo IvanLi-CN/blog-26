@@ -64,7 +64,7 @@
       "evidence": [
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "545dc1c87da1b8c502926790e0c411d0d363814a",
+          "blob": "4339340e66d688f3f7e00f06e52b5026371dadea",
           "command": "Release reader validates public identity and treats the supplement as an optional administrator overlay"
         },
         {
@@ -95,7 +95,7 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "d31e213c7117dce4d3a00efa284dc1e20fc9a3f1",
+          "blob": "3195447017f32bd4735c4302c84d15b1ac0513d3",
           "command": "bun test tests/lib/playbook-contract.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
@@ -105,7 +105,7 @@
         },
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "545dc1c87da1b8c502926790e0c411d0d363814a",
+          "blob": "4339340e66d688f3f7e00f06e52b5026371dadea",
           "command": "Supplement identity and failure isolation tests keep explicit and optional public release paths distinct"
         },
         {
@@ -120,7 +120,7 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "d31e213c7117dce4d3a00efa284dc1e20fc9a3f1",
+          "blob": "3195447017f32bd4735c4302c84d15b1ac0513d3",
           "command": "Public and supplement contract tests preserve shared Markdown bytes and validate actual Rust exporter fixture bytes"
         }
       ]
@@ -226,12 +226,12 @@
       "evidence": [
         {
           "path": "src/lib/playbook/cache.ts",
-          "blob": "f57d620033f2e0762c0632e7b3dd9eda0304d190",
+          "blob": "faf0da170cce404f18b9338d0b4b8301ba95d890",
           "command": "Playbook cache persists an optional source-bound supplement and keeps malformed or mismatched data out of the admin read model"
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "d31e213c7117dce4d3a00efa284dc1e20fc9a3f1",
+          "blob": "3195447017f32bd4735c4302c84d15b1ac0513d3",
           "command": "Supplement persistence and conflicting overlay adoption retain a public-only fallback"
         }
       ]
