@@ -21,7 +21,7 @@
     "public/watermark-ivanli-a.light.v3.svg": "3c2867d74a3455b9d4678e0c3339af9b51848aeb",
     "public/watermark-ivanli-b.dark.v3.svg": "6687f0d1dc010c6b39a673c49c087eac86723973",
     "public/watermark-ivanli-b.light.v3.svg": "c081fcf6aa44c81db5c410a6c288a1e39263a997",
-    "scripts/package-public-media.test.ts": "ef8730008a152552047bf4e97c3bdf53ead14cc8",
+    "scripts/package-public-media.test.ts": "fcaa23991d2c2f50685e749ec2ec053e074d7906",
     "scripts/package-public-media.ts": "b9effcb06f4cc12bdf4ac8ab90c8ba022a294072",
     "scripts/prepare-edgeone-pwa-config.ts": "9dd8b3af81d88ec05f13b84a3ed4d4ac28476cb1",
     "scripts/verify-pages-build.test.ts": "dd5eda445e9178aeae576dfcf89c43450e26279d",
@@ -30,7 +30,7 @@
     "src/components/common/markdown/plugins/rehype-image-optimization.ts": "234450b67811944641217af51270dcfc86a45200",
     "src/lib/__tests__/public-media.test.ts": "43d43826303b492efef575e368be952ee51869c4",
     "src/lib/public-media.ts": "cafb5b630d157f8618121ee65fee6b12412ceed5",
-    "src/lib/release/inputs.ts": "bf8b586faad79bac129b2cedfdae19d8b5275230",
+    "src/lib/release/inputs.ts": "b9ccf36d6ae781e5f3141fbd76ef137c4f6e8f62",
     "src/server/http-compat-api.test.ts": "c10934eeea45e79370ebda02cb6369098cbdb617",
     "src/server/public-media-watermark-assets.test.ts": "e2544c82793a1ea188db07101a0ad6205c97c78d",
     "src/server/public-media-watermark.test.ts": "c291e26cda237383021a43da7fc77be0a5aafca2",
@@ -64,7 +64,7 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The implementation selects ink from the rendered coverage ROI, shares a WatermarkPlan across Imagor and Sharp paths, weights animated frames by display duration, and exposes only complete v3 A/B pairs to new snapshots and frozen static builds, including v1/v2 candidate migration inputs.",
+      "reasoning": "The implementation selects ink from the rendered coverage ROI, shares a WatermarkPlan across Imagor and Sharp paths, weights animated frames by display duration, and exposes only complete v3 A/B pairs to new snapshots while preserving complete same-version v1/v2 candidate families in frozen static builds.",
       "assessed_at": "2026-10-22T03:05:42+08:00",
       "evidence": [
         {
@@ -79,8 +79,8 @@
         },
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "bf8b586faad79bac129b2cedfdae19d8b5275230",
-          "command": "Release input freezing prefetches v3 watermark pairs when current content still exposes a legacy v1/v2 candidate"
+          "blob": "b9ccf36d6ae781e5f3141fbd76ef137c4f6e8f62",
+          "command": "Release input freezing keeps the private supplement snapshot while preserving complete same-version v1/v2 pairs from legacy snapshots and closing only new/current candidates with v3 siblings"
         }
       ],
       "scope_drift": {
@@ -105,8 +105,8 @@
         },
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "ef8730008a152552047bf4e97c3bdf53ead14cc8",
-          "command": "Packaging tests pass when a frozen snapshot references either a base asset, only one v3 watermark candidate, or a legacy candidate requiring v3 migration closure"
+          "blob": "fcaa23991d2c2f50685e749ec2ec053e074d7906",
+          "command": "Packaging tests pass for base assets, one-sided v3 candidates, complete legacy v2 pairs, and rejection of missing current siblings"
         },
         {
           "path": "docs/specs/public-media-assets-facade/assets/watermark-regional-v3-fixed-color.gif",
