@@ -25,10 +25,10 @@ import { extractMemoTitle, isGeneratedMemoTitle } from "@/lib/content-sources/ut
 import { extractPostCoverCandidate, isExternalImageUrl } from "@/lib/post-cover";
 import {
   createEmptyPublicMediaCollection,
+  getPublicMediaWatermarkVersion,
   type PublicMediaCollection,
   type PublicMediaItem,
   rewritePublicContentMediaUrls,
-  supportsPublicMediaPresentations,
 } from "@/lib/public-media";
 import { rebuildSnapshotTags } from "@/lib/snapshot-tags";
 import type {
@@ -117,34 +117,42 @@ function normalizeSnapshotPaths(
   snapshot: PublicSnapshot,
   preserveSourceDescriptors: boolean
 ): PublicSnapshot {
-  const posts = snapshot.posts.map((post) => ({
-    ...post,
-    media: normalizeSnapshotMedia(post.media, preserveSourceDescriptors),
-    filePath: getSnapshotRecordPath(post),
-    body: rewritePublicContentMediaUrls(post.body, {
-      kind: "post",
-      slug: post.slug,
+  const posts = snapshot.posts.map((post) => {
+    const watermarkRenderVersion = getPublicMediaWatermarkVersion(post.media);
+    return {
+      ...post,
+      media: normalizeSnapshotMedia(post.media, preserveSourceDescriptors),
       filePath: getSnapshotRecordPath(post),
-      supportsResponsiveWatermark: supportsPublicMediaPresentations(post.media),
-    }),
-  }));
-  const memos = snapshot.memos.map((memo) => ({
-    ...memo,
-    title: normalizeLegacyMemoTitle(
-      memo.title,
-      getSnapshotRecordPath(memo),
-      memo.content,
-      memo.slug
-    ),
-    media: normalizeSnapshotMedia(memo.media, preserveSourceDescriptors),
-    filePath: getSnapshotRecordPath(memo),
-    content: rewritePublicContentMediaUrls(memo.content, {
-      kind: "memo",
-      slug: memo.slug,
+      body: rewritePublicContentMediaUrls(post.body, {
+        kind: "post",
+        slug: post.slug,
+        filePath: getSnapshotRecordPath(post),
+        supportsResponsiveWatermark: watermarkRenderVersion !== null,
+        watermarkRenderVersion: watermarkRenderVersion ?? undefined,
+      }),
+    };
+  });
+  const memos = snapshot.memos.map((memo) => {
+    const watermarkRenderVersion = getPublicMediaWatermarkVersion(memo.media);
+    return {
+      ...memo,
+      title: normalizeLegacyMemoTitle(
+        memo.title,
+        getSnapshotRecordPath(memo),
+        memo.content,
+        memo.slug
+      ),
+      media: normalizeSnapshotMedia(memo.media, preserveSourceDescriptors),
       filePath: getSnapshotRecordPath(memo),
-      supportsResponsiveWatermark: supportsPublicMediaPresentations(memo.media),
-    }),
-  }));
+      content: rewritePublicContentMediaUrls(memo.content, {
+        kind: "memo",
+        slug: memo.slug,
+        filePath: getSnapshotRecordPath(memo),
+        supportsResponsiveWatermark: watermarkRenderVersion !== null,
+        watermarkRenderVersion: watermarkRenderVersion ?? undefined,
+      }),
+    };
+  });
   return rebuildSnapshotTags({ ...snapshot, posts, memos });
 }
 
