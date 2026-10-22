@@ -104,7 +104,8 @@ if (selected.supplement) {
 }
 
 async function syncSupplementToConsole(source: PlaybookSupplementEnvelope["manifest"]["source"]) {
-  let payload: Record<string, unknown> = { source, supplement: null };
+  const rollbackField = rollback ? { rollback: true } : {};
+  let payload: Record<string, unknown> = { source, supplement: null, ...rollbackField };
   if (supplementEnvelope) {
     if (!supplementFileBytes)
       throw new Error("Playbook supplement data is unavailable for console sync");
@@ -119,6 +120,7 @@ async function syncSupplementToConsole(source: PlaybookSupplementEnvelope["manif
         catalog: Buffer.from(catalogBytes).toString("base64"),
         search: Buffer.from(searchBytes).toString("base64"),
       },
+      ...rollbackField,
     };
   }
   const token = process.env.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN?.trim();

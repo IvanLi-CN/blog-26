@@ -1306,6 +1306,28 @@ describe("playbook-cache-http-ssr", () => {
     await store.updateSupplement(older.edition.edition.source, olderSupplement);
     expect(store.adminEdition?.supplement).toBeDefined();
   });
+  test("stages a rollback overlay before the public store adopts the previous edition", async () => {
+    const root = await temp();
+    const older = makePublicBundle("v3.0.0", "100");
+    const newer = makePublicBundle("v3.1.0", "101");
+    const olderSupplementBundle = makeSupplementBundle("v3.0.0", "100");
+    const olderSupplement = {
+      manifest: olderSupplementBundle.manifest,
+      catalog: JSON.parse(olderSupplementBundle.files[0].content),
+      search: JSON.parse(olderSupplementBundle.files[1].content),
+    };
+    const store = new PlaybookStore(root);
+
+    await store.adopt(older.edition);
+    await store.adopt(newer.edition);
+    await store.updateSupplement(older.edition.edition.source, olderSupplement, undefined, {
+      allowRollback: true,
+    });
+
+    expect(store.adminEdition?.supplement).toBeUndefined();
+    await store.adopt(older.edition);
+    expect(store.adminEdition?.supplement).toBeDefined();
+  });
   test("does not clear an accepted overlay on a same-source absent retry", async () => {
     const root = await temp();
     const current = makePublicBundle();

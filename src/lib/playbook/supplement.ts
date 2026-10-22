@@ -31,6 +31,12 @@ export function validatePlaybookSupplement(
     if (!catalogBytes || !searchBytes) throw new Error("Supplement data files are incomplete");
     verifyFile(catalogBytes, manifest.files[0]);
     verifyFile(searchBytes, manifest.files[1]);
+    const decodedCatalog = JSON.parse(new TextDecoder().decode(catalogBytes));
+    const decodedSearch = JSON.parse(new TextDecoder().decode(searchBytes));
+    if (encodeJson(decodedCatalog) !== encodeJson(catalog))
+      throw new Error("Supplement catalog projection does not match package bytes");
+    if (encodeJson(decodedSearch) !== encodeJson(search))
+      throw new Error("Supplement search projection does not match package bytes");
   }
   assertUniqueSearchIds(search.documents);
   return { manifest, catalog, search };

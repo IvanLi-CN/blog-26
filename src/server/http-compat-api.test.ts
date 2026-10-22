@@ -380,8 +380,8 @@ describe("HTTP compatibility APIs", () => {
     fs.mkdirSync(tamperedRoot, { recursive: true });
     const tamperedStore = new PlaybookStore(tamperedRoot);
     await tamperedStore.adopt(publicBundle.edition);
-    const tamperedCatalog = structuredClone(supplement.catalog);
-    tamperedCatalog.snapshot.projects[0].description = "Tampered supplement content";
+    const tamperedSearch = structuredClone(supplement.search);
+    tamperedSearch.documents[0].body = "Tampered supplement content";
     const tampered = await handlePlaybookSupplementSyncRequest(
       new Request("http://localhost/api/admin/playbook/supplement", {
         method: "PUT",
@@ -391,7 +391,7 @@ describe("HTTP compatibility APIs", () => {
         },
         body: JSON.stringify({
           source: supplementBundle.manifest.source,
-          supplement: { ...supplement, catalog: tamperedCatalog },
+          supplement: { ...supplement, search: tamperedSearch },
           supplementFiles: supplementFiles(supplementBundle),
         }),
       }),
@@ -486,6 +486,27 @@ describe("HTTP compatibility APIs", () => {
     );
     expect(rejected.status).toBe(400);
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+
+    const pendingRollback = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          source: olderSupplementBundle.manifest.source,
+          supplement: olderSupplement,
+          supplementFiles: supplementFiles(olderSupplementBundle),
+          rollback: true,
+        }),
+      }),
+      store
+    );
+    expect(pendingRollback.status).toBe(200);
+    expect(store.adminEdition?.supplement).toBeUndefined();
+    await store.adopt(publicBundle.edition);
+    expect(store.adminEdition?.supplement).toBeDefined();
 
     const restored = new PlaybookStore(receiverRoot);
     await restored.load(publicSeed);

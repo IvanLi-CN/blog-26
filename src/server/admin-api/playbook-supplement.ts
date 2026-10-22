@@ -17,6 +17,7 @@ const inputSchema = z
     source: sourceSchema,
     supplement: z.unknown().nullable(),
     supplementFiles: supplementFilesSchema.optional(),
+    rollback: z.boolean().optional(),
   })
   .strict();
 
@@ -106,7 +107,9 @@ export async function handlePlaybookSupplementSyncRequest(
         ? undefined
         : validatePlaybookSupplement(input.supplement, rawFiles);
     await store.load();
-    const result = await store.updateSupplement(input.source, supplement, rawFiles);
+    const result = await store.updateSupplement(input.source, supplement, rawFiles, {
+      allowRollback: input.rollback === true,
+    });
     const current = store.current?.edition.source;
     return json(
       {

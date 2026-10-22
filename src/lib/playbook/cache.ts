@@ -33,6 +33,9 @@ interface PlaybookSupplementState {
   source: PlaybookSourceIdentity;
   supplement: PlaybookSupplementEnvelope | null;
 }
+interface PlaybookSupplementUpdateOptions {
+  allowRollback?: boolean;
+}
 export type PlaybookFetcher = (url: string, init?: RequestInit) => Promise<Response>;
 export const PLAYBOOK_POLL_INTERVAL_MS = 300_000;
 export type PlaybookSchedule = (run: () => void, intervalMs: number) => () => void;
@@ -238,17 +241,19 @@ export class PlaybookStore {
   async updateSupplement(
     source: PlaybookSourceIdentity,
     supplement?: PlaybookSupplementEnvelope,
-    rawFiles?: ReadonlyMap<string, Uint8Array>
+    rawFiles?: ReadonlyMap<string, Uint8Array>,
+    options: PlaybookSupplementUpdateOptions = {}
   ) {
     return this.enqueueStateMutation(() =>
-      this.updateSupplementLocked(source, supplement, rawFiles)
+      this.updateSupplementLocked(source, supplement, rawFiles, options)
     );
   }
 
   private async updateSupplementLocked(
     source: PlaybookSourceIdentity,
     supplement?: PlaybookSupplementEnvelope,
-    rawFiles?: ReadonlyMap<string, Uint8Array>
+    rawFiles?: ReadonlyMap<string, Uint8Array>,
+    options: PlaybookSupplementUpdateOptions = {}
   ) {
     await this.load();
     const parsedSource = sourceSchema.parse(source);
@@ -261,8 +266,16 @@ export class PlaybookStore {
         samePlaybookSource(this.state.current.edition.source, parsedSource) &&
         compareStableTags(this.state.previous.edition.source.tag, parsedSource.tag) > 0
     );
+    const isPendingRollback = Boolean(
+      this.state.current &&
+        this.state.previous &&
+        options.allowRollback &&
+        samePlaybookSource(this.state.previous.edition.source, parsedSource) &&
+        compareStableTags(this.state.current.edition.source.tag, parsedSource.tag) > 0
+    );
+    const isRollbackSupplement = isAdoptedRollback || isPendingRollback;
     for (const existing of [this.state.current?.edition.source, this.supplementSource]) {
-      if (!existing || samePlaybookSource(existing, parsedSource) || isAdoptedRollback) continue;
+      if (!existing || samePlaybookSource(existing, parsedSource) || isRollbackSupplement) continue;
       const order = compareStableTags(parsedSource.tag, existing.tag);
       if (order < 0) throw new Error("Playbook supplement source is older than the receiver state");
       if (order === 0) throw new Error("Playbook supplement source identity conflict");
