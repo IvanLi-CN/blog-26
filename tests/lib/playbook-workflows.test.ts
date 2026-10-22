@@ -84,6 +84,8 @@ describe("playbook deployment boundaries", () => {
     expect(updateScript).toContain("/api/admin/playbook/supplement");
     expect(updateScript).toContain("PLAYBOOK_SUPPLEMENT_SYNC_TOKEN");
     expect(updateScript).toContain('supplementStatus = "invalid"');
+    expect(updateScript).toContain("Ignoring invalid optional Playbook supplement");
+    expect(updateScript).not.toContain("Playbook supplement verification failed");
     expect(updateScript).toContain(
       "shouldSyncSupplement(current, selected.manifest, supplementStatus)"
     );
@@ -108,6 +110,9 @@ describe("playbook deployment boundaries", () => {
     expect(prepare).toContain("downloadRetainedEdition(inputEdition, manifestUrl, destination)");
     expect(prepare).toContain("const edition = inputSeed");
     expect(prepare).toContain("mergePlaybookSupplement(edition, supplement)");
+    expect(prepare).toContain(
+      "Ignoring invalid optional Playbook supplement; public edition remains usable"
+    );
 
     const initial = await readFile("scripts/fetch-initial-playbook.ts", "utf8");
     expect(initial).toContain("GITHUB_OUTPUT");

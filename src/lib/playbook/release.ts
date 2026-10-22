@@ -282,7 +282,10 @@ function assertOptionalAssetIdentity(
     input.supplement_manifest_asset_size,
   ];
   if (!resolved.supplement) {
-    if (hasSupplementAssetIdentity(input)) throw new Error("Supplement assets are unavailable");
+    if (hasSupplementAssetIdentity(input))
+      console.warn(
+        "[playbook] ignoring supplement identity because supplement assets are unavailable"
+      );
     return;
   }
   if (!supplementFields.some(Boolean)) throw new Error("Supplement asset identity is required");

@@ -15,7 +15,6 @@ import {
 } from "../src/lib/playbook/manifest";
 import {
   deployContent,
-  hasSupplementAssetIdentity,
   type ReleaseTrigger,
   resolveRelease,
   shouldSyncSupplement,
@@ -92,11 +91,6 @@ if (selected.supplement) {
     supplementRoot = candidateRoot;
   } catch (error) {
     supplementFileBytes = undefined;
-    if (hasSupplementAssetIdentity(input)) {
-      throw new Error(
-        `Playbook supplement verification failed: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
     supplementStatus = "invalid";
     console.warn(
       `Ignoring invalid optional Playbook supplement: ${error instanceof Error ? error.message : String(error)}`

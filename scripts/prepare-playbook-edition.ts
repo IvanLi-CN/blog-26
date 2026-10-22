@@ -138,11 +138,15 @@ const supplementRoot = process.env.PLAYBOOK_SUPPLEMENT_DIR
     ? resolve(bundleRoot, "supplement")
     : undefined;
 if (supplementRoot) {
-  const supplement = await readPlaybookSupplement(supplementRoot);
-  if (!samePlaybookSource(edition.edition.source, supplement.manifest.source))
-    throw new Error("Playbook supplement source does not match the public edition");
-  mergePlaybookSupplement(edition, supplement);
-  await writeFile(supplementSeedPath, encodeJson(supplement));
+  try {
+    const supplement = await readPlaybookSupplement(supplementRoot);
+    if (!samePlaybookSource(edition.edition.source, supplement.manifest.source))
+      throw new Error("Playbook supplement source does not match the public edition");
+    mergePlaybookSupplement(edition, supplement);
+    await writeFile(supplementSeedPath, encodeJson(supplement));
+  } catch {
+    console.warn("Ignoring invalid optional Playbook supplement; public edition remains usable");
+  }
 } else if (process.env.PLAYBOOK_SUPPLEMENT_REQUIRED === "true") {
   throw new Error("Playbook supplement is required");
 }
