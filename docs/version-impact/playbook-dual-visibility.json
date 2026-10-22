@@ -25,7 +25,7 @@
     "src/lib/playbook/supplement.ts": "09c6ee7828cd8ac939c61a49c490d15c94fb4e08",
     "src/lib/playbook/types.ts": "f681e0254c8fbe17482c1fc85c0698c245ecef79",
     "src/lib/playbook/web-demo-fixture.ts": "05b0a4b7e8edfc8c022e8107e646b39cbec67f9e",
-    "src/lib/release/inputs.ts": "bf8b586faad79bac129b2cedfdae19d8b5275230",
+    "src/lib/release/inputs.ts": "b9ccf36d6ae781e5f3141fbd76ef137c4f6e8f62",
     "src/lib/release/source.ts": "2258ff7a6d77000f2d65da972d17d071b4b14cc4",
     "src/server/admin-api/playbook-supplement.ts": "f86901222fcce34f50ab74e33e5fad23e12f71c8",
     "src/server/admin-api/router.ts": "a570710b2d73376db2b681ad08d0f56b6c5d4e43",
