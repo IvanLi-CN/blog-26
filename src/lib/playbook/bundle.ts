@@ -4,6 +4,7 @@ import { gunzipSync, inflateRawSync } from "node:zlib";
 import {
   computeEditionDigest,
   encodeJson,
+  encodePlaybookRawFiles,
   fileRecord,
   parseManifest,
   sha256,
@@ -155,7 +156,13 @@ export function createPlaybookEdition(
   };
   edition.editionDigest = computeEditionDigest(edition);
   return legacyCatalog
-    ? { edition, catalog, search, legacyCatalog: true }
+    ? {
+        edition,
+        catalog,
+        search,
+        legacyCatalog: true,
+        legacyRawFiles: encodePlaybookRawFiles(files),
+      }
     : { edition, catalog, search };
 }
 

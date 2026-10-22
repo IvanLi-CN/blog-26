@@ -2,8 +2,15 @@ import { randomUUID } from "node:crypto";
 import { renameSync } from "node:fs";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import { encodeJson, parseEditionIdentity, samePlaybookEdition, verifyFile } from "./manifest";
-import { validatePlaybookSearchRoute } from "./navigation";
+import {
+  decodePlaybookRawFiles,
+  encodeJson,
+  encodePlaybookRawFiles,
+  parseEditionIdentity,
+  samePlaybookEdition,
+  verifyFile,
+} from "./manifest";
+import { normalizePlaybookSearch, validatePlaybookSearchRoute } from "./navigation";
 import { compareStableTags } from "./release";
 import {
   assertPublicCatalog,
@@ -55,34 +62,6 @@ function supplementProjectionFiles(supplement: PlaybookSupplementEnvelope) {
   ]);
 }
 
-function encodePersistedSupplementFiles(rawFiles: ReadonlyMap<string, Uint8Array>) {
-  const encode = (path: string) => {
-    const bytes = rawFiles.get(path);
-    if (!bytes) throw new Error(`Supplement data file is missing: ${path}`);
-    return Buffer.from(bytes).toString("base64");
-  };
-  return { catalog: encode("catalog.json"), search: encode("search-documents.json") };
-}
-
-function decodePersistedSupplementFiles(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value))
-    throw new Error("Supplement persisted file bytes are missing");
-  const input = value as Record<string, unknown>;
-  const decode = (field: string) => {
-    const encoded = input[field];
-    if (typeof encoded !== "string" || !encoded)
-      throw new Error(`Supplement persisted file bytes are invalid: ${field}`);
-    const bytes = Buffer.from(encoded, "base64");
-    if (bytes.toString("base64") !== encoded)
-      throw new Error(`Supplement persisted file bytes are invalid: ${field}`);
-    return bytes;
-  };
-  return new Map<string, Uint8Array>([
-    ["catalog.json", decode("catalog")],
-    ["search-documents.json", decode("search")],
-  ]);
-}
-
 export function playbookCacheDirectory(dbPath = process.env.DB_PATH || "./data/sqlite.db") {
   return resolve(process.env.PLAYBOOK_CACHE_DIR || join(dirname(dbPath), "playbook-cache"));
 }
@@ -95,18 +74,43 @@ export function validatePlaybookEdition(
   const input = value as Record<string, unknown>;
   const edition = parseEditionIdentity(input.edition);
   const legacyCatalog = input.legacyCatalog === true || isLegacyPublicCatalog(input.catalog);
+  const embeddedRawFiles = legacyCatalog
+    ? input.legacyRawFiles === undefined
+      ? undefined
+      : decodePlaybookRawFiles(input.legacyRawFiles)
+    : undefined;
+  const verifiedRawFiles = rawFiles ?? embeddedRawFiles;
+  if (legacyCatalog && !verifiedRawFiles)
+    throw new Error("Legacy public edition raw file bytes are required");
   const catalog = assertPublicCatalog(input.catalog);
-  const search = searchSchema.parse(input.search);
+  const parsedSearch = searchSchema.parse(input.search);
+  const search = legacyCatalog ? normalizePlaybookSearch(catalog, parsedSearch) : parsedSearch;
   const ids = new Set<string>();
   for (const document of search.documents) {
     if (ids.has(document.id)) throw new Error("Duplicate search id");
     ids.add(document.id);
     validatePlaybookSearchRoute(catalog, document);
   }
+  if (legacyCatalog) {
+    const rawCatalog = JSON.parse(new TextDecoder().decode(verifiedRawFiles?.get("catalog.json")));
+    const rawSearch = JSON.parse(
+      new TextDecoder().decode(verifiedRawFiles?.get("search-documents.json"))
+    );
+    const normalizedCatalog = assertPublicCatalog(rawCatalog);
+    const normalizedSearch = normalizePlaybookSearch(
+      normalizedCatalog,
+      searchSchema.parse(rawSearch)
+    );
+    if (
+      encodeJson(normalizedCatalog) !== encodeJson(catalog) ||
+      encodeJson(normalizedSearch) !== encodeJson(search)
+    )
+      throw new Error("Legacy public file projection mismatch");
+  }
   for (const file of edition.files.filter((entry) => entry.path !== "public-snapshot.json")) {
     const normalized = file.path === "catalog.json" ? catalog : search;
     const source = file.path === "catalog.json" ? input.catalog : input.search;
-    const raw = rawFiles?.get(file.path);
+    const raw = verifiedRawFiles?.get(file.path);
     if (raw) {
       verifyFile(raw, file);
       if (legacyCatalog) continue;
@@ -130,7 +134,13 @@ export function validatePlaybookEdition(
     verifyFile(input.publicSnapshot, snapshot);
   }
   return legacyCatalog
-    ? { edition, catalog, search, legacyCatalog: true }
+    ? {
+        edition,
+        catalog,
+        search,
+        legacyCatalog: true,
+        legacyRawFiles: encodePlaybookRawFiles(verifiedRawFiles),
+      }
     : { edition, catalog, search };
 }
 
@@ -263,8 +273,7 @@ export class PlaybookStore {
       try {
         const raw = JSON.parse(persistedSupplementState) as Record<string, unknown>;
         const source = sourceSchema.parse(raw.source);
-        const rawFiles =
-          raw.supplement === null ? undefined : decodePersistedSupplementFiles(raw.rawFiles);
+        const rawFiles = raw.supplement === null ? undefined : decodePlaybookRawFiles(raw.rawFiles);
         const supplement =
           raw.supplement === null
             ? undefined
@@ -328,7 +337,7 @@ export class PlaybookStore {
       ? validatePlaybookSupplement(supplement, validationFiles)
       : undefined;
     const persistedRawFiles = validated
-      ? encodePersistedSupplementFiles(validationFiles as ReadonlyMap<string, Uint8Array>)
+      ? encodePlaybookRawFiles(validationFiles as ReadonlyMap<string, Uint8Array>)
       : undefined;
     if (validated && !samePlaybookSource(parsedSource, validated.manifest.source))
       throw new Error("Playbook supplement source identity mismatch");

@@ -208,6 +208,8 @@ describe("playbook-public-contract", () => {
     expect(retained.legacyCatalog).toBe(true);
     expect(retained.edition).toEqual(sourceEdition.edition);
     expect(retained.catalog.snapshot.projects[0].catalog_visibility).toBe("public");
+    await rm(join(root, "retained/catalog.json"));
+    await rm(join(root, "retained/search-documents.json"));
     const publishedRoot = join(root, "published");
     await writePublicEdition(publishedRoot, retained, join(root, "retained"), "{}\n");
     const publishedDirectory = join(
@@ -221,6 +223,15 @@ describe("playbook-public-contract", () => {
     const restored = new PlaybookStore(join(root, "cache"));
     await restored.load(join(root, "missing-seed.json"));
     expect(restored.current?.edition).toEqual(sourceEdition.edition);
+
+    const persistedPath = join(root, "cache/state.json");
+    const persisted = JSON.parse(await readFile(persistedPath, "utf8"));
+    persisted.current.catalog.snapshot.projects[0].description = "Tampered legacy content";
+    persisted.current.catalog.project_details[0].item.description = "Tampered legacy content";
+    await writeFile(persistedPath, encodeJson(persisted));
+    const tampered = new PlaybookStore(join(root, "cache"));
+    await tampered.load(join(root, "missing-seed.json"));
+    expect(tampered.current).toBeUndefined();
   });
   test("rejects bad digests, traversal, links and duplicate tar entries without extraction", () => {
     const bundle = makePublicBundle();

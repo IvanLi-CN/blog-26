@@ -7,7 +7,13 @@ import {
   playbookVersionPath,
   validatePlaybookEdition,
 } from "./cache";
-import { encodeJson, parseEditionIdentity, samePlaybookEdition, verifyFile } from "./manifest";
+import {
+  decodePlaybookRawFiles,
+  encodeJson,
+  parseEditionIdentity,
+  samePlaybookEdition,
+  verifyFile,
+} from "./manifest";
 import { getPlaybookPolicies } from "./navigation";
 import type { PlaybookEdition, PlaybookEditionIdentity } from "./types";
 
@@ -130,10 +136,7 @@ export async function writePublicEdition(
   publicSnapshot: Uint8Array | string
 ) {
   const rawFiles = edition.legacyCatalog
-    ? new Map<string, Uint8Array>([
-        ["catalog.json", await readFile(join(bundleRoot, "catalog.json"))],
-        ["search-documents.json", await readFile(join(bundleRoot, "search-documents.json"))],
-      ])
+    ? decodePlaybookRawFiles(edition.legacyRawFiles)
     : undefined;
   validatePlaybookEdition(edition, rawFiles);
   const directory = join(publicRoot, playbookVersionPath(edition.edition));

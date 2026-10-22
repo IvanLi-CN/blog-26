@@ -26,6 +26,34 @@ export function encodeJson(value: unknown) {
   return `${JSON.stringify(value, (_key, nested) => (nested && typeof nested === "object" && !Array.isArray(nested) ? Object.fromEntries(Object.entries(nested).sort(([a], [b]) => a.localeCompare(b))) : nested), 2)}\n`;
 }
 
+export function encodePlaybookRawFiles(rawFiles: ReadonlyMap<string, Uint8Array>) {
+  const encode = (path: string) => {
+    const bytes = rawFiles.get(path);
+    if (!bytes) throw new Error(`Playbook data file is missing: ${path}`);
+    return Buffer.from(bytes).toString("base64");
+  };
+  return { catalog: encode("catalog.json"), search: encode("search-documents.json") };
+}
+
+export function decodePlaybookRawFiles(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error("Playbook raw file bytes are missing");
+  const input = value as Record<string, unknown>;
+  const decode = (field: string) => {
+    const encoded = input[field];
+    if (typeof encoded !== "string" || !encoded)
+      throw new Error(`Playbook raw file bytes are invalid: ${field}`);
+    const bytes = Buffer.from(encoded, "base64");
+    if (bytes.toString("base64") !== encoded)
+      throw new Error(`Playbook raw file bytes are invalid: ${field}`);
+    return bytes;
+  };
+  return new Map<string, Uint8Array>([
+    ["catalog.json", decode("catalog")],
+    ["search-documents.json", decode("search")],
+  ]);
+}
+
 export function fileRecord(path: string, content: Uint8Array | string): PlaybookManifestFile {
   return {
     path,
