@@ -6,9 +6,9 @@
     "Dockerfile": "d7b48d22e76236a2e951fe2474ba9186ebe07e17",
     ".github/workflows/playbook-content-rollback.yml": "73626071105bea6fc35fff8fb663aacd71d80e1f",
     ".github/workflows/playbook-content-update.yml": "56ba8614c27b065781f40898b541612d934c6521",
-    "docs/runbooks/style-playbook-publishing.md": "1cf6391de7354306d61d8eaf690659665edcabf0",
+    "docs/runbooks/style-playbook-publishing.md": "648ccdcb0a0ef3a4d38367a8f540ead31c592483",
     "docs/specs/style-playbook-integration/HISTORY.md": "c4ea01aba979fd59e193c15a5ea1858904024af5",
-    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "921e6c2b5c07997b79b9f79ae484e2d64ff3d947",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "f8915cda8ad19051fbc9e8d934cdf8d40882e524",
     "docs/specs/style-playbook-integration/SPEC.md": "1526c9cc6f512d7892789646e99272ebf178e883",
     "docs/specs/style-playbook-integration/contracts/public-package.md": "faa9766419f451ea74e4af7fbe254910399dcd29",
     "docs/specs/style-playbook-integration/contracts/release-trigger.md": "8f5ba5137026ecd18558f78f9bb7f741ddd9681c",
@@ -18,14 +18,14 @@
     "scripts/prepare-backend-dist.sh": "f2a8b868dbeefb9b28cfdefcfff3a74f9ecdc9b6",
     "scripts/prepare-playbook-edition.ts": "8e30dad44e1f98fa6dee579f6a0a3f3ce347ead6",
     "src/lib/admin-api-client.ts": "926e9bbc0c1d0c99b3b95d219eb88f6cbb9734f5",
-    "src/lib/playbook/artifacts.ts": "98f4d2aa7ac98565dddaa14cd60e085b9ac6cb81",
-    "src/lib/playbook/bundle.ts": "1d0517cb7624a91a2f12dce2c0ccfddd89c9a58f",
-    "src/lib/playbook/cache.ts": "4e22b5ceddf71ef236e1378d0500829f90acb16a",
+    "src/lib/playbook/artifacts.ts": "2cb826c29d253b9fdb1347fc1583430a8546e9b6",
+    "src/lib/playbook/bundle.ts": "13a726154f3ab270407d5274cacc370ac1b6a8a9",
+    "src/lib/playbook/cache.ts": "231b277720592c7a706ddbc59554bf52cf7f8735",
     "src/lib/playbook/fixture.ts": "5df5704636a959f61f9301b2e9b0efba49eea934",
-    "src/lib/playbook/manifest.ts": "16d4184b0eb42b42cf779fa3629f4a80375ea09a",
-    "src/lib/playbook/release.ts": "d9cc35432f01766f3fbde6d667e73ee5984fc252",
+    "src/lib/playbook/manifest.ts": "c416bcb4cceb4b4322f16821e751877c61a9461e",
+    "src/lib/playbook/release.ts": "46cf715f1fb5049bbfab5a881ae102e6c75d1662",
     "src/lib/playbook/schema.ts": "b3d36b4290a1337c068e0330e625d78265758891",
-    "src/lib/playbook/supplement.ts": "46d2eb82bde47630557d3e62ed83baf446d4ecd8",
+    "src/lib/playbook/supplement.ts": "9e00fad5709e3cc8df8246a4536eaf00dfcd52aa",
     "src/lib/playbook/types.ts": "a85bc56fdee6d5e0f788e4adcf993cafff7d7c55",
     "src/lib/playbook/web-demo-fixture.ts": "05b0a4b7e8edfc8c022e8107e646b39cbec67f9e",
     "src/lib/release/inputs.ts": "b9f21e8ef06e376f6254606a9bb900b083babc9f",
@@ -36,7 +36,7 @@
     "src/server/routers/admin/index.ts": "a0221d7071f529099c250fce356939a00095f934",
     "src/server/routers/admin/playbook.ts": "47e980599443589feeef4ecc1976cfb5eb6fb070",
     "tests/lib/manual-release-source.test.ts": "015b936082fdaf6c4435d47b49e6649a2aa9d8ea",
-    "tests/lib/playbook-contract.test.ts": "3372ea4cab44179220a85b6b342d94175c38d8f0",
+    "tests/lib/playbook-contract.test.ts": "4b15c393b565114dd88d041fe4fa27c3a6b2efd0",
     "tests/lib/playbook-fixture.ts": "182603e4da37bff59c1ee55093e1fbefb949bc45",
     "tests/lib/playbook-workflows.test.ts": "e99a2c47a3d80f29f8b5fe29f83de3d7c2534c1d",
     "tests/fixtures/playbook/rust-supplement-catalog.fixture": "5eafd8f810a3765097aacee8d962b31912e93ef0",
@@ -62,12 +62,12 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The implementation keeps the public edition unchanged at its boundary while adding a source-bound protected supplement receiver, authenticated administrator browsing, and persisted overlay staging; invalid supplement data is isolated from public adoption, rollback retries are idempotent only for the exact published identity, active rollback windows reject newer late supplements, and production frozen inputs and backend-dist exclude the supplement from public product artifacts.",
-      "assessed_at": "2026-10-23T04:06:20+08:00",
+      "reasoning": "The implementation keeps the public edition unchanged at its boundary while adding a source-bound protected supplement receiver, authenticated administrator browsing, and persisted overlay staging; invalid supplement data and malformed UTF-8 are isolated from public adoption, rollback retries are idempotent only for the exact published identity, active rollback windows reject newer late supplements, and production frozen inputs and backend-dist exclude the supplement from public product artifacts.",
+      "assessed_at": "2026-10-23T04:14:54+08:00",
       "evidence": [
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "d9cc35432f01766f3fbde6d667e73ee5984fc252",
+          "blob": "46cf715f1fb5049bbfab5a881ae102e6c75d1662",
           "command": "Release reader validates public identity; exact rollback retries are idempotent and conflicting identities fail closed"
         },
         {
@@ -93,12 +93,12 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "Public and supplement package validation, source identity checks, administrator authorization, strict duplicate-key request parsing, HTTPS-only supplement sync endpoints, public artifact exclusion, raw-body preservation, deterministic assets, persisted overlay recovery, exact rollback retry handling, rollback-window late supplement rejection, frozen seed byte validation, and the relevant Blog test and check suites pass.",
-      "assessed_at": "2026-10-23T04:06:20+08:00",
+      "reasoning": "Public and supplement package validation, strict UTF-8 and duplicate-key parsing, source identity checks, administrator authorization, HTTPS-only supplement sync endpoints, public artifact exclusion, raw-body preservation, deterministic assets, persisted overlay recovery, exact rollback retry handling, rollback-window late supplement rejection, frozen seed byte validation, documented rollback identity inputs, and the relevant Blog test and check suites pass.",
+      "assessed_at": "2026-10-23T04:14:54+08:00",
       "evidence": [
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "3372ea4cab44179220a85b6b342d94175c38d8f0",
+          "blob": "4b15c393b565114dd88d041fe4fa27c3a6b2efd0",
           "command": "bun test src/server/http-compat-api.test.ts tests/lib/playbook-contract.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
@@ -113,8 +113,8 @@
         },
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "d9cc35432f01766f3fbde6d667e73ee5984fc252",
-          "command": "Supplement identity, exact rollback retry, and failure isolation tests keep public release paths distinct"
+          "blob": "46cf715f1fb5049bbfab5a881ae102e6c75d1662",
+          "command": "Supplement identity, exact rollback retry, strict UTF-8 manifests, and failure isolation tests keep public release paths distinct"
         },
         {
           "path": "src/lib/playbook/schema.ts",
@@ -123,7 +123,7 @@
         },
         {
           "path": "src/lib/playbook/artifacts.ts",
-          "blob": "98f4d2aa7ac98565dddaa14cd60e085b9ac6cb81",
+          "blob": "2cb826c29d253b9fdb1347fc1583430a8546e9b6",
           "command": "Retained public editions verify and preserve legacy package file identities while rebuilding policy resources"
         },
         {
@@ -133,7 +133,7 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "3372ea4cab44179220a85b6b342d94175c38d8f0",
+          "blob": "4b15c393b565114dd88d041fe4fa27c3a6b2efd0",
           "command": "Public and supplement contract tests preserve shared Markdown bytes, validate Rust fixture bytes, rollback identity, and supplement seed bytes"
         },
         {
@@ -247,12 +247,12 @@
       "evidence": [
         {
           "path": "src/lib/playbook/cache.ts",
-          "blob": "4e22b5ceddf71ef236e1378d0500829f90acb16a",
+          "blob": "231b277720592c7a706ddbc59554bf52cf7f8735",
           "command": "Playbook cache persists an optional source-bound supplement, rejects newer late sources during rollback, and keeps malformed or mismatched data out of the admin read model"
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "3372ea4cab44179220a85b6b342d94175c38d8f0",
+          "blob": "4b15c393b565114dd88d041fe4fa27c3a6b2efd0",
           "command": "Supplement persistence, rollback-window late arrivals, and conflicting overlay adoption retain a public-only fallback"
         }
       ]

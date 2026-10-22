@@ -9,6 +9,7 @@ import {
 } from "./cache";
 import {
   decodePlaybookRawFiles,
+  decodeUtf8,
   encodeJson,
   parseEditionIdentity,
   parseJson,
@@ -51,7 +52,7 @@ export async function readPublicPointer(url: string, fetcher: PlaybookFetcher = 
   if (response.status === 404) return undefined;
   if (!response.ok) throw new Error(`Public pointer unavailable: ${response.status}`);
   return parseEditionIdentity(
-    parseJson(new TextDecoder().decode(await readBoundedResponse(response, 64 * 1024)))
+    parseJson(decodeUtf8(await readBoundedResponse(response, 64 * 1024), "Public pointer"))
   );
 }
 
@@ -76,7 +77,7 @@ export async function downloadRetainedEdition(
     );
     verifyFile(bytes, record);
     await write(join(destination, record.path), bytes);
-    files.set(record.path, parseJson(new TextDecoder().decode(bytes)));
+    files.set(record.path, parseJson(decodeUtf8(bytes, `Playbook ${record.path}`)));
     rawFiles.set(record.path, bytes);
   }
   const edition = validatePlaybookEdition(

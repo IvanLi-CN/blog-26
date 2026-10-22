@@ -168,6 +168,38 @@ describe("playbook-public-contract", () => {
       )
     ).toThrow("Duplicate JSON object key");
   });
+  test("rejects invalid UTF-8 in public and supplement projections", () => {
+    const corruptJson = (content: string) => {
+      const bytes = Buffer.from(content);
+      const marker = Buffer.from('"generated_at": "');
+      const start = bytes.indexOf(marker);
+      if (start < 0) throw new Error("Fixture has no generated_at field");
+      bytes[start + marker.length] = 0xff;
+      return bytes;
+    };
+    const publicBundle = makePublicBundle();
+    expect(() =>
+      createPlaybookEdition(
+        new Map([
+          ["catalog.json", corruptJson(publicBundle.files[0].content)],
+          ["search-documents.json", Buffer.from(publicBundle.files[1].content)],
+        ]),
+        publicBundle.manifest,
+        "b".repeat(40),
+        "{}\n"
+      )
+    ).toThrow("valid UTF-8");
+
+    const supplementBundle = makeSupplementBundle();
+    expect(() =>
+      parseSupplementFiles(
+        new Map([
+          ["catalog.json", corruptJson(supplementBundle.files[0].content)],
+          ["search-documents.json", Buffer.from(supplementBundle.files[1].content)],
+        ])
+      )
+    ).toThrow("valid UTF-8");
+  });
   test("compatibly reads the legacy public catalog without changing body bytes", () => {
     const legacy = structuredClone(publicFixtureCatalog);
     const body = legacy.project_details[0].sections[0].markdown;

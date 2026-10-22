@@ -1,4 +1,5 @@
 import {
+  decodeUtf8,
   encodeJson,
   parseEditionIdentity,
   parseJson,
@@ -151,7 +152,7 @@ async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
   )
     throw new Error("Release assets are not ready");
   const manifestBytes = await reader.asset(manifestAsset.id, manifestAsset.size);
-  const manifest = parseManifest(parseJson(new TextDecoder().decode(manifestBytes)), "public");
+  const manifest = parseManifest(parseJson(decodeUtf8(manifestBytes, "Public manifest")), "public");
   const commit = await reader.commit(release.tag_name);
   if (
     manifest.source.releaseId !== String(release.id) ||
@@ -192,7 +193,7 @@ async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
         supplementManifestAsset.size
       );
       const supplementManifest = parseManifest(
-        parseJson(new TextDecoder().decode(supplementManifestBytes)),
+        parseJson(decodeUtf8(supplementManifestBytes, "Supplement manifest")),
         "supplement"
       );
       if (

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { gunzipSync, inflateRawSync } from "node:zlib";
 import {
   computeEditionDigest,
+  decodeUtf8,
   encodeJson,
   encodePlaybookRawFiles,
   fileRecord,
@@ -111,10 +112,10 @@ export function readSupplementArchive(archive: Uint8Array, manifest: PlaybookMan
 
 export function parseSupplementFiles(files: Map<string, Uint8Array>) {
   const catalog = assertSupplementCatalog(
-    parseJson(Buffer.from(files.get("catalog.json") ?? []).toString("utf8"))
+    parseJson(decodeUtf8(files.get("catalog.json") ?? [], "Supplement catalog"))
   );
   const search = searchSchema.parse(
-    parseJson(Buffer.from(files.get("search-documents.json") ?? []).toString("utf8"))
+    parseJson(decodeUtf8(files.get("search-documents.json") ?? [], "Supplement search"))
   );
   return { catalog, search };
 }
@@ -128,13 +129,13 @@ export function createPlaybookEdition(
   commitSchema.parse(rendererCommit);
   const contentSnapshotIdentity = sha256(publicSnapshot);
   digestSchema.parse(contentSnapshotIdentity);
-  const rawCatalog = parseJson(Buffer.from(files.get("catalog.json") ?? []).toString("utf8"));
+  const rawCatalog = parseJson(decodeUtf8(files.get("catalog.json") ?? [], "Public catalog"));
   const legacyCatalog = isLegacyPublicCatalog(rawCatalog);
   const catalog = assertPublicCatalog(rawCatalog);
   const search = normalizePlaybookSearch(
     catalog,
     searchSchema.parse(
-      parseJson(Buffer.from(files.get("search-documents.json") ?? []).toString("utf8"))
+      parseJson(decodeUtf8(files.get("search-documents.json") ?? [], "Public search"))
     )
   );
   const catalogBytes = files.get("catalog.json");
@@ -173,7 +174,7 @@ export async function readPlaybookEdition(
   publicSnapshot: Uint8Array | string
 ) {
   const manifest = parseManifest(
-    parseJson(await readFile(join(root, PLAYBOOK_MANIFEST_FILE), "utf8"))
+    parseJson(decodeUtf8(await readFile(join(root, PLAYBOOK_MANIFEST_FILE)), "Public manifest"))
   );
   const archive = await readFile(join(root, manifest.bundle.name));
   return createPlaybookEdition(

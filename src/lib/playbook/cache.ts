@@ -4,6 +4,7 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import {
   decodePlaybookRawFiles,
+  decodeUtf8,
   encodeJson,
   encodePlaybookRawFiles,
   parseEditionIdentity,
@@ -93,9 +94,11 @@ export function validatePlaybookEdition(
     validatePlaybookSearchRoute(catalog, document);
   }
   if (legacyCatalog) {
-    const rawCatalog = parseJson(new TextDecoder().decode(verifiedRawFiles?.get("catalog.json")));
+    const rawCatalog = parseJson(
+      decodeUtf8(verifiedRawFiles?.get("catalog.json") ?? [], "Public catalog")
+    );
     const rawSearch = parseJson(
-      new TextDecoder().decode(verifiedRawFiles?.get("search-documents.json"))
+      decodeUtf8(verifiedRawFiles?.get("search-documents.json") ?? [], "Public search")
     );
     const normalizedCatalog = assertPublicCatalog(rawCatalog);
     const normalizedSearch = normalizePlaybookSearch(
@@ -115,7 +118,7 @@ export function validatePlaybookEdition(
     if (raw) {
       verifyFile(raw, file);
       if (legacyCatalog) continue;
-      if (encodeJson(parseJson(new TextDecoder().decode(raw))) !== encodeJson(source))
+      if (encodeJson(parseJson(decodeUtf8(raw, `Playbook ${file.path}`))) !== encodeJson(source))
         throw new Error(`Playbook file projection mismatch: ${file.path}`);
       continue;
     }

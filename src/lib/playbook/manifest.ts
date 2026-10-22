@@ -22,6 +22,14 @@ export function sha256(content: string | Uint8Array) {
   return createHash("sha256").update(content).digest("hex");
 }
 
+export function decodeUtf8(content: Uint8Array, label = "Playbook bytes") {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(content);
+  } catch {
+    throw new Error(`${label} must be valid UTF-8`);
+  }
+}
+
 export function parseJson<T = unknown>(text: string): T {
   let offset = 0;
   const whitespace = () => {
@@ -214,7 +222,7 @@ export function verifyFile(content: Uint8Array | string, record: PlaybookManifes
 }
 
 export async function readAndValidateManifest(path: string) {
-  return parseManifest(parseJson(await readFile(path, "utf8")));
+  return parseManifest(parseJson(decodeUtf8(await readFile(path), "Playbook manifest")));
 }
 
 export async function verifyManifestFiles(root: string, manifest: PlaybookManifest) {
