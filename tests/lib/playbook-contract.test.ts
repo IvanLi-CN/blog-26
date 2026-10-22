@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
@@ -1740,6 +1740,42 @@ describe("playbook-cache-http-ssr", () => {
     });
     await store.updateSupplement(retryBundle.manifest.source, retrySupplement);
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+    expect(store.adminEdition?.supplement).toBeDefined();
+  });
+  test("keeps public adoption successful when conflicting supplement cleanup cannot persist", async () => {
+    const root = await temp();
+    const current = makePublicBundle();
+    const next = makePublicBundle("v3.1.0", "101");
+    const supplementBundle = makeSupplementBundle("v3.1.0", "101");
+    const catalog = JSON.parse(supplementBundle.files[0].content);
+    catalog.snapshot.projects[0].slug = "sample-project";
+    catalog.project_details[0].item.slug = "sample-project";
+    const conflictingBundle = makeSupplementBundle("v3.1.0", "101", catalog);
+    const conflicting = validatePlaybookSupplement({
+      manifest: conflictingBundle.manifest,
+      catalog: JSON.parse(conflictingBundle.files[0].content),
+      search: JSON.parse(conflictingBundle.files[1].content),
+    });
+    const store = new PlaybookStore(root);
+    await store.adopt(current.edition);
+    await store.updateSupplement(conflictingBundle.manifest.source, conflicting);
+    const supplementStatePath = join(root, "supplement-state.json");
+    await rm(supplementStatePath);
+    await mkdir(supplementStatePath);
+
+    await expect(store.adopt(next.edition)).resolves.toBeUndefined();
+    expect(store.current?.edition.source.tag).toBe("v3.1.0");
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
+    expect(store.adminEdition?.supplement).toBeUndefined();
+
+    await rm(supplementStatePath, { recursive: true });
+    const retryBundle = makeSupplementBundle("v3.1.0", "101");
+    const retrySupplement = validatePlaybookSupplement({
+      manifest: retryBundle.manifest,
+      catalog: JSON.parse(retryBundle.files[0].content),
+      search: JSON.parse(retryBundle.files[1].content),
+    });
+    await store.updateSupplement(retryBundle.manifest.source, retrySupplement);
     expect(store.adminEdition?.supplement).toBeDefined();
   });
   test("sync is single-flight, adopts whole editions and keeps old data on incompatible downloads", async () => {

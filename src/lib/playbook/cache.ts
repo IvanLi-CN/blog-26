@@ -525,8 +525,16 @@ export class PlaybookStore {
       await unlink(staging).catch(() => undefined);
       throw error;
     }
-    if (clearConflictingSupplement)
-      await this.persistSupplementState(edition.edition.source, null, undefined, true);
+    if (clearConflictingSupplement) {
+      try {
+        await this.persistSupplementState(edition.edition.source, null, undefined, true);
+      } catch {
+        // Public adoption already committed; keep optional cleanup from reporting it as failed.
+        this.supplement = undefined;
+        this.supplementSource = edition.edition.source;
+        this.supplementRetryable = true;
+      }
+    }
   }
 
   private enqueueStateMutation<T>(operation: () => Promise<T>) {
