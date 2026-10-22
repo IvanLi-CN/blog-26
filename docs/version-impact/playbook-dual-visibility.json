@@ -259,12 +259,12 @@
       "evidence": [
         {
           "path": "src/lib/playbook/cache.ts",
-          "blob": "50c3ccbeb50f5d51b6ccbc3655516f8afdcb59adf9a1e566a414f8f889e4f22a",
+          "blob": "7d98aee709f9bec423d412c70ee176e63ec44758",
           "command": "Playbook cache persists an optional source-bound supplement, preserves staged overlays across same-source absent retries, isolates conflicting overlays during public adoption, persists retryable invalidation across restart, rejects newer late sources during rollback, and keeps malformed or mismatched data out of the admin read model"
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "43777a42fd8d44146632477c931cfb87abadc779",
+          "blob": "b42d6e3a9c4f5624c6af6b20d092480194c8c361",
           "command": "Supplement persistence, same-source staged retries, durable invalidation after failed cleanup, rollback-window late arrivals, and conflicting overlay adoption retain a public-only fallback while allowing the public edition to advance"
         }
       ]
