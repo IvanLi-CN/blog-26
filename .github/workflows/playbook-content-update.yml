@@ -77,6 +77,8 @@ jobs:
         run: bun scripts/playbook-content-update.ts
         env:
           GH_TOKEN: ${{ secrets.PLAYBOOK_SOURCE_TOKEN }}
+          PLAYBOOK_SUPPLEMENT_SYNC_TOKEN: ${{ secrets.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN }}
+          PLAYBOOK_SUPPLEMENT_SYNC_URL: ${{ vars.PLAYBOOK_SUPPLEMENT_SYNC_URL || '' }}
           PLAYBOOK_INTEGRATION_ENABLED: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED }}
           PUBLIC_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL || 'https://console.ivanli.cc' }}
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://ivanli.cc' }}

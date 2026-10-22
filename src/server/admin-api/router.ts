@@ -40,6 +40,7 @@ import {
   suggestTagIcon,
 } from "@/server/services/tag-icons";
 import { getTagSummaries } from "@/server/services/tag-service";
+import { handlePlaybookSupplementSyncRequest } from "./playbook-supplement";
 
 function json(data: unknown, init: ResponseInit = {}, extraHeaders?: Headers) {
   const headers = new Headers(init.headers);
@@ -251,6 +252,8 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
   try {
     const url = new URL(request.url);
     const pathname = subPath.replace(/\/+/g, "/").replace(/\/$/, "") || "/";
+
+    if (pathname === "/playbook/supplement") return handlePlaybookSupplementSyncRequest(request);
 
     if (pathname === "/session") {
       if (request.method !== "GET") return methodNotAllowed(request.method);

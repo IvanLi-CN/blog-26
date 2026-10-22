@@ -6,7 +6,7 @@
 
 ## 双可见性与补充包接收
 
-Blog 数据合同现在区分项目的 `catalog_visibility` 与 `source_visibility`，并由 Topic 自己的 `catalog_visibility` 决定 Topic 是否进入公共包。`related_projects` 是唯一的机器关系来源，正文前置链接不再参与 Blog 构建。上游同一 Release 发布 `playbook-public.tar.gz` 与可选的 `playbook-private-supplement.tar.gz`；Blog 接收端验证并冻结补充 seed，管理员 API 在 source identity 匹配时合并公共目录与补充 overlay，公共静态站和匿名接口仍只读取公共包。
+Blog 数据合同现在区分项目的 `catalog_visibility` 与 `source_visibility`，并由 Topic 自己的 `catalog_visibility` 决定 Topic 是否进入公共包。`related_projects` 是唯一的机器关系来源，正文前置链接不再参与 Blog 构建。上游同一 Release 发布 `playbook-public.tar.gz` 与可选的 `playbook-private-supplement.tar.gz`；Blog 接收端验证补充投影并按 source identity 暂存，公共指针同步后管理员 API 合并公共目录与补充 overlay，公共静态站和匿名接口仍只读取公共包。
 
 共享正文已经是整理后的共享知识，接收端不执行 sanitizer、敏感词替换、标题改写或逐段重写；结构化边界不合法时直接拒绝或忽略不安全 overlay。该实现同时覆盖首次应用输入冻结、内容 workflow、backend dist 和管理员读取路径。
 

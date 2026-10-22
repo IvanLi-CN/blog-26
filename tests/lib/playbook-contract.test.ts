@@ -1190,6 +1190,34 @@ describe("playbook-cache-http-ssr", () => {
     expect(malformedStore.adminEdition?.supplement).toBeUndefined();
     expect(malformedStore.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
   });
+  test("stages a supplement by source identity across public edition adoption", async () => {
+    const root = await temp();
+    const current = makePublicBundle();
+    const next = makePublicBundle("v3.1.0", "101");
+    const supplementBundle = makeSupplementBundle("v3.1.0", "101");
+    const supplement = {
+      manifest: supplementBundle.manifest,
+      catalog: JSON.parse(supplementBundle.files[0].content),
+      search: JSON.parse(supplementBundle.files[1].content),
+    };
+    const store = new PlaybookStore(root);
+
+    await store.adopt(current.edition);
+    await store.updateSupplement(supplementBundle.manifest.source, supplement);
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
+
+    await store.adopt(next.edition);
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+    expect(store.adminEdition?.supplement).toBeDefined();
+
+    const restored = new PlaybookStore(root);
+    await restored.load(join(root, "missing-seed.json"));
+    expect(restored.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+
+    await restored.updateSupplement(next.edition.edition.source);
+    expect(restored.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
+    expect(restored.adminEdition?.supplement).toBeUndefined();
+  });
   test("sync is single-flight, adopts whole editions and keeps old data on incompatible downloads", async () => {
     const root = await temp();
     const current = makePublicBundle();

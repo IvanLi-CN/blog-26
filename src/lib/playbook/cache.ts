@@ -4,7 +4,12 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { encodeJson, parseEditionIdentity, samePlaybookEdition, verifyFile } from "./manifest";
 import { validatePlaybookSearchRoute } from "./navigation";
-import { assertPublicCatalog, PLAYBOOK_PUBLIC_POINTER_URL, searchSchema } from "./schema";
+import {
+  assertPublicCatalog,
+  PLAYBOOK_PUBLIC_POINTER_URL,
+  searchSchema,
+  sourceSchema,
+} from "./schema";
 import {
   mergePlaybookSupplement,
   samePlaybookSource,
@@ -14,6 +19,7 @@ import type {
   PlaybookAdminEdition,
   PlaybookEdition,
   PlaybookEditionIdentity,
+  PlaybookSourceIdentity,
   PlaybookSupplementEnvelope,
 } from "./types";
 
@@ -21,6 +27,10 @@ export interface PlaybookCacheState {
   current?: PlaybookEdition;
   previous?: PlaybookEdition;
   adoption?: { taskId: string; at: number; edition?: string };
+}
+interface PlaybookSupplementState {
+  source: PlaybookSourceIdentity;
+  supplement: PlaybookSupplementEnvelope | null;
 }
 export type PlaybookFetcher = (url: string, init?: RequestInit) => Promise<Response>;
 export const PLAYBOOK_POLL_INTERVAL_MS = 300_000;
@@ -74,6 +84,7 @@ function freezeEdition(edition: PlaybookEdition) {
 export class PlaybookStore {
   private state: PlaybookCacheState = {};
   private supplement?: PlaybookSupplementEnvelope;
+  private supplementSource?: PlaybookSourceIdentity;
   private loaded?: Promise<void>;
   private flight?: {
     promise: Promise<void>;
@@ -106,6 +117,8 @@ export class PlaybookStore {
     if (!this.state.current) return undefined;
     const supplement =
       this.supplement &&
+      this.supplementSource &&
+      samePlaybookSource(this.state.current.edition.source, this.supplementSource) &&
       samePlaybookSource(this.state.current.edition.source, this.supplement.manifest.source)
         ? this.supplement
         : undefined;
@@ -167,19 +180,68 @@ export class PlaybookStore {
       }
     }
     this.supplement = undefined;
-    if (this.state.current) {
+    this.supplementSource = undefined;
+    let persistedSupplementState: string | undefined;
+    try {
+      persistedSupplementState = await readFile(join(this.root, "supplement-state.json"), "utf8");
+    } catch {
+      // The seed remains the bootstrap source until the receiver has installed a state file.
+    }
+    if (persistedSupplementState !== undefined) {
+      try {
+        const raw = JSON.parse(persistedSupplementState) as Record<string, unknown>;
+        const source = sourceSchema.parse(raw.source);
+        const supplement =
+          raw.supplement === null ? undefined : validatePlaybookSupplement(raw.supplement);
+        if (supplement && !samePlaybookSource(source, supplement.manifest.source))
+          throw new Error("Playbook supplement state source identity mismatch");
+        this.supplementSource = source;
+        if (supplement) this.supplement = freezeSupplement(supplement);
+      } catch {
+        // A malformed receiver state must never expose an overlay.
+        this.supplement = undefined;
+        this.supplementSource = undefined;
+      }
+    } else if (this.state.current) {
       try {
         const supplement = validatePlaybookSupplement(
           JSON.parse(await readFile(resolve(supplementSeedPath), "utf8"))
         );
         if (samePlaybookSource(this.state.current.edition.source, supplement.manifest.source)) {
           const merged = mergePlaybookSupplement(this.state.current, supplement);
-          if (merged.supplement) this.supplement = freezeSupplement(supplement);
+          if (merged.supplement) {
+            this.supplementSource = supplement.manifest.source;
+            this.supplement = freezeSupplement(supplement);
+          }
         }
       } catch {
         /* Private supplement is optional; malformed or mismatched data never enters admin reads. */
       }
     }
+  }
+
+  async updateSupplement(source: PlaybookSourceIdentity, supplement?: PlaybookSupplementEnvelope) {
+    await this.load();
+    const parsedSource = sourceSchema.parse(source);
+    const validated = supplement ? validatePlaybookSupplement(supplement) : undefined;
+    if (validated && !samePlaybookSource(parsedSource, validated.manifest.source))
+      throw new Error("Playbook supplement source identity mismatch");
+    const next: PlaybookSupplementState = {
+      source: parsedSource,
+      supplement: validated ?? null,
+    };
+    await mkdir(this.root, { recursive: true });
+    const staging = join(this.root, `.supplement-${randomUUID()}.tmp`);
+    await writeFile(staging, encodeJson(next), { mode: 0o600 });
+    try {
+      renameSync(staging, join(this.root, "supplement-state.json"));
+    } catch (error) {
+      await unlink(staging).catch(() => undefined);
+      throw error;
+    }
+    this.supplementSource = parsedSource;
+    this.supplement = validated ? freezeSupplement(validated) : undefined;
+    return { source: parsedSource, supplementAvailable: Boolean(validated) };
   }
 
   async adopt(

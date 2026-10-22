@@ -26,8 +26,9 @@
 | `/search` | 文章、Memo 和Playbook的统一搜索入口 |
 | `/admin/content-sync` | 管理员查看本地内容与 Playbook 的采用状态、进度、数量及同步记录 |
 | `/api/admin/playbook` | 管理员按项目、Topic 或搜索读取合并后的公共目录与非公开补充目录 |
+| `/api/admin/playbook/supplement` | 受保护的接收入口，接收同一 source identity 的补充包投影并暂存到 console 缓存 |
 
-数据接口包括上游固定 Release 的公共包与非公开补充包、博客部署指针、不可变版本数据、backend/admin seed 和 console 本地缓存。公共指针位于 `/_content/playbook/manifest.json`，版本文件位于 `/_content/playbook/<release-tag>/<digest>/`；补充包只在受保护的 Blog 构建与 backend/admin seed 链路中流转，不进入公共静态目录或匿名接口。具体文件布局必须遵循下述身份与缓存契约。
+数据接口包括上游固定 Release 的公共包与非公开补充包、博客部署指针、不可变版本数据、backend/admin seed、受保护的补充包接收入口和 console 本地缓存。公共指针位于 `/_content/playbook/manifest.json`，版本文件位于 `/_content/playbook/<release-tag>/<digest>/`；补充包只在受保护的 Blog 构建、接收入口和 backend/admin 缓存链路中流转，不进入公共静态目录或匿名接口。接收入口按 source identity 暂存补充投影，公共指针同步采用同一来源后管理员读模型才合并；没有补充包的来源会明确清除该来源的 overlay。具体文件布局必须遵循下述身份与缓存契约。
 
 公开包与部署 edition 的固定格式见 [公开包契约](./contracts/public-package.md)。跨仓触发的参与方、接口、输入、凭据、补漏与结果处理见 [Release 触发契约](./contracts/release-trigger.md)。
 
@@ -40,7 +41,9 @@ flowchart LR
   P[文章与 Memo 公开快照] --> W
   W --> S[Astro 构建并校验]
   S --> D[EdgeOne 静态页面与 JSON]
-  D --> C[console 后台同步]
+  W --> X[受保护补充包接收入口]
+  X --> C[console 后台同步]
+  D --> C
   C --> L[本地最后成功快照]
   L --> R[console SSR 与Playbook搜索]
 ```
@@ -59,7 +62,7 @@ Policy Skill 的公开文本文件必须能在页面内直接查看，预览区�
 
 公共页面、公共 JSON 与公共搜索只能消费上游经过可见性和内容检查的公共导出，必须排除目录私有项目、私有 Topic、内部字段、生成记录、管理数据及凭据。公共项目必须明确包含 `catalog_visibility: public` 与 `source_visibility: public|private`；来源私有项目在公共投影中只保留 `source: private`，不得输出私有 source URL。Topic 必须独立包含 `catalog_visibility`，权限不得从项目推导；`related_projects` 是 Blog 关系唯一真相源，正文中的旧前置链接不得参与构建。非公开整理知识只通过同一 Release 的补充包进入受保护的管理员读模型。缺失、非法、重复或互相矛盾的结构化字段一律拒绝；不得用原始仓库 Markdown 扫描或内部 API 绕过包合同。共享正文按原文复制，不执行 sanitizer、敏感词替换、标题改写或逐段重写；边界校验失败时直接拒绝。公共正文必须按现有受控 Markdown renderer 展示，不得执行包内脚本或 MDX。
 
-补充包是公共包的 overlay，只包含公共包省略的目录私有项目、私有 Topic、关系边和 `private_source_metadata`，不重复公共正文或公共项目记录。Blog 接收端必须验证补充包与公共包的 source identity、manifest、归档根文件、记录关系和搜索路由；缺失或不匹配的补充包只能使管理员 overlay 不可用，不能削弱公共 edition。管理员搜索和浏览可以看到合并后的完整目录，但补充包不得进入公共指针、静态页面、匿名 API 或公共搜索索引。
+补充包是公共包的 overlay，只包含公共包省略的目录私有项目、私有 Topic、关系边和 `private_source_metadata`，不重复公共正文或公共项目记录。Blog 接收端必须验证补充包与公共包的 source identity、manifest、归档根文件、记录关系和搜索路由；接收入口只接受受保护的同步令牌，并按来源身份原子替换暂存状态。缺失或不匹配的补充包只能使管理员 overlay 不可用，不能削弱公共 edition；公共版本切换失败时保留上一版公共与管理员读模型。管理员搜索和浏览可以看到合并后的完整目录，但补充包不得进入公共指针、静态页面、匿名 API 或公共搜索索引。
 
 ### REQ-PBI-003 — 固定来源与包身份
 
@@ -67,7 +70,7 @@ Policy Skill 的公开文本文件必须能在页面内直接查看，预览区�
 
 ### REQ-PBI-004 — 稳定发布自动更新
 
-博客内容 workflow 每小时检查一次上游稳定 Release；发布资产齐全且通过校验后，自动选择最高的就绪稳定 SemVer 并构建、部署。`PLAYBOOK_INTEGRATION_ENABLED` 是应用集成与定时内容更新的唯一启用开关；未设置或为 false 时暂停自动更新，普通应用发布必须失败关闭以免丢失当前 Playbook，显式回滚要求同一开关为 false。首次应用发布在没有已部署指针时也使用相同的选择逻辑。博客使用已发布的稳定前端渲染器和明确身份的文章/Memo 公开快照。未经应用发布门禁的最新 `main` 不得自动作为渲染器。人工可默认执行 `mode=reconcile`，也可提交固定来源身份进行 `mode=release` 重试；两种入口复用相同的来源校验和部署流程。上游无需跨仓调用博客 Actions API。
+博客内容 workflow 每小时检查一次上游稳定 Release；发布资产齐全且通过校验后，自动选择最高的就绪稳定 SemVer 并构建、部署公共静态站，同时把对应的补充投影发送到受保护接收入口。`PLAYBOOK_INTEGRATION_ENABLED` 是应用集成与定时内容更新的唯一启用开关；未设置或为 false 时暂停自动更新，普通应用发布必须失败关闭以免丢失当前 Playbook，显式回滚要求同一开关为 false。首次应用发布在没有已部署指针时也使用相同的选择逻辑。博客使用已发布的稳定前端渲染器和明确身份的文章/Memo 公开快照。未经应用发布门禁的最新 `main` 不得自动作为渲染器。人工可默认执行 `mode=reconcile`，也可提交固定来源身份进行 `mode=release` 重试；两种入口复用相同的来源校验、公共部署和补充接收流程。上游 Release workflow 可以在资产就绪后按既有 dispatch 合同通知 Blog；博客自身的 schedule 仍是无通知场景下的补漏入口。
 
 ### REQ-PBI-005 — 内容与应用发布分离
 
@@ -83,7 +86,7 @@ Playbook页面、目录、详情、搜索数据和当前指针必须来自同一
 
 ### REQ-PBI-008 — console 跟随已部署版本
 
-console 必须后台同步博客的公开 JSON，在网络健康且 schema 兼容时约五分钟内跟随成功部署的数据。console 必须先读取指针，再下载该确切版本，完成来源、schema、digest 与记录关系校验，并在同一个原子采用点切换目录、正文、资源和词法搜索投影。语义投影按同一 edition 异步准备，不是内容采用的前置条件；缺失、失败或取消时保留已采用内容并报告语义覆盖不足，采用前的校验失败或取消仍保留上一版。并发刷新必须只保留一个任务；目录、详情、资源和词法搜索不得分批生效。SSR 必须使用已验证的本地快照，不得逐页面请求访问 GitHub、上游服务或未部署的上游版本。Playbook 同步只改变其独立快照与可重建搜索投影，不写入或删除文章/Memo 内容，初始快照也不得覆盖已有成功缓存。
+console 必须后台同步博客的公开 JSON，在网络健康且 schema 兼容时约五分钟内跟随成功部署的数据。博客内容 workflow 在公共指针核对成功后，必须通过受保护接收入口提交同一 source identity 的补充投影；console 必须按来源身份暂存补充投影，并在公共版本采用后将公共目录与补充目录作为一个管理员读模型合并。console 必须先读取指针，再下载该确切版本，完成来源、schema、digest 与记录关系校验，并在同一个原子采用点切换目录、正文、资源和词法搜索投影。补充接收失败不能削弱公共版本，公共版本采用失败也不能启用不匹配的补充投影；没有补充包的来源必须清除该来源 overlay。语义投影按同一 edition 异步准备，不是内容采用的前置条件；缺失、失败或取消时保留已采用内容并报告语义覆盖不足，采用前的校验失败或取消仍保留上一版。并发刷新必须只保留一个任务；目录、详情、资源和词法搜索不得分批生效。SSR 必须使用已验证的本地快照，不得逐页面请求访问 GitHub、上游服务或未部署的上游版本。Playbook 同步只改变其独立快照与可重建搜索投影，不写入或删除文章/Memo 内容，初始快照也不得覆盖已有成功缓存。
 
 ### REQ-PBI-009 — 最后成功版本与首次启动
 

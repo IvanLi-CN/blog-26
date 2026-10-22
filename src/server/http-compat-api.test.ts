@@ -9,11 +9,14 @@ import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import sharp from "sharp";
 import { db, initializeDB } from "@/lib/db";
+import { PlaybookStore } from "@/lib/playbook/cache";
+import { encodeJson } from "@/lib/playbook/manifest";
 import { computePostContentHash } from "@/lib/post-body-contract-server";
 import { buildPublicMediaHash } from "@/lib/public-media";
 import { llmSettings, postEmbeddings, posts, sessions, users, vectorizedFiles } from "@/lib/schema";
 import { SEARCH_QUERY_LIMITS } from "@/lib/search/query";
 import { DEFAULT_SEARCH_POLICY } from "@/lib/search/settings";
+import { handlePlaybookSupplementSyncRequest } from "@/server/admin-api/playbook-supplement";
 import { contentSearchIndex } from "@/server/services/content-search-index";
 import { buildPublicMemoStaticPages } from "../../site/lib/memo-pagination";
 import { makePublicBundle, makeSupplementBundle } from "../../tests/lib/playbook-fixture";
@@ -44,6 +47,8 @@ function resetHttpCompatEnv() {
   delete process.env.OPENAI_API_BASE_URL;
   delete process.env.PLAYBOOK_SEED_PATH;
   delete process.env.PLAYBOOK_SUPPLEMENT_SEED_PATH;
+  delete process.env.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN;
+  delete process.env.PLAYBOOK_SUPPLEMENT_SYNC_URL;
 }
 
 function buildRequest(pathname: string, init: RequestInit = {}, email?: string) {
@@ -345,6 +350,56 @@ describe("HTTP compatibility APIs", () => {
         document: expect.objectContaining({ id: "page:topic:private-topic" }),
       }),
     ]);
+  });
+
+  it("accepts a source-bound supplement through the protected receiver and persists it", async () => {
+    const publicBundle = makePublicBundle();
+    const nextBundle = makePublicBundle("v3.1.0", "101");
+    const supplementBundle = makeSupplementBundle("v3.1.0", "101");
+    const supplement = {
+      manifest: supplementBundle.manifest,
+      catalog: JSON.parse(supplementBundle.files[0].content),
+      search: JSON.parse(supplementBundle.files[1].content),
+    };
+    const receiverRoot = path.join(PLAYBOOK_TEST_PATH, "receiver");
+    fs.mkdirSync(receiverRoot, { recursive: true });
+    const publicSeed = path.join(receiverRoot, "public.json");
+    fs.writeFileSync(publicSeed, encodeJson(publicBundle.edition));
+    const store = new PlaybookStore(receiverRoot);
+    await store.adopt(publicBundle.edition);
+
+    process.env.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN = "receiver-test-token";
+    const unauthorized = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ source: supplementBundle.manifest.source, supplement }),
+      }),
+      store
+    );
+    expect(unauthorized.status).toBe(401);
+
+    const accepted = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ source: supplementBundle.manifest.source, supplement }),
+      }),
+      store
+    );
+    expect(accepted.status).toBe(200);
+    expect(await accepted.json()).toMatchObject({ accepted: true, supplementAvailable: true });
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
+
+    await store.adopt(nextBundle.edition);
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+
+    const restored = new PlaybookStore(receiverRoot);
+    await restored.load(publicSeed);
+    expect(restored.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
   });
 
   it("returns masked LLM settings, persists overrides, and can clear saved keys", async () => {

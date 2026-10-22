@@ -9,9 +9,9 @@
 | `IvanLi-CN/style-playbook-skills` Release workflow | 生成并发布固定版本公开数据 |
 | `IvanLi-CN/blog-26` 的 `playbook-content-update.yml` | 每小时检查最新就绪稳定版本；也支持人工触发，校验来源、构建并部署公共静态站，并校验补充包输入 |
 | `ivanli.cc` 已部署 manifest | 记录实际已生效的Playbook身份，供去重、版本判断和 console 同步 |
-| `console.ivanli.cc` | 在博客部署后读取公开指针，独立执行公共缓存同步；管理员后端从同源私有补充 seed 读取完整管理目录 |
+| `console.ivanli.cc` | 在博客部署后读取公开指针，独立执行公共缓存同步；管理员后端从受保护接收入口暂存并按 source identity 合并私有补充目录 |
 
-博客不接收上游跨仓通知。主要触发为博客自身每小时的 `schedule`；人工操作使用同一个 `workflow_dispatch`，默认执行 `reconcile`。因此上游不需要博客仓库的 `Actions: write` 权限。
+上游 Release workflow 可以在资产就绪后通过既有 `workflow_dispatch` 合同通知 Blog；主要补漏入口仍是博客自身每小时的 `schedule`，人工操作使用同一个 `workflow_dispatch`，默认执行 `reconcile`。上游只需要 Blog workflow 的 dispatch 权限，不需要读取 Blog 源码或修改 Blog 仓库内容；通知失败时不影响 schedule 补漏。
 
 ```mermaid
 sequenceDiagram
@@ -28,8 +28,9 @@ sequenceDiagram
   B->>B: 使用已发布渲染器构建、校验
   B->>S: 在共享生产部署锁内部署
   B->>S: 核对公开指针已生效
+  B->>C: 通过受保护入口提交同 source identity 的补充投影
   C->>S: 后台读取新指针和版本化 JSON
-  C->>C: 校验后整体替换缓存
+  C->>C: 校验后整体替换公共缓存并切换管理员 overlay
 ```
 
 ## Upstream Publication Readiness
@@ -41,7 +42,7 @@ sequenceDiagram
 
 就绪 manifest 是单独的 Release asset，必须在数据包上传成功并核对 digest 后最后上传，避免数据包把自身 digest 包进自身的循环定义。缺少完整 manifest 的 Release 不具备构建资格。同一 Release 重跑必须核对既有资产，不得覆盖为不同内容。
 
-上游至少需要成功发布两个公开资产；包含非公开整理知识的 Release 还必须成对发布 `playbook-private-supplement.tar.gz` 与 `playbook-private-supplement-manifest.json`。补充包不改变公共 pointer，也不进入公共静态站；博客接收端会把它作为同一 source identity 的 admin-only overlay 校验。canary、draft、无发布意图或公开检查失败的 Release 不会被博客选中。上游不触发博客构建，博客在下一次补漏时自行发现已就绪版本。
+上游至少需要成功发布两个公开资产；包含非公开整理知识的 Release 还必须成对发布 `playbook-private-supplement.tar.gz` 与 `playbook-private-supplement-manifest.json`。补充包不改变公共 pointer，也不进入公共静态站；博客接收端会把它作为同一 source identity 的 admin-only overlay 校验，并在公共 pointer 校验成功后提交到受保护 console 入口。canary、draft、无发布意图或公开检查失败的 Release 不会被博客选中。上游通知只是加速路径，博客仍会在下一次补漏时自行发现已就绪版本。
 
 ## Dispatch Interface
 
@@ -86,8 +87,9 @@ GitHub API 接受人工请求仅代表 workflow 已提交排队，不能把 HTTP
 | --- | --- |
 | 博客下载/补漏 job | `PLAYBOOK_SOURCE_TOKEN` 对私有上游仓库的 `Contents: read`，用于读取 Release 元数据和资产 |
 | 博客部署 job | 复用博客自己的 EdgeOne 部署凭据 |
+| Blog 到 console 的补充同步 | `PLAYBOOK_SUPPLEMENT_SYNC_TOKEN`，只允许调用受保护的 `/api/admin/playbook/supplement` 接收入口；可用 `PLAYBOOK_SUPPLEMENT_SYNC_URL` 指向 console 地址 |
 
-只需博客侧一个 fine-grained PAT，限于上游仓库的 `Contents: read`。不创建上游到博客的跨仓写权限。console 与访客只读博客公开 JSON。
+博客侧的上游读取 PAT 与 Blog 到 console 的同步令牌职责分离。同步令牌只用于提交经过校验的补充投影，不授予 GitHub 仓库写权限；console 与访客只读博客公开 JSON，管理员入口才读取补充缓存。
 
 ## Receiver Processing
 
@@ -96,7 +98,7 @@ GitHub API 接受人工请求仅代表 workflow 已提交排队，不能把 HTTP
 3. 对比已部署指针。相同 Release/digest 已生效时跳过；同一 Release 不同 digest 拒绝；较旧稳定版本跳过，不直接信任 API `latest` 作为版本顺序。
 4. 固定当前已发布的博客渲染器与文章/Memo 输入，构建并执行静态校验。
 5. 获取与正常前端部署相同的生产 job 并发组，再重新读取部署身份。若内容已被采用或已变旧则跳过；若当前渲染器已改变，则不得部署旧渲染器产物，需要重新构建后再核对。
-6. 部署完整公共页面及版本化数据，核对公开指针已生效，记录实际采用的公共/补充输入身份与下游 run URL。补充数据只冻结到 backend/admin runtime，不能被静态站或匿名 API 读取；console 的公共同步仍只从公开指针发现变化，无须上游单独通知。
+6. 部署完整公共页面及版本化数据，核对公开指针已生效，再把同一 source identity 的补充投影提交到受保护 console 接收入口；若 Release 没有补充包则提交明确的空 overlay。记录实际采用的公共/补充输入身份与下游 run URL。接收端先按来源身份暂存，console 的公共同步采用同一来源后才向管理员读模型合并；补充数据不能被静态站或匿名 API 读取。
 
 生产 job 并发组使用 `blog26-edgeone-production` 与 `cancel-in-progress: false`，由内容和正常前端部署共同使用。GitHub Actions 原生并发只保留一个运行中的任务和一个待处理任务；两种流程之间需要同一个部署 job 边界。待处理任务仍必须执行版本与渲染器复核，不能依赖 dispatch 时间保证顺序。
 

@@ -20,6 +20,7 @@ import {
   resolveRelease,
 } from "../src/lib/playbook/release";
 import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
+import type { PlaybookSupplementEnvelope } from "../src/lib/playbook/types";
 import { publicVersionSchema } from "../src/lib/release/deployment";
 import { versionSchema } from "../src/lib/release/policy";
 import { readContract } from "../src/lib/release/source";
@@ -60,6 +61,7 @@ await writeFile(
 );
 await writeFile(resolve(bundleRoot, "playbook-public.tar.gz"), archive);
 let supplementRoot: string | undefined;
+let supplementEnvelope: PlaybookSupplementEnvelope | null = null;
 if (selected.supplement) {
   try {
     const supplementArchive = await reader.asset(
@@ -67,7 +69,11 @@ if (selected.supplement) {
       selected.supplement.manifest.bundle.size
     );
     const supplementFiles = readSupplementArchive(supplementArchive, selected.supplement.manifest);
-    parseSupplementFiles(supplementFiles);
+    const parsedSupplement = parseSupplementFiles(supplementFiles);
+    supplementEnvelope = {
+      manifest: selected.supplement.manifest,
+      ...parsedSupplement,
+    };
     const candidateRoot = resolve(taskRoot, "supplement");
     await mkdir(candidateRoot, { recursive: true });
     await writeFile(
@@ -90,6 +96,32 @@ if (selected.supplement) {
     );
   }
 }
+
+async function syncSupplementToConsole(source: PlaybookSupplementEnvelope["manifest"]["source"]) {
+  const token = process.env.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN?.trim();
+  if (!token) throw new Error("PLAYBOOK_SUPPLEMENT_SYNC_TOKEN is required");
+  const endpoint =
+    process.env.PLAYBOOK_SUPPLEMENT_SYNC_URL ||
+    new URL(
+      "/api/admin/playbook/supplement",
+      process.env.PUBLIC_API_BASE_URL || "https://console.ivanli.cc"
+    ).toString();
+  const response = await fetch(endpoint, {
+    method: "PUT",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+      accept: "application/json",
+    },
+    body: encodeJson({ source, supplement: supplementEnvelope }),
+    redirect: "error",
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!response.ok) throw new Error(`Console Playbook supplement sync failed: ${response.status}`);
+  const result = (await response.json()) as { accepted?: boolean };
+  if (result.accepted !== true) throw new Error("Console rejected the Playbook supplement");
+}
+
 let buildNumber = 0;
 let rendererRoot = "";
 let productVersion = "";
@@ -266,6 +298,7 @@ try {
   throw error;
 }
 const current = await readPublicPointer(manifestUrl);
+await syncSupplementToConsole(selected.manifest.source);
 const summary = `Playbook result: ${result}\n\n${encodeJson({ adopted: current, upstreamRunId: input.source_run_id || null, supplement: supplementRoot ? (selected.supplement?.manifest ?? null) : null, downstreamRun: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` })}`;
 console.log(summary);
 if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, summary);

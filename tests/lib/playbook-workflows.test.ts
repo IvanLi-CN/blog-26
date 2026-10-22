@@ -54,6 +54,12 @@ describe("playbook deployment boundaries", () => {
     expect(updateStep?.env?.PLAYBOOK_INTEGRATION_ENABLED).toBe(
       "$" + "{{ vars.PLAYBOOK_INTEGRATION_ENABLED }}"
     );
+    expect(updateStep?.env?.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN).toBe(
+      "$" + "{{ secrets.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN }}"
+    );
+    expect(updateStep?.env?.PLAYBOOK_SUPPLEMENT_SYNC_URL).toBe(
+      "$" + "{{ vars.PLAYBOOK_SUPPLEMENT_SYNC_URL || '' }}"
+    );
     const rollbackPause = rollback.jobs.rollback.steps?.find(
       (step) => step.name === "Require paused automatic updates"
     );
@@ -65,9 +71,17 @@ describe("playbook deployment boundaries", () => {
     expect(rollbackStep?.env?.PLAYBOOK_INTEGRATION_ENABLED).toBe(
       "$" + "{{ vars.PLAYBOOK_INTEGRATION_ENABLED }}"
     );
+    expect(rollbackStep?.env?.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN).toBe(
+      "$" + "{{ secrets.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN }}"
+    );
+    expect(rollbackStep?.env?.PLAYBOOK_SUPPLEMENT_SYNC_URL).toBe(
+      "$" + "{{ vars.PLAYBOOK_SUPPLEMENT_SYNC_URL || '' }}"
+    );
     const updateScript = await readFile("scripts/playbook-content-update.ts", "utf8");
     expect(updateScript).toContain('process.env.PLAYBOOK_INTEGRATION_ENABLED === "true"');
     expect(updateScript).toContain("Initial Playbook edition must be deployed through");
+    expect(updateScript).toContain("/api/admin/playbook/supplement");
+    expect(updateScript).toContain("PLAYBOOK_SUPPLEMENT_SYNC_TOKEN");
 
     for (const job of [update.jobs.production, rollback.jobs.rollback]) {
       const checkout = job.steps?.find((step) => step.uses === "actions/checkout@v7");
