@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   buildPublicMediaAssetUrl,
   buildPublicMediaPresentations,
+  getPublicMediaWatermarkVersion,
   resolveContentMediaPath,
   rewritePublicContentMediaUrls,
   supportsPublicMediaPresentations,
@@ -188,6 +189,28 @@ describe("public-media", () => {
       expect(presentations?.a).not.toContain("/blog/blog/");
     });
 
+    it("keeps complete legacy v2 snapshots on their v2 candidate family", () => {
+      const legacyContext = { ...context, watermarkRenderVersion: "v2" as const };
+      const presentations = buildPublicMediaPresentations({
+        context: legacyContext,
+        mediaPath: "blog/assets/photo.png",
+        sourcePath: "blog/assets/photo.png",
+        role: "content",
+        variant: "content",
+      });
+
+      expect(presentations?.a).toContain("/wm-a-v2/content.webp");
+      expect(presentations?.b).toContain("/wm-b-v2/content.webp");
+      expect(
+        buildPublicMediaAssetUrl({
+          context: legacyContext,
+          mediaPath: "./assets/photo.png",
+          role: "content",
+          variant: "content",
+        })
+      ).toContain("/wm-b-v2/content.webp");
+    });
+
     it("uses v3 defaults for admin previews while accepting explicit candidates", () => {
       const adminContext = { ...context, assetScope: "admin-preview" as const };
       expect(
@@ -292,14 +315,14 @@ describe("public-media", () => {
         sources: [],
       };
 
-      expect(
-        supportsPublicMediaPresentations({
-          primary: null,
-          cover: null,
-          content: [item],
-          attachments: [],
-        })
-      ).toBe(true);
+      const media = {
+        primary: null,
+        cover: null,
+        content: [item],
+        attachments: [],
+      };
+      expect(supportsPublicMediaPresentations(media)).toBe(true);
+      expect(getPublicMediaWatermarkVersion(media)).toBe("v2");
     });
 
     it("accepts complete current v3 candidates", () => {
@@ -333,6 +356,39 @@ describe("public-media", () => {
           attachments: [],
         })
       ).toBe(true);
+    });
+
+    it("rejects a cross-version watermark pair across content items", () => {
+      const item = (version: "v2" | "v3") => ({
+        hash: "abc123",
+        kind: "image" as const,
+        role: "content" as const,
+        alt: null,
+        sourcePath: "blog/assets/photo.png",
+        variants: {},
+        presentations: {
+          content: {
+            a: `/api/public/assets/post/demo-post/abc123/wm-a-${version}/content.webp`,
+            b: `/api/public/assets/post/demo-post/abc123/wm-b-${version}/content.webp`,
+          },
+          full: {
+            a: `/api/public/assets/post/demo-post/abc123/wm-a-${version}/full.webp`,
+            b: `/api/public/assets/post/demo-post/abc123/wm-b-${version}/full.webp`,
+          },
+        },
+        poster: null,
+        playback: null,
+        sources: [],
+      });
+      const media = {
+        primary: null,
+        cover: null,
+        content: [item("v2"), item("v3")],
+        attachments: [],
+      };
+
+      expect(supportsPublicMediaPresentations(media)).toBe(false);
+      expect(getPublicMediaWatermarkVersion(media)).toBeNull();
     });
   });
 });

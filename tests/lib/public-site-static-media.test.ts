@@ -128,4 +128,55 @@ describe("static public site snapshot media", () => {
       expect(item?.variants.content).toMatch(/^\/api\/public\/assets\//u);
     }
   });
+
+  test("keeps complete v2 snapshot bodies on the v2 watermark candidates", async () => {
+    temporaryRoot = await mkdtemp(join(tmpdir(), "public-site-snapshot-v2-"));
+    const snapshotPath = join(temporaryRoot, "snapshot.json");
+    const media = {
+      ...mediaItem("legacy-image"),
+      presentations: {
+        content: {
+          a: "/api/public/assets/post/legacy/legacy-image/wm-a-v2/content.webp",
+          b: "/api/public/assets/post/legacy/legacy-image/wm-b-v2/content.webp",
+        },
+        full: {
+          a: "/api/public/assets/post/legacy/legacy-image/wm-a-v2/full.webp",
+          b: "/api/public/assets/post/legacy/legacy-image/wm-b-v2/full.webp",
+        },
+      },
+    };
+
+    await writeFile(
+      snapshotPath,
+      JSON.stringify({
+        posts: [
+          {
+            id: "legacy-post-id",
+            slug: "legacy",
+            title: "Legacy",
+            body: "![legacy](./assets/photo.png)",
+            tags: [],
+            publishDate: "2026-10-01T00:00:00.000Z",
+            filePath: "posts/legacy.md",
+            media: { primary: media, cover: null, content: [media], attachments: [] },
+          },
+        ],
+        memos: [],
+        tags: {
+          summaries: [],
+          groups: [],
+          categoryIcons: {},
+          tagIconMap: {},
+          tagIconSvgMap: {},
+          timelines: {},
+        },
+      })
+    );
+    process.env.PUBLIC_SNAPSHOT_PATH = snapshotPath;
+    delete process.env.CONSOLE_RUNTIME;
+
+    const snapshot = await getSnapshot();
+    expect(snapshot.posts[0]?.body).toContain("/wm-b-v2/content.webp");
+    expect(snapshot.posts[0]?.body).not.toContain("/wm-b-v3/content.webp");
+  });
 });

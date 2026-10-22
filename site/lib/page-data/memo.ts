@@ -8,7 +8,7 @@ import { extractTextSummary, stripMatchingLeadingTitleHeading } from "@/lib/mark
 import { getMemoPresentation } from "@/lib/memo-presentation";
 import {
   createEmptyPublicMediaCollection,
-  supportsPublicMediaPresentations,
+  getPublicMediaWatermarkVersion,
 } from "@/lib/public-media";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
 import type { PublicMemoRecord } from "@/public-site/snapshot";
@@ -187,11 +187,13 @@ export async function loadmemo(Astro: PageContext) {
   );
   const contentSource = "local" as const;
   const isAdminDetail = consoleMemo?.isAdmin ?? consoleWebDemoPersona === "admin";
+  const watermarkRenderVersion = getPublicMediaWatermarkVersion(renderMemo.media);
   const publicMediaContext = {
     kind: "memo" as const,
     slug: renderMemo.slug,
     filePath: renderMemo.filePath,
-    supportsResponsiveWatermark: supportsPublicMediaPresentations(renderMemo.media),
+    supportsResponsiveWatermark: watermarkRenderVersion !== null,
+    watermarkRenderVersion: watermarkRenderVersion ?? undefined,
     ...(isAdminDetail ? { assetScope: "admin-preview" as const } : {}),
   };
   const memoDescription = extractTextSummary(renderMemo.content, 180) || snapshot.site.description;
