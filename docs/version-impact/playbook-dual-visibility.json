@@ -80,7 +80,7 @@
         },
         {
           "path": "src/server/admin-api/playbook-supplement.ts",
-          "blob": "f86901222fcce34f50ab74e33e5fad23e12f71c8",
+          "blob": "0181501da328fb6d68c51271ae64e2eceac578c0",
           "command": "Protected receiver validates source-bound supplement payloads and persists only accepted overlay metadata"
         }
       ],
@@ -101,7 +101,7 @@
         },
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "a42b548906f25dbbf432da7d3b22a465d7008cda",
+          "blob": "332234702b6508af6ec3894efd5395b81a9ce187",
           "command": "bun test src/server/http-compat-api.test.ts"
         },
         {
@@ -162,7 +162,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "a42b548906f25dbbf432da7d3b22a465d7008cda",
+          "blob": "332234702b6508af6ec3894efd5395b81a9ce187",
           "command": "HTTP compatibility tests cover anonymous, authenticated user, and administrator Playbook access"
         }
       ]
@@ -230,7 +230,7 @@
       "evidence": [
         {
           "path": "src/lib/playbook/cache.ts",
-          "blob": "dbf70209b0815c4ba7b2465fc72eb33457fa85df",
+          "blob": "113c6002f1500a687044a67b34baaf0db46aaa11",
           "command": "Playbook cache persists an optional source-bound supplement and keeps malformed or mismatched data out of the admin read model"
         },
         {
