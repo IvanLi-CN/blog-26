@@ -234,6 +234,33 @@ describe("packagePublicMedia", () => {
     ]);
   });
 
+  test("can freeze the sibling when a snapshot contains one derived watermark variant", async () => {
+    const cwd = await fixture();
+    const candidateUrl = "/api/public/assets/post/logo/hash/wm-b-v3/content.webp?v=2026-10-15";
+    await writeFile(join(cwd, "site-dist", "snapshot.json"), `{"media":"${candidateUrl}"}`);
+
+    const requestedUrls: string[] = [];
+    const manifest = await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      includeDerivedWatermarkVariants: true,
+      fetchImpl: async (input) => {
+        requestedUrls.push(String(input));
+        return response("image");
+      },
+    });
+
+    expect(requestedUrls).toEqual([
+      `https://api.example${candidateUrl}`,
+      "https://api.example/api/public/assets/post/logo/hash/wm-a-v3/content.webp?v=2026-10-15",
+    ]);
+    expect(manifest.entries.map((entry) => entry.sourcePath)).toEqual([
+      "/api/public/assets/post/logo/hash/wm-a-v3/content.webp?v=2026-10-15",
+      "/api/public/assets/post/logo/hash/wm-b-v3/content.webp?v=2026-10-15",
+    ]);
+  });
+
   test("fails closed when a current derived watermark variant is missing", async () => {
     const cwd = await fixture();
     const candidateUrl = "/api/public/assets/post/logo/hash/content.webp?v=2026-10-15";

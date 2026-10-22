@@ -485,6 +485,40 @@ function deriveWatermarkReference(
   return derived;
 }
 
+function deriveSiblingWatermarkReferences(
+  reference: AssetReference,
+  mediaOrigin: string,
+  basePath: string
+): AssetReference[] {
+  const match = PUBLIC_DERIVED_RENDER_VARIANT_RE.exec(reference.sourceUrl.pathname);
+  if (!match) return [];
+  const [, kind, slug, hash, currentRenderId, variant, extension] = match;
+  if (
+    !DERIVED_WATERMARK_RENDER_IDS.includes(
+      currentRenderId as (typeof DERIVED_WATERMARK_RENDER_IDS)[number]
+    )
+  ) {
+    return [];
+  }
+  return DERIVED_WATERMARK_RENDER_IDS.filter((renderId) => renderId !== currentRenderId).map(
+    (renderId) => {
+      const sourceUrl = new URL(reference.sourceUrl.href);
+      sourceUrl.pathname = `${PUBLIC_MEDIA_FACADE_PREFIX}${kind}/${slug}/${hash}/${renderId}/${variant}.${extension}`;
+      const relativePath = assertSafeAssetPath(sourceUrl.pathname);
+      const sourcePath = `${sourceUrl.pathname}${sourceUrl.search}`;
+      const staticPath = sitePath(basePath, `${STATIC_MEDIA_PREFIX}${relativePath}`);
+      return {
+        raw: "",
+        sourcePath,
+        sourceUrl,
+        fetchUrl: `${mediaOrigin}${sourcePath}`,
+        staticPath,
+        replacement: () => staticPath,
+      } satisfies AssetReference;
+    }
+  );
+}
+
 function isLegacyDerivedWatermarkPath(pathname: string) {
   const match = PUBLIC_DERIVED_RENDER_VARIANT_RE.exec(pathname);
   return match?.[4]?.endsWith("-v1") === true;
@@ -634,6 +668,10 @@ export async function packagePublicMedia(
           const derivedKey = fetchKey(derived);
           if (!uniqueReferences.has(derivedKey)) uniqueReferences.set(derivedKey, derived);
         }
+      }
+      for (const sibling of deriveSiblingWatermarkReferences(reference, mediaOrigin, basePath)) {
+        const siblingKey = fetchKey(sibling);
+        if (!uniqueReferences.has(siblingKey)) uniqueReferences.set(siblingKey, sibling);
       }
       // Legacy snapshots can render the unversioned facade URL while still
       // exposing v1 watermark candidates in their media metadata. Freeze the
