@@ -71,6 +71,8 @@ const failedInputsRecovery = z
       workflow_dispatch: z.object({
         inputs: z.object({
           release_id: z.object({ type: z.string(), required: z.boolean() }),
+          confirm_loss: z.object({ type: z.string(), required: z.boolean() }),
+          incident_reason: z.object({ type: z.string(), required: z.boolean() }),
         }),
       }),
     }),
@@ -82,6 +84,23 @@ const failedInputsRecovery = z
     }),
   })
   .parse(load(readFileSync(".github/workflows/abandon-failed-inputs-release.yml", "utf8")));
+const retryRecovery = z
+  .object({
+    on: z.object({
+      workflow_dispatch: z.object({
+        inputs: z.record(z.string(), z.object({ type: z.string(), required: z.boolean() })),
+      }),
+    }),
+    permissions: z.record(z.string(), z.string()),
+    jobs: z.object({
+      retry: z.object({
+        if: z.string(),
+        "timeout-minutes": z.number(),
+        permissions: z.record(z.string(), z.string()),
+      }),
+    }),
+  })
+  .parse(load(readFileSync(".github/workflows/retry-product-release.yml", "utf8")));
 
 describe("prerelease workflow deployment boundary", () => {
   test("product release can be resumed from the uniquely registered merged identity", () => {
@@ -119,6 +138,22 @@ describe("prerelease workflow deployment boundary", () => {
     expect(freeze?.env?.PUBLIC_STATIC_MEDIA_DOWNLOAD_CONCURRENCY).toBe("8");
   });
 
+  test("preflights frozen media before image packaging and records stable boundaries", () => {
+    const steps = release.jobs.production.steps;
+    const inputRecord = steps.findIndex((step) => step.id === "record-inputs");
+    const preflight = steps.findIndex((step) => step.id === "preflight-media");
+    const imageBuild = steps.findIndex((step) => step.id === "build-products");
+    expect(inputRecord).toBeGreaterThanOrEqual(0);
+    expect(preflight).toBeGreaterThan(inputRecord);
+    expect(imageBuild).toBeGreaterThan(preflight);
+    expect(steps[preflight]?.run).toContain("preflight-frozen-media");
+    expect(steps[imageBuild]?.run).toContain("--use-preflight");
+    expect(steps[preflight]?.name).toBe("Preflight frozen media closure");
+    expect(steps[imageBuild]?.name).toBe(
+      "Build the full-feature image from validated static output"
+    );
+  });
+
   test("manual release exposes only one optional text version request", () => {
     const manual = z
       .object({
@@ -144,9 +179,11 @@ describe("prerelease workflow deployment boundary", () => {
     expect(publication?.if).toContain("steps.identify.outputs.prerelease == 'true'");
     expect(deployment?.if).toContain("steps.identify.outputs.prerelease == 'false'");
     expect(deployment?.env?.EDGEONE_API_TOKEN).toBe("$" + "{{ secrets.EDGEONE_API_TOKEN }}");
-    expect(
-      steps.filter((step) => JSON.stringify(step).includes("secrets.EDGEONE_API_TOKEN"))
-    ).toEqual([deployment]);
+    const deploymentSecretSteps = steps.filter((step) =>
+      JSON.stringify(step).includes("secrets.EDGEONE_API_TOKEN")
+    );
+    expect(deploymentSecretSteps).toHaveLength(1);
+    expect(deploymentSecretSteps[0]?.run).toBe(deployment?.run);
     expect(publication?.env?.EDGEONE_API_TOKEN).toBeUndefined();
     expect(release.jobs.production.concurrency).toMatchObject({
       group: "blog26-edgeone-production",
@@ -187,11 +224,22 @@ describe("prerelease workflow deployment boundary", () => {
   test("failed frozen-input recovery is explicitly scoped to one release identity", () => {
     expect(failedInputsRecovery.on.workflow_dispatch.inputs).toEqual({
       release_id: { type: "string", required: true },
+      confirm_loss: { type: "boolean", required: true },
+      incident_reason: { type: "string", required: true },
     });
     expect(failedInputsRecovery.jobs.abandon["timeout-minutes"]).toBe(20);
     expect(failedInputsRecovery.jobs.abandon.permissions).toMatchObject({
       actions: "read",
       contents: "write",
     });
+  });
+
+  test("retry accepts only a release identity and reruns the original run", () => {
+    expect(retryRecovery.on.workflow_dispatch.inputs).toEqual({
+      release_id: { type: "string", required: true },
+    });
+    expect(retryRecovery.permissions).toEqual({ contents: "read", actions: "write" });
+    expect(retryRecovery.jobs.retry.if).toContain("github.ref == 'refs/heads/main'");
+    expect(retryRecovery.jobs.retry.permissions).toEqual({ contents: "read", actions: "write" });
   });
 });

@@ -4,7 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       release_id:
-        description: Failed merged release identity with frozen inputs and no products
+        description: Failed or cancelled release identity whose frozen input artifact is unavailable
+        required: true
+        type: string
+      confirm_loss:
+        description: Confirm that the original frozen inputs cannot be recovered
+        required: true
+        type: boolean
+      incident_reason:
+        description: Incident reason for permanently abandoning the release identity
         required: true
         type: string
 
@@ -28,6 +36,10 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
-      - run: RELEASE_ID="${{ inputs.release_id }}" bun scripts/product-release.ts abandon-failed-inputs
+      - name: Abandon only after frozen input loss is confirmed
+        run: bun scripts/product-release.ts abandon-failed-inputs
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          RELEASE_CONFIRM_LOSS: ${{ inputs.confirm_loss }}
+          RELEASE_INCIDENT_REASON: ${{ inputs.incident_reason }}

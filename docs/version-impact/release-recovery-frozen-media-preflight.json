@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
+  "covered_files": {
+    ".github/workflows/abandon-failed-inputs-release.yml": "6e038873501b5491634758b85191f20068876c4b",
+    ".github/workflows/notify-release-failure.yml": "efc0e3fd93fc696637002bc09402d6da7db879e8",
+    ".github/workflows/product-release.yml": "e250c5f3bc22bd770d09ac0c1d56174161c36e66",
+    ".github/workflows/retry-product-release.yml": "5d6be9679872974e4fec3384214fd6d6c6a73e88",
+    "docs/adr/0029-release-recovery-and-frozen-media-preflight.md": "c284d022a3e76455cdce0f1c9371d3f7b6f9147a",
+    "docs/runbooks/manual-version-release.md": "a59eb3a61438fae555533d6f96ffbfff892b21e0",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "eeb2066de2a32503b1e4672b16a41a627b7d84ad",
+    "docs/specs/manual-version-release/SPEC.md": "029a3ce6db8030b70cc28efd3f425016c665e980",
+    "scripts/product-release.ts": "155d1448ac7a29b5e46f082cdc99a5bddc2e2930",
+    "src/lib/release/artifacts.ts": "9faf84f70f5dca76c916008167112917412ff694",
+    "src/lib/release/completion.ts": "f9370b1ed2484e5d4ecb1f1714de6e0d57ac328e",
+    "src/lib/release/failure.ts": "db94f1eaf4bd9959256c204dba003eb85f948e05",
+    "src/lib/release/github.ts": "24167d59daea86cc8419730c0ebe4d2ad6214bc6",
+    "src/lib/release/ledger.ts": "999cbb7cf69a3b5a9cdba30e917569a1620d2e03",
+    "src/lib/release/products.ts": "d87fe2a85c3f3e32394fa52b697741ea158ed346",
+    "src/lib/release/publication.ts": "f4a58c48b1a19eb27bc2a4a504627fbcae06c629",
+    "tests/ci/notify-release-failure-workflow.test.ts": "6547c9cb7acc1c01668678d306f9406a33c3d550",
+    "tests/ci/product-prerelease-workflow.test.ts": "9d3fa41920fee4060c3001db8a50c0ceccbb9258",
+    "tests/lib/manual-release-completion.test.ts": "692c323f60f299589c46a90b55ccedc7a9ec8245",
+    "tests/lib/manual-release-failure.test.ts": "f03887076131cc895c4866a744dbede6a83ab90a",
+    "tests/lib/manual-release-ledger.test.ts": "d587bd127817e92a18d8076707e9119dce808581",
+    "tests/lib/manual-release-products.test.ts": "abd2d7343cf0fe5f6d16de6dbee8aaa34995846f",
+    "tests/lib/manual-release-recovery.test.ts": "7d399586302b2661aa2f3eb57f683e8ff680d93b"
+  },
+  "change": {
+    "description": "Restore same-identity Product Release recovery after frozen inputs and add deterministic frozen-media preflight before image packaging.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a backward-compatible release operations fix. It preserves release identity, version allocation, source binding, artifact retention, product formats, transport and required checks while adding a same-run retry contract and an earlier frozen-media validation boundary.",
+      "assessed_at": "2026-10-23T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "docs/adr/0029-release-recovery-and-frozen-media-preflight.md",
+          "blob": "c284d022a3e76455cdce0f1c9371d3f7b6f9147a",
+          "command": "Review the accepted recovery and preflight decision"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The retry workflow accepts only a release identity and reruns the validated original Product Release run. New failure metadata is additive to the ledger reader, input-only abandon is fail-closed when artifacts remain available, and static output reuse is bound to identity, source and frozen input digest.",
+      "assessed_at": "2026-10-23T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-completion.test.ts",
+          "blob": "692c323f60f299589c46a90b55ccedc7a9ec8245",
+          "command": "bun test tests/lib/manual-release-completion.test.ts"
+        },
+        {
+          "path": "tests/lib/manual-release-products.test.ts",
+          "blob": "abd2d7343cf0fe5f6d16de6dbee8aaa34995846f",
+          "command": "bun test tests/lib/manual-release-products.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to Product Release recovery, failure context, frozen-media preflight, their workflows, focused tests and the owning runbook/spec/ADR evidence."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused release, workflow, media and notification contract tests pass; repository check and the new workflow actionlint checks pass. An empirical GitHub Actions rerun drill remains required before this record can be treated as final runtime evidence.",
+      "assessed_at": "2026-10-23T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "7d399586302b2661aa2f3eb57f683e8ff680d93b",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts tests/ci/notify-release-failure-workflow.test.ts tests/lib/manual-release-failure.test.ts tests/lib/manual-release-products.test.ts tests/lib/manual-release-completion.test.ts tests/lib/manual-release-ledger.test.ts tests/lib/manual-release-recovery.test.ts tests/lib/manual-release-media.test.ts"
+        },
+        {
+          "path": "docs/specs/manual-version-release/SPEC.md",
+          "blob": "029a3ce6db8030b70cc28efd3f425016c665e980",
+          "command": "Document check and review of REQ-MVR-017 through VER-MVR-015"
+        },
+        {
+          "path": ".github/workflows/retry-product-release.yml",
+          "blob": "5d6be9679872974e4fec3384214fd6d6c6a73e88",
+          "command": "actionlint .github/workflows/retry-product-release.yml .github/workflows/notify-release-failure.yml .github/workflows/abandon-failed-inputs-release.yml"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6"
+      ],
+      "evidence": [
+        {
+          "path": "docs/adr/0029-release-recovery-and-frozen-media-preflight.md",
+          "blob": "c284d022a3e76455cdce0f1c9371d3f7b6f9147a",
+          "command": "The decision explicitly preserves public product and API contracts."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The release ledger is operational signed release state rather than application persistence; old phase strings remain readable, new step metadata is optional, and identity/version/artifact invariants remain unchanged.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-ledger.test.ts",
+          "blob": "d587bd127817e92a18d8076707e9119dce808581",
+          "command": "bun test tests/lib/manual-release-ledger.test.ts"
+        }
+      ]
+    }
+  }
+}

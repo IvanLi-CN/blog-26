@@ -131,6 +131,33 @@ describe("frozen release recovery", () => {
       expect(attempts).toBe(2);
     });
   }
+  test("successful recovery clears the failure recorded by the previous attempt", async () => {
+    const { store, id, entry } = frozenStore("alpha");
+    const current = await store.read();
+    await store.compareAndSwap(
+      current.sha,
+      updateRelease(current.ledger, id, {
+        failure: {
+          phase: "build_products",
+          step: "Build the full-feature image from validated static output",
+          runId: "7",
+          attempt: 1,
+        },
+      })
+    );
+    const completed = await finishRelease(store, id, {
+      productionPointers: async () => pointers,
+      publish: async () => proofs(entry).publication,
+      deploy: async () => {
+        throw new Error("prerelease must not deploy");
+      },
+      promote: async () => {
+        throw new Error("prerelease must not promote");
+      },
+    });
+    expect(completed.stage).toBe("complete");
+    expect(completed.failure).toBeUndefined();
+  });
   test("unavailable or changed production observations never prove isolation", async () => {
     const { store, id, entry } = frozenStore("alpha");
     let reads = 0;
@@ -243,7 +270,7 @@ describe("frozen release recovery", () => {
     for (const [kind, step] of [
       ["inputs", "Freeze public build inputs under the production lock"],
       ["inputs", "Retain frozen inputs for 90 days"],
-      ["products", "Build the static frontend and full-feature image"],
+      ["products", "Build the full-feature image from validated static output"],
       ["products", "Retain both immutable products for 90 days"],
     ] as const) {
       completedStep = step;
@@ -253,7 +280,7 @@ describe("frozen release recovery", () => {
       completedStep =
         kind === "inputs"
           ? "Freeze public build inputs under the production lock"
-          : "Build the static frontend and full-feature image";
+          : "Build the full-feature image from validated static output";
       for (conclusion of ["failure", "cancelled"])
         expect(findArtifact(github, entry, kind)).toBeUndefined();
       conclusion = null;
@@ -261,6 +288,8 @@ describe("frozen release recovery", () => {
       conclusion = "skipped";
       expect(findArtifact(github, entry, kind)).toBeUndefined();
     }
+    completedStep = "Preflight frozen media closure";
+    expect(findArtifact(github, entry, "products")).toBeUndefined();
     completedStep = "";
     previousStatus = "in_progress";
     expect(() => findArtifact(github, entry, "inputs")).toThrow("unavailable");

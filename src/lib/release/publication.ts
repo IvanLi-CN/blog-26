@@ -48,12 +48,16 @@ export async function finishRelease(
   }
   async function record(patch: Partial<ReleaseEntry>) {
     await changeLedger(store, (ledger) => ({
-      ledger: updateRelease(ledger, identity, patch),
+      ledger: updateRelease(ledger, identity, { ...patch, failure: undefined }),
       result: null,
     }));
   }
   let entry = await current();
-  if (entry.stage === "complete") return entry;
+  if (entry.stage === "complete") {
+    if (!entry.failure) return entry;
+    await record({ failure: undefined });
+    return current();
+  }
   if (!["frozen", "published", "deployed"].includes(entry.stage))
     throw new Error("Publication requires both frozen products");
   async function pointers(): Promise<ProductionPointers> {

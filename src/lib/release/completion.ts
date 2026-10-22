@@ -58,6 +58,7 @@ export const qualitySchema = z
   .strict();
 export type QualityPolicy = z.infer<typeof qualitySchema>;
 export const releaseRecoveryEventSchema = z.enum(["workflow_run", "workflow_dispatch"]);
+export const productReleaseWorkflowPath = ".github/workflows/product-release.yml" as const;
 export function readQuality(path = ".github/quality-gates.json"): QualityPolicy {
   const quality = qualitySchema.parse(JSON.parse(readFileSync(path, "utf8")));
   const expected = quality.expected_pr_workflows.flatMap((workflow) => workflow.jobs);
@@ -71,7 +72,7 @@ export function readQuality(path = ".github/quality-gates.json"): QualityPolicy 
   return quality;
 }
 
-const runSchema = z.object({
+export const runSchema = z.object({
   id: z.number().int().positive(),
   workflow_id: z.number().int().positive(),
   run_attempt: z.number().int().positive(),
@@ -82,6 +83,7 @@ const runSchema = z.object({
   conclusion: z.string().nullable(),
   path: z.string(),
   head_repository: z.object({ full_name: z.string() }),
+  html_url: z.string().url().optional(),
 });
 export type WorkflowRun = z.infer<typeof runSchema>;
 
@@ -233,6 +235,34 @@ export function manualRecoveryRunCanTakeOver(
       previousRun.status === "completed" &&
       ["failure", "cancelled"].includes(previousRun.conclusion || "")
   );
+}
+
+export function assertRetryableProductRelease(
+  entry: ReleaseEntry,
+  run: WorkflowRun,
+  repository: string
+): void {
+  if (!["merged", "frozen", "published", "deployed"].includes(entry.stage))
+    throw new Error("Only an incomplete merged release can be retried");
+  if (!entry.releaseRunId || entry.releaseRunId !== run.id)
+    throw new Error("Retry must target the ledger's original release run");
+  if (!entry.mergeSha || run.head_sha !== entry.mergeSha)
+    throw new Error("Retry run source differs from the registered merge SHA");
+  if (
+    run.head_repository.full_name !== repository ||
+    run.head_branch !== "main" ||
+    !releaseRecoveryEventSchema.safeParse(run.event).success ||
+    run.path !== productReleaseWorkflowPath
+  )
+    throw new Error("Retry target is not the trusted Product Release run");
+  if (run.status !== "completed" || !["failure", "cancelled"].includes(run.conclusion || ""))
+    throw new Error("Only a completed failed or cancelled Product Release run can be retried");
+  if (entry.failure) {
+    if (entry.failure.runId !== String(run.id))
+      throw new Error("Recorded release failure belongs to another workflow run");
+    if (entry.failure.attempt > run.run_attempt)
+      throw new Error("Recorded release failure attempt is newer than the workflow run");
+  }
 }
 
 export async function resolveCompletedRelease(
