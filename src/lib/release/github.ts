@@ -249,6 +249,11 @@ export class GitHubRelease {
     });
   }
 
+  rerunWorkflowRun(runId: number): void {
+    if (!Number.isInteger(runId) || runId <= 0) throw new Error("Workflow run identity is invalid");
+    this.api(`${this.root}/actions/runs/${runId}/rerun`, "POST");
+  }
+
   publishReleaseChecks(
     releaseId: string,
     headSha: string,

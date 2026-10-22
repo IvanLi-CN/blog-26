@@ -92,13 +92,28 @@ export async function verifyDirectory(
   return manifest;
 }
 
-const serverArtifactSchema = z.object({
+export const serverArtifactSchema = z.object({
   id: z.number().int().positive(),
   name: z.string(),
   expired: z.boolean(),
   digest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
   workflow_run: z.object({ id: z.number().int().positive() }),
 });
+export type ServerArtifact = z.infer<typeof serverArtifactSchema>;
+
+export function findServerArtifact(
+  github: GitHubRelease,
+  entry: ReleaseEntry,
+  kind: ArtifactManifest["kind"]
+): ServerArtifact | undefined {
+  const name = `release-${entry.id}-${kind}`;
+  const artifacts = github
+    .pages(`${github.root}/actions/runs/${entry.releaseRunId}/artifacts?per_page=100`, "artifacts")
+    .map((raw) => serverArtifactSchema.parse(raw))
+    .filter((item) => item.name === name);
+  if (artifacts.length > 1) throw new Error("Multiple immutable artifacts claim the same identity");
+  return artifacts[0];
+}
 
 export function assertNeverFrozen(
   github: GitHubRelease,
@@ -120,7 +135,7 @@ export function assertNeverFrozen(
     kind === "inputs"
       ? ["Freeze public build inputs under the production lock", "Retain frozen inputs for 90 days"]
       : [
-          "Build the static frontend and full-feature image",
+          "Build the full-feature image from validated static output",
           "Retain both immutable products for 90 days",
         ];
   for (let attempt = 1; attempt <= run.run_attempt; attempt++) {
@@ -156,7 +171,7 @@ export function assertNeverFrozen(
         step.status === "completed" &&
         [
           "Freeze public build inputs under the production lock",
-          "Build the static frontend and full-feature image",
+          "Build the full-feature image from validated static output",
         ].includes(step.name) &&
         ["failure", "cancelled"].includes(step.conclusion || "")
       )
@@ -175,12 +190,7 @@ export function findArtifact(
 ) {
   if (!entry.releaseRunId) throw new Error("Original release run is missing");
   const name = `release-${entry.id}-${kind}`;
-  const artifacts = github
-    .pages(`${github.root}/actions/runs/${entry.releaseRunId}/artifacts?per_page=100`, "artifacts")
-    .map((raw) => serverArtifactSchema.parse(raw))
-    .filter((item) => item.name === name);
-  if (artifacts.length > 1) throw new Error("Multiple immutable artifacts claim the same identity");
-  const artifact = artifacts[0];
+  const artifact = findServerArtifact(github, entry, kind);
   const recorded = entry[kind];
   if (!artifact) {
     if (recorded) throw new Error("Frozen artifact was removed; recovery is blocked");

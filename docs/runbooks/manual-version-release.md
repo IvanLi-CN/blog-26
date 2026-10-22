@@ -34,17 +34,21 @@ GitHub 适配器固定 REST API `2022-11-28`，按该字段合同核验 PR 与�
 
 ## 恢复
 
-重跑失败的原工作流；不重新 dispatch 一个替代版本。恢复读取原 release-ledger 登记，复用版本、来源、输入和冻结产物，仅补齐缺失步骤。已存在 tag、发布资产或镜像的身份与摘要不同则停止，不能覆盖。
+Product Release 失败或取消后，默认运行 **Retry Product Release**（`.github/workflows/retry-product-release.yml`），只填写原 `release_id`。入口会核验 ledger identity、原 Product Release run ID、main、workflow path、merge SHA、当前未完成 stage 和失败/取消结论，然后调用 GitHub `rerun` API；这是同一个 run 的新 `run_attempt`，不是新的 Product Release run、版本、reservation 或 artifact。直接在 GitHub Actions 页面重跑原 Product Release run 具有相同合同，但不得新建一个 manual Product Release run 接管已冻结 identity。
 
-如果 Product Release 在冻结输入前被 GitHub Actions 超时取消，原运行不会进入普通 failure 恢复路径。确认该运行结论为 `cancelled` 且 ledger 没有 inputs/products 后，手动运行 **Abandon Cancelled Product Release**（`.github/workflows/abandon-cancelled-release.yml`）并填写原 release identity；入口会再次核验原运行、拒绝已有冻结产物，并将该身份正式标记为 abandoned。随后重新运行 **Manual Product Release**，版本留空即可按已验证影响自动分配下一个可用版本，不复用已烧毁身份。
+原 run 恢复时先 restore 原 run 的 inputs/products；已登记的 artifact、版本、sourceSha、mergeSha 和摘要只能复用，任何 identity 或字节冲突都停止。成功的 `record inputs`、`record products` 或 publication checkpoint 会清除旧 failure；通知会显示 version、identity、source/merge SHA、run URL、attempt、phase、step 和 recovery target。
 
-如果 Product Release 已冻结 inputs 但在生成 products 前失败，手动运行 **Abandon Failed Product Release Inputs**（`.github/workflows/abandon-failed-inputs-release.yml`）并填写原 release identity。入口会核验原失败 run、冻结 inputs artifact 和没有 products 的状态，只清除该身份的 inputs 并标记为 abandoned；随后重新运行 **Manual Product Release**，版本留空即可自动分配下一个可用版本。该操作必须在 GitHub Actions 中执行，以保留 release ledger 所需的 `github-actions[bot]` Verified 签名；本地用户令牌不能直接写入 ledger。
+如果 Product Release 在任何 inputs/products 产生前被 GitHub Actions 取消，仍应先 retry 原 run。只有确认原 run 无 artifact 且决定放弃时，才手动运行 **Abandon Cancelled Product Release**（`.github/workflows/abandon-cancelled-release.yml`）；入口会再次核验原运行、拒绝已有冻结产物，并将该身份正式标记为 abandoned。随后重新运行 **Manual Product Release**，版本留空即可按已验证影响自动分配下一个可用版本，不复用已烧毁身份。
+
+如果 Product Release 已冻结 inputs 但在生成 products 前失败，必须运行 **Retry Product Release**，不能 abandon；原 inputs artifact 可用时，**Abandon Failed Product Release Inputs**（`.github/workflows/abandon-failed-inputs-release.yml`）会拒绝。只有 GitHub 已证明原 inputs artifact 缺失或过期、没有任何 products artifact，并且确实决定烧毁 identity 时，才允许该 emergency workflow；它要求 `confirm_loss=true` 和非空 `incident_reason`，会保留原失败上下文并标记 abandoned。该操作必须在 GitHub Actions 中执行，以保留 release ledger 所需的 `github-actions[bot]` Verified 签名；本地用户令牌不能直接写入 ledger。
+
+Product Release 在 `record inputs` 后、镜像构建前执行 **Preflight frozen media closure**：它只读取同一 frozen snapshot、media manifest 和 build config，使用相同静态构建验证 watermark/clipping 等媒体闭包，并写入绑定 identity/sourceSha/inputs manifest digest 的静态输出证明。预检失败会停在可重试的 `preflight_media` 阶段，不会创建 products artifact；预检通过后镜像阶段消费该静态输出，不重新访问变化中的远端媒体。
 
 同一准备 run 重跑复用原始请求与身份；前一身份完成后，新 run 可申请下一个版本。预发布两种产物发布成功后，记录共享锁内正式 GitHub latest、镜像 latest、生产版本与 Playbook 指针的前后读回；一致才能 complete，部署和晋升均记为 `not-applicable`。读取失败或变化不能当作不变证明。已完成预发布的幂等恢复不要求生产仍停留在历史指针。
 
 首次验收时，批准的 bootstrap renderer 可能尚无静态 `/version.json`。仅当明确读回 404 且 Playbook rendererCommit 与 bootstrap 来源一致时记录该端点不存在；未知 renderer、其他错误或解析失败会停止。该记录不能当作新正式版部署的验收证据。
 
-冻结产物保留 90 天。公开媒体冻结使用最多 8 个并发下载 worker，单请求仍受现有超时、重试和大小限制约束；Product Release 作业超时为 360 分钟，以覆盖大量静态媒体和外部网络抖动。产物失效或缺失时报告恢复受阻，不联网重新生成同身份的新内容。关闭未合并的版本 PR 会废弃预留，已占用版本不会重新分配。较新版本已完成生产部署后，旧身份重跑不会回退生产指针。
+failure phase 固定为 `resolve`、`restore`、`freeze_inputs`、`retain_inputs`、`record_inputs`、`preflight_media`、`build_products`、`verify_products`、`retain_products`、`record_products`、`publish_prerelease`、`publish_stable` 或 `unknown`；ledger 仍兼容历史的 `merged` 等旧 phase，但新 failure 必须同时记录实际 workflow step。冻结产物保留 90 天。公开媒体冻结使用最多 8 个并发下载 worker，单请求仍受现有超时、重试和大小限制约束；Product Release 作业超时为 360 分钟，以覆盖大量静态媒体和外部网络抖动。产物失效或缺失时报告恢复受阻，不联网重新生成同身份的新内容。关闭未合并的版本 PR 会废弃预留，已占用版本不会重新分配。较新版本已完成生产部署后，旧身份重跑不会回退生产指针。
 
 若上传完成但登记绑定尚未完成，恢复会核验原 Actions 运行所有尝试的冻结、构建及上传步骤记录。已经完成冻结或上传却找不到对应产物时停止；原运行记录不可验证时也停止。只有原记录证明该类产物尚未冻结，才允许继续初次生成。
 

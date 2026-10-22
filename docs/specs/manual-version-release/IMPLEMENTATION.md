@@ -24,6 +24,11 @@
 - 来源移动后的新手动准备保留废弃记录和已占用版本；原运行重跑及其他发版人不能替换旧身份。尚未绑定的 PR 也必须核验来源并关闭后才能重新准备。
 - 自动合并与 main 保护规则已通过实际配置读回核验：十项 required checks、严格 up-to-date、Verified commits、管理员受约束、禁止 force/delete、零新增人工审批。
 - 发布身份采用内置 `GITHUB_TOKEN` 和 GraphQL expected-head 签名提交，准备阶段显式 dispatch 确切 preparation head 的 CI/E2E；合并衔接在全部作业成功且登记身份、PR 编号、PR head 与来源未变化后，通过 Checks API 发布同一 Actions 身份创建的 PR 关联检查见证，再观察受保护的自动合并。[签名探针](https://github.com/IvanLi-CN/blog-26/actions/runs/37506548178/job/112416565449)已核验内置令牌创建的 [Verified 登记提交](https://github.com/IvanLi-CN/blog-26/commit/8e69dd5fc60966944c7869fe89ee5223bf3eb3f8)。Product Release 同时支持无输入的受控恢复 dispatch；它只从 release-ledger 解析唯一仍有效的已合并身份，复用其 merge SHA 并重新核验 main CI/E2E，不接受版本、来源或产物参数。最终候选的完整 CI、平台验收和审查证据随实现 PR 交付；生产发版由后续自动衔接或该恢复入口触发。
+- Product Release failure/cancelled recovery 现在通过 `retry-product-release.yml` 以唯一 `release_id` 触发原 Product Release run rerun；恢复校验 repository、workflow path、main、原 run ID、merge SHA、未完成 stage 和 conclusion，不创建 successor identity，不复制 artifact。旧 ledger failure phase 仍可读取，新失败同时记录固定 phase、实际 step、run ID 和 attempt；成功推进会清除旧 failure。
+- frozen inputs 记录后、image build 前新增 deterministic frozen-media preflight。预检只读取同一 frozen snapshot、media manifest 和 build config，生成绑定 release identity、merge SHA 与 inputs manifest digest 的静态输出证明，image build 只复用匹配证明；预检输出不是不可变产品 artifact，可在原 run rerun 中重建。
+- input-only abandon 已收紧：可用 frozen inputs artifact 时明确拒绝；仅在 GitHub 已证明 artifact 缺失或过期、没有 products、人工确认 loss 且提供 incident reason 时允许紧急 abandon。无任何 artifact 的 pre-artifact failure/cancelled 仍保留原有 abandon 入口，abandoned identity 不可复活或重新分配。
+- 失败通知继续使用既有 Oidrune transport，但补充 version、release identity、source/merge SHA、run URL、attempt、fixed phase、step、same-identity recovery operation 和 retry URL；Product Release 不持有通知凭据或 delivery 逻辑。
+- 本修复对齐 Style Playbook 的 `manual-version-release-delivery`、`release-failure-notification` 和 `quality-gates` Topic：同 identity 恢复、失败上下文含恢复目标、生产发布仍为 post-merge gate，未改写 PR/main required checks。
 - 未触发生产产品发布、部署或真实通知测试；不得把本地 fixture 和配置读回当成生产发布成功证明。
 
 ## References

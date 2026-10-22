@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import contractJson from "../../.github/release-contract.json";
 import { GitHubLedgerStore, GitHubRelease } from "../../src/lib/release/github";
 import {
+  abandonUnrecoverableFrozenInputs,
   changeLedger,
   initialLedger,
   type LedgerStore,
@@ -430,7 +431,7 @@ describe("durable product release reservations", () => {
       failure: { phase: "merged", runId: "7", attempt: 1 },
     });
   });
-  test("failed merged releases can abandon a frozen input before products exist", () => {
+  test("available frozen inputs cannot be abandoned without the emergency loss path", () => {
     const first = reserveRelease(initialLedger(contract), request);
     let merged = updateRelease(first.ledger, first.entry.id, {
       stage: "pr_open",
@@ -451,9 +452,21 @@ describe("durable product release reservations", () => {
       manifestDigest: "2".repeat(64),
     };
     const frozen = updateRelease(merged, first.entry.id, { inputs: input });
-    const abandoned = updateRelease(frozen, first.entry.id, {
-      stage: "abandoned",
-      inputs: undefined,
+    expect(() =>
+      updateRelease(frozen, first.entry.id, {
+        stage: "abandoned",
+        inputs: undefined,
+      })
+    ).toThrow("cannot be abandoned");
+    expect(() =>
+      abandonUnrecoverableFrozenInputs(frozen, first.entry.id, {
+        artifactUnavailable: true,
+        incidentReason: "",
+      })
+    ).toThrow("incident reason");
+    const abandoned = abandonUnrecoverableFrozenInputs(frozen, first.entry.id, {
+      artifactUnavailable: true,
+      incidentReason: "Artifact retention loss was confirmed",
     });
     expect(abandoned.entries[0]?.stage).toBe("abandoned");
     expect(abandoned.entries[0]?.inputs).toBeUndefined();

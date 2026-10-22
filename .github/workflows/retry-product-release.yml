@@ -1,0 +1,43 @@
+name: Retry Product Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: Original Product Release identity to rerun in place
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  retry:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout trusted release tooling
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Install release Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install release Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.2
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+      - name: Validate and rerun the original Product Release
+        run: bun scripts/product-release.ts retry
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ inputs.release_id }}

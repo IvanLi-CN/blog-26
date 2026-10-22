@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { releaseFailureSchema } from "./failure";
 import {
   allocateVersion,
   canonicalJson,
@@ -106,14 +107,7 @@ export const entrySchema = z
     latestStatus: z.literal("not-applicable").optional(),
     productionBefore: productionPointersSchema.optional(),
     productionAfter: productionPointersSchema.optional(),
-    failure: z
-      .object({
-        phase: z.string().min(1),
-        runId: z.string().regex(/^\d+$/),
-        attempt: z.number().int().positive(),
-      })
-      .strict()
-      .optional(),
+    failure: releaseFailureSchema.optional(),
   })
   .strict();
 export type ReleaseEntry = z.infer<typeof entrySchema>;
@@ -375,7 +369,8 @@ export function updateRelease(
   ledger: ReleaseLedger,
   id: string,
   patch: Partial<ReleaseEntry>,
-  now = new Date().toISOString()
+  now = new Date().toISOString(),
+  options: { allowFrozenInputLoss?: boolean } = {}
 ): ReleaseLedger {
   const original = ledger.entries.find((entry) => entry.id === id);
   if (!original) throw new Error("Unknown release identity");
@@ -410,7 +405,8 @@ export function updateRelease(
       !original.publication &&
       !original.deployment &&
       Object.hasOwn(patch, "inputs") &&
-      patch.inputs === undefined;
+      patch.inputs === undefined &&
+      options.allowFrozenInputLoss === true;
     if (
       !["reserved", "pr_open", "abandoned"].includes(original.stage) &&
       !failedBeforeArtifacts &&
@@ -432,6 +428,34 @@ export function updateRelease(
     throw new Error("An abandoned reservation cannot be revived");
   validateEntry(next);
   return { ...ledger, entries: ledger.entries.map((entry) => (entry.id === id ? next : entry)) };
+}
+
+export function abandonUnrecoverableFrozenInputs(
+  ledger: ReleaseLedger,
+  id: string,
+  evidence: { artifactUnavailable: true; incidentReason: string },
+  now = new Date().toISOString()
+): ReleaseLedger {
+  if (!evidence.artifactUnavailable || evidence.incidentReason.trim().length < 10)
+    throw new Error(
+      "Frozen-input abandonment requires confirmed artifact loss and an incident reason"
+    );
+  const original = ledger.entries.find((entry) => entry.id === id);
+  if (!original) throw new Error("Unknown release identity");
+  if (
+    original.stage !== "merged" ||
+    !original.failure ||
+    !original.inputs ||
+    original.products ||
+    original.publication ||
+    original.deployment
+  )
+    throw new Error(
+      "Only a failed merged release with frozen inputs and no products can be abandoned"
+    );
+  return updateRelease(ledger, id, { stage: "abandoned", inputs: undefined }, now, {
+    allowFrozenInputLoss: true,
+  });
 }
 
 export function rebindReleaseRun(

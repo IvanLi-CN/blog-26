@@ -13,7 +13,7 @@ jobs:
   failure_identity:
     if: >-
       github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'failure' &&
+      (github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'cancelled') &&
       github.event.workflow_run.head_branch == 'main' &&
       github.event.workflow_run.head_repository.full_name == github.repository &&
       (github.event.workflow_run.path == '.github/workflows/manual-product-release.yml' ||
@@ -22,11 +22,20 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      actions: read
     outputs:
       confirmed: ${{ steps.identity.outputs.confirmed }}
       version: ${{ steps.identity.outputs.version }}
       source: ${{ steps.identity.outputs.source }}
+      source_sha: ${{ steps.identity.outputs.source_sha }}
+      merge_sha: ${{ steps.identity.outputs.merge_sha }}
       identity: ${{ steps.identity.outputs.identity }}
+      run_url: ${{ steps.identity.outputs.run_url }}
+      attempt: ${{ steps.identity.outputs.attempt }}
+      phase: ${{ steps.identity.outputs.phase }}
+      step: ${{ steps.identity.outputs.step }}
+      recovery: ${{ steps.identity.outputs.recovery }}
+      recovery_url: ${{ steps.identity.outputs.recovery_url }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -54,10 +63,16 @@ jobs:
         workflow: ${{ github.event.workflow_run.name }}
         product version: ${{ needs.failure_identity.outputs.version }}
         source: ${{ needs.failure_identity.outputs.source }}
+        source sha: ${{ needs.failure_identity.outputs.source_sha }}
+        merge sha: ${{ needs.failure_identity.outputs.merge_sha }}
         identity: ${{ needs.failure_identity.outputs.identity }}
-        attempt: ${{ github.event.workflow_run.run_attempt }}
-        url: ${{ github.event.workflow_run.html_url }}
-        note: Retry the original release run; keep its reserved identity and frozen products.
+        attempt: ${{ needs.failure_identity.outputs.attempt }}
+        phase: ${{ needs.failure_identity.outputs.phase }}
+        step: ${{ needs.failure_identity.outputs.step }}
+        recovery: ${{ needs.failure_identity.outputs.recovery }}
+        url: ${{ needs.failure_identity.outputs.run_url }}
+        recovery url: ${{ needs.failure_identity.outputs.recovery_url }}
+        note: Use the same-identity retry target. Frozen-input abandon is rejected while its artifact is available; emergency abandon requires confirmed artifact loss and an incident reason.
   smoke_test:
     if: ${{ github.event_name == 'workflow_dispatch' }}
     permissions:
