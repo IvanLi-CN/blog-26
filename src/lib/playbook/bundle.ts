@@ -6,6 +6,7 @@ import {
   encodeJson,
   encodePlaybookRawFiles,
   fileRecord,
+  parseJson,
   parseManifest,
   sha256,
   verifyFile,
@@ -110,10 +111,10 @@ export function readSupplementArchive(archive: Uint8Array, manifest: PlaybookMan
 
 export function parseSupplementFiles(files: Map<string, Uint8Array>) {
   const catalog = assertSupplementCatalog(
-    JSON.parse(Buffer.from(files.get("catalog.json") ?? []).toString("utf8"))
+    parseJson(Buffer.from(files.get("catalog.json") ?? []).toString("utf8"))
   );
   const search = searchSchema.parse(
-    JSON.parse(Buffer.from(files.get("search-documents.json") ?? []).toString("utf8"))
+    parseJson(Buffer.from(files.get("search-documents.json") ?? []).toString("utf8"))
   );
   return { catalog, search };
 }
@@ -127,13 +128,13 @@ export function createPlaybookEdition(
   commitSchema.parse(rendererCommit);
   const contentSnapshotIdentity = sha256(publicSnapshot);
   digestSchema.parse(contentSnapshotIdentity);
-  const rawCatalog = JSON.parse(Buffer.from(files.get("catalog.json") ?? []).toString("utf8"));
+  const rawCatalog = parseJson(Buffer.from(files.get("catalog.json") ?? []).toString("utf8"));
   const legacyCatalog = isLegacyPublicCatalog(rawCatalog);
   const catalog = assertPublicCatalog(rawCatalog);
   const search = normalizePlaybookSearch(
     catalog,
     searchSchema.parse(
-      JSON.parse(Buffer.from(files.get("search-documents.json") ?? []).toString("utf8"))
+      parseJson(Buffer.from(files.get("search-documents.json") ?? []).toString("utf8"))
     )
   );
   const catalogBytes = files.get("catalog.json");
@@ -172,7 +173,7 @@ export async function readPlaybookEdition(
   publicSnapshot: Uint8Array | string
 ) {
   const manifest = parseManifest(
-    JSON.parse(await readFile(join(root, PLAYBOOK_MANIFEST_FILE), "utf8"))
+    parseJson(await readFile(join(root, PLAYBOOK_MANIFEST_FILE), "utf8"))
   );
   const archive = await readFile(join(root, manifest.bundle.name));
   return createPlaybookEdition(

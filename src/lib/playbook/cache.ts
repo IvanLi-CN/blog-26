@@ -7,6 +7,7 @@ import {
   encodeJson,
   encodePlaybookRawFiles,
   parseEditionIdentity,
+  parseJson,
   samePlaybookEdition,
   verifyFile,
 } from "./manifest";
@@ -92,8 +93,8 @@ export function validatePlaybookEdition(
     validatePlaybookSearchRoute(catalog, document);
   }
   if (legacyCatalog) {
-    const rawCatalog = JSON.parse(new TextDecoder().decode(verifiedRawFiles?.get("catalog.json")));
-    const rawSearch = JSON.parse(
+    const rawCatalog = parseJson(new TextDecoder().decode(verifiedRawFiles?.get("catalog.json")));
+    const rawSearch = parseJson(
       new TextDecoder().decode(verifiedRawFiles?.get("search-documents.json"))
     );
     const normalizedCatalog = assertPublicCatalog(rawCatalog);
@@ -114,7 +115,7 @@ export function validatePlaybookEdition(
     if (raw) {
       verifyFile(raw, file);
       if (legacyCatalog) continue;
-      if (encodeJson(JSON.parse(new TextDecoder().decode(raw))) !== encodeJson(source))
+      if (encodeJson(parseJson(new TextDecoder().decode(raw))) !== encodeJson(source))
         throw new Error(`Playbook file projection mismatch: ${file.path}`);
       continue;
     }
@@ -226,10 +227,9 @@ export class PlaybookStore {
 
   private async loadState(seedPath: string, supplementSeedPath: string) {
     try {
-      const raw = JSON.parse(await readFile(join(this.root, "state.json"), "utf8")) as Record<
-        string,
-        unknown
-      >;
+      const raw = parseJson<Record<string, unknown>>(
+        await readFile(join(this.root, "state.json"), "utf8")
+      );
       if (raw.adoption && typeof raw.adoption === "object") {
         const a = raw.adoption as Record<string, unknown>;
         if (typeof a.taskId === "string" && typeof a.at === "number")
@@ -255,7 +255,7 @@ export class PlaybookStore {
     if (!this.state.current) {
       try {
         this.state.current = freezeEdition(
-          validatePlaybookEdition(JSON.parse(await readFile(resolve(seedPath), "utf8")))
+          validatePlaybookEdition(parseJson(await readFile(resolve(seedPath), "utf8")))
         );
       } catch {
         /* Other console surfaces remain available without a playbook. */
@@ -271,7 +271,7 @@ export class PlaybookStore {
     }
     if (persistedSupplementState !== undefined) {
       try {
-        const raw = JSON.parse(persistedSupplementState) as Record<string, unknown>;
+        const raw = parseJson<Record<string, unknown>>(persistedSupplementState);
         const source = sourceSchema.parse(raw.source);
         const rawFiles = raw.supplement === null ? undefined : decodePlaybookRawFiles(raw.rawFiles);
         const supplement =
@@ -296,7 +296,7 @@ export class PlaybookStore {
     } else if (this.state.current) {
       try {
         const supplement = validatePlaybookSupplement(
-          JSON.parse(await readFile(resolve(supplementSeedPath), "utf8"))
+          parseJson(await readFile(resolve(supplementSeedPath), "utf8"))
         );
         if (samePlaybookSource(this.state.current.edition.source, supplement.manifest.source)) {
           const merged = mergePlaybookSupplement(this.state.current, supplement);
@@ -535,7 +535,7 @@ export class PlaybookStore {
       const pointer =
         retainedIdentity ??
         parseEditionIdentity(
-          JSON.parse(
+          parseJson(
             Buffer.from(await fetchBounded(this.fetcher, manifestUrl, 64 * 1024, signal)).toString(
               "utf8"
             )
@@ -562,7 +562,7 @@ export class PlaybookStore {
             return {
               path: file.path,
               bytes,
-              value: JSON.parse(Buffer.from(bytes).toString("utf8")),
+              value: parseJson(Buffer.from(bytes).toString("utf8")),
             };
           })
       );

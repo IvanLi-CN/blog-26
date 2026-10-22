@@ -11,6 +11,7 @@ import {
   decodePlaybookRawFiles,
   encodeJson,
   parseEditionIdentity,
+  parseJson,
   samePlaybookEdition,
   verifyFile,
 } from "./manifest";
@@ -50,7 +51,7 @@ export async function readPublicPointer(url: string, fetcher: PlaybookFetcher = 
   if (response.status === 404) return undefined;
   if (!response.ok) throw new Error(`Public pointer unavailable: ${response.status}`);
   return parseEditionIdentity(
-    JSON.parse(new TextDecoder().decode(await readBoundedResponse(response, 64 * 1024)))
+    parseJson(new TextDecoder().decode(await readBoundedResponse(response, 64 * 1024)))
   );
 }
 
@@ -75,7 +76,7 @@ export async function downloadRetainedEdition(
     );
     verifyFile(bytes, record);
     await write(join(destination, record.path), bytes);
-    files.set(record.path, JSON.parse(new TextDecoder().decode(bytes)));
+    files.set(record.path, parseJson(new TextDecoder().decode(bytes)));
     rawFiles.set(record.path, bytes);
   }
   const edition = validatePlaybookEdition(

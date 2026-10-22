@@ -10,6 +10,7 @@ import { validatePlaybookEdition } from "../src/lib/playbook/cache";
 import {
   encodeJson,
   parseEditionIdentity,
+  parseJson,
   samePlaybookEdition,
 } from "../src/lib/playbook/manifest";
 import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
@@ -28,10 +29,10 @@ await rm(supplementSeedPath, { force: true });
 if (process.env.PLAYBOOK_FROZEN_INPUT_DIR) {
   const frozen = resolve(process.env.PLAYBOOK_FROZEN_INPUT_DIR);
   const seed = validatePlaybookEdition(
-    JSON.parse(await readFile(join(frozen, "playbook-edition.json"), "utf8"))
+    parseJson(await readFile(join(frozen, "playbook-edition.json"), "utf8"))
   );
   const pointer = parseEditionIdentity(
-    JSON.parse(await readFile(join(frozen, "playbook/manifest.json"), "utf8"))
+    parseJson(await readFile(join(frozen, "playbook/manifest.json"), "utf8"))
   );
   if (
     !samePlaybookEdition(seed.edition, pointer) ||
@@ -49,7 +50,7 @@ if (process.env.PLAYBOOK_FROZEN_INPUT_DIR) {
     throw error;
   });
   if (frozenSupplement) {
-    const supplement = validatePlaybookSupplementSeed(JSON.parse(frozenSupplement));
+    const supplement = validatePlaybookSupplementSeed(parseJson(frozenSupplement));
     if (!samePlaybookSource(seed.edition.source, supplement.manifest.source))
       throw new Error("Frozen Playbook supplement source does not match the public edition");
     await writeFile(supplementSeedPath, encodeJson(supplement));
@@ -76,7 +77,7 @@ let bundleRoot = process.env.PLAYBOOK_BUNDLE_DIR;
 let current: PlaybookEditionIdentity | undefined;
 const inputPath = process.env.PLAYBOOK_EDITION_INPUT_PATH;
 const inputSeed = inputPath
-  ? validatePlaybookEdition(JSON.parse(await readFile(resolve(inputPath), "utf8")))
+  ? validatePlaybookEdition(parseJson(await readFile(resolve(inputPath), "utf8")))
   : undefined;
 await rm(resolve(publicRoot, "_content/playbook"), { recursive: true, force: true });
 await mkdir(working, { recursive: true });

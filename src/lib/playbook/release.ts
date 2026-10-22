@@ -1,6 +1,7 @@
 import {
   encodeJson,
   parseEditionIdentity,
+  parseJson,
   parseManifest,
   samePlaybookEdition,
   sha256,
@@ -150,7 +151,7 @@ async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
   )
     throw new Error("Release assets are not ready");
   const manifestBytes = await reader.asset(manifestAsset.id, manifestAsset.size);
-  const manifest = parseManifest(JSON.parse(new TextDecoder().decode(manifestBytes)), "public");
+  const manifest = parseManifest(parseJson(new TextDecoder().decode(manifestBytes)), "public");
   const commit = await reader.commit(release.tag_name);
   if (
     manifest.source.releaseId !== String(release.id) ||
@@ -191,7 +192,7 @@ async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
         supplementManifestAsset.size
       );
       const supplementManifest = parseManifest(
-        JSON.parse(new TextDecoder().decode(supplementManifestBytes)),
+        parseJson(new TextDecoder().decode(supplementManifestBytes)),
         "supplement"
       );
       if (

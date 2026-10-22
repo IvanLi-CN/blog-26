@@ -13,18 +13,19 @@
     "docs/specs/style-playbook-integration/contracts/public-package.md": "dc75bc634a379510787a44c1d1ee3e0ef66373f3",
     "docs/specs/style-playbook-integration/contracts/release-trigger.md": "8b9208153c18d75f49e019867eb07874a8059870",
     "scripts/fetch-initial-playbook.ts": "36e658229f163f08008f7c5a3af313778e628b33",
+    "scripts/prepare-console-playbook-seed.ts": "d126f6fe798e17cb479c7f85056a310290e6f0b5",
     "scripts/playbook-content-update.ts": "c121a9e902be99cfea719aaf5762cb5a2a900481",
     "scripts/prepare-backend-dist.sh": "ed0e0fea1f8a9b4add452bb2f62985c1aac1bcd1",
-    "scripts/prepare-playbook-edition.ts": "123f84a92776d018ea0ddec5b3f3057b25acfd28",
+    "scripts/prepare-playbook-edition.ts": "aeebf4cb80e3b9a9d9352601aa67ab179da53b2b",
     "src/lib/admin-api-client.ts": "926e9bbc0c1d0c99b3b95d219eb88f6cbb9734f5",
-    "src/lib/playbook/artifacts.ts": "aeb75ce71325908c76e75351b1ec4afcfb054b83",
-    "src/lib/playbook/bundle.ts": "936e5c35342452bdc9c517b9cec9a70c2f316683",
-    "src/lib/playbook/cache.ts": "4297c5b105f01842f0bdb579c9a720d144962ea5",
+    "src/lib/playbook/artifacts.ts": "98f4d2aa7ac98565dddaa14cd60e085b9ac6cb81",
+    "src/lib/playbook/bundle.ts": "1d0517cb7624a91a2f12dce2c0ccfddd89c9a58f",
+    "src/lib/playbook/cache.ts": "d582f58709ef037a428c81d123af6b4728a61308",
     "src/lib/playbook/fixture.ts": "5df5704636a959f61f9301b2e9b0efba49eea934",
-    "src/lib/playbook/manifest.ts": "f19f581a876eeb09710d18749fb7fb960f933acc",
-    "src/lib/playbook/release.ts": "90b55c65463818e004087eca87225eb5c820e284",
+    "src/lib/playbook/manifest.ts": "16d4184b0eb42b42cf779fa3629f4a80375ea09a",
+    "src/lib/playbook/release.ts": "d9cc35432f01766f3fbde6d667e73ee5984fc252",
     "src/lib/playbook/schema.ts": "b3d36b4290a1337c068e0330e625d78265758891",
-    "src/lib/playbook/supplement.ts": "b6fe3cbcadc365a282110c36b7fe9af1682af2d0",
+    "src/lib/playbook/supplement.ts": "ba4068f6bb6769ec425d2691db954631d69c4af",
     "src/lib/playbook/types.ts": "a85bc56fdee6d5e0f788e4adcf993cafff7d7c55",
     "src/lib/playbook/web-demo-fixture.ts": "05b0a4b7e8edfc8c022e8107e646b39cbec67f9e",
     "src/lib/release/inputs.ts": "b9ccf36d6ae781e5f3141fbd76ef137c4f6e8f62",
@@ -35,9 +36,9 @@
     "src/server/routers/admin/index.ts": "a0221d7071f529099c250fce356939a00095f934",
     "src/server/routers/admin/playbook.ts": "47e980599443589feeef4ecc1976cfb5eb6fb070",
     "tests/lib/manual-release-source.test.ts": "015b936082fdaf6c4435d47b49e6649a2aa9d8ea",
-    "tests/lib/playbook-contract.test.ts": "759da82ede1c52e17b8356d8251ca959ff1061ca",
+    "tests/lib/playbook-contract.test.ts": "295dfdc16b70bb615681099d680436bf5e7e0c41",
     "tests/lib/playbook-fixture.ts": "182603e4da37bff59c1ee55093e1fbefb949bc45",
-    "tests/lib/playbook-workflows.test.ts": "c2bfa30fd584df45d690f9fffcc7e36cb1115696",
+    "tests/lib/playbook-workflows.test.ts": "24fe2afeed563cb4254a7c5d9acc53c5ac1c215f",
     "tests/fixtures/playbook/rust-supplement-catalog.fixture": "5eafd8f810a3765097aacee8d962b31912e93ef0",
     "tests/fixtures/playbook/rust-supplement-search.fixture": "9d20810bc370fbeeaa0fe459bf882c3943cbf85a"
   },
@@ -50,7 +51,7 @@
     "planned": {
       "impact": "minor",
       "reasoning": "The change adds an administrator-only Playbook overlay, additive release assets, an independent visibility projection, and a source-bound persisted supplement staging file. Existing public package names, public routes, and public content remain compatible.",
-      "assessed_at": "2026-10-22T21:28:58+08:00",
+      "assessed_at": "2026-10-22T21:47:59+08:00",
       "evidence": [
         {
           "path": "docs/specs/style-playbook-integration/SPEC.md",
@@ -62,11 +63,11 @@
     "current": {
       "impact": "minor",
       "reasoning": "The implementation keeps the public edition unchanged at its boundary while adding a source-bound protected supplement receiver, authenticated administrator browsing, and persisted overlay staging; invalid supplement data is isolated from public adoption, rollback retries are idempotent only for the exact published identity, and frozen seeds revalidate preserved raw bytes.",
-      "assessed_at": "2026-10-22T21:28:58+08:00",
+      "assessed_at": "2026-10-22T21:47:59+08:00",
       "evidence": [
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "90b55c65463818e004087eca87225eb5c820e284",
+          "blob": "d9cc35432f01766f3fbde6d667e73ee5984fc252",
           "command": "Release reader validates public identity; exact rollback retries are idempotent and conflicting identities fail closed"
         },
         {
@@ -93,11 +94,11 @@
     "verified": {
       "impact": "minor",
       "reasoning": "Public and supplement package validation, source identity checks, administrator authorization, raw-body preservation, deterministic assets, persisted overlay recovery, exact rollback retry handling, frozen seed byte validation, and the relevant Blog test and check suites pass.",
-      "assessed_at": "2026-10-22T21:28:58+08:00",
+      "assessed_at": "2026-10-22T21:47:59+08:00",
       "evidence": [
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "759da82ede1c52e17b8356d8251ca959ff1061ca",
+          "blob": "295dfdc16b70bb615681099d680436bf5e7e0c41",
           "command": "bun test src/server/http-compat-api.test.ts tests/lib/playbook-contract.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
@@ -107,7 +108,7 @@
         },
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "90b55c65463818e004087eca87225eb5c820e284",
+          "blob": "d9cc35432f01766f3fbde6d667e73ee5984fc252",
           "command": "Supplement identity, exact rollback retry, and failure isolation tests keep public release paths distinct"
         },
         {
@@ -117,7 +118,7 @@
         },
         {
           "path": "src/lib/playbook/artifacts.ts",
-          "blob": "aeb75ce71325908c76e75351b1ec4afcfb054b83",
+          "blob": "98f4d2aa7ac98565dddaa14cd60e085b9ac6cb81",
           "command": "Retained public editions verify and preserve legacy package file identities while rebuilding policy resources"
         },
         {
@@ -127,7 +128,7 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "759da82ede1c52e17b8356d8251ca959ff1061ca",
+          "blob": "295dfdc16b70bb615681099d680436bf5e7e0c41",
           "command": "Public and supplement contract tests preserve shared Markdown bytes, validate Rust fixture bytes, rollback identity, and supplement seed bytes"
         },
         {
@@ -241,12 +242,12 @@
       "evidence": [
         {
           "path": "src/lib/playbook/cache.ts",
-          "blob": "4297c5b105f01842f0bdb579c9a720d144962ea5",
+          "blob": "d582f58709ef037a428c81d123af6b4728a61308",
           "command": "Playbook cache persists an optional source-bound supplement and keeps malformed or mismatched data out of the admin read model"
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "759da82ede1c52e17b8356d8251ca959ff1061ca",
+          "blob": "295dfdc16b70bb615681099d680436bf5e7e0c41",
           "command": "Supplement persistence and conflicting overlay adoption retain a public-only fallback"
         }
       ]

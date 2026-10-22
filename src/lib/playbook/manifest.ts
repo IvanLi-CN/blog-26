@@ -22,6 +22,101 @@ export function sha256(content: string | Uint8Array) {
   return createHash("sha256").update(content).digest("hex");
 }
 
+export function parseJson<T = unknown>(text: string): T {
+  let offset = 0;
+  const whitespace = () => {
+    while (
+      text[offset] === " " ||
+      text[offset] === "\n" ||
+      text[offset] === "\r" ||
+      text[offset] === "\t"
+    )
+      offset++;
+  };
+  const readString = () => {
+    const start = offset++;
+    let escaped = false;
+    while (offset < text.length) {
+      const character = text[offset++];
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (character === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (character === '"') return JSON.parse(text.slice(start, offset)) as string;
+    }
+    throw new Error("Invalid JSON string");
+  };
+  const readValue = (): void => {
+    whitespace();
+    if (text[offset] === '"') {
+      readString();
+      return;
+    }
+    if (text[offset] === "{") {
+      readObject();
+      return;
+    }
+    if (text[offset] === "[") {
+      readArray();
+      return;
+    }
+    const start = offset;
+    while (offset < text.length && !",]} \n\r\t".includes(text[offset] ?? "")) offset++;
+    if (offset === start) throw new Error("Invalid JSON value");
+  };
+  const readObject = () => {
+    offset++;
+    whitespace();
+    const keys = new Set<string>();
+    if (text[offset] === "}") {
+      offset++;
+      return;
+    }
+    while (true) {
+      whitespace();
+      if (text[offset] !== '"') throw new Error("Invalid JSON object key");
+      const key = readString();
+      if (keys.has(key)) throw new Error("Duplicate JSON object key");
+      keys.add(key);
+      whitespace();
+      if (text[offset++] !== ":") throw new Error("Invalid JSON object separator");
+      readValue();
+      whitespace();
+      if (text[offset] === "}") {
+        offset++;
+        return;
+      }
+      if (text[offset++] !== ",") throw new Error("Invalid JSON object delimiter");
+    }
+  };
+  const readArray = () => {
+    offset++;
+    whitespace();
+    if (text[offset] === "]") {
+      offset++;
+      return;
+    }
+    while (true) {
+      readValue();
+      whitespace();
+      if (text[offset] === "]") {
+        offset++;
+        return;
+      }
+      if (text[offset++] !== ",") throw new Error("Invalid JSON array delimiter");
+    }
+  };
+
+  readValue();
+  whitespace();
+  if (offset !== text.length) throw new Error("Invalid JSON trailing data");
+  return JSON.parse(text) as T;
+}
+
 export function encodeJson(value: unknown) {
   return `${JSON.stringify(value, (_key, nested) => (nested && typeof nested === "object" && !Array.isArray(nested) ? Object.fromEntries(Object.entries(nested).sort(([a], [b]) => a.localeCompare(b))) : nested), 2)}\n`;
 }
@@ -119,7 +214,7 @@ export function verifyFile(content: Uint8Array | string, record: PlaybookManifes
 }
 
 export async function readAndValidateManifest(path: string) {
-  return parseManifest(JSON.parse(await readFile(path, "utf8")));
+  return parseManifest(parseJson(await readFile(path, "utf8")));
 }
 
 export async function verifyManifestFiles(root: string, manifest: PlaybookManifest) {

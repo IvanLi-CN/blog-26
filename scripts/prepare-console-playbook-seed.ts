@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { downloadRetainedEdition, readPublicPointer } from "../src/lib/playbook/artifacts";
 import { readPlaybookEdition } from "../src/lib/playbook/bundle";
 import { validatePlaybookEdition } from "../src/lib/playbook/cache";
-import { encodeJson } from "../src/lib/playbook/manifest";
+import { encodeJson, parseJson } from "../src/lib/playbook/manifest";
 import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
 
 type SeedOptions = {
@@ -22,7 +22,7 @@ export async function loadInitialPlaybookEdition(options: SeedOptions = {}) {
       if (error?.code === "ENOENT") return undefined;
       throw error;
     });
-    if (raw) return validatePlaybookEdition(JSON.parse(raw));
+    if (raw) return validatePlaybookEdition(parseJson(raw));
   }
   const url = options.manifestUrl || PLAYBOOK_PUBLIC_POINTER_URL;
   const pointer = await (options.readPointer || readPublicPointer)(url);

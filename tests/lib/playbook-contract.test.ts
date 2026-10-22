@@ -125,6 +125,49 @@ describe("playbook-public-contract", () => {
     mismatchedProject.snapshot.topics[0] = mismatchedProject.topic_details[0].item;
     expect(() => assertPublicCatalog(mismatchedProject)).toThrow("project references");
   });
+  test("rejects duplicate JSON object keys at the package boundary", () => {
+    const publicBundle = makePublicBundle();
+    const duplicateCatalog = publicBundle.files[0].content.replace(
+      '"generated_at": "2026-09-01T00:00:00Z",',
+      '"generated_at": "2026-09-01T00:00:00Z",\n  "generated_at": "2026-09-01T00:00:00Z",'
+    );
+    const publicFiles = [
+      { path: "catalog.json", content: duplicateCatalog },
+      publicBundle.files[1],
+    ];
+    const publicArchive = makeArchive(publicFiles);
+    const publicManifest: PlaybookManifest = {
+      ...publicBundle.manifest,
+      bundle: {
+        ...publicBundle.manifest.bundle,
+        size: publicArchive.length,
+        sha256: sha256(publicArchive),
+      },
+      files: publicFiles.map((file) => fileRecord(file.path, file.content)),
+    };
+    expect(() =>
+      createPlaybookEdition(
+        readPublicArchive(publicArchive, publicManifest),
+        publicManifest,
+        "b".repeat(40),
+        "{}\n"
+      )
+    ).toThrow("Duplicate JSON object key");
+
+    const supplementBundle = makeSupplementBundle();
+    const duplicateSupplementCatalog = supplementBundle.files[0].content.replace(
+      '"generated_at": "2026-09-01T00:00:00Z",',
+      '"generated_at": "2026-09-01T00:00:00Z",\n  "generated_at": "2026-09-01T00:00:00Z",'
+    );
+    expect(() =>
+      parseSupplementFiles(
+        new Map([
+          ["catalog.json", Buffer.from(duplicateSupplementCatalog)],
+          ["search-documents.json", Buffer.from(supplementBundle.files[1].content)],
+        ])
+      )
+    ).toThrow("Duplicate JSON object key");
+  });
   test("compatibly reads the legacy public catalog without changing body bytes", () => {
     const legacy = structuredClone(publicFixtureCatalog);
     const body = legacy.project_details[0].sections[0].markdown;

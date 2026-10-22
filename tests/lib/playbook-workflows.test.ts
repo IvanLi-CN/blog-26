@@ -103,7 +103,7 @@ describe("playbook deployment boundaries", () => {
 
     const prepare = await readFile("scripts/prepare-playbook-edition.ts", "utf8");
     expect(prepare).toContain("PLAYBOOK_EDITION_INPUT_PATH");
-    expect(prepare).toContain("validatePlaybookEdition(JSON.parse");
+    expect(prepare).toContain("validatePlaybookEdition(parseJson");
     expect(prepare).toContain("downloadRetainedEdition(inputEdition, manifestUrl, destination)");
     expect(prepare).toContain("const edition = inputSeed");
     expect(prepare).toContain("mergePlaybookSupplement(edition, supplement)");

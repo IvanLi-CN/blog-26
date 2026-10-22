@@ -5,6 +5,7 @@ import {
   decodePlaybookRawFiles,
   encodeJson,
   encodePlaybookRawFiles,
+  parseJson,
   parseManifest,
   verifyFile,
 } from "./manifest";
@@ -41,8 +42,8 @@ export function validatePlaybookSupplement(
     if (!catalogBytes || !searchBytes) throw new Error("Supplement data files are incomplete");
     verifyFile(catalogBytes, manifest.files[0]);
     verifyFile(searchBytes, manifest.files[1]);
-    const decodedCatalog = JSON.parse(new TextDecoder().decode(catalogBytes));
-    const decodedSearch = JSON.parse(new TextDecoder().decode(searchBytes));
+    const decodedCatalog = parseJson(new TextDecoder().decode(catalogBytes));
+    const decodedSearch = parseJson(new TextDecoder().decode(searchBytes));
     if (encodeJson(decodedCatalog) !== encodeJson(catalog))
       throw new Error("Supplement catalog projection does not match package bytes");
     if (encodeJson(decodedSearch) !== encodeJson(search))
@@ -63,7 +64,7 @@ export function validatePlaybookSupplementSeed(value: unknown): PlaybookSuppleme
 
 export async function readPlaybookSupplement(root: string): Promise<PlaybookSupplementSeed> {
   const manifest = parseManifest(
-    JSON.parse(await readFile(join(root, "playbook-private-supplement-manifest.json"), "utf8")),
+    parseJson(await readFile(join(root, "playbook-private-supplement-manifest.json"), "utf8")),
     "supplement"
   );
   const archive = await readFile(join(root, manifest.bundle.name));
