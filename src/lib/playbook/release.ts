@@ -114,10 +114,6 @@ async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
     throw new Error("Release is not stable and published");
   const manifestAsset = uniqueAsset(release, PLAYBOOK_PUBLIC_MANIFEST_NAME, true);
   const bundleAsset = uniqueAsset(release, PLAYBOOK_PUBLIC_BUNDLE_NAME, true);
-  const supplementManifestAsset = uniqueAsset(release, PLAYBOOK_SUPPLEMENT_MANIFEST_NAME, false);
-  const supplementBundleAsset = uniqueAsset(release, PLAYBOOK_SUPPLEMENT_BUNDLE_NAME, false);
-  if (Boolean(supplementManifestAsset) !== Boolean(supplementBundleAsset))
-    throw new Error("Release supplement assets are incomplete");
   if (
     !manifestAsset ||
     !bundleAsset ||
@@ -150,45 +146,57 @@ async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
         manifestAssetDigest?: string | null;
       }
     | undefined;
-  if (supplementManifestAsset && supplementBundleAsset) {
-    if (
-      supplementManifestAsset.size > PLAYBOOK_MAX_MANIFEST_BYTES ||
-      supplementBundleAsset.size > PLAYBOOK_MAX_BUNDLE_BYTES
-    )
-      throw new Error("Release supplement assets are not ready");
-    const supplementManifestBytes = await reader.asset(
-      supplementManifestAsset.id,
-      supplementManifestAsset.size
+  try {
+    const supplementManifestAsset = uniqueAsset(release, PLAYBOOK_SUPPLEMENT_MANIFEST_NAME, false);
+    const supplementBundleAsset = uniqueAsset(release, PLAYBOOK_SUPPLEMENT_BUNDLE_NAME, false);
+    if (Boolean(supplementManifestAsset) !== Boolean(supplementBundleAsset))
+      throw new Error("Release supplement assets are incomplete");
+    if (supplementManifestAsset && supplementBundleAsset) {
+      if (
+        supplementManifestAsset.size > PLAYBOOK_MAX_MANIFEST_BYTES ||
+        supplementBundleAsset.size > PLAYBOOK_MAX_BUNDLE_BYTES
+      )
+        throw new Error("Release supplement assets are not ready");
+      const supplementManifestBytes = await reader.asset(
+        supplementManifestAsset.id,
+        supplementManifestAsset.size
+      );
+      const supplementManifest = parseManifest(
+        JSON.parse(new TextDecoder().decode(supplementManifestBytes)),
+        "supplement"
+      );
+      if (
+        encodeJson(supplementManifest.source) !== encodeJson(manifest.source) ||
+        supplementManifest.bundle.size !== supplementBundleAsset.size
+      )
+        throw new Error("Release metadata does not match supplement manifest");
+      assertAssetDigest(
+        supplementManifestAsset,
+        `sha256:${sha256(supplementManifestBytes)}`,
+        "Supplement manifest asset"
+      );
+      assertAssetDigest(
+        supplementBundleAsset,
+        `sha256:${supplementManifest.bundle.sha256}`,
+        "Supplement bundle asset"
+      );
+      supplement = {
+        manifest: supplementManifest,
+        bundleAssetId: supplementBundleAsset.id,
+        bundleAssetSize: supplementBundleAsset.size,
+        bundleAssetDigest: supplementBundleAsset.digest,
+        manifestAssetId: supplementManifestAsset.id,
+        manifestAssetSize: supplementManifestAsset.size,
+        manifestAssetDigest: supplementManifestAsset.digest,
+        manifestAssetSha256: sha256(supplementManifestBytes),
+      };
+    }
+  } catch (error) {
+    // The supplement is an optional admin overlay; public adoption remains valid.
+    console.warn(
+      "[playbook] ignoring invalid supplement assets:",
+      error instanceof Error ? error.message : String(error)
     );
-    const supplementManifest = parseManifest(
-      JSON.parse(new TextDecoder().decode(supplementManifestBytes)),
-      "supplement"
-    );
-    if (
-      encodeJson(supplementManifest.source) !== encodeJson(manifest.source) ||
-      supplementManifest.bundle.size !== supplementBundleAsset.size
-    )
-      throw new Error("Release metadata does not match supplement manifest");
-    assertAssetDigest(
-      supplementManifestAsset,
-      `sha256:${sha256(supplementManifestBytes)}`,
-      "Supplement manifest asset"
-    );
-    assertAssetDigest(
-      supplementBundleAsset,
-      `sha256:${supplementManifest.bundle.sha256}`,
-      "Supplement bundle asset"
-    );
-    supplement = {
-      manifest: supplementManifest,
-      bundleAssetId: supplementBundleAsset.id,
-      bundleAssetSize: supplementBundleAsset.size,
-      bundleAssetDigest: supplementBundleAsset.digest,
-      manifestAssetId: supplementManifestAsset.id,
-      manifestAssetSize: supplementManifestAsset.size,
-      manifestAssetDigest: supplementManifestAsset.digest,
-      manifestAssetSha256: sha256(supplementManifestBytes),
-    };
   }
   return {
     manifest,
@@ -239,11 +247,9 @@ function assertOptionalAssetIdentity(
     input.supplement_manifest_asset_digest,
     input.supplement_manifest_asset_size,
   ];
-  if (!supplementFields.some(Boolean)) {
-    if (resolved.supplement) throw new Error("Supplement asset identity is required");
-    return;
-  }
-  if (supplementFields.some((value) => !value) || !resolved.supplement)
+  if (!resolved.supplement) return;
+  if (!supplementFields.some(Boolean)) throw new Error("Supplement asset identity is required");
+  if (supplementFields.some((value) => !value))
     throw new Error("Incomplete supplement asset identity");
   const supplement = resolved.supplement;
   if (

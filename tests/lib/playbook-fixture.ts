@@ -150,11 +150,12 @@ export function makeSupplementBundle(
   tag = "v3.0.0",
   releaseId = "100",
   catalog = supplementCatalog,
-  search = supplementSearch
+  search = supplementSearch,
+  serialize: (value: unknown) => string = encodeJson
 ) {
   const files = [
-    { path: "catalog.json", content: encodeJson(catalog) },
-    { path: "search-documents.json", content: encodeJson(search) },
+    { path: "catalog.json", content: serialize(catalog) },
+    { path: "search-documents.json", content: serialize(search) },
   ];
   const archive = makeArchive(files);
   const manifest: PlaybookManifest = {
@@ -174,6 +175,17 @@ export function makeSupplementBundle(
     files: files.map((file) => fileRecord(file.path, file.content)),
   };
   return { archive, manifest, files };
+}
+
+export function makeRustSupplementBundle(
+  tag = "v3.0.0",
+  releaseId = "100",
+  catalog = supplementCatalog,
+  search = supplementSearch
+) {
+  return makeSupplementBundle(tag, releaseId, catalog, search, (value) =>
+    JSON.stringify(value, null, 2)
+  );
 }
 
 if (import.meta.main) {

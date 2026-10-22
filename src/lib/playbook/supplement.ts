@@ -14,14 +14,24 @@ import type {
   PlaybookSupplementEnvelope,
 } from "./types";
 
-export function validatePlaybookSupplement(value: unknown): PlaybookSupplementEnvelope {
+export function validatePlaybookSupplement(
+  value: unknown,
+  rawFiles?: ReadonlyMap<string, Uint8Array>
+): PlaybookSupplementEnvelope {
   if (!value || typeof value !== "object") throw new Error("Invalid Playbook supplement envelope");
   const input = value as Record<string, unknown>;
   const manifest = parseManifest(input.manifest, "supplement");
   const catalog = assertSupplementCatalog(input.catalog);
   const search = searchSchema.parse(input.search);
-  verifyFile(encodeJson(catalog), manifest.files[0]);
-  verifyFile(encodeJson(search), manifest.files[1]);
+  // Archive readers verify the original bytes. A parsed seed is a derived object
+  // and must not be reserialized before comparing it with the upstream digest.
+  if (rawFiles) {
+    const catalogBytes = rawFiles.get("catalog.json");
+    const searchBytes = rawFiles.get("search-documents.json");
+    if (!catalogBytes || !searchBytes) throw new Error("Supplement data files are incomplete");
+    verifyFile(catalogBytes, manifest.files[0]);
+    verifyFile(searchBytes, manifest.files[1]);
+  }
   assertUniqueSearchIds(search.documents);
   return { manifest, catalog, search };
 }
@@ -34,7 +44,7 @@ export async function readPlaybookSupplement(root: string): Promise<PlaybookSupp
   const archive = await readFile(join(root, manifest.bundle.name));
   const files = readSupplementArchive(archive, manifest);
   const parsed: PlaybookSupplement = parseSupplementFiles(files);
-  return validatePlaybookSupplement({ manifest, ...parsed });
+  return validatePlaybookSupplement({ manifest, ...parsed }, files);
 }
 
 export function mergePlaybookSupplement(

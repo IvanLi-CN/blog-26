@@ -53,7 +53,12 @@ import {
   validatePlaybookSupplement,
 } from "../../src/lib/playbook/supplement";
 import { handlePlaybookRequest } from "../../src/server/public-api/playbook";
-import { makeArchive, makePublicBundle, makeSupplementBundle } from "./playbook-fixture";
+import {
+  makeArchive,
+  makePublicBundle,
+  makeRustSupplementBundle,
+  makeSupplementBundle,
+} from "./playbook-fixture";
 
 const roots: string[] = [];
 async function temp() {
@@ -268,6 +273,13 @@ describe("playbook-public-contract", () => {
         search: JSON.parse(internal.files[1].content),
       })
     ).toThrow("Internal field");
+  });
+  test("accepts supplement bytes serialized by the Rust upstream exporter", () => {
+    const bundle = makeRustSupplementBundle();
+    const files = readSupplementArchive(bundle.archive, bundle.manifest);
+    const parsed = parseSupplementFiles(files);
+    const supplement = validatePlaybookSupplement({ manifest: bundle.manifest, ...parsed }, files);
+    expect(supplement.catalog.snapshot.projects[0]?.slug).toBe("private-project");
   });
   test("merges supplement relations without changing public body bytes", () => {
     const publicCatalog = structuredClone(publicFixtureCatalog);
@@ -648,6 +660,35 @@ describe("playbook-dispatch-and-reconcile", () => {
     await expect(
       resolveRelease(reader, { ...input, supplement_manifest_asset_id: undefined })
     ).rejects.toThrow("Incomplete supplement asset identity");
+  });
+  test("keeps the public release usable when supplement assets are incomplete", async () => {
+    const bundle = makePublicBundle();
+    const base = sourceReader([bundle]);
+    const release = await base.release(bundle.manifest.source.releaseId);
+    const reader: ReleaseReader = {
+      ...base,
+      release: async () => ({
+        ...release,
+        assets: [
+          ...release.assets,
+          {
+            id: 3,
+            name: "playbook-private-supplement-manifest.json",
+            size: 1,
+          },
+        ],
+      }),
+    };
+    const selected = await resolveRelease(reader, {
+      mode: "release",
+      source_repository: bundle.manifest.source.repository,
+      source_release_id: bundle.manifest.source.releaseId,
+      source_tag: bundle.manifest.source.tag,
+      source_sha: bundle.manifest.source.commit,
+      bundle_sha256: bundle.manifest.bundle.sha256,
+    });
+    expect(selected?.manifest.source.releaseId).toBe(bundle.manifest.source.releaseId);
+    expect(selected?.supplement).toBeUndefined();
   });
   test("skips duplicates and late releases, rejects republished content", () => {
     const current = makePublicBundle();

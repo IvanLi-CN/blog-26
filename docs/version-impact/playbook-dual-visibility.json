@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "8e15818aad5ebe923c6d7f43b37a6e0a05ec6af2",
+  "covered_files": {
+    ".github/workflows/playbook-content-rollback.yml": "0b3cec3ef94dd978a970fcd537d48ff9af6fe5a3",
+    ".github/workflows/playbook-content-update.yml": "4037663bcafc36d9176e929ff4c9218cf9a222bd",
+    "docs/specs/style-playbook-integration/HISTORY.md": "e9a5532a91f34dd1452e2d8bd62f6c470c760df1",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "5a88977a743cb66b90562b37220a3551ad2548dd",
+    "docs/specs/style-playbook-integration/SPEC.md": "53109c2f16eff39b029e2b52dc1560aaba6191ae",
+    "docs/specs/style-playbook-integration/contracts/public-package.md": "f4de90d91276ea2253f701fa9a94c290942df328",
+    "docs/specs/style-playbook-integration/contracts/release-trigger.md": "8824d693308715f0919ed68467359742dffc9016",
+    "scripts/fetch-initial-playbook.ts": "c5742e8dfacfa154cc3143fd0d9903ef7208d6a4",
+    "scripts/playbook-content-update.ts": "0b80483d37e04585400210fcc2ead27da877fc93",
+    "scripts/prepare-backend-dist.sh": "ed0e0fea1f8a9b4add452bb2f62985c1aac1bcd1",
+    "scripts/prepare-playbook-edition.ts": "f8c34bfabea518785e76d7e56f8f5a2bee1a6c5e",
+    "src/lib/admin-api-client.ts": "926e9bbc0c1d0c99b3b95d219eb88f6cbb9734f5",
+    "src/lib/playbook/bundle.ts": "11ad0f236447ef83ec0e9c013186fc8e72678ed0",
+    "src/lib/playbook/cache.ts": "0d0a8cf8942c8a24b601d3bff85cc90633ac1097",
+    "src/lib/playbook/fixture.ts": "5df5704636a959f61f9301b2e9b0efba49eea934",
+    "src/lib/playbook/manifest.ts": "c4e5c3b57e79e05a33bdf196c59b1df50bb2b73d",
+    "src/lib/playbook/release.ts": "af579336d875b5a08b4b4197f4043819a3257718",
+    "src/lib/playbook/schema.ts": "b075a405970036d66532233f93fa9643e5932dc4",
+    "src/lib/playbook/supplement.ts": "09c6ee7828cd8ac939c61a49c490d15c94fb4e08",
+    "src/lib/playbook/types.ts": "2778fbeff61994693b9a8ae80a5802840510fc41",
+    "src/lib/playbook/web-demo-fixture.ts": "05b0a4b7e8edfc8c022e8107e646b39cbec67f9e",
+    "src/lib/release/inputs.ts": "b9ccf36d6ae781e5f3141fbd76ef137c4f6e8f62",
+    "src/server/admin-api/router.ts": "7740e5b8fe80011e23858c091e158405e9f964ef",
+    "src/server/http-compat-api.test.ts": "36e8380ca37e648f7b2d40de8537521bd2dab089",
+    "src/server/routers/admin/index.ts": "a0221d7071f529099c250fce356939a00095f934",
+    "src/server/routers/admin/playbook.ts": "47e980599443589feeef4ecc1976cfb5eb6fb070",
+    "tests/lib/playbook-contract.test.ts": "a7d6ead9cc16fc6d2b42b6f970b044d75c755783",
+    "tests/lib/playbook-fixture.ts": "3dbe80f7421d7b5b0e457fa0a8cabd1dd63ce988"
+  },
+  "change": {
+    "description": "Add independent Playbook catalog and source visibility, deterministic public and private supplement packages, and an authenticated administrator read model while preserving the public package and notification identity.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "The change adds an administrator-only Playbook overlay, additive release assets, and an independent visibility projection. Existing public package names, public routes, and public content remain compatible.",
+      "assessed_at": "2026-10-22T13:39:20+08:00",
+      "evidence": [
+        {
+          "path": "docs/specs/style-playbook-integration/SPEC.md",
+          "blob": "53109c2f16eff39b029e2b52dc1560aaba6191ae",
+          "command": "Playbook SPEC defines independent visibility, public package compatibility, and the administrator supplement contract"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "The implementation keeps the public edition unchanged at its boundary while adding source-bound supplement ingestion and authenticated administrator browsing; invalid supplement data is isolated from public adoption.",
+      "assessed_at": "2026-10-22T13:39:20+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/playbook/release.ts",
+          "blob": "af579336d875b5a08b4b4197f4043819a3257718",
+          "command": "Release reader validates public identity and treats the supplement as an optional administrator overlay"
+        },
+        {
+          "path": "src/server/routers/admin/playbook.ts",
+          "blob": "47e980599443589feeef4ecc1976cfb5eb6fb070",
+          "command": "Authenticated administrator Playbook browse and search route"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains limited to the upstream Playbook data contract, dual release assets, Blog receiver, administrator read model, and their tests and documentation."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "Public and supplement package validation, source identity checks, administrator authorization, raw-body preservation, deterministic assets, and the existing Blog test and check suites pass.",
+      "assessed_at": "2026-10-22T13:39:20+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-contract.test.ts",
+          "blob": "a7d6ead9cc16fc6d2b42b6f970b044d75c755783",
+          "command": "bun test tests/lib/playbook-contract.test.ts"
+        },
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "36e8380ca37e648f7b2d40de8537521bd2dab089",
+          "command": "bun test src/server/http-compat-api.test.ts"
+        },
+        {
+          "path": "src/lib/playbook/release.ts",
+          "blob": "af579336d875b5a08b4b4197f4043819a3257718",
+          "command": "Supplement failure isolation test keeps the public release usable"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1"
+      ],
+      "evidence": [
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "36e8380ca37e648f7b2d40de8537521bd2dab089",
+          "command": "HTTP compatibility tests cover anonymous, authenticated user, and administrator Playbook access"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The change does not add or alter a Blog database migration or persistent application state; the supplement seed is a derived release input and is source-bound to the public edition.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/lib/playbook/cache.ts",
+          "blob": "0d0a8cf8942c8a24b601d3bff85cc90633ac1097",
+          "command": "Playbook cache keeps malformed or mismatched supplement data out of the admin read model"
+        }
+      ]
+    }
+  }
+}
