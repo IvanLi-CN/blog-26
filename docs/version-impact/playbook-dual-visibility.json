@@ -62,12 +62,12 @@
       "evidence": [
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "af579336d875b5a08b4b4197f4043819a3257718",
+          "blob": "f1672c8615ae33637245e1f928aff6dfca160587",
           "command": "Release reader validates public identity and treats the supplement as an optional administrator overlay"
         },
         {
           "path": "src/lib/release/source.ts",
-          "blob": "fdb756dc2378178f7d49e4b5b545c1308f85209a",
+          "blob": "2258ff7a6d77000f2d65da972d17d071b4b14cc4",
           "command": "Release policy recognizes a verified release carried by a non-first-parent branch merge without accepting an unregistered VERSION change"
         },
         {
@@ -88,8 +88,8 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "a7d6ead9cc16fc6d2b42b6f970b044d75c755783",
-          "command": "bun test tests/lib/playbook-contract.test.ts"
+          "blob": "dfe34f75f4412df6922a84f2b2188c66bfa4e6a0",
+          "command": "bun test tests/lib/playbook-contract.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
           "path": "src/server/http-compat-api.test.ts",
@@ -98,8 +98,8 @@
         },
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "af579336d875b5a08b4b4197f4043819a3257718",
-          "command": "Supplement failure isolation test keeps the public release usable"
+          "blob": "f1672c8615ae33637245e1f928aff6dfca160587",
+          "command": "Supplement identity and failure isolation tests keep explicit and optional public release paths distinct"
         },
         {
           "path": "src/lib/playbook/schema.ts",
@@ -108,12 +108,12 @@
         },
         {
           "path": "tests/lib/manual-release-source.test.ts",
-          "blob": "111bbba24f28fac6c31a846261e316b9cd3854d6",
-          "command": "Release source tests cover VERSION provenance across registered merge commits and branch merges"
+          "blob": "015b936082fdaf6c4435d47b49e6649a2aa9d8ea",
+          "command": "Release source tests cover VERSION provenance across registered merge commits, branch merges, and preparation markers"
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "80a64f0ff25d8b32ba6622d0987306e1219def1f",
+          "blob": "dfe34f75f4412df6922a84f2b2188c66bfa4e6a0",
           "command": "Public and supplement contract tests preserve shared Markdown bytes and validate actual Rust exporter fixture bytes"
         }
       ]
