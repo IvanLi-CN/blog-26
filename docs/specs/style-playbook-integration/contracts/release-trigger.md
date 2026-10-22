@@ -40,7 +40,7 @@ sequenceDiagram
 - `playbook-public.tar.gz`：经过公开检查的目录、正文与搜索数据。
 - `playbook-public-manifest.json`：schema 版本、来源仓库、Release ID/tag、解析后的 commit、文件清单及 SHA-256/大小，以及数据包的名称、SHA-256 和大小。
 
-就绪 manifest 是单独的 Release asset，必须在数据包上传成功并核对 digest 后最后上传，避免数据包把自身 digest 包进自身的循环定义。缺少完整 manifest 的 Release 不具备构建资格。同一 Release 重跑必须核对既有资产，不得覆盖为不同内容。
+就绪 manifest 是单独的 Release asset，必须在数据包上传成功并核对 digest 后最后上传，避免数据包把自身 digest 包进自身的循环定义。缺少完整 manifest 的 Release 不具备构建资格。同一 Release 重跑必须核对既有资产，不得覆盖为不同内容。上游发布 job 在预检、创建 Release 以及每次资产上传前都重新确认仓库仍为 private；任一检查失败都不得继续上传。
 
 上游至少需要成功发布两个公开资产；包含非公开整理知识的 Release 还必须成对发布 `playbook-private-supplement.tar.gz` 与 `playbook-private-supplement-manifest.json`。补充包不改变公共 pointer，也不进入公共静态站；博客接收端会把它作为同一 source identity 的 admin-only overlay 校验，并在公共 pointer 校验成功后提交到受保护 console 入口。canary、draft、无发布意图或公开检查失败的 Release 不会被博客选中。上游通知只是加速路径，博客仍会在下一次补漏时自行发现已就绪版本。
 

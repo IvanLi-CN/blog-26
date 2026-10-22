@@ -397,6 +397,26 @@ describe("HTTP compatibility APIs", () => {
     await store.adopt(nextBundle.edition);
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
 
+    const conflictingCatalog = structuredClone(supplement.catalog);
+    conflictingCatalog.snapshot.projects[0].slug = "sample-project";
+    conflictingCatalog.project_details[0].item.slug = "sample-project";
+    const rejected = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          source: supplementBundle.manifest.source,
+          supplement: { ...supplement, catalog: conflictingCatalog },
+        }),
+      }),
+      store
+    );
+    expect(rejected.status).toBe(400);
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+
     const restored = new PlaybookStore(receiverRoot);
     await restored.load(publicSeed);
     expect(restored.adminEdition?.catalog.snapshot.projects).toHaveLength(2);

@@ -10,30 +10,30 @@
     "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "37d7b06069e8974ac120c0f29ba5d871e59b1a5e",
     "docs/specs/style-playbook-integration/SPEC.md": "37461842ebf6e6cfed22986c04f98cdafe1c5941",
     "docs/specs/style-playbook-integration/contracts/public-package.md": "acc9e2e9b6826b2f81542a9bd8d3c5f708ded365",
-    "docs/specs/style-playbook-integration/contracts/release-trigger.md": "8e3d598de4efd3cb2627badc4ed7bb76984192d7",
+    "docs/specs/style-playbook-integration/contracts/release-trigger.md": "7ebd4545d8c5bcc0d3d0bbb02afcf51f9aef93cd",
     "scripts/fetch-initial-playbook.ts": "1986171c347ce7ad6f3a9984b0035caa000e45c0",
     "scripts/playbook-content-update.ts": "4687a37f345c71c51494509c9935c3fd15822a89",
     "scripts/prepare-backend-dist.sh": "ed0e0fea1f8a9b4add452bb2f62985c1aac1bcd1",
     "scripts/prepare-playbook-edition.ts": "a8f5cc3a0c3a68448b14f39c5931b1ad6107b1b6",
     "src/lib/admin-api-client.ts": "926e9bbc0c1d0c99b3b95d219eb88f6cbb9734f5",
     "src/lib/playbook/bundle.ts": "11ad0f236447ef83ec0e9c013186fc8e72678ed0",
-    "src/lib/playbook/cache.ts": "8a98345e62fe5d32f3a2a78ab4bd8d625fd403a6",
+    "src/lib/playbook/cache.ts": "f2633005471c0e4e135cc208b234161963cbf2ad",
     "src/lib/playbook/fixture.ts": "5df5704636a959f61f9301b2e9b0efba49eea934",
     "src/lib/playbook/manifest.ts": "c4e5c3b57e79e05a33bdf196c59b1df50bb2b73d",
     "src/lib/playbook/release.ts": "f1672c8615ae33637245e1f928aff6dfca160587",
-    "src/lib/playbook/schema.ts": "4346dd7b211be00388153aba05c9a8242cfd74ed",
+    "src/lib/playbook/schema.ts": "f9310f5f4d8306a543675edf5d41d5ab07497bde",
     "src/lib/playbook/supplement.ts": "09c6ee7828cd8ac939c61a49c490d15c94fb4e08",
-    "src/lib/playbook/types.ts": "2778fbeff61994693b9a8ae80a5802840510fc41",
+    "src/lib/playbook/types.ts": "f681e0254c8fbe17482c1fc85c0698c245ecef79",
     "src/lib/playbook/web-demo-fixture.ts": "05b0a4b7e8edfc8c022e8107e646b39cbec67f9e",
     "src/lib/release/inputs.ts": "bf8b586faad79bac129b2cedfdae19d8b5275230",
     "src/lib/release/source.ts": "2258ff7a6d77000f2d65da972d17d071b4b14cc4",
     "src/server/admin-api/playbook-supplement.ts": "f86901222fcce34f50ab74e33e5fad23e12f71c8",
     "src/server/admin-api/router.ts": "a570710b2d73376db2b681ad08d0f56b6c5d4e43",
-    "src/server/http-compat-api.test.ts": "b252539706f6ddc938be017a8d6c748ad81ad485",
+    "src/server/http-compat-api.test.ts": "c10934eeea45e79370ebda02cb6369098cbdb617",
     "src/server/routers/admin/index.ts": "a0221d7071f529099c250fce356939a00095f934",
     "src/server/routers/admin/playbook.ts": "47e980599443589feeef4ecc1976cfb5eb6fb070",
     "tests/lib/manual-release-source.test.ts": "015b936082fdaf6c4435d47b49e6649a2aa9d8ea",
-    "tests/lib/playbook-contract.test.ts": "3bae7ee083198d90d381a5b769a97d786c766860",
+    "tests/lib/playbook-contract.test.ts": "e22d77b7a29738bba8e5fdbbec11a66f9e95f0f6",
     "tests/lib/playbook-fixture.ts": "182603e4da37bff59c1ee55093e1fbefb949bc45",
     "tests/lib/playbook-workflows.test.ts": "7410b898a47d5e6894124f045d6c86b259901a23",
     "tests/fixtures/playbook/rust-supplement-catalog.fixture": "5eafd8f810a3765097aacee8d962b31912e93ef0",
@@ -95,12 +95,12 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "3bae7ee083198d90d381a5b769a97d786c766860",
+          "blob": "e22d77b7a29738bba8e5fdbbec11a66f9e95f0f6",
           "command": "bun test tests/lib/playbook-contract.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "b252539706f6ddc938be017a8d6c748ad81ad485",
+          "blob": "c10934eeea45e79370ebda02cb6369098cbdb617",
           "command": "bun test src/server/http-compat-api.test.ts"
         },
         {
@@ -110,7 +110,7 @@
         },
         {
           "path": "src/lib/playbook/schema.ts",
-          "blob": "4346dd7b211be00388153aba05c9a8242cfd74ed",
+          "blob": "f9310f5f4d8306a543675edf5d41d5ab07497bde",
           "command": "Public catalog validation compatibly reads the legacy visibility and missing-preamble shape without changing Markdown bytes"
         },
         {
@@ -120,7 +120,7 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "3bae7ee083198d90d381a5b769a97d786c766860",
+          "blob": "e22d77b7a29738bba8e5fdbbec11a66f9e95f0f6",
           "command": "Public and supplement contract tests preserve shared Markdown bytes and validate actual Rust exporter fixture bytes"
         }
       ]
@@ -160,7 +160,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "b252539706f6ddc938be017a8d6c748ad81ad485",
+          "blob": "c10934eeea45e79370ebda02cb6369098cbdb617",
           "command": "HTTP compatibility tests cover anonymous, authenticated user, and administrator Playbook access"
         }
       ]
@@ -174,7 +174,7 @@
       "evidence": [
         {
           "path": "src/lib/playbook/cache.ts",
-          "blob": "8a98345e62fe5d32f3a2a78ab4bd8d625fd403a6",
+          "blob": "f2633005471c0e4e135cc208b234161963cbf2ad",
           "command": "Playbook cache keeps malformed or mismatched supplement data out of the admin read model"
         }
       ]

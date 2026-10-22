@@ -114,15 +114,22 @@ export class PlaybookStore {
     return this.state.previous;
   }
   get adminEdition(): PlaybookAdminEdition | undefined {
-    if (!this.state.current) return undefined;
+    const current = this.state.current;
+    if (!current) return undefined;
     const supplement =
       this.supplement &&
       this.supplementSource &&
-      samePlaybookSource(this.state.current.edition.source, this.supplementSource) &&
-      samePlaybookSource(this.state.current.edition.source, this.supplement.manifest.source)
+      samePlaybookSource(current.edition.source, this.supplementSource) &&
+      samePlaybookSource(current.edition.source, this.supplement.manifest.source)
         ? this.supplement
         : undefined;
-    return mergePlaybookSupplement(this.state.current, supplement);
+    if (!supplement) return mergePlaybookSupplement(current);
+    try {
+      return mergePlaybookSupplement(current, supplement);
+    } catch {
+      // A staged overlay must never make the administrator read model unavailable.
+      return mergePlaybookSupplement(current);
+    }
   }
   getEdition(digest: string, sourceReleaseId: string, sourceTag: string) {
     return [this.state.current, this.state.previous].find(
@@ -195,6 +202,12 @@ export class PlaybookStore {
           raw.supplement === null ? undefined : validatePlaybookSupplement(raw.supplement);
         if (supplement && !samePlaybookSource(source, supplement.manifest.source))
           throw new Error("Playbook supplement state source identity mismatch");
+        if (
+          supplement &&
+          this.state.current &&
+          samePlaybookSource(this.state.current.edition.source, source)
+        )
+          mergePlaybookSupplement(this.state.current, supplement);
         this.supplementSource = source;
         if (supplement) this.supplement = freezeSupplement(supplement);
       } catch {
@@ -226,6 +239,12 @@ export class PlaybookStore {
     const validated = supplement ? validatePlaybookSupplement(supplement) : undefined;
     if (validated && !samePlaybookSource(parsedSource, validated.manifest.source))
       throw new Error("Playbook supplement source identity mismatch");
+    if (
+      validated &&
+      this.state.current &&
+      samePlaybookSource(this.state.current.edition.source, parsedSource)
+    )
+      mergePlaybookSupplement(this.state.current, validated);
     const next: PlaybookSupplementState = {
       source: parsedSource,
       supplement: validated ?? null,

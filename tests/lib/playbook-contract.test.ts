@@ -269,6 +269,26 @@ describe("playbook-public-contract", () => {
     expect(parsed.catalog.snapshot.projects[0].catalog_visibility).toBe("private");
     expect(parsed.catalog.private_source_metadata[0].source).toContain("private-project");
     expect(parsed.catalog.relation_edges).toHaveLength(1);
+    const publicProjectSupplement = structuredClone(parsed.catalog);
+    publicProjectSupplement.snapshot.projects[0].catalog_visibility = "public" as never;
+    publicProjectSupplement.project_details[0].item.catalog_visibility = "public" as never;
+    expect(() =>
+      validatePlaybookSupplement({
+        manifest: supplement.manifest,
+        catalog: publicProjectSupplement,
+        search: parsed.search,
+      })
+    ).toThrow();
+    const publicTopicSupplement = structuredClone(parsed.catalog);
+    publicTopicSupplement.snapshot.topics[0].catalog_visibility = "public" as never;
+    publicTopicSupplement.topic_details[0].item.catalog_visibility = "public" as never;
+    expect(() =>
+      validatePlaybookSupplement({
+        manifest: supplement.manifest,
+        catalog: publicTopicSupplement,
+        search: parsed.search,
+      })
+    ).toThrow();
     expect(() =>
       parseSupplementFiles(
         new Map([
@@ -1217,6 +1237,27 @@ describe("playbook-cache-http-ssr", () => {
     await restored.updateSupplement(next.edition.edition.source);
     expect(restored.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
     expect(restored.adminEdition?.supplement).toBeUndefined();
+  });
+  test("fails closed when a staged supplement conflicts with its adopted public edition", async () => {
+    const root = await temp();
+    const current = makePublicBundle();
+    const next = makePublicBundle("v3.1.0", "101");
+    const supplementBundle = makeSupplementBundle("v3.1.0", "101");
+    const catalog = JSON.parse(supplementBundle.files[0].content);
+    catalog.snapshot.projects[0].slug = "sample-project";
+    catalog.project_details[0].item.slug = "sample-project";
+    const supplement = validatePlaybookSupplement({
+      manifest: supplementBundle.manifest,
+      catalog,
+      search: JSON.parse(supplementBundle.files[1].content),
+    });
+    const store = new PlaybookStore(root);
+    await store.adopt(current.edition);
+    await store.updateSupplement(supplementBundle.manifest.source, supplement);
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
+    await store.adopt(next.edition);
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
+    expect(store.adminEdition?.supplement).toBeUndefined();
   });
   test("sync is single-flight, adopts whole editions and keeps old data on incompatible downloads", async () => {
     const root = await temp();

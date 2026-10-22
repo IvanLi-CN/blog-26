@@ -389,7 +389,7 @@ export const supplementProjectSchema = z.strictObject({
   source: text,
   tags: z.array(text),
   snapshot_exists: z.boolean(),
-  catalog_visibility: z.enum(["public", "private"]),
+  catalog_visibility: z.literal("private"),
   source_visibility: z.enum(["public", "private"]),
   created_at: nullableText,
   updated_at: nullableText,
@@ -402,7 +402,7 @@ export const supplementTopicSchema = z.strictObject({
   categories: z.array(text),
   project_count: z.number().int().nonnegative(),
   related_projects: z.array(projectRefSchema),
-  catalog_visibility: z.enum(["public", "private"]),
+  catalog_visibility: z.literal("private"),
 });
 
 export const supplementCatalogSchema = z.strictObject({

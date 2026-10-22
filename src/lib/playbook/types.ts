@@ -111,7 +111,7 @@ export interface PlaybookSupplementProjectListItem {
   source: string;
   tags: string[];
   snapshot_exists: boolean;
-  catalog_visibility: "public" | "private";
+  catalog_visibility: "private";
   source_visibility: "public" | "private";
   created_at?: string | null;
   updated_at?: string | null;
@@ -124,7 +124,7 @@ export interface PlaybookSupplementTopicListItem {
   categories: string[];
   project_count: number;
   related_projects: PlaybookTopicProjectRef[];
-  catalog_visibility: "public" | "private";
+  catalog_visibility: "private";
 }
 
 export interface PlaybookSupplementProjectDetail {

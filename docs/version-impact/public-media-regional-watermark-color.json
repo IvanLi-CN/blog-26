@@ -31,7 +31,7 @@
     "src/lib/__tests__/public-media.test.ts": "43d43826303b492efef575e368be952ee51869c4",
     "src/lib/public-media.ts": "cafb5b630d157f8618121ee65fee6b12412ceed5",
     "src/lib/release/inputs.ts": "bf8b586faad79bac129b2cedfdae19d8b5275230",
-    "src/server/http-compat-api.test.ts": "b252539706f6ddc938be017a8d6c748ad81ad485",
+    "src/server/http-compat-api.test.ts": "c10934eeea45e79370ebda02cb6369098cbdb617",
     "src/server/public-media-watermark-assets.test.ts": "e2544c82793a1ea188db07101a0ad6205c97c78d",
     "src/server/public-media-watermark.test.ts": "c291e26cda237383021a43da7fc77be0a5aafca2",
     "src/server/public-media-watermark.ts": "3520a18f2256e40e57980233aa01f92d22ffc4a1",
@@ -95,7 +95,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "b252539706f6ddc938be017a8d6c748ad81ad485",
+          "blob": "c10934eeea45e79370ebda02cb6369098cbdb617",
           "command": "bun test src/server/http-compat-api.test.ts: 100 tests pass and 3 are skipped on the final candidate"
         },
         {
@@ -164,7 +164,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "b252539706f6ddc938be017a8d6c748ad81ad485",
+          "blob": "c10934eeea45e79370ebda02cb6369098cbdb617",
           "command": "HTTP compatibility coverage exercises authorization, media transforms, GIFs, and video-cover boundaries without state migration"
         }
       ]
