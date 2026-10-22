@@ -1407,6 +1407,37 @@ describe("playbook-cache-http-ssr", () => {
     await store.adopt(older.edition);
     expect(store.adminEdition?.supplement).toBeDefined();
   });
+  test("fails closed when a staged rollback overlay cannot merge into the adopted edition", async () => {
+    const root = await temp();
+    const previous = makePublicBundle("v3.0.0", "100");
+    const newer = makePublicBundle("v3.1.0", "101");
+    const older = makePublicBundle("v2.9.0", "99");
+    const invalidCatalog = structuredClone(
+      JSON.parse(makeSupplementBundle("v2.9.0", "99").files[0].content)
+    );
+    invalidCatalog.relation_edges.push({
+      topic_slug: "missing-topic",
+      project_slug: "private-project",
+      project_name: "Private Project",
+    });
+    const invalidBundle = makeSupplementBundle("v2.9.0", "99", invalidCatalog);
+    const invalidSupplement = {
+      manifest: invalidBundle.manifest,
+      catalog: JSON.parse(invalidBundle.files[0].content),
+      search: JSON.parse(invalidBundle.files[1].content),
+    };
+    const store = new PlaybookStore(root);
+
+    await store.adopt(previous.edition);
+    await store.adopt(newer.edition);
+    await store.updateSupplement(older.edition.edition.source, invalidSupplement, undefined, {
+      allowRollback: true,
+    });
+
+    await expect(store.adopt(older.edition)).rejects.toThrow("unknown object");
+    expect(store.current?.edition.source.tag).toBe("v3.1.0");
+    expect(store.adminEdition?.supplement).toBeUndefined();
+  });
   test("does not clear an accepted overlay on a same-source absent retry", async () => {
     const root = await temp();
     const current = makePublicBundle();
@@ -1476,6 +1507,30 @@ describe("playbook-cache-http-ssr", () => {
       "整理后的私有补充项目知识。"
     );
   });
+  test("rejects a tampered persisted supplement projection after restart", async () => {
+    const root = await temp();
+    const current = makePublicBundle();
+    const supplementBundle = makeSupplementBundle();
+    const supplement = {
+      manifest: supplementBundle.manifest,
+      catalog: JSON.parse(supplementBundle.files[0].content),
+      search: JSON.parse(supplementBundle.files[1].content),
+    };
+    const store = new PlaybookStore(root);
+    await store.adopt(current.edition);
+    await store.updateSupplement(supplementBundle.manifest.source, supplement);
+
+    const statePath = join(root, "supplement-state.json");
+    const persisted = JSON.parse(await readFile(statePath, "utf8"));
+    persisted.supplement.catalog.snapshot.projects[0].description = "Tampered persisted content";
+    persisted.supplement.catalog.project_details[0].item.description = "Tampered persisted content";
+    await writeFile(statePath, encodeJson(persisted));
+
+    const restored = new PlaybookStore(root);
+    await restored.load(join(root, "missing-seed.json"));
+    expect(restored.adminEdition?.supplement).toBeUndefined();
+    expect(restored.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
+  });
   test("fails closed when a staged supplement conflicts with its adopted public edition", async () => {
     const root = await temp();
     const current = makePublicBundle();
@@ -1484,16 +1539,18 @@ describe("playbook-cache-http-ssr", () => {
     const catalog = JSON.parse(supplementBundle.files[0].content);
     catalog.snapshot.projects[0].slug = "sample-project";
     catalog.project_details[0].item.slug = "sample-project";
+    const conflictingBundle = makeSupplementBundle("v3.1.0", "101", catalog);
     const supplement = validatePlaybookSupplement({
-      manifest: supplementBundle.manifest,
-      catalog,
-      search: JSON.parse(supplementBundle.files[1].content),
+      manifest: conflictingBundle.manifest,
+      catalog: JSON.parse(conflictingBundle.files[0].content),
+      search: JSON.parse(conflictingBundle.files[1].content),
     });
     const store = new PlaybookStore(root);
     await store.adopt(current.edition);
-    await store.updateSupplement(supplementBundle.manifest.source, supplement);
+    await store.updateSupplement(conflictingBundle.manifest.source, supplement);
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
-    await store.adopt(next.edition);
+    await expect(store.adopt(next.edition)).rejects.toThrow("duplicates a public project");
+    expect(store.current?.edition.source.tag).toBe("v3.0.0");
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
     expect(store.adminEdition?.supplement).toBeUndefined();
   });

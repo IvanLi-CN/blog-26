@@ -11,7 +11,7 @@
     "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "37d7b06069e8974ac120c0f29ba5d871e59b1a5e",
     "docs/specs/style-playbook-integration/SPEC.md": "37461842ebf6e6cfed22986c04f98cdafe1c5941",
     "docs/specs/style-playbook-integration/contracts/public-package.md": "5c4d1ca616373843c0ced9ed8ec214a4b992639e",
-    "docs/specs/style-playbook-integration/contracts/release-trigger.md": "2bd5173d164759fe998c1849f7cbdb1b49d47e4b",
+    "docs/specs/style-playbook-integration/contracts/release-trigger.md": "55a286632d43c4baa28c87b7fbc483ed291d8405",
     "scripts/fetch-initial-playbook.ts": "1986171c347ce7ad6f3a9984b0035caa000e45c0",
     "scripts/playbook-content-update.ts": "c121a9e902be99cfea719aaf5762cb5a2a900481",
     "scripts/prepare-backend-dist.sh": "ed0e0fea1f8a9b4add452bb2f62985c1aac1bcd1",
@@ -19,7 +19,7 @@
     "src/lib/admin-api-client.ts": "926e9bbc0c1d0c99b3b95d219eb88f6cbb9734f5",
     "src/lib/playbook/artifacts.ts": "486d8a8eaa8ec28ee8302a323d4fb111f8ddb4e8",
     "src/lib/playbook/bundle.ts": "371588cbd4505c49312c8277d5c01579322e2c23",
-    "src/lib/playbook/cache.ts": "8fee59cb42b6ffdb736fa20d5540076c077a857a",
+    "src/lib/playbook/cache.ts": "1f168fcd0137504dccc610bd42b94bf1c211355e",
     "src/lib/playbook/fixture.ts": "5df5704636a959f61f9301b2e9b0efba49eea934",
     "src/lib/playbook/manifest.ts": "c4e5c3b57e79e05a33bdf196c59b1df50bb2b73d",
     "src/lib/playbook/release.ts": "4339340e66d688f3f7e00f06e52b5026371dadea",
@@ -35,7 +35,7 @@
     "src/server/routers/admin/index.ts": "a0221d7071f529099c250fce356939a00095f934",
     "src/server/routers/admin/playbook.ts": "47e980599443589feeef4ecc1976cfb5eb6fb070",
     "tests/lib/manual-release-source.test.ts": "015b936082fdaf6c4435d47b49e6649a2aa9d8ea",
-    "tests/lib/playbook-contract.test.ts": "73783f91ffef9d241beaee02d3d1d70c2a8240a2",
+    "tests/lib/playbook-contract.test.ts": "7c12bfe73c7442b9ba3ff9f7c0cdbe7db4358c12",
     "tests/lib/playbook-fixture.ts": "182603e4da37bff59c1ee55093e1fbefb949bc45",
     "tests/lib/playbook-workflows.test.ts": "1f62d3930b6eb53b916873966f9649965c168540",
     "tests/fixtures/playbook/rust-supplement-catalog.fixture": "5eafd8f810a3765097aacee8d962b31912e93ef0",
@@ -97,7 +97,7 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "73783f91ffef9d241beaee02d3d1d70c2a8240a2",
+          "blob": "7c12bfe73c7442b9ba3ff9f7c0cdbe7db4358c12",
           "command": "bun test tests/lib/playbook-contract.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
@@ -127,7 +127,7 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "73783f91ffef9d241beaee02d3d1d70c2a8240a2",
+          "blob": "7c12bfe73c7442b9ba3ff9f7c0cdbe7db4358c12",
           "command": "Public and supplement contract tests preserve shared Markdown bytes and validate actual Rust exporter fixture bytes"
         }
       ]
@@ -236,12 +236,12 @@
       "evidence": [
         {
           "path": "src/lib/playbook/cache.ts",
-          "blob": "8fee59cb42b6ffdb736fa20d5540076c077a857a",
+          "blob": "1f168fcd0137504dccc610bd42b94bf1c211355e",
           "command": "Playbook cache persists an optional source-bound supplement and keeps malformed or mismatched data out of the admin read model"
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "73783f91ffef9d241beaee02d3d1d70c2a8240a2",
+          "blob": "7c12bfe73c7442b9ba3ff9f7c0cdbe7db4358c12",
           "command": "Supplement persistence and conflicting overlay adoption retain a public-only fallback"
         }
       ]

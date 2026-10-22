@@ -33,6 +33,7 @@ export interface PlaybookCacheState {
 interface PlaybookSupplementState {
   source: PlaybookSourceIdentity;
   supplement: PlaybookSupplementEnvelope | null;
+  rawFiles?: { catalog: string; search: string };
 }
 interface PlaybookSupplementUpdateOptions {
   allowRollback?: boolean;
@@ -46,6 +47,41 @@ const schedule: PlaybookSchedule = (run, intervalMs) => {
   timer.unref?.();
   return () => clearInterval(timer);
 };
+
+function supplementProjectionFiles(supplement: PlaybookSupplementEnvelope) {
+  return new Map<string, Uint8Array>([
+    ["catalog.json", Buffer.from(encodeJson(supplement.catalog))],
+    ["search-documents.json", Buffer.from(encodeJson(supplement.search))],
+  ]);
+}
+
+function encodePersistedSupplementFiles(rawFiles: ReadonlyMap<string, Uint8Array>) {
+  const encode = (path: string) => {
+    const bytes = rawFiles.get(path);
+    if (!bytes) throw new Error(`Supplement data file is missing: ${path}`);
+    return Buffer.from(bytes).toString("base64");
+  };
+  return { catalog: encode("catalog.json"), search: encode("search-documents.json") };
+}
+
+function decodePersistedSupplementFiles(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error("Supplement persisted file bytes are missing");
+  const input = value as Record<string, unknown>;
+  const decode = (field: string) => {
+    const encoded = input[field];
+    if (typeof encoded !== "string" || !encoded)
+      throw new Error(`Supplement persisted file bytes are invalid: ${field}`);
+    const bytes = Buffer.from(encoded, "base64");
+    if (bytes.toString("base64") !== encoded)
+      throw new Error(`Supplement persisted file bytes are invalid: ${field}`);
+    return bytes;
+  };
+  return new Map<string, Uint8Array>([
+    ["catalog.json", decode("catalog")],
+    ["search-documents.json", decode("search")],
+  ]);
+}
 
 export function playbookCacheDirectory(dbPath = process.env.DB_PATH || "./data/sqlite.db") {
   return resolve(process.env.PLAYBOOK_CACHE_DIR || join(dirname(dbPath), "playbook-cache"));
@@ -227,8 +263,12 @@ export class PlaybookStore {
       try {
         const raw = JSON.parse(persistedSupplementState) as Record<string, unknown>;
         const source = sourceSchema.parse(raw.source);
+        const rawFiles =
+          raw.supplement === null ? undefined : decodePersistedSupplementFiles(raw.rawFiles);
         const supplement =
-          raw.supplement === null ? undefined : validatePlaybookSupplement(raw.supplement);
+          raw.supplement === null
+            ? undefined
+            : validatePlaybookSupplement(raw.supplement, rawFiles);
         if (supplement && !samePlaybookSource(source, supplement.manifest.source))
           throw new Error("Playbook supplement state source identity mismatch");
         if (
@@ -281,7 +321,15 @@ export class PlaybookStore {
   ) {
     await this.load();
     const parsedSource = sourceSchema.parse(source);
-    const validated = supplement ? validatePlaybookSupplement(supplement, rawFiles) : undefined;
+    const validationFiles = supplement
+      ? (rawFiles ?? supplementProjectionFiles(supplement))
+      : undefined;
+    const validated = supplement
+      ? validatePlaybookSupplement(supplement, validationFiles)
+      : undefined;
+    const persistedRawFiles = validated
+      ? encodePersistedSupplementFiles(validationFiles as ReadonlyMap<string, Uint8Array>)
+      : undefined;
     if (validated && !samePlaybookSource(parsedSource, validated.manifest.source))
       throw new Error("Playbook supplement source identity mismatch");
     const isAdoptedRollback = Boolean(
@@ -331,6 +379,7 @@ export class PlaybookStore {
     const next: PlaybookSupplementState = {
       source: parsedSource,
       supplement: validated ?? null,
+      ...(persistedRawFiles ? { rawFiles: persistedRawFiles } : {}),
     };
     await mkdir(this.root, { recursive: true });
     const staging = join(this.root, `.supplement-${randomUUID()}.tmp`);
@@ -366,6 +415,11 @@ export class PlaybookStore {
     commitFence?: (commit: () => void) => void
   ) {
     const edition = freezeEdition(validatePlaybookEdition(value));
+    if (
+      this.supplement &&
+      samePlaybookSource(edition.edition.source, this.supplement.manifest.source)
+    )
+      mergePlaybookSupplement(edition, this.supplement);
     const next = {
       current: edition,
       adoption: adoption
