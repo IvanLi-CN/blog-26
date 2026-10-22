@@ -248,7 +248,7 @@ async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
 function assertOptionalAssetIdentity(
   input: ReleaseTrigger,
   resolved: Awaited<ReturnType<typeof readyManifest>>
-) {
+): boolean {
   const publicFields = [
     input.manifest_sha256,
     input.bundle_asset_id,
@@ -286,11 +286,13 @@ function assertOptionalAssetIdentity(
       console.warn(
         "[playbook] ignoring supplement identity because supplement assets are unavailable"
       );
-    return;
+    return !hasSupplementAssetIdentity(input);
   }
-  if (!supplementFields.some(Boolean)) throw new Error("Supplement asset identity is required");
-  if (supplementFields.some((value) => !value))
-    throw new Error("Incomplete supplement asset identity");
+  if (!supplementFields.some(Boolean)) return true;
+  if (supplementFields.some((value) => !value)) {
+    console.warn("[playbook] ignoring incomplete optional supplement asset identity");
+    return false;
+  }
   const supplement = resolved.supplement;
   if (
     input.supplement_bundle_sha256 !== supplement.manifest.bundle.sha256 ||
@@ -301,8 +303,11 @@ function assertOptionalAssetIdentity(
     input.supplement_manifest_asset_id !== String(supplement.manifestAssetId) ||
     input.supplement_manifest_asset_digest !== `sha256:${supplement.manifestAssetSha256}` ||
     input.supplement_manifest_asset_size !== String(supplement.manifestAssetSize)
-  )
-    throw new Error("Supplement asset identity mismatch");
+  ) {
+    console.warn("[playbook] ignoring mismatched optional supplement asset identity");
+    return false;
+  }
+  return true;
 }
 
 export async function resolveRelease(reader: ReleaseReader, input: ReleaseTrigger) {
@@ -324,7 +329,8 @@ export async function resolveRelease(reader: ReleaseReader, input: ReleaseTrigge
       manifest.bundle.sha256 !== input.bundle_sha256
     )
       throw new Error("Notification identity mismatch");
-    assertOptionalAssetIdentity(input, resolved);
+    if (!assertOptionalAssetIdentity(input, resolved) && resolved.supplement)
+      return { ...resolved, supplement: undefined, supplementStatus: "invalid" as const };
     return resolved;
   }
   if (

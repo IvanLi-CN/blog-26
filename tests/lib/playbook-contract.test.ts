@@ -863,12 +863,38 @@ describe("playbook-dispatch-and-reconcile", () => {
     const selected = await resolveRelease(reader, input);
     expect(selected.supplement?.manifest.bundle.name).toBe("playbook-private-supplement.tar.gz");
     expect(selected.supplementStatus).toBe("valid");
+    const publicOnlyInput = { ...input };
+    for (const field of [
+      "supplement_bundle_sha256",
+      "supplement_manifest_sha256",
+      "supplement_bundle_asset_id",
+      "supplement_bundle_asset_digest",
+      "supplement_bundle_asset_size",
+      "supplement_manifest_asset_id",
+      "supplement_manifest_asset_digest",
+      "supplement_manifest_asset_size",
+    ] as const)
+      delete publicOnlyInput[field];
+    const selectedWithoutSupplementIdentity = await resolveRelease(reader, publicOnlyInput);
+    expect(selectedWithoutSupplementIdentity.supplement?.manifest.bundle.name).toBe(
+      "playbook-private-supplement.tar.gz"
+    );
+    expect(selectedWithoutSupplementIdentity.supplementStatus).toBe("valid");
+    const mismatchedSupplement = await resolveRelease(reader, {
+      ...input,
+      supplement_bundle_sha256: "0".repeat(64),
+    });
+    expect(mismatchedSupplement.supplement).toBeUndefined();
+    expect(mismatchedSupplement.supplementStatus).toBe("invalid");
+    const incompleteSupplement = await resolveRelease(reader, {
+      ...input,
+      supplement_manifest_asset_id: undefined,
+    });
+    expect(incompleteSupplement.supplement).toBeUndefined();
+    expect(incompleteSupplement.supplementStatus).toBe("invalid");
     await expect(
-      resolveRelease(reader, { ...input, supplement_bundle_sha256: "0".repeat(64) })
-    ).rejects.toThrow("Supplement asset identity mismatch");
-    await expect(
-      resolveRelease(reader, { ...input, supplement_manifest_asset_id: undefined })
-    ).rejects.toThrow("Incomplete supplement asset identity");
+      resolveRelease(reader, { ...input, manifest_sha256: "0".repeat(64) })
+    ).rejects.toThrow("Public asset identity mismatch");
   });
   test("keeps the public release usable when supplement assets are incomplete", async () => {
     const bundle = makePublicBundle();
@@ -1551,7 +1577,7 @@ describe("playbook-cache-http-ssr", () => {
     await store.adopt(older.edition);
     expect(store.adminEdition?.supplement).toBeDefined();
   });
-  test("fails closed when a staged rollback overlay cannot merge into the adopted edition", async () => {
+  test("isolates a staged rollback overlay that cannot merge into the adopted edition", async () => {
     const root = await temp();
     const previous = makePublicBundle("v3.0.0", "100");
     const newer = makePublicBundle("v3.1.0", "101");
@@ -1578,8 +1604,10 @@ describe("playbook-cache-http-ssr", () => {
       allowRollback: true,
     });
 
-    await expect(store.adopt(older.edition)).rejects.toThrow("unknown object");
-    expect(store.current?.edition.source.tag).toBe("v3.1.0");
+    await store.adopt(older.edition);
+    expect(store.current?.edition.source.tag).toBe("v2.9.0");
+    expect(store.adminEdition?.supplement).toBeUndefined();
+    await store.updateSupplement(older.edition.edition.source);
     expect(store.adminEdition?.supplement).toBeUndefined();
   });
   test("does not clear an accepted overlay on a same-source absent retry", async () => {
@@ -1675,7 +1703,7 @@ describe("playbook-cache-http-ssr", () => {
     expect(restored.adminEdition?.supplement).toBeUndefined();
     expect(restored.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
   });
-  test("fails closed when a staged supplement conflicts with its adopted public edition", async () => {
+  test("isolates a staged supplement that conflicts with its adopted public edition", async () => {
     const root = await temp();
     const current = makePublicBundle();
     const next = makePublicBundle("v3.1.0", "101");
@@ -1693,10 +1721,14 @@ describe("playbook-cache-http-ssr", () => {
     await store.adopt(current.edition);
     await store.updateSupplement(conflictingBundle.manifest.source, supplement);
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
-    await expect(store.adopt(next.edition)).rejects.toThrow("duplicates a public project");
-    expect(store.current?.edition.source.tag).toBe("v3.0.0");
+    await store.adopt(next.edition);
+    expect(store.current?.edition.source.tag).toBe("v3.1.0");
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
     expect(store.adminEdition?.supplement).toBeUndefined();
+    await store.updateSupplement(conflictingBundle.manifest.source);
+    expect(store.adminEdition?.supplement).toBeUndefined();
+    await store.adopt(next.edition);
+    expect(store.current?.edition.source.tag).toBe("v3.1.0");
   });
   test("sync is single-flight, adopts whole editions and keeps old data on incompatible downloads", async () => {
     const root = await temp();

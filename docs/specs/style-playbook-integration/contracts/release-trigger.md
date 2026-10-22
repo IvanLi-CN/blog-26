@@ -74,7 +74,7 @@ POST /repos/IvanLi-CN/blog-26/actions/workflows/playbook-content-update.yml/disp
 | `source_sha` | `release` 模式必填，40 位十六进制 commit，必须与 tag 解析结果一致 |
 | `bundle_sha256` | `release` 模式必填，必须与就绪 manifest 和下载包一致 |
 | `manifest_sha256`、`bundle_asset_*`、`manifest_asset_*` | 可选的公共资产身份；一旦提供必须完整且与 Release asset digest/size 一致 |
-| `supplement_bundle_sha256`、`supplement_manifest_sha256`、`supplement_*_asset_*` | Release 含补充包时必填的补充资产身份；必须完整且与补充 manifest、Release asset digest/size 一致 |
+| `supplement_bundle_sha256`、`supplement_manifest_sha256`、`supplement_*_asset_*` | 可选的补充资产身份；提供时必须完整且与补充 manifest、Release asset digest/size 一致；缺失、部分或失配只使本次管理员 overlay 不可用，不阻断公共发布 |
 | `source_run_id` | 来源运行关联信息；人工重试可省略，不作为来源授权依据 |
 
 GitHub input 定义中，来源字段允许为空以支持 `reconcile`；接收 job 必须按模式执行上述必填与一致性检查。`reconcile` 不接受调用者注入候选来源，在内部读取固定上游的 Release 元数据并生成同一组固定输入。普通触发接口没有回滚模式，回滚通过单独的显式操作处理。
@@ -98,7 +98,7 @@ GitHub API 接受人工请求仅代表 workflow 已提交排队，不能把 HTTP
 3. 对比已部署指针。相同 Release/digest 已生效时跳过；同一 Release 不同 digest 拒绝；较旧稳定版本跳过，不直接信任 API `latest` 作为版本顺序。
 4. 固定当前已发布的博客渲染器与文章/Memo 输入，构建并执行静态校验。
 5. 获取与正常前端部署相同的生产 job 并发组，再重新读取部署身份。若内容已被采用或已变旧则跳过；若当前渲染器已改变，则不得部署旧渲染器产物，需要重新构建后再核对。
-6. 部署完整公共页面及版本化数据，核对公开指针已生效，再把同一 source identity 的补充投影提交到受保护 console 接收入口；若 Release 没有补充包则提交明确的空 overlay，但同一 source identity 已接受的补充包或空 overlay 都不得被缺失资产或重试改写，只有 source 切换才会清理旧 overlay。显式 rollback 请求携带受保护的 `rollback=true` 标志，并且只允许暂存严格早于当前 stable source 的补充投影；待公共同步采用该 source 后再恢复管理员读模型，普通乱序旧请求仍必须拒绝。若暂存补充投影无法与之后采用的公共 edition 合并，公共 edition 采用必须 fail closed，不能以 public-only 结果冒充成功；应清除或修复该 source 的补充状态后重试。补充状态和构建时的补充 seed 都必须保留 manifest 对应的原始数据文件字节，加载或重启先复验文件摘要和投影一致性。记录实际采用的公共/补充输入身份与下游 run URL。接收端先按来源身份暂存，console 的公共同步采用同一来源后才向管理员读模型合并；补充数据不能被静态站或匿名 API 读取。
+6. 部署完整公共页面及版本化数据，核对公开指针已生效，再把同一 source identity 的补充投影提交到受保护 console 接收入口；若 Release 没有补充包则提交明确的空 overlay，但同一 source identity 已接受的补充包或空 overlay 都不得被缺失资产或重试改写，只有 source 切换才会清理旧 overlay。显式 rollback 请求携带受保护的 `rollback=true` 标志，并且只允许暂存严格早于当前 stable source 的补充投影；待公共同步采用该 source 后再恢复管理员读模型，普通乱序旧请求仍必须拒绝。若暂存补充投影无法与之后采用的公共 edition 合并，公共 edition 仍必须成功采用为 public-only 结果，并隔离该 source 的管理员 overlay；随后可通过同源空补充请求清除冲突状态后重试。补充状态和构建时的补充 seed 都必须保留 manifest 对应的原始数据文件字节，加载或重启先复验文件摘要和投影一致性。记录实际采用的公共/补充输入身份与下游 run URL。接收端先按来源身份暂存，console 的公共同步采用同一来源后才向管理员读模型合并；补充数据不能被静态站或匿名 API 读取。
 
 生产 job 并发组使用 `blog26-edgeone-production` 与 `cancel-in-progress: false`，由内容和正常前端部署共同使用。GitHub Actions 原生并发只保留一个运行中的任务和一个待处理任务；两种流程之间需要同一个部署 job 边界。待处理任务仍必须执行版本与渲染器复核，不能依赖 dispatch 时间保证顺序。
 

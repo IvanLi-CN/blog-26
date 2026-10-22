@@ -399,9 +399,17 @@ export class PlaybookStore {
     if (
       !validated &&
       this.supplement &&
-      samePlaybookSource(this.supplement.manifest.source, parsedSource)
-    )
-      return { source: parsedSource, supplementAvailable: true };
+      samePlaybookSource(this.supplement.manifest.source, parsedSource) &&
+      this.state.current &&
+      samePlaybookSource(this.state.current.edition.source, parsedSource)
+    ) {
+      try {
+        mergePlaybookSupplement(this.state.current, this.supplement);
+        return { source: parsedSource, supplementAvailable: true };
+      } catch {
+        // A conflicting overlay must be clearable for the public edition to recover.
+      }
+    }
     const next: PlaybookSupplementState = {
       source: parsedSource,
       supplement: validated ?? null,
@@ -444,8 +452,13 @@ export class PlaybookStore {
     if (
       this.supplement &&
       samePlaybookSource(edition.edition.source, this.supplement.manifest.source)
-    )
-      mergePlaybookSupplement(edition, this.supplement);
+    ) {
+      try {
+        mergePlaybookSupplement(edition, this.supplement);
+      } catch {
+        // An optional admin overlay must not block public edition adoption.
+      }
+    }
     const next = {
       current: edition,
       adoption: adoption
