@@ -100,18 +100,27 @@ export async function handlePlaybookSupplementSyncRequest(
 
   try {
     const input = inputSchema.parse(await readJson(request));
-    const rawFiles =
-      input.supplement === null
-        ? undefined
-        : input.supplementFiles
-          ? decodeSupplementFiles(input.supplementFiles)
-          : undefined;
-    if (input.supplement !== null && !rawFiles)
-      throw new Error("Supplement file bytes are required");
-    const supplement =
-      input.supplement === null
-        ? undefined
-        : validatePlaybookSupplement(input.supplement, rawFiles);
+    let rawFiles: Map<string, Uint8Array> | undefined;
+    let supplement: ReturnType<typeof validatePlaybookSupplement> | undefined;
+    if (input.supplement !== null) {
+      try {
+        rawFiles = input.supplementFiles ? decodeSupplementFiles(input.supplementFiles) : undefined;
+        if (!rawFiles) throw new Error("Supplement file bytes are required");
+        supplement = validatePlaybookSupplement(input.supplement, rawFiles);
+      } catch (error) {
+        try {
+          await store.updateSupplement(input.source, undefined, undefined, {
+            allowRollback: input.rollback === true,
+            allowSameSourceRetry: true,
+          });
+        } catch (cleanupError) {
+          console.warn(
+            `Could not persist invalid Playbook supplement tombstone: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`
+          );
+        }
+        throw error;
+      }
+    }
     if (input.supplement !== null && input.supplementStatus !== undefined)
       throw new Error("Supplement status is only valid when supplement is absent");
     await store.load();

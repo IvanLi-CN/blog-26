@@ -379,7 +379,24 @@ describe("HTTP compatibility APIs", () => {
     const tamperedRoot = path.join(PLAYBOOK_TEST_PATH, "receiver-tampered");
     fs.mkdirSync(tamperedRoot, { recursive: true });
     const tamperedStore = new PlaybookStore(tamperedRoot);
-    await tamperedStore.adopt(publicBundle.edition);
+    await tamperedStore.adopt(nextBundle.edition);
+    const acceptedBeforeTamper = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          source: supplementBundle.manifest.source,
+          supplement,
+          supplementFiles: supplementFiles(supplementBundle),
+        }),
+      }),
+      tamperedStore
+    );
+    expect(acceptedBeforeTamper.status).toBe(200);
+    expect(tamperedStore.adminEdition?.supplement).toBeDefined();
     const tamperedSearch = structuredClone(supplement.search);
     tamperedSearch.documents[0].body = "Tampered supplement content";
     const tampered = await handlePlaybookSupplementSyncRequest(
@@ -440,7 +457,11 @@ describe("HTTP compatibility APIs", () => {
       store
     );
     expect(accepted.status).toBe(200);
-    expect(await accepted.json()).toMatchObject({ accepted: true, supplementAvailable: true });
+    expect(await accepted.json()).toMatchObject({
+      accepted: true,
+      supplementAvailable: true,
+      currentSourceMatches: false,
+    });
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
 
     await store.adopt(nextBundle.edition);

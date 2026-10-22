@@ -145,8 +145,12 @@ async function syncSupplementToConsole(source: PlaybookSupplementEnvelope["manif
     signal: AbortSignal.timeout(30_000),
   });
   if (!response.ok) throw new Error(`Console Playbook supplement sync failed: ${response.status}`);
-  const result = (await response.json()) as { accepted?: boolean };
+  const result = (await response.json()) as {
+    accepted?: boolean;
+    currentSourceMatches?: boolean;
+  };
   if (result.accepted !== true) throw new Error("Console rejected the Playbook supplement");
+  return { accepted: true, currentSourceMatches: result.currentSourceMatches === true };
 }
 
 let buildNumber = 0;
@@ -348,10 +352,16 @@ try {
   );
 }
 let supplementSynced = false;
+let supplementStaged = false;
 if (current && shouldSyncSupplement(current, selected.manifest)) {
   try {
-    await syncSupplementToConsole(selected.manifest.source);
-    supplementSynced = true;
+    const syncResult = await syncSupplementToConsole(selected.manifest.source);
+    supplementStaged = true;
+    supplementSynced = syncResult.currentSourceMatches;
+    if (!supplementSynced)
+      console.warn(
+        "Playbook supplement staged in console; current public source is not adopted there yet"
+      );
   } catch (error) {
     console.warn(
       `Playbook supplement sync deferred; public edition remains deployed: ${error instanceof Error ? error.message : String(error)}`
@@ -362,6 +372,13 @@ if (current && shouldSyncSupplement(current, selected.manifest)) {
     "Playbook supplement sync deferred; public pointer is unavailable while public edition remains deployed"
   );
 }
-const summary = `Playbook result: ${result}\n\n${encodeJson({ adopted: current, upstreamRunId: input.source_run_id || null, supplement: supplementSynced && supplementRoot ? (selected.supplement?.manifest ?? null) : null, supplementSynced, downstreamRun: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` })}`;
+const summary = `Playbook result: ${result}\n\n${encodeJson({
+  adopted: current,
+  upstreamRunId: input.source_run_id || null,
+  supplement: supplementSynced && supplementRoot ? (selected.supplement?.manifest ?? null) : null,
+  supplementStaged,
+  supplementSynced,
+  downstreamRun: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+})}`;
 console.log(summary);
 if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, summary);

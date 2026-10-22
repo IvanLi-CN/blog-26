@@ -14,7 +14,7 @@
     "docs/specs/style-playbook-integration/contracts/release-trigger.md": "11371027e9ce5f9440ff3d621efcc7d0ca8aa4eb",
     "scripts/fetch-initial-playbook.ts": "ae1361f494a07f5e15c85c18fd081fe54454b989",
     "scripts/prepare-console-playbook-seed.ts": "d126f6fe798e17cb479c7f85056a310290e6f0b5",
-    "scripts/playbook-content-update.ts": "36f697b9155c7f14401a600c5d2cd83e18a8a6ae",
+    "scripts/playbook-content-update.ts": "4493fa5277697f0b47efdb0ccaffa80517c447f1",
     "scripts/prepare-backend-dist.sh": "f2a8b868dbeefb9b28cfdefcfff3a74f9ecdc9b6",
     "scripts/prepare-playbook-edition.ts": "c4d6540f4991ae9f62340b464a2ab0ee69052e1f",
     "src/lib/admin-api-client.ts": "926e9bbc0c1d0c99b3b95d219eb88f6cbb9734f5",
@@ -30,15 +30,15 @@
     "src/lib/playbook/web-demo-fixture.ts": "05b0a4b7e8edfc8c022e8107e646b39cbec67f9e",
     "src/lib/release/inputs.ts": "b9f21e8ef06e376f6254606a9bb900b083babc9f",
     "src/lib/release/source.ts": "2258ff7a6d77000f2d65da972d17d071b4b14cc4",
-    "src/server/admin-api/playbook-supplement.ts": "7eccb29d5d12fb73528d0d602bd8177c947ec058",
+    "src/server/admin-api/playbook-supplement.ts": "603957f5e1e459d2cb17bf45c839f394b525880b",
     "src/server/admin-api/router.ts": "a570710b2d73376db2b681ad08d0f56b6c5d4e43",
-    "src/server/http-compat-api.test.ts": "e38ff02d97b221c2c6f1498f0829000f2fd7ef90",
+    "src/server/http-compat-api.test.ts": "1cda0de58f04ba44ab52cbe64e512b7c0a3351ea",
     "src/server/routers/admin/index.ts": "a0221d7071f529099c250fce356939a00095f934",
     "src/server/routers/admin/playbook.ts": "47e980599443589feeef4ecc1976cfb5eb6fb070",
     "tests/lib/manual-release-source.test.ts": "015b936082fdaf6c4435d47b49e6649a2aa9d8ea",
     "tests/lib/playbook-contract.test.ts": "a36984246beb00758391235cafa07bc175f5c676",
     "tests/lib/playbook-fixture.ts": "182603e4da37bff59c1ee55093e1fbefb949bc45",
-    "tests/lib/playbook-workflows.test.ts": "21c42e83c16ab00000de01821038697273f23a44",
+    "tests/lib/playbook-workflows.test.ts": "4da67bfdf7efd7b9b1f83115f210ad7af734abd2",
     "tests/fixtures/playbook/rust-supplement-catalog.fixture": "5eafd8f810a3765097aacee8d962b31912e93ef0",
     "tests/fixtures/playbook/rust-supplement-search.fixture": "9d20810bc370fbeeaa0fe459bf882c3943cbf85a"
   },
@@ -82,7 +82,7 @@
         },
         {
           "path": "src/server/admin-api/playbook-supplement.ts",
-          "blob": "7eccb29d5d12fb73528d0d602bd8177c947ec058",
+          "blob": "603957f5e1e459d2cb17bf45c839f394b525880b",
           "command": "Protected receiver validates source-bound supplement payloads and persists only accepted overlay metadata"
         }
       ],
@@ -103,12 +103,12 @@
         },
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "e38ff02d97b221c2c6f1498f0829000f2fd7ef90",
+          "blob": "1cda0de58f04ba44ab52cbe64e512b7c0a3351ea",
           "command": "bun test src/server/http-compat-api.test.ts"
         },
         {
           "path": "tests/lib/playbook-workflows.test.ts",
-          "blob": "21c42e83c16ab00000de01821038697273f23a44",
+          "blob": "4da67bfdf7efd7b9b1f83115f210ad7af734abd2",
           "command": "Workflow boundary tests reject non-HTTPS sync endpoints, keep invalid optional supplements, merge conflicts and receiver failures from blocking the public deployment, clear stale supplement retries, and assert that supplements stay out of public frozen and backend artifacts"
         },
         {
@@ -179,7 +179,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "e38ff02d97b221c2c6f1498f0829000f2fd7ef90",
+          "blob": "1cda0de58f04ba44ab52cbe64e512b7c0a3351ea",
           "command": "HTTP compatibility tests cover anonymous, authenticated user, and administrator Playbook access"
         }
       ]
