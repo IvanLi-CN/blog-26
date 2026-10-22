@@ -78,6 +78,7 @@ export type PublicMediaPackageOptions = {
   downloadAttempts?: number;
   retryDelayMs?: number;
   includeDerivedWatermarkVariants?: boolean;
+  includeMigratedWatermarkVariants?: boolean;
   clippingResourceUrls?: string[];
   fetchImpl?: PublicMediaFetcher;
 };
@@ -519,9 +520,34 @@ function deriveSiblingWatermarkReferences(
   );
 }
 
+function deriveMigratedWatermarkReferences(
+  reference: AssetReference,
+  mediaOrigin: string,
+  basePath: string
+): AssetReference[] {
+  const match = PUBLIC_DERIVED_RENDER_VARIANT_RE.exec(reference.sourceUrl.pathname);
+  if (!match || match[4]?.endsWith("-v3")) return [];
+  const [, kind, slug, hash, , variant, extension] = match;
+  return DERIVED_WATERMARK_RENDER_IDS.map((renderId) => {
+    const sourceUrl = new URL(reference.sourceUrl.href);
+    sourceUrl.pathname = `${PUBLIC_MEDIA_FACADE_PREFIX}${kind}/${slug}/${hash}/${renderId}/${variant}.${extension}`;
+    const relativePath = assertSafeAssetPath(sourceUrl.pathname);
+    const sourcePath = `${sourceUrl.pathname}${sourceUrl.search}`;
+    const staticPath = sitePath(basePath, `${STATIC_MEDIA_PREFIX}${relativePath}`);
+    return {
+      raw: "",
+      sourcePath,
+      sourceUrl,
+      fetchUrl: `${mediaOrigin}${sourcePath}`,
+      staticPath,
+      replacement: () => staticPath,
+    } satisfies AssetReference;
+  });
+}
+
 function isLegacyDerivedWatermarkPath(pathname: string) {
   const match = PUBLIC_DERIVED_RENDER_VARIANT_RE.exec(pathname);
-  return match?.[4]?.endsWith("-v1") === true;
+  return match?.[4]?.endsWith("-v1") === true || match?.[4]?.endsWith("-v2") === true;
 }
 
 function deriveBaseReference(
@@ -681,6 +707,16 @@ export async function packagePublicMedia(
         if (base) {
           const baseKey = fetchKey(base);
           if (!uniqueReferences.has(baseKey)) uniqueReferences.set(baseKey, base);
+        }
+      }
+      if (options.includeMigratedWatermarkVariants) {
+        for (const migrated of deriveMigratedWatermarkReferences(
+          reference,
+          mediaOrigin,
+          basePath
+        )) {
+          const migratedKey = fetchKey(migrated);
+          if (!uniqueReferences.has(migratedKey)) uniqueReferences.set(migratedKey, migrated);
         }
       }
     }
