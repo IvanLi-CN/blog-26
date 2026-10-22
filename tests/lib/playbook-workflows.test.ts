@@ -6,6 +6,7 @@ import {
   findEdgeoneCacheRule,
 } from "../../scripts/prepare-edgeone-pwa-config";
 import { withoutDeploymentCredentials } from "../../src/lib/playbook/child-env";
+import { parseSupplementSyncEndpoint } from "../../src/lib/playbook/supplement";
 import { getPublicStaticCacheControl } from "../../src/lib/public-static-cache-policy";
 
 type WorkflowStep = {
@@ -111,6 +112,32 @@ describe("playbook deployment boundaries", () => {
     const initial = await readFile("scripts/fetch-initial-playbook.ts", "utf8");
     expect(initial).toContain("GITHUB_OUTPUT");
     expect(initial).toContain("bundle_dir=" + "$" + "{directory}");
+  });
+  test("private supplements stay out of frozen public and backend artifacts", async () => {
+    const releaseInputs = await readFile("src/lib/release/inputs.ts", "utf8");
+    expect(releaseInputs).not.toContain("PLAYBOOK_SUPPLEMENT_DIR");
+    expect(releaseInputs).not.toContain("playbook-private-supplement.json");
+
+    const prepare = await readFile("scripts/prepare-playbook-edition.ts", "utf8");
+    const frozenBranch = prepare.slice(
+      prepare.indexOf("if (process.env.PLAYBOOK_FROZEN_INPUT_DIR)"),
+      prepare.indexOf("const snapshotPath = resolve(")
+    );
+    expect(frozenBranch).not.toContain("supplement");
+
+    const backendDist = await readFile("scripts/prepare-backend-dist.sh", "utf8");
+    expect(backendDist).not.toContain("playbook-private-supplement.json");
+  });
+  test("supplement sync endpoints require credential-free HTTPS", () => {
+    expect(
+      parseSupplementSyncEndpoint("https://console.example.test/api/admin/supplement").href
+    ).toBe("https://console.example.test/api/admin/supplement");
+    expect(() =>
+      parseSupplementSyncEndpoint("http://console.example.test/api/admin/supplement")
+    ).toThrow("HTTPS");
+    expect(() =>
+      parseSupplementSyncEndpoint("https://user:password@console.example.test/api/admin/supplement")
+    ).toThrow("credential-free HTTPS");
   });
   test("private source reads use the scoped PAT secret without minting GitHub Apps", async () => {
     const updateText = await readFile(".github/workflows/playbook-content-update.yml", "utf8");

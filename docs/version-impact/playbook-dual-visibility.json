@@ -6,17 +6,17 @@
     "Dockerfile": "d7b48d22e76236a2e951fe2474ba9186ebe07e17",
     ".github/workflows/playbook-content-rollback.yml": "73626071105bea6fc35fff8fb663aacd71d80e1f",
     ".github/workflows/playbook-content-update.yml": "56ba8614c27b065781f40898b541612d934c6521",
-    "docs/runbooks/style-playbook-publishing.md": "009384dc7d9ac3042edefa28a2046690ba6500a9",
+    "docs/runbooks/style-playbook-publishing.md": "1cf6391de7354306d61d8eaf690659665edcabf0",
     "docs/specs/style-playbook-integration/HISTORY.md": "c4ea01aba979fd59e193c15a5ea1858904024af5",
-    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "c0ddb382c32fd3e20f6c7d82ee8691278d86a404",
-    "docs/specs/style-playbook-integration/SPEC.md": "37461842ebf6e6cfed22986c04f98cdafe1c5941",
-    "docs/specs/style-playbook-integration/contracts/public-package.md": "dc75bc634a379510787a44c1d1ee3e0ef66373f3",
-    "docs/specs/style-playbook-integration/contracts/release-trigger.md": "8b9208153c18d75f49e019867eb07874a8059870",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "5757f09bc5eb6142a92daabe0dcb89a2a0ba7429",
+    "docs/specs/style-playbook-integration/SPEC.md": "1526c9cc6f512d7892789646e99272ebf178e883",
+    "docs/specs/style-playbook-integration/contracts/public-package.md": "faa9766419f451ea74e4af7fbe254910399dcd29",
+    "docs/specs/style-playbook-integration/contracts/release-trigger.md": "8f5ba5137026ecd18558f78f9bb7f741ddd9681c",
     "scripts/fetch-initial-playbook.ts": "36e658229f163f08008f7c5a3af313778e628b33",
     "scripts/prepare-console-playbook-seed.ts": "d126f6fe798e17cb479c7f85056a310290e6f0b5",
-    "scripts/playbook-content-update.ts": "c121a9e902be99cfea719aaf5762cb5a2a900481",
-    "scripts/prepare-backend-dist.sh": "ed0e0fea1f8a9b4add452bb2f62985c1aac1bcd1",
-    "scripts/prepare-playbook-edition.ts": "aeebf4cb80e3b9a9d9352601aa67ab179da53b2b",
+    "scripts/playbook-content-update.ts": "be12bec271573e40bff803526b9cd9727c708142",
+    "scripts/prepare-backend-dist.sh": "f2a8b868dbeefb9b28cfdefcfff3a74f9ecdc9b6",
+    "scripts/prepare-playbook-edition.ts": "8e30dad44e1f98fa6dee579f6a0a3f3ce347ead6",
     "src/lib/admin-api-client.ts": "926e9bbc0c1d0c99b3b95d219eb88f6cbb9734f5",
     "src/lib/playbook/artifacts.ts": "98f4d2aa7ac98565dddaa14cd60e085b9ac6cb81",
     "src/lib/playbook/bundle.ts": "1d0517cb7624a91a2f12dce2c0ccfddd89c9a58f",
@@ -25,20 +25,20 @@
     "src/lib/playbook/manifest.ts": "16d4184b0eb42b42cf779fa3629f4a80375ea09a",
     "src/lib/playbook/release.ts": "d9cc35432f01766f3fbde6d667e73ee5984fc252",
     "src/lib/playbook/schema.ts": "b3d36b4290a1337c068e0330e625d78265758891",
-    "src/lib/playbook/supplement.ts": "ba40687f6bb6769ec425d2691db954631d69c4af",
+    "src/lib/playbook/supplement.ts": "46d2eb82bde47630557d3e62ed83baf446d4ecd8",
     "src/lib/playbook/types.ts": "a85bc56fdee6d5e0f788e4adcf993cafff7d7c55",
     "src/lib/playbook/web-demo-fixture.ts": "05b0a4b7e8edfc8c022e8107e646b39cbec67f9e",
-    "src/lib/release/inputs.ts": "b9ccf36d6ae781e5f3141fbd76ef137c4f6e8f62",
+    "src/lib/release/inputs.ts": "b9f21e8ef06e376f6254606a9bb900b083babc9f",
     "src/lib/release/source.ts": "2258ff7a6d77000f2d65da972d17d071b4b14cc4",
-    "src/server/admin-api/playbook-supplement.ts": "982dc542c073a84fdff067334cdfd9c7ad0e5104",
+    "src/server/admin-api/playbook-supplement.ts": "b60bbd257f7cb0060f3f92ab10bc31a9553dea7e",
     "src/server/admin-api/router.ts": "a570710b2d73376db2b681ad08d0f56b6c5d4e43",
-    "src/server/http-compat-api.test.ts": "29969ecd49a682392136d28167a1b304c335a836",
+    "src/server/http-compat-api.test.ts": "48ac891647294cd9a9f670d097e312ffce22f8b4",
     "src/server/routers/admin/index.ts": "a0221d7071f529099c250fce356939a00095f934",
     "src/server/routers/admin/playbook.ts": "47e980599443589feeef4ecc1976cfb5eb6fb070",
     "tests/lib/manual-release-source.test.ts": "015b936082fdaf6c4435d47b49e6649a2aa9d8ea",
     "tests/lib/playbook-contract.test.ts": "295dfdc16b70bb615681099d680436bf5e7e0c41",
     "tests/lib/playbook-fixture.ts": "182603e4da37bff59c1ee55093e1fbefb949bc45",
-    "tests/lib/playbook-workflows.test.ts": "24fe2afeed563cb4254a7c5d9acc53c5ac1c215f",
+    "tests/lib/playbook-workflows.test.ts": "e99a2c47a3d80f29f8b5fe29f83de3d7c2534c1d",
     "tests/fixtures/playbook/rust-supplement-catalog.fixture": "5eafd8f810a3765097aacee8d962b31912e93ef0",
     "tests/fixtures/playbook/rust-supplement-search.fixture": "9d20810bc370fbeeaa0fe459bf882c3943cbf85a"
   },
@@ -55,15 +55,15 @@
       "evidence": [
         {
           "path": "docs/specs/style-playbook-integration/SPEC.md",
-          "blob": "37461842ebf6e6cfed22986c04f98cdafe1c5941",
+          "blob": "1526c9cc6f512d7892789646e99272ebf178e883",
           "command": "Playbook SPEC defines independent visibility, public package compatibility, and the administrator supplement contract"
         }
       ]
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The implementation keeps the public edition unchanged at its boundary while adding a source-bound protected supplement receiver, authenticated administrator browsing, and persisted overlay staging; invalid supplement data is isolated from public adoption, rollback retries are idempotent only for the exact published identity, and frozen seeds revalidate preserved raw bytes.",
-      "assessed_at": "2026-10-22T21:47:59+08:00",
+      "reasoning": "The implementation keeps the public edition unchanged at its boundary while adding a source-bound protected supplement receiver, authenticated administrator browsing, and persisted overlay staging; invalid supplement data is isolated from public adoption, rollback retries are idempotent only for the exact published identity, and production frozen inputs and backend-dist exclude the supplement from public product artifacts.",
+      "assessed_at": "2026-10-23T03:57:21+08:00",
       "evidence": [
         {
           "path": "src/lib/playbook/release.ts",
@@ -82,7 +82,7 @@
         },
         {
           "path": "src/server/admin-api/playbook-supplement.ts",
-          "blob": "982dc542c073a84fdff067334cdfd9c7ad0e5104",
+          "blob": "b60bbd257f7cb0060f3f92ab10bc31a9553dea7e",
           "command": "Protected receiver validates source-bound supplement payloads and persists only accepted overlay metadata"
         }
       ],
@@ -93,8 +93,8 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "Public and supplement package validation, source identity checks, administrator authorization, raw-body preservation, deterministic assets, persisted overlay recovery, exact rollback retry handling, frozen seed byte validation, and the relevant Blog test and check suites pass.",
-      "assessed_at": "2026-10-22T21:47:59+08:00",
+      "reasoning": "Public and supplement package validation, source identity checks, administrator authorization, strict duplicate-key request parsing, HTTPS-only supplement sync endpoints, public artifact exclusion, raw-body preservation, deterministic assets, persisted overlay recovery, exact rollback retry handling, frozen seed byte validation, and the relevant Blog test and check suites pass.",
+      "assessed_at": "2026-10-23T03:57:21+08:00",
       "evidence": [
         {
           "path": "tests/lib/playbook-contract.test.ts",
@@ -103,8 +103,13 @@
         },
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "29969ecd49a682392136d28167a1b304c335a836",
+          "blob": "48ac891647294cd9a9f670d097e312ffce22f8b4",
           "command": "bun test src/server/http-compat-api.test.ts"
+        },
+        {
+          "path": "tests/lib/playbook-workflows.test.ts",
+          "blob": "e99a2c47a3d80f29f8b5fe29f83de3d7c2534c1d",
+          "command": "Workflow boundary tests reject non-HTTPS sync endpoints and assert that supplements stay out of public frozen and backend artifacts"
         },
         {
           "path": "src/lib/playbook/release.ts",
@@ -174,7 +179,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "29969ecd49a682392136d28167a1b304c335a836",
+          "blob": "48ac891647294cd9a9f670d097e312ffce22f8b4",
           "command": "HTTP compatibility tests cover anonymous, authenticated user, and administrator Playbook access"
         }
       ]

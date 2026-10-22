@@ -18,7 +18,6 @@ import {
   mergePlaybookSupplement,
   readPlaybookSupplement,
   samePlaybookSource,
-  validatePlaybookSupplementSeed,
 } from "../src/lib/playbook/supplement";
 import type { PlaybookEditionIdentity } from "../src/lib/playbook/types";
 
@@ -43,23 +42,6 @@ if (process.env.PLAYBOOK_FROZEN_INPUT_DIR) {
   await cp(join(frozen, "playbook"), join(publicRoot, "_content/playbook"), { recursive: true });
   await mkdir(resolve("site/generated"), { recursive: true });
   await writeFile(seedPath, encodeJson(seed));
-  const frozenSupplementPath = join(frozen, "playbook-private-supplement.json");
-  const frozenSupplement = await readFile(frozenSupplementPath, "utf8").catch((error: unknown) => {
-    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT")
-      return undefined;
-    throw error;
-  });
-  if (frozenSupplement) {
-    const supplement = validatePlaybookSupplementSeed(parseJson(frozenSupplement));
-    if (!samePlaybookSource(seed.edition.source, supplement.manifest.source))
-      throw new Error("Frozen Playbook supplement source does not match the public edition");
-    await writeFile(supplementSeedPath, encodeJson(supplement));
-  }
-  if (
-    process.env.PLAYBOOK_SUPPLEMENT_REQUIRED === "true" &&
-    !(await Bun.file(supplementSeedPath).exists())
-  )
-    throw new Error("Frozen Playbook supplement is required");
   console.log(`Reusing frozen Playbook edition ${pointer.editionDigest}`);
   process.exit(0);
 }

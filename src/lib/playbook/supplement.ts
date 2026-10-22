@@ -22,6 +22,24 @@ import type {
   PlaybookSupplementSeed,
 } from "./types";
 
+export function parseSupplementSyncEndpoint(value: string): URL {
+  let endpoint: URL;
+  try {
+    endpoint = new URL(value);
+  } catch {
+    throw new Error("Playbook supplement sync URL must be a valid HTTPS URL");
+  }
+  if (
+    endpoint.protocol !== "https:" ||
+    endpoint.username ||
+    endpoint.password ||
+    endpoint.search ||
+    endpoint.hash
+  )
+    throw new Error("Playbook supplement sync URL must be a credential-free HTTPS URL");
+  return endpoint;
+}
+
 export function validatePlaybookSupplement(
   value: unknown,
   rawFiles?: ReadonlyMap<string, Uint8Array>

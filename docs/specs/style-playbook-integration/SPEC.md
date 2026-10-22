@@ -28,7 +28,7 @@
 | `/api/admin/playbook` | 管理员按项目、Topic 或搜索读取合并后的公共目录与非公开补充目录 |
 | `/api/admin/playbook/supplement` | 受保护的接收入口，接收同一 source identity 的补充包投影并暂存到 console 缓存 |
 
-数据接口包括上游固定 Release 的公共包与非公开补充包、博客部署指针、不可变版本数据、backend/admin seed、受保护的补充包接收入口和 console 本地缓存。公共指针位于 `/_content/playbook/manifest.json`，版本文件位于 `/_content/playbook/<release-tag>/<digest>/`；补充包只在受保护的 Blog 构建、接收入口和 backend/admin 缓存链路中流转，不进入公共静态目录或匿名接口。接收入口按 source identity 暂存补充投影，公共指针同步采用同一来源后管理员读模型才合并；没有补充包的来源会明确清除该来源的 overlay。具体文件布局必须遵循下述身份与缓存契约。
+数据接口包括上游固定 Release 的公共包与非公开补充包、博客部署指针、不可变版本数据、backend/admin seed、受保护的补充包接收入口和 console 本地缓存。公共指针位于 `/_content/playbook/manifest.json`，版本文件位于 `/_content/playbook/<release-tag>/<digest>/`；补充包只在受保护的 Blog 内容 workflow、接收入口和 backend/admin 缓存链路中流转，不进入 frozen product inputs、`backend-dist`、公开 GHCR 镜像、公共静态目录或匿名接口。接收入口按 source identity 暂存补充投影，公共指针同步采用同一来源后管理员读模型才合并；没有补充包的来源会明确清除该来源的 overlay。具体文件布局必须遵循下述身份与缓存契约。
 
 公开包与部署 edition 的固定格式见 [公开包契约](./contracts/public-package.md)。跨仓触发的参与方、接口、输入、凭据、补漏与结果处理见 [Release 触发契约](./contracts/release-trigger.md)。
 

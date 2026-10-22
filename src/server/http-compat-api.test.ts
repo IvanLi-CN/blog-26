@@ -410,6 +410,20 @@ describe("HTTP compatibility APIs", () => {
     );
     expect(unauthorized.status).toBe(401);
 
+    const duplicateSource = JSON.stringify(supplementBundle.manifest.source);
+    const duplicateKey = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: `{"source":${duplicateSource},"source":${duplicateSource},"supplement":${JSON.stringify(supplement)},"supplementFiles":${JSON.stringify(supplementFiles(supplementBundle))}}`,
+      }),
+      store
+    );
+    expect(duplicateKey.status).toBe(400);
+
     const accepted = await handlePlaybookSupplementSyncRequest(
       new Request("http://localhost/api/admin/playbook/supplement", {
         method: "PUT",

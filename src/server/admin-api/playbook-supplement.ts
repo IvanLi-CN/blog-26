@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { ZodError, z } from "zod";
 import { getRuntimePlaybookStore, type PlaybookStore } from "@/lib/playbook/cache";
+import { parseJson } from "@/lib/playbook/manifest";
 import { PLAYBOOK_MAX_BUNDLE_BYTES, sourceSchema } from "@/lib/playbook/schema";
 import { samePlaybookSource, validatePlaybookSupplement } from "@/lib/playbook/supplement";
 
@@ -70,7 +71,11 @@ async function readJson(request: Request) {
   } finally {
     await reader.cancel().catch(() => undefined);
   }
-  return JSON.parse(new TextDecoder().decode(Buffer.concat(parts)));
+  try {
+    return parseJson(new TextDecoder().decode(Buffer.concat(parts)));
+  } catch (error) {
+    throw new SyntaxError(error instanceof Error ? error.message : "Invalid JSON");
+  }
 }
 
 export async function handlePlaybookSupplementSyncRequest(

@@ -21,6 +21,7 @@ import {
   shouldSyncSupplement,
 } from "../src/lib/playbook/release";
 import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
+import { parseSupplementSyncEndpoint } from "../src/lib/playbook/supplement";
 import type { PlaybookSupplementEnvelope } from "../src/lib/playbook/types";
 import { publicVersionSchema } from "../src/lib/release/deployment";
 import { versionSchema } from "../src/lib/release/policy";
@@ -125,12 +126,13 @@ async function syncSupplementToConsole(source: PlaybookSupplementEnvelope["manif
   }
   const token = process.env.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN?.trim();
   if (!token) throw new Error("PLAYBOOK_SUPPLEMENT_SYNC_TOKEN is required");
-  const endpoint =
+  const endpoint = parseSupplementSyncEndpoint(
     process.env.PLAYBOOK_SUPPLEMENT_SYNC_URL ||
-    new URL(
-      "/api/admin/playbook/supplement",
-      process.env.PUBLIC_API_BASE_URL || "https://console.ivanli.cc"
-    ).toString();
+      new URL(
+        "/api/admin/playbook/supplement",
+        process.env.PUBLIC_API_BASE_URL || "https://console.ivanli.cc"
+      ).toString()
+  ).toString();
   const response = await fetch(endpoint, {
     method: "PUT",
     headers: {
