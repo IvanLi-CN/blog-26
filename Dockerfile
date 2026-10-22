@@ -15,7 +15,7 @@ COPY package.json bun.lock ./
 
 # Speed up dependency install with BuildKit cache; keep it cacheable across builds
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen
+    bun install --frozen-lockfile
 
 # Optional Playwright installation (disabled by default for production builds)
 ARG WITH_PLAYWRIGHT=false

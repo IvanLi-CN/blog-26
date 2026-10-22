@@ -3,6 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
   "covered_files": {
+    "Dockerfile": "d7b48d22e76236a2e951fe2474ba9186ebe07e17",
     ".github/workflows/abandon-failed-inputs-release.yml": "6e038873501b5491634758b85191f20068876c4b",
     ".github/workflows/notify-release-failure.yml": "efc0e3fd93fc696637002bc09402d6da7db879e8",
     ".github/workflows/product-release.yml": "e250c5f3bc22bd770d09ac0c1d56174161c36e66",
