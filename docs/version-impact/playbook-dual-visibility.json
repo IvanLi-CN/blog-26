@@ -98,7 +98,7 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "a8e32171d7a07fa333cdd1d5756d9023d7e8a0bd",
+          "blob": "a36984246beb00758391235cafa07bc175f5c676",
           "command": "bun test src/server/http-compat-api.test.ts tests/lib/playbook-contract.test.ts tests/lib/playbook-workflows.test.ts tests/lib/manual-release-policy.test.ts tests/lib/manual-release-source.test.ts"
         },
         {
@@ -133,7 +133,7 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "a8e32171d7a07fa333cdd1d5756d9023d7e8a0bd",
+          "blob": "a36984246beb00758391235cafa07bc175f5c676",
           "command": "Public and supplement contract tests preserve shared Markdown bytes, validate Rust fixture bytes, rollback identity, unavailable optional identities, and supplement seed bytes"
         },
         {
