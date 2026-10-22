@@ -28,7 +28,7 @@
     "src/lib/playbook/web-demo-fixture.ts": "05b0a4b7e8edfc8c022e8107e646b39cbec67f9e",
     "src/lib/release/inputs.ts": "b9ccf36d6ae781e5f3141fbd76ef137c4f6e8f62",
     "src/lib/release/source.ts": "2258ff7a6d77000f2d65da972d17d071b4b14cc4",
-    "src/server/admin-api/playbook-supplement.ts": "0181501da328fb6d68c51271ae64e2eceac578c0",
+    "src/server/admin-api/playbook-supplement.ts": "6ab0b9f708e811b90f8ea0eff327344a1c23934e",
     "src/server/admin-api/router.ts": "a570710b2d73376db2b681ad08d0f56b6c5d4e43",
     "src/server/http-compat-api.test.ts": "332234702b6508af6ec3894efd5395b81a9ce187",
     "src/server/routers/admin/index.ts": "a0221d7071f529099c250fce356939a00095f934",
@@ -80,7 +80,7 @@
         },
         {
           "path": "src/server/admin-api/playbook-supplement.ts",
-          "blob": "0181501da328fb6d68c51271ae64e2eceac578c0",
+          "blob": "6ab0b9f708e811b90f8ea0eff327344a1c23934e",
           "command": "Protected receiver validates source-bound supplement payloads and persists only accepted overlay metadata"
         }
       ],

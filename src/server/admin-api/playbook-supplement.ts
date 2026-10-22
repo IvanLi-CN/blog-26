@@ -4,7 +4,8 @@ import { getRuntimePlaybookStore, type PlaybookStore } from "@/lib/playbook/cach
 import { PLAYBOOK_MAX_BUNDLE_BYTES, sourceSchema } from "@/lib/playbook/schema";
 import { samePlaybookSource, validatePlaybookSupplement } from "@/lib/playbook/supplement";
 
-const MAX_REQUEST_BYTES = PLAYBOOK_MAX_BUNDLE_BYTES;
+// The receiver carries the parsed projection and base64 copies of both package files.
+const MAX_REQUEST_BYTES = PLAYBOOK_MAX_BUNDLE_BYTES * 3;
 const supplementFilesSchema = z
   .object({
     catalog: z.string(),
