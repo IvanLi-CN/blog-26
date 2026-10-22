@@ -8,24 +8,24 @@
     ".github/workflows/playbook-content-update.yml": "56ba8614c27b065781f40898b541612d934c6521",
     "docs/runbooks/style-playbook-publishing.md": "009384dc7d9ac3042edefa28a2046690ba6500a9",
     "docs/specs/style-playbook-integration/HISTORY.md": "c4ea01aba979fd59e193c15a5ea1858904024af5",
-    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "37d7b06069e8974ac120c0f29ba5d871e59b1a5e",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "c0ddb382c32fd3e20f6c7d82ee8691278d86a404",
     "docs/specs/style-playbook-integration/SPEC.md": "37461842ebf6e6cfed22986c04f98cdafe1c5941",
     "docs/specs/style-playbook-integration/contracts/public-package.md": "dc75bc634a379510787a44c1d1ee3e0ef66373f3",
-    "docs/specs/style-playbook-integration/contracts/release-trigger.md": "55a286632d43c4baa28c87b7fbc483ed291d8405",
-    "scripts/fetch-initial-playbook.ts": "1986171c347ce7ad6f3a9984b0035caa000e45c0",
+    "docs/specs/style-playbook-integration/contracts/release-trigger.md": "8b9208153c18d75f49e019867eb07874a8059870",
+    "scripts/fetch-initial-playbook.ts": "36e658229f163f08008f7c5a3af313778e628b33",
     "scripts/playbook-content-update.ts": "c121a9e902be99cfea719aaf5762cb5a2a900481",
     "scripts/prepare-backend-dist.sh": "ed0e0fea1f8a9b4add452bb2f62985c1aac1bcd1",
-    "scripts/prepare-playbook-edition.ts": "a8f5cc3a0c3a68448b14f39c5931b1ad6107b1b6",
+    "scripts/prepare-playbook-edition.ts": "123f84a92776d018ea0ddec5b3f3057b25acfd28",
     "src/lib/admin-api-client.ts": "926e9bbc0c1d0c99b3b95d219eb88f6cbb9734f5",
     "src/lib/playbook/artifacts.ts": "aeb75ce71325908c76e75351b1ec4afcfb054b83",
     "src/lib/playbook/bundle.ts": "936e5c35342452bdc9c517b9cec9a70c2f316683",
     "src/lib/playbook/cache.ts": "4297c5b105f01842f0bdb579c9a720d144962ea5",
     "src/lib/playbook/fixture.ts": "5df5704636a959f61f9301b2e9b0efba49eea934",
     "src/lib/playbook/manifest.ts": "f19f581a876eeb09710d18749fb7fb960f933acc",
-    "src/lib/playbook/release.ts": "4339340e66d688f3f7e00f06e52b5026371dadea",
+    "src/lib/playbook/release.ts": "90b55c65463818e004087eca87225eb5c820e284",
     "src/lib/playbook/schema.ts": "b3d36b4290a1337c068e0330e625d78265758891",
-    "src/lib/playbook/supplement.ts": "6b4a959bc86e9ac486b319a2079743bd2df71d8e",
-    "src/lib/playbook/types.ts": "aa6545bc13bd22296bae8731d0f2a4365f7752ec",
+    "src/lib/playbook/supplement.ts": "b6fe3cbcadc365a282110c36b7fe9af1682af2d0",
+    "src/lib/playbook/types.ts": "a85bc56fdee6d5e0f788e4adcf993cafff7d7c55",
     "src/lib/playbook/web-demo-fixture.ts": "05b0a4b7e8edfc8c022e8107e646b39cbec67f9e",
     "src/lib/release/inputs.ts": "b9ccf36d6ae781e5f3141fbd76ef137c4f6e8f62",
     "src/lib/release/source.ts": "2258ff7a6d77000f2d65da972d17d071b4b14cc4",
@@ -35,9 +35,9 @@
     "src/server/routers/admin/index.ts": "a0221d7071f529099c250fce356939a00095f934",
     "src/server/routers/admin/playbook.ts": "47e980599443589feeef4ecc1976cfb5eb6fb070",
     "tests/lib/manual-release-source.test.ts": "015b936082fdaf6c4435d47b49e6649a2aa9d8ea",
-    "tests/lib/playbook-contract.test.ts": "45e67c5384793fa721b4b91beaaa0d495479078d",
+    "tests/lib/playbook-contract.test.ts": "759da82ede1c52e17b8356d8251ca959ff1061ca",
     "tests/lib/playbook-fixture.ts": "182603e4da37bff59c1ee55093e1fbefb949bc45",
-    "tests/lib/playbook-workflows.test.ts": "1f62d3930b6eb53b916873966f9649965c168540",
+    "tests/lib/playbook-workflows.test.ts": "c2bfa30fd584df45d690f9fffcc7e36cb1115696",
     "tests/fixtures/playbook/rust-supplement-catalog.fixture": "5eafd8f810a3765097aacee8d962b31912e93ef0",
     "tests/fixtures/playbook/rust-supplement-search.fixture": "9d20810bc370fbeeaa0fe459bf882c3943cbf85a"
   },
@@ -50,7 +50,7 @@
     "planned": {
       "impact": "minor",
       "reasoning": "The change adds an administrator-only Playbook overlay, additive release assets, an independent visibility projection, and a source-bound persisted supplement staging file. Existing public package names, public routes, and public content remain compatible.",
-      "assessed_at": "2026-10-22T13:39:20+08:00",
+      "assessed_at": "2026-10-22T21:28:58+08:00",
       "evidence": [
         {
           "path": "docs/specs/style-playbook-integration/SPEC.md",
@@ -61,13 +61,13 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The implementation keeps the public edition unchanged at its boundary while adding a source-bound protected supplement receiver, authenticated administrator browsing, and persisted overlay staging; invalid supplement data is isolated from public adoption and the staging file is optional and rebuildable.",
-      "assessed_at": "2026-10-22T13:39:20+08:00",
+      "reasoning": "The implementation keeps the public edition unchanged at its boundary while adding a source-bound protected supplement receiver, authenticated administrator browsing, and persisted overlay staging; invalid supplement data is isolated from public adoption, rollback retries are idempotent only for the exact published identity, and frozen seeds revalidate preserved raw bytes.",
+      "assessed_at": "2026-10-22T21:28:58+08:00",
       "evidence": [
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "4339340e66d688f3f7e00f06e52b5026371dadea",
-          "command": "Release reader validates public identity and treats the supplement as an optional administrator overlay"
+          "blob": "90b55c65463818e004087eca87225eb5c820e284",
+          "command": "Release reader validates public identity; exact rollback retries are idempotent and conflicting identities fail closed"
         },
         {
           "path": "src/lib/release/source.ts",
@@ -92,13 +92,13 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "Public and supplement package validation, source identity checks, administrator authorization, raw-body preservation, deterministic assets, persisted overlay recovery, and the existing Blog test and check suites pass.",
-      "assessed_at": "2026-10-22T13:39:20+08:00",
+      "reasoning": "Public and supplement package validation, source identity checks, administrator authorization, raw-body preservation, deterministic assets, persisted overlay recovery, exact rollback retry handling, frozen seed byte validation, and the relevant Blog test and check suites pass.",
+      "assessed_at": "2026-10-22T21:28:58+08:00",
       "evidence": [
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "45e67c5384793fa721b4b91beaaa0d495479078d",
-          "command": "bun test tests/lib/playbook-contract.test.ts tests/lib/playbook-workflows.test.ts"
+          "blob": "759da82ede1c52e17b8356d8251ca959ff1061ca",
+          "command": "bun test src/server/http-compat-api.test.ts tests/lib/playbook-contract.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
           "path": "src/server/http-compat-api.test.ts",
@@ -107,8 +107,8 @@
         },
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "4339340e66d688f3f7e00f06e52b5026371dadea",
-          "command": "Supplement identity and failure isolation tests keep explicit and optional public release paths distinct"
+          "blob": "90b55c65463818e004087eca87225eb5c820e284",
+          "command": "Supplement identity, exact rollback retry, and failure isolation tests keep public release paths distinct"
         },
         {
           "path": "src/lib/playbook/schema.ts",
@@ -127,8 +127,13 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "45e67c5384793fa721b4b91beaaa0d495479078d",
-          "command": "Public and supplement contract tests preserve shared Markdown bytes and validate actual Rust exporter fixture bytes"
+          "blob": "759da82ede1c52e17b8356d8251ca959ff1061ca",
+          "command": "Public and supplement contract tests preserve shared Markdown bytes, validate Rust fixture bytes, rollback identity, and supplement seed bytes"
+        },
+        {
+          "path": "scripts/fetch-initial-playbook.ts",
+          "blob": "36e658229f163f08008f7c5a3af313778e628b33",
+          "command": "Initial bootstrap resolves the exact pointer release and fails closed on invalid or unavailable supplement assets"
         }
       ]
     }

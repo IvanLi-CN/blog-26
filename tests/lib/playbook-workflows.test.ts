@@ -164,6 +164,9 @@ describe("playbook deployment boundaries", () => {
   test("initial application bootstrap uses the latest ready stable release without a pinned ID", async () => {
     const initialScript = await readFile("scripts/fetch-initial-playbook.ts", "utf8");
     expect(initialScript).toMatch(/resolveRelease\(reader,\s*\{\s*mode: "reconcile"/u);
+    expect(initialScript).toContain('mode: "release"');
+    expect(initialScript).toContain("Published Playbook supplement assets are invalid");
+    expect(initialScript).not.toContain("Ignoring invalid optional Playbook supplement");
   });
   test("pointer revalidates, version files are immutable and package resources cannot execute", () => {
     const digest = "a".repeat(64);

@@ -965,7 +965,34 @@ describe("playbook-build-deploy-adapter", () => {
       })
     ).toBe("deployed");
   });
-  test("explicit rollback rejects a newer target and rechecks the current release after build", async () => {
+  test("retries an already deployed rollback without rebuilding or redeploying", async () => {
+    const target = makePublicBundle("v3.0.0", "100");
+    let builds = 0;
+    let deployments = 0;
+    let verifications = 0;
+    const outcome = await deployContent(
+      {
+        current: async () => target.edition.edition,
+        build: async () => {
+          builds++;
+          return target.edition.edition;
+        },
+        deploy: async () => {
+          deployments++;
+        },
+        verify: async () => {
+          verifications++;
+        },
+      },
+      target.manifest,
+      { rollback: true, automaticUpdatesEnabled: false }
+    );
+    expect(outcome).toBe("deployed");
+    expect(builds).toBe(0);
+    expect(deployments).toBe(0);
+    expect(verifications).toBe(1);
+  });
+  test("explicit rollback rejects a newer target and rechecks identity after build", async () => {
     const current = makePublicBundle("v3.0.0", "100");
     const newer = makePublicBundle("v3.1.0", "101");
     let buildCalls = 0;
@@ -992,13 +1019,14 @@ describe("playbook-build-deploy-adapter", () => {
 
     const target = makePublicBundle("v3.0.0", "100");
     let latest = makePublicBundle("v3.2.0", "102").edition.edition;
+    const conflictingTarget = makePublicBundle("v3.0.0", "999").edition.edition;
     let deployed = false;
     await expect(
       deployContent(
         {
           current: async () => latest,
           build: async () => {
-            latest = target.edition.edition;
+            latest = conflictingTarget;
             return target.edition.edition;
           },
           deploy: async () => {

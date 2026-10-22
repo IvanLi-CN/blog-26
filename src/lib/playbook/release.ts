@@ -385,8 +385,18 @@ function matchesBuildIdentity(
   );
 }
 
+function matchesPublishedManifest(edition: PlaybookEditionIdentity, manifest: PlaybookManifest) {
+  return (
+    encodeJson(edition.source) === encodeJson(manifest.source) &&
+    encodeJson(edition.bundle) === encodeJson(manifest.bundle)
+  );
+}
+
 function assertOlderRollbackTarget(target: PlaybookManifest, current: PlaybookEditionIdentity) {
-  if (compareStableTags(target.source.tag, current.source.tag) >= 0)
+  if (
+    compareStableTags(target.source.tag, current.source.tag) >= 0 &&
+    !matchesPublishedManifest(current, target)
+  )
     throw new Error("Rollback target must be older than the current stable release");
 }
 
@@ -405,6 +415,10 @@ export async function deployContent(
     if (decision !== "update") return decision;
   }
   if (!current) throw new Error("Initial deployment must use the normal application release");
+  if (options.rollback && matchesPublishedManifest(current, manifest)) {
+    await adapter.verify(current);
+    return "deployed";
+  }
   if (options.rollback) assertOlderRollbackTarget(manifest, current);
   // Also supports adapters where preparation can outlive a renderer publication.
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -414,6 +428,10 @@ export async function deployContent(
     const latest = await adapter.current();
     if (!latest) throw new Error("Deployed renderer identity disappeared");
     if (options.rollback) {
+      if (matchesPublishedManifest(latest, manifest)) {
+        await adapter.verify(latest);
+        return "deployed";
+      }
       assertOlderRollbackTarget(manifest, latest);
     } else {
       const decision = adoptionDecision(manifest, latest);
