@@ -63,6 +63,7 @@ await writeFile(
 await writeFile(resolve(bundleRoot, "playbook-public.tar.gz"), archive);
 let supplementRoot: string | undefined;
 let supplementEnvelope: PlaybookSupplementEnvelope | null = null;
+let supplementStatus = selected.supplementStatus;
 if (selected.supplement) {
   try {
     const supplementArchive = await reader.asset(
@@ -92,6 +93,7 @@ if (selected.supplement) {
         `Playbook supplement verification failed: ${error instanceof Error ? error.message : String(error)}`
       );
     }
+    supplementStatus = "invalid";
     console.warn(
       `Ignoring invalid optional Playbook supplement: ${error instanceof Error ? error.message : String(error)}`
     );
@@ -299,11 +301,7 @@ try {
   throw error;
 }
 const current = await readPublicPointer(manifestUrl);
-const supplementSynced = shouldSyncSupplement(
-  current,
-  selected.manifest,
-  selected.supplementStatus
-);
+const supplementSynced = shouldSyncSupplement(current, selected.manifest, supplementStatus);
 if (supplementSynced) await syncSupplementToConsole(selected.manifest.source);
 const summary = `Playbook result: ${result}\n\n${encodeJson({ adopted: current, upstreamRunId: input.source_run_id || null, supplement: supplementSynced && supplementRoot ? (selected.supplement?.manifest ?? null) : null, supplementSynced, downstreamRun: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` })}`;
 console.log(summary);

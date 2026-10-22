@@ -82,6 +82,8 @@ describe("playbook deployment boundaries", () => {
     expect(updateScript).toContain("Initial Playbook edition must be deployed through");
     expect(updateScript).toContain("/api/admin/playbook/supplement");
     expect(updateScript).toContain("PLAYBOOK_SUPPLEMENT_SYNC_TOKEN");
+    expect(updateScript).toContain('supplementStatus = "invalid"');
+    expect(updateScript).toContain("selected.manifest,\n  supplementStatus");
 
     for (const job of [update.jobs.production, rollback.jobs.rollback]) {
       const checkout = job.steps?.find((step) => step.uses === "actions/checkout@v7");
