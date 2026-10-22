@@ -252,7 +252,7 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "4b15c393b565114dd88d041fe4fa27c3a6b2efd0",
+          "blob": "c4fe6bd9c9397d9d60ecd2484ab2982a7470d496",
           "command": "Supplement persistence, rollback-window late arrivals, and conflicting overlay adoption retain a public-only fallback"
         }
       ]
