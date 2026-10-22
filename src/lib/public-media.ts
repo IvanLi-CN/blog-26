@@ -28,6 +28,7 @@ export type PublicMediaVariant = (typeof PUBLIC_MEDIA_VARIANTS)[number];
 export type PublicMediaRenderId = (typeof PUBLIC_MEDIA_RENDER_IDS)[number];
 export type PublicMediaRole = (typeof PUBLIC_MEDIA_ROLES)[number];
 export type PublicMediaKind = "image" | "gif" | "video";
+export type PublicMediaWatermarkVersion = "v2" | "v3";
 
 export interface PublicMediaContext {
   kind: PublicContentKind;
@@ -36,6 +37,8 @@ export interface PublicMediaContext {
   assetScope?: PublicMediaAssetScope;
   /** Whether the bound snapshot provides complete responsive watermark candidates. */
   supportsResponsiveWatermark?: boolean;
+  /** The candidate version carried by a complete bound snapshot. */
+  watermarkRenderVersion?: PublicMediaWatermarkVersion;
 }
 
 export interface PublicMediaSourceDescriptor {
@@ -194,9 +197,10 @@ export function isPublicMediaRenderId(value: string): value is PublicMediaRender
 }
 
 export function getDefaultPublicMediaRenderId(
-  variant: Exclude<PublicMediaVariant, "play">
+  variant: Exclude<PublicMediaVariant, "play">,
+  version: PublicMediaWatermarkVersion = "v3"
 ): PublicMediaRenderId {
-  return variant === "card" ? "wm-a-v3" : "wm-b-v3";
+  return variant === "card" ? `wm-a-${version}` : `wm-b-${version}`;
 }
 
 export function normalizePublicMediaExt(value: string) {
@@ -377,7 +381,10 @@ export function buildPublicMediaAssetUrl(params: {
         : (params.renderId ??
           (params.variant === "play" || params.context.supportsResponsiveWatermark === false
             ? undefined
-            : getDefaultPublicMediaRenderId(params.variant))),
+            : getDefaultPublicMediaRenderId(
+                params.variant,
+                params.context.watermarkRenderVersion ?? "v3"
+              ))),
     variant: params.variant,
     ext,
   });
@@ -389,30 +396,41 @@ export function buildPublicMediaAssetUrl(params: {
  * treated as legacy so a static build never emits a candidate the snapshot
  * cannot serve.
  */
-export function supportsPublicMediaPresentations(media: PublicMediaCollection | null | undefined) {
-  const contentItems = media?.content ?? [];
-  if (contentItems.length === 0) return false;
-
-  return contentItems.every((item) =>
-    (["content", "full"] as const).every((variant) => {
-      const presentations = item.presentations?.[variant];
-      return isCurrentWatermarkPresentationPair(presentations);
-    })
-  );
-}
-
-function isCurrentWatermarkPresentationPair(presentations: PublicMediaPresentations | undefined) {
-  if (!presentations?.a || !presentations.b) return false;
+function watermarkPresentationVersion(
+  presentations: PublicMediaPresentations | undefined
+): PublicMediaWatermarkVersion | null {
+  if (!presentations?.a || !presentations.b) return null;
 
   try {
     const aPath = new URL(presentations.a, "https://public.invalid").pathname;
     const bPath = new URL(presentations.b, "https://public.invalid").pathname;
     const aVersion = /(?:^|\/)wm-a-(v2|v3)\//u.exec(aPath)?.[1];
     const bVersion = /(?:^|\/)wm-b-(v2|v3)\//u.exec(bPath)?.[1];
-    return Boolean(aVersion && bVersion && aVersion === bVersion);
+    return aVersion && aVersion === bVersion ? (aVersion as PublicMediaWatermarkVersion) : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+export function getPublicMediaWatermarkVersion(
+  media: PublicMediaCollection | null | undefined
+): PublicMediaWatermarkVersion | null {
+  const contentItems = media?.content ?? [];
+  if (contentItems.length === 0) return null;
+
+  let version: PublicMediaWatermarkVersion | null = null;
+  for (const item of contentItems) {
+    for (const variant of ["content", "full"] as const) {
+      const itemVersion = watermarkPresentationVersion(item.presentations?.[variant]);
+      if (!itemVersion || (version && version !== itemVersion)) return null;
+      version = itemVersion;
+    }
+  }
+  return version;
+}
+
+export function supportsPublicMediaPresentations(media: PublicMediaCollection | null | undefined) {
+  return getPublicMediaWatermarkVersion(media) !== null;
 }
 
 export function buildPublicMediaPresentations(params: {
@@ -438,8 +456,12 @@ export function buildPublicMediaPresentations(params: {
     }
     return buildPublicMediaAssetUrl({ ...params, renderId });
   };
-  const a = buildCandidate("wm-a-v3");
-  const b = buildCandidate("wm-b-v3");
+  const renderIds: [PublicMediaRenderId, PublicMediaRenderId] =
+    params.context.watermarkRenderVersion === "v2"
+      ? ["wm-a-v2", "wm-b-v2"]
+      : ["wm-a-v3", "wm-b-v3"];
+  const a = buildCandidate(renderIds[0]);
+  const b = buildCandidate(renderIds[1]);
   if (!a || !b) return null;
   return { a, b } satisfies PublicMediaPresentations;
 }

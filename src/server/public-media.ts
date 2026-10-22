@@ -16,6 +16,7 @@ import {
   buildPublicMediaPresentations,
   createEmptyPublicMediaCollection,
   detectPublicMediaKind,
+  getDefaultPublicMediaRenderId,
   inferPublicMediaMimeType,
   isExternalMediaUrl,
   isPublicContentKind,
@@ -370,10 +371,10 @@ function pickRasterFallbackExt(ref: MediaReference) {
 }
 
 function getPublicMediaRenderId(
-  _context: PublicMediaContext,
+  context: PublicMediaContext,
   variant: Exclude<PublicMediaVariant, "play">
 ): PublicMediaRenderId | undefined {
-  return variant === "card" ? "wm-a-v3" : "wm-b-v3";
+  return getDefaultPublicMediaRenderId(variant, context.watermarkRenderVersion ?? "v3");
 }
 
 function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference) {
