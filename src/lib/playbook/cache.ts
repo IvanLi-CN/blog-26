@@ -4,6 +4,7 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { encodeJson, parseEditionIdentity, samePlaybookEdition, verifyFile } from "./manifest";
 import { validatePlaybookSearchRoute } from "./navigation";
+import { compareStableTags } from "./release";
 import {
   assertPublicCatalog,
   PLAYBOOK_PUBLIC_POINTER_URL,
@@ -95,6 +96,7 @@ export class PlaybookStore {
     promise: Promise<PlaybookEdition | undefined>;
     controller: AbortController;
   };
+  private stateMutationTail: Promise<void> = Promise.resolve();
   private stopPolling?: () => void;
   private stopped = false;
   constructor(
@@ -234,11 +236,24 @@ export class PlaybookStore {
   }
 
   async updateSupplement(source: PlaybookSourceIdentity, supplement?: PlaybookSupplementEnvelope) {
+    return this.enqueueStateMutation(() => this.updateSupplementLocked(source, supplement));
+  }
+
+  private async updateSupplementLocked(
+    source: PlaybookSourceIdentity,
+    supplement?: PlaybookSupplementEnvelope
+  ) {
     await this.load();
     const parsedSource = sourceSchema.parse(source);
     const validated = supplement ? validatePlaybookSupplement(supplement) : undefined;
     if (validated && !samePlaybookSource(parsedSource, validated.manifest.source))
       throw new Error("Playbook supplement source identity mismatch");
+    for (const existing of [this.state.current?.edition.source, this.supplementSource]) {
+      if (!existing || samePlaybookSource(existing, parsedSource)) continue;
+      const order = compareStableTags(parsedSource.tag, existing.tag);
+      if (order < 0) throw new Error("Playbook supplement source is older than the receiver state");
+      if (order === 0) throw new Error("Playbook supplement source identity conflict");
+    }
     if (
       validated &&
       this.state.current &&
@@ -264,6 +279,18 @@ export class PlaybookStore {
   }
 
   async adopt(
+    value: PlaybookEdition,
+    adoption?: { taskId: string; at: number; edition?: string },
+    signal?: AbortSignal,
+    expectedBase?: PlaybookEditionIdentity | null,
+    commitFence?: (commit: () => void) => void
+  ) {
+    return this.enqueueStateMutation(() =>
+      this.adoptLocked(value, adoption, signal, expectedBase, commitFence)
+    );
+  }
+
+  private async adoptLocked(
     value: PlaybookEdition,
     adoption?: { taskId: string; at: number; edition?: string },
     signal?: AbortSignal,
@@ -307,6 +334,15 @@ export class PlaybookStore {
       await unlink(staging).catch(() => undefined);
       throw error;
     }
+  }
+
+  private enqueueStateMutation<T>(operation: () => Promise<T>) {
+    const result = this.stateMutationTail.then(operation);
+    this.stateMutationTail = result.then(
+      () => undefined,
+      () => undefined
+    );
+    return result;
   }
 
   sync(

@@ -397,6 +397,29 @@ describe("HTTP compatibility APIs", () => {
     await store.adopt(nextBundle.edition);
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
 
+    const olderSupplementBundle = makeSupplementBundle("v3.0.0", "100");
+    const olderSupplement = {
+      manifest: olderSupplementBundle.manifest,
+      catalog: JSON.parse(olderSupplementBundle.files[0].content),
+      search: JSON.parse(olderSupplementBundle.files[1].content),
+    };
+    const outOfOrder = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          source: olderSupplementBundle.manifest.source,
+          supplement: olderSupplement,
+        }),
+      }),
+      store
+    );
+    expect(outOfOrder.status).toBe(400);
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+
     const conflictingCatalog = structuredClone(supplement.catalog);
     conflictingCatalog.snapshot.projects[0].slug = "sample-project";
     conflictingCatalog.project_details[0].item.slug = "sample-project";

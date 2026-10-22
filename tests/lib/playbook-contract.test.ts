@@ -1246,6 +1246,33 @@ describe("playbook-cache-http-ssr", () => {
     expect(restored.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
     expect(restored.adminEdition?.supplement).toBeUndefined();
   });
+  test("serializes supplement updates so stale arrivals cannot replace a newer staged source", async () => {
+    const root = await temp();
+    const current = makePublicBundle();
+    const next = makePublicBundle("v3.1.0", "101");
+    const newerBundle = makeSupplementBundle("v3.1.0", "101");
+    const olderBundle = makeSupplementBundle("v3.0.0", "100");
+    const newer = {
+      manifest: newerBundle.manifest,
+      catalog: JSON.parse(newerBundle.files[0].content),
+      search: JSON.parse(newerBundle.files[1].content),
+    };
+    const older = {
+      manifest: olderBundle.manifest,
+      catalog: JSON.parse(olderBundle.files[0].content),
+      search: JSON.parse(olderBundle.files[1].content),
+    };
+    const store = new PlaybookStore(root);
+    await store.adopt(current.edition);
+
+    const newerUpdate = store.updateSupplement(newerBundle.manifest.source, newer);
+    const olderUpdate = store.updateSupplement(olderBundle.manifest.source, older);
+    await newerUpdate;
+    await expect(olderUpdate).rejects.toThrow("older");
+
+    await store.adopt(next.edition);
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+  });
   test("fails closed when a staged supplement conflicts with its adopted public edition", async () => {
     const root = await temp();
     const current = makePublicBundle();
