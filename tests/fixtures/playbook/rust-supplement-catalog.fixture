@@ -1,0 +1,183 @@
+{
+  "snapshot": {
+    "index": {
+      "generated_at": "2026-10-22T06:02:57.448010+00:00",
+      "project_count": 1,
+      "topic_count": 1
+    },
+    "projects": [
+      {
+        "slug": "catalog-private-project",
+        "name": "Catalog Private Project",
+        "description": "Private catalog knowledge.",
+        "source": "private",
+        "tags": [
+          "Private topic"
+        ],
+        "snapshot_exists": true,
+        "catalog_visibility": "private",
+        "source_visibility": "private",
+        "created_at": null,
+        "updated_at": null
+      }
+    ],
+    "topics": [
+      {
+        "slug": "private-topic",
+        "token": "Private topic",
+        "description": "Supplement-only topic body.",
+        "categories": [],
+        "project_count": 2,
+        "related_projects": [
+          {
+            "slug": "source-private-project",
+            "name": "Source Private Project"
+          },
+          {
+            "slug": "catalog-private-project",
+            "name": "Catalog Private Project"
+          }
+        ],
+        "catalog_visibility": "private"
+      }
+    ]
+  },
+  "project_details": [
+    {
+      "item": {
+        "slug": "catalog-private-project",
+        "name": "Catalog Private Project",
+        "description": "Private catalog knowledge.",
+        "source": "private",
+        "tags": [
+          "Private topic"
+        ],
+        "snapshot_exists": true,
+        "catalog_visibility": "private",
+        "source_visibility": "private",
+        "created_at": null,
+        "updated_at": null
+      },
+      "title": "Catalog Private Project",
+      "doc_metadata": [
+        {
+          "key": "schema_version",
+          "value": "2"
+        },
+        {
+          "key": "kind",
+          "value": "project"
+        },
+        {
+          "key": "slug",
+          "value": "catalog-private-project"
+        },
+        {
+          "key": "catalog_visibility",
+          "value": "private"
+        },
+        {
+          "key": "source_visibility",
+          "value": "private"
+        }
+      ],
+      "stack": {
+        "language": "TypeScript"
+      },
+      "preamble": "\n\n",
+      "sections": [
+        {
+          "id": "basics",
+          "title": "Basics",
+          "markdown": "Private catalog knowledge.\n\n"
+        },
+        {
+          "id": "taxonomy",
+          "title": "Taxonomy",
+          "markdown": "- Tags: Private topic\n"
+        }
+      ]
+    }
+  ],
+  "topic_details": [
+    {
+      "item": {
+        "slug": "private-topic",
+        "token": "Private topic",
+        "description": "Supplement-only topic body.",
+        "categories": [],
+        "project_count": 2,
+        "related_projects": [
+          {
+            "slug": "source-private-project",
+            "name": "Source Private Project"
+          },
+          {
+            "slug": "catalog-private-project",
+            "name": "Catalog Private Project"
+          }
+        ],
+        "catalog_visibility": "private"
+      },
+      "doc_metadata": [
+        {
+          "key": "schema_version",
+          "value": "3"
+        },
+        {
+          "key": "kind",
+          "value": "topic"
+        },
+        {
+          "key": "slug",
+          "value": "private-topic"
+        },
+        {
+          "key": "catalog_visibility",
+          "value": "private"
+        },
+        {
+          "key": "related_projects",
+          "value": ""
+        }
+      ],
+      "preamble": "\n",
+      "sections": [
+        {
+          "id": "definition",
+          "title": "Definition",
+          "markdown": "Supplement-only topic body.\n"
+        }
+      ]
+    }
+  ],
+  "private_source_metadata": [
+    {
+      "project_slug": "catalog-private-project",
+      "source": "https://github.com/IvanLi-CN/catalog-private-project",
+      "source_visibility": "private"
+    },
+    {
+      "project_slug": "source-private-project",
+      "source": "https://github.com/IvanLi-CN/source-private-project",
+      "source_visibility": "private"
+    }
+  ],
+  "relation_edges": [
+    {
+      "topic_slug": "private-topic",
+      "project_slug": "catalog-private-project",
+      "project_name": "Catalog Private Project"
+    },
+    {
+      "topic_slug": "private-topic",
+      "project_slug": "source-private-project",
+      "project_name": "Source Private Project"
+    },
+    {
+      "topic_slug": "shared-topic",
+      "project_slug": "catalog-private-project",
+      "project_name": "Catalog Private Project"
+    }
+  ]
+}

@@ -10,8 +10,8 @@
     "docs/specs/style-playbook-integration/SPEC.md": "53109c2f16eff39b029e2b52dc1560aaba6191ae",
     "docs/specs/style-playbook-integration/contracts/public-package.md": "f4de90d91276ea2253f701fa9a94c290942df328",
     "docs/specs/style-playbook-integration/contracts/release-trigger.md": "8824d693308715f0919ed68467359742dffc9016",
-    "scripts/fetch-initial-playbook.ts": "c5742e8dfacfa154cc3143fd0d9903ef7208d6a4",
-    "scripts/playbook-content-update.ts": "0b80483d37e04585400210fcc2ead27da877fc93",
+    "scripts/fetch-initial-playbook.ts": "1986171c347ce7ad6f3a9984b0035caa000e45c0",
+    "scripts/playbook-content-update.ts": "6f2aa98c88888be7b5b920f85d779715b85340ee",
     "scripts/prepare-backend-dist.sh": "ed0e0fea1f8a9b4add452bb2f62985c1aac1bcd1",
     "scripts/prepare-playbook-edition.ts": "f8c34bfabea518785e76d7e56f8f5a2bee1a6c5e",
     "src/lib/admin-api-client.ts": "926e9bbc0c1d0c99b3b95d219eb88f6cbb9734f5",
@@ -20,17 +20,21 @@
     "src/lib/playbook/fixture.ts": "5df5704636a959f61f9301b2e9b0efba49eea934",
     "src/lib/playbook/manifest.ts": "c4e5c3b57e79e05a33bdf196c59b1df50bb2b73d",
     "src/lib/playbook/release.ts": "af579336d875b5a08b4b4197f4043819a3257718",
-    "src/lib/playbook/schema.ts": "b075a405970036d66532233f93fa9643e5932dc4",
+    "src/lib/playbook/schema.ts": "4346dd7b211be00388153aba05c9a8242cfd74ed",
     "src/lib/playbook/supplement.ts": "09c6ee7828cd8ac939c61a49c490d15c94fb4e08",
     "src/lib/playbook/types.ts": "2778fbeff61994693b9a8ae80a5802840510fc41",
     "src/lib/playbook/web-demo-fixture.ts": "05b0a4b7e8edfc8c022e8107e646b39cbec67f9e",
     "src/lib/release/inputs.ts": "b9ccf36d6ae781e5f3141fbd76ef137c4f6e8f62",
+    "src/lib/release/source.ts": "fdb756dc2378178f7d49e4b5b545c1308f85209a",
     "src/server/admin-api/router.ts": "7740e5b8fe80011e23858c091e158405e9f964ef",
     "src/server/http-compat-api.test.ts": "36e8380ca37e648f7b2d40de8537521bd2dab089",
     "src/server/routers/admin/index.ts": "a0221d7071f529099c250fce356939a00095f934",
     "src/server/routers/admin/playbook.ts": "47e980599443589feeef4ecc1976cfb5eb6fb070",
-    "tests/lib/playbook-contract.test.ts": "a7d6ead9cc16fc6d2b42b6f970b044d75c755783",
-    "tests/lib/playbook-fixture.ts": "3dbe80f7421d7b5b0e457fa0a8cabd1dd63ce988"
+    "tests/lib/manual-release-source.test.ts": "111bbba24f28fac6c31a846261e316b9cd3854d6",
+    "tests/lib/playbook-contract.test.ts": "80a64f0ff25d8b32ba6622d0987306e1219def1f",
+    "tests/lib/playbook-fixture.ts": "98d1ae98890fe7c0ca5309f93a765fa954e8e73e",
+    "tests/fixtures/playbook/rust-supplement-catalog.fixture": "5eafd8f810a3765097aacee8d962b31912e93ef0",
+    "tests/fixtures/playbook/rust-supplement-search.fixture": "9d20810bc370fbeeaa0fe459bf882c3943cbf85a"
   },
   "change": {
     "description": "Add independent Playbook catalog and source visibility, deterministic public and private supplement packages, and an authenticated administrator read model while preserving the public package and notification identity.",
@@ -59,6 +63,11 @@
           "path": "src/lib/playbook/release.ts",
           "blob": "af579336d875b5a08b4b4197f4043819a3257718",
           "command": "Release reader validates public identity and treats the supplement as an optional administrator overlay"
+        },
+        {
+          "path": "src/lib/release/source.ts",
+          "blob": "fdb756dc2378178f7d49e4b5b545c1308f85209a",
+          "command": "Release policy recognizes a verified release carried by a non-first-parent branch merge without accepting an unregistered VERSION change"
         },
         {
           "path": "src/server/routers/admin/playbook.ts",
@@ -90,6 +99,21 @@
           "path": "src/lib/playbook/release.ts",
           "blob": "af579336d875b5a08b4b4197f4043819a3257718",
           "command": "Supplement failure isolation test keeps the public release usable"
+        },
+        {
+          "path": "src/lib/playbook/schema.ts",
+          "blob": "4346dd7b211be00388153aba05c9a8242cfd74ed",
+          "command": "Public catalog validation compatibly reads the legacy visibility and missing-preamble shape without changing Markdown bytes"
+        },
+        {
+          "path": "tests/lib/manual-release-source.test.ts",
+          "blob": "111bbba24f28fac6c31a846261e316b9cd3854d6",
+          "command": "Release source tests cover VERSION provenance across registered merge commits and branch merges"
+        },
+        {
+          "path": "tests/lib/playbook-contract.test.ts",
+          "blob": "80a64f0ff25d8b32ba6622d0987306e1219def1f",
+          "command": "Public and supplement contract tests preserve shared Markdown bytes and validate actual Rust exporter fixture bytes"
         }
       ]
     }

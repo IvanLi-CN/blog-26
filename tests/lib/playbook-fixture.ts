@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { gzipSync } from "node:zlib";
@@ -177,15 +178,41 @@ export function makeSupplementBundle(
   return { archive, manifest, files };
 }
 
-export function makeRustSupplementBundle(
-  tag = "v3.0.0",
-  releaseId = "100",
-  catalog = supplementCatalog,
-  search = supplementSearch
-) {
-  return makeSupplementBundle(tag, releaseId, catalog, search, (value) =>
-    JSON.stringify(value, null, 2)
-  );
+export function makeRustSupplementBundle(tag = "v3.0.0", releaseId = "100") {
+  const files = [
+    {
+      path: "catalog.json",
+      content: readFileSync(
+        resolve(import.meta.dir, "../fixtures/playbook/rust-supplement-catalog.fixture"),
+        "utf8"
+      ),
+    },
+    {
+      path: "search-documents.json",
+      content: readFileSync(
+        resolve(import.meta.dir, "../fixtures/playbook/rust-supplement-search.fixture"),
+        "utf8"
+      ),
+    },
+  ];
+  const archive = makeArchive(files);
+  const manifest: PlaybookManifest = {
+    schemaVersion: 1,
+    source: {
+      repository: "IvanLi-CN/style-playbook-skills",
+      releaseId,
+      tag,
+      commit: "a".repeat(40),
+      publishedAt: "2026-09-01T00:00:00Z",
+    },
+    bundle: {
+      name: "playbook-private-supplement.tar.gz",
+      size: archive.length,
+      sha256: sha256(archive),
+    },
+    files: files.map((file) => fileRecord(file.path, file.content)),
+  };
+  return { archive, manifest, files };
 }
 
 if (import.meta.main) {

@@ -121,6 +121,28 @@ describe("playbook-public-contract", () => {
     mismatchedProject.snapshot.topics[0] = mismatchedProject.topic_details[0].item;
     expect(() => assertPublicCatalog(mismatchedProject)).toThrow("project references");
   });
+  test("compatibly reads the legacy public catalog without changing body bytes", () => {
+    const legacy = structuredClone(publicFixtureCatalog);
+    const body = legacy.project_details[0].sections[0].markdown;
+    Reflect.set(legacy.snapshot.projects[0], "visibility", null);
+    Reflect.deleteProperty(legacy.snapshot.projects[0], "catalog_visibility");
+    Reflect.deleteProperty(legacy.snapshot.projects[0], "source_visibility");
+    Reflect.set(legacy.project_details[0].item, "visibility", null);
+    Reflect.deleteProperty(legacy.project_details[0].item, "catalog_visibility");
+    Reflect.deleteProperty(legacy.project_details[0].item, "source_visibility");
+    Reflect.deleteProperty(legacy.snapshot.topics[0], "catalog_visibility");
+    Reflect.deleteProperty(legacy.topic_details[0].item, "catalog_visibility");
+    Reflect.deleteProperty(legacy.project_details[0], "preamble");
+    Reflect.deleteProperty(legacy.topic_details[0], "preamble");
+
+    const normalized = assertPublicCatalog(legacy);
+    expect(normalized.snapshot.projects[0].catalog_visibility).toBe("public");
+    expect(normalized.snapshot.projects[0].source_visibility).toBe("public");
+    expect(normalized.snapshot.topics[0].catalog_visibility).toBe("public");
+    expect(normalized.project_details[0].preamble).toBe("");
+    expect(normalized.topic_details[0].preamble).toBe("");
+    expect(normalized.project_details[0].sections[0].markdown).toBe(body);
+  });
   test("rejects bad digests, traversal, links and duplicate tar entries without extraction", () => {
     const bundle = makePublicBundle();
     expect(() =>
@@ -279,7 +301,7 @@ describe("playbook-public-contract", () => {
     const files = readSupplementArchive(bundle.archive, bundle.manifest);
     const parsed = parseSupplementFiles(files);
     const supplement = validatePlaybookSupplement({ manifest: bundle.manifest, ...parsed }, files);
-    expect(supplement.catalog.snapshot.projects[0]?.slug).toBe("private-project");
+    expect(supplement.catalog.snapshot.projects[0]?.slug).toBe("catalog-private-project");
   });
   test("merges supplement relations without changing public body bytes", () => {
     const publicCatalog = structuredClone(publicFixtureCatalog);

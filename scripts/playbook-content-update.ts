@@ -56,19 +56,29 @@ await writeFile(
 await writeFile(resolve(bundleRoot, "playbook-public.tar.gz"), archive);
 let supplementRoot: string | undefined;
 if (selected.supplement) {
-  const supplementArchive = await reader.asset(
-    selected.supplement.bundleAssetId,
-    selected.supplement.manifest.bundle.size
-  );
-  const supplementFiles = readSupplementArchive(supplementArchive, selected.supplement.manifest);
-  parseSupplementFiles(supplementFiles);
-  supplementRoot = resolve(taskRoot, "supplement");
-  await mkdir(supplementRoot, { recursive: true });
-  await writeFile(
-    resolve(supplementRoot, "playbook-private-supplement-manifest.json"),
-    encodeJson(selected.supplement.manifest)
-  );
-  await writeFile(resolve(supplementRoot, "playbook-private-supplement.tar.gz"), supplementArchive);
+  try {
+    const supplementArchive = await reader.asset(
+      selected.supplement.bundleAssetId,
+      selected.supplement.manifest.bundle.size
+    );
+    const supplementFiles = readSupplementArchive(supplementArchive, selected.supplement.manifest);
+    parseSupplementFiles(supplementFiles);
+    const candidateRoot = resolve(taskRoot, "supplement");
+    await mkdir(candidateRoot, { recursive: true });
+    await writeFile(
+      resolve(candidateRoot, "playbook-private-supplement-manifest.json"),
+      encodeJson(selected.supplement.manifest)
+    );
+    await writeFile(
+      resolve(candidateRoot, "playbook-private-supplement.tar.gz"),
+      supplementArchive
+    );
+    supplementRoot = candidateRoot;
+  } catch (error) {
+    console.warn(
+      `Ignoring invalid optional Playbook supplement: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 }
 let buildNumber = 0;
 let rendererRoot = "";
@@ -125,7 +135,7 @@ try {
         const env = withoutDeploymentCredentials(process.env, {
           PLAYBOOK_BUNDLE_DIR: bundleRoot,
           PLAYBOOK_SUPPLEMENT_DIR: supplementRoot,
-          PLAYBOOK_SUPPLEMENT_REQUIRED: selected.supplement ? "true" : undefined,
+          PLAYBOOK_SUPPLEMENT_REQUIRED: supplementRoot ? "true" : undefined,
           PLAYBOOK_USE_DEPLOYED: "true",
           PLAYBOOK_REQUIRED: "true",
           PLAYBOOK_RENDERER_COMMIT: renderer,
@@ -246,6 +256,6 @@ try {
   throw error;
 }
 const current = await readPublicPointer(manifestUrl);
-const summary = `Playbook result: ${result}\n\n${encodeJson({ adopted: current, upstreamRunId: input.source_run_id || null, supplement: selected.supplement?.manifest ?? null, downstreamRun: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` })}`;
+const summary = `Playbook result: ${result}\n\n${encodeJson({ adopted: current, upstreamRunId: input.source_run_id || null, supplement: supplementRoot ? (selected.supplement?.manifest ?? null) : null, downstreamRun: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` })}`;
 console.log(summary);
 if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, summary);

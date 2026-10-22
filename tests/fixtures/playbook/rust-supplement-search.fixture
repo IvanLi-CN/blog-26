@@ -1,0 +1,127 @@
+{
+  "generated_at": "2026-10-22T06:02:57.451187+00:00",
+  "documents": [
+    {
+      "id": "page:project:catalog-private-project",
+      "kind": "page",
+      "title": "Catalog Private Project",
+      "subtitle": "Private catalog knowledge.",
+      "body": "Project 项目 Catalog Private Project catalog-private-project Private catalog knowledge. Private topic schema_version 2 kind project slug catalog-private-project catalog_visibility private source_visibility private",
+      "route": "/projects/catalog-private-project",
+      "section_id": null,
+      "keywords": [
+        "project",
+        "项目",
+        "catalog-private-project",
+        "Catalog Private Project",
+        "Catalog Private Project",
+        "Private catalog knowledge.",
+        "Private topic",
+        "schema_version",
+        "2",
+        "kind",
+        "project",
+        "slug",
+        "catalog-private-project",
+        "catalog_visibility",
+        "private",
+        "source_visibility",
+        "private"
+      ],
+      "command_id": null
+    },
+    {
+      "id": "page:topic:private-topic",
+      "kind": "page",
+      "title": "Private topic",
+      "subtitle": "Supplement-only topic body.",
+      "body": "Topic 主题 Private topic private-topic Supplement-only topic body. Source Private Project source-private-project Catalog Private Project catalog-private-project schema_version 3 kind topic slug private-topic catalog_visibility private related_projects ",
+      "route": "/topics/private-topic",
+      "section_id": null,
+      "keywords": [
+        "topic",
+        "主题",
+        "private-topic",
+        "Private topic",
+        "Supplement-only topic body.",
+        "source-private-project",
+        "Source Private Project",
+        "catalog-private-project",
+        "Catalog Private Project",
+        "schema_version",
+        "3",
+        "kind",
+        "topic",
+        "slug",
+        "private-topic",
+        "catalog_visibility",
+        "private",
+        "related_projects",
+        ""
+      ],
+      "command_id": null
+    },
+    {
+      "id": "section:project:catalog-private-project:basics",
+      "kind": "section",
+      "title": "Catalog Private Project · Basics",
+      "subtitle": null,
+      "body": "Basics\nPrivate catalog knowledge.\n\n",
+      "route": "/projects/catalog-private-project",
+      "section_id": "basics",
+      "keywords": [
+        "project",
+        "项目",
+        "catalog-private-project",
+        "Catalog Private Project",
+        "Catalog Private Project",
+        "Private topic",
+        "Basics",
+        "basics"
+      ],
+      "command_id": null
+    },
+    {
+      "id": "section:project:catalog-private-project:taxonomy",
+      "kind": "section",
+      "title": "Catalog Private Project · Taxonomy",
+      "subtitle": null,
+      "body": "Taxonomy\n- Tags: Private topic\n",
+      "route": "/projects/catalog-private-project",
+      "section_id": "taxonomy",
+      "keywords": [
+        "project",
+        "项目",
+        "catalog-private-project",
+        "Catalog Private Project",
+        "Catalog Private Project",
+        "Private topic",
+        "Taxonomy",
+        "taxonomy"
+      ],
+      "command_id": null
+    },
+    {
+      "id": "section:topic:private-topic:definition",
+      "kind": "section",
+      "title": "Private topic · Definition",
+      "subtitle": null,
+      "body": "Definition\nSupplement-only topic body.\n",
+      "route": "/topics/private-topic",
+      "section_id": "definition",
+      "keywords": [
+        "topic",
+        "主题",
+        "private-topic",
+        "Private topic",
+        "source-private-project",
+        "Source Private Project",
+        "catalog-private-project",
+        "Catalog Private Project",
+        "Definition",
+        "definition"
+      ],
+      "command_id": null
+    }
+  ]
+}

@@ -237,8 +237,69 @@ export const editionSchema = z.strictObject({
   previous: z.strictObject({ tag: stableTagSchema, editionDigest: digestSchema }).optional(),
 });
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizeLegacyPublicCatalog(value: unknown): unknown {
+  if (!isRecord(value) || !isRecord(value.snapshot)) return value;
+  const snapshot = value.snapshot;
+  const snapshotProjects = Array.isArray(snapshot.projects) ? snapshot.projects : [];
+  const projectDetails = Array.isArray(value.project_details) ? value.project_details : [];
+  const snapshotTopics = Array.isArray(snapshot.topics) ? snapshot.topics : [];
+  const topicDetails = Array.isArray(value.topic_details) ? value.topic_details : [];
+  const hasLegacyVisibility = [...snapshotProjects, ...projectDetails].some((item) => {
+    const project = isRecord(item) && isRecord(item.item) ? item.item : item;
+    return isRecord(project) && Object.hasOwn(project, "visibility");
+  });
+  const hasLegacyTopics = [...snapshotTopics, ...topicDetails].some((item) => {
+    const topic = isRecord(item) && isRecord(item.item) ? item.item : item;
+    return isRecord(topic) && !Object.hasOwn(topic, "catalog_visibility");
+  });
+  if (!hasLegacyVisibility && !(snapshotProjects.length === 0 && hasLegacyTopics)) return value;
+
+  const normalized = structuredClone(value) as Record<string, unknown>;
+  const normalizedSnapshot = normalized.snapshot as Record<string, unknown>;
+  const normalizeProject = (value: unknown) => {
+    if (!isRecord(value)) return;
+    if (Object.hasOwn(value, "visibility")) {
+      if (value.visibility !== null && value.visibility !== "public")
+        throw new Error("Legacy public catalog contains non-public project visibility");
+      delete value.visibility;
+    }
+    if (!Object.hasOwn(value, "catalog_visibility")) value.catalog_visibility = "public";
+    if (!Object.hasOwn(value, "source_visibility"))
+      value.source_visibility = value.source === "private" ? "private" : "public";
+  };
+  const normalizeTopic = (value: unknown) => {
+    if (isRecord(value) && !Object.hasOwn(value, "catalog_visibility"))
+      value.catalog_visibility = "public";
+  };
+  const normalizeDetailPreamble = (value: unknown) => {
+    if (isRecord(value) && !Object.hasOwn(value, "preamble")) value.preamble = "";
+  };
+
+  for (const project of Array.isArray(normalizedSnapshot.projects)
+    ? normalizedSnapshot.projects
+    : [])
+    normalizeProject(project);
+  for (const detail of Array.isArray(normalized.project_details)
+    ? normalized.project_details
+    : []) {
+    if (isRecord(detail)) normalizeProject(detail.item);
+    normalizeDetailPreamble(detail);
+  }
+  for (const topic of Array.isArray(normalizedSnapshot.topics) ? normalizedSnapshot.topics : [])
+    normalizeTopic(topic);
+  for (const detail of Array.isArray(normalized.topic_details) ? normalized.topic_details : []) {
+    if (isRecord(detail)) normalizeTopic(detail.item);
+    normalizeDetailPreamble(detail);
+  }
+  return normalized;
+}
+
 export function assertPublicCatalog(value: unknown) {
-  const catalog = catalogSchema.parse(value);
+  const catalog = catalogSchema.parse(normalizeLegacyPublicCatalog(value));
   // Fixed objects are strict schemas; arbitrary public records share the metadata boundary.
   for (const project of catalog.project_details) rejectInternalFields(project.stack);
   for (const topic of catalog.topic_details)

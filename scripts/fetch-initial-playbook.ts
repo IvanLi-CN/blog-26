@@ -23,21 +23,27 @@ await mkdir(directory, { recursive: true });
 await writeFile(resolve(directory, "playbook-public-manifest.json"), encodeJson(selected.manifest));
 await writeFile(resolve(directory, "playbook-public.tar.gz"), archive);
 if (selected.supplement) {
-  const supplementArchive = await reader.asset(
-    selected.supplement.bundleAssetId,
-    selected.supplement.manifest.bundle.size
-  );
-  parseSupplementFiles(readSupplementArchive(supplementArchive, selected.supplement.manifest));
-  const supplementDirectory = resolve(directory, "supplement");
-  await mkdir(supplementDirectory, { recursive: true });
-  await writeFile(
-    resolve(supplementDirectory, "playbook-private-supplement-manifest.json"),
-    encodeJson(selected.supplement.manifest)
-  );
-  await writeFile(
-    resolve(supplementDirectory, "playbook-private-supplement.tar.gz"),
-    supplementArchive
-  );
+  try {
+    const supplementArchive = await reader.asset(
+      selected.supplement.bundleAssetId,
+      selected.supplement.manifest.bundle.size
+    );
+    parseSupplementFiles(readSupplementArchive(supplementArchive, selected.supplement.manifest));
+    const supplementDirectory = resolve(directory, "supplement");
+    await mkdir(supplementDirectory, { recursive: true });
+    await writeFile(
+      resolve(supplementDirectory, "playbook-private-supplement-manifest.json"),
+      encodeJson(selected.supplement.manifest)
+    );
+    await writeFile(
+      resolve(supplementDirectory, "playbook-private-supplement.tar.gz"),
+      supplementArchive
+    );
+  } catch (error) {
+    console.warn(
+      `Ignoring invalid optional Playbook supplement: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 }
 if (process.env.GITHUB_ENV)
   await appendFile(process.env.GITHUB_ENV, `PLAYBOOK_BUNDLE_DIR=${directory}\n`);
