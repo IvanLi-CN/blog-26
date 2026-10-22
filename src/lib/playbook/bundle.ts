@@ -15,6 +15,7 @@ import {
   assertSupplementCatalog,
   commitSchema,
   digestSchema,
+  isLegacyPublicCatalog,
   PLAYBOOK_PUBLIC_BUNDLE_NAME,
   PLAYBOOK_SUPPLEMENT_BUNDLE_NAME,
   searchSchema,
@@ -125,19 +126,22 @@ export function createPlaybookEdition(
   commitSchema.parse(rendererCommit);
   const contentSnapshotIdentity = sha256(publicSnapshot);
   digestSchema.parse(contentSnapshotIdentity);
-  const catalog = assertPublicCatalog(
-    JSON.parse(Buffer.from(files.get("catalog.json") ?? []).toString("utf8"))
-  );
+  const rawCatalog = JSON.parse(Buffer.from(files.get("catalog.json") ?? []).toString("utf8"));
+  const legacyCatalog = isLegacyPublicCatalog(rawCatalog);
+  const catalog = assertPublicCatalog(rawCatalog);
   const search = normalizePlaybookSearch(
     catalog,
     searchSchema.parse(
       JSON.parse(Buffer.from(files.get("search-documents.json") ?? []).toString("utf8"))
     )
   );
+  const catalogBytes = files.get("catalog.json");
+  const searchBytes = files.get("search-documents.json");
+  if (!catalogBytes || !searchBytes) throw new Error("Public bundle data files are incomplete");
   const records = [
-    fileRecord("catalog.json", encodeJson(catalog)),
+    fileRecord("catalog.json", legacyCatalog ? catalogBytes : encodeJson(catalog)),
     fileRecord("public-snapshot.json", publicSnapshot),
-    fileRecord("search-documents.json", encodeJson(search)),
+    fileRecord("search-documents.json", legacyCatalog ? searchBytes : encodeJson(search)),
   ];
   const edition = {
     schemaVersion: 1 as const,
@@ -150,7 +154,9 @@ export function createPlaybookEdition(
     generatedAt: manifest.source.publishedAt,
   };
   edition.editionDigest = computeEditionDigest(edition);
-  return { edition, catalog, search };
+  return legacyCatalog
+    ? { edition, catalog, search, legacyCatalog: true }
+    : { edition, catalog, search };
 }
 
 export async function readPlaybookEdition(

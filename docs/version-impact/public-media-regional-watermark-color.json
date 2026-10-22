@@ -34,7 +34,7 @@
     "src/lib/__tests__/public-media.test.ts": "43c5b92446967b6db5d318d3deec9c08e0f719e9",
     "src/lib/public-media.ts": "5aaa4de1b6472ed3012aa01209d0e59ba21f7da0",
     "src/lib/release/inputs.ts": "b9ccf36d6ae781e5f3141fbd76ef137c4f6e8f62",
-    "src/server/http-compat-api.test.ts": "81c663c54e70fc2963da7b7ec47285f99bc9ec4f",
+    "src/server/http-compat-api.test.ts": "29969ecd49a682392136d28167a1b304c335a836",
     "src/server/public-media-watermark-assets.test.ts": "e2544c82793a1ea188db07101a0ad6205c97c78d",
     "src/server/public-media-watermark.test.ts": "c291e26cda237383021a43da7fc77be0a5aafca2",
     "src/server/public-media-watermark.ts": "3520a18f2256e40e57980233aa01f92d22ffc4a1",
@@ -104,7 +104,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "81c663c54e70fc2963da7b7ec47285f99bc9ec4f",
+          "blob": "29969ecd49a682392136d28167a1b304c335a836",
           "command": "bun test src/server/http-compat-api.test.ts: 100 tests pass and 3 are skipped on the final candidate"
         },
         {
@@ -183,7 +183,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "81c663c54e70fc2963da7b7ec47285f99bc9ec4f",
+          "blob": "29969ecd49a682392136d28167a1b304c335a836",
           "command": "HTTP compatibility coverage exercises authorization, media transforms, GIFs, and video-cover boundaries without state migration"
         }
       ]

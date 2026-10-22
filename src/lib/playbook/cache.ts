@@ -7,6 +7,7 @@ import { validatePlaybookSearchRoute } from "./navigation";
 import { compareStableTags } from "./release";
 import {
   assertPublicCatalog,
+  isLegacyPublicCatalog,
   PLAYBOOK_PUBLIC_POINTER_URL,
   searchSchema,
   sourceSchema,
@@ -50,10 +51,14 @@ export function playbookCacheDirectory(dbPath = process.env.DB_PATH || "./data/s
   return resolve(process.env.PLAYBOOK_CACHE_DIR || join(dirname(dbPath), "playbook-cache"));
 }
 
-export function validatePlaybookEdition(value: unknown): PlaybookEdition {
+export function validatePlaybookEdition(
+  value: unknown,
+  rawFiles?: ReadonlyMap<string, Uint8Array>
+): PlaybookEdition {
   if (!value || typeof value !== "object") throw new Error("Invalid edition envelope");
   const input = value as Record<string, unknown>;
   const edition = parseEditionIdentity(input.edition);
+  const legacyCatalog = input.legacyCatalog === true || isLegacyPublicCatalog(input.catalog);
   const catalog = assertPublicCatalog(input.catalog);
   const search = searchSchema.parse(input.search);
   const ids = new Set<string>();
@@ -62,8 +67,24 @@ export function validatePlaybookEdition(value: unknown): PlaybookEdition {
     ids.add(document.id);
     validatePlaybookSearchRoute(catalog, document);
   }
-  for (const file of edition.files.filter((entry) => entry.path !== "public-snapshot.json"))
-    verifyFile(encodeJson(file.path === "catalog.json" ? catalog : search), file);
+  for (const file of edition.files.filter((entry) => entry.path !== "public-snapshot.json")) {
+    const normalized = file.path === "catalog.json" ? catalog : search;
+    const source = file.path === "catalog.json" ? input.catalog : input.search;
+    const raw = rawFiles?.get(file.path);
+    if (raw) {
+      verifyFile(raw, file);
+      if (encodeJson(JSON.parse(new TextDecoder().decode(raw))) !== encodeJson(source))
+        throw new Error(`Playbook file projection mismatch: ${file.path}`);
+      continue;
+    }
+    if (legacyCatalog && file.path === "catalog.json") continue;
+    try {
+      verifyFile(encodeJson(normalized), file);
+    } catch {
+      // Legacy public catalogs are normalized for reads but retain their original file identity.
+      verifyFile(encodeJson(source), file);
+    }
+  }
   if (input.publicSnapshot !== undefined) {
     if (typeof input.publicSnapshot !== "string" && !(input.publicSnapshot instanceof Uint8Array))
       throw new Error("Invalid article/Memo snapshot");
@@ -71,7 +92,9 @@ export function validatePlaybookEdition(value: unknown): PlaybookEdition {
     if (!snapshot) throw new Error("Article/Memo snapshot record is missing");
     verifyFile(input.publicSnapshot, snapshot);
   }
-  return { edition, catalog, search };
+  return legacyCatalog
+    ? { edition, catalog, search, legacyCatalog: true }
+    : { edition, catalog, search };
 }
 
 function freezeEdition(edition: PlaybookEdition) {
@@ -268,10 +291,8 @@ export class PlaybookStore {
     );
     const isPendingRollback = Boolean(
       this.state.current &&
-        this.state.previous &&
         options.allowRollback &&
-        samePlaybookSource(this.state.previous.edition.source, parsedSource) &&
-        compareStableTags(this.state.current.edition.source.tag, parsedSource.tag) > 0
+        compareStableTags(parsedSource.tag, this.state.current.edition.source.tag) < 0
     );
     const isRollbackSupplement = isAdoptedRollback || isPendingRollback;
     for (const existing of [this.state.current?.edition.source, this.supplementSource]) {
@@ -467,7 +488,11 @@ export class PlaybookStore {
               signal
             );
             verifyFile(bytes, file);
-            return [file.path, JSON.parse(Buffer.from(bytes).toString("utf8"))] as const;
+            return {
+              path: file.path,
+              bytes,
+              value: JSON.parse(Buffer.from(bytes).toString("utf8")),
+            };
           })
       );
       const snapshot = pointer.files.find((file) => file.path === "public-snapshot.json");
@@ -478,13 +503,17 @@ export class PlaybookStore {
         snapshot.size,
         signal
       );
-      const files = new Map(results);
-      const edition = validatePlaybookEdition({
-        edition: pointer,
-        catalog: files.get("catalog.json"),
-        search: files.get("search-documents.json"),
-        publicSnapshot,
-      });
+      const files = new Map(results.map((result) => [result.path, result.value]));
+      const rawFiles = new Map(results.map((result) => [result.path, result.bytes]));
+      const edition = validatePlaybookEdition(
+        {
+          edition: pointer,
+          catalog: files.get("catalog.json"),
+          search: files.get("search-documents.json"),
+          publicSnapshot,
+        },
+        rawFiles
+      );
       if (this.stopped || signal.aborted) return;
       return freezeEdition(edition);
     })();

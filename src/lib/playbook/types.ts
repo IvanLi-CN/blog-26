@@ -207,6 +207,7 @@ export interface PlaybookEdition {
   edition: PlaybookEditionIdentity;
   catalog: PlaybookPublicCatalog;
   search: PlaybookSearchPayload;
+  legacyCatalog?: boolean;
 }
 
 export interface PlaybookSupplementEnvelope extends PlaybookSupplement {

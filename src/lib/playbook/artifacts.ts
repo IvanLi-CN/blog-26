@@ -59,6 +59,7 @@ export async function downloadRetainedEdition(
     manifestUrl
   );
   const files = new Map<string, unknown>();
+  const rawFiles = new Map<string, Uint8Array>();
   for (const record of pointer.files) {
     const bytes = await fetchBounded(
       fetcher,
@@ -69,12 +70,16 @@ export async function downloadRetainedEdition(
     verifyFile(bytes, record);
     await write(join(destination, record.path), bytes);
     files.set(record.path, JSON.parse(new TextDecoder().decode(bytes)));
+    rawFiles.set(record.path, bytes);
   }
-  const edition = validatePlaybookEdition({
-    edition: pointer,
-    catalog: files.get("catalog.json"),
-    search: files.get("search-documents.json"),
-  });
+  const edition = validatePlaybookEdition(
+    {
+      edition: pointer,
+      catalog: files.get("catalog.json"),
+      search: files.get("search-documents.json"),
+    },
+    rawFiles
+  );
   const archive = await fetchBounded(
     fetcher,
     new URL(pointer.bundle.name, base).href,

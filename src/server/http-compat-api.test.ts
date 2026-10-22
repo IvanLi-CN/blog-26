@@ -432,11 +432,12 @@ describe("HTTP compatibility APIs", () => {
     await store.adopt(nextBundle.edition);
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
 
-    const olderSupplementBundle = makeSupplementBundle("v3.0.0", "100");
+    const rollbackBundle = makePublicBundle("v2.9.0", "99");
+    const rollbackSupplementBundle = makeSupplementBundle("v2.9.0", "99");
     const olderSupplement = {
-      manifest: olderSupplementBundle.manifest,
-      catalog: JSON.parse(olderSupplementBundle.files[0].content),
-      search: JSON.parse(olderSupplementBundle.files[1].content),
+      manifest: rollbackSupplementBundle.manifest,
+      catalog: JSON.parse(rollbackSupplementBundle.files[0].content),
+      search: JSON.parse(rollbackSupplementBundle.files[1].content),
     };
     const outOfOrder = await handlePlaybookSupplementSyncRequest(
       new Request("http://localhost/api/admin/playbook/supplement", {
@@ -446,9 +447,9 @@ describe("HTTP compatibility APIs", () => {
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          source: olderSupplementBundle.manifest.source,
+          source: rollbackSupplementBundle.manifest.source,
           supplement: olderSupplement,
-          supplementFiles: supplementFiles(olderSupplementBundle),
+          supplementFiles: supplementFiles(rollbackSupplementBundle),
         }),
       }),
       store
@@ -495,9 +496,9 @@ describe("HTTP compatibility APIs", () => {
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          source: olderSupplementBundle.manifest.source,
+          source: rollbackSupplementBundle.manifest.source,
           supplement: olderSupplement,
-          supplementFiles: supplementFiles(olderSupplementBundle),
+          supplementFiles: supplementFiles(rollbackSupplementBundle),
           rollback: true,
         }),
       }),
@@ -505,7 +506,7 @@ describe("HTTP compatibility APIs", () => {
     );
     expect(pendingRollback.status).toBe(200);
     expect(store.adminEdition?.supplement).toBeUndefined();
-    await store.adopt(publicBundle.edition);
+    await store.adopt(rollbackBundle.edition);
     expect(store.adminEdition?.supplement).toBeDefined();
 
     const restored = new PlaybookStore(receiverRoot);

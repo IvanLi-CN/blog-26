@@ -241,8 +241,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function normalizeLegacyPublicCatalog(value: unknown): unknown {
-  if (!isRecord(value) || !isRecord(value.snapshot)) return value;
+export function isLegacyPublicCatalog(value: unknown) {
+  if (!isRecord(value) || !isRecord(value.snapshot)) return false;
   const snapshot = value.snapshot;
   const snapshotProjects = Array.isArray(snapshot.projects) ? snapshot.projects : [];
   const projectDetails = Array.isArray(value.project_details) ? value.project_details : [];
@@ -256,7 +256,12 @@ function normalizeLegacyPublicCatalog(value: unknown): unknown {
     const topic = isRecord(item) && isRecord(item.item) ? item.item : item;
     return isRecord(topic) && !Object.hasOwn(topic, "catalog_visibility");
   });
-  if (!hasLegacyVisibility && !(snapshotProjects.length === 0 && hasLegacyTopics)) return value;
+  return hasLegacyVisibility || (snapshotProjects.length === 0 && hasLegacyTopics);
+}
+
+function normalizeLegacyPublicCatalog(value: unknown): unknown {
+  if (!isRecord(value) || !isRecord(value.snapshot)) return value;
+  if (!isLegacyPublicCatalog(value)) return value;
 
   const normalized = structuredClone(value) as Record<string, unknown>;
   const normalizedSnapshot = normalized.snapshot as Record<string, unknown>;
