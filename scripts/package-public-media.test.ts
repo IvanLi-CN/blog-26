@@ -394,6 +394,37 @@ describe("packagePublicMedia", () => {
     ]);
   });
 
+  test("keeps a complete v2 watermark pair on the legacy snapshot version", async () => {
+    const cwd = await fixture();
+    const watermarkA = "/api/public/assets/post/logo/hash/wm-a-v2/content.webp?v=2026-10-15";
+    const watermarkB = "/api/public/assets/post/logo/hash/wm-b-v2/content.webp?v=2026-10-15";
+    await writeFile(
+      join(cwd, "site-dist", "snapshot.json"),
+      JSON.stringify({ media: [watermarkA, watermarkB] })
+    );
+
+    const requestedUrls: string[] = [];
+    await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      includeDerivedWatermarkVariants: true,
+      fetchImpl: async (input) => {
+        requestedUrls.push(String(input));
+        return response("image");
+      },
+    });
+
+    expect(requestedUrls).not.toContain(
+      "https://api.example/api/public/assets/post/logo/hash/wm-a-v3/content.webp?v=2026-10-15"
+    );
+    expect(requestedUrls).not.toContain(
+      "https://api.example/api/public/assets/post/logo/hash/wm-b-v3/content.webp?v=2026-10-15"
+    );
+    expect(requestedUrls).toContain(`https://api.example${watermarkA}`);
+    expect(requestedUrls).toContain(`https://api.example${watermarkB}`);
+  });
+
   test("does not exempt non-stable or malformed Playbook edition paths", async () => {
     const cwd = await fixture();
     const invalidTagPath = join(
