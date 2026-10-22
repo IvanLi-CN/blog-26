@@ -79,7 +79,7 @@
         },
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "53ae2c941c0643997a02ea5de956a55eefe41767",
+          "blob": "bf8b586faad79bac129b2cedfdae19d8b5275230",
           "command": "Release input freezing prefetches v3 watermark pairs when current content still exposes a legacy v1/v2 candidate"
         }
       ],
@@ -95,7 +95,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "36e8380ca37e648f7b2d40de8537521bd2dab089",
+          "blob": "b252539706f6ddc938be017a8d6c748ad81ad485",
           "command": "bun test src/server/http-compat-api.test.ts: 100 tests pass and 3 are skipped on the final candidate"
         },
         {
@@ -164,7 +164,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "36e8380ca37e648f7b2d40de8537521bd2dab089",
+          "blob": "b252539706f6ddc938be017a8d6c748ad81ad485",
           "command": "HTTP compatibility coverage exercises authorization, media transforms, GIFs, and video-cover boundaries without state migration"
         }
       ]
