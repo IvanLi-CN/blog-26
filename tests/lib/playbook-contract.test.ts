@@ -697,6 +697,7 @@ describe("playbook-dispatch-and-reconcile", () => {
     };
     const selected = await resolveRelease(reader, input);
     expect(selected.supplement?.manifest.bundle.name).toBe("playbook-private-supplement.tar.gz");
+    expect(selected.supplementStatus).toBe("valid");
     await expect(
       resolveRelease(reader, { ...input, supplement_bundle_sha256: "0".repeat(64) })
     ).rejects.toThrow("Supplement asset identity mismatch");
@@ -732,6 +733,7 @@ describe("playbook-dispatch-and-reconcile", () => {
     });
     expect(selected?.manifest.source.releaseId).toBe(bundle.manifest.source.releaseId);
     expect(selected?.supplement).toBeUndefined();
+    expect(selected?.supplementStatus).toBe("invalid");
 
     await expect(
       resolveRelease(reader, {
@@ -772,6 +774,8 @@ describe("playbook-dispatch-and-reconcile", () => {
     const older = makePublicBundle("v2.9.0", "99");
 
     expect(shouldSyncSupplement(current.edition.edition, current.manifest)).toBe(true);
+    expect(shouldSyncSupplement(current.edition.edition, current.manifest, "absent")).toBe(true);
+    expect(shouldSyncSupplement(current.edition.edition, current.manifest, "invalid")).toBe(false);
     expect(shouldSyncSupplement(current.edition.edition, older.manifest)).toBe(false);
   });
 });
@@ -1272,6 +1276,39 @@ describe("playbook-cache-http-ssr", () => {
 
     await store.adopt(next.edition);
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+  });
+  test("rejects changed supplement content for an existing source identity", async () => {
+    const root = await temp();
+    const current = makePublicBundle();
+    const originalBundle = makeSupplementBundle();
+    const changedCatalog = structuredClone(JSON.parse(originalBundle.files[0].content));
+    changedCatalog.snapshot.projects[0].description = "Changed supplement content";
+    changedCatalog.project_details[0].item.description = "Changed supplement content";
+    const changedBundle = makeSupplementBundle(
+      originalBundle.manifest.source.tag,
+      originalBundle.manifest.source.releaseId,
+      changedCatalog
+    );
+    const original = {
+      manifest: originalBundle.manifest,
+      catalog: JSON.parse(originalBundle.files[0].content),
+      search: JSON.parse(originalBundle.files[1].content),
+    };
+    const changed = {
+      manifest: changedBundle.manifest,
+      catalog: JSON.parse(changedBundle.files[0].content),
+      search: JSON.parse(changedBundle.files[1].content),
+    };
+    const store = new PlaybookStore(root);
+    await store.adopt(current.edition);
+    await store.updateSupplement(originalBundle.manifest.source, original);
+
+    await expect(store.updateSupplement(changedBundle.manifest.source, changed)).rejects.toThrow(
+      "source identity conflict"
+    );
+    expect(store.adminEdition?.supplement?.catalog.snapshot.projects[0]?.description).toBe(
+      "整理后的私有补充项目知识。"
+    );
   });
   test("fails closed when a staged supplement conflicts with its adopted public edition", async () => {
     const root = await temp();

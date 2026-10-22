@@ -299,7 +299,11 @@ try {
   throw error;
 }
 const current = await readPublicPointer(manifestUrl);
-const supplementSynced = shouldSyncSupplement(current, selected.manifest);
+const supplementSynced = shouldSyncSupplement(
+  current,
+  selected.manifest,
+  selected.supplementStatus
+);
 if (supplementSynced) await syncSupplementToConsole(selected.manifest.source);
 const summary = `Playbook result: ${result}\n\n${encodeJson({ adopted: current, upstreamRunId: input.source_run_id || null, supplement: supplementSynced && supplementRoot ? (selected.supplement?.manifest ?? null) : null, supplementSynced, downstreamRun: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` })}`;
 console.log(summary);

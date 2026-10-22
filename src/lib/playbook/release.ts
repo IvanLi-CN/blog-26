@@ -58,6 +58,8 @@ export interface ReleaseTrigger {
   source_run_id?: string;
 }
 
+export type PlaybookSupplementStatus = "absent" | "valid" | "invalid";
+
 const SUPPLEMENT_IDENTITY_FIELDS = [
   "supplement_bundle_sha256",
   "supplement_manifest_sha256",
@@ -102,9 +104,13 @@ export function adoptionDecision(candidate: PlaybookManifest, current?: Playbook
 
 export function shouldSyncSupplement(
   current: PlaybookEditionIdentity | undefined,
-  candidate: PlaybookManifest
+  candidate: PlaybookManifest,
+  supplementStatus: PlaybookSupplementStatus = "valid"
 ) {
-  return Boolean(current && encodeJson(current.source) === encodeJson(candidate.source));
+  return (
+    supplementStatus !== "invalid" &&
+    Boolean(current && encodeJson(current.source) === encodeJson(candidate.source))
+  );
 }
 
 function uniqueAsset(
@@ -168,6 +174,7 @@ async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
         manifestAssetDigest?: string | null;
       }
     | undefined;
+  let supplementStatus: PlaybookSupplementStatus = "absent";
   try {
     const supplementManifestAsset = uniqueAsset(release, PLAYBOOK_SUPPLEMENT_MANIFEST_NAME, false);
     const supplementBundleAsset = uniqueAsset(release, PLAYBOOK_SUPPLEMENT_BUNDLE_NAME, false);
@@ -212,9 +219,11 @@ async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
         manifestAssetDigest: supplementManifestAsset.digest,
         manifestAssetSha256: sha256(supplementManifestBytes),
       };
+      supplementStatus = "valid";
     }
   } catch (error) {
     // The supplement is an optional admin overlay; public adoption remains valid.
+    supplementStatus = "invalid";
     console.warn(
       "[playbook] ignoring invalid supplement assets:",
       error instanceof Error ? error.message : String(error)
@@ -230,6 +239,7 @@ async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
     manifestAssetDigest: manifestAsset.digest,
     manifestAssetSha256: sha256(manifestBytes),
     supplement,
+    supplementStatus,
   };
 }
 

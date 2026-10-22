@@ -256,6 +256,13 @@ export class PlaybookStore {
     }
     if (
       validated &&
+      this.supplement &&
+      samePlaybookSource(this.supplement.manifest.source, parsedSource) &&
+      encodeJson(validated) !== encodeJson(this.supplement)
+    )
+      throw new Error("Playbook supplement source identity conflict");
+    if (
+      validated &&
       this.state.current &&
       samePlaybookSource(this.state.current.edition.source, parsedSource)
     )
