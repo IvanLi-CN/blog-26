@@ -12,7 +12,7 @@
     "docs/specs/style-playbook-integration/contracts/public-package.md": "acc9e2e9b6826b2f81542a9bd8d3c5f708ded365",
     "docs/specs/style-playbook-integration/contracts/release-trigger.md": "7ebd4545d8c5bcc0d3d0bbb02afcf51f9aef93cd",
     "scripts/fetch-initial-playbook.ts": "1986171c347ce7ad6f3a9984b0035caa000e45c0",
-    "scripts/playbook-content-update.ts": "70a546494a064d6eea6e4a0c5a63e876c6b552a6",
+    "scripts/playbook-content-update.ts": "bee1fccc6a19386c2ee91ceff7d4dfd93c9e0079",
     "scripts/prepare-backend-dist.sh": "ed0e0fea1f8a9b4add452bb2f62985c1aac1bcd1",
     "scripts/prepare-playbook-edition.ts": "a8f5cc3a0c3a68448b14f39c5931b1ad6107b1b6",
     "src/lib/admin-api-client.ts": "926e9bbc0c1d0c99b3b95d219eb88f6cbb9734f5",
@@ -33,7 +33,7 @@
     "src/server/routers/admin/index.ts": "a0221d7071f529099c250fce356939a00095f934",
     "src/server/routers/admin/playbook.ts": "47e980599443589feeef4ecc1976cfb5eb6fb070",
     "tests/lib/manual-release-source.test.ts": "015b936082fdaf6c4435d47b49e6649a2aa9d8ea",
-    "tests/lib/playbook-contract.test.ts": "eb9ffc7718bc24f3b17fbbf49568655bbf6e3c90",
+    "tests/lib/playbook-contract.test.ts": "37108d5ff523d3123085d4c04e5cbfdc6218efa5",
     "tests/lib/playbook-fixture.ts": "182603e4da37bff59c1ee55093e1fbefb949bc45",
     "tests/lib/playbook-workflows.test.ts": "7410b898a47d5e6894124f045d6c86b259901a23",
     "tests/fixtures/playbook/rust-supplement-catalog.fixture": "5eafd8f810a3765097aacee8d962b31912e93ef0",
@@ -95,7 +95,7 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "eb9ffc7718bc24f3b17fbbf49568655bbf6e3c90",
+          "blob": "37108d5ff523d3123085d4c04e5cbfdc6218efa5",
           "command": "bun test tests/lib/playbook-contract.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
@@ -120,7 +120,7 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "eb9ffc7718bc24f3b17fbbf49568655bbf6e3c90",
+          "blob": "37108d5ff523d3123085d4c04e5cbfdc6218efa5",
           "command": "Public and supplement contract tests preserve shared Markdown bytes and validate actual Rust exporter fixture bytes"
         }
       ]
@@ -231,7 +231,7 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "eb9ffc7718bc24f3b17fbbf49568655bbf6e3c90",
+          "blob": "37108d5ff523d3123085d4c04e5cbfdc6218efa5",
           "command": "Supplement persistence and conflicting overlay adoption retain a public-only fallback"
         }
       ]
