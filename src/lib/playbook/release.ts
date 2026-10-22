@@ -58,6 +58,21 @@ export interface ReleaseTrigger {
   source_run_id?: string;
 }
 
+const SUPPLEMENT_IDENTITY_FIELDS = [
+  "supplement_bundle_sha256",
+  "supplement_manifest_sha256",
+  "supplement_bundle_asset_id",
+  "supplement_bundle_asset_digest",
+  "supplement_bundle_asset_size",
+  "supplement_manifest_asset_id",
+  "supplement_manifest_asset_digest",
+  "supplement_manifest_asset_size",
+] as const;
+
+export function hasSupplementAssetIdentity(input: ReleaseTrigger) {
+  return SUPPLEMENT_IDENTITY_FIELDS.some((field) => Boolean(input[field]));
+}
+
 export function compareStableTags(a: string, b: string) {
   const parts = (tag: string) =>
     stableTagSchema.parse(tag).replace(/^v/u, "").split(".").map(BigInt);
@@ -247,7 +262,10 @@ function assertOptionalAssetIdentity(
     input.supplement_manifest_asset_digest,
     input.supplement_manifest_asset_size,
   ];
-  if (!resolved.supplement) return;
+  if (!resolved.supplement) {
+    if (hasSupplementAssetIdentity(input)) throw new Error("Supplement assets are unavailable");
+    return;
+  }
   if (!supplementFields.some(Boolean)) throw new Error("Supplement asset identity is required");
   if (supplementFields.some((value) => !value))
     throw new Error("Incomplete supplement asset identity");

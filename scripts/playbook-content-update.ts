@@ -13,7 +13,12 @@ import {
   parseEditionIdentity,
   samePlaybookEdition,
 } from "../src/lib/playbook/manifest";
-import { deployContent, type ReleaseTrigger, resolveRelease } from "../src/lib/playbook/release";
+import {
+  deployContent,
+  hasSupplementAssetIdentity,
+  type ReleaseTrigger,
+  resolveRelease,
+} from "../src/lib/playbook/release";
 import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
 import { publicVersionSchema } from "../src/lib/release/deployment";
 import { versionSchema } from "../src/lib/release/policy";
@@ -75,6 +80,11 @@ if (selected.supplement) {
     );
     supplementRoot = candidateRoot;
   } catch (error) {
+    if (hasSupplementAssetIdentity(input)) {
+      throw new Error(
+        `Playbook supplement verification failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
     console.warn(
       `Ignoring invalid optional Playbook supplement: ${error instanceof Error ? error.message : String(error)}`
     );

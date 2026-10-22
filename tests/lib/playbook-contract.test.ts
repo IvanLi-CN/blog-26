@@ -711,6 +711,18 @@ describe("playbook-dispatch-and-reconcile", () => {
     });
     expect(selected?.manifest.source.releaseId).toBe(bundle.manifest.source.releaseId);
     expect(selected?.supplement).toBeUndefined();
+
+    await expect(
+      resolveRelease(reader, {
+        mode: "release",
+        source_repository: bundle.manifest.source.repository,
+        source_release_id: bundle.manifest.source.releaseId,
+        source_tag: bundle.manifest.source.tag,
+        source_sha: bundle.manifest.source.commit,
+        bundle_sha256: bundle.manifest.bundle.sha256,
+        supplement_bundle_sha256: "0".repeat(64),
+      })
+    ).rejects.toThrow("Supplement assets are unavailable");
   });
   test("skips duplicates and late releases, rejects republished content", () => {
     const current = makePublicBundle();
