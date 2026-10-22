@@ -21,8 +21,8 @@
     "public/watermark-ivanli-a.light.v3.svg": "3c2867d74a3455b9d4678e0c3339af9b51848aeb",
     "public/watermark-ivanli-b.dark.v3.svg": "6687f0d1dc010c6b39a673c49c087eac86723973",
     "public/watermark-ivanli-b.light.v3.svg": "c081fcf6aa44c81db5c410a6c288a1e39263a997",
-    "scripts/package-public-media.test.ts": "33b6b8af18d638e8adf9eb08809e0f7ad75f67f7",
-    "scripts/package-public-media.ts": "62832d35c5687ea417ae9fa8f391b6c91a50e58a",
+    "scripts/package-public-media.test.ts": "ef8730008a152552047bf4e97c3bdf53ead14cc8",
+    "scripts/package-public-media.ts": "b9effcb06f4cc12bdf4ac8ab90c8ba022a294072",
     "scripts/prepare-edgeone-pwa-config.ts": "9dd8b3af81d88ec05f13b84a3ed4d4ac28476cb1",
     "scripts/verify-pages-build.test.ts": "dd5eda445e9178aeae576dfcf89c43450e26279d",
     "scripts/verify-pages-build.ts": "ab0d379093911c3c44366d39b15a730fd5af3fd5",
@@ -30,6 +30,7 @@
     "src/components/common/markdown/plugins/rehype-image-optimization.ts": "234450b67811944641217af51270dcfc86a45200",
     "src/lib/__tests__/public-media.test.ts": "43d43826303b492efef575e368be952ee51869c4",
     "src/lib/public-media.ts": "cafb5b630d157f8618121ee65fee6b12412ceed5",
+    "src/lib/release/inputs.ts": "bf8b586faad79bac129b2cedfdae19d8b5275230",
     "src/server/http-compat-api.test.ts": "36e8380ca37e648f7b2d40de8537521bd2dab089",
     "src/server/public-media-watermark-assets.test.ts": "e2544c82793a1ea188db07101a0ad6205c97c78d",
     "src/server/public-media-watermark.test.ts": "c291e26cda237383021a43da7fc77be0a5aafca2",
@@ -63,7 +64,7 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The implementation selects ink from the rendered coverage ROI, shares a WatermarkPlan across Imagor and Sharp paths, weights animated frames by display duration, and exposes only complete v3 A/B pairs to new snapshots and frozen static builds.",
+      "reasoning": "The implementation selects ink from the rendered coverage ROI, shares a WatermarkPlan across Imagor and Sharp paths, weights animated frames by display duration, and exposes only complete v3 A/B pairs to new snapshots and frozen static builds, including v1/v2 candidate migration inputs.",
       "assessed_at": "2026-10-22T03:05:42+08:00",
       "evidence": [
         {
@@ -75,11 +76,16 @@
           "path": "src/server/public-media-watermark.test.ts",
           "blob": "c291e26cda237383021a43da7fc77be0a5aafca2",
           "command": "Focused scoring, transparent-background, duration weighting, timeout, queue deadline, and asset identity tests"
+        },
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "53ae2c941c0643997a02ea5de956a55eefe41767",
+          "command": "Release input freezing prefetches v3 watermark pairs when current content still exposes a legacy v1/v2 candidate"
         }
       ],
       "scope_drift": {
         "detected": false,
-        "description": "The candidate remains limited to public media rendering, static asset identity, documentation, and their tests; no persistence schema, playback stream, or release workflow behavior changed."
+        "description": "The candidate remains limited to public media rendering, static asset identity, release input closure, documentation, and their tests; no persistence schema or playback stream behavior changed."
       }
     },
     "verified": {
@@ -99,8 +105,8 @@
         },
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "33b6b8af18d638e8adf9eb08809e0f7ad75f67f7",
-          "command": "Packaging tests pass when a frozen snapshot references either a base asset or only one v3 watermark candidate, preserving complete A/B closure and historical candidate handling"
+          "blob": "ef8730008a152552047bf4e97c3bdf53ead14cc8",
+          "command": "Packaging tests pass when a frozen snapshot references either a base asset, only one v3 watermark candidate, or a legacy candidate requiring v3 migration closure"
         },
         {
           "path": "docs/specs/public-media-assets-facade/assets/watermark-regional-v3-fixed-color.gif",
