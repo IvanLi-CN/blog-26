@@ -1,4 +1,4 @@
-import { appendFile, mkdir, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { readPublicPointer } from "../src/lib/playbook/artifacts";
 import {
@@ -40,7 +40,9 @@ if (pointer) {
     throw new Error("Published Playbook pointer files do not match its source release");
 }
 const directory = resolve(".tmp/playbook-initial");
+const supplementDirectory = resolve(directory, "supplement");
 await mkdir(directory, { recursive: true });
+await rm(supplementDirectory, { recursive: true, force: true });
 if (!pointer) {
   const archive = await reader.asset(selected.bundleAssetId, selected.manifest.bundle.size);
   readPublicArchive(archive, selected.manifest);
@@ -50,24 +52,27 @@ if (!pointer) {
   );
   await writeFile(resolve(directory, "playbook-public.tar.gz"), archive);
 }
-if (selected.supplementStatus === "invalid")
-  throw new Error("Published Playbook supplement assets are invalid");
-if (selected.supplement) {
-  const supplementArchive = await reader.asset(
-    selected.supplement.bundleAssetId,
-    selected.supplement.manifest.bundle.size
-  );
-  parseSupplementFiles(readSupplementArchive(supplementArchive, selected.supplement.manifest));
-  const supplementDirectory = resolve(directory, "supplement");
-  await mkdir(supplementDirectory, { recursive: true });
-  await writeFile(
-    resolve(supplementDirectory, "playbook-private-supplement-manifest.json"),
-    encodeJson(selected.supplement.manifest)
-  );
-  await writeFile(
-    resolve(supplementDirectory, "playbook-private-supplement.tar.gz"),
-    supplementArchive
-  );
+if (selected.supplementStatus === "invalid") {
+  console.warn("Ignoring invalid optional Playbook supplement; public bundle remains usable");
+} else if (selected.supplement) {
+  try {
+    const supplementArchive = await reader.asset(
+      selected.supplement.bundleAssetId,
+      selected.supplement.manifest.bundle.size
+    );
+    parseSupplementFiles(readSupplementArchive(supplementArchive, selected.supplement.manifest));
+    await mkdir(supplementDirectory, { recursive: true });
+    await writeFile(
+      resolve(supplementDirectory, "playbook-private-supplement-manifest.json"),
+      encodeJson(selected.supplement.manifest)
+    );
+    await writeFile(
+      resolve(supplementDirectory, "playbook-private-supplement.tar.gz"),
+      supplementArchive
+    );
+  } catch {
+    console.warn("Ignoring invalid optional Playbook supplement; public bundle remains usable");
+  }
 }
 if (process.env.GITHUB_ENV)
   await appendFile(process.env.GITHUB_ENV, `PLAYBOOK_BUNDLE_DIR=${directory}\n`);

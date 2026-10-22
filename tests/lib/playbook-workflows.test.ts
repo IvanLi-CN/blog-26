@@ -192,8 +192,13 @@ describe("playbook deployment boundaries", () => {
     const initialScript = await readFile("scripts/fetch-initial-playbook.ts", "utf8");
     expect(initialScript).toMatch(/resolveRelease\(reader,\s*\{\s*mode: "reconcile"/u);
     expect(initialScript).toContain('mode: "release"');
-    expect(initialScript).toContain("Published Playbook supplement assets are invalid");
-    expect(initialScript).not.toContain("Ignoring invalid optional Playbook supplement");
+    expect(initialScript).toContain(
+      "Ignoring invalid optional Playbook supplement; public bundle remains usable"
+    );
+    expect(initialScript).toContain(
+      "await rm(supplementDirectory, { recursive: true, force: true })"
+    );
+    expect(initialScript).not.toContain("Published Playbook supplement assets are invalid");
   });
   test("pointer revalidates, version files are immutable and package resources cannot execute", () => {
     const digest = "a".repeat(64);
