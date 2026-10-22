@@ -25,7 +25,7 @@ import {
   validatePlaybookEdition,
 } from "../../src/lib/playbook/cache";
 import { publicFixtureCatalog, publicFixtureSearch } from "../../src/lib/playbook/fixture";
-import { readBounded } from "../../src/lib/playbook/github";
+import { readBounded, SourceResponseLimitError } from "../../src/lib/playbook/github";
 import {
   computeEditionDigest,
   encodeJson,
@@ -38,6 +38,7 @@ import {
 import {
   adoptionDecision,
   deployContent,
+  PlaybookSupplementInvalidError,
   PlaybookSupplementUnavailableError,
   type ReleaseReader,
   readSupplementAsset,
@@ -837,13 +838,17 @@ describe("playbook-dispatch-and-reconcile", () => {
   });
 
   test("bounds streaming source responses", async () => {
-    const stream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(new Uint8Array(5));
-        controller.close();
-      },
-    });
-    await expect(readBounded(stream, 4)).rejects.toThrow("4-byte limit");
+    const createOversizedStream = () =>
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new Uint8Array(5));
+          controller.close();
+        },
+      });
+    await expect(readBounded(createOversizedStream(), 4)).rejects.toBeInstanceOf(
+      SourceResponseLimitError
+    );
+    await expect(readBounded(createOversizedStream(), 4)).rejects.toThrow("4-byte limit");
   });
 
   test("selects highest ready SemVer and does not trust notification parameters", async () => {
@@ -1023,6 +1028,31 @@ describe("playbook-dispatch-and-reconcile", () => {
     await expect(
       readSupplementAsset(reader, 3, supplement.archive.length, "Supplement manifest asset")
     ).rejects.toBeInstanceOf(PlaybookSupplementUnavailableError);
+  });
+  test("invalidates oversized optional assets instead of preserving the old supplement", async () => {
+    const publicBundle = makePublicBundle();
+    const supplement = makeSupplementBundle();
+    const base = sourceReader([publicBundle], [supplement]);
+    const reader: ReleaseReader = {
+      ...base,
+      asset: async (id, maxBytes) => {
+        if (id === 3) throw new SourceResponseLimitError(`response exceeds ${maxBytes ?? 0}`);
+        return base.asset(id, maxBytes);
+      },
+    };
+    const selected = await resolveRelease(reader, {
+      mode: "release",
+      source_repository: publicBundle.manifest.source.repository,
+      source_release_id: publicBundle.manifest.source.releaseId,
+      source_tag: publicBundle.manifest.source.tag,
+      source_sha: publicBundle.manifest.source.commit,
+      bundle_sha256: publicBundle.manifest.bundle.sha256,
+    });
+    expect(selected.supplement).toBeUndefined();
+    expect(selected.supplementStatus).toBe("invalid");
+    await expect(
+      readSupplementAsset(reader, 3, supplement.archive.length, "Supplement manifest asset")
+    ).rejects.toBeInstanceOf(PlaybookSupplementInvalidError);
   });
   test("skips duplicates and late releases, rejects republished content", () => {
     const current = makePublicBundle();

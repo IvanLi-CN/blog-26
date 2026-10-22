@@ -387,6 +387,7 @@ try {
 }
 let supplementSynced = false;
 let supplementStaged = false;
+let supplementSyncError: string | undefined;
 if (supplementStatus === "unavailable") {
   console.warn(
     "Playbook supplement sync deferred because optional assets are unavailable; existing overlay remains deployed"
@@ -401,8 +402,9 @@ if (supplementStatus === "unavailable") {
         "Playbook supplement staged in console; current public source is not adopted there yet"
       );
   } catch (error) {
-    console.warn(
-      `Playbook supplement sync deferred; public edition remains deployed: ${error instanceof Error ? error.message : String(error)}`
+    supplementSyncError = error instanceof Error ? error.message : String(error);
+    console.error(
+      `Playbook supplement sync failed after public deployment; public edition remains deployed: ${supplementSyncError}`
     );
   }
 } else if (!current) {
@@ -416,7 +418,12 @@ const summary = `Playbook result: ${result}\n\n${encodeJson({
   supplement: supplementSynced && supplementRoot ? (selected.supplement?.manifest ?? null) : null,
   supplementStaged,
   supplementSynced,
+  supplementSyncError: supplementSyncError ?? null,
   downstreamRun: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
 })}`;
 console.log(summary);
 if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, summary);
+if (supplementSyncError)
+  throw new Error(
+    `Playbook supplement sync failed after public deployment: ${supplementSyncError}`
+  );

@@ -14,18 +14,18 @@
     "docs/specs/style-playbook-integration/contracts/release-trigger.md": "64ac2fb4f1effe69e8fdad979eb4075e710c730a",
     "scripts/fetch-initial-playbook.ts": "2da29e35b875ce0038aec8a2ad4476244f5e4b0b",
     "scripts/prepare-console-playbook-seed.ts": "d126f6fe798e17cb479c7f85056a310290e6f0b5",
-    "scripts/playbook-content-update.ts": "311491bfafe000d9633d1db639e7db3d7d6b07d3",
+    "scripts/playbook-content-update.ts": "54ccd6c1087cd9a1d6cb3dd3e8547941a16d297d",
     "scripts/prepare-backend-dist.sh": "f2a8b868dbeefb9b28cfdefcfff3a74f9ecdc9b6",
     "scripts/prepare-playbook-edition.ts": "c4d6540f4991ae9f62340b464a2ab0ee69052e1f",
     "src/lib/admin-api-client.ts": "926e9bbc0c1d0c99b3b95d219eb88f6cbb9734f5",
     "src/lib/playbook/artifacts.ts": "2cb826c29d253b9fdb1347fc1583430a8546e9b6",
     "src/lib/playbook/bundle.ts": "ae607265b44850e7084483134ef06c14bacae276",
-    "src/lib/playbook/github.ts": "3b6250faddb2c2baea8926bf7f55fedbeec649da",
+    "src/lib/playbook/github.ts": "749df3d4580e83e571842279c98d96161a485f98",
     "src/lib/playbook/cache.ts": "7d98aee709f9bec423d412c70ee176e63ec44758",
     "src/lib/playbook/fixture.ts": "5df5704636a959f61f9301b2e9b0efba49eea934",
     "src/lib/playbook/manifest.ts": "c416bcb4cceb4b4322f16821e751877c61a9461e",
     "src/lib/playbook/public-package-capabilities.json": "c64a471dbe131999919b3bd63522a47be3d0e848",
-    "src/lib/playbook/release.ts": "ddf8c00ee98ebc469ec1eab63ddb3c4848c5d026",
+    "src/lib/playbook/release.ts": "a01c5b36fcc215e74ebac02a790c4d79b514db6e",
     "src/lib/playbook/renderer-capability.ts": "b3b6266cbbc55d78b97eec2419f5194ed0cd4661",
     "src/lib/playbook/schema.ts": "b3d36b4290a1337c068e0330e625d78265758891",
     "src/lib/playbook/supplement.ts": "9e00fad5709e3cc8df8246a4536eaf00dfcd52aa",
@@ -39,9 +39,9 @@
     "src/server/routers/admin/index.ts": "a0221d7071f529099c250fce356939a00095f934",
     "src/server/routers/admin/playbook.ts": "47e980599443589feeef4ecc1976cfb5eb6fb070",
     "tests/lib/manual-release-source.test.ts": "015b936082fdaf6c4435d47b49e6649a2aa9d8ea",
-    "tests/lib/playbook-contract.test.ts": "fd0989e8e72df182525f1d87264d634c1fa5b5af",
+    "tests/lib/playbook-contract.test.ts": "acfebe06023ae9044e377e9b3a558bb765ee7df9",
     "tests/lib/playbook-fixture.ts": "cef915c6a23e9182d3e18d92f0123489b9afa27e",
-    "tests/lib/playbook-workflows.test.ts": "7a8b208fd7fd9bfa3aefae743d727a7d784e4f1f",
+    "tests/lib/playbook-workflows.test.ts": "7b67a48b9fbcfa7ed226198e54f30bb8f9771d9c",
     "tests/fixtures/playbook/rust-supplement-catalog.fixture": "5eafd8f810a3765097aacee8d962b31912e93ef0",
     "tests/fixtures/playbook/rust-supplement-search.fixture": "9d20810bc370fbeeaa0fe459bf882c3943cbf85a"
   },
@@ -70,8 +70,8 @@
       "evidence": [
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "ddf8c00ee98ebc469ec1eab63ddb3c4848c5d026",
-          "command": "Release reader validates public identity and source commit timestamp; unavailable, incomplete or mismatched optional supplement identities are isolated from public adoption"
+          "blob": "a01c5b36fcc215e74ebac02a790c4d79b514db6e",
+          "command": "Release reader validates public identity and source commit timestamp; unavailable, incomplete, oversized or mismatched optional supplement identities are isolated from public adoption"
         },
         {
           "path": "src/lib/release/source.ts",
@@ -95,8 +95,8 @@
         },
         {
           "path": "scripts/playbook-content-update.ts",
-          "blob": "311491bfafe000d9633d1db639e7db3d7d6b07d3",
-          "command": "Blog content updates validate public/supplement merge compatibility before sync, preserve an existing overlay when optional assets are unavailable, and reject a deployed renderer without the current public and supplement package capabilities before building"
+          "blob": "54ccd6c1087cd9a1d6cb3dd3e8547941a16d297d",
+          "command": "Blog content updates validate public/supplement merge compatibility before sync, preserve an existing overlay when optional assets are unavailable, surface receiver sync failures after public deployment, and reject a deployed renderer without the current public and supplement package capabilities before building"
         }
       ],
       "scope_drift": {
@@ -111,7 +111,7 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "fd0989e8e72df182525f1d87264d634c1fa5b5af",
+          "blob": "acfebe06023ae9044e377e9b3a558bb765ee7df9",
           "command": "bun test src/server/http-compat-api.test.ts tests/lib/playbook-contract.test.ts tests/lib/playbook-workflows.test.ts tests/lib/manual-release-policy.test.ts tests/lib/manual-release-source.test.ts"
         },
         {
@@ -121,12 +121,12 @@
         },
         {
           "path": "tests/lib/playbook-workflows.test.ts",
-          "blob": "7a8b208fd7fd9bfa3aefae743d727a7d784e4f1f",
-          "command": "Workflow boundary tests reject non-HTTPS sync endpoints, keep invalid optional supplements, defer unavailable optional assets, validate public/supplement merge compatibility before sync, gate content builds on deployed renderer capabilities, keep merge conflicts and receiver failures from blocking the public deployment, clear stale supplement retries, and assert that supplements stay out of public frozen and backend artifacts"
+          "blob": "7b67a48b9fbcfa7ed226198e54f30bb8f9771d9c",
+          "command": "Workflow boundary tests reject non-HTTPS sync endpoints, keep invalid optional supplements, defer unavailable optional assets, validate public/supplement merge compatibility before sync, gate content builds on deployed renderer capabilities, surface receiver failures after preserving the public deployment, clear stale supplement retries, and assert that supplements stay out of public frozen and backend artifacts"
         },
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "ddf8c00ee98ebc469ec1eab63ddb3c4848c5d026",
+          "blob": "a01c5b36fcc215e74ebac02a790c4d79b514db6e",
           "command": "Supplement identity, unavailable or mismatched optional identities, exact rollback retry, strict UTF-8 manifests, and failure isolation tests keep public release paths distinct"
         },
         {
@@ -146,7 +146,7 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "fd0989e8e72df182525f1d87264d634c1fa5b5af",
+          "blob": "acfebe06023ae9044e377e9b3a558bb765ee7df9",
           "command": "Public and supplement contract tests preserve shared Markdown bytes, validate deterministic archive metadata and source timestamps, Rust fixture bytes, rollback identity, unavailable optional identities, staged same-source overlays, durable invalidation across restart, and stale-marker replacement"
         },
         {
@@ -265,7 +265,7 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "fd0989e8e72df182525f1d87264d634c1fa5b5af",
+          "blob": "acfebe06023ae9044e377e9b3a558bb765ee7df9",
           "command": "Supplement persistence, same-source staged retries, durable invalidation after failed cleanup, rollback-window late arrivals, conflicting overlay adoption, and temporarily unavailable asset reads retain a public-only fallback while allowing the public edition to advance"
         }
       ]

@@ -4,6 +4,13 @@ import { PLAYBOOK_MAX_BUNDLE_BYTES, PLAYBOOK_REPOSITORY } from "./schema";
 
 const MAX_JSON_RESPONSE_BYTES = 8 * 1024 * 1024;
 
+export class SourceResponseLimitError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "SourceResponseLimitError";
+  }
+}
+
 export async function readBounded(stream: ReadableStream<Uint8Array>, maxBytes: number) {
   const reader = stream.getReader();
   const chunks: Uint8Array[] = [];
@@ -15,7 +22,9 @@ export async function readBounded(stream: ReadableStream<Uint8Array>, maxBytes: 
       if (value) {
         size += value.byteLength;
         if (size > maxBytes)
-          throw new Error(`GitHub source response exceeds the ${maxBytes}-byte limit`);
+          throw new SourceResponseLimitError(
+            `GitHub source response exceeds the ${maxBytes}-byte limit`
+          );
         chunks.push(value);
       }
     }

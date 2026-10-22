@@ -109,6 +109,13 @@ describe("playbook deployment boundaries", () => {
     expect(updateScript).toContain("currentSourceMatches");
     expect(updateScript).toContain("supplementStaged = true");
     expect(updateScript).toContain("supplementSynced = syncResult.currentSourceMatches");
+    expect(updateScript).toContain("supplementSyncError");
+    expect(updateScript).toContain(
+      "Playbook supplement sync failed after public deployment; public edition remains deployed"
+    );
+    expect(updateScript).toContain(
+      "throw new Error(\n    `Playbook supplement sync failed after public deployment"
+    );
     expect(updateScript).toContain("assertPlaybookRendererCompatibility");
     expect(updateScript).toContain("createPlaybookEdition");
     expect(updateScript).toContain("mergePlaybookSupplement(publicEdition, supplementEnvelope)");

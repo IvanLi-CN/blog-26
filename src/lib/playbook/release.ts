@@ -1,3 +1,4 @@
+import { SourceResponseLimitError } from "./github";
 import {
   decodeUtf8,
   encodeJson,
@@ -70,6 +71,13 @@ export class PlaybookSupplementUnavailableError extends Error {
   }
 }
 
+export class PlaybookSupplementInvalidError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "PlaybookSupplementInvalidError";
+  }
+}
+
 export async function readSupplementAsset(
   reader: ReleaseReader,
   id: number,
@@ -77,8 +85,20 @@ export async function readSupplementAsset(
   label: string
 ) {
   try {
-    return await reader.asset(id, maxBytes);
+    const bytes = await reader.asset(id, maxBytes);
+    if (bytes.byteLength > maxBytes)
+      throw new PlaybookSupplementInvalidError(
+        `${label} exceeds its declared byte limit (${maxBytes})`
+      );
+    return bytes;
   } catch (error) {
+    if (
+      error instanceof SourceResponseLimitError ||
+      error instanceof PlaybookSupplementInvalidError
+    )
+      throw new PlaybookSupplementInvalidError(`${label} failed integrity validation`, {
+        cause: error,
+      });
     throw new PlaybookSupplementUnavailableError(`${label} could not be read`, { cause: error });
   }
 }
