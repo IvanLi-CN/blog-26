@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { load } from "js-yaml";
 import {
   createEdgeoneCacheConfig,
@@ -8,6 +10,7 @@ import {
 import { withoutDeploymentCredentials } from "../../src/lib/playbook/child-env";
 import {
   assertPlaybookRendererCapabilities,
+  assertPlaybookRendererCompatibility,
   PLAYBOOK_PUBLIC_PACKAGE_CAPABILITIES,
   PLAYBOOK_RENDERER_CAPABILITY_PATH,
 } from "../../src/lib/playbook/renderer-capability";
@@ -103,8 +106,9 @@ describe("playbook deployment boundaries", () => {
     expect(updateScript).toContain("currentSourceMatches");
     expect(updateScript).toContain("supplementStaged = true");
     expect(updateScript).toContain("supplementSynced = syncResult.currentSourceMatches");
-    expect(updateScript).toContain("assertRendererCompatibility");
-    expect(updateScript).toContain("PLAYBOOK_RENDERER_CAPABILITY_PATH");
+    expect(updateScript).toContain("assertPlaybookRendererCompatibility");
+    expect(updateScript).toContain("createPlaybookEdition");
+    expect(updateScript).toContain("mergePlaybookSupplement(publicEdition, supplementEnvelope)");
     expect(PLAYBOOK_RENDERER_CAPABILITY_PATH).toBe(
       "src/lib/playbook/public-package-capabilities.json"
     );
@@ -121,6 +125,27 @@ describe("playbook deployment boundaries", () => {
     expect(() =>
       assertPlaybookRendererCapabilities(PLAYBOOK_PUBLIC_PACKAGE_CAPABILITIES)
     ).not.toThrow();
+  });
+  test("content updates reject missing and incompatible deployed renderer capabilities", async () => {
+    const root = await mkdtemp(join(tmpdir(), "playbook-renderer-capabilities-"));
+    const capabilityPath = join(root, PLAYBOOK_RENDERER_CAPABILITY_PATH);
+    try {
+      await expect(assertPlaybookRendererCompatibility(root)).rejects.toThrow(
+        "incompatible with the current public package"
+      );
+      await mkdir(dirname(capabilityPath), { recursive: true });
+      await writeFile(
+        capabilityPath,
+        JSON.stringify({ public_catalog_schema_version: 1, supplement_schema_version: 1 })
+      );
+      await expect(assertPlaybookRendererCompatibility(root)).rejects.toThrow(
+        "incompatible with the current public package"
+      );
+      await writeFile(capabilityPath, JSON.stringify(PLAYBOOK_PUBLIC_PACKAGE_CAPABILITIES));
+      await expect(assertPlaybookRendererCompatibility(root)).resolves.toBeUndefined();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
   test("image builders accept an exact Playbook edition as an immutable input", async () => {
     const dockerfile = await readFile("Dockerfile", "utf8");

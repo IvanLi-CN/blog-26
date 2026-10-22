@@ -296,8 +296,10 @@ export class PlaybookStore {
         if (supplement && retryable) throw new Error("Invalid Playbook supplement retry state");
         if (supplement && !samePlaybookSource(source, supplement.manifest.source))
           throw new Error("Playbook supplement state source identity mismatch");
+        // A valid persisted overlay supersedes a stale marker left by a failed marker-clear write.
         const invalidated = Boolean(
-          this.state.supplementInvalidation &&
+          !supplement &&
+            this.state.supplementInvalidation &&
             samePlaybookSource(this.state.supplementInvalidation, source)
         );
         if (

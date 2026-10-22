@@ -1690,6 +1690,31 @@ describe("playbook-cache-http-ssr", () => {
       JSON.parse(await readFile(join(root, "state.json"), "utf8")).supplementInvalidation
     ).toBeUndefined();
   });
+  test("does not let a stale invalidation marker hide a valid persisted overlay after restart", async () => {
+    const root = await temp();
+    const current = makePublicBundle();
+    const supplementBundle = makeSupplementBundle();
+    const supplement = {
+      manifest: supplementBundle.manifest,
+      catalog: JSON.parse(supplementBundle.files[0].content),
+      search: JSON.parse(supplementBundle.files[1].content),
+    };
+    const store = new PlaybookStore(root);
+
+    await store.adopt(current.edition);
+    await store.updateSupplement(current.edition.edition.source, supplement);
+    await writeFile(
+      join(root, "state.json"),
+      JSON.stringify({
+        current: current.edition,
+        supplementInvalidation: current.edition.edition.source,
+      })
+    );
+
+    const restored = new PlaybookStore(root);
+    await restored.load(join(root, "missing-seed.json"));
+    expect(restored.adminEdition?.supplement).toBeDefined();
+  });
   test("does not replace a same-source empty overlay with a supplement", async () => {
     const root = await temp();
     const current = makePublicBundle();

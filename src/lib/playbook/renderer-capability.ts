@@ -1,3 +1,6 @@
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+
 export const PLAYBOOK_RENDERER_CAPABILITY_PATH =
   "src/lib/playbook/public-package-capabilities.json";
 
@@ -17,4 +20,17 @@ export function assertPlaybookRendererCapabilities(value: unknown) {
       PLAYBOOK_PUBLIC_PACKAGE_CAPABILITIES.supplement_schema_version
   )
     throw new Error("Playbook renderer does not support the current public package");
+}
+
+export async function assertPlaybookRendererCompatibility(rendererRoot: string) {
+  const capabilityPath = resolve(rendererRoot, PLAYBOOK_RENDERER_CAPABILITY_PATH);
+  try {
+    assertPlaybookRendererCapabilities(JSON.parse(await readFile(capabilityPath, "utf8")));
+  } catch (error) {
+    throw new Error(
+      `Deployed Playbook renderer is incompatible with the current public package: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
 }

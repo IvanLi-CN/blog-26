@@ -2,6 +2,7 @@ import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { downloadRetainedEdition, readPublicPointer } from "../src/lib/playbook/artifacts";
 import {
+  createPlaybookEdition,
   parseSupplementFiles,
   readPublicArchive,
   readSupplementArchive,
@@ -19,12 +20,12 @@ import {
   resolveRelease,
   shouldSyncSupplement,
 } from "../src/lib/playbook/release";
-import {
-  assertPlaybookRendererCapabilities,
-  PLAYBOOK_RENDERER_CAPABILITY_PATH,
-} from "../src/lib/playbook/renderer-capability";
+import { assertPlaybookRendererCompatibility } from "../src/lib/playbook/renderer-capability";
 import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
-import { parseSupplementSyncEndpoint } from "../src/lib/playbook/supplement";
+import {
+  mergePlaybookSupplement,
+  parseSupplementSyncEndpoint,
+} from "../src/lib/playbook/supplement";
 import type { PlaybookSupplementEnvelope } from "../src/lib/playbook/types";
 import { publicVersionSchema } from "../src/lib/release/deployment";
 import { versionSchema } from "../src/lib/release/policy";
@@ -53,7 +54,7 @@ if (!selected) {
   process.exit(0);
 }
 const archive = await reader.asset(selected.bundleAssetId, selected.manifest.bundle.size);
-readPublicArchive(archive, selected.manifest);
+const publicFiles = readPublicArchive(archive, selected.manifest);
 const taskRoot = resolve(
   process.env.RUNNER_TEMP || ".tmp",
   `playbook-${process.env.GITHUB_RUN_ID || "local"}`
@@ -98,6 +99,25 @@ if (selected.supplement) {
     supplementStatus = "invalid";
     console.warn(
       `Ignoring invalid optional Playbook supplement: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+if (supplementStatus === "valid" && supplementEnvelope) {
+  try {
+    const publicEdition = createPlaybookEdition(
+      publicFiles,
+      selected.manifest,
+      selected.manifest.source.commit,
+      new Uint8Array()
+    );
+    mergePlaybookSupplement(publicEdition, supplementEnvelope);
+  } catch (error) {
+    supplementStatus = "invalid";
+    supplementRoot = undefined;
+    supplementEnvelope = null;
+    supplementFileBytes = undefined;
+    console.warn(
+      `Ignoring invalid optional Playbook supplement after public merge validation: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }
@@ -179,18 +199,6 @@ async function output(args: string[], cwd = process.cwd()) {
   if (status !== 0) throw new Error(`Command failed: ${args[0]}`);
   return text;
 }
-async function assertRendererCompatibility(rendererRoot: string) {
-  const capabilityPath = resolve(rendererRoot, PLAYBOOK_RENDERER_CAPABILITY_PATH);
-  try {
-    assertPlaybookRendererCapabilities(JSON.parse(await readFile(capabilityPath, "utf8")));
-  } catch (error) {
-    throw new Error(
-      `Deployed Playbook renderer is incompatible with the current public package: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
-  }
-}
 if (process.env.GITHUB_STEP_SUMMARY)
   await appendFile(
     process.env.GITHUB_STEP_SUMMARY,
@@ -206,7 +214,7 @@ try {
         rendererRoot = resolve(taskRoot, `renderer-${++buildNumber}`);
         await run(["git", "fetch", "origin", renderer]);
         await run(["git", "worktree", "add", "--detach", rendererRoot, renderer]);
-        await assertRendererCompatibility(rendererRoot);
+        await assertPlaybookRendererCompatibility(rendererRoot);
         try {
           productVersion = versionSchema.parse(
             (await readFile(resolve(rendererRoot, "VERSION"), "utf8")).trim()
