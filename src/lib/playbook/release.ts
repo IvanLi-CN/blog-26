@@ -325,7 +325,7 @@ export async function resolveRelease(reader: ReleaseReader, input: ReleaseTrigge
       manifest.bundle.sha256 !== input.bundle_sha256
     )
       throw new Error("Notification identity mismatch");
-    if (!assertOptionalAssetIdentity(input, resolved) && resolved.supplement)
+    if (!assertOptionalAssetIdentity(input, resolved))
       return { ...resolved, supplement: undefined, supplementStatus: "invalid" as const };
     return resolved;
   }

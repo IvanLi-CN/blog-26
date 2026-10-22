@@ -8,7 +8,7 @@
     ".github/workflows/playbook-content-update.yml": "56ba8614c27b065781f40898b541612d934c6521",
     "docs/runbooks/style-playbook-publishing.md": "648ccdcb0a0ef3a4d38367a8f540ead31c592483",
     "docs/specs/style-playbook-integration/HISTORY.md": "c4ea01aba979fd59e193c15a5ea1858904024af5",
-    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "f6103d684ed716502a1674da21ac14fc2d808456",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "014807a7839491ae08231878314d49abc2dcbc03",
     "docs/specs/style-playbook-integration/SPEC.md": "66faec339524ce92e731388fe87383ed1b963652",
     "docs/specs/style-playbook-integration/contracts/public-package.md": "faa9766419f451ea74e4af7fbe254910399dcd29",
     "docs/specs/style-playbook-integration/contracts/release-trigger.md": "11371027e9ce5f9440ff3d621efcc7d0ca8aa4eb",
@@ -20,10 +20,10 @@
     "src/lib/admin-api-client.ts": "926e9bbc0c1d0c99b3b95d219eb88f6cbb9734f5",
     "src/lib/playbook/artifacts.ts": "2cb826c29d253b9fdb1347fc1583430a8546e9b6",
     "src/lib/playbook/bundle.ts": "13a726154f3ab270407d5274cacc370ac1b6a8a9",
-    "src/lib/playbook/cache.ts": "15cf57177a495746781b3dc9ad400b5a07180aae",
+    "src/lib/playbook/cache.ts": "12adf3a99e74823d929ec8a18fbcd2bd88aef489",
     "src/lib/playbook/fixture.ts": "5df5704636a959f61f9301b2e9b0efba49eea934",
     "src/lib/playbook/manifest.ts": "c416bcb4cceb4b4322f16821e751877c61a9461e",
-    "src/lib/playbook/release.ts": "e3b21bdc6dbc8706089a0595413a2503f2fbd84a",
+    "src/lib/playbook/release.ts": "5591a0140e8b438a85f7fa101ebe903b2ff3b3a3",
     "src/lib/playbook/schema.ts": "b3d36b4290a1337c068e0330e625d78265758891",
     "src/lib/playbook/supplement.ts": "9e00fad5709e3cc8df8246a4536eaf00dfcd52aa",
     "src/lib/playbook/types.ts": "a85bc56fdee6d5e0f788e4adcf993cafff7d7c55",
@@ -36,7 +36,7 @@
     "src/server/routers/admin/index.ts": "a0221d7071f529099c250fce356939a00095f934",
     "src/server/routers/admin/playbook.ts": "47e980599443589feeef4ecc1976cfb5eb6fb070",
     "tests/lib/manual-release-source.test.ts": "015b936082fdaf6c4435d47b49e6649a2aa9d8ea",
-    "tests/lib/playbook-contract.test.ts": "0f9ebbc0fadd25091b05ec9c8c8a7f6b8719b0a8",
+    "tests/lib/playbook-contract.test.ts": "a36984246beb00758391235cafa07bc175f5c676",
     "tests/lib/playbook-fixture.ts": "182603e4da37bff59c1ee55093e1fbefb949bc45",
     "tests/lib/playbook-workflows.test.ts": "21c42e83c16ab00000de01821038697273f23a44",
     "tests/fixtures/playbook/rust-supplement-catalog.fixture": "5eafd8f810a3765097aacee8d962b31912e93ef0",
@@ -67,7 +67,7 @@
       "evidence": [
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "e3b21bdc6dbc8706089a0595413a2503f2fbd84a",
+          "blob": "5591a0140e8b438a85f7fa101ebe903b2ff3b3a3",
           "command": "Release reader validates public identity; unavailable, incomplete or mismatched optional supplement identities are isolated from public adoption"
         },
         {
@@ -113,7 +113,7 @@
         },
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "e3b21bdc6dbc8706089a0595413a2503f2fbd84a",
+          "blob": "5591a0140e8b438a85f7fa101ebe903b2ff3b3a3",
           "command": "Supplement identity, unavailable or mismatched optional identities, exact rollback retry, strict UTF-8 manifests, and failure isolation tests keep public release paths distinct"
         },
         {
@@ -247,12 +247,12 @@
       "evidence": [
         {
           "path": "src/lib/playbook/cache.ts",
-          "blob": "15cf57177a495746781b3dc9ad400b5a07180aae",
+          "blob": "12adf3a99e74823d929ec8a18fbcd2bd88aef489",
           "command": "Playbook cache persists an optional source-bound supplement, isolates conflicting overlays during public adoption, rejects newer late sources during rollback, and keeps malformed or mismatched data out of the admin read model"
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "0f9ebbc0fadd25091b05ec9c8c8a7f6b8719b0a8",
+          "blob": "a36984246beb00758391235cafa07bc175f5c676",
           "command": "Supplement persistence, rollback-window late arrivals, and conflicting overlay adoption retain a public-only fallback while allowing the public edition to advance"
         }
       ]

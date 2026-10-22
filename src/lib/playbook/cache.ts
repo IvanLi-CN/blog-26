@@ -449,12 +449,23 @@ export class PlaybookStore {
         // A conflicting overlay must be clearable for the public edition to recover.
       }
     }
-    return this.persistSupplementState(
-      parsedSource,
-      validated ?? null,
-      persistedRawFiles,
-      !validated && options.allowSameSourceRetry === true
-    );
+    const retryableClear = !validated && options.allowSameSourceRetry === true;
+    try {
+      return await this.persistSupplementState(
+        parsedSource,
+        validated ?? null,
+        persistedRawFiles,
+        retryableClear
+      );
+    } catch (error) {
+      if (retryableClear) {
+        // Hide an invalid overlay immediately even when its tombstone cannot persist.
+        this.supplementSource = parsedSource;
+        this.supplement = undefined;
+        this.supplementRetryable = true;
+      }
+      throw error;
+    }
   }
 
   async adopt(

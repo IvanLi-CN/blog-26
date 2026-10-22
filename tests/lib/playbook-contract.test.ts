@@ -940,6 +940,18 @@ describe("playbook-dispatch-and-reconcile", () => {
     );
     expect(selectedWithUnavailableSupplement?.supplement).toBeUndefined();
     expect(selectedWithUnavailableSupplement?.supplementStatus).toBe("invalid");
+
+    const selectedWithoutSupplementAssets = await resolveRelease(reader, {
+      mode: "release",
+      source_repository: bundle.manifest.source.repository,
+      source_release_id: bundle.manifest.source.releaseId,
+      source_tag: bundle.manifest.source.tag,
+      source_sha: bundle.manifest.source.commit,
+      bundle_sha256: bundle.manifest.bundle.sha256,
+      supplement_bundle_sha256: "0".repeat(64),
+    });
+    expect(selectedWithoutSupplementAssets?.supplement).toBeUndefined();
+    expect(selectedWithoutSupplementAssets?.supplementStatus).toBe("invalid");
   });
   test("skips duplicates and late releases, rejects republished content", () => {
     const current = makePublicBundle();
@@ -1634,6 +1646,35 @@ describe("playbook-cache-http-ssr", () => {
 
     expect(store.adminEdition?.supplement).toBeDefined();
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+  });
+  test("hides an invalid overlay when its retryable tombstone cannot persist", async () => {
+    const root = await temp();
+    const current = makePublicBundle();
+    const supplementBundle = makeSupplementBundle();
+    const supplement = {
+      manifest: supplementBundle.manifest,
+      catalog: JSON.parse(supplementBundle.files[0].content),
+      search: JSON.parse(supplementBundle.files[1].content),
+    };
+    const store = new PlaybookStore(root);
+
+    await store.adopt(current.edition);
+    await store.updateSupplement(current.edition.edition.source, supplement);
+    const supplementStatePath = join(root, "supplement-state.json");
+    await rm(supplementStatePath);
+    await mkdir(supplementStatePath);
+
+    await expect(
+      store.updateSupplement(current.edition.edition.source, undefined, undefined, {
+        allowSameSourceRetry: true,
+      })
+    ).rejects.toThrow();
+    expect(store.adminEdition?.supplement).toBeUndefined();
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
+
+    await rm(supplementStatePath, { recursive: true });
+    await store.updateSupplement(current.edition.edition.source, supplement);
+    expect(store.adminEdition?.supplement).toBeDefined();
   });
   test("does not replace a same-source empty overlay with a supplement", async () => {
     const root = await temp();
