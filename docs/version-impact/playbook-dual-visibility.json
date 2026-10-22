@@ -25,7 +25,7 @@
     "src/lib/playbook/manifest.ts": "16d4184b0eb42b42cf779fa3629f4a80375ea09a",
     "src/lib/playbook/release.ts": "d9cc35432f01766f3fbde6d667e73ee5984fc252",
     "src/lib/playbook/schema.ts": "b3d36b4290a1337c068e0330e625d78265758891",
-    "src/lib/playbook/supplement.ts": "ba4068f6bb6769ec425d2691db954631d69c4af",
+    "src/lib/playbook/supplement.ts": "ba40687f6bb6769ec425d2691db954631d69c4af",
     "src/lib/playbook/types.ts": "a85bc56fdee6d5e0f788e4adcf993cafff7d7c55",
     "src/lib/playbook/web-demo-fixture.ts": "05b0a4b7e8edfc8c022e8107e646b39cbec67f9e",
     "src/lib/release/inputs.ts": "b9ccf36d6ae781e5f3141fbd76ef137c4f6e8f62",
