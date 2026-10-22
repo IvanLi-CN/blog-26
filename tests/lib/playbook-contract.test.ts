@@ -208,6 +208,14 @@ describe("playbook-public-contract", () => {
     expect(retained.legacyCatalog).toBe(true);
     expect(retained.edition).toEqual(sourceEdition.edition);
     expect(retained.catalog.snapshot.projects[0].catalog_visibility).toBe("public");
+    const publishedRoot = join(root, "published");
+    await writePublicEdition(publishedRoot, retained, join(root, "retained"), "{}\n");
+    const publishedDirectory = join(
+      publishedRoot,
+      playbookVersionPath(sourceEdition.edition).slice(1)
+    );
+    expect(await readFile(join(publishedDirectory, "catalog.json"))).toEqual(catalogBytes);
+    expect(await readFile(join(publishedDirectory, "search-documents.json"))).toEqual(searchBytes);
     const store = new PlaybookStore(join(root, "cache"));
     await store.adopt(retained);
     const restored = new PlaybookStore(join(root, "cache"));
@@ -1416,6 +1424,24 @@ describe("playbook-cache-http-ssr", () => {
 
     expect(store.adminEdition?.supplement).toBeDefined();
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+  });
+  test("does not replace a same-source empty overlay with a supplement", async () => {
+    const root = await temp();
+    const current = makePublicBundle();
+    const supplementBundle = makeSupplementBundle();
+    const supplement = {
+      manifest: supplementBundle.manifest,
+      catalog: JSON.parse(supplementBundle.files[0].content),
+      search: JSON.parse(supplementBundle.files[1].content),
+    };
+    const store = new PlaybookStore(root);
+
+    await store.adopt(current.edition);
+    await store.updateSupplement(current.edition.edition.source);
+    await expect(
+      store.updateSupplement(current.edition.edition.source, supplement)
+    ).rejects.toThrow("source identity conflict");
+    expect(store.adminEdition?.supplement).toBeUndefined();
   });
   test("rejects changed supplement content for an existing source identity", async () => {
     const root = await temp();

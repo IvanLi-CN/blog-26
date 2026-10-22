@@ -73,11 +73,12 @@ export function validatePlaybookEdition(
     const raw = rawFiles?.get(file.path);
     if (raw) {
       verifyFile(raw, file);
+      if (legacyCatalog) continue;
       if (encodeJson(JSON.parse(new TextDecoder().decode(raw))) !== encodeJson(source))
         throw new Error(`Playbook file projection mismatch: ${file.path}`);
       continue;
     }
-    if (legacyCatalog && file.path === "catalog.json") continue;
+    if (legacyCatalog) continue;
     try {
       verifyFile(encodeJson(normalized), file);
     } catch {
@@ -306,6 +307,13 @@ export class PlaybookStore {
       this.supplement &&
       samePlaybookSource(this.supplement.manifest.source, parsedSource) &&
       encodeJson(validated) !== encodeJson(this.supplement)
+    )
+      throw new Error("Playbook supplement source identity conflict");
+    if (
+      validated &&
+      this.supplementSource &&
+      samePlaybookSource(this.supplementSource, parsedSource) &&
+      !this.supplement
     )
       throw new Error("Playbook supplement source identity conflict");
     if (

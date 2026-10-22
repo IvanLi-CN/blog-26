@@ -129,10 +129,22 @@ export async function writePublicEdition(
   bundleRoot: string,
   publicSnapshot: Uint8Array | string
 ) {
-  validatePlaybookEdition(edition);
+  const rawFiles = edition.legacyCatalog
+    ? new Map<string, Uint8Array>([
+        ["catalog.json", await readFile(join(bundleRoot, "catalog.json"))],
+        ["search-documents.json", await readFile(join(bundleRoot, "search-documents.json"))],
+      ])
+    : undefined;
+  validatePlaybookEdition(edition, rawFiles);
   const directory = join(publicRoot, playbookVersionPath(edition.edition));
-  await write(join(directory, "catalog.json"), encodeJson(edition.catalog));
-  await write(join(directory, "search-documents.json"), encodeJson(edition.search));
+  await write(
+    join(directory, "catalog.json"),
+    rawFiles?.get("catalog.json") ?? encodeJson(edition.catalog)
+  );
+  await write(
+    join(directory, "search-documents.json"),
+    rawFiles?.get("search-documents.json") ?? encodeJson(edition.search)
+  );
   const snapshotFile = edition.edition.files.find((file) => file.path === "public-snapshot.json");
   if (!snapshotFile) throw new Error("Article/Memo snapshot record is missing");
   verifyFile(publicSnapshot, snapshotFile);
