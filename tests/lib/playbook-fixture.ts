@@ -8,7 +8,11 @@ import {
   publicReadingFixtureCatalog,
   publicReadingFixtureSearch,
 } from "../../src/lib/playbook/reading-fixture";
-import type { PlaybookManifest } from "../../src/lib/playbook/types";
+import type {
+  PlaybookManifest,
+  PlaybookSearchPayload,
+  PlaybookSupplementCatalog,
+} from "../../src/lib/playbook/types";
 import { webDemoCatalog, webDemoSearch } from "../../src/lib/playbook/web-demo-fixture";
 
 export function makeArchive(files: { path: string; content: string; kind?: string }[]) {
@@ -63,6 +67,113 @@ export function makePublicBundle(
     "{}\n"
   );
   return { archive, manifest, edition, files };
+}
+
+const supplementProject = {
+  slug: "private-project",
+  name: "Private Project",
+  description: "整理后的私有补充项目知识。",
+  source: "private",
+  tags: ["工程"],
+  snapshot_exists: true,
+  catalog_visibility: "private" as const,
+  source_visibility: "private" as const,
+  created_at: null,
+  updated_at: null,
+};
+const supplementTopic = {
+  slug: "private-topic",
+  token: "私有主题",
+  description: "仅供管理员浏览的主题补充。",
+  categories: ["工程"],
+  project_count: 1,
+  related_projects: [{ slug: supplementProject.slug, name: supplementProject.name }],
+  catalog_visibility: "private" as const,
+};
+const supplementCatalog: PlaybookSupplementCatalog = {
+  snapshot: {
+    index: { generated_at: "2026-09-01T00:00:00Z", project_count: 1, topic_count: 1 },
+    projects: [supplementProject],
+    topics: [supplementTopic],
+  },
+  project_details: [
+    {
+      item: supplementProject,
+      title: "Private Project 实践快照",
+      doc_metadata: [],
+      stack: { runtime: "private" },
+      preamble: "",
+      sections: [{ id: "basics", title: "基础", markdown: "私有整理正文。" }],
+    },
+  ],
+  topic_details: [
+    {
+      item: supplementTopic,
+      doc_metadata: [],
+      preamble: "",
+      sections: [{ id: "definition", title: "定义", markdown: "私有主题正文。" }],
+    },
+  ],
+  private_source_metadata: [
+    {
+      project_slug: supplementProject.slug,
+      source: "https://github.com/example/private-project",
+      source_visibility: "private",
+    },
+  ],
+  relation_edges: [
+    {
+      topic_slug: supplementTopic.slug,
+      project_slug: supplementProject.slug,
+      project_name: supplementProject.name,
+    },
+  ],
+};
+const supplementSearch: PlaybookSearchPayload = {
+  generated_at: "2026-09-01T00:00:00Z",
+  documents: [
+    {
+      id: "page:topic:private-topic",
+      kind: "page",
+      title: "私有主题",
+      subtitle: null,
+      body: "私有主题正文。",
+      route: "/topics/private-topic",
+      section_id: null,
+      keywords: ["工程"],
+      command_id: null,
+    },
+  ],
+};
+
+export function makeSupplementBundle(
+  tag = "v3.0.0",
+  releaseId = "100",
+  catalog = supplementCatalog,
+  search = supplementSearch
+) {
+  const files = [
+    { path: "catalog.json", content: encodeJson(catalog) },
+    { path: "search-documents.json", content: encodeJson(search) },
+  ];
+  const archive = makeArchive(files);
+  const manifest: PlaybookManifest = {
+    schemaVersion: 1,
+    source: {
+      repository: "IvanLi-CN/style-playbook-skills",
+      releaseId,
+      tag,
+      commit: "a".repeat(40),
+      publishedAt: "2026-09-01T00:00:00Z",
+    },
+    bundle: {
+      name: "playbook-private-supplement.tar.gz",
+      size: archive.length,
+      sha256: sha256(archive),
+    },
+    files: files.map((file) => fileRecord(file.path, file.content)),
+  };
+  return { archive, manifest, files };
 }
 
 if (import.meta.main) {

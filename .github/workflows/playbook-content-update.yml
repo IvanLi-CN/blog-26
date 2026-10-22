@@ -16,6 +16,36 @@ on:
         type: string
       bundle_sha256:
         type: string
+      manifest_sha256:
+        type: string
+      bundle_asset_id:
+        type: string
+      bundle_asset_digest:
+        type: string
+      bundle_asset_size:
+        type: string
+      manifest_asset_id:
+        type: string
+      manifest_asset_digest:
+        type: string
+      manifest_asset_size:
+        type: string
+      supplement_bundle_sha256:
+        type: string
+      supplement_manifest_sha256:
+        type: string
+      supplement_bundle_asset_id:
+        type: string
+      supplement_bundle_asset_digest:
+        type: string
+      supplement_bundle_asset_size:
+        type: string
+      supplement_manifest_asset_id:
+        type: string
+      supplement_manifest_asset_digest:
+        type: string
+      supplement_manifest_asset_size:
+        type: string
       source_run_id:
         type: string
   schedule:

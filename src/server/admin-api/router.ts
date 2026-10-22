@@ -267,6 +267,21 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
 
     const { caller, resHeaders } = await createAdminCallerForRequest(request);
 
+    if (pathname === "/playbook") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      const kind = getString(url.searchParams.get("kind"));
+      return json(
+        await caller.admin.playbook.browse({
+          query: getString(url.searchParams.get("q")),
+          kind: kind === "project" || kind === "topic" || kind === "search" ? kind : "all",
+          slug: getString(url.searchParams.get("slug")),
+          limit: getNumber(url.searchParams.get("limit"), 50),
+        }),
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+
     if (pathname === "/search-settings") {
       if (request.method === "GET")
         return json(

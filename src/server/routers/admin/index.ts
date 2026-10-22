@@ -5,6 +5,7 @@ import { adminDashboardRouter } from "./dashboard";
 import { filesRouter } from "./files";
 import { adminJobsRouter } from "./jobs";
 import { adminPersonalAccessTokensRouter } from "./personal-access-tokens";
+import { adminPlaybookRouter } from "./playbook";
 import { adminPostsRouter } from "./posts";
 import { adminVectorizeRouter } from "./vectorize";
 
@@ -15,6 +16,7 @@ import { adminVectorizeRouter } from "./vectorize";
 export const adminRouter = createTRPCRouter({
   dashboard: adminDashboardRouter,
   posts: adminPostsRouter,
+  playbook: adminPlaybookRouter,
   comments: adminCommentsRouter,
   contentSync: adminContentSyncRouter,
   vectorize: adminVectorizeRouter,

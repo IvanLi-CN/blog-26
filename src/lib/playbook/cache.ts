@@ -5,7 +5,17 @@ import { dirname, join, resolve } from "node:path";
 import { encodeJson, parseEditionIdentity, samePlaybookEdition, verifyFile } from "./manifest";
 import { validatePlaybookSearchRoute } from "./navigation";
 import { assertPublicCatalog, PLAYBOOK_PUBLIC_POINTER_URL, searchSchema } from "./schema";
-import type { PlaybookEdition, PlaybookEditionIdentity } from "./types";
+import {
+  mergePlaybookSupplement,
+  samePlaybookSource,
+  validatePlaybookSupplement,
+} from "./supplement";
+import type {
+  PlaybookAdminEdition,
+  PlaybookEdition,
+  PlaybookEditionIdentity,
+  PlaybookSupplementEnvelope,
+} from "./types";
 
 export interface PlaybookCacheState {
   current?: PlaybookEdition;
@@ -63,6 +73,7 @@ function freezeEdition(edition: PlaybookEdition) {
 
 export class PlaybookStore {
   private state: PlaybookCacheState = {};
+  private supplement?: PlaybookSupplementEnvelope;
   private loaded?: Promise<void>;
   private flight?: {
     promise: Promise<void>;
@@ -91,6 +102,15 @@ export class PlaybookStore {
   get previous() {
     return this.state.previous;
   }
+  get adminEdition(): PlaybookAdminEdition | undefined {
+    if (!this.state.current) return undefined;
+    const supplement =
+      this.supplement &&
+      samePlaybookSource(this.state.current.edition.source, this.supplement.manifest.source)
+        ? this.supplement
+        : undefined;
+    return mergePlaybookSupplement(this.state.current, supplement);
+  }
   getEdition(digest: string, sourceReleaseId: string, sourceTag: string) {
     return [this.state.current, this.state.previous].find(
       (entry) =>
@@ -100,12 +120,16 @@ export class PlaybookStore {
     );
   }
 
-  load(seedPath = process.env.PLAYBOOK_SEED_PATH || "site/generated/playbook-edition.json") {
-    if (!this.loaded) this.loaded = this.loadState(seedPath);
+  load(
+    seedPath = process.env.PLAYBOOK_SEED_PATH || "site/generated/playbook-edition.json",
+    supplementSeedPath = process.env.PLAYBOOK_SUPPLEMENT_SEED_PATH ||
+      resolve(dirname(seedPath), "playbook-private-supplement.json")
+  ) {
+    if (!this.loaded) this.loaded = this.loadState(seedPath, supplementSeedPath);
     return this.loaded;
   }
 
-  private async loadState(seedPath: string) {
+  private async loadState(seedPath: string, supplementSeedPath: string) {
     try {
       const raw = JSON.parse(await readFile(join(this.root, "state.json"), "utf8")) as Record<
         string,
@@ -140,6 +164,20 @@ export class PlaybookStore {
         );
       } catch {
         /* Other console surfaces remain available without a playbook. */
+      }
+    }
+    this.supplement = undefined;
+    if (this.state.current) {
+      try {
+        const supplement = validatePlaybookSupplement(
+          JSON.parse(await readFile(resolve(supplementSeedPath), "utf8"))
+        );
+        if (samePlaybookSource(this.state.current.edition.source, supplement.manifest.source)) {
+          const merged = mergePlaybookSupplement(this.state.current, supplement);
+          if (merged.supplement) this.supplement = freezeSupplement(supplement);
+        }
+      } catch {
+        /* Private supplement is optional; malformed or mismatched data never enters admin reads. */
       }
     }
   }
@@ -333,6 +371,17 @@ function linkAbortSignal(signal: AbortSignal | undefined, controller: AbortContr
   const abort = () => controller.abort(signal.reason);
   if (signal.aborted) abort();
   else signal.addEventListener("abort", abort, { once: true });
+}
+
+function freezeSupplement(supplement: PlaybookSupplementEnvelope) {
+  const freeze = (value: unknown) => {
+    if (value && typeof value === "object") {
+      for (const nested of Object.values(value)) freeze(nested);
+      Object.freeze(value);
+    }
+  };
+  freeze(supplement);
+  return supplement;
 }
 
 export async function fetchBounded(

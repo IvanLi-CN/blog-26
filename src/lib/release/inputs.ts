@@ -250,9 +250,18 @@ export async function freezeInputs(entry: ReleaseEntry, root: string): Promise<v
   const { existsSync } = await import("node:fs");
   if (!existsSync(".tmp/playbook-initial/playbook-public-manifest.json"))
     delete prepareEnv.PLAYBOOK_BUNDLE_DIR;
+  if (existsSync(".tmp/playbook-initial/supplement/playbook-private-supplement-manifest.json")) {
+    prepareEnv.PLAYBOOK_SUPPLEMENT_DIR = ".tmp/playbook-initial/supplement";
+    prepareEnv.PLAYBOOK_SUPPLEMENT_REQUIRED = "true";
+  }
   await buildCommand(["bun", "scripts/prepare-playbook-edition.ts"], prepareEnv);
   await cp("public/_content/playbook", join(root, "playbook"), { recursive: true });
   await cp("site/generated/playbook-edition.json", join(root, "playbook-edition.json"));
+  if (existsSync("site/generated/playbook-private-supplement.json"))
+    await cp(
+      "site/generated/playbook-private-supplement.json",
+      join(root, "playbook-private-supplement.json")
+    );
   const mediaRoot = join(root, "media");
   await mkdir(mediaRoot, { recursive: true });
   await writeFile(join(mediaRoot, "snapshot.json"), snapshot);

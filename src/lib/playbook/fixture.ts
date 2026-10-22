@@ -9,7 +9,8 @@ const project = {
   source: "https://github.com/example/public-project",
   tags: ["astro", "交付"],
   snapshot_exists: true,
-  visibility: "public",
+  catalog_visibility: "public" as const,
+  source_visibility: "public" as const,
   created_at: null,
   updated_at: null,
 };
@@ -21,6 +22,7 @@ const topic = {
   categories: ["工程", "Release"],
   project_count: 1,
   related_projects: [{ slug: project.slug, name: project.name }],
+  catalog_visibility: "public" as const,
 };
 export const publicFixtureCatalog: PlaybookPublicCatalog = {
   snapshot: {
@@ -33,6 +35,7 @@ export const publicFixtureCatalog: PlaybookPublicCatalog = {
       item: project,
       title: "Sample Project 实践快照",
       doc_metadata: [{ key: "范围", value: "公开样例" }],
+      preamble: "",
       stack: {
         framework: "Astro",
         runtime: "Bun",
@@ -62,6 +65,7 @@ export const publicFixtureCatalog: PlaybookPublicCatalog = {
     {
       item: topic,
       doc_metadata: [],
+      preamble: "",
       sections: [
         {
           id: "release",

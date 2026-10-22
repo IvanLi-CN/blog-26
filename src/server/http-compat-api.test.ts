@@ -16,10 +16,12 @@ import { SEARCH_QUERY_LIMITS } from "@/lib/search/query";
 import { DEFAULT_SEARCH_POLICY } from "@/lib/search/settings";
 import { contentSearchIndex } from "@/server/services/content-search-index";
 import { buildPublicMemoStaticPages } from "../../site/lib/memo-pagination";
+import { makePublicBundle, makeSupplementBundle } from "../../tests/lib/playbook-fixture";
 
 const TEST_DB_PATH = path.join(process.cwd(), "tmp/http-compat-api-test.sqlite");
 const MIGRATIONS_PATH = path.join(process.cwd(), "drizzle");
 const LOCAL_CONTENT_BASE_PATH = path.join(process.cwd(), "tmp/http-compat-local");
+const PLAYBOOK_TEST_PATH = path.join(process.cwd(), "tmp/http-compat-playbook");
 const ADMIN_EMAIL = "admin-test@test.local";
 const USER_EMAIL = "user-test@test.local";
 
@@ -40,6 +42,8 @@ function resetHttpCompatEnv() {
   process.env.LLM_SETTINGS_MASTER_KEY = "test-master-key";
   delete process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_BASE_URL;
+  delete process.env.PLAYBOOK_SEED_PATH;
+  delete process.env.PLAYBOOK_SUPPLEMENT_SEED_PATH;
 }
 
 function buildRequest(pathname: string, init: RequestInit = {}, email?: string) {
@@ -205,6 +209,7 @@ describe("HTTP compatibility APIs", () => {
       fs.rmSync(TEST_DB_PATH);
     }
     fs.rmSync(LOCAL_CONTENT_BASE_PATH, { recursive: true, force: true });
+    fs.rmSync(PLAYBOOK_TEST_PATH, { recursive: true, force: true });
   }, 10_000);
 
   beforeEach(async () => {
@@ -299,6 +304,47 @@ describe("HTTP compatibility APIs", () => {
       "/search-settings"
     );
     expect(JSON.stringify(await settings.json())).not.toContain("apiKey");
+  });
+
+  it("exposes the merged playbook only to administrators", async () => {
+    const publicBundle = makePublicBundle();
+    const supplementBundle = makeSupplementBundle();
+    const supplement = {
+      manifest: supplementBundle.manifest,
+      catalog: JSON.parse(supplementBundle.files[0].content),
+      search: JSON.parse(supplementBundle.files[1].content),
+    };
+    fs.mkdirSync(PLAYBOOK_TEST_PATH, { recursive: true });
+    const publicSeedPath = path.join(PLAYBOOK_TEST_PATH, "public.json");
+    const supplementSeedPath = path.join(PLAYBOOK_TEST_PATH, "supplement.json");
+    fs.writeFileSync(publicSeedPath, JSON.stringify(publicBundle.edition));
+    fs.writeFileSync(supplementSeedPath, JSON.stringify(supplement));
+    process.env.PLAYBOOK_SEED_PATH = publicSeedPath;
+    process.env.PLAYBOOK_SUPPLEMENT_SEED_PATH = supplementSeedPath;
+
+    const anonymous = await handleAdminApiRequest(buildRequest("/api/admin/playbook"), "/playbook");
+    expect(anonymous.status).toBe(401);
+    const member = await handleAdminApiRequest(
+      buildRequest("/api/admin/playbook", {}, USER_EMAIL),
+      "/playbook"
+    );
+    expect(member.status).toBe(403);
+
+    const response = await handleAdminApiRequest(
+      buildRequest("/api/admin/playbook?kind=search&q=私有&limit=10", {}, ADMIN_EMAIL),
+      "/playbook"
+    );
+    expect(response.status).toBe(200);
+    const payload = await readJson(response);
+    expect(payload.supplementAvailable).toBe(true);
+    expect(payload.catalog.private_source_metadata).toEqual([
+      expect.objectContaining({ project_slug: "private-project" }),
+    ]);
+    expect(payload.results).toEqual([
+      expect.objectContaining({
+        document: expect.objectContaining({ id: "page:topic:private-topic" }),
+      }),
+    ]);
   });
 
   it("returns masked LLM settings, persists overrides, and can clear saved keys", async () => {

@@ -13,6 +13,11 @@ import type { ClippingReading } from "@/lib/memo-clipping";
 import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
 import type { LlmModelOption, LlmModelSource } from "./llm-models";
+import type {
+  PlaybookAdminCatalog,
+  PlaybookEditionIdentity,
+  PlaybookSearchDocument,
+} from "./playbook/types";
 import type { PublicMediaCollection } from "./public-media";
 import type {
   AdminSearchSettings,
@@ -32,6 +37,22 @@ export interface AdminUser {
 export interface AdminSession {
   user: AdminUser | null;
   isAdmin: boolean;
+}
+
+export interface AdminPlaybookBrowseResponse {
+  source: PlaybookEditionIdentity["source"];
+  edition: string;
+  supplementAvailable: boolean;
+  catalog: {
+    index: PlaybookAdminCatalog["snapshot"]["index"];
+    projects: PlaybookAdminCatalog["snapshot"]["projects"];
+    topics: PlaybookAdminCatalog["snapshot"]["topics"];
+    private_source_metadata: PlaybookAdminCatalog["private_source_metadata"];
+    relation_edges: PlaybookAdminCatalog["relation_edges"];
+  };
+  project?: PlaybookAdminCatalog["project_details"][number];
+  topic?: PlaybookAdminCatalog["topic_details"][number];
+  results: Array<{ document: PlaybookSearchDocument; score: number }>;
 }
 
 export interface AdminApiErrorShape {
@@ -511,6 +532,14 @@ function buildSearch(params: Record<string, string | number | boolean | undefine
 
 export const adminApi = {
   session: () => adminRequest<AdminSession>("/api/admin/session"),
+  getPlaybook: (
+    params: {
+      q?: string;
+      kind?: "all" | "project" | "topic" | "search";
+      slug?: string;
+      limit?: number;
+    } = {}
+  ) => adminRequest<AdminPlaybookBrowseResponse>(`/api/admin/playbook${buildSearch(params)}`),
   previewPost: (slug: string) =>
     adminRequest<AdminPreviewPost>(`/api/admin/preview/posts/${encodeURIComponent(slug)}`),
   previewMemo: (slug: string) =>

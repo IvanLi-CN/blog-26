@@ -13,9 +13,17 @@ import {
   samePlaybookEdition,
 } from "../src/lib/playbook/manifest";
 import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
+import {
+  readPlaybookSupplement,
+  samePlaybookSource,
+  validatePlaybookSupplement,
+} from "../src/lib/playbook/supplement";
+import type { PlaybookEditionIdentity } from "../src/lib/playbook/types";
 
 const publicRoot = resolve("public");
 const seedPath = resolve("site/generated/playbook-edition.json");
+const supplementSeedPath = resolve("site/generated/playbook-private-supplement.json");
+await rm(supplementSeedPath, { force: true });
 if (process.env.PLAYBOOK_FROZEN_INPUT_DIR) {
   const frozen = resolve(process.env.PLAYBOOK_FROZEN_INPUT_DIR);
   const seed = validatePlaybookEdition(
@@ -33,6 +41,23 @@ if (process.env.PLAYBOOK_FROZEN_INPUT_DIR) {
   await cp(join(frozen, "playbook"), join(publicRoot, "_content/playbook"), { recursive: true });
   await mkdir(resolve("site/generated"), { recursive: true });
   await writeFile(seedPath, encodeJson(seed));
+  const frozenSupplementPath = join(frozen, "playbook-private-supplement.json");
+  const frozenSupplement = await readFile(frozenSupplementPath, "utf8").catch((error: unknown) => {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT")
+      return undefined;
+    throw error;
+  });
+  if (frozenSupplement) {
+    const supplement = validatePlaybookSupplement(JSON.parse(frozenSupplement));
+    if (!samePlaybookSource(seed.edition.source, supplement.manifest.source))
+      throw new Error("Frozen Playbook supplement source does not match the public edition");
+    await writeFile(supplementSeedPath, encodeJson(supplement));
+  }
+  if (
+    process.env.PLAYBOOK_SUPPLEMENT_REQUIRED === "true" &&
+    !(await Bun.file(supplementSeedPath).exists())
+  )
+    throw new Error("Frozen Playbook supplement is required");
   console.log(`Reusing frozen Playbook edition ${pointer.editionDigest}`);
   process.exit(0);
 }
@@ -47,7 +72,7 @@ const renderer =
 const manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL;
 const working = resolve(process.env.PLAYBOOK_WORK_DIR || ".tmp/playbook");
 let bundleRoot = process.env.PLAYBOOK_BUNDLE_DIR;
-let current: Awaited<ReturnType<typeof readPublicPointer>>;
+let current: PlaybookEditionIdentity | undefined;
 const inputPath = process.env.PLAYBOOK_EDITION_INPUT_PATH;
 const inputSeed = inputPath
   ? validatePlaybookEdition(JSON.parse(await readFile(resolve(inputPath), "utf8")))
@@ -120,6 +145,22 @@ if (current) {
 await writePublicEdition(publicRoot, edition, resolve(bundleRoot), snapshot);
 await mkdir(resolve("site/generated"), { recursive: true });
 await writeFile(seedPath, encodeJson(edition));
+const supplementRoot = process.env.PLAYBOOK_SUPPLEMENT_DIR
+  ? resolve(process.env.PLAYBOOK_SUPPLEMENT_DIR)
+  : bundleRoot &&
+      (await Bun.file(
+        join(bundleRoot, "supplement/playbook-private-supplement-manifest.json")
+      ).exists())
+    ? resolve(bundleRoot, "supplement")
+    : undefined;
+if (supplementRoot) {
+  const supplement = await readPlaybookSupplement(supplementRoot);
+  if (!samePlaybookSource(edition.edition.source, supplement.manifest.source))
+    throw new Error("Playbook supplement source does not match the public edition");
+  await writeFile(supplementSeedPath, encodeJson(supplement));
+} else if (process.env.PLAYBOOK_SUPPLEMENT_REQUIRED === "true") {
+  throw new Error("Playbook supplement is required");
+}
 console.log(
   `Playbook edition ${edition.edition.editionDigest} (${edition.edition.source.tag}, renderer ${edition.edition.rendererCommit})`
 );

@@ -10,14 +10,24 @@ import {
   verifyFile,
 } from "./manifest";
 import { normalizePlaybookSearch } from "./navigation";
-import { assertPublicCatalog, commitSchema, digestSchema, searchSchema } from "./schema";
+import {
+  assertPublicCatalog,
+  assertSupplementCatalog,
+  commitSchema,
+  digestSchema,
+  PLAYBOOK_PUBLIC_BUNDLE_NAME,
+  PLAYBOOK_SUPPLEMENT_BUNDLE_NAME,
+  searchSchema,
+} from "./schema";
 import type { PlaybookEdition, PlaybookManifest } from "./types";
 
 export const PLAYBOOK_MANIFEST_FILE = "playbook-public-manifest.json";
 const FILES = ["catalog.json", "search-documents.json"];
 
 // Parse the tiny ustar data contract in memory. Never extract paths or execute assets.
-export function readPublicArchive(archive: Uint8Array, manifest: PlaybookManifest) {
+function readArchive(archive: Uint8Array, manifest: PlaybookManifest, expectedBundleName: string) {
+  if (manifest.bundle.name !== expectedBundleName)
+    throw new Error(`Unexpected bundle for ${expectedBundleName}`);
   if (archive.byteLength !== manifest.bundle.size || sha256(archive) !== manifest.bundle.sha256)
     throw new Error("Playbook bundle integrity mismatch");
   if (
@@ -31,7 +41,7 @@ export function readPublicArchive(archive: Uint8Array, manifest: PlaybookManifes
   const raw = inflateRawSync(archive.subarray(10), {
     info: true,
     maxOutputLength: 64 * 1024 * 1024,
-  }) as {
+  }) as unknown as {
     engine: { bytesWritten: number };
   };
   if (10 + raw.engine.bytesWritten + 8 !== archive.byteLength)
@@ -86,6 +96,24 @@ export function readPublicArchive(archive: Uint8Array, manifest: PlaybookManifes
   if (files.size !== FILES.length) throw new Error("Archive data files are incomplete");
   if (!terminated || tar.length % 512 !== 0) throw new Error("Archive has no complete terminator");
   return files;
+}
+
+export function readPublicArchive(archive: Uint8Array, manifest: PlaybookManifest) {
+  return readArchive(archive, manifest, PLAYBOOK_PUBLIC_BUNDLE_NAME);
+}
+
+export function readSupplementArchive(archive: Uint8Array, manifest: PlaybookManifest) {
+  return readArchive(archive, manifest, PLAYBOOK_SUPPLEMENT_BUNDLE_NAME);
+}
+
+export function parseSupplementFiles(files: Map<string, Uint8Array>) {
+  const catalog = assertSupplementCatalog(
+    JSON.parse(Buffer.from(files.get("catalog.json") ?? []).toString("utf8"))
+  );
+  const search = searchSchema.parse(
+    JSON.parse(Buffer.from(files.get("search-documents.json") ?? []).toString("utf8"))
+  );
+  return { catalog, search };
 }
 
 export function createPlaybookEdition(

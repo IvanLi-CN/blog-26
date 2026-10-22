@@ -41,6 +41,9 @@ copy_tree "${ROOT_DIR}/site/assets/brand/source" "${DIST_DIR}/site/assets/brand/
 if [[ -f "${ROOT_DIR}/site/generated/playbook-edition.json" ]]; then
   copy_file "site/generated/playbook-edition.json" "${DIST_DIR}/site/generated"
 fi
+if [[ -f "${ROOT_DIR}/site/generated/playbook-private-supplement.json" ]]; then
+  copy_file "site/generated/playbook-private-supplement.json" "${DIST_DIR}/site/generated"
+fi
 
 copy_file "scripts/search-index.ts" "${DIST_DIR}/scripts"
 if [[ ! -f "${ROOT_DIR}/native/search/search.linux-x64.node" ]]; then

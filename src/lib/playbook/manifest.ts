@@ -1,7 +1,12 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { editionSchema, manifestSchema } from "./schema";
+import {
+  editionSchema,
+  manifestSchema,
+  PLAYBOOK_PUBLIC_BUNDLE_NAME,
+  PLAYBOOK_SUPPLEMENT_BUNDLE_NAME,
+} from "./schema";
 import type {
   PlaybookEdition,
   PlaybookEditionIdentity,
@@ -36,8 +41,12 @@ function assertSortedFilePaths(files: PlaybookManifestFile[], expected: string, 
     throw new Error(`${label} file records must be sorted by path`);
 }
 
-export function parseManifest(value: unknown): PlaybookManifest {
+export function parseManifest(value: unknown, kind: "public" | "supplement" = "public") {
   const manifest = manifestSchema.parse(value);
+  const expectedBundleName =
+    kind === "public" ? PLAYBOOK_PUBLIC_BUNDLE_NAME : PLAYBOOK_SUPPLEMENT_BUNDLE_NAME;
+  if (manifest.bundle.name !== expectedBundleName)
+    throw new Error(`${kind} manifest has an unexpected bundle name`);
   assertSortedFilePaths(manifest.files, "catalog.json,search-documents.json", "Public bundle");
   if (manifest.files.map((file) => file.path).join(",") !== "catalog.json,search-documents.json")
     throw new Error("Public bundle must contain catalog.json and search-documents.json");

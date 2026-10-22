@@ -1,8 +1,18 @@
-import { encodeJson, parseEditionIdentity, parseManifest, samePlaybookEdition } from "./manifest";
+import {
+  encodeJson,
+  parseEditionIdentity,
+  parseManifest,
+  samePlaybookEdition,
+  sha256,
+} from "./manifest";
 import {
   PLAYBOOK_MAX_BUNDLE_BYTES,
   PLAYBOOK_MAX_MANIFEST_BYTES,
+  PLAYBOOK_PUBLIC_BUNDLE_NAME,
+  PLAYBOOK_PUBLIC_MANIFEST_NAME,
   PLAYBOOK_REPOSITORY,
+  PLAYBOOK_SUPPLEMENT_BUNDLE_NAME,
+  PLAYBOOK_SUPPLEMENT_MANIFEST_NAME,
   stableTagSchema,
 } from "./schema";
 import type { PlaybookEditionIdentity, PlaybookManifest } from "./types";
@@ -13,7 +23,7 @@ export interface SourceRelease {
   draft: boolean;
   prerelease: boolean;
   published_at: string | null;
-  assets: { id: number; name: string; size: number }[];
+  assets: { id: number; name: string; size: number; digest?: string | null }[];
 }
 
 export interface ReleaseReader {
@@ -30,6 +40,21 @@ export interface ReleaseTrigger {
   source_tag?: string;
   source_sha?: string;
   bundle_sha256?: string;
+  manifest_sha256?: string;
+  bundle_asset_id?: string;
+  bundle_asset_digest?: string;
+  bundle_asset_size?: string;
+  manifest_asset_id?: string;
+  manifest_asset_digest?: string;
+  manifest_asset_size?: string;
+  supplement_bundle_sha256?: string;
+  supplement_manifest_sha256?: string;
+  supplement_bundle_asset_id?: string;
+  supplement_bundle_asset_digest?: string;
+  supplement_bundle_asset_size?: string;
+  supplement_manifest_asset_id?: string;
+  supplement_manifest_asset_digest?: string;
+  supplement_manifest_asset_size?: string;
   source_run_id?: string;
 }
 
@@ -60,6 +85,25 @@ export function adoptionDecision(candidate: PlaybookManifest, current?: Playbook
     : ("update" as const);
 }
 
+function uniqueAsset(
+  release: SourceRelease,
+  name: string,
+  required: boolean
+): SourceRelease["assets"][number] | undefined {
+  const matches = release.assets.filter((asset) => asset.name === name);
+  if (matches.length > 1) throw new Error(`Release contains duplicate ${name} assets`);
+  if (required && matches.length === 0) throw new Error(`Release is missing ${name}`);
+  return matches[0];
+}
+
+function assertAssetDigest(
+  asset: SourceRelease["assets"][number],
+  expected: string,
+  label: string
+) {
+  if (asset.digest && asset.digest !== expected) throw new Error(`${label} digest mismatch`);
+}
+
 async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
   if (
     release.draft ||
@@ -68,10 +112,12 @@ async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
     !stableTagSchema.safeParse(release.tag_name).success
   )
     throw new Error("Release is not stable and published");
-  const manifestAsset = release.assets.find(
-    (asset) => asset.name === "playbook-public-manifest.json"
-  );
-  const bundleAsset = release.assets.find((asset) => asset.name === "playbook-public.tar.gz");
+  const manifestAsset = uniqueAsset(release, PLAYBOOK_PUBLIC_MANIFEST_NAME, true);
+  const bundleAsset = uniqueAsset(release, PLAYBOOK_PUBLIC_BUNDLE_NAME, true);
+  const supplementManifestAsset = uniqueAsset(release, PLAYBOOK_SUPPLEMENT_MANIFEST_NAME, false);
+  const supplementBundleAsset = uniqueAsset(release, PLAYBOOK_SUPPLEMENT_BUNDLE_NAME, false);
+  if (Boolean(supplementManifestAsset) !== Boolean(supplementBundleAsset))
+    throw new Error("Release supplement assets are incomplete");
   if (
     !manifestAsset ||
     !bundleAsset ||
@@ -79,9 +125,8 @@ async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
     bundleAsset.size > PLAYBOOK_MAX_BUNDLE_BYTES
   )
     throw new Error("Release assets are not ready");
-  const manifest = parseManifest(
-    JSON.parse(new TextDecoder().decode(await reader.asset(manifestAsset.id, manifestAsset.size)))
-  );
+  const manifestBytes = await reader.asset(manifestAsset.id, manifestAsset.size);
+  const manifest = parseManifest(JSON.parse(new TextDecoder().decode(manifestBytes)), "public");
   const commit = await reader.commit(release.tag_name);
   if (
     manifest.source.releaseId !== String(release.id) ||
@@ -91,7 +136,127 @@ async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
     manifest.bundle.size !== bundleAsset.size
   )
     throw new Error("Release metadata does not match public manifest");
-  return { manifest, bundleAssetId: bundleAsset.id };
+  assertAssetDigest(manifestAsset, `sha256:${sha256(manifestBytes)}`, "Public manifest asset");
+  assertAssetDigest(bundleAsset, `sha256:${manifest.bundle.sha256}`, "Public bundle asset");
+  let supplement:
+    | {
+        manifest: PlaybookManifest;
+        bundleAssetId: number;
+        bundleAssetSize: number;
+        bundleAssetDigest?: string | null;
+        manifestAssetSha256: string;
+        manifestAssetId: number;
+        manifestAssetSize: number;
+        manifestAssetDigest?: string | null;
+      }
+    | undefined;
+  if (supplementManifestAsset && supplementBundleAsset) {
+    if (
+      supplementManifestAsset.size > PLAYBOOK_MAX_MANIFEST_BYTES ||
+      supplementBundleAsset.size > PLAYBOOK_MAX_BUNDLE_BYTES
+    )
+      throw new Error("Release supplement assets are not ready");
+    const supplementManifestBytes = await reader.asset(
+      supplementManifestAsset.id,
+      supplementManifestAsset.size
+    );
+    const supplementManifest = parseManifest(
+      JSON.parse(new TextDecoder().decode(supplementManifestBytes)),
+      "supplement"
+    );
+    if (
+      encodeJson(supplementManifest.source) !== encodeJson(manifest.source) ||
+      supplementManifest.bundle.size !== supplementBundleAsset.size
+    )
+      throw new Error("Release metadata does not match supplement manifest");
+    assertAssetDigest(
+      supplementManifestAsset,
+      `sha256:${sha256(supplementManifestBytes)}`,
+      "Supplement manifest asset"
+    );
+    assertAssetDigest(
+      supplementBundleAsset,
+      `sha256:${supplementManifest.bundle.sha256}`,
+      "Supplement bundle asset"
+    );
+    supplement = {
+      manifest: supplementManifest,
+      bundleAssetId: supplementBundleAsset.id,
+      bundleAssetSize: supplementBundleAsset.size,
+      bundleAssetDigest: supplementBundleAsset.digest,
+      manifestAssetId: supplementManifestAsset.id,
+      manifestAssetSize: supplementManifestAsset.size,
+      manifestAssetDigest: supplementManifestAsset.digest,
+      manifestAssetSha256: sha256(supplementManifestBytes),
+    };
+  }
+  return {
+    manifest,
+    bundleAssetId: bundleAsset.id,
+    bundleAssetSize: bundleAsset.size,
+    bundleAssetDigest: bundleAsset.digest,
+    manifestAssetId: manifestAsset.id,
+    manifestAssetSize: manifestAsset.size,
+    manifestAssetDigest: manifestAsset.digest,
+    manifestAssetSha256: sha256(manifestBytes),
+    supplement,
+  };
+}
+
+function assertOptionalAssetIdentity(
+  input: ReleaseTrigger,
+  resolved: Awaited<ReturnType<typeof readyManifest>>
+) {
+  const publicFields = [
+    input.manifest_sha256,
+    input.bundle_asset_id,
+    input.bundle_asset_digest,
+    input.bundle_asset_size,
+    input.manifest_asset_id,
+    input.manifest_asset_digest,
+    input.manifest_asset_size,
+  ];
+  if (publicFields.some(Boolean)) {
+    if (publicFields.some((value) => !value)) throw new Error("Incomplete public asset identity");
+    if (
+      input.manifest_sha256 !== resolved.manifestAssetSha256 ||
+      input.bundle_asset_id !== String(resolved.bundleAssetId) ||
+      input.bundle_asset_digest !== `sha256:${resolved.manifest.bundle.sha256}` ||
+      input.bundle_asset_size !== String(resolved.bundleAssetSize) ||
+      input.manifest_asset_id !== String(resolved.manifestAssetId) ||
+      input.manifest_asset_digest !== `sha256:${resolved.manifestAssetSha256}` ||
+      input.manifest_asset_size !== String(resolved.manifestAssetSize)
+    )
+      throw new Error("Public asset identity mismatch");
+  }
+  const supplementFields = [
+    input.supplement_bundle_sha256,
+    input.supplement_manifest_sha256,
+    input.supplement_bundle_asset_id,
+    input.supplement_bundle_asset_digest,
+    input.supplement_bundle_asset_size,
+    input.supplement_manifest_asset_id,
+    input.supplement_manifest_asset_digest,
+    input.supplement_manifest_asset_size,
+  ];
+  if (!supplementFields.some(Boolean)) {
+    if (resolved.supplement) throw new Error("Supplement asset identity is required");
+    return;
+  }
+  if (supplementFields.some((value) => !value) || !resolved.supplement)
+    throw new Error("Incomplete supplement asset identity");
+  const supplement = resolved.supplement;
+  if (
+    input.supplement_bundle_sha256 !== supplement.manifest.bundle.sha256 ||
+    input.supplement_manifest_sha256 !== supplement.manifestAssetSha256 ||
+    input.supplement_bundle_asset_id !== String(supplement.bundleAssetId) ||
+    input.supplement_bundle_asset_digest !== `sha256:${supplement.manifest.bundle.sha256}` ||
+    input.supplement_bundle_asset_size !== String(supplement.bundleAssetSize) ||
+    input.supplement_manifest_asset_id !== String(supplement.manifestAssetId) ||
+    input.supplement_manifest_asset_digest !== `sha256:${supplement.manifestAssetSha256}` ||
+    input.supplement_manifest_asset_size !== String(supplement.manifestAssetSize)
+  )
+    throw new Error("Supplement asset identity mismatch");
 }
 
 export async function resolveRelease(reader: ReleaseReader, input: ReleaseTrigger) {
@@ -113,6 +278,7 @@ export async function resolveRelease(reader: ReleaseReader, input: ReleaseTrigge
       manifest.bundle.sha256 !== input.bundle_sha256
     )
       throw new Error("Notification identity mismatch");
+    assertOptionalAssetIdentity(input, resolved);
     return resolved;
   }
   if (

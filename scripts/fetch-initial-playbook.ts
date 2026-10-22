@@ -1,7 +1,11 @@
 import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { readPublicPointer } from "../src/lib/playbook/artifacts";
-import { readPublicArchive } from "../src/lib/playbook/bundle";
+import {
+  parseSupplementFiles,
+  readPublicArchive,
+  readSupplementArchive,
+} from "../src/lib/playbook/bundle";
 import { githubReleaseReader } from "../src/lib/playbook/github";
 import { encodeJson } from "../src/lib/playbook/manifest";
 import { resolveRelease } from "../src/lib/playbook/release";
@@ -18,6 +22,23 @@ const directory = resolve(".tmp/playbook-initial");
 await mkdir(directory, { recursive: true });
 await writeFile(resolve(directory, "playbook-public-manifest.json"), encodeJson(selected.manifest));
 await writeFile(resolve(directory, "playbook-public.tar.gz"), archive);
+if (selected.supplement) {
+  const supplementArchive = await reader.asset(
+    selected.supplement.bundleAssetId,
+    selected.supplement.manifest.bundle.size
+  );
+  parseSupplementFiles(readSupplementArchive(supplementArchive, selected.supplement.manifest));
+  const supplementDirectory = resolve(directory, "supplement");
+  await mkdir(supplementDirectory, { recursive: true });
+  await writeFile(
+    resolve(supplementDirectory, "playbook-private-supplement-manifest.json"),
+    encodeJson(selected.supplement.manifest)
+  );
+  await writeFile(
+    resolve(supplementDirectory, "playbook-private-supplement.tar.gz"),
+    supplementArchive
+  );
+}
 if (process.env.GITHUB_ENV)
   await appendFile(process.env.GITHUB_ENV, `PLAYBOOK_BUNDLE_DIR=${directory}\n`);
 if (process.env.GITHUB_OUTPUT)

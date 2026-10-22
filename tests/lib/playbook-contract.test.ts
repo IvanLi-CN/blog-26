@@ -12,7 +12,12 @@ import {
   readPublicPointer,
   writePublicEdition,
 } from "../../src/lib/playbook/artifacts";
-import { createPlaybookEdition, readPublicArchive } from "../../src/lib/playbook/bundle";
+import {
+  createPlaybookEdition,
+  parseSupplementFiles,
+  readPublicArchive,
+  readSupplementArchive,
+} from "../../src/lib/playbook/bundle";
 import {
   PLAYBOOK_POLL_INTERVAL_MS,
   PlaybookStore,
@@ -42,8 +47,13 @@ import {
   queryPlaybookSearch,
   tokenizePlaybookText,
 } from "../../src/lib/playbook/search";
+import {
+  mergePlaybookSupplement,
+  searchPlaybookAdmin,
+  validatePlaybookSupplement,
+} from "../../src/lib/playbook/supplement";
 import { handlePlaybookRequest } from "../../src/server/public-api/playbook";
-import { makeArchive, makePublicBundle } from "./playbook-fixture";
+import { makeArchive, makePublicBundle, makeSupplementBundle } from "./playbook-fixture";
 
 const roots: string[] = [];
 async function temp() {
@@ -75,15 +85,15 @@ describe("playbook-public-contract", () => {
       })
     ).toThrow();
     const privateCatalog = structuredClone(publicFixtureCatalog);
-    privateCatalog.snapshot.projects[0].visibility = "private";
+    privateCatalog.snapshot.projects[0].catalog_visibility = "private" as never;
     expect(() => assertPublicCatalog(privateCatalog)).toThrow();
     const missingVisibility = structuredClone(publicFixtureCatalog);
-    Reflect.deleteProperty(missingVisibility.snapshot.projects[0], "visibility");
-    Reflect.deleteProperty(missingVisibility.project_details[0].item, "visibility");
+    Reflect.deleteProperty(missingVisibility.snapshot.projects[0], "catalog_visibility");
+    Reflect.deleteProperty(missingVisibility.project_details[0].item, "catalog_visibility");
     expect(() => assertPublicCatalog(missingVisibility)).toThrow();
     const unknownVisibility = structuredClone(publicFixtureCatalog);
-    Reflect.set(unknownVisibility.snapshot.projects[0], "visibility", "internal");
-    Reflect.set(unknownVisibility.project_details[0].item, "visibility", "internal");
+    Reflect.set(unknownVisibility.snapshot.projects[0], "catalog_visibility", "internal");
+    Reflect.set(unknownVisibility.project_details[0].item, "catalog_visibility", "internal");
     expect(() => assertPublicCatalog(unknownVisibility)).toThrow();
     const invalid = structuredClone(publicFixtureCatalog);
     invalid.topic_details[0].policy_skills[0].frontmatter.secret = "never publish";
@@ -219,6 +229,114 @@ describe("playbook-public-contract", () => {
       expect(() => assertPublicCatalog(catalog)).toThrow("resource path collision");
     }
   });
+  test("accepts independent visibility fields and validates the supplement overlay", () => {
+    const publicCatalog = structuredClone(publicFixtureCatalog);
+    publicCatalog.snapshot.projects[0].source = "private";
+    publicCatalog.snapshot.projects[0].source_visibility = "private";
+    publicCatalog.project_details[0].item = publicCatalog.snapshot.projects[0];
+    expect(assertPublicCatalog(publicCatalog).snapshot.projects[0].source).toBe("private");
+
+    const supplement = makeSupplementBundle();
+    const files = readSupplementArchive(supplement.archive, supplement.manifest);
+    const parsed = parseSupplementFiles(files);
+    expect(parsed.catalog.snapshot.projects[0].catalog_visibility).toBe("private");
+    expect(parsed.catalog.private_source_metadata[0].source).toContain("private-project");
+    expect(parsed.catalog.relation_edges).toHaveLength(1);
+    expect(() =>
+      parseSupplementFiles(
+        new Map([
+          [
+            "catalog.json",
+            Buffer.from(
+              encodeJson({
+                ...parsed.catalog,
+                relation_edges: parsed.catalog.relation_edges.concat(parsed.catalog.relation_edges),
+              })
+            ),
+          ],
+          ["search-documents.json", Buffer.from(encodeJson(parsed.search))],
+        ])
+      )
+    ).toThrow("Duplicate playbook identity");
+    const internal = makeSupplementBundle();
+    const internalCatalog = JSON.parse(internal.files[0].content);
+    internalCatalog.project_details[0].stack = { repoPath: "/private/checkout" };
+    expect(() =>
+      validatePlaybookSupplement({
+        manifest: internal.manifest,
+        catalog: internalCatalog,
+        search: JSON.parse(internal.files[1].content),
+      })
+    ).toThrow("Internal field");
+  });
+  test("merges supplement relations without changing public body bytes", () => {
+    const publicCatalog = structuredClone(publicFixtureCatalog);
+    publicCatalog.snapshot.topics[0].project_count = 0;
+    publicCatalog.snapshot.topics[0].related_projects = [];
+    publicCatalog.topic_details[0].item.project_count = 0;
+    publicCatalog.topic_details[0].item.related_projects = [];
+    const publicBundle = makePublicBundle("v3.0.0", "100", publicCatalog);
+    const baseSupplementBundle = makeSupplementBundle();
+    const supplementCatalog = JSON.parse(baseSupplementBundle.files[0].content);
+    supplementCatalog.relation_edges.push({
+      topic_slug: "delivery",
+      project_slug: "sample-project",
+      project_name: "Sample Project",
+    });
+    const supplementSearch = JSON.parse(baseSupplementBundle.files[1].content);
+    const supplementBundle = makeSupplementBundle(
+      "v3.0.0",
+      "100",
+      supplementCatalog,
+      supplementSearch
+    );
+    const supplement = validatePlaybookSupplement({
+      manifest: supplementBundle.manifest,
+      catalog: supplementCatalog,
+      search: supplementSearch,
+    });
+    const before = publicBundle.edition.catalog.topic_details[0].sections.map((section) => ({
+      id: section.id,
+      markdown: section.markdown,
+    }));
+    const merged = mergePlaybookSupplement(publicBundle.edition, supplement);
+    const topic = merged.catalog.topic_details.find((detail) => detail.item.slug === "delivery");
+    expect(
+      topic?.sections.map((section) => ({ id: section.id, markdown: section.markdown }))
+    ).toEqual(before);
+    expect(topic?.item.related_projects).toContainEqual({
+      slug: "sample-project",
+      name: "Sample Project",
+    });
+    expect(merged.catalog.snapshot.projects.map((project) => project.slug)).toContain(
+      "private-project"
+    );
+    expect(merged.catalog.private_source_metadata[0]?.source).toBe(
+      "https://github.com/example/private-project"
+    );
+    expect(searchPlaybookAdmin(merged, "私有主题").map((result) => result.document.id)).toContain(
+      "page:topic:private-topic"
+    );
+  });
+  test("rejects supplement identity and relation boundary mismatches", () => {
+    const publicBundle = makePublicBundle();
+    const supplementBundle = makeSupplementBundle("v3.1.0", "101");
+    const supplement = validatePlaybookSupplement({
+      manifest: supplementBundle.manifest,
+      catalog: JSON.parse(supplementBundle.files[0].content),
+      search: JSON.parse(supplementBundle.files[1].content),
+    });
+    expect(() => mergePlaybookSupplement(publicBundle.edition, supplement)).toThrow(
+      "source identity"
+    );
+    const invalid = validatePlaybookSupplement({
+      manifest: makeSupplementBundle().manifest,
+      catalog: JSON.parse(makeSupplementBundle().files[0].content),
+      search: JSON.parse(makeSupplementBundle().files[1].content),
+    });
+    invalid.catalog.relation_edges[0].project_slug = "missing-project";
+    expect(() => mergePlaybookSupplement(publicBundle.edition, invalid)).toThrow("unknown object");
+  });
   test("renders package Mermaid as inert code in Topic and Policy SSR", () => {
     const catalog = structuredClone(publicFixtureCatalog);
     const markdown = "\n```mermaid\ngraph TD; A-->B;\nclick A call packageCallback()\n```";
@@ -349,22 +467,60 @@ describe("playbook-public-contract", () => {
   });
 });
 
-function sourceReader(bundles: ReturnType<typeof makePublicBundle>[]): ReleaseReader {
-  const releases: SourceRelease[] = bundles.map((bundle, i) => ({
-    id: Number(bundle.manifest.source.releaseId),
-    tag_name: bundle.manifest.source.tag,
-    draft: false,
-    prerelease: false,
-    published_at: bundle.manifest.source.publishedAt,
-    assets: [
-      {
-        id: i * 2 + 1,
-        name: "playbook-public-manifest.json",
-        size: encodeJson(bundle.manifest).length,
-      },
-      { id: i * 2 + 2, name: "playbook-public.tar.gz", size: bundle.archive.length },
-    ],
-  }));
+function sourceReader(
+  bundles: ReturnType<typeof makePublicBundle>[],
+  supplements: (ReturnType<typeof makeSupplementBundle> | undefined)[] = []
+): ReleaseReader {
+  const releases: SourceRelease[] = bundles.map((bundle, i) => {
+    const supplement = supplements[i];
+    return {
+      id: Number(bundle.manifest.source.releaseId),
+      tag_name: bundle.manifest.source.tag,
+      draft: false,
+      prerelease: false,
+      published_at: bundle.manifest.source.publishedAt,
+      assets: [
+        {
+          id: i * 4 + 1,
+          name: "playbook-public-manifest.json",
+          size: Buffer.byteLength(encodeJson(bundle.manifest)),
+          digest: `sha256:${sha256(encodeJson(bundle.manifest))}`,
+        },
+        {
+          id: i * 4 + 2,
+          name: "playbook-public.tar.gz",
+          size: bundle.archive.length,
+          digest: `sha256:${bundle.manifest.bundle.sha256}`,
+        },
+        ...(supplement
+          ? [
+              {
+                id: i * 4 + 3,
+                name: "playbook-private-supplement-manifest.json",
+                size: Buffer.byteLength(encodeJson(supplement.manifest)),
+                digest: `sha256:${sha256(encodeJson(supplement.manifest))}`,
+              },
+              {
+                id: i * 4 + 4,
+                name: "playbook-private-supplement.tar.gz",
+                size: supplement.archive.length,
+                digest: `sha256:${supplement.manifest.bundle.sha256}`,
+              },
+            ]
+          : []),
+      ],
+    };
+  });
+  const bytes = new Map<number, Uint8Array>();
+  bundles.forEach((bundle, i) => {
+    bytes.set(i * 4 + 1, Buffer.from(encodeJson(bundle.manifest)));
+    bytes.set(i * 4 + 2, bundle.archive);
+    const supplement = supplements[i];
+    if (supplement) {
+      bytes.set(i * 4 + 3, Buffer.from(encodeJson(supplement.manifest)));
+      bytes.set(i * 4 + 4, supplement.archive);
+    }
+  });
   return {
     list: async () => releases,
     release: async (id) => {
@@ -373,10 +529,11 @@ function sourceReader(bundles: ReturnType<typeof makePublicBundle>[]): ReleaseRe
       return release;
     },
     commit: async () => "a".repeat(40),
-    asset: async (id) =>
-      id % 2
-        ? Buffer.from(encodeJson(bundles[(id - 1) / 2].manifest))
-        : bundles[id / 2 - 1].archive,
+    asset: async (id) => {
+      const asset = bytes.get(id);
+      if (!asset) throw new Error(`Unknown fixture asset ${id}`);
+      return asset;
+    },
   };
 }
 describe("playbook-dispatch-and-reconcile", () => {
@@ -453,6 +610,44 @@ describe("playbook-dispatch-and-reconcile", () => {
         resolveRelease({ ...reader, release: async () => ({ ...release, [state]: true }) }, input)
       ).rejects.toThrow("not stable");
     }
+  });
+  test("requires and verifies both package identities for a notified dual release", async () => {
+    const publicBundle = makePublicBundle();
+    const supplement = makeSupplementBundle();
+    const reader = sourceReader([publicBundle], [supplement]);
+    const publicManifestBytes = encodeJson(publicBundle.manifest);
+    const supplementManifestBytes = encodeJson(supplement.manifest);
+    const input = {
+      mode: "release" as const,
+      source_repository: publicBundle.manifest.source.repository,
+      source_release_id: publicBundle.manifest.source.releaseId,
+      source_tag: publicBundle.manifest.source.tag,
+      source_sha: publicBundle.manifest.source.commit,
+      bundle_sha256: publicBundle.manifest.bundle.sha256,
+      manifest_sha256: sha256(publicManifestBytes),
+      bundle_asset_id: "2",
+      bundle_asset_digest: `sha256:${publicBundle.manifest.bundle.sha256}`,
+      bundle_asset_size: String(publicBundle.archive.length),
+      manifest_asset_id: "1",
+      manifest_asset_digest: `sha256:${sha256(publicManifestBytes)}`,
+      manifest_asset_size: String(Buffer.byteLength(publicManifestBytes)),
+      supplement_bundle_sha256: supplement.manifest.bundle.sha256,
+      supplement_manifest_sha256: sha256(supplementManifestBytes),
+      supplement_bundle_asset_id: "4",
+      supplement_bundle_asset_digest: `sha256:${supplement.manifest.bundle.sha256}`,
+      supplement_bundle_asset_size: String(supplement.archive.length),
+      supplement_manifest_asset_id: "3",
+      supplement_manifest_asset_digest: `sha256:${sha256(supplementManifestBytes)}`,
+      supplement_manifest_asset_size: String(Buffer.byteLength(supplementManifestBytes)),
+    };
+    const selected = await resolveRelease(reader, input);
+    expect(selected.supplement?.manifest.bundle.name).toBe("playbook-private-supplement.tar.gz");
+    await expect(
+      resolveRelease(reader, { ...input, supplement_bundle_sha256: "0".repeat(64) })
+    ).rejects.toThrow("Supplement asset identity mismatch");
+    await expect(
+      resolveRelease(reader, { ...input, supplement_manifest_asset_id: undefined })
+    ).rejects.toThrow("Incomplete supplement asset identity");
   });
   test("skips duplicates and late releases, rejects republished content", () => {
     const current = makePublicBundle();
@@ -866,6 +1061,59 @@ describe("playbook-cache-http-ssr", () => {
     );
     expect(resource.headers.get("content-type")).toContain("text/plain");
     expect(await resource.text()).toContain("echo verify");
+  });
+  test("loads a source-bound private supplement only for the admin read model", async () => {
+    const root = await temp();
+    const publicBundle = makePublicBundle();
+    const supplementBundle = makeSupplementBundle();
+    const publicSeed = join(root, "playbook-edition.json");
+    const supplementSeed = join(root, "playbook-private-supplement.json");
+    await writeFile(publicSeed, encodeJson(publicBundle.edition));
+    await writeFile(
+      supplementSeed,
+      encodeJson({
+        manifest: supplementBundle.manifest,
+        catalog: JSON.parse(supplementBundle.files[0].content),
+        search: JSON.parse(supplementBundle.files[1].content),
+      })
+    );
+    const store = new PlaybookStore(root);
+    await store.load(publicSeed, supplementSeed);
+    expect(store.current?.catalog.snapshot.projects).toHaveLength(1);
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+    expect(store.adminEdition?.supplement?.manifest.bundle.name).toBe(
+      "playbook-private-supplement.tar.gz"
+    );
+    const mismatched = makeSupplementBundle("v3.1.0", "101");
+    await writeFile(
+      supplementSeed,
+      encodeJson({
+        manifest: mismatched.manifest,
+        catalog: JSON.parse(mismatched.files[0].content),
+        search: JSON.parse(mismatched.files[1].content),
+      })
+    );
+    const isolated = new PlaybookStore(await temp());
+    await writeFile(join(isolated.root, "seed.json"), encodeJson(publicBundle.edition));
+    await isolated.load(join(isolated.root, "seed.json"), supplementSeed);
+    expect(isolated.adminEdition?.supplement).toBeUndefined();
+    expect(isolated.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
+    const malformed = makeSupplementBundle();
+    const malformedSearch = JSON.parse(malformed.files[1].content);
+    malformedSearch.documents[0].route = "/topics/missing-topic";
+    await writeFile(
+      supplementSeed,
+      encodeJson({
+        manifest: malformed.manifest,
+        catalog: JSON.parse(malformed.files[0].content),
+        search: malformedSearch,
+      })
+    );
+    const malformedStore = new PlaybookStore(await temp());
+    await writeFile(join(malformedStore.root, "seed.json"), encodeJson(publicBundle.edition));
+    await malformedStore.load(join(malformedStore.root, "seed.json"), supplementSeed);
+    expect(malformedStore.adminEdition?.supplement).toBeUndefined();
+    expect(malformedStore.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
   });
   test("sync is single-flight, adopts whole editions and keeps old data on incompatible downloads", async () => {
     const root = await temp();
