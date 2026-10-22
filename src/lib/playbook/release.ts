@@ -106,13 +106,9 @@ export function adoptionDecision(candidate: PlaybookManifest, current?: Playbook
 
 export function shouldSyncSupplement(
   current: PlaybookEditionIdentity | undefined,
-  candidate: PlaybookManifest,
-  supplementStatus: PlaybookSupplementStatus = "valid"
+  candidate: PlaybookManifest
 ) {
-  return (
-    supplementStatus !== "invalid" &&
-    Boolean(current && encodeJson(current.source) === encodeJson(candidate.source))
-  );
+  return Boolean(current && encodeJson(current.source) === encodeJson(candidate.source));
 }
 
 function uniqueAsset(

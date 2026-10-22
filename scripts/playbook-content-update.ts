@@ -100,7 +100,13 @@ if (selected.supplement) {
 
 async function syncSupplementToConsole(source: PlaybookSupplementEnvelope["manifest"]["source"]) {
   const rollbackField = rollback ? { rollback: true } : {};
-  let payload: Record<string, unknown> = { source, supplement: null, ...rollbackField };
+  const invalidField = supplementStatus === "invalid" ? { supplementStatus: "invalid" } : {};
+  let payload: Record<string, unknown> = {
+    source,
+    supplement: null,
+    ...invalidField,
+    ...rollbackField,
+  };
   if (supplementEnvelope) {
     if (!supplementFileBytes)
       throw new Error("Playbook supplement data is unavailable for console sync");
@@ -333,9 +339,16 @@ if (supplementStatus === "valid" && supplementRoot && rendererRoot) {
     );
   }
 }
-const current = await readPublicPointer(manifestUrl);
+let current: Awaited<ReturnType<typeof readPublicPointer>> | undefined;
+try {
+  current = await readPublicPointer(manifestUrl);
+} catch (error) {
+  console.warn(
+    `Playbook supplement sync deferred; public edition remains deployed: ${error instanceof Error ? error.message : String(error)}`
+  );
+}
 let supplementSynced = false;
-if (shouldSyncSupplement(current, selected.manifest, supplementStatus)) {
+if (current && shouldSyncSupplement(current, selected.manifest)) {
   try {
     await syncSupplementToConsole(selected.manifest.source);
     supplementSynced = true;
@@ -344,6 +357,10 @@ if (shouldSyncSupplement(current, selected.manifest, supplementStatus)) {
       `Playbook supplement sync deferred; public edition remains deployed: ${error instanceof Error ? error.message : String(error)}`
     );
   }
+} else if (!current) {
+  console.warn(
+    "Playbook supplement sync deferred; public pointer is unavailable while public edition remains deployed"
+  );
 }
 const summary = `Playbook result: ${result}\n\n${encodeJson({ adopted: current, upstreamRunId: input.source_run_id || null, supplement: supplementSynced && supplementRoot ? (selected.supplement?.manifest ?? null) : null, supplementSynced, downstreamRun: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` })}`;
 console.log(summary);

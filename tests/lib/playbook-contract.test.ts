@@ -968,8 +968,6 @@ describe("playbook-dispatch-and-reconcile", () => {
     const older = makePublicBundle("v2.9.0", "99");
 
     expect(shouldSyncSupplement(current.edition.edition, current.manifest)).toBe(true);
-    expect(shouldSyncSupplement(current.edition.edition, current.manifest, "absent")).toBe(true);
-    expect(shouldSyncSupplement(current.edition.edition, current.manifest, "invalid")).toBe(false);
     expect(shouldSyncSupplement(current.edition.edition, older.manifest)).toBe(false);
   });
 });
@@ -1607,8 +1605,17 @@ describe("playbook-cache-http-ssr", () => {
     await store.adopt(older.edition);
     expect(store.current?.edition.source.tag).toBe("v2.9.0");
     expect(store.adminEdition?.supplement).toBeUndefined();
-    await store.updateSupplement(older.edition.edition.source);
-    expect(store.adminEdition?.supplement).toBeUndefined();
+    const retryBundle = makeSupplementBundle("v2.9.0", "99");
+    const retrySupplement = validatePlaybookSupplement({
+      manifest: retryBundle.manifest,
+      catalog: JSON.parse(retryBundle.files[0].content),
+      search: JSON.parse(retryBundle.files[1].content),
+    });
+    const restored = new PlaybookStore(root);
+    await restored.load(join(root, "missing-seed.json"));
+    expect(restored.adminEdition?.supplement).toBeUndefined();
+    await restored.updateSupplement(older.edition.edition.source, retrySupplement);
+    expect(restored.adminEdition?.supplement).toBeDefined();
   });
   test("does not clear an accepted overlay on a same-source absent retry", async () => {
     const root = await temp();
@@ -1725,10 +1732,15 @@ describe("playbook-cache-http-ssr", () => {
     expect(store.current?.edition.source.tag).toBe("v3.1.0");
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
     expect(store.adminEdition?.supplement).toBeUndefined();
-    await store.updateSupplement(conflictingBundle.manifest.source);
-    expect(store.adminEdition?.supplement).toBeUndefined();
-    await store.adopt(next.edition);
-    expect(store.current?.edition.source.tag).toBe("v3.1.0");
+    const retryBundle = makeSupplementBundle("v3.1.0", "101");
+    const retrySupplement = validatePlaybookSupplement({
+      manifest: retryBundle.manifest,
+      catalog: JSON.parse(retryBundle.files[0].content),
+      search: JSON.parse(retryBundle.files[1].content),
+    });
+    await store.updateSupplement(retryBundle.manifest.source, retrySupplement);
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+    expect(store.adminEdition?.supplement).toBeDefined();
   });
   test("sync is single-flight, adopts whole editions and keeps old data on incompatible downloads", async () => {
     const root = await temp();

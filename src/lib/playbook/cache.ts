@@ -42,10 +42,12 @@ export interface PlaybookCacheState {
 interface PlaybookSupplementState {
   source: PlaybookSourceIdentity;
   supplement: PlaybookSupplementEnvelope | null;
+  retryable?: boolean;
   rawFiles?: { catalog: string; search: string };
 }
 interface PlaybookSupplementUpdateOptions {
   allowRollback?: boolean;
+  allowSameSourceRetry?: boolean;
 }
 export type PlaybookFetcher = (url: string, init?: RequestInit) => Promise<Response>;
 export const PLAYBOOK_POLL_INTERVAL_MS = 300_000;
@@ -163,6 +165,7 @@ export class PlaybookStore {
   private state: PlaybookCacheState = {};
   private supplement?: PlaybookSupplementEnvelope;
   private supplementSource?: PlaybookSourceIdentity;
+  private supplementRetryable = false;
   private loaded?: Promise<void>;
   private flight?: {
     promise: Promise<void>;
@@ -266,6 +269,7 @@ export class PlaybookStore {
     }
     this.supplement = undefined;
     this.supplementSource = undefined;
+    this.supplementRetryable = false;
     let persistedSupplementState: string | undefined;
     try {
       persistedSupplementState = await readFile(join(this.root, "supplement-state.json"), "utf8");
@@ -276,11 +280,15 @@ export class PlaybookStore {
       try {
         const raw = parseJson<Record<string, unknown>>(persistedSupplementState);
         const source = sourceSchema.parse(raw.source);
+        if (raw.retryable !== undefined && typeof raw.retryable !== "boolean")
+          throw new Error("Invalid Playbook supplement retry state");
+        const retryable = raw.retryable === true;
         const rawFiles = raw.supplement === null ? undefined : decodePlaybookRawFiles(raw.rawFiles);
         const supplement =
           raw.supplement === null
             ? undefined
             : validatePlaybookSupplement(raw.supplement, rawFiles);
+        if (supplement && retryable) throw new Error("Invalid Playbook supplement retry state");
         if (supplement && !samePlaybookSource(source, supplement.manifest.source))
           throw new Error("Playbook supplement state source identity mismatch");
         if (
@@ -290,11 +298,13 @@ export class PlaybookStore {
         )
           mergePlaybookSupplement(this.state.current, supplement);
         this.supplementSource = source;
+        this.supplementRetryable = retryable && !supplement;
         if (supplement) this.supplement = freezeSupplement(supplement);
       } catch {
         // A malformed receiver state must never expose an overlay.
         this.supplement = undefined;
         this.supplementSource = undefined;
+        this.supplementRetryable = false;
       }
     } else if (this.state.current) {
       try {
@@ -323,6 +333,33 @@ export class PlaybookStore {
     return this.enqueueStateMutation(() =>
       this.updateSupplementLocked(source, supplement, rawFiles, options)
     );
+  }
+
+  private async persistSupplementState(
+    source: PlaybookSourceIdentity,
+    supplement: PlaybookSupplementEnvelope | null,
+    rawFiles?: { catalog: string; search: string },
+    retryable = false
+  ) {
+    const next: PlaybookSupplementState = {
+      source,
+      supplement,
+      ...(retryable ? { retryable: true } : {}),
+      ...(rawFiles ? { rawFiles } : {}),
+    };
+    await mkdir(this.root, { recursive: true });
+    const staging = join(this.root, `.supplement-${randomUUID()}.tmp`);
+    await writeFile(staging, encodeJson(next), { mode: 0o600 });
+    try {
+      renameSync(staging, join(this.root, "supplement-state.json"));
+    } catch (error) {
+      await unlink(staging).catch(() => undefined);
+      throw error;
+    }
+    this.supplementSource = source;
+    this.supplement = supplement ? freezeSupplement(supplement) : undefined;
+    this.supplementRetryable = retryable && !supplement;
+    return { source, supplementAvailable: Boolean(supplement) };
   }
 
   private async updateSupplementLocked(
@@ -387,7 +424,8 @@ export class PlaybookStore {
       validated &&
       this.supplementSource &&
       samePlaybookSource(this.supplementSource, parsedSource) &&
-      !this.supplement
+      !this.supplement &&
+      !this.supplementRetryable
     )
       throw new Error("Playbook supplement source identity conflict");
     if (
@@ -398,6 +436,7 @@ export class PlaybookStore {
       mergePlaybookSupplement(this.state.current, validated);
     if (
       !validated &&
+      options.allowSameSourceRetry !== true &&
       this.supplement &&
       samePlaybookSource(this.supplement.manifest.source, parsedSource) &&
       this.state.current &&
@@ -410,23 +449,12 @@ export class PlaybookStore {
         // A conflicting overlay must be clearable for the public edition to recover.
       }
     }
-    const next: PlaybookSupplementState = {
-      source: parsedSource,
-      supplement: validated ?? null,
-      ...(persistedRawFiles ? { rawFiles: persistedRawFiles } : {}),
-    };
-    await mkdir(this.root, { recursive: true });
-    const staging = join(this.root, `.supplement-${randomUUID()}.tmp`);
-    await writeFile(staging, encodeJson(next), { mode: 0o600 });
-    try {
-      renameSync(staging, join(this.root, "supplement-state.json"));
-    } catch (error) {
-      await unlink(staging).catch(() => undefined);
-      throw error;
-    }
-    this.supplementSource = parsedSource;
-    this.supplement = validated ? freezeSupplement(validated) : undefined;
-    return { source: parsedSource, supplementAvailable: Boolean(validated) };
+    return this.persistSupplementState(
+      parsedSource,
+      validated ?? null,
+      persistedRawFiles,
+      !validated && options.allowSameSourceRetry === true
+    );
   }
 
   async adopt(
@@ -449,6 +477,7 @@ export class PlaybookStore {
     commitFence?: (commit: () => void) => void
   ) {
     const edition = freezeEdition(validatePlaybookEdition(value));
+    let clearConflictingSupplement = false;
     if (
       this.supplement &&
       samePlaybookSource(edition.edition.source, this.supplement.manifest.source)
@@ -457,6 +486,7 @@ export class PlaybookStore {
         mergePlaybookSupplement(edition, this.supplement);
       } catch {
         // An optional admin overlay must not block public edition adoption.
+        clearConflictingSupplement = true;
       }
     }
     const next = {
@@ -495,6 +525,8 @@ export class PlaybookStore {
       await unlink(staging).catch(() => undefined);
       throw error;
     }
+    if (clearConflictingSupplement)
+      await this.persistSupplementState(edition.edition.source, null, undefined, true);
   }
 
   private enqueueStateMutation<T>(operation: () => Promise<T>) {

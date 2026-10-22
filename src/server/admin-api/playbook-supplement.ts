@@ -18,6 +18,7 @@ const inputSchema = z
     source: sourceSchema,
     supplement: z.unknown().nullable(),
     supplementFiles: supplementFilesSchema.optional(),
+    supplementStatus: z.literal("invalid").optional(),
     rollback: z.boolean().optional(),
   })
   .strict();
@@ -111,9 +112,12 @@ export async function handlePlaybookSupplementSyncRequest(
       input.supplement === null
         ? undefined
         : validatePlaybookSupplement(input.supplement, rawFiles);
+    if (input.supplement !== null && input.supplementStatus !== undefined)
+      throw new Error("Supplement status is only valid when supplement is absent");
     await store.load();
     const result = await store.updateSupplement(input.source, supplement, rawFiles, {
       allowRollback: input.rollback === true,
+      allowSameSourceRetry: input.supplementStatus === "invalid",
     });
     const current = store.current?.edition.source;
     return json(
