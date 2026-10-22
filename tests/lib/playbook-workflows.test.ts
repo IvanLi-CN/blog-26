@@ -89,6 +89,13 @@ describe("playbook deployment boundaries", () => {
     expect(updateScript).toContain(
       "shouldSyncSupplement(current, selected.manifest, supplementStatus)"
     );
+    expect(updateScript).toContain(
+      "Playbook supplement sync deferred; public edition remains deployed"
+    );
+    expect(updateScript).toContain(
+      "Ignoring optional Playbook supplement after merge failure; public edition remains deployed"
+    );
+    expect(updateScript).toContain("supplementSynced = true");
 
     for (const job of [update.jobs.production, rollback.jobs.rollback]) {
       const checkout = job.steps?.find((step) => step.uses === "actions/checkout@v7");

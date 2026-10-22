@@ -318,9 +318,33 @@ try {
     );
   throw error;
 }
+if (supplementStatus === "valid" && supplementRoot && rendererRoot) {
+  const preparedSupplementPath = resolve(
+    rendererRoot,
+    "site/generated/playbook-private-supplement.json"
+  );
+  if (!(await Bun.file(preparedSupplementPath).exists())) {
+    supplementStatus = "invalid";
+    supplementRoot = undefined;
+    supplementEnvelope = null;
+    supplementFileBytes = undefined;
+    console.warn(
+      "Ignoring optional Playbook supplement after merge failure; public edition remains deployed"
+    );
+  }
+}
 const current = await readPublicPointer(manifestUrl);
-const supplementSynced = shouldSyncSupplement(current, selected.manifest, supplementStatus);
-if (supplementSynced) await syncSupplementToConsole(selected.manifest.source);
+let supplementSynced = false;
+if (shouldSyncSupplement(current, selected.manifest, supplementStatus)) {
+  try {
+    await syncSupplementToConsole(selected.manifest.source);
+    supplementSynced = true;
+  } catch (error) {
+    console.warn(
+      `Playbook supplement sync deferred; public edition remains deployed: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
 const summary = `Playbook result: ${result}\n\n${encodeJson({ adopted: current, upstreamRunId: input.source_run_id || null, supplement: supplementSynced && supplementRoot ? (selected.supplement?.manifest ?? null) : null, supplementSynced, downstreamRun: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` })}`;
 console.log(summary);
 if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, summary);

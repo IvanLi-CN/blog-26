@@ -8,13 +8,13 @@
     ".github/workflows/playbook-content-update.yml": "56ba8614c27b065781f40898b541612d934c6521",
     "docs/runbooks/style-playbook-publishing.md": "648ccdcb0a0ef3a4d38367a8f540ead31c592483",
     "docs/specs/style-playbook-integration/HISTORY.md": "c4ea01aba979fd59e193c15a5ea1858904024af5",
-    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "e1cd70e339021901deea37640849a1c409c6d7dd",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "86d176c2f3c07211e8d5ec28654a92df283415bc",
     "docs/specs/style-playbook-integration/SPEC.md": "1526c9cc6f512d7892789646e99272ebf178e883",
     "docs/specs/style-playbook-integration/contracts/public-package.md": "faa9766419f451ea74e4af7fbe254910399dcd29",
     "docs/specs/style-playbook-integration/contracts/release-trigger.md": "b62448eb556fe08fb7c2e868a995f0bccc48e619",
     "scripts/fetch-initial-playbook.ts": "ae1361f494a07f5e15c85c18fd081fe54454b989",
     "scripts/prepare-console-playbook-seed.ts": "d126f6fe798e17cb479c7f85056a310290e6f0b5",
-    "scripts/playbook-content-update.ts": "e17af78f15c1f9686757431d928dd1485f734c59",
+    "scripts/playbook-content-update.ts": "fc3b35c324ce1d63c85de6bbd90701949394d0e",
     "scripts/prepare-backend-dist.sh": "f2a8b868dbeefb9b28cfdefcfff3a74f9ecdc9b6",
     "scripts/prepare-playbook-edition.ts": "c4d6540f4991ae9f62340b464a2ab0ee69052e1f",
     "src/lib/admin-api-client.ts": "926e9bbc0c1d0c99b3b95d219eb88f6cbb9734f5",
@@ -38,7 +38,7 @@
     "tests/lib/manual-release-source.test.ts": "015b936082fdaf6c4435d47b49e6649a2aa9d8ea",
     "tests/lib/playbook-contract.test.ts": "a75863e2bcfb5ddeb363d09826c11517abe5e704",
     "tests/lib/playbook-fixture.ts": "182603e4da37bff59c1ee55093e1fbefb949bc45",
-    "tests/lib/playbook-workflows.test.ts": "37d68dedd89435b095c4074d2827add50bbd90a2",
+    "tests/lib/playbook-workflows.test.ts": "40223b50db01c5de67794c7141014597092c1193",
     "tests/fixtures/playbook/rust-supplement-catalog.fixture": "5eafd8f810a3765097aacee8d962b31912e93ef0",
     "tests/fixtures/playbook/rust-supplement-search.fixture": "9d20810bc370fbeeaa0fe459bf882c3943cbf85a"
   },
@@ -62,7 +62,7 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The implementation keeps the public edition unchanged at its boundary while adding a source-bound protected supplement receiver, authenticated administrator browsing, and persisted overlay staging; invalid supplement data and malformed UTF-8 are isolated from public adoption, optional supplement identities and merge conflicts cannot block the public edition, initial public acquisition treats the supplement as an optional overlay and clears stale retry files, rollback retries are idempotent only for the exact published identity, active rollback windows reject newer late supplements, and production frozen inputs and backend-dist exclude the supplement from public product artifacts.",
+      "reasoning": "The implementation keeps the public edition unchanged at its boundary while adding a source-bound protected supplement receiver, authenticated administrator browsing, and persisted overlay staging; invalid supplement data and malformed UTF-8 are isolated from public adoption, optional supplement identities and merge conflicts cannot block the public edition, post-deployment receiver failures are deferred for later reconciliation, initial public acquisition treats the supplement as an optional overlay and clears stale retry files, rollback retries are idempotent only for the exact published identity, active rollback windows reject newer late supplements, and production frozen inputs and backend-dist exclude the supplement from public product artifacts.",
       "assessed_at": "2026-10-23T04:52:00+08:00",
       "evidence": [
         {
@@ -108,8 +108,8 @@
         },
         {
           "path": "tests/lib/playbook-workflows.test.ts",
-          "blob": "37d68dedd89435b095c4074d2827add50bbd90a2",
-          "command": "Workflow boundary tests reject non-HTTPS sync endpoints, keep invalid optional supplements and merge conflicts from blocking the public seed, clear stale supplement retries, and assert that supplements stay out of public frozen and backend artifacts"
+          "blob": "40223b50db01c5de67794c7141014597092c1193",
+          "command": "Workflow boundary tests reject non-HTTPS sync endpoints, keep invalid optional supplements, merge conflicts and receiver failures from blocking the public deployment, clear stale supplement retries, and assert that supplements stay out of public frozen and backend artifacts"
         },
         {
           "path": "src/lib/playbook/release.ts",
