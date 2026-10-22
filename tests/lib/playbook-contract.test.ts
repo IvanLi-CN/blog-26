@@ -1489,6 +1489,10 @@ describe("playbook-cache-http-ssr", () => {
 
     await store.adopt(current.edition);
     await store.updateSupplement(supplementBundle.manifest.source, supplement);
+    await store.updateSupplement(next.edition.edition.source);
+    expect(
+      JSON.parse(await readFile(join(root, "supplement-state.json"), "utf8")).supplement
+    ).toBeDefined();
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
 
     await store.adopt(next.edition);
@@ -1671,10 +1675,20 @@ describe("playbook-cache-http-ssr", () => {
     ).rejects.toThrow();
     expect(store.adminEdition?.supplement).toBeUndefined();
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
+    expect(
+      JSON.parse(await readFile(join(root, "state.json"), "utf8")).supplementInvalidation
+    ).toEqual(current.edition.edition.source);
+
+    const restored = new PlaybookStore(root);
+    await restored.load(join(root, "missing-seed.json"));
+    expect(restored.adminEdition?.supplement).toBeUndefined();
 
     await rm(supplementStatePath, { recursive: true });
     await store.updateSupplement(current.edition.edition.source, supplement);
     expect(store.adminEdition?.supplement).toBeDefined();
+    expect(
+      JSON.parse(await readFile(join(root, "state.json"), "utf8")).supplementInvalidation
+    ).toBeUndefined();
   });
   test("does not replace a same-source empty overlay with a supplement", async () => {
     const root = await temp();

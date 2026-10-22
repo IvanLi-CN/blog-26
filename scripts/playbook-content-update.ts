@@ -19,6 +19,10 @@ import {
   resolveRelease,
   shouldSyncSupplement,
 } from "../src/lib/playbook/release";
+import {
+  assertPlaybookRendererCapabilities,
+  PLAYBOOK_RENDERER_CAPABILITY_PATH,
+} from "../src/lib/playbook/renderer-capability";
 import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
 import { parseSupplementSyncEndpoint } from "../src/lib/playbook/supplement";
 import type { PlaybookSupplementEnvelope } from "../src/lib/playbook/types";
@@ -175,6 +179,18 @@ async function output(args: string[], cwd = process.cwd()) {
   if (status !== 0) throw new Error(`Command failed: ${args[0]}`);
   return text;
 }
+async function assertRendererCompatibility(rendererRoot: string) {
+  const capabilityPath = resolve(rendererRoot, PLAYBOOK_RENDERER_CAPABILITY_PATH);
+  try {
+    assertPlaybookRendererCapabilities(JSON.parse(await readFile(capabilityPath, "utf8")));
+  } catch (error) {
+    throw new Error(
+      `Deployed Playbook renderer is incompatible with the current public package: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
+}
 if (process.env.GITHUB_STEP_SUMMARY)
   await appendFile(
     process.env.GITHUB_STEP_SUMMARY,
@@ -190,6 +206,7 @@ try {
         rendererRoot = resolve(taskRoot, `renderer-${++buildNumber}`);
         await run(["git", "fetch", "origin", renderer]);
         await run(["git", "worktree", "add", "--detach", rendererRoot, renderer]);
+        await assertRendererCompatibility(rendererRoot);
         try {
           productVersion = versionSchema.parse(
             (await readFile(resolve(rendererRoot, "VERSION"), "utf8")).trim()

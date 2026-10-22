@@ -38,6 +38,7 @@ export interface PlaybookCacheState {
   current?: PlaybookEdition;
   previous?: PlaybookEdition;
   adoption?: { taskId: string; at: number; edition?: string };
+  supplementInvalidation?: PlaybookSourceIdentity;
 }
 interface PlaybookSupplementState {
   source: PlaybookSourceIdentity;
@@ -245,6 +246,10 @@ export class PlaybookStore {
             edition: typeof a.edition === "string" ? a.edition : undefined,
           };
       }
+      if (raw.supplementInvalidation !== undefined) {
+        const invalidation = sourceSchema.safeParse(raw.supplementInvalidation);
+        if (invalidation.success) this.state.supplementInvalidation = invalidation.data;
+      }
       for (const key of ["current", "previous"] as const) {
         try {
           this.state[key] = freezeEdition(validatePlaybookEdition(raw[key]));
@@ -291,22 +296,33 @@ export class PlaybookStore {
         if (supplement && retryable) throw new Error("Invalid Playbook supplement retry state");
         if (supplement && !samePlaybookSource(source, supplement.manifest.source))
           throw new Error("Playbook supplement state source identity mismatch");
+        const invalidated = Boolean(
+          this.state.supplementInvalidation &&
+            samePlaybookSource(this.state.supplementInvalidation, source)
+        );
         if (
           supplement &&
+          !invalidated &&
           this.state.current &&
           samePlaybookSource(this.state.current.edition.source, source)
         )
           mergePlaybookSupplement(this.state.current, supplement);
         this.supplementSource = source;
-        this.supplementRetryable = retryable && !supplement;
-        if (supplement) this.supplement = freezeSupplement(supplement);
+        this.supplementRetryable = (retryable && !supplement) || invalidated;
+        if (supplement && !invalidated) this.supplement = freezeSupplement(supplement);
       } catch {
         // A malformed receiver state must never expose an overlay.
         this.supplement = undefined;
         this.supplementSource = undefined;
         this.supplementRetryable = false;
       }
-    } else if (this.state.current) {
+    } else if (
+      this.state.current &&
+      !(
+        this.state.supplementInvalidation &&
+        samePlaybookSource(this.state.supplementInvalidation, this.state.current.edition.source)
+      )
+    ) {
       try {
         const supplement = validatePlaybookSupplement(
           parseJson(await readFile(resolve(supplementSeedPath), "utf8"))
@@ -359,7 +375,27 @@ export class PlaybookStore {
     this.supplementSource = source;
     this.supplement = supplement ? freezeSupplement(supplement) : undefined;
     this.supplementRetryable = retryable && !supplement;
+    const invalidation = retryable && !supplement ? source : undefined;
+    if (invalidation) this.state.supplementInvalidation = invalidation;
+    else delete this.state.supplementInvalidation;
+    await this.persistSupplementInvalidation(invalidation).catch(() => undefined);
     return { source, supplementAvailable: Boolean(supplement) };
+  }
+
+  private async persistSupplementInvalidation(source?: PlaybookSourceIdentity) {
+    const next = { ...this.state };
+    if (source) next.supplementInvalidation = source;
+    else delete next.supplementInvalidation;
+    await mkdir(this.root, { recursive: true });
+    const staging = join(this.root, `.state-${randomUUID()}.tmp`);
+    await writeFile(staging, encodeJson(next), { mode: 0o600 });
+    try {
+      renameSync(staging, join(this.root, "state.json"));
+    } catch (error) {
+      await unlink(staging).catch(() => undefined);
+      throw error;
+    }
+    this.state = next;
   }
 
   private async updateSupplementLocked(
@@ -438,16 +474,19 @@ export class PlaybookStore {
       !validated &&
       options.allowSameSourceRetry !== true &&
       this.supplement &&
-      samePlaybookSource(this.supplement.manifest.source, parsedSource) &&
-      this.state.current &&
-      samePlaybookSource(this.state.current.edition.source, parsedSource)
+      samePlaybookSource(this.supplement.manifest.source, parsedSource)
     ) {
-      try {
-        mergePlaybookSupplement(this.state.current, this.supplement);
-        return { source: parsedSource, supplementAvailable: true };
-      } catch {
-        // A conflicting overlay must be clearable for the public edition to recover.
+      if (
+        this.state.current &&
+        samePlaybookSource(this.state.current.edition.source, parsedSource)
+      ) {
+        try {
+          mergePlaybookSupplement(this.state.current, this.supplement);
+        } catch {
+          // A staged conflicting overlay remains isolated until an explicit invalidation.
+        }
       }
+      return { source: parsedSource, supplementAvailable: true };
     }
     const retryableClear = !validated && options.allowSameSourceRetry === true;
     try {
@@ -463,6 +502,13 @@ export class PlaybookStore {
         this.supplementSource = parsedSource;
         this.supplement = undefined;
         this.supplementRetryable = true;
+        this.state.supplementInvalidation = parsedSource;
+        try {
+          await this.persistSupplementInvalidation(parsedSource);
+        } catch {
+          // Remove a stale persisted overlay when the durable retry marker cannot be written.
+          await unlink(join(this.root, "supplement-state.json")).catch(() => undefined);
+        }
       }
       throw error;
     }
@@ -511,6 +557,7 @@ export class PlaybookStore {
         this.state.current && samePlaybookEdition(this.state.current.edition, edition.edition)
           ? this.state.previous
           : this.state.current,
+      supplementInvalidation: this.state.supplementInvalidation,
     };
     await mkdir(this.root, { recursive: true });
     const staging = join(this.root, `.state-${randomUUID()}.tmp`);

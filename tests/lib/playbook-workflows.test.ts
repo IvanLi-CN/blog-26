@@ -6,6 +6,11 @@ import {
   findEdgeoneCacheRule,
 } from "../../scripts/prepare-edgeone-pwa-config";
 import { withoutDeploymentCredentials } from "../../src/lib/playbook/child-env";
+import {
+  assertPlaybookRendererCapabilities,
+  PLAYBOOK_PUBLIC_PACKAGE_CAPABILITIES,
+  PLAYBOOK_RENDERER_CAPABILITY_PATH,
+} from "../../src/lib/playbook/renderer-capability";
 import { parseSupplementSyncEndpoint } from "../../src/lib/playbook/supplement";
 import { getPublicStaticCacheControl } from "../../src/lib/public-static-cache-policy";
 
@@ -98,11 +103,24 @@ describe("playbook deployment boundaries", () => {
     expect(updateScript).toContain("currentSourceMatches");
     expect(updateScript).toContain("supplementStaged = true");
     expect(updateScript).toContain("supplementSynced = syncResult.currentSourceMatches");
+    expect(updateScript).toContain("assertRendererCompatibility");
+    expect(updateScript).toContain("PLAYBOOK_RENDERER_CAPABILITY_PATH");
+    expect(PLAYBOOK_RENDERER_CAPABILITY_PATH).toBe(
+      "src/lib/playbook/public-package-capabilities.json"
+    );
 
     for (const job of [update.jobs.production, rollback.jobs.rollback]) {
       const checkout = job.steps?.find((step) => step.uses === "actions/checkout@v7");
       expect(checkout?.with?.["persist-credentials"]).toBe(false);
     }
+  });
+  test("content updates gate the dual-visibility package on the deployed renderer", () => {
+    expect(() => assertPlaybookRendererCapabilities({})).toThrow(
+      "does not support the current public package"
+    );
+    expect(() =>
+      assertPlaybookRendererCapabilities(PLAYBOOK_PUBLIC_PACKAGE_CAPABILITIES)
+    ).not.toThrow();
   });
   test("image builders accept an exact Playbook edition as an immutable input", async () => {
     const dockerfile = await readFile("Dockerfile", "utf8");
