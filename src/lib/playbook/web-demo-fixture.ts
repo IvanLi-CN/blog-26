@@ -9,7 +9,8 @@ const project = {
   source: "https://github.com/IvanLi-CN/blog-26",
   tags: ["Astro", "Bun", "Playwright", "SQLite", "本地内容源"],
   snapshot_exists: true,
-  visibility: "public" as const,
+  catalog_visibility: "public" as const,
+  source_visibility: "public" as const,
   created_at: "2026-01-08T00:00:00Z",
   updated_at: "2026-10-13T00:00:00Z",
 };
@@ -24,6 +25,7 @@ const topics = [
     categories: ["前端", "内容交付"],
     project_count: 1,
     related_projects: topicRefs,
+    catalog_visibility: "public" as const,
   },
   {
     slug: "playwright-e2e",
@@ -32,6 +34,7 @@ const topics = [
     categories: ["测试", "质量门禁"],
     project_count: 1,
     related_projects: topicRefs,
+    catalog_visibility: "public" as const,
   },
   {
     slug: "local-content-source",
@@ -40,6 +43,7 @@ const topics = [
     categories: ["内容", "运行时"],
     project_count: 1,
     related_projects: topicRefs,
+    catalog_visibility: "public" as const,
   },
   {
     slug: "worktree-bootstrap",
@@ -48,6 +52,7 @@ const topics = [
     categories: ["工程效率", "开发环境"],
     project_count: 1,
     related_projects: topicRefs,
+    catalog_visibility: "public" as const,
   },
   {
     slug: "delivery",
@@ -56,6 +61,7 @@ const topics = [
     categories: ["Release", "可恢复性"],
     project_count: 1,
     related_projects: topicRefs,
+    catalog_visibility: "public" as const,
   },
 ];
 
@@ -257,6 +263,7 @@ const topicDetails = topics.map((item) => ({
     { key: "验证状态", value: "基于当前仓库结构整理" },
     { key: "关联项目", value: project.name },
   ],
+  preamble: "",
   sections: [
     {
       id: "context",
@@ -289,6 +296,7 @@ export const webDemoCatalog: PlaybookPublicCatalog = {
         { key: "构建方式", value: "Bun + Astro + Vite" },
       ],
       stack,
+      preamble: "",
       sections: projectSections,
     },
   ],

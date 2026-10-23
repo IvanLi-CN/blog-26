@@ -141,7 +141,33 @@ export function semanticSourceBlobs(
       proveRelease(entry);
     } else {
       const parent = gitOutput(["rev-parse", `${sha}^`]).trim();
-      if (businessVersion !== null && treeBlobs(sha).VERSION === businessVersion) continue;
+      const candidateVersion = treeBlobs(sha).VERSION;
+      const candidateVersionText = gitFile(sha, "VERSION")?.trim();
+      const carriedRelease = gitOutput(["rev-list", "--parents", "-n", "1", sha])
+        .trim()
+        .split(" ")
+        .slice(1)
+        .map((parentSha) => ({
+          parentSha,
+          entry: ledger.entries.find((item) => item.mergeSha === parentSha),
+        }))
+        .find(
+          ({ parentSha, entry: carriedEntry }) =>
+            carriedEntry !== undefined && treeBlobs(parentSha).VERSION === candidateVersion
+        );
+      if (carriedRelease) {
+        if (proveRelease) proveRelease(carriedRelease.entry);
+        continue;
+      }
+      const preparedRelease = ledger.entries.find(
+        (entry) =>
+          entry.stage === "pr_open" &&
+          entry.mergeSha === undefined &&
+          entry.sourceSha === parent &&
+          entry.version === candidateVersionText
+      );
+      if (preparedRelease) continue;
+      if (businessVersion !== null && candidateVersion === businessVersion) continue;
       if (
         businessVersion !== null ||
         gitFile(parent, "VERSION") !== undefined ||

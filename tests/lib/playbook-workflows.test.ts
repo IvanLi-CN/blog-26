@@ -1,11 +1,20 @@
 import { describe, expect, test } from "bun:test";
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { load } from "js-yaml";
 import {
   createEdgeoneCacheConfig,
   findEdgeoneCacheRule,
 } from "../../scripts/prepare-edgeone-pwa-config";
 import { withoutDeploymentCredentials } from "../../src/lib/playbook/child-env";
+import {
+  assertPlaybookRendererCapabilities,
+  assertPlaybookRendererCompatibility,
+  PLAYBOOK_PUBLIC_PACKAGE_CAPABILITIES,
+  PLAYBOOK_RENDERER_CAPABILITY_PATH,
+} from "../../src/lib/playbook/renderer-capability";
+import { parseSupplementSyncEndpoint } from "../../src/lib/playbook/supplement";
 import { getPublicStaticCacheControl } from "../../src/lib/public-static-cache-policy";
 
 type WorkflowStep = {
@@ -54,6 +63,12 @@ describe("playbook deployment boundaries", () => {
     expect(updateStep?.env?.PLAYBOOK_INTEGRATION_ENABLED).toBe(
       "$" + "{{ vars.PLAYBOOK_INTEGRATION_ENABLED }}"
     );
+    expect(updateStep?.env?.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN).toBe(
+      "$" + "{{ secrets.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN }}"
+    );
+    expect(updateStep?.env?.PLAYBOOK_SUPPLEMENT_SYNC_URL).toBe(
+      "$" + "{{ vars.PLAYBOOK_SUPPLEMENT_SYNC_URL || '' }}"
+    );
     const rollbackPause = rollback.jobs.rollback.steps?.find(
       (step) => step.name === "Require paused automatic updates"
     );
@@ -65,13 +80,89 @@ describe("playbook deployment boundaries", () => {
     expect(rollbackStep?.env?.PLAYBOOK_INTEGRATION_ENABLED).toBe(
       "$" + "{{ vars.PLAYBOOK_INTEGRATION_ENABLED }}"
     );
+    expect(rollbackStep?.env?.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN).toBe(
+      "$" + "{{ secrets.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN }}"
+    );
+    expect(rollbackStep?.env?.PLAYBOOK_SUPPLEMENT_SYNC_URL).toBe(
+      "$" + "{{ vars.PLAYBOOK_SUPPLEMENT_SYNC_URL || '' }}"
+    );
     const updateScript = await readFile("scripts/playbook-content-update.ts", "utf8");
     expect(updateScript).toContain('process.env.PLAYBOOK_INTEGRATION_ENABLED === "true"');
     expect(updateScript).toContain("Initial Playbook edition must be deployed through");
+    expect(updateScript).toContain("/api/admin/playbook/supplement");
+    expect(updateScript).toContain("PLAYBOOK_SUPPLEMENT_SYNC_TOKEN");
+    expect(updateScript).toContain('supplementStatus = "invalid"');
+    expect(updateScript).toContain("let supplementRelationConflict = false");
+    expect(updateScript).toContain("supplementRelationConflict = true");
+    expect(updateScript).toContain("Ignoring relation-conflicting optional Playbook supplement");
+    expect(updateScript).toContain("if (supplementRelationConflict)");
+    expect(updateScript).toContain("supplementRelationConflict,");
+    expect(updateScript).toContain("supplementStatus =");
+    expect(updateScript).toContain('"unavailable"');
+    expect(updateScript).toContain("Ignoring invalid optional Playbook supplement");
+    expect(updateScript).toContain("existing overlay remains deployed");
+    expect(updateScript).not.toContain("Playbook supplement verification failed");
+    expect(updateScript).toContain("shouldSyncSupplement(current, selected.manifest)");
+    expect(updateScript).toContain('supplementStatus === "invalid"');
+    expect(updateScript).toContain('supplementStatus === "absent"');
+    expect(updateScript).toContain("public pointer is unavailable");
+    expect(updateScript).toContain(
+      "Playbook supplement sync deferred; public edition remains deployed"
+    );
+    expect(updateScript).toContain(
+      "Ignoring optional Playbook supplement after merge failure; public edition remains deployed"
+    );
+    expect(updateScript).toContain("currentSourceMatches");
+    expect(updateScript).toContain("supplementStaged = true");
+    expect(updateScript).toContain("supplementSynced = syncResult.currentSourceMatches");
+    expect(updateScript).toContain("supplementSyncError");
+    expect(updateScript).toContain(
+      "Playbook supplement sync failed after public deployment; public edition remains deployed"
+    );
+    expect(updateScript).toContain(
+      "throw new Error(\n    `Playbook supplement sync failed after public deployment"
+    );
+    expect(updateScript).toContain("assertPlaybookRendererCompatibility");
+    expect(updateScript).toContain("createPlaybookEdition");
+    expect(updateScript).toContain("publicRelationIndexFromCatalog");
+    expect(updateScript).toContain("publicRelationIndex,");
+    expect(updateScript).toContain("mergePlaybookSupplement(publicEdition, supplementEnvelope)");
+    expect(PLAYBOOK_RENDERER_CAPABILITY_PATH).toBe(
+      "src/lib/playbook/public-package-capabilities.json"
+    );
 
     for (const job of [update.jobs.production, rollback.jobs.rollback]) {
       const checkout = job.steps?.find((step) => step.uses === "actions/checkout@v7");
       expect(checkout?.with?.["persist-credentials"]).toBe(false);
+    }
+  });
+  test("content updates gate the dual-visibility package on the deployed renderer", () => {
+    expect(() => assertPlaybookRendererCapabilities({})).toThrow(
+      "does not support the current public package"
+    );
+    expect(() =>
+      assertPlaybookRendererCapabilities(PLAYBOOK_PUBLIC_PACKAGE_CAPABILITIES)
+    ).not.toThrow();
+  });
+  test("content updates reject missing and incompatible deployed renderer capabilities", async () => {
+    const root = await mkdtemp(join(tmpdir(), "playbook-renderer-capabilities-"));
+    const capabilityPath = join(root, PLAYBOOK_RENDERER_CAPABILITY_PATH);
+    try {
+      await expect(assertPlaybookRendererCompatibility(root)).rejects.toThrow(
+        "incompatible with the current public package"
+      );
+      await mkdir(dirname(capabilityPath), { recursive: true });
+      await writeFile(
+        capabilityPath,
+        JSON.stringify({ public_catalog_schema_version: 1, supplement_schema_version: 1 })
+      );
+      await expect(assertPlaybookRendererCompatibility(root)).rejects.toThrow(
+        "incompatible with the current public package"
+      );
+      await writeFile(capabilityPath, JSON.stringify(PLAYBOOK_PUBLIC_PACKAGE_CAPABILITIES));
+      await expect(assertPlaybookRendererCompatibility(root)).resolves.toBeUndefined();
+    } finally {
+      await rm(root, { recursive: true, force: true });
     }
   });
   test("image builders accept an exact Playbook edition as an immutable input", async () => {
@@ -85,13 +176,43 @@ describe("playbook deployment boundaries", () => {
 
     const prepare = await readFile("scripts/prepare-playbook-edition.ts", "utf8");
     expect(prepare).toContain("PLAYBOOK_EDITION_INPUT_PATH");
-    expect(prepare).toContain("validatePlaybookEdition(JSON.parse");
+    expect(prepare).toContain("validatePlaybookEdition(parseJson");
     expect(prepare).toContain("downloadRetainedEdition(inputEdition, manifestUrl, destination)");
     expect(prepare).toContain("const edition = inputSeed");
+    expect(prepare).toContain("mergePlaybookSupplement(edition, supplement)");
+    expect(prepare).toContain(
+      "Ignoring invalid optional Playbook supplement; public edition remains usable"
+    );
 
     const initial = await readFile("scripts/fetch-initial-playbook.ts", "utf8");
     expect(initial).toContain("GITHUB_OUTPUT");
     expect(initial).toContain("bundle_dir=" + "$" + "{directory}");
+  });
+  test("private supplements stay out of frozen public and backend artifacts", async () => {
+    const releaseInputs = await readFile("src/lib/release/inputs.ts", "utf8");
+    expect(releaseInputs).not.toContain("PLAYBOOK_SUPPLEMENT_DIR");
+    expect(releaseInputs).not.toContain("playbook-private-supplement.json");
+
+    const prepare = await readFile("scripts/prepare-playbook-edition.ts", "utf8");
+    const frozenBranch = prepare.slice(
+      prepare.indexOf("if (process.env.PLAYBOOK_FROZEN_INPUT_DIR)"),
+      prepare.indexOf("const snapshotPath = resolve(")
+    );
+    expect(frozenBranch).not.toContain("supplement");
+
+    const backendDist = await readFile("scripts/prepare-backend-dist.sh", "utf8");
+    expect(backendDist).not.toContain("playbook-private-supplement.json");
+  });
+  test("supplement sync endpoints require credential-free HTTPS", () => {
+    expect(
+      parseSupplementSyncEndpoint("https://console.example.test/api/admin/supplement").href
+    ).toBe("https://console.example.test/api/admin/supplement");
+    expect(() =>
+      parseSupplementSyncEndpoint("http://console.example.test/api/admin/supplement")
+    ).toThrow("HTTPS");
+    expect(() =>
+      parseSupplementSyncEndpoint("https://user:password@console.example.test/api/admin/supplement")
+    ).toThrow("credential-free HTTPS");
   });
   test("private source reads use the scoped PAT secret without minting GitHub Apps", async () => {
     const updateText = await readFile(".github/workflows/playbook-content-update.yml", "utf8");
@@ -145,6 +266,14 @@ describe("playbook deployment boundaries", () => {
   test("initial application bootstrap uses the latest ready stable release without a pinned ID", async () => {
     const initialScript = await readFile("scripts/fetch-initial-playbook.ts", "utf8");
     expect(initialScript).toMatch(/resolveRelease\(reader,\s*\{\s*mode: "reconcile"/u);
+    expect(initialScript).toContain('mode: "release"');
+    expect(initialScript).toContain(
+      "Ignoring invalid optional Playbook supplement; public bundle remains usable"
+    );
+    expect(initialScript).toContain(
+      "await rm(supplementDirectory, { recursive: true, force: true })"
+    );
+    expect(initialScript).not.toContain("Published Playbook supplement assets are invalid");
   });
   test("pointer revalidates, version files are immutable and package resources cannot execute", () => {
     const digest = "a".repeat(64);

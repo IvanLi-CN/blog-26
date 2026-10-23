@@ -1,7 +1,13 @@
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { downloadRetainedEdition, readPublicPointer } from "../src/lib/playbook/artifacts";
-import { readPublicArchive } from "../src/lib/playbook/bundle";
+import {
+  createPlaybookEdition,
+  PLAYBOOK_SOURCE_TIMESTAMP_FILE,
+  parseSupplementFiles,
+  readPublicArchive,
+  readSupplementArchive,
+} from "../src/lib/playbook/bundle";
 import { withoutDeploymentCredentials } from "../src/lib/playbook/child-env";
 import { githubReleaseReader } from "../src/lib/playbook/github";
 import {
@@ -9,8 +15,22 @@ import {
   parseEditionIdentity,
   samePlaybookEdition,
 } from "../src/lib/playbook/manifest";
-import { deployContent, type ReleaseTrigger, resolveRelease } from "../src/lib/playbook/release";
+import {
+  deployContent,
+  PlaybookSupplementUnavailableError,
+  type ReleaseTrigger,
+  readSupplementAsset,
+  resolveRelease,
+  shouldSyncSupplement,
+} from "../src/lib/playbook/release";
+import { assertPlaybookRendererCompatibility } from "../src/lib/playbook/renderer-capability";
 import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
+import {
+  mergePlaybookSupplement,
+  parseSupplementSyncEndpoint,
+  publicRelationIndexFromCatalog,
+} from "../src/lib/playbook/supplement";
+import type { PlaybookSupplementEnvelope } from "../src/lib/playbook/types";
 import { publicVersionSchema } from "../src/lib/release/deployment";
 import { versionSchema } from "../src/lib/release/policy";
 import { readContract } from "../src/lib/release/source";
@@ -38,7 +58,7 @@ if (!selected) {
   process.exit(0);
 }
 const archive = await reader.asset(selected.bundleAssetId, selected.manifest.bundle.size);
-readPublicArchive(archive, selected.manifest);
+const publicFiles = readPublicArchive(archive, selected.manifest, selected.sourceTimestamp);
 const taskRoot = resolve(
   process.env.RUNNER_TEMP || ".tmp",
   `playbook-${process.env.GITHUB_RUN_ID || "local"}`
@@ -50,6 +70,139 @@ await writeFile(
   encodeJson(selected.manifest)
 );
 await writeFile(resolve(bundleRoot, "playbook-public.tar.gz"), archive);
+await writeFile(
+  resolve(bundleRoot, PLAYBOOK_SOURCE_TIMESTAMP_FILE),
+  `${selected.sourceTimestamp}\n`
+);
+let supplementRoot: string | undefined;
+let supplementEnvelope: PlaybookSupplementEnvelope | null = null;
+let supplementFileBytes: Map<string, Uint8Array> | undefined;
+let publicRelationIndex: ReturnType<typeof publicRelationIndexFromCatalog> | undefined;
+let supplementStatus = selected.supplementStatus;
+let supplementRelationConflict = false;
+if (selected.supplement) {
+  try {
+    const supplementArchive = await readSupplementAsset(
+      reader,
+      selected.supplement.bundleAssetId,
+      selected.supplement.manifest.bundle.size,
+      "Supplement bundle asset"
+    );
+    const files = readSupplementArchive(
+      supplementArchive,
+      selected.supplement.manifest,
+      selected.sourceTimestamp
+    );
+    const parsedSupplement = parseSupplementFiles(files);
+    supplementFileBytes = files;
+    supplementEnvelope = {
+      manifest: selected.supplement.manifest,
+      ...parsedSupplement,
+    };
+    const candidateRoot = resolve(taskRoot, "supplement");
+    await mkdir(candidateRoot, { recursive: true });
+    await writeFile(
+      resolve(candidateRoot, "playbook-private-supplement-manifest.json"),
+      encodeJson(selected.supplement.manifest)
+    );
+    await writeFile(
+      resolve(candidateRoot, "playbook-private-supplement.tar.gz"),
+      supplementArchive
+    );
+    supplementRoot = candidateRoot;
+  } catch (error) {
+    supplementFileBytes = undefined;
+    supplementStatus =
+      error instanceof PlaybookSupplementUnavailableError ? "unavailable" : "invalid";
+    console.warn(
+      `Ignoring ${supplementStatus} optional Playbook supplement: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+if (supplementStatus === "valid" && supplementEnvelope) {
+  try {
+    const publicEdition = createPlaybookEdition(
+      publicFiles,
+      selected.manifest,
+      selected.manifest.source.commit,
+      new Uint8Array(),
+      selected.sourceTimestamp
+    );
+    publicRelationIndex = publicRelationIndexFromCatalog(publicEdition.catalog);
+    mergePlaybookSupplement(publicEdition, supplementEnvelope);
+  } catch (error) {
+    supplementStatus = "invalid";
+    supplementRelationConflict = true;
+    supplementRoot = undefined;
+    supplementEnvelope = null;
+    supplementFileBytes = undefined;
+    console.warn(
+      `Ignoring invalid optional Playbook supplement after public merge validation: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+async function syncSupplementToConsole(source: PlaybookSupplementEnvelope["manifest"]["source"]) {
+  const rollbackField = rollback ? { rollback: true } : {};
+  const supplementStatusField =
+    supplementStatus === "invalid"
+      ? { supplementStatus: "invalid" as const }
+      : supplementStatus === "absent"
+        ? { supplementStatus: "absent" as const }
+        : {};
+  let payload: Record<string, unknown> = {
+    source,
+    supplement: null,
+    ...supplementStatusField,
+    ...rollbackField,
+  };
+  if (supplementEnvelope) {
+    if (!supplementFileBytes)
+      throw new Error("Playbook supplement data is unavailable for console sync");
+    const catalogBytes = supplementFileBytes.get("catalog.json");
+    const searchBytes = supplementFileBytes.get("search-documents.json");
+    if (!catalogBytes || !searchBytes)
+      throw new Error("Playbook supplement files are incomplete for console sync");
+    payload = {
+      source,
+      supplement: supplementEnvelope,
+      supplementFiles: {
+        catalog: Buffer.from(catalogBytes).toString("base64"),
+        search: Buffer.from(searchBytes).toString("base64"),
+      },
+      publicRelationIndex,
+      ...rollbackField,
+    };
+  }
+  const token = process.env.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN?.trim();
+  if (!token) throw new Error("PLAYBOOK_SUPPLEMENT_SYNC_TOKEN is required");
+  const endpoint = parseSupplementSyncEndpoint(
+    process.env.PLAYBOOK_SUPPLEMENT_SYNC_URL ||
+      new URL(
+        "/api/admin/playbook/supplement",
+        process.env.PUBLIC_API_BASE_URL || "https://console.ivanli.cc"
+      ).toString()
+  ).toString();
+  const response = await fetch(endpoint, {
+    method: "PUT",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+      accept: "application/json",
+    },
+    body: encodeJson(payload),
+    redirect: "error",
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!response.ok) throw new Error(`Console Playbook supplement sync failed: ${response.status}`);
+  const result = (await response.json()) as {
+    accepted?: boolean;
+    currentSourceMatches?: boolean;
+  };
+  if (result.accepted !== true) throw new Error("Console rejected the Playbook supplement");
+  return { accepted: true, currentSourceMatches: result.currentSourceMatches === true };
+}
+
 let buildNumber = 0;
 let rendererRoot = "";
 let productVersion = "";
@@ -87,6 +240,7 @@ try {
         rendererRoot = resolve(taskRoot, `renderer-${++buildNumber}`);
         await run(["git", "fetch", "origin", renderer]);
         await run(["git", "worktree", "add", "--detach", rendererRoot, renderer]);
+        await assertPlaybookRendererCompatibility(rendererRoot);
         try {
           productVersion = versionSchema.parse(
             (await readFile(resolve(rendererRoot, "VERSION"), "utf8")).trim()
@@ -104,6 +258,8 @@ try {
         );
         const env = withoutDeploymentCredentials(process.env, {
           PLAYBOOK_BUNDLE_DIR: bundleRoot,
+          PLAYBOOK_SUPPLEMENT_DIR: supplementRoot,
+          PLAYBOOK_SUPPLEMENT_REQUIRED: supplementRoot ? "true" : undefined,
           PLAYBOOK_USE_DEPLOYED: "true",
           PLAYBOOK_REQUIRED: "true",
           PLAYBOOK_RENDERER_COMMIT: renderer,
@@ -223,7 +379,73 @@ try {
     );
   throw error;
 }
-const current = await readPublicPointer(manifestUrl);
-const summary = `Playbook result: ${result}\n\n${encodeJson({ adopted: current, upstreamRunId: input.source_run_id || null, downstreamRun: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` })}`;
+if (supplementStatus === "valid" && supplementRoot && rendererRoot) {
+  const preparedSupplementPath = resolve(
+    rendererRoot,
+    "site/generated/playbook-private-supplement.json"
+  );
+  if (!(await Bun.file(preparedSupplementPath).exists())) {
+    supplementStatus = "invalid";
+    supplementRoot = undefined;
+    supplementEnvelope = null;
+    supplementFileBytes = undefined;
+    console.warn(
+      "Ignoring optional Playbook supplement after merge failure; public edition remains deployed"
+    );
+  }
+}
+let current: Awaited<ReturnType<typeof readPublicPointer>> | undefined;
+try {
+  current = await readPublicPointer(manifestUrl);
+} catch (error) {
+  console.warn(
+    `Playbook supplement sync deferred; public edition remains deployed: ${error instanceof Error ? error.message : String(error)}`
+  );
+}
+let supplementSynced = false;
+let supplementStaged = false;
+let supplementSyncError: string | undefined;
+if (supplementRelationConflict) {
+  console.warn(
+    "Ignoring relation-conflicting optional Playbook supplement; existing overlay remains deployed"
+  );
+} else if (supplementStatus === "unavailable") {
+  console.warn(
+    "Playbook supplement sync deferred because optional assets are unavailable; existing overlay remains deployed"
+  );
+} else if (current && shouldSyncSupplement(current, selected.manifest)) {
+  try {
+    const syncResult = await syncSupplementToConsole(selected.manifest.source);
+    supplementStaged = true;
+    supplementSynced = syncResult.currentSourceMatches;
+    if (!supplementSynced)
+      console.warn(
+        "Playbook supplement staged in console; current public source is not adopted there yet"
+      );
+  } catch (error) {
+    supplementSyncError = error instanceof Error ? error.message : String(error);
+    console.error(
+      `Playbook supplement sync failed after public deployment; public edition remains deployed: ${supplementSyncError}`
+    );
+  }
+} else if (!current) {
+  console.warn(
+    "Playbook supplement sync deferred; public pointer is unavailable while public edition remains deployed"
+  );
+}
+const summary = `Playbook result: ${result}\n\n${encodeJson({
+  adopted: current,
+  upstreamRunId: input.source_run_id || null,
+  supplement: supplementSynced && supplementRoot ? (selected.supplement?.manifest ?? null) : null,
+  supplementRelationConflict,
+  supplementStaged,
+  supplementSynced,
+  supplementSyncError: supplementSyncError ?? null,
+  downstreamRun: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+})}`;
 console.log(summary);
 if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, summary);
+if (supplementSyncError)
+  throw new Error(
+    `Playbook supplement sync failed after public deployment: ${supplementSyncError}`
+  );

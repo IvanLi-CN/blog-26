@@ -16,6 +16,36 @@ on:
         type: string
       bundle_sha256:
         type: string
+      manifest_sha256:
+        type: string
+      bundle_asset_id:
+        type: string
+      bundle_asset_digest:
+        type: string
+      bundle_asset_size:
+        type: string
+      manifest_asset_id:
+        type: string
+      manifest_asset_digest:
+        type: string
+      manifest_asset_size:
+        type: string
+      supplement_bundle_sha256:
+        type: string
+      supplement_manifest_sha256:
+        type: string
+      supplement_bundle_asset_id:
+        type: string
+      supplement_bundle_asset_digest:
+        type: string
+      supplement_bundle_asset_size:
+        type: string
+      supplement_manifest_asset_id:
+        type: string
+      supplement_manifest_asset_digest:
+        type: string
+      supplement_manifest_asset_size:
+        type: string
       source_run_id:
         type: string
   schedule:
@@ -47,6 +77,8 @@ jobs:
         run: bun scripts/playbook-content-update.ts
         env:
           GH_TOKEN: ${{ secrets.PLAYBOOK_SOURCE_TOKEN }}
+          PLAYBOOK_SUPPLEMENT_SYNC_TOKEN: ${{ secrets.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN }}
+          PLAYBOOK_SUPPLEMENT_SYNC_URL: ${{ vars.PLAYBOOK_SUPPLEMENT_SYNC_URL || '' }}
           PLAYBOOK_INTEGRATION_ENABLED: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED }}
           PUBLIC_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL || 'https://console.ivanli.cc' }}
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://ivanli.cc' }}

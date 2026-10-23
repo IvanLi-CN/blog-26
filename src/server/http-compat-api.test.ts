@@ -9,17 +9,23 @@ import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import sharp from "sharp";
 import { db, initializeDB } from "@/lib/db";
+import { PlaybookStore } from "@/lib/playbook/cache";
+import { encodeJson } from "@/lib/playbook/manifest";
+import { publicRelationIndexFromCatalog } from "@/lib/playbook/supplement";
 import { computePostContentHash } from "@/lib/post-body-contract-server";
 import { buildPublicMediaHash } from "@/lib/public-media";
 import { llmSettings, postEmbeddings, posts, sessions, users, vectorizedFiles } from "@/lib/schema";
 import { SEARCH_QUERY_LIMITS } from "@/lib/search/query";
 import { DEFAULT_SEARCH_POLICY } from "@/lib/search/settings";
+import { handlePlaybookSupplementSyncRequest } from "@/server/admin-api/playbook-supplement";
 import { contentSearchIndex } from "@/server/services/content-search-index";
 import { buildPublicMemoStaticPages } from "../../site/lib/memo-pagination";
+import { makePublicBundle, makeSupplementBundle } from "../../tests/lib/playbook-fixture";
 
 const TEST_DB_PATH = path.join(process.cwd(), "tmp/http-compat-api-test.sqlite");
 const MIGRATIONS_PATH = path.join(process.cwd(), "drizzle");
 const LOCAL_CONTENT_BASE_PATH = path.join(process.cwd(), "tmp/http-compat-local");
+const PLAYBOOK_TEST_PATH = path.join(process.cwd(), "tmp/http-compat-playbook");
 const ADMIN_EMAIL = "admin-test@test.local";
 const USER_EMAIL = "user-test@test.local";
 
@@ -40,6 +46,10 @@ function resetHttpCompatEnv() {
   process.env.LLM_SETTINGS_MASTER_KEY = "test-master-key";
   delete process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_BASE_URL;
+  delete process.env.PLAYBOOK_SEED_PATH;
+  delete process.env.PLAYBOOK_SUPPLEMENT_SEED_PATH;
+  delete process.env.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN;
+  delete process.env.PLAYBOOK_SUPPLEMENT_SYNC_URL;
 }
 
 function buildRequest(pathname: string, init: RequestInit = {}, email?: string) {
@@ -52,6 +62,13 @@ function buildRequest(pathname: string, init: RequestInit = {}, email?: string) 
 
 async function readJson(response: Response) {
   return (await response.json()) as Record<string, any>;
+}
+
+function supplementFiles(bundle: ReturnType<typeof makeSupplementBundle>) {
+  return {
+    catalog: Buffer.from(bundle.files[0].content).toString("base64"),
+    search: Buffer.from(bundle.files[1].content).toString("base64"),
+  };
 }
 
 function createSuccessfulSyncResult() {
@@ -205,6 +222,7 @@ describe("HTTP compatibility APIs", () => {
       fs.rmSync(TEST_DB_PATH);
     }
     fs.rmSync(LOCAL_CONTENT_BASE_PATH, { recursive: true, force: true });
+    fs.rmSync(PLAYBOOK_TEST_PATH, { recursive: true, force: true });
   }, 10_000);
 
   beforeEach(async () => {
@@ -299,6 +317,330 @@ describe("HTTP compatibility APIs", () => {
       "/search-settings"
     );
     expect(JSON.stringify(await settings.json())).not.toContain("apiKey");
+  });
+
+  it("exposes the merged playbook only to administrators", async () => {
+    const publicBundle = makePublicBundle();
+    const supplementBundle = makeSupplementBundle();
+    const supplement = {
+      manifest: supplementBundle.manifest,
+      catalog: JSON.parse(supplementBundle.files[0].content),
+      search: JSON.parse(supplementBundle.files[1].content),
+    };
+    fs.mkdirSync(PLAYBOOK_TEST_PATH, { recursive: true });
+    const publicSeedPath = path.join(PLAYBOOK_TEST_PATH, "public.json");
+    const supplementSeedPath = path.join(PLAYBOOK_TEST_PATH, "supplement.json");
+    fs.writeFileSync(publicSeedPath, JSON.stringify(publicBundle.edition));
+    fs.writeFileSync(supplementSeedPath, JSON.stringify(supplement));
+    process.env.PLAYBOOK_SEED_PATH = publicSeedPath;
+    process.env.PLAYBOOK_SUPPLEMENT_SEED_PATH = supplementSeedPath;
+
+    const anonymous = await handleAdminApiRequest(buildRequest("/api/admin/playbook"), "/playbook");
+    expect(anonymous.status).toBe(401);
+    const member = await handleAdminApiRequest(
+      buildRequest("/api/admin/playbook", {}, USER_EMAIL),
+      "/playbook"
+    );
+    expect(member.status).toBe(403);
+
+    const response = await handleAdminApiRequest(
+      buildRequest("/api/admin/playbook?kind=search&q=私有&limit=10", {}, ADMIN_EMAIL),
+      "/playbook"
+    );
+    expect(response.status).toBe(200);
+    const payload = await readJson(response);
+    expect(payload.supplementAvailable).toBe(true);
+    expect(payload.catalog.private_source_metadata).toEqual([
+      expect.objectContaining({ project_slug: "private-project" }),
+    ]);
+    expect(payload.results).toEqual([
+      expect.objectContaining({
+        document: expect.objectContaining({ id: "page:topic:private-topic" }),
+      }),
+    ]);
+  });
+
+  it("accepts a source-bound supplement through the protected receiver and persists it", async () => {
+    const publicBundle = makePublicBundle();
+    const nextBundle = makePublicBundle("v3.1.0", "101");
+    const publicRelationIndex = publicRelationIndexFromCatalog(publicBundle.edition.catalog);
+    const supplementBundle = makeSupplementBundle("v3.1.0", "101");
+    const supplement = {
+      manifest: supplementBundle.manifest,
+      catalog: JSON.parse(supplementBundle.files[0].content),
+      search: JSON.parse(supplementBundle.files[1].content),
+    };
+    const receiverRoot = path.join(PLAYBOOK_TEST_PATH, "receiver");
+    fs.mkdirSync(receiverRoot, { recursive: true });
+    const publicSeed = path.join(receiverRoot, "public.json");
+    fs.writeFileSync(publicSeed, encodeJson(publicBundle.edition));
+    const store = new PlaybookStore(receiverRoot);
+    await store.adopt(publicBundle.edition);
+    process.env.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN = "receiver-test-token";
+
+    const unknownRelationCatalog = structuredClone(supplement.catalog);
+    unknownRelationCatalog.relation_edges.push({
+      topic_slug: "missing-topic",
+      project_slug: "private-project",
+      project_name: "Private Project",
+    });
+    const unknownRelationBundle = makeSupplementBundle("v3.1.0", "101", unknownRelationCatalog);
+    const unknownRelation = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          source: unknownRelationBundle.manifest.source,
+          supplement: {
+            manifest: unknownRelationBundle.manifest,
+            catalog: unknownRelationCatalog,
+            search: JSON.parse(unknownRelationBundle.files[1].content),
+          },
+          supplementFiles: supplementFiles(unknownRelationBundle),
+          publicRelationIndex,
+        }),
+      }),
+      store
+    );
+    expect(unknownRelation.status).toBe(400);
+    expect(store.adminEdition?.supplement).toBeUndefined();
+
+    const tamperedRoot = path.join(PLAYBOOK_TEST_PATH, "receiver-tampered");
+    fs.mkdirSync(tamperedRoot, { recursive: true });
+    const tamperedStore = new PlaybookStore(tamperedRoot);
+    await tamperedStore.adopt(nextBundle.edition);
+    const acceptedBeforeTamper = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          source: supplementBundle.manifest.source,
+          supplement,
+          supplementFiles: supplementFiles(supplementBundle),
+          publicRelationIndex,
+        }),
+      }),
+      tamperedStore
+    );
+    expect(acceptedBeforeTamper.status).toBe(200);
+    expect(tamperedStore.adminEdition?.supplement).toBeDefined();
+    const tamperedSearch = structuredClone(supplement.search);
+    tamperedSearch.documents[0].body = "Tampered supplement content";
+    const tampered = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          source: supplementBundle.manifest.source,
+          supplement: { ...supplement, search: tamperedSearch },
+          supplementFiles: supplementFiles(supplementBundle),
+          publicRelationIndex,
+        }),
+      }),
+      tamperedStore
+    );
+    expect(tampered.status).toBe(400);
+    expect(tamperedStore.adminEdition?.supplement).toBeUndefined();
+
+    const unauthorized = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ source: supplementBundle.manifest.source, supplement }),
+      }),
+      store
+    );
+    expect(unauthorized.status).toBe(401);
+
+    const duplicateSource = JSON.stringify(supplementBundle.manifest.source);
+    const duplicateKey = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: `{"source":${duplicateSource},"source":${duplicateSource},"supplement":${JSON.stringify(supplement)},"supplementFiles":${JSON.stringify(supplementFiles(supplementBundle))},"publicRelationIndex":${JSON.stringify(publicRelationIndex)}}`,
+      }),
+      store
+    );
+    expect(duplicateKey.status).toBe(400);
+
+    const accepted = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          source: supplementBundle.manifest.source,
+          supplement,
+          supplementFiles: supplementFiles(supplementBundle),
+          publicRelationIndex,
+        }),
+      }),
+      store
+    );
+    expect(accepted.status).toBe(200);
+    expect(await accepted.json()).toMatchObject({
+      accepted: true,
+      supplementAvailable: true,
+      currentSourceMatches: false,
+    });
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
+
+    const absent = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          source: supplementBundle.manifest.source,
+          supplement: null,
+          supplementStatus: "absent",
+        }),
+      }),
+      store
+    );
+    expect(absent.status).toBe(200);
+    expect(store.adminEdition?.supplement).toBeUndefined();
+
+    await store.adopt(nextBundle.edition);
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
+
+    const invalidClear = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          source: supplementBundle.manifest.source,
+          supplement: null,
+          supplementStatus: "invalid",
+        }),
+      }),
+      store
+    );
+    expect(invalidClear.status).toBe(200);
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
+
+    const retried = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          source: supplementBundle.manifest.source,
+          supplement,
+          supplementFiles: supplementFiles(supplementBundle),
+          publicRelationIndex,
+        }),
+      }),
+      store
+    );
+    expect(retried.status).toBe(200);
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+
+    const rollbackBundle = makePublicBundle("v2.9.0", "99");
+    const rollbackSupplementBundle = makeSupplementBundle("v2.9.0", "99");
+    const olderSupplement = {
+      manifest: rollbackSupplementBundle.manifest,
+      catalog: JSON.parse(rollbackSupplementBundle.files[0].content),
+      search: JSON.parse(rollbackSupplementBundle.files[1].content),
+    };
+    const outOfOrder = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          source: rollbackSupplementBundle.manifest.source,
+          supplement: olderSupplement,
+          supplementFiles: supplementFiles(rollbackSupplementBundle),
+          publicRelationIndex,
+        }),
+      }),
+      store
+    );
+    expect(outOfOrder.status).toBe(400);
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+
+    const conflictingCatalog = structuredClone(supplement.catalog);
+    conflictingCatalog.snapshot.projects[0].slug = "sample-project";
+    conflictingCatalog.project_details[0].item.slug = "sample-project";
+    const conflictingBundle = makeSupplementBundle(
+      supplementBundle.manifest.source.tag,
+      supplementBundle.manifest.source.releaseId,
+      conflictingCatalog
+    );
+    const conflictingSupplement = {
+      manifest: conflictingBundle.manifest,
+      catalog: JSON.parse(conflictingBundle.files[0].content),
+      search: JSON.parse(conflictingBundle.files[1].content),
+    };
+    const rejected = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          source: conflictingBundle.manifest.source,
+          supplement: conflictingSupplement,
+          supplementFiles: supplementFiles(conflictingBundle),
+          publicRelationIndex,
+        }),
+      }),
+      store
+    );
+    expect(rejected.status).toBe(400);
+    expect(store.adminEdition?.supplement).toBeDefined();
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+
+    const pendingRollback = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          source: rollbackSupplementBundle.manifest.source,
+          supplement: olderSupplement,
+          supplementFiles: supplementFiles(rollbackSupplementBundle),
+          publicRelationIndex,
+          rollback: true,
+        }),
+      }),
+      store
+    );
+    expect(pendingRollback.status).toBe(200);
+    expect(store.adminEdition?.supplement).toBeUndefined();
+    await store.adopt(rollbackBundle.edition);
+    expect(store.adminEdition?.supplement).toBeDefined();
+
+    const restored = new PlaybookStore(receiverRoot);
+    await restored.load(publicSeed);
+    expect(restored.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
   });
 
   it("returns masked LLM settings, persists overrides, and can clear saved keys", async () => {

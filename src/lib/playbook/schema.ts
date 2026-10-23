@@ -2,6 +2,10 @@ import { z } from "zod";
 
 export const PLAYBOOK_REPOSITORY = "IvanLi-CN/style-playbook-skills";
 export const PLAYBOOK_PUBLIC_POINTER_URL = "https://ivanli.cc/_content/playbook/manifest.json";
+export const PLAYBOOK_PUBLIC_BUNDLE_NAME = "playbook-public.tar.gz";
+export const PLAYBOOK_PUBLIC_MANIFEST_NAME = "playbook-public-manifest.json";
+export const PLAYBOOK_SUPPLEMENT_BUNDLE_NAME = "playbook-private-supplement.tar.gz";
+export const PLAYBOOK_SUPPLEMENT_MANIFEST_NAME = "playbook-private-supplement-manifest.json";
 export const PLAYBOOK_MAX_MANIFEST_BYTES = 64 * 1024;
 export const PLAYBOOK_MAX_BUNDLE_BYTES = 64 * 1024 * 1024;
 export const digestSchema = z.string().regex(/^[a-f0-9]{64}$/);
@@ -62,6 +66,7 @@ const sectionSchema = z.strictObject({
 const privateMetadataKeys = new Set([
   "catalogcategories",
   "sourceurl",
+  "sourcerepo",
   "repositoryurl",
   "repourl",
   "repopath",
@@ -121,7 +126,8 @@ const projectSchema = z.strictObject({
   source: text,
   tags: z.array(text),
   snapshot_exists: z.boolean(),
-  visibility: z.literal("public").nullable(),
+  catalog_visibility: z.literal("public"),
+  source_visibility: z.enum(["public", "private"]),
   created_at: nullableText,
   updated_at: nullableText,
 });
@@ -132,6 +138,7 @@ const topicSchema = z.strictObject({
   categories: z.array(text),
   project_count: z.number().int().nonnegative(),
   related_projects: z.array(projectRefSchema),
+  catalog_visibility: z.literal("public"),
 });
 const resourceSchema = z.strictObject({ path: safePathSchema, kind: text, content: text });
 const policySchema = z.strictObject({
@@ -162,6 +169,7 @@ export const catalogSchema = z.strictObject({
       title: text,
       doc_metadata: z.array(metadataSchema),
       stack: z.unknown(),
+      preamble: text,
       sections: z.array(sectionSchema),
     })
   ),
@@ -169,6 +177,7 @@ export const catalogSchema = z.strictObject({
     z.strictObject({
       item: topicSchema,
       doc_metadata: z.array(metadataSchema),
+      preamble: text,
       sections: z.array(sectionSchema),
       policy_skills: z.array(policySchema),
     })
@@ -198,7 +207,7 @@ export const sourceSchema = z.strictObject({
   publishedAt: z.string().datetime({ offset: true }),
 });
 export const bundleSchema = z.strictObject({
-  name: z.literal("playbook-public.tar.gz"),
+  name: z.enum([PLAYBOOK_PUBLIC_BUNDLE_NAME, PLAYBOOK_SUPPLEMENT_BUNDLE_NAME]),
   sha256: digestSchema,
   size: z.number().int().positive().max(PLAYBOOK_MAX_BUNDLE_BYTES),
 });
@@ -222,15 +231,87 @@ export const editionSchema = z.strictObject({
   editionDigest: digestSchema,
   rendererCommit: commitSchema,
   contentSnapshotIdentity: digestSchema,
+  sourceTimestamp: z.number().int().nonnegative().safe().optional(),
   source: sourceSchema,
-  bundle: bundleSchema,
+  bundle: bundleSchema.extend({ name: z.literal(PLAYBOOK_PUBLIC_BUNDLE_NAME) }),
   files: z.array(fileSchema).length(3),
   generatedAt: z.string().datetime({ offset: true }),
   previous: z.strictObject({ tag: stableTagSchema, editionDigest: digestSchema }).optional(),
 });
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+export function isLegacyPublicCatalog(value: unknown) {
+  if (!isRecord(value) || !isRecord(value.snapshot)) return false;
+  const snapshot = value.snapshot;
+  const snapshotProjects = Array.isArray(snapshot.projects) ? snapshot.projects : [];
+  const projectDetails = Array.isArray(value.project_details) ? value.project_details : [];
+  const snapshotTopics = Array.isArray(snapshot.topics) ? snapshot.topics : [];
+  const topicDetails = Array.isArray(value.topic_details) ? value.topic_details : [];
+  const hasLegacyVisibility = [...snapshotProjects, ...projectDetails].some((item) => {
+    const project = isRecord(item) && isRecord(item.item) ? item.item : item;
+    return isRecord(project) && Object.hasOwn(project, "visibility");
+  });
+  const hasLegacyTopics = [...snapshotTopics, ...topicDetails].some((item) => {
+    const topic = isRecord(item) && isRecord(item.item) ? item.item : item;
+    return isRecord(topic) && !Object.hasOwn(topic, "catalog_visibility");
+  });
+  return hasLegacyVisibility || (snapshotProjects.length === 0 && hasLegacyTopics);
+}
+
+function normalizeLegacyPublicCatalog(value: unknown): unknown {
+  if (!isRecord(value) || !isRecord(value.snapshot)) return value;
+  if (!isLegacyPublicCatalog(value)) return value;
+
+  const normalized = structuredClone(value) as Record<string, unknown>;
+  const normalizedSnapshot = normalized.snapshot as Record<string, unknown>;
+  const normalizeProject = (value: unknown) => {
+    if (!isRecord(value)) return;
+    const hasLegacyVisibility = Object.hasOwn(value, "visibility");
+    if (hasLegacyVisibility) {
+      if (value.visibility !== null && value.visibility !== "public")
+        throw new Error("Legacy public catalog contains non-public project visibility");
+      delete value.visibility;
+    }
+    if (!Object.hasOwn(value, "catalog_visibility")) {
+      if (!hasLegacyVisibility)
+        throw new Error("Legacy public catalog project visibility is missing");
+      value.catalog_visibility = "public";
+    }
+    if (!Object.hasOwn(value, "source_visibility"))
+      value.source_visibility = value.source === "private" ? "private" : "public";
+  };
+  const normalizeTopic = (value: unknown) => {
+    if (isRecord(value) && !Object.hasOwn(value, "catalog_visibility"))
+      value.catalog_visibility = "public";
+  };
+  const normalizeDetailPreamble = (value: unknown) => {
+    if (isRecord(value) && !Object.hasOwn(value, "preamble")) value.preamble = "";
+  };
+
+  for (const project of Array.isArray(normalizedSnapshot.projects)
+    ? normalizedSnapshot.projects
+    : [])
+    normalizeProject(project);
+  for (const detail of Array.isArray(normalized.project_details)
+    ? normalized.project_details
+    : []) {
+    if (isRecord(detail)) normalizeProject(detail.item);
+    normalizeDetailPreamble(detail);
+  }
+  for (const topic of Array.isArray(normalizedSnapshot.topics) ? normalizedSnapshot.topics : [])
+    normalizeTopic(topic);
+  for (const detail of Array.isArray(normalized.topic_details) ? normalized.topic_details : []) {
+    if (isRecord(detail)) normalizeTopic(detail.item);
+    normalizeDetailPreamble(detail);
+  }
+  return normalized;
+}
+
 export function assertPublicCatalog(value: unknown) {
-  const catalog = catalogSchema.parse(value);
+  const catalog = catalogSchema.parse(normalizeLegacyPublicCatalog(value));
   // Fixed objects are strict schemas; arbitrary public records share the metadata boundary.
   for (const project of catalog.project_details) rejectInternalFields(project.stack);
   for (const topic of catalog.topic_details)
@@ -246,6 +327,13 @@ export function assertPublicCatalog(value: unknown) {
     throw new Error("Catalog counts do not match");
   const projects = new Map(catalog.snapshot.projects.map((item) => [item.slug, item]));
   const topics = new Map(catalog.snapshot.topics.map((item) => [item.slug, item]));
+  for (const project of catalog.snapshot.projects) {
+    if (
+      (project.source_visibility === "private" && project.source !== "private") ||
+      (project.source_visibility === "public" && project.source === "private")
+    )
+      throw new Error("Public project source visibility mismatch");
+  }
   if (
     catalog.project_details.length !== projects.size ||
     catalog.topic_details.length !== topics.size
@@ -294,8 +382,155 @@ export function assertPublicCatalog(value: unknown) {
   return catalog;
 }
 
+export const supplementSourceMetadataSchema = z.strictObject({
+  project_slug: slugSchema,
+  source: text,
+  source_visibility: z.literal("private"),
+});
+
+export const relationEdgeSchema = z.strictObject({
+  topic_slug: slugSchema,
+  project_slug: slugSchema,
+  project_name: text,
+});
+
+export const publicRelationIndexSchema = z.strictObject({
+  projects: z.array(projectRefSchema),
+  topics: z.array(
+    z.strictObject({
+      slug: slugSchema,
+      related_projects: z.array(projectRefSchema),
+    })
+  ),
+});
+export type PlaybookPublicRelationIndex = z.infer<typeof publicRelationIndexSchema>;
+
+export const supplementProjectSchema = z.strictObject({
+  slug: slugSchema,
+  name: text,
+  description: nullableText,
+  source: text,
+  tags: z.array(text),
+  snapshot_exists: z.boolean(),
+  catalog_visibility: z.literal("private"),
+  source_visibility: z.enum(["public", "private"]),
+  created_at: nullableText,
+  updated_at: nullableText,
+});
+
+export const supplementTopicSchema = z.strictObject({
+  slug: slugSchema,
+  token: text,
+  description: nullableText,
+  categories: z.array(text),
+  project_count: z.number().int().nonnegative(),
+  related_projects: z.array(projectRefSchema),
+  catalog_visibility: z.literal("private"),
+});
+
+export const supplementCatalogSchema = z.strictObject({
+  snapshot: z.strictObject({
+    index: z.strictObject({
+      generated_at: z.string().datetime({ offset: true }),
+      project_count: z.number().int().nonnegative(),
+      topic_count: z.number().int().nonnegative(),
+    }),
+    projects: z.array(supplementProjectSchema),
+    topics: z.array(supplementTopicSchema),
+  }),
+  project_details: z.array(
+    z.strictObject({
+      item: supplementProjectSchema,
+      title: text,
+      doc_metadata: z.array(metadataSchema),
+      stack: z.unknown(),
+      preamble: text,
+      sections: z.array(sectionSchema),
+    })
+  ),
+  topic_details: z.array(
+    z.strictObject({
+      item: supplementTopicSchema,
+      doc_metadata: z.array(metadataSchema),
+      preamble: text,
+      sections: z.array(sectionSchema),
+    })
+  ),
+  private_source_metadata: z.array(supplementSourceMetadataSchema),
+  relation_edges: z.array(relationEdgeSchema),
+});
+
+export function assertSupplementCatalog(value: unknown) {
+  const catalog = supplementCatalogSchema.parse(value);
+  unique(catalog.snapshot.projects.map((item) => item.slug));
+  unique(catalog.snapshot.topics.map((item) => item.slug));
+  unique(catalog.project_details.map((item) => item.item.slug));
+  unique(catalog.topic_details.map((item) => item.item.slug));
+  unique(catalog.private_source_metadata.map((item) => item.project_slug));
+  const projects = new Map(catalog.snapshot.projects.map((item) => [item.slug, item]));
+  const topics = new Map(catalog.snapshot.topics.map((item) => [item.slug, item]));
+  for (const project of catalog.snapshot.projects) {
+    if (
+      (project.source_visibility === "private" && project.source !== "private") ||
+      (project.source_visibility === "public" && project.source === "private")
+    )
+      throw new Error("Supplement project source visibility mismatch");
+  }
+  if (
+    catalog.snapshot.index.project_count !== catalog.snapshot.projects.length ||
+    catalog.snapshot.index.topic_count !== catalog.snapshot.topics.length ||
+    catalog.project_details.length !== projects.size ||
+    catalog.topic_details.length !== topics.size
+  )
+    throw new Error("Supplement catalog counts or details are incomplete");
+  for (const detail of catalog.project_details) {
+    if (JSON.stringify(projects.get(detail.item.slug)) !== JSON.stringify(detail.item))
+      throw new Error("Supplement project detail identity mismatch");
+    rejectInternalFields(detail.stack);
+    unique(detail.sections.map((section) => section.id));
+  }
+  for (const detail of catalog.topic_details) {
+    if (JSON.stringify(topics.get(detail.item.slug)) !== JSON.stringify(detail.item))
+      throw new Error("Supplement topic detail identity mismatch");
+    unique(detail.sections.map((section) => section.id));
+    unique(detail.item.related_projects.map((project) => project.slug));
+  }
+  unique(catalog.relation_edges.map((edge) => `${edge.topic_slug}\0${edge.project_slug}`));
+  const topicDetails = new Map(
+    catalog.topic_details.map((detail) => [detail.item.slug, detail.item])
+  );
+  for (const edge of catalog.relation_edges) {
+    const topic = topicDetails.get(edge.topic_slug);
+    if (!topic) continue;
+    const relatedProject = topic.related_projects.find(
+      (project) => project.slug === edge.project_slug
+    );
+    if (!relatedProject || relatedProject.name !== edge.project_name)
+      throw new Error("Supplement relation does not match Topic related_projects");
+  }
+  for (const metadata of catalog.private_source_metadata) {
+    const project = projects.get(metadata.project_slug);
+    if (project && project.source_visibility !== "private")
+      throw new Error("Supplement source metadata is not private");
+  }
+  return catalog;
+}
+
 function unique(values: string[]) {
   if (new Set(values).size !== values.length) throw new Error("Duplicate playbook identity");
+}
+
+export function assertPublicRelationIndex(value: unknown): PlaybookPublicRelationIndex {
+  const index = publicRelationIndexSchema.parse(value);
+  unique(index.projects.map((project) => project.slug));
+  unique(index.topics.map((topic) => topic.slug));
+  const projects = new Map(index.projects.map((project) => [project.slug, project]));
+  for (const topic of index.topics) {
+    unique(topic.related_projects.map((project) => project.slug));
+    if (topic.related_projects.some((project) => projects.get(project.slug)?.name !== project.name))
+      throw new Error("Public relation index has invalid project references");
+  }
+  return index;
 }
 
 const internalRecordKeys = new Set([

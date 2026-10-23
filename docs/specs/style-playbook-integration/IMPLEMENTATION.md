@@ -3,7 +3,7 @@
 ## Current Status
 
 - Lifecycle: active
-- Implementation: candidate complete；原生阅读、公开资源浏览、发布链和 console 持久快照已有实现；统一服务端搜索、公开资源正文检索、现代 RAG 版本绑定、异步语义投影与管理员内容同步状态已接入。重型恢复、Mock 投影链路验证、视觉确认和交付门禁尚待完成。
+- Implementation: candidate complete；原生阅读、公开资源浏览、双包接收、受保护补充接收、同源公共关系索引校验、管理员合并浏览、发布链和 console 持久快照已有实现；统一服务端搜索、公开资源正文检索、现代 RAG 版本绑定、异步语义投影与管理员内容同步状态已接入。重型恢复、Mock 投影链路验证、视觉确认和交付门禁尚待完成。
 - Catalog note: 原生 Playbook、内容 workflow 和 console 持久快照已落地，生产公开指针已有可校验内容；生产 console 的实际采用版本和运行时同步配置尚未在本工作区核实。
 - `REQ-PBI-012`、`REQ-PBI-013`、`REQ-PBI-015` 的既有章节聚合、展开和高亮已实现；统一适配器现在聚合章节与公开资源并返回同版定位，服务端共同排名与全局容量已接入。既有自动化与视觉证据不替代当前 Candidate 的重型验证。
 - `REQ-PBI-016` 已在博客消费端实现：详情与索引移除自动生成的内容版本和维护字段，明确异常状态使用中文提示。针对性 SSR、纯函数、静态 smoke、浏览器视觉与格式检查已通过，交付门禁待完成。
@@ -12,11 +12,11 @@
 
 | Requirements | 实现 | 验证 |
 | --- | --- | --- |
-| `REQ-PBI-001`、`REQ-PBI-002` | Astro 原生目录与详情、真实标题层级、静态子标题 anchor 与当前阅读位置、受控 Markdown、关系、公开文件树和高亮预览及匿名 Policy 资源；严格公开包校验和归档安全检查 | `playbook-contract.test.ts` 的完整公开样例、私有字段拒绝、损坏归档与 SSR；`playbook-outline.test.ts` 的已有编号、重复标题与锚点一致性；`playbook-resources.test.tsx` 的原文保真、惰性 HTML、同版下载链接及文件引用；正式 `/playbook/` Web Demo 路由检查；Storybook 仅保留资源浏览器组件场景 |
-| `REQ-PBI-003`、`REQ-PBI-004` | 固定 Release 元数据复核、tag commit 核对；首次引导与每小时补漏都选择最高就绪稳定 SemVer，手动入口默认 reconcile | 模拟 GitHub reader 检查 draft、prerelease、身份不符与最高就绪稳定 SemVer |
+| `REQ-PBI-001`、`REQ-PBI-002` | Astro 原生目录与详情、真实标题层级、静态子标题 anchor 与当前阅读位置、受控 Markdown、双可见性目录关系、公开文件树和高亮预览及匿名 Policy 资源；公共包与补充包严格校验和归档安全检查，补充包通过受保护接收入口按 source identity 暂存，合并结果仅通过管理员 API 暴露 | `playbook-contract.test.ts` 的完整公开/补充样例、私有字段拒绝、损坏归档、正文原样和 SSR；`playbook-outline.test.ts` 的已有编号、重复标题与锚点一致性；`playbook-resources.test.tsx` 的原文保真、惰性 HTML、同版下载链接及文件引用；管理员路由、补充接收入口和正式 `/playbook/` Web Demo 路由检查；Storybook 仅保留资源浏览器组件场景 |
+| `REQ-PBI-003`、`REQ-PBI-004` | 固定 Release 元数据复核、公共/补充资产身份核对、tag commit 核对；首次引导与每小时补漏都按最高就绪稳定 SemVer 验证公共归档并在最高候选损坏时回退，手动入口默认 reconcile；初始公共包获取把补充包作为可选 overlay，未提供补充身份时使用 Release 中已验证的补充包，补充包状态无效、补充身份缺失/部分/失配（包括无补充资产却携带身份）、二次下载失败或归档解析失败只记录警告并继续公共 seed，同时清除重试残留的旧 supplement 目录 | 模拟 GitHub reader 检查 draft、prerelease、身份不符、最高候选损坏回退、未带补充身份仍可采用有效补充、补充资产不完整、无补充资产但携带身份、补充身份失配或部分字段不阻断公共发布、补充二次读取失败不阻断公共 seed、重试清除陈旧补充目录与最高就绪稳定 SemVer |
 | `REQ-PBI-005`、`REQ-PBI-006` | 内容刷新复用已部署 renderer 和独立文章/Memo 快照；正常前端与内容/回滚 job 共享排队锁，锁内重建 | 部署适配器检查幂等、迟到、变化后重建、失败不采用及显式暂停回滚；workflow 结构测试 |
 | `REQ-PBI-007` | edition 包含 renderer、来源包和完整公开文件摘要；同批指针、页面、搜索、资源及原始包，保留前一版 | 静态产物校验、身份重算、旧文件保留、不可变与重新验证缓存策略测试 |
-| `REQ-PBI-008`、`REQ-PBI-009` | console 启动加载持久缓存/固定 seed，立即和每 300 秒单任务同步；统一搜索使用 current/previous edition；语义投影按同版异步准备，失败不撤销内容采用 | 既有缓存、断网/损坏/schema 不兼容、重启、首次 HTTP SSR 及指定 edition 搜索已验证；共同投影失败恢复待 Agent VM 验证 |
+| `REQ-PBI-008`、`REQ-PBI-009` | console 启动加载持久缓存/固定 public seed 与可选 admin-only supplement seed；内容 workflow 的构建 seed 和接收状态保留补充包原始数据字节、同源公共关系索引并按 manifest 复验，生产 frozen product inputs、`backend-dist` 与公开镜像只携带 public seed；公共包、补充包、manifest 和缓存投影统一使用 fatal UTF-8 解码，非法字节直接拒绝；接收入口按 source identity 持久化补充状态，立即和每 300 秒单任务同步；统一公共搜索使用 current/previous edition，管理员读模型合并 source-matching supplement；显式回滚后的补充接收只接受当前回滚源或明确允许的更旧目标，拒绝高于当前回滚源的迟到补充，保留已恢复 overlay；初始公共 seed 不因可选补充包失效或 overlay 合并冲突而失败，补充目录按本次输入重建；普通同源空 overlay 继续防止迟到补充，invalid 清除状态可通过同源有效补充恢复，关系冲突在 Blog 同步前拒绝且不删除已有有效 overlay；构建未生成合并后的 supplement seed 时隔离补充状态并跳过提交；公共指针二次读取、补充构建、receiver 或冲突 overlay 清理落盘失败只记录告警并由后续补漏重试，不撤销或标失败公共采用；语义投影按同版异步准备，失败不撤销内容采用 | 既有缓存、受保护接收、乱序 source identity、空 overlay、断网/损坏/schema 不兼容、非法 UTF-8、补充包错配、重启、seed 原始字节篡改拒绝、回滚后的迟到补充拒绝、可选补充失效或合并冲突仍保留公共 seed、关系冲突候选不清除已有 overlay、invalid 清除后同源有效重试、补充接收失败不阻断公共采用、冲突清理落盘失败不阻断公共采用、构建合并冲突不触发补充提交、公共指针二次读取失败不阻断公共采用、首次 HTTP SSR 及指定 edition 搜索已验证；共同投影失败恢复待 Agent VM 验证 |
 | `REQ-PBI-010` | `src/server/services/playbook-search.ts` 将 Topic、项目实践、Policy 正文与公开资源聚合为 edition-bound 候选；现代执行器按 source/type 过滤并用共同 RRF 排名，搜索页发起单一服务端请求 | 适配器、导航、入口回归和正式 Web Demo 的 Topic/Policy 统一列表已通过；跨来源 RAG、真实模型输入隔离仍待当前 Candidate VM 验证 |
 | `REQ-PBI-011` | 请求/采用身份记录和整体回滚入口已有实现 | 既有 API 409 与构建/部署适配器测试；现代统一搜索身份与管理员持久历史待验证 |
 | `REQ-PBI-012` | 展示层 SearchResultGroup 按来源、类型和规范路由归组；同 edition catalog 提供权威标题与章节位置，单章节直接作为主入口 | Playbook 身份、标题、锚点、Policy/栏目及缺失公开对象测试；文章/Memo 跨类型身份回归 |
@@ -66,11 +66,11 @@ Policy 公开资源使用 SSR 文件浏览器：可收起的原生目录树、�
 - 统一服务端入口、跨来源共同排名、全局 topK、截断前范围筛选与现代搜索版本元信息已接入，详见 [统一搜索接口](../search-relevance/contracts/unified-search.md)；当前 Candidate 仍需重型验证；本次模型和 embedding 提供方均使用 Mock，不调用真实外部服务。
 - Policy 公开资源文件已由同版公开 catalog 准备检索候选并返回安全路径，语义投影按 edition/model/content hash 异步去重；完整崩溃恢复与无 JavaScript 定位验收待验证，现有发布包无需读取私有源文件。
 - 管理员内容同步页已纳入 Playbook 来源、按来源刷新和独立语义状态；持久任务历史、取消与采用边界需要在 Agent VM 故障注入中验证。
-- 当前候选的 Playbook 纯函数、SSR、静态/Web Demo/console 构建、视觉证据和格式检查已完成；新增页面截图为 current-only，待 owner 确认后才能冻结候选，受影响的独立审查与 live PR 当前 head 门禁仍待完成。实现覆盖不等同于交付完成。
+- 当前候选的 Playbook 纯函数、双包接收、管理员 API、SSR、静态/Web Demo/console 构建、视觉证据和格式检查已完成；新增页面截图为 current-only，待 owner 确认后才能冻结候选，受影响的独立审查与 live PR 当前 head 门禁仍待完成。实现覆盖不等同于交付完成。
 - 上游原生 Release 负责发布可重复公开包，并在数据包之后最后上传 manifest；博客通过每小时补漏读取最新就绪稳定版，不要求上游调用博客 Actions API。见 [公开包契约](./contracts/public-package.md) 和 [触发契约](./contracts/release-trigger.md)。
 - `PLAYBOOK_SOURCE_TOKEN` 提供上游只读访问；生产更新仍须在首次应用部署验证指针后手动启用。首次引导自动选择最高的就绪稳定 SemVer，不需要固定 Release ID。
 - 真实 EdgeOne 原子发布、生产指针及 console 五分钟跟随由两仓合并后的上线阶段验证；模拟适配器与本地 HTTP 结果不替代生产验收。
-- 本任务停在 merge-ready，不合并、不触发真实 Release、不配置远端凭据。上线顺序和暂停/回滚流程见 [发布 runbook](../../runbooks/style-playbook-publishing.md)。
+- 本任务不触发真实 Release、不配置远端凭据；PR 合并按交付流程的 Step 5C 版本确认和 CI/review 门禁执行。上线顺序和暂停/回滚流程见 [发布 runbook](../../runbooks/style-playbook-publishing.md)。
 
 ## 内容同步统计与语义准备缺口
 

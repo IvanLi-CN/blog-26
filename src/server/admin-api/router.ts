@@ -40,6 +40,7 @@ import {
   suggestTagIcon,
 } from "@/server/services/tag-icons";
 import { getTagSummaries } from "@/server/services/tag-service";
+import { handlePlaybookSupplementSyncRequest } from "./playbook-supplement";
 
 function json(data: unknown, init: ResponseInit = {}, extraHeaders?: Headers) {
   const headers = new Headers(init.headers);
@@ -252,6 +253,8 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
     const url = new URL(request.url);
     const pathname = subPath.replace(/\/+/g, "/").replace(/\/$/, "") || "/";
 
+    if (pathname === "/playbook/supplement") return handlePlaybookSupplementSyncRequest(request);
+
     if (pathname === "/session") {
       if (request.method !== "GET") return methodNotAllowed(request.method);
       const { ctx, resHeaders } = await createCallerForRequest(request);
@@ -266,6 +269,21 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
     }
 
     const { caller, resHeaders } = await createAdminCallerForRequest(request);
+
+    if (pathname === "/playbook") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      const kind = getString(url.searchParams.get("kind"));
+      return json(
+        await caller.admin.playbook.browse({
+          query: getString(url.searchParams.get("q")),
+          kind: kind === "project" || kind === "topic" || kind === "search" ? kind : "all",
+          slug: getString(url.searchParams.get("slug")),
+          limit: getNumber(url.searchParams.get("limit"), 50),
+        }),
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
 
     if (pathname === "/search-settings") {
       if (request.method === "GET")

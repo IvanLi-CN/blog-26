@@ -7,7 +7,15 @@ import {
   playbookVersionPath,
   validatePlaybookEdition,
 } from "./cache";
-import { encodeJson, parseEditionIdentity, samePlaybookEdition, verifyFile } from "./manifest";
+import {
+  decodePlaybookRawFiles,
+  decodeUtf8,
+  encodeJson,
+  parseEditionIdentity,
+  parseJson,
+  samePlaybookEdition,
+  verifyFile,
+} from "./manifest";
 import { getPlaybookPolicies } from "./navigation";
 import type { PlaybookEdition, PlaybookEditionIdentity } from "./types";
 
@@ -44,7 +52,7 @@ export async function readPublicPointer(url: string, fetcher: PlaybookFetcher = 
   if (response.status === 404) return undefined;
   if (!response.ok) throw new Error(`Public pointer unavailable: ${response.status}`);
   return parseEditionIdentity(
-    JSON.parse(new TextDecoder().decode(await readBoundedResponse(response, 64 * 1024)))
+    parseJson(decodeUtf8(await readBoundedResponse(response, 64 * 1024), "Public pointer"))
   );
 }
 
@@ -59,6 +67,7 @@ export async function downloadRetainedEdition(
     manifestUrl
   );
   const files = new Map<string, unknown>();
+  const rawFiles = new Map<string, Uint8Array>();
   for (const record of pointer.files) {
     const bytes = await fetchBounded(
       fetcher,
@@ -68,13 +77,17 @@ export async function downloadRetainedEdition(
     );
     verifyFile(bytes, record);
     await write(join(destination, record.path), bytes);
-    files.set(record.path, JSON.parse(new TextDecoder().decode(bytes)));
+    files.set(record.path, parseJson(decodeUtf8(bytes, `Playbook ${record.path}`)));
+    rawFiles.set(record.path, bytes);
   }
-  const edition = validatePlaybookEdition({
-    edition: pointer,
-    catalog: files.get("catalog.json"),
-    search: files.get("search-documents.json"),
-  });
+  const edition = validatePlaybookEdition(
+    {
+      edition: pointer,
+      catalog: files.get("catalog.json"),
+      search: files.get("search-documents.json"),
+    },
+    rawFiles
+  );
   const archive = await fetchBounded(
     fetcher,
     new URL(pointer.bundle.name, base).href,
@@ -97,7 +110,8 @@ export async function downloadRetainedEdition(
   const rebuilt = await readPlaybookEdition(
     destination,
     pointer.rendererCommit,
-    await readFile(join(destination, "public-snapshot.json"))
+    await readFile(join(destination, "public-snapshot.json")),
+    pointer.sourceTimestamp
   );
   if (!samePlaybookEdition(rebuilt.edition, pointer))
     throw new Error("Retained package does not reproduce the public edition");
@@ -124,10 +138,19 @@ export async function writePublicEdition(
   bundleRoot: string,
   publicSnapshot: Uint8Array | string
 ) {
-  validatePlaybookEdition(edition);
+  const rawFiles = edition.legacyCatalog
+    ? decodePlaybookRawFiles(edition.legacyRawFiles)
+    : undefined;
+  validatePlaybookEdition(edition, rawFiles);
   const directory = join(publicRoot, playbookVersionPath(edition.edition));
-  await write(join(directory, "catalog.json"), encodeJson(edition.catalog));
-  await write(join(directory, "search-documents.json"), encodeJson(edition.search));
+  await write(
+    join(directory, "catalog.json"),
+    rawFiles?.get("catalog.json") ?? encodeJson(edition.catalog)
+  );
+  await write(
+    join(directory, "search-documents.json"),
+    rawFiles?.get("search-documents.json") ?? encodeJson(edition.search)
+  );
   const snapshotFile = edition.edition.files.find((file) => file.path === "public-snapshot.json");
   if (!snapshotFile) throw new Error("Article/Memo snapshot record is missing");
   verifyFile(publicSnapshot, snapshotFile);

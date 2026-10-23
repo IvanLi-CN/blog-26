@@ -44,7 +44,8 @@ export interface PlaybookPublicProjectListItem {
   source: string;
   tags: string[];
   snapshot_exists: boolean;
-  visibility: "public" | null;
+  catalog_visibility: "public";
+  source_visibility: "public" | "private";
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -56,6 +57,7 @@ export interface PlaybookPublicTopicListItem {
   categories: string[];
   project_count: number;
   related_projects: PlaybookTopicProjectRef[];
+  catalog_visibility: "public";
 }
 
 export interface PlaybookPublicProjectDetail {
@@ -63,12 +65,14 @@ export interface PlaybookPublicProjectDetail {
   title: string;
   doc_metadata: PlaybookDocMetadataField[];
   stack: unknown;
+  preamble: string;
   sections: PlaybookDocSection[];
 }
 
 export interface PlaybookPublicTopicDetail {
   item: PlaybookPublicTopicListItem;
   doc_metadata: PlaybookDocMetadataField[];
+  preamble: string;
   sections: PlaybookDocSection[];
   policy_skills: PlaybookPolicySkillDetail[];
 }
@@ -98,6 +102,66 @@ export interface PlaybookSearchDocument {
 export interface PlaybookSearchPayload {
   generated_at: string;
   documents: PlaybookSearchDocument[];
+}
+
+export interface PlaybookSupplementProjectListItem {
+  slug: string;
+  name: string;
+  description?: string | null;
+  source: string;
+  tags: string[];
+  snapshot_exists: boolean;
+  catalog_visibility: "private";
+  source_visibility: "public" | "private";
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface PlaybookSupplementTopicListItem {
+  slug: string;
+  token: string;
+  description?: string | null;
+  categories: string[];
+  project_count: number;
+  related_projects: PlaybookTopicProjectRef[];
+  catalog_visibility: "private";
+}
+
+export interface PlaybookSupplementProjectDetail {
+  item: PlaybookSupplementProjectListItem;
+  title: string;
+  doc_metadata: PlaybookDocMetadataField[];
+  stack: unknown;
+  preamble: string;
+  sections: PlaybookDocSection[];
+}
+
+export interface PlaybookSupplementTopicDetail {
+  item: PlaybookSupplementTopicListItem;
+  doc_metadata: PlaybookDocMetadataField[];
+  preamble: string;
+  sections: PlaybookDocSection[];
+}
+
+export interface PlaybookSupplementCatalog {
+  snapshot: {
+    index: { generated_at: string; project_count: number; topic_count: number };
+    projects: PlaybookSupplementProjectListItem[];
+    topics: PlaybookSupplementTopicListItem[];
+  };
+  project_details: PlaybookSupplementProjectDetail[];
+  topic_details: PlaybookSupplementTopicDetail[];
+  private_source_metadata: {
+    project_slug: string;
+    source: string;
+    source_visibility: "private";
+  }[];
+  relation_edges: { topic_slug: string; project_slug: string; project_name: string }[];
+}
+
+export interface PlaybookSupplement {
+  catalog: PlaybookSupplementCatalog;
+  search: PlaybookSearchPayload;
 }
 
 export interface PlaybookSourceIdentity {
@@ -132,6 +196,7 @@ export interface PlaybookEditionIdentity {
   editionDigest: string;
   rendererCommit: string;
   contentSnapshotIdentity: string;
+  sourceTimestamp?: number;
   source: PlaybookSourceIdentity;
   bundle: PlaybookBundleIdentity;
   files: PlaybookManifestFile[];
@@ -143,4 +208,44 @@ export interface PlaybookEdition {
   edition: PlaybookEditionIdentity;
   catalog: PlaybookPublicCatalog;
   search: PlaybookSearchPayload;
+  legacyCatalog?: boolean;
+  legacyRawFiles?: { catalog: string; search: string };
+}
+
+export interface PlaybookSupplementEnvelope extends PlaybookSupplement {
+  manifest: PlaybookManifest;
+}
+
+export interface PlaybookSupplementSeed extends PlaybookSupplementEnvelope {
+  rawFiles: { catalog: string; search: string };
+}
+
+export type PlaybookAdminProjectListItem =
+  | PlaybookPublicProjectListItem
+  | PlaybookSupplementProjectListItem;
+export type PlaybookAdminTopicListItem =
+  | PlaybookPublicTopicListItem
+  | PlaybookSupplementTopicListItem;
+export type PlaybookAdminProjectDetail =
+  | PlaybookPublicProjectDetail
+  | PlaybookSupplementProjectDetail;
+export type PlaybookAdminTopicDetail = PlaybookPublicTopicDetail | PlaybookSupplementTopicDetail;
+
+export interface PlaybookAdminCatalog {
+  snapshot: {
+    index: { generated_at: string; project_count: number; topic_count: number };
+    projects: PlaybookAdminProjectListItem[];
+    topics: PlaybookAdminTopicListItem[];
+  };
+  project_details: PlaybookAdminProjectDetail[];
+  topic_details: PlaybookAdminTopicDetail[];
+  private_source_metadata: PlaybookSupplementCatalog["private_source_metadata"];
+  relation_edges: PlaybookSupplementCatalog["relation_edges"];
+}
+
+export interface PlaybookAdminEdition {
+  edition: PlaybookEditionIdentity;
+  catalog: PlaybookAdminCatalog;
+  search: PlaybookSearchPayload;
+  supplement?: PlaybookSupplementEnvelope;
 }
