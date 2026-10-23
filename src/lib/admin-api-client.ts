@@ -185,9 +185,15 @@ export interface AdminComment {
   content: string;
   postSlug: string;
   authorName: string;
-  authorEmail: string;
+  authorEmail: string | null;
   parentId: string | null;
   status: "pending" | "approved" | "rejected";
+  targetType?: "article" | "memo" | "project";
+  targetKey?: string;
+  readerId?: string | null;
+  deletedAt?: number | null;
+  deleted?: boolean;
+  revision?: number;
   createdAt: number;
 }
 
@@ -595,7 +601,8 @@ export const adminApi = {
     page?: number;
     limit?: number;
     search?: string;
-    status?: "all" | "approved" | "pending" | "rejected";
+    status?: "all" | "approved" | "pending" | "rejected" | "deleted";
+    targetType?: "article" | "memo" | "project";
     sortBy?: "createdAt" | "authorName";
     sortOrder?: "asc" | "desc";
   }) => adminRequest<AdminCommentsListResponse>(`/api/admin/comments${buildSearch(params)}`),
@@ -607,24 +614,27 @@ export const adminApi = {
         body: JSON.stringify(input),
       }
     ),
-  deleteComment: (id: string) =>
+  deleteComment: (id: string, expectedRevision?: number) =>
     adminRequest<{ success: boolean; message: string }>(
       `/api/admin/comments/${encodeURIComponent(id)}`,
       {
         method: "DELETE",
+        body: JSON.stringify({ expectedRevision }),
       }
     ),
   batchUpdateComments: (input: {
     ids: string[];
-    action: "approve" | "reject" | "pending" | "delete";
+    action: "approve" | "reject" | "pending" | "delete" | "restore";
+    expectedRevisions?: Record<string, number>;
   }) =>
-    adminRequest<{ success: boolean; message: string; affectedCount: number }>(
-      "/api/admin/comments/batch",
-      {
-        method: "POST",
-        body: JSON.stringify(input),
-      }
-    ),
+    adminRequest<{
+      success: boolean;
+      message?: string;
+      results?: Array<{ id: string; result: string }>;
+    }>("/api/admin/comments/batch", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
   getContentSyncSystemConfig: () =>
     adminRequest<Record<string, unknown>>("/api/admin/content-sync/system-config"),
   getContentSyncStatus: (

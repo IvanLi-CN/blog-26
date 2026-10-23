@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
   "covered_files": {
-    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "b5a2247670cb07f94e9d110782022509081acc81",
+    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "5396c2b20f8e96e0da64c0a1a2c054d67e5d1041",
     "tests/e2e/web-demo/public-csr.spec.ts": "93f4605ef6de0e26ad9ece7ea2e476b8d1f49156"
   },
   "change": {
@@ -15,11 +15,11 @@
     "planned": {
       "impact": "patch",
       "reasoning": "The change only makes existing Web Demo tests wait for the already-published hydration and route state; it does not change product code or public behavior.",
-      "assessed_at": "2026-10-23T00:00:00+08:00",
+      "assessed_at": "2026-10-23T15:43:07+08:00",
       "evidence": [
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "b5a2247670cb07f94e9d110782022509081acc81",
+          "blob": "5396c2b20f8e96e0da64c0a1a2c054d67e5d1041",
           "command": "bunx playwright test tests/e2e/web-demo/console-memo-boundary.spec.ts"
         }
       ]
@@ -27,11 +27,11 @@
     "current": {
       "impact": "patch",
       "reasoning": "The candidate is limited to deterministic readiness waits in the Console Memo Web Demo E2E file; runtime routes, payloads, persistence, and compatibility contracts remain unchanged.",
-      "assessed_at": "2026-10-23T00:00:00+08:00",
+      "assessed_at": "2026-10-23T15:43:07+08:00",
       "evidence": [
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "b5a2247670cb07f94e9d110782022509081acc81",
+          "blob": "5396c2b20f8e96e0da64c0a1a2c054d67e5d1041",
           "command": "bunx playwright test tests/e2e/web-demo/console-memo-boundary.spec.ts"
         }
       ],
@@ -43,11 +43,11 @@
     "verified": {
       "impact": "patch",
       "reasoning": "Repository checks and the exact Web Demo CI test sets pass with the readiness waits, confirming a test-only synchronization correction.",
-      "assessed_at": "2026-10-23T00:00:00+08:00",
+      "assessed_at": "2026-10-23T15:43:07+08:00",
       "evidence": [
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "b5a2247670cb07f94e9d110782022509081acc81",
+          "blob": "5396c2b20f8e96e0da64c0a1a2c054d67e5d1041",
           "command": "Exact CI console desktop and mobile Web Demo sets pass sequentially"
         },
         {
@@ -107,7 +107,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "b5a2247670cb07f94e9d110782022509081acc81",
+          "blob": "5396c2b20f8e96e0da64c0a1a2c054d67e5d1041",
           "command": "No persistent-state implementation is changed"
         }
       ]

@@ -31,9 +31,27 @@ export function useUserInfo() {
     const version = ++requestVersion.current;
     setIsLoading(true);
     try {
-      const data = await readJson<UserInfo | null>(toPublicApiUrl("/api/public/auth/me"));
+      const data = await readJson<{
+        reader: {
+          id: string;
+          githubLogin: string;
+          displayName: string | null;
+          avatarUrl: string | null;
+          profileUrl: string | null;
+        } | null;
+      }>(toPublicApiUrl("/api/public/reader-auth/me"));
       if (version !== requestVersion.current) return;
-      setUserInfo(data);
+      setUserInfo(
+        data.reader
+          ? {
+              id: data.reader.id,
+              nickname: data.reader.displayName || data.reader.githubLogin,
+              email: null,
+              avatarUrl: data.reader.avatarUrl || "/site-assets/default-avatar.svg",
+              profileUrl: data.reader.profileUrl,
+            }
+          : null
+      );
     } catch {
       if (version !== requestVersion.current) return;
       setUserInfo(null);
@@ -53,7 +71,7 @@ export function useUserInfo() {
 
   const logout = useCallback(async () => {
     try {
-      await readJson(toPublicApiUrl("/api/public/auth/logout"), { method: "POST" });
+      await readJson(toPublicApiUrl("/api/public/reader-auth/logout"), { method: "POST" });
     } finally {
       setUserInfo(null);
       window.location.reload();
@@ -65,9 +83,10 @@ export function useUserInfo() {
 
 interface UseCommentsProps {
   postSlug: string;
+  target?: { type: "article" | "memo" | "project"; key: string };
 }
 
-export function useComments({ postSlug }: UseCommentsProps) {
+export function useComments({ postSlug, target }: UseCommentsProps) {
   const [comments, setComments] = useState<CommentWithAuthorAndReplies[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +94,8 @@ export function useComments({ postSlug }: UseCommentsProps) {
   const [totalPages, setTotalPages] = useState(1);
   const [isAdmin, setIsAdmin] = useState(false);
   const requestVersion = useRef(0);
+  const targetType = target?.type;
+  const targetKey = target?.key;
 
   const fetchComments = useCallback(
     async (pageNum: number, refresh = false) => {
@@ -88,14 +109,23 @@ export function useComments({ postSlug }: UseCommentsProps) {
           isAdmin: boolean;
         }>(
           toPublicApiUrl(
-            `/api/public/comments?slug=${encodeURIComponent(postSlug)}&page=${pageNum}&limit=10`
+            `/api/public/comments?slug=${encodeURIComponent(postSlug)}${
+              targetType && targetKey
+                ? `&targetType=${encodeURIComponent(targetType)}&targetKey=${encodeURIComponent(targetKey)}`
+                : ""
+            }&page=${pageNum}&limit=10`
           )
         );
         if (version !== requestVersion.current) return;
+        const nextComments = Array.isArray(data.comments) ? data.comments : [];
         setComments((prev) =>
-          pageNum === 1 || refresh ? data.comments : [...prev, ...data.comments]
+          pageNum === 1 || refresh ? nextComments : [...prev, ...nextComments]
         );
-        setTotalPages(data.totalPages);
+        setTotalPages(
+          typeof data.totalPages === "number" && Number.isFinite(data.totalPages)
+            ? Math.max(1, data.totalPages)
+            : 1
+        );
         setIsAdmin(data.isAdmin || false);
         setPage(pageNum);
       } catch (err: unknown) {
@@ -106,7 +136,7 @@ export function useComments({ postSlug }: UseCommentsProps) {
         if (version === requestVersion.current) setIsLoading(false);
       }
     },
-    [postSlug]
+    [postSlug, targetKey, targetType]
   );
 
   const loadMore = () => {
@@ -136,7 +166,7 @@ export function useModerateComment() {
   const [error, setError] = useState<string | null>(null);
 
   const moderateComment = useCallback(
-    async (commentId: string, status: "approved" | "rejected") => {
+    async (commentId: string, status: "approved" | "rejected", expectedRevision?: number) => {
       setIsModerating(true);
       setError(null);
       try {
@@ -145,7 +175,7 @@ export function useModerateComment() {
           {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ status }),
+            body: JSON.stringify({ status, expectedRevision }),
           }
         );
         return result;
@@ -163,6 +193,61 @@ export function useModerateComment() {
   return { moderateComment, isModerating, error };
 }
 
+export function useCommentReplies() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadReplies = useCallback(async (commentId: string, cursor?: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      return await readJson<{ replies: Comment[]; nextCursor: string | null }>(
+        toPublicApiUrl(
+          `/api/public/comments/${encodeURIComponent(commentId)}/replies?limit=20${
+            cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""
+          }`
+        )
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  return { loadReplies, isLoading, error };
+}
+
+export function useRestoreComment() {
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const restoreComment = useCallback(async (commentId: string, expectedRevision?: number) => {
+    setIsRestoring(true);
+    setError(null);
+    try {
+      return await readJson(
+        toPublicApiUrl(`/api/public/comments/${encodeURIComponent(commentId)}/restore`),
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ expectedRevision }),
+        }
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+      throw err;
+    } finally {
+      setIsRestoring(false);
+    }
+  }, []);
+
+  return { restoreComment, isRestoring, error };
+}
+
 export function usePostComment() {
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -172,8 +257,8 @@ export function usePostComment() {
       postSlug: string;
       content: string;
       parentId?: string;
-      author?: Omit<UserInfo, "id" | "avatarUrl">;
-      captchaResponse?: string;
+      target?: { type: "article" | "memo" | "project"; key: string };
+      submissionKey?: string;
     }) => {
       setIsPosting(true);
       setError(null);
@@ -181,7 +266,10 @@ export function usePostComment() {
         const result = await readJson(toPublicApiUrl("/api/public/comments"), {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(commentData),
+          body: JSON.stringify({
+            ...commentData,
+            submissionKey: commentData.submissionKey || crypto.randomUUID(),
+          }),
         });
 
         return { ok: true, json: () => Promise.resolve(result) };
@@ -203,26 +291,29 @@ export function useEditComment() {
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const editComment = useCallback(async (commentId: string, content: string) => {
-    setIsEditing(true);
-    setError(null);
-    try {
-      return await readJson(
-        toPublicApiUrl(`/api/public/comments/${encodeURIComponent(commentId)}`),
-        {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ content }),
-        }
-      );
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
-      throw err;
-    } finally {
-      setIsEditing(false);
-    }
-  }, []);
+  const editComment = useCallback(
+    async (commentId: string, content: string, expectedRevision?: number) => {
+      setIsEditing(true);
+      setError(null);
+      try {
+        return await readJson(
+          toPublicApiUrl(`/api/public/comments/${encodeURIComponent(commentId)}`),
+          {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ content, expectedRevision }),
+          }
+        );
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        setError(message);
+        throw err;
+      } finally {
+        setIsEditing(false);
+      }
+    },
+    []
+  );
 
   return { editComment, isEditing, error };
 }
@@ -231,7 +322,7 @@ export function useDeleteComment() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const deleteComment = useCallback(async (commentId: string) => {
+  const deleteComment = useCallback(async (commentId: string, expectedRevision?: number) => {
     setIsDeleting(true);
     setError(null);
     try {
@@ -239,6 +330,8 @@ export function useDeleteComment() {
         toPublicApiUrl(`/api/public/comments/${encodeURIComponent(commentId)}`),
         {
           method: "DELETE",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ expectedRevision }),
         }
       );
     } catch (err: unknown) {

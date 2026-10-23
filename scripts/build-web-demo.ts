@@ -86,6 +86,7 @@ export async function prepareWebDemoInputs() {
   };
 
   await run("prepare deterministic local content", ["run", "migrate"], env);
+  await run("complete deterministic comment backfill", ["run", "comments:backfill"], env);
   await run("seed deterministic local content", ["run", "seed"], env);
   await run("write deterministic local fixtures", ["scripts/generate-test-data.ts", "--dev"], env);
   for (const document of SEARCH_DEMO_DOCUMENTS)

@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../../lib/db";
 import { comments, emailVerificationCodes, posts, users } from "../../../lib/schema";
@@ -21,15 +21,19 @@ export const adminDashboardRouter = createTRPCRouter({
         .where(eq(posts.draft, true));
 
       // 评论统计
-      const totalCommentsResult = await db.select({ count: sql<number>`count(*)` }).from(comments);
+      const activeComments = isNull(comments.deletedAt);
+      const totalCommentsResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(comments)
+        .where(activeComments);
       const approvedCommentsResult = await db
         .select({ count: sql<number>`count(*)` })
         .from(comments)
-        .where(eq(comments.status, "approved"));
+        .where(and(activeComments, eq(comments.status, "approved")));
       const pendingCommentsResult = await db
         .select({ count: sql<number>`count(*)` })
         .from(comments)
-        .where(eq(comments.status, "pending"));
+        .where(and(activeComments, eq(comments.status, "pending")));
 
       // 用户统计
       const totalUsersResult = await db.select({ count: sql<number>`count(*)` }).from(users);
@@ -240,6 +244,7 @@ export const adminDashboardRouter = createTRPCRouter({
     try {
       const now = Date.now();
       const oneDayAgo = now - 24 * 60 * 60 * 1000;
+      const oneDayAgoSeconds = Math.floor(now / 1000) - 24 * 60 * 60;
 
       // 检查最近24小时的活动
       const recentPosts = await db
@@ -250,7 +255,7 @@ export const adminDashboardRouter = createTRPCRouter({
       const recentComments = await db
         .select({ count: sql<number>`count(*)` })
         .from(comments)
-        .where(gte(comments.createdAt, oneDayAgo));
+        .where(and(gte(comments.createdAt, oneDayAgoSeconds), isNull(comments.deletedAt)));
 
       const recentUsers = await db
         .select({ count: sql<number>`count(*)` })
@@ -261,7 +266,7 @@ export const adminDashboardRouter = createTRPCRouter({
       const pendingComments = await db
         .select({ count: sql<number>`count(*)` })
         .from(comments)
-        .where(eq(comments.status, "pending"));
+        .where(and(eq(comments.status, "pending"), isNull(comments.deletedAt)));
 
       const draftPosts = await db
         .select({ count: sql<number>`count(*)` })

@@ -10,6 +10,7 @@ import {
   getConsoleWebDemoClippingArticle,
   getConsoleWebDemoPersona,
 } from "./console-web-demo";
+import { projectCatalog } from "./project-catalog";
 import { positiveSearchTerms, searchHighlightSpans } from "./search/highlights";
 import { planNativeQuery } from "./search/native-query";
 import { searchModeSchema } from "./search/settings";
@@ -27,6 +28,7 @@ import {
   getWebDemoState,
   isWebDemoBuildEnabled,
   recordWebDemoMutation,
+  WEB_DEMO_ACTION_EVENT,
   type WebDemoApp,
   type WebDemoEnvironment,
   waitForWebDemoRequest,
@@ -78,6 +80,314 @@ function demoPublicUser(environment: WebDemoEnvironment) {
     avatarUrl: "",
     isAdmin: environment.persona === "admin",
   };
+}
+
+type DemoComment = {
+  id: string;
+  content: string;
+  postSlug: string;
+  targetType: "article" | "memo" | "project";
+  targetKey: string;
+  authorName: string;
+  authorEmail: string | null;
+  readerPersona: "user" | "other" | "admin";
+  parentId: string | null;
+  rootId: string | null;
+  status: "pending" | "approved" | "rejected";
+  deletedAt: number | null;
+  revision: number;
+  createdAt: number;
+  submissionKey?: string;
+};
+
+type DemoReplyCursor = { createdAt: number; id: string };
+
+const demoComments = new Map<string, DemoComment[]>();
+let demoCommentSequence = 1;
+let demoCommentsResetWindow: Window | null = null;
+
+function ensureDemoCommentResetListener() {
+  if (typeof window === "undefined" || typeof window.addEventListener !== "function") return;
+  if (demoCommentsResetWindow === window) return;
+  demoCommentsResetWindow = window;
+  window.addEventListener(WEB_DEMO_ACTION_EVENT, (event) => {
+    const action = (event as CustomEvent<{ action?: string }>).detail?.action;
+    if (action === "reset-state") {
+      demoComments.clear();
+      demoCommentSequence = 1;
+    }
+  });
+}
+
+function demoCommentTarget(url: URL) {
+  const rawType = url.searchParams.get("targetType") || "article";
+  const targetType = (["article", "memo", "project"] as const).includes(
+    rawType as DemoComment["targetType"]
+  )
+    ? (rawType as DemoComment["targetType"])
+    : "article";
+  const targetKey = url.searchParams.get("targetKey") || url.searchParams.get("slug") || "";
+  return { targetType, targetKey };
+}
+
+function isDemoCommentTargetAvailable(targetType: DemoComment["targetType"], targetKey: string) {
+  if (!targetKey || targetKey.startsWith("missing")) return false;
+  return targetType !== "project" || projectCatalog.some((project) => project.slug === targetKey);
+}
+
+function seedDemoComments(targetType: DemoComment["targetType"], targetKey: string) {
+  const key = `${targetType}:${targetKey}`;
+  const existing = demoComments.get(key);
+  if (existing) return existing;
+  if (!isDemoCommentTargetAvailable(targetType, targetKey)) {
+    demoComments.set(key, []);
+    return [];
+  }
+  const rootId = `demo-comment-${demoCommentSequence++}`;
+  const replyId = `demo-comment-${demoCommentSequence++}`;
+  const pendingId = `demo-comment-${demoCommentSequence++}`;
+  const now = Date.now();
+  const seeded: DemoComment[] = [
+    {
+      id: rootId,
+      content: "这篇内容的边界整理得很清楚。",
+      postSlug: targetKey,
+      targetType,
+      targetKey,
+      authorName: "其他读者",
+      authorEmail: null,
+      readerPersona: "other",
+      parentId: null,
+      rootId,
+      status: "approved",
+      deletedAt: null,
+      revision: 1,
+      createdAt: now - 86_400_000,
+    },
+    {
+      id: replyId,
+      content: "同感，回复也会平铺在同一讨论组里。",
+      postSlug: targetKey,
+      targetType,
+      targetKey,
+      authorName: "Demo User",
+      authorEmail: null,
+      readerPersona: "user",
+      parentId: rootId,
+      rootId,
+      status: "approved",
+      deletedAt: null,
+      revision: 1,
+      createdAt: now - 43_200_000,
+    },
+    {
+      id: pendingId,
+      content: "这条评论用于演示待审核状态。",
+      postSlug: targetKey,
+      targetType,
+      targetKey,
+      authorName: "Demo User",
+      authorEmail: null,
+      readerPersona: "user",
+      parentId: null,
+      rootId: pendingId,
+      status: "pending",
+      deletedAt: null,
+      revision: 1,
+      createdAt: now - 3_600_000,
+    },
+  ];
+  demoComments.set(key, seeded);
+  return seeded;
+}
+
+function demoCommentDto(
+  comment: DemoComment,
+  environment: WebDemoEnvironment,
+  placeholder = false
+) {
+  const own = comment.readerPersona === environment.persona || environment.persona === "admin";
+  const deleted = Boolean(comment.deletedAt);
+  const visibleStatus = placeholder ? "approved" : comment.status;
+  return {
+    id: comment.id,
+    content: (deleted && environment.persona !== "admin") || placeholder ? "" : comment.content,
+    parentId: comment.parentId,
+    rootId: comment.rootId,
+    target: { type: comment.targetType, key: comment.targetKey },
+    status: visibleStatus,
+    deleted,
+    revision: comment.revision,
+    authorEmail: environment.persona === "admin" ? comment.authorEmail : null,
+    author: {
+      id:
+        (deleted || placeholder) && environment.persona !== "admin"
+          ? comment.id
+          : comment.readerPersona === "user"
+            ? "demo-user"
+            : comment.id,
+      nickname:
+        deleted && environment.persona !== "admin"
+          ? "已删除"
+          : placeholder
+            ? "评论暂不可见"
+            : comment.authorName,
+      avatarUrl: "/site-assets/default-avatar.svg",
+      profileUrl: null,
+    },
+    canDelete: own,
+    canModerate: environment.persona === "admin",
+    replies: [] as unknown[],
+    repliesNextCursor: null as string | null,
+    placeholder,
+    createdAt: comment.createdAt,
+  };
+}
+
+function encodeDemoReplyCursor(cursor: DemoReplyCursor) {
+  return btoa(JSON.stringify(cursor)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/u, "");
+}
+
+function decodeDemoReplyCursor(value: string | null): DemoReplyCursor | null {
+  if (!value) return null;
+  try {
+    const encoded = value.replaceAll("-", "+").replaceAll("_", "/");
+    const padded = encoded + "=".repeat((4 - (encoded.length % 4)) % 4);
+    const parsed = JSON.parse(atob(padded)) as Partial<DemoReplyCursor>;
+    return typeof parsed.createdAt === "number" && typeof parsed.id === "string"
+      ? { createdAt: parsed.createdAt, id: parsed.id }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function getDemoComments(url: URL, environment: WebDemoEnvironment) {
+  const { targetType, targetKey } = demoCommentTarget(url);
+  const rows = seedDemoComments(targetType, targetKey);
+  const byIdAll = new Map(rows.map((comment) => [comment.id, comment]));
+  const hasVisibleReply = new Set<string>();
+  for (const comment of rows) {
+    if (comment.parentId && !comment.deletedAt && comment.status === "approved") {
+      let parent = byIdAll.get(comment.parentId);
+      while (parent) {
+        if (parent.status === "approved" || (parent.status === "pending" && !parent.deletedAt)) {
+          hasVisibleReply.add(parent.id);
+        }
+        parent = parent.parentId ? byIdAll.get(parent.parentId) : undefined;
+      }
+    }
+  }
+  const visible = rows.filter((comment) => {
+    if (environment.persona === "admin") return true;
+    if (comment.deletedAt) return hasVisibleReply.has(comment.id);
+    return (
+      comment.status === "approved" ||
+      (environment.persona === "user" && comment.readerPersona === "user") ||
+      hasVisibleReply.has(comment.id)
+    );
+  });
+  const byId = new Map(
+    visible.map((comment) => [
+      comment.id,
+      demoCommentDto(
+        comment,
+        environment,
+        environment.persona !== "admin" &&
+          comment.status !== "approved" &&
+          !comment.deletedAt &&
+          !(environment.persona === "user" && comment.readerPersona === "user") &&
+          hasVisibleReply.has(comment.id)
+      ),
+    ])
+  );
+  const roots = visible
+    .filter((comment) => !comment.parentId)
+    .flatMap((comment) => {
+      const dto = byId.get(comment.id);
+      return dto ? [dto] : [];
+    });
+  for (const comment of visible.filter((item) => item.parentId)) {
+    const root = roots.find((item) => item.id === comment.rootId);
+    const reply = byId.get(comment.id);
+    if (root && reply && root.replies.length < 20) root.replies.push(reply);
+    else if (root && reply && !root.repliesNextCursor) {
+      const last = root.replies.at(-1) as { createdAt: number; id: string } | undefined;
+      if (last) {
+        root.repliesNextCursor = encodeDemoReplyCursor({
+          createdAt: last.createdAt,
+          id: last.id,
+        });
+      }
+    }
+  }
+  return { comments: roots, totalPages: 1, isAdmin: environment.persona === "admin" };
+}
+
+function getDemoCommentReplies(url: URL, environment: WebDemoEnvironment, commentId: string) {
+  const rows = [...demoComments.values()].flat();
+  const comment = rows.find((item) => item.id === commentId);
+  if (!comment) return jsonResponse({ error: "评论不存在" }, 404);
+  const rootId = comment.rootId || comment.id;
+  const targetRows = rows.filter(
+    (item) => item.targetType === comment.targetType && item.targetKey === comment.targetKey
+  );
+  const hasVisibleReply = new Set<string>();
+  for (const item of targetRows) {
+    if (item.parentId && !item.deletedAt && item.status === "approved") {
+      let parent = targetRows.find((candidate) => candidate.id === item.parentId);
+      while (parent) {
+        if (parent.status === "approved" || (parent.status === "pending" && !parent.deletedAt)) {
+          hasVisibleReply.add(parent.id);
+        }
+        parent = parent.parentId
+          ? targetRows.find((candidate) => candidate.id === parent?.parentId)
+          : undefined;
+      }
+    }
+  }
+  const visible = targetRows.filter(
+    (item) =>
+      environment.persona === "admin" ||
+      (!item.deletedAt &&
+        (item.status === "approved" ||
+          (environment.persona === "user" && item.readerPersona === "user") ||
+          hasVisibleReply.has(item.id))) ||
+      (item.deletedAt && hasVisibleReply.has(item.id))
+  );
+  const visibleComment = visible.some((item) => item.id === commentId);
+  if (!visibleComment) return jsonResponse({ error: "评论不可见" }, 404);
+  const cursor = decodeDemoReplyCursor(url.searchParams.get("cursor"));
+  if (url.searchParams.get("cursor") && !cursor)
+    return jsonResponse({ error: "回复游标无效" }, 400);
+  const replyRows = visible
+    .filter((item) => item.rootId === rootId && item.parentId)
+    .sort((left, right) => left.createdAt - right.createdAt || left.id.localeCompare(right.id))
+    .filter(
+      (item) =>
+        !cursor ||
+        item.createdAt > cursor.createdAt ||
+        (item.createdAt === cursor.createdAt && item.id > cursor.id)
+    );
+  const page = replyRows.slice(0, 20);
+  const nextCursor =
+    replyRows.length > page.length
+      ? encodeDemoReplyCursor({ createdAt: page.at(-1)?.createdAt ?? 0, id: page.at(-1)?.id ?? "" })
+      : null;
+  return jsonResponse({
+    replies: page.map((item) =>
+      demoCommentDto(
+        item,
+        environment,
+        environment.persona !== "admin" &&
+          item.status !== "approved" &&
+          !item.deletedAt &&
+          !(environment.persona === "user" && item.readerPersona === "user") &&
+          hasVisibleReply.has(item.id)
+      )
+    ),
+    nextCursor,
+  });
 }
 
 const demoMemoOverrides = new Map<string, PublicMemoRecord>();
@@ -433,6 +743,7 @@ async function getDemoPublicResponse(
   dataMode: "fixture" | "dense" | "empty",
   init?: RequestInit
 ) {
+  ensureDemoCommentResetListener();
   const body = readDemoRequestBody(init);
   // The Demo build's server supplies route-scoped fixture data after the
   // common connection/delay/abort policy has admitted this actual read.
@@ -443,6 +754,27 @@ async function getDemoPublicResponse(
   }
   if (url.pathname === "/api/public/auth/me" && method === "GET") {
     return jsonResponse(demoPublicUser(environment));
+  }
+
+  if (url.pathname === "/api/public/reader-auth/me" && method === "GET") {
+    return jsonResponse({
+      available: true,
+      reader:
+        environment.persona === "guest"
+          ? null
+          : {
+              id: environment.persona === "admin" ? "demo-admin" : "demo-user",
+              githubId: environment.persona === "admin" ? "demo-admin-github" : "demo-user-github",
+              githubLogin: environment.persona === "admin" ? "ivan-demo" : "reader-demo",
+              displayName: environment.persona === "admin" ? "Ivan" : "Demo User",
+              avatarUrl: "/site-assets/default-avatar.svg",
+              profileUrl: "https://github.com/example",
+            },
+    });
+  }
+
+  if (url.pathname === "/api/public/reader-auth/logout" && method === "POST") {
+    return jsonResponse({ ok: true });
   }
 
   if (url.pathname === "/api/public/memos" && method === "GET") {
@@ -505,21 +837,125 @@ async function getDemoPublicResponse(
   }
 
   if (url.pathname === "/api/public/comments" && method === "GET") {
-    return jsonResponse({ comments: [], totalPages: 1, isAdmin: environment.persona === "admin" });
+    return jsonResponse(getDemoComments(url, environment));
   }
 
   if (url.pathname === "/api/public/comments" && method === "POST") {
-    return jsonResponse({ ok: true, comment: null });
+    if (environment.persona === "guest")
+      return jsonResponse({ error: "请先使用 GitHub 登录" }, 401);
+    const { targetType, targetKey } = demoCommentTarget(url);
+    const requestBody = readDemoRequestBody(init);
+    const content = typeof requestBody.content === "string" ? requestBody.content.trim() : "";
+    if (!content) return jsonResponse({ error: "评论内容不能为空" }, 400);
+    const target = requestBody.target as { type?: string; key?: string } | undefined;
+    const rawType = target?.type || targetType;
+    const actualType = (["article", "memo", "project"] as const).includes(
+      rawType as DemoComment["targetType"]
+    )
+      ? (rawType as DemoComment["targetType"])
+      : targetType;
+    const actualKey = target?.key || String(requestBody.postSlug || targetKey);
+    if (!isDemoCommentTargetAvailable(actualType, actualKey))
+      return jsonResponse({ error: "评论目标不存在" }, 404);
+    const parentId = typeof requestBody.parentId === "string" ? requestBody.parentId : null;
+    const rows = seedDemoComments(actualType, actualKey);
+    if (parentId) {
+      const parent = rows.find((item) => item.id === parentId);
+      if (parent?.status !== "approved" || parent.deletedAt)
+        return jsonResponse({ error: "只能回复当前目标下已通过且未删除的评论" }, 400);
+    }
+    const submissionKey = String(requestBody.submissionKey || `demo-${crypto.randomUUID()}`);
+    const existing = rows.find(
+      (row) => row.readerPersona === environment.persona && row.submissionKey === submissionKey
+    );
+    if (existing)
+      return jsonResponse({
+        success: true,
+        commentId: existing.id,
+        message: "评论已提交，正在等待审核",
+      });
+    const id = `demo-comment-${demoCommentSequence++}`;
+    const row: DemoComment = {
+      id,
+      content,
+      postSlug: actualKey,
+      targetType: actualType,
+      targetKey: actualKey,
+      authorName: environment.persona === "admin" ? "Ivan" : "Demo User",
+      authorEmail: null,
+      readerPersona: environment.persona === "admin" ? "admin" : "user",
+      parentId,
+      rootId: parentId ? rows.find((item) => item.id === parentId)?.rootId || parentId : id,
+      status: "pending",
+      deletedAt: null,
+      revision: 1,
+      createdAt: Date.now(),
+      submissionKey,
+    };
+    rows.push(row);
+    recordWebDemoMutation("提交评论", `${actualType}:${actualKey} · 待审核`);
+    return jsonResponse({ success: true, commentId: id, message: "评论已提交，正在等待审核" });
+  }
+
+  const commentRepliesMatch = url.pathname.match(/^\/api\/public\/comments\/([^/]+)\/replies$/);
+  if (commentRepliesMatch && method === "GET") {
+    return getDemoCommentReplies(
+      url,
+      environment,
+      decodeURIComponent(commentRepliesMatch[1] || "")
+    );
   }
 
   if (url.pathname.startsWith("/api/public/comments/") && ["PATCH", "DELETE"].includes(method)) {
     if (environment.persona === "guest") return jsonResponse({ error: "UNAUTHORIZED" }, 401);
-    return jsonResponse({ error: "评论不存在" }, 404);
+    const segments = url.pathname.split("/").filter(Boolean);
+    const id = segments[segments.length - 1] || "";
+    const rows = [...demoComments.values()].flat();
+    const row = rows.find((item) => item.id === id);
+    if (!row) return jsonResponse({ error: "评论不存在" }, 404);
+    if (method === "PATCH" && environment.persona !== "admin")
+      return jsonResponse({ error: "读者不能编辑评论" }, 403);
+    if (method === "DELETE" && environment.persona !== "admin" && row.readerPersona !== "user") {
+      return jsonResponse({ error: "没有权限删除此评论" }, 403);
+    }
+    if (method === "DELETE") {
+      row.deletedAt = Date.now();
+      row.revision += 1;
+      recordWebDemoMutation("软删除评论", id);
+      return jsonResponse({ success: true, message: "评论已删除" });
+    }
+    return jsonResponse({ error: "读者不能编辑评论" }, 403);
   }
 
   if (/^\/api\/public\/comments\/[^/]+\/moderate$/.test(url.pathname) && method === "POST") {
     if (environment.persona === "guest") return jsonResponse({ error: "UNAUTHORIZED" }, 401);
     if (environment.persona !== "admin") return jsonResponse({ error: "FORBIDDEN" }, 403);
+    const id = decodeURIComponent(url.pathname.split("/").at(-2) || "");
+    const row = [...demoComments.values()].flat().find((item) => item.id === id);
+    if (!row) return jsonResponse({ success: true });
+    const requestBody = readDemoRequestBody(init);
+    if (requestBody.status === "approved" && row.deletedAt)
+      return jsonResponse({ error: "已删除评论不能直接通过" }, 409);
+    row.status =
+      requestBody.status === "rejected"
+        ? "rejected"
+        : requestBody.status === "pending"
+          ? "pending"
+          : "approved";
+    row.revision += 1;
+    recordWebDemoMutation("审核评论", `${id} · ${row.status}`);
+    return jsonResponse({ success: true });
+  }
+
+  if (/^\/api\/public\/comments\/[^/]+\/restore$/.test(url.pathname) && method === "POST") {
+    if (environment.persona !== "admin") return jsonResponse({ error: "FORBIDDEN" }, 403);
+    const id = decodeURIComponent(url.pathname.split("/").at(-2) || "");
+    const row = [...demoComments.values()].flat().find((item) => item.id === id);
+    if (!row) return jsonResponse({ error: "评论不存在" }, 404);
+    row.deletedAt = null;
+    row.status = "pending";
+    row.revision += 1;
+    recordWebDemoMutation("恢复评论", `${id} · 待审核`);
     return jsonResponse({ success: true });
   }
 

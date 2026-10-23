@@ -64,6 +64,11 @@ function resolveAllowedOrigin(request: Pick<Request, "headers" | "url">) {
   return configuredOrigins.includes(originHeader) ? originHeader : null;
 }
 
+export function hasTrustedPublicOrigin(request: Pick<Request, "headers" | "url">) {
+  const origin = request.headers.get("origin");
+  return !origin || Boolean(resolveAllowedOrigin(request));
+}
+
 export function appendPublicCorsHeaders(
   headers: Headers,
   request: Pick<Request, "headers" | "url">,

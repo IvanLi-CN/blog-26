@@ -42,6 +42,22 @@ function createForm(submissionId: string, text: string) {
   return form;
 }
 
+function runCommentBackfill(databasePath: string) {
+  const result = Bun.spawnSync(
+    [process.execPath, path.resolve("scripts/backfill-reader-comments.ts")],
+    {
+      env: { ...process.env, DB_PATH: databasePath },
+      stdout: "pipe",
+      stderr: "pipe",
+    }
+  );
+  return {
+    exitCode: result.exitCode,
+    output: new TextDecoder().decode(result.stdout),
+    error: new TextDecoder().decode(result.stderr),
+  };
+}
+
 describe("system share API", () => {
   beforeAll(async () => {
     process.env.NODE_ENV = "test";
@@ -752,7 +768,7 @@ describe("system share API", () => {
     expect(fs.readFileSync(memoPath, "utf8")).toContain('"source":"manual"');
   });
 
-  test("upgrades a legacy submission row without losing its identity", async () => {
+  test("upgrades legacy comments and resumes a blocked backfill without losing identity", async () => {
     const migrationRoot = fs.mkdtempSync(
       path.join(process.cwd(), "tmp", "system-share-migrations-")
     );
@@ -760,22 +776,59 @@ describe("system share API", () => {
     const legacyDbPath = path.join(migrationRoot, "legacy.sqlite");
     fs.cpSync(migrationsPath, legacyMigrationsPath, { recursive: true });
     fs.rmSync(path.join(legacyMigrationsPath, "0016_system_share_recovery.sql"));
+    fs.rmSync(path.join(legacyMigrationsPath, "0017_github_reader_comments.sql"));
+    fs.rmSync(path.join(legacyMigrationsPath, "0018_comments_backfill_gate.sql"));
     const journalPath = path.join(legacyMigrationsPath, "meta", "_journal.json");
     const journal = JSON.parse(fs.readFileSync(journalPath, "utf8")) as {
       entries: Array<{ tag: string }>;
     };
-    journal.entries = journal.entries.filter((entry) => entry.tag !== "0016_system_share_recovery");
+    journal.entries = journal.entries.filter(
+      (entry) =>
+        entry.tag !== "0016_system_share_recovery" &&
+        entry.tag !== "0017_github_reader_comments" &&
+        entry.tag !== "0018_comments_backfill_gate"
+    );
     fs.writeFileSync(journalPath, `${JSON.stringify(journal)}\n`);
 
     const sqlite = new Database(legacyDbPath);
     try {
       migrate(drizzle(sqlite), { migrationsFolder: legacyMigrationsPath });
       const submissionId = randomUUID();
+      const rootCommentId = randomUUID();
+      const replyCommentId = randomUUID();
       sqlite
         .query(
           "INSERT INTO system_share_submissions (submission_id, memo_id, state, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
         )
         .run(submissionId, "Memos/legacy.md", "completed", 1, 2);
+      sqlite
+        .query(
+          "INSERT INTO comments (id, content, post_slug, author_name, author_email, parent_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        .run(
+          rootCommentId,
+          "保留根评论正文",
+          "legacy-article",
+          "Legacy Reader",
+          "legacy@example.com",
+          null,
+          "approved",
+          10
+        );
+      sqlite
+        .query(
+          "INSERT INTO comments (id, content, post_slug, author_name, author_email, parent_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        .run(
+          replyCommentId,
+          "保留回复正文",
+          "legacy-article",
+          "Reply Reader",
+          "reply@example.com",
+          rootCommentId,
+          "pending",
+          20
+        );
       migrate(drizzle(sqlite), { migrationsFolder: migrationsPath });
       const row = sqlite
         .query(
@@ -790,6 +843,90 @@ describe("system share API", () => {
         lease_token: null,
         lease_expires_at: null,
       });
+
+      const migratedComments = sqlite
+        .query(
+          "SELECT id, content, post_slug, target_type, target_key, author_name, author_email, parent_id, root_id, status, revision FROM comments ORDER BY created_at"
+        )
+        .all() as Array<Record<string, unknown>>;
+      expect(migratedComments).toEqual([
+        {
+          id: rootCommentId,
+          content: "保留根评论正文",
+          post_slug: "legacy-article",
+          target_type: "article",
+          target_key: "legacy-article",
+          author_name: "Legacy Reader",
+          author_email: "legacy@example.com",
+          parent_id: null,
+          root_id: rootCommentId,
+          status: "approved",
+          revision: 1,
+        },
+        {
+          id: replyCommentId,
+          content: "保留回复正文",
+          post_slug: "legacy-article",
+          target_type: "article",
+          target_key: "legacy-article",
+          author_name: "Reply Reader",
+          author_email: "reply@example.com",
+          parent_id: rootCommentId,
+          root_id: rootCommentId,
+          status: "pending",
+          revision: 1,
+        },
+      ]);
+
+      sqlite.query("UPDATE comments SET target_type = '', target_key = '', root_id = NULL").run();
+      const firstBackfill = runCommentBackfill(legacyDbPath);
+      expect(firstBackfill.exitCode).toBe(0);
+      expect(JSON.parse(firstBackfill.output)).toMatchObject({
+        scanned: 2,
+        repaired: 2,
+        status: "complete",
+      });
+      expect(
+        sqlite
+          .query("SELECT id, target_type, target_key, root_id FROM comments ORDER BY created_at")
+          .all()
+      ).toEqual([
+        {
+          id: rootCommentId,
+          target_type: "article",
+          target_key: "legacy-article",
+          root_id: rootCommentId,
+        },
+        {
+          id: replyCommentId,
+          target_type: "article",
+          target_key: "legacy-article",
+          root_id: rootCommentId,
+        },
+      ]);
+
+      const secondBackfill = runCommentBackfill(legacyDbPath);
+      expect(secondBackfill.exitCode).toBe(0);
+      expect(JSON.parse(secondBackfill.output)).toMatchObject({ repaired: 0, status: "complete" });
+
+      sqlite
+        .query("UPDATE comments SET parent_id = ?, root_id = NULL WHERE id = ?")
+        .run("missing-parent", replyCommentId);
+      const blockedBackfill = runCommentBackfill(legacyDbPath);
+      expect(blockedBackfill.exitCode).toBe(1);
+      expect(JSON.parse(blockedBackfill.output)).toMatchObject({ status: "blocked" });
+      expect(
+        sqlite
+          .query("SELECT status, error_count FROM comment_migration_state WHERE id = ?")
+          .get("reader-comments")
+      ).toEqual({ status: "blocked", error_count: 1 });
+
+      sqlite
+        .query("UPDATE comments SET parent_id = ?, root_id = NULL WHERE id = ?")
+        .run(rootCommentId, replyCommentId);
+      const resumedBackfill = runCommentBackfill(legacyDbPath);
+      expect(resumedBackfill.exitCode).toBe(0);
+      expect(JSON.parse(resumedBackfill.output)).toMatchObject({ status: "complete" });
     } finally {
       sqlite.close();
       fs.rmSync(migrationRoot, { recursive: true, force: true });

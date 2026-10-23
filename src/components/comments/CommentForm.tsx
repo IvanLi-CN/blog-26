@@ -1,14 +1,17 @@
 "use client";
 
 import type React from "react";
-import { useCallback, useEffect, useId, useState } from "react";
-import { toPublicSitePath } from "@/lib/public-runtime-url";
+import { useEffect, useId, useRef, useState } from "react";
+import { toPublicApiUrl } from "@/lib/public-runtime-url";
 import Icon from "../ui/Icon";
 import { Textarea } from "../ui/textarea";
 import type { UserInfo } from "./types";
 
+type CommentTarget = { type: "article" | "memo" | "project"; key: string };
+
 interface CommentFormProps {
   postSlug: string;
+  target?: CommentTarget;
   parentId?: string;
   onCommentPosted: () => void;
   userInfo: UserInfo | null;
@@ -16,8 +19,8 @@ interface CommentFormProps {
     postSlug: string;
     content: string;
     parentId?: string;
-    captchaResponse?: string;
-    author?: Omit<UserInfo, "id" | "avatarUrl">;
+    target?: CommentTarget;
+    submissionKey?: string;
   }) => Promise<{ ok: boolean; json: () => Promise<unknown> }>;
   isPosting: boolean;
   error: string | null;
@@ -26,8 +29,13 @@ interface CommentFormProps {
   usePublicSitePaths?: boolean;
 }
 
+function draftKey(target: CommentTarget | undefined, postSlug: string, parentId?: string) {
+  return `reader-comment-draft:${target?.type || "article"}:${target?.key || postSlug}:${parentId || "root"}`;
+}
+
 export default function CommentForm({
   postSlug,
+  target,
   parentId,
   onCommentPosted,
   userInfo,
@@ -36,195 +44,143 @@ export default function CommentForm({
   error,
   onLogout,
   onLoginSuccess: _onLoginSuccess,
-  usePublicSitePaths = false,
 }: CommentFormProps) {
   const [content, setContent] = useState("");
-  const [nickname, setNickname] = useState("");
-  const [email, setEmail] = useState("");
-
-  const nicknameId = useId();
-  const emailId = useId();
+  const [draftLoaded, setDraftLoaded] = useState(false);
   const contentId = useId();
-
-  const [captchaResponse, setCaptchaResponse] = useState<string | null>(null);
-  const [captchaError, setCaptchaError] = useState<string | null>(null);
-  const fallbackAvatarUrl = usePublicSitePaths
-    ? (toPublicSitePath("/site-assets/default-avatar.svg") ?? "/site-assets/default-avatar.svg")
-    : "/site-assets/default-avatar.svg";
-
-  const handleCaptchaSuccess = useCallback((response: string) => {
-    setCaptchaResponse(response);
-    setCaptchaError(null);
-  }, []);
+  const submissionKey = useRef<string>(crypto.randomUUID());
+  const key = draftKey(target, postSlug, parentId);
 
   useEffect(() => {
-    // @ts-expect-error - injected by captcha script
-    window.handleCaptchaSuccess = handleCaptchaSuccess;
-    return () => {
-      // @ts-expect-error - injected by captcha script
-      delete window.handleCaptchaSuccess;
-    };
-  }, [handleCaptchaSuccess]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!content.trim() || (!userInfo && (!nickname.trim() || !email.trim()))) {
-      return;
+    try {
+      const draft = window.sessionStorage.getItem(key);
+      if (draft) setContent(draft);
+    } finally {
+      setDraftLoaded(true);
     }
-    setCaptchaError(null);
+  }, [key]);
 
+  useEffect(() => {
+    if (!draftLoaded || !content.trim()) return;
+    window.sessionStorage.setItem(key, content);
+  }, [content, draftLoaded, key]);
+
+  const startLogin = () => {
+    window.sessionStorage.setItem(key, content);
+    const returnTo = window.location.href;
+    const loginUrl = new URL(toPublicApiUrl("/api/public/reader-auth/github/start"));
+    loginUrl.searchParams.set("returnTo", returnTo);
+    window.location.assign(loginUrl.toString());
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const trimmed = content.trim();
+    if (!userInfo || !trimmed) return;
     const response = await postComment({
       postSlug,
-      content,
+      target,
+      content: trimmed,
       parentId,
-      ...(!userInfo && { author: { nickname, email }, captchaResponse: captchaResponse ?? "" }),
+      submissionKey: submissionKey.current,
     });
-
-    if (response.ok) {
-      setContent("");
-      onCommentPosted();
-      return;
-    }
-
-    const result = (await response.json()) as { error?: string };
-    if (result.error?.includes("验证")) {
-      setCaptchaError("人机验证失败，请重试。");
-      // @ts-expect-error - injected by captcha script
-      window.LUOCAPTCHA?.reset();
-    }
+    if (!response.ok) return;
+    setContent("");
+    window.sessionStorage.removeItem(key);
+    submissionKey.current = crypto.randomUUID();
+    onCommentPosted();
   };
 
   return (
-    <div className="space-y-6">
-      {userInfo && (
-        <div className="nature-panel-soft flex items-center gap-4 px-4 py-4">
+    <div className="comment-form space-y-3">
+      {!userInfo ? (
+        <div className="comment-auth-row comment-auth-row--guest flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="font-medium text-[color:var(--nature-text)]">登录后参与讨论</p>
+            <p className="mt-0.5 text-xs leading-5 text-[color:var(--nature-text-soft)]">
+              评论会在审核通过后公开显示。
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={startLogin}
+            className="nature-button nature-button-primary min-h-9 shrink-0 px-3 py-1.5 text-sm"
+          >
+            <Icon name="tabler:brand-github" className="h-4 w-4" />
+            GitHub 登录
+          </button>
+        </div>
+      ) : (
+        <div className="comment-auth-row flex items-center gap-3">
           <div className="overflow-hidden rounded-full border border-[rgba(var(--nature-border-rgb),0.72)]">
             {/* biome-ignore lint/performance/noImgElement: comment avatar uses native img for framework-neutral rendering */}
             <img
-              src={userInfo.avatarUrl || fallbackAvatarUrl}
+              src={userInfo.avatarUrl || "/site-assets/default-avatar.svg"}
               alt={userInfo.nickname}
-              className="h-12 w-12 rounded-full object-cover"
-              width={48}
-              height={48}
+              className="h-8 w-8 rounded-full object-cover"
+              width={32}
+              height={32}
             />
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="font-semibold text-[color:var(--nature-text)]">{userInfo.nickname}</h3>
-            <p className="truncate text-sm text-[color:var(--nature-text-soft)]">
-              {userInfo.email || "admin@example.com"}
-            </p>
+            <p className="text-xs text-[color:var(--nature-text-soft)]">GitHub 读者</p>
           </div>
-          <button type="button" onClick={onLogout} className="nature-button nature-button-ghost">
+          <button
+            type="button"
+            onClick={onLogout}
+            className="nature-button nature-button-ghost min-h-9 shrink-0 px-3 py-2 text-sm"
+          >
             <Icon name="tabler:logout-2" className="h-4 w-4" />
             登出
           </button>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {!userInfo && (
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <label
-                htmlFor={nicknameId}
-                className="text-sm font-medium text-[color:var(--nature-text-soft)]"
-              >
-                昵称 *
-              </label>
-              <label className="nature-input-shell">
-                <input
-                  id={nicknameId}
-                  type="text"
-                  placeholder="请输入昵称"
-                  className="nature-input"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  required
-                />
-              </label>
-            </div>
-            <div className="space-y-2">
-              <label
-                htmlFor={emailId}
-                className="text-sm font-medium text-[color:var(--nature-text-soft)]"
-              >
-                邮箱 *
-              </label>
-              <label className="nature-input-shell">
-                <input
-                  id={emailId}
-                  type="email"
-                  placeholder="请输入邮箱"
-                  className="nature-input"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </label>
-            </div>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-3">
+            <label
+              htmlFor={contentId}
+              className="text-xs font-medium text-[color:var(--nature-text-soft)]"
+            >
+              评论内容
+            </label>
+            <span className="text-[0.7rem] tabular-nums text-[color:var(--nature-text-soft)]">
+              {content.length}/1000
+            </span>
           </div>
-        )}
-
-        <div className="space-y-2">
-          <label
-            htmlFor={contentId}
-            className="text-sm font-medium text-[color:var(--nature-text-soft)]"
-          >
-            评论内容 *
-          </label>
-          <div className="space-y-3">
-            <div className="nature-input-shell nature-textarea-shell">
-              <Textarea
-                id={contentId}
-                className="min-h-[9rem] resize-y border-0 bg-transparent px-0 py-0 text-base leading-7 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                placeholder="分享你的想法..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                required
-                aria-label="评论内容"
-              />
-            </div>
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                className="nature-button nature-button-primary min-h-11 justify-center px-5 py-3"
-                disabled={isPosting || !content.trim()}
-              >
-                {isPosting ? (
-                  <>
-                    <span className="nature-spinner h-4 w-4" />
-                    提交中...
-                  </>
-                ) : (
-                  <>
-                    <Icon name="tabler:send-2" className="h-4 w-4" />
-                    提交
-                  </>
-                )}
-              </button>
-            </div>
+          <div className="nature-input-shell nature-textarea-shell">
+            <Textarea
+              id={contentId}
+              className="min-h-[4.75rem] resize-y border-0 bg-transparent px-0 py-0 text-[0.95rem] leading-6 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+              placeholder={userInfo ? "分享你的想法..." : "登录后即可评论"}
+              value={content}
+              onChange={(event) => setContent(event.target.value)}
+              maxLength={1000}
+              aria-label="评论内容"
+            />
           </div>
         </div>
-
-        {!userInfo && (
-          <div className="space-y-2">
-            <div className="text-sm font-medium text-[color:var(--nature-text-soft)]">人机验证</div>
-            <div className="nature-panel-soft px-4 py-4">
-              <div
-                className="l-captcha"
-                data-site-key={process.env.PUBLIC_LUOSIMAO_SITE_KEY}
-                data-callback="handleCaptchaSuccess"
-              ></div>
-              {captchaError && (
-                <div className="nature-alert nature-alert-error mt-4">
-                  <Icon name="tabler:alert-triangle" className="h-5 w-5" />
-                  <span>{captchaError}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
+        <div className="flex justify-end pt-0.5">
+          <button
+            type="submit"
+            className="nature-button nature-button-primary min-h-10 justify-center px-4 py-2"
+            disabled={!userInfo || isPosting || !content.trim()}
+          >
+            {isPosting ? (
+              <>
+                <span className="nature-spinner h-4 w-4" />
+                提交中...
+              </>
+            ) : (
+              <>
+                <Icon name="tabler:send-2" className="h-4 w-4" />
+                提交审核
+              </>
+            )}
+          </button>
+        </div>
         {error && (
           <div role="alert" className="nature-alert nature-alert-error">
             <Icon name="tabler:alert-triangle" className="h-5 w-5" />

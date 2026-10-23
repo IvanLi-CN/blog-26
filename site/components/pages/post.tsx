@@ -130,9 +130,14 @@ export default function postPage(data: Awaited<ReturnType<typeof loadpost>>) {
             </div>
             <PostReactions postSlug={post.slug} />
           </div>
-
-          <CommentSectionWithProvider postSlug={post.slug} usePublicSitePaths={true} />
         </article>
+        <aside className="post-detail-comments">
+          <CommentSectionWithProvider
+            postSlug={post.slug}
+            target={{ type: "article", key: post.slug }}
+            usePublicSitePaths={true}
+          />
+        </aside>
       </section>
 
       {relatedPosts.length > 0 && (

@@ -62,6 +62,38 @@
   display: block;
 }
 
+.clipping-reader-tabs {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.clipping-reader-tab {
+  min-height: 2.75rem;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 2px solid transparent;
+  color: var(--nature-text-soft);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.clipping-reader-tab[aria-selected="true"] {
+  border-bottom-color: var(--nature-accent-strong);
+  color: var(--nature-text);
+}
+
+.clipping-comments-below {
+  min-width: 0;
+}
+
+@media (max-width: 639px) {
+  .clipping-comments-below .nature-panel {
+    border-inline: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+}
+
 .clipping-reading-column {
   display: flex;
   min-width: 0;
@@ -234,7 +266,7 @@
   box-shadow: 0 8px 24px var(--shadow-soft);
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1280px) {
   .memo-detail-layout > .nature-reading-measure:has([data-clipping-discussion="true"]) {
     max-width: none;
   }

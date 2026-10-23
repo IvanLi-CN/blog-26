@@ -620,6 +620,13 @@ html[data-ui-theme="light"] {
   }
 }
 
+.admin-table-checkbox {
+  width: 1.5rem;
+  min-height: 1.5rem;
+  height: 1.5rem;
+  vertical-align: middle;
+}
+
 @media (min-width: 1024px) and (pointer: fine) {
   .admin-button {
     height: 2rem;
@@ -634,6 +641,11 @@ html[data-ui-theme="light"] {
   .admin-tabs-trigger {
     min-height: 1.75rem;
     height: 1.75rem;
+  }
+
+  .admin-checkbox {
+    min-height: 1.25rem;
+    height: 1.25rem;
   }
 
   .admin-button-sm {
@@ -652,9 +664,18 @@ html[data-ui-theme="light"] {
   }
 
   .admin-button-icon,
-  .admin-checkbox,
   .admin-radio-control {
     width: 1.75rem;
+  }
+
+  .admin-checkbox {
+    width: 1.25rem;
+  }
+
+  .admin-table-checkbox {
+    width: 1rem;
+    min-height: 1rem;
+    height: 1rem;
   }
 
   .admin-select-scroll-button {

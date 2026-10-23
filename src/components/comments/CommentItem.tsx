@@ -1,25 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Icon from "../ui/Icon";
 import { Textarea } from "../ui/textarea";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import CommentForm from "./CommentForm";
 import CommentList from "./CommentList";
-import { useDeleteComment, useEditComment, useModerateComment } from "./hooks";
+import {
+  useCommentReplies,
+  useDeleteComment,
+  useEditComment,
+  useModerateComment,
+  useRestoreComment,
+} from "./hooks";
 import type { Comment, UserInfo } from "./types";
 
 interface CommentItemProps {
   comment: Comment;
+  density?: "root" | "reply";
   postSlug: string;
+  target?: { type: "article" | "memo" | "project"; key: string };
   onCommentPosted: (message?: string) => void;
   userInfo: UserInfo | null;
   postComment: (commentData: {
     postSlug: string;
     content: string;
     parentId?: string;
-    author?: Omit<UserInfo, "id" | "avatarUrl">;
+    target?: { type: "article" | "memo" | "project"; key: string };
+    submissionKey?: string;
   }) => Promise<any>;
   isPosting: boolean;
   error: string | null;
@@ -30,12 +39,18 @@ interface CommentItemProps {
 }
 
 function formatDate(timestamp: number) {
+  return new Date(timestamp).toLocaleDateString("zh-CN");
+}
+
+function formatDateTime(timestamp: number) {
   return new Date(timestamp).toLocaleString("zh-CN");
 }
 
 export default function CommentItem({
   comment,
+  density = "root",
   postSlug,
+  target,
   onCommentPosted,
   userInfo,
   postComment,
@@ -50,10 +65,39 @@ export default function CommentItem({
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [loadedReplies, setLoadedReplies] = useState<Comment[]>([]);
+  const [repliesCursor, setRepliesCursor] = useState(comment.repliesNextCursor ?? null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
 
   const { moderateComment, isModerating } = useModerateComment();
   const { editComment, isEditing: isEditingComment } = useEditComment();
   const { deleteComment, isDeleting } = useDeleteComment();
+  const { restoreComment, isRestoring } = useRestoreComment();
+  const { loadReplies, isLoading: isLoadingReplies } = useCommentReplies();
+
+  useEffect(() => {
+    setLoadedReplies([]);
+    setRepliesCursor(comment.repliesNextCursor ?? null);
+  }, [comment.repliesNextCursor]);
+
+  useEffect(() => {
+    if (!isMoreOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
+        setIsMoreOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsMoreOpen(false);
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMoreOpen]);
 
   const handleReplyPosted = () => {
     setIsReplying(false);
@@ -62,7 +106,7 @@ export default function CommentItem({
 
   const handleModerate = async (status: "approved" | "rejected") => {
     try {
-      await moderateComment(comment.id, status);
+      await moderateComment(comment.id, status, comment.revision);
       onCommentPosted(`留言已成功${status === "approved" ? "批准" : "拒绝"}。`);
     } catch (e) {
       console.error(e);
@@ -71,7 +115,7 @@ export default function CommentItem({
 
   const handleEditSave = async () => {
     try {
-      await editComment(comment.id, editContent);
+      await editComment(comment.id, editContent, comment.revision);
       setIsEditing(false);
       onCommentPosted("评论已更新");
     } catch (e) {
@@ -81,7 +125,7 @@ export default function CommentItem({
 
   const handleConfirmDelete = async () => {
     try {
-      await deleteComment(comment.id);
+      await deleteComment(comment.id, comment.revision);
       onCommentPosted("评论已删除");
       setShowDeleteConfirm(false);
     } catch (e) {
@@ -90,40 +134,57 @@ export default function CommentItem({
     }
   };
 
-  const canEdit = userInfo && (userInfo.email === comment.authorEmail || isAdmin);
-  const canDelete = userInfo && (userInfo.email === comment.authorEmail || isAdmin);
+  const handleRestore = async () => {
+    try {
+      await restoreComment(comment.id, comment.revision);
+      onCommentPosted("评论已恢复并进入待审核");
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const canDelete = Boolean(comment.canDelete || isAdmin);
+  const displayedReplies = [...comment.replies, ...loadedReplies];
+
+  const handleLoadReplies = async () => {
+    if (!repliesCursor || isLoadingReplies) return;
+    try {
+      const result = await loadReplies(comment.id, repliesCursor);
+      setLoadedReplies((current) => [...current, ...result.replies]);
+      setRepliesCursor(result.nextCursor);
+    } catch {
+      // The parent comment remains available; a later retry can use the same cursor.
+    }
+  };
+
+  const isReply = density === "reply";
 
   return (
-    <article className="nature-panel px-4 py-5 sm:px-5">
-      <div className="flex items-start gap-4">
-        <div className="overflow-hidden rounded-full border border-[rgba(var(--nature-border-rgb),0.72)]">
+    <article className={`comment-item ${isReply ? "comment-item--reply" : "comment-item--root"}`}>
+      <div className="comment-item__body flex items-start">
+        <div className="comment-item__avatar shrink-0 overflow-hidden rounded-full border border-[rgba(var(--nature-border-rgb),0.72)]">
           {/* biome-ignore lint/performance/noImgElement: comment avatar uses native img for framework-neutral rendering */}
           <img
             src={comment.author.avatarUrl}
             alt={comment.author.nickname || "用户"}
-            className="h-12 w-12 rounded-full object-cover"
-            width={48}
-            height={48}
+            className="h-full w-full rounded-full object-cover"
+            width={28}
+            height={28}
           />
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="mb-3 flex flex-wrap items-center gap-3">
+          <div className="comment-item__header flex flex-wrap items-center">
             <h4 className="font-semibold text-[color:var(--nature-text)]">
               {comment.author.nickname}
             </h4>
             <time
-              className="text-sm text-[color:var(--nature-text-soft)]"
+              className="comment-item__meta text-sm text-[color:var(--nature-text-soft)]"
               dateTime={new Date(comment.createdAt).toISOString()}
+              title={isAdmin ? formatDateTime(comment.createdAt) : undefined}
             >
               {formatDate(comment.createdAt)}
             </time>
-            {comment.status === "pending" && (
-              <span className="nature-chip nature-chip-warning gap-1">
-                <Icon name="tabler:clock-exclamation" className="h-3.5 w-3.5" />
-                待审核
-              </span>
-            )}
           </div>
 
           {isEditing ? (
@@ -166,125 +227,222 @@ export default function CommentItem({
               </div>
             </div>
           ) : (
-            <div className="nature-prose max-w-none text-[color:var(--nature-text)]">
-              <p className="mb-0 whitespace-pre-wrap leading-7">{comment.content}</p>
-            </div>
-          )}
-
-          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[rgba(var(--nature-border-rgb),0.56)] pt-3">
-            <button
-              type="button"
-              onClick={() => setIsReplying(!isReplying)}
-              className="nature-button nature-button-ghost min-h-9 px-3 py-2 text-sm"
-            >
-              <Icon name="tabler:corner-down-left" className="h-4 w-4" />
-              回复
-            </button>
-
-            {canEdit && (
-              <button
-                type="button"
-                onClick={() => setIsEditing(!isEditing)}
-                className="nature-button nature-button-ghost min-h-9 px-3 py-2 text-sm"
-              >
-                <Icon name="tabler:edit" className="h-4 w-4" />
-                编辑
-              </button>
-            )}
-
-            {canDelete && (
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="nature-button nature-button-ghost min-h-9 px-3 py-2 text-sm text-[color:var(--nature-danger)]"
-              >
-                <Icon name="tabler:trash" className="h-4 w-4" />
-                删除
-              </button>
-            )}
-
-            {isAdmin && comment.status === "pending" && (
-              <div className="ml-auto flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleModerate("approved")}
-                  className="nature-button nature-button-primary min-h-9 px-3 py-2 text-sm"
-                  disabled={isModerating}
-                >
-                  {isModerating ? (
-                    <span className="nature-spinner h-4 w-4" />
-                  ) : (
-                    <Icon name="tabler:check" className="h-4 w-4" />
-                  )}
-                  批准
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleModerate("rejected")}
-                  className="nature-button nature-button-danger min-h-9 px-3 py-2 text-sm"
-                  disabled={isModerating}
-                >
-                  {isModerating ? (
-                    <span className="nature-spinner h-4 w-4" />
-                  ) : (
-                    <Icon name="tabler:x" className="h-4 w-4" />
-                  )}
-                  拒绝
-                </button>
-              </div>
-            )}
-          </div>
-
-          {isReplying && (
-            <div className="nature-panel-soft mt-5 px-4 py-4">
-              <div className="mb-4 flex items-center gap-2 text-sm font-medium text-[color:var(--nature-text-soft)]">
-                <Icon
-                  name="tabler:corner-down-left"
-                  className="h-4 w-4 text-[color:var(--nature-accent-strong)]"
-                />
-                回复 {comment.author.nickname}
-              </div>
-              <CommentForm
-                postSlug={postSlug}
-                parentId={comment.id}
-                onCommentPosted={handleReplyPosted}
-                userInfo={userInfo}
-                postComment={postComment}
-                isPosting={isPosting}
-                error={error}
-                onLogout={onLogout}
-                onLoginSuccess={onLoginSuccess}
-                usePublicSitePaths={usePublicSitePaths}
-              />
-            </div>
-          )}
-
-          {comment.replies && comment.replies.length > 0 && (
-            <div className="mt-6 border-l border-[rgba(var(--nature-border-rgb),0.58)] pl-4 sm:pl-6">
-              <div className="mb-4 flex items-center gap-2 text-sm font-medium text-[color:var(--nature-text-soft)]">
-                <Icon
-                  name="tabler:messages"
-                  className="h-4 w-4 text-[color:var(--nature-accent-strong)]"
-                />
-                {comment.replies.length} 条回复
-              </div>
-              <CommentList
-                comments={comment.replies}
-                postSlug={postSlug}
-                onCommentPosted={onCommentPosted}
-                userInfo={userInfo}
-                postComment={postComment}
-                isPosting={isPosting}
-                error={error}
-                onLogout={onLogout}
-                onLoginSuccess={onLoginSuccess}
-                isAdmin={isAdmin}
-                usePublicSitePaths={usePublicSitePaths}
-              />
+            <div className="comment-item__content nature-prose max-w-none text-[color:var(--nature-text)]">
+              <p className="mb-0 whitespace-pre-wrap leading-7">
+                {comment.deleted && !isAdmin
+                  ? "评论已删除"
+                  : comment.placeholder
+                    ? "评论暂不可见"
+                    : comment.content}
+              </p>
             </div>
           )}
         </div>
       </div>
+
+      <div className="comment-item__actions mt-4 flex flex-wrap items-center gap-2 pt-1">
+        {(displayedReplies.length > 0 ||
+          (comment.status === "pending" && !comment.placeholder)) && (
+          <div className="comment-item__action-meta">
+            {displayedReplies.length > 0 && (
+              <span className="comment-item__reply-count">
+                <Icon name="tabler:messages" className="h-4 w-4" />
+                {displayedReplies.length} 条回复
+              </span>
+            )}
+            {comment.status === "pending" && !comment.placeholder && (
+              <span className="comment-item__status nature-chip nature-chip-warning">
+                <Icon name="tabler:clock-exclamation" className="h-3.5 w-3.5" />
+                待审核
+              </span>
+            )}
+          </div>
+        )}
+
+        {!comment.deleted && !comment.placeholder && comment.status === "approved" && (
+          <button
+            type="button"
+            onClick={() => setIsReplying(!isReplying)}
+            className="comment-action"
+          >
+            <Icon name="tabler:corner-down-left" className="h-4 w-4" />
+            回复
+          </button>
+        )}
+
+        {!isAdmin && canDelete && !comment.deleted && (
+          <button
+            type="button"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="comment-action comment-action--danger"
+          >
+            <Icon name="tabler:trash" className="h-4 w-4" />
+            删除
+          </button>
+        )}
+
+        {isAdmin && (
+          <div ref={moreMenuRef} className="comment-more-menu">
+            <button
+              type="button"
+              className="comment-action comment-more-menu__trigger"
+              aria-label="更多评论操作"
+              aria-expanded={isMoreOpen}
+              aria-haspopup="menu"
+              title="更多评论操作"
+              onClick={() => setIsMoreOpen((current) => !current)}
+            >
+              <Icon name="tabler:dots-vertical" className="h-4 w-4" />
+              <span className="sr-only">更多评论操作</span>
+            </button>
+            {isMoreOpen ? (
+              <div className="comment-more-menu__content" role="menu" aria-label="更多评论操作">
+                {comment.deleted ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="comment-more-menu__item comment-action--status"
+                    onClick={() => {
+                      setIsMoreOpen(false);
+                      void handleRestore();
+                    }}
+                    disabled={isRestoring}
+                  >
+                    {isRestoring ? (
+                      <span className="nature-spinner h-4 w-4" />
+                    ) : (
+                      <Icon name="tabler:restore" className="h-4 w-4" />
+                    )}
+                    恢复待审
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="comment-more-menu__item"
+                      onClick={() => {
+                        setIsMoreOpen(false);
+                        setIsEditing(!isEditing);
+                      }}
+                    >
+                      <Icon name="tabler:edit" className="h-4 w-4" />
+                      编辑
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="comment-more-menu__item comment-action--danger"
+                      onClick={() => {
+                        setIsMoreOpen(false);
+                        setShowDeleteConfirm(true);
+                      }}
+                      disabled={isDeleting}
+                    >
+                      <Icon name="tabler:trash" className="h-4 w-4" />
+                      软删除
+                    </button>
+                    {comment.status === "pending" ? (
+                      <>
+                        <hr className="comment-more-menu__divider" />
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="comment-more-menu__item comment-action--approve"
+                          onClick={() => {
+                            setIsMoreOpen(false);
+                            void handleModerate("approved");
+                          }}
+                          disabled={isModerating}
+                        >
+                          {isModerating ? (
+                            <span className="nature-spinner h-4 w-4" />
+                          ) : (
+                            <Icon name="tabler:check" className="h-4 w-4" />
+                          )}
+                          批准
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="comment-more-menu__item comment-action--danger"
+                          onClick={() => {
+                            setIsMoreOpen(false);
+                            void handleModerate("rejected");
+                          }}
+                          disabled={isModerating}
+                        >
+                          {isModerating ? (
+                            <span className="nature-spinner h-4 w-4" />
+                          ) : (
+                            <Icon name="tabler:x" className="h-4 w-4" />
+                          )}
+                          拒绝
+                        </button>
+                      </>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
+
+      {isReplying && (
+        <div className="comment-item__reply-form mt-4 pt-1">
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-[color:var(--nature-text-soft)]">
+            <Icon
+              name="tabler:corner-down-left"
+              className="h-4 w-4 text-[color:var(--nature-accent-strong)]"
+            />
+            回复 {comment.author.nickname}
+          </div>
+          <CommentForm
+            postSlug={postSlug}
+            target={target}
+            parentId={comment.id}
+            onCommentPosted={handleReplyPosted}
+            userInfo={userInfo}
+            postComment={postComment}
+            isPosting={isPosting}
+            error={error}
+            onLogout={onLogout}
+            onLoginSuccess={onLoginSuccess}
+            usePublicSitePaths={usePublicSitePaths}
+          />
+        </div>
+      )}
+
+      {displayedReplies.length > 0 && (
+        <div className="comment-item__replies">
+          <CommentList
+            comments={displayedReplies}
+            density="reply"
+            postSlug={postSlug}
+            target={target}
+            onCommentPosted={onCommentPosted}
+            userInfo={userInfo}
+            postComment={postComment}
+            isPosting={isPosting}
+            error={error}
+            onLogout={onLogout}
+            onLoginSuccess={onLoginSuccess}
+            isAdmin={isAdmin}
+            usePublicSitePaths={usePublicSitePaths}
+          />
+          {repliesCursor ? (
+            <button
+              type="button"
+              className="nature-button nature-button-ghost mt-3 min-h-9 px-3 py-2 text-sm"
+              onClick={() => void handleLoadReplies()}
+              disabled={isLoadingReplies}
+            >
+              {isLoadingReplies ? "正在加载…" : "加载更多回复"}
+            </button>
+          ) : null}
+        </div>
+      )}
 
       {showDeleteConfirm && (
         <div className="nature-modal" role="dialog" aria-modal="true">
@@ -305,7 +463,7 @@ export default function CommentItem({
               </div>
             </div>
             <div className="nature-panel-soft mt-5 px-4 py-4 text-sm text-[color:var(--nature-text-soft)]">
-              确定要删除这条评论吗？删除后将无法恢复，包括所有回复内容。
+              确定要删除这条评论吗？评论会被软删除，回复关系会保留。
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <button

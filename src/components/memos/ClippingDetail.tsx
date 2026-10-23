@@ -1,15 +1,18 @@
 "use client";
 
 import {
+  type KeyboardEvent,
   type MutableRefObject,
   type ReactNode,
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
 } from "react";
+import CommentSectionWithProvider from "@/components/comments/CommentSectionWithProvider";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import "./clipping-admin.css";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
@@ -80,11 +83,11 @@ function createTransport(slug: string): ClippingTransport {
 }
 const emptyChat: ClippingChat = { messages: [], generating: false, partial: "" };
 const subscribeDesktop = (changed: () => void) => {
-  const query = window.matchMedia("(min-width: 1024px)");
+  const query = window.matchMedia("(min-width: 1280px)");
   query.addEventListener("change", changed);
   return () => query.removeEventListener("change", changed);
 };
-const desktopSnapshot = () => window.matchMedia("(min-width: 1024px)").matches;
+const desktopSnapshot = () => window.matchMedia("(min-width: 1280px)").matches;
 const serverSnapshot = () => false;
 
 function ChatPanel({
@@ -233,6 +236,7 @@ export function ClippingDetail({
   header,
   publicMediaContext,
   publicAssetVersion,
+  commentsTarget,
 }: {
   slug: string;
   memoContent: string;
@@ -245,6 +249,7 @@ export function ClippingDetail({
   header?: ReactNode;
   publicMediaContext?: PublicMediaContext;
   publicAssetVersion?: string | null;
+  commentsTarget?: { type: "article" | "memo" | "project"; key: string };
 }) {
   const [transport] = useState(() => providedTransport ?? createTransport(slug));
   const [article, setArticle] = useState(initialArticle);
@@ -256,6 +261,11 @@ export function ClippingDetail({
   const [activeLanguage, setActiveLanguage] = useState<"source" | "translation">("source");
   const [error, setError] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
+  const [activePanel, setActivePanel] = useState<"comments" | "ai">(
+    commentsTarget ? "comments" : "ai"
+  );
+  const commentsTabRef = useRef<HTMLButtonElement>(null);
+  const aiTabRef = useRef<HTMLButtonElement>(null);
   const [busy, setBusy] = useState(false);
   const scroll = useRef(0);
   const previousMemoContent = useRef(memoContent);
@@ -274,9 +284,44 @@ export function ClippingDetail({
     [article.resourceBaseUrl]
   );
   const desktop = useSyncExternalStore(subscribeDesktop, desktopSnapshot, serverSnapshot);
+  const instanceId = useId().replace(/:/g, "");
+  const panelIdPrefix = `clipping-${live ? "live" : "static"}-${instanceId}`;
+  const commentsTabId = `${panelIdPrefix}-comments-tab`;
+  const commentsPanelId = `${panelIdPrefix}-comments-panel`;
+  const aiTabId = `${panelIdPrefix}-ai-tab`;
+  const aiPanelId = `${panelIdPrefix}-ai-panel`;
+  const commentsPanelA11y = canDiscuss
+    ? { role: "tabpanel" as const, "aria-labelledby": commentsTabId }
+    : { role: "region" as const, "aria-label": "评论" };
+  const aiPanelA11y = commentsTarget
+    ? { role: "tabpanel" as const, "aria-labelledby": aiTabId }
+    : { role: "region" as const, "aria-label": "文章对话" };
   const reading = article.reading;
   const memoContentChanged = previousMemoContent.current !== memoContent;
   const displayedMemoContent = memoContentChanged ? memoContent : (article.content ?? memoContent);
+  const commentsTargetKey = commentsTarget ? `${commentsTarget.type}:${commentsTarget.key}` : "";
+  useEffect(() => {
+    setActivePanel(commentsTargetKey ? "comments" : "ai");
+  }, [commentsTargetKey]);
+  function handlePanelTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (!commentsTarget || !canDiscuss) return;
+    const panels = ["comments", "ai"] as const;
+    const currentIndex = panels.indexOf(activePanel);
+    let nextIndex: number | null = null;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown")
+      nextIndex = (currentIndex + 1) % panels.length;
+    if (event.key === "ArrowLeft" || event.key === "ArrowUp")
+      nextIndex = (currentIndex - 1 + panels.length) % panels.length;
+    if (event.key === "Home") nextIndex = 0;
+    if (event.key === "End") nextIndex = panels.length - 1;
+    if (nextIndex === null) return;
+    event.preventDefault();
+    const nextPanel = panels[nextIndex];
+    setActivePanel(nextPanel);
+    requestAnimationFrame(() => {
+      (nextPanel === "comments" ? commentsTabRef : aiTabRef).current?.focus();
+    });
+  }
   useEffect(() => {
     if (!memoContentChanged) return;
     previousMemoContent.current = memoContent;
@@ -333,6 +378,7 @@ export function ClippingDetail({
     } catch (error) {
       if (error instanceof ClippingApiError && [401, 403].includes(error.status)) {
         setCanDiscuss(false);
+        setActivePanel("comments");
         setSnapshot(emptyChat);
         setDraft("");
         setSheetOpen(false);
@@ -404,7 +450,7 @@ export function ClippingDetail({
     ) : null;
   return (
     <section
-      className={`clipping-detail-layout min-w-0 ${surface === "admin" ? "clipping-admin-surface admin-editor-preview" : ""} ${canDiscuss && desktop ? "" : "clipping-detail-layout-single"}`}
+      className={`clipping-detail-layout min-w-0 ${surface === "admin" ? "clipping-admin-surface admin-editor-preview" : ""} ${(canDiscuss && desktop) || (commentsTarget && desktop) ? "" : "clipping-detail-layout-single"}`}
       data-testid="clipping-detail"
       data-clipping-discussion={canDiscuss}
       data-clipping-surface={surface}
@@ -560,38 +606,105 @@ export function ClippingDetail({
           </div>
         </article>
       </div>
-      {canDiscuss ? (
-        desktop ? (
-          <aside
-            className="clipping-chat-card nature-panel nature-mobile-reading-surface sticky top-6 flex h-[min(80dvh,900px)] min-h-0 min-w-0 flex-col"
-            aria-label="文章对话"
-          >
-            <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 border-b border-[color:var(--nature-line)] px-5 py-4">
-              <h2 className="font-semibold">文章对话</h2>
-            </div>
-            {chat}
-          </aside>
-        ) : (
-          <BottomSheet
-            open={sheetOpen}
-            onOpenChange={setSheetOpen}
-            title="文章对话"
-            surface={surface}
-            floatingTrigger
-            trigger={
+      {desktop && (canDiscuss || commentsTarget) ? (
+        <aside
+          className="clipping-chat-card nature-panel nature-mobile-reading-surface sticky top-6 flex min-h-0 min-w-0 flex-col"
+          aria-label={
+            commentsTarget && canDiscuss ? "评论与文章对话" : commentsTarget ? "评论" : "文章对话"
+          }
+        >
+          {commentsTarget && canDiscuss ? (
+            <div
+              className="clipping-reader-tabs border-b border-[color:var(--nature-line)] px-4 pt-3"
+              role="tablist"
+              aria-label="阅读工具"
+            >
               <button
                 type="button"
-                className="nature-button fixed right-4 z-40 min-h-11 shadow-lg"
-                style={{ bottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}
-                data-testid="clipping-open-chat"
+                role="tab"
+                aria-selected={activePanel === "comments"}
+                aria-controls={commentsPanelId}
+                id={commentsTabId}
+                ref={commentsTabRef}
+                tabIndex={activePanel === "comments" ? 0 : -1}
+                className="clipping-reader-tab"
+                onClick={() => setActivePanel("comments")}
+                onKeyDown={handlePanelTabKeyDown}
               >
-                讨论文章
+                评论
               </button>
-            }
-          >
-            {chat}
-          </BottomSheet>
-        )
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activePanel === "ai"}
+                aria-controls={aiPanelId}
+                id={aiTabId}
+                ref={aiTabRef}
+                tabIndex={activePanel === "ai" ? 0 : -1}
+                className="clipping-reader-tab"
+                onClick={() => setActivePanel("ai")}
+                onKeyDown={handlePanelTabKeyDown}
+              >
+                文章对话
+              </button>
+            </div>
+          ) : null}
+          {commentsTarget ? (
+            <div
+              id={commentsPanelId}
+              {...commentsPanelA11y}
+              hidden={activePanel !== "comments"}
+              className="min-h-0"
+            >
+              <CommentSectionWithProvider
+                postSlug={commentsTarget.key}
+                target={commentsTarget}
+                title="评论"
+                embedded
+              />
+            </div>
+          ) : null}
+          {canDiscuss ? (
+            <div id={aiPanelId} {...aiPanelA11y} hidden={activePanel !== "ai"} className="min-h-0">
+              <div className="flex min-h-0 flex-1 flex-col">
+                <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 border-b border-[color:var(--nature-line)] px-5 py-4">
+                  <h2 className="font-semibold">文章对话</h2>
+                </div>
+                {chat}
+              </div>
+            </div>
+          ) : null}
+        </aside>
+      ) : null}
+      {!desktop && commentsTarget ? (
+        <div className="clipping-comments-below">
+          <CommentSectionWithProvider
+            postSlug={commentsTarget.key}
+            target={commentsTarget}
+            title="评论"
+          />
+        </div>
+      ) : null}
+      {canDiscuss && !desktop ? (
+        <BottomSheet
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
+          title="文章对话"
+          surface={surface}
+          floatingTrigger
+          trigger={
+            <button
+              type="button"
+              className="nature-button fixed right-4 z-40 min-h-11 shadow-lg"
+              style={{ bottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}
+              data-testid="clipping-open-chat"
+            >
+              讨论文章
+            </button>
+          }
+        >
+          {chat}
+        </BottomSheet>
       ) : null}
     </section>
   );

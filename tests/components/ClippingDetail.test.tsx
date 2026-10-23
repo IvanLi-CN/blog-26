@@ -62,4 +62,39 @@ describe("ClippingDetail", () => {
     expect(view.getByTestId("clipping-memo-content").textContent).not.toContain("旧的剪藏正文");
     await act(async () => await Promise.resolve());
   });
+
+  test("names the standalone AI panel when no tablist is present", () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query === "(min-width: 1280px)",
+        media: query,
+        onchange: null,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        dispatchEvent: () => false,
+      }),
+    });
+    try {
+      const view = render(
+        <ClippingDetail
+          slug="clipping-preview"
+          memoContent="预览正文"
+          initialArticle={article}
+          initialCanDiscuss
+          transport={transport}
+        />
+      );
+
+      expect(view.getByRole("region", { name: "文章对话" })).toBeTruthy();
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        value: originalMatchMedia,
+      });
+    }
+  });
 });

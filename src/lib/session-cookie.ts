@@ -3,6 +3,7 @@ import { resolveRequestOrigin } from "@/lib/public-cors";
 type SessionCookieOptions = {
   maxAge: number;
   value?: string;
+  sameSite?: "Lax" | "None";
 };
 
 function normalizeOrigin(raw: string | null | undefined) {
@@ -35,7 +36,7 @@ export function createSessionCookieHeader(
 ) {
   const crossSite = isCrossSiteRequest(request);
   const secure = shouldUseSecureCookie(request, crossSite);
-  const sameSite = crossSite ? "None" : "Lax";
+  const sameSite = options.sameSite ?? (crossSite ? "None" : "Lax");
   const value = options.value ?? "";
 
   return [

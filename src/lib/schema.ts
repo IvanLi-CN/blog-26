@@ -9,19 +9,109 @@ export const users = sqliteTable("users", {
   createdAt: integer("created_at").notNull(),
 });
 
-// 临时适配现有数据库schema
-export const comments = sqliteTable("comments", {
+export const readers = sqliteTable(
+  "readers",
+  {
+    id: text("id").primaryKey(),
+    githubId: text("github_id").notNull(),
+    githubLogin: text("github_login").notNull(),
+    displayName: text("display_name"),
+    avatarUrl: text("avatar_url"),
+    profileUrl: text("profile_url"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => ({
+    githubIdUnique: uniqueIndex("readers_github_id_unique").on(table.githubId),
+    loginIndex: index("readers_github_login_idx").on(table.githubLogin),
+  })
+);
+
+export const readerSessions = sqliteTable(
+  "reader_sessions",
+  {
+    id: text("id").primaryKey(),
+    readerId: text("reader_id")
+      .notNull()
+      .references(() => readers.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: integer("expires_at").notNull(),
+    createdAt: integer("created_at").notNull(),
+    revokedAt: integer("revoked_at"),
+  },
+  (table) => ({
+    tokenUnique: uniqueIndex("reader_sessions_token_unique").on(table.tokenHash),
+    readerIndex: index("reader_sessions_reader_idx").on(table.readerId),
+    expiryIndex: index("reader_sessions_expiry_idx").on(table.expiresAt),
+  })
+);
+
+export const readerOAuthAttempts = sqliteTable(
+  "reader_oauth_attempts",
+  {
+    id: text("id").primaryKey(),
+    stateHash: text("state_hash").notNull(),
+    codeVerifier: text("code_verifier").notNull(),
+    returnTo: text("return_to").notNull(),
+    expiresAt: integer("expires_at").notNull(),
+    createdAt: integer("created_at").notNull(),
+    consumedAt: integer("consumed_at"),
+  },
+  (table) => ({
+    stateUnique: uniqueIndex("reader_oauth_attempts_state_unique").on(table.stateHash),
+    expiryIndex: index("reader_oauth_attempts_expiry_idx").on(table.expiresAt),
+  })
+);
+
+export const commentMigrationState = sqliteTable("comment_migration_state", {
   id: text("id").primaryKey(),
-  content: text("content").notNull(),
-  postSlug: text("post_slug").notNull(),
-  authorName: text("author_name").notNull(),
-  authorEmail: text("author_email").notNull(),
-  parentId: text("parent_id"),
-  status: text("status", { enum: ["pending", "approved", "rejected"] })
-    .notNull()
-    .default("pending"),
-  createdAt: integer("created_at").notNull(),
+  status: text("status", { enum: ["pending", "running", "blocked", "complete"] }).notNull(),
+  scanned: integer("scanned").notNull().default(0),
+  repaired: integer("repaired").notNull().default(0),
+  errorCount: integer("error_count").notNull().default(0),
+  updatedAt: integer("updated_at").notNull(),
+  lastError: text("last_error"),
 });
+
+// 临时适配现有数据库schema
+export const comments = sqliteTable(
+  "comments",
+  {
+    id: text("id").primaryKey(),
+    content: text("content").notNull(),
+    postSlug: text("post_slug").notNull(),
+    targetType: text("target_type", { enum: ["article", "memo", "project"] })
+      .notNull()
+      .default("article"),
+    targetKey: text("target_key").notNull().default(""),
+    authorName: text("author_name").notNull(),
+    authorEmail: text("author_email"),
+    readerId: text("reader_id").references(() => readers.id, { onDelete: "set null" }),
+    parentId: text("parent_id"),
+    rootId: text("root_id"),
+    status: text("status", { enum: ["pending", "approved", "rejected"] })
+      .notNull()
+      .default("pending"),
+    deletedAt: integer("deleted_at"),
+    revision: integer("revision").notNull().default(1),
+    submissionKey: text("submission_key"),
+    createdAt: integer("created_at").notNull(),
+  },
+  (table) => ({
+    targetStatusIndex: index("comments_target_status_idx").on(
+      table.targetType,
+      table.targetKey,
+      table.status,
+      table.createdAt
+    ),
+    readerIndex: index("comments_reader_idx").on(table.readerId, table.createdAt),
+    rootIndex: index("comments_root_idx").on(table.rootId, table.createdAt),
+    submissionUnique: uniqueIndex("comments_reader_submission_unique").on(
+      table.readerId,
+      table.submissionKey
+    ),
+  })
+);
 
 // 文章缓存表
 export const posts = sqliteTable("posts", {
@@ -287,6 +377,18 @@ export const usersRelations = relations(users, ({ many }) => ({
   personalAccessTokens: many(personalAccessTokens),
 }));
 
+export const readersRelations = relations(readers, ({ many }) => ({
+  comments: many(comments),
+  sessions: many(readerSessions),
+}));
+
+export const readerSessionsRelations = relations(readerSessions, ({ one }) => ({
+  reader: one(readers, {
+    fields: [readerSessions.readerId],
+    references: [readers.id],
+  }),
+}));
+
 export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, {
     fields: [sessions.userId],
@@ -309,6 +411,10 @@ export const commentsRelations = relations(comments, ({ one, many }) => ({
   }),
   replies: many(comments, {
     relationName: "replies",
+  }),
+  reader: one(readers, {
+    fields: [comments.readerId],
+    references: [readers.id],
   }),
 }));
 
