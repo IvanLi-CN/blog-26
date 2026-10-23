@@ -69,6 +69,8 @@ jobs:
           cp scripts/fetch-initial-playbook.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/fetch-initial-playbook.ts"
           cp scripts/prepare-playbook-edition.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/prepare-playbook-edition.ts"
           cp src/lib/playbook/bundle.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/bundle.ts"
+          cp src/lib/playbook/artifacts.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/artifacts.ts"
+          cp src/lib/playbook/cache.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/cache.ts"
           cp src/lib/playbook/release.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/release.ts"
           cp src/lib/playbook/schema.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/schema.ts"
       - name: Checkout the verified merged source
