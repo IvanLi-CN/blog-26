@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
+  "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
   "covered_files": {
-    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "c338d9e084e97f185db331a7e5367048087c0d06",
+    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "b5a2247670cb07f94e9d110782022509081acc81",
     "tests/e2e/web-demo/public-csr.spec.ts": "93f4605ef6de0e26ad9ece7ea2e476b8d1f49156"
   },
   "change": {
@@ -15,39 +15,39 @@
     "planned": {
       "impact": "patch",
       "reasoning": "The change only makes existing Web Demo tests wait for the already-published hydration and route state; it does not change product code or public behavior.",
-      "assessed_at": "2026-10-16T00:00:00+08:00",
+      "assessed_at": "2026-10-23T00:00:00+08:00",
       "evidence": [
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "c338d9e084e97f185db331a7e5367048087c0d06",
+          "blob": "b5a2247670cb07f94e9d110782022509081acc81",
           "command": "bunx playwright test tests/e2e/web-demo/console-memo-boundary.spec.ts"
         }
       ]
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The candidate is limited to deterministic readiness waits in two Web Demo E2E files; runtime routes, payloads, persistence, and compatibility contracts remain unchanged.",
-      "assessed_at": "2026-10-16T00:00:00+08:00",
+      "reasoning": "The candidate is limited to deterministic readiness waits in the Console Memo Web Demo E2E file; runtime routes, payloads, persistence, and compatibility contracts remain unchanged.",
+      "assessed_at": "2026-10-23T00:00:00+08:00",
       "evidence": [
         {
-          "path": "tests/e2e/web-demo/public-csr.spec.ts",
-          "blob": "93f4605ef6de0e26ad9ece7ea2e476b8d1f49156",
-          "command": "bunx playwright test tests/e2e/web-demo/public-csr.spec.ts tests/e2e/web-demo/project-runtime-motion.spec.ts tests/e2e/web-demo/search-modes.spec.ts"
+          "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
+          "blob": "b5a2247670cb07f94e9d110782022509081acc81",
+          "command": "bunx playwright test tests/e2e/web-demo/console-memo-boundary.spec.ts"
         }
       ],
       "scope_drift": {
         "detected": false,
-        "description": "Only the two E2E test files are changed; no product implementation or release input is modified."
+        "description": "Only the Console Memo E2E test and its version-impact evidence are changed; no product implementation or release input is modified."
       }
     },
     "verified": {
       "impact": "patch",
       "reasoning": "Repository checks and the exact Web Demo CI test sets pass with the readiness waits, confirming a test-only synchronization correction.",
-      "assessed_at": "2026-10-16T00:00:00+08:00",
+      "assessed_at": "2026-10-23T00:00:00+08:00",
       "evidence": [
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "c338d9e084e97f185db331a7e5367048087c0d06",
+          "blob": "b5a2247670cb07f94e9d110782022509081acc81",
           "command": "Exact CI console desktop and mobile Web Demo sets pass sequentially"
         },
         {
@@ -63,6 +63,13 @@
       "impact": "patch",
       "change": "unchanged",
       "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
         "3.0.3",
         "3.0.4",
         "3.0.5",
@@ -71,7 +78,17 @@
         "3.2.1",
         "3.3.0",
         "3.3.2",
-        "3.3.3"
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4"
       ],
       "evidence": [
         {
@@ -90,7 +107,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "c338d9e084e97f185db331a7e5367048087c0d06",
+          "blob": "b5a2247670cb07f94e9d110782022509081acc81",
           "command": "No persistent-state implementation is changed"
         }
       ]
