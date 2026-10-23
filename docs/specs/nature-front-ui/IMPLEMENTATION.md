@@ -94,6 +94,15 @@ teardown clears settle timers and DOM state.
 Direct-follow is enabled only when the current delta can change the header
 offset; endpoint no-ops continue through the normal direction gates.
 
+Responsive header navigation keeps the brand and controls on the first row and
+uses a full second row below `1024px`. At `640px–1023px`, and on narrower
+viewports down to the `360px` label breakpoint, the five navigation links fill
+the available width between `16px` gutters with equal flexible gaps. Below
+`360px`, the same touch-sized links retain their icons and collapse their
+labels. The official Web Demo matrix covers `320`, `359`, `360`, `375`, `393`,
+`480`, `627`, `640`, `768`, `1023`, and `1024px` without document or navigation
+list overflow.
+
 ## Ambient renderer
 
 The public shell mounts a transparent native-DPR WebGPU renderer over the

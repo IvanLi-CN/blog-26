@@ -702,6 +702,29 @@ test.describe("mobile public reading surfaces", () => {
       .toBe(`${availableWidth}px`);
   });
 
+  test("tablet-width article details retain card framing", async ({ page }) => {
+    await page.setViewportSize({ width: 627, height: 768 });
+    await gotoWithTheme(page, "/posts/code-block-fixture", "dark");
+
+    for (const selector of [".post-detail-header", ".post-detail-body"]) {
+      const card = page.locator(selector);
+      const bounds = await card.boundingBox();
+      expect(bounds).not.toBeNull();
+      expect(bounds?.x ?? 0).toBeGreaterThan(0);
+      expect(bounds?.width ?? 627).toBeLessThan(627);
+      await expect(card).toHaveCSS("border-top-left-radius", "16px");
+      await expect(card).toHaveCSS("border-top-width", "1px");
+      await expect(card).not.toHaveCSS("box-shadow", "none");
+    }
+
+    await page.setViewportSize({ width: 393, height: 852 });
+    await gotoWithTheme(page, "/posts/code-block-fixture", "dark");
+    for (const selector of [".post-detail-header", ".post-detail-body"]) {
+      await expectEdgeToEdge(page.locator(selector), page);
+      await expect(page.locator(selector)).toHaveCSS("border-top-left-radius", "0px");
+    }
+  });
+
   test("long unbroken text stays inside the reading surface while code scrolls locally", async ({
     page,
   }) => {

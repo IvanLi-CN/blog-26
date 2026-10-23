@@ -1548,6 +1548,42 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
   }
 }
 
+@media (min-width: 480px) and (max-width: 639px) {
+  .post-detail-header,
+  .post-detail-body {
+    width: 100%;
+    max-width: 100%;
+    margin-inline-start: 0;
+    border: 1px solid var(--nature-line);
+    border-radius: var(--nature-radius-lg);
+    background: linear-gradient(180deg, var(--nature-surface-strong), var(--nature-surface));
+    box-shadow: var(--nature-shadow);
+    backdrop-filter: blur(26px) saturate(1.12);
+  }
+
+  .post-detail-body:is(:hover, :focus-within) {
+    transform: translateY(-2px);
+    border-color: var(--nature-line-strong);
+    box-shadow: var(--nature-shadow-strong);
+  }
+}
+
+@media (max-width: 479px) {
+  .post-detail-header,
+  .post-detail-body {
+    box-sizing: border-box;
+    width: var(--nature-reading-viewport-width, 100vw);
+    max-width: var(--nature-reading-viewport-width, 100vw);
+    margin-inline-start: calc(50% - var(--nature-reading-viewport-half-width, 50vw));
+    overflow-wrap: anywhere;
+    border: 0;
+    border-radius: 0;
+    background: var(--nature-surface-strong);
+    box-shadow: none;
+    backdrop-filter: blur(8px);
+  }
+}
+
 @media (max-width: 375px) {
   .post-detail-cover {
     width: calc(100% + 1rem);

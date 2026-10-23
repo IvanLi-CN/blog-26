@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "4001a2df221914b8777670bbfb49798f7c0e7500",
+  "covered_files": {
+    "docs/specs/nature-front-ui/HISTORY.md": "9383291dacef155c784b081592b0b8d59c923266",
+    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "246235cfd9e784d84ced4315fd575f4c3fe06981",
+    "docs/specs/nature-front-ui/SPEC.md": "fe40e3df405d971badb64bf48c7855c6ae12ff02",
+    "docs/specs/nature-front-ui/assets/public-header-responsive-393-dark.png": "20f64365e83ca07146a1aa4906ad62ffc4c4803b",
+    "docs/specs/nature-front-ui/assets/public-header-responsive-640-dark.png": "df1eb33479cbe2963f78867b18e92bc7bf7fc618",
+    "site/components/SiteHeader.tsx": "429b18f851228b66a8fbb7162f970e4091309ee0",
+    "site/styles/public-pages.css": "973a6bfa3ed16ca9bfafb8a792e67cb4cc1539d9",
+    "src/components/common/PublicStoryHeader.tsx": "ea27271a9b62e6be038d2a9933364eac2392ba05",
+    "src/styles/globals.css": "3e1ec5281d4b1d47deb7dd6082ab940a3a4f0f50",
+    "tests/e2e/guest/mobile-reading-surface.spec.ts": "747a2190764de4a425ef7c6275e7b5e7c73262d3",
+    "tests/e2e/guest/nature-front-coverage.spec.ts": "7ccea9ac6a60258ec9fb13f80d8be3eabe757c17"
+  },
+  "change": {
+    "description": "Align public header controls and navigation across desktop, tablet, and narrow mobile viewports while preserving the existing public routes and reading surfaces.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "This changes compatible public frontend layout behavior and responsive navigation affordances without changing public data, routes, persistence, or server APIs.",
+      "assessed_at": "2026-10-11T17:30:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/guest/nature-front-coverage.spec.ts",
+          "blob": "7ccea9ac6a60258ec9fb13f80d8be3eabe757c17",
+          "command": "Direct Playwright responsive matrix across 320px through 1024px with no document or navigation overflow"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "The candidate remains limited to public header CSS/components, article surface styling, responsive E2E coverage, and synchronized Nature UI documentation; no API, persistence, or release-version files are changed by the feature.",
+      "assessed_at": "2026-10-11T17:30:00+08:00",
+      "evidence": [
+        {
+          "path": "docs/specs/nature-front-ui/SPEC.md",
+          "blob": "fe40e3df405d971badb64bf48c7855c6ae12ff02",
+          "command": "Nature UI spec contract and visual-evidence document checks pass"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The implementation matches the approved responsive public header and reading-surface scope; no public route, API, persistence, or VERSION contract drift was found."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "Biome, 999 Bun tests, production Web Demo build, direct responsive Playwright matrix, and Nature UI contract/drift checks verify a compatible public frontend layout change.",
+      "assessed_at": "2026-10-11T17:30:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/guest/nature-front-coverage.spec.ts",
+          "blob": "7ccea9ac6a60258ec9fb13f80d8be3eabe757c17",
+          "command": "Direct Playwright matrix at 320, 359, 360, 375, 393, 480, 627, 640, 768, 1023, and 1024px; all overflow assertions pass"
+        },
+        {
+          "path": "docs/specs/nature-front-ui/SPEC.md",
+          "blob": "fe40e3df405d971badb64bf48c7855c6ae12ff02",
+          "command": "spec_contract_check, visual_evidence_document check, and spec_drift_check pass"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0"
+      ],
+      "evidence": [
+        {
+          "path": "tests/e2e/guest/mobile-reading-surface.spec.ts",
+          "blob": "747a2190764de4a425ef7c6275e7b5e7c73262d3",
+          "command": "GitHub Playwright E2E covers responsive reading surfaces and the local responsive matrix passes"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local content format, browser persistence, or durable release state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/e2e/guest/mobile-reading-surface.spec.ts",
+          "blob": "747a2190764de4a425ef7c6275e7b5e7c73262d3",
+          "command": "Responsive reading-surface coverage runs without durable state changes"
+        }
+      ]
+    }
+  }
+}
