@@ -310,8 +310,30 @@ function normalizeLegacyPublicCatalog(value: unknown): unknown {
   return normalized;
 }
 
-export function assertPublicCatalog(value: unknown) {
-  const catalog = catalogSchema.parse(normalizeLegacyPublicCatalog(value));
+function stripInternalDocMetadata(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const normalized = structuredClone(value) as Record<string, unknown>;
+  for (const key of ["project_details", "topic_details"]) {
+    const details = normalized[key];
+    if (!Array.isArray(details)) continue;
+    for (const detail of details) {
+      if (!isRecord(detail) || !Array.isArray(detail.doc_metadata)) continue;
+      detail.doc_metadata = detail.doc_metadata.filter((entry) => {
+        if (!isRecord(entry) || typeof entry.key !== "string") return true;
+        return !privateMetadataKeys.has(normalizedKey(entry.key)) && !isCredentialKey(entry.key);
+      });
+    }
+  }
+  return normalized;
+}
+
+export interface PublicCatalogOptions {
+  stripInternalMetadata?: boolean;
+}
+
+export function assertPublicCatalog(value: unknown, options: PublicCatalogOptions = {}) {
+  const catalogInput = options.stripInternalMetadata ? stripInternalDocMetadata(value) : value;
+  const catalog = catalogSchema.parse(normalizeLegacyPublicCatalog(catalogInput));
   // Fixed objects are strict schemas; arbitrary public records share the metadata boundary.
   for (const project of catalog.project_details) rejectInternalFields(project.stack);
   for (const topic of catalog.topic_details)

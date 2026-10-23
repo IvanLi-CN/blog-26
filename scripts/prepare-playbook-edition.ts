@@ -97,7 +97,9 @@ if (!bundleRoot) {
 snapshot ||= await readFile(snapshotPath);
 const edition = inputSeed
   ? inputSeed
-  : await readPlaybookEdition(resolve(bundleRoot), renderer, snapshot);
+  : await readPlaybookEdition(resolve(bundleRoot), renderer, snapshot, undefined, {
+      stripInternalMetadata: Boolean(current),
+    });
 validatePlaybookEdition(edition);
 if (current) {
   if (!samePlaybookEdition(current, edition.edition))
