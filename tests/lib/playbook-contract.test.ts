@@ -117,6 +117,12 @@ describe("playbook-public-contract", () => {
     const metadata = structuredClone(publicFixtureCatalog);
     metadata.project_details[0].doc_metadata.push({ key: "Repo Path", value: "/private/checkout" });
     expect(() => assertPublicCatalog(metadata)).toThrow("Internal metadata");
+    const privateSourceLocator = structuredClone(publicFixtureCatalog);
+    privateSourceLocator.project_details[0].doc_metadata.push({
+      key: "source_repo",
+      value: "IvanLi-CN/mcu-agentd",
+    });
+    expect(() => assertPublicCatalog(privateSourceLocator)).toThrow("Internal metadata");
     const relation = structuredClone(publicFixtureCatalog);
     relation.topic_details[0].policy_skills[0].summary.policy_dependencies = ["private-rule"];
     expect(() => assertPublicCatalog(relation)).toThrow();

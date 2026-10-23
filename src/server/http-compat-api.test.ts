@@ -613,6 +613,7 @@ describe("HTTP compatibility APIs", () => {
       store
     );
     expect(rejected.status).toBe(400);
+    expect(store.adminEdition?.supplement).toBeDefined();
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
 
     const pendingRollback = await handlePlaybookSupplementSyncRequest(

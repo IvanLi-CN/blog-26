@@ -66,6 +66,7 @@ const sectionSchema = z.strictObject({
 const privateMetadataKeys = new Set([
   "catalogcategories",
   "sourceurl",
+  "sourcerepo",
   "repositoryurl",
   "repourl",
   "repopath",
