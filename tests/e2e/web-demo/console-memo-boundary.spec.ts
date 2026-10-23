@@ -14,13 +14,23 @@ async function waitForPublicRouterHydration(page: Page) {
   });
 }
 
+async function gotoHydratedPublicRoute(page: Page, url: string) {
+  await page.goto(url, { waitUntil: "domcontentloaded" });
+  await waitForPublicRouterHydration(page);
+}
+
+async function goBackToHydratedPublicRoute(page: Page) {
+  await page.goBack({ waitUntil: "domcontentloaded" });
+  await waitForPublicRouterHydration(page);
+}
+
 test.describe("Console Memo Web Demo", () => {
   test.describe.configure({ timeout: 60_000 });
 
   test("covers the admin list eye action, same-origin detail, preview boundary, and back position", async ({
     page,
   }) => {
-    await page.goto("/memos/?d_persona=admin&d_delay=normal", { waitUntil: "domcontentloaded" });
+    await gotoHydratedPublicRoute(page, "/memos/?d_persona=admin&d_delay=normal");
     const list = page.getByTestId("admin-live-memo-list-items");
     await expect(list).toBeVisible();
     const card = page.getByTestId("admin-live-memo-card").filter({
@@ -66,7 +76,7 @@ test.describe("Console Memo Web Demo", () => {
       "管理员可以在详情首屏看到尚未进入公开快照的正文"
     );
 
-    await page.goBack({ waitUntil: "domcontentloaded" });
+    await goBackToHydratedPublicRoute(page);
     await expect(page).toHaveURL(/\/memos\/?(?:\?.*)?$/);
     await expect(page.getByTestId("admin-live-memo-list-items")).toBeVisible();
     await expect.poll(() => page.evaluate(() => Math.round(window.scrollY))).toBe(listScrollY);
@@ -132,9 +142,7 @@ test.describe("Console Memo Web Demo", () => {
   });
 
   test("rechecks the detail boundary when the Web Demo persona changes", async ({ page }) => {
-    await page.goto(`/memos/${privateSlug}/?d_persona=admin&d_delay=normal`, {
-      waitUntil: "domcontentloaded",
-    });
+    await gotoHydratedPublicRoute(page, `/memos/${privateSlug}/?d_persona=admin&d_delay=normal`);
     await expect(page.getByTestId("public-memo-detail-controls")).toBeVisible();
     await expect(page.getByTestId("public-memo-detail-body")).toContainText(
       "管理员可以在详情首屏看到尚未进入公开快照的正文"
@@ -165,10 +173,7 @@ test.describe("Console Memo Web Demo", () => {
   test("renders clipping source, translation, and admin discussion from the official adapter", async ({
     page,
   }) => {
-    await page.goto(`/memos/${clippingSlug}/?d_persona=admin&d_delay=normal`, {
-      waitUntil: "domcontentloaded",
-    });
-    await waitForPublicRouterHydration(page);
+    await gotoHydratedPublicRoute(page, `/memos/${clippingSlug}/?d_persona=admin&d_delay=normal`);
     const clipping = page
       .locator('[data-testid="clipping-detail"][data-clipping-surface="public"]:visible')
       .last();
@@ -217,10 +222,7 @@ test.describe("Console Memo Web Demo", () => {
   test("renders guest clipping materials without exposing discussion controls", async ({
     page,
   }) => {
-    await page.goto(`/memos/${clippingSlug}/?d_persona=guest&d_delay=normal`, {
-      waitUntil: "domcontentloaded",
-    });
-    await waitForPublicRouterHydration(page);
+    await gotoHydratedPublicRoute(page, `/memos/${clippingSlug}/?d_persona=guest&d_delay=normal`);
     const clipping = page
       .locator('[data-testid="clipping-detail"][data-clipping-surface="public"]:visible')
       .last();
@@ -259,7 +261,7 @@ test.describe("Console Memo Web Demo", () => {
   });
 
   test("saves in place and records the in-memory Web Demo mutation", async ({ page }) => {
-    await page.goto(`/memos/?d_persona=admin&d_delay=normal`, { waitUntil: "domcontentloaded" });
+    await gotoHydratedPublicRoute(page, "/memos/?d_persona=admin&d_delay=normal");
     await page
       .getByTestId("admin-live-memo-card")
       .filter({ hasText: "发布窗口后的内部复盘" })
@@ -283,7 +285,7 @@ test.describe("Console Memo Web Demo", () => {
       "保存后仍停留在当前详情路由"
     );
 
-    await page.goBack({ waitUntil: "domcontentloaded" });
+    await goBackToHydratedPublicRoute(page);
     await expect(page).toHaveURL(/\/memos\/?(?:\?.*)?$/);
     await expect(page.getByTestId("admin-live-memo-list-items")).toBeVisible();
     await expect(
@@ -295,13 +297,15 @@ test.describe("Console Memo Web Demo", () => {
   });
 
   test("opens the dedicated preview with the saved Console Web Demo content", async ({ page }) => {
-    await page.goto(`/memos/?d_persona=admin&d_delay=normal`, { waitUntil: "domcontentloaded" });
+    await gotoHydratedPublicRoute(page, "/memos/?d_persona=admin&d_delay=normal");
     await page
       .getByTestId("admin-live-memo-card")
       .filter({ hasText: "发布窗口后的内部复盘" })
       .getByRole("link", { name: "查看详情" })
       .click();
-    await page.getByRole("button", { name: "编辑 Memo" }).click();
+    const editButton = page.getByRole("button", { name: "编辑 Memo" });
+    await expect(editButton).toBeEnabled({ timeout: 15_000 });
+    await editButton.click();
     const modal = page.getByTestId("quick-memo-edit-modal");
     await expect(modal).toBeVisible();
     await modal
@@ -319,8 +323,7 @@ test.describe("Console Memo Web Demo", () => {
   test("keeps a deleted Web Demo Memo out of the list after client navigation", async ({
     page,
   }) => {
-    await page.goto(`/memos/?d_persona=admin&d_delay=normal`, { waitUntil: "domcontentloaded" });
-    await waitForPublicRouterHydration(page);
+    await gotoHydratedPublicRoute(page, "/memos/?d_persona=admin&d_delay=normal");
     await page
       .locator(`[data-testid="admin-live-memo-card"][data-slug="${privateSlug}"]`)
       .getByRole("link", { name: "查看详情" })
@@ -336,7 +339,7 @@ test.describe("Console Memo Web Demo", () => {
   });
 
   test("does not restore a deleted detail from its SSR seed on reload", async ({ page }) => {
-    await page.goto(`/memos/?d_persona=admin&d_delay=normal`, { waitUntil: "domcontentloaded" });
+    await gotoHydratedPublicRoute(page, "/memos/?d_persona=admin&d_delay=normal");
     await page
       .locator(`[data-testid="admin-live-memo-card"][data-slug="${privateSlug}"]`)
       .getByRole("link", { name: "查看详情" })
@@ -345,9 +348,7 @@ test.describe("Console Memo Web Demo", () => {
     await page.getByTestId("admin-live-memo-delete").click();
     await expect(page).toHaveURL(/\/memos\/?(?:\?.*)?$/);
 
-    await page.goto(`/memos/${privateSlug}/?d_persona=admin&d_delay=normal`, {
-      waitUntil: "domcontentloaded",
-    });
+    await gotoHydratedPublicRoute(page, `/memos/${privateSlug}/?d_persona=admin&d_delay=normal`);
     await expect(page.locator('[data-testid="public-memo-detail-card"]:visible')).toHaveCount(0);
     await expect(page.locator('[data-testid="public-memo-detail-body"]:visible')).toHaveCount(0);
     await expect(page.locator("body")).not.toContainText(
