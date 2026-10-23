@@ -8,13 +8,13 @@
     ".github/workflows/playbook-content-update.yml": "56ba8614c27b065781f40898b541612d934c6521",
     "docs/runbooks/style-playbook-publishing.md": "7f4b3f7c3463464ef2313aa1f4329f1b22752bf2",
     "docs/specs/style-playbook-integration/HISTORY.md": "c4ea01aba979fd59e193c15a5ea1858904024af5",
-    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "e571d7309c7f88857358fa0df954e5d3e7c1196c",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "0d4fc078367d4698bf2a76ae5b03025cb8d7b127",
     "docs/specs/style-playbook-integration/SPEC.md": "c344eb192722d8bf0ee4f636d059c54b41b8aac3",
     "docs/specs/style-playbook-integration/contracts/public-package.md": "bab331f11b051912c2e3827e738fbbc7812047f6",
-    "docs/specs/style-playbook-integration/contracts/release-trigger.md": "66f8b4e341780e8c1219e2385412609b95ce4546",
+    "docs/specs/style-playbook-integration/contracts/release-trigger.md": "1bf0d216c3d1480be896987f44127b64f603bb8a",
     "scripts/fetch-initial-playbook.ts": "2d32c42d7c2bf74fd810a0b74ee0e146aafa2935",
     "scripts/prepare-console-playbook-seed.ts": "d126f6fe798e17cb479c7f85056a310290e6f0b5",
-    "scripts/playbook-content-update.ts": "dc197236f0e8101f856ca60927ef989b25166701",
+    "scripts/playbook-content-update.ts": "d10d0b8a7638f746622d623f08913892834c2162",
     "scripts/prepare-backend-dist.sh": "f2a8b868dbeefb9b28cfdefcfff3a74f9ecdc9b6",
     "scripts/prepare-playbook-edition.ts": "f0df228d3f27b4c8b534a07719fc9dc45d6dab2a",
     "scripts/stage-playbook-initial-from-artifact.ts": "8f18eeaf69ae743e8dff006d920702f65fc4a5fe",
@@ -44,7 +44,7 @@
     "tests/lib/manual-release-source.test.ts": "015b936082fdaf6c4435d47b49e6649a2aa9d8ea",
     "tests/lib/playbook-contract.test.ts": "a13eab658792841a63b011290f3238189a7f6a6e",
     "tests/lib/playbook-fixture.ts": "b1b4b5db69c257d00f57de260f1627d8507e71bd",
-    "tests/lib/playbook-workflows.test.ts": "b05da844f8677b14c67c7a98c8c25fcef64df3d7",
+    "tests/lib/playbook-workflows.test.ts": "bbe942adce3e8432e9ab630f5500988643653869",
     "tests/fixtures/playbook/rust-supplement-catalog.fixture": "5eafd8f810a3765097aacee8d962b31912e93ef0",
     "tests/fixtures/playbook/rust-supplement-search.fixture": "9d20810bc370fbeeaa0fe459bf882c3943cbf85a"
   },
@@ -98,7 +98,7 @@
         },
         {
           "path": "scripts/playbook-content-update.ts",
-          "blob": "dc197236f0e8101f856ca60927ef989b25166701",
+          "blob": "d10d0b8a7638f746622d623f08913892834c2162",
           "command": "Blog content updates validate public/supplement merge compatibility before sync, preserve an existing overlay when optional assets are unavailable, surface receiver sync failures after public deployment, and reject a deployed renderer without the current public and supplement package capabilities before building"
         }
       ],
@@ -124,7 +124,7 @@
         },
         {
           "path": "tests/lib/playbook-workflows.test.ts",
-          "blob": "b05da844f8677b14c67c7a98c8c25fcef64df3d7",
+          "blob": "bbe942adce3e8432e9ab630f5500988643653869",
           "command": "Workflow boundary tests reject non-HTTPS sync endpoints, keep invalid optional supplements, defer unavailable optional assets, validate public/supplement merge compatibility before sync, gate content builds on deployed renderer capabilities, surface receiver failures after preserving the public deployment, clear stale supplement retries, and assert that supplements stay out of public frozen and backend artifacts"
         },
         {

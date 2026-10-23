@@ -92,6 +92,11 @@ describe("playbook deployment boundaries", () => {
     expect(updateScript).toContain("/api/admin/playbook/supplement");
     expect(updateScript).toContain("PLAYBOOK_SUPPLEMENT_SYNC_TOKEN");
     expect(updateScript).toContain('supplementStatus = "invalid"');
+    expect(updateScript).toContain("let supplementRelationConflict = false");
+    expect(updateScript).toContain("supplementRelationConflict = true");
+    expect(updateScript).toContain("Ignoring relation-conflicting optional Playbook supplement");
+    expect(updateScript).toContain("if (supplementRelationConflict)");
+    expect(updateScript).toContain("supplementRelationConflict,");
     expect(updateScript).toContain("supplementStatus =");
     expect(updateScript).toContain('"unavailable"');
     expect(updateScript).toContain("Ignoring invalid optional Playbook supplement");

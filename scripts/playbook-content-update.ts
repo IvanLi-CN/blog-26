@@ -79,6 +79,7 @@ let supplementEnvelope: PlaybookSupplementEnvelope | null = null;
 let supplementFileBytes: Map<string, Uint8Array> | undefined;
 let publicRelationIndex: ReturnType<typeof publicRelationIndexFromCatalog> | undefined;
 let supplementStatus = selected.supplementStatus;
+let supplementRelationConflict = false;
 if (selected.supplement) {
   try {
     const supplementArchive = await readSupplementAsset(
@@ -131,6 +132,7 @@ if (supplementStatus === "valid" && supplementEnvelope) {
     mergePlaybookSupplement(publicEdition, supplementEnvelope);
   } catch (error) {
     supplementStatus = "invalid";
+    supplementRelationConflict = true;
     supplementRoot = undefined;
     supplementEnvelope = null;
     supplementFileBytes = undefined;
@@ -403,7 +405,11 @@ try {
 let supplementSynced = false;
 let supplementStaged = false;
 let supplementSyncError: string | undefined;
-if (supplementStatus === "unavailable") {
+if (supplementRelationConflict) {
+  console.warn(
+    "Ignoring relation-conflicting optional Playbook supplement; existing overlay remains deployed"
+  );
+} else if (supplementStatus === "unavailable") {
   console.warn(
     "Playbook supplement sync deferred because optional assets are unavailable; existing overlay remains deployed"
   );
@@ -431,6 +437,7 @@ const summary = `Playbook result: ${result}\n\n${encodeJson({
   adopted: current,
   upstreamRunId: input.source_run_id || null,
   supplement: supplementSynced && supplementRoot ? (selected.supplement?.manifest ?? null) : null,
+  supplementRelationConflict,
   supplementStaged,
   supplementSynced,
   supplementSyncError: supplementSyncError ?? null,
