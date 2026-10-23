@@ -588,6 +588,18 @@ describe("playbook-public-contract", () => {
         ])
       )
     ).toThrow("Duplicate playbook identity");
+    const relationMismatch = structuredClone(parsed.catalog);
+    relationMismatch.snapshot.topics[0].related_projects = [];
+    relationMismatch.snapshot.topics[0].project_count = 0;
+    relationMismatch.topic_details[0].item.related_projects = [];
+    relationMismatch.topic_details[0].item.project_count = 0;
+    expect(() =>
+      validatePlaybookSupplement({
+        manifest: supplement.manifest,
+        catalog: relationMismatch,
+        search: parsed.search,
+      })
+    ).toThrow("does not match Topic related_projects");
     const internal = makeSupplementBundle();
     const internalCatalog = JSON.parse(internal.files[0].content);
     internalCatalog.project_details[0].stack = { repoPath: "/private/checkout" };
@@ -604,6 +616,10 @@ describe("playbook-public-contract", () => {
     const files = readSupplementArchive(bundle.archive, bundle.manifest);
     const parsed = parseSupplementFiles(files);
     const supplement = validatePlaybookSupplement({ manifest: bundle.manifest, ...parsed }, files);
+    expect(parsed.catalog.topic_details[0]?.item.related_projects).toEqual([
+      { slug: "source-private-project", name: "Source Private Project" },
+      { slug: "catalog-private-project", name: "Catalog Private Project" },
+    ]);
     expect(supplement.catalog.snapshot.projects[0]?.slug).toBe("catalog-private-project");
   });
   test("merges supplement relations without changing public body bytes", () => {

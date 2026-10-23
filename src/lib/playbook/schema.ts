@@ -478,6 +478,18 @@ export function assertSupplementCatalog(value: unknown) {
     unique(detail.item.related_projects.map((project) => project.slug));
   }
   unique(catalog.relation_edges.map((edge) => `${edge.topic_slug}\0${edge.project_slug}`));
+  const topicDetails = new Map(
+    catalog.topic_details.map((detail) => [detail.item.slug, detail.item])
+  );
+  for (const edge of catalog.relation_edges) {
+    const topic = topicDetails.get(edge.topic_slug);
+    if (!topic) continue;
+    const relatedProject = topic.related_projects.find(
+      (project) => project.slug === edge.project_slug
+    );
+    if (!relatedProject || relatedProject.name !== edge.project_name)
+      throw new Error("Supplement relation does not match Topic related_projects");
+  }
   for (const metadata of catalog.private_source_metadata) {
     const project = projects.get(metadata.project_slug);
     if (project && project.source_visibility !== "private")
