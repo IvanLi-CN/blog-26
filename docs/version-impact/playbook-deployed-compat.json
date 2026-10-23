@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
   "covered_files": {
-    ".github/workflows/product-release.yml": "45d183c72ad41ac6b62160da23395e9be1276673",
+    ".github/workflows/product-release.yml": "75ef866d859cd05ec0dbb99a543806e056cd533e",
     "scripts/prepare-playbook-edition.ts": "440084f36645f4d6fb941e0aad2c3994f0c77099",
     "src/lib/playbook/artifacts.ts": "8db0131aca2a286c4b205fc4123a492e898ae048",
     "src/lib/playbook/bundle.ts": "7a522d40dbee98adf7b4b59536cf670cc7354493",
@@ -56,7 +56,7 @@
         },
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "45d183c72ad41ac6b62160da23395e9be1276673",
+          "blob": "75ef866d859cd05ec0dbb99a543806e056cd533e",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         }
       ],

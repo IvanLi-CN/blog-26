@@ -6,7 +6,7 @@
     "Dockerfile": "d7b48d22e76236a2e951fe2474ba9186ebe07e17",
     ".github/workflows/abandon-failed-inputs-release.yml": "6e038873501b5491634758b85191f20068876c4b",
     ".github/workflows/notify-release-failure.yml": "efc0e3fd93fc696637002bc09402d6da7db879e8",
-    ".github/workflows/product-release.yml": "45d183c72ad41ac6b62160da23395e9be1276673",
+    ".github/workflows/product-release.yml": "75ef866d859cd05ec0dbb99a543806e056cd533e",
     ".github/workflows/retry-product-release.yml": "5d6be9679872974e4fec3384214fd6d6c6a73e88",
     "docs/adr/0029-release-recovery-and-frozen-media-preflight.md": "c284d022a3e76455cdce0f1c9371d3f7b6f9147a",
     "docs/runbooks/manual-version-release.md": "a59eb3a61438fae555533d6f96ffbfff892b21e0",
