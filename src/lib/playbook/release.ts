@@ -331,6 +331,13 @@ function assertOptionalAssetIdentity(
         );
       return true;
     }
+    if (resolved.supplementStatus === "invalid") {
+      if (hasSupplementAssetIdentity(input))
+        console.warn(
+          "[playbook] supplement identity cannot be checked because the assets are invalid"
+        );
+      return true;
+    }
     if (hasSupplementAssetIdentity(input))
       console.warn(
         "[playbook] ignoring supplement identity because supplement assets are unavailable"
@@ -379,7 +386,7 @@ export async function resolveRelease(reader: ReleaseReader, input: ReleaseTrigge
     )
       throw new Error("Notification identity mismatch");
     if (!assertOptionalAssetIdentity(input, resolved))
-      return { ...resolved, supplement: undefined, supplementStatus: "invalid" as const };
+      return { ...resolved, supplement: undefined, supplementStatus: "unavailable" as const };
     return resolved;
   }
   if (

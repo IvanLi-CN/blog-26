@@ -185,17 +185,25 @@ export function parseManifest(value: unknown, kind: "public" | "supplement" = "p
 }
 
 export function computeEditionDigest(
-  edition: Pick<PlaybookEdition["edition"], "bundle" | "rendererCommit" | "files">
+  edition: Pick<
+    PlaybookEdition["edition"],
+    "bundle" | "rendererCommit" | "sourceTimestamp" | "files"
+  >
 ) {
-  return sha256(
-    JSON.stringify({
-      bundleDigest: edition.bundle.sha256,
-      rendererCommit: edition.rendererCommit,
-      files: [...edition.files]
-        .sort((a, b) => a.path.localeCompare(b.path))
-        .map((file) => ({ path: file.path, sha256: file.sha256, size: file.size })),
-    })
-  );
+  const identity: {
+    bundleDigest: string;
+    rendererCommit: string;
+    sourceTimestamp?: number;
+    files: { path: string; sha256: string; size: number }[];
+  } = {
+    bundleDigest: edition.bundle.sha256,
+    rendererCommit: edition.rendererCommit,
+    files: [...edition.files]
+      .sort((a, b) => a.path.localeCompare(b.path))
+      .map((file) => ({ path: file.path, sha256: file.sha256, size: file.size })),
+  };
+  if (edition.sourceTimestamp !== undefined) identity.sourceTimestamp = edition.sourceTimestamp;
+  return sha256(JSON.stringify(identity));
 }
 
 export function parseEditionIdentity(value: unknown) {

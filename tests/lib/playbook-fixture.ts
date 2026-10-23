@@ -2,7 +2,11 @@ import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { gzipSync } from "node:zlib";
-import { createPlaybookEdition, readPublicArchive } from "../../src/lib/playbook/bundle";
+import {
+  createPlaybookEdition,
+  PLAYBOOK_SOURCE_TIMESTAMP_FILE,
+  readPublicArchive,
+} from "../../src/lib/playbook/bundle";
 import { publicFixtureCatalog, publicFixtureSearch } from "../../src/lib/playbook/fixture";
 import { encodeJson, fileRecord, sha256 } from "../../src/lib/playbook/manifest";
 import {
@@ -76,10 +80,11 @@ export function makePublicBundle(
     files: files.map((file) => fileRecord(file.path, file.content)),
   };
   const edition = createPlaybookEdition(
-    readPublicArchive(archive, manifest),
+    readPublicArchive(archive, manifest, 0),
     manifest,
     "b".repeat(40),
-    "{}\n"
+    "{}\n",
+    0
   );
   return { archive, manifest, edition, files };
 }
@@ -239,5 +244,6 @@ if (import.meta.main) {
   await mkdir(root, { recursive: true });
   await writeFile(resolve(root, "playbook-public-manifest.json"), encodeJson(bundle.manifest));
   await writeFile(resolve(root, "playbook-public.tar.gz"), bundle.archive);
+  await writeFile(resolve(root, PLAYBOOK_SOURCE_TIMESTAMP_FILE), "0\n");
   console.log(root);
 }

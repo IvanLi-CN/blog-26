@@ -81,7 +81,10 @@ export function validatePlaybookSupplementSeed(value: unknown): PlaybookSuppleme
   };
 }
 
-export async function readPlaybookSupplement(root: string): Promise<PlaybookSupplementSeed> {
+export async function readPlaybookSupplement(
+  root: string,
+  expectedSourceTimestamp?: number
+): Promise<PlaybookSupplementSeed> {
   const manifest = parseManifest(
     parseJson(
       decodeUtf8(
@@ -92,7 +95,7 @@ export async function readPlaybookSupplement(root: string): Promise<PlaybookSupp
     "supplement"
   );
   const archive = await readFile(join(root, manifest.bundle.name));
-  const files = readSupplementArchive(archive, manifest);
+  const files = readSupplementArchive(archive, manifest, expectedSourceTimestamp);
   const parsed: PlaybookSupplement = parseSupplementFiles(files);
   return {
     ...validatePlaybookSupplement({ manifest, ...parsed }, files),

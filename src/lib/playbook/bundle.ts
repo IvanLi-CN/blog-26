@@ -7,6 +7,7 @@ import {
   encodeJson,
   encodePlaybookRawFiles,
   fileRecord,
+  parseEditionIdentity,
   parseJson,
   parseManifest,
   sha256,
@@ -26,7 +27,35 @@ import {
 import type { PlaybookEdition, PlaybookManifest } from "./types";
 
 export const PLAYBOOK_MANIFEST_FILE = "playbook-public-manifest.json";
+export const PLAYBOOK_SOURCE_TIMESTAMP_FILE = ".playbook-source-timestamp";
 const FILES = ["catalog.json", "search-documents.json"];
+
+function assertSourceTimestamp(value: number) {
+  if (!Number.isSafeInteger(value) || value < 0) throw new Error("Invalid source commit timestamp");
+  return value;
+}
+
+async function readExpectedSourceTimestamp(root: string, explicit?: number) {
+  if (explicit !== undefined) return assertSourceTimestamp(explicit);
+  const sidecar = await readFile(join(root, PLAYBOOK_SOURCE_TIMESTAMP_FILE), "utf8").catch(
+    (error) => {
+      if (error?.code === "ENOENT") return undefined;
+      throw error;
+    }
+  );
+  if (sidecar !== undefined) {
+    const raw = sidecar.trim();
+    if (!/^\d+$/u.test(raw)) throw new Error("Invalid source commit timestamp");
+    const value = Number(raw);
+    return assertSourceTimestamp(value);
+  }
+  const identity = await readFile(join(root, "edition.json"), "utf8").catch((error) => {
+    if (error?.code === "ENOENT") return undefined;
+    throw error;
+  });
+  if (identity === undefined) return undefined;
+  return parseEditionIdentity(parseJson(identity)).sourceTimestamp;
+}
 
 function readOctalField(
   header: Uint8Array,
@@ -221,9 +250,11 @@ export function createPlaybookEdition(
   files: Map<string, Uint8Array>,
   manifest: PlaybookManifest,
   rendererCommit: string,
-  publicSnapshot: Uint8Array | string
+  publicSnapshot: Uint8Array | string,
+  sourceTimestamp?: number
 ): PlaybookEdition {
   commitSchema.parse(rendererCommit);
+  if (sourceTimestamp !== undefined) assertSourceTimestamp(sourceTimestamp);
   const contentSnapshotIdentity = sha256(publicSnapshot);
   digestSchema.parse(contentSnapshotIdentity);
   const rawCatalog = parseJson(
@@ -250,6 +281,7 @@ export function createPlaybookEdition(
     editionDigest: "",
     rendererCommit,
     contentSnapshotIdentity,
+    ...(sourceTimestamp === undefined ? {} : { sourceTimestamp }),
     source: manifest.source,
     bundle: manifest.bundle,
     files: records,
@@ -270,16 +302,19 @@ export function createPlaybookEdition(
 export async function readPlaybookEdition(
   root: string,
   rendererCommit: string,
-  publicSnapshot: Uint8Array | string
+  publicSnapshot: Uint8Array | string,
+  expectedSourceTimestamp?: number
 ) {
+  const sourceTimestamp = await readExpectedSourceTimestamp(root, expectedSourceTimestamp);
   const manifest = parseManifest(
     parseJson(decodeUtf8(await readFile(join(root, PLAYBOOK_MANIFEST_FILE)), "Public manifest"))
   );
   const archive = await readFile(join(root, manifest.bundle.name));
   return createPlaybookEdition(
-    readPublicArchive(archive, manifest),
+    readPublicArchive(archive, manifest, sourceTimestamp),
     manifest,
     rendererCommit,
-    publicSnapshot
+    publicSnapshot,
+    sourceTimestamp
   );
 }

@@ -110,7 +110,8 @@ export async function downloadRetainedEdition(
   const rebuilt = await readPlaybookEdition(
     destination,
     pointer.rendererCommit,
-    await readFile(join(destination, "public-snapshot.json"))
+    await readFile(join(destination, "public-snapshot.json")),
+    pointer.sourceTimestamp
   );
   if (!samePlaybookEdition(rebuilt.edition, pointer))
     throw new Error("Retained package does not reproduce the public edition");

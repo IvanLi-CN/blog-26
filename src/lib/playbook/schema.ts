@@ -230,6 +230,7 @@ export const editionSchema = z.strictObject({
   editionDigest: digestSchema,
   rendererCommit: commitSchema,
   contentSnapshotIdentity: digestSchema,
+  sourceTimestamp: z.number().int().nonnegative().safe().optional(),
   source: sourceSchema,
   bundle: bundleSchema.extend({ name: z.literal(PLAYBOOK_PUBLIC_BUNDLE_NAME) }),
   files: z.array(fileSchema).length(3),

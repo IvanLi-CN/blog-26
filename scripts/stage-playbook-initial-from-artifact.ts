@@ -1,7 +1,7 @@
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { readPublicPointer } from "../src/lib/playbook/artifacts";
-import { readPlaybookEdition } from "../src/lib/playbook/bundle";
+import { PLAYBOOK_SOURCE_TIMESTAMP_FILE, readPlaybookEdition } from "../src/lib/playbook/bundle";
 import { parseEditionIdentity } from "../src/lib/playbook/manifest";
 
 if (await readPublicPointer("https://ivanli.cc/_content/playbook/manifest.json")) process.exit(0);
@@ -22,5 +22,10 @@ const destination = resolve(".tmp/playbook-initial");
 await mkdir(destination, { recursive: true });
 for (const name of [pointer.bundle.name, "playbook-public-manifest.json"])
   await writeFile(resolve(destination, name), await readFile(resolve(root, name)));
+if (pointer.sourceTimestamp !== undefined)
+  await writeFile(
+    resolve(destination, PLAYBOOK_SOURCE_TIMESTAMP_FILE),
+    `${pointer.sourceTimestamp}\n`
+  );
 if (!process.env.GITHUB_ENV) throw new Error("GITHUB_ENV is required");
 await appendFile(process.env.GITHUB_ENV, `PLAYBOOK_BUNDLE_DIR=${destination}\n`);

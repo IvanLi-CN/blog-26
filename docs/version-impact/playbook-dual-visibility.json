@@ -10,26 +10,26 @@
     "docs/specs/style-playbook-integration/HISTORY.md": "c4ea01aba979fd59e193c15a5ea1858904024af5",
     "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "014807a7839491ae08231878314d49abc2dcbc03",
     "docs/specs/style-playbook-integration/SPEC.md": "66faec339524ce92e731388fe87383ed1b963652",
-    "docs/specs/style-playbook-integration/contracts/public-package.md": "fe3ff111f03bde6ce0703e568a900d9eb385095e",
+    "docs/specs/style-playbook-integration/contracts/public-package.md": "897453b92ccbdccf7cb025de34ba06a14b4aa278",
     "docs/specs/style-playbook-integration/contracts/release-trigger.md": "64ac2fb4f1effe69e8fdad979eb4075e710c730a",
-    "scripts/fetch-initial-playbook.ts": "2da29e35b875ce0038aec8a2ad4476244f5e4b0b",
+    "scripts/fetch-initial-playbook.ts": "2d32c42d7c2bf74fd810a0b74ee0e146aafa2935",
     "scripts/prepare-console-playbook-seed.ts": "d126f6fe798e17cb479c7f85056a310290e6f0b5",
-    "scripts/playbook-content-update.ts": "54ccd6c1087cd9a1d6cb3dd3e8547941a16d297d",
+    "scripts/playbook-content-update.ts": "8d4dca25c3143d132115a9ae38782ae8dd68139d",
     "scripts/prepare-backend-dist.sh": "f2a8b868dbeefb9b28cfdefcfff3a74f9ecdc9b6",
-    "scripts/prepare-playbook-edition.ts": "c4d6540f4991ae9f62340b464a2ab0ee69052e1f",
+    "scripts/prepare-playbook-edition.ts": "f0df228d3f27b4c8b534a07719fc9dc45d6dab2a",
     "src/lib/admin-api-client.ts": "926e9bbc0c1d0c99b3b95d219eb88f6cbb9734f5",
-    "src/lib/playbook/artifacts.ts": "2cb826c29d253b9fdb1347fc1583430a8546e9b6",
-    "src/lib/playbook/bundle.ts": "253f8cd826e335112cb4892ad1458aeac9dc374e",
+    "src/lib/playbook/artifacts.ts": "666fb51cdf330b065855aa71a5741791fc132169",
+    "src/lib/playbook/bundle.ts": "d03f2e244d6fe093aa9387b29f861a8ab2a6a9b8",
     "src/lib/playbook/github.ts": "749df3d4580e83e571842279c98d96161a485f98",
     "src/lib/playbook/cache.ts": "7d98aee709f9bec423d412c70ee176e63ec44758",
     "src/lib/playbook/fixture.ts": "5df5704636a959f61f9301b2e9b0efba49eea934",
-    "src/lib/playbook/manifest.ts": "c416bcb4cceb4b4322f16821e751877c61a9461e",
+    "src/lib/playbook/manifest.ts": "95bfd1e08d9cf8acc1ca67cb27cbe1f4e48ab3e0",
     "src/lib/playbook/public-package-capabilities.json": "c64a471dbe131999919b3bd63522a47be3d0e848",
-    "src/lib/playbook/release.ts": "a01c5b36fcc215e74ebac02a790c4d79b514db6e",
+    "src/lib/playbook/release.ts": "0502e2569d51e1861cdb8d83d196891d8ab4c9c6",
     "src/lib/playbook/renderer-capability.ts": "b3b6266cbbc55d78b97eec2419f5194ed0cd4661",
-    "src/lib/playbook/schema.ts": "47ab9594a8fafd8a877750e3797220507181614d",
-    "src/lib/playbook/supplement.ts": "9e00fad5709e3cc8df8246a4536eaf00dfcd52aa",
-    "src/lib/playbook/types.ts": "a85bc56fdee6d5e0f788e4adcf993cafff7d7c55",
+    "src/lib/playbook/schema.ts": "1e318b1116e8e30cd801540ea4ec28b7a8b360ed",
+    "src/lib/playbook/supplement.ts": "659eb43167db5505f2160527b127889c18b710f7",
+    "src/lib/playbook/types.ts": "1697cb2d60fc50aa26d168aeff47a060648893c0",
     "src/lib/playbook/web-demo-fixture.ts": "05b0a4b7e8edfc8c022e8107e646b39cbec67f9e",
     "src/lib/release/inputs.ts": "b9f21e8ef06e376f6254606a9bb900b083babc9f",
     "src/lib/release/source.ts": "2258ff7a6d77000f2d65da972d17d071b4b14cc4",
@@ -39,8 +39,8 @@
     "src/server/routers/admin/index.ts": "a0221d7071f529099c250fce356939a00095f934",
     "src/server/routers/admin/playbook.ts": "47e980599443589feeef4ecc1976cfb5eb6fb070",
     "tests/lib/manual-release-source.test.ts": "015b936082fdaf6c4435d47b49e6649a2aa9d8ea",
-    "tests/lib/playbook-contract.test.ts": "723b8f5b1836166705586d21ad6cf323c42f34ca",
-    "tests/lib/playbook-fixture.ts": "13fd5d5300b891632b573f2ef9e588b3dc5ce793",
+    "tests/lib/playbook-contract.test.ts": "0dc73b8e8fd73cd7391d75517c309fd82fa32e66",
+    "tests/lib/playbook-fixture.ts": "b1b4b5db69c257d00f57de260f1627d8507e71bd",
     "tests/lib/playbook-workflows.test.ts": "7b67a48b9fbcfa7ed226198e54f30bb8f9771d9c",
     "tests/fixtures/playbook/rust-supplement-catalog.fixture": "5eafd8f810a3765097aacee8d962b31912e93ef0",
     "tests/fixtures/playbook/rust-supplement-search.fixture": "9d20810bc370fbeeaa0fe459bf882c3943cbf85a"
@@ -70,7 +70,7 @@
       "evidence": [
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "a01c5b36fcc215e74ebac02a790c4d79b514db6e",
+          "blob": "0502e2569d51e1861cdb8d83d196891d8ab4c9c6",
           "command": "Release reader validates public identity and source commit timestamp; unavailable, incomplete, oversized or mismatched optional supplement identities are isolated from public adoption"
         },
         {
@@ -95,7 +95,7 @@
         },
         {
           "path": "scripts/playbook-content-update.ts",
-          "blob": "54ccd6c1087cd9a1d6cb3dd3e8547941a16d297d",
+          "blob": "8d4dca25c3143d132115a9ae38782ae8dd68139d",
           "command": "Blog content updates validate public/supplement merge compatibility before sync, preserve an existing overlay when optional assets are unavailable, surface receiver sync failures after public deployment, and reject a deployed renderer without the current public and supplement package capabilities before building"
         }
       ],
@@ -111,7 +111,7 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "723b8f5b1836166705586d21ad6cf323c42f34ca",
+          "blob": "3cf277183c01c6479adbdf6f58a6f1c081153216",
           "command": "bun test src/server/http-compat-api.test.ts tests/lib/playbook-contract.test.ts tests/lib/playbook-workflows.test.ts tests/lib/manual-release-policy.test.ts tests/lib/manual-release-source.test.ts"
         },
         {
@@ -126,17 +126,17 @@
         },
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "a01c5b36fcc215e74ebac02a790c4d79b514db6e",
+          "blob": "0502e2569d51e1861cdb8d83d196891d8ab4c9c6",
           "command": "Supplement identity, unavailable or mismatched optional identities, exact rollback retry, strict UTF-8 manifests, and failure isolation tests keep public release paths distinct"
         },
         {
           "path": "src/lib/playbook/schema.ts",
-          "blob": "47ab9594a8fafd8a877750e3797220507181614d",
+          "blob": "1e318b1116e8e30cd801540ea4ec28b7a8b360ed",
           "command": "Public catalog validation compatibly reads the legacy visibility and missing-preamble shape without changing Markdown bytes"
         },
         {
           "path": "src/lib/playbook/artifacts.ts",
-          "blob": "2cb826c29d253b9fdb1347fc1583430a8546e9b6",
+          "blob": "666fb51cdf330b065855aa71a5741791fc132169",
           "command": "Retained public editions verify and preserve legacy package file identities while rebuilding policy resources"
         },
         {
@@ -146,12 +146,12 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "723b8f5b1836166705586d21ad6cf323c42f34ca",
+          "blob": "3cf277183c01c6479adbdf6f58a6f1c081153216",
           "command": "Public and supplement contract tests preserve shared Markdown bytes, validate deterministic archive metadata and source timestamps, Rust fixture bytes, rollback identity, unavailable optional identities, staged same-source overlays, durable invalidation across restart, and stale-marker replacement"
         },
         {
           "path": "scripts/fetch-initial-playbook.ts",
-          "blob": "2da29e35b875ce0038aec8a2ad4476244f5e4b0b",
+          "blob": "2d32c42d7c2bf74fd810a0b74ee0e146aafa2935",
           "command": "Initial bootstrap resolves the exact pointer release, validates archive metadata against the source timestamp, preserves the public seed when optional supplement assets are invalid or unavailable, and clears stale supplement retries"
         }
       ]
@@ -265,7 +265,7 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "723b8f5b1836166705586d21ad6cf323c42f34ca",
+          "blob": "3cf277183c01c6479adbdf6f58a6f1c081153216",
           "command": "Supplement persistence, same-source staged retries, durable invalidation after failed cleanup, rollback-window late arrivals, conflicting overlay adoption, and temporarily unavailable asset reads retain a public-only fallback while allowing the public edition to advance"
         }
       ]

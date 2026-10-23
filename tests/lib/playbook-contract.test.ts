@@ -15,6 +15,7 @@ import {
 import {
   createPlaybookEdition,
   parseSupplementFiles,
+  readPlaybookEdition,
   readPublicArchive,
   readSupplementArchive,
 } from "../../src/lib/playbook/bundle";
@@ -55,6 +56,7 @@ import {
 } from "../../src/lib/playbook/search";
 import {
   mergePlaybookSupplement,
+  readPlaybookSupplement,
   searchPlaybookAdmin,
   validatePlaybookSupplement,
 } from "../../src/lib/playbook/supplement";
@@ -1023,13 +1025,13 @@ describe("playbook-dispatch-and-reconcile", () => {
       supplement_bundle_sha256: "0".repeat(64),
     });
     expect(mismatchedSupplement.supplement).toBeUndefined();
-    expect(mismatchedSupplement.supplementStatus).toBe("invalid");
+    expect(mismatchedSupplement.supplementStatus).toBe("unavailable");
     const incompleteSupplement = await resolveRelease(reader, {
       ...input,
       supplement_manifest_asset_id: undefined,
     });
     expect(incompleteSupplement.supplement).toBeUndefined();
-    expect(incompleteSupplement.supplementStatus).toBe("invalid");
+    expect(incompleteSupplement.supplementStatus).toBe("unavailable");
     await expect(
       resolveRelease(reader, { ...input, manifest_sha256: "0".repeat(64) })
     ).rejects.toThrow("Public asset identity mismatch");
@@ -1427,6 +1429,29 @@ describe("playbook-build-deploy-adapter", () => {
 });
 
 describe("playbook-artifact-verification", () => {
+  test("local archive readers enforce the carried source timestamp", async () => {
+    const root = await temp();
+    const publicBundle = makePublicBundle();
+    await writeFile(join(root, "playbook-public-manifest.json"), encodeJson(publicBundle.manifest));
+    await writeFile(join(root, "playbook-public.tar.gz"), publicBundle.archive);
+    await writeFile(join(root, ".playbook-source-timestamp"), "1\n");
+    await expect(readPlaybookEdition(root, "b".repeat(40), "{}\n")).rejects.toThrow("timestamp");
+    await writeFile(join(root, ".playbook-source-timestamp"), "\n");
+    await expect(readPlaybookEdition(root, "b".repeat(40), "{}\n")).rejects.toThrow(
+      "Invalid source commit timestamp"
+    );
+
+    const supplementRoot = join(root, "supplement");
+    const supplement = makeSupplementBundle();
+    await mkdir(supplementRoot, { recursive: true });
+    await writeFile(
+      join(supplementRoot, "playbook-private-supplement-manifest.json"),
+      encodeJson(supplement.manifest)
+    );
+    await writeFile(join(supplementRoot, "playbook-private-supplement.tar.gz"), supplement.archive);
+    await expect(readPlaybookSupplement(supplementRoot, 1)).rejects.toThrow("timestamp");
+  });
+
   test("initial console seed uses the same public snapshot as the static edition", async () => {
     const root = await temp();
     const bundle = makePublicBundle();

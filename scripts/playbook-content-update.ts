@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { downloadRetainedEdition, readPublicPointer } from "../src/lib/playbook/artifacts";
 import {
   createPlaybookEdition,
+  PLAYBOOK_SOURCE_TIMESTAMP_FILE,
   parseSupplementFiles,
   readPublicArchive,
   readSupplementArchive,
@@ -68,6 +69,10 @@ await writeFile(
   encodeJson(selected.manifest)
 );
 await writeFile(resolve(bundleRoot, "playbook-public.tar.gz"), archive);
+await writeFile(
+  resolve(bundleRoot, PLAYBOOK_SOURCE_TIMESTAMP_FILE),
+  `${selected.sourceTimestamp}\n`
+);
 let supplementRoot: string | undefined;
 let supplementEnvelope: PlaybookSupplementEnvelope | null = null;
 let supplementFileBytes: Map<string, Uint8Array> | undefined;
@@ -117,7 +122,8 @@ if (supplementStatus === "valid" && supplementEnvelope) {
       publicFiles,
       selected.manifest,
       selected.manifest.source.commit,
-      new Uint8Array()
+      new Uint8Array(),
+      selected.sourceTimestamp
     );
     mergePlaybookSupplement(publicEdition, supplementEnvelope);
   } catch (error) {

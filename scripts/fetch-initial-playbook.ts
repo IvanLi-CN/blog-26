@@ -2,6 +2,7 @@ import { appendFile, mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { readPublicPointer } from "../src/lib/playbook/artifacts";
 import {
+  PLAYBOOK_SOURCE_TIMESTAMP_FILE,
   parseSupplementFiles,
   readPublicArchive,
   readSupplementArchive,
@@ -55,6 +56,10 @@ if (!pointer) {
     encodeJson(selected.manifest)
   );
   await writeFile(resolve(directory, "playbook-public.tar.gz"), archive);
+  await writeFile(
+    resolve(directory, PLAYBOOK_SOURCE_TIMESTAMP_FILE),
+    `${selected.sourceTimestamp}\n`
+  );
 }
 if (selected.supplementStatus === "invalid") {
   console.warn("Ignoring invalid optional Playbook supplement; public bundle remains usable");

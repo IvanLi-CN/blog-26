@@ -139,7 +139,10 @@ const supplementRoot = process.env.PLAYBOOK_SUPPLEMENT_DIR
     : undefined;
 if (supplementRoot) {
   try {
-    const supplement = await readPlaybookSupplement(supplementRoot);
+    const supplement = await readPlaybookSupplement(
+      supplementRoot,
+      edition.edition.sourceTimestamp
+    );
     if (!samePlaybookSource(edition.edition.source, supplement.manifest.source))
       throw new Error("Playbook supplement source does not match the public edition");
     mergePlaybookSupplement(edition, supplement);

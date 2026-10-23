@@ -196,6 +196,7 @@ export interface PlaybookEditionIdentity {
   editionDigest: string;
   rendererCommit: string;
   contentSnapshotIdentity: string;
+  sourceTimestamp?: number;
   source: PlaybookSourceIdentity;
   bundle: PlaybookBundleIdentity;
   files: PlaybookManifestFile[];

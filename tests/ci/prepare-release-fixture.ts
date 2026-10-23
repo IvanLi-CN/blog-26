@@ -28,7 +28,7 @@ const bundle = makePublicBundle();
 await writeFile(resolve(bundleRoot, "playbook-public-manifest.json"), encodeJson(bundle.manifest));
 await writeFile(resolve(bundleRoot, "playbook-public.tar.gz"), bundle.archive);
 const snapshot = await readFile("site/generated/public-snapshot.json");
-const edition = await readPlaybookEdition(bundleRoot, sourceSha, snapshot);
+const edition = await readPlaybookEdition(bundleRoot, sourceSha, snapshot, 0);
 await writePublicEdition(resolve(work, "fixture-public"), edition, bundleRoot, snapshot);
 await cp(resolve(work, "fixture-public/_content/playbook"), resolve(inputs, "playbook"), {
   recursive: true,

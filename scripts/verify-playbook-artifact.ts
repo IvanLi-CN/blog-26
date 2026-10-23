@@ -41,7 +41,7 @@ async function verifyPublishedEdition(directory: string, expected: typeof pointe
     sha256: manifest.bundle.sha256,
     size: manifest.bundle.size,
   });
-  readPublicArchive(archive, manifest);
+  readPublicArchive(archive, manifest, expected.sourceTimestamp);
   const values = new Map<string, unknown>();
   for (const file of identity.files) {
     const bytes = await readFile(resolve(directory, file.path));
