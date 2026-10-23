@@ -61,7 +61,7 @@
       "evidence": [
         {
           "path": "docs/specs/style-playbook-integration/SPEC.md",
-          "blob": "66faec339524ce92e731388fe87383ed1b963652",
+          "blob": "c344eb192722d8bf0ee4f636d059c54b41b8aac3",
           "command": "Playbook SPEC defines independent visibility, public package compatibility, and the administrator supplement contract"
         }
       ]
@@ -73,7 +73,7 @@
       "evidence": [
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "0502e2569d51e1861cdb8d83d196891d8ab4c9c6",
+          "blob": "c25e8f4e67facd7fc23fad17cc06a0a37a0cf561",
           "command": "Release reader validates public identity and source commit timestamp; unavailable, incomplete, oversized or mismatched optional supplement identities are isolated from public adoption"
         },
         {
@@ -88,17 +88,17 @@
         },
         {
           "path": "src/server/admin-api/playbook-supplement.ts",
-          "blob": "c973929a7ac00cfe17eed7dfbd1ac36a86fdea44",
+          "blob": "461c5d73a128c85ffafcbecd9150c02abdf0c09f",
           "command": "Protected receiver validates source-bound supplement payloads and persists only accepted overlay metadata"
         },
         {
           "path": "src/lib/playbook/cache.ts",
-          "blob": "9891c4afc7d035e0c0d8fa3ef1d4894cb0693fa9",
+          "blob": "a1c276c2bb0a3b98d61afa0d6a0528ff26414ff8",
           "command": "Receiver cache preserves staged same-source overlays, distinguishes explicit empty overlays from retryable absence, persists fail-closed invalidation across restart when retryable cleanup cannot replace the overlay, and does not let a stale marker hide a valid replacement"
         },
         {
           "path": "scripts/playbook-content-update.ts",
-          "blob": "8fa528b280ebfe40fb0d664667c3fe7450274e79",
+          "blob": "dc197236f0e8101f856ca60927ef989b25166701",
           "command": "Blog content updates validate public/supplement merge compatibility before sync, preserve an existing overlay when optional assets are unavailable, surface receiver sync failures after public deployment, and reject a deployed renderer without the current public and supplement package capabilities before building"
         }
       ],
@@ -114,27 +114,27 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "fce0ab2accdf1a8448cb89a1ce6c8d7923f9a179",
+          "blob": "a13eab658792841a63b011290f3238189a7f6a6e",
           "command": "bun test src/server/http-compat-api.test.ts tests/lib/playbook-contract.test.ts tests/lib/playbook-workflows.test.ts tests/lib/manual-release-policy.test.ts tests/lib/manual-release-source.test.ts"
         },
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "c08dfdbe2c336673fc75e9ee18d6040977d76099",
+          "blob": "ca01e89603d0ea1fe6bd5a9f4726ab0c2cb04b50",
           "command": "bun test src/server/http-compat-api.test.ts"
         },
         {
           "path": "tests/lib/playbook-workflows.test.ts",
-          "blob": "7116060b707162a5d4b5dff303099707cb42c27c",
+          "blob": "b05da844f8677b14c67c7a98c8c25fcef64df3d7",
           "command": "Workflow boundary tests reject non-HTTPS sync endpoints, keep invalid optional supplements, defer unavailable optional assets, validate public/supplement merge compatibility before sync, gate content builds on deployed renderer capabilities, surface receiver failures after preserving the public deployment, clear stale supplement retries, and assert that supplements stay out of public frozen and backend artifacts"
         },
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "0502e2569d51e1861cdb8d83d196891d8ab4c9c6",
+          "blob": "c25e8f4e67facd7fc23fad17cc06a0a37a0cf561",
           "command": "Supplement identity, unavailable or mismatched optional identities, exact rollback retry, strict UTF-8 manifests, and failure isolation tests keep public release paths distinct"
         },
         {
           "path": "src/lib/playbook/schema.ts",
-          "blob": "88191fb4cf0f822833b1b2254669691ee02fd275",
+          "blob": "c68fd63bde03b6e22cb8bd51ff81e99a60a4efd1",
           "command": "Public catalog validation compatibly reads the legacy visibility and missing-preamble shape without changing Markdown bytes"
         },
         {
@@ -149,7 +149,7 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "fce0ab2accdf1a8448cb89a1ce6c8d7923f9a179",
+          "blob": "a13eab658792841a63b011290f3238189a7f6a6e",
           "command": "Public and supplement contract tests preserve shared Markdown bytes, validate deterministic archive metadata and source timestamps, Rust fixture bytes, rollback identity, unavailable optional identities, staged same-source overlays, durable invalidation across restart, and stale-marker replacement"
         },
         {
@@ -195,7 +195,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "c08dfdbe2c336673fc75e9ee18d6040977d76099",
+          "blob": "ca01e89603d0ea1fe6bd5a9f4726ab0c2cb04b50",
           "command": "HTTP compatibility tests cover anonymous, authenticated user, and administrator Playbook access"
         }
       ]
@@ -263,12 +263,12 @@
       "evidence": [
         {
           "path": "src/lib/playbook/cache.ts",
-          "blob": "9891c4afc7d035e0c0d8fa3ef1d4894cb0693fa9",
+          "blob": "a1c276c2bb0a3b98d61afa0d6a0528ff26414ff8",
           "command": "Playbook cache persists an optional source-bound supplement, preserves staged overlays across same-source absent retries, isolates conflicting overlays during public adoption, persists retryable invalidation across restart, rejects newer late sources during rollback, and keeps malformed or mismatched data out of the admin read model"
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "fce0ab2accdf1a8448cb89a1ce6c8d7923f9a179",
+          "blob": "a13eab658792841a63b011290f3238189a7f6a6e",
           "command": "Supplement persistence, same-source staged retries, explicit empty overlays, durable invalidation after failed cleanup, rollback-window late arrivals, conflicting overlay adoption, and temporarily unavailable asset reads retain a public-only fallback while allowing the public edition to advance"
         }
       ]
