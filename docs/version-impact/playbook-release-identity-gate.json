@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
+  "covered_files": {
+    "scripts/fetch-initial-playbook.ts": "ac7c64d7b849d5d54bfde30d774a0d27ada7d0a6",
+    "src/lib/playbook/release.ts": "06744d5a7ba4180ac4c385c5147d89a0746e7036",
+    "tests/lib/playbook-contract.test.ts": "6bc88d4a931ba43ebcbdf653653f512b82add95f"
+  },
+  "change": {
+    "description": "Keep the initial Playbook release gate bound to the upstream source and bundle identity while allowing the published catalog and search records to use the blog's normalized representation.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a release-gate correctness fix. It changes no public API, SQLite schema, content data, or runtime reader behavior; it prevents a false negative when source Release files are normalized during publication.",
+      "assessed_at": "2026-10-23T20:27:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-contract.test.ts",
+          "blob": "6bc88d4a931ba43ebcbdf653653f512b82add95f",
+          "command": "bun test tests/lib/playbook-contract.test.ts tests/lib/playbook-workflows.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The initial acquisition step now validates only source and bundle identity. The retained-edition download and file-integrity checks remain responsible for the published normalized files, and a regression test rejects source identity drift.",
+      "assessed_at": "2026-10-23T20:27:00+08:00",
+      "evidence": [
+        {
+          "path": "scripts/fetch-initial-playbook.ts",
+          "blob": "ac7c64d7b849d5d54bfde30d774a0d27ada7d0a6",
+          "command": "bunx biome check scripts/fetch-initial-playbook.ts src/lib/playbook/release.ts tests/lib/playbook-contract.test.ts"
+        },
+        {
+          "path": "src/lib/playbook/release.ts",
+          "blob": "06744d5a7ba4180ac4c385c5147d89a0746e7036",
+          "command": "assertPublishedSourceIdentity preserves source and bundle identity validation"
+        },
+        {
+          "path": "tests/lib/playbook-contract.test.ts",
+          "blob": "6bc88d4a931ba43ebcbdf653653f512b82add95f",
+          "command": "The regression test accepts normalized file records and rejects source identity drift"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains limited to the false-positive Playbook release gate and its focused contract test."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused Playbook contract and workflow tests pass, and Biome confirms the changed release gate and test files are formatted. Source and bundle mismatches remain rejected while normalized published file records are accepted.",
+      "assessed_at": "2026-10-23T20:27:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-contract.test.ts",
+          "blob": "6bc88d4a931ba43ebcbdf653653f512b82add95f",
+          "command": "bun test tests/lib/playbook-contract.test.ts tests/lib/playbook-workflows.test.ts: 81 passed, 0 failed"
+        },
+        {
+          "path": "scripts/fetch-initial-playbook.ts",
+          "blob": "ac7c64d7b849d5d54bfde30d774a0d27ada7d0a6",
+          "command": "bunx biome check scripts/fetch-initial-playbook.ts src/lib/playbook/release.ts tests/lib/playbook-contract.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4"
+      ],
+      "evidence": [
+        {
+          "path": "src/lib/playbook/release.ts",
+          "blob": "06744d5a7ba4180ac4c385c5147d89a0746e7036",
+          "command": "The change preserves public API and Playbook content contracts."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The change does not alter SQLite schema, local content, browser persistence, release ledger state, or published artifact formats.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/lib/playbook/release.ts",
+          "blob": "06744d5a7ba4180ac4c385c5147d89a0746e7036",
+          "command": "The helper only compares source and bundle identities and does not write durable state."
+        }
+      ]
+    }
+  }
+}
