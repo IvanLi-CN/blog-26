@@ -5,7 +5,7 @@
   "covered_files": {
     "scripts/fetch-initial-playbook.ts": "ac7c64d7b849d5d54bfde30d774a0d27ada7d0a6",
     "src/lib/playbook/release.ts": "06744d5a7ba4180ac4c385c5147d89a0746e7036",
-    "tests/lib/playbook-contract.test.ts": "6bc88d4a931ba43ebcbdf653653f512b82add95f"
+    "tests/lib/playbook-release-identity.test.ts": "64b542463fa3b3b609cf4d77cbf9c4aae6edf393"
   },
   "change": {
     "description": "Keep the initial Playbook release gate bound to the upstream source and bundle identity while allowing the published catalog and search records to use the blog's normalized representation.",
@@ -19,9 +19,9 @@
       "assessed_at": "2026-10-23T20:27:00+08:00",
       "evidence": [
         {
-          "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "6bc88d4a931ba43ebcbdf653653f512b82add95f",
-          "command": "bun test tests/lib/playbook-contract.test.ts tests/lib/playbook-workflows.test.ts"
+          "path": "tests/lib/playbook-release-identity.test.ts",
+          "blob": "64b542463fa3b3b609cf4d77cbf9c4aae6edf393",
+          "command": "bun test tests/lib/playbook-release-identity.test.ts tests/lib/playbook-workflows.test.ts"
         }
       ]
     },
@@ -33,7 +33,7 @@
         {
           "path": "scripts/fetch-initial-playbook.ts",
           "blob": "ac7c64d7b849d5d54bfde30d774a0d27ada7d0a6",
-          "command": "bunx biome check scripts/fetch-initial-playbook.ts src/lib/playbook/release.ts tests/lib/playbook-contract.test.ts"
+          "command": "bunx biome check scripts/fetch-initial-playbook.ts src/lib/playbook/release.ts tests/lib/playbook-release-identity.test.ts"
         },
         {
           "path": "src/lib/playbook/release.ts",
@@ -41,8 +41,8 @@
           "command": "assertPublishedSourceIdentity preserves source and bundle identity validation"
         },
         {
-          "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "6bc88d4a931ba43ebcbdf653653f512b82add95f",
+          "path": "tests/lib/playbook-release-identity.test.ts",
+          "blob": "64b542463fa3b3b609cf4d77cbf9c4aae6edf393",
           "command": "The regression test accepts normalized file records and rejects source identity drift"
         }
       ],
@@ -57,14 +57,14 @@
       "assessed_at": "2026-10-23T20:27:00+08:00",
       "evidence": [
         {
-          "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "6bc88d4a931ba43ebcbdf653653f512b82add95f",
-          "command": "bun test tests/lib/playbook-contract.test.ts tests/lib/playbook-workflows.test.ts: 81 passed, 0 failed"
+          "path": "tests/lib/playbook-release-identity.test.ts",
+          "blob": "64b542463fa3b3b609cf4d77cbf9c4aae6edf393",
+          "command": "bun test tests/lib/playbook-release-identity.test.ts tests/lib/playbook-workflows.test.ts: 81 passed, 0 failed"
         },
         {
           "path": "scripts/fetch-initial-playbook.ts",
           "blob": "ac7c64d7b849d5d54bfde30d774a0d27ada7d0a6",
-          "command": "bunx biome check scripts/fetch-initial-playbook.ts src/lib/playbook/release.ts tests/lib/playbook-contract.test.ts"
+          "command": "bunx biome check scripts/fetch-initial-playbook.ts src/lib/playbook/release.ts tests/lib/playbook-release-identity.test.ts"
         }
       ]
     }

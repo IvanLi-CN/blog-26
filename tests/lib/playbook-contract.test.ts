@@ -38,7 +38,6 @@ import {
 } from "../../src/lib/playbook/manifest";
 import {
   adoptionDecision,
-  assertPublishedSourceIdentity,
   deployContent,
   PlaybookSupplementInvalidError,
   PlaybookSupplementUnavailableError,
@@ -934,23 +933,6 @@ function sourceReader(
   };
 }
 describe("playbook-dispatch-and-reconcile", () => {
-  test("checks source and bundle identity without comparing normalized file records", () => {
-    const bundle = makePublicBundle();
-    const normalizedPointer = {
-      ...bundle.edition.edition,
-      files: bundle.edition.edition.files.map((file) =>
-        file.path === "catalog.json" ? { ...file, size: file.size + 1 } : file
-      ),
-    };
-    expect(() => assertPublishedSourceIdentity(normalizedPointer, bundle.manifest)).not.toThrow();
-    expect(() =>
-      assertPublishedSourceIdentity(
-        { ...normalizedPointer, source: { ...normalizedPointer.source, tag: "v9.9.9" } },
-        bundle.manifest
-      )
-    ).toThrow("does not match its source release");
-  });
-
   test("rejects oversized bundle metadata before downloading the asset", async () => {
     const bundle = makePublicBundle();
     const base = sourceReader([bundle]);

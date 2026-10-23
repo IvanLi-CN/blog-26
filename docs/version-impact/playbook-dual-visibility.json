@@ -12,7 +12,7 @@
     "docs/specs/style-playbook-integration/SPEC.md": "c344eb192722d8bf0ee4f636d059c54b41b8aac3",
     "docs/specs/style-playbook-integration/contracts/public-package.md": "bab331f11b051912c2e3827e738fbbc7812047f6",
     "docs/specs/style-playbook-integration/contracts/release-trigger.md": "1bf0d216c3d1480be896987f44127b64f603bb8a",
-    "scripts/fetch-initial-playbook.ts": "2d32c42d7c2bf74fd810a0b74ee0e146aafa2935",
+    "scripts/fetch-initial-playbook.ts": "ac7c64d7b849d5d54bfde30d774a0d27ada7d0a6",
     "scripts/prepare-console-playbook-seed.ts": "d126f6fe798e17cb479c7f85056a310290e6f0b5",
     "scripts/playbook-content-update.ts": "d10d0b8a7638f746622d623f08913892834c2162",
     "scripts/prepare-backend-dist.sh": "f2a8b868dbeefb9b28cfdefcfff3a74f9ecdc9b6",
@@ -27,7 +27,7 @@
     "src/lib/playbook/fixture.ts": "5df5704636a959f61f9301b2e9b0efba49eea934",
     "src/lib/playbook/manifest.ts": "95bfd1e08d9cf8acc1ca67cb27cbe1f4e48ab3e0",
     "src/lib/playbook/public-package-capabilities.json": "c64a471dbe131999919b3bd63522a47be3d0e848",
-    "src/lib/playbook/release.ts": "c25e8f4e67facd7fc23fad17cc06a0a37a0cf561",
+    "src/lib/playbook/release.ts": "06744d5a7ba4180ac4c385c5147d89a0746e7036",
     "src/lib/playbook/renderer-capability.ts": "b3b6266cbbc55d78b97eec2419f5194ed0cd4661",
     "src/lib/playbook/schema.ts": "4cba71be9e16647a8cd31e32a7b5187a69896953",
     "src/lib/playbook/supplement.ts": "eac37144b5f6a860d71310f5250a7681aad80da7",
@@ -73,7 +73,7 @@
       "evidence": [
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "c25e8f4e67facd7fc23fad17cc06a0a37a0cf561",
+          "blob": "06744d5a7ba4180ac4c385c5147d89a0746e7036",
           "command": "Release reader validates public identity and source commit timestamp; unavailable, incomplete, oversized or mismatched optional supplement identities are isolated from public adoption"
         },
         {
@@ -129,7 +129,7 @@
         },
         {
           "path": "src/lib/playbook/release.ts",
-          "blob": "c25e8f4e67facd7fc23fad17cc06a0a37a0cf561",
+          "blob": "06744d5a7ba4180ac4c385c5147d89a0746e7036",
           "command": "Supplement identity, unavailable or mismatched optional identities, exact rollback retry, strict UTF-8 manifests, and failure isolation tests keep public release paths distinct"
         },
         {
@@ -154,7 +154,7 @@
         },
         {
           "path": "scripts/fetch-initial-playbook.ts",
-          "blob": "2d32c42d7c2bf74fd810a0b74ee0e146aafa2935",
+          "blob": "ac7c64d7b849d5d54bfde30d774a0d27ada7d0a6",
           "command": "Initial bootstrap resolves the exact pointer release, validates archive metadata against the source timestamp, preserves the public seed when optional supplement assets are invalid or unavailable, and clears stale supplement retries"
         }
       ]
