@@ -612,7 +612,14 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
               | "approved"
               | "pending"
               | "rejected"
+              | "deleted"
               | undefined) ?? "all",
+          targetType:
+            (getString(url.searchParams.get("targetType")) as
+              | "article"
+              | "memo"
+              | "project"
+              | undefined) ?? undefined,
           sortBy:
             (getString(url.searchParams.get("sortBy")) as "createdAt" | "authorName" | undefined) ??
             "createdAt",
@@ -649,7 +656,12 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
         );
       }
       if (request.method === "DELETE") {
-        return json(await caller.admin.comments.delete({ id }), { status: 200 }, resHeaders);
+        const body = await parseJsonBody(request);
+        return json(
+          await caller.admin.comments.delete({ id, ...(body as object) } as never),
+          { status: 200 },
+          resHeaders
+        );
       }
       return methodNotAllowed(request.method, resHeaders);
     }

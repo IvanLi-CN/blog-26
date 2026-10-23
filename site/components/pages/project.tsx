@@ -1,3 +1,4 @@
+import CommentSectionWithProvider from "@/components/comments/CommentSectionWithProvider";
 import Icon from "@/components/ui/Icon";
 import type { loadproject } from "../../lib/page-data/project";
 import { toPublicSitePath } from "../../lib/runtime-urls";
@@ -170,6 +171,13 @@ export default function projectPage(data: Awaited<ReturnType<typeof loadproject>
                   </ol>
                 </nav>
               )}
+              <div className="project-detail-comments">
+                <CommentSectionWithProvider
+                  postSlug={project.slug}
+                  target={{ type: "project", key: project.slug }}
+                  usePublicSitePaths={true}
+                />
+              </div>
             </aside>
           </div>
         </div>

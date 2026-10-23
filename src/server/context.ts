@@ -1,6 +1,7 @@
 import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 import { extractAuthFromRequest } from "../lib/auth-utils";
 import { initializeDB } from "../lib/db";
+import { getReaderFromRequest, type Reader } from "../lib/reader-auth";
 
 export interface User {
   id: string;
@@ -14,6 +15,7 @@ export interface TRPCContext {
   resHeaders: Headers;
   user?: User;
   isAdmin: boolean;
+  reader?: Reader;
   clientAddress?: string;
 }
 
@@ -30,6 +32,7 @@ export async function createContext({
 
   // 使用统一的认证逻辑（所有环境）
   const { user, isAdmin } = await extractAuthFromRequest(req);
+  const reader = await getReaderFromRequest(req);
 
   // 3. 获取客户端 IP 地址
   const clientAddress =
@@ -43,6 +46,7 @@ export async function createContext({
     resHeaders,
     user,
     isAdmin,
+    reader: reader ?? undefined,
     clientAddress,
   };
 }

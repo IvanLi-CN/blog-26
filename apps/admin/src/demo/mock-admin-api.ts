@@ -359,7 +359,23 @@ for (const key of fileContents.keys()) {
 directoryPaths.add("local:Hardware");
 const E2E_FIXTURE_SESSION_KEY = "admin-demo-e2e-fixture-editor";
 
-const comments = [
+type DemoAdminComment = {
+  id: string;
+  content: string;
+  postSlug: string;
+  authorName: string;
+  authorEmail: string | null;
+  parentId: string | null;
+  status: "pending" | "approved" | "rejected";
+  targetType: "article" | "memo" | "project";
+  targetKey: string;
+  deleted: boolean;
+  deletedAt: number | null;
+  revision: number;
+  createdAt: number;
+};
+
+const comments: DemoAdminComment[] = [
   {
     id: "comment-1",
     content: "Hooks 章节的依赖数组解释很清楚。",
@@ -368,6 +384,11 @@ const comments = [
     authorEmail: "ming@example.com",
     parentId: null,
     status: "approved" as const,
+    targetType: "article" as const,
+    targetKey: "react-hooks-deep-dive",
+    deleted: false,
+    deletedAt: null,
+    revision: 1,
     createdAt: now - 86_400_000,
   },
   {
@@ -378,9 +399,27 @@ const comments = [
     authorEmail: "rui@example.com",
     parentId: null,
     status: "pending" as const,
+    targetType: "article" as const,
+    targetKey: "redis-caching-strategies",
+    deleted: false,
+    deletedAt: null,
+    revision: 1,
     createdAt: now - 7_200_000,
   },
 ];
+const initialDemoComments = comments.map((comment) => ({ ...comment }));
+let commentsResetWindow: Window | null = null;
+
+function ensureDemoCommentsResetListener() {
+  if (typeof window === "undefined" || typeof window.addEventListener !== "function") return;
+  if (commentsResetWindow === window) return;
+  commentsResetWindow = window;
+  window.addEventListener("web-demo:action", (event) => {
+    const action = (event as CustomEvent<{ action?: string }>).detail?.action;
+    if (action !== "reset-state") return;
+    comments.splice(0, comments.length, ...initialDemoComments.map((comment) => ({ ...comment })));
+  });
+}
 
 const tagGroups: TagGroup[] = [
   { key: "frontend", title: "Frontend", tags: ["React", "Hooks"] },
@@ -605,6 +644,7 @@ class DemoApiError extends Error {
 }
 
 export function setupAdminDemoApiMocks() {
+  ensureDemoCommentsResetListener();
   if (window.__adminDemoApiMockInstalled) return;
   window.__adminDemoApiMockInstalled = true;
 
@@ -862,10 +902,105 @@ async function handleAdminRequest(
   if (path === "/api/admin/posts/batch")
     return json({ success: true, message: "已更新文章", affectedCount: bodyIds(body).length });
   if (path === "/api/admin/posts/vectorize") return json({ success: true, queued: true });
-  if (path === "/api/admin/comments")
-    return json({ comments, pagination: pagination(comments.length) });
-  if (path.startsWith("/api/admin/comments/"))
+  if (path === "/api/admin/comments") {
+    const status = url.searchParams.get("status") || "all";
+    const targetType = url.searchParams.get("targetType") || "all";
+    const search = (url.searchParams.get("search") || "").toLowerCase();
+    const filtered = comments.filter((comment) => {
+      if (status === "deleted" && !comment.deleted) return false;
+      if (
+        status !== "all" &&
+        status !== "deleted" &&
+        (comment.deleted || comment.status !== status)
+      )
+        return false;
+      if (
+        search &&
+        !`${comment.content} ${comment.authorName} ${comment.authorEmail}`
+          .toLowerCase()
+          .includes(search)
+      )
+        return false;
+      if (targetType !== "all" && comment.targetType !== targetType) return false;
+      return true;
+    });
+    return json({ comments: filtered, pagination: pagination(filtered.length) });
+  }
+  if (path === "/api/admin/comments/batch" && method === "POST") {
+    const ids = bodyIds(body);
+    const action = String(body.action || "");
+    const expectedRevisions =
+      body.expectedRevisions && typeof body.expectedRevisions === "object"
+        ? (body.expectedRevisions as Record<string, unknown>)
+        : {};
+    const results = ids.map((id) => {
+      const comment = comments.find((item) => item.id === id);
+      if (!comment) return { id, result: "failed", reason: "not_found" };
+      const expected = expectedRevisions[id];
+      if (typeof expected === "number" && expected !== comment.revision)
+        return { id, result: "skipped", reason: "revision_conflict" };
+      if (action === "delete") {
+        if (comment.deleted) return { id, result: "skipped", reason: "deleted" };
+        comment.deleted = true;
+        comment.deletedAt = Date.now();
+      } else if (action === "restore") {
+        if (!comment.deleted) return { id, result: "skipped", reason: "not_deleted" };
+        comment.deleted = false;
+        comment.deletedAt = null;
+        comment.status = "pending";
+      } else if (comment.deleted) {
+        return { id, result: "skipped", reason: "deleted" };
+      } else {
+        comment.status =
+          action === "approve" ? "approved" : action === "reject" ? "rejected" : "pending";
+      }
+      comment.revision += 1;
+      return { id, result: "success" };
+    });
+    recordWebDemoMutation("批量处理评论", `${ids.length} 条 · ${action}`);
+    return json({ success: true, results });
+  }
+  if (path.startsWith("/api/admin/comments/")) {
+    const id = decodeURIComponent(path.split("/").at(-1) || "");
+    const comment = comments.find((item) => item.id === id);
+    if (!comment) return json({ error: { code: "NOT_FOUND", message: "评论不存在" } }, 404);
+    if (typeof body.expectedRevision === "number" && body.expectedRevision !== comment.revision) {
+      return json(
+        { error: { code: "CONFLICT", message: "评论已被其他操作更新，请刷新后重试" } },
+        409
+      );
+    }
+    if (method === "DELETE") {
+      if (comment.deleted) return json({ success: true, message: "评论已软删除" });
+      comment.deleted = true;
+      comment.deletedAt = Date.now();
+      comment.revision += 1;
+      return json({ success: true, message: "评论已软删除" });
+    }
+    if (method === "PATCH") {
+      if (body.action === "restore") {
+        if (!comment.deleted) return json({ success: true, message: "评论无需恢复" });
+        comment.deleted = false;
+        comment.deletedAt = null;
+        comment.status = "pending";
+      } else if (comment.deleted && body.status === "approved") {
+        return json({ error: { code: "CONFLICT", message: "已删除评论不能直接通过" } }, 409);
+      } else if (!comment.deleted) {
+        if (typeof body.content === "string" && body.content.trim()) {
+          comment.content = body.content.trim();
+        }
+        if (typeof body.status === "string") {
+          comment.status = body.status as typeof comment.status;
+        }
+      }
+      comment.revision += 1;
+      return json({
+        success: true,
+        message: typeof body.content === "string" ? "评论内容已更新" : "评论状态已更新",
+      });
+    }
     return json({ success: true, message: "评论状态已更新" });
+  }
   if (path === "/api/admin/content-sync/status") return json(unifiedSyncStatus(url));
   if (path === "/api/admin/content-sync/rag/trigger") {
     demoIndexStarted = true;
@@ -1240,7 +1375,9 @@ function updatePostFromBody(id: string, body: Record<string, unknown>) {
 }
 
 function bodyIds(body: Record<string, unknown>) {
-  return Array.isArray(body.ids) ? body.ids : [];
+  return Array.isArray(body.ids)
+    ? body.ids.filter((id): id is string => typeof id === "string")
+    : [];
 }
 
 function pagination(total: number) {
@@ -1271,7 +1408,13 @@ function dashboardStats(): DashboardStats {
           ? posts.filter((post) => post.draft).length * 2
           : posts.filter((post) => post.draft).length,
     },
-    comments: { total: comments.length, approved: 1, pending: 1 },
+    comments: {
+      total: comments.filter((comment) => !comment.deleted).length,
+      approved: comments.filter((comment) => !comment.deleted && comment.status === "approved")
+        .length,
+      pending: comments.filter((comment) => !comment.deleted && comment.status === "pending")
+        .length,
+    },
     users: { total: 1 },
     activity: { verificationCodes: 0 },
   };

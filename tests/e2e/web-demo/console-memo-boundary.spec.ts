@@ -208,6 +208,7 @@ test.describe("Console Memo Web Demo", () => {
       page.locator('[data-testid="clipping-article-source"]:visible').last()
     ).toContainText("Durable article workflows");
     if (isMobileViewport) await page.getByTestId("clipping-open-chat").last().click();
+    else await clipping.getByRole("tab", { name: "文章对话" }).click();
     await expect(page.locator('[data-testid="clipping-chat"]:visible').last()).toBeVisible();
     if (isMobileViewport) await page.getByRole("button", { name: "关闭" }).click();
     await page.getByRole("button", { name: "简体中文译文" }).click();

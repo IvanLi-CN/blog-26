@@ -19,10 +19,23 @@ import { and, eq, gt, inArray, isNull, lt, lte, or } from "drizzle-orm";
 import { getActiveLocalBasePath } from "@/config/paths";
 import type { SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import { generateSlugFromPath } from "@/lib/content-sources/utils";
-import { db } from "@/lib/db";
+import { db, initializeDB } from "@/lib/db";
 import { buildMemoRelativePath, getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
-import { appendPublicCorsHeaders, createPublicCorsPreflightResponse } from "@/lib/public-cors";
+import {
+  appendPublicCorsHeaders,
+  createPublicCorsPreflightResponse,
+  hasTrustedPublicOrigin,
+} from "@/lib/public-cors";
+import {
+  clearReaderOAuthStateCookieHeader,
+  clearReaderSessionCookieHeader,
+  completeReaderOAuth,
+  createReaderOAuthStart,
+  getReaderOAuthReturnTo,
+  readerAuthAvailable,
+  revokeReaderSession,
+} from "@/lib/reader-auth";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
 import { posts, systemShareSubmissions } from "@/lib/schema";
 import { ContentSearchError } from "@/lib/search/native-query";
@@ -262,6 +275,10 @@ function statusFromTrpcError(error: TRPCError) {
       return 405;
     case "CONFLICT":
       return 409;
+    case "PRECONDITION_FAILED":
+      return 412;
+    case "TOO_MANY_REQUESTS":
+      return 429;
     case "SERVICE_UNAVAILABLE":
       return 503;
     default:
@@ -1311,6 +1328,72 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
       });
     }
 
+    if (pathname === "/reader-auth/github/start") {
+      if (request.method !== "GET") return methodNotAllowed(request, request.method);
+      if (!hasTrustedPublicOrigin(request)) {
+        return json(request, { error: "请求来源不受信任" }, { status: 403 });
+      }
+      await initializeDB();
+      try {
+        const result = await createReaderOAuthStart(request, url.searchParams.get("returnTo"));
+        const headers = new Headers({
+          location: result.location,
+          "cache-control": "no-store",
+        });
+        headers.append("set-cookie", result.cookie);
+        appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
+        return new Response(null, { status: 302, headers });
+      } catch (error) {
+        return json(
+          request,
+          {
+            error: error instanceof Error ? error.message : "GitHub reader OAuth is unavailable",
+            available: readerAuthAvailable(),
+          },
+          { status: 503, headers: { "cache-control": "no-store" } }
+        );
+      }
+    }
+
+    if (pathname === "/reader-auth/github/callback") {
+      if (request.method !== "GET") return methodNotAllowed(request, request.method);
+      await initializeDB();
+      const state = url.searchParams.get("state");
+      const code = url.searchParams.get("code");
+      if (!state || !code) {
+        return new Response(null, {
+          status: 302,
+          headers: {
+            location: "/?reader_auth_error=invalid_callback",
+            "cache-control": "no-store",
+          },
+        });
+      }
+      try {
+        const result = await completeReaderOAuth(request, state, code);
+        const headers = new Headers({
+          location: result.returnTo,
+          "cache-control": "no-store",
+        });
+        headers.append("set-cookie", result.cookie);
+        headers.append("set-cookie", clearReaderOAuthStateCookieHeader(request));
+        appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
+        return new Response(null, { status: 302, headers });
+      } catch (error) {
+        const returnTo = await getReaderOAuthReturnTo(request, state);
+        const fallbackUrl = new URL(returnTo || "/", request.url);
+        fallbackUrl.searchParams.set("reader_auth_error", "failed");
+        const headers = new Headers({
+          location: fallbackUrl.toString(),
+          "cache-control": "no-store",
+        });
+        headers.append("set-cookie", clearReaderOAuthStateCookieHeader(request));
+        appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
+        console.warn("GitHub reader OAuth callback failed", error);
+        return new Response(null, { status: 302, headers });
+      }
+    }
+
     if (pathname === "/playbook/search-index" || pathname === "/playbook/resource") {
       const response = await handlePlaybookRequest(request, pathname, getRuntimePlaybookStore());
       appendPublicCorsHeaders(response.headers, request, PUBLIC_API_ALLOWED_METHODS);
@@ -1359,6 +1442,31 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
       if (request.method !== "POST") return methodNotAllowed(request, request.method);
       const result = await caller.auth.logout();
       return json(request, result, { status: 200 }, resHeaders);
+    }
+
+    if (pathname === "/reader-auth/me") {
+      if (request.method !== "GET") return methodNotAllowed(request, request.method);
+      return json(
+        request,
+        { reader: ctx.reader ?? null, available: readerAuthAvailable() },
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+
+    if (pathname === "/reader-auth/logout") {
+      if (request.method !== "POST") return methodNotAllowed(request, request.method);
+      if (!hasTrustedPublicOrigin(request)) {
+        return json(request, { error: "请求来源不受信任" }, { status: 403 });
+      }
+      await revokeReaderSession(request);
+      resHeaders.append("set-cookie", clearReaderSessionCookieHeader(request));
+      return json(
+        request,
+        { ok: true },
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
     }
 
     if (pathname === "/posts") {
@@ -1596,17 +1704,37 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
 
     if (pathname === "/comments") {
       if (request.method === "GET") {
+        const targetType = url.searchParams.get("targetType");
+        const targetKey = url.searchParams.get("targetKey");
+        const target =
+          targetType && targetKey
+            ? { type: targetType as "article" | "memo" | "project", key: targetKey }
+            : undefined;
         const result = await caller.comments.getComments({
-          slug: url.searchParams.get("slug") || "",
+          slug: url.searchParams.get("slug") || targetKey || "",
+          target,
           page: Number(url.searchParams.get("page") || 1),
           limit: Number(url.searchParams.get("limit") || 10),
         });
-        return json(request, result, { status: 200 }, resHeaders);
+        return json(
+          request,
+          result,
+          { status: 200, headers: { "cache-control": "no-store" } },
+          resHeaders
+        );
       }
       if (request.method === "POST") {
+        if (!hasTrustedPublicOrigin(request)) {
+          return json(request, { error: "请求来源不受信任" }, { status: 403 });
+        }
         const body = (await parseBody(request)) || {};
         const result = await caller.comments.createComment(body as never);
-        return json(request, result, { status: 200 }, resHeaders);
+        return json(
+          request,
+          result,
+          { status: 200, headers: { "cache-control": "no-store" } },
+          resHeaders
+        );
       }
       return methodNotAllowed(request, request.method);
     }
@@ -1615,30 +1743,102 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
     if (commentMatch) {
       const commentId = decodeURIComponent(commentMatch[1]);
       if (request.method === "PATCH") {
-        const body = ((await parseBody(request)) || {}) as { content?: string };
+        if (!hasTrustedPublicOrigin(request)) {
+          return json(request, { error: "请求来源不受信任" }, { status: 403 });
+        }
+        const body = ((await parseBody(request)) || {}) as {
+          content?: string;
+          expectedRevision?: number;
+        };
         const result = await caller.comments.editComment({
           commentId,
           content: body.content || "",
+          expectedRevision: body.expectedRevision,
         });
-        return json(request, result, { status: 200 }, resHeaders);
+        return json(
+          request,
+          result,
+          { status: 200, headers: { "cache-control": "no-store" } },
+          resHeaders
+        );
       }
       if (request.method === "DELETE") {
-        const result = await caller.comments.deleteComment({ commentId });
-        return json(request, result, { status: 200 }, resHeaders);
+        if (!hasTrustedPublicOrigin(request)) {
+          return json(request, { error: "请求来源不受信任" }, { status: 403 });
+        }
+        const body = ((await parseBody(request)) || {}) as { expectedRevision?: number };
+        const result = await caller.comments.deleteComment({
+          commentId,
+          expectedRevision: body.expectedRevision,
+        });
+        return json(
+          request,
+          result,
+          { status: 200, headers: { "cache-control": "no-store" } },
+          resHeaders
+        );
       }
       return methodNotAllowed(request, request.method);
+    }
+
+    const commentRepliesMatch = pathname.match(/^\/comments\/([^/]+)\/replies$/);
+    if (commentRepliesMatch) {
+      if (request.method !== "GET") return methodNotAllowed(request, request.method);
+      const result = await caller.comments.getCommentReplies({
+        commentId: decodeURIComponent(commentRepliesMatch[1]),
+        cursor: url.searchParams.get("cursor") || undefined,
+        limit: Number(url.searchParams.get("limit") || 20),
+      });
+      return json(
+        request,
+        result,
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
     }
 
     const moderateMatch = pathname.match(/^\/comments\/([^/]+)\/moderate$/);
     if (moderateMatch) {
       if (request.method !== "POST") return methodNotAllowed(request, request.method);
+      if (!hasTrustedPublicOrigin(request)) {
+        return json(request, { error: "请求来源不受信任" }, { status: 403 });
+      }
       const commentId = decodeURIComponent(moderateMatch[1]);
-      const body = ((await parseBody(request)) || {}) as { status?: "approved" | "rejected" };
+      const body = ((await parseBody(request)) || {}) as {
+        status?: "approved" | "rejected";
+        expectedRevision?: number;
+      };
       const result = await caller.comments.moderateComment({
         commentId,
         status: body.status || "approved",
+        expectedRevision: body.expectedRevision,
       });
-      return json(request, result, { status: 200 }, resHeaders);
+      return json(
+        request,
+        result,
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+
+    const restoreMatch = pathname.match(/^\/comments\/([^/]+)\/restore$/);
+    if (restoreMatch) {
+      if (request.method !== "POST") return methodNotAllowed(request, request.method);
+      if (!hasTrustedPublicOrigin(request)) {
+        return json(request, { error: "请求来源不受信任" }, { status: 403 });
+      }
+      const commentId = decodeURIComponent(restoreMatch[1]);
+      const body = ((await parseBody(request)) || {}) as { expectedRevision?: number };
+      const result = await caller.comments.restoreComment({
+        commentId,
+        expectedRevision: body.expectedRevision,
+      });
+      return json(
+        request,
+        result,
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
     }
 
     if (pathname === "/reactions") {

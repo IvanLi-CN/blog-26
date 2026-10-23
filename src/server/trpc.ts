@@ -42,6 +42,8 @@ function getHTTPStatusCodeFromError(err: TRPCError): number {
       return 422;
     case "TOO_MANY_REQUESTS":
       return 429;
+    case "SERVICE_UNAVAILABLE":
+      return 503;
     case "CLIENT_CLOSED_REQUEST":
       return 499;
     case "INTERNAL_SERVER_ERROR":

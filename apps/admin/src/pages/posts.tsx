@@ -193,6 +193,7 @@ export function PostsPage() {
                 <TableRow>
                   <TableHead className="w-12">
                     <Checkbox
+                      className="admin-table-checkbox"
                       checked={allSelected}
                       onCheckedChange={() =>
                         setSelectedIds(allSelected ? [] : rows.map((post) => post.id))
@@ -230,6 +231,7 @@ export function PostsPage() {
                       <TableRow key={post.id}>
                         <TableCell>
                           <Checkbox
+                            className="admin-table-checkbox"
                             checked={selectedIds.includes(post.id)}
                             onCheckedChange={() => toggleRow(post.id)}
                             aria-label={`选择文章 ${post.title || post.slug}`}

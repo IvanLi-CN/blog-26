@@ -539,7 +539,7 @@ export const Primitives: Story = {
     expect(
       Math.abs(searchField.getBoundingClientRect().top - statusField.getBoundingClientRect().top)
     ).toBeLessThanOrEqual(1);
-    expect(stateCheckbox.getBoundingClientRect().height).toBe(28);
+    expect(stateCheckbox.getBoundingClientRect().height).toBe(20);
     expect(overviewTab.getBoundingClientRect().height).toBe(28);
     await userEvent.click(canvas.getByRole("button", { name: "删除" }));
     await expect(

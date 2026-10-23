@@ -2,6 +2,7 @@
 
 import { ClippingDetail } from "@clipping-reader";
 import { useCallback, useEffect, useRef, useState } from "react";
+import CommentSectionWithProvider from "@/components/comments/CommentSectionWithProvider";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import type { ClippingArticle } from "@/components/memos/ClippingDetail";
 import { MemoTypeBadge } from "@/components/memos/MemoTypeBadge";
@@ -1119,32 +1120,8 @@ export function PublicMemoDetailControlsIsland({
   return (
     <section className="mb-6 space-y-6" data-testid="public-memo-detail-controls">
       {memo ? (
-        <article>
-          {!memo.clipping ? (
-            <div
-              className="nature-panel nature-mobile-reading-surface memo-detail-card px-4 py-7 sm:px-8"
-              data-testid="public-memo-detail-card"
-            >
-              {adminToolbar}
-              {detailHeader}
-              <div className="mt-6" data-testid="public-memo-detail-body">
-                <MarkdownRenderer
-                  content={detailBody}
-                  variant="article"
-                  enableMath={true}
-                  enableMermaid={true}
-                  enableCodeFolding={true}
-                  removeTags={true}
-                  rewritePublicSitePaths={true}
-                  articlePath={memo.filePath ?? ""}
-                  contentSource="local"
-                  publicMediaContext={publicMediaContext}
-                />
-              </div>
-            </div>
-          ) : null}
-
-          {memo.clipping ? (
+        memo.clipping ? (
+          <article>
             <div data-testid="public-memo-detail-body">
               <ClippingDetail
                 key={memo.slug}
@@ -1170,6 +1147,7 @@ export function PublicMemoDetailControlsIsland({
                 // Console details use the public Nature shell; Admin Preview owns admin styling.
                 surface="public"
                 publicMediaContext={publicMediaContext}
+                commentsTarget={{ type: "memo", key: memo.slug }}
                 onTitleChange={(title) =>
                   setMemo((current) =>
                     current && current.title !== title ? { ...current, title } : current
@@ -1177,8 +1155,40 @@ export function PublicMemoDetailControlsIsland({
                 }
               />
             </div>
-          ) : null}
-        </article>
+          </article>
+        ) : (
+          <div className="memo-authoring-detail-layout">
+            <article className="memo-authoring-detail-main">
+              <div
+                className="nature-panel nature-mobile-reading-surface memo-detail-card px-4 py-7 sm:px-8"
+                data-testid="public-memo-detail-card"
+              >
+                {adminToolbar}
+                {detailHeader}
+                <div className="mt-6" data-testid="public-memo-detail-body">
+                  <MarkdownRenderer
+                    content={detailBody}
+                    variant="article"
+                    enableMath={true}
+                    enableMermaid={true}
+                    enableCodeFolding={true}
+                    removeTags={true}
+                    rewritePublicSitePaths={true}
+                    articlePath={memo.filePath ?? ""}
+                    contentSource="local"
+                    publicMediaContext={publicMediaContext}
+                  />
+                </div>
+              </div>
+            </article>
+            <aside className="memo-authoring-detail-comments">
+              <CommentSectionWithProvider
+                postSlug={memo.slug}
+                target={{ type: "memo", key: memo.slug }}
+              />
+            </aside>
+          </div>
+        )
       ) : null}
 
       {errorMessage ? (

@@ -120,6 +120,20 @@
       "when": 1792061131409,
       "tag": "0016_system_share_recovery",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792061131500,
+      "tag": "0017_github_reader_comments",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1792727560502,
+      "tag": "0018_comments_backfill_gate",
+      "breakpoints": true
     }
   ]
 }

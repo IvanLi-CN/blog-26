@@ -6,14 +6,17 @@ import type { Comment, UserInfo } from "./types";
 
 interface CommentListProps {
   comments: Comment[];
+  density?: "root" | "reply";
   postSlug: string;
+  target?: { type: "article" | "memo" | "project"; key: string };
   onCommentPosted: (message?: string) => void;
   userInfo: UserInfo | null;
   postComment: (commentData: {
     postSlug: string;
     content: string;
     parentId?: string;
-    author?: Omit<UserInfo, "id" | "avatarUrl">;
+    target?: { type: "article" | "memo" | "project"; key: string };
+    submissionKey?: string;
   }) => Promise<any>;
   isPosting: boolean;
   error: string | null;
@@ -25,7 +28,9 @@ interface CommentListProps {
 
 export default function CommentList({
   comments,
+  density = "root",
   postSlug,
+  target,
   onCommentPosted,
   userInfo,
   postComment,
@@ -53,12 +58,14 @@ export default function CommentList({
   }
 
   return (
-    <div className="space-y-6">
+    <div className={`comment-list ${density === "reply" ? "comment-list--replies" : ""}`}>
       {comments.map((comment) => (
         <CommentItem
           key={comment.id}
           comment={comment}
+          density={density}
           postSlug={postSlug}
+          target={target}
           onCommentPosted={onCommentPosted}
           userInfo={userInfo}
           postComment={postComment}
