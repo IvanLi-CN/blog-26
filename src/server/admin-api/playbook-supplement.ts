@@ -18,7 +18,7 @@ const inputSchema = z
     source: sourceSchema,
     supplement: z.unknown().nullable(),
     supplementFiles: supplementFilesSchema.optional(),
-    supplementStatus: z.literal("invalid").optional(),
+    supplementStatus: z.enum(["absent", "invalid"]).optional(),
     rollback: z.boolean().optional(),
   })
   .strict();
@@ -127,6 +127,7 @@ export async function handlePlaybookSupplementSyncRequest(
     const result = await store.updateSupplement(input.source, supplement, rawFiles, {
       allowRollback: input.rollback === true,
       allowSameSourceRetry: input.supplementStatus === "invalid",
+      acceptEmptyOverlay: input.supplementStatus === "absent",
     });
     const current = store.current?.edition.source;
     return json(

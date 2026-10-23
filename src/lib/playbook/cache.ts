@@ -49,6 +49,7 @@ interface PlaybookSupplementState {
 interface PlaybookSupplementUpdateOptions {
   allowRollback?: boolean;
   allowSameSourceRetry?: boolean;
+  acceptEmptyOverlay?: boolean;
 }
 export type PlaybookFetcher = (url: string, init?: RequestInit) => Promise<Response>;
 export const PLAYBOOK_POLL_INTERVAL_MS = 300_000;
@@ -474,6 +475,7 @@ export class PlaybookStore {
       mergePlaybookSupplement(this.state.current, validated);
     if (
       !validated &&
+      options.acceptEmptyOverlay !== true &&
       options.allowSameSourceRetry !== true &&
       this.supplement &&
       samePlaybookSource(this.supplement.manifest.source, parsedSource)

@@ -139,11 +139,16 @@ if (supplementStatus === "valid" && supplementEnvelope) {
 
 async function syncSupplementToConsole(source: PlaybookSupplementEnvelope["manifest"]["source"]) {
   const rollbackField = rollback ? { rollback: true } : {};
-  const invalidField = supplementStatus === "invalid" ? { supplementStatus: "invalid" } : {};
+  const supplementStatusField =
+    supplementStatus === "invalid"
+      ? { supplementStatus: "invalid" as const }
+      : supplementStatus === "absent"
+        ? { supplementStatus: "absent" as const }
+        : {};
   let payload: Record<string, unknown> = {
     source,
     supplement: null,
-    ...invalidField,
+    ...supplementStatusField,
     ...rollbackField,
   };
   if (supplementEnvelope) {

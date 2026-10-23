@@ -99,6 +99,7 @@ describe("playbook deployment boundaries", () => {
     expect(updateScript).not.toContain("Playbook supplement verification failed");
     expect(updateScript).toContain("shouldSyncSupplement(current, selected.manifest)");
     expect(updateScript).toContain('supplementStatus === "invalid"');
+    expect(updateScript).toContain('supplementStatus === "absent"');
     expect(updateScript).toContain("public pointer is unavailable");
     expect(updateScript).toContain(
       "Playbook supplement sync deferred; public edition remains deployed"

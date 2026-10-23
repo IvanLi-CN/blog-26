@@ -464,8 +464,26 @@ describe("HTTP compatibility APIs", () => {
     });
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
 
+    const absent = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          source: supplementBundle.manifest.source,
+          supplement: null,
+          supplementStatus: "absent",
+        }),
+      }),
+      store
+    );
+    expect(absent.status).toBe(200);
+    expect(store.adminEdition?.supplement).toBeUndefined();
+
     await store.adopt(nextBundle.edition);
-    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
 
     const invalidClear = await handlePlaybookSupplementSyncRequest(
       new Request("http://localhost/api/admin/playbook/supplement", {

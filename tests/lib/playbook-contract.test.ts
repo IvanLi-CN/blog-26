@@ -228,6 +228,21 @@ describe("playbook-public-contract", () => {
     expect(normalized.topic_details[0].preamble).toBe("");
     expect(normalized.project_details[0].sections[0].markdown).toBe(body);
   });
+  test("rejects a legacy catalog project missing both visibility fields", () => {
+    const malformed = structuredClone(publicFixtureCatalog);
+    Reflect.deleteProperty(malformed.snapshot.projects[0], "catalog_visibility");
+    Reflect.deleteProperty(malformed.snapshot.projects[0], "source_visibility");
+    Reflect.deleteProperty(malformed.project_details[0].item, "catalog_visibility");
+    Reflect.deleteProperty(malformed.project_details[0].item, "source_visibility");
+    Reflect.deleteProperty(malformed.snapshot.topics[0], "catalog_visibility");
+    Reflect.deleteProperty(malformed.topic_details[0].item, "catalog_visibility");
+    malformed.project_details[0].item = structuredClone(malformed.project_details[0].item);
+    Reflect.set(malformed.project_details[0].item, "visibility", null);
+
+    expect(() => assertPublicCatalog(malformed)).toThrow(
+      "Legacy public catalog project visibility is missing"
+    );
+  });
   test("retains legacy file identities while downloading and restoring an edition", async () => {
     const legacyCatalog = structuredClone(publicFixtureCatalog);
     Reflect.set(legacyCatalog.snapshot.projects[0], "visibility", null);
@@ -1863,6 +1878,29 @@ describe("playbook-cache-http-ssr", () => {
 
     expect(store.adminEdition?.supplement).toBeDefined();
     expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(2);
+  });
+  test("clears an accepted overlay for an explicit same-source empty overlay", async () => {
+    const root = await temp();
+    const current = makePublicBundle();
+    const supplementBundle = makeSupplementBundle();
+    const supplement = {
+      manifest: supplementBundle.manifest,
+      catalog: JSON.parse(supplementBundle.files[0].content),
+      search: JSON.parse(supplementBundle.files[1].content),
+    };
+    const store = new PlaybookStore(root);
+
+    await store.adopt(current.edition);
+    await store.updateSupplement(current.edition.edition.source, supplement);
+    await store.updateSupplement(current.edition.edition.source, undefined, undefined, {
+      acceptEmptyOverlay: true,
+    });
+
+    expect(store.adminEdition?.supplement).toBeUndefined();
+    expect(store.adminEdition?.catalog.snapshot.projects).toHaveLength(1);
+    await expect(
+      store.updateSupplement(current.edition.edition.source, supplement)
+    ).rejects.toThrow("source identity conflict");
   });
   test("hides an invalid overlay when its retryable tombstone cannot persist", async () => {
     const root = await temp();

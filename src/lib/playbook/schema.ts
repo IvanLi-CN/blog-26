@@ -268,12 +268,17 @@ function normalizeLegacyPublicCatalog(value: unknown): unknown {
   const normalizedSnapshot = normalized.snapshot as Record<string, unknown>;
   const normalizeProject = (value: unknown) => {
     if (!isRecord(value)) return;
-    if (Object.hasOwn(value, "visibility")) {
+    const hasLegacyVisibility = Object.hasOwn(value, "visibility");
+    if (hasLegacyVisibility) {
       if (value.visibility !== null && value.visibility !== "public")
         throw new Error("Legacy public catalog contains non-public project visibility");
       delete value.visibility;
     }
-    if (!Object.hasOwn(value, "catalog_visibility")) value.catalog_visibility = "public";
+    if (!Object.hasOwn(value, "catalog_visibility")) {
+      if (!hasLegacyVisibility)
+        throw new Error("Legacy public catalog project visibility is missing");
+      value.catalog_visibility = "public";
+    }
     if (!Object.hasOwn(value, "source_visibility"))
       value.source_visibility = value.source === "private" ? "private" : "public";
   };
