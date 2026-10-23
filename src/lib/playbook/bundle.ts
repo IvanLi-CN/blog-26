@@ -142,14 +142,19 @@ function readArchive(
       throw new Error("Archive entry timestamp does not match the source commit");
     if (prefix || !FILES.includes(name) || (kind !== "0" && kind !== "") || files.has(name))
       throw new Error(`Unsafe or unexpected archive entry: ${name}`);
+    if (name !== FILES[files.size]) throw new Error("Archive entries are not in canonical order");
     const end = offset + 512 + size;
-    if (!Number.isSafeInteger(size) || end > tar.length) throw new Error("Truncated archive");
+    const nextOffset = offset + 512 + Math.ceil(size / 512) * 512;
+    if (!Number.isSafeInteger(size) || end > tar.length || nextOffset > tar.length)
+      throw new Error("Truncated archive");
+    if (tar.subarray(end, nextOffset).some((byte) => byte !== 0))
+      throw new Error("Archive entry padding is not zero");
     const bytes = tar.subarray(offset + 512, end);
     const record = manifest.files.find((file) => file.path === name);
     if (!record) throw new Error("Archive file missing from manifest");
     verifyFile(bytes, record);
     files.set(name, bytes);
-    offset += 512 + Math.ceil(size / 512) * 512;
+    offset = nextOffset;
   }
   if (files.size !== FILES.length) throw new Error("Archive data files are incomplete");
   if (!terminated || tar.length % 512 !== 0) throw new Error("Archive has no complete terminator");

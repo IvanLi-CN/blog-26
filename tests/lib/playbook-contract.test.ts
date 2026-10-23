@@ -418,6 +418,46 @@ describe("playbook-public-contract", () => {
         sourceTimestamp
       )
     ).toThrow("metadata");
+
+    const canonicalFiles = [
+      { path: "catalog.json", content: "catalog" },
+      { path: "search-documents.json", content: "search" },
+    ];
+    const canonicalArchive = makeArchive(canonicalFiles);
+    const canonicalManifest = {
+      ...publicBundle.manifest,
+      files: canonicalFiles.map((file) => fileRecord(file.path, file.content)),
+      bundle: {
+        ...publicBundle.manifest.bundle,
+        size: canonicalArchive.length,
+        sha256: sha256(canonicalArchive),
+      },
+    };
+    const swappedArchive = makeArchive([...canonicalFiles].reverse());
+    expect(() =>
+      readPublicArchive(swappedArchive, {
+        ...canonicalManifest,
+        bundle: {
+          ...canonicalManifest.bundle,
+          size: swappedArchive.length,
+          sha256: sha256(swappedArchive),
+        },
+      })
+    ).toThrow("canonical order");
+
+    const nonZeroPaddingTar = gunzipSync(canonicalArchive);
+    nonZeroPaddingTar[512 + canonicalFiles[0].content.length] = 1;
+    const nonZeroPaddingArchive = gzipSync(nonZeroPaddingTar);
+    expect(() =>
+      readPublicArchive(nonZeroPaddingArchive, {
+        ...canonicalManifest,
+        bundle: {
+          ...canonicalManifest.bundle,
+          size: nonZeroPaddingArchive.length,
+          sha256: sha256(nonZeroPaddingArchive),
+        },
+      })
+    ).toThrow("padding");
   });
   test("rejects nested internal key variants without excluding ordinary public fields", () => {
     for (const key of [
