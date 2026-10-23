@@ -28,6 +28,7 @@ import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
 import {
   mergePlaybookSupplement,
   parseSupplementSyncEndpoint,
+  publicRelationIndexFromCatalog,
 } from "../src/lib/playbook/supplement";
 import type { PlaybookSupplementEnvelope } from "../src/lib/playbook/types";
 import { publicVersionSchema } from "../src/lib/release/deployment";
@@ -76,6 +77,7 @@ await writeFile(
 let supplementRoot: string | undefined;
 let supplementEnvelope: PlaybookSupplementEnvelope | null = null;
 let supplementFileBytes: Map<string, Uint8Array> | undefined;
+let publicRelationIndex: ReturnType<typeof publicRelationIndexFromCatalog> | undefined;
 let supplementStatus = selected.supplementStatus;
 if (selected.supplement) {
   try {
@@ -125,6 +127,7 @@ if (supplementStatus === "valid" && supplementEnvelope) {
       new Uint8Array(),
       selected.sourceTimestamp
     );
+    publicRelationIndex = publicRelationIndexFromCatalog(publicEdition.catalog);
     mergePlaybookSupplement(publicEdition, supplementEnvelope);
   } catch (error) {
     supplementStatus = "invalid";
@@ -165,6 +168,7 @@ async function syncSupplementToConsole(source: PlaybookSupplementEnvelope["manif
         catalog: Buffer.from(catalogBytes).toString("base64"),
         search: Buffer.from(searchBytes).toString("base64"),
       },
+      publicRelationIndex,
       ...rollbackField,
     };
   }

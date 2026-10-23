@@ -11,6 +11,7 @@ import sharp from "sharp";
 import { db, initializeDB } from "@/lib/db";
 import { PlaybookStore } from "@/lib/playbook/cache";
 import { encodeJson } from "@/lib/playbook/manifest";
+import { publicRelationIndexFromCatalog } from "@/lib/playbook/supplement";
 import { computePostContentHash } from "@/lib/post-body-contract-server";
 import { buildPublicMediaHash } from "@/lib/public-media";
 import { llmSettings, postEmbeddings, posts, sessions, users, vectorizedFiles } from "@/lib/schema";
@@ -362,6 +363,7 @@ describe("HTTP compatibility APIs", () => {
   it("accepts a source-bound supplement through the protected receiver and persists it", async () => {
     const publicBundle = makePublicBundle();
     const nextBundle = makePublicBundle("v3.1.0", "101");
+    const publicRelationIndex = publicRelationIndexFromCatalog(publicBundle.edition.catalog);
     const supplementBundle = makeSupplementBundle("v3.1.0", "101");
     const supplement = {
       manifest: supplementBundle.manifest,
@@ -374,8 +376,38 @@ describe("HTTP compatibility APIs", () => {
     fs.writeFileSync(publicSeed, encodeJson(publicBundle.edition));
     const store = new PlaybookStore(receiverRoot);
     await store.adopt(publicBundle.edition);
-
     process.env.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN = "receiver-test-token";
+
+    const unknownRelationCatalog = structuredClone(supplement.catalog);
+    unknownRelationCatalog.relation_edges.push({
+      topic_slug: "missing-topic",
+      project_slug: "private-project",
+      project_name: "Private Project",
+    });
+    const unknownRelationBundle = makeSupplementBundle("v3.1.0", "101", unknownRelationCatalog);
+    const unknownRelation = await handlePlaybookSupplementSyncRequest(
+      new Request("http://localhost/api/admin/playbook/supplement", {
+        method: "PUT",
+        headers: {
+          authorization: "Bearer receiver-test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          source: unknownRelationBundle.manifest.source,
+          supplement: {
+            manifest: unknownRelationBundle.manifest,
+            catalog: unknownRelationCatalog,
+            search: JSON.parse(unknownRelationBundle.files[1].content),
+          },
+          supplementFiles: supplementFiles(unknownRelationBundle),
+          publicRelationIndex,
+        }),
+      }),
+      store
+    );
+    expect(unknownRelation.status).toBe(400);
+    expect(store.adminEdition?.supplement).toBeUndefined();
+
     const tamperedRoot = path.join(PLAYBOOK_TEST_PATH, "receiver-tampered");
     fs.mkdirSync(tamperedRoot, { recursive: true });
     const tamperedStore = new PlaybookStore(tamperedRoot);
@@ -391,6 +423,7 @@ describe("HTTP compatibility APIs", () => {
           source: supplementBundle.manifest.source,
           supplement,
           supplementFiles: supplementFiles(supplementBundle),
+          publicRelationIndex,
         }),
       }),
       tamperedStore
@@ -410,6 +443,7 @@ describe("HTTP compatibility APIs", () => {
           source: supplementBundle.manifest.source,
           supplement: { ...supplement, search: tamperedSearch },
           supplementFiles: supplementFiles(supplementBundle),
+          publicRelationIndex,
         }),
       }),
       tamperedStore
@@ -435,7 +469,7 @@ describe("HTTP compatibility APIs", () => {
           authorization: "Bearer receiver-test-token",
           "content-type": "application/json",
         },
-        body: `{"source":${duplicateSource},"source":${duplicateSource},"supplement":${JSON.stringify(supplement)},"supplementFiles":${JSON.stringify(supplementFiles(supplementBundle))}}`,
+        body: `{"source":${duplicateSource},"source":${duplicateSource},"supplement":${JSON.stringify(supplement)},"supplementFiles":${JSON.stringify(supplementFiles(supplementBundle))},"publicRelationIndex":${JSON.stringify(publicRelationIndex)}}`,
       }),
       store
     );
@@ -452,6 +486,7 @@ describe("HTTP compatibility APIs", () => {
           source: supplementBundle.manifest.source,
           supplement,
           supplementFiles: supplementFiles(supplementBundle),
+          publicRelationIndex,
         }),
       }),
       store
@@ -514,6 +549,7 @@ describe("HTTP compatibility APIs", () => {
           source: supplementBundle.manifest.source,
           supplement,
           supplementFiles: supplementFiles(supplementBundle),
+          publicRelationIndex,
         }),
       }),
       store
@@ -539,6 +575,7 @@ describe("HTTP compatibility APIs", () => {
           source: rollbackSupplementBundle.manifest.source,
           supplement: olderSupplement,
           supplementFiles: supplementFiles(rollbackSupplementBundle),
+          publicRelationIndex,
         }),
       }),
       store
@@ -570,6 +607,7 @@ describe("HTTP compatibility APIs", () => {
           source: conflictingBundle.manifest.source,
           supplement: conflictingSupplement,
           supplementFiles: supplementFiles(conflictingBundle),
+          publicRelationIndex,
         }),
       }),
       store
@@ -588,6 +626,7 @@ describe("HTTP compatibility APIs", () => {
           source: rollbackSupplementBundle.manifest.source,
           supplement: olderSupplement,
           supplementFiles: supplementFiles(rollbackSupplementBundle),
+          publicRelationIndex,
           rollback: true,
         }),
       }),

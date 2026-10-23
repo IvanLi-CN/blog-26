@@ -1,3 +1,4 @@
+import { readPublicArchive } from "./bundle";
 import { SourceResponseLimitError } from "./github";
 import {
   decodeUtf8,
@@ -202,6 +203,8 @@ async function readyManifest(reader: ReleaseReader, release: SourceRelease) {
     throw new Error("Release metadata does not match public manifest");
   assertAssetDigest(manifestAsset, `sha256:${sha256(manifestBytes)}`, "Public manifest asset");
   assertAssetDigest(bundleAsset, `sha256:${manifest.bundle.sha256}`, "Public bundle asset");
+  const publicArchive = await reader.asset(bundleAsset.id, bundleAsset.size);
+  readPublicArchive(publicArchive, manifest, sourceTimestamp);
   let supplement:
     | {
         manifest: PlaybookManifest;

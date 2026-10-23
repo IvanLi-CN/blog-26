@@ -393,6 +393,17 @@ export const relationEdgeSchema = z.strictObject({
   project_name: text,
 });
 
+export const publicRelationIndexSchema = z.strictObject({
+  projects: z.array(projectRefSchema),
+  topics: z.array(
+    z.strictObject({
+      slug: slugSchema,
+      related_projects: z.array(projectRefSchema),
+    })
+  ),
+});
+export type PlaybookPublicRelationIndex = z.infer<typeof publicRelationIndexSchema>;
+
 export const supplementProjectSchema = z.strictObject({
   slug: slugSchema,
   name: text,
@@ -506,6 +517,19 @@ export function assertSupplementCatalog(value: unknown) {
 
 function unique(values: string[]) {
   if (new Set(values).size !== values.length) throw new Error("Duplicate playbook identity");
+}
+
+export function assertPublicRelationIndex(value: unknown): PlaybookPublicRelationIndex {
+  const index = publicRelationIndexSchema.parse(value);
+  unique(index.projects.map((project) => project.slug));
+  unique(index.topics.map((topic) => topic.slug));
+  const projects = new Map(index.projects.map((project) => [project.slug, project]));
+  for (const topic of index.topics) {
+    unique(topic.related_projects.map((project) => project.slug));
+    if (topic.related_projects.some((project) => projects.get(project.slug)?.name !== project.name))
+      throw new Error("Public relation index has invalid project references");
+  }
+  return index;
 }
 
 const internalRecordKeys = new Set([

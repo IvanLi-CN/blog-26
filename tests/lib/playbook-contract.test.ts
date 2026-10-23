@@ -56,6 +56,7 @@ import {
 } from "../../src/lib/playbook/search";
 import {
   mergePlaybookSupplement,
+  publicRelationIndexFromCatalog,
   readPlaybookSupplement,
   searchPlaybookAdmin,
   validatePlaybookSupplement,
@@ -566,6 +567,7 @@ describe("playbook-public-contract", () => {
     const supplement = makeSupplementBundle();
     const files = readSupplementArchive(supplement.archive, supplement.manifest);
     const parsed = parseSupplementFiles(files);
+    const publicRelationIndex = publicRelationIndexFromCatalog(publicFixtureCatalog);
     expect(parsed.catalog.snapshot.projects[0].catalog_visibility).toBe("private");
     expect(parsed.catalog.private_source_metadata[0].source).toContain("private-project");
     expect(parsed.catalog.relation_edges).toHaveLength(1);
@@ -589,6 +591,19 @@ describe("playbook-public-contract", () => {
         search: parsed.search,
       })
     ).toThrow();
+    const unknownRelation = structuredClone(parsed.catalog);
+    unknownRelation.relation_edges.push({
+      topic_slug: "missing-topic",
+      project_slug: "private-project",
+      project_name: "Private Project",
+    });
+    expect(() =>
+      validatePlaybookSupplement(
+        { manifest: supplement.manifest, catalog: unknownRelation, search: parsed.search },
+        undefined,
+        publicRelationIndex
+      )
+    ).toThrow("unknown object");
     expect(() =>
       parseSupplementFiles(
         new Map([
@@ -650,8 +665,8 @@ describe("playbook-public-contract", () => {
     const supplementCatalog = JSON.parse(baseSupplementBundle.files[0].content);
     supplementCatalog.relation_edges.push({
       topic_slug: "delivery",
-      project_slug: "sample-project",
-      project_name: "Sample Project",
+      project_slug: "private-project",
+      project_name: "Private Project",
     });
     const supplementSearch = JSON.parse(baseSupplementBundle.files[1].content);
     const supplementBundle = makeSupplementBundle(
@@ -660,11 +675,15 @@ describe("playbook-public-contract", () => {
       supplementCatalog,
       supplementSearch
     );
-    const supplement = validatePlaybookSupplement({
-      manifest: supplementBundle.manifest,
-      catalog: supplementCatalog,
-      search: supplementSearch,
-    });
+    const supplement = validatePlaybookSupplement(
+      {
+        manifest: supplementBundle.manifest,
+        catalog: supplementCatalog,
+        search: supplementSearch,
+      },
+      undefined,
+      publicRelationIndexFromCatalog(publicBundle.edition.catalog)
+    );
     const before = publicBundle.edition.catalog.topic_details[0].sections.map((section) => ({
       id: section.id,
       markdown: section.markdown,
@@ -675,8 +694,8 @@ describe("playbook-public-contract", () => {
       topic?.sections.map((section) => ({ id: section.id, markdown: section.markdown }))
     ).toEqual(before);
     expect(topic?.item.related_projects).toContainEqual({
-      slug: "sample-project",
-      name: "Sample Project",
+      slug: "private-project",
+      name: "Private Project",
     });
     expect(merged.catalog.snapshot.projects.map((project) => project.slug)).toContain(
       "private-project"
@@ -985,6 +1004,19 @@ describe("playbook-dispatch-and-reconcile", () => {
         resolveRelease({ ...reader, release: async () => ({ ...release, [state]: true }) }, input)
       ).rejects.toThrow("not stable");
     }
+  });
+  test("falls back when the highest stable release has a corrupt public archive", async () => {
+    const older = makePublicBundle("v3.9.0", "99");
+    const newer = makePublicBundle("v3.10.0", "100");
+    const base = sourceReader([older, newer]);
+    const selected = await resolveRelease(
+      {
+        ...base,
+        asset: async (id) => (id === 6 ? Buffer.from("corrupt") : base.asset(id)),
+      },
+      { mode: "reconcile" }
+    );
+    expect(selected?.manifest.source.tag).toBe("v3.9.0");
   });
   test("requires and verifies both package identities for a notified dual release", async () => {
     const publicBundle = makePublicBundle();

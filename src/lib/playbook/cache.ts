@@ -18,11 +18,13 @@ import {
   assertPublicCatalog,
   isLegacyPublicCatalog,
   PLAYBOOK_PUBLIC_POINTER_URL,
+  type PlaybookPublicRelationIndex,
   searchSchema,
   sourceSchema,
 } from "./schema";
 import {
   mergePlaybookSupplement,
+  publicRelationIndexFromCatalog,
   samePlaybookSource,
   validatePlaybookSupplement,
 } from "./supplement";
@@ -50,6 +52,7 @@ interface PlaybookSupplementUpdateOptions {
   allowRollback?: boolean;
   allowSameSourceRetry?: boolean;
   acceptEmptyOverlay?: boolean;
+  publicRelationIndex?: PlaybookPublicRelationIndex;
 }
 export type PlaybookFetcher = (url: string, init?: RequestInit) => Promise<Response>;
 export const PLAYBOOK_POLL_INTERVAL_MS = 300_000;
@@ -290,10 +293,14 @@ export class PlaybookStore {
           throw new Error("Invalid Playbook supplement retry state");
         const retryable = raw.retryable === true;
         const rawFiles = raw.supplement === null ? undefined : decodePlaybookRawFiles(raw.rawFiles);
+        const publicRelationIndex =
+          this.state.current && samePlaybookSource(this.state.current.edition.source, source)
+            ? publicRelationIndexFromCatalog(this.state.current.catalog)
+            : undefined;
         const supplement =
           raw.supplement === null
             ? undefined
-            : validatePlaybookSupplement(raw.supplement, rawFiles);
+            : validatePlaybookSupplement(raw.supplement, rawFiles, publicRelationIndex);
         if (supplement && retryable) throw new Error("Invalid Playbook supplement retry state");
         if (supplement && !samePlaybookSource(source, supplement.manifest.source))
           throw new Error("Playbook supplement state source identity mismatch");
@@ -327,9 +334,17 @@ export class PlaybookStore {
       )
     ) {
       try {
-        const supplement = validatePlaybookSupplement(
-          parseJson(await readFile(resolve(supplementSeedPath), "utf8"))
-        );
+        const supplementValue = parseJson(await readFile(resolve(supplementSeedPath), "utf8"));
+        const unboundSupplement = validatePlaybookSupplement(supplementValue);
+        const supplement =
+          this.state.current &&
+          samePlaybookSource(this.state.current.edition.source, unboundSupplement.manifest.source)
+            ? validatePlaybookSupplement(
+                supplementValue,
+                undefined,
+                publicRelationIndexFromCatalog(this.state.current.catalog)
+              )
+            : unboundSupplement;
         if (samePlaybookSource(this.state.current.edition.source, supplement.manifest.source)) {
           const merged = mergePlaybookSupplement(this.state.current, supplement);
           if (merged.supplement) {
@@ -412,8 +427,13 @@ export class PlaybookStore {
     const validationFiles = supplement
       ? (rawFiles ?? supplementProjectionFiles(supplement))
       : undefined;
+    const publicRelationIndex =
+      options.publicRelationIndex ??
+      (this.state.current && samePlaybookSource(this.state.current.edition.source, parsedSource)
+        ? publicRelationIndexFromCatalog(this.state.current.catalog)
+        : undefined);
     const validated = supplement
-      ? validatePlaybookSupplement(supplement, validationFiles)
+      ? validatePlaybookSupplement(supplement, validationFiles, publicRelationIndex)
       : undefined;
     const persistedRawFiles = validated
       ? encodePlaybookRawFiles(validationFiles as ReadonlyMap<string, Uint8Array>)

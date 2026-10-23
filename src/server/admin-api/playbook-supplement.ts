@@ -2,7 +2,11 @@ import { timingSafeEqual } from "node:crypto";
 import { ZodError, z } from "zod";
 import { getRuntimePlaybookStore, type PlaybookStore } from "@/lib/playbook/cache";
 import { parseJson } from "@/lib/playbook/manifest";
-import { PLAYBOOK_MAX_BUNDLE_BYTES, sourceSchema } from "@/lib/playbook/schema";
+import {
+  PLAYBOOK_MAX_BUNDLE_BYTES,
+  publicRelationIndexSchema,
+  sourceSchema,
+} from "@/lib/playbook/schema";
 import { samePlaybookSource, validatePlaybookSupplement } from "@/lib/playbook/supplement";
 
 // The receiver carries the parsed projection and base64 copies of both package files.
@@ -18,6 +22,7 @@ const inputSchema = z
     source: sourceSchema,
     supplement: z.unknown().nullable(),
     supplementFiles: supplementFilesSchema.optional(),
+    publicRelationIndex: publicRelationIndexSchema.optional(),
     supplementStatus: z.enum(["absent", "invalid"]).optional(),
     rollback: z.boolean().optional(),
   })
@@ -104,6 +109,8 @@ export async function handlePlaybookSupplementSyncRequest(
     let supplement: ReturnType<typeof validatePlaybookSupplement> | undefined;
     if (input.supplement !== null) {
       try {
+        if (!input.publicRelationIndex)
+          throw new Error("Public relation index is required for supplement sync");
         rawFiles = input.supplementFiles ? decodeSupplementFiles(input.supplementFiles) : undefined;
         if (!rawFiles) throw new Error("Supplement file bytes are required");
         supplement = validatePlaybookSupplement(input.supplement, rawFiles);
@@ -123,11 +130,14 @@ export async function handlePlaybookSupplementSyncRequest(
     }
     if (input.supplement !== null && input.supplementStatus !== undefined)
       throw new Error("Supplement status is only valid when supplement is absent");
+    if (input.supplement === null && input.publicRelationIndex !== undefined)
+      throw new Error("Public relation index is only valid with a supplement");
     await store.load();
     const result = await store.updateSupplement(input.source, supplement, rawFiles, {
       allowRollback: input.rollback === true,
       allowSameSourceRetry: input.supplementStatus === "invalid",
       acceptEmptyOverlay: input.supplementStatus === "absent",
+      publicRelationIndex: input.publicRelationIndex,
     });
     const current = store.current?.edition.source;
     return json(

@@ -119,6 +119,8 @@ describe("playbook deployment boundaries", () => {
     );
     expect(updateScript).toContain("assertPlaybookRendererCompatibility");
     expect(updateScript).toContain("createPlaybookEdition");
+    expect(updateScript).toContain("publicRelationIndexFromCatalog");
+    expect(updateScript).toContain("publicRelationIndex,");
     expect(updateScript).toContain("mergePlaybookSupplement(publicEdition, supplementEnvelope)");
     expect(PLAYBOOK_RENDERER_CAPABILITY_PATH).toBe(
       "src/lib/playbook/public-package-capabilities.json"

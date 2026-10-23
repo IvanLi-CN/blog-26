@@ -11,12 +11,19 @@ import {
   verifyFile,
 } from "./manifest";
 import { playbookHref } from "./navigation";
-import { assertSupplementCatalog, relationEdgeSchema, searchSchema } from "./schema";
+import {
+  assertPublicRelationIndex,
+  assertSupplementCatalog,
+  type PlaybookPublicRelationIndex,
+  relationEdgeSchema,
+  searchSchema,
+} from "./schema";
 import type {
   PlaybookAdminCatalog,
   PlaybookAdminEdition,
   PlaybookAdminTopicDetail,
   PlaybookEdition,
+  PlaybookPublicCatalog,
   PlaybookSearchDocument,
   PlaybookSupplement,
   PlaybookSupplementEnvelope,
@@ -43,12 +50,15 @@ export function parseSupplementSyncEndpoint(value: string): URL {
 
 export function validatePlaybookSupplement(
   value: unknown,
-  rawFiles?: ReadonlyMap<string, Uint8Array>
+  rawFiles?: ReadonlyMap<string, Uint8Array>,
+  publicRelationIndex?: PlaybookPublicRelationIndex
 ): PlaybookSupplementEnvelope {
   if (!value || typeof value !== "object") throw new Error("Invalid Playbook supplement envelope");
   const input = value as Record<string, unknown>;
   const manifest = parseManifest(input.manifest, "supplement");
   const catalog = assertSupplementCatalog(input.catalog);
+  if (publicRelationIndex)
+    assertSupplementRelationBoundary(catalog, assertPublicRelationIndex(publicRelationIndex));
   const search = searchSchema.parse(input.search);
   const embeddedRawFiles =
     input.rawFiles === undefined ? undefined : decodePlaybookRawFiles(input.rawFiles);
@@ -70,6 +80,71 @@ export function validatePlaybookSupplement(
   }
   assertUniqueSearchIds(search.documents);
   return { manifest, catalog, search };
+}
+
+export function publicRelationIndexFromCatalog(
+  catalog: PlaybookPublicCatalog
+): PlaybookPublicRelationIndex {
+  return assertPublicRelationIndex({
+    projects: catalog.snapshot.projects.map(({ slug, name }) => ({ slug, name })),
+    topics: catalog.snapshot.topics.map(({ slug, related_projects }) => ({
+      slug,
+      related_projects,
+    })),
+  });
+}
+
+function assertSupplementRelationBoundary(
+  catalog: PlaybookSupplementEnvelope["catalog"],
+  publicRelationIndex: PlaybookPublicRelationIndex
+) {
+  const supplementProjects = new Map(
+    catalog.snapshot.projects.map((project) => [project.slug, project])
+  );
+  const supplementTopics = new Map(catalog.snapshot.topics.map((topic) => [topic.slug, topic]));
+  const publicProjects = new Map(
+    publicRelationIndex.projects.map((project) => [project.slug, project])
+  );
+  const publicTopics = new Map(publicRelationIndex.topics.map((topic) => [topic.slug, topic]));
+  for (const slug of supplementProjects.keys()) {
+    if (publicProjects.has(slug)) throw new Error("Supplement duplicates a public project");
+  }
+  for (const slug of supplementTopics.keys()) {
+    if (publicTopics.has(slug)) throw new Error("Supplement duplicates a public topic");
+  }
+
+  const projectBySlug = new Map([...publicProjects, ...supplementProjects]);
+  const topicBySlug = new Map([...publicTopics, ...supplementTopics]);
+  const edgeKeys = new Set(
+    catalog.relation_edges.map((edge) => `${edge.topic_slug}\0${edge.project_slug}`)
+  );
+  for (const topic of catalog.snapshot.topics) {
+    for (const project of topic.related_projects) {
+      const resolved = projectBySlug.get(project.slug);
+      if (!resolved) throw new Error("Supplement topic references an unknown project");
+      if (resolved.name !== project.name) throw new Error("Supplement topic project name mismatch");
+      if (!edgeKeys.has(`${topic.slug}\0${project.slug}`))
+        throw new Error("Supplement relation edges are incomplete");
+    }
+  }
+  for (const edge of catalog.relation_edges) {
+    const topic = topicBySlug.get(edge.topic_slug);
+    const project = projectBySlug.get(edge.project_slug);
+    if (!topic || !project) throw new Error("Supplement relation references an unknown object");
+    if (project.name !== edge.project_name)
+      throw new Error("Supplement relation has a conflicting project name");
+    const topicIsSupplement = supplementTopics.has(edge.topic_slug);
+    const projectIsSupplement = supplementProjects.has(edge.project_slug);
+    if (!topicIsSupplement && !projectIsSupplement)
+      throw new Error("Supplement relation is not an overlay edge");
+    if (topicIsSupplement) {
+      const relatedProject = topic.related_projects.find(
+        (related) => related.slug === edge.project_slug
+      );
+      if (!relatedProject || relatedProject.name !== edge.project_name)
+        throw new Error("Supplement relation does not match Topic related_projects");
+    }
+  }
 }
 
 export function validatePlaybookSupplementSeed(value: unknown): PlaybookSupplementSeed {
