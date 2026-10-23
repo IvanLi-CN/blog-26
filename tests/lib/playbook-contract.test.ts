@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { gunzipSync, gzipSync } from "node:zlib";
+import { gunzipSync } from "node:zlib";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { loadInitialPlaybookEdition } from "../../scripts/prepare-console-playbook-seed";
@@ -62,6 +62,7 @@ import type { PlaybookManifest } from "../../src/lib/playbook/types";
 import { handlePlaybookRequest } from "../../src/server/public-api/playbook";
 import {
   makeArchive,
+  makeCanonicalGzip,
   makePublicBundle,
   makeRustSupplementBundle,
   makeSupplementBundle,
@@ -320,9 +321,9 @@ describe("playbook-public-contract", () => {
         bundle: { ...bundle.manifest.bundle, sha256: "0".repeat(64) },
       })
     ).toThrow("integrity");
-    for (const entry of [
-      { path: "../catalog.json", content: "{}" },
-      { path: "catalog.json", content: "{}", kind: "2" },
+    for (const { entry, error } of [
+      { entry: { path: "../catalog.json", content: "{}" }, error: "Unsafe" },
+      { entry: { path: "catalog.json", content: "{}", kind: "2" }, error: "canonical" },
     ]) {
       const archive = makeArchive([entry]);
       expect(() =>
@@ -330,7 +331,7 @@ describe("playbook-public-contract", () => {
           ...bundle.manifest,
           bundle: { ...bundle.manifest.bundle, size: archive.length, sha256: sha256(archive) },
         })
-      ).toThrow("Unsafe");
+      ).toThrow(error);
     }
     const archive = makeArchive([...bundle.files, bundle.files[0]]);
     expect(() =>
@@ -340,7 +341,7 @@ describe("playbook-public-contract", () => {
       })
     ).toThrow("Unsafe");
     const oneBlockTerminator = gunzipSync(bundle.archive).subarray(0, -512);
-    const oneBlockArchive = gzipSync(oneBlockTerminator);
+    const oneBlockArchive = makeCanonicalGzip(oneBlockTerminator);
     expect(() =>
       readPublicArchive(oneBlockArchive, {
         ...bundle.manifest,
@@ -364,7 +365,7 @@ describe("playbook-public-contract", () => {
     ).toThrow("one gzip member");
     const nonUstarTar = gunzipSync(bundle.archive);
     nonUstarTar[257] = 0x78;
-    const nonUstarArchive = gzipSync(nonUstarTar);
+    const nonUstarArchive = makeCanonicalGzip(nonUstarTar);
     expect(() =>
       readPublicArchive(nonUstarArchive, {
         ...bundle.manifest,
@@ -447,7 +448,7 @@ describe("playbook-public-contract", () => {
 
     const nonZeroPaddingTar = gunzipSync(canonicalArchive);
     nonZeroPaddingTar[512 + canonicalFiles[0].content.length] = 1;
-    const nonZeroPaddingArchive = gzipSync(nonZeroPaddingTar);
+    const nonZeroPaddingArchive = makeCanonicalGzip(nonZeroPaddingTar);
     expect(() =>
       readPublicArchive(nonZeroPaddingArchive, {
         ...canonicalManifest,
@@ -458,6 +459,36 @@ describe("playbook-public-contract", () => {
         },
       })
     ).toThrow("padding");
+
+    const nonCanonicalPathArchive = makeArchive([
+      { path: "./catalog.json", content: "catalog" },
+      { path: "search-documents.json", content: "search" },
+    ]);
+    expect(() =>
+      readPublicArchive(nonCanonicalPathArchive, {
+        ...canonicalManifest,
+        bundle: {
+          ...canonicalManifest.bundle,
+          size: nonCanonicalPathArchive.length,
+          sha256: sha256(nonCanonicalPathArchive),
+        },
+      })
+    ).toThrow("Unsafe");
+
+    for (const offset of [8, 9]) {
+      const nonCanonicalGzipHeader = Buffer.from(canonicalArchive);
+      nonCanonicalGzipHeader[offset] = offset === 8 ? 0 : 3;
+      expect(() =>
+        readPublicArchive(nonCanonicalGzipHeader, {
+          ...canonicalManifest,
+          bundle: {
+            ...canonicalManifest.bundle,
+            size: nonCanonicalGzipHeader.length,
+            sha256: sha256(nonCanonicalGzipHeader),
+          },
+        })
+      ).toThrow("gzip format");
+    }
   });
   test("rejects nested internal key variants without excluding ordinary public fields", () => {
     for (const key of [

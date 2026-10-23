@@ -38,8 +38,17 @@ export function makeArchive(
     header.write(`${checksum.toString(8).padStart(6, "0")}\0 `, 148);
     parts.push(header, body, Buffer.alloc((512 - (body.length % 512)) % 512));
   }
-  const archive = gzipSync(Buffer.concat([...parts, Buffer.alloc(1024)]));
+  const archive = gzipSync(Buffer.concat([...parts, Buffer.alloc(1024)]), { level: 9 });
   archive.writeUInt32LE(sourceTimestamp, 4);
+  archive[8] = 2;
+  archive[9] = 255;
+  return archive;
+}
+
+export function makeCanonicalGzip(tar: Uint8Array) {
+  const archive = gzipSync(tar, { level: 9 });
+  archive[8] = 2;
+  archive[9] = 255;
   return archive;
 }
 

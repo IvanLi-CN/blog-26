@@ -46,10 +46,33 @@ function readOctalField(
   return value;
 }
 
-function readNullTerminatedField(header: Uint8Array, start: number, size: number) {
-  return Buffer.from(header.subarray(start, start + size))
-    .toString("utf8")
-    .split("\0", 1)[0];
+function assertArchiveField(
+  header: Uint8Array,
+  start: number,
+  expected: Uint8Array,
+  label: string
+) {
+  const actual = header.subarray(start, start + expected.length);
+  if (actual.length !== expected.length || actual.some((byte, index) => byte !== expected[index]))
+    throw new Error(`Archive ${label} is not canonical`);
+}
+
+function canonicalTextField(value: string, size: number) {
+  const encoded = Buffer.from(value, "utf8");
+  if (encoded.length >= size) throw new Error("Archive text field is too long");
+  const field = Buffer.alloc(size);
+  encoded.copy(field);
+  return field;
+}
+
+function canonicalOctalField(value: number, size: number) {
+  const text = value.toString(8).padStart(size - 1, "0");
+  if (text.length !== size - 1) throw new Error("Archive numeric field is too large");
+  return Buffer.from(`${text}\0`, "ascii");
+}
+
+function canonicalChecksumField(value: number) {
+  return Buffer.from(`${value.toString(8).padStart(6, "0")}\0 `, "ascii");
 }
 
 // Parse the tiny ustar data contract in memory. Never extract paths or execute assets.
@@ -68,9 +91,11 @@ function readArchive(
     archive[0] !== 0x1f ||
     archive[1] !== 0x8b ||
     archive[2] !== 0x08 ||
-    archive[3] !== 0
+    archive[3] !== 0 ||
+    archive[8] !== 2 ||
+    archive[9] !== 255
   )
-    throw new Error("Unsupported gzip format; expected one deterministic member");
+    throw new Error("Unsupported gzip format; expected one deterministic member and header");
   const gzipTimestamp = new DataView(archive.buffer, archive.byteOffset + 4, 4).getUint32(0, true);
   if (
     expectedSourceTimestamp !== undefined &&
@@ -106,33 +131,34 @@ function readArchive(
     const version = header.subarray(263, 265).toString("utf8");
     if (magic !== "ustar\0" || version !== "00")
       throw new Error("Unsupported archive format; expected ustar");
-    const name = readNullTerminatedField(header, 0, 100).replace(/^\.\//u, "");
-    const prefix = readNullTerminatedField(header, 345, 155);
+    const name = Buffer.from(header.subarray(0, 100)).toString("utf8").split("\0", 1)[0];
     const size = readOctalField(header, 124, 12, "size");
     const checksum = readOctalField(header, 148, 8, "checksum");
     let actualChecksum = 0;
     for (let i = 0; i < 512; i++) actualChecksum += i >= 148 && i < 156 ? 32 : header[i];
     if (actualChecksum !== checksum) throw new Error("Invalid archive checksum");
-    const kind = readNullTerminatedField(header, 156, 1);
     const mode = readOctalField(header, 100, 8, "mode");
     const uid = readOctalField(header, 108, 8, "uid");
     const gid = readOctalField(header, 116, 8, "gid");
     const mtime = readOctalField(header, 136, 12, "mtime");
-    const linkName = readNullTerminatedField(header, 157, 100);
-    const uname = readNullTerminatedField(header, 265, 32);
-    const gname = readNullTerminatedField(header, 297, 32);
     const devMajor = readOctalField(header, 329, 8, "device major", true);
     const devMinor = readOctalField(header, 337, 8, "device minor", true);
-    if (
-      mode !== 0o644 ||
-      uid !== 0 ||
-      gid !== 0 ||
-      linkName ||
-      uname ||
-      gname ||
-      devMajor !== 0 ||
-      devMinor !== 0
-    )
+    assertArchiveField(header, 0, canonicalTextField(name, 100), "name");
+    assertArchiveField(header, 100, canonicalOctalField(mode, 8), "mode");
+    assertArchiveField(header, 108, canonicalOctalField(uid, 8), "uid");
+    assertArchiveField(header, 116, canonicalOctalField(gid, 8), "gid");
+    assertArchiveField(header, 124, canonicalOctalField(size, 12), "size");
+    assertArchiveField(header, 136, canonicalOctalField(mtime, 12), "mtime");
+    assertArchiveField(header, 148, canonicalChecksumField(checksum), "checksum");
+    assertArchiveField(header, 156, Buffer.from("0", "ascii"), "type flag");
+    assertArchiveField(header, 157, new Uint8Array(100), "link name");
+    assertArchiveField(header, 265, new Uint8Array(32), "user name");
+    assertArchiveField(header, 297, new Uint8Array(32), "group name");
+    assertArchiveField(header, 329, new Uint8Array(8), "device major");
+    assertArchiveField(header, 337, new Uint8Array(8), "device minor");
+    assertArchiveField(header, 345, new Uint8Array(155), "prefix");
+    assertArchiveField(header, 500, new Uint8Array(12), "reserved bytes");
+    if (mode !== 0o644 || uid !== 0 || gid !== 0 || devMajor !== 0 || devMinor !== 0)
       throw new Error("Archive entry metadata is not deterministic");
     if (archiveTimestamp === undefined) archiveTimestamp = mtime;
     if (
@@ -140,7 +166,7 @@ function readArchive(
       (expectedSourceTimestamp !== undefined && mtime !== expectedSourceTimestamp)
     )
       throw new Error("Archive entry timestamp does not match the source commit");
-    if (prefix || !FILES.includes(name) || (kind !== "0" && kind !== "") || files.has(name))
+    if (!FILES.includes(name) || files.has(name))
       throw new Error(`Unsafe or unexpected archive entry: ${name}`);
     if (name !== FILES[files.size]) throw new Error("Archive entries are not in canonical order");
     const end = offset + 512 + size;
