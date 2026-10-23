@@ -67,7 +67,10 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/release-playbook-tooling/fixed"
           cp scripts/fetch-initial-playbook.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/fetch-initial-playbook.ts"
+          cp scripts/prepare-playbook-edition.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/prepare-playbook-edition.ts"
+          cp src/lib/playbook/bundle.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/bundle.ts"
           cp src/lib/playbook/release.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/release.ts"
+          cp src/lib/playbook/schema.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/schema.ts"
       - name: Checkout the verified merged source
         id: checkout-source
         if: steps.identify.outputs.active == 'true'
@@ -86,9 +89,15 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/release-playbook-tooling/source"
           cp scripts/fetch-initial-playbook.ts "$RUNNER_TEMP/release-playbook-tooling/source/fetch-initial-playbook.ts"
+          cp scripts/prepare-playbook-edition.ts "$RUNNER_TEMP/release-playbook-tooling/source/prepare-playbook-edition.ts"
+          cp src/lib/playbook/bundle.ts "$RUNNER_TEMP/release-playbook-tooling/source/bundle.ts"
           cp src/lib/playbook/release.ts "$RUNNER_TEMP/release-playbook-tooling/source/release.ts"
+          cp src/lib/playbook/schema.ts "$RUNNER_TEMP/release-playbook-tooling/source/schema.ts"
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/fetch-initial-playbook.ts" scripts/fetch-initial-playbook.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/fixed/prepare-playbook-edition.ts" scripts/prepare-playbook-edition.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/fixed/bundle.ts" src/lib/playbook/bundle.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/release.ts" src/lib/playbook/release.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/fixed/schema.ts" src/lib/playbook/schema.ts
       - name: Freeze public build inputs under the production lock
         id: freeze-inputs
         if: steps.restore.outputs.need_inputs == 'true'
@@ -108,7 +117,10 @@ jobs:
         id: restore-playbook-tooling
         run: |
           cp "$RUNNER_TEMP/release-playbook-tooling/source/fetch-initial-playbook.ts" scripts/fetch-initial-playbook.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/source/prepare-playbook-edition.ts" scripts/prepare-playbook-edition.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/source/bundle.ts" src/lib/playbook/bundle.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/source/release.ts" src/lib/playbook/release.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/source/schema.ts" src/lib/playbook/schema.ts
       - name: Retain frozen inputs for 90 days
         id: retain-inputs
         if: steps.restore.outputs.need_inputs == 'true'

@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
   "covered_files": {
-    ".github/workflows/product-release.yml": "2e075f5b1c03c8c0a4d6e79b9a9b0c331823909e",
+    ".github/workflows/product-release.yml": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
     "tests/ci/product-prerelease-workflow.test.ts": "8ca82eea17052ff532230c02f7e213c0ef0ad6c0"
   },
   "change": {
@@ -31,7 +31,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "2e075f5b1c03c8c0a4d6e79b9a9b0c331823909e",
+          "blob": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
           "command": "The restore step is ordered before the verified-source checkout and retains its output for later freeze/build steps."
         },
         {
@@ -52,7 +52,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "2e075f5b1c03c8c0a4d6e79b9a9b0c331823909e",
+          "blob": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
           "command": "bunx biome check tests/ci/product-prerelease-workflow.test.ts"
         },
         {
@@ -81,7 +81,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "2e075f5b1c03c8c0a4d6e79b9a9b0c331823909e",
+          "blob": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
           "command": "The workflow order does not alter HTTP, tRPC, MCP, or shipped product contracts."
         }
       ]
@@ -95,7 +95,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "2e075f5b1c03c8c0a4d6e79b9a9b0c331823909e",
+          "blob": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
           "command": "Only the order of existing recovery and source-checkout steps changed."
         }
       ]

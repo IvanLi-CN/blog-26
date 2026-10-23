@@ -22,6 +22,7 @@ import {
   isLegacyPublicCatalog,
   PLAYBOOK_PUBLIC_BUNDLE_NAME,
   PLAYBOOK_SUPPLEMENT_BUNDLE_NAME,
+  type PublicCatalogOptions,
   searchSchema,
 } from "./schema";
 import type { PlaybookEdition, PlaybookManifest } from "./types";
@@ -251,7 +252,8 @@ export function createPlaybookEdition(
   manifest: PlaybookManifest,
   rendererCommit: string,
   publicSnapshot: Uint8Array | string,
-  sourceTimestamp?: number
+  sourceTimestamp?: number,
+  catalogOptions?: PublicCatalogOptions
 ): PlaybookEdition {
   commitSchema.parse(rendererCommit);
   if (sourceTimestamp !== undefined) assertSourceTimestamp(sourceTimestamp);
@@ -261,7 +263,7 @@ export function createPlaybookEdition(
     decodeUtf8(files.get("catalog.json") ?? new Uint8Array(), "Public catalog")
   );
   const legacyCatalog = isLegacyPublicCatalog(rawCatalog);
-  const catalog = assertPublicCatalog(rawCatalog);
+  const catalog = assertPublicCatalog(rawCatalog, catalogOptions);
   const search = normalizePlaybookSearch(
     catalog,
     searchSchema.parse(
@@ -303,7 +305,8 @@ export async function readPlaybookEdition(
   root: string,
   rendererCommit: string,
   publicSnapshot: Uint8Array | string,
-  expectedSourceTimestamp?: number
+  expectedSourceTimestamp?: number,
+  catalogOptions?: PublicCatalogOptions
 ) {
   const sourceTimestamp = await readExpectedSourceTimestamp(root, expectedSourceTimestamp);
   const manifest = parseManifest(
@@ -315,6 +318,7 @@ export async function readPlaybookEdition(
     manifest,
     rendererCommit,
     publicSnapshot,
-    sourceTimestamp
+    sourceTimestamp,
+    catalogOptions
   );
 }

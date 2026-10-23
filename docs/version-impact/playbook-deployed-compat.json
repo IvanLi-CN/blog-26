@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
+  "covered_files": {
+    ".github/workflows/product-release.yml": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
+    "scripts/prepare-playbook-edition.ts": "5077c0ab59940fb8e00fb7bc5afca71914965bf3",
+    "src/lib/playbook/bundle.ts": "7a314d4dc9a3ee72847d4fde6d25aa5db2d26476",
+    "src/lib/playbook/schema.ts": "b69a0851a3a460de2ee173a8784edb8e7bcf0397",
+    "tests/lib/playbook-deployed-compat.test.ts": "ec121664ee0af96b925be2f0809daccf4b3bb4b4"
+  },
+  "change": {
+    "description": "Keep strict Playbook metadata validation for new sources while allowing the deployed-edition reader to remove historical internal doc metadata before validation during release recovery.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The compatibility path is opt-in and limited to historical deployed catalog reads. New source validation, public payload shape, release identity, and persistent application state remain unchanged.",
+      "assessed_at": "2026-10-23T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-deployed-compat.test.ts",
+          "blob": "ec121664ee0af96b925be2f0809daccf4b3bb4b4",
+          "command": "bun test tests/lib/playbook-deployed-compat.test.ts tests/lib/playbook-contract.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The release bridge carries the current schema, bundle reader, and deployed-edition preparation script into the freeze step, where only the deployed pointer path enables internal metadata stripping. Malformed metadata and all ordinary source reads remain rejected.",
+      "assessed_at": "2026-10-23T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/playbook/schema.ts",
+          "blob": "b69a0851a3a460de2ee173a8784edb8e7bcf0397",
+          "command": "bun test tests/lib/playbook-deployed-compat.test.ts tests/lib/playbook-contract.test.ts"
+        },
+        {
+          "path": "scripts/prepare-playbook-edition.ts",
+          "blob": "5077c0ab59940fb8e00fb7bc5afca71914965bf3",
+          "command": "bunx biome check scripts/prepare-playbook-edition.ts src/lib/playbook/bundle.ts src/lib/playbook/schema.ts tests/lib/playbook-deployed-compat.test.ts"
+        },
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The change remains limited to historical deployed Playbook metadata compatibility and the recovery workflow tooling bridge."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The focused Playbook contract, compatibility, release identity, and workflow tests pass. Strict default validation still rejects internal metadata, while the explicit deployed-read option strips only recognized internal doc metadata before validation.",
+      "assessed_at": "2026-10-23T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-deployed-compat.test.ts",
+          "blob": "ec121664ee0af96b925be2f0809daccf4b3bb4b4",
+          "command": "bun test tests/lib/playbook-deployed-compat.test.ts tests/lib/playbook-contract.test.ts tests/ci/product-prerelease-workflow.test.ts tests/lib/playbook-release-identity.test.ts: 81 passed, 0 failed"
+        },
+        {
+          "path": "src/lib/playbook/schema.ts",
+          "blob": "b69a0851a3a460de2ee173a8784edb8e7bcf0397",
+          "command": "bunx biome check src/lib/playbook/schema.ts src/lib/playbook/bundle.ts scripts/prepare-playbook-edition.ts tests/lib/playbook-deployed-compat.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.1.1",
+        "3.2.1",
+        "3.3.3",
+        "3.4.6",
+        "3.5.8",
+        "3.6.1",
+        "3.7.4"
+      ],
+      "evidence": [
+        {
+          "path": "src/lib/playbook/schema.ts",
+          "blob": "b69a0851a3a460de2ee173a8784edb8e7bcf0397",
+          "command": "The new option is internal to deployed-edition preparation and does not alter public API response contracts."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The compatibility option only transforms an in-memory catalog during release input preparation; it does not alter SQLite schema, reader sessions, comments, release ledger state, or published identity formats.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/lib/playbook/bundle.ts",
+          "blob": "7a314d4dc9a3ee72847d4fde6d25aa5db2d26476",
+          "command": "Catalog compatibility is applied before edition construction and is not persisted as a new state format."
+        }
+      ]
+    }
+  }
+}
