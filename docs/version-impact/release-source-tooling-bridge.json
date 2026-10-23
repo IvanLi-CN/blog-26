@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
+  "covered_files": {
+    ".github/workflows/product-release.yml": "2e075f5b1c03c8c0a4d6e79b9a9b0c331823909e"
+  },
+  "change": {
+    "description": "Allow a recovery of an older registered release source to use the current Playbook identity gate only while freezing external inputs, then restore the exact source tooling before product construction.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a release-orchestration repair. It preserves the original release identity, source SHA, frozen artifacts, product formats, and publication sequence while allowing the corrected Playbook compatibility gate to run during input acquisition.",
+      "assessed_at": "2026-10-23T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "2e075f5b1c03c8c0a4d6e79b9a9b0c331823909e",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The recovery workflow preserves the current gate scripts before checking out the registered source, swaps them in only for freeze-inputs, and restores the registered source files before later product steps. No public response, database schema, or artifact identity changes.",
+      "assessed_at": "2026-10-23T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "2e075f5b1c03c8c0a4d6e79b9a9b0c331823909e",
+          "command": "The workflow preserves, selects, and restores the two Playbook tooling files around freeze-inputs."
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The change is limited to recovery-time release tooling selection and its workflow evidence."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The focused Product Release workflow contract tests pass. The same-identity recovery run remains bound to the original release source and failed only because the old source gate was selected; this workflow repair is ready for the next empirical rerun.",
+      "assessed_at": "2026-10-23T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "2e075f5b1c03c8c0a4d6e79b9a9b0c331823909e",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4"
+      ],
+      "evidence": [
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "2e075f5b1c03c8c0a4d6e79b9a9b0c331823909e",
+          "command": "The workflow does not alter public HTTP, tRPC, MCP, or static product contracts."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The workflow only selects transient files on the Actions runner and does not change the release ledger or application persistence.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "2e075f5b1c03c8c0a4d6e79b9a9b0c331823909e",
+          "command": "The temporary tooling directory is runner-local and is removed with the job."
+        }
+      ]
+    }
+  }
+}

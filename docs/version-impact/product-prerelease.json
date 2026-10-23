@@ -7,7 +7,7 @@
     ".github/release-contract.json": "b019adfd2969ca868d58ed7014692c9fade8ee8a",
     ".github/workflows/ci.yml": "d0ce015111ffb8d71e11ad8e3d1650d2b6c44548",
     ".github/workflows/manual-product-release.yml": "ea9a5c86fe62d31bf5949ee7c9684c507c7aaecd",
-    ".github/workflows/product-release.yml": "be25706242df623b5362363d27846a865e9a6e5d",
+    ".github/workflows/product-release.yml": "2e075f5b1c03c8c0a4d6e79b9a9b0c331823909e",
     "CONTEXT.md": "aa1054a4c7bbee8555ba201c33c4989de49f720e",
     "docs/adr/0008-ci-dependency-freshness-policy.md": "a7bd615e08f9a13ff3469987dc5da7685747ada4",
     "docs/adr/0013-native-project-tag-discovery.md": "685754ce830f1e81118dd90afaab0b07274cab9f",

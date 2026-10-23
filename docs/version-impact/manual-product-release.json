@@ -9,7 +9,7 @@
     ".github/workflows/e2e.yml": "1d7d44ddf153a4c470faf837daeb63c5e139dbd2",
     ".github/workflows/manual-product-release.yml": "ea9a5c86fe62d31bf5949ee7c9684c507c7aaecd",
     ".github/workflows/notify-release-failure.yml": "7f7aa566abd39c485756b939822c04b1d0c9f40f",
-    ".github/workflows/product-release.yml": "57d5dbbe84f8292882ee715dab354d02fcdb8699",
+    ".github/workflows/product-release.yml": "2e075f5b1c03c8c0a4d6e79b9a9b0c331823909e",
     ".github/workflows/release-merge-followup.yml": "1bf7166bf6e678e561a3e6eb8053bd86885442c3",
     ".gitignore": "ce64803d3963e4668cd644c7ef465dd36e266eba",
     "AGENTS.md": "043a300f5054f4b889e8992dd98209c4dfe2143d",

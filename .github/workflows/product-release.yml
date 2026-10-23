@@ -61,6 +61,13 @@ jobs:
         run: bun scripts/product-release.ts restore
         env:
           GH_TOKEN: ${{ github.token }}
+      - name: Preserve source Playbook tooling for frozen input acquisition
+        if: steps.restore.outputs.need_inputs == 'true'
+        id: preserve-playbook-tooling
+        run: |
+          mkdir -p "$RUNNER_TEMP/release-playbook-tooling/fixed"
+          cp scripts/fetch-initial-playbook.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/fetch-initial-playbook.ts"
+          cp src/lib/playbook/release.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/release.ts"
       - name: Checkout the verified merged source
         id: checkout-source
         if: steps.identify.outputs.active == 'true'
@@ -73,6 +80,15 @@ jobs:
         id: install-product-dependencies
         if: steps.identify.outputs.active == 'true'
         run: bun install --frozen-lockfile
+      - name: Use current Playbook identity gate for frozen input acquisition
+        if: steps.restore.outputs.need_inputs == 'true'
+        id: select-playbook-tooling
+        run: |
+          mkdir -p "$RUNNER_TEMP/release-playbook-tooling/source"
+          cp scripts/fetch-initial-playbook.ts "$RUNNER_TEMP/release-playbook-tooling/source/fetch-initial-playbook.ts"
+          cp src/lib/playbook/release.ts "$RUNNER_TEMP/release-playbook-tooling/source/release.ts"
+          cp "$RUNNER_TEMP/release-playbook-tooling/fixed/fetch-initial-playbook.ts" scripts/fetch-initial-playbook.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/fixed/release.ts" src/lib/playbook/release.ts
       - name: Freeze public build inputs under the production lock
         id: freeze-inputs
         if: steps.restore.outputs.need_inputs == 'true'
@@ -87,6 +103,12 @@ jobs:
           PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: ${{ vars.PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL }}
           PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL: ${{ vars.PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL }}
           PUBLIC_OCTO_RILL_METRICS_BASE_URL: ${{ vars.PUBLIC_OCTO_RILL_METRICS_BASE_URL }}
+      - name: Restore registered source Playbook tooling
+        if: always() && steps.restore.outputs.need_inputs == 'true' && steps.select-playbook-tooling.outcome == 'success'
+        id: restore-playbook-tooling
+        run: |
+          cp "$RUNNER_TEMP/release-playbook-tooling/source/fetch-initial-playbook.ts" scripts/fetch-initial-playbook.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/source/release.ts" src/lib/playbook/release.ts
       - name: Retain frozen inputs for 90 days
         id: retain-inputs
         if: steps.restore.outputs.need_inputs == 'true'

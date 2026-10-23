@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "d870ef2223291211cb91c19bcefc1f4aaeb8bf6b",
   "covered_files": {
-    ".github/workflows/product-release.yml": "e00c5451cc3638ad510d820a18b99d552f42c485",
+    ".github/workflows/product-release.yml": "2e075f5b1c03c8c0a4d6e79b9a9b0c331823909e",
     "docs/runbooks/manual-version-release.md": "0c9682e8fe528b229d32e7ccc233810148efc6dc",
     "docs/specs/manual-version-release/IMPLEMENTATION.md": "f4b722fae56aa1d81904a6512866e438b913d2db",
     "docs/specs/manual-version-release/SPEC.md": "73a26106dae908a2974a27965fda6553f24120cb",
@@ -38,7 +38,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "e00c5451cc3638ad510d820a18b99d552f42c485",
+          "blob": "2e075f5b1c03c8c0a4d6e79b9a9b0c331823909e",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         },
         {
