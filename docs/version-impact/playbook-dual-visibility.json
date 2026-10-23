@@ -111,7 +111,7 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "3cf277183c01c6479adbdf6f58a6f1c081153216",
+          "blob": "0dc73b8e8fd73cd7391d75517c309fd82fa32e66",
           "command": "bun test src/server/http-compat-api.test.ts tests/lib/playbook-contract.test.ts tests/lib/playbook-workflows.test.ts tests/lib/manual-release-policy.test.ts tests/lib/manual-release-source.test.ts"
         },
         {
@@ -146,7 +146,7 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "3cf277183c01c6479adbdf6f58a6f1c081153216",
+          "blob": "0dc73b8e8fd73cd7391d75517c309fd82fa32e66",
           "command": "Public and supplement contract tests preserve shared Markdown bytes, validate deterministic archive metadata and source timestamps, Rust fixture bytes, rollback identity, unavailable optional identities, staged same-source overlays, durable invalidation across restart, and stale-marker replacement"
         },
         {
@@ -265,7 +265,7 @@
         },
         {
           "path": "tests/lib/playbook-contract.test.ts",
-          "blob": "3cf277183c01c6479adbdf6f58a6f1c081153216",
+          "blob": "0dc73b8e8fd73cd7391d75517c309fd82fa32e66",
           "command": "Supplement persistence, same-source staged retries, durable invalidation after failed cleanup, rollback-window late arrivals, conflicting overlay adoption, and temporarily unavailable asset reads retain a public-only fallback while allowing the public edition to advance"
         }
       ]
