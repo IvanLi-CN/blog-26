@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
   "covered_files": {
-    ".github/workflows/product-release.yml": "c8e3acdec3258d2ea4a1932a0554d173047f45c6"
+    ".github/workflows/product-release.yml": "45d183c72ad41ac6b62160da23395e9be1276673"
   },
   "change": {
     "description": "Allow a recovery of an older registered release source to use the current Playbook tooling only while freezing external inputs, then restore the exact source tooling before product construction.",
@@ -18,7 +18,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
+          "blob": "45d183c72ad41ac6b62160da23395e9be1276673",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         }
       ]
@@ -30,7 +30,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
+          "blob": "45d183c72ad41ac6b62160da23395e9be1276673",
           "command": "The workflow preserves, selects, and restores the current Playbook tooling files around freeze-inputs."
         }
       ],
@@ -46,7 +46,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
+          "blob": "45d183c72ad41ac6b62160da23395e9be1276673",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         }
       ]
@@ -86,7 +86,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
+          "blob": "45d183c72ad41ac6b62160da23395e9be1276673",
           "command": "The workflow does not alter public HTTP, tRPC, MCP, or static product contracts."
         }
       ]
@@ -100,7 +100,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
+          "blob": "45d183c72ad41ac6b62160da23395e9be1276673",
           "command": "The temporary tooling directory is runner-local and is removed with the job."
         }
       ]

@@ -19,6 +19,7 @@ import {
   isLegacyPublicCatalog,
   PLAYBOOK_PUBLIC_POINTER_URL,
   type PlaybookPublicRelationIndex,
+  type PublicCatalogOptions,
   searchSchema,
   sourceSchema,
 } from "./schema";
@@ -77,7 +78,8 @@ export function playbookCacheDirectory(dbPath = process.env.DB_PATH || "./data/s
 
 export function validatePlaybookEdition(
   value: unknown,
-  rawFiles?: ReadonlyMap<string, Uint8Array>
+  rawFiles?: ReadonlyMap<string, Uint8Array>,
+  catalogOptions: PublicCatalogOptions = {}
 ): PlaybookEdition {
   if (!value || typeof value !== "object") throw new Error("Invalid edition envelope");
   const input = value as Record<string, unknown>;
@@ -91,7 +93,7 @@ export function validatePlaybookEdition(
   const verifiedRawFiles = rawFiles ?? embeddedRawFiles;
   if (legacyCatalog && !verifiedRawFiles)
     throw new Error("Legacy public edition raw file bytes are required");
-  const catalog = assertPublicCatalog(input.catalog);
+  const catalog = assertPublicCatalog(input.catalog, catalogOptions);
   const parsedSearch = searchSchema.parse(input.search);
   const search = legacyCatalog ? normalizePlaybookSearch(catalog, parsedSearch) : parsedSearch;
   const ids = new Set<string>();
@@ -107,7 +109,7 @@ export function validatePlaybookEdition(
     const rawSearch = parseJson(
       decodeUtf8(verifiedRawFiles?.get("search-documents.json") ?? [], "Public search")
     );
-    const normalizedCatalog = assertPublicCatalog(rawCatalog);
+    const normalizedCatalog = assertPublicCatalog(rawCatalog, catalogOptions);
     const normalizedSearch = normalizePlaybookSearch(
       normalizedCatalog,
       searchSchema.parse(rawSearch)
@@ -125,11 +127,23 @@ export function validatePlaybookEdition(
     if (raw) {
       verifyFile(raw, file);
       if (legacyCatalog) continue;
-      if (encodeJson(parseJson(decodeUtf8(raw, `Playbook ${file.path}`))) !== encodeJson(source))
+      const rawValue = parseJson(decodeUtf8(raw, `Playbook ${file.path}`));
+      if (
+        file.path === "catalog.json" &&
+        catalogOptions.stripInternalMetadata === true &&
+        encodeJson(assertPublicCatalog(rawValue, catalogOptions)) === encodeJson(catalog)
+      )
+        continue;
+      if (encodeJson(rawValue) !== encodeJson(source))
         throw new Error(`Playbook file projection mismatch: ${file.path}`);
       continue;
     }
     if (legacyCatalog) continue;
+    if (file.path === "catalog.json" && catalogOptions.stripInternalMetadata === true) {
+      // The historical catalog hash was verified while downloading the raw
+      // deployed file; the sanitized in-memory projection has different bytes.
+      continue;
+    }
     try {
       verifyFile(encodeJson(normalized), file);
     } catch {
@@ -256,7 +270,9 @@ export class PlaybookStore {
       }
       for (const key of ["current", "previous"] as const) {
         try {
-          this.state[key] = freezeEdition(validatePlaybookEdition(raw[key]));
+          this.state[key] = freezeEdition(
+            validatePlaybookEdition(raw[key], undefined, { stripInternalMetadata: true })
+          );
         } catch {
           /* An incompatible or incomplete entry cannot replace a compatible one. */
         }
@@ -270,7 +286,9 @@ export class PlaybookStore {
     if (!this.state.current) {
       try {
         this.state.current = freezeEdition(
-          validatePlaybookEdition(parseJson(await readFile(resolve(seedPath), "utf8")))
+          validatePlaybookEdition(parseJson(await readFile(resolve(seedPath), "utf8")), undefined, {
+            stripInternalMetadata: true,
+          })
         );
       } catch {
         /* Other console surfaces remain available without a playbook. */
@@ -557,7 +575,9 @@ export class PlaybookStore {
     expectedBase?: PlaybookEditionIdentity | null,
     commitFence?: (commit: () => void) => void
   ) {
-    const edition = freezeEdition(validatePlaybookEdition(value));
+    const edition = freezeEdition(
+      validatePlaybookEdition(value, undefined, { stripInternalMetadata: true })
+    );
     let clearConflictingSupplement = false;
     if (
       this.supplement &&
@@ -735,7 +755,8 @@ export class PlaybookStore {
           search: files.get("search-documents.json"),
           publicSnapshot,
         },
-        rawFiles
+        rawFiles,
+        { stripInternalMetadata: true }
       );
       if (this.stopped || signal.aborted) return;
       return freezeEdition(edition);

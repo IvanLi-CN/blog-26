@@ -16,14 +16,14 @@
     "scripts/prepare-console-playbook-seed.ts": "d126f6fe798e17cb479c7f85056a310290e6f0b5",
     "scripts/playbook-content-update.ts": "d10d0b8a7638f746622d623f08913892834c2162",
     "scripts/prepare-backend-dist.sh": "f2a8b868dbeefb9b28cfdefcfff3a74f9ecdc9b6",
-    "scripts/prepare-playbook-edition.ts": "5077c0ab59940fb8e00fb7bc5afca71914965bf3",
+    "scripts/prepare-playbook-edition.ts": "440084f36645f4d6fb941e0aad2c3994f0c77099",
     "scripts/stage-playbook-initial-from-artifact.ts": "8f18eeaf69ae743e8dff006d920702f65fc4a5fe",
     "scripts/verify-playbook-artifact.ts": "6d89695620bfda99d8b33d54848708935cde70c0",
     "src/lib/admin-api-client.ts": "2a64f08b269db50bef7a5452e4c3c607a53f8884",
-    "src/lib/playbook/artifacts.ts": "666fb51cdf330b065855aa71a5741791fc132169",
-    "src/lib/playbook/bundle.ts": "7a314d4dc9a3ee72847d4fde6d25aa5db2d26476",
+    "src/lib/playbook/artifacts.ts": "8db0131aca2a286c4b205fc4123a492e898ae048",
+    "src/lib/playbook/bundle.ts": "7a522d40dbee98adf7b4b59536cf670cc7354493",
     "src/lib/playbook/github.ts": "749df3d4580e83e571842279c98d96161a485f98",
-    "src/lib/playbook/cache.ts": "a1c276c2bb0a3b98d61afa0d6a0528ff26414ff8",
+    "src/lib/playbook/cache.ts": "e753bc25eaf0b643171fa4cbda5d212117eb935d",
     "src/lib/playbook/fixture.ts": "5df5704636a959f61f9301b2e9b0efba49eea934",
     "src/lib/playbook/manifest.ts": "95bfd1e08d9cf8acc1ca67cb27cbe1f4e48ab3e0",
     "src/lib/playbook/public-package-capabilities.json": "c64a471dbe131999919b3bd63522a47be3d0e848",
@@ -93,7 +93,7 @@
         },
         {
           "path": "src/lib/playbook/cache.ts",
-          "blob": "a1c276c2bb0a3b98d61afa0d6a0528ff26414ff8",
+          "blob": "e753bc25eaf0b643171fa4cbda5d212117eb935d",
           "command": "Receiver cache preserves staged same-source overlays, distinguishes explicit empty overlays from retryable absence, persists fail-closed invalidation across restart when retryable cleanup cannot replace the overlay, and does not let a stale marker hide a valid replacement"
         },
         {
@@ -139,7 +139,7 @@
         },
         {
           "path": "src/lib/playbook/artifacts.ts",
-          "blob": "666fb51cdf330b065855aa71a5741791fc132169",
+          "blob": "8db0131aca2a286c4b205fc4123a492e898ae048",
           "command": "Retained public editions verify and preserve legacy package file identities while rebuilding policy resources"
         },
         {
@@ -263,7 +263,7 @@
       "evidence": [
         {
           "path": "src/lib/playbook/cache.ts",
-          "blob": "a1c276c2bb0a3b98d61afa0d6a0528ff26414ff8",
+          "blob": "e753bc25eaf0b643171fa4cbda5d212117eb935d",
           "command": "Playbook cache persists an optional source-bound supplement, preserves staged overlays across same-source absent retries, isolates conflicting overlays during public adoption, persists retryable invalidation across restart, rejects newer late sources during rollback, and keeps malformed or mismatched data out of the admin read model"
         },
         {

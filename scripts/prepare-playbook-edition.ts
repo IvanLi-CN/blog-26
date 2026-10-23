@@ -100,7 +100,9 @@ const edition = inputSeed
   : await readPlaybookEdition(resolve(bundleRoot), renderer, snapshot, undefined, {
       stripInternalMetadata: Boolean(current),
     });
-validatePlaybookEdition(edition);
+validatePlaybookEdition(edition, undefined, {
+  stripInternalMetadata: Boolean(current),
+});
 if (current) {
   if (!samePlaybookEdition(current, edition.edition))
     edition.edition.previous = { tag: current.source.tag, editionDigest: current.editionDigest };
@@ -128,7 +130,9 @@ if (current) {
     edition.edition.previous = current.previous;
   }
 }
-await writePublicEdition(publicRoot, edition, resolve(bundleRoot), snapshot);
+await writePublicEdition(publicRoot, edition, resolve(bundleRoot), snapshot, {
+  stripInternalMetadata: Boolean(current),
+});
 await mkdir(resolve("site/generated"), { recursive: true });
 await writeFile(seedPath, encodeJson(edition));
 const supplementRoot = process.env.PLAYBOOK_SUPPLEMENT_DIR

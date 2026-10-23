@@ -91,11 +91,15 @@ jobs:
           cp scripts/fetch-initial-playbook.ts "$RUNNER_TEMP/release-playbook-tooling/source/fetch-initial-playbook.ts"
           cp scripts/prepare-playbook-edition.ts "$RUNNER_TEMP/release-playbook-tooling/source/prepare-playbook-edition.ts"
           cp src/lib/playbook/bundle.ts "$RUNNER_TEMP/release-playbook-tooling/source/bundle.ts"
+          cp src/lib/playbook/artifacts.ts "$RUNNER_TEMP/release-playbook-tooling/source/artifacts.ts"
+          cp src/lib/playbook/cache.ts "$RUNNER_TEMP/release-playbook-tooling/source/cache.ts"
           cp src/lib/playbook/release.ts "$RUNNER_TEMP/release-playbook-tooling/source/release.ts"
           cp src/lib/playbook/schema.ts "$RUNNER_TEMP/release-playbook-tooling/source/schema.ts"
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/fetch-initial-playbook.ts" scripts/fetch-initial-playbook.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/prepare-playbook-edition.ts" scripts/prepare-playbook-edition.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/bundle.ts" src/lib/playbook/bundle.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/fixed/artifacts.ts" src/lib/playbook/artifacts.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/fixed/cache.ts" src/lib/playbook/cache.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/release.ts" src/lib/playbook/release.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/schema.ts" src/lib/playbook/schema.ts
       - name: Freeze public build inputs under the production lock
@@ -119,6 +123,8 @@ jobs:
           cp "$RUNNER_TEMP/release-playbook-tooling/source/fetch-initial-playbook.ts" scripts/fetch-initial-playbook.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/source/prepare-playbook-edition.ts" scripts/prepare-playbook-edition.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/source/bundle.ts" src/lib/playbook/bundle.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/source/artifacts.ts" src/lib/playbook/artifacts.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/source/cache.ts" src/lib/playbook/cache.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/source/release.ts" src/lib/playbook/release.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/source/schema.ts" src/lib/playbook/schema.ts
       - name: Retain frozen inputs for 90 days
