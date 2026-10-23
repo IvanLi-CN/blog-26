@@ -10,6 +10,7 @@ import {
 import { githubReleaseReader } from "../src/lib/playbook/github";
 import { encodeJson } from "../src/lib/playbook/manifest";
 import {
+  assertPublishedSourceIdentity,
   PlaybookSupplementUnavailableError,
   readSupplementAsset,
   resolveRelease,
@@ -31,18 +32,7 @@ const selected = pointer
 if (!selected)
   throw new Error("No ready stable Playbook release is available for the initial build");
 if (pointer) {
-  if (
-    encodeJson(pointer.source) !== encodeJson(selected.manifest.source) ||
-    encodeJson(pointer.bundle) !== encodeJson(selected.manifest.bundle)
-  )
-    throw new Error("Published Playbook pointer does not match its source release");
-  const pointerFiles = new Map(pointer.files.map((file) => [file.path, file]));
-  if (
-    selected.manifest.files.some(
-      (file) => encodeJson(pointerFiles.get(file.path)) !== encodeJson(file)
-    )
-  )
-    throw new Error("Published Playbook pointer files do not match its source release");
+  assertPublishedSourceIdentity(pointer, selected.manifest);
 }
 const directory = resolve(".tmp/playbook-initial");
 const supplementDirectory = resolve(directory, "supplement");

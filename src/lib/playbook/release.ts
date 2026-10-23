@@ -79,6 +79,17 @@ export class PlaybookSupplementInvalidError extends Error {
   }
 }
 
+export function assertPublishedSourceIdentity(
+  pointer: PlaybookEditionIdentity,
+  manifest: PlaybookManifest
+) {
+  if (
+    encodeJson(pointer.source) !== encodeJson(manifest.source) ||
+    encodeJson(pointer.bundle) !== encodeJson(manifest.bundle)
+  )
+    throw new Error("Published Playbook pointer does not match its source release");
+}
+
 export async function readSupplementAsset(
   reader: ReleaseReader,
   id: number,
