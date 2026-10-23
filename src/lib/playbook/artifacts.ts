@@ -17,6 +17,7 @@ import {
   verifyFile,
 } from "./manifest";
 import { getPlaybookPolicies } from "./navigation";
+import type { PublicCatalogOptions } from "./schema";
 import type { PlaybookEdition, PlaybookEditionIdentity } from "./types";
 
 async function write(path: string, data: string | Uint8Array) {
@@ -60,7 +61,8 @@ export async function downloadRetainedEdition(
   pointer: PlaybookEditionIdentity,
   manifestUrl: string,
   destination: string,
-  fetcher: PlaybookFetcher = fetch
+  fetcher: PlaybookFetcher = fetch,
+  catalogOptions: PublicCatalogOptions = { stripInternalMetadata: true }
 ) {
   const base = new URL(
     `.${playbookVersionPath(pointer).replace("/_content/playbook", "")}`,
@@ -86,7 +88,8 @@ export async function downloadRetainedEdition(
       catalog: files.get("catalog.json"),
       search: files.get("search-documents.json"),
     },
-    rawFiles
+    rawFiles,
+    catalogOptions
   );
   const archive = await fetchBounded(
     fetcher,
@@ -111,7 +114,8 @@ export async function downloadRetainedEdition(
     destination,
     pointer.rendererCommit,
     await readFile(join(destination, "public-snapshot.json")),
-    pointer.sourceTimestamp
+    pointer.sourceTimestamp,
+    catalogOptions
   );
   if (!samePlaybookEdition(rebuilt.edition, pointer))
     throw new Error("Retained package does not reproduce the public edition");
@@ -136,12 +140,17 @@ export async function writePublicEdition(
   publicRoot: string,
   edition: PlaybookEdition,
   bundleRoot: string,
-  publicSnapshot: Uint8Array | string
+  publicSnapshot: Uint8Array | string,
+  catalogOptions: PublicCatalogOptions = {}
 ) {
-  const rawFiles = edition.legacyCatalog
-    ? decodePlaybookRawFiles(edition.legacyRawFiles)
-    : undefined;
-  validatePlaybookEdition(edition, rawFiles);
+  let rawFiles = edition.legacyCatalog ? decodePlaybookRawFiles(edition.legacyRawFiles) : undefined;
+  if (!rawFiles && catalogOptions.stripInternalMetadata === true) {
+    rawFiles = new Map<string, Uint8Array>([
+      ["catalog.json", await readFile(join(bundleRoot, "catalog.json"))],
+      ["search-documents.json", await readFile(join(bundleRoot, "search-documents.json"))],
+    ]);
+  }
+  validatePlaybookEdition(edition, rawFiles, catalogOptions);
   const directory = join(publicRoot, playbookVersionPath(edition.edition));
   await write(
     join(directory, "catalog.json"),

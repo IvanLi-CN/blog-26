@@ -3,11 +3,13 @@
   "kind": "version-impact-record",
   "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
   "covered_files": {
-    ".github/workflows/product-release.yml": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
-    "scripts/prepare-playbook-edition.ts": "5077c0ab59940fb8e00fb7bc5afca71914965bf3",
-    "src/lib/playbook/bundle.ts": "7a314d4dc9a3ee72847d4fde6d25aa5db2d26476",
+    ".github/workflows/product-release.yml": "45d183c72ad41ac6b62160da23395e9be1276673",
+    "scripts/prepare-playbook-edition.ts": "440084f36645f4d6fb941e0aad2c3994f0c77099",
+    "src/lib/playbook/artifacts.ts": "8db0131aca2a286c4b205fc4123a492e898ae048",
+    "src/lib/playbook/bundle.ts": "7a522d40dbee98adf7b4b59536cf670cc7354493",
+    "src/lib/playbook/cache.ts": "e753bc25eaf0b643171fa4cbda5d212117eb935d",
     "src/lib/playbook/schema.ts": "b69a0851a3a460de2ee173a8784edb8e7bcf0397",
-    "tests/lib/playbook-deployed-compat.test.ts": "ec121664ee0af96b925be2f0809daccf4b3bb4b4"
+    "tests/lib/playbook-deployed-compat.test.ts": "593e02718de41b59b1a56ab4fc59940d29c74e9f"
   },
   "change": {
     "description": "Keep strict Playbook metadata validation for new sources while allowing the deployed-edition reader to remove historical internal doc metadata before validation during release recovery.",
@@ -22,14 +24,14 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-deployed-compat.test.ts",
-          "blob": "ec121664ee0af96b925be2f0809daccf4b3bb4b4",
+          "blob": "593e02718de41b59b1a56ab4fc59940d29c74e9f",
           "command": "bun test tests/lib/playbook-deployed-compat.test.ts tests/lib/playbook-contract.test.ts"
         }
       ]
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The release bridge carries the current schema, bundle reader, and deployed-edition preparation script into the freeze step, where only the deployed pointer path enables internal metadata stripping. Malformed metadata and all ordinary source reads remain rejected.",
+      "reasoning": "The release bridge carries the current schema, bundle reader, retained-artifact reader, cache validator, and deployed-edition preparation script into the freeze step, where only the deployed pointer path enables internal metadata stripping. Historical catalog bytes retain their published identity while malformed metadata and all ordinary source reads remain rejected.",
       "assessed_at": "2026-10-23T00:00:00+08:00",
       "evidence": [
         {
@@ -39,12 +41,22 @@
         },
         {
           "path": "scripts/prepare-playbook-edition.ts",
-          "blob": "5077c0ab59940fb8e00fb7bc5afca71914965bf3",
+          "blob": "440084f36645f4d6fb941e0aad2c3994f0c77099",
           "command": "bunx biome check scripts/prepare-playbook-edition.ts src/lib/playbook/bundle.ts src/lib/playbook/schema.ts tests/lib/playbook-deployed-compat.test.ts"
         },
         {
+          "path": "src/lib/playbook/artifacts.ts",
+          "blob": "8db0131aca2a286c4b205fc4123a492e898ae048",
+          "command": "Retained deployed editions validate sanitized historical catalogs while reproducing the pointer identity"
+        },
+        {
+          "path": "src/lib/playbook/cache.ts",
+          "blob": "e753bc25eaf0b643171fa4cbda5d212117eb935d",
+          "command": "Runtime cache adoption and restart paths use the same deployed-read compatibility boundary"
+        },
+        {
           "path": ".github/workflows/product-release.yml",
-          "blob": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
+          "blob": "45d183c72ad41ac6b62160da23395e9be1276673",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         }
       ],
@@ -55,18 +67,28 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "The focused Playbook contract, compatibility, release identity, and workflow tests pass. Strict default validation still rejects internal metadata, while the explicit deployed-read option strips only recognized internal doc metadata before validation.",
+      "reasoning": "The focused Playbook contract, compatibility, release identity, and workflow tests pass. Strict default validation still rejects internal metadata, while the explicit deployed-read option strips only recognized internal doc metadata before validation and preserves historical file identity through download, cache adoption, restart, and publication.",
       "assessed_at": "2026-10-23T00:00:00+08:00",
       "evidence": [
         {
           "path": "tests/lib/playbook-deployed-compat.test.ts",
-          "blob": "ec121664ee0af96b925be2f0809daccf4b3bb4b4",
+          "blob": "593e02718de41b59b1a56ab4fc59940d29c74e9f",
           "command": "bun test tests/lib/playbook-deployed-compat.test.ts tests/lib/playbook-contract.test.ts tests/ci/product-prerelease-workflow.test.ts tests/lib/playbook-release-identity.test.ts: 81 passed, 0 failed"
         },
         {
           "path": "src/lib/playbook/schema.ts",
           "blob": "b69a0851a3a460de2ee173a8784edb8e7bcf0397",
           "command": "bunx biome check src/lib/playbook/schema.ts src/lib/playbook/bundle.ts scripts/prepare-playbook-edition.ts tests/lib/playbook-deployed-compat.test.ts"
+        },
+        {
+          "path": "src/lib/playbook/artifacts.ts",
+          "blob": "8db0131aca2a286c4b205fc4123a492e898ae048",
+          "command": "bun test tests/lib/playbook-deployed-compat.test.ts tests/lib/playbook-contract.test.ts"
+        },
+        {
+          "path": "src/lib/playbook/cache.ts",
+          "blob": "e753bc25eaf0b643171fa4cbda5d212117eb935d",
+          "command": "bun test tests/lib/playbook-workflows.test.ts tests/lib/playbook-contract.test.ts"
         }
       ]
     }
@@ -119,7 +141,7 @@
       "evidence": [
         {
           "path": "src/lib/playbook/bundle.ts",
-          "blob": "7a314d4dc9a3ee72847d4fde6d25aa5db2d26476",
+          "blob": "7a522d40dbee98adf7b4b59536cf670cc7354493",
           "command": "Catalog compatibility is applied before edition construction and is not persisted as a new state format."
         }
       ]

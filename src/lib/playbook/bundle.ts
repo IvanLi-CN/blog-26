@@ -273,8 +273,11 @@ export function createPlaybookEdition(
   const catalogBytes = files.get("catalog.json");
   const searchBytes = files.get("search-documents.json");
   if (!catalogBytes || !searchBytes) throw new Error("Public bundle data files are incomplete");
+  // Deployed historical editions retain their original catalog bytes so the
+  // compatibility projection does not change the published edition identity.
+  const preserveCatalogBytes = legacyCatalog || catalogOptions?.stripInternalMetadata === true;
   const records = [
-    fileRecord("catalog.json", legacyCatalog ? catalogBytes : encodeJson(catalog)),
+    fileRecord("catalog.json", preserveCatalogBytes ? catalogBytes : encodeJson(catalog)),
     fileRecord("public-snapshot.json", publicSnapshot),
     fileRecord("search-documents.json", legacyCatalog ? searchBytes : encodeJson(search)),
   ];
