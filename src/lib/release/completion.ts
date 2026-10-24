@@ -246,7 +246,10 @@ export function assertRetryableProductRelease(
     throw new Error("Only an incomplete merged release can be retried");
   if (!entry.releaseRunId || entry.releaseRunId !== run.id)
     throw new Error("Retry must target the ledger's original release run");
-  if (!entry.mergeSha || run.head_sha !== entry.mergeSha)
+  // A workflow_run is emitted for the registered merge SHA; a manual dispatch
+  // records the main head that started the run while the release stays bound to
+  // its registered merge identity.
+  if (!entry.mergeSha || (run.event !== "workflow_dispatch" && run.head_sha !== entry.mergeSha))
     throw new Error("Retry run source differs from the registered merge SHA");
   if (
     run.head_repository.full_name !== repository ||

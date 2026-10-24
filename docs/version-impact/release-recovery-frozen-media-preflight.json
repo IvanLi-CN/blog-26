@@ -14,7 +14,7 @@
     "docs/specs/manual-version-release/SPEC.md": "029a3ce6db8030b70cc28efd3f425016c665e980",
     "scripts/product-release.ts": "155d1448ac7a29b5e46f082cdc99a5bddc2e2930",
     "src/lib/release/artifacts.ts": "9faf84f70f5dca76c916008167112917412ff694",
-    "src/lib/release/completion.ts": "f9370b1ed2484e5d4ecb1f1714de6e0d57ac328e",
+    "src/lib/release/completion.ts": "24e10aa01d512452634aec35f4270a16169ef601",
     "src/lib/release/failure.ts": "db94f1eaf4bd9959256c204dba003eb85f948e05",
     "src/lib/release/github.ts": "24167d59daea86cc8419730c0ebe4d2ad6214bc6",
     "src/lib/release/ledger.ts": "999cbb7cf69a3b5a9cdba30e917569a1620d2e03",
@@ -22,7 +22,7 @@
     "src/lib/release/publication.ts": "f4a58c48b1a19eb27bc2a4a504627fbcae06c629",
     "tests/ci/notify-release-failure-workflow.test.ts": "6547c9cb7acc1c01668678d306f9406a33c3d550",
     "tests/ci/product-prerelease-workflow.test.ts": "9d3fa41920fee4060c3001db8a50c0ceccbb9258",
-    "tests/lib/manual-release-completion.test.ts": "692c323f60f299589c46a90b55ccedc7a9ec8245",
+    "tests/lib/manual-release-completion.test.ts": "3119ff8b6524755c7c59db1770d7aad4b5d27295",
     "tests/lib/manual-release-failure.test.ts": "f03887076131cc895c4866a744dbede6a83ab90a",
     "tests/lib/manual-release-ledger.test.ts": "d587bd127817e92a18d8076707e9119dce808581",
     "tests/lib/manual-release-products.test.ts": "abd2d7343cf0fe5f6d16de6dbee8aaa34995846f",
@@ -48,12 +48,12 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The retry workflow accepts only a release identity and reruns the validated original Product Release run. New failure metadata is additive to the ledger reader, input-only abandon is fail-closed when artifacts remain available, and static output reuse is bound to identity, source and frozen input digest.",
+      "reasoning": "The retry workflow accepts only a release identity and reruns the validated original Product Release run; manual dispatch retries accept the dispatch head while retaining the registered merge identity. New failure metadata is additive to the ledger reader, input-only abandon is fail-closed when artifacts remain available, and static output reuse is bound to identity, source and frozen input digest.",
       "assessed_at": "2026-10-23T00:00:00+08:00",
       "evidence": [
         {
           "path": "tests/lib/manual-release-completion.test.ts",
-          "blob": "692c323f60f299589c46a90b55ccedc7a9ec8245",
+          "blob": "3119ff8b6524755c7c59db1770d7aad4b5d27295",
           "command": "bun test tests/lib/manual-release-completion.test.ts"
         },
         {
