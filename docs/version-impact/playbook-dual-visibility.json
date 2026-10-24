@@ -16,12 +16,12 @@
     "scripts/prepare-console-playbook-seed.ts": "d126f6fe798e17cb479c7f85056a310290e6f0b5",
     "scripts/playbook-content-update.ts": "d10d0b8a7638f746622d623f08913892834c2162",
     "scripts/prepare-backend-dist.sh": "f2a8b868dbeefb9b28cfdefcfff3a74f9ecdc9b6",
-    "scripts/prepare-playbook-edition.ts": "440084f36645f4d6fb941e0aad2c3994f0c77099",
+    "scripts/prepare-playbook-edition.ts": "de051f025ccddc417c87e9dedfb265f0dc3b3588",
     "scripts/stage-playbook-initial-from-artifact.ts": "8f18eeaf69ae743e8dff006d920702f65fc4a5fe",
     "scripts/verify-playbook-artifact.ts": "6d89695620bfda99d8b33d54848708935cde70c0",
     "src/lib/admin-api-client.ts": "2a64f08b269db50bef7a5452e4c3c607a53f8884",
-    "src/lib/playbook/artifacts.ts": "8db0131aca2a286c4b205fc4123a492e898ae048",
-    "src/lib/playbook/bundle.ts": "7a522d40dbee98adf7b4b59536cf670cc7354493",
+    "src/lib/playbook/artifacts.ts": "9c8d3482e60eeaa22db358f17920d65ab961a630",
+    "src/lib/playbook/bundle.ts": "b2b359e49a26c42aa3c94bd918053ec45563fbd2",
     "src/lib/playbook/github.ts": "749df3d4580e83e571842279c98d96161a485f98",
     "src/lib/playbook/cache.ts": "e753bc25eaf0b643171fa4cbda5d212117eb935d",
     "src/lib/playbook/fixture.ts": "5df5704636a959f61f9301b2e9b0efba49eea934",
@@ -139,7 +139,7 @@
         },
         {
           "path": "src/lib/playbook/artifacts.ts",
-          "blob": "8db0131aca2a286c4b205fc4123a492e898ae048",
+          "blob": "9c8d3482e60eeaa22db358f17920d65ab961a630",
           "command": "Retained public editions verify and preserve legacy package file identities while rebuilding policy resources"
         },
         {

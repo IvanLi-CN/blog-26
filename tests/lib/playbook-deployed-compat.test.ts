@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { downloadRetainedEdition } from "../../src/lib/playbook/artifacts";
+import { downloadRetainedEdition, writePublicEdition } from "../../src/lib/playbook/artifacts";
 import { createPlaybookEdition } from "../../src/lib/playbook/bundle";
 import { publicFixtureCatalog, publicFixtureSearch } from "../../src/lib/playbook/fixture";
 import { encodeJson, fileRecord, sha256 } from "../../src/lib/playbook/manifest";
@@ -35,16 +35,20 @@ describe("deployed Playbook compatibility", () => {
     });
     const catalogBytes = Buffer.from(encodeJson(catalog));
     const searchBytes = Buffer.from(
-      encodeJson(
+      `${encodeJson(
         normalizePlaybookSearch(
           assertPublicCatalog(catalog, { stripInternalMetadata: true }),
           publicFixtureSearch
         )
-      )
+      )}\n`
     );
+    const archiveCatalogBytes = Buffer.from(
+      encodeJson(assertPublicCatalog(catalog, { stripInternalMetadata: true }))
+    );
+    const archiveSearchBytes = Buffer.from(searchBytes.toString("utf8").trimEnd());
     const archive = makeArchive([
-      { path: "catalog.json", content: catalogBytes.toString("utf8") },
-      { path: "search-documents.json", content: searchBytes.toString("utf8") },
+      { path: "catalog.json", content: archiveCatalogBytes.toString("utf8") },
+      { path: "search-documents.json", content: archiveSearchBytes.toString("utf8") },
     ]);
     const manifest: PlaybookManifest = {
       schemaVersion: 1,
@@ -57,8 +61,8 @@ describe("deployed Playbook compatibility", () => {
       },
       bundle: { name: "playbook-public.tar.gz", size: archive.length, sha256: sha256(archive) },
       files: [
-        fileRecord("catalog.json", catalogBytes),
-        fileRecord("search-documents.json", searchBytes),
+        fileRecord("catalog.json", archiveCatalogBytes),
+        fileRecord("search-documents.json", archiveSearchBytes),
       ],
     };
     const source = createPlaybookEdition(
@@ -94,6 +98,22 @@ describe("deployed Playbook compatibility", () => {
       key: "source_repo",
       value: "IvanLi-CN/internal-checkout",
     });
+    const published = await mkdtemp(join(tmpdir(), "playbook-deployed-published-"));
+    await writePublicEdition(published, retained, destination, "{}\n", {
+      stripInternalMetadata: true,
+    });
+    expect(
+      await readFile(
+        join(
+          published,
+          "_content/playbook",
+          retained.edition.source.tag,
+          retained.edition.editionDigest,
+          "catalog.json"
+        )
+      )
+    ).toEqual(catalogBytes);
+    await rm(published, { recursive: true, force: true });
     await rm(destination, { recursive: true, force: true });
   });
 });

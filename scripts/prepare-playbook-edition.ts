@@ -19,7 +19,7 @@ import {
   readPlaybookSupplement,
   samePlaybookSource,
 } from "../src/lib/playbook/supplement";
-import type { PlaybookEditionIdentity } from "../src/lib/playbook/types";
+import type { PlaybookEdition, PlaybookEditionIdentity } from "../src/lib/playbook/types";
 
 const publicRoot = resolve("public");
 const seedPath = resolve("site/generated/playbook-edition.json");
@@ -57,6 +57,7 @@ const manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL;
 const working = resolve(process.env.PLAYBOOK_WORK_DIR || ".tmp/playbook");
 let bundleRoot = process.env.PLAYBOOK_BUNDLE_DIR;
 let current: PlaybookEditionIdentity | undefined;
+let retainedEdition: PlaybookEdition | undefined;
 const inputPath = process.env.PLAYBOOK_EDITION_INPUT_PATH;
 const inputSeed = inputPath
   ? validatePlaybookEdition(parseJson(await readFile(resolve(inputPath), "utf8")))
@@ -83,7 +84,7 @@ if (!inputSeed && process.env.PLAYBOOK_USE_DEPLOYED === "true") {
       publicRoot,
       `_content/playbook/${current.source.tag}/${current.editionDigest}`
     );
-    await downloadRetainedEdition(current, manifestUrl, destination);
+    retainedEdition = await downloadRetainedEdition(current, manifestUrl, destination);
     bundleRoot ||= destination;
   }
 }
@@ -97,9 +98,10 @@ if (!bundleRoot) {
 snapshot ||= await readFile(snapshotPath);
 const edition = inputSeed
   ? inputSeed
-  : await readPlaybookEdition(resolve(bundleRoot), renderer, snapshot, undefined, {
+  : (retainedEdition ??
+    (await readPlaybookEdition(resolve(bundleRoot), renderer, snapshot, undefined, {
       stripInternalMetadata: Boolean(current),
-    });
+    })));
 validatePlaybookEdition(edition, undefined, {
   stripInternalMetadata: Boolean(current),
 });
