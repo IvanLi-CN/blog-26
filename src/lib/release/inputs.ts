@@ -62,6 +62,7 @@ const publicEnvNames = [
 
 const snapshotRetryDelaysMs = [1_000, 3_000] as const;
 const snapshotRequestTimeoutMs = 60_000;
+export const DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES = 64 * 1024 * 1024;
 const clippingResourceReferenceRe = /\.\/assets\/[a-f0-9]{64}\.[a-z0-9]+(?:[?#][^"'`\s<>)]+)?/giu;
 export type ClippingSnapshotArticle = {
   source: string | null;
@@ -70,8 +71,19 @@ export type ClippingSnapshotArticle = {
 };
 type SnapshotFetcher = (input: URL, init?: RequestInit) => Promise<Response>;
 type SnapshotSleep = (delayMs: number) => Promise<unknown>;
-const fetchPublicSnapshotOverHttp11: SnapshotFetcher = (input, init) =>
-  fetchPublicResourceOverHttp11(input, init, snapshotRequestTimeoutMs);
+const fetchPublicSnapshotOverHttp11: SnapshotFetcher = async (input, init) => {
+  const response = await fetchPublicResourceOverHttp11(
+    input,
+    init,
+    snapshotRequestTimeoutMs,
+    DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES
+  );
+  const declaredLength = Number(response.headers.get("content-length"));
+  if (Number.isSafeInteger(declaredLength) && declaredLength > DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES) {
+    throw new Error(`Public snapshot response exceeds ${DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES} bytes`);
+  }
+  return response;
+};
 
 export function clippingResourceUrlsFromSnapshot(
   articles: Record<string, ClippingSnapshotArticle> | undefined,

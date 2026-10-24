@@ -249,15 +249,27 @@ export async function fetchPublicResourceOverHttp11(
       new Response(child.stderr).text(),
       child.exited,
     ]);
-    const parsed = parseCurlHeaders(await readFile(headersPath, "utf8"));
+    if (exitCode !== 0 && !body.tooLarge) {
+      const details = diagnostics.trim();
+      throw new Error(`HTTP/1.1 public resource fallback failed${details ? `: ${details}` : ""}`);
+    }
+    let parsed: ParsedCurlHeaders;
+    try {
+      parsed = parseCurlHeaders(await readFile(headersPath, "utf8"));
+    } catch (error) {
+      if (exitCode !== 0) {
+        const details = diagnostics.trim();
+        throw new Error(
+          `HTTP/1.1 public resource fallback failed${details ? `: ${details}` : ""}`,
+          { cause: error }
+        );
+      }
+      throw error;
+    }
     if (body.tooLarge) {
       const headers = new Headers(parsed.headers);
       headers.set("content-length", String((maxBodyBytes ?? 0) + 1));
       return new Response(null, { headers, status: parsed.status });
-    }
-    if (exitCode !== 0) {
-      const details = diagnostics.trim();
-      throw new Error(`HTTP/1.1 public resource fallback failed${details ? `: ${details}` : ""}`);
     }
     const responseBody = new ArrayBuffer(body.body.byteLength);
     new Uint8Array(responseBody).set(body.body);
