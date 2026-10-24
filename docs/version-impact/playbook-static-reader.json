@@ -5,7 +5,7 @@
   "covered_files": {
     ".github/workflows/product-release.yml": "189103f4f41f6e94f8b6b599764c6254964d8794",
     "site/lib/playbook.ts": "54b326904b51daccb0bfa586c715ec03de8fe283",
-    "tests/ci/product-prerelease-workflow.test.ts": "d277eede3cb47a0d858d43372f6389d72ddcd322",
+    "tests/ci/product-prerelease-workflow.test.ts": "ace267dfa7edb6441ad7a21e64840a2cc38a67f8",
     "tests/lib/playbook-static-reader.test.ts": "a17cccb800242c077b780f693897d8c51c726f5c"
   },
   "change": {
@@ -53,7 +53,7 @@
         },
         {
           "path": "tests/ci/product-prerelease-workflow.test.ts",
-          "blob": "d277eede3cb47a0d858d43372f6389d72ddcd322",
+          "blob": "ace267dfa7edb6441ad7a21e64840a2cc38a67f8",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         },
         {

@@ -58,7 +58,8 @@ async function verifyPublishedEdition(directory: string, expected: typeof pointe
       catalog: values.get("catalog.json"),
       search: values.get("search-documents.json"),
     },
-    rawFiles
+    rawFiles,
+    { stripInternalMetadata: true }
   );
   for (const policy of getPlaybookPolicies(edition.catalog)) {
     const policyRoot = resolve(directory, "policies", policy.summary.slug);

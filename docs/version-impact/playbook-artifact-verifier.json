@@ -4,8 +4,8 @@
   "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
   "covered_files": {
     ".github/workflows/product-release.yml": "189103f4f41f6e94f8b6b599764c6254964d8794",
-    "scripts/verify-playbook-artifact.ts": "ffd78f6af4f8735e62e5d02020860ad93aae48a8",
-    "tests/ci/product-prerelease-workflow.test.ts": "d277eede3cb47a0d858d43372f6389d72ddcd322"
+    "scripts/verify-playbook-artifact.ts": "e8872b439495430717e91127e26344ae1ba1237d",
+    "tests/ci/product-prerelease-workflow.test.ts": "ace267dfa7edb6441ad7a21e64840a2cc38a67f8"
   },
   "change": {
     "description": "Reuse verified Playbook catalog and search bytes when validating retained editions during frozen product preflight, and carry the verifier fix through recovery tooling.",
@@ -20,12 +20,12 @@
       "evidence": [
         {
           "path": "scripts/verify-playbook-artifact.ts",
-          "blob": "ffd78f6af4f8735e62e5d02020860ad93aae48a8",
+          "blob": "e8872b439495430717e91127e26344ae1ba1237d",
           "command": "The verifier passes the bytes it has already checked to validatePlaybookEdition"
         },
         {
           "path": "tests/ci/product-prerelease-workflow.test.ts",
-          "blob": "d277eede3cb47a0d858d43372f6389d72ddcd322",
+          "blob": "ace267dfa7edb6441ad7a21e64840a2cc38a67f8",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         }
       ]
@@ -42,12 +42,12 @@
         },
         {
           "path": "scripts/verify-playbook-artifact.ts",
-          "blob": "ffd78f6af4f8735e62e5d02020860ad93aae48a8",
+          "blob": "e8872b439495430717e91127e26344ae1ba1237d",
           "command": "bunx biome check scripts/verify-playbook-artifact.ts"
         },
         {
           "path": "tests/ci/product-prerelease-workflow.test.ts",
-          "blob": "d277eede3cb47a0d858d43372f6389d72ddcd322",
+          "blob": "ace267dfa7edb6441ad7a21e64840a2cc38a67f8",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         }
       ],
@@ -63,12 +63,12 @@
       "evidence": [
         {
           "path": "scripts/verify-playbook-artifact.ts",
-          "blob": "ffd78f6af4f8735e62e5d02020860ad93aae48a8",
+          "blob": "e8872b439495430717e91127e26344ae1ba1237d",
           "command": "bunx biome check scripts/verify-playbook-artifact.ts tests/ci/product-prerelease-workflow.test.ts"
         },
         {
           "path": "tests/ci/product-prerelease-workflow.test.ts",
-          "blob": "d277eede3cb47a0d858d43372f6389d72ddcd322",
+          "blob": "ace267dfa7edb6441ad7a21e64840a2cc38a67f8",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts: 12 passed, 0 failed"
         },
         {
@@ -113,7 +113,7 @@
       "evidence": [
         {
           "path": "scripts/verify-playbook-artifact.ts",
-          "blob": "ffd78f6af4f8735e62e5d02020860ad93aae48a8",
+          "blob": "e8872b439495430717e91127e26344ae1ba1237d",
           "command": "Release-time validation only; published API response shapes are unchanged"
         }
       ]

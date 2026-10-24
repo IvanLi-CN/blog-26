@@ -164,7 +164,7 @@ describe("prerelease workflow deployment boundary", () => {
     const verifier = readFileSync("scripts/verify-playbook-artifact.ts", "utf8");
     expect(verifier).toContain("const rawFiles = new Map<string, Uint8Array>()");
     expect(verifier).toContain("rawFiles.set(file.path, bytes)");
-    expect(verifier).toContain("    rawFiles\n  );");
+    expect(verifier).toContain("    rawFiles,\n    { stripInternalMetadata: true }\n  );");
   });
 
   test("manual release exposes only one optional text version request", () => {
