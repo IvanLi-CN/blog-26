@@ -46,7 +46,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "75ef866d859cd05ec0dbb99a543806e056cd533e",
+          "blob": "de3208edcf506dfc0ee07427e2cd75e93af202b6",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         }
       ]
