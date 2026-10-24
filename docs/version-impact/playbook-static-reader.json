@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
+  "covered_files": {
+    "site/lib/playbook.ts": "54b326904b51daccb0bfa586c715ec03de8fe283",
+    "tests/lib/playbook-static-reader.test.ts": "a17cccb800242c077b780f693897d8c51c726f5c"
+  },
+  "change": {
+    "description": "Apply the existing deployed Playbook metadata projection when static pages read retained editions, keeping historical catalog identity bytes while preventing internal metadata from entering rendered public routes.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change only selects the existing internal-metadata stripping projection for static page reads; public route shapes, edition identities, server APIs, and persistent state remain unchanged.",
+      "assessed_at": "2026-10-24T20:32:12+08:00",
+      "evidence": [
+        {
+          "path": "site/lib/playbook.ts",
+          "blob": "54b326904b51daccb0bfa586c715ec03de8fe283",
+          "command": "Static Playbook reads use parseStaticPlaybookEdition with stripInternalMetadata enabled"
+        },
+        {
+          "path": "tests/lib/playbook-static-reader.test.ts",
+          "blob": "a17cccb800242c077b780f693897d8c51c726f5c",
+          "command": "bun test tests/lib/playbook-static-reader.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The fix is limited to the static Playbook reader and its regression witness. Retained catalog bytes and edition hashes remain unchanged, while static rendering consumes the sanitized in-memory projection.",
+      "assessed_at": "2026-10-24T20:32:12+08:00",
+      "evidence": [
+        {
+          "path": "site/lib/playbook.ts",
+          "blob": "54b326904b51daccb0bfa586c715ec03de8fe283",
+          "command": "Static page loading validates retained editions with the deployed-read compatibility option"
+        },
+        {
+          "path": "tests/lib/playbook-static-reader.test.ts",
+          "blob": "a17cccb800242c077b780f693897d8c51c726f5c",
+          "command": "bun test tests/lib/playbook-static-reader.test.ts tests/lib/playbook-deployed-compat.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The change remains limited to static Playbook compatibility parsing and its focused regression test."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused static-reader and deployed-compatibility tests pass, and the existing strict default validation remains covered separately. The fix changes only the static reader projection and does not alter public API payloads or persistent state.",
+      "assessed_at": "2026-10-24T20:32:12+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-static-reader.test.ts",
+          "blob": "a17cccb800242c077b780f693897d8c51c726f5c",
+          "command": "bun test tests/lib/playbook-static-reader.test.ts tests/lib/playbook-deployed-compat.test.ts: 3 passed, 0 failed"
+        },
+        {
+          "path": "site/lib/playbook.ts",
+          "blob": "54b326904b51daccb0bfa586c715ec03de8fe283",
+          "command": "bunx biome check site/lib/playbook.ts tests/lib/playbook-static-reader.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4"
+      ],
+      "evidence": [
+        {
+          "path": "site/lib/playbook.ts",
+          "blob": "54b326904b51daccb0bfa586c715ec03de8fe283",
+          "command": "The compatibility projection is internal to static rendering and leaves public route response shapes unchanged"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The static reader only changes an in-memory projection during frontend generation; it does not alter SQLite schema, reader sessions, comments, release ledger state, or edition identity bytes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "site/lib/playbook.ts",
+          "blob": "54b326904b51daccb0bfa586c715ec03de8fe283",
+          "command": "No persistent state or migration path is changed"
+        }
+      ]
+    }
+  }
+}
