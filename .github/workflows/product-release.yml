@@ -68,6 +68,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/release-playbook-tooling/fixed"
           cp scripts/fetch-initial-playbook.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/fetch-initial-playbook.ts"
           cp scripts/prepare-playbook-edition.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/prepare-playbook-edition.ts"
+          cp scripts/verify-playbook-artifact.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/verify-playbook-artifact.ts"
           cp site/lib/playbook.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/site-lib-playbook.ts"
           cp src/lib/playbook/bundle.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/bundle.ts"
           cp src/lib/playbook/artifacts.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/artifacts.ts"
@@ -93,6 +94,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/release-playbook-tooling/source"
           cp scripts/fetch-initial-playbook.ts "$RUNNER_TEMP/release-playbook-tooling/source/fetch-initial-playbook.ts"
           cp scripts/prepare-playbook-edition.ts "$RUNNER_TEMP/release-playbook-tooling/source/prepare-playbook-edition.ts"
+          cp scripts/verify-playbook-artifact.ts "$RUNNER_TEMP/release-playbook-tooling/source/verify-playbook-artifact.ts"
           cp site/lib/playbook.ts "$RUNNER_TEMP/release-playbook-tooling/source/site-lib-playbook.ts"
           cp src/lib/playbook/bundle.ts "$RUNNER_TEMP/release-playbook-tooling/source/bundle.ts"
           cp src/lib/playbook/artifacts.ts "$RUNNER_TEMP/release-playbook-tooling/source/artifacts.ts"
@@ -101,6 +103,7 @@ jobs:
           cp src/lib/playbook/schema.ts "$RUNNER_TEMP/release-playbook-tooling/source/schema.ts"
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/fetch-initial-playbook.ts" scripts/fetch-initial-playbook.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/prepare-playbook-edition.ts" scripts/prepare-playbook-edition.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/fixed/verify-playbook-artifact.ts" scripts/verify-playbook-artifact.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/site-lib-playbook.ts" site/lib/playbook.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/bundle.ts" src/lib/playbook/bundle.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/artifacts.ts" src/lib/playbook/artifacts.ts
@@ -129,6 +132,7 @@ jobs:
         run: |
           cp "$RUNNER_TEMP/release-playbook-tooling/source/fetch-initial-playbook.ts" scripts/fetch-initial-playbook.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/source/prepare-playbook-edition.ts" scripts/prepare-playbook-edition.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/source/verify-playbook-artifact.ts" scripts/verify-playbook-artifact.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/source/site-lib-playbook.ts" site/lib/playbook.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/source/bundle.ts" src/lib/playbook/bundle.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/source/artifacts.ts" src/lib/playbook/artifacts.ts
@@ -155,6 +159,7 @@ jobs:
         id: apply-preflight-playbook-tooling
         run: |
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/prepare-playbook-edition.ts" scripts/prepare-playbook-edition.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/fixed/verify-playbook-artifact.ts" scripts/verify-playbook-artifact.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/site-lib-playbook.ts" site/lib/playbook.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/bundle.ts" src/lib/playbook/bundle.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/artifacts.ts" src/lib/playbook/artifacts.ts

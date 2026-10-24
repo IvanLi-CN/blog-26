@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "c7fb3e7200a8f820097b28d6da98521e14dc9b61",
+  "covered_files": {
+    ".github/workflows/product-release.yml": "189103f4f41f6e94f8b6b599764c6254964d8794",
+    "scripts/verify-playbook-artifact.ts": "ffd78f6af4f8735e62e5d02020860ad93aae48a8",
+    "tests/ci/product-prerelease-workflow.test.ts": "d277eede3cb47a0d858d43372f6389d72ddcd322"
+  },
+  "change": {
+    "description": "Reuse verified Playbook catalog and search bytes when validating retained editions during frozen product preflight, and carry the verifier fix through recovery tooling.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The verifier still checks every retained file and manifest digest; it now supplies those already-verified bytes to the legacy projection validator so historical editions can pass preflight without changing published data or runtime APIs.",
+      "assessed_at": "2026-10-24T22:00:00+08:00",
+      "evidence": [
+        {
+          "path": "scripts/verify-playbook-artifact.ts",
+          "blob": "ffd78f6af4f8735e62e5d02020860ad93aae48a8",
+          "command": "The verifier passes the bytes it has already checked to validatePlaybookEdition"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "d277eede3cb47a0d858d43372f6389d72ddcd322",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The change is limited to release-time retained Playbook validation and the compatibility copy used by frozen preflight. Manifest hashes, edition identities, public route data, and persistent state remain unchanged.",
+      "assessed_at": "2026-10-24T22:00:00+08:00",
+      "evidence": [
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "189103f4f41f6e94f8b6b599764c6254964d8794",
+          "command": "The recovery workflow copies the current verifier before frozen preflight"
+        },
+        {
+          "path": "scripts/verify-playbook-artifact.ts",
+          "blob": "ffd78f6af4f8735e62e5d02020860ad93aae48a8",
+          "command": "bunx biome check scripts/verify-playbook-artifact.ts"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "d277eede3cb47a0d858d43372f6389d72ddcd322",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "Only the retained Playbook verifier and its recovery-tooling witness changed."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused workflow and formatting checks pass. The verifier preserves strict file and manifest checks while satisfying the legacy validator with the exact bytes it already authenticated; no public payload or durable state contract changes.",
+      "assessed_at": "2026-10-24T22:00:00+08:00",
+      "evidence": [
+        {
+          "path": "scripts/verify-playbook-artifact.ts",
+          "blob": "ffd78f6af4f8735e62e5d02020860ad93aae48a8",
+          "command": "bunx biome check scripts/verify-playbook-artifact.ts tests/ci/product-prerelease-workflow.test.ts"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "d277eede3cb47a0d858d43372f6389d72ddcd322",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts: 12 passed, 0 failed"
+        },
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "189103f4f41f6e94f8b6b599764c6254964d8794",
+          "command": "Recovery copies the fixed verifier into the source checkout before preflight"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4"
+      ],
+      "evidence": [
+        {
+          "path": "scripts/verify-playbook-artifact.ts",
+          "blob": "ffd78f6af4f8735e62e5d02020860ad93aae48a8",
+          "command": "Release-time validation only; published API response shapes are unchanged"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The change does not write or migrate SQLite, reader sessions, comments, release ledger state, or Playbook edition identity bytes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "189103f4f41f6e94f8b6b599764c6254964d8794",
+          "command": "The workflow only selects release-time source files for preflight"
+        }
+      ]
+    }
+  }
+}
