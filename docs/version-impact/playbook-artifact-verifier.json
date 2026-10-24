@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "c7fb3e7200a8f820097b28d6da98521e14dc9b61",
+  "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
   "covered_files": {
     ".github/workflows/product-release.yml": "189103f4f41f6e94f8b6b599764c6254964d8794",
     "scripts/verify-playbook-artifact.ts": "ffd78f6af4f8735e62e5d02020860ad93aae48a8",
