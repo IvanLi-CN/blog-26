@@ -232,6 +232,7 @@ export async function fetchPublicResourceOverHttp11(
     const child = spawnImpl(
       [
         "curl",
+        "--disable",
         "--silent",
         "--show-error",
         "--http1.1",

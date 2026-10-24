@@ -35,14 +35,17 @@ function fakeCurlSpawner({
   exitCode = 0,
   headers,
   onKill,
+  onSpawn,
 }: {
   body: string;
   stderr?: string;
   exitCode?: number;
   headers: string;
   onKill?: () => void;
+  onSpawn?: (args: string[]) => void;
 }): PublicHttp11Spawner {
   return (args) => {
+    onSpawn?.(args);
     const headersPath = args[args.indexOf("--dump-header") + 1];
     if (!headersPath) throw new Error("fake curl did not receive a header output path");
     const stdout = new Response(body).body;
@@ -59,6 +62,7 @@ function fakeCurlSpawner({
 
 describe("packagePublicMedia", () => {
   test("parses successful responses from the HTTP/1.1 process adapter", async () => {
+    let curlArgs: string[] = [];
     const response = await fetchPublicResourceOverHttp11(
       "https://api.example/resource",
       {},
@@ -67,9 +71,13 @@ describe("packagePublicMedia", () => {
       fakeCurlSpawner({
         body: "four",
         headers: "HTTP/1.1 200 OK\r\ncontent-length: 4\r\n\r\n",
+        onSpawn: (args) => {
+          curlArgs = args;
+        },
       })
     );
 
+    expect(curlArgs).toContain("--disable");
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("four");
   });
