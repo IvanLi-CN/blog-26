@@ -86,7 +86,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "75ef866d859cd05ec0dbb99a543806e056cd533e",
+          "blob": "de3208edcf506dfc0ee07427e2cd75e93af202b6",
           "command": "The workflow does not alter public HTTP, tRPC, MCP, or static product contracts."
         }
       ]
@@ -100,7 +100,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "75ef866d859cd05ec0dbb99a543806e056cd533e",
+          "blob": "de3208edcf506dfc0ee07427e2cd75e93af202b6",
           "command": "The temporary tooling directory is runner-local and is removed with the job."
         }
       ]
