@@ -143,7 +143,11 @@ describe("prerelease workflow deployment boundary", () => {
     const inputRecord = steps.findIndex((step) => step.id === "record-inputs");
     const preflight = steps.findIndex((step) => step.id === "preflight-media");
     const imageBuild = steps.findIndex((step) => step.id === "build-products");
+    const compatibility = steps.findIndex((step) => step.id === "apply-preflight-playbook-tooling");
     expect(inputRecord).toBeGreaterThanOrEqual(0);
+    expect(compatibility).toBeGreaterThan(inputRecord);
+    expect(compatibility).toBeLessThan(preflight);
+    expect(steps[compatibility]?.run).toContain("release-playbook-tooling/fixed");
     expect(preflight).toBeGreaterThan(inputRecord);
     expect(imageBuild).toBeGreaterThan(preflight);
     expect(steps[preflight]?.run).toContain("preflight-frozen-media");
