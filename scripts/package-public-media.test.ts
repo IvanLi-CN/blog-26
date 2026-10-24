@@ -37,6 +37,7 @@ function fakeCurlSpawner({
   headers,
   onKill,
   onSpawn,
+  stdoutChunks,
   holdExit = false,
 }: {
   body: string;
@@ -45,22 +46,27 @@ function fakeCurlSpawner({
   headers: string;
   onKill?: () => void;
   onSpawn?: (args: string[], options: Parameters<PublicHttp11Spawner>[1]) => void;
+  stdoutChunks?: string[];
   holdExit?: boolean;
 }): PublicHttp11Spawner {
   return (args, options) => {
     onSpawn?.(args, options);
-    const headersPath = args[args.indexOf("--dump-header") + 1];
-    if (!headersPath) throw new Error("fake curl did not receive a header output path");
-    const stdout = new Response(body).body;
+    if (!args.includes("--include")) throw new Error("fake curl did not include response headers");
+    const stdout = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of stdoutChunks ?? [`${headers}${body}`]) {
+          controller.enqueue(new TextEncoder().encode(chunk));
+        }
+        controller.close();
+      },
+    });
     const stderrStream = new Response(stderr).body;
     if (!stdout || !stderrStream) throw new Error("fake curl streams were not created");
     let releaseExit: ((code: number) => void) | undefined;
     const exited = new Promise<number>((resolve) => {
       releaseExit = resolve;
     });
-    void writeFile(headersPath, headers).then(() => {
-      if (!holdExit) releaseExit?.(exitCode);
-    });
+    if (!holdExit) releaseExit?.(exitCode);
     return {
       stdout,
       stderr: stderrStream,
@@ -91,8 +97,137 @@ describe("packagePublicMedia", () => {
     );
 
     expect(curlArgs).toContain("--disable");
+    expect(curlArgs).toContain("--globoff");
+    expect(curlArgs).toContain("--include");
+    expect(curlArgs).toContain("--raw");
+    expect(curlArgs).toContain("--suppress-connect-headers");
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("four");
+  });
+
+  test("parses interim headers and body data across stdout chunks", async () => {
+    const response = await fetchPublicResourceOverHttp11(
+      "https://api.example/resource",
+      {},
+      1_000,
+      undefined,
+      fakeCurlSpawner({
+        body: "",
+        headers: "",
+        stdoutChunks: [
+          "HTTP/1.1 100 Continue\r\n",
+          "\r\nHTTP/1.1 200 OK\r\ncontent-length: 4\r\n",
+          "\r\nfo",
+          "ur",
+        ],
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("four");
+  });
+
+  test("strips chunked response trailers from the media body", async () => {
+    const response = await fetchPublicResourceOverHttp11(
+      "https://api.example/resource",
+      {},
+      1_000,
+      undefined,
+      fakeCurlSpawner({
+        body: "",
+        headers: "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n",
+        stdoutChunks: [
+          "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n",
+          "4\r\nfour\r\n",
+          "0\r\nX-Checksum: abc\r\n\r\n",
+        ],
+      })
+    );
+
+    expect(await response.text()).toBe("four");
+  });
+
+  test("rejects fallback responses with unsupported content encoding", async () => {
+    await expect(
+      fetchPublicResourceOverHttp11(
+        "https://api.example/resource",
+        {},
+        1_000,
+        undefined,
+        fakeCurlSpawner({
+          body: "compressed",
+          headers: "HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\n\r\n",
+        })
+      )
+    ).rejects.toThrow("unsupported content encoding");
+  });
+
+  test("rejects folded fallback response headers", async () => {
+    await expect(
+      fetchPublicResourceOverHttp11(
+        "https://api.example/resource",
+        {},
+        1_000,
+        undefined,
+        fakeCurlSpawner({
+          body: "compressed",
+          headers: "HTTP/1.1 200 OK\r\nContent-Encoding:\r\n gzip\r\n\r\n",
+        })
+      )
+    ).rejects.toThrow("folded response header");
+  });
+
+  test("rejects fallback responses with unsupported transfer encoding", async () => {
+    await expect(
+      fetchPublicResourceOverHttp11(
+        "https://api.example/resource",
+        {},
+        1_000,
+        undefined,
+        fakeCurlSpawner({
+          body: "compressed",
+          headers: "HTTP/1.1 200 OK\r\nTransfer-Encoding: gzip\r\n\r\n",
+        })
+      )
+    ).rejects.toThrow("unsupported transfer encoding");
+  });
+
+  test("rejects conflicting transfer and content length headers", async () => {
+    await expect(
+      fetchPublicResourceOverHttp11(
+        "https://api.example/resource",
+        {},
+        1_000,
+        4,
+        fakeCurlSpawner({
+          body: "",
+          headers: "",
+          stdoutChunks: [
+            "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\ncontent-length: 999\r\n\r\n",
+            "0\r\n\r\n",
+          ],
+        })
+      )
+    ).rejects.toThrow("conflicting response framing headers");
+  });
+
+  test("preserves no-body HTTP status semantics", async () => {
+    for (const status of [204, 205, 304]) {
+      const response = await fetchPublicResourceOverHttp11(
+        "https://api.example/resource",
+        {},
+        1_000,
+        undefined,
+        fakeCurlSpawner({
+          body: "",
+          headers: `HTTP/1.1 ${status} No Content\r\ncontent-length: 9\r\n\r\n`,
+        })
+      );
+
+      expect(response.status).toBe(status);
+      expect(response.headers.get("content-length")).toBeNull();
+      expect(await response.arrayBuffer()).toHaveLength(0);
+    }
   });
 
   test("kills the HTTP/1.1 process when the response exceeds the limit", async () => {
@@ -103,8 +238,9 @@ describe("packagePublicMedia", () => {
       1_000,
       4,
       fakeCurlSpawner({
-        body: "five!",
-        headers: "HTTP/1.1 200 OK\r\ncontent-length: 5\r\n\r\n",
+        body: "",
+        headers: "",
+        stdoutChunks: ["HTTP/1.1 200 OK\r\ncontent-length: 5\r\n\r\nfi", "ve!"],
         onKill: () => {
           killed = true;
         },
@@ -134,6 +270,82 @@ describe("packagePublicMedia", () => {
     ).rejects.toThrow("curl: (6) Could not resolve host");
   });
 
+  test("preserves curl diagnostics when the response body is truncated", async () => {
+    await expect(
+      fetchPublicResourceOverHttp11(
+        "https://api.example/resource",
+        {},
+        1_000,
+        undefined,
+        fakeCurlSpawner({
+          body: "four",
+          headers: "HTTP/1.1 200 OK\r\ncontent-length: 5\r\n\r\n",
+          stderr: "curl: (18) end of response with 1 bytes missing",
+          exitCode: 18,
+        })
+      )
+    ).rejects.toThrow("curl: (18) end of response with 1 bytes missing");
+  });
+
+  test("rejects an HTTP/1.1 fallback before spawning when already aborted", async () => {
+    const controller = new AbortController();
+    const reason = new Error("cancelled before spawn");
+    controller.abort(reason);
+    let spawned = false;
+
+    await expect(
+      fetchPublicResourceOverHttp11(
+        "https://api.example/resource",
+        { signal: controller.signal },
+        1_000,
+        undefined,
+        ((..._args) => {
+          spawned = true;
+          throw new Error("curl should not spawn");
+        }) as PublicHttp11Spawner
+      )
+    ).rejects.toBe(reason);
+    expect(spawned).toBe(false);
+  });
+
+  test("kills an HTTP/1.1 fallback when its signal aborts during streaming", async () => {
+    const controller = new AbortController();
+    const reason = new Error("cancelled during stream");
+    let killed = false;
+    let releaseExit: ((code: number) => void) | undefined;
+    const spawner: PublicHttp11Spawner = () => {
+      const stderr = new Response("").body;
+      if (!stderr) throw new Error("fake curl stderr stream was not created");
+      return {
+        stdout: new ReadableStream<Uint8Array>({
+          start() {
+            // Keep stdout open until the abort signal kills the fake process.
+          },
+        }),
+        stderr,
+        exited: new Promise<number>((resolve) => {
+          releaseExit = resolve;
+        }),
+        kill: () => {
+          killed = true;
+          releaseExit?.(143);
+        },
+      };
+    };
+
+    const pending = fetchPublicResourceOverHttp11(
+      "https://api.example/resource",
+      { signal: controller.signal },
+      1_000,
+      undefined,
+      spawner
+    );
+    controller.abort(reason);
+
+    await expect(pending).rejects.toBe(reason);
+    expect(killed).toBe(true);
+  });
+
   test("bounds response-header storage and kills curl while headers grow", async () => {
     let killed = false;
     await expect(
@@ -144,7 +356,38 @@ describe("packagePublicMedia", () => {
         undefined,
         fakeCurlSpawner({
           body: "",
-          headers: `HTTP/1.1 200 OK\r\nX-Large: ${"x".repeat(DEFAULT_MAX_HEADER_BYTES)}\r\n\r\n`,
+          headers: "",
+          stdoutChunks: [
+            `HTTP/1.1 200 OK\r\nX-Large: ${"x".repeat(DEFAULT_MAX_HEADER_BYTES - 32)}`,
+            "xxxxxxxxxxxxxxxx",
+          ],
+          holdExit: true,
+          onKill: () => {
+            killed = true;
+          },
+        })
+      )
+    ).rejects.toThrow(
+      `HTTP/1.1 public resource fallback response headers exceed ${DEFAULT_MAX_HEADER_BYTES} bytes`
+    );
+    expect(killed).toBe(true);
+  });
+
+  test("bounds chunked response trailers with the header limit", async () => {
+    let killed = false;
+    await expect(
+      fetchPublicResourceOverHttp11(
+        "https://api.example/resource",
+        {},
+        1_000,
+        undefined,
+        fakeCurlSpawner({
+          body: "",
+          headers: "",
+          stdoutChunks: [
+            "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n",
+            `0\r\nX-Large: ${"x".repeat(DEFAULT_MAX_HEADER_BYTES)}\r\n\r\n`,
+          ],
           holdExit: true,
           onKill: () => {
             killed = true;
@@ -495,6 +738,63 @@ describe("packagePublicMedia", () => {
           url === "https://api.example/api/public/assets/post/logo/hash/content.webp?v=2026-10-15"
       )
     ).toHaveLength(3);
+  });
+
+  test("preserves legacy fallback recovery when the HTTP/1.1 fallback fails", async () => {
+    const cwd = await fixture();
+    const watermark = "/api/public/assets/post/logo/hash/wm-a-v1/content.webp?v=2026-10-15";
+    await writeFile(join(cwd, "site-dist", "snapshot.json"), `{"media":"${watermark}"}`);
+
+    const requestedUrls: string[] = [];
+    let fallbackAttempts = 0;
+    const manifest = await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      downloadAttempts: 1,
+      retryDelayMs: 0,
+      fetchImpl: async (input) => {
+        const url = String(input);
+        requestedUrls.push(url);
+        if (url.includes("/wm-a-v1/")) return new Response("missing", { status: 404 });
+        return response("base-image");
+      },
+      fallbackFetchImpl: async () => {
+        fallbackAttempts += 1;
+        throw new Error("curl fallback failed");
+      },
+    });
+
+    expect(fallbackAttempts).toBe(1);
+    expect(requestedUrls).toEqual([
+      `https://api.example${watermark}`,
+      "https://api.example/api/public/assets/post/logo/hash/content.webp?v=2026-10-15",
+    ]);
+    expect(manifest.packagedCount).toBe(1);
+  });
+
+  test("does not hide fallback origin policy errors after a legacy 404", async () => {
+    const cwd = await fixture();
+    const watermark = "/api/public/assets/post/logo/hash/wm-a-v1/content.webp?v=2026-10-15";
+    await writeFile(join(cwd, "site-dist", "snapshot.json"), `{"media":"${watermark}"}`);
+
+    await expect(
+      packagePublicMedia({
+        cwd,
+        mediaOrigin: "https://api.example",
+        siteUrl: "https://site.example",
+        downloadAttempts: 1,
+        fetchImpl: async (input) => {
+          if (String(input).includes("/wm-a-v1/")) return new Response("missing", { status: 404 });
+          return response("base-image");
+        },
+        fallbackFetchImpl: async () =>
+          new Response(null, {
+            status: 302,
+            headers: { location: "https://evil.example/content.webp" },
+          }),
+      })
+    ).rejects.toThrow("redirect escaped the configured origin");
   });
 
   test("freezes the canonical asset for legacy watermark candidates", async () => {

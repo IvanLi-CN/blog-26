@@ -1,16 +1,6 @@
 #!/usr/bin/env bun
 
-import {
-  appendFile,
-  mkdir,
-  mkdtemp,
-  readdir,
-  readFile,
-  rm,
-  stat,
-  writeFile,
-} from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { appendFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { extname, join, relative, resolve, sep } from "node:path";
 import { withoutDeploymentCredentials } from "../src/lib/playbook/child-env";
 
@@ -25,6 +15,7 @@ export const DEFAULT_MAX_FILES = 20_000;
 export const DEFAULT_MAX_PROJECT_BYTES = 5 * 1024 * 1024 * 1024;
 export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 export const DEFAULT_MAX_HEADER_BYTES = 64 * 1024;
+const RESPONSE_BODY_CHUNK_BYTES = 64 * 1024;
 export const DEFAULT_DOWNLOAD_CONCURRENCY = 1;
 export const DEFAULT_DOWNLOAD_ATTEMPTS = 3;
 export const DEFAULT_RETRY_DELAY_MS = 500;
@@ -117,7 +108,12 @@ type DownloadResult = {
 type ParsedCurlHeaders = {
   status: number;
   headers: Headers;
+  contentLength?: number;
+  chunked: boolean;
+  noBody: boolean;
 };
+
+type ByteArray = Uint8Array<ArrayBufferLike>;
 
 type PublicHttp11Process = {
   stdout: ReadableStream<Uint8Array>;
@@ -174,85 +170,425 @@ function parseCurlHeaders(raw: string): ParsedCurlHeaders {
   }
   const headers = new Headers();
   for (const line of lines.slice(1)) {
+    if (/^\s/u.test(line)) {
+      throw new Error("HTTP/1.1 fallback returned a folded response header");
+    }
     const separator = line.indexOf(":");
     if (separator <= 0) continue;
     headers.append(line.slice(0, separator), line.slice(separator + 1).trim());
   }
-  return { status, headers };
+  const rawContentLength = headers.get("content-length");
+  let contentLength: number | undefined;
+  if (rawContentLength !== null) {
+    const values = rawContentLength.split(",").map((value) => value.trim());
+    if (
+      values.length === 0 ||
+      values.some((value) => !/^\d+$/u.test(value)) ||
+      new Set(values).size !== 1
+    ) {
+      throw new Error("HTTP/1.1 fallback returned an invalid content length");
+    }
+    contentLength = Number(values[0]);
+    if (!Number.isSafeInteger(contentLength)) {
+      throw new Error("HTTP/1.1 fallback returned an invalid content length");
+    }
+  }
+  const transferEncodings = headers
+    .get("transfer-encoding")
+    ?.split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  const chunked = transferEncodings?.at(-1) === "chunked";
+  if (transferEncodings && (transferEncodings.length !== 1 || !chunked)) {
+    throw new Error("HTTP/1.1 fallback returned an unsupported transfer encoding");
+  }
+  if (chunked && contentLength !== undefined) {
+    throw new Error("HTTP/1.1 fallback returned conflicting response framing headers");
+  }
+  const contentEncodings = headers
+    .get("content-encoding")
+    ?.split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  if (contentEncodings?.some((value) => value !== "identity")) {
+    throw new Error("HTTP/1.1 fallback returned an unsupported content encoding");
+  }
+  const noBody =
+    (status >= 100 && status < 200) || status === 204 || status === 205 || status === 304;
+  return { status, headers, contentLength, chunked, noBody };
 }
 
-async function readCurlBodyWithinLimit(
+class ByteQueue {
+  private readonly chunks: ByteArray[] = [];
+  private headIndex = 0;
+  private headOffset = 0;
+  private total = 0;
+
+  get byteLength() {
+    return this.total;
+  }
+
+  push(chunk: ByteArray) {
+    if (chunk.byteLength === 0) return;
+    this.chunks.push(chunk);
+    this.total += chunk.byteLength;
+  }
+
+  findLineEnd() {
+    let index = 0;
+    for (let chunkIndex = this.headIndex; chunkIndex < this.chunks.length; chunkIndex += 1) {
+      const chunk = this.chunks[chunkIndex];
+      const start = chunkIndex === this.headIndex ? this.headOffset : 0;
+      for (let offset = start; offset < chunk.byteLength; offset += 1) {
+        if (chunk[offset] === 10) return index + 1;
+        index += 1;
+      }
+    }
+    return -1;
+  }
+
+  findHeaderEnd() {
+    const recent: number[] = [];
+    let index = 0;
+    for (let chunkIndex = this.headIndex; chunkIndex < this.chunks.length; chunkIndex += 1) {
+      const chunk = this.chunks[chunkIndex];
+      const start = chunkIndex === this.headIndex ? this.headOffset : 0;
+      for (let offset = start; offset < chunk.byteLength; offset += 1) {
+        recent.push(chunk[offset]);
+        if (recent.length > 4) recent.shift();
+        if (
+          recent.length >= 4 &&
+          recent.at(-4) === 13 &&
+          recent.at(-3) === 10 &&
+          recent.at(-2) === 13 &&
+          recent.at(-1) === 10
+        ) {
+          return index + 1;
+        }
+        if (recent.length >= 2 && recent.at(-2) === 10 && recent.at(-1) === 10) {
+          return index + 1;
+        }
+        index += 1;
+      }
+    }
+    return -1;
+  }
+
+  peek(length: number): ByteArray {
+    if (length < 0 || length > this.total)
+      throw new Error("ByteQueue peek exceeds available bytes");
+    const result = new Uint8Array(length);
+    let offset = 0;
+    this.forEachView(length, (view) => {
+      result.set(view, offset);
+      offset += view.byteLength;
+    });
+    return result;
+  }
+
+  take(length: number): ByteArray {
+    const result = new Uint8Array(length);
+    let offset = 0;
+    this.consume(length, (view) => {
+      result.set(view, offset);
+      offset += view.byteLength;
+    });
+    return result;
+  }
+
+  consume(length: number, consumer: (view: ByteArray) => void) {
+    if (length < 0 || length > this.total) {
+      throw new Error("ByteQueue consume exceeds available bytes");
+    }
+    let remaining = length;
+    while (remaining > 0) {
+      const chunk = this.chunks[this.headIndex];
+      const available = chunk.byteLength - this.headOffset;
+      const consumed = Math.min(available, remaining);
+      consumer(chunk.subarray(this.headOffset, this.headOffset + consumed));
+      this.headOffset += consumed;
+      this.total -= consumed;
+      remaining -= consumed;
+      if (this.headOffset === chunk.byteLength) {
+        this.headIndex += 1;
+        this.headOffset = 0;
+        if (this.headIndex === this.chunks.length) {
+          this.chunks.length = 0;
+          this.headIndex = 0;
+        } else if (this.headIndex >= 128 && this.headIndex * 2 >= this.chunks.length) {
+          this.chunks.splice(0, this.headIndex);
+          this.headIndex = 0;
+        }
+      }
+    }
+  }
+
+  private forEachView(length: number, consumer: (view: ByteArray) => void) {
+    let remaining = length;
+    for (let chunkIndex = this.headIndex; remaining > 0; chunkIndex += 1) {
+      const chunk = this.chunks[chunkIndex];
+      const start = chunkIndex === this.headIndex ? this.headOffset : 0;
+      const available = chunk.byteLength - start;
+      const consumed = Math.min(available, remaining);
+      consumer(chunk.subarray(start, start + consumed));
+      remaining -= consumed;
+    }
+  }
+}
+
+class CurlHeaderLimitError extends Error {}
+
+class CurlBodyLimitError extends Error {}
+
+function abortReason(signal: AbortSignal) {
+  return signal.reason ?? new DOMException("The operation was aborted", "AbortError");
+}
+
+async function readProcessDiagnostics(
   stream: ReadableStream<Uint8Array>,
-  maxBodyBytes: number | undefined,
-  kill: () => void
-): Promise<{ body: Uint8Array; tooLarge: boolean }> {
+  maxBytes: number
+): Promise<string> {
   const reader = stream.getReader();
-  const chunks: Uint8Array[] = [];
+  const chunks: ByteArray[] = [];
   let total = 0;
   try {
-    while (true) {
+    while (total < maxBytes) {
       const next = await reader.read();
       if (next.done) break;
-      total += next.value.byteLength;
-      if (maxBodyBytes !== undefined && total > maxBodyBytes) {
-        kill();
+      const remaining = maxBytes - total;
+      const chunk = next.value.byteLength > remaining ? next.value.slice(0, remaining) : next.value;
+      chunks.push(chunk);
+      total += chunk.byteLength;
+      if (chunk.byteLength < next.value.byteLength || total >= maxBytes) {
         await reader.cancel().catch(() => undefined);
-        return { body: new Uint8Array(), tooLarge: true };
+        break;
       }
-      chunks.push(next.value);
     }
-  } catch (error) {
-    await reader.cancel().catch(() => undefined);
-    throw error;
   } finally {
     reader.releaseLock();
   }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
 
+async function readCurlResponseWithinLimits(
+  stream: ReadableStream<Uint8Array>,
+  maxBodyBytes: number | undefined,
+  maxHeaderBytes: number,
+  kill: () => void,
+  signal?: AbortSignal
+): Promise<{
+  body: Uint8Array;
+  headersTooLarge: boolean;
+  parsed?: ParsedCurlHeaders;
+  tooLarge: boolean;
+}> {
+  const reader = stream.getReader();
+  let headerBytesSeen = 0;
+  const pending = new ByteQueue();
+  let parsed: ParsedCurlHeaders | undefined;
+  const chunks: ByteArray[] = [];
+  let bodyChunk = new Uint8Array(RESPONSE_BODY_CHUNK_BYTES);
+  let bodyChunkOffset = 0;
+  let total = 0;
+  let chunkState: "size" | "data" | "terminator" | "trailers" | "done" = "size";
+  let chunkRemaining = 0;
+  let abortListener: (() => void) | undefined;
+  const decoder = new TextDecoder();
+  if (signal) {
+    abortListener = () => {
+      kill();
+      void reader.cancel().catch(() => undefined);
+    };
+    signal.addEventListener("abort", abortListener, { once: true });
+    if (signal.aborted) abortListener();
+  }
+  const appendBody = (value: ByteArray) => {
+    if (value.byteLength === 0) return;
+    total += value.byteLength;
+    if (maxBodyBytes !== undefined && total > maxBodyBytes) throw new CurlBodyLimitError();
+    let offset = 0;
+    while (offset < value.byteLength) {
+      const available = RESPONSE_BODY_CHUNK_BYTES - bodyChunkOffset;
+      const copied = Math.min(available, value.byteLength - offset);
+      bodyChunk.set(value.subarray(offset, offset + copied), bodyChunkOffset);
+      bodyChunkOffset += copied;
+      offset += copied;
+      if (bodyChunkOffset === RESPONSE_BODY_CHUNK_BYTES) {
+        chunks.push(bodyChunk);
+        bodyChunk = new Uint8Array(RESPONSE_BODY_CHUNK_BYTES);
+        bodyChunkOffset = 0;
+      }
+    }
+  };
+  const consumeChunkedBody = () => {
+    while (true) {
+      if (chunkState === "size") {
+        const lineEnd = pending.findLineEnd();
+        if (lineEnd < 0) {
+          if (pending.byteLength > maxHeaderBytes) throw new CurlHeaderLimitError();
+          return;
+        }
+        if (lineEnd > maxHeaderBytes) throw new CurlHeaderLimitError();
+        const line = decoder.decode(pending.take(lineEnd)).replace(/\r?\n$/u, "");
+        const sizeToken = line.split(";", 1)[0]?.trim() ?? "";
+        if (!/^[0-9a-f]+$/iu.test(sizeToken)) {
+          throw new Error("HTTP/1.1 fallback returned an invalid chunk size");
+        }
+        let size: bigint;
+        try {
+          size = BigInt(`0x${sizeToken}`);
+        } catch {
+          throw new Error("HTTP/1.1 fallback returned an invalid chunk size");
+        }
+        if (size > BigInt(Number.MAX_SAFE_INTEGER)) {
+          if (maxBodyBytes !== undefined) throw new CurlBodyLimitError();
+          throw new Error("HTTP/1.1 fallback returned an oversized chunk");
+        }
+        if (maxBodyBytes !== undefined && size > BigInt(maxBodyBytes) - BigInt(total)) {
+          throw new CurlBodyLimitError();
+        }
+        chunkRemaining = Number(size);
+        chunkState = chunkRemaining === 0 ? "trailers" : "data";
+        continue;
+      }
+
+      if (chunkState === "data") {
+        const consumed = Math.min(chunkRemaining, pending.byteLength);
+        pending.consume(consumed, appendBody);
+        chunkRemaining -= consumed;
+        if (chunkRemaining > 0) return;
+        chunkState = "terminator";
+        continue;
+      }
+
+      if (chunkState === "terminator") {
+        if (pending.byteLength < 2) return;
+        const terminator = pending.take(2);
+        if (terminator[0] !== 13 || terminator[1] !== 10) {
+          throw new Error("HTTP/1.1 fallback returned an invalid chunk terminator");
+        }
+        chunkState = "size";
+        continue;
+      }
+
+      if (chunkState === "trailers") {
+        if (pending.byteLength === 0) return;
+        const prefix = pending.peek(Math.min(2, pending.byteLength));
+        if ((prefix.length >= 2 && prefix[0] === 13 && prefix[1] === 10) || prefix[0] === 10) {
+          const emptyTrailerLength = prefix[0] === 10 ? 1 : 2;
+          pending.consume(emptyTrailerLength, () => undefined);
+          headerBytesSeen += emptyTrailerLength;
+          if (headerBytesSeen > maxHeaderBytes) throw new CurlHeaderLimitError();
+          chunkState = "done";
+          continue;
+        }
+        const trailerEnd = pending.findHeaderEnd();
+        if (trailerEnd < 0) {
+          if (headerBytesSeen + pending.byteLength > maxHeaderBytes) {
+            throw new CurlHeaderLimitError();
+          }
+          return;
+        }
+        headerBytesSeen += trailerEnd;
+        if (headerBytesSeen > maxHeaderBytes) throw new CurlHeaderLimitError();
+        pending.consume(trailerEnd, () => undefined);
+        chunkState = "done";
+        continue;
+      }
+
+      if (pending.byteLength > 0) {
+        throw new Error("HTTP/1.1 fallback returned bytes after the response body");
+      }
+      return;
+    }
+  };
+  try {
+    while (true) {
+      if (signal?.aborted) throw abortReason(signal);
+      const next = await reader.read();
+      if (next.done) break;
+      if (signal?.aborted) throw abortReason(signal);
+      pending.push(next.value);
+      while (!parsed) {
+        const headerEnd = pending.findHeaderEnd();
+        if (headerEnd < 0) {
+          if (headerBytesSeen + pending.byteLength > maxHeaderBytes) {
+            throw new CurlHeaderLimitError();
+          }
+          break;
+        }
+        headerBytesSeen += headerEnd;
+        if (headerBytesSeen > maxHeaderBytes) throw new CurlHeaderLimitError();
+        const current = parseCurlHeaders(decoder.decode(pending.take(headerEnd)));
+        if (current.status >= 100 && current.status < 200 && current.status !== 101) continue;
+        parsed = current;
+      }
+      if (!parsed) continue;
+      if (parsed.noBody) {
+        if (pending.byteLength > 0) {
+          throw new Error("HTTP/1.1 fallback returned bytes for a response without a body");
+        }
+        continue;
+      }
+      if (parsed.contentLength !== undefined && maxBodyBytes !== undefined) {
+        if (parsed.contentLength > maxBodyBytes) throw new CurlBodyLimitError();
+      }
+      if (parsed.chunked) {
+        consumeChunkedBody();
+      } else {
+        const remaining =
+          parsed.contentLength === undefined ? pending.byteLength : parsed.contentLength - total;
+        if (pending.byteLength > remaining) {
+          throw new Error("HTTP/1.1 fallback returned more bytes than its content length");
+        }
+        pending.consume(pending.byteLength, appendBody);
+      }
+    }
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    if (signal?.aborted) throw abortReason(signal);
+    if (error instanceof CurlHeaderLimitError) {
+      kill();
+      return { body: new Uint8Array(), headersTooLarge: true, parsed, tooLarge: false };
+    }
+    if (error instanceof CurlBodyLimitError) {
+      kill();
+      return { body: new Uint8Array(), headersTooLarge: false, parsed, tooLarge: true };
+    }
+    throw error;
+  } finally {
+    if (signal && abortListener) signal.removeEventListener("abort", abortListener);
+    reader.releaseLock();
+  }
+
+  const isChunkedComplete = () => chunkState === "done";
+  if (parsed?.chunked && !parsed.noBody && !isChunkedComplete()) {
+    throw new Error("HTTP/1.1 fallback returned a truncated chunked response");
+  }
+  if (
+    parsed &&
+    !parsed.noBody &&
+    !parsed.chunked &&
+    parsed.contentLength !== undefined &&
+    total !== parsed.contentLength
+  ) {
+    throw new Error("HTTP/1.1 fallback returned a truncated response body");
+  }
+
+  if (bodyChunkOffset > 0) chunks.push(bodyChunk.slice(0, bodyChunkOffset));
   const body = new Uint8Array(total);
   let offset = 0;
   for (const chunk of chunks) {
     body.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return { body, tooLarge: false };
-}
-
-function startCurlHeaderLimitMonitor(
-  path: string,
-  maxBytes: number,
-  kill: () => void
-): { stop: () => Promise<void>; exceeded: () => boolean } {
-  let stopped = false;
-  let exceeded = false;
-  const monitor = (async () => {
-    while (!stopped) {
-      try {
-        if ((await stat(path)).size > maxBytes) {
-          exceeded = true;
-          kill();
-          return;
-        }
-      } catch {
-        // curl may not have created the header file yet.
-      }
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-  })();
-  return {
-    stop: async () => {
-      stopped = true;
-      await monitor;
-    },
-    exceeded: () => exceeded,
-  };
-}
-
-async function fileExceedsLimit(path: string, maxBytes: number): Promise<boolean> {
-  try {
-    return (await stat(path)).size > maxBytes;
-  } catch {
-    return false;
-  }
+  return { body, headersTooLarge: false, parsed, tooLarge: false };
 }
 
 export async function fetchPublicResourceOverHttp11(
@@ -264,6 +600,7 @@ export async function fetchPublicResourceOverHttp11(
 ): Promise<Response> {
   const method = (init.method ?? "GET").toUpperCase();
   if (method !== "GET") throw new Error("HTTP/1.1 public resource fallback only supports GET");
+  if (init.signal?.aborted) throw abortReason(init.signal);
   const url = new URL(String(input));
   if (url.protocol !== "https:" || url.username || url.password) {
     throw new Error("HTTP/1.1 public resource fallback requires an HTTPS URL without credentials");
@@ -271,55 +608,51 @@ export async function fetchPublicResourceOverHttp11(
   if (maxBodyBytes !== undefined && (!Number.isSafeInteger(maxBodyBytes) || maxBodyBytes <= 0)) {
     throw new Error("maxBodyBytes must be a positive integer");
   }
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "blog-public-http11-"));
-  const headersPath = join(temporaryRoot, "headers.txt");
-  let headerMonitor: ReturnType<typeof startCurlHeaderLimitMonitor> | undefined;
-  try {
-    const child = spawnImpl(
-      [
-        "curl",
-        "--disable",
-        "--silent",
-        "--show-error",
-        "--http1.1",
-        "--no-compressed",
-        "--proto",
-        "=https",
-        "--max-time",
-        String(Math.ceil(requestTimeoutMs / 1_000)),
-        "--dump-header",
-        headersPath,
-        "--output",
-        "-",
-        url.href,
-      ],
-      {
-        stdout: "pipe",
-        stderr: "pipe",
-        timeout: requestTimeoutMs,
-        env: withoutDeploymentCredentials(process.env),
-      }
-    );
-    headerMonitor = startCurlHeaderLimitMonitor(headersPath, DEFAULT_MAX_HEADER_BYTES, () =>
-      child.kill()
-    );
-    let body: { body: Uint8Array; tooLarge: boolean };
-    try {
-      body = await readCurlBodyWithinLimit(child.stdout, maxBodyBytes, () => child.kill());
-    } catch (error) {
-      child.kill();
-      await child.exited;
-      throw error;
+  const child = spawnImpl(
+    [
+      "curl",
+      "--disable",
+      "--globoff",
+      "--silent",
+      "--show-error",
+      "--http1.1",
+      "--no-compressed",
+      "--raw",
+      "--proto",
+      "=https",
+      "--max-time",
+      String(Math.ceil(requestTimeoutMs / 1_000)),
+      "--include",
+      "--suppress-connect-headers",
+      "--output",
+      "-",
+      url.href,
+    ],
+    {
+      stdout: "pipe",
+      stderr: "pipe",
+      timeout: requestTimeoutMs,
+      env: withoutDeploymentCredentials(process.env),
     }
-    const [diagnostics, exitCode] = await Promise.all([
-      new Response(child.stderr).text(),
-      child.exited,
-    ]);
-    await headerMonitor.stop();
-    if (
-      headerMonitor.exceeded() ||
-      (await fileExceedsLimit(headersPath, DEFAULT_MAX_HEADER_BYTES))
-    ) {
+  );
+  const abortHandler = init.signal ? () => child.kill() : undefined;
+  if (init.signal && abortHandler) {
+    init.signal.addEventListener("abort", abortHandler, { once: true });
+  }
+  const diagnosticsPromise = readProcessDiagnostics(child.stderr, DEFAULT_MAX_HEADER_BYTES).catch(
+    () => ""
+  );
+  try {
+    const body = await readCurlResponseWithinLimits(
+      child.stdout,
+      maxBodyBytes,
+      DEFAULT_MAX_HEADER_BYTES,
+      () => child.kill(),
+      init.signal ?? undefined
+    );
+    const [diagnostics, exitCode] = await Promise.all([diagnosticsPromise, child.exited]);
+    if (init.signal?.aborted) throw abortReason(init.signal);
+    if (body.headersTooLarge) {
       throw new Error(
         `HTTP/1.1 public resource fallback response headers exceed ${DEFAULT_MAX_HEADER_BYTES} bytes`
       );
@@ -328,30 +661,42 @@ export async function fetchPublicResourceOverHttp11(
       const details = diagnostics.trim();
       throw new Error(`HTTP/1.1 public resource fallback failed${details ? `: ${details}` : ""}`);
     }
-    let parsed: ParsedCurlHeaders;
-    try {
-      parsed = parseCurlHeaders(await readFile(headersPath, "utf8"));
-    } catch (error) {
-      if (exitCode !== 0) {
-        const details = diagnostics.trim();
-        throw new Error(
-          `HTTP/1.1 public resource fallback failed${details ? `: ${details}` : ""}`,
-          { cause: error }
-        );
-      }
-      throw error;
-    }
+    if (!body.parsed) throw new Error("HTTP/1.1 fallback did not return a valid response status");
     if (body.tooLarge) {
-      const headers = new Headers(parsed.headers);
+      const headers = new Headers(body.parsed.headers);
+      if (body.parsed.chunked) headers.delete("transfer-encoding");
       headers.set("content-length", String((maxBodyBytes ?? 0) + 1));
-      return new Response(null, { headers, status: parsed.status });
+      return new Response(null, { headers, status: body.parsed.status });
     }
-    const responseBody = new ArrayBuffer(body.body.byteLength);
-    new Uint8Array(responseBody).set(body.body);
-    return new Response(responseBody, { headers: parsed.headers, status: parsed.status });
+    const responseBody = body.parsed.noBody ? null : new ArrayBuffer(body.body.byteLength);
+    if (responseBody) new Uint8Array(responseBody).set(body.body);
+    const headers = new Headers(body.parsed.headers);
+    if (body.parsed.noBody) {
+      headers.delete("content-length");
+    } else if (body.parsed.chunked) {
+      headers.delete("transfer-encoding");
+      headers.delete("trailer");
+      headers.set("content-length", String(body.body.byteLength));
+    }
+    return new Response(responseBody, {
+      headers,
+      status: body.parsed.status,
+    });
+  } catch (error) {
+    child.kill();
+    const [diagnostics, exitCode] = await Promise.all([diagnosticsPromise, child.exited]);
+    if (init.signal?.aborted) throw abortReason(init.signal);
+    if (exitCode !== 0) {
+      const details = diagnostics.trim();
+      throw new Error(`HTTP/1.1 public resource fallback failed${details ? `: ${details}` : ""}`, {
+        cause: error,
+      });
+    }
+    throw error;
   } finally {
-    await headerMonitor?.stop();
-    await rm(temporaryRoot, { recursive: true, force: true });
+    if (init.signal && abortHandler) {
+      init.signal.removeEventListener("abort", abortHandler);
+    }
   }
 }
 
@@ -701,6 +1046,8 @@ async function downloadMedia(
     try {
       return await downloadOnce(fallbackFetchImpl);
     } catch (error) {
+      if (error instanceof MediaPolicyError) throw error;
+      if (lastError instanceof MediaNotFoundError) throw lastError;
       if (error instanceof MediaNotFoundError || !isRetryableError(error)) throw error;
       throw mediaDownloadError(url, downloadAttempts, error);
     }
