@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
   "covered_files": {
-    "scripts/product-release.ts": "7c07ef5399130342c8522f02d334aeb0c3fbb74c",
+    "scripts/product-release.ts": "97987e86e4841e5bc412232c834125ba24c070b5",
     "src/lib/release/completion.ts": "2717cb7776b682ea359f05abbcbedcfb71d936c2",
     "tests/lib/manual-release-completion.test.ts": "8539233bb5228bad624d879c70aeb970aaad8946"
   },
@@ -32,7 +32,7 @@
       "evidence": [
         {
           "path": "scripts/product-release.ts",
-          "blob": "7c07ef5399130342c8522f02d334aeb0c3fbb74c",
+          "blob": "97987e86e4841e5bc412232c834125ba24c070b5",
           "command": "bunx biome check scripts/product-release.ts src/lib/release/completion.ts tests/lib/manual-release-completion.test.ts"
         },
         {
@@ -58,7 +58,7 @@
         },
         {
           "path": "scripts/product-release.ts",
-          "blob": "7c07ef5399130342c8522f02d334aeb0c3fbb74c",
+          "blob": "97987e86e4841e5bc412232c834125ba24c070b5",
           "command": "bunx biome check scripts/product-release.ts src/lib/release/completion.ts tests/lib/manual-release-completion.test.ts"
         }
       ]
@@ -113,7 +113,7 @@
       "evidence": [
         {
           "path": "scripts/product-release.ts",
-          "blob": "7c07ef5399130342c8522f02d334aeb0c3fbb74c",
+          "blob": "97987e86e4841e5bc412232c834125ba24c070b5",
           "command": "The recovery operation writes the existing abandoned release state without changing ledger schema."
         }
       ]
