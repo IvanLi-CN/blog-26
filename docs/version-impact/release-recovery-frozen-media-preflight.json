@@ -21,7 +21,7 @@
     "src/lib/release/products.ts": "d87fe2a85c3f3e32394fa52b697741ea158ed346",
     "src/lib/release/publication.ts": "f4a58c48b1a19eb27bc2a4a504627fbcae06c629",
     "tests/ci/notify-release-failure-workflow.test.ts": "6547c9cb7acc1c01668678d306f9406a33c3d550",
-    "tests/ci/product-prerelease-workflow.test.ts": "e1e7193a6d7cfc1ec3dacba48613d42918a5510d",
+    "tests/ci/product-prerelease-workflow.test.ts": "8a56da35c411eae77ed914f2b8a71b934a5f8665",
     "tests/lib/manual-release-completion.test.ts": "8539233bb5228bad624d879c70aeb970aaad8946",
     "tests/lib/manual-release-failure.test.ts": "f03887076131cc895c4866a744dbede6a83ab90a",
     "tests/lib/manual-release-ledger.test.ts": "d587bd127817e92a18d8076707e9119dce808581",
@@ -53,7 +53,7 @@
       "evidence": [
         {
           "path": "tests/ci/product-prerelease-workflow.test.ts",
-          "blob": "e1e7193a6d7cfc1ec3dacba48613d42918a5510d",
+          "blob": "8a56da35c411eae77ed914f2b8a71b934a5f8665",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         },
         {
