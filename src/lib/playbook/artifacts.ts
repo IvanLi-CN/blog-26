@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { readPlaybookEdition } from "./bundle";
+import { createPlaybookEdition, readPublicArchive } from "./bundle";
 import {
   fetchBounded,
   type PlaybookFetcher,
@@ -13,6 +13,7 @@ import {
   encodeJson,
   parseEditionIdentity,
   parseJson,
+  parseManifest,
   samePlaybookEdition,
   verifyFile,
 } from "./manifest";
@@ -82,7 +83,7 @@ export async function downloadRetainedEdition(
     files.set(record.path, parseJson(decodeUtf8(bytes, `Playbook ${record.path}`)));
     rawFiles.set(record.path, bytes);
   }
-  const edition = validatePlaybookEdition(
+  validatePlaybookEdition(
     {
       edition: pointer,
       catalog: files.get("catalog.json"),
@@ -103,22 +104,38 @@ export async function downloadRetainedEdition(
     size: pointer.bundle.size,
   });
   await write(join(destination, pointer.bundle.name), archive);
-  const manifest = await fetchBounded(
+  const manifestBytes = await fetchBounded(
     fetcher,
     new URL("playbook-public-manifest.json", base).href,
     64 * 1024,
     AbortSignal.timeout(30_000)
   );
-  await write(join(destination, "playbook-public-manifest.json"), manifest);
-  const rebuilt = await readPlaybookEdition(
-    destination,
+  const manifest = parseManifest(parseJson(decodeUtf8(manifestBytes, "Public manifest")));
+  if (
+    encodeJson(manifest.source) !== encodeJson(pointer.source) ||
+    encodeJson(manifest.bundle) !== encodeJson(pointer.bundle)
+  )
+    throw new Error("Retained package source identity mismatch");
+  const archiveFiles = readPublicArchive(archive, manifest, pointer.sourceTimestamp);
+  createPlaybookEdition(
+    archiveFiles,
+    manifest,
     pointer.rendererCommit,
     await readFile(join(destination, "public-snapshot.json")),
     pointer.sourceTimestamp,
     catalogOptions
   );
-  if (!samePlaybookEdition(rebuilt.edition, pointer))
+  const edition = createPlaybookEdition(
+    new Map([...rawFiles.entries()].map(([path, bytes]) => [path, bytes] as [string, Uint8Array])),
+    manifest,
+    pointer.rendererCommit,
+    await readFile(join(destination, "public-snapshot.json")),
+    pointer.sourceTimestamp,
+    catalogOptions
+  );
+  if (!samePlaybookEdition(edition.edition, pointer))
     throw new Error("Retained package does not reproduce the public edition");
+  await write(join(destination, "playbook-public-manifest.json"), manifestBytes);
   await write(join(destination, "edition.json"), encodeJson(pointer));
   await writePolicyResources(destination, edition);
   return edition;
