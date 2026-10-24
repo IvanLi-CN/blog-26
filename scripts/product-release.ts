@@ -8,6 +8,7 @@ import {
   verifyDirectory,
 } from "../src/lib/release/artifacts";
 import {
+  assertReleaseRecoverySource,
   assertRetryableProductRelease,
   classifyMergeFollowup,
   evaluationChecksPassed,
@@ -489,7 +490,7 @@ if (command === "notification") {
     })
     .parse(app.api(`${app.root}/actions/runs/${entry.releaseRunId}`));
   if (run.id !== entry.releaseRunId) throw new Error("Release run identity changed");
-  if (run.head_sha !== entry.mergeSha) throw new Error("Failed release source identity changed");
+  assertReleaseRecoverySource(entry, run);
   if (entry.failure.attempt > run.run_attempt)
     throw new Error("Release failure attempt is newer than the registered run");
   const { findArtifact } = await import("../src/lib/release/artifacts");
