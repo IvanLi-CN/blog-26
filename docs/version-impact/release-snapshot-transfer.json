@@ -7,12 +7,13 @@
     "docs/specs/manual-version-release/IMPLEMENTATION.md": "8f730f2627c43f4eca0780220036b3bfa732340c",
     "scripts/package-public-media.test.ts": "36ba493deb885c27cdd0b86ce8cd0a12771b044b",
     "scripts/package-public-media.ts": "17ce4fcd4b17aeeff7e1a1b7d65eda8fdcdcd585",
+    "scripts/run-test-suite.ts": "90c333cc5b0100105c91c630545560dee5e73da9",
     "src/lib/release/inputs.ts": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
     "tests/lib/manual-release-inputs.test.ts": "55b3ae82c2fefd4c6c16e630eaa79983e942da10",
     "tests/lib/manual-release-media.test.ts": "784b850bd71689f78f6d28a87dd18482d6643790"
   },
   "change": {
-    "description": "Make public release input acquisition resilient across Bun transport failures by bounding primary and HTTP/1.1 fallback reads, isolating curl configuration, preserving HTTPS and same-origin redirect rules, and sealing derived public watermark variants.",
+    "description": "Make public release input acquisition resilient across Bun transport failures by bounding primary and HTTP/1.1 fallback reads, isolating curl configuration, preserving HTTPS and same-origin redirect rules, sealing derived public watermark variants, and registering deterministic fallback coverage in the unit-test runner.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api"]
   },
@@ -48,11 +49,16 @@
           "path": "scripts/package-public-media.test.ts",
           "blob": "36ba493deb885c27cdd0b86ce8cd0a12771b044b",
           "command": "bun test scripts/package-public-media.test.ts: curl success, size termination, diagnostics, and configuration isolation pass"
+        },
+        {
+          "path": "scripts/run-test-suite.ts",
+          "blob": "90c333cc5b0100105c91c630545560dee5e73da9",
+          "command": "bun run test:unit: the deterministic package-public-media adapter suite is included in unit-test discovery"
         }
       ],
       "scope_drift": {
         "detected": true,
-        "description": "The candidate extends the earlier retry fix with bounded primary and HTTP/1.1 fallback snapshot/media reads, same-origin redirect enforcement, curl configuration isolation, and deterministic fallback adapter coverage; the public input and frozen media contracts remain compatible."
+        "description": "The candidate extends the earlier retry fix with bounded primary and HTTP/1.1 fallback snapshot/media reads, same-origin redirect enforcement, curl configuration isolation, deterministic fallback adapter coverage, and explicit unit-test discovery; the public input and frozen media contracts remain compatible."
       }
     },
     "verified": {
@@ -74,6 +80,11 @@
           "path": "docs/specs/manual-version-release/SPEC.md",
           "blob": "029a3ce6db8030b70cc28efd3f425016c665e980",
           "command": "spec_drift_check.sh: manual version release specification remains synchronized"
+        },
+        {
+          "path": "scripts/run-test-suite.ts",
+          "blob": "90c333cc5b0100105c91c630545560dee5e73da9",
+          "command": "bun run test:unit: explicit fallback adapter discovery is included in the unit-test suite"
         }
       ]
     }
