@@ -16,7 +16,7 @@
     "scripts/prepare-console-playbook-seed.ts": "d126f6fe798e17cb479c7f85056a310290e6f0b5",
     "scripts/playbook-content-update.ts": "d10d0b8a7638f746622d623f08913892834c2162",
     "scripts/prepare-backend-dist.sh": "f2a8b868dbeefb9b28cfdefcfff3a74f9ecdc9b6",
-    "scripts/prepare-playbook-edition.ts": "ffbbcbb1bf76606c96cbadcbd868358516ce1c08",
+    "scripts/prepare-playbook-edition.ts": "c0912e5adc8d21c30cf2d68fb8ba6359603d1d54",
     "scripts/stage-playbook-initial-from-artifact.ts": "8f18eeaf69ae743e8dff006d920702f65fc4a5fe",
     "scripts/verify-playbook-artifact.ts": "6d89695620bfda99d8b33d54848708935cde70c0",
     "src/lib/admin-api-client.ts": "2a64f08b269db50bef7a5452e4c3c607a53f8884",
@@ -44,7 +44,7 @@
     "tests/lib/manual-release-source.test.ts": "015b936082fdaf6c4435d47b49e6649a2aa9d8ea",
     "tests/lib/playbook-contract.test.ts": "8d4811b314bffde3f0c10bdfde620a6e277e157f",
     "tests/lib/playbook-fixture.ts": "b1b4b5db69c257d00f57de260f1627d8507e71bd",
-    "tests/lib/playbook-workflows.test.ts": "bbe942adce3e8432e9ab630f5500988643653869",
+    "tests/lib/playbook-workflows.test.ts": "21a260ea600138843aa6cfcced2c5324582bb93e",
     "tests/fixtures/playbook/rust-supplement-catalog.fixture": "5eafd8f810a3765097aacee8d962b31912e93ef0",
     "tests/fixtures/playbook/rust-supplement-search.fixture": "9d20810bc370fbeeaa0fe459bf882c3943cbf85a"
   },
@@ -124,7 +124,7 @@
         },
         {
           "path": "tests/lib/playbook-workflows.test.ts",
-          "blob": "bbe942adce3e8432e9ab630f5500988643653869",
+          "blob": "21a260ea600138843aa6cfcced2c5324582bb93e",
           "command": "Workflow boundary tests reject non-HTTPS sync endpoints, keep invalid optional supplements, defer unavailable optional assets, validate public/supplement merge compatibility before sync, gate content builds on deployed renderer capabilities, surface receiver failures after preserving the public deployment, clear stale supplement retries, and assert that supplements stay out of public frozen and backend artifacts"
         },
         {
