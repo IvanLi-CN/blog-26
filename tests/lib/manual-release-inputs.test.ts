@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   clippingResourceUrlsFromSnapshot,
+  DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES,
   DEFAULT_RELEASE_MEDIA_DOWNLOAD_CONCURRENCY,
   fetchPublicSnapshot,
   MAX_RELEASE_MEDIA_DOWNLOAD_CONCURRENCY,
@@ -117,22 +118,50 @@ describe("manual release snapshot acquisition", () => {
   test("retries when reading a successful response body fails", async () => {
     const waits: number[] = [];
     let calls = 0;
-    const response = new Response("ok", { status: 200 });
-    response.text = async () => {
-      calls += 1;
-      if (calls === 1) throw new Error("socket reset while reading body");
-      return "ok";
-    };
-
-    const result = await fetchPublicSnapshot(
+    const responseBody = () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start: (controller) => {
+            controller.enqueue(new TextEncoder().encode("partial"));
+            controller.error(new Error("socket reset while reading body"));
+          },
+        }),
+        { status: 200 }
+      );
+    const response = await fetchPublicSnapshot(
       snapshotUrl,
-      async () => response,
+      async () => {
+        calls += 1;
+        return calls === 1 ? responseBody() : new Response("ok", { status: 200 });
+      },
       async (delayMs) => waits.push(delayMs)
     );
 
-    expect(await result.text()).toBe("ok");
+    expect(await response.text()).toBe("ok");
     expect(calls).toBe(2);
     expect(waits).toEqual([1_000]);
+  });
+
+  test("bounds oversized primary snapshot responses", async () => {
+    let calls = 0;
+    await expect(
+      fetchPublicSnapshot(
+        snapshotUrl,
+        async () => {
+          calls += 1;
+          return new Response("small body", {
+            status: 200,
+            headers: {
+              "content-length": String(DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES + 1),
+            },
+          });
+        },
+        async () => undefined
+      )
+    ).rejects.toThrow(
+      `Public snapshot response exceeds ${DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES} bytes`
+    );
+    expect(calls).toBe(3);
   });
 
   test("uses an HTTP/1.1 fallback after repeated response-body transport failures", async () => {
@@ -140,11 +169,15 @@ describe("manual release snapshot acquisition", () => {
     const result = await fetchPublicSnapshot(
       snapshotUrl,
       async () => {
-        const response = new Response("partial", { status: 200 });
-        response.text = async () => {
-          throw new Error("socket reset while reading body");
-        };
-        return response;
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            start: (controller) => {
+              controller.enqueue(new TextEncoder().encode("partial"));
+              controller.error(new Error("socket reset while reading body"));
+            },
+          }),
+          { status: 200 }
+        );
       },
       async () => undefined,
       async () => {

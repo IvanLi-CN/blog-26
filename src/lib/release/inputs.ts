@@ -117,6 +117,55 @@ async function cancelSnapshotResponseBody(response: Response): Promise<void> {
   }
 }
 
+async function readSnapshotResponseText(response: Response): Promise<string> {
+  const declaredLength = Number(response.headers.get("content-length"));
+  if (Number.isSafeInteger(declaredLength) && declaredLength > DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES) {
+    await cancelSnapshotResponseBody(response);
+    throw new Error(`Public snapshot response exceeds ${DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES} bytes`);
+  }
+
+  if (!response.body) {
+    const body = new Uint8Array(await response.arrayBuffer());
+    if (body.byteLength > DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES) {
+      throw new Error(
+        `Public snapshot response exceeds ${DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES} bytes`
+      );
+    }
+    return new TextDecoder().decode(body);
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      total += next.value.byteLength;
+      if (total > DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES) {
+        await reader.cancel().catch(() => undefined);
+        throw new Error(
+          `Public snapshot response exceeds ${DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES} bytes`
+        );
+      }
+      chunks.push(next.value);
+    }
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(body);
+}
+
 export async function fetchPublicSnapshot(
   snapshotUrl: URL,
   fetcher: SnapshotFetcher = fetch,
@@ -152,7 +201,7 @@ export async function fetchPublicSnapshot(
     try {
       // Consume the body inside the retry boundary. Edge failures can occur after
       // the headers arrive, while the chunked response is being read.
-      const body = await response.text();
+      const body = await readSnapshotResponseText(response);
       return new Response(body, {
         headers: response.headers,
         status: response.status,
