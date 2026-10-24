@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
+  "covered_files": {
+    "scripts/package-public-media.test.ts": "36ba493deb885c27cdd0b86ce8cd0a12771b044b",
+    "scripts/package-public-media.ts": "17ce4fcd4b17aeeff7e1a1b7d65eda8fdcdcd585",
+    "scripts/run-test-suite.ts": "90c333cc5b0100105c91c630545560dee5e73da9",
+    "src/lib/release/inputs.ts": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+    "tests/lib/manual-release-inputs.test.ts": "55b3ae82c2fefd4c6c16e630eaa79983e942da10"
+  },
+  "change": {
+    "description": "Make public release input acquisition resilient across Bun transport failures by bounding primary and HTTP/1.1 fallback reads, isolating curl configuration, preserving HTTPS and same-origin redirect rules, sealing derived public watermark variants, and registering deterministic fallback coverage in the unit-test runner.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a compatible release packaging reliability fix. It preserves the public snapshot and media contracts, keeps acquisition fail-closed on origin and size violations, and adds deterministic coverage for the transport fallback.",
+      "assessed_at": "2026-10-24T16:22:27+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+          "command": "bun test tests/lib/manual-release-*.test.ts scripts/package-public-media.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate falls back from Bun transport failures to bounded HTTP/1.1 acquisition for public snapshots and media, isolates curl configuration, preserves HTTPS and same-origin redirect checks, and keeps the public input and frozen media contracts compatible.",
+      "assessed_at": "2026-10-24T16:22:27+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+          "command": "bun test tests/lib/manual-release-*.test.ts scripts/package-public-media.test.ts: bounded primary and HTTP/1.1 fallback reads pass"
+        },
+        {
+          "path": "scripts/package-public-media.test.ts",
+          "blob": "36ba493deb885c27cdd0b86ce8cd0a12771b044b",
+          "command": "bun run test:unit: curl success, size termination, diagnostics, configuration isolation, and fallback handoff pass"
+        },
+        {
+          "path": "scripts/run-test-suite.ts",
+          "blob": "90c333cc5b0100105c91c630545560dee5e73da9",
+          "command": "bun run test:unit: the explicit package-public-media adapter suite is discovered by the unit runner"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to release input acquisition, static public media packaging, explicit unit-test discovery, focused tests, and release evidence."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The focused release-input and media adapter tests, the complete unit-test runner, and the repository check confirm bounded acquisition and fail-closed transport behavior without changing public payloads, persistent state, or product artifact identity.",
+      "assessed_at": "2026-10-24T16:22:27+08:00",
+      "evidence": [
+        {
+          "path": "scripts/package-public-media.test.ts",
+          "blob": "36ba493deb885c27cdd0b86ce8cd0a12771b044b",
+          "command": "bun run test:unit: 1402 passed, 52 skipped, 0 failed across 163 files"
+        },
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+          "command": "bun test tests/lib/manual-release-*.test.ts scripts/package-public-media.test.ts: release input and fallback adapter coverage passes"
+        },
+        {
+          "path": "scripts/run-test-suite.ts",
+          "blob": "90c333cc5b0100105c91c630545560dee5e73da9",
+          "command": "bun run test:unit: explicit fallback coverage is included and the runner completes with 1402 passed, 52 skipped, 0 failed"
+        },
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+          "command": "bun run check: release input implementation passes repository lint and format gates"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.7.4"
+      ],
+      "evidence": [
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+          "command": "The public snapshot and media URL, response, and frozen input contracts remain unchanged"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The change only bounds in-memory response reads and release-time artifact acquisition; it does not alter SQLite schema, local content, browser persistence, release ledger format, or frozen artifact identity fields.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+          "command": "No database, cache, artifact manifest identity, or release ledger format changes"
+        }
+      ]
+    }
+  }
+}

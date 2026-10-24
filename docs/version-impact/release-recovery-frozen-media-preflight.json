@@ -10,7 +10,7 @@
     ".github/workflows/retry-product-release.yml": "5d6be9679872974e4fec3384214fd6d6c6a73e88",
     "docs/adr/0029-release-recovery-and-frozen-media-preflight.md": "c284d022a3e76455cdce0f1c9371d3f7b6f9147a",
     "docs/runbooks/manual-version-release.md": "a59eb3a61438fae555533d6f96ffbfff892b21e0",
-    "docs/specs/manual-version-release/IMPLEMENTATION.md": "eeb2066de2a32503b1e4672b16a41a627b7d84ad",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "8f730f2627c43f4eca0780220036b3bfa732340c",
     "docs/specs/manual-version-release/SPEC.md": "029a3ce6db8030b70cc28efd3f425016c665e980",
     "scripts/product-release.ts": "155d1448ac7a29b5e46f082cdc99a5bddc2e2930",
     "src/lib/release/artifacts.ts": "9faf84f70f5dca76c916008167112917412ff694",
