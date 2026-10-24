@@ -12,6 +12,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { extname, join, relative, resolve, sep } from "node:path";
+import { withoutDeploymentCredentials } from "../src/lib/playbook/child-env";
 
 export const PUBLIC_MEDIA_FACADE_PREFIX = "/api/public/assets/";
 export const CLIPPING_RESOURCE_FACADE_RE =
@@ -23,6 +24,7 @@ export const DEFAULT_MAX_BYTES = 20 * 1024 * 1024;
 export const DEFAULT_MAX_FILES = 20_000;
 export const DEFAULT_MAX_PROJECT_BYTES = 5 * 1024 * 1024 * 1024;
 export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+export const DEFAULT_MAX_HEADER_BYTES = 64 * 1024;
 export const DEFAULT_DOWNLOAD_CONCURRENCY = 1;
 export const DEFAULT_DOWNLOAD_ATTEMPTS = 3;
 export const DEFAULT_RETRY_DELAY_MS = 500;
@@ -126,7 +128,12 @@ type PublicHttp11Process = {
 
 export type PublicHttp11Spawner = (
   args: string[],
-  options: { stdout: "pipe"; stderr: "pipe"; timeout: number }
+  options: {
+    stdout: "pipe";
+    stderr: "pipe";
+    timeout: number;
+    env: Record<string, string | undefined>;
+  }
 ) => PublicHttp11Process;
 
 const spawnPublicHttp11Process: PublicHttp11Spawner = (args, options) => Bun.spawn(args, options);
@@ -210,6 +217,44 @@ async function readCurlBodyWithinLimit(
   return { body, tooLarge: false };
 }
 
+function startCurlHeaderLimitMonitor(
+  path: string,
+  maxBytes: number,
+  kill: () => void
+): { stop: () => Promise<void>; exceeded: () => boolean } {
+  let stopped = false;
+  let exceeded = false;
+  const monitor = (async () => {
+    while (!stopped) {
+      try {
+        if ((await stat(path)).size > maxBytes) {
+          exceeded = true;
+          kill();
+          return;
+        }
+      } catch {
+        // curl may not have created the header file yet.
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  })();
+  return {
+    stop: async () => {
+      stopped = true;
+      await monitor;
+    },
+    exceeded: () => exceeded,
+  };
+}
+
+async function fileExceedsLimit(path: string, maxBytes: number): Promise<boolean> {
+  try {
+    return (await stat(path)).size > maxBytes;
+  } catch {
+    return false;
+  }
+}
+
 export async function fetchPublicResourceOverHttp11(
   input: RequestInfo | URL,
   init: RequestInit = {},
@@ -228,6 +273,7 @@ export async function fetchPublicResourceOverHttp11(
   }
   const temporaryRoot = await mkdtemp(join(tmpdir(), "blog-public-http11-"));
   const headersPath = join(temporaryRoot, "headers.txt");
+  let headerMonitor: ReturnType<typeof startCurlHeaderLimitMonitor> | undefined;
   try {
     const child = spawnImpl(
       [
@@ -251,7 +297,11 @@ export async function fetchPublicResourceOverHttp11(
         stdout: "pipe",
         stderr: "pipe",
         timeout: requestTimeoutMs,
+        env: withoutDeploymentCredentials(process.env),
       }
+    );
+    headerMonitor = startCurlHeaderLimitMonitor(headersPath, DEFAULT_MAX_HEADER_BYTES, () =>
+      child.kill()
     );
     let body: { body: Uint8Array; tooLarge: boolean };
     try {
@@ -265,6 +315,15 @@ export async function fetchPublicResourceOverHttp11(
       new Response(child.stderr).text(),
       child.exited,
     ]);
+    await headerMonitor.stop();
+    if (
+      headerMonitor.exceeded() ||
+      (await fileExceedsLimit(headersPath, DEFAULT_MAX_HEADER_BYTES))
+    ) {
+      throw new Error(
+        `HTTP/1.1 public resource fallback response headers exceed ${DEFAULT_MAX_HEADER_BYTES} bytes`
+      );
+    }
     if (exitCode !== 0 && !body.tooLarge) {
       const details = diagnostics.trim();
       throw new Error(`HTTP/1.1 public resource fallback failed${details ? `: ${details}` : ""}`);
@@ -291,6 +350,7 @@ export async function fetchPublicResourceOverHttp11(
     new Uint8Array(responseBody).set(body.body);
     return new Response(responseBody, { headers: parsed.headers, status: parsed.status });
   } finally {
+    await headerMonitor?.stop();
     await rm(temporaryRoot, { recursive: true, force: true });
   }
 }

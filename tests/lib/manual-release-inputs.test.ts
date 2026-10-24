@@ -161,7 +161,33 @@ describe("manual release snapshot acquisition", () => {
     ).rejects.toThrow(
       `Public snapshot response exceeds ${DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES} bytes`
     );
-    expect(calls).toBe(3);
+    expect(calls).toBe(1);
+  });
+
+  test("does not retry chunked oversized primary snapshot responses", async () => {
+    let calls = 0;
+    await expect(
+      fetchPublicSnapshot(
+        snapshotUrl,
+        async () => {
+          calls += 1;
+          return new Response(
+            new ReadableStream<Uint8Array>({
+              start: (controller) => {
+                controller.enqueue(new Uint8Array(DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES + 1));
+              },
+            }),
+            { status: 200 }
+          );
+        },
+        async () => {
+          throw new Error("unexpected retry");
+        }
+      )
+    ).rejects.toThrow(
+      `Public snapshot response exceeds ${DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES} bytes`
+    );
+    expect(calls).toBe(1);
   });
 
   test("uses an HTTP/1.1 fallback after repeated response-body transport failures", async () => {

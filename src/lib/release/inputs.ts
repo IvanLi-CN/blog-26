@@ -64,6 +64,14 @@ const snapshotRetryDelaysMs = [1_000, 3_000] as const;
 const snapshotRequestTimeoutMs = 60_000;
 export const DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES = 64 * 1024 * 1024;
 const clippingResourceReferenceRe = /\.\/assets\/[a-f0-9]{64}\.[a-z0-9]+(?:[?#][^"'`\s<>)]+)?/giu;
+
+class PublicSnapshotTooLargeError extends Error {
+  constructor() {
+    super(`Public snapshot response exceeds ${DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES} bytes`);
+    this.name = "PublicSnapshotTooLargeError";
+  }
+}
+
 export type ClippingSnapshotArticle = {
   source: string | null;
   translation: string | null;
@@ -80,7 +88,7 @@ const fetchPublicSnapshotOverHttp11: SnapshotFetcher = async (input, init) => {
   );
   const declaredLength = Number(response.headers.get("content-length"));
   if (Number.isSafeInteger(declaredLength) && declaredLength > DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES) {
-    throw new Error(`Public snapshot response exceeds ${DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES} bytes`);
+    throw new PublicSnapshotTooLargeError();
   }
   return response;
 };
@@ -121,15 +129,13 @@ async function readSnapshotResponseText(response: Response): Promise<string> {
   const declaredLength = Number(response.headers.get("content-length"));
   if (Number.isSafeInteger(declaredLength) && declaredLength > DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES) {
     await cancelSnapshotResponseBody(response);
-    throw new Error(`Public snapshot response exceeds ${DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES} bytes`);
+    throw new PublicSnapshotTooLargeError();
   }
 
   if (!response.body) {
     const body = new Uint8Array(await response.arrayBuffer());
     if (body.byteLength > DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES) {
-      throw new Error(
-        `Public snapshot response exceeds ${DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES} bytes`
-      );
+      throw new PublicSnapshotTooLargeError();
     }
     return new TextDecoder().decode(body);
   }
@@ -144,9 +150,7 @@ async function readSnapshotResponseText(response: Response): Promise<string> {
       total += next.value.byteLength;
       if (total > DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES) {
         await reader.cancel().catch(() => undefined);
-        throw new Error(
-          `Public snapshot response exceeds ${DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES} bytes`
-        );
+        throw new PublicSnapshotTooLargeError();
       }
       chunks.push(next.value);
     }
@@ -210,6 +214,7 @@ export async function fetchPublicSnapshot(
     } catch (error) {
       lastError = error;
       await cancelSnapshotResponseBody(response);
+      if (error instanceof PublicSnapshotTooLargeError) throw error;
       if (attempt === snapshotRetryDelaysMs.length) break;
       await sleep(snapshotRetryDelaysMs[attempt] || 0);
     }

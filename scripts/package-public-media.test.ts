@@ -3,6 +3,7 @@ import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promi
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
+  DEFAULT_MAX_HEADER_BYTES,
   fetchPublicResourceOverHttp11,
   type PublicHttp11Spawner,
   type PublicMediaFetcher,
@@ -36,26 +37,38 @@ function fakeCurlSpawner({
   headers,
   onKill,
   onSpawn,
+  holdExit = false,
 }: {
   body: string;
   stderr?: string;
   exitCode?: number;
   headers: string;
   onKill?: () => void;
-  onSpawn?: (args: string[]) => void;
+  onSpawn?: (args: string[], options: Parameters<PublicHttp11Spawner>[1]) => void;
+  holdExit?: boolean;
 }): PublicHttp11Spawner {
-  return (args) => {
-    onSpawn?.(args);
+  return (args, options) => {
+    onSpawn?.(args, options);
     const headersPath = args[args.indexOf("--dump-header") + 1];
     if (!headersPath) throw new Error("fake curl did not receive a header output path");
     const stdout = new Response(body).body;
     const stderrStream = new Response(stderr).body;
     if (!stdout || !stderrStream) throw new Error("fake curl streams were not created");
+    let releaseExit: ((code: number) => void) | undefined;
+    const exited = new Promise<number>((resolve) => {
+      releaseExit = resolve;
+    });
+    void writeFile(headersPath, headers).then(() => {
+      if (!holdExit) releaseExit?.(exitCode);
+    });
     return {
       stdout,
       stderr: stderrStream,
-      exited: writeFile(headersPath, headers).then(() => exitCode),
-      kill: () => onKill?.(),
+      exited,
+      kill: () => {
+        onKill?.();
+        releaseExit?.(exitCode);
+      },
     };
   };
 }
@@ -119,6 +132,54 @@ describe("packagePublicMedia", () => {
         })
       )
     ).rejects.toThrow("curl: (6) Could not resolve host");
+  });
+
+  test("bounds response-header storage and kills curl while headers grow", async () => {
+    let killed = false;
+    await expect(
+      fetchPublicResourceOverHttp11(
+        "https://api.example/resource",
+        {},
+        1_000,
+        undefined,
+        fakeCurlSpawner({
+          body: "",
+          headers: `HTTP/1.1 200 OK\r\nX-Large: ${"x".repeat(DEFAULT_MAX_HEADER_BYTES)}\r\n\r\n`,
+          holdExit: true,
+          onKill: () => {
+            killed = true;
+          },
+        })
+      )
+    ).rejects.toThrow(
+      `HTTP/1.1 public resource fallback response headers exceed ${DEFAULT_MAX_HEADER_BYTES} bytes`
+    );
+    expect(killed).toBe(true);
+  });
+
+  test("does not pass deployment credentials to curl", async () => {
+    const previousToken = process.env.PLAYBOOK_SOURCE_TOKEN;
+    process.env.PLAYBOOK_SOURCE_TOKEN = "test-token";
+    let childEnv: Parameters<PublicHttp11Spawner>[1]["env"] | undefined;
+    try {
+      await fetchPublicResourceOverHttp11(
+        "https://api.example/resource",
+        {},
+        1_000,
+        undefined,
+        fakeCurlSpawner({
+          body: "four",
+          headers: "HTTP/1.1 200 OK\r\ncontent-length: 4\r\n\r\n",
+          onSpawn: (_args, options) => {
+            childEnv = options.env;
+          },
+        })
+      );
+    } finally {
+      if (previousToken === undefined) delete process.env.PLAYBOOK_SOURCE_TOKEN;
+      else process.env.PLAYBOOK_SOURCE_TOKEN = previousToken;
+    }
+    expect(childEnv?.PLAYBOOK_SOURCE_TOKEN).toBeUndefined();
   });
 
   test("packages clipping version resources and does not leave oversized resources external", async () => {
