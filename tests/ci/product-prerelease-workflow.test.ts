@@ -148,6 +148,7 @@ describe("prerelease workflow deployment boundary", () => {
     expect(compatibility).toBeGreaterThan(inputRecord);
     expect(compatibility).toBeLessThan(preflight);
     expect(steps[compatibility]?.run).toContain("release-playbook-tooling/fixed");
+    expect(steps[compatibility]?.run).toContain("site-lib-playbook.ts");
     expect(preflight).toBeGreaterThan(inputRecord);
     expect(imageBuild).toBeGreaterThan(preflight);
     expect(steps[preflight]?.run).toContain("preflight-frozen-media");
