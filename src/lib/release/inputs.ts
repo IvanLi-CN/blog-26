@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import { z } from "zod";
 import {
   CLIPPING_RESOURCE_BASE_FACADE_RE,
+  fetchPublicResourceOverHttp11,
   type PublicMediaManifest,
   packagePublicMedia,
 } from "../../../scripts/package-public-media";
@@ -60,14 +61,37 @@ const publicEnvNames = [
 ] as const;
 
 const snapshotRetryDelaysMs = [1_000, 3_000] as const;
+const snapshotRequestTimeoutMs = 60_000;
+export const DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES = 64 * 1024 * 1024;
 const clippingResourceReferenceRe = /\.\/assets\/[a-f0-9]{64}\.[a-z0-9]+(?:[?#][^"'`\s<>)]+)?/giu;
+
+class PublicSnapshotTooLargeError extends Error {
+  constructor() {
+    super(`Public snapshot response exceeds ${DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES} bytes`);
+    this.name = "PublicSnapshotTooLargeError";
+  }
+}
+
 export type ClippingSnapshotArticle = {
   source: string | null;
   translation: string | null;
   resourceBaseUrl?: string | null;
 };
-type SnapshotFetcher = typeof fetch;
-type SnapshotSleep = (delayMs: number) => Promise<void>;
+type SnapshotFetcher = (input: URL, init?: RequestInit) => Promise<Response>;
+type SnapshotSleep = (delayMs: number) => Promise<unknown>;
+const fetchPublicSnapshotOverHttp11: SnapshotFetcher = async (input, init) => {
+  const response = await fetchPublicResourceOverHttp11(
+    input,
+    init,
+    snapshotRequestTimeoutMs,
+    DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES
+  );
+  const declaredLength = Number(response.headers.get("content-length"));
+  if (Number.isSafeInteger(declaredLength) && declaredLength > DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES) {
+    throw new PublicSnapshotTooLargeError();
+  }
+  return response;
+};
 
 export function clippingResourceUrlsFromSnapshot(
   articles: Record<string, ClippingSnapshotArticle> | undefined,
@@ -93,10 +117,66 @@ function isRetryableSnapshotStatus(status: number): boolean {
   return status === 408 || status === 425 || status === 429 || status >= 500;
 }
 
+async function cancelSnapshotResponseBody(response: Response): Promise<void> {
+  try {
+    await response.body?.cancel();
+  } catch {
+    // The response is already unusable; cleanup must not mask the acquisition error.
+  }
+}
+
+async function readSnapshotResponseText(response: Response): Promise<string> {
+  const declaredLength = Number(response.headers.get("content-length"));
+  if (Number.isSafeInteger(declaredLength) && declaredLength > DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES) {
+    await cancelSnapshotResponseBody(response);
+    throw new PublicSnapshotTooLargeError();
+  }
+
+  if (!response.body) {
+    const body = new Uint8Array(await response.arrayBuffer());
+    if (body.byteLength > DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES) {
+      throw new PublicSnapshotTooLargeError();
+    }
+    return new TextDecoder().decode(body);
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      total += next.value.byteLength;
+      if (total > DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES) {
+        await reader.cancel().catch(() => undefined);
+        throw new PublicSnapshotTooLargeError();
+      }
+      chunks.push(next.value);
+    }
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(body);
+}
+
 export async function fetchPublicSnapshot(
   snapshotUrl: URL,
   fetcher: SnapshotFetcher = fetch,
-  sleep: SnapshotSleep = (delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs))
+  sleep: SnapshotSleep = (delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)),
+  fallbackFetcher: SnapshotFetcher | undefined = fetcher === fetch
+    ? fetchPublicSnapshotOverHttp11
+    : undefined
 ): Promise<Response> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= snapshotRetryDelaysMs.length; attempt += 1) {
@@ -104,19 +184,20 @@ export async function fetchPublicSnapshot(
     try {
       response = await fetcher(snapshotUrl, {
         redirect: "error",
-        signal: AbortSignal.timeout(60_000),
+        signal: AbortSignal.timeout(snapshotRequestTimeoutMs),
       });
     } catch (error) {
-      if (attempt === snapshotRetryDelaysMs.length) throw error;
       lastError = error;
+      if (attempt === snapshotRetryDelaysMs.length) break;
       await sleep(snapshotRetryDelaysMs[attempt] || 0);
       continue;
     }
 
     if (!response.ok) {
       lastError = new Error(`Public snapshot acquisition failed (HTTP ${response.status})`);
-      if (!isRetryableSnapshotStatus(response.status) || attempt === snapshotRetryDelaysMs.length)
-        throw lastError;
+      await cancelSnapshotResponseBody(response);
+      if (!isRetryableSnapshotStatus(response.status)) throw lastError;
+      if (attempt === snapshotRetryDelaysMs.length) break;
       await sleep(snapshotRetryDelaysMs[attempt] || 0);
       continue;
     }
@@ -124,16 +205,36 @@ export async function fetchPublicSnapshot(
     try {
       // Consume the body inside the retry boundary. Edge failures can occur after
       // the headers arrive, while the chunked response is being read.
-      const body = await response.text();
+      const body = await readSnapshotResponseText(response);
       return new Response(body, {
         headers: response.headers,
         status: response.status,
         statusText: response.statusText,
       });
     } catch (error) {
-      if (attempt === snapshotRetryDelaysMs.length) throw error;
       lastError = error;
+      await cancelSnapshotResponseBody(response);
+      if (error instanceof PublicSnapshotTooLargeError) throw error;
+      if (attempt === snapshotRetryDelaysMs.length) break;
       await sleep(snapshotRetryDelaysMs[attempt] || 0);
+    }
+  }
+  if (fallbackFetcher) {
+    try {
+      const response = await fallbackFetcher(snapshotUrl);
+      if (!response.ok) {
+        throw new Error(`Public snapshot acquisition failed (HTTP ${response.status})`);
+      }
+      return response;
+    } catch (fallbackError) {
+      const fallbackMessage =
+        fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+      const originalMessage =
+        lastError instanceof Error ? `; last fetch error: ${lastError.message}` : "";
+      throw new Error(
+        `Public snapshot acquisition failed after fetch retries and HTTP/1.1 fallback: ${fallbackMessage}${originalMessage}`,
+        { cause: fallbackError }
+      );
     }
   }
   if (lastError instanceof Error) throw lastError;
