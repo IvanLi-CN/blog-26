@@ -103,6 +103,14 @@ export function assertRunSource(
     throw new Error("Workflow run is not a trusted main evaluation for this source");
 }
 
+export function assertReleaseRecoverySource(entry: ReleaseEntry, run: WorkflowRun): void {
+  // A manually dispatched recovery run records the main branch head that started it.
+  // The release identity remains bound to its registered merge SHA, so later main
+  // commits are safe to accept while workflow-run recovery keeps exact provenance.
+  if (!entry.mergeSha || (run.event !== "workflow_dispatch" && run.head_sha !== entry.mergeSha))
+    throw new Error("Failed release source identity changed");
+}
+
 export function mainChecksPassed(
   github: GitHubRelease,
   sourceSha: string,
@@ -249,8 +257,7 @@ export function assertRetryableProductRelease(
   // A workflow_run is emitted for the registered merge SHA; a manual dispatch
   // records the main head that started the run while the release stays bound to
   // its registered merge identity.
-  if (!entry.mergeSha || (run.event !== "workflow_dispatch" && run.head_sha !== entry.mergeSha))
-    throw new Error("Retry run source differs from the registered merge SHA");
+  assertReleaseRecoverySource(entry, run);
   if (
     run.head_repository.full_name !== repository ||
     run.head_branch !== "main" ||

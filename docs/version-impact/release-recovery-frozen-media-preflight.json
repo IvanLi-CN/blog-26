@@ -6,23 +6,23 @@
     "Dockerfile": "d7b48d22e76236a2e951fe2474ba9186ebe07e17",
     ".github/workflows/abandon-failed-inputs-release.yml": "6e038873501b5491634758b85191f20068876c4b",
     ".github/workflows/notify-release-failure.yml": "efc0e3fd93fc696637002bc09402d6da7db879e8",
-    ".github/workflows/product-release.yml": "de3208edcf506dfc0ee07427e2cd75e93af202b6",
+    ".github/workflows/product-release.yml": "9676d360bcda580692ecad16c3eeacb2b7c62816",
     ".github/workflows/retry-product-release.yml": "5d6be9679872974e4fec3384214fd6d6c6a73e88",
-    "docs/adr/0029-release-recovery-and-frozen-media-preflight.md": "c284d022a3e76455cdce0f1c9371d3f7b6f9147a",
-    "docs/runbooks/manual-version-release.md": "a59eb3a61438fae555533d6f96ffbfff892b21e0",
-    "docs/specs/manual-version-release/IMPLEMENTATION.md": "8f730f2627c43f4eca0780220036b3bfa732340c",
+    "docs/adr/0029-release-recovery-and-frozen-media-preflight.md": "6fdd0b91ef16df7de7f2313daef42ddbe4c7ebb6",
+    "docs/runbooks/manual-version-release.md": "c2cc85993a7d2ecaf800c7c56845058484ce9688",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "eeb2066de2a32503b1e4672b16a41a627b7d84ad",
     "docs/specs/manual-version-release/SPEC.md": "029a3ce6db8030b70cc28efd3f425016c665e980",
-    "scripts/product-release.ts": "155d1448ac7a29b5e46f082cdc99a5bddc2e2930",
+    "scripts/product-release.ts": "97987e86e4841e5bc412232c834125ba24c070b5",
     "src/lib/release/artifacts.ts": "9faf84f70f5dca76c916008167112917412ff694",
-    "src/lib/release/completion.ts": "24e10aa01d512452634aec35f4270a16169ef601",
+    "src/lib/release/completion.ts": "2717cb7776b682ea359f05abbcbedcfb71d936c2",
     "src/lib/release/failure.ts": "db94f1eaf4bd9959256c204dba003eb85f948e05",
     "src/lib/release/github.ts": "24167d59daea86cc8419730c0ebe4d2ad6214bc6",
     "src/lib/release/ledger.ts": "999cbb7cf69a3b5a9cdba30e917569a1620d2e03",
     "src/lib/release/products.ts": "d87fe2a85c3f3e32394fa52b697741ea158ed346",
     "src/lib/release/publication.ts": "f4a58c48b1a19eb27bc2a4a504627fbcae06c629",
     "tests/ci/notify-release-failure-workflow.test.ts": "6547c9cb7acc1c01668678d306f9406a33c3d550",
-    "tests/ci/product-prerelease-workflow.test.ts": "9b378b7bf4f602da1c3bbc358c9e2cccae798f15",
-    "tests/lib/manual-release-completion.test.ts": "3119ff8b6524755c7c59db1770d7aad4b5d27295",
+    "tests/ci/product-prerelease-workflow.test.ts": "e1e7193a6d7cfc1ec3dacba48613d42918a5510d",
+    "tests/lib/manual-release-completion.test.ts": "8539233bb5228bad624d879c70aeb970aaad8946",
     "tests/lib/manual-release-failure.test.ts": "f03887076131cc895c4866a744dbede6a83ab90a",
     "tests/lib/manual-release-ledger.test.ts": "d587bd127817e92a18d8076707e9119dce808581",
     "tests/lib/manual-release-products.test.ts": "abd2d7343cf0fe5f6d16de6dbee8aaa34995846f",
@@ -48,13 +48,13 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The retry workflow accepts only a release identity and reruns the validated original Product Release run; manual dispatch retries accept the dispatch head while retaining the registered merge identity. New failure metadata is additive to the ledger reader, input-only abandon is fail-closed when artifacts remain available, and static output reuse is bound to identity, source and frozen input digest.",
+      "reasoning": "The retry workflow accepts only a release identity and reruns the validated original Product Release run; manual dispatch retries accept the dispatch head while retaining the registered merge identity. New failure metadata is additive to the ledger reader, input-only abandon is fail-closed when artifacts remain available, static output reuse is bound to identity, source and frozen input digest, and historical frozen catalogs may use the current verified compatibility tooling during preflight without changing source or input bytes.",
       "assessed_at": "2026-10-23T00:00:00+08:00",
       "evidence": [
         {
-          "path": "tests/lib/manual-release-completion.test.ts",
-          "blob": "3119ff8b6524755c7c59db1770d7aad4b5d27295",
-          "command": "bun test tests/lib/manual-release-completion.test.ts"
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "e1e7193a6d7cfc1ec3dacba48613d42918a5510d",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         },
         {
           "path": "tests/lib/manual-release-products.test.ts",
@@ -69,7 +69,7 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Focused release, workflow, media and notification contract tests pass; repository check and the new workflow actionlint checks pass. An empirical GitHub Actions rerun drill remains required before this record can be treated as final runtime evidence.",
+      "reasoning": "Focused release, workflow, media and notification contract tests pass; the preflight compatibility overlay is covered by the workflow contract test and keeps the original release identity/source/input proofs unchanged. An empirical GitHub Actions rerun drill remains required before this record can be treated as final runtime evidence.",
       "assessed_at": "2026-10-23T00:00:00+08:00",
       "evidence": [
         {
@@ -83,9 +83,9 @@
           "command": "Document check and review of REQ-MVR-017 through VER-MVR-015"
         },
         {
-          "path": ".github/workflows/retry-product-release.yml",
-          "blob": "5d6be9679872974e4fec3384214fd6d6c6a73e88",
-          "command": "actionlint .github/workflows/retry-product-release.yml .github/workflows/notify-release-failure.yml .github/workflows/abandon-failed-inputs-release.yml"
+          "path": ".github/workflows/product-release.yml",
+          "blob": "9676d360bcda580692ecad16c3eeacb2b7c62816",
+          "command": "actionlint .github/workflows/product-release.yml"
         }
       ]
     }
@@ -125,7 +125,7 @@
       "evidence": [
         {
           "path": "docs/adr/0029-release-recovery-and-frozen-media-preflight.md",
-          "blob": "c284d022a3e76455cdce0f1c9371d3f7b6f9147a",
+          "blob": "6fdd0b91ef16df7de7f2313daef42ddbe4c7ebb6",
           "command": "The decision explicitly preserves public product and API contracts."
         }
       ]

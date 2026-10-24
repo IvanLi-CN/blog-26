@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import contractJson from "../../.github/release-contract.json";
 import {
+  assertReleaseRecoverySource,
   assertRetryableProductRelease,
   manualRecoveryRunCanTakeOver,
   manualReleaseWorkflowRun,
@@ -232,6 +233,44 @@ describe("manual product release resolution", () => {
         contract.repository
       )
     ).toThrow("original release run");
+  });
+
+  test("accepts a later main head for a manual recovery dispatch", () => {
+    const current = fixture([4]);
+    const entry = updateRelease(current, current.entries[0]?.id || "", {
+      stage: "merged",
+      mergeSha,
+      releaseRunId: 98,
+    }).entries[0];
+    if (!entry) throw new Error("Missing recovery fixture");
+    expect(() =>
+      assertReleaseRecoverySource(entry, {
+        id: 98,
+        workflow_id: 123,
+        run_attempt: 1,
+        head_sha: "d".repeat(40),
+        head_branch: "main",
+        event: "workflow_dispatch",
+        status: "completed",
+        conclusion: "failure",
+        path: productReleaseWorkflowPath,
+        head_repository: { full_name: contract.repository },
+      })
+    ).not.toThrow();
+    expect(() =>
+      assertReleaseRecoverySource(entry, {
+        id: 98,
+        workflow_id: 123,
+        run_attempt: 1,
+        head_sha: "d".repeat(40),
+        head_branch: "main",
+        event: "workflow_run",
+        status: "completed",
+        conclusion: "failure",
+        path: productReleaseWorkflowPath,
+        head_repository: { full_name: contract.repository },
+      })
+    ).toThrow("Failed release source identity changed");
   });
 
   test("reruns the original GitHub Actions run without dispatching a successor", () => {

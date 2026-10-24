@@ -146,6 +146,15 @@ jobs:
         run: bun scripts/product-release.ts record-inputs
         env:
           GH_TOKEN: ${{ github.token }}
+      - name: Apply current Playbook compatibility tooling for frozen preflight
+        if: steps.restore.outputs.need_products == 'true'
+        id: apply-preflight-playbook-tooling
+        run: |
+          cp "$RUNNER_TEMP/release-playbook-tooling/fixed/prepare-playbook-edition.ts" scripts/prepare-playbook-edition.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/fixed/bundle.ts" src/lib/playbook/bundle.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/fixed/artifacts.ts" src/lib/playbook/artifacts.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/fixed/cache.ts" src/lib/playbook/cache.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/fixed/schema.ts" src/lib/playbook/schema.ts
       - name: Install release Rust toolchain
         id: install-rust-toolchain
         if: steps.restore.outputs.need_products == 'true'

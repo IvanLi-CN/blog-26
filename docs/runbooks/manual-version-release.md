@@ -44,6 +44,8 @@ Product Release 失败或取消后，默认运行 **Retry Product Release**（`.
 
 Product Release 在 `record inputs` 后、镜像构建前执行 **Preflight frozen media closure**：它只读取同一 frozen snapshot、media manifest 和 build config，使用相同静态构建验证 watermark/clipping 等媒体闭包，并写入绑定 identity/sourceSha/inputs manifest digest 的静态输出证明。预检失败会停在可重试的 `preflight_media` 阶段，不会创建 products artifact；预检通过后镜像阶段消费该静态输出，不重新访问变化中的远端媒体。
 
+历史 frozen catalog 需要兼容投影时，输入冻结仍使用登记源工具；预检和镜像阶段可以使用当前已验证的 Playbook 兼容工具。该覆盖只修复读取/校验边界，不改变 release identity、登记源 SHA 或 frozen 输入字节。
+
 同一准备 run 重跑复用原始请求与身份；前一身份完成后，新 run 可申请下一个版本。预发布两种产物发布成功后，记录共享锁内正式 GitHub latest、镜像 latest、生产版本与 Playbook 指针的前后读回；一致才能 complete，部署和晋升均记为 `not-applicable`。读取失败或变化不能当作不变证明。已完成预发布的幂等恢复不要求生产仍停留在历史指针。
 
 首次验收时，批准的 bootstrap renderer 可能尚无静态 `/version.json`。仅当明确读回 404 且 Playbook rendererCommit 与 bootstrap 来源一致时记录该端点不存在；未知 renderer、其他错误或解析失败会停止。该记录不能当作新正式版部署的验收证据。
