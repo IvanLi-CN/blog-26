@@ -135,7 +135,7 @@ describe("prerelease workflow deployment boundary", () => {
     const freeze = release.jobs.production.steps.find(
       (step) => step.run === "bun scripts/product-release.ts freeze-inputs"
     );
-    expect(freeze?.env?.PUBLIC_STATIC_MEDIA_DOWNLOAD_CONCURRENCY).toBe("8");
+    expect(freeze?.env?.PUBLIC_STATIC_MEDIA_DOWNLOAD_CONCURRENCY).toBe("2");
   });
 
   test("preflights frozen media before image packaging and records stable boundaries", () => {

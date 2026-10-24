@@ -3,8 +3,8 @@
   "kind": "version-impact-record",
   "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
   "covered_files": {
-    ".github/workflows/product-release.yml": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
-    "tests/ci/product-prerelease-workflow.test.ts": "8ca82eea17052ff532230c02f7e213c0ef0ad6c0"
+    ".github/workflows/product-release.yml": "de3208edcf506dfc0ee07427e2cd75e93af202b6",
+    "tests/ci/product-prerelease-workflow.test.ts": "9b378b7bf4f602da1c3bbc358c9e2cccae798f15"
   },
   "change": {
     "description": "Restore a recovery run's immutable artifacts before checking out the verified product source so recovery tooling uses the current release implementation while products remain bound to the original source.",
@@ -31,12 +31,12 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
+          "blob": "de3208edcf506dfc0ee07427e2cd75e93af202b6",
           "command": "The restore step is ordered before the verified-source checkout and retains its output for later freeze/build steps."
         },
         {
           "path": "tests/ci/product-prerelease-workflow.test.ts",
-          "blob": "8ca82eea17052ff532230c02f7e213c0ef0ad6c0",
+          "blob": "9b378b7bf4f602da1c3bbc358c9e2cccae798f15",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         }
       ],
@@ -52,12 +52,12 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
+          "blob": "de3208edcf506dfc0ee07427e2cd75e93af202b6",
           "command": "bunx biome check tests/ci/product-prerelease-workflow.test.ts"
         },
         {
           "path": "tests/ci/product-prerelease-workflow.test.ts",
-          "blob": "8ca82eea17052ff532230c02f7e213c0ef0ad6c0",
+          "blob": "9b378b7bf4f602da1c3bbc358c9e2cccae798f15",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts tests/lib/manual-release-recovery.test.ts"
         }
       ]

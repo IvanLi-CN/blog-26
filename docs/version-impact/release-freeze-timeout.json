@@ -5,7 +5,7 @@
   "covered_files": {
     ".github/release-contract.json": "fe8185c3c18a4f334df17242e9dd3604d17a7f49",
     ".github/workflows/abandon-cancelled-release.yml": "7e20b45b52a25c324b9bc07fe9f4daa2af8c024e",
-    ".github/workflows/product-release.yml": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
+    ".github/workflows/product-release.yml": "de3208edcf506dfc0ee07427e2cd75e93af202b6",
     "docs/runbooks/manual-version-release.md": "a8ee22cb7a88e36c0934c470379ec7d465d73596",
     "docs/specs/manual-version-release/IMPLEMENTATION.md": "f4b722fae56aa1d81904a6512866e438b913d2db",
     "docs/specs/manual-version-release/SPEC.md": "73a26106dae908a2974a27965fda6553f24120cb",
@@ -15,7 +15,7 @@
     "src/lib/release/policy.ts": "b3abb4cacedebc506e2bfc5e9361700f8f63ab51",
     "src/lib/release/completion.ts": "c62a8584ae694a830d6efc7a3f46118b41cf7f71",
     "src/lib/release/source.ts": "78d8a7aba2db9591d0ddf899aac8c9b850cf71ed",
-    "tests/ci/product-prerelease-workflow.test.ts": "8ca82eea17052ff532230c02f7e213c0ef0ad6c0",
+    "tests/ci/product-prerelease-workflow.test.ts": "9b378b7bf4f602da1c3bbc358c9e2cccae798f15",
     "tests/lib/manual-release-completion.test.ts": "791507100f8bd802ed3ae7e885ad7c8e5410e273",
     "tests/lib/manual-release-inputs.test.ts": "dc6b0305cecd7e023f69b7e8071b9fc0784277e9",
     "tests/lib/manual-release-ledger.test.ts": "38a7add73dcf1902530501ecd38a48c96e1afd13"
@@ -40,7 +40,7 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "Product Release now passes an explicit concurrency of 8 to the public media freezer, validates the bound in the release input layer, and extends only the signed production release timeout to 360 minutes; it also supports a no-input recovery dispatch that resolves one registered merged identity, validates the original source policy tree, and can rebind only an unfrozen failed manual run. Content deployment remains at one worker.",
+      "reasoning": "Product Release now passes an explicit concurrency of 2 to the public media freezer so production watermark analysis workers are not overrun, validates the bound in the release input layer, and extends only the signed production release timeout to 360 minutes; it also supports a no-input recovery dispatch that resolves one registered merged identity, validates the original source policy tree, and can rebind only an unfrozen failed manual run. Content deployment remains at one worker.",
       "assessed_at": "2026-10-17T04:37:31+08:00",
       "evidence": [
         {
@@ -50,7 +50,7 @@
         },
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "c8e3acdec3258d2ea4a1932a0554d173047f45c6",
+          "blob": "de3208edcf506dfc0ee07427e2cd75e93af202b6",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         },
         {
