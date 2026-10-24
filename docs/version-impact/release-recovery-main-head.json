@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
+  "covered_files": {
+    "scripts/product-release.ts": "7c07ef5399130342c8522f02d334aeb0c3fbb74c",
+    "src/lib/release/completion.ts": "2717cb7776b682ea359f05abbcbedcfb71d936c2",
+    "tests/lib/manual-release-completion.test.ts": "8539233bb5228bad624d879c70aeb970aaad8946"
+  },
+  "change": {
+    "description": "Allow failed Product Release recovery commands to accept the later main head recorded by a manual dispatch while retaining the registered release identity.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a backward-compatible recovery validation fix. It preserves the release identity, artifact provenance and product formats while aligning failed-input abandonment with the existing manual retry contract.",
+      "assessed_at": "2026-10-24T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-completion.test.ts",
+          "blob": "8539233bb5228bad624d879c70aeb970aaad8946",
+          "command": "bun test tests/lib/manual-release-completion.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Workflow-dispatch recovery still requires the registered release run, main branch, trusted repository, Product Release path, completed failure or cancellation and artifact-loss proof; only the exact head comparison is relaxed for the manual dispatch event.",
+      "assessed_at": "2026-10-24T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "scripts/product-release.ts",
+          "blob": "7c07ef5399130342c8522f02d334aeb0c3fbb74c",
+          "command": "bunx biome check scripts/product-release.ts src/lib/release/completion.ts tests/lib/manual-release-completion.test.ts"
+        },
+        {
+          "path": "src/lib/release/completion.ts",
+          "blob": "2717cb7776b682ea359f05abbcbedcfb71d936c2",
+          "command": "Shared recovery source validation keeps workflow-run recovery exact-head bound."
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The change is limited to Product Release recovery source validation and its focused regression test."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused completion tests and Biome checks pass; no public endpoint, application persistence schema or product artifact format changes are introduced.",
+      "assessed_at": "2026-10-24T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-completion.test.ts",
+          "blob": "8539233bb5228bad624d879c70aeb970aaad8946",
+          "command": "bun test tests/lib/manual-release-completion.test.ts"
+        },
+        {
+          "path": "scripts/product-release.ts",
+          "blob": "7c07ef5399130342c8522f02d334aeb0c3fbb74c",
+          "command": "bunx biome check scripts/product-release.ts src/lib/release/completion.ts tests/lib/manual-release-completion.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4"
+      ],
+      "evidence": [
+        {
+          "path": "src/lib/release/completion.ts",
+          "blob": "2717cb7776b682ea359f05abbcbedcfb71d936c2",
+          "command": "Recovery validation is internal to Product Release and does not alter application endpoints."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The change reads existing workflow metadata and updates only the existing release ledger stage during the authorized loss recovery path; application persistence and artifact identity fields are unchanged.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "scripts/product-release.ts",
+          "blob": "7c07ef5399130342c8522f02d334aeb0c3fbb74c",
+          "command": "The recovery operation writes the existing abandoned release state without changing ledger schema."
+        }
+      ]
+    }
+  }
+}
