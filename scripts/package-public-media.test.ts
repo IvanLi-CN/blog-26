@@ -2,7 +2,12 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { type PublicMediaFetcher, packagePublicMedia } from "./package-public-media";
+import {
+  fetchPublicResourceOverHttp11,
+  type PublicHttp11Spawner,
+  type PublicMediaFetcher,
+  packagePublicMedia,
+} from "./package-public-media";
 import { verifyPublicMediaPackage } from "./verify-public-media-package";
 
 const temporaryRoots: string[] = [];
@@ -24,7 +29,90 @@ function response(body: string, headers: Record<string, string> = {}) {
   return new Response(body, { status: 200, headers });
 }
 
+function fakeCurlSpawner({
+  body,
+  stderr = "",
+  exitCode = 0,
+  headers,
+  onKill,
+}: {
+  body: string;
+  stderr?: string;
+  exitCode?: number;
+  headers: string;
+  onKill?: () => void;
+}): PublicHttp11Spawner {
+  return (args) => {
+    const headersPath = args[args.indexOf("--dump-header") + 1];
+    if (!headersPath) throw new Error("fake curl did not receive a header output path");
+    const stdout = new Response(body).body;
+    const stderrStream = new Response(stderr).body;
+    if (!stdout || !stderrStream) throw new Error("fake curl streams were not created");
+    return {
+      stdout,
+      stderr: stderrStream,
+      exited: writeFile(headersPath, headers).then(() => exitCode),
+      kill: () => onKill?.(),
+    };
+  };
+}
+
 describe("packagePublicMedia", () => {
+  test("parses successful responses from the HTTP/1.1 process adapter", async () => {
+    const response = await fetchPublicResourceOverHttp11(
+      "https://api.example/resource",
+      {},
+      1_000,
+      undefined,
+      fakeCurlSpawner({
+        body: "four",
+        headers: "HTTP/1.1 200 OK\r\ncontent-length: 4\r\n\r\n",
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("four");
+  });
+
+  test("kills the HTTP/1.1 process when the response exceeds the limit", async () => {
+    let killed = false;
+    const response = await fetchPublicResourceOverHttp11(
+      "https://api.example/resource",
+      {},
+      1_000,
+      4,
+      fakeCurlSpawner({
+        body: "five!",
+        headers: "HTTP/1.1 200 OK\r\ncontent-length: 5\r\n\r\n",
+        onKill: () => {
+          killed = true;
+        },
+      })
+    );
+
+    expect(killed).toBe(true);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-length")).toBe("5");
+    expect(await response.arrayBuffer()).toHaveLength(0);
+  });
+
+  test("preserves HTTP/1.1 process diagnostics on non-zero exit", async () => {
+    await expect(
+      fetchPublicResourceOverHttp11(
+        "https://api.example/resource",
+        {},
+        1_000,
+        undefined,
+        fakeCurlSpawner({
+          body: "",
+          stderr: "curl: (6) Could not resolve host",
+          exitCode: 6,
+          headers: "",
+        })
+      )
+    ).rejects.toThrow("curl: (6) Could not resolve host");
+  });
+
   test("packages clipping version resources and does not leave oversized resources external", async () => {
     const cwd = await fixture();
     const filename = `${"a".repeat(64)}.png`;

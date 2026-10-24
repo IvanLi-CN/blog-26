@@ -117,6 +117,20 @@ type ParsedCurlHeaders = {
   headers: Headers;
 };
 
+type PublicHttp11Process = {
+  stdout: ReadableStream<Uint8Array>;
+  stderr: ReadableStream<Uint8Array>;
+  exited: Promise<number>;
+  kill: () => void;
+};
+
+export type PublicHttp11Spawner = (
+  args: string[],
+  options: { stdout: "pipe"; stderr: "pipe"; timeout: number }
+) => PublicHttp11Process;
+
+const spawnPublicHttp11Process: PublicHttp11Spawner = (args, options) => Bun.spawn(args, options);
+
 class MediaNotFoundError extends Error {
   constructor(url: string) {
     super(`Media origin returned HTTP 404 for ${url}`);
@@ -200,7 +214,8 @@ export async function fetchPublicResourceOverHttp11(
   input: RequestInfo | URL,
   init: RequestInit = {},
   requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
-  maxBodyBytes?: number
+  maxBodyBytes?: number,
+  spawnImpl: PublicHttp11Spawner = spawnPublicHttp11Process
 ): Promise<Response> {
   const method = (init.method ?? "GET").toUpperCase();
   if (method !== "GET") throw new Error("HTTP/1.1 public resource fallback only supports GET");
@@ -214,7 +229,7 @@ export async function fetchPublicResourceOverHttp11(
   const temporaryRoot = await mkdtemp(join(tmpdir(), "blog-public-http11-"));
   const headersPath = join(temporaryRoot, "headers.txt");
   try {
-    const child = Bun.spawn(
+    const child = spawnImpl(
       [
         "curl",
         "--silent",
