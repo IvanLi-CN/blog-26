@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
+  "covered_files": {
+    "scripts/verify-playbook-artifact.ts": "e8872b439495430717e91127e26344ae1ba1237d",
+    "tests/ci/product-prerelease-workflow.test.ts": "ace267dfa7edb6441ad7a21e64840a2cc38a67f8"
+  },
+  "change": {
+    "description": "Enable the existing internal-metadata sanitization boundary when the frozen Playbook verifier validates retained catalog bytes.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "Release-time validation now applies the same metadata compatibility option used by the static reader while retaining strict byte, manifest, and route checks.",
+      "assessed_at": "2026-10-25T02:26:15+08:00",
+      "evidence": [
+        {
+          "path": "scripts/verify-playbook-artifact.ts",
+          "blob": "e8872b439495430717e91127e26344ae1ba1237d",
+          "command": "The verifier passes stripInternalMetadata to validatePlaybookEdition"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "ace267dfa7edb6441ad7a21e64840a2cc38a67f8",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The change is limited to release-time Playbook validation and its contract witness; published data, runtime APIs, and persistent state are unchanged.",
+      "assessed_at": "2026-10-25T02:26:15+08:00",
+      "evidence": [
+        {
+          "path": "scripts/verify-playbook-artifact.ts",
+          "blob": "e8872b439495430717e91127e26344ae1ba1237d",
+          "command": "bunx biome check scripts/verify-playbook-artifact.ts tests/ci/product-prerelease-workflow.test.ts"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "ace267dfa7edb6441ad7a21e64840a2cc38a67f8",
+          "command": "The workflow contract asserts the verifier sanitization option"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "Only the retained Playbook verifier and its focused contract test changed."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused test and formatting checks pass; the verifier still authenticates raw files and only removes internal metadata from the in-memory public projection.",
+      "assessed_at": "2026-10-25T02:26:15+08:00",
+      "evidence": [
+        {
+          "path": "scripts/verify-playbook-artifact.ts",
+          "blob": "e8872b439495430717e91127e26344ae1ba1237d",
+          "command": "bunx biome check scripts/verify-playbook-artifact.ts tests/ci/product-prerelease-workflow.test.ts"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "ace267dfa7edb6441ad7a21e64840a2cc38a67f8",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts: 12 passed, 0 failed"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4"
+      ],
+      "evidence": [
+        {
+          "path": "scripts/verify-playbook-artifact.ts",
+          "blob": "e8872b439495430717e91127e26344ae1ba1237d",
+          "command": "Release-time validation only; public response shapes are unchanged"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The change does not write or migrate SQLite, reader sessions, comments, release ledger state, or Playbook edition identity bytes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "scripts/verify-playbook-artifact.ts",
+          "blob": "e8872b439495430717e91127e26344ae1ba1237d",
+          "command": "The verifier only changes release-time in-memory validation"
+        }
+      ]
+    }
+  }
+}
