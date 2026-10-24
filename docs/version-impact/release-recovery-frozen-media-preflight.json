@@ -125,7 +125,7 @@
       "evidence": [
         {
           "path": "docs/adr/0029-release-recovery-and-frozen-media-preflight.md",
-          "blob": "c284d022a3e76455cdce0f1c9371d3f7b6f9147a",
+          "blob": "6fdd0b91ef16df7de7f2313daef42ddbe4c7ebb6",
           "command": "The decision explicitly preserves public product and API contracts."
         }
       ]
