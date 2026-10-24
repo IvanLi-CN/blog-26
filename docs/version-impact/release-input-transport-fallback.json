@@ -3,11 +3,11 @@
   "kind": "version-impact-record",
   "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
   "covered_files": {
-    "scripts/package-public-media.test.ts": "36ba493deb885c27cdd0b86ce8cd0a12771b044b",
-    "scripts/package-public-media.ts": "17ce4fcd4b17aeeff7e1a1b7d65eda8fdcdcd585",
+    "scripts/package-public-media.test.ts": "469480da8a52bd60f2af042001a81b602cb943d2",
+    "scripts/package-public-media.ts": "0c0c38266d5b8be2d31fa7f205efb40228791ed8",
     "scripts/run-test-suite.ts": "90c333cc5b0100105c91c630545560dee5e73da9",
-    "src/lib/release/inputs.ts": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
-    "tests/lib/manual-release-inputs.test.ts": "55b3ae82c2fefd4c6c16e630eaa79983e942da10"
+    "src/lib/release/inputs.ts": "4916a35dc48bb612c920bc621914f733f91e8639",
+    "tests/lib/manual-release-inputs.test.ts": "111540273d7b3996ae5571676fa2ee0050248fe3"
   },
   "change": {
     "description": "Make public release input acquisition resilient across Bun transport failures by bounding primary and HTTP/1.1 fallback reads, isolating curl configuration, preserving HTTPS and same-origin redirect rules, sealing derived public watermark variants, and registering deterministic fallback coverage in the unit-test runner.",
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+          "blob": "4916a35dc48bb612c920bc621914f733f91e8639",
           "command": "bun test tests/lib/manual-release-*.test.ts scripts/package-public-media.test.ts"
         }
       ]
@@ -34,13 +34,13 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+          "blob": "4916a35dc48bb612c920bc621914f733f91e8639",
           "command": "bun test tests/lib/manual-release-*.test.ts scripts/package-public-media.test.ts: bounded primary and HTTP/1.1 fallback reads pass"
         },
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "36ba493deb885c27cdd0b86ce8cd0a12771b044b",
-          "command": "bun run test:unit: curl success, size termination, diagnostics, configuration isolation, and fallback handoff pass"
+          "blob": "469480da8a52bd60f2af042001a81b602cb943d2",
+          "command": "bun run test:unit: curl success, bounded body and header termination, diagnostics, credential isolation, and fallback handoff pass"
         },
         {
           "path": "scripts/run-test-suite.ts",
@@ -60,22 +60,22 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "36ba493deb885c27cdd0b86ce8cd0a12771b044b",
-          "command": "bun run test:unit: 1402 passed, 52 skipped, 0 failed across 163 files"
+          "blob": "469480da8a52bd60f2af042001a81b602cb943d2",
+          "command": "bun run test:unit: 1405 passed, 52 skipped, 0 failed across 163 files"
         },
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+          "blob": "4916a35dc48bb612c920bc621914f733f91e8639",
           "command": "bun test tests/lib/manual-release-*.test.ts scripts/package-public-media.test.ts: release input and fallback adapter coverage passes"
         },
         {
           "path": "scripts/run-test-suite.ts",
           "blob": "90c333cc5b0100105c91c630545560dee5e73da9",
-          "command": "bun run test:unit: explicit fallback coverage is included and the runner completes with 1402 passed, 52 skipped, 0 failed"
+          "command": "bun run test:unit: explicit fallback coverage is included and the runner completes with 1405 passed, 52 skipped, 0 failed"
         },
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+          "blob": "4916a35dc48bb612c920bc621914f733f91e8639",
           "command": "bun run check: release input implementation passes repository lint and format gates"
         }
       ]
@@ -116,7 +116,7 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+          "blob": "4916a35dc48bb612c920bc621914f733f91e8639",
           "command": "The public snapshot and media URL, response, and frozen input contracts remain unchanged"
         }
       ]
@@ -130,7 +130,7 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+          "blob": "4916a35dc48bb612c920bc621914f733f91e8639",
           "command": "No database, cache, artifact manifest identity, or release ledger format changes"
         }
       ]
