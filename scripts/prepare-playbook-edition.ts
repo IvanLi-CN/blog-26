@@ -29,7 +29,9 @@ await rm(supplementSeedPath, { force: true });
 if (process.env.PLAYBOOK_FROZEN_INPUT_DIR) {
   const frozen = resolve(process.env.PLAYBOOK_FROZEN_INPUT_DIR);
   const seed = validatePlaybookEdition(
-    parseJson(await readFile(join(frozen, "playbook-edition.json"), "utf8"))
+    parseJson(await readFile(join(frozen, "playbook-edition.json"), "utf8")),
+    undefined,
+    { stripInternalMetadata: true }
   );
   const pointer = parseEditionIdentity(
     parseJson(await readFile(join(frozen, "playbook/manifest.json"), "utf8"))
