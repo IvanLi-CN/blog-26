@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   clippingResourceUrlsFromSnapshot,
+  DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES,
   DEFAULT_RELEASE_MEDIA_DOWNLOAD_CONCURRENCY,
   fetchPublicSnapshot,
   MAX_RELEASE_MEDIA_DOWNLOAD_CONCURRENCY,
@@ -55,6 +56,34 @@ describe("manual release snapshot acquisition", () => {
     expect(waits).toEqual([1_000, 3_000]);
   });
 
+  test("cancels retryable snapshot response bodies before retrying", async () => {
+    let calls = 0;
+    let canceled = false;
+    const response = await fetchPublicSnapshot(
+      snapshotUrl,
+      async () => {
+        calls += 1;
+        if (calls === 1) {
+          return new Response(
+            new ReadableStream<Uint8Array>({
+              start: (controller) => controller.enqueue(new Uint8Array([1])),
+              cancel: () => {
+                canceled = true;
+              },
+            }),
+            { status: 503 }
+          );
+        }
+        return new Response("complete", { status: 200 });
+      },
+      async () => undefined
+    );
+
+    expect(await response.text()).toBe("complete");
+    expect(calls).toBe(2);
+    expect(canceled).toBe(true);
+  });
+
   test("does not retry non-transient client errors", async () => {
     let calls = 0;
     await expect(
@@ -89,21 +118,122 @@ describe("manual release snapshot acquisition", () => {
   test("retries when reading a successful response body fails", async () => {
     const waits: number[] = [];
     let calls = 0;
-    const response = new Response("ok", { status: 200 });
-    response.text = async () => {
-      calls += 1;
-      if (calls === 1) throw new Error("socket reset while reading body");
-      return "ok";
-    };
-
-    const result = await fetchPublicSnapshot(
+    const responseBody = () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start: (controller) => {
+            controller.enqueue(new TextEncoder().encode("partial"));
+            controller.error(new Error("socket reset while reading body"));
+          },
+        }),
+        { status: 200 }
+      );
+    const response = await fetchPublicSnapshot(
       snapshotUrl,
-      async () => response,
+      async () => {
+        calls += 1;
+        return calls === 1 ? responseBody() : new Response("ok", { status: 200 });
+      },
       async (delayMs) => waits.push(delayMs)
     );
 
-    expect(await result.text()).toBe("ok");
+    expect(await response.text()).toBe("ok");
     expect(calls).toBe(2);
     expect(waits).toEqual([1_000]);
+  });
+
+  test("bounds oversized primary snapshot responses", async () => {
+    let calls = 0;
+    await expect(
+      fetchPublicSnapshot(
+        snapshotUrl,
+        async () => {
+          calls += 1;
+          return new Response("small body", {
+            status: 200,
+            headers: {
+              "content-length": String(DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES + 1),
+            },
+          });
+        },
+        async () => undefined
+      )
+    ).rejects.toThrow(
+      `Public snapshot response exceeds ${DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES} bytes`
+    );
+    expect(calls).toBe(1);
+  });
+
+  test("does not retry chunked oversized primary snapshot responses", async () => {
+    let calls = 0;
+    await expect(
+      fetchPublicSnapshot(
+        snapshotUrl,
+        async () => {
+          calls += 1;
+          return new Response(
+            new ReadableStream<Uint8Array>({
+              start: (controller) => {
+                controller.enqueue(new Uint8Array(DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES + 1));
+              },
+            }),
+            { status: 200 }
+          );
+        },
+        async () => {
+          throw new Error("unexpected retry");
+        }
+      )
+    ).rejects.toThrow(
+      `Public snapshot response exceeds ${DEFAULT_MAX_PUBLIC_SNAPSHOT_BYTES} bytes`
+    );
+    expect(calls).toBe(1);
+  });
+
+  test("uses an HTTP/1.1 fallback after repeated response-body transport failures", async () => {
+    let fallbackCalls = 0;
+    const result = await fetchPublicSnapshot(
+      snapshotUrl,
+      async () => {
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            start: (controller) => {
+              controller.enqueue(new TextEncoder().encode("partial"));
+              controller.error(new Error("socket reset while reading body"));
+            },
+          }),
+          { status: 200 }
+        );
+      },
+      async () => undefined,
+      async () => {
+        fallbackCalls += 1;
+        return new Response("complete", { status: 200 });
+      }
+    );
+
+    expect(await result.text()).toBe("complete");
+    expect(fallbackCalls).toBe(1);
+  });
+
+  test("uses the same fallback after repeated request transport failures", async () => {
+    let calls = 0;
+    let fallbackCalls = 0;
+    const result = await fetchPublicSnapshot(
+      snapshotUrl,
+      async () => {
+        calls += 1;
+        throw new Error("socket reset before response");
+      },
+      async () => undefined,
+      async () => {
+        fallbackCalls += 1;
+        return new Response("complete", { status: 200 });
+      }
+    );
+
+    expect(await result.text()).toBe("complete");
+    expect(calls).toBe(3);
+    expect(fallbackCalls).toBe(1);
   });
 });

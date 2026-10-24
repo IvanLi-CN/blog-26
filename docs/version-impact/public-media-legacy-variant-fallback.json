@@ -3,8 +3,8 @@
   "kind": "version-impact-record",
   "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
   "covered_files": {
-    "scripts/package-public-media.test.ts": "7142f095cb378dafacf01ab92c5a891010fadbe3",
-    "scripts/package-public-media.ts": "1c92ee2377adfe2446d467d38edc3a3aba44b0be",
+    "scripts/package-public-media.test.ts": "36ba493deb885c27cdd0b86ce8cd0a12771b044b",
+    "scripts/package-public-media.ts": "17ce4fcd4b17aeeff7e1a1b7d65eda8fdcdcd585",
     "scripts/verify-public-media-package.ts": "c83c03c4e69782212fad1d09a5a41d2e5f351962"
   },
   "change": {
@@ -20,7 +20,7 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "7142f095cb378dafacf01ab92c5a891010fadbe3",
+          "blob": "36ba493deb885c27cdd0b86ce8cd0a12771b044b",
           "command": "bun test scripts/package-public-media.test.ts"
         }
       ]
@@ -32,7 +32,7 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "7142f095cb378dafacf01ab92c5a891010fadbe3",
+          "blob": "36ba493deb885c27cdd0b86ce8cd0a12771b044b",
           "command": "bun test scripts/package-public-media.test.ts"
         },
         {
@@ -53,12 +53,12 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "7142f095cb378dafacf01ab92c5a891010fadbe3",
+          "blob": "36ba493deb885c27cdd0b86ce8cd0a12771b044b",
           "command": "bun test scripts/package-public-media.test.ts (26 passed)"
         },
         {
           "path": "scripts/package-public-media.ts",
-          "blob": "1c92ee2377adfe2446d467d38edc3a3aba44b0be",
+          "blob": "17ce4fcd4b17aeeff7e1a1b7d65eda8fdcdcd585",
           "command": "bunx biome check scripts/package-public-media.ts scripts/package-public-media.test.ts scripts/verify-public-media-package.ts"
         }
       ]
@@ -82,7 +82,7 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "7142f095cb378dafacf01ab92c5a891010fadbe3",
+          "blob": "36ba493deb885c27cdd0b86ce8cd0a12771b044b",
           "command": "The facade URL contract remains unchanged; only release-time static rewriting gains a legacy fallback"
         }
       ]
@@ -96,7 +96,7 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.ts",
-          "blob": "1c92ee2377adfe2446d467d38edc3a3aba44b0be",
+          "blob": "17ce4fcd4b17aeeff7e1a1b7d65eda8fdcdcd585",
           "command": "The alias field is confined to the release artifact manifest and has no runtime persistence dependency"
         }
       ]

@@ -7,17 +7,17 @@
     ".github/workflows/abandon-cancelled-release.yml": "7e20b45b52a25c324b9bc07fe9f4daa2af8c024e",
     ".github/workflows/product-release.yml": "de3208edcf506dfc0ee07427e2cd75e93af202b6",
     "docs/runbooks/manual-version-release.md": "a8ee22cb7a88e36c0934c470379ec7d465d73596",
-    "docs/specs/manual-version-release/IMPLEMENTATION.md": "f4b722fae56aa1d81904a6512866e438b913d2db",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "8f730f2627c43f4eca0780220036b3bfa732340c",
     "docs/specs/manual-version-release/SPEC.md": "73a26106dae908a2974a27965fda6553f24120cb",
     "scripts/product-release.ts": "ec6d4bb0c7df05493be98e694f25fb232b371c91",
-    "src/lib/release/inputs.ts": "51adb012fd6f764d2e7814688ff3d49bd6a9bf5f",
+    "src/lib/release/inputs.ts": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
     "src/lib/release/ledger.ts": "a11289245293c0214d17b9522f200757a619a396",
     "src/lib/release/policy.ts": "b3abb4cacedebc506e2bfc5e9361700f8f63ab51",
     "src/lib/release/completion.ts": "c62a8584ae694a830d6efc7a3f46118b41cf7f71",
     "src/lib/release/source.ts": "78d8a7aba2db9591d0ddf899aac8c9b850cf71ed",
     "tests/ci/product-prerelease-workflow.test.ts": "9b378b7bf4f602da1c3bbc358c9e2cccae798f15",
     "tests/lib/manual-release-completion.test.ts": "791507100f8bd802ed3ae7e885ad7c8e5410e273",
-    "tests/lib/manual-release-inputs.test.ts": "dc6b0305cecd7e023f69b7e8071b9fc0784277e9",
+    "tests/lib/manual-release-inputs.test.ts": "55b3ae82c2fefd4c6c16e630eaa79983e942da10",
     "tests/lib/manual-release-ledger.test.ts": "38a7add73dcf1902530501ecd38a48c96e1afd13"
   },
   "change": {
@@ -33,7 +33,7 @@
       "evidence": [
         {
           "path": "tests/lib/manual-release-inputs.test.ts",
-          "blob": "dc6b0305cecd7e023f69b7e8071b9fc0784277e9",
+          "blob": "55b3ae82c2fefd4c6c16e630eaa79983e942da10",
           "command": "bun test tests/lib/manual-release-inputs.test.ts tests/ci/product-prerelease-workflow.test.ts scripts/package-public-media.test.ts"
         }
       ]
@@ -45,7 +45,7 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "51adb012fd6f764d2e7814688ff3d49bd6a9bf5f",
+          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
           "command": "bunx biome check src/lib/release/inputs.ts src/lib/release/policy.ts tests/lib/manual-release-inputs.test.ts tests/ci/product-prerelease-workflow.test.ts"
         },
         {
@@ -86,7 +86,7 @@
         },
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "51adb012fd6f764d2e7814688ff3d49bd6a9bf5f",
+          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
           "command": "bunx biome check src/lib/release/inputs.ts src/lib/release/policy.ts tests/lib/manual-release-inputs.test.ts tests/ci/product-prerelease-workflow.test.ts"
         },
         {
@@ -115,7 +115,7 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "51adb012fd6f764d2e7814688ff3d49bd6a9bf5f",
+          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
           "command": "The public snapshot URL, response payload, frozen input schema, and runtime media facade are unchanged"
         }
       ]
