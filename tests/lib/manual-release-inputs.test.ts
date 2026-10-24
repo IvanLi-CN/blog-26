@@ -55,6 +55,34 @@ describe("manual release snapshot acquisition", () => {
     expect(waits).toEqual([1_000, 3_000]);
   });
 
+  test("cancels retryable snapshot response bodies before retrying", async () => {
+    let calls = 0;
+    let canceled = false;
+    const response = await fetchPublicSnapshot(
+      snapshotUrl,
+      async () => {
+        calls += 1;
+        if (calls === 1) {
+          return new Response(
+            new ReadableStream<Uint8Array>({
+              start: (controller) => controller.enqueue(new Uint8Array([1])),
+              cancel: () => {
+                canceled = true;
+              },
+            }),
+            { status: 503 }
+          );
+        }
+        return new Response("complete", { status: 200 });
+      },
+      async () => undefined
+    );
+
+    expect(await response.text()).toBe("complete");
+    expect(calls).toBe(2);
+    expect(canceled).toBe(true);
+  });
+
   test("does not retry non-transient client errors", async () => {
     let calls = 0;
     await expect(

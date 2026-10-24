@@ -160,16 +160,56 @@ function parseCurlHeaders(raw: string): ParsedCurlHeaders {
   return { status, headers };
 }
 
+async function readCurlBodyWithinLimit(
+  stream: ReadableStream<Uint8Array>,
+  maxBodyBytes: number | undefined,
+  kill: () => void
+): Promise<{ body: Uint8Array; tooLarge: boolean }> {
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      total += next.value.byteLength;
+      if (maxBodyBytes !== undefined && total > maxBodyBytes) {
+        kill();
+        await reader.cancel().catch(() => undefined);
+        return { body: new Uint8Array(), tooLarge: true };
+      }
+      chunks.push(next.value);
+    }
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { body, tooLarge: false };
+}
+
 export async function fetchPublicResourceOverHttp11(
   input: RequestInfo | URL,
   init: RequestInit = {},
-  requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS
+  requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
+  maxBodyBytes?: number
 ): Promise<Response> {
   const method = (init.method ?? "GET").toUpperCase();
   if (method !== "GET") throw new Error("HTTP/1.1 public resource fallback only supports GET");
   const url = new URL(String(input));
   if (url.protocol !== "https:" || url.username || url.password) {
     throw new Error("HTTP/1.1 public resource fallback requires an HTTPS URL without credentials");
+  }
+  if (maxBodyBytes !== undefined && (!Number.isSafeInteger(maxBodyBytes) || maxBodyBytes <= 0)) {
+    throw new Error("maxBodyBytes must be a positive integer");
   }
   const temporaryRoot = await mkdtemp(join(tmpdir(), "blog-public-http11-"));
   const headersPath = join(temporaryRoot, "headers.txt");
@@ -197,17 +237,31 @@ export async function fetchPublicResourceOverHttp11(
         timeout: requestTimeoutMs,
       }
     );
-    const [body, diagnostics, exitCode] = await Promise.all([
-      new Response(child.stdout).arrayBuffer(),
+    let body: { body: Uint8Array; tooLarge: boolean };
+    try {
+      body = await readCurlBodyWithinLimit(child.stdout, maxBodyBytes, () => child.kill());
+    } catch (error) {
+      child.kill();
+      await child.exited;
+      throw error;
+    }
+    const [diagnostics, exitCode] = await Promise.all([
       new Response(child.stderr).text(),
       child.exited,
     ]);
+    const parsed = parseCurlHeaders(await readFile(headersPath, "utf8"));
+    if (body.tooLarge) {
+      const headers = new Headers(parsed.headers);
+      headers.set("content-length", String((maxBodyBytes ?? 0) + 1));
+      return new Response(null, { headers, status: parsed.status });
+    }
     if (exitCode !== 0) {
       const details = diagnostics.trim();
       throw new Error(`HTTP/1.1 public resource fallback failed${details ? `: ${details}` : ""}`);
     }
-    const parsed = parseCurlHeaders(await readFile(headersPath, "utf8"));
-    return new Response(body, { headers: parsed.headers, status: parsed.status });
+    const responseBody = new ArrayBuffer(body.body.byteLength);
+    new Uint8Array(responseBody).set(body.body);
+    return new Response(responseBody, { headers: parsed.headers, status: parsed.status });
   } finally {
     await rm(temporaryRoot, { recursive: true, force: true });
   }
@@ -755,7 +809,7 @@ export async function packagePublicMedia(
     options.fallbackFetchImpl ??
     (options.fetchImpl === undefined
       ? (input: RequestInfo | URL, init?: RequestInit) =>
-          fetchPublicResourceOverHttp11(input, init, requestTimeoutMs)
+          fetchPublicResourceOverHttp11(input, init, requestTimeoutMs, maxBytes)
       : undefined);
 
   if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0)

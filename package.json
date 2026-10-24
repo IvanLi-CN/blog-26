@@ -101,7 +101,7 @@
     "test-server:start": "bun run test-env:reset && concurrently --names \"Astro,Admin,Gateway\" --prefix-colors \"yellow,blue,green\" \"DB_PATH=./test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./test-data/local PUBLIC_SITE_URL=http://127.0.0.1:25090 SITE_PORT=25093 bun run site:dev\" \"ADMIN_PORT=25094 bun run admin:dev\" \"NODE_ENV=test ADMIN_EMAIL=admin-test@test.local DB_PATH=./test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./test-data/local PUBLIC_SITE_URL=http://127.0.0.1:25090 PORT=25090 SITE_PORT=25093 ADMIN_PORT=25094 bun run gateway:dev\"",
     "dev-data:generate": "bun ./scripts/generate-test-data.ts --dev",
     "dev-data:clean": "bun ./scripts/generate-test-data.ts --dev --clean",
-    "test": "bun test --isolate src tests/integration tests/lib tests/server --exclude='tests/e2e/**/*' --exclude='backend-dist/**/*'",
+    "test": "bun test --isolate src tests/integration tests/lib tests/server scripts/package-public-media.test.ts --exclude='tests/e2e/**/*' --exclude='backend-dist/**/*'",
     "test:admin-ui": "bun test tests/lib/admin-ui-controls.test.ts",
     "test:watch": "bun test --watch",
     "test:unit": "bun ./scripts/run-test-suite.ts",

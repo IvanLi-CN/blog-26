@@ -22,6 +22,7 @@ const EXCLUDE_DIRS = new Set([
 ]);
 
 const ROOTS = ["src", "tests", "tests/integration", "tests/lib", "tests/server"];
+const EXPLICIT_TEST_FILES = ["scripts/package-public-media.test.ts"];
 const LINUX_ONLY_TESTS = new Set(["src/lib/ai/search-fallback.test.ts"]);
 
 function isTestFile(filePath: string): boolean {
@@ -69,6 +70,9 @@ async function main() {
   }
 
   for (const r of roots) walk(r, fileSet);
+  for (const file of EXPLICIT_TEST_FILES) {
+    if (existsSync(file)) fileSet.add(file);
+  }
 
   const files = [...fileSet].sort();
 

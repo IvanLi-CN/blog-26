@@ -97,6 +97,14 @@ function isRetryableSnapshotStatus(status: number): boolean {
   return status === 408 || status === 425 || status === 429 || status >= 500;
 }
 
+async function cancelSnapshotResponseBody(response: Response): Promise<void> {
+  try {
+    await response.body?.cancel();
+  } catch {
+    // The response is already unusable; cleanup must not mask the acquisition error.
+  }
+}
+
 export async function fetchPublicSnapshot(
   snapshotUrl: URL,
   fetcher: SnapshotFetcher = fetch,
@@ -122,6 +130,7 @@ export async function fetchPublicSnapshot(
 
     if (!response.ok) {
       lastError = new Error(`Public snapshot acquisition failed (HTTP ${response.status})`);
+      await cancelSnapshotResponseBody(response);
       if (!isRetryableSnapshotStatus(response.status)) throw lastError;
       if (attempt === snapshotRetryDelaysMs.length) break;
       await sleep(snapshotRetryDelaysMs[attempt] || 0);
@@ -139,6 +148,7 @@ export async function fetchPublicSnapshot(
       });
     } catch (error) {
       lastError = error;
+      await cancelSnapshotResponseBody(response);
       if (attempt === snapshotRetryDelaysMs.length) break;
       await sleep(snapshotRetryDelaysMs[attempt] || 0);
     }
