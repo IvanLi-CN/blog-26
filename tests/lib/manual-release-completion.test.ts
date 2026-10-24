@@ -200,6 +200,24 @@ describe("manual product release resolution", () => {
       assertRetryableProductRelease(
         entry,
         {
+          id: 98,
+          workflow_id: 123,
+          run_attempt: 2,
+          head_sha: "d".repeat(40),
+          head_branch: "main",
+          event: "workflow_dispatch",
+          status: "completed",
+          conclusion: "failure",
+          path: productReleaseWorkflowPath,
+          head_repository: { full_name: contract.repository },
+        },
+        contract.repository
+      )
+    ).not.toThrow();
+    expect(() =>
+      assertRetryableProductRelease(
+        entry,
+        {
           id: 99,
           workflow_id: 123,
           run_attempt: 2,

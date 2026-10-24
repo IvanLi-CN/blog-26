@@ -5,12 +5,13 @@ import {
   readPublicPointer,
   writePublicEdition,
 } from "../src/lib/playbook/artifacts";
-import { readPlaybookEdition } from "../src/lib/playbook/bundle";
+import { createPlaybookEdition, readPlaybookEdition } from "../src/lib/playbook/bundle";
 import { validatePlaybookEdition } from "../src/lib/playbook/cache";
 import {
   encodeJson,
   parseEditionIdentity,
   parseJson,
+  parseManifest,
   samePlaybookEdition,
 } from "../src/lib/playbook/manifest";
 import { PLAYBOOK_PUBLIC_POINTER_URL } from "../src/lib/playbook/schema";
@@ -96,6 +97,23 @@ if (!bundleRoot) {
   process.exit(0);
 }
 snapshot ||= await readFile(snapshotPath);
+if (retainedEdition && current) {
+  const manifest = parseManifest(
+    parseJson(await readFile(join(bundleRoot || "", "playbook-public-manifest.json"), "utf8"))
+  );
+  const rawFiles = new Map<string, Uint8Array>();
+  for (const path of ["catalog.json", "search-documents.json"])
+    rawFiles.set(path, await readFile(join(bundleRoot || "", path)));
+  // Keep historical catalog/search bytes while binding the new release snapshot.
+  retainedEdition = createPlaybookEdition(
+    rawFiles,
+    manifest,
+    renderer,
+    snapshot,
+    current.sourceTimestamp,
+    { stripInternalMetadata: true }
+  );
+}
 const edition = inputSeed
   ? inputSeed
   : (retainedEdition ??

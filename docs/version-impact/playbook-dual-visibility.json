@@ -16,7 +16,7 @@
     "scripts/prepare-console-playbook-seed.ts": "d126f6fe798e17cb479c7f85056a310290e6f0b5",
     "scripts/playbook-content-update.ts": "d10d0b8a7638f746622d623f08913892834c2162",
     "scripts/prepare-backend-dist.sh": "f2a8b868dbeefb9b28cfdefcfff3a74f9ecdc9b6",
-    "scripts/prepare-playbook-edition.ts": "de051f025ccddc417c87e9dedfb265f0dc3b3588",
+    "scripts/prepare-playbook-edition.ts": "ffbbcbb1bf76606c96cbadcbd868358516ce1c08",
     "scripts/stage-playbook-initial-from-artifact.ts": "8f18eeaf69ae743e8dff006d920702f65fc4a5fe",
     "scripts/verify-playbook-artifact.ts": "6d89695620bfda99d8b33d54848708935cde70c0",
     "src/lib/admin-api-client.ts": "2a64f08b269db50bef7a5452e4c3c607a53f8884",

@@ -98,8 +98,22 @@ describe("deployed Playbook compatibility", () => {
       key: "source_repo",
       value: "IvanLi-CN/internal-checkout",
     });
+    const nextSnapshot = Buffer.from('{"generatedAt":"next"}\n');
+    const rebound = createPlaybookEdition(
+      new Map([
+        ["catalog.json", catalogBytes],
+        ["search-documents.json", searchBytes],
+      ]),
+      manifest,
+      "b".repeat(40),
+      nextSnapshot,
+      undefined,
+      { stripInternalMetadata: true }
+    );
+    expect(rebound.edition.editionDigest).not.toBe(retained.edition.editionDigest);
+    expect(rebound.edition.contentSnapshotIdentity).toBe(sha256(nextSnapshot));
     const published = await mkdtemp(join(tmpdir(), "playbook-deployed-published-"));
-    await writePublicEdition(published, retained, destination, "{}\n", {
+    await writePublicEdition(published, rebound, destination, nextSnapshot, {
       stripInternalMetadata: true,
     });
     expect(
@@ -107,12 +121,23 @@ describe("deployed Playbook compatibility", () => {
         join(
           published,
           "_content/playbook",
-          retained.edition.source.tag,
-          retained.edition.editionDigest,
+          rebound.edition.source.tag,
+          rebound.edition.editionDigest,
           "catalog.json"
         )
       )
     ).toEqual(catalogBytes);
+    expect(
+      await readFile(
+        join(
+          published,
+          "_content/playbook",
+          rebound.edition.source.tag,
+          rebound.edition.editionDigest,
+          "public-snapshot.json"
+        )
+      )
+    ).toEqual(nextSnapshot);
     await rm(published, { recursive: true, force: true });
     await rm(destination, { recursive: true, force: true });
   });

@@ -4,34 +4,34 @@
   "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
   "covered_files": {
     ".github/workflows/product-release.yml": "75ef866d859cd05ec0dbb99a543806e056cd533e",
-    "scripts/prepare-playbook-edition.ts": "de051f025ccddc417c87e9dedfb265f0dc3b3588",
+    "scripts/prepare-playbook-edition.ts": "ffbbcbb1bf76606c96cbadcbd868358516ce1c08",
     "src/lib/playbook/artifacts.ts": "9c8d3482e60eeaa22db358f17920d65ab961a630",
     "src/lib/playbook/bundle.ts": "b2b359e49a26c42aa3c94bd918053ec45563fbd2",
     "src/lib/playbook/cache.ts": "e753bc25eaf0b643171fa4cbda5d212117eb935d",
     "src/lib/playbook/schema.ts": "b69a0851a3a460de2ee173a8784edb8e7bcf0397",
-    "tests/lib/playbook-deployed-compat.test.ts": "65e6b9ebec5cebe980e2cb20418e0111fffeca44"
+    "tests/lib/playbook-deployed-compat.test.ts": "6319dde874b68ac92f59b39a70503e10ffda85ab"
   },
   "change": {
-    "description": "Keep strict Playbook metadata validation for new sources while allowing release recovery to read historical deployed projections and preserve their pointer file identities.",
+    "description": "Keep strict Playbook metadata validation for new sources while allowing release recovery to read historical deployed projections, preserve their pointer file identities, and bind the current public snapshot.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api", "persistent-state"]
   },
   "classification": {
     "planned": {
       "impact": "patch",
-      "reasoning": "The compatibility path is opt-in and limited to historical deployed catalog/search reads. New source validation, public payload shape, release identity, and persistent application state remain unchanged.",
+      "reasoning": "The compatibility path is opt-in and limited to historical deployed catalog/search reads plus rebinding the current public snapshot for the new release. New source validation, public payload shape, and persistent application state remain unchanged.",
       "assessed_at": "2026-10-23T00:00:00+08:00",
       "evidence": [
         {
           "path": "tests/lib/playbook-deployed-compat.test.ts",
-          "blob": "65e6b9ebec5cebe980e2cb20418e0111fffeca44",
+          "blob": "6319dde874b68ac92f59b39a70503e10ffda85ab",
           "command": "bun test tests/lib/playbook-deployed-compat.test.ts tests/lib/playbook-contract.test.ts"
         }
       ]
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The release bridge carries the current schema, bundle reader, retained-artifact reader, cache validator, and deployed-edition preparation script into the freeze step, where only the deployed pointer path enables internal metadata stripping. Historical catalog and search bytes retain their published identity while malformed metadata and all ordinary source reads remain rejected.",
+      "reasoning": "The release bridge carries the current schema, bundle reader, retained-artifact reader, cache validator, and deployed-edition preparation script into the freeze step, where only the deployed pointer path enables internal metadata stripping. Historical catalog and search bytes retain their published identity, while the new release binds the current public snapshot and malformed metadata or ordinary source reads remain rejected.",
       "assessed_at": "2026-10-23T00:00:00+08:00",
       "evidence": [
         {
@@ -41,13 +41,13 @@
         },
         {
           "path": "scripts/prepare-playbook-edition.ts",
-          "blob": "de051f025ccddc417c87e9dedfb265f0dc3b3588",
+          "blob": "ffbbcbb1bf76606c96cbadcbd868358516ce1c08",
           "command": "bunx biome check scripts/prepare-playbook-edition.ts src/lib/playbook/bundle.ts src/lib/playbook/schema.ts tests/lib/playbook-deployed-compat.test.ts"
         },
         {
           "path": "src/lib/playbook/artifacts.ts",
           "blob": "9c8d3482e60eeaa22db358f17920d65ab961a630",
-          "command": "Retained deployed editions validate sanitized historical projections while reproducing the pointer identity"
+          "command": "Retained deployed editions validate sanitized historical projections, reproduce pointer file identities, and rebind the current snapshot"
         },
         {
           "path": "src/lib/playbook/cache.ts",
@@ -62,7 +62,7 @@
       ],
       "scope_drift": {
         "detected": false,
-        "description": "The change remains limited to historical deployed Playbook projection compatibility and the recovery workflow tooling bridge."
+        "description": "The change remains limited to historical deployed Playbook projection compatibility, current snapshot rebinding, and the recovery workflow tooling bridge."
       }
     },
     "verified": {
@@ -72,8 +72,8 @@
       "evidence": [
         {
           "path": "tests/lib/playbook-deployed-compat.test.ts",
-          "blob": "65e6b9ebec5cebe980e2cb20418e0111fffeca44",
-          "command": "bun test tests/lib/playbook-deployed-compat.test.ts tests/lib/playbook-contract.test.ts tests/ci/product-prerelease-workflow.test.ts tests/lib/playbook-release-identity.test.ts: 81 passed, 0 failed"
+          "blob": "6319dde874b68ac92f59b39a70503e10ffda85ab",
+          "command": "bun test tests/lib/playbook-deployed-compat.test.ts tests/lib/playbook-contract.test.ts tests/ci/product-prerelease-workflow.test.ts tests/lib/playbook-release-identity.test.ts tests/lib/manual-release-policy.test.ts: 103 passed, 0 failed"
         },
         {
           "path": "src/lib/playbook/schema.ts",
