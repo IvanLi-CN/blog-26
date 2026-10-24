@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
   "covered_files": {
-    ".github/workflows/product-release.yml": "9676d360bcda580692ecad16c3eeacb2b7c62816"
+    ".github/workflows/product-release.yml": "cc14b77a26f0fd101397f20293cb55211a6eb82a"
   },
   "change": {
     "description": "Allow a recovery of an older registered release source to use the current Playbook compatibility tooling for frozen media preflight and product construction without changing the registered source or frozen inputs.",
@@ -18,7 +18,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "9676d360bcda580692ecad16c3eeacb2b7c62816",
+          "blob": "cc14b77a26f0fd101397f20293cb55211a6eb82a",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         }
       ]
@@ -30,7 +30,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "9676d360bcda580692ecad16c3eeacb2b7c62816",
+          "blob": "cc14b77a26f0fd101397f20293cb55211a6eb82a",
           "command": "The workflow preserves the registered source for input acquisition and applies verified current compatibility files before frozen media preflight and image packaging."
         }
       ],
@@ -46,7 +46,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "9676d360bcda580692ecad16c3eeacb2b7c62816",
+          "blob": "cc14b77a26f0fd101397f20293cb55211a6eb82a",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         }
       ]
@@ -86,7 +86,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "9676d360bcda580692ecad16c3eeacb2b7c62816",
+          "blob": "cc14b77a26f0fd101397f20293cb55211a6eb82a",
           "command": "The workflow does not alter public HTTP, tRPC, MCP, or static product contracts."
         }
       ]
@@ -100,7 +100,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "9676d360bcda580692ecad16c3eeacb2b7c62816",
+          "blob": "cc14b77a26f0fd101397f20293cb55211a6eb82a",
           "command": "The temporary tooling directory is runner-local and is removed with the job."
         }
       ]

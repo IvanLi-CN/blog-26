@@ -6,7 +6,7 @@
     "Dockerfile": "d7b48d22e76236a2e951fe2474ba9186ebe07e17",
     ".github/workflows/abandon-failed-inputs-release.yml": "6e038873501b5491634758b85191f20068876c4b",
     ".github/workflows/notify-release-failure.yml": "efc0e3fd93fc696637002bc09402d6da7db879e8",
-    ".github/workflows/product-release.yml": "9676d360bcda580692ecad16c3eeacb2b7c62816",
+    ".github/workflows/product-release.yml": "cc14b77a26f0fd101397f20293cb55211a6eb82a",
     ".github/workflows/retry-product-release.yml": "5d6be9679872974e4fec3384214fd6d6c6a73e88",
     "docs/adr/0029-release-recovery-and-frozen-media-preflight.md": "6fdd0b91ef16df7de7f2313daef42ddbe4c7ebb6",
     "docs/runbooks/manual-version-release.md": "c2cc85993a7d2ecaf800c7c56845058484ce9688",
@@ -84,7 +84,7 @@
         },
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "9676d360bcda580692ecad16c3eeacb2b7c62816",
+          "blob": "cc14b77a26f0fd101397f20293cb55211a6eb82a",
           "command": "actionlint .github/workflows/product-release.yml"
         }
       ]
