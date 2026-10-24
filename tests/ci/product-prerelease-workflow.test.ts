@@ -149,6 +149,7 @@ describe("prerelease workflow deployment boundary", () => {
     expect(compatibility).toBeLessThan(preflight);
     expect(steps[compatibility]?.run).toContain("release-playbook-tooling/fixed");
     expect(steps[compatibility]?.run).toContain("site-lib-playbook.ts");
+    expect(steps[compatibility]?.run).toContain("verify-playbook-artifact.ts");
     expect(preflight).toBeGreaterThan(inputRecord);
     expect(imageBuild).toBeGreaterThan(preflight);
     expect(steps[preflight]?.run).toContain("preflight-frozen-media");
@@ -157,6 +158,13 @@ describe("prerelease workflow deployment boundary", () => {
     expect(steps[imageBuild]?.name).toBe(
       "Build the full-feature image from validated static output"
     );
+  });
+
+  test("retained Playbook verification supplies authenticated legacy file bytes", () => {
+    const verifier = readFileSync("scripts/verify-playbook-artifact.ts", "utf8");
+    expect(verifier).toContain("const rawFiles = new Map<string, Uint8Array>()");
+    expect(verifier).toContain("rawFiles.set(file.path, bytes)");
+    expect(verifier).toContain("    rawFiles\n  );");
   });
 
   test("manual release exposes only one optional text version request", () => {

@@ -43,17 +43,23 @@ async function verifyPublishedEdition(directory: string, expected: typeof pointe
   });
   readPublicArchive(archive, manifest, expected.sourceTimestamp);
   const values = new Map<string, unknown>();
+  const rawFiles = new Map<string, Uint8Array>();
   for (const file of identity.files) {
     const bytes = await readFile(resolve(directory, file.path));
     verifyFile(bytes, file);
-    if (file.path !== "public-snapshot.json")
+    if (file.path !== "public-snapshot.json") {
       values.set(file.path, JSON.parse(bytes.toString("utf8")));
+      rawFiles.set(file.path, bytes);
+    }
   }
-  const edition = validatePlaybookEdition({
-    edition: identity,
-    catalog: values.get("catalog.json"),
-    search: values.get("search-documents.json"),
-  });
+  const edition = validatePlaybookEdition(
+    {
+      edition: identity,
+      catalog: values.get("catalog.json"),
+      search: values.get("search-documents.json"),
+    },
+    rawFiles
+  );
   for (const policy of getPlaybookPolicies(edition.catalog)) {
     const policyRoot = resolve(directory, "policies", policy.summary.slug);
     const expectedSkill = `---\n${JSON.stringify(policy.frontmatter, null, 2)}\n---\n\n${policy.instruction_markdown}\n`;

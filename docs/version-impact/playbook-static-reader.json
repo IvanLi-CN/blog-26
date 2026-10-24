@@ -3,9 +3,9 @@
   "kind": "version-impact-record",
   "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
   "covered_files": {
-    ".github/workflows/product-release.yml": "cc14b77a26f0fd101397f20293cb55211a6eb82a",
+    ".github/workflows/product-release.yml": "189103f4f41f6e94f8b6b599764c6254964d8794",
     "site/lib/playbook.ts": "54b326904b51daccb0bfa586c715ec03de8fe283",
-    "tests/ci/product-prerelease-workflow.test.ts": "8a56da35c411eae77ed914f2b8a71b934a5f8665",
+    "tests/ci/product-prerelease-workflow.test.ts": "d277eede3cb47a0d858d43372f6389d72ddcd322",
     "tests/lib/playbook-static-reader.test.ts": "a17cccb800242c077b780f693897d8c51c726f5c"
   },
   "change": {
@@ -21,8 +21,8 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "cc14b77a26f0fd101397f20293cb55211a6eb82a",
-          "command": "Product Release snapshots the static reader with the current Playbook compatibility tooling before frozen preflight and image packaging"
+          "blob": "189103f4f41f6e94f8b6b599764c6254964d8794",
+          "command": "Product Release snapshots the static reader and retained-edition verifier with the current Playbook compatibility tooling before frozen preflight and image packaging"
         },
         {
           "path": "site/lib/playbook.ts",
@@ -43,8 +43,8 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "cc14b77a26f0fd101397f20293cb55211a6eb82a",
-          "command": "The recovery workflow applies the same current static-reader compatibility implementation to the frozen product build"
+          "blob": "189103f4f41f6e94f8b6b599764c6254964d8794",
+          "command": "The recovery workflow applies the current static-reader and retained-edition verifier compatibility implementation to the frozen product build"
         },
         {
           "path": "site/lib/playbook.ts",
@@ -53,7 +53,7 @@
         },
         {
           "path": "tests/ci/product-prerelease-workflow.test.ts",
-          "blob": "8a56da35c411eae77ed914f2b8a71b934a5f8665",
+          "blob": "d277eede3cb47a0d858d43372f6389d72ddcd322",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         },
         {
@@ -79,7 +79,7 @@
         },
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "cc14b77a26f0fd101397f20293cb55211a6eb82a",
+          "blob": "189103f4f41f6e94f8b6b599764c6254964d8794",
           "command": "The compatibility copy is limited to the static build reader and does not change the release ledger identity or frozen input bytes"
         },
         {
@@ -124,8 +124,8 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "cc14b77a26f0fd101397f20293cb55211a6eb82a",
-          "command": "The recovery workflow reuses the registered source and frozen artifact identity while applying the validated reader projection"
+          "blob": "189103f4f41f6e94f8b6b599764c6254964d8794",
+          "command": "The recovery workflow reuses the registered source and frozen artifact identity while applying the validated reader and retained-edition projections"
         },
         {
           "path": "site/lib/playbook.ts",
