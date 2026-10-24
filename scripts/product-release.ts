@@ -589,7 +589,7 @@ if (command === "notification") {
     run.head_repository.full_name !== contract.repository
   )
     throw new Error("Emergency frozen-input recovery run is not trusted");
-  if (run.head_sha !== entry.mergeSha) throw new Error("Failed release source identity changed");
+  assertReleaseRecoverySource(entry, run);
   if (entry.failure && entry.releaseRunId !== Number(entry.failure.runId))
     throw new Error("Release failure does not belong to the registered release run");
   if (entry.failure && entry.failure.attempt > run.run_attempt)
