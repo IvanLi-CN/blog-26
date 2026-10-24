@@ -4,15 +4,15 @@
   "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
   "covered_files": {
     "docs/specs/manual-version-release/HISTORY.md": "d974057f8333c47926293cebf4810efa7a547221",
-    "docs/specs/manual-version-release/IMPLEMENTATION.md": "f4b722fae56aa1d81904a6512866e438b913d2db",
-    "scripts/package-public-media.test.ts": "7142f095cb378dafacf01ab92c5a891010fadbe3",
-    "scripts/package-public-media.ts": "1c92ee2377adfe2446d467d38edc3a3aba44b0be",
-    "src/lib/release/inputs.ts": "51adb012fd6f764d2e7814688ff3d49bd6a9bf5f",
-    "tests/lib/manual-release-inputs.test.ts": "dc6b0305cecd7e023f69b7e8071b9fc0784277e9",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "8f730f2627c43f4eca0780220036b3bfa732340c",
+    "scripts/package-public-media.test.ts": "36ba493deb885c27cdd0b86ce8cd0a12771b044b",
+    "scripts/package-public-media.ts": "17ce4fcd4b17aeeff7e1a1b7d65eda8fdcdcd585",
+    "src/lib/release/inputs.ts": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+    "tests/lib/manual-release-inputs.test.ts": "55b3ae82c2fefd4c6c16e630eaa79983e942da10",
     "tests/lib/manual-release-media.test.ts": "784b850bd71689f78f6d28a87dd18482d6643790"
   },
   "change": {
-    "description": "Make release input freezing retryable and seal the derived public watermark variants emitted by the static build.",
+    "description": "Make public release input acquisition resilient across Bun transport failures by bounding primary and HTTP/1.1 fallback reads, isolating curl configuration, preserving HTTPS and same-origin redirect rules, and sealing derived public watermark variants.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api"]
   },
@@ -24,45 +24,55 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "51adb012fd6f764d2e7814688ff3d49bd6a9bf5f",
+          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
           "command": "bun test tests/lib/manual-release-inputs.test.ts tests/lib/manual-release-media.test.ts"
         }
       ]
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The candidate keeps response-body retry handling and extends the frozen media manifest with actual wm-a-v1 and wm-b-v1 bytes; release inputs, derived URL identity and compatibility contracts remain unchanged.",
-      "assessed_at": "2026-10-16T00:00:00+08:00",
+      "reasoning": "The candidate falls back from Bun transport failures to bounded HTTP/1.1 acquisition for public snapshots and media, isolates curl configuration, preserves HTTPS and same-origin redirect checks, and keeps the frozen media manifest and public input contracts unchanged.",
+      "assessed_at": "2026-10-24T16:03:29+08:00",
       "evidence": [
         {
           "path": "tests/lib/manual-release-media.test.ts",
           "blob": "784b850bd71689f78f6d28a87dd18482d6643790",
           "command": "bun test tests/lib/manual-release-media.test.ts: frozen media reuse serves derived watermark variants"
+        },
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+          "command": "bun test tests/lib/manual-release-*.test.ts scripts/package-public-media.test.ts: bounded primary and HTTP/1.1 fallback reads pass"
+        },
+        {
+          "path": "scripts/package-public-media.test.ts",
+          "blob": "36ba493deb885c27cdd0b86ce8cd0a12771b044b",
+          "command": "bun test scripts/package-public-media.test.ts: curl success, size termination, diagnostics, and configuration isolation pass"
         }
       ],
       "scope_drift": {
-        "detected": false,
-        "description": "The candidate is limited to release input retry handling, derived watermark media sealing, focused tests, and release evidence."
+        "detected": true,
+        "description": "The candidate extends the earlier retry fix with bounded primary and HTTP/1.1 fallback snapshot/media reads, same-origin redirect enforcement, curl configuration isolation, and deterministic fallback adapter coverage; the public input and frozen media contracts remain compatible."
       }
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Focused release-input and frozen-media tests, the full repository check, and CI policy validation confirm a compatible packaging correction with no endpoint, payload, persistent-state, or product behavior change.",
-      "assessed_at": "2026-10-16T00:00:00+08:00",
+      "reasoning": "Focused release-input and media adapter tests, the full repository check, and CI policy validation confirm a compatible packaging correction with bounded acquisition, fail-closed origin and size checks, and no endpoint, payload, persistent-state, or product behavior change.",
+      "assessed_at": "2026-10-24T16:03:29+08:00",
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "7142f095cb378dafacf01ab92c5a891010fadbe3",
-          "command": "bun test scripts/package-public-media.test.ts tests/lib/manual-release-media.test.ts: derived watermark freeze and sealed reuse pass"
+          "blob": "36ba493deb885c27cdd0b86ce8cd0a12771b044b",
+          "command": "bun test scripts/package-public-media.test.ts tests/lib/manual-release-media.test.ts: fallback success, size termination, diagnostics, configuration isolation, and derived watermark reuse pass"
         },
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "51adb012fd6f764d2e7814688ff3d49bd6a9bf5f",
-          "command": "bun run check: release input implementation passes Biome and type checks"
+          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+          "command": "bun test tests/lib/manual-release-*.test.ts scripts/package-public-media.test.ts: primary and fallback snapshot/media reads, retries, redirects, and size bounds pass"
         },
         {
           "path": "docs/specs/manual-version-release/SPEC.md",
-          "blob": "73a26106dae908a2974a27965fda6553f24120cb",
+          "blob": "029a3ce6db8030b70cc28efd3f425016c665e980",
           "command": "spec_drift_check.sh: manual version release specification remains synchronized"
         }
       ]
@@ -86,7 +96,7 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "51adb012fd6f764d2e7814688ff3d49bd6a9bf5f",
+          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
           "command": "The public snapshot URL, response contract, and frozen input schema are unchanged"
         }
       ]
@@ -100,7 +110,7 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "51adb012fd6f764d2e7814688ff3d49bd6a9bf5f",
+          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
           "command": "No database, cache, artifact, or release ledger format changes"
         }
       ]
