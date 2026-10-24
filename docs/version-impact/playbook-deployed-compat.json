@@ -4,7 +4,7 @@
   "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
   "covered_files": {
     ".github/workflows/product-release.yml": "75ef866d859cd05ec0dbb99a543806e056cd533e",
-    "scripts/prepare-playbook-edition.ts": "ffbbcbb1bf76606c96cbadcbd868358516e1c08",
+    "scripts/prepare-playbook-edition.ts": "ffbbcbb1bf76606c96cbadcbd868358516ce1c08",
     "src/lib/playbook/artifacts.ts": "9c8d3482e60eeaa22db358f17920d65ab961a630",
     "src/lib/playbook/bundle.ts": "b2b359e49a26c42aa3c94bd918053ec45563fbd2",
     "src/lib/playbook/cache.ts": "e753bc25eaf0b643171fa4cbda5d212117eb935d",
@@ -41,7 +41,7 @@
         },
         {
           "path": "scripts/prepare-playbook-edition.ts",
-          "blob": "ffbbcbb1bf76606c96cbadcbd868358516e1c08",
+          "blob": "ffbbcbb1bf76606c96cbadcbd868358516ce1c08",
           "command": "bunx biome check scripts/prepare-playbook-edition.ts src/lib/playbook/bundle.ts src/lib/playbook/schema.ts tests/lib/playbook-deployed-compat.test.ts"
         },
         {
