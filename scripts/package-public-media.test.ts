@@ -1005,6 +1005,36 @@ describe("packagePublicMedia", () => {
     ).toBe("four");
   });
 
+  test("uses the HTTP/1.1 fallback after media transport retries are exhausted", async () => {
+    const cwd = await fixture();
+    const mediaPath = "/api/public/assets/post/fallback/hash/card.webp";
+    await writeFile(join(cwd, "site-dist", "index.html"), `<img src="${mediaPath}">`);
+
+    let fetchAttempts = 0;
+    let fallbackAttempts = 0;
+    await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      downloadAttempts: 3,
+      retryDelayMs: 0,
+      fetchImpl: async () => {
+        fetchAttempts += 1;
+        throw new Error("socket reset");
+      },
+      fallbackFetchImpl: async () => {
+        fallbackAttempts += 1;
+        return response("four", { "content-length": "4" });
+      },
+    });
+
+    expect(fetchAttempts).toBe(3);
+    expect(fallbackAttempts).toBe(1);
+    expect(
+      await readFile(join(cwd, "site-dist/_content/assets/post/fallback/hash/card.webp"), "utf8")
+    ).toBe("four");
+  });
+
   test("retries transient not-found media responses", async () => {
     const cwd = await fixture();
     const mediaPath = "/api/public/assets/post/retry-404/hash/card.webp";

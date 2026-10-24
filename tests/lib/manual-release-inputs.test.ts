@@ -106,4 +106,47 @@ describe("manual release snapshot acquisition", () => {
     expect(calls).toBe(2);
     expect(waits).toEqual([1_000]);
   });
+
+  test("uses an HTTP/1.1 fallback after repeated response-body transport failures", async () => {
+    let fallbackCalls = 0;
+    const result = await fetchPublicSnapshot(
+      snapshotUrl,
+      async () => {
+        const response = new Response("partial", { status: 200 });
+        response.text = async () => {
+          throw new Error("socket reset while reading body");
+        };
+        return response;
+      },
+      async () => undefined,
+      async () => {
+        fallbackCalls += 1;
+        return new Response("complete", { status: 200 });
+      }
+    );
+
+    expect(await result.text()).toBe("complete");
+    expect(fallbackCalls).toBe(1);
+  });
+
+  test("uses the same fallback after repeated request transport failures", async () => {
+    let calls = 0;
+    let fallbackCalls = 0;
+    const result = await fetchPublicSnapshot(
+      snapshotUrl,
+      async () => {
+        calls += 1;
+        throw new Error("socket reset before response");
+      },
+      async () => undefined,
+      async () => {
+        fallbackCalls += 1;
+        return new Response("complete", { status: 200 });
+      }
+    );
+
+    expect(await result.text()).toBe("complete");
+    expect(calls).toBe(3);
+    expect(fallbackCalls).toBe(1);
+  });
 });

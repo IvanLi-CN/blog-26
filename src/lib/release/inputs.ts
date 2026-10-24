@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import { z } from "zod";
 import {
   CLIPPING_RESOURCE_BASE_FACADE_RE,
+  fetchPublicResourceOverHttp11,
   type PublicMediaManifest,
   packagePublicMedia,
 } from "../../../scripts/package-public-media";
@@ -60,14 +61,17 @@ const publicEnvNames = [
 ] as const;
 
 const snapshotRetryDelaysMs = [1_000, 3_000] as const;
+const snapshotRequestTimeoutMs = 60_000;
 const clippingResourceReferenceRe = /\.\/assets\/[a-f0-9]{64}\.[a-z0-9]+(?:[?#][^"'`\s<>)]+)?/giu;
 export type ClippingSnapshotArticle = {
   source: string | null;
   translation: string | null;
   resourceBaseUrl?: string | null;
 };
-type SnapshotFetcher = typeof fetch;
-type SnapshotSleep = (delayMs: number) => Promise<void>;
+type SnapshotFetcher = (input: URL, init?: RequestInit) => Promise<Response>;
+type SnapshotSleep = (delayMs: number) => Promise<unknown>;
+const fetchPublicSnapshotOverHttp11: SnapshotFetcher = (input, init) =>
+  fetchPublicResourceOverHttp11(input, init, snapshotRequestTimeoutMs);
 
 export function clippingResourceUrlsFromSnapshot(
   articles: Record<string, ClippingSnapshotArticle> | undefined,
@@ -96,7 +100,10 @@ function isRetryableSnapshotStatus(status: number): boolean {
 export async function fetchPublicSnapshot(
   snapshotUrl: URL,
   fetcher: SnapshotFetcher = fetch,
-  sleep: SnapshotSleep = (delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs))
+  sleep: SnapshotSleep = (delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)),
+  fallbackFetcher: SnapshotFetcher | undefined = fetcher === fetch
+    ? fetchPublicSnapshotOverHttp11
+    : undefined
 ): Promise<Response> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= snapshotRetryDelaysMs.length; attempt += 1) {
@@ -104,19 +111,19 @@ export async function fetchPublicSnapshot(
     try {
       response = await fetcher(snapshotUrl, {
         redirect: "error",
-        signal: AbortSignal.timeout(60_000),
+        signal: AbortSignal.timeout(snapshotRequestTimeoutMs),
       });
     } catch (error) {
-      if (attempt === snapshotRetryDelaysMs.length) throw error;
       lastError = error;
+      if (attempt === snapshotRetryDelaysMs.length) break;
       await sleep(snapshotRetryDelaysMs[attempt] || 0);
       continue;
     }
 
     if (!response.ok) {
       lastError = new Error(`Public snapshot acquisition failed (HTTP ${response.status})`);
-      if (!isRetryableSnapshotStatus(response.status) || attempt === snapshotRetryDelaysMs.length)
-        throw lastError;
+      if (!isRetryableSnapshotStatus(response.status)) throw lastError;
+      if (attempt === snapshotRetryDelaysMs.length) break;
       await sleep(snapshotRetryDelaysMs[attempt] || 0);
       continue;
     }
@@ -131,9 +138,27 @@ export async function fetchPublicSnapshot(
         statusText: response.statusText,
       });
     } catch (error) {
-      if (attempt === snapshotRetryDelaysMs.length) throw error;
       lastError = error;
+      if (attempt === snapshotRetryDelaysMs.length) break;
       await sleep(snapshotRetryDelaysMs[attempt] || 0);
+    }
+  }
+  if (fallbackFetcher) {
+    try {
+      const response = await fallbackFetcher(snapshotUrl);
+      if (!response.ok) {
+        throw new Error(`Public snapshot acquisition failed (HTTP ${response.status})`);
+      }
+      return response;
+    } catch (fallbackError) {
+      const fallbackMessage =
+        fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+      const originalMessage =
+        lastError instanceof Error ? `; last fetch error: ${lastError.message}` : "";
+      throw new Error(
+        `Public snapshot acquisition failed after fetch retries and HTTP/1.1 fallback: ${fallbackMessage}${originalMessage}`,
+        { cause: fallbackError }
+      );
     }
   }
   if (lastError instanceof Error) throw lastError;

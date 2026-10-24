@@ -1,6 +1,16 @@
 #!/usr/bin/env bun
 
-import { appendFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import {
+  appendFile,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { extname, join, relative, resolve, sep } from "node:path";
 
 export const PUBLIC_MEDIA_FACADE_PREFIX = "/api/public/assets/";
@@ -77,6 +87,7 @@ export type PublicMediaPackageOptions = {
   downloadConcurrency?: number;
   downloadAttempts?: number;
   retryDelayMs?: number;
+  fallbackFetchImpl?: PublicMediaFetcher;
   includeDerivedWatermarkVariants?: boolean;
   includeMigratedWatermarkVariants?: boolean;
   clippingResourceUrls?: string[];
@@ -101,10 +112,104 @@ type DownloadResult = {
   reason: string | null;
 };
 
+type ParsedCurlHeaders = {
+  status: number;
+  headers: Headers;
+};
+
 class MediaNotFoundError extends Error {
   constructor(url: string) {
     super(`Media origin returned HTTP 404 for ${url}`);
     this.name = "MediaNotFoundError";
+  }
+}
+
+class MediaHttpError extends Error {
+  readonly status: number;
+
+  constructor(status: number, url: string) {
+    super(`Media origin returned HTTP ${status} for ${url}`);
+    this.name = "MediaHttpError";
+    this.status = status;
+  }
+}
+
+class MediaPolicyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MediaPolicyError";
+  }
+}
+
+function parseCurlHeaders(raw: string): ParsedCurlHeaders {
+  const blocks = raw
+    .split(/\r?\n\r?\n/u)
+    .filter((block) => /^HTTP\/\d(?:\.\d)?\s+\d{3}/mu.test(block));
+  const block = blocks.at(-1);
+  const lines = block?.split(/\r?\n/u) ?? [];
+  const status = Number(/^HTTP\/\d(?:\.\d)?\s+(\d{3})/u.exec(lines[0] ?? "")?.[1]);
+  if (!Number.isInteger(status) || status < 100 || status > 599) {
+    throw new Error("HTTP/1.1 fallback did not return a valid response status");
+  }
+  const headers = new Headers();
+  for (const line of lines.slice(1)) {
+    const separator = line.indexOf(":");
+    if (separator <= 0) continue;
+    headers.append(line.slice(0, separator), line.slice(separator + 1).trim());
+  }
+  return { status, headers };
+}
+
+export async function fetchPublicResourceOverHttp11(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS
+): Promise<Response> {
+  const method = (init.method ?? "GET").toUpperCase();
+  if (method !== "GET") throw new Error("HTTP/1.1 public resource fallback only supports GET");
+  const url = new URL(String(input));
+  if (url.protocol !== "https:" || url.username || url.password) {
+    throw new Error("HTTP/1.1 public resource fallback requires an HTTPS URL without credentials");
+  }
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "blog-public-http11-"));
+  const headersPath = join(temporaryRoot, "headers.txt");
+  try {
+    const child = Bun.spawn(
+      [
+        "curl",
+        "--silent",
+        "--show-error",
+        "--http1.1",
+        "--no-compressed",
+        "--proto",
+        "=https",
+        "--max-time",
+        String(Math.ceil(requestTimeoutMs / 1_000)),
+        "--dump-header",
+        headersPath,
+        "--output",
+        "-",
+        url.href,
+      ],
+      {
+        stdout: "pipe",
+        stderr: "pipe",
+        timeout: requestTimeoutMs,
+      }
+    );
+    const [body, diagnostics, exitCode] = await Promise.all([
+      new Response(child.stdout).arrayBuffer(),
+      new Response(child.stderr).text(),
+      child.exited,
+    ]);
+    if (exitCode !== 0) {
+      const details = diagnostics.trim();
+      throw new Error(`HTTP/1.1 public resource fallback failed${details ? `: ${details}` : ""}`);
+    }
+    const parsed = parseCurlHeaders(await readFile(headersPath, "utf8"));
+    return new Response(body, { headers: parsed.headers, status: parsed.status });
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
   }
 }
 
@@ -379,14 +484,15 @@ async function fetchMediaWithinOrigin(
 
     await cancelResponseBody(response);
     const location = response.headers.get("location");
-    if (!location) throw new Error("Media origin returned a redirect without a location");
+    if (!location)
+      throw new MediaPolicyError("Media origin returned a redirect without a location");
     const nextUrl = new URL(location, currentUrl);
     if (nextUrl.origin !== mediaOrigin) {
-      throw new Error("Media origin redirect escaped the configured origin");
+      throw new MediaPolicyError("Media origin redirect escaped the configured origin");
     }
     currentUrl = nextUrl.toString();
   }
-  throw new Error(`Media origin returned more than ${MAX_MEDIA_REDIRECTS} redirects`);
+  throw new MediaPolicyError(`Media origin returned more than ${MAX_MEDIA_REDIRECTS} redirects`);
 }
 
 async function downloadMedia(
@@ -396,39 +502,22 @@ async function downloadMedia(
   fetchImpl: PublicMediaFetcher,
   requestTimeoutMs: number,
   downloadAttempts: number,
-  retryDelayMs: number
+  retryDelayMs: number,
+  fallbackFetchImpl?: PublicMediaFetcher
 ): Promise<DownloadResult> {
   // GET headers provide the size limit without a separate round-trip.
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= downloadAttempts; attempt += 1) {
-    let response: Response;
-    try {
-      response = await fetchMediaWithinOrigin(
-        url,
-        mediaOrigin,
-        { method: "GET" },
-        fetchImpl,
-        requestTimeoutMs
-      );
-    } catch (error) {
-      lastError = error;
-      if (attempt === downloadAttempts) throw mediaDownloadError(url, downloadAttempts, error);
-      await new Promise((resolve) => setTimeout(resolve, retryDelayMs * attempt));
-      continue;
-    }
+  const downloadOnce = async (transport: PublicMediaFetcher): Promise<DownloadResult> => {
+    const response = await fetchMediaWithinOrigin(
+      url,
+      mediaOrigin,
+      { method: "GET" },
+      transport,
+      requestTimeoutMs
+    );
     if (!response.ok) {
       await cancelResponseBody(response);
-      const retryable =
-        response.status === 404 ||
-        response.status === 408 ||
-        response.status === 429 ||
-        response.status >= 500;
-      if (retryable && attempt < downloadAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, retryDelayMs * attempt));
-        continue;
-      }
       if (response.status === 404) throw new MediaNotFoundError(url);
-      throw new Error(`Media origin returned HTTP ${response.status} for ${url}`);
+      throw new MediaHttpError(response.status, url);
     }
     const declaredLength = readContentLength(response);
     if (declaredLength !== null && declaredLength > maxBytes) {
@@ -436,21 +525,47 @@ async function downloadMedia(
       return { status: "external", bytes: declaredLength, reason: "over_max_bytes" };
     }
 
+    const result = await readResponseWithinLimit(response, maxBytes, requestTimeoutMs, url);
+    if (result.tooLarge) {
+      return { status: "external", bytes: maxBytes + 1, reason: "over_max_bytes" };
+    }
+    if (!result.body || result.body.byteLength === 0) {
+      throw new Error("Media origin returned an empty body");
+    }
+    return { status: "packaged", bytes: result.body.byteLength, body: result.body, reason: null };
+  };
+
+  const isRetryableError = (error: unknown) => {
+    if (error instanceof MediaPolicyError) return false;
+    if (!(error instanceof MediaHttpError)) return true;
+    return (
+      error.status === 404 || error.status === 408 || error.status === 429 || error.status >= 500
+    );
+  };
+
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= downloadAttempts; attempt += 1) {
     try {
-      const result = await readResponseWithinLimit(response, maxBytes, requestTimeoutMs, url);
-      if (result.tooLarge) {
-        return { status: "external", bytes: maxBytes + 1, reason: "over_max_bytes" };
-      }
-      if (!result.body || result.body.byteLength === 0) {
-        throw new Error("Media origin returned an empty body");
-      }
-      return { status: "packaged", bytes: result.body.byteLength, body: result.body, reason: null };
+      return await downloadOnce(fetchImpl);
     } catch (error) {
+      if (!isRetryableError(error)) throw error;
       lastError = error;
-      if (attempt === downloadAttempts) throw error;
+      if (attempt === downloadAttempts) break;
       await new Promise((resolve) => setTimeout(resolve, retryDelayMs * attempt));
     }
   }
+
+  if (fallbackFetchImpl) {
+    try {
+      return await downloadOnce(fallbackFetchImpl);
+    } catch (error) {
+      if (error instanceof MediaNotFoundError || !isRetryableError(error)) throw error;
+      throw mediaDownloadError(url, downloadAttempts, error);
+    }
+  }
+
+  if (lastError instanceof MediaNotFoundError || lastError instanceof MediaHttpError)
+    throw lastError;
   throw mediaDownloadError(url, downloadAttempts, lastError);
 }
 
@@ -636,6 +751,12 @@ export async function packagePublicMedia(
     options.retryDelayMs ??
     Number(process.env.PUBLIC_STATIC_MEDIA_RETRY_DELAY_MS ?? DEFAULT_RETRY_DELAY_MS);
   const fetchImpl = options.fetchImpl ?? fetch;
+  const fallbackFetchImpl =
+    options.fallbackFetchImpl ??
+    (options.fetchImpl === undefined
+      ? (input: RequestInfo | URL, init?: RequestInit) =>
+          fetchPublicResourceOverHttp11(input, init, requestTimeoutMs)
+      : undefined);
 
   if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0)
     throw new Error("maxBytes must be a positive integer");
@@ -738,7 +859,8 @@ export async function packagePublicMedia(
           fetchImpl,
           requestTimeoutMs,
           downloadAttempts,
-          retryDelayMs
+          retryDelayMs,
+          fallbackFetchImpl
         );
       } catch (error) {
         if (!(error instanceof MediaNotFoundError) || !reference.fallback) throw error;
@@ -751,7 +873,8 @@ export async function packagePublicMedia(
           fetchImpl,
           requestTimeoutMs,
           downloadAttempts,
-          retryDelayMs
+          retryDelayMs,
+          fallbackFetchImpl
         );
       }
       if (reference.required && result.status === "external") {
