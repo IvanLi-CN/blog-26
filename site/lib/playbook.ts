@@ -4,6 +4,10 @@ import { getRuntimePlaybookStore, validatePlaybookEdition } from "@/lib/playbook
 import { getPlaybookPolicies } from "@/lib/playbook/navigation";
 import type { PlaybookEdition } from "@/lib/playbook/types";
 
+export function parseStaticPlaybookEdition(raw: string): PlaybookEdition {
+  return validatePlaybookEdition(JSON.parse(raw), undefined, { stripInternalMetadata: true });
+}
+
 let staticEdition: Promise<PlaybookEdition | undefined> | undefined;
 export async function getPlaybookEdition() {
   if (process.env.CONSOLE_RUNTIME === "true") {
@@ -15,7 +19,7 @@ export async function getPlaybookEdition() {
     resolve(process.env.PLAYBOOK_SEED_PATH || "site/generated/playbook-edition.json"),
     "utf8"
   )
-    .then((raw) => validatePlaybookEdition(JSON.parse(raw)))
+    .then(parseStaticPlaybookEdition)
     .catch((error) => {
       if (error.code === "ENOENT" && process.env.PLAYBOOK_REQUIRED !== "true") return undefined;
       throw error;
