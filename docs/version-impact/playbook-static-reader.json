@@ -3,7 +3,9 @@
   "kind": "version-impact-record",
   "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
   "covered_files": {
+    ".github/workflows/product-release.yml": "cc14b77a26f0fd101397f20293cb55211a6eb82a",
     "site/lib/playbook.ts": "54b326904b51daccb0bfa586c715ec03de8fe283",
+    "tests/ci/product-prerelease-workflow.test.ts": "8a56da35c411eae77ed914f2b8a71b934a5f8665",
     "tests/lib/playbook-static-reader.test.ts": "a17cccb800242c077b780f693897d8c51c726f5c"
   },
   "change": {
@@ -17,6 +19,11 @@
       "reasoning": "The change only selects the existing internal-metadata stripping projection for static page reads; public route shapes, edition identities, server APIs, and persistent state remain unchanged.",
       "assessed_at": "2026-10-24T20:32:12+08:00",
       "evidence": [
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "cc14b77a26f0fd101397f20293cb55211a6eb82a",
+          "command": "Product Release snapshots the static reader with the current Playbook compatibility tooling before frozen preflight and image packaging"
+        },
         {
           "path": "site/lib/playbook.ts",
           "blob": "54b326904b51daccb0bfa586c715ec03de8fe283",
@@ -35,9 +42,19 @@
       "assessed_at": "2026-10-24T20:32:12+08:00",
       "evidence": [
         {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "cc14b77a26f0fd101397f20293cb55211a6eb82a",
+          "command": "The recovery workflow applies the same current static-reader compatibility implementation to the frozen product build"
+        },
+        {
           "path": "site/lib/playbook.ts",
           "blob": "54b326904b51daccb0bfa586c715ec03de8fe283",
           "command": "Static page loading validates retained editions with the deployed-read compatibility option"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "8a56da35c411eae77ed914f2b8a71b934a5f8665",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         },
         {
           "path": "tests/lib/playbook-static-reader.test.ts",
@@ -59,6 +76,11 @@
           "path": "tests/lib/playbook-static-reader.test.ts",
           "blob": "a17cccb800242c077b780f693897d8c51c726f5c",
           "command": "bun test tests/lib/playbook-static-reader.test.ts tests/lib/playbook-deployed-compat.test.ts: 3 passed, 0 failed"
+        },
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "cc14b77a26f0fd101397f20293cb55211a6eb82a",
+          "command": "The compatibility copy is limited to the static build reader and does not change the release ledger identity or frozen input bytes"
         },
         {
           "path": "site/lib/playbook.ts",
@@ -100,6 +122,11 @@
         "3.7.4"
       ],
       "evidence": [
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "cc14b77a26f0fd101397f20293cb55211a6eb82a",
+          "command": "The recovery workflow reuses the registered source and frozen artifact identity while applying the validated reader projection"
+        },
         {
           "path": "site/lib/playbook.ts",
           "blob": "54b326904b51daccb0bfa586c715ec03de8fe283",
