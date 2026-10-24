@@ -61,7 +61,7 @@
         {
           "path": "scripts/package-public-media.test.ts",
           "blob": "b3910544d1d6d91ade397702c45520a0bcefd2a0",
-          "command": "bun run test:unit: 1418 passed, 52 skipped, 0 failed across 163 files"
+          "command": "bun run test:unit: 1419 passed, 52 skipped, 0 failed across 163 files"
         },
         {
           "path": "src/lib/release/inputs.ts",
@@ -71,7 +71,7 @@
         {
           "path": "scripts/run-test-suite.ts",
           "blob": "90c333cc5b0100105c91c630545560dee5e73da9",
-          "command": "bun run test:unit: explicit fallback coverage is included and the runner completes with 1418 passed, 52 skipped, 0 failed"
+          "command": "bun run test:unit: explicit fallback coverage is included and the runner completes with 1419 passed, 52 skipped, 0 failed"
         },
         {
           "path": "src/lib/release/inputs.ts",
