@@ -374,7 +374,7 @@ function getPublicMediaRenderId(
   context: PublicMediaContext,
   variant: Exclude<PublicMediaVariant, "play">
 ): PublicMediaRenderId | undefined {
-  return getDefaultPublicMediaRenderId(variant, context.watermarkRenderVersion ?? "v3");
+  return getDefaultPublicMediaRenderId(variant, context.watermarkRenderVersion ?? "v4");
 }
 
 function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference) {
@@ -845,11 +845,13 @@ function getWatermarkComposition(renderId: PublicMediaRenderId) {
 }
 
 function getWatermarkVersion(renderId: PublicMediaRenderId) {
-  return renderId.endsWith("-v3")
-    ? ("v3" as const)
-    : renderId.endsWith("-v2")
-      ? ("v2" as const)
-      : ("v1" as const);
+  return renderId.endsWith("-v4")
+    ? ("v4" as const)
+    : renderId.endsWith("-v3")
+      ? ("v3" as const)
+      : renderId.endsWith("-v2")
+        ? ("v2" as const)
+        : ("v1" as const);
 }
 
 function getWatermarkMargin(dimensions: DerivedDimensions) {
@@ -1010,6 +1012,7 @@ async function chooseAdaptiveWatermarkInk(params: {
   renderId: PublicMediaRenderId;
 }) {
   const composition = getWatermarkComposition(params.renderId);
+  const version = getWatermarkVersion(params.renderId);
   const info = await stat(getLocalPath(params.ref.sourcePath));
   const key = watermarkCacheKey({
     sourcePath: params.ref.sourcePath,
@@ -1018,9 +1021,10 @@ async function chooseAdaptiveWatermarkInk(params: {
     ctimeMs: info.ctimeMs,
     variant: params.variant,
     composition,
+    version,
   });
   return getCachedWatermarkInk(key, async (signal) => {
-    const lightAsset = watermarkAssetName(composition, "v3", "light");
+    const lightAsset = watermarkAssetName(composition, version, "light");
     const svg = await readWatermarkSvg(lightAsset);
     const mask = await renderWatermarkMask(svg, getWatermarkWidth(params.dimensions, composition));
     const scores: WatermarkInkScores =
@@ -1041,7 +1045,8 @@ async function getWatermarkPlan(params: {
 }): Promise<WatermarkPlan> {
   const composition = getWatermarkComposition(params.renderId);
   const version = getWatermarkVersion(params.renderId);
-  const ink: WatermarkInk = version === "v3" ? await chooseAdaptiveWatermarkInk(params) : "light";
+  const ink: WatermarkInk =
+    version === "v3" || version === "v4" ? await chooseAdaptiveWatermarkInk(params) : "light";
   return createWatermarkPlan({ composition, version, ink, dimensions: params.dimensions });
 }
 
@@ -1095,9 +1100,9 @@ async function getWatermarkFilter(
   }
   const plan = await getWatermarkPlan({ request, context, ref, variant, dimensions, renderId });
   const watermarkUrl = `${getInternalSourceBaseUrl(request)}/${plan.asset}`;
-  // Some deployed imagorvideo versions leave the watermark at its intrinsic SVG
-  // size when only w_ratio is provided. v2 fixes that while keeping width as the
-  // authoritative dimension; v1 retains its historical filter for old snapshots.
+  // Versioned filters keep the historical v1 expression and use explicit bounds
+  // for v2+; v4 also uses a zero-origin A canvas so deployed Imagor renderers
+  // cannot interpret the SVG's intrinsic offset as a full-size watermark.
   return plan.heightRatio === null
     ? `watermark(${encodeImagorFilterString(watermarkUrl)},-${plan.margin},-${plan.margin},36,${plan.widthRatio * 100})`
     : `watermark(${encodeImagorFilterString(watermarkUrl)},-${plan.margin},-${plan.margin},36,${plan.widthRatio * 100},${plan.heightRatio})`;

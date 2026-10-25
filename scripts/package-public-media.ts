@@ -942,8 +942,8 @@ const MAX_MEDIA_REDIRECTS = 5;
 const PUBLIC_RENDER_VARIANT_RE =
   /^\/api\/public\/assets\/(post|memo)\/([^/]+)\/([^/]+)\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu;
 const PUBLIC_DERIVED_RENDER_VARIANT_RE =
-  /^\/api\/public\/assets\/(post|memo)\/([^/]+)\/([^/]+)\/(wm-[ab]-v[123])\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu;
-const DERIVED_WATERMARK_RENDER_IDS = ["wm-a-v3", "wm-b-v3"] as const;
+  /^\/api\/public\/assets\/(post|memo)\/([^/]+)\/([^/]+)\/(wm-[ab]-v[1234])\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu;
+const DERIVED_WATERMARK_RENDER_IDS = ["wm-a-v4", "wm-b-v4"] as const;
 
 async function fetchMediaWithinOrigin(
   url: string,
@@ -1098,15 +1098,17 @@ function deriveSiblingWatermarkReferences(
   const match = PUBLIC_DERIVED_RENDER_VARIANT_RE.exec(reference.sourceUrl.pathname);
   if (!match) return [];
   const [, kind, slug, hash, currentRenderId, variant, extension] = match;
-  if (
-    !DERIVED_WATERMARK_RENDER_IDS.includes(
-      currentRenderId as (typeof DERIVED_WATERMARK_RENDER_IDS)[number]
-    )
-  ) {
+  const siblingRenderIds = currentRenderId.endsWith("-v4")
+    ? DERIVED_WATERMARK_RENDER_IDS
+    : currentRenderId.endsWith("-v3")
+      ? (["wm-a-v3", "wm-b-v3"] as const)
+      : null;
+  if (!siblingRenderIds) {
     return [];
   }
-  return DERIVED_WATERMARK_RENDER_IDS.filter((renderId) => renderId !== currentRenderId).map(
-    (renderId) => {
+  return siblingRenderIds
+    .filter((renderId) => renderId !== currentRenderId)
+    .map((renderId) => {
       const sourceUrl = new URL(reference.sourceUrl.href);
       sourceUrl.pathname = `${PUBLIC_MEDIA_FACADE_PREFIX}${kind}/${slug}/${hash}/${renderId}/${variant}.${extension}`;
       const relativePath = assertSafeAssetPath(sourceUrl.pathname);
@@ -1120,8 +1122,7 @@ function deriveSiblingWatermarkReferences(
         staticPath,
         replacement: () => staticPath,
       } satisfies AssetReference;
-    }
-  );
+    });
 }
 
 function deriveMigratedWatermarkReferences(
@@ -1130,7 +1131,7 @@ function deriveMigratedWatermarkReferences(
   basePath: string
 ): AssetReference[] {
   const match = PUBLIC_DERIVED_RENDER_VARIANT_RE.exec(reference.sourceUrl.pathname);
-  if (!match || match[4]?.endsWith("-v3")) return [];
+  if (!match || match[4]?.endsWith("-v3") || match[4]?.endsWith("-v4")) return [];
   const [, kind, slug, hash, , variant, extension] = match;
   return DERIVED_WATERMARK_RENDER_IDS.map((renderId) => {
     const sourceUrl = new URL(reference.sourceUrl.href);

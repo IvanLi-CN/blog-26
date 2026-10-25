@@ -394,6 +394,16 @@ function buildDynamicChecks(
       validate: assertWatermarkDomainPaths,
     },
     {
+      file: "site-dist/watermark-ivanli-a.light.v4.svg",
+      includes: ["<svg", "viewBox", "#fff"],
+      excludes: [],
+    },
+    {
+      file: "site-dist/watermark-ivanli-a.dark.v4.svg",
+      includes: ["<svg", "viewBox", "#24352d"],
+      excludes: [],
+    },
+    {
       file: "site-dist/robots.txt",
       includes: [`Host: ${siteOrigin}`, `Sitemap: ${siteUrl}/sitemap.xml`],
       excludes: siteOrigin === siteUrl ? [] : [`Host: ${siteUrl}`],

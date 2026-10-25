@@ -10,6 +10,8 @@ const watermarkFiles = [
   "public/watermark-ivanli-a.dark.v3.svg",
   "public/watermark-ivanli-b.light.v3.svg",
   "public/watermark-ivanli-b.dark.v3.svg",
+  "public/watermark-ivanli-a.light.v4.svg",
+  "public/watermark-ivanli-a.dark.v4.svg",
 ] as const;
 
 describe("versioned Logo watermark assets", () => {
@@ -45,4 +47,15 @@ describe("versioned Logo watermark assets", () => {
       }
     });
   }
+
+  it("normalizes the v4 A canvas to a zero-origin viewBox", async () => {
+    for (const relativePath of [
+      "public/watermark-ivanli-a.light.v4.svg",
+      "public/watermark-ivanli-a.dark.v4.svg",
+    ]) {
+      const svg = await readFile(resolve(process.cwd(), relativePath), "utf8");
+      expect(svg).toContain('viewBox="0 0 796 572"');
+      expect(svg).toContain('transform="translate(-110 -226)"');
+    }
+  });
 });

@@ -624,13 +624,13 @@ describe("packagePublicMedia", () => {
 
     expect(requestedUrls).toEqual([
       `https://api.example${candidateUrl}`,
-      "https://api.example/api/public/assets/post/logo/hash/wm-a-v3/content.webp?v=2026-10-15",
-      "https://api.example/api/public/assets/post/logo/hash/wm-b-v3/content.webp?v=2026-10-15",
+      "https://api.example/api/public/assets/post/logo/hash/wm-a-v4/content.webp?v=2026-10-15",
+      "https://api.example/api/public/assets/post/logo/hash/wm-b-v4/content.webp?v=2026-10-15",
     ]);
     expect(manifest.entries.map((entry) => entry.sourcePath)).toEqual([
       "/api/public/assets/post/logo/hash/content.webp?v=2026-10-15",
-      "/api/public/assets/post/logo/hash/wm-a-v3/content.webp?v=2026-10-15",
-      "/api/public/assets/post/logo/hash/wm-b-v3/content.webp?v=2026-10-15",
+      "/api/public/assets/post/logo/hash/wm-a-v4/content.webp?v=2026-10-15",
+      "/api/public/assets/post/logo/hash/wm-b-v4/content.webp?v=2026-10-15",
     ]);
   });
 
@@ -677,14 +677,14 @@ describe("packagePublicMedia", () => {
         fetchImpl: async (input) => {
           const url = String(input);
           requestedUrls.push(url);
-          if (url.includes("/wm-a-v3/")) return new Response("missing", { status: 404 });
+          if (url.includes("/wm-a-v4/")) return new Response("missing", { status: 404 });
           return response("image");
         },
       })
     ).rejects.toThrow("Media origin returned HTTP 404");
     expect(requestedUrls).toEqual([
       `https://api.example${candidateUrl}`,
-      "https://api.example/api/public/assets/post/logo/hash/wm-a-v3/content.webp?v=2026-10-15",
+      "https://api.example/api/public/assets/post/logo/hash/wm-a-v4/content.webp?v=2026-10-15",
     ]);
   });
 
@@ -825,7 +825,7 @@ describe("packagePublicMedia", () => {
     ).toBe(true);
   });
 
-  test("can prefetch v3 watermark variants when migrating a legacy candidate", async () => {
+  test("can prefetch v4 watermark variants when migrating a legacy candidate", async () => {
     const cwd = await fixture();
     const watermark = "/api/public/assets/post/logo/hash/wm-b-v1/content.webp?v=2026-10-15";
     await writeFile(join(cwd, "site-dist", "snapshot.json"), `{"media":"${watermark}"}`);
@@ -846,8 +846,8 @@ describe("packagePublicMedia", () => {
     expect(requestedUrls).toEqual([
       `https://api.example${watermark}`,
       "https://api.example/api/public/assets/post/logo/hash/content.webp?v=2026-10-15",
-      "https://api.example/api/public/assets/post/logo/hash/wm-a-v3/content.webp?v=2026-10-15",
-      "https://api.example/api/public/assets/post/logo/hash/wm-b-v3/content.webp?v=2026-10-15",
+      "https://api.example/api/public/assets/post/logo/hash/wm-a-v4/content.webp?v=2026-10-15",
+      "https://api.example/api/public/assets/post/logo/hash/wm-b-v4/content.webp?v=2026-10-15",
     ]);
   });
 

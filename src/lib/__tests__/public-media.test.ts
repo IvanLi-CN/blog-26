@@ -160,7 +160,7 @@ describe("public-media", () => {
           role: "content",
           variant: "card",
         })
-      ).toContain("/wm-a-v3/card.webp");
+      ).toContain("/wm-a-v4/card.webp");
       expect(
         buildPublicMediaAssetUrl({
           context,
@@ -168,7 +168,7 @@ describe("public-media", () => {
           role: "content",
           variant: "content",
         })
-      ).toContain("/wm-b-v3/content.webp");
+      ).toContain("/wm-b-v4/content.webp");
     });
 
     it("enumerates A/B candidates from an already normalized source path", () => {
@@ -184,8 +184,8 @@ describe("public-media", () => {
         a: expect.stringContaining("/demo-post/"),
         b: expect.stringContaining("/demo-post/"),
       });
-      expect(presentations?.a).toContain("/wm-a-v3/content.webp");
-      expect(presentations?.b).toContain("/wm-b-v3/content.webp");
+      expect(presentations?.a).toContain("/wm-a-v4/content.webp");
+      expect(presentations?.b).toContain("/wm-b-v4/content.webp");
       expect(presentations?.a).not.toContain("/blog/blog/");
     });
 
@@ -211,7 +211,7 @@ describe("public-media", () => {
       ).toContain("/wm-b-v2/content.webp");
     });
 
-    it("uses v3 defaults for admin previews while accepting explicit candidates", () => {
+    it("uses v4 defaults for admin previews while accepting explicit candidates", () => {
       const adminContext = { ...context, assetScope: "admin-preview" as const };
       expect(
         buildPublicMediaAssetUrl({
@@ -220,15 +220,7 @@ describe("public-media", () => {
           role: "content",
           variant: "content",
         })
-      ).toContain("/wm-b-v3/content.webp");
-      expect(
-        buildPublicMediaAssetUrl({
-          context: adminContext,
-          mediaPath: "./assets/photo.png",
-          role: "content",
-          variant: "content",
-        })
-      ).toContain("/wm-b-v3/content.webp");
+      ).toContain("/wm-b-v4/content.webp");
       expect(
         buildPublicMediaAssetUrl({
           context: adminContext,
@@ -358,8 +350,41 @@ describe("public-media", () => {
       ).toBe(true);
     });
 
+    it("accepts complete current v4 candidates", () => {
+      const item = {
+        hash: "abc123",
+        kind: "image" as const,
+        role: "content" as const,
+        alt: null,
+        sourcePath: "blog/assets/photo.png",
+        variants: {},
+        presentations: {
+          content: {
+            a: "/api/public/assets/post/demo-post/abc123/wm-a-v4/content.webp",
+            b: "/api/public/assets/post/demo-post/abc123/wm-b-v4/content.webp",
+          },
+          full: {
+            a: "/api/public/assets/post/demo-post/abc123/wm-a-v4/full.webp",
+            b: "/api/public/assets/post/demo-post/abc123/wm-b-v4/full.webp",
+          },
+        },
+        poster: null,
+        playback: null,
+        sources: [],
+      };
+
+      const media = {
+        primary: null,
+        cover: null,
+        content: [item],
+        attachments: [],
+      };
+      expect(supportsPublicMediaPresentations(media)).toBe(true);
+      expect(getPublicMediaWatermarkVersion(media)).toBe("v4");
+    });
+
     it("rejects a cross-version watermark pair across content items", () => {
-      const item = (version: "v2" | "v3") => ({
+      const item = (version: "v2" | "v3" | "v4") => ({
         hash: "abc123",
         kind: "image" as const,
         role: "content" as const,
