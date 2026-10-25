@@ -64,6 +64,9 @@ function normalizeReturnTo(raw: string | null, request: Request) {
     const trustedOrigins = new Set(
       [
         requestOrigin,
+        // The console build statically binds PUBLIC_SITE_URL to the console origin.
+        // SITE_URL remains runtime-configurable and identifies the public site for OAuth return paths.
+        process.env.SITE_URL,
         process.env.PUBLIC_SITE_URL,
         process.env.PUBLIC_API_BASE_URL,
         process.env.CONSOLE_URL,

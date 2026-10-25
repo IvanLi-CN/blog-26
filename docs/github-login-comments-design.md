@@ -138,7 +138,7 @@ GitHub 读者身份与评论归属应使用 GitHub 持久用户 ID 关联，而�
 
 ## 运行配置
 
-GitHub 读者 OAuth 使用独立 OAuth App。服务端需要配置 `GITHUB_READER_CLIENT_ID`、`GITHUB_READER_CLIENT_SECRET` 和 `GITHUB_READER_CALLBACK_URL`；生产回调固定为 `https://console.ivanli.cc/api/public/reader-auth/github/callback`，测试环境使用当前隔离 Console 的回调地址。配置不完整时登录入口返回不可用状态，既有管理员认证不受影响。
+GitHub 读者 OAuth 只使用一个生产 OAuth App，生产运行面包含公开站 `https://ivanli.cc` 与 Console `https://console.ivanli.cc` 两个可信 origin。服务端需要配置 `GITHUB_READER_CLIENT_ID`、`GITHUB_READER_CLIENT_SECRET` 和 `GITHUB_READER_CALLBACK_URL`；唯一生产回调固定为 `https://console.ivanli.cc/api/public/reader-auth/github/callback`，回调完成后按授权尝试返回原始公开站或 Console 页面。Console 构建的 `PUBLIC_SITE_URL` 可以指向 Console SSR，但读者 OAuth 回跳必须使用运行时 `SITE_URL=https://ivanli.cc` 识别公开站 origin。配置不完整时登录入口返回不可用状态，既有管理员认证不受影响。
 
 ## 仓库依据
 

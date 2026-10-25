@@ -16,7 +16,7 @@
 | 需求 | 实现覆盖 | 剩余验证 |
 | --- | --- | --- |
 | REQ-GRC-001 至 REQ-GRC-004 | `comments` 增加 `targetType/targetKey/readerId/rootId`，文章、Memo、项目详情共用评论区；历史邮箱署名保留且不认领；catalog-only 项目目标可读。 | 真实发布数据迁移后的抽样核对。 |
-| REQ-GRC-005 至 REQ-GRC-006 | 独立 `readers`、`reader_sessions`、`reader_oauth_attempts`；服务端 OAuth code + PKCE、一次性 state、七天 hash 会话、可信 origin 回跳、sessionStorage 草稿和 no-store 身份响应。 | 独立测试 OAuth App、真实 GitHub 浏览器授权与双 origin 会话。 |
+| REQ-GRC-005 至 REQ-GRC-006 | 独立 `readers`、`reader_sessions`、`reader_oauth_attempts`；服务端 OAuth code + PKCE、一次性 state、七天 hash 会话、可信 origin 回跳、运行时 `SITE_URL` 公开站回跳兼容 Console 构建值、sessionStorage 草稿和 no-store 身份响应。 | 唯一生产 OAuth App 在公开站与 Console 两个生产 origin 上的真实 GitHub 浏览器授权。 |
 | REQ-GRC-007 至 REQ-GRC-008 | 新建统一为 pending；本人/管理员可见；REST、tRPC、详情评论区、后台两套入口共享审核与软删除；后台支持类型/状态/删除筛选和批量逐项结果。 | 远端 CI 与真实管理员运行面回归。 |
 | REQ-GRC-009 至 REQ-GRC-011 | 读者编辑服务端拒绝；本人软删除；管理员查看原文、单条/批量删除和恢复，恢复固定 pending；revision 条件更新防止迟到操作复活。 | 并发 SQLite 压测和真实后台浏览器操作。 |
 | REQ-GRC-012、REQ-GRC-016 | 只允许两层新回复；目标、状态、对象和频率限制服务端校验；submissionKey 幂等；主评论分页、回复游标分页和可继续加载。 | 长讨论浏览器证据。 |

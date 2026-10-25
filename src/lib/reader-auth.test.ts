@@ -9,6 +9,7 @@ import {
   completeReaderOAuth,
   createReaderOAuthStart,
   getReaderFromRequest,
+  getReaderOAuthReturnTo,
   revokeReaderSession,
 } from "@/lib/reader-auth";
 import { readerOAuthAttempts, readerSessions, readers } from "@/lib/schema";
@@ -21,6 +22,7 @@ const originalEnv = {
   clientSecret: process.env.GITHUB_READER_CLIENT_SECRET,
   callbackUrl: process.env.GITHUB_READER_CALLBACK_URL,
   publicSiteUrl: process.env.PUBLIC_SITE_URL,
+  siteUrl: process.env.SITE_URL,
 };
 
 describe("reader OAuth", () => {
@@ -37,6 +39,7 @@ describe("reader OAuth", () => {
     process.env.GITHUB_READER_CALLBACK_URL =
       "https://console.example/api/public/reader-auth/github/callback";
     process.env.PUBLIC_SITE_URL = "https://blog.example";
+    process.env.SITE_URL = "https://blog.example";
   });
 
   beforeEach(async () => {
@@ -55,6 +58,7 @@ describe("reader OAuth", () => {
     process.env.GITHUB_READER_CLIENT_SECRET = originalEnv.clientSecret;
     process.env.GITHUB_READER_CALLBACK_URL = originalEnv.callbackUrl;
     process.env.PUBLIC_SITE_URL = originalEnv.publicSiteUrl;
+    process.env.SITE_URL = originalEnv.siteUrl;
     if (fs.existsSync(TEST_DB_PATH)) fs.rmSync(TEST_DB_PATH);
   });
 
@@ -162,5 +166,29 @@ describe("reader OAuth", () => {
     );
 
     expect(await db.select().from(readerOAuthAttempts).all()).toHaveLength(1);
+  });
+
+  it("uses the runtime public site when the console build site points at the console", async () => {
+    process.env.PUBLIC_SITE_URL = "https://console.example";
+    process.env.SITE_URL = "https://blog.example";
+    const startRequest = new Request(
+      "https://console.example/api/public/reader-auth/github/start",
+      { headers: { origin: "https://console.example" } }
+    );
+    const start = await createReaderOAuthStart(
+      startRequest,
+      "https://blog.example/memos/demo/#comments"
+    );
+    const authorize = new URL(start.location);
+    const state = authorize.searchParams.get("state");
+    expect(state).toBeTruthy();
+
+    const returnTo = await getReaderOAuthReturnTo(
+      new Request(`https://console.example/api/public/reader-auth/github/callback?state=${state}`, {
+        headers: { cookie: start.cookie.split(";")[0] },
+      }),
+      state as string
+    );
+    expect(returnTo).toBe("https://blog.example/memos/demo/#comments");
   });
 });
