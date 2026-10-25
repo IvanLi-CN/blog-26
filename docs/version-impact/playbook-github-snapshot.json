@@ -21,7 +21,7 @@
     "drizzle/meta/0019_snapshot.json": "45598a901d8a2c52e127b1860d80efcc3084e73d",
     "drizzle/meta/_journal.json": "874e9c69c34975edd9dcb53438fcc195b6ba1eb1",
     "site/lib/page-data/playbookDetail.ts": "2ff3f44411398b6d7e4dce30317f85ad0d30baa7",
-    "site/lib/playbook.ts": "d49d9a2c129001f4b1f416a5f9defe0c1156e8bd",
+    "site/lib/playbook.ts": "b18fecc8f5f10c55ddbe15f3a5e523a2110fc641",
     "src/lib/admin-api-client.ts": "96c68d0ce64e1f0ff9c09808dee522df7f366d84",
     "src/lib/playbook/github-source.test.ts": "f493ecdfdd3b8e31f3e72a204ce17ad3f24e7299",
     "src/lib/playbook/github-source.ts": "4e610817da81d93c66517e9aa7ba578d78e6a318",
