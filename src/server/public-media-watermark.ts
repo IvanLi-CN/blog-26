@@ -1,6 +1,6 @@
 import sharp from "sharp";
 
-export const WATERMARK_STRATEGY_VERSION = "regional-contrast-v3";
+export const WATERMARK_STRATEGY_VERSION = "regional-contrast-v4";
 export const WATERMARK_OVERALL_OPACITY = 0.64;
 export const WATERMARK_DARK_RGB = [36, 53, 45] as const;
 export const WATERMARK_LIGHT_RGB = [255, 255, 255] as const;
@@ -28,7 +28,7 @@ export type WatermarkInkScores = {
 
 export type WatermarkPlan = {
   composition: "a" | "b";
-  version: "v1" | "v2" | "v3";
+  version: "v1" | "v2" | "v3" | "v4";
   ink: WatermarkInk;
   asset: string;
   widthRatio: number;
@@ -262,16 +262,19 @@ export function chooseWatermarkInk(frames: readonly WatermarkFrame[], mask: Wate
 
 export function watermarkAssetName(
   composition: "a" | "b",
-  version: "v1" | "v2" | "v3",
+  version: "v1" | "v2" | "v3" | "v4",
   ink: WatermarkInk = "light"
 ) {
-  if (version !== "v3") return `watermark-ivanli-${composition}.v1.svg`;
+  if (version === "v1" || version === "v2") return `watermark-ivanli-${composition}.v1.svg`;
+  if (version === "v4" && composition === "b") {
+    return `watermark-ivanli-b.${ink}.v3.svg`;
+  }
   return `watermark-ivanli-${composition}.${ink}.${version}.svg`;
 }
 
 export function createWatermarkPlan(params: {
   composition: "a" | "b";
-  version: "v1" | "v2" | "v3";
+  version: "v1" | "v2" | "v3" | "v4";
   ink: WatermarkInk;
   dimensions: { width: number; height: number };
 }) {

@@ -61,7 +61,7 @@ describe("rehypeImageOptimization", () => {
     const img = tree.children[0] as Element;
     const expectedHash = buildPublicMediaHash("blog/assets/hello-world.jpg", "content");
     expect(img.properties?.src).toBe(
-      `/api/public/assets/post/posts-cover-fallback/${expectedHash}/wm-b-v3/content.webp`
+      `/api/public/assets/post/posts-cover-fallback/${expectedHash}/wm-b-v4/content.webp`
     );
   });
 
@@ -95,10 +95,10 @@ describe("rehypeImageOptimization", () => {
     const img = tree.children[0] as Element;
     const expectedHash = buildPublicMediaHash("Memos/assets/inline-123.png", "content");
     expect(img.properties?.src).toBe(
-      `/api/public/assets/memo/demo-memo/${expectedHash}/wm-b-v3/content.webp`
+      `/api/public/assets/memo/demo-memo/${expectedHash}/wm-b-v4/content.webp`
     );
     expect(img.properties?.["data-original-src"]).toBe(
-      `/api/public/assets/memo/demo-memo/${expectedHash}/wm-b-v3/content.webp`
+      `/api/public/assets/memo/demo-memo/${expectedHash}/wm-b-v4/content.webp`
     );
   });
 
@@ -287,13 +287,13 @@ describe("rehypeImageOptimization", () => {
     const video = tree.children[0] as Element;
     const expectedHash = buildPublicMediaHash("blog/assets/preview.jpg", "content");
     expect(video.properties?.poster).toBe(
-      `/api/public/assets/post/demo-post/${expectedHash}/wm-b-v3/content.webp?v=snapshot-1`
+      `/api/public/assets/post/demo-post/${expectedHash}/wm-b-v4/content.webp?v=snapshot-1`
     );
     expect(video.properties?.["data-watermark-poster-a"]).toBe(
-      `/api/public/assets/post/demo-post/${expectedHash}/wm-a-v3/content.webp?v=snapshot-1`
+      `/api/public/assets/post/demo-post/${expectedHash}/wm-a-v4/content.webp?v=snapshot-1`
     );
     expect(video.properties?.["data-watermark-poster-b"]).toBe(
-      `/api/public/assets/post/demo-post/${expectedHash}/wm-b-v3/content.webp?v=snapshot-1`
+      `/api/public/assets/post/demo-post/${expectedHash}/wm-b-v4/content.webp?v=snapshot-1`
     );
   });
 

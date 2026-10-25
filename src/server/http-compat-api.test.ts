@@ -1782,8 +1782,8 @@ public: false
     expect(snapshotPost?.media?.cover?.variants?.cover).toContain(
       "/api/public/assets/post/public-media-post/"
     );
-    expect(snapshotPost?.media?.cover?.presentations?.cover?.a).toContain("/wm-a-v3/cover");
-    expect(snapshotPost?.media?.cover?.presentations?.cover?.b).toContain("/wm-b-v3/cover");
+    expect(snapshotPost?.media?.cover?.presentations?.cover?.a).toContain("/wm-a-v4/cover");
+    expect(snapshotPost?.media?.cover?.presentations?.cover?.b).toContain("/wm-b-v4/cover");
   }, 30_000);
 
   it("omits local public content whose media source is missing", async () => {
@@ -2061,7 +2061,7 @@ public: false
     }
   });
 
-  it("proxies versioned Logo candidates with the selected composition", async () => {
+  it("proxies current v4 Logo candidates with the selected composition", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
     await sharp({
       create: {
@@ -2095,7 +2095,7 @@ public: false
       expect(init?.method ?? "GET").toBe("GET");
       expect(url).toContain("/fit-in/1600x900/");
       expect(url).toContain(
-        `watermark(b64:${Buffer.from("http://blog:25090/watermark-ivanli-b.v1.svg").toString("base64url")},-16,-16,36,18,100)`
+        `watermark(b64:${Buffer.from("http://blog:25090/watermark-ivanli-b.light.v3.svg").toString("base64url")},-16,-16,36,18,100)`
       );
       return new Response("versioned-image", {
         status: 200,
@@ -2106,8 +2106,8 @@ public: false
     try {
       const mediaHash = buildPublicMediaHash("blog/assets/versioned-cover.png", "cover");
       const response = await handlePublicApiRequest(
-        buildRequest(`/api/public/assets/post/versioned-logo-post/${mediaHash}/wm-b-v2/cover.webp`),
-        `/assets/post/versioned-logo-post/${mediaHash}/wm-b-v2/cover.webp`
+        buildRequest(`/api/public/assets/post/versioned-logo-post/${mediaHash}/wm-b-v4/cover.webp`),
+        `/assets/post/versioned-logo-post/${mediaHash}/wm-b-v4/cover.webp`
       );
       expect(response.status).toBe(200);
       expect(await response.text()).toBe("versioned-image");

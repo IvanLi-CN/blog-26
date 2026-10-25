@@ -34,7 +34,7 @@
 
 ## 本轮实现边界
 
-- 新公开派生使用 `wm-a-v3` / `wm-b-v3`，v1/v2 候选继续作为历史快照兼容身份；静态打包必须同时覆盖四份 v3 用色资产与现有版本化 SVG。
+- 新公开派生使用 `wm-a-v4` / `wm-b-v4`，v1/v2/v3 候选继续作为历史快照兼容身份；静态打包必须覆盖 v4 A 的两份用色资产、复用的 v3 B 资产与现有版本化 SVG。
 - v3 选色使用最终派生帧的水印主体覆盖区；透明源在评分阶段按白底合成；GIF 逐帧累计并按 delay 加权后固定最终颜色，分析帧不保留到整段处理结束；视频分析帧流式限制在 20 MiB 内。
 - Imagor 正常链路、oversized Sharp 链路和管理员预览共享同一 WatermarkPlan；视频只分析签名内部 source 的无水印 `frame(0)`，播放流不变。分析并发为 2、排队上限为 32、总预算为 15 秒（从入队开始）；排队超时直接移除，已启动任务超时返回受控错误但直到底层处理结束才释放逻辑并发槽位。
 
@@ -84,13 +84,13 @@
 24. 后台文章预览对 `draft: true` 或 `public: false` 改成禁用解释态 CTA，复用既有 preview payload 的 `draft/public` 字段，不新增浏览器可见 API 字段，也不再给作者一个稳定落到公开 404 的链接。
 25. 后台预览的 post/memo 本地媒体现在走独立的 `/api/admin/preview/assets/:kind/:slug/:mediaHash/:variant.:ext` 门面，hero 与正文图片不再复用匿名公开 `assets` 权限链路；草稿作者态预览不会因为公开门禁而掉图。
 26. 仅后台预览资产门面允许在 imagor 派生处理器不可用时回退原始本地媒体字节，保持作者态可读；匿名公开 `assets` 门面继续维持 `502 Public media processor unavailable` 的 fail-fast 合同。
-27. Logo 水印现在使用版本化 `wm-a-v3` / `wm-b-v3` 路径与四份同源白色/墨绿色 SVG 资源；`wm-a-v1` / `wm-b-v1` 与 `wm-a-v2` / `wm-b-v2` 保留旧快照兼容。公开与管理员新 URL 默认使用 v3，`PublicMediaItem.presentations` 枚举非 `play` 用途的 A/B 候选，旧路径和历史版本继续保持兼容。
+27. Logo 水印现在使用版本化 `wm-a-v4` / `wm-b-v4` 路径；v4 A 使用两份零起点画布 SVG，v4 B 复用几何未变更的 v3 B 资源。`wm-a-v1` / `wm-b-v1`、`wm-a-v2` / `wm-b-v2` 与 `wm-a-v3` / `wm-b-v3` 保留旧快照兼容。公开与管理员新 URL 默认使用 v4，`PublicMediaItem.presentations` 枚举非 `play` 用途的 A/B 候选，旧路径和历史版本继续保持兼容。
 28. A/B 由页面实际可见 CSS 宽度选择：`<600` 使用 A，`>=600` 使用 B；共享选择器通过 `ResizeObserver`、图片加载、路由进入和灯箱打开测量 contain 可见矩形，DPR 不参与构图，卸载时释放监听。
 29. 列表、时间线、相关推荐、详情封面、正文和灯箱在现有图框中使用 contain；图片自身 hover 放大已移除。灯箱独立选择 `full` 候选，静态和 hydration 输出保留 A/B 候选闭包。
-30. 版本化派生使用 7%/18% Logo 宽度、2% 右下边距、64% 可见不透明度（imagor alpha 36），v2/v3 显式使用非约束 `h_ratio=100` 保持宽度为主口径；方向校正/缩放/取帧后按 240×160/80,000px² 门槛豁免；v3 在实际覆盖区按主体 mask 评分白色/墨绿色，GIF 逐帧累计并按 delay 加权固定颜色，视频使用同配方的签名 imagor `/meta` 与 `frame(0)` 分析，分析帧流式限制在 20MiB 内，oversized 图片用共享 `WatermarkPlan` 的 sharp 合成。
-31. `verify-pages-build` 与静态媒体打包识别带 renderId 的路径并校验 A/B v1/v2/v3 SVG 静态资源；候选 URL 带 snapshot 版本戳，v3 缺失候选、下载失败和 artifact 限额阻止发布，v1/v2 历史快照继续保留兼容语义。
+30. 版本化派生使用 7%/18% Logo 宽度、2% 右下边距、64% 可见不透明度（imagor alpha 36），v2/v3/v4 显式使用非约束 `h_ratio=100` 保持宽度为主口径，并修复旧派生按 SVG 固有尺寸放大的问题；方向校正/缩放/取帧后按 240×160/80,000px² 门槛豁免；v3/v4 在实际覆盖区按主体 mask 评分白色/墨绿色，GIF 逐帧累计并按 delay 加权固定颜色，视频使用同配方的签名 imagor `/meta` 与 `frame(0)` 分析，分析帧流式限制在 20MiB 内，oversized 图片用共享 `WatermarkPlan` 的 sharp 合成。v4 A 另外通过零起点 SVG 画布兼容生产 Imagor 的 viewBox 尺寸解释，v4 B 复用 v3 B 几何。
+31. `verify-pages-build` 与静态媒体打包识别带 renderId 的路径并校验 A/B v1/v2/v3/v4 SVG 静态资源；候选 URL 带 snapshot 版本戳，v4 缺失候选、下载失败和 artifact 限额阻止发布，v1/v2/v3 历史快照继续保留兼容语义。
 32. 路由会拒绝带 renderId 的 `play` 播放地址，避免把登记的 A/B 身份误用于原始视频透传；未知身份和非法 renderId 继续返回 404。
-33. A/B v3 SVG 使用无描边白色或墨绿色主体；白色版采用暗色柔和阴影，墨绿色版采用白色柔和阴影。本地 sharp 在 GIF 输出时把选定颜色的单帧透明 Logo 画布按动画页数堆叠后合成，确保每一帧都保留固定水印与原有时序；分析队列限制并发 2、排队 32、总预算 15 秒（从入队开始），超时不会提前释放仍在运行的底层处理槽位。
+33. A/B v3/v4 SVG 使用无描边白色或墨绿色主体；白色版采用暗色柔和阴影，墨绿色版采用白色柔和阴影，v4 A 的画布原点为零并通过平移保留原图形几何。本地 sharp 在 GIF 输出时把选定颜色的单帧透明 Logo 画布按动画页数堆叠后合成，确保每一帧都保留固定水印与原有时序；分析队列限制并发 2、排队 32、总预算 15 秒（从入队开始），超时不会提前释放仍在运行的底层处理槽位。
 34. 灯箱媒体槽位明确拥有 `90vw` 内的稳定宽度，full 候选仍独立按可见宽度选择，避免 `max-width: 100%` 在无宽度父层中塌缩为 0×0。
 
 ## 本地开发与故障语义
