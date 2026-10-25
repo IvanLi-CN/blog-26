@@ -42,11 +42,13 @@
     "src/server/services/playbook-search.ts": "fe4a8ef197c8b1f549d4317fd56f775000a50fa6",
     "src/server/services/playbook-snapshot-runtime.test.ts": "8a7d942a9121ba9ad1440dbf0d3f850cb84580ba",
     "src/server/services/playbook-snapshot-store.ts": "28e63e31a6719188ac44f1a5f1967afae76ab2fe",
-    "src/server/services/rag-index.test.ts": "8505fd58aab88df973d4f427918e6d29b8bf3caa",
+    "src/server/services/rag-index.test.ts": "d7e71b0b86962aefcbb2bc3ba4d0ba5aa7961fe9",
     "src/server/services/rag-index.ts": "333f9e14a9bc63343e17e2378a996e3235d886b0",
     "src/server/services/search-semantic-projection.ts": "4778050b384a59a5d680c7469587acf85c6a9108",
     "tests/e2e/web-demo/content-sync.spec.ts": "1300002255f840838871c0af8d4b5be4eda849c2",
-    "tests/lib/playbook-snapshot-restart.test.ts": "35df9f92917c999f6406564d1350242cc0bf6259"
+    "tests/lib/playbook-contract.test.ts": "50a8e2ecf8b5c8c68d03ea1c7720fee8e1b883ae",
+    "tests/lib/playbook-snapshot-restart.test.ts": "35df9f92917c999f6406564d1350242cc0bf6259",
+    "tests/server/system-share-api.test.ts": "85d8599b30d1b8a87fb6cddb383b849d010867ff"
   },
   "change": {
     "description": "Adopt a GitHub-only dynamic Playbook snapshot source with durable current and previous state, current-only public reads, and administrator-only synchronization evidence.",

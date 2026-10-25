@@ -556,7 +556,9 @@ test("cancelled targets stay cancelled across startup without automatic model ca
   await cancelContentTask(task.taskId);
   await completed(task.taskId);
   const before = requests;
-  const stop = await startContentSyncRuntime();
+  const stop = await startContentSyncRuntime({
+    seedPath: join(root, "missing-playbook-seed.json"),
+  });
   await Bun.sleep(30);
   stop();
   expect((await getContentTask(task.taskId))?.status).toBe("cancelled");

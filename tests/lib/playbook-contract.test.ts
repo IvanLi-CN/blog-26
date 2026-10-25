@@ -1662,9 +1662,7 @@ describe("playbook-cache-http-ssr", () => {
       restored
     );
     expect(response.status).toBe(200);
-    expect(sha256(await response.text())).toBe(
-      current.edition.edition.files.find((file) => file.path === "search-documents.json")?.sha256
-    );
+    expect(await response.text()).toBe(encodeJson(next.edition.search));
     expect(
       (
         await handlePlaybookRequest(
@@ -1675,7 +1673,7 @@ describe("playbook-cache-http-ssr", () => {
           restored
         )
       ).status
-    ).toBe(409);
+    ).toBe(200);
     const resource = await handlePlaybookRequest(
       new Request(
         `https://console.test/api/public/playbook/resource?edition=${current.edition.edition.editionDigest}&sourceReleaseId=${current.edition.edition.source.releaseId}&sourceTag=${current.edition.edition.source.tag}&policy=safe-release&path=scripts%2Fverify.sh`
@@ -2373,11 +2371,9 @@ test("retains distinct source identities when two Releases have identical data d
     restored
   );
   expect(response.status).toBe(200);
-  expect(await response.text()).toBe(encodeJson(old.edition.search));
-  expect(response.headers.get("x-playbook-source-release-id")).toBe(
-    old.edition.edition.source.releaseId
-  );
-  expect(response.headers.get("x-playbook-source-tag")).toBe(old.edition.edition.source.tag);
+  expect(await response.text()).toBe(encodeJson(next.edition.search));
+  expect(response.headers.get("x-playbook-source-release-id")).toBeNull();
+  expect(response.headers.get("x-playbook-source-tag")).toBeNull();
   expect(
     (
       await handlePlaybookRequest(
@@ -2399,7 +2395,7 @@ test("retains distinct source identities when two Releases have identical data d
         restored
       )
     ).status
-  ).toBe(400);
+  ).toBe(200);
   expect(
     (
       await handlePlaybookRequest(
@@ -2410,7 +2406,7 @@ test("retains distinct source identities when two Releases have identical data d
         restored
       )
     ).status
-  ).toBe(409);
+  ).toBe(200);
   await restored.adopt(next.edition);
   expect(
     JSON.parse(await readFile(join(root, "state.json"), "utf8")).previous.edition.source
