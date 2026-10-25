@@ -4,6 +4,8 @@ status: accepted
 
 # 统一搜索排序与独立 Playbook 同步管理
 
+> Playbook 动态来源和静态指针跟随部分已由 [ADR 0030](./0030-github-source-and-database-playbook-snapshots.md) 取代；本 ADR 的统一搜索、内容聚合、原子词法投影和 RAG 独立性仍然有效，具体来源边界以当前主题 Spec 为准。
+
 搜索页在浏览器中拼接文章/Memo 与 Playbook 的结果，使程序化入口缺少 Playbook，也使“全部”无法按相关性综合排序。Playbook 的后台更新虽已存在，却没有进入管理员的内容同步视图。决定由共同的服务端检索边界提供跨来源搜索、聚合、筛选和综合排序，并把 Playbook 作为独立来源纳入内容同步管理；统一检索与管理不合并内容所有权或发布流程。
 
 ## Considered Options

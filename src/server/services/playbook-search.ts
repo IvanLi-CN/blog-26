@@ -8,6 +8,7 @@ import {
 import { createPlaybookSearchPages } from "@/lib/playbook/search";
 import type {
   PlaybookEdition,
+  PlaybookGitHubSnapshot,
   PlaybookPolicySkillDetail,
   PlaybookSearchDocument,
 } from "@/lib/playbook/types";
@@ -17,6 +18,7 @@ import {
   searchHighlightSpans,
 } from "@/lib/search/highlights";
 import { parseSearchQuery, type SearchColumn, type SearchQueryAst } from "@/lib/search/query";
+import type { PlaybookStoredSnapshot } from "./playbook-snapshot-store";
 
 export type PlaybookSearchType = "topic" | "experience" | "policy";
 export type PlaybookSearchLocation = {
@@ -52,6 +54,9 @@ export type PlaybookSearchCandidate = {
   contentHash: string;
 };
 
+export type PlaybookSearchSnapshot = PlaybookGitHubSnapshot | PlaybookStoredSnapshot;
+export type PlaybookSearchEdition = PlaybookEdition | PlaybookSearchSnapshot;
+
 export type PlaybookSearchChunk = {
   id: string;
   parentId: string;
@@ -86,11 +91,43 @@ const FIELD_WEIGHT: Record<SearchColumn, number> = {
   tags: 4,
 };
 
-function editionVersion(edition: PlaybookEdition) {
-  return `${edition.edition.editionDigest}:${edition.edition.source.releaseId}:${edition.edition.source.tag}`;
+export function isPlaybookStoredSnapshot(
+  edition: PlaybookSearchEdition
+): edition is PlaybookSearchSnapshot {
+  return "contentHash" in edition && "sourceRevision" in edition;
 }
 
-function parentIdentity(edition: PlaybookEdition, type: PlaybookSearchType, slug: string) {
+export function playbookEditionIdentity(edition: PlaybookSearchEdition) {
+  return isPlaybookStoredSnapshot(edition)
+    ? {
+        edition: edition.contentHash,
+        sourceReleaseId: edition.sourceRevision.commit,
+        sourceTag: edition.sourceRevision.ref,
+      }
+    : {
+        edition: edition.edition.editionDigest,
+        sourceReleaseId: edition.edition.source.releaseId,
+        sourceTag: edition.edition.source.tag,
+      };
+}
+
+export function playbookContentIdentity(edition: PlaybookSearchEdition) {
+  return isPlaybookStoredSnapshot(edition) ? edition.contentHash : edition.edition.editionDigest;
+}
+
+function editionVersion(edition: PlaybookSearchEdition) {
+  return isPlaybookStoredSnapshot(edition)
+    ? playbookContentIdentity(edition)
+    : `${playbookContentIdentity(edition)}:${edition.edition.source.releaseId}:${edition.edition.source.tag}`;
+}
+
+function publicHref(edition: PlaybookSearchEdition, route: string, sectionId?: string | null) {
+  return isPlaybookStoredSnapshot(edition)
+    ? playbookHref(route, sectionId)
+    : playbookVersionHref(edition.edition, route, sectionId);
+}
+
+function parentIdentity(edition: PlaybookSearchEdition, type: PlaybookSearchType, slug: string) {
   return `playbook:${editionVersion(edition)}:${type}:${slug}`;
 }
 
@@ -232,7 +269,7 @@ function scoreAstInField(chunk: PlaybookChunk, ast: SearchQueryAst, field: Searc
 }
 
 function resourceChunk(
-  edition: PlaybookEdition,
+  edition: PlaybookSearchEdition,
   policy: PlaybookPolicySkillDetail,
   path: string,
   kind: string,
@@ -265,7 +302,7 @@ function resourceChunk(
       kind: "resource",
       id: `resource:${path}`,
       title: path,
-      href: `${playbookVersionHref(edition.edition, route)}#${resourceAnchor}`,
+      href: `${publicHref(edition, route)}#${resourceAnchor}`,
       snippet: snippet(content, path, [{ value: path }]),
       order: 1,
       resourcePath: path,
@@ -273,7 +310,7 @@ function resourceChunk(
   };
 }
 
-function chunksForEdition(edition: PlaybookEdition) {
+function chunksForEdition(edition: PlaybookSearchEdition) {
   const pages = createPlaybookSearchPages(edition.catalog);
   const pageMap = new Map(pages.map((page) => [page.href, page]));
   const normalized = normalizePlaybookSearch(edition.catalog, edition.search);
@@ -326,7 +363,7 @@ function chunksForEdition(edition: PlaybookEdition) {
               kind: "section" as const,
               id: section.id,
               title: section.title,
-              href: playbookVersionHref(edition.edition, parsed.canonicalRoute, section.id),
+              href: publicHref(edition, parsed.canonicalRoute, section.id),
               snippet: snippet(document.body, document.body.slice(0, 80), [
                 { value: document.title },
               ]),
@@ -347,7 +384,7 @@ function chunksForEdition(edition: PlaybookEdition) {
 
 /** Stable semantic units; results still aggregate back to their parent object. */
 export function listPlaybookSearchChunks(
-  edition: PlaybookEdition,
+  edition: PlaybookSearchEdition,
   options: { type?: "all" | PlaybookSearchType } = {}
 ): PlaybookSearchChunk[] {
   const nextIndex = new Map<string, number>();
@@ -385,7 +422,7 @@ export function listPlaybookSearchChunks(
 
 /** Return the complete, edition-bound parent projection for embedding preparation. */
 export function listPlaybookCandidates(
-  edition: PlaybookEdition,
+  edition: PlaybookSearchEdition,
   options: { type?: "all" | PlaybookSearchType } = {}
 ): PlaybookSearchCandidate[] {
   const groups = new Map<string, PlaybookSearchCandidate>();
@@ -409,14 +446,12 @@ export function listPlaybookCandidates(
         body: chunk.body,
         tags: chunk.tags,
         route: chunk.canonicalRoute,
-        href: playbookVersionHref(edition.edition, chunk.canonicalRoute),
+        href: publicHref(edition, chunk.canonicalRoute),
         version: editionVersion(edition),
         score: 0,
         locations: location ? [location] : [],
         edition: {
-          edition: edition.edition.editionDigest,
-          sourceReleaseId: edition.edition.source.releaseId,
-          sourceTag: edition.edition.source.tag,
+          ...playbookEditionIdentity(edition),
         },
         contentHash: createHash("sha256")
           .update(`${chunk.title}\n${chunk.excerpt ?? ""}\n${chunk.body}`)
@@ -441,7 +476,7 @@ export function listPlaybookCandidates(
 }
 
 export function searchPlaybookCandidates(
-  edition: PlaybookEdition,
+  edition: PlaybookSearchEdition,
   query: string,
   options: { limit: number; type?: "all" | PlaybookSearchType } = { limit: 20 }
 ): PlaybookSearchCandidate[] {
@@ -454,7 +489,7 @@ export function searchPlaybookCandidates(
     if (!evaluateAst(chunk, plan.ast)) continue;
     const id = parentIdentity(edition, chunk.type, chunk.slug);
     const score = scoreAst(chunk, plan.ast);
-    const href = playbookVersionHref(edition.edition, chunk.canonicalRoute);
+    const href = publicHref(edition, chunk.canonicalRoute);
     const location = chunk.location
       ? {
           ...chunk.location,
@@ -481,9 +516,7 @@ export function searchPlaybookCandidates(
         score,
         locations: location ? [location] : [],
         edition: {
-          edition: edition.edition.editionDigest,
-          sourceReleaseId: edition.edition.source.releaseId,
-          sourceTag: edition.edition.source.tag,
+          ...playbookEditionIdentity(edition),
         },
         contentHash,
       });
@@ -536,7 +569,6 @@ export function playbookSearchResult(
     highlightTerms,
     type: candidate.type,
     source: "playbook" as const,
-    edition: candidate.edition,
     href: bestLocation?.href ?? candidate.href,
     final: candidate.score,
     ...(bestLocation?.kind === "resource"

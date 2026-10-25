@@ -2,7 +2,15 @@
 
 ## Lifecycle / Compatibility
 
-本主题是 active 的长期需求主题。博客原生阅读集合与 console 跟随博客已部署版本的架构边界记录在 [ADR 0011](../../adr/0011-published-playbook-read-model.md)。文章与 Memo 的实时 console 边界继续由 [ADR 0010](../../adr/0010-self-contained-console-runtime.md) 定义。
+本主题是 active 的长期需求主题。博客原生阅读集合与静态站发布边界保留既有合同；动态服务的 GitHub 内容源与数据库快照边界记录在 [ADR 0030](../../adr/0030-github-source-and-database-playbook-snapshots.md)。文章与 Memo 的实时 console 边界继续由 [ADR 0010](../../adr/0010-self-contained-console-runtime.md) 定义。
+
+## GitHub-only 动态来源与数据库快照
+
+本轮需求收敛将动态服务的来源从静态站公开指针和 Release 资产改为 GitHub 内容提供方。默认仓库为 `IvanLi-CN/style-playbook-skills`，默认 ref 为 `main`，服务解析 branch/tag/commit 为单一 commit SHA，并从该 commit 的固定公开导出读取完整内容。静态站仍可独立发布访客内容，但不再是动态服务的读取入口或回退来源。
+
+来源比较使用 provider、配置仓库/ref、resolved commit 与完整内容 hash：同 source revision 的 hash 不一致仍是 stale 候选，只有结构、公共边界或内部文件 digest 校验失败才是无效候选；配置仓库/ref 或 commit 改变但内容相同只更新来源修订；只要内容 hash 不同且候选通过校验，就整体替换 current 快照，并按 source revision 变化更新来源修订。数据库保留 current/previous，GitHub 失败或候选无效时继续使用 current；启动、默认五分钟轮询和管理员异步触发共用同一采用边界。同步状态、回退原因和 RAG 覆盖不足只对管理员可见，访客只读取已采用内容。
+
+对应长期契约见 [SPEC.md](./SPEC.md)、[GitHub 内容源契约](./contracts/github-source.md) 与 [ADR 0030](../../adr/0030-github-source-and-database-playbook-snapshots.md)。本节记录需求决定，不代表运行时代码、数据库迁移或部署配置已经完成切换。
 
 ## 双可见性与补充包接收
 

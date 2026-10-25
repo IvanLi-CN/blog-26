@@ -2,13 +2,13 @@ import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
 import { contentTaskCounters, contentTasks } from "@/lib/schema";
+import { getPlaybookSnapshotStore } from "./playbook-snapshot-store";
 
 export type ContentTask = typeof contentTasks.$inferSelect;
 export const taskControllers = new Map<string, AbortController>();
 const owners = new Map<string, { token: string; timer: ReturnType<typeof setInterval> }>();
-const leaseDuration = 30000;
+export const CONTENT_TASK_LEASE_MS = 30000;
 export function taskOwnerIsLive(task: ContentTask) {
   if (
     task.finishedAt !== null ||
@@ -63,12 +63,14 @@ function retainOwner(task: ContentTask) {
       current.leaseUntil <= Date.now()
     ) {
       clearInterval(timer);
+      owners.delete(task.id);
+      taskControllers.delete(task.id);
       controller.abort(new DOMException("Task lease lost", "AbortError"));
       return;
     }
     if (current.cancelRequested) controller.abort(new DOMException("Task cancelled", "AbortError"));
     db.update(contentTasks)
-      .set({ leaseUntil: Date.now() + leaseDuration })
+      .set({ leaseUntil: Date.now() + CONTENT_TASK_LEASE_MS })
       .where(
         and(
           eq(contentTasks.id, task.id),
@@ -148,7 +150,7 @@ export async function beginContentTask(input: {
         ownerToken: randomUUID(),
         ownerHost: hostname(),
         ownerPid: process.pid,
-        leaseUntil: now + leaseDuration,
+        leaseUntil: now + CONTENT_TASK_LEASE_MS,
       };
       tx.update(contentTasks)
         .set({
@@ -192,7 +194,7 @@ export async function beginContentTask(input: {
       ownerToken: randomUUID(),
       ownerHost: hostname(),
       ownerPid: process.pid,
-      leaseUntil: now + leaseDuration,
+      leaseUntil: now + CONTENT_TASK_LEASE_MS,
     };
     tx.insert(contentTasks).values(task).run();
     return { task, reused: false };
@@ -225,16 +227,28 @@ export function finishContentTask(
   id: string,
   status: "success" | "unchanged" | "failed" | "cancelled",
   error?: string,
-  token = owners.get(id)?.token
+  token?: string
 ) {
   db.transaction((tx) => {
     const task = tx.select().from(contentTasks).where(eq(contentTasks.id, id)).get();
     if (!task || task.finishedAt !== null) return;
-    if (token ? task.ownerToken !== token : taskOwnerIsLive(task)) return;
+    const localOwner = owners.get(id);
+    const ownerToken =
+      token ??
+      (localOwner && task.leaseUntil && task.leaseUntil > Date.now()
+        ? localOwner.token
+        : undefined);
     const committed =
       task.kind === "sync" &&
       task.source === "playbook" &&
-      getRuntimePlaybookStore().adoption?.taskId === id;
+      getPlaybookSnapshotStore().getCurrent()?.taskId === id;
+    if (
+      !committed &&
+      (ownerToken
+        ? task.ownerToken !== ownerToken || !task.leaseUntil || task.leaseUntil <= Date.now()
+        : taskOwnerIsLive(task))
+    )
+      return;
     const terminal = committed
       ? "success"
       : task.cancelRequested && task.phase !== "adopted"
@@ -307,7 +321,7 @@ export async function cancelContentTask(id: string) {
       task.phase === "adopted" ||
       (task.kind === "sync" &&
         task.source === "playbook" &&
-        getRuntimePlaybookStore().adoption?.taskId === id)
+        getPlaybookSnapshotStore().getCurrent()?.taskId === id)
     ) {
       return { taskId: id, status: "completed" };
     }

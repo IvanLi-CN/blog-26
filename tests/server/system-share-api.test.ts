@@ -778,6 +778,7 @@ describe("system share API", () => {
     fs.rmSync(path.join(legacyMigrationsPath, "0016_system_share_recovery.sql"));
     fs.rmSync(path.join(legacyMigrationsPath, "0017_github_reader_comments.sql"));
     fs.rmSync(path.join(legacyMigrationsPath, "0018_comments_backfill_gate.sql"));
+    fs.rmSync(path.join(legacyMigrationsPath, "0019_playbook_snapshots.sql"));
     const journalPath = path.join(legacyMigrationsPath, "meta", "_journal.json");
     const journal = JSON.parse(fs.readFileSync(journalPath, "utf8")) as {
       entries: Array<{ tag: string }>;
@@ -786,7 +787,8 @@ describe("system share API", () => {
       (entry) =>
         entry.tag !== "0016_system_share_recovery" &&
         entry.tag !== "0017_github_reader_comments" &&
-        entry.tag !== "0018_comments_backfill_gate"
+        entry.tag !== "0018_comments_backfill_gate" &&
+        entry.tag !== "0019_playbook_snapshots"
     );
     fs.writeFileSync(journalPath, `${JSON.stringify(journal)}\n`);
 

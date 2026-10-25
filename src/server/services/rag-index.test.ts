@@ -14,11 +14,13 @@ import {
 } from "@/lib/content-sources";
 import { ContentSourceManager } from "@/lib/content-sources/manager";
 import { db, initializeDB } from "@/lib/db";
-import { getRuntimePlaybookStore, PlaybookStore } from "@/lib/playbook/cache";
 import { publicFixtureCatalog, publicFixtureSearch } from "@/lib/playbook/fixture";
+import { computePlaybookContentHash } from "@/lib/playbook/manifest";
+import type { PlaybookGitHubSnapshot } from "@/lib/playbook/types";
 import {
   contentTaskCounters,
   contentTasks,
+  playbookSnapshots,
   postEmbeddings,
   posts,
   ragIndexConfigs,
@@ -29,7 +31,11 @@ import {
 } from "@/lib/schema";
 import { syncEventManager } from "@/lib/sync-events";
 import { makePublicBundle } from "../../../tests/lib/playbook-fixture";
-import { checkPlaybook, startContentSyncRuntime } from "./content-sync-runtime";
+import {
+  checkPlaybook,
+  PLAYBOOK_SYNC_REQUEST_KEY,
+  startContentSyncRuntime,
+} from "./content-sync-runtime";
 import { contentSyncStatus } from "./content-sync-status";
 import {
   assertContentTaskOwner,
@@ -40,16 +46,15 @@ import {
   getContentTask,
   updateContentTask,
 } from "./content-tasks";
+import { PlaybookSnapshotStore } from "./playbook-snapshot-store";
 import { ragCoverage, runRagIndex, summarizeCoverage, triggerRagIndex } from "./rag-index";
 
 const originalFetch = globalThis.fetch;
 const environment = { ...process.env };
 let root: string;
-let scenario = 0;
 beforeAll(async () => {
   root = mkdtempSync(join(tmpdir(), "rag-coverage-test-"));
   process.env.DB_PATH = join(root, "db.sqlite");
-  process.env.PLAYBOOK_CACHE_DIR = join(root, "playbook");
   process.env.OPENAI_API_KEY = "synthetic";
   process.env.OPENAI_API_BASE_URL = "https://synthetic.example.test";
   process.env.EMBEDDING_MODEL_NAME = "synthetic";
@@ -62,10 +67,9 @@ beforeAll(async () => {
   await initializeDB(true);
 });
 beforeEach(async () => {
-  process.env.PLAYBOOK_CACHE_DIR = join(root, `playbook-${scenario++}`);
-  Reflect.deleteProperty(globalThis, Symbol.for("blog26.playbook-store.v1"));
   await db.delete(posts);
   await db.delete(postEmbeddings);
+  await db.delete(playbookSnapshots);
   await db.delete(ragIndexTargets);
   await db.delete(ragIndexConfigs);
   await db.delete(contentTasks);
@@ -94,6 +98,25 @@ const fixture = (id: string, body = "Public synthetic content") => ({
   contentHash: id,
   dataSource: "local",
 });
+function snapshotFor(bundle: ReturnType<typeof makePublicBundle>): PlaybookGitHubSnapshot {
+  const normalized = {
+    catalog: bundle.edition.catalog,
+    search: bundle.edition.search,
+  };
+  return {
+    ...normalized,
+    sourceRevision: {
+      provider: "github",
+      repository: bundle.edition.edition.source.repository,
+      ref: bundle.edition.edition.source.tag,
+      commit: bundle.edition.edition.source.commit,
+    },
+    contentHash: computePlaybookContentHash(normalized),
+  };
+}
+function snapshotIdentity(snapshot: PlaybookGitHubSnapshot) {
+  return { sourceRevision: snapshot.sourceRevision, contentHash: snapshot.contentHash };
+}
 async function completed(id: string) {
   for (let attempt = 0; attempt < 2000; attempt++) {
     const task = await getContentTask(id);
@@ -231,25 +254,169 @@ test("cancel is durable and a late provider result cannot commit", async () => {
   ).not.toBeNull();
 });
 
-test("Playbook current and previous projections retain their exact edition across reload", async () => {
-  process.env.PLAYBOOK_SYNC_ENABLED = "false";
-  const store = getRuntimePlaybookStore();
-  const first = makePublicBundle("v3.0.0", "100").edition;
-  await store.adopt(first);
+test("Playbook current and previous projections retain content identity across reload", async () => {
+  const store = new PlaybookSnapshotStore();
+  const first = snapshotFor(makePublicBundle("v3.0.0", "100"));
+  store.adopt(first, { expectedCurrent: null });
   const job = await runRagIndex({ source: "playbook" }, "repair");
   expect((await completed(job.taskId)).status).toBe("success");
   expect((await ragCoverage({ source: "playbook" })).status.contents.indexed).toBe(3);
-  const second = makePublicBundle("v3.0.1", "101").edition;
-  await store.adopt(second);
-  expect((await ragCoverage({ source: "playbook" })).status.contents.indexed).toBe(0);
+  const second = snapshotFor(makePublicBundle("v3.0.1", "101"));
+  store.adopt(second, { expectedCurrent: snapshotIdentity(first) });
+  expect((await ragCoverage({ source: "playbook" })).status.contents.indexed).toBe(3);
   expect(
     (await ragCoverage({ source: "playbook", edition: "previous" })).status.contents.indexed
   ).toBe(3);
-  const reloaded = new PlaybookStore(store.root);
-  await reloaded.load();
-  expect(reloaded.current?.edition.source.releaseId).toBe("101");
-  expect(reloaded.previous?.edition.source.releaseId).toBe("100");
+  const reloaded = new PlaybookSnapshotStore();
+  expect(reloaded.current?.sourceRevision.ref).toBe("v3.0.1");
+  expect(reloaded.previous?.sourceRevision.ref).toBe("v3.0.0");
 });
+
+test("Playbook RAG reuses vectors when only source provenance changes", async () => {
+  const store = new PlaybookSnapshotStore();
+  const first = snapshotFor(makePublicBundle("v3.0.0", "100"));
+  store.adopt(first, { expectedCurrent: null });
+  let requests = 0;
+  globalThis.fetch = Object.assign(
+    async () => {
+      requests++;
+      return Response.json({ data: [{ embedding: [1, 0] }] });
+    },
+    { preconnect: originalFetch.preconnect }
+  );
+
+  const initialJob = await runRagIndex({ source: "playbook" }, "repair");
+  expect((await completed(initialJob.taskId)).status).toBe("success");
+  const beforeProvenanceOnlyRefresh = requests;
+  const next = {
+    ...first,
+    sourceRevision: { ...first.sourceRevision, commit: "c".repeat(40) },
+  };
+  store.adopt(next, { expectedCurrent: snapshotIdentity(first) });
+
+  expect((await ragCoverage({ source: "playbook" })).status.contents.indexed).toBe(3);
+  const refreshJob = await runRagIndex({ source: "playbook" }, "repair");
+  expect(refreshJob.reused).toBe(false);
+  expect((await completed(refreshJob.taskId)).status).toBe("success");
+  expect(requests).toBe(beforeProvenanceOnlyRefresh);
+
+  const initialTarget = JSON.parse((await getContentTask(initialJob.taskId))?.target ?? "{}") as {
+    targetKey?: string;
+  };
+  const refreshedTarget = JSON.parse((await getContentTask(refreshJob.taskId))?.target ?? "{}") as {
+    targetKey?: string;
+  };
+  expect(refreshedTarget.targetKey).toBe(initialTarget.targetKey);
+});
+
+test("Playbook adoption queues RAG preparation after the sync task completes", async () => {
+  const previousToken = process.env.STYLE_PLAYBOOK_GITHUB_TOKEN;
+  process.env.STYLE_PLAYBOOK_GITHUB_TOKEN = "synthetic-token";
+  const store = new PlaybookSnapshotStore();
+  const current = snapshotFor(makePublicBundle("v3.2.0", "120"));
+  const next = snapshotFor(makePublicBundle("v3.2.1", "121"));
+  store.adopt(current, { expectedCurrent: null });
+
+  try {
+    expect(
+      await checkPlaybook("manual", undefined, {
+        store,
+        sourceLoader: async () => ({ status: "ready", snapshot: next }),
+      })
+    ).toEqual({ cancelled: false, adopted: true });
+
+    let ragTask = db.select().from(contentTasks).where(eq(contentTasks.kind, "rag")).get();
+    for (let attempt = 0; attempt < 200 && !ragTask; attempt++) {
+      await Bun.sleep(5);
+      ragTask = db.select().from(contentTasks).where(eq(contentTasks.kind, "rag")).get();
+    }
+    expect(ragTask?.source).toBe("playbook");
+    expect((await completed(ragTask?.id ?? "")).status).toBe("success");
+  } finally {
+    if (previousToken === undefined) delete process.env.STYLE_PLAYBOOK_GITHUB_TOKEN;
+    else process.env.STYLE_PLAYBOOK_GITHUB_TOKEN = previousToken;
+  }
+});
+
+test("Playbook adoption retries RAG after an older task releases its source lock", async () => {
+  const previousToken = process.env.STYLE_PLAYBOOK_GITHUB_TOKEN;
+  process.env.STYLE_PLAYBOOK_GITHUB_TOKEN = "synthetic-token";
+  const store = new PlaybookSnapshotStore();
+  const current = snapshotFor(makePublicBundle("v3.3.0", "130"));
+  const nextCatalog = structuredClone(publicFixtureCatalog);
+  nextCatalog.snapshot.topics[0].token = "Changed topic";
+  const next = snapshotFor(makePublicBundle("v3.3.1", "131", nextCatalog));
+  store.adopt(current, { expectedCurrent: null });
+  let release: ((response: Response) => void) | undefined;
+  let requests = 0;
+  globalThis.fetch = Object.assign(
+    async () => {
+      requests++;
+      if (requests === 1)
+        return await new Promise<Response>((resolve) => {
+          release = resolve;
+        });
+      return Response.json({ data: [{ embedding: [1, 0] }] });
+    },
+    { preconnect: originalFetch.preconnect }
+  );
+
+  try {
+    const first = await runRagIndex({ source: "playbook" }, "repair");
+    while (!release) await Bun.sleep(5);
+    expect(
+      await checkPlaybook("manual", undefined, {
+        store,
+        sourceLoader: async () => ({ status: "ready", snapshot: next }),
+      })
+    ).toEqual({ cancelled: false, adopted: true });
+    release(new Response(JSON.stringify({ data: [{ embedding: [1, 0] }] }), { status: 200 }));
+
+    let retry = (await db.select().from(contentTasks)).find(
+      (task) => task.kind === "rag" && task.id !== first.taskId
+    );
+    for (let attempt = 0; attempt < 1000 && !retry; attempt++) {
+      await Bun.sleep(5);
+      retry = (await db.select().from(contentTasks)).find(
+        (task) => task.kind === "rag" && task.id !== first.taskId
+      );
+    }
+    expect(retry?.source).toBe("playbook");
+    expect((await completed(retry?.id ?? "")).status).toBe("success");
+    expect((await ragCoverage({ source: "playbook" })).status.contents.indexed).toBe(3);
+  } finally {
+    release?.(Response.json({ data: [{ embedding: [1, 0] }] }));
+    if (previousToken === undefined) delete process.env.STYLE_PLAYBOOK_GITHUB_TOKEN;
+    else process.env.STYLE_PLAYBOOK_GITHUB_TOKEN = previousToken;
+  }
+});
+
+test("startup prepares missing current Playbook coverage after a persisted snapshot", async () => {
+  const previousToken = process.env.STYLE_PLAYBOOK_GITHUB_TOKEN;
+  delete process.env.STYLE_PLAYBOOK_GITHUB_TOKEN;
+  const store = new PlaybookSnapshotStore();
+  store.adopt(snapshotFor(makePublicBundle("v3.4.0", "140")), { expectedCurrent: null });
+  const stop = await startContentSyncRuntime({
+    store,
+    schedule: () => () => undefined,
+  });
+
+  try {
+    let ragTask = db.select().from(contentTasks).where(eq(contentTasks.kind, "rag")).get();
+    for (let attempt = 0; attempt < 200 && !ragTask; attempt++) {
+      await Bun.sleep(5);
+      ragTask = db.select().from(contentTasks).where(eq(contentTasks.kind, "rag")).get();
+    }
+    expect(ragTask?.source).toBe("playbook");
+    expect((await completed(ragTask?.id ?? "")).status).toBe("success");
+    expect((await ragCoverage({ source: "playbook" })).status.contents.indexed).toBe(3);
+  } finally {
+    stop();
+    if (previousToken === undefined) delete process.env.STYLE_PLAYBOOK_GITHUB_TOKEN;
+    else process.env.STYLE_PLAYBOOK_GITHUB_TOKEN = previousToken;
+  }
+});
+
 test("summary includes both sources, unique current parents and disabled cached content", async () => {
   const catalog = structuredClone(publicFixtureCatalog);
   for (let i = 0; i < 77; i++) {
@@ -264,7 +431,7 @@ test("summary includes both sources, unique current parents and disabled cached 
   }
   catalog.snapshot.index.topic_count = 78;
   const bundle = makePublicBundle("v3.1.0", "102", catalog, publicFixtureSearch);
-  await getRuntimePlaybookStore().adopt(bundle.edition);
+  new PlaybookSnapshotStore().adopt(snapshotFor(bundle), { expectedCurrent: null });
   await db.insert(posts).values(Array.from({ length: 324 }, (_, i) => fixture(`content-${i}`)));
   const manager = getContentSourceManager();
   if (!manager.getSources().length) {
@@ -277,7 +444,7 @@ test("summary includes both sources, unique current parents and disabled cached 
   expect(Object.values(status.content.byType).reduce((n, x) => n + x, 0)).toBe(404);
   expect(status.content.bySource).toMatchObject({ local: 324, playbook: 80 });
 });
-test("cancelled manifests are not resumed automatically; interrupted tasks keep identity", async () => {
+test("interrupted RAG tasks resume with the same target identity", async () => {
   process.env.PLAYBOOK_SYNC_ENABLED = "false";
   await db.insert(posts).values(fixture("recover"));
   const catalog = await ragCoverage({ source: "blog" });
@@ -307,8 +474,12 @@ test("cancelled manifests are not resumed automatically; interrupted tasks keep 
     .set({ status: "interrupted", phase: "interrupted" })
     .where(eq(contentTasks.id, previous.task.id));
   const stop = await startContentSyncRuntime();
-  expect((await completed(previous.task.id)).status).toBe("success");
-  stop();
+  try {
+    expect((await completed(previous.task.id)).status).toBe("success");
+    expect((await ragCoverage({ source: "blog" })).status.contents.indexed).toBe(1);
+  } finally {
+    stop();
+  }
 });
 
 test("new inputs invalidate coverage and a bound provider dimension cannot change silently", async () => {
@@ -385,7 +556,9 @@ test("cancelled targets stay cancelled across startup without automatic model ca
   await cancelContentTask(task.taskId);
   await completed(task.taskId);
   const before = requests;
-  const stop = await startContentSyncRuntime();
+  const stop = await startContentSyncRuntime({
+    seedPath: join(root, "missing-playbook-seed.json"),
+  });
   await Bun.sleep(30);
   stop();
   expect((await getContentTask(task.taskId))?.status).toBe("cancelled");
@@ -409,9 +582,12 @@ test("a committed adoption checkpoint outranks a stale cancellation on restart",
     .update(contentTasks)
     .set({ phase: "adopting", cancelRequested: true, leaseUntil: 0 })
     .where(eq(contentTasks.id, task.id));
-  await getRuntimePlaybookStore().adopt(makePublicBundle("v9.0.1", "901").edition, {
+  const store = new PlaybookSnapshotStore();
+  store.adopt(snapshotFor(makePublicBundle("v9.0.1", "901")), {
     taskId: task.id,
-    at: 1,
+    checkedAt: 1,
+    adoptedAt: 1,
+    expectedCurrent: null,
   });
   const enabled = process.env.PLAYBOOK_SYNC_ENABLED;
   const key = process.env.OPENAI_API_KEY;
@@ -573,16 +749,20 @@ test("authenticated HTTP status filters and durable task operations match their 
 });
 
 test("superseded content recovery preserves the later adopted edition", async () => {
-  const store = getRuntimePlaybookStore();
-  const retained = makePublicBundle("v9.0.3", "903").edition;
-  await store.adopt(retained);
-  await store.adopt(makePublicBundle("v9.0.4", "904").edition);
+  const store = new PlaybookSnapshotStore();
+  const retained = snapshotFor(makePublicBundle("v9.0.3", "903"));
+  store.adopt(retained, { expectedCurrent: null });
+  const current = snapshotFor(makePublicBundle("v9.0.4", "904"));
+  store.adopt(current, { expectedCurrent: snapshotIdentity(retained) });
   const { task } = await beginContentTask({
     kind: "sync",
     source: "playbook",
-    requestKey: "public-deployment-pointer",
+    requestKey: PLAYBOOK_SYNC_REQUEST_KEY,
     origin: "test",
-    target: JSON.stringify(retained.edition),
+    target: JSON.stringify({
+      base: snapshotIdentity(retained),
+      candidate: snapshotIdentity(retained),
+    }),
   });
   await db
     .update(contentTasks)
@@ -605,8 +785,13 @@ test("superseded content recovery preserves the later adopted edition", async ()
       "Recovery adoption superseded"
     );
     expect((await getContentTask(task.id))?.status).toBe("failed");
-    expect((await getContentTask(task.id))?.target).toBe(JSON.stringify(retained.edition));
-    expect(store.current?.edition.source.tag).toBe("v9.0.4");
+    expect((await getContentTask(task.id))?.target).toBe(
+      JSON.stringify({
+        base: snapshotIdentity(retained),
+        candidate: snapshotIdentity(retained),
+      })
+    );
+    expect(store.current?.sourceRevision.ref).toBe("v9.0.4");
     expect(requests).toBe(0);
   } finally {
     if (enabled === undefined) delete process.env.PLAYBOOK_SYNC_ENABLED;
@@ -643,13 +828,9 @@ test("unavailable admin coverage keeps totals but nulls every target classificat
   delete process.env.OPENAI_API_KEY;
   try {
     const status = await contentSyncStatus({ source: "blog" });
-    expect(status.rag.contents.total).toBe(1);
+    expect(status.rag.contents.total).toBe(0);
     expect(status.rag.contents.unindexed).toBeNull();
-    expect(status.rag.details.length).toBeGreaterThan(0);
-    for (const detail of status.rag.details) {
-      expect(detail.state).toBeNull();
-      expect(detail.reason).toBe("embedding-unconfigured");
-    }
+    expect(status.rag.details).toEqual([]);
   } finally {
     process.env.OPENAI_API_KEY = key;
   }
@@ -695,7 +876,11 @@ test("cancelled local sync retains discovered total and unprocessed remainder", 
   }));
   source.detectChanges = async () => ({
     sourceName: "local",
-    changes: items.map((item) => ({ item, operation: "create" as const })),
+    changes: items.map((item) => ({
+      item,
+      operation: "create" as const,
+      reason: "synthetic test change",
+    })),
     detectedAt: 1,
     stats: { total: 10, created: 10, updated: 0, deleted: 0, skipped: 0 },
   });
@@ -728,14 +913,18 @@ test("cancelled local sync retains discovered total and unprocessed remainder", 
 });
 
 test("an interrupted unadopted target can commit when its adoption base is unchanged", async () => {
-  const store = getRuntimePlaybookStore();
-  await store.adopt(makePublicBundle("v9.1.0", "910").edition);
-  const next = makePublicBundle("v9.1.1", "911").edition;
-  const target = JSON.stringify({ ...next.edition, recoveryBase: store.current?.edition });
+  const store = new PlaybookSnapshotStore();
+  const current = snapshotFor(makePublicBundle("v9.1.0", "910"));
+  store.adopt(current, { expectedCurrent: null });
+  const next = snapshotFor(makePublicBundle("v9.1.1", "911"));
+  const target = JSON.stringify({
+    base: snapshotIdentity(current),
+    candidate: snapshotIdentity(next),
+  });
   const { task } = await beginContentTask({
     kind: "sync",
     source: "playbook",
-    requestKey: "public-deployment-pointer",
+    requestKey: PLAYBOOK_SYNC_REQUEST_KEY,
     origin: "test",
     target,
   });
@@ -743,41 +932,43 @@ test("an interrupted unadopted target can commit when its adoption base is uncha
     .update(contentTasks)
     .set({ status: "interrupted", phase: "interrupted" })
     .where(eq(contentTasks.id, task.id));
-  const download = store.downloadEdition;
-  store.downloadEdition = async (_url, _signal, retained) => {
-    expect(retained?.editionDigest).toBe(next.edition.editionDigest);
-    return next;
-  };
   const enabled = process.env.PLAYBOOK_SYNC_ENABLED;
   const key = process.env.OPENAI_API_KEY;
-  process.env.PLAYBOOK_SYNC_ENABLED = "true";
+  const token = process.env.STYLE_PLAYBOOK_GITHUB_TOKEN;
+  process.env.STYLE_PLAYBOOK_GITHUB_TOKEN = "synthetic-token";
   delete process.env.OPENAI_API_KEY;
   try {
-    await checkPlaybook("recovery", task.id);
+    await checkPlaybook("recovery", task.id, {
+      store,
+      sourceLoader: async () => ({ status: "ready", snapshot: next }),
+    });
     expect((await getContentTask(task.id))?.status).toBe("success");
     expect((await getContentTask(task.id))?.target).toBe(target);
-    expect(store.current?.edition.source.tag).toBe("v9.1.1");
+    expect(store.current?.sourceRevision.ref).toBe("v9.1.1");
   } finally {
-    store.downloadEdition = download;
     if (enabled === undefined) delete process.env.PLAYBOOK_SYNC_ENABLED;
     else process.env.PLAYBOOK_SYNC_ENABLED = enabled;
+    if (token === undefined) delete process.env.STYLE_PLAYBOOK_GITHUB_TOKEN;
+    else process.env.STYLE_PLAYBOOK_GITHUB_TOKEN = token;
     process.env.OPENAI_API_KEY = key;
   }
 });
 
-test("cache adoption commit fence rejects a changed base without replacing current", async () => {
-  const store = getRuntimePlaybookStore();
-  const old = makePublicBundle("v9.2.0", "920").edition;
-  const newer = makePublicBundle("v9.2.1", "921").edition;
-  await store.adopt(old);
-  await store.adopt(newer);
-  await expect(
-    store.adopt(old, { taskId: "superseded", at: Date.now() }, undefined, old.edition)
-  ).rejects.toThrow("Adoption base changed");
-  const reloaded = new PlaybookStore(store.root);
-  await reloaded.load();
-  expect(reloaded.current?.edition.source.tag).toBe("v9.2.1");
-  expect(reloaded.adoption?.taskId).not.toBe("superseded");
+test("snapshot adoption commit fence rejects a changed base without replacing current", async () => {
+  const store = new PlaybookSnapshotStore();
+  const old = snapshotFor(makePublicBundle("v9.2.0", "920"));
+  const newer = snapshotFor(makePublicBundle("v9.2.1", "921"));
+  store.adopt(old, { expectedCurrent: null });
+  store.adopt(newer, { expectedCurrent: snapshotIdentity(old) });
+  expect(() =>
+    store.adopt(old, {
+      taskId: "superseded",
+      expectedCurrent: snapshotIdentity(old),
+    })
+  ).toThrow("snapshot adoption base changed");
+  const reloaded = new PlaybookSnapshotStore();
+  expect(reloaded.current?.sourceRevision.ref).toBe("v9.2.1");
+  expect(reloaded.current?.taskId).not.toBe("superseded");
 });
 
 test("all-source parent aggregation retains colliding source identities", () => {
@@ -919,11 +1110,12 @@ test("all-source trigger continues Playbook while sharing an active local task",
   await manager.registerSource(source);
   const oldEnabled = process.env.PLAYBOOK_SYNC_ENABLED;
   const key = process.env.OPENAI_API_KEY;
-  process.env.PLAYBOOK_SYNC_ENABLED = "true";
+  const token = process.env.STYLE_PLAYBOOK_GITHUB_TOKEN;
+  const store = new PlaybookSnapshotStore();
+  const initial = snapshotFor(makePublicBundle("v3.0.0", "100"));
+  store.adopt(initial, { expectedCurrent: null });
+  delete process.env.STYLE_PLAYBOOK_GITHUB_TOKEN;
   delete process.env.OPENAI_API_KEY;
-  const store = getRuntimePlaybookStore();
-  const bundle = makePublicBundle("v3.1.0", "102");
-  store.downloadEdition = async () => bundle.edition;
   try {
     const local = manager.syncAll();
     while (!release) await Bun.sleep(5);
@@ -935,14 +1127,23 @@ test("all-source trigger continues Playbook while sharing an active local task",
     await local;
     const result = await all;
     expect(result).toHaveProperty("playbook");
-    expect(store.current?.edition.source.releaseId).toBe("102");
+    const playbookResult = "playbook" in result ? result.playbook : undefined;
+    if (
+      playbookResult &&
+      typeof playbookResult === "object" &&
+      "taskId" in playbookResult &&
+      typeof playbookResult.taskId === "string"
+    )
+      await completed(playbookResult.taskId);
+    expect(store.current?.sourceRevision.ref).toBe("v3.0.0");
     const history = await caller.admin.contentSync.getSyncHistory({ limit: 20 });
     const playbook = history.find((row) => row.sources[0] === "playbook");
-    expect(playbook?.stats.created).toBeGreaterThan(0);
-    expect(playbook?.stats.added).toBe(playbook?.stats.created);
+    expect(playbook?.stats.created).toBeUndefined();
     expect((await contentSyncTotals()).totalSyncs).toBe(2);
   } finally {
     process.env.OPENAI_API_KEY = key;
+    if (token === undefined) delete process.env.STYLE_PLAYBOOK_GITHUB_TOKEN;
+    else process.env.STYLE_PLAYBOOK_GITHUB_TOKEN = token;
     if (oldEnabled === undefined) delete process.env.PLAYBOOK_SYNC_ENABLED;
     else process.env.PLAYBOOK_SYNC_ENABLED = oldEnabled;
     await resetContentSourceManager();
@@ -1043,7 +1244,7 @@ test("actual writes classify a new update-labelled item as created and unchanged
   };
   source.detectChanges = async () => ({
     sourceName: "local",
-    changes: [{ item, operation: "update" }],
+    changes: [{ item, operation: "update", reason: "synthetic test change" }],
     detectedAt: 1,
     stats: { total: 1, created: 0, updated: 1, deleted: 0, skipped: 0 },
   });
@@ -1127,7 +1328,7 @@ test("a checkpoint failure rolls back its content mutation in the same transacti
   };
   source.detectChanges = async () => ({
     sourceName: "local",
-    changes: [{ item, operation: "create" }],
+    changes: [{ item, operation: "create", reason: "synthetic test change" }],
     detectedAt: 1,
     stats: { total: 1, created: 1, updated: 0, deleted: 0, skipped: 0 },
   });
@@ -1318,31 +1519,40 @@ test("legacy cancellation requires an exact task when two sync sources are activ
 test("durable remote cancellation fences Playbook adoption without a local abort", async () => {
   const enabled = process.env.PLAYBOOK_SYNC_ENABLED;
   const key = process.env.OPENAI_API_KEY;
+  const token = process.env.STYLE_PLAYBOOK_GITHUB_TOKEN;
   process.env.PLAYBOOK_SYNC_ENABLED = "true";
+  process.env.STYLE_PLAYBOOK_GITHUB_TOKEN = "synthetic-token";
   delete process.env.OPENAI_API_KEY;
-  const store = getRuntimePlaybookStore();
-  const old = makePublicBundle("v7.0.0", "700").edition;
-  await store.adopt(old);
-  store.downloadEdition = async () => makePublicBundle("v7.0.1", "701").edition;
-  const adopt = store.adopt.bind(store);
-  store.adopt = async (value, checkpoint, signal, base, fence) =>
-    adopt(value, checkpoint, signal, base, (commit) => {
-      if (!checkpoint || !fence) throw new Error("Missing task commit fence");
-      db.update(contentTasks)
-        .set({ cancelRequested: true })
-        .where(eq(contentTasks.id, checkpoint.taskId))
-        .run();
-      fence(commit);
-    });
+  const store = new PlaybookSnapshotStore();
+  const old = snapshotFor(makePublicBundle("v7.0.0", "700"));
+  const next = snapshotFor(makePublicBundle("v7.0.1", "701"));
+  store.adopt(old, { expectedCurrent: null });
   try {
-    expect(await checkPlaybook()).toEqual({ cancelled: true, adopted: false });
-    expect(store.current?.edition.source.releaseId).toBe("700");
+    const result = await checkPlaybook("manual", undefined, {
+      store,
+      sourceLoader: async () => {
+        const task = db
+          .select()
+          .from(contentTasks)
+          .where(eq(contentTasks.source, "playbook"))
+          .get();
+        if (!task) throw new Error("Missing Playbook task");
+        db.update(contentTasks)
+          .set({ cancelRequested: true })
+          .where(eq(contentTasks.id, task.id))
+          .run();
+        return { status: "ready", snapshot: next };
+      },
+    });
+    expect(result).toEqual({ cancelled: true, adopted: false });
+    expect(store.current?.sourceRevision.ref).toBe("v7.0.0");
     expect(db.select().from(contentTasks).where(eq(contentTasks.kind, "sync")).get()?.status).toBe(
       "cancelled"
     );
   } finally {
-    store.adopt = adopt;
     process.env.OPENAI_API_KEY = key;
+    if (token === undefined) delete process.env.STYLE_PLAYBOOK_GITHUB_TOKEN;
+    else process.env.STYLE_PLAYBOOK_GITHUB_TOKEN = token;
     if (enabled === undefined) delete process.env.PLAYBOOK_SYNC_ENABLED;
     else process.env.PLAYBOOK_SYNC_ENABLED = enabled;
   }

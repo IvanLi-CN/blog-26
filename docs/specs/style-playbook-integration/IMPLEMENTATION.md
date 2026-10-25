@@ -3,10 +3,13 @@
 ## Current Status
 
 - Lifecycle: active
-- Implementation: candidate complete；原生阅读、公开资源浏览、双包接收、受保护补充接收、同源公共关系索引校验、管理员合并浏览、发布链和 console 持久快照已有实现；统一服务端搜索、公开资源正文检索、现代 RAG 版本绑定、异步语义投影与管理员内容同步状态已接入。重型恢复、Mock 投影链路验证、视觉确认和交付门禁尚待完成。
-- Catalog note: 原生 Playbook、内容 workflow 和 console 持久快照已落地，生产公开指针已有可校验内容；生产 console 的实际采用版本和运行时同步配置尚未在本工作区核实。
+- Implementation: historical Release/static-pointer implementation notes remain below, but the current source contract is now GitHub-only for dynamic sync. This decision update does not claim that runtime code, migrations, or deployment configuration has been switched to ADR 0030.
+- Catalog note: the static public publication path remains documented separately; dynamic runtime adoption, current/previous database snapshots, GitHub configuration, and the new administrator-only status boundary require implementation work before they can be called complete.
+- T1 source primitives: `src/lib/playbook/github-source.ts` now resolves one GitHub ref, reads the fixed three-file public export at that commit, enforces the current strict public catalog schema and an exact canonical catalog/search projection including page/section/resource metadata, preambles, bodies and keywords, reuses the public catalog/search validators, computes the normalized content hash without exporter timestamps, supports GitHub raw responses for large files, classifies permanent fixed-path export errors as invalid, and exposes validated current/stale comparison semantics across provider, configured repository/ref and resolved commit. Its focused fixture tests cover fixed-commit reconstruction, malformed digest/public-boundary rejection, transport/configuration behavior, incomplete and extra projections, metadata/body/resource/preamble mismatches, timestamp-only changes, repository/ref changes, raw large-file fallback, fixed-path failure classification, and all commit/hash combinations; this does not claim runtime adoption or database integration.
 - `REQ-PBI-012`、`REQ-PBI-013`、`REQ-PBI-015` 的既有章节聚合、展开和高亮已实现；统一适配器现在聚合章节与公开资源并返回同版定位，服务端共同排名与全局容量已接入。既有自动化与视觉证据不替代当前 Candidate 的重型验证。
 - `REQ-PBI-016` 已在博客消费端实现：详情与索引移除自动生成的内容版本和维护字段，明确异常状态使用中文提示。针对性 SSR、纯函数、静态 smoke、浏览器视觉与格式检查已通过，交付门禁待完成。
+
+以下覆盖表保留既有实现勘察，涉及 Release、静态指针或旧 edition 的条目不代表已满足新的 GitHub-only 动态来源合同；新的 source、snapshot、status 和 admin-only 边界以当前 `SPEC.md`、`github-source.md` 与 ADR 0030 为准。
 
 ## Implementation Coverage
 
@@ -67,9 +70,9 @@ Policy 公开资源使用 SSR 文件浏览器：可收起的原生目录树、�
 - Policy 公开资源文件已由同版公开 catalog 准备检索候选并返回安全路径，语义投影按 edition/model/content hash 异步去重；完整崩溃恢复与无 JavaScript 定位验收待验证，现有发布包无需读取私有源文件。
 - 管理员内容同步页已纳入 Playbook 来源、按来源刷新和独立语义状态；持久任务历史、取消与采用边界需要在 Agent VM 故障注入中验证。
 - 当前候选的 Playbook 纯函数、双包接收、管理员 API、SSR、静态/Web Demo/console 构建、视觉证据和格式检查已完成；新增页面截图为 current-only，待 owner 确认后才能冻结候选，受影响的独立审查与 live PR 当前 head 门禁仍待完成。实现覆盖不等同于交付完成。
-- 上游原生 Release 负责发布可重复公开包，并在数据包之后最后上传 manifest；博客通过每小时补漏读取最新就绪稳定版，不要求上游调用博客 Actions API。见 [公开包契约](./contracts/public-package.md) 和 [触发契约](./contracts/release-trigger.md)。
-- `PLAYBOOK_SOURCE_TOKEN` 提供上游只读访问；生产更新仍须在首次应用部署验证指针后手动启用。首次引导自动选择最高的就绪稳定 SemVer，不需要固定 Release ID。
-- 真实 EdgeOne 原子发布、生产指针及 console 五分钟跟随由两仓合并后的上线阶段验证；模拟适配器与本地 HTTP 结果不替代生产验收。
+- 上游原生 Release 负责静态站可重复公开包；博客通过静态发布合同检查并部署，见 [公开包契约](./contracts/public-package.md) 和 [触发契约](./contracts/release-trigger.md)。这条链路不再定义动态 console 的来源。
+- 动态服务的目标配置是 `STYLE_PLAYBOOK_GITHUB_TOKEN`、`STYLE_PLAYBOOK_GITHUB_REPOSITORY` 和 `STYLE_PLAYBOOK_GITHUB_REF`；缺少 Token 为 `unconfigured`，不使用旧的 `PLAYBOOK_SOURCE_TOKEN`、`GH_TOKEN` 或 `PLAYBOOK_SYNC_ENABLED` provider 开关。
+- 动态 current/previous 数据库快照、GitHub 五分钟轮询、来源 hash 比较和管理员状态尚未由本工作区的运行时代码切换；模拟静态发布和本地 HTTP 结果不替代新动态合同的实现验收。
 - 本任务不触发真实 Release、不配置远端凭据；PR 合并按交付流程的 Step 5C 版本确认和 CI/review 门禁执行。上线顺序和暂停/回滚流程见 [发布 runbook](../../runbooks/style-playbook-publishing.md)。
 
 ## 内容同步统计与语义准备缺口
@@ -87,11 +90,13 @@ Policy 公开资源使用 SSR 文件浏览器：可收起的原生目录树、�
 ## References
 
 - [长期需求](./SPEC.md)
+- [GitHub 内容源契约](./contracts/github-source.md)
 - [公开包契约](./contracts/public-package.md)
 - [Release 触发契约](./contracts/release-trigger.md)
 - [研究基线与主题历史](./HISTORY.md)
 - [ADR 0011](../../adr/0011-published-playbook-read-model.md)
 - [ADR 0024](../../adr/0024-unified-search-and-playbook-sync-management.md)
+- [ADR 0030](../../adr/0030-github-source-and-database-playbook-snapshots.md)
 
 交付遵循主线的手动产品发布合同。普通实现 PR 不改 VERSION、不自动发布；Release Policy 的兼容性证据覆盖当前搜索代码、测试和文档 blob。搜索修复保持公开数组 API、权限和持久 SQLite/local content 格式兼容，属于 patch 影响；整个可信基线后的未发布区间仍包含主线已有 minor 能力，保留区间级 minor 分类。
 

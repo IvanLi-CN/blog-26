@@ -2,41 +2,85 @@ import type { PlaybookStore } from "@/lib/playbook/cache";
 import { encodeJson } from "@/lib/playbook/manifest";
 import { getPlaybookPolicies } from "@/lib/playbook/navigation";
 import { digestSchema, stableTagSchema } from "@/lib/playbook/schema";
+import type { PlaybookEdition } from "@/lib/playbook/types";
+import type { PlaybookStoredSnapshot } from "../services/playbook-snapshot-store";
 
-export async function handlePlaybookRequest(request: Request, path: string, store: PlaybookStore) {
+type PublicPlaybookSource =
+  | PlaybookStoredSnapshot
+  | PlaybookEdition
+  | PlaybookStore
+  | null
+  | undefined;
+type PublicPlaybookContent = Pick<PlaybookStoredSnapshot, "catalog" | "search"> | PlaybookEdition;
+
+function isStoredSnapshot(value: PublicPlaybookContent): value is PlaybookStoredSnapshot {
+  return "contentHash" in value && "sourceRevision" in value;
+}
+
+function publicSearch(current: PublicPlaybookContent) {
+  if (!isStoredSnapshot(current)) return current.search;
+  const { generated_at: _generatedAt, ...search } = current.search;
+  return search;
+}
+
+function currentPlaybook(source: PublicPlaybookSource): PublicPlaybookContent | null {
+  if (!source) return null;
+  if ("current" in source) return source.current ?? null;
+  return source;
+}
+
+function isLegacyPlaybookStore(source: PublicPlaybookSource): source is PlaybookStore {
+  return Boolean(source && "getEdition" in source && typeof source.getEdition === "function");
+}
+
+export function handlePlaybookRequest(
+  request: Request,
+  path: string,
+  source: PublicPlaybookSource
+) {
   if (request.method !== "GET")
     return new Response("Method not allowed", { status: 405, headers: { allow: "GET" } });
   const url = new URL(request.url);
-  const digest = digestSchema.safeParse(url.searchParams.get("edition"));
-  const sourceReleaseId = url.searchParams.get("sourceReleaseId");
-  const sourceTag = url.searchParams.get("sourceTag");
-  const parsedTag = stableTagSchema.safeParse(sourceTag);
-  if (
-    !digest.success ||
-    !sourceReleaseId ||
-    !/^[1-9]\d*$/u.test(sourceReleaseId) ||
-    !parsedTag.success
-  )
-    return Response.json(
-      { error: "A valid edition, sourceReleaseId and sourceTag are required" },
-      { status: 400 }
-    );
-  await store.load();
-  const edition = store.getEdition(digest.data, sourceReleaseId, parsedTag.data);
-  if (!edition)
-    return Response.json({ error: "Edition unavailable; refresh the page" }, { status: 409 });
+  const legacy = isLegacyPlaybookStore(source) ? source : null;
+  const identityHeaders: Record<string, string> = {};
+  let current: PublicPlaybookContent | null;
+  if (legacy) {
+    const digest = digestSchema.safeParse(url.searchParams.get("edition"));
+    const sourceReleaseId = url.searchParams.get("sourceReleaseId");
+    const sourceTag = stableTagSchema.safeParse(url.searchParams.get("sourceTag"));
+    if (
+      !digest.success ||
+      !sourceReleaseId ||
+      !/^[1-9]\d*$/u.test(sourceReleaseId) ||
+      !sourceTag.success
+    )
+      return Response.json(
+        { error: "A valid edition, sourceReleaseId and sourceTag are required" },
+        { status: 400 }
+      );
+    current = legacy.getEdition(digest.data, sourceReleaseId, sourceTag.data) ?? null;
+    if (!current)
+      return Response.json({ error: "Edition unavailable; refresh the page" }, { status: 409 });
+    Object.assign(identityHeaders, {
+      "x-playbook-edition": digest.data,
+      "x-playbook-source-release-id": current.edition.source.releaseId,
+      "x-playbook-source-tag": current.edition.source.tag,
+      "x-playbook-source-commit": current.edition.source.commit,
+    });
+  } else {
+    current = currentPlaybook(source);
+  }
+  if (!current) return Response.json({ error: "Playbook unavailable" }, { status: 503 });
+
   if (path === "/playbook/search-index")
-    return new Response(encodeJson(edition.search), {
+    return new Response(encodeJson(publicSearch(current)), {
       headers: {
         "content-type": "application/json; charset=utf-8",
-        "cache-control": "no-store",
-        "x-playbook-edition": digest.data,
-        "x-playbook-source-release-id": edition.edition.source.releaseId,
-        "x-playbook-source-tag": edition.edition.source.tag,
-        "x-playbook-source-commit": edition.edition.source.commit,
+        "cache-control": legacy ? "public, max-age=31536000, immutable" : "no-store",
+        ...identityHeaders,
       },
     });
-  const policy = getPlaybookPolicies(edition.catalog).find(
+  const policy = getPlaybookPolicies(current.catalog).find(
     (item) => item.summary.slug === url.searchParams.get("policy")
   );
   const resourcePath = url.searchParams.get("path");
@@ -51,11 +95,8 @@ export async function handlePlaybookRequest(request: Request, path: string, stor
       "content-type": "text/plain; charset=utf-8",
       "content-disposition": "attachment",
       "x-content-type-options": "nosniff",
-      "x-playbook-edition": digest.data,
-      "x-playbook-source-release-id": edition.edition.source.releaseId,
-      "x-playbook-source-tag": edition.edition.source.tag,
-      "x-playbook-source-commit": edition.edition.source.commit,
-      "cache-control": "public, max-age=31536000, immutable",
+      "cache-control": legacy ? "public, max-age=31536000, immutable" : "no-store",
+      ...identityHeaders,
     },
   });
 }

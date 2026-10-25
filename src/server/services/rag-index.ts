@@ -3,8 +3,6 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { embeddingChunks, projectionDigest, validEmbedding } from "@/lib/ai/embedding-target";
 import { buildEmbeddingInput, hashEmbeddingInput, withEmbeddingSlot } from "@/lib/ai/embeddings";
 import { db } from "@/lib/db";
-import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
-import type { PlaybookEdition } from "@/lib/playbook/types";
 import {
   contentTasks,
   postEmbeddings,
@@ -23,9 +21,17 @@ import {
   finishContentTask,
   taskControllers,
   updateContentTask,
+  waitContentTask,
 } from "./content-tasks";
 import { getResolvedLlmConfig, type ResolvedTierConfig } from "./llm-settings";
-import { listPlaybookSearchChunks, type PlaybookSearchType } from "./playbook-search";
+import {
+  listPlaybookSearchChunks,
+  type PlaybookSearchEdition,
+  type PlaybookSearchType,
+  playbookContentIdentity,
+  playbookEditionIdentity,
+} from "./playbook-search";
+import { getPlaybookSnapshotStore } from "./playbook-snapshot-store";
 import { embedSearchQuery, SearchModelError } from "./search-model";
 
 export type RagSource = "all" | "blog" | "playbook";
@@ -35,7 +41,7 @@ export type RagScope = {
   type?: string;
   edition?: "current" | "previous";
   publishedOnly?: boolean;
-  playbook?: PlaybookEdition | null;
+  playbook?: PlaybookSearchEdition | null;
   config?: ResolvedTierConfig;
 };
 export type RagTarget = {
@@ -49,7 +55,7 @@ export type RagTarget = {
   contentHash: string;
   documentHash: string;
   version: string;
-  edition?: PlaybookEdition;
+  edition?: PlaybookSearchEdition;
   fingerprint: string;
   model: string;
   location?: string;
@@ -83,14 +89,13 @@ export async function ragCatalog(scope: RagScope = {}) {
   const { fingerprint, configuredDim, policy } = embeddingIdentity(config);
   const source = scope.source ?? "all",
     type = scope.type ?? "all";
-  const store = getRuntimePlaybookStore();
-  await store.load();
+  const store = getPlaybookSnapshotStore();
   const edition =
     scope.playbook !== undefined
       ? scope.playbook
       : scope.edition === "previous"
-        ? store.previous
-        : store.current;
+        ? store.getPrevious()
+        : store.getCurrent();
   const targets: RagTarget[] = [];
   const missingSources: string[] = [];
   const wantsBlog = source !== "playbook" && ["all", "post", "memo", "clipping"].includes(type);
@@ -169,11 +174,7 @@ export async function ragCatalog(scope: RagScope = {}) {
             parent: chunk.parentId,
             index: chunkIndex,
             hash: contentHash,
-            edition: {
-              edition: edition.edition.editionDigest,
-              sourceReleaseId: edition.edition.source.releaseId,
-              sourceTag: edition.edition.source.tag,
-            },
+            edition: playbookContentIdentity(edition),
             fingerprint,
           });
           targets.push({
@@ -186,11 +187,7 @@ export async function ragCatalog(scope: RagScope = {}) {
             input,
             contentHash,
             documentHash: contentHash,
-            version: projectionDigest({
-              edition: edition.edition.editionDigest,
-              sourceReleaseId: edition.edition.source.releaseId,
-              sourceTag: edition.edition.source.tag,
-            }),
+            version: playbookContentIdentity(edition),
             edition,
             fingerprint,
             model: config.model ?? "",
@@ -204,14 +201,7 @@ export async function ragCatalog(scope: RagScope = {}) {
     type,
     access: scope.publishedOnly === false ? "authorized" : "public",
     blogWatermark: watermark,
-    playbook:
-      wantsPlaybook && edition
-        ? {
-            edition: edition.edition.editionDigest,
-            sourceReleaseId: edition.edition.source.releaseId,
-            sourceTag: edition.edition.source.tag,
-          }
-        : null,
+    playbook: wantsPlaybook && edition ? playbookEditionIdentity(edition) : null,
     fingerprint,
     model: config.model,
     configuredDim,
@@ -225,6 +215,14 @@ export async function ragCatalog(scope: RagScope = {}) {
     available: Boolean(config.model && config.baseUrl && config.apiKeyAvailable),
   };
 }
+
+function ragProjectionIdentity(catalog: Awaited<ReturnType<typeof ragCatalog>>) {
+  return {
+    ...catalog.identity,
+    playbook: catalog.identity.playbook?.edition ?? null,
+  };
+}
+
 const emptyCounts = () => ({
   total: 0,
   indexed: 0,
@@ -306,16 +304,15 @@ export async function ragCoverage(scope: RagScope = {}) {
   const eligibleVectorIds = new Set<string>();
   const details = catalog.targets.map((target) => {
     const record = provenance.get(target.id),
-      vector = record?.vectorId ? vectors.get(record.vectorId) : undefined;
+      vector = record?.vectorId ? vectors.get(record.vectorId) : undefined,
+      playbookIdentity = target.edition ? playbookEditionIdentity(target.edition) : undefined;
     const sameIdentity =
       vector &&
       (target.source === "blog"
         ? "postId" in vector && vector.postId === target.parentId
         : "parentId" in vector &&
           vector.parentId === target.parentId &&
-          vector.editionDigest === target.edition?.edition.editionDigest &&
-          vector.sourceReleaseId === target.edition?.edition.source.releaseId &&
-          vector.sourceTag === target.edition?.edition.source.tag &&
+          vector.editionDigest === playbookIdentity?.edition &&
           vector.status === "ready");
     const valid = Boolean(
       catalog.available &&
@@ -353,9 +350,7 @@ export async function ragCoverage(scope: RagScope = {}) {
                 row.chunkIndex === target.chunkIndex &&
                 row.location === target.location &&
                 row.type === target.type &&
-                row.editionDigest === target.edition?.edition.editionDigest &&
-                row.sourceReleaseId === target.edition?.edition.source.releaseId &&
-                row.sourceTag === target.edition?.edition.source.tag
+                row.editionDigest === playbookIdentity?.edition
             );
       state = historical ? "outdated" : "unindexed";
     }
@@ -413,8 +408,9 @@ async function ensureRagManifest(
   signal?: AbortSignal,
   ownerToken?: string | null
 ) {
+  const identity = ragProjectionIdentity(catalog);
   const id = projectionDigest({
-    identity: catalog.identity,
+    identity,
     targets: catalog.targets.map((x) => x.id),
   });
   // Persist the complete expected list first; target completion is resumable in bounded batches.
@@ -453,14 +449,16 @@ async function targetStillCurrent(target: RagTarget, scope: RagScope) {
   const config = (await getResolvedLlmConfig()).embedding;
   if (embeddingIdentity(config).fingerprint !== target.fingerprint) return false;
   if (target.source === "playbook") {
-    const identity = target.edition?.edition;
+    const targetIdentity = target.edition ? playbookEditionIdentity(target.edition) : undefined;
+    const selected =
+      scope.playbook !== undefined
+        ? scope.playbook
+        : scope.edition === "previous"
+          ? getPlaybookSnapshotStore().getPrevious()
+          : getPlaybookSnapshotStore().getCurrent();
+    const currentIdentity = selected ? playbookEditionIdentity(selected) : undefined;
     return Boolean(
-      identity &&
-        getRuntimePlaybookStore().getEdition(
-          identity.editionDigest,
-          identity.source.releaseId,
-          identity.source.tag
-        )
+      targetIdentity && currentIdentity && targetIdentity.edition === currentIdentity.edition
     );
   }
   const row = (await readSearchRows([target.parentId]))[0];
@@ -520,7 +518,8 @@ export async function runRagIndex(
   scope: RagScope,
   mode: "repair" | "rebuild",
   origin = "manual",
-  resumeId?: string
+  resumeId?: string,
+  conflictAttempt = 0
 ) {
   if (scope.source === "all" || !scope.source) throw new Error("Run one RAG source per task");
   const catalog = await ragCatalog(scope);
@@ -531,28 +530,52 @@ export async function runRagIndex(
     type: scope.type ?? "all",
     targets: catalog.targets.map((target) => target.id),
     fingerprint: catalog.identity.fingerprint,
-    playbook: catalog.identity.playbook,
+    playbook: catalog.identity.playbook?.edition ?? null,
   });
   const requestKey = projectionDigest({ targetKey, mode });
-  const { task, reused } = await beginContentTask({
-    kind: "rag",
-    source: scope.source === "blog" ? "local" : "playbook",
-    requestKey,
-    origin,
-    target: JSON.stringify({
-      source: scope.source,
-      mode,
-      edition: scope.edition ?? "current",
-      identity: catalog.identity,
-      manifestId: projectionDigest({
+  let task: Awaited<ReturnType<typeof beginContentTask>>["task"];
+  let reused: boolean;
+  try {
+    ({ task, reused } = await beginContentTask({
+      kind: "rag",
+      source: scope.source === "blog" ? "local" : "playbook",
+      requestKey,
+      origin,
+      target: JSON.stringify({
+        source: scope.source,
+        mode,
+        edition: scope.edition ?? "current",
         identity: catalog.identity,
-        targets: catalog.targets.map((x) => x.id),
+        manifestId: projectionDigest({
+          identity: ragProjectionIdentity(catalog),
+          targets: catalog.targets.map((x) => x.id),
+        }),
+        targetKey,
+        type: scope.type ?? "all",
       }),
-      targetKey,
-      type: scope.type ?? "all",
-    }),
-    resumeId,
-  });
+      resumeId,
+    }));
+  } catch (error) {
+    if (origin !== "automatic" && origin !== "content-sync") throw error;
+    const active = db
+      .select()
+      .from(contentTasks)
+      .where(
+        and(
+          eq(contentTasks.kind, "rag"),
+          eq(contentTasks.source, scope.source === "blog" ? "local" : "playbook"),
+          inArray(contentTasks.status, ["queued", "running"])
+        )
+      )
+      .get();
+    if (!active || conflictAttempt >= 3) throw error;
+    try {
+      await waitContentTask(active.id);
+    } catch {
+      throw error;
+    }
+    return runRagIndex(scope, mode, origin, resumeId, conflictAttempt + 1);
+  }
   if (reused) return { taskId: task.id, reused: true };
   await updateContentTask(task.id, { total: catalog.targets.length }, task.ownerToken ?? undefined);
   const controller = taskControllers.get(task.id);
@@ -701,17 +724,18 @@ export async function runRagIndex(
             if (!persisted) throw new Error("Vector persistence failed");
             vectorId = persisted.id;
           } else {
-            const edition = target.edition?.edition;
+            const edition = target.edition;
             if (!edition) throw new Error("Edition required");
+            const identity = playbookEditionIdentity(edition);
             const values = {
               source: "playbook" as const,
               contentId: target.id,
               parentId: target.parentId,
               type: target.type,
               slug: target.slug,
-              editionDigest: edition.editionDigest,
-              sourceReleaseId: edition.source.releaseId,
-              sourceTag: edition.source.tag,
+              editionDigest: identity.edition,
+              sourceReleaseId: identity.sourceReleaseId,
+              sourceTag: identity.sourceTag,
               location: target.location ?? String(target.chunkIndex),
               chunkIndex: target.chunkIndex,
               modelName: target.model,
@@ -730,9 +754,7 @@ export async function runRagIndex(
                   eq(searchSemanticEmbeddings.parentId, target.parentId),
                   eq(searchSemanticEmbeddings.modelName, target.model),
                   eq(searchSemanticEmbeddings.chunkIndex, target.chunkIndex),
-                  eq(searchSemanticEmbeddings.editionDigest, edition.editionDigest),
-                  eq(searchSemanticEmbeddings.sourceReleaseId, edition.source.releaseId),
-                  eq(searchSemanticEmbeddings.sourceTag, edition.source.tag)
+                  eq(searchSemanticEmbeddings.editionDigest, identity.edition)
                 )
               )
               .get();
@@ -836,7 +858,7 @@ export async function triggerRagIndex(
           type: "all",
           targets: catalog.targets.map((target) => target.id),
           fingerprint: catalog.identity.fingerprint,
-          playbook: catalog.identity.playbook,
+          playbook: catalog.identity.playbook?.edition ?? null,
         });
         const previous = db
           .select()

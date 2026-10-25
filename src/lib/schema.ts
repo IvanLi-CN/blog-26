@@ -540,6 +540,27 @@ export const contentTasks = sqliteTable(
       .where(sql`${t.status} IN ('queued','running')`),
   })
 );
+
+export const playbookSnapshots = sqliteTable(
+  "playbook_snapshots",
+  {
+    slot: text("slot", { enum: ["current", "previous"] }).primaryKey(),
+    provider: text("provider").notNull(),
+    repository: text("repository").notNull(),
+    ref: text("ref").notNull(),
+    commit: text("commit").notNull(),
+    contentHash: text("content_hash").notNull(),
+    catalog: text("catalog").notNull(),
+    search: text("search").notNull(),
+    checkedAt: integer("checked_at").notNull(),
+    adoptedAt: integer("adopted_at").notNull(),
+    taskId: text("task_id"),
+  },
+  (t) => ({
+    sourceTime: index("playbook_snapshots_source_time").on(t.provider, t.checkedAt),
+  })
+);
+
 export const contentTaskCounters = sqliteTable("content_task_counters", {
   source: text("source").primaryKey(),
   total: integer("total").notNull().default(0),

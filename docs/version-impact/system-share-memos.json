@@ -26,7 +26,7 @@
     "tests/lib/public-pwa-assets.test.ts": "c37b4b2755de5d224dda565ff7ea4b1505022ba8",
     "tests/lib/public-pwa-edgeone-config.test.ts": "15885de1543c199a9c9b73259f7a5293edea0c4a",
     "tests/lib/manual-release-ledger.test.ts": "f261cabef857a626f8ce2030b3730bc7d0dfacd3",
-    "tests/server/system-share-api.test.ts": "f4d02796951df0c459abd6647262d708848bf4a0"
+    "tests/server/system-share-api.test.ts": "85d8599b30d1b8a87fb6cddb383b849d010867ff"
   },
   "change": {
     "description": "Add console-only Web Share Target ingestion with browser-local unauthenticated holding, administrator confirmation, server-side URL classification, private-by-default Memo creation, attachment limits, and idempotent submission recovery.",
@@ -46,7 +46,7 @@
         },
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "f4d02796951df0c459abd6647262d708848bf4a0",
+          "blob": "85d8599b30d1b8a87fb6cddb383b849d010867ff",
           "command": "bun test --isolate tests/server/system-share-api.test.ts"
         }
       ]
@@ -63,7 +63,7 @@
         },
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "f4d02796951df0c459abd6647262d708848bf4a0",
+          "blob": "85d8599b30d1b8a87fb6cddb383b849d010867ff",
           "command": "bun run test:precommit"
         }
       ],
@@ -84,7 +84,7 @@
         },
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "f4d02796951df0c459abd6647262d708848bf4a0",
+          "blob": "85d8599b30d1b8a87fb6cddb383b849d010867ff",
           "command": "bun run test:precommit"
         },
         {
@@ -121,7 +121,7 @@
       "evidence": [
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "f4d02796951df0c459abd6647262d708848bf4a0",
+          "blob": "85d8599b30d1b8a87fb6cddb383b849d010867ff",
           "command": "bun run test:precommit"
         },
         {
@@ -148,7 +148,7 @@
       "evidence": [
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "f4d02796951df0c459abd6647262d708848bf4a0",
+          "blob": "85d8599b30d1b8a87fb6cddb383b849d010867ff",
           "command": "bun run test:precommit"
         },
         {
