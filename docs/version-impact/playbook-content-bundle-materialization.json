@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "d2648343816c89772855dcc90be2f87b70d29d8d",
+  "base_sha": "3e45385586a098d3e83b891f241234308f162bb1",
   "covered_files": {
     "scripts/playbook-content-update.ts": "a285eb17809fcbec0fbd3425d2d4285aa7b3efc7",
     "src/lib/playbook/bundle.ts": "74a320885fd74ccd0566d63fa52c734f03be2dd0",
@@ -106,7 +106,8 @@
         "3.6.1",
         "3.7.4",
         "3.8.4",
-        "3.8.5"
+        "3.8.5",
+        "3.8.6"
       ],
       "evidence": [
         {
