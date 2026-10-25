@@ -4,8 +4,6 @@ import { z } from "zod";
 import { buildEmbeddingInput, cosineSimilarity, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import type { SearchResult } from "@/lib/ai/search";
 import { db } from "@/lib/db";
-import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
-import type { PlaybookEdition } from "@/lib/playbook/types";
 import { postEmbeddings, posts } from "@/lib/schema";
 import { isClippingSearchMemo, searchContent } from "@/lib/search/content-search";
 import { ContentSearchError, planNativeQuery } from "@/lib/search/native-query";
@@ -22,12 +20,14 @@ import {
 import type { ResolvedTierConfig } from "./llm-settings";
 import {
   type PlaybookSearchCandidate,
+  type PlaybookSearchEdition,
   type PlaybookSearchType,
   playbookCandidateContext,
   playbookCandidateKey,
   playbookSearchResult,
   searchPlaybookCandidates,
 } from "./playbook-search";
+import { getPlaybookSnapshotStore } from "./playbook-snapshot-store";
 import { ragCoverage } from "./rag-index";
 import {
   embedSearchQuery,
@@ -72,13 +72,14 @@ export const contentSearchInputSchema = z.preprocess(
 );
 export type ContentSearchInput = z.infer<typeof contentSearchInputSchema>;
 export type ContentSearchEnvelope = {
-  results: Array<ReturnType<typeof contentResult> | ReturnType<typeof playbookSearchResult>>;
+  results: Array<
+    (ReturnType<typeof contentResult> | ReturnType<typeof playbookSearchResult> | SearchResult) & {
+      source?: string;
+    }
+  >;
   requestedMode: ContentSearchInput["mode"];
   effectiveMode: ContentSearchInput["mode"];
   reason?: SearchReason;
-  playbook?: { edition: string; sourceReleaseId: string; sourceTag: string };
-  incompleteSources?: string[];
-  ragIncompleteSources?: string[];
 };
 export type SearchProgressPhase =
   | "started"
@@ -260,7 +261,7 @@ function unifiedPublishDate(candidate: UnifiedCandidate) {
 async function currentUnified(
   candidates: UnifiedCandidate[],
   publishedOnly: boolean,
-  edition?: PlaybookEdition
+  edition?: PlaybookSearchEdition
 ) {
   const blog = candidates.filter(
     (candidate): candidate is IndexedContent => !isPlaybookCandidate(candidate)
@@ -270,11 +271,16 @@ async function currentUnified(
     if (!isPlaybookCandidate(candidate)) continue;
     if (
       !edition ||
-      candidate.edition.edition !== edition.edition.editionDigest ||
-      candidate.edition.sourceReleaseId !== edition.edition.source.releaseId ||
-      candidate.edition.sourceTag !== edition.edition.source.tag
+      candidate.edition.edition !==
+        ("contentHash" in edition ? edition.contentHash : edition.edition.editionDigest) ||
+      candidate.edition.sourceReleaseId !==
+        ("sourceRevision" in edition
+          ? edition.sourceRevision.commit
+          : edition.edition.source.releaseId) ||
+      candidate.edition.sourceTag !==
+        ("sourceRevision" in edition ? edition.sourceRevision.ref : edition.edition.source.tag)
     )
-      throw new ContentSearchError("SERVICE_UNAVAILABLE", "search-playbook-changed");
+      throw new ContentSearchError("SERVICE_UNAVAILABLE", "search-unavailable");
   }
   return candidates;
 }
@@ -327,31 +333,19 @@ function playbookType(type: ContentSearchInput["type"]): "all" | PlaybookSearchT
 
 async function resolvePlaybookEdition(input: ContentSearchInput) {
   if (!wantsPlaybook(input.type) || input.source === "blog") return undefined;
-  const store = getRuntimePlaybookStore();
-  await store.load();
-  const selected = store.current;
+  const selected = getPlaybookSnapshotStore().getCurrent();
   if (selected) return selected;
   if (input.source === "playbook") {
-    throw new ContentSearchError("SERVICE_UNAVAILABLE", "search-playbook-edition-unavailable");
+    throw new ContentSearchError("SERVICE_UNAVAILABLE", "search-unavailable");
   }
   return undefined;
-}
-
-function playbookMetadata(edition?: PlaybookEdition) {
-  return edition
-    ? {
-        edition: edition.edition.editionDigest,
-        sourceReleaseId: edition.edition.source.releaseId,
-        sourceTag: edition.edition.source.tag,
-      }
-    : undefined;
 }
 
 async function keywordCandidates(
   input: ContentSearchInput,
   query: string,
   publishedOnly: boolean,
-  edition?: PlaybookEdition,
+  edition?: PlaybookSearchEdition,
   limit = Math.min(1000, Math.max(100, input.topK * 5))
 ) {
   const blog: IndexedContent[] = [];
@@ -422,9 +416,7 @@ function nearCandidateKey(candidate: NearCandidate) {
 async function keywordNearEnvelope(
   input: ContentSearchInput,
   publishedOnly: boolean,
-  edition: PlaybookEdition | undefined,
-  metadata: ContentSearchEnvelope["playbook"],
-  incompleteSources: string[]
+  edition: PlaybookSearchEdition | undefined
 ): Promise<ContentSearchEnvelope> {
   const limit = Math.min(1000, Math.max(100, input.topK * 5));
   const blog =
@@ -498,8 +490,6 @@ async function keywordNearEnvelope(
     requestedMode: input.mode,
     effectiveMode: "keyword",
     reason: "explicit-query",
-    ...(metadata ? { playbook: metadata } : {}),
-    ...(incompleteSources.length ? { incompleteSources } : {}),
   };
 }
 
@@ -533,16 +523,12 @@ export async function executeContentModes(
   }
   const publishedOnly = context.publishedOnly !== false;
   const edition = await resolvePlaybookEdition(input);
-  const incompleteSources =
-    input.source !== "playbook" && wantsPlaybook(input.type) && !edition ? ["playbook"] : [];
-  const metadata = edition ? { playbook: playbookMetadata(edition) } : {};
   const keywordState = async (query = input.q) => {
     const state = await keywordCandidates(input, query, publishedOnly, edition);
     const merged = mergeKeywordCandidates(state.blog, state.playbook, input.topK * 5);
     await currentUnified(merged, publishedOnly, edition);
     return { ...state, merged };
   };
-  let ragIncompleteSources: string[] = [];
   let coverageIdentity: unknown;
   let keywordResultReported = false;
   const captureRagCoverage = async (config?: ResolvedTierConfig) => {
@@ -553,7 +539,6 @@ export async function executeContentModes(
       playbook: edition ?? null,
       config,
     });
-    ragIncompleteSources = coverage.status.incompleteSources;
     coverageIdentity = {
       identity: coverage.status.identity,
       targets: coverage.status.details.map((row) => [row.id, row.state, row.indexedAt]),
@@ -569,9 +554,6 @@ export async function executeContentModes(
     requestedMode: input.mode,
     effectiveMode: "keyword",
     ...(reason ? { reason } : {}),
-    ...(metadata.playbook ? { playbook: metadata.playbook } : {}),
-    ...(incompleteSources.length ? { incompleteSources } : {}),
-    ...(ragIncompleteSources.length ? { ragIncompleteSources } : {}),
   });
   const reportKeywordResults = async (result: ContentSearchEnvelope) => {
     if (input.mode === "keyword" || keywordResultReported) return;
@@ -599,16 +581,7 @@ export async function executeContentModes(
     if (parseSearchQuery(input.q).limitExceeded)
       throw new ContentSearchError("BAD_REQUEST", "query-budget-exceeded");
     if (input.mode === "rag") await captureRagCoverage();
-    const envelope = {
-      ...(await keywordNearEnvelope(
-        input,
-        publishedOnly,
-        edition,
-        metadata.playbook,
-        incompleteSources
-      )),
-      ...(ragIncompleteSources.length ? { ragIncompleteSources } : {}),
-    };
+    const envelope = await keywordNearEnvelope(input, publishedOnly, edition);
     await reportKeywordResults(envelope);
     return envelope;
   }
@@ -825,9 +798,6 @@ export async function executeContentModes(
       ),
       requestedMode: input.mode,
       effectiveMode: input.mode,
-      ...(metadata.playbook ? { playbook: metadata.playbook } : {}),
-      ...(incompleteSources.length ? { incompleteSources } : {}),
-      ...(ragIncompleteSources.length ? { ragIncompleteSources } : {}),
     };
   } catch (error) {
     if (context.signal?.aborted) throw context.signal.reason ?? error;

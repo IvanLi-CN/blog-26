@@ -1,15 +1,17 @@
 import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { cosineSimilarity } from "@/lib/ai/embeddings";
 import { db } from "@/lib/db";
-import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
-import type { PlaybookEdition } from "@/lib/playbook/types";
 import { contentSyncLogs, searchSemanticEmbeddings } from "@/lib/schema";
 import { getResolvedLlmConfig, type ResolvedTierConfig } from "./llm-settings";
 import {
   listPlaybookCandidates,
   type PlaybookSearchCandidate,
+  type PlaybookSearchEdition,
   type PlaybookSearchType,
+  playbookContentIdentity,
+  playbookEditionIdentity,
 } from "./playbook-search";
+import { getPlaybookSnapshotStore } from "./playbook-snapshot-store";
 import { ragCoverage, runRagIndex } from "./rag-index";
 import { embedSearchQuery } from "./search-model";
 
@@ -25,18 +27,19 @@ export type SemanticProjectionStatus = {
 };
 
 export async function getPlaybookContentSyncStatus() {
-  const store = getRuntimePlaybookStore();
-  await store.load();
   const model = await getResolvedLlmConfig()
     .then((config) => config.embedding.model ?? "")
     .catch(() => "");
-  const editions = [store.current, store.previous].filter(Boolean) as PlaybookEdition[];
-  const previous = store.previous;
-  const state = store.current;
+  const snapshotStore = getPlaybookSnapshotStore();
+  const editions = [snapshotStore.getCurrent(), snapshotStore.getPrevious()].filter(
+    (edition): edition is NonNullable<typeof edition> => Boolean(edition)
+  );
+  const previous = snapshotStore.getPrevious();
+  const state = snapshotStore.getCurrent();
   const coverage = await ragCoverage({ source: "playbook" });
   const semantic = {
     source: "playbook" as const,
-    edition: state?.edition.editionDigest,
+    edition: state?.contentHash,
     model,
     total: coverage.status.chunks.total,
     ready: coverage.status.chunks.indexed,
@@ -65,18 +68,18 @@ export async function getPlaybookContentSyncStatus() {
     adopted: Boolean(state),
     current: state
       ? {
-          edition: state.edition.editionDigest,
-          sourceReleaseId: state.edition.source.releaseId,
-          sourceTag: state.edition.source.tag,
-          generatedAt: state.edition.generatedAt,
+          edition: state.contentHash,
+          sourceReleaseId: state.sourceRevision.commit,
+          sourceTag: state.sourceRevision.ref,
+          generatedAt: state.search.generated_at,
         }
       : null,
     previous: previous
       ? {
-          edition: previous.edition.editionDigest,
-          sourceReleaseId: previous.edition.source.releaseId,
-          sourceTag: previous.edition.source.tag,
-          generatedAt: previous.edition.generatedAt,
+          edition: previous.contentHash,
+          sourceReleaseId: previous.sourceRevision.commit,
+          sourceTag: previous.sourceRevision.ref,
+          generatedAt: previous.search.generated_at,
         }
       : null,
     lexical: { status: state ? "ready" : "unavailable", count: lexicalCount },
@@ -90,10 +93,10 @@ export async function getPlaybookContentSyncStatus() {
       createdAt: entry.createdAt,
     })),
     editions: editions.map((edition) => ({
-      edition: edition.edition.editionDigest,
-      sourceReleaseId: edition.edition.source.releaseId,
-      sourceTag: edition.edition.source.tag,
-      generatedAt: edition.edition.generatedAt,
+      edition: edition.contentHash,
+      sourceReleaseId: edition.sourceRevision.commit,
+      sourceTag: edition.sourceRevision.ref,
+      generatedAt: edition.search.generated_at,
     })),
   };
 }
@@ -102,6 +105,7 @@ export function semanticProjectionId(input: {
   source: "blog" | "playbook";
   parentId: string;
   edition?: string;
+  contentHash?: string;
   sourceReleaseId?: string;
   sourceTag?: string;
   model: string;
@@ -110,28 +114,28 @@ export function semanticProjectionId(input: {
   return [
     input.source,
     input.parentId,
-    input.edition ?? "current",
-    input.sourceReleaseId ?? "release",
-    input.sourceTag ?? "tag",
+    input.contentHash ??
+      [
+        input.edition ?? "current",
+        input.sourceReleaseId ?? "release",
+        input.sourceTag ?? "tag",
+      ].join(":"),
     input.model,
     input.chunkIndex,
   ].join(":");
 }
 
 export async function getPlaybookSemanticStatus(
-  edition: PlaybookEdition | undefined,
+  edition: PlaybookSearchEdition | undefined,
   model: string
 ): Promise<SemanticProjectionStatus> {
   const conditions = [
     eq(searchSemanticEmbeddings.source, "playbook"),
     eq(searchSemanticEmbeddings.modelName, model),
   ];
-  if (edition)
-    conditions.push(
-      eq(searchSemanticEmbeddings.editionDigest, edition.edition.editionDigest),
-      eq(searchSemanticEmbeddings.sourceReleaseId, edition.edition.source.releaseId),
-      eq(searchSemanticEmbeddings.sourceTag, edition.edition.source.tag)
-    );
+  if (edition) {
+    conditions.push(eq(searchSemanticEmbeddings.editionDigest, playbookContentIdentity(edition)));
+  }
   const rows = await db
     .select({
       status: searchSemanticEmbeddings.status,
@@ -141,7 +145,7 @@ export async function getPlaybookSemanticStatus(
     .where(and(...conditions));
   return {
     source: "playbook",
-    ...(edition ? { edition: edition.edition.editionDigest } : {}),
+    ...(edition ? { edition: playbookEditionIdentity(edition).edition } : {}),
     model,
     total: rows.length,
     ready: rows.filter((row) => row.status === "ready").length,
@@ -151,15 +155,16 @@ export async function getPlaybookSemanticStatus(
   };
 }
 
-export async function discardPlaybookSemanticProjection(edition: PlaybookEdition, model: string) {
+export async function discardPlaybookSemanticProjection(
+  edition: PlaybookSearchEdition,
+  model: string
+) {
   await db
     .delete(searchSemanticEmbeddings)
     .where(
       and(
         eq(searchSemanticEmbeddings.source, "playbook"),
-        eq(searchSemanticEmbeddings.editionDigest, edition.edition.editionDigest),
-        eq(searchSemanticEmbeddings.sourceReleaseId, edition.edition.source.releaseId),
-        eq(searchSemanticEmbeddings.sourceTag, edition.edition.source.tag),
+        eq(searchSemanticEmbeddings.editionDigest, playbookContentIdentity(edition)),
         eq(searchSemanticEmbeddings.modelName, model)
       )
     );
@@ -167,38 +172,32 @@ export async function discardPlaybookSemanticProjection(edition: PlaybookEdition
 
 /** Prepare stable edition-bound chunks without making adoption depend on embeddings. */
 export async function preparePlaybookSemanticProjection(
-  edition: PlaybookEdition,
+  edition: PlaybookSearchEdition,
   config: ResolvedTierConfig,
   options: { type?: "all" | PlaybookSearchType; signal?: AbortSignal } = {}
 ) {
-  const { taskId } = await runRagIndex(
+  if (options.signal?.aborted) throw options.signal.reason;
+  const result = await runRagIndex(
     { source: "playbook", playbook: edition, type: options.type ?? "all", config },
     "repair",
     "compatibility"
   );
-  const { getContentTask, cancelContentTask } = await import("./content-tasks");
-  while (true) {
-    if (options.signal?.aborted) {
-      await cancelContentTask(taskId);
-      throw options.signal.reason;
-    }
-    const task = await getContentTask(taskId);
-    if (task?.finishedAt !== null && task)
-      return {
-        prepared: task.processed - task.failed,
-        total: task.total,
-        failed: task.failed,
-        edition: edition.edition.editionDigest,
-        model: config.model,
-      };
-    await Bun.sleep(20);
-  }
+  return {
+    taskId: result.taskId,
+    queued: true,
+    reused: result.reused,
+    prepared: 0,
+    total: 0,
+    failed: 0,
+    edition: playbookEditionIdentity(edition).edition,
+    model: config.model,
+  };
 }
 
 export async function semanticPlaybookCandidates(
   query: string,
   config: ResolvedTierConfig,
-  edition: PlaybookEdition,
+  edition: PlaybookSearchEdition,
   limit: number,
   type: "all" | PlaybookSearchType = "all",
   options: { timeoutMs?: number; signal?: AbortSignal } = {}
@@ -220,9 +219,7 @@ export async function semanticPlaybookCandidates(
     .where(
       and(
         eq(searchSemanticEmbeddings.source, "playbook"),
-        eq(searchSemanticEmbeddings.editionDigest, edition.edition.editionDigest),
-        eq(searchSemanticEmbeddings.sourceReleaseId, edition.edition.source.releaseId),
-        eq(searchSemanticEmbeddings.sourceTag, edition.edition.source.tag),
+        eq(searchSemanticEmbeddings.editionDigest, playbookContentIdentity(edition)),
         eq(searchSemanticEmbeddings.modelName, model),
         eq(searchSemanticEmbeddings.status, "ready"),
         isNotNull(searchSemanticEmbeddings.vector),

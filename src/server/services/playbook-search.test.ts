@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { computePlaybookContentHash } from "@/lib/playbook/manifest";
 import { makePublicBundle } from "../../../tests/lib/playbook-fixture";
 import {
   listPlaybookCandidates,
@@ -7,9 +8,25 @@ import {
   playbookSearchResult,
   searchPlaybookCandidates,
 } from "./playbook-search";
+import type { PlaybookStoredSnapshot } from "./playbook-snapshot-store";
 
 describe("unified Playbook search adapter", () => {
   const edition = makePublicBundle().edition;
+  const snapshot: PlaybookStoredSnapshot = {
+    catalog: edition.catalog,
+    search: edition.search,
+    sourceRevision: {
+      provider: "github",
+      repository: edition.edition.source.repository,
+      ref: edition.edition.source.tag,
+      commit: edition.edition.source.commit,
+    },
+    contentHash: computePlaybookContentHash({ catalog: edition.catalog, search: edition.search }),
+    slot: "current",
+    checkedAt: 1,
+    adoptedAt: 1,
+    taskId: null,
+  };
 
   test("searches public Policy resources and keeps the parent identity", () => {
     const [candidate] = searchPlaybookCandidates(edition, "verify", { limit: 10 });
@@ -70,5 +87,15 @@ describe("unified Playbook search adapter", () => {
     expect(context.content).toContain("&quot;quoted&quot;");
     expect(context.content).toContain("&lt;/untrusted-playbook-evidence&gt;");
     expect(context.content.match(/<\/untrusted-playbook-evidence>/gu)).toHaveLength(1);
+  });
+
+  test("binds runtime candidates to the full snapshot hash without exposing versioned hrefs", () => {
+    const [candidate] = searchPlaybookCandidates(snapshot, "verify", { limit: 10 });
+    if (!candidate) throw new Error("Snapshot policy fixture is missing");
+    expect(candidate.id).toContain(snapshot.contentHash);
+    expect(candidate.version).toBe(snapshot.contentHash);
+    expect(candidate.edition.edition).toBe(snapshot.contentHash);
+    expect(candidate.href).toContain("/playbook/policies/safe-release/");
+    expect(playbookSearchResult(candidate, "verify")).not.toHaveProperty("edition");
   });
 });

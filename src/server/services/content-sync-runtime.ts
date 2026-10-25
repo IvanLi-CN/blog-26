@@ -1,4 +1,5 @@
 import { and, eq, inArray } from "drizzle-orm";
+import { projectionDigest } from "@/lib/ai/embedding-target";
 import { getContentSourceManager } from "@/lib/content-sources";
 import { ensureContentSourcesRegistered } from "@/lib/content-sources/register";
 import { db } from "@/lib/db";
@@ -30,6 +31,7 @@ import {
   type PlaybookSnapshotStore,
   samePlaybookSnapshotIdentity,
 } from "./playbook-snapshot-store";
+import { ragCatalog, ragCoverage, runRagIndex, triggerRagIndex } from "./rag-index";
 
 export const PLAYBOOK_SYNC_INTERVAL_MS = 300000;
 export const PLAYBOOK_SYNC_REQUEST_KEY = "github-public-snapshot";
@@ -59,6 +61,21 @@ export interface PlaybookCheckResult {
 type SnapshotTaskTarget = {
   base?: PlaybookSnapshotIdentity | null;
   candidate?: PlaybookSnapshotIdentity;
+};
+
+type RagTaskTarget = {
+  source: "blog" | "playbook";
+  mode: "repair" | "rebuild";
+  edition?: "current" | "previous";
+  type?: string;
+  targetKey?: string;
+  identity?: {
+    playbook?: {
+      edition: string;
+      sourceReleaseId: string;
+      sourceTag: string;
+    } | null;
+  };
 };
 
 function combineAbortSignals(...signals: Array<AbortSignal | null | undefined>) {
@@ -341,6 +358,8 @@ export function checkPlaybook(
         undefined,
         task.ownerToken ?? undefined
       );
+      if (adopted || origin === "manual")
+        void triggerRagIndex("playbook", "repair", "content-sync").catch(() => undefined);
       terminal = true;
       return { cancelled: false, adopted };
     } catch (error) {
@@ -434,7 +453,43 @@ export async function startContentSyncRuntime(options: ContentSyncRuntimeOptions
           await checkPlaybook("recovery", task.id, options).catch(() =>
             finishContentTask(task.id, "failed", "Playbook recovery unavailable")
           );
-        else if (task.kind === "sync")
+        else if (task.kind === "rag") {
+          try {
+            const target = JSON.parse(task.target) as RagTaskTarget;
+            const edition = target.edition ?? "current";
+            const playbook =
+              target.source === "playbook"
+                ? edition === "previous"
+                  ? store.getPrevious()
+                  : store.getCurrent()
+                : undefined;
+            const expectedPlaybook = target.identity?.playbook;
+            if (
+              target.source === "playbook" &&
+              (!playbook || (expectedPlaybook && playbook.contentHash !== expectedPlaybook.edition))
+            )
+              throw new Error("Recovery target unavailable");
+            const recoveredScope = {
+              source: target.source,
+              edition,
+              playbook,
+              type: target.type,
+            };
+            const recovered = await ragCatalog(recoveredScope);
+            const recoveredKey = projectionDigest({
+              source: target.source,
+              type: target.type ?? "all",
+              targets: recovered.targets.map((row) => row.id),
+              fingerprint: recovered.identity.fingerprint,
+              playbook: recovered.identity.playbook?.edition ?? null,
+            });
+            if (target.targetKey && target.targetKey !== recoveredKey)
+              throw new Error("Recovery target changed");
+            await runRagIndex(recoveredScope, target.mode, "recovery", task.id);
+          } catch {
+            finishContentTask(task.id, "failed", "Recovery target unavailable");
+          }
+        } else if (task.kind === "sync")
           await getContentSourceManager()
             .syncAll(task.requestKey === "full", task.id)
             .catch(() => finishContentTask(task.id, "failed", "Local recovery failed"));
@@ -446,8 +501,19 @@ export async function startContentSyncRuntime(options: ContentSyncRuntimeOptions
     return recoveryFlight;
   };
 
+  const prepare = async () => {
+    for (const source of ["blog", "playbook"] as const) {
+      const coverage = await ragCoverage({ source });
+      if (!coverage.status.incompleteSources.includes(source)) continue;
+      void triggerRagIndex(source, "repair", "automatic").catch(() => undefined);
+    }
+  };
+
   await recover();
-  void checkPlaybook("automatic", undefined, options).catch(() => undefined);
+  await prepare();
+  void checkPlaybook("automatic", undefined, options)
+    .then(() => prepare())
+    .catch(() => undefined);
   const schedule =
     options.schedule ??
     ((run: () => void | Promise<void>, intervalMs: number) => {
@@ -459,6 +525,7 @@ export async function startContentSyncRuntime(options: ContentSyncRuntimeOptions
     () =>
       recover()
         .then(() => checkPlaybook("automatic", undefined, options))
+        .then(() => prepare())
         .then(() => undefined)
         .catch(() => undefined),
     options.intervalMs ?? PLAYBOOK_SYNC_INTERVAL_MS
