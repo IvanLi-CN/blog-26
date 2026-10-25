@@ -234,6 +234,7 @@ export function PlaybookSyncStatusDetails({
       <section
         className="space-y-3 border-t border-border/50 pt-4"
         aria-labelledby="playbook-semantic-heading"
+        data-testid="playbook-semantic-projection"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h4 id="playbook-semantic-heading" className="text-sm font-medium">

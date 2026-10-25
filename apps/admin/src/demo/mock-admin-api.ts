@@ -825,6 +825,7 @@ function unifiedSyncStatus(url: URL) {
   const chunks = chunkMetrics(contents);
   const blogContents = metrics(source === "playbook" ? 0 : 299);
   const playbookContents = metrics(source === "blog" ? 0 : 80);
+  const blogCoverage = metrics(299);
   const playbookCoverage = metrics(80);
   const isIncomplete = (metrics: DemoRagMetrics) =>
     metrics.indexed === null ||
@@ -868,7 +869,7 @@ function unifiedSyncStatus(url: URL) {
     editionDigest: previousContentHash,
     generatedAt: new Date(now - 1_800_000).toISOString(),
   };
-  const current = playbookState === "unconfigured" ? null : currentSnapshot;
+  const current = available ? currentSnapshot : null;
   const selectedEdition = previous ? previousSnapshot : current;
   const playbookTaskStatus = demoPlaybookSyncCancelled
     ? "cancelled"
@@ -958,7 +959,8 @@ function unifiedSyncStatus(url: URL) {
     observedAt: now,
     summary: {
       registeredSources: 2,
-      enabledSources: scene === "admin-sync-disabled" ? 1 : 2,
+      enabledSources:
+        scene === "admin-sync-disabled" || scene === "admin-sync-unconfigured" ? 1 : 2,
       total: 404,
       totalSyncs: scene === "admin-sync-history" ? 12 : 2,
       trackingSince: now - 86400000,
@@ -980,7 +982,7 @@ function unifiedSyncStatus(url: URL) {
       {
         name: "playbook",
         type: "playbook",
-        enabled: scene !== "admin-sync-disabled",
+        enabled: scene !== "admin-sync-disabled" && scene !== "admin-sync-unconfigured",
         total: 80,
         lastCheckAt: playbookState === "unconfigured" ? null : now - 600000,
         lastSuccessAt: current ? now - 600000 : null,
@@ -1028,14 +1030,14 @@ function unifiedSyncStatus(url: URL) {
       bySource: [
         {
           source: "blog",
-          contents: blogContents,
-          chunks: chunkMetrics(blogContents),
+          contents: blogCoverage,
+          chunks: chunkMetrics(blogCoverage),
           available,
         },
         {
           source: "playbook",
-          contents: playbookContents,
-          chunks: chunkMetrics(playbookContents),
+          contents: playbookCoverage,
+          chunks: chunkMetrics(playbookCoverage),
           available,
         },
       ],

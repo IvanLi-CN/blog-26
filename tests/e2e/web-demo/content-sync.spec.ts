@@ -73,6 +73,9 @@ test.describe("Content sync RAG coverage Web Demo", () => {
         .locator("span")
         .filter({ hasText: /^pending$/ })
     ).toBeVisible();
+    await expect(page.getByTestId("playbook-semantic-projection")).toContainText("48");
+    await expect(page.getByTestId("playbook-semantic-projection")).toContainText("24");
+    await expect(page.getByTestId("playbook-semantic-projection")).toContainText("0");
     await scope.getByRole("button", { name: "博客", exact: true }).click();
     await expect(
       page
@@ -80,6 +83,9 @@ test.describe("Content sync RAG coverage Web Demo", () => {
         .locator("span")
         .filter({ hasText: /^pending$/ })
     ).toBeVisible();
+    await expect(page.getByTestId("playbook-semantic-projection")).toContainText("48");
+    await expect(page.getByTestId("playbook-semantic-projection")).toContainText("24");
+    await expect(page.getByTestId("playbook-semantic-projection")).toContainText("0");
     await scope.getByRole("button", { name: "Playbook", exact: true }).click();
     const edition = page.getByRole("combobox", { name: "Playbook 版本" });
     await edition.click();
@@ -124,6 +130,7 @@ test.describe("Content sync RAG coverage Web Demo", () => {
     await expect(values).toHaveText(["379", "—", "—", "—", "—", "—"]);
     await expect(page.getByRole("button", { name: "补建缺失 / 过时 / 失败" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "重建所选来源全部分块" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "刷新 Playbook" })).toBeDisabled();
     const incomplete = page.getByTestId("rag-incomplete");
     await expect(incomplete).toContainText("blog");
     await expect(incomplete).toContainText("playbook");
