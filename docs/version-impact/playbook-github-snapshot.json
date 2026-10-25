@@ -46,6 +46,7 @@
     "src/server/services/rag-index.ts": "333f9e14a9bc63343e17e2378a996e3235d886b0",
     "src/server/services/search-semantic-projection.ts": "4778050b384a59a5d680c7469587acf85c6a9108",
     "tests/e2e/web-demo/content-sync.spec.ts": "1300002255f840838871c0af8d4b5be4eda849c2",
+    "tests/lib/playbook-build-smoke.ts": "8813788f50d19d5213eaf2bc2241f301e6ae09f1",
     "tests/lib/playbook-snapshot-restart.test.ts": "35df9f92917c999f6406564d1350242cc0bf6259",
     "tests/lib/rag-index-restart-fixture.ts": "e8663e385d05177399bc3022bc40b61069740c01",
     "tests/server/system-share-api.test.ts": "85d8599b30d1b8a87fb6cddb383b849d010867ff"
@@ -118,6 +119,11 @@
           "path": "tests/lib/rag-index-restart-fixture.ts",
           "blob": "e8663e385d05177399bc3022bc40b61069740c01",
           "command": "Linux restart, cancellation, upgrade, and local sync recovery fixture validation"
+        },
+        {
+          "path": "tests/lib/playbook-build-smoke.ts",
+          "blob": "8813788f50d19d5213eaf2bc2241f301e6ae09f1",
+          "command": "Static artifact and current-only console SSR/search smoke validation"
         }
       ]
     }
