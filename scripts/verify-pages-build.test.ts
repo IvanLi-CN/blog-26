@@ -38,6 +38,16 @@ function writeV3WatermarkFiles(root: string) {
     "site-dist/watermark-ivanli-b.dark.v3.svg",
     "<svg fill='#24352d'><g class='watermark-domain'><path d='M0 0L1 1'/></g></svg>"
   );
+  writeBuildFile(
+    root,
+    "site-dist/watermark-ivanli-a.light.v4.svg",
+    "<svg viewBox='0 0 796 572' fill='#fff'></svg>"
+  );
+  writeBuildFile(
+    root,
+    "site-dist/watermark-ivanli-a.dark.v4.svg",
+    "<svg viewBox='0 0 796 572' fill='#24352d'></svg>"
+  );
 }
 
 describe("verify-pages-build", () => {

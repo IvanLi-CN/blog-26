@@ -7,6 +7,7 @@ import {
   runWatermarkAnalysis,
   type WatermarkFrame,
   watermarkAssetName,
+  watermarkCacheKey,
 } from "./public-media-watermark";
 
 function frame(red: number, green: number, blue: number, delayMs = 100): WatermarkFrame {
@@ -115,24 +116,40 @@ describe("public media watermark contrast", () => {
     expect(mask.data.some((value) => value > 0)).toBe(true);
   });
 
-  it("keeps historical asset identity and gives v3 explicit ink assets", () => {
+  it("keeps historical asset identity and gives v3/v4 explicit ink assets", () => {
     expect(watermarkAssetName("a", "v1")).toBe("watermark-ivanli-a.v1.svg");
     expect(watermarkAssetName("b", "v2")).toBe("watermark-ivanli-b.v1.svg");
     expect(watermarkAssetName("a", "v3", "dark")).toBe("watermark-ivanli-a.dark.v3.svg");
+    expect(watermarkAssetName("a", "v4", "dark")).toBe("watermark-ivanli-a.dark.v4.svg");
+    expect(watermarkAssetName("b", "v4", "dark")).toBe("watermark-ivanli-b.dark.v3.svg");
     expect(
       createWatermarkPlan({
-        composition: "b",
-        version: "v3",
+        composition: "a",
+        version: "v4",
         ink: "dark",
         dimensions: { width: 1000, height: 600 },
       })
     ).toMatchObject({
-      asset: "watermark-ivanli-b.dark.v3.svg",
-      width: 180,
+      asset: "watermark-ivanli-a.dark.v4.svg",
+      width: 70,
       margin: 20,
       opacity: 0.64,
       heightRatio: 100,
     });
     resetWatermarkAnalysisStateForTests();
+  });
+
+  it("separates adaptive ink cache keys by render version", () => {
+    const base = {
+      sourcePath: "blog/assets/cover.png",
+      size: 1024,
+      mtimeMs: 10,
+      ctimeMs: 10,
+      variant: "cover",
+      composition: "a",
+    };
+    expect(watermarkCacheKey({ ...base, version: "v3" })).not.toBe(
+      watermarkCacheKey({ ...base, version: "v4" })
+    );
   });
 });
