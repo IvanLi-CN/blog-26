@@ -18,41 +18,81 @@ import type { PlaybookGitHubSnapshot, PlaybookSearchPayload } from "./types";
 const commit = "a".repeat(40);
 const nextCommit = "b".repeat(40);
 
+const fixtureTopic = publicFixtureCatalog.topic_details[0];
+const fixtureProject = publicFixtureCatalog.project_details[0];
+const fixturePolicy = fixtureTopic?.policy_skills[0];
+if (!fixtureTopic || !fixtureProject || !fixturePolicy) throw new Error("fixture is incomplete");
+
+const topicBody = [
+  fixtureTopic.item.description ?? "",
+  ...fixtureTopic.sections.map((section) => section.markdown),
+].join(" ");
+const projectBody = [
+  fixtureProject.item.description ?? "",
+  ...fixtureProject.sections.map((section) => section.markdown),
+].join(" ");
+const resourceBody = fixturePolicy.resources.map((resource) => resource.content).join("\n\n");
+
 const completeFixtureSearch: PlaybookSearchPayload = {
-  ...publicFixtureSearch,
+  generated_at: publicFixtureSearch.generated_at,
   documents: [
-    ...publicFixtureSearch.documents,
     {
-      id: "section:recovery",
-      kind: "section",
-      title: "失败与恢复",
-      subtitle: "可靠交付",
-      body: "断网时继续提供已经验证的内容，恢复后整体切换新版本。",
-      route: "/topics/delivery",
-      section_id: "recovery",
-      keywords: ["恢复"],
+      id: `topic:${fixtureTopic.item.slug}`,
+      kind: "page",
+      title: fixtureTopic.item.token,
+      subtitle: "实践主题",
+      body: topicBody,
+      route: `/topics/${fixtureTopic.item.slug}`,
+      section_id: null,
+      keywords: fixtureTopic.item.categories,
       command_id: null,
     },
+    ...fixtureTopic.sections.map((section) => ({
+      id: `section:${fixtureTopic.item.slug}:${section.id}`,
+      kind: "section" as const,
+      title: section.title,
+      subtitle: fixtureTopic.item.token,
+      body: section.markdown,
+      route: `/topics/${fixtureTopic.item.slug}`,
+      section_id: section.id,
+      keywords: fixtureTopic.item.categories,
+      command_id: null,
+    })),
     {
-      id: "section:architecture",
-      kind: "section",
-      title: "架构与选择",
-      subtitle: "Sample Project 实践快照",
-      body: "以 Astro 提供静态阅读，用固定的内容版本保持可重复构建。",
-      route: "/projects/sample-project",
-      section_id: "architecture",
-      keywords: ["Astro"],
+      id: `project:${fixtureProject.item.slug}`,
+      kind: "page",
+      title: fixtureProject.title,
+      subtitle: "项目实践",
+      body: projectBody,
+      route: `/projects/${fixtureProject.item.slug}`,
+      section_id: null,
+      keywords: fixtureProject.item.tags,
       command_id: null,
     },
+    ...fixtureProject.sections.map((section) => ({
+      id: `section:${fixtureProject.item.slug}:${section.id}`,
+      kind: "section" as const,
+      title: section.title,
+      subtitle: fixtureProject.title,
+      body: section.markdown,
+      route: `/projects/${fixtureProject.item.slug}`,
+      section_id: section.id,
+      keywords: fixtureProject.item.tags,
+      command_id: null,
+    })),
     {
-      id: "section:resources",
+      id: `resource:${fixturePolicy.summary.slug}:${fixturePolicy.resources[0]?.path}`,
       kind: "section",
-      title: "公开资源",
-      subtitle: "Safe Release",
-      body: "公开资源文件。",
-      route: "/policies/safe-release",
+      title: fixturePolicy.resources[0]?.path ?? "resource",
+      subtitle: fixturePolicy.resources[0]?.kind ?? "resource",
+      body: resourceBody,
+      route: `/policies/${fixturePolicy.summary.slug}`,
       section_id: "resources",
-      keywords: ["资源"],
+      keywords: [
+        fixturePolicy.resources[0]?.path ?? "resource",
+        fixturePolicy.resources[0]?.kind ?? "resource",
+        fixturePolicy.summary.slug,
+      ],
       command_id: null,
     },
   ],
@@ -135,6 +175,14 @@ test("classifies commit and content identity changes without rebuilding unchange
     ...sameHashNewCommit,
     contentHash: "3".repeat(64),
   };
+  const differentRefSameHash = {
+    ...base,
+    sourceRevision: { ...base.sourceRevision, ref: "release" },
+  };
+  const differentRepositorySameHash = {
+    ...base,
+    sourceRevision: { ...base.sourceRevision, repository: "example/style-playbook-skills" },
+  };
 
   expect(comparePlaybookSnapshots(base, base)).toEqual({
     status: "current",
@@ -167,6 +215,22 @@ test("classifies commit and content identity changes without rebuilding unchange
     updateProvenance: true,
     rebuildContent: true,
     rebuildKeywordProjection: true,
+  });
+  expect(comparePlaybookSnapshots(differentRefSameHash, base)).toMatchObject({
+    status: "stale",
+    sourceChanged: true,
+    contentChanged: false,
+    updateProvenance: true,
+    rebuildContent: false,
+    rebuildKeywordProjection: false,
+  });
+  expect(comparePlaybookSnapshots(differentRepositorySameHash, base)).toMatchObject({
+    status: "stale",
+    sourceChanged: true,
+    contentChanged: false,
+    updateProvenance: true,
+    rebuildContent: false,
+    rebuildKeywordProjection: false,
   });
 
   const timestampOnly = {
@@ -269,7 +333,37 @@ test("reports malformed digest and public-boundary failures as invalid candidate
 
 test("rejects an incomplete lexical projection before a source can be adopted", () => {
   expect(() => normalizePlaybookSnapshot(publicFixtureCatalog, publicFixtureSearch)).toThrow(
-    "Search is missing"
+    "Search projection"
+  );
+});
+
+test("rejects search documents that do not carry catalog content or keyword projections", () => {
+  const wrongBody = structuredClone(completeFixtureSearch);
+  const topicPage = wrongBody.documents.find((document) => document.id === "topic:delivery");
+  if (!topicPage) throw new Error("topic search document is missing");
+  topicPage.body = "wrong body";
+  expect(() => normalizePlaybookSnapshot(publicFixtureCatalog, wrongBody)).toThrow(
+    "Search projection body mismatch"
+  );
+
+  const wrongKeywords = structuredClone(completeFixtureSearch);
+  const projectPage = wrongKeywords.documents.find(
+    (document) => document.id === "project:sample-project"
+  );
+  if (!projectPage) throw new Error("project search document is missing");
+  projectPage.keywords = [];
+  expect(() => normalizePlaybookSnapshot(publicFixtureCatalog, wrongKeywords)).toThrow(
+    "Search projection metadata mismatch"
+  );
+});
+
+test("rejects a resource projection that omits public resource content", () => {
+  const invalidSearch = structuredClone(completeFixtureSearch);
+  const resources = invalidSearch.documents.find((document) => document.section_id === "resources");
+  if (!resources) throw new Error("resource search document is missing");
+  resources.body = "resource summary only";
+  expect(() => normalizePlaybookSnapshot(publicFixtureCatalog, invalidSearch)).toThrow(
+    "Search resource projection mismatch"
   );
 });
 
@@ -302,6 +396,15 @@ describe("source result states", () => {
       repository: config.repository,
       ref: config.ref,
     });
+  });
+
+  test("classifies malformed source identity before checking token availability", async () => {
+    const result = await loadPlaybookGitHubSnapshot(makeTransport(makeFixtureFiles()), {
+      ...config,
+      repository: "invalid",
+      token: null,
+    });
+    expect(result).toMatchObject({ status: "invalid", repository: "invalid", ref: config.ref });
   });
 
   test("maps transport failures to failed without weakening the snapshot contract", async () => {

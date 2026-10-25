@@ -16,7 +16,7 @@ This contract defines the dynamic Playbook source and covers `REQ-PBI-008`, `REQ
 
 The provider resolves the configured ref to one commit SHA, then reads the fixed public export defined by the upstream export contract at that commit. The export must contain a complete catalog, bodies, public resources and search documents from the same commit. The provider does not scan arbitrary repository paths, fetch the static site, consume a deployed pointer, consume Release assets, follow links to private files, or mix files from multiple revisions.
 
-Validation rejects missing or malformed export data, unknown or conflicting visibility, private or internal records, unsafe resource paths, incomplete content, and any digest mismatch. The provider computes a deterministic content snapshot hash over the normalized catalog, bodies, public resources and search documents. A source read failure is `failed`; a structurally or publicly invalid candidate is `invalid`; neither replaces the adopted snapshot.
+Validation rejects missing or malformed export data, unknown or conflicting visibility, private or internal records, unsafe resource paths, incomplete content, and any digest mismatch. The provider verifies each public topic, project and Policy page/section against catalog identity, metadata, body, keywords and public resource content before adoption. It computes a deterministic content snapshot hash over the normalized catalog, bodies, public resources and search documents. A source read failure is `failed`; a structurally or publicly invalid candidate is `invalid`; neither replaces the adopted snapshot.
 
 The dynamic source allowlist is exactly the following GitHub Contents API paths, all read at the resolved commit SHA:
 
@@ -30,9 +30,10 @@ The provider requests no other paths and never uses `web/.generated`, `web/dist-
 
 | Source result | Dynamic outcome |
 | --- | --- |
-| Same commit SHA and same content hash | `current`; no content or index rebuild. |
-| Different commit SHA and same content hash | Treat the candidate as `stale` until adopted; then update source provenance while keeping the content snapshot and keyword/RAG targets without rebuilding them. |
-| Different commit SHA and different content hash | Candidate is `stale` relative to the adopted snapshot; after validation, atomically adopt the complete content and keyword projection, then prepare RAG asynchronously. |
+| Same source revision (provider, configured repository/ref and resolved commit SHA) and same content hash | `current`; no content or index rebuild. |
+| Different configured repository/ref with the same resolved commit SHA and content hash | `stale`; update source provenance after adoption while keeping the content snapshot and keyword/RAG targets without rebuilding them. |
+| Different resolved commit SHA and same content hash | Treat the candidate as `stale` until adopted; then update source provenance while keeping the content snapshot and keyword/RAG targets without rebuilding them. |
+| Different resolved commit SHA and different content hash | Candidate is `stale` relative to the adopted snapshot; after validation, atomically adopt the complete content and keyword projection, then prepare RAG asynchronously. |
 | Missing token | `unconfigured`; retain the adopted snapshot. |
 | GitHub request or transient network failure | `failed`; bounded retry may occur outside the request path, then retain the adopted snapshot. |
 | Invalid export, public-boundary violation or hash inconsistency | `invalid`; do not retry blindly and retain the adopted snapshot. |

@@ -20,6 +20,7 @@ import type {
   PlaybookGitHubSnapshot,
   PlaybookNormalizedSnapshot,
   PlaybookPublicCatalog,
+  PlaybookSearchDocument,
   PlaybookSearchPayload,
   PlaybookSnapshotComparison,
 } from "./types";
@@ -108,44 +109,139 @@ function assertCompletePlaybookSearch(
   catalog: PlaybookPublicCatalog,
   search: PlaybookSearchPayload
 ) {
-  const pageRoutes = new Set(
-    search.documents
-      .filter((document) => document.kind === "page" && document.section_id == null)
-      .map((document) => playbookHref(document.route))
-  );
-  const expectedPages = [
-    ...catalog.topic_details.map((detail) => `/topics/${detail.item.slug}`),
-    ...catalog.project_details.map((detail) => `/projects/${detail.item.slug}`),
-    ...getPlaybookPolicies(catalog).map((policy) => `/policies/${policy.summary.slug}`),
-  ].map((route) => playbookHref(route));
-  for (const route of expectedPages) {
-    if (!pageRoutes.has(route)) throw new Error(`Search is missing page projection: ${route}`);
-  }
+  const find = (route: string, sectionId: string | null) => {
+    const target = playbookHref(route, sectionId);
+    return search.documents.find(
+      (document) =>
+        playbookHref(document.route, document.section_id) === target &&
+        (sectionId === null
+          ? document.kind === "page" && document.section_id == null
+          : document.kind !== "page" && document.section_id === sectionId)
+    );
+  };
+  const requireDocument = (input: {
+    id: string;
+    kind: PlaybookSearchDocument["kind"];
+    title: string;
+    subtitle: string;
+    route: string;
+    sectionId: string | null;
+    keywords: string[];
+    bodyParts: string[];
+  }) => {
+    const document = find(input.route, input.sectionId);
+    const canonicalRoute = playbookHref(input.route, input.sectionId);
+    if (
+      !document ||
+      document.id !== input.id ||
+      document.kind !== input.kind ||
+      document.title !== input.title ||
+      document.subtitle !== input.subtitle ||
+      document.route !== canonicalRoute ||
+      document.section_id !== input.sectionId ||
+      !input.keywords.every((keyword) => document.keywords.includes(keyword))
+    )
+      throw new Error(`Search projection metadata mismatch: ${canonicalRoute}`);
+    for (const bodyPart of input.bodyParts) {
+      if (bodyPart.trim() && !document.body.includes(bodyPart))
+        throw new Error(`Search projection body mismatch: ${canonicalRoute}`);
+    }
+    return document;
+  };
 
-  const sectionRoutes = new Set(
-    search.documents
-      .filter((document) => document.kind !== "page" && document.section_id)
-      .map((document) => playbookHref(document.route, document.section_id))
-  );
-  const expectedSections = [
-    ...catalog.topic_details.flatMap((detail) =>
-      detail.sections.map((section) => `/topics/${detail.item.slug}#${section.id}`)
-    ),
-    ...catalog.project_details.flatMap((detail) =>
-      detail.sections.map((section) => `/projects/${detail.item.slug}#${section.id}`)
-    ),
-    ...getPlaybookPolicies(catalog).flatMap((policy) =>
-      policy.resources.length ? [`/policies/${policy.summary.slug}#resources`] : []
-    ),
-  ].map((route) => playbookHref(route));
-  for (const route of expectedSections) {
-    if (!sectionRoutes.has(route))
-      throw new Error(`Search is missing section projection: ${route}`);
+  for (const detail of catalog.topic_details) {
+    const route = `/topics/${detail.item.slug}`;
+    requireDocument({
+      id: `topic:${detail.item.slug}`,
+      kind: "page",
+      title: detail.item.token,
+      subtitle: "实践主题",
+      route,
+      sectionId: null,
+      keywords: detail.item.categories,
+      bodyParts: [
+        detail.item.description ?? "",
+        ...detail.sections.map((section) => section.markdown),
+      ],
+    });
+    for (const section of detail.sections) {
+      requireDocument({
+        id: `section:${detail.item.slug}:${section.id}`,
+        kind: "section",
+        title: section.title,
+        subtitle: detail.item.token,
+        route,
+        sectionId: section.id,
+        keywords: detail.item.categories,
+        bodyParts: [section.markdown],
+      });
+    }
+  }
+  for (const detail of catalog.project_details) {
+    const route = `/projects/${detail.item.slug}`;
+    requireDocument({
+      id: `project:${detail.item.slug}`,
+      kind: "page",
+      title: detail.title,
+      subtitle: "项目实践",
+      route,
+      sectionId: null,
+      keywords: detail.item.tags,
+      bodyParts: [
+        detail.item.description ?? "",
+        ...detail.sections.map((section) => section.markdown),
+      ],
+    });
+    for (const section of detail.sections) {
+      requireDocument({
+        id: `section:${detail.item.slug}:${section.id}`,
+        kind: "section",
+        title: section.title,
+        subtitle: detail.title,
+        route,
+        sectionId: section.id,
+        keywords: detail.item.tags,
+        bodyParts: [section.markdown],
+      });
+    }
+  }
+  for (const policy of getPlaybookPolicies(catalog)) {
+    const route = `/policies/${policy.summary.slug}`;
+    requireDocument({
+      id: `policy:${policy.summary.slug}`,
+      kind: "page",
+      title: policy.summary.name,
+      subtitle: policy.summary.description,
+      route,
+      sectionId: null,
+      keywords: [policy.summary.slug, policy.summary.primary_topic],
+      bodyParts: [policy.instruction_markdown],
+    });
+    if (policy.resources.length) {
+      const resources = find(route, "resources");
+      if (!resources)
+        throw new Error(
+          `Search is missing section projection: ${playbookHref(route, "resources")}`
+        );
+      for (const resource of policy.resources) {
+        if (!resources.body.includes(resource.content))
+          throw new Error(`Search resource projection mismatch: ${resource.path}`);
+      }
+    }
   }
 }
 
 function invalid(message: string, options?: ErrorOptions): never {
   throw new PlaybookGitHubSourceInvalidError(message, options);
+}
+
+function validateSourceConfig(config: Pick<PlaybookGitHubSourceConfig, "repository" | "ref">) {
+  try {
+    githubRepositorySchema.parse(config.repository);
+    githubRefSchema.parse(config.ref);
+  } catch (error) {
+    invalid("GitHub source configuration is invalid", { cause: error });
+  }
 }
 
 function readExportValue(bytes: Uint8Array, label: string) {
@@ -200,12 +296,7 @@ export async function readPlaybookGitHubSnapshot(
   transport: PlaybookGitHubSourceTransport,
   config: PlaybookGitHubSourceConfig
 ): Promise<PlaybookGitHubSnapshot> {
-  try {
-    githubRepositorySchema.parse(config.repository);
-    githubRefSchema.parse(config.ref);
-  } catch (error) {
-    invalid("GitHub source configuration is invalid", { cause: error });
-  }
+  validateSourceConfig(config);
   let commit: string;
   try {
     commit = await transport.resolveRef({ repository: config.repository, ref: config.ref });
@@ -264,6 +355,13 @@ export async function loadPlaybookGitHubSnapshot(
   transport: PlaybookGitHubSourceTransport,
   config: PlaybookGitHubSourceConfig
 ): Promise<PlaybookGitHubSourceResult> {
+  try {
+    validateSourceConfig(config);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "GitHub source configuration is invalid";
+    return { status: "invalid", repository: config.repository, ref: config.ref, message };
+  }
   if (!config.token)
     return { status: "unconfigured", repository: config.repository, ref: config.ref };
   try {
@@ -283,7 +381,11 @@ export function comparePlaybookSnapshots(
   githubSourceRevisionSchema.parse(adopted.sourceRevision);
   digestSchema.parse(candidate.contentHash);
   digestSchema.parse(adopted.contentHash);
-  const sourceChanged = candidate.sourceRevision.commit !== adopted.sourceRevision.commit;
+  const sourceChanged =
+    candidate.sourceRevision.provider !== adopted.sourceRevision.provider ||
+    candidate.sourceRevision.repository !== adopted.sourceRevision.repository ||
+    candidate.sourceRevision.ref !== adopted.sourceRevision.ref ||
+    candidate.sourceRevision.commit !== adopted.sourceRevision.commit;
   const contentChanged = candidate.contentHash !== adopted.contentHash;
   return {
     status: sourceChanged || contentChanged ? "stale" : "current",
