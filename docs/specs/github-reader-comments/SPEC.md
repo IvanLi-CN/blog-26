@@ -55,7 +55,7 @@
 - GitHub 授权 MUST 使用服务端完成的 Web 授权码流程、绑定当前浏览器尝试的一次性 state 与 PKCE S256；错误、过期、重放或不匹配的回调不得创建读者会话。
 - 回调、会话与读者 API MUST 归 Console 运行面管理；Cookie 保持 Console host 范围及 HttpOnly，生产使用 HTTPS。公开站通过受信任的直接 API 请求获取身份，不扩大 Cookie 域或放松公开回源去身份边界。
 - 回跳 MUST 仅接受配置允许的公开站、Console origin 与合法内容路径；GitHub token、密钥和会话凭据不得进入公开构建产物、URL、草稿、公开响应或日志。获取身份后不需要持有 GitHub token 为评论提供持续访问。
-- 配置 MUST 隔离开发、测试和生产凭据及回调；缺少有效配置或 GitHub 不可用时显示清楚的不可用/重试状态，保留阅读能力与草稿，不回退游客发言。不得要求访客安装仓库应用或授予仓库权限。
+- 生产运行面包含公开站与 Console 两个可信 origin，但 MUST 只使用一个生产 OAuth App 和唯一的精确生产回调 `https://console.ivanli.cc/api/public/reader-auth/github/callback`；回调完成后 MUST 按一次性授权状态返回发起登录的公开站或 Console 页面。缺少有效配置或 GitHub 不可用时显示清楚的不可用/重试状态，保留阅读能力与草稿，不回退游客发言。不得要求访客安装仓库应用或授予仓库权限。
 
 ### REQ-GRC-007 — 先审核后公开
 
