@@ -18,6 +18,7 @@ import {
   readPlaybookEdition,
   readPublicArchive,
   readSupplementArchive,
+  writePublicArchiveFiles,
 } from "../../src/lib/playbook/bundle";
 import {
   PLAYBOOK_POLL_INTERVAL_MS,
@@ -82,6 +83,24 @@ afterEach(async () => {
 });
 
 describe("playbook-public-contract", () => {
+  test("materializes public archive files for renderer bundle consumers", async () => {
+    const bundle = makePublicBundle();
+    const root = await temp();
+    await writeFile(join(root, "playbook-public-manifest.json"), encodeJson(bundle.manifest));
+    await writeFile(join(root, bundle.manifest.bundle.name), bundle.archive);
+    await writePublicArchiveFiles(root, readPublicArchive(bundle.archive, bundle.manifest, 0));
+
+    const restored = await readPlaybookEdition(root, "b".repeat(40), "{}\n", 0);
+
+    expect(restored.edition).toEqual(bundle.edition.edition);
+    expect(await readFile(join(root, "catalog.json"))).toEqual(
+      Buffer.from(bundle.files[0].content)
+    );
+    expect(await readFile(join(root, "search-documents.json"))).toEqual(
+      Buffer.from(bundle.files[1].content)
+    );
+  });
+
   test("validates the complete public catalog and rejects internal fields, relationships and schema", () => {
     const bundle = makePublicBundle();
     expect(
