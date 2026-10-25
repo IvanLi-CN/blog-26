@@ -21,7 +21,6 @@ import type { SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import { generateSlugFromPath } from "@/lib/content-sources/utils";
 import { db, initializeDB } from "@/lib/db";
 import { buildMemoRelativePath, getServerLocalMemoRootPath } from "@/lib/memo-paths";
-import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
 import {
   appendPublicCorsHeaders,
   createPublicCorsPreflightResponse,
@@ -60,6 +59,7 @@ import {
   type SearchProgressPhase,
 } from "@/server/services/content-search";
 import { suggestPublicSearchTerms } from "@/server/services/search-suggestions";
+import { getPlaybookSnapshotStore } from "../services/playbook-snapshot-store";
 import { handlePlaybookRequest } from "./playbook";
 
 const PUBLIC_API_ALLOWED_METHODS = ["GET", "HEAD", "POST", "PATCH", "DELETE", "OPTIONS"] as const;
@@ -1411,7 +1411,12 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
     }
 
     if (pathname === "/playbook/search-index" || pathname === "/playbook/resource") {
-      const response = await handlePlaybookRequest(request, pathname, getRuntimePlaybookStore());
+      await initializeDB();
+      const response = handlePlaybookRequest(
+        request,
+        pathname,
+        getPlaybookSnapshotStore().getCurrent()
+      );
       appendPublicCorsHeaders(response.headers, request, PUBLIC_API_ALLOWED_METHODS);
       return response;
     }
@@ -1622,18 +1627,9 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
       resHeaders.set("Search-Requested-Mode", result.requestedMode);
       resHeaders.set("Search-Effective-Mode", result.effectiveMode);
       if (result.reason) resHeaders.set("Search-Reason", result.reason);
-      if (result.playbook) {
-        resHeaders.set("Search-Playbook-Edition", result.playbook.edition);
-        resHeaders.set("Search-Playbook-Source-Release-Id", result.playbook.sourceReleaseId);
-        resHeaders.set("Search-Playbook-Source-Tag", result.playbook.sourceTag);
-      }
-      if (result.incompleteSources?.length)
-        resHeaders.set("Search-Incomplete-Sources", result.incompleteSources.join(","));
-      if (result.ragIncompleteSources?.length)
-        resHeaders.set("Search-RAG-Incomplete-Sources", result.ragIncompleteSources.join(","));
       resHeaders.set(
         "access-control-expose-headers",
-        "Search-Requested-Mode, Search-Effective-Mode, Search-Reason, Search-Playbook-Edition, Search-Playbook-Source-Release-Id, Search-Playbook-Source-Tag, Search-Incomplete-Sources, Search-RAG-Incomplete-Sources"
+        "Search-Requested-Mode, Search-Effective-Mode, Search-Reason"
       );
       resHeaders.set("cache-control", "no-store");
       return json(

@@ -5,8 +5,12 @@ import os from "node:os";
 import path from "node:path";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
-import { initializeDB } from "@/lib/db";
+import { db, initializeDB } from "@/lib/db";
+import { computePlaybookContentHash } from "@/lib/playbook/manifest";
+import { playbookSnapshots } from "@/lib/schema";
 import { handlePublicApiRequest } from "@/server/public-api/router";
+import { PlaybookSnapshotStore } from "@/server/services/playbook-snapshot-store";
+import { makePublicBundle } from "../../../tests/lib/playbook-fixture";
 
 let directory: string;
 const oldDbPath = process.env.DB_PATH;
@@ -88,7 +92,7 @@ describe("public search SSE transport", () => {
     expect(body).toContain("event: result");
   });
 
-  test("preserves controlled Playbook availability errors in SSE", async () => {
+  test("does not expose Playbook availability details in SSE", async () => {
     const response = await handlePublicApiRequest(
       new Request("http://localhost/api/public/search/stream?q=fixture&mode=rag&source=playbook"),
       "/search/stream"
@@ -97,7 +101,8 @@ describe("public search SSE transport", () => {
     const body = await response.text();
     expect(body).toContain("event: started");
     expect(body).toContain('"code":"SERVICE_UNAVAILABLE"');
-    expect(body).toContain('"error":"search-playbook-edition-unavailable"');
+    expect(body).toContain('"error":"search-unavailable"');
+    expect(body).not.toContain("playbook-edition");
   });
 
   test("JSON search keeps legacy selector compatibility without validating it", async () => {
@@ -109,5 +114,54 @@ describe("public search SSE transport", () => {
     );
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual([]);
+  });
+
+  test("serves only the adopted current snapshot without operational metadata", async () => {
+    await db.delete(playbookSnapshots);
+    const bundle = makePublicBundle("v3.0.0", "100");
+    const current = {
+      catalog: bundle.edition.catalog,
+      search: bundle.edition.search,
+      sourceRevision: {
+        provider: "github" as const,
+        repository: bundle.edition.edition.source.repository,
+        ref: bundle.edition.edition.source.tag,
+        commit: bundle.edition.edition.source.commit,
+      },
+      contentHash: computePlaybookContentHash({
+        catalog: bundle.edition.catalog,
+        search: bundle.edition.search,
+      }),
+    };
+    new PlaybookSnapshotStore().adopt(current, { expectedCurrent: null });
+
+    const search = await handlePublicApiRequest(
+      new Request(
+        `http://localhost/api/public/search?q=verify&mode=keyword&source=playbook&edition=${"f".repeat(64)}&sourceReleaseId=999&sourceTag=old`
+      ),
+      "/search"
+    );
+    expect(search.status).toBe(200);
+    expect(search.headers.get("Search-Playbook-Edition")).toBeNull();
+    expect(search.headers.get("Search-Playbook-Source-Release-Id")).toBeNull();
+    expect(search.headers.get("Search-RAG-Incomplete-Sources")).toBeNull();
+    const results = await search.json();
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]).not.toHaveProperty("edition");
+    expect(JSON.stringify(results)).not.toContain(current.contentHash);
+
+    const index = await handlePublicApiRequest(
+      new Request(
+        `http://localhost/api/public/playbook/search-index?edition=${"0".repeat(64)}&sourceReleaseId=1&sourceTag=previous`
+      ),
+      "/playbook/search-index"
+    );
+    expect(index.status).toBe(200);
+    expect(index.headers.get("x-playbook-edition")).toBeNull();
+    expect(index.headers.get("x-playbook-source-commit")).toBeNull();
+    const indexBody = (await index.json()) as { documents: unknown[]; generated_at?: string };
+    expect(indexBody).toEqual({ documents: bundle.edition.search.documents });
+    expect(indexBody).not.toHaveProperty("generated_at");
+    await db.delete(playbookSnapshots);
   });
 });

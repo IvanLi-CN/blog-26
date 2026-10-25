@@ -11,9 +11,11 @@ import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { enhanced } from "@/lib/ai/search";
 import { clearSearchCache } from "@/lib/ai/search-cache";
 import { db, initializeDB } from "@/lib/db";
-import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
+import { computePlaybookContentHash } from "@/lib/playbook/manifest";
+import type { PlaybookGitHubSnapshot } from "@/lib/playbook/types";
 import {
   llmSettings,
+  playbookSnapshots,
   postEmbeddings,
   posts,
   ragIndexConfigs,
@@ -30,7 +32,9 @@ import { appRouter } from "@/server/router";
 import { makePublicBundle } from "../../../tests/lib/playbook-fixture";
 import { executeContentModes } from "./content-search";
 import { contentSearchIndex } from "./content-search-index";
+import { getContentTask } from "./content-tasks";
 import { updateAdminLlmSettings } from "./llm-settings";
+import { getPlaybookSnapshotStore } from "./playbook-snapshot-store";
 import { ragCatalog } from "./rag-index";
 import {
   getAdminSearchSettings,
@@ -76,6 +80,29 @@ function fakeFetch(
   handler: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 ): typeof fetch {
   return Object.assign(mock(handler), { preconnect: originalFetch.preconnect });
+}
+
+function snapshotFor(bundle: ReturnType<typeof makePublicBundle>): PlaybookGitHubSnapshot {
+  const normalized = { catalog: bundle.edition.catalog, search: bundle.edition.search };
+  return {
+    ...normalized,
+    sourceRevision: {
+      provider: "github",
+      repository: bundle.edition.edition.source.repository,
+      ref: bundle.edition.edition.source.tag,
+      commit: bundle.edition.edition.source.commit,
+    },
+    contentHash: computePlaybookContentHash(normalized),
+  };
+}
+
+async function waitForTask(id: string) {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const task = await getContentTask(id);
+    if (task?.finishedAt !== null && task) return task;
+    await Bun.sleep(10);
+  }
+  throw new Error(`Task did not finish: ${id}`);
 }
 
 function waitWithAbort(ms: number, signal?: AbortSignal | null) {
@@ -187,6 +214,7 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     await db.delete(postEmbeddings);
     await db.delete(ragIndexTargets);
     await db.delete(ragIndexConfigs);
+    await db.delete(playbookSnapshots);
     await db.delete(llmSettings);
     await db.delete(posts);
     await db.delete(searchSettings);
@@ -404,7 +432,6 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
         requestedMode: "rag",
         effectiveMode: "keyword",
         reason: "explicit-query",
-        ragIncompleteSources: ["blog"],
       });
       expect(incomplete.results.map((row) => row.slug)).toEqual(["fallback-coverage"]);
       const response = await handlePublicApiRequest(
@@ -413,12 +440,12 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
         ),
         "/search"
       );
-      expect(response?.headers.get("Search-RAG-Incomplete-Sources")).toBe("blog");
+      expect(response?.headers.get("Search-RAG-Incomplete-Sources")).toBeNull();
       await seedVerifiedBlog("fallback-coverage");
-      expect((await executeContentModes(input)).ragIncompleteSources).toBeUndefined();
-      expect(
-        (await executeContentModes({ ...input, mode: "keyword" })).ragIncompleteSources
-      ).toBeUndefined();
+      expect(await executeContentModes(input)).not.toHaveProperty("ragIncompleteSources");
+      expect(await executeContentModes({ ...input, mode: "keyword" })).not.toHaveProperty(
+        "ragIncompleteSources"
+      );
       expect(globalThis.fetch).not.toHaveBeenCalled();
     });
   }
@@ -1289,8 +1316,8 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
   });
   test("RAG joins a same-edition Playbook semantic candidate with untrusted evidence", async () => {
     const bundle = makePublicBundle("v3.0.0", "100");
-    process.env.PLAYBOOK_CACHE_DIR = path.join(directory, "playbook-cache");
-    await getRuntimePlaybookStore().adopt(bundle.edition);
+    const snapshot = snapshotFor(bundle);
+    getPlaybookSnapshotStore().adopt(snapshot, { expectedCurrent: null });
     await db.delete(searchSemanticEmbeddings);
     const embedding = [1, 0];
     const resolved = await resolveSearchPolicy("rag");
@@ -1338,9 +1365,10 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
         ],
       });
     });
-    const projection = await preparePlaybookSemanticProjection(bundle.edition, embeddingConfig);
+    const projection = await preparePlaybookSemanticProjection(snapshot, embeddingConfig);
     expect(projection.failed).toBe(0);
-    expect(projection.prepared).toBeGreaterThan(0);
+    expect(projection.queued).toBe(true);
+    await waitForTask(projection.taskId);
     const result = await executeContentModes({
       q: "semantic-only",
       mode: "rag",
@@ -1349,7 +1377,7 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
       topK: 3,
     });
     expect(result.effectiveMode).toBe("rag");
-    expect(result.ragIncompleteSources).toBeUndefined();
+    expect(result).not.toHaveProperty("ragIncompleteSources");
     expect(result.results.some((item) => item.source === "playbook")).toBe(true);
     const chatPayload = modelInputs.find((entry) => entry.url.endsWith("/chat/completions"))
       ?.payload as {
@@ -1357,9 +1385,9 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
     };
     const candidateContent = chatPayload.messages?.[1]?.content ?? "";
     expect(candidateContent).toContain("<untrusted-playbook-evidence");
-    expect(candidateContent).toContain(bundle.edition.edition.editionDigest);
-    expect(candidateContent).toContain(bundle.edition.edition.source.releaseId);
-    expect(candidateContent).toContain(bundle.edition.edition.source.tag);
+    expect(candidateContent).toContain(snapshot.contentHash);
+    expect(candidateContent).toContain(snapshot.sourceRevision.commit);
+    expect(candidateContent).toContain(snapshot.sourceRevision.ref);
     expect(candidateContent).not.toContain("private");
     expect(result.results.every((item) => item.source === "playbook")).toBe(true);
   });
@@ -1367,8 +1395,11 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
   test("HTTP, tRPC, and MCP ignore legacy Playbook selectors and use current", async () => {
     const previous = makePublicBundle("v2.9.9", "99");
     const bundle = makePublicBundle("v3.0.0", "100");
-    await getRuntimePlaybookStore().adopt(previous.edition);
-    await getRuntimePlaybookStore().adopt(bundle.edition);
+    const previousSnapshot = snapshotFor(previous);
+    const currentSnapshot = snapshotFor(bundle);
+    const store = getPlaybookSnapshotStore();
+    store.adopt(previousSnapshot, { expectedCurrent: null });
+    store.adopt(currentSnapshot, { expectedCurrent: previousSnapshot });
     const legacyIdentity = new URLSearchParams({
       edition: "not-a-digest",
       sourceReleaseId: "not-a-release",
@@ -1382,8 +1413,8 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
       "/search"
     );
     expect(http.status).toBe(200);
-    expect(http.headers.get("Search-Playbook-Edition")).toBe(bundle.edition.edition.editionDigest);
-    expect(http.headers.get("Search-Playbook-Source-Release-Id")).toBe("100");
+    expect(http.headers.get("Search-Playbook-Edition")).toBeNull();
+    expect(http.headers.get("Search-Playbook-Source-Release-Id")).toBeNull();
     expect((await http.json()) as Array<{ source: string }>).toEqual(
       expect.arrayContaining([expect.objectContaining({ source: "playbook" })])
     );
@@ -1403,7 +1434,7 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
         sourceReleaseId: previous.edition.edition.source.releaseId,
         sourceTag: previous.edition.edition.source.tag,
       });
-    expect(trpc.playbook?.sourceTag).toBe("v3.0.0");
+    expect(trpc).not.toHaveProperty("playbook");
     expect(trpc.results.every((item) => item.source === "playbook")).toBe(true);
 
     const headers = {
@@ -1461,10 +1492,9 @@ describe.skipIf(process.platform !== "linux")("content modes with persistent Tan
           ?.slice(6) ?? raw
       );
       const result = JSON.parse(payload.result.content[0].text) as {
-        playbook?: { sourceTag: string };
         results: Array<{ source: string }>;
       };
-      expect(result.playbook?.sourceTag).toBe("v3.0.0");
+      expect(result).not.toHaveProperty("playbook");
       expect(result.results.every((item) => item.source === "playbook")).toBe(true);
 
       const unknownParameterResponse = await handleMcpHttpRequest(

@@ -18,6 +18,6 @@ export async function loadplaybookDetail(Astro: PageContext) {
     edition: trimRouteEdition(edition, path),
     path,
     title,
-    versioned: Boolean(routeParams.editionDigest),
+    versioned: process.env.CONSOLE_RUNTIME !== "true" && Boolean(routeParams.editionDigest),
   };
 }
