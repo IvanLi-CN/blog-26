@@ -14,7 +14,15 @@ import { encodeJson } from "@/lib/playbook/manifest";
 import { publicRelationIndexFromCatalog } from "@/lib/playbook/supplement";
 import { computePostContentHash } from "@/lib/post-body-contract-server";
 import { buildPublicMediaHash } from "@/lib/public-media";
-import { llmSettings, postEmbeddings, posts, sessions, users, vectorizedFiles } from "@/lib/schema";
+import {
+  llmSettings,
+  postEmbeddings,
+  posts,
+  readerOAuthAttempts,
+  sessions,
+  users,
+  vectorizedFiles,
+} from "@/lib/schema";
 import { SEARCH_QUERY_LIMITS } from "@/lib/search/query";
 import { DEFAULT_SEARCH_POLICY } from "@/lib/search/settings";
 import { handlePlaybookSupplementSyncRequest } from "@/server/admin-api/playbook-supplement";
@@ -1546,6 +1554,60 @@ public: false
 
     expect(response.status).toBe(200);
     expect(response.headers.get("access-control-allow-origin")).toBe("https://pages.example.test");
+  });
+
+  it("returns OAuth cancellation to the original page", async () => {
+    if (!db) throw new Error("Database has not been initialised");
+    const originalReaderEnv = {
+      clientId: process.env.GITHUB_READER_CLIENT_ID,
+      clientSecret: process.env.GITHUB_READER_CLIENT_SECRET,
+      callbackUrl: process.env.GITHUB_READER_CALLBACK_URL,
+    };
+    process.env.GITHUB_READER_CLIENT_ID = "reader-client-id";
+    process.env.GITHUB_READER_CLIENT_SECRET = "reader-client-secret";
+    process.env.GITHUB_READER_CALLBACK_URL =
+      "http://localhost/api/public/reader-auth/github/callback";
+    await db.delete(readerOAuthAttempts);
+
+    try {
+      const returnTo = "http://localhost/memos/demo/?draft=1#comments";
+      const startResponse = await handlePublicApiRequest(
+        buildRequest(
+          `/api/public/reader-auth/github/start?returnTo=${encodeURIComponent(returnTo)}`,
+          { headers: { origin: "http://localhost" } }
+        ),
+        "/reader-auth/github/start"
+      );
+      expect(startResponse.status).toBe(302);
+      const authorizeUrl = new URL(startResponse.headers.get("location") ?? "");
+      const state = authorizeUrl.searchParams.get("state");
+      const cookie = startResponse.headers.get("set-cookie")?.split(";")[0];
+      expect(state).toBeTruthy();
+      expect(cookie).toContain("reader_oauth_state=");
+
+      const cancelResponse = await handlePublicApiRequest(
+        buildRequest(
+          `/api/public/reader-auth/github/callback?state=${encodeURIComponent(state as string)}&error=access_denied`,
+          { headers: { cookie: cookie as string } }
+        ),
+        "/reader-auth/github/callback"
+      );
+      expect(cancelResponse.status).toBe(302);
+      expect(cancelResponse.headers.get("location")).toBe(
+        "http://localhost/memos/demo/?draft=1&reader_auth_error=cancelled#comments"
+      );
+      expect(cancelResponse.headers.get("set-cookie")).toContain("reader_oauth_state=");
+    } finally {
+      await db.delete(readerOAuthAttempts);
+      if (originalReaderEnv.clientId === undefined) delete process.env.GITHUB_READER_CLIENT_ID;
+      else process.env.GITHUB_READER_CLIENT_ID = originalReaderEnv.clientId;
+      if (originalReaderEnv.clientSecret === undefined)
+        delete process.env.GITHUB_READER_CLIENT_SECRET;
+      else process.env.GITHUB_READER_CLIENT_SECRET = originalReaderEnv.clientSecret;
+      if (originalReaderEnv.callbackUrl === undefined)
+        delete process.env.GITHUB_READER_CALLBACK_URL;
+      else process.env.GITHUB_READER_CALLBACK_URL = originalReaderEnv.callbackUrl;
+    }
   });
 
   it("exports a live public snapshot from /api/public/snapshot", async () => {

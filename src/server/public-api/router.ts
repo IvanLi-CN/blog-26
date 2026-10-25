@@ -1360,7 +1360,8 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
       await initializeDB();
       const state = url.searchParams.get("state");
       const code = url.searchParams.get("code");
-      if (!state || !code) {
+      const oauthError = url.searchParams.get("error");
+      if (!state || (!code && !oauthError)) {
         return new Response(null, {
           status: 302,
           headers: {
@@ -1368,6 +1369,21 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
             "cache-control": "no-store",
           },
         });
+      }
+      if (oauthError) {
+        const returnTo = await getReaderOAuthReturnTo(request, state);
+        const fallbackUrl = new URL(returnTo || "/", request.url);
+        fallbackUrl.searchParams.set(
+          "reader_auth_error",
+          oauthError === "access_denied" ? "cancelled" : "failed"
+        );
+        const headers = new Headers({
+          location: fallbackUrl.toString(),
+          "cache-control": "no-store",
+        });
+        headers.append("set-cookie", clearReaderOAuthStateCookieHeader(request));
+        appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
+        return new Response(null, { status: 302, headers });
       }
       try {
         const result = await completeReaderOAuth(request, state, code);
