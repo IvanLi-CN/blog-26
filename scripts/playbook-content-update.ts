@@ -7,6 +7,7 @@ import {
   parseSupplementFiles,
   readPublicArchive,
   readSupplementArchive,
+  writePublicArchiveFiles,
 } from "../src/lib/playbook/bundle";
 import { withoutDeploymentCredentials } from "../src/lib/playbook/child-env";
 import { githubReleaseReader } from "../src/lib/playbook/github";
@@ -70,6 +71,7 @@ await writeFile(
   encodeJson(selected.manifest)
 );
 await writeFile(resolve(bundleRoot, "playbook-public.tar.gz"), archive);
+await writePublicArchiveFiles(bundleRoot, publicFiles);
 await writeFile(
   resolve(bundleRoot, PLAYBOOK_SOURCE_TIMESTAMP_FILE),
   `${selected.sourceTimestamp}\n`

@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { gunzipSync, inflateRawSync } from "node:zlib";
 import {
@@ -233,6 +233,17 @@ export function readSupplementArchive(
   expectedSourceTimestamp?: number
 ) {
   return readArchive(archive, manifest, PLAYBOOK_SUPPLEMENT_BUNDLE_NAME, expectedSourceTimestamp);
+}
+
+export async function writePublicArchiveFiles(
+  root: string,
+  files: Map<string, Uint8Array>
+): Promise<void> {
+  for (const name of FILES) {
+    const bytes = files.get(name);
+    if (!bytes) throw new Error(`Public archive data file is missing: ${name}`);
+    await writeFile(join(root, name), bytes);
+  }
 }
 
 export function parseSupplementFiles(files: Map<string, Uint8Array>) {
