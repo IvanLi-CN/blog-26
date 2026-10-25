@@ -99,6 +99,37 @@ const { getRuntimePlaybookStore } = await import("../../src/lib/playbook/cache")
 const { posts } = await import("../../src/lib/schema");
 const { ragCoverage, runRagIndex } = await import("../../src/server/services/rag-index");
 const { getContentTask } = await import("../../src/server/services/content-tasks");
+
+async function adoptPlaybookFixture(tag: string, releaseId: string) {
+  const { makePublicBundle } = await import("./playbook-fixture");
+  const { computePlaybookContentHash } = await import("../../src/lib/playbook/manifest");
+  const { getPlaybookSnapshotStore } = await import(
+    "../../src/server/services/playbook-snapshot-store"
+  );
+  const bundle = makePublicBundle(tag, releaseId);
+  await getRuntimePlaybookStore().adopt(bundle.edition);
+  const normalized = { catalog: bundle.edition.catalog, search: bundle.edition.search };
+  const store = getPlaybookSnapshotStore();
+  const current = store.getCurrent();
+  store.adopt(
+    {
+      ...normalized,
+      sourceRevision: {
+        provider: "github",
+        repository: bundle.edition.edition.source.repository,
+        ref: bundle.edition.edition.source.tag,
+        commit: bundle.edition.edition.source.commit,
+      },
+      contentHash: computePlaybookContentHash(normalized),
+    },
+    {
+      expectedCurrent: current
+        ? { sourceRevision: current.sourceRevision, contentHash: current.contentHash }
+        : null,
+    }
+  );
+}
+
 if (phase === "upgrade") {
   await getRuntimePlaybookStore().load();
   if (getRuntimePlaybookStore().current?.edition.source.tag !== "v2.9.9")
@@ -192,8 +223,7 @@ if (phase.startsWith("local-")) {
 }
 const restartReceipt = join(dirname(dbPath), "interrupted.json");
 if (phase === "interrupt-write" || phase === "cancel-write") {
-  const { makePublicBundle } = await import("./playbook-fixture");
-  await getRuntimePlaybookStore().adopt(makePublicBundle("v3.0.1", "301").edition);
+  await adoptPlaybookFixture("v3.0.1", "301");
   const { taskId } = await runRagIndex({ source: "playbook" }, "repair");
   for (let i = 0; i < 1000; i++) {
     const task = await getContentTask(taskId);
@@ -227,8 +257,7 @@ if (phase === "recover" || phase === "cancel-read") {
     throw new Error("Recovery changed persisted identity/progress");
   // Make the interrupted edition previous: recovery must keep its full identity.
   await getRuntimePlaybookStore().load();
-  const { makePublicBundle } = await import("./playbook-fixture");
-  await getRuntimePlaybookStore().adopt(makePublicBundle("v3.0.2", "302").edition);
+  await adoptPlaybookFixture("v3.0.2", "302");
   const { cancelContentTask } = await import("../../src/server/services/content-tasks");
   if (phase === "cancel-read") {
     const stop = await (
@@ -282,8 +311,7 @@ if (phase === "recover" || phase === "cancel-read") {
   process.exit(0);
 }
 if (phase === "write") {
-  const { makePublicBundle } = await import("./playbook-fixture");
-  await getRuntimePlaybookStore().adopt(makePublicBundle("v3.3.0", "300").edition);
+  await adoptPlaybookFixture("v3.3.0", "300");
   await db.insert(posts).values({
     id: "synthetic-blog",
     slug: "synthetic-blog",
