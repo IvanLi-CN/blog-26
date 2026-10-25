@@ -45,8 +45,9 @@ const SEARCH_PATH = `${PLAYBOOK_GITHUB_PUBLIC_EXPORT_ROOT}/search-documents.json
 const MANIFEST_PATH = `${PLAYBOOK_GITHUB_PUBLIC_EXPORT_ROOT}/manifest.json`;
 const GITHUB_SOURCE_REQUEST_TIMEOUT_MS = 30_000;
 const GITHUB_SOURCE_MAX_FILE_BYTES = 32 * 1024 * 1024;
-const GITHUB_SOURCE_MAX_API_RESPONSE_BYTES = 64 * 1024;
+const GITHUB_SOURCE_MAX_COMMIT_SHA_BYTES = 128;
 const GITHUB_SOURCE_MAX_CONTENTS_RESPONSE_BYTES = 48 * 1024 * 1024;
+const GITHUB_COMMIT_SHA_ACCEPT = "application/vnd.github.sha";
 const GITHUB_CONTENTS_OBJECT_ACCEPT = "application/vnd.github.object+json";
 const GITHUB_RAW_ACCEPT = "application/vnd.github.raw+json";
 
@@ -331,6 +332,7 @@ export async function readPlaybookGitHubSnapshot(
   try {
     commit = await transport.resolveRef({ repository: config.repository, ref: config.ref });
   } catch (error) {
+    if (error instanceof PlaybookGitHubSourceInvalidError) throw error;
     throw new PlaybookGitHubSourceReadError("GitHub ref resolution failed", { cause: error });
   }
   if (!/^[a-f0-9]{40}$/u.test(commit)) invalid("GitHub ref did not resolve to a commit SHA");
@@ -453,6 +455,7 @@ export function createPlaybookGitHubSourceTransport(
       signal: AbortSignal.timeout(requestTimeoutMs),
     });
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
       if (invalidStatus && (response.status === 404 || response.status === 422))
         throw new PlaybookGitHubSourceInvalidError(
           `GitHub public export path is unavailable: ${response.status}`
@@ -464,8 +467,10 @@ export function createPlaybookGitHubSourceTransport(
   async function readResponseBytes(response: Response, maxBytes: number, label: string) {
     if (!response.body) throw new PlaybookGitHubSourceInvalidError(`${label} has no body`);
     const contentLength = response.headers.get("content-length");
-    if (contentLength && /^\d+$/u.test(contentLength) && Number(contentLength) > maxBytes)
+    if (contentLength && /^\d+$/u.test(contentLength) && Number(contentLength) > maxBytes) {
+      await response.body.cancel().catch(() => undefined);
       throw new PlaybookGitHubSourceInvalidError(`${label} exceeds byte limit`);
+    }
     const reader = response.body.getReader();
     const parts: Uint8Array[] = [];
     let size = 0;
@@ -483,17 +488,11 @@ export function createPlaybookGitHubSourceTransport(
     }
     return Buffer.concat(parts);
   }
-  async function json(url: string, invalidStatus = false) {
-    const response = await request(
-      url,
-      invalidStatus ? GITHUB_CONTENTS_OBJECT_ACCEPT : headers.Accept,
-      invalidStatus
-    );
+  async function json(url: string) {
+    const response = await request(url, GITHUB_CONTENTS_OBJECT_ACCEPT, true);
     const bytes = await readResponseBytes(
       response,
-      invalidStatus
-        ? GITHUB_SOURCE_MAX_CONTENTS_RESPONSE_BYTES
-        : GITHUB_SOURCE_MAX_API_RESPONSE_BYTES,
+      GITHUB_SOURCE_MAX_CONTENTS_RESPONSE_BYTES,
       "GitHub API response"
     );
     try {
@@ -502,7 +501,6 @@ export function createPlaybookGitHubSourceTransport(
         throw new Error("GitHub API response root must be an object");
       return value as Record<string, unknown>;
     } catch (error) {
-      if (!invalidStatus) throw error;
       throw new PlaybookGitHubSourceInvalidError("GitHub public export response is malformed", {
         cause: error,
       });
@@ -514,15 +512,30 @@ export function createPlaybookGitHubSourceTransport(
   }
   return {
     async resolveRef({ repository, ref }) {
-      const value = await json(
-        `https://api.github.com/repos/${repository}/commits/${encodeURIComponent(ref)}`
+      const response = await request(
+        `https://api.github.com/repos/${repository}/commits/${encodeURIComponent(ref)}`,
+        GITHUB_COMMIT_SHA_ACCEPT
       );
-      if (typeof value.sha !== "string") throw new Error("GitHub commit response has no SHA");
-      return value.sha;
+      const bytes = await readResponseBytes(
+        response,
+        GITHUB_SOURCE_MAX_COMMIT_SHA_BYTES,
+        "GitHub commit SHA response"
+      );
+      let value: string;
+      try {
+        value = decodeUtf8(bytes, "GitHub commit SHA response").trim();
+      } catch (error) {
+        throw new PlaybookGitHubSourceInvalidError("GitHub commit response is malformed", {
+          cause: error,
+        });
+      }
+      if (!/^[a-f0-9]{40}$/u.test(value))
+        throw new PlaybookGitHubSourceInvalidError("GitHub commit response has no valid SHA");
+      return value;
     },
     async readFile({ repository, commit, path }) {
       const url = githubApiPath(repository, path, `ref=${encodeURIComponent(commit)}`);
-      const value = await json(url, true);
+      const value = await json(url);
       if (value.type !== "file" || value.path !== path)
         throw new PlaybookGitHubSourceInvalidError(`GitHub path is not a file: ${path}`);
       if (

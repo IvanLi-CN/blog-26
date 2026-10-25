@@ -604,8 +604,7 @@ describe("source result states", () => {
 
   test("classifies a missing fixed export path as invalid", async () => {
     const fetchImpl = (async (input: RequestInfo | URL) => {
-      if (String(input).includes("/commits/"))
-        return new Response(JSON.stringify({ sha: commit }), { status: 200 });
+      if (String(input).includes("/commits/")) return new Response(commit, { status: 200 });
       return new Response(JSON.stringify({ message: "Not Found" }), { status: 404 });
     }) as unknown as typeof fetch;
     const result = await loadPlaybookGitHubSnapshot(
@@ -618,9 +617,23 @@ describe("source result states", () => {
   test("classifies malformed successful Contents responses as invalid", async () => {
     for (const body of ["{", "null"]) {
       const fetchImpl = (async (input: RequestInfo | URL) => {
-        if (String(input).includes("/commits/"))
-          return new Response(JSON.stringify({ sha: commit }), { status: 200 });
+        if (String(input).includes("/commits/")) return new Response(commit, { status: 200 });
         return new Response(body, { status: 200 });
+      }) as unknown as typeof fetch;
+      const result = await loadPlaybookGitHubSnapshot(
+        createPlaybookGitHubSourceTransport("fixture-token", fetchImpl),
+        config
+      );
+      expect(result.status).toBe("invalid");
+    }
+  });
+
+  test("classifies malformed, missing, and oversized commit responses as invalid", async () => {
+    const bodies: Array<string | null> = ["", "not-a-commit-sha", "a".repeat(129), null];
+    for (const body of bodies) {
+      const fetchImpl = (async (input: RequestInfo | URL) => {
+        if (String(input).includes("/commits/")) return new Response(body, { status: 200 });
+        throw new Error("export files must not be read after an invalid ref response");
       }) as unknown as typeof fetch;
       const result = await loadPlaybookGitHubSnapshot(
         createPlaybookGitHubSourceTransport("fixture-token", fetchImpl),
@@ -635,8 +648,7 @@ test("pins the production transport to GitHub API paths and validates response b
   const requests: Array<{ url: string; init: RequestInit }> = [];
   const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
     requests.push({ url: String(input), init: init ?? {} });
-    if (requests.length === 1)
-      return new Response(JSON.stringify({ sha: commit }), { status: 200 });
+    if (requests.length === 1) return new Response(commit, { status: 200 });
     return new Response(
       JSON.stringify({
         type: "file",
@@ -665,7 +677,7 @@ test("pins the production transport to GitHub API paths and validates response b
   ]);
   expect(requests[0]?.init).toMatchObject({
     headers: {
-      Accept: "application/vnd.github+json",
+      Accept: "application/vnd.github.sha",
       Authorization: "Bearer fixture-token",
       "X-GitHub-Api-Version": "2022-11-28",
     },
@@ -688,8 +700,7 @@ test("falls back to the raw GitHub media type for large file responses", async (
   const rawBytes = Buffer.from("large fixture bytes");
   const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
     requests.push({ url: String(input), init: init ?? {} });
-    if (requests.length === 1)
-      return new Response(JSON.stringify({ sha: commit }), { status: 200 });
+    if (requests.length === 1) return new Response(commit, { status: 200 });
     if (requests.length === 2)
       return new Response(
         JSON.stringify({
@@ -725,8 +736,7 @@ test("falls back to the raw GitHub media type for large file responses", async (
 
 test("classifies interrupted response bodies as retryable failures", async () => {
   const fetchImpl = (async (input: RequestInfo | URL) => {
-    if (String(input).includes("/commits/"))
-      return new Response(JSON.stringify({ sha: commit }), { status: 200 });
+    if (String(input).includes("/commits/")) return new Response(commit, { status: 200 });
     const body = new ReadableStream<Uint8Array>({
       start(controller) {
         controller.error(new Error("connection reset"));
@@ -745,8 +755,7 @@ test("aborts a stalled GitHub request after the configured timeout", async () =>
   let requestSignal: AbortSignal | undefined;
   const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
     requestSignal = init?.signal ?? undefined;
-    if (String(input).includes("/commits/"))
-      return new Response(JSON.stringify({ sha: commit }), { status: 200 });
+    if (String(input).includes("/commits/")) return new Response(commit, { status: 200 });
     return new Promise<Response>((_resolve, reject) => {
       if (!requestSignal) {
         reject(new Error("request signal is missing"));
@@ -770,8 +779,7 @@ test("aborts a stalled GitHub request after the configured timeout", async () =>
 
 test("rejects raw responses that exceed the GitHub source byte limit", async () => {
   const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    if (String(input).includes("/commits/"))
-      return new Response(JSON.stringify({ sha: commit }), { status: 200 });
+    if (String(input).includes("/commits/")) return new Response(commit, { status: 200 });
     if (new Headers(init?.headers).get("Accept") !== "application/vnd.github.raw+json")
       return new Response(
         JSON.stringify({
@@ -796,4 +804,49 @@ test("rejects raw responses that exceed the GitHub source byte limit", async () 
       path: "public/playbook/catalog.json",
     })
   ).rejects.toThrow("exceeds byte limit");
+});
+
+test("cancels response bodies before non-success status failures", async () => {
+  let cancellations = 0;
+  const fetchImpl = (async (input: RequestInfo | URL) => {
+    if (String(input).includes("/commits/")) return new Response(commit, { status: 200 });
+    const body = new ReadableStream<Uint8Array>({
+      cancel() {
+        cancellations++;
+      },
+    });
+    return new Response(body, { status: 404 });
+  }) as unknown as typeof fetch;
+  const result = await loadPlaybookGitHubSnapshot(
+    createPlaybookGitHubSourceTransport("fixture-token", fetchImpl),
+    config
+  );
+  expect(result.status).toBe("invalid");
+  expect(cancellations).toBe(1);
+});
+
+test("cancels response bodies before declared byte-limit failures", async () => {
+  let cancellations = 0;
+  const fetchImpl = (async (input: RequestInfo | URL) => {
+    if (String(input).includes("/commits/")) return new Response(commit, { status: 200 });
+    const body = new ReadableStream<Uint8Array>({
+      cancel() {
+        cancellations++;
+      },
+    });
+    return new Response(body, {
+      status: 200,
+      headers: { "content-length": String(48 * 1024 * 1024 + 1) },
+    });
+  }) as unknown as typeof fetch;
+  const transport = createPlaybookGitHubSourceTransport("fixture-token", fetchImpl);
+  await transport.resolveRef({ repository: config.repository, ref: config.ref });
+  await expect(
+    transport.readFile({
+      repository: config.repository,
+      commit,
+      path: "public/playbook/catalog.json",
+    })
+  ).rejects.toThrow("exceeds byte limit");
+  expect(cancellations).toBe(1);
 });
