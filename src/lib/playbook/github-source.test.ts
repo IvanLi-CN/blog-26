@@ -337,6 +337,22 @@ test("reports malformed digest and public-boundary failures as invalid candidate
   expect(boundaryResult.status).toBe("invalid");
 });
 
+test("rejects a valid but mismatched content hash", async () => {
+  const files = makeFixtureFiles();
+  const manifestBytes = files.get(PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[0]);
+  if (!manifestBytes) throw new Error("fixture manifest is missing");
+  const manifest = JSON.parse(Buffer.from(manifestBytes).toString("utf8")) as {
+    contentHash: string;
+  };
+  const mismatchedHash = "0".repeat(64);
+  expect(manifest.contentHash).not.toBe(mismatchedHash);
+  manifest.contentHash = mismatchedHash;
+  files.set(PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[0], Buffer.from(encodeJson(manifest)));
+
+  const result = await loadPlaybookGitHubSnapshot(makeTransport(files), config);
+  expect(result.status).toBe("invalid");
+});
+
 test("rejects an incomplete lexical projection before a source can be adopted", () => {
   expect(() => normalizePlaybookSnapshot(publicFixtureCatalog, publicFixtureSearch)).toThrow(
     "Search projection"
