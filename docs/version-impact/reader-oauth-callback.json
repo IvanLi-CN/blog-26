@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "94a23823fa32bff7e048c02b333a0fa42835ef53",
+  "covered_files": {
+    "src/server/http-compat-api.test.ts": "231c42dff443ac9ea0d3ca1a6e9abf2f8c49296e",
+    "src/server/public-api/router.ts": "7bcf7ca685605768e0e27cd97b6ca0d379eb42f7"
+  },
+  "change": {
+    "description": "Preserve the reader return page and clear the one-time OAuth state when GitHub authorization is cancelled or fails.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a compatible error-path repair for the existing reader OAuth callback. Successful authorization, administrator authentication, schema state, and published content remain unchanged.",
+      "assessed_at": "2026-10-25T10:43:47+08:00",
+      "evidence": [
+        {
+          "path": "src/server/public-api/router.ts",
+          "blob": "7bcf7ca685605768e0e27cd97b6ca0d379eb42f7",
+          "command": "Reader OAuth callback preserves the trusted return path for cancellation and failure"
+        },
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "231c42dff443ac9ea0d3ca1a6e9abf2f8c49296e",
+          "command": "Regression test covers access_denied redirect and state-cookie clearing"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate accepts GitHub error callbacks, retrieves only the matching trusted OAuth attempt, redirects to its original page with a bounded error marker, and clears the browser state cookie. It does not alter successful code exchange or persistent data formats.",
+      "assessed_at": "2026-10-25T10:43:47+08:00",
+      "evidence": [
+        {
+          "path": "src/server/public-api/router.ts",
+          "blob": "7bcf7ca685605768e0e27cd97b6ca0d379eb42f7",
+          "command": "Public callback branch handles access_denied and failed authorization outcomes"
+        },
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "231c42dff443ac9ea0d3ca1a6e9abf2f8c49296e",
+          "command": "bun test src/lib/reader-auth.test.ts src/server/http-compat-api.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to the reader OAuth callback error path and its direct HTTP regression test; no schema, administrator identity, successful OAuth, or public content contract drift was found."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused reader-auth and HTTP compatibility tests pass, including cancellation return-path preservation and OAuth state-cookie clearing. The change is compatible with the published API and has no persistent-state migration.",
+      "assessed_at": "2026-10-25T10:43:47+08:00",
+      "evidence": [
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "231c42dff443ac9ea0d3ca1a6e9abf2f8c49296e",
+          "command": "bun test src/lib/reader-auth.test.ts src/server/http-compat-api.test.ts: 105 passed, 3 existing skipped"
+        },
+        {
+          "path": "src/server/public-api/router.ts",
+          "blob": "7bcf7ca685605768e0e27cd97b6ca0d379eb42f7",
+          "command": "bun run check: Biome and admin UI boundary checks pass"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4"
+      ],
+      "evidence": [
+        {
+          "path": "src/server/public-api/router.ts",
+          "blob": "7bcf7ca685605768e0e27cd97b6ca0d379eb42f7",
+          "command": "Only the existing reader OAuth callback error response is extended"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local-content format, browser persistence, or durable release-ledger state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "231c42dff443ac9ea0d3ca1a6e9abf2f8c49296e",
+          "command": "Regression coverage uses the existing OAuth attempt table without changing its schema"
+        }
+      ]
+    }
+  }
+}
