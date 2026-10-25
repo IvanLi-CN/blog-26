@@ -1,13 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { initializeDB } from "@/lib/db";
 import { validatePlaybookEdition } from "@/lib/playbook/cache";
 import { getPlaybookPolicies } from "@/lib/playbook/navigation";
 import type { PlaybookEdition } from "@/lib/playbook/types";
-import {
-  getPlaybookSnapshotStore,
-  type PlaybookStoredSnapshot,
-} from "@/server/services/playbook-snapshot-store";
+import type { PlaybookStoredSnapshot } from "@/server/services/playbook-snapshot-store";
 
 const CURRENT_PUBLIC_EDITION_DIGEST = "0".repeat(64);
 
@@ -47,6 +43,10 @@ export function parseStaticPlaybookEdition(raw: string): PlaybookEdition {
 let staticEdition: Promise<PlaybookEdition | undefined> | undefined;
 export async function getPlaybookEdition() {
   if (process.env.CONSOLE_RUNTIME === "true") {
+    const [{ initializeDB }, { getPlaybookSnapshotStore }] = await Promise.all([
+      import("@/lib/db"),
+      import("@/server/services/playbook-snapshot-store"),
+    ]);
     await initializeDB();
     const snapshot = getPlaybookSnapshotStore().getCurrent();
     return snapshot ? runtimeEdition(snapshot) : undefined;
