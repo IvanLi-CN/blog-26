@@ -1,5 +1,7 @@
 # Style Playbook Release 触发契约
 
+> This contract covers the independent static-site publication path only. It does not define the dynamic console source; that boundary is in [GitHub 内容源契约](./github-source.md).
+
 本契约定义上游稳定发布完成后如何启动博客内容构建，覆盖 `REQ-PBI-003`、`REQ-PBI-004`、`REQ-PBI-006` 和 `REQ-PBI-011`。目标 workflow 已在博客实现；相关凭据和生产启用属于上线阶段，当前状态见 [IMPLEMENTATION.md](../IMPLEMENTATION.md)。
 
 ## Participants and Boundary
@@ -85,7 +87,7 @@ GitHub API 接受人工请求仅代表 workflow 已提交排队，不能把 HTTP
 
 | 使用位置 | 所需授权 |
 | --- | --- |
-| 博客下载/补漏 job | `PLAYBOOK_SOURCE_TOKEN` 对私有上游仓库的 `Contents: read`，用于读取 Release 元数据和资产 |
+| 博客下载/补漏 job | `STYLE_PLAYBOOK_GITHUB_TOKEN` 对私有上游仓库的 `Contents: read`，用于读取 Release 元数据和资产 |
 | 博客部署 job | 复用博客自己的 EdgeOne 部署凭据 |
 | Blog 到 console 的补充同步 | `PLAYBOOK_SUPPLEMENT_SYNC_TOKEN`，只允许调用受保护的 `/api/admin/playbook/supplement` 接收入口；可用无凭据的 HTTPS `PLAYBOOK_SUPPLEMENT_SYNC_URL` 指向 console 地址 |
 

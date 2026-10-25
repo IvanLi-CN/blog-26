@@ -4,6 +4,8 @@ status: accepted
 
 # Follow the Blog's Published Style Playbook Edition in Console
 
+> The dynamic console source decision in this ADR was superseded by [ADR 0030](./0030-github-source-and-database-playbook-snapshots.md). The static publication, content/application separation, and visitor-facing identity consequences remain historical context only where they do not conflict with the current topic Spec.
+
 The blog presents Style Playbook as a native reading collection of public Topics, project experience snapshots, and Policy Skills. Its build consumes a versioned public export from an upstream stable Release, and a successful static deployment publishes both the pages and the public data for that edition. Console follows this deployed edition through a persisted local cache, accepting roughly five minutes of synchronization delay under healthy, compatible conditions and retaining the last successful edition when refresh fails.
 
 ## Considered Options
