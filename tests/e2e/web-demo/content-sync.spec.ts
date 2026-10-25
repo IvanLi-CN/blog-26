@@ -1,6 +1,59 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Content sync RAG coverage Web Demo", () => {
+  test("shows the Playbook state machine and admin-only source identity", async ({ page }) => {
+    const states = [
+      ["admin-dashboard", "当前"],
+      ["admin-sync-unindexed", "当前"],
+      ["admin-sync-outdated", "过时"],
+      ["admin-sync-failed", "失败"],
+      ["admin-sync-failed&d_data=empty", "无效快照"],
+      ["admin-sync-disabled", "不可用"],
+      ["admin-sync-unconfigured", "未配置"],
+    ] as const;
+
+    for (const [query, label] of states) {
+      await page.goto(`/admin/content-sync?d_scene=${query}`);
+      const status = page.getByTestId("playbook-sync-status");
+      await expect(status.getByText(label, { exact: true })).toBeVisible();
+      await expect(page.getByTestId("playbook-source-identity")).toContainText(
+        "IvanLi-CN/style-playbook-skills"
+      );
+      await expect(status).toContainText("当前 commit");
+      await expect(status).toContainText("当前 content hash");
+      await expect(status).toContainText("上一快照");
+    }
+  });
+
+  test("shows RAG coverage insufficiency as a separate admin state", async ({ page }) => {
+    await page.goto("/admin/content-sync?d_scene=admin-sync-partial&d_theme=dark");
+    await expect(page.getByTestId("rag-incomplete")).toContainText("RAG 覆盖不足");
+    await expect(page.getByTestId("rag-incomplete")).toContainText("blog");
+    await expect(page.getByTestId("rag-incomplete")).toContainText("playbook");
+  });
+
+  test("keeps Playbook operational identity out of the public API", async ({ page }) => {
+    await page.goto("/admin/content-sync?d_scene=admin-sync-partial");
+    const response = await page.evaluate(async () => {
+      const result = await fetch("/api/public/page?path=%2F");
+      return { status: result.status, body: await result.text() };
+    });
+    expect(response.status).toBe(200);
+    expect(response.body).not.toContain("IvanLi-CN/style-playbook-skills");
+    expect(response.body).not.toContain("sourceStatus");
+    expect(response.body).not.toContain("taskId");
+  });
+
+  test("keeps admin sync status behind the admin boundary", async ({ page }) => {
+    await page.goto("/admin/content-sync?d_persona=guest");
+    const response = await page.evaluate(async () => {
+      const result = await fetch("/api/admin/content-sync/status");
+      return { status: result.status, body: await result.text() };
+    });
+    expect(response.status).toBe(403);
+    expect(response.body).toContain("管理员权限");
+  });
+
   test("chips select one coverage scope and reset the Playbook edition", async ({ page }) => {
     await page.goto("/admin/content-sync?d_scene=admin-sync-partial&d_theme=dark");
     const scope = page.getByRole("group", { name: "RAG 范围" });
@@ -14,6 +67,20 @@ test.describe("Content sync RAG coverage Web Demo", () => {
     await expect(coverage.locator("dd").first()).toHaveText("299");
     await scope.getByRole("button", { name: "Playbook", exact: true }).click();
     await expect(coverage.locator("dd").first()).toHaveText("80");
+    await expect(
+      page
+        .getByTestId("playbook-sync-status")
+        .locator("span")
+        .filter({ hasText: /^pending$/ })
+    ).toBeVisible();
+    await scope.getByRole("button", { name: "博客", exact: true }).click();
+    await expect(
+      page
+        .getByTestId("playbook-sync-status")
+        .locator("span")
+        .filter({ hasText: /^pending$/ })
+    ).toBeVisible();
+    await scope.getByRole("button", { name: "Playbook", exact: true }).click();
     const edition = page.getByRole("combobox", { name: "Playbook 版本" });
     await edition.click();
     await page.getByRole("option", { name: "上一版详情" }).click();
@@ -57,6 +124,15 @@ test.describe("Content sync RAG coverage Web Demo", () => {
     await expect(values).toHaveText(["379", "—", "—", "—", "—", "—"]);
     await expect(page.getByRole("button", { name: "补建缺失 / 过时 / 失败" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "重建所选来源全部分块" })).toBeDisabled();
+    const incomplete = page.getByTestId("rag-incomplete");
+    await expect(incomplete).toContainText("blog");
+    await expect(incomplete).toContainText("playbook");
+    await page
+      .getByRole("group", { name: "RAG 范围" })
+      .getByRole("button", { name: "博客", exact: true })
+      .click();
+    await expect(incomplete).toContainText("blog");
+    await expect(incomplete).not.toContainText("playbook");
   });
 
   test("zero coverage and disabled cached sources preserve distinct counts", async ({ page }) => {
@@ -76,5 +152,16 @@ test.describe("Content sync RAG coverage Web Demo", () => {
     await expect(sourceCard).toContainText("80");
     await expect(sourceCard).toContainText("同步停用");
     await expect(page.getByTestId("rag-coverage").first().locator("dd").first()).toHaveText("379");
+  });
+
+  test("Playbook refresh returns an async task and exposes its checking state", async ({
+    page,
+  }) => {
+    await page.goto("/admin/content-sync?d_scene=admin-dashboard");
+    await page.getByRole("button", { name: "刷新 Playbook" }).click();
+    await expect(page.getByTestId("content-sync-queued")).toBeVisible();
+    await expect(page.getByTestId("playbook-sync-status")).toContainText("检查中");
+    await expect(page.getByTestId("playbook-sync-task")).toContainText("running");
+    await expect(page.getByRole("button", { name: "刷新 Playbook" })).toBeDisabled();
   });
 });

@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render } from "@testing-library/react";
 import {
   ContentSyncActions,
   PlaybookStatusDetails,
+  PlaybookSyncStatusDetails,
   RagCoverageGrid,
   VectorizationStatsGrid,
 } from "./content-sync";
@@ -80,6 +81,49 @@ describe("Playbook sync controls", () => {
     expect(getByText("已采用")).toBeTruthy();
     expect(getByText(/2 ready/)).toBeTruthy();
     expect(getByText(/1 条记录/)).toBeTruthy();
+  });
+
+  test("renders the dynamic sync state, source identity, snapshots, and failure reason", () => {
+    const currentHash = "c".repeat(64);
+    const previousHash = "d".repeat(64);
+    const { getAllByText, getByTestId, getByText } = render(
+      <PlaybookSyncStatusDetails
+        playbook={{
+          adopted: true,
+          state: "failed",
+          sourceStatus: "failed",
+          repository: "IvanLi-CN/style-playbook-skills",
+          ref: "main",
+          adoptedAt: Date.now(),
+          current: {
+            editionDigest: currentHash,
+            contentHash: currentHash,
+            commit: "a".repeat(40),
+            ref: "main",
+            source: { releaseId: "100", tag: "v2.4.3" },
+          },
+          previous: {
+            editionDigest: previousHash,
+            contentHash: previousHash,
+            commit: "b".repeat(40),
+            ref: "main",
+          },
+          lexical: { status: "ready", count: 80 },
+          semantic: { status: "failed", lastError: "GitHub 检查失败" },
+          lastCheckAt: Date.now(),
+          lastSuccessAt: Date.now(),
+        }}
+      />
+    );
+
+    expect(getByTestId("playbook-sync-status")).toBeTruthy();
+    expect(getByTestId("playbook-source-identity").textContent).toContain(
+      "IvanLi-CN/style-playbook-skills"
+    );
+    expect(getByText("失败")).toBeTruthy();
+    expect(getByText("GitHub 检查失败")).toBeTruthy();
+    expect(getAllByText(currentHash)).toHaveLength(2);
+    expect(getByText(previousHash)).toBeTruthy();
   });
 
   test("fires Playbook refresh and disables all actions while busy", () => {

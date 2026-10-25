@@ -2,6 +2,15 @@ import type { UnifiedContentSyncStatus } from "@/server/services/content-sync-st
 
 export type { UnifiedContentSyncStatus };
 
+export type PlaybookSyncState =
+  | "unconfigured"
+  | "current"
+  | "checking"
+  | "stale"
+  | "failed"
+  | "invalid"
+  | "unavailable";
+
 import type {
   AdminLlmCatalogResponse,
   AdminLlmSettingsPayload,
@@ -311,6 +320,15 @@ export interface PlaybookContentSyncStatus {
     sourceTag: string;
     generatedAt: string;
   }>;
+}
+
+export interface ContentSyncTriggerResponse {
+  success?: boolean;
+  queued?: boolean;
+  taskId?: string | null;
+  status?: UnifiedContentSyncStatus | null;
+  message?: string;
+  [key: string]: unknown;
 }
 
 export interface SyncProgress {
@@ -672,12 +690,12 @@ export const adminApi = {
   getVectorizationStats: () =>
     adminRequest<VectorizationStats>("/api/admin/content-sync/vectorization-stats"),
   triggerContentSync: (input: Record<string, unknown> = {}) =>
-    adminRequest<Record<string, unknown>>("/api/admin/content-sync/trigger", {
+    adminRequest<ContentSyncTriggerResponse>("/api/admin/content-sync/trigger", {
       method: "POST",
       body: JSON.stringify(input),
     }),
   triggerPlaybookSync: () =>
-    adminRequest<Record<string, unknown>>("/api/admin/content-sync/playbook/trigger", {
+    adminRequest<ContentSyncTriggerResponse>("/api/admin/content-sync/playbook/trigger", {
       method: "POST",
     }),
   cancelContentSync: () =>
