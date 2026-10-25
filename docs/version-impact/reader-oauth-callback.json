@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "94a23823fa32bff7e048c02b333a0fa42835ef53",
+  "base_sha": "d2648343816c89772855dcc90be2f87b70d29d8d",
   "covered_files": {
     "docs/github-login-comments-design.md": "5ae6ac006cc1a05f64c4387cc6108705351b436a",
     "docs/incidents/2026-10-25-github-reader-oauth-app-mismatch.md": "ee2c7301d74fe637aabdea2a2a091b8be8afae20",
