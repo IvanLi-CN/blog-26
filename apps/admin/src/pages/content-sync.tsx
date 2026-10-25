@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   adminApi,
   type PlaybookContentSyncStatus,
+  type PlaybookSyncState,
   type UnifiedContentSyncStatus,
   type VectorizationStats,
 } from "@/lib/admin-api-client";
@@ -31,6 +32,261 @@ import { formatCount, formatDateTime, getErrorMessage, PageHeader } from "~/page
 function compactEdition(value?: string | null) {
   if (!value) return "-";
   return value.length > 24 ? `${value.slice(0, 12)}…${value.slice(-8)}` : value;
+}
+
+type PlaybookSnapshotView = {
+  edition?: string | null;
+  editionDigest?: string | null;
+  contentHash?: string | null;
+  repository?: string | null;
+  ref?: string | null;
+  commit?: string | null;
+  generatedAt?: string | null;
+  source?: { releaseId?: string | null; tag?: string | null } | null;
+};
+
+export type PlaybookStatusView = {
+  adopted: boolean;
+  state?: PlaybookSyncState;
+  sourceStatus?: string | null;
+  repository?: string | null;
+  ref?: string | null;
+  adoptedAt?: number | null;
+  current?: PlaybookSnapshotView | null;
+  previous?: PlaybookSnapshotView | null;
+  lexical?: { status: string; count: number };
+  semantic?: { status: string; lastError?: string | null };
+  lastCheckAt?: number | null;
+  lastSuccessAt?: number | null;
+};
+
+type PlaybookTaskView = UnifiedContentSyncStatus["tasks"]["items"][number];
+
+const PLAYBOOK_STATE_LABELS: Record<PlaybookSyncState, string> = {
+  unconfigured: "未配置",
+  current: "当前",
+  checking: "检查中",
+  stale: "过时",
+  failed: "失败",
+  invalid: "无效快照",
+  unavailable: "不可用",
+};
+
+function playbookStateTone(state?: PlaybookSyncState) {
+  if (state === "current") return "success" as const;
+  if (state === "checking" || state === "stale") return "warning" as const;
+  if (state === "failed" || state === "invalid") return "danger" as const;
+  return "outline" as const;
+}
+
+function taskTone(status?: string) {
+  if (status === "failed") return "danger" as const;
+  if (status === "running" || status === "queued") return "warning" as const;
+  if (status === "success" || status === "unchanged") return "success" as const;
+  return "outline" as const;
+}
+
+function displayValue(value?: string | null) {
+  return value || "不可用";
+}
+
+function displayMetric(value?: number | null) {
+  return value === undefined || value === null ? "—" : formatCount(value);
+}
+
+export function PlaybookSyncStatusDetails({
+  playbook,
+  task,
+  rag,
+}: {
+  playbook: PlaybookStatusView;
+  task?: PlaybookTaskView;
+  rag?: UnifiedContentSyncStatus["rag"];
+}) {
+  const state = playbook.state ?? "unavailable";
+  const current = playbook.current;
+  const previous = playbook.previous;
+  const ragSource = rag?.bySource.find((row) => row.source === "playbook");
+  const ragContents = ragSource?.contents;
+
+  return (
+    <div className="space-y-5" data-testid="playbook-sync-status">
+      <div className="flex flex-col gap-4 border-b border-border/50 pb-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium">Playbook 同步状态</span>
+            <Badge tone={playbookStateTone(state)}>{PLAYBOOK_STATE_LABELS[state]}</Badge>
+            <Badge tone={playbook.adopted ? "success" : "outline"}>
+              {playbook.adopted ? "内容已采用" : "内容未采用"}
+            </Badge>
+          </div>
+          <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+            <div className="min-w-0">
+              <dt className="text-xs text-muted-foreground">来源状态</dt>
+              <dd className="mt-1 font-medium text-foreground">
+                {displayValue(playbook.sourceStatus)}
+              </dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-xs text-muted-foreground">词法索引</dt>
+              <dd className="mt-1 font-medium text-foreground">
+                {playbook.lexical
+                  ? `${playbook.lexical.status} · ${formatCount(playbook.lexical.count)} 项`
+                  : "不可用"}
+              </dd>
+            </div>
+          </dl>
+        </div>
+        <dl className="grid shrink-0 gap-1 text-left text-xs text-muted-foreground sm:text-right">
+          <div>
+            <dt className="inline">最近检查：</dt>{" "}
+            <dd className="inline">{formatDateTime(playbook.lastCheckAt)}</dd>
+          </div>
+          <div>
+            <dt className="inline">最近成功：</dt>{" "}
+            <dd className="inline">{formatDateTime(playbook.lastSuccessAt)}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <section className="space-y-3" data-testid="playbook-source-identity">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <h4 className="text-sm font-medium">来源身份</h4>
+          <p className="text-xs text-muted-foreground">固定到同一 GitHub commit</p>
+        </div>
+        <dl className="grid min-w-0 gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+          <div className="min-w-0">
+            <dt className="text-xs text-muted-foreground">仓库</dt>
+            <dd className="mt-1 break-words font-mono text-xs font-medium text-foreground">
+              {displayValue(playbook.repository)}
+            </dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="text-xs text-muted-foreground">Ref</dt>
+            <dd className="mt-1 break-words font-mono text-xs font-medium text-foreground">
+              {displayValue(playbook.ref)}
+            </dd>
+          </div>
+          <div className="min-w-0 sm:col-span-2">
+            <dt className="text-xs text-muted-foreground">当前 commit</dt>
+            <dd className="mt-1 min-w-0 rounded-lg bg-background/45 px-3 py-2 font-mono text-xs font-medium leading-5 text-foreground break-all">
+              {displayValue(current?.commit)}
+            </dd>
+          </div>
+          <div className="min-w-0 sm:col-span-2">
+            <dt className="text-xs text-muted-foreground">当前 content hash</dt>
+            <dd className="mt-1 min-w-0 rounded-lg bg-background/45 px-3 py-2 font-mono text-xs font-medium leading-5 text-foreground break-all">
+              {displayValue(current?.contentHash ?? current?.editionDigest)}
+            </dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="text-xs text-muted-foreground">Release / tag</dt>
+            <dd className="mt-1 break-words font-medium text-foreground">
+              {displayValue(current?.source?.releaseId)} / {displayValue(current?.source?.tag)}
+            </dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="text-xs text-muted-foreground">采用时间</dt>
+            <dd className="mt-1 font-medium text-foreground">
+              {formatDateTime(playbook.adoptedAt)}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section
+        className="space-y-3 border-t border-border/50 pt-4"
+        aria-labelledby="playbook-snapshots-heading"
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <h4 id="playbook-snapshots-heading" className="text-sm font-medium">
+            快照对比
+          </h4>
+          <p className="text-xs text-muted-foreground">用于确认当前采用内容与上一版来源</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 sm:divide-x sm:divide-border/50">
+          {(
+            [
+              ["当前快照", current],
+              ["上一快照", previous],
+            ] as const
+          ).map(([label, snapshot], index) => (
+            <div className={`min-w-0 ${index === 1 ? "sm:pl-4" : "sm:pr-4"}`} key={label}>
+              <p className="text-xs text-muted-foreground">{label}</p>
+              <p className="mt-1 break-all font-mono text-xs font-medium leading-5 text-foreground">
+                {displayValue(snapshot?.editionDigest ?? snapshot?.contentHash)}
+              </p>
+              <dl className="mt-2 grid gap-x-3 gap-y-1 text-xs text-muted-foreground sm:grid-cols-2">
+                <div className="min-w-0">
+                  <dt className="inline">commit：</dt>
+                  <dd className="inline break-all font-mono">{displayValue(snapshot?.commit)}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="inline">ref：</dt>
+                  <dd className="inline break-words font-mono">{displayValue(snapshot?.ref)}</dd>
+                </div>
+              </dl>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section
+        className="space-y-3 border-t border-border/50 pt-4"
+        aria-labelledby="playbook-semantic-heading"
+        data-testid="playbook-semantic-projection"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h4 id="playbook-semantic-heading" className="text-sm font-medium">
+            语义投影
+          </h4>
+          <Badge tone={taskTone(playbook.semantic?.status)}>
+            {displayValue(playbook.semantic?.status)}
+          </Badge>
+        </div>
+        <p className="break-words text-sm text-foreground">
+          模型：<span className="font-medium">{displayValue(rag?.identity.model)}</span>
+        </p>
+        <dl className="grid grid-cols-3 gap-3 border-t border-border/50 pt-3 text-sm">
+          <div className="min-w-0">
+            <dt className="text-xs text-muted-foreground">ready</dt>
+            <dd className="mt-1 font-semibold tabular-nums">
+              {displayMetric(ragContents?.indexed)}
+            </dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="text-xs text-muted-foreground">pending</dt>
+            <dd className="mt-1 font-semibold tabular-nums">
+              {displayMetric(ragContents?.unindexed)}
+            </dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="text-xs text-muted-foreground">failed</dt>
+            <dd className="mt-1 font-semibold tabular-nums">
+              {displayMetric(ragContents?.failed)}
+            </dd>
+          </div>
+        </dl>
+        {playbook.semantic?.lastError && (
+          <p className="break-words text-sm text-danger">{playbook.semantic.lastError}</p>
+        )}
+      </section>
+
+      {task && (
+        <div
+          className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border/50 pt-4 text-sm"
+          data-testid="playbook-sync-task"
+        >
+          <span className="font-medium">最近同步任务</span>
+          <Badge tone={taskTone(task.status)}>{task.status}</Badge>
+          <span className="text-muted-foreground">
+            {task.phase} · {task.processed}/{task.total} · 失败 {task.failed}
+          </span>
+          {task.error && <span className="break-words text-danger">{task.error}</span>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function PlaybookStatusDetails({ playbook }: { playbook: PlaybookContentSyncStatus }) {
@@ -182,6 +438,9 @@ export function ContentSyncPage() {
   const cancel = useMutation({ mutationFn: adminApi.cancelContentTask, onSuccess: refresh });
   const data = statusQuery.data;
   const active = data?.tasks.items.filter((task) => task.finishedAt === null) ?? [];
+  const latestPlaybookSync = data?.tasks.items.find(
+    (task) => task.kind === "sync" && task.source === "playbook"
+  );
   const count = (value?: number | null) =>
     value === undefined || value === null ? "—" : formatCount(value);
   return (
@@ -241,6 +500,11 @@ export function ContentSyncPage() {
             {getErrorMessage(error)}
           </Alert>
         ))}
+      {sync.data?.queued && (
+        <div data-testid="content-sync-queued">
+          <Alert>同步任务已加入持久队列；当前状态会随任务进度刷新，页面无需等待请求完成。</Alert>
+        </div>
+      )}
       {index.data?.results
         .filter((result) => result.error)
         .map((result) => (
@@ -308,43 +572,26 @@ export function ContentSyncPage() {
                       {count(ragSource.contents.total)} 项完整索引
                     </p>
                   )}
-                  <Disclosure className="text-sm text-muted-foreground" summary="身份与最近记录">
-                    <dl className="mt-3 space-y-2">
-                      <div>
-                        <dt>最近检查</dt>
-                        <dd>{formatDateTime(item.lastCheckAt)}</dd>
-                      </div>
-                      <div>
-                        <dt>最近成功同步</dt>
-                        <dd>{formatDateTime(item.lastSuccessAt)}</dd>
-                      </div>
-                      {item.name === "playbook" && (
-                        <>
-                          <div>
-                            <dt>采用时间</dt>
-                            <dd>
-                              {data.playbook.adoptedAt
-                                ? formatDateTime(data.playbook.adoptedAt)
-                                : "未知"}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt>当前 edition</dt>
-                            <dd className="break-all font-mono text-xs">
-                              {data.playbook.current?.editionDigest ?? "不可用"}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt>Release / tag</dt>
-                            <dd className="break-all">
-                              {data.playbook.current?.source.releaseId} /{" "}
-                              {data.playbook.current?.source.tag}
-                            </dd>
-                          </div>
-                        </>
-                      )}
-                    </dl>
-                  </Disclosure>
+                  {item.name === "playbook" ? (
+                    <PlaybookSyncStatusDetails
+                      playbook={data.playbook}
+                      task={latestPlaybookSync}
+                      rag={data.rag}
+                    />
+                  ) : (
+                    <Disclosure className="text-sm text-muted-foreground" summary="身份与最近记录">
+                      <dl className="mt-3 space-y-2">
+                        <div>
+                          <dt>最近检查</dt>
+                          <dd>{formatDateTime(item.lastCheckAt)}</dd>
+                        </div>
+                        <div>
+                          <dt>最近成功同步</dt>
+                          <dd>{formatDateTime(item.lastSuccessAt)}</dd>
+                        </div>
+                      </dl>
+                    </Disclosure>
+                  )}
                 </div>
               );
             })}
@@ -408,6 +655,13 @@ export function ContentSyncPage() {
                   : "所选 Playbook 快照不可用。"}
               </Alert>
             )}
+            {data?.rag.incompleteSources.length ? (
+              <div data-testid="rag-incomplete">
+                <Alert tone="warning">
+                  RAG 覆盖不足：{data.rag.incompleteSources.join("、")} 尚未完成可用索引。
+                </Alert>
+              </div>
+            ) : null}
             {data && (
               <>
                 <RagCoverageGrid
@@ -494,9 +748,7 @@ export function ContentSyncPage() {
                   <span className="font-medium">
                     {task.source} · {task.kind === "rag" ? "RAG 索引" : "内容同步"}
                   </span>
-                  <Badge tone={task.status === "failed" ? "danger" : "outline"}>
-                    {task.status}
-                  </Badge>
+                  <Badge tone={taskTone(task.status)}>{task.status}</Badge>
                   <span className="text-sm text-muted-foreground">
                     {task.phase} · {task.processed}/{task.total} · 失败 {task.failed}
                   </span>

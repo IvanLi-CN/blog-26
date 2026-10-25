@@ -8,6 +8,7 @@ import type {
   JobRun,
   PersonalAccessTokenListRow,
   PlaybookContentSyncStatus,
+  PlaybookSyncState,
   SyncHistoryEntry,
   SyncLog,
   SyncProgress,
@@ -409,6 +410,19 @@ const comments: DemoAdminComment[] = [
 ];
 const initialDemoComments = comments.map((comment) => ({ ...comment }));
 let commentsResetWindow: Window | null = null;
+const DEMO_RAG_TASK_ID = "550e8400-e29b-41d4-a716-446655440000";
+const DEMO_PLAYBOOK_TASK_ID = "550e8400-e29b-41d4-a716-446655440001";
+let demoIndexCancelled = false;
+let demoIndexStarted = false;
+let demoPlaybookSyncCancelled = false;
+let demoPlaybookSyncStarted = false;
+
+function resetDemoContentSyncState() {
+  demoIndexCancelled = false;
+  demoIndexStarted = false;
+  demoPlaybookSyncCancelled = false;
+  demoPlaybookSyncStarted = false;
+}
 
 function ensureDemoCommentsResetListener() {
   if (typeof window === "undefined" || typeof window.addEventListener !== "function") return;
@@ -418,6 +432,7 @@ function ensureDemoCommentsResetListener() {
     const action = (event as CustomEvent<{ action?: string }>).detail?.action;
     if (action !== "reset-state") return;
     comments.splice(0, comments.length, ...initialDemoComments.map((comment) => ({ ...comment })));
+    resetDemoContentSyncState();
   });
 }
 
@@ -730,15 +745,57 @@ const demoSearchSettings: AdminSearchSettings = {
 const demoSearchRuns = new Map<string, SearchValidationRun>();
 const demoSearchRevision = { rag: 0, rewrite: 0 };
 
-let demoIndexCancelled = false;
-let demoIndexStarted = false;
+type DemoRagMetrics = {
+  total: number;
+  indexed: number | null;
+  unindexed: number | null;
+  outdated: number | null;
+  failed: number | null;
+  coverage: number | null;
+};
+
 function unifiedSyncStatus(url: URL) {
-  const scene = getWebDemoState(window.location, "admin").scene;
+  const demoState = getWebDemoState(window.location, "admin");
+  const scene = demoState.scene;
+  const dataMode = demoState.data;
   const source = url.searchParams.get("source") ?? "all";
   const previous = url.searchParams.get("edition") === "previous";
   const available = scene !== "admin-sync-unconfigured";
+  const invalidSnapshot = scene === "admin-sync-failed" && dataMode === "empty";
+  const checking = demoPlaybookSyncStarted && !demoPlaybookSyncCancelled;
+  const playbookState: PlaybookSyncState = checking
+    ? "checking"
+    : scene === "admin-sync-unconfigured"
+      ? "unconfigured"
+      : invalidSnapshot
+        ? "invalid"
+        : scene === "admin-sync-failed"
+          ? "failed"
+          : scene === "admin-sync-outdated"
+            ? "stale"
+            : scene === "admin-sync-disabled"
+              ? "unavailable"
+              : "current";
+  const sourceStatus =
+    playbookState === "unconfigured"
+      ? "unconfigured"
+      : playbookState === "invalid"
+        ? "invalid"
+        : playbookState === "failed"
+          ? "failed"
+          : playbookState === "unavailable"
+            ? "unavailable"
+            : "ready";
+  const failureMessage =
+    playbookState === "invalid"
+      ? "Playbook 快照校验失败，当前版本未采用。"
+      : playbookState === "failed"
+        ? "GitHub 检查失败；保留上一次已采用快照。"
+        : playbookState === "unconfigured"
+          ? "尚未配置 Playbook 来源。"
+          : null;
   const total = source === "blog" ? 299 : source === "playbook" ? 80 : 379;
-  const metrics = (count: number) => {
+  const metrics = (count: number): DemoRagMetrics => {
     const indexed = scene === "admin-sync-unindexed" ? 0 : Math.floor(count * 0.6);
     const outdated =
       scene === "admin-sync-unindexed"
@@ -756,27 +813,116 @@ function unifiedSyncStatus(url: URL) {
       coverage: available && count ? indexed / count : null,
     };
   };
-  const chunkMetrics = (counts: ReturnType<typeof metrics>) =>
-    Object.fromEntries(
-      Object.entries(counts).map(([key, value]) => [
-        key,
-        key === "coverage" || value === null ? value : value * 3,
-      ])
-    );
+  const chunkMetrics = (counts: ReturnType<typeof metrics>) => ({
+    total: counts.total * 3,
+    indexed: counts.indexed === null ? null : counts.indexed * 3,
+    unindexed: counts.unindexed === null ? null : counts.unindexed * 3,
+    outdated: counts.outdated === null ? null : counts.outdated * 3,
+    failed: counts.failed === null ? null : counts.failed * 3,
+    coverage: counts.coverage,
+  });
   const contents = metrics(total);
   const chunks = chunkMetrics(contents);
-  const edition = {
-    editionDigest: (previous ? "b" : "a").repeat(64),
+  const blogContents = metrics(source === "playbook" ? 0 : 299);
+  const playbookContents = metrics(source === "blog" ? 0 : 80);
+  const blogCoverage = metrics(299);
+  const playbookCoverage = metrics(80);
+  const isIncomplete = (metrics: DemoRagMetrics) =>
+    metrics.indexed === null ||
+    metrics.unindexed !== 0 ||
+    metrics.outdated !== 0 ||
+    metrics.failed !== 0;
+  const semanticStatus = !available
+    ? "unavailable"
+    : playbookCoverage.failed !== 0
+      ? "failed"
+      : isIncomplete(playbookCoverage)
+        ? "pending"
+        : "ready";
+  const currentContentHash = "c".repeat(64);
+  const previousContentHash = "d".repeat(64);
+  const currentSnapshot = {
+    slot: "current" as const,
+    provider: "github",
+    repository: "IvanLi-CN/style-playbook-skills",
+    ref: "main",
+    commit: "a".repeat(40),
+    contentHash: currentContentHash,
+    checkedAt: now - 600000,
+    adoptedAt: now - 600000,
+    taskId: DEMO_PLAYBOOK_TASK_ID,
+    edition: currentContentHash,
+    editionDigest: currentContentHash,
     source: { releaseId: "100", tag: "v2.4.3" },
+    sourceReleaseId: "100",
+    sourceTag: "v2.4.3",
     generatedAt: new Date(now - 600000).toISOString(),
   };
-  const task = {
-    id: "550e8400-e29b-41d4-a716-446655440000",
+  const previousSnapshot = {
+    ...currentSnapshot,
+    slot: "previous" as const,
+    commit: "b".repeat(40),
+    contentHash: previousContentHash,
+    adoptedAt: now - 1_800_000,
+    taskId: null,
+    edition: previousContentHash,
+    editionDigest: previousContentHash,
+    generatedAt: new Date(now - 1_800_000).toISOString(),
+  };
+  const current = available ? currentSnapshot : null;
+  const selectedEdition = previous ? previousSnapshot : current;
+  const playbookTaskStatus = demoPlaybookSyncCancelled
+    ? "cancelled"
+    : playbookState === "checking"
+      ? "running"
+      : playbookState === "current"
+        ? "success"
+        : "failed";
+  const playbookTask = {
+    id: DEMO_PLAYBOOK_TASK_ID,
+    kind: "sync",
+    source: "playbook",
+    origin: "manual",
+    requestKey: "demo-playbook",
+    target: JSON.stringify({ source: "playbook" }),
+    result: JSON.stringify({
+      sourceStatus,
+      ...(playbookState === "stale" ? { comparison: "stale" } : {}),
+      ...(failureMessage ? { error: failureMessage } : {}),
+    }),
+    status: playbookTaskStatus,
+    phase:
+      playbookState === "checking"
+        ? "fetch"
+        : playbookState === "stale"
+          ? "compare"
+          : playbookState === "invalid"
+            ? "validate"
+            : playbookState === "unconfigured"
+              ? "configure"
+              : playbookState === "unavailable"
+                ? "unavailable"
+                : "adopted",
+    total: 80,
+    processed: playbookState === "checking" ? 24 : playbookState === "current" ? 80 : 0,
+    failed: playbookState === "failed" || playbookState === "invalid" ? 1 : 0,
+    error: failureMessage,
+    startedAt: now - 600000,
+    finishedAt: playbookState === "checking" && !demoPlaybookSyncCancelled ? null : now - 1000,
+    cancelRequested: demoPlaybookSyncCancelled,
+    ownerToken: null,
+    ownerHost: null,
+    ownerPid: null,
+    leaseUntil: null,
+  };
+  const ragTask = {
+    id: DEMO_RAG_TASK_ID,
     kind: "rag",
     source: source === "blog" ? "local" : "playbook",
     origin: "manual",
     requestKey: "demo",
     target: "{}",
+    result: null,
     status: demoIndexCancelled ? "cancelled" : demoIndexStarted ? "running" : "success",
     phase: demoIndexStarted ? "embedding" : "success",
     total: 240,
@@ -786,12 +932,35 @@ function unifiedSyncStatus(url: URL) {
     startedAt: now - 600000,
     finishedAt: demoIndexStarted && !demoIndexCancelled ? null : now - 1000,
     cancelRequested: demoIndexCancelled,
+    ownerToken: null,
+    ownerHost: null,
+    ownerPid: null,
+    leaseUntil: null,
   };
+  const incompleteSources = !available
+    ? source === "blog"
+      ? ["blog"]
+      : source === "playbook"
+        ? ["playbook"]
+        : ["blog", "playbook"]
+    : source === "blog"
+      ? isIncomplete(blogContents)
+        ? ["blog"]
+        : []
+      : source === "playbook"
+        ? isIncomplete(playbookContents)
+          ? ["playbook"]
+          : []
+        : [
+            ...(isIncomplete(blogContents) ? ["blog"] : []),
+            ...(isIncomplete(playbookContents) ? ["playbook"] : []),
+          ];
   return {
     observedAt: now,
     summary: {
       registeredSources: 2,
-      enabledSources: scene === "admin-sync-disabled" ? 1 : 2,
+      enabledSources:
+        scene === "admin-sync-disabled" || scene === "admin-sync-unconfigured" ? 1 : 2,
       total: 404,
       totalSyncs: scene === "admin-sync-history" ? 12 : 2,
       trackingSince: now - 86400000,
@@ -802,27 +971,57 @@ function unifiedSyncStatus(url: URL) {
       bySource: { local: 324, playbook: 80 },
     },
     sources: [
-      { name: "local", type: "local", enabled: true, total: 324 },
-      { name: "playbook", type: "playbook", enabled: scene !== "admin-sync-disabled", total: 80 },
+      {
+        name: "local",
+        type: "local",
+        enabled: true,
+        total: 324,
+        lastCheckAt: now - 600000,
+        lastSuccessAt: now - 600000,
+      },
+      {
+        name: "playbook",
+        type: "playbook",
+        enabled: scene !== "admin-sync-disabled" && scene !== "admin-sync-unconfigured",
+        total: 80,
+        lastCheckAt: playbookState === "unconfigured" ? null : now - 600000,
+        lastSuccessAt: current ? now - 600000 : null,
+      },
     ],
     playbook: {
-      adopted: true,
-      adoptedAt: now - 600000,
-      current: { ...edition, editionDigest: "a".repeat(64) },
-      previous: { ...edition, editionDigest: "b".repeat(64) },
+      adopted: Boolean(current),
+      state: playbookState,
+      sourceStatus,
+      repository: currentSnapshot.repository,
+      ref: currentSnapshot.ref,
+      adoptedAt: current?.adoptedAt ?? null,
+      current,
+      previous: previousSnapshot,
+      lexical: { status: current ? "ready" : "unavailable", count: 80 },
+      semantic: {
+        status: semanticStatus,
+        lastError: failureMessage,
+      },
+      lastCheckAt: playbookState === "unconfigured" ? null : now - 600000,
+      lastSuccessAt: current ? now - 600000 : null,
     },
     rag: {
       contents,
       chunks,
       available,
       reason: available ? null : "embedding-unconfigured",
-      missingSources: [],
       identity: {
         source,
         type: "all",
         access: "public",
         blogWatermark: 1,
-        playbook: { edition: edition.editionDigest, sourceReleaseId: "100", sourceTag: "v2.4.3" },
+        playbook: selectedEdition
+          ? {
+              edition: selectedEdition.contentHash,
+              sourceReleaseId: selectedEdition.commit,
+              sourceTag: selectedEdition.ref,
+            }
+          : null,
         fingerprint: "d".repeat(64),
         model: "BAAI/bge-m3",
         configuredDim: null,
@@ -831,23 +1030,24 @@ function unifiedSyncStatus(url: URL) {
       bySource: [
         {
           source: "blog",
-          contents: metrics(source === "playbook" ? 0 : 299),
-          chunks: chunkMetrics(metrics(source === "playbook" ? 0 : 299)),
+          contents: blogCoverage,
+          chunks: chunkMetrics(blogCoverage),
           available,
         },
         {
           source: "playbook",
-          contents: metrics(source === "blog" ? 0 : 80),
-          chunks: chunkMetrics(metrics(source === "blog" ? 0 : 80)),
+          contents: playbookCoverage,
+          chunks: chunkMetrics(playbookCoverage),
           available,
         },
       ],
       details: [],
-      incompleteSources: source === "all" ? ["blog", "playbook"] : [source],
+      missingSources: !available ? ["playbook"] : [],
+      incompleteSources,
       lastIndexedAt: now - 600000,
     },
-    tasks: { items: [task], total: 1 },
-    policy: { rag: { available: true }, rewrite: { available: true } },
+    tasks: { items: [playbookTask, ragTask], total: 2 },
+    policy: { rag: { available }, rewrite: { available: true } },
   };
 }
 
@@ -1002,22 +1202,51 @@ async function handleAdminRequest(
     return json({ success: true, message: "评论状态已更新" });
   }
   if (path === "/api/admin/content-sync/status") return json(unifiedSyncStatus(url));
+  if (
+    (path === "/api/admin/content-sync/trigger" &&
+      method === "POST" &&
+      body?.source === "playbook") ||
+    (path === "/api/admin/content-sync/playbook/trigger" && method === "POST")
+  ) {
+    demoPlaybookSyncStarted = true;
+    demoPlaybookSyncCancelled = false;
+    recordWebDemoMutation("启动 Playbook 检查", "持久任务已入队（模拟）");
+    return json(
+      {
+        success: true,
+        queued: true,
+        taskId: DEMO_PLAYBOOK_TASK_ID,
+        status: unifiedSyncStatus(url),
+      },
+      200
+    );
+  }
+  if (path === "/api/admin/content-sync/trigger" && method === "POST") {
+    recordWebDemoMutation("启动内容同步", `${String(body?.source ?? "all")}（模拟）`);
+    return json({ success: true, queued: true, message: "任务已加入队列" }, 200);
+  }
   if (path === "/api/admin/content-sync/rag/trigger") {
     demoIndexStarted = true;
     demoIndexCancelled = false;
     recordWebDemoMutation("启动 RAG 索引", `${String(body.source)} · ${String(body.mode)}（模拟）`);
     return json(
       {
-        taskIds: ["550e8400-e29b-41d4-a716-446655440000"],
-        results: [{ source: body.source, taskId: "550e8400-e29b-41d4-a716-446655440000" }],
+        taskIds: [DEMO_RAG_TASK_ID],
+        results: [{ source: body.source, taskId: DEMO_RAG_TASK_ID }],
       },
       202
     );
   }
   if (path.startsWith("/api/admin/content-sync/tasks/") && path.endsWith("/cancel")) {
+    const taskId = decodeURIComponent(path.split("/").at(-2) ?? "");
+    if (taskId === DEMO_PLAYBOOK_TASK_ID) {
+      demoPlaybookSyncCancelled = true;
+      recordWebDemoMutation("取消 Playbook 检查", "保留上一次已采用快照");
+      return json({ taskId, status: "cancelled" });
+    }
     demoIndexCancelled = true;
     recordWebDemoMutation("取消 RAG 任务", "保留已成功的模拟分块");
-    return json({ taskId: "550e8400-e29b-41d4-a716-446655440000", status: "cancelled" });
+    return json({ taskId: DEMO_RAG_TASK_ID, status: "cancelled" });
   }
   if (path === "/api/admin/content-sync/manager-stats")
     return json({ registeredSources: 2, enabledSources: 2, activeJobs: 1 });
