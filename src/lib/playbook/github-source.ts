@@ -6,9 +6,15 @@ import {
   parseJson,
   verifyFile,
 } from "./manifest";
-import { getPlaybookPolicies, normalizePlaybookSearch, playbookHref } from "./navigation";
+import {
+  getPlaybookPolicies,
+  normalizePlaybookSearch,
+  playbookHref,
+  validatePlaybookSearchRoute,
+} from "./navigation";
 import {
   assertPublicCatalog,
+  catalogSchema,
   digestSchema,
   githubPublicExportManifestSchema,
   githubRefSchema,
@@ -99,8 +105,19 @@ export function normalizePlaybookSnapshot(
   catalogInput: unknown,
   searchInput: unknown
 ): PlaybookNormalizedSnapshot {
-  const catalog = assertPublicCatalog(catalogInput);
-  const search = normalizePlaybookSearch(catalog, searchSchema.parse(searchInput));
+  // Parse the current public schema before the shared legacy-compatible validator.
+  // GitHub exports must not gain public visibility through historical normalization.
+  const catalog = assertPublicCatalog(catalogSchema.parse(catalogInput));
+  const parsedSearch = searchSchema.parse(searchInput);
+  const routedSearch: PlaybookSearchPayload = {
+    generated_at: parsedSearch.generated_at,
+    documents: parsedSearch.documents.map((document) => ({
+      ...document,
+      route: validatePlaybookSearchRoute(catalog, document),
+    })),
+  };
+  assertCompletePlaybookSearch(catalog, routedSearch);
+  const search = normalizePlaybookSearch(catalog, routedSearch);
   assertCompletePlaybookSearch(catalog, search);
   return { catalog, search };
 }
@@ -109,16 +126,8 @@ function assertCompletePlaybookSearch(
   catalog: PlaybookPublicCatalog,
   search: PlaybookSearchPayload
 ) {
-  const find = (route: string, sectionId: string | null) => {
-    const target = playbookHref(route, sectionId);
-    return search.documents.find(
-      (document) =>
-        playbookHref(document.route, document.section_id) === target &&
-        (sectionId === null
-          ? document.kind === "page" && document.section_id == null
-          : document.kind !== "page" && document.section_id === sectionId)
-    );
-  };
+  const expectedIds = new Set<string>();
+  const find = (id: string) => search.documents.find((document) => document.id === id);
   const requireDocument = (input: {
     id: string;
     kind: PlaybookSearchDocument["kind"];
@@ -129,7 +138,8 @@ function assertCompletePlaybookSearch(
     keywords: string[];
     bodyParts: string[];
   }) => {
-    const document = find(input.route, input.sectionId);
+    expectedIds.add(input.id);
+    const document = find(input.id);
     const canonicalRoute = playbookHref(input.route, input.sectionId);
     if (
       !document ||
@@ -139,7 +149,9 @@ function assertCompletePlaybookSearch(
       document.subtitle !== input.subtitle ||
       document.route !== canonicalRoute ||
       document.section_id !== input.sectionId ||
-      !input.keywords.every((keyword) => document.keywords.includes(keyword))
+      document.command_id !== null ||
+      document.keywords.length !== input.keywords.length ||
+      input.keywords.some((keyword, index) => document.keywords[index] !== keyword)
     )
       throw new Error(`Search projection metadata mismatch: ${canonicalRoute}`);
     for (const bodyPart of input.bodyParts) {
@@ -161,6 +173,7 @@ function assertCompletePlaybookSearch(
       keywords: detail.item.categories,
       bodyParts: [
         detail.item.description ?? "",
+        detail.preamble,
         ...detail.sections.map((section) => section.markdown),
       ],
     });
@@ -189,6 +202,7 @@ function assertCompletePlaybookSearch(
       keywords: detail.item.tags,
       bodyParts: [
         detail.item.description ?? "",
+        detail.preamble,
         ...detail.sections.map((section) => section.markdown),
       ],
     });
@@ -217,18 +231,23 @@ function assertCompletePlaybookSearch(
       keywords: [policy.summary.slug, policy.summary.primary_topic],
       bodyParts: [policy.instruction_markdown],
     });
-    if (policy.resources.length) {
-      const resources = find(route, "resources");
-      if (!resources)
-        throw new Error(
-          `Search is missing section projection: ${playbookHref(route, "resources")}`
-        );
-      for (const resource of policy.resources) {
-        if (!resources.body.includes(resource.content))
-          throw new Error(`Search resource projection mismatch: ${resource.path}`);
-      }
-    }
+    for (const resource of policy.resources)
+      requireDocument({
+        id: `resource:${policy.summary.slug}:${resource.path}`,
+        kind: "section",
+        title: resource.path,
+        subtitle: resource.kind,
+        route,
+        sectionId: "resources",
+        keywords: [resource.path, resource.kind, policy.summary.slug],
+        bodyParts: [resource.content],
+      });
   }
+  const unexpected = search.documents.find((document) => !expectedIds.has(document.id));
+  if (unexpected)
+    throw new Error(`Search projection contains unexpected document: ${unexpected.id}`);
+  if (search.documents.length !== expectedIds.size)
+    throw new Error("Duplicate search document identity");
 }
 
 function invalid(message: string, options?: ErrorOptions): never {
@@ -310,6 +329,7 @@ export async function readPlaybookGitHubSnapshot(
     try {
       files.set(path, await transport.readFile({ repository: config.repository, commit, path }));
     } catch (error) {
+      if (error instanceof PlaybookGitHubSourceInvalidError) throw error;
       throw new PlaybookGitHubSourceReadError(`GitHub public export read failed: ${path}`, {
         cause: error,
       });
@@ -411,10 +431,27 @@ export function createPlaybookGitHubSourceTransport(
     Authorization: `Bearer ${token}`,
     "X-GitHub-Api-Version": "2022-11-28",
   };
-  async function json(url: string) {
-    const response = await fetchImpl(url, { headers, redirect: "error" });
-    if (!response.ok) throw new Error(`GitHub API request failed: ${response.status}`);
+  async function request(url: string, accept = headers.Accept, invalidStatus = false) {
+    const response = await fetchImpl(url, {
+      headers: { ...headers, Accept: accept },
+      redirect: "error",
+    });
+    if (!response.ok) {
+      if (invalidStatus && (response.status === 404 || response.status === 422))
+        throw new PlaybookGitHubSourceInvalidError(
+          `GitHub public export path is unavailable: ${response.status}`
+        );
+      throw new Error(`GitHub API request failed: ${response.status}`);
+    }
+    return response;
+  }
+  async function json(url: string, invalidStatus = false) {
+    const response = await request(url, headers.Accept, invalidStatus);
     return (await response.json()) as Record<string, unknown>;
+  }
+  async function raw(url: string) {
+    const response = await request(url, "application/vnd.github.raw", true);
+    return new Uint8Array(await response.arrayBuffer());
   }
   return {
     async resolveRef({ repository, ref }) {
@@ -425,15 +462,17 @@ export function createPlaybookGitHubSourceTransport(
       return value.sha;
     },
     async readFile({ repository, commit, path }) {
-      const value = await json(
-        githubApiPath(repository, path, `ref=${encodeURIComponent(commit)}`)
-      );
-      if (value.type !== "file" || value.path !== path || typeof value.content !== "string")
-        throw new Error(`GitHub path is not a file: ${path}`);
+      const url = githubApiPath(repository, path, `ref=${encodeURIComponent(commit)}`);
+      const value = await json(url, true);
+      if (value.type !== "file" || value.path !== path)
+        throw new PlaybookGitHubSourceInvalidError(`GitHub path is not a file: ${path}`);
+      if (value.encoding === "none" || value.content === "") return raw(url);
+      if (typeof value.content !== "string")
+        throw new PlaybookGitHubSourceInvalidError(`GitHub file has no content: ${path}`);
       const content = value.content.replace(/\s/gu, "");
       const bytes = Buffer.from(content, "base64");
       if (bytes.toString("base64") !== content)
-        throw new Error(`GitHub file is not valid base64: ${path}`);
+        throw new PlaybookGitHubSourceInvalidError(`GitHub file is not valid base64: ${path}`);
       return bytes;
     },
   };

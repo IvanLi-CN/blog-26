@@ -13,7 +13,7 @@ export const commitSchema = z.string().regex(/^[a-f0-9]{40}$/);
 export const stableTagSchema = z.string().regex(/^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
 export const githubRepositorySchema = z
   .string()
-  .regex(/^[^/\s]+\/[^/\s]+$/u, "Invalid GitHub repository");
+  .regex(/^[A-Za-z0-9][A-Za-z0-9_.-]*\/[A-Za-z0-9][A-Za-z0-9_.-]*$/u, "Invalid GitHub repository");
 export const githubRefSchema = z
   .string()
   .min(1)

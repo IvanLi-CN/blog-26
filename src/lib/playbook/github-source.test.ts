@@ -31,7 +31,6 @@ const projectBody = [
   fixtureProject.item.description ?? "",
   ...fixtureProject.sections.map((section) => section.markdown),
 ].join(" ");
-const resourceBody = fixturePolicy.resources.map((resource) => resource.content).join("\n\n");
 
 const completeFixtureSearch: PlaybookSearchPayload = {
   generated_at: publicFixtureSearch.generated_at,
@@ -81,20 +80,27 @@ const completeFixtureSearch: PlaybookSearchPayload = {
       command_id: null,
     })),
     {
-      id: `resource:${fixturePolicy.summary.slug}:${fixturePolicy.resources[0]?.path}`,
-      kind: "section",
-      title: fixturePolicy.resources[0]?.path ?? "resource",
-      subtitle: fixturePolicy.resources[0]?.kind ?? "resource",
-      body: resourceBody,
+      id: `policy:${fixturePolicy.summary.slug}`,
+      kind: "page",
+      title: fixturePolicy.summary.name,
+      subtitle: fixturePolicy.summary.description,
+      body: fixturePolicy.instruction_markdown,
       route: `/policies/${fixturePolicy.summary.slug}`,
-      section_id: "resources",
-      keywords: [
-        fixturePolicy.resources[0]?.path ?? "resource",
-        fixturePolicy.resources[0]?.kind ?? "resource",
-        fixturePolicy.summary.slug,
-      ],
+      section_id: null,
+      keywords: [fixturePolicy.summary.slug, fixturePolicy.summary.primary_topic],
       command_id: null,
     },
+    ...fixturePolicy.resources.map((resource) => ({
+      id: `resource:${fixturePolicy.summary.slug}:${resource.path}`,
+      kind: "section" as const,
+      title: resource.path,
+      subtitle: resource.kind,
+      body: resource.content,
+      route: `/policies/${fixturePolicy.summary.slug}`,
+      section_id: "resources",
+      keywords: [resource.path, resource.kind, fixturePolicy.summary.slug],
+      command_id: null,
+    })),
   ],
 };
 
@@ -363,7 +369,62 @@ test("rejects a resource projection that omits public resource content", () => {
   if (!resources) throw new Error("resource search document is missing");
   resources.body = "resource summary only";
   expect(() => normalizePlaybookSnapshot(publicFixtureCatalog, invalidSearch)).toThrow(
-    "Search resource projection mismatch"
+    "Search projection body mismatch"
+  );
+});
+
+test("rejects extra documents, missing Policy pages, and resource metadata drift", () => {
+  const extraDocumentSearch = structuredClone(completeFixtureSearch);
+  const topicPage = extraDocumentSearch.documents.find(
+    (document) => document.id === "topic:delivery"
+  );
+  if (!topicPage) throw new Error("topic search document is missing");
+  extraDocumentSearch.documents.push({ ...topicPage, id: "extra:topic", body: "unbound content" });
+  expect(() => normalizePlaybookSnapshot(publicFixtureCatalog, extraDocumentSearch)).toThrow(
+    "unexpected document"
+  );
+
+  const missingPolicySearch = structuredClone(completeFixtureSearch);
+  missingPolicySearch.documents = missingPolicySearch.documents.filter(
+    (document) => document.id !== "policy:safe-release"
+  );
+  expect(() => normalizePlaybookSnapshot(publicFixtureCatalog, missingPolicySearch)).toThrow(
+    "Search projection metadata mismatch"
+  );
+
+  const wrongResourceSearch = structuredClone(completeFixtureSearch);
+  const resource = wrongResourceSearch.documents.find(
+    (document) => document.section_id === "resources"
+  );
+  if (!resource) throw new Error("resource search document is missing");
+  resource.id = "resource:safe-release:wrong.sh";
+  resource.title = "wrong.sh";
+  resource.subtitle = "text";
+  resource.keywords = [];
+  expect(() => normalizePlaybookSnapshot(publicFixtureCatalog, wrongResourceSearch)).toThrow(
+    "Search projection metadata mismatch"
+  );
+});
+
+test("requires strict current catalog visibility and indexes detail preambles", () => {
+  const legacyCatalog = structuredClone(publicFixtureCatalog);
+  const legacyProject = legacyCatalog.project_details[0]?.item as unknown as Record<
+    string,
+    unknown
+  >;
+  const legacyTopic = legacyCatalog.topic_details[0]?.item as unknown as Record<string, unknown>;
+  if (!legacyProject || !legacyTopic) throw new Error("fixture catalog is incomplete");
+  legacyProject.visibility = null;
+  Reflect.deleteProperty(legacyProject, "catalog_visibility");
+  Reflect.deleteProperty(legacyProject, "source_visibility");
+  Reflect.deleteProperty(legacyTopic, "catalog_visibility");
+  expect(() => normalizePlaybookSnapshot(legacyCatalog, completeFixtureSearch)).toThrow();
+
+  const preambleCatalog = structuredClone(publicFixtureCatalog);
+  preambleCatalog.topic_details[0].preamble = "topic preamble must be searchable";
+  preambleCatalog.project_details[0].preamble = "project preamble must be searchable";
+  expect(() => normalizePlaybookSnapshot(preambleCatalog, completeFixtureSearch)).toThrow(
+    "Search projection body mismatch"
   );
 });
 
@@ -383,6 +444,11 @@ describe("source result states", () => {
     ).toEqual({ repository: "org/repo", ref: "feature/ref", token: "token" });
     expect(() =>
       readPlaybookGitHubSourceConfig({ STYLE_PLAYBOOK_GITHUB_REPOSITORY: "invalid" })
+    ).toThrow();
+    expect(() =>
+      readPlaybookGitHubSourceConfig({
+        STYLE_PLAYBOOK_GITHUB_REPOSITORY: "ignored\\..\\actual/repo",
+      })
     ).toThrow();
   });
 
@@ -423,6 +489,19 @@ describe("source result states", () => {
       ref: config.ref,
     });
   });
+
+  test("classifies a missing fixed export path as invalid", async () => {
+    const fetchImpl = (async (input: RequestInfo | URL) => {
+      if (String(input).includes("/commits/"))
+        return new Response(JSON.stringify({ sha: commit }), { status: 200 });
+      return new Response(JSON.stringify({ message: "Not Found" }), { status: 404 });
+    }) as unknown as typeof fetch;
+    const result = await loadPlaybookGitHubSnapshot(
+      createPlaybookGitHubSourceTransport("fixture-token", fetchImpl),
+      config
+    );
+    expect(result.status).toBe("invalid");
+  });
 });
 
 test("pins the production transport to GitHub API paths and validates response bytes", async () => {
@@ -460,6 +539,45 @@ test("pins the production transport to GitHub API paths and validates response b
   expect(requests[0]?.init).toEqual({
     headers: {
       Accept: "application/vnd.github+json",
+      Authorization: "Bearer fixture-token",
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+    redirect: "error",
+  });
+});
+
+test("falls back to the raw GitHub media type for large file responses", async () => {
+  const requests: Array<{ url: string; init: RequestInit }> = [];
+  const rawBytes = Buffer.from("large fixture bytes");
+  const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    requests.push({ url: String(input), init: init ?? {} });
+    if (requests.length === 1)
+      return new Response(JSON.stringify({ sha: commit }), { status: 200 });
+    if (requests.length === 2)
+      return new Response(
+        JSON.stringify({
+          type: "file",
+          path: "public/playbook/catalog.json",
+          encoding: "none",
+          content: "",
+        }),
+        { status: 200 }
+      );
+    return new Response(rawBytes, { status: 200 });
+  }) as unknown as typeof fetch;
+  const transport = createPlaybookGitHubSourceTransport("fixture-token", fetchImpl);
+
+  await transport.resolveRef({ repository: config.repository, ref: config.ref });
+  await expect(
+    transport.readFile({
+      repository: config.repository,
+      commit,
+      path: "public/playbook/catalog.json",
+    })
+  ).resolves.toEqual(rawBytes);
+  expect(requests[2]?.init).toEqual({
+    headers: {
+      Accept: "application/vnd.github.raw",
       Authorization: "Bearer fixture-token",
       "X-GitHub-Api-Version": "2022-11-28",
     },
