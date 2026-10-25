@@ -6,9 +6,10 @@ import {
   parseJson,
   verifyFile,
 } from "./manifest";
-import { normalizePlaybookSearch } from "./navigation";
+import { getPlaybookPolicies, normalizePlaybookSearch, playbookHref } from "./navigation";
 import {
   assertPublicCatalog,
+  digestSchema,
   githubPublicExportManifestSchema,
   githubRefSchema,
   githubRepositorySchema,
@@ -99,29 +100,79 @@ export function normalizePlaybookSnapshot(
 ): PlaybookNormalizedSnapshot {
   const catalog = assertPublicCatalog(catalogInput);
   const search = normalizePlaybookSearch(catalog, searchSchema.parse(searchInput));
+  assertCompletePlaybookSearch(catalog, search);
   return { catalog, search };
+}
+
+function assertCompletePlaybookSearch(
+  catalog: PlaybookPublicCatalog,
+  search: PlaybookSearchPayload
+) {
+  const pageRoutes = new Set(
+    search.documents
+      .filter((document) => document.kind === "page" && document.section_id == null)
+      .map((document) => playbookHref(document.route))
+  );
+  const expectedPages = [
+    ...catalog.topic_details.map((detail) => `/topics/${detail.item.slug}`),
+    ...catalog.project_details.map((detail) => `/projects/${detail.item.slug}`),
+    ...getPlaybookPolicies(catalog).map((policy) => `/policies/${policy.summary.slug}`),
+  ].map((route) => playbookHref(route));
+  for (const route of expectedPages) {
+    if (!pageRoutes.has(route)) throw new Error(`Search is missing page projection: ${route}`);
+  }
+
+  const sectionRoutes = new Set(
+    search.documents
+      .filter((document) => document.kind !== "page" && document.section_id)
+      .map((document) => playbookHref(document.route, document.section_id))
+  );
+  const expectedSections = [
+    ...catalog.topic_details.flatMap((detail) =>
+      detail.sections.map((section) => `/topics/${detail.item.slug}#${section.id}`)
+    ),
+    ...catalog.project_details.flatMap((detail) =>
+      detail.sections.map((section) => `/projects/${detail.item.slug}#${section.id}`)
+    ),
+    ...getPlaybookPolicies(catalog).flatMap((policy) =>
+      policy.resources.length ? [`/policies/${policy.summary.slug}#resources`] : []
+    ),
+  ].map((route) => playbookHref(route));
+  for (const route of expectedSections) {
+    if (!sectionRoutes.has(route))
+      throw new Error(`Search is missing section projection: ${route}`);
+  }
 }
 
 function invalid(message: string, options?: ErrorOptions): never {
   throw new PlaybookGitHubSourceInvalidError(message, options);
 }
 
+function readExportValue(bytes: Uint8Array, label: string) {
+  try {
+    const text = decodeUtf8(bytes, label);
+    const value = parseJson(text);
+    if (encodeJson(value) !== text) invalid(`${label} is not canonical JSON`);
+    return value;
+  } catch (error) {
+    if (error instanceof PlaybookGitHubSourceInvalidError) throw error;
+    return invalid(`${label} is invalid`, { cause: error });
+  }
+}
+
 function readExportManifest(bytes: Uint8Array) {
   try {
     return githubPublicExportManifestSchema.parse(
-      parseJson(decodeUtf8(bytes, "GitHub Playbook export manifest"))
+      readExportValue(bytes, "GitHub Playbook export manifest")
     );
   } catch (error) {
+    if (error instanceof PlaybookGitHubSourceInvalidError) throw error;
     return invalid("GitHub Playbook export manifest is invalid", { cause: error });
   }
 }
 
 function readExportJson(bytes: Uint8Array, label: string) {
-  try {
-    return parseJson(decodeUtf8(bytes, label));
-  } catch (error) {
-    return invalid(`${label} is invalid`, { cause: error });
-  }
+  return readExportValue(bytes, label);
 }
 
 function assertManifestFiles(
@@ -228,6 +279,10 @@ export function comparePlaybookSnapshots(
   candidate: Pick<PlaybookGitHubSnapshot, "sourceRevision" | "contentHash">,
   adopted: Pick<PlaybookGitHubSnapshot, "sourceRevision" | "contentHash">
 ): PlaybookSnapshotComparison {
+  githubSourceRevisionSchema.parse(candidate.sourceRevision);
+  githubSourceRevisionSchema.parse(adopted.sourceRevision);
+  digestSchema.parse(candidate.contentHash);
+  digestSchema.parse(adopted.contentHash);
   const sourceChanged = candidate.sourceRevision.commit !== adopted.sourceRevision.commit;
   const contentChanged = candidate.contentHash !== adopted.contentHash;
   return {
@@ -284,17 +339,15 @@ export function createPlaybookGitHubSourceTransport(
 
 export function createPlaybookGitHubExportManifest(
   catalog: PlaybookPublicCatalog,
-  search: PlaybookSearchPayload,
-  serializedCatalog = encodeJson(catalog),
-  serializedSearch = encodeJson(search)
+  search: PlaybookSearchPayload
 ) {
   const normalized = normalizePlaybookSnapshot(catalog, search);
   return {
     schemaVersion: 1 as const,
     contentHash: computePlaybookContentHash(normalized),
     files: [
-      fileRecord("catalog.json", serializedCatalog),
-      fileRecord("search-documents.json", serializedSearch),
+      fileRecord("catalog.json", encodeJson(normalized.catalog)),
+      fileRecord("search-documents.json", encodeJson(normalized.search)),
     ] as const,
   };
 }

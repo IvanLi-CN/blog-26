@@ -3,27 +3,66 @@ import { publicFixtureCatalog, publicFixtureSearch } from "./fixture";
 import {
   comparePlaybookSnapshots,
   createPlaybookGitHubExportManifest,
+  createPlaybookGitHubSourceTransport,
   loadPlaybookGitHubSnapshot,
+  normalizePlaybookSnapshot,
   PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST,
   type PlaybookGitHubSourceConfig,
   type PlaybookGitHubSourceTransport,
   readPlaybookGitHubSnapshot,
+  readPlaybookGitHubSourceConfig,
 } from "./github-source";
-import { encodeJson, fileRecord } from "./manifest";
-import type { PlaybookGitHubSnapshot } from "./types";
+import { computePlaybookContentHash, encodeJson, fileRecord } from "./manifest";
+import type { PlaybookGitHubSnapshot, PlaybookSearchPayload } from "./types";
 
 const commit = "a".repeat(40);
 const nextCommit = "b".repeat(40);
 
-function makeFixtureFiles(catalog = publicFixtureCatalog, search = publicFixtureSearch) {
-  const catalogBytes = Buffer.from(encodeJson(catalog));
-  const searchBytes = Buffer.from(encodeJson(search));
-  const manifest = createPlaybookGitHubExportManifest(
-    catalog,
-    search,
-    catalogBytes.toString("utf8"),
-    searchBytes.toString("utf8")
-  );
+const completeFixtureSearch: PlaybookSearchPayload = {
+  ...publicFixtureSearch,
+  documents: [
+    ...publicFixtureSearch.documents,
+    {
+      id: "section:recovery",
+      kind: "section",
+      title: "失败与恢复",
+      subtitle: "可靠交付",
+      body: "断网时继续提供已经验证的内容，恢复后整体切换新版本。",
+      route: "/topics/delivery",
+      section_id: "recovery",
+      keywords: ["恢复"],
+      command_id: null,
+    },
+    {
+      id: "section:architecture",
+      kind: "section",
+      title: "架构与选择",
+      subtitle: "Sample Project 实践快照",
+      body: "以 Astro 提供静态阅读，用固定的内容版本保持可重复构建。",
+      route: "/projects/sample-project",
+      section_id: "architecture",
+      keywords: ["Astro"],
+      command_id: null,
+    },
+    {
+      id: "section:resources",
+      kind: "section",
+      title: "公开资源",
+      subtitle: "Safe Release",
+      body: "公开资源文件。",
+      route: "/policies/safe-release",
+      section_id: "resources",
+      keywords: ["资源"],
+      command_id: null,
+    },
+  ],
+};
+
+function makeFixtureFiles(catalog = publicFixtureCatalog, search = completeFixtureSearch) {
+  const normalized = normalizePlaybookSnapshot(catalog, search);
+  const catalogBytes = Buffer.from(encodeJson(normalized.catalog));
+  const searchBytes = Buffer.from(encodeJson(normalized.search));
+  const manifest = createPlaybookGitHubExportManifest(normalized.catalog, normalized.search);
   return new Map<string, Uint8Array>([
     [PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[0], Buffer.from(encodeJson(manifest))],
     [PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[1], catalogBytes],
@@ -129,6 +168,24 @@ test("classifies commit and content identity changes without rebuilding unchange
     rebuildContent: true,
     rebuildKeywordProjection: true,
   });
+
+  const timestampOnly = {
+    catalog: {
+      ...base.catalog,
+      snapshot: {
+        ...base.catalog.snapshot,
+        index: { ...base.catalog.snapshot.index, generated_at: "2027-01-01T00:00:00Z" },
+      },
+    },
+    search: { ...base.search, generated_at: "2027-01-01T00:00:00Z" },
+  };
+  expect(computePlaybookContentHash(timestampOnly)).toBe(computePlaybookContentHash(base));
+
+  const malformed = {
+    sourceRevision: { provider: "github" as const, repository: "bad", ref: "bad", commit: "bad" },
+    contentHash: "bad",
+  };
+  expect(() => comparePlaybookSnapshots(malformed, malformed)).toThrow();
 });
 
 test("reports malformed digest and public-boundary failures as invalid candidates", async () => {
@@ -160,6 +217,34 @@ test("reports malformed digest and public-boundary failures as invalid candidate
   const mismatchResult = await loadPlaybookGitHubSnapshot(makeTransport(mismatchedFiles), config);
   expect(mismatchResult.status).toBe("invalid");
 
+  const nonCanonicalFiles = makeFixtureFiles();
+  const canonicalCatalogBytes = nonCanonicalFiles.get(PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[1]);
+  const nonCanonicalManifestBytes = nonCanonicalFiles.get(PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[0]);
+  if (!canonicalCatalogBytes || !nonCanonicalManifestBytes)
+    throw new Error("fixture export is incomplete");
+  const nonCanonicalCatalogBytes = Buffer.from(
+    JSON.stringify(JSON.parse(Buffer.from(canonicalCatalogBytes).toString("utf8")))
+  );
+  nonCanonicalFiles.set(PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[1], nonCanonicalCatalogBytes);
+  const nonCanonicalManifest = JSON.parse(
+    Buffer.from(nonCanonicalManifestBytes).toString("utf8")
+  ) as {
+    files: [
+      { path: string; sha256: string; size: number },
+      { path: string; sha256: string; size: number },
+    ];
+  };
+  nonCanonicalManifest.files[0] = fileRecord("catalog.json", nonCanonicalCatalogBytes);
+  nonCanonicalFiles.set(
+    PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[0],
+    Buffer.from(encodeJson(nonCanonicalManifest))
+  );
+  const nonCanonicalResult = await loadPlaybookGitHubSnapshot(
+    makeTransport(nonCanonicalFiles),
+    config
+  );
+  expect(nonCanonicalResult.status).toBe("invalid");
+
   const invalidCatalog = structuredClone(publicFixtureCatalog);
   const topic = invalidCatalog.topic_details[0];
   const policy = topic?.policy_skills[0];
@@ -182,7 +267,31 @@ test("reports malformed digest and public-boundary failures as invalid candidate
   expect(boundaryResult.status).toBe("invalid");
 });
 
+test("rejects an incomplete lexical projection before a source can be adopted", () => {
+  expect(() => normalizePlaybookSnapshot(publicFixtureCatalog, publicFixtureSearch)).toThrow(
+    "Search is missing"
+  );
+});
+
 describe("source result states", () => {
+  test("reads the server-only source configuration with stable defaults", () => {
+    expect(readPlaybookGitHubSourceConfig({})).toEqual({
+      repository: "IvanLi-CN/style-playbook-skills",
+      ref: "main",
+      token: null,
+    });
+    expect(
+      readPlaybookGitHubSourceConfig({
+        STYLE_PLAYBOOK_GITHUB_REPOSITORY: " org/repo ",
+        STYLE_PLAYBOOK_GITHUB_REF: " feature/ref ",
+        STYLE_PLAYBOOK_GITHUB_TOKEN: " token ",
+      })
+    ).toEqual({ repository: "org/repo", ref: "feature/ref", token: "token" });
+    expect(() =>
+      readPlaybookGitHubSourceConfig({ STYLE_PLAYBOOK_GITHUB_REPOSITORY: "invalid" })
+    ).toThrow();
+  });
+
   test("keeps a missing token unconfigured without attempting a GitHub read", async () => {
     const result = await loadPlaybookGitHubSnapshot(makeTransport(makeFixtureFiles()), {
       ...config,
@@ -210,5 +319,47 @@ describe("source result states", () => {
       repository: config.repository,
       ref: config.ref,
     });
+  });
+});
+
+test("pins the production transport to GitHub API paths and validates response bytes", async () => {
+  const requests: Array<{ url: string; init: RequestInit }> = [];
+  const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    requests.push({ url: String(input), init: init ?? {} });
+    if (requests.length === 1)
+      return new Response(JSON.stringify({ sha: commit }), { status: 200 });
+    return new Response(
+      JSON.stringify({
+        type: "file",
+        path: "public/playbook/catalog.json",
+        content: Buffer.from("fixture\n").toString("base64"),
+      }),
+      { status: 200 }
+    );
+  }) as unknown as typeof fetch;
+  const transport = createPlaybookGitHubSourceTransport("fixture-token", fetchImpl);
+
+  expect(await transport.resolveRef({ repository: config.repository, ref: config.ref })).toBe(
+    commit
+  );
+  expect(
+    await transport.readFile({
+      repository: config.repository,
+      commit,
+      path: "public/playbook/catalog.json",
+    })
+  ).toEqual(Buffer.from("fixture\n"));
+  expect(requests.map((request) => request.url)).toEqual([
+    "https://api.github.com/repos/IvanLi-CN/style-playbook-skills/commits/main",
+    "https://api.github.com/repos/IvanLi-CN/style-playbook-skills/contents/public/playbook/catalog.json?ref=" +
+      commit,
+  ]);
+  expect(requests[0]?.init).toEqual({
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: "Bearer fixture-token",
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+    redirect: "error",
   });
 });

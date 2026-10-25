@@ -24,7 +24,19 @@ export function sha256(content: string | Uint8Array) {
 }
 
 export function encodePlaybookSnapshot(snapshot: PlaybookNormalizedSnapshot) {
-  return encodeJson({ catalog: snapshot.catalog, search: snapshot.search });
+  const catalogIndex = Object.fromEntries(
+    Object.entries(snapshot.catalog.snapshot.index).filter(([key]) => key !== "generated_at")
+  );
+  const search = Object.fromEntries(
+    Object.entries(snapshot.search).filter(([key]) => key !== "generated_at")
+  );
+  return encodeJson({
+    catalog: {
+      ...snapshot.catalog,
+      snapshot: { ...snapshot.catalog.snapshot, index: catalogIndex },
+    },
+    search,
+  });
 }
 
 export function computePlaybookContentHash(snapshot: PlaybookNormalizedSnapshot) {

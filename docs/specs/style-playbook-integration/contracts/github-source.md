@@ -24,7 +24,7 @@ The dynamic source allowlist is exactly the following GitHub Contents API paths,
 - `public/playbook/catalog.json` is the complete normalized public catalog, including readable bodies, public resources and the public relationships required by the blog.
 - `public/playbook/search-documents.json` is the complete public lexical-search projection for that same catalog.
 
-The provider requests no other paths and never uses `web/.generated`, `web/dist-public`, a static-site URL, a deployed pointer, or Release assets as this dynamic input. JSON bytes are canonicalized by the application contract before file and snapshot hashes are computed. The export manifest's file order and paths are fixed; a missing file, extra manifest entry, malformed digest, invalid UTF-8/JSON, schema failure or public-boundary violation makes the candidate `invalid`.
+The provider requests no other paths and never uses `web/.generated`, `web/dist-public`, a static-site URL, a deployed pointer, or Release assets as this dynamic input. JSON bytes are canonicalized by the application contract before file and snapshot hashes are computed. The normalized content hash excludes exporter generation timestamps (`catalog.snapshot.index.generated_at` and `search.generated_at`) so timestamp-only regeneration is a provenance change, not a content rebuild. The export manifest's file order and paths are fixed; a missing file, extra manifest entry, malformed digest, invalid UTF-8/JSON, schema failure or public-boundary violation makes the candidate `invalid`.
 
 ## Comparison and adoption
 
