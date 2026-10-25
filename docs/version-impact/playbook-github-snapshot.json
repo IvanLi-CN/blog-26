@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "3e45385586a098d3e83b891f241234308f162bb1",
+  "covered_files": {
+    "GLOSSARY.md": "4b89e5f7af439a06d0cf1857e0e1e9ac23290213",
+    "apps/admin/src/demo/mock-admin-api.ts": "3a547e43af30ac2236f0376ef6df9d8d9c0a8dd1",
+    "apps/admin/src/pages/content-sync.test.tsx": "9b8472941370e40e91f2775499ea9ece8b54049d",
+    "apps/admin/src/pages/content-sync.tsx": "f1575d0c489296ae798b56d47829c593aadc23fa",
+    "docs/adr/0011-published-playbook-read-model.md": "5024ecc49b04e90e538d0eccc710d9890dc07b59",
+    "docs/adr/0024-unified-search-and-playbook-sync-management.md": "20395ada38b1320343c60d92ee77362d730e8ec6",
+    "docs/adr/0030-github-source-and-database-playbook-snapshots.md": "242e912fa2c52a15e603219904e5e83e144db415",
+    "docs/runbooks/style-playbook-publishing.md": "c655d63cbcb72e1d9733e2cca795e718cbc96047",
+    "docs/specs/README.md": "2e0438fa46ce9c729fd872f4ff241dd07aa8b931",
+    "docs/specs/style-playbook-integration/HISTORY.md": "a69f598652c5e39b80989fa615f6f52a7d711781",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "6c332045c5198d5177e5245f07b65ad17b4e0025",
+    "docs/specs/style-playbook-integration/SPEC.md": "46b5bdbb5ec078821e6a3eddd197e9b5eb92dcf4",
+    "docs/specs/style-playbook-integration/contracts/github-source.md": "9360b01aedc56c3e36a41258a6f953094f923b8b",
+    "docs/specs/style-playbook-integration/contracts/release-trigger.md": "1fc29342c538346d52a65d9a60ee141317458a3b",
+    "drizzle/0019_playbook_snapshots.sql": "ee19a94b7ae43b6c06b801dd79607d9c16c441ff",
+    "drizzle/meta/0019_snapshot.json": "45598a901d8a2c52e127b1860d80efcc3084e73d",
+    "drizzle/meta/_journal.json": "874e9c69c34975edd9dcb53438fcc195b6ba1eb1",
+    "site/lib/page-data/playbookDetail.ts": "2ff3f44411398b6d7e4dce30317f85ad0d30baa7",
+    "site/lib/playbook.ts": "d49d9a2c129001f4b1f416a5f9defe0c1156e8bd",
+    "src/lib/admin-api-client.ts": "96c68d0ce64e1f0ff9c09808dee522df7f366d84",
+    "src/lib/playbook/github-source.test.ts": "f493ecdfdd3b8e31f3e72a204ce17ad3f24e7299",
+    "src/lib/playbook/github-source.ts": "4e610817da81d93c66517e9aa7ba578d78e6a318",
+    "src/lib/playbook/manifest.ts": "f73cc0613a1f6b52539de27cb739d90bfe70dfa0",
+    "src/lib/playbook/schema.ts": "5ec1b7c8e37c3d18bc844910125f01c13c081fbb",
+    "src/lib/playbook/types.ts": "c905728b6c3550f186ece586ebb3d8b635c71d01",
+    "src/lib/schema.ts": "0c6000509ca29f4cbdc54e01c21701ebbb7f3eab",
+    "src/server/public-api/playbook.ts": "2a2027ed3260e909e0a09f179142266fd672440f",
+    "src/server/public-api/router.ts": "a3c97c5839e342a231c519002c5c537938466ac5",
+    "src/server/public-api/search-stream.test.ts": "503214b887d13f51c992bc578eb75d8d31fcc83a",
+    "src/server/routers/admin/content-sync.ts": "673f4837f4b5f1c0202d7c5aa297b498ce93efa5",
+    "src/server/services/content-search.test.ts": "e20ae7f6bb082669355799f444debee2a03204b5",
+    "src/server/services/content-search.ts": "68488c94606a81bb3da120211d686bb60eee8fce",
+    "src/server/services/content-sync-runtime.ts": "7d3cf180d38e638377d602ad7e5430b5d1819925",
+    "src/server/services/content-sync-status.ts": "7c401326730a0e453e11b4cea832d1a8d06ba1a7",
+    "src/server/services/content-tasks.ts": "c556062647dc00af6fd6d7a8188aaf75bb8b3771",
+    "src/server/services/playbook-search.test.ts": "dc6738f06a26a74203bc745a9d69e5d6d1b84844",
+    "src/server/services/playbook-search.ts": "fe4a8ef197c8b1f549d4317fd56f775000a50fa6",
+    "src/server/services/playbook-snapshot-runtime.test.ts": "8a7d942a9121ba9ad1440dbf0d3f850cb84580ba",
+    "src/server/services/playbook-snapshot-store.ts": "28e63e31a6719188ac44f1a5f1967afae76ab2fe",
+    "src/server/services/rag-index.test.ts": "8505fd58aab88df973d4f427918e6d29b8bf3caa",
+    "src/server/services/rag-index.ts": "333f9e14a9bc63343e17e2378a996e3235d886b0",
+    "src/server/services/search-semantic-projection.ts": "4778050b384a59a5d680c7469587acf85c6a9108",
+    "tests/e2e/web-demo/content-sync.spec.ts": "1300002255f840838871c0af8d4b5be4eda849c2",
+    "tests/lib/playbook-snapshot-restart.test.ts": "35df9f92917c999f6406564d1350242cc0bf6259"
+  },
+  "change": {
+    "description": "Adopt a GitHub-only dynamic Playbook snapshot source with durable current and previous state, current-only public reads, and administrator-only synchronization evidence.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "This is a compatible minor Playbook integration: the public read contract gains a persisted snapshot source and the SQLite schema adds durable current and previous state without removing existing static release paths.",
+      "assessed_at": "2026-10-26T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/playbook/github-source.ts",
+          "blob": "4e610817da81d93c66517e9aa7ba578d78e6a318",
+          "command": "Focused validation for src/lib/playbook/github-source.ts"
+        },
+        {
+          "path": "drizzle/0019_playbook_snapshots.sql",
+          "blob": "ee19a94b7ae43b6c06b801dd79607d9c16c441ff",
+          "command": "Focused validation for drizzle/0019_playbook_snapshots.sql"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "The candidate implements the approved GitHub-only source, atomic snapshot adoption, current-only public search and administrator-only operational evidence; static Release and store paths remain independent.",
+      "assessed_at": "2026-10-26T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/server/public-api/playbook.ts",
+          "blob": "2a2027ed3260e909e0a09f179142266fd672440f",
+          "command": "Focused validation for src/server/public-api/playbook.ts"
+        },
+        {
+          "path": "src/server/services/playbook-snapshot-runtime.test.ts",
+          "blob": "8a7d942a9121ba9ad1440dbf0d3f850cb84580ba",
+          "command": "Focused validation for src/server/services/playbook-snapshot-runtime.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains within the approved GitHub source, snapshot persistence, public current-only read, administrator evidence and UI layout scope."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "Focused source, runtime, restart, public search, administrator, Web Demo and repository checks cover the changed source, persistence, permission and rendered-surface boundaries.",
+      "assessed_at": "2026-10-26T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/playbook/github-source.test.ts",
+          "blob": "f493ecdfdd3b8e31f3e72a204ce17ad3f24e7299",
+          "command": "Focused validation for src/lib/playbook/github-source.test.ts"
+        },
+        {
+          "path": "apps/admin/src/pages/content-sync.test.tsx",
+          "blob": "9b8472941370e40e91f2775499ea9ece8b54049d",
+          "command": "Focused validation for apps/admin/src/pages/content-sync.test.tsx"
+        },
+        {
+          "path": "tests/e2e/web-demo/content-sync.spec.ts",
+          "blob": "1300002255f840838871c0af8d4b5be4eda849c2",
+          "command": "Focused validation for tests/e2e/web-demo/content-sync.spec.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": ["3.8.4", "3.8.5", "3.8.6"],
+      "evidence": [
+        {
+          "path": "src/server/public-api/playbook.ts",
+          "blob": "2a2027ed3260e909e0a09f179142266fd672440f",
+          "command": "Public Playbook catalog, detail, resource and search responses remain compatible while binding reads to current snapshot identity"
+        },
+        {
+          "path": "src/server/public-api/search-stream.test.ts",
+          "blob": "503214b887d13f51c992bc578eb75d8d31fcc83a",
+          "command": "Public JSON and SSE search paths retain current-only behavior and omit operational metadata"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "minor",
+      "applicable": true,
+      "state_description": "SQLite adds Playbook current and previous snapshot records plus durable task identity; existing databases upgrade through the checked migration and prior content remains readable.",
+      "readable_by_prior_versions": ["3.8.4", "3.8.5", "3.8.6"],
+      "upgrade_from_versions": ["3.8.4", "3.8.5", "3.8.6"],
+      "evidence": [
+        {
+          "path": "drizzle/0019_playbook_snapshots.sql",
+          "blob": "ee19a94b7ae43b6c06b801dd79607d9c16c441ff",
+          "command": "SQLite migration adds the snapshot tables without deleting or rewriting existing content state"
+        },
+        {
+          "path": "tests/lib/playbook-snapshot-restart.test.ts",
+          "blob": "35df9f92917c999f6406564d1350242cc0bf6259",
+          "command": "Restart, seed, failed-candidate and lease-recovery behavior preserves current and previous snapshots"
+        }
+      ]
+    }
+  }
+}
