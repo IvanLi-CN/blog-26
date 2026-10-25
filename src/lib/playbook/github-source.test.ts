@@ -361,6 +361,14 @@ test("rejects search documents that do not carry catalog content or keyword proj
   expect(() => normalizePlaybookSnapshot(publicFixtureCatalog, wrongKeywords)).toThrow(
     "Search projection metadata mismatch"
   );
+
+  const extraBody = structuredClone(completeFixtureSearch);
+  const extraTopicPage = extraBody.documents.find((document) => document.id === "topic:delivery");
+  if (!extraTopicPage) throw new Error("topic search document is missing");
+  extraTopicPage.body += " unbound source prose";
+  expect(() => normalizePlaybookSnapshot(publicFixtureCatalog, extraBody)).toThrow(
+    "Search projection body mismatch"
+  );
 });
 
 test("rejects a resource projection that omits public resource content", () => {
@@ -501,6 +509,21 @@ describe("source result states", () => {
       config
     );
     expect(result.status).toBe("invalid");
+  });
+
+  test("classifies malformed successful Contents responses as invalid", async () => {
+    for (const body of ["{", "null"]) {
+      const fetchImpl = (async (input: RequestInfo | URL) => {
+        if (String(input).includes("/commits/"))
+          return new Response(JSON.stringify({ sha: commit }), { status: 200 });
+        return new Response(body, { status: 200 });
+      }) as unknown as typeof fetch;
+      const result = await loadPlaybookGitHubSnapshot(
+        createPlaybookGitHubSourceTransport("fixture-token", fetchImpl),
+        config
+      );
+      expect(result.status).toBe("invalid");
+    }
   });
 });
 

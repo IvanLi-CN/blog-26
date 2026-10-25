@@ -154,10 +154,9 @@ function assertCompletePlaybookSearch(
       input.keywords.some((keyword, index) => document.keywords[index] !== keyword)
     )
       throw new Error(`Search projection metadata mismatch: ${canonicalRoute}`);
-    for (const bodyPart of input.bodyParts) {
-      if (bodyPart.trim() && !document.body.includes(bodyPart))
-        throw new Error(`Search projection body mismatch: ${canonicalRoute}`);
-    }
+    const expectedBody = input.bodyParts.filter((bodyPart) => bodyPart.trim()).join(" ");
+    if (document.body !== expectedBody)
+      throw new Error(`Search projection body mismatch: ${canonicalRoute}`);
     return document;
   };
 
@@ -447,7 +446,17 @@ export function createPlaybookGitHubSourceTransport(
   }
   async function json(url: string, invalidStatus = false) {
     const response = await request(url, headers.Accept, invalidStatus);
-    return (await response.json()) as Record<string, unknown>;
+    try {
+      const value: unknown = await response.json();
+      if (!value || typeof value !== "object" || Array.isArray(value))
+        throw new Error("GitHub API response root must be an object");
+      return value as Record<string, unknown>;
+    } catch (error) {
+      if (!invalidStatus) throw error;
+      throw new PlaybookGitHubSourceInvalidError("GitHub public export response is malformed", {
+        cause: error,
+      });
+    }
   }
   async function raw(url: string) {
     const response = await request(url, "application/vnd.github.raw", true);
