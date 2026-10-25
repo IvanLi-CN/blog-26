@@ -1,4 +1,4 @@
-import { checkPlaybook, playbookSyncEnabled } from "../../services/content-sync-runtime";
+import { enqueuePlaybookCheck, playbookSyncEnabled } from "../../services/content-sync-runtime";
 import { contentSyncStatus } from "../../services/content-sync-status";
 import {
   cancelContentTask,
@@ -6,7 +6,6 @@ import {
   getContentTask,
   listContentTasks,
 } from "../../services/content-tasks";
-import { listPlaybookCandidates } from "../../services/playbook-search";
 import { triggerRagIndex } from "../../services/rag-index";
 
 /**
@@ -21,9 +20,9 @@ import { z } from "zod";
 import { ensureContentSourcesRegistered } from "@/lib/content-sources/register";
 import { SYSTEM_CONFIG } from "../../../config/paths";
 import { getContentSourceManager } from "../../../lib/content-sources";
-import { getRuntimePlaybookStore } from "../../../lib/playbook/cache";
+import { getPlaybookPolicies } from "../../../lib/playbook/navigation";
 import { syncEventManager } from "../../../lib/sync-events";
-import { getPlaybookContentSyncStatus } from "../../services/search-semantic-projection";
+import { getPlaybookSnapshotStore } from "../../services/playbook-snapshot-store";
 import { adminProcedure, createTRPCRouter } from "../../trpc";
 
 // 输入验证 Schema
@@ -46,16 +45,19 @@ const _contentSourceConfigSchema = z.object({
 
 type PlaybookSyncResult = {
   success: true;
-  status: Awaited<ReturnType<typeof getPlaybookContentSyncStatus>>;
-  cancelled?: boolean;
-  adopted?: boolean;
+  taskId: string | null;
+  queued: boolean;
+  status: Awaited<ReturnType<typeof contentSyncStatus>>;
 };
 
 async function runPlaybookSync(): Promise<PlaybookSyncResult> {
+  const { task, promise } = await enqueuePlaybookCheck("manual");
+  void promise.catch(() => undefined);
   return {
     success: true,
-    ...(await checkPlaybook()),
-    status: await getPlaybookContentSyncStatus(),
+    taskId: task?.id ?? null,
+    queued: Boolean(task),
+    status: await contentSyncStatus({ source: "playbook" }),
   };
 }
 
@@ -104,13 +106,17 @@ export const adminContentSyncRouter = createTRPCRouter({
   getTask: adminProcedure
     .input(z.object({ taskId: z.string().uuid() }).optional())
     .query(async ({ input }) => {
+      if (!input) throw new TRPCError({ code: "BAD_REQUEST", message: "Task ID is required" });
       const task = await getContentTask(input.taskId);
       if (!task) throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
       return task;
     }),
   cancelTask: adminProcedure
     .input(z.object({ taskId: z.string().uuid() }).optional())
-    .mutation(({ input }) => cancelContentTask(input.taskId)),
+    .mutation(({ input }) => {
+      if (!input) throw new TRPCError({ code: "BAD_REQUEST", message: "Task ID is required" });
+      return cancelContentTask(input.taskId);
+    }),
   // ============================================================================
   // 同步操作
   // ============================================================================
@@ -140,12 +146,10 @@ export const adminContentSyncRouter = createTRPCRouter({
           (error instanceof Error && error.message.startsWith("Task conflict:"))
         )
           throw error;
-        const playbook = playbookSyncEnabled()
-          ? await runPlaybookSync().catch(() => ({
-              success: false,
-              error: "Playbook check failed",
-            }))
-          : { enabled: false };
+        const playbook = await runPlaybookSync().catch(() => ({
+          success: false,
+          error: "Playbook check failed",
+        }));
         return { success: false, local: { success: false, error: "Local sync failed" }, playbook };
       }
 
@@ -166,9 +170,10 @@ export const adminContentSyncRouter = createTRPCRouter({
       };
       if (source === "local") return resultPayload;
 
-      const playbook = playbookSyncEnabled()
-        ? await runPlaybookSync().catch(() => ({ success: false, error: "Playbook check failed" }))
-        : { enabled: false };
+      const playbook = await runPlaybookSync().catch(() => ({
+        success: false,
+        error: "Playbook check failed",
+      }));
       return { ...resultPayload, playbook };
     } catch (error) {
       if (error instanceof TRPCError) throw error;
@@ -249,11 +254,13 @@ export const adminContentSyncRouter = createTRPCRouter({
         .groupBy(posts.type, posts.source);
 
       // 使用 posts 表的统计结果
-      const current = getRuntimePlaybookStore();
-      await current.load();
+      const current = getPlaybookSnapshotStore().getCurrent();
       const pbCounts = new Map<string, number>();
-      for (const row of current.current ? listPlaybookCandidates(current.current) : [])
-        pbCounts.set(row.type, (pbCounts.get(row.type) ?? 0) + 1);
+      if (current) {
+        pbCounts.set("topic", current.catalog.topic_details.length);
+        pbCounts.set("experience", current.catalog.project_details.length);
+        pbCounts.set("policy", getPlaybookPolicies(current.catalog).length);
+      }
       const allStats = [
         ...postsStats,
         ...[...pbCounts].map(([type, count]) => ({ type, source: "playbook", count })),
@@ -369,19 +376,19 @@ export const adminContentSyncRouter = createTRPCRouter({
         error: status.error,
         metadata: status.metadata,
       }));
-      const playbook = await getPlaybookContentSyncStatus();
+      const playbook = await contentSyncStatus({ source: "playbook" });
       return [
         ...localSources,
         {
-          name: playbook.name,
-          type: playbook.type,
+          name: "playbook",
+          type: "playbook",
           priority: 0,
           enabled: playbookSyncEnabled(),
-          online: playbook.adopted,
-          totalItems: playbook.lexical.count,
-          lastSync: getRuntimePlaybookStore().adoption?.at,
-          error: playbook.semantic.lastError,
-          metadata: playbook,
+          online: playbook.playbook.adopted,
+          totalItems: playbook.playbook.lexical.count,
+          lastSync: playbook.playbook.adoptedAt,
+          error: playbook.playbook.semantic.lastError,
+          metadata: playbook.playbook,
         },
       ];
     } catch (error) {
