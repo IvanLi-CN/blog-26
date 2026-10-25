@@ -8,7 +8,7 @@
 
 本轮需求收敛将动态服务的来源从静态站公开指针和 Release 资产改为 GitHub 内容提供方。默认仓库为 `IvanLi-CN/style-playbook-skills`，默认 ref 为 `main`，服务解析 branch/tag/commit 为单一 commit SHA，并从该 commit 的固定公开导出读取完整内容。静态站仍可独立发布访客内容，但不再是动态服务的读取入口或回退来源。
 
-来源比较使用 provider、配置仓库/ref、resolved commit 与完整内容 hash：同 source revision 的 hash 不一致仍是 stale 候选，只有结构、公共边界或内部文件 digest 校验失败才是无效候选；配置仓库/ref 或 commit 改变但内容相同只更新来源修订；source revision 与内容都不同才替换完整 current 快照。数据库保留 current/previous，GitHub 失败或候选无效时继续使用 current；启动、默认五分钟轮询和管理员异步触发共用同一采用边界。同步状态、回退原因和 RAG 覆盖不足只对管理员可见，访客只读取已采用内容。
+来源比较使用 provider、配置仓库/ref、resolved commit 与完整内容 hash：同 source revision 的 hash 不一致仍是 stale 候选，只有结构、公共边界或内部文件 digest 校验失败才是无效候选；配置仓库/ref 或 commit 改变但内容相同只更新来源修订；只要内容 hash 不同且候选通过校验，就整体替换 current 快照，并按 source revision 变化更新来源修订。数据库保留 current/previous，GitHub 失败或候选无效时继续使用 current；启动、默认五分钟轮询和管理员异步触发共用同一采用边界。同步状态、回退原因和 RAG 覆盖不足只对管理员可见，访客只读取已采用内容。
 
 对应长期契约见 [SPEC.md](./SPEC.md)、[GitHub 内容源契约](./contracts/github-source.md) 与 [ADR 0030](../../adr/0030-github-source-and-database-playbook-snapshots.md)。本节记录需求决定，不代表运行时代码、数据库迁移或部署配置已经完成切换。
 

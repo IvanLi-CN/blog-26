@@ -475,6 +475,16 @@ test("preserves whitespace-only section and resource bodies in exact projections
   expect(() => normalizePlaybookSnapshot(catalog, search)).not.toThrow();
 });
 
+test("accepts search documents that omit schema-nullish metadata fields", () => {
+  const search = structuredClone(completeFixtureSearch);
+  for (const document of search.documents) {
+    Reflect.deleteProperty(document, "command_id");
+    if (document.kind === "page") Reflect.deleteProperty(document, "section_id");
+  }
+
+  expect(() => normalizePlaybookSnapshot(publicFixtureCatalog, search)).not.toThrow();
+});
+
 test("rejects a resource projection that omits public resource content", () => {
   const invalidSearch = structuredClone(completeFixtureSearch);
   const resources = invalidSearch.documents.find((document) => document.section_id === "resources");
@@ -777,6 +787,29 @@ test("aborts a stalled GitHub request after the configured timeout", async () =>
   expect(requestSignal?.aborted).toBe(true);
 });
 
+test("classifies a response body stalled after headers as failed", async () => {
+  let requestSignal: AbortSignal | undefined;
+  const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    requestSignal = init?.signal ?? undefined;
+    if (String(input).includes("/commits/")) return new Response(commit, { status: 200 });
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const fail = () =>
+          controller.error(requestSignal?.reason ?? new Error("request timed out"));
+        if (requestSignal?.aborted) fail();
+        else requestSignal?.addEventListener("abort", fail, { once: true });
+      },
+    });
+    return new Response(body, { status: 200 });
+  }) as unknown as typeof fetch;
+  const result = await loadPlaybookGitHubSnapshot(
+    createPlaybookGitHubSourceTransport("fixture-token", fetchImpl, { requestTimeoutMs: 1 }),
+    config
+  );
+  expect(result.status).toBe("failed");
+  expect(requestSignal?.aborted).toBe(true);
+});
+
 test("rejects raw responses that exceed the GitHub source byte limit", async () => {
   const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (String(input).includes("/commits/")) return new Response(commit, { status: 200 });
@@ -849,4 +882,38 @@ test("cancels response bodies before declared byte-limit failures", async () => 
     })
   ).rejects.toThrow("exceeds byte limit");
   expect(cancellations).toBe(1);
+});
+
+test("rejects chunked raw responses that exceed the byte limit", async () => {
+  let chunks = 0;
+  const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input).includes("/commits/")) return new Response(commit, { status: 200 });
+    if (new Headers(init?.headers).get("Accept") !== "application/vnd.github.raw+json")
+      return new Response(
+        JSON.stringify({
+          type: "file",
+          path: "public/playbook/catalog.json",
+          encoding: "none",
+          content: "",
+        }),
+        { status: 200 }
+      );
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (chunks++ < 33) controller.enqueue(new Uint8Array(1024 * 1024));
+        else controller.close();
+      },
+    });
+    return new Response(body, { status: 200 });
+  }) as unknown as typeof fetch;
+  const transport = createPlaybookGitHubSourceTransport("fixture-token", fetchImpl);
+  await transport.resolveRef({ repository: config.repository, ref: config.ref });
+  await expect(
+    transport.readFile({
+      repository: config.repository,
+      commit,
+      path: "public/playbook/catalog.json",
+    })
+  ).rejects.toThrow("exceeds byte limit");
+  expect(chunks).toBeGreaterThan(32);
 });

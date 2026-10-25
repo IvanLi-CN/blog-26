@@ -154,6 +154,8 @@ function assertCompletePlaybookSearch(
     expectedIds.add(input.id);
     const document = find(input.id);
     const canonicalRoute = playbookHref(input.route, input.sectionId);
+    const sectionId = document?.section_id ?? null;
+    const commandId = document?.command_id ?? null;
     if (
       !document ||
       document.id !== input.id ||
@@ -161,8 +163,8 @@ function assertCompletePlaybookSearch(
       document.title !== input.title ||
       document.subtitle !== input.subtitle ||
       document.route !== canonicalRoute ||
-      document.section_id !== input.sectionId ||
-      document.command_id !== null ||
+      sectionId !== input.sectionId ||
+      commandId !== null ||
       document.keywords.length !== input.keywords.length ||
       input.keywords.some((keyword, index) => document.keywords[index] !== keyword)
     )
