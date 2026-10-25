@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "8673c6b4ca0dbf3791631a3424aada59b48c9605",
+  "base_sha": "3e45385586a098d3e83b891f241234308f162bb1",
   "covered_files": {
     "docs/adr/0025-display-selected-watermark-renditions.md": "351e7fe6982396b200e58c81992d207bcf03a3ed",
     "docs/public-media-watermark-design.md": "b8b571d11968e787ff8b5396c330246d6942ca42",
@@ -19,11 +19,11 @@
     "src/components/common/markdown/plugins/rehype-image-optimization.ts": "ea996834639dbc03dceeb724a37814f4a03f8649",
     "src/lib/__tests__/public-media.test.ts": "19715c26f1f43dd7ae88a9c65633d991d86038c5",
     "src/lib/public-media.ts": "1c84a953bfe053a8701a56e2ceb0af774c12ca17",
-    "src/server/http-compat-api.test.ts": "a25820eee4cfe4faf8a0654f705bce674f8beaa9",
+    "src/server/http-compat-api.test.ts": "088a2068e5004078446d3631e12506070ece1079",
     "src/server/public-media-watermark-assets.test.ts": "8f6448349183ab43ad4e2e9ccedcaef263339f4b",
-    "src/server/public-media-watermark.test.ts": "e4820b3624f99d525987045c545009a752834ba9",
-    "src/server/public-media-watermark.ts": "37274da599c3878566d04df9219d71b11ed91964",
-    "src/server/public-media.ts": "2fd04b1fb7c7dd1900b1ad8d5009bd1fa598942f",
+    "src/server/public-media-watermark.test.ts": "d62ec07a699b0c011d818ab0d569e9e24d65935c",
+    "src/server/public-media-watermark.ts": "f8e265febac753e576a42aa4f06eb1ac48f94ecb",
+    "src/server/public-media.ts": "f6f126c3b5f710514c3a962c771732334fe7a8fc",
     "tests/e2e/guest/posts-cover-fallback.spec.ts": "3a2e272e4dbe4f564242ab029890144fe8b03ba2",
     "tests/lib/public-pwa-edgeone-config.test.ts": "995836979a7dd35b326310c817fc53414ec3cf16"
   },
@@ -57,7 +57,7 @@
       "evidence": [
         {
           "path": "src/server/public-media.ts",
-          "blob": "2fd04b1fb7c7dd1900b1ad8d5009bd1fa598942f",
+          "blob": "f6f126c3b5f710514c3a962c771732334fe7a8fc",
           "command": "Versioned Imagor filters use explicit width and h_ratio=100 bounds while legacy v1 keeps its historical expression"
         },
         {
@@ -78,12 +78,12 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "a25820eee4cfe4faf8a0654f705bce674f8beaa9",
+          "blob": "088a2068e5004078446d3631e12506070ece1079",
           "command": "bun test src/server/http-compat-api.test.ts -t watermark|presentation|video-adaptive|animated|snapshot|cover: 10 passed, 1 skipped"
         },
         {
           "path": "src/server/public-media-watermark.test.ts",
-          "blob": "e4820b3624f99d525987045c545009a752834ba9",
+          "blob": "d62ec07a699b0c011d818ab0d569e9e24d65935c",
           "command": "bun test src/server/public-media-watermark.test.ts: v4 asset identity and plan bounds pass with the watermark analysis suite"
         },
         {
@@ -147,7 +147,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "a25820eee4cfe4faf8a0654f705bce674f8beaa9",
+          "blob": "088a2068e5004078446d3631e12506070ece1079",
           "command": "HTTP compatibility coverage exercises legacy and versioned media paths without a state migration"
         }
       ]

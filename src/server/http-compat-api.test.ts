@@ -1271,7 +1271,7 @@ image: ./assets/cover.png
     const coverHash = buildPublicMediaHash("blog/assets/cover.png", "cover");
     const persistedCoverHash = buildPublicMediaHash("blog/assets/persisted-cover.png", "cover");
     expect(String(payload.image)).toContain(
-      `/api/admin/preview/assets/post/preview-contaminated-assets/${coverHash}/wm-b-v3/cover`
+      `/api/admin/preview/assets/post/preview-contaminated-assets/${coverHash}/wm-b-v4/cover`
     );
     expect(String(payload.image)).not.toContain(persistedCoverHash);
     expect(String(payload.body)).toContain(

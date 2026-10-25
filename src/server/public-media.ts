@@ -1012,6 +1012,7 @@ async function chooseAdaptiveWatermarkInk(params: {
   renderId: PublicMediaRenderId;
 }) {
   const composition = getWatermarkComposition(params.renderId);
+  const version = getWatermarkVersion(params.renderId);
   const info = await stat(getLocalPath(params.ref.sourcePath));
   const key = watermarkCacheKey({
     sourcePath: params.ref.sourcePath,
@@ -1020,13 +1021,10 @@ async function chooseAdaptiveWatermarkInk(params: {
     ctimeMs: info.ctimeMs,
     variant: params.variant,
     composition,
+    version,
   });
   return getCachedWatermarkInk(key, async (signal) => {
-    const lightAsset = watermarkAssetName(
-      composition,
-      getWatermarkVersion(params.renderId),
-      "light"
-    );
+    const lightAsset = watermarkAssetName(composition, version, "light");
     const svg = await readWatermarkSvg(lightAsset);
     const mask = await renderWatermarkMask(svg, getWatermarkWidth(params.dimensions, composition));
     const scores: WatermarkInkScores =

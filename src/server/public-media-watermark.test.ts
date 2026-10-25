@@ -7,6 +7,7 @@ import {
   runWatermarkAnalysis,
   type WatermarkFrame,
   watermarkAssetName,
+  watermarkCacheKey,
 } from "./public-media-watermark";
 
 function frame(red: number, green: number, blue: number, delayMs = 100): WatermarkFrame {
@@ -136,5 +137,19 @@ describe("public media watermark contrast", () => {
       heightRatio: 100,
     });
     resetWatermarkAnalysisStateForTests();
+  });
+
+  it("separates adaptive ink cache keys by render version", () => {
+    const base = {
+      sourcePath: "blog/assets/cover.png",
+      size: 1024,
+      mtimeMs: 10,
+      ctimeMs: 10,
+      variant: "cover",
+      composition: "a",
+    };
+    expect(watermarkCacheKey({ ...base, version: "v3" })).not.toBe(
+      watermarkCacheKey({ ...base, version: "v4" })
+    );
   });
 });

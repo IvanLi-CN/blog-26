@@ -299,6 +299,7 @@ export function watermarkCacheKey(parts: {
   ctimeMs: number;
   variant: string;
   composition: string;
+  version: WatermarkPlan["version"];
 }) {
   return [
     WATERMARK_STRATEGY_VERSION,
@@ -308,6 +309,7 @@ export function watermarkCacheKey(parts: {
     parts.ctimeMs,
     parts.variant,
     parts.composition,
+    parts.version,
   ].join("|");
 }
 
