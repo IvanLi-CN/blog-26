@@ -11,6 +11,17 @@ export const PLAYBOOK_MAX_BUNDLE_BYTES = 64 * 1024 * 1024;
 export const digestSchema = z.string().regex(/^[a-f0-9]{64}$/);
 export const commitSchema = z.string().regex(/^[a-f0-9]{40}$/);
 export const stableTagSchema = z.string().regex(/^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
+export const githubRepositorySchema = z
+  .string()
+  .regex(/^[^/\s]+\/[^/\s]+$/u, "Invalid GitHub repository");
+export const githubRefSchema = z
+  .string()
+  .min(1)
+  .max(256)
+  .refine(
+    (value) => ![...value].some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127),
+    "Invalid GitHub ref"
+  );
 export const slugSchema = z.string().regex(/^[a-z0-9][a-z0-9._-]*$/);
 export const safePathSchema = z
   .string()
@@ -237,6 +248,29 @@ export const editionSchema = z.strictObject({
   files: z.array(fileSchema).length(3),
   generatedAt: z.string().datetime({ offset: true }),
   previous: z.strictObject({ tag: stableTagSchema, editionDigest: digestSchema }).optional(),
+});
+
+const publicExportFileSchema = z.strictObject({
+  path: z.enum(["catalog.json", "search-documents.json"]),
+  sha256: digestSchema,
+  size: z
+    .number()
+    .int()
+    .nonnegative()
+    .max(32 * 1024 * 1024),
+});
+
+export const githubPublicExportManifestSchema = z.strictObject({
+  schemaVersion: z.literal(1),
+  contentHash: digestSchema,
+  files: z.tuple([publicExportFileSchema, publicExportFileSchema]),
+});
+
+export const githubSourceRevisionSchema = z.strictObject({
+  provider: z.literal("github"),
+  repository: githubRepositorySchema,
+  ref: githubRefSchema,
+  commit: commitSchema,
 });
 
 function isRecord(value: unknown): value is Record<string, unknown> {

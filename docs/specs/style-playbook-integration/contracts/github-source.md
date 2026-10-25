@@ -18,6 +18,14 @@ The provider resolves the configured ref to one commit SHA, then reads the fixed
 
 Validation rejects missing or malformed export data, unknown or conflicting visibility, private or internal records, unsafe resource paths, incomplete content, and any digest mismatch. The provider computes a deterministic content snapshot hash over the normalized catalog, bodies, public resources and search documents. A source read failure is `failed`; a structurally or publicly invalid candidate is `invalid`; neither replaces the adopted snapshot.
 
+The dynamic source allowlist is exactly the following GitHub Contents API paths, all read at the resolved commit SHA:
+
+- `public/playbook/manifest.json` records `schemaVersion=1`, the normalized snapshot `contentHash`, and the SHA-256 plus byte size of the two data files.
+- `public/playbook/catalog.json` is the complete normalized public catalog, including readable bodies, public resources and the public relationships required by the blog.
+- `public/playbook/search-documents.json` is the complete public lexical-search projection for that same catalog.
+
+The provider requests no other paths and never uses `web/.generated`, `web/dist-public`, a static-site URL, a deployed pointer, or Release assets as this dynamic input. JSON bytes are canonicalized by the application contract before file and snapshot hashes are computed. The export manifest's file order and paths are fixed; a missing file, extra manifest entry, malformed digest, invalid UTF-8/JSON, schema failure or public-boundary violation makes the candidate `invalid`.
+
 ## Comparison and adoption
 
 | Source result | Dynamic outcome |

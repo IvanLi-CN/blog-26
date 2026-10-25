@@ -5,6 +5,7 @@
 - Lifecycle: active
 - Implementation: historical Release/static-pointer implementation notes remain below, but the current source contract is now GitHub-only for dynamic sync. This decision update does not claim that runtime code, migrations, or deployment configuration has been switched to ADR 0030.
 - Catalog note: the static public publication path remains documented separately; dynamic runtime adoption, current/previous database snapshots, GitHub configuration, and the new administrator-only status boundary require implementation work before they can be called complete.
+- T1 source primitives: `src/lib/playbook/github-source.ts` now resolves one GitHub ref, reads the fixed three-file public export at that commit, reuses the public catalog/search validators, computes the normalized content hash, and exposes current/stale comparison semantics. Its focused fixture tests cover fixed-commit reconstruction, malformed digest/public-boundary rejection, and all commit/hash combinations; this does not claim runtime adoption or database integration.
 - `REQ-PBI-012`、`REQ-PBI-013`、`REQ-PBI-015` 的既有章节聚合、展开和高亮已实现；统一适配器现在聚合章节与公开资源并返回同版定位，服务端共同排名与全局容量已接入。既有自动化与视觉证据不替代当前 Candidate 的重型验证。
 - `REQ-PBI-016` 已在博客消费端实现：详情与索引移除自动生成的内容版本和维护字段，明确异常状态使用中文提示。针对性 SSR、纯函数、静态 smoke、浏览器视觉与格式检查已通过，交付门禁待完成。
 

@@ -249,3 +249,29 @@ export interface PlaybookAdminEdition {
   search: PlaybookSearchPayload;
   supplement?: PlaybookSupplementEnvelope;
 }
+
+export interface PlaybookGitHubSourceRevision {
+  provider: "github";
+  repository: string;
+  ref: string;
+  commit: string;
+}
+
+export interface PlaybookNormalizedSnapshot {
+  catalog: PlaybookPublicCatalog;
+  search: PlaybookSearchPayload;
+}
+
+export interface PlaybookGitHubSnapshot extends PlaybookNormalizedSnapshot {
+  sourceRevision: PlaybookGitHubSourceRevision;
+  contentHash: string;
+}
+
+export interface PlaybookSnapshotComparison {
+  status: "current" | "stale";
+  sourceChanged: boolean;
+  contentChanged: boolean;
+  updateProvenance: boolean;
+  rebuildContent: boolean;
+  rebuildKeywordProjection: boolean;
+}
