@@ -43,6 +43,12 @@ export const PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST = [
 const CATALOG_PATH = `${PLAYBOOK_GITHUB_PUBLIC_EXPORT_ROOT}/catalog.json`;
 const SEARCH_PATH = `${PLAYBOOK_GITHUB_PUBLIC_EXPORT_ROOT}/search-documents.json`;
 const MANIFEST_PATH = `${PLAYBOOK_GITHUB_PUBLIC_EXPORT_ROOT}/manifest.json`;
+const GITHUB_SOURCE_REQUEST_TIMEOUT_MS = 30_000;
+const GITHUB_SOURCE_MAX_FILE_BYTES = 32 * 1024 * 1024;
+const GITHUB_SOURCE_MAX_API_RESPONSE_BYTES = 64 * 1024;
+const GITHUB_SOURCE_MAX_CONTENTS_RESPONSE_BYTES = 48 * 1024 * 1024;
+const GITHUB_CONTENTS_OBJECT_ACCEPT = "application/vnd.github.object+json";
+const GITHUB_RAW_ACCEPT = "application/vnd.github.raw+json";
 
 export interface PlaybookGitHubSourceConfig {
   repository: string;
@@ -53,6 +59,10 @@ export interface PlaybookGitHubSourceConfig {
 export interface PlaybookGitHubSourceTransport {
   resolveRef(input: { repository: string; ref: string }): Promise<string>;
   readFile(input: { repository: string; commit: string; path: string }): Promise<Uint8Array>;
+}
+
+export interface PlaybookGitHubSourceTransportOptions {
+  requestTimeoutMs?: number;
 }
 
 export type PlaybookGitHubSourceResult =
@@ -126,6 +136,8 @@ function assertCompletePlaybookSearch(
   catalog: PlaybookPublicCatalog,
   search: PlaybookSearchPayload
 ) {
+  const sectionDocumentId = (kind: "topic" | "project", slug: string, sectionId: string) =>
+    `section:${kind}:${slug}:${sectionId}`;
   const expectedIds = new Set<string>();
   const find = (id: string) => search.documents.find((document) => document.id === id);
   const requireDocument = (input: {
@@ -154,7 +166,7 @@ function assertCompletePlaybookSearch(
       input.keywords.some((keyword, index) => document.keywords[index] !== keyword)
     )
       throw new Error(`Search projection metadata mismatch: ${canonicalRoute}`);
-    const expectedBody = input.bodyParts.filter((bodyPart) => bodyPart.trim()).join(" ");
+    const expectedBody = input.bodyParts.filter((bodyPart) => bodyPart.length > 0).join(" ");
     if (document.body !== expectedBody)
       throw new Error(`Search projection body mismatch: ${canonicalRoute}`);
     return document;
@@ -178,7 +190,7 @@ function assertCompletePlaybookSearch(
     });
     for (const section of detail.sections) {
       requireDocument({
-        id: `section:${detail.item.slug}:${section.id}`,
+        id: sectionDocumentId("topic", detail.item.slug, section.id),
         kind: "section",
         title: section.title,
         subtitle: detail.item.token,
@@ -207,7 +219,7 @@ function assertCompletePlaybookSearch(
     });
     for (const section of detail.sections) {
       requireDocument({
-        id: `section:${detail.item.slug}:${section.id}`,
+        id: sectionDocumentId("project", detail.item.slug, section.id),
         kind: "section",
         title: section.title,
         subtitle: detail.title,
@@ -423,8 +435,12 @@ function githubApiPath(repository: string, path: string, query?: string) {
 
 export function createPlaybookGitHubSourceTransport(
   token: string,
-  fetchImpl: typeof fetch = fetch
+  fetchImpl: typeof fetch = fetch,
+  options: PlaybookGitHubSourceTransportOptions = {}
 ): PlaybookGitHubSourceTransport {
+  const requestTimeoutMs = options.requestTimeoutMs ?? GITHUB_SOURCE_REQUEST_TIMEOUT_MS;
+  if (!Number.isSafeInteger(requestTimeoutMs) || requestTimeoutMs <= 0)
+    throw new Error("GitHub source request timeout must be a positive integer");
   const headers = {
     Accept: "application/vnd.github+json",
     Authorization: `Bearer ${token}`,
@@ -434,6 +450,7 @@ export function createPlaybookGitHubSourceTransport(
     const response = await fetchImpl(url, {
       headers: { ...headers, Accept: accept },
       redirect: "error",
+      signal: AbortSignal.timeout(requestTimeoutMs),
     });
     if (!response.ok) {
       if (invalidStatus && (response.status === 404 || response.status === 422))
@@ -444,10 +461,43 @@ export function createPlaybookGitHubSourceTransport(
     }
     return response;
   }
-  async function json(url: string, invalidStatus = false) {
-    const response = await request(url, headers.Accept, invalidStatus);
+  async function readResponseBytes(response: Response, maxBytes: number, label: string) {
+    if (!response.body) throw new PlaybookGitHubSourceInvalidError(`${label} has no body`);
+    const contentLength = response.headers.get("content-length");
+    if (contentLength && /^\d+$/u.test(contentLength) && Number(contentLength) > maxBytes)
+      throw new PlaybookGitHubSourceInvalidError(`${label} exceeds byte limit`);
+    const reader = response.body.getReader();
+    const parts: Uint8Array[] = [];
+    let size = 0;
     try {
-      const value: unknown = await response.json();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > maxBytes)
+          throw new PlaybookGitHubSourceInvalidError(`${label} exceeds byte limit`);
+        parts.push(value);
+      }
+    } finally {
+      await reader.cancel().catch(() => undefined);
+    }
+    return Buffer.concat(parts);
+  }
+  async function json(url: string, invalidStatus = false) {
+    const response = await request(
+      url,
+      invalidStatus ? GITHUB_CONTENTS_OBJECT_ACCEPT : headers.Accept,
+      invalidStatus
+    );
+    const bytes = await readResponseBytes(
+      response,
+      invalidStatus
+        ? GITHUB_SOURCE_MAX_CONTENTS_RESPONSE_BYTES
+        : GITHUB_SOURCE_MAX_API_RESPONSE_BYTES,
+      "GitHub API response"
+    );
+    try {
+      const value: unknown = parseJson(decodeUtf8(bytes, "GitHub API response"));
       if (!value || typeof value !== "object" || Array.isArray(value))
         throw new Error("GitHub API response root must be an object");
       return value as Record<string, unknown>;
@@ -459,8 +509,8 @@ export function createPlaybookGitHubSourceTransport(
     }
   }
   async function raw(url: string) {
-    const response = await request(url, "application/vnd.github.raw", true);
-    return new Uint8Array(await response.arrayBuffer());
+    const response = await request(url, GITHUB_RAW_ACCEPT, true);
+    return readResponseBytes(response, GITHUB_SOURCE_MAX_FILE_BYTES, "GitHub raw file response");
   }
   return {
     async resolveRef({ repository, ref }) {
@@ -475,6 +525,14 @@ export function createPlaybookGitHubSourceTransport(
       const value = await json(url, true);
       if (value.type !== "file" || value.path !== path)
         throw new PlaybookGitHubSourceInvalidError(`GitHub path is not a file: ${path}`);
+      if (
+        value.size !== undefined &&
+        (typeof value.size !== "number" ||
+          !Number.isSafeInteger(value.size) ||
+          value.size < 0 ||
+          value.size > GITHUB_SOURCE_MAX_FILE_BYTES)
+      )
+        throw new PlaybookGitHubSourceInvalidError(`GitHub file exceeds byte limit: ${path}`);
       if (value.encoding === "none" || value.content === "") return raw(url);
       if (typeof value.content !== "string")
         throw new PlaybookGitHubSourceInvalidError(`GitHub file has no content: ${path}`);
@@ -482,6 +540,8 @@ export function createPlaybookGitHubSourceTransport(
       const bytes = Buffer.from(content, "base64");
       if (bytes.toString("base64") !== content)
         throw new PlaybookGitHubSourceInvalidError(`GitHub file is not valid base64: ${path}`);
+      if (bytes.byteLength > GITHUB_SOURCE_MAX_FILE_BYTES)
+        throw new PlaybookGitHubSourceInvalidError(`GitHub file exceeds byte limit: ${path}`);
       return bytes;
     },
   };

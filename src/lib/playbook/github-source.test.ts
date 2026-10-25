@@ -47,7 +47,7 @@ const completeFixtureSearch: PlaybookSearchPayload = {
       command_id: null,
     },
     ...fixtureTopic.sections.map((section) => ({
-      id: `section:${fixtureTopic.item.slug}:${section.id}`,
+      id: `section:topic:${fixtureTopic.item.slug}:${section.id}`,
       kind: "section" as const,
       title: section.title,
       subtitle: fixtureTopic.item.token,
@@ -69,7 +69,7 @@ const completeFixtureSearch: PlaybookSearchPayload = {
       command_id: null,
     },
     ...fixtureProject.sections.map((section) => ({
-      id: `section:${fixtureProject.item.slug}:${section.id}`,
+      id: `section:project:${fixtureProject.item.slug}:${section.id}`,
       kind: "section" as const,
       title: section.title,
       subtitle: fixtureProject.title,
@@ -371,6 +371,110 @@ test("rejects search documents that do not carry catalog content or keyword proj
   );
 });
 
+test("namespaces section identities by public object kind", () => {
+  const catalog = structuredClone(publicFixtureCatalog);
+  const topic = catalog.topic_details[0];
+  const project = catalog.project_details[0];
+  const snapshotTopic = catalog.snapshot.topics[0];
+  const topicSection = topic?.sections[0];
+  const projectSection = project?.sections[0];
+  if (!topic || !project || !snapshotTopic || !topicSection || !projectSection)
+    throw new Error("fixture catalog is incomplete");
+
+  const collidingSlug = project.item.slug;
+  topic.item.slug = collidingSlug;
+  snapshotTopic.slug = collidingSlug;
+  projectSection.id = topicSection.id;
+  topicSection.id = projectSection.id;
+  topic.policy_skills[0].summary.primary_topic = collidingSlug;
+
+  const search = structuredClone(completeFixtureSearch);
+  const topicPage = search.documents.find((document) => document.id === "topic:delivery");
+  const topicSections = search.documents.filter((document) =>
+    document.id.startsWith("section:topic:delivery:")
+  );
+  const projectSectionDocument = search.documents.find(
+    (document) => document.id === `section:project:${project.item.slug}:architecture`
+  );
+  const policyPage = search.documents.find(
+    (document) => document.id === `policy:${topic.policy_skills[0]?.summary.slug}`
+  );
+  if (!topicPage || !projectSectionDocument || !policyPage || topicSections.length !== 2)
+    throw new Error("fixture search is incomplete");
+
+  topicPage.id = `topic:${collidingSlug}`;
+  topicPage.route = `/topics/${collidingSlug}`;
+  for (const document of topicSections) {
+    const sectionId = document.section_id;
+    if (!sectionId) throw new Error("topic section identity is missing");
+    document.id = `section:topic:${collidingSlug}:${sectionId}`;
+    document.route = `/topics/${collidingSlug}`;
+  }
+  projectSectionDocument.id = `section:project:${collidingSlug}:${projectSection.id}`;
+  projectSectionDocument.section_id = projectSection.id;
+  policyPage.keywords = [policyPage.keywords[0] ?? "", collidingSlug];
+
+  expect(() => normalizePlaybookSnapshot(catalog, search)).not.toThrow();
+});
+
+test("preserves whitespace-only section and resource bodies in exact projections", () => {
+  const catalog = structuredClone(publicFixtureCatalog);
+  const topic = catalog.topic_details[0];
+  const project = catalog.project_details[0];
+  const resource = topic?.policy_skills[0]?.resources[0];
+  const topicSection = topic?.sections[0];
+  const projectSection = project?.sections[0];
+  if (!topic || !project || !resource || !topicSection || !projectSection)
+    throw new Error("fixture catalog is incomplete");
+
+  topicSection.markdown = "\n";
+  projectSection.markdown = "\t";
+  resource.content = " \n";
+
+  const search = structuredClone(completeFixtureSearch);
+  const topicPage = search.documents.find((document) => document.id === `topic:${topic.item.slug}`);
+  const topicSectionDocument = search.documents.find(
+    (document) => document.id === `section:topic:${topic.item.slug}:${topicSection.id}`
+  );
+  const projectPage = search.documents.find(
+    (document) => document.id === `project:${project.item.slug}`
+  );
+  const projectSectionDocument = search.documents.find(
+    (document) => document.id === `section:project:${project.item.slug}:${projectSection.id}`
+  );
+  const resourceDocument = search.documents.find(
+    (document) => document.id === `resource:${fixturePolicy.summary.slug}:${resource.path}`
+  );
+  if (
+    !topicPage ||
+    !topicSectionDocument ||
+    !projectPage ||
+    !projectSectionDocument ||
+    !resourceDocument
+  )
+    throw new Error("fixture search is incomplete");
+
+  topicPage.body = [
+    topic.item.description ?? "",
+    topic.preamble,
+    ...topic.sections.map((section) => section.markdown),
+  ]
+    .filter((bodyPart) => bodyPart.length > 0)
+    .join(" ");
+  topicSectionDocument.body = topicSection.markdown;
+  projectPage.body = [
+    project.item.description ?? "",
+    project.preamble,
+    ...project.sections.map((section) => section.markdown),
+  ]
+    .filter((bodyPart) => bodyPart.length > 0)
+    .join(" ");
+  projectSectionDocument.body = projectSection.markdown;
+  resourceDocument.body = resource.content;
+
+  expect(() => normalizePlaybookSnapshot(catalog, search)).not.toThrow();
+});
+
 test("rejects a resource projection that omits public resource content", () => {
   const invalidSearch = structuredClone(completeFixtureSearch);
   const resources = invalidSearch.documents.find((document) => document.section_id === "resources");
@@ -559,7 +663,7 @@ test("pins the production transport to GitHub API paths and validates response b
     "https://api.github.com/repos/IvanLi-CN/style-playbook-skills/contents/public/playbook/catalog.json?ref=" +
       commit,
   ]);
-  expect(requests[0]?.init).toEqual({
+  expect(requests[0]?.init).toMatchObject({
     headers: {
       Accept: "application/vnd.github+json",
       Authorization: "Bearer fixture-token",
@@ -567,6 +671,16 @@ test("pins the production transport to GitHub API paths and validates response b
     },
     redirect: "error",
   });
+  expect(requests[0]?.init.signal).toBeInstanceOf(AbortSignal);
+  expect(requests[1]?.init).toMatchObject({
+    headers: {
+      Accept: "application/vnd.github.object+json",
+      Authorization: "Bearer fixture-token",
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+    redirect: "error",
+  });
+  expect(requests[1]?.init.signal).toBeInstanceOf(AbortSignal);
 });
 
 test("falls back to the raw GitHub media type for large file responses", async () => {
@@ -598,12 +712,88 @@ test("falls back to the raw GitHub media type for large file responses", async (
       path: "public/playbook/catalog.json",
     })
   ).resolves.toEqual(rawBytes);
-  expect(requests[2]?.init).toEqual({
+  expect(requests[2]?.init).toMatchObject({
     headers: {
-      Accept: "application/vnd.github.raw",
+      Accept: "application/vnd.github.raw+json",
       Authorization: "Bearer fixture-token",
       "X-GitHub-Api-Version": "2022-11-28",
     },
     redirect: "error",
   });
+  expect(requests[2]?.init.signal).toBeInstanceOf(AbortSignal);
+});
+
+test("classifies interrupted response bodies as retryable failures", async () => {
+  const fetchImpl = (async (input: RequestInfo | URL) => {
+    if (String(input).includes("/commits/"))
+      return new Response(JSON.stringify({ sha: commit }), { status: 200 });
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.error(new Error("connection reset"));
+      },
+    });
+    return new Response(body, { status: 200 });
+  }) as unknown as typeof fetch;
+  const result = await loadPlaybookGitHubSnapshot(
+    createPlaybookGitHubSourceTransport("fixture-token", fetchImpl),
+    config
+  );
+  expect(result.status).toBe("failed");
+});
+
+test("aborts a stalled GitHub request after the configured timeout", async () => {
+  let requestSignal: AbortSignal | undefined;
+  const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    requestSignal = init?.signal ?? undefined;
+    if (String(input).includes("/commits/"))
+      return new Response(JSON.stringify({ sha: commit }), { status: 200 });
+    return new Promise<Response>((_resolve, reject) => {
+      if (!requestSignal) {
+        reject(new Error("request signal is missing"));
+        return;
+      }
+      requestSignal.addEventListener(
+        "abort",
+        () => reject(requestSignal?.reason ?? new Error("request timed out")),
+        { once: true }
+      );
+    });
+  }) as unknown as typeof fetch;
+  const result = await loadPlaybookGitHubSnapshot(
+    createPlaybookGitHubSourceTransport("fixture-token", fetchImpl, { requestTimeoutMs: 1 }),
+    config
+  );
+  expect(result.status).toBe("failed");
+  expect(requestSignal).toBeInstanceOf(AbortSignal);
+  expect(requestSignal?.aborted).toBe(true);
+});
+
+test("rejects raw responses that exceed the GitHub source byte limit", async () => {
+  const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input).includes("/commits/"))
+      return new Response(JSON.stringify({ sha: commit }), { status: 200 });
+    if (new Headers(init?.headers).get("Accept") !== "application/vnd.github.raw+json")
+      return new Response(
+        JSON.stringify({
+          type: "file",
+          path: "public/playbook/catalog.json",
+          encoding: "none",
+          content: "",
+        }),
+        { status: 200 }
+      );
+    return new Response("small body", {
+      status: 200,
+      headers: { "content-length": String(32 * 1024 * 1024 + 1) },
+    });
+  }) as unknown as typeof fetch;
+  const transport = createPlaybookGitHubSourceTransport("fixture-token", fetchImpl);
+  await transport.resolveRef({ repository: config.repository, ref: config.ref });
+  await expect(
+    transport.readFile({
+      repository: config.repository,
+      commit,
+      path: "public/playbook/catalog.json",
+    })
+  ).rejects.toThrow("exceeds byte limit");
 });
