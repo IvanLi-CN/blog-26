@@ -12,6 +12,7 @@ import type {
   PlaybookEditionIdentity,
   PlaybookManifest,
   PlaybookManifestFile,
+  PlaybookNormalizedSnapshot,
 } from "./types";
 
 export function samePlaybookEdition(a: PlaybookEditionIdentity, b: PlaybookEditionIdentity) {
@@ -20,6 +21,26 @@ export function samePlaybookEdition(a: PlaybookEditionIdentity, b: PlaybookEditi
 
 export function sha256(content: string | Uint8Array) {
   return createHash("sha256").update(content).digest("hex");
+}
+
+export function encodePlaybookSnapshot(snapshot: PlaybookNormalizedSnapshot) {
+  const catalogIndex = Object.fromEntries(
+    Object.entries(snapshot.catalog.snapshot.index).filter(([key]) => key !== "generated_at")
+  );
+  const search = Object.fromEntries(
+    Object.entries(snapshot.search).filter(([key]) => key !== "generated_at")
+  );
+  return encodeJson({
+    catalog: {
+      ...snapshot.catalog,
+      snapshot: { ...snapshot.catalog.snapshot, index: catalogIndex },
+    },
+    search,
+  });
+}
+
+export function computePlaybookContentHash(snapshot: PlaybookNormalizedSnapshot) {
+  return sha256(encodePlaybookSnapshot(snapshot));
 }
 
 export function decodeUtf8(content: Uint8Array, label = "Playbook bytes") {
