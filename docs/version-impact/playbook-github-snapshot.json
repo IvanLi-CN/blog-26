@@ -29,7 +29,7 @@
     "src/lib/playbook/schema.ts": "5ec1b7c8e37c3d18bc844910125f01c13c081fbb",
     "src/lib/playbook/types.ts": "c905728b6c3550f186ece586ebb3d8b635c71d01",
     "src/lib/schema.ts": "0c6000509ca29f4cbdc54e01c21701ebbb7f3eab",
-    "src/server/public-api/playbook.ts": "2a2027ed3260e909e0a09f179142266fd672440f",
+    "src/server/public-api/playbook.ts": "dd4e8db3767c1db70ecaf36d678cfffda00d009c",
     "src/server/public-api/router.ts": "a3c97c5839e342a231c519002c5c537938466ac5",
     "src/server/public-api/search-stream.test.ts": "503214b887d13f51c992bc578eb75d8d31fcc83a",
     "src/server/routers/admin/content-sync.ts": "673f4837f4b5f1c0202d7c5aa297b498ce93efa5",
@@ -46,7 +46,6 @@
     "src/server/services/rag-index.ts": "333f9e14a9bc63343e17e2378a996e3235d886b0",
     "src/server/services/search-semantic-projection.ts": "4778050b384a59a5d680c7469587acf85c6a9108",
     "tests/e2e/web-demo/content-sync.spec.ts": "1300002255f840838871c0af8d4b5be4eda849c2",
-    "tests/lib/playbook-contract.test.ts": "50a8e2ecf8b5c8c68d03ea1c7720fee8e1b883ae",
     "tests/lib/playbook-snapshot-restart.test.ts": "35df9f92917c999f6406564d1350242cc0bf6259",
     "tests/server/system-share-api.test.ts": "85d8599b30d1b8a87fb6cddb383b849d010867ff"
   },
@@ -80,7 +79,7 @@
       "evidence": [
         {
           "path": "src/server/public-api/playbook.ts",
-          "blob": "2a2027ed3260e909e0a09f179142266fd672440f",
+          "blob": "dd4e8db3767c1db70ecaf36d678cfffda00d009c",
           "command": "Focused validation for src/server/public-api/playbook.ts"
         },
         {
@@ -148,7 +147,7 @@
       "evidence": [
         {
           "path": "src/server/public-api/playbook.ts",
-          "blob": "2a2027ed3260e909e0a09f179142266fd672440f",
+          "blob": "dd4e8db3767c1db70ecaf36d678cfffda00d009c",
           "command": "Public Playbook catalog, detail, resource and search responses remain compatible while binding reads to current snapshot identity"
         },
         {

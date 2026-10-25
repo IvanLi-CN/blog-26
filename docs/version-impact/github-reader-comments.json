@@ -58,7 +58,7 @@
     "src/styles/globals.css": "808ff0298335ac49a54868b606d76d430f8eb792",
     "tests/e2e/web-demo/console-comments.spec.ts": "69a95bc2ab05a2dc5eaf3462ed0ac79d9ba60bd3",
     "tests/e2e/web-demo/public-comments.spec.ts": "74c860b007b2b5e7b865dd57ca738a627c4c26f8",
-    "tests/server/system-share-api.test.ts": "4bb1bb06b4de1b7fb0be6eda087cd0a5fa85bdc2",
+    "tests/server/system-share-api.test.ts": "85d8599b30d1b8a87fb6cddb383b849d010867ff",
     "tests/e2e/web-demo/console-memo-boundary.spec.ts": "5396c2b20f8e96e0da64c0a1a2c054d67e5d1041",
     "drizzle/0018_comments_backfill_gate.sql": "31756eeeee6b5c3cdf4c29f1ec05dcb8ced1783d",
     "drizzle/meta/0018_snapshot.json": "274f64e2fbe70816c46f1f0ff5f948328e4a3bef",
@@ -136,7 +136,7 @@
         },
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "4bb1bb06b4de1b7fb0be6eda087cd0a5fa85bdc2",
+          "blob": "85d8599b30d1b8a87fb6cddb383b849d010867ff",
           "command": "bun test tests/server/system-share-api.test.ts: legacy comment migration, resumable backfill, idempotent rerun, and blocked recovery"
         },
         {
@@ -202,7 +202,7 @@
         },
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "4bb1bb06b4de1b7fb0be6eda087cd0a5fa85bdc2",
+          "blob": "85d8599b30d1b8a87fb6cddb383b849d010867ff",
           "command": "bun test tests/server/system-share-api.test.ts: legacy comment migration, resumable backfill, idempotent rerun, and blocked recovery"
         },
         {

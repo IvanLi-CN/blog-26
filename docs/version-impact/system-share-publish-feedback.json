@@ -50,7 +50,7 @@
     "tests/lib/public-pwa-assets.test.ts": "babda4a2eb57de53c7d3377e021746f9b8e918bf",
     "tests/lib/web-demo-inspector-layout.test.ts": "a17f835643925fdd1b33d110a3c1ade0786da90c",
     "tests/server/console-api-route.test.ts": "8d2d99311d518cf3107d1ec3150996180a7e7be9",
-    "tests/server/system-share-api.test.ts": "cce718709bef7dda6b2e0785fee91e8ebd466319"
+    "tests/server/system-share-api.test.ts": "85d8599b30d1b8a87fb6cddb383b849d010867ff"
   },
   "change": {
     "description": "Complete console PWA system-share publishing with stable submission identity, crash-safe recovery, global publish feedback, confirmed navigation, and official Web Demo coverage.",
@@ -108,7 +108,7 @@
       "evidence": [
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "cce718709bef7dda6b2e0785fee91e8ebd466319",
+          "blob": "85d8599b30d1b8a87fb6cddb383b849d010867ff",
           "command": "System-share authentication, limits, idempotency, recovery, cleanup, and visibility tests"
         },
         {
@@ -150,7 +150,7 @@
       "evidence": [
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "cce718709bef7dda6b2e0785fee91e8ebd466319",
+          "blob": "85d8599b30d1b8a87fb6cddb383b849d010867ff",
           "command": "Existing administrator-only API contract remains compatible"
         },
         {
@@ -210,7 +210,7 @@
         },
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "cce718709bef7dda6b2e0785fee91e8ebd466319",
+          "blob": "85d8599b30d1b8a87fb6cddb383b849d010867ff",
           "command": "Recovery and prior-state compatibility regression coverage"
         }
       ]
