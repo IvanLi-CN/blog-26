@@ -26,6 +26,7 @@ import { extractPostCoverCandidate, isExternalImageUrl } from "@/lib/post-cover"
 import {
   createEmptyPublicMediaCollection,
   getPublicMediaWatermarkVersion,
+  migratePublicMediaV4ToV5,
   type PublicMediaCollection,
   type PublicMediaItem,
   rewritePublicContentMediaUrls,
@@ -96,14 +97,46 @@ function normalizeSnapshotMedia(
     return createEmptyPublicMediaCollection();
   }
 
+  const migrateItem = (item: PublicMediaItem | null | undefined) => {
+    if (!item) return null;
+    return {
+      ...item,
+      variants: Object.fromEntries(
+        Object.entries(item.variants).map(([variant, value]) => [
+          variant,
+          typeof value === "string" ? migratePublicMediaV4ToV5(value) : value,
+        ])
+      ) as PublicMediaItem["variants"],
+      presentations: item.presentations
+        ? (Object.fromEntries(
+            Object.entries(item.presentations).map(([variant, candidates]) => [
+              variant,
+              candidates
+                ? {
+                    a: migratePublicMediaV4ToV5(candidates.a),
+                    b: migratePublicMediaV4ToV5(candidates.b),
+                  }
+                : candidates,
+            ])
+          ) as PublicMediaItem["presentations"])
+        : item.presentations,
+      poster: item.poster ? migratePublicMediaV4ToV5(item.poster) : item.poster,
+      playback: item.playback ? migratePublicMediaV4ToV5(item.playback) : item.playback,
+      sources: Array.isArray(item.sources)
+        ? item.sources.map((source) => ({
+            ...source,
+            url: migratePublicMediaV4ToV5(source.url),
+          }))
+        : [],
+    } satisfies PublicMediaItem;
+  };
   const normalizeItem = (item: PublicMediaItem | null | undefined) => {
-    if (!item || preserveSourceDescriptors) return item ?? null;
-    return { ...item, sources: [] };
+    const migrated = migrateItem(item);
+    if (!migrated || preserveSourceDescriptors) return migrated;
+    return { ...migrated, sources: [] };
   };
   const normalizeItems = (items: PublicMediaItem[] | undefined) =>
-    Array.isArray(items)
-      ? items.map((item) => (preserveSourceDescriptors ? item : { ...item, sources: [] }))
-      : [];
+    Array.isArray(items) ? items.map((item) => normalizeItem(item) as PublicMediaItem) : [];
 
   return {
     primary: normalizeItem(media.primary),
@@ -118,39 +151,47 @@ function normalizeSnapshotPaths(
   preserveSourceDescriptors: boolean
 ): PublicSnapshot {
   const posts = snapshot.posts.map((post) => {
-    const watermarkRenderVersion = getPublicMediaWatermarkVersion(post.media);
+    const media = normalizeSnapshotMedia(post.media, preserveSourceDescriptors);
+    const watermarkRenderVersion = getPublicMediaWatermarkVersion(media);
     return {
       ...post,
-      media: normalizeSnapshotMedia(post.media, preserveSourceDescriptors),
+      image: post.image ? migratePublicMediaV4ToV5(post.image) : post.image,
+      media,
       filePath: getSnapshotRecordPath(post),
-      body: rewritePublicContentMediaUrls(post.body, {
-        kind: "post",
-        slug: post.slug,
-        filePath: getSnapshotRecordPath(post),
-        supportsResponsiveWatermark: watermarkRenderVersion !== null,
-        watermarkRenderVersion: watermarkRenderVersion ?? undefined,
-      }),
+      body: migratePublicMediaV4ToV5(
+        rewritePublicContentMediaUrls(post.body, {
+          kind: "post",
+          slug: post.slug,
+          filePath: getSnapshotRecordPath(post),
+          supportsResponsiveWatermark: watermarkRenderVersion !== null,
+          watermarkRenderVersion: watermarkRenderVersion ?? undefined,
+        })
+      ),
     };
   });
   const memos = snapshot.memos.map((memo) => {
-    const watermarkRenderVersion = getPublicMediaWatermarkVersion(memo.media);
+    const media = normalizeSnapshotMedia(memo.media, preserveSourceDescriptors);
+    const watermarkRenderVersion = getPublicMediaWatermarkVersion(media);
     return {
       ...memo,
+      image: memo.image ? migratePublicMediaV4ToV5(memo.image) : memo.image,
       title: normalizeLegacyMemoTitle(
         memo.title,
         getSnapshotRecordPath(memo),
         memo.content,
         memo.slug
       ),
-      media: normalizeSnapshotMedia(memo.media, preserveSourceDescriptors),
+      media,
       filePath: getSnapshotRecordPath(memo),
-      content: rewritePublicContentMediaUrls(memo.content, {
-        kind: "memo",
-        slug: memo.slug,
-        filePath: getSnapshotRecordPath(memo),
-        supportsResponsiveWatermark: watermarkRenderVersion !== null,
-        watermarkRenderVersion: watermarkRenderVersion ?? undefined,
-      }),
+      content: migratePublicMediaV4ToV5(
+        rewritePublicContentMediaUrls(memo.content, {
+          kind: "memo",
+          slug: memo.slug,
+          filePath: getSnapshotRecordPath(memo),
+          supportsResponsiveWatermark: watermarkRenderVersion !== null,
+          watermarkRenderVersion: watermarkRenderVersion ?? undefined,
+        })
+      ),
     };
   });
   return rebuildSnapshotTags({ ...snapshot, posts, memos });

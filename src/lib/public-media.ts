@@ -93,6 +93,8 @@ const FILES_API_PREFIX = "/api/files/";
 const PUBLIC_ASSETS_PREFIX = "/api/public/assets/";
 const ADMIN_PREVIEW_ASSETS_PREFIX = "/api/admin/preview/assets/";
 const STATIC_PUBLIC_ASSETS_PREFIX = "/_content/assets/";
+const PUBLIC_MEDIA_V4_PATH_RE =
+  /((?:\/api\/public\/assets|\/_content\/assets)\/(?:post|memo)\/[^/?#"'<>]+\/[^/?#"'<>]+\/)wm-([ab])-v4(?=\/)/gu;
 const INLINE_MARKDOWN_LINK_RE =
   /(!?\[[^\]\n]*\]\()(\s*)(<[^>\n]+>|(?:[^\s()\\]+|\\.|\([^()\n]*\))+)([^)]*)(\))/g;
 
@@ -182,6 +184,11 @@ export function isPublicAssetFacadeUrl(value: string) {
 
 export function isStaticPublicAssetUrl(value: string) {
   return value.trim().startsWith(STATIC_PUBLIC_ASSETS_PREFIX);
+}
+
+/** v4's A watermark uses a full-card SVG canvas; migrate published paths to the compact v5 pair. */
+export function migratePublicMediaV4ToV5(value: string) {
+  return value.replace(PUBLIC_MEDIA_V4_PATH_RE, "$1wm-$2-v5");
 }
 
 export function isPublishedPublicAssetUrl(value: string) {

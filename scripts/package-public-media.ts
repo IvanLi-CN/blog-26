@@ -3,6 +3,7 @@
 import { appendFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { extname, join, relative, resolve, sep } from "node:path";
 import { withoutDeploymentCredentials } from "../src/lib/playbook/child-env";
+import { migratePublicMediaV4ToV5 } from "../src/lib/public-media";
 
 export const PUBLIC_MEDIA_FACADE_PREFIX = "/api/public/assets/";
 export const CLIPPING_RESOURCE_FACADE_RE =
@@ -1103,7 +1104,9 @@ function canonicalizeWatermarkReference(
   basePath: string,
   siteUrl: string
 ): AssetReference {
-  const canonicalPath = canonicalPublicMediaPath(reference.sourceUrl.pathname);
+  const canonicalPath = migratePublicMediaV4ToV5(
+    canonicalPublicMediaPath(reference.sourceUrl.pathname)
+  );
   if (canonicalPath === reference.sourceUrl.pathname) return reference;
 
   const sourceUrl = new URL(reference.sourceUrl.href);
