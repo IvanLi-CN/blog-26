@@ -12,6 +12,8 @@ const watermarkFiles = [
   "public/watermark-ivanli-b.dark.v3.svg",
   "public/watermark-ivanli-a.light.v4.svg",
   "public/watermark-ivanli-a.dark.v4.svg",
+  "public/watermark-ivanli-a.light.v5.svg",
+  "public/watermark-ivanli-a.dark.v5.svg",
 ] as const;
 
 describe("versioned Logo watermark assets", () => {
@@ -55,6 +57,18 @@ describe("versioned Logo watermark assets", () => {
     ]) {
       const svg = await readFile(resolve(process.cwd(), relativePath), "utf8");
       expect(svg).toContain('viewBox="0 0 796 572"');
+      expect(svg).toContain('transform="translate(-110 -226)"');
+    }
+  });
+
+  it("uses a compact v5 A canvas for renderer compatibility", async () => {
+    for (const relativePath of [
+      "public/watermark-ivanli-a.light.v5.svg",
+      "public/watermark-ivanli-a.dark.v5.svg",
+    ]) {
+      const svg = await readFile(resolve(process.cwd(), relativePath), "utf8");
+      expect(svg).toContain('viewBox="0 0 150 105"');
+      expect(svg).toContain('transform="scale(0.18)"');
       expect(svg).toContain('transform="translate(-110 -226)"');
     }
   });
