@@ -34,6 +34,8 @@ type PublicMemoRecord = {
   content: string;
   excerpt?: string | null;
   isPublic: boolean;
+  canComment?: boolean;
+  draft?: boolean;
   tags: string[];
   filePath?: string;
   source?: string;
@@ -1038,6 +1040,7 @@ export function PublicMemoDetailControlsIsland({
 
   const detailBody = memo ? stripMatchingLeadingTitleHeading(memo.content, memo.title) : "";
   const detailPresentation = getMemoPresentation(memo ?? {});
+  const canComment = Boolean(memo?.canComment ?? (memo?.isPublic && memo?.draft !== true));
   const detailHeader = memo ? (
     <header className="space-y-4" data-testid="public-memo-detail-heading">
       <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--nature-text-soft)]">
@@ -1148,6 +1151,7 @@ export function PublicMemoDetailControlsIsland({
                 surface="public"
                 publicMediaContext={publicMediaContext}
                 commentsTarget={{ type: "memo", key: memo.slug }}
+                commentsCanCompose={canComment}
                 onTitleChange={(title) =>
                   setMemo((current) =>
                     current && current.title !== title ? { ...current, title } : current
@@ -1185,6 +1189,7 @@ export function PublicMemoDetailControlsIsland({
               <CommentSectionWithProvider
                 postSlug={memo.slug}
                 target={{ type: "memo", key: memo.slug }}
+                allowCompose={canComment}
               />
             </aside>
           </div>

@@ -8,6 +8,7 @@ interface CommentSectionWithProviderProps {
   title?: string;
   usePublicSitePaths?: boolean;
   embedded?: boolean;
+  allowCompose?: boolean;
 }
 
 export default function CommentSectionWithProvider({
@@ -16,6 +17,7 @@ export default function CommentSectionWithProvider({
   title,
   usePublicSitePaths = false,
   embedded = false,
+  allowCompose = true,
 }: CommentSectionWithProviderProps) {
   return (
     <CommentSection
@@ -24,6 +26,7 @@ export default function CommentSectionWithProvider({
       title={title}
       usePublicSitePaths={usePublicSitePaths}
       embedded={embedded}
+      allowCompose={allowCompose}
     />
   );
 }

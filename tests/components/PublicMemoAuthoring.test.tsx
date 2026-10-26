@@ -149,6 +149,39 @@ describe.serial("Administrator Memo pagination", () => {
 });
 
 describe.serial("Memo detail boundary", () => {
+  test("mounts administrator comments without a public composer for a private Memo detail", async () => {
+    const requests: string[] = [];
+    globalThis.fetch = (async (input) => {
+      const url = new URL(String(input), "http://localhost");
+      requests.push(url.pathname);
+      if (url.pathname === "/api/public/auth/me") return Response.json({ isAdmin: true });
+      if (url.pathname === "/api/public/memos/private-detail") {
+        return Response.json({ ...memo("private-detail"), isPublic: false, canComment: false });
+      }
+      if (url.pathname === "/api/public/reader-auth/me") return Response.json({ reader: null });
+      if (url.pathname === "/api/public/comments") {
+        return Response.json({ comments: [], totalPages: 1, isAdmin: true });
+      }
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    }) as typeof fetch;
+
+    const view = render(
+      <PublicMemoDetailControlsIsland
+        slug="private-detail"
+        initialIsAdmin
+        initialMemo={{ ...memo("private-detail"), isPublic: false, canComment: false }}
+      />
+    );
+
+    await waitFor(() => expect(requests).toContain("/api/public/memos/private-detail"));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+    await waitFor(() => expect(requests).toContain("/api/public/comments"));
+    expect(view.getByRole("heading", { name: "留言" })).toBeTruthy();
+    expect(view.queryByLabelText("评论内容")).toBeNull();
+  });
+
   test("points the eye action to the same-origin Console detail route", async () => {
     let authParsed = false;
     globalThis.fetch = (async (input) => {

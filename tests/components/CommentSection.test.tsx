@@ -62,6 +62,16 @@ describe("CommentSection states", () => {
     expect(queryByRole("button", { name: "提交审核" })).toBeNull();
   });
 
+  test("hides the composer while keeping an admin-visible comment list", async () => {
+    installDemo("?d_persona=admin&d_connection=online");
+    const { findByText, queryByLabelText } = render(
+      <CommentSection postSlug={target.key} target={target} allowCompose={false} />
+    );
+
+    expect(await findByText("这篇内容的边界整理得很清楚。")).toBeTruthy();
+    expect(queryByLabelText("评论内容")).toBeNull();
+  });
+
   test("keeps a generic 404 as a retryable request error", async () => {
     delete document.documentElement.dataset.webDemoBuild;
     window.history.replaceState({}, "", "/posts/demo-article/");

@@ -22,6 +22,7 @@ import { db } from "../../lib/db";
 import { projectCatalog } from "../../lib/project-catalog";
 import { comments, posts, readers, users } from "../../lib/schema";
 import { toMsTimestamp } from "../../lib/utils";
+import { isClippingRowPublic } from "../clipping/projection";
 import { adminProcedure, createTRPCRouter, publicProcedure } from "../trpc";
 
 const commentsPublicProcedure = publicProcedure.use(async ({ next }) => {
@@ -173,7 +174,7 @@ function decodeReplyCursor(value: string | undefined): ReplyCursor | null {
   }
 }
 
-async function assertPublicTarget(target: Target) {
+async function assertTargetExists(target: Target) {
   if (target.type === "project") {
     if (!projectCatalog.some((project) => project.slug === target.key)) {
       throw new TRPCError({ code: "NOT_FOUND", message: "评论目标不存在" });
@@ -182,11 +183,26 @@ async function assertPublicTarget(target: Target) {
   }
   const expectedType = target.type === "article" ? "post" : target.type;
   const row = await db
-    .select({ type: posts.type, draft: posts.draft, public: posts.public })
+    .select()
     .from(posts)
     .where(and(eq(posts.slug, target.key), eq(posts.type, expectedType)))
     .get();
+  if (!row) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "评论目标不存在" });
+  }
+  return row;
+}
+
+async function assertPublicTarget(target: Target) {
+  if (target.type === "project") {
+    await assertTargetExists(target);
+    return;
+  }
+  const row = await assertTargetExists(target);
   if (!row || row.draft || !row.public) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "评论目标不存在" });
+  }
+  if (target.type === "memo" && !(await isClippingRowPublic(row))) {
     throw new TRPCError({ code: "NOT_FOUND", message: "评论目标不存在" });
   }
 }
@@ -434,7 +450,11 @@ export const commentsRouter = createTRPCRouter({
   getComments: commentsPublicProcedure.input(getCommentsSchema).query(async ({ input, ctx }) => {
     const target = input.target || { type: "article" as const, key: input.slug as string };
     try {
-      await assertPublicTarget(target);
+      // Console administrators can manage comments while viewing the current
+      // private or draft Memo. Public readers remain limited to published
+      // targets, including when they hold a GitHub reader session.
+      if (ctx.isAdmin) await assertTargetExists(target);
+      else await assertPublicTarget(target);
     } catch (error) {
       // Keep the legacy slug-only read contract usable for old pages whose content
       // is absent from the current database; explicit target reads stay strict.
@@ -470,7 +490,7 @@ export const commentsRouter = createTRPCRouter({
         .get();
       if (!comment) throw new TRPCError({ code: "NOT_FOUND", message: "评论不存在" });
       const target = { type: comment.targetType, key: comment.targetKey } as Target;
-      await assertPublicTarget(target);
+      if (!ctx.isAdmin) await assertPublicTarget(target);
       let rootId = comment.rootId || comment.id;
       const seen = new Set<string>();
       let current = comment;

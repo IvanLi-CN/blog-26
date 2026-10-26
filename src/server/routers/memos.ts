@@ -984,6 +984,7 @@ export const memosRouter = router({
 
       const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
       const clipping = await clippingProjectionForRow(memo);
+      const canComment = memo.public && !memo.draft && (await isClippingRowPublic(memo));
       if (
         clipping &&
         (clipping.authored.frontmatter.public === false ||
@@ -1010,6 +1011,7 @@ export const memosRouter = router({
             }
           : {}),
         isPublic: memo.public,
+        canComment,
         tags: memo.tags ? JSON.parse(memo.tags) : [],
         image:
           pickLegacyPublicImage(media, "content", publicMediaContext.assetScope) ??
@@ -1446,6 +1448,8 @@ export const memosRouter = router({
       const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(updatedRow);
 
       const clipping = clippingInput.enabled ? await projectClippingMemo(id) : null;
+      const canComment =
+        updatedRow.public && !updatedRow.draft && (await isClippingRowPublic(updatedRow));
       return {
         id,
         slug: existingMemo.slug,
@@ -1459,6 +1463,7 @@ export const memosRouter = router({
             }
           : {}),
         isPublic: updateData.public,
+        canComment,
         tags,
         attachments: normalized.attachments,
         createdAt: displayTime,

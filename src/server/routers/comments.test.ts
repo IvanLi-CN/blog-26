@@ -374,6 +374,83 @@ describe("comments reader lifecycle", () => {
     expect(created.success).toBe(true);
   });
 
+  it("rejects private and draft content targets", async () => {
+    await seedPost("private-article");
+    await seedPost("draft-memo", "memo");
+    await seedPost("private-clipping", "memo");
+    if (!db) throw new Error("Database has not been initialised");
+    await db.update(posts).set({ public: false }).where(eq(posts.slug, "private-article"));
+    await db.update(posts).set({ draft: true }).where(eq(posts.slug, "draft-memo"));
+    await db
+      .update(posts)
+      .set({ metadata: JSON.stringify({ authoredClipping: { sourceUrl: "https://example.com" } }) })
+      .where(eq(posts.slug, "private-clipping"));
+    await db.insert(comments).values({
+      id: "private-admin-comment",
+      content: "Private Memo comment for administrator review",
+      postSlug: "private-article",
+      targetType: "article",
+      targetKey: "private-article",
+      authorName: "Legacy reader",
+      authorEmail: null,
+      readerId: null,
+      parentId: null,
+      rootId: "private-admin-comment",
+      status: "pending",
+      deletedAt: null,
+      revision: 1,
+      submissionKey: null,
+      createdAt: Math.floor(Date.now() / 1000),
+    });
+
+    await expect(
+      createCaller({ reader }).comments.createComment({
+        target: { type: "article", key: "private-article" },
+        content: "Should fail",
+        submissionKey: "private-article",
+      })
+    ).rejects.toMatchObject({ code: "NOT_FOUND", message: "评论目标不存在" });
+    await expect(
+      createCaller({ reader }).comments.createComment({
+        target: { type: "memo", key: "draft-memo" },
+        content: "Should fail",
+        submissionKey: "draft-memo",
+      })
+    ).rejects.toMatchObject({ code: "NOT_FOUND", message: "评论目标不存在" });
+    await expect(
+      createCaller({ reader }).comments.createComment({
+        target: { type: "memo", key: "private-clipping" },
+        content: "Should fail",
+        submissionKey: "private-clipping",
+      })
+    ).rejects.toMatchObject({ code: "NOT_FOUND", message: "评论目标不存在" });
+
+    await expect(
+      createCaller({ isAdmin: true }).comments.getComments({
+        target: { type: "article", key: "private-article" },
+      })
+    ).resolves.toMatchObject({
+      totalPages: 1,
+      isAdmin: true,
+      comments: [{ content: "Private Memo comment for administrator review" }],
+    });
+    await expect(
+      createCaller().comments.getComments({
+        target: { type: "article", key: "private-article" },
+      })
+    ).rejects.toMatchObject({ code: "NOT_FOUND", message: "评论目标不存在" });
+    await expect(
+      createCaller({ isAdmin: true }).comments.getComments({
+        target: { type: "memo", key: "draft-memo" },
+      })
+    ).resolves.toMatchObject({ comments: [], totalPages: 1, isAdmin: true });
+    await expect(
+      createCaller({ isAdmin: true }).comments.getComments({
+        target: { type: "memo", key: "private-clipping" },
+      })
+    ).resolves.toMatchObject({ comments: [], totalPages: 1, isAdmin: true });
+  });
+
   it("keeps legacy slug-only reads compatible when the article is absent", async () => {
     const result = await createCaller().comments.getComments({ slug: "legacy-missing-article" });
     expect(result).toMatchObject({ comments: [], totalPages: 1, isAdmin: false });
