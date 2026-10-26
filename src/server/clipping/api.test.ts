@@ -585,6 +585,11 @@ test("public MCP memo metadata fails closed for private and malformed values", a
         authorEmail: "private@example.com",
         content: "private body",
         systemShare: { leaseToken: "secret-lease-token" },
+        attachments: [
+          {
+            path: "assets/system-share/submission/secret-lease-token/private.png",
+          },
+        ],
       }),
       contentHash: marker,
     });

@@ -97,6 +97,14 @@ function normalizeAttachmentsToPersistedSemantics(
 
 export type MemoRow = typeof posts.$inferSelect;
 
+async function restoreMemoIndexRow(row: MemoRow): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.delete(posts).where(eq(posts.id, row.id));
+    await tx.insert(posts).values(row);
+  });
+  clearSearchCache();
+}
+
 const timeDisplaySources = ["publishDate", "updateDate", "lastModified", "unknown"] as const;
 type TimeDisplaySource = (typeof timeDisplaySources)[number];
 
@@ -1119,6 +1127,8 @@ export const memosRouter = router({
     let normalizedContent = rawContent;
     let normalizedAttachments = inputAttachments;
     let lastError: unknown = null;
+    let createdFullPath: string | null = null;
+    let createdFreshFile = false;
 
     for (const source of candidates) {
       try {
@@ -1146,6 +1156,8 @@ export const memosRouter = router({
 
         const basePath = getLocalBasePathOrThrow();
         const fullPath = join(basePath, createdId);
+        createdFullPath = fullPath;
+        createdFreshFile = false;
         if (systemShare) {
           ensureSafeSystemShareDirectorySync(dirname(fullPath));
         } else {
@@ -1228,6 +1240,7 @@ export const memosRouter = router({
               encoding: "utf-8",
               flag: "wx",
             });
+            createdFreshFile = true;
           }
         });
 
@@ -1289,11 +1302,26 @@ export const memosRouter = router({
     clearSearchCache();
     notifyClippingChange(createdId);
 
-    // 触发增量数据同步（内部已处理错误日志）
-    if (isTestEnv) {
-      void triggerIncrementalSync();
-    } else {
-      await triggerIncrementalSync();
+    try {
+      if (isTestEnv) {
+        void triggerIncrementalSync();
+      } else {
+        await triggerIncrementalSync({ throwOnError: true });
+      }
+    } catch (error) {
+      if (createdFreshFile && createdFullPath) {
+        try {
+          await withClippingVisibilityLock(async () => {
+            await rm(createdFullPath, { force: true });
+            await db.delete(posts).where(eq(posts.id, createdId));
+            clearSearchCache();
+            await triggerIncrementalSync({ throwOnError: true });
+          });
+        } catch (rollbackError) {
+          console.error("创建 memo 同步失败后恢复状态失败:", rollbackError);
+        }
+      }
+      throw error;
     }
 
     try {
@@ -1451,8 +1479,26 @@ export const memosRouter = router({
             } else {
               await writeFile(fullPath, existingRaw, "utf-8");
             }
+            await restoreMemoIndexRow(existingMemo);
           } catch (rollbackError) {
             console.error("更新 memo 失败后恢复 canonical 文件失败:", rollbackError);
+          }
+          throw error;
+        }
+
+        try {
+          if (!isTestEnv) await triggerIncrementalSync({ throwOnError: true });
+        } catch (error) {
+          try {
+            if (existingRaw === null) {
+              await rm(fullPath, { force: true });
+            } else {
+              await writeFile(fullPath, existingRaw, "utf-8");
+            }
+            await restoreMemoIndexRow(existingMemo);
+            await triggerIncrementalSync({ throwOnError: true });
+          } catch (rollbackError) {
+            console.error("更新 memo 同步失败后恢复状态失败:", rollbackError);
           }
           throw error;
         }
@@ -1466,8 +1512,6 @@ export const memosRouter = router({
       // 触发增量数据同步
       if (isTestEnv) {
         void triggerIncrementalSync();
-      } else {
-        await triggerIncrementalSync();
       }
 
       const updatedRow: MemoRow = { ...existingMemo, ...updateData } as MemoRow;
@@ -1549,16 +1593,28 @@ export const memosRouter = router({
             }
           }
 
-          // 从数据库删除
           try {
             await db.delete(posts).where(eq(posts.id, id));
+            if (!isTestEnv) await triggerIncrementalSync({ throwOnError: true });
           } catch (error) {
             if (previousRaw !== null) {
               try {
                 await writeFile(fullPath, previousRaw, "utf8");
+                await restoreMemoIndexRow(existingMemo);
               } catch (rollbackError) {
                 console.error("删除 memo 失败后恢复 canonical 文件失败:", rollbackError);
               }
+            } else {
+              try {
+                await restoreMemoIndexRow(existingMemo);
+              } catch (rollbackError) {
+                console.error("删除 memo 失败后恢复索引记录失败:", rollbackError);
+              }
+            }
+            try {
+              if (!isTestEnv) await triggerIncrementalSync({ throwOnError: true });
+            } catch (rollbackError) {
+              console.error("删除 memo 同步失败后恢复状态失败:", rollbackError);
             }
             throw error;
           }
@@ -1585,8 +1641,6 @@ export const memosRouter = router({
       // 触发增量数据同步
       if (isTestEnv) {
         void triggerIncrementalSync();
-      } else {
-        await triggerIncrementalSync();
       }
 
       return { success: true, id };

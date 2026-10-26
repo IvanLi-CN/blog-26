@@ -8,14 +8,14 @@
     "src/components/comments/CommentSectionWithProvider.tsx": "a17dcb3dc172cf02dd1b16c00f6816fcf81144bf",
     "src/components/memos/ClippingDetail.tsx": "8fb8a9d27cc2b6fc40b2548b55d510cba16c9163",
     "src/server/clipping/projection.ts": "647613c041786c27ffc468dbf21415d527f75cd9",
-    "src/server/clipping/api.test.ts": "5758fd885391a739131dcd60a37a763a35e62920",
+    "src/server/clipping/api.test.ts": "17a75b78faf707172bf64d14693c569f264c1acc",
     "src/server/clipping/store.test.ts": "e18f3549cbfdeb9c4030055fd13d67519094738d",
     "src/server/clipping/store.ts": "5bbe74b49284389859adebd202e5d0ef9c3e0cf3",
-    "src/server/mcp.ts": "35f1423db4bfe7cc59721441a8f141e17e46c423",
+    "src/server/mcp.ts": "f713b1822c17a07a33b4a97c2a0ecc7007905c8d",
     "src/server/routers/admin/files.ts": "b6f4a79f2939291764b30df420bebee43e5daa0e",
     "src/server/routers/comments.test.ts": "71ec7bab9a668ed1b7559fc54d91f57130585a68",
     "src/server/routers/comments.ts": "8ebfa5d0aece1f01c1a3cc0fed1b09e29496f662",
-    "src/server/routers/memos.ts": "26e2246273cbe7654226bf28e69da1920d8892c4",
+    "src/server/routers/memos.ts": "c647f8b58200e47223632cee15f16199cfb6f01b",
     "tests/components/CommentSection.test.tsx": "76157dd929540c3b0817348598820f8a774d342a",
     "tests/components/PublicMemoAuthoring.test.tsx": "4eddda1413ef18d80483fc60467f604d1443ec1e"
   },
@@ -49,12 +49,12 @@
         },
         {
           "path": "src/server/routers/memos.ts",
-          "blob": "26e2246273cbe7654226bf28e69da1920d8892c4",
+          "blob": "c647f8b58200e47223632cee15f16199cfb6f01b",
           "command": "Memo create, update, and delete canonical paths under the clipping visibility lock; creation rejects existing paths and failures restore the prior file"
         },
         {
           "path": "src/server/mcp.ts",
-          "blob": "35f1423db4bfe7cc59721441a8f141e17e46c423",
+          "blob": "f713b1822c17a07a33b4a97c2a0ecc7007905c8d",
           "command": "MCP list selection/projection and Memo create, update, and delete paths share the clipping visibility lock; public Memo fields and metadata are allowlisted fail-closed and creation rejects existing paths"
         },
         {
@@ -90,12 +90,12 @@
         },
         {
           "path": "src/server/routers/memos.ts",
-          "blob": "26e2246273cbe7654226bf28e69da1920d8892c4",
+          "blob": "c647f8b58200e47223632cee15f16199cfb6f01b",
           "command": "Memo create, update, and delete critical sections serialize canonical content writes, reject existing paths, and restore failed operations"
         },
         {
           "path": "src/server/mcp.ts",
-          "blob": "35f1423db4bfe7cc59721441a8f141e17e46c423",
+          "blob": "f713b1822c17a07a33b4a97c2a0ecc7007905c8d",
           "command": "MCP list selection/projection and canonical Memo create, update, and delete paths share the visibility lock, public field/metadata boundary, and rollback handling"
         },
         {
@@ -110,7 +110,7 @@
         },
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "5758fd885391a739131dcd60a37a763a35e62920",
+          "blob": "17a75b78faf707172bf64d14693c569f264c1acc",
           "command": "MCP public memo list regression verifies private fields and malformed/system-share metadata are not exposed"
         },
         {

@@ -147,7 +147,6 @@ function stripPrivateMcpMetadata(metadata: string | null): string | null {
       "publishDate",
       "updateDate",
       "category",
-      "attachments",
     ]);
     const sanitized = Object.fromEntries(
       Object.entries(parsed as Record<string, unknown>).filter(([key]) => publicKeys.has(key))
@@ -315,6 +314,14 @@ async function deleteStorageFile(_source: StorageSource, filePath: string): Prom
 
 async function deleteIndexedContentRow(id: string): Promise<void> {
   await db.delete(postsTable).where(eq(postsTable.id, id));
+  clearSearchCache();
+}
+
+async function restoreIndexedContentRow(row: PostRow): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.delete(postsTable).where(eq(postsTable.id, row.id));
+    await tx.insert(postsTable).values(row);
+  });
   clearSearchCache();
 }
 
@@ -900,7 +907,8 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         } catch (error) {
           try {
             await writeStorageFile(resolveStorageSource(row), row.filePath, previousRaw);
-            await triggerIncrementalSync();
+            await restoreIndexedContentRow(row);
+            await triggerIncrementalSync({ throwOnError: true });
           } catch (rollbackError) {
             console.error("[MCP] memo update rollback failed:", rollbackError);
           }
@@ -938,8 +946,8 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       } catch (error) {
         try {
           await writeStorageFile(resolveStorageSource(row), row.filePath, previousRaw);
-          if (deletedIndexed) await db.insert(postsTable).values(row);
-          await triggerIncrementalSync();
+          if (deletedIndexed) await restoreIndexedContentRow(row);
+          await triggerIncrementalSync({ throwOnError: true });
         } catch (rollbackError) {
           console.error("[MCP] memo delete rollback failed:", rollbackError);
         }
