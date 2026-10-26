@@ -8,13 +8,14 @@
     "src/components/comments/CommentSectionWithProvider.tsx": "a17dcb3dc172cf02dd1b16c00f6816fcf81144bf",
     "src/components/memos/ClippingDetail.tsx": "8fb8a9d27cc2b6fc40b2548b55d510cba16c9163",
     "src/server/clipping/projection.ts": "647613c041786c27ffc468dbf21415d527f75cd9",
+    "src/server/clipping/api.test.ts": "c46cb36296a16ad0afc55914363de1ff0e409a5d",
     "src/server/clipping/store.test.ts": "e18f3549cbfdeb9c4030055fd13d67519094738d",
     "src/server/clipping/store.ts": "5bbe74b49284389859adebd202e5d0ef9c3e0cf3",
-    "src/server/mcp.ts": "fed3d3acbcb7409531c47ae0c7c01a8e703354ee",
+    "src/server/mcp.ts": "cf3f0bbf0f1a71eee36aef5fe87f86ac2a5aae82",
     "src/server/routers/admin/files.ts": "b6f4a79f2939291764b30df420bebee43e5daa0e",
     "src/server/routers/comments.test.ts": "71ec7bab9a668ed1b7559fc54d91f57130585a68",
     "src/server/routers/comments.ts": "8ebfa5d0aece1f01c1a3cc0fed1b09e29496f662",
-    "src/server/routers/memos.ts": "203782323c18ab41319f40a08e66ca3140664082",
+    "src/server/routers/memos.ts": "e99452d3a268b80a8fac2ed6a619b063bf2e3578",
     "tests/components/CommentSection.test.tsx": "76157dd929540c3b0817348598820f8a774d342a",
     "tests/components/PublicMemoAuthoring.test.tsx": "4eddda1413ef18d80483fc60467f604d1443ec1e"
   },
@@ -38,8 +39,8 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The candidate retains target-aware REST/tRPC behavior and all existing comment lifecycle contracts, while public reads, deletes, counts, and creates bind publication state to their database operation and clipping reads to a synchronized canonical-file visibility check. All administrator canonical Memo writers, including the Memo router, MCP tools, and local Markdown file manager, share the same visibility lock; public MCP projections use that lock as well, and MCP/router creation uses exclusive file creation to reject path collisions. The change remains within the existing comment and Memo detail surfaces.",
-      "assessed_at": "2026-10-26T15:23:41+08:00",
+      "reasoning": "The candidate retains target-aware REST/tRPC behavior and all existing comment lifecycle contracts, while public reads, deletes, counts, and creates bind publication state to their database operation and clipping reads to a synchronized canonical-file visibility check. All administrator canonical Memo writers, including the Memo router, MCP tools, and local Markdown file manager, share the same visibility lock; MCP list selection and projection use that lock as one operation, public Memo fields are allowlisted, and MCP/router creation uses exclusive file creation to reject path collisions. Memo update failures restore the prior canonical file before returning. The change remains within the existing comment and Memo detail surfaces.",
+      "assessed_at": "2026-10-26T15:47:22+08:00",
       "evidence": [
         {
           "path": "src/server/routers/comments.ts",
@@ -48,13 +49,13 @@
         },
         {
           "path": "src/server/routers/memos.ts",
-          "blob": "203782323c18ab41319f40a08e66ca3140664082",
-          "command": "Memo create and update canonical content under the clipping visibility lock; creation rejects existing paths"
+          "blob": "e99452d3a268b80a8fac2ed6a619b063bf2e3578",
+          "command": "Memo create, update, and delete canonical paths under the clipping visibility lock; creation rejects existing paths and update failure restores the prior file"
         },
         {
           "path": "src/server/mcp.ts",
-          "blob": "fed3d3acbcb7409531c47ae0c7c01a8e703354ee",
-          "command": "MCP public projections and Memo create, update, and delete paths share the clipping visibility lock; creation rejects existing paths"
+          "blob": "cf3f0bbf0f1a71eee36aef5fe87f86ac2a5aae82",
+          "command": "MCP list selection/projection and Memo create, update, and delete paths share the clipping visibility lock; public Memo fields are allowlisted and creation rejects existing paths"
         },
         {
           "path": "src/server/routers/admin/files.ts",
@@ -74,8 +75,8 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "The affected comment, clipping, and release-policy suites pass after the operation-boundary repair, preserving idempotent submissions, reply pagination, target isolation, soft deletion, private/draft rejection, canonical clipping visibility, serialized administrator writers, and collision-safe Memo creation. Existing component and Web Demo evidence remains applicable to the unchanged UI contract.",
-      "assessed_at": "2026-10-26T15:23:41+08:00",
+      "reasoning": "The affected comment, clipping, MCP, Memo, and release-policy suites pass after the operation-boundary repair, preserving idempotent submissions, reply pagination, target isolation, soft deletion, private/draft rejection, canonical clipping visibility, serialized administrator writers, collision-safe Memo creation, public MCP field privacy, and file rollback on failed Memo updates. Existing component and Web Demo evidence remains applicable to the unchanged UI contract.",
+      "assessed_at": "2026-10-26T15:47:22+08:00",
       "evidence": [
         {
           "path": "src/server/routers/comments.test.ts",
@@ -89,13 +90,13 @@
         },
         {
           "path": "src/server/routers/memos.ts",
-          "blob": "203782323c18ab41319f40a08e66ca3140664082",
-          "command": "Memo create and update critical sections serialize canonical content writes and reject existing paths"
+          "blob": "e99452d3a268b80a8fac2ed6a619b063bf2e3578",
+          "command": "Memo create, update, and delete critical sections serialize canonical content writes, reject existing paths, and restore failed updates"
         },
         {
           "path": "src/server/mcp.ts",
-          "blob": "fed3d3acbcb7409531c47ae0c7c01a8e703354ee",
-          "command": "MCP public projections and canonical Memo create, update, and delete paths share the visibility lock"
+          "blob": "cf3f0bbf0f1a71eee36aef5fe87f86ac2a5aae82",
+          "command": "MCP list selection/projection and canonical Memo create, update, and delete paths share the visibility lock and public field boundary"
         },
         {
           "path": "src/server/routers/admin/files.ts",
@@ -106,6 +107,11 @@
           "path": "src/server/clipping/store.test.ts",
           "blob": "e18f3549cbfdeb9c4030055fd13d67519094738d",
           "command": "bun test src/server/clipping/store.test.ts: 15 passed, including sync visibility and lock serialization"
+        },
+        {
+          "path": "src/server/clipping/api.test.ts",
+          "blob": "c46cb36296a16ad0afc55914363de1ff0e409a5d",
+          "command": "MCP public memo list regression verifies private fields are not exposed"
         },
         {
           "path": "tests/components/CommentSection.test.tsx",

@@ -193,8 +193,12 @@ async function getFrontmatterDiagnostics(row: PostRow, kind: ContentKind) {
   }
 }
 
-async function annotateContentRows<T extends PostRow>(rows: T[], kind: ContentKind) {
-  return withClippingVisibilityLock(async () => {
+async function annotateContentRows<T extends PostRow>(
+  rows: T[],
+  kind: ContentKind,
+  options: { assumeVisibilityLock?: boolean } = {}
+) {
+  const operation = async () => {
     const results = await Promise.all(
       rows.map(async (row) => {
         const auth = getMcpAuthContext();
@@ -226,7 +230,47 @@ async function annotateContentRows<T extends PostRow>(rows: T[], kind: ContentKi
       })
     );
     return results.filter((row) => row !== null);
-  });
+  };
+  return options.assumeVisibilityLock ? operation() : withClippingVisibilityLock(operation);
+}
+
+function toPublicMcpMemo(item: Record<string, unknown>) {
+  const {
+    id,
+    slug,
+    title,
+    excerpt,
+    body,
+    publishDate,
+    updateDate,
+    category,
+    tags,
+    public: isPublic,
+    draft,
+    image,
+    clipping,
+    metadata,
+    hasFrontmatter,
+    missingRecommendedMetadata,
+  } = item;
+  return {
+    id,
+    slug,
+    title,
+    excerpt,
+    body,
+    publishDate,
+    updateDate,
+    category,
+    tags,
+    public: isPublic,
+    draft,
+    image,
+    clipping,
+    metadata,
+    hasFrontmatter,
+    missingRecommendedMetadata,
+  };
 }
 
 function resolveStorageSource(_row: Pick<PostRow, "source" | "dataSource">): StorageSource {
@@ -443,33 +487,38 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       }
       if (category) conds.push(eq(postsTable.category, category));
       if (tag) conds.push(like(postsTable.tags, `%${tag}%`));
-      const rows = await db
-        .select({
-          id: postsTable.id,
-          slug: postsTable.slug,
-          title: postsTable.title,
-          excerpt: postsTable.excerpt,
-          publishDate: postsTable.publishDate,
-          updateDate: postsTable.updateDate,
-          category: postsTable.category,
-          tags: postsTable.tags,
-          public: postsTable.public,
-          createdVia: postsTable.createdVia,
-          source: postsTable.source,
-          dataSource: postsTable.dataSource,
-          filePath: postsTable.filePath,
-        })
-        .from(postsTable)
-        .where(ands(conds))
-        .orderBy(desc(postsTable.publishDate))
-        .limit(limit)
-        .offset(offset);
-      const items = (await annotateContentRows(rows as PostRow[], "post")).map(
-        ({ filePath: _filePath, source: _source, dataSource: _dataSource, ...item }) => item
-      );
-      const total =
-        (await db.select({ count: sql<number>`count(*)` }).from(postsTable).where(ands(conds)))[0]
-          ?.count ?? 0;
+      const { items, total } = await withClippingVisibilityLock(async () => {
+        const rows = await db
+          .select({
+            id: postsTable.id,
+            slug: postsTable.slug,
+            title: postsTable.title,
+            excerpt: postsTable.excerpt,
+            publishDate: postsTable.publishDate,
+            updateDate: postsTable.updateDate,
+            category: postsTable.category,
+            tags: postsTable.tags,
+            public: postsTable.public,
+            createdVia: postsTable.createdVia,
+            source: postsTable.source,
+            dataSource: postsTable.dataSource,
+            filePath: postsTable.filePath,
+          })
+          .from(postsTable)
+          .where(ands(conds))
+          .orderBy(desc(postsTable.publishDate))
+          .limit(limit)
+          .offset(offset);
+        const items = (
+          await annotateContentRows(rows as PostRow[], "post", {
+            assumeVisibilityLock: true,
+          })
+        ).map(({ filePath: _filePath, source: _source, dataSource: _dataSource, ...item }) => item);
+        const total =
+          (await db.select({ count: sql<number>`count(*)` }).from(postsTable).where(ands(conds)))[0]
+            ?.count ?? 0;
+        return { items, total };
+      });
       return {
         content: [
           {
@@ -742,17 +791,27 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         const ts = new Date(cursorDate).getTime();
         if (!Number.isNaN(ts)) conds.push(sql`${postsTable.publishDate} < ${ts}`);
       }
-      const rows = await db
-        .select()
-        .from(postsTable)
-        .where(ands(conds))
-        .orderBy(desc(postsTable.publishDate), desc(postsTable.id))
-        .limit(input.limit + 1);
-      const hasMore = rows.length > input.limit;
-      const items = await annotateContentRows(hasMore ? rows.slice(0, input.limit) : rows, "memo");
-      let nextCursor: string | undefined;
-      if (hasMore && items.length)
-        nextCursor = `${iso(items[items.length - 1].publishDate || Date.now())}_${items[items.length - 1].id}`;
+      const { items, nextCursor, hasMore } = await withClippingVisibilityLock(async () => {
+        const rows = await db
+          .select()
+          .from(postsTable)
+          .where(ands(conds))
+          .orderBy(desc(postsTable.publishDate), desc(postsTable.id))
+          .limit(input.limit + 1);
+        const hasMore = rows.length > input.limit;
+        const annotatedItems = await annotateContentRows(
+          hasMore ? rows.slice(0, input.limit) : rows,
+          "memo",
+          { assumeVisibilityLock: true }
+        );
+        const items = input.publicOnly
+          ? annotatedItems.map((item) => toPublicMcpMemo(item as Record<string, unknown>))
+          : annotatedItems;
+        let nextCursor: string | undefined;
+        if (hasMore && items.length)
+          nextCursor = `${iso(items[items.length - 1].publishDate || Date.now())}_${items[items.length - 1].id}`;
+        return { items, nextCursor, hasMore };
+      });
       return {
         content: [{ type: "text", text: JSON.stringify({ items, nextCursor, hasMore }, null, 2) }],
       };
@@ -799,33 +858,36 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       // 管理员专属
       requireAdmin();
       const input = args as z.infer<typeof updateMemoInput>;
-      const row = await db
-        .select()
-        .from(postsTable)
-        .where(and(eq(postsTable.slug, input.slug), eq(postsTable.type, "memo")))
-        .limit(1)
-        .then((r) => r[0]);
-      if (!row?.filePath) throw new Error("Memo not found or missing filePath");
-      const result = await withClippingVisibilityLock(() =>
-        updateFrontmatterInStorage(
-          row,
-          async (fm) => {
-            if (input.title !== undefined) fm.title = input.title;
-            fm.public = input.isPublic;
-            if (input.tags !== undefined) fm.tags = input.tags;
-            fm.updateDate = new Date().toISOString();
-            await attachClippingReference(
-              input.content,
-              fm,
-              getMcpAuthContext().userId ?? null,
-              row.id
-            );
-          },
-          input.content,
-          "memo"
-        )
-      );
-      notifyClippingChange(row.id);
+      const { result, rowId } = await withClippingVisibilityLock(async () => {
+        const row = await db
+          .select()
+          .from(postsTable)
+          .where(and(eq(postsTable.slug, input.slug), eq(postsTable.type, "memo")))
+          .limit(1)
+          .then((r) => r[0]);
+        if (!row?.filePath) throw new Error("Memo not found or missing filePath");
+        return {
+          rowId: row.id,
+          result: await updateFrontmatterInStorage(
+            row,
+            async (fm) => {
+              if (input.title !== undefined) fm.title = input.title;
+              fm.public = input.isPublic;
+              if (input.tags !== undefined) fm.tags = input.tags;
+              fm.updateDate = new Date().toISOString();
+              await attachClippingReference(
+                input.content,
+                fm,
+                getMcpAuthContext().userId ?? null,
+                row.id
+              );
+            },
+            input.content,
+            "memo"
+          ),
+        };
+      });
+      notifyClippingChange(rowId);
       await triggerIncrementalSync();
       return buildToolResult(result);
     }
@@ -835,18 +897,19 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
     // 管理员专属
     requireAdmin();
     const input = args as z.infer<typeof deleteMemoInput>;
-    const row = await db
-      .select()
-      .from(postsTable)
-      .where(and(eq(postsTable.slug, input.slug), eq(postsTable.type, "memo")))
-      .limit(1)
-      .then((r) => r[0]);
-    if (!row?.filePath) throw new Error("Memo not found or missing filePath");
-    await withClippingVisibilityLock(async () => {
+    const rowId = await withClippingVisibilityLock(async () => {
+      const row = await db
+        .select()
+        .from(postsTable)
+        .where(and(eq(postsTable.slug, input.slug), eq(postsTable.type, "memo")))
+        .limit(1)
+        .then((r) => r[0]);
+      if (!row?.filePath) throw new Error("Memo not found or missing filePath");
       await deleteStorageFile(resolveStorageSource(row), row.filePath);
       await deleteIndexedContentRow(row.id);
+      return row.id;
     });
-    notifyClippingChange(row.id);
+    notifyClippingChange(rowId);
     await triggerIncrementalSync();
     return { content: [{ type: "text", text: "ok" }] };
   });

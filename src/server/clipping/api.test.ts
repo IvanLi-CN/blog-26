@@ -535,6 +535,12 @@ test("MCP omitted tags preserve clipping metadata while explicit empty tags remo
     expect(clearedMemo?.metadata).not.toContain('"clipping"');
     expect(clearedMemo?.metadata).not.toContain("authorEmail");
     expect(clearedMemo?.metadata).not.toContain('"content"');
+    expect(clearedMemo).not.toHaveProperty("author");
+    expect(clearedMemo).not.toHaveProperty("filePath");
+    expect(clearedMemo).not.toHaveProperty("source");
+    expect(clearedMemo).not.toHaveProperty("dataSource");
+    expect(clearedMemo).not.toHaveProperty("contentHash");
+    expect(clearedMemo).not.toHaveProperty("createdVia");
   } finally {
     await client.close();
     await connected.server.close();

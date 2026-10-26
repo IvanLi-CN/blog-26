@@ -1374,8 +1374,11 @@ export const memosRouter = router({
           markdownFilePath,
         });
         let existingFrontmatter: Record<string, unknown> = {};
+        let existingRaw: string | null = null;
         try {
-          existingFrontmatter = (await readAuthoredMemo(id)).frontmatter;
+          const authored = await readAuthoredMemo(id);
+          existingRaw = authored.raw;
+          existingFrontmatter = authored.frontmatter;
         } catch (error) {
           if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT"))
             throw error;
@@ -1439,7 +1442,20 @@ export const memosRouter = router({
 
         await mkdir(dirname(fullPath), { recursive: true });
         await writeFile(fullPath, markdownContent, "utf-8");
-        await db.update(posts).set(updateData).where(eq(posts.id, id));
+        try {
+          await db.update(posts).set(updateData).where(eq(posts.id, id));
+        } catch (error) {
+          try {
+            if (existingRaw === null) {
+              await rm(fullPath, { force: true });
+            } else {
+              await writeFile(fullPath, existingRaw, "utf-8");
+            }
+          } catch (rollbackError) {
+            console.error("更新 memo 失败后恢复 canonical 文件失败:", rollbackError);
+          }
+          throw error;
+        }
 
         return { existingMemo, normalized, clippingInput, resolvedTitle, updateData };
       });
@@ -1499,25 +1515,22 @@ export const memosRouter = router({
     const isTestEnv = process.env.NODE_ENV === "test" || process.env.ADMIN_EMAIL?.includes("test");
 
     try {
-      // 查找现有 memo
-      const existingMemo = await db
-        .select()
-        .from(posts)
-        .where(and(eq(posts.id, id), eq(posts.type, "memo")))
-        .limit(1)
-        .then((result) => result[0]);
-
-      if (!existingMemo) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Memo 不存在",
-        });
-      }
-
       if (isLocalContentEnabled()) {
         const basePath = getLocalBasePathOrThrow();
-        const localFilePath = (existingMemo.filePath || existingMemo.id).replace(/^\/+/, "");
         await withClippingVisibilityLock(async () => {
+          const existingMemo = await db
+            .select()
+            .from(posts)
+            .where(and(eq(posts.id, id), eq(posts.type, "memo")))
+            .limit(1)
+            .then((result) => result[0]);
+          if (!existingMemo) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Memo 不存在",
+            });
+          }
+          const localFilePath = (existingMemo.filePath || existingMemo.id).replace(/^\/+/, "");
           try {
             await rm(join(basePath, localFilePath), { force: true });
           } catch (err) {
@@ -1532,6 +1545,18 @@ export const memosRouter = router({
           await db.delete(posts).where(eq(posts.id, id));
         });
       } else {
+        const existingMemo = await db
+          .select()
+          .from(posts)
+          .where(and(eq(posts.id, id), eq(posts.type, "memo")))
+          .limit(1)
+          .then((result) => result[0]);
+        if (!existingMemo) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Memo 不存在",
+          });
+        }
         // 从数据库删除
         await db.delete(posts).where(eq(posts.id, id));
       }
