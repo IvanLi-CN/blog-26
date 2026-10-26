@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "8c2fa721211eee29765ec0e782ad0f2ca50d1f31",
+  "covered_files": {
+    "site/components/PublicMemoAuthoring.tsx": "ae261d910d58fba2d63f7f9580c7beab70cd6534",
+    "src/components/comments/CommentSection.tsx": "14e52038a28559871488ca5a301c2b1acbbc942d",
+    "src/components/comments/CommentSectionWithProvider.tsx": "a17dcb3dc172cf02dd1b16c00f6816fcf81144bf",
+    "src/components/memos/ClippingDetail.tsx": "8fb8a9d27cc2b6fc40b2548b55d510cba16c9163",
+    "src/server/routers/comments.test.ts": "71ec7bab9a668ed1b7559fc54d91f57130585a68",
+    "src/server/routers/comments.ts": "e18d90af2d3eb7e6d2b5e236fd4794024e56f1be",
+    "src/server/routers/memos.ts": "0d73aacf82de4a01ef1113b4034952adf91b8181",
+    "tests/components/CommentSection.test.tsx": "76157dd929540c3b0817348598820f8a774d342a",
+    "tests/components/PublicMemoAuthoring.test.tsx": "4eddda1413ef18d80483fc60467f604d1443ec1e"
+  },
+  "change": {
+    "description": "Preserve the GitHub reader comment boundary for public Memo reads and writes when an administrator changes publication state concurrently, while keeping the existing target-aware comment surface and private Memo behavior.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a backward-compatible consistency repair for the public comment boundary. It does not change response shapes, authentication roles, moderation semantics, persistent schemas, or private AI access.",
+      "assessed_at": "2026-10-26T14:49:56+08:00",
+      "evidence": [
+        {
+          "path": "docs/specs/github-reader-comments/SPEC.md",
+          "blob": "f5db412779bd26aa1ab0a49cbef32d68717d3c2f",
+          "command": "Locked public target visibility and reader comment lifecycle requirements"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate retains target-aware REST/tRPC behavior and all existing comment lifecycle contracts, while public reads and creates recheck publication state inside an immediate SQLite transaction before reading or inserting comment data. The change is limited to the existing comment and Memo detail surfaces.",
+      "assessed_at": "2026-10-26T14:49:56+08:00",
+      "evidence": [
+        {
+          "path": "src/server/routers/comments.ts",
+          "blob": "e18d90af2d3eb7e6d2b5e236fd4794024e56f1be",
+          "command": "Public comment reads and creates recheck target visibility inside an immediate transaction"
+        },
+        {
+          "path": "src/server/routers/comments.test.ts",
+          "blob": "71ec7bab9a668ed1b7559fc54d91f57130585a68",
+          "command": "bun test src/server/routers/comments.test.ts: 13 passed"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains within the locked GitHub reader comment lifecycle, target visibility, Memo detail, and responsive comment surface scope; no OAuth credentials, administrator identity, schema migration, or private AI permission scope changed."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The affected comment router suite passes after the immediate transaction repair, preserving idempotent submissions, reply pagination, target isolation, soft deletion, and private/draft rejection. Existing component and Web Demo evidence remains applicable to the unchanged UI contract.",
+      "assessed_at": "2026-10-26T14:49:56+08:00",
+      "evidence": [
+        {
+          "path": "src/server/routers/comments.test.ts",
+          "blob": "71ec7bab9a668ed1b7559fc54d91f57130585a68",
+          "command": "bun test src/server/routers/comments.test.ts: 13 passed, 45 expectations"
+        },
+        {
+          "path": "src/server/routers/comments.ts",
+          "blob": "e18d90af2d3eb7e6d2b5e236fd4794024e56f1be",
+          "command": "bunx biome check src/server/routers/comments.ts and targeted TypeScript diagnostics pass"
+        },
+        {
+          "path": "tests/components/CommentSection.test.tsx",
+          "blob": "76157dd929540c3b0817348598820f8a774d342a",
+          "command": "Existing comment surface state, identity, and retry regression coverage remains green"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0"
+      ],
+      "evidence": [
+        {
+          "path": "src/server/routers/comments.ts",
+          "blob": "e18d90af2d3eb7e6d2b5e236fd4794024e56f1be",
+          "command": "Comment response and mutation payloads remain unchanged while visibility is rechecked atomically"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The repair does not change SQLite schema, comment row formats, browser drafts, OAuth session state, local content, or release ledger state.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/server/routers/comments.ts",
+          "blob": "e18d90af2d3eb7e6d2b5e236fd4794024e56f1be",
+          "command": "The immediate transaction only changes operation ordering and does not alter persisted shapes"
+        }
+      ]
+    }
+  }
+}

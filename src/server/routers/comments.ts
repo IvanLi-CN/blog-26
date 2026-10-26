@@ -207,6 +207,24 @@ async function assertPublicTarget(target: Target) {
   }
 }
 
+function assertPublicTargetSync(target: Target, database: CommentDatabase = db) {
+  if (target.type === "project") {
+    if (!projectCatalog.some((project) => project.slug === target.key)) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "评论目标不存在" });
+    }
+    return;
+  }
+  const expectedType = target.type === "article" ? "post" : target.type;
+  const row = database
+    .select()
+    .from(posts)
+    .where(and(eq(posts.slug, target.key), eq(posts.type, expectedType)))
+    .get();
+  if (!row || row.draft || !row.public) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "评论目标不存在" });
+  }
+}
+
 function enforceRateLimit(readerId: string) {
   const now = Date.now();
   const existing = rateBuckets.get(readerId);
@@ -223,14 +241,16 @@ function enforceRateLimit(readerId: string) {
   rateBuckets.set(readerId, { minuteStart, minute, hourStart: existing.hourStart, hour });
 }
 
-async function loadAuthorMaps(rows: Array<typeof comments.$inferSelect>) {
+type CommentDatabase = Pick<typeof db, "select">;
+
+function loadAuthorMaps(rows: Array<typeof comments.$inferSelect>, database: CommentDatabase = db) {
   const readerIds = [...new Set(rows.flatMap((row) => (row.readerId ? [row.readerId] : [])))];
   const emails = [...new Set(rows.flatMap((row) => (row.authorEmail ? [row.authorEmail] : [])))];
   const readerRows = readerIds.length
-    ? await db.select().from(readers).where(inArray(readers.id, readerIds)).all()
+    ? database.select().from(readers).where(inArray(readers.id, readerIds)).all()
     : [];
   const userRows = emails.length
-    ? await db.select().from(users).where(inArray(users.email, emails)).all()
+    ? database.select().from(users).where(inArray(users.email, emails)).all()
     : [];
   return {
     readers: new Map(readerRows.map((row) => [row.id, row])),
@@ -238,7 +258,7 @@ async function loadAuthorMaps(rows: Array<typeof comments.$inferSelect>) {
   };
 }
 
-async function buildPublicComments(
+function buildPublicComments(
   target: Target,
   readerId: string | undefined,
   isAdmin: boolean,
@@ -248,43 +268,42 @@ async function buildPublicComments(
     replyRootId?: string;
     replyCursor?: ReplyCursor | null;
     replyLimit?: number;
-  } = {}
+  } = {},
+  database: CommentDatabase = db
 ) {
   const visibleReplyRoots = isAdmin
     ? []
-    : (
-        await db
-          .select({ rootId: comments.rootId })
-          .from(comments)
-          .where(
-            and(
-              targetCondition(target),
-              isNotNull(comments.parentId),
-              eq(comments.status, "approved"),
-              isNull(comments.deletedAt),
-              isNotNull(comments.rootId)
-            )
+    : database
+        .select({ rootId: comments.rootId })
+        .from(comments)
+        .where(
+          and(
+            targetCondition(target),
+            isNotNull(comments.parentId),
+            eq(comments.status, "approved"),
+            isNull(comments.deletedAt),
+            isNotNull(comments.rootId)
           )
-          .groupBy(comments.rootId)
-          .all()
-      ).flatMap((row) => (row.rootId ? [row.rootId] : []));
+        )
+        .groupBy(comments.rootId)
+        .all()
+        .flatMap((row) => (row.rootId ? [row.rootId] : []));
   const ownReplyRoots = readerId
-    ? (
-        await db
-          .select({ rootId: comments.rootId })
-          .from(comments)
-          .where(
-            and(
-              targetCondition(target),
-              isNotNull(comments.parentId),
-              eq(comments.readerId, readerId),
-              isNull(comments.deletedAt),
-              isNotNull(comments.rootId)
-            )
+    ? database
+        .select({ rootId: comments.rootId })
+        .from(comments)
+        .where(
+          and(
+            targetCondition(target),
+            isNotNull(comments.parentId),
+            eq(comments.readerId, readerId),
+            isNull(comments.deletedAt),
+            isNotNull(comments.rootId)
           )
-          .groupBy(comments.rootId)
-          .all()
-      ).flatMap((row) => (row.rootId ? [row.rootId] : []))
+        )
+        .groupBy(comments.rootId)
+        .all()
+        .flatMap((row) => (row.rootId ? [row.rootId] : []))
     : [];
   const ownRootCondition = readerId ? eq(comments.readerId, readerId) : undefined;
   const rootsWithVisibleReplies =
@@ -313,8 +332,8 @@ async function buildPublicComments(
   const rootWhere = and(targetCondition(target), isNull(comments.parentId), visibilityCondition);
   const totalRoots = options.replyRootId
     ? 1
-    : ((await db.select({ count: count() }).from(comments).where(rootWhere).get())?.count ?? 0);
-  const rootRows = await db
+    : (database.select({ count: count() }).from(comments).where(rootWhere).get()?.count ?? 0);
+  const rootRows = database
     .select()
     .from(comments)
     .where(options.replyRootId ? and(rootWhere, eq(comments.id, options.replyRootId)) : rootWhere)
@@ -324,43 +343,41 @@ async function buildPublicComments(
     .all();
   const replyLimit = options.replyLimit ?? 20;
   const replyRowsByRoot = new Map<string, Array<typeof comments.$inferSelect>>();
-  await Promise.all(
-    rootRows.map(async (root) => {
-      const replyVisibility = isAdmin
-        ? undefined
-        : or(
-            and(eq(comments.status, "approved"), isNull(comments.deletedAt)),
-            readerId ? eq(comments.readerId, readerId) : undefined
-          );
-      const cursorCondition = options.replyCursor
-        ? or(
-            gt(comments.createdAt, options.replyCursor.createdAt),
-            and(
-              eq(comments.createdAt, options.replyCursor.createdAt),
-              gt(comments.id, options.replyCursor.id)
-            )
-          )
-        : undefined;
-      const rows = await db
-        .select()
-        .from(comments)
-        .where(
+  for (const root of rootRows) {
+    const replyVisibility = isAdmin
+      ? undefined
+      : or(
+          and(eq(comments.status, "approved"), isNull(comments.deletedAt)),
+          readerId ? eq(comments.readerId, readerId) : undefined
+        );
+    const cursorCondition = options.replyCursor
+      ? or(
+          gt(comments.createdAt, options.replyCursor.createdAt),
           and(
-            targetCondition(target),
-            eq(comments.rootId, root.id),
-            isNotNull(comments.parentId),
-            replyVisibility,
-            options.replyRootId === root.id ? cursorCondition : undefined
+            eq(comments.createdAt, options.replyCursor.createdAt),
+            gt(comments.id, options.replyCursor.id)
           )
         )
-        .orderBy(asc(comments.createdAt), asc(comments.id))
-        .limit(replyLimit + 1)
-        .all();
-      replyRowsByRoot.set(root.id, rows);
-    })
-  );
+      : undefined;
+    const rows = database
+      .select()
+      .from(comments)
+      .where(
+        and(
+          targetCondition(target),
+          eq(comments.rootId, root.id),
+          isNotNull(comments.parentId),
+          replyVisibility,
+          options.replyRootId === root.id ? cursorCondition : undefined
+        )
+      )
+      .orderBy(asc(comments.createdAt), asc(comments.id))
+      .limit(replyLimit + 1)
+      .all();
+    replyRowsByRoot.set(root.id, rows);
+  }
   const visibleRows = rootRows.flatMap((root) => [root, ...(replyRowsByRoot.get(root.id) ?? [])]);
-  const maps = await loadAuthorMaps(visibleRows);
+  const maps = loadAuthorMaps(visibleRows, database);
   const mapped = new Map<string, PublicComment>();
   for (const row of visibleRows) {
     const reader = row.readerId ? maps.readers.get(row.readerId) : undefined;
@@ -468,10 +485,35 @@ export const commentsRouter = createTRPCRouter({
       }
       throw error;
     }
-    const { roots, totalRoots } = await buildPublicComments(target, ctx.reader?.id, ctx.isAdmin, {
-      rootOffset: (input.page - 1) * input.limit,
-      rootLimit: input.limit,
-    });
+    const build = () =>
+      buildPublicComments(
+        target,
+        ctx.reader?.id,
+        ctx.isAdmin,
+        {
+          rootOffset: (input.page - 1) * input.limit,
+          rootLimit: input.limit,
+        },
+        db
+      );
+    const { roots, totalRoots } = ctx.isAdmin
+      ? build()
+      : db.transaction(
+          (tx) => {
+            assertPublicTargetSync(target, tx);
+            return buildPublicComments(
+              target,
+              ctx.reader?.id,
+              false,
+              {
+                rootOffset: (input.page - 1) * input.limit,
+                rootLimit: input.limit,
+              },
+              tx
+            );
+          },
+          { behavior: "immediate" }
+        );
     return {
       comments: roots,
       totalPages: Math.max(1, Math.ceil(totalRoots / input.limit)),
@@ -509,11 +551,27 @@ export const commentsRouter = createTRPCRouter({
       if (input.cursor && !cursor) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "回复游标无效" });
       }
-      const { roots } = await buildPublicComments(target, ctx.reader?.id, ctx.isAdmin, {
-        replyRootId: rootId,
-        replyCursor: cursor,
-        replyLimit: input.limit,
-      });
+      const build = (database: CommentDatabase = db) =>
+        buildPublicComments(
+          target,
+          ctx.reader?.id,
+          ctx.isAdmin,
+          {
+            replyRootId: rootId,
+            replyCursor: cursor,
+            replyLimit: input.limit,
+          },
+          database
+        );
+      const { roots } = ctx.isAdmin
+        ? build()
+        : db.transaction(
+            (tx) => {
+              assertPublicTargetSync(target, tx);
+              return build(tx);
+            },
+            { behavior: "immediate" }
+          );
       const root = roots.find((item) => item.id === rootId);
       if (!root) throw new TRPCError({ code: "NOT_FOUND", message: "评论不可见" });
       const requestedIsVisible =
@@ -564,76 +622,89 @@ export const commentsRouter = createTRPCRouter({
       if (!ctx.reader) {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "请先使用 GitHub 登录" });
       }
+      const reader = ctx.reader;
       const target = normalizeTarget(input);
       await assertPublicTarget(target);
       const content = input.content.trim();
       if (!content) throw new TRPCError({ code: "BAD_REQUEST", message: "评论内容不能为空" });
       const parentId = input.replyToId || input.parentId || null;
       const submissionKey = input.submissionKey || uuidv4();
-      const existingSubmission = await db
-        .select()
-        .from(comments)
-        .where(and(eq(comments.readerId, ctx.reader.id), eq(comments.submissionKey, submissionKey)))
-        .get();
-      if (existingSubmission) {
-        if (
-          existingSubmission.content !== content ||
-          existingSubmission.targetType !== target.type ||
-          existingSubmission.targetKey !== target.key ||
-          existingSubmission.parentId !== parentId
-        ) {
-          throw new TRPCError({ code: "CONFLICT", message: "submissionKey 已用于另一条评论" });
-        }
-        return {
-          success: true,
-          commentId: existingSubmission.id,
-          message: "评论已提交，正在等待审核",
-        };
-      }
-      enforceRateLimit(ctx.reader.id);
-      let rootId: string | null = null;
-      if (parentId) {
-        const parent = await db.select().from(comments).where(eq(comments.id, parentId)).get();
-        if (
-          !parent ||
-          parent.targetType !== target.type ||
-          parent.targetKey !== target.key ||
-          parent.status !== "approved" ||
-          parent.deletedAt
-        ) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "只能回复当前目标下已通过且未删除的评论",
-          });
-        }
-        rootId = parent.rootId || parent.id;
-      }
-      const now = Math.floor(Date.now() / 1000);
-      const commentId = uuidv4();
       try {
-        await db.insert(comments).values({
-          id: commentId,
-          content,
-          postSlug: target.key,
-          targetType: target.type,
-          targetKey: target.key,
-          authorName: ctx.reader.displayName || ctx.reader.githubLogin,
-          authorEmail: null,
-          readerId: ctx.reader.id,
-          parentId,
-          rootId,
-          status: "pending",
-          revision: 1,
-          submissionKey,
-          createdAt: now,
-        });
+        return db.transaction(
+          (tx) => {
+            assertPublicTargetSync(target, tx);
+            const existingSubmission = tx
+              .select()
+              .from(comments)
+              .where(
+                and(eq(comments.readerId, reader.id), eq(comments.submissionKey, submissionKey))
+              )
+              .get();
+            if (existingSubmission) {
+              if (
+                existingSubmission.content !== content ||
+                existingSubmission.targetType !== target.type ||
+                existingSubmission.targetKey !== target.key ||
+                existingSubmission.parentId !== parentId
+              ) {
+                throw new TRPCError({
+                  code: "CONFLICT",
+                  message: "submissionKey 已用于另一条评论",
+                });
+              }
+              return {
+                success: true,
+                commentId: existingSubmission.id,
+                message: "评论已提交，正在等待审核",
+              };
+            }
+            enforceRateLimit(reader.id);
+            let rootId: string | null = null;
+            if (parentId) {
+              const parent = tx.select().from(comments).where(eq(comments.id, parentId)).get();
+              if (
+                !parent ||
+                parent.targetType !== target.type ||
+                parent.targetKey !== target.key ||
+                parent.status !== "approved" ||
+                parent.deletedAt
+              ) {
+                throw new TRPCError({
+                  code: "BAD_REQUEST",
+                  message: "只能回复当前目标下已通过且未删除的评论",
+                });
+              }
+              rootId = parent.rootId || parent.id;
+            }
+            const commentId = uuidv4();
+            tx.insert(comments)
+              .values({
+                id: commentId,
+                content,
+                postSlug: target.key,
+                targetType: target.type,
+                targetKey: target.key,
+                authorName: reader.displayName || reader.githubLogin,
+                authorEmail: null,
+                readerId: reader.id,
+                parentId,
+                rootId,
+                status: "pending",
+                revision: 1,
+                submissionKey,
+                createdAt: Math.floor(Date.now() / 1000),
+              })
+              .run();
+            return { success: true, commentId, message: "评论已提交，正在等待审核" };
+          },
+          { behavior: "immediate" }
+        );
       } catch (error) {
-        const concurrentSubmission = await db
+        if (error instanceof TRPCError) throw error;
+        const concurrentSubmission = db
           .select()
           .from(comments)
-          .where(
-            and(eq(comments.readerId, ctx.reader.id), eq(comments.submissionKey, submissionKey))
-          )
+          .where(and(eq(comments.readerId, reader.id), eq(comments.submissionKey, submissionKey)))
           .get();
         if (!concurrentSubmission) throw error;
         if (
@@ -650,7 +721,6 @@ export const commentsRouter = createTRPCRouter({
           message: "评论已提交，正在等待审核",
         };
       }
-      return { success: true, commentId, message: "评论已提交，正在等待审核" };
     }),
 
   moderateComment: commentsAdminProcedure
