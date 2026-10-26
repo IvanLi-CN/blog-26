@@ -466,6 +466,8 @@ describe("EdgeOne public PWA cache config", () => {
       "watermark-ivanli-b.dark.v3.svg",
       "watermark-ivanli-a.light.v4.svg",
       "watermark-ivanli-a.dark.v4.svg",
+      "watermark-ivanli-a.light.v5.svg",
+      "watermark-ivanli-a.dark.v5.svg",
       "site-assets/default-avatar.svg",
       "site-assets/file.svg",
       "site-assets/globe.svg",

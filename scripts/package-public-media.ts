@@ -942,8 +942,8 @@ const MAX_MEDIA_REDIRECTS = 5;
 const PUBLIC_RENDER_VARIANT_RE =
   /^\/api\/public\/assets\/(post|memo)\/([^/]+)\/([^/]+)\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu;
 const PUBLIC_DERIVED_RENDER_VARIANT_RE =
-  /^\/api\/public\/assets\/(post|memo)\/([^/]+)\/([^/]+)\/(wm-[ab]-v[1234])\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu;
-const DERIVED_WATERMARK_RENDER_IDS = ["wm-a-v4", "wm-b-v4"] as const;
+  /^\/api\/public\/assets\/(post|memo)\/([^/]+)\/([^/]+)\/(wm-[ab]-v[12345])\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu;
+const DERIVED_WATERMARK_RENDER_IDS = ["wm-a-v5", "wm-b-v5"] as const;
 
 /**
  * Public media presentation URLs use a stable format per variant. The API
@@ -952,7 +952,7 @@ const DERIVED_WATERMARK_RENDER_IDS = ["wm-a-v4", "wm-b-v4"] as const;
  */
 export function canonicalPublicMediaPath(pathname: string) {
   const match = PUBLIC_DERIVED_RENDER_VARIANT_RE.exec(pathname);
-  if (!match?.[4].endsWith("-v4")) return pathname;
+  if (!match?.[4].endsWith("-v4") && !match?.[4].endsWith("-v5")) return pathname;
 
   const variant = match[5].toLowerCase();
   const extension = match[6].toLowerCase();
@@ -1165,11 +1165,13 @@ function deriveSiblingWatermarkReferences(
   const match = PUBLIC_DERIVED_RENDER_VARIANT_RE.exec(reference.sourceUrl.pathname);
   if (!match) return [];
   const [, kind, slug, hash, currentRenderId, variant, extension] = match;
-  const siblingRenderIds = currentRenderId.endsWith("-v4")
+  const siblingRenderIds = currentRenderId.endsWith("-v5")
     ? DERIVED_WATERMARK_RENDER_IDS
-    : currentRenderId.endsWith("-v3")
-      ? (["wm-a-v3", "wm-b-v3"] as const)
-      : null;
+    : currentRenderId.endsWith("-v4")
+      ? (["wm-a-v4", "wm-b-v4"] as const)
+      : currentRenderId.endsWith("-v3")
+        ? (["wm-a-v3", "wm-b-v3"] as const)
+        : null;
   if (!siblingRenderIds) {
     return [];
   }
@@ -1198,7 +1200,8 @@ function deriveMigratedWatermarkReferences(
   basePath: string
 ): AssetReference[] {
   const match = PUBLIC_DERIVED_RENDER_VARIANT_RE.exec(reference.sourceUrl.pathname);
-  if (!match || match[4]?.endsWith("-v3") || match[4]?.endsWith("-v4")) return [];
+  if (!match || match[4]?.endsWith("-v3") || match[4]?.endsWith("-v4") || match[4]?.endsWith("-v5"))
+    return [];
   const [, kind, slug, hash, , variant, extension] = match;
   return DERIVED_WATERMARK_RENDER_IDS.map((renderId) => {
     const sourceUrl = new URL(reference.sourceUrl.href);
