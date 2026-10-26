@@ -654,12 +654,17 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
 
 .comment-item__header {
   min-width: 0;
+  flex-wrap: nowrap;
   column-gap: 0.55rem;
-  row-gap: 0.15rem;
   margin-bottom: 0.65rem;
 }
 
 .comment-item__header h4 {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   line-height: 1.25;
 }
 

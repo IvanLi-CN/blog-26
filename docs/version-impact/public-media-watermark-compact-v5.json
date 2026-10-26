@@ -5,33 +5,35 @@
   "change": {
     "description": "Publish wm-a-v5 and wm-b-v5 with a compact A watermark canvas after the production wm-a-v4 card rendition was verified oversized, while preserving v1/v2/v3/v4 watermark URLs and historical snapshot semantics.",
     "release_unit_description": "static frontend and full-feature Docker image",
-    "affected_contracts": ["public-api"]
+    "affected_contracts": [
+      "public-api"
+    ]
   },
   "covered_files": {
-    "docs/adr/0025-display-selected-watermark-renditions.md": "48e5d3180aa09200636399d6afe148ce891e32e5",
-    "docs/public-media-watermark-design.md": "e21bfb1324a118382297597feee55297e427fcbd",
-    "docs/specs/public-media-assets-facade/HISTORY.md": "a724d9b701db0f8302e83f13ae1610394cf77395",
-    "docs/specs/public-media-assets-facade/IMPLEMENTATION.md": "cd0543fa7000e73dfcb58403765ca7f1ac20d1a7",
-    "docs/specs/public-media-assets-facade/SPEC.md": "5eb895d73246a6c31f73836795e81048229a16b0",
-    "public/watermark-ivanli-a.dark.v5.svg": "ee3e660badbea5f5832fa7e580c448d0e08f9364",
-    "public/watermark-ivanli-a.light.v5.svg": "9f7502d40fd17272b21bb39fcde7e608935ae55e",
-    "scripts/package-public-media.test.ts": "e180f3958707cf644a0487ddf68a63cc8cd8db04",
-    "scripts/package-public-media.ts": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
-    "scripts/prepare-edgeone-pwa-config.ts": "54f79359348e041b8e6bca97266e8324d091db97",
-    "scripts/verify-pages-build.ts": "19979f091f665ec610aafe3c26ba839d2c287f88",
-    "src/components/common/markdown/plugins/rehype-image-optimization.test.ts": "56ff981456515ec75aef219a2e6edd45cd3b64b2",
-    "src/components/common/markdown/plugins/rehype-image-optimization.ts": "de75d2a799134fe75fd41452596a511311b43199",
-    "src/lib/__tests__/public-media.test.ts": "ef402d335a1c600b6830da2dbf6a79dfcc39723c",
-    "src/lib/public-media.ts": "39adc1ea4fd3fff8ac7ba300dd45f82ceac70d00",
-    "src/lib/release/inputs.ts": "07fdf11d208887b45beb01103f6a2a0c478a2a0e",
-    "src/server/http-compat-api.test.ts": "4c2d70f590d537c4c193dce7eebc38facd52521d",
-    "src/server/public-media-watermark-assets.test.ts": "0c462fb1279284184fe20a524a4754ad1e705073",
-    "src/server/public-media-watermark.test.ts": "8a12950417171189631c279d747814dd00b0dd3d",
-    "src/server/public-media-watermark.ts": "4ad6d06c05be31b7ac2a30948b0ac4fe7ded438e",
-    "src/server/public-media.ts": "a908031949cf151286a8b7dc0ac3b82f6a234495",
-    "tests/e2e/guest/posts-cover-fallback.spec.ts": "968ca67ad9628686da53dd322ffe58625a73f14b",
-    "tests/lib/public-pwa-edgeone-config.test.ts": "d3ae420041156cc93e160115ddc3f7001db70e7e",
-    "scripts/verify-pages-build.test.ts": "f84e07a0c9ec50ee61360146f774776e596b2033"
+    "docs/adr/0025-display-selected-watermark-renditions.md": "fbf50bc8b45f1f13ca20fc4569a210609485a727",
+    "docs/public-media-watermark-design.md": "673b3f4d1342241f9a9a7343a46951ad621dd7c1",
+    "docs/specs/public-media-assets-facade/HISTORY.md": "e590754ae9588e9fbbe2383b11b2a235d15e9d56",
+    "docs/specs/public-media-assets-facade/IMPLEMENTATION.md": "ee676acb5f97c77ef3d027c5d611c6623576e643",
+    "docs/specs/public-media-assets-facade/SPEC.md": "3f263e6fb177f11cb3e7075d41c33e75cc612e2d",
+    "public/watermark-ivanli-a.dark.v5.svg": "88625419707c4220de7ae6cb6b593333a8da1e44",
+    "public/watermark-ivanli-a.light.v5.svg": "b7e0f9d944d32c0261ee03b88fd5e4be42a8182d",
+    "scripts/package-public-media.test.ts": "004e231828021f537d112210cc3e7656e8bc7d38",
+    "scripts/package-public-media.ts": "b79be6a42e43c2fb3911a641a398d3d7deed3bfd",
+    "scripts/prepare-edgeone-pwa-config.ts": "241fac254d71eef3915cb40ac59f839c329f46da",
+    "scripts/verify-pages-build.ts": "b4218403531127755a68d1c5cc8703661e85b061",
+    "src/components/common/markdown/plugins/rehype-image-optimization.test.ts": "4e652f7d5bc3595831a4ac421fe90c542549d648",
+    "src/components/common/markdown/plugins/rehype-image-optimization.ts": "60f69b24311ee0d61a457b05500a44328fe102ec",
+    "src/lib/__tests__/public-media.test.ts": "077fe61891ce86956d574e87c1734a7aea9645f7",
+    "src/lib/public-media.ts": "65e858812ce11caaf5808a1e6d402989d12da530",
+    "src/lib/release/inputs.ts": "c5874c93efa913d55ce8f87e9abf15a7d71152a3",
+    "src/server/http-compat-api.test.ts": "ac5d22f1018f1204db947c341f0deb3e2e5d9473",
+    "src/server/public-media-watermark-assets.test.ts": "232d40bd2c0e91ffdc92b555128dffd0483caea4",
+    "src/server/public-media-watermark.test.ts": "39ad4f67d1ebe29393824dee6b7f9e3061a4a5d5",
+    "src/server/public-media-watermark.ts": "b2cd757e7b72b09dc10317892fef48a1e7829028",
+    "src/server/public-media.ts": "6426610d7650f5740fc91458eeb415a01966735b",
+    "tests/e2e/guest/posts-cover-fallback.spec.ts": "21ac24d33fca2cb78eddde1f81c62e53dd20ef44",
+    "tests/lib/public-pwa-edgeone-config.test.ts": "94ec35d37a4e91cb27d77483c2b7bd1d3dfb618d",
+    "scripts/verify-pages-build.test.ts": "2365dd33439d65b2df29061d21523e139bb3272b"
   },
   "classification": {
     "planned": {
@@ -41,12 +43,12 @@
       "evidence": [
         {
           "path": "docs/specs/public-media-assets-facade/SPEC.md",
-          "blob": "5eb895d73246a6c31f73836795e81048229a16b0",
+          "blob": "3f263e6fb177f11cb3e7075d41c33e75cc612e2d",
           "command": "Public media SPEC records the v5 identity, compact A canvas, and legacy compatibility contract"
         },
         {
           "path": "docs/adr/0025-display-selected-watermark-renditions.md",
-          "blob": "48e5d3180aa09200636399d6afe148ce891e32e5",
+          "blob": "fbf50bc8b45f1f13ca20fc4569a210609485a727",
           "command": "ADR records the current v5 rendition boundary and compact A canvas"
         }
       ]
@@ -58,12 +60,12 @@
       "evidence": [
         {
           "path": "src/server/public-media.ts",
-          "blob": "a908031949cf151286a8b7dc0ac3b82f6a234495",
+          "blob": "6426610d7650f5740fc91458eeb415a01966735b",
           "command": "Versioned Imagor filters use explicit width and h_ratio=100 bounds while v5 uses the compact A canvas"
         },
         {
           "path": "scripts/package-public-media.ts",
-          "blob": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
+          "blob": "b79be6a42e43c2fb3911a641a398d3d7deed3bfd",
           "command": "Static packaging closes current v5 A/B siblings and preserves explicit v3/v4 and legacy migration behavior"
         }
       ],
@@ -79,12 +81,12 @@
       "evidence": [
         {
           "path": "src/server/public-media-watermark-assets.test.ts",
-          "blob": "0c462fb1279284184fe20a524a4754ad1e705073",
+          "blob": "232d40bd2c0e91ffdc92b555128dffd0483caea4",
           "command": "bun test src/server/public-media-watermark-assets.test.ts: v5 light/dark assets and compact viewBox pass"
         },
         {
           "path": "package.json",
-          "blob": "d302eecab6d7ec8e908c2b16eeed1988a18c4bd2",
+          "blob": "b9182c49f9896f59a8cde5f1f03c13ab236600af",
           "command": "bun run check: Biome check and Admin UI boundary check pass; existing warnings and infos are non-fatal"
         }
       ]
@@ -130,12 +132,12 @@
       "evidence": [
         {
           "path": "src/lib/__tests__/public-media.test.ts",
-          "blob": "ef402d335a1c600b6830da2dbf6a79dfcc39723c",
+          "blob": "077fe61891ce86956d574e87c1734a7aea9645f7",
           "command": "bun test src/lib/__tests__/public-media.test.ts: v5 defaults, complete v5 A/B candidates, and explicit v1/v2/v3/v4 compatibility pass"
         },
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "4c2d70f590d537c4c193dce7eebc38facd52521d",
+          "blob": "ac5d22f1018f1204db947c341f0deb3e2e5d9473",
           "command": "bun test src/server/http-compat-api.test.ts: current v5 URLs and explicit legacy candidates pass"
         }
       ]
@@ -149,10 +151,10 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "4c2d70f590d537c4c193dce7eebc38facd52521d",
+          "blob": "ac5d22f1018f1204db947c341f0deb3e2e5d9473",
           "command": "HTTP compatibility coverage exercises versioned media paths without a state migration"
         }
       ]
     }
   }
-}
+}\n

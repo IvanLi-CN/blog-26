@@ -14,7 +14,7 @@ interface CommentFormProps {
   postSlug: string;
   target?: CommentTarget;
   parentId?: string;
-  onCommentPosted: () => void;
+  onCommentPosted: (message?: string) => void;
   userInfo: UserInfo | null;
   postComment: (commentData: {
     postSlug: string;
@@ -87,10 +87,11 @@ export default function CommentForm({
       submissionKey: submissionKey.current,
     });
     if (!response.ok) return;
+    const payload = (await response.json()) as { message?: string };
     setContent("");
     window.sessionStorage.removeItem(key);
     submissionKey.current = crypto.randomUUID();
-    onCommentPosted();
+    onCommentPosted(payload.message);
   };
 
   return (
@@ -125,7 +126,9 @@ export default function CommentForm({
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="font-semibold text-[color:var(--nature-text)]">{userInfo.nickname}</h3>
-            <p className="text-xs text-[color:var(--nature-text-soft)]">GitHub 读者</p>
+            <p className="text-xs text-[color:var(--nature-text-soft)]">
+              {userInfo.isAdminAuthor ? "GitHub 管理员" : "GitHub 读者"}
+            </p>
           </div>
           <button
             type="button"
@@ -177,7 +180,7 @@ export default function CommentForm({
             ) : (
               <>
                 <Icon name="tabler:send-2" className="h-4 w-4" />
-                提交审核
+                {userInfo?.isAdminAuthor ? "直接发布" : "提交审核"}
               </>
             )}
           </button>

@@ -17,6 +17,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from "node:pat
 import { TRPCError } from "@trpc/server";
 import { and, eq, gt, inArray, isNull, lt, lte, or } from "drizzle-orm";
 import { getActiveLocalBasePath } from "@/config/paths";
+import { isAdminGithubId } from "@/lib/admin-github-binding";
 import type { SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import { generateSlugFromPath } from "@/lib/content-sources/utils";
 import { db, initializeDB } from "@/lib/db";
@@ -25,12 +26,19 @@ import {
   appendPublicCorsHeaders,
   createPublicCorsPreflightResponse,
   hasTrustedPublicOrigin,
+  hasTrustedSameOriginNavigation,
 } from "@/lib/public-cors";
 import {
+  AdminGithubBindingError,
+  cancelAdminGithubBindingOAuth,
+  clearAdminGithubBindingStateCookieHeader,
   clearReaderOAuthStateCookieHeader,
   clearReaderSessionCookieHeader,
+  completeAdminGithubBindingOAuth,
   completeReaderOAuth,
+  createAdminGithubBindingStart,
   createReaderOAuthStart,
+  getOAuthAttemptDetails,
   getReaderOAuthReturnTo,
   readerAuthAvailable,
   revokeReaderSession,
@@ -1357,6 +1365,47 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
       }
     }
 
+    if (pathname === "/reader-auth/github/binding/start") {
+      if (request.method !== "GET") return methodNotAllowed(request, request.method);
+      if (!hasTrustedSameOriginNavigation(request)) {
+        return json(request, { error: "请求来源不受信任" }, { status: 403 });
+      }
+      await initializeDB();
+      const { ctx, resHeaders } = await createCallerForRequest(request);
+      if (!ctx.user) {
+        return json(request, { error: "请先登录管理员账号" }, { status: 401 }, resHeaders);
+      }
+      if (!ctx.isAdmin) {
+        return json(
+          request,
+          { error: "只有管理员可以绑定 GitHub 身份" },
+          { status: 403 },
+          resHeaders
+        );
+      }
+      try {
+        const result = await createAdminGithubBindingStart(
+          request,
+          ctx.user.id,
+          url.searchParams.get("returnTo") || "/admin/github-binding"
+        );
+        const headers = new Headers({
+          location: result.location,
+          "cache-control": "no-store",
+        });
+        headers.append("set-cookie", result.cookie);
+        appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
+        return new Response(null, { status: 302, headers });
+      } catch {
+        return json(
+          request,
+          { error: "GitHub 绑定暂不可用", available: readerAuthAvailable() },
+          { status: 503, headers: { "cache-control": "no-store" } },
+          resHeaders
+        );
+      }
+    }
+
     if (pathname === "/reader-auth/github/callback") {
       if (request.method !== "GET") return methodNotAllowed(request, request.method);
       await initializeDB();
@@ -1372,7 +1421,37 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
           },
         });
       }
+      const attempt = state ? await getOAuthAttemptDetails(request, state) : null;
+      const isBindingAttempt = attempt?.purpose === "admin_binding";
+      const bindingContext = isBindingAttempt ? await createCallerForRequest(request) : null;
+      const currentAdminUserId =
+        bindingContext?.ctx.isAdmin && bindingContext.ctx.user ? bindingContext.ctx.user.id : null;
       if (oauthError) {
+        if (isBindingAttempt) {
+          const bindingResult = await cancelAdminGithubBindingOAuth(
+            request,
+            state as string,
+            currentAdminUserId,
+            oauthError === "access_denied" ? "cancelled" : "failure"
+          );
+          const fallbackUrl = new URL(
+            bindingResult?.returnTo || "/admin/github-binding",
+            request.url
+          );
+          fallbackUrl.searchParams.set(
+            "binding",
+            oauthError === "access_denied" && currentAdminUserId === attempt?.adminUserId
+              ? "cancelled"
+              : "failed"
+          );
+          const headers = new Headers({
+            location: fallbackUrl.toString(),
+            "cache-control": "no-store",
+          });
+          headers.append("set-cookie", clearAdminGithubBindingStateCookieHeader(request));
+          appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
+          return new Response(null, { status: 302, headers });
+        }
         const returnTo = await getReaderOAuthReturnTo(request, state);
         const fallbackUrl = new URL(returnTo || "/", request.url);
         fallbackUrl.searchParams.set(
@@ -1388,6 +1467,25 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
         return new Response(null, { status: 302, headers });
       }
       try {
+        if (!code) throw new Error("GitHub authorization code is missing");
+        if (isBindingAttempt) {
+          const result = await completeAdminGithubBindingOAuth(
+            request,
+            state as string,
+            code,
+            currentAdminUserId
+          );
+          const fallbackUrl = new URL(result.returnTo, request.url);
+          fallbackUrl.searchParams.set("binding", "success");
+          const headers = new Headers({
+            location: fallbackUrl.toString(),
+            "cache-control": "no-store",
+          });
+          headers.append("set-cookie", result.cookie);
+          headers.append("set-cookie", clearAdminGithubBindingStateCookieHeader(request));
+          appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
+          return new Response(null, { status: 302, headers });
+        }
         const result = await completeReaderOAuth(request, state, code);
         const headers = new Headers({
           location: result.returnTo,
@@ -1398,6 +1496,22 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
         appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
         return new Response(null, { status: 302, headers });
       } catch (error) {
+        if (isBindingAttempt) {
+          const fallbackUrl = new URL(attempt?.returnTo || "/admin/github-binding", request.url);
+          const code =
+            error instanceof AdminGithubBindingError && error.code === "conflict"
+              ? "conflict"
+              : "failed";
+          fallbackUrl.searchParams.set("binding", code);
+          const headers = new Headers({
+            location: fallbackUrl.toString(),
+            "cache-control": "no-store",
+          });
+          headers.append("set-cookie", clearAdminGithubBindingStateCookieHeader(request));
+          appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
+          console.warn("GitHub admin binding callback failed", error);
+          return new Response(null, { status: 302, headers });
+        }
         const returnTo = await getReaderOAuthReturnTo(request, state);
         const fallbackUrl = new URL(returnTo || "/", request.url);
         fallbackUrl.searchParams.set("reader_auth_error", "failed");
@@ -1471,7 +1585,11 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
       if (request.method !== "GET") return methodNotAllowed(request, request.method);
       return json(
         request,
-        { reader: ctx.reader ?? null, available: readerAuthAvailable() },
+        {
+          reader: ctx.reader ?? null,
+          isAdminAuthor: ctx.reader ? await isAdminGithubId(ctx.reader.githubId) : false,
+          available: readerAuthAvailable(),
+        },
         { status: 200, headers: { "cache-control": "no-store" } },
         resHeaders
       );

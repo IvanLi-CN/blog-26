@@ -43,6 +43,13 @@ async function updateRevision(
   if (expectedRevision !== undefined && existing.revision !== expectedRevision) {
     throw new TRPCError({ code: "CONFLICT", message: "评论已被其他操作更新，请刷新后重试" });
   }
+  const changedValues = Object.entries(values).filter(([, value]) => value !== undefined);
+  if (
+    changedValues.length === 0 ||
+    changedValues.every(([key, value]) => (existing as Record<string, unknown>)[key] === value)
+  ) {
+    return existing;
+  }
   const updated = await db
     .update(comments)
     .set({ ...values, revision: existing.revision + 1 })
@@ -111,12 +118,19 @@ export const adminCommentsRouter = createTRPCRouter({
       if (!existing.deletedAt) return { success: true, message: "评论无需恢复" };
       await updateRevision(input.id, input.expectedRevision, {
         deletedAt: null,
-        status: "pending",
+        status: existing.authorRole === "admin" ? "approved" : "pending",
       });
-      return { success: true, message: "评论已恢复并进入待审" };
+      return {
+        success: true,
+        message:
+          existing.authorRole === "admin" ? "管理员评论已恢复并公开" : "评论已恢复并进入待审",
+      };
     }
     if (existing.deletedAt && input.status === "approved") {
       throw new TRPCError({ code: "CONFLICT", message: "已删除评论不能直接通过" });
+    }
+    if (existing.authorRole === "admin" && input.status && input.status !== "approved") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "管理员评论只能保持已公开状态" });
     }
     const { id: _id, expectedRevision: _expectedRevision, action: _action, ...values } = input;
     await updateRevision(input.id, input.expectedRevision, values);
@@ -173,7 +187,7 @@ export const adminCommentsRouter = createTRPCRouter({
             try {
               await updateRevision(id, input.expectedRevisions?.[id] ?? row.revision, {
                 deletedAt: null,
-                status: "pending",
+                status: row.authorRole === "admin" ? "approved" : "pending",
               });
               results.push({ id, result: "success" });
             } catch (error) {
@@ -190,14 +204,23 @@ export const adminCommentsRouter = createTRPCRouter({
           results.push({ id, result: "skipped", reason: "deleted" });
           continue;
         }
+        const targetStatus =
+          input.action === "approve"
+            ? "approved"
+            : input.action === "reject"
+              ? "rejected"
+              : "pending";
+        if (row.authorRole === "admin" && targetStatus !== "approved") {
+          results.push({ id, result: "skipped", reason: "admin_always_approved" });
+          continue;
+        }
+        if (row.status === targetStatus) {
+          results.push({ id, result: "skipped", reason: "already_status" });
+          continue;
+        }
         try {
           await updateRevision(id, input.expectedRevisions?.[id] ?? row.revision, {
-            status:
-              input.action === "approve"
-                ? "approved"
-                : input.action === "reject"
-                  ? "rejected"
-                  : "pending",
+            status: targetStatus,
           });
           results.push({ id, result: "success" });
         } catch (error) {

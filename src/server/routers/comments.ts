@@ -13,6 +13,7 @@ import {
   like,
   lte,
   or,
+  sql,
 } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
@@ -20,7 +21,7 @@ import { getAvatarUrl } from "../../lib/avatar";
 import { assertCommentMigrationReady } from "../../lib/comment-migration";
 import { db } from "../../lib/db";
 import { projectCatalog } from "../../lib/project-catalog";
-import { comments, posts, readers, users } from "../../lib/schema";
+import { adminGithubBindings, comments, posts, readers, users } from "../../lib/schema";
 import { toMsTimestamp } from "../../lib/utils";
 import {
   isClippingRowPublic,
@@ -135,6 +136,7 @@ type PublicComment = {
   placeholder: boolean;
   revision: number;
   authorEmail: string | null;
+  authorRole: "reader" | "admin";
   author: {
     id: string;
     nickname: string | null;
@@ -318,7 +320,9 @@ function buildPublicComments(
         .all()
         .flatMap((row) => (row.rootId ? [row.rootId] : []))
     : [];
-  const ownRootCondition = readerId ? eq(comments.readerId, readerId) : undefined;
+  const ownRootCondition = readerId
+    ? and(eq(comments.readerId, readerId), isNull(comments.deletedAt))
+    : undefined;
   const rootsWithVisibleReplies =
     visibleReplyRoots.length || ownReplyRoots.length
       ? or(
@@ -361,7 +365,7 @@ function buildPublicComments(
       ? undefined
       : or(
           and(eq(comments.status, "approved"), isNull(comments.deletedAt)),
-          readerId ? eq(comments.readerId, readerId) : undefined
+          readerId ? and(eq(comments.readerId, readerId), isNull(comments.deletedAt)) : undefined
         );
     const cursorCondition = options.replyCursor
       ? or(
@@ -398,8 +402,15 @@ function buildPublicComments(
     const deleted = Boolean(row.deletedAt);
     const own = Boolean(readerId && row.readerId === readerId);
     const placeholder = !isAdmin && !own && !deleted && row.status !== "approved";
-    const authorName =
-      reader?.displayName || reader?.githubLogin || legacyUser?.name || row.authorName;
+    const isAdminAuthor = row.authorRole === "admin";
+    const authorName = isAdminAuthor
+      ? row.authorName
+      : reader?.displayName || reader?.githubLogin || legacyUser?.name || row.authorName;
+    const authorId = isAdminAuthor
+      ? row.authorGithubId
+        ? `github:${row.authorGithubId}`
+        : row.id
+      : reader?.id || legacyUser?.id || (isAdmin ? row.authorEmail : null) || row.id;
     const rootId = row.rootId || (row.parentId ? null : row.id);
     mapped.set(row.id, {
       id: row.id,
@@ -412,21 +423,19 @@ function buildPublicComments(
       deleted,
       revision: row.revision,
       authorEmail: isAdmin ? row.authorEmail : null,
+      authorRole: row.authorRole,
       author: {
-        id:
-          deleted && !isAdmin
-            ? row.id
-            : placeholder
-              ? row.id
-              : reader?.id || legacyUser?.id || (isAdmin ? row.authorEmail : null) || row.id,
+        id: deleted && !isAdmin ? row.id : placeholder ? row.id : authorId,
         nickname: deleted && !isAdmin ? "已删除" : placeholder ? "评论暂不可见" : authorName,
         avatarUrl:
           (deleted || placeholder) && !isAdmin
             ? "/site-assets/default-avatar.svg"
-            : reader?.avatarUrl || "/site-assets/default-avatar.svg",
-        profileUrl: deleted || placeholder ? null : reader?.profileUrl,
+            : isAdminAuthor
+              ? "/site-assets/default-avatar.svg"
+              : reader?.avatarUrl || "/site-assets/default-avatar.svg",
+        profileUrl: deleted || placeholder || isAdminAuthor ? null : reader?.profileUrl,
       },
-      canDelete: isAdmin || own,
+      canDelete: isAdmin || (own && row.authorRole !== "admin"),
       canModerate: isAdmin,
       replies: [],
       repliesNextCursor: null,
@@ -463,6 +472,13 @@ async function updateWithRevision(
   if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "评论不存在" });
   if (expectedRevision !== undefined && existing.revision !== expectedRevision) {
     throw new TRPCError({ code: "CONFLICT", message: "评论已被其他操作更新，请刷新后重试" });
+  }
+  const changedValues = Object.entries(values).filter(([, value]) => value !== undefined);
+  if (
+    changedValues.length === 0 ||
+    changedValues.every(([key, value]) => (existing as Record<string, unknown>)[key] === value)
+  ) {
+    return existing;
   }
   const updated = await db
     .update(comments)
@@ -648,9 +664,9 @@ export const commentsRouter = createTRPCRouter({
       try {
         return await withPublicTargetConsistency(target, () =>
           db.transaction(
-            (tx) => {
+            async (tx) => {
               assertPublicTargetSync(target, tx);
-              const existingSubmission = tx
+              const existingSubmission = await tx
                 .select()
                 .from(comments)
                 .where(
@@ -672,13 +688,22 @@ export const commentsRouter = createTRPCRouter({
                 return {
                   success: true,
                   commentId: existingSubmission.id,
-                  message: "评论已提交，正在等待审核",
+                  authorRole: existingSubmission.authorRole,
+                  status: existingSubmission.status,
+                  message:
+                    existingSubmission.authorRole === "admin"
+                      ? "管理员评论已公开"
+                      : "评论已提交，正在等待审核",
                 };
               }
               enforceRateLimit(reader.id);
               let rootId: string | null = null;
               if (parentId) {
-                const parent = tx.select().from(comments).where(eq(comments.id, parentId)).get();
+                const parent = await tx
+                  .select()
+                  .from(comments)
+                  .where(eq(comments.id, parentId))
+                  .get();
                 if (
                   !parent ||
                   parent.targetType !== target.type ||
@@ -694,32 +719,52 @@ export const commentsRouter = createTRPCRouter({
                 rootId = parent.rootId || parent.id;
               }
               const commentId = uuidv4();
-              tx.insert(comments)
-                .values({
-                  id: commentId,
-                  content,
-                  postSlug: target.key,
-                  targetType: target.type,
-                  targetKey: target.key,
-                  authorName: reader.displayName || reader.githubLogin,
-                  authorEmail: null,
-                  readerId: reader.id,
-                  parentId,
-                  rootId,
-                  status: "pending",
-                  revision: 1,
-                  submissionKey,
-                  createdAt: Math.floor(Date.now() / 1000),
-                })
+              // Serialize role derivation with binding changes so a comment cannot observe a
+              // binding state that is concurrently being removed.
+              await tx
+                .update(adminGithubBindings)
+                .set({ updatedAt: sql`${adminGithubBindings.updatedAt}` })
+                .where(eq(adminGithubBindings.githubId, reader.githubId))
                 .run();
-              return { success: true, commentId, message: "评论已提交，正在等待审核" };
+              const binding = await tx
+                .select({ id: adminGithubBindings.id })
+                .from(adminGithubBindings)
+                .where(eq(adminGithubBindings.githubId, reader.githubId))
+                .get();
+              const authorRole = binding ? ("admin" as const) : ("reader" as const);
+              const status = authorRole === "admin" ? "approved" : "pending";
+              await tx.insert(comments).values({
+                id: commentId,
+                content,
+                postSlug: target.key,
+                targetType: target.type,
+                targetKey: target.key,
+                authorName: reader.displayName || reader.githubLogin,
+                authorEmail: null,
+                readerId: reader.id,
+                parentId,
+                rootId,
+                authorRole,
+                authorGithubId: reader.githubId,
+                status,
+                revision: 1,
+                submissionKey,
+                createdAt: Math.floor(Date.now() / 1000),
+              });
+              return {
+                success: true,
+                commentId,
+                authorRole,
+                status,
+                message: authorRole === "admin" ? "管理员评论已公开" : "评论已提交，正在等待审核",
+              };
             },
             { behavior: "immediate" }
           )
         );
       } catch (error) {
         if (error instanceof TRPCError) throw error;
-        const concurrentSubmission = db
+        const concurrentSubmission = await db
           .select()
           .from(comments)
           .where(and(eq(comments.readerId, reader.id), eq(comments.submissionKey, submissionKey)))
@@ -736,7 +781,12 @@ export const commentsRouter = createTRPCRouter({
         return {
           success: true,
           commentId: concurrentSubmission.id,
-          message: "评论已提交，正在等待审核",
+          authorRole: concurrentSubmission.authorRole,
+          status: concurrentSubmission.status,
+          message:
+            concurrentSubmission.authorRole === "admin"
+              ? "管理员评论已公开"
+              : "评论已提交，正在等待审核",
         };
       }
     }),
@@ -753,19 +803,30 @@ export const commentsRouter = createTRPCRouter({
       if (existing.deletedAt) {
         throw new TRPCError({ code: "CONFLICT", message: "已删除评论不能直接通过" });
       }
+      if (existing.authorRole === "admin" && input.status !== "approved") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "管理员评论只能保持已公开状态" });
+      }
       await updateWithRevision(input.commentId, input.expectedRevision, { status: input.status });
-      return { success: true, message: "评论状态已更新" };
+      return {
+        success: true,
+        message: existing.status === input.status ? "评论状态未改变" : "评论状态已更新",
+      };
     }),
 
   restoreComment: commentsAdminProcedure.input(restoreCommentSchema).mutation(async ({ input }) => {
     const existing = await db.select().from(comments).where(eq(comments.id, input.commentId)).get();
     if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "评论不存在" });
     if (!existing.deletedAt) return { success: true, message: "评论无需恢复" };
+    const status = existing.authorRole === "admin" ? "approved" : "pending";
     await updateWithRevision(input.commentId, input.expectedRevision, {
       deletedAt: null,
-      status: "pending",
+      status,
     });
-    return { success: true, message: "评论已恢复并进入待审" };
+    return {
+      success: true,
+      status,
+      message: status === "approved" ? "管理员评论已恢复并公开" : "评论已恢复并进入待审",
+    };
   }),
 
   editComment: commentsAdminProcedure.input(editCommentSchema).mutation(async ({ input }) => {
@@ -786,7 +847,12 @@ export const commentsRouter = createTRPCRouter({
               .get();
             if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "评论不存在" });
             const canDelete =
-              ctx.isAdmin || Boolean(ctx.reader?.id && existing.readerId === ctx.reader.id);
+              ctx.isAdmin ||
+              Boolean(
+                ctx.reader?.id &&
+                  existing.readerId === ctx.reader.id &&
+                  existing.authorRole !== "admin"
+              );
             if (!canDelete)
               throw new TRPCError({ code: "FORBIDDEN", message: "没有权限删除此评论" });
             const target = { type: existing.targetType, key: existing.targetKey } as Target;
@@ -891,6 +957,7 @@ export const commentsRouter = createTRPCRouter({
               ? getAvatarUrl(row.authorEmail)
               : "/site-assets/default-avatar.svg",
           },
+          authorRole: row.authorRole,
         })),
         totalCount: total,
         totalPages: Math.max(1, Math.ceil(total / input.limit)),
@@ -941,6 +1008,10 @@ export const commentsRouter = createTRPCRouter({
       const row = await db.select().from(comments).where(eq(comments.id, id)).get();
       if (!row) results.push({ id, result: "failed", reason: "not_found" });
       else if (row.deletedAt) results.push({ id, result: "skipped", reason: "deleted" });
+      else if (row.authorRole === "admin" && input.status !== "approved")
+        results.push({ id, result: "skipped", reason: "admin_always_approved" });
+      else if (row.status === input.status)
+        results.push({ id, result: "skipped", reason: "already_status" });
       else {
         try {
           await updateWithRevision(id, row.revision, { status: input.status });

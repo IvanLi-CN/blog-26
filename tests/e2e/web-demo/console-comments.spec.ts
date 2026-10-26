@@ -151,7 +151,7 @@ test.describe("Console comments Web Demo", () => {
 
   test("uses the avatar fallback in the Console clipping route", async ({ page }) => {
     await page.goto(
-      `${clippingPath}?d_scene=comments-avatar-failure&d_persona=admin&d_delay=normal`,
+      `${clippingPath}?d_scene=comments-avatar-failure&d_persona=admin&d_github_binding=bound&d_delay=normal`,
       { waitUntil: "domcontentloaded" }
     );
     await expect(page.locator('[data-testid="clipping-detail"]:visible').last()).toBeVisible();
@@ -205,7 +205,7 @@ test.describe("Console comments Web Demo", () => {
   });
 
   test("normalizes empty avatar URLs in the Console clipping route", async ({ page }) => {
-    await page.goto(`${clippingPath}?d_persona=admin&d_delay=normal`, {
+    await page.goto(`${clippingPath}?d_persona=admin&d_github_binding=bound&d_delay=normal`, {
       waitUntil: "domcontentloaded",
     });
     await expect(page.locator('[data-testid="clipping-detail"]:visible').last()).toBeVisible();

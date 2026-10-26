@@ -320,7 +320,12 @@ export function CommentsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          <div className="font-medium">{comment.authorName}</div>
+                          <div className="flex flex-wrap items-center gap-2 font-medium">
+                            <span>{comment.authorName}</span>
+                            {comment.authorRole === "admin" ? (
+                              <Badge tone="default">管理员</Badge>
+                            ) : null}
+                          </div>
                           {comment.authorEmail ? (
                             <div className="text-xs text-muted-foreground">
                               {comment.authorEmail}
@@ -375,7 +380,7 @@ export function CommentsPage() {
                                 }
                               >
                                 <RotateCcw className="size-4" />
-                                恢复并待审
+                                {comment.authorRole === "admin" ? "恢复并公开" : "恢复并待审"}
                               </Button>
                             ) : (
                               <>
@@ -407,7 +412,7 @@ export function CommentsPage() {
                                     批准公开
                                   </Button>
                                 ) : null}
-                                {comment.status !== "rejected" ? (
+                                {comment.authorRole !== "admin" && comment.status !== "rejected" ? (
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -426,7 +431,7 @@ export function CommentsPage() {
                                     拒绝公开
                                   </Button>
                                 ) : null}
-                                {comment.status !== "pending" ? (
+                                {comment.authorRole !== "admin" && comment.status !== "pending" ? (
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -484,7 +489,7 @@ export function CommentsPage() {
                                     }
                                   >
                                     <RotateCcw className="size-4" />
-                                    恢复并待审
+                                    {comment.authorRole === "admin" ? "恢复并公开" : "恢复并待审"}
                                   </DropdownMenuItem>
                                 ) : (
                                   <>
@@ -512,7 +517,8 @@ export function CommentsPage() {
                                         批准公开
                                       </DropdownMenuItem>
                                     ) : null}
-                                    {comment.status !== "rejected" ? (
+                                    {comment.authorRole !== "admin" &&
+                                    comment.status !== "rejected" ? (
                                       <DropdownMenuItem
                                         disabled={updateMutation.isPending}
                                         onSelect={() =>
@@ -529,7 +535,8 @@ export function CommentsPage() {
                                         拒绝公开
                                       </DropdownMenuItem>
                                     ) : null}
-                                    {comment.status !== "pending" ? (
+                                    {comment.authorRole !== "admin" &&
+                                    comment.status !== "pending" ? (
                                       <DropdownMenuItem
                                         disabled={updateMutation.isPending}
                                         onSelect={() =>

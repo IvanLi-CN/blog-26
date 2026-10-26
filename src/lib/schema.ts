@@ -53,6 +53,10 @@ export const readerOAuthAttempts = sqliteTable(
     stateHash: text("state_hash").notNull(),
     codeVerifier: text("code_verifier").notNull(),
     returnTo: text("return_to").notNull(),
+    purpose: text("purpose", { enum: ["reader_login", "admin_binding"] })
+      .notNull()
+      .default("reader_login"),
+    adminUserId: text("admin_user_id"),
     expiresAt: integer("expires_at").notNull(),
     createdAt: integer("created_at").notNull(),
     consumedAt: integer("consumed_at"),
@@ -60,6 +64,50 @@ export const readerOAuthAttempts = sqliteTable(
   (table) => ({
     stateUnique: uniqueIndex("reader_oauth_attempts_state_unique").on(table.stateHash),
     expiryIndex: index("reader_oauth_attempts_expiry_idx").on(table.expiresAt),
+  })
+);
+
+export const adminGithubBindings = sqliteTable(
+  "admin_github_bindings",
+  {
+    id: text("id").primaryKey(),
+    adminUserId: text("admin_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    githubId: text("github_id").notNull(),
+    githubLogin: text("github_login").notNull(),
+    displayName: text("display_name"),
+    avatarUrl: text("avatar_url"),
+    profileUrl: text("profile_url"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => ({
+    adminUnique: uniqueIndex("admin_github_bindings_admin_unique").on(table.adminUserId),
+    githubUnique: uniqueIndex("admin_github_bindings_github_unique").on(table.githubId),
+  })
+);
+
+export const adminGithubBindingEvents = sqliteTable(
+  "admin_github_binding_events",
+  {
+    id: text("id").primaryKey(),
+    adminUserId: text("admin_user_id").notNull(),
+    githubId: text("github_id"),
+    action: text("action", { enum: ["bind", "unbind"] }).notNull(),
+    result: text("result", { enum: ["success", "cancelled", "conflict", "failure"] }).notNull(),
+    errorCode: text("error_code"),
+    createdAt: integer("created_at").notNull(),
+  },
+  (table) => ({
+    adminTimeIndex: index("admin_github_binding_events_admin_time_idx").on(
+      table.adminUserId,
+      table.createdAt
+    ),
+    githubTimeIndex: index("admin_github_binding_events_github_time_idx").on(
+      table.githubId,
+      table.createdAt
+    ),
   })
 );
 
@@ -87,6 +135,10 @@ export const comments = sqliteTable(
     authorName: text("author_name").notNull(),
     authorEmail: text("author_email"),
     readerId: text("reader_id").references(() => readers.id, { onDelete: "set null" }),
+    authorRole: text("author_role", { enum: ["reader", "admin"] })
+      .notNull()
+      .default("reader"),
+    authorGithubId: text("author_github_id"),
     parentId: text("parent_id"),
     rootId: text("root_id"),
     status: text("status", { enum: ["pending", "approved", "rejected"] })
