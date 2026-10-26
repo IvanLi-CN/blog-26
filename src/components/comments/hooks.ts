@@ -60,6 +60,7 @@ export function useUserInfo() {
           avatarUrl: string | null;
           profileUrl: string | null;
         } | null;
+        isAdminAuthor?: boolean;
       }>(toPublicApiUrl("/api/public/reader-auth/me"));
       if (version !== requestVersion.current) return;
       setUserInfo(
@@ -70,6 +71,7 @@ export function useUserInfo() {
               email: null,
               avatarUrl: data.reader.avatarUrl || "/site-assets/default-avatar.svg",
               profileUrl: data.reader.profileUrl,
+              isAdminAuthor: data.isAdminAuthor === true,
             }
           : null
       );

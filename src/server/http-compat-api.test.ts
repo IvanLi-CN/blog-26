@@ -16,11 +16,15 @@ import { publicRelationIndexFromCatalog } from "@/lib/playbook/supplement";
 import { computePostContentHash } from "@/lib/post-body-contract-server";
 import { buildPublicMediaHash } from "@/lib/public-media";
 import {
+  adminGithubBindingEvents,
+  adminGithubBindings,
   commentMigrationState,
   llmSettings,
   postEmbeddings,
   posts,
   readerOAuthAttempts,
+  readerSessions,
+  readers,
   sessions,
   users,
   vectorizedFiles,
@@ -351,6 +355,52 @@ describe("HTTP compatibility APIs", () => {
       "/search-settings"
     );
     expect(JSON.stringify(await settings.json())).not.toContain("apiKey");
+  });
+
+  it("requires same-origin requests for admin GitHub unbinding", async () => {
+    if (!db) throw new Error("Database has not been initialised");
+    await db.insert(users).values({
+      id: "admin-unbind-origin-test",
+      email: ADMIN_EMAIL,
+      name: "Admin",
+      createdAt: Date.now(),
+    });
+    await db.insert(adminGithubBindings).values({
+      id: "admin-unbind-origin-binding",
+      adminUserId: "admin-unbind-origin-test",
+      githubId: "github-unbind-origin-test",
+      githubLogin: "unbind-origin-test",
+      displayName: "Unbind Origin",
+      avatarUrl: null,
+      profileUrl: "https://github.com/unbind-origin-test",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    const crossSite = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/github-binding/unbind",
+        { method: "POST", headers: { "sec-fetch-site": "cross-site" } },
+        ADMIN_EMAIL
+      ),
+      "/github-binding/unbind"
+    );
+    expect(crossSite.status).toBe(403);
+    expect(await db.select().from(adminGithubBindings).get()).toMatchObject({
+      githubId: "github-unbind-origin-test",
+    });
+
+    const sameOrigin = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/github-binding/unbind",
+        { method: "POST", headers: { "sec-fetch-site": "same-origin" } },
+        ADMIN_EMAIL
+      ),
+      "/github-binding/unbind"
+    );
+    expect(sameOrigin.status).toBe(200);
+    expect(await db.select().from(adminGithubBindings).get()).toBeUndefined();
+    await db.delete(adminGithubBindingEvents);
   });
 
   it("exposes the merged playbook only to administrators", async () => {
@@ -1625,6 +1675,124 @@ public: false
       expect(cancelResponse.headers.get("set-cookie")).toContain("reader_oauth_state=");
     } finally {
       await db.delete(readerOAuthAttempts);
+      if (originalReaderEnv.clientId === undefined) delete process.env.GITHUB_READER_CLIENT_ID;
+      else process.env.GITHUB_READER_CLIENT_ID = originalReaderEnv.clientId;
+      if (originalReaderEnv.clientSecret === undefined)
+        delete process.env.GITHUB_READER_CLIENT_SECRET;
+      else process.env.GITHUB_READER_CLIENT_SECRET = originalReaderEnv.clientSecret;
+      if (originalReaderEnv.callbackUrl === undefined)
+        delete process.env.GITHUB_READER_CALLBACK_URL;
+      else process.env.GITHUB_READER_CALLBACK_URL = originalReaderEnv.callbackUrl;
+    }
+  });
+
+  it("rejects cross-site navigation from starting an admin GitHub binding", async () => {
+    const response = await handlePublicApiRequest(
+      buildRequest(
+        "/api/public/reader-auth/github/binding/start",
+        { headers: { "sec-fetch-site": "cross-site" } },
+        ADMIN_EMAIL
+      ),
+      "/reader-auth/github/binding/start"
+    );
+
+    expect(response.status).toBe(403);
+    expect(await readJson(response)).toMatchObject({ error: "请求来源不受信任" });
+  });
+
+  it("binds GitHub through the admin callback and identifies the reader session", async () => {
+    if (!db) throw new Error("Database has not been initialised");
+    const originalFetch = globalThis.fetch;
+    const originalReaderEnv = {
+      clientId: process.env.GITHUB_READER_CLIENT_ID,
+      clientSecret: process.env.GITHUB_READER_CLIENT_SECRET,
+      callbackUrl: process.env.GITHUB_READER_CALLBACK_URL,
+    };
+    process.env.GITHUB_READER_CLIENT_ID = "reader-client-id";
+    process.env.GITHUB_READER_CLIENT_SECRET = "reader-client-secret";
+    process.env.GITHUB_READER_CALLBACK_URL =
+      "http://localhost/api/public/reader-auth/github/callback";
+    await db.delete(readerOAuthAttempts);
+    await db.delete(readerSessions);
+    await db.delete(readers);
+    await db.delete(adminGithubBindingEvents);
+    await db.delete(adminGithubBindings);
+
+    try {
+      const startResponse = await handlePublicApiRequest(
+        buildRequest(
+          "/api/public/reader-auth/github/binding/start?returnTo=http%3A%2F%2Flocalhost%2Fadmin%2Fgithub-binding",
+          { headers: { "sec-fetch-site": "same-origin" } },
+          ADMIN_EMAIL
+        ),
+        "/reader-auth/github/binding/start"
+      );
+      expect(startResponse.status).toBe(302);
+      const authorizeUrl = new URL(startResponse.headers.get("location") ?? "");
+      const state = authorizeUrl.searchParams.get("state");
+      const cookie = startResponse.headers.get("set-cookie")?.split(";")[0];
+      expect(authorizeUrl.searchParams.get("scope")).toBeNull();
+      expect(authorizeUrl.searchParams.get("code_challenge_method")).toBe("S256");
+      expect(cookie).toContain("reader_binding_oauth_state=");
+
+      globalThis.fetch = Object.assign(
+        async (input: RequestInfo | URL) => {
+          const url = String(input);
+          if (url.includes("access_token"))
+            return Response.json({ access_token: "one-shot-token" });
+          if (url === "https://api.github.com/user") {
+            return Response.json({
+              id: 81001,
+              login: "http-bound-admin",
+              name: "HTTP Bound Admin",
+              avatar_url: null,
+              html_url: "https://github.com/http-bound-admin",
+            });
+          }
+          throw new Error(`unexpected OAuth request: ${url}`);
+        },
+        { preconnect: originalFetch.preconnect }
+      ) as typeof fetch;
+
+      const callbackResponse = await handlePublicApiRequest(
+        buildRequest(
+          `/api/public/reader-auth/github/callback?state=${encodeURIComponent(state as string)}&code=oauth-code`,
+          { headers: { cookie: cookie as string, origin: "http://localhost" } },
+          ADMIN_EMAIL
+        ),
+        "/reader-auth/github/callback"
+      );
+      expect(callbackResponse.status).toBe(302);
+      expect(callbackResponse.headers.get("location")).toBe(
+        "http://localhost/admin/github-binding?binding=success"
+      );
+      const sessionCookie = callbackResponse.headers
+        .getSetCookie()
+        .find((value) => value.startsWith("reader_session_id="))
+        ?.split(";")[0];
+      expect(sessionCookie).toBeTruthy();
+      expect(callbackResponse.headers.get("set-cookie")).not.toContain("one-shot-token");
+
+      const meResponse = await handlePublicApiRequest(
+        buildRequest(
+          "/api/public/reader-auth/me",
+          { headers: { cookie: sessionCookie as string } },
+          ADMIN_EMAIL
+        ),
+        "/reader-auth/me"
+      );
+      expect(meResponse.status).toBe(200);
+      expect(await meResponse.json()).toMatchObject({
+        isAdminAuthor: true,
+        reader: { githubId: "81001", githubLogin: "http-bound-admin" },
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+      await db.delete(readerOAuthAttempts);
+      await db.delete(readerSessions);
+      await db.delete(readers);
+      await db.delete(adminGithubBindingEvents);
+      await db.delete(adminGithubBindings);
       if (originalReaderEnv.clientId === undefined) delete process.env.GITHUB_READER_CLIENT_ID;
       else process.env.GITHUB_READER_CLIENT_ID = originalReaderEnv.clientId;
       if (originalReaderEnv.clientSecret === undefined)

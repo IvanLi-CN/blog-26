@@ -120,6 +120,9 @@ export default function CommentSection({
             <div
               className="flex items-center justify-center p-8 text-[color:var(--nature-text-soft)]"
               data-testid="comments-loading"
+              role="status"
+              aria-live="polite"
+              aria-label="正在加载评论"
             >
               <span className="nature-spinner h-5 w-5" />
             </div>

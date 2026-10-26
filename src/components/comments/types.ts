@@ -17,6 +17,7 @@ export interface Comment {
   target?: { type: "article" | "memo" | "project"; key: string };
   rootId?: string | null;
   deleted?: boolean;
+  authorRole?: "reader" | "admin";
   placeholder?: boolean;
   revision?: number;
   canDelete?: boolean;
@@ -30,5 +31,6 @@ export interface UserInfo {
   email: string | null;
   avatarUrl: string;
   isAdmin?: boolean;
+  isAdminAuthor?: boolean;
   profileUrl?: string | null;
 }

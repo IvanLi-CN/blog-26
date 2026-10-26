@@ -366,6 +366,7 @@ type DemoAdminComment = {
   postSlug: string;
   authorName: string;
   authorEmail: string | null;
+  authorRole: "reader" | "admin";
   parentId: string | null;
   status: "pending" | "approved" | "rejected";
   targetType: "article" | "memo" | "project";
@@ -383,6 +384,7 @@ const comments: DemoAdminComment[] = [
     postSlug: "react-hooks-deep-dive",
     authorName: "Ming",
     authorEmail: "ming@example.com",
+    authorRole: "reader",
     parentId: null,
     status: "approved" as const,
     targetType: "article" as const,
@@ -398,6 +400,7 @@ const comments: DemoAdminComment[] = [
     postSlug: "redis-caching-strategies",
     authorName: "Rui",
     authorEmail: "rui@example.com",
+    authorRole: "reader",
     parentId: null,
     status: "pending" as const,
     targetType: "article" as const,
@@ -406,6 +409,22 @@ const comments: DemoAdminComment[] = [
     deletedAt: null,
     revision: 1,
     createdAt: now - 7_200_000,
+  },
+  {
+    id: "comment-admin-1",
+    content: "管理员绑定身份后的评论会保留公开标记。",
+    postSlug: "react-hooks-deep-dive",
+    authorName: "Ivan",
+    authorEmail: null,
+    authorRole: "admin",
+    parentId: null,
+    status: "approved" as const,
+    targetType: "article" as const,
+    targetKey: "react-hooks-deep-dive",
+    deleted: false,
+    deletedAt: null,
+    revision: 1,
+    createdAt: now - 1_800_000,
   },
 ];
 const initialDemoComments = comments.map((comment) => ({ ...comment }));
@@ -1080,6 +1099,43 @@ async function handleAdminRequest(
   if (environment?.persona !== "admin") {
     return json({ error: { code: "FORBIDDEN", message: "演示会话没有管理员权限。" } }, 403);
   }
+  if (path === "/api/admin/github-binding" && method === "GET") {
+    const binding = environment.githubBinding === "bound";
+    return json({
+      binding: binding
+        ? {
+            id: "demo-admin-binding",
+            adminUserId: "demo-admin",
+            githubId: "demo-admin-github",
+            githubLogin: "ivan-demo",
+            displayName: "Ivan",
+            avatarUrl: "/site-assets/default-avatar.svg",
+            profileUrl: "https://github.com/example",
+            createdAt: now - 86_400_000,
+            updatedAt: now,
+          }
+        : null,
+      lastEvent: binding
+        ? {
+            id: "demo-admin-binding-event",
+            adminUserId: "demo-admin",
+            githubId: "demo-admin-github",
+            action: "bind",
+            result: "success",
+            errorCode: null,
+            createdAt: now,
+          }
+        : null,
+    });
+  }
+  if (path === "/api/admin/github-binding/simulate" && method === "POST") {
+    recordWebDemoMutation("模拟绑定 GitHub", "绑定状态写入当前 Web Demo 内存。");
+    return json({ success: true, message: "演示绑定已完成" });
+  }
+  if (path === "/api/admin/github-binding/unbind" && method === "POST") {
+    recordWebDemoMutation("解绑 GitHub 管理员身份", "解绑状态写入当前 Web Demo 内存。");
+    return json({ success: true, message: "GitHub 管理员身份已解绑" });
+  }
   if (path === "/api/admin/dashboard/stats") return json(dashboardStats());
   if (path === "/api/admin/dashboard/recent-activity") return json(recentActivity());
   if (path.startsWith("/api/admin/preview/memos/") && method === "GET") {
@@ -1147,7 +1203,7 @@ async function handleAdminRequest(
         if (!comment.deleted) return { id, result: "skipped", reason: "not_deleted" };
         comment.deleted = false;
         comment.deletedAt = null;
-        comment.status = "pending";
+        comment.status = comment.authorRole === "admin" ? "approved" : "pending";
       } else if (comment.deleted) {
         return { id, result: "skipped", reason: "deleted" };
       } else {
@@ -1182,7 +1238,7 @@ async function handleAdminRequest(
         if (!comment.deleted) return json({ success: true, message: "评论无需恢复" });
         comment.deleted = false;
         comment.deletedAt = null;
-        comment.status = "pending";
+        comment.status = comment.authorRole === "admin" ? "approved" : "pending";
       } else if (comment.deleted && body.status === "approved") {
         return json({ error: { code: "CONFLICT", message: "已删除评论不能直接通过" } }, 409);
       } else if (!comment.deleted) {

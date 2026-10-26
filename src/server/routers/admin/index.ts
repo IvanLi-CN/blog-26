@@ -3,6 +3,7 @@ import { adminCommentsRouter } from "./comments";
 import { adminContentSyncRouter } from "./content-sync";
 import { adminDashboardRouter } from "./dashboard";
 import { filesRouter } from "./files";
+import { adminGithubBindingRouter } from "./github-binding";
 import { adminJobsRouter } from "./jobs";
 import { adminPersonalAccessTokensRouter } from "./personal-access-tokens";
 import { adminPlaybookRouter } from "./playbook";
@@ -18,6 +19,7 @@ export const adminRouter = createTRPCRouter({
   posts: adminPostsRouter,
   playbook: adminPlaybookRouter,
   comments: adminCommentsRouter,
+  githubBinding: adminGithubBindingRouter,
   contentSync: adminContentSyncRouter,
   vectorize: adminVectorizeRouter,
   jobs: adminJobsRouter,

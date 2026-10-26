@@ -25,11 +25,12 @@ describe("Web Demo runtime state", () => {
     const environment = getWebDemoEnvironment({
       pathname: "/memos/",
       search:
-        "?d_scene=memo-oldest&d_persona=admin&d_connection=offline&d_delay=custom&d_delay_ms=2300&d_theme=dark&d_motion=reduce&d_data=dense",
+        "?d_scene=memo-oldest&d_persona=admin&d_github_binding=bound&d_connection=offline&d_delay=custom&d_delay_ms=2300&d_theme=dark&d_motion=reduce&d_data=dense",
     });
 
     expect(environment).toEqual({
       persona: "admin",
+      githubBinding: "bound",
       connection: "offline",
       delay: "custom",
       delayMs: 2300,
@@ -45,6 +46,7 @@ describe("Web Demo runtime state", () => {
     ).toEqual({
       scene: "memo-oldest",
       persona: "admin",
+      githubBinding: "unbound",
       network: "offline",
       data: "dense",
     });
@@ -86,7 +88,20 @@ describe("Web Demo runtime state", () => {
     expect(url).toContain("d_scene=memo-middle");
     expect(url).toContain("d_connection=online");
     expect(url).toContain("d_delay=slow");
+    expect(url).toContain("d_github_binding=unbound");
     expect(url).not.toContain("d_network=");
+
+    const boundUrl = getWebDemoShareUrl(
+      {
+        scene: "memo-middle",
+        persona: "admin",
+        githubBinding: "bound",
+        network: "healthy",
+        data: "fixture",
+      },
+      location
+    );
+    expect(boundUrl).toContain("d_github_binding=bound");
   });
 
   it("exposes route-specific scene choices for public and admin surfaces", () => {
@@ -118,6 +133,7 @@ describe("Web Demo runtime state", () => {
 
     expect(environment).toEqual({
       persona: "user",
+      githubBinding: "unbound",
       connection: "online",
       delay: "custom",
       delayMs: 30_000,

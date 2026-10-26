@@ -53,20 +53,20 @@ describe("Web Demo public identity", () => {
     window.history.replaceState(
       {},
       "",
-      "/posts/code-block-fixture/?d_persona=guest&d_connection=online&d_delay=normal"
+      "/posts/code-block-fixture/?d_persona=guest&d_github_binding=bound&d_connection=online&d_delay=normal"
     );
     const { getByTestId } = render(<IdentityProbe />);
     await waitFor(() => expect(getByTestId("auth").textContent).toBe("guest"));
     changePersona("admin");
     await waitFor(() => {
       expect(getByTestId("auth").textContent).toBe("demo-admin");
-      expect(getByTestId("comments-user").textContent).toBe("demo-admin");
+      expect(getByTestId("comments-user").textContent).toBe("demo-admin-reader");
       expect(getByTestId("permission").textContent).toBe("true");
     });
     changePersona("user");
     await waitFor(() => {
       expect(getByTestId("auth").textContent).toBe("demo-user");
-      expect(getByTestId("comments-user").textContent).toBe("demo-user");
+      expect(getByTestId("comments-user").textContent).toBe("demo-user-reader");
       expect(getByTestId("permission").textContent).toBe("false");
     });
   });
@@ -76,13 +76,13 @@ describe("Web Demo public identity", () => {
     window.history.replaceState(
       {},
       "",
-      "/posts/code-block-fixture/?d_persona=guest&d_connection=online&d_delay=custom&d_delay_ms=2300"
+      "/posts/code-block-fixture/?d_persona=guest&d_github_binding=bound&d_connection=online&d_delay=custom&d_delay_ms=2300"
     );
     const { getByTestId } = render(<IdentityProbe />);
     changePersona("admin");
     await waitFor(() => {
       expect(getByTestId("auth").textContent).toBe("demo-admin");
-      expect(getByTestId("comments-user").textContent).toBe("demo-admin");
+      expect(getByTestId("comments-user").textContent).toBe("demo-admin-reader");
       expect(getByTestId("error").textContent).toBe("none");
     });
   });
