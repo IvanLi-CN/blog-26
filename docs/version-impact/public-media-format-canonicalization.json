@@ -3,8 +3,8 @@
   "kind": "version-impact-record",
   "base_sha": "e3989b4ea59bddad4cb910684a0546be5b0c4a88",
   "covered_files": {
-    "scripts/package-public-media.test.ts": "330bc5ecbea30eeae96e4b239fba008fe900173e",
-    "scripts/package-public-media.ts": "f2333bc13d4a5c3001f92dd36b5b486c6e19cf4e",
+    "scripts/package-public-media.test.ts": "e180f3958707cf644a0487ddf68a63cc8cd8db04",
+    "scripts/package-public-media.ts": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
     "src/lib/release/inputs.ts": "07fdf11d208887b45beb01103f6a2a0c478a2a0e",
     "tests/lib/manual-release-media.test.ts": "e62430fe93b69e578c2750c9dbaa121fb221900c"
   },
@@ -21,7 +21,7 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.ts",
-          "blob": "f2333bc13d4a5c3001f92dd36b5b486c6e19cf4e",
+          "blob": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
           "command": "Packaging code defines the canonical static presentation format for v4 source candidates"
         }
       ]
@@ -33,7 +33,7 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "330bc5ecbea30eeae96e4b239fba008fe900173e",
+          "blob": "e180f3958707cf644a0487ddf68a63cc8cd8db04",
           "command": "bun test scripts/package-public-media.test.ts"
         },
         {
@@ -59,7 +59,7 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "330bc5ecbea30eeae96e4b239fba008fe900173e",
+          "blob": "e180f3958707cf644a0487ddf68a63cc8cd8db04",
           "command": "bun test scripts/package-public-media.test.ts"
         },
         {
@@ -74,7 +74,7 @@
         },
         {
           "path": "scripts/package-public-media.ts",
-          "blob": "f2333bc13d4a5c3001f92dd36b5b486c6e19cf4e",
+          "blob": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
           "command": "bun run check"
         }
       ]
@@ -120,7 +120,7 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.ts",
-          "blob": "f2333bc13d4a5c3001f92dd36b5b486c6e19cf4e",
+          "blob": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
           "command": "Canonical packaging preserves the existing public media URL contract"
         }
       ]
