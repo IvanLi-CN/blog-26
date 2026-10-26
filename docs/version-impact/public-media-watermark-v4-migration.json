@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "d83dd15ae37130c6b424e9e61066e42638198ea6",
+  "covered_files": {
+    "scripts/package-public-media.test.ts": "f8dc6afd81e40a0fd99f5184e29d58b1138ec8b9",
+    "scripts/package-public-media.ts": "564f07fffebffc00235bad99b6e4f3d027985bbf",
+    "site/lib/public-site.ts": "b4812446c80730bb98a628c419f1f45763b6a908",
+    "src/lib/__tests__/public-site-snapshot-compat.test.ts": "fe400ea514630fe980d4bdf0e4448074db7d3437",
+    "src/lib/public-media.ts": "9194c2fe30e28951080d7812b3d6e55d1ef13845",
+    "src/lib/release/inputs.ts": "d0291f6ee1da7c5a2627ed14cdda1a99ddc39583"
+  },
+  "change": {
+    "description": "Migrate legacy public-media v4 watermark references in published snapshots and static packaging to the compact v5 A/B renditions so existing posts no longer render the oversized v4 canvas.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a compatible rendering correction. Existing v1/v2/v3/v4 URLs remain readable, while published v4 references are normalized to the already-supported compact v5 renditions. No API payload shape, persistent state, or authorization contract changes.",
+      "assessed_at": "2026-10-27T10:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/public-media.ts",
+          "blob": "9194c2fe30e28951080d7812b3d6e55d1ef13845",
+          "command": "The migration helper targets only public v4 watermark paths and preserves earlier version families"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Snapshot media and ordinary static packaging rewrite only legacy v4 watermark references to v5; frozen release packaging preserves sealed output identities so retries remain byte-compatible with their original inputs.",
+      "assessed_at": "2026-10-27T10:00:00+08:00",
+      "evidence": [
+        {
+          "path": "site/lib/public-site.ts",
+          "blob": "b4812446c80730bb98a628c419f1f45763b6a908",
+          "command": "Snapshot normalization migrates legacy v4 media and content references before selecting the public rendition"
+        },
+        {
+          "path": "scripts/package-public-media.ts",
+          "blob": "564f07fffebffc00235bad99b6e4f3d027985bbf",
+          "command": "Static packaging canonicalizes v4 references to the v5 asset pair before downloading candidates"
+        },
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "d0291f6ee1da7c5a2627ed14cdda1a99ddc39583",
+          "command": "Frozen release packaging preserves the exact sealed media identity during recovery"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains limited to public snapshot normalization, static public-media packaging, and their regression coverage."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused snapshot, static packaging, and frozen-media reuse tests verify that new builds migrate v4 references to compact v5 assets while sealed legacy outputs remain reusable; repository checks pass without a persistent-state migration.",
+      "assessed_at": "2026-10-27T10:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/__tests__/public-site-snapshot-compat.test.ts",
+          "blob": "fe400ea514630fe980d4bdf0e4448074db7d3437",
+          "command": "Focused snapshot compatibility regression test passes for legacy v4 media and body references"
+        },
+        {
+          "path": "scripts/package-public-media.test.ts",
+          "blob": "f8dc6afd81e40a0fd99f5184e29d58b1138ec8b9",
+          "command": "Focused packaging regression test passes for v4-to-v5 canonicalization"
+        },
+        {
+          "path": "tests/lib/manual-release-media.test.ts",
+          "blob": "55a6517c24264b86c57f6ee13e0df4a9ec9617dd",
+          "command": "Frozen media reuse regression covers source-format aliases and sealed legacy outputs"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3"
+      ],
+      "evidence": [
+        {
+          "path": "src/lib/__tests__/public-site-snapshot-compat.test.ts",
+          "blob": "fe400ea514630fe980d4bdf0e4448074db7d3437",
+          "command": "The compatibility test preserves legacy snapshot loading while selecting the compact v5 rendition"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local content format, browser persistence, or release-ledger state changes; the migration is applied while reading snapshots and packaging static assets.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "d0291f6ee1da7c5a2627ed14cdda1a99ddc39583",
+          "command": "Frozen media identity selection changes packaging behavior without writing persistent state"
+        }
+      ]
+    }
+  }
+}

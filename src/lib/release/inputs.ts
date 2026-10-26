@@ -441,6 +441,7 @@ export async function packageFrozenMedia(
     siteUrl: config.env.PUBLIC_SITE_URL,
     siteBasePath: config.env.PUBLIC_SITE_BASE_PATH,
     downloadAttempts: 1,
+    migrateLegacyWatermarks: false,
     fetchImpl: async (input) => {
       const url = new URL(String(input));
       if (url.origin !== new URL(config.env.PUBLIC_API_BASE_URL || "").origin)

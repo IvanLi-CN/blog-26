@@ -357,4 +357,65 @@ describe("public snapshot compatibility", () => {
       await rm(tempDir, { recursive: true, force: true });
     }
   });
+
+  it("migrates v4 watermark metadata and published body links to v5", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "blog25-snapshot-watermark-migration-"));
+    try {
+      const snapshot = createLegacySnapshot();
+      const base = "/_content/assets/post/legacy-post/abc123";
+      const item = {
+        hash: "abc123",
+        kind: "image" as const,
+        role: "content" as const,
+        alt: "legacy image",
+        sourcePath: "Notes/assets/legacy.png",
+        variants: {
+          card: `${base}/wm-a-v4/card.webp`,
+          cover: `${base}/wm-b-v4/cover.webp`,
+          content: `${base}/wm-b-v4/content.webp`,
+          full: `${base}/wm-b-v4/full.webp`,
+        },
+        presentations: {
+          content: {
+            a: `${base}/wm-a-v4/content.webp`,
+            b: `${base}/wm-b-v4/content.webp`,
+          },
+          full: {
+            a: `${base}/wm-a-v4/full.webp`,
+            b: `${base}/wm-b-v4/full.webp`,
+          },
+        },
+        poster: null,
+        playback: null,
+        sources: [
+          {
+            variant: "content" as const,
+            format: "webp",
+            url: `${base}/wm-b-v4/content.webp`,
+            mimeType: "image/webp",
+          },
+        ],
+      };
+      snapshot.posts[0] = {
+        ...snapshot.posts[0],
+        body: `![legacy](${base}/wm-b-v4/content.webp)`,
+        media: { primary: null, cover: item, content: [item], attachments: [] },
+      } as PublicSnapshot["posts"][number];
+      const snapshotPath = join(tempDir, "legacy-public-snapshot.json");
+      await writeFile(snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
+      process.env.PUBLIC_SNAPSHOT_PATH = snapshotPath;
+      __resetSnapshotForTests();
+
+      const loaded = await getSnapshot();
+      const post = loaded.posts[0];
+
+      expect(post.media?.cover?.variants.card).toContain("/wm-a-v5/card.webp");
+      expect(post.media?.content[0]?.presentations?.content?.a).toContain("/wm-a-v5/content.webp");
+      expect(post.media?.content[0]?.presentations?.content?.b).toContain("/wm-b-v5/content.webp");
+      expect(post.body).toContain("/wm-b-v5/content.webp");
+      expect(post.body).not.toContain("/wm-b-v4/");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
 });

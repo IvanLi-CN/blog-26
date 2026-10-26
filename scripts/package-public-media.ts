@@ -3,6 +3,7 @@
 import { appendFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { extname, join, relative, resolve, sep } from "node:path";
 import { withoutDeploymentCredentials } from "../src/lib/playbook/child-env";
+import { migratePublicMediaV4ToV5 } from "../src/lib/public-media";
 
 export const PUBLIC_MEDIA_FACADE_PREFIX = "/api/public/assets/";
 export const CLIPPING_RESOURCE_FACADE_RE =
@@ -83,6 +84,7 @@ export type PublicMediaPackageOptions = {
   fallbackFetchImpl?: PublicMediaFetcher;
   includeDerivedWatermarkVariants?: boolean;
   includeMigratedWatermarkVariants?: boolean;
+  migrateLegacyWatermarks?: boolean;
   clippingResourceUrls?: string[];
   fetchImpl?: PublicMediaFetcher;
 };
@@ -1103,7 +1105,9 @@ function canonicalizeWatermarkReference(
   basePath: string,
   siteUrl: string
 ): AssetReference {
-  const canonicalPath = canonicalPublicMediaPath(reference.sourceUrl.pathname);
+  const canonicalPath = migratePublicMediaV4ToV5(
+    canonicalPublicMediaPath(reference.sourceUrl.pathname)
+  );
   if (canonicalPath === reference.sourceUrl.pathname) return reference;
 
   const sourceUrl = new URL(reference.sourceUrl.href);
@@ -1360,16 +1364,18 @@ export async function packagePublicMedia(
   }
   for (const url of options.clippingResourceUrls ?? [])
     references.push(...extractReferences(url, siteUrl, mediaOrigin, basePath));
-  const normalizedReferences = references.map((reference) =>
-    canonicalizeWatermarkReference(reference, mediaOrigin, basePath, siteUrl)
-  );
+  const normalizeReference = (reference: AssetReference) =>
+    options.migrateLegacyWatermarks === false
+      ? reference
+      : canonicalizeWatermarkReference(reference, mediaOrigin, basePath, siteUrl);
+  const normalizedReferences = references.map(normalizeReference);
   const referenceByRaw = new Map(
     references.map((reference, index) => [reference.raw, normalizedReferences[index]])
   );
 
   const uniqueReferences = new Map<string, AssetReference>();
   const addUniqueReference = (reference: AssetReference) => {
-    const normalized = canonicalizeWatermarkReference(reference, mediaOrigin, basePath, siteUrl);
+    const normalized = normalizeReference(reference);
     uniqueReferences.set(fetchKey(normalized), normalized);
   };
   for (const reference of normalizedReferences) {
