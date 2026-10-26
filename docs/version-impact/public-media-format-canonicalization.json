@@ -3,10 +3,10 @@
   "kind": "version-impact-record",
   "base_sha": "e3989b4ea59bddad4cb910684a0546be5b0c4a88",
   "covered_files": {
-    "scripts/package-public-media.test.ts": "004e231828021f537d112210cc3e7656e8bc7d38",
-    "scripts/package-public-media.ts": "b79be6a42e43c2fb3911a641a398d3d7deed3bfd",
-    "src/lib/release/inputs.ts": "c5874c93efa913d55ce8f87e9abf15a7d71152a3",
-    "tests/lib/manual-release-media.test.ts": "608554d3a746b220c8bff05e166ea11220ded2e8"
+    "scripts/package-public-media.test.ts": "e180f3958707cf644a0487ddf68a63cc8cd8db04",
+    "scripts/package-public-media.ts": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
+    "src/lib/release/inputs.ts": "07fdf11d208887b45beb01103f6a2a0c478a2a0e",
+    "tests/lib/manual-release-media.test.ts": "e62430fe93b69e578c2750c9dbaa121fb221900c"
   },
   "change": {
     "description": "Canonicalize v4 public-media source-format candidates to the static site's stable presentation formats and reuse sealed outputs when a frozen manifest preserves an equivalent packaged path.",
@@ -23,7 +23,7 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.ts",
-          "blob": "b79be6a42e43c2fb3911a641a398d3d7deed3bfd",
+          "blob": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
           "command": "Packaging code defines the canonical static presentation format for v4 source candidates"
         }
       ]
@@ -35,17 +35,17 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "004e231828021f537d112210cc3e7656e8bc7d38",
+          "blob": "e180f3958707cf644a0487ddf68a63cc8cd8db04",
           "command": "bun test scripts/package-public-media.test.ts"
         },
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "c5874c93efa913d55ce8f87e9abf15a7d71152a3",
+          "blob": "07fdf11d208887b45beb01103f6a2a0c478a2a0e",
           "command": "bun test tests/lib/manual-release-media.test.ts tests/lib/manual-release-inputs.test.ts"
         },
         {
           "path": "tests/lib/manual-release-media.test.ts",
-          "blob": "608554d3a746b220c8bff05e166ea11220ded2e8",
+          "blob": "e62430fe93b69e578c2750c9dbaa121fb221900c",
           "command": "bun test tests/lib/manual-release-media.test.ts"
         }
       ],
@@ -61,22 +61,22 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "004e231828021f537d112210cc3e7656e8bc7d38",
+          "blob": "e180f3958707cf644a0487ddf68a63cc8cd8db04",
           "command": "bun test scripts/package-public-media.test.ts"
         },
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "c5874c93efa913d55ce8f87e9abf15a7d71152a3",
+          "blob": "07fdf11d208887b45beb01103f6a2a0c478a2a0e",
           "command": "bun test tests/lib/manual-release-media.test.ts tests/lib/manual-release-inputs.test.ts"
         },
         {
           "path": "tests/lib/manual-release-media.test.ts",
-          "blob": "608554d3a746b220c8bff05e166ea11220ded2e8",
+          "blob": "e62430fe93b69e578c2750c9dbaa121fb221900c",
           "command": "bun test tests/lib/manual-release-media.test.ts"
         },
         {
           "path": "scripts/package-public-media.ts",
-          "blob": "b79be6a42e43c2fb3911a641a398d3d7deed3bfd",
+          "blob": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
           "command": "bun run check"
         }
       ]
@@ -122,7 +122,7 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.ts",
-          "blob": "b79be6a42e43c2fb3911a641a398d3d7deed3bfd",
+          "blob": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
           "command": "Canonical packaging preserves the existing public media URL contract"
         }
       ]
@@ -136,10 +136,10 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "c5874c93efa913d55ce8f87e9abf15a7d71152a3",
+          "blob": "07fdf11d208887b45beb01103f6a2a0c478a2a0e",
           "command": "Frozen release input acquisition performs URL and sealed-output normalization without a state migration"
         }
       ]
     }
   }
-}\n
+}

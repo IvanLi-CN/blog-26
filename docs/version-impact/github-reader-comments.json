@@ -3,93 +3,93 @@
   "kind": "version-impact-record",
   "base_sha": "e3989b4ea59bddad4cb910684a0546be5b0c4a88",
   "covered_files": {
-    ".github/workflows/e2e.yml": "5890466fb9b00fa20eaa0f10c830801c02fc151c",
-    "Dockerfile": "342cd8fc33d95114841fee74823e8262655bc50a",
-    "GLOSSARY.md": "f875db058e8a42ab2cb3940eb894dc327cb27b43",
-    "apps/admin/src/components/admin-soft-ui.stories.tsx": "7c897e204a2ac26c2ddf71c292ba73a90fa9e540",
-    "apps/admin/src/components/app-shell.tsx": "fc384d8dd0d2517de7df65e9bc146e171285d528",
-    "apps/admin/src/components/ui.tsx": "01ff7ed4e27becd806c31d6737c98d2eb22198e7",
-    "apps/admin/src/demo/mock-admin-api.ts": "a0628a0074b699fe2b69e77288246a75501ae0d8",
-    "apps/admin/src/pages/comments.tsx": "12ab264f84cdb3b4eda24d735a23f579abf24317",
-    "apps/admin/src/pages/github-binding.tsx": "3ac2481e3838aa6d930232e3289bded46d72db6a",
-    "apps/admin/src/pages/posts.tsx": "d9ad3bbe3e2960b208f3b5c7370ec4256b6e9bbc",
-    "apps/admin/src/router.tsx": "243c451e00554a6c6bdc8efa7dc62b376101f687",
-    "apps/admin/src/styles.css": "71beca74f83fe46251fee8502bc75aa454aa383c",
-    "docs/adr/0029-github-reader-and-legacy-comment-identity.md": "21c717b07df6eee2971df5eb068859211f79db9f",
-    "docs/adr/0031-github-admin-comment-identity-binding.md": "1ab6ad026d148883fe112702b30e9c81bce32c1e",
-    "docs/github-login-comments-design.md": "b6086467bbcc0eb50925aff192f21e873cb35f3d",
-    "docs/specs/README.md": "23f185c2334b5f40b533f4cdaace6c4f74097124",
-    "docs/specs/github-reader-comments/HISTORY.md": "360bcd85a974b7a2e87d08cd4dc392ff47991809",
-    "docs/specs/github-reader-comments/IMPLEMENTATION.md": "376abd830b95949916caa4f8d802e25a7a7a163b",
-    "docs/specs/github-reader-comments/SPEC.md": "de0ff35f6973526b8efdc73752851261daf62a95",
-    "docs/specs/github-reader-comments/assets/console-admin-comments-1440.png": "5f4634451cecd029538aecd6aa6fc4a41e67cf77",
-    "docs/specs/github-reader-comments/assets/github-admin-binding-1440.png": "46db9dc3f112dd20066067d6dc4d0e10e5fea0fc",
-    "docs/specs/github-reader-comments/assets/github-admin-binding-393.png": "1855b2c325fbc4156446cdabdcf347bbbdc02259",
-    "docs/specs/github-reader-comments/assets/github-admin-inspector-1440.png": "842994c0137218d1b0ecf47f253e3e565418cf0e",
-    "docs/specs/github-reader-comments/assets/github-admin-public-1440.png": "58b84f430f1b4d06ba776bdf6d2f2ec5accf6f1f",
-    "docs/specs/github-reader-comments/assets/github-admin-public-393.png": "7eea88d0d9aec81aaf13df828663dfb6755abefc",
-    "docs/specs/github-reader-comments/assets/public-guest-comments-1280.png": "3807fd64b835fd03c287b16970917d68eed610ee",
-    "docs/specs/github-reader-comments/assets/public-guest-comments-639.png": "cb12ce78a0bb5ade15a8ef619a3bb3b916abe811",
-    "docs/specs/memo-clipping/SPEC.md": "8a20cd10ada89fc1a50f45c4708de92a0991083f",
-    "drizzle/0017_github_reader_comments.sql": "1737ee1d4b352ef41df1aeb68fe99679f91ed4bb",
-    "drizzle/0018_comments_backfill_gate.sql": "b0a3ebd37688f7a0853126920d6e627aed786ff8",
-    "drizzle/0020_github_admin_comment_identity.sql": "8150f1ca4ad3ddbe11db7b026adcc82982d46f35",
-    "drizzle/meta/0018_snapshot.json": "13abddda3160219d162e10e1ed7d86a37be8d1c5",
-    "drizzle/meta/0020_snapshot.json": "b1f83aac245b0f78b8849f2a265a56c8abeffec5",
-    "drizzle/meta/_journal.json": "8748810112dcab0cd3a3513280084ec40d8877a1",
-    "package.json": "b9182c49f9896f59a8cde5f1f03c13ab236600af",
-    "scripts/backfill-reader-comments.ts": "a6c04ce101083ff6b2282f1f2f37104c36a03d46",
-    "scripts/build-web-demo.ts": "97974f61499464a4672bc6df13f2db164477401d",
-    "scripts/package-public-media.test.ts": "004e231828021f537d112210cc3e7656e8bc7d38",
-    "scripts/package-public-media.ts": "b79be6a42e43c2fb3911a641a398d3d7deed3bfd",
-    "site/components/PublicMemoAuthoring.tsx": "a315b8b483e59687d8e7711486babda7323a1079",
-    "site/components/pages/memo.tsx": "565d8abbced687e056430a2ebd36bfe94a20e914",
-    "site/components/pages/post.tsx": "a6c01540b39c4e61cde4b3c88e3478d0f1173497",
-    "site/components/pages/project.tsx": "a8295ac6eb1105a2451b1010643d7195a3b7e43c",
-    "site/styles/public-pages.css": "6e0b1f885670796bbef925a2892ca9fea28286af",
-    "src/components/WebDemoInspector.css": "ef8093409bb37b73579b0c76ed40359276824df4",
-    "src/components/WebDemoInspector.tsx": "2357fe2f19b656e72edfa5eaaefcc287c82324e3",
-    "src/components/comments/CommentForm.tsx": "fa52ad8f3e0be6786343c84a24a3faa80c1e0130",
-    "src/components/comments/CommentItem.tsx": "6c4900831011ba22f7e0300fd66e82b4864a2fe3",
-    "src/components/comments/CommentList.tsx": "32390ab9f265b354cf066c9e31c89b352794868e",
-    "src/components/comments/CommentSection.tsx": "497a70fe1113752ed3176467e728f272cc4631c3",
-    "src/components/comments/CommentSectionWithProvider.tsx": "9f349c8ff91eb986bda1031db9ec83b3122606a2",
-    "src/components/comments/hooks.ts": "fbbe985cd16a1e3c54941f67c8d04ee25954d932",
-    "src/components/comments/types.ts": "0fae8922e5d4ec63fc2992b32517cd9a12b43fef",
-    "src/components/memos/ClippingDetail.tsx": "678b968f5c683509a47250b744cff4e5c1834e9a",
-    "src/components/memos/clipping-admin.css": "00f659b8ddf50a0c1560c58fcba463f6b77d3ea6",
-    "src/lib/admin-api-client.ts": "a97a987984cd22065c13c149f6d7687529347b1f",
-    "src/lib/admin-github-binding.ts": "32a203cbfaa3a63cb3761d9012e686e3fb98c8aa",
-    "src/lib/comment-migration.ts": "e2ab3da7c35371678582befe27700fe054d26655",
-    "src/lib/public-cors.ts": "d2dfabd271b305e5ada9e6cf28648faa76bbc48a",
-    "src/lib/reader-auth.test.ts": "ea23574f5465c461b550784de4a340c2e0aadbda",
-    "src/lib/reader-auth.ts": "bcf0f90a0bd32c10001eb5259531ef3efd6df71f",
-    "src/lib/release/inputs.ts": "c5874c93efa913d55ce8f87e9abf15a7d71152a3",
-    "src/lib/schema.ts": "e9286b5f2c6002f654068192e34a81704adfd415",
-    "src/lib/session-cookie.ts": "ca1d9e0b74316ab53309f5d24c3f4ee0f090824f",
-    "src/lib/web-demo-fetch.ts": "26bb42a629b57d69c25a67a71ab2ff02b0e939ab",
-    "src/lib/web-demo-runtime.ts": "f408f9ff4247f003c8e3336e3738b02db1e4ae37",
-    "src/server/admin-api/router.ts": "09c9701a361bf238ef3d7208713335cf9092c465",
-    "src/server/context.ts": "d8f21f327fda7e038cce8b55d68ac33b461451e4",
-    "src/server/http-compat-api.test.ts": "ac5d22f1018f1204db947c341f0deb3e2e5d9473",
-    "src/server/public-api/router.ts": "2b38d93a1a9220bf8ce9841d0989f069c5de6eb5",
-    "src/server/routers/admin/comments.ts": "e0e2318cb2bacdb028f48375d620bafa690939db",
-    "src/server/routers/admin/dashboard.ts": "adf112f3741a54f4292870f43e8be927edd7c9f9",
-    "src/server/routers/admin/github-binding.ts": "ec65548773b16c7677d8b5c3474008a2beb8d259",
-    "src/server/routers/admin/index.ts": "1f9450748c0a779fb6e7705badb310832961e32a",
-    "src/server/routers/comments.test.ts": "3f05dda6970b7ad7e0410f17a7f666cf1b8d0a52",
-    "src/server/routers/comments.ts": "b878e4bd81302ae59c7f68a71d8e8794521744c4",
-    "src/server/trpc.ts": "64eb6149a7ba64042b24b071d5c184b58f5ae274",
-    "src/styles/globals.css": "627b6f7611107407fa95435ed5fd9a68d295a185",
-    "tests/components/ClippingDetail.test.tsx": "1ba535d1e47a1244139326c5acd22c12cfd4bc35",
-    "tests/components/WebDemoIdentity.test.tsx": "b490e4fbc0acc035f21a5723e9f4b73c90d89e79",
-    "tests/e2e/web-demo/console-comments.spec.ts": "2ff17ffe9929be4711ca7c62ece3c342f236da57",
-    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "1c7f383537668a46ee576cebd3b4d338e82f80ec",
-    "tests/e2e/web-demo/github-admin-binding.spec.ts": "07a9379286af31d2678d522758444988dfb93c56",
-    "tests/e2e/web-demo/public-comments.spec.ts": "3c7d1114d0c665b2b40b6102c60388fd1f67426f",
-    "tests/lib/web-demo-inspector-layout.test.ts": "590aa3cb7e111415c3b7e3a872d8e68b9044eb13",
-    "tests/lib/web-demo-runtime.test.ts": "00b9aa7c70a0fe50da571266ee4a262b229e5726",
-    "tests/server/system-share-api.test.ts": "99602eb2514fe15a4ad580e937420b88c6b800dc"
+    ".github/workflows/e2e.yml": "3592e384bd47e2094e5d04f034436099cd9f7ff8",
+    "Dockerfile": "d7b48d22e76236a2e951fe2474ba9186ebe07e17",
+    "GLOSSARY.md": "db66baa738715926f703ded4830b40510ca3a2a1",
+    "apps/admin/src/components/admin-soft-ui.stories.tsx": "c1c957892dca1e8dc570a49ac31a29cb0aada480",
+    "apps/admin/src/components/app-shell.tsx": "00bbb7260e3df892d52f846538b11d9f78d274b9",
+    "apps/admin/src/components/ui.tsx": "cf36989e189b4e953b0d1f2d42ad702ad1b18e5f",
+    "apps/admin/src/demo/mock-admin-api.ts": "478f6e26e4285126616f9b0e7c3f8452ba8629c3",
+    "apps/admin/src/pages/comments.tsx": "ddaf301ed21318ef5161814e3161881b62e21842",
+    "apps/admin/src/pages/github-binding.tsx": "86f2b35099154d04156da67369573af994ad89a0",
+    "apps/admin/src/pages/posts.tsx": "ab0a4ff6d351fd066dcc9358e8fa105fca42cd67",
+    "apps/admin/src/router.tsx": "fc49b3884c8106c51f18556d44c0e7644bbcacea",
+    "apps/admin/src/styles.css": "ec514b035e496ed29a6628d409602bd71a4dbd81",
+    "docs/adr/0029-github-reader-and-legacy-comment-identity.md": "76b6b4e73ea76bd975771dadad8d1cd07cb283ff",
+    "docs/adr/0031-github-admin-comment-identity-binding.md": "28804490b9473ea940c01ecdafbe0f18e81fb9e8",
+    "docs/github-login-comments-design.md": "7854256361101cfa62b8c9a2cf42408007b08a8a",
+    "docs/specs/README.md": "2e0438fa46ce9c729fd872f4ff241dd07aa8b931",
+    "docs/specs/github-reader-comments/HISTORY.md": "21432672fc69f218174d6be65e95a2ff5dfb7486",
+    "docs/specs/github-reader-comments/IMPLEMENTATION.md": "46d6074fbc0d58165702f27aa1ebac7e9571812e",
+    "docs/specs/github-reader-comments/SPEC.md": "0c6a220709e25b6f5fcfca2e1b8e5c5d0a62099d",
+    "docs/specs/github-reader-comments/assets/console-admin-comments-1440.png": "54bc5b446e04b7cd81707137f48e65dc571e38e9",
+    "docs/specs/github-reader-comments/assets/github-admin-binding-1440.png": "e6654ccf489b43506eeb6008330abddf2c119e4c",
+    "docs/specs/github-reader-comments/assets/github-admin-binding-393.png": "0f538590c61a7d3b44bf9ab6080ab8af793b420b",
+    "docs/specs/github-reader-comments/assets/github-admin-inspector-1440.png": "6d3b17d664b3d8c41725f686e42d906272d3bcc1",
+    "docs/specs/github-reader-comments/assets/github-admin-public-1440.png": "a8d8a89934503f0a79b2e4d971829d92feb328c0",
+    "docs/specs/github-reader-comments/assets/github-admin-public-393.png": "4b7fab4966ea769c38481f9d450cfbba839fa2b9",
+    "docs/specs/github-reader-comments/assets/public-guest-comments-1280.png": "2265f157f67868a65c881be488c3946df480936a",
+    "docs/specs/github-reader-comments/assets/public-guest-comments-639.png": "6d9ce0cf63eb862b000b6fabf24f8f3d62f16333",
+    "docs/specs/memo-clipping/SPEC.md": "2c5671b948ca546c96e6375cadcfbf0492e479ea",
+    "drizzle/0017_github_reader_comments.sql": "b89b5c6e3730a6ee12277658143d80c272cb0ba6",
+    "drizzle/0018_comments_backfill_gate.sql": "31756eeeee6b5c3cdf4c29f1ec05dcb8ced1783d",
+    "drizzle/0020_github_admin_comment_identity.sql": "cd11c6f257ed8ba8a639bfe77e2fc43950b1edcf",
+    "drizzle/meta/0018_snapshot.json": "274f64e2fbe70816c46f1f0ff5f948328e4a3bef",
+    "drizzle/meta/0020_snapshot.json": "86301ec1ff8e7408c6292392b338791c36b85f13",
+    "drizzle/meta/_journal.json": "05912b4fbf99856c80c3e06419794cacddd2e8a6",
+    "package.json": "d302eecab6d7ec8e908c2b16eeed1988a18c4bd2",
+    "scripts/backfill-reader-comments.ts": "753401fbacb59cfbbe555050104bdfb45164600c",
+    "scripts/build-web-demo.ts": "9fecc9affe2adb46c6ae5450bd9c0826254fc676",
+    "scripts/package-public-media.test.ts": "e180f3958707cf644a0487ddf68a63cc8cd8db04",
+    "scripts/package-public-media.ts": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
+    "site/components/PublicMemoAuthoring.tsx": "ae261d910d58fba2d63f7f9580c7beab70cd6534",
+    "site/components/pages/memo.tsx": "b2162e7617f7866b0d1c55b662d0e87d94aac1d3",
+    "site/components/pages/post.tsx": "f31b28e9f9ee72534e040bd9a35151caf42c69d1",
+    "site/components/pages/project.tsx": "b2288f976e69b54f3aaaac35ff242db71400636a",
+    "site/styles/public-pages.css": "c51fac6d45538b76bed4b77c48e3a7109da282e8",
+    "src/components/WebDemoInspector.css": "7ac4249fe1ca41b76b2668dce4b5ba36543b42a4",
+    "src/components/WebDemoInspector.tsx": "fe24cc2f8fe9081f46d582647d5e2ad9f6bb3830",
+    "src/components/comments/CommentForm.tsx": "a556a9ca2dc532adea91d889f37f59a62efe0113",
+    "src/components/comments/CommentItem.tsx": "2809f1e91be2c7599d64a6b5282ff80e8ceac8bc",
+    "src/components/comments/CommentList.tsx": "fd0051ed5cf00fb905827736ce2803caebfcdfa8",
+    "src/components/comments/CommentSection.tsx": "43e9fe05ca7978a130b1d74797933ac094b06391",
+    "src/components/comments/CommentSectionWithProvider.tsx": "a17dcb3dc172cf02dd1b16c00f6816fcf81144bf",
+    "src/components/comments/hooks.ts": "bea309874dc4cbc787bd6206fa9b57ae36534d08",
+    "src/components/comments/types.ts": "388742ea1646369036cb04f8daea7f93f5c46683",
+    "src/components/memos/ClippingDetail.tsx": "8fb8a9d27cc2b6fc40b2548b55d510cba16c9163",
+    "src/components/memos/clipping-admin.css": "f15eb673c4ab44ef14369c0b7c24f6facd64827c",
+    "src/lib/admin-api-client.ts": "a3584ad2cfd00a3e296b7efdbe50a8f6415780bb",
+    "src/lib/admin-github-binding.ts": "578eb1aab06fce42c9aaa88381c1ae8c8ca9fa44",
+    "src/lib/comment-migration.ts": "5cba77c96aedb53097203937eb46cd44ebbc26c5",
+    "src/lib/public-cors.ts": "32d22805db2c3745e062b99dbb75de026a217718",
+    "src/lib/reader-auth.test.ts": "754e6f0da08927329c27a0765049f08962555616",
+    "src/lib/reader-auth.ts": "94d616e34c421cb15763e6ae605915ab30fb1f61",
+    "src/lib/release/inputs.ts": "07fdf11d208887b45beb01103f6a2a0c478a2a0e",
+    "src/lib/schema.ts": "8217b86504c951e3774c4297a2da48a639f2f389",
+    "src/lib/session-cookie.ts": "688ecc90d7e3f618ca62f6eea49ae732991d00cc",
+    "src/lib/web-demo-fetch.ts": "eff07390a8107b266ceb6aaf77ae74aece124a5b",
+    "src/lib/web-demo-runtime.ts": "7a5b7a60dda23347c53c158c31fc5eca528baad9",
+    "src/server/admin-api/router.ts": "00923d2dd94beba5588c0e3cfccaf82516933ed0",
+    "src/server/context.ts": "995fcb26b6d4db0228ca66760f1688fd8a0c02d4",
+    "src/server/http-compat-api.test.ts": "38d1ec2ce697f44b50dc496f401cc3d427f76447",
+    "src/server/public-api/router.ts": "04f552874e2640c0699145020e40d2667c303d57",
+    "src/server/routers/admin/comments.ts": "2b04da5c8a5aeee2e81e5006d5b0c5fd694e72a8",
+    "src/server/routers/admin/dashboard.ts": "770ff0c173bfd1f09ba38a3aae50161b889d761a",
+    "src/server/routers/admin/github-binding.ts": "18abeff9522fa421768ed5d69dc72096127d320d",
+    "src/server/routers/admin/index.ts": "d4ab3c79652eccf0b78c3b065d1231f17f888d85",
+    "src/server/routers/comments.test.ts": "3c594830b94c86e461460ea9a2f687126226150c",
+    "src/server/routers/comments.ts": "0251253a39b8da534161c466313d7d99aa677ac2",
+    "src/server/trpc.ts": "ced44e6bfee3413ca31a1e9312f44de7879b4a4a",
+    "src/styles/globals.css": "73416c5a05121d3652ec34d59cf828ceb5ce1a43",
+    "tests/components/ClippingDetail.test.tsx": "447687f894e228786b07be4e354fed2fbc39e6cc",
+    "tests/components/WebDemoIdentity.test.tsx": "ce278f71fa67a54d60a6d3c22aa61f749fb91a3e",
+    "tests/e2e/web-demo/console-comments.spec.ts": "643f5e3bc0faab21401dc4db719f3110c28f4794",
+    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "5396c2b20f8e96e0da64c0a1a2c054d67e5d1041",
+    "tests/e2e/web-demo/github-admin-binding.spec.ts": "2d6b7fdf275cf1f52dd980c6065b4e269b611ab6",
+    "tests/e2e/web-demo/public-comments.spec.ts": "e63ef75c079bd48de3323a1efd5f898f94f211ee",
+    "tests/lib/web-demo-inspector-layout.test.ts": "fe23eede051d89aac3ee669b070887578072ae4f",
+    "tests/lib/web-demo-runtime.test.ts": "01b2756e2f35343fb72a48a7819b6d3623bd2284",
+    "tests/server/system-share-api.test.ts": "468a2441dddc024f6911dad7d007031eb8f92175"
   },
   "change": {
     "description": "Add independent GitHub reader OAuth with PKCE, target-aware article/Memo/project comments, review-before-publication, soft deletion and restoration, historical comment migration, administrator batch moderation, GitHub administrator identity binding, and responsive public/Console comment surfaces.",
@@ -107,12 +107,12 @@
       "evidence": [
         {
           "path": "docs/specs/github-reader-comments/SPEC.md",
-          "blob": "de0ff35f6973526b8efdc73752851261daf62a95",
+          "blob": "0c6a220709e25b6f5fcfca2e1b8e5c5d0a62099d",
           "command": "Locked GitHub reader/comments requirements and acceptance contracts"
         },
         {
           "path": "docs/adr/0029-github-reader-and-legacy-comment-identity.md",
-          "blob": "21c717b07df6eee2971df5eb068859211f79db9f",
+          "blob": "76b6b4e73ea76bd975771dadad8d1cd07cb283ff",
           "command": "ADR preserves administrator identity and legacy comment ownership boundaries"
         }
       ]
@@ -124,97 +124,97 @@
       "evidence": [
         {
           "path": "src/lib/reader-auth.ts",
-          "blob": "bcf0f90a0bd32c10001eb5259531ef3efd6df71f",
+          "blob": "94d616e34c421cb15763e6ae605915ab30fb1f61",
           "command": "Reader OAuth PKCE, state consumption, and hashed session implementation"
         },
         {
           "path": "src/lib/admin-github-binding.ts",
-          "blob": "32a203cbfaa3a63cb3761d9012e686e3fb98c8aa",
+          "blob": "578eb1aab06fce42c9aaa88381c1ae8c8ca9fa44",
           "command": "Administrator binding identity, uniqueness, and token-free audit helpers"
         },
         {
           "path": "drizzle/0020_github_admin_comment_identity.sql",
-          "blob": "8150f1ca4ad3ddbe11db7b026adcc82982d46f35",
+          "blob": "cd11c6f257ed8ba8a639bfe77e2fc43950b1edcf",
           "command": "SQLite migration adds one-to-one administrator GitHub bindings, audit events, and comment role snapshots"
         },
         {
           "path": "src/server/routers/admin/github-binding.ts",
-          "blob": "ec65548773b16c7677d8b5c3474008a2beb8d259",
+          "blob": "18abeff9522fa421768ed5d69dc72096127d320d",
           "command": "Admin tRPC binding status and unbind contract"
         },
         {
           "path": "drizzle/0017_github_reader_comments.sql",
-          "blob": "1737ee1d4b352ef41df1aeb68fe99679f91ed4bb",
+          "blob": "b89b5c6e3730a6ee12277658143d80c272cb0ba6",
           "command": "SQLite migration preserves legacy comments and adds reader/comment lifecycle columns"
         },
         {
           "path": "src/server/routers/comments.test.ts",
-          "blob": "3f05dda6970b7ad7e0410f17a7f666cf1b8d0a52",
+          "blob": "3c594830b94c86e461460ea9a2f687126226150c",
           "command": "bun test src/server/routers/comments.test.ts: lifecycle, role authorization, admin moderation invariants, orphan deletion visibility, idempotency, and pagination tests"
         },
         {
           "path": "src/server/public-api/router.ts",
-          "blob": "2b38d93a1a9220bf8ce9841d0989f069c5de6eb5",
+          "blob": "04f552874e2640c0699145020e40d2667c303d57",
           "command": "Public reader auth and target-aware comment REST routes"
         },
         {
           "path": "tests/components/PublicMemoAuthoring.test.tsx",
-          "blob": "08cb7869af43fb48b1c2b24b6f08c8dffeca3b7f",
+          "blob": "4eddda1413ef18d80483fc60467f604d1443ec1e",
           "command": "bun test tests/components/PublicMemoAuthoring.test.tsx: public/Console Memo boundary and persona transitions"
         },
         {
           "path": "src/lib/web-demo-fetch.ts",
-          "blob": "26bb42a629b57d69c25a67a71ab2ff02b0e939ab",
+          "blob": "eff07390a8107b266ceb6aaf77ae74aece124a5b",
           "command": "Web Demo Inspector comment identity, moderation, deletion, restoration, and target fixtures"
         },
         {
           "path": "tests/e2e/web-demo/github-admin-binding.spec.ts",
-          "blob": "07a9379286af31d2678d522758444988dfb93c56",
+          "blob": "2d6b7fdf275cf1f52dd980c6065b4e269b611ab6",
           "command": "Official Web Demo desktop/mobile binding, marker, unbind, soft-delete, restore, and overflow checks"
         },
         {
           "path": "src/lib/comment-migration.ts",
-          "blob": "e2ab3da7c35371678582befe27700fe054d26655",
+          "blob": "5cba77c96aedb53097203937eb46cd44ebbc26c5",
           "command": "Persistent comment backfill state gate rejects comment service access until complete"
         },
         {
           "path": "drizzle/0018_comments_backfill_gate.sql",
-          "blob": "b0a3ebd37688f7a0853126920d6e627aed786ff8",
+          "blob": "31756eeeee6b5c3cdf4c29f1ec05dcb8ced1783d",
           "command": "Forward migration creates the pending comment backfill state row"
         },
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "99602eb2514fe15a4ad580e937420b88c6b800dc",
+          "blob": "468a2441dddc024f6911dad7d007031eb8f92175",
           "command": "bun test tests/server/system-share-api.test.ts: legacy comment migration, resumable backfill, idempotent rerun, and blocked recovery"
         },
         {
           "path": "src/components/memos/ClippingDetail.tsx",
-          "blob": "678b968f5c683509a47250b744cff4e5c1834e9a",
+          "blob": "8fb8a9d27cc2b6fc40b2548b55d510cba16c9163",
           "command": "ClippingDetail uses named region semantics for standalone AI and returns to comments after expired AI access"
         },
         {
           "path": "tests/components/ClippingDetail.test.tsx",
-          "blob": "1ba535d1e47a1244139326c5acd22c12cfd4bc35",
+          "blob": "447687f894e228786b07be4e354fed2fbc39e6cc",
           "command": "bun test tests/components/ClippingDetail.test.tsx: standalone AI region accessibility"
         },
         {
           "path": "src/server/routers/admin/comments.ts",
-          "blob": "e0e2318cb2bacdb028f48375d620bafa690939db",
+          "blob": "2b04da5c8a5aeee2e81e5006d5b0c5fd694e72a8",
           "command": "Admin comment moderation preserves the approved admin-role invariant and idempotent batch updates"
         },
         {
           "path": "apps/admin/src/pages/github-binding.tsx",
-          "blob": "3ac2481e3838aa6d930232e3289bded46d72db6a",
+          "blob": "86f2b35099154d04156da67369573af994ad89a0",
           "command": "Binding page renders semantic success, warning, and error notices with an accessible loading status"
         },
         {
           "path": "apps/admin/src/pages/comments.tsx",
-          "blob": "12ab264f84cdb3b4eda24d735a23f579abf24317",
+          "blob": "ddaf301ed21318ef5161814e3161881b62e21842",
           "command": "Admin comment controls hide moderation actions that cannot apply to admin-authored comments"
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "5890466fb9b00fa20eaa0f10c830801c02fc151c",
+          "blob": "3592e384bd47e2094e5d04f034436099cd9f7ff8",
           "command": "Public Web Demo official routes run on desktop and mobile viewports"
         }
       ],
@@ -230,97 +230,97 @@
       "evidence": [
         {
           "path": "src/lib/reader-auth.ts",
-          "blob": "bcf0f90a0bd32c10001eb5259531ef3efd6df71f",
+          "blob": "94d616e34c421cb15763e6ae605915ab30fb1f61",
           "command": "Reader OAuth PKCE, state consumption, and hashed session implementation"
         },
         {
           "path": "src/lib/admin-github-binding.ts",
-          "blob": "32a203cbfaa3a63cb3761d9012e686e3fb98c8aa",
+          "blob": "578eb1aab06fce42c9aaa88381c1ae8c8ca9fa44",
           "command": "Administrator binding identity, uniqueness, and token-free audit helpers"
         },
         {
           "path": "drizzle/0020_github_admin_comment_identity.sql",
-          "blob": "8150f1ca4ad3ddbe11db7b026adcc82982d46f35",
+          "blob": "cd11c6f257ed8ba8a639bfe77e2fc43950b1edcf",
           "command": "SQLite migration adds one-to-one administrator GitHub bindings, audit events, and comment role snapshots"
         },
         {
           "path": "src/server/routers/admin/github-binding.ts",
-          "blob": "ec65548773b16c7677d8b5c3474008a2beb8d259",
+          "blob": "18abeff9522fa421768ed5d69dc72096127d320d",
           "command": "Admin tRPC binding status and unbind contract"
         },
         {
           "path": "drizzle/0017_github_reader_comments.sql",
-          "blob": "1737ee1d4b352ef41df1aeb68fe99679f91ed4bb",
+          "blob": "b89b5c6e3730a6ee12277658143d80c272cb0ba6",
           "command": "SQLite migration preserves legacy comments and adds reader/comment lifecycle columns"
         },
         {
           "path": "src/server/routers/comments.test.ts",
-          "blob": "3f05dda6970b7ad7e0410f17a7f666cf1b8d0a52",
+          "blob": "3c594830b94c86e461460ea9a2f687126226150c",
           "command": "bun test src/server/routers/comments.test.ts: lifecycle, role authorization, admin moderation invariants, orphan deletion visibility, idempotency, and pagination tests"
         },
         {
           "path": "src/lib/reader-auth.test.ts",
-          "blob": "ea23574f5465c461b550784de4a340c2e0aadbda",
+          "blob": "754e6f0da08927329c27a0765049f08962555616",
           "command": "bun test src/lib/reader-auth.test.ts: PKCE, one-time state, session hash, read, and logout fixtures"
         },
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "ac5d22f1018f1204db947c341f0deb3e2e5d9473",
+          "blob": "38d1ec2ce697f44b50dc496f401cc3d427f76447",
           "command": "bun test src/server/http-compat-api.test.ts: 98 passed, 3 existing skips"
         },
         {
           "path": "docs/specs/github-reader-comments/IMPLEMENTATION.md",
-          "blob": "376abd830b95949916caa4f8d802e25a7a7a163b",
+          "blob": "46d6074fbc0d58165702f27aa1ebac7e9571812e",
           "command": "Final implementation validation, migration report, Web Demo build, and known external blockers"
         },
         {
           "path": "src/lib/comment-migration.ts",
-          "blob": "e2ab3da7c35371678582befe27700fe054d26655",
+          "blob": "5cba77c96aedb53097203937eb46cd44ebbc26c5",
           "command": "Comment tRPC procedures fail closed unless persistent backfill state is complete"
         },
         {
           "path": "tests/e2e/web-demo/github-admin-binding.spec.ts",
-          "blob": "07a9379286af31d2678d522758444988dfb93c56",
+          "blob": "2d6b7fdf275cf1f52dd980c6065b4e269b611ab6",
           "command": "Official Web Demo desktop/mobile binding, marker, unbind, soft-delete, restore, and overflow checks"
         },
         {
           "path": "scripts/backfill-reader-comments.ts",
-          "blob": "a6c04ce101083ff6b2282f1f2f37104c36a03d46",
+          "blob": "753401fbacb59cfbbe555050104bdfb45164600c",
           "command": "Backfill records running, blocked, and complete state with resumable reports"
         },
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "99602eb2514fe15a4ad580e937420b88c6b800dc",
+          "blob": "468a2441dddc024f6911dad7d007031eb8f92175",
           "command": "bun test tests/server/system-share-api.test.ts: legacy comment migration, resumable backfill, idempotent rerun, and blocked recovery"
         },
         {
           "path": "src/components/memos/ClippingDetail.tsx",
-          "blob": "678b968f5c683509a47250b744cff4e5c1834e9a",
+          "blob": "8fb8a9d27cc2b6fc40b2548b55d510cba16c9163",
           "command": "ClippingDetail uses named region semantics for standalone AI and returns to comments after expired AI access"
         },
         {
           "path": "tests/components/ClippingDetail.test.tsx",
-          "blob": "1ba535d1e47a1244139326c5acd22c12cfd4bc35",
+          "blob": "447687f894e228786b07be4e354fed2fbc39e6cc",
           "command": "bun test tests/components/ClippingDetail.test.tsx: standalone AI region accessibility"
         },
         {
           "path": "src/server/routers/admin/comments.ts",
-          "blob": "e0e2318cb2bacdb028f48375d620bafa690939db",
+          "blob": "2b04da5c8a5aeee2e81e5006d5b0c5fd694e72a8",
           "command": "Admin comment moderation preserves the approved admin-role invariant and idempotent batch updates"
         },
         {
           "path": "apps/admin/src/pages/github-binding.tsx",
-          "blob": "3ac2481e3838aa6d930232e3289bded46d72db6a",
+          "blob": "86f2b35099154d04156da67369573af994ad89a0",
           "command": "Binding page renders semantic success, warning, and error notices with an accessible loading status"
         },
         {
           "path": "apps/admin/src/pages/comments.tsx",
-          "blob": "12ab264f84cdb3b4eda24d735a23f579abf24317",
+          "blob": "ddaf301ed21318ef5161814e3161881b62e21842",
           "command": "Admin comment controls hide moderation actions that cannot apply to admin-authored comments"
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "5890466fb9b00fa20eaa0f10c830801c02fc151c",
+          "blob": "3592e384bd47e2094e5d04f034436099cd9f7ff8",
           "command": "Public Web Demo official routes run on desktop and mobile viewports"
         }
       ]
@@ -359,17 +359,17 @@
       "evidence": [
         {
           "path": "src/server/public-api/router.ts",
-          "blob": "2b38d93a1a9220bf8ce9841d0989f069c5de6eb5",
+          "blob": "04f552874e2640c0699145020e40d2667c303d57",
           "command": "Public reader auth and target-aware comment REST routes"
         },
         {
           "path": "src/server/routers/comments.ts",
-          "blob": "b878e4bd81302ae59c7f68a71d8e8794521744c4",
+          "blob": "0251253a39b8da534161c466313d7d99aa677ac2",
           "command": "Shared target-aware comment service keeps legacy postSlug article calls and adds reader-aware operations"
         },
         {
           "path": "src/server/routers/comments.test.ts",
-          "blob": "3f05dda6970b7ad7e0410f17a7f666cf1b8d0a52",
+          "blob": "3c594830b94c86e461460ea9a2f687126226150c",
           "command": "bun test src/server/routers/comments.test.ts: lifecycle, target isolation, idempotency, deletion, and pagination tests"
         }
       ]
@@ -433,25 +433,25 @@
       "evidence": [
         {
           "path": "drizzle/0017_github_reader_comments.sql",
-          "blob": "1737ee1d4b352ef41df1aeb68fe99679f91ed4bb",
+          "blob": "b89b5c6e3730a6ee12277658143d80c272cb0ba6",
           "command": "SQLite migration preserves legacy comments and adds reader/comment lifecycle columns"
         },
         {
           "path": "src/lib/schema.ts",
-          "blob": "e9286b5f2c6002f654068192e34a81704adfd415",
+          "blob": "8217b86504c951e3774c4297a2da48a639f2f389",
           "command": "Drizzle schema maps independent reader tables and forward-compatible comment fields"
         },
         {
           "path": "scripts/backfill-reader-comments.ts",
-          "blob": "a6c04ce101083ff6b2282f1f2f37104c36a03d46",
+          "blob": "753401fbacb59cfbbe555050104bdfb45164600c",
           "command": "Repeatable backfill reports anomalies and exits blocked without silent data loss"
         },
         {
           "path": "drizzle/0018_comments_backfill_gate.sql",
-          "blob": "b0a3ebd37688f7a0853126920d6e627aed786ff8",
+          "blob": "31756eeeee6b5c3cdf4c29f1ec05dcb8ced1783d",
           "command": "Forward migration persists pending state until historical comment backfill completes"
         }
       ]
     }
   }
-}\n
+}
