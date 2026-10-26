@@ -1,5 +1,22 @@
 import { recognizeMemoClipping } from "@/lib/memo-clipping";
-import { projectClippingMemo, readAuthoredMemo } from "./store";
+import { projectClippingMemo, readAuthoredMemo, readAuthoredMemoSync } from "./store";
+
+let clippingVisibilityTail = Promise.resolve();
+
+/** Serialize public comment operations with administrator clipping file updates. */
+export async function withClippingVisibilityLock<T>(operation: () => T | Promise<T>): Promise<T> {
+  const previous = clippingVisibilityTail;
+  let release!: () => void;
+  clippingVisibilityTail = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await previous;
+  try {
+    return await operation();
+  } finally {
+    release();
+  }
+}
 
 /** The filesystem is authoritative even before a visibility edit reaches the index. */
 export async function isClippingRowPublic(row: {
@@ -31,6 +48,42 @@ export async function isClippingRowPublic(row: {
     return true;
   try {
     const { frontmatter } = await readAuthoredMemo(row.id);
+    return frontmatter.public !== false && frontmatter.draft !== true;
+  } catch {
+    return false;
+  }
+}
+
+/** Synchronous projection used while holding the SQLite operation boundary. */
+export function isClippingRowPublicSync(row: {
+  id: string;
+  type: string;
+  body: string;
+  tags: string | null;
+  metadata: string | null;
+}) {
+  if (row.type !== "memo") return true;
+  let metadata: Record<string, unknown> = {};
+  try {
+    metadata = JSON.parse(row.metadata ?? "{}");
+  } catch {
+    /* Legacy metadata. */
+  }
+  let tags: unknown = [];
+  try {
+    tags = JSON.parse(row.tags ?? "[]");
+  } catch {
+    /* Legacy tags. */
+  }
+  const body = typeof metadata.content === "string" ? metadata.content : row.body;
+  if (
+    !metadata.authoredClipping &&
+    !metadata.clipping &&
+    !recognizeMemoClipping(body, { ...metadata, tags }).enabled
+  )
+    return true;
+  try {
+    const { frontmatter } = readAuthoredMemoSync(row.id);
     return frontmatter.public !== false && frontmatter.draft !== true;
   } catch {
     return false;

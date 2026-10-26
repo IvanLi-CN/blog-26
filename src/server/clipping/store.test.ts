@@ -5,7 +5,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import matter from "gray-matter";
 import { CLIPPING_RESOURCE_MAX_BYTES } from "@/lib/clipping-resources";
-import { isClippingRowPublic } from "./projection";
+import {
+  isClippingRowPublic,
+  isClippingRowPublicSync,
+  withClippingVisibilityLock,
+} from "./projection";
 import {
   attachClippingReference,
   ClippingStore,
@@ -118,9 +122,37 @@ test("raw visibility fences stale public indices and missing authored files", as
     expect(await isClippingRowPublic(row)).toBe(false);
     await rm(path);
     expect(await isClippingRowPublic(row)).toBe(false);
+    expect(isClippingRowPublicSync(row)).toBe(false);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("serializes clipping visibility checks with administrator file updates", async () => {
+  let release!: () => void;
+  let entered!: () => void;
+  const enteredPromise = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  let administratorStarted = false;
+  const readerOperation = withClippingVisibilityLock(async () => {
+    entered();
+    await new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return "reader";
+  });
+  await enteredPromise;
+  const administratorOperation = withClippingVisibilityLock(async () => {
+    administratorStarted = true;
+    return "administrator";
+  });
+  await Promise.resolve();
+  expect(administratorStarted).toBe(false);
+  release();
+  await expect(readerOperation).resolves.toBe("reader");
+  await expect(administratorOperation).resolves.toBe("administrator");
+  expect(administratorStarted).toBe(true);
 });
 test("private artifact storage rejects public-root placement and path traversal", async () => {
   const root = await fixture();

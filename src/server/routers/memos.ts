@@ -30,7 +30,11 @@ import {
 } from "@/lib/persisted-paths";
 import { buildLegacyPublicMediaUrl, rewritePublicContentMediaUrls } from "@/lib/public-media";
 import { resolvePublicMemoTitle } from "@/public-site/snapshot";
-import { clippingProjectionForRow, isClippingRowPublic } from "@/server/clipping/projection";
+import {
+  clippingProjectionForRow,
+  isClippingRowPublic,
+  withClippingVisibilityLock,
+} from "@/server/clipping/projection";
 import { notifyClippingChange } from "@/server/clipping/runtime";
 import {
   attachClippingReference,
@@ -1402,8 +1406,6 @@ export const memosRouter = router({
       const basePath = getLocalBasePathOrThrow();
       const localFilePath = (existingMemo.filePath || existingMemo.id).replace(/^\/+/, "");
       const fullPath = join(basePath, localFilePath);
-      await mkdir(dirname(fullPath), { recursive: true });
-      await writeFile(fullPath, markdownContent, "utf-8");
 
       // 更新数据库
       const now = Date.now();
@@ -1433,7 +1435,11 @@ export const memosRouter = router({
         contentHash: calculateSimpleHash(normalized.content),
       };
 
-      await db.update(posts).set(updateData).where(eq(posts.id, id));
+      await withClippingVisibilityLock(async () => {
+        await mkdir(dirname(fullPath), { recursive: true });
+        await writeFile(fullPath, markdownContent, "utf-8");
+        await db.update(posts).set(updateData).where(eq(posts.id, id));
+      });
       clearSearchCache();
       notifyClippingChange(id);
 
@@ -1507,19 +1513,24 @@ export const memosRouter = router({
       if (isLocalContentEnabled()) {
         const basePath = getLocalBasePathOrThrow();
         const localFilePath = (existingMemo.filePath || existingMemo.id).replace(/^\/+/, "");
-        try {
-          await rm(join(basePath, localFilePath), { force: true });
-        } catch (err) {
-          if (process.env.NODE_ENV !== "production") {
-            console.warn("[memos.delete] local 删除失败(开发环境忽略)", localFilePath, err);
-          } else {
-            throw err;
+        await withClippingVisibilityLock(async () => {
+          try {
+            await rm(join(basePath, localFilePath), { force: true });
+          } catch (err) {
+            if (process.env.NODE_ENV !== "production") {
+              console.warn("[memos.delete] local 删除失败(开发环境忽略)", localFilePath, err);
+            } else {
+              throw err;
+            }
           }
-        }
-      }
 
-      // 从数据库删除
-      await db.delete(posts).where(eq(posts.id, id));
+          // 从数据库删除
+          await db.delete(posts).where(eq(posts.id, id));
+        });
+      } else {
+        // 从数据库删除
+        await db.delete(posts).where(eq(posts.id, id));
+      }
       notifyClippingChange(id);
       clearSearchCache();
 

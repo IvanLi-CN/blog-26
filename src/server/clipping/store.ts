@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import { renameSync } from "node:fs";
+import { readFileSync, realpathSync, renameSync } from "node:fs";
 import {
   type FileHandle,
   link,
@@ -107,6 +107,25 @@ export async function readAuthoredMemo(memoId: string) {
   const actual = await realpath(path);
   if (!inside(root, actual)) throw new Error("Invalid memo content symlink");
   const raw = await readFile(actual, "utf8");
+  const parsed = matter(raw);
+  return {
+    path: actual,
+    raw,
+    body: parsed.content,
+    frontmatter: parsed.data as Record<string, unknown>,
+  };
+}
+
+/** Synchronous counterpart used at SQLite operation boundaries. */
+export function readAuthoredMemoSync(memoId: string) {
+  const base = getActiveLocalBasePath();
+  if (!base) throw new Error("未配置本地内容目录。");
+  const root = realpathSync(base);
+  const path = resolve(root, memoId.replace(/^\/+/, ""));
+  if (!inside(root, path)) throw new Error("Invalid memo content path");
+  const actual = realpathSync(path);
+  if (!inside(root, actual)) throw new Error("Invalid memo content symlink");
+  const raw = readFileSync(actual, "utf8");
   const parsed = matter(raw);
   return {
     path: actual,

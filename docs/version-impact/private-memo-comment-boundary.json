@@ -7,9 +7,12 @@
     "src/components/comments/CommentSection.tsx": "14e52038a28559871488ca5a301c2b1acbbc942d",
     "src/components/comments/CommentSectionWithProvider.tsx": "a17dcb3dc172cf02dd1b16c00f6816fcf81144bf",
     "src/components/memos/ClippingDetail.tsx": "8fb8a9d27cc2b6fc40b2548b55d510cba16c9163",
+    "src/server/clipping/projection.ts": "647613c041786c27ffc468dbf21415d527f75cd9",
+    "src/server/clipping/store.test.ts": "e18f3549cbfdeb9c4030055fd13d67519094738d",
+    "src/server/clipping/store.ts": "5bbe74b49284389859adebd202e5d0ef9c3e0cf3",
     "src/server/routers/comments.test.ts": "71ec7bab9a668ed1b7559fc54d91f57130585a68",
-    "src/server/routers/comments.ts": "e18d90af2d3eb7e6d2b5e236fd4794024e56f1be",
-    "src/server/routers/memos.ts": "0d73aacf82de4a01ef1113b4034952adf91b8181",
+    "src/server/routers/comments.ts": "8ebfa5d0aece1f01c1a3cc0fed1b09e29496f662",
+    "src/server/routers/memos.ts": "029b6043adc8c06a9a2fa0b7f46a1716f13ca2ce",
     "tests/components/CommentSection.test.tsx": "76157dd929540c3b0817348598820f8a774d342a",
     "tests/components/PublicMemoAuthoring.test.tsx": "4eddda1413ef18d80483fc60467f604d1443ec1e"
   },
@@ -33,13 +36,13 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The candidate retains target-aware REST/tRPC behavior and all existing comment lifecycle contracts, while public reads and creates recheck publication state inside an immediate SQLite transaction before reading or inserting comment data. The change is limited to the existing comment and Memo detail surfaces.",
+      "reasoning": "The candidate retains target-aware REST/tRPC behavior and all existing comment lifecycle contracts, while public reads, deletes, counts, and creates bind publication state to their database operation and clipping reads to a synchronized canonical-file visibility check. The change is limited to the existing comment and Memo detail surfaces.",
       "assessed_at": "2026-10-26T14:49:56+08:00",
       "evidence": [
         {
           "path": "src/server/routers/comments.ts",
-          "blob": "e18d90af2d3eb7e6d2b5e236fd4794024e56f1be",
-          "command": "Public comment reads and creates recheck target visibility inside an immediate transaction"
+          "blob": "8ebfa5d0aece1f01c1a3cc0fed1b09e29496f662",
+          "command": "Public comment reads, deletes, counts, and creates bind target visibility to operation boundaries"
         },
         {
           "path": "src/server/routers/comments.test.ts",
@@ -54,7 +57,7 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "The affected comment router suite passes after the immediate transaction repair, preserving idempotent submissions, reply pagination, target isolation, soft deletion, and private/draft rejection. Existing component and Web Demo evidence remains applicable to the unchanged UI contract.",
+      "reasoning": "The affected comment and clipping suites pass after the operation-boundary repair, preserving idempotent submissions, reply pagination, target isolation, soft deletion, private/draft rejection, and canonical clipping visibility. Existing component and Web Demo evidence remains applicable to the unchanged UI contract.",
       "assessed_at": "2026-10-26T14:49:56+08:00",
       "evidence": [
         {
@@ -64,8 +67,13 @@
         },
         {
           "path": "src/server/routers/comments.ts",
-          "blob": "e18d90af2d3eb7e6d2b5e236fd4794024e56f1be",
-          "command": "bunx biome check src/server/routers/comments.ts and targeted TypeScript diagnostics pass"
+          "blob": "8ebfa5d0aece1f01c1a3cc0fed1b09e29496f662",
+          "command": "bunx biome check on affected server files and targeted TypeScript diagnostics pass"
+        },
+        {
+          "path": "src/server/clipping/store.test.ts",
+          "blob": "e18f3549cbfdeb9c4030055fd13d67519094738d",
+          "command": "bun test src/server/clipping/store.test.ts: 15 passed, including sync visibility and lock serialization"
         },
         {
           "path": "tests/components/CommentSection.test.tsx",
@@ -114,8 +122,8 @@
       "evidence": [
         {
           "path": "src/server/routers/comments.ts",
-          "blob": "e18d90af2d3eb7e6d2b5e236fd4794024e56f1be",
-          "command": "Comment response and mutation payloads remain unchanged while visibility is rechecked atomically"
+          "blob": "8ebfa5d0aece1f01c1a3cc0fed1b09e29496f662",
+          "command": "Comment response and mutation payloads remain unchanged while visibility is bound to atomic operation checks"
         }
       ]
     },
@@ -128,8 +136,8 @@
       "evidence": [
         {
           "path": "src/server/routers/comments.ts",
-          "blob": "e18d90af2d3eb7e6d2b5e236fd4794024e56f1be",
-          "command": "The immediate transaction only changes operation ordering and does not alter persisted shapes"
+          "blob": "8ebfa5d0aece1f01c1a3cc0fed1b09e29496f662",
+          "command": "The repair only changes operation ordering and does not alter persisted shapes"
         }
       ]
     }
