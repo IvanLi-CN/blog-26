@@ -608,7 +608,7 @@ describe("packagePublicMedia", () => {
   test("canonicalizes v4 watermark source formats to static presentation formats", async () => {
     const cwd = await fixture();
     const png = "/api/public/assets/post/logo/hash/wm-a-v4/full.png?v=2026-10-15";
-    const gif = "/api/public/assets/memo/logo/hash/wm-b-v4/full.gif?v=2026-10-15";
+    const gif = "/api/public/assets/memo/logo/hash/wm-b-v4/card.gif?v=2026-10-15";
     await writeFile(join(cwd, "site-dist", "snapshot.json"), JSON.stringify({ media: [png, gif] }));
 
     const requestedUrls: string[] = [];
@@ -624,7 +624,7 @@ describe("packagePublicMedia", () => {
 
     expect(requestedUrls).toEqual([
       "https://api.example/api/public/assets/post/logo/hash/wm-a-v4/full.webp?v=2026-10-15",
-      "https://api.example/api/public/assets/memo/logo/hash/wm-b-v4/full.webp?v=2026-10-15",
+      "https://api.example/api/public/assets/memo/logo/hash/wm-b-v4/card.webp?v=2026-10-15",
     ]);
     expect(await readFile(join(cwd, "site-dist", "snapshot.json"), "utf8")).toContain(
       "/_content/assets/post/logo/hash/wm-a-v4/full.webp?v=2026-10-15"
@@ -637,7 +637,7 @@ describe("packagePublicMedia", () => {
         }),
         expect.objectContaining({
           sourcePath: gif,
-          outputPath: "/_content/assets/memo/logo/hash/wm-b-v4/full.webp",
+          outputPath: "/_content/assets/memo/logo/hash/wm-b-v4/card.webp",
         }),
       ])
     );

@@ -958,7 +958,9 @@ export function canonicalPublicMediaPath(pathname: string) {
   const extension = match[6].toLowerCase();
   let canonicalExtension: string | undefined;
   if (extension === "gif") {
-    canonicalExtension = ["content", "full"].includes(variant) ? "webp" : "jpg";
+    // Card renders are emitted as WebP in the static package, even when the
+    // upstream facade exposes the source-format GIF candidate.
+    canonicalExtension = ["card", "content", "full"].includes(variant) ? "webp" : "jpg";
   } else if (["avif", "bmp", "jpeg", "jpg", "png"].includes(extension)) {
     canonicalExtension = ["social", "poster"].includes(variant) ? "jpg" : "webp";
   }

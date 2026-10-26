@@ -4,8 +4,8 @@
   "base_sha": "e3989b4ea59bddad4cb910684a0546be5b0c4a88",
   "covered_files": {
     ".github/workflows/product-release.yml": "4df561354a7b908b95ed7564520d9b086ab88cf6",
-    "scripts/package-public-media.test.ts": "e180f3958707cf644a0487ddf68a63cc8cd8db04",
-    "scripts/package-public-media.ts": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
+    "scripts/package-public-media.test.ts": "59d9a06c2b9de952c98a40128d8fd8a30fb07af1",
+    "scripts/package-public-media.ts": "ab44e4d54fe0e5a00ce58338018f9a37ac61aa85",
     "src/lib/release/inputs.ts": "4a4e43b3a34f5105a3e8a1b45374eadee74f3c1d",
     "tests/ci/product-prerelease-workflow.test.ts": "f38f4c74f397bc344a7a09247b973cbfede201d6",
     "tests/lib/manual-release-media.test.ts": "55a6517c24264b86c57f6ee13e0df4a9ec9617dd"
@@ -23,7 +23,7 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.ts",
-          "blob": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
+          "blob": "ab44e4d54fe0e5a00ce58338018f9a37ac61aa85",
           "command": "Packaging code defines the canonical static presentation format for v4 source candidates"
         }
       ]
@@ -35,7 +35,7 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "e180f3958707cf644a0487ddf68a63cc8cd8db04",
+          "blob": "59d9a06c2b9de952c98a40128d8fd8a30fb07af1",
           "command": "bun test scripts/package-public-media.test.ts"
         },
         {
@@ -66,7 +66,7 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
-          "blob": "e180f3958707cf644a0487ddf68a63cc8cd8db04",
+          "blob": "59d9a06c2b9de952c98a40128d8fd8a30fb07af1",
           "command": "bun test scripts/package-public-media.test.ts"
         },
         {
@@ -86,7 +86,7 @@
         },
         {
           "path": "scripts/package-public-media.ts",
-          "blob": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
+          "blob": "ab44e4d54fe0e5a00ce58338018f9a37ac61aa85",
           "command": "bun run check"
         }
       ]
@@ -132,7 +132,7 @@
       "evidence": [
         {
           "path": "scripts/package-public-media.ts",
-          "blob": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
+          "blob": "ab44e4d54fe0e5a00ce58338018f9a37ac61aa85",
           "command": "Canonical packaging preserves the existing public media URL contract"
         }
       ]

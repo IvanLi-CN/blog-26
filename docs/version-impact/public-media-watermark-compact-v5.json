@@ -15,8 +15,8 @@
     "docs/specs/public-media-assets-facade/SPEC.md": "5eb895d73246a6c31f73836795e81048229a16b0",
     "public/watermark-ivanli-a.dark.v5.svg": "ee3e660badbea5f5832fa7e580c448d0e08f9364",
     "public/watermark-ivanli-a.light.v5.svg": "9f7502d40fd17272b21bb39fcde7e608935ae55e",
-    "scripts/package-public-media.test.ts": "e180f3958707cf644a0487ddf68a63cc8cd8db04",
-    "scripts/package-public-media.ts": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
+    "scripts/package-public-media.test.ts": "59d9a06c2b9de952c98a40128d8fd8a30fb07af1",
+    "scripts/package-public-media.ts": "ab44e4d54fe0e5a00ce58338018f9a37ac61aa85",
     "scripts/prepare-edgeone-pwa-config.ts": "54f79359348e041b8e6bca97266e8324d091db97",
     "scripts/verify-pages-build.ts": "19979f091f665ec610aafe3c26ba839d2c287f88",
     "src/components/common/markdown/plugins/rehype-image-optimization.test.ts": "56ff981456515ec75aef219a2e6edd45cd3b64b2",
@@ -63,7 +63,7 @@
         },
         {
           "path": "scripts/package-public-media.ts",
-          "blob": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
+          "blob": "ab44e4d54fe0e5a00ce58338018f9a37ac61aa85",
           "command": "Static packaging closes current v5 A/B siblings and preserves explicit v3/v4 and legacy migration behavior"
         }
       ],
