@@ -51,8 +51,8 @@
         },
         {
           "path": "src/server/routers/memos.ts",
-          "blob": "07e2ffa6dc1afdd8df055062c418a79fe6b85ee7",
-          "command": "Memo create, update, and delete canonical paths under the clipping visibility lock; creation rejects existing paths, system-share creation marks fresh files, and failures restore the prior file"
+          "blob": "02b5a3d24afb3698d3eed1f24fb8fae94fb5c621",
+          "command": "Memo public list and detail reads, plus create, update, and delete critical sections, share the visibility lock; creation rejects existing paths, marks fresh system-share files, and restores failed operations"
         },
         {
           "path": "src/server/mcp.ts",
