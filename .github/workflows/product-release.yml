@@ -61,11 +61,13 @@ jobs:
         run: bun scripts/product-release.ts restore
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Preserve source Playbook tooling for frozen input acquisition
-        if: steps.restore.outputs.need_inputs == 'true'
-        id: preserve-playbook-tooling
+      - name: Preserve current compatibility tooling for frozen input acquisition and preflight
+        if: steps.restore.outputs.need_inputs == 'true' || steps.restore.outputs.need_products == 'true'
+        id: preserve-compatibility-tooling
         run: |
           mkdir -p "$RUNNER_TEMP/release-playbook-tooling/fixed"
+          cp scripts/package-public-media.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/package-public-media.ts"
+          cp src/lib/release/inputs.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/release-inputs.ts"
           cp scripts/fetch-initial-playbook.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/fetch-initial-playbook.ts"
           cp scripts/prepare-playbook-edition.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/prepare-playbook-edition.ts"
           cp scripts/verify-playbook-artifact.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/verify-playbook-artifact.ts"
@@ -158,6 +160,8 @@ jobs:
         if: steps.restore.outputs.need_products == 'true'
         id: apply-preflight-playbook-tooling
         run: |
+          cp "$RUNNER_TEMP/release-playbook-tooling/fixed/package-public-media.ts" scripts/package-public-media.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/fixed/release-inputs.ts" src/lib/release/inputs.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/prepare-playbook-edition.ts" scripts/prepare-playbook-edition.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/verify-playbook-artifact.ts" scripts/verify-playbook-artifact.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/site-lib-playbook.ts" site/lib/playbook.ts

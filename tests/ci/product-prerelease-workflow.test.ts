@@ -148,6 +148,8 @@ describe("prerelease workflow deployment boundary", () => {
     expect(compatibility).toBeGreaterThan(inputRecord);
     expect(compatibility).toBeLessThan(preflight);
     expect(steps[compatibility]?.run).toContain("release-playbook-tooling/fixed");
+    expect(steps[compatibility]?.run).toContain("package-public-media.ts");
+    expect(steps[compatibility]?.run).toContain("release-inputs.ts");
     expect(steps[compatibility]?.run).toContain("site-lib-playbook.ts");
     expect(steps[compatibility]?.run).toContain("verify-playbook-artifact.ts");
     expect(preflight).toBeGreaterThan(inputRecord);

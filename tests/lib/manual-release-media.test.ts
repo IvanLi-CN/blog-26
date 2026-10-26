@@ -120,19 +120,20 @@ test("frozen media reuse matches a packaged output when the source format was al
   const root = await mkdtemp(join(tmpdir(), "release-media-format-alias-"));
   const inputs = join(root, "inputs");
   const output = join(root, "site");
-  const outputPath = "/_content/assets/memo/test/hash/wm-a-v4/card.webp";
-  await mkdir(join(inputs, "media", outputPath.slice(1, outputPath.lastIndexOf("/"))), {
+  const frozenOutputPath = "/_content/assets/memo/test/hash/wm-a-v4/card.jpg";
+  const requestedOutputPath = "/_content/assets/memo/test/hash/wm-a-v4/card.webp";
+  await mkdir(join(inputs, "media", frozenOutputPath.slice(1, frozenOutputPath.lastIndexOf("/"))), {
     recursive: true,
   });
   await mkdir(output);
-  await writeFile(join(inputs, "media", outputPath.slice(1)), "aliased-card-bytes");
+  await writeFile(join(inputs, "media", frozenOutputPath.slice(1)), "aliased-card-bytes");
   await writeFile(
     join(inputs, "media/_content/media-manifest.json"),
     JSON.stringify({
       entries: [
         {
           sourcePath: "/api/public/assets/memo/test/hash/wm-a-v4/card.gif",
-          outputPath,
+          outputPath: frozenOutputPath,
           status: "packaged",
         },
       ],
@@ -161,7 +162,9 @@ test("frozen media reuse matches a packaged output when the source format was al
     },
   };
   await packageFrozenMedia(inputs, config, output);
-  expect(await readFile(join(output, outputPath.slice(1)), "utf8")).toBe("aliased-card-bytes");
+  expect(await readFile(join(output, requestedOutputPath.slice(1)), "utf8")).toBe(
+    "aliased-card-bytes"
+  );
 });
 
 test("frozen media reuse serves captured clipping resources", async () => {
