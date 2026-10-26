@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "3e45385586a098d3e83b891f241234308f162bb1",
+  "base_sha": "e2f4f281b72f2ea049c2bcefd98d736c99c691a1",
   "covered_files": {
     "docs/adr/0025-display-selected-watermark-renditions.md": "351e7fe6982396b200e58c81992d207bcf03a3ed",
     "docs/public-media-watermark-design.md": "b8b571d11968e787ff8b5396c330246d6942ca42",
@@ -132,7 +132,8 @@
         "3.7.4",
         "3.8.4",
         "3.8.5",
-        "3.8.6"
+        "3.8.6",
+        "3.9.0"
       ],
       "evidence": [
         {
