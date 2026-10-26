@@ -6,8 +6,10 @@ import {
   CLIPPING_RESOURCE_BASE_FACADE_RE,
   canonicalPublicMediaFetchKey,
   fetchPublicResourceOverHttp11,
+  PUBLIC_MEDIA_FACADE_PREFIX,
   type PublicMediaManifest,
   packagePublicMedia,
+  STATIC_MEDIA_PREFIX,
 } from "../../../scripts/package-public-media";
 import { withoutDeploymentCredentials } from "../playbook/child-env";
 import { sealDirectory, verifyDirectory } from "./artifacts";
@@ -445,10 +447,21 @@ export async function packageFrozenMedia(
         throw new Error("Frozen media origin changed");
       const key = (value: string) =>
         canonicalPublicMediaFetchKey(value, config.env.PUBLIC_API_BASE_URL);
-      const entry = manifest.entries.find((item) => key(item.sourcePath) === key(url.href));
+      const base = config.env.PUBLIC_SITE_BASE_PATH === "/" ? "" : config.env.PUBLIC_SITE_BASE_PATH;
+      const relativePath = url.pathname.startsWith(PUBLIC_MEDIA_FACADE_PREFIX)
+        ? url.pathname.slice(PUBLIC_MEDIA_FACADE_PREFIX.length)
+        : url.pathname.slice("/api/public/".length);
+      const outputPath = `${base}${STATIC_MEDIA_PREFIX}${relativePath}`;
+      const entry =
+        manifest.entries.find(
+          (item) =>
+            item.status === "packaged" && item.outputPath && key(item.sourcePath) === key(url.href)
+        ) ??
+        manifest.entries.find(
+          (item) => item.status === "packaged" && item.outputPath === outputPath
+        );
       if (!entry?.outputPath || entry.status !== "packaged")
         throw new Error("Media was not covered by the frozen public snapshot");
-      const base = config.env.PUBLIC_SITE_BASE_PATH === "/" ? "" : config.env.PUBLIC_SITE_BASE_PATH;
       const relative = entry.outputPath.slice((base || "").length).replace(/^\/+/, "");
       const path = resolve(root, "media", relative);
       if (!path.startsWith(`${resolve(root, "media")}/`))
