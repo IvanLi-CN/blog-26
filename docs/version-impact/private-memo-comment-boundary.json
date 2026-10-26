@@ -13,10 +13,11 @@
     "src/server/clipping/store.ts": "5bbe74b49284389859adebd202e5d0ef9c3e0cf3",
     "src/server/mcp.ts": "6b7b545eed32f7f406e7d91ac363048f82ac9243",
     "src/server/public-media.ts": "ddd59aba42de96914e424e0bcaeca6be05e3960f",
+    "src/server/public-api/router.ts": "df1f1f9d49fda6c67ddd703abbd1f802b2b82fff",
     "src/server/routers/admin/files.ts": "b6f4a79f2939291764b30df420bebee43e5daa0e",
     "src/server/routers/comments.test.ts": "71ec7bab9a668ed1b7559fc54d91f57130585a68",
     "src/server/routers/comments.ts": "8ebfa5d0aece1f01c1a3cc0fed1b09e29496f662",
-    "src/server/routers/memos.ts": "07e2ffa6dc1afdd8df055062c418a79fe6b85ee7",
+    "src/server/routers/memos.ts": "02b5a3d24afb3698d3eed1f24fb8fae94fb5c621",
     "tests/components/CommentSection.test.tsx": "76157dd929540c3b0817348598820f8a774d342a",
     "tests/components/PublicMemoAuthoring.test.tsx": "4eddda1413ef18d80483fc60467f604d1443ec1e"
   },
@@ -64,6 +65,11 @@
           "command": "Public Memo attachments keep external or already-published URLs and omit unsupported or unresolved local paths instead of returning private source paths"
         },
         {
+          "path": "src/server/public-api/router.ts",
+          "blob": "df1f1f9d49fda6c67ddd703abbd1f802b2b82fff",
+          "command": "Public search Memo title and visibility projection shares the clipping visibility lock with canonical-file reads"
+        },
+        {
           "path": "src/server/routers/admin/files.ts",
           "blob": "b6f4a79f2939291764b30df420bebee43e5daa0e",
           "command": "Local Markdown file mutations share the clipping visibility lock"
@@ -96,8 +102,8 @@
         },
         {
           "path": "src/server/routers/memos.ts",
-          "blob": "07e2ffa6dc1afdd8df055062c418a79fe6b85ee7",
-          "command": "Memo create, update, and delete critical sections serialize canonical content writes, reject existing paths, mark fresh system-share files, and restore failed operations"
+          "blob": "02b5a3d24afb3698d3eed1f24fb8fae94fb5c621",
+          "command": "Memo public list and detail reads, plus create, update, and delete critical sections, share the visibility lock; creation rejects existing paths, marks fresh system-share files, and restores failed operations"
         },
         {
           "path": "src/server/mcp.ts",
@@ -108,6 +114,11 @@
           "path": "src/server/public-media.ts",
           "blob": "ddd59aba42de96914e424e0bcaeca6be05e3960f",
           "command": "Public attachment projection drops unsupported and unresolved local sources rather than falling back to canonical paths"
+        },
+        {
+          "path": "src/server/public-api/router.ts",
+          "blob": "df1f1f9d49fda6c67ddd703abbd1f802b2b82fff",
+          "command": "Public search Memo visibility and title resolution share the clipping visibility lock"
         },
         {
           "path": "src/server/routers/admin/files.ts",

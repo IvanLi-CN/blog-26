@@ -795,155 +795,158 @@ export const memosRouter = router({
         }
       }
 
-      // 查询数据 - 多取一条用于判断是否有下一页
-      const memoList = await db
-        .select()
-        .from(posts)
-        .where(conditions.length > 0 ? and(...conditions) : undefined)
-        // 重要：严格按发布/创建时间倒序排序，而非更新时间
-        .orderBy(
-          direction === "older" ? desc(posts.publishDate) : asc(posts.publishDate),
-          direction === "older" ? desc(posts.id) : asc(posts.id)
-        )
-        .limit(limit + 1); // 多取一条用于判断 hasMore
+      const result = await withClippingVisibilityLock(async () => {
+        // 查询数据 - 多取一条用于判断是否有下一页
+        const memoList = await db
+          .select()
+          .from(posts)
+          .where(conditions.length > 0 ? and(...conditions) : undefined)
+          // 重要：严格按发布/创建时间倒序排序，而非更新时间
+          .orderBy(
+            direction === "older" ? desc(posts.publishDate) : asc(posts.publishDate),
+            direction === "older" ? desc(posts.id) : asc(posts.id)
+          )
+          .limit(limit + 1); // 多取一条用于判断 hasMore
 
-      // 判断是否有更多数据
-      const hasMore = memoList.length > limit;
-      const selectedMemos = hasMore ? memoList.slice(0, limit) : memoList;
-      const actualMemos = direction === "newer" ? selectedMemos.reverse() : selectedMemos;
+        // 判断是否有更多数据
+        const hasMore = memoList.length > limit;
+        const selectedMemos = hasMore ? memoList.slice(0, limit) : memoList;
+        const actualMemos = direction === "newer" ? selectedMemos.reverse() : selectedMemos;
 
-      // 计算向量化状态（与 /posts 相同口径：当前模型名 + 输入拼接哈希一致且存在向量）
-      const resolved = await getResolvedLlmConfig();
-      const modelName = resolved.embedding.model || "BAAI/bge-m3";
-      const memosWithVectorStatus = await Promise.all(
-        actualMemos.map(async (m) => {
-          try {
-            const embeddingInput = buildEmbeddingInput({
-              title: m.title || "",
-              excerpt: m.excerpt || "",
-              body: m.body || "",
-            });
-            const embeddingHash = hashEmbeddingInput(embeddingInput);
-            const status = await EmbeddingsRepository.getVectorizationStatus(
-              m.id,
-              modelName,
-              embeddingHash
-            );
+        // 计算向量化状态（与 /posts 相同口径：当前模型名 + 输入拼接哈希一致且存在向量）
+        const resolved = await getResolvedLlmConfig();
+        const modelName = resolved.embedding.model || "BAAI/bge-m3";
+        const memosWithVectorStatus = await Promise.all(
+          actualMemos.map(async (m) => {
+            try {
+              const embeddingInput = buildEmbeddingInput({
+                title: m.title || "",
+                excerpt: m.excerpt || "",
+                body: m.body || "",
+              });
+              const embeddingHash = hashEmbeddingInput(embeddingInput);
+              const status = await EmbeddingsRepository.getVectorizationStatus(
+                m.id,
+                modelName,
+                embeddingHash
+              );
+              return {
+                ...m,
+                isVectorized: status === "indexed",
+              } as typeof m & { isVectorized: boolean };
+            } catch {
+              return { ...m, isVectorized: false } as typeof m & { isVectorized: boolean };
+            }
+          })
+        );
+
+        // 转换为 API 响应格式
+        const memoResults = await Promise.all(
+          memosWithVectorStatus.map(async (memo) => {
+            if (!ctx.isAdmin && !(await isClippingRowPublic(memo))) return null;
+            const media = buildPublicMediaCollection("memo", memo as MemoRow);
+            const attachments = rewritePublicMemoAttachments(memo as MemoRow, media);
+            const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
+            const clipping = await clippingProjectionForRow(memo);
+            const title = clipping ? clipping.title : await resolvePublicMemoTitle(memo as MemoRow);
+            const publicMediaContext = {
+              kind: "memo" as const,
+              slug: memo.slug,
+              filePath: memo.filePath || memo.id,
+            };
+
             return {
-              ...m,
-              isVectorized: status === "indexed",
-            } as typeof m & { isVectorized: boolean };
-          } catch {
-            return { ...m, isVectorized: false } as typeof m & { isVectorized: boolean };
+              id: memo.id,
+              slug: memo.slug,
+              title,
+              excerpt: memo.excerpt,
+              content: rewritePublicContentMediaUrls(
+                clipping?.content ?? memo.body,
+                publicMediaContext
+              ),
+              ...(clipping ? { clipping: clipping.reading } : {}),
+              isPublic: memo.public,
+              tags: memo.tags ? JSON.parse(memo.tags) : [],
+              attachments,
+              image:
+                pickLegacyPublicImage(media, "content") ??
+                buildLegacyPublicMediaUrl({
+                  mediaPath: memo.image,
+                  dataSource: memo.dataSource,
+                  filePath: memo.filePath,
+                }),
+              media,
+              author: memo.author || undefined,
+              filePath: memo.filePath,
+              source: memo.source,
+              dataSource: memo.dataSource || "local",
+              createdAt: displayTime,
+              publishedAt,
+              updatedAt,
+              timeDisplaySource: source,
+              // 新增：向量化标记
+              isVectorized: (memo as any).isVectorized === true,
+            };
+          })
+        );
+
+        const formattedMemos = memoResults.filter((memo) => memo !== null);
+
+        // 为非管理员移除不在界面展示的敏感/内部字段，避免接口信息泄露
+        // 对非管理员进行字段最小化（但保留 UI 必需字段：attachments、author、filePath、source）
+        const sanitizedMemos = ctx.isAdmin
+          ? formattedMemos
+          : formattedMemos.map((m) => ({
+              id: m.id,
+              slug: m.slug,
+              title: m.title,
+              excerpt: m.excerpt,
+              content: m.content,
+              ...("clipping" in m ? { clipping: m.clipping } : {}),
+              isPublic: m.isPublic,
+              tags: m.tags,
+              attachments: (m as any).attachments,
+              image: (m as any).image,
+              media: (m as any).media,
+              author: (m as any).author,
+              filePath: (m as any).filePath,
+              source: (m as any).source,
+              createdAt: m.createdAt,
+              publishedAt: m.publishedAt,
+              updatedAt: m.updatedAt,
+              timeDisplaySource: m.timeDisplaySource,
+            }));
+
+        // Newer pages are queried in ascending order, then reversed for the display order.
+        let nextCursor: string | undefined;
+        let previousCursor: string | undefined;
+        if (actualMemos.length > 0) {
+          if (direction === "older") {
+            const firstMemo = actualMemos[0];
+            const firstDate = new Date(toMsTimestamp(firstMemo.publishDate)).toISOString();
+            if (cursor) previousCursor = `${firstDate}_${firstMemo.id}`;
+
+            if (hasMore) {
+              const lastMemo = actualMemos[actualMemos.length - 1];
+              const lastDate = new Date(toMsTimestamp(lastMemo.publishDate)).toISOString();
+              nextCursor = `${lastDate}_${lastMemo.id}`;
+            }
+          } else {
+            const firstMemo = actualMemos[0];
+            const firstDate = new Date(toMsTimestamp(firstMemo.publishDate)).toISOString();
+            if (hasMore) previousCursor = `${firstDate}_${firstMemo.id}`;
           }
-        })
-      );
-
-      // 转换为 API 响应格式
-      const memoResults = await Promise.all(
-        memosWithVectorStatus.map(async (memo) => {
-          if (!ctx.isAdmin && !(await isClippingRowPublic(memo))) return null;
-          const media = buildPublicMediaCollection("memo", memo as MemoRow);
-          const attachments = rewritePublicMemoAttachments(memo as MemoRow, media);
-          const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
-          const clipping = await clippingProjectionForRow(memo);
-          const title = clipping ? clipping.title : await resolvePublicMemoTitle(memo as MemoRow);
-          const publicMediaContext = {
-            kind: "memo" as const,
-            slug: memo.slug,
-            filePath: memo.filePath || memo.id,
-          };
-
-          return {
-            id: memo.id,
-            slug: memo.slug,
-            title,
-            excerpt: memo.excerpt,
-            content: rewritePublicContentMediaUrls(
-              clipping?.content ?? memo.body,
-              publicMediaContext
-            ),
-            ...(clipping ? { clipping: clipping.reading } : {}),
-            isPublic: memo.public,
-            tags: memo.tags ? JSON.parse(memo.tags) : [],
-            attachments,
-            image:
-              pickLegacyPublicImage(media, "content") ??
-              buildLegacyPublicMediaUrl({
-                mediaPath: memo.image,
-                dataSource: memo.dataSource,
-                filePath: memo.filePath,
-              }),
-            media,
-            author: memo.author || undefined,
-            filePath: memo.filePath,
-            source: memo.source,
-            dataSource: memo.dataSource || "local",
-            createdAt: displayTime,
-            publishedAt,
-            updatedAt,
-            timeDisplaySource: source,
-            // 新增：向量化标记
-            isVectorized: (memo as any).isVectorized === true,
-          };
-        })
-      );
-
-      const formattedMemos = memoResults.filter((memo) => memo !== null);
-
-      // 为非管理员移除不在界面展示的敏感/内部字段，避免接口信息泄露
-      // 对非管理员进行字段最小化（但保留 UI 必需字段：attachments、author、filePath、source）
-      const sanitizedMemos = ctx.isAdmin
-        ? formattedMemos
-        : formattedMemos.map((m) => ({
-            id: m.id,
-            slug: m.slug,
-            title: m.title,
-            excerpt: m.excerpt,
-            content: m.content,
-            ...("clipping" in m ? { clipping: m.clipping } : {}),
-            isPublic: m.isPublic,
-            tags: m.tags,
-            attachments: (m as any).attachments,
-            image: (m as any).image,
-            media: (m as any).media,
-            author: (m as any).author,
-            filePath: (m as any).filePath,
-            source: (m as any).source,
-            createdAt: m.createdAt,
-            publishedAt: m.publishedAt,
-            updatedAt: m.updatedAt,
-            timeDisplaySource: m.timeDisplaySource,
-          }));
-
-      // Newer pages are queried in ascending order, then reversed for the display order.
-      let nextCursor: string | undefined;
-      let previousCursor: string | undefined;
-      if (actualMemos.length > 0) {
-        if (direction === "older") {
-          const firstMemo = actualMemos[0];
-          const firstDate = new Date(toMsTimestamp(firstMemo.publishDate)).toISOString();
-          if (cursor) previousCursor = `${firstDate}_${firstMemo.id}`;
-
-          if (hasMore) {
-            const lastMemo = actualMemos[actualMemos.length - 1];
-            const lastDate = new Date(toMsTimestamp(lastMemo.publishDate)).toISOString();
-            nextCursor = `${lastDate}_${lastMemo.id}`;
-          }
-        } else {
-          const firstMemo = actualMemos[0];
-          const firstDate = new Date(toMsTimestamp(firstMemo.publishDate)).toISOString();
-          if (hasMore) previousCursor = `${firstDate}_${firstMemo.id}`;
         }
-      }
 
-      return {
-        memos: sanitizedMemos,
-        nextCursor,
-        previousCursor,
-        hasPrevious: direction === "newer" ? hasMore : actualMemos.length > 0 && Boolean(cursor),
-        hasMore,
-      };
+        return {
+          memos: sanitizedMemos,
+          nextCursor,
+          previousCursor,
+          hasPrevious: direction === "newer" ? hasMore : actualMemos.length > 0 && Boolean(cursor),
+          hasMore,
+        };
+      });
+      return result;
     } catch (error) {
       console.error("获取 memo 列表失败:", error);
       throw new TRPCError({
@@ -959,110 +962,116 @@ export const memosRouter = router({
     const isAdminPreview = ctx.isAdmin && ctx.req.headers.get("x-admin-preview") === "1";
 
     try {
-      const memo = await db
-        .select()
-        .from(posts)
-        .where(and(eq(posts.slug, slug), eq(posts.type, "memo")))
-        .limit(1)
-        .then((result) => result[0]);
+      const result = await withClippingVisibilityLock(async () => {
+        const memo = await db
+          .select()
+          .from(posts)
+          .where(and(eq(posts.slug, slug), eq(posts.type, "memo")))
+          .limit(1)
+          .then((result) => result[0]);
 
-      if (!memo) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Memo 不存在",
-        });
-      }
+        if (!memo) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Memo 不存在",
+          });
+        }
 
-      // 权限检查：非管理员只能查看已公开且非草稿的 memo
-      if ((!memo.public || memo.draft || !(await isClippingRowPublic(memo))) && !ctx.isAdmin) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Memo 不存在",
-        });
-      }
+        // 权限检查：非管理员只能查看已公开且非草稿的 memo
+        if ((!memo.public || memo.draft || !(await isClippingRowPublic(memo))) && !ctx.isAdmin) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Memo 不存在",
+          });
+        }
 
-      const media = buildPublicMediaCollection(
-        "memo",
-        memo,
-        isAdminPreview ? "admin-preview" : "public"
-      );
-      const publicAttachments = rewritePublicMemoAttachments(memo, media);
-      const publicMediaContext = {
-        kind: "memo" as const,
-        slug: memo.slug,
-        filePath: memo.filePath || memo.id,
-        assetScope: isAdminPreview ? ("admin-preview" as const) : ("public" as const),
-      };
+        const media = buildPublicMediaCollection(
+          "memo",
+          memo,
+          isAdminPreview ? "admin-preview" : "public"
+        );
+        const publicAttachments = rewritePublicMemoAttachments(memo, media);
+        const publicMediaContext = {
+          kind: "memo" as const,
+          slug: memo.slug,
+          filePath: memo.filePath || memo.id,
+          assetScope: isAdminPreview ? ("admin-preview" as const) : ("public" as const),
+        };
 
-      const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
-      const clipping = await clippingProjectionForRow(memo);
-      const canComment = memo.public && !memo.draft && (await isClippingRowPublic(memo));
-      if (
-        clipping &&
-        (clipping.authored.frontmatter.public === false ||
-          clipping.authored.frontmatter.draft === true) &&
-        !ctx.isAdmin
-      )
-        throw new TRPCError({ code: "NOT_FOUND", message: "Memo 不存在" });
-      const title = clipping ? clipping.title : await resolvePublicMemoTitle(memo);
+        const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
+        const clipping = await clippingProjectionForRow(memo);
+        const canComment = memo.public && !memo.draft && (await isClippingRowPublic(memo));
+        if (
+          clipping &&
+          (clipping.authored.frontmatter.public === false ||
+            clipping.authored.frontmatter.draft === true) &&
+          !ctx.isAdmin
+        )
+          throw new TRPCError({ code: "NOT_FOUND", message: "Memo 不存在" });
+        const title = clipping ? clipping.title : await resolvePublicMemoTitle(memo);
 
-      const base = {
-        id: memo.id,
-        slug: memo.slug,
-        title,
-        excerpt: memo.excerpt,
-        content: rewritePublicContentMediaUrls(clipping?.content ?? memo.body, publicMediaContext),
-        ...(clipping
-          ? {
-              clipping: clipping.reading,
-              canDiscuss:
-                ctx.isAdmin ||
-                Boolean(
-                  clipping.manifest?.creatorId && clipping.manifest.creatorId === ctx.user?.id
-                ),
-            }
-          : {}),
-        isPublic: memo.public,
-        canComment,
-        tags: memo.tags ? JSON.parse(memo.tags) : [],
-        image:
-          pickLegacyPublicImage(media, "content", publicMediaContext.assetScope) ??
-          buildLegacyPublicMediaUrl({
-            mediaPath: memo.image,
-            dataSource: memo.dataSource,
-            filePath: memo.filePath,
-          }),
-        media,
-        createdAt: displayTime,
-        publishedAt,
-        updatedAt,
-        timeDisplaySource: source,
-      } as const;
+        const base = {
+          id: memo.id,
+          slug: memo.slug,
+          title,
+          excerpt: memo.excerpt,
+          content: rewritePublicContentMediaUrls(
+            clipping?.content ?? memo.body,
+            publicMediaContext
+          ),
+          ...(clipping
+            ? {
+                clipping: clipping.reading,
+                canDiscuss:
+                  ctx.isAdmin ||
+                  Boolean(
+                    clipping.manifest?.creatorId && clipping.manifest.creatorId === ctx.user?.id
+                  ),
+              }
+            : {}),
+          isPublic: memo.public,
+          canComment,
+          tags: memo.tags ? JSON.parse(memo.tags) : [],
+          image:
+            pickLegacyPublicImage(media, "content", publicMediaContext.assetScope) ??
+            buildLegacyPublicMediaUrl({
+              mediaPath: memo.image,
+              dataSource: memo.dataSource,
+              filePath: memo.filePath,
+            }),
+          media,
+          createdAt: displayTime,
+          publishedAt,
+          updatedAt,
+          timeDisplaySource: source,
+        } as const;
 
-      // 非管理员只返回界面会显示的字段
-      if (!ctx.isAdmin) {
-        return base;
-      }
+        // 非管理员只返回界面会显示的字段
+        if (!ctx.isAdmin) {
+          return base;
+        }
 
-      // 管理员返回完整信息
-      return {
-        ...base,
-        ...(clipping
-          ? {
-              authoredContent: clipping.authored.body.trim(),
-              authoredTitle:
-                typeof clipping.authored.frontmatter.title === "string"
-                  ? clipping.authored.frontmatter.title
-                  : "",
-            }
-          : {}),
-        attachments: publicAttachments,
-        author: memo.author || undefined,
-        filePath: memo.filePath,
-        source: memo.source,
-        dataSource: (memo as any).dataSource || "local",
-        isVectorized: false,
-      } as any;
+        // 管理员返回完整信息
+        return {
+          ...base,
+          ...(clipping
+            ? {
+                authoredContent: clipping.authored.body.trim(),
+                authoredTitle:
+                  typeof clipping.authored.frontmatter.title === "string"
+                    ? clipping.authored.frontmatter.title
+                    : "",
+              }
+            : {}),
+          attachments: publicAttachments,
+          author: memo.author || undefined,
+          filePath: memo.filePath,
+          source: memo.source,
+          dataSource: (memo as any).dataSource || "local",
+          isVectorized: false,
+        } as any;
+      });
+      return result;
     } catch (error) {
       if (error instanceof TRPCError) {
         throw error;
