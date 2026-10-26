@@ -12,7 +12,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, gt, like, sql } from "drizzle-orm";
@@ -1531,8 +1531,16 @@ export const memosRouter = router({
             });
           }
           const localFilePath = (existingMemo.filePath || existingMemo.id).replace(/^\/+/, "");
+          const fullPath = join(basePath, localFilePath);
+          let previousRaw: string | null = null;
           try {
-            await rm(join(basePath, localFilePath), { force: true });
+            previousRaw = await readFile(fullPath, "utf8");
+          } catch (error) {
+            if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT"))
+              throw error;
+          }
+          try {
+            await rm(fullPath, { force: true });
           } catch (err) {
             if (process.env.NODE_ENV !== "production") {
               console.warn("[memos.delete] local 删除失败(开发环境忽略)", localFilePath, err);
@@ -1542,7 +1550,18 @@ export const memosRouter = router({
           }
 
           // 从数据库删除
-          await db.delete(posts).where(eq(posts.id, id));
+          try {
+            await db.delete(posts).where(eq(posts.id, id));
+          } catch (error) {
+            if (previousRaw !== null) {
+              try {
+                await writeFile(fullPath, previousRaw, "utf8");
+              } catch (rollbackError) {
+                console.error("删除 memo 失败后恢复 canonical 文件失败:", rollbackError);
+              }
+            }
+            throw error;
+          }
         });
       } else {
         const existingMemo = await db

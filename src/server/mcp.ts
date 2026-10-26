@@ -87,12 +87,13 @@ async function ensureContentSourcesRegistered() {
   return manager;
 }
 
-async function triggerIncrementalSync() {
+async function triggerIncrementalSync(options: { throwOnError?: boolean } = {}) {
   const manager = await ensureContentSourcesRegistered();
   try {
     await manager.syncAll(false);
   } catch (e) {
     console.warn("[MCP] incremental sync failed:", e);
+    if (options.throwOnError) throw e;
   }
 }
 
@@ -137,13 +138,23 @@ function stripPrivateMcpMetadata(metadata: string | null): string | null {
   if (!metadata) return metadata;
   try {
     const parsed = JSON.parse(metadata);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return metadata;
-    const sanitized = { ...(parsed as Record<string, unknown>) };
-    for (const key of ["authorEmail", "clipping", "content", "creatorId", "proof", "updatedVia"])
-      delete sanitized[key];
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return "{}";
+    const publicKeys = new Set([
+      "title",
+      "tags",
+      "public",
+      "draft",
+      "publishDate",
+      "updateDate",
+      "category",
+      "attachments",
+    ]);
+    const sanitized = Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>).filter(([key]) => publicKeys.has(key))
+    );
     return JSON.stringify(sanitized);
   } catch {
-    return metadata;
+    return "{}";
   }
 }
 
@@ -866,29 +877,41 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
           .limit(1)
           .then((r) => r[0]);
         if (!row?.filePath) throw new Error("Memo not found or missing filePath");
+        const previousRaw = await readStorageFile(resolveStorageSource(row), row.filePath);
+        const result = await updateFrontmatterInStorage(
+          row,
+          async (fm) => {
+            if (input.title !== undefined) fm.title = input.title;
+            fm.public = input.isPublic;
+            if (input.tags !== undefined) fm.tags = input.tags;
+            fm.updateDate = new Date().toISOString();
+            await attachClippingReference(
+              input.content,
+              fm,
+              getMcpAuthContext().userId ?? null,
+              row.id
+            );
+          },
+          input.content,
+          "memo"
+        );
+        try {
+          await triggerIncrementalSync({ throwOnError: true });
+        } catch (error) {
+          try {
+            await writeStorageFile(resolveStorageSource(row), row.filePath, previousRaw);
+            await triggerIncrementalSync();
+          } catch (rollbackError) {
+            console.error("[MCP] memo update rollback failed:", rollbackError);
+          }
+          throw error;
+        }
         return {
           rowId: row.id,
-          result: await updateFrontmatterInStorage(
-            row,
-            async (fm) => {
-              if (input.title !== undefined) fm.title = input.title;
-              fm.public = input.isPublic;
-              if (input.tags !== undefined) fm.tags = input.tags;
-              fm.updateDate = new Date().toISOString();
-              await attachClippingReference(
-                input.content,
-                fm,
-                getMcpAuthContext().userId ?? null,
-                row.id
-              );
-            },
-            input.content,
-            "memo"
-          ),
+          result,
         };
       });
       notifyClippingChange(rowId);
-      await triggerIncrementalSync();
       return buildToolResult(result);
     }
   );
@@ -905,12 +928,26 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         .limit(1)
         .then((r) => r[0]);
       if (!row?.filePath) throw new Error("Memo not found or missing filePath");
-      await deleteStorageFile(resolveStorageSource(row), row.filePath);
-      await deleteIndexedContentRow(row.id);
+      const previousRaw = await readStorageFile(resolveStorageSource(row), row.filePath);
+      let deletedIndexed = false;
+      try {
+        await deleteStorageFile(resolveStorageSource(row), row.filePath);
+        await deleteIndexedContentRow(row.id);
+        deletedIndexed = true;
+        await triggerIncrementalSync({ throwOnError: true });
+      } catch (error) {
+        try {
+          await writeStorageFile(resolveStorageSource(row), row.filePath, previousRaw);
+          if (deletedIndexed) await db.insert(postsTable).values(row);
+          await triggerIncrementalSync();
+        } catch (rollbackError) {
+          console.error("[MCP] memo delete rollback failed:", rollbackError);
+        }
+        throw error;
+      }
       return row.id;
     });
     notifyClippingChange(rowId);
-    await triggerIncrementalSync();
     return { content: [{ type: "text", text: "ok" }] };
   });
 
