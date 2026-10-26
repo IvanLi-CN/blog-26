@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e2f4f281b72f2ea049c2bcefd98d736c99c691a1",
+  "covered_files": {
+    "site/assets/projects/posters-source/oidrune-dark.png": "058c90644b15a1e1d8c8063c1957dcf97e08a8de",
+    "site/assets/projects/posters-source/oidrune-light.png": "2b547564f538b6771f722aff18b15d474cccac5a",
+    "site/assets/projects/social-source/oidrune-dark.png": "b33aefd57d914cfc0aeb152777d3988f620713a9",
+    "site/assets/projects/social-source/oidrune-light.png": "f36fde2e5e3acc1ac9a16add46cff558065ffb1e"
+  },
+  "change": {
+    "description": "Add the existing Chinese Oidrune poster and social-preview source images to the public project media catalog for light and dark themes.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change adds compatible static project media and does not alter application API behavior, persistence schemas, or existing project routes.",
+      "assessed_at": "2026-10-26T16:07:45+08:00",
+      "evidence": [
+        {
+          "path": "site/assets/projects/posters-source/oidrune-dark.png",
+          "blob": "058c90644b15a1e1d8c8063c1957dcf97e08a8de",
+          "command": "Source media is copied from the confirmed Oidrune Chinese dark poster asset"
+        },
+        {
+          "path": "site/assets/projects/social-source/oidrune-dark.png",
+          "blob": "b33aefd57d914cfc0aeb152777d3988f620713a9",
+          "command": "Source media is copied from the confirmed Oidrune Chinese dark social-preview asset"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate remains limited to four source images consumed by the existing poster and social-preview generators; no runtime code, route contract, public API shape, or persistent state is changed.",
+      "assessed_at": "2026-10-26T16:07:45+08:00",
+      "evidence": [
+        {
+          "path": "scripts/verify-project-poster-assets.ts",
+          "blob": "c1b361b06108b95cd2239479543363476ca76145",
+          "command": "bun run verify:project-posters"
+        },
+        {
+          "path": "scripts/verify-project-social-preview-assets.ts",
+          "blob": "51690bf8e9fff924bbf52b9ffc58a2a8a5d3a793",
+          "command": "bun run verify:project-social-previews"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate contains only the four confirmed Oidrune source images and their release evidence record; existing generators and consumers remain unchanged."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The poster and social-preview generators produced all expected derived variants, their verification commands passed, the source hashes match the confirmed Oidrune assets, and desktop/mobile Web Demo evidence shows the media rendered in the public project list and detail page.",
+      "assessed_at": "2026-10-26T16:07:45+08:00",
+      "evidence": [
+        {
+          "path": "scripts/verify-project-poster-assets.ts",
+          "blob": "c1b361b06108b95cd2239479543363476ca76145",
+          "command": "bun run verify:project-posters: verified 128 variants"
+        },
+        {
+          "path": "scripts/verify-project-social-preview-assets.ts",
+          "blob": "51690bf8e9fff924bbf52b9ffc58a2a8a5d3a793",
+          "command": "bun run verify:project-social-previews: verified 132 variants"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0"
+      ],
+      "evidence": [
+        {
+          "path": "scripts/verify-project-poster-assets.ts",
+          "blob": "c1b361b06108b95cd2239479543363476ca76145",
+          "command": "Existing project poster URL and derived-asset contract remains unchanged"
+        },
+        {
+          "path": "scripts/verify-project-social-preview-assets.ts",
+          "blob": "51690bf8e9fff924bbf52b9ffc58a2a8a5d3a793",
+          "command": "Existing project social-preview URL and derived-asset contract remains unchanged"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The change adds static source images only; it does not change SQLite, local content, browser storage, generated manifest identity, or release ledger state.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "site/assets/projects/posters-source/oidrune-dark.png",
+          "blob": "058c90644b15a1e1d8c8063c1957dcf97e08a8de",
+          "command": "No persistent-state file or migration is introduced"
+        }
+      ]
+    }
+  }
+}
