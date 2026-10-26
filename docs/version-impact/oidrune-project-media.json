@@ -6,7 +6,8 @@
     "site/assets/projects/posters-source/oidrune-dark.png": "058c90644b15a1e1d8c8063c1957dcf97e08a8de",
     "site/assets/projects/posters-source/oidrune-light.png": "2b547564f538b6771f722aff18b15d474cccac5a",
     "site/assets/projects/social-source/oidrune-dark.png": "b33aefd57d914cfc0aeb152777d3988f620713a9",
-    "site/assets/projects/social-source/oidrune-light.png": "f36fde2e5e3acc1ac9a16add46cff558065ffb1e"
+    "site/assets/projects/social-source/oidrune-light.png": "f36fde2e5e3acc1ac9a16add46cff558065ffb1e",
+    "tests/e2e/guest/nature-front-coverage.spec.ts": "7a94119e856a837f7326b0299d558fdb92d42a6a"
   },
   "change": {
     "description": "Add the existing Chinese Oidrune poster and social-preview source images to the public project media catalog for light and dark themes.",
