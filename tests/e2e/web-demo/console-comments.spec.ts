@@ -9,7 +9,10 @@ async function openComments(page: import("@playwright/test").Page, persona: stri
   });
   const section = page.locator(".comment-section");
   await expect.poll(() => page.locator(".comment-section:visible").count()).toBe(1);
+  await expect(section).toHaveCount(1);
   await expect(section.last()).toBeVisible();
+  await expect(section.last().getByRole("heading", { name: "评论" })).toBeVisible();
+  await expect(section.last()).not.toContainText("Conversation");
   await expect(section.last()).toContainText("这篇内容的边界整理得很清楚。");
   return section.last();
 }
@@ -60,5 +63,178 @@ test.describe("Console comments Web Demo", () => {
     await expect(chatTab).toHaveAttribute("aria-selected", "false");
     await expect(page.locator(`#${commentsPanelId}`)).toBeVisible();
     await expect(page.locator(`#${aiPanelId}`)).toBeHidden();
+  });
+
+  test("keeps the public comment surface flat in the Console memo route", async ({ page }) => {
+    await page.goto(`${memoPath}?d_data=empty&d_delay=normal`, {
+      waitUntil: "domcontentloaded",
+    });
+    const section = page.locator(".comment-section:visible").last();
+    await expect(section).toBeVisible();
+    await expect(section.getByTestId("comments-empty")).toBeVisible();
+    await expect(section.locator(".comment-empty.nature-empty")).toHaveCount(0);
+  });
+
+  test("hides the composer when the Console memo target is unavailable", async ({ page }) => {
+    await page.goto(`${memoPath}?d_scene=comments-target-unavailable&d_delay=normal`, {
+      waitUntil: "domcontentloaded",
+    });
+    const section = page.locator(".comment-section:visible").last();
+    await expect(section.getByTestId("comment-target-unavailable")).toBeVisible();
+    await expect(section.getByLabel("评论内容")).toHaveCount(0);
+    await expect(section.getByRole("button", { name: "GitHub 登录" })).toHaveCount(0);
+    await expect(section).not.toContainText("暂无评论");
+  });
+
+  test("recovers Console memo comments through the retry control", async ({ page }) => {
+    await page.goto(`${memoPath}?d_connection=online&d_delay=normal`, {
+      waitUntil: "domcontentloaded",
+    });
+    const section = page.locator(".comment-section:visible").last();
+    await expect(section).toContainText("这篇内容的边界整理得很清楚。");
+    await page.getByTestId("web-demo-inspector-trigger").click();
+    await page.getByTestId("web-demo-connection-offline").click();
+    const offline = page.locator(".comment-section:visible").last();
+    await expect(offline.getByTestId("comment-retry")).toBeVisible();
+    await page.getByRole("button", { name: "收起 Web Demo 控制面板" }).click();
+    await page.evaluate(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("d_connection", "online");
+      window.history.replaceState({}, "", url);
+    });
+    await offline.getByTestId("comment-retry").click();
+    await expect(offline).toContainText("这篇内容的边界整理得很清楚。");
+  });
+
+  test("keeps an empty comment state in the Console clipping route", async ({ page }) => {
+    await page.goto(`${clippingPath}?d_data=empty&d_persona=admin&d_delay=normal`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator('[data-testid="clipping-detail"]:visible').last()).toBeVisible();
+    const section = page.locator(".comment-section:visible").last();
+    await expect(section).toBeVisible();
+    await expect(section.getByTestId("comments-empty")).toBeVisible();
+    await expect(section.locator(".comment-empty.nature-empty")).toHaveCount(0);
+  });
+
+  test("hides the composer when the Console clipping target is unavailable", async ({ page }) => {
+    await page.goto(`${clippingPath}?d_scene=comments-target-unavailable&d_delay=normal`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator('[data-testid="clipping-detail"]:visible').last()).toBeVisible();
+    const section = page.locator(".comment-section:visible").last();
+    await expect(section.getByTestId("comment-target-unavailable")).toBeVisible();
+    await expect(section.getByLabel("评论内容")).toHaveCount(0);
+    await expect(section.getByRole("button", { name: "GitHub 登录" })).toHaveCount(0);
+    await expect(section).not.toContainText("暂无评论");
+  });
+
+  test("recovers Console clipping comments through the retry control", async ({ page }) => {
+    await page.goto(`${clippingPath}?d_connection=online&d_delay=normal`, {
+      waitUntil: "domcontentloaded",
+    });
+    const section = page.locator(".comment-section:visible").last();
+    await expect(section).toContainText("这篇内容的边界整理得很清楚。");
+    await page.getByTestId("web-demo-inspector-trigger").click();
+    await page.getByTestId("web-demo-connection-offline").click();
+    const offline = page.locator(".comment-section:visible").last();
+    await expect(offline.getByTestId("comment-retry")).toBeVisible();
+    await page.getByRole("button", { name: "收起 Web Demo 控制面板" }).click();
+    await page.evaluate(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("d_connection", "online");
+      window.history.replaceState({}, "", url);
+    });
+    await offline.getByTestId("comment-retry").click();
+    await expect(offline).toContainText("这篇内容的边界整理得很清楚。");
+  });
+
+  test("uses the avatar fallback in the Console clipping route", async ({ page }) => {
+    await page.goto(
+      `${clippingPath}?d_scene=comments-avatar-failure&d_persona=admin&d_delay=normal`,
+      { waitUntil: "domcontentloaded" }
+    );
+    await expect(page.locator('[data-testid="clipping-detail"]:visible').last()).toBeVisible();
+    await expect(page.locator(".comment-section")).toHaveCount(1);
+    const isMobileViewport = await page.evaluate(() => window.innerWidth < 1024);
+    if (isMobileViewport) {
+      const sections = page.locator(".clipping-comments-below .comment-section:visible");
+      await expect(sections).toHaveCount(1);
+      const section = sections.last();
+      await expect(section).toBeVisible();
+      await expect(section.getByRole("heading", { name: "评论" })).toBeVisible();
+      await expect(section).not.toContainText("Conversation");
+      await expect(section).toContainText("这篇内容的边界整理得很清楚。");
+      await expect(section.locator(".comment-form img")).toHaveAttribute(
+        "src",
+        "/site-assets/default-avatar.svg",
+        { timeout: 15000 }
+      );
+      const authorAvatars = section.locator(".comment-item__avatar img");
+      await expect(authorAvatars).not.toHaveCount(0);
+      await expect
+        .poll(() =>
+          authorAvatars.evaluateAll((images) =>
+            images.every((image) => image.getAttribute("src") === "/site-assets/default-avatar.svg")
+          )
+        )
+        .toBe(true);
+      return;
+    }
+    const commentsTab = page.getByRole("tab", { name: "评论" });
+    await commentsTab.click();
+    const panelId = await commentsTab.getAttribute("aria-controls");
+    if (!panelId) throw new Error("Comments tab must expose its panel");
+    const section = page.locator(`#${panelId} .comment-section`);
+    await expect(section).toHaveCount(1);
+    await expect(section).toContainText("这篇内容的边界整理得很清楚。");
+    await expect(section.locator(".comment-form img")).toHaveAttribute(
+      "src",
+      "/site-assets/default-avatar.svg",
+      { timeout: 15000 }
+    );
+    const authorAvatars = section.locator(".comment-item__avatar img");
+    await expect(authorAvatars).not.toHaveCount(0);
+    await expect
+      .poll(() =>
+        authorAvatars.evaluateAll((images) =>
+          images.every((image) => image.getAttribute("src") === "/site-assets/default-avatar.svg")
+        )
+      )
+      .toBe(true);
+  });
+
+  test("normalizes empty avatar URLs in the Console clipping route", async ({ page }) => {
+    await page.goto(`${clippingPath}?d_persona=admin&d_delay=normal`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator('[data-testid="clipping-detail"]:visible').last()).toBeVisible();
+    await expect(page.locator(".comment-section")).toHaveCount(1);
+    const isMobileViewport = await page.evaluate(() => window.innerWidth < 1024);
+    let section = page.locator(".comment-section").last();
+    if (isMobileViewport) {
+      section = page.locator(".clipping-comments-below .comment-section:visible").last();
+    } else {
+      const commentsTab = page.getByRole("tab", { name: "评论" });
+      await commentsTab.click();
+      const panelId = await commentsTab.getAttribute("aria-controls");
+      if (!panelId) throw new Error("Comments tab must expose its panel");
+      section = page.locator(`#${panelId} .comment-section`);
+    }
+    await expect(section).toBeVisible();
+    await expect(section).toContainText("这篇内容的边界整理得很清楚。");
+    await expect(section.locator(".comment-form img")).toHaveAttribute(
+      "src",
+      "/site-assets/default-avatar.svg"
+    );
+    const authorAvatars = section.locator(".comment-item__avatar img");
+    await expect(authorAvatars).not.toHaveCount(0);
+    await expect
+      .poll(() =>
+        authorAvatars.evaluateAll((images) =>
+          images.every((image) => image.getAttribute("src") === "/site-assets/default-avatar.svg")
+        )
+      )
+      .toBe(true);
   });
 });

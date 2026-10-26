@@ -4,7 +4,7 @@ import CommentSection from "./CommentSection";
 
 interface CommentSectionWithProviderProps {
   postSlug: string;
-  target?: { type: "article" | "memo" | "project"; key: string };
+  target: { type: "article" | "memo" | "project"; key: string };
   title?: string;
   usePublicSitePaths?: boolean;
   embedded?: boolean;

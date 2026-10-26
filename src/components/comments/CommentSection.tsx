@@ -7,7 +7,7 @@ import CommentList from "./CommentList";
 import { useComments, usePostComment, useUserInfo } from "./hooks";
 
 const DEFAULT_TEXTS = {
-  title: "留言",
+  title: "评论",
   submitSuccess: "留言已提交，正在等待审核。",
   loadingText: "加载中...",
   loadMoreText: "加载更多",
@@ -15,7 +15,7 @@ const DEFAULT_TEXTS = {
 
 interface CommentSectionProps {
   postSlug: string;
-  target?: { type: "article" | "memo" | "project"; key: string };
+  target: { type: "article" | "memo" | "project"; key: string };
   title?: string;
   texts?: Partial<typeof DEFAULT_TEXTS>;
   usePublicSitePaths?: boolean;
@@ -47,6 +47,7 @@ export default function CommentSection({
     loadMore,
     refetch,
     isAdmin,
+    viewState,
   } = useComments({
     postSlug,
     target,
@@ -54,6 +55,9 @@ export default function CommentSection({
   const { userInfo, logout, isLoading: isUserLoading, refetchUserInfo } = useUserInfo();
   const { postComment, isPosting, error: postError } = usePostComment();
   const [successMessage, setSuccessMessage] = useState("");
+  const hasCommentContext = viewState === "ready" || viewState === "ready-empty";
+  const hasRecoverableComments = comments.length > 0;
+  const showCommentComposer = hasCommentContext || hasRecoverableComments;
 
   const handleCommentPosted = async (message: string = finalTexts.submitSuccess) => {
     setSuccessMessage(message);
@@ -69,12 +73,11 @@ export default function CommentSection({
     <section className={`comment-section ${embedded ? "comment-section--embedded" : "mt-16"}`}>
       <div className={`comment-panel ${embedded ? "comment-panel--embedded" : "nature-panel"}`}>
         <div className="comment-panel__header flex items-center gap-3">
-          <div className="nature-empty-icon h-10 w-10">
+          <div className="comment-panel__icon" aria-hidden="true">
             <Icon name="tabler:messages" className="h-5 w-5" />
           </div>
           <div>
-            <div className="nature-kicker">Conversation</div>
-            <h2 className="mt-1.5 text-2xl font-semibold text-[color:var(--nature-text)]">
+            <h2 className="text-2xl font-semibold text-[color:var(--nature-text)]">
               {displayTitle}
             </h2>
           </div>
@@ -87,13 +90,85 @@ export default function CommentSection({
           </div>
         )}
 
-        <div className="comment-compose">
-          {isUserLoading ? (
-            <div className="flex items-center justify-center p-8 text-[color:var(--nature-text-soft)]">
+        {showCommentComposer && (
+          <div className="comment-compose">
+            {isUserLoading ? (
+              <div className="flex items-center justify-center p-8 text-[color:var(--nature-text-soft)]">
+                <span className="nature-spinner h-5 w-5" />
+              </div>
+            ) : (
+              <CommentForm
+                postSlug={postSlug}
+                target={target}
+                onCommentPosted={handleCommentPosted}
+                userInfo={userInfo}
+                postComment={postComment}
+                isPosting={isPosting}
+                error={postError}
+                onLogout={logout}
+                onLoginSuccess={refetchUserInfo}
+                usePublicSitePaths={usePublicSitePaths}
+              />
+            )}
+          </div>
+        )}
+
+        <div className="comment-thread">
+          {viewState === "loading" && isCommentsLoading && page === 1 && (
+            <div
+              className="flex items-center justify-center p-8 text-[color:var(--nature-text-soft)]"
+              data-testid="comments-loading"
+            >
               <span className="nature-spinner h-5 w-5" />
             </div>
-          ) : (
-            <CommentForm
+          )}
+          {viewState === "target-unavailable" && (
+            <div
+              className="comment-state comment-state--unavailable"
+              data-testid="comment-target-unavailable"
+              role="status"
+            >
+              <Icon name="tabler:alert-triangle" className="h-5 w-5" />
+              <div>
+                <h3 className="font-semibold text-[color:var(--nature-text)]">评论目标不存在</h3>
+                <p className="mt-1 text-sm text-[color:var(--nature-text-soft)]">
+                  当前内容不可用，暂时无法显示评论。
+                </p>
+              </div>
+            </div>
+          )}
+          {viewState === "error" && (
+            <div
+              className="comment-state comment-state--error"
+              data-testid="comment-load-error"
+              role="alert"
+            >
+              <Icon name="tabler:alert-triangle" className="h-5 w-5" />
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-[color:var(--nature-text)]">
+                  评论加载失败，请重试
+                </h3>
+                {commentsError?.message && commentsError.message !== "Failed to fetch" && (
+                  <p className="mt-1 text-sm text-[color:var(--nature-text-soft)]">
+                    {commentsError.message}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                className="nature-button nature-button-ghost shrink-0"
+                onClick={refetch}
+                data-testid="comment-retry"
+              >
+                <Icon name="tabler:refresh" className="h-4 w-4" />
+                重试
+              </button>
+            </div>
+          )}
+
+          {hasCommentContext && (
+            <CommentList
+              comments={comments}
               postSlug={postSlug}
               target={target}
               onCommentPosted={handleCommentPosted}
@@ -103,40 +178,28 @@ export default function CommentSection({
               error={postError}
               onLogout={logout}
               onLoginSuccess={refetchUserInfo}
+              isAdmin={isAdmin}
               usePublicSitePaths={usePublicSitePaths}
             />
           )}
-        </div>
 
-        <div className="comment-thread">
-          {isCommentsLoading && page === 1 && (
-            <div className="flex items-center justify-center p-8 text-[color:var(--nature-text-soft)]">
-              <span className="nature-spinner h-5 w-5" />
-            </div>
-          )}
-          {commentsError && (
-            <div className="nature-alert nature-alert-error mb-6">
+          {hasCommentContext && commentsError && (
+            <div className="comment-state comment-state--inline" role="alert">
               <Icon name="tabler:alert-triangle" className="h-5 w-5" />
-              <span>{commentsError}</span>
+              <span className="min-w-0 flex-1">评论加载失败，请重试</span>
+              <button
+                type="button"
+                className="nature-button nature-button-ghost shrink-0"
+                onClick={refetch}
+                data-testid="comment-retry"
+              >
+                <Icon name="tabler:refresh" className="h-4 w-4" />
+                重试
+              </button>
             </div>
           )}
 
-          <CommentList
-            comments={comments}
-            postSlug={postSlug}
-            target={target}
-            onCommentPosted={handleCommentPosted}
-            userInfo={userInfo}
-            postComment={postComment}
-            isPosting={isPosting}
-            error={postError}
-            onLogout={logout}
-            onLoginSuccess={refetchUserInfo}
-            isAdmin={isAdmin}
-            usePublicSitePaths={usePublicSitePaths}
-          />
-
-          {page < liveTotalPages && (
+          {hasCommentContext && page < liveTotalPages && (
             <div className="comment-pagination text-center">
               <button
                 type="button"

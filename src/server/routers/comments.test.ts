@@ -377,6 +377,12 @@ describe("comments reader lifecycle", () => {
   it("keeps legacy slug-only reads compatible when the article is absent", async () => {
     const result = await createCaller().comments.getComments({ slug: "legacy-missing-article" });
     expect(result).toMatchObject({ comments: [], totalPages: 1, isAdmin: false });
+    await expect(
+      createCaller().comments.getComments({
+        slug: "legacy-missing-article",
+        target: { type: "article", key: "legacy-missing-article" },
+      })
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
   it("hides deleted reader identity while preserving visible replies", async () => {

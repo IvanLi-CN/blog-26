@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "3e45385586a098d3e83b891f241234308f162bb1",
+  "base_sha": "e2f4f281b72f2ea049c2bcefd98d736c99c691a1",
   "covered_files": {
-    "GLOSSARY.md": "4b89e5f7af439a06d0cf1857e0e1e9ac23290213",
+    "GLOSSARY.md": "b44892bd8ca4e089bd49005ed8c77c84f051cdb8",
     "apps/admin/src/demo/mock-admin-api.ts": "3a547e43af30ac2236f0376ef6df9d8d9c0a8dd1",
     "apps/admin/src/pages/content-sync.test.tsx": "9b8472941370e40e91f2775499ea9ece8b54049d",
     "apps/admin/src/pages/content-sync.tsx": "f1575d0c489296ae798b56d47829c593aadc23fa",
@@ -154,7 +154,8 @@
         "3.7.4",
         "3.8.4",
         "3.8.5",
-        "3.8.6"
+        "3.8.6",
+        "3.9.0"
       ],
       "evidence": [
         {
@@ -196,7 +197,8 @@
         "3.7.4",
         "3.8.4",
         "3.8.5",
-        "3.8.6"
+        "3.8.6",
+        "3.9.0"
       ],
       "evidence": [
         {

@@ -5,6 +5,7 @@ import Icon from "../ui/Icon";
 import { Textarea } from "../ui/textarea";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import CommentAvatar from "./CommentAvatar";
 import CommentForm from "./CommentForm";
 import CommentList from "./CommentList";
 import {
@@ -163,9 +164,8 @@ export default function CommentItem({
     <article className={`comment-item ${isReply ? "comment-item--reply" : "comment-item--root"}`}>
       <div className="comment-item__body flex items-start">
         <div className="comment-item__avatar shrink-0 overflow-hidden rounded-full border border-[rgba(var(--nature-border-rgb),0.72)]">
-          {/* biome-ignore lint/performance/noImgElement: comment avatar uses native img for framework-neutral rendering */}
-          <img
-            src={comment.author.avatarUrl}
+          <CommentAvatar
+            avatarUrl={comment.author.avatarUrl}
             alt={comment.author.nickname || "用户"}
             className="h-full w-full rounded-full object-cover"
             width={28}
