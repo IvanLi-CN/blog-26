@@ -178,7 +178,7 @@ describe.serial("Memo detail boundary", () => {
       await new Promise((resolve) => setTimeout(resolve, 30));
     });
     await waitFor(() => expect(requests).toContain("/api/public/comments"));
-    expect(view.getByRole("heading", { name: "留言" })).toBeTruthy();
+    expect(view.getByRole("heading", { name: "评论" })).toBeTruthy();
     expect(view.queryByLabelText("评论内容")).toBeNull();
   });
 
