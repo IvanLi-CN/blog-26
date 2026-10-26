@@ -3,13 +3,15 @@
   "kind": "version-impact-record",
   "base_sha": "e3989b4ea59bddad4cb910684a0546be5b0c4a88",
   "covered_files": {
+    ".github/workflows/product-release.yml": "4df561354a7b908b95ed7564520d9b086ab88cf6",
     "scripts/package-public-media.test.ts": "59d9a06c2b9de952c98a40128d8fd8a30fb07af1",
     "scripts/package-public-media.ts": "ab44e4d54fe0e5a00ce58338018f9a37ac61aa85",
-    "src/lib/release/inputs.ts": "07fdf11d208887b45beb01103f6a2a0c478a2a0e",
-    "tests/lib/manual-release-media.test.ts": "e62430fe93b69e578c2750c9dbaa121fb221900c"
+    "src/lib/release/inputs.ts": "4a4e43b3a34f5105a3e8a1b45374eadee74f3c1d",
+    "tests/ci/product-prerelease-workflow.test.ts": "f38f4c74f397bc344a7a09247b973cbfede201d6",
+    "tests/lib/manual-release-media.test.ts": "55a6517c24264b86c57f6ee13e0df4a9ec9617dd"
   },
   "change": {
-    "description": "Canonicalize v4 public-media source-format candidates to the static site's stable presentation formats and reuse sealed outputs when a frozen manifest preserves an equivalent packaged path.",
+    "description": "Canonicalize v4 public-media source-format candidates to the static site's stable presentation formats and reuse uniquely equivalent sealed outputs during release recovery.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api"]
   },
@@ -17,7 +19,7 @@
     "planned": {
       "impact": "patch",
       "reasoning": "The change corrects release-time media candidate normalization without changing public media identities, route behavior, persistence schemas, or consumer-facing API shapes.",
-      "assessed_at": "2026-10-26T19:00:51+08:00",
+      "assessed_at": "2026-10-26T21:31:27+08:00",
       "evidence": [
         {
           "path": "scripts/package-public-media.ts",
@@ -28,8 +30,8 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The candidate is limited to static packaging, frozen release input lookup, and their focused tests; it preserves existing public media URLs and changes no durable application state.",
-      "assessed_at": "2026-10-26T19:00:51+08:00",
+      "reasoning": "The candidate is limited to static packaging, frozen release input lookup, recovery tooling, and their focused tests; it preserves existing public media URLs and changes no durable application state.",
+      "assessed_at": "2026-10-26T21:31:27+08:00",
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
@@ -38,24 +40,29 @@
         },
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "07fdf11d208887b45beb01103f6a2a0c478a2a0e",
+          "blob": "4a4e43b3a34f5105a3e8a1b45374eadee74f3c1d",
           "command": "bun test tests/lib/manual-release-media.test.ts tests/lib/manual-release-inputs.test.ts"
         },
         {
           "path": "tests/lib/manual-release-media.test.ts",
-          "blob": "e62430fe93b69e578c2750c9dbaa121fb221900c",
+          "blob": "55a6517c24264b86c57f6ee13e0df4a9ec9617dd",
           "command": "bun test tests/lib/manual-release-media.test.ts"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "f38f4c74f397bc344a7a09247b973cbfede201d6",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         }
       ],
       "scope_drift": {
         "detected": false,
-        "description": "The candidate remains limited to canonical v4 source-format selection, frozen manifest output-path compatibility, and focused release-media tests."
+        "description": "The candidate remains limited to canonical v4 source-format selection, uniquely matched frozen manifest output aliases, recovery tooling, and focused release-media tests."
       }
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Focused packaging and frozen-media tests pass, repository checks pass, and canonical v4 presentation formats plus equivalent sealed output paths are accepted without changing public media identities or persistent state.",
-      "assessed_at": "2026-10-26T19:00:51+08:00",
+      "reasoning": "Focused packaging, frozen-media, and recovery-workflow tests pass, repository checks pass, and canonical v4 presentation formats plus uniquely equivalent sealed output paths are accepted without changing public media identities or persistent state.",
+      "assessed_at": "2026-10-26T21:31:27+08:00",
       "evidence": [
         {
           "path": "scripts/package-public-media.test.ts",
@@ -64,13 +71,18 @@
         },
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "07fdf11d208887b45beb01103f6a2a0c478a2a0e",
+          "blob": "4a4e43b3a34f5105a3e8a1b45374eadee74f3c1d",
           "command": "bun test tests/lib/manual-release-media.test.ts tests/lib/manual-release-inputs.test.ts"
         },
         {
           "path": "tests/lib/manual-release-media.test.ts",
-          "blob": "e62430fe93b69e578c2750c9dbaa121fb221900c",
+          "blob": "55a6517c24264b86c57f6ee13e0df4a9ec9617dd",
           "command": "bun test tests/lib/manual-release-media.test.ts"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "f38f4c74f397bc344a7a09247b973cbfede201d6",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         },
         {
           "path": "scripts/package-public-media.ts",
@@ -134,7 +146,7 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "07fdf11d208887b45beb01103f6a2a0c478a2a0e",
+          "blob": "4a4e43b3a34f5105a3e8a1b45374eadee74f3c1d",
           "command": "Frozen release input acquisition performs URL and sealed-output normalization without a state migration"
         }
       ]

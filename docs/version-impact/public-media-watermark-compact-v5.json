@@ -23,7 +23,7 @@
     "src/components/common/markdown/plugins/rehype-image-optimization.ts": "de75d2a799134fe75fd41452596a511311b43199",
     "src/lib/__tests__/public-media.test.ts": "ef402d335a1c600b6830da2dbf6a79dfcc39723c",
     "src/lib/public-media.ts": "39adc1ea4fd3fff8ac7ba300dd45f82ceac70d00",
-    "src/lib/release/inputs.ts": "07fdf11d208887b45beb01103f6a2a0c478a2a0e",
+    "src/lib/release/inputs.ts": "4a4e43b3a34f5105a3e8a1b45374eadee74f3c1d",
     "src/server/http-compat-api.test.ts": "38d1ec2ce697f44b50dc496f401cc3d427f76447",
     "src/server/public-media-watermark-assets.test.ts": "0c462fb1279284184fe20a524a4754ad1e705073",
     "src/server/public-media-watermark.test.ts": "8a12950417171189631c279d747814dd00b0dd3d",

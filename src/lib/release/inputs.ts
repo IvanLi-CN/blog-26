@@ -452,6 +452,21 @@ export async function packageFrozenMedia(
         ? url.pathname.slice(PUBLIC_MEDIA_FACADE_PREFIX.length)
         : url.pathname.slice("/api/public/".length);
       const outputPath = `${base}${STATIC_MEDIA_PREFIX}${relativePath}`;
+      const outputStem = (value: string) => value.replace(/\.[^/.]+$/u, "");
+      const requestedOutputStem = outputStem(outputPath);
+      const aliasedOutputPaths = [
+        ...new Set(
+          manifest.entries
+            .filter(
+              (item) =>
+                item.status === "packaged" &&
+                item.outputPath &&
+                outputStem(item.outputPath) === requestedOutputStem
+            )
+            .map((item) => item.outputPath as string)
+        ),
+      ];
+      const aliasedOutputPath = aliasedOutputPaths.length === 1 ? aliasedOutputPaths[0] : undefined;
       const entry =
         manifest.entries.find(
           (item) =>
@@ -459,7 +474,12 @@ export async function packageFrozenMedia(
         ) ??
         manifest.entries.find(
           (item) => item.status === "packaged" && item.outputPath === outputPath
-        );
+        ) ??
+        (aliasedOutputPath
+          ? manifest.entries.find(
+              (item) => item.status === "packaged" && item.outputPath === aliasedOutputPath
+            )
+          : undefined);
       if (!entry?.outputPath || entry.status !== "packaged")
         throw new Error("Media was not covered by the frozen public snapshot");
       const relative = entry.outputPath.slice((base || "").length).replace(/^\/+/, "");
