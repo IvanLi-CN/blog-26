@@ -1216,6 +1216,7 @@ export const memosRouter = router({
                   markdownContent,
                   systemShare.leaseToken
                 );
+                createdFreshFile = true;
               } catch (error) {
                 if (!isFileExistsError(error)) throw error;
                 const existing = readSystemShareMemoSync(fullPath);

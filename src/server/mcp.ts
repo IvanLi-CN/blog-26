@@ -22,6 +22,7 @@ import {
 } from "@/server/clipping/projection";
 import { notifyClippingChange } from "@/server/clipping/runtime";
 import { attachClippingReference } from "@/server/clipping/store";
+import { buildPublicMediaCollection, rewritePublicMemoAttachments } from "@/server/public-media";
 import {
   contentSearchInputObjectSchema,
   executeContentModes,
@@ -134,10 +135,13 @@ function getMissingRecommendedMetadata(fm: Record<string, unknown>, kind: Conten
   return fields.filter((field) => isMissingFrontmatterValue(fm[field]));
 }
 
-function stripPrivateMcpMetadata(metadata: string | null): string | null {
-  if (!metadata) return metadata;
+function stripPrivateMcpMetadata(
+  metadata: string | null,
+  publicAttachments?: Array<Record<string, unknown>>
+): string | null {
+  if (!metadata && (!publicAttachments || publicAttachments.length === 0)) return metadata;
   try {
-    const parsed = JSON.parse(metadata);
+    const parsed = metadata ? JSON.parse(metadata) : {};
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return "{}";
     const publicKeys = new Set([
       "title",
@@ -151,6 +155,9 @@ function stripPrivateMcpMetadata(metadata: string | null): string | null {
     const sanitized = Object.fromEntries(
       Object.entries(parsed as Record<string, unknown>).filter(([key]) => publicKeys.has(key))
     );
+    if (publicAttachments && publicAttachments.length > 0) {
+      sanitized.attachments = publicAttachments;
+    }
     return JSON.stringify(sanitized);
   } catch {
     return "{}";
@@ -214,6 +221,22 @@ async function annotateContentRows<T extends PostRow>(
         const auth = getMcpAuthContext();
         if (!auth.isAdmin && !(await isClippingRowPublic(row))) return null;
         const clipping = kind === "memo" ? await clippingProjectionForRow(row) : null;
+        const publicAttachmentRow = clipping
+          ? {
+              ...row,
+              body: clipping.authored.body,
+              metadata: JSON.stringify({
+                attachments: clipping.authored.frontmatter.attachments ?? [],
+              }),
+            }
+          : row;
+        const publicAttachments =
+          !auth.isAdmin && kind === "memo"
+            ? rewritePublicMemoAttachments(
+                publicAttachmentRow,
+                buildPublicMediaCollection("memo", publicAttachmentRow)
+              )
+            : undefined;
         return {
           ...row,
           ...(clipping
@@ -221,9 +244,9 @@ async function annotateContentRows<T extends PostRow>(
                 title: clipping.title,
                 body: clipping.content,
                 clipping: clipping.reading,
-                metadata: JSON.stringify({
-                  attachments: clipping.authored.frontmatter.attachments ?? [],
-                }),
+                ...(publicAttachments && publicAttachments.length > 0
+                  ? { metadata: JSON.stringify({ attachments: publicAttachments }) }
+                  : {}),
                 ...(getMcpAuthContext().isAdmin
                   ? {
                       authoredContent: clipping.authored.body.trim(),
@@ -233,7 +256,7 @@ async function annotateContentRows<T extends PostRow>(
               }
             : {}),
           ...(kind === "memo" && !auth.isAdmin
-            ? { metadata: stripPrivateMcpMetadata(row.metadata) }
+            ? { metadata: stripPrivateMcpMetadata(row.metadata, publicAttachments) }
             : {}),
           ...(await getFrontmatterDiagnostics(row, kind)),
         };
@@ -863,8 +886,21 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
     });
     const md = `${fm}${formatMarkdownBody(input.content)}`;
     await withClippingVisibilityLock(() => writeStorageFile("local", rel, md, { flag: "wx" }));
+    try {
+      await triggerIncrementalSync({ throwOnError: true });
+    } catch (error) {
+      try {
+        await withClippingVisibilityLock(async () => {
+          await deleteStorageFile("local", rel);
+          await deleteIndexedContentRow(rel);
+          await triggerIncrementalSync({ throwOnError: true });
+        });
+      } catch (rollbackError) {
+        console.error("[MCP] memo create rollback failed:", rollbackError);
+      }
+      throw error;
+    }
     notifyClippingChange(rel);
-    await triggerIncrementalSync();
     return { content: [{ type: "text", text: "ok" }] };
   });
 
