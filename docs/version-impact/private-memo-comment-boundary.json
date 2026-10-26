@@ -8,7 +8,7 @@
     "src/components/comments/CommentSectionWithProvider.tsx": "a17dcb3dc172cf02dd1b16c00f6816fcf81144bf",
     "src/components/memos/ClippingDetail.tsx": "8fb8a9d27cc2b6fc40b2548b55d510cba16c9163",
     "src/server/clipping/projection.ts": "647613c041786c27ffc468dbf21415d527f75cd9",
-    "src/server/clipping/api.test.ts": "1bc289d90cd1d8c5323a55c34db8bad86645d629",
+    "src/server/clipping/api.test.ts": "0d3fd68c98d865b0769924bdf8c6d4871776de81",
     "src/server/clipping/store.test.ts": "e18f3549cbfdeb9c4030055fd13d67519094738d",
     "src/server/clipping/store.ts": "5bbe74b49284389859adebd202e5d0ef9c3e0cf3",
     "src/server/mcp.ts": "6b7b545eed32f7f406e7d91ac363048f82ac9243",
