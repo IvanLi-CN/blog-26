@@ -945,6 +945,39 @@ const PUBLIC_DERIVED_RENDER_VARIANT_RE =
   /^\/api\/public\/assets\/(post|memo)\/([^/]+)\/([^/]+)\/(wm-[ab]-v[1234])\/(card|cover|content|full|social|poster)\.([a-z0-9]+)$/iu;
 const DERIVED_WATERMARK_RENDER_IDS = ["wm-a-v4", "wm-b-v4"] as const;
 
+/**
+ * Public media presentation URLs use a stable format per variant. The API
+ * also exposes source-format candidates for compatibility, but those
+ * candidates are not part of the static site's render contract.
+ */
+export function canonicalPublicMediaPath(pathname: string) {
+  const match = PUBLIC_DERIVED_RENDER_VARIANT_RE.exec(pathname);
+  if (!match?.[4].endsWith("-v4")) return pathname;
+
+  const variant = match[5].toLowerCase();
+  const extension = match[6].toLowerCase();
+  let canonicalExtension: string | undefined;
+  if (extension === "gif") {
+    canonicalExtension = ["content", "full"].includes(variant) ? "webp" : "jpg";
+  } else if (["avif", "bmp", "jpeg", "jpg", "png"].includes(extension)) {
+    canonicalExtension = ["social", "poster"].includes(variant) ? "jpg" : "webp";
+  }
+  if (!canonicalExtension || canonicalExtension === extension) return pathname;
+
+  const extensionStart = pathname.lastIndexOf(".");
+  return `${pathname.slice(0, extensionStart + 1)}${canonicalExtension}`;
+}
+
+export function canonicalPublicMediaFetchKey(
+  value: string | URL,
+  baseUrl = "https://public.invalid"
+) {
+  const url = new URL(String(value), baseUrl);
+  url.pathname = canonicalPublicMediaPath(url.pathname);
+  url.searchParams.delete("v");
+  return `${url.pathname}${url.search}`;
+}
+
 async function fetchMediaWithinOrigin(
   url: string,
   mediaOrigin: string,
@@ -1059,9 +1092,43 @@ async function downloadMedia(
 }
 
 function fetchKey(reference: AssetReference) {
-  const url = new URL(reference.fetchUrl);
-  url.searchParams.delete("v");
-  return `${url.pathname}${url.search}`;
+  return canonicalPublicMediaFetchKey(reference.fetchUrl);
+}
+
+function canonicalizeWatermarkReference(
+  reference: AssetReference,
+  mediaOrigin: string,
+  basePath: string,
+  siteUrl: string
+): AssetReference {
+  const canonicalPath = canonicalPublicMediaPath(reference.sourceUrl.pathname);
+  if (canonicalPath === reference.sourceUrl.pathname) return reference;
+
+  const sourceUrl = new URL(reference.sourceUrl.href);
+  sourceUrl.pathname = canonicalPath;
+  const sourcePath = `${sourceUrl.pathname}${sourceUrl.search}`;
+  const fetchUrl = `${mediaOrigin}${sourcePath}`;
+  const staticPath = sitePath(
+    basePath,
+    `${STATIC_MEDIA_PREFIX}${canonicalPath.slice(PUBLIC_MEDIA_FACADE_PREFIX.length)}`
+  );
+  const suffix = `${sourceUrl.search}${sourceUrl.hash}`;
+  const absolute = isAbsoluteHttpUrl(reference.raw);
+
+  return {
+    ...reference,
+    sourceUrl,
+    fetchUrl,
+    staticPath,
+    replacement: (status) => {
+      if (status === "external") return `${mediaOrigin}${sourcePath}${sourceUrl.hash}`;
+      const path = `${staticPath}${suffix}`;
+      return absolute ? `${new URL(siteUrl).origin}${path}` : path;
+    },
+    fallback: reference.fallback
+      ? canonicalizeWatermarkReference(reference.fallback, mediaOrigin, basePath, siteUrl)
+      : undefined,
+  };
 }
 
 function deriveWatermarkReference(
@@ -1288,11 +1355,20 @@ export async function packagePublicMedia(
   }
   for (const url of options.clippingResourceUrls ?? [])
     references.push(...extractReferences(url, siteUrl, mediaOrigin, basePath));
-  const referenceByRaw = new Map(references.map((reference) => [reference.raw, reference]));
+  const normalizedReferences = references.map((reference) =>
+    canonicalizeWatermarkReference(reference, mediaOrigin, basePath, siteUrl)
+  );
+  const referenceByRaw = new Map(
+    references.map((reference, index) => [reference.raw, normalizedReferences[index]])
+  );
 
   const uniqueReferences = new Map<string, AssetReference>();
-  for (const reference of references) {
-    uniqueReferences.set(fetchKey(reference), reference);
+  const addUniqueReference = (reference: AssetReference) => {
+    const normalized = canonicalizeWatermarkReference(reference, mediaOrigin, basePath, siteUrl);
+    uniqueReferences.set(fetchKey(normalized), normalized);
+  };
+  for (const reference of normalizedReferences) {
+    addUniqueReference(reference);
   }
 
   const entriesByKey = new Map<string, PublicMediaManifestEntry>();
@@ -1301,14 +1377,11 @@ export async function packagePublicMedia(
     for (const reference of references) {
       for (const renderId of DERIVED_WATERMARK_RENDER_IDS) {
         const derived = deriveWatermarkReference(reference, renderId, mediaOrigin, basePath);
-        if (derived) {
-          const derivedKey = fetchKey(derived);
-          if (!uniqueReferences.has(derivedKey)) uniqueReferences.set(derivedKey, derived);
-        }
+        if (derived && !uniqueReferences.has(fetchKey(derived))) addUniqueReference(derived);
       }
       for (const sibling of deriveSiblingWatermarkReferences(reference, mediaOrigin, basePath)) {
         const siblingKey = fetchKey(sibling);
-        if (!uniqueReferences.has(siblingKey)) uniqueReferences.set(siblingKey, sibling);
+        if (!uniqueReferences.has(siblingKey)) addUniqueReference(sibling);
       }
       // Legacy snapshots can render the unversioned facade URL while still
       // exposing v1 watermark candidates in their media metadata. Freeze the
@@ -1317,7 +1390,7 @@ export async function packagePublicMedia(
         const base = deriveBaseReference(reference, mediaOrigin, basePath);
         if (base) {
           const baseKey = fetchKey(base);
-          if (!uniqueReferences.has(baseKey)) uniqueReferences.set(baseKey, base);
+          if (!uniqueReferences.has(baseKey)) addUniqueReference(base);
         }
       }
       if (options.includeMigratedWatermarkVariants) {
@@ -1327,7 +1400,7 @@ export async function packagePublicMedia(
           basePath
         )) {
           const migratedKey = fetchKey(migrated);
-          if (!uniqueReferences.has(migratedKey)) uniqueReferences.set(migratedKey, migrated);
+          if (!uniqueReferences.has(migratedKey)) addUniqueReference(migrated);
         }
       }
     }

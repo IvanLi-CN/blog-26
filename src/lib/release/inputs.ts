@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import { z } from "zod";
 import {
   CLIPPING_RESOURCE_BASE_FACADE_RE,
+  canonicalPublicMediaFetchKey,
   fetchPublicResourceOverHttp11,
   type PublicMediaManifest,
   packagePublicMedia,
@@ -442,11 +443,8 @@ export async function packageFrozenMedia(
       const url = new URL(String(input));
       if (url.origin !== new URL(config.env.PUBLIC_API_BASE_URL || "").origin)
         throw new Error("Frozen media origin changed");
-      const key = (value: string) => {
-        const parsed = new URL(value, config.env.PUBLIC_API_BASE_URL);
-        parsed.searchParams.delete("v");
-        return `${parsed.pathname}${parsed.search}`;
-      };
+      const key = (value: string) =>
+        canonicalPublicMediaFetchKey(value, config.env.PUBLIC_API_BASE_URL);
       const entry = manifest.entries.find((item) => key(item.sourcePath) === key(url.href));
       if (!entry?.outputPath || entry.status !== "packaged")
         throw new Error("Media was not covered by the frozen public snapshot");

@@ -402,7 +402,7 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.getByRole("heading", { name: "Oidrune", exact: true })).toBeVisible();
 
     const projectImages = page.locator(".projects-poster-card img");
-    await expect(projectImages).toHaveCount(15);
+    await expect(projectImages).toHaveCount(16);
     await expect(projectImages.first()).toHaveAttribute("loading", "eager");
     await expect(projectImages.first()).toHaveAttribute("fetchpriority", "high");
     await expect(projectImages.nth(1)).toHaveAttribute("loading", "lazy");
@@ -703,8 +703,8 @@ test.describe("Nature frontend public coverage", () => {
       .first();
     const kaisouImage = kaisouPoster.locator("img[data-project-poster-image]");
 
-    await expect(posterImages).toHaveCount(15);
-    await expect(lazyPosters).toHaveCount(14);
+    await expect(posterImages).toHaveCount(16);
+    await expect(lazyPosters).toHaveCount(15);
     await expect(kaisouPoster.locator(".project-poster-preview")).toBeVisible();
     await expect(kaisouPoster.locator(".project-poster-copy")).toHaveCount(0);
     await expect(kaisouPoster.locator(".project-poster-scrim")).toHaveCount(0);
