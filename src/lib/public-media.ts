@@ -21,6 +21,8 @@ export const PUBLIC_MEDIA_RENDER_IDS = [
   "wm-b-v3",
   "wm-a-v4",
   "wm-b-v4",
+  "wm-a-v5",
+  "wm-b-v5",
 ] as const;
 export const PUBLIC_MEDIA_ROLES = ["cover", "content", "attachment", "playback"] as const;
 
@@ -30,7 +32,7 @@ export type PublicMediaVariant = (typeof PUBLIC_MEDIA_VARIANTS)[number];
 export type PublicMediaRenderId = (typeof PUBLIC_MEDIA_RENDER_IDS)[number];
 export type PublicMediaRole = (typeof PUBLIC_MEDIA_ROLES)[number];
 export type PublicMediaKind = "image" | "gif" | "video";
-export type PublicMediaWatermarkVersion = "v2" | "v3" | "v4";
+export type PublicMediaWatermarkVersion = "v2" | "v3" | "v4" | "v5";
 
 export interface PublicMediaContext {
   kind: PublicContentKind;
@@ -200,7 +202,7 @@ export function isPublicMediaRenderId(value: string): value is PublicMediaRender
 
 export function getDefaultPublicMediaRenderId(
   variant: Exclude<PublicMediaVariant, "play">,
-  version: PublicMediaWatermarkVersion = "v4"
+  version: PublicMediaWatermarkVersion = "v5"
 ): PublicMediaRenderId {
   return variant === "card" ? `wm-a-${version}` : `wm-b-${version}`;
 }
@@ -385,7 +387,7 @@ export function buildPublicMediaAssetUrl(params: {
             ? undefined
             : getDefaultPublicMediaRenderId(
                 params.variant,
-                params.context.watermarkRenderVersion ?? "v4"
+                params.context.watermarkRenderVersion ?? "v5"
               ))),
     variant: params.variant,
     ext,
@@ -406,8 +408,8 @@ function watermarkPresentationVersion(
   try {
     const aPath = new URL(presentations.a, "https://public.invalid").pathname;
     const bPath = new URL(presentations.b, "https://public.invalid").pathname;
-    const aVersion = /(?:^|\/)wm-a-(v2|v3|v4)\//u.exec(aPath)?.[1];
-    const bVersion = /(?:^|\/)wm-b-(v2|v3|v4)\//u.exec(bPath)?.[1];
+    const aVersion = /(?:^|\/)wm-a-(v2|v3|v4|v5)\//u.exec(aPath)?.[1];
+    const bVersion = /(?:^|\/)wm-b-(v2|v3|v4|v5)\//u.exec(bPath)?.[1];
     return aVersion && aVersion === bVersion ? (aVersion as PublicMediaWatermarkVersion) : null;
   } catch {
     return null;
@@ -458,7 +460,7 @@ export function buildPublicMediaPresentations(params: {
     }
     return buildPublicMediaAssetUrl({ ...params, renderId });
   };
-  const version = params.context.watermarkRenderVersion ?? "v4";
+  const version = params.context.watermarkRenderVersion ?? "v5";
   const renderIds = [`wm-a-${version}`, `wm-b-${version}`] as [
     PublicMediaRenderId,
     PublicMediaRenderId,

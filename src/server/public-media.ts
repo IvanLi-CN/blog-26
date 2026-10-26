@@ -375,7 +375,7 @@ function getPublicMediaRenderId(
   context: PublicMediaContext,
   variant: Exclude<PublicMediaVariant, "play">
 ): PublicMediaRenderId | undefined {
-  return getDefaultPublicMediaRenderId(variant, context.watermarkRenderVersion ?? "v4");
+  return getDefaultPublicMediaRenderId(variant, context.watermarkRenderVersion ?? "v5");
 }
 
 function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference) {
@@ -850,13 +850,15 @@ function getWatermarkComposition(renderId: PublicMediaRenderId) {
 }
 
 function getWatermarkVersion(renderId: PublicMediaRenderId) {
-  return renderId.endsWith("-v4")
-    ? ("v4" as const)
-    : renderId.endsWith("-v3")
-      ? ("v3" as const)
-      : renderId.endsWith("-v2")
-        ? ("v2" as const)
-        : ("v1" as const);
+  return renderId.endsWith("-v5")
+    ? ("v5" as const)
+    : renderId.endsWith("-v4")
+      ? ("v4" as const)
+      : renderId.endsWith("-v3")
+        ? ("v3" as const)
+        : renderId.endsWith("-v2")
+          ? ("v2" as const)
+          : ("v1" as const);
 }
 
 function getWatermarkMargin(dimensions: DerivedDimensions) {
@@ -1051,7 +1053,9 @@ async function getWatermarkPlan(params: {
   const composition = getWatermarkComposition(params.renderId);
   const version = getWatermarkVersion(params.renderId);
   const ink: WatermarkInk =
-    version === "v3" || version === "v4" ? await chooseAdaptiveWatermarkInk(params) : "light";
+    version === "v3" || version === "v4" || version === "v5"
+      ? await chooseAdaptiveWatermarkInk(params)
+      : "light";
   return createWatermarkPlan({ composition, version, ink, dimensions: params.dimensions });
 }
 
@@ -1106,8 +1110,9 @@ async function getWatermarkFilter(
   const plan = await getWatermarkPlan({ request, context, ref, variant, dimensions, renderId });
   const watermarkUrl = `${getInternalSourceBaseUrl(request)}/${plan.asset}`;
   // Versioned filters keep the historical v1 expression and use explicit bounds
-  // for v2+; v4 also uses a zero-origin A canvas so deployed Imagor renderers
-  // cannot interpret the SVG's intrinsic offset as a full-size watermark.
+  // Versioned filters keep the historical v1 expression and use explicit bounds
+  // for v2+; v5 uses a compact A canvas so deployed Imagor renderers cannot
+  // interpret the SVG's intrinsic canvas as a full-size watermark.
   return plan.heightRatio === null
     ? `watermark(${encodeImagorFilterString(watermarkUrl)},-${plan.margin},-${plan.margin},36,${plan.widthRatio * 100})`
     : `watermark(${encodeImagorFilterString(watermarkUrl)},-${plan.margin},-${plan.margin},36,${plan.widthRatio * 100},${plan.heightRatio})`;

@@ -404,6 +404,16 @@ function buildDynamicChecks(
       excludes: [],
     },
     {
+      file: "site-dist/watermark-ivanli-a.light.v5.svg",
+      includes: ["<svg", 'viewBox="0 0 150 105"', "#fff"],
+      excludes: [],
+    },
+    {
+      file: "site-dist/watermark-ivanli-a.dark.v5.svg",
+      includes: ["<svg", 'viewBox="0 0 150 105"', "#24352d"],
+      excludes: [],
+    },
+    {
       file: "site-dist/robots.txt",
       includes: [`Host: ${siteOrigin}`, `Sitemap: ${siteUrl}/sitemap.xml`],
       excludes: siteOrigin === siteUrl ? [] : [`Host: ${siteUrl}`],
