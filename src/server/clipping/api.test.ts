@@ -589,6 +589,9 @@ test("public MCP memo metadata fails closed for private and malformed values", a
           {
             path: "assets/system-share/submission/secret-lease-token/private.png",
           },
+          {
+            path: "assets/system-share/submission/secret-lease-token/private.txt",
+          },
         ],
       }),
       contentHash: marker,
@@ -612,6 +615,7 @@ test("public MCP memo metadata fails closed for private and malformed values", a
     const sanitizedMetadata = JSON.parse(sanitized?.metadata ?? "{}") as {
       attachments?: Array<{ path?: string }>;
     };
+    expect(sanitizedMetadata.attachments).toHaveLength(1);
     expect(sanitizedMetadata.attachments?.[0]?.path).toContain("/api/public/assets/memo/");
     expect(sanitized?.metadata).not.toContain("secret-lease-token");
 

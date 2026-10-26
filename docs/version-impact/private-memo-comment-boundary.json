@@ -12,6 +12,7 @@
     "src/server/clipping/store.test.ts": "e18f3549cbfdeb9c4030055fd13d67519094738d",
     "src/server/clipping/store.ts": "5bbe74b49284389859adebd202e5d0ef9c3e0cf3",
     "src/server/mcp.ts": "6b7b545eed32f7f406e7d91ac363048f82ac9243",
+    "src/server/public-media.ts": "ddd59aba42de96914e424e0bcaeca6be05e3960f",
     "src/server/routers/admin/files.ts": "b6f4a79f2939291764b30df420bebee43e5daa0e",
     "src/server/routers/comments.test.ts": "71ec7bab9a668ed1b7559fc54d91f57130585a68",
     "src/server/routers/comments.ts": "8ebfa5d0aece1f01c1a3cc0fed1b09e29496f662",
@@ -58,6 +59,11 @@
           "command": "MCP list selection/projection and Memo create, update, and delete paths share the clipping visibility lock; public Memo fields and metadata are allowlisted fail-closed, publishable attachments use the public-media projection, and creation rollback removes failed canonical files"
         },
         {
+          "path": "src/server/public-media.ts",
+          "blob": "ddd59aba42de96914e424e0bcaeca6be05e3960f",
+          "command": "Public Memo attachments keep external or already-published URLs and omit unsupported or unresolved local paths instead of returning private source paths"
+        },
+        {
           "path": "src/server/routers/admin/files.ts",
           "blob": "b6f4a79f2939291764b30df420bebee43e5daa0e",
           "command": "Local Markdown file mutations share the clipping visibility lock"
@@ -99,6 +105,11 @@
           "command": "MCP list selection/projection and canonical Memo create, update, and delete paths share the visibility lock, public field/metadata boundary, public-media attachment projection, and rollback handling"
         },
         {
+          "path": "src/server/public-media.ts",
+          "blob": "ddd59aba42de96914e424e0bcaeca6be05e3960f",
+          "command": "Public attachment projection drops unsupported and unresolved local sources rather than falling back to canonical paths"
+        },
+        {
           "path": "src/server/routers/admin/files.ts",
           "blob": "b6f4a79f2939291764b30df420bebee43e5daa0e",
           "command": "Admin local Markdown write, rename, move, copy, and delete paths share the visibility lock"
@@ -110,7 +121,7 @@
         },
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "1bc289d90cd1d8c5323a55c34db8bad86645d629",
+          "blob": "0d3fd68c98d865b0769924bdf8c6d4871776de81",
           "command": "MCP public memo list regression verifies private fields and malformed/system-share metadata are not exposed while publishable attachments are rewritten"
         },
         {
