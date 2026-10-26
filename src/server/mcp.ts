@@ -194,37 +194,39 @@ async function getFrontmatterDiagnostics(row: PostRow, kind: ContentKind) {
 }
 
 async function annotateContentRows<T extends PostRow>(rows: T[], kind: ContentKind) {
-  const results = await Promise.all(
-    rows.map(async (row) => {
-      const auth = getMcpAuthContext();
-      if (!auth.isAdmin && !(await isClippingRowPublic(row))) return null;
-      const clipping = kind === "memo" ? await clippingProjectionForRow(row) : null;
-      return {
-        ...row,
-        ...(clipping
-          ? {
-              title: clipping.title,
-              body: clipping.content,
-              clipping: clipping.reading,
-              metadata: JSON.stringify({
-                attachments: clipping.authored.frontmatter.attachments ?? [],
-              }),
-              ...(getMcpAuthContext().isAdmin
-                ? {
-                    authoredContent: clipping.authored.body.trim(),
-                    authoredTitle: clipping.authored.frontmatter.title ?? "",
-                  }
-                : {}),
-            }
-          : {}),
-        ...(kind === "memo" && !auth.isAdmin
-          ? { metadata: stripPrivateMcpMetadata(row.metadata) }
-          : {}),
-        ...(await getFrontmatterDiagnostics(row, kind)),
-      };
-    })
-  );
-  return results.filter((row) => row !== null);
+  return withClippingVisibilityLock(async () => {
+    const results = await Promise.all(
+      rows.map(async (row) => {
+        const auth = getMcpAuthContext();
+        if (!auth.isAdmin && !(await isClippingRowPublic(row))) return null;
+        const clipping = kind === "memo" ? await clippingProjectionForRow(row) : null;
+        return {
+          ...row,
+          ...(clipping
+            ? {
+                title: clipping.title,
+                body: clipping.content,
+                clipping: clipping.reading,
+                metadata: JSON.stringify({
+                  attachments: clipping.authored.frontmatter.attachments ?? [],
+                }),
+                ...(getMcpAuthContext().isAdmin
+                  ? {
+                      authoredContent: clipping.authored.body.trim(),
+                      authoredTitle: clipping.authored.frontmatter.title ?? "",
+                    }
+                  : {}),
+              }
+            : {}),
+          ...(kind === "memo" && !auth.isAdmin
+            ? { metadata: stripPrivateMcpMetadata(row.metadata) }
+            : {}),
+          ...(await getFrontmatterDiagnostics(row, kind)),
+        };
+      })
+    );
+    return results.filter((row) => row !== null);
+  });
 }
 
 function resolveStorageSource(_row: Pick<PostRow, "source" | "dataSource">): StorageSource {
@@ -240,13 +242,14 @@ async function readStorageFile(_source: StorageSource, filePath: string): Promis
 async function writeStorageFile(
   _source: StorageSource,
   filePath: string,
-  content: string
+  content: string,
+  options: { flag?: "w" | "wx" } = {}
 ): Promise<void> {
   const fs = await import("node:fs/promises");
   const p = await import("node:path");
   const full = p.join(getLocalBasePathOrThrow(), filePath);
   await fs.mkdir(p.dirname(full), { recursive: true });
-  await fs.writeFile(full, content, "utf-8");
+  await fs.writeFile(full, content, { encoding: "utf-8", ...options });
 }
 
 async function deleteStorageFile(_source: StorageSource, filePath: string): Promise<void> {
@@ -782,7 +785,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       },
     });
     const md = `${fm}${formatMarkdownBody(input.content)}`;
-    await writeStorageFile("local", rel, md);
+    await withClippingVisibilityLock(() => writeStorageFile("local", rel, md, { flag: "wx" }));
     notifyClippingChange(rel);
     await triggerIncrementalSync();
     return { content: [{ type: "text", text: "ok" }] };

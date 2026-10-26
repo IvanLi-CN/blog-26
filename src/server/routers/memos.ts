@@ -1170,60 +1170,66 @@ export const memosRouter = router({
           createdId
         );
 
-        if (systemShare) {
-          withSystemShareFileCommit(systemShare, fullPath, () => {
-            try {
-              const existing = readSystemShareMemoSync(fullPath);
-              if (belongsToSystemShare(existing, systemShare.submissionId)) {
-                normalizedContent = existing.body;
-                const existingAttachments = existing.frontmatter.attachments;
-                normalizedAttachments = Array.isArray(existingAttachments)
-                  ? existingAttachments
-                  : normalizedAttachments;
-                frontmatter = { ...existing.frontmatter };
-                return;
-              }
-              throw new Error("System-share Memo path is already owned by another submission");
-            } catch (error) {
-              if (isMissingFileError(error)) {
-                // The first publish has not reached the filesystem commit point.
-              } else if (isYamlParseError(error)) {
-                if (!rawSystemShareMarkerMatches(fullPath, systemShare.submissionId)) {
-                  throw new Error("System-share Memo path has unverified malformed content");
+        await withClippingVisibilityLock(async () => {
+          if (systemShare) {
+            withSystemShareFileCommit(systemShare, fullPath, () => {
+              try {
+                const existing = readSystemShareMemoSync(fullPath);
+                if (belongsToSystemShare(existing, systemShare.submissionId)) {
+                  normalizedContent = existing.body;
+                  const existingAttachments = existing.frontmatter.attachments;
+                  normalizedAttachments = Array.isArray(existingAttachments)
+                    ? existingAttachments
+                    : normalizedAttachments;
+                  frontmatter = { ...existing.frontmatter };
+                  return;
                 }
-                unlinkSync(fullPath);
-              } else {
-                throw error;
+                throw new Error("System-share Memo path is already owned by another submission");
+              } catch (error) {
+                if (isMissingFileError(error)) {
+                  // The first publish has not reached the filesystem commit point.
+                } else if (isYamlParseError(error)) {
+                  if (!rawSystemShareMarkerMatches(fullPath, systemShare.submissionId)) {
+                    throw new Error("System-share Memo path has unverified malformed content");
+                  }
+                  unlinkSync(fullPath);
+                } else {
+                  throw error;
+                }
               }
+              const markdownContent = buildMemoMarkdownDocument(normalizedContent, frontmatter);
+              try {
+                writeSystemShareMemoAtomicallySync(
+                  fullPath,
+                  markdownContent,
+                  systemShare.leaseToken
+                );
+              } catch (error) {
+                if (!isFileExistsError(error)) throw error;
+                const existing = readSystemShareMemoSync(fullPath);
+                if (belongsToSystemShare(existing, systemShare.submissionId)) {
+                  normalizedContent = existing.body;
+                  const existingAttachments = existing.frontmatter.attachments;
+                  normalizedAttachments = Array.isArray(existingAttachments)
+                    ? existingAttachments
+                    : normalizedAttachments;
+                  frontmatter = { ...existing.frontmatter };
+                  return;
+                }
+                throw new Error("System-share Memo path is already owned by another submission");
+              }
+            });
+            if (isTestEnv && process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_MEMO_LINK === "1") {
+              throw new Error("system-share post-commit failure (test injection)");
             }
+          } else {
             const markdownContent = buildMemoMarkdownDocument(normalizedContent, frontmatter);
-            try {
-              writeSystemShareMemoAtomicallySync(fullPath, markdownContent, systemShare.leaseToken);
-            } catch (error) {
-              if (!isFileExistsError(error)) throw error;
-              const existing = readSystemShareMemoSync(fullPath);
-              if (belongsToSystemShare(existing, systemShare.submissionId)) {
-                normalizedContent = existing.body;
-                const existingAttachments = existing.frontmatter.attachments;
-                normalizedAttachments = Array.isArray(existingAttachments)
-                  ? existingAttachments
-                  : normalizedAttachments;
-                frontmatter = { ...existing.frontmatter };
-                return;
-              }
-              throw new Error("System-share Memo path is already owned by another submission");
-            }
-          });
-          if (isTestEnv && process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_MEMO_LINK === "1") {
-            throw new Error("system-share post-commit failure (test injection)");
+            await writeFile(fullPath, markdownContent, {
+              encoding: "utf-8",
+              flag: "wx",
+            });
           }
-        } else {
-          const markdownContent = buildMemoMarkdownDocument(normalizedContent, frontmatter);
-          await writeFile(fullPath, markdownContent, {
-            encoding: "utf-8",
-            flag: "w",
-          });
-        }
+        });
 
         createdSource = source;
 
