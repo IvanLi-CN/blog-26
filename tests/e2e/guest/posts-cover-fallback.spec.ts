@@ -33,7 +33,7 @@ test.describe("posts cover fallback", () => {
 
     const parsedImageUrl = new URL(imageSrc, page.url());
     expect(parsedImageUrl.pathname).toMatch(
-      /\/api\/public\/assets\/post\/hello-world\/[0-9a-f]+\/wm-a-v4\/card\.webp$/
+      /\/api\/public\/assets\/post\/hello-world\/[0-9a-f]+\/wm-a-v5\/card\.webp$/
     );
     expect(parsedImageUrl.searchParams.has("v")).toBe(true);
 

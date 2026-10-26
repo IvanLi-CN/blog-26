@@ -40,8 +40,8 @@
     "package.json": "d302eecab6d7ec8e908c2b16eeed1988a18c4bd2",
     "scripts/backfill-reader-comments.ts": "753401fbacb59cfbbe555050104bdfb45164600c",
     "scripts/build-web-demo.ts": "9fecc9affe2adb46c6ae5450bd9c0826254fc676",
-    "scripts/package-public-media.test.ts": "330bc5ecbea30eeae96e4b239fba008fe900173e",
-    "scripts/package-public-media.ts": "f2333bc13d4a5c3001f92dd36b5b486c6e19cf4e",
+    "scripts/package-public-media.test.ts": "e180f3958707cf644a0487ddf68a63cc8cd8db04",
+    "scripts/package-public-media.ts": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
     "site/components/PublicMemoAuthoring.tsx": "ae261d910d58fba2d63f7f9580c7beab70cd6534",
     "site/components/pages/memo.tsx": "b2162e7617f7866b0d1c55b662d0e87d94aac1d3",
     "site/components/pages/post.tsx": "f31b28e9f9ee72534e040bd9a35151caf42c69d1",
@@ -71,7 +71,7 @@
     "src/lib/web-demo-runtime.ts": "7a5b7a60dda23347c53c158c31fc5eca528baad9",
     "src/server/admin-api/router.ts": "00923d2dd94beba5588c0e3cfccaf82516933ed0",
     "src/server/context.ts": "995fcb26b6d4db0228ca66760f1688fd8a0c02d4",
-    "src/server/http-compat-api.test.ts": "d2391252019fefb426d753ad1ddb3ab50f2a5e78",
+    "src/server/http-compat-api.test.ts": "38d1ec2ce697f44b50dc496f401cc3d427f76447",
     "src/server/public-api/router.ts": "04f552874e2640c0699145020e40d2667c303d57",
     "src/server/routers/admin/comments.ts": "2b04da5c8a5aeee2e81e5006d5b0c5fd694e72a8",
     "src/server/routers/admin/dashboard.ts": "770ff0c173bfd1f09ba38a3aae50161b889d761a",
@@ -94,7 +94,10 @@
   "change": {
     "description": "Add independent GitHub reader OAuth with PKCE, target-aware article/Memo/project comments, review-before-publication, soft deletion and restoration, historical comment migration, administrator batch moderation, GitHub administrator identity binding, and responsive public/Console comment surfaces.",
     "release_unit_description": "static frontend and full-feature Docker image",
-    "affected_contracts": ["public-api", "persistent-state"]
+    "affected_contracts": [
+      "public-api",
+      "persistent-state"
+    ]
   },
   "classification": {
     "planned": {
@@ -262,7 +265,7 @@
         },
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "d2391252019fefb426d753ad1ddb3ab50f2a5e78",
+          "blob": "38d1ec2ce697f44b50dc496f401cc3d427f76447",
           "command": "bun test src/server/http-compat-api.test.ts: 98 passed, 3 existing skips"
         },
         {

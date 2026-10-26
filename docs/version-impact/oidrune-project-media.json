@@ -12,7 +12,9 @@
   "change": {
     "description": "Add the existing Chinese Oidrune poster and social-preview source images to the public project media catalog for light and dark themes.",
     "release_unit_description": "static frontend and full-feature Docker image",
-    "affected_contracts": ["public-api"]
+    "affected_contracts": [
+      "public-api"
+    ]
   },
   "classification": {
     "planned": {

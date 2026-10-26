@@ -116,12 +116,14 @@ describe("public media watermark contrast", () => {
     expect(mask.data.some((value) => value > 0)).toBe(true);
   });
 
-  it("keeps historical asset identity and gives v3/v4 explicit ink assets", () => {
+  it("keeps historical asset identity and gives v3-v5 explicit ink assets", () => {
     expect(watermarkAssetName("a", "v1")).toBe("watermark-ivanli-a.v1.svg");
     expect(watermarkAssetName("b", "v2")).toBe("watermark-ivanli-b.v1.svg");
     expect(watermarkAssetName("a", "v3", "dark")).toBe("watermark-ivanli-a.dark.v3.svg");
     expect(watermarkAssetName("a", "v4", "dark")).toBe("watermark-ivanli-a.dark.v4.svg");
     expect(watermarkAssetName("b", "v4", "dark")).toBe("watermark-ivanli-b.dark.v3.svg");
+    expect(watermarkAssetName("a", "v5", "dark")).toBe("watermark-ivanli-a.dark.v5.svg");
+    expect(watermarkAssetName("b", "v5", "dark")).toBe("watermark-ivanli-b.dark.v3.svg");
     expect(
       createWatermarkPlan({
         composition: "a",
@@ -151,5 +153,21 @@ describe("public media watermark contrast", () => {
     expect(watermarkCacheKey({ ...base, version: "v3" })).not.toBe(
       watermarkCacheKey({ ...base, version: "v4" })
     );
+  });
+
+  it("keeps the compact v5 A plan bounded by the final output width", () => {
+    expect(
+      createWatermarkPlan({
+        composition: "a",
+        version: "v5",
+        ink: "light",
+        dimensions: { width: 744, height: 464 },
+      })
+    ).toMatchObject({
+      asset: "watermark-ivanli-a.light.v5.svg",
+      width: 52,
+      margin: 15,
+      heightRatio: 100,
+    });
   });
 });

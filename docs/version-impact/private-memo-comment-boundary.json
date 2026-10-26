@@ -12,7 +12,7 @@
     "src/server/clipping/store.test.ts": "e18f3549cbfdeb9c4030055fd13d67519094738d",
     "src/server/clipping/store.ts": "5bbe74b49284389859adebd202e5d0ef9c3e0cf3",
     "src/server/mcp.ts": "6b7b545eed32f7f406e7d91ac363048f82ac9243",
-    "src/server/public-media.ts": "ddd59aba42de96914e424e0bcaeca6be05e3960f",
+    "src/server/public-media.ts": "a908031949cf151286a8b7dc0ac3b82f6a234495",
     "src/server/public-api/router.ts": "04f552874e2640c0699145020e40d2667c303d57",
     "src/server/routers/admin/files.ts": "b6f4a79f2939291764b30df420bebee43e5daa0e",
     "src/server/routers/comments.test.ts": "3c594830b94c86e461460ea9a2f687126226150c",
@@ -24,7 +24,9 @@
   "change": {
     "description": "Preserve the GitHub reader comment boundary for public Memo reads and writes when an administrator changes publication state concurrently, while keeping the existing target-aware comment surface and private Memo behavior.",
     "release_unit_description": "static frontend and full-feature Docker image",
-    "affected_contracts": ["public-api"]
+    "affected_contracts": [
+      "public-api"
+    ]
   },
   "classification": {
     "planned": {
@@ -61,7 +63,7 @@
         },
         {
           "path": "src/server/public-media.ts",
-          "blob": "ddd59aba42de96914e424e0bcaeca6be05e3960f",
+          "blob": "a908031949cf151286a8b7dc0ac3b82f6a234495",
           "command": "Public Memo attachments keep external or already-published URLs and omit unsupported or unresolved local paths instead of returning private source paths"
         },
         {
@@ -112,7 +114,7 @@
         },
         {
           "path": "src/server/public-media.ts",
-          "blob": "ddd59aba42de96914e424e0bcaeca6be05e3960f",
+          "blob": "a908031949cf151286a8b7dc0ac3b82f6a234495",
           "command": "Public attachment projection drops unsupported and unresolved local sources rather than falling back to canonical paths"
         },
         {
