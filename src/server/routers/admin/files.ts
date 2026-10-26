@@ -34,6 +34,7 @@ import { clearSearchCache } from "../../../lib/ai/search-cache";
 import { getContentSourceManager, LocalContentSource } from "../../../lib/content-sources";
 import { db } from "../../../lib/db";
 import { postEmbeddings, posts, vectorizedFiles } from "../../../lib/schema";
+import { withClippingVisibilityLock } from "../../clipping/projection";
 import { adminProcedure, createTRPCRouter } from "../../trpc";
 
 const listDirectorySchema = z.object({
@@ -1419,16 +1420,20 @@ export const filesRouter = createTRPCRouter({
       });
     }
 
-    const writeSnapshot = await snapshotWritableLocalFile(input.path);
-    await (
-      source as LocalContentSource & { writeFile: (path: string, content: string) => Promise<void> }
-    ).writeFile(input.path, contentToWrite);
+    await withClippingVisibilityLock(async () => {
+      const writeSnapshot = await snapshotWritableLocalFile(input.path);
+      await (
+        source as LocalContentSource & {
+          writeFile: (path: string, content: string) => Promise<void>;
+        }
+      ).writeFile(input.path, contentToWrite);
 
-    if (isMarkdown) {
-      await syncAndCommitFileMutation(writeSnapshot, {
-        rollbackPaths: [input.path],
-      });
-    }
+      if (isMarkdown) {
+        await syncAndCommitFileMutation(writeSnapshot, {
+          rollbackPaths: [input.path],
+        });
+      }
+    });
 
     return {
       success: true,
@@ -1494,10 +1499,12 @@ export const filesRouter = createTRPCRouter({
       });
     }
 
-    const result = await renameLocalFile(input.oldPath, input.newName);
-    await syncAndCommitFileMutation(result, {
-      stalePaths: [input.oldPath],
-      rollbackPaths: [input.oldPath, result.newPath],
+    await withClippingVisibilityLock(async () => {
+      const mutation = await renameLocalFile(input.oldPath, input.newName);
+      await syncAndCommitFileMutation(mutation, {
+        stalePaths: [input.oldPath],
+        rollbackPaths: [input.oldPath, mutation.newPath],
+      });
     });
 
     return {
@@ -1512,13 +1519,15 @@ export const filesRouter = createTRPCRouter({
     const manager = getContentSourceManager();
     await ensureSourceReady(manager);
 
-    const mutation = await moveLocalEntries(input.paths, input.destinationPath);
-    const result = await syncAndCommitFileMutation(mutation, {
-      stalePaths: input.paths,
-      rollbackPaths: [
-        ...input.paths,
-        ...mutation.moved.flatMap((entry) => (entry.nextPath ? [entry.nextPath] : [])),
-      ],
+    const result = await withClippingVisibilityLock(async () => {
+      const mutation = await moveLocalEntries(input.paths, input.destinationPath);
+      return syncAndCommitFileMutation(mutation, {
+        stalePaths: input.paths,
+        rollbackPaths: [
+          ...input.paths,
+          ...mutation.moved.flatMap((entry) => (entry.nextPath ? [entry.nextPath] : [])),
+        ],
+      });
     });
 
     return {
@@ -1533,12 +1542,14 @@ export const filesRouter = createTRPCRouter({
     const manager = getContentSourceManager();
     await ensureSourceReady(manager);
 
-    const mutation = await copyLocalEntries(input.paths, input.destinationPath);
-    const result = await syncAndCommitFileMutation(mutation, {
-      rollbackPaths: [
-        ...input.paths,
-        ...mutation.copied.flatMap((entry) => (entry.nextPath ? [entry.nextPath] : [])),
-      ],
+    const result = await withClippingVisibilityLock(async () => {
+      const mutation = await copyLocalEntries(input.paths, input.destinationPath);
+      return syncAndCommitFileMutation(mutation, {
+        rollbackPaths: [
+          ...input.paths,
+          ...mutation.copied.flatMap((entry) => (entry.nextPath ? [entry.nextPath] : [])),
+        ],
+      });
     });
 
     return {
@@ -1553,9 +1564,11 @@ export const filesRouter = createTRPCRouter({
     const manager = getContentSourceManager();
     await ensureSourceReady(manager);
 
-    const result = await syncAndCommitFileMutation(await deleteLocalEntries(input.entries), {
-      stalePaths: input.entries.map((entry) => entry.path),
-    });
+    const result = await withClippingVisibilityLock(async () =>
+      syncAndCommitFileMutation(await deleteLocalEntries(input.entries), {
+        stalePaths: input.entries.map((entry) => entry.path),
+      })
+    );
 
     return {
       success: true,

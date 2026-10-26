@@ -15,9 +15,14 @@ import { buildMemoRelativePath } from "@/lib/memo-paths";
 import { posts as postsTable } from "@/lib/schema";
 import { buildContentSearchCondition } from "@/lib/search/content-search";
 import { isSearchQueryWithinBudget } from "@/lib/search/query";
-import { clippingProjectionForRow, isClippingRowPublic } from "@/server/clipping/projection";
+import {
+  clippingProjectionForRow,
+  isClippingRowPublic,
+  withClippingVisibilityLock,
+} from "@/server/clipping/projection";
 import { notifyClippingChange } from "@/server/clipping/runtime";
 import { attachClippingReference } from "@/server/clipping/store";
+import { buildPublicMediaCollection, rewritePublicMemoAttachments } from "@/server/public-media";
 import {
   contentSearchInputObjectSchema,
   executeContentModes,
@@ -83,12 +88,13 @@ async function ensureContentSourcesRegistered() {
   return manager;
 }
 
-async function triggerIncrementalSync() {
+async function triggerIncrementalSync(options: { throwOnError?: boolean } = {}) {
   const manager = await ensureContentSourcesRegistered();
   try {
     await manager.syncAll(false);
   } catch (e) {
     console.warn("[MCP] incremental sync failed:", e);
+    if (options.throwOnError) throw e;
   }
 }
 
@@ -129,17 +135,32 @@ function getMissingRecommendedMetadata(fm: Record<string, unknown>, kind: Conten
   return fields.filter((field) => isMissingFrontmatterValue(fm[field]));
 }
 
-function stripPrivateMcpMetadata(metadata: string | null): string | null {
-  if (!metadata) return metadata;
+function stripPrivateMcpMetadata(
+  metadata: string | null,
+  publicAttachments?: Array<Record<string, unknown>>
+): string | null {
+  if (!metadata && (!publicAttachments || publicAttachments.length === 0)) return metadata;
   try {
-    const parsed = JSON.parse(metadata);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return metadata;
-    const sanitized = { ...(parsed as Record<string, unknown>) };
-    for (const key of ["authorEmail", "clipping", "content", "creatorId", "proof", "updatedVia"])
-      delete sanitized[key];
+    const parsed = metadata ? JSON.parse(metadata) : {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return "{}";
+    const publicKeys = new Set([
+      "title",
+      "tags",
+      "public",
+      "draft",
+      "publishDate",
+      "updateDate",
+      "category",
+    ]);
+    const sanitized = Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>).filter(([key]) => publicKeys.has(key))
+    );
+    if (publicAttachments && publicAttachments.length > 0) {
+      sanitized.attachments = publicAttachments;
+    }
     return JSON.stringify(sanitized);
   } catch {
-    return metadata;
+    return "{}";
   }
 }
 
@@ -189,38 +210,100 @@ async function getFrontmatterDiagnostics(row: PostRow, kind: ContentKind) {
   }
 }
 
-async function annotateContentRows<T extends PostRow>(rows: T[], kind: ContentKind) {
-  const results = await Promise.all(
-    rows.map(async (row) => {
-      const auth = getMcpAuthContext();
-      if (!auth.isAdmin && !(await isClippingRowPublic(row))) return null;
-      const clipping = kind === "memo" ? await clippingProjectionForRow(row) : null;
-      return {
-        ...row,
-        ...(clipping
+async function annotateContentRows<T extends PostRow>(
+  rows: T[],
+  kind: ContentKind,
+  options: { assumeVisibilityLock?: boolean } = {}
+) {
+  const operation = async () => {
+    const results = await Promise.all(
+      rows.map(async (row) => {
+        const auth = getMcpAuthContext();
+        if (!auth.isAdmin && !(await isClippingRowPublic(row))) return null;
+        const clipping = kind === "memo" ? await clippingProjectionForRow(row) : null;
+        const publicAttachmentRow = clipping
           ? {
-              title: clipping.title,
-              body: clipping.content,
-              clipping: clipping.reading,
+              ...row,
+              body: clipping.authored.body,
               metadata: JSON.stringify({
                 attachments: clipping.authored.frontmatter.attachments ?? [],
               }),
-              ...(getMcpAuthContext().isAdmin
-                ? {
-                    authoredContent: clipping.authored.body.trim(),
-                    authoredTitle: clipping.authored.frontmatter.title ?? "",
-                  }
-                : {}),
             }
-          : {}),
-        ...(kind === "memo" && !auth.isAdmin
-          ? { metadata: stripPrivateMcpMetadata(row.metadata) }
-          : {}),
-        ...(await getFrontmatterDiagnostics(row, kind)),
-      };
-    })
-  );
-  return results.filter((row) => row !== null);
+          : row;
+        const publicAttachments =
+          !auth.isAdmin && kind === "memo"
+            ? rewritePublicMemoAttachments(
+                publicAttachmentRow,
+                buildPublicMediaCollection("memo", publicAttachmentRow)
+              )
+            : undefined;
+        return {
+          ...row,
+          ...(clipping
+            ? {
+                title: clipping.title,
+                body: clipping.content,
+                clipping: clipping.reading,
+                ...(publicAttachments && publicAttachments.length > 0
+                  ? { metadata: JSON.stringify({ attachments: publicAttachments }) }
+                  : {}),
+                ...(getMcpAuthContext().isAdmin
+                  ? {
+                      authoredContent: clipping.authored.body.trim(),
+                      authoredTitle: clipping.authored.frontmatter.title ?? "",
+                    }
+                  : {}),
+              }
+            : {}),
+          ...(kind === "memo" && !auth.isAdmin
+            ? { metadata: stripPrivateMcpMetadata(row.metadata, publicAttachments) }
+            : {}),
+          ...(await getFrontmatterDiagnostics(row, kind)),
+        };
+      })
+    );
+    return results.filter((row) => row !== null);
+  };
+  return options.assumeVisibilityLock ? operation() : withClippingVisibilityLock(operation);
+}
+
+function toPublicMcpMemo(item: Record<string, unknown>) {
+  const {
+    id,
+    slug,
+    title,
+    excerpt,
+    body,
+    publishDate,
+    updateDate,
+    category,
+    tags,
+    public: isPublic,
+    draft,
+    image,
+    clipping,
+    metadata,
+    hasFrontmatter,
+    missingRecommendedMetadata,
+  } = item;
+  return {
+    id,
+    slug,
+    title,
+    excerpt,
+    body,
+    publishDate,
+    updateDate,
+    category,
+    tags,
+    public: isPublic,
+    draft,
+    image,
+    clipping,
+    metadata,
+    hasFrontmatter,
+    missingRecommendedMetadata,
+  };
 }
 
 function resolveStorageSource(_row: Pick<PostRow, "source" | "dataSource">): StorageSource {
@@ -236,13 +319,14 @@ async function readStorageFile(_source: StorageSource, filePath: string): Promis
 async function writeStorageFile(
   _source: StorageSource,
   filePath: string,
-  content: string
+  content: string,
+  options: { flag?: "w" | "wx" } = {}
 ): Promise<void> {
   const fs = await import("node:fs/promises");
   const p = await import("node:path");
   const full = p.join(getLocalBasePathOrThrow(), filePath);
   await fs.mkdir(p.dirname(full), { recursive: true });
-  await fs.writeFile(full, content, "utf-8");
+  await fs.writeFile(full, content, { encoding: "utf-8", ...options });
 }
 
 async function deleteStorageFile(_source: StorageSource, filePath: string): Promise<void> {
@@ -253,6 +337,14 @@ async function deleteStorageFile(_source: StorageSource, filePath: string): Prom
 
 async function deleteIndexedContentRow(id: string): Promise<void> {
   await db.delete(postsTable).where(eq(postsTable.id, id));
+  clearSearchCache();
+}
+
+async function restoreIndexedContentRow(row: PostRow): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.delete(postsTable).where(eq(postsTable.id, row.id));
+    await tx.insert(postsTable).values(row);
+  });
   clearSearchCache();
 }
 
@@ -436,33 +528,38 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       }
       if (category) conds.push(eq(postsTable.category, category));
       if (tag) conds.push(like(postsTable.tags, `%${tag}%`));
-      const rows = await db
-        .select({
-          id: postsTable.id,
-          slug: postsTable.slug,
-          title: postsTable.title,
-          excerpt: postsTable.excerpt,
-          publishDate: postsTable.publishDate,
-          updateDate: postsTable.updateDate,
-          category: postsTable.category,
-          tags: postsTable.tags,
-          public: postsTable.public,
-          createdVia: postsTable.createdVia,
-          source: postsTable.source,
-          dataSource: postsTable.dataSource,
-          filePath: postsTable.filePath,
-        })
-        .from(postsTable)
-        .where(ands(conds))
-        .orderBy(desc(postsTable.publishDate))
-        .limit(limit)
-        .offset(offset);
-      const items = (await annotateContentRows(rows as PostRow[], "post")).map(
-        ({ filePath: _filePath, source: _source, dataSource: _dataSource, ...item }) => item
-      );
-      const total =
-        (await db.select({ count: sql<number>`count(*)` }).from(postsTable).where(ands(conds)))[0]
-          ?.count ?? 0;
+      const { items, total } = await withClippingVisibilityLock(async () => {
+        const rows = await db
+          .select({
+            id: postsTable.id,
+            slug: postsTable.slug,
+            title: postsTable.title,
+            excerpt: postsTable.excerpt,
+            publishDate: postsTable.publishDate,
+            updateDate: postsTable.updateDate,
+            category: postsTable.category,
+            tags: postsTable.tags,
+            public: postsTable.public,
+            createdVia: postsTable.createdVia,
+            source: postsTable.source,
+            dataSource: postsTable.dataSource,
+            filePath: postsTable.filePath,
+          })
+          .from(postsTable)
+          .where(ands(conds))
+          .orderBy(desc(postsTable.publishDate))
+          .limit(limit)
+          .offset(offset);
+        const items = (
+          await annotateContentRows(rows as PostRow[], "post", {
+            assumeVisibilityLock: true,
+          })
+        ).map(({ filePath: _filePath, source: _source, dataSource: _dataSource, ...item }) => item);
+        const total =
+          (await db.select({ count: sql<number>`count(*)` }).from(postsTable).where(ands(conds)))[0]
+            ?.count ?? 0;
+        return { items, total };
+      });
       return {
         content: [
           {
@@ -735,17 +832,27 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         const ts = new Date(cursorDate).getTime();
         if (!Number.isNaN(ts)) conds.push(sql`${postsTable.publishDate} < ${ts}`);
       }
-      const rows = await db
-        .select()
-        .from(postsTable)
-        .where(ands(conds))
-        .orderBy(desc(postsTable.publishDate), desc(postsTable.id))
-        .limit(input.limit + 1);
-      const hasMore = rows.length > input.limit;
-      const items = await annotateContentRows(hasMore ? rows.slice(0, input.limit) : rows, "memo");
-      let nextCursor: string | undefined;
-      if (hasMore && items.length)
-        nextCursor = `${iso(items[items.length - 1].publishDate || Date.now())}_${items[items.length - 1].id}`;
+      const { items, nextCursor, hasMore } = await withClippingVisibilityLock(async () => {
+        const rows = await db
+          .select()
+          .from(postsTable)
+          .where(ands(conds))
+          .orderBy(desc(postsTable.publishDate), desc(postsTable.id))
+          .limit(input.limit + 1);
+        const hasMore = rows.length > input.limit;
+        const annotatedItems = await annotateContentRows(
+          hasMore ? rows.slice(0, input.limit) : rows,
+          "memo",
+          { assumeVisibilityLock: true }
+        );
+        const items = input.publicOnly
+          ? annotatedItems.map((item) => toPublicMcpMemo(item as Record<string, unknown>))
+          : annotatedItems;
+        let nextCursor: string | undefined;
+        if (hasMore && items.length)
+          nextCursor = `${iso(items[items.length - 1].publishDate || Date.now())}_${items[items.length - 1].id}`;
+        return { items, nextCursor, hasMore };
+      });
       return {
         content: [{ type: "text", text: JSON.stringify({ items, nextCursor, hasMore }, null, 2) }],
       };
@@ -778,9 +885,22 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       },
     });
     const md = `${fm}${formatMarkdownBody(input.content)}`;
-    await writeStorageFile("local", rel, md);
+    await withClippingVisibilityLock(() => writeStorageFile("local", rel, md, { flag: "wx" }));
+    try {
+      await triggerIncrementalSync({ throwOnError: true });
+    } catch (error) {
+      try {
+        await withClippingVisibilityLock(async () => {
+          await deleteStorageFile("local", rel);
+          await deleteIndexedContentRow(rel);
+          await triggerIncrementalSync({ throwOnError: true });
+        });
+      } catch (rollbackError) {
+        console.error("[MCP] memo create rollback failed:", rollbackError);
+      }
+      throw error;
+    }
     notifyClippingChange(rel);
-    await triggerIncrementalSync();
     return { content: [{ type: "text", text: "ok" }] };
   });
 
@@ -792,32 +912,50 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       // 管理员专属
       requireAdmin();
       const input = args as z.infer<typeof updateMemoInput>;
-      const row = await db
-        .select()
-        .from(postsTable)
-        .where(and(eq(postsTable.slug, input.slug), eq(postsTable.type, "memo")))
-        .limit(1)
-        .then((r) => r[0]);
-      if (!row?.filePath) throw new Error("Memo not found or missing filePath");
-      const result = await updateFrontmatterInStorage(
-        row,
-        async (fm) => {
-          if (input.title !== undefined) fm.title = input.title;
-          fm.public = input.isPublic;
-          if (input.tags !== undefined) fm.tags = input.tags;
-          fm.updateDate = new Date().toISOString();
-          await attachClippingReference(
-            input.content,
-            fm,
-            getMcpAuthContext().userId ?? null,
-            row.id
-          );
-        },
-        input.content,
-        "memo"
-      );
-      notifyClippingChange(row.id);
-      await triggerIncrementalSync();
+      const { result, rowId } = await withClippingVisibilityLock(async () => {
+        const row = await db
+          .select()
+          .from(postsTable)
+          .where(and(eq(postsTable.slug, input.slug), eq(postsTable.type, "memo")))
+          .limit(1)
+          .then((r) => r[0]);
+        if (!row?.filePath) throw new Error("Memo not found or missing filePath");
+        const previousRaw = await readStorageFile(resolveStorageSource(row), row.filePath);
+        const result = await updateFrontmatterInStorage(
+          row,
+          async (fm) => {
+            if (input.title !== undefined) fm.title = input.title;
+            fm.public = input.isPublic;
+            if (input.tags !== undefined) fm.tags = input.tags;
+            fm.updateDate = new Date().toISOString();
+            await attachClippingReference(
+              input.content,
+              fm,
+              getMcpAuthContext().userId ?? null,
+              row.id
+            );
+          },
+          input.content,
+          "memo"
+        );
+        try {
+          await triggerIncrementalSync({ throwOnError: true });
+        } catch (error) {
+          try {
+            await writeStorageFile(resolveStorageSource(row), row.filePath, previousRaw);
+            await restoreIndexedContentRow(row);
+            await triggerIncrementalSync({ throwOnError: true });
+          } catch (rollbackError) {
+            console.error("[MCP] memo update rollback failed:", rollbackError);
+          }
+          throw error;
+        }
+        return {
+          rowId: row.id,
+          result,
+        };
+      });
+      notifyClippingChange(rowId);
       return buildToolResult(result);
     }
   );
@@ -826,17 +964,34 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
     // 管理员专属
     requireAdmin();
     const input = args as z.infer<typeof deleteMemoInput>;
-    const row = await db
-      .select()
-      .from(postsTable)
-      .where(and(eq(postsTable.slug, input.slug), eq(postsTable.type, "memo")))
-      .limit(1)
-      .then((r) => r[0]);
-    if (!row?.filePath) throw new Error("Memo not found or missing filePath");
-    await deleteStorageFile(resolveStorageSource(row), row.filePath);
-    await deleteIndexedContentRow(row.id);
-    notifyClippingChange(row.id);
-    await triggerIncrementalSync();
+    const rowId = await withClippingVisibilityLock(async () => {
+      const row = await db
+        .select()
+        .from(postsTable)
+        .where(and(eq(postsTable.slug, input.slug), eq(postsTable.type, "memo")))
+        .limit(1)
+        .then((r) => r[0]);
+      if (!row?.filePath) throw new Error("Memo not found or missing filePath");
+      const previousRaw = await readStorageFile(resolveStorageSource(row), row.filePath);
+      let deletedIndexed = false;
+      try {
+        await deleteStorageFile(resolveStorageSource(row), row.filePath);
+        await deleteIndexedContentRow(row.id);
+        deletedIndexed = true;
+        await triggerIncrementalSync({ throwOnError: true });
+      } catch (error) {
+        try {
+          await writeStorageFile(resolveStorageSource(row), row.filePath, previousRaw);
+          if (deletedIndexed) await restoreIndexedContentRow(row);
+          await triggerIncrementalSync({ throwOnError: true });
+        } catch (rollbackError) {
+          console.error("[MCP] memo delete rollback failed:", rollbackError);
+        }
+        throw error;
+      }
+      return row.id;
+    });
+    notifyClippingChange(rowId);
     return { content: [{ type: "text", text: "ok" }] };
   });
 

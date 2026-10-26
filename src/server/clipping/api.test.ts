@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import matter from "gray-matter";
@@ -535,11 +536,101 @@ test("MCP omitted tags preserve clipping metadata while explicit empty tags remo
     expect(clearedMemo?.metadata).not.toContain('"clipping"');
     expect(clearedMemo?.metadata).not.toContain("authorEmail");
     expect(clearedMemo?.metadata).not.toContain('"content"');
+    expect(clearedMemo).not.toHaveProperty("author");
+    expect(clearedMemo).not.toHaveProperty("filePath");
+    expect(clearedMemo).not.toHaveProperty("source");
+    expect(clearedMemo).not.toHaveProperty("dataSource");
+    expect(clearedMemo).not.toHaveProperty("contentHash");
+    expect(clearedMemo).not.toHaveProperty("createdVia");
   } finally {
     await client.close();
     await connected.server.close();
     server.stop(true);
     await writeFile(join(root, "authored", id), raw);
+  }
+});
+
+test("public MCP memo metadata fails closed for private and malformed values", async () => {
+  const { createMcpWebTransport } = await import("@/server/mcp");
+  const connected = await createMcpWebTransport();
+  const actor = { isAdmin: false };
+  const server = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    fetch: (request) => runWithMcpAuth(actor, () => connected.transport.handleRequest(request)),
+  });
+  const client = new Client({ name: "mcp-public-metadata", version: "1" });
+  const marker = `public-mcp-metadata-${randomUUID()}`;
+  const filePath = `Memos/${marker}.md`;
+  const fullPath = join(root, "authored", filePath);
+  const now = Date.now();
+  try {
+    await mkdir(join(root, "authored", "Memos"), { recursive: true });
+    await writeFile(fullPath, matter.stringify(marker, { public: true, tags: [] }));
+    await db.insert(posts).values({
+      id: filePath,
+      slug: marker,
+      type: "memo",
+      title: marker,
+      body: marker,
+      filePath,
+      public: true,
+      draft: false,
+      publishDate: now,
+      source: "local",
+      dataSource: "local",
+      tags: "[]",
+      author: "private@example.com",
+      metadata: JSON.stringify({
+        authorEmail: "private@example.com",
+        content: "private body",
+        systemShare: { leaseToken: "secret-lease-token" },
+        attachments: [
+          {
+            path: "assets/system-share/submission/secret-lease-token/private.png",
+          },
+          {
+            path: "assets/system-share/submission/secret-lease-token/private.txt",
+          },
+        ],
+      }),
+      contentHash: marker,
+    });
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${server.port}/mcp`))
+    );
+
+    const list = async () => {
+      const result = await client.callTool({
+        name: "memos_list",
+        arguments: { publicOnly: true, limit: 10, search: marker },
+      });
+      const payload = JSON.parse(String(result.content?.[0]?.text)) as {
+        items: Array<{ id: string; metadata?: string | null }>;
+      };
+      return payload.items.find((item) => item.id === filePath);
+    };
+
+    const sanitized = await list();
+    const sanitizedMetadata = JSON.parse(sanitized?.metadata ?? "{}") as {
+      attachments?: Array<{ path?: string }>;
+    };
+    expect(sanitizedMetadata.attachments).toHaveLength(1);
+    expect(sanitizedMetadata.attachments?.[0]?.path).toContain("/api/public/assets/memo/");
+    expect(sanitized?.metadata).not.toContain("secret-lease-token");
+
+    await db
+      .update(posts)
+      .set({ metadata: '{"authorEmail":"private@example.com"' })
+      .where(eq(posts.id, filePath));
+    const malformed = await list();
+    expect(malformed?.metadata).toBe("{}");
+  } finally {
+    await client.close();
+    await connected.server.close();
+    server.stop(true);
+    await db.delete(posts).where(eq(posts.id, filePath));
+    await rm(fullPath, { force: true });
   }
 });
 

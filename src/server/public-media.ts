@@ -22,6 +22,7 @@ import {
   isPublicContentKind,
   isPublicMediaRenderId,
   isPublicMediaVariant,
+  isPublishedPublicAssetUrl,
   normalizePublicMediaExt,
   type PublicContentKind,
   type PublicMediaAssetScope,
@@ -571,11 +572,15 @@ export function rewritePublicMemoAttachments(row: ContentRow, media: PublicMedia
       .map((item) => [item.sourcePath, item.playback as string])
   );
 
-  return parseAttachments(row).map((attachment) => {
+  return parseAttachments(row).flatMap((attachment) => {
     const sourcePath = resolveContentMediaPath(attachment.path, getCanonicalFilePath(row));
-    if (!sourcePath) return attachment;
-    const resolvedPath =
-      attachmentMap.get(sourcePath) ?? playbackMap.get(sourcePath) ?? attachment.path;
+    if (!sourcePath) {
+      return isExternalMediaUrl(attachment.path) || isPublishedPublicAssetUrl(attachment.path)
+        ? [attachment]
+        : [];
+    }
+    const resolvedPath = attachmentMap.get(sourcePath) ?? playbackMap.get(sourcePath);
+    if (!resolvedPath) return [];
     return {
       ...attachment,
       path: resolvedPath,

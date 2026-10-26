@@ -46,7 +46,7 @@ import {
 } from "@/lib/system-share";
 import { buildPublicSnapshot, resolvePublicMemoTitle } from "@/public-site/snapshot";
 import { handleClippingRequest, handleClippingResourceRequest } from "@/server/clipping/api";
-import { isClippingRowPublic } from "@/server/clipping/projection";
+import { isClippingRowPublic, withClippingVisibilityLock } from "@/server/clipping/projection";
 import { readAuthoredMemo } from "@/server/clipping/store";
 import { createContext } from "@/server/context";
 import { handlePublicAssetFacadeRequest } from "@/server/public-media";
@@ -1156,35 +1156,37 @@ async function handleSystemShareRequest(
 async function normalizePublicSearchTitles<
   T extends { slug: string; type?: string; title?: string | null },
 >(results: T[]) {
-  const memoSlugs = Array.from(
-    new Set(results.filter((result) => result.type === "memo").map((result) => result.slug))
-  );
-  if (memoSlugs.length === 0) return results;
+  return withClippingVisibilityLock(async () => {
+    const memoSlugs = Array.from(
+      new Set(results.filter((result) => result.type === "memo").map((result) => result.slug))
+    );
+    if (memoSlugs.length === 0) return results;
 
-  const memoRows = await db
-    .select()
-    .from(posts)
-    .where(and(eq(posts.type, "memo"), inArray(posts.slug, memoSlugs)));
-  const publicBySlug = new Map(
-    await Promise.all(
-      memoRows.map(async (row) => [row.slug, await isClippingRowPublic(row)] as const)
-    )
-  );
-  const titleBySlug = new Map(
-    await Promise.all(
-      memoRows
-        .filter((row) => publicBySlug.get(row.slug) ?? false)
-        .map(async (row) => [row.slug, await resolvePublicMemoTitle(row)] as const)
-    )
-  );
+    const memoRows = await db
+      .select()
+      .from(posts)
+      .where(and(eq(posts.type, "memo"), inArray(posts.slug, memoSlugs)));
+    const publicBySlug = new Map(
+      await Promise.all(
+        memoRows.map(async (row) => [row.slug, await isClippingRowPublic(row)] as const)
+      )
+    );
+    const titleBySlug = new Map(
+      await Promise.all(
+        memoRows
+          .filter((row) => publicBySlug.get(row.slug) ?? false)
+          .map(async (row) => [row.slug, await resolvePublicMemoTitle(row)] as const)
+      )
+    );
 
-  return results
-    .map((result) =>
-      result.type === "memo" && titleBySlug.has(result.slug)
-        ? { ...result, title: titleBySlug.get(result.slug) ?? null }
-        : result
-    )
-    .filter((result) => result.type !== "memo" || (publicBySlug.get(result.slug) ?? false));
+    return results
+      .map((result) =>
+        result.type === "memo" && titleBySlug.has(result.slug)
+          ? { ...result, title: titleBySlug.get(result.slug) ?? null }
+          : result
+      )
+      .filter((result) => result.type !== "memo" || (publicBySlug.get(result.slug) ?? false));
+  });
 }
 
 function readPublicSearchInput(url: URL): unknown {

@@ -12,7 +12,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, gt, like, sql } from "drizzle-orm";
@@ -30,7 +30,11 @@ import {
 } from "@/lib/persisted-paths";
 import { buildLegacyPublicMediaUrl, rewritePublicContentMediaUrls } from "@/lib/public-media";
 import { resolvePublicMemoTitle } from "@/public-site/snapshot";
-import { clippingProjectionForRow, isClippingRowPublic } from "@/server/clipping/projection";
+import {
+  clippingProjectionForRow,
+  isClippingRowPublic,
+  withClippingVisibilityLock,
+} from "@/server/clipping/projection";
 import { notifyClippingChange } from "@/server/clipping/runtime";
 import {
   attachClippingReference,
@@ -92,6 +96,14 @@ function normalizeAttachmentsToPersistedSemantics(
 }
 
 export type MemoRow = typeof posts.$inferSelect;
+
+async function restoreMemoIndexRow(row: MemoRow): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.delete(posts).where(eq(posts.id, row.id));
+    await tx.insert(posts).values(row);
+  });
+  clearSearchCache();
+}
 
 const timeDisplaySources = ["publishDate", "updateDate", "lastModified", "unknown"] as const;
 type TimeDisplaySource = (typeof timeDisplaySources)[number];
@@ -783,155 +795,158 @@ export const memosRouter = router({
         }
       }
 
-      // 查询数据 - 多取一条用于判断是否有下一页
-      const memoList = await db
-        .select()
-        .from(posts)
-        .where(conditions.length > 0 ? and(...conditions) : undefined)
-        // 重要：严格按发布/创建时间倒序排序，而非更新时间
-        .orderBy(
-          direction === "older" ? desc(posts.publishDate) : asc(posts.publishDate),
-          direction === "older" ? desc(posts.id) : asc(posts.id)
-        )
-        .limit(limit + 1); // 多取一条用于判断 hasMore
+      const result = await withClippingVisibilityLock(async () => {
+        // 查询数据 - 多取一条用于判断是否有下一页
+        const memoList = await db
+          .select()
+          .from(posts)
+          .where(conditions.length > 0 ? and(...conditions) : undefined)
+          // 重要：严格按发布/创建时间倒序排序，而非更新时间
+          .orderBy(
+            direction === "older" ? desc(posts.publishDate) : asc(posts.publishDate),
+            direction === "older" ? desc(posts.id) : asc(posts.id)
+          )
+          .limit(limit + 1); // 多取一条用于判断 hasMore
 
-      // 判断是否有更多数据
-      const hasMore = memoList.length > limit;
-      const selectedMemos = hasMore ? memoList.slice(0, limit) : memoList;
-      const actualMemos = direction === "newer" ? selectedMemos.reverse() : selectedMemos;
+        // 判断是否有更多数据
+        const hasMore = memoList.length > limit;
+        const selectedMemos = hasMore ? memoList.slice(0, limit) : memoList;
+        const actualMemos = direction === "newer" ? selectedMemos.reverse() : selectedMemos;
 
-      // 计算向量化状态（与 /posts 相同口径：当前模型名 + 输入拼接哈希一致且存在向量）
-      const resolved = await getResolvedLlmConfig();
-      const modelName = resolved.embedding.model || "BAAI/bge-m3";
-      const memosWithVectorStatus = await Promise.all(
-        actualMemos.map(async (m) => {
-          try {
-            const embeddingInput = buildEmbeddingInput({
-              title: m.title || "",
-              excerpt: m.excerpt || "",
-              body: m.body || "",
-            });
-            const embeddingHash = hashEmbeddingInput(embeddingInput);
-            const status = await EmbeddingsRepository.getVectorizationStatus(
-              m.id,
-              modelName,
-              embeddingHash
-            );
+        // 计算向量化状态（与 /posts 相同口径：当前模型名 + 输入拼接哈希一致且存在向量）
+        const resolved = await getResolvedLlmConfig();
+        const modelName = resolved.embedding.model || "BAAI/bge-m3";
+        const memosWithVectorStatus = await Promise.all(
+          actualMemos.map(async (m) => {
+            try {
+              const embeddingInput = buildEmbeddingInput({
+                title: m.title || "",
+                excerpt: m.excerpt || "",
+                body: m.body || "",
+              });
+              const embeddingHash = hashEmbeddingInput(embeddingInput);
+              const status = await EmbeddingsRepository.getVectorizationStatus(
+                m.id,
+                modelName,
+                embeddingHash
+              );
+              return {
+                ...m,
+                isVectorized: status === "indexed",
+              } as typeof m & { isVectorized: boolean };
+            } catch {
+              return { ...m, isVectorized: false } as typeof m & { isVectorized: boolean };
+            }
+          })
+        );
+
+        // 转换为 API 响应格式
+        const memoResults = await Promise.all(
+          memosWithVectorStatus.map(async (memo) => {
+            if (!ctx.isAdmin && !(await isClippingRowPublic(memo))) return null;
+            const media = buildPublicMediaCollection("memo", memo as MemoRow);
+            const attachments = rewritePublicMemoAttachments(memo as MemoRow, media);
+            const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
+            const clipping = await clippingProjectionForRow(memo);
+            const title = clipping ? clipping.title : await resolvePublicMemoTitle(memo as MemoRow);
+            const publicMediaContext = {
+              kind: "memo" as const,
+              slug: memo.slug,
+              filePath: memo.filePath || memo.id,
+            };
+
             return {
-              ...m,
-              isVectorized: status === "indexed",
-            } as typeof m & { isVectorized: boolean };
-          } catch {
-            return { ...m, isVectorized: false } as typeof m & { isVectorized: boolean };
+              id: memo.id,
+              slug: memo.slug,
+              title,
+              excerpt: memo.excerpt,
+              content: rewritePublicContentMediaUrls(
+                clipping?.content ?? memo.body,
+                publicMediaContext
+              ),
+              ...(clipping ? { clipping: clipping.reading } : {}),
+              isPublic: memo.public,
+              tags: memo.tags ? JSON.parse(memo.tags) : [],
+              attachments,
+              image:
+                pickLegacyPublicImage(media, "content") ??
+                buildLegacyPublicMediaUrl({
+                  mediaPath: memo.image,
+                  dataSource: memo.dataSource,
+                  filePath: memo.filePath,
+                }),
+              media,
+              author: memo.author || undefined,
+              filePath: memo.filePath,
+              source: memo.source,
+              dataSource: memo.dataSource || "local",
+              createdAt: displayTime,
+              publishedAt,
+              updatedAt,
+              timeDisplaySource: source,
+              // 新增：向量化标记
+              isVectorized: (memo as any).isVectorized === true,
+            };
+          })
+        );
+
+        const formattedMemos = memoResults.filter((memo) => memo !== null);
+
+        // 为非管理员移除不在界面展示的敏感/内部字段，避免接口信息泄露
+        // 对非管理员进行字段最小化（但保留 UI 必需字段：attachments、author、filePath、source）
+        const sanitizedMemos = ctx.isAdmin
+          ? formattedMemos
+          : formattedMemos.map((m) => ({
+              id: m.id,
+              slug: m.slug,
+              title: m.title,
+              excerpt: m.excerpt,
+              content: m.content,
+              ...("clipping" in m ? { clipping: m.clipping } : {}),
+              isPublic: m.isPublic,
+              tags: m.tags,
+              attachments: (m as any).attachments,
+              image: (m as any).image,
+              media: (m as any).media,
+              author: (m as any).author,
+              filePath: (m as any).filePath,
+              source: (m as any).source,
+              createdAt: m.createdAt,
+              publishedAt: m.publishedAt,
+              updatedAt: m.updatedAt,
+              timeDisplaySource: m.timeDisplaySource,
+            }));
+
+        // Newer pages are queried in ascending order, then reversed for the display order.
+        let nextCursor: string | undefined;
+        let previousCursor: string | undefined;
+        if (actualMemos.length > 0) {
+          if (direction === "older") {
+            const firstMemo = actualMemos[0];
+            const firstDate = new Date(toMsTimestamp(firstMemo.publishDate)).toISOString();
+            if (cursor) previousCursor = `${firstDate}_${firstMemo.id}`;
+
+            if (hasMore) {
+              const lastMemo = actualMemos[actualMemos.length - 1];
+              const lastDate = new Date(toMsTimestamp(lastMemo.publishDate)).toISOString();
+              nextCursor = `${lastDate}_${lastMemo.id}`;
+            }
+          } else {
+            const firstMemo = actualMemos[0];
+            const firstDate = new Date(toMsTimestamp(firstMemo.publishDate)).toISOString();
+            if (hasMore) previousCursor = `${firstDate}_${firstMemo.id}`;
           }
-        })
-      );
-
-      // 转换为 API 响应格式
-      const memoResults = await Promise.all(
-        memosWithVectorStatus.map(async (memo) => {
-          if (!ctx.isAdmin && !(await isClippingRowPublic(memo))) return null;
-          const media = buildPublicMediaCollection("memo", memo as MemoRow);
-          const attachments = rewritePublicMemoAttachments(memo as MemoRow, media);
-          const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
-          const clipping = await clippingProjectionForRow(memo);
-          const title = clipping ? clipping.title : await resolvePublicMemoTitle(memo as MemoRow);
-          const publicMediaContext = {
-            kind: "memo" as const,
-            slug: memo.slug,
-            filePath: memo.filePath || memo.id,
-          };
-
-          return {
-            id: memo.id,
-            slug: memo.slug,
-            title,
-            excerpt: memo.excerpt,
-            content: rewritePublicContentMediaUrls(
-              clipping?.content ?? memo.body,
-              publicMediaContext
-            ),
-            ...(clipping ? { clipping: clipping.reading } : {}),
-            isPublic: memo.public,
-            tags: memo.tags ? JSON.parse(memo.tags) : [],
-            attachments,
-            image:
-              pickLegacyPublicImage(media, "content") ??
-              buildLegacyPublicMediaUrl({
-                mediaPath: memo.image,
-                dataSource: memo.dataSource,
-                filePath: memo.filePath,
-              }),
-            media,
-            author: memo.author || undefined,
-            filePath: memo.filePath,
-            source: memo.source,
-            dataSource: memo.dataSource || "local",
-            createdAt: displayTime,
-            publishedAt,
-            updatedAt,
-            timeDisplaySource: source,
-            // 新增：向量化标记
-            isVectorized: (memo as any).isVectorized === true,
-          };
-        })
-      );
-
-      const formattedMemos = memoResults.filter((memo) => memo !== null);
-
-      // 为非管理员移除不在界面展示的敏感/内部字段，避免接口信息泄露
-      // 对非管理员进行字段最小化（但保留 UI 必需字段：attachments、author、filePath、source）
-      const sanitizedMemos = ctx.isAdmin
-        ? formattedMemos
-        : formattedMemos.map((m) => ({
-            id: m.id,
-            slug: m.slug,
-            title: m.title,
-            excerpt: m.excerpt,
-            content: m.content,
-            ...("clipping" in m ? { clipping: m.clipping } : {}),
-            isPublic: m.isPublic,
-            tags: m.tags,
-            attachments: (m as any).attachments,
-            image: (m as any).image,
-            media: (m as any).media,
-            author: (m as any).author,
-            filePath: (m as any).filePath,
-            source: (m as any).source,
-            createdAt: m.createdAt,
-            publishedAt: m.publishedAt,
-            updatedAt: m.updatedAt,
-            timeDisplaySource: m.timeDisplaySource,
-          }));
-
-      // Newer pages are queried in ascending order, then reversed for the display order.
-      let nextCursor: string | undefined;
-      let previousCursor: string | undefined;
-      if (actualMemos.length > 0) {
-        if (direction === "older") {
-          const firstMemo = actualMemos[0];
-          const firstDate = new Date(toMsTimestamp(firstMemo.publishDate)).toISOString();
-          if (cursor) previousCursor = `${firstDate}_${firstMemo.id}`;
-
-          if (hasMore) {
-            const lastMemo = actualMemos[actualMemos.length - 1];
-            const lastDate = new Date(toMsTimestamp(lastMemo.publishDate)).toISOString();
-            nextCursor = `${lastDate}_${lastMemo.id}`;
-          }
-        } else {
-          const firstMemo = actualMemos[0];
-          const firstDate = new Date(toMsTimestamp(firstMemo.publishDate)).toISOString();
-          if (hasMore) previousCursor = `${firstDate}_${firstMemo.id}`;
         }
-      }
 
-      return {
-        memos: sanitizedMemos,
-        nextCursor,
-        previousCursor,
-        hasPrevious: direction === "newer" ? hasMore : actualMemos.length > 0 && Boolean(cursor),
-        hasMore,
-      };
+        return {
+          memos: sanitizedMemos,
+          nextCursor,
+          previousCursor,
+          hasPrevious: direction === "newer" ? hasMore : actualMemos.length > 0 && Boolean(cursor),
+          hasMore,
+        };
+      });
+      return result;
     } catch (error) {
       console.error("获取 memo 列表失败:", error);
       throw new TRPCError({
@@ -947,108 +962,116 @@ export const memosRouter = router({
     const isAdminPreview = ctx.isAdmin && ctx.req.headers.get("x-admin-preview") === "1";
 
     try {
-      const memo = await db
-        .select()
-        .from(posts)
-        .where(and(eq(posts.slug, slug), eq(posts.type, "memo")))
-        .limit(1)
-        .then((result) => result[0]);
+      const result = await withClippingVisibilityLock(async () => {
+        const memo = await db
+          .select()
+          .from(posts)
+          .where(and(eq(posts.slug, slug), eq(posts.type, "memo")))
+          .limit(1)
+          .then((result) => result[0]);
 
-      if (!memo) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Memo 不存在",
-        });
-      }
+        if (!memo) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Memo 不存在",
+          });
+        }
 
-      // 权限检查：非管理员只能查看已公开且非草稿的 memo
-      if ((!memo.public || memo.draft || !(await isClippingRowPublic(memo))) && !ctx.isAdmin) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Memo 不存在",
-        });
-      }
+        // 权限检查：非管理员只能查看已公开且非草稿的 memo
+        if ((!memo.public || memo.draft || !(await isClippingRowPublic(memo))) && !ctx.isAdmin) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Memo 不存在",
+          });
+        }
 
-      const media = buildPublicMediaCollection(
-        "memo",
-        memo,
-        isAdminPreview ? "admin-preview" : "public"
-      );
-      const publicAttachments = rewritePublicMemoAttachments(memo, media);
-      const publicMediaContext = {
-        kind: "memo" as const,
-        slug: memo.slug,
-        filePath: memo.filePath || memo.id,
-        assetScope: isAdminPreview ? ("admin-preview" as const) : ("public" as const),
-      };
+        const media = buildPublicMediaCollection(
+          "memo",
+          memo,
+          isAdminPreview ? "admin-preview" : "public"
+        );
+        const publicAttachments = rewritePublicMemoAttachments(memo, media);
+        const publicMediaContext = {
+          kind: "memo" as const,
+          slug: memo.slug,
+          filePath: memo.filePath || memo.id,
+          assetScope: isAdminPreview ? ("admin-preview" as const) : ("public" as const),
+        };
 
-      const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
-      const clipping = await clippingProjectionForRow(memo);
-      if (
-        clipping &&
-        (clipping.authored.frontmatter.public === false ||
-          clipping.authored.frontmatter.draft === true) &&
-        !ctx.isAdmin
-      )
-        throw new TRPCError({ code: "NOT_FOUND", message: "Memo 不存在" });
-      const title = clipping ? clipping.title : await resolvePublicMemoTitle(memo);
+        const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
+        const clipping = await clippingProjectionForRow(memo);
+        const canComment = memo.public && !memo.draft && (await isClippingRowPublic(memo));
+        if (
+          clipping &&
+          (clipping.authored.frontmatter.public === false ||
+            clipping.authored.frontmatter.draft === true) &&
+          !ctx.isAdmin
+        )
+          throw new TRPCError({ code: "NOT_FOUND", message: "Memo 不存在" });
+        const title = clipping ? clipping.title : await resolvePublicMemoTitle(memo);
 
-      const base = {
-        id: memo.id,
-        slug: memo.slug,
-        title,
-        excerpt: memo.excerpt,
-        content: rewritePublicContentMediaUrls(clipping?.content ?? memo.body, publicMediaContext),
-        ...(clipping
-          ? {
-              clipping: clipping.reading,
-              canDiscuss:
-                ctx.isAdmin ||
-                Boolean(
-                  clipping.manifest?.creatorId && clipping.manifest.creatorId === ctx.user?.id
-                ),
-            }
-          : {}),
-        isPublic: memo.public,
-        tags: memo.tags ? JSON.parse(memo.tags) : [],
-        image:
-          pickLegacyPublicImage(media, "content", publicMediaContext.assetScope) ??
-          buildLegacyPublicMediaUrl({
-            mediaPath: memo.image,
-            dataSource: memo.dataSource,
-            filePath: memo.filePath,
-          }),
-        media,
-        createdAt: displayTime,
-        publishedAt,
-        updatedAt,
-        timeDisplaySource: source,
-      } as const;
+        const base = {
+          id: memo.id,
+          slug: memo.slug,
+          title,
+          excerpt: memo.excerpt,
+          content: rewritePublicContentMediaUrls(
+            clipping?.content ?? memo.body,
+            publicMediaContext
+          ),
+          ...(clipping
+            ? {
+                clipping: clipping.reading,
+                canDiscuss:
+                  ctx.isAdmin ||
+                  Boolean(
+                    clipping.manifest?.creatorId && clipping.manifest.creatorId === ctx.user?.id
+                  ),
+              }
+            : {}),
+          isPublic: memo.public,
+          canComment,
+          tags: memo.tags ? JSON.parse(memo.tags) : [],
+          image:
+            pickLegacyPublicImage(media, "content", publicMediaContext.assetScope) ??
+            buildLegacyPublicMediaUrl({
+              mediaPath: memo.image,
+              dataSource: memo.dataSource,
+              filePath: memo.filePath,
+            }),
+          media,
+          createdAt: displayTime,
+          publishedAt,
+          updatedAt,
+          timeDisplaySource: source,
+        } as const;
 
-      // 非管理员只返回界面会显示的字段
-      if (!ctx.isAdmin) {
-        return base;
-      }
+        // 非管理员只返回界面会显示的字段
+        if (!ctx.isAdmin) {
+          return base;
+        }
 
-      // 管理员返回完整信息
-      return {
-        ...base,
-        ...(clipping
-          ? {
-              authoredContent: clipping.authored.body.trim(),
-              authoredTitle:
-                typeof clipping.authored.frontmatter.title === "string"
-                  ? clipping.authored.frontmatter.title
-                  : "",
-            }
-          : {}),
-        attachments: publicAttachments,
-        author: memo.author || undefined,
-        filePath: memo.filePath,
-        source: memo.source,
-        dataSource: (memo as any).dataSource || "local",
-        isVectorized: false,
-      } as any;
+        // 管理员返回完整信息
+        return {
+          ...base,
+          ...(clipping
+            ? {
+                authoredContent: clipping.authored.body.trim(),
+                authoredTitle:
+                  typeof clipping.authored.frontmatter.title === "string"
+                    ? clipping.authored.frontmatter.title
+                    : "",
+              }
+            : {}),
+          attachments: publicAttachments,
+          author: memo.author || undefined,
+          filePath: memo.filePath,
+          source: memo.source,
+          dataSource: (memo as any).dataSource || "local",
+          isVectorized: false,
+        } as any;
+      });
+      return result;
     } catch (error) {
       if (error instanceof TRPCError) {
         throw error;
@@ -1113,6 +1136,8 @@ export const memosRouter = router({
     let normalizedContent = rawContent;
     let normalizedAttachments = inputAttachments;
     let lastError: unknown = null;
+    let createdFullPath: string | null = null;
+    let createdFreshFile = false;
 
     for (const source of candidates) {
       try {
@@ -1140,6 +1165,8 @@ export const memosRouter = router({
 
         const basePath = getLocalBasePathOrThrow();
         const fullPath = join(basePath, createdId);
+        createdFullPath = fullPath;
+        createdFreshFile = false;
         if (systemShare) {
           ensureSafeSystemShareDirectorySync(dirname(fullPath));
         } else {
@@ -1164,60 +1191,68 @@ export const memosRouter = router({
           createdId
         );
 
-        if (systemShare) {
-          withSystemShareFileCommit(systemShare, fullPath, () => {
-            try {
-              const existing = readSystemShareMemoSync(fullPath);
-              if (belongsToSystemShare(existing, systemShare.submissionId)) {
-                normalizedContent = existing.body;
-                const existingAttachments = existing.frontmatter.attachments;
-                normalizedAttachments = Array.isArray(existingAttachments)
-                  ? existingAttachments
-                  : normalizedAttachments;
-                frontmatter = { ...existing.frontmatter };
-                return;
-              }
-              throw new Error("System-share Memo path is already owned by another submission");
-            } catch (error) {
-              if (isMissingFileError(error)) {
-                // The first publish has not reached the filesystem commit point.
-              } else if (isYamlParseError(error)) {
-                if (!rawSystemShareMarkerMatches(fullPath, systemShare.submissionId)) {
-                  throw new Error("System-share Memo path has unverified malformed content");
+        await withClippingVisibilityLock(async () => {
+          if (systemShare) {
+            withSystemShareFileCommit(systemShare, fullPath, () => {
+              try {
+                const existing = readSystemShareMemoSync(fullPath);
+                if (belongsToSystemShare(existing, systemShare.submissionId)) {
+                  normalizedContent = existing.body;
+                  const existingAttachments = existing.frontmatter.attachments;
+                  normalizedAttachments = Array.isArray(existingAttachments)
+                    ? existingAttachments
+                    : normalizedAttachments;
+                  frontmatter = { ...existing.frontmatter };
+                  return;
                 }
-                unlinkSync(fullPath);
-              } else {
-                throw error;
+                throw new Error("System-share Memo path is already owned by another submission");
+              } catch (error) {
+                if (isMissingFileError(error)) {
+                  // The first publish has not reached the filesystem commit point.
+                } else if (isYamlParseError(error)) {
+                  if (!rawSystemShareMarkerMatches(fullPath, systemShare.submissionId)) {
+                    throw new Error("System-share Memo path has unverified malformed content");
+                  }
+                  unlinkSync(fullPath);
+                } else {
+                  throw error;
+                }
               }
+              const markdownContent = buildMemoMarkdownDocument(normalizedContent, frontmatter);
+              try {
+                writeSystemShareMemoAtomicallySync(
+                  fullPath,
+                  markdownContent,
+                  systemShare.leaseToken
+                );
+                createdFreshFile = true;
+              } catch (error) {
+                if (!isFileExistsError(error)) throw error;
+                const existing = readSystemShareMemoSync(fullPath);
+                if (belongsToSystemShare(existing, systemShare.submissionId)) {
+                  normalizedContent = existing.body;
+                  const existingAttachments = existing.frontmatter.attachments;
+                  normalizedAttachments = Array.isArray(existingAttachments)
+                    ? existingAttachments
+                    : normalizedAttachments;
+                  frontmatter = { ...existing.frontmatter };
+                  return;
+                }
+                throw new Error("System-share Memo path is already owned by another submission");
+              }
+            });
+            if (isTestEnv && process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_MEMO_LINK === "1") {
+              throw new Error("system-share post-commit failure (test injection)");
             }
+          } else {
             const markdownContent = buildMemoMarkdownDocument(normalizedContent, frontmatter);
-            try {
-              writeSystemShareMemoAtomicallySync(fullPath, markdownContent, systemShare.leaseToken);
-            } catch (error) {
-              if (!isFileExistsError(error)) throw error;
-              const existing = readSystemShareMemoSync(fullPath);
-              if (belongsToSystemShare(existing, systemShare.submissionId)) {
-                normalizedContent = existing.body;
-                const existingAttachments = existing.frontmatter.attachments;
-                normalizedAttachments = Array.isArray(existingAttachments)
-                  ? existingAttachments
-                  : normalizedAttachments;
-                frontmatter = { ...existing.frontmatter };
-                return;
-              }
-              throw new Error("System-share Memo path is already owned by another submission");
-            }
-          });
-          if (isTestEnv && process.env.SYSTEM_SHARE_TEST_FAIL_AFTER_MEMO_LINK === "1") {
-            throw new Error("system-share post-commit failure (test injection)");
+            await writeFile(fullPath, markdownContent, {
+              encoding: "utf-8",
+              flag: "wx",
+            });
+            createdFreshFile = true;
           }
-        } else {
-          const markdownContent = buildMemoMarkdownDocument(normalizedContent, frontmatter);
-          await writeFile(fullPath, markdownContent, {
-            encoding: "utf-8",
-            flag: "w",
-          });
-        }
+        });
 
         createdSource = source;
 
@@ -1277,11 +1312,26 @@ export const memosRouter = router({
     clearSearchCache();
     notifyClippingChange(createdId);
 
-    // 触发增量数据同步（内部已处理错误日志）
-    if (isTestEnv) {
-      void triggerIncrementalSync();
-    } else {
-      await triggerIncrementalSync();
+    try {
+      if (isTestEnv) {
+        void triggerIncrementalSync();
+      } else {
+        await triggerIncrementalSync({ throwOnError: true });
+      }
+    } catch (error) {
+      if (createdFreshFile && createdFullPath) {
+        try {
+          await withClippingVisibilityLock(async () => {
+            await rm(createdFullPath, { force: true });
+            await db.delete(posts).where(eq(posts.id, createdId));
+            clearSearchCache();
+            await triggerIncrementalSync({ throwOnError: true });
+          });
+        } catch (rollbackError) {
+          console.error("创建 memo 同步失败后恢复状态失败:", rollbackError);
+        }
+      }
+      throw error;
     }
 
     try {
@@ -1338,114 +1388,148 @@ export const memosRouter = router({
     const isTestEnv = process.env.NODE_ENV === "test" || process.env.ADMIN_EMAIL?.includes("test");
 
     try {
-      // 查找现有 memo
-      const existingMemo = await db
-        .select()
-        .from(posts)
-        .where(and(eq(posts.id, id), eq(posts.type, "memo")))
-        .limit(1)
-        .then((result) => result[0]);
+      const updateState = await withClippingVisibilityLock(async () => {
+        // Read and write the canonical file under one lock so concurrent admin updates
+        // cannot compute frontmatter from the same stale snapshot.
+        const existingMemo = await db
+          .select()
+          .from(posts)
+          .where(and(eq(posts.id, id), eq(posts.type, "memo")))
+          .limit(1)
+          .then((result) => result[0]);
 
-      if (!existingMemo) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Memo 不存在",
+        if (!existingMemo) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Memo 不存在",
+          });
+        }
+
+        const markdownFilePath = existingMemo.filePath || existingMemo.id;
+        const normalized = normalizePersistedMemoInput({
+          content: rawContent,
+          attachments: Array.isArray(attachments) ? attachments : [],
+          markdownFilePath,
         });
-      }
+        let existingFrontmatter: Record<string, unknown> = {};
+        let existingRaw: string | null = null;
+        try {
+          const authored = await readAuthoredMemo(id);
+          existingRaw = authored.raw;
+          existingFrontmatter = authored.frontmatter;
+        } catch (error) {
+          if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT"))
+            throw error;
+        }
+        const clippingInput = recognizeMemoClipping(normalized.content, {
+          ...existingFrontmatter,
+          title,
+          tags,
+        });
+        const resolvedTitle = clippingInput.enabled
+          ? (title ??
+            (typeof existingFrontmatter.title === "string" ? existingFrontmatter.title : ""))
+          : (title ?? extractTitleFromContent(normalized.content));
 
-      const markdownFilePath = existingMemo.filePath || existingMemo.id;
-      const normalized = normalizePersistedMemoInput({
-        content: rawContent,
-        attachments: Array.isArray(attachments) ? attachments : [],
-        markdownFilePath,
-      });
-      let existingFrontmatter: Record<string, unknown> = {};
-      try {
-        existingFrontmatter = (await readAuthoredMemo(id)).frontmatter;
-      } catch (error) {
-        if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT"))
+        const nowIso = new Date().toISOString();
+        const frontmatter: Record<string, unknown> = {
+          ...existingFrontmatter,
+          title: resolvedTitle,
+          public: isPublic,
+          tags,
+          attachments: normalized.attachments,
+          authorEmail: existingFrontmatter.clipping
+            ? existingFrontmatter.authorEmail
+            : ctx.user?.email || "admin@example.com",
+          updateDate: nowIso,
+        };
+        await attachClippingReference(normalized.content, frontmatter, ctx.user?.id ?? null, id);
+        const existingPublishIso = toIsoString(existingMemo.publishDate ?? null);
+        if (existingPublishIso) {
+          frontmatter.publishDate = existingPublishIso;
+        }
+
+        const markdownContent = buildMemoMarkdownDocument(normalized.content, frontmatter);
+        const basePath = getLocalBasePathOrThrow();
+        const localFilePath = (existingMemo.filePath || existingMemo.id).replace(/^\/+/, "");
+        const fullPath = join(basePath, localFilePath);
+        const now = Date.now();
+        let meta: any = {};
+        try {
+          meta = existingMemo.metadata ? JSON.parse(existingMemo.metadata) : {};
+        } catch {
+          meta = {};
+        }
+        meta.attachments = normalized.attachments;
+        if (frontmatter.clipping) {
+          meta.clipping = frontmatter.clipping;
+          meta.content = normalized.content;
+        }
+
+        const updateData = {
+          title: resolvedTitle,
+          excerpt: generateExcerptFromContent(normalized.content),
+          body: normalized.content,
+          public: isPublic,
+          tags: JSON.stringify(tags),
+          metadata: JSON.stringify(meta),
+          updateDate: now,
+          lastModified: now,
+          contentHash: calculateSimpleHash(normalized.content),
+        };
+
+        await mkdir(dirname(fullPath), { recursive: true });
+        await writeFile(fullPath, markdownContent, "utf-8");
+        try {
+          await db.update(posts).set(updateData).where(eq(posts.id, id));
+        } catch (error) {
+          try {
+            if (existingRaw === null) {
+              await rm(fullPath, { force: true });
+            } else {
+              await writeFile(fullPath, existingRaw, "utf-8");
+            }
+            await restoreMemoIndexRow(existingMemo);
+          } catch (rollbackError) {
+            console.error("更新 memo 失败后恢复 canonical 文件失败:", rollbackError);
+          }
           throw error;
-      }
-      const clippingInput = recognizeMemoClipping(normalized.content, {
-        ...existingFrontmatter,
-        title,
-        tags,
+        }
+
+        try {
+          if (!isTestEnv) await triggerIncrementalSync({ throwOnError: true });
+        } catch (error) {
+          try {
+            if (existingRaw === null) {
+              await rm(fullPath, { force: true });
+            } else {
+              await writeFile(fullPath, existingRaw, "utf-8");
+            }
+            await restoreMemoIndexRow(existingMemo);
+            await triggerIncrementalSync({ throwOnError: true });
+          } catch (rollbackError) {
+            console.error("更新 memo 同步失败后恢复状态失败:", rollbackError);
+          }
+          throw error;
+        }
+
+        return { existingMemo, normalized, clippingInput, resolvedTitle, updateData };
       });
-      const resolvedTitle = clippingInput.enabled
-        ? (title ??
-          (typeof existingFrontmatter.title === "string" ? existingFrontmatter.title : ""))
-        : (title ?? extractTitleFromContent(normalized.content));
-
-      // 构建 markdown 内容
-      const nowIso = new Date().toISOString();
-      const frontmatter: Record<string, unknown> = {
-        ...existingFrontmatter,
-        title: resolvedTitle,
-        public: isPublic,
-        tags,
-        attachments: normalized.attachments,
-        authorEmail: existingFrontmatter.clipping
-          ? existingFrontmatter.authorEmail
-          : ctx.user?.email || "admin@example.com",
-        updateDate: nowIso,
-      };
-      await attachClippingReference(normalized.content, frontmatter, ctx.user?.id ?? null, id);
-      const existingPublishIso = toIsoString(existingMemo.publishDate ?? null);
-      if (existingPublishIso) {
-        frontmatter.publishDate = existingPublishIso;
-      }
-
-      const markdownContent = buildMemoMarkdownDocument(normalized.content, frontmatter);
-
-      const basePath = getLocalBasePathOrThrow();
-      const localFilePath = (existingMemo.filePath || existingMemo.id).replace(/^\/+/, "");
-      const fullPath = join(basePath, localFilePath);
-      await mkdir(dirname(fullPath), { recursive: true });
-      await writeFile(fullPath, markdownContent, "utf-8");
-
-      // 更新数据库
-      const now = Date.now();
-      // 合并并更新元数据
-      let meta: any = {};
-      try {
-        meta = existingMemo.metadata ? JSON.parse(existingMemo.metadata) : {};
-      } catch {
-        // ignore malformed metadata json
-        meta = {};
-      }
-      meta.attachments = normalized.attachments;
-      if (frontmatter.clipping) {
-        meta.clipping = frontmatter.clipping;
-        meta.content = normalized.content;
-      }
-
-      const updateData = {
-        title: resolvedTitle,
-        excerpt: generateExcerptFromContent(normalized.content),
-        body: normalized.content, // 使用 body 字段匹配实际数据库结构
-        public: isPublic,
-        tags: JSON.stringify(tags),
-        metadata: JSON.stringify(meta),
-        updateDate: now,
-        lastModified: now,
-        contentHash: calculateSimpleHash(normalized.content),
-      };
-
-      await db.update(posts).set(updateData).where(eq(posts.id, id));
+      const { existingMemo, normalized, clippingInput, resolvedTitle, updateData } = updateState;
       clearSearchCache();
       notifyClippingChange(id);
 
       // 触发增量数据同步
       if (isTestEnv) {
         void triggerIncrementalSync();
-      } else {
-        await triggerIncrementalSync();
       }
 
       const updatedRow: MemoRow = { ...existingMemo, ...updateData } as MemoRow;
       const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(updatedRow);
 
       const clipping = clippingInput.enabled ? await projectClippingMemo(id) : null;
+      const canComment =
+        updatedRow.public && !updatedRow.draft && (await isClippingRowPublic(updatedRow));
       return {
         id,
         slug: existingMemo.slug,
@@ -1459,6 +1543,7 @@ export const memosRouter = router({
             }
           : {}),
         isPublic: updateData.public,
+        canComment,
         tags,
         attachments: normalized.attachments,
         createdAt: displayTime,
@@ -1484,45 +1569,88 @@ export const memosRouter = router({
     const isTestEnv = process.env.NODE_ENV === "test" || process.env.ADMIN_EMAIL?.includes("test");
 
     try {
-      // 查找现有 memo
-      const existingMemo = await db
-        .select()
-        .from(posts)
-        .where(and(eq(posts.id, id), eq(posts.type, "memo")))
-        .limit(1)
-        .then((result) => result[0]);
-
-      if (!existingMemo) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Memo 不存在",
-        });
-      }
-
       if (isLocalContentEnabled()) {
         const basePath = getLocalBasePathOrThrow();
-        const localFilePath = (existingMemo.filePath || existingMemo.id).replace(/^\/+/, "");
-        try {
-          await rm(join(basePath, localFilePath), { force: true });
-        } catch (err) {
-          if (process.env.NODE_ENV !== "production") {
-            console.warn("[memos.delete] local 删除失败(开发环境忽略)", localFilePath, err);
-          } else {
-            throw err;
+        await withClippingVisibilityLock(async () => {
+          const existingMemo = await db
+            .select()
+            .from(posts)
+            .where(and(eq(posts.id, id), eq(posts.type, "memo")))
+            .limit(1)
+            .then((result) => result[0]);
+          if (!existingMemo) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Memo 不存在",
+            });
           }
-        }
-      }
+          const localFilePath = (existingMemo.filePath || existingMemo.id).replace(/^\/+/, "");
+          const fullPath = join(basePath, localFilePath);
+          let previousRaw: string | null = null;
+          try {
+            previousRaw = await readFile(fullPath, "utf8");
+          } catch (error) {
+            if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT"))
+              throw error;
+          }
+          try {
+            await rm(fullPath, { force: true });
+          } catch (err) {
+            if (process.env.NODE_ENV !== "production") {
+              console.warn("[memos.delete] local 删除失败(开发环境忽略)", localFilePath, err);
+            } else {
+              throw err;
+            }
+          }
 
-      // 从数据库删除
-      await db.delete(posts).where(eq(posts.id, id));
+          try {
+            await db.delete(posts).where(eq(posts.id, id));
+            if (!isTestEnv) await triggerIncrementalSync({ throwOnError: true });
+          } catch (error) {
+            if (previousRaw !== null) {
+              try {
+                await writeFile(fullPath, previousRaw, "utf8");
+                await restoreMemoIndexRow(existingMemo);
+              } catch (rollbackError) {
+                console.error("删除 memo 失败后恢复 canonical 文件失败:", rollbackError);
+              }
+            } else {
+              try {
+                await restoreMemoIndexRow(existingMemo);
+              } catch (rollbackError) {
+                console.error("删除 memo 失败后恢复索引记录失败:", rollbackError);
+              }
+            }
+            try {
+              if (!isTestEnv) await triggerIncrementalSync({ throwOnError: true });
+            } catch (rollbackError) {
+              console.error("删除 memo 同步失败后恢复状态失败:", rollbackError);
+            }
+            throw error;
+          }
+        });
+      } else {
+        const existingMemo = await db
+          .select()
+          .from(posts)
+          .where(and(eq(posts.id, id), eq(posts.type, "memo")))
+          .limit(1)
+          .then((result) => result[0]);
+        if (!existingMemo) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Memo 不存在",
+          });
+        }
+        // 从数据库删除
+        await db.delete(posts).where(eq(posts.id, id));
+      }
       notifyClippingChange(id);
       clearSearchCache();
 
       // 触发增量数据同步
       if (isTestEnv) {
         void triggerIncrementalSync();
-      } else {
-        await triggerIncrementalSync();
       }
 
       return { success: true, id };

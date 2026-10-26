@@ -237,6 +237,7 @@ export function ClippingDetail({
   publicMediaContext,
   publicAssetVersion,
   commentsTarget,
+  commentsCanCompose,
 }: {
   slug: string;
   memoContent: string;
@@ -250,6 +251,7 @@ export function ClippingDetail({
   publicMediaContext?: PublicMediaContext;
   publicAssetVersion?: string | null;
   commentsTarget?: { type: "article" | "memo" | "project"; key: string };
+  commentsCanCompose?: boolean;
 }) {
   const [transport] = useState(() => providedTransport ?? createTransport(slug));
   const [article, setArticle] = useState(initialArticle);
@@ -661,6 +663,7 @@ export function ClippingDetail({
                 target={commentsTarget}
                 title="评论"
                 embedded
+                allowCompose={commentsCanCompose}
               />
             </div>
           ) : null}
@@ -682,6 +685,7 @@ export function ClippingDetail({
             postSlug={commentsTarget.key}
             target={commentsTarget}
             title="评论"
+            allowCompose={commentsCanCompose}
           />
         </div>
       ) : null}

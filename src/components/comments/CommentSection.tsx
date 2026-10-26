@@ -20,6 +20,7 @@ interface CommentSectionProps {
   texts?: Partial<typeof DEFAULT_TEXTS>;
   usePublicSitePaths?: boolean;
   embedded?: boolean;
+  allowCompose?: boolean;
 }
 
 export default function CommentSection({
@@ -29,6 +30,7 @@ export default function CommentSection({
   texts = {},
   usePublicSitePaths = false,
   embedded = false,
+  allowCompose = true,
 }: CommentSectionProps) {
   const finalTexts = { ...DEFAULT_TEXTS, ...texts };
   const displayTitle = title || finalTexts.title;
@@ -90,7 +92,7 @@ export default function CommentSection({
           </div>
         )}
 
-        {showCommentComposer && (
+        {allowCompose && showCommentComposer && (
           <div className="comment-compose">
             {isUserLoading ? (
               <div className="flex items-center justify-center p-8 text-[color:var(--nature-text-soft)]">
