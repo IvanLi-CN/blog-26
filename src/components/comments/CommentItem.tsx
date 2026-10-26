@@ -138,7 +138,9 @@ export default function CommentItem({
   const handleRestore = async () => {
     try {
       await restoreComment(comment.id, comment.revision);
-      onCommentPosted("评论已恢复并进入待审核");
+      onCommentPosted(
+        comment.authorRole === "admin" ? "管理员评论已恢复并公开" : "评论已恢复并进入待审核"
+      );
     } catch (e) {
       console.error(e);
     }
@@ -174,10 +176,13 @@ export default function CommentItem({
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="comment-item__header flex flex-wrap items-center">
-            <h4 className="font-semibold text-[color:var(--nature-text)]">
+          <div className="comment-item__header flex min-w-0 flex-nowrap items-center">
+            <h4 className="min-w-0 flex-1 truncate font-semibold text-[color:var(--nature-text)]">
               {comment.author.nickname}
             </h4>
+            {comment.authorRole === "admin" ? (
+              <span className="nature-chip nature-chip-accent ml-2">管理员</span>
+            ) : null}
             <time
               className="comment-item__meta text-sm text-[color:var(--nature-text-soft)]"
               dateTime={new Date(comment.createdAt).toISOString()}
@@ -313,7 +318,7 @@ export default function CommentItem({
                     ) : (
                       <Icon name="tabler:restore" className="h-4 w-4" />
                     )}
-                    恢复待审
+                    {comment.authorRole === "admin" ? "恢复并公开" : "恢复待审"}
                   </button>
                 ) : (
                   <>

@@ -16,6 +16,7 @@ export type WebDemoConnection = "online" | "offline";
 export type WebDemoDelayMode = "normal" | "slow" | "custom";
 export type WebDemoThemeSelection = "light" | "dark" | "system";
 export type WebDemoMotionPreference = "system" | "reduce";
+export type WebDemoGithubBinding = "unbound" | "bound";
 
 /** @deprecated Use WebDemoConnection and WebDemoDelayMode for new code. */
 export type WebDemoNetwork = "healthy" | "slow" | "offline";
@@ -63,6 +64,7 @@ export type WebDemoSceneState = {
 
 export type WebDemoEnvironment = {
   persona: WebDemoPersona;
+  githubBinding: WebDemoGithubBinding;
   connection: WebDemoConnection;
   delay: WebDemoDelayMode;
   delayMs: number;
@@ -73,6 +75,8 @@ export type WebDemoEnvironment = {
 /** Compatibility snapshot for existing scene consumers. New code should use WebDemoRuntimeState. */
 export type WebDemoState = WebDemoSceneState & {
   persona: WebDemoPersona;
+  /** Optional for legacy in-memory consumers; normalized states always include it. */
+  githubBinding?: WebDemoGithubBinding;
   network: WebDemoNetwork;
 };
 
@@ -85,6 +89,7 @@ export type WebDemoStateChangeKey =
   | "scene"
   | "data"
   | "persona"
+  | "githubBinding"
   | "connection"
   | "delay"
   | "theme"
@@ -122,6 +127,7 @@ const stateKeys = {
   scene: "d_scene",
   data: "d_data",
   persona: "d_persona",
+  githubBinding: "d_github_binding",
   connection: "d_connection",
   delay: "d_delay",
   delayMs: "d_delay_ms",
@@ -137,6 +143,7 @@ const defaultSceneState: WebDemoSceneState = {
 
 const defaultEnvironment: WebDemoEnvironment = {
   persona: "guest",
+  githubBinding: "unbound",
   connection: "online",
   delay: "normal",
   delayMs: 1500,
@@ -180,6 +187,7 @@ const scenes = [
   "system-share-response-loss",
 ] as const satisfies readonly WebDemoScene[];
 const personas = ["guest", "user", "admin"] as const satisfies readonly WebDemoPersona[];
+const githubBindings = ["unbound", "bound"] as const satisfies readonly WebDemoGithubBinding[];
 const connections = ["online", "offline"] as const satisfies readonly WebDemoConnection[];
 const delays = ["normal", "slow", "custom"] as const satisfies readonly WebDemoDelayMode[];
 const themes = ["light", "dark", "system"] as const satisfies readonly WebDemoThemeSelection[];
@@ -280,6 +288,9 @@ export function normalizeWebDemoEnvironment(
     : fallback.delayMs;
   return {
     persona: isValue(environment.persona, personas) ? environment.persona : fallback.persona,
+    githubBinding: isValue(environment.githubBinding, githubBindings)
+      ? environment.githubBinding
+      : fallback.githubBinding,
     connection: isValue(environment.connection, connections)
       ? environment.connection
       : fallback.connection,
@@ -337,6 +348,7 @@ export function normalizeWebDemoState(
   const environment = normalizeWebDemoEnvironment(
     {
       persona: state.persona,
+      githubBinding: state.githubBinding,
       ...(legacyNetwork ? legacyNetworkToEnvironment(legacyNetwork) : {}),
     },
     pathname,
@@ -362,6 +374,7 @@ export function getWebDemoEnvironment(
   const delayMsParam = params.get(stateKeys.delayMs);
   const themeParam = params.get(stateKeys.theme);
   const motionParam = params.get(stateKeys.motion);
+  const githubBindingParam = params.get(stateKeys.githubBinding);
   const legacyNetwork = params.get(stateKeys.legacyNetwork);
   const legacyEnvironment = isValue(legacyNetwork, ["healthy", "slow", "offline"] as const)
     ? legacyNetworkToEnvironment(legacyNetwork)
@@ -377,6 +390,11 @@ export function getWebDemoEnvironment(
         : isValue(session.persona, personas)
           ? session.persona
           : fallback.persona,
+      githubBinding: isValue(githubBindingParam, githubBindings)
+        ? githubBindingParam
+        : isValue(session.githubBinding, githubBindings)
+          ? session.githubBinding
+          : fallback.githubBinding,
       connection: hasNewConnection
         ? connectionParam
         : (legacyEnvironment?.connection ??
@@ -445,6 +463,7 @@ function toLegacyWebDemoState(runtimeState: WebDemoRuntimeState): WebDemoState {
   return {
     ...runtimeState.sceneState,
     persona: runtimeState.environment.persona,
+    githubBinding: runtimeState.environment.githubBinding,
     network: environmentToLegacyNetwork(runtimeState.environment),
   };
 }
@@ -459,6 +478,7 @@ function runtimeFromLegacyState(
     environment: normalizeWebDemoEnvironment(
       {
         persona: state.persona,
+        githubBinding: state.githubBinding,
         ...legacyNetworkToEnvironment(state.network),
       },
       pathname,
@@ -686,6 +706,8 @@ export function getWebDemoStateChangeKeys(
   if (previous.sceneState.scene !== next.sceneState.scene) changed.push("scene");
   if (previous.sceneState.data !== next.sceneState.data) changed.push("data");
   if (previous.environment.persona !== next.environment.persona) changed.push("persona");
+  if (previous.environment.githubBinding !== next.environment.githubBinding)
+    changed.push("githubBinding");
   if (previous.environment.connection !== next.environment.connection) changed.push("connection");
   if (
     previous.environment.delay !== next.environment.delay ||
@@ -717,6 +739,7 @@ export function writeWebDemoRuntimeStateToLocation(
   url.searchParams.set(stateKeys.scene, sceneState.scene);
   url.searchParams.set(stateKeys.data, sceneState.data);
   url.searchParams.set(stateKeys.persona, environment.persona);
+  url.searchParams.set(stateKeys.githubBinding, environment.githubBinding);
   url.searchParams.set(stateKeys.connection, environment.connection);
   url.searchParams.set(stateKeys.delay, environment.delay);
   url.searchParams.set(stateKeys.delayMs, String(environment.delayMs));
@@ -754,6 +777,7 @@ export function getWebDemoShareUrl(
   url.searchParams.set(stateKeys.scene, sceneState.scene);
   url.searchParams.set(stateKeys.data, sceneState.data);
   url.searchParams.set(stateKeys.persona, environment.persona);
+  url.searchParams.set(stateKeys.githubBinding, environment.githubBinding);
   url.searchParams.set(stateKeys.connection, environment.connection);
   url.searchParams.set(stateKeys.delay, environment.delay);
   url.searchParams.set(stateKeys.delayMs, String(environment.delayMs));
@@ -775,7 +799,12 @@ export function setWebDemoRuntimeState(
   const changed = getWebDemoStateChangeKeys(previous, normalized);
   if (
     changed.some(
-      (key) => key === "data" || key === "persona" || key === "connection" || key === "delay"
+      (key) =>
+        key === "data" ||
+        key === "persona" ||
+        key === "githubBinding" ||
+        key === "connection" ||
+        key === "delay"
     )
   ) {
     cancelWebDemoRequests();

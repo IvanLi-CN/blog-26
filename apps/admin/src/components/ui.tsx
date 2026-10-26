@@ -53,17 +53,15 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   size?: "default" | "sm" | "lg" | "icon" | "content";
 };
 
-export function Button({
-  className,
-  variant = "default",
-  size = "default",
-  asChild = false,
-  ...props
-}: ButtonProps) {
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { className, variant = "default", size = "default", asChild = false, ...props },
+  ref
+) {
   const Comp = asChild ? Slot : "button";
 
   return (
     <Comp
+      ref={ref}
       className={cn(
         "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-2xl text-sm font-medium transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45 lg:rounded-[0.75rem] [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
         variant !== "row" && variant !== "bare" && "active:scale-[0.98]",
@@ -95,7 +93,8 @@ export function Button({
       {...props}
     />
   );
-}
+});
+Button.displayName = "Button";
 
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
@@ -440,6 +439,8 @@ export function Alert({
     tone === "danger" || tone === "warning" ? TriangleAlert : tone === "success" ? Check : Info;
   return (
     <div
+      role={tone === "danger" ? "alert" : "status"}
+      aria-live={tone === "danger" ? "assertive" : "polite"}
       className={cn(
         "flex gap-3 rounded-3xl border px-4 py-3 text-sm leading-6 shadow-sm lg:rounded-[1rem] lg:px-3.5 lg:py-2.5",
         tone === "default" && "border-border/60 bg-muted/62 text-foreground",
@@ -581,6 +582,7 @@ export function DialogContent({
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-scrim/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out" />
       <DialogPrimitive.Content
+        aria-modal={true}
         className={cn(
           "fixed left-1/2 top-1/2 z-50 grid max-h-[min(88vh,760px)] w-[min(calc(100vw-2rem),34rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-3xl border border-border/60 bg-card text-card-foreground shadow-2xl shadow-shadow-strong outline-none lg:rounded-[1rem]",
           className
@@ -667,6 +669,7 @@ export function ConfirmDialog({
   destructive,
   confirmPending = false,
   confirmPendingLabel,
+  returnFocusRef,
   onConfirm,
 }: {
   open: boolean;
@@ -678,11 +681,18 @@ export function ConfirmDialog({
   destructive?: boolean;
   confirmPending?: boolean;
   confirmPendingLabel?: string;
+  returnFocusRef?: { current: HTMLElement | null };
   onConfirm: () => void | Promise<void>;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          if (!returnFocusRef?.current) return;
+          event.preventDefault();
+          returnFocusRef.current.focus();
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="pr-8 text-xl font-semibold">{title}</DialogTitle>
           {description ? (

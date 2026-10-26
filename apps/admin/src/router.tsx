@@ -4,6 +4,7 @@ import { CommentsPage } from "~/pages/comments";
 import { ContentSyncPage } from "~/pages/content-sync";
 import { DashboardPage } from "~/pages/dashboard";
 import { EditorPage } from "~/pages/editor";
+import { GithubBindingPage } from "~/pages/github-binding";
 import { LlmSettingsPage } from "~/pages/llm-settings";
 import { PatsPage } from "~/pages/pats";
 import { PostsPage } from "~/pages/posts";
@@ -57,6 +58,11 @@ const commentsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "comments",
   component: CommentsPage,
+});
+const githubBindingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "github-binding",
+  component: GithubBindingPage,
 });
 const contentSyncRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -131,6 +137,7 @@ export const routeTree = rootRoute.addChildren([
   postsRoute,
   editorRoute,
   commentsRoute,
+  githubBindingRoute,
   contentSyncRoute,
   schedulesRoute,
   scheduleDetailRoute,

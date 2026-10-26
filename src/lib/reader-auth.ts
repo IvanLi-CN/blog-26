@@ -1,11 +1,19 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { and, eq, gt, isNull, lt } from "drizzle-orm";
+import { recordAdminGithubBindingEvent } from "./admin-github-binding";
 import { db } from "./db";
-import { readerOAuthAttempts, readerSessions, readers } from "./schema";
+import {
+  adminGithubBindingEvents,
+  adminGithubBindings,
+  readerOAuthAttempts,
+  readerSessions,
+  readers,
+} from "./schema";
 import { createSessionCookieHeader } from "./session-cookie";
 
 export const READER_SESSION_COOKIE_NAME = "reader_session_id";
-const READER_OAUTH_STATE_COOKIE_NAME = "reader_oauth_state";
+export const READER_OAUTH_STATE_COOKIE_NAME = "reader_oauth_state";
+export const ADMIN_GITHUB_BINDING_STATE_COOKIE_NAME = "reader_binding_oauth_state";
 const READER_SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 const READER_OAUTH_ATTEMPT_DURATION_MS = 10 * 60 * 1000;
 
@@ -23,6 +31,34 @@ type ReaderAuthConfig = {
   clientSecret: string;
   callbackUrl: string;
 };
+
+type ReaderOAuthPurpose = "reader_login" | "admin_binding";
+
+export type GithubProfile = {
+  githubId: string;
+  githubLogin: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  profileUrl: string | null;
+};
+
+export type AdminGithubBindingErrorCode =
+  | "invalid_state"
+  | "expired"
+  | "replayed"
+  | "mismatched_session"
+  | "conflict"
+  | "oauth_failed";
+
+export class AdminGithubBindingError extends Error {
+  readonly code: AdminGithubBindingErrorCode;
+
+  constructor(code: AdminGithubBindingErrorCode) {
+    super("GitHub 管理员身份绑定未完成");
+    this.name = "AdminGithubBindingError";
+    this.code = code;
+  }
+}
 
 function base64Url(value: Uint8Array) {
   return Buffer.from(value).toString("base64url");
@@ -109,6 +145,20 @@ export function clearReaderOAuthStateCookieHeader(request: Request) {
   return createSessionCookieHeader(request, READER_OAUTH_STATE_COOKIE_NAME, { maxAge: 0 });
 }
 
+export function adminGithubBindingStateCookieHeader(request: Request, state: string) {
+  return createSessionCookieHeader(request, ADMIN_GITHUB_BINDING_STATE_COOKIE_NAME, {
+    value: state,
+    maxAge: READER_OAUTH_ATTEMPT_DURATION_MS / 1000,
+    sameSite: "Lax",
+  });
+}
+
+export function clearAdminGithubBindingStateCookieHeader(request: Request) {
+  return createSessionCookieHeader(request, ADMIN_GITHUB_BINDING_STATE_COOKIE_NAME, {
+    maxAge: 0,
+  });
+}
+
 export function readerSessionCookieHeader(request: Request, token: string) {
   return createSessionCookieHeader(request, READER_SESSION_COOKIE_NAME, {
     value: token,
@@ -121,7 +171,12 @@ export function clearReaderSessionCookieHeader(request: Request) {
   return createSessionCookieHeader(request, READER_SESSION_COOKIE_NAME, { maxAge: 0 });
 }
 
-export async function createReaderOAuthStart(request: Request, rawReturnTo: string | null) {
+async function createOAuthStart(
+  request: Request,
+  rawReturnTo: string | null,
+  purpose: ReaderOAuthPurpose,
+  adminUserId?: string
+) {
   const config = getConfig();
   if (!config) {
     throw new Error("GitHub reader OAuth is not configured");
@@ -136,6 +191,8 @@ export async function createReaderOAuthStart(request: Request, rawReturnTo: stri
     stateHash: hashValue(state),
     codeVerifier,
     returnTo: normalizeReturnTo(rawReturnTo, request),
+    purpose,
+    adminUserId: adminUserId ?? null,
     expiresAt: now + READER_OAUTH_ATTEMPT_DURATION_MS,
     createdAt: now,
   });
@@ -152,26 +209,45 @@ export async function createReaderOAuthStart(request: Request, rawReturnTo: stri
 
   return {
     location: authorizeUrl.toString(),
-    cookie: readerOAuthStateCookieHeader(request, state),
+    cookie:
+      purpose === "admin_binding"
+        ? adminGithubBindingStateCookieHeader(request, state)
+        : readerOAuthStateCookieHeader(request, state),
   };
 }
 
-async function consumeOAuthAttempt(request: Request, state: string) {
-  const cookieState = parseCookies(request)[READER_OAUTH_STATE_COOKIE_NAME];
-  if (!cookieState || cookieState !== state) return null;
-  const now = Date.now();
+export function createReaderOAuthStart(request: Request, rawReturnTo: string | null) {
+  return createOAuthStart(request, rawReturnTo, "reader_login");
+}
+
+export function createAdminGithubBindingStart(
+  request: Request,
+  adminUserId: string,
+  rawReturnTo: string | null
+) {
+  return createOAuthStart(request, rawReturnTo, "admin_binding", adminUserId);
+}
+
+export async function getOAuthAttemptDetails(request: Request, state: string) {
   const attempt = await db
     .select()
     .from(readerOAuthAttempts)
-    .where(
-      and(
-        eq(readerOAuthAttempts.stateHash, hashValue(state)),
-        gt(readerOAuthAttempts.expiresAt, now),
-        isNull(readerOAuthAttempts.consumedAt)
-      )
-    )
+    .where(eq(readerOAuthAttempts.stateHash, hashValue(state)))
     .get();
   if (!attempt) return null;
+  const cookies = parseCookies(request);
+  const stateCookieName =
+    attempt.purpose === "admin_binding"
+      ? ADMIN_GITHUB_BINDING_STATE_COOKIE_NAME
+      : READER_OAUTH_STATE_COOKIE_NAME;
+  if (cookies[stateCookieName] !== state) return null;
+  return attempt;
+}
+
+async function consumeOAuthAttempt(request: Request, state: string) {
+  const attempt = await getOAuthAttemptDetails(request, state);
+  if (!attempt || attempt.consumedAt || attempt.expiresAt <= Date.now()) return null;
+  const now = Date.now();
   const consumed = await db
     .update(readerOAuthAttempts)
     .set({ consumedAt: now })
@@ -188,19 +264,8 @@ async function consumeOAuthAttempt(request: Request, state: string) {
 }
 
 export async function getReaderOAuthReturnTo(request: Request, state: string) {
-  const cookieState = parseCookies(request)[READER_OAUTH_STATE_COOKIE_NAME];
-  if (!cookieState || cookieState !== state) return null;
-  const attempt = await db
-    .select({ returnTo: readerOAuthAttempts.returnTo })
-    .from(readerOAuthAttempts)
-    .where(
-      and(
-        eq(readerOAuthAttempts.stateHash, hashValue(state)),
-        gt(readerOAuthAttempts.expiresAt, Date.now())
-      )
-    )
-    .get();
-  return attempt?.returnTo ?? null;
+  const attempt = await getOAuthAttemptDetails(request, state);
+  return attempt && attempt.expiresAt > Date.now() ? attempt.returnTo : null;
 }
 
 async function exchangeGithubCode(config: ReaderAuthConfig, code: string, verifier: string) {
@@ -246,14 +311,19 @@ async function readGithubProfile(accessToken: string) {
     displayName: payload.name?.trim() || payload.login,
     avatarUrl: payload.avatar_url || null,
     profileUrl: payload.html_url || null,
-  };
+  } satisfies GithubProfile;
 }
 
 export async function completeReaderOAuth(request: Request, state: string, code: string) {
   const config = getConfig();
   if (!config) throw new Error("GitHub reader OAuth is not configured");
   const attempt = await consumeOAuthAttempt(request, state);
-  if (!attempt) throw new Error("GitHub authorization state is invalid or expired");
+  if (!attempt) {
+    throw new Error("GitHub authorization state is invalid or expired");
+  }
+  if (attempt.purpose !== "reader_login") {
+    throw new Error("GitHub authorization state is invalid or expired");
+  }
   const accessToken = await exchangeGithubCode(config, code, attempt.codeVerifier);
   const profile = await readGithubProfile(accessToken);
   const now = Date.now();
@@ -281,6 +351,217 @@ export async function completeReaderOAuth(request: Request, state: string, code:
     returnTo: attempt.returnTo,
     cookie: readerSessionCookieHeader(request, rawToken),
   };
+}
+
+export async function cancelAdminGithubBindingOAuth(
+  request: Request,
+  state: string,
+  currentAdminUserId: string | null,
+  result: "cancelled" | "failure" = "cancelled"
+) {
+  const attempt = await getOAuthAttemptDetails(request, state);
+  const adminUserId = attempt?.adminUserId;
+  if (attempt?.purpose !== "admin_binding" || !adminUserId) return null;
+  const sameAdmin = currentAdminUserId === adminUserId;
+  if (!sameAdmin) {
+    await recordAdminGithubBindingEvent({
+      adminUserId,
+      action: "bind",
+      result: "failure",
+      errorCode: "mismatched_session",
+    });
+    return attempt;
+  }
+  if (attempt.consumedAt) {
+    await recordAdminGithubBindingEvent({
+      adminUserId,
+      action: "bind",
+      result: "failure",
+      errorCode: "replayed",
+    });
+    return attempt;
+  }
+  if (attempt.expiresAt <= Date.now()) {
+    await recordAdminGithubBindingEvent({
+      adminUserId,
+      action: "bind",
+      result: "failure",
+      errorCode: "expired",
+    });
+    return attempt;
+  }
+  const consumed = await consumeOAuthAttempt(request, state);
+  await recordAdminGithubBindingEvent({
+    adminUserId,
+    action: "bind",
+    result: consumed ? result : "failure",
+    errorCode: consumed ? (result === "cancelled" ? "cancelled" : "oauth_failed") : "replayed",
+  });
+  return attempt;
+}
+
+export async function completeAdminGithubBindingOAuth(
+  request: Request,
+  state: string,
+  code: string,
+  currentAdminUserId: string | null
+) {
+  const details = await getOAuthAttemptDetails(request, state);
+  const adminUserId = details?.adminUserId;
+  if (details?.purpose !== "admin_binding" || !adminUserId) {
+    throw new AdminGithubBindingError("invalid_state");
+  }
+  if (details.consumedAt) {
+    await recordAdminGithubBindingEvent({
+      adminUserId,
+      action: "bind",
+      result: "failure",
+      errorCode: "replayed",
+    });
+    throw new AdminGithubBindingError("replayed");
+  }
+  if (details.expiresAt <= Date.now()) {
+    await recordAdminGithubBindingEvent({
+      adminUserId,
+      action: "bind",
+      result: "failure",
+      errorCode: "expired",
+    });
+    throw new AdminGithubBindingError("expired");
+  }
+  if (currentAdminUserId !== adminUserId) {
+    await consumeOAuthAttempt(request, state);
+    await recordAdminGithubBindingEvent({
+      adminUserId,
+      action: "bind",
+      result: "failure",
+      errorCode: "mismatched_session",
+    });
+    throw new AdminGithubBindingError("mismatched_session");
+  }
+
+  const attempt = await consumeOAuthAttempt(request, state);
+  if (!attempt) {
+    await recordAdminGithubBindingEvent({
+      adminUserId,
+      action: "bind",
+      result: "failure",
+      errorCode: "replayed",
+    });
+    throw new AdminGithubBindingError("replayed");
+  }
+
+  const config = getConfig();
+  if (!config) {
+    await recordAdminGithubBindingEvent({
+      adminUserId,
+      action: "bind",
+      result: "failure",
+      errorCode: "oauth_failed",
+    });
+    throw new AdminGithubBindingError("oauth_failed");
+  }
+
+  let profile: GithubProfile;
+  try {
+    const accessToken = await exchangeGithubCode(config, code, attempt.codeVerifier);
+    profile = await readGithubProfile(accessToken);
+  } catch {
+    await recordAdminGithubBindingEvent({
+      adminUserId,
+      action: "bind",
+      result: "failure",
+      errorCode: "oauth_failed",
+    });
+    throw new AdminGithubBindingError("oauth_failed");
+  }
+
+  const now = Date.now();
+  const rawToken = randomToken(48);
+  try {
+    const readerRow = await db.transaction(async (tx) => {
+      const transactionDb = tx as unknown as typeof db;
+      const existingAdminBinding = await transactionDb
+        .select()
+        .from(adminGithubBindings)
+        .where(eq(adminGithubBindings.adminUserId, adminUserId))
+        .get();
+      const existingGithubBinding = await transactionDb
+        .select()
+        .from(adminGithubBindings)
+        .where(eq(adminGithubBindings.githubId, profile.githubId))
+        .get();
+      if (
+        (existingAdminBinding && existingAdminBinding.githubId !== profile.githubId) ||
+        (existingGithubBinding && existingGithubBinding.adminUserId !== adminUserId)
+      ) {
+        throw new AdminGithubBindingError("conflict");
+      }
+
+      const reader = await transactionDb
+        .insert(readers)
+        .values({ id: randomUUID(), ...profile, createdAt: now, updatedAt: now })
+        .onConflictDoUpdate({
+          target: readers.githubId,
+          set: { ...profile, updatedAt: now },
+        })
+        .returning()
+        .get();
+      if (!reader) throw new AdminGithubBindingError("oauth_failed");
+
+      const bindingValues = {
+        id: existingAdminBinding?.id ?? randomUUID(),
+        adminUserId,
+        ...profile,
+        createdAt: existingAdminBinding?.createdAt ?? now,
+        updatedAt: now,
+      } satisfies typeof adminGithubBindings.$inferInsert;
+      await transactionDb
+        .insert(adminGithubBindings)
+        .values(bindingValues)
+        .onConflictDoUpdate({
+          target: adminGithubBindings.adminUserId,
+          set: { ...profile, updatedAt: now },
+        });
+      await transactionDb.insert(readerSessions).values({
+        id: randomUUID(),
+        readerId: reader.id,
+        tokenHash: hashValue(rawToken),
+        expiresAt: now + READER_SESSION_DURATION_MS,
+        createdAt: now,
+      });
+      const eventValues = {
+        id: randomUUID(),
+        adminUserId,
+        githubId: profile.githubId,
+        action: "bind",
+        result: "success",
+        errorCode: null,
+        createdAt: now,
+      } satisfies typeof adminGithubBindingEvents.$inferInsert;
+      await transactionDb.insert(adminGithubBindingEvents).values(eventValues);
+      return reader;
+    });
+
+    return {
+      reader: readerFromRow(readerRow),
+      returnTo: attempt.returnTo,
+      cookie: readerSessionCookieHeader(request, rawToken),
+    };
+  } catch (error) {
+    const bindingError =
+      error instanceof AdminGithubBindingError
+        ? error
+        : new AdminGithubBindingError("oauth_failed");
+    await recordAdminGithubBindingEvent({
+      adminUserId,
+      githubId: profile.githubId,
+      action: "bind",
+      result: bindingError.code === "conflict" ? "conflict" : "failure",
+      errorCode: bindingError.code,
+    });
+    throw bindingError;
+  }
 }
 
 export async function getReaderFromRequest(request: Request): Promise<Reader | null> {

@@ -69,6 +69,18 @@ export function hasTrustedPublicOrigin(request: Pick<Request, "headers" | "url">
   return !origin || Boolean(resolveAllowedOrigin(request));
 }
 
+export function hasTrustedSameOriginNavigation(request: Pick<Request, "headers" | "url">) {
+  const requestOrigin = resolveRequestOrigin(request);
+  const originHeader = normalizeOrigin(request.headers.get("origin"));
+  if (originHeader) return Boolean(requestOrigin && originHeader === requestOrigin);
+
+  const fetchSite = request.headers.get("sec-fetch-site")?.trim().toLowerCase();
+  if (fetchSite) return fetchSite === "same-origin" || fetchSite === "none";
+
+  const refererOrigin = normalizeOrigin(request.headers.get("referer"));
+  return Boolean(requestOrigin && refererOrigin === requestOrigin);
+}
+
 export function appendPublicCorsHeaders(
   headers: Headers,
   request: Pick<Request, "headers" | "url">,

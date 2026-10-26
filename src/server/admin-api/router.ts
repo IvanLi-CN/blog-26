@@ -9,6 +9,7 @@ import {
   toBuiltinLlmModelOptions,
 } from "@/lib/llm-models";
 import { type LlmTier, llmTierSchema } from "@/lib/llm-settings";
+import { hasTrustedSameOriginNavigation } from "@/lib/public-cors";
 import { aiSearchModeSchema } from "@/lib/search/settings";
 import { createContext } from "@/server/context";
 import { handleAdminPreviewAssetRequest } from "@/server/public-media";
@@ -269,6 +270,27 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
     }
 
     const { caller, resHeaders } = await createAdminCallerForRequest(request);
+
+    if (pathname === "/github-binding") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      return json(
+        await caller.admin.githubBinding.get(),
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+
+    if (pathname === "/github-binding/unbind") {
+      if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
+      if (!hasTrustedSameOriginNavigation(request)) {
+        return json(
+          { error: { code: "FORBIDDEN", message: "请求来源不受信任" } },
+          { status: 403 },
+          resHeaders
+        );
+      }
+      return json(await caller.admin.githubBinding.unbind(), { status: 200 }, resHeaders);
+    }
 
     if (pathname === "/playbook") {
       if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);

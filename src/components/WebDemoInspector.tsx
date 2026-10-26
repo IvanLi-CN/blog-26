@@ -9,6 +9,7 @@ import {
   Copy,
   Database,
   Gauge,
+  Link2,
   MonitorCog,
   Moon,
   PanelRightClose,
@@ -53,6 +54,7 @@ import {
   type WebDemoDataMode,
   type WebDemoDelayMode,
   type WebDemoEnvironment,
+  type WebDemoGithubBinding,
   type WebDemoMotionPreference,
   type WebDemoMutation,
   type WebDemoPersona,
@@ -75,6 +77,11 @@ const personaOptions: Array<{ value: WebDemoPersona; label: string; icon: typeof
   { value: "guest", label: "未登录", icon: UserRound },
   { value: "user", label: "普通用户", icon: CircleUserRound },
   { value: "admin", label: "管理员", icon: ShieldCheck },
+];
+
+const githubBindingOptions: Array<{ value: WebDemoGithubBinding; label: string }> = [
+  { value: "unbound", label: "未绑定" },
+  { value: "bound", label: "已绑定" },
 ];
 
 const connectionOptions: Array<{ value: WebDemoConnection; label: string; icon: typeof Wifi }> = [
@@ -233,6 +240,7 @@ export default function WebDemoInspector({
                     : next.environment.delay === "slow"
                       ? "slow"
                       : "healthy",
+                githubBinding: next.environment.githubBinding,
               },
               sceneState: next.sceneState,
               environment: next.environment,
@@ -467,6 +475,34 @@ export default function WebDemoInspector({
                         data-testid={`web-demo-persona-${value}`}
                       >
                         <Icon aria-hidden="true" size={13} />
+                        {label}
+                      </RadioGroupItem>
+                    ))}
+                  </RadioGroup>
+                </div>
+
+                <div className="web-demo-inspector-setting web-demo-inspector-setting-github-binding">
+                  <span className="web-demo-inspector-setting-label">
+                    <Link2 aria-hidden="true" size={14} />
+                    GitHub 绑定
+                  </span>
+                  <RadioGroup
+                    className="web-demo-inspector-radio-group"
+                    orientation="horizontal"
+                    value={environment.githubBinding}
+                    onValueChange={(value) =>
+                      updateEnvironment({ githubBinding: value as WebDemoGithubBinding })
+                    }
+                    aria-label="GitHub 绑定状态"
+                  >
+                    {githubBindingOptions.map(({ value, label }) => (
+                      <RadioGroupItem
+                        key={value}
+                        value={value}
+                        density="compact"
+                        aria-label={label}
+                        data-testid={`web-demo-github-binding-${value}`}
+                      >
                         {label}
                       </RadioGroupItem>
                     ))}

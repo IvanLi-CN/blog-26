@@ -4,7 +4,7 @@
   "base_sha": "e3989b4ea59bddad4cb910684a0546be5b0c4a88",
   "covered_files": {
     "site/components/PublicMemoAuthoring.tsx": "ae261d910d58fba2d63f7f9580c7beab70cd6534",
-    "src/components/comments/CommentSection.tsx": "14e52038a28559871488ca5a301c2b1acbbc942d",
+    "src/components/comments/CommentSection.tsx": "43e9fe05ca7978a130b1d74797933ac094b06391",
     "src/components/comments/CommentSectionWithProvider.tsx": "a17dcb3dc172cf02dd1b16c00f6816fcf81144bf",
     "src/components/memos/ClippingDetail.tsx": "8fb8a9d27cc2b6fc40b2548b55d510cba16c9163",
     "src/server/clipping/projection.ts": "647613c041786c27ffc468dbf21415d527f75cd9",
@@ -13,10 +13,10 @@
     "src/server/clipping/store.ts": "5bbe74b49284389859adebd202e5d0ef9c3e0cf3",
     "src/server/mcp.ts": "6b7b545eed32f7f406e7d91ac363048f82ac9243",
     "src/server/public-media.ts": "ddd59aba42de96914e424e0bcaeca6be05e3960f",
-    "src/server/public-api/router.ts": "df1f1f9d49fda6c67ddd703abbd1f802b2b82fff",
+    "src/server/public-api/router.ts": "04f552874e2640c0699145020e40d2667c303d57",
     "src/server/routers/admin/files.ts": "b6f4a79f2939291764b30df420bebee43e5daa0e",
-    "src/server/routers/comments.test.ts": "71ec7bab9a668ed1b7559fc54d91f57130585a68",
-    "src/server/routers/comments.ts": "8ebfa5d0aece1f01c1a3cc0fed1b09e29496f662",
+    "src/server/routers/comments.test.ts": "3c594830b94c86e461460ea9a2f687126226150c",
+    "src/server/routers/comments.ts": "0251253a39b8da534161c466313d7d99aa677ac2",
     "src/server/routers/memos.ts": "02b5a3d24afb3698d3eed1f24fb8fae94fb5c621",
     "tests/components/CommentSection.test.tsx": "76157dd929540c3b0817348598820f8a774d342a",
     "tests/components/PublicMemoAuthoring.test.tsx": "4eddda1413ef18d80483fc60467f604d1443ec1e"
@@ -34,7 +34,7 @@
       "evidence": [
         {
           "path": "docs/specs/github-reader-comments/SPEC.md",
-          "blob": "f5db412779bd26aa1ab0a49cbef32d68717d3c2f",
+          "blob": "0c6a220709e25b6f5fcfca2e1b8e5c5d0a62099d",
           "command": "Locked public target visibility and reader comment lifecycle requirements"
         }
       ]
@@ -46,7 +46,7 @@
       "evidence": [
         {
           "path": "src/server/routers/comments.ts",
-          "blob": "8ebfa5d0aece1f01c1a3cc0fed1b09e29496f662",
+          "blob": "0251253a39b8da534161c466313d7d99aa677ac2",
           "command": "Public comment reads, deletes, counts, and creates bind target visibility to operation boundaries"
         },
         {
@@ -66,7 +66,7 @@
         },
         {
           "path": "src/server/public-api/router.ts",
-          "blob": "df1f1f9d49fda6c67ddd703abbd1f802b2b82fff",
+          "blob": "04f552874e2640c0699145020e40d2667c303d57",
           "command": "Public search Memo title and visibility projection shares the clipping visibility lock with canonical-file reads"
         },
         {
@@ -76,7 +76,7 @@
         },
         {
           "path": "src/server/routers/comments.test.ts",
-          "blob": "71ec7bab9a668ed1b7559fc54d91f57130585a68",
+          "blob": "3c594830b94c86e461460ea9a2f687126226150c",
           "command": "bun test src/server/routers/comments.test.ts: 13 passed"
         }
       ],
@@ -92,12 +92,12 @@
       "evidence": [
         {
           "path": "src/server/routers/comments.test.ts",
-          "blob": "71ec7bab9a668ed1b7559fc54d91f57130585a68",
+          "blob": "3c594830b94c86e461460ea9a2f687126226150c",
           "command": "bun test src/server/routers/comments.test.ts: 13 passed, 45 expectations"
         },
         {
           "path": "src/server/routers/comments.ts",
-          "blob": "8ebfa5d0aece1f01c1a3cc0fed1b09e29496f662",
+          "blob": "0251253a39b8da534161c466313d7d99aa677ac2",
           "command": "bunx biome check on affected server files and targeted TypeScript diagnostics pass"
         },
         {
@@ -117,7 +117,7 @@
         },
         {
           "path": "src/server/public-api/router.ts",
-          "blob": "df1f1f9d49fda6c67ddd703abbd1f802b2b82fff",
+          "blob": "04f552874e2640c0699145020e40d2667c303d57",
           "command": "Public search Memo visibility and title resolution share the clipping visibility lock"
         },
         {
@@ -183,7 +183,7 @@
       "evidence": [
         {
           "path": "src/server/routers/comments.ts",
-          "blob": "8ebfa5d0aece1f01c1a3cc0fed1b09e29496f662",
+          "blob": "0251253a39b8da534161c466313d7d99aa677ac2",
           "command": "Comment response and mutation payloads remain unchanged while visibility is bound to atomic operation checks"
         }
       ]
@@ -197,7 +197,7 @@
       "evidence": [
         {
           "path": "src/server/routers/comments.ts",
-          "blob": "8ebfa5d0aece1f01c1a3cc0fed1b09e29496f662",
+          "blob": "0251253a39b8da534161c466313d7d99aa677ac2",
           "command": "The repair only changes operation ordering and does not alter persisted shapes"
         }
       ]

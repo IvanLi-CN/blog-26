@@ -83,6 +83,22 @@ function demoPublicUser(environment: WebDemoEnvironment) {
   };
 }
 
+function demoReader(environment: WebDemoEnvironment, scene?: WebDemoScene) {
+  if (environment.persona === "guest") return null;
+  if (environment.persona === "admin" && environment.githubBinding !== "bound") return null;
+  return {
+    id: environment.persona === "admin" ? "demo-admin-reader" : "demo-user-reader",
+    githubId: environment.persona === "admin" ? "demo-admin-github" : "demo-user-github",
+    githubLogin: environment.persona === "admin" ? "ivan-demo" : "reader-demo",
+    displayName: environment.persona === "admin" ? "Ivan" : "Demo User",
+    avatarUrl:
+      scene === "comments-avatar-failure"
+        ? "/site-assets/__missing-comment-avatar__.svg"
+        : "/site-assets/default-avatar.svg",
+    profileUrl: "https://github.com/example",
+  };
+}
+
 type DemoComment = {
   id: string;
   content: string;
@@ -91,6 +107,7 @@ type DemoComment = {
   targetKey: string;
   authorName: string;
   authorEmail: string | null;
+  authorRole: "reader" | "admin";
   readerPersona: "user" | "other" | "admin";
   parentId: string | null;
   rootId: string | null;
@@ -157,6 +174,7 @@ function seedDemoComments(targetType: DemoComment["targetType"], targetKey: stri
       targetKey,
       authorName: "其他读者",
       authorEmail: null,
+      authorRole: "reader",
       readerPersona: "other",
       parentId: null,
       rootId,
@@ -164,6 +182,23 @@ function seedDemoComments(targetType: DemoComment["targetType"], targetKey: stri
       deletedAt: null,
       revision: 1,
       createdAt: now - 86_400_000,
+    },
+    {
+      id: `demo-comment-${demoCommentSequence++}`,
+      content: "管理员身份绑定后的评论会直接公开，并保留作者标记。",
+      postSlug: targetKey,
+      targetType,
+      targetKey,
+      authorName: "Ivan",
+      authorEmail: null,
+      readerPersona: "admin",
+      authorRole: "admin",
+      parentId: null,
+      rootId: `demo-comment-${demoCommentSequence - 1}`,
+      status: "approved",
+      deletedAt: null,
+      revision: 1,
+      createdAt: now - 64_800_000,
     },
     {
       id: replyId,
@@ -174,6 +209,7 @@ function seedDemoComments(targetType: DemoComment["targetType"], targetKey: stri
       authorName: "Demo User",
       authorEmail: null,
       readerPersona: "user",
+      authorRole: "reader",
       parentId: rootId,
       rootId,
       status: "approved",
@@ -190,6 +226,7 @@ function seedDemoComments(targetType: DemoComment["targetType"], targetKey: stri
       authorName: "Demo User",
       authorEmail: null,
       readerPersona: "user",
+      authorRole: "reader",
       parentId: null,
       rootId: pendingId,
       status: "pending",
@@ -221,6 +258,7 @@ function demoCommentDto(
     deleted,
     revision: comment.revision,
     authorEmail: environment.persona === "admin" ? comment.authorEmail : null,
+    authorRole: comment.authorRole,
     author: {
       id:
         (deleted || placeholder) && environment.persona !== "admin"
@@ -791,22 +829,11 @@ async function getDemoPublicResponse(
   }
 
   if (url.pathname === "/api/public/reader-auth/me" && method === "GET") {
+    const reader = demoReader(environment, scene);
     return jsonResponse({
       available: true,
-      reader:
-        environment.persona === "guest"
-          ? null
-          : {
-              id: environment.persona === "admin" ? "demo-admin" : "demo-user",
-              githubId: environment.persona === "admin" ? "demo-admin-github" : "demo-user-github",
-              githubLogin: environment.persona === "admin" ? "ivan-demo" : "reader-demo",
-              displayName: environment.persona === "admin" ? "Ivan" : "Demo User",
-              avatarUrl:
-                scene === "comments-avatar-failure"
-                  ? "/site-assets/__missing-comment-avatar__.svg"
-                  : "",
-              profileUrl: "https://github.com/example",
-            },
+      reader,
+      isAdminAuthor: environment.persona === "admin" && environment.githubBinding === "bound",
     });
   }
 
@@ -880,6 +907,8 @@ async function getDemoPublicResponse(
   if (url.pathname === "/api/public/comments" && method === "POST") {
     if (environment.persona === "guest")
       return jsonResponse({ error: "请先使用 GitHub 登录" }, 401);
+    if (environment.persona === "admin" && environment.githubBinding !== "bound")
+      return jsonResponse({ error: "请先绑定 GitHub 管理员身份" }, 401);
     const { targetType, targetKey } = demoCommentTarget(url);
     const requestBody = readDemoRequestBody(init);
     const content = typeof requestBody.content === "string" ? requestBody.content.trim() : "";
@@ -905,14 +934,15 @@ async function getDemoPublicResponse(
         return jsonResponse({ error: "只能回复当前目标下已通过且未删除的评论" }, 400);
     }
     const submissionKey = String(requestBody.submissionKey || `demo-${crypto.randomUUID()}`);
+    const authorRole = environment.persona === "admin" ? "admin" : "reader";
     const existing = rows.find(
-      (row) => row.readerPersona === environment.persona && row.submissionKey === submissionKey
+      (row) => row.authorRole === authorRole && row.submissionKey === submissionKey
     );
     if (existing)
       return jsonResponse({
         success: true,
         commentId: existing.id,
-        message: "评论已提交，正在等待审核",
+        message: existing.authorRole === "admin" ? "管理员评论已公开" : "评论已提交，正在等待审核",
       });
     const id = `demo-comment-${demoCommentSequence++}`;
     const row: DemoComment = {
@@ -923,18 +953,28 @@ async function getDemoPublicResponse(
       targetKey: actualKey,
       authorName: environment.persona === "admin" ? "Ivan" : "Demo User",
       authorEmail: null,
+      authorRole,
       readerPersona: environment.persona === "admin" ? "admin" : "user",
       parentId,
       rootId: parentId ? rows.find((item) => item.id === parentId)?.rootId || parentId : id,
-      status: "pending",
+      status: authorRole === "admin" ? "approved" : "pending",
       deletedAt: null,
       revision: 1,
       createdAt: Date.now(),
       submissionKey,
     };
     rows.push(row);
-    recordWebDemoMutation("提交评论", `${actualType}:${actualKey} · 待审核`);
-    return jsonResponse({ success: true, commentId: id, message: "评论已提交，正在等待审核" });
+    recordWebDemoMutation(
+      "提交评论",
+      `${actualType}:${actualKey} · ${authorRole === "admin" ? "已公开" : "待审核"}`
+    );
+    return jsonResponse({
+      success: true,
+      commentId: id,
+      authorRole,
+      status: row.status,
+      message: authorRole === "admin" ? "管理员评论已公开" : "评论已提交，正在等待审核",
+    });
   }
 
   const commentRepliesMatch = url.pathname.match(/^\/api\/public\/comments\/([^/]+)\/replies$/);
@@ -994,10 +1034,17 @@ async function getDemoPublicResponse(
     const row = [...demoComments.values()].flat().find((item) => item.id === id);
     if (!row) return jsonResponse({ error: "评论不存在" }, 404);
     row.deletedAt = null;
-    row.status = "pending";
+    row.status = row.authorRole === "admin" ? "approved" : "pending";
     row.revision += 1;
-    recordWebDemoMutation("恢复评论", `${id} · 待审核`);
-    return jsonResponse({ success: true });
+    recordWebDemoMutation(
+      "恢复评论",
+      `${id} · ${row.authorRole === "admin" ? "已公开" : "待审核"}`
+    );
+    return jsonResponse({
+      success: true,
+      status: row.status,
+      message: row.authorRole === "admin" ? "管理员评论已恢复并公开" : "评论已恢复并进入待审",
+    });
   }
 
   const runtimeMatch = url.pathname.match(/^\/api\/public\/metrics\/v1\/([^/]+)$/);

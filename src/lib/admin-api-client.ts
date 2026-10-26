@@ -195,6 +195,7 @@ export interface AdminComment {
   postSlug: string;
   authorName: string;
   authorEmail: string | null;
+  authorRole?: "reader" | "admin";
   parentId: string | null;
   status: "pending" | "approved" | "rejected";
   targetType?: "article" | "memo" | "project";
@@ -209,6 +210,29 @@ export interface AdminComment {
 export interface AdminCommentsListResponse {
   comments: AdminComment[];
   pagination: Pagination;
+}
+
+export interface AdminGithubBindingResponse {
+  binding: {
+    id: string;
+    adminUserId: string;
+    githubId: string;
+    githubLogin: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+    profileUrl: string | null;
+    createdAt: number;
+    updatedAt: number;
+  } | null;
+  lastEvent: {
+    id: string;
+    adminUserId: string;
+    githubId: string | null;
+    action: "bind" | "unbind";
+    result: "success" | "cancelled" | "conflict" | "failure";
+    errorCode: string | null;
+    createdAt: number;
+  } | null;
 }
 
 export interface DataSourceInfo {
@@ -624,6 +648,15 @@ export const adminApi = {
     sortBy?: "createdAt" | "authorName";
     sortOrder?: "asc" | "desc";
   }) => adminRequest<AdminCommentsListResponse>(`/api/admin/comments${buildSearch(params)}`),
+  getGithubBinding: () => adminRequest<AdminGithubBindingResponse>("/api/admin/github-binding"),
+  simulateGithubBinding: () =>
+    adminRequest<{ success: boolean; message: string }>("/api/admin/github-binding/simulate", {
+      method: "POST",
+    }),
+  unbindGithubBinding: () =>
+    adminRequest<{ success: boolean; message: string }>("/api/admin/github-binding/unbind", {
+      method: "POST",
+    }),
   updateComment: (id: string, input: Record<string, unknown>) =>
     adminRequest<{ success: boolean; message: string }>(
       `/api/admin/comments/${encodeURIComponent(id)}`,

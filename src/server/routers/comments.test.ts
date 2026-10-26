@@ -6,11 +6,14 @@ import path from "node:path";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import { unbindAdminGithubBinding } from "@/lib/admin-github-binding";
 import { COMMENT_MIGRATION_ID } from "@/lib/comment-migration";
 import { db, initializeDB } from "@/lib/db";
 import { projectCatalog } from "@/lib/project-catalog";
 import type { Reader } from "@/lib/reader-auth";
 import {
+  adminGithubBindingEvents,
+  adminGithubBindings,
   commentMigrationState,
   comments,
   posts,
@@ -94,6 +97,8 @@ describe("comments reader lifecycle", () => {
     await db.delete(readerSessions);
     await db.delete(posts);
     await db.delete(readers);
+    await db.delete(adminGithubBindingEvents);
+    await db.delete(adminGithubBindings);
     await db.insert(readers).values({
       ...reader,
       createdAt: Date.now(),
@@ -165,6 +170,175 @@ describe("comments reader lifecycle", () => {
       target: input.target,
     });
     expect(restored.comments[0]).toMatchObject({ status: "pending", deleted: false });
+  });
+
+  it("publishes bound admin comments, preserves their marker, and gates new comments after unbind", async () => {
+    await seedPost("admin-comment-lifecycle");
+    if (!db) throw new Error("Database has not been initialised");
+    await db.insert(users).values({
+      id: "admin-comments-test",
+      email: "admin-comments-test@example.com",
+      name: "Admin",
+      createdAt: Date.now(),
+    });
+    const adminReader: Reader = {
+      ...reader,
+      id: "reader-admin-comments",
+      githubId: "github-admin-comments",
+      githubLogin: "admin-comments",
+      displayName: "Admin Comments",
+    };
+    await registerReader(adminReader);
+    await db.insert(adminGithubBindings).values({
+      id: "admin-comments-binding",
+      adminUserId: "admin-comments-test",
+      githubId: adminReader.githubId,
+      githubLogin: adminReader.githubLogin,
+      displayName: adminReader.displayName,
+      avatarUrl: null,
+      profileUrl: adminReader.profileUrl,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    await expect(
+      createCaller({ isAdmin: true }).comments.createComment({
+        target: { type: "article", key: "admin-comment-lifecycle" },
+        content: "Admin session alone must not comment",
+        submissionKey: "admin-session-only",
+      })
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+
+    const created = await createCaller({ reader: adminReader }).comments.createComment({
+      target: { type: "article", key: "admin-comment-lifecycle" },
+      content: "Published by the bound admin",
+      submissionKey: "admin-comment-root",
+    });
+    expect(created).toMatchObject({
+      authorRole: "admin",
+      status: "approved",
+      message: "管理员评论已公开",
+    });
+    const publicRoot = await createCaller().comments.getComments({
+      target: { type: "article", key: "admin-comment-lifecycle" },
+    });
+    expect(publicRoot.comments[0]).toMatchObject({
+      id: created.commentId,
+      status: "approved",
+      authorRole: "admin",
+      canDelete: false,
+    });
+
+    const reply = await createCaller({ reader: adminReader }).comments.createComment({
+      target: { type: "article", key: "admin-comment-lifecycle" },
+      parentId: created.commentId,
+      content: "Published admin reply",
+      submissionKey: "admin-comment-reply",
+    });
+    expect(reply).toMatchObject({ authorRole: "admin", status: "approved" });
+
+    await expect(
+      createCaller({ isAdmin: true }).comments.moderateComment({
+        commentId: created.commentId,
+        status: "rejected",
+        expectedRevision: 1,
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    const repeatedModeration = await createCaller({ isAdmin: true }).comments.batchModerate({
+      commentIds: [created.commentId],
+      status: "approved",
+    });
+    expect(repeatedModeration.results[0]).toMatchObject({
+      result: "skipped",
+      reason: "already_status",
+    });
+    const rejectedModeration = await createCaller({ isAdmin: true }).comments.batchModerate({
+      commentIds: [created.commentId],
+      status: "rejected",
+    });
+    expect(rejectedModeration.results[0]).toMatchObject({
+      result: "skipped",
+      reason: "admin_always_approved",
+    });
+    const unchangedAdmin = await db
+      .select()
+      .from(comments)
+      .where(eq(comments.id, created.commentId))
+      .get();
+    expect(unchangedAdmin).toMatchObject({ status: "approved", revision: 1 });
+
+    await expect(
+      createCaller({ isAdmin: true }).admin.comments.update({
+        id: created.commentId,
+        status: "pending",
+        expectedRevision: 1,
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    const repeatedAdminBatch = await createCaller({ isAdmin: true }).admin.comments.batchUpdate({
+      ids: [created.commentId],
+      action: "approve",
+      expectedRevisions: { [created.commentId]: 1 },
+    });
+    expect(repeatedAdminBatch.results[0]).toMatchObject({
+      result: "skipped",
+      reason: "already_status",
+    });
+
+    await expect(
+      createCaller({ reader: adminReader }).comments.deleteComment({
+        commentId: created.commentId,
+        expectedRevision: 1,
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await createCaller({ isAdmin: true }).comments.deleteComment({
+      commentId: created.commentId,
+      expectedRevision: 1,
+    });
+    await createCaller({ isAdmin: true }).comments.restoreComment({
+      commentId: created.commentId,
+      expectedRevision: 2,
+    });
+    const restored = await createCaller().comments.getComments({
+      target: { type: "article", key: "admin-comment-lifecycle" },
+    });
+    expect(restored.comments[0]).toMatchObject({ status: "approved", authorRole: "admin" });
+
+    const unbound = await unbindAdminGithubBinding("admin-comments-test");
+    expect(unbound).toMatchObject({
+      id: "admin-comments-binding",
+      githubId: adminReader.githubId,
+    });
+    const unbindEvent = await db
+      .select()
+      .from(adminGithubBindingEvents)
+      .where(eq(adminGithubBindingEvents.adminUserId, "admin-comments-test"))
+      .get();
+    expect(unbindEvent).toMatchObject({
+      action: "unbind",
+      result: "success",
+      githubId: adminReader.githubId,
+    });
+    const afterUnbind = await createCaller({ reader: adminReader }).comments.createComment({
+      target: { type: "article", key: "admin-comment-lifecycle" },
+      content: "This comment needs review after unbind",
+      submissionKey: "reader-comment-after-unbind",
+    });
+    expect(afterUnbind).toMatchObject({ authorRole: "reader", status: "pending" });
+    const ownAfterUnbind = await createCaller({ reader: adminReader }).comments.getComments({
+      target: { type: "article", key: "admin-comment-lifecycle" },
+    });
+    expect(
+      ownAfterUnbind.comments.find((comment) => comment.id === afterUnbind.commentId)
+    ).toMatchObject({ authorRole: "reader", status: "pending" });
+    const publicAfterUnbind = await createCaller().comments.getComments({
+      target: { type: "article", key: "admin-comment-lifecycle" },
+    });
+    expect(publicAfterUnbind.comments.some((comment) => comment.id === created.commentId)).toBe(
+      true
+    );
+    expect(publicAfterUnbind.comments.some((comment) => comment.id === afterUnbind.commentId)).toBe(
+      false
+    );
   });
 
   it("does not expose orphaned legacy author emails in public identity fields", async () => {
@@ -566,6 +740,72 @@ describe("comments reader lifecycle", () => {
       content: "My pending reply",
       status: "pending",
     });
+  });
+
+  it("hides deleted own comments without visible descendants", async () => {
+    await seedPost("deleted-orphan-comments");
+    const target = { type: "article" as const, key: "deleted-orphan-comments" };
+    const ownRootReader = {
+      ...reader,
+      id: "reader-deleted-orphan-root",
+      githubId: "github-deleted-orphan-root",
+      githubLogin: "deleted-orphan-root",
+    };
+    await registerReader(ownRootReader);
+    const ownRoot = await createCaller({ reader: ownRootReader }).comments.createComment({
+      target,
+      content: "Deleted root without replies",
+      submissionKey: "deleted-orphan-root",
+    });
+    await createCaller({ reader: ownRootReader }).comments.deleteComment({
+      commentId: ownRoot.commentId,
+    });
+    const ownRootVisible = await createCaller({ reader: ownRootReader }).comments.getComments({
+      slug: target.key,
+      target,
+    });
+    expect(ownRootVisible.comments).toHaveLength(0);
+
+    const parentReader = {
+      ...reader,
+      id: "reader-deleted-orphan-parent",
+      githubId: "github-deleted-orphan-parent",
+      githubLogin: "deleted-orphan-parent",
+    };
+    const replyReader = {
+      ...reader,
+      id: "reader-deleted-orphan-reply",
+      githubId: "github-deleted-orphan-reply",
+      githubLogin: "deleted-orphan-reply",
+    };
+    await registerReader(parentReader);
+    await registerReader(replyReader);
+    const parent = await createCaller({ reader: parentReader }).comments.createComment({
+      target,
+      content: "Parent without visible descendants",
+      submissionKey: "deleted-orphan-parent",
+    });
+    await createCaller({ isAdmin: true }).comments.moderateComment({
+      commentId: parent.commentId,
+      status: "approved",
+    });
+    const reply = await createCaller({ reader: replyReader }).comments.createComment({
+      target,
+      content: "Reply that is also deleted",
+      parentId: parent.commentId,
+      submissionKey: "deleted-orphan-reply",
+    });
+    await createCaller({ isAdmin: true }).comments.deleteComment({
+      commentId: parent.commentId,
+    });
+    await createCaller({ reader: replyReader }).comments.deleteComment({
+      commentId: reply.commentId,
+    });
+    const deletedThread = await createCaller({ reader: replyReader }).comments.getComments({
+      slug: target.key,
+      target,
+    });
+    expect(deletedThread.comments).toHaveLength(0);
   });
 
   it("keeps an author's pending reply visible when its parent is rejected", async () => {

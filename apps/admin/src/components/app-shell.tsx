@@ -6,6 +6,7 @@ import {
   Files,
   KeyRound,
   LayoutDashboard,
+  Link2,
   Menu,
   MessageSquareMore,
   RefreshCcw,
@@ -101,6 +102,7 @@ const navSections = [
     label: "系统",
     items: [
       { to: "/pats", label: "访问令牌", icon: KeyRound },
+      { to: "/github-binding", label: "GitHub 身份", icon: Link2 },
       { to: "/llm-settings", label: "LLM 设置", icon: BrainCircuit },
     ],
   },
