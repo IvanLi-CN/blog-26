@@ -10,9 +10,11 @@
     "src/server/clipping/projection.ts": "647613c041786c27ffc468dbf21415d527f75cd9",
     "src/server/clipping/store.test.ts": "e18f3549cbfdeb9c4030055fd13d67519094738d",
     "src/server/clipping/store.ts": "5bbe74b49284389859adebd202e5d0ef9c3e0cf3",
+    "src/server/mcp.ts": "46cd7a6eb98a884fe7f978d13c1adeacb44ef989",
+    "src/server/routers/admin/files.ts": "b6f4a79f2939291764b30df420bebee43e5daa0e",
     "src/server/routers/comments.test.ts": "71ec7bab9a668ed1b7559fc54d91f57130585a68",
     "src/server/routers/comments.ts": "8ebfa5d0aece1f01c1a3cc0fed1b09e29496f662",
-    "src/server/routers/memos.ts": "029b6043adc8c06a9a2fa0b7f46a1716f13ca2ce",
+    "src/server/routers/memos.ts": "3e59380cdc3d75fd8941a29e49a18e9346f923f9",
     "tests/components/CommentSection.test.tsx": "76157dd929540c3b0817348598820f8a774d342a",
     "tests/components/PublicMemoAuthoring.test.tsx": "4eddda1413ef18d80483fc60467f604d1443ec1e"
   },
@@ -36,13 +38,28 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The candidate retains target-aware REST/tRPC behavior and all existing comment lifecycle contracts, while public reads, deletes, counts, and creates bind publication state to their database operation and clipping reads to a synchronized canonical-file visibility check. The change is limited to the existing comment and Memo detail surfaces.",
-      "assessed_at": "2026-10-26T14:49:56+08:00",
+      "reasoning": "The candidate retains target-aware REST/tRPC behavior and all existing comment lifecycle contracts, while public reads, deletes, counts, and creates bind publication state to their database operation and clipping reads to a synchronized canonical-file visibility check. All administrator canonical Memo writers, including the Memo router, MCP tools, and local Markdown file manager, share the same visibility lock. The change remains within the existing comment and Memo detail surfaces.",
+      "assessed_at": "2026-10-26T15:23:41+08:00",
       "evidence": [
         {
           "path": "src/server/routers/comments.ts",
           "blob": "8ebfa5d0aece1f01c1a3cc0fed1b09e29496f662",
           "command": "Public comment reads, deletes, counts, and creates bind target visibility to operation boundaries"
+        },
+        {
+          "path": "src/server/routers/memos.ts",
+          "blob": "3e59380cdc3d75fd8941a29e49a18e9346f923f9",
+          "command": "Memo update reads and writes canonical content under the clipping visibility lock"
+        },
+        {
+          "path": "src/server/mcp.ts",
+          "blob": "46cd7a6eb98a884fe7f978d13c1adeacb44ef989",
+          "command": "MCP Memo update and delete writes share the clipping visibility lock"
+        },
+        {
+          "path": "src/server/routers/admin/files.ts",
+          "blob": "b6f4a79f2939291764b30df420bebee43e5daa0e",
+          "command": "Local Markdown file mutations share the clipping visibility lock"
         },
         {
           "path": "src/server/routers/comments.test.ts",
@@ -57,8 +74,8 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "The affected comment and clipping suites pass after the operation-boundary repair, preserving idempotent submissions, reply pagination, target isolation, soft deletion, private/draft rejection, and canonical clipping visibility. Existing component and Web Demo evidence remains applicable to the unchanged UI contract.",
-      "assessed_at": "2026-10-26T14:49:56+08:00",
+      "reasoning": "The affected comment, clipping, and release-policy suites pass after the operation-boundary repair, preserving idempotent submissions, reply pagination, target isolation, soft deletion, private/draft rejection, canonical clipping visibility, and serialized administrator writers. Existing component and Web Demo evidence remains applicable to the unchanged UI contract.",
+      "assessed_at": "2026-10-26T15:23:41+08:00",
       "evidence": [
         {
           "path": "src/server/routers/comments.test.ts",
@@ -69,6 +86,21 @@
           "path": "src/server/routers/comments.ts",
           "blob": "8ebfa5d0aece1f01c1a3cc0fed1b09e29496f662",
           "command": "bunx biome check on affected server files and targeted TypeScript diagnostics pass"
+        },
+        {
+          "path": "src/server/routers/memos.ts",
+          "blob": "3e59380cdc3d75fd8941a29e49a18e9346f923f9",
+          "command": "Memo update critical section now reads and writes canonical content under one lock"
+        },
+        {
+          "path": "src/server/mcp.ts",
+          "blob": "46cd7a6eb98a884fe7f978d13c1adeacb44ef989",
+          "command": "MCP Memo canonical file update and delete paths share the visibility lock"
+        },
+        {
+          "path": "src/server/routers/admin/files.ts",
+          "blob": "b6f4a79f2939291764b30df420bebee43e5daa0e",
+          "command": "Admin local Markdown write, rename, move, copy, and delete paths share the visibility lock"
         },
         {
           "path": "src/server/clipping/store.test.ts",

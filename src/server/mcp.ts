@@ -15,7 +15,11 @@ import { buildMemoRelativePath } from "@/lib/memo-paths";
 import { posts as postsTable } from "@/lib/schema";
 import { buildContentSearchCondition } from "@/lib/search/content-search";
 import { isSearchQueryWithinBudget } from "@/lib/search/query";
-import { clippingProjectionForRow, isClippingRowPublic } from "@/server/clipping/projection";
+import {
+  clippingProjectionForRow,
+  isClippingRowPublic,
+  withClippingVisibilityLock,
+} from "@/server/clipping/projection";
 import { notifyClippingChange } from "@/server/clipping/runtime";
 import { attachClippingReference } from "@/server/clipping/store";
 import {
@@ -799,22 +803,24 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         .limit(1)
         .then((r) => r[0]);
       if (!row?.filePath) throw new Error("Memo not found or missing filePath");
-      const result = await updateFrontmatterInStorage(
-        row,
-        async (fm) => {
-          if (input.title !== undefined) fm.title = input.title;
-          fm.public = input.isPublic;
-          if (input.tags !== undefined) fm.tags = input.tags;
-          fm.updateDate = new Date().toISOString();
-          await attachClippingReference(
-            input.content,
-            fm,
-            getMcpAuthContext().userId ?? null,
-            row.id
-          );
-        },
-        input.content,
-        "memo"
+      const result = await withClippingVisibilityLock(() =>
+        updateFrontmatterInStorage(
+          row,
+          async (fm) => {
+            if (input.title !== undefined) fm.title = input.title;
+            fm.public = input.isPublic;
+            if (input.tags !== undefined) fm.tags = input.tags;
+            fm.updateDate = new Date().toISOString();
+            await attachClippingReference(
+              input.content,
+              fm,
+              getMcpAuthContext().userId ?? null,
+              row.id
+            );
+          },
+          input.content,
+          "memo"
+        )
       );
       notifyClippingChange(row.id);
       await triggerIncrementalSync();
@@ -833,8 +839,10 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       .limit(1)
       .then((r) => r[0]);
     if (!row?.filePath) throw new Error("Memo not found or missing filePath");
-    await deleteStorageFile(resolveStorageSource(row), row.filePath);
-    await deleteIndexedContentRow(row.id);
+    await withClippingVisibilityLock(async () => {
+      await deleteStorageFile(resolveStorageSource(row), row.filePath);
+      await deleteIndexedContentRow(row.id);
+    });
     notifyClippingChange(row.id);
     await triggerIncrementalSync();
     return { content: [{ type: "text", text: "ok" }] };

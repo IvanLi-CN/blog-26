@@ -1344,102 +1344,100 @@ export const memosRouter = router({
     const isTestEnv = process.env.NODE_ENV === "test" || process.env.ADMIN_EMAIL?.includes("test");
 
     try {
-      // 查找现有 memo
-      const existingMemo = await db
-        .select()
-        .from(posts)
-        .where(and(eq(posts.id, id), eq(posts.type, "memo")))
-        .limit(1)
-        .then((result) => result[0]);
+      const updateState = await withClippingVisibilityLock(async () => {
+        // Read and write the canonical file under one lock so concurrent admin updates
+        // cannot compute frontmatter from the same stale snapshot.
+        const existingMemo = await db
+          .select()
+          .from(posts)
+          .where(and(eq(posts.id, id), eq(posts.type, "memo")))
+          .limit(1)
+          .then((result) => result[0]);
 
-      if (!existingMemo) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Memo 不存在",
+        if (!existingMemo) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Memo 不存在",
+          });
+        }
+
+        const markdownFilePath = existingMemo.filePath || existingMemo.id;
+        const normalized = normalizePersistedMemoInput({
+          content: rawContent,
+          attachments: Array.isArray(attachments) ? attachments : [],
+          markdownFilePath,
         });
-      }
+        let existingFrontmatter: Record<string, unknown> = {};
+        try {
+          existingFrontmatter = (await readAuthoredMemo(id)).frontmatter;
+        } catch (error) {
+          if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT"))
+            throw error;
+        }
+        const clippingInput = recognizeMemoClipping(normalized.content, {
+          ...existingFrontmatter,
+          title,
+          tags,
+        });
+        const resolvedTitle = clippingInput.enabled
+          ? (title ??
+            (typeof existingFrontmatter.title === "string" ? existingFrontmatter.title : ""))
+          : (title ?? extractTitleFromContent(normalized.content));
 
-      const markdownFilePath = existingMemo.filePath || existingMemo.id;
-      const normalized = normalizePersistedMemoInput({
-        content: rawContent,
-        attachments: Array.isArray(attachments) ? attachments : [],
-        markdownFilePath,
-      });
-      let existingFrontmatter: Record<string, unknown> = {};
-      try {
-        existingFrontmatter = (await readAuthoredMemo(id)).frontmatter;
-      } catch (error) {
-        if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT"))
-          throw error;
-      }
-      const clippingInput = recognizeMemoClipping(normalized.content, {
-        ...existingFrontmatter,
-        title,
-        tags,
-      });
-      const resolvedTitle = clippingInput.enabled
-        ? (title ??
-          (typeof existingFrontmatter.title === "string" ? existingFrontmatter.title : ""))
-        : (title ?? extractTitleFromContent(normalized.content));
+        const nowIso = new Date().toISOString();
+        const frontmatter: Record<string, unknown> = {
+          ...existingFrontmatter,
+          title: resolvedTitle,
+          public: isPublic,
+          tags,
+          attachments: normalized.attachments,
+          authorEmail: existingFrontmatter.clipping
+            ? existingFrontmatter.authorEmail
+            : ctx.user?.email || "admin@example.com",
+          updateDate: nowIso,
+        };
+        await attachClippingReference(normalized.content, frontmatter, ctx.user?.id ?? null, id);
+        const existingPublishIso = toIsoString(existingMemo.publishDate ?? null);
+        if (existingPublishIso) {
+          frontmatter.publishDate = existingPublishIso;
+        }
 
-      // 构建 markdown 内容
-      const nowIso = new Date().toISOString();
-      const frontmatter: Record<string, unknown> = {
-        ...existingFrontmatter,
-        title: resolvedTitle,
-        public: isPublic,
-        tags,
-        attachments: normalized.attachments,
-        authorEmail: existingFrontmatter.clipping
-          ? existingFrontmatter.authorEmail
-          : ctx.user?.email || "admin@example.com",
-        updateDate: nowIso,
-      };
-      await attachClippingReference(normalized.content, frontmatter, ctx.user?.id ?? null, id);
-      const existingPublishIso = toIsoString(existingMemo.publishDate ?? null);
-      if (existingPublishIso) {
-        frontmatter.publishDate = existingPublishIso;
-      }
+        const markdownContent = buildMemoMarkdownDocument(normalized.content, frontmatter);
+        const basePath = getLocalBasePathOrThrow();
+        const localFilePath = (existingMemo.filePath || existingMemo.id).replace(/^\/+/, "");
+        const fullPath = join(basePath, localFilePath);
+        const now = Date.now();
+        let meta: any = {};
+        try {
+          meta = existingMemo.metadata ? JSON.parse(existingMemo.metadata) : {};
+        } catch {
+          meta = {};
+        }
+        meta.attachments = normalized.attachments;
+        if (frontmatter.clipping) {
+          meta.clipping = frontmatter.clipping;
+          meta.content = normalized.content;
+        }
 
-      const markdownContent = buildMemoMarkdownDocument(normalized.content, frontmatter);
+        const updateData = {
+          title: resolvedTitle,
+          excerpt: generateExcerptFromContent(normalized.content),
+          body: normalized.content,
+          public: isPublic,
+          tags: JSON.stringify(tags),
+          metadata: JSON.stringify(meta),
+          updateDate: now,
+          lastModified: now,
+          contentHash: calculateSimpleHash(normalized.content),
+        };
 
-      const basePath = getLocalBasePathOrThrow();
-      const localFilePath = (existingMemo.filePath || existingMemo.id).replace(/^\/+/, "");
-      const fullPath = join(basePath, localFilePath);
-
-      // 更新数据库
-      const now = Date.now();
-      // 合并并更新元数据
-      let meta: any = {};
-      try {
-        meta = existingMemo.metadata ? JSON.parse(existingMemo.metadata) : {};
-      } catch {
-        // ignore malformed metadata json
-        meta = {};
-      }
-      meta.attachments = normalized.attachments;
-      if (frontmatter.clipping) {
-        meta.clipping = frontmatter.clipping;
-        meta.content = normalized.content;
-      }
-
-      const updateData = {
-        title: resolvedTitle,
-        excerpt: generateExcerptFromContent(normalized.content),
-        body: normalized.content, // 使用 body 字段匹配实际数据库结构
-        public: isPublic,
-        tags: JSON.stringify(tags),
-        metadata: JSON.stringify(meta),
-        updateDate: now,
-        lastModified: now,
-        contentHash: calculateSimpleHash(normalized.content),
-      };
-
-      await withClippingVisibilityLock(async () => {
         await mkdir(dirname(fullPath), { recursive: true });
         await writeFile(fullPath, markdownContent, "utf-8");
         await db.update(posts).set(updateData).where(eq(posts.id, id));
+
+        return { existingMemo, normalized, clippingInput, resolvedTitle, updateData };
       });
+      const { existingMemo, normalized, clippingInput, resolvedTitle, updateData } = updateState;
       clearSearchCache();
       notifyClippingChange(id);
 
