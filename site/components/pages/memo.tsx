@@ -68,7 +68,7 @@ export default function MemoPage(data: Awaited<ReturnType<typeof loadmemo>>) {
                 header={heading}
                 publicMediaContext={publicMediaContext}
                 publicAssetVersion={assetVersion}
-                commentsTarget={{ type: "memo", key: memo.slug }}
+                commentsTarget={isConsoleRuntime ? undefined : { type: "memo", key: memo.slug }}
               />
             ) : (
               <div

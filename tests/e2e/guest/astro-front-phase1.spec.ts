@@ -97,7 +97,7 @@ test.describe("Astro public front (phase 1)", () => {
     await page.goto("/posts/hello-world", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: "Hello World" }).first()).toBeVisible();
     await expect(page.getByText("Feedback")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "留言" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "评论", exact: true })).toBeVisible();
     await expect(page.getByText("暂无评论")).toBeVisible();
 
     await page.goto("/memos", { waitUntil: "domcontentloaded" });

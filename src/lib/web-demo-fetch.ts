@@ -31,6 +31,7 @@ import {
   WEB_DEMO_ACTION_EVENT,
   type WebDemoApp,
   type WebDemoEnvironment,
+  type WebDemoScene,
   waitForWebDemoRequest,
 } from "./web-demo-runtime";
 
@@ -204,7 +205,8 @@ function seedDemoComments(targetType: DemoComment["targetType"], targetKey: stri
 function demoCommentDto(
   comment: DemoComment,
   environment: WebDemoEnvironment,
-  placeholder = false
+  placeholder = false,
+  avatarFailure = false
 ) {
   const own = comment.readerPersona === environment.persona || environment.persona === "admin";
   const deleted = Boolean(comment.deletedAt);
@@ -232,7 +234,11 @@ function demoCommentDto(
           : placeholder
             ? "评论暂不可见"
             : comment.authorName,
-      avatarUrl: "/site-assets/default-avatar.svg",
+      avatarUrl: avatarFailure
+        ? "/site-assets/__missing-comment-avatar__.svg"
+        : comment.readerPersona === "other"
+          ? ""
+          : "/site-assets/default-avatar.svg",
       profileUrl: null,
     },
     canDelete: own,
@@ -262,8 +268,28 @@ function decodeDemoReplyCursor(value: string | null): DemoReplyCursor | null {
   }
 }
 
-function getDemoComments(url: URL, environment: WebDemoEnvironment) {
+function getDemoComments(
+  url: URL,
+  environment: WebDemoEnvironment,
+  dataMode: "fixture" | "dense" | "empty",
+  scene: WebDemoScene
+) {
   const { targetType, targetKey } = demoCommentTarget(url);
+  const hasExplicitTarget = url.searchParams.has("targetType") || url.searchParams.has("targetKey");
+  if (
+    hasExplicitTarget &&
+    (scene === "comments-target-unavailable" ||
+      !isDemoCommentTargetAvailable(targetType, targetKey))
+  ) {
+    return jsonResponse({ error: "评论目标不存在", code: "NOT_FOUND" }, 404);
+  }
+  if (dataMode === "empty") {
+    return jsonResponse({
+      comments: [],
+      totalPages: 1,
+      isAdmin: environment.persona === "admin",
+    });
+  }
   const rows = seedDemoComments(targetType, targetKey);
   const byIdAll = new Map(rows.map((comment) => [comment.id, comment]));
   const hasVisibleReply = new Set<string>();
@@ -297,7 +323,8 @@ function getDemoComments(url: URL, environment: WebDemoEnvironment) {
           comment.status !== "approved" &&
           !comment.deletedAt &&
           !(environment.persona === "user" && comment.readerPersona === "user") &&
-          hasVisibleReply.has(comment.id)
+          hasVisibleReply.has(comment.id),
+        scene === "comments-avatar-failure"
       ),
     ])
   );
@@ -321,10 +348,15 @@ function getDemoComments(url: URL, environment: WebDemoEnvironment) {
       }
     }
   }
-  return { comments: roots, totalPages: 1, isAdmin: environment.persona === "admin" };
+  return jsonResponse({ comments: roots, totalPages: 1, isAdmin: environment.persona === "admin" });
 }
 
-function getDemoCommentReplies(url: URL, environment: WebDemoEnvironment, commentId: string) {
+function getDemoCommentReplies(
+  url: URL,
+  environment: WebDemoEnvironment,
+  commentId: string,
+  avatarFailure = false
+) {
   const rows = [...demoComments.values()].flat();
   const comment = rows.find((item) => item.id === commentId);
   if (!comment) return jsonResponse({ error: "评论不存在" }, 404);
@@ -383,7 +415,8 @@ function getDemoCommentReplies(url: URL, environment: WebDemoEnvironment, commen
           item.status !== "approved" &&
           !item.deletedAt &&
           !(environment.persona === "user" && item.readerPersona === "user") &&
-          hasVisibleReply.has(item.id)
+          hasVisibleReply.has(item.id),
+        avatarFailure
       )
     ),
     nextCursor,
@@ -741,6 +774,7 @@ async function getDemoPublicResponse(
   method: string,
   environment: WebDemoEnvironment,
   dataMode: "fixture" | "dense" | "empty",
+  scene: WebDemoScene,
   init?: RequestInit
 ) {
   ensureDemoCommentResetListener();
@@ -767,7 +801,10 @@ async function getDemoPublicResponse(
               githubId: environment.persona === "admin" ? "demo-admin-github" : "demo-user-github",
               githubLogin: environment.persona === "admin" ? "ivan-demo" : "reader-demo",
               displayName: environment.persona === "admin" ? "Ivan" : "Demo User",
-              avatarUrl: "/site-assets/default-avatar.svg",
+              avatarUrl:
+                scene === "comments-avatar-failure"
+                  ? "/site-assets/__missing-comment-avatar__.svg"
+                  : "",
               profileUrl: "https://github.com/example",
             },
     });
@@ -837,7 +874,7 @@ async function getDemoPublicResponse(
   }
 
   if (url.pathname === "/api/public/comments" && method === "GET") {
-    return jsonResponse(getDemoComments(url, environment));
+    return getDemoComments(url, environment, dataMode, scene);
   }
 
   if (url.pathname === "/api/public/comments" && method === "POST") {
@@ -855,8 +892,11 @@ async function getDemoPublicResponse(
       ? (rawType as DemoComment["targetType"])
       : targetType;
     const actualKey = target?.key || String(requestBody.postSlug || targetKey);
-    if (!isDemoCommentTargetAvailable(actualType, actualKey))
-      return jsonResponse({ error: "评论目标不存在" }, 404);
+    if (
+      scene === "comments-target-unavailable" ||
+      !isDemoCommentTargetAvailable(actualType, actualKey)
+    )
+      return jsonResponse({ error: "评论目标不存在", code: "NOT_FOUND" }, 404);
     const parentId = typeof requestBody.parentId === "string" ? requestBody.parentId : null;
     const rows = seedDemoComments(actualType, actualKey);
     if (parentId) {
@@ -902,7 +942,8 @@ async function getDemoPublicResponse(
     return getDemoCommentReplies(
       url,
       environment,
-      decodeURIComponent(commentRepliesMatch[1] || "")
+      decodeURIComponent(commentRepliesMatch[1] || ""),
+      scene === "comments-avatar-failure"
     );
   }
 
@@ -1275,6 +1316,7 @@ export async function webDemoFetch(
       method,
       environment,
       sceneState.data,
+      sceneState.scene,
       signal ? { ...init, signal } : init
     );
     if (mockResponse) return mockResponse;

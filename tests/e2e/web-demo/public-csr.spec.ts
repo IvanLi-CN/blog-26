@@ -236,7 +236,7 @@ test("SSR content hydrates without repeating its page read", async ({ page, requ
   await page.goto("/posts/code-block-fixture/?d_connection=offline&d_delay=normal");
   await ready(page);
   await expect(page.locator("main")).toContainText("Code Block Fixture");
-  await expect(page.locator("main [role=alert]")).toHaveCount(0);
+  await expect(page.locator("main [data-public-route-error]")).toHaveCount(0);
   expect(reads).toEqual([]);
   expect(hydrationErrors).toEqual([]);
 });

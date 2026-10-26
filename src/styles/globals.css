@@ -560,6 +560,12 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
   padding: 1.15rem 1.25rem 0.95rem;
 }
 
+.comment-panel__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--nature-accent-strong);
+}
+
 .comment-panel__alert {
   margin: 0 1.25rem 0.9rem;
 }
@@ -575,6 +581,47 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
 
 .comment-pagination {
   margin-top: 1.25rem;
+}
+
+.comment-empty,
+.comment-state {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  text-align: center;
+}
+
+.comment-empty {
+  flex-direction: column;
+  color: var(--nature-text-soft);
+}
+
+.comment-empty__icon {
+  display: inline-flex;
+  color: var(--nature-accent-strong);
+}
+
+.comment-state {
+  justify-content: flex-start;
+  padding: 1rem 0;
+  color: var(--nature-text-soft);
+  text-align: left;
+}
+
+.comment-state--error {
+  color: var(--nature-danger);
+}
+
+.comment-state--unavailable {
+  color: var(--nature-text-soft);
+}
+
+.comment-state--inline {
+  margin-top: 1rem;
+  border-top: 1px solid var(--nature-line);
+  color: var(--nature-danger);
 }
 
 .comment-form .nature-textarea-shell {
@@ -844,7 +891,17 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
 }
 
 @media (max-width: 639px) {
+  .comment-auth-row--guest {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .comment-auth-row--guest .nature-button {
+    align-self: flex-end;
+  }
+
   .comment-panel.nature-panel {
+    border: 0;
     border-right: 0;
     border-left: 0;
     border-radius: 0;

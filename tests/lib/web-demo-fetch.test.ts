@@ -217,6 +217,47 @@ describe("webDemoFetch", () => {
     ).toBe(true);
   });
 
+  it("keeps valid empty comments distinct from an unavailable target", async () => {
+    installBrowser("?d_data=empty&d_connection=online");
+    const emptyResponse = await webDemoFetch(
+      "/api/public/comments?slug=demo-article&targetType=article&targetKey=demo-article"
+    );
+    expect(emptyResponse.status).toBe(200);
+    expect(await emptyResponse.json()).toMatchObject({ comments: [], totalPages: 1 });
+
+    installBrowser("?d_scene=comments-target-unavailable&d_connection=online");
+    const unavailableResponse = await webDemoFetch(
+      "/api/public/comments?slug=demo-article&targetType=article&targetKey=demo-article"
+    );
+    expect(unavailableResponse.status).toBe(404);
+    expect(await unavailableResponse.json()).toMatchObject({
+      error: "评论目标不存在",
+      code: "NOT_FOUND",
+    });
+  });
+
+  it("keeps legacy slug-only comment reads compatible", async () => {
+    installBrowser("?d_connection=online");
+    const response = await webDemoFetch("/api/public/comments?slug=missing-legacy-article");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ comments: [], totalPages: 1 });
+  });
+
+  it("serves a broken avatar URL for the avatar fallback scene", async () => {
+    installBrowser("?d_scene=comments-avatar-failure&d_persona=user&d_connection=online");
+    const identity = await webDemoFetch("/api/public/reader-auth/me");
+    expect(await identity.json()).toMatchObject({
+      reader: { avatarUrl: "/site-assets/__missing-comment-avatar__.svg" },
+    });
+    const comments = await webDemoFetch(
+      "/api/public/comments?slug=demo-article&targetType=article&targetKey=demo-article"
+    );
+    const payload = await comments.json();
+    expect(payload.comments[0].author.avatarUrl).toBe(
+      "/site-assets/__missing-comment-avatar__.svg"
+    );
+  });
+
   it("cancels direct admin uploads even when the caller supplies no signal", async () => {
     installBrowser("?d_persona=admin&d_delay=custom&d_delay_ms=2300");
     setupAdminDemoApiMocks();

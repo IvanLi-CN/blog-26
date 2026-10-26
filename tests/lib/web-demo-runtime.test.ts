@@ -97,6 +97,11 @@ describe("Web Demo runtime state", () => {
       "memo-quick-edit"
     );
     expect(
+      getWebDemoSceneOptions("/memos/console-demo-clipping-durable-workflows/", "public").map(
+        (option) => option.value
+      )
+    ).toContain("comments-avatar-failure");
+    expect(
       getWebDemoSceneOptions("/admin/dashboard", "admin").map((option) => option.value)
     ).toEqual(["admin-dashboard", "admin-editor"]);
   });

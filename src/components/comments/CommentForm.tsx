@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { toPublicApiUrl } from "@/lib/public-runtime-url";
 import Icon from "../ui/Icon";
 import { Textarea } from "../ui/textarea";
+import CommentAvatar from "./CommentAvatar";
 import type { UserInfo } from "./types";
 
 type CommentTarget = { type: "article" | "memo" | "project"; key: string };
@@ -46,24 +47,25 @@ export default function CommentForm({
   onLoginSuccess: _onLoginSuccess,
 }: CommentFormProps) {
   const [content, setContent] = useState("");
-  const [draftLoaded, setDraftLoaded] = useState(false);
+  const [loadedDraftKey, setLoadedDraftKey] = useState<string | null>(null);
   const contentId = useId();
   const submissionKey = useRef<string>(crypto.randomUUID());
   const key = draftKey(target, postSlug, parentId);
 
   useEffect(() => {
+    let draft = "";
     try {
-      const draft = window.sessionStorage.getItem(key);
-      if (draft) setContent(draft);
+      draft = window.sessionStorage.getItem(key) ?? "";
     } finally {
-      setDraftLoaded(true);
+      setContent(draft);
+      setLoadedDraftKey(key);
     }
   }, [key]);
 
   useEffect(() => {
-    if (!draftLoaded || !content.trim()) return;
+    if (loadedDraftKey !== key || !content.trim()) return;
     window.sessionStorage.setItem(key, content);
-  }, [content, draftLoaded, key]);
+  }, [content, key, loadedDraftKey]);
 
   const startLogin = () => {
     window.sessionStorage.setItem(key, content);
@@ -113,9 +115,8 @@ export default function CommentForm({
       ) : (
         <div className="comment-auth-row flex items-center gap-3">
           <div className="overflow-hidden rounded-full border border-[rgba(var(--nature-border-rgb),0.72)]">
-            {/* biome-ignore lint/performance/noImgElement: comment avatar uses native img for framework-neutral rendering */}
-            <img
-              src={userInfo.avatarUrl || "/site-assets/default-avatar.svg"}
+            <CommentAvatar
+              avatarUrl={userInfo.avatarUrl}
               alt={userInfo.nickname}
               className="h-8 w-8 rounded-full object-cover"
               width={32}

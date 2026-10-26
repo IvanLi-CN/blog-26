@@ -12,7 +12,7 @@
 
 ## Related Changes
 
-尚无产品实现、PR 或提交关联；当前仓库行为与实现缺口见 [IMPLEMENTATION.md](./IMPLEMENTATION.md)。
+评论承载层、头像失败回退、显式评论目标状态和 Web Demo 验证已落入当前产品实现；实现覆盖与剩余发布门禁见 [IMPLEMENTATION.md](./IMPLEMENTATION.md)。提交、PR 和审查关联由本次交付流程记录。
 
 ## References
 

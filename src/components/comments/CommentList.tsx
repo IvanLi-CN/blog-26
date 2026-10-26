@@ -43,8 +43,8 @@ export default function CommentList({
 }: CommentListProps) {
   if (comments.length === 0) {
     return (
-      <div className="nature-empty py-12">
-        <div className="nature-empty-icon">
+      <div className="comment-empty py-12" data-testid="comments-empty">
+        <div className="comment-empty__icon">
           <Icon name="tabler:message-circle-2" className="h-8 w-8" />
         </div>
         <div>
