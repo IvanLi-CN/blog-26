@@ -24,9 +24,7 @@
   "change": {
     "description": "Preserve the GitHub reader comment boundary for public Memo reads and writes when an administrator changes publication state concurrently, while keeping the existing target-aware comment surface and private Memo behavior.",
     "release_unit_description": "static frontend and full-feature Docker image",
-    "affected_contracts": [
-      "public-api"
-    ]
+    "affected_contracts": ["public-api"]
   },
   "classification": {
     "planned": {

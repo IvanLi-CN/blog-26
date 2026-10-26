@@ -5,9 +5,7 @@
   "change": {
     "description": "Publish wm-a-v5 and wm-b-v5 with a compact A watermark canvas after the production wm-a-v4 card rendition was verified oversized, while preserving v1/v2/v3/v4 watermark URLs and historical snapshot semantics.",
     "release_unit_description": "static frontend and full-feature Docker image",
-    "affected_contracts": [
-      "public-api"
-    ]
+    "affected_contracts": ["public-api"]
   },
   "covered_files": {
     "docs/adr/0025-display-selected-watermark-renditions.md": "48e5d3180aa09200636399d6afe148ce891e32e5",

@@ -94,10 +94,7 @@
   "change": {
     "description": "Add independent GitHub reader OAuth with PKCE, target-aware article/Memo/project comments, review-before-publication, soft deletion and restoration, historical comment migration, administrator batch moderation, GitHub administrator identity binding, and responsive public/Console comment surfaces.",
     "release_unit_description": "static frontend and full-feature Docker image",
-    "affected_contracts": [
-      "public-api",
-      "persistent-state"
-    ]
+    "affected_contracts": ["public-api", "persistent-state"]
   },
   "classification": {
     "planned": {

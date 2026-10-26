@@ -11,9 +11,7 @@
   "change": {
     "description": "Canonicalize v4 public-media source-format candidates to the static site's stable presentation formats and reuse sealed outputs when a frozen manifest preserves an equivalent packaged path.",
     "release_unit_description": "static frontend and full-feature Docker image",
-    "affected_contracts": [
-      "public-api"
-    ]
+    "affected_contracts": ["public-api"]
   },
   "classification": {
     "planned": {
