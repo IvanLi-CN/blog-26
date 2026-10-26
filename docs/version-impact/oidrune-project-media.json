@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "e2f4f281b72f2ea049c2bcefd98d736c99c691a1",
+  "base_sha": "e3989b4ea59bddad4cb910684a0546be5b0c4a88",
   "covered_files": {
     "site/assets/projects/posters-source/oidrune-dark.png": "058c90644b15a1e1d8c8063c1957dcf97e08a8de",
     "site/assets/projects/posters-source/oidrune-light.png": "2b547564f538b6771f722aff18b15d474cccac5a",
@@ -104,7 +104,8 @@
         "3.8.4",
         "3.8.5",
         "3.8.6",
-        "3.9.0"
+        "3.9.0",
+        "3.10.0"
       ],
       "evidence": [
         {
