@@ -84,6 +84,7 @@ export type PublicMediaPackageOptions = {
   fallbackFetchImpl?: PublicMediaFetcher;
   includeDerivedWatermarkVariants?: boolean;
   includeMigratedWatermarkVariants?: boolean;
+  migrateLegacyWatermarks?: boolean;
   clippingResourceUrls?: string[];
   fetchImpl?: PublicMediaFetcher;
 };
@@ -1363,16 +1364,18 @@ export async function packagePublicMedia(
   }
   for (const url of options.clippingResourceUrls ?? [])
     references.push(...extractReferences(url, siteUrl, mediaOrigin, basePath));
-  const normalizedReferences = references.map((reference) =>
-    canonicalizeWatermarkReference(reference, mediaOrigin, basePath, siteUrl)
-  );
+  const normalizeReference = (reference: AssetReference) =>
+    options.migrateLegacyWatermarks === false
+      ? reference
+      : canonicalizeWatermarkReference(reference, mediaOrigin, basePath, siteUrl);
+  const normalizedReferences = references.map(normalizeReference);
   const referenceByRaw = new Map(
     references.map((reference, index) => [reference.raw, normalizedReferences[index]])
   );
 
   const uniqueReferences = new Map<string, AssetReference>();
   const addUniqueReference = (reference: AssetReference) => {
-    const normalized = canonicalizeWatermarkReference(reference, mediaOrigin, basePath, siteUrl);
+    const normalized = normalizeReference(reference);
     uniqueReferences.set(fetchKey(normalized), normalized);
   };
   for (const reference of normalizedReferences) {

@@ -4,10 +4,11 @@
   "base_sha": "d83dd15ae37130c6b424e9e61066e42638198ea6",
   "covered_files": {
     "scripts/package-public-media.test.ts": "f8dc6afd81e40a0fd99f5184e29d58b1138ec8b9",
-    "scripts/package-public-media.ts": "00ab0db19cb0ca1383607a55441e9c3282117fd7",
+    "scripts/package-public-media.ts": "564f07fffebffc00235bad99b6e4f3d027985bbf",
     "site/lib/public-site.ts": "b4812446c80730bb98a628c419f1f45763b6a908",
     "src/lib/__tests__/public-site-snapshot-compat.test.ts": "fe400ea514630fe980d4bdf0e4448074db7d3437",
-    "src/lib/public-media.ts": "9194c2fe30e28951080d7812b3d6e55d1ef13845"
+    "src/lib/public-media.ts": "9194c2fe30e28951080d7812b3d6e55d1ef13845",
+    "src/lib/release/inputs.ts": "d0291f6ee1da7c5a2627ed14cdda1a99ddc39583"
   },
   "change": {
     "description": "Migrate legacy public-media v4 watermark references in published snapshots and static packaging to the compact v5 A/B renditions so existing posts no longer render the oversized v4 canvas.",
@@ -29,7 +30,7 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "Snapshot media, rendered content URLs, and static packaging now rewrite only legacy v4 watermark references to v5; source descriptors, non-watermark media, v1/v2/v3 paths, and existing v5 paths remain unchanged.",
+      "reasoning": "Snapshot media and ordinary static packaging rewrite only legacy v4 watermark references to v5; frozen release packaging preserves sealed output identities so retries remain byte-compatible with their original inputs.",
       "assessed_at": "2026-10-27T10:00:00+08:00",
       "evidence": [
         {
@@ -39,8 +40,13 @@
         },
         {
           "path": "scripts/package-public-media.ts",
-          "blob": "00ab0db19cb0ca1383607a55441e9c3282117fd7",
+          "blob": "564f07fffebffc00235bad99b6e4f3d027985bbf",
           "command": "Static packaging canonicalizes v4 references to the v5 asset pair before downloading candidates"
+        },
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "d0291f6ee1da7c5a2627ed14cdda1a99ddc39583",
+          "command": "Frozen release packaging preserves the exact sealed media identity during recovery"
         }
       ],
       "scope_drift": {
@@ -50,7 +56,7 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Focused snapshot compatibility and static packaging tests verify that legacy v4 references resolve to compact v5 assets while explicit legacy versions remain compatible; repository checks pass without a persistent-state migration.",
+      "reasoning": "Focused snapshot, static packaging, and frozen-media reuse tests verify that new builds migrate v4 references to compact v5 assets while sealed legacy outputs remain reusable; repository checks pass without a persistent-state migration.",
       "assessed_at": "2026-10-27T10:00:00+08:00",
       "evidence": [
         {
@@ -64,9 +70,9 @@
           "command": "Focused packaging regression test passes for v4-to-v5 canonicalization"
         },
         {
-          "path": "src/lib/public-media.ts",
-          "blob": "9194c2fe30e28951080d7812b3d6e55d1ef13845",
-          "command": "Repository check validates the migration helper and public media URL contract"
+          "path": "tests/lib/manual-release-media.test.ts",
+          "blob": "55a6517c24264b86c57f6ee13e0df4a9ec9617dd",
+          "command": "Frozen media reuse regression covers source-format aliases and sealed legacy outputs"
         }
       ]
     }
@@ -125,9 +131,9 @@
       "upgrade_from_versions": [],
       "evidence": [
         {
-          "path": "site/lib/public-site.ts",
-          "blob": "b4812446c80730bb98a628c419f1f45763b6a908",
-          "command": "Snapshot normalization changes rendered URLs without writing persistent state"
+          "path": "src/lib/release/inputs.ts",
+          "blob": "d0291f6ee1da7c5a2627ed14cdda1a99ddc39583",
+          "command": "Frozen media identity selection changes packaging behavior without writing persistent state"
         }
       ]
     }
