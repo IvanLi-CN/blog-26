@@ -19,7 +19,7 @@
     "src/components/common/markdown/plugins/rehype-image-optimization.ts": "ea996834639dbc03dceeb724a37814f4a03f8649",
     "src/lib/__tests__/public-media.test.ts": "19715c26f1f43dd7ae88a9c65633d991d86038c5",
     "src/lib/public-media.ts": "1c84a953bfe053a8701a56e2ceb0af774c12ca17",
-    "src/server/http-compat-api.test.ts": "088a2068e5004078446d3631e12506070ece1079",
+    "src/server/http-compat-api.test.ts": "4346604c0ed9a57c46429daac738395ada06dabd",
     "src/server/public-media-watermark-assets.test.ts": "8f6448349183ab43ad4e2e9ccedcaef263339f4b",
     "src/server/public-media-watermark.test.ts": "d62ec07a699b0c011d818ab0d569e9e24d65935c",
     "src/server/public-media-watermark.ts": "f8e265febac753e576a42aa4f06eb1ac48f94ecb",
@@ -78,7 +78,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "088a2068e5004078446d3631e12506070ece1079",
+          "blob": "4346604c0ed9a57c46429daac738395ada06dabd",
           "command": "bun test src/server/http-compat-api.test.ts -t watermark|presentation|video-adaptive|animated|snapshot|cover: 10 passed, 1 skipped"
         },
         {
@@ -152,7 +152,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "088a2068e5004078446d3631e12506070ece1079",
+          "blob": "4346604c0ed9a57c46429daac738395ada06dabd",
           "command": "HTTP compatibility coverage exercises legacy and versioned media paths without a state migration"
         }
       ]
