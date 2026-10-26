@@ -152,7 +152,7 @@ describe("public-media", () => {
       filePath: "blog/demo-post.md",
     };
 
-    it("uses A for cards and B for larger usage defaults", () => {
+    it("uses v5 A for cards and v5 B for larger usage defaults", () => {
       expect(
         buildPublicMediaAssetUrl({
           context,
@@ -160,7 +160,7 @@ describe("public-media", () => {
           role: "content",
           variant: "card",
         })
-      ).toContain("/wm-a-v4/card.webp");
+      ).toContain("/wm-a-v5/card.webp");
       expect(
         buildPublicMediaAssetUrl({
           context,
@@ -168,7 +168,7 @@ describe("public-media", () => {
           role: "content",
           variant: "content",
         })
-      ).toContain("/wm-b-v4/content.webp");
+      ).toContain("/wm-b-v5/content.webp");
     });
 
     it("enumerates A/B candidates from an already normalized source path", () => {
@@ -184,8 +184,8 @@ describe("public-media", () => {
         a: expect.stringContaining("/demo-post/"),
         b: expect.stringContaining("/demo-post/"),
       });
-      expect(presentations?.a).toContain("/wm-a-v4/content.webp");
-      expect(presentations?.b).toContain("/wm-b-v4/content.webp");
+      expect(presentations?.a).toContain("/wm-a-v5/content.webp");
+      expect(presentations?.b).toContain("/wm-b-v5/content.webp");
       expect(presentations?.a).not.toContain("/blog/blog/");
     });
 
@@ -211,7 +211,7 @@ describe("public-media", () => {
       ).toContain("/wm-b-v2/content.webp");
     });
 
-    it("uses v4 defaults for admin previews while accepting explicit candidates", () => {
+    it("uses v5 defaults for admin previews while accepting explicit candidates", () => {
       const adminContext = { ...context, assetScope: "admin-preview" as const };
       expect(
         buildPublicMediaAssetUrl({
@@ -220,7 +220,7 @@ describe("public-media", () => {
           role: "content",
           variant: "content",
         })
-      ).toContain("/wm-b-v4/content.webp");
+      ).toContain("/wm-b-v5/content.webp");
       expect(
         buildPublicMediaAssetUrl({
           context: adminContext,
@@ -384,7 +384,7 @@ describe("public-media", () => {
     });
 
     it("rejects a cross-version watermark pair across content items", () => {
-      const item = (version: "v2" | "v3" | "v4") => ({
+      const item = (version: "v2" | "v3" | "v4" | "v5") => ({
         hash: "abc123",
         kind: "image" as const,
         role: "content" as const,

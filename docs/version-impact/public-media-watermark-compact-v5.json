@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e3989b4ea59bddad4cb910684a0546be5b0c4a88",
+  "change": {
+    "description": "Publish wm-a-v5 and wm-b-v5 with a compact A watermark canvas after the production wm-a-v4 card rendition was verified oversized, while preserving v1/v2/v3/v4 watermark URLs and historical snapshot semantics.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "covered_files": {
+    "docs/adr/0025-display-selected-watermark-renditions.md": "48e5d3180aa09200636399d6afe148ce891e32e5",
+    "docs/public-media-watermark-design.md": "e21bfb1324a118382297597feee55297e427fcbd",
+    "docs/specs/public-media-assets-facade/HISTORY.md": "a724d9b701db0f8302e83f13ae1610394cf77395",
+    "docs/specs/public-media-assets-facade/IMPLEMENTATION.md": "cd0543fa7000e73dfcb58403765ca7f1ac20d1a7",
+    "docs/specs/public-media-assets-facade/SPEC.md": "5eb895d73246a6c31f73836795e81048229a16b0",
+    "public/watermark-ivanli-a.dark.v5.svg": "ee3e660badbea5f5832fa7e580c448d0e08f9364",
+    "public/watermark-ivanli-a.light.v5.svg": "9f7502d40fd17272b21bb39fcde7e608935ae55e",
+    "scripts/package-public-media.test.ts": "e180f3958707cf644a0487ddf68a63cc8cd8db04",
+    "scripts/package-public-media.ts": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
+    "scripts/prepare-edgeone-pwa-config.ts": "54f79359348e041b8e6bca97266e8324d091db97",
+    "scripts/verify-pages-build.ts": "19979f091f665ec610aafe3c26ba839d2c287f88",
+    "src/components/common/markdown/plugins/rehype-image-optimization.test.ts": "56ff981456515ec75aef219a2e6edd45cd3b64b2",
+    "src/components/common/markdown/plugins/rehype-image-optimization.ts": "de75d2a799134fe75fd41452596a511311b43199",
+    "src/lib/__tests__/public-media.test.ts": "ef402d335a1c600b6830da2dbf6a79dfcc39723c",
+    "src/lib/public-media.ts": "39adc1ea4fd3fff8ac7ba300dd45f82ceac70d00",
+    "src/lib/release/inputs.ts": "49ca22cacf2e4e3ce96e4c9388d35be2e1bd83d0",
+    "src/server/http-compat-api.test.ts": "4c2d70f590d537c4c193dce7eebc38facd52521d",
+    "src/server/public-media-watermark-assets.test.ts": "0c462fb1279284184fe20a524a4754ad1e705073",
+    "src/server/public-media-watermark.test.ts": "8a12950417171189631c279d747814dd00b0dd3d",
+    "src/server/public-media-watermark.ts": "4ad6d06c05be31b7ac2a30948b0ac4fe7ded438e",
+    "src/server/public-media.ts": "a908031949cf151286a8b7dc0ac3b82f6a234495",
+    "tests/e2e/guest/posts-cover-fallback.spec.ts": "968ca67ad9628686da53dd322ffe58625a73f14b",
+    "tests/lib/public-pwa-edgeone-config.test.ts": "d3ae420041156cc93e160115ddc3f7001db70e7e",
+    "scripts/verify-pages-build.test.ts": "f84e07a0c9ec50ee61360146f774776e596b2033"
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "The candidate adds compatible public media render identities and a compact watermark canvas. Existing v1/v2/v3/v4 identities remain available for old snapshots and no persistence schema changes are introduced.",
+      "assessed_at": "2026-10-26T19:00:00+08:00",
+      "evidence": [
+        {
+          "path": "docs/specs/public-media-assets-facade/SPEC.md",
+          "blob": "5eb895d73246a6c31f73836795e81048229a16b0",
+          "command": "Public media SPEC records the v5 identity, compact A canvas, and legacy compatibility contract"
+        },
+        {
+          "path": "docs/adr/0025-display-selected-watermark-renditions.md",
+          "blob": "48e5d3180aa09200636399d6afe148ce891e32e5",
+          "command": "ADR records the current v5 rendition boundary and compact A canvas"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "New public and admin URLs default to v5, v5 keeps the finite A/B contract and explicit h_ratio=100, and v1/v2/v3/v4 paths remain readable without rewriting historical bytes.",
+      "assessed_at": "2026-10-26T19:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/server/public-media.ts",
+          "blob": "a908031949cf151286a8b7dc0ac3b82f6a234495",
+          "command": "Versioned Imagor filters use explicit width and h_ratio=100 bounds while v5 uses the compact A canvas"
+        },
+        {
+          "path": "scripts/package-public-media.ts",
+          "blob": "d2e04c92164ad60719e3747d3fa936bdc018b4e5",
+          "command": "Static packaging closes current v5 A/B siblings and preserves explicit v3/v4 and legacy migration behavior"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains limited to public media rendering, versioned static assets, static packaging, tests, and their owning documentation; no persistence, authorization, or playback contract changed."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "Focused public-media tests pass with 210 passed and 3 skipped, the full repository check passes with only pre-existing warnings and infos, and the v5 assets are validated as compact zero-origin SVGs.",
+      "assessed_at": "2026-10-26T19:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/server/public-media-watermark-assets.test.ts",
+          "blob": "0c462fb1279284184fe20a524a4754ad1e705073",
+          "command": "bun test src/server/public-media-watermark-assets.test.ts: v5 light/dark assets and compact viewBox pass"
+        },
+        {
+          "path": "package.json",
+          "blob": "d302eecab6d7ec8e908c2b16eeed1988a18c4bd2",
+          "command": "bun run check: Biome check and Admin UI boundary check pass; existing warnings and infos are non-fatal"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0"
+      ],
+      "evidence": [
+        {
+          "path": "src/lib/__tests__/public-media.test.ts",
+          "blob": "ef402d335a1c600b6830da2dbf6a79dfcc39723c",
+          "command": "bun test src/lib/__tests__/public-media.test.ts: v5 defaults, complete v5 A/B candidates, and explicit v1/v2/v3/v4 compatibility pass"
+        },
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "4c2d70f590d537c4c193dce7eebc38facd52521d",
+          "command": "bun test src/server/http-compat-api.test.ts: current v5 URLs and explicit legacy candidates pass"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local content format, browser persistence, or durable release-ledger state changes; v5 candidates are regenerated from public snapshots and static artifacts.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "4c2d70f590d537c4c193dce7eebc38facd52521d",
+          "command": "HTTP compatibility coverage exercises versioned media paths without a state migration"
+        }
+      ]
+    }
+  }
+}

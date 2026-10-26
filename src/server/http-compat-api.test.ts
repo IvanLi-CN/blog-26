@@ -1297,7 +1297,7 @@ image: ./assets/cover.png
     const coverHash = buildPublicMediaHash("blog/assets/cover.png", "cover");
     const persistedCoverHash = buildPublicMediaHash("blog/assets/persisted-cover.png", "cover");
     expect(String(payload.image)).toContain(
-      `/api/admin/preview/assets/post/preview-contaminated-assets/${coverHash}/wm-b-v4/cover`
+      `/api/admin/preview/assets/post/preview-contaminated-assets/${coverHash}/wm-b-v5/cover`
     );
     expect(String(payload.image)).not.toContain(persistedCoverHash);
     expect(String(payload.body)).toContain(
@@ -1808,8 +1808,8 @@ public: false
     expect(snapshotPost?.media?.cover?.variants?.cover).toContain(
       "/api/public/assets/post/public-media-post/"
     );
-    expect(snapshotPost?.media?.cover?.presentations?.cover?.a).toContain("/wm-a-v4/cover");
-    expect(snapshotPost?.media?.cover?.presentations?.cover?.b).toContain("/wm-b-v4/cover");
+    expect(snapshotPost?.media?.cover?.presentations?.cover?.a).toContain("/wm-a-v5/cover");
+    expect(snapshotPost?.media?.cover?.presentations?.cover?.b).toContain("/wm-b-v5/cover");
   }, 30_000);
 
   it("omits local public content whose media source is missing", async () => {
