@@ -8,6 +8,7 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import sharp from "sharp";
+import { COMMENT_MIGRATION_ID } from "@/lib/comment-migration";
 import { db, initializeDB } from "@/lib/db";
 import { PlaybookStore } from "@/lib/playbook/cache";
 import { encodeJson } from "@/lib/playbook/manifest";
@@ -15,6 +16,7 @@ import { publicRelationIndexFromCatalog } from "@/lib/playbook/supplement";
 import { computePostContentHash } from "@/lib/post-body-contract-server";
 import { buildPublicMediaHash } from "@/lib/public-media";
 import {
+  commentMigrationState,
   llmSettings,
   postEmbeddings,
   posts,
@@ -256,6 +258,30 @@ describe("HTTP compatibility APIs", () => {
     const { resetContentSourceManager } = await import("@/lib/content-sources");
     await resetContentSourceManager();
   }, 10_000);
+
+  it("preserves target 404 codes without labeling generic public 404s", async () => {
+    if (!db) throw new Error("Database has not been initialised");
+    await db
+      .update(commentMigrationState)
+      .set({ status: "complete", updatedAt: Date.now(), lastError: null })
+      .where(eq(commentMigrationState.id, COMMENT_MIGRATION_ID));
+
+    const targetResponse = await handlePublicApiRequest(
+      buildRequest(
+        "/api/public/comments?slug=missing-http-target&targetType=article&targetKey=missing-http-target"
+      ),
+      "/comments"
+    );
+    expect(targetResponse.status).toBe(404);
+    expect(await targetResponse.json()).toMatchObject({ code: "NOT_FOUND" });
+
+    const routeResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/missing-route"),
+      "/missing-route"
+    );
+    expect(routeResponse.status).toBe(404);
+    expect(await routeResponse.json()).not.toHaveProperty("code");
+  });
 
   it("protects search settings and validates only saved mode policies", async () => {
     for (const [method, route] of [

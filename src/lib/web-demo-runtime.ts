@@ -23,6 +23,8 @@ export type WebDemoNetwork = "healthy" | "slow" | "offline";
 export type WebDemoDataMode = "fixture" | "dense" | "empty";
 export type WebDemoScene =
   | "public-reading"
+  | "comments-target-unavailable"
+  | "comments-avatar-failure"
   | "memo-middle"
   | "memo-quick-edit"
   | "memo-newest"
@@ -144,6 +146,8 @@ const defaultEnvironment: WebDemoEnvironment = {
 
 const scenes = [
   "public-reading",
+  "comments-target-unavailable",
+  "comments-avatar-failure",
   "memo-middle",
   "memo-quick-edit",
   "memo-newest",
@@ -293,13 +297,21 @@ export function normalizeWebDemoSceneState(
 ): WebDemoSceneState {
   const fallback = getDefaultWebDemoSceneState(pathname);
   let scene = isValue(state.scene, scenes) ? state.scene : fallback.scene;
-  if (app === "admin" && (scene.startsWith("memo-") || scene.startsWith("clipping-")))
+  if (
+    app === "admin" &&
+    (scene.startsWith("memo-") || scene.startsWith("clipping-") || scene.startsWith("comments-"))
+  )
     scene = "admin-dashboard";
   if (app === "public" && scene.startsWith("admin-")) scene = fallback.scene;
   if (app === "public" && scene.startsWith("clipping-") && !isClippingWebDemoPath(pathname)) {
     scene = fallback.scene;
   }
-  if (isClippingWebDemoPath(pathname) && !scene.startsWith("clipping-")) scene = fallback.scene;
+  if (
+    isClippingWebDemoPath(pathname) &&
+    !scene.startsWith("clipping-") &&
+    !scene.startsWith("comments-")
+  )
+    scene = fallback.scene;
   return {
     scene,
     data: isValue(state.data, dataModes) ? state.data : fallback.data,
@@ -564,6 +576,16 @@ export function getWebDemoSceneOptions(pathname: string, app: WebDemoApp): WebDe
         label: "剪藏 · 长文章",
         description: "章节、宽表格、代码和独立对话滚动。",
       },
+      {
+        value: "comments-target-unavailable",
+        label: "评论 · 目标不可用",
+        description: "目标不存在时隐藏评论输入并显示独立状态。",
+      },
+      {
+        value: "comments-avatar-failure",
+        label: "评论 · 头像回退",
+        description: "头像 URL 失败时使用本地默认头像。",
+      },
     ];
   }
 
@@ -593,6 +615,16 @@ export function getWebDemoSceneOptions(pathname: string, app: WebDemoApp): WebDe
         value: "memo-network-fault",
         label: "Memos · 网络故障",
         description: "加载下一页时返回可恢复的模拟错误。",
+      },
+      {
+        value: "comments-target-unavailable",
+        label: "评论 · 目标不可用",
+        description: "目标不存在时隐藏评论输入并显示独立状态。",
+      },
+      {
+        value: "comments-avatar-failure",
+        label: "评论 · 头像回退",
+        description: "头像 URL 失败时使用本地默认头像。",
       },
     ];
   }
@@ -632,6 +664,16 @@ export function getWebDemoSceneOptions(pathname: string, app: WebDemoApp): WebDe
       value: "public-reading",
       label: "公共站点 · 阅读",
       description: "正式公共页面的只读模拟状态。",
+    },
+    {
+      value: "comments-target-unavailable",
+      label: "评论 · 目标不可用",
+      description: "目标不存在时隐藏评论输入并显示独立状态。",
+    },
+    {
+      value: "comments-avatar-failure",
+      label: "评论 · 头像回退",
+      description: "头像 URL 失败时使用本地默认头像。",
     },
   ];
 }
@@ -781,12 +823,18 @@ export function isWebDemoBuildEnabled() {
   );
 }
 
-export function subscribeWebDemoRequestChanges(onChange: () => void) {
+export function subscribeWebDemoRequestChanges(
+  onChange: (detail?: WebDemoStateChangeDetail) => void
+) {
   if (!isWebDemoBuildEnabled()) return () => undefined;
   const handleChange = (event: Event) => {
     const detail = (event as CustomEvent<WebDemoStateChangeDetail>).detail;
-    if (detail?.changed.some((key) => ["persona", "connection", "delay"].includes(key))) {
-      onChange();
+    if (
+      detail?.changed.some((key) =>
+        ["scene", "data", "persona", "connection", "delay"].includes(key)
+      )
+    ) {
+      onChange(detail);
     }
   };
   window.addEventListener(WEB_DEMO_STATE_EVENT, handleChange);
