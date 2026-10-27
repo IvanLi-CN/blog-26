@@ -75,7 +75,7 @@
         },
         {
           "path": "src/lib/assistant-discussion-migration.ts",
-          "blob": "efcfab993a5b015f16481f0201236100a75ed47b",
+          "blob": "6ca8057e5532ff295735a3cfe70508c8945d6374",
           "command": "bun test --timeout 15000 --isolate src/lib/assistant-contracts.test.ts src/lib/assistant-storage.test.ts tests/lib/site-assistant-migration.test.ts src/server/clipping/agent-runtime.test.ts src/server/clipping/service.test.ts tests/lib/assistant-discussion-migration.test.ts tests/server/system-share-api.test.ts (72 pass, 0 fail, 333 expectations)"
         },
         {

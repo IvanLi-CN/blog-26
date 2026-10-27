@@ -27,7 +27,7 @@
     "drizzle/0022_frontend_session_auth_source.sql": "d5f9b74113528bc0c2b1ce44954ff0403d21ef3a",
     "drizzle/meta/0021_snapshot.json": "e92824ad3e99987a1955fa4b933434ab2a0d2f0f",
     "drizzle/meta/0022_snapshot.json": "841c1de352c2d4585f9d56d7a7be60ae55726bbb",
-    "drizzle/meta/_journal.json": "d5f39c0b846f0d05c4b892d9610e8a731b859a77",
+    "drizzle/meta/_journal.json": "d245ec1546e5df69d6a4803fb4b97609a7d62157",
     "src/lib/admin-github-binding.ts": "a95abdef7ade5303f1760eca995f996fd3d14242",
     "src/lib/assistant-contracts.test.ts": "23d8188294ffe5277ea815634464f97600c68244",
     "src/lib/assistant-contracts.ts": "09cce95f033e59abc901177297afb13b864ed213",
@@ -161,7 +161,7 @@
         },
         {
           "path": "drizzle/meta/_journal.json",
-          "blob": "d5f39c0b846f0d05c4b892d9610e8a731b859a77",
+          "blob": "d245ec1546e5df69d6a4803fb4b97609a7d62157",
           "command": "bun run db:migrations:validate"
         },
         {
