@@ -27,7 +27,7 @@
     "planned": {
       "impact": "minor",
       "reasoning": "The admin-only operations surface adds compatible read and same-origin policy endpoints plus UI routes. It does not remove existing routes, alter public response shapes, or add durable state schema changes.",
-      "assessed_at": "2026-10-27T23:35:52+08:00",
+      "assessed_at": "2026-10-27T23:54:24+08:00",
       "evidence": [
         {
           "path": "docs/specs/site-knowledge-assistant/SPEC.md",
@@ -43,13 +43,13 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The candidate adds the admin AI usage page, user quota operations, shared usage client types, and the dashboard seven-day usage panel. The dashboard endpoint reuses the existing service aggregation and returns only timezone, range, metric, and trend data; the dashboard now exposes success, failure, cancelled, missing, and estimated call states without database migration or durable state shape changes.",
-      "assessed_at": "2026-10-27T23:35:52+08:00",
+      "reasoning": "The candidate is rebased onto PR base 84eebd33a624d8028a905fe54042334aa4abad90 and adds the admin AI usage page, user quota operations, shared usage client types, and the dashboard seven-day usage panel. The dashboard endpoint reuses the existing service aggregation and returns only timezone, range, metric, and trend data; the dashboard now exposes success, failure, cancelled, missing, and estimated call states without database migration or durable state shape changes. Compatibility evidence remains anchored to the published 3.11.4 baseline e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af as required by the release policy.",
+      "assessed_at": "2026-10-27T23:54:24+08:00",
       "evidence": [
         {
           "path": "apps/admin/src/pages/dashboard.tsx",
           "blob": "657e1decc584716ef161452982028d71240dfa69",
-          "command": "Dashboard renders four AI usage cards, a three-band seven-day stack, an exact-value table, timezone labeling, and success, failure, cancelled, missing, and estimated call counts"
+          "command": "Dashboard renders four AI usage cards, a three-band seven-day stack, an exact-value table, timezone labeling, and success, failure, cancelled, missing, and estimated call counts after rebasing the PR onto 84eebd33; the release evidence base remains the published 3.11.4 source e6790c24"
         },
         {
           "path": "src/server/admin-api/router.ts",
@@ -69,8 +69,8 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "The protected dashboard API contract passes the HTTP compatibility test, the compiled admin build succeeds, and the Web Demo passes desktop and mobile acceptance for the new dashboard surface plus the existing AI usage and user quota flows. The dashboard shows all seven natural-day rows, timezone labeling, additive token dimensions, and success, failure, cancelled, missing, and estimated status without introducing persistent state changes.",
-      "assessed_at": "2026-10-27T23:35:52+08:00",
+      "reasoning": "The protected dashboard API contract passes the HTTP compatibility test, the compiled admin build succeeds, and the Web Demo passes desktop and mobile acceptance for the new dashboard surface plus the existing AI usage and user quota flows. The dashboard shows all seven natural-day rows, timezone labeling, additive token dimensions, and success, failure, cancelled, missing, and estimated status without introducing persistent state changes. The rebased head is source-assessed against the published 3.11.4 evidence base with 102 semantic changes, 5 matching records, and minor impact.",
+      "assessed_at": "2026-10-27T23:54:24+08:00",
       "evidence": [
         {
           "path": "tests/e2e/web-demo/dashboard.spec.ts",
@@ -85,7 +85,7 @@
         {
           "path": "package.json",
           "blob": "3d0e64c848f06801f9746e3d3cea091ff9929b73",
-          "command": "VITE_WEB_DEMO_BUILD=true ADMIN_OUT_DIR=web-demo-admin-dist bunx vite build --config apps/admin/vite.config.ts --configLoader runner; bunx biome check --write <changed files>; git diff --check (all pass; full Web Demo build was separately attempted but stopped at an existing dev-sync:trigger hang)"
+          "command": "VITE_WEB_DEMO_BUILD=true ADMIN_OUT_DIR=web-demo-admin-dist bunx vite build --config apps/admin/vite.config.ts --configLoader runner; bunx biome check --write <changed files>; git diff --check; sourceAssessment(prBase=84eebd33, publishedBaseline=e6790c24, semanticChanges=102, records=5, impact=minor)"
         }
       ]
     }
