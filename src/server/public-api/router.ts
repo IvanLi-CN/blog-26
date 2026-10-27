@@ -60,6 +60,8 @@ import {
   validateSystemShareFiles,
 } from "@/lib/system-share";
 import { buildPublicSnapshot, resolvePublicMemoTitle } from "@/public-site/snapshot";
+import { handleAssistantRequest } from "@/server/assistant/api";
+import type { AssistantService } from "@/server/assistant/service";
 import { handleClippingRequest, handleClippingResourceRequest } from "@/server/clipping/api";
 import { isClippingRowPublic, withClippingVisibilityLock } from "@/server/clipping/projection";
 import { readAuthoredMemo } from "@/server/clipping/store";
@@ -1312,7 +1314,11 @@ function searchStreamResponse(request: Request, input: ContentSearchInput, resHe
   return new Response(stream, { status: 200, headers });
 }
 
-export async function handlePublicApiRequest(request: Request, subPath: string) {
+export async function handlePublicApiRequest(
+  request: Request,
+  subPath: string,
+  assistantService?: AssistantService
+) {
   try {
     if (request.method === "OPTIONS") {
       return createPublicCorsPreflightResponse(request, PUBLIC_API_ALLOWED_METHODS);
@@ -1544,6 +1550,10 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
       );
       appendPublicCorsHeaders(response.headers, request, PUBLIC_API_ALLOWED_METHODS);
       return response;
+    }
+
+    if (pathname === "/chat" || pathname.startsWith("/chat/")) {
+      return handleAssistantRequest(request, pathname, new Headers(), assistantService);
     }
 
     const { caller, resHeaders, ctx } = await createCallerForRequest(request);

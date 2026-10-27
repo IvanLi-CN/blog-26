@@ -176,6 +176,20 @@
       "when": 1793095900505,
       "tag": "0024_ai_usage_daily_result_counts",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1793107590595,
+      "tag": "0025_assistant_message_citations",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1793109851253,
+      "tag": "0026_assistant_lookup_indexes",
+      "breakpoints": true
     }
   ]
 }

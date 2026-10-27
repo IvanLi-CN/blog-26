@@ -1,8 +1,9 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, asc, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { buildEmbeddingInput, cosineSimilarity, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import type { SearchResult } from "@/lib/ai/search";
+import type { AiUsageContext } from "@/lib/ai-usage";
 import { db } from "@/lib/db";
 import { postEmbeddings, posts } from "@/lib/schema";
 import { isClippingSearchMemo, searchContent } from "@/lib/search/content-search";
@@ -93,6 +94,7 @@ export type ContentSearchExecutionContext = {
   embeddingModel?: string;
   candidateLimit?: number;
   signal?: AbortSignal;
+  metering?: AiUsageContext;
   transport?: "json" | "sse";
   onProgress?: (phase: SearchProgressPhase) => void;
   onKeywordResults?: (result: ContentSearchEnvelope) => Promise<void> | void;
@@ -118,13 +120,25 @@ function cacheSet<T>(cache: Map<string, CacheEntry<T>>, key: string, value: T) {
 }
 const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 
+function meteringForStage(metering: AiUsageContext | undefined, stage: string) {
+  if (!metering) return undefined;
+  const root =
+    metering.idempotencyKey ?? metering.logicalRequestId ?? `${metering.feature}:${randomUUID()}`;
+  return { ...metering, idempotencyKey: `${root}:${stage}` };
+}
+
 async function vectorCandidates(
   query: string,
   embeddingConfig: ResolvedTierConfig,
   limit: number,
   publishedOnly: boolean,
   type: "all" | "post" | "memo" | "clipping",
-  options: { timeoutMs?: number; signal?: AbortSignal; onProgress?: () => void } = {}
+  options: {
+    timeoutMs?: number;
+    signal?: AbortSignal;
+    onProgress?: () => void;
+    metering?: AiUsageContext;
+  } = {}
 ): Promise<IndexedContent[]> {
   if (options.signal?.aborted)
     throw options.signal.reason ?? new DOMException("Aborted", "AbortError");
@@ -160,7 +174,9 @@ async function vectorCandidates(
     embeddingConfig,
     query,
     options.timeoutMs,
-    options.signal ? { signal: options.signal } : undefined
+    options.signal || options.metering
+      ? { signal: options.signal, metering: options.metering }
+      : undefined
   );
   const scores = new Map<string, number>();
   const hashes = new Map<string, string>();
@@ -616,6 +632,7 @@ export async function executeContentModes(
         reportProgress(context, "judging");
         output = await rewriteSearchQuery(resolved.chat, modelPolicy, plan.query, {
           signal: context.signal,
+          metering: meteringForStage(context.metering, "rewrite"),
         });
       }
       const maxQueries = "maxQueries" in policy ? policy.maxQueries : 3;
@@ -664,6 +681,7 @@ export async function executeContentModes(
               {
                 timeoutMs: modelTimeoutMs,
                 signal: context.signal,
+                metering: meteringForStage(context.metering, "embedding-blog"),
                 onProgress: () => reportProgress(context, "embedding"),
               }
             );
@@ -678,7 +696,11 @@ export async function executeContentModes(
               edition,
               candidateLimit,
               playbookType(input.type),
-              { timeoutMs: modelTimeoutMs, signal: context.signal }
+              {
+                timeoutMs: modelTimeoutMs,
+                signal: context.signal,
+                metering: meteringForStage(context.metering, "embedding-playbook"),
+              }
             )
           : [];
       const candidates: UnifiedCandidate[] = [...literal];
@@ -754,6 +776,7 @@ export async function executeContentModes(
         reportProgress(context, "judging");
         output = await judgeSearchCandidates(resolved.chat, modelPolicy, plan.query, payload, {
           signal: context.signal,
+          metering: meteringForStage(context.metering, "judge"),
         });
       }
       const supplied = new Set(windows.map(unifiedId));

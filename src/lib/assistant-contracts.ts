@@ -84,6 +84,21 @@ export type AssistantMessage = {
   createdAt: number;
   updatedAt: number;
   completedAt: number | null;
+  citations: AssistantCitation[];
+};
+
+export type AssistantCitation = {
+  id: string;
+  messageId: string;
+  source: "blog" | "playbook";
+  sourceId: string | null;
+  sourceType: string | null;
+  slug: string | null;
+  title: string;
+  href: string;
+  location: string | null;
+  snippet: string | null;
+  createdAt: number;
 };
 
 export const ASSISTANT_GENERATION_STATUSES = [
@@ -242,6 +257,36 @@ export type CreateAssistantGenerationJobInput = {
   now?: number;
 };
 
+export type SubmitAssistantTurnInput = {
+  frontendUserId: string;
+  isAdmin?: boolean;
+  conversationId?: string | null;
+  requestId: string;
+  clientRequestId?: string | null;
+  content: string;
+  kind?: AssistantConversationKind;
+  title?: string | null;
+  clippingMemoId?: string | null;
+  clippingVersionId?: string | null;
+  now?: number;
+};
+
+export type AssistantTurnSubmission = {
+  createdConversation: boolean;
+  conversation: AssistantConversation;
+  userMessage: AssistantMessage;
+  assistantMessage: AssistantMessage;
+  generationJob: AssistantGenerationJob;
+};
+
+export type AssistantJobExecution = {
+  conversation: AssistantConversation;
+  job: AssistantGenerationJob;
+  userMessage: AssistantMessage;
+  assistantMessage: AssistantMessage;
+  messages: AssistantMessage[];
+};
+
 export type UpdateAssistantGenerationJobInput = Partial<
   Pick<
     AssistantGenerationJob,
@@ -275,4 +320,67 @@ export type AssistantMessageStorage = {
     frontendUserId: string,
     input: UpdateAssistantGenerationJobInput
   ): Promise<AssistantGenerationJob | null>;
+  findIdempotentTurn(
+    frontendUserId: string,
+    requestId: string,
+    clientRequestId?: string | null,
+    conversationId?: string | null,
+    now?: number
+  ): Promise<AssistantTurnSubmission | null>;
+  submitTurn(input: SubmitAssistantTurnInput): Promise<AssistantTurnSubmission>;
+  getConversationState(
+    conversationId: string,
+    frontendUserId: string
+  ): Promise<AssistantConversation | null>;
+  getConversationMessages(
+    conversationId: string,
+    frontendUserId: string
+  ): Promise<AssistantMessage[] | null>;
+  listGenerationJobs(
+    conversationId: string,
+    frontendUserId: string
+  ): Promise<AssistantGenerationJob[] | null>;
+  getJobExecution(generationJobId: string): Promise<AssistantJobExecution | null>;
+  getFrontendUserIsAdmin(frontendUserId: string): Promise<boolean>;
+  recoverRunningGenerations(now?: number): Promise<number>;
+  recoverExpiredGenerations(now?: number): Promise<number>;
+  claimNextGenerationJob(now: number, leaseMs: number): Promise<AssistantJobExecution | null>;
+  renewGenerationLease(
+    generationJobId: string,
+    attempt: number,
+    now: number,
+    leaseMs: number
+  ): Promise<boolean>;
+  appendGenerationDelta(
+    generationJobId: string,
+    attempt: number,
+    content: string,
+    now: number
+  ): Promise<boolean>;
+  finishGeneration(
+    generationJobId: string,
+    attempt: number,
+    input: {
+      status: "completed" | "failed" | "cancelled";
+      content?: string;
+      errorCode?: string | null;
+      citations?: Array<Omit<AssistantCitation, "id" | "messageId" | "createdAt">>;
+      now?: number;
+    }
+  ): Promise<AssistantGenerationJob | null>;
+  stopGeneration(
+    generationJobId: string,
+    frontendUserId: string,
+    now?: number
+  ): Promise<AssistantGenerationJob | null>;
+  deleteConversation(
+    conversationId: string,
+    frontendUserId: string,
+    now?: number
+  ): Promise<boolean>;
+  expireConversation(
+    conversationId: string,
+    frontendUserId: string,
+    now?: number
+  ): Promise<boolean>;
 };

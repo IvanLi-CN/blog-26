@@ -6,6 +6,7 @@ import { extractAuthFromRequest } from "@/lib/auth-utils";
 import { getPublicStaticCacheControl } from "@/lib/public-static-cache-policy";
 import { loadWorktreeEnvFileIfPresent, resolveWorktreePort } from "@/lib/worktree-env";
 import { handleAdminApiRequest } from "@/server/admin-api/router";
+import { startAssistantRuntime, stopAssistantRuntime } from "@/server/assistant/runtime";
 import { startClippingRuntime, stopClippingRuntime } from "@/server/clipping/runtime";
 import { handleDevApiRequest } from "@/server/dev-api/router";
 import { handleFilesApiRequest } from "@/server/files-api/router";
@@ -23,6 +24,7 @@ import { handleVersionRequest, readRuntimeVersionInfo } from "@/server/version-a
 loadWorktreeEnvFileIfPresent();
 await startClippingRuntime();
 await startSearchIndexRuntime();
+await startAssistantRuntime();
 
 type GatewayMode = "dev" | "production";
 
@@ -748,6 +750,7 @@ log("gateway ready", {
 
 const shutdown = async () => {
   log("shutting down gateway");
+  await stopAssistantRuntime();
   await stopClippingRuntime();
   stopSearchIndexRuntime();
   server.stop();

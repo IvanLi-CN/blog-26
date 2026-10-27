@@ -263,6 +263,32 @@ export const assistantMessages = sqliteTable(
       table.conversationId,
       table.clientRequestId
     ),
+    clientRequestIndex: index("assistant_messages_client_request_idx").on(table.clientRequestId),
+  })
+);
+
+export const assistantMessageCitations = sqliteTable(
+  "assistant_message_citations",
+  {
+    id: text("id").primaryKey(),
+    messageId: text("message_id")
+      .notNull()
+      .references(() => assistantMessages.id, { onDelete: "cascade" }),
+    source: text("source", { enum: ["blog", "playbook"] }).notNull(),
+    sourceId: text("source_id"),
+    sourceType: text("source_type"),
+    slug: text("slug"),
+    title: text("title").notNull(),
+    href: text("href").notNull(),
+    location: text("location"),
+    snippet: text("snippet"),
+    createdAt: integer("created_at").notNull(),
+  },
+  (table) => ({
+    messageIndex: index("assistant_message_citations_message_idx").on(
+      table.messageId,
+      table.createdAt
+    ),
   })
 );
 
@@ -304,6 +330,7 @@ export const assistantGenerationJobs = sqliteTable(
       table.status,
       table.leaseUntil
     ),
+    userMessageIndex: index("assistant_generation_jobs_user_message_idx").on(table.userMessageId),
   })
 );
 
@@ -1009,6 +1036,7 @@ export type FrontendIdentityLink = typeof frontendIdentityLinks.$inferSelect;
 export type FrontendSession = typeof frontendSessions.$inferSelect;
 export type AssistantConversationRow = typeof assistantConversations.$inferSelect;
 export type AssistantMessageRow = typeof assistantMessages.$inferSelect;
+export type AssistantMessageCitationRow = typeof assistantMessageCitations.$inferSelect;
 export type AssistantGenerationJobRow = typeof assistantGenerationJobs.$inferSelect;
 export type AiUsageRecordRow = typeof aiUsageRecords.$inferSelect;
 export type AiUsageDailySummaryRow = typeof aiUsageDailySummaries.$inferSelect;

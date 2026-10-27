@@ -27,23 +27,23 @@
     "drizzle/0022_frontend_session_auth_source.sql": "d5f9b74113528bc0c2b1ce44954ff0403d21ef3a",
     "drizzle/meta/0021_snapshot.json": "e92824ad3e99987a1955fa4b933434ab2a0d2f0f",
     "drizzle/meta/0022_snapshot.json": "841c1de352c2d4585f9d56d7a7be60ae55726bbb",
-    "drizzle/meta/_journal.json": "5e8e805ec9eda8851e2adfa7459bff19a67b761f",
+    "drizzle/meta/_journal.json": "e04c27d13c458128218494a878957e224c1f839c",
     "src/lib/admin-github-binding.ts": "a95abdef7ade5303f1760eca995f996fd3d14242",
     "src/lib/assistant-contracts.test.ts": "23d8188294ffe5277ea815634464f97600c68244",
-    "src/lib/assistant-contracts.ts": "938bd7e084fae2f4e156ef4376333a712d6fe795",
-    "src/lib/assistant-storage.test.ts": "d3d16600316daefd903ea6d3f8f82bd87261162c",
-    "src/lib/assistant-storage.ts": "5ed552b62a10224fb905dc11e5422933af05fb39",
+    "src/lib/assistant-contracts.ts": "199b16b1252eef2bffe8fe1885c91ca16a75e55d",
+    "src/lib/assistant-storage.test.ts": "aee4512e9b2e12f35b92e1ba3c0ce55a77606b9f",
+    "src/lib/assistant-storage.ts": "a270e120799996a9628b9ad958e20f7f86329d3f",
     "src/lib/frontend-auth.test.ts": "681d51953a33e7d86fae1369a1ac62fdf106a683",
     "src/lib/frontend-auth.ts": "ae0ab3db35de34d669c8971c1338c5d06263449a",
-    "src/lib/schema.ts": "000b907d5dcdd78016d9da1b56a6ce854f5b6dec",
+    "src/lib/schema.ts": "0d4c7e32c7d8c0b58dfcb593aa5e14283c561bd6",
     "src/server/context.ts": "153ab30dca6cc8e2377ce17e8da093ce9928fae2",
     "src/server/public-api/frontend-auth.test.ts": "37ec1bb76931e0908d503a7e8ac72a3b5e578ba1",
-    "src/server/public-api/router.ts": "a3913a5794a89dd55d8d249335e0471f96616bdc",
+    "src/server/public-api/router.ts": "aeeb0864f450a593439bd29c6f93b2913369af01",
     "src/server/routers/comments.test.ts": "5d4cb420aa5fa25ef5e8e29f9022544d02bd51a1",
     "src/server/routers/comments.ts": "11d66246d78b0eb85125230c0d9499d5500d287b",
     "tests/fixtures/site-assistant-legacy.sql": "bb9afb88fe2e5449e11082a0c5034803f317ca83",
     "tests/lib/site-assistant-migration.test.ts": "eec482023a39c17876154f0ba3c5d73a05eaa6d4",
-    "tests/server/system-share-api.test.ts": "0fe4915c122e171cbd34ff255aa52b91ade53fdd"
+    "tests/server/system-share-api.test.ts": "737e9f8f4cedf53ffddc4a4a47abf96a3aba7b4c"
   },
   "change": {
     "description": "Add the shared frontend identity/session boundary, app-owned assistant SQLite contract tables, comment ownership compatibility, binding-safe sessions, atomic assistant writes, and parent-branch CI/E2E triggers for the site knowledge assistant.",
@@ -85,12 +85,12 @@
         },
         {
           "path": "src/lib/assistant-contracts.ts",
-          "blob": "938bd7e084fae2f4e156ef4376333a712d6fe795",
+          "blob": "199b16b1252eef2bffe8fe1885c91ca16a75e55d",
           "command": "Shared FrontendPrincipal, source-aware sessions, conversation/message/generation/usage/quota/migration contracts"
         },
         {
           "path": "src/lib/assistant-storage.ts",
-          "blob": "5ed552b62a10224fb905dc11e5422933af05fb39",
+          "blob": "a270e120799996a9628b9ad958e20f7f86329d3f",
           "command": "SQLite-owned conversation/message/generation storage with atomic idempotent writes, ownership checks, and role/conversation validation"
         },
         {
@@ -126,7 +126,7 @@
       "evidence": [
         {
           "path": "src/lib/assistant-storage.test.ts",
-          "blob": "d3d16600316daefd903ea6d3f8f82bd87261162c",
+          "blob": "aee4512e9b2e12f35b92e1ba3c0ce55a77606b9f",
           "command": "bun test --isolate src/lib/assistant-contracts.test.ts src/lib/assistant-storage.test.ts src/lib/frontend-auth.test.ts tests/lib/site-assistant-migration.test.ts src/server/public-api/frontend-auth.test.ts src/server/routers/comments.test.ts"
         },
         {
@@ -136,7 +136,7 @@
         },
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "0fe4915c122e171cbd34ff255aa52b91ade53fdd",
+          "blob": "737e9f8f4cedf53ffddc4a4a47abf96a3aba7b4c",
           "command": "bun test --isolate tests/server/system-share-api.test.ts -t 'upgrades legacy comments and resumes a blocked backfill without losing identity'"
         },
         {
@@ -156,22 +156,22 @@
         },
         {
           "path": "src/server/public-api/router.ts",
-          "blob": "a3913a5794a89dd55d8d249335e0471f96616bdc",
+          "blob": "aeeb0864f450a593439bd29c6f93b2913369af01",
           "command": "bun test --isolate src/server/http-compat-api.test.ts (107 pass, 3 skipped, 0 fail)"
         },
         {
           "path": "drizzle/meta/_journal.json",
-          "blob": "5e8e805ec9eda8851e2adfa7459bff19a67b761f",
+          "blob": "e04c27d13c458128218494a878957e224c1f839c",
           "command": "bun run db:migrations:validate"
         },
         {
           "path": "src/lib/schema.ts",
-          "blob": "000b907d5dcdd78016d9da1b56a6ce854f5b6dec",
+          "blob": "0d4c7e32c7d8c0b58dfcb593aa5e14283c561bd6",
           "command": "bunx drizzle-kit generate (session auth_source migration generated and schema is consistent)"
         },
         {
           "path": "src/lib/assistant-storage.ts",
-          "blob": "5ed552b62a10224fb905dc11e5422933af05fb39",
+          "blob": "a270e120799996a9628b9ad958e20f7f86329d3f",
           "command": "bun run test:unit (1520 pass, 52 skipped, 0 fail)"
         },
         {
