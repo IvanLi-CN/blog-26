@@ -23,6 +23,12 @@ const legacyRelatedPost = {
   metadata: {},
 } satisfies PublicPostRecord;
 
+const absoluteLegacyRelatedPost = {
+  ...legacyRelatedPost,
+  image:
+    "https://blog.ivanli.cc/_content/assets/post/legacy-related-post/abc123/wm-b-v4/cover.webp",
+} satisfies PublicPostRecord;
+
 describe("RelatedPostCard", () => {
   test("maps a legacy public cover fallback to the clean card asset", () => {
     const markup = renderToStaticMarkup(
@@ -33,5 +39,29 @@ describe("RelatedPostCard", () => {
     expect(markup).not.toContain("/wm-b-v4/cover.webp");
     expect(markup).toContain("object-cover");
     expect(markup).toContain("group-hover:scale-[1.04]");
+  });
+
+  test("maps an absolute same-site legacy cover fallback to the clean card asset", () => {
+    const markup = renderToStaticMarkup(
+      createElement(RelatedPostCard, { post: absoluteLegacyRelatedPost })
+    );
+
+    expect(markup).toContain(
+      "https://blog.ivanli.cc/_content/assets/post/legacy-related-post/abc123/card.webp"
+    );
+    expect(markup).not.toContain("/wm-b-v4/cover.webp");
+  });
+
+  test("preserves an unrelated external cover URL", () => {
+    const markup = renderToStaticMarkup(
+      createElement(RelatedPostCard, {
+        post: {
+          ...absoluteLegacyRelatedPost,
+          image: "https://images.example.test/cover.webp",
+        },
+      })
+    );
+
+    expect(markup).toContain("https://images.example.test/cover.webp");
   });
 });

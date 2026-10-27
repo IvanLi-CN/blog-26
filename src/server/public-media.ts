@@ -1146,6 +1146,8 @@ async function buildImagorPath(params: {
   const filters: string[] = getImagorFrameFilters(params.ref, params.variant);
   filters.push(`format(${format})`);
   if (params.renderId) {
+    // Explicit render IDs are source/presentation candidates. List cards stay clean by omitting
+    // the render ID; an explicit watermark candidate must keep its requested watermark.
     const dimensions = await readDerivedDimensions(params.ref, params.variant, {
       request: params.request,
       context: params.context,

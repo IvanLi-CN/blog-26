@@ -1,22 +1,52 @@
 import Icon from "@/components/ui/Icon";
+import { SITE } from "@/config/site";
 import { extractPostCoverCandidate, isExternalImageUrl } from "@/lib/post-cover";
 import { getPublicMediaCardFallbackUrl, isPublishedPublicAssetUrl } from "@/lib/public-media";
 import type { PublicPostRecord } from "@/public-site/snapshot";
-import { appendPublicAssetVersion } from "../lib/public-site-client";
-import { toPublicSitePath } from "../lib/runtime-urls";
+import { appendPublicAssetVersion, getSiteOrigin } from "../lib/public-site-client";
+import { getPublicApiBaseUrl, toPublicSitePath } from "../lib/runtime-urls";
 
 interface Props {
   post: PublicPostRecord;
   assetVersion?: string | null;
 }
+
+function getInternalPublicOrigins() {
+  const origins = new Set<string>([getSiteOrigin(), new URL(SITE.url).origin]);
+  const apiBaseUrl = getPublicApiBaseUrl();
+  if (apiBaseUrl) {
+    try {
+      origins.add(new URL(apiBaseUrl).origin);
+    } catch {
+      // Ignore malformed optional runtime configuration and keep the site origin.
+    }
+  }
+  return origins;
+}
+
+function getRelatedCardFallbackUrl(candidate: string) {
+  if (isPublishedPublicAssetUrl(candidate)) {
+    return getPublicMediaCardFallbackUrl(candidate);
+  }
+  if (!isExternalImageUrl(candidate)) return null;
+
+  try {
+    const parsed = new URL(candidate);
+    if (!getInternalPublicOrigins().has(parsed.origin)) return candidate;
+    if (!isPublishedPublicAssetUrl(parsed.pathname)) return candidate;
+    const fallbackPath = getPublicMediaCardFallbackUrl(
+      `${parsed.pathname}${parsed.search}${parsed.hash}`
+    );
+    return `${parsed.origin}${fallbackPath}`;
+  } catch {
+    return candidate;
+  }
+}
+
 export default function RelatedPostCard(props: Props) {
   const { post, assetVersion = null } = props;
   const coverCandidate = extractPostCoverCandidate(post);
-  const fallbackImage =
-    coverCandidate &&
-    (isExternalImageUrl(coverCandidate) || isPublishedPublicAssetUrl(coverCandidate))
-      ? getPublicMediaCardFallbackUrl(coverCandidate)
-      : null;
+  const fallbackImage = coverCandidate ? getRelatedCardFallbackUrl(coverCandidate) : null;
   const imageSrc = appendPublicAssetVersion(
     post.media.cover?.variants.card ?? post.media.primary?.variants.card ?? fallbackImage,
     assetVersion

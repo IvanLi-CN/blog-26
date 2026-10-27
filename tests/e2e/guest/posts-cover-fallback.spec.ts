@@ -135,6 +135,11 @@ test.describe("posts cover fallback", () => {
     );
     expect(parsedImageUrl.pathname).not.toContain("/wm-");
     expect(await timelineImage.getAttribute("class")).toContain("object-cover");
+    expect(await timelineImage.getAttribute("class")).toContain("group-hover:scale-105");
+    await timelineImage.hover();
+    await expect
+      .poll(() => timelineImage.evaluate((node) => getComputedStyle(node).scale))
+      .toBe("1.05");
   });
 
   test("keeps detail cover and body media watermarked", async ({ page }) => {
