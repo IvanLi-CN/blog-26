@@ -33,7 +33,7 @@
   "change": {
     "description": "Add provider-call AI usage metering across assistant-facing clipping, search, indexing, tags, icons, and model validation paths, with contained token dimensions, retry-aware settlement, rolling personal quota helpers, additive daily result counts, daily rollups, and detail retention.",
     "release_unit_description": "static frontend and full-feature Docker image",
-    "affected_contracts": ["persistent-state", "operations"]
+    "affected_contracts": ["persistent-state"]
   },
   "classification": {
     "planned": {
@@ -60,26 +60,32 @@
       "evidence": [
         {
           "path": "src/lib/ai-usage.ts",
+          "blob": "a92fa10670d40d3e8f8897e86cc570462fe7d0eb",
           "command": "Reservation, settlement, provider usage normalization, quota snapshots/resets, daily idempotent rollup, and 90-day cleanup implementation"
         },
         {
           "path": "src/server/clipping/agent-runtime.ts",
+          "blob": "6b9991ca7b0515b425d4df45ce53d63f04cc502d",
           "command": "GenerationTask hooks meter each Pi provider attempt and preserve clipping conversation ownership context"
         },
         {
           "path": "src/server/services/search-model.ts",
+          "blob": "9bd21fe5011d579b6aeced1c9b08ab86417976c4",
           "command": "Direct chat and embedding requests record actual responses and provider failures"
         },
         {
           "path": "src/lib/ai/rerank.ts",
+          "blob": "a05b35eaafd42e1af50b46d0ea46b5cae7367430",
           "command": "Search rerank backoff attempts are metered individually, including retryable responses and network failures"
         },
         {
           "path": "src/server/admin-api/router.ts",
+          "blob": "c2473002af7ea8ba80dc0bede47f871af6354815",
           "command": "Admin search validation, model validation, tag organization, and icon suggestion requests pass the authenticated frontend/admin identity into actual provider-call metering; catalog metadata discovery remains outside model-validation metering"
         },
         {
           "path": "src/server/services/search-validation.ts",
+          "blob": "5530f7aa80d8d17c848cf4551fd1f01f99137455",
           "command": "Search quality validation meters each embedding, rewrite, and RAG judge provider call with a run/stage-scoped logical request"
         }
       ],
@@ -95,54 +101,67 @@
       "evidence": [
         {
           "path": "src/lib/ai-usage.test.ts",
+          "blob": "ef6134e9fd1b374fa97f3c22075d880310b2eb75",
           "command": "bun test src/lib/ai-usage.test.ts (20 pass; containment including DeepSeek cache fields, reservations/corrections, concurrent settlement, retries, repeated internal question steps, reset cycles, admin bypass, ordinary/admin conversation limits, status rollups, stale-dimension correction, legacy summary compatibility, multi-day maintenance, and cleanup independence)"
         },
         {
           "path": "src/lib/ai/rerank.test.ts",
+          "blob": "5344a5a128f276e9c71481d3086d31ddf920bc17",
           "command": "bun test src/lib/ai/rerank.test.ts (8 pass; rerank response parsing and upstream failure behavior)"
         },
         {
           "path": "src/server/services/search-model.test.ts",
+          "blob": "c59ff6b7933abb9617be84fa80cb19f470924f0d",
           "command": "bun test src/server/services/search-model.test.ts (5 pass; provider request shape, budget guards, and embedding bounds)"
         },
         {
           "path": "src/server/clipping/agent-runtime.test.ts",
+          "blob": "b9c6feeee3f66cde97853e583d522137dbed4c45",
           "command": "bun test src/server/clipping/agent-runtime.test.ts (3 pass; provider adapter, recovery, and interrupted generation; raw provider observation and durable compaction matching are covered by the runtime implementation path)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
+          "blob": "edd5d7892d42be2ad5d1298d7675349d7fba02ba",
           "command": "bun test src/server/clipping/service.test.ts (14 pass; clipping lifecycle, retries, recovery, and chat binding)"
         },
         {
           "path": "src/server/services/llm-settings.test.ts",
+          "blob": "fdfd8e472b9b1df2effba691be784eb1adddee6b",
           "command": "bun test src/server/services/llm-settings.test.ts (13 pass; admin model validation contract and provider configuration behavior)"
         },
         {
           "path": "src/server/http-compat-api.test.ts",
+          "blob": "38d1ec2ce697f44b50dc496f401cc3d427f76447",
           "command": "bun test src/server/http-compat-api.test.ts (107 pass, 3 skipped; authenticated admin HTTP compatibility surface)"
         },
         {
           "path": "src/server/services/rag-index.test.ts",
+          "blob": "d7e71b0b86962aefcbb2bc3ba4d0ba5aa7961fe9",
           "command": "bun test src/server/services/rag-index.test.ts (49 pass; RAG indexing, retries, cancellation, recovery, and provider-bound coverage)"
         },
         {
           "path": "src/server/clipping/service-recovery.test.ts",
+          "blob": "6b460561c67198d4bea5f41c4e28f24bc5474e21",
           "command": "bun test src/server/clipping/service-recovery.test.ts (1 pass; SIGKILL recovery and persisted metering-context rebinding)"
         },
         {
           "path": "src/lib/ai-usage.ts",
+          "blob": "a92fa10670d40d3e8f8897e86cc570462fe7d0eb",
           "command": "bunx biome check on changed implementation files; git diff --check"
         },
         {
           "path": "package.json",
+          "blob": "d302eecab6d7ec8e908c2b16eeed1988a18c4bd2",
           "command": "bun run check completes successfully with 26 existing Biome warnings and 13 infos; the admin UI boundary passes for 48 files; bun run db:migrations:validate passes"
         },
         {
           "path": "src/server/services/search-model.ts",
+          "blob": "9bd21fe5011d579b6aeced1c9b08ab86417976c4",
           "command": "bunx tsc --noEmit filtered to changed surfaces; no diagnostic from the new metering module or provider integration code"
         },
         {
           "path": "drizzle/0023_ai_usage_daily_result_counts.sql",
+          "blob": "51839b875299f08f972d16fb8c137e542ef82558",
           "command": "bun run db:migrations:validate; additive migration journal and SQL are present for the three daily result-count columns"
         }
       ]
@@ -156,10 +175,12 @@
       "evidence": [
         {
           "path": "src/server/services/search-model.ts",
+          "blob": "9bd21fe5011d579b6aeced1c9b08ab86417976c4",
           "command": "Existing search response and error contracts remain unchanged; metering options are additive and internal"
         },
         {
           "path": "src/server/clipping/service.ts",
+          "blob": "26b0c625edbced59ed3a3d6fc26fbb6a40f4e04f",
           "command": "Existing clipping conversation and lifecycle responses remain unchanged"
         }
       ]
@@ -175,10 +196,12 @@
       "evidence": [
         {
           "path": "drizzle/0023_ai_usage_daily_result_counts.sql",
+          "blob": "51839b875299f08f972d16fb8c137e542ef82558",
           "command": "Adds three NOT NULL integer result-count columns with DEFAULT 0, so rows created by the pre-migration schema remain readable"
         },
         {
           "path": "src/lib/ai-usage.test.ts",
+          "blob": "ef6134e9fd1b374fa97f3c22075d880310b2eb75",
           "command": "In-memory Drizzle migration applies the forward-only schema and verifies idempotent result rollups, legacy-summary defaults, and detail cleanup independence"
         }
       ]
