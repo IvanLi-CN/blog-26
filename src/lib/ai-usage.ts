@@ -21,6 +21,7 @@ const UNKNOWN_TOKEN_RESERVATION = 4_096;
 const HOUR_MS = 60 * 60 * 1_000;
 const WEEK_MS = 7 * 24 * HOUR_MS;
 const DETAIL_RETENTION_MS = 90 * 24 * HOUR_MS;
+export const DEFAULT_AI_USAGE_TIMEZONE = "Asia/Shanghai";
 
 export type AiUsageMetadata = Record<string, string | number | boolean | null>;
 
@@ -1279,7 +1280,7 @@ export async function runAiUsageMaintenance(
   options: { now?: number; timezone?: string; database?: AiDatabase } = {}
 ) {
   const now = options.now ?? Date.now();
-  const timezone = options.timezone ?? "UTC";
+  const timezone = options.timezone ?? DEFAULT_AI_USAGE_TIMEZONE;
   const previousDay = calendarDayKey(new Date(now), timezone, -1);
   const cutoff = now - DETAIL_RETENTION_MS;
   const oldRows = await (await getDatabase(options.database))

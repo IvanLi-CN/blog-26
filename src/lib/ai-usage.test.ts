@@ -1191,4 +1191,16 @@ describe("AI usage metering", () => {
     });
     expect(result.day).toBe("2026-03-07");
   });
+
+  it("uses the product timezone for scheduled maintenance by default", async () => {
+    const result = await runAiUsageMaintenance({
+      now: Date.parse("2026-01-02T16:30:00Z"),
+      database,
+    });
+
+    expect(result.rollup).toMatchObject({
+      day: "2026-01-02",
+      timezone: "Asia/Shanghai",
+    });
+  });
 });

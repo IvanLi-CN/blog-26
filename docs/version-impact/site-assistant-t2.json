@@ -12,8 +12,8 @@
     "src/lib/assistant-contracts.ts": "938bd7e084fae2f4e156ef4376333a712d6fe795",
     "src/lib/schema.ts": "000b907d5dcdd78016d9da1b56a6ce854f5b6dec",
     "src/lib/ai/embeddings.ts": "2c303c131c22191e53ccc35ece864c2f1b51fbf1",
-    "src/lib/ai-usage.test.ts": "13b139a6770777b038c9323b9e3b44586a2cfdd1",
-    "src/lib/ai-usage.ts": "6bdf5a25f0f5b9ad5aa7c8da034d9bedd04b1ec0",
+    "src/lib/ai-usage.test.ts": "0aaf770057d2de72d6f43aae6c2d03cab36be683",
+    "src/lib/ai-usage.ts": "fce78b35e4e98cec05cc9d14cd89e03e420f30af",
     "src/lib/ai/search.ts": "08b0bbd32eb604a031bfd5f620d20dacd11bcd3a",
     "src/lib/ai/vectorization.ts": "450a97ce5fd9d7509b71c2c3c25608a045b9e05e",
     "src/lib/ai/rerank.ts": "a05b35eaafd42e1af50b46d0ea46b5cae7367430",
@@ -22,6 +22,9 @@
     "src/server/clipping/agent-runtime.ts": "6b9991ca7b0515b425d4df45ce53d63f04cc502d",
     "src/server/clipping/service.ts": "26b0c625edbced59ed3a3d6fc26fbb6a40f4e04f",
     "src/server/jobs/definitions.ts": "b12ca785af83539ee22b1d8f11b27444e7e57d13",
+    "src/server/jobs/index.ts": "96547ef6235a05d079a5c592fba7bdc44ac23ddd",
+    "src/server/jobs/runtime.ts": "d6ef29d77b742b2ca00025717612dadbb307d743",
+    "src/server/jobs/scheduler.ts": "355b7f3af603b77422a598eaaa5e3483f1a29e2c",
     "src/server/services/llm-model-catalog.ts": "e4e352a82e7902344140aaaea79e0d5a1e6a9a24",
     "src/server/services/llm-settings.ts": "609af5cc184315db6f4d7023f29f5d3071a85a3e",
     "src/server/services/rag-index.ts": "c8241a1f102269f88399dc81b15e5c4b2abaa918",
@@ -30,7 +33,9 @@
     "src/server/services/search-validation.ts": "5530f7aa80d8d17c848cf4551fd1f01f99137455",
     "src/server/services/tag-ai.ts": "b2a3d4302f9526e5b7f096afa3fb964bba15a118",
     "src/server/services/tag-icons.ts": "1ee8ac64445d6bdec836388a520b39387550b995",
-    "tests/server/jobs/definitions.test.ts": "de44938911af1ffc8a4168b442402b4534db90be"
+    "scripts/start-console.ts": "aec1f7abeb3192b8f2e0ac241cad68e289d15837",
+    "tests/server/jobs/definitions.test.ts": "de44938911af1ffc8a4168b442402b4534db90be",
+    "tests/server/jobs/runtime.test.ts": "dc63ce830bf75b7a4c67d260db210fd99bfc8597"
   },
   "change": {
     "description": "Add provider-call AI usage metering across assistant-facing clipping, search, indexing, tags, icons, and model validation paths, with contained token dimensions, retry-aware settlement, rolling personal quota helpers, additive daily result counts, daily rollups, detail retention, and an existing-scheduler maintenance job.",
@@ -57,13 +62,13 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The candidate records every attempted provider call, preserves user/feature/provider/model/status/raw dimensions without prompt or answer bodies, observes raw provider usage before SDK normalization, uses conservative reservations with in-place corrections, and keeps automatic retries from adding question counts while manual retries remain separate. Late settlements trigger an idempotent backfill of already-existing affected summaries, with the complete detail read and summary write serialized in one immediate transaction. runAiUsageMaintenance remains the sole maintenance entry point and is registered as the daily ai-usage-maintenance job in the existing scheduler. Daily summaries now preserve success, failure, and cancellation counts across detail cleanup. Upstream model catalog metadata discovery remains outside model-validation metering; actual admin validation calls carry the authenticated backend identity context. Assistant content-search/search user metering context remains T4-owned and is intentionally not changed here.",
+      "reasoning": "The candidate records every attempted provider call, preserves user/feature/provider/model/status/raw dimensions without prompt or answer bodies, observes raw provider usage before SDK normalization, uses conservative reservations with in-place corrections, and keeps automatic retries from adding question counts while manual retries remain separate. Late settlements trigger an idempotent backfill of already-existing affected summaries, with the complete detail read and summary write serialized in one immediate transaction. runAiUsageMaintenance remains the sole maintenance entry point, defaults scheduled maintenance to Asia/Shanghai, and is registered as the daily ai-usage-maintenance job in the existing scheduler. The production console is the sole scheduler owner and stops that worker in its existing shutdown path; the development-only gateway does not start a second worker. Daily summaries now preserve success, failure, and cancellation counts across detail cleanup. Upstream model catalog metadata discovery remains outside model-validation metering; actual admin validation calls carry the authenticated backend identity context. Assistant content-search/search user metering context remains T4-owned and is intentionally not changed here.",
       "assessed_at": "2026-10-27T00:00:00+08:00",
       "evidence": [
         {
           "path": "src/lib/ai-usage.ts",
-          "blob": "6bdf5a25f0f5b9ad5aa7c8da034d9bedd04b1ec0",
-          "command": "Reservation, settlement, transaction-serialized late-settlement summary backfill, provider usage normalization, quota snapshots/resets, daily idempotent rollup, and 90-day cleanup implementation"
+          "blob": "fce78b35e4e98cec05cc9d14cd89e03e420f30af",
+          "command": "Reservation, settlement, transaction-serialized late-settlement summary backfill, provider usage normalization, quota snapshots/resets, daily idempotent rollup, 90-day cleanup, and the Asia/Shanghai maintenance default"
         },
         {
           "path": "src/server/clipping/agent-runtime.ts",
@@ -91,6 +96,21 @@
           "command": "Registers the canonical runAiUsageMaintenance entry as a daily ai-usage-maintenance job in the existing scheduler"
         },
         {
+          "path": "src/server/jobs/runtime.ts",
+          "blob": "d6ef29d77b742b2ca00025717612dadbb307d743",
+          "command": "Owns the singleton scheduler startup/shutdown boundary used by the production console lifecycle"
+        },
+        {
+          "path": "src/server/jobs/scheduler.ts",
+          "blob": "355b7f3af603b77422a598eaaa5e3483f1a29e2c",
+          "command": "Stops scheduled timers without re-arming a completed job after the scheduler has been shut down"
+        },
+        {
+          "path": "scripts/start-console.ts",
+          "blob": "aec1f7abeb3192b8f2e0ac241cad68e289d15837",
+          "command": "Starts the unique jobs runtime in the production self-contained console and stops it through the existing shutdown flow"
+        },
+        {
           "path": "src/server/services/search-validation.ts",
           "blob": "5530f7aa80d8d17c848cf4551fd1f01f99137455",
           "command": "Search quality validation meters each embedding, rewrite, and RAG judge provider call with a run/stage-scoped logical request"
@@ -103,13 +123,13 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "Focused usage, provider integration, scheduler-definition, search-model, clipping runtime/service, RAG, HTTP, migration, and recovery tests pass in isolated processes, including a controlled late-settlement daily-summary correction, a true Promise.all backfill, and repeat idempotence. Repository check completes successfully: Biome reports pre-existing public-site warnings and infos, and the admin UI boundary passes for 48 files. Filtered TypeScript output retains pre-existing diagnostics in search, admin, clipping, test compatibility code, and src/server/jobs/definitions.ts:101 (SyncResult.warnings, present at the e7115daa base); the new metering module, shared contract, durable agent runtime, provider integrations, and maintenance job add no diagnostics. The T3-owned system-share test remains a known 1-failure legacy-comments fixture issue and is not changed by T2.",
+      "reasoning": "Focused usage, provider integration, scheduler-definition, scheduler-lifecycle, search-model, clipping runtime/service, RAG, HTTP, migration, and recovery tests pass in isolated processes, including a controlled late-settlement daily-summary correction, a true Promise.all backfill, repeat idempotence, production-console-only scheduler registration, singleton startup, shutdown timer cleanup, and the Asia/Shanghai default. Repository check completes successfully with pre-existing Biome warnings and infos, and the admin UI boundary passes for 48 files. Filtered TypeScript output retains the pre-existing console-dist declaration, Socket type, and src/server/jobs/definitions.ts:101 SyncResult.warnings diagnostics; the new metering and scheduler lifecycle code adds no diagnostic. The T3-owned system-share fixture compatibility fix is present on the integrated head and is not product or migration logic owned by T2.",
       "assessed_at": "2026-10-27T00:00:00+08:00",
       "evidence": [
         {
           "path": "src/lib/ai-usage.test.ts",
-          "blob": "13b139a6770777b038c9323b9e3b44586a2cfdd1",
-          "command": "bun test src/lib/ai-usage.test.ts (23 pass; containment including DeepSeek cache fields, reservations/corrections, concurrent stale-summary regression and true Promise.all backfills, retries, repeated internal question steps, reset cycles, admin bypass, ordinary/admin conversation limits, status rollups, late-settlement summary backfill/idempotence, legacy summary compatibility, multi-day maintenance, and cleanup independence)"
+          "blob": "0aaf770057d2de72d6f43aae6c2d03cab36be683",
+          "command": "bun test src/lib/ai-usage.test.ts (24 pass; containment including DeepSeek cache fields, reservations/corrections, concurrent stale-summary regression and true Promise.all backfills, retries, repeated internal question steps, reset cycles, admin bypass, ordinary/admin conversation limits, status rollups, late-settlement summary backfill/idempotence, legacy summary compatibility, Asia/Shanghai default maintenance timezone, multi-day maintenance, and cleanup independence)"
         },
         {
           "path": "tests/server/jobs/definitions.test.ts",
@@ -163,8 +183,13 @@
         },
         {
           "path": "src/lib/ai-usage.ts",
-          "blob": "6bdf5a25f0f5b9ad5aa7c8da034d9bedd04b1ec0",
-          "command": "bunx biome check on changed implementation files; git diff --check; concurrent late-settlement backfill is exercised by the 23-test metering suite"
+          "blob": "fce78b35e4e98cec05cc9d14cd89e03e420f30af",
+          "command": "bunx biome check on changed implementation files; git diff --check; concurrent late-settlement backfill and the Asia/Shanghai maintenance default are exercised by the metering suite"
+        },
+        {
+          "path": "tests/server/jobs/runtime.test.ts",
+          "blob": "dc63ce830bf75b7a4c67d260db210fd99bfc8597",
+          "command": "bun test tests/server/jobs/runtime.test.ts (2 pass; production console-only registration, gateway exclusion, singleton startup, and shutdown timer cleanup)"
         },
         {
           "path": "package.json",
@@ -318,7 +343,7 @@
         },
         {
           "path": "src/lib/ai-usage.test.ts",
-          "blob": "13b139a6770777b038c9323b9e3b44586a2cfdd1",
+          "blob": "0aaf770057d2de72d6f43aae6c2d03cab36be683",
           "command": "In-memory Drizzle migration applies the forward-only schema and verifies idempotent result rollups, legacy-summary defaults, and detail cleanup independence"
         }
       ]
