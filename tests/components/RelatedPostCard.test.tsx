@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import PostCard from "../../site/components/PostCard";
 import RelatedPostCard from "../../site/components/RelatedPostCard";
+import TimelineCard from "../../site/components/TimelineCard";
 import { createEmptyPublicMediaCollection } from "../../src/lib/public-media";
 import type { PublicPostRecord } from "../../src/public-site/snapshot";
 
@@ -63,5 +65,41 @@ describe("RelatedPostCard", () => {
     );
 
     expect(markup).toContain("https://images.example.test/cover.webp");
+  });
+
+  test("maps an absolute same-site legacy cover fallback in the posts list", () => {
+    const markup = renderToStaticMarkup(
+      createElement(PostCard, { post: absoluteLegacyRelatedPost })
+    );
+
+    expect(markup).toContain(
+      "https://blog.ivanli.cc/_content/assets/post/legacy-related-post/abc123/card.webp"
+    );
+    expect(markup).not.toContain("/wm-b-v4/cover.webp");
+  });
+
+  test("maps an absolute same-site legacy cover fallback in the timeline", () => {
+    const markup = renderToStaticMarkup(
+      createElement(TimelineCard, {
+        item: {
+          type: "post",
+          slug: absoluteLegacyRelatedPost.slug,
+          title: absoluteLegacyRelatedPost.title,
+          excerpt: absoluteLegacyRelatedPost.excerpt,
+          content: absoluteLegacyRelatedPost.body,
+          publishDate: absoluteLegacyRelatedPost.publishDate,
+          tags: absoluteLegacyRelatedPost.tags,
+          image: absoluteLegacyRelatedPost.image,
+          media: absoluteLegacyRelatedPost.media,
+          dataSource: absoluteLegacyRelatedPost.dataSource,
+          filePath: absoluteLegacyRelatedPost.filePath,
+        },
+      })
+    );
+
+    expect(markup).toContain(
+      "https://blog.ivanli.cc/_content/assets/post/legacy-related-post/abc123/card.webp"
+    );
+    expect(markup).not.toContain("/wm-b-v4/cover.webp");
   });
 });

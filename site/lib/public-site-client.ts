@@ -1,6 +1,8 @@
 /** Public presentation helpers shared by the server and browser. */
 import { SITE } from "@/config/site";
-import { getPublicSiteUrl, toPublicSitePath } from "@/lib/public-runtime-url";
+import { isExternalImageUrl } from "@/lib/post-cover";
+import { getPublicMediaCardFallbackUrl, isPublishedPublicAssetUrl } from "@/lib/public-media";
+import { getPublicApiBaseUrl, getPublicSiteUrl, toPublicSitePath } from "@/lib/public-runtime-url";
 
 export function getSiteUrl() {
   return getPublicSiteUrl() || SITE.url;
@@ -22,6 +24,43 @@ export function getCanonicalUrl(pathname = "/") {
 }
 export function toAbsoluteSiteUrl(pathname: string) {
   return getCanonicalUrl(pathname);
+}
+
+function getInternalPublicOrigins() {
+  const origins = new Set<string>([getSiteOrigin()]);
+  try {
+    origins.add(new URL(SITE.url).origin);
+  } catch {
+    // Keep the resolved public site origin when the static site config is malformed.
+  }
+  const apiBaseUrl = getPublicApiBaseUrl();
+  if (apiBaseUrl) {
+    try {
+      origins.add(new URL(apiBaseUrl).origin);
+    } catch {
+      // Ignore malformed optional runtime configuration.
+    }
+  }
+  return origins;
+}
+
+export function getPublicSiteCardFallbackUrl(candidate: string) {
+  if (isPublishedPublicAssetUrl(candidate)) {
+    return getPublicMediaCardFallbackUrl(candidate);
+  }
+  if (!isExternalImageUrl(candidate)) return null;
+
+  try {
+    const parsed = new URL(candidate);
+    if (!getInternalPublicOrigins().has(parsed.origin)) return candidate;
+    if (!isPublishedPublicAssetUrl(parsed.pathname)) return candidate;
+    const fallbackPath = getPublicMediaCardFallbackUrl(
+      `${parsed.pathname}${parsed.search}${parsed.hash}`
+    );
+    return `${parsed.origin}${fallbackPath}`;
+  } catch {
+    return candidate;
+  }
 }
 
 export function appendPublicAssetVersion(

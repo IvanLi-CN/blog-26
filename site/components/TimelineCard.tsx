@@ -3,7 +3,7 @@ import { extractTextSummary } from "@/lib/markdown-utils";
 import { getMemoPresentation } from "@/lib/memo-presentation";
 import { getPublicMediaCardFallbackUrl, type PublicMediaCollection } from "@/lib/public-media";
 import { formatAbsoluteDate } from "../lib/format";
-import { appendPublicAssetVersion } from "../lib/public-site-client";
+import { appendPublicAssetVersion, getPublicSiteCardFallbackUrl } from "../lib/public-site-client";
 import { toPublicSitePath } from "../lib/runtime-urls";
 import TagBadge from "./TagBadge";
 
@@ -39,7 +39,9 @@ export default function TimelineCard(props: Props) {
   const imageSrc = appendPublicAssetVersion(
     item.media?.cover?.variants.card ??
       item.media?.primary?.variants.card ??
-      (item.image ? getPublicMediaCardFallbackUrl(item.image) : item.image),
+      (item.image
+        ? (getPublicSiteCardFallbackUrl(item.image) ?? getPublicMediaCardFallbackUrl(item.image))
+        : item.image),
     assetVersion
   );
   return (

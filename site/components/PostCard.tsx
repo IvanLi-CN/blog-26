@@ -3,7 +3,7 @@ import { getPublicMediaCardFallbackUrl } from "@/lib/public-media";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import type { PublicPostRecord } from "@/public-site/snapshot";
 import { formatAbsoluteDate } from "../lib/format";
-import { appendPublicAssetVersion } from "../lib/public-site-client";
+import { appendPublicAssetVersion, getPublicSiteCardFallbackUrl } from "../lib/public-site-client";
 import { toPublicSitePath } from "../lib/runtime-urls";
 import TagBadge from "./TagBadge";
 
@@ -21,7 +21,9 @@ export default function PostCard(props: Props) {
   const imageSrc = appendPublicAssetVersion(
     post.media.cover?.variants.card ??
       post.media.primary?.variants.card ??
-      (post.image ? getPublicMediaCardFallbackUrl(post.image) : post.image),
+      (post.image
+        ? (getPublicSiteCardFallbackUrl(post.image) ?? getPublicMediaCardFallbackUrl(post.image))
+        : post.image),
     assetVersion
   );
   return (

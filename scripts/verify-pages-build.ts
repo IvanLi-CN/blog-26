@@ -247,7 +247,7 @@ function requiresBuildTimeAssetVersion(url: string) {
   return /\/(?:[a-z0-9-]+\/)?(?:card|cover)\.[^/?#]+(?:[?#]|$)/u.test(url);
 }
 
-function assertRenderedUnwatermarkedCoverImages(content: string, file: string) {
+export function assertRenderedUnwatermarkedCoverImages(content: string, file: string) {
   const document = JSDOM.fragment(content);
   const images = document.querySelectorAll(
     '[data-testid="post-card-cover"] img, [data-testid="home-timeline"] img, article[itemprop="isRelatedTo"] img'
