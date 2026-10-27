@@ -263,6 +263,7 @@ export const assistantMessages = sqliteTable(
       table.conversationId,
       table.clientRequestId
     ),
+    clientRequestIndex: index("assistant_messages_client_request_idx").on(table.clientRequestId),
   })
 );
 
@@ -329,6 +330,7 @@ export const assistantGenerationJobs = sqliteTable(
       table.status,
       table.leaseUntil
     ),
+    userMessageIndex: index("assistant_generation_jobs_user_message_idx").on(table.userMessageId),
   })
 );
 

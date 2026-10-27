@@ -18,6 +18,9 @@ const DEFAULT_LEASE_MS = 45_000;
 const DEFAULT_PUMP_DELAY_MS = 25;
 const MAX_HISTORY_MESSAGES = 24;
 const MAX_CITATIONS = 8;
+const MAX_PROVIDER_RESPONSE_BYTES = 4 * 1024 * 1024;
+const MAX_ASSISTANT_OUTPUT_CHARS = 100_000;
+const PROVIDER_TIMEOUT_MS = 120_000;
 
 type AssistantCitationInput = Omit<AssistantCitation, "id" | "messageId" | "createdAt">;
 
@@ -132,6 +135,31 @@ function responseError(response: Response) {
 
 type StreamResult = { content: string; usage: unknown | null };
 
+async function readBoundedProviderBody(body: ReadableStream<Uint8Array>, maxBytes: number) {
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let bytes = 0;
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      bytes += chunk.value.byteLength;
+      if (bytes > maxBytes) throw new Error("assistant-provider-response-too-large");
+      chunks.push(chunk.value);
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined);
+    reader.releaseLock();
+  }
+  const result = new Uint8Array(bytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(result);
+}
+
 async function readProviderResponse(
   response: Response,
   signal: AbortSignal,
@@ -139,12 +167,20 @@ async function readProviderResponse(
 ): Promise<StreamResult> {
   if (!response.ok) throw responseError(response);
   const contentType = response.headers.get("content-type") ?? "";
+  const declaredLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_PROVIDER_RESPONSE_BYTES)
+    throw new Error("assistant-provider-response-too-large");
   if (!response.body || /(?:^|;)\s*application\/json(?:;|$)/iu.test(contentType)) {
-    const payload = (await response.json()) as {
+    if (!response.body) throw new Error("assistant-provider-empty-response");
+    const payload = JSON.parse(
+      await readBoundedProviderBody(response.body, MAX_PROVIDER_RESPONSE_BYTES)
+    ) as {
       choices?: Array<{ message?: { content?: string | null } }>;
       usage?: unknown;
     };
     const content = payload.choices?.[0]?.message?.content?.trim() ?? "";
+    if (content.length > MAX_ASSISTANT_OUTPUT_CHARS)
+      throw new Error("assistant-provider-output-too-large");
     if (content && !(await onDelta(content))) throw new DOMException("Aborted", "AbortError");
     return { content, usage: payload.usage ?? null };
   }
@@ -154,6 +190,7 @@ async function readProviderResponse(
   let buffer = "";
   let content = "";
   let usage: unknown | null = null;
+  let responseBytes = 0;
   const consume = async (line: string) => {
     const value = line.startsWith("data:") ? line.slice(5).trim() : "";
     if (!value || value === "[DONE]") return;
@@ -174,6 +211,8 @@ async function readProviderResponse(
       payload.choices?.[0]?.delta?.content ?? payload.choices?.[0]?.message?.content ?? "";
     if (!delta) return;
     content += delta;
+    if (content.length > MAX_ASSISTANT_OUTPUT_CHARS)
+      throw new Error("assistant-provider-output-too-large");
     if (!(await onDelta(content))) throw new DOMException("Aborted", "AbortError");
   };
   try {
@@ -181,6 +220,9 @@ async function readProviderResponse(
       if (signal.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
       const chunk = await reader.read();
       if (chunk.done) break;
+      responseBytes += chunk.value.byteLength;
+      if (responseBytes > MAX_PROVIDER_RESPONSE_BYTES)
+        throw new Error("assistant-provider-response-too-large");
       buffer += decoder.decode(chunk.value, { stream: true });
       const lines = buffer.split(/\r?\n/u);
       buffer = lines.pop() ?? "";
@@ -189,6 +231,7 @@ async function readProviderResponse(
     buffer += decoder.decode();
     for (const line of buffer.split(/\r?\n/u)) await consume(line);
   } finally {
+    await reader.cancel().catch(() => undefined);
     reader.releaseLock();
   }
   return { content, usage };
@@ -239,6 +282,7 @@ async function defaultGenerateAssistantAnswer({
   const body = JSON.stringify({
     model: resolved.chat.model,
     temperature: 0.2,
+    max_tokens: 2048,
     stream: true,
     stream_options: { include_usage: true },
     messages,
@@ -257,11 +301,12 @@ async function defaultGenerateAssistantAnswer({
   const result = await meterProviderCall({
     context: answerContext,
     call: async () => {
+      const providerSignal = AbortSignal.any([signal, AbortSignal.timeout(PROVIDER_TIMEOUT_MS)]);
       const response = await fetch(
         `${resolved.chat.baseUrl?.replace(/\/+$/u, "")}/chat/completions`,
         {
           method: "POST",
-          signal,
+          signal: providerSignal,
           headers: {
             "content-type": "application/json",
             authorization: `Bearer ${resolved.chat.apiKey}`,
@@ -269,7 +314,7 @@ async function defaultGenerateAssistantAnswer({
           body,
         }
       );
-      return readProviderResponse(response, signal, onDelta);
+      return readProviderResponse(response, providerSignal, onDelta);
     },
     getOutcome: (value) => ({ status: "success", usage: value.usage }),
   });
@@ -288,7 +333,9 @@ export class AssistantRuntime {
   private stopped = false;
   private pumping = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  private pumpTask: Promise<void> | null = null;
   private readonly controllers = new Map<string, AbortController>();
+  private readonly processing = new Set<Promise<void>>();
 
   constructor(options: AssistantRuntimeOptions = {}) {
     this.storage = options.storage ?? createAssistantStorage(options.database);
@@ -319,13 +366,26 @@ export class AssistantRuntime {
     this.timer = null;
     for (const controller of this.controllers.values()) controller.abort();
     await this.storage.recoverRunningGenerations(this.now());
+    const pumpTask = this.pumpTask;
+    if (pumpTask) await pumpTask;
+    await Promise.allSettled([...this.processing]);
+  }
+
+  cancelGeneration(generationJobId: string) {
+    this.controllers
+      .get(generationJobId)
+      ?.abort(new DOMException("Generation cancelled", "AbortError"));
   }
 
   private schedule(delayMs: number) {
     if (this.stopped || this.timer) return;
     this.timer = setTimeout(() => {
       this.timer = null;
-      void this.pump();
+      const task = this.pump().catch(() => undefined);
+      this.pumpTask = task;
+      void task.then(() => {
+        if (this.pumpTask === task) this.pumpTask = null;
+      });
     }, delayMs);
   }
 
@@ -336,7 +396,17 @@ export class AssistantRuntime {
       while (!this.stopped) {
         const execution = await this.storage.claimNextGenerationJob(this.now(), this.leaseMs);
         if (!execution) break;
-        await this.process(execution);
+        if (this.stopped) {
+          await this.storage.recoverRunningGenerations(this.now());
+          break;
+        }
+        const task = this.process(execution);
+        this.processing.add(task);
+        try {
+          await task;
+        } finally {
+          this.processing.delete(task);
+        }
       }
     } finally {
       this.pumping = false;

@@ -66,6 +66,15 @@ export class AssistantService {
     principal: FrontendPrincipal,
     input: Omit<SubmitAssistantTurnInput, "frontendUserId" | "isAdmin">
   ) {
+    if (!principal.isAdmin) {
+      const quota = await getAssistantQuotaSnapshot(principal.id);
+      const exhausted =
+        quota.tokenHour >= quota.policy.tokenHourlyLimit ||
+        quota.tokenWeek >= quota.policy.tokenWeeklyLimit ||
+        quota.questionHour >= quota.policy.questionHourlyLimit ||
+        quota.questionWeek >= quota.policy.questionWeeklyLimit;
+      if (exhausted) throw new AssistantServiceError("quota", "Assistant quota exceeded");
+    }
     let submission: AssistantTurnSubmission;
     try {
       submission = await this.storage.submitTurn({
@@ -130,8 +139,16 @@ export class AssistantService {
       conversation.status !== "active" ||
       (conversation.expiresAt !== null && conversation.expiresAt <= Date.now())
     ) {
-      if (conversation.status === "active")
+      const jobs =
+        conversation.status === "active"
+          ? await this.storage.listGenerationJobs(conversationId, principal.id)
+          : null;
+      if (conversation.status === "active") {
         await this.storage.expireConversation(conversationId, principal.id, Date.now());
+        for (const job of jobs ?? [])
+          if (job.status === "queued" || job.status === "running")
+            this.runtime.cancelGeneration(job.id);
+      }
       throw new AssistantServiceError("gone", "Assistant conversation has expired or been deleted");
     }
     const messages =
@@ -160,14 +177,23 @@ export class AssistantService {
       turnId = activeJob(jobs)?.id;
     }
     if (!turnId) return { stopped: false, generationJob: null };
+    const existing = await this.storage.getGenerationJob(turnId, principal.id);
+    if (!existing) throw new AssistantServiceError("not-found", "Assistant turn not found");
+    if (existing.status !== "queued" && existing.status !== "running")
+      return { stopped: false, generationJob: existing };
     const generationJob = await this.storage.stopGeneration(turnId, principal.id, Date.now());
     if (!generationJob) throw new AssistantServiceError("not-found", "Assistant turn not found");
+    this.runtime.cancelGeneration(generationJob.id);
     return { stopped: true, generationJob };
   }
 
   async delete(principal: FrontendPrincipal, conversationId: string) {
+    const jobs = await this.storage.listGenerationJobs(conversationId, principal.id);
     const deleted = await this.storage.deleteConversation(conversationId, principal.id, Date.now());
     if (!deleted) throw new AssistantServiceError("not-found", "Assistant conversation not found");
+    for (const job of jobs ?? [])
+      if (job.status === "queued" || job.status === "running")
+        this.runtime.cancelGeneration(job.id);
     return { deleted: true, conversationId };
   }
 }

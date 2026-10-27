@@ -120,6 +120,12 @@ function cacheSet<T>(cache: Map<string, CacheEntry<T>>, key: string, value: T) {
 }
 const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 
+function meteringForStage(metering: AiUsageContext | undefined, stage: string) {
+  if (!metering) return undefined;
+  const root = metering.idempotencyKey ?? metering.logicalRequestId ?? metering.feature;
+  return { ...metering, idempotencyKey: `${root}:${stage}` };
+}
+
 async function vectorCandidates(
   query: string,
   embeddingConfig: ResolvedTierConfig,
@@ -625,7 +631,7 @@ export async function executeContentModes(
         reportProgress(context, "judging");
         output = await rewriteSearchQuery(resolved.chat, modelPolicy, plan.query, {
           signal: context.signal,
-          metering: context.metering,
+          metering: meteringForStage(context.metering, "rewrite"),
         });
       }
       const maxQueries = "maxQueries" in policy ? policy.maxQueries : 3;
@@ -674,7 +680,7 @@ export async function executeContentModes(
               {
                 timeoutMs: modelTimeoutMs,
                 signal: context.signal,
-                metering: context.metering,
+                metering: meteringForStage(context.metering, "embedding-blog"),
                 onProgress: () => reportProgress(context, "embedding"),
               }
             );
@@ -689,7 +695,11 @@ export async function executeContentModes(
               edition,
               candidateLimit,
               playbookType(input.type),
-              { timeoutMs: modelTimeoutMs, signal: context.signal, metering: context.metering }
+              {
+                timeoutMs: modelTimeoutMs,
+                signal: context.signal,
+                metering: meteringForStage(context.metering, "embedding-playbook"),
+              }
             )
           : [];
       const candidates: UnifiedCandidate[] = [...literal];
@@ -765,7 +775,7 @@ export async function executeContentModes(
         reportProgress(context, "judging");
         output = await judgeSearchCandidates(resolved.chat, modelPolicy, plan.query, payload, {
           signal: context.signal,
-          metering: context.metering,
+          metering: meteringForStage(context.metering, "judge"),
         });
       }
       const supplied = new Set(windows.map(unifiedId));

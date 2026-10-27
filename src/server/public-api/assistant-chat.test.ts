@@ -1,18 +1,23 @@
 import { Database } from "bun:sqlite";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import { createAssistantStorage } from "@/lib/assistant-storage";
 import { db, initializeDB } from "@/lib/db";
 import {
   assistantConversations,
   frontendIdentityLinks,
   frontendSessions,
   frontendUsers,
+  readerSessions,
+  readers,
   users,
 } from "@/lib/schema";
-import { stopAssistantRuntime } from "@/server/assistant/runtime";
+import { createAssistantRuntimeForTest, stopAssistantRuntime } from "@/server/assistant/runtime";
+import { type AssistantService, createAssistantServiceForTest } from "@/server/assistant/service";
 import { handlePublicApiRequest } from "@/server/public-api/router";
 
 const testDbPath = path.join(process.cwd(), "tmp/public-assistant-chat-test.sqlite");
@@ -21,6 +26,8 @@ const originalDbPath = process.env.DB_PATH;
 const originalAdminEmail = process.env.ADMIN_EMAIL;
 const originalNodeEnv = process.env.NODE_ENV;
 const adminEmail = "assistant-chat-admin@test.local";
+let assistantService: AssistantService | null = null;
+let assistantRuntime: ReturnType<typeof createAssistantRuntimeForTest> | null = null;
 
 function request(pathname: string, options: RequestInit = {}) {
   return new Request(`http://localhost/api/public${pathname}`, {
@@ -48,6 +55,42 @@ async function bootstrapSession() {
   return cookie;
 }
 
+async function bootstrapReaderSession() {
+  const token = "assistant-chat-reader-token";
+  const now = Date.now();
+  await db?.insert(readers).values({
+    id: "assistant-chat-reader",
+    githubId: "assistant-chat-reader-github",
+    githubLogin: "assistant-chat-reader",
+    displayName: "Assistant Chat Reader",
+    avatarUrl: "/site-assets/default-avatar.svg",
+    profileUrl: null,
+    createdAt: now,
+    updatedAt: now,
+  });
+  await db?.insert(readerSessions).values({
+    id: "assistant-chat-reader-session",
+    readerId: "assistant-chat-reader",
+    tokenHash: createHash("sha256").update(token).digest("hex"),
+    expiresAt: now + 60 * 60 * 1000,
+    createdAt: now,
+    revokedAt: null,
+  });
+  const bootstrap = await handlePublicApiRequest(
+    request("/frontend-auth/bootstrap", {
+      method: "POST",
+      headers: { cookie: `reader_session_id=${token}` },
+    }),
+    "/frontend-auth/bootstrap"
+  );
+  const cookie = bootstrap.headers
+    .getSetCookie()
+    .find((value) => value.startsWith("frontend_session_id="))
+    ?.split(";", 1)[0];
+  if (!cookie) throw new Error("reader frontend session cookie was not created");
+  return cookie;
+}
+
 function authenticated(pathname: string, cookie: string, options: RequestInit = {}) {
   return request(pathname, {
     ...options,
@@ -56,6 +99,15 @@ function authenticated(pathname: string, cookie: string, options: RequestInit = 
       ...(options.headers ?? {}),
     },
   });
+}
+
+function assistant(pathname: string, cookie: string, options: RequestInit = {}) {
+  if (!assistantService) throw new Error("assistant test service was not created");
+  return handlePublicApiRequest(
+    authenticated(pathname, cookie, options),
+    pathname.split("?", 1)[0],
+    assistantService
+  );
 }
 
 describe("public assistant chat API", () => {
@@ -73,10 +125,28 @@ describe("public assistant chat API", () => {
 
   beforeEach(async () => {
     await db?.delete(assistantConversations);
+    await db?.delete(readerSessions);
+    await db?.delete(readers);
     await db?.delete(frontendSessions);
     await db?.delete(frontendIdentityLinks);
     await db?.delete(frontendUsers);
     await db?.delete(users);
+    const storage = createAssistantStorage(db ?? undefined);
+    assistantRuntime = createAssistantRuntimeForTest({
+      storage,
+      generate: async ({ onDelta }) => {
+        await onDelta("Deterministic assistant answer");
+        return { content: "Deterministic assistant answer", citations: [] };
+      },
+      pumpDelayMs: 1,
+    });
+    assistantService = createAssistantServiceForTest({ storage, runtime: assistantRuntime });
+  });
+
+  afterEach(async () => {
+    await assistantRuntime?.stop();
+    assistantRuntime = null;
+    assistantService = null;
   });
 
   afterAll(async () => {
@@ -96,22 +166,20 @@ describe("public assistant chat API", () => {
     expect(await unauthorized.json()).toMatchObject({ code: "UNAUTHORIZED" });
 
     const cookie = await bootstrapSession();
-    const quota = await handlePublicApiRequest(authenticated("/chat/quota", cookie), "/chat/quota");
+    const quota = await assistant("/chat/quota", cookie);
     expect(quota.status).toBe(200);
+    expect(quota.headers.get("cache-control")).toBe("no-store, private");
     expect(await quota.json()).toMatchObject({ unlimited: true });
 
-    const submitted = await handlePublicApiRequest(
-      authenticated("/chat", cookie, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          requestId: "api-chat-request-1",
-          clientRequestId: "api-chat-client-1",
-          content: "Explain SQLite",
-        }),
+    const submitted = await assistant("/chat", cookie, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        requestId: "api-chat-request-1",
+        clientRequestId: "api-chat-client-1",
+        content: "Explain SQLite",
       }),
-      "/chat"
-    );
+    });
     expect(submitted.status).toBe(202);
     const accepted = (await submitted.json()) as {
       conversationId: string;
@@ -120,29 +188,24 @@ describe("public assistant chat API", () => {
     expect(accepted.conversationId).toBeTruthy();
     expect(accepted.turnId).toBeTruthy();
 
-    const retry = await handlePublicApiRequest(
-      authenticated("/chat", cookie, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          requestId: "api-chat-request-1",
-          clientRequestId: "api-chat-client-1",
-          content: "Explain SQLite again",
-        }),
+    const retry = await assistant("/chat", cookie, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        requestId: "api-chat-request-1",
+        clientRequestId: "api-chat-client-1",
+        content: "Explain SQLite again",
       }),
-      "/chat"
-    );
+    });
     expect(retry.status).toBe(202);
     expect((await retry.json()).turnId).toBe(accepted.turnId);
 
-    const snapshot = await handlePublicApiRequest(
-      authenticated(
-        `/chat/snapshot?conversationId=${encodeURIComponent(accepted.conversationId)}`,
-        cookie
-      ),
-      "/chat/snapshot"
+    const snapshot = await assistant(
+      `/chat/snapshot?conversationId=${encodeURIComponent(accepted.conversationId)}`,
+      cookie
     );
     expect(snapshot.status).toBe(200);
+    expect(snapshot.headers.get("cache-control")).toBe("no-store, private");
     const snapshotBody = (await snapshot.json()) as {
       conversation: { id: string };
       messages: Array<{ role: string; content: string }>;
@@ -150,38 +213,52 @@ describe("public assistant chat API", () => {
     expect(snapshotBody).toMatchObject({ conversation: { id: accepted.conversationId } });
     expect(snapshotBody.messages[0]).toMatchObject({ role: "user", content: "Explain SQLite" });
 
-    const events = await handlePublicApiRequest(
-      authenticated(
-        `/chat/events?conversationId=${encodeURIComponent(accepted.conversationId)}`,
-        cookie
-      ),
-      "/chat/events"
+    const events = await assistant(
+      `/chat/events?conversationId=${encodeURIComponent(accepted.conversationId)}`,
+      cookie
     );
     expect(events.status).toBe(200);
     expect(events.headers.get("content-type")).toContain("text/event-stream");
-    expect(await events.text()).toContain("event: snapshot");
+    const eventText = await events.text();
+    expect(eventText).toContain("event: snapshot");
+    expect(eventText).toContain('"status":"completed"');
 
-    const deleted = await handlePublicApiRequest(
-      authenticated(`/chat/conversations/${encodeURIComponent(accepted.conversationId)}`, cookie, {
+    const deleted = await assistant(
+      `/chat/conversations/${encodeURIComponent(accepted.conversationId)}`,
+      cookie,
+      {
         method: "DELETE",
-      }),
-      `/chat/conversations/${accepted.conversationId}`
+      }
     );
     expect(deleted.status).toBe(200);
-    const gone = await handlePublicApiRequest(
-      authenticated(`/chat/conversations/${encodeURIComponent(accepted.conversationId)}`, cookie),
-      `/chat/conversations/${accepted.conversationId}`
+    const gone = await assistant(
+      `/chat/conversations/${encodeURIComponent(accepted.conversationId)}`,
+      cookie
     );
     expect(gone.status).toBe(410);
   });
 
   it("does not disclose another or missing conversation", async () => {
     const cookie = await bootstrapSession();
-    const missing = await handlePublicApiRequest(
-      authenticated("/chat/conversations/not-a-real-conversation", cookie),
-      "/chat/conversations/not-a-real-conversation"
-    );
+    const submitted = await assistant("/chat", cookie, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ requestId: "owner-isolation-request", content: "private" }),
+    });
+    const { conversationId } = (await submitted.json()) as { conversationId: string };
+    const otherCookie = await bootstrapReaderSession();
+    const missing = await assistant("/chat/conversations/not-a-real-conversation", otherCookie);
     expect(missing.status).toBe(404);
     expect(await missing.json()).toMatchObject({ code: "NOT_FOUND" });
+    for (const [pathname, options] of [
+      [`/chat/conversations/${conversationId}`, {}],
+      [`/chat/conversations/${conversationId}/messages`, {}],
+      [`/chat/conversations/${conversationId}/events`, {}],
+      [`/chat/conversations/${conversationId}/stop`, { method: "POST" }],
+      [`/chat/conversations/${conversationId}`, { method: "DELETE" }],
+    ] as const) {
+      const response = await assistant(pathname, otherCookie, options);
+      expect(response.status).toBe(404);
+    }
   });
 });

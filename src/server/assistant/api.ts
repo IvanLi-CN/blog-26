@@ -3,10 +3,12 @@ import type { AssistantGenerationJob, FrontendPrincipal } from "@/lib/assistant-
 import { initializeDB } from "@/lib/db";
 import { getFrontendPrincipalFromRequest } from "@/lib/frontend-auth";
 import { appendPublicCorsHeaders, hasTrustedPublicOrigin } from "@/lib/public-cors";
-import { assistantRequestId } from "./runtime";
-import { AssistantServiceError, getAssistantService } from "./service";
+import { type AssistantService, AssistantServiceError, getAssistantService } from "./service";
 
 const PUBLIC_API_ALLOWED_METHODS = ["GET", "HEAD", "POST", "PATCH", "DELETE", "OPTIONS"] as const;
+const MAX_ASSISTANT_BODY_BYTES = 64 * 1024;
+const MAX_ACTIVE_EVENT_STREAMS_PER_USER = 4;
+const activeEventStreams = new Map<string, number>();
 const submitSchema = z
   .object({
     conversationId: z.string().trim().min(1).max(200).nullable().optional(),
@@ -48,6 +50,7 @@ function response(
     }
   }
   headers.set("content-type", "application/json; charset=utf-8");
+  headers.set("cache-control", "no-store, private");
   appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
   return new Response(JSON.stringify(data), { status, headers });
 }
@@ -77,9 +80,41 @@ function routeError(error: unknown): AssistantApiError {
 }
 
 async function body(request: Request) {
+  const contentLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > MAX_ASSISTANT_BODY_BYTES)
+    throw new AssistantApiError(413, "PAYLOAD_TOO_LARGE", "Assistant request body is too large");
   try {
-    return await request.json();
-  } catch {
+    const reader = request.body?.getReader();
+    if (!reader) throw new Error("empty request body");
+    const chunks: Uint8Array[] = [];
+    let bytes = 0;
+    try {
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        bytes += chunk.value.byteLength;
+        if (bytes > MAX_ASSISTANT_BODY_BYTES) {
+          await reader.cancel();
+          throw new AssistantApiError(
+            413,
+            "PAYLOAD_TOO_LARGE",
+            "Assistant request body is too large"
+          );
+        }
+        chunks.push(chunk.value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    const total = new Uint8Array(bytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      total.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return JSON.parse(new TextDecoder().decode(total));
+  } catch (error) {
+    if (error instanceof AssistantApiError) throw error;
     throw new AssistantApiError(400, "BAD_REQUEST", "Invalid JSON body");
   }
 }
@@ -99,13 +134,26 @@ function streamResponse(
   service: ReturnType<typeof getAssistantService>,
   principal: NonNullable<Awaited<ReturnType<typeof getFrontendPrincipalFromRequest>>>
 ) {
+  const active = activeEventStreams.get(principal.id) ?? 0;
+  if (active >= MAX_ACTIVE_EVENT_STREAMS_PER_USER)
+    throw new AssistantApiError(429, "TOO_MANY_STREAMS", "Too many assistant event streams");
+  activeEventStreams.set(principal.id, active + 1);
   const encoder = new TextEncoder();
   let closed = false;
+  let released = false;
+  const release = () => {
+    if (released) return;
+    released = true;
+    const remaining = (activeEventStreams.get(principal.id) ?? 1) - 1;
+    if (remaining > 0) activeEventStreams.set(principal.id, remaining);
+    else activeEventStreams.delete(principal.id);
+  };
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       const close = () => {
         if (closed) return;
         closed = true;
+        release();
         controller.close();
       };
       request.signal.addEventListener("abort", close, { once: true });
@@ -153,6 +201,7 @@ function streamResponse(
     },
     cancel() {
       closed = true;
+      release();
     },
   });
   const headers = new Headers({
@@ -190,10 +239,13 @@ async function submitAssistantRequest(
   const input = parsed.data;
   const content = input.content ?? input.text ?? input.message;
   if (!content) throw new AssistantApiError(400, "BAD_REQUEST", "Message content is required");
-  const clientRequestId = input.clientRequestId ?? input.requestId ?? null;
+  const idempotencyKey = request.headers.get("idempotency-key")?.trim() || null;
+  const requestId = input.requestId ?? idempotencyKey ?? input.clientRequestId ?? null;
+  if (!requestId) throw new AssistantApiError(400, "BAD_REQUEST", "requestId is required");
+  const clientRequestId = input.clientRequestId ?? input.requestId ?? idempotencyKey;
   const result = await service.submit(principal, {
     conversationId: input.conversationId ?? null,
-    requestId: input.requestId ?? clientRequestId ?? assistantRequestId(),
+    requestId,
     clientRequestId,
     content,
     kind: input.kind,
@@ -207,7 +259,8 @@ async function submitAssistantRequest(
 export async function handleAssistantRequest(
   request: Request,
   pathname: string,
-  resHeaders = new Headers()
+  resHeaders = new Headers(),
+  serviceOverride?: AssistantService
 ) {
   try {
     await initializeDB();
@@ -215,7 +268,8 @@ export async function handleAssistantRequest(
     if (!principal) throw new AssistantApiError(401, "UNAUTHORIZED", "Authentication is required");
     if (request.method !== "GET" && request.method !== "HEAD" && !hasTrustedPublicOrigin(request))
       throw new AssistantApiError(403, "FORBIDDEN", "Request origin is not trusted");
-    const service = getAssistantService();
+    const service = serviceOverride ?? getAssistantService();
+    await service.runtime.start();
     const url = new URL(request.url);
 
     if (pathname === "/chat" || pathname === "/chat/conversations") {

@@ -141,6 +141,84 @@ describe("assistant runtime", () => {
     await runtime.stop();
   });
 
+  it("marks provider failures as terminal without retrying the job", async () => {
+    await addUser("assistant-runtime-failure-owner");
+    const storage = createAssistantStorage(database);
+    const submission = await storage.submitTurn({
+      frontendUserId: "assistant-runtime-failure-owner",
+      requestId: "runtime-failure-request",
+      content: "Fail safely",
+      now: 250,
+    });
+    let attempts = 0;
+    const runtime = createAssistantRuntimeForTest({
+      storage,
+      pumpDelayMs: 1,
+      generate: async () => {
+        attempts += 1;
+        throw new Error("provider-down");
+      },
+      now: () => 1_000,
+    });
+    await runtime.start();
+    await waitFor(
+      async () =>
+        (
+          await storage.getGenerationJob(
+            submission.generationJob.id,
+            "assistant-runtime-failure-owner"
+          )
+        )?.status === "failed"
+    );
+    const job = await storage.getGenerationJob(
+      submission.generationJob.id,
+      "assistant-runtime-failure-owner"
+    );
+    expect(attempts).toBe(1);
+    expect(job).toMatchObject({ status: "failed", errorCode: "provider-down" });
+    await runtime.stop();
+  });
+
+  it("fails an in-flight job on restart without replaying the provider call", async () => {
+    await addUser("assistant-runtime-restart-owner");
+    const storage = createAssistantStorage(database);
+    const submission = await storage.submitTurn({
+      frontendUserId: "assistant-runtime-restart-owner",
+      requestId: "runtime-restart-request",
+      content: "Recover this job",
+      now: 275,
+    });
+    const claimed = await storage.claimNextGenerationJob(1_000, 500);
+    expect(claimed?.job.id).toBe(submission.generationJob.id);
+    let attempts = 0;
+    const runtime = createAssistantRuntimeForTest({
+      storage,
+      pumpDelayMs: 1,
+      generate: async () => {
+        attempts += 1;
+        return { content: "must not replay", citations: [] };
+      },
+      now: () => 1_100,
+    });
+    await runtime.start();
+    await waitFor(
+      async () =>
+        (
+          await storage.getGenerationJob(
+            submission.generationJob.id,
+            "assistant-runtime-restart-owner"
+          )
+        )?.status === "failed"
+    );
+    const job = await storage.getGenerationJob(
+      submission.generationJob.id,
+      "assistant-runtime-restart-owner"
+    );
+    expect(attempts).toBe(0);
+    expect(job).toMatchObject({ status: "failed", errorCode: "worker-restarted" });
+    await runtime.stop();
+  });
+
   it("binds public retrieval to published content and the question usage context", async () => {
     await addUser("assistant-retrieval-owner");
     const storage = createAssistantStorage(database);

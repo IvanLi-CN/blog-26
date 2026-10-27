@@ -5,7 +5,7 @@ import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { createAssistantStorage } from "@/lib/assistant-storage";
 import * as schema from "@/lib/schema";
-import { assistantQuotaPolicies, frontendUsers } from "@/lib/schema";
+import { assistantMessageCitations, assistantQuotaPolicies, frontendUsers } from "@/lib/schema";
 
 const migrationsPath = path.resolve("drizzle");
 const sqlite = new Database(":memory:");
@@ -290,16 +290,51 @@ describe("assistant SQLite storage", () => {
     );
     expect(messages.at(-1)?.content).toBe("late?");
     expect(messages.at(-1)?.status).toBe("cancelled");
+    await database.insert(assistantMessageCitations).values({
+      id: "runtime-citation-to-delete",
+      messageId: first.assistantMessage.id,
+      source: "blog",
+      sourceId: "runtime-source",
+      sourceType: "post",
+      slug: "runtime-source",
+      title: "Runtime source",
+      href: "/posts/runtime-source",
+      location: "content",
+      snippet: "Runtime source snippet",
+      createdAt: 509,
+    });
+
+    const racing = await Promise.allSettled([
+      storage.submitTurn({
+        frontendUserId: "frontend-storage-runtime-owner",
+        conversationId: first.conversation.id,
+        requestId: "runtime-race-1",
+        content: "Racing turn one",
+        now: 510,
+      }),
+      storage.submitTurn({
+        frontendUserId: "frontend-storage-runtime-owner",
+        conversationId: first.conversation.id,
+        requestId: "runtime-race-2",
+        content: "Racing turn two",
+        now: 510,
+      }),
+    ]);
+    expect(racing.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(
+      racing.filter((result) => result.status === "rejected").map((result) => result.reason.code)
+    ).toEqual(["conflict"]);
 
     const afterExpiry = await storage.submitTurn({
       frontendUserId: "frontend-storage-runtime-owner",
       requestId: "runtime-request-after-expiry",
       content: "A fresh question after expiry",
-      now: 1_500,
+      now: 2_000,
     });
     expect(afterExpiry.conversation.id).not.toBe(first.conversation.id);
     expect(
       await storage.listMessages(first.conversation.id, "frontend-storage-runtime-owner")
     ).toEqual([]);
+    expect(await database.select().from(assistantMessageCitations)).toHaveLength(0);
   });
 });

@@ -177,6 +177,17 @@ function setConversationTerminal(
       )
     )
     .run();
+  const messageIds = tx
+    .select({ id: assistantMessages.id })
+    .from(assistantMessages)
+    .where(eq(assistantMessages.conversationId, conversationId))
+    .all()
+    .map((row) => row.id);
+  if (messageIds.length > 0) {
+    tx.delete(assistantMessageCitations)
+      .where(inArray(assistantMessageCitations.messageId, messageIds))
+      .run();
+  }
   tx.delete(assistantMessages).where(eq(assistantMessages.conversationId, conversationId)).run();
   tx.update(assistantConversations)
     .set({ status, deletedAt: status === "deleted" ? now : null })
@@ -811,19 +822,24 @@ export function createAssistantStorage(
             .where(eq(assistantGenerationJobs.status, "running"))
             .all();
           for (const row of rows) {
+            const cancelled = row.cancelRequested;
             tx.update(assistantGenerationJobs)
               .set({
-                status: "failed",
+                status: cancelled ? "cancelled" : "failed",
                 leaseUntil: null,
                 finishedAt: now,
                 updatedAt: now,
-                errorCode: "worker-restarted",
+                errorCode: cancelled ? "cancelled-by-user" : "worker-restarted",
               })
               .where(eq(assistantGenerationJobs.id, row.id))
               .run();
             if (row.assistantMessageId) {
               tx.update(assistantMessages)
-                .set({ status: "failed", updatedAt: now, completedAt: now })
+                .set({
+                  status: cancelled ? "cancelled" : "failed",
+                  updatedAt: now,
+                  completedAt: now,
+                })
                 .where(eq(assistantMessages.id, row.assistantMessageId))
                 .run();
             }
@@ -1102,7 +1118,10 @@ export function createAssistantStorage(
               .where(eq(assistantGenerationJobs.id, generationJobId))
               .run();
           }
-          if (current.job.assistantMessageId && current.job.status !== "completed") {
+          if (
+            current.job.assistantMessageId &&
+            (current.job.status === "queued" || current.job.status === "running")
+          ) {
             tx.update(assistantMessages)
               .set({ status: "cancelled", updatedAt: now, completedAt: now })
               .where(eq(assistantMessages.id, current.job.assistantMessageId))
@@ -1139,7 +1158,11 @@ export function createAssistantStorage(
         (tx) => {
           const conversation = selectConversation(tx, conversationId, frontendUserId);
           if (!conversation) return false;
-          if (conversation.status !== "expired")
+          if (
+            conversation.status === "active" &&
+            conversation.expiresAt !== null &&
+            conversation.expiresAt <= now
+          )
             setConversationTerminal(tx, conversationId, "expired", now);
           return true;
         },

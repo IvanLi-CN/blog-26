@@ -784,6 +784,8 @@ describe("system share API", () => {
     fs.rmSync(path.join(legacyMigrationsPath, "0022_frontend_session_auth_source.sql"));
     fs.rmSync(path.join(legacyMigrationsPath, "0023_assistant_discussion_migration.sql"));
     fs.rmSync(path.join(legacyMigrationsPath, "0024_ai_usage_daily_result_counts.sql"));
+    fs.rmSync(path.join(legacyMigrationsPath, "0025_assistant_message_citations.sql"));
+    fs.rmSync(path.join(legacyMigrationsPath, "0026_assistant_lookup_indexes.sql"));
     const journalPath = path.join(legacyMigrationsPath, "meta", "_journal.json");
     const journal = JSON.parse(fs.readFileSync(journalPath, "utf8")) as {
       entries: Array<{ tag: string }>;
@@ -798,7 +800,9 @@ describe("system share API", () => {
         entry.tag !== "0021_site_knowledge_assistant_contracts" &&
         entry.tag !== "0022_frontend_session_auth_source" &&
         entry.tag !== "0023_assistant_discussion_migration" &&
-        entry.tag !== "0024_ai_usage_daily_result_counts"
+        entry.tag !== "0024_ai_usage_daily_result_counts" &&
+        entry.tag !== "0025_assistant_message_citations" &&
+        entry.tag !== "0026_assistant_lookup_indexes"
     );
     fs.writeFileSync(journalPath, `${JSON.stringify(journal)}\n`);
 

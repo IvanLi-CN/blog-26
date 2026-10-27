@@ -169,6 +169,12 @@ type SemanticExecution = {
 const MAX_SEMANTIC_VECTOR_ROWS = 10_000;
 type ResolvedSearchConfig = Awaited<ReturnType<typeof getResolvedLlmConfig>>;
 
+function meteringForStage(metering: AiUsageContext | undefined, stage: string) {
+  if (!metering) return undefined;
+  const root = metering.idempotencyKey ?? metering.logicalRequestId ?? metering.feature;
+  return { ...metering, idempotencyKey: `${root}:${stage}` };
+}
+
 function buildProviderFingerprint(
   mode: "semantic" | "enhanced",
   input: SemanticSearchInput & { rerankerModel?: string },
@@ -269,7 +275,10 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
   let qv: number[];
   try {
     const { vector } = await createEmbedding(input.q, model, {
-      metering: { ...input.metering, feature: input.metering?.feature ?? "search-embedding" },
+      metering: meteringForStage(
+        { ...input.metering, feature: input.metering?.feature ?? "search-embedding" },
+        "semantic-embedding"
+      ),
     });
     qv = vector;
   } catch {
@@ -455,7 +464,7 @@ async function legacyEnhancedWithReranker(
     const items = await rerankApi(input.q, docs, {
       model: input.rerankerModel,
       topN: docs.length,
-      metering: input.metering,
+      metering: meteringForStage(input.metering, "legacy-rerank"),
     });
     const max = Math.max(...items.map((item) => item.score));
     const min = Math.min(...items.map((item) => item.score));

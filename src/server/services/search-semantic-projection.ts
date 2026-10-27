@@ -230,13 +230,21 @@ export async function semanticPlaybookCandidates(
     .orderBy(asc(searchSemanticEmbeddings.id))
     .limit(10_000);
   if (!rows.length) return [];
+  const metering = options.metering
+    ? {
+        ...options.metering,
+        idempotencyKey: `${
+          options.metering.idempotencyKey ??
+          options.metering.logicalRequestId ??
+          options.metering.feature
+        }:semantic-playbook`,
+      }
+    : undefined;
   const vector = await embedSearchQuery(
     config,
     query,
     options.timeoutMs,
-    options.signal || options.metering
-      ? { signal: options.signal, metering: options.metering }
-      : undefined
+    options.signal || options.metering ? { signal: options.signal, metering } : undefined
   );
   const scoreByParent = new Map<string, number>();
   for (const row of rows) {
