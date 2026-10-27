@@ -94,10 +94,6 @@
           "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
           "blob": "fea6211123b2f4e42e9c80e1266077444e0ec210",
           "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:51460 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-cover-media.spec.ts: 2 passed"
-        },
-        {
-          "path": "site-dist/posts/index.html",
-          "command": "DB_PATH=./test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./test-data/local CONTENT_SOURCES=local bun run frontend:build: 129 pages built; list HTML uses clean card.webp and detail HTML keeps wm-v5 cover/content paths"
         }
       ]
     }
