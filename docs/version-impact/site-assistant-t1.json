@@ -30,15 +30,15 @@
     "drizzle/meta/_journal.json": "e04c27d13c458128218494a878957e224c1f839c",
     "src/lib/admin-github-binding.ts": "a95abdef7ade5303f1760eca995f996fd3d14242",
     "src/lib/assistant-contracts.test.ts": "23d8188294ffe5277ea815634464f97600c68244",
-    "src/lib/assistant-contracts.ts": "199b16b1252eef2bffe8fe1885c91ca16a75e55d",
-    "src/lib/assistant-storage.test.ts": "aee4512e9b2e12f35b92e1ba3c0ce55a77606b9f",
-    "src/lib/assistant-storage.ts": "a270e120799996a9628b9ad958e20f7f86329d3f",
+    "src/lib/assistant-contracts.ts": "24d72b23b6babf34dc7aef36d63fd946251fb8e8",
+    "src/lib/assistant-storage.test.ts": "0e84dbfa8c878a2fd9d8b8ff7ff37448ca3dfd07",
+    "src/lib/assistant-storage.ts": "ca9c8aa19909077377ef0bd72112e20cebded7a1",
     "src/lib/frontend-auth.test.ts": "681d51953a33e7d86fae1369a1ac62fdf106a683",
     "src/lib/frontend-auth.ts": "ae0ab3db35de34d669c8971c1338c5d06263449a",
     "src/lib/schema.ts": "0d4c7e32c7d8c0b58dfcb593aa5e14283c561bd6",
     "src/server/context.ts": "153ab30dca6cc8e2377ce17e8da093ce9928fae2",
     "src/server/public-api/frontend-auth.test.ts": "37ec1bb76931e0908d503a7e8ac72a3b5e578ba1",
-    "src/server/public-api/router.ts": "aeeb0864f450a593439bd29c6f93b2913369af01",
+    "src/server/public-api/router.ts": "27516e1bb0c2d3f8cfa2d1b6e7cd030b994a661f",
     "src/server/routers/comments.test.ts": "5d4cb420aa5fa25ef5e8e29f9022544d02bd51a1",
     "src/server/routers/comments.ts": "11d66246d78b0eb85125230c0d9499d5500d287b",
     "tests/fixtures/site-assistant-legacy.sql": "bb9afb88fe2e5449e11082a0c5034803f317ca83",
@@ -85,12 +85,12 @@
         },
         {
           "path": "src/lib/assistant-contracts.ts",
-          "blob": "199b16b1252eef2bffe8fe1885c91ca16a75e55d",
+          "blob": "24d72b23b6babf34dc7aef36d63fd946251fb8e8",
           "command": "Shared FrontendPrincipal, source-aware sessions, conversation/message/generation/usage/quota/migration contracts"
         },
         {
           "path": "src/lib/assistant-storage.ts",
-          "blob": "a270e120799996a9628b9ad958e20f7f86329d3f",
+          "blob": "ca9c8aa19909077377ef0bd72112e20cebded7a1",
           "command": "SQLite-owned conversation/message/generation storage with atomic idempotent writes, ownership checks, and role/conversation validation"
         },
         {
@@ -126,7 +126,7 @@
       "evidence": [
         {
           "path": "src/lib/assistant-storage.test.ts",
-          "blob": "aee4512e9b2e12f35b92e1ba3c0ce55a77606b9f",
+          "blob": "0e84dbfa8c878a2fd9d8b8ff7ff37448ca3dfd07",
           "command": "bun test --isolate src/lib/assistant-contracts.test.ts src/lib/assistant-storage.test.ts src/lib/frontend-auth.test.ts tests/lib/site-assistant-migration.test.ts src/server/public-api/frontend-auth.test.ts src/server/routers/comments.test.ts"
         },
         {
@@ -156,7 +156,7 @@
         },
         {
           "path": "src/server/public-api/router.ts",
-          "blob": "aeeb0864f450a593439bd29c6f93b2913369af01",
+          "blob": "27516e1bb0c2d3f8cfa2d1b6e7cd030b994a661f",
           "command": "bun test --isolate src/server/http-compat-api.test.ts (107 pass, 3 skipped, 0 fail)"
         },
         {
@@ -171,7 +171,7 @@
         },
         {
           "path": "src/lib/assistant-storage.ts",
-          "blob": "a270e120799996a9628b9ad958e20f7f86329d3f",
+          "blob": "ca9c8aa19909077377ef0bd72112e20cebded7a1",
           "command": "bun run test:unit (1520 pass, 52 skipped, 0 fail)"
         },
         {

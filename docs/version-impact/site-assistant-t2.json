@@ -9,7 +9,7 @@
     "drizzle/0024_ai_usage_daily_result_counts.sql": "51839b875299f08f972d16fb8c137e542ef82558",
     "drizzle/meta/0024_snapshot.json": "35b706bb2b291a762c8beabce4a50640b5f81dfe",
     "drizzle/meta/_journal.json": "e04c27d13c458128218494a878957e224c1f839c",
-    "src/lib/assistant-contracts.ts": "199b16b1252eef2bffe8fe1885c91ca16a75e55d",
+    "src/lib/assistant-contracts.ts": "24d72b23b6babf34dc7aef36d63fd946251fb8e8",
     "src/lib/schema.ts": "0d4c7e32c7d8c0b58dfcb593aa5e14283c561bd6",
     "src/lib/ai/embeddings.ts": "2c303c131c22191e53ccc35ece864c2f1b51fbf1",
     "src/lib/ai-usage.test.ts": "0aaf770057d2de72d6f43aae6c2d03cab36be683",
@@ -20,7 +20,7 @@
     "src/server/admin-api/router.ts": "d3033c0d6dfb96c10cd6135de88b208e79883ea0",
     "src/server/ai/icon-reranker.ts": "9b19608a004d6fd53a9ecb47e3bf0df8ba13b629",
     "src/server/clipping/agent-runtime.ts": "6b9991ca7b0515b425d4df45ce53d63f04cc502d",
-    "src/server/clipping/service.ts": "26b0c625edbced59ed3a3d6fc26fbb6a40f4e04f",
+    "src/server/clipping/service.ts": "71a4740187933df3b2b5154761304edc52081548",
     "src/server/jobs/definitions.ts": "b12ca785af83539ee22b1d8f11b27444e7e57d13",
     "src/server/jobs/index.ts": "96547ef6235a05d079a5c592fba7bdc44ac23ddd",
     "src/server/jobs/runtime.ts": "d6ef29d77b742b2ca00025717612dadbb307d743",
@@ -33,7 +33,7 @@
     "src/server/services/search-validation.ts": "5530f7aa80d8d17c848cf4551fd1f01f99137455",
     "src/server/services/tag-ai.ts": "b2a3d4302f9526e5b7f096afa3fb964bba15a118",
     "src/server/services/tag-icons.ts": "1ee8ac64445d6bdec836388a520b39387550b995",
-    "scripts/start-console.ts": "aec1f7abeb3192b8f2e0ac241cad68e289d15837",
+    "scripts/start-console.ts": "f9581e191ea8cf461a2bd70d22f2a88a31298042",
     "tests/server/jobs/definitions.test.ts": "de44938911af1ffc8a4168b442402b4534db90be",
     "tests/server/jobs/runtime.test.ts": "dc63ce830bf75b7a4c67d260db210fd99bfc8597"
   },
@@ -107,7 +107,7 @@
         },
         {
           "path": "scripts/start-console.ts",
-          "blob": "aec1f7abeb3192b8f2e0ac241cad68e289d15837",
+          "blob": "f9581e191ea8cf461a2bd70d22f2a88a31298042",
           "command": "Starts the unique jobs runtime in the production self-contained console and stops it through the existing shutdown flow"
         },
         {
@@ -256,7 +256,7 @@
         },
         {
           "path": "src/server/clipping/service.ts",
-          "blob": "26b0c625edbced59ed3a3d6fc26fbb6a40f4e04f",
+          "blob": "71a4740187933df3b2b5154761304edc52081548",
           "command": "Existing clipping conversation and lifecycle responses remain unchanged"
         }
       ]
