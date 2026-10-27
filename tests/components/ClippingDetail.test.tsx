@@ -97,4 +97,35 @@ describe("ClippingDetail", () => {
       });
     }
   });
+
+  test("does not start the legacy live chat transport when chat is hidden", async () => {
+    let chatReads = 0;
+    let subscriptions = 0;
+    const hiddenChatTransport: ClippingTransport = {
+      request: async <T,>(path: string) => {
+        if (path === "chat") chatReads += 1;
+        return article as T;
+      },
+      subscribe: () => {
+        subscriptions += 1;
+        return () => undefined;
+      },
+    };
+
+    render(
+      <ClippingDetail
+        slug="clipping-live"
+        memoContent="实时剪藏正文"
+        initialArticle={article}
+        initialCanDiscuss
+        live
+        hideChat
+        transport={hiddenChatTransport}
+      />
+    );
+    await act(async () => await Promise.resolve());
+
+    expect(chatReads).toBe(0);
+    expect(subscriptions).toBe(0);
+  });
 });

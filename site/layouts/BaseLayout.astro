@@ -4,6 +4,7 @@ import "../../src/styles/globals.css";
 import "../../src/styles/nature-restored.css";
 import AmbientScene from "@/components/common/AmbientScene";
 import WebDemoInspector from "@/components/WebDemoInspector";
+import KnowledgeAssistant from "../components/KnowledgeAssistant";
 import { SITE, UI } from "@/config/site";
 import IconifyBoot from "../components/IconifyBoot";
 import { SystemShareToastViewport } from "../components/SystemShareToast";
@@ -27,6 +28,7 @@ const {
 const canonical = getCanonicalUrl(pathname);
 const isConsoleRuntime = process.env.CONSOLE_RUNTIME === "true";
 const isWebDemoBuild = process.env.WEB_DEMO_BUILD === "true";
+const isAssistantPage = Astro.url.pathname.replace(/\/+$/, "") === "/chat";
 const pwaAssets = await getPublicPwaAssetPaths();
 const shareTargetServiceWorker = toPublicSitePath("/share-target-sw.js");
 const resolvedImage =
@@ -241,6 +243,7 @@ const resolvedImage =
       </div>
     </div>
     {isConsoleRuntime ? <SystemShareToastViewport client:load /> : null}
+    {!isAssistantPage ? <KnowledgeAssistant client:load /> : null}
     {isWebDemoBuild ? (
       <WebDemoInspector
         client:load

@@ -1,0 +1,7 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import KnowledgeAssistant from "../components/KnowledgeAssistant";
+---
+<BaseLayout pathname={Astro.url.pathname} title="知识助手">
+  <KnowledgeAssistant client:load fullPage />
+</BaseLayout>

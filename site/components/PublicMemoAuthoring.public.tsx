@@ -7,6 +7,7 @@ export function PublicMemoDetailControlsIsland(_props?: {
   initialMemo?: unknown;
   initialIsAdmin?: boolean;
   initialClippingArticle?: unknown;
+  hideChat?: boolean;
 }) {
   return null;
 }

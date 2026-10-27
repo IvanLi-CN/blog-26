@@ -42,6 +42,12 @@ export type WebDemoScene =
   | "search-rewrite-ready"
   | "search-ai-unavailable"
   | "search-index-unavailable"
+  | "assistant-ready"
+  | "assistant-generating"
+  | "assistant-quota-exhausted"
+  | "assistant-expired"
+  | "assistant-failure"
+  | "assistant-reconnecting"
   | "admin-dashboard"
   | "admin-editor"
   | "admin-sync-unindexed"
@@ -171,6 +177,12 @@ const scenes = [
   "search-rewrite-ready",
   "search-ai-unavailable",
   "search-index-unavailable",
+  "assistant-ready",
+  "assistant-generating",
+  "assistant-quota-exhausted",
+  "assistant-expired",
+  "assistant-failure",
+  "assistant-reconnecting",
   "admin-dashboard",
   "admin-editor",
   "admin-sync-unindexed",
@@ -263,6 +275,7 @@ export function getDefaultWebDemoSceneState(pathname = ""): WebDemoSceneState {
   if (isClippingWebDemoPath(pathname)) return { ...defaultSceneState, scene: "clipping-ready" };
   if (pathname.startsWith("/memos")) return { ...defaultSceneState, scene: "memo-middle" };
   if (pathname.startsWith("/search")) return { ...defaultSceneState, scene: "search-ready" };
+  if (pathname.startsWith("/chat")) return { ...defaultSceneState, scene: "assistant-ready" };
   return { ...defaultSceneState };
 }
 
@@ -541,6 +554,41 @@ export function getWebDemoSceneOptions(pathname: string, app: WebDemoApp): WebDe
             description: "公开 RAG 双单位覆盖与持久任务场景。",
           }))
         : []),
+    ];
+  }
+
+  if (pathname.startsWith("/chat")) {
+    return [
+      {
+        value: "assistant-ready",
+        label: "助手 · 可用",
+        description: "已登录用户可以查看会话、额度和公开知识回答。",
+      },
+      {
+        value: "assistant-generating",
+        label: "助手 · 生成中",
+        description: "保留会话切换、停止生成和展开页面能力。",
+      },
+      {
+        value: "assistant-quota-exhausted",
+        label: "助手 · 额度耗尽",
+        description: "显示 Token/问题额度耗尽后的受控错误。",
+      },
+      {
+        value: "assistant-expired",
+        label: "助手 · 对话过期",
+        description: "过期会话不再展示正文，允许新建对话。",
+      },
+      {
+        value: "assistant-failure",
+        label: "助手 · 生成失败",
+        description: "保留失败消息和可恢复的重试入口。",
+      },
+      {
+        value: "assistant-reconnecting",
+        label: "助手 · 重连中",
+        description: "模拟快照读取失败时的重连提示。",
+      },
     ];
   }
 
