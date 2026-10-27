@@ -122,6 +122,31 @@ describe("manual product release resolution", () => {
     ).toBe(true);
   });
 
+  test("allows takeover when the run summary is stale but every job failed", () => {
+    const current = fixture([4]);
+    const merged = updateRelease(current, current.entries[0]?.id || "", {
+      stage: "merged",
+      mergeSha,
+      releaseRunId: 98,
+      failure: { phase: "freeze_inputs", runId: "98", attempt: 1 },
+    }).entries[0];
+    if (!merged) throw new Error("Missing merged fixture");
+    const run = {
+      id: 98,
+      workflow_id: 123,
+      run_attempt: 1,
+      head_sha: mergeSha,
+      head_branch: "main",
+      event: "workflow_dispatch",
+      status: "in_progress",
+      conclusion: null,
+      path: productReleaseWorkflowPath,
+      head_repository: { full_name: contract.repository },
+    };
+    expect(manualRecoveryRunCanTakeOver(merged, run, contract.repository, true)).toBe(true);
+    expect(manualRecoveryRunCanTakeOver(merged, run, contract.repository)).toBe(false);
+  });
+
   test("does not allow a new manual run to take over frozen inputs", () => {
     const current = fixture([4]);
     const merged = updateRelease(current, current.entries[0]?.id || "", {
