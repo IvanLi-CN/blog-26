@@ -1106,84 +1106,91 @@ export async function rollupAiUsageDay(
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(day)) throw new Error("Invalid usage rollup day");
   const start = localMidnightUtc(day, timezone);
   const end = localMidnightUtc(dayKey(new Date(start + 36 * HOUR_MS), timezone), timezone);
-  const rows = await database
-    .select()
-    .from(aiUsageRecords)
-    .where(and(gte(aiUsageRecords.occurredAt, start), lt(aiUsageRecords.occurredAt, end)))
-    .all();
-  type UsageRollupGroup = {
-    day: string;
-    timezone: string;
-    frontendUserId: string | null;
-    feature: string;
-    provider: string | null;
-    model: string | null;
-    callCount: number;
-    inputTokens: number;
-    cachedInputTokens: number;
-    outputTokens: number;
-    reasoningTokens: number;
-    totalTokens: number;
-    estimatedCallCount: number;
-    incompleteCallCount: number;
-    successCallCount: number;
-    failureCallCount: number;
-    cancelledCallCount: number;
-  };
-  const groups = new Map<string, UsageRollupGroup>();
-  for (const row of rows) {
-    const keyValues = {
-      day,
-      timezone,
-      frontendUserId: row.frontendUserId,
-      feature: row.feature,
-      provider: row.provider,
-      model: row.model,
-    };
-    const key = JSON.stringify(keyValues);
-    const group = groups.get(key) ?? {
-      ...keyValues,
-      callCount: 0,
-      inputTokens: 0,
-      cachedInputTokens: 0,
-      outputTokens: 0,
-      reasoningTokens: 0,
-      totalTokens: 0,
-      estimatedCallCount: 0,
-      incompleteCallCount: 0,
-      successCallCount: 0,
-      failureCallCount: 0,
-      cancelledCallCount: 0,
-    };
-    group.callCount += 1;
-    group.inputTokens += row.inputTokens ?? 0;
-    group.cachedInputTokens += row.cachedInputTokens ?? 0;
-    group.outputTokens += row.outputTokens ?? 0;
-    group.reasoningTokens += row.reasoningTokens ?? 0;
-    group.totalTokens += row.totalTokens ?? 0;
-    if (row.estimated) group.estimatedCallCount += 1;
-    if (!row.usageComplete || row.status === "missing" || row.status === "incomplete") {
-      group.incompleteCallCount += 1;
-    }
-    if (row.status === "success") group.successCallCount += 1;
-    if (row.status === "failure") group.failureCallCount += 1;
-    if (row.status === "cancelled") group.cancelledCallCount += 1;
-    groups.set(key, group);
-  }
-
-  const existingSummaryRows = await database
-    .select()
-    .from(aiUsageDailySummaries)
-    .where(and(eq(aiUsageDailySummaries.day, day), eq(aiUsageDailySummaries.timezone, timezone)))
-    .all();
-  const summarizedCallCount = existingSummaryRows.reduce((total, row) => total + row.callCount, 0);
-  // A summary may outlive some of its detail rows. Rebuilding from the partial
-  // remainder would silently erase the retained history, so leave it intact.
-  const detailsArePartial = rows.length < summarizedCallCount;
-
-  await database.transaction(
+  // Read and write in one immediate transaction so concurrent backfills cannot
+  // commit a stale detail snapshot after a newer summary.
+  const result = await database.transaction(
     (tx) => {
-      if (detailsArePartial) return;
+      const rows = tx
+        .select()
+        .from(aiUsageRecords)
+        .where(and(gte(aiUsageRecords.occurredAt, start), lt(aiUsageRecords.occurredAt, end)))
+        .all();
+      type UsageRollupGroup = {
+        day: string;
+        timezone: string;
+        frontendUserId: string | null;
+        feature: string;
+        provider: string | null;
+        model: string | null;
+        callCount: number;
+        inputTokens: number;
+        cachedInputTokens: number;
+        outputTokens: number;
+        reasoningTokens: number;
+        totalTokens: number;
+        estimatedCallCount: number;
+        incompleteCallCount: number;
+        successCallCount: number;
+        failureCallCount: number;
+        cancelledCallCount: number;
+      };
+      const groups = new Map<string, UsageRollupGroup>();
+      for (const row of rows) {
+        const keyValues = {
+          day,
+          timezone,
+          frontendUserId: row.frontendUserId,
+          feature: row.feature,
+          provider: row.provider,
+          model: row.model,
+        };
+        const key = JSON.stringify(keyValues);
+        const group = groups.get(key) ?? {
+          ...keyValues,
+          callCount: 0,
+          inputTokens: 0,
+          cachedInputTokens: 0,
+          outputTokens: 0,
+          reasoningTokens: 0,
+          totalTokens: 0,
+          estimatedCallCount: 0,
+          incompleteCallCount: 0,
+          successCallCount: 0,
+          failureCallCount: 0,
+          cancelledCallCount: 0,
+        };
+        group.callCount += 1;
+        group.inputTokens += row.inputTokens ?? 0;
+        group.cachedInputTokens += row.cachedInputTokens ?? 0;
+        group.outputTokens += row.outputTokens ?? 0;
+        group.reasoningTokens += row.reasoningTokens ?? 0;
+        group.totalTokens += row.totalTokens ?? 0;
+        if (row.estimated) group.estimatedCallCount += 1;
+        if (!row.usageComplete || row.status === "missing" || row.status === "incomplete") {
+          group.incompleteCallCount += 1;
+        }
+        if (row.status === "success") group.successCallCount += 1;
+        if (row.status === "failure") group.failureCallCount += 1;
+        if (row.status === "cancelled") group.cancelledCallCount += 1;
+        groups.set(key, group);
+      }
+
+      const existingSummaryRows = tx
+        .select()
+        .from(aiUsageDailySummaries)
+        .where(
+          and(eq(aiUsageDailySummaries.day, day), eq(aiUsageDailySummaries.timezone, timezone))
+        )
+        .all();
+      const summarizedCallCount = existingSummaryRows.reduce(
+        (total, row) => total + row.callCount,
+        0
+      );
+      // A summary may outlive some of its detail rows. Rebuilding from the partial
+      // remainder would silently erase the retained history, so leave it intact.
+      const detailsArePartial = rows.length < summarizedCallCount;
+      if (detailsArePartial) return { records: rows.length, dimensions: groups.size };
+
       for (const current of existingSummaryRows) {
         const key = JSON.stringify({
           day: current.day,
@@ -1243,10 +1250,11 @@ export async function rollupAiUsageDay(
           tx.insert(aiUsageDailySummaries).values(values).run();
         }
       }
+      return { records: rows.length, dimensions: groups.size };
     },
     { behavior: "immediate" }
   );
-  return { day, timezone, records: rows.length, dimensions: groups.size };
+  return { day, timezone, ...result };
 }
 
 export async function cleanupAiUsageDetails(

@@ -45,6 +45,61 @@ async function addUser(id: string, isAdmin = false) {
   });
 }
 
+function createRollupReadGate() {
+  let gated = false;
+  let releaseRead!: () => void;
+  let signalRead!: () => void;
+  const readStarted = new Promise<void>((resolve) => {
+    signalRead = resolve;
+  });
+  const readReleased = new Promise<void>((resolve) => {
+    releaseRead = resolve;
+  });
+
+  const wrapQuery = (query: object, gateDetails: boolean): object =>
+    new Proxy(query, {
+      get(target, property, receiver) {
+        const value = Reflect.get(target, property, receiver);
+        if (property === "from" && typeof value === "function") {
+          return (table: unknown) => {
+            const next = value.apply(target, [table]);
+            return wrapQuery(next as object, table === aiUsageRecords);
+          };
+        }
+        if (property === "all" && gateDetails && !gated && typeof value === "function") {
+          gated = true;
+          signalRead();
+          return (...args: unknown[]) => {
+            const rows = value.apply(target, args);
+            return readReleased.then(() => rows);
+          };
+        }
+        if (typeof value === "function") {
+          return (...args: unknown[]) => {
+            const next = value.apply(target, args);
+            if (next && (typeof next === "object" || typeof next === "function")) {
+              return wrapQuery(next as object, gateDetails);
+            }
+            return next;
+          };
+        }
+        return value;
+      },
+    });
+
+  const gatedDatabase = new Proxy(database, {
+    get(target, property, receiver) {
+      const value = Reflect.get(target, property, receiver);
+      if (property === "select" && typeof value === "function") {
+        return (...args: unknown[]) => wrapQuery(value.apply(target, args) as object, false);
+      }
+      return value;
+    },
+  });
+
+  return { database: gatedDatabase, readStarted, release: releaseRead };
+}
+
 describe("AI usage metering", () => {
   beforeAll(() => {
     migrate(database, { migrationsFolder: migrationsPath });
@@ -464,6 +519,160 @@ describe("AI usage metering", () => {
       totalTokens: 5,
       usageComplete: true,
       estimated: false,
+    });
+  });
+
+  it("does not let concurrent summary backfills restore stale usage", async () => {
+    const occurredAt = Date.parse("2026-01-01T01:00:00.000Z");
+    const first = await reserveAiUsage(
+      {
+        feature: "assistant",
+        provider: "openai-compatible",
+        model: "concurrent-model",
+        logicalRequestId: "summary-concurrency-first",
+        inputEstimateTokens: 1,
+        outputEstimateTokens: 1,
+        occurredAt,
+      },
+      database
+    );
+    await settleAiUsage(
+      first,
+      { usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 }, occurredAt },
+      database
+    );
+    await rollupAiUsageDay({ day: "2026-01-01", timezone: "UTC", now: occurredAt, database });
+
+    const second = await reserveAiUsage(
+      {
+        feature: "assistant",
+        provider: "openai-compatible",
+        model: "concurrent-model",
+        logicalRequestId: "summary-concurrency-second",
+        inputEstimateTokens: 1,
+        outputEstimateTokens: 1,
+        occurredAt,
+      },
+      database
+    );
+    const third = await reserveAiUsage(
+      {
+        feature: "assistant",
+        provider: "openai-compatible",
+        model: "concurrent-model",
+        logicalRequestId: "summary-concurrency-third",
+        inputEstimateTokens: 1,
+        outputEstimateTokens: 1,
+        occurredAt,
+      },
+      database
+    );
+
+    const rollupGate = createRollupReadGate();
+    const firstSettlement = settleAiUsage(
+      second,
+      { usage: { input_tokens: 100, output_tokens: 0, total_tokens: 100 }, occurredAt },
+      rollupGate.database
+    );
+    const gateHit = await Promise.race([
+      rollupGate.readStarted.then(() => true),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 25)),
+    ]);
+    const secondSettlement = settleAiUsage(
+      third,
+      { usage: { input_tokens: 200, output_tokens: 0, total_tokens: 200 }, occurredAt },
+      rollupGate.database
+    );
+    if (gateHit) await secondSettlement;
+    rollupGate.release();
+    await Promise.all([firstSettlement, secondSettlement]);
+
+    expect(
+      await database
+        .select()
+        .from(aiUsageDailySummaries)
+        .where(eq(aiUsageDailySummaries.day, "2026-01-01"))
+        .get()
+    ).toMatchObject({
+      callCount: 3,
+      totalTokens: 302,
+      estimatedCallCount: 0,
+      incompleteCallCount: 0,
+      successCallCount: 3,
+    });
+  });
+
+  it("serializes truly concurrent summary backfills without duplicating calls", async () => {
+    const occurredAt = Date.parse("2026-01-02T01:00:00.000Z");
+    const first = await reserveAiUsage(
+      {
+        feature: "assistant",
+        provider: "openai-compatible",
+        model: "concurrent-model",
+        logicalRequestId: "parallel-summary-first",
+        inputEstimateTokens: 1,
+        outputEstimateTokens: 1,
+        occurredAt,
+      },
+      database
+    );
+    await settleAiUsage(
+      first,
+      { usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 }, occurredAt },
+      database
+    );
+    await rollupAiUsageDay({ day: "2026-01-02", timezone: "UTC", now: occurredAt, database });
+
+    const second = await reserveAiUsage(
+      {
+        feature: "assistant",
+        provider: "openai-compatible",
+        model: "concurrent-model",
+        logicalRequestId: "parallel-summary-second",
+        inputEstimateTokens: 1,
+        outputEstimateTokens: 1,
+        occurredAt,
+      },
+      database
+    );
+    const third = await reserveAiUsage(
+      {
+        feature: "assistant",
+        provider: "openai-compatible",
+        model: "concurrent-model",
+        logicalRequestId: "parallel-summary-third",
+        inputEstimateTokens: 1,
+        outputEstimateTokens: 1,
+        occurredAt,
+      },
+      database
+    );
+
+    await Promise.all([
+      settleAiUsage(
+        second,
+        { usage: { input_tokens: 100, output_tokens: 0, total_tokens: 100 }, occurredAt },
+        database
+      ),
+      settleAiUsage(
+        third,
+        { usage: { input_tokens: 200, output_tokens: 0, total_tokens: 200 }, occurredAt },
+        database
+      ),
+    ]);
+
+    expect(
+      await database
+        .select()
+        .from(aiUsageDailySummaries)
+        .where(eq(aiUsageDailySummaries.day, "2026-01-02"))
+        .get()
+    ).toMatchObject({
+      callCount: 3,
+      totalTokens: 302,
+      estimatedCallCount: 0,
+      incompleteCallCount: 0,
+      successCallCount: 3,
     });
   });
 
