@@ -39,12 +39,13 @@ async function assertRenderedObjectCover(page: Page, image: Locator, pixelTolera
     .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
-  const scale = Math.max(
-    rendered.info.width / source.info.width,
-    rendered.info.height / source.info.height
-  );
-  const cropX = (source.info.width * scale - rendered.info.width) / 2;
-  const cropY = (source.info.height * scale - rendered.info.height) / 2;
+  const layout = await image.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  });
+  const scale = Math.max(layout.width / source.info.width, layout.height / source.info.height);
+  const cropX = (source.info.width * scale - layout.width) / 2;
+  const cropY = (source.info.height * scale - layout.height) / 2;
   const samplePoints = [
     [Math.floor(rendered.info.width / 2), 8],
     [Math.floor(rendered.info.width / 2), rendered.info.height - 9],
@@ -53,17 +54,37 @@ async function assertRenderedObjectCover(page: Page, image: Locator, pixelTolera
   ];
 
   for (const [x, y] of samplePoints) {
-    const sourceX = Math.min(source.info.width - 1, Math.max(0, Math.round((x + cropX) / scale)));
-    const sourceY = Math.min(source.info.height - 1, Math.max(0, Math.round((y + cropY) / scale)));
-    const renderedOffset = (y * rendered.info.width + x) * rendered.info.channels;
-    const sourceOffset = (sourceY * source.info.width + sourceX) * source.info.channels;
-    const delta = [0, 1, 2].reduce(
-      (total, channel) =>
-        total +
-        Math.abs(rendered.data[renderedOffset + channel] - source.data[sourceOffset + channel]),
-      0
+    // Locator screenshots round fractional CSS boxes to image pixels. Map sample
+    // centers through the CSS box first, then allow one source pixel of browser
+    // resampling variance when comparing against the decoded source.
+    const cssX = ((x + 0.5) / rendered.info.width) * layout.width;
+    const cssY = ((y + 0.5) / rendered.info.height) * layout.height;
+    const sourceX = Math.min(
+      source.info.width - 1,
+      Math.max(0, Math.round((cssX + cropX) / scale))
     );
-    expect(delta).toBeLessThan(pixelTolerance);
+    const sourceY = Math.min(
+      source.info.height - 1,
+      Math.max(0, Math.round((cssY + cropY) / scale))
+    );
+    const renderedOffset = (y * rendered.info.width + x) * rendered.info.channels;
+    const renderedRgb = [0, 1, 2].map((channel) => rendered.data[renderedOffset + channel]);
+    const neighborhoodDelta = [];
+    for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
+      for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
+        const nearbyX = Math.min(source.info.width - 1, Math.max(0, sourceX + offsetX));
+        const nearbyY = Math.min(source.info.height - 1, Math.max(0, sourceY + offsetY));
+        const sourceOffset = (nearbyY * source.info.width + nearbyX) * source.info.channels;
+        neighborhoodDelta.push(
+          renderedRgb.reduce(
+            (total, channel, index) =>
+              total + Math.abs(channel - source.data[sourceOffset + index]),
+            0
+          )
+        );
+      }
+    }
+    expect(Math.min(...neighborhoodDelta)).toBeLessThan(pixelTolerance);
   }
 }
 
@@ -114,7 +135,9 @@ test.describe("public cover media in Web Demo", () => {
     await image.locator("..").hover();
     await expect.poll(() => image.evaluate((node) => getComputedStyle(node).scale)).toBe("1.05");
 
-    const screenshot = await page.screenshot({ path: test.info().outputPath("posts-desktop.png") });
+    const screenshot = await page.screenshot({
+      path: test.info().outputPath("posts-desktop.png"),
+    });
     await test.info().attach("posts-desktop", { body: screenshot, contentType: "image/png" });
   });
 
@@ -186,6 +209,31 @@ test.describe("public cover media in Web Demo", () => {
     );
     expect(relatedSrc).not.toContain("/wm-");
     expect(await relatedImage.getAttribute("class")).toContain("object-cover");
+    const relatedLayout = await relatedImage.evaluate((node) => {
+      const container = node.parentElement;
+      const imageRect = node.getBoundingClientRect();
+      const containerRect = container?.getBoundingClientRect();
+      return {
+        objectFit: getComputedStyle(node).objectFit,
+        imageWidth: imageRect.width,
+        imageHeight: imageRect.height,
+        containerWidth: containerRect?.width ?? 0,
+        containerHeight: containerRect?.height ?? 0,
+        sourceRatio: node.naturalWidth / node.naturalHeight,
+      };
+    });
+    expect(relatedLayout.objectFit).toBe("cover");
+    expect(Math.abs(relatedLayout.imageWidth - relatedLayout.containerWidth)).toBeLessThanOrEqual(
+      2
+    );
+    expect(Math.abs(relatedLayout.imageHeight - relatedLayout.containerHeight)).toBeLessThanOrEqual(
+      2
+    );
+    expect(
+      Math.abs(
+        relatedLayout.containerWidth / relatedLayout.containerHeight - relatedLayout.sourceRatio
+      )
+    ).toBeGreaterThan(0.1);
     await assertOpaqueImageCorners(page, relatedImage);
     await assertRenderedObjectCover(page, relatedImage);
     await page.evaluate(() => window.scrollTo(0, 0));
