@@ -253,8 +253,10 @@ export function assertRenderedUnwatermarkedCoverImages(content: string, file: st
     '[data-testid="post-card-cover"] img, [data-testid="home-timeline"] img, article[itemprop="isRelatedTo"] img'
   );
   for (const image of images) {
-    const src = image.getAttribute("src") ?? "";
-    if (!src) continue;
+    const src = image.getAttribute("src")?.trim() ?? "";
+    if (!src) {
+      throw new Error(`Expected rendered cover image to have a non-empty src in ${file}`);
+    }
     if (!/\/card\.[^/?#]+(?:[?#]|$)/u.test(src)) {
       throw new Error(`Expected rendered cover image to use card variant in ${file}: ${src}`);
     }

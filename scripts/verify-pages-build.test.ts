@@ -105,6 +105,16 @@ describe("verify-pages-build", () => {
         "clean-surfaces.html"
       )
     ).not.toThrow();
+
+    for (const [index, content] of [
+      `<a data-testid="post-card-cover"><img></a>`,
+      `<div data-testid="home-timeline"><img src=""></div>`,
+      `<article itemprop="isRelatedTo"><img src="   "></article>`,
+    ].entries()) {
+      expect(() =>
+        assertRenderedUnwatermarkedCoverImages(content, `missing-src-${index}.html`)
+      ).toThrow(/non-empty src/);
+    }
   });
 
   it("verifies a non-fixture static build by discovering real post and tag pages", () => {

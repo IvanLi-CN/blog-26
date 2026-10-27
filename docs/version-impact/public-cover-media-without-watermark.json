@@ -20,13 +20,13 @@
     "src/lib/public-media.ts": "c20b12c295eee84a9cb709bb63dd21c84a6c5483",
     "src/server/http-compat-api.test.ts": "5957397a0ee35f74e270e15b3e15a5b463fc0943",
     "src/server/public-media.ts": "d856b6885f4fb9b8418161ed831f42daf6e16370",
-    "scripts/verify-pages-build.test.ts": "3f5197a4562a55558da9aa5160fe867970ceb949",
+    "scripts/verify-pages-build.test.ts": "70b5fa44a21bafb7ddaf313fbebb9a8bcfdb7d46",
     "tests/components/RelatedPostCard.test.tsx": "d7d6e4d5cbfb7840439af10b16322bc8d2257bb5",
     "tests/e2e/guest/public-csr-navigation.spec.ts": "93e7de8a9516a2199930d29535e696c47431c407",
     "tests/e2e/guest/posts-cover-fallback.spec.ts": "7895f43d07da998ebf4dd0326bfe205dadfffc15",
     "tests/e2e/web-demo/public-csr.spec.ts": "0372e5791f80a1cffb578e334e518b289b828ec2",
     "tests/e2e/web-demo/public-cover-media.spec.ts": "ccb608ab566ba5694756777719d789ae01ab077a",
-    "scripts/verify-pages-build.ts": "3c78b6ae57e63380eb9126a7c2d6543da3869b16"
+    "scripts/verify-pages-build.ts": "ac5ad7d90edf9c49f1bdae654e5ea5769907dcb0"
   },
   "change": {
     "description": "Restore historical list-cover rendering while limiting the unwatermarked public media contract to list cover/card; detail covers, source descriptors, body, attachments, and playback retain their watermark paths and candidates.",
@@ -73,12 +73,12 @@
         },
         {
           "path": "scripts/verify-pages-build.ts",
-          "blob": "3c78b6ae57e63380eb9126a7c2d6543da3869b16",
+          "blob": "ac5ad7d90edf9c49f1bdae654e5ea5769907dcb0",
           "command": "PUBLIC_SITE_URL=https://ivanli.cc PUBLIC_API_BASE_URL=https://console.ivanli.cc bun run frontend:build && PUBLIC_SITE_URL=https://ivanli.cc PUBLIC_API_BASE_URL=https://console.ivanli.cc bun scripts/verify-pages-build.ts"
         },
         {
           "path": "scripts/verify-pages-build.test.ts",
-          "blob": "3f5197a4562a55558da9aa5160fe867970ceb949",
+          "blob": "70b5fa44a21bafb7ddaf313fbebb9a8bcfdb7d46",
           "command": "bun test scripts/verify-pages-build.test.ts"
         }
       ],
@@ -114,12 +114,12 @@
         },
         {
           "path": "scripts/verify-pages-build.ts",
-          "blob": "3c78b6ae57e63380eb9126a7c2d6543da3869b16",
+          "blob": "ac5ad7d90edf9c49f1bdae654e5ea5769907dcb0",
           "command": "PUBLIC_SITE_URL=https://ivanli.cc PUBLIC_API_BASE_URL=https://console.ivanli.cc bun run frontend:build && PUBLIC_SITE_URL=https://ivanli.cc PUBLIC_API_BASE_URL=https://console.ivanli.cc bun scripts/verify-pages-build.ts"
         },
         {
           "path": "scripts/verify-pages-build.test.ts",
-          "blob": "3f5197a4562a55558da9aa5160fe867970ceb949",
+          "blob": "70b5fa44a21bafb7ddaf313fbebb9a8bcfdb7d46",
           "command": "bun test scripts/verify-pages-build.test.ts"
         }
       ]
