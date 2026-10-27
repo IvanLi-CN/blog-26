@@ -1,0 +1,274 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "4eb92d04e1d92624b1c3e9180db84b81b55770e3",
+  "covered_files": {
+    ".github/workflows/ci.yml": "1da8cc6003ac6bffdfecfe6076e362b472876e93",
+    ".github/workflows/e2e.yml": "3adf7910776c17374ce84698562ae0a5b39046d8",
+    "docs/adr/0038-frontend-identity-and-assistant-storage-boundary.md": "41ce278081af3928b0ffc2f61b0e8b4ed152127b",
+    "drizzle/0021_site_knowledge_assistant_contracts.sql": "fd3206629fcb753e68183162ecaf446b41c3f55d",
+    "drizzle/meta/0021_snapshot.json": "e92824ad3e99987a1955fa4b933434ab2a0d2f0f",
+    "drizzle/meta/_journal.json": "52adc019929ee6b8eb983a1bc8b44801506a353d",
+    "src/lib/assistant-contracts.test.ts": "23d8188294ffe5277ea815634464f97600c68244",
+    "src/lib/assistant-contracts.ts": "838aa1cb80b27eb86403d5a8db6e510c1370d159",
+    "src/lib/assistant-storage.test.ts": "65dc501d087f8ea1492eff2cddb6c5008c5fc042",
+    "src/lib/assistant-storage.ts": "e203f9ae6c89b2e0a108e777cd8474ec7c1551b0",
+    "src/lib/frontend-auth.test.ts": "12240812c61d3edd5b24415c80a7b76a46b5357b",
+    "src/lib/frontend-auth.ts": "3a4e969750c77df62849c44fc8ad01af414fef86",
+    "src/lib/schema.ts": "eb5683256f50e6ef02b92bdd1415cc3b0f35683b",
+    "src/server/context.ts": "153ab30dca6cc8e2377ce17e8da093ce9928fae2",
+    "src/server/public-api/frontend-auth.test.ts": "37ec1bb76931e0908d503a7e8ac72a3b5e578ba1",
+    "src/server/public-api/router.ts": "a3913a5794a89dd55d8d249335e0471f96616bdc",
+    "src/server/routers/comments.test.ts": "05ca3773e086f0ff58259d75a0ad5c6a73bb0993",
+    "src/server/routers/comments.ts": "fc72cc45133b383919ce31ae56556520ff0682ca",
+    "tests/fixtures/site-assistant-legacy.sql": "bb9afb88fe2e5449e11082a0c5034803f317ca83",
+    "tests/lib/site-assistant-migration.test.ts": "f8bc5e75a9b2e4d51c95832def4718a5de70644f"
+  },
+  "change": {
+    "description": "Add the shared frontend identity/session boundary, app-owned assistant SQLite contract tables, comment ownership compatibility, and parent-branch CI/E2E triggers for the site knowledge assistant.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "The public authentication addition is backward compatible, and the forward-only SQLite migration keeps existing comment authors, readerId ownership, backend sessions, and clipping runtime fields available.",
+      "assessed_at": "2026-10-27T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "docs/adr/0038-frontend-identity-and-assistant-storage-boundary.md",
+          "blob": "41ce278081af3928b0ffc2f61b0e8b4ed152127b",
+          "command": "Defines independent frontend sessions, app-owned SQLite state, and DDL/backfill separation"
+        },
+        {
+          "path": "docs/specs/site-knowledge-assistant/SPEC.md",
+          "blob": "d11a224a6283c60aa276785997ee8a33a4586dad",
+          "command": "Locked frontend identity, retention, generation, usage, quota, and migration requirements"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "The candidate adds opt-in frontend-auth endpoints, independent hashed sessions, app-owned assistant storage, and nullable frontendUserId comment ownership while preserving legacy authentication and comment paths.",
+      "assessed_at": "2026-10-27T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/frontend-auth.ts",
+          "blob": "3a4e969750c77df62849c44fc8ad01af414fef86",
+          "command": "Independent hashed seven-day frontend session, trusted admin/reader identity linking, bootstrap suppression, and explicit logout"
+        },
+        {
+          "path": "src/lib/assistant-contracts.ts",
+          "blob": "838aa1cb80b27eb86403d5a8db6e510c1370d159",
+          "command": "Shared FrontendPrincipal, conversation/message/generation/usage/quota/migration contracts"
+        },
+        {
+          "path": "src/lib/assistant-storage.ts",
+          "blob": "e203f9ae6c89b2e0a108e777cd8474ec7c1551b0",
+          "command": "SQLite-owned conversation/message/generation storage with frontend ownership checks"
+        },
+        {
+          "path": "drizzle/0021_site_knowledge_assistant_contracts.sql",
+          "blob": "fd3206629fcb753e68183162ecaf446b41c3f55d",
+          "command": "Forward DDL adds assistant state tables and nullable comment frontend ownership"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "blob": "1da8cc6003ac6bffdfecfe6076e362b472876e93",
+          "command": "Existing CI jobs now trigger for pull requests targeting th/site-knowledge-assistant"
+        },
+        {
+          "path": ".github/workflows/e2e.yml",
+          "blob": "3adf7910776c17374ce84698562ae0a5b39046d8",
+          "command": "Existing E2E jobs now trigger for pull requests targeting th/site-knowledge-assistant"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to T1 identity, storage, comment compatibility, migration, and parent-branch trigger surfaces; assistant workers, quota accounting, admin screens, and public chat UI remain out of scope."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "Repository checks, migration validation and application, focused identity/storage/comment/API tests, and the existing HTTP compatibility suite pass. Full TypeScript remains blocked by pre-existing repository errors outside the changed assistant surfaces; the changed-surface filter reports only those baseline router errors.",
+      "assessed_at": "2026-10-27T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/assistant-storage.test.ts",
+          "blob": "65dc501d087f8ea1492eff2cddb6c5008c5fc042",
+          "command": "bun test --isolate src/lib/assistant-contracts.test.ts src/lib/assistant-storage.test.ts src/lib/frontend-auth.test.ts tests/lib/site-assistant-migration.test.ts src/server/public-api/frontend-auth.test.ts src/server/routers/comments.test.ts"
+        },
+        {
+          "path": "tests/lib/site-assistant-migration.test.ts",
+          "blob": "f8bc5e75a9b2e4d51c95832def4718a5de70644f",
+          "command": "Legacy SQLite fixture applies drizzle/0021 without rewriting readerId or comment content"
+        },
+        {
+          "path": "src/server/public-api/frontend-auth.test.ts",
+          "blob": "37ec1bb76931e0908d503a7e8ac72a3b5e578ba1",
+          "command": "Public frontend bootstrap, me, logout, cookie, and same-origin route regression"
+        },
+        {
+          "path": "src/server/routers/comments.test.ts",
+          "blob": "05ca3773e086f0ff58259d75a0ad5c6a73bb0993",
+          "command": "bun test --isolate src/server/routers/comments.test.ts"
+        },
+        {
+          "path": "src/server/public-api/router.ts",
+          "blob": "a3913a5794a89dd55d8d249335e0471f96616bdc",
+          "command": "bun test --isolate src/server/http-compat-api.test.ts (107 pass, 3 skipped, 0 fail)"
+        },
+        {
+          "path": "drizzle/meta/_journal.json",
+          "blob": "52adc019929ee6b8eb983a1bc8b44801506a353d",
+          "command": "bun run db:migrations:validate"
+        },
+        {
+          "path": "src/lib/schema.ts",
+          "blob": "eb5683256f50e6ef02b92bdd1415cc3b0f35683b",
+          "command": "bunx drizzle-kit generate (no schema changes after migration generation)"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "blob": "1da8cc6003ac6bffdfecfe6076e362b472876e93",
+          "command": "bun run check; git diff --check"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4"
+      ],
+      "evidence": [
+        {
+          "path": "src/server/public-api/frontend-auth.test.ts",
+          "blob": "37ec1bb76931e0908d503a7e8ac72a3b5e578ba1",
+          "command": "Frontend authentication endpoints are additive and existing HTTP compatibility tests remain green"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "minor",
+      "applicable": true,
+      "state_description": "The forward-only SQLite migration adds frontend identity, assistant conversation/message/generation/usage/quota/migration tables and a nullable comments ownership column; legacy reader ownership and clipping runtime state remain readable.",
+      "readable_by_prior_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4"
+      ],
+      "upgrade_from_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4"
+      ],
+      "evidence": [
+        {
+          "path": "tests/lib/site-assistant-migration.test.ts",
+          "blob": "f8bc5e75a9b2e4d51c95832def4718a5de70644f",
+          "command": "bun test --isolate tests/lib/site-assistant-migration.test.ts"
+        },
+        {
+          "path": "drizzle/0021_site_knowledge_assistant_contracts.sql",
+          "blob": "fd3206629fcb753e68183162ecaf446b41c3f55d",
+          "command": "bun run db:migrations:validate and full in-memory Drizzle migration application"
+        }
+      ]
+    }
+  }
+}

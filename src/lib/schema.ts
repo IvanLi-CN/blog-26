@@ -121,6 +121,320 @@ export const commentMigrationState = sqliteTable("comment_migration_state", {
   lastError: text("last_error"),
 });
 
+export const frontendUsers = sqliteTable(
+  "frontend_users",
+  {
+    id: text("id").primaryKey(),
+    adminUserId: text("admin_user_id").references(() => users.id, { onDelete: "cascade" }),
+    isAdmin: integer("is_admin", { mode: "boolean" }).notNull().default(false),
+    displayName: text("display_name").notNull(),
+    email: text("email"),
+    avatarUrl: text("avatar_url").notNull(),
+    profileUrl: text("profile_url"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => ({
+    adminUserUnique: uniqueIndex("frontend_users_admin_user_unique").on(table.adminUserId),
+    adminIndex: index("frontend_users_admin_idx").on(table.isAdmin),
+  })
+);
+
+export const frontendIdentityLinks = sqliteTable(
+  "frontend_identity_links",
+  {
+    id: text("id").primaryKey(),
+    frontendUserId: text("frontend_user_id")
+      .notNull()
+      .references(() => frontendUsers.id, { onDelete: "cascade" }),
+    provider: text("provider", { enum: ["admin", "github"] }).notNull(),
+    providerSubject: text("provider_subject").notNull(),
+    providerLogin: text("provider_login"),
+    adminUserId: text("admin_user_id").references(() => users.id, { onDelete: "cascade" }),
+    readerId: text("reader_id").references(() => readers.id, { onDelete: "cascade" }),
+    displayName: text("display_name"),
+    email: text("email"),
+    avatarUrl: text("avatar_url"),
+    profileUrl: text("profile_url"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => ({
+    providerSubjectUnique: uniqueIndex("frontend_identity_links_provider_subject_unique").on(
+      table.provider,
+      table.providerSubject
+    ),
+    frontendUserIndex: index("frontend_identity_links_frontend_user_idx").on(table.frontendUserId),
+    adminUserUnique: uniqueIndex("frontend_identity_links_admin_user_unique").on(table.adminUserId),
+    readerUnique: uniqueIndex("frontend_identity_links_reader_unique").on(table.readerId),
+  })
+);
+
+export const frontendSessions = sqliteTable(
+  "frontend_sessions",
+  {
+    id: text("id").primaryKey(),
+    frontendUserId: text("frontend_user_id")
+      .notNull()
+      .references(() => frontendUsers.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: integer("expires_at").notNull(),
+    createdAt: integer("created_at").notNull(),
+    revokedAt: integer("revoked_at"),
+  },
+  (table) => ({
+    tokenUnique: uniqueIndex("frontend_sessions_token_unique").on(table.tokenHash),
+    userIndex: index("frontend_sessions_user_idx").on(table.frontendUserId),
+    expiryIndex: index("frontend_sessions_expiry_idx").on(table.expiresAt),
+  })
+);
+
+export const assistantConversations = sqliteTable(
+  "assistant_conversations",
+  {
+    id: text("id").primaryKey(),
+    frontendUserId: text("frontend_user_id")
+      .notNull()
+      .references(() => frontendUsers.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["general", "clipping"] })
+      .notNull()
+      .default("general"),
+    title: text("title"),
+    clippingMemoId: text("clipping_memo_id"),
+    clippingVersionId: text("clipping_version_id"),
+    status: text("status", { enum: ["active", "expired", "deleted"] })
+      .notNull()
+      .default("active"),
+    createdAt: integer("created_at").notNull(),
+    lastUserMessageAt: integer("last_user_message_at"),
+    expiresAt: integer("expires_at"),
+    deletedAt: integer("deleted_at"),
+  },
+  (table) => ({
+    ownerTimeIndex: index("assistant_conversations_owner_time_idx").on(
+      table.frontendUserId,
+      table.createdAt
+    ),
+    statusExpiryIndex: index("assistant_conversations_status_expiry_idx").on(
+      table.status,
+      table.expiresAt
+    ),
+    clippingIndex: index("assistant_conversations_clipping_idx").on(
+      table.frontendUserId,
+      table.clippingMemoId,
+      table.clippingVersionId
+    ),
+  })
+);
+
+export const assistantMessages = sqliteTable(
+  "assistant_messages",
+  {
+    id: text("id").primaryKey(),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => assistantConversations.id, { onDelete: "cascade" }),
+    sequence: integer("sequence").notNull(),
+    role: text("role", { enum: ["user", "assistant", "system", "tool"] }).notNull(),
+    content: text("content").notNull(),
+    status: text("status", {
+      enum: ["pending", "streaming", "completed", "failed", "cancelled"],
+    })
+      .notNull()
+      .default("completed"),
+    clientRequestId: text("client_request_id"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+    completedAt: integer("completed_at"),
+  },
+  (table) => ({
+    conversationSequenceUnique: uniqueIndex("assistant_messages_conversation_sequence_unique").on(
+      table.conversationId,
+      table.sequence
+    ),
+    conversationIndex: index("assistant_messages_conversation_idx").on(
+      table.conversationId,
+      table.createdAt
+    ),
+    requestIndex: index("assistant_messages_request_idx").on(
+      table.conversationId,
+      table.clientRequestId
+    ),
+  })
+);
+
+export const assistantGenerationJobs = sqliteTable(
+  "assistant_generation_jobs",
+  {
+    id: text("id").primaryKey(),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => assistantConversations.id, { onDelete: "cascade" }),
+    userMessageId: text("user_message_id").references(() => assistantMessages.id, {
+      onDelete: "set null",
+    }),
+    assistantMessageId: text("assistant_message_id").references(() => assistantMessages.id, {
+      onDelete: "set null",
+    }),
+    requestId: text("request_id").notNull(),
+    status: text("status", {
+      enum: ["queued", "running", "completed", "failed", "cancelled"],
+    })
+      .notNull()
+      .default("queued"),
+    attempt: integer("attempt").notNull().default(1),
+    leaseUntil: integer("lease_until"),
+    cancelRequested: integer("cancel_requested", { mode: "boolean" }).notNull().default(false),
+    startedAt: integer("started_at"),
+    finishedAt: integer("finished_at"),
+    errorCode: text("error_code"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => ({
+    requestUnique: uniqueIndex("assistant_generation_jobs_request_unique").on(table.requestId),
+    conversationIndex: index("assistant_generation_jobs_conversation_idx").on(
+      table.conversationId,
+      table.createdAt
+    ),
+    statusLeaseIndex: index("assistant_generation_jobs_status_lease_idx").on(
+      table.status,
+      table.leaseUntil
+    ),
+  })
+);
+
+export const aiUsageRecords = sqliteTable(
+  "ai_usage_records",
+  {
+    id: text("id").primaryKey(),
+    frontendUserId: text("frontend_user_id").references(() => frontendUsers.id, {
+      onDelete: "set null",
+    }),
+    conversationId: text("conversation_id").references(() => assistantConversations.id, {
+      onDelete: "set null",
+    }),
+    generationJobId: text("generation_job_id").references(() => assistantGenerationJobs.id, {
+      onDelete: "set null",
+    }),
+    feature: text("feature").notNull(),
+    provider: text("provider"),
+    model: text("model"),
+    status: text("status", {
+      enum: ["success", "failure", "cancelled", "missing", "incomplete"],
+    }).notNull(),
+    inputTokens: integer("input_tokens"),
+    cachedInputTokens: integer("cached_input_tokens"),
+    outputTokens: integer("output_tokens"),
+    reasoningTokens: integer("reasoning_tokens"),
+    totalTokens: integer("total_tokens"),
+    estimated: integer("estimated", { mode: "boolean" }).notNull().default(false),
+    usageComplete: integer("usage_complete", { mode: "boolean" }).notNull().default(false),
+    idempotencyKey: text("idempotency_key"),
+    occurredAt: integer("occurred_at").notNull(),
+    createdAt: integer("created_at").notNull(),
+    rawUsage: text("raw_usage"),
+  },
+  (table) => ({
+    idempotencyUnique: uniqueIndex("ai_usage_records_idempotency_unique").on(table.idempotencyKey),
+    occurredIndex: index("ai_usage_records_occurred_idx").on(table.occurredAt),
+    userOccurredIndex: index("ai_usage_records_user_occurred_idx").on(
+      table.frontendUserId,
+      table.occurredAt
+    ),
+    featureIndex: index("ai_usage_records_feature_idx").on(table.feature, table.occurredAt),
+  })
+);
+
+export const aiUsageDailySummaries = sqliteTable(
+  "ai_usage_daily_summaries",
+  {
+    id: text("id").primaryKey(),
+    day: text("day").notNull(),
+    timezone: text("timezone").notNull(),
+    frontendUserId: text("frontend_user_id").references(() => frontendUsers.id, {
+      onDelete: "set null",
+    }),
+    feature: text("feature").notNull(),
+    provider: text("provider"),
+    model: text("model"),
+    callCount: integer("call_count").notNull().default(0),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    cachedInputTokens: integer("cached_input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    reasoningTokens: integer("reasoning_tokens").notNull().default(0),
+    totalTokens: integer("total_tokens").notNull().default(0),
+    estimatedCallCount: integer("estimated_call_count").notNull().default(0),
+    incompleteCallCount: integer("incomplete_call_count").notNull().default(0),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => ({
+    dimensionUnique: uniqueIndex("ai_usage_daily_summaries_dimension_unique").on(
+      table.day,
+      table.timezone,
+      table.frontendUserId,
+      table.feature,
+      table.provider,
+      table.model
+    ),
+    dayIndex: index("ai_usage_daily_summaries_day_idx").on(table.day),
+  })
+);
+
+export const assistantQuotaPolicies = sqliteTable(
+  "assistant_quota_policies",
+  {
+    id: text("id").primaryKey(),
+    scope: text("scope", { enum: ["global"] })
+      .notNull()
+      .default("global"),
+    tokenHourlyLimit: integer("token_hourly_limit").notNull(),
+    tokenWeeklyLimit: integer("token_weekly_limit").notNull(),
+    questionHourlyLimit: integer("question_hourly_limit").notNull(),
+    questionWeeklyLimit: integer("question_weekly_limit").notNull(),
+    maxConversations: integer("max_conversations").notNull(),
+    retentionMs: integer("retention_ms").notNull(),
+    timezone: text("timezone").notNull().default("UTC"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => ({
+    scopeUnique: uniqueIndex("assistant_quota_policies_scope_unique").on(table.scope),
+  })
+);
+
+export const assistantQuotaResets = sqliteTable(
+  "assistant_quota_resets",
+  {
+    id: text("id").primaryKey(),
+    frontendUserId: text("frontend_user_id")
+      .notNull()
+      .references(() => frontendUsers.id, { onDelete: "cascade" }),
+    reason: text("reason", { enum: ["manual", "window"] }).notNull(),
+    resetAt: integer("reset_at").notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (table) => ({
+    userTimeIndex: index("assistant_quota_resets_user_time_idx").on(
+      table.frontendUserId,
+      table.resetAt
+    ),
+  })
+);
+
+export const assistantMigrationState = sqliteTable("assistant_migration_state", {
+  id: text("id").primaryKey(),
+  status: text("status", { enum: ["pending", "running", "blocked", "complete"] }).notNull(),
+  sourceVersion: text("source_version").notNull(),
+  cursor: text("cursor"),
+  scanned: integer("scanned").notNull().default(0),
+  migrated: integer("migrated").notNull().default(0),
+  quarantined: integer("quarantined").notNull().default(0),
+  errorCount: integer("error_count").notNull().default(0),
+  updatedAt: integer("updated_at").notNull(),
+  lastError: text("last_error"),
+});
+
 // 临时适配现有数据库schema
 export const comments = sqliteTable(
   "comments",
@@ -135,6 +449,9 @@ export const comments = sqliteTable(
     authorName: text("author_name").notNull(),
     authorEmail: text("author_email"),
     readerId: text("reader_id").references(() => readers.id, { onDelete: "set null" }),
+    frontendUserId: text("frontend_user_id").references(() => frontendUsers.id, {
+      onDelete: "set null",
+    }),
     authorRole: text("author_role", { enum: ["reader", "admin"] })
       .notNull()
       .default("reader"),
@@ -157,6 +474,10 @@ export const comments = sqliteTable(
       table.createdAt
     ),
     readerIndex: index("comments_reader_idx").on(table.readerId, table.createdAt),
+    frontendUserIndex: index("comments_frontend_user_idx").on(
+      table.frontendUserId,
+      table.createdAt
+    ),
     rootIndex: index("comments_root_idx").on(table.rootId, table.createdAt),
     submissionUnique: uniqueIndex("comments_reader_submission_unique").on(
       table.readerId,
@@ -427,11 +748,122 @@ export const usersRelations = relations(users, ({ many }) => ({
   comments: many(comments),
   sessions: many(sessions),
   personalAccessTokens: many(personalAccessTokens),
+  frontendIdentityLinks: many(frontendIdentityLinks),
+  frontendUsers: many(frontendUsers),
 }));
 
 export const readersRelations = relations(readers, ({ many }) => ({
   comments: many(comments),
   sessions: many(readerSessions),
+  frontendIdentityLinks: many(frontendIdentityLinks),
+}));
+
+export const frontendUsersRelations = relations(frontendUsers, ({ one, many }) => ({
+  adminUser: one(users, {
+    fields: [frontendUsers.adminUserId],
+    references: [users.id],
+  }),
+  identityLinks: many(frontendIdentityLinks),
+  sessions: many(frontendSessions),
+  conversations: many(assistantConversations),
+  usageRecords: many(aiUsageRecords),
+  dailyUsageSummaries: many(aiUsageDailySummaries),
+  quotaResets: many(assistantQuotaResets),
+  comments: many(comments),
+}));
+
+export const frontendIdentityLinksRelations = relations(frontendIdentityLinks, ({ one }) => ({
+  frontendUser: one(frontendUsers, {
+    fields: [frontendIdentityLinks.frontendUserId],
+    references: [frontendUsers.id],
+  }),
+  adminUser: one(users, {
+    fields: [frontendIdentityLinks.adminUserId],
+    references: [users.id],
+  }),
+  reader: one(readers, {
+    fields: [frontendIdentityLinks.readerId],
+    references: [readers.id],
+  }),
+}));
+
+export const frontendSessionsRelations = relations(frontendSessions, ({ one }) => ({
+  frontendUser: one(frontendUsers, {
+    fields: [frontendSessions.frontendUserId],
+    references: [frontendUsers.id],
+  }),
+}));
+
+export const assistantConversationsRelations = relations(
+  assistantConversations,
+  ({ one, many }) => ({
+    frontendUser: one(frontendUsers, {
+      fields: [assistantConversations.frontendUserId],
+      references: [frontendUsers.id],
+    }),
+    messages: many(assistantMessages),
+    generationJobs: many(assistantGenerationJobs),
+    usageRecords: many(aiUsageRecords),
+  })
+);
+
+export const assistantMessagesRelations = relations(assistantMessages, ({ one, many }) => ({
+  conversation: one(assistantConversations, {
+    fields: [assistantMessages.conversationId],
+    references: [assistantConversations.id],
+  }),
+  userGenerationJobs: many(assistantGenerationJobs, { relationName: "userMessage" }),
+  assistantGenerationJobs: many(assistantGenerationJobs, { relationName: "assistantMessage" }),
+}));
+
+export const assistantGenerationJobsRelations = relations(
+  assistantGenerationJobs,
+  ({ one, many }) => ({
+    conversation: one(assistantConversations, {
+      fields: [assistantGenerationJobs.conversationId],
+      references: [assistantConversations.id],
+    }),
+    userMessage: one(assistantMessages, {
+      fields: [assistantGenerationJobs.userMessageId],
+      references: [assistantMessages.id],
+      relationName: "userMessage",
+    }),
+    assistantMessage: one(assistantMessages, {
+      fields: [assistantGenerationJobs.assistantMessageId],
+      references: [assistantMessages.id],
+      relationName: "assistantMessage",
+    }),
+    usageRecords: many(aiUsageRecords),
+  })
+);
+
+export const aiUsageRecordsRelations = relations(aiUsageRecords, ({ one }) => ({
+  frontendUser: one(frontendUsers, {
+    fields: [aiUsageRecords.frontendUserId],
+    references: [frontendUsers.id],
+  }),
+  conversation: one(assistantConversations, {
+    fields: [aiUsageRecords.conversationId],
+    references: [assistantConversations.id],
+  }),
+  generationJob: one(assistantGenerationJobs, {
+    fields: [aiUsageRecords.generationJobId],
+    references: [assistantGenerationJobs.id],
+  }),
+}));
+
+export const aiUsageDailySummariesRelations = relations(aiUsageDailySummaries, ({ one }) => ({
+  frontendUser: one(frontendUsers, {
+    fields: [aiUsageDailySummaries.frontendUserId],
+    references: [frontendUsers.id],
+  }),
+}));
+
+export const assistantQuotaResetsRelations = relations(assistantQuotaResets, ({ one }) => ({
+  frontendUser: one(frontendUsers, {
+    fields: [assistantQuotaResets.frontendUserId],
+    references: [frontendUsers.id],
+  }),
 }));
 
 export const readerSessionsRelations = relations(readerSessions, ({ one }) => ({
@@ -467,6 +899,10 @@ export const commentsRelations = relations(comments, ({ one, many }) => ({
   reader: one(readers, {
     fields: [comments.readerId],
     references: [readers.id],
+  }),
+  frontendUser: one(frontendUsers, {
+    fields: [comments.frontendUserId],
+    references: [frontendUsers.id],
   }),
 }));
 
@@ -560,6 +996,19 @@ export type NewPost = typeof posts.$inferInsert;
 export type SystemShareSubmission = typeof systemShareSubmissions.$inferSelect;
 
 export type PersonalAccessToken = typeof personalAccessTokens.$inferSelect;
+
+export type FrontendUser = typeof frontendUsers.$inferSelect;
+export type NewFrontendUser = typeof frontendUsers.$inferInsert;
+export type FrontendIdentityLink = typeof frontendIdentityLinks.$inferSelect;
+export type FrontendSession = typeof frontendSessions.$inferSelect;
+export type AssistantConversationRow = typeof assistantConversations.$inferSelect;
+export type AssistantMessageRow = typeof assistantMessages.$inferSelect;
+export type AssistantGenerationJobRow = typeof assistantGenerationJobs.$inferSelect;
+export type AiUsageRecordRow = typeof aiUsageRecords.$inferSelect;
+export type AiUsageDailySummaryRow = typeof aiUsageDailySummaries.$inferSelect;
+export type AssistantQuotaPolicyRow = typeof assistantQuotaPolicies.$inferSelect;
+export type AssistantQuotaResetRow = typeof assistantQuotaResets.$inferSelect;
+export type AssistantMigrationStateRow = typeof assistantMigrationState.$inferSelect;
 
 export const contentTasks = sqliteTable(
   "content_tasks",

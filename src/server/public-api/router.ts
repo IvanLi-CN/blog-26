@@ -21,6 +21,13 @@ import { isAdminGithubId } from "@/lib/admin-github-binding";
 import type { SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import { generateSlugFromPath } from "@/lib/content-sources/utils";
 import { db, initializeDB } from "@/lib/db";
+import {
+  bootstrapFrontendAuth,
+  clearFrontendLogoutCookieHeader,
+  frontendAuthMe,
+  logoutFrontendAuth,
+  startAdminFrontendAuth,
+} from "@/lib/frontend-auth";
 import { buildMemoRelativePath, getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import {
   appendPublicCorsHeaders,
@@ -262,7 +269,8 @@ function json(request: Request, data: unknown, init: ResponseInit = {}, extraHea
   headers.set("content-type", "application/json; charset=utf-8");
   if (extraHeaders) {
     for (const [key, value] of extraHeaders.entries()) {
-      headers.set(key, value);
+      if (key.toLowerCase() === "set-cookie") headers.append(key, value);
+      else headers.set(key, value);
     }
   }
   appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
@@ -1492,6 +1500,7 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
           "cache-control": "no-store",
         });
         headers.append("set-cookie", result.cookie);
+        headers.append("set-cookie", clearFrontendLogoutCookieHeader(request));
         headers.append("set-cookie", clearReaderOAuthStateCookieHeader(request));
         appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
         return new Response(null, { status: 302, headers });
@@ -1538,6 +1547,69 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
     }
 
     const { caller, resHeaders, ctx } = await createCallerForRequest(request);
+    if (pathname === "/frontend-auth/me") {
+      if (request.method !== "GET") return methodNotAllowed(request, request.method);
+      return json(
+        request,
+        await frontendAuthMe(request),
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+
+    if (pathname === "/frontend-auth/bootstrap") {
+      if (request.method !== "POST") return methodNotAllowed(request, request.method);
+      if (!hasTrustedPublicOrigin(request)) {
+        return json(request, { error: "请求来源不受信任" }, { status: 403 }, resHeaders);
+      }
+      const result = await bootstrapFrontendAuth(request);
+      for (const cookie of result.setCookies) resHeaders.append("set-cookie", cookie);
+      return json(
+        request,
+        result,
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+
+    if (pathname === "/frontend-auth/admin-start") {
+      if (request.method !== "POST") return methodNotAllowed(request, request.method);
+      if (!hasTrustedPublicOrigin(request)) {
+        return json(request, { error: "请求来源不受信任" }, { status: 403 }, resHeaders);
+      }
+      const result = await startAdminFrontendAuth(request);
+      for (const cookie of result.setCookies) resHeaders.append("set-cookie", cookie);
+      if (!result.authenticated) {
+        return json(
+          request,
+          { error: "请先登录管理员账号", ...result },
+          { status: 401, headers: { "cache-control": "no-store" } },
+          resHeaders
+        );
+      }
+      return json(
+        request,
+        result,
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+
+    if (pathname === "/frontend-auth/logout") {
+      if (request.method !== "POST") return methodNotAllowed(request, request.method);
+      if (!hasTrustedPublicOrigin(request)) {
+        return json(request, { error: "请求来源不受信任" }, { status: 403 }, resHeaders);
+      }
+      const result = await logoutFrontendAuth(request);
+      for (const cookie of result.setCookies) resHeaders.append("set-cookie", cookie);
+      return json(
+        request,
+        result,
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+
     if (pathname === "/system-share") {
       return await handleSystemShareRequest(request, caller, ctx, resHeaders);
     }
