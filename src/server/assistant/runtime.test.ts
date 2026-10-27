@@ -3,10 +3,16 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import path from "node:path";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import type { FrontendPrincipal } from "@/lib/assistant-contracts";
 import { createAssistantStorage } from "@/lib/assistant-storage";
 import * as schema from "@/lib/schema";
 import { frontendUsers } from "@/lib/schema";
-import { buildAssistantRetrievalContext, createAssistantRuntimeForTest } from "./runtime";
+import {
+  buildAssistantRetrievalContext,
+  createAssistantRuntimeForTest,
+  readAssistantProviderResponse,
+} from "./runtime";
+import { createAssistantServiceForTest } from "./service";
 
 const sqlite = new Database(":memory:");
 const database = drizzle(sqlite, { schema });
@@ -109,19 +115,44 @@ describe("assistant runtime", () => {
     const gate = new Promise<void>((resolve) => {
       unblock = resolve;
     });
+    const principal = {
+      id: "assistant-runtime-stop-owner",
+      kind: "reader" as const,
+      isAdmin: false,
+      displayName: "Assistant Runtime Stop Owner",
+      email: null,
+      avatarUrl: "/site-assets/default-avatar.svg",
+      profileUrl: null,
+      adminUserId: null,
+      readerId: "assistant-runtime-stop-owner",
+      github: null,
+    } satisfies FrontendPrincipal;
+    let aborted = false;
     const runtime = createAssistantRuntimeForTest({
       storage,
       leaseMs: 500,
-      generate: async () => {
+      generate: async ({ signal }) => {
         release();
-        await gate;
+        await new Promise<void>((resolve, reject) => {
+          const onAbort = () => {
+            aborted = true;
+            reject(signal.reason ?? new DOMException("Generation cancelled", "AbortError"));
+          };
+          signal.addEventListener("abort", onAbort, { once: true });
+          void gate.then(() => {
+            signal.removeEventListener("abort", onAbort);
+            resolve();
+          });
+        });
         return { content: "late answer", citations: [] };
       },
       now: () => 1_000,
     });
     await runtime.start();
     await started;
-    await storage.stopGeneration(submission.generationJob.id, "assistant-runtime-stop-owner", 210);
+    const service = createAssistantServiceForTest({ storage, runtime });
+    const stopped = await service.stop(principal, { turnId: submission.generationJob.id });
+    expect(stopped.stopped).toBe(true);
     unblock();
     await waitFor(
       async () =>
@@ -138,6 +169,7 @@ describe("assistant runtime", () => {
     );
     expect(messages.at(-1)?.content).toBe("");
     expect(messages.at(-1)?.status).toBe("cancelled");
+    expect(aborted).toBe(true);
     await runtime.stop();
   });
 
@@ -219,6 +251,48 @@ describe("assistant runtime", () => {
     await runtime.stop();
   });
 
+  it("fails an abandoned lease while the worker remains online", async () => {
+    await addUser("assistant-runtime-lease-owner");
+    const storage = createAssistantStorage(database);
+    let now = 1_000;
+    let attempts = 0;
+    const runtime = createAssistantRuntimeForTest({
+      storage,
+      pumpDelayMs: 1,
+      generate: async () => {
+        attempts += 1;
+        return { content: "must not run", citations: [] };
+      },
+      now: () => now,
+    });
+    await runtime.start();
+    const submission = await storage.submitTurn({
+      frontendUserId: "assistant-runtime-lease-owner",
+      requestId: "runtime-lease-request",
+      content: "Recover the abandoned lease",
+      now: 1_001,
+    });
+    expect((await storage.claimNextGenerationJob(1_002, 10))?.job.id).toBe(
+      submission.generationJob.id
+    );
+    now = 1_013;
+    runtime.enqueue();
+    await waitFor(
+      async () =>
+        (
+          await storage.getGenerationJob(
+            submission.generationJob.id,
+            "assistant-runtime-lease-owner"
+          )
+        )?.status === "failed"
+    );
+    expect(attempts).toBe(0);
+    expect(
+      await storage.getGenerationJob(submission.generationJob.id, "assistant-runtime-lease-owner")
+    ).toMatchObject({ errorCode: "worker-lease-expired" });
+    await runtime.stop();
+  });
+
   it("binds public retrieval to published content and the question usage context", async () => {
     await addUser("assistant-retrieval-owner");
     const storage = createAssistantStorage(database);
@@ -248,5 +322,31 @@ describe("assistant runtime", () => {
       publishedOnly: false,
       metering: { isAdmin: true },
     });
+  });
+
+  it("requires a complete provider SSE stream before committing success", async () => {
+    const headers = { "content-type": "text/event-stream" };
+    const incomplete = new Response('data: {"choices":[{"delta":{"content":"partial"}}]}\n\n', {
+      headers,
+    });
+    await expect(
+      readAssistantProviderResponse(incomplete, new AbortController().signal, async () => true)
+    ).rejects.toThrow("assistant-provider-stream-incomplete");
+
+    const providerError = new Response(
+      'event: error\ndata: {"error":{"message":"upstream failed"}}\n\n',
+      { headers }
+    );
+    await expect(
+      readAssistantProviderResponse(providerError, new AbortController().signal, async () => true)
+    ).rejects.toThrow("assistant-provider-stream-error:upstream failed");
+
+    const complete = new Response(
+      'data: {"choices":[{"delta":{"content":"complete"}}]}\n\ndata: [DONE]\n\n',
+      { headers }
+    );
+    await expect(
+      readAssistantProviderResponse(complete, new AbortController().signal, async () => true)
+    ).resolves.toMatchObject({ content: "complete" });
   });
 });

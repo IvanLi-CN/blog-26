@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { cosineSimilarity } from "@/lib/ai/embeddings";
 import type { AiUsageContext } from "@/lib/ai-usage";
@@ -236,7 +237,7 @@ export async function semanticPlaybookCandidates(
         idempotencyKey: `${
           options.metering.idempotencyKey ??
           options.metering.logicalRequestId ??
-          options.metering.feature
+          `${options.metering.feature}:${randomUUID()}`
         }:semantic-playbook`,
       }
     : undefined;

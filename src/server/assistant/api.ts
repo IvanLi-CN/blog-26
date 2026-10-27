@@ -7,6 +7,7 @@ import { type AssistantService, AssistantServiceError, getAssistantService } fro
 
 const PUBLIC_API_ALLOWED_METHODS = ["GET", "HEAD", "POST", "PATCH", "DELETE", "OPTIONS"] as const;
 const MAX_ASSISTANT_BODY_BYTES = 64 * 1024;
+const MAX_ASSISTANT_QUERY_CHARS = 8_192;
 const MAX_ACTIVE_EVENT_STREAMS_PER_USER = 4;
 const activeEventStreams = new Map<string, number>();
 const submitSchema = z
@@ -14,9 +15,9 @@ const submitSchema = z
     conversationId: z.string().trim().min(1).max(200).nullable().optional(),
     requestId: z.string().trim().min(1).max(200).optional(),
     clientRequestId: z.string().trim().min(1).max(200).nullable().optional(),
-    content: z.string().trim().min(1).max(32_000).optional(),
-    text: z.string().trim().min(1).max(32_000).optional(),
-    message: z.string().trim().min(1).max(32_000).optional(),
+    content: z.string().trim().min(1).max(MAX_ASSISTANT_QUERY_CHARS).optional(),
+    text: z.string().trim().min(1).max(MAX_ASSISTANT_QUERY_CHARS).optional(),
+    message: z.string().trim().min(1).max(MAX_ASSISTANT_QUERY_CHARS).optional(),
     kind: z.enum(["general", "clipping"]).optional(),
     title: z.string().trim().max(300).nullable().optional(),
     clippingMemoId: z.string().trim().max(200).nullable().optional(),
@@ -281,7 +282,7 @@ export async function handleAssistantRequest(
         return response(request, await service.list(principal), 200, undefined, resHeaders);
       }
       if (request.method !== "POST") return methodNotAllowed(request);
-      return submitAssistantRequest(request, principal, service, resHeaders);
+      return await submitAssistantRequest(request, principal, service, resHeaders);
     }
 
     if (pathname === "/chat/quota") {
@@ -314,7 +315,7 @@ export async function handleAssistantRequest(
 
     if (pathname === "/chat/messages") {
       if (request.method === "POST")
-        return submitAssistantRequest(request, principal, service, resHeaders);
+        return await submitAssistantRequest(request, principal, service, resHeaders);
       if (request.method !== "GET") return methodNotAllowed(request);
       const conversationId = conversationIdFromUrl(url);
       if (!conversationId)

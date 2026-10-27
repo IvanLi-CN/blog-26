@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, asc, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { buildEmbeddingInput, cosineSimilarity, hashEmbeddingInput } from "@/lib/ai/embeddings";
@@ -122,7 +122,8 @@ const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(va
 
 function meteringForStage(metering: AiUsageContext | undefined, stage: string) {
   if (!metering) return undefined;
-  const root = metering.idempotencyKey ?? metering.logicalRequestId ?? metering.feature;
+  const root =
+    metering.idempotencyKey ?? metering.logicalRequestId ?? `${metering.feature}:${randomUUID()}`;
   return { ...metering, idempotencyKey: `${root}:${stage}` };
 }
 

@@ -28,6 +28,7 @@ export async function initializeDB(force: boolean = false): Promise<void> {
 
       // Use Bun's built-in SQLite driver
       const sqlite = new Database(currentResolvedDBPath);
+      sqlite.exec("PRAGMA foreign_keys = ON");
       db = drizzle(sqlite, { schema });
       console.log("Connected to the SQLite database at", currentResolvedDBPath);
       console.log("Drizzle ORM initialized.");

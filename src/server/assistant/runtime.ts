@@ -129,6 +129,15 @@ function historyMessages(messages: AssistantMessage[], excludedMessageId?: strin
     .map((message) => ({ role: message.role, content: message.content }));
 }
 
+function isAssistantSchemaUnavailable(error: unknown) {
+  return (
+    error instanceof Error &&
+    /no such table:\s*assistant_(?:conversations|generation_jobs|messages|message_citations)/iu.test(
+      error.message
+    )
+  );
+}
+
 function responseError(response: Response) {
   return new Error(`Assistant provider returned ${response.status} ${response.statusText}`);
 }
@@ -160,7 +169,7 @@ async function readBoundedProviderBody(body: ReadableStream<Uint8Array>, maxByte
   return new TextDecoder().decode(result);
 }
 
-async function readProviderResponse(
+export async function readAssistantProviderResponse(
   response: Response,
   signal: AbortSignal,
   onDelta: (content: string) => Promise<boolean>
@@ -191,21 +200,41 @@ async function readProviderResponse(
   let content = "";
   let usage: unknown | null = null;
   let responseBytes = 0;
+  let eventType = "";
+  let sawDone = false;
   const consume = async (line: string) => {
+    if (line.startsWith("event:")) {
+      eventType = line.slice(6).trim();
+      return;
+    }
     const value = line.startsWith("data:") ? line.slice(5).trim() : "";
-    if (!value || value === "[DONE]") return;
+    if (!value) return;
+    if (value === "[DONE]") {
+      sawDone = true;
+      eventType = "";
+      return;
+    }
     let payload: {
       choices?: Array<{
         delta?: { content?: string | null };
         message?: { content?: string | null };
       }>;
       usage?: unknown;
+      error?: { message?: string; code?: string } | string;
     };
     try {
       payload = JSON.parse(value) as typeof payload;
     } catch {
-      return;
+      throw new Error("assistant-provider-invalid-stream");
     }
+    if (eventType === "error" || payload.error) {
+      const error =
+        typeof payload.error === "string"
+          ? payload.error
+          : payload.error?.message || payload.error?.code || "assistant-provider-stream-error";
+      throw new Error(`assistant-provider-stream-error:${error}`);
+    }
+    eventType = "";
     if (payload.usage !== undefined) usage = payload.usage;
     const delta =
       payload.choices?.[0]?.delta?.content ?? payload.choices?.[0]?.message?.content ?? "";
@@ -230,6 +259,7 @@ async function readProviderResponse(
     }
     buffer += decoder.decode();
     for (const line of buffer.split(/\r?\n/u)) await consume(line);
+    if (!sawDone) throw new Error("assistant-provider-stream-incomplete");
   } finally {
     await reader.cancel().catch(() => undefined);
     reader.releaseLock();
@@ -314,7 +344,7 @@ async function defaultGenerateAssistantAnswer({
           body,
         }
       );
-      return readProviderResponse(response, providerSignal, onDelta);
+      return readAssistantProviderResponse(response, providerSignal, onDelta);
     },
     getOutcome: (value) => ({ status: "success", usage: value.usage }),
   });
@@ -351,7 +381,7 @@ export class AssistantRuntime {
     this.started = true;
     this.stopped = false;
     if (this.usesGlobalStorage) await initializeDB().catch(() => undefined);
-    await this.storage.recoverRunningGenerations(this.now());
+    await this.recoverRunningGenerations();
     this.schedule(0);
   }
 
@@ -365,7 +395,7 @@ export class AssistantRuntime {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     for (const controller of this.controllers.values()) controller.abort();
-    await this.storage.recoverRunningGenerations(this.now());
+    await this.recoverRunningGenerations();
     const pumpTask = this.pumpTask;
     if (pumpTask) await pumpTask;
     await Promise.allSettled([...this.processing]);
@@ -394,10 +424,11 @@ export class AssistantRuntime {
     this.pumping = true;
     try {
       while (!this.stopped) {
+        await this.recoverExpiredGenerations();
         const execution = await this.storage.claimNextGenerationJob(this.now(), this.leaseMs);
         if (!execution) break;
         if (this.stopped) {
-          await this.storage.recoverRunningGenerations(this.now());
+          await this.recoverRunningGenerations();
           break;
         }
         const task = this.process(execution);
@@ -410,6 +441,24 @@ export class AssistantRuntime {
       }
     } finally {
       this.pumping = false;
+    }
+  }
+
+  private async recoverRunningGenerations() {
+    try {
+      return await this.storage.recoverRunningGenerations(this.now());
+    } catch (error) {
+      if (isAssistantSchemaUnavailable(error)) return 0;
+      throw error;
+    }
+  }
+
+  private async recoverExpiredGenerations() {
+    try {
+      return await this.storage.recoverExpiredGenerations(this.now());
+    } catch (error) {
+      if (isAssistantSchemaUnavailable(error)) return 0;
+      throw error;
     }
   }
 
@@ -451,12 +500,16 @@ export class AssistantRuntime {
     } catch (error) {
       const cancelled =
         controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError");
-      await this.storage.finishGeneration(jobId, execution.job.attempt, {
-        status: cancelled ? "cancelled" : "failed",
-        content,
-        errorCode: cancelled ? "cancelled" : errorCode(error),
-        now: this.now(),
-      });
+      try {
+        await this.storage.finishGeneration(jobId, execution.job.attempt, {
+          status: cancelled ? "cancelled" : "failed",
+          content,
+          errorCode: cancelled ? "cancelled" : errorCode(error),
+          now: this.now(),
+        });
+      } catch {
+        await this.recoverRunningGenerations().catch(() => undefined);
+      }
     } finally {
       clearInterval(renewTimer);
       this.controllers.delete(jobId);

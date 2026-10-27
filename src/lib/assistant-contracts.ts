@@ -320,6 +320,11 @@ export type AssistantMessageStorage = {
     frontendUserId: string,
     input: UpdateAssistantGenerationJobInput
   ): Promise<AssistantGenerationJob | null>;
+  findIdempotentTurn(
+    frontendUserId: string,
+    requestId: string,
+    clientRequestId?: string | null
+  ): Promise<AssistantTurnSubmission | null>;
   submitTurn(input: SubmitAssistantTurnInput): Promise<AssistantTurnSubmission>;
   getConversationState(
     conversationId: string,
@@ -336,6 +341,7 @@ export type AssistantMessageStorage = {
   getJobExecution(generationJobId: string): Promise<AssistantJobExecution | null>;
   getFrontendUserIsAdmin(frontendUserId: string): Promise<boolean>;
   recoverRunningGenerations(now?: number): Promise<number>;
+  recoverExpiredGenerations(now?: number): Promise<number>;
   claimNextGenerationJob(now: number, leaseMs: number): Promise<AssistantJobExecution | null>;
   renewGenerationLease(
     generationJobId: string,

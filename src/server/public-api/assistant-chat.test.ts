@@ -9,6 +9,7 @@ import { createAssistantStorage } from "@/lib/assistant-storage";
 import { db, initializeDB } from "@/lib/db";
 import {
   assistantConversations,
+  assistantQuotaPolicies,
   frontendIdentityLinks,
   frontendSessions,
   frontendUsers,
@@ -28,6 +29,8 @@ const originalNodeEnv = process.env.NODE_ENV;
 const adminEmail = "assistant-chat-admin@test.local";
 let assistantService: AssistantService | null = null;
 let assistantRuntime: ReturnType<typeof createAssistantRuntimeForTest> | null = null;
+let generationEntered: Promise<void> = Promise.resolve();
+let releaseGeneration: (() => void) | null = null;
 
 function request(pathname: string, options: RequestInit = {}) {
   return new Request(`http://localhost/api/public${pathname}`, {
@@ -125,17 +128,28 @@ describe("public assistant chat API", () => {
 
   beforeEach(async () => {
     await db?.delete(assistantConversations);
+    await db?.delete(assistantQuotaPolicies);
     await db?.delete(readerSessions);
     await db?.delete(readers);
     await db?.delete(frontendSessions);
     await db?.delete(frontendIdentityLinks);
     await db?.delete(frontendUsers);
     await db?.delete(users);
+    releaseGeneration = null;
+    let markGenerationEntered!: () => void;
+    generationEntered = new Promise<void>((resolve) => {
+      markGenerationEntered = resolve;
+    });
+    const generationGate = new Promise<void>((resolve) => {
+      releaseGeneration = resolve;
+    });
     const storage = createAssistantStorage(db ?? undefined);
     assistantRuntime = createAssistantRuntimeForTest({
       storage,
       generate: async ({ onDelta }) => {
+        markGenerationEntered();
         await onDelta("Deterministic assistant answer");
+        await generationGate;
         return { content: "Deterministic assistant answer", citations: [] };
       },
       pumpDelayMs: 1,
@@ -144,6 +158,7 @@ describe("public assistant chat API", () => {
   });
 
   afterEach(async () => {
+    releaseGeneration?.();
     await assistantRuntime?.stop();
     assistantRuntime = null;
     assistantService = null;
@@ -151,6 +166,7 @@ describe("public assistant chat API", () => {
 
   afterAll(async () => {
     await stopAssistantRuntime();
+    db?.$client.close();
     if (originalDbPath === undefined) delete process.env.DB_PATH;
     else process.env.DB_PATH = originalDbPath;
     if (originalAdminEmail === undefined) delete process.env.ADMIN_EMAIL;
@@ -166,6 +182,17 @@ describe("public assistant chat API", () => {
     expect(await unauthorized.json()).toMatchObject({ code: "UNAUTHORIZED" });
 
     const cookie = await bootstrapSession();
+    const tooLong = await assistant("/chat", cookie, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        requestId: "api-chat-too-long",
+        content: "x".repeat(8_193),
+      }),
+    });
+    expect(tooLong.status).toBe(400);
+    expect(await tooLong.json()).toMatchObject({ code: "BAD_REQUEST" });
+
     const quota = await assistant("/chat/quota", cookie);
     expect(quota.status).toBe(200);
     expect(quota.headers.get("cache-control")).toBe("no-store, private");
@@ -187,6 +214,18 @@ describe("public assistant chat API", () => {
     };
     expect(accepted.conversationId).toBeTruthy();
     expect(accepted.turnId).toBeTruthy();
+
+    const conflict = await assistant("/chat", cookie, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        conversationId: accepted.conversationId,
+        requestId: "api-chat-conflict-request",
+        content: "A concurrent turn",
+      }),
+    });
+    expect(conflict.status).toBe(409);
+    expect(await conflict.json()).toMatchObject({ code: "CONFLICT" });
 
     const retry = await assistant("/chat", cookie, {
       method: "POST",
@@ -219,6 +258,8 @@ describe("public assistant chat API", () => {
     );
     expect(events.status).toBe(200);
     expect(events.headers.get("content-type")).toContain("text/event-stream");
+    await generationEntered;
+    releaseGeneration?.();
     const eventText = await events.text();
     expect(eventText).toContain("event: snapshot");
     expect(eventText).toContain('"status":"completed"');
@@ -260,5 +301,58 @@ describe("public assistant chat API", () => {
       const response = await assistant(pathname, otherCookie, options);
       expect(response.status).toBe(404);
     }
+  });
+
+  it("replays an accepted reader turn after quota exhaustion", async () => {
+    const cookie = await bootstrapReaderSession();
+    const submitted = await assistant("/chat", cookie, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        requestId: "reader-idempotent-request",
+        clientRequestId: "reader-idempotent-client",
+        content: "Recover this accepted turn",
+      }),
+    });
+    expect(submitted.status).toBe(202);
+    const accepted = (await submitted.json()) as { turnId: string };
+
+    const now = Date.now();
+    await db?.insert(assistantQuotaPolicies).values({
+      id: "reader-idempotent-quota-policy",
+      scope: "global",
+      tokenHourlyLimit: 1_000_000,
+      tokenWeeklyLimit: 1_000_000,
+      questionHourlyLimit: 0,
+      questionWeeklyLimit: 0,
+      maxConversations: 3,
+      retentionMs: 7 * 24 * 60 * 60 * 1000,
+      timezone: "UTC",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const rejected = await assistant("/chat", cookie, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        requestId: "reader-quota-request",
+        content: "This new turn should be rejected",
+      }),
+    });
+    expect(rejected.status).toBe(429);
+    expect(await rejected.json()).toMatchObject({ code: "QUOTA" });
+
+    const retry = await assistant("/chat", cookie, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        requestId: "reader-idempotent-request",
+        clientRequestId: "reader-idempotent-client",
+        content: "The client retried after losing the response",
+      }),
+    });
+    expect(retry.status).toBe(202);
+    expect((await retry.json()).turnId).toBe(accepted.turnId);
   });
 });

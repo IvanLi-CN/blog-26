@@ -66,24 +66,37 @@ export class AssistantService {
     principal: FrontendPrincipal,
     input: Omit<SubmitAssistantTurnInput, "frontendUserId" | "isAdmin">
   ) {
-    if (!principal.isAdmin) {
+    let submission: AssistantTurnSubmission | null = await this.storage.findIdempotentTurn(
+      principal.id,
+      input.requestId,
+      input.clientRequestId
+    );
+    if (!submission && !principal.isAdmin) {
       const quota = await getAssistantQuotaSnapshot(principal.id);
       const exhausted =
         quota.tokenHour >= quota.policy.tokenHourlyLimit ||
         quota.tokenWeek >= quota.policy.tokenWeeklyLimit ||
         quota.questionHour >= quota.policy.questionHourlyLimit ||
         quota.questionWeek >= quota.policy.questionWeeklyLimit;
-      if (exhausted) throw new AssistantServiceError("quota", "Assistant quota exceeded");
+      if (exhausted) {
+        submission = await this.storage.findIdempotentTurn(
+          principal.id,
+          input.requestId,
+          input.clientRequestId
+        );
+        if (!submission) throw new AssistantServiceError("quota", "Assistant quota exceeded");
+      }
     }
-    let submission: AssistantTurnSubmission;
-    try {
-      submission = await this.storage.submitTurn({
-        ...input,
-        frontendUserId: principal.id,
-        isAdmin: principal.isAdmin,
-      });
-    } catch (error) {
-      translateStorageError(error);
+    if (!submission) {
+      try {
+        submission = await this.storage.submitTurn({
+          ...input,
+          frontendUserId: principal.id,
+          isAdmin: principal.isAdmin,
+        });
+      } catch (error) {
+        translateStorageError(error);
+      }
     }
     await this.runtime.start();
     this.runtime.enqueue();
@@ -183,8 +196,11 @@ export class AssistantService {
       return { stopped: false, generationJob: existing };
     const generationJob = await this.storage.stopGeneration(turnId, principal.id, Date.now());
     if (!generationJob) throw new AssistantServiceError("not-found", "Assistant turn not found");
-    this.runtime.cancelGeneration(generationJob.id);
-    return { stopped: true, generationJob };
+    const stopped =
+      (generationJob.status === "running" && generationJob.cancelRequested) ||
+      (generationJob.status === "cancelled" && generationJob.errorCode === "cancelled-by-user");
+    if (stopped) this.runtime.cancelGeneration(generationJob.id);
+    return { stopped, generationJob };
   }
 
   async delete(principal: FrontendPrincipal, conversationId: string) {

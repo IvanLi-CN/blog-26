@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import type { AiUsageContext } from "@/lib/ai-usage";
 import { uniqueRankedContent } from "@/lib/search/content-identity";
@@ -169,9 +170,10 @@ type SemanticExecution = {
 const MAX_SEMANTIC_VECTOR_ROWS = 10_000;
 type ResolvedSearchConfig = Awaited<ReturnType<typeof getResolvedLlmConfig>>;
 
-function meteringForStage(metering: AiUsageContext | undefined, stage: string) {
+export function meteringForStage(metering: AiUsageContext | undefined, stage: string) {
   if (!metering) return undefined;
-  const root = metering.idempotencyKey ?? metering.logicalRequestId ?? metering.feature;
+  const root =
+    metering.idempotencyKey ?? metering.logicalRequestId ?? `${metering.feature}:${randomUUID()}`;
   return { ...metering, idempotencyKey: `${root}:${stage}` };
 }
 

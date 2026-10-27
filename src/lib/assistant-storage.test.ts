@@ -1,11 +1,18 @@
 import { Database } from "bun:sqlite";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import path from "node:path";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
-import { createAssistantStorage } from "@/lib/assistant-storage";
+import { createAssistantStorage, MAX_ASSISTANT_CONVERSATION_BYTES } from "@/lib/assistant-storage";
 import * as schema from "@/lib/schema";
-import { assistantMessageCitations, assistantQuotaPolicies, frontendUsers } from "@/lib/schema";
+import {
+  assistantConversations,
+  assistantGenerationJobs,
+  assistantMessageCitations,
+  assistantQuotaPolicies,
+  frontendUsers,
+} from "@/lib/schema";
 
 const migrationsPath = path.resolve("drizzle");
 const sqlite = new Database(":memory:");
@@ -198,6 +205,42 @@ describe("assistant SQLite storage", () => {
     ).rejects.toThrow("role assistant");
   });
 
+  it("bounds retained conversation content before accepting another turn", async () => {
+    await database.insert(frontendUsers).values({
+      id: "frontend-storage-bound-owner",
+      adminUserId: null,
+      isAdmin: false,
+      displayName: "Bound Owner",
+      email: null,
+      avatarUrl: "/site-assets/default-avatar.svg",
+      profileUrl: null,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    const storage = createAssistantStorage(database);
+    const conversation = await storage.createConversation({
+      id: "conversation-storage-bound",
+      frontendUserId: "frontend-storage-bound-owner",
+      now: 450,
+    });
+    await storage.appendMessage({
+      conversationId: conversation.id,
+      frontendUserId: conversation.frontendUserId,
+      role: "user",
+      content: "x".repeat(MAX_ASSISTANT_CONVERSATION_BYTES),
+      now: 451,
+    });
+    await expect(
+      storage.submitTurn({
+        conversationId: conversation.id,
+        frontendUserId: conversation.frontendUserId,
+        requestId: "bound-history-request",
+        content: "one more question",
+        now: 452,
+      })
+    ).rejects.toMatchObject({ code: "quota" });
+  });
+
   it("atomically creates a first turn, enforces one active turn, and blocks late deltas", async () => {
     await database.insert(frontendUsers).values({
       id: "frontend-storage-runtime-owner",
@@ -242,6 +285,15 @@ describe("assistant SQLite storage", () => {
       now: 501,
     });
     expect(retry.generationJob.id).toBe(first.generationJob.id);
+    expect(
+      (
+        await storage.findIdempotentTurn(
+          "frontend-storage-runtime-owner",
+          "runtime-request-2",
+          "runtime-client-1"
+        )
+      )?.generationJob.id
+    ).toBe(first.generationJob.id);
     await expect(
       storage.submitTurn({
         frontendUserId: "frontend-storage-runtime-owner",
@@ -324,6 +376,38 @@ describe("assistant SQLite storage", () => {
     expect(
       racing.filter((result) => result.status === "rejected").map((result) => result.reason.code)
     ).toEqual(["conflict"]);
+
+    await expect(
+      storage.submitTurn({
+        frontendUserId: "frontend-storage-runtime-owner",
+        conversationId: first.conversation.id,
+        requestId: "runtime-expired-request",
+        content: "Submit after expiry",
+        now: 2_000,
+      })
+    ).rejects.toMatchObject({ code: "gone" });
+    expect(
+      await storage.getConversation(first.conversation.id, "frontend-storage-runtime-owner")
+    ).toMatchObject({ status: "expired" });
+    expect(
+      await storage.getGenerationJob(first.generationJob.id, "frontend-storage-runtime-owner")
+    ).toMatchObject({
+      status: "cancelled",
+      userMessageId: null,
+      assistantMessageId: null,
+    });
+    expect(
+      await database
+        .select()
+        .from(assistantGenerationJobs)
+        .where(eq(assistantGenerationJobs.conversationId, first.conversation.id))
+    ).toHaveLength(2);
+    expect(
+      await database
+        .select()
+        .from(assistantConversations)
+        .where(eq(assistantConversations.id, first.conversation.id))
+    ).toMatchObject([{ status: "expired" }]);
 
     const afterExpiry = await storage.submitTurn({
       frontendUserId: "frontend-storage-runtime-owner",
