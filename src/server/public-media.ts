@@ -1144,7 +1144,7 @@ async function buildImagorPath(params: {
   const sourceUrl = buildImagorSourceUrl(params.request, params.context, params.ref);
 
   const filters: string[] = getImagorFrameFilters(params.ref, params.variant);
-  filters.push(`format(${format})`);
+  filters.push(`format(${format})`, "strip_exif()");
   if (params.renderId) {
     // Explicit render IDs are source/presentation candidates. List cards stay clean by omitting
     // the render ID; an explicit watermark candidate must keep its requested watermark.
@@ -1167,7 +1167,6 @@ async function buildImagorPath(params: {
         )
       );
     }
-    filters.push("strip_exif()");
   } else if (
     !isUnwatermarkedPublicMediaVariant(
       params.ref.role,

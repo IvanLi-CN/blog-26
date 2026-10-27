@@ -2005,6 +2005,18 @@ public: false
     expect(snapshotPost?.media?.content?.[0]?.presentations?.content?.b).toContain(
       "/wm-b-v5/content"
     );
+
+    const listResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/posts?limit=50"),
+      "/posts"
+    );
+    expect(listResponse.status).toBe(200);
+    const listPayload = await readJson(listResponse);
+    const listPost = listPayload.posts.find(
+      (post: { slug: string }) => post.slug === "public-media-post"
+    );
+    expect(listPost?.image).toContain("/wm-b-v5/cover");
+    expect(listPost?.media?.cover?.variants?.card).not.toContain("/wm-");
   }, 30_000);
 
   it("omits local public content whose media source is missing", async () => {
@@ -2322,6 +2334,7 @@ public: false
       const url =
         typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       expect(init?.method ?? "GET").toBe("GET");
+      expect(url).toContain("strip_exif()");
       if (url.includes("/fit-in/960x640/")) {
         expect(url).not.toContain("watermark(");
       } else {
