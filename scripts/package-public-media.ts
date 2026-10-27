@@ -83,6 +83,7 @@ export type PublicMediaPackageOptions = {
   retryDelayMs?: number;
   fallbackFetchImpl?: PublicMediaFetcher;
   includeDerivedWatermarkVariants?: boolean;
+  includeBaseMediaVariants?: boolean;
   includeMigratedWatermarkVariants?: boolean;
   migrateLegacyWatermarks?: boolean;
   clippingResourceUrls?: string[];
@@ -1393,6 +1394,13 @@ export async function packagePublicMedia(
       for (const sibling of deriveSiblingWatermarkReferences(reference, mediaOrigin, basePath)) {
         const siblingKey = fetchKey(sibling);
         if (!uniqueReferences.has(siblingKey)) addUniqueReference(sibling);
+      }
+      if (options.includeBaseMediaVariants) {
+        const base = deriveBaseReference(reference, mediaOrigin, basePath);
+        if (base) {
+          const baseKey = fetchKey(base);
+          if (!uniqueReferences.has(baseKey)) addUniqueReference(base);
+        }
       }
       // Legacy snapshots can render the unversioned facade URL while still
       // exposing v1 watermark candidates in their media metadata. Freeze the
