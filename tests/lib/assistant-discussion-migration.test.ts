@@ -260,6 +260,108 @@ describe("assistant discussion migration", () => {
     }
   });
 
+  it("keeps the completed current version during same-target reprocessing and repeated apply", async () => {
+    const directory = withTempDirectory();
+    try {
+      const targetPath = createTarget(directory);
+      const piPath = createPi(directory);
+      const initial = await migrateAssistantDiscussions({
+        targetDbPath: targetPath,
+        piDbPath: piPath,
+        mode: "apply",
+        now: () => 15_000,
+        resolveTrustedCreator: trustedReader,
+      });
+      expect(initial.status).toBe("complete");
+
+      const target = new Database(targetPath);
+      target.query("UPDATE memo_clippings SET manifest = ?, updated_at = ? WHERE id = ?").run(
+        JSON.stringify({
+          schemaVersion: 1,
+          id: "clip-1",
+          memoId: "memo.md",
+          creatorId: "legacy-reader",
+          revision: 3,
+          enabled: true,
+          deleted: false,
+          targetUrl: "https://example.test/current",
+          conversationId: "1",
+          previousConversations: [
+            { targetUrl: "https://example.test/legacy", conversationId: "2" },
+          ],
+          currentVersionId: "version-current",
+          activeVersionId: "version-reprocess",
+          versions: [
+            {
+              id: "version-current",
+              revision: 2,
+              targetUrl: "https://example.test/current",
+              createdAt: 2,
+              status: "completed",
+              summaryState: "completed",
+              translationState: "completed",
+            },
+            {
+              id: "version-reprocess",
+              revision: 3,
+              targetUrl: "https://example.test/current",
+              createdAt: 3,
+              status: "queued",
+              summaryState: "pending",
+              translationState: "pending",
+            },
+          ],
+        }),
+        3,
+        "clip-1"
+      );
+      target.close();
+
+      const reprocess = await migrateAssistantDiscussions({
+        targetDbPath: targetPath,
+        piDbPath: piPath,
+        mode: "apply",
+        cleanup: true,
+        now: () => 15_001,
+        resolveTrustedCreator: trustedReader,
+      });
+      expect(reprocess.status).toBe("complete");
+      expect(reprocess.cleanup.removed).toEqual([]);
+      expect(reprocess.cleanup.skipped).toHaveLength(2);
+      expect(reprocess.cleanup.skipped.every((item) => item.reason === "clipping-processing")).toBe(
+        true
+      );
+
+      const repeated = await migrateAssistantDiscussions({
+        targetDbPath: targetPath,
+        piDbPath: piPath,
+        mode: "apply",
+        cleanup: true,
+        now: () => 15_002,
+        resolveTrustedCreator: trustedReader,
+      });
+      expect(repeated.status).toBe("complete");
+      const after = new Database(targetPath);
+      const clippingVersionIds = after
+        .query<{ clipping_version_id: string | null }, [string]>(
+          "SELECT clipping_version_id FROM assistant_conversations WHERE clipping_memo_id = ? ORDER BY id"
+        )
+        .all("memo.md")
+        .map((row) => row.clipping_version_id);
+      expect(clippingVersionIds).toHaveLength(2);
+      expect(clippingVersionIds).toEqual(expect.arrayContaining(["version-current", null]));
+      expect(after.query("SELECT COUNT(*) AS count FROM assistant_conversations").get()).toEqual({
+        count: 2,
+      });
+      expect(after.query("SELECT COUNT(*) AS count FROM assistant_messages").get()).toEqual({
+        count: 7,
+      });
+      after.close();
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it("resumes after an interruption without duplicating the completed conversation", async () => {
     const directory = withTempDirectory();
     try {
@@ -563,14 +665,14 @@ describe("assistant discussion migration", () => {
       );
 
       const migrated = new Database(targetPath);
-      expect(
-        migrated
-          .query<{ clipping_version_id: string }, []>(
-            "SELECT clipping_version_id FROM assistant_conversations ORDER BY id"
-          )
-          .all()
-          .map((row) => row.clipping_version_id)
-      ).toEqual(expect.arrayContaining(["version-processing", "version-current"]));
+      const clippingVersionIds = migrated
+        .query<{ clipping_version_id: string | null }, []>(
+          "SELECT clipping_version_id FROM assistant_conversations ORDER BY id"
+        )
+        .all()
+        .map((row) => row.clipping_version_id);
+      expect(clippingVersionIds).toHaveLength(2);
+      expect(clippingVersionIds.every((versionId) => versionId === null)).toBe(true);
       migrated.close();
       const source = new Database(piPath);
       expect(source.query("SELECT COUNT(*) AS count FROM conversations").get()).toEqual({

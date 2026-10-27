@@ -541,7 +541,7 @@ function versionProcessing(version: unknown): boolean {
 
 function versionMatchesTarget(version: JsonObject | undefined, targetUrl: string | null): boolean {
   if (!version) return false;
-  return targetUrl === null || asString(version.targetUrl) === targetUrl;
+  return asString(version.targetUrl) === targetUrl;
 }
 
 function versionForTarget(
@@ -551,16 +551,15 @@ function versionForTarget(
 ): { id: string | null; processing: boolean } {
   const versions = Array.isArray(manifest.versions) ? manifest.versions.filter(isObject) : [];
   const active = versions.find((version) => version.id === manifest.activeVersionId);
-  const preferred = preferredId
-    ? versions.find((version) => version.id === preferredId)
+  const current = preferredId
+    ? versions.find(
+        (version) => version.id === preferredId && versionMatchesTarget(version, targetUrl)
+      )
     : undefined;
-  const candidates = versions
-    .filter((version) => versionMatchesTarget(version, targetUrl))
-    .sort((a, b) => Number(b.createdAt ?? 0) - Number(a.createdAt ?? 0));
-  const candidate =
-    (versionMatchesTarget(active, targetUrl) ? active : undefined) ??
-    (versionMatchesTarget(preferred, targetUrl) ? preferred : undefined) ??
-    candidates[0];
+  const fallback = versions.findLast(
+    (version) => versionMatchesTarget(version, targetUrl) && Boolean(asString(version.sourceHash))
+  );
+  const candidate = current ?? fallback;
   return {
     id: asString(candidate?.id),
     processing: versionProcessing(candidate) || versionProcessing(active),
