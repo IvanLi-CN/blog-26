@@ -159,7 +159,10 @@ async function synthesizeTouchScroll(
       const maxScrollTop = Math.max(0, scroll.scrollHeight - window.innerHeight);
       const gestureHeadroom = Math.abs(gestureDistance) + 240;
       target.scrollIntoView({ block: "center", inline: "nearest" });
-      scroll.scrollTop = Math.max(0, Math.min(maxScrollTop - gestureHeadroom, scroll.scrollTop));
+      scroll.scrollTop =
+        gestureDistance < 0
+          ? Math.max(0, Math.min(maxScrollTop - gestureHeadroom, scroll.scrollTop))
+          : Math.min(maxScrollTop, Math.max(gestureHeadroom, scroll.scrollTop));
       const box = target.getBoundingClientRect();
       return {
         x: Math.max(2, Math.min(window.innerWidth - 2, box.left + box.width / 2)),
@@ -539,9 +542,9 @@ test.describe("Console system share Web Demo", () => {
         await page.getByRole("button", { name: "移除 分享附件.txt" }).click();
         await expect(page.getByTestId("system-share-empty-attachments")).toBeVisible();
       }
-      const result = await synthesizeTouchScroll(page, selector, -180);
-      expect(result.after).toBeGreaterThanOrEqual(result.before);
-      gestureDeltas.push(result.after - result.before);
+      const result = await synthesizeTouchScroll(page, selector, 180);
+      expect(result.after).toBeLessThanOrEqual(result.before);
+      gestureDeltas.push(result.before - result.after);
     }
     expect(Math.max(...gestureDeltas)).toBeGreaterThan(0);
 
