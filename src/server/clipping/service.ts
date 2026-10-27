@@ -18,6 +18,7 @@ import {
 } from "../assistant/runtime";
 import {
   type AssistantService,
+  AssistantServiceError,
   type AssistantSnapshot,
   getAssistantService,
 } from "../assistant/service";
@@ -391,9 +392,7 @@ export class ClippingService {
       assistantVersionsToStop = manifest.versions
         .filter(
           (version) =>
-            !recognition?.enabled ||
-            !authored ||
-            version.targetUrl !== (recognition.targetUrl ?? manifest.targetUrl)
+            !recognition?.enabled || !authored || version.targetUrl !== recognition?.targetUrl
         )
         .map((version) => version.id);
       const activeVersion = manifest.versions.find(
@@ -898,6 +897,10 @@ export class ClippingService {
   private async ensureAssistantBinding(memoId: string, principal: FrontendPrincipal) {
     this.assertAssistantChatReady();
     await this.reconcile(memoId);
+    return this.ensureAssistantBindingCurrent(memoId, principal);
+  }
+
+  private async ensureAssistantBindingCurrent(memoId: string, principal: FrontendPrincipal) {
     const id = this.known.get(memoId);
     const manifest = id ? await this.store.manifest(id) : null;
     if (!manifest?.enabled || manifest.deleted || !manifest.targetUrl)
@@ -998,27 +1001,37 @@ export class ClippingService {
     requestId: string,
     expected?: { revision: number; targetUrl: string }
   ) {
-    const binding = await this.ensureAssistantBinding(memoId, principal);
-    if (
-      expected &&
-      (binding.manifest.revision !== expected.revision ||
-        binding.manifest.targetUrl !== expected.targetUrl)
-    )
-      throw new ClippingTargetChangedError();
-    const authored = await readAuthoredMemo(memoId);
-    return this.assistantService.submit(principal, {
-      conversationId: binding.conversation?.id ?? null,
-      requestId,
-      clientRequestId: requestId,
-      content: text,
-      kind: "clipping",
-      title: extractMemoTitle(authored.frontmatter, authored.body),
-      clippingMemoId: memoId,
-      clippingVersionId: binding.version.id,
+    return this.withMutationLock(async () => {
+      this.assertAssistantChatReady();
+      await this.reconcileUnlocked(memoId);
+      const binding = await this.ensureAssistantBindingCurrent(memoId, principal);
+      if (
+        expected &&
+        (binding.manifest.revision !== expected.revision ||
+          binding.manifest.targetUrl !== expected.targetUrl)
+      )
+        throw new ClippingTargetChangedError();
+      const authored = await readAuthoredMemo(memoId);
+      return this.assistantService.submit(principal, {
+        conversationId: binding.conversation?.id ?? null,
+        requestId,
+        clientRequestId: requestId,
+        content: text,
+        kind: "clipping",
+        title: extractMemoTitle(authored.frontmatter, authored.body),
+        clippingMemoId: memoId,
+        clippingVersionId: binding.version.id,
+      });
     });
   }
 
-  async assistantStop(principal: FrontendPrincipal, turnId: string) {
+  async assistantStop(memoId: string, principal: FrontendPrincipal, turnId: string) {
+    const job = await this.assistantService.storage.getGenerationJob(turnId, principal.id);
+    const conversation = job
+      ? await this.assistantService.storage.getConversation(job.conversationId, principal.id)
+      : null;
+    if (conversation?.kind !== "clipping" || conversation.clippingMemoId !== memoId)
+      throw new AssistantServiceError("not-found", "Assistant turn not found");
     return this.assistantService.stop(principal, { turnId });
   }
 

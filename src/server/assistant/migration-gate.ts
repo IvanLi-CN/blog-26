@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { ASSISTANT_DISCUSSION_MIGRATION_ID } from "@/lib/assistant-discussion-migration";
 import { db, initializeDB } from "@/lib/db";
 import { assistantConversations, assistantMigrationState, memoClippings } from "@/lib/schema";
@@ -64,6 +64,28 @@ export async function readAssistantMigrationGate(
   if (!db) {
     return { ready: false, status: "pending", reason: "assistant-database-unavailable" };
   }
+
+  const requiredTables = [
+    "frontend_users",
+    "memo_clippings",
+    "assistant_conversations",
+    "assistant_messages",
+    "assistant_message_citations",
+    "assistant_generation_jobs",
+    "assistant_migration_state",
+    "ai_usage_records",
+    "ai_usage_daily_summaries",
+    "assistant_quota_policies",
+    "assistant_quota_resets",
+  ];
+  const tableRows = await db.all<{ name: string }>(sql`
+    SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (${sql.join(
+      requiredTables.map((name) => sql`${name}`),
+      sql`, `
+    )})
+  `);
+  if (tableRows.length !== requiredTables.length)
+    return { ready: false, status: "pending", reason: "assistant-schema-required" };
 
   try {
     await db.select({ id: assistantConversations.id }).from(assistantConversations).limit(1).get();

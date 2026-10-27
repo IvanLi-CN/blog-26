@@ -234,6 +234,26 @@ test("uses per-user unified conversations across same-target versions and separa
       status: "cancelled",
       cancelRequested: true,
     });
+    const invalidTargetPending = await assistantStorage.submitTurn({
+      frontendUserId: principal.id,
+      kind: "clipping",
+      clippingMemoId: memoId,
+      clippingVersionId: "44444444-4444-4444-8444-444444444444",
+      requestId: "chat-invalid-target-pending",
+      content: "Pending invalid target",
+      now: 5,
+    });
+    await writeFile(
+      join(contentRoot, memoId),
+      matter.stringify("Author remarks\n\n#剪藏", changedAgain.data)
+    );
+    await service.reconcile(memoId);
+    expect(
+      await assistantStorage.getGenerationJob(invalidTargetPending.generationJob.id, principal.id)
+    ).toMatchObject({
+      status: "cancelled",
+      cancelRequested: true,
+    });
   } finally {
     await service.close();
     await assistantRuntime.stop();

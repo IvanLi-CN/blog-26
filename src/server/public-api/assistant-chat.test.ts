@@ -236,7 +236,17 @@ describe("public assistant chat API", () => {
       `/chat/snapshot?conversationId=${encodeURIComponent(clipping.conversation.id)}`,
       cookie
     );
-    expect(genericClippingSnapshot.status).toBe(404);
+    expect(genericClippingSnapshot.status).toBe(200);
+    expect(await genericClippingSnapshot.json()).toMatchObject({
+      conversation: { id: clipping.conversation.id, kind: "clipping" },
+    });
+    const conversations = await assistant("/chat", cookie);
+    expect(conversations.status).toBe(200);
+    expect((await conversations.json()).conversations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: clipping.conversation.id, kind: "clipping" }),
+      ])
+    );
     const genericClippingSubmit = await assistant("/chat", cookie, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -258,7 +268,7 @@ describe("public assistant chat API", () => {
         content: "private clipping question",
       }),
     });
-    expect(genericClippingExistingSubmit.status).toBe(404);
+    expect(genericClippingExistingSubmit.status).toBe(409);
     const mixedStop = await assistant("/chat/stop", cookie, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -267,13 +277,20 @@ describe("public assistant chat API", () => {
         turnId: clipping.generationJob.id,
       }),
     });
-    expect(mixedStop.status).toBe(404);
+    expect(mixedStop.status).toBe(409);
     expect(
       await assistantService.storage.getGenerationJob(
         clipping.generationJob.id,
         owner.frontendUserId
       )
     ).toMatchObject({ status: "queued" });
+    const clippingStop = await assistant("/chat/stop", cookie, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ conversationId: clipping.conversation.id }),
+    });
+    expect(clippingStop.status).toBe(200);
+    expect(await clippingStop.json()).toMatchObject({ stopped: true });
 
     const conflict = await assistant("/chat", cookie, {
       method: "POST",

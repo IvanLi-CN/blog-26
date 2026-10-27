@@ -655,7 +655,9 @@ describe("assistant SQLite storage", () => {
       attempt.status === "fulfilled" ? [attempt.value] : []
     );
     expect(accepted).toHaveLength(1);
-    expect(await storage.listConversations(owner)).toHaveLength(1);
+    expect(await storage.listConversations(owner)).toEqual([
+      expect.objectContaining({ kind: "clipping", clippingMemoId: "Memos/concurrent.md" }),
+    ]);
   });
 
   it("rejects request ids reused across assistant conversation kinds", async () => {

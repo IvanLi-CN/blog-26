@@ -1638,7 +1638,7 @@ export async function handlePublicApiRequest(
       return result;
     }
     const clippingMatch = pathname.match(
-      /^\/memos\/([^/]+)\/clipping(?:\/(status|reprocess|chat(?:\/events)?))?$/
+      /^\/memos\/([^/]+)\/clipping(?:\/(status|reprocess|chat(?:\/(?:events|stop))?))?$/
     );
     if (clippingMatch) {
       const result = await handleClippingRequest(

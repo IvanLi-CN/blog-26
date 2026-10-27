@@ -59,7 +59,20 @@ export type AssistantRuntimeOptions = {
   now?: () => number;
 };
 
-const contextProviders = new Map<AssistantConversationKind, AssistantContextProvider>();
+const assistantRuntimeStateKey = Symbol.for("blog26.assistant.runtime");
+type SharedAssistantRuntimeState = {
+  contextProviders: Map<AssistantConversationKind, AssistantContextProvider>;
+  runtime: AssistantRuntime | null;
+};
+const shared = globalThis as typeof globalThis & {
+  [assistantRuntimeStateKey]?: SharedAssistantRuntimeState;
+};
+let assistantRuntimeState = shared[assistantRuntimeStateKey];
+if (!assistantRuntimeState) {
+  assistantRuntimeState = { contextProviders: new Map(), runtime: null };
+  shared[assistantRuntimeStateKey] = assistantRuntimeState;
+}
+const contextProviders = assistantRuntimeState.contextProviders;
 
 export function registerAssistantContextProvider(
   kind: AssistantConversationKind,
@@ -589,11 +602,9 @@ function errorCode(error: unknown) {
   return "generation-failed";
 }
 
-let assistantRuntime: AssistantRuntime | null = null;
-
 export function getAssistantRuntime() {
-  assistantRuntime ??= new AssistantRuntime();
-  return assistantRuntime;
+  assistantRuntimeState.runtime ??= new AssistantRuntime();
+  return assistantRuntimeState.runtime;
 }
 
 export async function startAssistantRuntime() {
@@ -603,8 +614,8 @@ export async function startAssistantRuntime() {
 }
 
 export async function stopAssistantRuntime() {
-  if (!assistantRuntime) return;
-  await assistantRuntime.stop();
+  if (!assistantRuntimeState.runtime) return;
+  await assistantRuntimeState.runtime.stop();
 }
 
 export function createAssistantRuntimeForTest(options: AssistantRuntimeOptions) {

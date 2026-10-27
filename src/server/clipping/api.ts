@@ -22,6 +22,7 @@ const turnSchema = z.object({
   text: z.string().trim().min(1).max(10_000),
   requestId: z.string().regex(/^[a-zA-Z0-9_-]{1,128}$/),
 });
+const stopSchema = z.object({ turnId: z.string().trim().min(1).max(200) }).strict();
 
 const MAX_ACTIVE_CLIPPING_EVENT_STREAMS = 4;
 const activeClippingEventStreams = new Map<string, number>();
@@ -208,7 +209,9 @@ function mapAssistantSnapshot(snapshot: AssistantSnapshot | null) {
     error:
       active?.status === "failed"
         ? active.errorCode
-        : (snapshot.generationJobs.findLast((job) => job.status === "failed")?.errorCode ?? null),
+        : snapshot.generationJobs.at(-1)?.status === "failed"
+          ? (snapshot.generationJobs.at(-1)?.errorCode ?? null)
+          : null,
   };
 }
 
@@ -263,12 +266,14 @@ async function routeClippingRequest(
   operation: string,
   ctx: TRPCContext
 ) {
-  if (!["", "status", "reprocess", "chat", "chat/events"].includes(operation))
+  if (!["", "status", "reprocess", "chat", "chat/events", "chat/stop"].includes(operation))
     return response({ error: "Not found" }, 404);
   const store = new ClippingStore();
   const privateOperation = operation === "reprocess";
   const discussionPrincipal =
-    operation === "chat" || operation === "chat/events" ? await frontendPrincipal(request) : null;
+    operation === "chat" || operation === "chat/events" || operation === "chat/stop"
+      ? await frontendPrincipal(request)
+      : null;
   const authorized = await access(slug, ctx, privateOperation, discussionPrincipal);
   const { row, manifest } = authorized;
   if (operation === "" || operation === "status") {
@@ -302,6 +307,28 @@ async function routeClippingRequest(
     await runtime().reconcile(row.id, true);
     return response({ accepted: true }, 202);
   }
+  if (operation === "chat/stop") {
+    if (request.method !== "POST") return response({ error: "Method not allowed" }, 405);
+    if (!authorized.recognition.enabled)
+      throw new TRPCError({ code: "NOT_FOUND", message: "此闪念没有启用剪藏" });
+    const principal = discussionPrincipal;
+    if (!principal) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录前台账号" });
+    requireSameOriginMutation(request);
+    const parsed = stopSchema.safeParse(await input(request));
+    if (!parsed.success) throw new TRPCError({ code: "BAD_REQUEST", message: "缺少有效的 turnId" });
+    const result = await runtime().assistantStop(row.id, principal, parsed.data.turnId);
+    return response({
+      stopped: result.stopped,
+      generationJob: result.generationJob
+        ? {
+            id: result.generationJob.id,
+            status: result.generationJob.status,
+            cancelRequested: result.generationJob.cancelRequested,
+            errorCode: result.generationJob.errorCode,
+          }
+        : null,
+    });
+  }
   if (operation === "chat") {
     if (!authorized.recognition.enabled)
       throw new TRPCError({ code: "NOT_FOUND", message: "此闪念没有启用剪藏" });
@@ -332,7 +359,7 @@ async function routeClippingRequest(
         await revalidateDiscussion(slug, ctx, currentManifest, principal);
       } catch (error) {
         await runtime()
-          .assistantStop(principal, submission.turnId)
+          .assistantStop(row.id, principal, submission.turnId)
           .catch(() => undefined);
         throw error;
       }
@@ -438,23 +465,33 @@ export async function handleClippingRequest(
     return await routeClippingRequest(request, slug, operation, ctx);
   } catch (error) {
     if (error instanceof TRPCError) throw error;
-    if (error instanceof ClippingAssistantUnavailableError)
+    if (
+      error instanceof ClippingAssistantUnavailableError ||
+      (error instanceof Error && error.name === "ClippingAssistantUnavailableError")
+    )
       throw new TRPCError({
         code: "SERVICE_UNAVAILABLE",
         message: "剪藏讨论尚未启用；请先完成旧讨论迁移校验。",
       });
-    if (error instanceof ClippingTargetChangedError)
+    if (
+      error instanceof ClippingTargetChangedError ||
+      (error instanceof Error && error.name === "ClippingTargetChangedError")
+    )
       throw new TRPCError({ code: "CONFLICT", message: error.message });
-    if (error instanceof AssistantServiceError) {
+    if (
+      error instanceof AssistantServiceError ||
+      (error instanceof Error && error.name === "AssistantServiceError")
+    ) {
+      const assistantError = error as AssistantServiceError;
       const code =
-        error.code === "quota"
+        assistantError.code === "quota"
           ? "TOO_MANY_REQUESTS"
-          : error.code === "conflict"
+          : assistantError.code === "conflict"
             ? "CONFLICT"
-            : error.code === "not-found" || error.code === "gone"
+            : assistantError.code === "not-found" || assistantError.code === "gone"
               ? "NOT_FOUND"
               : "INTERNAL_SERVER_ERROR";
-      throw new TRPCError({ code, message: error.message });
+      throw new TRPCError({ code, message: assistantError.message });
     }
     if (error instanceof Error && /^[\u3400-\u9fff]/u.test(error.message))
       throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
