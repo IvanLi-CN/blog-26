@@ -2006,6 +2006,9 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
   font-size: 1.2rem;
   color: var(--nature-text);
 }
+.project-mdx-content .project-mdx-section > :is(h2, h3):not(:first-child) {
+  margin-top: 1.8rem;
+}
 .project-mdx-content p,
 .project-mdx-content ul,
 .project-mdx-content ol {
