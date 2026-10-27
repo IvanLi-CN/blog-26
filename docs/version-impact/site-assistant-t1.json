@@ -39,7 +39,8 @@
     "src/server/routers/comments.test.ts": "05ca3773e086f0ff58259d75a0ad5c6a73bb0993",
     "src/server/routers/comments.ts": "fc72cc45133b383919ce31ae56556520ff0682ca",
     "tests/fixtures/site-assistant-legacy.sql": "bb9afb88fe2e5449e11082a0c5034803f317ca83",
-    "tests/lib/site-assistant-migration.test.ts": "f8bc5e75a9b2e4d51c95832def4718a5de70644f"
+    "tests/lib/site-assistant-migration.test.ts": "f8bc5e75a9b2e4d51c95832def4718a5de70644f",
+    "tests/server/system-share-api.test.ts": "fe1b2f674e56130dea05229f7a9b5d6461c66551"
   },
   "change": {
     "description": "Add the shared frontend identity/session boundary, app-owned assistant SQLite contract tables, comment ownership compatibility, and parent-branch CI/E2E triggers for the site knowledge assistant.",
@@ -119,6 +120,11 @@
           "path": "tests/lib/site-assistant-migration.test.ts",
           "blob": "f8bc5e75a9b2e4d51c95832def4718a5de70644f",
           "command": "Legacy SQLite fixture applies drizzle/0021 without rewriting readerId or comment content"
+        },
+        {
+          "path": "tests/server/system-share-api.test.ts",
+          "blob": "fe1b2f674e56130dea05229f7a9b5d6461c66551",
+          "command": "bun test --isolate tests/server/system-share-api.test.ts -t 'upgrades legacy comments and resumes a blocked backfill without losing identity'"
         },
         {
           "path": "src/server/public-api/frontend-auth.test.ts",
