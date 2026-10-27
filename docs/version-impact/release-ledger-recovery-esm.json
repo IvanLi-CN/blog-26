@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "914ad5400525faa4bec80ce559094092bbff021d",
+  "base_sha": "9b32ab340a6b9df9199d6829b6db601e2aead0e5",
   "covered_files": {
     ".github/workflows/bootstrap-release-ledger-recovery.yml": "8a770bd695ad2d9818ea37f37048a2eca2982ab5"
   },
