@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "27c2f3f20f0f88d4382c2d4d583bdfa2dcca5f5e",
+  "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
   "covered_files": {
     "src/lib/release/completion.ts": "d8a73b4f4c7d1a13e3e8f2e855ec1776302b163d",
     "tests/lib/manual-release-completion.test.ts": "9ba67aa8b20da3428140c95acd23260059f35fd9"
