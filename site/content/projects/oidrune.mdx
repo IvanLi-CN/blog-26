@@ -1,5 +1,7 @@
 ---
 slug: oidrune
+detailSummary: >-
+  Oidrune 是部署在 Cloudflare 上的 GitHub Actions 通知网关，把调用仓库的 OIDC 身份验证、事件接收、Telegram 投递和运营控制收束到一个无需共享调用方密钥的入口。接入方只需复用固定版本 workflow 并授予 id-token: write，网关负责 owner/repository allowlist、可信 workflow SHA、持久化接收、自动重试和死信。运营者可以在控制台围绕接收记录、投递尝试与最终 delivered 状态排查通知链路。
 ---
 
 <section className="project-mdx-section">

@@ -244,6 +244,20 @@ describe("project content contracts", () => {
     expect(project?.summary).not.toBe(extractProjectDetailSummary(source));
   });
 
+  test("migrated projects provide substantial detail summaries", () => {
+    const contentDir = join(process.cwd(), "site/content/projects");
+
+    for (const slug of migratedProjectSlugs) {
+      const project = projectCatalog.find((item) => item.slug === slug);
+      const source = readFileSync(join(contentDir, `${slug}.mdx`), "utf8");
+      const detailSummary = extractProjectDetailSummary(source);
+
+      expect(detailSummary).toBeTruthy();
+      expect(detailSummary?.length ?? 0).toBeGreaterThan(100);
+      expect(detailSummary).not.toBe(project?.summary);
+    }
+  });
+
   test("TOC uses rendered text for inline Markdown links", () => {
     expect(extractProjectToc("## [API docs](https://example.com)\n\n## Two\n\n## Three")).toEqual([
       { depth: 2, text: "API docs", slug: "api-docs" },
