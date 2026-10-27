@@ -376,6 +376,14 @@ describe("public snapshot compatibility", () => {
           full: `${base}/wm-b-v4/full.webp`,
         },
         presentations: {
+          card: {
+            a: `${base}/wm-a-v4/card.webp`,
+            b: `${base}/wm-b-v4/card.webp`,
+          },
+          cover: {
+            a: `${base}/wm-a-v4/cover.webp`,
+            b: `${base}/wm-b-v4/cover.webp`,
+          },
           content: {
             a: `${base}/wm-a-v4/content.webp`,
             b: `${base}/wm-b-v4/content.webp`,
@@ -394,10 +402,23 @@ describe("public snapshot compatibility", () => {
             url: `${base}/wm-b-v4/content.webp`,
             mimeType: "image/webp",
           },
+          {
+            variant: "card" as const,
+            format: "webp",
+            url: `${base}/wm-a-v4/card.webp`,
+            mimeType: "image/webp",
+          },
+          {
+            variant: "cover" as const,
+            format: "webp",
+            url: `${base}/wm-b-v4/cover.webp`,
+            mimeType: "image/webp",
+          },
         ],
       };
       snapshot.posts[0] = {
         ...snapshot.posts[0],
+        image: `${base}/wm-b-v4/cover.webp`,
         body: `![legacy](${base}/wm-b-v4/content.webp)`,
         media: { primary: null, cover: item, content: [item], attachments: [] },
       } as PublicSnapshot["posts"][number];
@@ -409,7 +430,13 @@ describe("public snapshot compatibility", () => {
       const loaded = await getSnapshot();
       const post = loaded.posts[0];
 
-      expect(post.media?.cover?.variants.card).toContain("/wm-a-v5/card.webp");
+      expect(post.image).toBe(`${base}/wm-b-v5/cover.webp`);
+      expect(post.media?.cover?.role).toBe("cover");
+      expect(post.media?.cover?.variants.card).toBe(`${base}/card.webp`);
+      expect(post.media?.cover?.variants.cover).toBe(`${base}/wm-b-v5/cover.webp`);
+      expect(post.media?.cover?.presentations?.cover?.a).toBe(`${base}/wm-a-v5/cover.webp`);
+      expect(post.media?.cover?.presentations?.cover?.b).toBe(`${base}/wm-b-v5/cover.webp`);
+      expect(post.media?.cover?.presentations?.card).toBeUndefined();
       expect(post.media?.content[0]?.presentations?.content?.a).toContain("/wm-a-v5/content.webp");
       expect(post.media?.content[0]?.presentations?.content?.b).toContain("/wm-b-v5/content.webp");
       expect(post.body).toContain("/wm-b-v5/content.webp");

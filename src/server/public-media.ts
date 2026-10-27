@@ -23,6 +23,7 @@ import {
   isPublicMediaRenderId,
   isPublicMediaVariant,
   isPublishedPublicAssetUrl,
+  isUnwatermarkedPublicMediaVariant,
   normalizePublicMediaExt,
   type PublicContentKind,
   type PublicMediaAssetScope,
@@ -373,9 +374,12 @@ function pickRasterFallbackExt(ref: MediaReference) {
 
 function getPublicMediaRenderId(
   context: PublicMediaContext,
-  variant: Exclude<PublicMediaVariant, "play">
+  variant: Exclude<PublicMediaVariant, "play">,
+  role: PublicMediaRole
 ): PublicMediaRenderId | undefined {
-  return getDefaultPublicMediaRenderId(variant, context.watermarkRenderVersion ?? "v5");
+  return isUnwatermarkedPublicMediaVariant(role, variant)
+    ? undefined
+    : getDefaultPublicMediaRenderId(variant, context.watermarkRenderVersion ?? "v5");
 }
 
 function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference) {
@@ -389,7 +393,7 @@ function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference
           kind: context.kind,
           slug: context.slug,
           mediaHash: ref.hash,
-          renderId: getPublicMediaRenderId(context, variant),
+          renderId: getPublicMediaRenderId(context, variant, ref.role),
           variant,
           ext: format,
         });
@@ -416,7 +420,7 @@ function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference
         kind: context.kind,
         slug: context.slug,
         mediaHash: ref.hash,
-        renderId: getPublicMediaRenderId(context, variant),
+        renderId: getPublicMediaRenderId(context, variant, ref.role),
         variant,
         ext: format,
       });
@@ -444,7 +448,7 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
         kind: context.kind,
         slug: context.slug,
         mediaHash: ref.hash,
-        renderId: getPublicMediaRenderId(context, variant),
+        renderId: getPublicMediaRenderId(context, variant, ref.role),
         variant,
         ext: variant === "social" ? "jpg" : pickPublicMediaExt("video", ref.sourcePath, variant),
       });
@@ -464,7 +468,7 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
         kind: context.kind,
         slug: context.slug,
         mediaHash: ref.hash,
-        renderId: getPublicMediaRenderId(context, variant),
+        renderId: getPublicMediaRenderId(context, variant, ref.role),
         variant,
         ext: pickPublicMediaExt(ref.kind, ref.sourcePath, variant),
       });
@@ -498,7 +502,7 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
           kind: context.kind,
           slug: context.slug,
           mediaHash: ref.hash,
-          renderId: getPublicMediaRenderId(context, "poster"),
+          renderId: getPublicMediaRenderId(context, "poster", ref.role),
           variant: "poster",
           ext: "jpg",
         })
@@ -1142,7 +1146,10 @@ async function buildImagorPath(params: {
     if (!dimensions) {
       throw new Error(`Unable to determine derived media dimensions: ${params.ref.sourcePath}`);
     }
-    if (meetsVersionedWatermarkThreshold(dimensions)) {
+    if (
+      !isUnwatermarkedPublicMediaVariant(params.ref.role, params.variant) &&
+      meetsVersionedWatermarkThreshold(dimensions)
+    ) {
       filters.push(
         await getWatermarkFilter(
           params.request,
@@ -1155,7 +1162,10 @@ async function buildImagorPath(params: {
       );
     }
     filters.push("strip_exif()");
-  } else if (await shouldApplyLegacyWatermark(params.ref, params.variant)) {
+  } else if (
+    !isUnwatermarkedPublicMediaVariant(params.ref.role, params.variant) &&
+    (await shouldApplyLegacyWatermark(params.ref, params.variant))
+  ) {
     filters.push(
       await getWatermarkFilter(params.request, params.context, params.ref, params.variant)
     );
@@ -1305,7 +1315,11 @@ async function renderLocalMediaVariant(
       withoutEnlargement: true,
     });
 
-  if (params.renderId && (await shouldApplyVersionedWatermark(resolved.ref, params.variant))) {
+  if (
+    params.renderId &&
+    !isUnwatermarkedPublicMediaVariant(resolved.ref.role, params.variant) &&
+    (await shouldApplyVersionedWatermark(resolved.ref, params.variant))
+  ) {
     const dimensions = await readDerivedDimensions(resolved.ref, params.variant);
     if (!dimensions) throw new Error("Unable to determine local derivative dimensions");
     const plan = await getWatermarkPlan({

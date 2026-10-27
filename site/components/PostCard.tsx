@@ -1,5 +1,5 @@
-import ResponsiveWatermarkedImage from "@/components/common/ResponsiveWatermarkedImage";
 import Icon from "@/components/ui/Icon";
+import { stripPublicMediaRenderId } from "@/lib/public-media";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import type { PublicPostRecord } from "@/public-site/snapshot";
 import { formatAbsoluteDate } from "../lib/format";
@@ -19,13 +19,11 @@ export default function PostCard(props: Props) {
     post.readingMinutes ?? calculateReadingTime(post.body || "")
   );
   const imageSrc = appendPublicAssetVersion(
-    post.media.cover?.variants.card ?? post.media.primary?.variants.card ?? post.image,
+    post.media.cover?.variants.card ??
+      post.media.primary?.variants.card ??
+      (post.image ? stripPublicMediaRenderId(post.image) : post.image),
     assetVersion
   );
-  const imagePresentations =
-    post.media.cover?.presentations?.card ?? post.media.primary?.presentations?.card;
-  const watermarkA = appendPublicAssetVersion(imagePresentations?.a, assetVersion);
-  const watermarkB = appendPublicAssetVersion(imagePresentations?.b, assetVersion);
   return (
     <article
       className="nature-panel post-list-entry relative mx-auto grid max-w-md gap-6 p-4 md:max-w-none md:grid-cols-2 md:gap-8"
@@ -88,12 +86,9 @@ export default function PostCard(props: Props) {
           data-testid="post-card-cover"
         >
           <div className="relative h-0 overflow-hidden rounded-[var(--nature-radius-md)] border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.2)] pb-[56.25%] shadow-[var(--nature-shadow)] transition-all duration-300 group-hover:shadow-[var(--nature-shadow-strong)] md:h-72 md:pb-[75%] lg:pb-[56.25%]">
-            <ResponsiveWatermarkedImage
+            <img
               src={imageSrc}
-              watermarkA={watermarkA}
-              watermarkB={watermarkB}
-              fallback="a"
-              className="absolute inset-0 h-full w-full rounded-[var(--nature-radius-md)] bg-[rgba(var(--nature-highlight-rgb),0.12)] object-contain"
+              className="absolute inset-0 h-full w-full rounded-[var(--nature-radius-md)] bg-[rgba(var(--nature-highlight-rgb),0.12)] object-cover transition-transform duration-300 group-hover:scale-105"
               alt={post.title}
               loading="lazy"
             />

@@ -95,6 +95,8 @@ const ADMIN_PREVIEW_ASSETS_PREFIX = "/api/admin/preview/assets/";
 const STATIC_PUBLIC_ASSETS_PREFIX = "/_content/assets/";
 const PUBLIC_MEDIA_V4_PATH_RE =
   /((?:\/api\/public\/assets|\/_content\/assets)\/(?:post|memo)\/[^/?#"'<>]+\/[^/?#"'<>]+\/)wm-([ab])-v4(?=\/)/gu;
+const PUBLIC_MEDIA_RENDER_PATH_RE =
+  /((?:\/api\/(?:public|admin\/preview)\/assets|\/_content\/assets)\/(?:post|memo)\/[^/?#"'<>]+\/[^/?#"'<>]+)\/wm-[ab]-v[1-5](?=\/)/gu;
 const INLINE_MARKDOWN_LINK_RE =
   /(!?\[[^\]\n]*\]\()(\s*)(<[^>\n]+>|(?:[^\s()\\]+|\\.|\([^()\n]*\))+)([^)]*)(\))/g;
 
@@ -191,6 +193,10 @@ export function migratePublicMediaV4ToV5(value: string) {
   return value.replace(PUBLIC_MEDIA_V4_PATH_RE, "$1wm-$2-v5");
 }
 
+export function stripPublicMediaRenderId(value: string) {
+  return value.replace(PUBLIC_MEDIA_RENDER_PATH_RE, "$1");
+}
+
 export function isPublishedPublicAssetUrl(value: string) {
   return isPublicAssetFacadeUrl(value) || isStaticPublicAssetUrl(value);
 }
@@ -205,6 +211,13 @@ export function isPublicMediaVariant(value: string): value is PublicMediaVariant
 
 export function isPublicMediaRenderId(value: string): value is PublicMediaRenderId {
   return (PUBLIC_MEDIA_RENDER_IDS as readonly string[]).includes(value);
+}
+
+export function isUnwatermarkedPublicMediaVariant(
+  role: PublicMediaRole,
+  variant: PublicMediaVariant
+) {
+  return role === "cover" && variant === "card";
 }
 
 export function getDefaultPublicMediaRenderId(
@@ -381,21 +394,23 @@ export function buildPublicMediaAssetUrl(params: {
 
   const mediaHash = buildPublicMediaHash(sourcePath, params.role);
   const ext = pickPublicMediaExt(mediaKind, sourcePath, params.variant);
+  const renderId = isUnwatermarkedPublicMediaVariant(params.role, params.variant)
+    ? undefined
+    : params.renderId === null
+      ? undefined
+      : (params.renderId ??
+        (params.variant === "play" || params.context.supportsResponsiveWatermark === false
+          ? undefined
+          : getDefaultPublicMediaRenderId(
+              params.variant,
+              params.context.watermarkRenderVersion ?? "v5"
+            )));
   return buildPublicAssetPath({
     scope: params.context.assetScope,
     kind: params.context.kind,
     slug: params.context.slug,
     mediaHash,
-    renderId:
-      params.renderId === null
-        ? undefined
-        : (params.renderId ??
-          (params.variant === "play" || params.context.supportsResponsiveWatermark === false
-            ? undefined
-            : getDefaultPublicMediaRenderId(
-                params.variant,
-                params.context.watermarkRenderVersion ?? "v5"
-              ))),
+    renderId,
     variant: params.variant,
     ext,
   });
@@ -451,6 +466,8 @@ export function buildPublicMediaPresentations(params: {
   role: PublicMediaRole;
   variant: Exclude<PublicMediaVariant, "play">;
 }) {
+  if (isUnwatermarkedPublicMediaVariant(params.role, params.variant)) return undefined;
+
   const buildCandidate = (renderId: PublicMediaRenderId) => {
     if (params.sourcePath) {
       const mediaKind = detectPublicMediaKind(params.sourcePath);

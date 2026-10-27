@@ -1,4 +1,3 @@
-import ResponsiveWatermarkedImage from "@/components/common/ResponsiveWatermarkedImage";
 import Icon from "@/components/ui/Icon";
 import { extractPostCoverCandidate, isExternalImageUrl } from "@/lib/post-cover";
 import type { PublicPostRecord } from "@/public-site/snapshot";
@@ -18,10 +17,6 @@ export default function RelatedPostCard(props: Props) {
       (coverCandidate && isExternalImageUrl(coverCandidate) ? coverCandidate : null),
     assetVersion
   );
-  const imagePresentations =
-    post.media.cover?.presentations?.card ?? post.media.primary?.presentations?.card;
-  const watermarkA = appendPublicAssetVersion(imagePresentations?.a, assetVersion);
-  const watermarkB = appendPublicAssetVersion(imagePresentations?.b, assetVersion);
   const hasCover = Boolean(imageSrc);
   const excerpt = post.excerpt?.trim() || "";
   const articleClass = "min-w-0 self-start";
@@ -52,13 +47,10 @@ export default function RelatedPostCard(props: Props) {
         <div className={linkClass}>
           {hasCover ? (
             <div className={mediaClass}>
-              <ResponsiveWatermarkedImage
+              <img
                 src={imageSrc ?? ""}
-                watermarkA={watermarkA}
-                watermarkB={watermarkB}
-                fallback="a"
                 alt={post.title}
-                className="h-full w-full object-contain"
+                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
                 loading="lazy"
                 decoding="async"
                 itemProp="image"

@@ -152,6 +152,56 @@ describe("public-media", () => {
       filePath: "blog/demo-post.md",
     };
 
+    it("keeps list cover cards clean while watermarking other cover variants", () => {
+      const coverContext = { ...context, watermarkRenderVersion: "v5" as const };
+
+      expect(
+        buildPublicMediaAssetUrl({
+          context: coverContext,
+          mediaPath: "./assets/photo.png",
+          role: "cover",
+          variant: "card",
+        })
+      ).toContain("/demo-post/");
+      expect(
+        buildPublicMediaAssetUrl({
+          context: coverContext,
+          mediaPath: "./assets/photo.png",
+          role: "cover",
+          variant: "card",
+          renderId: "wm-a-v5",
+        })
+      ).not.toContain("/wm-");
+      expect(
+        buildPublicMediaPresentations({
+          context: coverContext,
+          mediaPath: "blog/assets/photo.png",
+          sourcePath: "blog/assets/photo.png",
+          role: "cover",
+          variant: "card",
+        })
+      ).toBeUndefined();
+
+      expect(
+        buildPublicMediaAssetUrl({
+          context: coverContext,
+          mediaPath: "./assets/photo.png",
+          role: "cover",
+          variant: "cover",
+        })
+      ).toContain("/wm-b-v5/cover.webp");
+
+      const presentations = buildPublicMediaPresentations({
+        context: coverContext,
+        mediaPath: "blog/assets/photo.png",
+        sourcePath: "blog/assets/photo.png",
+        role: "cover",
+        variant: "cover",
+      });
+      expect(presentations?.a).toContain("/wm-a-v5/cover.webp");
+      expect(presentations?.b).toContain("/wm-b-v5/cover.webp");
+    });
+
     it("uses v5 A for cards and v5 B for larger usage defaults", () => {
       expect(
         buildPublicMediaAssetUrl({
