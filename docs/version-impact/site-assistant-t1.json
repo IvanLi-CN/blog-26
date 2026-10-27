@@ -306,8 +306,8 @@
       "evidence": [
         {
           "path": "tests/lib/site-assistant-migration.test.ts",
-          "blob": "f8bc5e75a9b2e4d51c95832def4718a5de70644f",
-          "command": "bun test --isolate tests/lib/site-assistant-migration.test.ts"
+          "blob": "eec482023a39c17876154f0ba3c5d73a05eaa6d4",
+          "command": "bun test --isolate tests/lib/site-assistant-migration.test.ts (legacy identity and SET NULL delete behavior)"
         },
         {
           "path": "drizzle/0021_site_knowledge_assistant_contracts.sql",
