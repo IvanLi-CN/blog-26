@@ -27,7 +27,7 @@
     "tests/e2e/guest/public-csr-navigation.spec.ts": "93e7de8a9516a2199930d29535e696c47431c407",
     "tests/e2e/guest/posts-cover-fallback.spec.ts": "7895f43d07da998ebf4dd0326bfe205dadfffc15",
     "tests/e2e/web-demo/public-csr.spec.ts": "0372e5791f80a1cffb578e334e518b289b828ec2",
-    "tests/e2e/web-demo/public-cover-media.spec.ts": "ccb608ab566ba5694756777719d789ae01ab077a",
+    "tests/e2e/web-demo/public-cover-media.spec.ts": "00500676b04a2c8491d314f9224ebacf2e219a52",
     "scripts/verify-pages-build.ts": "ac5ad7d90edf9c49f1bdae654e5ea5769907dcb0"
   },
   "change": {
