@@ -21,11 +21,11 @@
     "src/server/http-compat-api.test.ts": "5957397a0ee35f74e270e15b3e15a5b463fc0943",
     "src/server/public-media.ts": "d856b6885f4fb9b8418161ed831f42daf6e16370",
     "scripts/verify-pages-build.test.ts": "3f5197a4562a55558da9aa5160fe867970ceb949",
-    "tests/components/RelatedPostCard.test.tsx": "b10740ca43ec81cfca514333f548f55c1ef6184d",
+    "tests/components/RelatedPostCard.test.tsx": "d7d6e4d5cbfb7840439af10b16322bc8d2257bb5",
     "tests/e2e/guest/public-csr-navigation.spec.ts": "93e7de8a9516a2199930d29535e696c47431c407",
-    "tests/e2e/guest/posts-cover-fallback.spec.ts": "fb2bc1cd5abc34a65113fd09ab727759562e2b6a",
+    "tests/e2e/guest/posts-cover-fallback.spec.ts": "7895f43d07da998ebf4dd0326bfe205dadfffc15",
     "tests/e2e/web-demo/public-csr.spec.ts": "0372e5791f80a1cffb578e334e518b289b828ec2",
-    "tests/e2e/web-demo/public-cover-media.spec.ts": "a0a5bb0f46670b16c9797799cc05ebdf49ab8cda",
+    "tests/e2e/web-demo/public-cover-media.spec.ts": "ccb608ab566ba5694756777719d789ae01ab077a",
     "scripts/verify-pages-build.ts": "3c78b6ae57e63380eb9126a7c2d6543da3869b16"
   },
   "change": {
@@ -68,7 +68,7 @@
         },
         {
           "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
-          "blob": "a0a5bb0f46670b16c9797799cc05ebdf49ab8cda",
+          "blob": "ccb608ab566ba5694756777719d789ae01ab077a",
           "command": "bun run web-demo:build && (WEB_DEMO_MODE=public WEB_DEMO_PORT=51460 bun scripts/preview-web-demo.ts >/tmp/blog-26-public-cover-media-web-demo.log 2>&1 & demo_pid=$!; trap 'kill $demo_pid 2>/dev/null || true' EXIT; ready=0; for attempt in $(seq 1 60); do if curl --fail --silent http://127.0.0.1:51460/posts/ >/dev/null; then ready=1; break; fi; sleep 1; done; test $ready = 1; WEB_DEMO_TEST_URL=http://127.0.0.1:51460 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-cover-media.spec.ts)"
         },
         {
@@ -109,7 +109,7 @@
         },
         {
           "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
-          "blob": "a0a5bb0f46670b16c9797799cc05ebdf49ab8cda",
+          "blob": "ccb608ab566ba5694756777719d789ae01ab077a",
           "command": "bun run web-demo:build && (WEB_DEMO_MODE=public WEB_DEMO_PORT=51460 bun scripts/preview-web-demo.ts >/tmp/blog-26-public-cover-media-web-demo.log 2>&1 & demo_pid=$!; trap 'kill $demo_pid 2>/dev/null || true' EXIT; ready=0; for attempt in $(seq 1 60); do if curl --fail --silent http://127.0.0.1:51460/posts/ >/dev/null; then ready=1; break; fi; sleep 1; done; test $ready = 1; WEB_DEMO_TEST_URL=http://127.0.0.1:51460 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-cover-media.spec.ts)"
         },
         {

@@ -118,7 +118,7 @@ test.describe("public cover media in Web Demo", () => {
     await test.info().attach("posts-desktop", { body: screenshot, contentType: "image/png" });
   });
 
-  test("renders the clean timeline cover with the historical hover scale", async ({ page }) => {
+  test("renders the clean timeline cover with the historical crop", async ({ page }) => {
     await page.goto("/", { waitUntil: "networkidle" });
 
     const image = page.getByTestId("home-timeline").locator("img").first();
@@ -132,13 +132,10 @@ test.describe("public cover media in Web Demo", () => {
     );
     expect(imageSrc).not.toContain("/wm-");
     expect(await image.getAttribute("class")).toContain("object-cover");
-    expect(await image.getAttribute("class")).toContain("group-hover:scale-105");
+    expect(await image.getAttribute("class")).not.toContain("group-hover:scale-105");
     expect(await image.evaluate((node) => getComputedStyle(node).objectFit)).toBe("cover");
     await assertOpaqueImageCorners(page, image);
     await assertRenderedObjectCover(page, image, 300);
-
-    await image.hover();
-    await expect.poll(() => image.evaluate((node) => getComputedStyle(node).scale)).toBe("1.05");
   });
 
   test("keeps detail and related media watermarked separately", async ({ page }) => {
