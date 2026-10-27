@@ -24,26 +24,29 @@
     "docs/specs/site-knowledge-assistant/IMPLEMENTATION.md": "d3ca0286b2213f9cf4a52b823cc177a103383786",
     "docs/specs/site-knowledge-assistant/SPEC.md": "d11a224a6283c60aa276785997ee8a33a4586dad",
     "drizzle/0021_site_knowledge_assistant_contracts.sql": "fd3206629fcb753e68183162ecaf446b41c3f55d",
+    "drizzle/0022_frontend_session_auth_source.sql": "d5f9b74113528bc0c2b1ce44954ff0403d21ef3a",
     "drizzle/meta/0021_snapshot.json": "e92824ad3e99987a1955fa4b933434ab2a0d2f0f",
-    "drizzle/meta/_journal.json": "52adc019929ee6b8eb983a1bc8b44801506a353d",
+    "drizzle/meta/0022_snapshot.json": "841c1de352c2d4585f9d56d7a7be60ae55726bbb",
+    "drizzle/meta/_journal.json": "d5f39c0b846f0d05c4b892d9610e8a731b859a77",
+    "src/lib/admin-github-binding.ts": "a95abdef7ade5303f1760eca995f996fd3d14242",
     "src/lib/assistant-contracts.test.ts": "23d8188294ffe5277ea815634464f97600c68244",
-    "src/lib/assistant-contracts.ts": "838aa1cb80b27eb86403d5a8db6e510c1370d159",
-    "src/lib/assistant-storage.test.ts": "65dc501d087f8ea1492eff2cddb6c5008c5fc042",
-    "src/lib/assistant-storage.ts": "e203f9ae6c89b2e0a108e777cd8474ec7c1551b0",
-    "src/lib/frontend-auth.test.ts": "12240812c61d3edd5b24415c80a7b76a46b5357b",
-    "src/lib/frontend-auth.ts": "3a4e969750c77df62849c44fc8ad01af414fef86",
-    "src/lib/schema.ts": "eb5683256f50e6ef02b92bdd1415cc3b0f35683b",
+    "src/lib/assistant-contracts.ts": "09cce95f033e59abc901177297afb13b864ed213",
+    "src/lib/assistant-storage.test.ts": "d3d16600316daefd903ea6d3f8f82bd87261162c",
+    "src/lib/assistant-storage.ts": "5ed552b62a10224fb905dc11e5422933af05fb39",
+    "src/lib/frontend-auth.test.ts": "681d51953a33e7d86fae1369a1ac62fdf106a683",
+    "src/lib/frontend-auth.ts": "ae0ab3db35de34d669c8971c1338c5d06263449a",
+    "src/lib/schema.ts": "2543b18e59a8cc9b356223ad0e99d9f8af7fbbef",
     "src/server/context.ts": "153ab30dca6cc8e2377ce17e8da093ce9928fae2",
     "src/server/public-api/frontend-auth.test.ts": "37ec1bb76931e0908d503a7e8ac72a3b5e578ba1",
     "src/server/public-api/router.ts": "a3913a5794a89dd55d8d249335e0471f96616bdc",
-    "src/server/routers/comments.test.ts": "05ca3773e086f0ff58259d75a0ad5c6a73bb0993",
-    "src/server/routers/comments.ts": "fc72cc45133b383919ce31ae56556520ff0682ca",
+    "src/server/routers/comments.test.ts": "5d4cb420aa5fa25ef5e8e29f9022544d02bd51a1",
+    "src/server/routers/comments.ts": "11d66246d78b0eb85125230c0d9499d5500d287b",
     "tests/fixtures/site-assistant-legacy.sql": "bb9afb88fe2e5449e11082a0c5034803f317ca83",
-    "tests/lib/site-assistant-migration.test.ts": "f8bc5e75a9b2e4d51c95832def4718a5de70644f",
-    "tests/server/system-share-api.test.ts": "fe1b2f674e56130dea05229f7a9b5d6461c66551"
+    "tests/lib/site-assistant-migration.test.ts": "eec482023a39c17876154f0ba3c5d73a05eaa6d4",
+    "tests/server/system-share-api.test.ts": "2240a081c5a23e284f696a03c32cf58392967a05"
   },
   "change": {
-    "description": "Add the shared frontend identity/session boundary, app-owned assistant SQLite contract tables, comment ownership compatibility, and parent-branch CI/E2E triggers for the site knowledge assistant.",
+    "description": "Add the shared frontend identity/session boundary, app-owned assistant SQLite contract tables, comment ownership compatibility, binding-safe sessions, atomic assistant writes, and parent-branch CI/E2E triggers for the site knowledge assistant.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api", "persistent-state"]
   },
@@ -67,28 +70,38 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The candidate adds opt-in frontend-auth endpoints, independent hashed sessions, app-owned assistant storage, and nullable frontendUserId comment ownership while preserving legacy authentication and comment paths.",
+      "reasoning": "The candidate adds opt-in frontend-auth endpoints, source-aware hashed sessions, app-owned assistant storage with atomic idempotent writes, and nullable frontendUserId comment ownership while preserving legacy authentication and comment paths.",
       "assessed_at": "2026-10-27T00:00:00+08:00",
       "evidence": [
         {
           "path": "src/lib/frontend-auth.ts",
-          "blob": "3a4e969750c77df62849c44fc8ad01af414fef86",
-          "command": "Independent hashed seven-day frontend session, trusted admin/reader identity linking, bootstrap suppression, and explicit logout"
+          "blob": "ae0ab3db35de34d669c8971c1338c5d06263449a",
+          "command": "Source-aware hashed seven-day frontend sessions, binding revalidation, trusted identity linking, bootstrap suppression, and explicit logout"
+        },
+        {
+          "path": "src/lib/admin-github-binding.ts",
+          "blob": "a95abdef7ade5303f1760eca995f996fd3d14242",
+          "command": "Revokes only GitHub-binding-derived frontend sessions during an atomic administrator unbind"
         },
         {
           "path": "src/lib/assistant-contracts.ts",
-          "blob": "838aa1cb80b27eb86403d5a8db6e510c1370d159",
-          "command": "Shared FrontendPrincipal, conversation/message/generation/usage/quota/migration contracts"
+          "blob": "09cce95f033e59abc901177297afb13b864ed213",
+          "command": "Shared FrontendPrincipal, source-aware sessions, conversation/message/generation/usage/quota/migration contracts"
         },
         {
           "path": "src/lib/assistant-storage.ts",
-          "blob": "e203f9ae6c89b2e0a108e777cd8474ec7c1551b0",
-          "command": "SQLite-owned conversation/message/generation storage with frontend ownership checks"
+          "blob": "5ed552b62a10224fb905dc11e5422933af05fb39",
+          "command": "SQLite-owned conversation/message/generation storage with atomic idempotent writes, ownership checks, and role/conversation validation"
         },
         {
           "path": "drizzle/0021_site_knowledge_assistant_contracts.sql",
           "blob": "fd3206629fcb753e68183162ecaf446b41c3f55d",
           "command": "Forward DDL adds assistant state tables and nullable comment frontend ownership"
+        },
+        {
+          "path": "drizzle/0022_frontend_session_auth_source.sql",
+          "blob": "d5f9b74113528bc0c2b1ce44954ff0403d21ef3a",
+          "command": "Forward migration records whether a frontend session originated from native admin auth or GitHub reader binding"
         },
         {
           "path": ".github/workflows/ci.yml",
@@ -108,23 +121,28 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "Repository checks, migration validation and application, focused identity/storage/comment/API tests, and the existing HTTP compatibility suite pass. Full TypeScript remains blocked by pre-existing repository errors outside the changed assistant surfaces; the changed-surface filter reports only those baseline router errors.",
+      "reasoning": "Repository checks, migration validation and application, focused identity/storage/comment/API tests, the full Unit suite, and the existing HTTP compatibility suite pass. Full TypeScript remains blocked by pre-existing repository errors outside the changed assistant surfaces; the changed-surface filter reports only the baseline system-share RequestInit errors.",
       "assessed_at": "2026-10-27T00:00:00+08:00",
       "evidence": [
         {
           "path": "src/lib/assistant-storage.test.ts",
-          "blob": "65dc501d087f8ea1492eff2cddb6c5008c5fc042",
+          "blob": "d3d16600316daefd903ea6d3f8f82bd87261162c",
           "command": "bun test --isolate src/lib/assistant-contracts.test.ts src/lib/assistant-storage.test.ts src/lib/frontend-auth.test.ts tests/lib/site-assistant-migration.test.ts src/server/public-api/frontend-auth.test.ts src/server/routers/comments.test.ts"
         },
         {
           "path": "tests/lib/site-assistant-migration.test.ts",
-          "blob": "f8bc5e75a9b2e4d51c95832def4718a5de70644f",
-          "command": "Legacy SQLite fixture applies drizzle/0021 without rewriting readerId or comment content"
+          "blob": "eec482023a39c17876154f0ba3c5d73a05eaa6d4",
+          "command": "Legacy SQLite fixture preserves comment identity and verifies assistant generation message references use SET NULL delete behavior"
         },
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "fe1b2f674e56130dea05229f7a9b5d6461c66551",
+          "blob": "2240a081c5a23e284f696a03c32cf58392967a05",
           "command": "bun test --isolate tests/server/system-share-api.test.ts -t 'upgrades legacy comments and resumes a blocked backfill without losing identity'"
+        },
+        {
+          "path": "src/lib/frontend-auth.test.ts",
+          "blob": "681d51953a33e7d86fae1369a1ac62fdf106a683",
+          "command": "bun test --isolate src/lib/frontend-auth.test.ts (binding-derived revocation, native admin preservation, mixed identity state, and expiry pass)"
         },
         {
           "path": "src/server/public-api/frontend-auth.test.ts",
@@ -133,7 +151,7 @@
         },
         {
           "path": "src/server/routers/comments.test.ts",
-          "blob": "05ca3773e086f0ff58259d75a0ad5c6a73bb0993",
+          "blob": "5d4cb420aa5fa25ef5e8e29f9022544d02bd51a1",
           "command": "bun test --isolate src/server/routers/comments.test.ts"
         },
         {
@@ -143,13 +161,18 @@
         },
         {
           "path": "drizzle/meta/_journal.json",
-          "blob": "52adc019929ee6b8eb983a1bc8b44801506a353d",
+          "blob": "d5f39c0b846f0d05c4b892d9610e8a731b859a77",
           "command": "bun run db:migrations:validate"
         },
         {
           "path": "src/lib/schema.ts",
-          "blob": "eb5683256f50e6ef02b92bdd1415cc3b0f35683b",
-          "command": "bunx drizzle-kit generate (no schema changes after migration generation)"
+          "blob": "2543b18e59a8cc9b356223ad0e99d9f8af7fbbef",
+          "command": "bunx drizzle-kit generate (session auth_source migration generated and schema is consistent)"
+        },
+        {
+          "path": "src/lib/assistant-storage.ts",
+          "blob": "5ed552b62a10224fb905dc11e5422933af05fb39",
+          "command": "bun run test:unit (1520 pass, 52 skipped, 0 fail)"
         },
         {
           "path": ".github/workflows/ci.yml",

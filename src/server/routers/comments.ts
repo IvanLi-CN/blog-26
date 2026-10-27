@@ -676,6 +676,9 @@ export const commentsRouter = createTRPCRouter({
       if (!principal && !legacyReader) {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "请先使用 GitHub 登录" });
       }
+      // A unified frontend session is authoritative. An older reader cookie may still be
+      // present in the same request, but it must not supply identity fields for this comment.
+      const commentReader = principal ? null : legacyReader;
       const target = normalizeTarget(input);
       await assertPublicTarget(target);
       const content = input.content.trim();
@@ -745,29 +748,29 @@ export const commentsRouter = createTRPCRouter({
               // Serialize role derivation with binding changes so a comment cannot observe a
               // binding state that is concurrently being removed.
               let authorRole = principal?.isAdmin ? ("admin" as const) : ("reader" as const);
-              if (!principal && legacyReader) {
+              if (!principal && commentReader) {
                 // Serialize role derivation with binding changes so a legacy reader comment
                 // cannot observe a binding state that is concurrently being removed.
                 await tx
                   .update(adminGithubBindings)
                   .set({ updatedAt: sql`${adminGithubBindings.updatedAt}` })
-                  .where(eq(adminGithubBindings.githubId, legacyReader.githubId))
+                  .where(eq(adminGithubBindings.githubId, commentReader.githubId))
                   .run();
                 const binding = await tx
                   .select({ id: adminGithubBindings.id })
                   .from(adminGithubBindings)
-                  .where(eq(adminGithubBindings.githubId, legacyReader.githubId))
+                  .where(eq(adminGithubBindings.githubId, commentReader.githubId))
                   .get();
                 authorRole = binding ? "admin" : "reader";
               }
               const status = authorRole === "admin" ? "approved" : "pending";
-              const authorReaderId = principal?.readerId ?? legacyReader?.id ?? null;
-              const authorGithubId = principal?.github?.id ?? legacyReader?.githubId ?? null;
+              const authorReaderId = principal?.readerId ?? commentReader?.id ?? null;
+              const authorGithubId = principal?.github?.id ?? commentReader?.githubId ?? null;
               const authorName = principal?.isAdmin
                 ? principal.github?.displayName || principal.displayName
                 : principal?.displayName ||
-                  legacyReader?.displayName ||
-                  legacyReader?.githubLogin ||
+                  commentReader?.displayName ||
+                  commentReader?.githubLogin ||
                   "Reader";
               await tx.insert(comments).values({
                 id: commentId,

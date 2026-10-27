@@ -107,7 +107,10 @@ export function clearFrontendLogoutCookieHeader(request: Request) {
   return createSessionCookieHeader(request, FRONTEND_LOGOUT_COOKIE_NAME, { maxAge: 0 });
 }
 
-async function loadPrincipal(frontendUserId: string): Promise<FrontendPrincipal | null> {
+async function loadPrincipal(
+  frontendUserId: string,
+  authSource: FrontendAuthSession["authSource"] = "admin"
+): Promise<FrontendPrincipal | null> {
   const database = await ensureDatabase();
   const row = await database
     .select()
@@ -122,24 +125,18 @@ async function loadPrincipal(frontendUserId: string): Promise<FrontendPrincipal 
     .where(eq(frontendIdentityLinks.frontendUserId, row.id))
     .all();
   const githubLink = links.find((link) => link.provider === "github") ?? null;
-  let readerId = githubLink?.readerId ?? null;
-  let github: FrontendGithubIdentity | null = githubLink
-    ? toGithubIdentity({
-        githubId: githubLink.providerSubject,
-        githubLogin:
-          githubLink.providerLogin ?? githubLink.displayName ?? githubLink.providerSubject,
-        displayName: githubLink.displayName,
-        avatarUrl: githubLink.avatarUrl,
-        profileUrl: githubLink.profileUrl,
-      })
-    : null;
+  let readerId: string | null = null;
+  let github: FrontendGithubIdentity | null = null;
+  let binding: typeof adminGithubBindings.$inferSelect | null = null;
 
-  if (!githubLink && row.adminUserId) {
-    const binding = await database
-      .select()
-      .from(adminGithubBindings)
-      .where(eq(adminGithubBindings.adminUserId, row.adminUserId))
-      .get();
+  if (row.isAdmin && row.adminUserId) {
+    binding =
+      (await database
+        .select()
+        .from(adminGithubBindings)
+        .where(eq(adminGithubBindings.adminUserId, row.adminUserId))
+        .get()) ?? null;
+    if (authSource === "github" && !binding) return null;
     if (binding) {
       const reader = await database
         .select({ id: readers.id })
@@ -149,6 +146,17 @@ async function loadPrincipal(frontendUserId: string): Promise<FrontendPrincipal 
       github = toGithubIdentity(binding);
       readerId = reader?.id ?? null;
     }
+  } else if (authSource === "github" && row.isAdmin) {
+    return null;
+  } else if (!row.isAdmin && githubLink) {
+    readerId = githubLink.readerId;
+    github = toGithubIdentity({
+      githubId: githubLink.providerSubject,
+      githubLogin: githubLink.providerLogin ?? githubLink.displayName ?? githubLink.providerSubject,
+      displayName: githubLink.displayName,
+      avatarUrl: githubLink.avatarUrl,
+      profileUrl: githubLink.profileUrl,
+    });
   }
 
   return {
@@ -383,23 +391,29 @@ async function ensureReaderFrontendUser(reader: Reader) {
   return principal;
 }
 
-async function createFrontendSession(frontendUserId: string, now = Date.now()) {
+async function createFrontendSession(
+  frontendUserId: string,
+  authSource: FrontendAuthSession["authSource"],
+  now = Date.now()
+) {
   const database = await ensureDatabase();
   const token = randomToken();
   const session = {
     id: randomUUID(),
     principalId: frontendUserId,
+    authSource,
     expiresAt: now + FRONTEND_SESSION_DURATION_MS,
     createdAt: now,
   } satisfies FrontendAuthSession;
   await database.insert(frontendSessions).values({
     id: session.id,
     frontendUserId,
+    authSource: session.authSource,
     tokenHash: hashToken(token),
     expiresAt: session.expiresAt,
     createdAt: session.createdAt,
   });
-  const principal = await loadPrincipal(frontendUserId);
+  const principal = await loadPrincipal(frontendUserId, authSource);
   if (!principal) throw new Error("Frontend session principal could not be loaded");
   return { principal, session, token } satisfies FrontendSessionResult;
 }
@@ -420,13 +434,20 @@ async function getFrontendSession(request: Request) {
     )
     .get();
   if (!row) return null;
-  const principal = await loadPrincipal(row.frontendUserId);
-  if (!principal) return null;
+  const principal = await loadPrincipal(row.frontendUserId, row.authSource);
+  if (!principal) {
+    await database
+      .update(frontendSessions)
+      .set({ revokedAt: Date.now() })
+      .where(eq(frontendSessions.id, row.id));
+    return null;
+  }
   return {
     principal,
     session: {
       id: row.id,
       principalId: row.frontendUserId,
+      authSource: row.authSource,
       expiresAt: row.expiresAt,
       createdAt: row.createdAt,
     } satisfies FrontendAuthSession,
@@ -467,8 +488,10 @@ export async function bootstrapFrontendAuth(request: Request): Promise<FrontendA
 
   const auth = await extractAuthFromRequest(request);
   let principal: FrontendPrincipal | null = null;
+  let authSource: FrontendAuthSession["authSource"] = "github";
   if (auth.user && auth.isAdmin) {
     principal = await ensureAdminFrontendUser(auth.user);
+    authSource = "admin";
   } else {
     const reader = await getReaderFromRequest(request);
     if (reader) principal = await ensureReaderFrontendUser(reader);
@@ -476,7 +499,7 @@ export async function bootstrapFrontendAuth(request: Request): Promise<FrontendA
   if (!principal) {
     return { ...stateFromSession(null, false), setCookies: [], bootstrapped: false };
   }
-  const created = await createFrontendSession(principal.id);
+  const created = await createFrontendSession(principal.id, authSource);
   return {
     authenticated: true,
     principal: created.principal,
@@ -511,7 +534,7 @@ export async function startAdminFrontendAuth(request: Request): Promise<Frontend
       .set({ revokedAt: Date.now() })
       .where(eq(frontendSessions.id, current.session.id));
   }
-  const created = await createFrontendSession(principal.id);
+  const created = await createFrontendSession(principal.id, "admin");
   return {
     authenticated: true,
     principal: created.principal,

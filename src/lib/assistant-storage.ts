@@ -124,56 +124,66 @@ export function createAssistantStorage(
     async appendMessage(input: AppendAssistantMessageInput) {
       const database = await getDatabase();
       const now = input.now ?? Date.now();
-      const conversation = await database
-        .select({ id: assistantConversations.id })
-        .from(assistantConversations)
-        .where(
-          and(
-            eq(assistantConversations.id, input.conversationId),
-            eq(assistantConversations.frontendUserId, input.frontendUserId)
-          )
-        )
-        .get();
-      if (!conversation) throw new Error("Assistant conversation is not owned by frontend user");
-      if (input.clientRequestId) {
-        const existing = await database
-          .select()
-          .from(assistantMessages)
-          .where(eq(assistantMessages.conversationId, input.conversationId))
-          .all();
-        const match = existing.find((row) => row.clientRequestId === input.clientRequestId);
-        if (match) return mapMessage(match);
-      }
-      const latest = await database
-        .select({ sequence: assistantMessages.sequence })
-        .from(assistantMessages)
-        .where(eq(assistantMessages.conversationId, input.conversationId))
-        .orderBy(desc(assistantMessages.sequence))
-        .limit(1)
-        .get();
-      const row = {
-        id: input.id ?? uuidv4(),
-        conversationId: input.conversationId,
-        sequence: input.sequence ?? (latest?.sequence ?? 0) + 1,
-        role: input.role,
-        content: input.content,
-        status: input.status ?? "completed",
-        clientRequestId: input.clientRequestId ?? null,
-        createdAt: now,
-        updatedAt: now,
-        completedAt: input.status === "completed" || !input.status ? now : null,
-      } satisfies typeof assistantMessages.$inferInsert;
-      await database.insert(assistantMessages).values(row);
-      if (input.role === "user") {
-        await database
-          .update(assistantConversations)
-          .set({
-            lastUserMessageAt: now,
-            expiresAt: now + DEFAULT_ASSISTANT_QUOTA_POLICY.retentionMs,
-          })
-          .where(eq(assistantConversations.id, input.conversationId));
-      }
-      return mapMessage(row as typeof assistantMessages.$inferSelect);
+      return database.transaction(
+        (tx) => {
+          const conversation = tx
+            .select({ id: assistantConversations.id })
+            .from(assistantConversations)
+            .where(
+              and(
+                eq(assistantConversations.id, input.conversationId),
+                eq(assistantConversations.frontendUserId, input.frontendUserId)
+              )
+            )
+            .get();
+          if (!conversation)
+            throw new Error("Assistant conversation is not owned by frontend user");
+          if (input.clientRequestId) {
+            const existing = tx
+              .select()
+              .from(assistantMessages)
+              .where(
+                and(
+                  eq(assistantMessages.conversationId, input.conversationId),
+                  eq(assistantMessages.clientRequestId, input.clientRequestId)
+                )
+              )
+              .get();
+            if (existing) return mapMessage(existing);
+          }
+          const latest = tx
+            .select({ sequence: assistantMessages.sequence })
+            .from(assistantMessages)
+            .where(eq(assistantMessages.conversationId, input.conversationId))
+            .orderBy(desc(assistantMessages.sequence))
+            .limit(1)
+            .get();
+          const row = {
+            id: input.id ?? uuidv4(),
+            conversationId: input.conversationId,
+            sequence: input.sequence ?? (latest?.sequence ?? 0) + 1,
+            role: input.role,
+            content: input.content,
+            status: input.status ?? "completed",
+            clientRequestId: input.clientRequestId ?? null,
+            createdAt: now,
+            updatedAt: now,
+            completedAt: input.status === "completed" || !input.status ? now : null,
+          } satisfies typeof assistantMessages.$inferInsert;
+          tx.insert(assistantMessages).values(row).run();
+          if (input.role === "user") {
+            tx.update(assistantConversations)
+              .set({
+                lastUserMessageAt: now,
+                expiresAt: now + DEFAULT_ASSISTANT_QUOTA_POLICY.retentionMs,
+              })
+              .where(eq(assistantConversations.id, input.conversationId))
+              .run();
+          }
+          return mapMessage(row as typeof assistantMessages.$inferSelect);
+        },
+        { behavior: "immediate" }
+      );
     },
 
     async listMessages(conversationId: string, frontendUserId: string) {
@@ -201,35 +211,82 @@ export function createAssistantStorage(
     async createGenerationJob(input: CreateAssistantGenerationJobInput) {
       const database = await getDatabase();
       const now = input.now ?? Date.now();
-      const conversation = await database
-        .select({ id: assistantConversations.id })
-        .from(assistantConversations)
-        .where(
-          and(
-            eq(assistantConversations.id, input.conversationId),
-            eq(assistantConversations.frontendUserId, input.frontendUserId)
-          )
-        )
-        .get();
-      if (!conversation) throw new Error("Assistant conversation is not owned by frontend user");
-      const row = {
-        id: input.id ?? uuidv4(),
-        conversationId: input.conversationId,
-        userMessageId: input.userMessageId ?? null,
-        assistantMessageId: input.assistantMessageId ?? null,
-        requestId: input.requestId,
-        status: "queued" as const,
-        attempt: 1,
-        leaseUntil: null,
-        cancelRequested: false,
-        startedAt: null,
-        finishedAt: null,
-        errorCode: null,
-        createdAt: now,
-        updatedAt: now,
-      } satisfies typeof assistantGenerationJobs.$inferInsert;
-      await database.insert(assistantGenerationJobs).values(row);
-      return mapGenerationJob(row as typeof assistantGenerationJobs.$inferSelect);
+      return database.transaction(
+        (tx) => {
+          const conversation = tx
+            .select({ id: assistantConversations.id })
+            .from(assistantConversations)
+            .where(
+              and(
+                eq(assistantConversations.id, input.conversationId),
+                eq(assistantConversations.frontendUserId, input.frontendUserId)
+              )
+            )
+            .get();
+          if (!conversation)
+            throw new Error("Assistant conversation is not owned by frontend user");
+
+          if (input.userMessageId) {
+            const userMessage = tx
+              .select({
+                conversationId: assistantMessages.conversationId,
+                role: assistantMessages.role,
+              })
+              .from(assistantMessages)
+              .where(eq(assistantMessages.id, input.userMessageId))
+              .get();
+            if (
+              !userMessage ||
+              userMessage.conversationId !== input.conversationId ||
+              userMessage.role !== "user"
+            ) {
+              throw new Error(
+                "Assistant user message must belong to the conversation and use role user"
+              );
+            }
+          }
+
+          if (input.assistantMessageId) {
+            const assistantMessage = tx
+              .select({
+                conversationId: assistantMessages.conversationId,
+                role: assistantMessages.role,
+              })
+              .from(assistantMessages)
+              .where(eq(assistantMessages.id, input.assistantMessageId))
+              .get();
+            if (
+              !assistantMessage ||
+              assistantMessage.conversationId !== input.conversationId ||
+              assistantMessage.role !== "assistant"
+            ) {
+              throw new Error(
+                "Assistant response message must belong to the conversation and use role assistant"
+              );
+            }
+          }
+
+          const row = {
+            id: input.id ?? uuidv4(),
+            conversationId: input.conversationId,
+            userMessageId: input.userMessageId ?? null,
+            assistantMessageId: input.assistantMessageId ?? null,
+            requestId: input.requestId,
+            status: "queued" as const,
+            attempt: 1,
+            leaseUntil: null,
+            cancelRequested: false,
+            startedAt: null,
+            finishedAt: null,
+            errorCode: null,
+            createdAt: now,
+            updatedAt: now,
+          } satisfies typeof assistantGenerationJobs.$inferInsert;
+          tx.insert(assistantGenerationJobs).values(row).run();
+          return mapGenerationJob(row as typeof assistantGenerationJobs.$inferSelect);
+        },
+        { behavior: "immediate" }
+      );
     },
 
     async getGenerationJob(generationJobId: string, frontendUserId: string) {

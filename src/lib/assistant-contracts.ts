@@ -29,6 +29,7 @@ export type FrontendPrincipal = {
 export type FrontendAuthSession = {
   id: string;
   principalId: string;
+  authSource: "admin" | "github";
   expiresAt: number;
   createdAt: number;
 };

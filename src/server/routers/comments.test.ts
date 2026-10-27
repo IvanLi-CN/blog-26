@@ -208,7 +208,10 @@ describe("comments reader lifecycle", () => {
       updatedAt: Date.now(),
     });
 
-    const created = await createCaller({ frontendPrincipal: principal }).comments.createComment({
+    const created = await createCaller({
+      frontendPrincipal: principal,
+      reader,
+    }).comments.createComment({
       target: { type: "article", key: "frontend-admin-comments" },
       content: "Native admin comment",
       submissionKey: "frontend-admin-submission",

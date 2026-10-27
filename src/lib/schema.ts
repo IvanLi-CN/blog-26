@@ -177,6 +177,9 @@ export const frontendSessions = sqliteTable(
     frontendUserId: text("frontend_user_id")
       .notNull()
       .references(() => frontendUsers.id, { onDelete: "cascade" }),
+    authSource: text("auth_source", { enum: ["admin", "github"] })
+      .notNull()
+      .default("admin"),
     tokenHash: text("token_hash").notNull(),
     expiresAt: integer("expires_at").notNull(),
     createdAt: integer("created_at").notNull(),
