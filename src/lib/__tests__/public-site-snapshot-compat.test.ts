@@ -416,11 +416,18 @@ describe("public snapshot compatibility", () => {
           },
         ],
       };
+      const absoluteCoverItem = {
+        ...item,
+        variants: {
+          ...item.variants,
+          card: `https://blog.ivanli.cc${base}/wm-a-v4/card.webp`,
+        },
+      };
       snapshot.posts[0] = {
         ...snapshot.posts[0],
         image: `${base}/wm-b-v4/cover.webp`,
         body: `![legacy](${base}/wm-b-v4/content.webp)`,
-        media: { primary: null, cover: item, content: [item], attachments: [] },
+        media: { primary: null, cover: absoluteCoverItem, content: [item], attachments: [] },
       } as PublicSnapshot["posts"][number];
       const snapshotPath = join(tempDir, "legacy-public-snapshot.json");
       await writeFile(snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
@@ -432,7 +439,7 @@ describe("public snapshot compatibility", () => {
 
       expect(post.image).toBe(`${base}/wm-b-v5/cover.webp`);
       expect(post.media?.cover?.role).toBe("cover");
-      expect(post.media?.cover?.variants.card).toBe(`${base}/card.webp`);
+      expect(post.media?.cover?.variants.card).toBe(`https://blog.ivanli.cc${base}/card.webp`);
       expect(post.media?.cover?.variants.cover).toBe(`${base}/wm-b-v5/cover.webp`);
       expect(post.media?.cover?.presentations?.cover?.a).toBe(`${base}/wm-a-v5/cover.webp`);
       expect(post.media?.cover?.presentations?.cover?.b).toBe(`${base}/wm-b-v5/cover.webp`);

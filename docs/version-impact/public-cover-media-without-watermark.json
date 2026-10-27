@@ -13,20 +13,20 @@
     "site/components/PostCard.tsx": "ce9e75ce755769e1a4ef1e95c02850f846f816c4",
     "site/components/RelatedPostCard.tsx": "b7f64a92d03399384e5e2d86ac19a9603f99f60e",
     "site/components/TimelineCard.tsx": "01d6af14e6b4b7eb4630552657bc41fb331c3573",
-    "site/lib/public-site.ts": "fcdb99bd07d796e4100a31d1bb4ccbedc7314c27",
-    "site/lib/public-site-client.ts": "63c1739dafaf198ae8d2d31d4dfd305c9d8ce8d4",
+    "site/lib/public-site.ts": "120b7b9e1de00928b8d30cabe21a54151ab76c62",
+    "site/lib/public-site-client.ts": "bbfbf0605b1b81db0598a7c106db9d85af0e658c",
     "src/lib/__tests__/public-media.test.ts": "6c9bd0dc3cd691d1376e7332b26867067bd71f9f",
-    "src/lib/__tests__/public-site-snapshot-compat.test.ts": "130a2f08312a2940b13d904db2e8a9cd22a8588c",
+    "src/lib/__tests__/public-site-snapshot-compat.test.ts": "e8e99dbcde8276479085c1ea2788a4daf5f6d30f",
     "src/lib/public-media.ts": "c20b12c295eee84a9cb709bb63dd21c84a6c5483",
     "src/server/http-compat-api.test.ts": "5957397a0ee35f74e270e15b3e15a5b463fc0943",
     "src/server/public-media.ts": "d856b6885f4fb9b8418161ed831f42daf6e16370",
     "scripts/verify-pages-build.test.ts": "3f5197a4562a55558da9aa5160fe867970ceb949",
-    "tests/components/RelatedPostCard.test.tsx": "7d36b397fc0edef748d73bdf7b790ac50716f634",
+    "tests/components/RelatedPostCard.test.tsx": "b10740ca43ec81cfca514333f548f55c1ef6184d",
     "tests/e2e/guest/public-csr-navigation.spec.ts": "93e7de8a9516a2199930d29535e696c47431c407",
     "tests/e2e/guest/posts-cover-fallback.spec.ts": "fb2bc1cd5abc34a65113fd09ab727759562e2b6a",
     "tests/e2e/web-demo/public-csr.spec.ts": "0372e5791f80a1cffb578e334e518b289b828ec2",
     "tests/e2e/web-demo/public-cover-media.spec.ts": "a0a5bb0f46670b16c9797799cc05ebdf49ab8cda",
-    "scripts/verify-pages-build.ts": "8b859cf394b3b7ce05860b88259393b45580e3e0"
+    "scripts/verify-pages-build.ts": "3c78b6ae57e63380eb9126a7c2d6543da3869b16"
   },
   "change": {
     "description": "Restore historical list-cover rendering while limiting the unwatermarked public media contract to list cover/card; detail covers, source descriptors, body, attachments, and playback retain their watermark paths and candidates.",
@@ -73,7 +73,7 @@
         },
         {
           "path": "scripts/verify-pages-build.ts",
-          "blob": "8b859cf394b3b7ce05860b88259393b45580e3e0",
+          "blob": "3c78b6ae57e63380eb9126a7c2d6543da3869b16",
           "command": "PUBLIC_SITE_URL=https://ivanli.cc PUBLIC_API_BASE_URL=https://console.ivanli.cc bun run frontend:build && PUBLIC_SITE_URL=https://ivanli.cc PUBLIC_API_BASE_URL=https://console.ivanli.cc bun scripts/verify-pages-build.ts"
         },
         {
@@ -114,7 +114,7 @@
         },
         {
           "path": "scripts/verify-pages-build.ts",
-          "blob": "8b859cf394b3b7ce05860b88259393b45580e3e0",
+          "blob": "3c78b6ae57e63380eb9126a7c2d6543da3869b16",
           "command": "PUBLIC_SITE_URL=https://ivanli.cc PUBLIC_API_BASE_URL=https://console.ivanli.cc bun run frontend:build && PUBLIC_SITE_URL=https://ivanli.cc PUBLIC_API_BASE_URL=https://console.ivanli.cc bun scripts/verify-pages-build.ts"
         },
         {

@@ -26,22 +26,17 @@ export function toAbsoluteSiteUrl(pathname: string) {
   return getCanonicalUrl(pathname);
 }
 
-function getInternalPublicOrigins() {
-  const origins = new Set<string>([getSiteOrigin()]);
-  try {
-    origins.add(new URL(SITE.url).origin);
-  } catch {
-    // Keep the resolved public site origin when the static site config is malformed.
-  }
-  const apiBaseUrl = getPublicApiBaseUrl();
-  if (apiBaseUrl) {
+function getInternalPublicHosts() {
+  const hosts = new Set<string>();
+  for (const value of [getSiteUrl(), SITE.url, getPublicApiBaseUrl()]) {
+    if (!value) continue;
     try {
-      origins.add(new URL(apiBaseUrl).origin);
+      hosts.add(new URL(value).host);
     } catch {
-      // Ignore malformed optional runtime configuration.
+      // Ignore malformed runtime configuration.
     }
   }
-  return origins;
+  return hosts;
 }
 
 export function getPublicSiteCardFallbackUrl(candidate: string) {
@@ -52,7 +47,7 @@ export function getPublicSiteCardFallbackUrl(candidate: string) {
 
   try {
     const parsed = new URL(candidate);
-    if (!getInternalPublicOrigins().has(parsed.origin)) return candidate;
+    if (!getInternalPublicHosts().has(parsed.host)) return candidate;
     if (!isPublishedPublicAssetUrl(parsed.pathname)) return candidate;
     const fallbackPath = getPublicMediaCardFallbackUrl(
       `${parsed.pathname}${parsed.search}${parsed.hash}`

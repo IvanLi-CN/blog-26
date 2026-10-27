@@ -1,6 +1,7 @@
 import {
   appendPublicAssetVersion,
   getCanonicalUrl,
+  getPublicSiteCardFallbackUrl,
   getSiteOrigin,
   getSiteUrl,
   pickTagIconSvg,
@@ -10,6 +11,7 @@ import {
 export {
   appendPublicAssetVersion,
   getCanonicalUrl,
+  getPublicSiteCardFallbackUrl,
   getSiteOrigin,
   getSiteUrl,
   pickTagIconSvg,
@@ -105,7 +107,7 @@ function normalizeSnapshotMedia(
     const role = roleOverride ?? item.role;
     const migrateUrl = (value: string, variant?: PublicMediaVariant) =>
       variant && isUnwatermarkedPublicMediaVariant(role, variant)
-        ? stripPublicMediaRenderId(value)
+        ? (getPublicSiteCardFallbackUrl(value) ?? stripPublicMediaRenderId(value))
         : migratePublicMediaV4ToV5(value);
     return {
       ...item,

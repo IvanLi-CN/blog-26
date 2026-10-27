@@ -31,6 +31,11 @@ const absoluteLegacyRelatedPost = {
     "https://blog.ivanli.cc/_content/assets/post/legacy-related-post/abc123/wm-b-v4/cover.webp",
 } satisfies PublicPostRecord;
 
+const httpLegacyRelatedPost = {
+  ...legacyRelatedPost,
+  image: "http://blog.ivanli.cc/_content/assets/post/legacy-related-post/abc123/wm-b-v4/cover.webp",
+} satisfies PublicPostRecord;
+
 describe("RelatedPostCard", () => {
   test("maps a legacy public cover fallback to the clean card asset", () => {
     const markup = renderToStaticMarkup(
@@ -50,6 +55,17 @@ describe("RelatedPostCard", () => {
 
     expect(markup).toContain(
       "https://blog.ivanli.cc/_content/assets/post/legacy-related-post/abc123/card.webp"
+    );
+    expect(markup).not.toContain("/wm-b-v4/cover.webp");
+  });
+
+  test("maps an http same-site legacy cover fallback to the clean card asset", () => {
+    const markup = renderToStaticMarkup(
+      createElement(RelatedPostCard, { post: httpLegacyRelatedPost })
+    );
+
+    expect(markup).toContain(
+      "http://blog.ivanli.cc/_content/assets/post/legacy-related-post/abc123/card.webp"
     );
     expect(markup).not.toContain("/wm-b-v4/cover.webp");
   });
