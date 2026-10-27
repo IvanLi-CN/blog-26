@@ -55,13 +55,13 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The candidate records every attempted provider call, preserves user/feature/provider/model/status/raw dimensions without prompt or answer bodies, observes raw provider usage before SDK normalization, uses conservative reservations with in-place corrections, and keeps automatic retries from adding question counts while manual retries remain separate. Daily summaries now preserve success, failure, and cancellation counts across detail cleanup. Upstream model catalog metadata discovery remains outside model-validation metering; actual admin validation calls carry the authenticated backend identity context.",
+      "reasoning": "The candidate records every attempted provider call, preserves user/feature/provider/model/status/raw dimensions without prompt or answer bodies, observes raw provider usage before SDK normalization, uses conservative reservations with in-place corrections, and keeps automatic retries from adding question counts while manual retries remain separate. Late settlements trigger an idempotent backfill of already-existing affected summaries, while runAiUsageMaintenance is the sole host-scheduler/operations entry point and this change does not claim production scheduler activation. Daily summaries now preserve success, failure, and cancellation counts across detail cleanup. Upstream model catalog metadata discovery remains outside model-validation metering; actual admin validation calls carry the authenticated backend identity context.",
       "assessed_at": "2026-10-27T00:00:00+08:00",
       "evidence": [
         {
           "path": "src/lib/ai-usage.ts",
-          "blob": "a92fa10670d40d3e8f8897e86cc570462fe7d0eb",
-          "command": "Reservation, settlement, provider usage normalization, quota snapshots/resets, daily idempotent rollup, and 90-day cleanup implementation"
+          "blob": "8551b8bb886de62bfed6854c337e500561ffbdf6",
+          "command": "Reservation, settlement, late-settlement summary backfill, provider usage normalization, quota snapshots/resets, daily idempotent rollup, and 90-day cleanup implementation"
         },
         {
           "path": "src/server/clipping/agent-runtime.ts",
@@ -96,13 +96,13 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "Focused usage, provider integration, search-model, clipping runtime/service, RAG, HTTP, and recovery tests pass in isolated processes. Repository check completes successfully: Biome reports pre-existing public-site warnings and infos, and the admin UI boundary passes for 48 files. Filtered TypeScript output retains pre-existing diagnostics in search, admin, clipping, and test compatibility code; the new metering module, shared contract, durable agent runtime, and Provider integration implementations have no diagnostics.",
+      "reasoning": "Focused usage, provider integration, search-model, clipping runtime/service, RAG, HTTP, and recovery tests pass in isolated processes, including a controlled late-settlement daily-summary correction and repeat idempotence case. Repository check completes successfully: Biome reports pre-existing public-site warnings and infos, and the admin UI boundary passes for 48 files. Filtered TypeScript output retains pre-existing diagnostics in search, admin, clipping, and test compatibility code; the new metering module, shared contract, durable agent runtime, and Provider integration implementations have no diagnostics.",
       "assessed_at": "2026-10-27T00:00:00+08:00",
       "evidence": [
         {
           "path": "src/lib/ai-usage.test.ts",
-          "blob": "ef6134e9fd1b374fa97f3c22075d880310b2eb75",
-          "command": "bun test src/lib/ai-usage.test.ts (20 pass; containment including DeepSeek cache fields, reservations/corrections, concurrent settlement, retries, repeated internal question steps, reset cycles, admin bypass, ordinary/admin conversation limits, status rollups, stale-dimension correction, legacy summary compatibility, multi-day maintenance, and cleanup independence)"
+          "blob": "6b513cc497bfbb84fb64f6e35a3fdae172b88856",
+          "command": "bun test src/lib/ai-usage.test.ts (21 pass; containment including DeepSeek cache fields, reservations/corrections, concurrent settlement, retries, repeated internal question steps, reset cycles, admin bypass, ordinary/admin conversation limits, status rollups, stale-dimension correction, late-settlement summary backfill/idempotence, legacy summary compatibility, multi-day maintenance, and cleanup independence)"
         },
         {
           "path": "src/lib/ai/rerank.test.ts",
@@ -146,8 +146,8 @@
         },
         {
           "path": "src/lib/ai-usage.ts",
-          "blob": "a92fa10670d40d3e8f8897e86cc570462fe7d0eb",
-          "command": "bunx biome check on changed implementation files; git diff --check"
+          "blob": "8551b8bb886de62bfed6854c337e500561ffbdf6",
+          "command": "bunx biome check on changed implementation files; git diff --check; late settlement backfill is exercised by the 21-test metering suite"
         },
         {
           "path": "package.json",
@@ -201,7 +201,7 @@
         },
         {
           "path": "src/lib/ai-usage.test.ts",
-          "blob": "ef6134e9fd1b374fa97f3c22075d880310b2eb75",
+          "blob": "6b513cc497bfbb84fb64f6e35a3fdae172b88856",
           "command": "In-memory Drizzle migration applies the forward-only schema and verifies idempotent result rollups, legacy-summary defaults, and detail cleanup independence"
         }
       ]

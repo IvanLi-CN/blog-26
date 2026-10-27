@@ -861,6 +861,55 @@ describe("AI usage metering", () => {
     expect(await database.select().from(aiUsageDailySummaries)).toHaveLength(1);
   });
 
+  it("backfills a late settlement into an existing daily summary idempotently", async () => {
+    const day = "2026-01-01";
+    const occurredAt = Date.parse(`${day}T01:00:00Z`);
+    const handle = await reserveAiUsage(
+      {
+        feature: "assistant",
+        logicalRequestId: "late-settlement",
+        inputEstimateTokens: 4,
+        outputEstimateTokens: 2,
+        occurredAt,
+      },
+      database
+    );
+    await rollupAiUsageDay({
+      day,
+      timezone: "UTC",
+      now: Date.parse("2026-01-02T00:00:00Z"),
+      database,
+    });
+    expect(await database.select().from(aiUsageDailySummaries)).toMatchObject([
+      expect.objectContaining({
+        callCount: 1,
+        totalTokens: 6,
+        estimatedCallCount: 1,
+        incompleteCallCount: 1,
+      }),
+    ]);
+
+    await settleAiUsage(
+      handle,
+      { usage: { input_tokens: 10, output_tokens: 2, total_tokens: 12 }, occurredAt },
+      database
+    );
+    expect(await database.select().from(aiUsageDailySummaries)).toMatchObject([
+      expect.objectContaining({
+        callCount: 1,
+        totalTokens: 12,
+        estimatedCallCount: 0,
+        incompleteCallCount: 0,
+        successCallCount: 1,
+      }),
+    ]);
+
+    await settleAiUsage(handle, { status: "success", occurredAt }, database);
+    expect(await database.select().from(aiUsageDailySummaries)).toMatchObject([
+      expect.objectContaining({ callCount: 1, totalTokens: 12, successCallCount: 1 }),
+    ]);
+  });
+
   it("keeps an existing summary created before result-count columns were added", async () => {
     await database.insert(aiUsageDailySummaries).values({
       id: "legacy-summary",

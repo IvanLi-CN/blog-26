@@ -846,7 +846,8 @@ export async function settleAiUsage(
 ) {
   const state = handleStates.get(handle);
   const database = databaseOverride ?? state?.database ?? (await getDatabase());
-  return database.transaction(
+  let affectedOccurredAt: number[] = [];
+  const settled = await database.transaction(
     (tx) => {
       const current = tx
         .select()
@@ -854,6 +855,7 @@ export async function settleAiUsage(
         .where(eq(aiUsageRecords.id, handle.id))
         .get();
       if (!current) return null;
+      affectedOccurredAt = [current.occurredAt, settlement.occurredAt ?? current.occurredAt];
       const raw = parseRaw(current.rawUsage);
       const normalized = normalizeAiUsage(settlement.usage);
       const hasCompleteCorrection = normalized.usageComplete;
@@ -904,6 +906,16 @@ export async function settleAiUsage(
     },
     { behavior: "immediate" }
   );
+  if (settled && affectedOccurredAt.length) {
+    try {
+      await backfillAiUsageSummaries(database, affectedOccurredAt);
+    } catch (error) {
+      if (!isAiUsageStoreUnavailable(error)) {
+        console.error("[ai-usage] failed to backfill daily summaries", error);
+      }
+    }
+  }
+  return settled;
 }
 
 export async function meterProviderCall<T>(options: {
@@ -1058,6 +1070,30 @@ function dimensionWhere(
       : eq(aiUsageDailySummaries.provider, provider),
     model === null ? isNull(aiUsageDailySummaries.model) : eq(aiUsageDailySummaries.model, model)
   );
+}
+
+async function backfillAiUsageSummaries(database: AiDatabase, occurredAtValues: readonly number[]) {
+  const summaries = await database
+    .select({ day: aiUsageDailySummaries.day, timezone: aiUsageDailySummaries.timezone })
+    .from(aiUsageDailySummaries)
+    .all();
+  const affected = new Map<string, { day: string; timezone: string }>();
+  for (const occurredAt of new Set(occurredAtValues)) {
+    const date = new Date(occurredAt);
+    if (Number.isNaN(date.getTime())) continue;
+    for (const summary of summaries) {
+      if (summary.day !== dayKey(date, summary.timezone)) continue;
+      affected.set(`${summary.day}\u0000${summary.timezone}`, summary);
+    }
+  }
+  for (const summary of affected.values()) {
+    await rollupAiUsageDay({
+      day: summary.day,
+      timezone: summary.timezone,
+      now: Date.now(),
+      database,
+    });
+  }
 }
 
 export async function rollupAiUsageDay(
@@ -1227,6 +1263,10 @@ export async function cleanupAiUsageDetails(
   return { cutoff, deleted: rows.length };
 }
 
+/**
+ * Sole maintenance entry point for a host scheduler or explicit operations trigger.
+ * This module does not start a timer; the deployment owns invoking this function.
+ */
 export async function runAiUsageMaintenance(
   options: { now?: number; timezone?: string; database?: AiDatabase } = {}
 ) {
