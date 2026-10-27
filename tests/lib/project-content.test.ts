@@ -239,7 +239,7 @@ describe("project content contracts", () => {
     );
     const source = readFileSync(join(process.cwd(), "site/content/projects/octo-rill.mdx"), "utf8");
     expect(extractProjectDetailSummary(source)).toBe(
-      "它更像一块为开发者自己定制的云端仪表板，重点不是社交网络式展示，而是把分散的 GitHub 动态重新组织成可消费的操作界面。"
+      "它更像一块为开发者自己定制的云端仪表板，重点不是社交网络式展示，而是把分散的 GitHub 动态重新组织成可消费的操作界面。OctoRill 将 Release、通知、社交反馈、日报和收件箱入口汇聚到一条阅读路径，并在同步、翻译与润色结果之间保留原始上下文。它不替代 GitHub 的评论、合并等协作动作，而是先帮助用户判断哪些变化值得继续跟进，再回到 GitHub 完成后续操作。"
     );
     expect(project?.summary).not.toBe(extractProjectDetailSummary(source));
   });
