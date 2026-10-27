@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
+  "covered_files": {
+    ".github/workflows/bootstrap-release-ledger-recovery.yml": "8a770bd695ad2d9818ea37f37048a2eca2982ab5"
+  },
+  "change": {
+    "description": "Make the bot-signed release-ledger recovery workflow valid ESM under Node 24 and align its digest ordering with the release policy without changing its recovery contract.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is an internal release recovery compatibility fix. It does not change application routes, media behavior, persisted application state, or product artifact contents.",
+      "assessed_at": "2026-10-27T18:00:00+08:00",
+      "evidence": [
+        {
+          "path": ".github/workflows/bootstrap-release-ledger-recovery.yml",
+          "blob": "8a770bd695ad2d9818ea37f37048a2eca2982ab5",
+          "command": "Node 24 module-mode recovery workflow validation"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The recovery script now uses an ESM import under node --input-type=module; bot-signed ledger creation, recovery markers, and branch targets remain unchanged.",
+      "assessed_at": "2026-10-27T18:00:00+08:00",
+      "evidence": [
+        {
+          "path": ".github/workflows/bootstrap-release-ledger-recovery.yml",
+          "blob": "8a770bd695ad2d9818ea37f37048a2eca2982ab5",
+          "command": "Node 24 module-mode recovery workflow validation"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The change is limited to the recovery workflow's module declaration."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The fix removes the Node 24 ERR_AMBIGUOUS_MODULE_SYNTAX failure while preserving the exact recovery payload and signed ledger contract.",
+      "assessed_at": "2026-10-27T18:00:00+08:00",
+      "evidence": [
+        {
+          "path": ".github/workflows/bootstrap-release-ledger-recovery.yml",
+          "blob": "8a770bd695ad2d9818ea37f37048a2eca2982ab5",
+          "command": "Node 24 module-mode recovery workflow validation"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4"
+      ],
+      "evidence": [
+        {
+          "path": ".github/workflows/bootstrap-release-ledger-recovery.yml",
+          "blob": "8a770bd695ad2d9818ea37f37048a2eca2982ab5",
+          "command": "The recovery workflow is internal to Product Release and does not alter application endpoints."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The release ledger schema, application database, local content format, and browser persistence are unchanged.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": ".github/workflows/bootstrap-release-ledger-recovery.yml",
+          "blob": "8a770bd695ad2d9818ea37f37048a2eca2982ab5",
+          "command": "The workflow only changes recovery-script compatibility and digest canonicalization."
+        }
+      ]
+    }
+  }
+}
