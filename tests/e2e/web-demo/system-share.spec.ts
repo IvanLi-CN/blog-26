@@ -157,7 +157,7 @@ async function synthesizeTouchScroll(
       const scroll = document.scrollingElement ?? document.documentElement;
       if (!target) throw new Error(`Missing touch target: ${targetSelector}`);
       const maxScrollTop = Math.max(0, scroll.scrollHeight - window.innerHeight);
-      const gestureHeadroom = Math.abs(gestureDistance) + 40;
+      const gestureHeadroom = Math.abs(gestureDistance) + 240;
       target.scrollIntoView({ block: "center", inline: "nearest" });
       scroll.scrollTop = Math.max(0, Math.min(maxScrollTop - gestureHeadroom, scroll.scrollTop));
       const box = target.getBoundingClientRect();

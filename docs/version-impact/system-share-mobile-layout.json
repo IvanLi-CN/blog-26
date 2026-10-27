@@ -11,7 +11,7 @@
     "site/components/SystemShareConfirmation.tsx": "e02c0604228cf8d62327a1b27bf2987ed72d1e02",
     "site/layouts/BaseLayout.astro": "0a163667e1e853c1ab9485cd400b915093997449",
     "site/pages/share.astro": "317e791bc6260c08bccd37467855b7769ad51ffa",
-    "tests/e2e/web-demo/system-share.spec.ts": "56e044c3e0a9971ae42bbada28192d2c9f1071e8"
+    "tests/e2e/web-demo/system-share.spec.ts": "2ca4c04765e8e8a725e8614652909698efaa1f51"
   },
   "change": {
     "description": "Tighten the Console system-share confirmation layout on mobile, preserve natural document scrolling from the attachment area, and synchronize the responsive Web Demo evidence without changing publish or persistence contracts.",
@@ -31,7 +31,7 @@
         },
         {
           "path": "tests/e2e/web-demo/system-share.spec.ts",
-          "blob": "56e044c3e0a9971ae42bbada28192d2c9f1071e8",
+          "blob": "2ca4c04765e8e8a725e8614652909698efaa1f51",
           "command": "Review the mobile first-viewport, responsive-width, and native-touch regression contract"
         }
       ]
@@ -64,7 +64,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/system-share.spec.ts",
-          "blob": "56e044c3e0a9971ae42bbada28192d2c9f1071e8",
+          "blob": "2ca4c04765e8e8a725e8614652909698efaa1f51",
           "command": "Focused system-share mobile first-viewport, responsive-width, and native-touch tests pass"
         },
         {
@@ -127,7 +127,7 @@
         },
         {
           "path": "tests/e2e/web-demo/system-share.spec.ts",
-          "blob": "56e044c3e0a9971ae42bbada28192d2c9f1071e8",
+          "blob": "2ca4c04765e8e8a725e8614652909698efaa1f51",
           "command": "Focused publish, retry, attachment, and navigation regressions exercise the unchanged route contract"
         }
       ]
