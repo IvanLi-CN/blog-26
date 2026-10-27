@@ -524,9 +524,9 @@ test.describe("Console system share Web Demo", () => {
     await editor.click();
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.insertText(
-      Array.from({ length: 48 }, (_, index) => `滚动回归正文第 ${index + 1} 行`).join("\n")
+      Array.from({ length: 96 }, (_, index) => `滚动回归正文第 ${index + 1} 行`).join("\n")
     );
-    await expect.poll(() => readPendingText(page), { timeout: 5_000 }).toContain("第 48 行");
+    await expect.poll(() => readPendingText(page), { timeout: 5_000 }).toContain("第 96 行");
     await expect(page.getByTestId("system-share-files")).toContainText("分享附件.txt");
     await page.getByTestId("system-share-original-toggle").click();
     await expect(page.getByTestId("system-share-original").locator("dl")).toBeVisible();
