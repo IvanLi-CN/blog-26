@@ -7,7 +7,7 @@
     "apps/admin/src/components/ui.tsx": "a3a988251e898401b19a197c08ba9b1e7278b5a5",
     "apps/admin/src/demo/mock-admin-api.ts": "4651c9b87258212b11ffdb8ed9875fe8bf15f54d",
     "apps/admin/src/pages/ai-usage.tsx": "048d05f0dbbf32cc36c511b45400d92c0b36ab3a",
-    "apps/admin/src/pages/dashboard.tsx": "aa15aeebc847e9c288d0a1e96ec13882d7736baf",
+    "apps/admin/src/pages/dashboard.tsx": "657e1decc584716ef161452982028d71240dfa69",
     "apps/admin/src/pages/users.tsx": "4ad280188018f8476e4213e674fbe241945bc090",
     "apps/admin/src/router.tsx": "46ade3604894321ce829fb7b80c6e28277f48f25",
     "src/lib/admin-api-client.ts": "3ce42b7552712f858c17c6a93a023e7b24293762",
@@ -16,10 +16,10 @@
     "src/server/services/admin-ai-usage.test.ts": "184126b343896771d0cba579587b51585f03b5e0",
     "src/server/services/admin-ai-usage.ts": "76e51e57133c5b6ee8c3572782985c6b85873dc5",
     "tests/e2e/web-demo/ai-usage.spec.ts": "9d8aac562f5fdcbbe536ec512af2321bb71448f6",
-    "tests/e2e/web-demo/dashboard.spec.ts": "f22dbea3145f8f947afc344f8de32afc8d1c6ddc"
+    "tests/e2e/web-demo/dashboard.spec.ts": "3995bd1be6e9d13dd36892dec4f1c9fe32d44eac"
   },
   "change": {
-    "description": "Add the administrator AI usage operations surface, per-user quota controls, and a dashboard view covering the latest seven natural days with timezone-aware stacked usage totals and missing-usage visibility.",
+    "description": "Add the administrator AI usage operations surface, per-user quota controls, and a dashboard view covering the latest seven natural days with timezone-aware stacked usage totals and success, failure, cancellation, missing, and estimated usage visibility.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api"]
   },
@@ -27,12 +27,12 @@
     "planned": {
       "impact": "minor",
       "reasoning": "The admin-only operations surface adds compatible read and same-origin policy endpoints plus UI routes. It does not remove existing routes, alter public response shapes, or add durable state schema changes.",
-      "assessed_at": "2026-10-27T14:45:00+08:00",
+      "assessed_at": "2026-10-27T23:35:52+08:00",
       "evidence": [
         {
           "path": "docs/specs/site-knowledge-assistant/SPEC.md",
           "blob": "d11a224a6283c60aa276785997ee8a33a4586dad",
-          "command": "REQ-SKA-018 requires the dashboard to show seven natural days, a consistent timezone, input/cache/output/call metrics, and incomplete usage visibility"
+          "command": "REQ-SKA-018 requires the dashboard to show seven natural days, a consistent timezone, input/cache/output/call metrics, and incomplete usage visibility; review follow-up requires failure and cancelled call visibility"
         },
         {
           "path": "src/server/admin-api/router.ts",
@@ -43,13 +43,13 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The candidate adds the admin AI usage page, user quota operations, shared usage client types, and the dashboard seven-day usage panel. The dashboard endpoint reuses the existing service aggregation and returns only timezone, range, metric, and trend data; no database migration or durable state shape changes are included.",
-      "assessed_at": "2026-10-27T14:45:00+08:00",
+      "reasoning": "The candidate adds the admin AI usage page, user quota operations, shared usage client types, and the dashboard seven-day usage panel. The dashboard endpoint reuses the existing service aggregation and returns only timezone, range, metric, and trend data; the dashboard now exposes success, failure, cancelled, missing, and estimated call states without database migration or durable state shape changes.",
+      "assessed_at": "2026-10-27T23:35:52+08:00",
       "evidence": [
         {
           "path": "apps/admin/src/pages/dashboard.tsx",
-          "blob": "aa15aeebc847e9c288d0a1e96ec13882d7736baf",
-          "command": "Dashboard renders four AI usage cards, a three-band seven-day stack, an exact-value table, timezone labeling, and missing/estimated counts"
+          "blob": "657e1decc584716ef161452982028d71240dfa69",
+          "command": "Dashboard renders four AI usage cards, a three-band seven-day stack, an exact-value table, timezone labeling, and success, failure, cancelled, missing, and estimated call counts"
         },
         {
           "path": "src/server/admin-api/router.ts",
@@ -69,13 +69,13 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "The protected dashboard API contract passes the HTTP compatibility test, the compiled admin build succeeds, and the Web Demo passes desktop and mobile acceptance for the new dashboard surface plus the existing AI usage and user quota flows. The dashboard shows all seven natural-day rows, timezone labeling, additive token dimensions, and missing/estimated status without introducing persistent state changes.",
-      "assessed_at": "2026-10-27T14:45:00+08:00",
+      "reasoning": "The protected dashboard API contract passes the HTTP compatibility test, the compiled admin build succeeds, and the Web Demo passes desktop and mobile acceptance for the new dashboard surface plus the existing AI usage and user quota flows. The dashboard shows all seven natural-day rows, timezone labeling, additive token dimensions, and success, failure, cancelled, missing, and estimated status without introducing persistent state changes.",
+      "assessed_at": "2026-10-27T23:35:52+08:00",
       "evidence": [
         {
           "path": "tests/e2e/web-demo/dashboard.spec.ts",
-          "blob": "f22dbea3145f8f947afc344f8de32afc8d1c6ddc",
-          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:64110 WEB_DEMO_VIEWPORT=desktop|mobile bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/dashboard.spec.ts (2 pass)"
+          "blob": "3995bd1be6e9d13dd36892dec4f1c9fe32d44eac",
+          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:25094 WEB_DEMO_VIEWPORT=desktop|mobile bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/dashboard.spec.ts (2 pass; asserts failure and cancelled columns plus call summary)"
         },
         {
           "path": "src/server/http-compat-api.test.ts",
@@ -85,7 +85,7 @@
         {
           "path": "package.json",
           "blob": "3d0e64c848f06801f9746e3d3cea091ff9929b73",
-          "command": "bun run admin:build:compiled; bun run web-demo:build; bunx biome check --write <changed files>; git diff --check (all pass; build warnings are existing chunk-size/Astro route warnings)"
+          "command": "VITE_WEB_DEMO_BUILD=true ADMIN_OUT_DIR=web-demo-admin-dist bunx vite build --config apps/admin/vite.config.ts --configLoader runner; bunx biome check --write <changed files>; git diff --check (all pass; full Web Demo build was separately attempted but stopped at an existing dev-sync:trigger hang)"
         }
       ]
     }

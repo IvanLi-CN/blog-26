@@ -158,6 +158,8 @@ function DashboardUsageTrend({ data }: { data: AdminDashboardAiUsage["trend"] })
               <TableHead>缓存命中输入</TableHead>
               <TableHead>输出</TableHead>
               <TableHead>调用</TableHead>
+              <TableHead>失败</TableHead>
+              <TableHead>中止</TableHead>
               <TableHead>缺失 / 估算</TableHead>
             </TableRow>
           </TableHeader>
@@ -171,6 +173,8 @@ function DashboardUsageTrend({ data }: { data: AdminDashboardAiUsage["trend"] })
                 <TableCell>{formatCount(item.cachedInputTokens)}</TableCell>
                 <TableCell>{formatCount(item.outputTokens)}</TableCell>
                 <TableCell>{formatCount(item.callCount)}</TableCell>
+                <TableCell>{formatCount(item.failureCallCount)}</TableCell>
+                <TableCell>{formatCount(item.cancelledCallCount)}</TableCell>
                 <TableCell>
                   {formatCount(item.missingCallCount)} / {formatCount(item.estimatedCallCount)}
                 </TableCell>
@@ -222,7 +226,7 @@ function DashboardUsagePanel({ usage }: { usage: AdminDashboardAiUsage }) {
           <DashboardUsageMetric
             title="调用次数"
             value={formatCount(metric.callCount)}
-            description={`成功 ${formatCount(metric.successCallCount)} · 缺失 ${formatCount(metric.missingCallCount)} · 估算 ${formatCount(metric.estimatedCallCount)}`}
+            description={`成功 ${formatCount(metric.successCallCount)} · 失败 ${formatCount(metric.failureCallCount)} · 中止 ${formatCount(metric.cancelledCallCount)} · 缺失 ${formatCount(metric.missingCallCount)} · 估算 ${formatCount(metric.estimatedCallCount)}`}
             tone="success"
           />
         </div>

@@ -19,10 +19,12 @@ test.describe("Admin dashboard AI usage Web Demo", () => {
     await expect(page.getByText("缓存命中 Token")).toBeVisible();
     await expect(page.getByText("输出 Token")).toBeVisible();
     await expect(page.getByText("调用次数")).toBeVisible();
+    await expect(page.getByText(/成功 .* · 失败 .* · 中止 .* · 缺失 .* · 估算 .*/)).toBeVisible();
     await expect(page.getByRole("img", { name: "最近七日 AI Token 消耗趋势" })).toBeVisible();
-    await expect(page.getByRole("table", { name: "最近七日 AI 用量同值表格" })).toBeVisible();
-    await expect(
-      page.getByRole("table", { name: "最近七日 AI 用量同值表格" }).locator("tbody tr")
-    ).toHaveCount(7);
+    const table = page.getByRole("table", { name: "最近七日 AI 用量同值表格" });
+    await expect(table).toBeVisible();
+    await expect(table.getByRole("columnheader", { name: "失败" })).toBeVisible();
+    await expect(table.getByRole("columnheader", { name: "中止" })).toBeVisible();
+    await expect(table.locator("tbody tr")).toHaveCount(7);
   });
 });
