@@ -272,6 +272,11 @@ export type SubmitAssistantTurnInput = {
   now?: number;
 };
 
+export type AssistantTurnScope = Pick<
+  SubmitAssistantTurnInput,
+  "kind" | "clippingMemoId" | "clippingVersionId"
+>;
+
 export type AssistantTurnSubmission = {
   createdConversation: boolean;
   conversation: AssistantConversation;
@@ -309,6 +314,7 @@ export type AssistantMessageStorage = {
     frontendUserId: string
   ): Promise<AssistantConversation | null>;
   listConversations(frontendUserId: string): Promise<AssistantConversation[]>;
+  listClippingConversations(clippingMemoId: string): Promise<AssistantConversation[]>;
   updateConversationClippingVersion(
     conversationId: string,
     frontendUserId: string,
@@ -332,7 +338,8 @@ export type AssistantMessageStorage = {
     requestId: string,
     clientRequestId?: string | null,
     conversationId?: string | null,
-    now?: number
+    now?: number,
+    scope?: AssistantTurnScope
   ): Promise<AssistantTurnSubmission | null>;
   submitTurn(input: SubmitAssistantTurnInput): Promise<AssistantTurnSubmission>;
   getConversationState(

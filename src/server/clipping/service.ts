@@ -320,9 +320,33 @@ export class ClippingService {
     return result;
   }
 
+  private async stopAssistantGenerationsForVersions(memoId: string, versionIds: string[]) {
+    if (!this.assistantMigrationGate.ready || versionIds.length === 0) return;
+    const conversations = await this.assistantService.storage.listClippingConversations(memoId);
+    const versions = new Set(versionIds);
+    for (const conversation of conversations) {
+      if (!conversation.clippingVersionId || !versions.has(conversation.clippingVersionId))
+        continue;
+      const jobs = await this.assistantService.storage.listGenerationJobs(
+        conversation.id,
+        conversation.frontendUserId
+      );
+      for (const job of jobs ?? []) {
+        if (job.status !== "queued" && job.status !== "running") continue;
+        await this.assistantService.storage.stopGeneration(
+          job.id,
+          conversation.frontendUserId,
+          Date.now()
+        );
+        this.assistantService.runtime.cancelGeneration(job.id);
+      }
+    }
+  }
+
   private async reconcileUnlocked(memoId: string, reprocess = false) {
     if (this.closing) throw new Error("剪藏处理器正在停止。");
     const abort: string[] = [];
+    let assistantVersionsToStop: string[] = [];
     await this.runtime.exclusive(async () => {
       let authored: Awaited<ReturnType<typeof readAuthoredMemo>> | null;
       try {
@@ -384,6 +408,11 @@ export class ClippingService {
         if (previous?.jobConversationId && ["queued", "processing"].includes(previous.status))
           abort.push(previous.jobConversationId);
         this.running.get(id)?.controller.abort();
+        if (changedTarget && manifest.targetUrl) {
+          assistantVersionsToStop = manifest.versions
+            .filter((version) => version.targetUrl === manifest.targetUrl)
+            .map((version) => version.id);
+        }
         if (manifest.conversationId && (changedTarget || !recognition?.enabled || !authored)) {
           if (changedTarget && manifest.targetUrl) {
             manifest.previousConversations.push({
@@ -413,6 +442,7 @@ export class ClippingService {
       // Also refresh the rebuildable index on remarks-only edits and after an index loss.
       await this.persist(manifest);
     });
+    await this.stopAssistantGenerationsForVersions(memoId, assistantVersionsToStop);
     for (const conversation of abort)
       await this.runtime.abort(conversation).catch((error) => {
         if (error instanceof RuntimeOwnershipError) this.markOwnershipLost();

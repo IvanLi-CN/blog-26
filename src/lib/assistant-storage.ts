@@ -8,6 +8,7 @@ import type {
   AssistantJobExecution,
   AssistantMessage,
   AssistantMessageStorage,
+  AssistantTurnScope,
   AssistantTurnSubmission,
   CreateAssistantConversationInput,
   CreateAssistantGenerationJobInput,
@@ -283,8 +284,21 @@ function submissionFromExecution(execution: AssistantJobExecution): AssistantTur
 type IdempotentSubmissionLookup =
   | { kind: "none" }
   | { kind: "not-owner" }
+  | { kind: "conflict" }
   | { kind: "gone" }
   | { kind: "submitted"; submission: AssistantTurnSubmission };
+
+function matchesTurnScope(
+  conversation: typeof assistantConversations.$inferSelect,
+  scope: AssistantTurnScope | undefined
+) {
+  if (!scope) return true;
+  return (
+    conversation.kind === (scope.kind ?? "general") &&
+    conversation.clippingMemoId === (scope.clippingMemoId ?? null) &&
+    conversation.clippingVersionId === (scope.clippingVersionId ?? null)
+  );
+}
 
 function findExistingSubmission(
   database: AssistantQueryDatabase,
@@ -293,9 +307,11 @@ function findExistingSubmission(
     conversation: typeof assistantConversations.$inferSelect;
   },
   frontendUserId: string,
-  now: number
+  now: number,
+  scope?: AssistantTurnScope
 ): IdempotentSubmissionLookup {
   if (row.conversation.frontendUserId !== frontendUserId) return { kind: "not-owner" };
+  if (!matchesTurnScope(row.conversation, scope)) return { kind: "conflict" };
   if (row.conversation.status !== "active") return { kind: "gone" };
   if (row.conversation.expiresAt !== null && row.conversation.expiresAt <= now) {
     setConversationTerminal(database, row.conversation.id, "expired", now);
@@ -313,7 +329,8 @@ function findIdempotentSubmission(
   requestId: string,
   clientRequestId: string | null | undefined,
   conversationId: string | null | undefined,
-  now: number
+  now: number,
+  scope?: AssistantTurnScope
 ): IdempotentSubmissionLookup {
   const existingRequest = database
     .select({ job: assistantGenerationJobs, conversation: assistantConversations })
@@ -325,7 +342,7 @@ function findIdempotentSubmission(
     .where(eq(assistantGenerationJobs.requestId, requestId))
     .get();
   if (existingRequest)
-    return findExistingSubmission(database, existingRequest, frontendUserId, now);
+    return findExistingSubmission(database, existingRequest, frontendUserId, now, scope);
 
   if (!clientRequestId) return { kind: "none" };
   const conditions = [
@@ -347,7 +364,7 @@ function findIdempotentSubmission(
     .where(and(...conditions))
     .get();
   return existingMessage
-    ? findExistingSubmission(database, existingMessage, frontendUserId, now)
+    ? findExistingSubmission(database, existingMessage, frontendUserId, now, scope)
     : { kind: "none" };
 }
 
@@ -421,6 +438,22 @@ export function createAssistantStorage(
         },
         { behavior: "immediate" }
       );
+    },
+
+    async listClippingConversations(clippingMemoId: string) {
+      const database = await getDatabase();
+      const rows = await database
+        .select()
+        .from(assistantConversations)
+        .where(
+          and(
+            eq(assistantConversations.kind, "clipping"),
+            eq(assistantConversations.clippingMemoId, clippingMemoId)
+          )
+        )
+        .orderBy(desc(assistantConversations.createdAt))
+        .all();
+      return rows.map(mapConversation);
     },
 
     async updateConversationClippingVersion(
@@ -657,10 +690,20 @@ export function createAssistantStorage(
             input.requestId,
             input.clientRequestId,
             input.conversationId,
-            now
+            now,
+            {
+              kind: input.kind,
+              clippingMemoId: input.clippingMemoId,
+              clippingVersionId: input.clippingVersionId,
+            }
           );
           if (idempotent.kind === "not-owner")
             throw new AssistantStorageError("not-found", "Assistant turn is not available");
+          if (idempotent.kind === "conflict")
+            throw new AssistantStorageError(
+              "conflict",
+              "Assistant request id is already used for another conversation"
+            );
           if (idempotent.kind === "gone") return { kind: "gone" as const };
           if (idempotent.kind === "submitted")
             return { kind: "submitted" as const, submission: idempotent.submission };
@@ -931,7 +974,8 @@ export function createAssistantStorage(
       requestId,
       clientRequestId,
       conversationId,
-      now = Date.now()
+      now = Date.now(),
+      scope
     ) {
       const database = await getDatabase();
       const result = await database.transaction(
@@ -942,12 +986,18 @@ export function createAssistantStorage(
             requestId,
             clientRequestId,
             conversationId,
-            now
+            now,
+            scope
           ),
         { behavior: "immediate" }
       );
       if (result.kind === "gone")
         throw new AssistantStorageError("gone", "Assistant conversation has expired");
+      if (result.kind === "conflict")
+        throw new AssistantStorageError(
+          "conflict",
+          "Assistant request id is already used for another conversation"
+        );
       return result.kind === "submitted" ? result.submission : null;
     },
 

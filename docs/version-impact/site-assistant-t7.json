@@ -4,86 +4,108 @@
   "base_sha": "4aa5449672049e203f2cfd7a2d588f0b3f921ac2",
   "covered_files": {
     "scripts/start-console.ts": "f9581e191ea8cf461a2bd70d22f2a88a31298042",
-    "src/lib/assistant-contracts.ts": "6814d2940115294b22b8e8c6f38b4a7bb3dfef03",
-    "src/lib/assistant-storage.test.ts": "8d37537383b25bc870d56c9716c42b8cf780923f",
-    "src/lib/assistant-storage.ts": "baaa945a66d80739d504475bcca8b12ce3e5b8f1",
+    "src/lib/assistant-contracts.ts": "24d72b23b6babf34dc7aef36d63fd946251fb8e8",
+    "src/lib/assistant-storage.test.ts": "71f82649a9205c966ab7324c613603650b2eff60",
+    "src/lib/assistant-storage.ts": "ca9c8aa19909077377ef0bd72112e20cebded7a1",
     "src/server/assistant/api.ts": "aa698607b76869084db28b91433ba378f1925fe9",
     "src/server/assistant/runtime.test.ts": "f4ee0ea499e477d1591b4ed906d61c3aceefb24d",
     "src/server/assistant/runtime.ts": "f70dab132862172d80974c3e799cd3939fe5dc13",
-    "src/server/assistant/service.ts": "ce618ff41a3427aa1697604104b96a3cb282dd8b",
-    "src/server/assistant/migration-gate.ts": "2662728bcd87207c0b8c1752174c4165588fcbe3",
-    "src/server/assistant/migration-gate.test.ts": "a6db4509488ae8fcd3d44274d3da970ee19ccab3",
-    "src/server/clipping/api.test.ts": "719db59dfb294a916b7f058519c68beac1c5b9a0",
-    "src/server/clipping/api.ts": "77e80b14117276c2f432695fc07d38816b79bbe4",
-    "src/server/clipping/assistant-adapter.test.ts": "fd2c14ca7552e19a889a7e5da1cdbde06a3d76c6",
-    "src/server/clipping/service.ts": "f814d6a02bb746b7b120be690e5e29b868cc13b0",
+    "src/server/assistant/service.ts": "49c00f058800ab4ee2608311961982ff7b4f79b2",
+    "src/server/assistant/migration-gate.ts": "9860bfa816e9eb2ae9ceb87f9d00b936f8cad888",
+    "src/server/assistant/migration-gate.test.ts": "81dc052303ff84887b770233a90997de267a3738",
+    "src/server/clipping/api.test.ts": "c1a5b3361059dc84d56a9da7639f9a831570aab9",
+    "src/server/clipping/api.ts": "00056224c4535d87392e69a25ecaf273518a3a7d",
+    "src/server/clipping/assistant-adapter.test.ts": "b2fccc6e658d062751a4b75cd74cab1f143fd5ba",
+    "src/server/clipping/service.ts": "dc9a95d0bf53a52833ef238d68d01e95a19b1865",
     "src/server/public-api/assistant-chat.test.ts": "f7a42f3385d824b992d4a0a0aa2eff6820be3d2b"
   },
   "change": {
     "description": "Route public clipping discussion through the unified frontend-user assistant service, preserve same-target conversations across recaptures, split conversations on target changes, gate legacy installations until migration completion, and align Console/Gateway assistant lifecycle with clipping startup and shutdown.",
-    "release_unit_description": "full-feature server and public clipping API",
-    "affected_contracts": ["public-api", "persistent-state", "runtime-lifecycle"]
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
   },
   "classification": {
     "planned": {
-      "impact": "minor",
+      "impact": "major",
       "reasoning": "The approved T7 scope changes clipping discussion ownership to frontend principals, keeps legacy installations disabled until validated migration, and reuses existing assistant tables without a schema migration.",
       "assessed_at": "2026-10-28T00:00:00+08:00",
       "evidence": [
         {
           "path": "docs/specs/site-knowledge-assistant/SPEC.md",
+          "blob": "d11a224a6283c60aa276785997ee8a33a4586dad",
           "command": "Defines one unified frontend-user assistant runtime, clipping target identity, migration gating, and single-worker lifecycle"
         },
         {
           "path": "docs/adr/0036-assistant-generation-independent-of-ui-lifecycle.md",
+          "blob": "b20d06076e509d325582952266276f3cf01e785b",
           "command": "Requires durable generation to remain independent of the browser connection lifecycle"
         }
       ]
     },
     "current": {
-      "impact": "minor",
+      "impact": "major",
       "reasoning": "The HTTP chat and event routes now require a frontend session; creator/admin management remains limited to reprocess. Same-target recaptures update the unified conversation version, target changes create a new conversation, and old Pi chat state remains only for clipping processing compatibility. No production migration or deployment was performed.",
       "assessed_at": "2026-10-28T00:00:00+08:00",
       "scope_drift": {
         "detected": false,
         "description": "The candidate is limited to clipping chat cutover, assistant storage/runtime lifecycle, migration readiness, Console startup/shutdown, and regression tests. It does not change UI routes, model providers, schema migrations, or production state."
-      }
+      },
+      "evidence": [
+        {
+          "path": "src/server/clipping/api.ts",
+          "blob": "00056224c4535d87392e69a25ecaf273518a3a7d",
+          "command": "Uses frontend identity for clipping discussion and revalidates target/version binding"
+        },
+        {
+          "path": "src/server/assistant/runtime.ts",
+          "blob": "f70dab132862172d80974c3e799cd3939fe5dc13",
+          "command": "Runs one durable assistant worker with context dispatch, recovery, expiry, and shutdown lifecycle"
+        }
+      ]
     },
     "verified": {
-      "impact": "minor",
+      "impact": "major",
       "reasoning": "Focused clipping, assistant, storage, migration-gate, generic API isolation, and public API tests pass; the migration journal is unchanged and valid; changed files format cleanly and the diff has no whitespace errors. Full repository check remains affected by pre-existing unrelated site diagnostics; no real model provider was called.",
       "assessed_at": "2026-10-28T00:00:00+08:00",
       "evidence": [
         {
           "path": "src/server/clipping/assistant-adapter.test.ts",
-          "command": "bun test src/server/clipping/assistant-adapter.test.ts (1 pass, 0 fail, 7 expectations)"
+          "blob": "b2fccc6e658d062751a4b75cd74cab1f143fd5ba",
+          "command": "bun test src/server/clipping/assistant-adapter.test.ts (1 pass, 0 fail, 7 expectations; old-target generation cancellation covered)"
         },
         {
           "path": "src/server/clipping/api.test.ts",
-          "command": "bun test src/server/clipping/api.test.ts (16 pass, 0 fail, 94 expectations)"
+          "blob": "c1a5b3361059dc84d56a9da7639f9a831570aab9",
+          "command": "bun test src/server/clipping/api.test.ts (18 pass, 0 fail, 104 expectations; frontend unified chat, migration gate, and SSE cap covered)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
+          "blob": "edd5d7892d42be2ad5d1298d7675349d7fba02ba",
           "command": "bun test src/server/clipping/service.test.ts (14 pass, 0 fail)"
         },
         {
           "path": "src/server/assistant/runtime.test.ts",
-          "command": "bun test src/server/assistant/runtime.test.ts (7 pass, 0 fail)"
+          "blob": "f4ee0ea499e477d1591b4ed906d61c3aceefb24d",
+          "command": "bun test src/server/assistant/runtime.test.ts (8 pass, 0 fail)"
         },
         {
           "path": "src/lib/assistant-storage.test.ts",
-          "command": "bun test src/lib/assistant-storage.test.ts (9 pass, 0 fail; concurrent clipping first-turn deduplication covered)"
+          "blob": "71f82649a9205c966ab7324c613603650b2eff60",
+          "command": "bun test src/lib/assistant-storage.test.ts (10 pass, 0 fail; concurrent clipping first-turn deduplication and scoped request-id collision covered)"
         },
         {
           "path": "src/server/assistant/migration-gate.test.ts",
+          "blob": "81dc052303ff84887b770233a90997de267a3738",
           "command": "bun test src/server/assistant/migration-gate.test.ts (3 pass, 0 fail)"
         },
         {
           "path": "src/server/public-api/assistant-chat.test.ts",
+          "blob": "f7a42f3385d824b992d4a0a0aa2eff6820be3d2b",
           "command": "bun test src/server/public-api/assistant-chat.test.ts (3 pass, 0 fail; generic clipping access/create guards covered)"
         },
         {
           "path": "drizzle/meta/_journal.json",
+          "blob": "e04c27d13c458128218494a878957e224c1f839c",
           "command": "bun run db:migrations:validate (passed; journal unchanged)"
         }
       ]
@@ -91,22 +113,132 @@
   },
   "compatibility_evidence": {
     "public_api": {
-      "impact": "minor",
-      "change": "behavioral-auth-boundary",
-      "legacy_behavior": "Creator/admin backend sessions could reach the old clipping discussion path.",
-      "current_behavior": "Clipping discussion requires the authenticated frontend principal; creator/admin authorization remains for reprocess and management operations.",
-      "migration_requirement": "Old installations with legacy clipping conversation references return service unavailable until the assistant discussion migration is complete."
+      "impact": "major",
+      "change": "breaking",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4"
+      ],
+      "evidence": [
+        {
+          "path": "src/server/clipping/api.ts",
+          "blob": "77e80b14117276c2f432695fc07d38816b79bbe4",
+          "command": "Requires a frontend session for clipping discussion and keeps creator/admin authorization on management operations"
+        }
+      ]
     },
     "persistent_state": {
       "impact": "minor",
       "applicable": true,
       "state_description": "The runtime consumes existing assistant conversation, message, generation-job, and migration-state tables; no Drizzle migration or journal entry is added.",
-      "readable_by_prior_versions": "Existing assistant tables remain readable by prior versions. Legacy clipping references require the existing migration workflow before the new clipping chat is enabled."
-    },
-    "runtime_lifecycle": {
-      "impact": "minor",
-      "change": "single-worker-startup-rescan-expiry-shutdown",
-      "evidence": "Console starts the assistant worker with clipping and stops it before clipping teardown; Gateway already uses the same assistant runtime lifecycle."
+      "readable_by_prior_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4"
+      ],
+      "upgrade_from_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4"
+      ],
+      "evidence": [
+        {
+          "path": "drizzle/meta/_journal.json",
+          "blob": "e04c27d13c458128218494a878957e224c1f839c",
+          "command": "No schema migration or journal entry is added; db:migrations:validate passes"
+        }
+      ]
     }
   }
 }

@@ -212,13 +212,28 @@ test("uses per-user unified conversations across same-target versions and separa
     await store.save(manifest);
     await store.write(clippingId, "44444444-4444-4444-8444-444444444444", "source", source);
     expect(await service.assistantSnapshot(memoId, principal)).toBeNull();
-    const newTarget = await service.assistantChat(
-      memoId,
-      principal,
-      "Discuss the new target",
-      "chat-two"
+    const pending = await assistantStorage.submitTurn({
+      frontendUserId: principal.id,
+      kind: "clipping",
+      clippingMemoId: memoId,
+      clippingVersionId: "44444444-4444-4444-8444-444444444444",
+      requestId: "chat-pending",
+      content: "Pending old target",
+      now: 4,
+    });
+    const changedAgain = matter(await Bun.file(join(contentRoot, memoId)).text());
+    changedAgain.content = changedAgain.content.replace("/two", "/three");
+    await writeFile(
+      join(contentRoot, memoId),
+      matter.stringify(changedAgain.content, changedAgain.data)
     );
-    expect(newTarget.conversationId).not.toBe(first.conversationId);
+    await service.reconcile(memoId);
+    expect(
+      await assistantStorage.getGenerationJob(pending.generationJob.id, principal.id)
+    ).toMatchObject({
+      status: "cancelled",
+      cancelRequested: true,
+    });
   } finally {
     await service.close();
     await assistantRuntime.stop();

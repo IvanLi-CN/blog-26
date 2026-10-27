@@ -73,7 +73,13 @@ export class AssistantService {
           principal.id,
           input.requestId,
           input.clientRequestId,
-          input.conversationId
+          input.conversationId,
+          Date.now(),
+          {
+            kind: input.kind,
+            clippingMemoId: input.clippingMemoId,
+            clippingVersionId: input.clippingVersionId,
+          }
         );
       } catch (error) {
         translateStorageError(error);

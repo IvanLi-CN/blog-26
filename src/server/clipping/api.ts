@@ -22,6 +22,9 @@ const turnSchema = z.object({
   requestId: z.string().regex(/^[a-zA-Z0-9_-]{1,128}$/),
 });
 
+const MAX_ACTIVE_CLIPPING_EVENT_STREAMS = 4;
+const activeClippingEventStreams = new Map<string, number>();
+
 function response(data: unknown, status = 200) {
   return Response.json(data, {
     status,
@@ -330,42 +333,68 @@ async function routeClippingRequest(
     if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
     if (!authorized.recognition.enabled)
       throw new TRPCError({ code: "NOT_FOUND", message: "此闪念没有启用剪藏" });
-    await frontendPrincipal(request);
+    const principal = await frontendPrincipal(request);
     const service = runtime();
+    const active = activeClippingEventStreams.get(principal.id) ?? 0;
+    if (active >= MAX_ACTIVE_CLIPPING_EVENT_STREAMS)
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: "剪藏讨论连接数已达上限，请关闭重复页面后重试。",
+      });
+    activeClippingEventStreams.set(principal.id, active + 1);
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      const current = activeClippingEventStreams.get(principal.id) ?? 0;
+      if (current <= 1) activeClippingEventStreams.delete(principal.id);
+      else activeClippingEventStreams.set(principal.id, current - 1);
+    };
     const encoder = new TextEncoder();
     let cancelled = false;
-    const stream = new ReadableStream<Uint8Array>({
-      async start(controller) {
-        let previous = "";
-        let sequence = 0;
-        const deadline = Date.now() + 60_000;
-        while (!cancelled && !request.signal.aborted && Date.now() < deadline) {
+    let stream: ReadableStream<Uint8Array>;
+    try {
+      stream = new ReadableStream<Uint8Array>({
+        async start(controller) {
           try {
-            const current = await access(slug, ctx, false);
-            currentDiscussion(current);
-            const principal = await frontendPrincipal(request);
-            const snapshot = await service.assistantSnapshot(current.row.id, principal);
-            if (!snapshot) break;
-            currentDiscussion(await access(slug, ctx, false));
-            if (cancelled || request.signal.aborted) break;
-            const data = JSON.stringify(mapAssistantSnapshot(snapshot));
-            if (data !== previous) {
-              controller.enqueue(
-                encoder.encode(`id: ${++sequence}\nevent: snapshot\ndata: ${data}\n\n`)
-              );
-              previous = data;
-            } else controller.enqueue(encoder.encode(": heartbeat\n\n"));
-          } catch {
-            break;
+            let previous = "";
+            let sequence = 0;
+            const deadline = Date.now() + 60_000;
+            while (!cancelled && !request.signal.aborted && Date.now() < deadline) {
+              try {
+                const current = await access(slug, ctx, false);
+                currentDiscussion(current);
+                await frontendPrincipal(request);
+                const snapshot = await service.assistantSnapshot(current.row.id, principal);
+                if (!snapshot) break;
+                currentDiscussion(await access(slug, ctx, false));
+                if (cancelled || request.signal.aborted) break;
+                const data = JSON.stringify(mapAssistantSnapshot(snapshot));
+                if (data !== previous) {
+                  controller.enqueue(
+                    encoder.encode(`id: ${++sequence}\nevent: snapshot\ndata: ${data}\n\n`)
+                  );
+                  previous = data;
+                } else controller.enqueue(encoder.encode(": heartbeat\n\n"));
+              } catch {
+                break;
+              }
+              await new Promise((resolve) => setTimeout(resolve, 700));
+            }
+            if (!cancelled && !request.signal.aborted) controller.close();
+          } finally {
+            release();
           }
-          await new Promise((resolve) => setTimeout(resolve, 700));
-        }
-        if (!cancelled) controller.close();
-      },
-      cancel() {
-        cancelled = true;
-      },
-    });
+        },
+        cancel() {
+          cancelled = true;
+          release();
+        },
+      });
+    } catch (error) {
+      release();
+      throw error;
+    }
     return new Response(stream, {
       headers: {
         "content-type": "text/event-stream",

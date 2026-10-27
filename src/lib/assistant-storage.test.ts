@@ -657,4 +657,37 @@ describe("assistant SQLite storage", () => {
     expect(accepted).toHaveLength(1);
     expect(await storage.listConversations(owner)).toHaveLength(1);
   });
+
+  it("rejects request ids reused across assistant conversation kinds", async () => {
+    const owner = "frontend-storage-request-scope";
+    await database.insert(frontendUsers).values({
+      id: owner,
+      adminUserId: null,
+      isAdmin: false,
+      displayName: "Request Scope Owner",
+      email: null,
+      avatarUrl: "/site-assets/default-avatar.svg",
+      profileUrl: null,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    const storage = createAssistantStorage(database);
+    await storage.submitTurn({
+      frontendUserId: owner,
+      requestId: "shared-request-id",
+      content: "General question",
+      now: Date.now(),
+    });
+    await expect(
+      storage.submitTurn({
+        frontendUserId: owner,
+        kind: "clipping",
+        clippingMemoId: "Memos/scoped.md",
+        clippingVersionId: "version-1",
+        requestId: "shared-request-id",
+        content: "Clipping question",
+        now: Date.now(),
+      })
+    ).rejects.toMatchObject({ code: "conflict" });
+  });
 });

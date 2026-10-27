@@ -12,20 +12,31 @@ export type AssistantMigrationGate = {
 function hasLegacyConversationReference(row: {
   conversationId: string | null;
   manifest?: string;
-  previousConversations?: Array<{ conversationId: string }>;
+  previousConversations?: unknown;
 }) {
-  if (row.conversationId) return true;
-  if (row.previousConversations?.length) return true;
+  if (row.conversationId !== null) return true;
+  if (row.previousConversations !== undefined) {
+    if (!Array.isArray(row.previousConversations)) return true;
+    if (row.previousConversations.length > 0) return true;
+  }
   if (row.manifest === undefined) return false;
   try {
-    const manifest = JSON.parse(row.manifest) as {
-      conversationId?: unknown;
-      previousConversations?: unknown;
-    };
-    return Boolean(
-      manifest.conversationId ||
-        (Array.isArray(manifest.previousConversations) && manifest.previousConversations.length)
-    );
+    const manifest: unknown = JSON.parse(row.manifest);
+    if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) return true;
+    const record = manifest as Record<string, unknown>;
+    if ("conversationId" in record) {
+      if (record.conversationId !== null && typeof record.conversationId !== "string") return true;
+      if (typeof record.conversationId === "string" && record.conversationId.trim()) return true;
+    }
+    if (!("previousConversations" in record)) return false;
+    if (!Array.isArray(record.previousConversations)) return true;
+    if (record.previousConversations.length === 0) return false;
+    const malformed = record.previousConversations.some((entry) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) return true;
+      const conversationId = (entry as Record<string, unknown>).conversationId;
+      return typeof conversationId !== "string" || !conversationId.trim();
+    });
+    return malformed || record.previousConversations.length > 0;
   } catch {
     return true;
   }
@@ -38,7 +49,7 @@ function isMissingTable(error: unknown) {
 type MigrationGateOptions = {
   manifests?: Array<{
     conversationId: string | null;
-    previousConversations: Array<{ conversationId: string }>;
+    previousConversations: unknown;
   }>;
 };
 
