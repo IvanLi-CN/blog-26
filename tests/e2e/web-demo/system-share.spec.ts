@@ -185,7 +185,11 @@ async function synthesizeTouchScroll(
     return scroll.scrollTop;
   });
   const client = await page.context().newCDPSession(page);
-  await client.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 1 });
+  await client.send("Emulation.setTouchEmulationEnabled", {
+    enabled: true,
+    maxTouchPoints: 1,
+    configuration: "mobile",
+  });
   try {
     await client.send("Input.synthesizeScrollGesture", {
       x: point.x,
