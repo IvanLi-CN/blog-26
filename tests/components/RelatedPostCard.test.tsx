@@ -117,5 +117,6 @@ describe("RelatedPostCard", () => {
       "https://blog.ivanli.cc/_content/assets/post/legacy-related-post/abc123/card.webp"
     );
     expect(markup).not.toContain("/wm-b-v4/cover.webp");
+    expect(markup).not.toContain("group-hover:scale-105");
   });
 });
