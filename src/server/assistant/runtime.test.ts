@@ -293,6 +293,32 @@ describe("assistant runtime", () => {
     await runtime.stop();
   });
 
+  it("expires stale conversations while the worker is idle", async () => {
+    await addUser("assistant-runtime-idle-expiry-owner");
+    const storage = createAssistantStorage(database);
+    const conversation = await storage.createConversation({
+      frontendUserId: "assistant-runtime-idle-expiry-owner",
+      kind: "general",
+      expiresAt: 1_001,
+      now: 1_000,
+    });
+    let now = 1_000;
+    const runtime = createAssistantRuntimeForTest({
+      storage,
+      expirySweepMs: 5,
+      generate: async () => ({ content: "unused", citations: [] }),
+      now: () => now,
+    });
+    await runtime.start();
+    now = 1_002;
+    await waitFor(
+      async () =>
+        (await storage.getConversation(conversation.id, "assistant-runtime-idle-expiry-owner"))
+          ?.status === "expired"
+    );
+    await runtime.stop();
+  });
+
   it("binds public retrieval to published content and the question usage context", async () => {
     await addUser("assistant-retrieval-owner");
     const storage = createAssistantStorage(database);

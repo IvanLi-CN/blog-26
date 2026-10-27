@@ -14,7 +14,7 @@ import { posts } from "@/lib/schema";
 import type { AssistantSnapshot } from "@/server/assistant/service";
 import type { TRPCContext } from "@/server/context";
 import { getClippingRuntime } from "./runtime";
-import { ClippingAssistantUnavailableError } from "./service";
+import { ClippingAssistantUnavailableError, ClippingTargetChangedError } from "./service";
 import { ClippingStore, clippingIdForMemo, projectClippingMemo, readAuthoredMemo } from "./store";
 
 const turnSchema = z.object({
@@ -202,11 +202,15 @@ function mapAssistantSnapshot(snapshot: AssistantSnapshot | null) {
   };
 }
 
-function currentDiscussion(current: Awaited<ReturnType<typeof access>>) {
+type CurrentDiscussionManifest = NonNullable<Awaited<ReturnType<typeof access>>["manifest"]> & {
+  targetUrl: string;
+};
+
+function currentDiscussion(current: Awaited<ReturnType<typeof access>>): CurrentDiscussionManifest {
   const { manifest, recognition } = current;
   if (!manifest?.enabled || !recognition.targetUrl || recognition.targetUrl !== manifest.targetUrl)
     throw new TRPCError({ code: "CONFLICT", message: "剪藏目标已变化，请重新打开对话。" });
-  return manifest;
+  return manifest as CurrentDiscussionManifest;
 }
 
 async function revalidateDiscussion(
@@ -288,14 +292,14 @@ async function routeClippingRequest(
   if (operation === "chat") {
     if (!authorized.recognition.enabled)
       throw new TRPCError({ code: "NOT_FOUND", message: "此闪念没有启用剪藏" });
-    currentDiscussion(authorized);
+    const currentManifest = currentDiscussion(authorized);
     const principal = await frontendPrincipal(request);
     if (request.method === "GET") {
       const requested = new URL(request.url).searchParams.get("conversationId");
       const snapshot = await runtime().assistantSnapshot(row.id, principal);
       if (requested && requested !== snapshot?.conversation.id)
         throw new TRPCError({ code: "FORBIDDEN", message: "仅能访问当前文章对话" });
-      await revalidateDiscussion(slug, ctx, manifest);
+      await revalidateDiscussion(slug, ctx, currentManifest);
       return response(mapAssistantSnapshot(snapshot));
     }
     if (request.method === "POST") {
@@ -307,9 +311,17 @@ async function routeClippingRequest(
         row.id,
         principal,
         parsed.data.text,
-        parsed.data.requestId
+        parsed.data.requestId,
+        { revision: currentManifest.revision, targetUrl: currentManifest.targetUrl }
       );
-      currentDiscussion(await access(slug, ctx, false));
+      try {
+        await revalidateDiscussion(slug, ctx, currentManifest);
+      } catch (error) {
+        await runtime()
+          .assistantStop(principal, submission.turnId)
+          .catch(() => undefined);
+        throw error;
+      }
       return response(submission, 202);
     }
     return response({ error: "Method not allowed" }, 405);
@@ -381,6 +393,8 @@ export async function handleClippingRequest(
         code: "SERVICE_UNAVAILABLE",
         message: "剪藏讨论尚未启用；请先完成旧讨论迁移校验。",
       });
+    if (error instanceof ClippingTargetChangedError)
+      throw new TRPCError({ code: "CONFLICT", message: error.message });
     if (error instanceof Error && /^[\u3400-\u9fff]/u.test(error.message))
       throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
     throw error;

@@ -370,7 +370,7 @@ export function createAssistantStorage(
         status: "active" as const,
         createdAt: now,
         lastUserMessageAt: null,
-        expiresAt: null,
+        expiresAt: input.expiresAt ?? null,
         deletedAt: null,
       } satisfies typeof assistantConversations.$inferInsert;
       await database.insert(assistantConversations).values(row);
@@ -670,6 +670,33 @@ export function createAssistantStorage(
             : undefined;
           if (input.conversationId && !conversation)
             throw new AssistantStorageError("not-found", "Assistant conversation is not available");
+
+          if (
+            !conversation &&
+            input.kind === "clipping" &&
+            input.clippingMemoId &&
+            input.clippingVersionId
+          ) {
+            conversation = tx
+              .select()
+              .from(assistantConversations)
+              .where(
+                and(
+                  eq(assistantConversations.frontendUserId, input.frontendUserId),
+                  eq(assistantConversations.kind, "clipping"),
+                  eq(assistantConversations.clippingMemoId, input.clippingMemoId),
+                  eq(assistantConversations.clippingVersionId, input.clippingVersionId),
+                  eq(assistantConversations.status, "active"),
+                  or(
+                    isNull(assistantConversations.expiresAt),
+                    gt(assistantConversations.expiresAt, now)
+                  )
+                )
+              )
+              .orderBy(desc(assistantConversations.createdAt))
+              .limit(1)
+              .get();
+          }
 
           let createdConversation = false;
           if (conversation) {

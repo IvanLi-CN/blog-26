@@ -232,6 +232,7 @@ export type CreateAssistantConversationInput = {
   title?: string | null;
   clippingMemoId?: string | null;
   clippingVersionId?: string | null;
+  expiresAt?: number | null;
   now?: number;
 };
 

@@ -200,7 +200,21 @@ export class ClippingService {
           throw error;
       }
     }
-    service.assistantMigrationGate = await readAssistantMigrationGate();
+    const manifests = await Promise.all(
+      [...new Set(service.known.values())].map((id) => service.store.manifest(id))
+    );
+    service.assistantMigrationGate = await readAssistantMigrationGate({
+      manifests: manifests.flatMap((manifest) =>
+        manifest
+          ? [
+              {
+                conversationId: manifest.conversationId,
+                previousConversations: manifest.previousConversations,
+              },
+            ]
+          : []
+      ),
+    });
     service.runtime = await AgentRuntimeFacade.open({
       path: options.runtimePath ?? clippingStoragePaths().runtime,
       resolveModel: options.resolveModel ?? resolveModel,
@@ -927,9 +941,16 @@ export class ClippingService {
     memoId: string,
     principal: FrontendPrincipal,
     text: string,
-    requestId: string
+    requestId: string,
+    expected?: { revision: number; targetUrl: string }
   ) {
     const binding = await this.ensureAssistantBinding(memoId, principal);
+    if (
+      expected &&
+      (binding.manifest.revision !== expected.revision ||
+        binding.manifest.targetUrl !== expected.targetUrl)
+    )
+      throw new ClippingTargetChangedError();
     const authored = await readAuthoredMemo(memoId);
     return this.assistantService.submit(principal, {
       conversationId: binding.conversation?.id ?? null,
@@ -941,6 +962,10 @@ export class ClippingService {
       clippingMemoId: memoId,
       clippingVersionId: binding.version.id,
     });
+  }
+
+  async assistantStop(principal: FrontendPrincipal, turnId: string) {
+    return this.assistantService.stop(principal, { turnId });
   }
 
   async chatSnapshot(conversationId: string) {
@@ -1042,5 +1067,14 @@ export class ClippingAssistantUnavailableError extends Error {
   constructor(reason: string | null) {
     super(reason ?? "assistant-discussion-migration-required");
     this.name = "ClippingAssistantUnavailableError";
+  }
+}
+
+export class ClippingTargetChangedError extends Error {
+  readonly code = "clipping-target-changed";
+
+  constructor() {
+    super("剪藏目标已变化，请重新打开对话。");
+    this.name = "ClippingTargetChangedError";
   }
 }

@@ -22,6 +22,7 @@ const MAX_CITATIONS = 8;
 const MAX_PROVIDER_RESPONSE_BYTES = 4 * 1024 * 1024;
 const MAX_ASSISTANT_OUTPUT_CHARS = 100_000;
 const PROVIDER_TIMEOUT_MS = 120_000;
+const DEFAULT_EXPIRY_SWEEP_MS = 60_000;
 
 export type AssistantCitationInput = Omit<AssistantCitation, "id" | "messageId" | "createdAt">;
 
@@ -53,6 +54,7 @@ export type AssistantRuntimeOptions = {
   database?: AssistantDatabase;
   leaseMs?: number;
   pumpDelayMs?: number;
+  expirySweepMs?: number;
   generate?: AssistantAnswerGenerator;
   now?: () => number;
 };
@@ -399,6 +401,7 @@ export class AssistantRuntime {
   private readonly usesGlobalStorage: boolean;
   private readonly leaseMs: number;
   private readonly pumpDelayMs: number;
+  private readonly expirySweepMs: number;
   private readonly generate: AssistantAnswerGenerator;
   private readonly now: () => number;
   private started = false;
@@ -414,6 +417,7 @@ export class AssistantRuntime {
     this.usesGlobalStorage = !options.storage && !options.database;
     this.leaseMs = options.leaseMs ?? DEFAULT_LEASE_MS;
     this.pumpDelayMs = options.pumpDelayMs ?? DEFAULT_PUMP_DELAY_MS;
+    this.expirySweepMs = options.expirySweepMs ?? DEFAULT_EXPIRY_SWEEP_MS;
     this.generate = options.generate ?? defaultGenerateAssistantAnswer;
     this.now = options.now ?? (() => Date.now());
   }
@@ -485,6 +489,7 @@ export class AssistantRuntime {
       }
     } finally {
       this.pumping = false;
+      if (!this.stopped) this.schedule(this.expirySweepMs);
     }
   }
 

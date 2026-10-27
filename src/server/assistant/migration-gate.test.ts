@@ -41,6 +41,26 @@ test("new installs do not need a discussion migration", async () => {
   });
 });
 
+test("canonical manifests keep discussion disabled when the clipping index is missing", async () => {
+  if (!db) throw new Error("Database is not initialized");
+  await db.delete(memoClippings);
+  await db.delete(assistantMigrationState);
+  await expect(
+    readAssistantMigrationGate({
+      manifests: [
+        {
+          conversationId: "legacy-pi-conversation",
+          previousConversations: [],
+        },
+      ],
+    })
+  ).resolves.toMatchObject({
+    ready: false,
+    status: "pending",
+    reason: "assistant-discussion-migration-required",
+  });
+});
+
 test("legacy discussion references stay disabled until a complete migration", async () => {
   if (!db) throw new Error("Database is not initialized");
   await db.insert(memoClippings).values({

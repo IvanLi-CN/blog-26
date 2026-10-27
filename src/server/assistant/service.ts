@@ -117,7 +117,9 @@ export class AssistantService {
   }
 
   async list(principal: FrontendPrincipal) {
-    const conversations = await this.storage.listConversations(principal.id);
+    const conversations = (await this.storage.listConversations(principal.id)).filter(
+      (conversation) => conversation.kind === "general"
+    );
     return { conversations, quota: await this.quota(principal) };
   }
 

@@ -623,4 +623,38 @@ describe("assistant SQLite storage", () => {
       await storage.listMessages(first.conversation.id, "frontend-storage-clipping-owner")
     ).toEqual([]);
   });
+
+  it("deduplicates concurrent first clipping turns by version", async () => {
+    const owner = "frontend-storage-concurrent-clipping";
+    await database.insert(frontendUsers).values({
+      id: owner,
+      adminUserId: null,
+      isAdmin: false,
+      displayName: "Concurrent Clipping Owner",
+      email: null,
+      avatarUrl: "/site-assets/default-avatar.svg",
+      profileUrl: null,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    const storage = createAssistantStorage(database);
+    const attempts = await Promise.allSettled(
+      ["first", "second"].map((requestId) =>
+        storage.submitTurn({
+          frontendUserId: owner,
+          kind: "clipping",
+          clippingMemoId: "Memos/concurrent.md",
+          clippingVersionId: "11111111-1111-4111-8111-111111111111",
+          requestId,
+          content: requestId,
+          now: Date.now(),
+        })
+      )
+    );
+    const accepted = attempts.flatMap((attempt) =>
+      attempt.status === "fulfilled" ? [attempt.value] : []
+    );
+    expect(accepted).toHaveLength(1);
+    expect(await storage.listConversations(owner)).toHaveLength(1);
+  });
 });

@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { createAssistantStorage } from "@/lib/assistant-storage";
@@ -214,6 +215,50 @@ describe("public assistant chat API", () => {
     };
     expect(accepted.conversationId).toBeTruthy();
     expect(accepted.turnId).toBeTruthy();
+
+    const owner = await db
+      ?.select({ frontendUserId: assistantConversations.frontendUserId })
+      .from(assistantConversations)
+      .where(eq(assistantConversations.id, accepted.conversationId))
+      .get();
+    if (!owner) throw new Error("assistant owner was not found");
+    const clipping = await assistantService?.storage.submitTurn({
+      frontendUserId: owner.frontendUserId,
+      kind: "clipping",
+      clippingMemoId: "Memos/private.md",
+      clippingVersionId: "11111111-1111-4111-8111-111111111111",
+      requestId: "api-clipping-seeded",
+      content: "private clipping question",
+      isAdmin: true,
+    });
+    if (!clipping) throw new Error("clipping conversation was not seeded");
+    const genericClippingSnapshot = await assistant(
+      `/chat/snapshot?conversationId=${encodeURIComponent(clipping.conversation.id)}`,
+      cookie
+    );
+    expect(genericClippingSnapshot.status).toBe(404);
+    const genericClippingSubmit = await assistant("/chat", cookie, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        requestId: "api-clipping-direct",
+        kind: "clipping",
+        clippingMemoId: "Memos/private.md",
+        clippingVersionId: "11111111-1111-4111-8111-111111111111",
+        content: "private clipping question",
+      }),
+    });
+    expect(genericClippingSubmit.status).toBe(404);
+    const genericClippingExistingSubmit = await assistant("/chat", cookie, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        requestId: "api-clipping-existing",
+        conversationId: clipping.conversation.id,
+        content: "private clipping question",
+      }),
+    });
+    expect(genericClippingExistingSubmit.status).toBe(404);
 
     const conflict = await assistant("/chat", cookie, {
       method: "POST",

@@ -4,17 +4,20 @@
   "base_sha": "4aa5449672049e203f2cfd7a2d588f0b3f921ac2",
   "covered_files": {
     "scripts/start-console.ts": "f9581e191ea8cf461a2bd70d22f2a88a31298042",
-    "src/lib/assistant-contracts.ts": "f576f656af23ba89057b54b19fa9bf1ce4e0e4b2",
-    "src/lib/assistant-storage.test.ts": "9f107afa9f17bdd15bc63913e770655dfcc0f3ad",
-    "src/lib/assistant-storage.ts": "4c0fbdc55f906944cebbd597e27edf80617135fb",
-    "src/server/assistant/runtime.test.ts": "69802cc5457582049372fd2ecc1b16b9c503979c",
-    "src/server/assistant/runtime.ts": "43b5e9bf55e71f1ab9d8cb3a815ecafc84dadb4f",
-    "src/server/assistant/migration-gate.ts": "7b3a5a4137262c9cd0adfbdd865c6bb43ef73469",
-    "src/server/assistant/migration-gate.test.ts": "f474277d49807ed5c8bf2b7ed2b6dc4ff78c3034",
+    "src/lib/assistant-contracts.ts": "6814d2940115294b22b8e8c6f38b4a7bb3dfef03",
+    "src/lib/assistant-storage.test.ts": "8d37537383b25bc870d56c9716c42b8cf780923f",
+    "src/lib/assistant-storage.ts": "baaa945a66d80739d504475bcca8b12ce3e5b8f1",
+    "src/server/assistant/api.ts": "aa698607b76869084db28b91433ba378f1925fe9",
+    "src/server/assistant/runtime.test.ts": "f4ee0ea499e477d1591b4ed906d61c3aceefb24d",
+    "src/server/assistant/runtime.ts": "f70dab132862172d80974c3e799cd3939fe5dc13",
+    "src/server/assistant/service.ts": "ce618ff41a3427aa1697604104b96a3cb282dd8b",
+    "src/server/assistant/migration-gate.ts": "2662728bcd87207c0b8c1752174c4165588fcbe3",
+    "src/server/assistant/migration-gate.test.ts": "a6db4509488ae8fcd3d44274d3da970ee19ccab3",
     "src/server/clipping/api.test.ts": "719db59dfb294a916b7f058519c68beac1c5b9a0",
-    "src/server/clipping/api.ts": "8d1deff6fd4e5c62ed15bd0b41b5218adac3ad66",
+    "src/server/clipping/api.ts": "77e80b14117276c2f432695fc07d38816b79bbe4",
     "src/server/clipping/assistant-adapter.test.ts": "fd2c14ca7552e19a889a7e5da1cdbde06a3d76c6",
-    "src/server/clipping/service.ts": "d0b37fdd8cab7d86b6e7398be88ab86476788362"
+    "src/server/clipping/service.ts": "f814d6a02bb746b7b120be690e5e29b868cc13b0",
+    "src/server/public-api/assistant-chat.test.ts": "f7a42f3385d824b992d4a0a0aa2eff6820be3d2b"
   },
   "change": {
     "description": "Route public clipping discussion through the unified frontend-user assistant service, preserve same-target conversations across recaptures, split conversations on target changes, gate legacy installations until migration completion, and align Console/Gateway assistant lifecycle with clipping startup and shutdown.",
@@ -48,7 +51,7 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "Focused clipping, assistant, storage, migration-gate, and API tests pass; the migration journal is unchanged and valid; changed files format cleanly and the diff has no whitespace errors. Full repository check remains affected by pre-existing unrelated site diagnostics; no real model provider was called.",
+      "reasoning": "Focused clipping, assistant, storage, migration-gate, generic API isolation, and public API tests pass; the migration journal is unchanged and valid; changed files format cleanly and the diff has no whitespace errors. Full repository check remains affected by pre-existing unrelated site diagnostics; no real model provider was called.",
       "assessed_at": "2026-10-28T00:00:00+08:00",
       "evidence": [
         {
@@ -69,11 +72,15 @@
         },
         {
           "path": "src/lib/assistant-storage.test.ts",
-          "command": "bun test src/lib/assistant-storage.test.ts (8 pass, 0 fail)"
+          "command": "bun test src/lib/assistant-storage.test.ts (9 pass, 0 fail; concurrent clipping first-turn deduplication covered)"
         },
         {
           "path": "src/server/assistant/migration-gate.test.ts",
-          "command": "bun test src/server/assistant/migration-gate.test.ts (2 pass, 0 fail)"
+          "command": "bun test src/server/assistant/migration-gate.test.ts (3 pass, 0 fail)"
+        },
+        {
+          "path": "src/server/public-api/assistant-chat.test.ts",
+          "command": "bun test src/server/public-api/assistant-chat.test.ts (3 pass, 0 fail; generic clipping access/create guards covered)"
         },
         {
           "path": "drizzle/meta/_journal.json",
