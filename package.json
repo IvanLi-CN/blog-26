@@ -107,6 +107,7 @@
     "test:unit": "bun ./scripts/run-test-suite.ts",
     "db:migrations:validate": "bun ./scripts/validate-drizzle-journal.ts",
     "comments:backfill": "bun ./scripts/backfill-reader-comments.ts",
+    "assistant:discussions:migrate": "bun ./scripts/migrate-assistant-discussions.ts",
     "test:e2e": "bun ./scripts/run-e2e.ts full",
     "test:e2e:playwright": "playwright test",
     "test:e2e:project": "bun ./scripts/run-e2e.ts project",

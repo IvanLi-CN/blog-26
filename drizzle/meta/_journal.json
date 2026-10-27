@@ -162,6 +162,13 @@
       "when": 1793089525913,
       "tag": "0022_frontend_session_auth_source",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1793089525914,
+      "tag": "0023_assistant_discussion_migration",
+      "breakpoints": true
     }
   ]
 }

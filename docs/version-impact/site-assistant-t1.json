@@ -27,7 +27,7 @@
     "drizzle/0022_frontend_session_auth_source.sql": "d5f9b74113528bc0c2b1ce44954ff0403d21ef3a",
     "drizzle/meta/0021_snapshot.json": "e92824ad3e99987a1955fa4b933434ab2a0d2f0f",
     "drizzle/meta/0022_snapshot.json": "841c1de352c2d4585f9d56d7a7be60ae55726bbb",
-    "drizzle/meta/_journal.json": "d5f39c0b846f0d05c4b892d9610e8a731b859a77",
+    "drizzle/meta/_journal.json": "d245ec1546e5df69d6a4803fb4b97609a7d62157",
     "src/lib/admin-github-binding.ts": "a95abdef7ade5303f1760eca995f996fd3d14242",
     "src/lib/assistant-contracts.test.ts": "23d8188294ffe5277ea815634464f97600c68244",
     "src/lib/assistant-contracts.ts": "09cce95f033e59abc901177297afb13b864ed213",
@@ -43,7 +43,7 @@
     "src/server/routers/comments.ts": "11d66246d78b0eb85125230c0d9499d5500d287b",
     "tests/fixtures/site-assistant-legacy.sql": "bb9afb88fe2e5449e11082a0c5034803f317ca83",
     "tests/lib/site-assistant-migration.test.ts": "eec482023a39c17876154f0ba3c5d73a05eaa6d4",
-    "tests/server/system-share-api.test.ts": "2240a081c5a23e284f696a03c32cf58392967a05"
+    "tests/server/system-share-api.test.ts": "3a9f9392f763bcde2c286442aeea35b2d246da4b"
   },
   "change": {
     "description": "Add the shared frontend identity/session boundary, app-owned assistant SQLite contract tables, comment ownership compatibility, binding-safe sessions, atomic assistant writes, and parent-branch CI/E2E triggers for the site knowledge assistant.",
@@ -136,7 +136,7 @@
         },
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "2240a081c5a23e284f696a03c32cf58392967a05",
+          "blob": "3a9f9392f763bcde2c286442aeea35b2d246da4b",
           "command": "bun test --isolate tests/server/system-share-api.test.ts -t 'upgrades legacy comments and resumes a blocked backfill without losing identity'"
         },
         {
@@ -161,7 +161,7 @@
         },
         {
           "path": "drizzle/meta/_journal.json",
-          "blob": "d5f39c0b846f0d05c4b892d9610e8a731b859a77",
+          "blob": "d245ec1546e5df69d6a4803fb4b97609a7d62157",
           "command": "bun run db:migrations:validate"
         },
         {
