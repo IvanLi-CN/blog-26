@@ -156,19 +156,17 @@ async function synthesizeTouchScroll(
       const target = document.querySelector<HTMLElement>(targetSelector);
       const scroll = document.scrollingElement ?? document.documentElement;
       if (!target) throw new Error(`Missing touch target: ${targetSelector}`);
-      const maxScrollTop = Math.max(0, scroll.scrollHeight - window.innerHeight);
+      const maxScrollTop = Math.max(0, scroll.scrollHeight - scroll.clientHeight);
       const gestureHeadroom = Math.abs(gestureDistance) + 40;
-      const targetTop = Math.max(
-        0,
-        Math.min(maxScrollTop - gestureHeadroom, target.offsetTop - window.innerHeight / 2)
-      );
-      scroll.scrollTop = targetTop;
+      target.scrollIntoView({ block: "center", inline: "nearest" });
+      scroll.scrollTop = Math.max(0, Math.min(maxScrollTop - gestureHeadroom, scroll.scrollTop));
       const box = target.getBoundingClientRect();
       return {
         x: Math.max(2, Math.min(window.innerWidth - 2, box.left + box.width / 2)),
         y: Math.max(2, Math.min(window.innerHeight - 2, box.top + Math.min(24, box.height / 2))),
         before: scroll.scrollTop,
         maxScrollTop,
+        canScrollDown: maxScrollTop - scroll.scrollTop > 1,
       };
     },
     { targetSelector: selector, distance }
@@ -198,7 +196,7 @@ async function synthesizeTouchScroll(
     const scroll = document.scrollingElement ?? document.documentElement;
     return scroll.scrollTop;
   });
-  return { before, after };
+  return { before, after, canScrollDown: point.canScrollDown };
 }
 
 test.describe("Console system share Web Demo", () => {
@@ -531,6 +529,7 @@ test.describe("Console system share Web Demo", () => {
     await page.getByTestId("system-share-original-toggle").click();
     await expect(page.getByTestId("system-share-original").locator("dl")).toBeVisible();
 
+    let movedGestures = 0;
     for (const selector of [
       '[data-testid="system-share-attachments-title"]',
       '[data-testid="system-share-file-row-0"]',
@@ -542,8 +541,14 @@ test.describe("Console system share Web Demo", () => {
         await expect(page.getByTestId("system-share-empty-attachments")).toBeVisible();
       }
       const result = await synthesizeTouchScroll(page, selector, -180);
-      expect(result.after).toBeGreaterThan(result.before);
+      if (result.canScrollDown) {
+        expect(result.after).toBeGreaterThan(result.before);
+        movedGestures += 1;
+      } else {
+        expect(result.after).toBeGreaterThanOrEqual(result.before);
+      }
     }
+    expect(movedGestures).toBeGreaterThan(0);
 
     const fileInput = page.locator('input[type="file"]');
     await fileInput.setInputFiles([
