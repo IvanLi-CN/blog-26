@@ -382,6 +382,13 @@ function getPublicMediaRenderId(
     : getDefaultPublicMediaRenderId(variant, context.watermarkRenderVersion ?? "v5");
 }
 
+function getPublicMediaSourceRenderId(
+  context: PublicMediaContext,
+  variant: Exclude<PublicMediaVariant, "play">
+): PublicMediaRenderId {
+  return getDefaultPublicMediaRenderId(variant, context.watermarkRenderVersion ?? "v5");
+}
+
 function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference) {
   const descriptors: PublicMediaSourceDescriptor[] = [];
 
@@ -393,7 +400,7 @@ function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference
           kind: context.kind,
           slug: context.slug,
           mediaHash: ref.hash,
-          renderId: getPublicMediaRenderId(context, variant, ref.role),
+          renderId: getPublicMediaSourceRenderId(context, variant),
           variant,
           ext: format,
         });
@@ -420,7 +427,7 @@ function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference
         kind: context.kind,
         slug: context.slug,
         mediaHash: ref.hash,
-        renderId: getPublicMediaRenderId(context, variant, ref.role),
+        renderId: getPublicMediaSourceRenderId(context, variant),
         variant,
         ext: format,
       });
@@ -1146,14 +1153,7 @@ async function buildImagorPath(params: {
     if (!dimensions) {
       throw new Error(`Unable to determine derived media dimensions: ${params.ref.sourcePath}`);
     }
-    if (
-      !isUnwatermarkedPublicMediaVariant(
-        params.ref.role,
-        params.variant,
-        params.context.assetScope
-      ) &&
-      meetsVersionedWatermarkThreshold(dimensions)
-    ) {
+    if (meetsVersionedWatermarkThreshold(dimensions)) {
       filters.push(
         await getWatermarkFilter(
           params.request,
@@ -1323,15 +1323,7 @@ async function renderLocalMediaVariant(
       withoutEnlargement: true,
     });
 
-  if (
-    params.renderId &&
-    !isUnwatermarkedPublicMediaVariant(
-      resolved.ref.role,
-      params.variant,
-      resolved.context.assetScope
-    ) &&
-    (await shouldApplyVersionedWatermark(resolved.ref, params.variant))
-  ) {
+  if (params.renderId && (await shouldApplyVersionedWatermark(resolved.ref, params.variant))) {
     const dimensions = await readDerivedDimensions(resolved.ref, params.variant);
     if (!dimensions) throw new Error("Unable to determine local derivative dimensions");
     const plan = await getWatermarkPlan({
@@ -1515,6 +1507,15 @@ async function proxyResolvedMediaVariant(
       return new Response("Not Found", { status: 404 });
     }
     return streamLocalMediaFile(request, resolved.ref);
+  }
+
+  if (process.env.WEB_DEMO_BUILD === "true") {
+    const localFallback = await renderLocalMediaVariant(request, resolved, {
+      variant: params.variant as Exclude<keyof typeof VARIANT_RECIPES, "play">,
+      ext: params.ext,
+      renderId: params.renderId,
+    });
+    if (localFallback) return localFallback;
   }
 
   let imagorPath: string;

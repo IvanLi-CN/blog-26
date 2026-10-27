@@ -139,7 +139,7 @@ function normalizeSnapshotMedia(
       sources: Array.isArray(item.sources)
         ? item.sources.map((source) => ({
             ...source,
-            url: migrateUrl(source.url, source.variant),
+            url: migratePublicMediaV4ToV5(source.url),
           }))
         : [],
     } satisfies PublicMediaItem;

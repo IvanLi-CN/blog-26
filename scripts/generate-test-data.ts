@@ -9,7 +9,7 @@ type Environment = "dev" | "test";
 
 async function buildFixturePng() {
   const svg = Buffer.from(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="580" height="328" viewBox="0 0 580 328">
+    `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600">
       <defs>
         <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stop-color="#e7f0eb" />
@@ -17,16 +17,16 @@ async function buildFixturePng() {
           <stop offset="1" stop-color="#395d4f" />
         </linearGradient>
       </defs>
-      <rect width="580" height="328" fill="url(#sky)" />
-      <path d="M0 230 118 120l94 78 96-126 142 158 130-88v186H0Z" fill="#254b40" opacity=".78" />
-      <path d="M0 270 150 205l94 42 130-80 206 84v77H0Z" fill="#18352d" opacity=".72" />
-      <path d="M50 328c64-77 142-88 220-40 54 33 105 35 159-3 37-26 83-32 151 3v40Z" fill="#c8d9c7" opacity=".75" />
+      <rect width="900" height="600" fill="url(#sky)" />
+      <path d="M0 420 183 220l146 117 149-207 220 245 202-137v362H0Z" fill="#254b40" opacity=".78" />
+      <path d="M0 494 233 309l146 65 202-125 319 131v220H0Z" fill="#18352d" opacity=".72" />
+      <path d="M78 600c99-141 220-161 342-73 84 61 163 64 247-5 58-48 129-59 233 5v73Z" fill="#c8d9c7" opacity=".75" />
     </svg>`
   );
   return sharp({
     create: {
-      width: 580,
-      height: 328,
+      width: 900,
+      height: 600,
       channels: 3,
       background: { r: 214, g: 229, b: 219 },
     },
@@ -148,6 +148,7 @@ async function createFixtureData(baseDir: string) {
         title: "Code Block Fixture",
         publishDate: "2026-01-01T12:00:00.000Z",
         public: true,
+        image: "./assets/hello.png",
         tags: ["code", "fixture", "local"],
         category: "notes",
       },

@@ -1,5 +1,6 @@
 import Icon from "@/components/ui/Icon";
 import { extractPostCoverCandidate, isExternalImageUrl } from "@/lib/post-cover";
+import { getPublicMediaCardFallbackUrl, isPublishedPublicAssetUrl } from "@/lib/public-media";
 import type { PublicPostRecord } from "@/public-site/snapshot";
 import { appendPublicAssetVersion } from "../lib/public-site-client";
 import { toPublicSitePath } from "../lib/runtime-urls";
@@ -11,10 +12,13 @@ interface Props {
 export default function RelatedPostCard(props: Props) {
   const { post, assetVersion = null } = props;
   const coverCandidate = extractPostCoverCandidate(post);
+  const fallbackImage =
+    coverCandidate &&
+    (isExternalImageUrl(coverCandidate) || isPublishedPublicAssetUrl(coverCandidate))
+      ? getPublicMediaCardFallbackUrl(coverCandidate)
+      : null;
   const imageSrc = appendPublicAssetVersion(
-    post.media.cover?.variants.card ??
-      post.media.primary?.variants.card ??
-      (coverCandidate && isExternalImageUrl(coverCandidate) ? coverCandidate : null),
+    post.media.cover?.variants.card ?? post.media.primary?.variants.card ?? fallbackImage,
     assetVersion
   );
   const hasCover = Boolean(imageSrc);

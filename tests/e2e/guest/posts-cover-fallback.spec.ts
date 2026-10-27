@@ -113,8 +113,10 @@ test.describe("posts cover fallback", () => {
     const imageResponse = await page.request.get(imageSrc);
     expect(imageResponse.ok()).toBeTruthy();
     expect((await imageResponse.body()).byteLength).toBeGreaterThan(0);
-    await assertImageDimensions(imageResponse, 580, 328);
+    await assertImageDimensions(imageResponse, 900, 600);
     await assertOpaqueCorners(imageResponse);
+    await cover.hover();
+    await expect.poll(() => image.evaluate((node) => getComputedStyle(node).scale)).toBe("1.05");
   });
 
   test("homepage timeline cards use the clean cover card variant", async ({ page }) => {
@@ -173,5 +175,32 @@ test.describe("posts cover fallback", () => {
 
     assertVisibleWatermark(cleanCard, detailPixels);
     assertVisibleWatermark(cleanCard, bodyPixels);
+  });
+
+  test("related post cards keep the clean cover crop and hover scale", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("theme", "light"));
+    await page.goto("/posts/hello-world/", { waitUntil: "domcontentloaded" });
+
+    const relatedCard = page.locator('article[itemprop="isRelatedTo"]').first();
+    await expect(relatedCard).toBeVisible();
+    const image = relatedCard.locator("img");
+    await expect(image).toBeVisible();
+    const imageSrc = await image.getAttribute("src");
+    expect(imageSrc).toBeTruthy();
+    if (!imageSrc) throw new Error("expected related cover src");
+
+    const parsedImageUrl = new URL(imageSrc, page.url());
+    expect(parsedImageUrl.pathname).toMatch(
+      /\/api\/public\/assets\/post\/code-block-fixture\/[0-9a-f]+\/card\.webp$/
+    );
+    expect(parsedImageUrl.pathname).not.toContain("/wm-");
+    expect(await image.getAttribute("class")).toContain("object-cover");
+    expect(await image.getAttribute("class")).toContain("group-hover:scale-[1.04]");
+    await expect
+      .poll(() => image.evaluate((node) => (node as HTMLImageElement).naturalWidth))
+      .toBe(900);
+
+    await image.hover();
+    await expect.poll(() => image.evaluate((node) => getComputedStyle(node).scale)).toBe("1.04");
   });
 });

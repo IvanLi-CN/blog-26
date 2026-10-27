@@ -1997,8 +1997,7 @@ public: false
     const detailCoverSource = coverSources.find(
       (source: { variant: string }) => source.variant === "cover"
     );
-    expect(cardSource?.url).toMatch(/\/card\./);
-    expect(cardSource?.url).not.toContain("/wm-");
+    expect(cardSource?.url).toMatch(/\/wm-a-v5\/card\./);
     expect(detailCoverSource?.url).toMatch(/\/wm-b-v5\/cover\./);
     expect(snapshotPost?.media?.content?.[0]?.presentations?.content?.a).toContain(
       "/wm-a-v5/content"
