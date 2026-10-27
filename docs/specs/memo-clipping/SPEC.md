@@ -7,6 +7,7 @@
 - Context: A Memo can capture one external article when it carries the #剪藏 tag. The product needs a durable Agent workflow that preserves the author's Memo, produces readable article materials, and attaches a private discussion without turning the captured source into an unrelated post.
 - In scope: trigger recognition, URL extraction, asynchronous processing, source Markdown, summary and Simplified Chinese translation, content visibility, source-link policy, persistent article conversations, responsive reading and chat surfaces, versioning, retry behavior, and cross-entry consistency.
 - Out of scope: PDF/OCR, authenticated or CAPTCHA-protected sources, complex JavaScript-only extraction, recursive web research, automatic publication or deployment, provider-specific prompts, and a general-purpose crawler.
+- Shared frontend identity, conversation ownership, floating/full-page chat, personal quotas, usage accounting and legacy discussion migration are owned by [Site Knowledge Assistant](../site-knowledge-assistant/SPEC.md). This topic owns clipping reading materials and their integration as authorized conversation context.
 
 ## Terms and Interfaces
 
@@ -21,7 +22,7 @@
 - 剪藏处理版本: one source snapshot with its summary, translation, captured resources, processing metadata, and result state.
 - 剪藏资源: a media file captured from the source article and owned by one processing version; it is not a general Memo attachment or an external URL fallback.
 - 剪藏处理状态: progress or outcome with distinguishable summary and translation completion.
-- 剪藏对话: the persistent, creator/admin-only conversation associated with a clipping's target; replacing the target creates a new conversation.
+- 剪藏对话: a user's private assistant conversation associated with a clipping's target and reading context. Different users own separate conversations; replacing the target separates old and new contexts. Publication of the Memo does not publish any conversation.
 - Validation boundary: pages MUST NOT be created in Storybook. Page layout and behavior verification MUST use actual application routes.
 - Web Demo MUST use the separately enabled Demo build on the official Memo list and detail routes with the production reader. Deterministic captured materials and in-memory discussion/reprocess operations MUST need no login, backend, article fetch, or model. The shared Inspector MUST expose clipping processing, success, translation failure, previous-version fallback, long content, persona, network, data, and reset/share controls; runtime query parameters MUST NOT activate Demo behavior in live artifacts.
 - Interface: the existing Memo create/edit/detail/list, local Markdown source, database index, MCP, public snapshot, and live console boundaries remain authoritative for their respective surfaces.
@@ -101,8 +102,8 @@ The reading header keeps author remarks and the generated summary visible. The o
 
 ### REQ-MCL-008
 
-- Each clipping MUST retain its processing versions, identify one current reading version, and maintain one active persistent conversation for its current target. Previous successful reading materials MUST remain available internally for failed-reprocess fallback. User-facing version history, past-conversation browsing, and manual version restoration are out of scope; no history/restore UI or business API may be exposed.
-- The conversation MUST be accessible only to the Memo creator and administrators, even when the parent Memo is public.
+- Each clipping MUST retain its processing versions and identify one current reading version. Previous successful reading materials MUST remain available internally for failed-reprocess fallback. Processing-version history and manual version restoration remain out of scope; this restriction does not prevent a user from browsing their own retained conversations in the unified assistant list.
+- Conversation ownership and access MUST follow the unified assistant contract: each frontend user owns a separate private conversation and may use only authorized reading materials. Administrators may retrieve nonpublic material but do not automatically read other users' private conversations. Legacy shared discussions follow the trusted-creator migration and unattributable-record preservation policy.
 - Conversation context MUST include the current source Markdown, translation when available, summary, and author remarks. Answers SHOULD distinguish source claims from Agent inference and SHOULD identify relevant sections or passages.
 - Discussion MUST be available once source Markdown exists, without waiting for translation. Without a captured source, the Agent MUST NOT imply that it has read the article.
 - Messages and generation state MUST survive reload, disconnect, and closing/reopening the mobile drawer. Context compaction MUST preserve the ability to locate source passages; long articles MUST NOT be silently omitted because they exceed the model context.
@@ -113,14 +114,13 @@ The reading header keeps author remarks and the generated summary visible. The o
 - Reader-facing lists, timeline entries, detail headers, search results, and management previews MUST identify clipping Memos as 剪藏 with the scissors icon rather than the ordinary Memo label and bulb icon. The icon MUST match the existing article and Memo outline family, stroke weight, rendered size, and shared timeline node frame. Displayed tag chips MUST omit only the exact 剪藏 marker for clipping Memos; other tags MUST remain visible. Authoring fields, stored tags, tag-based retrieval, routes, and permission boundaries MUST retain their existing behavior.
 - Clipping type presentation MUST NOT change ordinary Memo list appearance. Ordinary entries retain their existing metadata, icon sizes, card structure, width, spacing, and responsive behavior. Memo lists MUST identify clipping entries through the existing type icon and MUST NOT add a redundant clipping badge beside the date or visibility metadata. Detail headers and surfaces with existing type labels MUST use the clipping label.
 - Search result presentation MUST distinguish 剪藏 from ordinary 闪念 while preserving Memo detail URLs. The public search UI MUST offer a separate 剪藏 filter/count using the result's display classification, without changing the indexed Memo type.
-- Detail pages with public comments MUST follow the responsive placement and shared interaction-area rules in [GitHub reader comments](../github-reader-comments/SPEC.md), including authorized comment/conversation tabs when the right area is shared. The following separate-conversation-column rules apply when that shared composition is not used; private conversation authorization and state preservation remain mandatory in either composition.
-- For authorized conversation participants using a separate conversation column, desktop detail MUST present the article reading surface on the left and the clipping conversation on the right, with a stable boundary that does not make either column unusable.
-- The left reading column MUST contain two separate sibling cards in an unframed stack: a Memo card for its heading, remarks, summary, processing status, and actions, followed by an article card for language controls and captured source/translation Markdown. The cards MUST have a 24px vertical gap and MUST NOT be nested inside another card. A separate conversation column MUST remain its own card alongside that unframed reading column, owning its heading, internally scrolling messages, and composer; shared comment/conversation tabs MUST retain these conversation capabilities without nesting an extra card.
-- The conversation composer MUST blend into the discussion card or mobile drawer without an additional rounded input surface. Input text MUST align with the messages, and keyboard focus MUST remain visible.
+- Detail pages with public comments MUST follow the responsive placement in [GitHub reader comments](../github-reader-comments/SPEC.md). Private questions MUST use the shared assistant floating entry, desktop panel, mobile drawer and full conversation route, without an isolated clipping conversation column or comment/conversation tabs.
+- The reading surface MUST contain two separate sibling cards in an unframed stack: a Memo card for its heading, remarks, summary, processing status, and actions, followed by an article card for language controls and captured source/translation Markdown. The cards MUST have a 24px vertical gap and MUST NOT be nested inside another card.
+- The shared conversation composer MUST blend into its panel or drawer without an additional rounded input surface. Input text MUST align with the messages, and keyboard focus MUST remain visible.
 - The reprocess action MUST form a low-emphasis management group beside the Memo's processing status. The original-page entry MUST accompany the article's language controls. These toolbars MUST wrap their groups without overflow on narrow screens and MUST NOT combine all three actions into equal-emphasis pills beneath the title.
-- Authorized desktop detail with a separate conversation column MUST use the wide content container with a 24px inter-card gap and a 320–360px discussion column. Ordinary Memos and visitor-only clipping reading without public comments MUST retain the existing single-column reading width; pages with public comments use the linked comment composition. Card hover or focus MUST NOT shift the reading position or discussion layout.
+- Reading without public comments MUST retain the existing single-column reading width; pages with public comments use the linked comment composition. Card hover or focus MUST NOT shift the reading position or assistant layout.
 - Language controls MUST clearly identify the displayed source or translation through their selected state and a non-color visual indicator. Focus on an inactive control MUST NOT imply selection; activation MUST update both the selected indicator and the displayed article together.
-- For authorized conversation participants, narrow detail MUST prioritize continuous article reading and expose the conversation through an explicit button that opens a bottom-sheet overlay. Other readers MUST receive the authorized reading surface without loading private conversation data.
+- Narrow detail MUST prioritize continuous article reading and use the global assistant entry to open its bottom-sheet overlay. Users MUST NOT load another user's private conversation; unauthenticated visitors receive only authorized reading data and the assistant login entry.
 - The bottom sheet MUST support a clear close action, focus capture and return, controlled background scrolling, safe-area padding, software-keyboard avoidance, preserved scroll position, and preserved unsent draft state.
 - The UI MUST follow the Nature responsive contract: continuous reading surfaces, no unnecessary nested cards, minimum 44px touch targets outside fine-pointer desktop, readable long text, light/dark/system themes, and reduced-motion behavior.
 
@@ -147,7 +147,7 @@ The reading header keeps author remarks and the generated summary visible. The o
 ### REQ-MCL-012
 
 - Editing clipping remarks MUST NOT automatically re-run the Agent or overwrite a newer author edit.
-- Changing the target URL MUST create a new processing version and a new conversation; previous successful material MAY remain as an explicitly attributed fallback; earlier conversations are not available through user-facing history operations.
+- Changing the target URL MUST create a new processing version and separate the new target's conversation context; previous successful material MAY remain as an explicitly attributed fallback. A user's earlier conversations remain accessible in the unified assistant list according to its retention policy; this does not expose processing-version history or restoration operations.
 - Removing #剪藏 MUST stop unfinished clipping work, restore ordinary Memo presentation, and retain saved reading materials internally without exposing manual historical recovery.
 - Manual reprocessing of the same target MUST retain the previous successful version until the replacement reaches a usable state.
 - Manual reprocessing of the same target MUST retain its conversation. Source, summary, and translation used for automatic fallback MUST belong to one matched processing version; unrelated source versions MUST NOT be silently mixed into one reading result or conversation.
@@ -187,21 +187,21 @@ Automated acceptance uses deterministic model doubles and isolated provider fixt
 
 ### VER-MCL-003
 
-- Method: content contract tests against Memo create/edit/delete, concurrent author edits, MCP create/update, filesystem sync, automatic previous-success fallback, absent history/restore endpoints, duplicate-URL Memos, target replacement/removal, and database/public snapshot projection.
+- Method: content contract tests against Memo create/edit/delete, concurrent author edits, MCP create/update, filesystem sync, automatic previous-success fallback, absent processing-version history/restore endpoints, duplicate-URL Memos, target replacement/removal, and database/public snapshot projection.
 - covers: REQ-MCL-005, REQ-MCL-007, REQ-MCL-010, REQ-MCL-012, and REQ-MCL-013
 - Pass condition: author remarks, titles, tags, visibility, attachments, clipping metadata, matched fallback materials, and source ownership survive every supported write path; removing a tag or Memo stops stale writes; same-URL Memos remain independent; remarks precede exactly one summary with a separator only when needed; private records never enter public projections.
 
 ### VER-MCL-004
 
-- Method: authenticated API and route tests for creator, administrator, unauthenticated visitor, public Memo, private Memo, public snapshot, and live console; conversation recovery and grounded-answer evaluation before/after translation and context compaction.
+- Method: authenticated API and route tests for conversation owner, other frontend user, administrator, unauthenticated visitor, public Memo, private Memo, public snapshot, and live console; conversation recovery and grounded-answer evaluation before/after translation and context compaction, including legacy trusted/unattributable ownership fixtures.
 - covers: REQ-MCL-008 and REQ-MCL-010
-- Pass condition: creator/admin conversation access and recovery work, all other access is denied, public exports contain only authorized reading artifacts without conversation state, and answers can locate source evidence without pretending to read unavailable text.
+- Pass condition: each frontend user accesses only their own conversation, ordinary users use public materials and administrators may use nonpublic materials without reading others' conversations; recovery and legacy preservation work, public exports omit conversation state, and answers locate source evidence without pretending to read unavailable text.
 
 ### VER-MCL-005
 
 - Method: desktop and narrow browser interaction tests at the project responsive contract viewports (including 393px, 375px, 360px, and 320px), with guest/authorized-reader views, keyboard, touch, software keyboard, reduced motion, theme changes, and focus return.
 - covers: REQ-MCL-009
-- Pass condition: desktop split reading/chat remains usable; mobile bottom sheet opens, closes, preserves reading position and draft state, respects safe areas, and has no horizontal overflow or inaccessible controls.
+- Pass condition: desktop reading coexists with the shared floating assistant panel, and the full conversation view retains the same messages; the mobile bottom sheet opens, closes, preserves reading position and draft state, respects safe areas, and has no horizontal overflow or inaccessible controls.
 
 ### VER-MCL-006
 
@@ -215,16 +215,14 @@ Automated acceptance uses deterministic model doubles and isolated provider fixt
 - [ADR 0010: Use a Self-Contained SSR Console Beside the Static Public Site](../../adr/0010-self-contained-console-runtime.md)
 - [ADR 0012: Keep Clipping Attached to a Memo With a Private Conversation](../../adr/0012-memo-clipping-content-boundaries.md)
 - [ADR 0028: Versioned Clipping Resource Publication](../../adr/0028-versioned-clipping-resource-publication.md)
+- [ADR 0033: Unified Frontend User Identity](../../adr/0033-unified-frontend-user-identity.md)
+- [ADR 0037: Unified Assistant and Clipping Conversations](../../adr/0037-unified-assistant-and-clipping-conversations.md)
 
 ## Visual Evidence
 
-The native Web Demo demonstrates the shared list, detail cards, and responsive private discussion. Fixtures are isolated from live APIs and model services.
+The list image defines clipping classification. Detail reading, shared assistant integration and responsive behavior MUST be verified on the official-route Web Demo using isolated fixtures. Existing images of the separate discussion column and clipping-only drawer describe the earlier implementation and are referenced in the implementation document, rather than defining the shared assistant layout.
 
 ![Desktop clipping list](./assets/list-dark-1440.png)
-
-![Desktop clipping detail and discussion](./assets/detail-dark-1440.png)
-
-![Mobile article discussion drawer](./assets/detail-light-393.png)
 
 ## References
 
@@ -233,6 +231,7 @@ The native Web Demo demonstrates the shared list, detail cards, and responsive p
 - [Domain glossary](../../../CONTEXT.md)
 - [Memo title semantics](../memo-title-semantics/SPEC.md)
 - [Nature frontend responsive contract](../nature-front-ui/SPEC.md)
+- [Unified assistant and AI usage](../site-knowledge-assistant/SPEC.md)
 - [Remote MCP contract](../remote-mcp/SPEC.md)
 - [Pi Durable introduction](https://earendil.com/posts/pi-durable/)
 - [Google Search Central: Qualify outbound links](https://developers.google.com/search/docs/crawling-indexing/qualify-outbound-links)

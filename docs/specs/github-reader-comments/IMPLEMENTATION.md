@@ -2,12 +2,13 @@
 
 ## Current Status
 
-- Implementation: the baseline reader-comment contract, the approved comment-surface refinements, and the explicit GitHub identity binding / administrator-comment author behavior are implemented in the current topic branch. Deterministic migration, OAuth fixture, API, public UI, admin UI and official Web Demo coverage are present. Real GitHub authorization, production migration and dual-origin acceptance remain owner-side release gates。
+- Implementation: in progress. The GitHub-only reader-comment baseline, comment-surface refinements, and explicit GitHub administrator binding are implemented. The unified frontend identity contract is not implemented: an administrator still cannot comment without a GitHub reader binding, and clipping still uses the old comment/conversation tabs. Existing deterministic and visual coverage applies to that baseline, not the new identity and unified-assistant requirements. Real GitHub authorization, production migration and dual-origin acceptance remain release gates。
 - Lifecycle: active。
 - 基线需求及[默认细节](../../github-login-comments-design.md#已确认的默认细节)已落入产品代码、数据库迁移、公开 API、后台入口、官方路由 Web Demo 与响应式布局；评论承载层、头像失败回退、评论目标状态、管理员 GitHub 身份绑定、管理员作者标记、管理员评论免审、解绑历史保留和不含 token 审计事件也已落入当前实现。外部 GitHub OAuth App 注册、生产密钥、真实跨 origin 授权和生产数据迁移仍不在本地实现范围内。
 
 ## Gate Boundary
 
+- Existing visual assets describe the GitHub-only baseline and are retained for compatibility: [Console comments](./assets/console-admin-comments-1440.png), [bound administrator desktop](./assets/github-admin-public-1440.png), [bound administrator mobile](./assets/github-admin-public-393.png), [binding desktop](./assets/github-admin-binding-1440.png), [binding mobile](./assets/github-admin-binding-393.png), and [binding Inspector](./assets/github-admin-inspector-1440.png). They do not verify native administrator frontend identity, footer-avatar rendering or the shared assistant entry.
 - PR merge gate: deterministic OAuth fixtures, isolated migration/backfill recovery, API and UI behavior, official-route Web Demo evidence, review lanes and required CI.
 - Release gate: owner-configured GitHub OAuth credentials, real dual-origin browser authorization, production migration/backfill and post-merge target verification. These checks remain mandatory before production release and are not simulated by Web Demo evidence.
 
@@ -27,7 +28,8 @@
 
 ## Contract Integration
 
-- `memo-clipping/SPEC.md` 的 REQ-MCL-009 已明确链接本主题：拥有评论区的详情按本主题组合右侧评论与授权 AI tabs；独立 AI 卡和无评论访客单栏保留适用条件，原对话权限、材料与生成恢复合同保持。
+- [站内知识助手](../site-knowledge-assistant/SPEC.md)拥有统一前台身份、无需 GitHub 的管理员评论与共享助手入口；本主题的 REQ-GRC-002、003、005、007、009、014、018、022 及相应验证需要随其落地。以上既有覆盖表不表示这些新增边界已完成。
+- `memo-clipping/SPEC.md` 的 REQ-MCL-009 保留阅读材料及评论布局，私人问答改由全站助手面板和完整界面承载。当前代码中的评论/AI tabs 与独立剪藏讨论需要归并，已有截图不构成新入口的验证。
 - `nature-front-ui/SPEC.md` 继续定义基础视觉与移动内容流；本主题新增评论区域及项目侧栏的组合规则，不能沿用项目小屏侧栏前置规则把评论放到正文前。
 - `PublicMemoAuthoring` 内部挂载的 `ClippingDetail` 是 Console 的真实剪藏阅读入口，验收不能仅覆盖静态 `pages/memo.tsx`。
 - 现有 REST、tRPC、管理员两套操作入口、计数、导出及旧编辑接口均需要纳入行为检查，不能只覆盖一个按钮或一个新接口。
