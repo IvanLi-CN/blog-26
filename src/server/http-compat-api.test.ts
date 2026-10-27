@@ -1990,6 +1990,16 @@ public: false
     expect(snapshotPost?.media?.cover?.variants?.cover).toContain("/wm-b-v5/cover");
     expect(snapshotPost?.media?.cover?.presentations?.cover?.a).toContain("/wm-a-v5/cover");
     expect(snapshotPost?.media?.cover?.presentations?.cover?.b).toContain("/wm-b-v5/cover");
+    const coverSources = snapshotPost?.media?.cover?.sources ?? [];
+    const cardSource = coverSources.find(
+      (source: { variant: string }) => source.variant === "card"
+    );
+    const detailCoverSource = coverSources.find(
+      (source: { variant: string }) => source.variant === "cover"
+    );
+    expect(cardSource?.url).toMatch(/\/card\./);
+    expect(cardSource?.url).not.toContain("/wm-");
+    expect(detailCoverSource?.url).toMatch(/\/wm-b-v5\/cover\./);
     expect(snapshotPost?.media?.content?.[0]?.presentations?.content?.a).toContain(
       "/wm-a-v5/content"
     );

@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
+  "covered_files": {
+    "docs/adr/0031-public-cover-media-without-watermark.md": "0cc1ee7f78e88130e09d3d7ba84ef43cdf0e1067",
+    "docs/specs/public-media-assets-facade/SPEC.md": "0be545a65011a4bc61d5a844b9cd616c355ca420",
+    "scripts/generate-test-data.ts": "e6a1f8f1893ea1ef0d2cebb0547bca935ab33899",
+    "site/components/PostCard.tsx": "8d6d3992f9e15f4784b45a2245ea4921789b5d15",
+    "site/components/RelatedPostCard.tsx": "b0f3a5d267e1eddc032d409929e9d3c00ea6d1a8",
+    "site/components/TimelineCard.tsx": "877a17c589b2c57f1d28687ad5c144b9a1a2ab9f",
+    "site/lib/public-site.ts": "c94f18c68a9f974074fe88bd214cc379987afdd0",
+    "src/lib/__tests__/public-media.test.ts": "ea334b7f8e1f33d55d85c13724c1c6d428e96afa",
+    "src/lib/__tests__/public-site-snapshot-compat.test.ts": "130a2f08312a2940b13d904db2e8a9cd22a8588c",
+    "src/lib/public-media.ts": "491c107a832f0d39f9b4934e8ae8a828afef48e8",
+    "src/server/http-compat-api.test.ts": "3efa3220a98f75d83adb59eb10c5fbe0a7e445ea",
+    "src/server/public-media.ts": "832ba4d4ecd99e0b3b54c1f3ba1c623844e6eeba",
+    "tests/e2e/guest/posts-cover-fallback.spec.ts": "94976d8f05ce4dff1dfb1bf0499fa0941723ec7e"
+  },
+  "change": {
+    "description": "Restore historical list-cover rendering while limiting the unwatermarked public media contract to cover/card; detail covers and non-list media retain their watermark paths and candidates.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a backward-compatible public media compatibility fix. It changes list cover presentation and role-specific asset selection without changing routes, persistent state, or non-list watermark behavior.",
+      "assessed_at": "2026-10-27T11:47:14+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/__tests__/public-media.test.ts",
+          "blob": "ea334b7f8e1f33d55d85c13724c1c6d428e96afa",
+          "command": "bun test src/lib/__tests__/public-media.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate restores object-cover list cards, keeps detail/body/attachment watermark candidates, migrates legacy cover/card paths only, and hardens the fallback fixture and external URL boundary.",
+      "assessed_at": "2026-10-27T11:47:14+08:00",
+      "evidence": [
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "3efa3220a98f75d83adb59eb10c5fbe0a7e445ea",
+          "command": "bun test src/server/http-compat-api.test.ts"
+        },
+        {
+          "path": "tests/e2e/guest/posts-cover-fallback.spec.ts",
+          "blob": "94976d8f05ce4dff1dfb1bf0499fa0941723ec7e",
+          "command": "bun run test:e2e -- tests/e2e/guest/posts-cover-fallback.spec.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "No scope drift; the candidate remains limited to public cover media selection, historical snapshot compatibility, list presentation, fixtures, tests, and their release evidence."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused contract, compatibility, E2E, and static public UI validation verify a reversible role-scoped media fix with no persistent-state migration.",
+      "assessed_at": "2026-10-27T11:47:14+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/__tests__/public-media.test.ts",
+          "blob": "ea334b7f8e1f33d55d85c13724c1c6d428e96afa",
+          "command": "bun test src/lib/__tests__/public-media.test.ts src/lib/__tests__/public-site-snapshot-compat.test.ts"
+        },
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "3efa3220a98f75d83adb59eb10c5fbe0a7e445ea",
+          "command": "bun test src/server/http-compat-api.test.ts"
+        },
+        {
+          "path": "tests/e2e/guest/posts-cover-fallback.spec.ts",
+          "blob": "94976d8f05ce4dff1dfb1bf0499fa0941723ec7e",
+          "command": "bun run test:e2e -- tests/e2e/guest/posts-cover-fallback.spec.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4"
+      ],
+      "evidence": [
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "3efa3220a98f75d83adb59eb10c5fbe0a7e445ea",
+          "command": "bun test src/server/http-compat-api.test.ts"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local content state, browser persistence, or durable release state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "docs/adr/0031-public-cover-media-without-watermark.md",
+          "blob": "0cc1ee7f78e88130e09d3d7ba84ef43cdf0e1067",
+          "command": "git diff --check e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af...HEAD"
+        }
+      ]
+    }
+  }
+}

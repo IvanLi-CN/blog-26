@@ -5,6 +5,7 @@ import {
   getPublicMediaWatermarkVersion,
   resolveContentMediaPath,
   rewritePublicContentMediaUrls,
+  stripPublicMediaRenderId,
   supportsPublicMediaPresentations,
 } from "@/lib/public-media";
 
@@ -200,6 +201,16 @@ describe("public-media", () => {
       });
       expect(presentations?.a).toContain("/wm-a-v5/cover.webp");
       expect(presentations?.b).toContain("/wm-b-v5/cover.webp");
+    });
+
+    it("does not rewrite external media URLs while stripping facade render IDs", () => {
+      const external =
+        "https://cdn.example.test/api/public/assets/post/demo/abc123/wm-a-v5/card.webp";
+
+      expect(stripPublicMediaRenderId(external)).toBe(external);
+      expect(
+        stripPublicMediaRenderId("/api/public/assets/post/demo/abc123/wm-a-v5/card.webp")
+      ).toBe("/api/public/assets/post/demo/abc123/card.webp");
     });
 
     it("uses v5 A for cards and v5 B for larger usage defaults", () => {

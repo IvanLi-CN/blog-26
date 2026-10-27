@@ -194,6 +194,7 @@ export function migratePublicMediaV4ToV5(value: string) {
 }
 
 export function stripPublicMediaRenderId(value: string) {
+  if (isExternalMediaUrl(value) || isDataMediaUrl(value)) return value;
   return value.replace(PUBLIC_MEDIA_RENDER_PATH_RE, "$1");
 }
 
