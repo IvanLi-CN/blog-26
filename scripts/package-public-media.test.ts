@@ -672,6 +672,34 @@ describe("packagePublicMedia", () => {
     ]);
   });
 
+  test("can freeze base media alongside current derived watermark variants", async () => {
+    const cwd = await fixture();
+    const candidateUrl = "/api/public/assets/post/logo/hash/wm-b-v5/cover.webp";
+    await writeFile(join(cwd, "site-dist", "snapshot.json"), `{"media":"${candidateUrl}"}`);
+
+    const requestedUrls: string[] = [];
+    const manifest = await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      includeDerivedWatermarkVariants: true,
+      includeBaseMediaVariants: true,
+      fetchImpl: async (input) => {
+        requestedUrls.push(String(input));
+        return response("image");
+      },
+    });
+
+    expect(requestedUrls).toEqual([
+      `https://api.example${candidateUrl}`,
+      "https://api.example/api/public/assets/post/logo/hash/wm-a-v5/cover.webp",
+      "https://api.example/api/public/assets/post/logo/hash/cover.webp",
+    ]);
+    expect(manifest.entries.map((entry) => entry.sourcePath)).toContain(
+      "/api/public/assets/post/logo/hash/cover.webp"
+    );
+  });
+
   test("can freeze the sibling when a snapshot contains one derived watermark variant", async () => {
     const cwd = await fixture();
     const candidateUrl = "/api/public/assets/post/logo/hash/wm-b-v3/content.webp?v=2026-10-15";
