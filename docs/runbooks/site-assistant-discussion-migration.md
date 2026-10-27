@@ -24,7 +24,7 @@ The command prints a plan and writes a JSON manifest under `ASSISTANT_MIGRATION_
 
 ## Apply and resume
 
-Use `--apply` after reviewing the dry-run manifest. Repeating the command is the supported resume operation; source IDs, hashes, deterministic target IDs, and the ledger make completed records no-ops.
+Use `--apply` after reviewing the dry-run manifest. Repeating the command is the supported resume operation; source IDs, hashes, deterministic target IDs, and the ledger make completed records no-ops. An existing target conversation can advance to a newer clipping version only when its recorded identity, memo, and target URL still match; a different target URL remains blocked without replacing the existing binding.
 
 ```sh
 ASSISTANT_MIGRATION_BACKUP_DIR=./dev-data/assistant-migration-backups \

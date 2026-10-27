@@ -3,7 +3,10 @@ import { describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { migrateAssistantDiscussions } from "@/lib/assistant-discussion-migration";
+import {
+  ASSISTANT_DISCUSSION_MIGRATION_ID,
+  migrateAssistantDiscussions,
+} from "@/lib/assistant-discussion-migration";
 
 const appFixturePath = path.resolve("tests/fixtures/site-assistant-legacy.sql");
 const piFixturePath = path.resolve("tests/fixtures/site-assistant-pi-discussions.sql");
@@ -356,7 +359,164 @@ describe("assistant discussion migration", () => {
       expect(after.query("SELECT COUNT(*) AS count FROM assistant_messages").get()).toEqual({
         count: 7,
       });
+      const beforeConversationIds = after
+        .query<{ id: string }, [string]>(
+          "SELECT id FROM assistant_conversations WHERE clipping_memo_id = ? ORDER BY id"
+        )
+        .all("memo.md")
+        .map((row) => row.id);
+      const beforeConversationLedgers = after
+        .query<{ source_id: string; source_hash: string; target_id: string | null }, [string]>(
+          "SELECT source_id, source_hash, target_id FROM assistant_migration_items WHERE migration_id = ? AND source_kind = 'conversation' ORDER BY source_id"
+        )
+        .all(ASSISTANT_DISCUSSION_MIGRATION_ID);
       after.close();
+
+      const completedTarget = new Database(targetPath);
+      completedTarget
+        .query("UPDATE memo_clippings SET manifest = ?, updated_at = ? WHERE id = ?")
+        .run(
+          JSON.stringify({
+            schemaVersion: 1,
+            id: "clip-1",
+            memoId: "memo.md",
+            creatorId: "legacy-reader",
+            revision: 3,
+            enabled: true,
+            deleted: false,
+            targetUrl: "https://example.test/current",
+            conversationId: "1",
+            previousConversations: [
+              { targetUrl: "https://example.test/legacy", conversationId: "2" },
+            ],
+            currentVersionId: "version-reprocess",
+            activeVersionId: "version-reprocess",
+            versions: [
+              {
+                id: "version-current",
+                revision: 2,
+                targetUrl: "https://example.test/current",
+                createdAt: 2,
+                status: "completed",
+                summaryState: "completed",
+                translationState: "completed",
+              },
+              {
+                id: "version-reprocess",
+                revision: 3,
+                targetUrl: "https://example.test/current",
+                createdAt: 3,
+                status: "completed",
+                summaryState: "completed",
+                translationState: "completed",
+              },
+            ],
+          }),
+          4,
+          "clip-1"
+        );
+      completedTarget.close();
+
+      const completedTransition = await migrateAssistantDiscussions({
+        targetDbPath: targetPath,
+        piDbPath: piPath,
+        mode: "apply",
+        now: () => 15_003,
+        resolveTrustedCreator: trustedReader,
+      });
+      expect(completedTransition.status).toBe("complete");
+      const transitioned = new Database(targetPath);
+      const transitionedBindings = transitioned
+        .query<{ source_id: string; source_hash: string; target_id: string | null }, [string]>(
+          "SELECT source_id, source_hash, target_id FROM assistant_migration_items WHERE migration_id = ? AND source_kind = 'conversation' ORDER BY source_id"
+        )
+        .all(ASSISTANT_DISCUSSION_MIGRATION_ID);
+      expect(transitionedBindings).toEqual(beforeConversationLedgers);
+      expect(transitionedBindings.map((row) => row.target_id).sort()).toEqual(
+        beforeConversationIds
+      );
+      const transitionedVersionIds = transitioned
+        .query<{ clipping_version_id: string | null }, [string]>(
+          "SELECT clipping_version_id FROM assistant_conversations WHERE clipping_memo_id = ? ORDER BY id"
+        )
+        .all("memo.md")
+        .map((row) => row.clipping_version_id);
+      expect(transitionedVersionIds).toEqual(expect.arrayContaining(["version-reprocess", null]));
+      transitioned.close();
+
+      const conflictingTarget = new Database(targetPath);
+      const currentManifestRow = conflictingTarget
+        .query<{ manifest: string }, [string]>("SELECT manifest FROM memo_clippings WHERE id = ?")
+        .get("clip-1");
+      const currentManifest = JSON.parse(currentManifestRow?.manifest ?? "{}") as Record<
+        string,
+        unknown
+      >;
+      conflictingTarget
+        .query(
+          "UPDATE memo_clippings SET target_url = ?, manifest = ?, updated_at = ? WHERE id = ?"
+        )
+        .run(
+          "https://example.test/other",
+          JSON.stringify({ ...currentManifest, targetUrl: "https://example.test/other" }),
+          5,
+          "clip-1"
+        );
+      conflictingTarget.close();
+
+      const conflict = await migrateAssistantDiscussions({
+        targetDbPath: targetPath,
+        piDbPath: piPath,
+        mode: "apply",
+        now: () => 15_004,
+        resolveTrustedCreator: trustedReader,
+      });
+      expect(conflict.status).toBe("blocked");
+      expect(
+        conflict.records.some((record) => record.reason === "existing-target-conversation-conflict")
+      ).toBe(true);
+      const preserved = new Database(targetPath);
+      expect(
+        preserved
+          .query<{ clipping_version_id: string | null }, [string]>(
+            "SELECT clipping_version_id FROM assistant_conversations WHERE clipping_memo_id = ? AND clipping_version_id IS NOT NULL"
+          )
+          .get("memo.md")
+      ).toEqual({ clipping_version_id: "version-reprocess" });
+      const preservedLedger = preserved
+        .query<{ payload: string }, [string]>(
+          "SELECT payload FROM assistant_migration_items WHERE migration_id = ? AND source_kind = 'conversation' AND source_id LIKE '%:conversation:1'"
+        )
+        .get(ASSISTANT_DISCUSSION_MIGRATION_ID);
+      const preservedPayload = JSON.parse(preservedLedger?.payload ?? "{}") as {
+        reference?: { targetUrl?: string | null };
+      };
+      expect(preservedPayload.reference?.targetUrl).toBe("https://example.test/current");
+      preserved.close();
+
+      const restoredTarget = new Database(targetPath);
+      restoredTarget
+        .query(
+          "UPDATE memo_clippings SET target_url = ?, manifest = ?, updated_at = ? WHERE id = ?"
+        )
+        .run(
+          "https://example.test/current",
+          JSON.stringify({ ...currentManifest, targetUrl: "https://example.test/current" }),
+          6,
+          "clip-1"
+        );
+      restoredTarget.close();
+
+      const repeatedCompleted = await migrateAssistantDiscussions({
+        targetDbPath: targetPath,
+        piDbPath: piPath,
+        mode: "apply",
+        cleanup: true,
+        now: () => 15_005,
+        resolveTrustedCreator: trustedReader,
+      });
+      expect(repeatedCompleted.status).toBe("complete");
+      expect(repeatedCompleted.cleanup.removed).toHaveLength(2);
     } finally {
       fs.rmSync(directory, { recursive: true, force: true });
     }

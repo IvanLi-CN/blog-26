@@ -794,6 +794,20 @@ function getLedger(target: Database, migrationId: string, kind: SourceKind, sour
     .get(migrationId, kind, sourceIdValue);
 }
 
+function ledgerReference(ledger: LedgerRow | undefined): JsonObject | null {
+  if (!ledger) return null;
+  const payload = readJsonValue(ledger.payload);
+  if (!isObject(payload) || !isObject(payload.reference) || !("targetUrl" in payload.reference)) {
+    return null;
+  }
+  return payload.reference;
+}
+
+function ledgerTargetUrl(ledger: LedgerRow | undefined): string | null | undefined {
+  const reference = ledgerReference(ledger);
+  return reference ? asString(reference.targetUrl) : undefined;
+}
+
 function writeLedger(
   target: Database,
   migrationId: string,
@@ -856,6 +870,7 @@ function targetMessageRow(target: Database, id: string) {
 
 function ensureTargetConversation(
   target: Database,
+  migrationId: string,
   plan: ConversationPlan,
   now: number,
   retentionMs: number
@@ -875,13 +890,27 @@ function ensureTargetConversation(
     )
     .get(plan.targetId);
   if (existing) {
+    const existingConversationLedger = getLedger(
+      target,
+      migrationId,
+      "conversation",
+      sourceId(plan.namespace, "conversation", plan.source.id)
+    );
+    const existingTargetUrl = ledgerTargetUrl(existingConversationLedger);
     if (
       existing.frontend_user_id !== plan.identity.id ||
       existing.kind !== "clipping" ||
       existing.clipping_memo_id !== plan.reference.memoId ||
-      existing.clipping_version_id !== plan.reference.clippingVersionId
+      existingConversationLedger?.target_id !== plan.targetId ||
+      existingTargetUrl === undefined ||
+      existingTargetUrl !== plan.reference.targetUrl
     ) {
       throw new Error("existing-target-conversation-conflict");
+    }
+    if (existing.clipping_version_id !== plan.reference.clippingVersionId) {
+      target
+        .query("UPDATE assistant_conversations SET clipping_version_id = ? WHERE id = ?")
+        .run(plan.reference.clippingVersionId, plan.targetId);
     }
     return;
   }
@@ -1028,14 +1057,14 @@ function migratePlan(
   const conversationSourceId = sourceId(plan.namespace, "conversation", plan.source.id);
   target.exec("BEGIN IMMEDIATE");
   try {
-    ensureTargetConversation(target, plan, now, retentionMs);
-    settleMissingPartial(target, migrationId, plan, now);
     const existingConversationLedger = getLedger(
       target,
       migrationId,
       "conversation",
       conversationSourceId
     );
+    ensureTargetConversation(target, migrationId, plan, now, retentionMs);
+    settleMissingPartial(target, migrationId, plan, now);
     const existingMessages = target
       .query<{ sequence: number }, [string]>(
         "SELECT sequence FROM assistant_messages WHERE conversation_id = ? ORDER BY sequence DESC LIMIT 1"
@@ -1387,8 +1416,15 @@ function verifyPlans(
     const sourceIdValue = sourceId(plan.namespace, "conversation", plan.source.id);
     const conversationLedger = getLedger(target, migrationId, "conversation", sourceIdValue);
     const conversation = target
-      .query<{ frontend_user_id: string; clipping_memo_id: string | null }, [string]>(
-        "SELECT frontend_user_id, clipping_memo_id FROM assistant_conversations WHERE id = ?"
+      .query<
+        {
+          frontend_user_id: string;
+          clipping_memo_id: string | null;
+          clipping_version_id: string | null;
+        },
+        [string]
+      >(
+        "SELECT frontend_user_id, clipping_memo_id, clipping_version_id FROM assistant_conversations WHERE id = ?"
       )
       .get(plan.targetId);
     if (
@@ -1397,7 +1433,8 @@ function verifyPlans(
       conversationLedger?.source_hash !== plan.source.sourceHash ||
       !conversation ||
       conversation.frontend_user_id !== plan.identity.id ||
-      conversation.clipping_memo_id !== plan.reference.memoId
+      conversation.clipping_memo_id !== plan.reference.memoId ||
+      conversation.clipping_version_id !== plan.reference.clippingVersionId
     ) {
       reasons.push(`${sourceIdValue}:conversation-mismatch`);
       continue;
@@ -1697,16 +1734,35 @@ export async function migrateAssistantDiscussions(
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
         const sourceIdValue = sourceId(source.namespace, "conversation", plan.source.id);
+        const existingConversationLedger = getLedger(
+          target,
+          migrationId,
+          "conversation",
+          sourceIdValue
+        );
+        const existingReference = ledgerReference(existingConversationLedger);
+        const failureSourceHash = existingConversationLedger?.source_hash ?? plan.source.sourceHash;
+        const failureTargetId = existingConversationLedger?.target_id ?? plan.targetId;
         writeLedger(
           target,
           migrationId,
           "conversation",
           sourceIdValue,
-          plan.source.sourceHash,
+          failureSourceHash,
           "failed",
-          plan.targetId,
+          failureTargetId,
           reason,
-          { ...plan.source.rawPayload, failure: reason },
+          {
+            ...plan.source.rawPayload,
+            sourceHash: failureSourceHash,
+            ...(existingReference
+              ? { reference: existingReference }
+              : existingConversationLedger
+                ? {}
+                : { reference: plan.reference }),
+            ...(failureTargetId ? { targetId: failureTargetId } : {}),
+            failure: reason,
+          },
           now
         );
         recordReport(records, "conversation", sourceIdValue, "failed", plan.targetId, reason);
