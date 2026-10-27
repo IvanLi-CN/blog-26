@@ -1,0 +1,199 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "cb1eff3a793728c11c36f28a697ac29326aee1e0",
+  "covered_files": {
+    "drizzle/0023_assistant_discussion_migration.sql": "2ac1b5b2adc42262ce390a96bafcd2a843a98e11",
+    "drizzle/meta/_journal.json": "d245ec1546e5df69d6a4803fb4b97609a7d62157",
+    "src/lib/assistant-discussion-migration.ts": "1baff3ee93c831492f95fc7c521baebce65742d5",
+    "scripts/migrate-assistant-discussions.ts": "6593074ba3ea86fecbbebd5d6402ba9d1341c13b",
+    "tests/fixtures/site-assistant-pi-discussions.sql": "ebbcd0607d68bc6f77a16a808ad542c47f65081a",
+    "tests/fixtures/site-assistant-pi-legacy.sql": "a72f15d97409907aa9127022c2201be2414bb52c",
+    "tests/lib/assistant-discussion-migration.test.ts": "6d360d0e9692bfe313cc777ecd9da1d7c812573f",
+    "docs/runbooks/site-assistant-discussion-migration.md": "793079f0cd74ec104e0602b97d0dc992b83819dd",
+    "package.json": "3d0e64c848f06801f9746e3d3cea091ff9929b73"
+  },
+  "change": {
+    "description": "Add a resumable, offline migration for current and legacy Pi clipping discussions into the T1 assistant conversation store, with deterministic source hashes, raw quarantine records, backup manifests, interruption-safe progress, and opt-in verified cleanup.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "The forward-only migration adds observability and backup tables and an offline backfill command. It does not change runtime routing or remove source data unless cleanup is explicitly requested after verification and source-safety checks.",
+      "assessed_at": "2026-10-27T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "docs/adr/0038-frontend-identity-and-assistant-storage-boundary.md",
+          "blob": "41ce278081af3928b0ffc2f61b0e8b4ed152127b",
+          "command": "Defines the app-owned assistant storage boundary and separates DDL from backfill/runtime cutover"
+        },
+        {
+          "path": "docs/specs/site-knowledge-assistant/SPEC.md",
+          "blob": "d11a224a6283c60aa276785997ee8a33a4586dad",
+          "command": "Locks migration safety, identity attribution, partial-output preservation, resumability, and clipping-task protection"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "The candidate adds only an offline CLI and forward-only migration ledger/backup tables. Current and legacy Pi records are copied by stable IDs and hashes; unknown attribution, invalid records, conflicts, and partial failures remain isolated, while runtime cutover remains out of scope.",
+      "assessed_at": "2026-10-27T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/assistant-discussion-migration.ts",
+          "blob": "1baff3ee93c831492f95fc7c521baebce65742d5",
+          "command": "Read-only planning, deterministic identity mapping, per-conversation transactions, source-hash ledgering, raw quarantine, backup manifests, interruption-safe resume, verification-gated cleanup, and runtime/task protection"
+        },
+        {
+          "path": "drizzle/0023_assistant_discussion_migration.sql",
+          "blob": "2ac1b5b2adc42262ce390a96bafcd2a843a98e11",
+          "command": "Forward-only migration adds assistant migration item and backup observability tables without changing T1 runtime tables"
+        },
+        {
+          "path": "docs/runbooks/site-assistant-discussion-migration.md",
+          "blob": "793079f0cd74ec104e0602b97d0dc992b83819dd",
+          "command": "Documents dry-run, apply/resume, backup, quarantine, task protection, and opt-in cleanup procedures"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "Runtime assistant routing, public UI, generation workers, quota accounting, and identity/storage contracts remain out of scope; this change owns only offline discussion migration and its evidence surfaces."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "The focused fixture suite covers dry-run/apply, current and legacy Pi schemas, partial output settlement, unknown attribution quarantine, interruption/resume, duplicate-safe reruns, source hash conflicts, target verification failure, active clipping task protection, and terminal cleanup. Repository checks and migration journal validation pass. The full repository suite reaches 1427 pass and 67 skip with one pre-existing system-share legacy-fixture failure outside this change; existing repository warnings remain unchanged.",
+      "assessed_at": "2026-10-27T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/assistant-discussion-migration.test.ts",
+          "blob": "6d360d0e9692bfe313cc777ecd9da1d7c812573f",
+          "command": "bun test --isolate tests/lib/assistant-discussion-migration.test.ts (8 pass, 0 fail, 53 expectations)"
+        },
+        {
+          "path": "src/lib/assistant-discussion-migration.ts",
+          "blob": "1baff3ee93c831492f95fc7c521baebce65742d5",
+          "command": "bun test --isolate src/lib/assistant-contracts.test.ts src/lib/assistant-storage.test.ts tests/lib/site-assistant-migration.test.ts src/server/clipping/agent-runtime.test.ts src/server/clipping/service.test.ts tests/lib/assistant-discussion-migration.test.ts (32 pass, 0 fail, 152 expectations)"
+        },
+        {
+          "path": "drizzle/meta/_journal.json",
+          "blob": "d245ec1546e5df69d6a4803fb4b97609a7d62157",
+          "command": "bun run db:migrations:validate"
+        },
+        {
+          "path": "package.json",
+          "blob": "3d0e64c848f06801f9746e3d3cea091ff9929b73",
+          "command": "bun run check; git diff --check"
+        },
+        {
+          "path": "package.json",
+          "blob": "3d0e64c848f06801f9746e3d3cea091ff9929b73",
+          "command": "bun run test (1427 pass, 67 skip, 1 pre-existing failure in tests/server/system-share-api.test.ts:842: memo_slug is absent from the legacy fixture)"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "none",
+      "change": "unchanged",
+      "supported_consumer_versions": [],
+      "evidence": [
+        {
+          "path": "src/lib/assistant-discussion-migration.ts",
+          "blob": "1baff3ee93c831492f95fc7c521baebce65742d5",
+          "command": "Offline migration module has no public HTTP route or runtime cutover"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "minor",
+      "applicable": true,
+      "state_description": "The forward-only SQLite migration adds migration item and backup manifest tables. The offline command copies Pi discussion messages and partial output into existing T1 assistant tables, preserves source IDs and hashes, quarantines unknown or invalid records, and retains old source records unless explicit cleanup passes verification and active-work guards.",
+      "readable_by_prior_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4"
+      ],
+      "upgrade_from_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4"
+      ],
+      "evidence": [
+        {
+          "path": "drizzle/0023_assistant_discussion_migration.sql",
+          "blob": "2ac1b5b2adc42262ce390a96bafcd2a843a98e11",
+          "command": "Forward DDL is additive and does not drop or alter existing T1/clipping tables"
+        },
+        {
+          "path": "tests/lib/assistant-discussion-migration.test.ts",
+          "blob": "6d360d0e9692bfe313cc777ecd9da1d7c812573f",
+          "command": "Fixture tests verify backup creation, resumable idempotence, partial settlement, source preservation on unsafe cleanup, and legacy schema compatibility"
+        }
+      ]
+    }
+  }
+}
