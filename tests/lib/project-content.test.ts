@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  extractProjectDetailSummary,
   extractProjectToc,
   resolveProjectBody,
   resolveProjectDetailBody,
@@ -30,7 +31,7 @@ describe("project content contracts", () => {
 
     for (const slug of migratedProjectSlugs) {
       const source = readFileSync(join(contentDir, `${slug}.mdx`), "utf8");
-      expect(source).toMatch(new RegExp(`^---\\nslug: ${slug}\\n---\\n`));
+      expect(source).toMatch(new RegExp(`^---\\nslug: ${slug}\\n(?:[^\\n]*\\n)*---\\n`));
       expect(source).toMatch(/^## /m);
       expect(source).not.toContain("项目是什么");
     }
@@ -220,6 +221,27 @@ describe("project content contracts", () => {
       { depth: 2, text: "设计取舍：保留证据", slug: "设计取舍保留证据-1" },
       { depth: 3, text: "子项", slug: "子项" },
     ]);
+  });
+
+  test("detail summaries come from MDX frontmatter", () => {
+    expect(
+      extractProjectDetailSummary(
+        '---\nslug: demo\ndetailSummary: "这是详情摘要，并保留正文链接。"\n---\n\n## 定位\n\n正文。'
+      )
+    ).toBe("这是详情摘要，并保留正文链接。");
+    expect(extractProjectDetailSummary("---\nslug: demo\n---\n\n## 定位\n\n正文。")).toBeNull();
+  });
+
+  test("project list and detail summaries stay separate", () => {
+    const project = projectCatalog.find((item) => item.slug === "octo-rill");
+    expect(project?.summary).toBe(
+      "围绕 GitHub 个人活动整理出的阅读与运营工作台，用来集中查看 release、通知和项目流动。"
+    );
+    const source = readFileSync(join(process.cwd(), "site/content/projects/octo-rill.mdx"), "utf8");
+    expect(extractProjectDetailSummary(source)).toBe(
+      "它更像一块为开发者自己定制的云端仪表板，重点不是社交网络式展示，而是把分散的 GitHub 动态重新组织成可消费的操作界面。"
+    );
+    expect(project?.summary).not.toBe(extractProjectDetailSummary(source));
   });
 
   test("TOC uses rendered text for inline Markdown links", () => {
