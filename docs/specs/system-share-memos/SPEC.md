@@ -202,6 +202,38 @@
 - Inputs: the shipped console confirmation flow.
 - Outputs: accessible, visually reviewable publish controls and state feedback without a separate page-level Demo route.
 
+### REQ-SSM-026
+
+- The mobile confirmation page MUST use compact non-editor spacing so unnecessary outer padding, oversized structural headers, and gaps between form sections do not push the publish controls beyond the first viewport when the content can otherwise fit.
+- With short Memo content, no attachments, the original-share panel collapsed, and the software keyboard closed, the publish controls MUST be fully visible near the bottom of the first usable viewport at `360x740` and `393x852` CSS px. The Memo editor MUST adapt to the remaining usable height rather than leaving surplus space in structural gaps.
+- Compactness MUST preserve readable text, required information, and the shared Nature UI touch-target minimum of `44px`. The page MUST respect browser chrome and device safe areas when determining usable height and positioning the bottom controls.
+- Inputs: the mobile viewport and a populated confirmation form.
+- Outputs: a compact first-screen confirmation layout whose flexible editor uses the remaining height.
+
+### REQ-SSM-027
+
+- Below `640px`, the confirmation page's primary form surface MUST reach both viewport edges, without an additional outer gutter or nested container padding that narrows the whole form.
+- Text and controls MUST retain the internal insets defined by the shared Nature UI responsive contract, including `16px` at `393px` viewport width and `12px` below `375px`; reaching the viewport edges MUST NOT place text or touch controls flush against them.
+- The layout MUST avoid horizontal page overflow and preserve the existing usable tablet and desktop composition.
+- Inputs: the confirmation page at mobile, tablet, and desktop widths.
+- Outputs: a full-width mobile form carrier with consistent internal spacing and usable wider layouts.
+
+### REQ-SSM-028
+
+- When long content, more attachments, expanded original-share data, a short viewport, or the software keyboard leaves insufficient usable height, the confirmation page MUST grow naturally and allow continuous vertical page scrolling to the publish controls.
+- The editor MUST retain a usable minimum height. Required content and controls MUST remain readable and reachable without clipping, overlap, or forced compression to fit one screen.
+- The publish controls MUST remain in normal document flow after the form content. The first-screen bottom placement requirement applies when the content fits; it MUST NOT prevent scrolling when the content exceeds the usable height.
+- Inputs: confirmation content and available height, including changes caused by keyboard or viewport resizing.
+- Outputs: a scrollable confirmation flow with a usable editor and reachable publish controls.
+
+### REQ-SSM-029
+
+- A vertical finger swipe beginning in the attachment region MUST scroll the confirmation page whenever the page has remaining scroll range. This MUST work over the attachment heading, empty state, file rows, and attachment-control area.
+- The attachment region MUST NOT trap the gesture or block scrolling from reaching the page when the region has no scroll range of its own.
+- Taps on attachment controls MUST continue to add or remove files, and normal editor focus, text selection, and input behavior MUST remain available.
+- Inputs: touch gestures and taps within the populated confirmation page.
+- Outputs: continuous page scrolling from the attachment region and working attachment controls.
+
 ## Verification
 
 ### VER-SSM-001
@@ -246,13 +278,33 @@
 - covers: `REQ-SSM-025`
 - Pass condition: the filled primary button has sufficient contrast and stable dimensions, Toasts remain readable and actionable over the page, the populated form is scannable at both sizes, and the detail navigation result is captured.
 
+### VER-SSM-008
+
+- Method: layout measurements and owner-reviewed official-route Web Demo evidence at `360x740` and `393x852` CSS px, using a valid pending share with a short URL and `#剪藏` content, no attachments, collapsed original-share data, and a closed software keyboard.
+- covers: `REQ-SSM-026`, `REQ-SSM-028`
+- Pass condition: the complete publish button, visibility control, and cancel action are visible near the first viewport's bottom without an initial scroll. Increasing available height expands the editor instead of creating surplus structural whitespace. Readable text and `44px` touch targets are preserved, and safe areas do not obscure the controls.
+
+### VER-SSM-009
+
+- Method: official-route responsive layout measurements at mobile widths `320px`, `360px`, `375px`, `393px`, and `639px`, with wider-layout regression checks at `768x1024` and `1440x1000` CSS px.
+- covers: `REQ-SSM-027`
+- Pass condition: below `640px`, the primary form carrier reaches both viewport edges, text and controls retain the shared internal insets, and there is no horizontal page overflow. Tablet and desktop controls remain readable, reachable, and free of overlap.
+
+### VER-SSM-010
+
+- Method: touch-input browser checks on the official `/share` route with long Memo content, multiple attachments, expanded original-share data, and a constrained `360x568` CSS-pixel viewport; additionally verify the software-keyboard transition in a supported mobile browser. Use a scrollable page and compare the same vertical swipe from the attachment heading, empty state, file row, and attachment-control area with a swipe elsewhere on the page.
+- covers: `REQ-SSM-028`, `REQ-SSM-029`
+- Pass condition: vertical swipes from every attachment-region starting area move the page while scroll range remains, and the publish controls can be reached. The editor retains a usable minimum height, keyboard open/close does not leave controls unreachable, and attachment taps plus editor input and text selection continue to work.
+
 ## Related ADRs
 
+- [ADR 0003: Public mobile content stream](../../adr/0003-public-mobile-content-stream.md)
 - [ADR 0020: Console PWA as the system-share write target](../../adr/0020-console-pwa-system-share-target.md)
 
 ## Visual Evidence
 
 - Required after candidate implementation and before production release: owner-reviewable captures from the official `/share` route at 390x844 and 1440x1000, covering populated, publishing, success, retryable failure, and resulting detail states. Production release waits for owner confirmation.
+- Mobile layout evidence MUST additionally cover the compact initial state at `360x740` and `393x852`, a content-overflow state, and attachment-origin touch scrolling as defined by `VER-SSM-008..010`. Earlier populated-state captures do not establish these layout and gesture pass conditions.
 
 ## References
 
@@ -260,3 +312,4 @@
 - `./HISTORY.md`
 - [Memo clipping workflow](../memo-clipping/SPEC.md)
 - [Public PWA](../public-pwa/SPEC.md)
+- [Nature UI responsive contract](../nature-front-ui/SPEC.md#44-responsive-control-and-code-density)

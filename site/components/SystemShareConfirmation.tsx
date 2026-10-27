@@ -26,6 +26,7 @@ import {
   showSystemShareProgress,
   showSystemShareSuccess,
 } from "./SystemShareToast";
+import "./SystemShareConfirmation.css";
 
 type AuthUser = { isAdmin?: boolean } | null;
 
@@ -447,11 +448,8 @@ export default function SystemShareConfirmation() {
   const rawShare = originalPending ?? pending;
 
   return (
-    <main
-      className="nature-container system-share-page max-w-4xl px-4 py-6 sm:px-6 sm:py-10"
-      data-testid="system-share-page"
-    >
-      <header className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-5">
+    <main className="nature-container system-share-page max-w-4xl" data-testid="system-share-page">
+      <header className="system-share-page-header flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <span className="nature-kicker">System Share</span>
           <h1 className="nature-title mt-2 text-3xl sm:text-4xl">确认发布 Memo</h1>
@@ -543,7 +541,7 @@ export default function SystemShareConfirmation() {
       ) : null}
 
       <form
-        className="nature-panel overflow-hidden"
+        className="nature-panel system-share-memo-form"
         onSubmit={(event) => {
           event.preventDefault();
           void submitCurrent();
@@ -551,7 +549,7 @@ export default function SystemShareConfirmation() {
         data-testid="system-share-memo-editor"
         aria-labelledby="system-share-memo-editor-title"
       >
-        <div className="quick-memo-edit-header">
+        <div className="quick-memo-edit-header system-share-memo-editor-header">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 id="system-share-memo-editor-title" className="quick-memo-edit-title">
@@ -561,12 +559,12 @@ export default function SystemShareConfirmation() {
           </div>
         </div>
 
-        <div
-          className="quick-memo-edit-body grid gap-7 overflow-visible p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_18rem]"
-          data-testid="system-share-memo-editor-body"
-        >
-          <div className="min-w-0">
-            <section data-testid="system-share-memo-editor-content">
+        <div className="system-share-memo-editor-body" data-testid="system-share-memo-editor-body">
+          <div className="system-share-memo-editor-content-column min-w-0">
+            <section
+              className="system-share-memo-editor-content-section"
+              data-testid="system-share-memo-editor-content"
+            >
               <span className="block text-sm font-medium">Memo 内容</span>
               <div
                 className="quick-memo-edit-container mt-2"
@@ -592,14 +590,20 @@ export default function SystemShareConfirmation() {
             </section>
           </div>
 
-          <aside className="space-y-6 border-t border-[color:var(--nature-line)] pt-6 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+          <aside className="system-share-memo-attachments">
             <section>
-              <span className="block text-sm font-medium">附件</span>
-              <ul className="mt-2 space-y-2" data-testid="system-share-files">
+              <span
+                className="block text-sm font-medium"
+                data-testid="system-share-attachments-title"
+              >
+                附件
+              </span>
+              <ul className="system-share-files" data-testid="system-share-files">
                 {pending.files.length ? (
                   pending.files.map((file, index) => (
                     <li
                       className="flex items-start gap-2 text-sm"
+                      data-testid={`system-share-file-row-${index}`}
                       key={`${file.name}-${file.size}-${file.lastModified ?? 0}`}
                     >
                       <Paperclip className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -619,10 +623,12 @@ export default function SystemShareConfirmation() {
                     </li>
                   ))
                 ) : (
-                  <li className="nature-muted text-sm">无附件</li>
+                  <li className="nature-muted text-sm" data-testid="system-share-empty-attachments">
+                    无附件
+                  </li>
                 )}
               </ul>
-              <label className="system-share-file-picker nature-button nature-button-outline mt-3 inline-flex min-h-11 cursor-pointer items-center gap-2">
+              <label className="system-share-file-picker nature-button nature-button-outline inline-flex min-h-11 cursor-pointer items-center gap-2">
                 <Paperclip aria-hidden="true" />
                 添加附件
                 <input

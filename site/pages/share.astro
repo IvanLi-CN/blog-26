@@ -6,6 +6,11 @@ const isConsoleRuntime = process.env.CONSOLE_RUNTIME === "true";
 if (!isConsoleRuntime) Astro.response.status = 404;
 ---
 
-<BaseLayout title="确认分享" description="确认系统分享内容" pathname={Astro.url.pathname}>
+<BaseLayout
+  title="确认分享"
+  description="确认系统分享内容"
+  pathname={Astro.url.pathname}
+  resizeForKeyboard={isConsoleRuntime}
+>
   {isConsoleRuntime ? <SystemShareConfirmation client:load /> : <main class="nature-container px-4 py-12">Not Found</main>}
 </BaseLayout>
