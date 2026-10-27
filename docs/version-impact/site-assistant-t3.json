@@ -10,7 +10,7 @@
     "tests/fixtures/site-assistant-pi-discussions.sql": "2fddf6aee5f2a93c6aaf01aab72d46c7b3dda192",
     "tests/fixtures/site-assistant-pi-legacy.sql": "a72f15d97409907aa9127022c2201be2414bb52c",
     "tests/lib/assistant-discussion-migration.test.ts": "052f7daf114d5cc701d320c5fec9ef7e3b34e1b3",
-    "tests/server/system-share-api.test.ts": "3a9f9392f763bcde2c286442aeea35b2d246da4b",
+    "tests/server/system-share-api.test.ts": "0fe4915c122e171cbd34ff255aa52b91ade53fdd",
     "docs/runbooks/site-assistant-discussion-migration.md": "7f6b6975cf074ecb085affcfe9b6bd0f4ff297bc",
     "package.json": "3d0e64c848f06801f9746e3d3cea091ff9929b73"
   },
