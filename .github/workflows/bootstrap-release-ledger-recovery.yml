@@ -37,7 +37,7 @@ jobs:
           gh api "repos/${REPOSITORY}/contents/ledger.json?ref=release-ledger" --jq '.content' | tr -d '\n' | base64 --decode > ledger.json
           export HEAD_SHA LEDGER_DIGEST
           node --input-type=module <<'NODE'
-          const fs = require("node:fs");
+          import fs from "node:fs";
 
           const token = process.env.GH_TOKEN;
           const repository = process.env.REPOSITORY;
