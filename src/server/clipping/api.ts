@@ -1,18 +1,20 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { extractAuthFromRequest } from "@/lib/auth-utils";
 import {
   buildClippingResourceBaseUrl,
   clippingResourceFilename,
   isSafeClippingResourceMimeType,
 } from "@/lib/clipping-resources";
 import { db } from "@/lib/db";
+import { getFrontendPrincipalFromRequest } from "@/lib/frontend-auth";
 import { recognizeMemoClipping } from "@/lib/memo-clipping";
 import { resolveRequestOrigin } from "@/lib/public-cors";
 import { posts } from "@/lib/schema";
+import type { AssistantSnapshot } from "@/server/assistant/service";
 import type { TRPCContext } from "@/server/context";
 import { getClippingRuntime } from "./runtime";
+import { ClippingAssistantUnavailableError } from "./service";
 import { ClippingStore, clippingIdForMemo, projectClippingMemo, readAuthoredMemo } from "./store";
 
 const turnSchema = z.object({
@@ -121,10 +123,7 @@ async function input(request: Request) {
   }
 }
 
-export function canDiscussClipping(
-  ctx: Pick<TRPCContext, "isAdmin" | "user">,
-  creatorId: string | null
-) {
+function canManageClipping(ctx: Pick<TRPCContext, "isAdmin" | "user">, creatorId: string | null) {
   return ctx.isAdmin || Boolean(creatorId && ctx.user?.id === creatorId);
 }
 
@@ -146,12 +145,11 @@ async function access(slug: string, ctx: TRPCContext, discussion = false) {
   const manifest = await store.manifest(id);
   if (manifest && (manifest.memoId !== row.id || manifest.deleted))
     throw new TRPCError({ code: "NOT_FOUND", message: "剪藏不存在" });
-  const participant = canDiscussClipping(ctx, manifest?.creatorId ?? null);
   if (discussion) {
-    if (!participant)
+    if (!canManageClipping(ctx, manifest?.creatorId ?? null))
       throw new TRPCError({
         code: ctx.user ? "FORBIDDEN" : "UNAUTHORIZED",
-        message: "对话及管理操作仅限创建者和管理员",
+        message: "管理操作仅限创建者和管理员",
       });
   } else if (
     !ctx.isAdmin &&
@@ -162,7 +160,46 @@ async function access(slug: string, ctx: TRPCContext, discussion = false) {
   ) {
     throw new TRPCError({ code: "NOT_FOUND", message: "闪念不存在" });
   }
-  return { row, authored, manifest, participant, recognition };
+  return { row, authored, manifest, recognition };
+}
+
+async function frontendPrincipal(request: Request) {
+  const principal = await getFrontendPrincipalFromRequest(request);
+  if (!principal)
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录前台账号后再讨论剪藏" });
+  return principal;
+}
+
+function mapAssistantSnapshot(snapshot: AssistantSnapshot | null) {
+  if (!snapshot)
+    return { messages: [], generating: false, partial: "", conversationId: null, error: null };
+  const active = snapshot.activeGenerationJob;
+  const partial = active?.assistantMessageId
+    ? (snapshot.messages.find((message) => message.id === active.assistantMessageId)?.content ?? "")
+    : "";
+  return {
+    messages: snapshot.messages
+      .filter(
+        (message) =>
+          (message.role === "user" || message.role === "assistant") &&
+          message.status !== "pending" &&
+          message.status !== "streaming" &&
+          (message.role === "user" || Boolean(message.content.trim()))
+      )
+      .map((message) => ({
+        id: message.id,
+        role: message.role,
+        text: message.content,
+        timestamp: message.createdAt,
+      })),
+    generating: Boolean(active),
+    partial,
+    conversationId: snapshot.conversation.id,
+    error:
+      active?.status === "failed"
+        ? active.errorCode
+        : (snapshot.generationJobs.findLast((job) => job.status === "failed")?.errorCode ?? null),
+  };
 }
 
 function currentDiscussion(current: Awaited<ReturnType<typeof access>>) {
@@ -177,12 +214,8 @@ async function revalidateDiscussion(
   ctx: TRPCContext,
   expected: NonNullable<Awaited<ReturnType<typeof access>>["manifest"]>
 ) {
-  const current = currentDiscussion(await access(slug, ctx, true));
-  if (
-    current.id !== expected.id ||
-    current.revision !== expected.revision ||
-    current.conversationId !== expected.conversationId
-  )
+  const current = currentDiscussion(await access(slug, ctx, false));
+  if (current.id !== expected.id || current.revision !== expected.revision)
     throw new TRPCError({ code: "CONFLICT", message: "剪藏目标已变化，请重新打开对话。" });
 }
 
@@ -218,9 +251,9 @@ async function routeClippingRequest(
   if (!["", "status", "reprocess", "chat", "chat/events"].includes(operation))
     return response({ error: "Not found" }, 404);
   const store = new ClippingStore();
-  const privateOperation = ["reprocess", "chat", "chat/events"].includes(operation);
+  const privateOperation = operation === "reprocess";
   const authorized = await access(slug, ctx, privateOperation);
-  const { row, manifest, participant } = authorized;
+  const { row, manifest } = authorized;
   if (operation === "" || operation === "status") {
     if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
     const projection = await projectClippingMemo(row.id, store, operation === "", operation === "");
@@ -239,7 +272,9 @@ async function routeClippingRequest(
                 : null,
           }
         : {}),
-      canDiscuss: participant,
+      canDiscuss:
+        Boolean(await getFrontendPrincipalFromRequest(request)) &&
+        Boolean(getClippingRuntime()?.assistantChatEnabled()),
       processorEnabled: Boolean(getClippingRuntime()),
     });
   }
@@ -251,38 +286,39 @@ async function routeClippingRequest(
     return response({ accepted: true }, 202);
   }
   if (operation === "chat") {
+    if (!authorized.recognition.enabled)
+      throw new TRPCError({ code: "NOT_FOUND", message: "此闪念没有启用剪藏" });
     currentDiscussion(authorized);
+    const principal = await frontendPrincipal(request);
     if (request.method === "GET") {
       const requested = new URL(request.url).searchParams.get("conversationId");
-      const conversationId = manifest.conversationId;
-      if (requested && requested !== conversationId)
+      const snapshot = await runtime().assistantSnapshot(row.id, principal);
+      if (requested && requested !== snapshot?.conversation.id)
         throw new TRPCError({ code: "FORBIDDEN", message: "仅能访问当前文章对话" });
-      if (!conversationId) {
-        await revalidateDiscussion(slug, ctx, manifest);
-        return response({ messages: [], generating: false, partial: "", conversationId: null });
-      }
-      const snapshot = await runtime().chatSnapshot(conversationId);
       await revalidateDiscussion(slug, ctx, manifest);
-      return response({ ...snapshot, conversationId });
+      return response(mapAssistantSnapshot(snapshot));
     }
     if (request.method === "POST") {
       requireSameOriginMutation(request);
       const parsed = turnSchema.safeParse(await input(request));
       if (!parsed.success)
         throw new TRPCError({ code: "BAD_REQUEST", message: "消息为空、过长或缺少幂等标识" });
-      const submission = await runtime().chat(row.id, parsed.data.text, parsed.data.requestId);
-      const current = currentDiscussion(await access(slug, ctx, true));
-      if (
-        current.revision !== manifest.revision ||
-        current.conversationId !== submission.conversationId
-      )
-        throw new TRPCError({ code: "CONFLICT", message: "剪藏目标已变化，请重新打开对话。" });
+      const submission = await runtime().assistantChat(
+        row.id,
+        principal,
+        parsed.data.text,
+        parsed.data.requestId
+      );
+      currentDiscussion(await access(slug, ctx, false));
       return response(submission, 202);
     }
     return response({ error: "Method not allowed" }, 405);
   }
   if (operation === "chat/events") {
     if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
+    if (!authorized.recognition.enabled)
+      throw new TRPCError({ code: "NOT_FOUND", message: "此闪念没有启用剪藏" });
+    await frontendPrincipal(request);
     const service = runtime();
     const encoder = new TextEncoder();
     let cancelled = false;
@@ -293,25 +329,14 @@ async function routeClippingRequest(
         const deadline = Date.now() + 60_000;
         while (!cancelled && !request.signal.aborted && Date.now() < deadline) {
           try {
-            // Resolve live identity and permissions for every private event, including revocation.
-            const identity = await extractAuthFromRequest(request);
-            const currentContext: TRPCContext = {
-              ...ctx,
-              user: identity.user,
-              isAdmin: identity.isAdmin,
-            };
-            const current = await access(slug, currentContext, true);
-            const binding = currentDiscussion(current);
-            if (!binding.conversationId) break;
-            const snapshot = await service.chatSnapshot(binding.conversationId);
-            // Permission and target can change while the snapshot is being loaded.
-            const liveIdentity = await extractAuthFromRequest(request);
-            await revalidateDiscussion(slug, { ...ctx, ...liveIdentity }, binding);
+            const current = await access(slug, ctx, false);
+            currentDiscussion(current);
+            const principal = await frontendPrincipal(request);
+            const snapshot = await service.assistantSnapshot(current.row.id, principal);
+            if (!snapshot) break;
+            currentDiscussion(await access(slug, ctx, false));
             if (cancelled || request.signal.aborted) break;
-            const data = JSON.stringify({
-              ...snapshot,
-              conversationId: binding.conversationId,
-            });
+            const data = JSON.stringify(mapAssistantSnapshot(snapshot));
             if (data !== previous) {
               controller.enqueue(
                 encoder.encode(`id: ${++sequence}\nevent: snapshot\ndata: ${data}\n\n`)
@@ -351,6 +376,11 @@ export async function handleClippingRequest(
     return await routeClippingRequest(request, slug, operation, ctx);
   } catch (error) {
     if (error instanceof TRPCError) throw error;
+    if (error instanceof ClippingAssistantUnavailableError)
+      throw new TRPCError({
+        code: "SERVICE_UNAVAILABLE",
+        message: "剪藏讨论尚未启用；请先完成旧讨论迁移校验。",
+      });
     if (error instanceof Error && /^[\u3400-\u9fff]/u.test(error.message))
       throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
     throw error;

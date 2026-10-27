@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "4aa5449672049e203f2cfd7a2d588f0b3f921ac2",
+  "covered_files": {
+    "scripts/start-console.ts": "f9581e191ea8cf461a2bd70d22f2a88a31298042",
+    "src/lib/assistant-contracts.ts": "f576f656af23ba89057b54b19fa9bf1ce4e0e4b2",
+    "src/lib/assistant-storage.test.ts": "9f107afa9f17bdd15bc63913e770655dfcc0f3ad",
+    "src/lib/assistant-storage.ts": "4c0fbdc55f906944cebbd597e27edf80617135fb",
+    "src/server/assistant/runtime.test.ts": "69802cc5457582049372fd2ecc1b16b9c503979c",
+    "src/server/assistant/runtime.ts": "43b5e9bf55e71f1ab9d8cb3a815ecafc84dadb4f",
+    "src/server/assistant/migration-gate.ts": "7b3a5a4137262c9cd0adfbdd865c6bb43ef73469",
+    "src/server/assistant/migration-gate.test.ts": "f474277d49807ed5c8bf2b7ed2b6dc4ff78c3034",
+    "src/server/clipping/api.test.ts": "719db59dfb294a916b7f058519c68beac1c5b9a0",
+    "src/server/clipping/api.ts": "8d1deff6fd4e5c62ed15bd0b41b5218adac3ad66",
+    "src/server/clipping/assistant-adapter.test.ts": "fd2c14ca7552e19a889a7e5da1cdbde06a3d76c6",
+    "src/server/clipping/service.ts": "d0b37fdd8cab7d86b6e7398be88ab86476788362"
+  },
+  "change": {
+    "description": "Route public clipping discussion through the unified frontend-user assistant service, preserve same-target conversations across recaptures, split conversations on target changes, gate legacy installations until migration completion, and align Console/Gateway assistant lifecycle with clipping startup and shutdown.",
+    "release_unit_description": "full-feature server and public clipping API",
+    "affected_contracts": ["public-api", "persistent-state", "runtime-lifecycle"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "The approved T7 scope changes clipping discussion ownership to frontend principals, keeps legacy installations disabled until validated migration, and reuses existing assistant tables without a schema migration.",
+      "assessed_at": "2026-10-28T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "docs/specs/site-knowledge-assistant/SPEC.md",
+          "command": "Defines one unified frontend-user assistant runtime, clipping target identity, migration gating, and single-worker lifecycle"
+        },
+        {
+          "path": "docs/adr/0036-assistant-generation-independent-of-ui-lifecycle.md",
+          "command": "Requires durable generation to remain independent of the browser connection lifecycle"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "The HTTP chat and event routes now require a frontend session; creator/admin management remains limited to reprocess. Same-target recaptures update the unified conversation version, target changes create a new conversation, and old Pi chat state remains only for clipping processing compatibility. No production migration or deployment was performed.",
+      "assessed_at": "2026-10-28T00:00:00+08:00",
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to clipping chat cutover, assistant storage/runtime lifecycle, migration readiness, Console startup/shutdown, and regression tests. It does not change UI routes, model providers, schema migrations, or production state."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "Focused clipping, assistant, storage, migration-gate, and API tests pass; the migration journal is unchanged and valid; changed files format cleanly and the diff has no whitespace errors. Full repository check remains affected by pre-existing unrelated site diagnostics; no real model provider was called.",
+      "assessed_at": "2026-10-28T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/server/clipping/assistant-adapter.test.ts",
+          "command": "bun test src/server/clipping/assistant-adapter.test.ts (1 pass, 0 fail, 7 expectations)"
+        },
+        {
+          "path": "src/server/clipping/api.test.ts",
+          "command": "bun test src/server/clipping/api.test.ts (16 pass, 0 fail, 94 expectations)"
+        },
+        {
+          "path": "src/server/clipping/service.test.ts",
+          "command": "bun test src/server/clipping/service.test.ts (14 pass, 0 fail)"
+        },
+        {
+          "path": "src/server/assistant/runtime.test.ts",
+          "command": "bun test src/server/assistant/runtime.test.ts (7 pass, 0 fail)"
+        },
+        {
+          "path": "src/lib/assistant-storage.test.ts",
+          "command": "bun test src/lib/assistant-storage.test.ts (8 pass, 0 fail)"
+        },
+        {
+          "path": "src/server/assistant/migration-gate.test.ts",
+          "command": "bun test src/server/assistant/migration-gate.test.ts (2 pass, 0 fail)"
+        },
+        {
+          "path": "drizzle/meta/_journal.json",
+          "command": "bun run db:migrations:validate (passed; journal unchanged)"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "behavioral-auth-boundary",
+      "legacy_behavior": "Creator/admin backend sessions could reach the old clipping discussion path.",
+      "current_behavior": "Clipping discussion requires the authenticated frontend principal; creator/admin authorization remains for reprocess and management operations.",
+      "migration_requirement": "Old installations with legacy clipping conversation references return service unavailable until the assistant discussion migration is complete."
+    },
+    "persistent_state": {
+      "impact": "minor",
+      "applicable": true,
+      "state_description": "The runtime consumes existing assistant conversation, message, generation-job, and migration-state tables; no Drizzle migration or journal entry is added.",
+      "readable_by_prior_versions": "Existing assistant tables remain readable by prior versions. Legacy clipping references require the existing migration workflow before the new clipping chat is enabled."
+    },
+    "runtime_lifecycle": {
+      "impact": "minor",
+      "change": "single-worker-startup-rescan-expiry-shutdown",
+      "evidence": "Console starts the assistant worker with clipping and stops it before clipping teardown; Gateway already uses the same assistant runtime lifecycle."
+    }
+  }
+}

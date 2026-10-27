@@ -308,6 +308,12 @@ export type AssistantMessageStorage = {
     frontendUserId: string
   ): Promise<AssistantConversation | null>;
   listConversations(frontendUserId: string): Promise<AssistantConversation[]>;
+  updateConversationClippingVersion(
+    conversationId: string,
+    frontendUserId: string,
+    clippingVersionId: string,
+    now?: number
+  ): Promise<AssistantConversation | null>;
   appendMessage(input: AppendAssistantMessageInput): Promise<AssistantMessage>;
   listMessages(conversationId: string, frontendUserId: string): Promise<AssistantMessage[]>;
   createGenerationJob(input: CreateAssistantGenerationJobInput): Promise<AssistantGenerationJob>;
@@ -383,4 +389,5 @@ export type AssistantMessageStorage = {
     frontendUserId: string,
     now?: number
   ): Promise<boolean>;
+  expireConversations(now?: number): Promise<number>;
 };

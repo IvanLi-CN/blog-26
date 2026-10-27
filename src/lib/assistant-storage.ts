@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import type {
   AppendAssistantMessageInput,
@@ -418,6 +418,36 @@ export function createAssistantStorage(
               (row) => row.status === "active" && (row.expiresAt === null || row.expiresAt > now)
             )
             .map(mapConversation);
+        },
+        { behavior: "immediate" }
+      );
+    },
+
+    async updateConversationClippingVersion(
+      conversationId: string,
+      frontendUserId: string,
+      clippingVersionId: string,
+      now = Date.now()
+    ) {
+      const database = await getDatabase();
+      return database.transaction(
+        (tx) => {
+          const conversation = selectConversation(tx, conversationId, frontendUserId);
+          if (conversation?.kind !== "clipping" || conversation.status !== "active") return null;
+          if (conversation.expiresAt !== null && conversation.expiresAt <= now) {
+            setConversationTerminal(tx, conversationId, "expired", now);
+            return null;
+          }
+          tx.update(assistantConversations)
+            .set({ clippingVersionId })
+            .where(eq(assistantConversations.id, conversationId))
+            .run();
+          const updated = tx
+            .select()
+            .from(assistantConversations)
+            .where(eq(assistantConversations.id, conversationId))
+            .get();
+          return updated ? mapConversation(updated) : null;
         },
         { behavior: "immediate" }
       );
@@ -979,6 +1009,28 @@ export function createAssistantStorage(
                 .run();
             }
           }
+          return rows.length;
+        },
+        { behavior: "immediate" }
+      );
+    },
+
+    async expireConversations(now = Date.now()) {
+      const database = await getDatabase();
+      return database.transaction(
+        (tx) => {
+          const rows = tx
+            .select({ id: assistantConversations.id })
+            .from(assistantConversations)
+            .where(
+              and(
+                eq(assistantConversations.status, "active"),
+                isNotNull(assistantConversations.expiresAt),
+                lte(assistantConversations.expiresAt, now)
+              )
+            )
+            .all();
+          for (const row of rows) setConversationTerminal(tx, row.id, "expired", now);
           return rows.length;
         },
         { behavior: "immediate" }

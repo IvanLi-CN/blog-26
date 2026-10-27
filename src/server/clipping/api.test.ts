@@ -11,7 +11,7 @@ import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import matter from "gray-matter";
 import { db, initializeDB } from "@/lib/db";
-import { memoClippings, posts } from "@/lib/schema";
+import { frontendSessions, frontendUsers, memoClippings, posts } from "@/lib/schema";
 import { buildPublicSnapshot, writePublicSnapshot } from "@/public-site/snapshot";
 import type { TRPCContext } from "@/server/context";
 import { runWithMcpAuth } from "@/server/mcp-auth-context";
@@ -34,6 +34,7 @@ const fm: Record<string, unknown> = { public: true, tags: ["剪藏"] };
 const prior = { ...process.env };
 let clippingId: string;
 const versionId = randomUUID();
+const frontendToken = "clipping-frontend-session-token";
 const resourceFilename = `${createHash("sha256").update("captured image").digest("hex")}.png`;
 let raw: string;
 beforeAll(async () => {
@@ -46,6 +47,26 @@ beforeAll(async () => {
   migrate(drizzle(sqlite), { migrationsFolder: "drizzle" });
   sqlite.close();
   await initializeDB(true);
+  await db.insert(frontendUsers).values({
+    id: "clipping-frontend-user",
+    adminUserId: null,
+    isAdmin: false,
+    displayName: "Clipping Reader",
+    email: "reader@example.com",
+    avatarUrl: "/site-assets/default-avatar.svg",
+    profileUrl: null,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+  await db.insert(frontendSessions).values({
+    id: "clipping-frontend-session",
+    frontendUserId: "clipping-frontend-user",
+    authSource: "github",
+    tokenHash: createHash("sha256").update(frontendToken).digest("hex"),
+    expiresAt: Date.now() + 60_000,
+    createdAt: Date.now(),
+    revokedAt: null,
+  });
   await attachClippingReference(body, fm, "creator", id);
   clippingId = (fm.clipping as { id: string }).id;
   raw = matter.stringify(body, fm);
@@ -163,6 +184,16 @@ async function request(operation: string, actor: Parameters<typeof context>[0]) 
     "clip",
     operation,
     context(actor)
+  );
+}
+function frontendRequest(operation: string) {
+  return handleClippingRequest(
+    new Request(`http://localhost/api/public/memos/clip/clipping/${operation}`, {
+      headers: { cookie: `frontend_session_id=${frontendToken}` },
+    }),
+    "clip",
+    operation,
+    context("guest")
   );
 }
 
@@ -331,7 +362,7 @@ test("resource facade rejects captured files from an incomplete version", async 
   }
 });
 
-test("public reading exposes only materials; conversation is restricted to creator and admin and history/restore are absent", async () => {
+test("public reading exposes only materials; conversation requires a frontend session", async () => {
   const reading = await (await request("", "guest")).json();
   expect(reading.source).toContain("Source.");
   expect(reading.content).toBe("备注\n\n---\n\n**Agent 摘要**\n\n摘要。");
@@ -340,10 +371,10 @@ test("public reading exposes only materials; conversation is restricted to creat
   expect(JSON.stringify(reading)).not.toContain("cdn.example/image.png");
   expect(JSON.stringify(reading)).not.toContain("private-conversation");
   expect(JSON.stringify(reading)).not.toContain("creator");
-  for (const actor of ["guest", "other"] as const)
+  for (const actor of ["guest", "other", "creator", "admin"] as const)
     for (const operation of ["chat", "chat/events"])
       await expect(request(operation, actor)).rejects.toMatchObject({
-        code: actor === "guest" ? "UNAUTHORIZED" : "FORBIDDEN",
+        code: "UNAUTHORIZED",
       });
   for (const actor of ["guest", "creator", "admin"] as const) {
     expect((await request("history", actor)).status).toBe(404);
@@ -454,7 +485,7 @@ test("conversation selectors cannot expose an earlier target discussion", async 
         "chat",
         context(actor)
       )
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   }
 });
 
@@ -659,7 +690,7 @@ test("a snapshot loaded across a target change cannot be returned as the current
   const key = Symbol.for("blog26.clipping.runtime");
   const globals = globalThis as typeof globalThis & { [key]: { service: ClippingService | null } };
   const previous = globals[key].service;
-  const original = service.chatSnapshot;
+  const original = service.assistantSnapshot;
   let entered!: () => void;
   let release!: () => void;
   const blocked = new Promise<void>((resolve) => {
@@ -668,14 +699,14 @@ test("a snapshot loaded across a target change cannot be returned as the current
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
-  service.chatSnapshot = async () => {
+  service.assistantSnapshot = async () => {
     entered();
     await gate;
-    return { messages: [], generating: false, partial: "" };
+    return null;
   };
   globals[key].service = service;
   try {
-    const pending = request("chat", "creator");
+    const pending = frontendRequest("chat");
     const result = pending.then(
       () => ({ code: "unexpected-success" }),
       (error) => error
@@ -684,11 +715,11 @@ test("a snapshot loaded across a target change cannot be returned as the current
     await writeFile(join(root, "authored", id), matter.stringify(body.replace("/one", "/two"), fm));
     release();
     expect(await result).toMatchObject({ code: "CONFLICT" });
-    await expect(request("chat", "admin")).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(frontendRequest("chat")).rejects.toMatchObject({ code: "CONFLICT" });
   } finally {
     release();
     globals[key].service = previous;
-    service.chatSnapshot = original;
+    service.assistantSnapshot = original;
     await writeFile(join(root, "authored", id), raw);
     await service.close();
   }
