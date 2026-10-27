@@ -226,8 +226,15 @@ export function classifyMergeFollowup(
 export function manualRecoveryRunCanTakeOver(
   entry: ReleaseEntry,
   previousRun: WorkflowRun,
-  repository: string
+  repository: string,
+  terminalFailureJobs = false
 ): boolean {
+  const staleFailedRun =
+    terminalFailureJobs &&
+    previousRun.status === "in_progress" &&
+    previousRun.conclusion === null &&
+    entry.failure?.runId === String(previousRun.id) &&
+    entry.failure.attempt <= previousRun.run_attempt;
   return Boolean(
     entry.stage === "merged" &&
       entry.releaseRunId &&
@@ -240,8 +247,21 @@ export function manualRecoveryRunCanTakeOver(
       previousRun.head_branch === "main" &&
       previousRun.event === "workflow_dispatch" &&
       previousRun.path === ".github/workflows/product-release.yml" &&
-      previousRun.status === "completed" &&
-      ["failure", "cancelled"].includes(previousRun.conclusion || "")
+      ((previousRun.status === "completed" &&
+        ["failure", "cancelled"].includes(previousRun.conclusion || "")) ||
+        staleFailedRun)
+  );
+}
+
+function workflowRunHasTerminalFailureJobs(github: GitHubRelease, runId: number): boolean {
+  const jobs = github.pages(`${github.root}/actions/runs/${runId}/jobs?per_page=100`, "jobs");
+  if (!jobs.length) return false;
+  const parsed = jobs.map((raw) =>
+    z.object({ status: z.string(), conclusion: z.string().nullable() }).parse(raw)
+  );
+  return (
+    parsed.every((job) => job.status === "completed") &&
+    parsed.some((job) => ["failure", "cancelled", "timed_out"].includes(job.conclusion || ""))
   );
 }
 
@@ -315,9 +335,19 @@ export async function resolveCompletedRelease(
     if (run.event !== "workflow_dispatch") return undefined;
     const previous = github.optional(`${github.root}/actions/runs/${matched.releaseRunId}`);
     const parsed = previous ? runSchema.safeParse(previous) : undefined;
+    const terminalFailureJobs =
+      parsed?.success &&
+      parsed.data.status === "in_progress" &&
+      parsed.data.conclusion === null &&
+      workflowRunHasTerminalFailureJobs(github, parsed.data.id);
     canRebind = Boolean(
       parsed?.success &&
-        manualRecoveryRunCanTakeOver(matched, parsed.data, github.contract.repository)
+        manualRecoveryRunCanTakeOver(
+          matched,
+          parsed.data,
+          github.contract.repository,
+          terminalFailureJobs
+        )
     );
     if (!canRebind) return undefined;
   }
