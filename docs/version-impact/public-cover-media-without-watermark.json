@@ -70,7 +70,7 @@
         },
         {
           "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
-          "blob": "ccb608ab566ba5694756777719d789ae01ab077a",
+          "blob": "00500676b04a2c8491d314f9224ebacf2e219a52",
           "command": "bun run web-demo:build && (WEB_DEMO_MODE=public WEB_DEMO_PORT=51460 bun scripts/preview-web-demo.ts >/tmp/blog-26-public-cover-media-web-demo.log 2>&1 & demo_pid=$!; trap 'kill $demo_pid 2>/dev/null || true' EXIT; ready=0; for attempt in $(seq 1 60); do if curl --fail --silent http://127.0.0.1:51460/posts/ >/dev/null; then ready=1; break; fi; sleep 1; done; test $ready = 1; WEB_DEMO_TEST_URL=http://127.0.0.1:51460 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-cover-media.spec.ts)"
         },
         {
@@ -111,7 +111,7 @@
         },
         {
           "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
-          "blob": "ccb608ab566ba5694756777719d789ae01ab077a",
+          "blob": "00500676b04a2c8491d314f9224ebacf2e219a52",
           "command": "bun run web-demo:build && (WEB_DEMO_MODE=public WEB_DEMO_PORT=51460 bun scripts/preview-web-demo.ts >/tmp/blog-26-public-cover-media-web-demo.log 2>&1 & demo_pid=$!; trap 'kill $demo_pid 2>/dev/null || true' EXIT; ready=0; for attempt in $(seq 1 60); do if curl --fail --silent http://127.0.0.1:51460/posts/ >/dev/null; then ready=1; break; fi; sleep 1; done; test $ready = 1; WEB_DEMO_TEST_URL=http://127.0.0.1:51460 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-cover-media.spec.ts)"
         },
         {
