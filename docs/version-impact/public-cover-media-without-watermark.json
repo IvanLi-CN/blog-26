@@ -9,6 +9,7 @@
     "scripts/generate-test-data.ts": "6d33465238dac613886188cd9f6843c603f4a865",
     "scripts/build-web-demo.ts": "9fecc9affe2adb46c6ae5450bd9c0826254fc676",
     "scripts/package-public-media.test.ts": "f8dc6afd81e40a0fd99f5184e29d58b1138ec8b9",
+    "scripts/run-test-suite.ts": "69cb2ed93178e6a71e06300c755eea520a6c8781",
     "scripts/preview-web-demo.ts": "da998b4e32d19c99577ad1c0b86d726286aa0aa5",
     "site/components/PostCard.tsx": "ce9e75ce755769e1a4ef1e95c02850f846f816c4",
     "site/components/RelatedPostCard.tsx": "b7f64a92d03399384e5e2d86ac19a9603f99f60e",
