@@ -205,14 +205,14 @@ export async function readAssistantProviderResponse(
   const consume = async (line: string) => {
     if (line.startsWith("event:")) {
       eventType = line.slice(6).trim();
-      return;
+      return false;
     }
     const value = line.startsWith("data:") ? line.slice(5).trim() : "";
-    if (!value) return;
+    if (!value) return false;
     if (value === "[DONE]") {
       sawDone = true;
       eventType = "";
-      return;
+      return true;
     }
     let payload: {
       choices?: Array<{
@@ -238,11 +238,12 @@ export async function readAssistantProviderResponse(
     if (payload.usage !== undefined) usage = payload.usage;
     const delta =
       payload.choices?.[0]?.delta?.content ?? payload.choices?.[0]?.message?.content ?? "";
-    if (!delta) return;
+    if (!delta) return false;
     content += delta;
     if (content.length > MAX_ASSISTANT_OUTPUT_CHARS)
       throw new Error("assistant-provider-output-too-large");
     if (!(await onDelta(content))) throw new DOMException("Aborted", "AbortError");
+    return false;
   };
   try {
     while (true) {
@@ -255,10 +256,17 @@ export async function readAssistantProviderResponse(
       buffer += decoder.decode(chunk.value, { stream: true });
       const lines = buffer.split(/\r?\n/u);
       buffer = lines.pop() ?? "";
-      for (const line of lines) await consume(line);
+      for (const line of lines) {
+        if (await consume(line)) break;
+      }
+      if (sawDone) break;
     }
-    buffer += decoder.decode();
-    for (const line of buffer.split(/\r?\n/u)) await consume(line);
+    if (!sawDone) {
+      buffer += decoder.decode();
+      for (const line of buffer.split(/\r?\n/u)) {
+        if (await consume(line)) break;
+      }
+    }
     if (!sawDone) throw new Error("assistant-provider-stream-incomplete");
   } finally {
     await reader.cancel().catch(() => undefined);

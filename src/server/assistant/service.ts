@@ -66,11 +66,20 @@ export class AssistantService {
     principal: FrontendPrincipal,
     input: Omit<SubmitAssistantTurnInput, "frontendUserId" | "isAdmin">
   ) {
-    let submission: AssistantTurnSubmission | null = await this.storage.findIdempotentTurn(
-      principal.id,
-      input.requestId,
-      input.clientRequestId
-    );
+    let submission: AssistantTurnSubmission | null;
+    const findExisting = async () => {
+      try {
+        return await this.storage.findIdempotentTurn(
+          principal.id,
+          input.requestId,
+          input.clientRequestId,
+          input.conversationId
+        );
+      } catch (error) {
+        translateStorageError(error);
+      }
+    };
+    submission = await findExisting();
     if (!submission && !principal.isAdmin) {
       const quota = await getAssistantQuotaSnapshot(principal.id);
       const exhausted =
@@ -79,11 +88,7 @@ export class AssistantService {
         quota.questionHour >= quota.policy.questionHourlyLimit ||
         quota.questionWeek >= quota.policy.questionWeeklyLimit;
       if (exhausted) {
-        submission = await this.storage.findIdempotentTurn(
-          principal.id,
-          input.requestId,
-          input.clientRequestId
-        );
+        submission = await findExisting();
         if (!submission) throw new AssistantServiceError("quota", "Assistant quota exceeded");
       }
     }

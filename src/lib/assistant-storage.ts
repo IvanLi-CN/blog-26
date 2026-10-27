@@ -280,12 +280,41 @@ function submissionFromExecution(execution: AssistantJobExecution): AssistantTur
   };
 }
 
+type IdempotentSubmissionLookup =
+  | { kind: "none" }
+  | { kind: "not-owner" }
+  | { kind: "gone" }
+  | { kind: "submitted"; submission: AssistantTurnSubmission };
+
+function findExistingSubmission(
+  database: AssistantQueryDatabase,
+  row: {
+    job: typeof assistantGenerationJobs.$inferSelect;
+    conversation: typeof assistantConversations.$inferSelect;
+  },
+  frontendUserId: string,
+  now: number
+): IdempotentSubmissionLookup {
+  if (row.conversation.frontendUserId !== frontendUserId) return { kind: "not-owner" };
+  if (row.conversation.status !== "active") return { kind: "gone" };
+  if (row.conversation.expiresAt !== null && row.conversation.expiresAt <= now) {
+    setConversationTerminal(database, row.conversation.id, "expired", now);
+    return { kind: "gone" };
+  }
+  const execution = selectExecutionRows(database, row.job.id);
+  return execution
+    ? { kind: "submitted", submission: submissionFromExecution(execution) }
+    : { kind: "gone" };
+}
+
 function findIdempotentSubmission(
   database: AssistantQueryDatabase,
   frontendUserId: string,
   requestId: string,
-  clientRequestId?: string | null
-) {
+  clientRequestId: string | null | undefined,
+  conversationId: string | null | undefined,
+  now: number
+): IdempotentSubmissionLookup {
   const existingRequest = database
     .select({ job: assistantGenerationJobs, conversation: assistantConversations })
     .from(assistantGenerationJobs)
@@ -295,13 +324,15 @@ function findIdempotentSubmission(
     )
     .where(eq(assistantGenerationJobs.requestId, requestId))
     .get();
-  if (existingRequest) {
-    if (existingRequest.conversation.frontendUserId !== frontendUserId) return null;
-    const execution = selectExecutionRows(database, existingRequest.job.id);
-    return execution ? submissionFromExecution(execution) : null;
-  }
+  if (existingRequest)
+    return findExistingSubmission(database, existingRequest, frontendUserId, now);
 
-  if (!clientRequestId) return null;
+  if (!clientRequestId) return { kind: "none" };
+  const conditions = [
+    eq(assistantMessages.clientRequestId, clientRequestId),
+    eq(assistantConversations.frontendUserId, frontendUserId),
+  ];
+  if (conversationId) conditions.push(eq(assistantConversations.id, conversationId));
   const existingMessage = database
     .select({ job: assistantGenerationJobs, conversation: assistantConversations })
     .from(assistantMessages)
@@ -313,12 +344,11 @@ function findIdempotentSubmission(
       assistantGenerationJobs,
       eq(assistantGenerationJobs.userMessageId, assistantMessages.id)
     )
-    .where(eq(assistantMessages.clientRequestId, clientRequestId))
+    .where(and(...conditions))
     .get();
-  if (!existingMessage || existingMessage.conversation.frontendUserId !== frontendUserId)
-    return null;
-  const execution = selectExecutionRows(database, existingMessage.job.id);
-  return execution ? submissionFromExecution(execution) : null;
+  return existingMessage
+    ? findExistingSubmission(database, existingMessage, frontendUserId, now)
+    : { kind: "none" };
 }
 
 export function createAssistantStorage(
@@ -591,57 +621,19 @@ export function createAssistantStorage(
             .where(eq(frontendUsers.id, input.frontendUserId))
             .get();
           const isAdmin = Boolean(input.isAdmin || owner?.isAdmin);
-          const existingRequest = tx
-            .select({ job: assistantGenerationJobs, conversation: assistantConversations })
-            .from(assistantGenerationJobs)
-            .innerJoin(
-              assistantConversations,
-              eq(assistantGenerationJobs.conversationId, assistantConversations.id)
-            )
-            .where(eq(assistantGenerationJobs.requestId, input.requestId))
-            .get();
-          if (existingRequest) {
-            if (existingRequest.conversation.frontendUserId !== input.frontendUserId)
-              throw new AssistantStorageError("not-found", "Assistant turn is not available");
-            const execution = selectExecutionRows(tx, existingRequest.job.id);
-            if (!execution)
-              throw new AssistantStorageError("gone", "Assistant turn is no longer available");
-            return {
-              kind: "submitted" as const,
-              submission: submissionFromExecution(execution),
-            };
-          }
-
-          if (input.clientRequestId) {
-            const existingMessage = tx
-              .select({
-                message: assistantMessages,
-                job: assistantGenerationJobs,
-                conversation: assistantConversations,
-              })
-              .from(assistantMessages)
-              .innerJoin(
-                assistantConversations,
-                eq(assistantMessages.conversationId, assistantConversations.id)
-              )
-              .innerJoin(
-                assistantGenerationJobs,
-                eq(assistantGenerationJobs.userMessageId, assistantMessages.id)
-              )
-              .where(eq(assistantMessages.clientRequestId, input.clientRequestId))
-              .get();
-            if (existingMessage) {
-              if (existingMessage.conversation.frontendUserId !== input.frontendUserId)
-                throw new AssistantStorageError("not-found", "Assistant turn is not available");
-              const execution = selectExecutionRows(tx, existingMessage.job.id);
-              if (!execution)
-                throw new AssistantStorageError("gone", "Assistant turn is no longer available");
-              return {
-                kind: "submitted" as const,
-                submission: submissionFromExecution(execution),
-              };
-            }
-          }
+          const idempotent = findIdempotentSubmission(
+            tx,
+            input.frontendUserId,
+            input.requestId,
+            input.clientRequestId,
+            input.conversationId,
+            now
+          );
+          if (idempotent.kind === "not-owner")
+            throw new AssistantStorageError("not-found", "Assistant turn is not available");
+          if (idempotent.kind === "gone") return { kind: "gone" as const };
+          if (idempotent.kind === "submitted")
+            return { kind: "submitted" as const, submission: idempotent.submission };
 
           let conversation = input.conversationId
             ? selectConversation(tx, input.conversationId, input.frontendUserId)
@@ -820,7 +812,7 @@ export function createAssistantStorage(
         },
         { behavior: "immediate" }
       );
-      if (result.kind === "expired")
+      if (result.kind === "expired" || result.kind === "gone")
         throw new AssistantStorageError("gone", "Assistant conversation has expired");
       return result.submission;
     },
@@ -877,9 +869,29 @@ export function createAssistantStorage(
       return updated ? mapGenerationJob(updated) : null;
     },
 
-    async findIdempotentTurn(frontendUserId, requestId, clientRequestId) {
+    async findIdempotentTurn(
+      frontendUserId,
+      requestId,
+      clientRequestId,
+      conversationId,
+      now = Date.now()
+    ) {
       const database = await getDatabase();
-      return findIdempotentSubmission(database, frontendUserId, requestId, clientRequestId);
+      const result = await database.transaction(
+        (tx) =>
+          findIdempotentSubmission(
+            tx,
+            frontendUserId,
+            requestId,
+            clientRequestId,
+            conversationId,
+            now
+          ),
+        { behavior: "immediate" }
+      );
+      if (result.kind === "gone")
+        throw new AssistantStorageError("gone", "Assistant conversation has expired");
+      return result.kind === "submitted" ? result.submission : null;
     },
 
     async getJobExecution(generationJobId: string) {
@@ -1060,7 +1072,8 @@ export function createAssistantStorage(
             eq(assistantGenerationJobs.id, generationJobId),
             eq(assistantGenerationJobs.attempt, attempt),
             eq(assistantGenerationJobs.status, "running"),
-            eq(assistantGenerationJobs.cancelRequested, false)
+            eq(assistantGenerationJobs.cancelRequested, false),
+            gt(assistantGenerationJobs.leaseUntil, now)
           )
         )
         .run();
@@ -1068,11 +1081,17 @@ export function createAssistantStorage(
         .select({
           status: assistantGenerationJobs.status,
           attempt: assistantGenerationJobs.attempt,
+          leaseUntil: assistantGenerationJobs.leaseUntil,
         })
         .from(assistantGenerationJobs)
         .where(eq(assistantGenerationJobs.id, generationJobId))
         .get();
-      return updated?.status === "running" && updated.attempt === attempt;
+      return (
+        updated?.status === "running" &&
+        updated.attempt === attempt &&
+        updated.leaseUntil !== null &&
+        updated.leaseUntil > now
+      );
     },
 
     async appendGenerationDelta(
@@ -1098,6 +1117,8 @@ export function createAssistantStorage(
             current.job.attempt !== attempt ||
             current.job.status !== "running" ||
             current.job.cancelRequested ||
+            current.job.leaseUntil === null ||
+            current.job.leaseUntil <= now ||
             current.conversation.status !== "active" ||
             (current.conversation.expiresAt !== null && current.conversation.expiresAt <= now) ||
             !current.job.assistantMessageId
@@ -1131,27 +1152,41 @@ export function createAssistantStorage(
           const invalid =
             current.job.status !== "running" ||
             current.job.cancelRequested ||
+            current.job.leaseUntil === null ||
+            current.job.leaseUntil <= now ||
             current.conversation.status !== "active" ||
             (current.conversation.expiresAt !== null && current.conversation.expiresAt <= now);
           if (invalid) {
             if (current.job.status === "running") {
-              tx.update(assistantGenerationJobs)
-                .set({
-                  status: "cancelled",
-                  cancelRequested: true,
-                  leaseUntil: null,
-                  finishedAt: now,
-                  updatedAt: now,
-                  errorCode:
-                    current.conversation.status === "active" ? "cancelled" : "conversation-closed",
-                })
-                .where(eq(assistantGenerationJobs.id, generationJobId))
-                .run();
-              if (current.job.assistantMessageId) {
-                tx.update(assistantMessages)
-                  .set({ status: "cancelled", updatedAt: now, completedAt: now })
-                  .where(eq(assistantMessages.id, current.job.assistantMessageId))
+              if (
+                current.conversation.status === "active" &&
+                current.conversation.expiresAt !== null &&
+                current.conversation.expiresAt <= now
+              ) {
+                setConversationTerminal(tx, current.conversation.id, "expired", now);
+              } else {
+                const cancelled = current.job.cancelRequested;
+                tx.update(assistantGenerationJobs)
+                  .set({
+                    status: cancelled ? "cancelled" : "failed",
+                    cancelRequested: cancelled,
+                    leaseUntil: null,
+                    finishedAt: now,
+                    updatedAt: now,
+                    errorCode: cancelled ? "cancelled-by-user" : "worker-lease-expired",
+                  })
+                  .where(eq(assistantGenerationJobs.id, generationJobId))
                   .run();
+                if (current.job.assistantMessageId) {
+                  tx.update(assistantMessages)
+                    .set({
+                      status: cancelled ? "cancelled" : "failed",
+                      updatedAt: now,
+                      completedAt: now,
+                    })
+                    .where(eq(assistantMessages.id, current.job.assistantMessageId))
+                    .run();
+                }
               }
             }
           } else {

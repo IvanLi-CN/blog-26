@@ -323,7 +323,9 @@ export type AssistantMessageStorage = {
   findIdempotentTurn(
     frontendUserId: string,
     requestId: string,
-    clientRequestId?: string | null
+    clientRequestId?: string | null,
+    conversationId?: string | null,
+    now?: number
   ): Promise<AssistantTurnSubmission | null>;
   submitTurn(input: SubmitAssistantTurnInput): Promise<AssistantTurnSubmission>;
   getConversationState(

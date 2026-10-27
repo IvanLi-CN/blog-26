@@ -290,7 +290,9 @@ describe("assistant SQLite storage", () => {
         await storage.findIdempotentTurn(
           "frontend-storage-runtime-owner",
           "runtime-request-2",
-          "runtime-client-1"
+          "runtime-client-1",
+          null,
+          501
         )
       )?.generationJob.id
     ).toBe(first.generationJob.id);
@@ -420,5 +422,142 @@ describe("assistant SQLite storage", () => {
       await storage.listMessages(first.conversation.id, "frontend-storage-runtime-owner")
     ).toEqual([]);
     expect(await database.select().from(assistantMessageCitations)).toHaveLength(0);
+  });
+
+  it("isolates client request ids across owners and rejects stale lease writes", async () => {
+    await database.insert(frontendUsers).values([
+      {
+        id: "frontend-storage-client-owner",
+        adminUserId: null,
+        isAdmin: false,
+        displayName: "Client Owner",
+        email: null,
+        avatarUrl: "/site-assets/default-avatar.svg",
+        profileUrl: null,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+      {
+        id: "frontend-storage-client-other",
+        adminUserId: null,
+        isAdmin: false,
+        displayName: "Client Other",
+        email: null,
+        avatarUrl: "/site-assets/default-avatar.svg",
+        profileUrl: null,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    ]);
+    await database
+      .insert(assistantQuotaPolicies)
+      .values({
+        id: "assistant-storage-client-policy",
+        scope: "global",
+        tokenHourlyLimit: 10_000,
+        tokenWeeklyLimit: 100_000,
+        questionHourlyLimit: 10,
+        questionWeeklyLimit: 100,
+        maxConversations: 3,
+        retentionMs: 1_000,
+        timezone: "UTC",
+        createdAt: 1,
+        updatedAt: 1,
+      })
+      .onConflictDoUpdate({ target: assistantQuotaPolicies.scope, set: { retentionMs: 1_000 } });
+    const storage = createAssistantStorage(database);
+    const first = await storage.submitTurn({
+      frontendUserId: "frontend-storage-client-owner",
+      requestId: "client-owner-request",
+      clientRequestId: "shared-client-request",
+      content: "Owner question",
+      now: 100,
+    });
+    const other = await storage.submitTurn({
+      frontendUserId: "frontend-storage-client-other",
+      requestId: "client-other-request",
+      clientRequestId: "shared-client-request",
+      content: "Other question",
+      now: 100,
+    });
+    expect(other.generationJob.id).not.toBe(first.generationJob.id);
+
+    const claimed = await storage.claimNextGenerationJob(101, 10);
+    expect(claimed?.job.id).toBe(first.generationJob.id);
+    expect(
+      await storage.renewGenerationLease(
+        first.generationJob.id,
+        first.generationJob.attempt,
+        112,
+        100
+      )
+    ).toBe(false);
+    expect(
+      await storage.appendGenerationDelta(
+        first.generationJob.id,
+        first.generationJob.attempt,
+        "stale body",
+        113
+      )
+    ).toBe(false);
+    expect(
+      await storage.finishGeneration(first.generationJob.id, first.generationJob.attempt, {
+        status: "completed",
+        content: "stale body",
+        now: 114,
+      })
+    ).toMatchObject({ status: "failed", errorCode: "worker-lease-expired" });
+    expect(
+      (await storage.listMessages(first.conversation.id, "frontend-storage-client-owner")).at(-1)
+    ).toMatchObject({ content: "", status: "failed" });
+    await storage.stopGeneration(other.generationJob.id, "frontend-storage-client-other", 115);
+  });
+
+  it("cleans an expired conversation before replaying a completed request", async () => {
+    await database.insert(frontendUsers).values({
+      id: "frontend-storage-expiry-owner",
+      adminUserId: null,
+      isAdmin: false,
+      displayName: "Expiry Owner",
+      email: null,
+      avatarUrl: "/site-assets/default-avatar.svg",
+      profileUrl: null,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    const storage = createAssistantStorage(database);
+    const first = await storage.submitTurn({
+      frontendUserId: "frontend-storage-expiry-owner",
+      requestId: "expiry-replay-request",
+      clientRequestId: "expiry-replay-client",
+      content: "Complete before expiry",
+      now: 100,
+    });
+    const claimed = await storage.claimNextGenerationJob(101, 10_000);
+    expect(claimed?.job.id).toBe(first.generationJob.id);
+    await storage.finishGeneration(first.generationJob.id, first.generationJob.attempt, {
+      status: "completed",
+      content: "Completed answer",
+      now: 102,
+    });
+    await expect(
+      storage.submitTurn({
+        frontendUserId: "frontend-storage-expiry-owner",
+        conversationId: first.conversation.id,
+        requestId: "expiry-replay-request",
+        clientRequestId: "expiry-replay-client",
+        content: "Replay after expiry",
+        now: 2_000,
+      })
+    ).rejects.toMatchObject({ code: "gone" });
+    expect(
+      await storage.getConversation(first.conversation.id, "frontend-storage-expiry-owner")
+    ).toMatchObject({ status: "expired" });
+    expect(
+      await storage.listMessages(first.conversation.id, "frontend-storage-expiry-owner")
+    ).toEqual([]);
+    expect(
+      await storage.getGenerationJob(first.generationJob.id, "frontend-storage-expiry-owner")
+    ).toMatchObject({ userMessageId: null, assistantMessageId: null });
   });
 });

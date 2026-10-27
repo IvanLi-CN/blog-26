@@ -348,5 +348,26 @@ describe("assistant runtime", () => {
     await expect(
       readAssistantProviderResponse(complete, new AbortController().signal, async () => true)
     ).resolves.toMatchObject({ content: "complete" });
+
+    const openBody = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            'data: {"choices":[{"delta":{"content":"complete"}}]}\n\ndata: [DONE]\n\n'
+          )
+        );
+      },
+    });
+    const openResult = await Promise.race([
+      readAssistantProviderResponse(
+        new Response(openBody, { headers }),
+        new AbortController().signal,
+        async () => true
+      ),
+      Bun.sleep(100).then(() => "timeout" as const),
+    ]);
+    expect(openResult).not.toBe("timeout");
+    if (openResult === "timeout") throw new Error("provider did not stop at [DONE]");
+    expect(openResult).toMatchObject({ content: "complete" });
   });
 });

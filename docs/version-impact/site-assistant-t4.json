@@ -11,15 +11,15 @@
     "scripts/start-gateway.ts": "9575b653d6bbf8f2f252ef01074cef5ece72b76e",
     "src/lib/ai/search.test.ts": "5194e792f578b6aaf681775e829cd3b8d2d178d8",
     "src/lib/ai/search.ts": "ae374c0a42a9116ee0d4541b3e4141d087dd79f9",
-    "src/lib/assistant-contracts.ts": "5863ac32df3c39620711bc8177be882764d6cd94",
-    "src/lib/assistant-storage.test.ts": "18d4080f88d472efdd0b50f57e82141bad57573f",
-    "src/lib/assistant-storage.ts": "0ada9b4fc81ebf952e9b0ab54a3b96f14c240746",
+    "src/lib/assistant-contracts.ts": "199b16b1252eef2bffe8fe1885c91ca16a75e55d",
+    "src/lib/assistant-storage.test.ts": "aee4512e9b2e12f35b92e1ba3c0ce55a77606b9f",
+    "src/lib/assistant-storage.ts": "a270e120799996a9628b9ad958e20f7f86329d3f",
     "src/lib/db.ts": "4f264eaef16da3746ec5a0aa7d4af047550e7955",
     "src/lib/schema.ts": "0d4c7e32c7d8c0b58dfcb593aa5e14283c561bd6",
     "src/server/assistant/api.ts": "b0ab3dcf18af6013a0b50c7449369cf07da22f5f",
-    "src/server/assistant/runtime.test.ts": "4dfc6b62602efc2305c47b33de310756c03044d7",
-    "src/server/assistant/runtime.ts": "7a92760d3a04610b2ac646461b1978e7acaf7d50",
-    "src/server/assistant/service.ts": "574d88b16ab69738843676172eff7a1a254b0901",
+    "src/server/assistant/runtime.test.ts": "69802cc5457582049372fd2ecc1b16b9c503979c",
+    "src/server/assistant/runtime.ts": "0385760fc286f6aad5d31448ffd0ecbfa0be637b",
+    "src/server/assistant/service.ts": "48367a2e715e27c6d3326dfd2e2562e6b8b6cd35",
     "src/server/public-api/assistant-chat.test.ts": "d62d86f31a191a9af49a1697ad7ef275aa24293a",
     "src/server/public-api/router.ts": "aeeb0864f450a593439bd29c6f93b2913369af01",
     "src/server/services/content-search.ts": "a0d21c73459b03749b9503d2e851b43e67a67e29",
@@ -56,17 +56,17 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The candidate adds forward-only citation and lookup-index migrations, a single SQLite worker with leases and restart-failure recovery, transactionally idempotent first-turn creation, authorization-scoped retrieval metering with unique stage keys, bounded provider execution, and owner-checked chat/snapshot/message/event/stop/delete routes. Late deltas and terminal conversations are rejected, provider SSE requires an explicit completion marker, conversation history is bounded, and unknown in-flight provider calls are not retried automatically.",
+      "reasoning": "The candidate adds forward-only citation and lookup-index migrations, a single SQLite worker with leases and restart-failure recovery, transactionally idempotent first-turn creation, authorization-scoped retrieval metering with unique stage keys, bounded provider execution, and owner-checked chat/snapshot/message/event/stop/delete routes. Lease expiry blocks renewals and late writes, idempotent replay cleans expired conversations before returning gone, late deltas and terminal conversations are rejected, provider SSE stops at an explicit completion marker, conversation history is bounded, and unknown in-flight provider calls are not retried automatically.",
       "assessed_at": "2026-10-27T00:00:00+08:00",
       "evidence": [
         {
           "path": "src/lib/assistant-storage.ts",
-          "blob": "0ada9b4fc81ebf952e9b0ab54a3b96f14c240746",
+          "blob": "a270e120799996a9628b9ad958e20f7f86329d3f",
           "command": "Owns atomic submission, sequence allocation, one-active-generation conflict checks, lease transitions, late-body rejection, citation persistence, expiry, and deletion"
         },
         {
           "path": "src/server/assistant/runtime.ts",
-          "blob": "7a92760d3a04610b2ac646461b1978e7acaf7d50",
+          "blob": "0385760fc286f6aad5d31448ffd0ecbfa0be637b",
           "command": "Runs the durable worker, renews leases, persists streamed deltas, uses authorized metered retrieval, and avoids automatic retry after restart"
         },
         {
@@ -87,18 +87,18 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "Focused storage, worker, retrieval-context, and HTTP/SSE tests pass, including provider failure, restart recovery, owner isolation, and legacy migration coverage. The repository check passes with the existing Biome warnings and infos. Migration journal validation, changed-file formatting, diff checks, and changed-surface TypeScript filtering were run; the remaining filtered diagnostics are pre-existing in unrelated routes/tests.",
+      "reasoning": "Focused storage, worker, retrieval-context, and HTTP/SSE tests pass, including provider failure, restart recovery, owner isolation, cross-owner idempotency, stale-lease rejection, expired replay cleanup, and legacy migration coverage. The repository check passes with the existing Biome warnings and infos. Migration journal validation, changed-file formatting, diff checks, and changed-surface TypeScript filtering were run; the remaining filtered diagnostics are pre-existing in unrelated routes/tests.",
       "assessed_at": "2026-10-27T00:00:00+08:00",
       "evidence": [
         {
           "path": "src/lib/assistant-storage.test.ts",
-          "blob": "18d4080f88d472efdd0b50f57e82141bad57573f",
-          "command": "bun test src/lib/assistant-storage.test.ts (5 pass, 0 fail, 33 expectations)"
+          "blob": "aee4512e9b2e12f35b92e1ba3c0ce55a77606b9f",
+          "command": "bun test src/lib/assistant-storage.test.ts (7 pass, 0 fail, 44 expectations)"
         },
         {
           "path": "src/server/assistant/runtime.test.ts",
-          "blob": "4dfc6b62602efc2305c47b33de310756c03044d7",
-          "command": "bun test src/server/assistant/runtime.test.ts (7 pass, 0 fail, 20 expectations)"
+          "blob": "69802cc5457582049372fd2ecc1b16b9c503979c",
+          "command": "bun test src/server/assistant/runtime.test.ts (7 pass, 0 fail, 22 expectations)"
         },
         {
           "path": "src/server/public-api/assistant-chat.test.ts",
@@ -127,7 +127,7 @@
         },
         {
           "path": "src/server/assistant/runtime.ts",
-          "blob": "7a92760d3a04610b2ac646461b1978e7acaf7d50",
+          "blob": "0385760fc286f6aad5d31448ffd0ecbfa0be637b",
           "command": "Filtered bunx tsc --noEmit reports no diagnostic in T4 assistant/runtime/retrieval files; remaining matches are pre-existing router, migration, and search-test diagnostics"
         }
       ]
