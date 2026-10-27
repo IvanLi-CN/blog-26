@@ -18,6 +18,14 @@ import { aiSearchModeSchema } from "@/lib/search/settings";
 import { createContext } from "@/server/context";
 import { handleAdminPreviewAssetRequest } from "@/server/public-media";
 import { appRouter } from "@/server/router";
+import {
+  ADMIN_USAGE_RANGES,
+  type AdminUsageGroupBy,
+  type AdminUsageRange,
+  getAdminAiUsageOverview,
+  listAdminUsers,
+  resetAdminUserQuota,
+} from "@/server/services/admin-ai-usage";
 import { getAdminLlmModelCatalog } from "@/server/services/llm-model-catalog";
 import {
   getAdminLlmSettingsPayload,
@@ -536,6 +544,154 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
       return json(
         await caller.admin.dashboard.recentActivity({
           limit: getNumber(url.searchParams.get("limit"), 10),
+        }),
+        { status: 200 },
+        resHeaders
+      );
+    }
+
+    if (pathname === "/users") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      return json(
+        await listAdminUsers({
+          search: getString(url.searchParams.get("search")),
+        }),
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+
+    const userQuotaResetMatch = pathname.match(/^\/users\/([^/]+)\/(?:quota-reset|reset-quota)$/u);
+    if (userQuotaResetMatch) {
+      if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
+      if (!hasTrustedSameOriginNavigation(request)) {
+        return json(
+          { error: { code: "FORBIDDEN", message: "请求来源不受信任" } },
+          { status: 403 },
+          resHeaders
+        );
+      }
+      let userId: string;
+      try {
+        userId = decodeURIComponent(userQuotaResetMatch[1]);
+      } catch {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid user id" });
+      }
+      const result = await resetAdminUserQuota(userId);
+      if (!result) {
+        return json(
+          { error: { code: "NOT_FOUND", message: "前台用户不存在" } },
+          { status: 404 },
+          resHeaders
+        );
+      }
+      return json({ success: true, ...result }, { status: 200 }, resHeaders);
+    }
+
+    if (pathname === "/ai-usage" || pathname === "/ai-usage/overview") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      const range = getString(url.searchParams.get("range")) as AdminUsageRange | undefined;
+      if (range && !ADMIN_USAGE_RANGES.includes(range)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid AI usage range" });
+      }
+      const status = getString(url.searchParams.get("status"));
+      const groupBy = (getString(url.searchParams.get("groupBy")) ??
+        "feature") as AdminUsageGroupBy;
+      if (!["user", "feature", "model"].includes(groupBy)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid AI usage group" });
+      }
+      if (
+        status &&
+        !["success", "failure", "cancelled", "missing", "incomplete"].includes(status)
+      ) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid AI usage result" });
+      }
+      const from = getString(url.searchParams.get("from"));
+      const to = getString(url.searchParams.get("to"));
+      if (range === "custom") {
+        const validDay = (value: string | undefined) => {
+          if (!value || !/^\d{4}-\d{2}-\d{2}$/u.test(value)) return false;
+          const [year, month, day] = value.split("-").map(Number);
+          const parsed = new Date(Date.UTC(year, month - 1, day));
+          return (
+            parsed.getUTCFullYear() === year &&
+            parsed.getUTCMonth() === month - 1 &&
+            parsed.getUTCDate() === day
+          );
+        };
+        if (!validDay(from) || !validDay(to) || (from as string) > (to as string)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid AI usage date range" });
+        }
+      }
+      return json(
+        await getAdminAiUsageOverview({
+          range,
+          from,
+          to,
+          groupBy,
+          filters: {
+            frontendUserId: getString(url.searchParams.get("user")),
+            feature: getString(url.searchParams.get("feature")),
+            model: getString(url.searchParams.get("model")),
+            status: status as
+              | "success"
+              | "failure"
+              | "cancelled"
+              | "missing"
+              | "incomplete"
+              | undefined,
+          },
+        }),
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+
+    if (pathname === "/ai-usage/policy") {
+      if (request.method === "GET") {
+        const { getAssistantQuotaPolicy } = await import("@/lib/ai-usage");
+        return json(await getAssistantQuotaPolicy(), { status: 200 }, resHeaders);
+      }
+      if (request.method !== "PUT") return methodNotAllowed(request.method, resHeaders);
+      if (!hasTrustedSameOriginNavigation(request)) {
+        return json(
+          { error: { code: "FORBIDDEN", message: "请求来源不受信任" } },
+          { status: 403 },
+          resHeaders
+        );
+      }
+      const body = await parseJsonBody(request);
+      if (!body || typeof body !== "object" || Array.isArray(body)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Request body must be an object" });
+      }
+      const positiveInteger = (value: unknown, name: string) => {
+        if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `${name} must be a non-negative integer`,
+          });
+        }
+        return value;
+      };
+      const timezone = typeof body.timezone === "string" ? body.timezone : "Asia/Shanghai";
+      try {
+        new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format();
+      } catch {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "timezone must be a valid IANA timezone",
+        });
+      }
+      const { setAssistantQuotaPolicy } = await import("@/lib/ai-usage");
+      return json(
+        await setAssistantQuotaPolicy({
+          tokenHourlyLimit: positiveInteger(body.tokenHourlyLimit, "tokenHourlyLimit"),
+          tokenWeeklyLimit: positiveInteger(body.tokenWeeklyLimit, "tokenWeeklyLimit"),
+          questionHourlyLimit: positiveInteger(body.questionHourlyLimit, "questionHourlyLimit"),
+          questionWeeklyLimit: positiveInteger(body.questionWeeklyLimit, "questionWeeklyLimit"),
+          maxConversations: positiveInteger(body.maxConversations, "maxConversations"),
+          retentionMs: positiveInteger(body.retentionMs, "retentionMs"),
+          timezone,
         }),
         { status: 200 },
         resHeaders

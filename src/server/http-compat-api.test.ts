@@ -403,6 +403,144 @@ describe("HTTP compatibility APIs", () => {
     await db.delete(adminGithubBindingEvents);
   });
 
+  it("exposes protected AI usage overview, user list, and policy routes", async () => {
+    if (!db) throw new Error("Database has not been initialised");
+    await db.insert(users).values({
+      id: "admin-ai-usage-api",
+      email: ADMIN_EMAIL,
+      name: "AI Usage Admin",
+      createdAt: Date.now(),
+    });
+
+    const unauthorized = await handleAdminApiRequest(
+      buildRequest("/api/admin/ai-usage"),
+      "/ai-usage"
+    );
+    expect(unauthorized.status).toBe(401);
+
+    const overview = await handleAdminApiRequest(
+      buildRequest("/api/admin/ai-usage?range=7d&groupBy=feature", {}, ADMIN_EMAIL),
+      "/ai-usage"
+    );
+    expect(overview.status).toBe(200);
+    expect(await readJson(overview)).toMatchObject({
+      range: { preset: "7d" },
+      trend: expect.any(Array),
+      metric: expect.any(Object),
+    });
+
+    const usersResponse = await handleAdminApiRequest(
+      buildRequest("/api/admin/users", {}, ADMIN_EMAIL),
+      "/users"
+    );
+    expect(usersResponse.status).toBe(200);
+    expect(await readJson(usersResponse)).toMatchObject({
+      users: expect.any(Array),
+      policy: expect.any(Object),
+    });
+
+    const policyBody = {
+      tokenHourlyLimit: 120,
+      tokenWeeklyLimit: 840,
+      questionHourlyLimit: 4,
+      questionWeeklyLimit: 20,
+      maxConversations: 2,
+      retentionMs: 86_400_000,
+      timezone: "Asia/Shanghai",
+    };
+    const crossSite = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/ai-usage/policy",
+        {
+          method: "PUT",
+          headers: {
+            "content-type": "application/json",
+            "sec-fetch-site": "cross-site",
+          },
+          body: JSON.stringify(policyBody),
+        },
+        ADMIN_EMAIL
+      ),
+      "/ai-usage/policy"
+    );
+    expect(crossSite.status).toBe(403);
+
+    const sameOrigin = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/ai-usage/policy",
+        {
+          method: "PUT",
+          headers: {
+            "content-type": "application/json",
+            "sec-fetch-site": "same-origin",
+          },
+          body: JSON.stringify(policyBody),
+        },
+        ADMIN_EMAIL
+      ),
+      "/ai-usage/policy"
+    );
+    expect(sameOrigin.status).toBe(200);
+    expect(await readJson(sameOrigin)).toMatchObject(policyBody);
+
+    const invalidTimezone = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/ai-usage/policy",
+        {
+          method: "PUT",
+          headers: {
+            "content-type": "application/json",
+            "sec-fetch-site": "same-origin",
+          },
+          body: JSON.stringify({ ...policyBody, timezone: "Not/AZone" }),
+        },
+        ADMIN_EMAIL
+      ),
+      "/ai-usage/policy"
+    );
+    expect(invalidTimezone.status).toBe(400);
+
+    const invalidBody = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/ai-usage/policy",
+        {
+          method: "PUT",
+          headers: {
+            "content-type": "application/json",
+            "sec-fetch-site": "same-origin",
+          },
+          body: "null",
+        },
+        ADMIN_EMAIL
+      ),
+      "/ai-usage/policy"
+    );
+    expect(invalidBody.status).toBe(400);
+
+    const invalidUserId = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/users/%E0%A4%A/quota-reset",
+        {
+          method: "POST",
+          headers: { "sec-fetch-site": "same-origin" },
+        },
+        ADMIN_EMAIL
+      ),
+      "/users/%E0%A4%A/quota-reset"
+    );
+    expect(invalidUserId.status).toBe(400);
+
+    const invalidDate = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/ai-usage?range=custom&from=2026-02-30&to=2026-03-01",
+        {},
+        ADMIN_EMAIL
+      ),
+      "/ai-usage"
+    );
+    expect(invalidDate.status).toBe(400);
+  });
+
   it("exposes the merged playbook only to administrators", async () => {
     const publicBundle = makePublicBundle();
     const supplementBundle = makeSupplementBundle();
