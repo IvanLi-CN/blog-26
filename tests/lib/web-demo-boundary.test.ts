@@ -26,11 +26,16 @@ describe("Web Demo request boundary", () => {
   it("keeps the assistant on one shared client surface and excludes private cache data", () => {
     expect(layout).toContain("KnowledgeAssistant");
     expect(layout).toContain("!isAssistantPage");
+    expect(layout).toContain('const assistantPath = toPublicSitePath("/chat")');
     expect(chatPage).toContain("fullPage");
     expect(assistant).toContain('data-testid="assistant-fab"');
     expect(assistant).toContain('data-testid="assistant-page"');
     expect(assistant).not.toContain("src/server/");
     expect(assistant).toContain("new:clipping:");
+    expect(assistant).toContain("!hasExplicitUiState");
+    expect(assistant).toContain("current[key] === submittedDraft");
+    expect(assistant).toContain("job.assistantMessageId === failedMessage.id");
+    expect(assistant).toContain("onRetry={(message) => void retry(message)}");
     expect(clippingDetail).toContain("data-assistant-clipping-slug");
     expect(clippingDetail).toContain("hideChat?: boolean");
   });

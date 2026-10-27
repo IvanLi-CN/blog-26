@@ -5,6 +5,7 @@ import Icon from "@/components/ui/Icon";
 import type {
   AssistantCitation,
   AssistantConversation,
+  AssistantMessage,
   FrontendAuthState,
 } from "@/lib/assistant-contracts";
 import {
@@ -155,6 +156,24 @@ function isGenerating(snapshot: AssistantSnapshot | null) {
   return status === "queued" || status === "running";
 }
 
+function findRetryUserMessage(snapshot: AssistantSnapshot, failedMessage: AssistantMessage) {
+  const generationJob = snapshot.generationJobs.find(
+    (job) => job.assistantMessageId === failedMessage.id
+  );
+  if (generationJob?.userMessageId) {
+    const userMessage = snapshot.messages.find(
+      (message) => message.id === generationJob.userMessageId && message.role === "user"
+    );
+    if (userMessage?.content.trim()) return userMessage;
+  }
+
+  const failedIndex = snapshot.messages.findIndex((message) => message.id === failedMessage.id);
+  if (failedIndex < 0) return null;
+  return [...snapshot.messages.slice(0, failedIndex)]
+    .reverse()
+    .find((message) => message.role === "user" && message.content.trim());
+}
+
 function errorMessage(error: unknown) {
   if (
     error instanceof AssistantClientError &&
@@ -278,7 +297,7 @@ function MessageStream({
   onRetry,
 }: {
   snapshot: AssistantSnapshot | null;
-  onRetry?: () => void;
+  onRetry?: (message: AssistantMessage) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const followTail = useRef(true);
@@ -327,7 +346,7 @@ function MessageStream({
                 <button
                   type="button"
                   className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-md border border-[color:var(--nature-line-strong)] px-2 text-xs font-semibold"
-                  onClick={onRetry}
+                  onClick={() => onRetry(message)}
                 >
                   <Icon name="tabler:refresh" className="h-3.5 w-3.5" />
                   重试
@@ -484,7 +503,12 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
       setQuota(data.quota);
       const requested = selectedRef.current;
       const context = getClippingContext();
-      if (preferContext && context) {
+      const hasExplicitDraft = Object.keys(draftsRef.current).some(
+        (key) => key === "new" || key.startsWith("new:clipping:")
+      );
+      const hasExplicitUiState =
+        requested !== null || hasExplicitDraft || newConversationContextFrozenRef.current;
+      if (preferContext && context && !hasExplicitUiState) {
         const contextual = data.conversations.find(
           (conversation) =>
             conversation.kind === "clipping" && conversation.clippingMemoId === context.slug
@@ -848,7 +872,9 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   const send = async (contentOverride?: string) => {
     const context = newConversationContextRef.current;
     const key = draftKey(selectedId, context);
-    const content = (contentOverride ?? draftsRef.current[key] ?? "").trim();
+    const draftValue = contentOverride ?? draftsRef.current[key] ?? "";
+    const content = draftValue.trim();
+    const submittedDraft = contentOverride === undefined ? draftValue : null;
     if (!content || !auth?.authenticated || submittingRef.current) return;
     submittingRef.current = true;
     setIsSubmitting(true);
@@ -874,7 +900,11 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         kind: context ? "clipping" : "general",
         clippingMemoId: context?.slug ?? null,
       });
-      setDrafts((current) => ({ ...current, [key]: "" }));
+      if (submittedDraft !== null) {
+        setDrafts((current) =>
+          current[key] === submittedDraft ? { ...current, [key]: "" } : current
+        );
+      }
       delete submissionRequestsRef.current[key];
       const { [key]: _pending, ...remainingPendingRequests } = pendingRequestsRef.current;
       pendingRequestsRef.current = remainingPendingRequests;
@@ -901,12 +931,10 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     }
   };
 
-  const retry = async () => {
+  const retry = async (failedMessage: AssistantMessage) => {
     if (!snapshot || !selectedId) return;
-    const lastUserMessage = [...snapshot.messages]
-      .reverse()
-      .find((message) => message.role === "user" && message.content.trim());
-    if (lastUserMessage) await send(lastUserMessage.content);
+    const userMessage = findRetryUserMessage(snapshot, failedMessage);
+    if (userMessage) await send(userMessage.content);
   };
 
   const stop = async () => {
@@ -1060,7 +1088,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                 </div>
               </div>
             ) : null}
-            <MessageStream snapshot={snapshot} onRetry={() => void retry()} />
+            <MessageStream snapshot={snapshot} onRetry={(message) => void retry(message)} />
             <div className="knowledge-assistant-compose">
               <textarea
                 className="nature-input-shell rounded-lg border border-[color:var(--nature-line)] bg-transparent p-3 text-sm leading-6 outline-none focus:border-[color:var(--nature-accent-strong)]"

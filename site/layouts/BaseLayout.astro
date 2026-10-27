@@ -28,7 +28,9 @@ const {
 const canonical = getCanonicalUrl(pathname);
 const isConsoleRuntime = process.env.CONSOLE_RUNTIME === "true";
 const isWebDemoBuild = process.env.WEB_DEMO_BUILD === "true";
-const isAssistantPage = Astro.url.pathname.replace(/\/+$/, "") === "/chat";
+const assistantPath = toPublicSitePath("/chat") ?? "/chat";
+const isAssistantPage =
+  Astro.url.pathname.replace(/\/+$/, "") === assistantPath.replace(/\/+$/, "");
 const pwaAssets = await getPublicPwaAssetPaths();
 const shareTargetServiceWorker = toPublicSitePath("/share-target-sw.js");
 const resolvedImage =
