@@ -22,6 +22,26 @@ test.describe("public cover media in Web Demo", () => {
       .poll(() => image.evaluate((node) => (node as HTMLImageElement).naturalHeight))
       .toBe(600);
 
+    const layout = await image.evaluate((node) => {
+      const container = node.parentElement;
+      const imageRect = node.getBoundingClientRect();
+      const containerRect = container?.getBoundingClientRect();
+      return {
+        objectFit: getComputedStyle(node).objectFit,
+        imageWidth: imageRect.width,
+        imageHeight: imageRect.height,
+        containerWidth: containerRect?.width ?? 0,
+        containerHeight: containerRect?.height ?? 0,
+        sourceRatio: node.naturalWidth / node.naturalHeight,
+      };
+    });
+    expect(layout.objectFit).toBe("cover");
+    expect(Math.abs(layout.imageWidth - layout.containerWidth)).toBeLessThanOrEqual(2);
+    expect(Math.abs(layout.imageHeight - layout.containerHeight)).toBeLessThanOrEqual(2);
+    expect(
+      Math.abs(layout.containerWidth / layout.containerHeight - layout.sourceRatio)
+    ).toBeGreaterThan(0.1);
+
     await image.locator("..").hover();
     await expect.poll(() => image.evaluate((node) => getComputedStyle(node).scale)).toBe("1.05");
 
@@ -44,6 +64,7 @@ test.describe("public cover media in Web Demo", () => {
     expect(imageSrc).not.toContain("/wm-");
     expect(await image.getAttribute("class")).toContain("object-cover");
     expect(await image.getAttribute("class")).toContain("group-hover:scale-105");
+    expect(await image.evaluate((node) => getComputedStyle(node).objectFit)).toBe("cover");
 
     await image.hover();
     await expect.poll(() => image.evaluate((node) => getComputedStyle(node).scale)).toBe("1.05");

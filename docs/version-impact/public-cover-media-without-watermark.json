@@ -22,7 +22,8 @@
     "tests/e2e/guest/public-csr-navigation.spec.ts": "93e7de8a9516a2199930d29535e696c47431c407",
     "tests/e2e/guest/posts-cover-fallback.spec.ts": "fb2bc1cd5abc34a65113fd09ab727759562e2b6a",
     "tests/e2e/web-demo/public-csr.spec.ts": "0372e5791f80a1cffb578e334e518b289b828ec2",
-    "tests/e2e/web-demo/public-cover-media.spec.ts": "e7f21835f9bb72a05c0860469416a195eacaf7dc"
+    "tests/e2e/web-demo/public-cover-media.spec.ts": "a7abbec6eed4ff52f7fafb827e1bf2237b21065c",
+    "scripts/verify-pages-build.ts": "19979f091f665ec610aafe3c26ba839d2c287f88"
   },
   "change": {
     "description": "Restore historical list-cover rendering while limiting the unwatermarked public media contract to list cover/card; detail covers, source descriptors, body, attachments, and playback retain their watermark paths and candidates.",
@@ -44,8 +45,8 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The candidate restores object-cover list cards and related-card hover behavior, keeps detail/body/attachment/playback and source-descriptor watermark candidates, migrates legacy cover/card paths only, and makes the Web Demo resolve local media derivatives instead of serving the favicon fallback.",
-      "assessed_at": "2026-10-27T13:10:50+08:00",
+      "reasoning": "The candidate restores object-cover list cards and related-card hover behavior, keeps detail/body/attachment/playback and source-descriptor watermark candidates, migrates legacy cover/card paths only, and makes the official SSR Web Demo resolve local media derivatives instead of serving the favicon fallback.",
+      "assessed_at": "2026-10-27T13:28:20+08:00",
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
@@ -64,13 +65,13 @@
         },
         {
           "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
-          "blob": "e7f21835f9bb72a05c0860469416a195eacaf7dc",
+          "blob": "a7abbec6eed4ff52f7fafb827e1bf2237b21065c",
           "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:51460 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-cover-media.spec.ts"
         },
         {
-          "path": "scripts/build-web-demo.ts",
-          "blob": "9fecc9affe2adb46c6ae5450bd9c0826254fc676",
-          "command": "bun run web-demo:build"
+          "path": "scripts/verify-pages-build.ts",
+          "blob": "19979f091f665ec610aafe3c26ba839d2c287f88",
+          "command": "PUBLIC_SITE_URL=https://ivanli.cc PUBLIC_API_BASE_URL=https://console.ivanli.cc bun run frontend:build && PUBLIC_SITE_URL=https://ivanli.cc PUBLIC_API_BASE_URL=https://console.ivanli.cc bun scripts/verify-pages-build.ts"
         }
       ],
       "scope_drift": {
@@ -80,12 +81,12 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Focused contract, compatibility, package logic, static build, and official Web Demo validation verify a reversible role-scoped media fix with no persistent-state migration. The local guest E2E command remains host-blocked by the Linux/amd64 embedded search module on macOS; CI remains authoritative for that gate. The release-only media packager also requires the configured remote media origin, while the local static output path contract was verified directly.",
-      "assessed_at": "2026-10-27T13:10:50+08:00",
+      "reasoning": "Focused contract, compatibility, package logic, static build and page-output verification, plus official SSR Web Demo validation verify a reversible role-scoped media fix with no persistent-state migration. The local guest E2E command remains host-blocked by the Linux/amd64 embedded search module on macOS; CI remains authoritative for that gate. The release-only media packager also requires the configured remote media origin, while the local static output path contract was verified directly.",
+      "assessed_at": "2026-10-27T13:28:20+08:00",
       "evidence": [
         {
           "path": "src/lib/__tests__/public-media.test.ts",
-          "blob": "645d5e0de10ecffceadf7a4b534fe16fb84842ec",
+          "blob": "6c9bd0dc3cd691d1376e7332b26867067bd71f9f",
           "command": "bun test src/lib/__tests__/public-media.test.ts src/lib/__tests__/public-site-snapshot-compat.test.ts"
         },
         {
@@ -100,13 +101,13 @@
         },
         {
           "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
-          "blob": "e7f21835f9bb72a05c0860469416a195eacaf7dc",
+          "blob": "a7abbec6eed4ff52f7fafb827e1bf2237b21065c",
           "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:51460 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-cover-media.spec.ts"
         },
         {
-          "path": "scripts/build-web-demo.ts",
-          "blob": "9fecc9affe2adb46c6ae5450bd9c0826254fc676",
-          "command": "bun run web-demo:build"
+          "path": "scripts/verify-pages-build.ts",
+          "blob": "19979f091f665ec610aafe3c26ba839d2c287f88",
+          "command": "PUBLIC_SITE_URL=https://ivanli.cc PUBLIC_API_BASE_URL=https://console.ivanli.cc bun run frontend:build && PUBLIC_SITE_URL=https://ivanli.cc PUBLIC_API_BASE_URL=https://console.ivanli.cc bun scripts/verify-pages-build.ts"
         }
       ]
     }
