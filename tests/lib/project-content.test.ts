@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  extractProjectDetailSummary,
   extractProjectToc,
   resolveProjectBody,
   resolveProjectDetailBody,
@@ -30,7 +31,7 @@ describe("project content contracts", () => {
 
     for (const slug of migratedProjectSlugs) {
       const source = readFileSync(join(contentDir, `${slug}.mdx`), "utf8");
-      expect(source).toMatch(new RegExp(`^---\\nslug: ${slug}\\n---\\n`));
+      expect(source).toMatch(new RegExp(`^---\\nslug: ${slug}\\n(?:[^\\n]*\\n)*---\\n`));
       expect(source).toMatch(/^## /m);
       expect(source).not.toContain("项目是什么");
     }
@@ -220,6 +221,45 @@ describe("project content contracts", () => {
       { depth: 2, text: "设计取舍：保留证据", slug: "设计取舍保留证据-1" },
       { depth: 3, text: "子项", slug: "子项" },
     ]);
+  });
+
+  test("detail summaries come from MDX frontmatter", () => {
+    expect(
+      extractProjectDetailSummary(
+        '---\nslug: demo\ndetailSummary: "这是详情摘要，并保留正文链接。"\n---\n\n## 定位\n\n正文。'
+      )
+    ).toBe("这是详情摘要，并保留正文链接。");
+    expect(extractProjectDetailSummary("---\nslug: demo\n---\n\n## 定位\n\n正文。")).toBeNull();
+  });
+
+  test("project list and detail summaries stay separate", () => {
+    const project = projectCatalog.find((item) => item.slug === "octo-rill");
+    expect(project?.summary).toBe("GitHub 动态阅读与运营工作台。");
+    const source = readFileSync(join(process.cwd(), "site/content/projects/octo-rill.mdx"), "utf8");
+    expect(extractProjectDetailSummary(source)).toBe(
+      "它更像一块为开发者自己定制的云端仪表板，重点不是社交网络式展示，而是把分散的 GitHub 动态重新组织成可消费的操作界面。OctoRill 将 Release、通知、社交反馈、日报和收件箱入口汇聚到一条阅读路径，并在同步、翻译与润色结果之间保留原始上下文。它不替代 GitHub 的评论、合并等协作动作，而是先帮助用户判断哪些变化值得继续跟进，再回到 GitHub 完成后续操作。"
+    );
+    expect(project?.summary).not.toBe(extractProjectDetailSummary(source));
+  });
+
+  test("project list summaries stay concise", () => {
+    for (const project of projectCatalog) {
+      expect(project.summary.length).toBeLessThanOrEqual(32);
+    }
+  });
+
+  test("migrated projects provide substantial detail summaries", () => {
+    const contentDir = join(process.cwd(), "site/content/projects");
+
+    for (const slug of migratedProjectSlugs) {
+      const project = projectCatalog.find((item) => item.slug === slug);
+      const source = readFileSync(join(contentDir, `${slug}.mdx`), "utf8");
+      const detailSummary = extractProjectDetailSummary(source);
+
+      expect(detailSummary).toBeTruthy();
+      expect(detailSummary?.length ?? 0).toBeGreaterThan(100);
+      expect(detailSummary).not.toBe(project?.summary);
+    }
   });
 
   test("TOC uses rendered text for inline Markdown links", () => {

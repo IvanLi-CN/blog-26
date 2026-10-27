@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
+  "covered_files": {
+    "docs/adr/0001-project-detail-mdx-authoring.md": "b0c7d179bc15fad91e79745821f3dbf0dd723d17",
+    "docs/adr/0032-project-detail-summary-source.md": "c3884dd5e546c648302ccee1ed7bba7f20e48d03",
+    "docs/project-content-authoring.md": "7f08e213023e472191e0644347c4a365422189f2",
+    "site/content/projects/blog-26.mdx": "654f0a61770ec5fa654be99dec053e2d79aa6b61",
+    "site/content/projects/codex-vibe-monitor.mdx": "128cf9c4f2f2a3cd3045abe328e1b31f9ecb91ef",
+    "site/content/projects/dockrev.mdx": "1fe181be5e91605bf1ee765a606a68cac55190e0",
+    "site/content/projects/flux-purr.mdx": "01a705df81e3b75e5db69c5b1b69defe5705b92d",
+    "site/content/projects/iso-usb-hub.mdx": "1fc866e01abe9b2d30a9782536da28d4b5d97217",
+    "site/content/projects/isolappurr-usb-hub.mdx": "4d91a46cde0ceb7defb62d52f502d8d189861947",
+    "site/content/projects/kaisoumail.mdx": "3bd757f5102a44ef5566d20ed29727fa9277f5c9",
+    "site/content/projects/loadlynx.mdx": "83490938b06d1381c8ad274d0b54c598c8a66562",
+    "site/content/projects/mains-aegis.mdx": "0bf58161ee3acaa09f08e1eed16436aea13127e9",
+    "site/content/projects/octo-rill.mdx": "2990c9cfe151cc11fa7ce9193f295aa9ad86887b",
+    "site/content/projects/oidrune.mdx": "0499edf372334c745614774cd2675fded186806c",
+    "site/content/projects/paste-preset.mdx": "1bdfdb21f74639cacd5dca5fcf8d3033f56b7724",
+    "site/content/projects/spoti-bind.mdx": "03ef6801189d4e3cb0dcc00beabbb7001d6ba197",
+    "site/content/projects/tavily-hikari.mdx": "d5a56a4845683e19db8a2b346371d580aba43c33",
+    "site/content/projects/tuckmark.mdx": "f75ab4d21899d0fb92608bc6d6708e52b0bf86fa",
+    "site/content/projects/xp.mdx": "3b838cadc77042f0a897c25bf2fff29c7c795264",
+    "site/lib/page-data/project.ts": "48133311afed23f0d39ed6633670023e802a01ee",
+    "site/lib/project-content-utils.ts": "c4f26bdd0231a93493063b913589e1871c91e174",
+    "site/lib/project-content.ts": "e68ad90c476166814910bd6b4eccbbda4128d856",
+    "site/styles/public-pages.css": "e92c1aac6b8f6bdc9a0d95a68951ebf34a7c0159",
+    "src/lib/project-catalog.ts": "b73ed140f3840b7c34f9815e18ffadeb2e362177",
+    "tests/e2e/guest/nature-front-coverage.spec.ts": "148214795416e550cba996b2edf238b20d8f3199",
+    "tests/lib/project-content.test.ts": "3d12f586e9245384dbcb892b2fbc9c8f4a95783f"
+  },
+  "change": {
+    "description": "Separate concise project catalog summaries from MDX detail summaries, refresh project detail copy, and preserve the public project-content source and spacing contracts.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The candidate changes visitor-facing project copy, catalog metadata, and content-source tests. It does not change routes, API shapes, persistence, or runtime service behavior.",
+      "assessed_at": "2026-10-27T18:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/project-catalog.ts",
+          "blob": "b73ed140f3840b7c34f9815e18ffadeb2e362177",
+          "command": "bun test tests/lib/project-content.test.ts"
+        },
+        {
+          "path": "tests/lib/project-content.test.ts",
+          "blob": "3d12f586e9245384dbcb892b2fbc9c8f4a95783f",
+          "command": "bun test tests/lib/project-content.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate keeps detail summaries in project MDX, shortens all catalog summaries for desktop scanning, updates the OctoRill detail structure and project-wide hero copy, and retains the existing public rendering and heading-spacing boundaries.",
+      "assessed_at": "2026-10-27T18:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/project-catalog.ts",
+          "blob": "b73ed140f3840b7c34f9815e18ffadeb2e362177",
+          "command": "bun test tests/lib/project-content.test.ts"
+        },
+        {
+          "path": "tests/lib/project-content.test.ts",
+          "blob": "3d12f586e9245384dbcb892b2fbc9c8f4a95783f",
+          "command": "bun test tests/lib/project-content.test.ts && bun run check"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains limited to public project copy, its MDX source boundary, related presentation spacing, documentation, and focused content-contract tests; no API, database, or release input is changed."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused project-content tests, full check, Web Demo build, and the exact CI E2E and application build suites pass, confirming a compatible public copy and presentation update with no persistent-state migration.",
+      "assessed_at": "2026-10-27T18:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/project-content.test.ts",
+          "blob": "3d12f586e9245384dbcb892b2fbc9c8f4a95783f",
+          "command": "bun test tests/lib/project-content.test.ts"
+        },
+        {
+          "path": "src/lib/project-catalog.ts",
+          "blob": "b73ed140f3840b7c34f9815e18ffadeb2e362177",
+          "command": "bun run check; CI Unit Tests, E2E, Web Demo, Build and Docker checks"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4"
+      ],
+      "evidence": [
+        {
+          "path": "tests/lib/project-content.test.ts",
+          "blob": "3d12f586e9245384dbcb892b2fbc9c8f4a95783f",
+          "command": "The tested public project catalog and detail-summary contracts remain route-compatible"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, cache schema, browser persistence, authored content storage, or durable release ledger state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/project-content.test.ts",
+          "blob": "3d12f586e9245384dbcb892b2fbc9c8f4a95783f",
+          "command": "The focused content-contract tests cover source selection without persistent-state changes"
+        }
+      ]
+    }
+  }
+}

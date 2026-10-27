@@ -1,5 +1,7 @@
 ---
 slug: xp
+detailSummary: >-
+  XP 是面向自托管 Xray 集群的控制面，维护多主机节点、端点、用户、授权和订阅的集群期望状态。管理员可以通过 Raft leader 串行写入配置，查看节点 reconcile 与 Xray 运行状态，并为有效 Grant 生成 VLESS + REALITY 或 Shadowsocks 2022 订阅。全局配置与本机流量/健康运行态分开保存，配额执行和节点恢复不会把瞬时状态写进集群日志。
 ---
 
 <section className="project-mdx-section">
