@@ -19,11 +19,14 @@ function hasLegacyConversationReference(row: {
     if (!Array.isArray(row.previousConversations)) return true;
     if (row.previousConversations.length > 0) return true;
   }
-  if (row.manifest === undefined) return false;
+  if (row.manifest === undefined) {
+    return !("previousConversations" in row && row.previousConversations !== undefined);
+  }
   try {
     const manifest: unknown = JSON.parse(row.manifest);
     if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) return true;
     const record = manifest as Record<string, unknown>;
+    if (!("conversationId" in record) || !("previousConversations" in record)) return true;
     if ("conversationId" in record) {
       if (record.conversationId !== null && typeof record.conversationId !== "string") return true;
       if (typeof record.conversationId === "string" && record.conversationId.trim()) return true;

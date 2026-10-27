@@ -259,6 +259,21 @@ describe("public assistant chat API", () => {
       }),
     });
     expect(genericClippingExistingSubmit.status).toBe(404);
+    const mixedStop = await assistant("/chat/stop", cookie, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        conversationId: accepted.conversationId,
+        turnId: clipping.generationJob.id,
+      }),
+    });
+    expect(mixedStop.status).toBe(404);
+    expect(
+      await assistantService.storage.getGenerationJob(
+        clipping.generationJob.id,
+        owner.frontendUserId
+      )
+    ).toMatchObject({ status: "queued" });
 
     const conflict = await assistant("/chat", cookie, {
       method: "POST",

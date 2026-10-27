@@ -73,6 +73,22 @@ test("canonical manifests keep discussion disabled when the clipping index is mi
     status: "pending",
     reason: "assistant-discussion-migration-required",
   });
+  for (const previousConversations of [undefined] as const) {
+    await expect(
+      readAssistantMigrationGate({
+        manifests: [
+          {
+            conversationId: null,
+            ...(previousConversations === undefined ? {} : { previousConversations }),
+          } as { conversationId: string | null; previousConversations: unknown },
+        ],
+      })
+    ).resolves.toMatchObject({
+      ready: false,
+      status: "pending",
+      reason: "assistant-discussion-migration-required",
+    });
+  }
 });
 
 test("legacy discussion references stay disabled until a complete migration", async () => {

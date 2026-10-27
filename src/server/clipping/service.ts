@@ -388,6 +388,14 @@ export class ClippingService {
       });
       this.known.set(memoId, id);
       const changedTarget = recognition?.enabled && recognition.targetUrl !== manifest.targetUrl;
+      assistantVersionsToStop = manifest.versions
+        .filter(
+          (version) =>
+            !recognition?.enabled ||
+            !authored ||
+            version.targetUrl !== (recognition.targetUrl ?? manifest.targetUrl)
+        )
+        .map((version) => version.id);
       const activeVersion = manifest.versions.find(
         (version) => version.id === manifest.activeVersionId
       );
@@ -408,11 +416,6 @@ export class ClippingService {
         if (previous?.jobConversationId && ["queued", "processing"].includes(previous.status))
           abort.push(previous.jobConversationId);
         this.running.get(id)?.controller.abort();
-        if (changedTarget && manifest.targetUrl) {
-          assistantVersionsToStop = manifest.versions
-            .filter((version) => version.targetUrl === manifest.targetUrl)
-            .map((version) => version.id);
-        }
         if (manifest.conversationId && (changedTarget || !recognition?.enabled || !authored)) {
           if (changedTarget && manifest.targetUrl) {
             manifest.previousConversations.push({
@@ -440,9 +443,9 @@ export class ClippingService {
         }
       }
       // Also refresh the rebuildable index on remarks-only edits and after an index loss.
+      await this.stopAssistantGenerationsForVersions(memoId, assistantVersionsToStop);
       await this.persist(manifest);
     });
-    await this.stopAssistantGenerationsForVersions(memoId, assistantVersionsToStop);
     for (const conversation of abort)
       await this.runtime.abort(conversation).catch((error) => {
         if (error instanceof RuntimeOwnershipError) this.markOwnershipLost();
@@ -945,9 +948,30 @@ export class ClippingService {
     const version = manifest?.versions.find((candidate) => candidate.id === versionId);
     if (!manifest?.enabled || manifest.deleted || !version?.targetUrl)
       throw new Error("对话对应的文章材料已不可用。");
+    if (version.targetUrl !== manifest.targetUrl)
+      throw new Error("assistant-clipping-context-unavailable");
+    if (!db) throw new Error("assistant-clipping-context-unavailable");
+    const owner = await db
+      .select({ isAdmin: frontendUsers.isAdmin })
+      .from(frontendUsers)
+      .where(eq(frontendUsers.id, execution.conversation.frontendUserId))
+      .get();
+    if (!owner) throw new Error("assistant-clipping-context-unavailable");
+    const authored = await readAuthoredMemo(manifest.memoId);
+    const post = await db
+      .select({ public: posts.public, draft: posts.draft })
+      .from(posts)
+      .where(eq(posts.id, manifest.memoId))
+      .get();
+    const publiclyReadable =
+      Boolean(post?.public) &&
+      !post?.draft &&
+      authored.frontmatter.public !== false &&
+      authored.frontmatter.draft !== true;
+    if (!owner.isAdmin && !publiclyReadable)
+      throw new Error("assistant-clipping-context-unavailable");
     const source = await this.store.read(manifest.id, version.id, "source");
     if (!source) throw new Error("原文尚未抓取，暂时无法讨论文章。");
-    const authored = await readAuthoredMemo(manifest.memoId);
     const remarks = recognizeMemoClipping(authored.body, authored.frontmatter).remarks;
     const summary = await this.store.read(manifest.id, version.id, "summary");
     const translation = await this.store.read(manifest.id, version.id, "translation");

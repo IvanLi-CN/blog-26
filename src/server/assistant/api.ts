@@ -375,9 +375,21 @@ export async function handleAssistantRequest(
         .strict()
         .safeParse(await body(request));
       if (!parsed.success) throw new AssistantApiError(400, "BAD_REQUEST", "Invalid stop request");
-      if (parsed.data.conversationId)
+      if (parsed.data.conversationId && (parsed.data.turnId || parsed.data.generationJobId)) {
+        const job = await requireGeneralTurn(
+          service,
+          principal,
+          parsed.data.turnId ?? parsed.data.generationJobId ?? ""
+        );
+        if (job.conversationId !== parsed.data.conversationId)
+          throw new AssistantApiError(
+            409,
+            "CONFLICT",
+            "conversationId does not match the assistant turn"
+          );
+      } else if (parsed.data.conversationId) {
         await requireGeneralConversation(service, principal, parsed.data.conversationId);
-      else if (parsed.data.turnId || parsed.data.generationJobId)
+      } else if (parsed.data.turnId || parsed.data.generationJobId)
         await requireGeneralTurn(
           service,
           principal,

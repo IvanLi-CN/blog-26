@@ -408,6 +408,7 @@ export class AssistantRuntime {
   private stopped = false;
   private pumping = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  private timerDueAt: number | null = null;
   private pumpTask: Promise<void> | null = null;
   private readonly controllers = new Map<string, AbortController>();
   private readonly processing = new Set<Promise<void>>();
@@ -434,13 +435,14 @@ export class AssistantRuntime {
 
   enqueue() {
     if (!this.started || this.stopped) return;
-    this.schedule(this.pumpDelayMs);
+    this.schedule(this.pumpDelayMs, true);
   }
 
   async stop() {
     this.stopped = true;
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
+    this.timerDueAt = null;
     for (const controller of this.controllers.values()) controller.abort();
     await this.recoverRunningGenerations();
     const pumpTask = this.pumpTask;
@@ -454,10 +456,17 @@ export class AssistantRuntime {
       ?.abort(new DOMException("Generation cancelled", "AbortError"));
   }
 
-  private schedule(delayMs: number) {
-    if (this.stopped || this.timer) return;
+  private schedule(delayMs: number, preferEarlier = false) {
+    if (this.stopped) return;
+    const dueAt = Date.now() + delayMs;
+    if (this.timer) {
+      if (!preferEarlier || (this.timerDueAt !== null && this.timerDueAt <= dueAt)) return;
+      clearTimeout(this.timer);
+    }
+    this.timerDueAt = dueAt;
     this.timer = setTimeout(() => {
       this.timer = null;
+      this.timerDueAt = null;
       const task = this.pump().catch(() => undefined);
       this.pumpTask = task;
       void task.then(() => {

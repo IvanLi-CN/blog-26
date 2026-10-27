@@ -319,6 +319,40 @@ describe("assistant runtime", () => {
     await runtime.stop();
   });
 
+  it("wakes a queued job before the idle expiry sweep", async () => {
+    await addUser("assistant-runtime-wakeup-owner");
+    const storage = createAssistantStorage(database);
+    let generated = 0;
+    const runtime = createAssistantRuntimeForTest({
+      storage,
+      pumpDelayMs: 0,
+      expirySweepMs: 1_000,
+      generate: async () => {
+        generated++;
+        return { content: "Woken answer", citations: [] };
+      },
+    });
+    await runtime.start();
+    await Bun.sleep(10);
+    const submission = await storage.submitTurn({
+      frontendUserId: "assistant-runtime-wakeup-owner",
+      requestId: "runtime-wakeup-request",
+      content: "Wake the worker",
+    });
+    runtime.enqueue();
+    await waitFor(
+      async () =>
+        (
+          await storage.getGenerationJob(
+            submission.generationJob.id,
+            "assistant-runtime-wakeup-owner"
+          )
+        )?.status === "completed"
+    );
+    expect(generated).toBe(1);
+    await runtime.stop();
+  });
+
   it("binds public retrieval to published content and the question usage context", async () => {
     await addUser("assistant-retrieval-owner");
     const storage = createAssistantStorage(database);

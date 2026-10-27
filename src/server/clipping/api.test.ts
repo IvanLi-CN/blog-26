@@ -22,7 +22,7 @@ import {
 } from "@/lib/schema";
 import { buildPublicSnapshot, writePublicSnapshot } from "@/public-site/snapshot";
 import { createAssistantRuntimeForTest } from "@/server/assistant/runtime";
-import { createAssistantServiceForTest } from "@/server/assistant/service";
+import { AssistantServiceError, createAssistantServiceForTest } from "@/server/assistant/service";
 import type { TRPCContext } from "@/server/context";
 import { runWithMcpAuth } from "@/server/mcp-auth-context";
 import { memosRouter } from "@/server/routers/memos";
@@ -685,9 +685,11 @@ test("private operations reject a removed canonical marker before stale runtime 
       join(root, "authored", id),
       matter.stringify("https://article.example/one", { ...fm, tags: [] })
     );
-    for (const operation of ["chat", "chat/events", "reprocess"])
-      for (const actor of ["creator", "admin"] as const)
-        await expect(request(operation, actor)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    for (const actor of ["creator", "admin"] as const) {
+      for (const operation of ["chat", "chat/events"])
+        await expect(request(operation, actor)).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+      await expect(request("reprocess", actor)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    }
   } finally {
     await writeFile(join(root, "authored", id), raw);
   }
@@ -804,6 +806,36 @@ test("frontend clipping chat routes use the unified assistant and cap SSE stream
     expect(initial.status).toBe(200);
     expect(await initial.json()).toMatchObject({ conversationId: null, messages: [] });
 
+    const originalChat = service.assistantChat;
+    try {
+      for (const [error, status] of [
+        [new AssistantServiceError("conflict", "discussion changed"), 409],
+        [new AssistantServiceError("quota", "quota exceeded"), 429],
+      ] as const) {
+        service.assistantChat = async () => {
+          throw error;
+        };
+        const response = await handlePublicApiRequest(
+          new Request("http://localhost/api/public/memos/clip/clipping/chat", {
+            method: "POST",
+            headers: {
+              cookie: `frontend_session_id=${frontendToken}`,
+              origin: "http://localhost",
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({
+              text: "What does the article preserve?",
+              requestId: `error-${status}`,
+            }),
+          }),
+          "/memos/clip/clipping/chat"
+        );
+        expect(response.status).toBe(status);
+      }
+    } finally {
+      service.assistantChat = originalChat;
+    }
+
     const submitted = await frontendRequest("chat", {
       method: "POST",
       headers: { origin: "http://localhost", "content-type": "application/json" },
@@ -882,6 +914,9 @@ test("migration gate blocks clipping chat while reprocess remains available", as
   try {
     globals[key].service = service;
     await expect(frontendRequest("chat")).rejects.toMatchObject({
+      code: "SERVICE_UNAVAILABLE",
+    });
+    await expect(frontendRequest("chat/events")).rejects.toMatchObject({
       code: "SERVICE_UNAVAILABLE",
     });
     expect((await request("reprocess", "creator")).status).toBe(202);

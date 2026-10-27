@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
+import type { FrontendPrincipal } from "@/lib/assistant-contracts";
 import {
   buildClippingResourceBaseUrl,
   clippingResourceFilename,
@@ -11,7 +12,7 @@ import { getFrontendPrincipalFromRequest } from "@/lib/frontend-auth";
 import { recognizeMemoClipping } from "@/lib/memo-clipping";
 import { resolveRequestOrigin } from "@/lib/public-cors";
 import { posts } from "@/lib/schema";
-import type { AssistantSnapshot } from "@/server/assistant/service";
+import { AssistantServiceError, type AssistantSnapshot } from "@/server/assistant/service";
 import type { TRPCContext } from "@/server/context";
 import { getClippingRuntime } from "./runtime";
 import { ClippingAssistantUnavailableError, ClippingTargetChangedError } from "./service";
@@ -130,7 +131,12 @@ function canManageClipping(ctx: Pick<TRPCContext, "isAdmin" | "user">, creatorId
   return ctx.isAdmin || Boolean(creatorId && ctx.user?.id === creatorId);
 }
 
-async function access(slug: string, ctx: TRPCContext, discussion = false) {
+async function access(
+  slug: string,
+  ctx: TRPCContext,
+  discussion = false,
+  discussionPrincipal: FrontendPrincipal | null = null
+) {
   const store = new ClippingStore();
   const row = (
     await db
@@ -156,6 +162,7 @@ async function access(slug: string, ctx: TRPCContext, discussion = false) {
       });
   } else if (
     !ctx.isAdmin &&
+    !discussionPrincipal?.isAdmin &&
     (!row.public ||
       row.draft ||
       authored.frontmatter.public === false ||
@@ -219,9 +226,10 @@ function currentDiscussion(current: Awaited<ReturnType<typeof access>>): Current
 async function revalidateDiscussion(
   slug: string,
   ctx: TRPCContext,
-  expected: NonNullable<Awaited<ReturnType<typeof access>>["manifest"]>
+  expected: NonNullable<Awaited<ReturnType<typeof access>>["manifest"]>,
+  discussionPrincipal: FrontendPrincipal | null = null
 ) {
-  const current = currentDiscussion(await access(slug, ctx, false));
+  const current = currentDiscussion(await access(slug, ctx, false, discussionPrincipal));
   if (current.id !== expected.id || current.revision !== expected.revision)
     throw new TRPCError({ code: "CONFLICT", message: "剪藏目标已变化，请重新打开对话。" });
 }
@@ -259,7 +267,9 @@ async function routeClippingRequest(
     return response({ error: "Not found" }, 404);
   const store = new ClippingStore();
   const privateOperation = operation === "reprocess";
-  const authorized = await access(slug, ctx, privateOperation);
+  const discussionPrincipal =
+    operation === "chat" || operation === "chat/events" ? await frontendPrincipal(request) : null;
+  const authorized = await access(slug, ctx, privateOperation, discussionPrincipal);
   const { row, manifest } = authorized;
   if (operation === "" || operation === "status") {
     if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
@@ -296,13 +306,14 @@ async function routeClippingRequest(
     if (!authorized.recognition.enabled)
       throw new TRPCError({ code: "NOT_FOUND", message: "此闪念没有启用剪藏" });
     const currentManifest = currentDiscussion(authorized);
-    const principal = await frontendPrincipal(request);
+    const principal = discussionPrincipal;
+    if (!principal) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录前台账号" });
     if (request.method === "GET") {
       const requested = new URL(request.url).searchParams.get("conversationId");
       const snapshot = await runtime().assistantSnapshot(row.id, principal);
       if (requested && requested !== snapshot?.conversation.id)
         throw new TRPCError({ code: "FORBIDDEN", message: "仅能访问当前文章对话" });
-      await revalidateDiscussion(slug, ctx, currentManifest);
+      await revalidateDiscussion(slug, ctx, currentManifest, principal);
       return response(mapAssistantSnapshot(snapshot));
     }
     if (request.method === "POST") {
@@ -318,7 +329,7 @@ async function routeClippingRequest(
         { revision: currentManifest.revision, targetUrl: currentManifest.targetUrl }
       );
       try {
-        await revalidateDiscussion(slug, ctx, currentManifest);
+        await revalidateDiscussion(slug, ctx, currentManifest, principal);
       } catch (error) {
         await runtime()
           .assistantStop(principal, submission.turnId)
@@ -333,8 +344,11 @@ async function routeClippingRequest(
     if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
     if (!authorized.recognition.enabled)
       throw new TRPCError({ code: "NOT_FOUND", message: "此闪念没有启用剪藏" });
-    const principal = await frontendPrincipal(request);
+    const principal = discussionPrincipal;
+    if (!principal) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录前台账号" });
     const service = runtime();
+    if (!service.assistantChatEnabled())
+      throw new ClippingAssistantUnavailableError("assistant-discussion-migration-required");
     const active = activeClippingEventStreams.get(principal.id) ?? 0;
     if (active >= MAX_ACTIVE_CLIPPING_EVENT_STREAMS)
       throw new TRPCError({
@@ -362,12 +376,19 @@ async function routeClippingRequest(
             const deadline = Date.now() + 60_000;
             while (!cancelled && !request.signal.aborted && Date.now() < deadline) {
               try {
-                const current = await access(slug, ctx, false);
-                currentDiscussion(current);
+                const current = await access(slug, ctx, false, principal);
+                const before = currentDiscussion(current);
                 await frontendPrincipal(request);
                 const snapshot = await service.assistantSnapshot(current.row.id, principal);
                 if (!snapshot) break;
-                currentDiscussion(await access(slug, ctx, false));
+                const after = currentDiscussion(await access(slug, ctx, false, principal));
+                if (
+                  after.id !== before.id ||
+                  after.revision !== before.revision ||
+                  after.targetUrl !== before.targetUrl
+                )
+                  break;
+                await frontendPrincipal(request);
                 if (cancelled || request.signal.aborted) break;
                 const data = JSON.stringify(mapAssistantSnapshot(snapshot));
                 if (data !== previous) {
@@ -424,6 +445,17 @@ export async function handleClippingRequest(
       });
     if (error instanceof ClippingTargetChangedError)
       throw new TRPCError({ code: "CONFLICT", message: error.message });
+    if (error instanceof AssistantServiceError) {
+      const code =
+        error.code === "quota"
+          ? "TOO_MANY_REQUESTS"
+          : error.code === "conflict"
+            ? "CONFLICT"
+            : error.code === "not-found" || error.code === "gone"
+              ? "NOT_FOUND"
+              : "INTERNAL_SERVER_ERROR";
+      throw new TRPCError({ code, message: error.message });
+    }
     if (error instanceof Error && /^[\u3400-\u9fff]/u.test(error.message))
       throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
     throw error;

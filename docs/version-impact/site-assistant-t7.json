@@ -7,17 +7,17 @@
     "src/lib/assistant-contracts.ts": "24d72b23b6babf34dc7aef36d63fd946251fb8e8",
     "src/lib/assistant-storage.test.ts": "71f82649a9205c966ab7324c613603650b2eff60",
     "src/lib/assistant-storage.ts": "ca9c8aa19909077377ef0bd72112e20cebded7a1",
-    "src/server/assistant/api.ts": "aa698607b76869084db28b91433ba378f1925fe9",
-    "src/server/assistant/runtime.test.ts": "f4ee0ea499e477d1591b4ed906d61c3aceefb24d",
-    "src/server/assistant/runtime.ts": "f70dab132862172d80974c3e799cd3939fe5dc13",
+    "src/server/assistant/api.ts": "d86682efbd8f8264b71fd1ba3ebfd0d85cbbb92c",
+    "src/server/assistant/runtime.test.ts": "3e0861423aa486f4dc0df92c96a4473c898eb002",
+    "src/server/assistant/runtime.ts": "0b17c4533d081f4f4f931ba3fdf5a76c01fd3f1e",
     "src/server/assistant/service.ts": "49c00f058800ab4ee2608311961982ff7b4f79b2",
-    "src/server/assistant/migration-gate.ts": "9860bfa816e9eb2ae9ceb87f9d00b936f8cad888",
-    "src/server/assistant/migration-gate.test.ts": "81dc052303ff84887b770233a90997de267a3738",
-    "src/server/clipping/api.test.ts": "c1a5b3361059dc84d56a9da7639f9a831570aab9",
-    "src/server/clipping/api.ts": "00056224c4535d87392e69a25ecaf273518a3a7d",
+    "src/server/assistant/migration-gate.ts": "b7fc3f0726a88253d751a191bfe0e86330c7a62d",
+    "src/server/assistant/migration-gate.test.ts": "c94e1a1cdc52ea25f153986c2ddf10fe59679a9a",
+    "src/server/clipping/api.test.ts": "6bbbcb15f8c13e3eea88dd37b240a5fbe6c02db8",
+    "src/server/clipping/api.ts": "ca49a1631da13df5ed25a86eafd3d69d4275ff7c",
     "src/server/clipping/assistant-adapter.test.ts": "b2fccc6e658d062751a4b75cd74cab1f143fd5ba",
-    "src/server/clipping/service.ts": "dc9a95d0bf53a52833ef238d68d01e95a19b1865",
-    "src/server/public-api/assistant-chat.test.ts": "f7a42f3385d824b992d4a0a0aa2eff6820be3d2b"
+    "src/server/clipping/service.ts": "6b7dd0163dfa309a72e382e5466c81747c4e4d38",
+    "src/server/public-api/assistant-chat.test.ts": "8285b0e13d6325c25ab35241768a60281c77c6ba"
   },
   "change": {
     "description": "Route public clipping discussion through the unified frontend-user assistant service, preserve same-target conversations across recaptures, split conversations on target changes, gate legacy installations until migration completion, and align Console/Gateway assistant lifecycle with clipping startup and shutdown.",
@@ -53,12 +53,12 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.ts",
-          "blob": "00056224c4535d87392e69a25ecaf273518a3a7d",
+          "blob": "ca49a1631da13df5ed25a86eafd3d69d4275ff7c",
           "command": "Uses frontend identity for clipping discussion and revalidates target/version binding"
         },
         {
           "path": "src/server/assistant/runtime.ts",
-          "blob": "f70dab132862172d80974c3e799cd3939fe5dc13",
+          "blob": "0b17c4533d081f4f4f931ba3fdf5a76c01fd3f1e",
           "command": "Runs one durable assistant worker with context dispatch, recovery, expiry, and shutdown lifecycle"
         }
       ]
@@ -75,8 +75,8 @@
         },
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "c1a5b3361059dc84d56a9da7639f9a831570aab9",
-          "command": "bun test src/server/clipping/api.test.ts (18 pass, 0 fail, 104 expectations; frontend unified chat, migration gate, and SSE cap covered)"
+          "blob": "6bbbcb15f8c13e3eea88dd37b240a5fbe6c02db8",
+          "command": "bun test src/server/clipping/api.test.ts (18 pass, 0 fail, 107 expectations; frontend unified chat, migration gate, SSE cap, and assistant error mapping covered)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
@@ -85,8 +85,8 @@
         },
         {
           "path": "src/server/assistant/runtime.test.ts",
-          "blob": "f4ee0ea499e477d1591b4ed906d61c3aceefb24d",
-          "command": "bun test src/server/assistant/runtime.test.ts (8 pass, 0 fail)"
+          "blob": "3e0861423aa486f4dc0df92c96a4473c898eb002",
+          "command": "bun test src/server/assistant/runtime.test.ts (9 pass, 0 fail; queued work wakes before the idle expiry sweep)"
         },
         {
           "path": "src/lib/assistant-storage.test.ts",
@@ -95,13 +95,13 @@
         },
         {
           "path": "src/server/assistant/migration-gate.test.ts",
-          "blob": "81dc052303ff84887b770233a90997de267a3738",
+          "blob": "c94e1a1cdc52ea25f153986c2ddf10fe59679a9a",
           "command": "bun test src/server/assistant/migration-gate.test.ts (3 pass, 0 fail)"
         },
         {
           "path": "src/server/public-api/assistant-chat.test.ts",
-          "blob": "f7a42f3385d824b992d4a0a0aa2eff6820be3d2b",
-          "command": "bun test src/server/public-api/assistant-chat.test.ts (3 pass, 0 fail; generic clipping access/create guards covered)"
+          "blob": "8285b0e13d6325c25ab35241768a60281c77c6ba",
+          "command": "bun test src/server/public-api/assistant-chat.test.ts (3 pass, 0 fail; generic clipping access/create and mixed-stop guards covered)"
         },
         {
           "path": "drizzle/meta/_journal.json",
@@ -153,7 +153,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.ts",
-          "blob": "77e80b14117276c2f432695fc07d38816b79bbe4",
+          "blob": "ca49a1631da13df5ed25a86eafd3d69d4275ff7c",
           "command": "Requires a frontend session for clipping discussion and keeps creator/admin authorization on management operations"
         }
       ]
