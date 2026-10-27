@@ -16,7 +16,7 @@
     "src/server/services/admin-ai-usage.test.ts": "184126b343896771d0cba579587b51585f03b5e0",
     "src/server/services/admin-ai-usage.ts": "76e51e57133c5b6ee8c3572782985c6b85873dc5",
     "tests/e2e/web-demo/ai-usage.spec.ts": "9d8aac562f5fdcbbe536ec512af2321bb71448f6",
-    "tests/e2e/web-demo/dashboard.spec.ts": "3995bd1be6e9d13dd36892dec4f1c9fe32d44eac"
+    "tests/e2e/web-demo/dashboard.spec.ts": "c8e2ed98abd7ad7029161832d4f81ce9cdc3797d"
   },
   "change": {
     "description": "Add the administrator AI usage operations surface, per-user quota controls, and a dashboard view covering the latest seven natural days with timezone-aware stacked usage totals and success, failure, cancellation, missing, and estimated usage visibility.",
@@ -27,7 +27,7 @@
     "planned": {
       "impact": "minor",
       "reasoning": "The admin-only operations surface adds compatible read and same-origin policy endpoints plus UI routes. It does not remove existing routes, alter public response shapes, or add durable state schema changes.",
-      "assessed_at": "2026-10-27T23:54:24+08:00",
+      "assessed_at": "2026-10-28T00:09:51+08:00",
       "evidence": [
         {
           "path": "docs/specs/site-knowledge-assistant/SPEC.md",
@@ -44,7 +44,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "The candidate is rebased onto PR base 84eebd33a624d8028a905fe54042334aa4abad90 and adds the admin AI usage page, user quota operations, shared usage client types, and the dashboard seven-day usage panel. The dashboard endpoint reuses the existing service aggregation and returns only timezone, range, metric, and trend data; the dashboard now exposes success, failure, cancelled, missing, and estimated call states without database migration or durable state shape changes. Compatibility evidence remains anchored to the published 3.11.4 baseline e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af as required by the release policy.",
-      "assessed_at": "2026-10-27T23:54:24+08:00",
+      "assessed_at": "2026-10-28T00:09:51+08:00",
       "evidence": [
         {
           "path": "apps/admin/src/pages/dashboard.tsx",
@@ -69,13 +69,13 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "The protected dashboard API contract passes the HTTP compatibility test, the compiled admin build succeeds, and the Web Demo passes desktop and mobile acceptance for the new dashboard surface plus the existing AI usage and user quota flows. The dashboard shows all seven natural-day rows, timezone labeling, additive token dimensions, and success, failure, cancelled, missing, and estimated status without introducing persistent state changes. The rebased head is source-assessed against the published 3.11.4 evidence base with 102 semantic changes, 5 matching records, and minor impact.",
-      "assessed_at": "2026-10-27T23:54:24+08:00",
+      "reasoning": "The protected dashboard API contract passes the HTTP compatibility test, the compiled admin build succeeds, and the Web Demo passes desktop and mobile acceptance for the new dashboard surface plus the existing AI usage and user quota flows. The dashboard shows all seven natural-day rows, timezone labeling, additive token dimensions, and success, failure, cancelled, missing, and estimated status; the Web Demo now compares every rendered result-state cell with the dashboard API response without introducing persistent state changes. The rebased head is source-assessed against the published 3.11.4 evidence base with 102 semantic changes, 5 matching records, and minor impact.",
+      "assessed_at": "2026-10-28T00:09:51+08:00",
       "evidence": [
         {
           "path": "tests/e2e/web-demo/dashboard.spec.ts",
-          "blob": "3995bd1be6e9d13dd36892dec4f1c9fe32d44eac",
-          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:25094 WEB_DEMO_VIEWPORT=desktop|mobile bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/dashboard.spec.ts (2 pass; asserts failure and cancelled columns plus call summary)"
+          "blob": "c8e2ed98abd7ad7029161832d4f81ce9cdc3797d",
+          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:25094 WEB_DEMO_VIEWPORT=desktop|mobile bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/dashboard.spec.ts (2 pass; compares every rendered call, failure, cancelled, missing, and estimated value with the API response)"
         },
         {
           "path": "src/server/http-compat-api.test.ts",
