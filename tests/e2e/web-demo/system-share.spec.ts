@@ -169,6 +169,11 @@ async function synthesizeTouchScroll(
         y: Math.max(2, Math.min(window.innerHeight - 2, box.top + Math.min(24, box.height / 2))),
         before: scroll.scrollTop,
         maxScrollTop,
+        targetTop: box.top,
+        targetBottom: box.bottom,
+        htmlScrollTop: document.documentElement.scrollTop,
+        bodyScrollTop: document.body.scrollTop,
+        rootTag: scroll.tagName,
       };
     },
     { targetSelector: selector, distance }
@@ -196,9 +201,13 @@ async function synthesizeTouchScroll(
   await page.waitForTimeout(100);
   const after = await page.evaluate(() => {
     const scroll = document.scrollingElement ?? document.documentElement;
-    return scroll.scrollTop;
+    return {
+      scrollTop: scroll.scrollTop,
+      htmlScrollTop: document.documentElement.scrollTop,
+      bodyScrollTop: document.body.scrollTop,
+    };
   });
-  return { before, after };
+  return { ...point, before, after };
 }
 
 test.describe("Console system share Web Demo", () => {
@@ -543,8 +552,9 @@ test.describe("Console system share Web Demo", () => {
         await expect(page.getByTestId("system-share-empty-attachments")).toBeVisible();
       }
       const result = await synthesizeTouchScroll(page, selector, 180);
-      expect(result.after).toBeLessThanOrEqual(result.before);
-      gestureDeltas.push(result.before - result.after);
+      console.log("[system-share touch]", selector, JSON.stringify(result));
+      expect(result.after.scrollTop).toBeLessThanOrEqual(result.before);
+      gestureDeltas.push(result.before - result.after.scrollTop);
     }
     expect(Math.max(...gestureDeltas)).toBeGreaterThan(0);
 
