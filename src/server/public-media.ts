@@ -377,7 +377,7 @@ function getPublicMediaRenderId(
   variant: Exclude<PublicMediaVariant, "play">,
   role: PublicMediaRole
 ): PublicMediaRenderId | undefined {
-  return isUnwatermarkedPublicMediaVariant(role, variant)
+  return isUnwatermarkedPublicMediaVariant(role, variant, context.assetScope)
     ? undefined
     : getDefaultPublicMediaRenderId(variant, context.watermarkRenderVersion ?? "v5");
 }
@@ -1147,7 +1147,11 @@ async function buildImagorPath(params: {
       throw new Error(`Unable to determine derived media dimensions: ${params.ref.sourcePath}`);
     }
     if (
-      !isUnwatermarkedPublicMediaVariant(params.ref.role, params.variant) &&
+      !isUnwatermarkedPublicMediaVariant(
+        params.ref.role,
+        params.variant,
+        params.context.assetScope
+      ) &&
       meetsVersionedWatermarkThreshold(dimensions)
     ) {
       filters.push(
@@ -1163,7 +1167,11 @@ async function buildImagorPath(params: {
     }
     filters.push("strip_exif()");
   } else if (
-    !isUnwatermarkedPublicMediaVariant(params.ref.role, params.variant) &&
+    !isUnwatermarkedPublicMediaVariant(
+      params.ref.role,
+      params.variant,
+      params.context.assetScope
+    ) &&
     (await shouldApplyLegacyWatermark(params.ref, params.variant))
   ) {
     filters.push(
@@ -1317,7 +1325,11 @@ async function renderLocalMediaVariant(
 
   if (
     params.renderId &&
-    !isUnwatermarkedPublicMediaVariant(resolved.ref.role, params.variant) &&
+    !isUnwatermarkedPublicMediaVariant(
+      resolved.ref.role,
+      params.variant,
+      resolved.context.assetScope
+    ) &&
     (await shouldApplyVersionedWatermark(resolved.ref, params.variant))
   ) {
     const dimensions = await readDerivedDimensions(resolved.ref, params.variant);

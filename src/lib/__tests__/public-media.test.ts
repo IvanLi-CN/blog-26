@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   buildPublicMediaAssetUrl,
   buildPublicMediaPresentations,
+  getPublicMediaCardFallbackUrl,
   getPublicMediaWatermarkVersion,
   resolveContentMediaPath,
   rewritePublicContentMediaUrls,
@@ -201,6 +202,25 @@ describe("public-media", () => {
       });
       expect(presentations?.a).toContain("/wm-a-v5/cover.webp");
       expect(presentations?.b).toContain("/wm-b-v5/cover.webp");
+
+      const adminCoverContext = { ...coverContext, assetScope: "admin-preview" as const };
+      expect(
+        buildPublicMediaAssetUrl({
+          context: adminCoverContext,
+          mediaPath: "./assets/photo.png",
+          role: "cover",
+          variant: "card",
+        })
+      ).toContain("/wm-a-v5/card.webp");
+      expect(
+        buildPublicMediaPresentations({
+          context: adminCoverContext,
+          mediaPath: "blog/assets/photo.png",
+          sourcePath: "blog/assets/photo.png",
+          role: "cover",
+          variant: "card",
+        })?.a
+      ).toContain("/wm-a-v5/card.webp");
     });
 
     it("does not rewrite external media URLs while stripping facade render IDs", () => {
@@ -208,9 +228,22 @@ describe("public-media", () => {
         "https://cdn.example.test/api/public/assets/post/demo/abc123/wm-a-v5/card.webp";
 
       expect(stripPublicMediaRenderId(external)).toBe(external);
+      for (const uri of [
+        "ftp://cdn.example.test/api/public/assets/post/demo/abc123/wm-a-v5/card.webp",
+        "blob:https://cdn.example.test/api/public/assets/post/demo/abc123/wm-a-v5/card.webp",
+        "DATA:image/png;base64,abc",
+      ]) {
+        expect(stripPublicMediaRenderId(uri)).toBe(uri);
+      }
       expect(
         stripPublicMediaRenderId("/api/public/assets/post/demo/abc123/wm-a-v5/card.webp")
       ).toBe("/api/public/assets/post/demo/abc123/card.webp");
+      expect(
+        getPublicMediaCardFallbackUrl(
+          "/_content/assets/post/demo/abc123/wm-b-v4/cover.webp?version=1"
+        )
+      ).toBe("/_content/assets/post/demo/abc123/card.webp?version=1");
+      expect(getPublicMediaCardFallbackUrl("/legacy/cover.webp")).toBe("/legacy/cover.webp");
     });
 
     it("uses v5 A for cards and v5 B for larger usage defaults", () => {

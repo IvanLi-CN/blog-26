@@ -1,5 +1,5 @@
 import Icon from "@/components/ui/Icon";
-import { stripPublicMediaRenderId } from "@/lib/public-media";
+import { getPublicMediaCardFallbackUrl } from "@/lib/public-media";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import type { PublicPostRecord } from "@/public-site/snapshot";
 import { formatAbsoluteDate } from "../lib/format";
@@ -21,7 +21,7 @@ export default function PostCard(props: Props) {
   const imageSrc = appendPublicAssetVersion(
     post.media.cover?.variants.card ??
       post.media.primary?.variants.card ??
-      (post.image ? stripPublicMediaRenderId(post.image) : post.image),
+      (post.image ? getPublicMediaCardFallbackUrl(post.image) : post.image),
     assetVersion
   );
   return (

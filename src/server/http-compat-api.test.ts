@@ -1355,9 +1355,9 @@ image: ./assets/cover.png
     );
     expect(payload.media?.cover?.sourcePath).toBe("blog/assets/cover.png");
     expect(String(payload.media?.cover?.variants?.card)).toContain(
-      `/api/admin/preview/assets/post/preview-contaminated-assets/${coverHash}/card`
+      `/api/admin/preview/assets/post/preview-contaminated-assets/${coverHash}/wm-a-v5/card`
     );
-    expect(String(payload.media?.cover?.variants?.card)).not.toContain("/wm-");
+    expect(String(payload.media?.cover?.variants?.card)).toContain("/wm-a-v5/card");
     expect(String(payload.media?.cover?.variants?.cover)).toContain(coverHash);
     expect(String(payload.media?.cover?.variants?.cover)).toContain("/wm-b-v5/cover");
     expect(String(payload.media?.primary?.variants?.cover)).toContain(coverHash);

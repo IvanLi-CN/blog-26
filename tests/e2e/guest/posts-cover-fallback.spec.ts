@@ -14,6 +14,34 @@ async function readNormalizedPixels(
     .toBuffer({ resolveWithObject: true });
 }
 
+async function assertImageDimensions(
+  response: Awaited<ReturnType<Page["request"]["get"]>>,
+  width: number,
+  height: number
+) {
+  expect(response.ok()).toBeTruthy();
+  const metadata = await sharp(await response.body()).metadata();
+  expect(metadata.width).toBe(width);
+  expect(metadata.height).toBe(height);
+}
+
+async function assertOpaqueCorners(response: Awaited<ReturnType<Page["request"]["get"]>>) {
+  expect(response.ok()).toBeTruthy();
+  const { data, info } = await sharp(await response.body())
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const corners = [
+    [0, 0],
+    [info.width - 1, 0],
+    [0, info.height - 1],
+    [info.width - 1, info.height - 1],
+  ];
+  for (const [x, y] of corners) {
+    expect(data[(y * info.width + x) * info.channels + 3]).toBe(255);
+  }
+}
+
 function assertVisibleWatermark(
   clean: { data: Buffer; info: { width: number; height: number } },
   rendered: { data: Buffer; info: { width: number; height: number } }
@@ -85,6 +113,26 @@ test.describe("posts cover fallback", () => {
     const imageResponse = await page.request.get(imageSrc);
     expect(imageResponse.ok()).toBeTruthy();
     expect((await imageResponse.body()).byteLength).toBeGreaterThan(0);
+    await assertImageDimensions(imageResponse, 580, 328);
+    await assertOpaqueCorners(imageResponse);
+  });
+
+  test("homepage timeline cards use the clean cover card variant", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("theme", "light"));
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+
+    const timelineImage = page.getByTestId("home-timeline").locator("img").first();
+    await expect(timelineImage).toBeVisible();
+    const imageSrc = await timelineImage.getAttribute("src");
+    expect(imageSrc).toBeTruthy();
+    if (!imageSrc) throw new Error("expected timeline cover src");
+
+    const parsedImageUrl = new URL(imageSrc, page.url());
+    expect(parsedImageUrl.pathname).toMatch(
+      /\/api\/public\/assets\/(post|memo)\/[^/]+\/[0-9a-f]+\/card\.webp$/
+    );
+    expect(parsedImageUrl.pathname).not.toContain("/wm-");
+    expect(await timelineImage.getAttribute("class")).toContain("object-cover");
   });
 
   test("keeps detail cover and body media watermarked", async ({ page }) => {

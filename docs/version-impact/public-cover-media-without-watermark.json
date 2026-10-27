@@ -6,16 +6,17 @@
     "docs/adr/0031-public-cover-media-without-watermark.md": "0cc1ee7f78e88130e09d3d7ba84ef43cdf0e1067",
     "docs/specs/public-media-assets-facade/SPEC.md": "0be545a65011a4bc61d5a844b9cd616c355ca420",
     "scripts/generate-test-data.ts": "e6a1f8f1893ea1ef0d2cebb0547bca935ab33899",
-    "site/components/PostCard.tsx": "8d6d3992f9e15f4784b45a2245ea4921789b5d15",
+    "scripts/package-public-media.test.ts": "f8dc6afd81e40a0fd99f5184e29d58b1138ec8b9",
+    "site/components/PostCard.tsx": "b2468d983e73012a37835e078ad2c289dea59ed6",
     "site/components/RelatedPostCard.tsx": "b0f3a5d267e1eddc032d409929e9d3c00ea6d1a8",
-    "site/components/TimelineCard.tsx": "877a17c589b2c57f1d28687ad5c144b9a1a2ab9f",
+    "site/components/TimelineCard.tsx": "672e8151f86a94db1428604428033d246fca4c0d",
     "site/lib/public-site.ts": "c94f18c68a9f974074fe88bd214cc379987afdd0",
-    "src/lib/__tests__/public-media.test.ts": "ea334b7f8e1f33d55d85c13724c1c6d428e96afa",
+    "src/lib/__tests__/public-media.test.ts": "645d5e0de10ecffceadf7a4b534fe16fb84842ec",
     "src/lib/__tests__/public-site-snapshot-compat.test.ts": "130a2f08312a2940b13d904db2e8a9cd22a8588c",
-    "src/lib/public-media.ts": "491c107a832f0d39f9b4934e8ae8a828afef48e8",
-    "src/server/http-compat-api.test.ts": "3efa3220a98f75d83adb59eb10c5fbe0a7e445ea",
-    "src/server/public-media.ts": "832ba4d4ecd99e0b3b54c1f3ba1c623844e6eeba",
-    "tests/e2e/guest/posts-cover-fallback.spec.ts": "94976d8f05ce4dff1dfb1bf0499fa0941723ec7e"
+    "src/lib/public-media.ts": "fa9b780b3d792db4f94ffa9061fea460da8791a1",
+    "src/server/http-compat-api.test.ts": "5f471ee0751871c26ac1b9e952184476d73adae4",
+    "src/server/public-media.ts": "0fa636fbb98eb81cfc3548ac06b3907417e5ee98",
+    "tests/e2e/guest/posts-cover-fallback.spec.ts": "7e3452c89cedc61e2bc3a93beacf2c7b20aa2b75"
   },
   "change": {
     "description": "Restore historical list-cover rendering while limiting the unwatermarked public media contract to cover/card; detail covers and non-list media retain their watermark paths and candidates.",
@@ -26,11 +27,11 @@
     "planned": {
       "impact": "patch",
       "reasoning": "This is a backward-compatible public media compatibility fix. It changes list cover presentation and role-specific asset selection without changing routes, persistent state, or non-list watermark behavior.",
-      "assessed_at": "2026-10-27T11:47:14+08:00",
+      "assessed_at": "2026-10-27T12:04:19+08:00",
       "evidence": [
         {
           "path": "src/lib/__tests__/public-media.test.ts",
-          "blob": "ea334b7f8e1f33d55d85c13724c1c6d428e96afa",
+          "blob": "645d5e0de10ecffceadf7a4b534fe16fb84842ec",
           "command": "bun test src/lib/__tests__/public-media.test.ts"
         }
       ]
@@ -38,16 +39,21 @@
     "current": {
       "impact": "patch",
       "reasoning": "The candidate restores object-cover list cards, keeps detail/body/attachment watermark candidates, migrates legacy cover/card paths only, and hardens the fallback fixture and external URL boundary.",
-      "assessed_at": "2026-10-27T11:47:14+08:00",
+      "assessed_at": "2026-10-27T12:04:19+08:00",
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "3efa3220a98f75d83adb59eb10c5fbe0a7e445ea",
+          "blob": "5f471ee0751871c26ac1b9e952184476d73adae4",
           "command": "bun test src/server/http-compat-api.test.ts"
         },
         {
+          "path": "scripts/package-public-media.test.ts",
+          "blob": "f8dc6afd81e40a0fd99f5184e29d58b1138ec8b9",
+          "command": "bun test scripts/package-public-media.test.ts"
+        },
+        {
           "path": "tests/e2e/guest/posts-cover-fallback.spec.ts",
-          "blob": "94976d8f05ce4dff1dfb1bf0499fa0941723ec7e",
+          "blob": "7e3452c89cedc61e2bc3a93beacf2c7b20aa2b75",
           "command": "bun run test:e2e -- tests/e2e/guest/posts-cover-fallback.spec.ts"
         }
       ],
@@ -58,23 +64,28 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Focused contract, compatibility, E2E, and static public UI validation verify a reversible role-scoped media fix with no persistent-state migration.",
-      "assessed_at": "2026-10-27T11:47:14+08:00",
+      "reasoning": "Focused contract, compatibility, package logic, static build, and public UI validation verify a reversible role-scoped media fix with no persistent-state migration. The local E2E command reaches the build but cannot start the Linux/amd64 embedded search module on this macOS host; CI remains the authoritative E2E gate.",
+      "assessed_at": "2026-10-27T12:04:19+08:00",
       "evidence": [
         {
           "path": "src/lib/__tests__/public-media.test.ts",
-          "blob": "ea334b7f8e1f33d55d85c13724c1c6d428e96afa",
+          "blob": "645d5e0de10ecffceadf7a4b534fe16fb84842ec",
           "command": "bun test src/lib/__tests__/public-media.test.ts src/lib/__tests__/public-site-snapshot-compat.test.ts"
         },
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "3efa3220a98f75d83adb59eb10c5fbe0a7e445ea",
+          "blob": "5f471ee0751871c26ac1b9e952184476d73adae4",
           "command": "bun test src/server/http-compat-api.test.ts"
         },
         {
+          "path": "scripts/package-public-media.test.ts",
+          "blob": "f8dc6afd81e40a0fd99f5184e29d58b1138ec8b9",
+          "command": "bun test scripts/package-public-media.test.ts"
+        },
+        {
           "path": "tests/e2e/guest/posts-cover-fallback.spec.ts",
-          "blob": "94976d8f05ce4dff1dfb1bf0499fa0941723ec7e",
-          "command": "bun run test:e2e -- tests/e2e/guest/posts-cover-fallback.spec.ts"
+          "blob": "7e3452c89cedc61e2bc3a93beacf2c7b20aa2b75",
+          "command": "DB_PATH=./test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./test-data/local CONTENT_SOURCES=local bun run frontend:build"
         }
       ]
     }
@@ -114,7 +125,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "3efa3220a98f75d83adb59eb10c5fbe0a7e445ea",
+          "blob": "5f471ee0751871c26ac1b9e952184476d73adae4",
           "command": "bun test src/server/http-compat-api.test.ts"
         }
       ]

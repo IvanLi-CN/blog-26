@@ -176,6 +176,10 @@ export function isDataMediaUrl(value: string) {
   return value.trim().startsWith("data:");
 }
 
+function hasMediaUrlScheme(value: string) {
+  return /^[a-z][a-z\d+.-]*:/iu.test(value.trim());
+}
+
 export function isPublicAssetFacadeUrl(value: string) {
   const normalized = value.trim();
   return (
@@ -194,8 +198,14 @@ export function migratePublicMediaV4ToV5(value: string) {
 }
 
 export function stripPublicMediaRenderId(value: string) {
-  if (isExternalMediaUrl(value) || isDataMediaUrl(value)) return value;
+  if (isExternalMediaUrl(value) || isDataMediaUrl(value) || hasMediaUrlScheme(value)) return value;
   return value.replace(PUBLIC_MEDIA_RENDER_PATH_RE, "$1");
+}
+
+export function getPublicMediaCardFallbackUrl(value: string) {
+  const stripped = stripPublicMediaRenderId(value);
+  if (!isPublishedPublicAssetUrl(stripped)) return stripped;
+  return stripped.replace(/\/cover(?=\.[^/?#]+(?:[?#]|$))/u, "/card");
 }
 
 export function isPublishedPublicAssetUrl(value: string) {
@@ -216,9 +226,10 @@ export function isPublicMediaRenderId(value: string): value is PublicMediaRender
 
 export function isUnwatermarkedPublicMediaVariant(
   role: PublicMediaRole,
-  variant: PublicMediaVariant
+  variant: PublicMediaVariant,
+  assetScope: PublicMediaAssetScope = "public"
 ) {
-  return role === "cover" && variant === "card";
+  return assetScope !== "admin-preview" && role === "cover" && variant === "card";
 }
 
 export function getDefaultPublicMediaRenderId(
@@ -395,7 +406,11 @@ export function buildPublicMediaAssetUrl(params: {
 
   const mediaHash = buildPublicMediaHash(sourcePath, params.role);
   const ext = pickPublicMediaExt(mediaKind, sourcePath, params.variant);
-  const renderId = isUnwatermarkedPublicMediaVariant(params.role, params.variant)
+  const renderId = isUnwatermarkedPublicMediaVariant(
+    params.role,
+    params.variant,
+    params.context.assetScope
+  )
     ? undefined
     : params.renderId === null
       ? undefined
@@ -467,7 +482,8 @@ export function buildPublicMediaPresentations(params: {
   role: PublicMediaRole;
   variant: Exclude<PublicMediaVariant, "play">;
 }) {
-  if (isUnwatermarkedPublicMediaVariant(params.role, params.variant)) return undefined;
+  if (isUnwatermarkedPublicMediaVariant(params.role, params.variant, params.context.assetScope))
+    return undefined;
 
   const buildCandidate = (renderId: PublicMediaRenderId) => {
     if (params.sourcePath) {

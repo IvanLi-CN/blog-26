@@ -1,7 +1,7 @@
 import Icon from "@/components/ui/Icon";
 import { extractTextSummary } from "@/lib/markdown-utils";
 import { getMemoPresentation } from "@/lib/memo-presentation";
-import { type PublicMediaCollection, stripPublicMediaRenderId } from "@/lib/public-media";
+import { getPublicMediaCardFallbackUrl, type PublicMediaCollection } from "@/lib/public-media";
 import { formatAbsoluteDate } from "../lib/format";
 import { appendPublicAssetVersion } from "../lib/public-site-client";
 import { toPublicSitePath } from "../lib/runtime-urls";
@@ -37,9 +37,9 @@ export default function TimelineCard(props: Props) {
   );
   const preview = item.excerpt || extractTextSummary(item.content || "", 180);
   const imageSrc = appendPublicAssetVersion(
-    item.media?.primary?.variants.card ??
-      item.media?.cover?.variants.card ??
-      (item.image ? stripPublicMediaRenderId(item.image) : item.image),
+    item.media?.cover?.variants.card ??
+      item.media?.primary?.variants.card ??
+      (item.image ? getPublicMediaCardFallbackUrl(item.image) : item.image),
     assetVersion
   );
   return (
