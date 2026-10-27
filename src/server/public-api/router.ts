@@ -60,6 +60,7 @@ import {
   validateSystemShareFiles,
 } from "@/lib/system-share";
 import { buildPublicSnapshot, resolvePublicMemoTitle } from "@/public-site/snapshot";
+import { handleAssistantRequest } from "@/server/assistant/api";
 import { handleClippingRequest, handleClippingResourceRequest } from "@/server/clipping/api";
 import { isClippingRowPublic, withClippingVisibilityLock } from "@/server/clipping/projection";
 import { readAuthoredMemo } from "@/server/clipping/store";
@@ -1544,6 +1545,10 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
       );
       appendPublicCorsHeaders(response.headers, request, PUBLIC_API_ALLOWED_METHODS);
       return response;
+    }
+
+    if (pathname === "/chat" || pathname.startsWith("/chat/")) {
+      return handleAssistantRequest(request, pathname);
     }
 
     const { caller, resHeaders, ctx } = await createCallerForRequest(request);

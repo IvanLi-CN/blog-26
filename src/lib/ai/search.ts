@@ -1,4 +1,5 @@
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import type { AiUsageContext } from "@/lib/ai-usage";
 import { uniqueRankedContent } from "@/lib/search/content-identity";
 import { isClippingRowPublic } from "@/server/clipping/projection";
 import { executeContentModes } from "@/server/services/content-search";
@@ -18,6 +19,7 @@ export type SemanticSearchInput = {
   type?: "all" | "post" | "memo";
   publishedOnly?: boolean;
   model?: string;
+  metering?: AiUsageContext;
 };
 
 export type SearchResult = {
@@ -267,7 +269,7 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
   let qv: number[];
   try {
     const { vector } = await createEmbedding(input.q, model, {
-      metering: { feature: "search-embedding" },
+      metering: { ...input.metering, feature: input.metering?.feature ?? "search-embedding" },
     });
     qv = vector;
   } catch {
@@ -355,7 +357,7 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
     .map(({ id, publishDate: _publishDate, ...result }) => {
       Object.defineProperty(result, "id", { value: id });
       return result;
-    });
+    }) as SearchResult[];
   return { results, source: "semantic" };
 }
 
@@ -435,9 +437,10 @@ export async function enhanced(
         publishedOnly: input.publishedOnly,
         embeddingModel: input.model,
         candidateLimit: input.rerankTopK,
+        metering: input.metering,
       }
     )
-  ).results;
+  ).results as SearchResult[];
 }
 
 async function legacyEnhancedWithReranker(
@@ -452,6 +455,7 @@ async function legacyEnhancedWithReranker(
     const items = await rerankApi(input.q, docs, {
       model: input.rerankerModel,
       topN: docs.length,
+      metering: input.metering,
     });
     const max = Math.max(...items.map((item) => item.score));
     const min = Math.min(...items.map((item) => item.score));

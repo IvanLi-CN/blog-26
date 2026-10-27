@@ -1,20 +1,44 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import type {
   AppendAssistantMessageInput,
+  AssistantCitation,
   AssistantConversation,
   AssistantGenerationJob,
+  AssistantJobExecution,
   AssistantMessage,
   AssistantMessageStorage,
+  AssistantTurnSubmission,
   CreateAssistantConversationInput,
   CreateAssistantGenerationJobInput,
+  SubmitAssistantTurnInput,
   UpdateAssistantGenerationJobInput,
 } from "@/lib/assistant-contracts";
 import { DEFAULT_ASSISTANT_QUOTA_POLICY } from "@/lib/assistant-contracts";
 import { db, initializeDB } from "@/lib/db";
-import { assistantConversations, assistantGenerationJobs, assistantMessages } from "@/lib/schema";
+import {
+  assistantConversations,
+  assistantGenerationJobs,
+  assistantMessageCitations,
+  assistantMessages,
+  assistantQuotaPolicies,
+  frontendUsers,
+} from "@/lib/schema";
 
-type AssistantDatabase = NonNullable<typeof db>;
+export type AssistantStorageErrorCode = "not-found" | "gone" | "conflict" | "quota";
+
+export class AssistantStorageError extends Error {
+  constructor(
+    readonly code: AssistantStorageErrorCode,
+    message = `Assistant storage error: ${code}`
+  ) {
+    super(message);
+    this.name = "AssistantStorageError";
+  }
+}
+
+export type AssistantDatabase = NonNullable<typeof db>;
+type AssistantQueryDatabase = Pick<AssistantDatabase, "select" | "update" | "delete">;
 
 async function database(): Promise<AssistantDatabase> {
   if (!db) await initializeDB();
@@ -38,7 +62,26 @@ function mapConversation(row: typeof assistantConversations.$inferSelect): Assis
   };
 }
 
-function mapMessage(row: typeof assistantMessages.$inferSelect): AssistantMessage {
+function mapCitation(row: typeof assistantMessageCitations.$inferSelect): AssistantCitation {
+  return {
+    id: row.id,
+    messageId: row.messageId,
+    source: row.source,
+    sourceId: row.sourceId,
+    sourceType: row.sourceType,
+    slug: row.slug,
+    title: row.title,
+    href: row.href,
+    location: row.location,
+    snippet: row.snippet,
+    createdAt: row.createdAt,
+  };
+}
+
+function mapMessage(
+  row: typeof assistantMessages.$inferSelect,
+  citations: AssistantCitation[] = []
+): AssistantMessage {
   return {
     id: row.id,
     conversationId: row.conversationId,
@@ -50,6 +93,7 @@ function mapMessage(row: typeof assistantMessages.$inferSelect): AssistantMessag
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     completedAt: row.completedAt,
+    citations,
   };
 }
 
@@ -72,6 +116,140 @@ function mapGenerationJob(
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+function assistantPolicy(database: Pick<AssistantDatabase, "select">, now: number) {
+  const row = database
+    .select()
+    .from(assistantQuotaPolicies)
+    .where(eq(assistantQuotaPolicies.scope, "global"))
+    .get();
+  return (
+    row ?? {
+      id: "default",
+      scope: "global" as const,
+      ...DEFAULT_ASSISTANT_QUOTA_POLICY,
+      createdAt: now,
+      updatedAt: now,
+    }
+  );
+}
+
+function citationMap(
+  rows: Array<typeof assistantMessageCitations.$inferSelect>
+): Map<string, AssistantCitation[]> {
+  const result = new Map<string, AssistantCitation[]>();
+  for (const row of rows) {
+    const values = result.get(row.messageId) ?? [];
+    values.push(mapCitation(row));
+    result.set(row.messageId, values);
+  }
+  return result;
+}
+
+function mapMessages(
+  rows: Array<typeof assistantMessages.$inferSelect>,
+  citations: Array<typeof assistantMessageCitations.$inferSelect> = []
+) {
+  const byMessage = citationMap(citations);
+  return rows.map((row) => mapMessage(row, byMessage.get(row.id) ?? []));
+}
+
+function setConversationTerminal(
+  tx: AssistantQueryDatabase,
+  conversationId: string,
+  status: "expired" | "deleted",
+  now: number
+) {
+  tx.update(assistantGenerationJobs)
+    .set({
+      status: "cancelled",
+      cancelRequested: true,
+      leaseUntil: null,
+      finishedAt: now,
+      updatedAt: now,
+      errorCode: status === "expired" ? "conversation-expired" : "conversation-deleted",
+    })
+    .where(
+      and(
+        eq(assistantGenerationJobs.conversationId, conversationId),
+        inArray(assistantGenerationJobs.status, ["queued", "running"])
+      )
+    )
+    .run();
+  tx.delete(assistantMessages).where(eq(assistantMessages.conversationId, conversationId)).run();
+  tx.update(assistantConversations)
+    .set({ status, deletedAt: status === "deleted" ? now : null })
+    .where(eq(assistantConversations.id, conversationId))
+    .run();
+}
+
+function selectConversation(
+  tx: AssistantQueryDatabase,
+  conversationId: string,
+  frontendUserId: string
+) {
+  return tx
+    .select()
+    .from(assistantConversations)
+    .where(
+      and(
+        eq(assistantConversations.id, conversationId),
+        eq(assistantConversations.frontendUserId, frontendUserId)
+      )
+    )
+    .get();
+}
+
+function selectExecutionRows(database: AssistantQueryDatabase, jobId: string) {
+  const current = database
+    .select({ job: assistantGenerationJobs, conversation: assistantConversations })
+    .from(assistantGenerationJobs)
+    .innerJoin(
+      assistantConversations,
+      eq(assistantGenerationJobs.conversationId, assistantConversations.id)
+    )
+    .where(eq(assistantGenerationJobs.id, jobId))
+    .get();
+  if (!current?.job.userMessageId || !current.job.assistantMessageId) return null;
+  const user = database
+    .select()
+    .from(assistantMessages)
+    .where(eq(assistantMessages.id, current.job.userMessageId))
+    .get();
+  const assistant = database
+    .select()
+    .from(assistantMessages)
+    .where(eq(assistantMessages.id, current.job.assistantMessageId))
+    .get();
+  if (!user || !assistant) return null;
+  const messages = database
+    .select()
+    .from(assistantMessages)
+    .where(eq(assistantMessages.conversationId, current.conversation.id))
+    .orderBy(asc(assistantMessages.sequence))
+    .all();
+  const citations = messages.length
+    ? database
+        .select()
+        .from(assistantMessageCitations)
+        .where(
+          inArray(
+            assistantMessageCitations.messageId,
+            messages.map((message) => message.id)
+          )
+        )
+        .orderBy(asc(assistantMessageCitations.createdAt))
+        .all()
+    : [];
+  const byMessage = citationMap(citations);
+  return {
+    conversation: mapConversation(current.conversation),
+    job: mapGenerationJob(current.job),
+    userMessage: mapMessage(user, byMessage.get(user.id) ?? []),
+    assistantMessage: mapMessage(assistant, byMessage.get(assistant.id) ?? []),
+    messages: messages.map((message) => mapMessage(message, byMessage.get(message.id) ?? [])),
+  } satisfies AssistantJobExecution;
 }
 
 export function createAssistantStorage(
@@ -110,15 +288,40 @@ export function createAssistantStorage(
       return row && row.frontendUserId === frontendUserId ? mapConversation(row) : null;
     },
 
-    async listConversations(frontendUserId: string) {
+    async getConversationState(conversationId: string, frontendUserId: string) {
       const database = await getDatabase();
-      const rows = await database
+      const row = await database
         .select()
         .from(assistantConversations)
-        .where(eq(assistantConversations.frontendUserId, frontendUserId))
-        .orderBy(desc(assistantConversations.createdAt))
-        .all();
-      return rows.filter((row) => row.deletedAt === null).map(mapConversation);
+        .where(eq(assistantConversations.id, conversationId))
+        .get();
+      return row && row.frontendUserId === frontendUserId ? mapConversation(row) : null;
+    },
+
+    async listConversations(frontendUserId: string) {
+      const database = await getDatabase();
+      const now = Date.now();
+      return database.transaction(
+        (tx) => {
+          const rows = tx
+            .select()
+            .from(assistantConversations)
+            .where(eq(assistantConversations.frontendUserId, frontendUserId))
+            .orderBy(desc(assistantConversations.createdAt))
+            .all();
+          for (const row of rows) {
+            if (row.status === "active" && row.expiresAt !== null && row.expiresAt <= now) {
+              setConversationTerminal(tx, row.id, "expired", now);
+            }
+          }
+          return rows
+            .filter(
+              (row) => row.status === "active" && (row.expiresAt === null || row.expiresAt > now)
+            )
+            .map(mapConversation);
+        },
+        { behavior: "immediate" }
+      );
     },
 
     async appendMessage(input: AppendAssistantMessageInput) {
@@ -126,16 +329,7 @@ export function createAssistantStorage(
       const now = input.now ?? Date.now();
       return database.transaction(
         (tx) => {
-          const conversation = tx
-            .select({ id: assistantConversations.id })
-            .from(assistantConversations)
-            .where(
-              and(
-                eq(assistantConversations.id, input.conversationId),
-                eq(assistantConversations.frontendUserId, input.frontendUserId)
-              )
-            )
-            .get();
+          const conversation = selectConversation(tx, input.conversationId, input.frontendUserId);
           if (!conversation)
             throw new Error("Assistant conversation is not owned by frontend user");
           if (input.clientRequestId) {
@@ -172,11 +366,9 @@ export function createAssistantStorage(
           } satisfies typeof assistantMessages.$inferInsert;
           tx.insert(assistantMessages).values(row).run();
           if (input.role === "user") {
+            const policy = assistantPolicy(tx, now);
             tx.update(assistantConversations)
-              .set({
-                lastUserMessageAt: now,
-                expiresAt: now + DEFAULT_ASSISTANT_QUOTA_POLICY.retentionMs,
-              })
+              .set({ lastUserMessageAt: now, expiresAt: now + policy.retentionMs })
               .where(eq(assistantConversations.id, input.conversationId))
               .run();
           }
@@ -187,6 +379,10 @@ export function createAssistantStorage(
     },
 
     async listMessages(conversationId: string, frontendUserId: string) {
+      return (await this.getConversationMessages(conversationId, frontendUserId)) ?? [];
+    },
+
+    async getConversationMessages(conversationId: string, frontendUserId: string) {
       const database = await getDatabase();
       const conversation = await database
         .select({ id: assistantConversations.id })
@@ -198,14 +394,49 @@ export function createAssistantStorage(
           )
         )
         .get();
-      if (!conversation) return [];
+      if (!conversation) return null;
       const rows = await database
         .select()
         .from(assistantMessages)
         .where(eq(assistantMessages.conversationId, conversationId))
         .orderBy(asc(assistantMessages.sequence))
         .all();
-      return rows.map(mapMessage);
+      const citations = rows.length
+        ? await database
+            .select()
+            .from(assistantMessageCitations)
+            .where(
+              inArray(
+                assistantMessageCitations.messageId,
+                rows.map((row) => row.id)
+              )
+            )
+            .orderBy(asc(assistantMessageCitations.createdAt))
+            .all()
+        : [];
+      return mapMessages(rows, citations);
+    },
+
+    async listGenerationJobs(conversationId: string, frontendUserId: string) {
+      const database = await getDatabase();
+      const owner = await database
+        .select({ id: assistantConversations.id })
+        .from(assistantConversations)
+        .where(
+          and(
+            eq(assistantConversations.id, conversationId),
+            eq(assistantConversations.frontendUserId, frontendUserId)
+          )
+        )
+        .get();
+      if (!owner) return null;
+      const rows = await database
+        .select()
+        .from(assistantGenerationJobs)
+        .where(eq(assistantGenerationJobs.conversationId, conversationId))
+        .orderBy(asc(assistantGenerationJobs.createdAt))
+        .all();
+      return rows.map(mapGenerationJob);
     },
 
     async createGenerationJob(input: CreateAssistantGenerationJobInput) {
@@ -213,16 +444,7 @@ export function createAssistantStorage(
       const now = input.now ?? Date.now();
       return database.transaction(
         (tx) => {
-          const conversation = tx
-            .select({ id: assistantConversations.id })
-            .from(assistantConversations)
-            .where(
-              and(
-                eq(assistantConversations.id, input.conversationId),
-                eq(assistantConversations.frontendUserId, input.frontendUserId)
-              )
-            )
-            .get();
+          const conversation = selectConversation(tx, input.conversationId, input.frontendUserId);
           if (!conversation)
             throw new Error("Assistant conversation is not owned by frontend user");
 
@@ -289,6 +511,230 @@ export function createAssistantStorage(
       );
     },
 
+    async submitTurn(input: SubmitAssistantTurnInput): Promise<AssistantTurnSubmission> {
+      const database = await getDatabase();
+      const now = input.now ?? Date.now();
+      return database.transaction(
+        (tx) => {
+          const owner = tx
+            .select({ isAdmin: frontendUsers.isAdmin })
+            .from(frontendUsers)
+            .where(eq(frontendUsers.id, input.frontendUserId))
+            .get();
+          const isAdmin = Boolean(input.isAdmin || owner?.isAdmin);
+          const existingRequest = tx
+            .select({ job: assistantGenerationJobs, conversation: assistantConversations })
+            .from(assistantGenerationJobs)
+            .innerJoin(
+              assistantConversations,
+              eq(assistantGenerationJobs.conversationId, assistantConversations.id)
+            )
+            .where(eq(assistantGenerationJobs.requestId, input.requestId))
+            .get();
+          if (existingRequest) {
+            if (existingRequest.conversation.frontendUserId !== input.frontendUserId)
+              throw new AssistantStorageError("not-found", "Assistant turn is not available");
+            const execution = selectExecutionRows(tx, existingRequest.job.id);
+            if (!execution)
+              throw new AssistantStorageError("gone", "Assistant turn is no longer available");
+            return {
+              createdConversation: false,
+              conversation: execution.conversation,
+              userMessage: execution.userMessage,
+              assistantMessage: execution.assistantMessage,
+              generationJob: execution.job,
+            };
+          }
+
+          if (input.clientRequestId) {
+            const existingMessage = tx
+              .select({
+                message: assistantMessages,
+                job: assistantGenerationJobs,
+                conversation: assistantConversations,
+              })
+              .from(assistantMessages)
+              .innerJoin(
+                assistantConversations,
+                eq(assistantMessages.conversationId, assistantConversations.id)
+              )
+              .innerJoin(
+                assistantGenerationJobs,
+                eq(assistantGenerationJobs.userMessageId, assistantMessages.id)
+              )
+              .where(eq(assistantMessages.clientRequestId, input.clientRequestId))
+              .get();
+            if (existingMessage) {
+              if (existingMessage.conversation.frontendUserId !== input.frontendUserId)
+                throw new AssistantStorageError("not-found", "Assistant turn is not available");
+              const execution = selectExecutionRows(tx, existingMessage.job.id);
+              if (!execution)
+                throw new AssistantStorageError("gone", "Assistant turn is no longer available");
+              return {
+                createdConversation: false,
+                conversation: execution.conversation,
+                userMessage: execution.userMessage,
+                assistantMessage: execution.assistantMessage,
+                generationJob: execution.job,
+              };
+            }
+          }
+
+          let conversation = input.conversationId
+            ? selectConversation(tx, input.conversationId, input.frontendUserId)
+            : undefined;
+          if (input.conversationId && !conversation)
+            throw new AssistantStorageError("not-found", "Assistant conversation is not available");
+
+          let createdConversation = false;
+          if (conversation) {
+            if (conversation.status !== "active")
+              throw new AssistantStorageError(
+                "gone",
+                "Assistant conversation is expired or deleted"
+              );
+            if (conversation.expiresAt !== null && conversation.expiresAt <= now) {
+              setConversationTerminal(tx, conversation.id, "expired", now);
+              throw new AssistantStorageError("gone", "Assistant conversation has expired");
+            }
+          } else {
+            const policy = assistantPolicy(tx, now);
+            const stale = tx
+              .select()
+              .from(assistantConversations)
+              .where(
+                and(
+                  eq(assistantConversations.frontendUserId, input.frontendUserId),
+                  eq(assistantConversations.status, "active")
+                )
+              )
+              .all();
+            for (const row of stale) {
+              if (row.expiresAt !== null && row.expiresAt <= now)
+                setConversationTerminal(tx, row.id, "expired", now);
+            }
+            const activeCount = tx
+              .select({ count: sql<number>`count(*)` })
+              .from(assistantConversations)
+              .where(
+                and(
+                  eq(assistantConversations.frontendUserId, input.frontendUserId),
+                  eq(assistantConversations.status, "active"),
+                  or(
+                    isNull(assistantConversations.expiresAt),
+                    gt(assistantConversations.expiresAt, now)
+                  )
+                )
+              )
+              .get();
+            if (!isAdmin && Number(activeCount?.count ?? 0) >= policy.maxConversations)
+              throw new AssistantStorageError("quota", "Assistant conversation limit reached");
+            const row = {
+              id: uuidv4(),
+              frontendUserId: input.frontendUserId,
+              kind: input.kind ?? "general",
+              title: input.title ?? null,
+              clippingMemoId: input.clippingMemoId ?? null,
+              clippingVersionId: input.clippingVersionId ?? null,
+              status: "active" as const,
+              createdAt: now,
+              lastUserMessageAt: now,
+              expiresAt: isAdmin ? null : now + policy.retentionMs,
+              deletedAt: null,
+            } satisfies typeof assistantConversations.$inferInsert;
+            tx.insert(assistantConversations).values(row).run();
+            conversation = row as typeof assistantConversations.$inferSelect;
+            createdConversation = true;
+          }
+
+          const activeJob = tx
+            .select()
+            .from(assistantGenerationJobs)
+            .where(
+              and(
+                eq(assistantGenerationJobs.conversationId, conversation.id),
+                inArray(assistantGenerationJobs.status, ["queued", "running"])
+              )
+            )
+            .get();
+          if (activeJob)
+            throw new AssistantStorageError(
+              "conflict",
+              "Assistant conversation already has an active turn"
+            );
+
+          const latest = tx
+            .select({ sequence: assistantMessages.sequence })
+            .from(assistantMessages)
+            .where(eq(assistantMessages.conversationId, conversation.id))
+            .orderBy(desc(assistantMessages.sequence))
+            .limit(1)
+            .get();
+          const userSequence = (latest?.sequence ?? 0) + 1;
+          const userRow = {
+            id: uuidv4(),
+            conversationId: conversation.id,
+            sequence: userSequence,
+            role: "user" as const,
+            content: input.content,
+            status: "completed" as const,
+            clientRequestId: input.clientRequestId ?? null,
+            createdAt: now,
+            updatedAt: now,
+            completedAt: now,
+          } satisfies typeof assistantMessages.$inferInsert;
+          const assistantRow = {
+            id: uuidv4(),
+            conversationId: conversation.id,
+            sequence: userSequence + 1,
+            role: "assistant" as const,
+            content: "",
+            status: "pending" as const,
+            clientRequestId: null,
+            createdAt: now,
+            updatedAt: now,
+            completedAt: null,
+          } satisfies typeof assistantMessages.$inferInsert;
+          tx.insert(assistantMessages).values([userRow, assistantRow]).run();
+          if (!createdConversation) {
+            const policy = assistantPolicy(tx, now);
+            tx.update(assistantConversations)
+              .set({
+                lastUserMessageAt: now,
+                expiresAt: isAdmin ? null : now + policy.retentionMs,
+              })
+              .where(eq(assistantConversations.id, conversation.id))
+              .run();
+          }
+          const jobRow = {
+            id: uuidv4(),
+            conversationId: conversation.id,
+            userMessageId: userRow.id,
+            assistantMessageId: assistantRow.id,
+            requestId: input.requestId,
+            status: "queued" as const,
+            attempt: 1,
+            leaseUntil: null,
+            cancelRequested: false,
+            startedAt: null,
+            finishedAt: null,
+            errorCode: null,
+            createdAt: now,
+            updatedAt: now,
+          } satisfies typeof assistantGenerationJobs.$inferInsert;
+          tx.insert(assistantGenerationJobs).values(jobRow).run();
+          return {
+            createdConversation,
+            conversation: mapConversation(conversation),
+            userMessage: mapMessage(userRow as typeof assistantMessages.$inferSelect),
+            assistantMessage: mapMessage(assistantRow as typeof assistantMessages.$inferSelect),
+            generationJob: mapGenerationJob(jobRow as typeof assistantGenerationJobs.$inferSelect),
+          };
+        },
+        { behavior: "immediate" }
+      );
+    },
+
     async getGenerationJob(generationJobId: string, frontendUserId: string) {
       const database = await getDatabase();
       const row = await database
@@ -339,6 +785,366 @@ export function createAssistantStorage(
         .where(eq(assistantGenerationJobs.id, generationJobId))
         .get();
       return updated ? mapGenerationJob(updated) : null;
+    },
+
+    async getJobExecution(generationJobId: string) {
+      return selectExecutionRows(await getDatabase(), generationJobId);
+    },
+
+    async getFrontendUserIsAdmin(frontendUserId: string) {
+      const database = await getDatabase();
+      const row = await database
+        .select({ isAdmin: frontendUsers.isAdmin })
+        .from(frontendUsers)
+        .where(eq(frontendUsers.id, frontendUserId))
+        .get();
+      return Boolean(row?.isAdmin);
+    },
+
+    async recoverRunningGenerations(now = Date.now()) {
+      const database = await getDatabase();
+      return database.transaction(
+        (tx) => {
+          const rows = tx
+            .select()
+            .from(assistantGenerationJobs)
+            .where(eq(assistantGenerationJobs.status, "running"))
+            .all();
+          for (const row of rows) {
+            tx.update(assistantGenerationJobs)
+              .set({
+                status: "failed",
+                leaseUntil: null,
+                finishedAt: now,
+                updatedAt: now,
+                errorCode: "worker-restarted",
+              })
+              .where(eq(assistantGenerationJobs.id, row.id))
+              .run();
+            if (row.assistantMessageId) {
+              tx.update(assistantMessages)
+                .set({ status: "failed", updatedAt: now, completedAt: now })
+                .where(eq(assistantMessages.id, row.assistantMessageId))
+                .run();
+            }
+          }
+          return rows.length;
+        },
+        { behavior: "immediate" }
+      );
+    },
+
+    async claimNextGenerationJob(now: number, leaseMs: number) {
+      const database = await getDatabase();
+      return database.transaction(
+        (tx) => {
+          const queued = tx
+            .select({ job: assistantGenerationJobs, conversation: assistantConversations })
+            .from(assistantGenerationJobs)
+            .innerJoin(
+              assistantConversations,
+              eq(assistantGenerationJobs.conversationId, assistantConversations.id)
+            )
+            .where(
+              and(
+                eq(assistantGenerationJobs.status, "queued"),
+                eq(assistantGenerationJobs.cancelRequested, false)
+              )
+            )
+            .orderBy(asc(assistantGenerationJobs.createdAt))
+            .all();
+          for (const item of queued) {
+            if (
+              item.conversation.status !== "active" ||
+              (item.conversation.expiresAt !== null && item.conversation.expiresAt <= now)
+            ) {
+              setConversationTerminal(
+                tx,
+                item.conversation.id,
+                item.conversation.status === "deleted" ? "deleted" : "expired",
+                now
+              );
+              continue;
+            }
+            const active = tx
+              .select({ id: assistantGenerationJobs.id })
+              .from(assistantGenerationJobs)
+              .where(
+                and(
+                  eq(assistantGenerationJobs.conversationId, item.conversation.id),
+                  eq(assistantGenerationJobs.status, "running")
+                )
+              )
+              .get();
+            if (active) continue;
+            tx.update(assistantGenerationJobs)
+              .set({ status: "running", leaseUntil: now + leaseMs, startedAt: now, updatedAt: now })
+              .where(
+                and(
+                  eq(assistantGenerationJobs.id, item.job.id),
+                  eq(assistantGenerationJobs.status, "queued"),
+                  eq(assistantGenerationJobs.cancelRequested, false)
+                )
+              )
+              .run();
+            const execution = selectExecutionRows(tx, item.job.id);
+            if (execution) return execution;
+            tx.update(assistantGenerationJobs)
+              .set({
+                status: "failed",
+                leaseUntil: null,
+                finishedAt: now,
+                updatedAt: now,
+                errorCode: "invalid-job",
+              })
+              .where(eq(assistantGenerationJobs.id, item.job.id))
+              .run();
+          }
+          return null;
+        },
+        { behavior: "immediate" }
+      );
+    },
+
+    async renewGenerationLease(
+      generationJobId: string,
+      attempt: number,
+      now: number,
+      leaseMs: number
+    ) {
+      const database = await getDatabase();
+      database
+        .update(assistantGenerationJobs)
+        .set({ leaseUntil: now + leaseMs, updatedAt: now })
+        .where(
+          and(
+            eq(assistantGenerationJobs.id, generationJobId),
+            eq(assistantGenerationJobs.attempt, attempt),
+            eq(assistantGenerationJobs.status, "running"),
+            eq(assistantGenerationJobs.cancelRequested, false)
+          )
+        )
+        .run();
+      const updated = await database
+        .select({
+          status: assistantGenerationJobs.status,
+          attempt: assistantGenerationJobs.attempt,
+        })
+        .from(assistantGenerationJobs)
+        .where(eq(assistantGenerationJobs.id, generationJobId))
+        .get();
+      return updated?.status === "running" && updated.attempt === attempt;
+    },
+
+    async appendGenerationDelta(
+      generationJobId: string,
+      attempt: number,
+      content: string,
+      now: number
+    ) {
+      const database = await getDatabase();
+      return database.transaction(
+        (tx) => {
+          const current = tx
+            .select({ job: assistantGenerationJobs, conversation: assistantConversations })
+            .from(assistantGenerationJobs)
+            .innerJoin(
+              assistantConversations,
+              eq(assistantGenerationJobs.conversationId, assistantConversations.id)
+            )
+            .where(eq(assistantGenerationJobs.id, generationJobId))
+            .get();
+          if (
+            !current ||
+            current.job.attempt !== attempt ||
+            current.job.status !== "running" ||
+            current.job.cancelRequested ||
+            current.conversation.status !== "active" ||
+            (current.conversation.expiresAt !== null && current.conversation.expiresAt <= now) ||
+            !current.job.assistantMessageId
+          )
+            return false;
+          tx.update(assistantMessages)
+            .set({ content, status: "streaming", updatedAt: now })
+            .where(eq(assistantMessages.id, current.job.assistantMessageId))
+            .run();
+          return true;
+        },
+        { behavior: "immediate" }
+      );
+    },
+
+    async finishGeneration(generationJobId, attempt, input) {
+      const database = await getDatabase();
+      const now = input.now ?? Date.now();
+      return database.transaction(
+        (tx) => {
+          const current = tx
+            .select({ job: assistantGenerationJobs, conversation: assistantConversations })
+            .from(assistantGenerationJobs)
+            .innerJoin(
+              assistantConversations,
+              eq(assistantGenerationJobs.conversationId, assistantConversations.id)
+            )
+            .where(eq(assistantGenerationJobs.id, generationJobId))
+            .get();
+          if (!current || current.job.attempt !== attempt) return null;
+          const invalid =
+            current.job.status !== "running" ||
+            current.job.cancelRequested ||
+            current.conversation.status !== "active" ||
+            (current.conversation.expiresAt !== null && current.conversation.expiresAt <= now);
+          if (invalid) {
+            if (current.job.status === "running") {
+              tx.update(assistantGenerationJobs)
+                .set({
+                  status: "cancelled",
+                  cancelRequested: true,
+                  leaseUntil: null,
+                  finishedAt: now,
+                  updatedAt: now,
+                  errorCode:
+                    current.conversation.status === "active" ? "cancelled" : "conversation-closed",
+                })
+                .where(eq(assistantGenerationJobs.id, generationJobId))
+                .run();
+              if (current.job.assistantMessageId) {
+                tx.update(assistantMessages)
+                  .set({ status: "cancelled", updatedAt: now, completedAt: now })
+                  .where(eq(assistantMessages.id, current.job.assistantMessageId))
+                  .run();
+              }
+            }
+          } else {
+            if (current.job.assistantMessageId) {
+              const patch: Partial<typeof assistantMessages.$inferInsert> = {
+                status: input.status,
+                updatedAt: now,
+                completedAt: now,
+              };
+              if (input.content !== undefined) patch.content = input.content;
+              tx.update(assistantMessages)
+                .set(patch)
+                .where(eq(assistantMessages.id, current.job.assistantMessageId))
+                .run();
+              if (input.status === "completed" && input.citations?.length) {
+                tx.delete(assistantMessageCitations)
+                  .where(eq(assistantMessageCitations.messageId, current.job.assistantMessageId))
+                  .run();
+                tx.insert(assistantMessageCitations)
+                  .values(
+                    input.citations.map((citation) => ({
+                      id: uuidv4(),
+                      messageId: current.job.assistantMessageId as string,
+                      ...citation,
+                      createdAt: now,
+                    }))
+                  )
+                  .run();
+              }
+            }
+            tx.update(assistantGenerationJobs)
+              .set({
+                status: input.status,
+                leaseUntil: null,
+                finishedAt: now,
+                updatedAt: now,
+                errorCode: input.errorCode ?? null,
+              })
+              .where(eq(assistantGenerationJobs.id, generationJobId))
+              .run();
+          }
+          const updated = tx
+            .select()
+            .from(assistantGenerationJobs)
+            .where(eq(assistantGenerationJobs.id, generationJobId))
+            .get();
+          return updated ? mapGenerationJob(updated) : null;
+        },
+        { behavior: "immediate" }
+      );
+    },
+
+    async stopGeneration(generationJobId, frontendUserId, now = Date.now()) {
+      const database = await getDatabase();
+      return database.transaction(
+        (tx) => {
+          const current = tx
+            .select({ job: assistantGenerationJobs, conversation: assistantConversations })
+            .from(assistantGenerationJobs)
+            .innerJoin(
+              assistantConversations,
+              eq(assistantGenerationJobs.conversationId, assistantConversations.id)
+            )
+            .where(
+              and(
+                eq(assistantGenerationJobs.id, generationJobId),
+                eq(assistantConversations.frontendUserId, frontendUserId)
+              )
+            )
+            .get();
+          if (!current) return null;
+          if (current.job.status === "queued") {
+            tx.update(assistantGenerationJobs)
+              .set({
+                status: "cancelled",
+                cancelRequested: true,
+                leaseUntil: null,
+                finishedAt: now,
+                updatedAt: now,
+                errorCode: "cancelled-by-user",
+              })
+              .where(eq(assistantGenerationJobs.id, generationJobId))
+              .run();
+          } else if (current.job.status === "running") {
+            tx.update(assistantGenerationJobs)
+              .set({ cancelRequested: true, updatedAt: now, errorCode: "cancelled-by-user" })
+              .where(eq(assistantGenerationJobs.id, generationJobId))
+              .run();
+          }
+          if (current.job.assistantMessageId && current.job.status !== "completed") {
+            tx.update(assistantMessages)
+              .set({ status: "cancelled", updatedAt: now, completedAt: now })
+              .where(eq(assistantMessages.id, current.job.assistantMessageId))
+              .run();
+          }
+          const updated = tx
+            .select()
+            .from(assistantGenerationJobs)
+            .where(eq(assistantGenerationJobs.id, generationJobId))
+            .get();
+          return updated ? mapGenerationJob(updated) : null;
+        },
+        { behavior: "immediate" }
+      );
+    },
+
+    async deleteConversation(conversationId, frontendUserId, now = Date.now()) {
+      const database = await getDatabase();
+      return database.transaction(
+        (tx) => {
+          const conversation = selectConversation(tx, conversationId, frontendUserId);
+          if (!conversation) return false;
+          if (conversation.status !== "deleted")
+            setConversationTerminal(tx, conversationId, "deleted", now);
+          return true;
+        },
+        { behavior: "immediate" }
+      );
+    },
+
+    async expireConversation(conversationId, frontendUserId, now = Date.now()) {
+      const database = await getDatabase();
+      return database.transaction(
+        (tx) => {
+          const conversation = selectConversation(tx, conversationId, frontendUserId);
+          if (!conversation) return false;
+          if (conversation.status !== "expired")
+            setConversationTerminal(tx, conversationId, "expired", now);
+          return true;
+        },
+        { behavior: "immediate" }
+      );
     },
   };
 }

@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e39a37b5e3576a12b495210be1068a459f7f4d46",
+  "covered_files": {
+    "drizzle/0025_assistant_message_citations.sql": "1507cf1b94ed1c7a864d2033e4d259df905f6307",
+    "drizzle/meta/0025_snapshot.json": "ba6c77a82ac2a462ac04f042c9bf3e8bc7252a7f",
+    "drizzle/meta/_journal.json": "19247742d13b59de3d46669e1dd628c1cf6ca560",
+    "src/lib/ai/search.ts": "eeb0f19c6bcda63c74ea1c14d5728e00b58bd205",
+    "src/lib/assistant-contracts.ts": "b7df023937a0ec32206d4008b195f267eb53d9dd",
+    "src/lib/assistant-storage.test.ts": "aecf6d5beb953fe6d0774acb38bc1be7af073268",
+    "src/lib/assistant-storage.ts": "5b8f11292ba9e55d6e72b0bf0511cf989490d580",
+    "src/lib/schema.ts": "920ab87be94c4b0479cf939d8555b069ea2b6e51",
+    "src/server/assistant/api.ts": "07f6913f2cf72dbeb5fdda7478cb77bf6270a55c",
+    "src/server/assistant/runtime.test.ts": "affef5c5ec1c8dcc1077d4820b330e06d360f1ea",
+    "src/server/assistant/runtime.ts": "392757af28a35431abde99de4d710a6bf58749cf",
+    "src/server/assistant/service.ts": "4c8a0e2ced91aa3a7e63c1d344d971e745670739",
+    "src/server/public-api/assistant-chat.test.ts": "f3e30e7b86dc3253cb56cd6b6d97a43b36337b45",
+    "src/server/public-api/router.ts": "e9ba0ca7f16f2af07974d52d03e48d9855ec9dab",
+    "src/server/services/content-search.ts": "550e1a356a8c93ee35ef5d4319cda43a42358e8a",
+    "src/server/services/search-semantic-projection.ts": "d8669a39970bc24133d8a78a5a5d6104b3976e73"
+  },
+  "change": {
+    "description": "Add the durable assistant worker, atomic turn submission, lease and terminal-state protection, authorized metered retrieval, citations, and authenticated public chat HTTP/SSE endpoints.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state", "runtime"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "The additive citation table and public chat routes preserve existing storage and search contracts while introducing the approved assistant runtime boundary.",
+      "assessed_at": "2026-10-27T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "docs/specs/site-knowledge-assistant/SPEC.md",
+          "blob": "d11a224a6283c60aa276785997ee8a33a4586dad",
+          "command": "Locks private ownership, retrieval authorization, retention, generation lifecycle, citations, and quota behavior"
+        },
+        {
+          "path": "docs/adr/0034-assistant-retrieval-follows-content-authorization.md",
+          "blob": "63f271726bc388041d7669dbb2d2550d68cd601a",
+          "command": "Requires public retrieval to use published-only content and administrator retrieval to use the frontend principal"
+        },
+        {
+          "path": "docs/adr/0036-assistant-generation-independent-of-ui-lifecycle.md",
+          "blob": "b20d06076e509d325582952266276f3cf01e785b",
+          "command": "Requires durable generation independent of browser connection lifecycle and explicit stop"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "The candidate adds a forward-only citation migration, a single SQLite worker with leases and restart-failure recovery, transactionally idempotent first-turn creation, authorization-scoped retrieval metering, and owner-checked chat/snapshot/message/event/stop/delete routes. Late deltas and terminal conversations are rejected, and unknown in-flight provider calls are not retried automatically.",
+      "assessed_at": "2026-10-27T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/assistant-storage.ts",
+          "blob": "5b8f11292ba9e55d6e72b0bf0511cf989490d580",
+          "command": "Owns atomic submission, sequence allocation, one-active-generation conflict checks, lease transitions, late-body rejection, citation persistence, expiry, and deletion"
+        },
+        {
+          "path": "src/server/assistant/runtime.ts",
+          "blob": "392757af28a35431abde99de4d710a6bf58749cf",
+          "command": "Runs the durable worker, renews leases, persists streamed deltas, uses authorized metered retrieval, and avoids automatic retry after restart"
+        },
+        {
+          "path": "src/server/assistant/api.ts",
+          "blob": "07f6913f2cf72dbeb5fdda7478cb77bf6270a55c",
+          "command": "Maps authenticated owner-scoped chat operations to 202/401/404/410/409/429 contracts and SSE snapshots"
+        },
+        {
+          "path": "src/server/services/content-search.ts",
+          "blob": "550e1a356a8c93ee35ef5d4319cda43a42358e8a",
+          "command": "Propagates the assistant authorization and usage context through embedding, rewrite, semantic Playbook, and judgement calls"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate stays within T4 assistant runtime, retrieval, public API, and citation persistence surfaces; admin UI, public UI, clipping cutover, production migration, and deployment remain out of scope."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "Focused storage, worker, retrieval-context, and HTTP/SSE tests pass. The repository check passes with the existing Biome warnings and infos. Migration journal validation, changed-file formatting, diff checks, and changed-surface TypeScript filtering were run; the remaining filtered diagnostics are pre-existing in unrelated routes/tests.",
+      "assessed_at": "2026-10-27T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/assistant-storage.test.ts",
+          "blob": "aecf6d5beb953fe6d0774acb38bc1be7af073268",
+          "command": "bun test src/lib/assistant-storage.test.ts (4 pass, 0 fail, 23 expectations)"
+        },
+        {
+          "path": "src/server/assistant/runtime.test.ts",
+          "blob": "affef5c5ec1c8dcc1077d4820b330e06d360f1ea",
+          "command": "bun test src/server/assistant/runtime.test.ts (3 pass, 0 fail, 7 expectations)"
+        },
+        {
+          "path": "src/server/public-api/assistant-chat.test.ts",
+          "blob": "f3e30e7b86dc3253cb56cd6b6d97a43b36337b45",
+          "command": "bun test src/server/public-api/assistant-chat.test.ts (2 pass, 0 fail, 19 expectations)"
+        },
+        {
+          "path": "drizzle/meta/_journal.json",
+          "blob": "19247742d13b59de3d46669e1dd628c1cf6ca560",
+          "command": "bun run db:migrations:validate"
+        },
+        {
+          "path": "package.json",
+          "blob": "3d0e64c848f06801f9746e3d3cea091ff9929b73",
+          "command": "bun run check; bunx biome check on changed files; git diff --check"
+        },
+        {
+          "path": "src/server/assistant/runtime.ts",
+          "blob": "392757af28a35431abde99de4d710a6bf58749cf",
+          "command": "Filtered bunx tsc --noEmit reports no diagnostic in T4 assistant/runtime/retrieval files; remaining matches are pre-existing router, migration, and search-test diagnostics"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "additive",
+      "evidence": [
+        {
+          "path": "src/server/public-api/router.ts",
+          "blob": "e9ba0ca7f16f2af07974d52d03e48d9855ec9dab",
+          "command": "Mounts the new authenticated /api/public/chat surface without changing existing routes"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "minor",
+      "applicable": true,
+      "state_description": "The forward-only migration adds assistant_message_citations with a cascading message reference; existing assistant conversation, message, job, and usage tables remain readable.",
+      "evidence": [
+        {
+          "path": "drizzle/0025_assistant_message_citations.sql",
+          "blob": "1507cf1b94ed1c7a864d2033e4d259df905f6307",
+          "command": "Adds only the citation table and message/time index"
+        }
+      ]
+    }
+  }
+}

@@ -5,7 +5,7 @@ import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { createAssistantStorage } from "@/lib/assistant-storage";
 import * as schema from "@/lib/schema";
-import { frontendUsers } from "@/lib/schema";
+import { assistantQuotaPolicies, frontendUsers } from "@/lib/schema";
 
 const migrationsPath = path.resolve("drizzle");
 const sqlite = new Database(":memory:");
@@ -196,5 +196,110 @@ describe("assistant SQLite storage", () => {
         requestId: "reference-wrong-assistant-role",
       })
     ).rejects.toThrow("role assistant");
+  });
+
+  it("atomically creates a first turn, enforces one active turn, and blocks late deltas", async () => {
+    await database.insert(frontendUsers).values({
+      id: "frontend-storage-runtime-owner",
+      adminUserId: null,
+      isAdmin: false,
+      displayName: "Runtime Owner",
+      email: null,
+      avatarUrl: "/site-assets/default-avatar.svg",
+      profileUrl: null,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    await database
+      .insert(assistantQuotaPolicies)
+      .values({
+        id: "assistant-storage-runtime-policy",
+        scope: "global",
+        tokenHourlyLimit: 10_000,
+        tokenWeeklyLimit: 100_000,
+        questionHourlyLimit: 10,
+        questionWeeklyLimit: 100,
+        maxConversations: 1,
+        retentionMs: 1_000,
+        timezone: "UTC",
+        createdAt: 1,
+        updatedAt: 1,
+      })
+      .onConflictDoUpdate({ target: assistantQuotaPolicies.scope, set: { maxConversations: 1 } });
+    const storage = createAssistantStorage(database);
+    const first = await storage.submitTurn({
+      frontendUserId: "frontend-storage-runtime-owner",
+      requestId: "runtime-request-1",
+      clientRequestId: "runtime-client-1",
+      content: "First question",
+      now: 500,
+    });
+    const retry = await storage.submitTurn({
+      frontendUserId: "frontend-storage-runtime-owner",
+      requestId: "runtime-request-2",
+      clientRequestId: "runtime-client-1",
+      content: "First question retried",
+      now: 501,
+    });
+    expect(retry.generationJob.id).toBe(first.generationJob.id);
+    await expect(
+      storage.submitTurn({
+        frontendUserId: "frontend-storage-runtime-owner",
+        requestId: "runtime-request-3",
+        content: "Second conversation",
+        now: 502,
+      })
+    ).rejects.toMatchObject({ code: "quota" });
+    await expect(
+      storage.submitTurn({
+        frontendUserId: "frontend-storage-runtime-owner",
+        conversationId: first.conversation.id,
+        requestId: "runtime-request-4",
+        content: "Concurrent turn",
+        now: 503,
+      })
+    ).rejects.toMatchObject({ code: "conflict" });
+
+    const claimed = await storage.claimNextGenerationJob(504, 10_000);
+    expect(claimed?.job.status).toBe("running");
+    expect(
+      await storage.appendGenerationDelta(
+        first.generationJob.id,
+        first.generationJob.attempt,
+        "late?",
+        505
+      )
+    ).toBe(true);
+    await storage.stopGeneration(first.generationJob.id, "frontend-storage-runtime-owner", 506);
+    expect(
+      await storage.appendGenerationDelta(
+        first.generationJob.id,
+        first.generationJob.attempt,
+        "late body",
+        507
+      )
+    ).toBe(false);
+    await storage.finishGeneration(first.generationJob.id, first.generationJob.attempt, {
+      status: "completed",
+      content: "late body",
+      now: 508,
+    });
+    const messages = await storage.listMessages(
+      first.conversation.id,
+      "frontend-storage-runtime-owner"
+    );
+    expect(messages.at(-1)?.content).toBe("late?");
+    expect(messages.at(-1)?.status).toBe("cancelled");
+
+    const afterExpiry = await storage.submitTurn({
+      frontendUserId: "frontend-storage-runtime-owner",
+      requestId: "runtime-request-after-expiry",
+      content: "A fresh question after expiry",
+      now: 1_500,
+    });
+    expect(afterExpiry.conversation.id).not.toBe(first.conversation.id);
+    expect(
+      await storage.listMessages(first.conversation.id, "frontend-storage-runtime-owner")
+    ).toEqual([]);
   });
 });
