@@ -151,24 +151,28 @@ async function synthesizeTouchScroll(
   selector: string,
   distance: number
 ) {
-  const point = await page.evaluate((targetSelector) => {
-    const target = document.querySelector<HTMLElement>(targetSelector);
-    const scroll = document.scrollingElement ?? document.documentElement;
-    if (!target) throw new Error(`Missing touch target: ${targetSelector}`);
-    const maxScrollTop = Math.max(0, scroll.scrollHeight - window.innerHeight);
-    const targetTop = Math.max(
-      0,
-      Math.min(maxScrollTop - 120, target.offsetTop - window.innerHeight / 2)
-    );
-    scroll.scrollTop = targetTop;
-    const box = target.getBoundingClientRect();
-    return {
-      x: Math.max(2, Math.min(window.innerWidth - 2, box.left + box.width / 2)),
-      y: Math.max(2, Math.min(window.innerHeight - 2, box.top + Math.min(24, box.height / 2))),
-      before: scroll.scrollTop,
-      maxScrollTop,
-    };
-  }, selector);
+  const point = await page.evaluate(
+    ({ targetSelector, distance: gestureDistance }) => {
+      const target = document.querySelector<HTMLElement>(targetSelector);
+      const scroll = document.scrollingElement ?? document.documentElement;
+      if (!target) throw new Error(`Missing touch target: ${targetSelector}`);
+      const maxScrollTop = Math.max(0, scroll.scrollHeight - window.innerHeight);
+      const gestureHeadroom = Math.abs(gestureDistance) + 40;
+      const targetTop = Math.max(
+        0,
+        Math.min(maxScrollTop - gestureHeadroom, target.offsetTop - window.innerHeight / 2)
+      );
+      scroll.scrollTop = targetTop;
+      const box = target.getBoundingClientRect();
+      return {
+        x: Math.max(2, Math.min(window.innerWidth - 2, box.left + box.width / 2)),
+        y: Math.max(2, Math.min(window.innerHeight - 2, box.top + Math.min(24, box.height / 2))),
+        before: scroll.scrollTop,
+        maxScrollTop,
+      };
+    },
+    { targetSelector: selector, distance }
+  );
   expect(point.maxScrollTop).toBeGreaterThan(0);
 
   const before = await page.evaluate(() => {
