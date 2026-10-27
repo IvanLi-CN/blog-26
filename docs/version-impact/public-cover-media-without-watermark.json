@@ -6,15 +6,16 @@
     "docs/adr/0031-public-cover-media-without-watermark.md": "0cc1ee7f78e88130e09d3d7ba84ef43cdf0e1067",
     "docs/specs/public-media-assets-facade/SPEC.md": "0be545a65011a4bc61d5a844b9cd616c355ca420",
     "scripts/generate-test-data.ts": "6d33465238dac613886188cd9f6843c603f4a865",
+    "scripts/build-web-demo.ts": "9fecc9affe2adb46c6ae5450bd9c0826254fc676",
     "scripts/package-public-media.test.ts": "f8dc6afd81e40a0fd99f5184e29d58b1138ec8b9",
     "scripts/preview-web-demo.ts": "da998b4e32d19c99577ad1c0b86d726286aa0aa5",
     "site/components/PostCard.tsx": "b2468d983e73012a37835e078ad2c289dea59ed6",
     "site/components/RelatedPostCard.tsx": "422391d1a60159014aa350d2419582aee63c8d63",
     "site/components/TimelineCard.tsx": "470fc75175f7d0cb4a2f5d6b8400d8469d088953",
     "site/lib/public-site.ts": "fcdb99bd07d796e4100a31d1bb4ccbedc7314c27",
-    "src/lib/__tests__/public-media.test.ts": "645d5e0de10ecffceadf7a4b534fe16fb84842ec",
+    "src/lib/__tests__/public-media.test.ts": "6c9bd0dc3cd691d1376e7332b26867067bd71f9f",
     "src/lib/__tests__/public-site-snapshot-compat.test.ts": "130a2f08312a2940b13d904db2e8a9cd22a8588c",
-    "src/lib/public-media.ts": "fa9b780b3d792db4f94ffa9061fea460da8791a1",
+    "src/lib/public-media.ts": "c20b12c295eee84a9cb709bb63dd21c84a6c5483",
     "src/server/http-compat-api.test.ts": "5957397a0ee35f74e270e15b3e15a5b463fc0943",
     "src/server/public-media.ts": "d856b6885f4fb9b8418161ed831f42daf6e16370",
     "tests/components/RelatedPostCard.test.tsx": "69f34c4dfe4f9f3d3b8c7702bfbfe789e189a0c9",
@@ -44,7 +45,7 @@
     "current": {
       "impact": "patch",
       "reasoning": "The candidate restores object-cover list cards and related-card hover behavior, keeps detail/body/attachment/playback and source-descriptor watermark candidates, migrates legacy cover/card paths only, and makes the Web Demo resolve local media derivatives instead of serving the favicon fallback.",
-      "assessed_at": "2026-10-27T12:48:30+08:00",
+      "assessed_at": "2026-10-27T13:10:50+08:00",
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
@@ -64,7 +65,12 @@
         {
           "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
           "blob": "e7f21835f9bb72a05c0860469416a195eacaf7dc",
-          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:51460 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-cover-media.spec.ts: 3 passed"
+          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:51460 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-cover-media.spec.ts"
+        },
+        {
+          "path": "scripts/build-web-demo.ts",
+          "blob": "9fecc9affe2adb46c6ae5450bd9c0826254fc676",
+          "command": "bun run web-demo:build"
         }
       ],
       "scope_drift": {
@@ -75,7 +81,7 @@
     "verified": {
       "impact": "patch",
       "reasoning": "Focused contract, compatibility, package logic, static build, and official Web Demo validation verify a reversible role-scoped media fix with no persistent-state migration. The local guest E2E command remains host-blocked by the Linux/amd64 embedded search module on macOS; CI remains authoritative for that gate. The release-only media packager also requires the configured remote media origin, while the local static output path contract was verified directly.",
-      "assessed_at": "2026-10-27T12:48:30+08:00",
+      "assessed_at": "2026-10-27T13:10:50+08:00",
       "evidence": [
         {
           "path": "src/lib/__tests__/public-media.test.ts",
@@ -95,7 +101,12 @@
         {
           "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
           "blob": "e7f21835f9bb72a05c0860469416a195eacaf7dc",
-          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:51460 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-cover-media.spec.ts: 3 passed"
+          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:51460 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-cover-media.spec.ts"
+        },
+        {
+          "path": "scripts/build-web-demo.ts",
+          "blob": "9fecc9affe2adb46c6ae5450bd9c0826254fc676",
+          "command": "bun run web-demo:build"
         }
       ]
     }

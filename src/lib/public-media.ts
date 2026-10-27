@@ -194,6 +194,9 @@ export function isStaticPublicAssetUrl(value: string) {
 
 /** v4's A watermark uses a full-card SVG canvas; migrate published paths to the compact v5 pair. */
 export function migratePublicMediaV4ToV5(value: string) {
+  if (isExternalMediaUrl(value) || isDataMediaUrl(value) || hasMediaUrlScheme(value)) {
+    return value;
+  }
   return value.replace(PUBLIC_MEDIA_V4_PATH_RE, "$1wm-$2-v5");
 }
 
@@ -406,21 +409,18 @@ export function buildPublicMediaAssetUrl(params: {
 
   const mediaHash = buildPublicMediaHash(sourcePath, params.role);
   const ext = pickPublicMediaExt(mediaKind, sourcePath, params.variant);
-  const renderId = isUnwatermarkedPublicMediaVariant(
-    params.role,
-    params.variant,
-    params.context.assetScope
-  )
-    ? undefined
-    : params.renderId === null
+  const renderId =
+    params.renderId === null
       ? undefined
       : (params.renderId ??
-        (params.variant === "play" || params.context.supportsResponsiveWatermark === false
+        (isUnwatermarkedPublicMediaVariant(params.role, params.variant, params.context.assetScope)
           ? undefined
-          : getDefaultPublicMediaRenderId(
-              params.variant,
-              params.context.watermarkRenderVersion ?? "v5"
-            )));
+          : params.variant === "play" || params.context.supportsResponsiveWatermark === false
+            ? undefined
+            : getDefaultPublicMediaRenderId(
+                params.variant,
+                params.context.watermarkRenderVersion ?? "v5"
+              )));
   return buildPublicAssetPath({
     scope: params.context.assetScope,
     kind: params.context.kind,

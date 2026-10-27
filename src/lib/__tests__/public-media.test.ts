@@ -4,6 +4,7 @@ import {
   buildPublicMediaPresentations,
   getPublicMediaCardFallbackUrl,
   getPublicMediaWatermarkVersion,
+  migratePublicMediaV4ToV5,
   resolveContentMediaPath,
   rewritePublicContentMediaUrls,
   stripPublicMediaRenderId,
@@ -173,7 +174,7 @@ describe("public-media", () => {
           variant: "card",
           renderId: "wm-a-v5",
         })
-      ).not.toContain("/wm-");
+      ).toContain("/wm-a-v5/card.webp");
       expect(
         buildPublicMediaPresentations({
           context: coverContext,
@@ -244,6 +245,21 @@ describe("public-media", () => {
         )
       ).toBe("/_content/assets/post/demo/abc123/card.webp?version=1");
       expect(getPublicMediaCardFallbackUrl("/legacy/cover.webp")).toBe("/legacy/cover.webp");
+    });
+
+    it("does not migrate versioned paths in external media URLs", () => {
+      for (const uri of [
+        "https://cdn.example.test/api/public/assets/post/demo/abc123/wm-a-v4/content.webp",
+        "ftp://cdn.example.test/api/public/assets/post/demo/abc123/wm-a-v4/content.webp",
+        "blob:https://cdn.example.test/api/public/assets/post/demo/abc123/wm-a-v4/content.webp",
+        "data:image/png;base64,abc",
+      ]) {
+        expect(migratePublicMediaV4ToV5(uri)).toBe(uri);
+      }
+
+      expect(
+        migratePublicMediaV4ToV5("/api/public/assets/post/demo/abc123/wm-a-v4/content.webp")
+      ).toBe("/api/public/assets/post/demo/abc123/wm-a-v5/content.webp");
     });
 
     it("uses v5 A for cards and v5 B for larger usage defaults", () => {
