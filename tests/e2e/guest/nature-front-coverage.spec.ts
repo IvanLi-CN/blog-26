@@ -611,7 +611,7 @@ test.describe("Nature frontend public coverage", () => {
     await expect(codexCard.getByRole("link", { name: "项目站点" })).toHaveCount(1);
     await expect(codexCard.locator(".projects-poster-summary-link")).toHaveAttribute(
       "title",
-      "自部署 OpenAI 兼容代理的观测与排障工作台。"
+      "OpenAI 兼容代理观测与排障工具。"
     );
     await expect(codexCard.locator(".projects-poster-summary")).toHaveCSS("white-space", "nowrap");
     await expect(codexCard.locator(".projects-poster-summary")).toHaveCSS(
