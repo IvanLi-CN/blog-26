@@ -69,7 +69,7 @@ jobs:
           const canonicalJson = (value) => {
             if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
             if (value !== null && typeof value === "object")
-              return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(",")}}`;
+              return `{${Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(",")}}`;
             return JSON.stringify(value);
           };
           const canonicalLedger = canonicalJson(ledgerData);
