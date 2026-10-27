@@ -169,6 +169,13 @@
       "when": 1793089525914,
       "tag": "0023_assistant_discussion_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1793095900505,
+      "tag": "0024_ai_usage_daily_result_counts",
+      "breakpoints": true
     }
   ]
 }

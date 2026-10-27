@@ -159,6 +159,9 @@ export type AiDailySummary = {
   totalTokens: number;
   estimatedCallCount: number;
   incompleteCallCount: number;
+  successCallCount: number;
+  failureCallCount: number;
+  cancelledCallCount: number;
   updatedAt: number;
 };
 

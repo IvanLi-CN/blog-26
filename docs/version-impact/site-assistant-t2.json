@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "cb1eff3a793728c11c36f28a697ac29326aee1e0",
+  "covered_files": {
+    "docs/adr/0035-personal-assistant-quota-and-sitewide-ai-metering.md": "ee6b4ca3dfd153104f645ad561419009b2465911",
+    "docs/specs/site-knowledge-assistant/SPEC.md": "d11a224a6283c60aa276785997ee8a33a4586dad",
+    "docs/specs/site-knowledge-assistant/IMPLEMENTATION.md": "d3ca0286b2213f9cf4a52b823cc177a103383786",
+    "drizzle/0023_ai_usage_daily_result_counts.sql": null,
+    "drizzle/meta/0023_snapshot.json": null,
+    "drizzle/meta/_journal.json": "d5f39c0b846f0d05c4b892d9610e8a731b859a77",
+    "src/lib/assistant-contracts.ts": "09cce95f033e59abc901177297afb13b864ed213",
+    "src/lib/schema.ts": "2543b18e59a8cc9b356223ad0e99d9f8af7fbbef",
+    "src/lib/ai/embeddings.ts": "b93e0f46f39b1156346955758190264c84aea075",
+    "src/lib/ai-usage.test.ts": null,
+    "src/lib/ai-usage.ts": null,
+    "src/lib/ai/search.ts": "543cca5875bb118464251fa10c9e36b0be21b4a9",
+    "src/lib/ai/vectorization.ts": "8384555503d84d9361d85ebfa3a2e8d3ce2a79e8",
+    "src/lib/ai/rerank.ts": "0e37c9eb1ea6bdaf23a3d4ddb19a4f24d93a39bf",
+    "src/server/admin-api/router.ts": "00923d2dd94beba5588c0e3cfccaf82516933ed0",
+    "src/server/ai/icon-reranker.ts": "4549140cb124e8b443e7546e204cf5949bfef776",
+    "src/server/clipping/agent-runtime.ts": "a8ead68b7114cc989f5b8b2b7f639692d3c23bc5",
+    "src/server/clipping/service.ts": "21b00fdaa33769f70ba0d5d8898bce25c7c8f4bf",
+    "src/server/services/llm-model-catalog.ts": "e4e352a82e7902344140aaaea79e0d5a1e6a9a24",
+    "src/server/services/llm-settings.ts": "67a13a92d6aec171fe5733103da5d0d7f8dcaa99",
+    "src/server/services/rag-index.ts": "333f9e14a9bc63343e17e2378a996e3235d886b0",
+    "src/server/services/search-model.ts": "1994b6e0938b10025b490e666b682c130994cbe9",
+    "src/server/services/search-suggestions.ts": "70dae530f395a3b0f1637b436d3c654de85f6049",
+    "src/server/services/search-validation.ts": "7021b0c151611c7001779d014e11e57a477fee40",
+    "src/server/services/tag-ai.ts": "945a773d489fdfc8bf2733d214628cfd8de6acae",
+    "src/server/services/tag-icons.ts": "5266d38d9f0f9ed85b030bea5f3dad86577fd6a7"
+  },
+  "change": {
+    "description": "Add provider-call AI usage metering across assistant-facing clipping, search, indexing, tags, icons, and model validation paths, with contained token dimensions, retry-aware settlement, rolling personal quota helpers, additive daily result counts, daily rollups, and detail retention.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["persistent-state", "operations"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "The implementation preserves existing provider and public response contracts, adds operational accounting and quota enforcement helpers, and extends the daily usage summary with additive result-count columns through a forward-only migration.",
+      "assessed_at": "2026-10-27T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "docs/adr/0035-personal-assistant-quota-and-sitewide-ai-metering.md",
+          "blob": "ee6b4ca3dfd153104f645ad561419009b2465911",
+          "command": "Defines separate personal quota and sitewide provider usage scope, retry semantics, containment, estimates, and retention"
+        },
+        {
+          "path": "docs/specs/site-knowledge-assistant/SPEC.md",
+          "blob": "d11a224a6283c60aa276785997ee8a33a4586dad",
+          "command": "Locks rolling token/question windows, three conversations, reset behavior, provider dimensions, and 90-day detail retention"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "The candidate records every attempted provider call, preserves user/feature/provider/model/status/raw dimensions without prompt or answer bodies, observes raw provider usage before SDK normalization, uses conservative reservations with in-place corrections, and keeps automatic retries from adding question counts while manual retries remain separate. Daily summaries now preserve success, failure, and cancellation counts across detail cleanup. Upstream model catalog metadata discovery remains outside model-validation metering; actual admin validation calls carry the authenticated backend identity context.",
+      "assessed_at": "2026-10-27T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/ai-usage.ts",
+          "command": "Reservation, settlement, provider usage normalization, quota snapshots/resets, daily idempotent rollup, and 90-day cleanup implementation"
+        },
+        {
+          "path": "src/server/clipping/agent-runtime.ts",
+          "command": "GenerationTask hooks meter each Pi provider attempt and preserve clipping conversation ownership context"
+        },
+        {
+          "path": "src/server/services/search-model.ts",
+          "command": "Direct chat and embedding requests record actual responses and provider failures"
+        },
+        {
+          "path": "src/lib/ai/rerank.ts",
+          "command": "Search rerank backoff attempts are metered individually, including retryable responses and network failures"
+        },
+        {
+          "path": "src/server/admin-api/router.ts",
+          "command": "Admin search validation, model validation, tag organization, and icon suggestion requests pass the authenticated frontend/admin identity into actual provider-call metering; catalog metadata discovery remains outside model-validation metering"
+        },
+        {
+          "path": "src/server/services/search-validation.ts",
+          "command": "Search quality validation meters each embedding, rewrite, and RAG judge provider call with a run/stage-scoped logical request"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate stays within T2 provider metering and quota behavior. The parent-approved shared-contract adjustment is limited to additive daily usage result-count fields, their shared type, and migration; identity/storage contracts and T3 migration surfaces remain unchanged, while assistant endpoint/UI integration remains a parent-owned follow-up seam."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "Focused usage, provider integration, search-model, clipping runtime/service, RAG, HTTP, and recovery tests pass in isolated processes. Repository check completes successfully: Biome reports pre-existing public-site warnings and infos, and the admin UI boundary passes for 48 files. Filtered TypeScript output retains pre-existing diagnostics in search, admin, clipping, and test compatibility code; the new metering module, shared contract, durable agent runtime, and Provider integration implementations have no diagnostics.",
+      "assessed_at": "2026-10-27T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/ai-usage.test.ts",
+          "command": "bun test src/lib/ai-usage.test.ts (20 pass; containment including DeepSeek cache fields, reservations/corrections, concurrent settlement, retries, repeated internal question steps, reset cycles, admin bypass, ordinary/admin conversation limits, status rollups, stale-dimension correction, legacy summary compatibility, multi-day maintenance, and cleanup independence)"
+        },
+        {
+          "path": "src/lib/ai/rerank.test.ts",
+          "command": "bun test src/lib/ai/rerank.test.ts (8 pass; rerank response parsing and upstream failure behavior)"
+        },
+        {
+          "path": "src/server/services/search-model.test.ts",
+          "command": "bun test src/server/services/search-model.test.ts (5 pass; provider request shape, budget guards, and embedding bounds)"
+        },
+        {
+          "path": "src/server/clipping/agent-runtime.test.ts",
+          "command": "bun test src/server/clipping/agent-runtime.test.ts (3 pass; provider adapter, recovery, and interrupted generation; raw provider observation and durable compaction matching are covered by the runtime implementation path)"
+        },
+        {
+          "path": "src/server/clipping/service.test.ts",
+          "command": "bun test src/server/clipping/service.test.ts (14 pass; clipping lifecycle, retries, recovery, and chat binding)"
+        },
+        {
+          "path": "src/server/services/llm-settings.test.ts",
+          "command": "bun test src/server/services/llm-settings.test.ts (13 pass; admin model validation contract and provider configuration behavior)"
+        },
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "command": "bun test src/server/http-compat-api.test.ts (107 pass, 3 skipped; authenticated admin HTTP compatibility surface)"
+        },
+        {
+          "path": "src/server/services/rag-index.test.ts",
+          "command": "bun test src/server/services/rag-index.test.ts (49 pass; RAG indexing, retries, cancellation, recovery, and provider-bound coverage)"
+        },
+        {
+          "path": "src/server/clipping/service-recovery.test.ts",
+          "command": "bun test src/server/clipping/service-recovery.test.ts (1 pass; SIGKILL recovery and persisted metering-context rebinding)"
+        },
+        {
+          "path": "src/lib/ai-usage.ts",
+          "command": "bunx biome check on changed implementation files; git diff --check"
+        },
+        {
+          "path": "package.json",
+          "command": "bun run check completes successfully with 26 existing Biome warnings and 13 infos; the admin UI boundary passes for 48 files; bun run db:migrations:validate passes"
+        },
+        {
+          "path": "src/server/services/search-model.ts",
+          "command": "bunx tsc --noEmit filtered to changed surfaces; no diagnostic from the new metering module or provider integration code"
+        },
+        {
+          "path": "drizzle/0023_ai_usage_daily_result_counts.sql",
+          "command": "bun run db:migrations:validate; additive migration journal and SQL are present for the three daily result-count columns"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [],
+      "evidence": [
+        {
+          "path": "src/server/services/search-model.ts",
+          "command": "Existing search response and error contracts remain unchanged; metering options are additive and internal"
+        },
+        {
+          "path": "src/server/clipping/service.ts",
+          "command": "Existing clipping conversation and lifecycle responses remain unchanged"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "minor",
+      "applicable": true,
+      "state_description": "A forward-only migration adds success_call_count, failure_call_count, and cancelled_call_count with zero defaults to ai_usage_daily_summaries. Existing T1 ai_usage_records, assistant_quota_policies, assistant_quota_resets, assistant_conversations, and frontendUsers contracts remain readable; detail rows are retained for 90 days by the maintenance helper while daily summaries and their result counts remain after cleanup.",
+      "readable_by_prior_versions": [
+        "cb1eff3a793728c11c36f28a697ac29326aee1e0 and later T1 schema versions"
+      ],
+      "upgrade_from_versions": ["cb1eff3a793728c11c36f28a697ac29326aee1e0"],
+      "evidence": [
+        {
+          "path": "drizzle/0023_ai_usage_daily_result_counts.sql",
+          "command": "Adds three NOT NULL integer result-count columns with DEFAULT 0, so rows created by the pre-migration schema remain readable"
+        },
+        {
+          "path": "src/lib/ai-usage.test.ts",
+          "command": "In-memory Drizzle migration applies the forward-only schema and verifies idempotent result rollups, legacy-summary defaults, and detail cleanup independence"
+        }
+      ]
+    }
+  }
+}

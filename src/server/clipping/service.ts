@@ -1,10 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { clearSearchCache } from "@/lib/ai/search-cache";
+import type { AiUsageContext } from "@/lib/ai-usage";
 import { extractMemoTitle } from "@/lib/content-sources/utils";
 import { db } from "@/lib/db";
 import { recognizeMemoClipping } from "@/lib/memo-clipping";
-import { memoClippings, memoClippingVersions, posts } from "@/lib/schema";
+import { frontendUsers, memoClippings, memoClippingVersions, posts } from "@/lib/schema";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import {
   AgentConfigurationError,
@@ -49,6 +50,8 @@ type ServiceOptions = {
 type ConversationBinding = {
   memoId: string;
   clippingId: string;
+  creatorId: string | null;
+  frontendUserId: string | null;
   conversationId: string;
   revision: number;
   targetUrl: string;
@@ -64,6 +67,22 @@ async function listMemoIds() {
     db.select({ id: memoClippings.memoId }).from(memoClippings),
   ]);
   return [...new Set([...memos, ...indexes].map(({ id }) => id))];
+}
+
+async function resolveFrontendUserId(creatorId: string | null) {
+  if (!creatorId) return null;
+  const direct = await db
+    .select({ id: frontendUsers.id })
+    .from(frontendUsers)
+    .where(eq(frontendUsers.id, creatorId))
+    .get();
+  if (direct) return direct.id;
+  const linked = await db
+    .select({ id: frontendUsers.id })
+    .from(frontendUsers)
+    .where(eq(frontendUsers.adminUserId, creatorId))
+    .get();
+  return linked?.id ?? null;
 }
 
 async function saveIndex(manifest: ClippingManifest, projection: Projection) {
@@ -198,12 +217,39 @@ export class ClippingService {
       for (const memoId of await (this.options.memoIds ?? listMemoIds)()) {
         await this.reconcile(memoId);
       }
+      await this.bindMeteringContexts();
       if (resume) this.runtime.resume();
       this.pump();
     })().finally(() => {
       this.scanning = null;
     });
     return this.scanning;
+  }
+
+  private async bindMeteringContexts() {
+    for (const clippingId of this.known.values()) {
+      const manifest = await this.store.manifest(clippingId);
+      if (!manifest) continue;
+      const frontendUserId = await resolveFrontendUserId(manifest.creatorId);
+      for (const version of manifest.versions) {
+        if (!version.jobConversationId) continue;
+        this.runtime.setMeteringContext(version.jobConversationId, {
+          feature: "clipping",
+          frontendUserId,
+          chargePersonalQuota: false,
+          logicalRequestId: `clipping-process:${version.id}`,
+        });
+      }
+      const chatContext = {
+        feature: "clipping",
+        frontendUserId,
+        chargePersonalQuota: Boolean(frontendUserId),
+      } satisfies AiUsageContext;
+      if (manifest.conversationId)
+        this.runtime.setMeteringContext(manifest.conversationId, chatContext);
+      for (const previous of manifest.previousConversations)
+        this.runtime.setMeteringContext(previous.conversationId, chatContext);
+    }
   }
 
   async reconcile(memoId: string, reprocess = false) {
@@ -434,7 +480,13 @@ export class ClippingService {
     const submission = await this.runtime.submit(
       version.jobConversationId,
       content,
-      `${version.id}:${key}`
+      `${version.id}:${key}`,
+      {
+        feature: "clipping",
+        logicalRequestId: `clipping-process:${version.id}:${key}`,
+        chargePersonalQuota: false,
+        chargeQuestion: false,
+      }
     );
     return this.runtime.answer(version.jobConversationId, submission);
   }
@@ -530,7 +582,13 @@ export class ClippingService {
       }
       if (!version.jobConversationId) {
         if (signal.aborted || this.closing) return;
-        const conversationId = await this.runtime.createConversation(PROCESS_INSTRUCTIONS);
+        const frontendUserId = await resolveFrontendUserId(manifest.creatorId);
+        const conversationId = await this.runtime.createConversation(PROCESS_INSTRUCTIONS, false, {
+          feature: "clipping",
+          frontendUserId,
+          chargePersonalQuota: false,
+          logicalRequestId: `clipping-process:${version.id}`,
+        });
         if (signal.aborted || this.closing) {
           await this.runtime.abort(conversationId).catch((error) => {
             if (error instanceof RuntimeOwnershipError) this.markOwnershipLost();
@@ -667,15 +725,22 @@ export class ClippingService {
     );
     if (!sourceVersion || !(await this.store.read(manifest.id, sourceVersion.id, "source")))
       throw new Error("原文尚未抓取，暂时无法讨论文章。");
+    const frontendUserId = await resolveFrontendUserId(manifest.creatorId);
     if (manifest.conversationId)
       return {
         memoId,
         clippingId: manifest.id,
+        creatorId: manifest.creatorId,
+        frontendUserId,
         conversationId: manifest.conversationId,
         revision: manifest.revision,
         targetUrl: manifest.targetUrl,
       };
-    const conversationId = await this.runtime.createConversation(CHAT_INSTRUCTIONS, true);
+    const conversationId = await this.runtime.createConversation(CHAT_INSTRUCTIONS, true, {
+      feature: "clipping",
+      frontendUserId,
+      chargePersonalQuota: Boolean(frontendUserId),
+    });
     return this.runtime.exclusive(async () => {
       const current = await this.store.manifest(manifest.id);
       if (
@@ -685,15 +750,20 @@ export class ClippingService {
         current.targetUrl !== manifest.targetUrl
       )
         throw new Error("剪藏目标已变化，请重新打开对话。");
+      const targetUrl = current.targetUrl ?? manifest.targetUrl;
+      if (!targetUrl) throw new Error("剪藏目标已变化，请重新打开对话。");
       // A concurrent call can create an unused empty runtime conversation, never two active conversations.
       current.conversationId ??= conversationId;
       await this.persist(current);
+      const boundConversationId = current.conversationId;
       return {
         memoId,
         clippingId: current.id,
-        conversationId: current.conversationId,
+        creatorId: current.creatorId,
+        frontendUserId,
+        conversationId: boundConversationId,
         revision: current.revision,
-        targetUrl: current.targetUrl,
+        targetUrl,
       };
     });
   }
@@ -779,7 +849,14 @@ export class ClippingService {
       const binding = await this.ensureConversationBinding(memoId);
       await this.options.beforeChatSubmit?.();
       await this.assertConversationBinding(binding);
-      const submissionId = await this.runtime.submit(binding.conversationId, text, requestId);
+      const submissionId = await this.runtime.submit(binding.conversationId, text, requestId, {
+        feature: "clipping",
+        frontendUserId: binding.frontendUserId,
+        chargePersonalQuota: Boolean(binding.frontendUserId),
+        chargeQuestion: true,
+        logicalRequestId: requestId,
+        logicalQuestionId: requestId,
+      });
       this.queueChatAnswer(binding, submissionId);
       return { conversationId: binding.conversationId };
     }).catch((error) => {
