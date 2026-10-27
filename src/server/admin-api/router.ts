@@ -1,6 +1,9 @@
 import { TRPCError } from "@trpc/server";
+import { eq } from "drizzle-orm";
 import OpenAI from "openai";
 import { ZodError, z } from "zod";
+import type { AiUsageContext } from "@/lib/ai-usage";
+import { db } from "@/lib/db";
 import { isValidIconId } from "@/lib/icons/aliases";
 import {
   decorateUpstreamLlmModelNames,
@@ -10,6 +13,7 @@ import {
 } from "@/lib/llm-models";
 import { type LlmTier, llmTierSchema } from "@/lib/llm-settings";
 import { hasTrustedSameOriginNavigation } from "@/lib/public-cors";
+import { frontendUsers } from "@/lib/schema";
 import { aiSearchModeSchema } from "@/lib/search/settings";
 import { createContext } from "@/server/context";
 import { handleAdminPreviewAssetRequest } from "@/server/public-media";
@@ -269,7 +273,25 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
       );
     }
 
-    const { caller, resHeaders } = await createAdminCallerForRequest(request);
+    const { caller, resHeaders, ctx } = await createAdminCallerForRequest(request);
+    const adminFrontendUserId = ctx.user
+      ? ((
+          await db
+            .select({ id: frontendUsers.id })
+            .from(frontendUsers)
+            .where(eq(frontendUsers.adminUserId, ctx.user.id))
+            .get()
+        )?.id ?? null)
+      : null;
+    const adminMetering = {
+      frontendUserId: adminFrontendUserId,
+      isAdmin: ctx.isAdmin,
+      chargePersonalQuota: false,
+      metadata: { adminUserId: ctx.user?.id ?? null },
+    } satisfies Pick<
+      AiUsageContext,
+      "frontendUserId" | "isAdmin" | "chargePersonalQuota" | "metadata"
+    >;
 
     if (pathname === "/github-binding") {
       if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
@@ -324,7 +346,14 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
         .object({ mode: aiSearchModeSchema })
         .strict()
         .parse(await request.json());
-      return json(await startSearchValidation(body.mode), { status: 202 }, resHeaders);
+      return json(
+        await startSearchValidation(body.mode, {
+          feature: "search-validation",
+          ...adminMetering,
+        }),
+        { status: 202 },
+        resHeaders
+      );
     }
     const validationMatch = pathname.match(/^\/search-settings\/validation\/([0-9a-f-]{36})$/u);
     if (validationMatch) {
@@ -385,7 +414,10 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
         const payload = body as { tier?: unknown; settings?: unknown };
         const tier = llmTierSchema.parse(payload.tier);
         return json(
-          await testAdminLlmSettings(tier, payload.settings as never),
+          await testAdminLlmSettings(tier, payload.settings as never, {
+            feature: "model-validation",
+            ...adminMetering,
+          }),
           { status: 200 },
           resHeaders
         );
@@ -970,6 +1002,7 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
           targetGroups: body.targetGroups,
           model: body.model,
           signal: request.signal,
+          metering: { feature: "tag-organization", ...adminMetering },
         });
 
         if (body.persist) {
@@ -1047,13 +1080,17 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
       if (body.type === "tag") {
         const name = String(body.name || "").trim();
         if (!name) return json({ error: "name required" }, { status: 400 }, resHeaders);
-        const result = await suggestTagIcon(name);
+        const result = await suggestTagIcon(name, {
+          metering: { feature: "icon-rerank", ...adminMetering },
+        });
         return json({ type: "tag", name, ...result }, { status: 200 }, resHeaders);
       }
       if (body.type === "category") {
         const key = String(body.key || "").trim();
         if (!key) return json({ error: "key required" }, { status: 400 }, resHeaders);
-        const result = await suggestCategoryIcon(key, body.title ? String(body.title) : undefined);
+        const result = await suggestCategoryIcon(key, body.title ? String(body.title) : undefined, {
+          metering: { feature: "icon-rerank", ...adminMetering },
+        });
         return json(
           { type: "category", key, title: body.title, ...result },
           { status: 200 },

@@ -115,8 +115,10 @@ class JobsScheduler {
       logger.info("run_completed", { status: "error", durationMs: Date.now() - startedAt });
     } finally {
       st.running = false;
-      st.nextAt = this.computeNext(st.def);
-      this.armTimer(st);
+      if (this.started) {
+        st.nextAt = this.computeNext(st.def);
+        this.armTimer(st);
+      }
 
       // Special hook: if cleanup job, perform file deletion and DB backfill here
       if (jobKey === "cleanup-job-logs") {

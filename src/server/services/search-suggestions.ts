@@ -9,6 +9,7 @@ import {
   type SearchSuggestionSeed,
   searchSuggestionItemRelatesToQuery,
 } from "@/lib/ai/search-suggestions";
+import { type AiUsageContext, meterProviderCall } from "@/lib/ai-usage";
 import { db, initializeDB } from "@/lib/db";
 import { posts } from "@/lib/schema";
 import { searchContent } from "@/lib/search/content-search";
@@ -27,6 +28,7 @@ type SuggestPublicSearchTermsInput = {
   reason: SearchSuggestionReason;
   limit?: number;
   strategy?: "auto" | "deterministic";
+  metering?: AiUsageContext;
 };
 
 function parseTags(value: string | null): string[] {
@@ -207,40 +209,51 @@ export async function suggestPublicSearchTerms(
 
   const model = resolved.chat.model || "gpt-4o-mini";
   const baseURL = (resolved.chat.baseUrl || "https://api.openai.com/v1").replace(/\/+$/, "");
-  const openai = new OpenAI({ apiKey, baseURL });
+  const openai = new OpenAI({ apiKey, baseURL, maxRetries: 0 });
   const catalog = seeds.slice(0, 42).map(compactSeed).join("\n");
 
   try {
-    const completion = await openai.chat.completions.create({
-      model,
-      messages: [
-        {
-          role: "system",
-          content: [
-            "You are designing the next search attempts for a public technical blog after a query returned no results.",
-            "Think from the reader's perspective: what concept direction should they try next to find useful existing content?",
-            "Do not merely replace synonyms, correct typos, or explain the taxonomy to the reader.",
-            "First infer the likely concept/domain behind the failed query, then propose compact search terms in exactly these strategy values:",
-            "broader_by_domain, related, sibling, alternative_label.",
-            "Meanings: broader_by_domain = a larger domain containing the concept; related = an adjacent concept likely discussed together; sibling = a peer concept in the same family; alternative_label = another common name for the same concept.",
-            "Avoid task/action keywords such as install, config, debug, tutorial, setup unless they are explicit concepts in the catalog.",
-            "Every suggestion must be likely to match the provided public content catalog or a close concept in it.",
-            "Prefer concept-direction nouns over long phrases, questions, or instructional wording.",
-            'Respond with ONLY JSON: {"interpretations":[{"concept":"...","domain":"...","confidence":0.0}],"suggestions":[{"term":"...","strategy":"broader_by_domain","concept":"...","domain":"...","rationale":"..."}]}',
-            "Rules: 3-5 suggestions, concise terms, no sentences as terms, no URLs, no markdown, no exact copy of the failed query, include at least 3 distinct strategies when possible.",
-          ].join("\n"),
-        },
-        {
-          role: "user",
-          content: JSON.stringify({
-            failedQuery: query,
-            reason: input.reason,
-            publicCatalog: catalog,
-          }),
-        },
-      ],
-      temperature: 0.2,
-      response_format: { type: "json_object" },
+    const completion = await meterProviderCall({
+      context: {
+        ...input.metering,
+        feature: "search-suggestions",
+        provider: "openai-compatible",
+        model,
+        inputEstimateTokens: Math.ceil(Buffer.byteLength(query + catalog, "utf8") / 4),
+        outputEstimateTokens: 768,
+      },
+      call: () =>
+        openai.chat.completions.create({
+          model,
+          messages: [
+            {
+              role: "system",
+              content: [
+                "You are designing the next search attempts for a public technical blog after a query returned no results.",
+                "Think from the reader's perspective: what concept direction should they try next to find useful existing content?",
+                "Do not merely replace synonyms, correct typos, or explain the taxonomy to the reader.",
+                "First infer the likely concept/domain behind the failed query, then propose compact search terms in exactly these strategy values:",
+                "broader_by_domain, related, sibling, alternative_label.",
+                "Meanings: broader_by_domain = a larger domain containing the concept; related = an adjacent concept likely discussed together; sibling = a peer concept in the same family; alternative_label = another common name for the same concept.",
+                "Avoid task/action keywords such as install, config, debug, tutorial, setup unless they are explicit concepts in the catalog.",
+                "Every suggestion must be likely to match the provided public content catalog or a close concept in it.",
+                "Prefer concept-direction nouns over long phrases, questions, or instructional wording.",
+                'Respond with ONLY JSON: {"interpretations":[{"concept":"...","domain":"...","confidence":0.0}],"suggestions":[{"term":"...","strategy":"broader_by_domain","concept":"...","domain":"...","rationale":"..."}]}',
+                "Rules: 3-5 suggestions, concise terms, no sentences as terms, no URLs, no markdown, no exact copy of the failed query, include at least 3 distinct strategies when possible.",
+              ].join("\n"),
+            },
+            {
+              role: "user",
+              content: JSON.stringify({
+                failedQuery: query,
+                reason: input.reason,
+                publicCatalog: catalog,
+              }),
+            },
+          ],
+          temperature: 0.2,
+          response_format: { type: "json_object" },
+        }),
     });
 
     const content = completion.choices[0]?.message?.content || "";

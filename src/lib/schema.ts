@@ -369,6 +369,9 @@ export const aiUsageDailySummaries = sqliteTable(
     totalTokens: integer("total_tokens").notNull().default(0),
     estimatedCallCount: integer("estimated_call_count").notNull().default(0),
     incompleteCallCount: integer("incomplete_call_count").notNull().default(0),
+    successCallCount: integer("success_call_count").notNull().default(0),
+    failureCallCount: integer("failure_call_count").notNull().default(0),
+    cancelledCallCount: integer("cancelled_call_count").notNull().default(0),
     updatedAt: integer("updated_at").notNull(),
   },
   (table) => ({

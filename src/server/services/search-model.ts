@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type AiUsageContext, meterProviderCall } from "@/lib/ai-usage";
 import type { SearchReason } from "@/lib/search/settings";
 import type { ResolvedTierConfig } from "./llm-settings";
 
@@ -44,9 +45,12 @@ export async function callSearchModel<T>(
   system: string,
   payload: unknown,
   schema: z.ZodType<T>,
-  options: { signal?: AbortSignal } = {}
+  options: { signal?: AbortSignal; metering?: AiUsageContext } = {}
 ): Promise<T> {
   if (!chat.baseUrl || !chat.apiKey || !chat.model) throw new SearchModelError("unconfigured");
+  const baseUrl = chat.baseUrl;
+  const apiKey = chat.apiKey;
+  const model = chat.model;
   const content = JSON.stringify(payload);
   if (Buffer.byteLength(system + content, "utf8") > MAX_SEARCH_MODEL_INPUT_BYTES)
     throw new SearchModelError("budget-exceeded");
@@ -56,49 +60,67 @@ export async function callSearchModel<T>(
         (value): value is AbortSignal => Boolean(value)
       )
     );
-    const response = await fetch(`${chat.baseUrl.replace(/\/$/u, "")}/chat/completions`, {
-      method: "POST",
-      signal,
-      headers: { "content-type": "application/json", authorization: `Bearer ${chat.apiKey}` },
-      body: JSON.stringify({
-        model: chat.model,
-        temperature: 0,
-        response_format: { type: "json_object" },
-        max_tokens: budget.maxOutputTokens,
-        ...(chat.model.toLowerCase().includes("deepseek")
-          ? { thinking: { type: "disabled" }, reasoning_effort: "none" }
-          : {}),
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content },
-        ],
+    const body = await meterProviderCall({
+      context: {
+        ...options.metering,
+        feature: options.metering?.feature ?? "search-model",
+        provider: options.metering?.provider ?? "openai-compatible",
+        model,
+        inputEstimateTokens: Math.ceil(Buffer.byteLength(system + content, "utf8") / 4),
+        outputEstimateTokens: budget.maxOutputTokens,
+      },
+      call: async () => {
+        const response = await fetch(`${baseUrl.replace(/\/$/u, "")}/chat/completions`, {
+          method: "POST",
+          signal,
+          headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({
+            model,
+            temperature: 0,
+            response_format: { type: "json_object" },
+            max_tokens: budget.maxOutputTokens,
+            ...(model.toLowerCase().includes("deepseek")
+              ? { thinking: { type: "disabled" }, reasoning_effort: "none" }
+              : {}),
+            messages: [
+              { role: "system", content: system },
+              { role: "user", content },
+            ],
+          }),
+        });
+        if (!response.ok) throw new SearchModelError("unavailable");
+        const reader = response.body?.getReader();
+        if (!reader) throw new SearchModelError("invalid-output");
+        const chunks: Uint8Array[] = [];
+        let size = 0;
+        try {
+          while (true) {
+            const chunk = await reader.read();
+            if (chunk.done) break;
+            size += chunk.value.byteLength;
+            if (size > 262144) {
+              await reader.cancel();
+              throw new SearchModelError("budget-exceeded");
+            }
+            chunks.push(chunk.value);
+          }
+        } finally {
+          reader.releaseLock();
+        }
+        return JSON.parse(Buffer.concat(chunks).toString("utf8")) as {
+          usage?: { prompt_tokens?: number; completion_tokens?: number } | null;
+          choices?: Array<{ finish_reason?: string; message?: { content?: string } }>;
+        };
+      },
+      getOutcome: (value) => ({
+        status: "success",
+        usage: value.usage,
       }),
     });
-    if (!response.ok) throw new SearchModelError("unavailable");
-    const reader = response.body?.getReader();
-    if (!reader) throw new SearchModelError("invalid-output");
-    const chunks: Uint8Array[] = [];
-    let size = 0;
-    try {
-      while (true) {
-        const chunk = await reader.read();
-        if (chunk.done) break;
-        size += chunk.value.byteLength;
-        if (size > 262144) {
-          await reader.cancel();
-          throw new SearchModelError("budget-exceeded");
-        }
-        chunks.push(chunk.value);
-      }
-    } finally {
-      reader.releaseLock();
-    }
-    const raw = Buffer.concat(chunks).toString("utf8");
-    const body = JSON.parse(raw);
     if (body.choices?.[0]?.finish_reason !== "stop") throw new SearchModelError("invalid-output");
     if (
-      body.usage?.prompt_tokens > budget.maxInputTokens ||
-      body.usage?.completion_tokens > budget.maxOutputTokens
+      (body.usage?.prompt_tokens ?? 0) > budget.maxInputTokens ||
+      (body.usage?.completion_tokens ?? 0) > budget.maxOutputTokens
     )
       throw new SearchModelError("budget-exceeded");
     const parsed = schema.safeParse(JSON.parse(body.choices?.[0]?.message?.content ?? ""));
@@ -116,23 +138,19 @@ export function rewriteSearchQuery(
   chat: ResolvedTierConfig,
   budget: Parameters<typeof callSearchModel>[1],
   query: string,
-  options: { signal?: AbortSignal } = {}
+  options: { signal?: AbortSignal; metering?: AiUsageContext } = {}
 ) {
-  return callSearchModel(
-    chat,
-    budget,
-    SEARCH_MODEL_PROMPTS.rewrite,
-    { query },
-    rewriteOutput,
-    options
-  );
+  return callSearchModel(chat, budget, SEARCH_MODEL_PROMPTS.rewrite, { query }, rewriteOutput, {
+    ...options,
+    metering: { ...options.metering, feature: "search-rewrite" },
+  });
 }
 export async function judgeSearchCandidates(
   chat: ResolvedTierConfig,
   budget: Parameters<typeof callSearchModel>[1],
   query: string,
   candidates: Array<{ id: string; title: string; content: string }>,
-  options: { signal?: AbortSignal } = {}
+  options: { signal?: AbortSignal; metering?: AiUsageContext } = {}
 ) {
   const output = await callSearchModel(
     chat,
@@ -140,7 +158,7 @@ export async function judgeSearchCandidates(
     SEARCH_MODEL_PROMPTS.rag,
     { query, candidates },
     judgementOutput,
-    options
+    { ...options, metering: { ...options.metering, feature: "search-rag" } }
   );
   const byId = new Map(candidates.map((candidate) => [candidate.id, candidate]));
   for (const item of output.items) {
@@ -161,10 +179,13 @@ export async function embedSearchQuery(
   config: ResolvedTierConfig,
   input: string,
   timeoutMs = 10000,
-  options?: { signal?: AbortSignal }
+  options?: { signal?: AbortSignal; metering?: AiUsageContext }
 ): Promise<number[]> {
   if (!config.baseUrl || !config.apiKey || !config.model)
     throw new SearchModelError("unconfigured");
+  const baseUrl = config.baseUrl;
+  const apiKey = config.apiKey;
+  const model = config.model;
   if (Buffer.byteLength(input, "utf8") > 64 * 1024) throw new SearchModelError("budget-exceeded");
   const signal = AbortSignal.any(
     [AbortSignal.timeout(timeoutMs), options?.signal].filter((value): value is AbortSignal =>
@@ -172,31 +193,47 @@ export async function embedSearchQuery(
     )
   );
   try {
-    const response = await fetch(`${config.baseUrl.replace(/\/$/u, "")}/embeddings`, {
-      method: "POST",
-      signal,
-      headers: { "content-type": "application/json", authorization: `Bearer ${config.apiKey}` },
-      body: JSON.stringify({ model: config.model, input }),
-    });
-    if (!response.ok) throw new SearchModelError("unavailable");
-    const reader = response.body?.getReader();
-    if (!reader) throw new SearchModelError("invalid-output");
-    let bytes = 0;
-    const chunks: Uint8Array[] = [];
-    try {
-      while (true) {
-        const chunk = await reader.read();
-        if (chunk.done) break;
-        bytes += chunk.value.byteLength;
-        if (bytes > 1048576) {
-          await reader.cancel();
-          throw new SearchModelError("budget-exceeded");
+    const body = await meterProviderCall({
+      context: {
+        ...options?.metering,
+        feature: options?.metering?.feature ?? "search-embedding",
+        provider: options?.metering?.provider ?? "openai-compatible",
+        model,
+        inputEstimateTokens: Math.ceil(Buffer.byteLength(input, "utf8") / 4),
+      },
+      call: async () => {
+        const response = await fetch(`${baseUrl.replace(/\/$/u, "")}/embeddings`, {
+          method: "POST",
+          signal,
+          headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({ model, input }),
+        });
+        if (!response.ok) throw new SearchModelError("unavailable");
+        const reader = response.body?.getReader();
+        if (!reader) throw new SearchModelError("invalid-output");
+        let bytes = 0;
+        const chunks: Uint8Array[] = [];
+        try {
+          while (true) {
+            const chunk = await reader.read();
+            if (chunk.done) break;
+            bytes += chunk.value.byteLength;
+            if (bytes > 1048576) {
+              await reader.cancel();
+              throw new SearchModelError("budget-exceeded");
+            }
+            chunks.push(chunk.value);
+          }
+        } finally {
+          reader.releaseLock();
         }
-        chunks.push(chunk.value);
-      }
-    } finally {
-      reader.releaseLock();
-    }
+        return JSON.parse(Buffer.concat(chunks).toString("utf8")) as { usage?: unknown };
+      },
+      getOutcome: (value) => ({
+        status: "success",
+        usage: value.usage,
+      }),
+    });
     const parsed = z
       .object({
         data: z
@@ -204,7 +241,7 @@ export async function embedSearchQuery(
           .min(1)
           .max(1),
       })
-      .safeParse(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+      .safeParse(body);
     if (!parsed.success) throw new SearchModelError("invalid-output");
     return parsed.data.data[0].embedding;
   } catch (error) {

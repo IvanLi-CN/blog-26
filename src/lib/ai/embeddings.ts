@@ -1,4 +1,10 @@
 import crypto from "node:crypto";
+import {
+  AiQuotaExceededError,
+  type AiUsageContext,
+  extractAiUsage,
+  meterProviderCall,
+} from "@/lib/ai-usage";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 
 function sleep(ms: number) {
@@ -89,6 +95,7 @@ type BackoffOptions = {
     status?: number;
     retryAfterMs?: number;
   }) => void;
+  meterAttempt?: (makeRequest: () => Promise<Response>, attempt: number) => Promise<Response>;
 };
 
 async function fetchWithBackoff(
@@ -104,7 +111,9 @@ async function fetchWithBackoff(
 
   while (true) {
     try {
-      const res = await makeRequest();
+      const res = await (options?.meterAttempt
+        ? options.meterAttempt(makeRequest, attempt + 1)
+        : makeRequest());
       if (res.ok) return res;
 
       // Retry on 429 or 5xx
@@ -136,6 +145,9 @@ async function fetchWithBackoff(
 
       return res;
     } catch (err) {
+      if (err instanceof AiQuotaExceededError) {
+        throw err;
+      }
       // network error: retry with backoff
       if (attempt >= retries) throw err;
       const wait = Math.min(maxDelayMs, Math.floor(delay * (1 + Math.random() * 0.25)));
@@ -172,12 +184,13 @@ export type EmbeddingResponse = {
 export async function createEmbedding(
   input: string,
   model?: string,
-  opts?: { onRetry?: BackoffOptions["onRetry"] }
+  opts?: { onRetry?: BackoffOptions["onRetry"]; metering?: AiUsageContext }
 ): Promise<EmbeddingResponse> {
   const resolved = await getResolvedLlmConfig();
   const modelName = model || resolved.embedding.model;
   const apiBase = resolved.embedding.baseUrl;
   const apiKey = resolved.embedding.apiKey;
+  const logicalRequestId = opts?.metering?.logicalRequestId ?? `embedding:${crypto.randomUUID()}`;
 
   if (!apiBase || !apiKey || !modelName) {
     throw new Error("Embedding model/baseUrl/apiKey is not configured");
@@ -199,6 +212,38 @@ export async function createEmbedding(
         retries: 5,
         initialDelayMs: 100,
         maxDelayMs: 3000,
+        meterAttempt: (makeRequest, attempt) =>
+          meterProviderCall({
+            context: {
+              ...opts?.metering,
+              feature: opts?.metering?.feature ?? "indexing",
+              provider: opts?.metering?.provider ?? "openai-compatible",
+              model: modelName,
+              logicalRequestId,
+              idempotencyKey: opts?.metering?.idempotencyKey
+                ? `${opts.metering.idempotencyKey}:attempt:${attempt}`
+                : undefined,
+              attempt,
+              automaticRetry: attempt > 1,
+              inputEstimateTokens: Math.ceil(Buffer.byteLength(input, "utf8") / 4),
+            },
+            call: makeRequest,
+            getOutcome: async (response) => {
+              let usage: unknown = null;
+              try {
+                usage = extractAiUsage(await response.clone().json());
+              } catch {
+                usage = null;
+              }
+              return {
+                status: response.ok ? "success" : "failure",
+                usage,
+                ...(response.ok
+                  ? {}
+                  : { error: { name: "ProviderHttpError", status: response.status } }),
+              };
+            },
+          }),
         onRetry: (info) => {
           // 命中 429/Retry-After 或网络错误时，应用全局冷却，避免风暴式重试
           if (info.reason === "rate_limited" || info.status === 429) {

@@ -129,6 +129,7 @@ export async function vectorizeAll(params: {
         const chunks = chunkText(input, chunkSize, chunkOverlap);
         await mapWithConcurrency(chunks, maxEmbedConcurrency, async (ch) => {
           const { vector, dim } = await createEmbedding(ch.text, modelName, {
+            metering: { feature: "indexing" },
             onRetry: ({ attempt, waitMs, reason, status, retryAfterMs }) => {
               syncEventManager.pushLog({
                 id: nanoid(),
@@ -156,6 +157,7 @@ export async function vectorizeAll(params: {
         });
       } else {
         const { vector, dim } = await createEmbedding(input, modelName, {
+          metering: { feature: "indexing" },
           onRetry: ({ attempt, waitMs, reason, status, retryAfterMs }) => {
             syncEventManager.pushLog({
               id: nanoid(),
@@ -241,6 +243,7 @@ export async function vectorizeOneBySlug(params: {
     const chunks = chunkText(input, chunkSize, chunkOverlap);
     await mapWithConcurrency(chunks, maxEmbedConcurrency, async (ch) => {
       const { vector, dim } = await createEmbedding(ch.text, modelName, {
+        metering: { feature: "indexing" },
         onRetry: ({ attempt, waitMs, reason, status, retryAfterMs }) => {
           syncEventManager.pushLog({
             id: nanoid(),
@@ -268,6 +271,7 @@ export async function vectorizeOneBySlug(params: {
     });
   } else {
     const { vector, dim } = await createEmbedding(input, modelName, {
+      metering: { feature: "indexing" },
       onRetry: ({ attempt, waitMs, reason, status, retryAfterMs }) => {
         syncEventManager.pushLog({
           id: nanoid(),

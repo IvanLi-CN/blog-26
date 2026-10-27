@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { cosineSimilarity } from "@/lib/ai/embeddings";
+import type { AiUsageContext } from "@/lib/ai-usage";
 import type { AiSearchMode, SearchValidationRun } from "@/lib/search/settings";
 import {
   embedSearchQuery,
@@ -80,7 +81,7 @@ const ragCases = [
 export function getSearchValidationRun(id: string) {
   return runs.get(id);
 }
-export async function startSearchValidation(mode: AiSearchMode) {
+export async function startSearchValidation(mode: AiSearchMode, metering?: AiUsageContext) {
   const admitted = admissions.get(mode);
   if (admitted) return admitted;
   const admission = (async () => {
@@ -102,6 +103,18 @@ export async function startSearchValidation(mode: AiSearchMode) {
       if (terminal) runs.delete(terminal.id);
     }
     runs.set(run.id, run);
+    const validationMetering = (stage: string): AiUsageContext => ({
+      ...metering,
+      feature: "search-validation",
+      logicalRequestId: `${metering?.logicalRequestId ?? `search-validation:${run.id}`}:${stage}`,
+      idempotencyKey: metering?.idempotencyKey ? `${metering.idempotencyKey}:${stage}` : undefined,
+      metadata: {
+        ...metering?.metadata,
+        validationMode: mode,
+        validationRunId: run.id,
+        validationStage: stage,
+      },
+    });
     void (async () => {
       try {
         if (
@@ -114,24 +127,31 @@ export async function startSearchValidation(mode: AiSearchMode) {
           if (!resolved.resolved) throw new SearchModelError("unconfigured");
           const vectorQuery = await embedSearchQuery(
             resolved.resolved.embedding,
-            "嵌入式 SQL 数据库 SQLite"
+            "嵌入式 SQL 数据库 SQLite",
+            10000,
+            { metering: validationMetering("embedding-query") }
           );
           const related = await embedSearchQuery(
             resolved.resolved.embedding,
-            "SQLite3 is an embedded SQL database supporting transactions."
+            "SQLite3 is an embedded SQL database supporting transactions.",
+            10000,
+            { metering: validationMetering("embedding-related") }
           );
           const unrelated = await embedSearchQuery(
             resolved.resolved.embedding,
-            "Plant tomatoes in a garden in spring."
+            "Plant tomatoes in a garden in spring.",
+            10000,
+            { metering: validationMetering("embedding-unrelated") }
           );
           if (cosineSimilarity(vectorQuery, related) <= cosineSimilarity(vectorQuery, unrelated))
             throw new SearchModelError("invalid-output");
-          for (const sample of ragCases) {
+          for (const [index, sample] of ragCases.entries()) {
             const output = await judgeSearchCandidates(
               resolved.chat,
               resolved.policy,
               sample.query,
-              sample.candidates
+              sample.candidates,
+              { metering: validationMetering(`rag-${index}`) }
             );
             const byId = new Map(output.items.map((x) => [x.id, x]));
             const supplied = new Set(sample.candidates.map((x) => x.id));
@@ -157,8 +177,13 @@ export async function startSearchValidation(mode: AiSearchMode) {
         } else {
           const probe = await createRewriteQualityProbe();
           try {
-            for (const sample of rewriteQualityCases) {
-              const output = await rewriteSearchQuery(resolved.chat, resolved.policy, sample.query);
+            for (const [index, sample] of rewriteQualityCases.entries()) {
+              const output = await rewriteSearchQuery(
+                resolved.chat,
+                resolved.policy,
+                sample.query,
+                { metering: validationMetering(`rewrite-${index}`) }
+              );
               const max = "maxQueries" in resolved.policy ? resolved.policy.maxQueries : 3;
               await probe.check(sample, output.queries, max);
               run.completed++;

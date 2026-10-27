@@ -266,7 +266,9 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
 
   let qv: number[];
   try {
-    const { vector } = await createEmbedding(input.q, model);
+    const { vector } = await createEmbedding(input.q, model, {
+      metering: { feature: "search-embedding" },
+    });
     qv = vector;
   } catch {
     return fallback();

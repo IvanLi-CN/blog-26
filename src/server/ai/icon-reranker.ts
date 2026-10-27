@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { type AiUsageContext, meterProviderCall } from "@/lib/ai-usage";
 import { getAllowedPrefixes, isValidIconId } from "@/lib/icons/aliases";
 import { validateIconExists } from "@/server/services/icon-validate";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
@@ -17,7 +18,10 @@ export type RerankResult = {
   considered: Array<{ id: string }>;
 };
 
-export async function pickBestIcon(ctx: RerankContext): Promise<RerankResult> {
+export async function pickBestIcon(
+  ctx: RerankContext,
+  options: { metering?: AiUsageContext } = {}
+): Promise<RerankResult> {
   const resolved = await getResolvedLlmConfig();
   const key = resolved.chat.apiKey || "";
   const model = resolved.chat.model || "gpt-4o-mini";
@@ -48,15 +52,26 @@ export async function pickBestIcon(ctx: RerankContext): Promise<RerankResult> {
   };
 
   try {
-    const openai = new OpenAI({ apiKey: key, baseURL: baseTrim });
-    const completion = await openai.chat.completions.create({
-      model,
-      messages: [
-        { role: "system", content: sys },
-        { role: "user", content: JSON.stringify(user) },
-      ],
-      temperature: 0.2,
-      response_format: { type: "json_object" },
+    const openai = new OpenAI({ apiKey: key, baseURL: baseTrim, maxRetries: 0 });
+    const completion = await meterProviderCall({
+      context: {
+        ...options.metering,
+        feature: "icon-rerank",
+        provider: "openai-compatible",
+        model,
+        inputEstimateTokens: Math.ceil(Buffer.byteLength(sys + JSON.stringify(user), "utf8") / 4),
+        outputEstimateTokens: 512,
+      },
+      call: () =>
+        openai.chat.completions.create({
+          model,
+          messages: [
+            { role: "system", content: sys },
+            { role: "user", content: JSON.stringify(user) },
+          ],
+          temperature: 0.2,
+          response_format: { type: "json_object" },
+        }),
     });
     const content = completion.choices?.[0]?.message?.content || "";
     let parsed: any = {};
