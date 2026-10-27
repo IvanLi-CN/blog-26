@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
+  "covered_files": {
+    "site/components/KnowledgeAssistant.css": "f293bf27306a83584417ad1790c6de653f7d3eff",
+    "site/components/KnowledgeAssistant.tsx": "72d8972878123e0ad7e8fa67b9823e9b611bbe64",
+    "site/components/PublicMemoAuthoring.public.tsx": "73ca42587cd5c2151f9f37a4f9dc7566f254919f",
+    "site/components/PublicMemoAuthoring.tsx": "7ac61a5c7bfe80d3e18957638ae46271e5c99b70",
+    "site/components/pages/memo.tsx": "67254f8d60514646999e26d17474d34171cc492a",
+    "site/layouts/BaseLayout.astro": "ba26e4b1ca8e905df22ac9d4c2f5baf26e828cfc",
+    "site/lib/assistant-client.ts": "d65da0a71d1ae1b91708ef425226f7e4c17bd223",
+    "site/pages/chat.astro": "3328491170a783cf905a135d28263390b45e1eba",
+    "src/components/comments/CommentForm.tsx": "bdf4d8e7402b81a57e52affd1a27ea5c65662327",
+    "src/components/comments/hooks.ts": "00680e47a73ec98dda96d20e57c53208f3b214b3",
+    "src/components/memos/ClippingDetail.tsx": "561b9ad0b78982018b359b983124a86932465971",
+    "src/lib/web-demo-fetch.ts": "a4b598bfdefb7deaf93a44844612e7041b1256d4",
+    "src/lib/web-demo-runtime.ts": "357f7cab956e9d15641e19df1193b711bd460025",
+    "tests/components/ClippingDetail.test.tsx": "c0ac9ebc6a20e12fed223d7acfca0edec0ecd8e3",
+    "tests/components/WebDemoIdentity.test.tsx": "59c0cb68531923f685a72c9f53ea74b803dc298a",
+    "tests/lib/web-demo-boundary.test.ts": "c63b41272bf36ad7394772295dd0ef8e81eac1e7",
+    "tests/lib/web-demo-fetch.test.ts": "a65f67ddad321d2ad87e36f8579a5293f7aa7997",
+    "tests/lib/web-demo-runtime.test.ts": "aa4532ac6ba5560de296a1e880fc55a63b6444c4"
+  },
+  "change": {
+    "description": "Add the shared public Knowledge Assistant FAB, dock, full-page route, auth-scoped drafts and quota UI, Web Demo assistant fixtures, unified frontend comment identity, and the legacy clipping chat boundary while preserving the existing public route families.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "The additive public assistant route and shared client surface are backward-compatible. Browser session state is additive and absent or unknown keys remain safe for earlier versions; no SQLite schema or server durable state is changed by T6.",
+      "assessed_at": "2026-10-28T02:45:15+08:00",
+      "evidence": [
+        {
+          "path": "docs/specs/site-knowledge-assistant/SPEC.md",
+          "blob": "d11a224a6283c60aa276785997ee8a33a4586dad",
+          "command": "Locks the shared frontend assistant, identity, quota, clipping context, responsive, and Web Demo requirements"
+        },
+        {
+          "path": "docs/adr/0034-assistant-retrieval-follows-content-authorization.md",
+          "blob": "63f271726bc388041d7669dbb2d2550d68cd601a",
+          "command": "Requires assistant retrieval to respect the public content authorization boundary"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "The candidate adds one shared assistant surface across static and dynamic public routes, a full-page /chat route, additive frontend-auth client usage, principal-scoped browser drafts and request handoff, Web Demo assistant scenes, and a shared comment identity projection. The legacy clipping live chat remains available only where explicitly enabled and is hidden on the public clipping route; no database migration or server durable assistant state shape is changed.",
+      "assessed_at": "2026-10-28T02:45:15+08:00",
+      "evidence": [
+        {
+          "path": "site/components/KnowledgeAssistant.tsx",
+          "blob": "72d8972878123e0ad7e8fa67b9823e9b611bbe64",
+          "command": "Shared FAB, dock, full-page route, principal-scoped drafts, frozen clipping/general context, quota, retry, stop, citations, and simulated login handoff"
+        },
+        {
+          "path": "site/components/KnowledgeAssistant.css",
+          "blob": "f293bf27306a83584417ad1790c6de653f7d3eff",
+          "command": "Responsive assistant layout and 44px controls validated at 320, 393, 639, 640, 1024, and 1440 viewport widths"
+        },
+        {
+          "path": "src/components/comments/hooks.ts",
+          "blob": "00680e47a73ec98dda96d20e57c53208f3b214b3",
+          "command": "Public comment identity reads the shared frontend-auth principal and preserves admin/reader role projection"
+        },
+        {
+          "path": "src/components/memos/ClippingDetail.tsx",
+          "blob": "561b9ad0b78982018b359b983124a86932465971",
+          "command": "Legacy clipping live chat is not read or subscribed when the shared Knowledge Assistant owns the public surface"
+        },
+        {
+          "path": "src/lib/web-demo-fetch.ts",
+          "blob": "a4b598bfdefb7deaf93a44844612e7041b1256d4",
+          "command": "Web Demo assistant records, ownership, idempotency, quota scenes, reset behavior, and cross-navigation session persistence"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains within T6 public static/dynamic UI, public comment identity, Web Demo fixtures, and legacy clipping entry-boundary scope; backend assistant runtime, context-material resolution, database migration, and deployment remain T4/T5-owned or out of scope."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "The public and Console Astro builds pass, 83 focused component/Web Demo tests pass, repository check and admin UI boundary checks pass, diff checks pass, browser smoke confirms guest draft handoff to simulated d_persona=user, and Tier4 review reports no remaining findings. Desktop/mobile immutable visual evidence covers the assistant surface; identity, responsive behavior, and legacy clipping entry compatibility remain covered by focused tests and route checks.",
+      "assessed_at": "2026-10-28T02:45:15+08:00",
+      "evidence": [
+        {
+          "path": "tests/components/ClippingDetail.test.tsx",
+          "blob": "c0ac9ebc6a20e12fed223d7acfca0edec0ecd8e3",
+          "command": "bun test focused suite: hidden legacy live chat performs no read or subscription"
+        },
+        {
+          "path": "tests/components/WebDemoIdentity.test.tsx",
+          "blob": "59c0cb68531923f685a72c9f53ea74b803dc298a",
+          "command": "bun test focused suite: Web Demo persona changes update shared auth and comment identity without stale reads"
+        },
+        {
+          "path": "tests/lib/web-demo-boundary.test.ts",
+          "blob": "c63b41272bf36ad7394772295dd0ef8e81eac1e7",
+          "command": "bun test focused suite: one shared assistant surface, no private cache data, and route boundary enforcement"
+        },
+        {
+          "path": "tests/lib/web-demo-fetch.test.ts",
+          "blob": "a65f67ddad321d2ad87e36f8579a5293f7aa7997",
+          "command": "bun test focused suite: 83 tests across 11 files pass, including assistant route ownership, idempotency, deletion, cross-scene persistence, and no live fallback"
+        },
+        {
+          "path": "site/components/KnowledgeAssistant.css",
+          "blob": "f293bf27306a83584417ad1790c6de653f7d3eff",
+          "command": "Browser visual evidence: immutable desktop and mobile snapshots validate the assistant dock/full-page framing and responsive control dimensions"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4"
+      ],
+      "evidence": [
+        {
+          "path": "site/pages/chat.astro",
+          "blob": "3328491170a783cf905a135d28263390b45e1eba",
+          "command": "Adds the public /chat route without removing existing public route families"
+        },
+        {
+          "path": "site/lib/assistant-client.ts",
+          "blob": "d65da0a71d1ae1b91708ef425226f7e4c17bd223",
+          "command": "Uses additive existing /api/public/frontend-auth and /api/public/chat contracts; legacy public APIs remain untouched"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": true,
+      "state_description": "T6 adds browser sessionStorage keys for principal-scoped assistant drafts, pending request ids, frozen new-conversation context, and login handoff. Earlier supported versions ignore these unknown keys; T6 tolerates absent keys. No SQLite schema or server durable state format changes.",
+      "readable_by_prior_versions": ["3.11.3", "3.11.4"],
+      "upgrade_from_versions": ["3.11.4"],
+      "evidence": [
+        {
+          "path": "site/components/KnowledgeAssistant.tsx",
+          "blob": "72d8972878123e0ad7e8fa67b9823e9b611bbe64",
+          "command": "Session state is additive, namespaced by principal, and read with safe defaults when keys are absent"
+        },
+        {
+          "path": "src/lib/web-demo-fetch.ts",
+          "blob": "a4b598bfdefb7deaf93a44844612e7041b1256d4",
+          "command": "Web Demo assistant records are session-scoped and resettable; no production database or durable file state is introduced"
+        }
+      ]
+    }
+  }
+}
