@@ -22,7 +22,7 @@
     "tests/e2e/guest/public-csr-navigation.spec.ts": "93e7de8a9516a2199930d29535e696c47431c407",
     "tests/e2e/guest/posts-cover-fallback.spec.ts": "fb2bc1cd5abc34a65113fd09ab727759562e2b6a",
     "tests/e2e/web-demo/public-csr.spec.ts": "0372e5791f80a1cffb578e334e518b289b828ec2",
-    "tests/e2e/web-demo/public-cover-media.spec.ts": "a7abbec6eed4ff52f7fafb827e1bf2237b21065c",
+    "tests/e2e/web-demo/public-cover-media.spec.ts": "c352aceda9a3ddcc2da1ac067ce855ef0e9b88cb",
     "scripts/verify-pages-build.ts": "19979f091f665ec610aafe3c26ba839d2c287f88"
   },
   "change": {
@@ -46,7 +46,7 @@
     "current": {
       "impact": "patch",
       "reasoning": "The candidate restores object-cover list cards and related-card hover behavior, keeps detail/body/attachment/playback and source-descriptor watermark candidates, migrates legacy cover/card paths only, and makes the official SSR Web Demo resolve local media derivatives instead of serving the favicon fallback.",
-      "assessed_at": "2026-10-27T13:28:20+08:00",
+      "assessed_at": "2026-10-27T13:35:25+08:00",
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
@@ -65,7 +65,7 @@
         },
         {
           "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
-          "blob": "a7abbec6eed4ff52f7fafb827e1bf2237b21065c",
+          "blob": "c352aceda9a3ddcc2da1ac067ce855ef0e9b88cb",
           "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:51460 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-cover-media.spec.ts"
         },
         {
@@ -82,7 +82,7 @@
     "verified": {
       "impact": "patch",
       "reasoning": "Focused contract, compatibility, package logic, static build and page-output verification, plus official SSR Web Demo validation verify a reversible role-scoped media fix with no persistent-state migration. The local guest E2E command remains host-blocked by the Linux/amd64 embedded search module on macOS; CI remains authoritative for that gate. The release-only media packager also requires the configured remote media origin, while the local static output path contract was verified directly.",
-      "assessed_at": "2026-10-27T13:28:20+08:00",
+      "assessed_at": "2026-10-27T13:35:25+08:00",
       "evidence": [
         {
           "path": "src/lib/__tests__/public-media.test.ts",
@@ -101,7 +101,7 @@
         },
         {
           "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
-          "blob": "a7abbec6eed4ff52f7fafb827e1bf2237b21065c",
+          "blob": "c352aceda9a3ddcc2da1ac067ce855ef0e9b88cb",
           "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:51460 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-cover-media.spec.ts"
         },
         {

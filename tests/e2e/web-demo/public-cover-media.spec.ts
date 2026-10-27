@@ -1,4 +1,49 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
+import sharp from "sharp";
+
+async function assertRenderedObjectCover(page: Page, image: Locator, pixelTolerance = 80) {
+  const imageSrc = await image.getAttribute("src");
+  expect(imageSrc).toBeTruthy();
+  if (!imageSrc) throw new Error("expected rendered cover src");
+
+  const sourceResponse = await page.request.get(imageSrc);
+  expect(sourceResponse.ok()).toBeTruthy();
+  const source = await sharp(await sourceResponse.body())
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const screenshot = await image.screenshot();
+  const rendered = await sharp(screenshot)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const scale = Math.max(
+    rendered.info.width / source.info.width,
+    rendered.info.height / source.info.height
+  );
+  const cropX = (source.info.width * scale - rendered.info.width) / 2;
+  const cropY = (source.info.height * scale - rendered.info.height) / 2;
+  const samplePoints = [
+    [Math.floor(rendered.info.width / 2), 8],
+    [Math.floor(rendered.info.width / 2), rendered.info.height - 9],
+    [8, Math.floor(rendered.info.height / 2)],
+    [rendered.info.width - 9, Math.floor(rendered.info.height / 2)],
+  ];
+
+  for (const [x, y] of samplePoints) {
+    const sourceX = Math.min(source.info.width - 1, Math.max(0, Math.round((x + cropX) / scale)));
+    const sourceY = Math.min(source.info.height - 1, Math.max(0, Math.round((y + cropY) / scale)));
+    const renderedOffset = (y * rendered.info.width + x) * rendered.info.channels;
+    const sourceOffset = (sourceY * source.info.width + sourceX) * source.info.channels;
+    const delta = [0, 1, 2].reduce(
+      (total, channel) =>
+        total +
+        Math.abs(rendered.data[renderedOffset + channel] - source.data[sourceOffset + channel]),
+      0
+    );
+    expect(delta).toBeLessThan(pixelTolerance);
+  }
+}
 
 test.describe("public cover media in Web Demo", () => {
   test("renders clean list covers with the historical crop and hover scale", async ({ page }) => {
@@ -41,6 +86,7 @@ test.describe("public cover media in Web Demo", () => {
     expect(
       Math.abs(layout.containerWidth / layout.containerHeight - layout.sourceRatio)
     ).toBeGreaterThan(0.1);
+    await assertRenderedObjectCover(page, image);
 
     await image.locator("..").hover();
     await expect.poll(() => image.evaluate((node) => getComputedStyle(node).scale)).toBe("1.05");
@@ -65,6 +111,7 @@ test.describe("public cover media in Web Demo", () => {
     expect(await image.getAttribute("class")).toContain("object-cover");
     expect(await image.getAttribute("class")).toContain("group-hover:scale-105");
     expect(await image.evaluate((node) => getComputedStyle(node).objectFit)).toBe("cover");
+    await assertRenderedObjectCover(page, image, 300);
 
     await image.hover();
     await expect.poll(() => image.evaluate((node) => getComputedStyle(node).scale)).toBe("1.05");
@@ -83,6 +130,25 @@ test.describe("public cover media in Web Demo", () => {
       /\/api\/public\/assets\/post\/hello-world\/[0-9a-f]+\/wm-[ab]-v5\/cover\.webp$/
     );
     expect(await detailCover.getAttribute("class")).toContain("object-contain");
+    await expect
+      .poll(() => detailCover.evaluate((node) => (node as HTMLImageElement).naturalWidth))
+      .toBe(900);
+    await expect
+      .poll(() => detailCover.evaluate((node) => (node as HTMLImageElement).naturalHeight))
+      .toBe(600);
+    const detailLayout = await detailCover.evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      return {
+        objectFit: getComputedStyle(node).objectFit,
+        width: rect.width,
+        height: rect.height,
+        sourceRatio: node.naturalWidth / node.naturalHeight,
+      };
+    });
+    expect(detailLayout.objectFit).toBe("contain");
+    expect(
+      Math.abs(detailLayout.width / detailLayout.height - detailLayout.sourceRatio)
+    ).toBeLessThan(0.05);
     expect(await detailCover.evaluate((node) => getComputedStyle(node).borderRadius)).toBe("0px");
 
     const bodyImage = page.locator(".post-detail-body img").first();
@@ -99,6 +165,8 @@ test.describe("public cover media in Web Demo", () => {
     );
     expect(relatedSrc).not.toContain("/wm-");
     expect(await relatedImage.getAttribute("class")).toContain("object-cover");
+    await assertRenderedObjectCover(page, relatedImage);
+    await page.evaluate(() => window.scrollTo(0, 0));
 
     const screenshot = await page.screenshot({
       path: test.info().outputPath("post-detail-mobile.png"),
