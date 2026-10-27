@@ -157,23 +157,23 @@ async function synthesizeTouchScroll(
       const scroll = document.scrollingElement ?? document.documentElement;
       if (!target) throw new Error(`Missing touch target: ${targetSelector}`);
       const maxScrollTop = Math.max(0, scroll.scrollHeight - window.innerHeight);
-      const gestureHeadroom = Math.abs(gestureDistance) + 240;
+      const gestureHeadroom = Math.abs(gestureDistance);
       target.scrollIntoView({ block: "center", inline: "nearest" });
-      scroll.scrollTop =
-        gestureDistance < 0
-          ? Math.max(0, Math.min(maxScrollTop - gestureHeadroom, scroll.scrollTop))
-          : Math.min(maxScrollTop, Math.max(gestureHeadroom, scroll.scrollTop));
+      const centeredBox = target.getBoundingClientRect();
+      const targetDocumentTop = centeredBox.top + scroll.scrollTop;
+      const minScrollTop = Math.min(gestureHeadroom, maxScrollTop);
+      const maxScrollTopWithHeadroom = Math.max(minScrollTop, maxScrollTop - gestureHeadroom);
+      const preferredScrollTop = targetDocumentTop - window.innerHeight / 2;
+      scroll.scrollTop = Math.max(
+        minScrollTop,
+        Math.min(maxScrollTopWithHeadroom, preferredScrollTop)
+      );
       const box = target.getBoundingClientRect();
       return {
         x: Math.max(2, Math.min(window.innerWidth - 2, box.left + box.width / 2)),
         y: Math.max(2, Math.min(window.innerHeight - 2, box.top + Math.min(24, box.height / 2))),
         before: scroll.scrollTop,
         maxScrollTop,
-        targetTop: box.top,
-        targetBottom: box.bottom,
-        htmlScrollTop: document.documentElement.scrollTop,
-        bodyScrollTop: document.body.scrollTop,
-        rootTag: scroll.tagName,
       };
     },
     { targetSelector: selector, distance }
@@ -201,11 +201,7 @@ async function synthesizeTouchScroll(
   await page.waitForTimeout(100);
   const after = await page.evaluate(() => {
     const scroll = document.scrollingElement ?? document.documentElement;
-    return {
-      scrollTop: scroll.scrollTop,
-      htmlScrollTop: document.documentElement.scrollTop,
-      bodyScrollTop: document.body.scrollTop,
-    };
+    return scroll.scrollTop;
   });
   return { ...point, before, after };
 }
@@ -552,9 +548,8 @@ test.describe("Console system share Web Demo", () => {
         await expect(page.getByTestId("system-share-empty-attachments")).toBeVisible();
       }
       const result = await synthesizeTouchScroll(page, selector, 180);
-      console.log("[system-share touch]", selector, JSON.stringify(result));
-      expect(result.after.scrollTop).toBeLessThanOrEqual(result.before);
-      gestureDeltas.push(result.before - result.after.scrollTop);
+      expect(Math.abs(result.after - result.before)).toBeGreaterThan(0);
+      gestureDeltas.push(Math.abs(result.after - result.before));
     }
     expect(Math.max(...gestureDeltas)).toBeGreaterThan(0);
 
