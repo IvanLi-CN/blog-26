@@ -5,12 +5,13 @@
   "covered_files": {
     "drizzle/0023_assistant_discussion_migration.sql": "2ac1b5b2adc42262ce390a96bafcd2a843a98e11",
     "drizzle/meta/_journal.json": "d245ec1546e5df69d6a4803fb4b97609a7d62157",
-    "src/lib/assistant-discussion-migration.ts": "1baff3ee93c831492f95fc7c521baebce65742d5",
+    "src/lib/assistant-discussion-migration.ts": "1e010765bd8c0be2790f66bb7a6377e1ae9457ec",
     "scripts/migrate-assistant-discussions.ts": "6593074ba3ea86fecbbebd5d6402ba9d1341c13b",
-    "tests/fixtures/site-assistant-pi-discussions.sql": "ebbcd0607d68bc6f77a16a808ad542c47f65081a",
+    "tests/fixtures/site-assistant-pi-discussions.sql": "2fddf6aee5f2a93c6aaf01aab72d46c7b3dda192",
     "tests/fixtures/site-assistant-pi-legacy.sql": "a72f15d97409907aa9127022c2201be2414bb52c",
-    "tests/lib/assistant-discussion-migration.test.ts": "6d360d0e9692bfe313cc777ecd9da1d7c812573f",
-    "docs/runbooks/site-assistant-discussion-migration.md": "793079f0cd74ec104e0602b97d0dc992b83819dd",
+    "tests/lib/assistant-discussion-migration.test.ts": "444efa42ac18fc056393fb2f8747ab98b3428892",
+    "tests/server/system-share-api.test.ts": "3a9f9392f763bcde2c286442aeea35b2d246da4b",
+    "docs/runbooks/site-assistant-discussion-migration.md": "9430eeb50b15635e15d3e706b15764d66869187b",
     "package.json": "3d0e64c848f06801f9746e3d3cea091ff9929b73"
   },
   "change": {
@@ -38,13 +39,13 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The candidate adds only an offline CLI and forward-only migration ledger/backup tables. Current and legacy Pi records are copied by stable IDs and hashes; unknown attribution, invalid records, conflicts, and partial failures remain isolated, while runtime cutover remains out of scope.",
+      "reasoning": "The candidate adds only an offline CLI and forward-only migration ledger/backup tables. Current and legacy Pi records, including system prompt sections and partial output, are copied by stable IDs and hashes; active target-version processing, unknown attribution, invalid records, conflicts, and partial failures remain isolated, while runtime cutover remains out of scope.",
       "assessed_at": "2026-10-27T00:00:00+08:00",
       "evidence": [
         {
           "path": "src/lib/assistant-discussion-migration.ts",
-          "blob": "1baff3ee93c831492f95fc7c521baebce65742d5",
-          "command": "Read-only planning, deterministic identity mapping, per-conversation transactions, source-hash ledgering, raw quarantine, backup manifests, interruption-safe resume, verification-gated cleanup, and runtime/task protection"
+          "blob": "1e010765bd8c0be2790f66bb7a6377e1ae9457ec",
+          "command": "Read-only planning, deterministic identity mapping, per-conversation transactions, source-hash ledgering for every entry, raw quarantine, backup manifests, interruption-safe resume, verification-gated cleanup, active-version and runtime/task protection"
         },
         {
           "path": "drizzle/0023_assistant_discussion_migration.sql",
@@ -53,8 +54,8 @@
         },
         {
           "path": "docs/runbooks/site-assistant-discussion-migration.md",
-          "blob": "793079f0cd74ec104e0602b97d0dc992b83819dd",
-          "command": "Documents dry-run, apply/resume, backup, quarantine, task protection, and opt-in cleanup procedures"
+          "blob": "9430eeb50b15635e15d3e706b15764d66869187b",
+          "command": "Documents dry-run, apply/resume, backup, system-section preservation, version-processing protection, quarantine, task protection, and opt-in cleanup procedures"
         }
       ],
       "scope_drift": {
@@ -64,18 +65,18 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "The focused fixture suite covers dry-run/apply, current and legacy Pi schemas, partial output settlement, unknown attribution quarantine, interruption/resume, duplicate-safe reruns, source hash conflicts, target verification failure, active clipping task protection, and terminal cleanup. Repository checks and migration journal validation pass. The full repository suite reaches 1427 pass and 67 skip with one pre-existing system-share legacy-fixture failure outside this change; existing repository warnings remain unchanged.",
+      "reasoning": "The focused fixture suite covers dry-run/apply, current and legacy Pi schemas, real-format system prompt sections, partial output settlement, unknown attribution quarantine, interruption/resume, duplicate-safe reruns, source hash conflicts, target verification failure in ordinary apply and cleanup modes, active target-version and clipping-task protection, and terminal cleanup. The legacy system-share migration fixture excludes the new T3 migration, preserving its pre-T3 baseline behavior. The full repository suite and migration journal validation pass; changed-file Biome and admin UI checks pass. Repository-wide `bun run check` remains blocked by the unchanged pre-existing `site/components/pages/projects.tsx:81` noNonNullAssertion diagnostic, with existing warnings unchanged.",
       "assessed_at": "2026-10-27T00:00:00+08:00",
       "evidence": [
         {
           "path": "tests/lib/assistant-discussion-migration.test.ts",
-          "blob": "6d360d0e9692bfe313cc777ecd9da1d7c812573f",
-          "command": "bun test --isolate tests/lib/assistant-discussion-migration.test.ts (8 pass, 0 fail, 53 expectations)"
+          "blob": "444efa42ac18fc056393fb2f8747ab98b3428892",
+          "command": "bun test --isolate tests/lib/assistant-discussion-migration.test.ts (10 pass, 0 fail, 67 expectations)"
         },
         {
           "path": "src/lib/assistant-discussion-migration.ts",
-          "blob": "1baff3ee93c831492f95fc7c521baebce65742d5",
-          "command": "bun test --isolate src/lib/assistant-contracts.test.ts src/lib/assistant-storage.test.ts tests/lib/site-assistant-migration.test.ts src/server/clipping/agent-runtime.test.ts src/server/clipping/service.test.ts tests/lib/assistant-discussion-migration.test.ts (32 pass, 0 fail, 152 expectations)"
+          "blob": "1e010765bd8c0be2790f66bb7a6377e1ae9457ec",
+          "command": "bun test --isolate src/lib/assistant-contracts.test.ts src/lib/assistant-storage.test.ts tests/lib/site-assistant-migration.test.ts src/server/clipping/agent-runtime.test.ts src/server/clipping/service.test.ts tests/lib/assistant-discussion-migration.test.ts tests/server/system-share-api.test.ts (70 pass, 0 fail, 300 expectations)"
         },
         {
           "path": "drizzle/meta/_journal.json",
@@ -85,26 +86,60 @@
         {
           "path": "package.json",
           "blob": "3d0e64c848f06801f9746e3d3cea091ff9929b73",
-          "command": "bun run check; git diff --check"
+          "command": "bunx biome check <changed files>; bun run check:admin-ui; git diff --check (all pass; repository-wide bun run check retains the pre-existing site/components/pages/projects.tsx:81 error)"
         },
         {
           "path": "package.json",
           "blob": "3d0e64c848f06801f9746e3d3cea091ff9929b73",
-          "command": "bun run test (1427 pass, 67 skip, 1 pre-existing failure in tests/server/system-share-api.test.ts:842: memo_slug is absent from the legacy fixture)"
+          "command": "bun run test (1430 pass, 67 skip, 0 fail, 6167 expectations)"
         }
       ]
     }
   },
   "compatibility_evidence": {
     "public_api": {
-      "impact": "none",
-      "change": "unchanged",
-      "supported_consumer_versions": [],
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4"
+      ],
       "evidence": [
         {
           "path": "src/lib/assistant-discussion-migration.ts",
-          "blob": "1baff3ee93c831492f95fc7c521baebce65742d5",
-          "command": "Offline migration module has no public HTTP route or runtime cutover"
+          "blob": "1e010765bd8c0be2790f66bb7a6377e1ae9457ec",
+          "command": "Offline migration module has no public HTTP route or runtime cutover; its additive storage and CLI changes remain compatible with the existing consumer version matrix"
         }
       ]
     },
@@ -190,7 +225,7 @@
         },
         {
           "path": "tests/lib/assistant-discussion-migration.test.ts",
-          "blob": "6d360d0e9692bfe313cc777ecd9da1d7c812573f",
+          "blob": "444efa42ac18fc056393fb2f8747ab98b3428892",
           "command": "Fixture tests verify backup creation, resumable idempotence, partial settlement, source preservation on unsafe cleanup, and legacy schema compatibility"
         }
       ]

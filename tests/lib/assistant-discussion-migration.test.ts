@@ -204,7 +204,7 @@ describe("assistant discussion migration", () => {
         count: 2,
       });
       expect(target.query("SELECT COUNT(*) AS count FROM assistant_messages").get()).toEqual({
-        count: 6,
+        count: 7,
       });
       expect(
         target
@@ -218,6 +218,14 @@ describe("assistant discussion migration", () => {
           .query("SELECT content FROM assistant_messages WHERE content = ?")
           .get("Partial answer")
       ).toBeTruthy();
+      expect(
+        target
+          .query("SELECT role, content FROM assistant_messages WHERE content LIKE ?")
+          .get("%Article context from prompt sections%")
+      ).toEqual({
+        role: "system",
+        content: "<reading-context>Article context from prompt sections</reading-context>",
+      });
       expect(
         target.query("SELECT COUNT(*) AS count FROM assistant_migration_backups").get()
       ).toEqual({ count: 1 });
@@ -244,7 +252,7 @@ describe("assistant discussion migration", () => {
         afterRerun.query("SELECT COUNT(*) AS count FROM assistant_conversations").get()
       ).toEqual({ count: 2 });
       expect(afterRerun.query("SELECT COUNT(*) AS count FROM assistant_messages").get()).toEqual({
-        count: 6,
+        count: 7,
       });
       afterRerun.close();
     } finally {
@@ -290,7 +298,7 @@ describe("assistant discussion migration", () => {
         count: 2,
       });
       expect(target.query("SELECT COUNT(*) AS count FROM assistant_messages").get()).toEqual({
-        count: 6,
+        count: 7,
       });
       target.close();
     } finally {
@@ -346,7 +354,7 @@ describe("assistant discussion migration", () => {
           .get("The settled answer.")
       ).toEqual({ status: "completed" });
       expect(target.query("SELECT COUNT(*) AS count FROM assistant_messages").get()).toEqual({
-        count: 7,
+        count: 8,
       });
       target.close();
     } finally {
@@ -445,6 +453,135 @@ describe("assistant discussion migration", () => {
     }
   });
 
+  it("refuses cleanup when archived system context is corrupted", async () => {
+    const directory = withTempDirectory();
+    try {
+      const targetPath = createTarget(directory);
+      const piPath = createPi(directory);
+      await migrateAssistantDiscussions({
+        targetDbPath: targetPath,
+        piDbPath: piPath,
+        mode: "apply",
+        now: () => 45_000,
+        resolveTrustedCreator: trustedReader,
+      });
+
+      const corrupt = new Database(targetPath);
+      corrupt
+        .query("UPDATE assistant_messages SET content = ? WHERE content LIKE ?")
+        .run("Corrupted reading context", "%Article context from prompt sections%");
+      corrupt.close();
+
+      const blocked = await migrateAssistantDiscussions({
+        targetDbPath: targetPath,
+        piDbPath: piPath,
+        mode: "apply",
+        cleanup: true,
+        now: () => 45_001,
+        resolveTrustedCreator: trustedReader,
+      });
+      expect(blocked.status).toBe("blocked");
+      expect(blocked.cleanup.verified).toBe(false);
+      expect(blocked.cleanup.removed).toEqual([]);
+      const source = new Database(piPath);
+      expect(source.query("SELECT COUNT(*) AS count FROM conversations").get()).toEqual({
+        count: 2,
+      });
+      source.close();
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("binds the active target version and protects cleanup during version processing", async () => {
+    const directory = withTempDirectory();
+    try {
+      const targetPath = createTarget(directory);
+      const piPath = createPi(directory);
+      const target = new Database(targetPath);
+      target
+        .query(
+          "UPDATE memo_clippings SET target_url = ?, current_version_id = ?, manifest = ?, updated_at = ? WHERE id = ?"
+        )
+        .run(
+          "https://example.test/next",
+          "version-current",
+          JSON.stringify({
+            schemaVersion: 1,
+            id: "clip-1",
+            memoId: "memo.md",
+            creatorId: "legacy-reader",
+            revision: 3,
+            enabled: true,
+            deleted: false,
+            targetUrl: "https://example.test/next",
+            conversationId: "1",
+            previousConversations: [
+              { targetUrl: "https://example.test/current", conversationId: "2" },
+            ],
+            currentVersionId: "version-current",
+            activeVersionId: "version-processing",
+            versions: [
+              {
+                id: "version-current",
+                revision: 2,
+                targetUrl: "https://example.test/current",
+                createdAt: 2,
+                status: "completed",
+                summaryState: "completed",
+                translationState: "completed",
+              },
+              {
+                id: "version-processing",
+                revision: 3,
+                targetUrl: "https://example.test/next",
+                createdAt: 3,
+                status: "processing",
+                summaryState: "pending",
+                translationState: "pending",
+              },
+            ],
+          }),
+          3,
+          "clip-1"
+        );
+      target.close();
+
+      const report = await migrateAssistantDiscussions({
+        targetDbPath: targetPath,
+        piDbPath: piPath,
+        mode: "apply",
+        cleanup: true,
+        now: () => 46_000,
+        resolveTrustedCreator: trustedReader,
+      });
+      expect(report.status).toBe("complete");
+      expect(report.cleanup.removed).toEqual([]);
+      expect(report.cleanup.skipped).toHaveLength(2);
+      expect(report.cleanup.skipped.every((item) => item.reason === "clipping-processing")).toBe(
+        true
+      );
+
+      const migrated = new Database(targetPath);
+      expect(
+        migrated
+          .query<{ clipping_version_id: string }, []>(
+            "SELECT clipping_version_id FROM assistant_conversations ORDER BY id"
+          )
+          .all()
+          .map((row) => row.clipping_version_id)
+      ).toEqual(expect.arrayContaining(["version-processing", "version-current"]));
+      migrated.close();
+      const source = new Database(piPath);
+      expect(source.query("SELECT COUNT(*) AS count FROM conversations").get()).toEqual({
+        count: 2,
+      });
+      source.close();
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it("preserves the old target when an immutable source entry hash changes", async () => {
     const directory = withTempDirectory();
     try {
@@ -514,12 +651,30 @@ describe("assistant discussion migration", () => {
         .query("UPDATE assistant_messages SET content = ? WHERE content = ?")
         .run("Corrupted target", "The current answer.");
       corrupt.close();
+      const ordinary = await migrateAssistantDiscussions({
+        targetDbPath: targetPath,
+        piDbPath: piPath,
+        mode: "apply",
+        now: () => 55_001,
+        resolveTrustedCreator: trustedReader,
+      });
+      expect(ordinary.status).toBe("blocked");
+      expect(ordinary.cleanup.requested).toBe(false);
+      const blockedState = new Database(targetPath);
+      expect(
+        blockedState
+          .query<{ status: string; last_error: string | null }, [string]>(
+            "SELECT status, last_error FROM assistant_migration_state WHERE id = ?"
+          )
+          .get("site-assistant-discussions-v1")
+      ).toMatchObject({ status: "blocked" });
+      blockedState.close();
       const blocked = await migrateAssistantDiscussions({
         targetDbPath: targetPath,
         piDbPath: piPath,
         mode: "apply",
         cleanup: true,
-        now: () => 55_001,
+        now: () => 55_002,
         resolveTrustedCreator: trustedReader,
       });
       expect(blocked.status).toBe("blocked");
@@ -543,7 +698,7 @@ describe("assistant discussion migration", () => {
         piDbPath: piPath,
         mode: "apply",
         cleanup: true,
-        now: () => 55_002,
+        now: () => 55_003,
         resolveTrustedCreator: trustedReader,
       });
       expect(cleaned.status).toBe("complete");

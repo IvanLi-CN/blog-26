@@ -20,7 +20,7 @@ LOCAL_CONTENT_BASE_PATH=./dev-data/local \
 bun run assistant:discussions:migrate
 ```
 
-The command prints a plan and writes a JSON manifest under `ASSISTANT_MIGRATION_BACKUP_DIR` (or the database directory's `assistant-migration-backups` folder). Unknown attribution, invalid manifests, unreferenced conversations, and source conflicts are listed as quarantined records with their raw source payloads.
+The command prints a plan and writes a JSON manifest under `ASSISTANT_MIGRATION_BACKUP_DIR` (or the database directory's `assistant-migration-backups` folder). It preserves Pi system prompt sections as system messages alongside normal model content. Unknown attribution, invalid manifests, unreferenced conversations, and source conflicts are listed as quarantined records with their raw source payloads.
 
 ## Apply and resume
 
@@ -41,4 +41,4 @@ Cleanup is opt-in and requires both `--apply` and `--cleanup`:
 bun run assistant:discussions:migrate --apply --cleanup
 ```
 
-Before deleting a source conversation, the command verifies target rows and hashes, re-reads the source, re-checks the runtime lease and Pi tasks inside a write transaction, and skips protected or changed source records. Quarantined source payloads are never deleted. The backup manifest and `assistant_migration_backups` row are retained for recovery evidence.
+Before deleting a source conversation, the command verifies target rows and hashes, re-reads the source, re-checks the runtime lease, active clipping version, and Pi tasks inside a write transaction, and skips protected or changed source records. Quarantined source payloads are never deleted. The backup manifest and `assistant_migration_backups` row are retained for recovery evidence.

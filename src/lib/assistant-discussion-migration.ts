@@ -308,6 +308,17 @@ function contentText(content: unknown): string {
   return text || canonicalJson(content);
 }
 
+function messageTextForEntry(entryKind: string | null, message: JsonObject): string {
+  const content = contentText(message.content);
+  if (entryKind !== "pi.system" && entryKind !== "pi.compaction") return content;
+  const sections = isObject(message.sections)
+    ? Object.values(message.sections)
+        .filter((value) => value !== null && value !== undefined)
+        .map(contentText)
+    : [];
+  return [content, ...sections].filter((part) => part.length > 0).join("\n\n");
+}
+
 function messageRole(
   entryKind: string | null,
   message: JsonObject
@@ -523,9 +534,14 @@ function readSourceData(piDbPath: string, now: number): SourceData {
 
 function versionProcessing(version: unknown): boolean {
   if (!isObject(version)) return false;
-  return [version.status, version.summaryState, version.translationState].some(
-    (value) => value === "processing"
+  return [version.status, version.summaryState, version.translationState].some((value) =>
+    ["queued", "processing"].includes(String(value))
   );
+}
+
+function versionMatchesTarget(version: JsonObject | undefined, targetUrl: string | null): boolean {
+  if (!version) return false;
+  return targetUrl === null || asString(version.targetUrl) === targetUrl;
 }
 
 function versionForTarget(
@@ -534,17 +550,20 @@ function versionForTarget(
   preferredId: string | null
 ): { id: string | null; processing: boolean } {
   const versions = Array.isArray(manifest.versions) ? manifest.versions.filter(isObject) : [];
-  if (preferredId) {
-    const preferred = versions.find((version) => version.id === preferredId);
-    return { id: preferredId, processing: versionProcessing(preferred) };
-  }
+  const active = versions.find((version) => version.id === manifest.activeVersionId);
+  const preferred = preferredId
+    ? versions.find((version) => version.id === preferredId)
+    : undefined;
   const candidates = versions
-    .filter((version) => targetUrl === null || version.targetUrl === targetUrl)
+    .filter((version) => versionMatchesTarget(version, targetUrl))
     .sort((a, b) => Number(b.createdAt ?? 0) - Number(a.createdAt ?? 0));
-  const candidate = candidates[0];
+  const candidate =
+    (versionMatchesTarget(active, targetUrl) ? active : undefined) ??
+    (versionMatchesTarget(preferred, targetUrl) ? preferred : undefined) ??
+    candidates[0];
   return {
     id: asString(candidate?.id),
-    processing: versionProcessing(candidate),
+    processing: versionProcessing(candidate) || versionProcessing(active),
   };
 }
 
@@ -614,6 +633,12 @@ function readReferenceData(target: Database): ReferenceData {
       targetUrl,
       asString(manifest.currentVersionId) ?? asString(row.current_version_id)
     );
+    const activeVersion = Array.isArray(manifest.versions)
+      ? manifest.versions
+          .filter(isObject)
+          .find((version) => version.id === manifest.activeVersionId)
+      : undefined;
+    const manifestProcessing = versionProcessing(activeVersion);
     if (currentConversationId !== null) {
       appendReference(references, {
         sourceConversationId: currentConversationId,
@@ -622,7 +647,7 @@ function readReferenceData(target: Database): ReferenceData {
         targetUrl,
         clippingVersionId: currentVersion.id,
         referenceKind: "current",
-        processing: currentVersion.processing,
+        processing: manifestProcessing || currentVersion.processing,
       });
     }
     const previousConversations = Array.isArray(manifest.previousConversations)
@@ -640,7 +665,7 @@ function readReferenceData(target: Database): ReferenceData {
         targetUrl: previousTargetUrl,
         clippingVersionId: previousVersion.id,
         referenceKind: "legacy-target",
-        processing: previousVersion.processing,
+        processing: manifestProcessing || previousVersion.processing,
       });
     }
   }
@@ -700,7 +725,7 @@ function makeTargetMessages(
       if (!isObject(value)) return;
       const role = messageRole(kind, value);
       if (!role) return;
-      const content = contentText(value.content);
+      const content = messageTextForEntry(kind, value);
       if (!content) return;
       const timestamp = normalizeTimestamp(value.timestamp, now);
       const sourceIdValue = sourceId(namespace, "entry", `${source.id}:${entry.id}:${index}`);
@@ -1265,14 +1290,17 @@ function writeSkippedEntries(
   migrationId: string,
   source: SourceConversation,
   namespace: string,
+  messages: readonly TargetMessage[],
   now: number,
   records: MigrationRecordReport[]
 ) {
   for (const entry of source.entries) {
-    const models = entryModel(entry.parsed.value);
-    if (models.length > 0 && entry.parsed.valid) continue;
+    const hasTargetMessage = messages.some(
+      (message) => message.sourceKind === "entry" && message.payload.sourceEntryId === entry.id
+    );
+    if (hasTargetMessage && entry.parsed.valid) continue;
     const sourceIdValue = sourceId(namespace, "entry", `${source.id}:${entry.id}:raw`);
-    const reason = entry.parsed.valid ? "entry-has-no-model-message" : "invalid-entry-record";
+    const reason = entry.parsed.valid ? "entry-has-no-migratable-message" : "invalid-entry-record";
     const state: LedgerState = entry.parsed.valid ? "skipped" : "quarantined";
     writeLedger(
       target,
@@ -1389,6 +1417,23 @@ function verifyPlans(
         row.status !== message.status
       ) {
         reasons.push(`${message.sourceId}:message-mismatch`);
+      }
+    }
+    const archivedEntryIds = new Set(
+      plan.messages
+        .filter((message) => message.sourceKind === "entry")
+        .map((message) => message.payload.sourceEntryId)
+    );
+    for (const entry of plan.source.entries) {
+      if (archivedEntryIds.has(entry.id)) continue;
+      const rawSourceId = sourceId(plan.namespace, "entry", `${plan.source.id}:${entry.id}:raw`);
+      const rawLedger = getLedger(target, migrationId, "entry", rawSourceId);
+      if (
+        !rawLedger ||
+        !["skipped", "quarantined"].includes(rawLedger.state) ||
+        rawLedger.source_hash !== sourceEntryHash(entry)
+      ) {
+        reasons.push(`${rawSourceId}:entry-ledger-mismatch`);
       }
     }
   }
@@ -1631,7 +1676,15 @@ export async function migrateAssistantDiscussions(
       }
       try {
         migratePlan(target, migrationId, plan, now, retentionMs(target));
-        writeSkippedEntries(target, migrationId, plan.source, plan.namespace, now, records);
+        writeSkippedEntries(
+          target,
+          migrationId,
+          plan.source,
+          plan.namespace,
+          plan.messages,
+          now,
+          records
+        );
         recordReport(
           records,
           "conversation",
@@ -1690,7 +1743,7 @@ export async function migrateAssistantDiscussions(
       : { requested: false, verified: verification.ok, removed: [], skipped: [] };
     const errorCount = records.filter((record) => record.state === "failed").length;
     const quarantined = records.filter((record) => record.state === "quarantined").length;
-    const blocked = errorCount > 0 || quarantined > 0 || (options.cleanup && !verification.ok);
+    const blocked = errorCount > 0 || quarantined > 0 || !verification.ok;
     const finalStatus: "blocked" | "complete" = blocked ? "blocked" : "complete";
     const lastError = blocked
       ? [

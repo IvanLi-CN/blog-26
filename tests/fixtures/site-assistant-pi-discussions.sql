@@ -80,8 +80,9 @@ VALUES
   (11, 1, NULL, 1, '{"id":11,"conversationId":1,"kind":"pi.user","model":[{"role":"user","content":"What is current?","timestamp":1000}]}'),
   (12, 1, NULL, 2, '{"id":12,"conversationId":1,"kind":"pi.assistant","model":[{"role":"assistant","content":[{"type":"text","text":"The current answer."}],"timestamp":2000,"stopReason":"stop"}]}'),
   (13, 1, NULL, 3, '{"id":13,"conversationId":1,"kind":"pi.system","model":[{"role":"system","content":"Article context","timestamp":2500}]}'),
-  (21, 2, NULL, 4, '{"id":21,"conversationId":2,"kind":"pi.user","model":[{"role":"user","content":"Legacy target question","timestamp":1100}]}'),
-  (22, 2, NULL, 5, '{"id":22,"conversationId":2,"kind":"pi.assistant","model":[{"role":"assistant","content":"Legacy target answer","timestamp":2100,"stopReason":"stop"}]}');
+  (15, 1, NULL, 4, '{"id":15,"conversationId":1,"kind":"pi.system","model":[{"role":"system","content":"","sections":{"reading":"<reading-context>Article context from prompt sections</reading-context>"},"timestamp":2600}]}'),
+  (21, 2, NULL, 5, '{"id":21,"conversationId":2,"kind":"pi.user","model":[{"role":"user","content":"Legacy target question","timestamp":1100}]}'),
+  (22, 2, NULL, 6, '{"id":22,"conversationId":2,"kind":"pi.assistant","model":[{"role":"assistant","content":"Legacy target answer","timestamp":2100,"stopReason":"stop"}]}');
 
 INSERT INTO documents (id, kind, family, key_value, scope_kind, owner_id, created_at, retired_at, record)
 VALUES (
