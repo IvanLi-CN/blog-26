@@ -1144,7 +1144,7 @@ async function buildImagorPath(params: {
   const sourceUrl = buildImagorSourceUrl(params.request, params.context, params.ref);
 
   const filters: string[] = getImagorFrameFilters(params.ref, params.variant);
-  filters.push(`format(${format})`, "strip_exif()");
+  filters.push(`format(${format})`);
   if (params.renderId) {
     // Explicit render IDs are source/presentation candidates. List cards stay clean by omitting
     // the render ID; an explicit watermark candidate must keep its requested watermark.
@@ -1179,6 +1179,7 @@ async function buildImagorPath(params: {
       await getWatermarkFilter(params.request, params.context, params.ref, params.variant)
     );
   }
+  filters.push("strip_exif()");
 
   const resizeSegment = `fit-in/${recipe.width}x${recipe.height}`;
   const filterSegment = filters.length > 0 ? `/filters:${filters.join(":")}` : "";

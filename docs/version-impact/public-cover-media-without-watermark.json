@@ -19,7 +19,7 @@
     "src/lib/__tests__/public-site-snapshot-compat.test.ts": "e8e99dbcde8276479085c1ea2788a4daf5f6d30f",
     "src/lib/public-media.ts": "c20b12c295eee84a9cb709bb63dd21c84a6c5483",
     "src/server/http-compat-api.test.ts": "161a5791c09571002bc620aeaba9e8f72bf9500e",
-    "src/server/public-media.ts": "aa70d01bd4ff7671f298e9c8fc1c4349e6d9fd90",
+    "src/server/public-media.ts": "23805581111bbe9954e26ed2cc109109333bb60f",
     "src/server/routers/posts.ts": "2bc8f9e2409a3cfbc7832cec527f9b942edb2b54",
     "scripts/verify-pages-build.test.ts": "70b5fa44a21bafb7ddaf313fbebb9a8bcfdb7d46",
     "tests/components/RelatedPostCard.test.tsx": "d7d6e4d5cbfb7840439af10b16322bc8d2257bb5",
