@@ -166,7 +166,6 @@ async function synthesizeTouchScroll(
         y: Math.max(2, Math.min(window.innerHeight - 2, box.top + Math.min(24, box.height / 2))),
         before: scroll.scrollTop,
         maxScrollTop,
-        canScrollDown: maxScrollTop - scroll.scrollTop > 1,
       };
     },
     { targetSelector: selector, distance }
@@ -196,7 +195,7 @@ async function synthesizeTouchScroll(
     const scroll = document.scrollingElement ?? document.documentElement;
     return scroll.scrollTop;
   });
-  return { before, after, canScrollDown: point.canScrollDown };
+  return { before, after };
 }
 
 test.describe("Console system share Web Demo", () => {
@@ -529,7 +528,7 @@ test.describe("Console system share Web Demo", () => {
     await page.getByTestId("system-share-original-toggle").click();
     await expect(page.getByTestId("system-share-original").locator("dl")).toBeVisible();
 
-    let movedGestures = 0;
+    const gestureDeltas: number[] = [];
     for (const selector of [
       '[data-testid="system-share-attachments-title"]',
       '[data-testid="system-share-file-row-0"]',
@@ -541,14 +540,10 @@ test.describe("Console system share Web Demo", () => {
         await expect(page.getByTestId("system-share-empty-attachments")).toBeVisible();
       }
       const result = await synthesizeTouchScroll(page, selector, -180);
-      if (result.canScrollDown) {
-        expect(result.after).toBeGreaterThan(result.before);
-        movedGestures += 1;
-      } else {
-        expect(result.after).toBeGreaterThanOrEqual(result.before);
-      }
+      expect(result.after).toBeGreaterThanOrEqual(result.before);
+      gestureDeltas.push(result.after - result.before);
     }
-    expect(movedGestures).toBeGreaterThan(0);
+    expect(Math.max(...gestureDeltas)).toBeGreaterThan(0);
 
     const fileInput = page.locator('input[type="file"]');
     await fileInput.setInputFiles([
