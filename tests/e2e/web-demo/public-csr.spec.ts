@@ -292,7 +292,10 @@ test("online CSR fetches structured data, keeps theme and uses fresh reads on hi
     if (routeApi(r.url())) requests.push(r.url());
     if (r.resourceType() === "document") documents.push(r.url());
   });
-  await page.getByRole("link", { name: "Code Block Fixture", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "Code Block Fixture", exact: true })
+    .getByRole("link")
+    .click();
   await expect(page).toHaveURL(/\/posts\/code-block-fixture\/?(?:\?.*)?$/);
   await expect(page.locator("main.nature-main")).toHaveAttribute("data-public-route", "post");
   await expect(page.locator("main.nature-main")).toHaveAttribute("aria-busy", "false");
