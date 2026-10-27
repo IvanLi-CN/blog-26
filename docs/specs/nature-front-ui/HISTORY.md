@@ -1,5 +1,6 @@
 # History
 
+- 2026-10-11: Public header navigation now fills the available second-row width from `360px` through `1023px`, keeps `16px` edge gutters, distributes links across the row, and removes the previous clipped or left-shrunk layout. The icon-only breakpoint remains below `360px`; Web Demo viewport evidence and guest coverage include the `359px` boundary.
 - Memo title visibility now delegates to memo-title-semantics; titleless public entries retain their date, metadata, content, and detail route.
 - The mobile reading-surface contract replaces transparent primary reading rows and prose with a continuous, theme-aware surface while retaining the compact content-flow structure.
 

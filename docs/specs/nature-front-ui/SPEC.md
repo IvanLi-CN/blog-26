@@ -72,7 +72,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 - The static `/search/` document must inspect the runtime URL before the first paint. When a non-blank `q` is present, the search input, query-aware status, and full loading skeleton expose the decoded keyword until React search results are ready.
 - On narrow viewports, the public site header uses the same content-width container as the page body. Its primary navigation stays visible as the second header row; theme selection and RSS remain directly available without a navigation menu. The RSS control keeps a compact 36px visual frame so it does not compete with the theme selector.
-- At `640px–1023px`, the public header keeps the brand and tool controls on the first row and primary navigation on the second. The navigation stays left-aligned with a fixed `16px` gap between links; the gap must not exceed the average content width of a navigation link. Unused row width remains to the right rather than stretching or centering the group.
+- At `640px–1023px`, the public header keeps the brand and tool controls on the first row and primary navigation on the second. The navigation list fills the available second-row width inside `16px` inline gutters; its five links distribute across that row with equal flexible gaps, each gap remaining at least `16px`, and neither the list nor the document may overflow horizontally. Below `640px`, the same `16px` navigation gutters and full-row distribution apply while labels remain visible from `360px` upward; below `360px`, labels may collapse to their already-labelled icons.
 - While the search island is pending hydration, its build-time empty state stays `hidden`, `inert`, and `aria-hidden`. The query-aware bootstrap is the only visible and accessible search surface.
 - The bootstrap fills keyword nodes with `textContent` and the input `value`; it must not inject URL-derived HTML.
 - The bootstrap hands off in place only after the React island emits its component-level ready signal from a committed query-aware render, including after Astro ClientRouter swaps. Missing, empty, or whitespace-only `q` values bypass it and keep the existing exploration state.
@@ -565,12 +565,12 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 
 ### Medium-width header navigation
 
-- Evidence bound to implementation commit `1c5305c858372668272bca2a20d6294e50382e44`, captured from the deterministic local Astro Demo in dark theme at `772x599` and `1023x800` CSS px. Source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, viewport strategy `Playwright CSS viewport`, margin policy `trim_only`, sensitive exclusion `N/A`.
-- The four links stay left-aligned on the second header row. Their fixed `16px` gaps remain below the measured `52px` average content width, and the page has no horizontal overflow. Guest E2E also covers the `640px` lower boundary.
+- Current evidence is captured from the deterministic local Web Demo in dark theme at `393x852` and `640x852` CSS px. Source type `ui_demo`, target program `Web Demo`, capture scope `browser-viewport`, viewport strategy `Playwright CSS viewport`, margin policy `trim_only`, sensitive exclusion `N/A`.
+- The five links fill the second header row between `16px` inline gutters and distribute across the available width at `640px`, `772px`, and `1023px`; measured edge insets remain `16px`, flexible gaps stay equal and at least `16px`, and the page has no horizontal overflow. The same checks cover `393px`, `375px`, `360px`, `359px`, and `320px`, including the icon-only breakpoint below `360px`.
 
-![Medium-width public header at 772px](./assets/public-header-medium-compact-772-dark.png)
+![Responsive public header at 393px](./assets/public-header-responsive-393-dark.png)
 
-![Medium-width public header at 1023px](./assets/public-header-medium-compact-1023-dark.png)
+![Responsive public header at 640px](./assets/public-header-responsive-640-dark.png)
 
 ### Compact mobile density (historical)
 
