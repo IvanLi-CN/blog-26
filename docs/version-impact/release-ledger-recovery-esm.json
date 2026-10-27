@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "914ad5400525faa4bec80ce559094092bbff021d",
   "covered_files": {
-    ".github/workflows/bootstrap-release-ledger-recovery.yml": "4bb37592aea643202a48547e2ddbe6fca0706a40"
+    ".github/workflows/bootstrap-release-ledger-recovery.yml": "45118dfb717dd9f0a9bd3a7a1c5dba7a3a6ef075"
   },
   "change": {
     "description": "Make the bot-signed release-ledger recovery workflow valid ESM under Node 24 without changing its recovery contract.",
@@ -18,7 +18,7 @@
       "evidence": [
         {
           "path": ".github/workflows/bootstrap-release-ledger-recovery.yml",
-          "blob": "4bb37592aea643202a48547e2ddbe6fca0706a40",
+          "blob": "45118dfb717dd9f0a9bd3a7a1c5dba7a3a6ef075",
           "command": "Node 24 module-mode recovery workflow validation"
         }
       ]
@@ -30,7 +30,7 @@
       "evidence": [
         {
           "path": ".github/workflows/bootstrap-release-ledger-recovery.yml",
-          "blob": "4bb37592aea643202a48547e2ddbe6fca0706a40",
+          "blob": "45118dfb717dd9f0a9bd3a7a1c5dba7a3a6ef075",
           "command": "Node 24 module-mode recovery workflow validation"
         }
       ],
@@ -46,7 +46,7 @@
       "evidence": [
         {
           "path": ".github/workflows/bootstrap-release-ledger-recovery.yml",
-          "blob": "4bb37592aea643202a48547e2ddbe6fca0706a40",
+          "blob": "45118dfb717dd9f0a9bd3a7a1c5dba7a3a6ef075",
           "command": "Node 24 module-mode recovery workflow validation"
         }
       ]
@@ -60,7 +60,7 @@
       "evidence": [
         {
           "path": ".github/workflows/bootstrap-release-ledger-recovery.yml",
-          "blob": "4bb37592aea643202a48547e2ddbe6fca0706a40",
+          "blob": "45118dfb717dd9f0a9bd3a7a1c5dba7a3a6ef075",
           "command": "The recovery workflow is internal to Product Release and does not alter application endpoints."
         }
       ]

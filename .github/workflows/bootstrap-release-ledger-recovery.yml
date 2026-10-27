@@ -7,6 +7,14 @@ on:
         description: Existing user-authored ledger head to bind with a bot recovery commit
         required: true
         type: string
+      release_id:
+        description: Optional abandoned release identity to bind to its merged pull request
+        required: false
+        type: string
+      merge_sha:
+        description: Optional merged pull request SHA for the abandoned release identity
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -26,6 +34,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           LEGACY_SHA: ${{ inputs.legacy_sha }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          MERGE_SHA: ${{ inputs.merge_sha }}
           REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
@@ -38,13 +48,33 @@ jobs:
           export HEAD_SHA LEDGER_DIGEST
           node --input-type=module <<'NODE'
           import fs from "node:fs";
+          import { createHash } from "node:crypto";
 
           const token = process.env.GH_TOKEN;
           const repository = process.env.REPOSITORY;
           const headSha = process.env.HEAD_SHA;
           const legacySha = process.env.LEGACY_SHA;
-          const ledgerDigest = process.env.LEDGER_DIGEST;
-          const ledger = fs.readFileSync("ledger.json").toString("base64");
+          const releaseId = process.env.RELEASE_ID;
+          const mergeSha = process.env.MERGE_SHA;
+          const ledgerData = JSON.parse(fs.readFileSync("ledger.json", "utf8"));
+          if (releaseId || mergeSha) {
+            if (!releaseId || !mergeSha || !/^[a-f0-9]{40}$/.test(mergeSha))
+              throw new Error("release_id and merge_sha must be supplied together");
+            const entry = ledgerData.entries.find((item) => item.id === releaseId);
+            if (!entry || entry.stage !== "abandoned" || entry.mergeSha || entry.inputs || entry.products)
+              throw new Error("Only an abandoned release without frozen artifacts can be rebound");
+            entry.mergeSha = mergeSha;
+            entry.updatedAt = new Date().toISOString();
+          }
+          const canonicalJson = (value) => {
+            if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+            if (value !== null && typeof value === "object")
+              return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(",")}}`;
+            return JSON.stringify(value);
+          };
+          const canonicalLedger = canonicalJson(ledgerData);
+          const ledgerDigest = createHash("sha256").update(canonicalLedger).digest("hex");
+          const ledger = Buffer.from(`${canonicalLedger}\n`).toString("base64");
           const input = {
             branch: { repositoryNameWithOwner: repository, branchName: "release-ledger" },
             expectedHeadOid: headSha,
