@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Activity, FileText, MessageSquareMore, Users } from "lucide-react";
-import { adminApi } from "@/lib/admin-api-client";
+import { Activity, BarChart3, FileText, MessageSquareMore, Users } from "lucide-react";
+import { type AdminDashboardAiUsage, adminApi } from "@/lib/admin-api-client";
 import {
   Alert,
   Badge,
@@ -11,8 +11,226 @@ import {
   CardTitle,
   EmptyState,
   Spinner,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "~/components/ui";
-import { formatDateTime, getErrorMessage, PageHeader } from "~/pages/helpers";
+import { formatCount, formatDateTime, getErrorMessage, PageHeader } from "~/pages/helpers";
+
+const usageMetricToneClasses = {
+  primary: "border-primary/20 bg-primary/8 text-primary",
+  secondary: "border-secondary/20 bg-secondary/8 text-secondary",
+  warning: "border-warning/24 bg-warning/10 text-warning",
+  success: "border-success/20 bg-success/8 text-success",
+} as const;
+
+function DashboardUsageMetric({
+  title,
+  value,
+  description,
+  tone,
+}: {
+  title: string;
+  value: string;
+  description: string;
+  tone: keyof typeof usageMetricToneClasses;
+}) {
+  return (
+    <div className={`rounded-2xl border p-4 ${usageMetricToneClasses[tone]}`}>
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <BarChart3 className="size-4" />
+        {title}
+      </div>
+      <div className="mt-3 text-2xl font-semibold text-foreground">{value}</div>
+      <div className="mt-2 text-xs leading-5 text-muted-foreground">{description}</div>
+    </div>
+  );
+}
+
+function DashboardUsageTrend({ data }: { data: AdminDashboardAiUsage["trend"] }) {
+  const max = Math.max(
+    1,
+    ...data.map(
+      (item) =>
+        Math.max(0, item.inputTokens - item.cachedInputTokens) +
+        item.cachedInputTokens +
+        item.outputTokens
+    )
+  );
+  const bandWidth = Math.max(42, (760 - 60) / Math.max(1, data.length));
+  const width = Math.max(760, 60 + data.length * bandWidth);
+  const chartHeight = 220;
+  const barWidth = Math.max(14, Math.min(28, bandWidth - 10));
+
+  return (
+    <div className="space-y-4">
+      <div className="overflow-x-auto admin-scrollbar">
+        <svg
+          className="h-56"
+          style={{ width: `${width}px`, minWidth: "620px" }}
+          viewBox={`0 0 ${width} ${chartHeight}`}
+          role="img"
+          aria-labelledby="dashboard-usage-trend-title dashboard-usage-trend-description"
+        >
+          <title id="dashboard-usage-trend-title">最近七日 AI Token 消耗趋势</title>
+          <desc id="dashboard-usage-trend-description">
+            未缓存输入、缓存命中输入和输出按统计时区逐日堆叠，数值以旁边的表格为准。
+          </desc>
+          <line
+            x1="20"
+            y1="190"
+            x2={width - 20}
+            y2="190"
+            stroke="currentColor"
+            className="text-border"
+          />
+          {data.map((item, index) => {
+            const x = 30 + index * bandWidth;
+            const input = Math.max(0, item.inputTokens - item.cachedInputTokens);
+            const cached = item.cachedInputTokens;
+            const output = item.outputTokens;
+            const inputHeight = (input / max) * 160;
+            const cachedHeight = (cached / max) * 160;
+            const outputHeight = (output / max) * 160;
+            const base = 190;
+            return (
+              <g key={item.day}>
+                <rect
+                  x={x}
+                  y={base - inputHeight}
+                  width={barWidth}
+                  height={inputHeight}
+                  rx="4"
+                  className="fill-primary/70"
+                />
+                <rect
+                  x={x}
+                  y={base - inputHeight - cachedHeight}
+                  width={barWidth}
+                  height={cachedHeight}
+                  rx="4"
+                  className="fill-secondary/75"
+                />
+                <rect
+                  x={x}
+                  y={base - inputHeight - cachedHeight - outputHeight}
+                  width={barWidth}
+                  height={outputHeight}
+                  rx="4"
+                  className="fill-warning/80"
+                />
+                <text
+                  x={x + barWidth / 2}
+                  y="210"
+                  textAnchor="middle"
+                  className="fill-muted-foreground text-[11px]"
+                >
+                  {item.day.slice(5)}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground" aria-hidden="true">
+        <span>
+          <i className="mr-1 inline-block size-2 rounded-sm bg-primary/70" />
+          未缓存输入
+        </span>
+        <span>
+          <i className="mr-1 inline-block size-2 rounded-sm bg-secondary/75" />
+          缓存命中输入
+        </span>
+        <span>
+          <i className="mr-1 inline-block size-2 rounded-sm bg-warning/80" />
+          输出
+        </span>
+      </div>
+      <div className="overflow-x-auto admin-scrollbar">
+        <Table aria-label="最近七日 AI 用量同值表格">
+          <TableHeader>
+            <TableRow>
+              <TableHead>日期</TableHead>
+              <TableHead>未缓存输入</TableHead>
+              <TableHead>缓存命中输入</TableHead>
+              <TableHead>输出</TableHead>
+              <TableHead>调用</TableHead>
+              <TableHead>缺失 / 估算</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.map((item) => (
+              <TableRow key={item.day}>
+                <TableCell>{item.day}</TableCell>
+                <TableCell>
+                  {formatCount(Math.max(0, item.inputTokens - item.cachedInputTokens))}
+                </TableCell>
+                <TableCell>{formatCount(item.cachedInputTokens)}</TableCell>
+                <TableCell>{formatCount(item.outputTokens)}</TableCell>
+                <TableCell>{formatCount(item.callCount)}</TableCell>
+                <TableCell>
+                  {formatCount(item.missingCallCount)} / {formatCount(item.estimatedCallCount)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
+function DashboardUsagePanel({ usage }: { usage: AdminDashboardAiUsage }) {
+  const { metric } = usage;
+  const uncachedInputTokens = Math.max(0, metric.inputTokens - metric.cachedInputTokens);
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <CardTitle>最近七日 AI 用量</CardTitle>
+            <CardDescription>
+              {usage.range.from} 至 {usage.range.to} · 统计时区 {usage.timezone}
+            </CardDescription>
+          </div>
+          <Badge tone="outline">含今天</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <DashboardUsageMetric
+            title="输入 Token"
+            value={formatCount(metric.inputTokens)}
+            description={`未缓存 ${formatCount(uncachedInputTokens)}`}
+            tone="primary"
+          />
+          <DashboardUsageMetric
+            title="缓存命中 Token"
+            value={formatCount(metric.cachedInputTokens)}
+            description="按提供方包含关系计入输入，不重复堆叠。"
+            tone="secondary"
+          />
+          <DashboardUsageMetric
+            title="输出 Token"
+            value={formatCount(metric.outputTokens)}
+            description={`总 Token ${formatCount(metric.totalTokens)}`}
+            tone="warning"
+          />
+          <DashboardUsageMetric
+            title="调用次数"
+            value={formatCount(metric.callCount)}
+            description={`成功 ${formatCount(metric.successCallCount)} · 缺失 ${formatCount(metric.missingCallCount)} · 估算 ${formatCount(metric.estimatedCallCount)}`}
+            tone="success"
+          />
+        </div>
+        <DashboardUsageTrend data={usage.trend} />
+      </CardContent>
+    </Card>
+  );
+}
 
 const statCards = [
   { key: "posts", title: "文章总数", icon: FileText, tone: "text-primary bg-primary/12" },
@@ -36,6 +254,10 @@ export function DashboardPage() {
   const activityQuery = useQuery({
     queryKey: ["dashboard-activity"],
     queryFn: () => adminApi.dashboardRecentActivity(12),
+  });
+  const usageQuery = useQuery({
+    queryKey: ["dashboard-ai-usage"],
+    queryFn: adminApi.dashboardAiUsage,
   });
 
   if (statsQuery.isLoading) {
@@ -95,6 +317,18 @@ export function DashboardPage() {
           );
         })}
       </div>
+
+      {usageQuery.isLoading ? (
+        <Card>
+          <CardContent className="flex items-center gap-2 p-5 text-sm text-muted-foreground">
+            <Spinner /> 加载最近七日 AI 用量中…
+          </CardContent>
+        </Card>
+      ) : usageQuery.error ? (
+        <Alert tone="danger">加载 AI 用量失败：{getErrorMessage(usageQuery.error)}</Alert>
+      ) : usageQuery.data ? (
+        <DashboardUsagePanel usage={usageQuery.data} />
+      ) : null}
 
       <div className="grid gap-6">
         <Card>

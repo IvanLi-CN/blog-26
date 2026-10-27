@@ -429,6 +429,21 @@ describe("HTTP compatibility APIs", () => {
       metric: expect.any(Object),
     });
 
+    const dashboardUsage = await handleAdminApiRequest(
+      buildRequest("/api/admin/dashboard/ai-usage", {}, ADMIN_EMAIL),
+      "/dashboard/ai-usage"
+    );
+    expect(dashboardUsage.status).toBe(200);
+    const dashboardUsageBody = await readJson(dashboardUsage);
+    expect(Array.isArray(dashboardUsageBody.trend)).toBe(true);
+    expect(dashboardUsageBody.trend).toHaveLength(7);
+    expect(dashboardUsageBody).toMatchObject({
+      timezone: expect.any(String),
+      range: { from: expect.any(String), to: expect.any(String) },
+      metric: expect.any(Object),
+      trend: expect.arrayContaining([expect.objectContaining({ day: expect.any(String) })]),
+    });
+
     const usersResponse = await handleAdminApiRequest(
       buildRequest("/api/admin/users", {}, ADMIN_EMAIL),
       "/users"

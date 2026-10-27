@@ -477,6 +477,13 @@ export interface AdminAiUsageOverview {
   retention: AdminUsageRetention;
 }
 
+export interface AdminDashboardAiUsage {
+  timezone: string;
+  range: { from: string; to: string };
+  metric: AdminUsageMetric;
+  trend: Array<AdminUsageMetric & { day: string }>;
+}
+
 export interface AdminUsageUser {
   id: string;
   displayName: string;
@@ -711,6 +718,7 @@ export const adminApi = {
   dashboardStats: () => adminRequest<DashboardStats>("/api/admin/dashboard/stats"),
   dashboardRecentActivity: (limit = 10) =>
     adminRequest<ActivityItem[]>(`/api/admin/dashboard/recent-activity${buildSearch({ limit })}`),
+  dashboardAiUsage: () => adminRequest<AdminDashboardAiUsage>("/api/admin/dashboard/ai-usage"),
   listUsers: (search?: string) =>
     adminRequest<AdminUsersResponse>(`/api/admin/users${buildSearch({ search })}`),
   resetUserQuota: (userId: string) =>

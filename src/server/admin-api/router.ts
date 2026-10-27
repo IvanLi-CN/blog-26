@@ -550,6 +550,21 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
       );
     }
 
+    if (pathname === "/dashboard/ai-usage") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      const overview = await getAdminAiUsageOverview({ range: "7d" });
+      return json(
+        {
+          timezone: overview.timezone,
+          range: { from: overview.range.from, to: overview.range.to },
+          metric: overview.metric,
+          trend: overview.trend,
+        },
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+
     if (pathname === "/users") {
       if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
       return json(

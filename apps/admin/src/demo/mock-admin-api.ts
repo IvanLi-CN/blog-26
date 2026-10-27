@@ -1,5 +1,6 @@
 import type {
   AdminAiUsageOverview,
+  AdminDashboardAiUsage,
   AdminPost,
   AdminUsageMetric,
   AdminUsageUser,
@@ -994,6 +995,31 @@ function demoAiUsageOverview(url: URL): AdminAiUsageOverview {
   };
 }
 
+function demoDashboardAiUsage(): AdminDashboardAiUsage {
+  const today = demoUsageDay(0);
+  const from = demoUsageDay(6);
+  const dataMode = getWebDemoState(window.location, "admin").data;
+  const weekRecords = demoUsageHistory.filter(
+    (record) => record.day >= from && record.day <= today
+  );
+  const records =
+    dataMode === "empty"
+      ? []
+      : dataMode === "dense"
+        ? [...weekRecords, ...weekRecords]
+        : weekRecords;
+  const trend = Array.from({ length: 7 }, (_, index) => {
+    const day = shiftDemoDay(from, index);
+    return { day, ...demoMetricFromRecords(records.filter((record) => record.day === day)) };
+  });
+  return {
+    timezone: DEMO_TIMEZONE,
+    range: { from, to: today },
+    metric: demoMetricFromRecords(records),
+    trend,
+  };
+}
+
 const demoChatSecret: AdminLlmSettingsPayload["settings"]["chat"]["apiKey"] = {
   hasValue: true,
   maskedValue: "sk-live-••••••••••••",
@@ -1656,6 +1682,9 @@ async function handleAdminRequest(
   }
   if (path === "/api/admin/dashboard/stats") return json(dashboardStats());
   if (path === "/api/admin/dashboard/recent-activity") return json(recentActivity());
+  if (path === "/api/admin/dashboard/ai-usage" && method === "GET") {
+    return json(demoDashboardAiUsage());
+  }
   if (path === "/api/admin/users" && method === "GET") {
     const search = (url.searchParams.get("search") ?? "").trim().toLocaleLowerCase();
     const users = search
