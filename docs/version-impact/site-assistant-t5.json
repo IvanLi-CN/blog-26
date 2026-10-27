@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
+  "covered_files": {
+    "apps/admin/src/components/app-shell.tsx": "15bb5d159cae10c62c0b94a467259574768ff827",
+    "apps/admin/src/components/ui.tsx": "a3a988251e898401b19a197c08ba9b1e7278b5a5",
+    "apps/admin/src/demo/mock-admin-api.ts": "4651c9b87258212b11ffdb8ed9875fe8bf15f54d",
+    "apps/admin/src/pages/ai-usage.tsx": "048d05f0dbbf32cc36c511b45400d92c0b36ab3a",
+    "apps/admin/src/pages/dashboard.tsx": "657e1decc584716ef161452982028d71240dfa69",
+    "apps/admin/src/pages/users.tsx": "4ad280188018f8476e4213e674fbe241945bc090",
+    "apps/admin/src/router.tsx": "46ade3604894321ce829fb7b80c6e28277f48f25",
+    "src/lib/admin-api-client.ts": "3ce42b7552712f858c17c6a93a023e7b24293762",
+    "src/server/admin-api/router.ts": "d3033c0d6dfb96c10cd6135de88b208e79883ea0",
+    "src/server/http-compat-api.test.ts": "9cf657d64be64e6a6e521330334ec3437279c482",
+    "src/server/services/admin-ai-usage.test.ts": "184126b343896771d0cba579587b51585f03b5e0",
+    "src/server/services/admin-ai-usage.ts": "76e51e57133c5b6ee8c3572782985c6b85873dc5",
+    "tests/e2e/web-demo/ai-usage.spec.ts": "9d8aac562f5fdcbbe536ec512af2321bb71448f6",
+    "tests/e2e/web-demo/dashboard.spec.ts": "c8e2ed98abd7ad7029161832d4f81ce9cdc3797d"
+  },
+  "change": {
+    "description": "Add the administrator AI usage operations surface, per-user quota controls, and a dashboard view covering the latest seven natural days with timezone-aware stacked usage totals and success, failure, cancellation, missing, and estimated usage visibility.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "The admin-only operations surface adds compatible read and same-origin policy endpoints plus UI routes. It does not remove existing routes, alter public response shapes, or add durable state schema changes.",
+      "assessed_at": "2026-10-28T00:09:51+08:00",
+      "evidence": [
+        {
+          "path": "docs/specs/site-knowledge-assistant/SPEC.md",
+          "blob": "d11a224a6283c60aa276785997ee8a33a4586dad",
+          "command": "REQ-SKA-018 requires the dashboard to show seven natural days, a consistent timezone, input/cache/output/call metrics, and incomplete usage visibility; review follow-up requires failure and cancelled call visibility"
+        },
+        {
+          "path": "src/server/admin-api/router.ts",
+          "blob": "d3033c0d6dfb96c10cd6135de88b208e79883ea0",
+          "command": "The admin API adds an additive dashboard usage read route while retaining the existing protected admin boundary"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "The candidate is rebased onto PR base 84eebd33a624d8028a905fe54042334aa4abad90 and adds the admin AI usage page, user quota operations, shared usage client types, and the dashboard seven-day usage panel. The dashboard endpoint reuses the existing service aggregation and returns only timezone, range, metric, and trend data; the dashboard now exposes success, failure, cancelled, missing, and estimated call states without database migration or durable state shape changes. Compatibility evidence remains anchored to the published 3.11.4 baseline e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af as required by the release policy.",
+      "assessed_at": "2026-10-28T00:09:51+08:00",
+      "evidence": [
+        {
+          "path": "apps/admin/src/pages/dashboard.tsx",
+          "blob": "657e1decc584716ef161452982028d71240dfa69",
+          "command": "Dashboard renders four AI usage cards, a three-band seven-day stack, an exact-value table, timezone labeling, and success, failure, cancelled, missing, and estimated call counts after rebasing the PR onto 84eebd33; the release evidence base remains the published 3.11.4 source e6790c24"
+        },
+        {
+          "path": "src/server/admin-api/router.ts",
+          "blob": "d3033c0d6dfb96c10cd6135de88b208e79883ea0",
+          "command": "Dashboard usage is an additive protected GET route backed by the existing seven-day AI usage aggregation"
+        },
+        {
+          "path": "apps/admin/src/demo/mock-admin-api.ts",
+          "blob": "4651c9b87258212b11ffdb8ed9875fe8bf15f54d",
+          "command": "The Web Demo mock exposes the dashboard route with deterministic Asia/Shanghai seven-day data and empty/dense data modes"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The change remains within the T5 administrator operations surface, its protected API contract, deterministic Web Demo fixtures, and focused verification; public site behavior, database schema, and provider metering semantics remain out of scope."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "The protected dashboard API contract passes the HTTP compatibility test, the compiled admin build succeeds, and the Web Demo passes desktop and mobile acceptance for the new dashboard surface plus the existing AI usage and user quota flows. The dashboard shows all seven natural-day rows, timezone labeling, additive token dimensions, and success, failure, cancelled, missing, and estimated status; the Web Demo now compares every rendered result-state cell with the dashboard API response without introducing persistent state changes. The rebased head is source-assessed against the published 3.11.4 evidence base with 102 semantic changes, 5 matching records, and minor impact.",
+      "assessed_at": "2026-10-28T00:09:51+08:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/dashboard.spec.ts",
+          "blob": "c8e2ed98abd7ad7029161832d4f81ce9cdc3797d",
+          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:25094 WEB_DEMO_VIEWPORT=desktop|mobile bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/dashboard.spec.ts (2 pass; compares every rendered call, failure, cancelled, missing, and estimated value with the API response)"
+        },
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "9cf657d64be64e6a6e521330334ec3437279c482",
+          "command": "bun test src/server/http-compat-api.test.ts -t \"exposes protected AI usage overview, user list, and policy routes\" (1 pass, 16 expectations)"
+        },
+        {
+          "path": "package.json",
+          "blob": "3d0e64c848f06801f9746e3d3cea091ff9929b73",
+          "command": "VITE_WEB_DEMO_BUILD=true ADMIN_OUT_DIR=web-demo-admin-dist bunx vite build --config apps/admin/vite.config.ts --configLoader runner; bunx biome check --write <changed files>; git diff --check; sourceAssessment(prBase=84eebd33, publishedBaseline=e6790c24, semanticChanges=102, records=5, impact=minor)"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4"
+      ],
+      "evidence": [
+        {
+          "path": "src/server/admin-api/router.ts",
+          "blob": "d3033c0d6dfb96c10cd6135de88b208e79883ea0",
+          "command": "The new route is additive, administrator-protected, and returns the existing aggregation dimensions without changing existing public API responses"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No database schema, migration, durable file, or persisted admin policy shape is introduced by T5.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/server/admin-api/router.ts",
+          "blob": "d3033c0d6dfb96c10cd6135de88b208e79883ea0",
+          "command": "Dashboard usage reads the existing AI usage service and does not write persistent state"
+        }
+      ]
+    }
+  }
+}

@@ -17,7 +17,7 @@
     "src/lib/ai/search.ts": "ae374c0a42a9116ee0d4541b3e4141d087dd79f9",
     "src/lib/ai/vectorization.ts": "450a97ce5fd9d7509b71c2c3c25608a045b9e05e",
     "src/lib/ai/rerank.ts": "a05b35eaafd42e1af50b46d0ea46b5cae7367430",
-    "src/server/admin-api/router.ts": "c2473002af7ea8ba80dc0bede47f871af6354815",
+    "src/server/admin-api/router.ts": "d3033c0d6dfb96c10cd6135de88b208e79883ea0",
     "src/server/ai/icon-reranker.ts": "9b19608a004d6fd53a9ecb47e3bf0df8ba13b629",
     "src/server/clipping/agent-runtime.ts": "6b9991ca7b0515b425d4df45ce53d63f04cc502d",
     "src/server/clipping/service.ts": "26b0c625edbced59ed3a3d6fc26fbb6a40f4e04f",
@@ -87,7 +87,7 @@
         },
         {
           "path": "src/server/admin-api/router.ts",
-          "blob": "c2473002af7ea8ba80dc0bede47f871af6354815",
+          "blob": "d3033c0d6dfb96c10cd6135de88b208e79883ea0",
           "command": "Admin search validation, model validation, tag organization, and icon suggestion requests pass the authenticated frontend/admin identity into actual provider-call metering; catalog metadata discovery remains outside model-validation metering"
         },
         {
@@ -168,7 +168,7 @@
         },
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "38d1ec2ce697f44b50dc496f401cc3d427f76447",
+          "blob": "9cf657d64be64e6a6e521330334ec3437279c482",
           "command": "bun test src/server/http-compat-api.test.ts (107 pass, 3 skipped; authenticated admin HTTP compatibility surface)"
         },
         {
