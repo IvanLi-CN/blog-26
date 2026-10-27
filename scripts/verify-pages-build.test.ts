@@ -102,7 +102,7 @@ describe("verify-pages-build", () => {
         `href="${basePath}/projects/"`,
         `action="${basePath}/search/"`,
         `href="${basePath}/feed.xml"`,
-        `<img src="${versionedCardUrl}">`,
+        `<a data-testid="post-card-cover"><img src="${versionedCardUrl}"></a>`,
         `<img src="${versionedContentUrl}">`,
         `<img src="/api/public/assets/post/${postSlug}/abcd1234/content.webp">`,
       ].join("\n")

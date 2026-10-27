@@ -247,6 +247,23 @@ function requiresBuildTimeAssetVersion(url: string) {
   return /\/(?:[a-z0-9-]+\/)?(?:card|cover)\.[^/?#]+(?:[?#]|$)/u.test(url);
 }
 
+function assertRenderedUnwatermarkedCoverImages(content: string, file: string) {
+  const document = JSDOM.fragment(content);
+  const images = document.querySelectorAll(
+    '[data-testid="post-card-cover"] img, [data-testid="home-timeline"] img, article[itemprop="isRelatedTo"] img'
+  );
+  for (const image of images) {
+    const src = image.getAttribute("src") ?? "";
+    if (!src) continue;
+    if (!/\/card\.[^/?#]+(?:[?#]|$)/u.test(src)) {
+      throw new Error(`Expected rendered cover image to use card variant in ${file}: ${src}`);
+    }
+    if (/\/wm-/u.test(src)) {
+      throw new Error(`Expected rendered cover image to be unwatermarked in ${file}: ${src}`);
+    }
+  }
+}
+
 function listBuildFiles(
   cwd: string,
   directory: string,
@@ -537,6 +554,7 @@ export function verifyPagesBuild(options: VerifyPagesBuildOptions) {
 
     for (const file of publicDocumentFiles) {
       assertExcludes(contents.get(file) ?? "", "/api/files/", file);
+      assertRenderedUnwatermarkedCoverImages(contents.get(file) ?? "", file);
     }
 
     for (const file of feedFiles) {

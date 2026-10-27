@@ -166,13 +166,13 @@ jobs:
           exit 1
 
       - name: Run public Web Demo official routes
-        run: bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-csr.spec.ts tests/e2e/web-demo/public-comments.spec.ts tests/e2e/web-demo/project-runtime-motion.spec.ts tests/e2e/web-demo/search-modes.spec.ts tests/e2e/web-demo/github-admin-binding.spec.ts
+        run: bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-csr.spec.ts tests/e2e/web-demo/public-comments.spec.ts tests/e2e/web-demo/project-runtime-motion.spec.ts tests/e2e/web-demo/search-modes.spec.ts tests/e2e/web-demo/github-admin-binding.spec.ts tests/e2e/web-demo/public-cover-media.spec.ts
         env:
           WEB_DEMO_TEST_URL: http://127.0.0.1:38211
           WEB_DEMO_TEST_REPORT: test-results/web-demo-public-routes.json
 
       - name: Run public Web Demo official routes on mobile
-        run: bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-csr.spec.ts tests/e2e/web-demo/public-comments.spec.ts tests/e2e/web-demo/project-runtime-motion.spec.ts tests/e2e/web-demo/search-modes.spec.ts tests/e2e/web-demo/github-admin-binding.spec.ts
+        run: bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-csr.spec.ts tests/e2e/web-demo/public-comments.spec.ts tests/e2e/web-demo/project-runtime-motion.spec.ts tests/e2e/web-demo/search-modes.spec.ts tests/e2e/web-demo/github-admin-binding.spec.ts tests/e2e/web-demo/public-cover-media.spec.ts
         env:
           WEB_DEMO_TEST_URL: http://127.0.0.1:38211
           WEB_DEMO_VIEWPORT: mobile

@@ -1,6 +1,28 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import sharp from "sharp";
 
+async function assertOpaqueImageCorners(page: Page, image: Locator) {
+  const imageSrc = await image.getAttribute("src");
+  expect(imageSrc).toBeTruthy();
+  if (!imageSrc) throw new Error("expected rendered image src");
+
+  const response = await page.request.get(imageSrc);
+  expect(response.ok()).toBeTruthy();
+  const { data, info } = await sharp(await response.body())
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const corners = [
+    [0, 0],
+    [info.width - 1, 0],
+    [0, info.height - 1],
+    [info.width - 1, info.height - 1],
+  ];
+  for (const [x, y] of corners) {
+    expect(data[(y * info.width + x) * info.channels + 3]).toBe(255);
+  }
+}
+
 async function assertRenderedObjectCover(page: Page, image: Locator, pixelTolerance = 80) {
   const imageSrc = await image.getAttribute("src");
   expect(imageSrc).toBeTruthy();
@@ -66,6 +88,7 @@ test.describe("public cover media in Web Demo", () => {
     await expect
       .poll(() => image.evaluate((node) => (node as HTMLImageElement).naturalHeight))
       .toBe(600);
+    await assertOpaqueImageCorners(page, image);
 
     const layout = await image.evaluate((node) => {
       const container = node.parentElement;
@@ -111,6 +134,7 @@ test.describe("public cover media in Web Demo", () => {
     expect(await image.getAttribute("class")).toContain("object-cover");
     expect(await image.getAttribute("class")).toContain("group-hover:scale-105");
     expect(await image.evaluate((node) => getComputedStyle(node).objectFit)).toBe("cover");
+    await assertOpaqueImageCorners(page, image);
     await assertRenderedObjectCover(page, image, 300);
 
     await image.hover();
@@ -149,7 +173,7 @@ test.describe("public cover media in Web Demo", () => {
     expect(
       Math.abs(detailLayout.width / detailLayout.height - detailLayout.sourceRatio)
     ).toBeLessThan(0.05);
-    expect(await detailCover.evaluate((node) => getComputedStyle(node).borderRadius)).toBe("0px");
+    await assertOpaqueImageCorners(page, detailCover);
 
     const bodyImage = page.locator(".post-detail-body img").first();
     await expect(bodyImage).toBeVisible();
@@ -165,6 +189,7 @@ test.describe("public cover media in Web Demo", () => {
     );
     expect(relatedSrc).not.toContain("/wm-");
     expect(await relatedImage.getAttribute("class")).toContain("object-cover");
+    await assertOpaqueImageCorners(page, relatedImage);
     await assertRenderedObjectCover(page, relatedImage);
     await page.evaluate(() => window.scrollTo(0, 0));
 
