@@ -43,7 +43,7 @@
     "src/server/routers/comments.ts": "11d66246d78b0eb85125230c0d9499d5500d287b",
     "tests/fixtures/site-assistant-legacy.sql": "bb9afb88fe2e5449e11082a0c5034803f317ca83",
     "tests/lib/site-assistant-migration.test.ts": "eec482023a39c17876154f0ba3c5d73a05eaa6d4",
-    "tests/server/system-share-api.test.ts": "2240a081c5a23e284f696a03c32cf58392967a05"
+    "tests/server/system-share-api.test.ts": "3a9f9392f763bcde2c286442aeea35b2d246da4b"
   },
   "change": {
     "description": "Add the shared frontend identity/session boundary, app-owned assistant SQLite contract tables, comment ownership compatibility, binding-safe sessions, atomic assistant writes, and parent-branch CI/E2E triggers for the site knowledge assistant.",
@@ -136,7 +136,7 @@
         },
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "2240a081c5a23e284f696a03c32cf58392967a05",
+          "blob": "3a9f9392f763bcde2c286442aeea35b2d246da4b",
           "command": "bun test --isolate tests/server/system-share-api.test.ts -t 'upgrades legacy comments and resumes a blocked backfill without losing identity'"
         },
         {

@@ -662,6 +662,83 @@ describe("assistant discussion migration", () => {
     }
   });
 
+  it("restores a migrated conversation after temporary attribution quarantine", async () => {
+    const directory = withTempDirectory();
+    try {
+      const targetPath = createTarget(directory);
+      const piPath = createPi(directory);
+      const initial = await migrateAssistantDiscussions({
+        targetDbPath: targetPath,
+        piDbPath: piPath,
+        mode: "apply",
+        now: () => 35_000,
+        resolveTrustedCreator: trustedReader,
+      });
+      expect(initial.status).toBe("complete");
+
+      let attributionTrusted = false;
+      const quarantined = await migrateAssistantDiscussions({
+        targetDbPath: targetPath,
+        piDbPath: piPath,
+        mode: "apply",
+        now: () => 35_001,
+        resolveTrustedCreator: async () => (attributionTrusted ? "legacy-reader" : null),
+      });
+      expect(quarantined.status).toBe("blocked");
+      expect(quarantined.quarantined).toBe(2);
+
+      const quarantinedTarget = new Database(targetPath);
+      const quarantinedLedger = quarantinedTarget
+        .query<{ state: string; target_id: string | null; payload: string }, [string]>(
+          "SELECT state, target_id, payload FROM assistant_migration_items WHERE migration_id = ? AND source_kind = 'conversation' AND source_id LIKE '%:conversation:1'"
+        )
+        .get(ASSISTANT_DISCUSSION_MIGRATION_ID);
+      expect(quarantinedLedger?.state).toBe("quarantined");
+      expect(quarantinedLedger?.target_id).toBeTruthy();
+      const quarantinedPayload = JSON.parse(quarantinedLedger?.payload ?? "{}") as {
+        reference?: { targetUrl?: string | null };
+        trustedBinding?: { targetId?: string | null; sourceHash?: string };
+      };
+      expect(quarantinedPayload.reference?.targetUrl).toBe("https://example.test/current");
+      expect(quarantinedPayload.trustedBinding?.targetId).toBe(quarantinedLedger?.target_id);
+      expect(quarantinedPayload.trustedBinding?.sourceHash).toBeTruthy();
+      quarantinedTarget.close();
+
+      attributionTrusted = true;
+      const restored = await migrateAssistantDiscussions({
+        targetDbPath: targetPath,
+        piDbPath: piPath,
+        mode: "apply",
+        now: () => 35_002,
+        resolveTrustedCreator: async () => (attributionTrusted ? "legacy-reader" : null),
+      });
+      expect(restored.status).toBe("complete");
+      const restoredTarget = new Database(targetPath);
+      const restoredLedger = restoredTarget
+        .query<{ state: string; target_id: string | null }, [string]>(
+          "SELECT state, target_id FROM assistant_migration_items WHERE migration_id = ? AND source_kind = 'conversation' AND source_id LIKE '%:conversation:1'"
+        )
+        .get(ASSISTANT_DISCUSSION_MIGRATION_ID);
+      expect(restoredLedger).toEqual({
+        state: "migrated",
+        target_id: quarantinedLedger?.target_id,
+      });
+      expect(
+        restoredTarget.query("SELECT COUNT(*) AS count FROM assistant_conversations").get()
+      ).toEqual({
+        count: 2,
+      });
+      expect(
+        restoredTarget.query("SELECT COUNT(*) AS count FROM assistant_messages").get()
+      ).toEqual({
+        count: 7,
+      });
+      restoredTarget.close();
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it("blocks cleanup while clipping work is processing and cleans only after verification", async () => {
     const directory = withTempDirectory();
     try {

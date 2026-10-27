@@ -1361,9 +1361,25 @@ function quarantinePlan(
   const sourceIdValue = sourceId(plan.namespace, "conversation", plan.source.id);
   const existing = getLedger(target, migrationId, "conversation", sourceIdValue);
   if (existing?.state === "quarantined" && existing.source_hash === plan.source.sourceHash) {
-    recordReport(records, "conversation", sourceIdValue, "quarantined", null, existing.reason);
+    recordReport(
+      records,
+      "conversation",
+      sourceIdValue,
+      "quarantined",
+      existing.target_id,
+      existing.reason
+    );
     return;
   }
+  const existingReference = ledgerReference(existing);
+  const trustedBinding =
+    existing?.target_id && existingReference
+      ? {
+          sourceHash: existing.source_hash,
+          targetId: existing.target_id,
+          reference: existingReference,
+        }
+      : null;
   writeLedger(
     target,
     migrationId,
@@ -1371,16 +1387,31 @@ function quarantinePlan(
     sourceIdValue,
     plan.source.sourceHash,
     "quarantined",
-    null,
+    trustedBinding?.targetId ?? null,
     plan.reason,
     {
       ...plan.source.rawPayload,
       references: plan.references,
       quarantineReason: plan.reason,
+      ...(trustedBinding
+        ? {
+            reference: trustedBinding.reference,
+            sourceHash: trustedBinding.sourceHash,
+            targetId: trustedBinding.targetId,
+            trustedBinding,
+          }
+        : {}),
     },
     now
   );
-  recordReport(records, "conversation", sourceIdValue, "quarantined", null, plan.reason);
+  recordReport(
+    records,
+    "conversation",
+    sourceIdValue,
+    "quarantined",
+    trustedBinding?.targetId ?? null,
+    plan.reason
+  );
 }
 
 function planRecords(
