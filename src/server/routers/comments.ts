@@ -273,9 +273,19 @@ function loadAuthorMaps(rows: Array<typeof comments.$inferSelect>, database: Com
   };
 }
 
+function ownCommentCondition(frontendUserId: string | undefined, readerId: string | undefined) {
+  if (frontendUserId && readerId) {
+    return or(eq(comments.frontendUserId, frontendUserId), eq(comments.readerId, readerId));
+  }
+  if (frontendUserId) return eq(comments.frontendUserId, frontendUserId);
+  if (readerId) return eq(comments.readerId, readerId);
+  return undefined;
+}
+
 function buildPublicComments(
   target: Target,
   readerId: string | undefined,
+  frontendUserId: string | undefined,
   isAdmin: boolean,
   options: {
     rootOffset?: number;
@@ -303,26 +313,28 @@ function buildPublicComments(
         .groupBy(comments.rootId)
         .all()
         .flatMap((row) => (row.rootId ? [row.rootId] : []));
-  const ownReplyRoots = readerId
-    ? database
-        .select({ rootId: comments.rootId })
-        .from(comments)
-        .where(
-          and(
-            targetCondition(target),
-            isNotNull(comments.parentId),
-            eq(comments.readerId, readerId),
-            isNull(comments.deletedAt),
-            isNotNull(comments.rootId)
+  const ownReplyRoots =
+    frontendUserId || readerId
+      ? database
+          .select({ rootId: comments.rootId })
+          .from(comments)
+          .where(
+            and(
+              targetCondition(target),
+              isNotNull(comments.parentId),
+              ownCommentCondition(frontendUserId, readerId),
+              isNull(comments.deletedAt),
+              isNotNull(comments.rootId)
+            )
           )
-        )
-        .groupBy(comments.rootId)
-        .all()
-        .flatMap((row) => (row.rootId ? [row.rootId] : []))
-    : [];
-  const ownRootCondition = readerId
-    ? and(eq(comments.readerId, readerId), isNull(comments.deletedAt))
-    : undefined;
+          .groupBy(comments.rootId)
+          .all()
+          .flatMap((row) => (row.rootId ? [row.rootId] : []))
+      : [];
+  const ownRootCondition =
+    frontendUserId || readerId
+      ? and(ownCommentCondition(frontendUserId, readerId), isNull(comments.deletedAt))
+      : undefined;
   const rootsWithVisibleReplies =
     visibleReplyRoots.length || ownReplyRoots.length
       ? or(
@@ -365,7 +377,9 @@ function buildPublicComments(
       ? undefined
       : or(
           and(eq(comments.status, "approved"), isNull(comments.deletedAt)),
-          readerId ? and(eq(comments.readerId, readerId), isNull(comments.deletedAt)) : undefined
+          frontendUserId || readerId
+            ? and(ownCommentCondition(frontendUserId, readerId), isNull(comments.deletedAt))
+            : undefined
         );
     const cursorCondition = options.replyCursor
       ? or(
@@ -400,7 +414,10 @@ function buildPublicComments(
     const reader = row.readerId ? maps.readers.get(row.readerId) : undefined;
     const legacyUser = row.authorEmail ? maps.users.get(row.authorEmail) : undefined;
     const deleted = Boolean(row.deletedAt);
-    const own = Boolean(readerId && row.readerId === readerId);
+    const own = Boolean(
+      (frontendUserId && row.frontendUserId === frontendUserId) ||
+        (readerId && row.readerId === readerId)
+    );
     const placeholder = !isAdmin && !own && !deleted && row.status !== "approved";
     const isAdminAuthor = row.authorRole === "admin";
     const authorName = isAdminAuthor
@@ -431,9 +448,9 @@ function buildPublicComments(
           (deleted || placeholder) && !isAdmin
             ? "/site-assets/default-avatar.svg"
             : isAdminAuthor
-              ? "/site-assets/default-avatar.svg"
+              ? reader?.avatarUrl || "/site-assets/avatar.jpg"
               : reader?.avatarUrl || "/site-assets/default-avatar.svg",
-        profileUrl: deleted || placeholder || isAdminAuthor ? null : reader?.profileUrl,
+        profileUrl: deleted || placeholder ? null : reader?.profileUrl,
       },
       canDelete: isAdmin || (own && row.authorRole !== "admin"),
       canModerate: isAdmin,
@@ -518,6 +535,7 @@ export const commentsRouter = createTRPCRouter({
       buildPublicComments(
         target,
         ctx.reader?.id,
+        ctx.frontendPrincipal?.id,
         ctx.isAdmin,
         {
           rootOffset: (input.page - 1) * input.limit,
@@ -534,6 +552,7 @@ export const commentsRouter = createTRPCRouter({
               return buildPublicComments(
                 target,
                 ctx.reader?.id,
+                ctx.frontendPrincipal?.id,
                 false,
                 {
                   rootOffset: (input.page - 1) * input.limit,
@@ -586,6 +605,7 @@ export const commentsRouter = createTRPCRouter({
         buildPublicComments(
           target,
           ctx.reader?.id,
+          ctx.frontendPrincipal?.id,
           ctx.isAdmin,
           {
             replyRootId: rootId,
@@ -651,16 +671,24 @@ export const commentsRouter = createTRPCRouter({
   createComment: commentsPublicProcedure
     .input(postCommentSchema)
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.reader) {
+      const principal = ctx.frontendPrincipal;
+      const legacyReader = ctx.reader;
+      if (!principal && !legacyReader) {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "请先使用 GitHub 登录" });
       }
-      const reader = ctx.reader;
+      // A unified frontend session is authoritative. An older reader cookie may still be
+      // present in the same request, but it must not supply identity fields for this comment.
+      const commentReader = principal ? null : legacyReader;
       const target = normalizeTarget(input);
       await assertPublicTarget(target);
       const content = input.content.trim();
       if (!content) throw new TRPCError({ code: "BAD_REQUEST", message: "评论内容不能为空" });
       const parentId = input.replyToId || input.parentId || null;
       const submissionKey = input.submissionKey || uuidv4();
+      const submissionOwner = principal
+        ? eq(comments.frontendUserId, principal.id)
+        : eq(comments.readerId, legacyReader?.id as string);
+      const rateLimitKey = principal?.id ?? (legacyReader?.id as string);
       try {
         return await withPublicTargetConsistency(target, () =>
           db.transaction(
@@ -669,9 +697,7 @@ export const commentsRouter = createTRPCRouter({
               const existingSubmission = await tx
                 .select()
                 .from(comments)
-                .where(
-                  and(eq(comments.readerId, reader.id), eq(comments.submissionKey, submissionKey))
-                )
+                .where(and(submissionOwner, eq(comments.submissionKey, submissionKey)))
                 .get();
               if (existingSubmission) {
                 if (
@@ -696,7 +722,7 @@ export const commentsRouter = createTRPCRouter({
                       : "评论已提交，正在等待审核",
                 };
               }
-              enforceRateLimit(reader.id);
+              enforceRateLimit(rateLimitKey);
               let rootId: string | null = null;
               if (parentId) {
                 const parent = await tx
@@ -721,31 +747,45 @@ export const commentsRouter = createTRPCRouter({
               const commentId = uuidv4();
               // Serialize role derivation with binding changes so a comment cannot observe a
               // binding state that is concurrently being removed.
-              await tx
-                .update(adminGithubBindings)
-                .set({ updatedAt: sql`${adminGithubBindings.updatedAt}` })
-                .where(eq(adminGithubBindings.githubId, reader.githubId))
-                .run();
-              const binding = await tx
-                .select({ id: adminGithubBindings.id })
-                .from(adminGithubBindings)
-                .where(eq(adminGithubBindings.githubId, reader.githubId))
-                .get();
-              const authorRole = binding ? ("admin" as const) : ("reader" as const);
+              let authorRole = principal?.isAdmin ? ("admin" as const) : ("reader" as const);
+              if (!principal && commentReader) {
+                // Serialize role derivation with binding changes so a legacy reader comment
+                // cannot observe a binding state that is concurrently being removed.
+                await tx
+                  .update(adminGithubBindings)
+                  .set({ updatedAt: sql`${adminGithubBindings.updatedAt}` })
+                  .where(eq(adminGithubBindings.githubId, commentReader.githubId))
+                  .run();
+                const binding = await tx
+                  .select({ id: adminGithubBindings.id })
+                  .from(adminGithubBindings)
+                  .where(eq(adminGithubBindings.githubId, commentReader.githubId))
+                  .get();
+                authorRole = binding ? "admin" : "reader";
+              }
               const status = authorRole === "admin" ? "approved" : "pending";
+              const authorReaderId = principal?.readerId ?? commentReader?.id ?? null;
+              const authorGithubId = principal?.github?.id ?? commentReader?.githubId ?? null;
+              const authorName = principal?.isAdmin
+                ? principal.github?.displayName || principal.displayName
+                : principal?.displayName ||
+                  commentReader?.displayName ||
+                  commentReader?.githubLogin ||
+                  "Reader";
               await tx.insert(comments).values({
                 id: commentId,
                 content,
                 postSlug: target.key,
                 targetType: target.type,
                 targetKey: target.key,
-                authorName: reader.displayName || reader.githubLogin,
-                authorEmail: null,
-                readerId: reader.id,
+                authorName,
+                authorEmail: principal?.isAdmin ? principal.email : null,
+                readerId: authorReaderId,
+                frontendUserId: principal?.id ?? null,
                 parentId,
                 rootId,
                 authorRole,
-                authorGithubId: reader.githubId,
+                authorGithubId,
                 status,
                 revision: 1,
                 submissionKey,
@@ -767,7 +807,7 @@ export const commentsRouter = createTRPCRouter({
         const concurrentSubmission = await db
           .select()
           .from(comments)
-          .where(and(eq(comments.readerId, reader.id), eq(comments.submissionKey, submissionKey)))
+          .where(and(submissionOwner, eq(comments.submissionKey, submissionKey)))
           .get();
         if (!concurrentSubmission) throw error;
         if (
@@ -849,8 +889,9 @@ export const commentsRouter = createTRPCRouter({
             const canDelete =
               ctx.isAdmin ||
               Boolean(
-                ctx.reader?.id &&
-                  existing.readerId === ctx.reader.id &&
+                ((ctx.frontendPrincipal?.id &&
+                  existing.frontendUserId === ctx.frontendPrincipal.id) ||
+                  (ctx.reader?.id && existing.readerId === ctx.reader.id)) &&
                   existing.authorRole !== "admin"
               );
             if (!canDelete)

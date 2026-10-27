@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { unbindAdminGithubBinding } from "@/lib/admin-github-binding";
+import type { FrontendPrincipal } from "@/lib/assistant-contracts";
 import { COMMENT_MIGRATION_ID } from "@/lib/comment-migration";
 import { db, initializeDB } from "@/lib/db";
 import { projectCatalog } from "@/lib/project-catalog";
@@ -16,6 +17,9 @@ import {
   adminGithubBindings,
   commentMigrationState,
   comments,
+  frontendIdentityLinks,
+  frontendSessions,
+  frontendUsers,
   posts,
   readerSessions,
   readers,
@@ -35,7 +39,9 @@ const reader: Reader = {
   profileUrl: "https://github.com/comments-test",
 };
 
-function createCaller(options: { reader?: Reader; isAdmin?: boolean } = {}) {
+function createCaller(
+  options: { reader?: Reader; isAdmin?: boolean; frontendPrincipal?: FrontendPrincipal } = {}
+) {
   return appRouter.createCaller({
     req: new Request("http://localhost/api/trpc"),
     resHeaders: new Headers(),
@@ -44,6 +50,7 @@ function createCaller(options: { reader?: Reader; isAdmin?: boolean } = {}) {
       ? { id: "admin-comments-test", nickname: "Admin", email: "admin@example.com" }
       : undefined,
     reader: options.reader,
+    frontendPrincipal: options.frontendPrincipal,
   } as never);
 }
 
@@ -94,6 +101,9 @@ describe("comments reader lifecycle", () => {
   beforeEach(async () => {
     if (!db) throw new Error("Database has not been initialised");
     await db.delete(comments);
+    await db.delete(frontendSessions);
+    await db.delete(frontendIdentityLinks);
+    await db.delete(frontendUsers);
     await db.delete(readerSessions);
     await db.delete(posts);
     await db.delete(readers);
@@ -170,6 +180,59 @@ describe("comments reader lifecycle", () => {
       target: input.target,
     });
     expect(restored.comments[0]).toMatchObject({ status: "pending", deleted: false });
+  });
+
+  it("publishes an unbound native admin comment through the frontend identity", async () => {
+    await seedPost("frontend-admin-comments");
+    const principal: FrontendPrincipal = {
+      id: "frontend-native-admin",
+      kind: "admin",
+      isAdmin: true,
+      displayName: "Station Admin",
+      email: "admin@example.com",
+      avatarUrl: "/site-assets/avatar.jpg",
+      profileUrl: null,
+      adminUserId: "native-admin-user",
+      readerId: null,
+      github: null,
+    };
+    await db?.insert(frontendUsers).values({
+      id: principal.id,
+      adminUserId: null,
+      isAdmin: true,
+      displayName: principal.displayName,
+      email: principal.email,
+      avatarUrl: principal.avatarUrl,
+      profileUrl: null,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    const created = await createCaller({
+      frontendPrincipal: principal,
+      reader,
+    }).comments.createComment({
+      target: { type: "article", key: "frontend-admin-comments" },
+      content: "Native admin comment",
+      submissionKey: "frontend-admin-submission",
+    });
+    expect(created).toMatchObject({ authorRole: "admin", status: "approved" });
+    const row = await db?.select().from(comments).where(eq(comments.id, created.commentId)).get();
+    expect(row).toMatchObject({
+      frontendUserId: principal.id,
+      readerId: null,
+      authorRole: "admin",
+      authorGithubId: null,
+      status: "approved",
+    });
+
+    const visible = await createCaller().comments.getComments({
+      target: { type: "article", key: "frontend-admin-comments" },
+    });
+    expect(visible.comments[0]).toMatchObject({
+      authorRole: "admin",
+      author: { avatarUrl: "/site-assets/avatar.jpg" },
+    });
   });
 
   it("publishes bound admin comments, preserves their marker, and gates new comments after unbind", async () => {
