@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "4aa5449672049e203f2cfd7a2d588f0b3f921ac2",
+  "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
   "covered_files": {
     "scripts/start-console.ts": "f9581e191ea8cf461a2bd70d22f2a88a31298042",
     "src/lib/assistant-contracts.ts": "24d72b23b6babf34dc7aef36d63fd946251fb8e8",
