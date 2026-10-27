@@ -95,6 +95,8 @@ const ADMIN_PREVIEW_ASSETS_PREFIX = "/api/admin/preview/assets/";
 const STATIC_PUBLIC_ASSETS_PREFIX = "/_content/assets/";
 const PUBLIC_MEDIA_V4_PATH_RE =
   /((?:\/api\/public\/assets|\/_content\/assets)\/(?:post|memo)\/[^/?#"'<>]+\/[^/?#"'<>]+\/)wm-([ab])-v4(?=\/)/gu;
+const PUBLIC_MEDIA_RENDER_PATH_RE =
+  /((?:\/api\/(?:public|admin\/preview)\/assets|\/_content\/assets)\/(?:post|memo)\/[^/?#"'<>]+\/[^/?#"'<>]+)\/wm-[ab]-v[1-5](?=\/)/gu;
 const INLINE_MARKDOWN_LINK_RE =
   /(!?\[[^\]\n]*\]\()(\s*)(<[^>\n]+>|(?:[^\s()\\]+|\\.|\([^()\n]*\))+)([^)]*)(\))/g;
 
@@ -174,6 +176,10 @@ export function isDataMediaUrl(value: string) {
   return value.trim().startsWith("data:");
 }
 
+function hasMediaUrlScheme(value: string) {
+  return /^[a-z][a-z\d+.-]*:/iu.test(value.trim());
+}
+
 export function isPublicAssetFacadeUrl(value: string) {
   const normalized = value.trim();
   return (
@@ -188,7 +194,21 @@ export function isStaticPublicAssetUrl(value: string) {
 
 /** v4's A watermark uses a full-card SVG canvas; migrate published paths to the compact v5 pair. */
 export function migratePublicMediaV4ToV5(value: string) {
+  if (isExternalMediaUrl(value) || isDataMediaUrl(value) || hasMediaUrlScheme(value)) {
+    return value;
+  }
   return value.replace(PUBLIC_MEDIA_V4_PATH_RE, "$1wm-$2-v5");
+}
+
+export function stripPublicMediaRenderId(value: string) {
+  if (isExternalMediaUrl(value) || isDataMediaUrl(value) || hasMediaUrlScheme(value)) return value;
+  return value.replace(PUBLIC_MEDIA_RENDER_PATH_RE, "$1");
+}
+
+export function getPublicMediaCardFallbackUrl(value: string) {
+  const stripped = stripPublicMediaRenderId(value);
+  if (!isPublishedPublicAssetUrl(stripped)) return stripped;
+  return stripped.replace(/\/cover(?=\.[^/?#]+(?:[?#]|$))/u, "/card");
 }
 
 export function isPublishedPublicAssetUrl(value: string) {
@@ -205,6 +225,14 @@ export function isPublicMediaVariant(value: string): value is PublicMediaVariant
 
 export function isPublicMediaRenderId(value: string): value is PublicMediaRenderId {
   return (PUBLIC_MEDIA_RENDER_IDS as readonly string[]).includes(value);
+}
+
+export function isUnwatermarkedPublicMediaVariant(
+  role: PublicMediaRole,
+  variant: PublicMediaVariant,
+  assetScope: PublicMediaAssetScope = "public"
+) {
+  return assetScope !== "admin-preview" && role === "cover" && variant === "card";
 }
 
 export function getDefaultPublicMediaRenderId(
@@ -381,21 +409,24 @@ export function buildPublicMediaAssetUrl(params: {
 
   const mediaHash = buildPublicMediaHash(sourcePath, params.role);
   const ext = pickPublicMediaExt(mediaKind, sourcePath, params.variant);
+  const renderId =
+    params.renderId === null
+      ? undefined
+      : (params.renderId ??
+        (isUnwatermarkedPublicMediaVariant(params.role, params.variant, params.context.assetScope)
+          ? undefined
+          : params.variant === "play" || params.context.supportsResponsiveWatermark === false
+            ? undefined
+            : getDefaultPublicMediaRenderId(
+                params.variant,
+                params.context.watermarkRenderVersion ?? "v5"
+              )));
   return buildPublicAssetPath({
     scope: params.context.assetScope,
     kind: params.context.kind,
     slug: params.context.slug,
     mediaHash,
-    renderId:
-      params.renderId === null
-        ? undefined
-        : (params.renderId ??
-          (params.variant === "play" || params.context.supportsResponsiveWatermark === false
-            ? undefined
-            : getDefaultPublicMediaRenderId(
-                params.variant,
-                params.context.watermarkRenderVersion ?? "v5"
-              ))),
+    renderId,
     variant: params.variant,
     ext,
   });
@@ -451,6 +482,9 @@ export function buildPublicMediaPresentations(params: {
   role: PublicMediaRole;
   variant: Exclude<PublicMediaVariant, "play">;
 }) {
+  if (isUnwatermarkedPublicMediaVariant(params.role, params.variant, params.context.assetScope))
+    return undefined;
+
   const buildCandidate = (renderId: PublicMediaRenderId) => {
     if (params.sourcePath) {
       const mediaKind = detectPublicMediaKind(params.sourcePath);

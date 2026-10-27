@@ -3,13 +3,38 @@
 import { existsSync, realpathSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import sharp from "sharp";
 
 type Environment = "dev" | "test";
 
-const TINY_PNG = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/l8JrWQAAAABJRU5ErkJggg==",
-  "base64"
-);
+async function buildFixturePng() {
+  const svg = Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600">
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#e7f0eb" />
+          <stop offset="0.55" stop-color="#9db9ad" />
+          <stop offset="1" stop-color="#395d4f" />
+        </linearGradient>
+      </defs>
+      <rect width="900" height="600" fill="url(#sky)" />
+      <path d="M0 420 183 220l146 117 149-207 220 245 202-137v362H0Z" fill="#254b40" opacity=".78" />
+      <path d="M0 494 233 309l146 65 202-125 319 131v220H0Z" fill="#18352d" opacity=".72" />
+      <path d="M78 600c99-141 220-161 342-73 84 61 163 64 247-5 58-48 129-59 233 5v73Z" fill="#c8d9c7" opacity=".75" />
+    </svg>`
+  );
+  return sharp({
+    create: {
+      width: 900,
+      height: 600,
+      channels: 3,
+      background: { r: 214, g: 229, b: 219 },
+    },
+  })
+    .composite([{ input: svg }])
+    .png()
+    .toBuffer();
+}
 
 function parseEnvironment(): { environment: Environment; cleanOnly: boolean } {
   const args = process.argv.slice(2);
@@ -95,6 +120,7 @@ function markdown(frontmatter: Record<string, unknown>, body: string) {
 }
 
 async function createFixtureData(baseDir: string) {
+  const fixturePng = await buildFixturePng();
   const codeFixtureReturnLine = `  return \`hello ${"name"}\`;`;
 
   await ensureDir(join(baseDir, "blog", "assets"));
@@ -122,6 +148,7 @@ async function createFixtureData(baseDir: string) {
         title: "Code Block Fixture",
         publishDate: "2026-01-01T12:00:00.000Z",
         public: true,
+        image: "./assets/hello.png",
         tags: ["code", "fixture", "local"],
         category: "notes",
       },
@@ -170,9 +197,9 @@ async function createFixtureData(baseDir: string) {
     )
   );
 
-  await writeBinaryFile(join(baseDir, "blog", "assets", "hello.png"), TINY_PNG);
-  await writeBinaryFile(join(baseDir, "projects", "assets", "project.png"), TINY_PNG);
-  await writeBinaryFile(join(baseDir, "Memos", "assets", "memo.png"), TINY_PNG);
+  await writeBinaryFile(join(baseDir, "blog", "assets", "hello.png"), fixturePng);
+  await writeBinaryFile(join(baseDir, "projects", "assets", "project.png"), fixturePng);
+  await writeBinaryFile(join(baseDir, "Memos", "assets", "memo.png"), fixturePng);
   await writeTextFile(
     join(baseDir, "blog", "assets", "diagram.svg"),
     '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#6b8f71"/></svg>\n'

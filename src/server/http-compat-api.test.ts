@@ -1354,8 +1354,14 @@ image: ./assets/cover.png
       "/api/admin/preview/assets/post/preview-contaminated-assets/"
     );
     expect(payload.media?.cover?.sourcePath).toBe("blog/assets/cover.png");
+    expect(String(payload.media?.cover?.variants?.card)).toContain(
+      `/api/admin/preview/assets/post/preview-contaminated-assets/${coverHash}/wm-a-v5/card`
+    );
+    expect(String(payload.media?.cover?.variants?.card)).toContain("/wm-a-v5/card");
     expect(String(payload.media?.cover?.variants?.cover)).toContain(coverHash);
+    expect(String(payload.media?.cover?.variants?.cover)).toContain("/wm-b-v5/cover");
     expect(String(payload.media?.primary?.variants?.cover)).toContain(coverHash);
+    expect(String(payload.media?.primary?.variants?.cover)).toContain("/wm-b-v5/cover");
 
     process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://localhost";
     try {
@@ -1973,11 +1979,44 @@ public: false
     );
     expect(snapshotPost?.image).toContain("/api/public/assets/post/public-media-post/");
     expect(snapshotPost?.image).not.toContain("/api/files/");
+    expect(snapshotPost?.image).toContain("/wm-b-v5/cover");
+    expect(snapshotPost?.media?.cover?.variants?.card).toContain(
+      "/api/public/assets/post/public-media-post/"
+    );
+    expect(snapshotPost?.media?.cover?.variants?.card).not.toContain("/wm-");
     expect(snapshotPost?.media?.cover?.variants?.cover).toContain(
       "/api/public/assets/post/public-media-post/"
     );
+    expect(snapshotPost?.media?.cover?.variants?.cover).toContain("/wm-b-v5/cover");
     expect(snapshotPost?.media?.cover?.presentations?.cover?.a).toContain("/wm-a-v5/cover");
     expect(snapshotPost?.media?.cover?.presentations?.cover?.b).toContain("/wm-b-v5/cover");
+    const coverSources = snapshotPost?.media?.cover?.sources ?? [];
+    const cardSource = coverSources.find(
+      (source: { variant: string }) => source.variant === "card"
+    );
+    const detailCoverSource = coverSources.find(
+      (source: { variant: string }) => source.variant === "cover"
+    );
+    expect(cardSource?.url).toMatch(/\/wm-a-v5\/card\./);
+    expect(detailCoverSource?.url).toMatch(/\/wm-b-v5\/cover\./);
+    expect(snapshotPost?.media?.content?.[0]?.presentations?.content?.a).toContain(
+      "/wm-a-v5/content"
+    );
+    expect(snapshotPost?.media?.content?.[0]?.presentations?.content?.b).toContain(
+      "/wm-b-v5/content"
+    );
+
+    const listResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/posts?limit=50"),
+      "/posts"
+    );
+    expect(listResponse.status).toBe(200);
+    const listPayload = await readJson(listResponse);
+    const listPost = listPayload.posts.find(
+      (post: { slug: string }) => post.slug === "public-media-post"
+    );
+    expect(listPost?.image).toContain("/wm-b-v5/cover");
+    expect(listPost?.media?.cover?.variants?.card).not.toContain("/wm-");
   }, 30_000);
 
   it("omits local public content whose media source is missing", async () => {
@@ -2214,15 +2253,17 @@ public: false
         typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       if (url.startsWith("http://imagor.example.test/")) {
         expect(init?.method).toBe("GET");
-        expect(url).toContain("/fit-in/1600x900/");
+        if (url.includes("/fit-in/960x640/")) {
+          expect(url).not.toContain("watermark(");
+        } else {
+          expect(url).toContain("/fit-in/1600x900/");
+          expect(url).toContain("watermark(");
+        }
         expect(url).toContain("filters:");
         const sourceSegment = new URL(url).pathname.split("/").at(-1) || "";
         expect(sourceSegment.startsWith("b64:")).toBe(true);
         expect(Buffer.from(sourceSegment.slice(4), "base64url").toString()).toBe(
           `http://blog:25090/_internal/assets/source/post/facade-post/${buildPublicMediaHash("blog/assets/facade-cover.png", "cover")}?source-token=test-source-secret`
-        );
-        expect(url).toContain(
-          `watermark(b64:${Buffer.from("http://blog:25090/watermark-ivanli.svg").toString("base64url")},-24,-24,18,22,22)`
         );
         return new Response("optimized-image", {
           status: 200,
@@ -2238,8 +2279,8 @@ public: false
     try {
       const mediaHash = buildPublicMediaHash("blog/assets/facade-cover.png", "cover");
       const response = await handlePublicApiRequest(
-        buildRequest(`/api/public/assets/post/facade-post/${mediaHash}/cover.webp`),
-        `/assets/post/facade-post/${mediaHash}/cover.webp`
+        buildRequest(`/api/public/assets/post/facade-post/${mediaHash}/card.webp`),
+        `/assets/post/facade-post/${mediaHash}/card.webp`
       );
 
       expect(response.status).toBe(200);
@@ -2247,6 +2288,12 @@ public: false
       expect(response.headers.get("cache-control")).toBe("public, max-age=600");
       expect(response.headers.get("location")).toBeNull();
       expect(await response.text()).toBe("optimized-image");
+
+      const detailResponse = await handlePublicApiRequest(
+        buildRequest(`/api/public/assets/post/facade-post/${mediaHash}/cover.webp`),
+        `/assets/post/facade-post/${mediaHash}/cover.webp`
+      );
+      expect(detailResponse.status).toBe(200);
     } finally {
       delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
       delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
@@ -2255,7 +2302,7 @@ public: false
     }
   });
 
-  it("proxies current v4 Logo candidates with the selected composition", async () => {
+  it("keeps list card covers clean while watermarking detail cover candidates", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
     await sharp({
       create: {
@@ -2287,10 +2334,13 @@ public: false
       const url =
         typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       expect(init?.method ?? "GET").toBe("GET");
-      expect(url).toContain("/fit-in/1600x900/");
-      expect(url).toContain(
-        `watermark(b64:${Buffer.from("http://blog:25090/watermark-ivanli-b.light.v3.svg").toString("base64url")},-16,-16,36,18,100)`
-      );
+      expect(url).toContain("strip_exif()");
+      if (url.includes("/fit-in/960x640/")) {
+        expect(url).not.toContain("watermark(");
+      } else {
+        expect(url).toContain("/fit-in/1600x900/");
+        expect(url).toContain("watermark(");
+      }
       return new Response("versioned-image", {
         status: 200,
         headers: { "content-type": "image/webp" },
@@ -2299,6 +2349,11 @@ public: false
 
     try {
       const mediaHash = buildPublicMediaHash("blog/assets/versioned-cover.png", "cover");
+      const cardResponse = await handlePublicApiRequest(
+        buildRequest(`/api/public/assets/post/versioned-logo-post/${mediaHash}/card.webp`),
+        `/assets/post/versioned-logo-post/${mediaHash}/card.webp`
+      );
+      expect(cardResponse.status).toBe(200);
       const response = await handlePublicApiRequest(
         buildRequest(`/api/public/assets/post/versioned-logo-post/${mediaHash}/wm-b-v4/cover.webp`),
         `/assets/post/versioned-logo-post/${mediaHash}/wm-b-v4/cover.webp`

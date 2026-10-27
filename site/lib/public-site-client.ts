@@ -1,6 +1,8 @@
 /** Public presentation helpers shared by the server and browser. */
 import { SITE } from "@/config/site";
-import { getPublicSiteUrl, toPublicSitePath } from "@/lib/public-runtime-url";
+import { isExternalImageUrl } from "@/lib/post-cover";
+import { getPublicMediaCardFallbackUrl, isPublishedPublicAssetUrl } from "@/lib/public-media";
+import { getPublicApiBaseUrl, getPublicSiteUrl, toPublicSitePath } from "@/lib/public-runtime-url";
 
 export function getSiteUrl() {
   return getPublicSiteUrl() || SITE.url;
@@ -22,6 +24,38 @@ export function getCanonicalUrl(pathname = "/") {
 }
 export function toAbsoluteSiteUrl(pathname: string) {
   return getCanonicalUrl(pathname);
+}
+
+function getInternalPublicHosts() {
+  const hosts = new Set<string>();
+  for (const value of [getSiteUrl(), SITE.url, getPublicApiBaseUrl()]) {
+    if (!value) continue;
+    try {
+      hosts.add(new URL(value).host);
+    } catch {
+      // Ignore malformed runtime configuration.
+    }
+  }
+  return hosts;
+}
+
+export function getPublicSiteCardFallbackUrl(candidate: string) {
+  if (isPublishedPublicAssetUrl(candidate)) {
+    return getPublicMediaCardFallbackUrl(candidate);
+  }
+  if (!isExternalImageUrl(candidate)) return null;
+
+  try {
+    const parsed = new URL(candidate);
+    if (!getInternalPublicHosts().has(parsed.host)) return candidate;
+    if (!isPublishedPublicAssetUrl(parsed.pathname)) return candidate;
+    const fallbackPath = getPublicMediaCardFallbackUrl(
+      `${parsed.pathname}${parsed.search}${parsed.hash}`
+    );
+    return `${parsed.origin}${fallbackPath}`;
+  } catch {
+    return candidate;
+  }
 }
 
 export function appendPublicAssetVersion(

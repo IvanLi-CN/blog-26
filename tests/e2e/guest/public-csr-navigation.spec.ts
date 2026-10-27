@@ -274,7 +274,10 @@ test("public navigation renders structured data without document exchange", asyn
     if (request.resourceType() === "document") documents.push(request.url());
     if (routeData(request.url())) reads.push(request.url());
   });
-  await page.getByRole("link", { name: "Code Block Fixture", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "Code Block Fixture", exact: true })
+    .getByRole("link")
+    .click();
   await expect(page.locator(".post-detail-body pre code")).toContainText("const tiny");
   await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
     "content",

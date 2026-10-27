@@ -23,6 +23,7 @@ import {
   isPublicMediaRenderId,
   isPublicMediaVariant,
   isPublishedPublicAssetUrl,
+  isUnwatermarkedPublicMediaVariant,
   normalizePublicMediaExt,
   type PublicContentKind,
   type PublicMediaAssetScope,
@@ -373,8 +374,18 @@ function pickRasterFallbackExt(ref: MediaReference) {
 
 function getPublicMediaRenderId(
   context: PublicMediaContext,
-  variant: Exclude<PublicMediaVariant, "play">
+  variant: Exclude<PublicMediaVariant, "play">,
+  role: PublicMediaRole
 ): PublicMediaRenderId | undefined {
+  return isUnwatermarkedPublicMediaVariant(role, variant, context.assetScope)
+    ? undefined
+    : getDefaultPublicMediaRenderId(variant, context.watermarkRenderVersion ?? "v5");
+}
+
+function getPublicMediaSourceRenderId(
+  context: PublicMediaContext,
+  variant: Exclude<PublicMediaVariant, "play">
+): PublicMediaRenderId {
   return getDefaultPublicMediaRenderId(variant, context.watermarkRenderVersion ?? "v5");
 }
 
@@ -389,7 +400,7 @@ function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference
           kind: context.kind,
           slug: context.slug,
           mediaHash: ref.hash,
-          renderId: getPublicMediaRenderId(context, variant),
+          renderId: getPublicMediaSourceRenderId(context, variant),
           variant,
           ext: format,
         });
@@ -416,7 +427,7 @@ function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference
         kind: context.kind,
         slug: context.slug,
         mediaHash: ref.hash,
-        renderId: getPublicMediaRenderId(context, variant),
+        renderId: getPublicMediaSourceRenderId(context, variant),
         variant,
         ext: format,
       });
@@ -444,7 +455,7 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
         kind: context.kind,
         slug: context.slug,
         mediaHash: ref.hash,
-        renderId: getPublicMediaRenderId(context, variant),
+        renderId: getPublicMediaRenderId(context, variant, ref.role),
         variant,
         ext: variant === "social" ? "jpg" : pickPublicMediaExt("video", ref.sourcePath, variant),
       });
@@ -464,7 +475,7 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
         kind: context.kind,
         slug: context.slug,
         mediaHash: ref.hash,
-        renderId: getPublicMediaRenderId(context, variant),
+        renderId: getPublicMediaRenderId(context, variant, ref.role),
         variant,
         ext: pickPublicMediaExt(ref.kind, ref.sourcePath, variant),
       });
@@ -498,7 +509,7 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
           kind: context.kind,
           slug: context.slug,
           mediaHash: ref.hash,
-          renderId: getPublicMediaRenderId(context, "poster"),
+          renderId: getPublicMediaRenderId(context, "poster", ref.role),
           variant: "poster",
           ext: "jpg",
         })
@@ -1135,6 +1146,8 @@ async function buildImagorPath(params: {
   const filters: string[] = getImagorFrameFilters(params.ref, params.variant);
   filters.push(`format(${format})`);
   if (params.renderId) {
+    // Explicit render IDs are source/presentation candidates. List cards stay clean by omitting
+    // the render ID; an explicit watermark candidate must keep its requested watermark.
     const dimensions = await readDerivedDimensions(params.ref, params.variant, {
       request: params.request,
       context: params.context,
@@ -1154,12 +1167,19 @@ async function buildImagorPath(params: {
         )
       );
     }
-    filters.push("strip_exif()");
-  } else if (await shouldApplyLegacyWatermark(params.ref, params.variant)) {
+  } else if (
+    !isUnwatermarkedPublicMediaVariant(
+      params.ref.role,
+      params.variant,
+      params.context.assetScope
+    ) &&
+    (await shouldApplyLegacyWatermark(params.ref, params.variant))
+  ) {
     filters.push(
       await getWatermarkFilter(params.request, params.context, params.ref, params.variant)
     );
   }
+  filters.push("strip_exif()");
 
   const resizeSegment = `fit-in/${recipe.width}x${recipe.height}`;
   const filterSegment = filters.length > 0 ? `/filters:${filters.join(":")}` : "";
@@ -1489,6 +1509,15 @@ async function proxyResolvedMediaVariant(
       return new Response("Not Found", { status: 404 });
     }
     return streamLocalMediaFile(request, resolved.ref);
+  }
+
+  if (process.env.WEB_DEMO_BUILD === "true") {
+    const localFallback = await renderLocalMediaVariant(request, resolved, {
+      variant: params.variant as Exclude<keyof typeof VARIANT_RECIPES, "play">,
+      ext: params.ext,
+      renderId: params.renderId,
+    });
+    if (localFallback) return localFallback;
   }
 
   let imagorPath: string;

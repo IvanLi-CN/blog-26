@@ -7,6 +7,7 @@
 ## Related ADRs
 
 - [ADR 0025: 按显示尺寸选择媒体水印派生](../../adr/0025-display-selected-watermark-renditions.md)
+- [ADR 0031: 列表封面媒体保持无水印](../../adr/0031-public-cover-media-without-watermark.md)
 
 ## 1. 背景
 
@@ -62,7 +63,7 @@
   - `GET /api/public/assets/:kind/:slug/:mediaHash/:renderId/:variant.:ext`
 - 旧的 `GET /api/public/assets/:kind/:slug/:mediaHash/:variant.:ext` 保留历史语义；新快照和页面使用版本化路径。
 - `kind` 只允许 `post | memo`。
-- `renderId` 只允许登记值 `wm-a-v1 | wm-b-v1 | wm-a-v2 | wm-b-v2 | wm-a-v3 | wm-b-v3 | wm-a-v4 | wm-b-v4 | wm-a-v5 | wm-b-v5`，不得接受任意处理表达式、关闭水印参数或未知身份；`play` 受控播放变体不接受任何 renderId。v5 是当前默认身份，v1/v2/v3/v4 保留旧快照兼容并不改写其历史字节语义。
+- 对 `content`、`attachment`、`social`、`full` 和 `poster` 用途，`renderId` 只允许登记值 `wm-a-v1 | wm-b-v1 | wm-a-v2 | wm-b-v2 | wm-a-v3 | wm-b-v3 | wm-a-v4 | wm-b-v4 | wm-a-v5 | wm-b-v5`，不得接受任意处理表达式、关闭水印参数或未知身份；只有列表封面的 `cover` 角色 `card` 变体不生成或选择水印 `renderId`，同一角色的 `cover`、`poster`、`social` 和 `full` 变体继续使用水印，`play` 受控播放变体也不接受 `renderId`。v5 是当前默认身份，v1/v2/v3/v4 保留旧快照兼容并不改写其历史字节语义。
 - `variant` 固定为：
   - `card`
   - `cover`
@@ -99,10 +100,11 @@
   - raw 原视频 URL
 - 公开图片、GIF 派生帧、视频 poster 必须 strip metadata / EXIF。
 - v3 选色逐帧累计覆盖区评分，不保留整段 GIF 的原始分析帧；视频首帧分析响应在流式读取时限制为 20 MiB，超限或分析超时返回受控处理器错误。分析总预算从入队开始计算，排队超时直接移除；已启动任务超时后仍由底层处理结束释放执行槽位。
-- 图片、GIF 单帧或视频 poster 派生结果宽 `<240px`、高 `<160px`、或面积 `<80,000px²` 时跳过水印；尺寸必须在方向校正、缩放/取帧之后判断。
+- 图片、GIF 单帧或视频 poster 派生结果宽 `<240px`、高 `<160px`、或面积 `<80,000px²` 时跳过水印；尺寸必须在方向校正、缩放/取帧之后判断。只有列表封面的 `cover/card` 变体无条件跳过水印，详情 `cover` 变体和其他媒体角色继续按现有阈值与候选规则处理。
 - `wm-a-v2` / `wm-b-v2` 保持既有固定白色语义；v3/v4 保留既有区域自适应用色语义，v5 沿用同一 A/B 几何、选色和合成参数。A 为 Iv 标志、B 为 Iv 标志与 `ivanli.cc`，最终宽度分别为 7% 与 18%，右/下边距均为最终图像宽度 2%。v3/v4/v5 在实际覆盖区的白色与墨绿主体中选择对比更强的一色，主体 alpha mask 排除 SVG 空白与柔影；整体不透明度仍为 64%，B 的分隔线与域名文字保持同一主体色。选色在方向校正、缩放或取帧后、烧录前进行，透明源按白底评分但输出保留透明度；保留动画 GIF 综合所有帧并按显示时长加权后固定一种颜色。v2/v3/v4/v5 的 imagor filter 显式传入宽度比例和非约束的 `h_ratio=100`，以最终输出宽度为唯一尺寸口径；这是避免旧派生按 SVG 固有尺寸放大的主要约束。本地 Sharp 路径保持相同宽度规则。v5 A 使用紧凑的 `0 0 150 105` SVG 画布，避免生产渲染器误解释大固有画布；v5 B 复用未变更的 v3 B 素材。v1/v2/v3/v4 继续用于旧快照兼容。imagor filter 的 `alpha` 使用 36。
 - 公开页面与灯箱按实际 CSS 可见宽度独立选择：`<600` 用 A，`>=600` 用 B；DPR 不改变构图。card 默认 A，其余图片用途默认 B；正常页面测量后校正，无法测量的 RSS/分享/禁用 JS 输出按用途默认。
-- 列表、时间线、相关推荐、详情封面、正文和灯箱保留现有图框但使用 `contain` 完整显示，允许留白；移除图片自身 hover 放大。
+- 列表卡片、时间线和相关推荐使用 `cover/card` 无水印基础图片；详情页封面使用带水印的 `cover` 变体和 A/B 候选，顶层兼容 `image`、`poster`、`social`、`full`、source descriptors 以及正文、附件、播放和灯箱媒体继续沿用当前水印候选合同。
+- 列表卡片、时间线和相关推荐恢复历史的封面呈现：使用 `object-cover` 铺满既有图框，并保留图片自身 hover 放大；详情页封面继续使用 `object-contain` 完整显示。除列表封面变体选择外，正文与附件图框、裁切和交互不因封面角色修复而改变。
 
 ### 5.5 内容媒体路径规范化
 
@@ -152,6 +154,7 @@
 
 - 旧 `image` 字段可暂时保留，但值必须是对应公开门面 URL。
 - 旧附件路径字符串若继续对外保留，也必须改写为对应公开门面 URL。
+- `cover/card` 是列表封面的唯一无水印变体，必须指向无水印基础路径并且不得输出该变体的 `presentations`；`cover/cover`、`poster`、其他 `variants`、`sources`、顶层兼容 `image` 字段必须保留水印路径和候选，其他角色继续按当前水印候选合同生成。
 
 ### 6.2 媒体角色
 
@@ -161,6 +164,7 @@
 - `content`: 正文内联图片/GIF/视频
 - `attachment`: Memo 附件
 - `playback`: 详情页内联视频播放目标
+- `cover` 角色只在列表 `card` 变体中无水印；详情 `cover` 变体及 `poster`、`social`、`full` 变体保留已登记的水印派生角色。正文、附件、播放和灯箱媒体合同不变。
 
 `mediaHash` 必须把“规范化相对媒体路径 + 内容角色”都纳入稳定键输入，避免同一路径在不同公开语义下冲突。
 

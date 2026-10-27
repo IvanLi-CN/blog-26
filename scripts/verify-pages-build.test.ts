@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
-import { extractBuildTimePublicAssetUrls, verifyPagesBuild } from "./verify-pages-build";
+import {
+  assertRenderedUnwatermarkedCoverImages,
+  extractBuildTimePublicAssetUrls,
+  verifyPagesBuild,
+} from "./verify-pages-build";
 
 const tempRoots: string[] = [];
 
@@ -78,6 +82,41 @@ describe("verify-pages-build", () => {
     expect(extractBuildTimePublicAssetUrls(`<img src="${url}">`)).toEqual([url]);
   });
 
+  it("rejects watermarked card URLs for list, timeline, and related cover surfaces", () => {
+    const surfaces = [
+      `<a data-testid="post-card-cover"><img src="/api/public/assets/post/list/hash/wm-b-v5/card.webp"></a>`,
+      `<div data-testid="home-timeline"><img src="/api/public/assets/post/timeline/hash/wm-b-v5/card.webp"></div>`,
+      `<article itemprop="isRelatedTo"><img src="/api/public/assets/post/related/hash/wm-b-v5/card.webp"></article>`,
+    ];
+
+    for (const [index, content] of surfaces.entries()) {
+      expect(() =>
+        assertRenderedUnwatermarkedCoverImages(content, `surface-${index}.html`)
+      ).toThrow(/unwatermarked/);
+    }
+
+    expect(() =>
+      assertRenderedUnwatermarkedCoverImages(
+        [
+          `<a data-testid="post-card-cover"><img src="/api/public/assets/post/list/hash/card.webp"></a>`,
+          `<div data-testid="home-timeline"><img src="/api/public/assets/post/timeline/hash/card.webp"></div>`,
+          `<article itemprop="isRelatedTo"><img src="/api/public/assets/post/related/hash/card.webp"></article>`,
+        ].join("\n"),
+        "clean-surfaces.html"
+      )
+    ).not.toThrow();
+
+    for (const [index, content] of [
+      `<a data-testid="post-card-cover"><img></a>`,
+      `<div data-testid="home-timeline"><img src=""></div>`,
+      `<article itemprop="isRelatedTo"><img src="   "></article>`,
+    ].entries()) {
+      expect(() =>
+        assertRenderedUnwatermarkedCoverImages(content, `missing-src-${index}.html`)
+      ).toThrow(/non-empty src/);
+    }
+  });
+
   it("verifies a non-fixture static build by discovering real post and tag pages", () => {
     const cwd = makeTempBuildRoot();
     const siteUrl = "https://pages.example.test/blog-26";
@@ -102,7 +141,7 @@ describe("verify-pages-build", () => {
         `href="${basePath}/projects/"`,
         `action="${basePath}/search/"`,
         `href="${basePath}/feed.xml"`,
-        `<img src="${versionedCardUrl}">`,
+        `<a data-testid="post-card-cover"><img src="${versionedCardUrl}"></a>`,
         `<img src="${versionedContentUrl}">`,
         `<img src="/api/public/assets/post/${postSlug}/abcd1234/content.webp">`,
       ].join("\n")
