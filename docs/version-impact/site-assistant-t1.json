@@ -27,15 +27,15 @@
     "drizzle/0022_frontend_session_auth_source.sql": "d5f9b74113528bc0c2b1ce44954ff0403d21ef3a",
     "drizzle/meta/0021_snapshot.json": "e92824ad3e99987a1955fa4b933434ab2a0d2f0f",
     "drizzle/meta/0022_snapshot.json": "841c1de352c2d4585f9d56d7a7be60ae55726bbb",
-    "drizzle/meta/_journal.json": "d245ec1546e5df69d6a4803fb4b97609a7d62157",
+    "drizzle/meta/_journal.json": "5e8e805ec9eda8851e2adfa7459bff19a67b761f",
     "src/lib/admin-github-binding.ts": "a95abdef7ade5303f1760eca995f996fd3d14242",
     "src/lib/assistant-contracts.test.ts": "23d8188294ffe5277ea815634464f97600c68244",
-    "src/lib/assistant-contracts.ts": "09cce95f033e59abc901177297afb13b864ed213",
+    "src/lib/assistant-contracts.ts": "938bd7e084fae2f4e156ef4376333a712d6fe795",
     "src/lib/assistant-storage.test.ts": "d3d16600316daefd903ea6d3f8f82bd87261162c",
     "src/lib/assistant-storage.ts": "5ed552b62a10224fb905dc11e5422933af05fb39",
     "src/lib/frontend-auth.test.ts": "681d51953a33e7d86fae1369a1ac62fdf106a683",
     "src/lib/frontend-auth.ts": "ae0ab3db35de34d669c8971c1338c5d06263449a",
-    "src/lib/schema.ts": "2543b18e59a8cc9b356223ad0e99d9f8af7fbbef",
+    "src/lib/schema.ts": "000b907d5dcdd78016d9da1b56a6ce854f5b6dec",
     "src/server/context.ts": "153ab30dca6cc8e2377ce17e8da093ce9928fae2",
     "src/server/public-api/frontend-auth.test.ts": "37ec1bb76931e0908d503a7e8ac72a3b5e578ba1",
     "src/server/public-api/router.ts": "a3913a5794a89dd55d8d249335e0471f96616bdc",
@@ -85,7 +85,7 @@
         },
         {
           "path": "src/lib/assistant-contracts.ts",
-          "blob": "09cce95f033e59abc901177297afb13b864ed213",
+          "blob": "938bd7e084fae2f4e156ef4376333a712d6fe795",
           "command": "Shared FrontendPrincipal, source-aware sessions, conversation/message/generation/usage/quota/migration contracts"
         },
         {
@@ -161,12 +161,12 @@
         },
         {
           "path": "drizzle/meta/_journal.json",
-          "blob": "d245ec1546e5df69d6a4803fb4b97609a7d62157",
+          "blob": "5e8e805ec9eda8851e2adfa7459bff19a67b761f",
           "command": "bun run db:migrations:validate"
         },
         {
           "path": "src/lib/schema.ts",
-          "blob": "2543b18e59a8cc9b356223ad0e99d9f8af7fbbef",
+          "blob": "000b907d5dcdd78016d9da1b56a6ce854f5b6dec",
           "command": "bunx drizzle-kit generate (session auth_source migration generated and schema is consistent)"
         },
         {

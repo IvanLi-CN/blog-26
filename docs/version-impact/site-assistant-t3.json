@@ -4,7 +4,7 @@
   "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
   "covered_files": {
     "drizzle/0023_assistant_discussion_migration.sql": "2ac1b5b2adc42262ce390a96bafcd2a843a98e11",
-    "drizzle/meta/_journal.json": "d245ec1546e5df69d6a4803fb4b97609a7d62157",
+    "drizzle/meta/_journal.json": "5e8e805ec9eda8851e2adfa7459bff19a67b761f",
     "src/lib/assistant-discussion-migration.ts": "6ca8057e5532ff295735a3cfe70508c8945d6374",
     "scripts/migrate-assistant-discussions.ts": "6593074ba3ea86fecbbebd5d6402ba9d1341c13b",
     "tests/fixtures/site-assistant-pi-discussions.sql": "2fddf6aee5f2a93c6aaf01aab72d46c7b3dda192",
@@ -80,7 +80,7 @@
         },
         {
           "path": "drizzle/meta/_journal.json",
-          "blob": "d245ec1546e5df69d6a4803fb4b97609a7d62157",
+          "blob": "5e8e805ec9eda8851e2adfa7459bff19a67b761f",
           "command": "bun run db:migrations:validate"
         },
         {
