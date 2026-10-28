@@ -232,6 +232,7 @@ export type CreateAssistantConversationInput = {
   title?: string | null;
   clippingMemoId?: string | null;
   clippingVersionId?: string | null;
+  expiresAt?: number | null;
   now?: number;
 };
 
@@ -271,6 +272,11 @@ export type SubmitAssistantTurnInput = {
   now?: number;
 };
 
+export type AssistantTurnScope = Pick<
+  SubmitAssistantTurnInput,
+  "kind" | "clippingMemoId" | "clippingVersionId"
+>;
+
 export type AssistantTurnSubmission = {
   createdConversation: boolean;
   conversation: AssistantConversation;
@@ -308,6 +314,14 @@ export type AssistantMessageStorage = {
     frontendUserId: string
   ): Promise<AssistantConversation | null>;
   listConversations(frontendUserId: string): Promise<AssistantConversation[]>;
+  listClippingConversations(clippingMemoId: string): Promise<AssistantConversation[]>;
+  updateConversationClippingVersion(
+    conversationId: string,
+    frontendUserId: string,
+    clippingVersionId: string,
+    now?: number,
+    expectedClippingVersionId?: string | null
+  ): Promise<AssistantConversation | null>;
   appendMessage(input: AppendAssistantMessageInput): Promise<AssistantMessage>;
   listMessages(conversationId: string, frontendUserId: string): Promise<AssistantMessage[]>;
   createGenerationJob(input: CreateAssistantGenerationJobInput): Promise<AssistantGenerationJob>;
@@ -325,7 +339,8 @@ export type AssistantMessageStorage = {
     requestId: string,
     clientRequestId?: string | null,
     conversationId?: string | null,
-    now?: number
+    now?: number,
+    scope?: AssistantTurnScope
   ): Promise<AssistantTurnSubmission | null>;
   submitTurn(input: SubmitAssistantTurnInput): Promise<AssistantTurnSubmission>;
   getConversationState(
@@ -383,4 +398,5 @@ export type AssistantMessageStorage = {
     frontendUserId: string,
     now?: number
   ): Promise<boolean>;
+  expireConversations(now?: number): Promise<number>;
 };

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
+  "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
   "covered_files": {
     "drizzle/0025_assistant_message_citations.sql": "1507cf1b94ed1c7a864d2033e4d259df905f6307",
     "drizzle/meta/0025_snapshot.json": "ba6c77a82ac2a462ac04f042c9bf3e8bc7252a7f",
@@ -11,17 +11,17 @@
     "scripts/start-gateway.ts": "9575b653d6bbf8f2f252ef01074cef5ece72b76e",
     "src/lib/ai/search.test.ts": "5194e792f578b6aaf681775e829cd3b8d2d178d8",
     "src/lib/ai/search.ts": "ae374c0a42a9116ee0d4541b3e4141d087dd79f9",
-    "src/lib/assistant-contracts.ts": "199b16b1252eef2bffe8fe1885c91ca16a75e55d",
-    "src/lib/assistant-storage.test.ts": "aee4512e9b2e12f35b92e1ba3c0ce55a77606b9f",
-    "src/lib/assistant-storage.ts": "a270e120799996a9628b9ad958e20f7f86329d3f",
+    "src/lib/assistant-contracts.ts": "6f9209c48252b2575cf662310e39d265d4060958",
+    "src/lib/assistant-storage.test.ts": "7c8a2de1ccf6e8a493ba4300aa69faf2fb708c50",
+    "src/lib/assistant-storage.ts": "f71be3986c49806d03aa533470ae3c95f87b70b4",
     "src/lib/db.ts": "4f264eaef16da3746ec5a0aa7d4af047550e7955",
     "src/lib/schema.ts": "0d4c7e32c7d8c0b58dfcb593aa5e14283c561bd6",
-    "src/server/assistant/api.ts": "b0ab3dcf18af6013a0b50c7449369cf07da22f5f",
-    "src/server/assistant/runtime.test.ts": "69802cc5457582049372fd2ecc1b16b9c503979c",
-    "src/server/assistant/runtime.ts": "0385760fc286f6aad5d31448ffd0ecbfa0be637b",
-    "src/server/assistant/service.ts": "48367a2e715e27c6d3326dfd2e2562e6b8b6cd35",
-    "src/server/public-api/assistant-chat.test.ts": "d62d86f31a191a9af49a1697ad7ef275aa24293a",
-    "src/server/public-api/router.ts": "aeeb0864f450a593439bd29c6f93b2913369af01",
+    "src/server/assistant/api.ts": "e470a31c83d3d8b5caa27875cc387e3bd20b3619",
+    "src/server/assistant/runtime.test.ts": "bf0054ab994c6f2b451f364542df22cbb8875e2e",
+    "src/server/assistant/runtime.ts": "30d3e06064302f1fecac57edc30c10803ba037d1",
+    "src/server/assistant/service.ts": "d1e1c4bd189d3410b25a40a0e018df187b41caf5",
+    "src/server/public-api/assistant-chat.test.ts": "6e16e309312be607eda9cd2ac7afbaac9eba4f80",
+    "src/server/public-api/router.ts": "27516e1bb0c2d3f8cfa2d1b6e7cd030b994a661f",
     "src/server/services/content-search.ts": "a0d21c73459b03749b9503d2e851b43e67a67e29",
     "src/server/services/search-semantic-projection.ts": "81837701ac0e701f07d7ebfed321315a4a9b09e6",
     "tests/server/system-share-api.test.ts": "737e9f8f4cedf53ffddc4a4a47abf96a3aba7b4c"
@@ -61,17 +61,17 @@
       "evidence": [
         {
           "path": "src/lib/assistant-storage.ts",
-          "blob": "a270e120799996a9628b9ad958e20f7f86329d3f",
+          "blob": "f71be3986c49806d03aa533470ae3c95f87b70b4",
           "command": "Owns atomic submission, sequence allocation, one-active-generation conflict checks, lease transitions, late-body rejection, citation persistence, expiry, and deletion"
         },
         {
           "path": "src/server/assistant/runtime.ts",
-          "blob": "0385760fc286f6aad5d31448ffd0ecbfa0be637b",
+          "blob": "30d3e06064302f1fecac57edc30c10803ba037d1",
           "command": "Runs the durable worker, renews leases, persists streamed deltas, uses authorized metered retrieval, and avoids automatic retry after restart"
         },
         {
           "path": "src/server/assistant/api.ts",
-          "blob": "b0ab3dcf18af6013a0b50c7449369cf07da22f5f",
+          "blob": "e470a31c83d3d8b5caa27875cc387e3bd20b3619",
           "command": "Maps authenticated owner-scoped chat operations to 202/401/404/410/409/429 contracts and SSE snapshots"
         },
         {
@@ -92,17 +92,17 @@
       "evidence": [
         {
           "path": "src/lib/assistant-storage.test.ts",
-          "blob": "aee4512e9b2e12f35b92e1ba3c0ce55a77606b9f",
+          "blob": "7c8a2de1ccf6e8a493ba4300aa69faf2fb708c50",
           "command": "bun test src/lib/assistant-storage.test.ts (7 pass, 0 fail, 44 expectations)"
         },
         {
           "path": "src/server/assistant/runtime.test.ts",
-          "blob": "69802cc5457582049372fd2ecc1b16b9c503979c",
+          "blob": "bf0054ab994c6f2b451f364542df22cbb8875e2e",
           "command": "bun test src/server/assistant/runtime.test.ts (7 pass, 0 fail, 22 expectations)"
         },
         {
           "path": "src/server/public-api/assistant-chat.test.ts",
-          "blob": "d62d86f31a191a9af49a1697ad7ef275aa24293a",
+          "blob": "6e16e309312be607eda9cd2ac7afbaac9eba4f80",
           "command": "bun test src/server/public-api/assistant-chat.test.ts (3 pass, 0 fail, 36 expectations)"
         },
         {
@@ -127,7 +127,7 @@
         },
         {
           "path": "src/server/assistant/runtime.ts",
-          "blob": "0385760fc286f6aad5d31448ffd0ecbfa0be637b",
+          "blob": "30d3e06064302f1fecac57edc30c10803ba037d1",
           "command": "Filtered bunx tsc --noEmit reports no diagnostic in T4 assistant/runtime/retrieval files; remaining matches are pre-existing router, migration, and search-test diagnostics"
         }
       ]
@@ -170,12 +170,13 @@
         "3.9.0",
         "3.10.0",
         "3.11.3",
-        "3.11.4"
+        "3.11.4",
+        "3.11.7"
       ],
       "evidence": [
         {
           "path": "src/server/public-api/router.ts",
-          "blob": "aeeb0864f450a593439bd29c6f93b2913369af01",
+          "blob": "27516e1bb0c2d3f8cfa2d1b6e7cd030b994a661f",
           "command": "Mounts the new authenticated /api/public/chat surface without changing existing routes"
         }
       ]
@@ -217,7 +218,8 @@
         "3.9.0",
         "3.10.0",
         "3.11.3",
-        "3.11.4"
+        "3.11.4",
+        "3.11.7"
       ],
       "upgrade_from_versions": [
         "2.7.0",
@@ -252,7 +254,8 @@
         "3.9.0",
         "3.10.0",
         "3.11.3",
-        "3.11.4"
+        "3.11.4",
+        "3.11.7"
       ],
       "evidence": [
         {

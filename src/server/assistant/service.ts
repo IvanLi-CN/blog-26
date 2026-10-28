@@ -10,7 +10,12 @@ import type {
 } from "@/lib/assistant-contracts";
 import { AssistantStorageError, createAssistantStorage } from "@/lib/assistant-storage";
 import { initializeDB } from "@/lib/db";
-import { type AssistantRuntime, getAssistantRuntime, startAssistantRuntime } from "./runtime";
+import {
+  type AssistantRuntime,
+  AssistantRuntimeClosedError,
+  getAssistantRuntime,
+  startAssistantRuntime,
+} from "./runtime";
 
 export class AssistantServiceError extends Error {
   constructor(
@@ -53,6 +58,41 @@ function activeJob(jobs: AssistantGenerationJob[]) {
   return jobs.find((job) => job.status === "queued" || job.status === "running") ?? null;
 }
 
+function assertRuntimeAccepting(runtime: AssistantRuntime) {
+  try {
+    runtime.assertAccepting();
+  } catch (error) {
+    if (error instanceof AssistantRuntimeClosedError)
+      throw new AssistantServiceError("conflict", "Assistant runtime is stopping");
+    throw error;
+  }
+}
+
+function resolveConversationInput(
+  conversation: AssistantConversation | null,
+  input: Omit<SubmitAssistantTurnInput, "frontendUserId" | "isAdmin">
+) {
+  if (!conversation) return input;
+  if (input.kind !== undefined && input.kind !== conversation.kind)
+    throw new AssistantServiceError("conflict", "Assistant conversation scope changed");
+  if (
+    input.clippingMemoId !== undefined &&
+    (input.clippingMemoId ?? null) !== conversation.clippingMemoId
+  )
+    throw new AssistantServiceError("conflict", "Assistant conversation scope changed");
+  if (
+    input.clippingVersionId !== undefined &&
+    (input.clippingVersionId ?? null) !== conversation.clippingVersionId
+  )
+    throw new AssistantServiceError("conflict", "Assistant conversation scope changed");
+  return {
+    ...input,
+    kind: conversation.kind,
+    clippingMemoId: conversation.clippingMemoId,
+    clippingVersionId: conversation.clippingVersionId,
+  };
+}
+
 export class AssistantService {
   readonly storage: AssistantMessageStorage;
   readonly runtime: AssistantRuntime;
@@ -66,54 +106,78 @@ export class AssistantService {
     principal: FrontendPrincipal,
     input: Omit<SubmitAssistantTurnInput, "frontendUserId" | "isAdmin">
   ) {
-    let submission: AssistantTurnSubmission | null;
-    const findExisting = async () => {
-      try {
-        return await this.storage.findIdempotentTurn(
-          principal.id,
-          input.requestId,
-          input.clientRequestId,
-          input.conversationId
-        );
-      } catch (error) {
-        translateStorageError(error);
-      }
-    };
-    submission = await findExisting();
-    if (!submission && !principal.isAdmin) {
-      const quota = await getAssistantQuotaSnapshot(principal.id);
-      const exhausted =
-        quota.tokenHour >= quota.policy.tokenHourlyLimit ||
-        quota.tokenWeek >= quota.policy.tokenWeeklyLimit ||
-        quota.questionHour >= quota.policy.questionHourlyLimit ||
-        quota.questionWeek >= quota.policy.questionWeeklyLimit;
-      if (exhausted) {
-        submission = await findExisting();
-        if (!submission) throw new AssistantServiceError("quota", "Assistant quota exceeded");
-      }
+    assertRuntimeAccepting(this.runtime);
+    try {
+      await this.runtime.start();
+    } catch (error) {
+      if (error instanceof AssistantRuntimeClosedError)
+        throw new AssistantServiceError("conflict", "Assistant runtime is stopping");
+      throw error;
     }
-    if (!submission) {
-      try {
-        submission = await this.storage.submitTurn({
-          ...input,
-          frontendUserId: principal.id,
-          isAdmin: principal.isAdmin,
-        });
-      } catch (error) {
-        translateStorageError(error);
+    const releaseSubmission = this.runtime.beginSubmission();
+    try {
+      const conversation = input.conversationId
+        ? await this.storage.getConversation(input.conversationId, principal.id)
+        : null;
+      if (input.conversationId && !conversation)
+        throw new AssistantServiceError("not-found", "Assistant conversation not found");
+      const resolvedInput = resolveConversationInput(conversation, input);
+      let submission: AssistantTurnSubmission | null;
+      const findExisting = async () => {
+        try {
+          return await this.storage.findIdempotentTurn(
+            principal.id,
+            resolvedInput.requestId,
+            resolvedInput.clientRequestId,
+            resolvedInput.conversationId,
+            Date.now(),
+            {
+              kind: resolvedInput.kind,
+              clippingMemoId: resolvedInput.clippingMemoId,
+              clippingVersionId: resolvedInput.clippingVersionId,
+            }
+          );
+        } catch (error) {
+          translateStorageError(error);
+        }
+      };
+      submission = await findExisting();
+      if (!submission && !principal.isAdmin) {
+        const quota = await getAssistantQuotaSnapshot(principal.id);
+        const exhausted =
+          quota.tokenHour >= quota.policy.tokenHourlyLimit ||
+          quota.tokenWeek >= quota.policy.tokenWeeklyLimit ||
+          quota.questionHour >= quota.policy.questionHourlyLimit ||
+          quota.questionWeek >= quota.policy.questionWeeklyLimit;
+        if (exhausted) {
+          submission = await findExisting();
+          if (!submission) throw new AssistantServiceError("quota", "Assistant quota exceeded");
+        }
       }
+      if (!submission) {
+        try {
+          submission = await this.storage.submitTurn({
+            ...resolvedInput,
+            frontendUserId: principal.id,
+            isAdmin: principal.isAdmin,
+          });
+        } catch (error) {
+          translateStorageError(error);
+        }
+      }
+      this.runtime.enqueue();
+      return {
+        status: "queued" as const,
+        conversationId: submission.conversation.id,
+        turnId: submission.generationJob.id,
+        requestId: submission.generationJob.requestId,
+        userMessageId: submission.userMessage.id,
+        assistantMessageId: submission.assistantMessage.id,
+        createdConversation: submission.createdConversation,
+      };
+    } finally {
+      releaseSubmission();
     }
-    await this.runtime.start();
-    this.runtime.enqueue();
-    return {
-      status: "queued" as const,
-      conversationId: submission.conversation.id,
-      turnId: submission.generationJob.id,
-      requestId: submission.generationJob.requestId,
-      userMessageId: submission.userMessage.id,
-      assistantMessageId: submission.assistantMessage.id,
-      createdConversation: submission.createdConversation,
-    };
   }
 
   async list(principal: FrontendPrincipal) {

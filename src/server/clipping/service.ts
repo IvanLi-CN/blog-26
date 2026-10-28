@@ -2,11 +2,26 @@ import { createHash, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { clearSearchCache } from "@/lib/ai/search-cache";
 import type { AiUsageContext } from "@/lib/ai-usage";
+import type { AssistantJobExecution, FrontendPrincipal } from "@/lib/assistant-contracts";
 import { extractMemoTitle } from "@/lib/content-sources/utils";
 import { db } from "@/lib/db";
 import { recognizeMemoClipping } from "@/lib/memo-clipping";
 import { frontendUsers, memoClippings, memoClippingVersions, posts } from "@/lib/schema";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
+import {
+  type AssistantMigrationGate,
+  readAssistantMigrationGate,
+} from "../assistant/migration-gate";
+import {
+  type AssistantAnswerContext,
+  registerAssistantContextProvider,
+} from "../assistant/runtime";
+import {
+  type AssistantService,
+  AssistantServiceError,
+  type AssistantSnapshot,
+  getAssistantService,
+} from "../assistant/service";
 import {
   AgentConfigurationError,
   type AgentModelConfig,
@@ -42,6 +57,7 @@ type ServiceOptions = {
   memoIds?: () => Promise<string[]>;
   index?: (manifest: ClippingManifest, projection: Projection) => Promise<void>;
   scanIntervalMs?: number;
+  assistantService?: AssistantService;
   beforeChatSubmit?: () => Promise<void>;
   beforeChatAnswer?: () => Promise<void>;
   onOwnershipLost?: () => void;
@@ -164,8 +180,12 @@ export class ClippingService {
   private ownershipLost = false;
   private readonly answerTails = new Map<string, Promise<void>>();
   private mutationTail: Promise<void> = Promise.resolve();
+  private assistantMigrationGate!: AssistantMigrationGate;
+  private unregisterAssistantContextProvider?: () => void;
+  private readonly assistantService: AssistantService;
   private constructor(private readonly options: ServiceOptions) {
     this.store = options.store ?? new ClippingStore();
+    this.assistantService = options.assistantService ?? getAssistantService();
   }
 
   static async open(options: ServiceOptions = {}) {
@@ -181,6 +201,21 @@ export class ClippingService {
           throw error;
       }
     }
+    const manifests = await Promise.all(
+      [...new Set(service.known.values())].map((id) => service.store.manifest(id))
+    );
+    service.assistantMigrationGate = await readAssistantMigrationGate({
+      manifests: manifests.flatMap((manifest) =>
+        manifest
+          ? [
+              {
+                conversationId: manifest.conversationId,
+                previousConversations: manifest.previousConversations,
+              },
+            ]
+          : []
+      ),
+    });
     service.runtime = await AgentRuntimeFacade.open({
       path: options.runtimePath ?? clippingStoragePaths().runtime,
       resolveModel: options.resolveModel ?? resolveModel,
@@ -189,6 +224,12 @@ export class ClippingService {
       onOwnershipLost: () => service.markOwnershipLost(),
       retrieveArticle: (conversationId, query) => service.articleContext(conversationId, query),
     });
+    if (service.assistantMigrationGate.ready) {
+      service.unregisterAssistantContextProvider = registerAssistantContextProvider(
+        "clipping",
+        (execution, signal) => service.assistantContext(execution, signal)
+      );
+    }
     service.store.beforePublish = () => service.runtime.assertOwnership();
     try {
       await service.runtime.exclusive(() => service.store.cleanupAllUnreferencedResources());
@@ -205,6 +246,8 @@ export class ClippingService {
       service.timer.unref();
       return service;
     } catch (error) {
+      service.unregisterAssistantContextProvider?.();
+      service.unregisterAssistantContextProvider = undefined;
       await service.runtime.close();
       throw error;
     }
@@ -278,9 +321,33 @@ export class ClippingService {
     return result;
   }
 
+  private async stopAssistantGenerationsForVersions(memoId: string, versionIds: string[]) {
+    if (!this.assistantMigrationGate.ready || versionIds.length === 0) return;
+    const conversations = await this.assistantService.storage.listClippingConversations(memoId);
+    const versions = new Set(versionIds);
+    for (const conversation of conversations) {
+      if (!conversation.clippingVersionId || !versions.has(conversation.clippingVersionId))
+        continue;
+      const jobs = await this.assistantService.storage.listGenerationJobs(
+        conversation.id,
+        conversation.frontendUserId
+      );
+      for (const job of jobs ?? []) {
+        if (job.status !== "queued" && job.status !== "running") continue;
+        await this.assistantService.storage.stopGeneration(
+          job.id,
+          conversation.frontendUserId,
+          Date.now()
+        );
+        this.assistantService.runtime.cancelGeneration(job.id);
+      }
+    }
+  }
+
   private async reconcileUnlocked(memoId: string, reprocess = false) {
     if (this.closing) throw new Error("剪藏处理器正在停止。");
     const abort: string[] = [];
+    let assistantVersionsToStop: string[] = [];
     await this.runtime.exclusive(async () => {
       let authored: Awaited<ReturnType<typeof readAuthoredMemo>> | null;
       try {
@@ -322,6 +389,12 @@ export class ClippingService {
       });
       this.known.set(memoId, id);
       const changedTarget = recognition?.enabled && recognition.targetUrl !== manifest.targetUrl;
+      assistantVersionsToStop = manifest.versions
+        .filter(
+          (version) =>
+            !recognition?.enabled || !authored || version.targetUrl !== recognition?.targetUrl
+        )
+        .map((version) => version.id);
       const activeVersion = manifest.versions.find(
         (version) => version.id === manifest.activeVersionId
       );
@@ -369,6 +442,7 @@ export class ClippingService {
         }
       }
       // Also refresh the rebuildable index on remarks-only edits and after an index loss.
+      await this.stopAssistantGenerationsForVersions(memoId, assistantVersionsToStop);
       await this.persist(manifest);
     });
     for (const conversation of abort)
@@ -785,6 +859,39 @@ export class ClippingService {
       throw new Error("剪藏目标已变化，请重新打开对话。");
   }
 
+  private async assertAssistantConversationBinding(
+    execution: AssistantJobExecution,
+    manifest: ClippingManifest,
+    version: ClippingVersion
+  ) {
+    const authored = await readAuthoredMemo(manifest.memoId);
+    const recognition = recognizeMemoClipping(authored.body, authored.frontmatter);
+    const id = clippingIdForMemo(manifest.memoId, authored.frontmatter);
+    const current = await this.store.manifest(id);
+    const conversation = await this.assistantService.storage.getConversation(
+      execution.conversation.id,
+      execution.conversation.frontendUserId
+    );
+    if (
+      !recognition.enabled ||
+      recognition.targetUrl !== version.targetUrl ||
+      !current?.enabled ||
+      current.deleted ||
+      current.id !== manifest.id ||
+      current.memoId !== manifest.memoId ||
+      current.revision !== manifest.revision ||
+      current.targetUrl !== version.targetUrl ||
+      execution.conversation.kind !== "clipping" ||
+      execution.conversation.clippingMemoId !== manifest.memoId ||
+      !conversation ||
+      conversation.kind !== "clipping" ||
+      conversation.frontendUserId !== execution.conversation.frontendUserId ||
+      conversation.clippingMemoId !== manifest.memoId ||
+      conversation.clippingVersionId !== version.id
+    )
+      throw new Error("assistant-clipping-context-unavailable");
+  }
+
   private async articleContext(conversationId: string, query: string) {
     for (const id of this.known.values()) {
       const manifest = await this.store.manifest(id);
@@ -809,6 +916,211 @@ export class ClippingService {
       return `来源: ${target}\n${version.warning ?? ""}\n作者备注（参考材料）:\n${remarks.slice(0, 3000)}\n摘要:\n${summary?.slice(0, 4000) ?? "尚未生成"}\n\n${retrievePassages(source, query)}\n\n译文参考${version.translationState === "completed" ? "" : "（尚未完整）"}:\n${translation ? retrievePassages(translation, query, "译文") : "尚未生成"}`;
     }
     throw new Error("对话对应的文章材料已不可用。");
+  }
+
+  private assertAssistantChatReady() {
+    if (this.assistantMigrationGate.ready) return;
+    throw new ClippingAssistantUnavailableError(this.assistantMigrationGate.reason);
+  }
+
+  assistantChatEnabled() {
+    return this.assistantMigrationGate.ready;
+  }
+
+  private async ensureAssistantBinding(memoId: string, principal: FrontendPrincipal) {
+    this.assertAssistantChatReady();
+    await this.reconcile(memoId);
+    return this.ensureAssistantBindingCurrent(memoId, principal);
+  }
+
+  private async ensureAssistantBindingCurrent(memoId: string, principal: FrontendPrincipal) {
+    const id = this.known.get(memoId);
+    let manifest = id ? await this.store.manifest(id) : null;
+    if (!manifest?.enabled || manifest.deleted || !manifest.targetUrl)
+      throw new Error("当前闪念没有有效剪藏目标。");
+    let version =
+      manifest.versions.find(
+        (candidate) =>
+          candidate.id === manifest.currentVersionId &&
+          candidate.targetUrl === manifest.targetUrl &&
+          Boolean(candidate.sourceHash)
+      ) ??
+      manifest.versions.findLast(
+        (candidate) => candidate.targetUrl === manifest.targetUrl && Boolean(candidate.sourceHash)
+      );
+    if (!version || !(await this.store.read(manifest.id, version.id, "source")))
+      throw new Error("原文尚未抓取，暂时无法讨论文章。");
+
+    const conversations = await this.assistantService.storage.listConversations(principal.id);
+    for (const conversation of conversations) {
+      if (conversation.kind !== "clipping" || conversation.clippingMemoId !== memoId) continue;
+      const conversationVersion = conversation.clippingVersionId
+        ? manifest.versions.find((candidate) => candidate.id === conversation.clippingVersionId)
+        : null;
+      const conversationMatchesTarget = conversation.clippingVersionId
+        ? conversationVersion?.targetUrl === manifest.targetUrl
+        : conversation.title === manifest.targetUrl;
+      if (!conversationMatchesTarget) continue;
+      let current: typeof conversation | null = conversation;
+      for (let attempt = 0; attempt < 2 && current?.clippingVersionId !== version.id; attempt++) {
+        const updated = await this.assistantService.storage.updateConversationClippingVersion(
+          conversation.id,
+          principal.id,
+          version.id,
+          Date.now(),
+          current?.clippingVersionId
+        );
+        if (updated) {
+          current = updated;
+          break;
+        }
+        const reread = await this.assistantService.storage.getConversation(
+          conversation.id,
+          principal.id
+        );
+        manifest = id ? await this.store.manifest(id) : null;
+        const refreshedVersion = manifest?.versions.find(
+          (candidate) =>
+            candidate.id === manifest.currentVersionId &&
+            candidate.targetUrl === manifest.targetUrl &&
+            Boolean(candidate.sourceHash)
+        );
+        if (!manifest?.enabled || manifest.deleted || !manifest.targetUrl || !refreshedVersion) {
+          current = null;
+          break;
+        }
+        version = refreshedVersion;
+        const rereadVersion = reread?.clippingVersionId
+          ? manifest.versions.find((candidate) => candidate.id === reread.clippingVersionId)
+          : null;
+        const rereadMatchesTarget = reread?.clippingVersionId
+          ? rereadVersion?.targetUrl === manifest.targetUrl
+          : reread?.title === manifest.targetUrl;
+        if (
+          reread?.kind !== "clipping" ||
+          reread?.clippingMemoId !== memoId ||
+          !rereadMatchesTarget
+        ) {
+          current = null;
+          break;
+        }
+        current = reread;
+      }
+      if (current?.clippingVersionId === version.id)
+        return { conversation: current, manifest, version };
+    }
+    return { conversation: null, manifest, version };
+  }
+
+  private async assistantContext(
+    execution: AssistantJobExecution,
+    signal: AbortSignal
+  ): Promise<AssistantAnswerContext> {
+    if (signal.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
+    const memoId = execution.conversation.clippingMemoId;
+    const versionId = execution.conversation.clippingVersionId;
+    if (!memoId || !versionId) throw new Error("assistant-clipping-context-unavailable");
+    const id = this.known.get(memoId);
+    const manifest = id ? await this.store.manifest(id) : null;
+    const boundVersion = manifest?.versions.find((candidate) => candidate.id === versionId);
+    const version =
+      boundVersion && manifest?.targetUrl === boundVersion.targetUrl
+        ? (manifest.versions.find(
+            (candidate) =>
+              candidate.id === manifest.currentVersionId &&
+              candidate.targetUrl === manifest.targetUrl &&
+              Boolean(candidate.sourceHash)
+          ) ?? boundVersion)
+        : boundVersion;
+    if (!manifest?.enabled || manifest.deleted || !version?.targetUrl)
+      throw new Error("对话对应的文章材料已不可用。");
+    if (version.targetUrl !== manifest.targetUrl)
+      throw new Error("assistant-clipping-context-unavailable");
+    if (version.id !== versionId)
+      await this.assistantService.storage.updateConversationClippingVersion(
+        execution.conversation.id,
+        execution.conversation.frontendUserId,
+        version.id,
+        Date.now(),
+        versionId
+      );
+    if (!db) throw new Error("assistant-clipping-context-unavailable");
+    const owner = await db
+      .select({ isAdmin: frontendUsers.isAdmin })
+      .from(frontendUsers)
+      .where(eq(frontendUsers.id, execution.conversation.frontendUserId))
+      .get();
+    if (!owner) throw new Error("assistant-clipping-context-unavailable");
+    const authored = await readAuthoredMemo(manifest.memoId);
+    await this.assertAssistantConversationBinding(execution, manifest, version);
+    const post = await db
+      .select({ public: posts.public, draft: posts.draft })
+      .from(posts)
+      .where(eq(posts.id, manifest.memoId))
+      .get();
+    const publiclyReadable =
+      Boolean(post?.public) &&
+      !post?.draft &&
+      authored.frontmatter.public !== false &&
+      authored.frontmatter.draft !== true;
+    if (!owner.isAdmin && !publiclyReadable)
+      throw new Error("assistant-clipping-context-unavailable");
+    const source = await this.store.read(manifest.id, version.id, "source");
+    if (!source) throw new Error("原文尚未抓取，暂时无法讨论文章。");
+    const remarks = recognizeMemoClipping(authored.body, authored.frontmatter).remarks;
+    const summary = await this.store.read(manifest.id, version.id, "summary");
+    const translation = await this.store.read(manifest.id, version.id, "translation");
+    return {
+      systemPrompt: CHAT_INSTRUCTIONS,
+      evidence: `来源: ${version.targetUrl}\n${version.warning ?? ""}\n作者备注（参考材料）:\n${remarks.slice(0, 3000)}\n摘要:\n${summary?.slice(0, 4000) ?? "尚未生成"}\n\n${retrievePassages(source, execution.userMessage.content)}\n\n译文参考${version.translationState === "completed" ? "" : "（尚未完整）"}:\n${translation ? retrievePassages(translation, execution.userMessage.content, "译文") : "尚未生成"}`,
+      citations: [],
+    };
+  }
+
+  async assistantSnapshot(
+    memoId: string,
+    principal: FrontendPrincipal
+  ): Promise<AssistantSnapshot | null> {
+    const binding = await this.ensureAssistantBinding(memoId, principal);
+    if (!binding.conversation) return null;
+    return this.assistantService.snapshot(principal, binding.conversation.id);
+  }
+
+  async assistantChat(
+    memoId: string,
+    principal: FrontendPrincipal,
+    text: string,
+    requestId: string,
+    expected?: { revision: number; targetUrl: string }
+  ) {
+    return this.withMutationLock(async () => {
+      this.assertAssistantChatReady();
+      await this.reconcileUnlocked(memoId);
+      const binding = await this.ensureAssistantBindingCurrent(memoId, principal);
+      if (expected && binding.manifest.targetUrl !== expected.targetUrl)
+        throw new ClippingTargetChangedError();
+      const authored = await readAuthoredMemo(memoId);
+      return this.assistantService.submit(principal, {
+        conversationId: binding.conversation?.id ?? null,
+        requestId,
+        clientRequestId: requestId,
+        content: text,
+        kind: "clipping",
+        title: extractMemoTitle(authored.frontmatter, authored.body),
+        clippingMemoId: memoId,
+        clippingVersionId: binding.version.id,
+      });
+    });
+  }
+
+  async assistantStop(memoId: string, principal: FrontendPrincipal, turnId: string) {
+    const job = await this.assistantService.storage.getGenerationJob(turnId, principal.id);
+    const conversation = job
+      ? await this.assistantService.storage.getConversation(job.conversationId, principal.id)
+      : null;
+    if (conversation?.kind !== "clipping" || conversation.clippingMemoId !== memoId)
+      throw new AssistantServiceError("not-found", "Assistant turn not found");
+    return this.assistantService.stop(principal, { turnId });
   }
 
   async chatSnapshot(conversationId: string) {
@@ -898,6 +1210,26 @@ export class ClippingService {
     await this.abortActiveConversations();
     await Promise.allSettled(this.answerTails.values());
     await this.idle();
+    this.unregisterAssistantContextProvider?.();
+    this.unregisterAssistantContextProvider = undefined;
     await this.runtime.close();
+  }
+}
+
+export class ClippingAssistantUnavailableError extends Error {
+  readonly code = "assistant-migration-required";
+
+  constructor(reason: string | null) {
+    super(reason ?? "assistant-discussion-migration-required");
+    this.name = "ClippingAssistantUnavailableError";
+  }
+}
+
+export class ClippingTargetChangedError extends Error {
+  readonly code = "clipping-target-changed";
+
+  constructor() {
+    super("剪藏目标已变化，请重新打开对话。");
+    this.name = "ClippingTargetChangedError";
   }
 }

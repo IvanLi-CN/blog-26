@@ -173,6 +173,94 @@ describe("assistant runtime", () => {
     await runtime.stop();
   });
 
+  it("replays an existing clipping turn through the generic service scope", async () => {
+    await addUser("assistant-runtime-clipping-owner");
+    const storage = createAssistantStorage(database);
+    const runtime = createAssistantRuntimeForTest({
+      storage,
+      pumpDelayMs: 0,
+      generate: async () => ({ content: "clipping answer", citations: [] }),
+    });
+    const service = createAssistantServiceForTest({ storage, runtime });
+    const principal = {
+      id: "assistant-runtime-clipping-owner",
+      kind: "reader" as const,
+      isAdmin: true,
+      displayName: "Clipping Owner",
+      email: null,
+      avatarUrl: "/site-assets/default-avatar.svg",
+      profileUrl: null,
+      adminUserId: null,
+      readerId: "assistant-runtime-clipping-owner",
+      github: null,
+    } satisfies FrontendPrincipal;
+    const first = await service.submit(principal, {
+      requestId: "generic-clipping-turn",
+      content: "Question about the clipping",
+      kind: "clipping",
+      clippingMemoId: "memo.md",
+      clippingVersionId: "version-1",
+    });
+    await waitFor(
+      async () =>
+        (await storage.getGenerationJob(first.turnId, principal.id))?.status === "completed"
+    );
+    const replay = await service.submit(principal, {
+      conversationId: first.conversationId,
+      requestId: "generic-clipping-turn",
+      content: "Question about the clipping",
+    });
+    expect(replay).toMatchObject({
+      conversationId: first.conversationId,
+      turnId: first.turnId,
+    });
+    expect((await storage.listMessages(first.conversationId, principal.id)).length).toBe(2);
+    await runtime.stop();
+  });
+
+  it("rejects new submissions after runtime shutdown begins", async () => {
+    await addUser("assistant-runtime-shutdown-owner");
+    const storage = createAssistantStorage(database);
+    const runtime = createAssistantRuntimeForTest({ storage });
+    const service = createAssistantServiceForTest({ storage, runtime });
+    const principal = {
+      id: "assistant-runtime-shutdown-owner",
+      kind: "reader" as const,
+      isAdmin: false,
+      displayName: "Shutdown Owner",
+      email: null,
+      avatarUrl: "/site-assets/default-avatar.svg",
+      profileUrl: null,
+      adminUserId: null,
+      readerId: "assistant-runtime-shutdown-owner",
+      github: null,
+    } satisfies FrontendPrincipal;
+    await runtime.start();
+    await runtime.stop();
+    await expect(
+      service.submit(principal, {
+        requestId: "after-shutdown",
+        content: "This must be rejected",
+      })
+    ).rejects.toMatchObject({ code: "conflict" });
+  });
+
+  it("waits for admitted submissions before completing shutdown", async () => {
+    const storage = createAssistantStorage(database);
+    const runtime = createAssistantRuntimeForTest({ storage });
+    await runtime.start();
+    const releaseSubmission = runtime.beginSubmission();
+    let stopped = false;
+    const stopping = runtime.stop().then(() => {
+      stopped = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(stopped).toBe(false);
+    releaseSubmission();
+    await stopping;
+    expect(stopped).toBe(true);
+  });
+
   it("marks provider failures as terminal without retrying the job", async () => {
     await addUser("assistant-runtime-failure-owner");
     const storage = createAssistantStorage(database);
@@ -207,7 +295,7 @@ describe("assistant runtime", () => {
       "assistant-runtime-failure-owner"
     );
     expect(attempts).toBe(1);
-    expect(job).toMatchObject({ status: "failed", errorCode: "provider-down" });
+    expect(job).toMatchObject({ status: "failed", errorCode: "generation-failed" });
     await runtime.stop();
   });
 
@@ -290,6 +378,66 @@ describe("assistant runtime", () => {
     expect(
       await storage.getGenerationJob(submission.generationJob.id, "assistant-runtime-lease-owner")
     ).toMatchObject({ errorCode: "worker-lease-expired" });
+    await runtime.stop();
+  });
+
+  it("expires stale conversations while the worker is idle", async () => {
+    await addUser("assistant-runtime-idle-expiry-owner");
+    const storage = createAssistantStorage(database);
+    const conversation = await storage.createConversation({
+      frontendUserId: "assistant-runtime-idle-expiry-owner",
+      kind: "general",
+      expiresAt: 1_001,
+      now: 1_000,
+    });
+    let now = 1_000;
+    const runtime = createAssistantRuntimeForTest({
+      storage,
+      expirySweepMs: 5,
+      generate: async () => ({ content: "unused", citations: [] }),
+      now: () => now,
+    });
+    await runtime.start();
+    now = 1_002;
+    await waitFor(
+      async () =>
+        (await storage.getConversation(conversation.id, "assistant-runtime-idle-expiry-owner"))
+          ?.status === "expired"
+    );
+    await runtime.stop();
+  });
+
+  it("wakes a queued job before the idle expiry sweep", async () => {
+    await addUser("assistant-runtime-wakeup-owner");
+    const storage = createAssistantStorage(database);
+    let generated = 0;
+    const runtime = createAssistantRuntimeForTest({
+      storage,
+      pumpDelayMs: 0,
+      expirySweepMs: 1_000,
+      generate: async () => {
+        generated++;
+        return { content: "Woken answer", citations: [] };
+      },
+    });
+    await runtime.start();
+    await Bun.sleep(10);
+    const submission = await storage.submitTurn({
+      frontendUserId: "assistant-runtime-wakeup-owner",
+      requestId: "runtime-wakeup-request",
+      content: "Wake the worker",
+    });
+    runtime.enqueue();
+    await waitFor(
+      async () =>
+        (
+          await storage.getGenerationJob(
+            submission.generationJob.id,
+            "assistant-runtime-wakeup-owner"
+          )
+        )?.status === "completed"
+    );
+    expect(generated).toBe(1);
     await runtime.stop();
   });
 

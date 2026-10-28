@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
+  "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
   "covered_files": {
     "docs/adr/0035-personal-assistant-quota-and-sitewide-ai-metering.md": "ee6b4ca3dfd153104f645ad561419009b2465911",
     "docs/specs/site-knowledge-assistant/SPEC.md": "d11a224a6283c60aa276785997ee8a33a4586dad",
@@ -9,7 +9,7 @@
     "drizzle/0024_ai_usage_daily_result_counts.sql": "51839b875299f08f972d16fb8c137e542ef82558",
     "drizzle/meta/0024_snapshot.json": "35b706bb2b291a762c8beabce4a50640b5f81dfe",
     "drizzle/meta/_journal.json": "e04c27d13c458128218494a878957e224c1f839c",
-    "src/lib/assistant-contracts.ts": "199b16b1252eef2bffe8fe1885c91ca16a75e55d",
+    "src/lib/assistant-contracts.ts": "6f9209c48252b2575cf662310e39d265d4060958",
     "src/lib/schema.ts": "0d4c7e32c7d8c0b58dfcb593aa5e14283c561bd6",
     "src/lib/ai/embeddings.ts": "2c303c131c22191e53ccc35ece864c2f1b51fbf1",
     "src/lib/ai-usage.test.ts": "0aaf770057d2de72d6f43aae6c2d03cab36be683",
@@ -20,7 +20,7 @@
     "src/server/admin-api/router.ts": "d3033c0d6dfb96c10cd6135de88b208e79883ea0",
     "src/server/ai/icon-reranker.ts": "9b19608a004d6fd53a9ecb47e3bf0df8ba13b629",
     "src/server/clipping/agent-runtime.ts": "6b9991ca7b0515b425d4df45ce53d63f04cc502d",
-    "src/server/clipping/service.ts": "26b0c625edbced59ed3a3d6fc26fbb6a40f4e04f",
+    "src/server/clipping/service.ts": "32b5c32e58acf54fd2d461c5aa354115d3f93d8e",
     "src/server/jobs/definitions.ts": "b12ca785af83539ee22b1d8f11b27444e7e57d13",
     "src/server/jobs/index.ts": "96547ef6235a05d079a5c592fba7bdc44ac23ddd",
     "src/server/jobs/runtime.ts": "d6ef29d77b742b2ca00025717612dadbb307d743",
@@ -33,7 +33,7 @@
     "src/server/services/search-validation.ts": "5530f7aa80d8d17c848cf4551fd1f01f99137455",
     "src/server/services/tag-ai.ts": "b2a3d4302f9526e5b7f096afa3fb964bba15a118",
     "src/server/services/tag-icons.ts": "1ee8ac64445d6bdec836388a520b39387550b995",
-    "scripts/start-console.ts": "aec1f7abeb3192b8f2e0ac241cad68e289d15837",
+    "scripts/start-console.ts": "ad21273121c2275428f92f0adc58d11789afc742",
     "tests/server/jobs/definitions.test.ts": "de44938911af1ffc8a4168b442402b4534db90be",
     "tests/server/jobs/runtime.test.ts": "dc63ce830bf75b7a4c67d260db210fd99bfc8597"
   },
@@ -107,7 +107,7 @@
         },
         {
           "path": "scripts/start-console.ts",
-          "blob": "aec1f7abeb3192b8f2e0ac241cad68e289d15837",
+          "blob": "ad21273121c2275428f92f0adc58d11789afc742",
           "command": "Starts the unique jobs runtime in the production self-contained console and stops it through the existing shutdown flow"
         },
         {
@@ -168,7 +168,7 @@
         },
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "9cf657d64be64e6a6e521330334ec3437279c482",
+          "blob": "a5c3bb6027a4860b72b68800239717c1eeda207f",
           "command": "bun test src/server/http-compat-api.test.ts (107 pass, 3 skipped; authenticated admin HTTP compatibility surface)"
         },
         {
@@ -246,7 +246,8 @@
         "3.9.0",
         "3.10.0",
         "3.11.3",
-        "3.11.4"
+        "3.11.4",
+        "3.11.7"
       ],
       "evidence": [
         {
@@ -256,7 +257,7 @@
         },
         {
           "path": "src/server/clipping/service.ts",
-          "blob": "26b0c625edbced59ed3a3d6fc26fbb6a40f4e04f",
+          "blob": "32b5c32e58acf54fd2d461c5aa354115d3f93d8e",
           "command": "Existing clipping conversation and lifecycle responses remain unchanged"
         }
       ]
@@ -298,7 +299,8 @@
         "3.9.0",
         "3.10.0",
         "3.11.3",
-        "3.11.4"
+        "3.11.4",
+        "3.11.7"
       ],
       "upgrade_from_versions": [
         "2.7.0",
@@ -333,7 +335,8 @@
         "3.9.0",
         "3.10.0",
         "3.11.3",
-        "3.11.4"
+        "3.11.4",
+        "3.11.7"
       ],
       "evidence": [
         {

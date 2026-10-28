@@ -3,6 +3,7 @@ import type { AssistantGenerationJob, FrontendPrincipal } from "@/lib/assistant-
 import { initializeDB } from "@/lib/db";
 import { getFrontendPrincipalFromRequest } from "@/lib/frontend-auth";
 import { appendPublicCorsHeaders, hasTrustedPublicOrigin } from "@/lib/public-cors";
+import { AssistantRuntimeClosedError } from "./runtime";
 import { type AssistantService, AssistantServiceError, getAssistantService } from "./service";
 
 const PUBLIC_API_ALLOWED_METHODS = ["GET", "HEAD", "POST", "PATCH", "DELETE", "OPTIONS"] as const;
@@ -62,6 +63,8 @@ function methodNotAllowed(request: Request) {
 
 function routeError(error: unknown): AssistantApiError {
   if (error instanceof AssistantApiError) return error;
+  if (error instanceof AssistantRuntimeClosedError)
+    return new AssistantApiError(409, "CONFLICT", "Assistant runtime is stopping");
   if (error instanceof AssistantServiceError) {
     const status =
       error.code === "not-found"
@@ -243,6 +246,21 @@ async function submitAssistantRequest(
   const idempotencyKey = request.headers.get("idempotency-key")?.trim() || null;
   const requestId = input.requestId ?? idempotencyKey ?? input.clientRequestId ?? null;
   if (!requestId) throw new AssistantApiError(400, "BAD_REQUEST", "requestId is required");
+  if (input.kind === "clipping" || input.clippingMemoId || input.clippingVersionId)
+    throw new AssistantApiError(
+      404,
+      "NOT_FOUND",
+      "Clipping discussions must use the clipping route"
+    );
+  if (input.conversationId) {
+    const conversation = await requireConversation(service, principal, input.conversationId);
+    if (conversation.kind === "clipping")
+      throw new AssistantApiError(
+        409,
+        "CONFLICT",
+        "Clipping discussions must use the clipping route"
+      );
+  }
   const clientRequestId = input.clientRequestId ?? input.requestId ?? idempotencyKey;
   const result = await service.submit(principal, {
     conversationId: input.conversationId ?? null,
@@ -255,6 +273,28 @@ async function submitAssistantRequest(
     clippingVersionId: input.clippingVersionId,
   });
   return response(request, result, 202, undefined, resHeaders);
+}
+
+async function requireConversation(
+  service: ReturnType<typeof getAssistantService>,
+  principal: FrontendPrincipal,
+  conversationId: string
+) {
+  const conversation = await service.storage.getConversation(conversationId, principal.id);
+  if (!conversation)
+    throw new AssistantApiError(404, "NOT_FOUND", "Assistant conversation not found");
+  return conversation;
+}
+
+async function requireGeneralTurn(
+  service: ReturnType<typeof getAssistantService>,
+  principal: FrontendPrincipal,
+  turnId: string
+) {
+  const job = await service.storage.getGenerationJob(turnId, principal.id);
+  if (!job) throw new AssistantApiError(404, "NOT_FOUND", "Assistant turn not found");
+  await requireConversation(service, principal, job.conversationId);
+  return job;
 }
 
 export async function handleAssistantRequest(
@@ -276,7 +316,9 @@ export async function handleAssistantRequest(
     if (pathname === "/chat" || pathname === "/chat/conversations") {
       if (request.method === "GET") {
         if (conversationIdFromUrl(url)) {
-          const snapshot = await service.snapshot(principal, conversationIdFromUrl(url));
+          const conversationId = conversationIdFromUrl(url);
+          await requireConversation(service, principal, conversationId);
+          const snapshot = await service.snapshot(principal, conversationId);
           return response(request, snapshot, 200, undefined, resHeaders);
         }
         return response(request, await service.list(principal), 200, undefined, resHeaders);
@@ -295,6 +337,7 @@ export async function handleAssistantRequest(
       const conversationId = conversationIdFromUrl(url);
       if (!conversationId)
         throw new AssistantApiError(400, "BAD_REQUEST", "conversationId is required");
+      await requireConversation(service, principal, conversationId);
       return response(
         request,
         await service.snapshot(principal, conversationId),
@@ -309,6 +352,7 @@ export async function handleAssistantRequest(
       const conversationId = conversationIdFromUrl(url);
       if (!conversationId)
         throw new AssistantApiError(400, "BAD_REQUEST", "conversationId is required");
+      await requireConversation(service, principal, conversationId);
       await service.snapshot(principal, conversationId);
       return streamResponse(request, conversationId, service, principal);
     }
@@ -320,6 +364,7 @@ export async function handleAssistantRequest(
       const conversationId = conversationIdFromUrl(url);
       if (!conversationId)
         throw new AssistantApiError(400, "BAD_REQUEST", "conversationId is required");
+      await requireConversation(service, principal, conversationId);
       return response(
         request,
         await service.messages(principal, conversationId),
@@ -340,6 +385,26 @@ export async function handleAssistantRequest(
         .strict()
         .safeParse(await body(request));
       if (!parsed.success) throw new AssistantApiError(400, "BAD_REQUEST", "Invalid stop request");
+      if (parsed.data.conversationId && (parsed.data.turnId || parsed.data.generationJobId)) {
+        const job = await requireGeneralTurn(
+          service,
+          principal,
+          parsed.data.turnId ?? parsed.data.generationJobId ?? ""
+        );
+        if (job.conversationId !== parsed.data.conversationId)
+          throw new AssistantApiError(
+            409,
+            "CONFLICT",
+            "conversationId does not match the assistant turn"
+          );
+      } else if (parsed.data.conversationId) {
+        await requireConversation(service, principal, parsed.data.conversationId);
+      } else if (parsed.data.turnId || parsed.data.generationJobId)
+        await requireGeneralTurn(
+          service,
+          principal,
+          parsed.data.turnId ?? parsed.data.generationJobId ?? ""
+        );
       const result = await service.stop(principal, {
         conversationId: parsed.data.conversationId,
         turnId: parsed.data.turnId ?? parsed.data.generationJobId,
@@ -356,6 +421,7 @@ export async function handleAssistantRequest(
     const eventConversationId = idFromPath(pathname, "/events");
     if (eventConversationId) {
       if (request.method !== "GET") return methodNotAllowed(request);
+      await requireConversation(service, principal, eventConversationId);
       await service.snapshot(principal, eventConversationId);
       return streamResponse(request, eventConversationId, service, principal);
     }
@@ -363,6 +429,7 @@ export async function handleAssistantRequest(
     const messageConversationId = idFromPath(pathname, "/messages");
     if (messageConversationId) {
       if (request.method !== "GET") return methodNotAllowed(request);
+      await requireConversation(service, principal, messageConversationId);
       return response(
         request,
         await service.messages(principal, messageConversationId),
@@ -375,6 +442,7 @@ export async function handleAssistantRequest(
     const stopConversationId = idFromPath(pathname, "/stop");
     if (stopConversationId) {
       if (request.method !== "POST") return methodNotAllowed(request);
+      await requireConversation(service, principal, stopConversationId);
       const result = await service.stop(principal, { conversationId: stopConversationId });
       return response(
         request,
@@ -388,6 +456,7 @@ export async function handleAssistantRequest(
     const turnStopMatch = pathname.match(/^\/chat\/turns\/([^/]+)\/stop$/u);
     if (turnStopMatch) {
       if (request.method !== "POST") return methodNotAllowed(request);
+      await requireGeneralTurn(service, principal, decodeURIComponent(turnStopMatch[1]));
       const result = await service.stop(principal, {
         turnId: decodeURIComponent(turnStopMatch[1]),
       });
@@ -402,6 +471,7 @@ export async function handleAssistantRequest(
 
     const conversationId = idFromPath(pathname, "");
     if (conversationId) {
+      await requireConversation(service, principal, conversationId);
       if (request.method === "GET")
         return response(
           request,

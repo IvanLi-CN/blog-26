@@ -560,4 +560,148 @@ describe("assistant SQLite storage", () => {
       await storage.getGenerationJob(first.generationJob.id, "frontend-storage-expiry-owner")
     ).toMatchObject({ userMessageId: null, assistantMessageId: null });
   });
+
+  it("expires all stale conversations and updates a clipping conversation's version by owner", async () => {
+    await database.insert(frontendUsers).values({
+      id: "frontend-storage-clipping-owner",
+      adminUserId: null,
+      isAdmin: false,
+      displayName: "Clipping Owner",
+      email: null,
+      avatarUrl: "/site-assets/default-avatar.svg",
+      profileUrl: null,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    await database
+      .insert(assistantQuotaPolicies)
+      .values({
+        id: "assistant-storage-clipping-policy",
+        scope: "global",
+        tokenHourlyLimit: 10_000,
+        tokenWeeklyLimit: 100_000,
+        questionHourlyLimit: 10,
+        questionWeeklyLimit: 100,
+        maxConversations: 3,
+        retentionMs: 100,
+        timezone: "UTC",
+        createdAt: 1,
+        updatedAt: 1,
+      })
+      .onConflictDoUpdate({ target: assistantQuotaPolicies.scope, set: { retentionMs: 100 } });
+    const storage = createAssistantStorage(database);
+    const first = await storage.submitTurn({
+      frontendUserId: "frontend-storage-clipping-owner",
+      requestId: "clipping-storage-request",
+      content: "Question about the saved article",
+      kind: "clipping",
+      clippingMemoId: "Memos/article.md",
+      clippingVersionId: "version-1",
+      now: 100,
+    });
+    const updated = await storage.updateConversationClippingVersion(
+      first.conversation.id,
+      "frontend-storage-clipping-owner",
+      "version-2",
+      101
+    );
+    expect(updated).toMatchObject({ clippingVersionId: "version-2" });
+    expect(
+      await storage.updateConversationClippingVersion(
+        first.conversation.id,
+        "frontend-storage-clipping-owner",
+        "version-3",
+        101,
+        "version-1"
+      )
+    ).toBeNull();
+    expect(
+      await storage.getConversation(first.conversation.id, "frontend-storage-clipping-owner")
+    ).toMatchObject({ clippingVersionId: "version-2" });
+    expect(
+      await storage.updateConversationClippingVersion(
+        first.conversation.id,
+        "another-owner",
+        "version-3",
+        101
+      )
+    ).toBeNull();
+
+    expect(await storage.expireConversations(201)).toBe(1);
+    expect(
+      await storage.getConversation(first.conversation.id, "frontend-storage-clipping-owner")
+    ).toMatchObject({ status: "expired" });
+    expect(
+      await storage.listMessages(first.conversation.id, "frontend-storage-clipping-owner")
+    ).toEqual([]);
+  });
+
+  it("deduplicates concurrent first clipping turns by version", async () => {
+    const owner = "frontend-storage-concurrent-clipping";
+    await database.insert(frontendUsers).values({
+      id: owner,
+      adminUserId: null,
+      isAdmin: false,
+      displayName: "Concurrent Clipping Owner",
+      email: null,
+      avatarUrl: "/site-assets/default-avatar.svg",
+      profileUrl: null,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    const storage = createAssistantStorage(database);
+    const attempts = await Promise.allSettled(
+      ["first", "second"].map((requestId) =>
+        storage.submitTurn({
+          frontendUserId: owner,
+          kind: "clipping",
+          clippingMemoId: "Memos/concurrent.md",
+          clippingVersionId: "11111111-1111-4111-8111-111111111111",
+          requestId,
+          content: requestId,
+          now: Date.now(),
+        })
+      )
+    );
+    const accepted = attempts.flatMap((attempt) =>
+      attempt.status === "fulfilled" ? [attempt.value] : []
+    );
+    expect(accepted).toHaveLength(1);
+    expect(await storage.listConversations(owner)).toEqual([
+      expect.objectContaining({ kind: "clipping", clippingMemoId: "Memos/concurrent.md" }),
+    ]);
+  });
+
+  it("rejects request ids reused across assistant conversation kinds", async () => {
+    const owner = "frontend-storage-request-scope";
+    await database.insert(frontendUsers).values({
+      id: owner,
+      adminUserId: null,
+      isAdmin: false,
+      displayName: "Request Scope Owner",
+      email: null,
+      avatarUrl: "/site-assets/default-avatar.svg",
+      profileUrl: null,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    const storage = createAssistantStorage(database);
+    await storage.submitTurn({
+      frontendUserId: owner,
+      requestId: "shared-request-id",
+      content: "General question",
+      now: Date.now(),
+    });
+    await expect(
+      storage.submitTurn({
+        frontendUserId: owner,
+        kind: "clipping",
+        clippingMemoId: "Memos/scoped.md",
+        clippingVersionId: "version-1",
+        requestId: "shared-request-id",
+        content: "Clipping question",
+        now: Date.now(),
+      })
+    ).rejects.toMatchObject({ code: "conflict" });
+  });
 });
