@@ -152,13 +152,22 @@ test("uses per-user unified conversations across same-target versions and separa
     index: async () => undefined,
   });
   try {
+    const migratedConversation = await assistantStorage.createConversation({
+      frontendUserId: principal.id,
+      kind: "clipping",
+      title: "https://article.example/one",
+      clippingMemoId: memoId,
+      clippingVersionId: null,
+      now: 0,
+    });
     const first = await service.assistantChat(
       memoId,
       principal,
       "What does it preserve?",
       "chat-one"
     );
-    expect(first.createdConversation).toBe(true);
+    expect(first.createdConversation).toBe(false);
+    expect(first.conversationId).toBe(migratedConversation.id);
     let snapshot = await service.assistantSnapshot(memoId, principal);
     for (let attempt = 0; attempt < 100 && snapshot?.activeGenerationJob; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 2));

@@ -859,6 +859,39 @@ export class ClippingService {
       throw new Error("剪藏目标已变化，请重新打开对话。");
   }
 
+  private async assertAssistantConversationBinding(
+    execution: AssistantJobExecution,
+    manifest: ClippingManifest,
+    version: ClippingVersion
+  ) {
+    const authored = await readAuthoredMemo(manifest.memoId);
+    const recognition = recognizeMemoClipping(authored.body, authored.frontmatter);
+    const id = clippingIdForMemo(manifest.memoId, authored.frontmatter);
+    const current = await this.store.manifest(id);
+    const conversation = await this.assistantService.storage.getConversation(
+      execution.conversation.id,
+      execution.conversation.frontendUserId
+    );
+    if (
+      !recognition.enabled ||
+      recognition.targetUrl !== version.targetUrl ||
+      !current?.enabled ||
+      current.deleted ||
+      current.id !== manifest.id ||
+      current.memoId !== manifest.memoId ||
+      current.revision !== manifest.revision ||
+      current.targetUrl !== version.targetUrl ||
+      execution.conversation.kind !== "clipping" ||
+      execution.conversation.clippingMemoId !== manifest.memoId ||
+      !conversation ||
+      conversation.kind !== "clipping" ||
+      conversation.frontendUserId !== execution.conversation.frontendUserId ||
+      conversation.clippingMemoId !== manifest.memoId ||
+      conversation.clippingVersionId !== version.id
+    )
+      throw new Error("assistant-clipping-context-unavailable");
+  }
+
   private async articleContext(conversationId: string, query: string) {
     for (const id of this.known.values()) {
       const manifest = await this.store.manifest(id);
@@ -924,7 +957,8 @@ export class ClippingService {
       const conversationVersion = conversation.clippingVersionId
         ? manifest.versions.find((candidate) => candidate.id === conversation.clippingVersionId)
         : null;
-      if (conversationVersion?.targetUrl !== manifest.targetUrl) continue;
+      if (conversation.clippingVersionId && conversationVersion?.targetUrl !== manifest.targetUrl)
+        continue;
       let current: typeof conversation | null = conversation;
       for (let attempt = 0; attempt < 2 && current?.clippingVersionId !== version.id; attempt++) {
         const updated = await this.assistantService.storage.updateConversationClippingVersion(
@@ -960,7 +994,7 @@ export class ClippingService {
         if (
           reread?.kind !== "clipping" ||
           reread?.clippingMemoId !== memoId ||
-          rereadVersion?.targetUrl !== manifest.targetUrl
+          (reread.clippingVersionId && rereadVersion?.targetUrl !== manifest.targetUrl)
         ) {
           current = null;
           break;
@@ -1013,15 +1047,7 @@ export class ClippingService {
       .get();
     if (!owner) throw new Error("assistant-clipping-context-unavailable");
     const authored = await readAuthoredMemo(manifest.memoId);
-    await this.assertConversationBinding({
-      memoId: manifest.memoId,
-      clippingId: manifest.id,
-      creatorId: manifest.creatorId,
-      frontendUserId: execution.conversation.frontendUserId,
-      conversationId: execution.conversation.id,
-      revision: manifest.revision,
-      targetUrl: version.targetUrl,
-    });
+    await this.assertAssistantConversationBinding(execution, manifest, version);
     const post = await db
       .select({ public: posts.public, draft: posts.draft })
       .from(posts)
