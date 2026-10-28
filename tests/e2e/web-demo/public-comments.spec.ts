@@ -4,10 +4,6 @@ const articlePath = "/posts/hello-world/";
 const stationAdminAvatar = "/site-assets/avatar.jpg";
 const defaultAvatar = "/site-assets/default-avatar.svg";
 
-function isLocalCommentAvatar(src: string | null) {
-  return src === defaultAvatar || src === stationAdminAvatar;
-}
-
 async function openComments(page: import("@playwright/test").Page, path: string, persona: string) {
   await page.goto(`${path}?d_persona=${persona}&d_delay=normal`, {
     waitUntil: "domcontentloaded",
@@ -198,9 +194,10 @@ test.describe("Public comments Web Demo", () => {
           avatarFailure
             .locator(".comment-item__avatar img")
             .evaluateAll(
-              (images) =>
+              (images, allowedAvatars) =>
                 images.length > 0 &&
-                images.every((image) => isLocalCommentAvatar(image.getAttribute("src")))
+                images.every((image) => allowedAvatars.includes(image.getAttribute("src"))),
+              [defaultAvatar, stationAdminAvatar]
             )
         )
         .toBe(true);
@@ -227,8 +224,10 @@ test.describe("Public comments Web Demo", () => {
       await expect(authorAvatars).not.toHaveCount(0);
       await expect
         .poll(() =>
-          authorAvatars.evaluateAll((images) =>
-            images.every((image) => isLocalCommentAvatar(image.getAttribute("src")))
+          authorAvatars.evaluateAll(
+            (images, allowedAvatars) =>
+              images.every((image) => allowedAvatars.includes(image.getAttribute("src"))),
+            [defaultAvatar, stationAdminAvatar]
           )
         )
         .toBe(true);
@@ -254,8 +253,10 @@ test.describe("Public comments Web Demo", () => {
     await expect(authorAvatars).not.toHaveCount(0);
     await expect
       .poll(() =>
-        authorAvatars.evaluateAll((images) =>
-          images.every((image) => isLocalCommentAvatar(image.getAttribute("src")))
+        authorAvatars.evaluateAll(
+          (images, allowedAvatars) =>
+            images.every((image) => allowedAvatars.includes(image.getAttribute("src"))),
+          [defaultAvatar, stationAdminAvatar]
         )
       )
       .toBe(true);

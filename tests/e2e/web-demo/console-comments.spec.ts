@@ -5,10 +5,6 @@ const clippingPath = "/memos/console-demo-clipping-durable-workflows/";
 const stationAdminAvatar = "/site-assets/avatar.jpg";
 const defaultAvatar = "/site-assets/default-avatar.svg";
 
-function isLocalCommentAvatar(src: string | null) {
-  return src === defaultAvatar || src === stationAdminAvatar;
-}
-
 async function openComments(page: import("@playwright/test").Page, persona: string) {
   await page.goto(`${memoPath}?d_persona=${persona}&d_delay=normal`, {
     waitUntil: "domcontentloaded",
@@ -180,8 +176,10 @@ test.describe("Console comments Web Demo", () => {
       await expect(authorAvatars).not.toHaveCount(0);
       await expect
         .poll(() =>
-          authorAvatars.evaluateAll((images) =>
-            images.every((image) => isLocalCommentAvatar(image.getAttribute("src")))
+          authorAvatars.evaluateAll(
+            (images, allowedAvatars) =>
+              images.every((image) => allowedAvatars.includes(image.getAttribute("src"))),
+            [defaultAvatar, stationAdminAvatar]
           )
         )
         .toBe(true);
@@ -207,8 +205,10 @@ test.describe("Console comments Web Demo", () => {
     await expect(authorAvatars).not.toHaveCount(0);
     await expect
       .poll(() =>
-        authorAvatars.evaluateAll((images) =>
-          images.every((image) => isLocalCommentAvatar(image.getAttribute("src")))
+        authorAvatars.evaluateAll(
+          (images, allowedAvatars) =>
+            images.every((image) => allowedAvatars.includes(image.getAttribute("src"))),
+          [defaultAvatar, stationAdminAvatar]
         )
       )
       .toBe(true);
@@ -244,8 +244,10 @@ test.describe("Console comments Web Demo", () => {
     await expect(authorAvatars).not.toHaveCount(0);
     await expect
       .poll(() =>
-        authorAvatars.evaluateAll((images) =>
-          images.every((image) => isLocalCommentAvatar(image.getAttribute("src")))
+        authorAvatars.evaluateAll(
+          (images, allowedAvatars) =>
+            images.every((image) => allowedAvatars.includes(image.getAttribute("src"))),
+          [defaultAvatar, stationAdminAvatar]
         )
       )
       .toBe(true);
