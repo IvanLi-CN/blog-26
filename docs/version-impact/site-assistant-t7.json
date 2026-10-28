@@ -5,22 +5,22 @@
   "covered_files": {
     "scripts/start-console.ts": "f9581e191ea8cf461a2bd70d22f2a88a31298042",
     "scripts/prepare-backend-dist.sh": "f3770d081a4e29cef6638c6ec9a847bb8b4c5555",
-    "src/lib/assistant-discussion-migration.ts": "bc6af326e1ebc0e6dd6a23cd32954c01ca357042",
-    "tests/lib/assistant-discussion-migration.test.ts": "73eb6cc0bee372c33e3a6b01c5632edaeae0d58a",
+    "src/lib/assistant-discussion-migration.ts": "139819bffa42f17124fb629c0ee3463d70fd9a24",
+    "tests/lib/assistant-discussion-migration.test.ts": "b0d18d3978b15fe8591db2ed26e5101d22d3befb",
     "tests/lib/playbook-workflows.test.ts": "9369fad5178f5dfaeacc6f344df75766f47e9a32",
     "src/lib/assistant-contracts.ts": "6f9209c48252b2575cf662310e39d265d4060958",
     "src/lib/assistant-storage.test.ts": "7c8a2de1ccf6e8a493ba4300aa69faf2fb708c50",
     "src/lib/assistant-storage.ts": "f71be3986c49806d03aa533470ae3c95f87b70b4",
-    "src/server/assistant/api.ts": "2a0481920ded7722ab985e80d2cf594805617cc1",
-    "src/server/assistant/runtime.test.ts": "558dda3576a3528d87131e55b750ae38288538d1",
-    "src/server/assistant/runtime.ts": "92b52806701d11509e6ac1cf9d01798ba54601ab",
-    "src/server/assistant/service.ts": "29d856c5230446ce22eaf8993fbec0f68d85e03c",
-    "src/server/assistant/migration-gate.ts": "972646946bc16c29376265ecc301b29a926dcbea",
-    "src/server/assistant/migration-gate.test.ts": "db9e9c6c0b1c670cc02157d27988b13257d86fdb",
+    "src/server/assistant/api.ts": "e470a31c83d3d8b5caa27875cc387e3bd20b3619",
+    "src/server/assistant/runtime.test.ts": "bf0054ab994c6f2b451f364542df22cbb8875e2e",
+    "src/server/assistant/runtime.ts": "30d3e06064302f1fecac57edc30c10803ba037d1",
+    "src/server/assistant/service.ts": "d1e1c4bd189d3410b25a40a0e018df187b41caf5",
+    "src/server/assistant/migration-gate.ts": "7f085e4576cf46081b6ccebc69e0c1730ed93085",
+    "src/server/assistant/migration-gate.test.ts": "c94e1a1cdc52ea25f153986c2ddf10fe59679a9a",
     "src/server/clipping/api.test.ts": "6bbbcb15f8c13e3eea88dd37b240a5fbe6c02db8",
     "src/server/clipping/api.ts": "3260338463423ddb79a11a376c34598dd7487679",
     "src/server/clipping/assistant-adapter.test.ts": "71d2c8ca3e0b394f821138af6fd54cdc5611b6ef",
-    "src/server/clipping/service.ts": "9a4757fed1996ca48c4b640dc28447c8eb0960a3",
+    "src/server/clipping/service.ts": "e904055ed6273ae5cc4f5ce67ba28ca863c8335d",
     "src/server/public-api/assistant-chat.test.ts": "6e16e309312be607eda9cd2ac7afbaac9eba4f80",
     "src/server/public-api/router.ts": "27516e1bb0c2d3f8cfa2d1b6e7cd030b994a661f"
   },
@@ -63,7 +63,7 @@
         },
         {
           "path": "src/server/assistant/runtime.ts",
-          "blob": "92b52806701d11509e6ac1cf9d01798ba54601ab",
+          "blob": "30d3e06064302f1fecac57edc30c10803ba037d1",
           "command": "Shares one durable assistant worker and context-provider registry across Console and compiled Astro modules, with recovery, expiry, and shutdown lifecycle"
         }
       ]
@@ -90,8 +90,8 @@
         },
         {
           "path": "src/server/assistant/runtime.test.ts",
-          "blob": "558dda3576a3528d87131e55b750ae38288538d1",
-          "command": "bun test src/server/assistant/runtime.test.ts (9 pass, 0 fail; queued work wakes before the idle expiry sweep)"
+          "blob": "bf0054ab994c6f2b451f364542df22cbb8875e2e",
+          "command": "bun test src/server/assistant/runtime.test.ts (12 pass, 0 fail; shutdown waits for admitted submissions and provider failures expose only stable error codes)"
         },
         {
           "path": "src/lib/assistant-storage.test.ts",
@@ -100,8 +100,13 @@
         },
         {
           "path": "src/server/assistant/migration-gate.test.ts",
-          "blob": "db9e9c6c0b1c670cc02157d27988b13257d86fdb",
+          "blob": "c94e1a1cdc52ea25f153986c2ddf10fe59679a9a",
           "command": "bun test src/server/assistant/migration-gate.test.ts (3 pass, 0 fail)"
+        },
+        {
+          "path": "tests/lib/assistant-discussion-migration.test.ts",
+          "blob": "b0d18d3978b15fe8591db2ed26e5101d22d3befb",
+          "command": "bun test tests/lib/assistant-discussion-migration.test.ts (13 pass, 0 fail; missing source conversations are quarantined instead of silently completing migration)"
         },
         {
           "path": "src/server/public-api/assistant-chat.test.ts",
@@ -237,7 +242,8 @@
         "3.9.0",
         "3.10.0",
         "3.11.3",
-        "3.11.4"
+        "3.11.4",
+        "3.11.7"
       ],
       "evidence": [
         {

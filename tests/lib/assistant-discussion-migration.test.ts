@@ -662,6 +662,54 @@ describe("assistant discussion migration", () => {
     }
   });
 
+  it("quarantines a clipping reference whose source conversation is missing", async () => {
+    const directory = withTempDirectory();
+    try {
+      const targetPath = createTarget(directory);
+      const piPath = createPi(directory);
+      const target = new Database(targetPath);
+      const row = target
+        .query<{ manifest: string }, []>("SELECT manifest FROM memo_clippings WHERE id = 'clip-1'")
+        .get();
+      const manifest = JSON.parse(row?.manifest ?? "{}") as {
+        conversationId?: string;
+        versions?: Array<Record<string, unknown>>;
+      };
+      manifest.conversationId = "999";
+      target
+        .query("UPDATE memo_clippings SET manifest = ?, updated_at = ? WHERE id = ?")
+        .run(JSON.stringify(manifest), 3, "clip-1");
+      target.close();
+
+      const report = await migrateAssistantDiscussions({
+        targetDbPath: targetPath,
+        piDbPath: piPath,
+        mode: "apply",
+        now: () => 32_000,
+        resolveTrustedCreator: trustedReader,
+      });
+      expect(report.status).toBe("blocked");
+      expect(report.records).toContainEqual({
+        sourceKind: "conversation",
+        sourceId: expect.stringContaining(":conversation:999"),
+        state: "quarantined",
+        targetId: null,
+        reason: "referenced-source-conversation-missing",
+      });
+      const migrated = new Database(targetPath);
+      expect(
+        migrated
+          .query<{ state: string; reason: string }, []>(
+            "SELECT state, reason FROM assistant_migration_items WHERE source_id LIKE '%:conversation:999'"
+          )
+          .get()
+      ).toEqual({ state: "quarantined", reason: "referenced-source-conversation-missing" });
+      migrated.close();
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it("restores a migrated conversation after temporary attribution quarantine", async () => {
     const directory = withTempDirectory();
     try {
@@ -787,6 +835,18 @@ describe("assistant discussion migration", () => {
         resolveTrustedCreator: trustedReader,
       });
       expect(cleaned.cleanup.removed.some((item) => item.endsWith(":conversation:1"))).toBe(true);
+
+      const repeated = await migrateAssistantDiscussions({
+        targetDbPath: targetPath,
+        piDbPath: piPath,
+        mode: "apply",
+        cleanup: true,
+        now: () => 40_002,
+        resolveTrustedCreator: trustedReader,
+      });
+      expect(repeated.status).toBe("complete");
+      expect(repeated.quarantined).toBe(0);
+      expect(repeated.cleanup.removed).toEqual([]);
     } finally {
       fs.rmSync(directory, { recursive: true, force: true });
     }
@@ -832,7 +892,7 @@ describe("assistant discussion migration", () => {
     }
   });
 
-  it("binds the active target version and protects cleanup during version processing", async () => {
+  it("protects active clipping work without migrating its processing conversation", async () => {
     const directory = withTempDirectory();
     try {
       const targetPath = createTarget(directory);
@@ -915,7 +975,7 @@ describe("assistant discussion migration", () => {
       });
       expect(report.status).toBe("complete");
       expect(report.cleanup.removed).toEqual([]);
-      expect(report.cleanup.skipped).toHaveLength(3);
+      expect(report.cleanup.skipped).toHaveLength(2);
       expect(report.cleanup.skipped.every((item) => item.reason === "clipping-processing")).toBe(
         true
       );
@@ -927,9 +987,15 @@ describe("assistant discussion migration", () => {
         )
         .all()
         .map((row) => row.clipping_version_id);
-      expect(clippingVersionIds).toHaveLength(3);
+      expect(clippingVersionIds).toHaveLength(2);
       expect(clippingVersionIds.filter((versionId) => versionId === null)).toHaveLength(2);
-      expect(clippingVersionIds).toContain("version-processing");
+      expect(
+        migrated
+          .query<{ state: string; reason: string }, []>(
+            "SELECT state, reason FROM assistant_migration_items WHERE source_id LIKE '%:conversation:3'"
+          )
+          .get()
+      ).toEqual({ state: "skipped", reason: "processing-conversation" });
       migrated.close();
       const remainingSource = new Database(piPath);
       expect(remainingSource.query("SELECT COUNT(*) AS count FROM conversations").get()).toEqual({

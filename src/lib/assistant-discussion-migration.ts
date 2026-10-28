@@ -119,6 +119,7 @@ type ManifestSeed = {
 
 type ReferenceData = {
   byConversation: Map<number, DiscussionReference[]>;
+  processingByConversation: Map<number, DiscussionReference[]>;
   invalidManifests: ManifestSeed[];
 };
 
@@ -160,6 +161,7 @@ type ConversationPlan = {
   targetId: string;
   identity: TargetIdentity | null;
   reason: string | null;
+  skipped: boolean;
   messages: TargetMessage[];
 };
 
@@ -595,6 +597,7 @@ function readReferenceData(target: Database): ReferenceData {
     throw new Error("Target database is missing memo_clippings; run bun run migrate first");
   }
   const references = new Map<number, DiscussionReference[]>();
+  const processingReferences = new Map<number, DiscussionReference[]>();
   const invalidManifests: ManifestSeed[] = [];
   const rows = target
     .query<Record<string, unknown>, []>(
@@ -641,7 +644,7 @@ function readReferenceData(target: Database): ReferenceData {
       : []) {
       const jobConversationId = numericConversationId(version.jobConversationId);
       if (jobConversationId === null) continue;
-      appendReference(references, {
+      appendReference(processingReferences, {
         sourceConversationId: jobConversationId,
         memoId,
         creatorId,
@@ -681,7 +684,11 @@ function readReferenceData(target: Database): ReferenceData {
       });
     }
   }
-  return { byConversation: references, invalidManifests };
+  return {
+    byConversation: references,
+    processingByConversation: processingReferences,
+    invalidManifests,
+  };
 }
 
 async function defaultTrustedCreator(reference: DiscussionReference): Promise<string | null> {
@@ -819,6 +826,16 @@ function ledgerReference(ledger: LedgerRow | undefined): JsonObject | null {
 function ledgerTargetUrl(ledger: LedgerRow | undefined): string | null | undefined {
   const reference = ledgerReference(ledger);
   return reference ? asString(reference.targetUrl) : undefined;
+}
+
+function hasCompletedMigration(target: Database, migrationId: string, sourceIdValue: string) {
+  const ledger = getLedger(target, migrationId, "conversation", sourceIdValue);
+  if (ledger?.state !== "migrated" || !ledger.target_id) return false;
+  return Boolean(
+    target
+      .query<{ id: string }, [string]>("SELECT id FROM assistant_conversations WHERE id = ?")
+      .get(ledger.target_id)
+  );
 }
 
 function writeLedger(
@@ -1136,18 +1153,20 @@ function makePlan(
   target: Database,
   source: SourceConversation,
   references: DiscussionReference[],
+  processingReferences: DiscussionReference[],
   namespace: string,
   now: number,
   resolver: TrustedCreatorResolver
 ): Promise<ConversationPlan> {
   const reference = chooseReference(references);
+  const allReferences = [...references, ...processingReferences];
   const targetId = deterministicId("conversation", `pi:${namespace}:conversation:${source.id}`);
   if (!reference) {
     return Promise.resolve({
       source,
       namespace,
-      references,
-      reference: references[0] ?? {
+      references: allReferences,
+      reference: allReferences[0] ?? {
         sourceConversationId: source.id,
         memoId: "",
         creatorId: null,
@@ -1158,7 +1177,13 @@ function makePlan(
       },
       targetId,
       identity: null,
-      reason: references.length ? "conflicting-attribution" : "unreferenced-conversation",
+      reason:
+        references.length > 0
+          ? "conflicting-attribution"
+          : processingReferences.length > 0
+            ? null
+            : "unreferenced-conversation",
+      skipped: references.length === 0 && processingReferences.length > 0,
       messages: [],
     });
   }
@@ -1167,10 +1192,11 @@ function makePlan(
     return {
       source,
       namespace,
-      references,
+      references: allReferences,
       reference,
       targetId,
       identity,
+      skipped: false,
       reason: !trustedCreator
         ? "unknown-author"
         : !identity
@@ -1434,16 +1460,16 @@ function planRecords(
   mode: MigrationMode
 ) {
   const sourceIdValue = sourceId(source.namespace, "conversation", plan.source.id);
-  const state: LedgerState = plan.reason ? "quarantined" : "migrated";
+  const state: LedgerState = plan.skipped ? "skipped" : plan.reason ? "quarantined" : "migrated";
   recordReport(
     records,
     "conversation",
     sourceIdValue,
     state,
-    plan.reason ? null : plan.targetId,
-    plan.reason
+    plan.skipped || plan.reason ? null : plan.targetId,
+    plan.skipped ? "processing-conversation" : plan.reason
   );
-  if (mode === "dry-run" && !plan.reason) {
+  if (mode === "dry-run" && !plan.reason && !plan.skipped) {
     for (const message of plan.messages)
       recordReport(records, message.sourceKind, message.sourceId, "migrated", message.id, null);
   }
@@ -1690,18 +1716,37 @@ export async function migrateAssistantDiscussions(
     assertMigrationTables(target);
     source = readSourceData(piDbPath, now);
     const references = readReferenceData(target);
+    const sourceConversationIds = new Set(
+      source.conversations.map((conversation) => conversation.id)
+    );
+    const missingReferences = [...references.byConversation.entries()].filter(
+      ([conversationId]) => !sourceConversationIds.has(conversationId)
+    );
     plans = await Promise.all(
       source.conversations.map((conversation) =>
         makePlan(
           target,
           conversation,
           references.byConversation.get(conversation.id) ?? [],
+          references.processingByConversation.get(conversation.id) ?? [],
           source?.namespace ?? sourceNamespace(piDbPath),
           now,
           resolver
         )
       )
     );
+
+    for (const [conversationId] of missingReferences) {
+      const sourceIdValue = sourceId(source.namespace, "conversation", conversationId);
+      if (hasCompletedMigration(target, migrationId, sourceIdValue)) continue;
+      records.push({
+        sourceKind: "conversation",
+        sourceId: sourceIdValue,
+        state: "quarantined",
+        targetId: null,
+        reason: "referenced-source-conversation-missing",
+      });
+    }
 
     for (const invalid of references.invalidManifests) {
       records.push({
@@ -1732,7 +1777,10 @@ export async function migrateAssistantDiscussions(
         mode,
         sourceVersion: source.version,
         status: "dry-run",
-        scanned: source.conversations.length + references.invalidManifests.length,
+        scanned:
+          source.conversations.length +
+          missingReferences.length +
+          references.invalidManifests.length,
         planned: plans.filter((plan) => !plan.reason && plan.identity).length,
         migrated: plans.filter((plan) => !plan.reason && plan.identity).length,
         quarantined: records.filter((record) => record.state === "quarantined").length,
@@ -1750,6 +1798,30 @@ export async function migrateAssistantDiscussions(
         throw new Error("injected-migration-interruption");
       }
       processed += 1;
+      if (plan.skipped) {
+        const sourceIdValue = sourceId(plan.namespace, "conversation", plan.source.id);
+        writeLedger(
+          target,
+          migrationId,
+          "conversation",
+          sourceIdValue,
+          plan.source.sourceHash,
+          "skipped",
+          null,
+          "processing-conversation",
+          { ...plan.source.rawPayload, references: plan.references },
+          now
+        );
+        recordReport(
+          records,
+          "conversation",
+          sourceIdValue,
+          "skipped",
+          null,
+          "processing-conversation"
+        );
+        continue;
+      }
       if (plan.reason || !plan.identity) {
         quarantinePlan(target, migrationId, plan, now, records);
         continue;
@@ -1835,6 +1907,27 @@ export async function migrateAssistantDiscussions(
         now
       );
     }
+    for (const [conversationId, conversationReferences] of missingReferences) {
+      const sourceIdValue = sourceId(source.namespace, "conversation", conversationId);
+      const payload = {
+        sourceConversationId: conversationId,
+        references: conversationReferences,
+      };
+      const sourceHash = sha256(payloadJson(payload));
+      if (hasCompletedMigration(target, migrationId, sourceIdValue)) continue;
+      writeLedger(
+        target,
+        migrationId,
+        "conversation",
+        sourceIdValue,
+        sourceHash,
+        "quarantined",
+        null,
+        "referenced-source-conversation-missing",
+        payload,
+        now
+      );
+    }
 
     const verification = verifyPlans(target, migrationId, plans);
     const cleanup = options.cleanup
@@ -1889,7 +1982,8 @@ export async function migrateAssistantDiscussions(
       mode,
       sourceVersion: source.version,
       status: finalStatus,
-      scanned: source.conversations.length + references.invalidManifests.length,
+      scanned:
+        source.conversations.length + missingReferences.length + references.invalidManifests.length,
       planned: plans.filter((plan) => !plan.reason && plan.identity).length,
       migrated: records.filter(
         (record) => record.sourceKind === "conversation" && record.state === "migrated"

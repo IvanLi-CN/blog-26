@@ -1002,6 +1002,15 @@ export class ClippingService {
       .get();
     if (!owner) throw new Error("assistant-clipping-context-unavailable");
     const authored = await readAuthoredMemo(manifest.memoId);
+    await this.assertConversationBinding({
+      memoId: manifest.memoId,
+      clippingId: manifest.id,
+      creatorId: manifest.creatorId,
+      frontendUserId: execution.conversation.frontendUserId,
+      conversationId: execution.conversation.id,
+      revision: manifest.revision,
+      targetUrl: version.targetUrl,
+    });
     const post = await db
       .select({ public: posts.public, draft: posts.draft })
       .from(posts)
