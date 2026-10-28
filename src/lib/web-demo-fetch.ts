@@ -164,17 +164,19 @@ function demoFrontendPrincipal(environment: WebDemoEnvironment): FrontendPrincip
     isAdmin,
     displayName: isAdmin ? "Ivan" : "Demo User",
     email: isAdmin ? "admin@example.com" : "user@example.com",
-    avatarUrl: "/site-assets/default-avatar.svg",
-    profileUrl: "https://github.com/example",
+    avatarUrl: isAdmin ? "/site-assets/avatar.jpg" : "/site-assets/default-avatar.svg",
+    profileUrl: isAdmin ? null : "https://github.com/example",
     adminUserId: isAdmin ? "demo-admin" : null,
-    readerId: isAdmin ? "demo-admin-reader" : "demo-user-reader",
-    github: {
-      id: isAdmin ? "demo-admin-github" : "demo-user-github",
-      login: isAdmin ? "ivan-demo" : "reader-demo",
-      displayName: isAdmin ? "Ivan" : "Demo User",
-      avatarUrl: "/site-assets/default-avatar.svg",
-      profileUrl: "https://github.com/example",
-    },
+    readerId: isAdmin ? null : "demo-user-reader",
+    github: isAdmin
+      ? null
+      : {
+          id: "demo-user-github",
+          login: "reader-demo",
+          displayName: "Demo User",
+          avatarUrl: "/site-assets/default-avatar.svg",
+          profileUrl: "https://github.com/example",
+        },
   };
 }
 
@@ -1546,8 +1548,6 @@ async function getDemoPublicResponse(
   if (url.pathname === "/api/public/comments" && method === "POST") {
     if (environment.persona === "guest")
       return jsonResponse({ error: "请先使用 GitHub 登录" }, 401);
-    if (environment.persona === "admin" && environment.githubBinding !== "bound")
-      return jsonResponse({ error: "请先绑定 GitHub 管理员身份" }, 401);
     const { targetType, targetKey } = demoCommentTarget(url);
     const requestBody = readDemoRequestBody(init);
     const content = typeof requestBody.content === "string" ? requestBody.content.trim() : "";

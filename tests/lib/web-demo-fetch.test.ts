@@ -345,6 +345,42 @@ describe("webDemoFetch", () => {
     ).toBe(true);
   });
 
+  it("keeps an unbound demo admin as an automatic frontend comment author", async () => {
+    installBrowser("?d_persona=admin&d_github_binding=unbound&d_connection=online");
+    const identity = await webDemoFetch("/api/public/frontend-auth/me");
+    expect(await identity.json()).toMatchObject({
+      authenticated: true,
+      principal: {
+        id: "demo-admin",
+        kind: "admin",
+        isAdmin: true,
+        displayName: "Ivan",
+        avatarUrl: "/site-assets/avatar.jpg",
+        profileUrl: null,
+        readerId: null,
+        github: null,
+      },
+    });
+
+    const response = await webDemoFetch(
+      "/api/public/comments?slug=demo-article&targetType=article&targetKey=demo-article",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          content: "未绑定管理员评论",
+          target: { type: "article", key: "demo-article" },
+          submissionKey: "unbound-admin-comment",
+        }),
+      }
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      authorRole: "admin",
+      status: "approved",
+      message: "管理员评论已公开",
+    });
+  });
+
   it("keeps valid empty comments distinct from an unavailable target", async () => {
     installBrowser("?d_data=empty&d_connection=online");
     const emptyResponse = await webDemoFetch(

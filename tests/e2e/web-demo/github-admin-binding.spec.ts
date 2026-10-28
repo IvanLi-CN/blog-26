@@ -52,11 +52,20 @@ test.describe("GitHub admin binding Web Demo", () => {
     ).toContainText("待审核");
 
     const unboundAdmin = await openComments(page, "admin", "unbound");
-    await expect(unboundAdmin.getByRole("button", { name: "GitHub 登录" })).toBeVisible();
-    await expect(unboundAdmin.getByRole("button", { name: "直接发布" })).toHaveCount(0);
+    await expect(unboundAdmin.getByText("管理员", { exact: true })).toBeVisible();
+    await expect(unboundAdmin.getByRole("button", { name: "直接发布" })).toBeVisible();
+    await unboundAdmin
+      .getByRole("textbox", { name: "评论内容" })
+      .fill("未绑定管理员的新评论也会直接公开。");
+    await unboundAdmin.getByRole("button", { name: "直接发布" }).click();
+    await expect(unboundAdmin.getByRole("alert")).toContainText("管理员评论已公开");
+    const unboundCreated = unboundAdmin.locator(".comment-item--root").filter({
+      hasText: "未绑定管理员的新评论也会直接公开。",
+    });
+    await expect(unboundCreated.getByText("管理员", { exact: true })).toBeVisible();
 
     const boundAdmin = await openComments(page, "admin", "bound");
-    await expect(boundAdmin.getByText("GitHub 管理员", { exact: true })).toBeVisible();
+    await expect(boundAdmin.getByText("管理员", { exact: true })).toBeVisible();
     await expect(boundAdmin.getByRole("button", { name: "直接发布" })).toBeVisible();
     const seeded = boundAdmin.locator(".comment-item--root").filter({
       hasText: seededAdminComment,
@@ -125,7 +134,8 @@ test.describe("GitHub admin binding Web Demo", () => {
     expect(publicPage?.ok()).toBe(true);
     const section = page.locator(".comment-section");
     await expect(section).toBeVisible();
-    await expect(section.getByRole("button", { name: "GitHub 登录" })).toBeVisible();
+    await expect(section.getByText("管理员", { exact: true })).toBeVisible();
+    await expect(section.getByRole("button", { name: "直接发布" })).toBeVisible();
     const seeded = section.locator(".comment-item--root").filter({ hasText: seededAdminComment });
     await expect(seeded).toBeVisible();
     await expect(seeded.getByText("管理员", { exact: true })).toBeVisible();
