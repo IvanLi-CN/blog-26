@@ -957,8 +957,10 @@ export class ClippingService {
       const conversationVersion = conversation.clippingVersionId
         ? manifest.versions.find((candidate) => candidate.id === conversation.clippingVersionId)
         : null;
-      if (conversation.clippingVersionId && conversationVersion?.targetUrl !== manifest.targetUrl)
-        continue;
+      const conversationMatchesTarget = conversation.clippingVersionId
+        ? conversationVersion?.targetUrl === manifest.targetUrl
+        : conversation.title === manifest.targetUrl;
+      if (!conversationMatchesTarget) continue;
       let current: typeof conversation | null = conversation;
       for (let attempt = 0; attempt < 2 && current?.clippingVersionId !== version.id; attempt++) {
         const updated = await this.assistantService.storage.updateConversationClippingVersion(
@@ -991,10 +993,13 @@ export class ClippingService {
         const rereadVersion = reread?.clippingVersionId
           ? manifest.versions.find((candidate) => candidate.id === reread.clippingVersionId)
           : null;
+        const rereadMatchesTarget = reread?.clippingVersionId
+          ? rereadVersion?.targetUrl === manifest.targetUrl
+          : reread?.title === manifest.targetUrl;
         if (
           reread?.kind !== "clipping" ||
           reread?.clippingMemoId !== memoId ||
-          (reread.clippingVersionId && rereadVersion?.targetUrl !== manifest.targetUrl)
+          !rereadMatchesTarget
         ) {
           current = null;
           break;

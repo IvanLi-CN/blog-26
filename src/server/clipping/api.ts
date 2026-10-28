@@ -162,8 +162,7 @@ async function access(
         message: "管理操作仅限创建者和管理员",
       });
   } else if (
-    !ctx.isAdmin &&
-    !discussionPrincipal?.isAdmin &&
+    !(discussionPrincipal ? discussionPrincipal.isAdmin : ctx.isAdmin) &&
     (!row.public ||
       row.draft ||
       authored.frontmatter.public === false ||
@@ -415,14 +414,21 @@ async function routeClippingRequest(
             const deadline = Date.now() + 60_000;
             while (!cancelled && !request.signal.aborted && Date.now() < deadline) {
               try {
-                const current = await access(slug, ctx, false, principal);
+                const refreshedPrincipal = await frontendPrincipal(request);
+                if (refreshedPrincipal.id !== principal.id) break;
+                const current = await access(slug, ctx, false, refreshedPrincipal);
                 const before = currentDiscussion(current);
-                await frontendPrincipal(request);
-                const snapshot = await service.assistantSnapshot(current.row.id, principal);
+                const snapshot = await service.assistantSnapshot(
+                  current.row.id,
+                  refreshedPrincipal
+                );
                 if (!snapshot) break;
-                const after = currentDiscussion(await access(slug, ctx, false, principal));
+                const after = currentDiscussion(await access(slug, ctx, false, refreshedPrincipal));
                 if (after.id !== before.id || after.targetUrl !== before.targetUrl) break;
-                await frontendPrincipal(request);
+                const finalPrincipal = await frontendPrincipal(request);
+                if (finalPrincipal.id !== principal.id) break;
+                const final = currentDiscussion(await access(slug, ctx, false, finalPrincipal));
+                if (final.id !== before.id || final.targetUrl !== before.targetUrl) break;
                 if (cancelled || request.signal.aborted) break;
                 const data = JSON.stringify(mapAssistantSnapshot(snapshot));
                 if (data !== previous) {

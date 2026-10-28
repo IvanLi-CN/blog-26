@@ -210,10 +210,10 @@ async function serveAdmin(
 
 const astro = await import("../console-dist/server/entry.mjs");
 await startClippingRuntime();
-await startAssistantRuntime();
 await startSearchIndexRuntime();
 const playbook = getRuntimePlaybookStore();
 await playbook.load();
+await startAssistantRuntime();
 const { startContentSyncRuntime } = await import("../src/server/services/content-sync-runtime");
 await startContentSyncRuntime();
 await startJobsRuntime();

@@ -220,7 +220,18 @@ test("uses per-user unified conversations across same-target versions and separa
     });
     await store.save(manifest);
     await store.write(clippingId, "44444444-4444-4444-8444-444444444444", "source", source);
+    const staleEmpty = await assistantStorage.createConversation({
+      frontendUserId: principal.id,
+      kind: "clipping",
+      title: "https://article.example/one",
+      clippingMemoId: memoId,
+      clippingVersionId: null,
+      now: 2.5,
+    });
     expect(await service.assistantSnapshot(memoId, principal)).toBeNull();
+    expect(
+      (await assistantStorage.getConversation(staleEmpty.id, principal.id))?.clippingVersionId
+    ).toBeNull();
     const pending = await assistantStorage.submitTurn({
       frontendUserId: principal.id,
       kind: "clipping",
