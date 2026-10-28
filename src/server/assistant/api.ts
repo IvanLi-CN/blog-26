@@ -252,7 +252,15 @@ async function submitAssistantRequest(
       "NOT_FOUND",
       "Clipping discussions must use the clipping route"
     );
-  if (input.conversationId) await requireConversation(service, principal, input.conversationId);
+  if (input.conversationId) {
+    const conversation = await requireConversation(service, principal, input.conversationId);
+    if (conversation.kind === "clipping")
+      throw new AssistantApiError(
+        409,
+        "CONFLICT",
+        "Clipping discussions must use the clipping route"
+      );
+  }
   const clientRequestId = input.clientRequestId ?? input.requestId ?? idempotencyKey;
   const result = await service.submit(principal, {
     conversationId: input.conversationId ?? null,

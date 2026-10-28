@@ -114,66 +114,70 @@ export class AssistantService {
         throw new AssistantServiceError("conflict", "Assistant runtime is stopping");
       throw error;
     }
-    const conversation = input.conversationId
-      ? await this.storage.getConversation(input.conversationId, principal.id)
-      : null;
-    if (input.conversationId && !conversation)
-      throw new AssistantServiceError("not-found", "Assistant conversation not found");
-    const resolvedInput = resolveConversationInput(conversation, input);
-    let submission: AssistantTurnSubmission | null;
-    const findExisting = async () => {
-      try {
-        return await this.storage.findIdempotentTurn(
-          principal.id,
-          resolvedInput.requestId,
-          resolvedInput.clientRequestId,
-          resolvedInput.conversationId,
-          Date.now(),
-          {
-            kind: resolvedInput.kind,
-            clippingMemoId: resolvedInput.clippingMemoId,
-            clippingVersionId: resolvedInput.clippingVersionId,
-          }
-        );
-      } catch (error) {
-        translateStorageError(error);
+    const releaseSubmission = this.runtime.beginSubmission();
+    try {
+      const conversation = input.conversationId
+        ? await this.storage.getConversation(input.conversationId, principal.id)
+        : null;
+      if (input.conversationId && !conversation)
+        throw new AssistantServiceError("not-found", "Assistant conversation not found");
+      const resolvedInput = resolveConversationInput(conversation, input);
+      let submission: AssistantTurnSubmission | null;
+      const findExisting = async () => {
+        try {
+          return await this.storage.findIdempotentTurn(
+            principal.id,
+            resolvedInput.requestId,
+            resolvedInput.clientRequestId,
+            resolvedInput.conversationId,
+            Date.now(),
+            {
+              kind: resolvedInput.kind,
+              clippingMemoId: resolvedInput.clippingMemoId,
+              clippingVersionId: resolvedInput.clippingVersionId,
+            }
+          );
+        } catch (error) {
+          translateStorageError(error);
+        }
+      };
+      submission = await findExisting();
+      if (!submission && !principal.isAdmin) {
+        const quota = await getAssistantQuotaSnapshot(principal.id);
+        const exhausted =
+          quota.tokenHour >= quota.policy.tokenHourlyLimit ||
+          quota.tokenWeek >= quota.policy.tokenWeeklyLimit ||
+          quota.questionHour >= quota.policy.questionHourlyLimit ||
+          quota.questionWeek >= quota.policy.questionWeeklyLimit;
+        if (exhausted) {
+          submission = await findExisting();
+          if (!submission) throw new AssistantServiceError("quota", "Assistant quota exceeded");
+        }
       }
-    };
-    submission = await findExisting();
-    if (!submission && !principal.isAdmin) {
-      const quota = await getAssistantQuotaSnapshot(principal.id);
-      const exhausted =
-        quota.tokenHour >= quota.policy.tokenHourlyLimit ||
-        quota.tokenWeek >= quota.policy.tokenWeeklyLimit ||
-        quota.questionHour >= quota.policy.questionHourlyLimit ||
-        quota.questionWeek >= quota.policy.questionWeeklyLimit;
-      if (exhausted) {
-        submission = await findExisting();
-        if (!submission) throw new AssistantServiceError("quota", "Assistant quota exceeded");
+      if (!submission) {
+        try {
+          submission = await this.storage.submitTurn({
+            ...resolvedInput,
+            frontendUserId: principal.id,
+            isAdmin: principal.isAdmin,
+          });
+        } catch (error) {
+          translateStorageError(error);
+        }
       }
+      this.runtime.enqueue();
+      return {
+        status: "queued" as const,
+        conversationId: submission.conversation.id,
+        turnId: submission.generationJob.id,
+        requestId: submission.generationJob.requestId,
+        userMessageId: submission.userMessage.id,
+        assistantMessageId: submission.assistantMessage.id,
+        createdConversation: submission.createdConversation,
+      };
+    } finally {
+      releaseSubmission();
     }
-    if (!submission) {
-      try {
-        submission = await this.storage.submitTurn({
-          ...resolvedInput,
-          frontendUserId: principal.id,
-          isAdmin: principal.isAdmin,
-        });
-      } catch (error) {
-        translateStorageError(error);
-      }
-    }
-    assertRuntimeAccepting(this.runtime);
-    this.runtime.enqueue();
-    return {
-      status: "queued" as const,
-      conversationId: submission.conversation.id,
-      turnId: submission.generationJob.id,
-      requestId: submission.generationJob.requestId,
-      userMessageId: submission.userMessage.id,
-      assistantMessageId: submission.assistantMessage.id,
-      createdConversation: submission.createdConversation,
-    };
   }
 
   async list(principal: FrontendPrincipal) {

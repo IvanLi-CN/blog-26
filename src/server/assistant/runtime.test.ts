@@ -245,6 +245,22 @@ describe("assistant runtime", () => {
     ).rejects.toMatchObject({ code: "conflict" });
   });
 
+  it("waits for admitted submissions before completing shutdown", async () => {
+    const storage = createAssistantStorage(database);
+    const runtime = createAssistantRuntimeForTest({ storage });
+    await runtime.start();
+    const releaseSubmission = runtime.beginSubmission();
+    let stopped = false;
+    const stopping = runtime.stop().then(() => {
+      stopped = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(stopped).toBe(false);
+    releaseSubmission();
+    await stopping;
+    expect(stopped).toBe(true);
+  });
+
   it("marks provider failures as terminal without retrying the job", async () => {
     await addUser("assistant-runtime-failure-owner");
     const storage = createAssistantStorage(database);
@@ -279,7 +295,7 @@ describe("assistant runtime", () => {
       "assistant-runtime-failure-owner"
     );
     expect(attempts).toBe(1);
-    expect(job).toMatchObject({ status: "failed", errorCode: "provider-down" });
+    expect(job).toMatchObject({ status: "failed", errorCode: "generation-failed" });
     await runtime.stop();
   });
 

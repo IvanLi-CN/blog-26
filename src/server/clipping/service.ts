@@ -211,7 +211,6 @@ export class ClippingService {
               {
                 conversationId: manifest.conversationId,
                 previousConversations: manifest.previousConversations,
-                versions: manifest.versions,
               },
             ]
           : []
@@ -903,10 +902,10 @@ export class ClippingService {
 
   private async ensureAssistantBindingCurrent(memoId: string, principal: FrontendPrincipal) {
     const id = this.known.get(memoId);
-    const manifest = id ? await this.store.manifest(id) : null;
+    let manifest = id ? await this.store.manifest(id) : null;
     if (!manifest?.enabled || manifest.deleted || !manifest.targetUrl)
       throw new Error("当前闪念没有有效剪藏目标。");
-    const version =
+    let version =
       manifest.versions.find(
         (candidate) =>
           candidate.id === manifest.currentVersionId &&
@@ -943,6 +942,18 @@ export class ClippingService {
           conversation.id,
           principal.id
         );
+        manifest = id ? await this.store.manifest(id) : null;
+        const refreshedVersion = manifest?.versions.find(
+          (candidate) =>
+            candidate.id === manifest.currentVersionId &&
+            candidate.targetUrl === manifest.targetUrl &&
+            Boolean(candidate.sourceHash)
+        );
+        if (!manifest?.enabled || manifest.deleted || !manifest.targetUrl || !refreshedVersion) {
+          current = null;
+          break;
+        }
+        version = refreshedVersion;
         const rereadVersion = reread?.clippingVersionId
           ? manifest.versions.find((candidate) => candidate.id === reread.clippingVersionId)
           : null;

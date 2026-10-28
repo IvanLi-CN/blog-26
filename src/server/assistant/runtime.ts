@@ -23,6 +23,19 @@ const MAX_PROVIDER_RESPONSE_BYTES = 4 * 1024 * 1024;
 const MAX_ASSISTANT_OUTPUT_CHARS = 100_000;
 const PROVIDER_TIMEOUT_MS = 120_000;
 const DEFAULT_EXPIRY_SWEEP_MS = 60_000;
+const SAFE_GENERATION_ERROR_CODES = new Set([
+  "assistant-clipping-context-unavailable",
+  "assistant-provider-empty-output",
+  "assistant-provider-empty-response",
+  "assistant-provider-invalid-stream",
+  "assistant-provider-output-too-large",
+  "assistant-provider-response-too-large",
+  "assistant-provider-stream-incomplete",
+  "assistant-provider-unconfigured",
+  "invalid-job",
+  "worker-lease-expired",
+  "worker-restarted",
+]);
 
 export type AssistantCitationInput = Omit<AssistantCitation, "id" | "messageId" | "createdAt">;
 
@@ -433,6 +446,9 @@ export class AssistantRuntime {
   private readonly controllers = new Map<string, AbortController>();
   private readonly processing = new Set<Promise<void>>();
   private acceptingSubmissions = true;
+  private activeSubmissions = 0;
+  private submissionDrain: Promise<void> | null = null;
+  private resolveSubmissionDrain: (() => void) | null = null;
 
   constructor(options: AssistantRuntimeOptions = {}) {
     this.storage = options.storage ?? createAssistantStorage(options.database);
@@ -459,6 +475,22 @@ export class AssistantRuntime {
     if (!this.acceptingSubmissions) throw new AssistantRuntimeClosedError();
   }
 
+  beginSubmission() {
+    this.assertAccepting();
+    this.activeSubmissions += 1;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      this.activeSubmissions -= 1;
+      if (this.activeSubmissions === 0) {
+        this.resolveSubmissionDrain?.();
+        this.resolveSubmissionDrain = null;
+        this.submissionDrain = null;
+      }
+    };
+  }
+
   enqueue() {
     if (!this.started || this.stopped) return;
     this.schedule(this.pumpDelayMs, true);
@@ -467,6 +499,12 @@ export class AssistantRuntime {
   async stop() {
     this.acceptingSubmissions = false;
     this.stopped = true;
+    if (this.activeSubmissions > 0) {
+      this.submissionDrain ??= new Promise<void>((resolve) => {
+        this.resolveSubmissionDrain = resolve;
+      });
+      await this.submissionDrain;
+    }
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     this.timerDueAt = null;
@@ -612,7 +650,8 @@ export class AssistantRuntime {
 }
 
 function errorCode(error: unknown) {
-  if (error instanceof Error) return error.message.slice(0, 120) || "generation-failed";
+  if (error instanceof Error && SAFE_GENERATION_ERROR_CODES.has(error.message))
+    return error.message;
   return "generation-failed";
 }
 
