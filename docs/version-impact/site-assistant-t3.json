@@ -11,7 +11,7 @@
     "tests/fixtures/site-assistant-pi-legacy.sql": "a72f15d97409907aa9127022c2201be2414bb52c",
     "tests/lib/assistant-discussion-migration.test.ts": "b0d18d3978b15fe8591db2ed26e5101d22d3befb",
     "tests/server/system-share-api.test.ts": "737e9f8f4cedf53ffddc4a4a47abf96a3aba7b4c",
-    "docs/runbooks/site-assistant-discussion-migration.md": "7f6b6975cf074ecb085affcfe9b6bd0f4ff297bc",
+    "docs/runbooks/site-assistant-discussion-migration.md": "79e001e1df68182b6951b9e6f62ed1d51e818531",
     "package.json": "3d0e64c848f06801f9746e3d3cea091ff9929b73"
   },
   "change": {
@@ -32,7 +32,7 @@
         },
         {
           "path": "docs/specs/site-knowledge-assistant/SPEC.md",
-          "blob": "d11a224a6283c60aa276785997ee8a33a4586dad",
+          "blob": "8c65ecb350cd07a924facc9804a9749eab6aae73",
           "command": "Locks migration safety, identity attribution, partial-output preservation, resumability, and clipping-task protection"
         }
       ]
@@ -54,7 +54,7 @@
         },
         {
           "path": "docs/runbooks/site-assistant-discussion-migration.md",
-          "blob": "7f6b6975cf074ecb085affcfe9b6bd0f4ff297bc",
+          "blob": "79e001e1df68182b6951b9e6f62ed1d51e818531",
           "command": "Documents dry-run, apply/resume, backup, system-section preservation, same-URL clipping-version transitions, different-target blocking, version-processing protection, quarantine, task protection, and opt-in cleanup procedures"
         }
       ],
