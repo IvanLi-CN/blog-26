@@ -1,6 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 const articlePath = "/posts/hello-world/";
+const stationAdminAvatar = "/site-assets/avatar.jpg";
+const defaultAvatar = "/site-assets/default-avatar.svg";
+
+function isLocalCommentAvatar(src: string | null) {
+  return src === defaultAvatar || src === stationAdminAvatar;
+}
 
 async function openComments(page: import("@playwright/test").Page, path: string, persona: string) {
   await page.goto(`${path}?d_persona=${persona}&d_delay=normal`, {
@@ -194,9 +200,7 @@ test.describe("Public comments Web Demo", () => {
             .evaluateAll(
               (images) =>
                 images.length > 0 &&
-                images.every(
-                  (image) => image.getAttribute("src") === "/site-assets/default-avatar.svg"
-                )
+                images.every((image) => isLocalCommentAvatar(image.getAttribute("src")))
             )
         )
         .toBe(true);
@@ -224,7 +228,7 @@ test.describe("Public comments Web Demo", () => {
       await expect
         .poll(() =>
           authorAvatars.evaluateAll((images) =>
-            images.every((image) => image.getAttribute("src") === "/site-assets/default-avatar.svg")
+            images.every((image) => isLocalCommentAvatar(image.getAttribute("src")))
           )
         )
         .toBe(true);
@@ -251,9 +255,15 @@ test.describe("Public comments Web Demo", () => {
     await expect
       .poll(() =>
         authorAvatars.evaluateAll((images) =>
-          images.every((image) => image.getAttribute("src") === "/site-assets/default-avatar.svg")
+          images.every((image) => isLocalCommentAvatar(image.getAttribute("src")))
         )
       )
       .toBe(true);
+    await expect(
+      section
+        .locator(".comment-item--root")
+        .filter({ hasText: "管理员身份绑定后的评论会直接公开，并保留作者标记。" })
+        .locator(".comment-item__avatar img")
+    ).toHaveAttribute("src", stationAdminAvatar);
   });
 });
