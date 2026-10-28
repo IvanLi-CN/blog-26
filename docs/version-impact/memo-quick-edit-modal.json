@@ -12,7 +12,7 @@
     "site/lib/page-data/memos.ts": "4468f799b278ae394c6f2ad3cc0e3fd6a2485380",
     "src/components/memos/PublicMemoAuthoring.stories.tsx": "0f135c87ecb4755ff78a768c6ac43aaf4c359c22",
     "src/components/memos/QuickMemoEditModal.tsx": "57401bd03d9099d9a51abb7bd4543ac0e6303eb2",
-    "src/lib/web-demo-fetch.ts": "b01a0e9bfa581ee9ae4f7a7bb6fb0ee1383daa58",
+    "src/lib/web-demo-fetch.ts": "83bcf9a748c3136ed70c50194ee65b14a387e99f",
     "src/lib/web-demo-runtime.ts": "4a6d973a273d194d58732b58f5e691bb4b4fb2d2",
     "src/styles/milkdown-nature.css": "fe81a47f977fdda2dcc6360e1e35ba59a9fae694",
     "tests/e2e/admin/memos/memo-admin-inline-view.spec.ts": "8f2abe570c343db4e6634c6e5335ca53428bd988",

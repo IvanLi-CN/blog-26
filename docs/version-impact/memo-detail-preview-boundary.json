@@ -31,9 +31,9 @@
     "src/lib/clipping-web-demo.ts": "ba7a3c371ac77c91aa6a7513635cd8aeafe691ce",
     "src/lib/console-web-demo.ts": "bd8439e4c3ab0d5b31ab9b5e250a3cd96230bac1",
     "src/lib/release/source.ts": "7725ab841f59bcd490d9caaba415deabc2aa5a3b",
-    "src/lib/web-demo-fetch.ts": "b01a0e9bfa581ee9ae4f7a7bb6fb0ee1383daa58",
-    "src/server/clipping/api.test.ts": "911b5e1f3d4b4ef8b5bd2d41f0ad372ca0ef7b5b",
-    "src/server/clipping/api.ts": "c2ed115a4c5a31cd2591b29e2997fe9479848169",
+    "src/lib/web-demo-fetch.ts": "83bcf9a748c3136ed70c50194ee65b14a387e99f",
+    "src/server/clipping/api.test.ts": "b215b6497aa88979a3a78097cced9a7651903a2c",
+    "src/server/clipping/api.ts": "ea01ccbc1f2476d55225917ce5b72f1d433e2143",
     "src/server/http-compat-api.test.ts": "aa055bf98c2b7f090380189b34356ec9839a096a",
     "src/server/routers/memos.ts": "dae1d2f73077b47bd3cbe7fc65c309aacdbc4183",
     "tests/components/ClippingDetail.test.tsx": "bc3316c4e19039d199eec388ad389e0e2b7dbe42",
@@ -207,7 +207,7 @@
         },
         {
           "path": "src/lib/web-demo-fetch.ts",
-          "blob": "b01a0e9bfa581ee9ae4f7a7bb6fb0ee1383daa58",
+          "blob": "83bcf9a748c3136ed70c50194ee65b14a387e99f",
           "command": "Focused unit/component suite: 27 passed; Web Demo admin/preview mutation bridge and public route behavior are covered by 24 Console plus 36 public browser cases"
         },
         {
@@ -251,7 +251,7 @@
         },
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "911b5e1f3d4b4ef8b5bd2d41f0ad372ca0ef7b5b",
+          "blob": "b215b6497aa88979a3a78097cced9a7651903a2c",
           "command": "Clipping read and discussion authorization regression suite passes"
         }
       ]

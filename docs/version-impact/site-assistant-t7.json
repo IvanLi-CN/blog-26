@@ -8,18 +8,18 @@
     "src/lib/assistant-discussion-migration.ts": "139819bffa42f17124fb629c0ee3463d70fd9a24",
     "tests/lib/assistant-discussion-migration.test.ts": "b0d18d3978b15fe8591db2ed26e5101d22d3befb",
     "tests/lib/playbook-workflows.test.ts": "9369fad5178f5dfaeacc6f344df75766f47e9a32",
-    "src/lib/assistant-contracts.ts": "6f9209c48252b2575cf662310e39d265d4060958",
+    "src/lib/assistant-contracts.ts": "1a73ac705a9a86f9b7fe58febbe3379f1d47bbff",
     "src/lib/assistant-storage.test.ts": "7c8a2de1ccf6e8a493ba4300aa69faf2fb708c50",
     "src/lib/assistant-storage.ts": "f71be3986c49806d03aa533470ae3c95f87b70b4",
     "src/server/assistant/api.ts": "e470a31c83d3d8b5caa27875cc387e3bd20b3619",
     "src/server/assistant/runtime.test.ts": "bf0054ab994c6f2b451f364542df22cbb8875e2e",
     "src/server/assistant/runtime.ts": "30d3e06064302f1fecac57edc30c10803ba037d1",
-    "src/server/assistant/service.ts": "d1e1c4bd189d3410b25a40a0e018df187b41caf5",
+    "src/server/assistant/service.ts": "d1d0e83e40e902f8de316d3eb18d35c12c92e8e5",
     "src/server/assistant/migration-gate.ts": "7f085e4576cf46081b6ccebc69e0c1730ed93085",
     "src/server/assistant/migration-gate.test.ts": "c94e1a1cdc52ea25f153986c2ddf10fe59679a9a",
     "src/lib/frontend-auth.ts": "99c6875d85af68716549c46d9e4edcad5090bc2c",
-    "src/server/clipping/api.test.ts": "911b5e1f3d4b4ef8b5bd2d41f0ad372ca0ef7b5b",
-    "src/server/clipping/api.ts": "c2ed115a4c5a31cd2591b29e2997fe9479848169",
+    "src/server/clipping/api.test.ts": "b215b6497aa88979a3a78097cced9a7651903a2c",
+    "src/server/clipping/api.ts": "ea01ccbc1f2476d55225917ce5b72f1d433e2143",
     "src/server/clipping/assistant-adapter.test.ts": "03770cee4bb69116f8bd35a32cb90157f86d7e53",
     "src/server/clipping/service.ts": "32b5c32e58acf54fd2d461c5aa354115d3f93d8e",
     "src/server/public-api/assistant-chat.test.ts": "6e16e309312be607eda9cd2ac7afbaac9eba4f80",
@@ -59,7 +59,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.ts",
-          "blob": "c2ed115a4c5a31cd2591b29e2997fe9479848169",
+          "blob": "ea01ccbc1f2476d55225917ce5b72f1d433e2143",
           "command": "Uses frontend identity for clipping discussion, maps authenticated Console admins to managed frontend principals, and revalidates target/version binding"
         },
         {
@@ -81,7 +81,7 @@
         },
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "911b5e1f3d4b4ef8b5bd2d41f0ad372ca0ef7b5b",
+          "blob": "b215b6497aa88979a3a78097cced9a7651903a2c",
           "command": "bun test src/server/clipping/api.test.ts -t 'frontend clipping chat routes use the unified assistant' (1 pass, 0 fail, 14 expectations; unified chat creation and continuation plus authenticated admin capability covered)"
         },
         {
@@ -165,7 +165,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.ts",
-          "blob": "c2ed115a4c5a31cd2591b29e2997fe9479848169",
+          "blob": "ea01ccbc1f2476d55225917ce5b72f1d433e2143",
           "command": "Requires a frontend identity for clipping discussion, derives the managed frontend admin identity from an authenticated Console session, and keeps creator/admin authorization on management operations"
         }
       ]

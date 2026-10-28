@@ -8,7 +8,7 @@
     "src/components/comments/CommentSectionWithProvider.tsx": "a17dcb3dc172cf02dd1b16c00f6816fcf81144bf",
     "src/components/memos/ClippingDetail.tsx": "963dc11c50e2f68908da03683548856c67e1d9b3",
     "src/server/clipping/projection.ts": "647613c041786c27ffc468dbf21415d527f75cd9",
-    "src/server/clipping/api.test.ts": "911b5e1f3d4b4ef8b5bd2d41f0ad372ca0ef7b5b",
+    "src/server/clipping/api.test.ts": "b215b6497aa88979a3a78097cced9a7651903a2c",
     "src/server/clipping/store.test.ts": "e18f3549cbfdeb9c4030055fd13d67519094738d",
     "src/server/clipping/store.ts": "5bbe74b49284389859adebd202e5d0ef9c3e0cf3",
     "src/server/mcp.ts": "6b7b545eed32f7f406e7d91ac363048f82ac9243",
@@ -132,7 +132,7 @@
         },
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "911b5e1f3d4b4ef8b5bd2d41f0ad372ca0ef7b5b",
+          "blob": "b215b6497aa88979a3a78097cced9a7651903a2c",
           "command": "MCP public memo list regression verifies private fields and malformed/system-share metadata are not exposed while publishable attachments are rewritten"
         },
         {

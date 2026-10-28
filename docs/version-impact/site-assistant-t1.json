@@ -30,7 +30,7 @@
     "drizzle/meta/_journal.json": "e04c27d13c458128218494a878957e224c1f839c",
     "src/lib/admin-github-binding.ts": "a95abdef7ade5303f1760eca995f996fd3d14242",
     "src/lib/assistant-contracts.test.ts": "23d8188294ffe5277ea815634464f97600c68244",
-    "src/lib/assistant-contracts.ts": "6f9209c48252b2575cf662310e39d265d4060958",
+    "src/lib/assistant-contracts.ts": "1a73ac705a9a86f9b7fe58febbe3379f1d47bbff",
     "src/lib/assistant-storage.test.ts": "7c8a2de1ccf6e8a493ba4300aa69faf2fb708c50",
     "src/lib/assistant-storage.ts": "f71be3986c49806d03aa533470ae3c95f87b70b4",
     "src/lib/frontend-auth.test.ts": "681d51953a33e7d86fae1369a1ac62fdf106a683",
@@ -85,7 +85,7 @@
         },
         {
           "path": "src/lib/assistant-contracts.ts",
-          "blob": "6f9209c48252b2575cf662310e39d265d4060958",
+          "blob": "1a73ac705a9a86f9b7fe58febbe3379f1d47bbff",
           "command": "Shared FrontendPrincipal, source-aware sessions, conversation/message/generation/usage/quota/migration contracts"
         },
         {

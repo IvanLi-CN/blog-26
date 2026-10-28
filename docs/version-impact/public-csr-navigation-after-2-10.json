@@ -125,7 +125,7 @@
     "site/pages/tags/index.astro": "28567272d31b418103b890392fc6654c2e2fc437",
     "site/styles/public-pages.css": "a25a85f36a6611087b1252c318b58fb0a8b0776b",
     "src/components/playbook/PlaybookPage.tsx": "c5ceacb9769c6d7f012a558c5fa217aec7267632",
-    "src/lib/web-demo-fetch.ts": "b01a0e9bfa581ee9ae4f7a7bb6fb0ee1383daa58",
+    "src/lib/web-demo-fetch.ts": "83bcf9a748c3136ed70c50194ee65b14a387e99f",
     "tests/components/PublicMemoAuthoring.test.tsx": "64c5676df7110b1ce06494c7d4f933f4652c4f17",
     "tests/e2e/admin/public-csr-authoring.spec.ts": "b2d9e8c7dcc2edaf9c589dcbeec62d0073aa4b70",
     "tests/e2e/clipping-web-demo.ts": "996f804d348c184986bdf454963343f6470fd995",
@@ -138,7 +138,7 @@
     "tests/lib/project-content.test.ts": "9b6a8c126935cbcddb51196d7e6ea4fcd71f9b06",
     "tests/lib/public-csr-route.test.ts": "1c1000aa508884951596ee6ddf13b06bb6506ed3",
     "tests/lib/web-demo-boundary.test.ts": "95cb0ac26f54d921418198639e654943c311477a",
-    "tests/lib/web-demo-fetch.test.ts": "4153c852c90fe6f4ef7ad17e55ac97e228fab83c",
+    "tests/lib/web-demo-fetch.test.ts": "c0aa663dbf5d395c35a1d2a32f90fb3546438b0a",
     "tests/storybook/story-boundary.test.ts": "94803bd632f1372a2c7529c56aa7a6e1ad78ff8d"
   },
   "change": {
@@ -159,7 +159,7 @@
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "4153c852c90fe6f4ef7ad17e55ac97e228fab83c",
+          "blob": "c0aa663dbf5d395c35a1d2a32f90fb3546438b0a",
           "command": "bun test tests/lib/web-demo-fetch.test.ts tests/lib/web-demo-boundary.test.ts (Agent VM)"
         },
         {
@@ -186,7 +186,7 @@
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "4153c852c90fe6f4ef7ad17e55ac97e228fab83c",
+          "blob": "c0aa663dbf5d395c35a1d2a32f90fb3546438b0a",
           "command": "bun test tests/lib/web-demo-fetch.test.ts tests/lib/web-demo-boundary.test.ts (Agent VM)"
         },
         {
@@ -217,7 +217,7 @@
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "4153c852c90fe6f4ef7ad17e55ac97e228fab83c",
+          "blob": "c0aa663dbf5d395c35a1d2a32f90fb3546438b0a",
           "command": "bun test tests/lib/web-demo-fetch.test.ts tests/lib/web-demo-boundary.test.ts (Agent VM)"
         },
         {

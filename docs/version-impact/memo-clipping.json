@@ -81,8 +81,8 @@
     "src/public-site/snapshot.ts": "344e805dd3eb5ced704bcbbd8b5ddcad71f51082",
     "src/server/clipping/agent-runtime.test.ts": "b9c6feeee3f66cde97853e583d522137dbed4c45",
     "src/server/clipping/agent-runtime.ts": "a8ead68b7114cc989f5b8b2b7f639692d3c23bc5",
-    "src/server/clipping/api.test.ts": "911b5e1f3d4b4ef8b5bd2d41f0ad372ca0ef7b5b",
-    "src/server/clipping/api.ts": "c2ed115a4c5a31cd2591b29e2997fe9479848169",
+    "src/server/clipping/api.test.ts": "b215b6497aa88979a3a78097cced9a7651903a2c",
+    "src/server/clipping/api.ts": "ea01ccbc1f2476d55225917ce5b72f1d433e2143",
     "src/server/clipping/article-segments.test.ts": "77fde805095f3ebd2478e6c258190eae40a97df7",
     "src/server/clipping/article-segments.ts": "7bf73b79a27d9a2d7b5fa067b74146e4b14c567e",
     "src/server/clipping/extract.test.ts": "dcd5442c3949f4f41e7bdc398aa3441f169550f6",
@@ -132,7 +132,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "911b5e1f3d4b4ef8b5bd2d41f0ad372ca0ef7b5b",
+          "blob": "b215b6497aa88979a3a78097cced9a7651903a2c",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
         },
         {
@@ -169,7 +169,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "911b5e1f3d4b4ef8b5bd2d41f0ad372ca0ef7b5b",
+          "blob": "b215b6497aa88979a3a78097cced9a7651903a2c",
           "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
@@ -220,7 +220,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "911b5e1f3d4b4ef8b5bd2d41f0ad372ca0ef7b5b",
+          "blob": "b215b6497aa88979a3a78097cced9a7651903a2c",
           "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
@@ -293,7 +293,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "911b5e1f3d4b4ef8b5bd2d41f0ad372ca0ef7b5b",
+          "blob": "b215b6497aa88979a3a78097cced9a7651903a2c",
           "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
