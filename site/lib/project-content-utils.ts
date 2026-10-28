@@ -1,4 +1,5 @@
 import GithubSlugger from "github-slugger";
+import matter from "gray-matter";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
@@ -95,6 +96,11 @@ function headingText(node: MarkdownNode) {
   };
   node.children?.forEach(collect);
   return values.join("").trim();
+}
+
+export function extractProjectDetailSummary(source: string): string | null {
+  const value = matter(source).data.detailSummary;
+  return typeof value === "string" ? value.replace(/\s+/g, " ").trim() || null : null;
 }
 
 export function extractProjectToc(source: string): ProjectTocItem[] {

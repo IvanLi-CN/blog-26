@@ -1,5 +1,7 @@
 ---
 slug: loadlynx
+detailSummary: >-
+  LoadLynx 是便携式电子负载整机，使用 STM32G431 负责 CC/CV 闭环、保护与高速遥测，ESP32-S3 负责界面、USB/Wi-Fi、Preset、标定与主机连接。用户在控制面调整模式、目标值和输出开关，同时看到实际电压、电流、功率、温度与 PD contract 状态。双 MCU 之间以带 CRC 的 SLIP/CBOR 协议交换原子控制消息，devd 和 CLI 负责设备身份、烧录、reset、monitor 与验证。
 ---
 
 <section className="project-mdx-section">

@@ -1,6 +1,7 @@
 import {
   appendPublicAssetVersion,
   getCanonicalUrl,
+  getPublicSiteCardFallbackUrl,
   getSiteOrigin,
   getSiteUrl,
   pickTagIconSvg,
@@ -10,6 +11,7 @@ import {
 export {
   appendPublicAssetVersion,
   getCanonicalUrl,
+  getPublicSiteCardFallbackUrl,
   getSiteOrigin,
   getSiteUrl,
   pickTagIconSvg,
@@ -26,10 +28,13 @@ import { extractPostCoverCandidate, isExternalImageUrl } from "@/lib/post-cover"
 import {
   createEmptyPublicMediaCollection,
   getPublicMediaWatermarkVersion,
+  isUnwatermarkedPublicMediaVariant,
   migratePublicMediaV4ToV5,
   type PublicMediaCollection,
   type PublicMediaItem,
+  type PublicMediaVariant,
   rewritePublicContentMediaUrls,
+  stripPublicMediaRenderId,
 } from "@/lib/public-media";
 import { rebuildSnapshotTags } from "@/lib/snapshot-tags";
 import type {
@@ -97,27 +102,38 @@ function normalizeSnapshotMedia(
     return createEmptyPublicMediaCollection();
   }
 
-  const migrateItem = (item: PublicMediaItem | null | undefined) => {
+  const migrateItem = (item: PublicMediaItem | null | undefined, roleOverride?: "cover") => {
     if (!item) return null;
+    const role = roleOverride ?? item.role;
+    const migrateUrl = (value: string, variant?: PublicMediaVariant) =>
+      variant && isUnwatermarkedPublicMediaVariant(role, variant)
+        ? (getPublicSiteCardFallbackUrl(value) ?? stripPublicMediaRenderId(value))
+        : migratePublicMediaV4ToV5(value);
     return {
       ...item,
+      role,
       variants: Object.fromEntries(
         Object.entries(item.variants).map(([variant, value]) => [
           variant,
-          typeof value === "string" ? migratePublicMediaV4ToV5(value) : value,
+          typeof value === "string" ? migrateUrl(value, variant as PublicMediaVariant) : value,
         ])
       ) as PublicMediaItem["variants"],
       presentations: item.presentations
         ? (Object.fromEntries(
-            Object.entries(item.presentations).map(([variant, candidates]) => [
-              variant,
-              candidates
-                ? {
-                    a: migratePublicMediaV4ToV5(candidates.a),
-                    b: migratePublicMediaV4ToV5(candidates.b),
-                  }
-                : candidates,
-            ])
+            Object.entries(item.presentations)
+              .filter(
+                ([variant]) =>
+                  !isUnwatermarkedPublicMediaVariant(role, variant as PublicMediaVariant)
+              )
+              .map(([variant, candidates]) => [
+                variant,
+                candidates
+                  ? {
+                      a: migratePublicMediaV4ToV5(candidates.a),
+                      b: migratePublicMediaV4ToV5(candidates.b),
+                    }
+                  : candidates,
+              ])
           ) as PublicMediaItem["presentations"])
         : item.presentations,
       poster: item.poster ? migratePublicMediaV4ToV5(item.poster) : item.poster,
@@ -130,17 +146,25 @@ function normalizeSnapshotMedia(
         : [],
     } satisfies PublicMediaItem;
   };
-  const normalizeItem = (item: PublicMediaItem | null | undefined) => {
-    const migrated = migrateItem(item);
+  const normalizeItem = (item: PublicMediaItem | null | undefined, roleOverride?: "cover") => {
+    const migrated = migrateItem(item, roleOverride);
     if (!migrated || preserveSourceDescriptors) return migrated;
     return { ...migrated, sources: [] };
   };
   const normalizeItems = (items: PublicMediaItem[] | undefined) =>
     Array.isArray(items) ? items.map((item) => normalizeItem(item) as PublicMediaItem) : [];
 
+  const primaryIsCover = Boolean(
+    media.primary &&
+      (media.primary.role === "cover" ||
+        (media.cover &&
+          (media.primary.hash === media.cover.hash ||
+            media.primary.sourcePath === media.cover.sourcePath)))
+  );
+
   return {
-    primary: normalizeItem(media.primary),
-    cover: normalizeItem(media.cover),
+    primary: normalizeItem(media.primary, primaryIsCover ? "cover" : undefined),
+    cover: normalizeItem(media.cover, "cover"),
     content: normalizeItems(media.content),
     attachments: normalizeItems(media.attachments),
   };

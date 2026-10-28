@@ -134,7 +134,7 @@ export const postsRouter = router({
           ...post,
           tags: normalizeTags(post.tags),
           image:
-            pickLegacyPublicImage(media, "card") ??
+            pickLegacyPublicImage(media, "cover") ??
             buildLegacyPublicMediaUrl({
               mediaPath: post.image,
               dataSource: post.dataSource,
@@ -428,7 +428,7 @@ export const postsRouter = router({
             ...post,
             tags: normalizeTags(post.tags),
             image:
-              pickLegacyPublicImage(media, "card") ??
+              pickLegacyPublicImage(media, "cover") ??
               buildLegacyPublicMediaUrl({
                 mediaPath: post.image,
                 dataSource: post.dataSource,

@@ -87,14 +87,15 @@ export async function createWebDemoPreviewServer({
             : new Response("Not found", { status: 404 });
         }
         const routeData = url.pathname === "/api/public/page" && request.method === "GET";
-        if (
-          url.pathname.startsWith("/api/admin/preview/assets/") ||
-          url.pathname.startsWith("/api/public/assets/")
-        ) {
+        if (url.pathname.startsWith("/api/admin/preview/assets/")) {
           const asset = Bun.file(resolve(activeSiteRoot, "client", "site-assets", "favicon.svg"));
           return (await asset.exists())
             ? new Response(asset)
             : new Response("Demo asset not found", { status: 404 });
+        }
+        if (routeData || url.pathname.startsWith("/api/public/assets/")) {
+          const upstream = new URL(url.pathname + url.search, `http://127.0.0.1:${upstreamPort}`);
+          return fetch(upstream, request);
         }
         if ((url.pathname === "/api" || url.pathname.startsWith("/api/")) && !routeData)
           return new Response("No live API in Web Demo", { status: 404 });

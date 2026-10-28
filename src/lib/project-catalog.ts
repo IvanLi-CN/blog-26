@@ -153,7 +153,7 @@ export const projectCatalog: ProjectCatalog = [
     slug: "codex-vibe-monitor",
     title: "Codex Vibe Monitor",
     domain: "developer-tools",
-    summary: "自部署 OpenAI 兼容代理的观测与排障工作台。",
+    summary: "OpenAI 兼容代理观测与排障工具。",
     heroSummary:
       "面向自部署环境的 OpenAI 兼容代理观测工作台，统一记录请求链路、流式响应、延迟指标、失败原因与上游尝试，帮助定位 AI 接入层的问题。",
     description:
@@ -195,8 +195,7 @@ export const projectCatalog: ProjectCatalog = [
     slug: "tavily-hikari",
     title: "Tavily Hikari",
     domain: "developer-tools",
-    summary:
-      "为 Tavily API 做的代理与审计控制台，把 key 池、额度、调用日志和团队入口统一到一个 Rust 服务里。",
+    summary: "Tavily API 代理与审计控制台。",
     description:
       "项目把第三方搜索能力包装成更适合团队协作的内部基础设施。除了代理请求，还关心配额治理、审计记录和面向运营的控制面视图。",
     poster: {
@@ -235,7 +234,7 @@ export const projectCatalog: ProjectCatalog = [
     slug: "kaisoumail",
     title: "KaisouMail",
     domain: "web-products",
-    summary: "基于 Cloudflare 的临时邮箱控制台，把邮箱生成、投递查看和公开前台整理成一套轻量产品。",
+    summary: "Cloudflare 临时邮箱控制台。",
     description:
       "这类工具最容易沦为脚本集合，但它被做成了完整的 Web 产品：既有面向访客的使用入口，也有可维护、可扩展的后台组织方式。",
     poster: {
@@ -273,7 +272,7 @@ export const projectCatalog: ProjectCatalog = [
     slug: "octo-rill",
     title: "OctoRill",
     domain: "developer-tools",
-    summary: "围绕 GitHub 个人活动整理出的阅读与运营工作台，用来集中查看 release、通知和项目流动。",
+    summary: "GitHub 动态阅读与运营工作台。",
     description:
       "它更像一块为开发者自己定制的云端仪表板，重点不是社交网络式展示，而是把分散的 GitHub 动态重新组织成可消费的操作界面。",
     poster: {
@@ -299,8 +298,7 @@ export const projectCatalog: ProjectCatalog = [
     slug: "paste-preset",
     title: "PastePreset",
     domain: "productivity-tools",
-    summary:
-      "一个偏生产力取向的浏览器内图片处理工具，用预设流程把常见裁切、压缩和导出动作收束到同一界面。",
+    summary: "浏览器内的图片处理与预设工具。",
     description:
       "它强调的是“重复操作的前端产品化”：把零散、临时、每次都要手调的图像处理流程，变成可保存、可重复使用的轻量工具链。",
     poster: {
@@ -333,7 +331,7 @@ export const projectCatalog: ProjectCatalog = [
     slug: "spoti-bind",
     title: "SpotiBind",
     domain: "productivity-tools",
-    summary: "macOS 菜单栏工具，把硬件媒体键转发给你选择的桌面音乐播放器。",
+    summary: "macOS 菜单栏媒体键路由工具。",
     description:
       "SpotiBind 把播放、下一首和上一首按键交给指定播放器，同时提供自动路由、固定目标和启动位置配置。目标不可用时，按键会继续交给 macOS 的默认行为。",
     poster: {
@@ -356,8 +354,7 @@ export const projectCatalog: ProjectCatalog = [
     slug: "blog-26",
     title: "Ivan's Blog",
     domain: "web-products",
-    summary:
-      "当前公开博客的开源镜像版本：Astro 前台、Admin SPA、Console SSR 和内容快照导出都在同一仓里协作。",
+    summary: "Astro、Admin 与内容管线一体的博客系统。",
     description:
       "这个站本身也是项目之一。重点不只是博客界面，而是公开前台、内容管线、后台编辑和部署边界如何被打磨成一套可公开维护的系统。",
     poster: {
@@ -393,7 +390,7 @@ export const projectCatalog: ProjectCatalog = [
     slug: "loadlynx",
     title: "LoadLynx",
     domain: "hardware-product",
-    summary: "便携式电子负载整机，围绕 STM32G431 与 ESP32-S3 做量测、控制与联网能力整合。",
+    summary: "STM32 与 ESP32-S3 驱动的便携式电子负载。",
     description:
       "它代表的是从电路、固件到控制面的整机思路：不仅关注负载本体的工作，还关心用户如何看见、调节和记录设备行为。",
     poster: {
@@ -435,8 +432,7 @@ export const projectCatalog: ProjectCatalog = [
     slug: "mains-aegis",
     title: "Mains Aegis",
     domain: "hardware-product",
-    summary:
-      "一套面向 HomeLab 和设备供电场景的 UPS 产品尝试，把供电、检测、策略控制和用户入口合到同一体系内。",
+    summary: "面向 HomeLab 的可编程 UPS 系统。",
     description:
       "项目关注的不只是 UPS 硬件选型，还包括系统级的供电策略与对外控制入口。它更像一台可被软件理解的供电设备，而不是传统黑盒。",
     poster: {
@@ -477,8 +473,7 @@ export const projectCatalog: ProjectCatalog = [
     slug: "isolappurr-usb-hub",
     title: "IsolaPurr USB Hub",
     domain: "hardware-product",
-    summary:
-      "带隔离、独立供电和 PD 能力的 USB Hub 产品化尝试，把电子爱好者常见的“怕烧电脑”问题做成一台正经设备。",
+    summary: "带隔离与独立供电的 USB Hub。",
     description:
       "它延续了 USB Hub 原型探索，但产品目标更明确：独立供电、隔离保护、控制能力和真实使用场景都被纳入统一交付。",
     poster: {
@@ -517,8 +512,7 @@ export const projectCatalog: ProjectCatalog = [
     slug: "tuckmark",
     title: "Tuckmark",
     domain: "device-control",
-    summary:
-      "面向标签打印和代理流程的控制平面，把打印任务、设备入口与自动化工作流捏成一个轻量操作台。",
+    summary: "标签打印与自动化流程控制平面。",
     description:
       "它的价值不在标签打印本身，而在于把一个很容易散落到脚本、驱动和桌面小工具里的场景，重新包装成 agent-native 的控制工作面。",
     poster: {
@@ -552,8 +546,7 @@ export const projectCatalog: ProjectCatalog = [
     slug: "flux-purr",
     title: "Flux Purr",
     domain: "device-control",
-    summary:
-      "设备侧 monorepo 基座，把固件、React 控制台和本地 devd 接口摆在同一开发体系内，降低设备产品的多端割裂感。",
+    summary: "嵌入式设备的固件与控制台基座。",
     description:
       "它更像一块设备软件基座：不是单一产品，而是为后续设备项目提供统一的控制约定、开发形态和本地联调路径。",
     poster: {
@@ -589,8 +582,7 @@ export const projectCatalog: ProjectCatalog = [
     slug: "iso-usb-hub",
     title: "IsolaRail",
     domain: "device-control",
-    summary:
-      "围绕四口 USB Hub 控制面展开的设备软件项目，负责端口、电源与设备侧能力的可见化与可控化。",
+    summary: "四口 USB Hub 的设备控制平面。",
     description:
       "相比完整整机产品，它更偏设备控制平面本身：关注如何把 USB Hub 的硬件能力组织成对用户和工具都友好的操作界面。",
     poster: {
@@ -627,8 +619,7 @@ export const projectCatalog: ProjectCatalog = [
     slug: "xp",
     title: "XP",
     domain: "operations-tools",
-    summary:
-      "一套偏自托管运维的 Xray 集群管理工具，用来整理多主机、多节点下的部署、配置与维护动作。",
+    summary: "自托管 Xray 集群控制面。",
     description:
       "它体现的是运维工具的产品化思路：不是只有配置文件，而是把跨主机资源和节点状态收束到一个更可持续维护的界面或流程里。",
     poster: {
@@ -664,7 +655,7 @@ export const projectCatalog: ProjectCatalog = [
     slug: "dockrev",
     title: "Dockrev",
     domain: "operations-tools",
-    summary: "一个面向 Docker / Compose 自托管环境的更新与运维助手，帮助梳理版本、容器和维护动作。",
+    summary: "Docker / Compose 更新与运维工具。",
     description:
       "它关注的是“小而长期”的运维负担：部署了很多服务以后，如何用更低认知成本看清哪些东西该更新、该重启、该回滚。",
     poster: {
@@ -701,8 +692,7 @@ export const projectCatalog: ProjectCatalog = [
     slug: "oidrune",
     title: "Oidrune",
     domain: "operations-tools",
-    summary:
-      "基于 Cloudflare 的 GitHub Actions 通知网关，用 GitHub OIDC 接收工作流完成事件并异步投递到运营者控制的 Telegram 目标。",
+    summary: "基于 GitHub OIDC 的 Actions 通知网关。",
     description:
       "Oidrune 把 GitHub Actions 的工作流完成通知收束成一个无调用方密钥的网关：调用仓库只需复用固定版本的 workflow 并授予 id-token: write，网关负责身份校验、持久化接收、重试、死信和运营控制台。",
     poster: {

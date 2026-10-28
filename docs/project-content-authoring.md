@@ -11,10 +11,10 @@ Every project detail must be written from the project's available evidence. The 
 The project catalog in `site/lib/projects.ts` owns project identity and discovery metadata:
 
 - title, slug, and domain;
-- card summary and Hero summary;
+- card summary;
 - poster, social preview, technology tags, public entries, related posts, and ordering.
 
-The project body lives at `site/content/projects/<slug>.mdx`. It owns the project-specific narrative and does not repeat catalog metadata in frontmatter, except for the required `slug` identity field used to validate the file-to-project binding. A missing MDX file is valid: the detail page must show only the verified catalog information, available media, public entries, and related reading.
+The project body lives at `site/content/projects/<slug>.mdx`. It owns the project-specific narrative and may provide an optional `detailSummary` frontmatter field for the detail-page Hero. The required `slug` identity field validates the file-to-project binding. A missing MDX file, or a body without `detailSummary`, falls back to the verified catalog detail description; available media, public entries, and related reading remain catalog data.
 
 Project-specific body assets live beside the body at `site/content/projects/<slug>/assets/`. They are separate from the theme-aware project poster and social-preview pipelines.
 
@@ -70,9 +70,9 @@ The site build validates component imports: only named imports of the four revie
 
 ## Catalog Copy and Public Entries
 
-`summary` is a concise, project-specific statement of purpose. It has a one-line visual budget on the project wall, where overflow is truncated but the full text remains available through hover and keyboard focus. Prefer roughly 30 to 44 Chinese characters when the project name is not included.
+`summary` is a concise, project-specific statement of purpose for the project wall. It has a one-line visual budget on the project wall, where overflow is truncated but the full text remains available through hover and keyboard focus. Prefer roughly 30 to 44 Chinese characters when the project name is not included.
 
-The Hero summary may be longer and is the canonical description for search metadata and structured data. It should complement, not duplicate, the MDX body.
+`detailSummary` is the longer detail-page Hero summary and is authored beside the MDX body. It is also used for detail-page search metadata and structured data. It should complement, not duplicate, the body prose. The legacy catalog `heroSummary` and `description` fields remain fallbacks for catalog-only projects and older bodies without `detailSummary`.
 
 Record public destinations by meaning, not display order:
 

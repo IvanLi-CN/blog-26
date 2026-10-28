@@ -26,7 +26,7 @@ export async function loadproject(Astro: PageContext) {
         highlights: project.highlights,
       };
   const canonicalUrl = getProjectCanonicalUrl(project.slug);
-  const heroSummary = project.heroSummary ?? project.description;
+  const heroSummary = body?.summary ?? project.heroSummary ?? project.description;
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "CreativeWork",

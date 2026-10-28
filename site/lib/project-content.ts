@@ -1,4 +1,5 @@
 import {
+  extractProjectDetailSummary,
   extractProjectToc,
   type ProjectTocItem,
   validateProjectMdxImports,
@@ -36,7 +37,14 @@ function validateBodies() {
 
 validateBodies();
 
-export function getProjectContentMetadata(slug: string): { toc: ProjectTocItem[] } | null {
+export function getProjectContentMetadata(
+  slug: string
+): { summary: string | null; toc: ProjectTocItem[] } | null {
   const source = sourceBodies[`../content/projects/${slug}.mdx`];
-  return source ? { toc: extractProjectToc(source) } : null;
+  return source
+    ? {
+        summary: extractProjectDetailSummary(source),
+        toc: extractProjectToc(source),
+      }
+    : null;
 }

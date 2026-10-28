@@ -367,6 +367,7 @@ export async function freezeInputs(entry: ReleaseEntry, root: string): Promise<v
     siteBasePath: env.PUBLIC_SITE_BASE_PATH,
     downloadConcurrency: resolveReleaseMediaDownloadConcurrency(),
     includeDerivedWatermarkVariants: true,
+    includeBaseMediaVariants: true,
     clippingResourceUrls,
   });
   if (media.externalCount)
