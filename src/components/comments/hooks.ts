@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { FrontendAuthState } from "@/lib/assistant-contracts";
 import { toPublicApiUrl } from "@/lib/public-runtime-url";
 import { webDemoFetch } from "@/lib/web-demo-fetch";
 import { subscribeWebDemoRequestChanges } from "@/lib/web-demo-runtime";
@@ -52,26 +53,31 @@ export function useUserInfo() {
     const version = ++requestVersion.current;
     setIsLoading(true);
     try {
-      const data = await readJson<{
-        reader: {
-          id: string;
-          githubLogin: string;
-          displayName: string | null;
-          avatarUrl: string | null;
-          profileUrl: string | null;
-        } | null;
-        isAdminAuthor?: boolean;
-      }>(toPublicApiUrl("/api/public/reader-auth/me"));
+      let data = await readJson<FrontendAuthState>(toPublicApiUrl("/api/public/frontend-auth/me"));
+      if (!data.authenticated && !data.loggedOut) {
+        try {
+          data = await readJson<FrontendAuthState>(
+            toPublicApiUrl("/api/public/frontend-auth/bootstrap"),
+            {
+              method: "POST",
+            }
+          );
+        } catch {
+          // Guests and unconfigured local sessions remain signed out.
+        }
+      }
       if (version !== requestVersion.current) return;
+      const principal = data.principal;
       setUserInfo(
-        data.reader
+        principal
           ? {
-              id: data.reader.id,
-              nickname: data.reader.displayName || data.reader.githubLogin,
-              email: null,
-              avatarUrl: data.reader.avatarUrl || "/site-assets/default-avatar.svg",
-              profileUrl: data.reader.profileUrl,
-              isAdminAuthor: data.isAdminAuthor === true,
+              id: principal.id,
+              nickname: principal.displayName || principal.github?.login || "前台用户",
+              email: principal.email,
+              avatarUrl: principal.avatarUrl || "/site-assets/default-avatar.svg",
+              profileUrl: principal.profileUrl || principal.github?.profileUrl,
+              isAdmin: principal.isAdmin,
+              isAdminAuthor: principal.isAdmin,
             }
           : null
       );
@@ -98,7 +104,7 @@ export function useUserInfo() {
 
   const logout = useCallback(async () => {
     try {
-      await readJson(toPublicApiUrl("/api/public/reader-auth/logout"), { method: "POST" });
+      await readJson(toPublicApiUrl("/api/public/frontend-auth/logout"), { method: "POST" });
     } finally {
       setUserInfo(null);
       window.location.reload();

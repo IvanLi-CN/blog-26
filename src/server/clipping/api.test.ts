@@ -19,6 +19,8 @@ import {
   frontendUsers,
   memoClippings,
   posts,
+  sessions,
+  users,
 } from "@/lib/schema";
 import { buildPublicSnapshot, writePublicSnapshot } from "@/public-site/snapshot";
 import { createAssistantRuntimeForTest } from "@/server/assistant/runtime";
@@ -45,6 +47,7 @@ const prior = { ...process.env };
 let clippingId: string;
 const versionId = randomUUID();
 const frontendToken = "clipping-frontend-session-token";
+const backendAdminToken = "clipping-backend-admin-session-token";
 const resourceFilename = `${createHash("sha256").update("captured image").digest("hex")}.png`;
 const sourceContent = `# Article\n\nSource.\n\n![Asset](./assets/${resourceFilename})`;
 let raw: string;
@@ -53,11 +56,28 @@ beforeAll(async () => {
   process.env.DB_PATH = join(root, "app.sqlite");
   process.env.LOCAL_CONTENT_BASE_PATH = join(root, "authored");
   process.env.CLIPPING_CONTENT_BASE_PATH = join(root, "materials");
+  process.env.ADMIN_EMAIL = "admin@example.com";
   await mkdir(join(root, "authored", "Memos"), { recursive: true });
   const sqlite = new Database(process.env.DB_PATH);
   migrate(drizzle(sqlite), { migrationsFolder: "drizzle" });
   sqlite.close();
   await initializeDB(true);
+  await db.insert(users).values({
+    id: "clipping-backend-admin",
+    email: "admin@example.com",
+    name: "Clipping Admin",
+    createdAt: Date.now(),
+  });
+  await db.insert(sessions).values({
+    id: backendAdminToken,
+    userId: "clipping-backend-admin",
+    deviceInfo: null,
+    ipAddress: null,
+    expiresAt: Date.now() + 60_000,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    isActive: true,
+  });
   await db.insert(frontendUsers).values({
     id: "clipping-frontend-user",
     adminUserId: null,
@@ -164,7 +184,12 @@ beforeAll(async () => {
     );
 });
 afterAll(async () => {
-  for (const key of ["DB_PATH", "LOCAL_CONTENT_BASE_PATH", "CLIPPING_CONTENT_BASE_PATH"]) {
+  for (const key of [
+    "DB_PATH",
+    "LOCAL_CONTENT_BASE_PATH",
+    "CLIPPING_CONTENT_BASE_PATH",
+    "ADMIN_EMAIL",
+  ]) {
     if (prior[key] === undefined) delete process.env[key];
     else process.env[key] = prior[key];
   }
@@ -200,6 +225,20 @@ async function request(operation: string, actor: Parameters<typeof context>[0]) 
 function frontendRequest(operation: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
   headers.set("cookie", `frontend_session_id=${frontendToken}`);
+  return handleClippingRequest(
+    new Request(`http://localhost/api/public/memos/clip/clipping/${operation}`, {
+      ...init,
+      headers,
+    }),
+    "clip",
+    operation,
+    context("guest")
+  );
+}
+
+function backendAdminRequest(operation: string, init: RequestInit = {}) {
+  const headers = new Headers(init.headers);
+  headers.set("cookie", `session_id=${backendAdminToken}`);
   return handleClippingRequest(
     new Request(`http://localhost/api/public/memos/clip/clipping/${operation}`, {
       ...init,
@@ -802,6 +841,9 @@ test("frontend clipping chat routes use the unified assistant and cap SSE stream
   let release: (() => void) | undefined;
   try {
     globals[key].service = service;
+    const adminArticle = await backendAdminRequest("");
+    expect(adminArticle.status).toBe(200);
+    expect((await adminArticle.json()).canDiscuss).toBe(true);
     const initial = await frontendRequest("chat");
     expect(initial.status).toBe(200);
     expect(await initial.json()).toMatchObject({ conversationId: null, messages: [] });
@@ -847,12 +889,52 @@ test("frontend clipping chat routes use the unified assistant and cap SSE stream
     const current = await frontendRequest("chat");
     expect((await current.json()).conversationId).toBe(submission.conversationId);
 
+    const continuation = await frontendRequest("chat", {
+      method: "POST",
+      headers: { origin: "http://localhost", "content-type": "application/json" },
+      body: JSON.stringify({ text: "What can be continued?", requestId: "http-chat-2" }),
+    });
+    expect(continuation.status).toBe(202);
+    expect((await continuation.json()).conversationId).toBe(submission.conversationId);
+
     const events = await frontendRequest("chat/events");
     expect(events.status).toBe(200);
     const eventReader = events.body?.getReader();
     expect(eventReader).toBeTruthy();
     await eventReader?.read();
     await eventReader?.cancel();
+
+    const originalAdminSnapshot = service.assistantSnapshot;
+    service.assistantSnapshot = async () => {
+      await db.update(sessions).set({ isActive: false }).where(eq(sessions.id, backendAdminToken));
+      return {
+        conversation: {
+          id: "admin-private-conversation",
+          frontendUserId: "admin",
+          kind: "clipping",
+          title: "private",
+          clippingMemoId: id,
+          clippingSlug: "clip",
+          clippingVersionId: versionId,
+          status: "active",
+          createdAt: Date.now(),
+          lastUserMessageAt: Date.now(),
+          expiresAt: Date.now() + 60_000,
+          deletedAt: null,
+        },
+        messages: [],
+        generationJobs: [],
+        activeGenerationJob: null,
+        eventSequence: 1,
+      };
+    };
+    try {
+      const revokedEvents = await backendAdminRequest("chat/events");
+      expect(await revokedEvents.text()).not.toContain("event: snapshot");
+    } finally {
+      service.assistantSnapshot = originalAdminSnapshot;
+      await db.update(sessions).set({ isActive: true }).where(eq(sessions.id, backendAdminToken));
+    }
 
     let entered = 0;
     let resolveEntered!: () => void;

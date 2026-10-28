@@ -216,7 +216,7 @@ async function saveAdminIdentityLink(
   }
 }
 
-async function ensureAdminFrontendUser(user: NonNullable<AuthResult["user"]>) {
+export async function ensureAdminFrontendUser(user: NonNullable<AuthResult["user"]>) {
   const database = await ensureDatabase();
   const now = Date.now();
   const existingLink = await database

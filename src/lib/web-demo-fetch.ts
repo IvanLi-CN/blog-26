@@ -5,6 +5,14 @@ import {
 } from "../../site/lib/memo-list-web-demo";
 import { projectRuntimeMetricsBySlug } from "../../site/lib/project-runtime-metrics";
 import type { PublicMemoRecord } from "../public-site/snapshot";
+import type {
+  AssistantCitation,
+  AssistantConversation,
+  AssistantGenerationJob,
+  AssistantMessage,
+  FrontendAuthState,
+  FrontendPrincipal,
+} from "./assistant-contracts";
 import {
   createConsoleWebDemoStore,
   getConsoleWebDemoClippingArticle,
@@ -29,6 +37,7 @@ import {
   isWebDemoBuildEnabled,
   recordWebDemoMutation,
   WEB_DEMO_ACTION_EVENT,
+  WEB_DEMO_CLIPPING_SLUG,
   type WebDemoApp,
   type WebDemoEnvironment,
   type WebDemoScene,
@@ -36,6 +45,357 @@ import {
 } from "./web-demo-runtime";
 
 const consoleWebDemoStore = createConsoleWebDemoStore();
+
+type DemoAssistantRecord = {
+  scene: WebDemoScene;
+  isSeed: boolean;
+  conversation: AssistantConversation;
+  messages: AssistantMessage[];
+  generationJob: AssistantGenerationJob | null;
+};
+
+type DemoAssistantSubmission = {
+  status: "queued";
+  conversationId: string;
+  turnId: string;
+  requestId: string;
+  userMessageId: string;
+  assistantMessageId: string;
+  createdConversation: boolean;
+};
+
+const demoAssistantRecords = new Map<string, DemoAssistantRecord>();
+const demoAssistantSeeded = new Set<string>();
+const demoAssistantDeleted = new Set<string>();
+const demoAssistantSubmissions = new Map<string, DemoAssistantSubmission>();
+let demoAssistantSequence = 1;
+let demoAssistantResetWindow: Window | null = null;
+let demoAssistantStorageWindow: Window | null = null;
+const DEMO_ASSISTANT_STORAGE_KEY = "web-demo-assistant-state";
+
+function clearDemoAssistantState() {
+  demoAssistantRecords.clear();
+  demoAssistantSeeded.clear();
+  demoAssistantDeleted.clear();
+  demoAssistantSubmissions.clear();
+  demoAssistantSequence = 1;
+}
+
+function restoreDemoAssistantState() {
+  if (typeof window === "undefined" || !window.sessionStorage) return;
+  try {
+    const raw = JSON.parse(window.sessionStorage.getItem(DEMO_ASSISTANT_STORAGE_KEY) || "null") as {
+      records?: unknown;
+      seeded?: unknown;
+      deleted?: unknown;
+      submissions?: unknown;
+      sequence?: unknown;
+    } | null;
+    if (!raw) return;
+    if (Array.isArray(raw.records)) {
+      for (const entry of raw.records) {
+        if (!Array.isArray(entry) || entry.length !== 2 || !entry[0] || !entry[1]) continue;
+        demoAssistantRecords.set(String(entry[0]), entry[1] as DemoAssistantRecord);
+      }
+    }
+    if (Array.isArray(raw.seeded))
+      raw.seeded.forEach((key) => {
+        demoAssistantSeeded.add(String(key));
+      });
+    if (Array.isArray(raw.deleted))
+      raw.deleted.forEach((id) => {
+        demoAssistantDeleted.add(String(id));
+      });
+    if (Array.isArray(raw.submissions)) {
+      for (const entry of raw.submissions) {
+        if (!Array.isArray(entry) || entry.length !== 2 || !entry[0] || !entry[1]) continue;
+        demoAssistantSubmissions.set(String(entry[0]), entry[1] as DemoAssistantSubmission);
+      }
+    }
+    if (typeof raw.sequence === "number" && Number.isInteger(raw.sequence) && raw.sequence > 0)
+      demoAssistantSequence = raw.sequence;
+  } catch {
+    clearDemoAssistantState();
+  }
+}
+
+function persistDemoAssistantState() {
+  if (typeof window === "undefined" || !window.sessionStorage) return;
+  try {
+    window.sessionStorage.setItem(
+      DEMO_ASSISTANT_STORAGE_KEY,
+      JSON.stringify({
+        records: Array.from(demoAssistantRecords.entries()),
+        seeded: Array.from(demoAssistantSeeded),
+        deleted: Array.from(demoAssistantDeleted),
+        submissions: Array.from(demoAssistantSubmissions.entries()),
+        sequence: demoAssistantSequence,
+      })
+    );
+  } catch {
+    // Session storage is an enhancement; the current document keeps the demo usable.
+  }
+}
+
+function ensureDemoAssistantResetListener() {
+  if (typeof window === "undefined" || typeof window.addEventListener !== "function") return;
+  if (demoAssistantStorageWindow !== window) {
+    clearDemoAssistantState();
+    demoAssistantStorageWindow = window;
+    restoreDemoAssistantState();
+  }
+  if (demoAssistantResetWindow === window) return;
+  demoAssistantResetWindow = window;
+  window.addEventListener(WEB_DEMO_ACTION_EVENT, (event) => {
+    const action = (event as CustomEvent<{ action?: string }>).detail?.action;
+    if (action === "reset-state") {
+      clearDemoAssistantState();
+      persistDemoAssistantState();
+    }
+  });
+}
+
+function demoFrontendPrincipal(environment: WebDemoEnvironment): FrontendPrincipal | null {
+  if (environment.persona === "guest") return null;
+  const isAdmin = environment.persona === "admin";
+  return {
+    id: isAdmin ? "demo-admin" : "demo-user",
+    kind: isAdmin ? "admin" : "reader",
+    isAdmin,
+    displayName: isAdmin ? "Ivan" : "Demo User",
+    email: isAdmin ? "admin@example.com" : "user@example.com",
+    avatarUrl: isAdmin ? "/site-assets/avatar.jpg" : "/site-assets/default-avatar.svg",
+    profileUrl: isAdmin ? null : "https://github.com/example",
+    adminUserId: isAdmin ? "demo-admin" : null,
+    readerId: isAdmin ? null : "demo-user-reader",
+    github: isAdmin
+      ? null
+      : {
+          id: "demo-user-github",
+          login: "reader-demo",
+          displayName: "Demo User",
+          avatarUrl: "/site-assets/default-avatar.svg",
+          profileUrl: "https://github.com/example",
+        },
+  };
+}
+
+function demoFrontendAuth(environment: WebDemoEnvironment): FrontendAuthState {
+  const principal = demoFrontendPrincipal(environment);
+  return {
+    authenticated: Boolean(principal),
+    principal,
+    expiresAt: principal ? Date.now() + 7 * 86_400_000 : null,
+    loggedOut: !principal,
+  };
+}
+
+function demoAssistantQuota(environment: WebDemoEnvironment, scene: WebDemoScene) {
+  const exhausted = scene === "assistant-quota-exhausted";
+  const unlimited = environment.persona === "admin";
+  const policy = {
+    maxConversations: 3,
+    retentionMs: 7 * 86_400_000,
+    tokenHourlyLimit: 10_000,
+    tokenWeeklyLimit: 50_000,
+    questionHourlyLimit: 20,
+    questionWeeklyLimit: 100,
+  };
+  return {
+    policy,
+    tokenHour: exhausted && !unlimited ? policy.tokenHourlyLimit : 0,
+    tokenWeek: exhausted && !unlimited ? policy.tokenWeeklyLimit : 0,
+    questionHour: exhausted && !unlimited ? policy.questionHourlyLimit : 0,
+    questionWeek: exhausted && !unlimited ? policy.questionWeeklyLimit : 0,
+    activeConversationCount: Array.from(demoAssistantRecords.values()).filter(
+      (record) =>
+        record.conversation.frontendUserId ===
+          (environment.persona === "admin" ? "demo-admin" : "demo-user") &&
+        (!record.isSeed || record.scene === scene) &&
+        record.conversation.status === "active"
+    ).length,
+    unlimited,
+    tokenHourlyRemaining: unlimited ? null : exhausted ? 0 : policy.tokenHourlyLimit,
+    tokenWeeklyRemaining: unlimited ? null : exhausted ? 0 : policy.tokenWeeklyLimit,
+    questionHourlyRemaining: unlimited ? null : exhausted ? 0 : policy.questionHourlyLimit,
+    questionWeeklyRemaining: unlimited ? null : exhausted ? 0 : policy.questionWeeklyLimit,
+  };
+}
+
+function demoAssistantRecord(
+  environment: WebDemoEnvironment,
+  scene: WebDemoScene,
+  id?: string,
+  options: {
+    withHistory?: boolean;
+    kind?: "general" | "clipping";
+    clippingMemoId?: string | null;
+  } = {}
+) {
+  const principal = demoFrontendPrincipal(environment);
+  if (!principal) return null;
+  const withHistory = options.withHistory ?? true;
+  const recordId = id || `demo-assistant-${principal.id}-${scene}`;
+  const existing = demoAssistantRecords.get(recordId);
+  if (existing) return existing;
+  const now = Date.now();
+  const expired = scene === "assistant-expired";
+  const generating = scene === "assistant-generating";
+  const failed = scene === "assistant-failure";
+  const conversation: AssistantConversation = {
+    id: recordId,
+    frontendUserId: principal.id,
+    kind: options.kind ?? "general",
+    title: "公开知识库问答",
+    clippingMemoId: options.clippingMemoId ?? null,
+    clippingSlug: options.kind === "clipping" ? (options.clippingMemoId ?? null) : null,
+    clippingVersionId: null,
+    status: expired ? "expired" : "active",
+    createdAt: now - 20_000,
+    lastUserMessageAt: withHistory ? now - 10_000 : null,
+    expiresAt: expired ? now - 1_000 : now + 7 * 86_400_000,
+    deletedAt: null,
+  };
+  const userMessage: AssistantMessage = {
+    id: `${recordId}-user`,
+    conversationId: recordId,
+    sequence: 1,
+    role: "user",
+    content: "这个站点主要记录什么？",
+    status: "completed",
+    clientRequestId: null,
+    createdAt: now - 10_000,
+    updatedAt: now - 10_000,
+    completedAt: now - 10_000,
+    citations: [],
+  };
+  const assistantMessage: AssistantMessage = {
+    id: `${recordId}-assistant`,
+    conversationId: recordId,
+    sequence: 2,
+    role: "assistant",
+    content: generating
+      ? "正在整理公开资料……"
+      : failed
+        ? "这次生成没有完成，请重试。"
+        : "这是一个记录工程实践、项目经验与公开文章的知识库。",
+    status: generating ? "streaming" : failed ? "failed" : "completed",
+    clientRequestId: null,
+    createdAt: now - 9_000,
+    updatedAt: now - 9_000,
+    completedAt: generating ? null : now - 8_000,
+    citations: demoAssistantCitations(now - 9_000, `${recordId}-assistant`),
+  };
+  const generationJob: AssistantGenerationJob | null = {
+    id: `${recordId}-job`,
+    conversationId: recordId,
+    userMessageId: userMessage.id,
+    assistantMessageId: assistantMessage.id,
+    requestId: `${recordId}-request`,
+    status: generating ? "running" : failed ? "failed" : "completed",
+    attempt: 1,
+    leaseUntil: null,
+    cancelRequested: false,
+    startedAt: now - 8_500,
+    finishedAt: generating ? null : now - 8_000,
+    errorCode: failed ? "provider-error" : null,
+    createdAt: now - 9_000,
+    updatedAt: now - 8_000,
+  };
+  const record: DemoAssistantRecord = {
+    scene,
+    isSeed: !id,
+    conversation,
+    messages: withHistory ? [userMessage, assistantMessage] : [],
+    generationJob: withHistory ? generationJob : null,
+  };
+  demoAssistantRecords.set(recordId, record);
+  persistDemoAssistantState();
+  return record;
+}
+
+function demoAssistantSnapshot(record: DemoAssistantRecord) {
+  return {
+    conversation: demoAssistantConversation(record),
+    messages: record.messages,
+    generationJobs: record.generationJob ? [record.generationJob] : [],
+    activeGenerationJob:
+      record.generationJob?.status === "queued" || record.generationJob?.status === "running"
+        ? record.generationJob
+        : null,
+    eventSequence: record.messages.at(-1)?.sequence ?? 0,
+  };
+}
+
+function demoAssistantConversation(record: DemoAssistantRecord): AssistantConversation {
+  if (record.conversation.kind !== "clipping") return record.conversation;
+  return {
+    ...record.conversation,
+    clippingSlug: record.conversation.clippingSlug ?? record.conversation.clippingMemoId,
+  };
+}
+
+function demoClippingAssistantSnapshot(record: DemoAssistantRecord | null) {
+  if (!record)
+    return {
+      messages: [],
+      generating: false,
+      partial: "",
+      conversationId: null,
+      error: null,
+      errorCode: null,
+    };
+  const active =
+    record.generationJob?.status === "queued" || record.generationJob?.status === "running"
+      ? record.generationJob
+      : null;
+  const partial = active
+    ? (record.messages.find((message) => message.id === active.assistantMessageId)?.content ?? "")
+    : "";
+  const latest = record.generationJob;
+  const failed = latest?.status === "failed" || latest?.status === "cancelled";
+  return {
+    messages: record.messages
+      .filter(
+        (message) =>
+          (message.role === "user" || message.role === "assistant") &&
+          message.id !== active?.assistantMessageId &&
+          message.status !== "pending" &&
+          message.status !== "streaming" &&
+          (message.role === "user" || Boolean(message.content.trim()))
+      )
+      .map((message) => ({
+        id: message.id,
+        role: message.role,
+        text: message.content,
+        timestamp: message.createdAt,
+        status: message.status,
+      })),
+    generating: Boolean(active),
+    partial,
+    conversationId: record.conversation.id,
+    error: failed ? (latest?.status === "cancelled" ? "已停止生成" : "生成失败，请稍后重试") : null,
+    errorCode: failed ? (latest?.status === "cancelled" ? "cancelled" : "generation-failed") : null,
+  };
+}
+
+function demoAssistantCitations(now: number, messageId: string): AssistantCitation[] {
+  return [
+    {
+      id: `demo-assistant-citation-${now}`,
+      messageId,
+      source: "blog",
+      sourceId: null,
+      sourceType: "post",
+      slug: "knowledge-base-overview",
+      title: "知识库公开内容说明",
+      href: "/posts/knowledge-base-overview/",
+      location: null,
+      snippet: null,
+      createdAt: now,
+    },
+  ];
+}
 
 export function combineAbortSignals(...signals: Array<AbortSignal | null | undefined>) {
   const activeSignals = signals.filter((signal): signal is AbortSignal => Boolean(signal));
@@ -272,11 +632,14 @@ function demoCommentDto(
           : placeholder
             ? "评论暂不可见"
             : comment.authorName,
-      avatarUrl: avatarFailure
-        ? "/site-assets/__missing-comment-avatar__.svg"
-        : comment.readerPersona === "other"
-          ? ""
-          : "/site-assets/default-avatar.svg",
+      avatarUrl:
+        comment.authorRole === "admin"
+          ? "/site-assets/avatar.jpg"
+          : avatarFailure
+            ? "/site-assets/__missing-comment-avatar__.svg"
+            : comment.readerPersona === "other"
+              ? ""
+              : "/site-assets/default-avatar.svg",
       profileUrl: null,
     },
     canDelete: own,
@@ -631,6 +994,217 @@ function demoRuntimeMetrics(slug: string, dataMode: "fixture" | "dense" | "empty
   return { ...payload, deduplicatedRepositories: nextRepositories, freshness: nextFreshness };
 }
 
+function getDemoAssistantResponse(
+  url: URL,
+  method: string,
+  environment: WebDemoEnvironment,
+  scene: WebDemoScene,
+  init?: RequestInit
+) {
+  ensureDemoAssistantResetListener();
+  const principal = demoFrontendPrincipal(environment);
+  if (!principal) return jsonResponse({ error: "需要登录", code: "UNAUTHORIZED" }, 401);
+  const quota = demoAssistantQuota(environment, scene);
+  const conversationId = url.searchParams.get("conversation");
+
+  if (url.pathname === "/api/public/chat/quota" && method === "GET") return jsonResponse(quota);
+
+  if (url.pathname === "/api/public/chat" && method === "GET") {
+    if (conversationId) {
+      if (demoAssistantDeleted.has(conversationId))
+        return jsonResponse({ error: "对话不存在", code: "NOT_FOUND" }, 404);
+      const record = demoAssistantRecords.get(conversationId);
+      if (!record || record.conversation.frontendUserId !== principal.id)
+        return jsonResponse({ error: "对话不存在", code: "NOT_FOUND" }, 404);
+      if (scene === "assistant-reconnecting")
+        return jsonResponse({ error: "正在重新连接", code: "RECONNECTING" }, 503);
+      if (!record || record.conversation.status === "expired")
+        return jsonResponse({ error: "对话已过期", code: "GONE" }, 410);
+      return jsonResponse(demoAssistantSnapshot(record));
+    }
+    const seedKey = `${principal.id}:${scene}`;
+    const seedId = `demo-assistant-${principal.id}-${scene}`;
+    if (!demoAssistantSeeded.has(seedKey) && !demoAssistantDeleted.has(seedId)) {
+      demoAssistantRecord(environment, scene);
+      demoAssistantSeeded.add(seedKey);
+      persistDemoAssistantState();
+    }
+    const conversations = Array.from(demoAssistantRecords.values())
+      .filter(
+        (record) =>
+          record.conversation.frontendUserId === principal.id &&
+          (!record.isSeed || record.scene === scene) &&
+          record.conversation.status !== "deleted"
+      )
+      .map(demoAssistantConversation);
+    return jsonResponse({ conversations, quota: demoAssistantQuota(environment, scene) });
+  }
+
+  if (url.pathname === "/api/public/chat" && method === "POST") {
+    const body = readDemoRequestBody(init);
+    const requestId =
+      typeof body.requestId === "string"
+        ? body.requestId
+        : new Headers(init?.headers).get("idempotency-key");
+    const replayKey = requestId ? `${principal.id}:${requestId}` : null;
+    const replay = replayKey ? demoAssistantSubmissions.get(replayKey) : null;
+    if (replay) return jsonResponse(replay, 202);
+    if (scene === "assistant-quota-exhausted" && !principal.isAdmin) {
+      return jsonResponse({ error: "Assistant quota exceeded", code: "QUOTA_EXCEEDED" }, 429);
+    }
+    const requestedId = typeof body.conversationId === "string" ? body.conversationId : undefined;
+    const activeConversationCount = Array.from(demoAssistantRecords.values()).filter(
+      (record) =>
+        record.conversation.frontendUserId === principal.id &&
+        (!record.isSeed || record.scene === scene) &&
+        record.conversation.status === "active"
+    ).length;
+    if (
+      !principal.isAdmin &&
+      !requestedId &&
+      activeConversationCount >= quota.policy.maxConversations
+    ) {
+      return jsonResponse({ error: "Conversation limit reached", code: "QUOTA" }, 429);
+    }
+    const record = requestedId
+      ? (demoAssistantRecords.get(requestedId) ?? null)
+      : demoAssistantRecord(
+          environment,
+          scene,
+          `demo-assistant-${principal.id}-${demoAssistantSequence++}`,
+          {
+            withHistory: false,
+            kind: body.kind === "clipping" ? "clipping" : "general",
+            clippingMemoId: typeof body.clippingMemoId === "string" ? body.clippingMemoId : null,
+          }
+        );
+    if (requestedId && (!record || record.conversation.frontendUserId !== principal.id))
+      return jsonResponse({ error: "对话不存在", code: "NOT_FOUND" }, 404);
+    if (!record || record.conversation.status === "expired")
+      return jsonResponse({ error: "对话已过期", code: "GONE" }, 410);
+    const content = typeof body.content === "string" ? body.content.trim() : "";
+    if (!content) return jsonResponse({ error: "问题不能为空", code: "BAD_REQUEST" }, 400);
+    const now = Date.now();
+    const sequence = record.messages.length + 1;
+    const userMessage: AssistantMessage = {
+      id: `${record.conversation.id}-user-${sequence}`,
+      conversationId: record.conversation.id,
+      sequence,
+      role: "user",
+      content,
+      status: "completed",
+      clientRequestId: typeof body.clientRequestId === "string" ? body.clientRequestId : null,
+      createdAt: now,
+      updatedAt: now,
+      completedAt: now,
+      citations: [],
+    };
+    const assistantStatus =
+      scene === "assistant-failure"
+        ? "failed"
+        : scene === "assistant-generating"
+          ? "streaming"
+          : "completed";
+    const assistantMessage: AssistantMessage = {
+      id: `${record.conversation.id}-assistant-${sequence + 1}`,
+      conversationId: record.conversation.id,
+      sequence: sequence + 1,
+      role: "assistant",
+      content:
+        assistantStatus === "failed"
+          ? "这次生成没有完成，请点击重试。"
+          : assistantStatus === "streaming"
+            ? "正在整理公开资料……"
+            : "根据公开知识库，这个问题可以从文章、项目和工程方法三个方向理解。",
+      status: assistantStatus,
+      clientRequestId: null,
+      createdAt: now + 1,
+      updatedAt: now + 1,
+      completedAt: assistantStatus === "streaming" ? null : now + 1,
+      citations: demoAssistantCitations(
+        now + 1,
+        `${record.conversation.id}-assistant-${sequence + 1}`
+      ),
+    };
+    record.messages.push(userMessage, assistantMessage);
+    record.conversation.lastUserMessageAt = now;
+    record.generationJob = {
+      id: `${record.conversation.id}-job-${sequence}`,
+      conversationId: record.conversation.id,
+      userMessageId: userMessage.id,
+      assistantMessageId: assistantMessage.id,
+      requestId: typeof body.requestId === "string" ? body.requestId : `demo-request-${sequence}`,
+      status:
+        assistantStatus === "failed"
+          ? "failed"
+          : assistantStatus === "streaming"
+            ? "running"
+            : "completed",
+      attempt: 1,
+      leaseUntil: null,
+      cancelRequested: false,
+      startedAt: now,
+      finishedAt: assistantStatus === "streaming" ? null : now + 1,
+      errorCode: assistantStatus === "failed" ? "provider-error" : null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const submission: DemoAssistantSubmission = {
+      status: "queued",
+      conversationId: record.conversation.id,
+      turnId: record.generationJob.id,
+      requestId: record.generationJob.requestId,
+      userMessageId: userMessage.id,
+      assistantMessageId: assistantMessage.id,
+      createdConversation: !requestedId,
+    };
+    if (replayKey) demoAssistantSubmissions.set(replayKey, submission);
+    persistDemoAssistantState();
+    recordWebDemoMutation("发送助手问题", content.slice(0, 48));
+    return jsonResponse(submission, 202);
+  }
+
+  if (url.pathname === "/api/public/chat/stop" && method === "POST") {
+    const body = readDemoRequestBody(init);
+    const id = typeof body.conversationId === "string" ? body.conversationId : null;
+    const record = id ? demoAssistantRecords.get(id) : null;
+    if (record && record.conversation.frontendUserId !== principal.id)
+      return jsonResponse({ error: "对话不存在", code: "NOT_FOUND" }, 404);
+    if (
+      record?.generationJob &&
+      (record.generationJob.status === "running" || record.generationJob.status === "queued")
+    ) {
+      record.generationJob.status = "cancelled";
+      record.generationJob.cancelRequested = true;
+      record.generationJob.errorCode = "cancelled-by-user";
+      record.generationJob.finishedAt = Date.now();
+      const assistant = record.messages.find(
+        (message) => message.id === record.generationJob?.assistantMessageId
+      );
+      if (assistant) assistant.status = "cancelled";
+      persistDemoAssistantState();
+      recordWebDemoMutation("停止助手生成", record.conversation.title || record.conversation.id);
+      return jsonResponse({ stopped: true, generationJob: record.generationJob });
+    }
+    return jsonResponse({ stopped: false, generationJob: record?.generationJob ?? null });
+  }
+
+  const deleteMatch = url.pathname.match(/^\/api\/public\/chat\/conversations\/([^/]+)$/u);
+  if (deleteMatch && method === "DELETE") {
+    const id = decodeURIComponent(deleteMatch[1] ?? "");
+    const record = demoAssistantRecords.get(id);
+    if (!record || record.conversation.frontendUserId !== principal.id)
+      return jsonResponse({ error: "对话不存在", code: "NOT_FOUND" }, 404);
+    demoAssistantRecords.delete(id);
+    demoAssistantDeleted.add(id);
+    persistDemoAssistantState();
+    recordWebDemoMutation("删除助手对话", id);
+    return jsonResponse({ deleted: true, conversationId: id });
+  }
+
+  return jsonResponse({ error: "该公共接口未接入 Web Demo 模拟。" }, 404);
+}
+
 function demoSearchRelevance(
   item: { title: string; excerpt: string; body?: string },
   query: string,
@@ -824,8 +1398,78 @@ async function getDemoPublicResponse(
     const consoleResponse = await getConsoleWebDemoResponse(url, method, body, init);
     if (consoleResponse) return consoleResponse;
   }
+  const clippingChatMatch = url.pathname.match(
+    /^\/api\/public\/memos\/([^/]+)\/clipping\/chat(\/stop)?$/u
+  );
+  if (clippingChatMatch) {
+    const clippingSlug = decodeURIComponent(clippingChatMatch[1] ?? "");
+    if (clippingSlug !== WEB_DEMO_CLIPPING_SLUG)
+      return jsonResponse({ error: "剪藏不存在", code: "NOT_FOUND" }, 404);
+    const principal = demoFrontendPrincipal(environment);
+    if (!principal) return jsonResponse({ error: "需要登录", code: "UNAUTHORIZED" }, 401);
+    const existing = Array.from(demoAssistantRecords.values()).find(
+      (record) =>
+        record.conversation.frontendUserId === principal.id &&
+        record.conversation.kind === "clipping" &&
+        record.conversation.clippingMemoId === clippingSlug
+    );
+    if (method === "GET") {
+      const requestedConversationId = url.searchParams.get("conversationId");
+      if (
+        requestedConversationId &&
+        (!existing || existing.conversation.id !== requestedConversationId)
+      )
+        return jsonResponse({ error: "仅能访问当前文章对话", code: "FORBIDDEN" }, 403);
+      return jsonResponse(demoClippingAssistantSnapshot(existing));
+    }
+    const proxyUrl = new URL("/api/public/chat", url);
+    if (clippingChatMatch[2]) proxyUrl.pathname = "/api/public/chat/stop";
+    const proxyBody = clippingChatMatch[2]
+      ? { ...body, conversationId: body.conversationId ?? existing?.conversation.id }
+      : {
+          ...body,
+          content: typeof body.text === "string" ? body.text : body.content,
+          kind: "clipping",
+          clippingMemoId: clippingSlug,
+          ...(existing ? { conversationId: existing.conversation.id } : {}),
+        };
+    return getDemoAssistantResponse(proxyUrl, method, environment, scene, {
+      ...init,
+      body: JSON.stringify(proxyBody),
+    });
+  }
   if (url.pathname === "/api/public/auth/me" && method === "GET") {
     return jsonResponse(demoPublicUser(environment));
+  }
+
+  if (url.pathname === "/api/public/frontend-auth/me" && method === "GET") {
+    return jsonResponse(demoFrontendAuth(environment));
+  }
+
+  if (url.pathname === "/api/public/frontend-auth/bootstrap" && method === "POST") {
+    return jsonResponse({
+      ...demoFrontendAuth(environment),
+      bootstrapped: environment.persona !== "guest",
+    });
+  }
+
+  if (url.pathname === "/api/public/frontend-auth/admin-start" && method === "POST") {
+    if (environment.persona !== "admin")
+      return jsonResponse({ error: "请先登录管理员账号", code: "UNAUTHORIZED" }, 401);
+    return jsonResponse(demoFrontendAuth(environment));
+  }
+
+  if (url.pathname === "/api/public/frontend-auth/logout" && method === "POST") {
+    return jsonResponse({
+      authenticated: false,
+      principal: null,
+      expiresAt: null,
+      loggedOut: true,
+    });
+  }
+
+  if (url.pathname.startsWith("/api/public/chat")) {
+    return getDemoAssistantResponse(url, method, environment, scene, init);
   }
 
   if (url.pathname === "/api/public/reader-auth/me" && method === "GET") {
@@ -907,8 +1551,6 @@ async function getDemoPublicResponse(
   if (url.pathname === "/api/public/comments" && method === "POST") {
     if (environment.persona === "guest")
       return jsonResponse({ error: "请先使用 GitHub 登录" }, 401);
-    if (environment.persona === "admin" && environment.githubBinding !== "bound")
-      return jsonResponse({ error: "请先绑定 GitHub 管理员身份" }, 401);
     const { targetType, targetKey } = demoCommentTarget(url);
     const requestBody = readDemoRequestBody(init);
     const content = typeof requestBody.content === "string" ? requestBody.content.trim() : "";

@@ -171,6 +171,38 @@ async function runSmoke() {
       throw new Error(`Article and discussion are not adjacent: ${JSON.stringify(columns)}`);
     await page.goto(`${base}/memos/${slug}`);
     await page.locator('[data-testid="public-memo-detail-controls"] .clipping-chat-card').waitFor();
+    const firstChat = await context.request.post(`${base}/api/public/memos/${slug}/clipping/chat`, {
+      headers: { origin: base, "content-type": "application/json" },
+      data: { text: "Which checkpoint is preserved?", requestId: "e2e-clipping-chat-1" },
+    });
+    if (firstChat.status() !== 202)
+      throw new Error(`Clipping assistant creation failed: ${firstChat.status()}`);
+    const firstChatBody = await firstChat.json();
+    let settled = false;
+    const settledDeadline = Date.now() + 15_000;
+    while (Date.now() <= settledDeadline) {
+      const snapshot = await context.request.get(`${base}/api/public/memos/${slug}/clipping/chat`);
+      if (snapshot.status() !== 200)
+        throw new Error(`Clipping assistant snapshot failed: ${snapshot.status()}`);
+      if (!(await snapshot.json()).generating) {
+        settled = true;
+        break;
+      }
+      await Bun.sleep(100);
+    }
+    if (!settled) throw new Error("Clipping assistant creation did not settle");
+    const continuedChat = await context.request.post(
+      `${base}/api/public/memos/${slug}/clipping/chat`,
+      {
+        headers: { origin: base, "content-type": "application/json" },
+        data: { text: "And what can be resumed?", requestId: "e2e-clipping-chat-2" },
+      }
+    );
+    if (continuedChat.status() !== 202)
+      throw new Error(`Clipping assistant continuation failed: ${continuedChat.status()}`);
+    const continuedChatBody = await continuedChat.json();
+    if (continuedChatBody.conversationId !== firstChatBody.conversationId)
+      throw new Error("Clipping assistant changed conversation binding on continuation");
     const memoBadge = page.locator(
       '[data-testid="public-memo-detail-controls"] .clipping-memo-card [data-content-kind="clipping"]'
     );
@@ -221,18 +253,19 @@ async function runSmoke() {
         `Public memo clips its reading/discussion cards: ${JSON.stringify(publicCards)}`
       );
     console.log("PASS console memo page: independent cards and wide reading container");
+    await page.getByRole("tab", { name: "文章对话", exact: true }).click();
     const desktopDraft = page.getByRole("textbox", { name: "向文章助手提问" });
     await desktopDraft.fill("保留跨视口草稿。");
     for (const width of [320, 360, 375, 393, 768]) {
       await page.setViewportSize({ width, height: 852 });
-      const trigger = page.getByRole("button", { name: "讨论文章", exact: true });
+      const trigger = page.getByTestId("clipping-open-chat").first();
       await page.waitForFunction(() => {
         const bounds = document
           .querySelector('[data-testid="clipping-open-chat"]')
           ?.getBoundingClientRect();
         return bounds && bounds.y >= 0 && bounds.bottom <= innerHeight;
       });
-      await trigger.click();
+      await trigger.click({ force: true });
       const dialog = page.getByRole("dialog", { name: "文章对话", exact: true });
       await dialog.waitFor();
       if ((await dialog.getByRole("textbox").inputValue()) !== "保留跨视口草稿。")

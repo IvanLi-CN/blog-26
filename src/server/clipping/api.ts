@@ -2,13 +2,14 @@ import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import type { FrontendPrincipal } from "@/lib/assistant-contracts";
+import { extractAuthFromRequest } from "@/lib/auth-utils";
 import {
   buildClippingResourceBaseUrl,
   clippingResourceFilename,
   isSafeClippingResourceMimeType,
 } from "@/lib/clipping-resources";
 import { db } from "@/lib/db";
-import { getFrontendPrincipalFromRequest } from "@/lib/frontend-auth";
+import { ensureAdminFrontendUser, getFrontendPrincipalFromRequest } from "@/lib/frontend-auth";
 import { recognizeMemoClipping } from "@/lib/memo-clipping";
 import { resolveRequestOrigin } from "@/lib/public-cors";
 import { posts } from "@/lib/schema";
@@ -175,9 +176,10 @@ async function access(
 
 async function frontendPrincipal(request: Request) {
   const principal = await getFrontendPrincipalFromRequest(request);
-  if (!principal)
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录前台账号后再讨论剪藏" });
-  return principal;
+  if (principal) return principal;
+  const auth = await extractAuthFromRequest(request);
+  if (auth.isAdmin && auth.user) return ensureAdminFrontendUser(auth.user);
+  throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录前台账号后再讨论剪藏" });
 }
 
 function mapAssistantSnapshot(snapshot: AssistantSnapshot | null) {
@@ -305,9 +307,15 @@ async function routeClippingRequest(
                 : null,
           }
         : {}),
-      canDiscuss:
-        Boolean(await getFrontendPrincipalFromRequest(request)) &&
-        Boolean(getClippingRuntime()?.assistantChatEnabled()),
+      canDiscuss: await (async () => {
+        if (!getClippingRuntime()?.assistantChatEnabled()) return false;
+        try {
+          await frontendPrincipal(request);
+          return true;
+        } catch {
+          return false;
+        }
+      })(),
       processorEnabled: Boolean(getClippingRuntime()),
     });
   }
@@ -351,7 +359,10 @@ async function routeClippingRequest(
       const snapshot = await runtime().assistantSnapshot(row.id, principal);
       if (requested && requested !== snapshot?.conversation.id)
         throw new TRPCError({ code: "FORBIDDEN", message: "仅能访问当前文章对话" });
-      await revalidateDiscussion(slug, ctx, currentManifest, principal);
+      const refreshedPrincipal = await frontendPrincipal(request);
+      if (refreshedPrincipal.id !== principal.id)
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录前台账号后再讨论剪藏" });
+      await revalidateDiscussion(slug, ctx, currentManifest, refreshedPrincipal);
       return response(mapAssistantSnapshot(snapshot));
     }
     if (request.method === "POST") {
@@ -367,7 +378,10 @@ async function routeClippingRequest(
         { revision: currentManifest.revision, targetUrl: currentManifest.targetUrl }
       );
       try {
-        await revalidateDiscussion(slug, ctx, currentManifest, principal);
+        const refreshedPrincipal = await frontendPrincipal(request);
+        if (refreshedPrincipal.id !== principal.id)
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录前台账号后再讨论剪藏" });
+        await revalidateDiscussion(slug, ctx, currentManifest, refreshedPrincipal);
       } catch (error) {
         await runtime()
           .assistantStop(row.id, principal, submission.turnId)

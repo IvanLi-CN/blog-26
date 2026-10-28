@@ -53,6 +53,8 @@ export type AssistantConversation = {
   kind: AssistantConversationKind;
   title: string | null;
   clippingMemoId: string | null;
+  /** Public route slug used to re-enter the clipping adapter from the unified list. */
+  clippingSlug?: string | null;
   clippingVersionId: string | null;
   status: AssistantConversationStatus;
   createdAt: number;

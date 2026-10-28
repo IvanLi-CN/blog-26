@@ -30,11 +30,11 @@
     "drizzle/meta/_journal.json": "e04c27d13c458128218494a878957e224c1f839c",
     "src/lib/admin-github-binding.ts": "a95abdef7ade5303f1760eca995f996fd3d14242",
     "src/lib/assistant-contracts.test.ts": "23d8188294ffe5277ea815634464f97600c68244",
-    "src/lib/assistant-contracts.ts": "6f9209c48252b2575cf662310e39d265d4060958",
+    "src/lib/assistant-contracts.ts": "1a73ac705a9a86f9b7fe58febbe3379f1d47bbff",
     "src/lib/assistant-storage.test.ts": "7c8a2de1ccf6e8a493ba4300aa69faf2fb708c50",
     "src/lib/assistant-storage.ts": "f71be3986c49806d03aa533470ae3c95f87b70b4",
     "src/lib/frontend-auth.test.ts": "681d51953a33e7d86fae1369a1ac62fdf106a683",
-    "src/lib/frontend-auth.ts": "ae0ab3db35de34d669c8971c1338c5d06263449a",
+    "src/lib/frontend-auth.ts": "99c6875d85af68716549c46d9e4edcad5090bc2c",
     "src/lib/schema.ts": "0d4c7e32c7d8c0b58dfcb593aa5e14283c561bd6",
     "src/server/context.ts": "153ab30dca6cc8e2377ce17e8da093ce9928fae2",
     "src/server/public-api/frontend-auth.test.ts": "37ec1bb76931e0908d503a7e8ac72a3b5e578ba1",
@@ -75,7 +75,7 @@
       "evidence": [
         {
           "path": "src/lib/frontend-auth.ts",
-          "blob": "ae0ab3db35de34d669c8971c1338c5d06263449a",
+          "blob": "99c6875d85af68716549c46d9e4edcad5090bc2c",
           "command": "Source-aware hashed seven-day frontend sessions, binding revalidation, trusted identity linking, bootstrap suppression, and explicit logout"
         },
         {
@@ -85,7 +85,7 @@
         },
         {
           "path": "src/lib/assistant-contracts.ts",
-          "blob": "6f9209c48252b2575cf662310e39d265d4060958",
+          "blob": "1a73ac705a9a86f9b7fe58febbe3379f1d47bbff",
           "command": "Shared FrontendPrincipal, source-aware sessions, conversation/message/generation/usage/quota/migration contracts"
         },
         {

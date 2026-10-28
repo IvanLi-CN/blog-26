@@ -9,7 +9,7 @@
     "drizzle/0024_ai_usage_daily_result_counts.sql": "51839b875299f08f972d16fb8c137e542ef82558",
     "drizzle/meta/0024_snapshot.json": "35b706bb2b291a762c8beabce4a50640b5f81dfe",
     "drizzle/meta/_journal.json": "e04c27d13c458128218494a878957e224c1f839c",
-    "src/lib/assistant-contracts.ts": "6f9209c48252b2575cf662310e39d265d4060958",
+    "src/lib/assistant-contracts.ts": "1a73ac705a9a86f9b7fe58febbe3379f1d47bbff",
     "src/lib/schema.ts": "0d4c7e32c7d8c0b58dfcb593aa5e14283c561bd6",
     "src/lib/ai/embeddings.ts": "2c303c131c22191e53ccc35ece864c2f1b51fbf1",
     "src/lib/ai-usage.test.ts": "0aaf770057d2de72d6f43aae6c2d03cab36be683",
