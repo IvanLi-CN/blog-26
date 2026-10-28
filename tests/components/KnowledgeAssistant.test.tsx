@@ -121,11 +121,14 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
 
     const fab = await waitFor(() => view.getByTestId("assistant-fab"));
     fireEvent.click(fab);
+    await waitFor(() => view.getAllByRole("button", { name: /general-conversation/ })[0]);
+    fireEvent.click(view.getAllByRole("button", { name: "关闭知识助手" })[1]);
+    document.dispatchEvent(new Event("astro:page-load"));
+    await waitFor(() => expect(listCalls).toBe(2));
+    fireEvent.click(fab);
     const generalButton = await waitFor(
       () => view.getAllByRole("button", { name: /general-conversation/ })[0]
     );
-
-    document.dispatchEvent(new Event("astro:page-load"));
     fireEvent.click(generalButton);
     releaseSecondList?.();
 

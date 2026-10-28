@@ -17,7 +17,7 @@
     "src/lib/web-demo-fetch.ts": "a4b598bfdefb7deaf93a44844612e7041b1256d4",
     "src/lib/web-demo-runtime.ts": "357f7cab956e9d15641e19df1193b711bd460025",
     "tests/components/ClippingDetail.test.tsx": "c0ac9ebc6a20e12fed223d7acfca0edec0ecd8e3",
-    "tests/components/KnowledgeAssistant.test.tsx": "fab3db9a601cf63fb19e08047276981f73a7b5bb",
+    "tests/components/KnowledgeAssistant.test.tsx": "268d9af3fa28273d67f8f8d3354b900170ade6b4",
     "tests/components/WebDemoIdentity.test.tsx": "59c0cb68531923f685a72c9f53ea74b803dc298a",
     "tests/lib/web-demo-boundary.test.ts": "ef61b3d36a358cbcdee648ea631c228c89d7a8ea",
     "tests/lib/web-demo-fetch.test.ts": "a65f67ddad321d2ad87e36f8579a5293f7aa7997",
@@ -104,7 +104,7 @@
         },
         {
           "path": "tests/components/KnowledgeAssistant.test.tsx",
-          "blob": "fab3db9a601cf63fb19e08047276981f73a7b5bb",
+          "blob": "268d9af3fa28273d67f8f8d3354b900170ade6b4",
           "command": "bun test focused suite: delayed list choices, idempotent draft replay migration, and empty clipping context rebinding"
         },
         {
