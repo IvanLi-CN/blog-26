@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
+  "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
   "covered_files": {
     "site/components/KnowledgeAssistant.css": "f293bf27306a83584417ad1790c6de653f7d3eff",
     "site/components/KnowledgeAssistant.tsx": "cd28da441ab4c67b5b52fea2fd3835f7cfbc49b5",
@@ -48,7 +48,7 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The candidate adds one shared assistant surface across static and dynamic public routes, a full-page /chat route, additive frontend-auth client usage, principal-scoped browser drafts and request handoff, Web Demo assistant scenes, and a shared comment identity projection. The legacy clipping live chat remains available only where explicitly enabled and is hidden on the public clipping route; no database migration or server durable assistant state shape is changed.",
+      "reasoning": "The candidate adds one shared assistant surface across static and dynamic public routes, a full-page /chat route, additive frontend-auth client usage, principal-scoped browser drafts and request handoff, Web Demo assistant scenes, and a shared comment identity projection. The legacy clipping live chat remains available in the Console runtime and is hidden only on the public assistant-owned clipping surface; no database migration or server durable assistant state shape is changed.",
       "assessed_at": "2026-10-28T02:45:15+08:00",
       "evidence": [
         {
@@ -84,7 +84,7 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "The public and Console Astro builds pass, 83 focused component/Web Demo tests pass, repository check and admin UI boundary checks pass, diff checks pass, browser smoke confirms guest draft handoff to simulated d_persona=user, and Tier4 review reports no remaining findings. Desktop/mobile immutable visual evidence covers the assistant surface; identity, responsive behavior, and legacy clipping entry compatibility remain covered by focused tests and route checks.",
+      "reasoning": "The public and Console Astro builds pass, focused component/Web Demo tests cover the assistant races and the Console clipping discussion boundary, repository check and admin UI boundary checks pass, diff checks pass, browser smoke confirms guest draft handoff to simulated d_persona=user, and Tier4 review reports no remaining findings. Desktop/mobile immutable visual evidence covers the assistant surface; identity, responsive behavior, and legacy clipping entry compatibility remain covered by focused tests and route checks.",
       "assessed_at": "2026-10-28T02:45:15+08:00",
       "evidence": [
         {
@@ -99,8 +99,13 @@
         },
         {
           "path": "tests/lib/web-demo-boundary.test.ts",
-          "blob": "ef61b3d36a358cbcdee648ea631c228c89d7a8ea",
-          "command": "bun test focused suite: one shared assistant surface, navigation race guards, no private cache data, and route boundary enforcement"
+          "blob": "35cd68854801b12bcc0e7695f600d026d475de28",
+          "command": "bun test focused suite: one shared assistant surface, navigation race guards, no private cache data, and Console clipping discussion boundary enforcement"
+        },
+        {
+          "path": "site/components/pages/memo.tsx",
+          "blob": "6a118ab9eaa648d658f5357776f898cd323577cb",
+          "command": "Console clipping keeps legacy discussion tabs while public assistant-owned routes hide the duplicate legacy chat"
         },
         {
           "path": "tests/components/KnowledgeAssistant.test.tsx",
@@ -110,7 +115,7 @@
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
           "blob": "a65f67ddad321d2ad87e36f8579a5293f7aa7997",
-          "command": "bun test focused suite: 83 tests across 11 files pass, including assistant route ownership, idempotency, deletion, cross-scene persistence, and no live fallback"
+          "command": "bun test focused suite: 50 tests across 7 files pass, including assistant route ownership, idempotency, deletion, cross-scene persistence, and no live fallback"
         },
         {
           "path": "site/components/KnowledgeAssistant.css",
@@ -157,7 +162,8 @@
         "3.9.0",
         "3.10.0",
         "3.11.3",
-        "3.11.4"
+        "3.11.4",
+        "3.11.7"
       ],
       "evidence": [
         {
@@ -176,8 +182,8 @@
       "impact": "patch",
       "applicable": true,
       "state_description": "T6 adds browser sessionStorage keys for principal-scoped assistant drafts, pending request ids, frozen new-conversation context, and login handoff. Earlier supported versions ignore these unknown keys; T6 tolerates absent keys. No SQLite schema or server durable state format changes.",
-      "readable_by_prior_versions": ["3.11.3", "3.11.4"],
-      "upgrade_from_versions": ["3.11.4"],
+      "readable_by_prior_versions": ["3.11.3", "3.11.4", "3.11.7"],
+      "upgrade_from_versions": ["3.11.4", "3.11.7"],
       "evidence": [
         {
           "path": "site/components/KnowledgeAssistant.tsx",
