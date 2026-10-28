@@ -925,15 +925,38 @@ export class ClippingService {
         ? manifest.versions.find((candidate) => candidate.id === conversation.clippingVersionId)
         : null;
       if (conversationVersion?.targetUrl !== manifest.targetUrl) continue;
-      const current =
-        conversation.clippingVersionId === version.id
-          ? conversation
-          : await this.assistantService.storage.updateConversationClippingVersion(
-              conversation.id,
-              principal.id,
-              version.id
-            );
-      if (current) return { conversation: current, manifest, version };
+      let current: typeof conversation | null = conversation;
+      for (let attempt = 0; attempt < 2 && current?.clippingVersionId !== version.id; attempt++) {
+        const updated = await this.assistantService.storage.updateConversationClippingVersion(
+          conversation.id,
+          principal.id,
+          version.id,
+          Date.now(),
+          current?.clippingVersionId
+        );
+        if (updated) {
+          current = updated;
+          break;
+        }
+        const reread = await this.assistantService.storage.getConversation(
+          conversation.id,
+          principal.id
+        );
+        const rereadVersion = reread?.clippingVersionId
+          ? manifest.versions.find((candidate) => candidate.id === reread.clippingVersionId)
+          : null;
+        if (
+          reread?.kind !== "clipping" ||
+          reread?.clippingMemoId !== memoId ||
+          rereadVersion?.targetUrl !== manifest.targetUrl
+        ) {
+          current = null;
+          break;
+        }
+        current = reread;
+      }
+      if (current?.clippingVersionId === version.id)
+        return { conversation: current, manifest, version };
     }
     return { conversation: null, manifest, version };
   }
@@ -948,11 +971,28 @@ export class ClippingService {
     if (!memoId || !versionId) throw new Error("assistant-clipping-context-unavailable");
     const id = this.known.get(memoId);
     const manifest = id ? await this.store.manifest(id) : null;
-    const version = manifest?.versions.find((candidate) => candidate.id === versionId);
+    const boundVersion = manifest?.versions.find((candidate) => candidate.id === versionId);
+    const version =
+      boundVersion && manifest?.targetUrl === boundVersion.targetUrl
+        ? (manifest.versions.find(
+            (candidate) =>
+              candidate.id === manifest.currentVersionId &&
+              candidate.targetUrl === manifest.targetUrl &&
+              Boolean(candidate.sourceHash)
+          ) ?? boundVersion)
+        : boundVersion;
     if (!manifest?.enabled || manifest.deleted || !version?.targetUrl)
       throw new Error("对话对应的文章材料已不可用。");
     if (version.targetUrl !== manifest.targetUrl)
       throw new Error("assistant-clipping-context-unavailable");
+    if (version.id !== versionId)
+      await this.assistantService.storage.updateConversationClippingVersion(
+        execution.conversation.id,
+        execution.conversation.frontendUserId,
+        version.id,
+        Date.now(),
+        versionId
+      );
     if (!db) throw new Error("assistant-clipping-context-unavailable");
     const owner = await db
       .select({ isAdmin: frontendUsers.isAdmin })
@@ -1005,11 +1045,7 @@ export class ClippingService {
       this.assertAssistantChatReady();
       await this.reconcileUnlocked(memoId);
       const binding = await this.ensureAssistantBindingCurrent(memoId, principal);
-      if (
-        expected &&
-        (binding.manifest.revision !== expected.revision ||
-          binding.manifest.targetUrl !== expected.targetUrl)
-      )
+      if (expected && binding.manifest.targetUrl !== expected.targetUrl)
         throw new ClippingTargetChangedError();
       const authored = await readAuthoredMemo(memoId);
       return this.assistantService.submit(principal, {

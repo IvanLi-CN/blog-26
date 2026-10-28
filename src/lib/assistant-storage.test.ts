@@ -609,6 +609,18 @@ describe("assistant SQLite storage", () => {
     expect(
       await storage.updateConversationClippingVersion(
         first.conversation.id,
+        "frontend-storage-clipping-owner",
+        "version-3",
+        101,
+        "version-1"
+      )
+    ).toBeNull();
+    expect(
+      await storage.getConversation(first.conversation.id, "frontend-storage-clipping-owner")
+    ).toMatchObject({ clippingVersionId: "version-2" });
+    expect(
+      await storage.updateConversationClippingVersion(
+        first.conversation.id,
         "another-owner",
         "version-3",
         101

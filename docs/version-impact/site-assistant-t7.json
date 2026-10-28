@@ -4,19 +4,23 @@
   "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
   "covered_files": {
     "scripts/start-console.ts": "f9581e191ea8cf461a2bd70d22f2a88a31298042",
-    "src/lib/assistant-contracts.ts": "24d72b23b6babf34dc7aef36d63fd946251fb8e8",
-    "src/lib/assistant-storage.test.ts": "0e84dbfa8c878a2fd9d8b8ff7ff37448ca3dfd07",
-    "src/lib/assistant-storage.ts": "ca9c8aa19909077377ef0bd72112e20cebded7a1",
-    "src/server/assistant/api.ts": "5e5c6011fa412b9a797b57b6885a4d874443c26e",
-    "src/server/assistant/runtime.test.ts": "3e0861423aa486f4dc0df92c96a4473c898eb002",
-    "src/server/assistant/runtime.ts": "4b37a3105a9b9103c88577829964adeecbb2d858",
-    "src/server/assistant/service.ts": "5eb97ba625c65fd4030cc0918833c4306b68158c",
+    "scripts/prepare-backend-dist.sh": "f3770d081a4e29cef6638c6ec9a847bb8b4c5555",
+    "src/lib/assistant-discussion-migration.ts": "bc6af326e1ebc0e6dd6a23cd32954c01ca357042",
+    "tests/lib/assistant-discussion-migration.test.ts": "73eb6cc0bee372c33e3a6b01c5632edaeae0d58a",
+    "tests/lib/playbook-workflows.test.ts": "9369fad5178f5dfaeacc6f344df75766f47e9a32",
+    "src/lib/assistant-contracts.ts": "6f9209c48252b2575cf662310e39d265d4060958",
+    "src/lib/assistant-storage.test.ts": "7c8a2de1ccf6e8a493ba4300aa69faf2fb708c50",
+    "src/lib/assistant-storage.ts": "f71be3986c49806d03aa533470ae3c95f87b70b4",
+    "src/server/assistant/api.ts": "2a0481920ded7722ab985e80d2cf594805617cc1",
+    "src/server/assistant/runtime.test.ts": "558dda3576a3528d87131e55b750ae38288538d1",
+    "src/server/assistant/runtime.ts": "92b52806701d11509e6ac1cf9d01798ba54601ab",
+    "src/server/assistant/service.ts": "29d856c5230446ce22eaf8993fbec0f68d85e03c",
     "src/server/assistant/migration-gate.ts": "6990ac6c8d5a7bcb450f6b94514e00d2084a9a5c",
     "src/server/assistant/migration-gate.test.ts": "c94e1a1cdc52ea25f153986c2ddf10fe59679a9a",
     "src/server/clipping/api.test.ts": "6bbbcb15f8c13e3eea88dd37b240a5fbe6c02db8",
-    "src/server/clipping/api.ts": "cb3482b983e90fdf74c0ec716b352b7c71746489",
+    "src/server/clipping/api.ts": "3260338463423ddb79a11a376c34598dd7487679",
     "src/server/clipping/assistant-adapter.test.ts": "71d2c8ca3e0b394f821138af6fd54cdc5611b6ef",
-    "src/server/clipping/service.ts": "71a4740187933df3b2b5154761304edc52081548",
+    "src/server/clipping/service.ts": "9140486cd8982483eaeded6da4d4fc413ed9be4a",
     "src/server/public-api/assistant-chat.test.ts": "6e16e309312be607eda9cd2ac7afbaac9eba4f80",
     "src/server/public-api/router.ts": "27516e1bb0c2d3f8cfa2d1b6e7cd030b994a661f"
   },
@@ -54,12 +58,12 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.ts",
-          "blob": "cb3482b983e90fdf74c0ec716b352b7c71746489",
+          "blob": "3260338463423ddb79a11a376c34598dd7487679",
           "command": "Uses frontend identity for clipping discussion and revalidates target/version binding"
         },
         {
           "path": "src/server/assistant/runtime.ts",
-          "blob": "4b37a3105a9b9103c88577829964adeecbb2d858",
+          "blob": "92b52806701d11509e6ac1cf9d01798ba54601ab",
           "command": "Shares one durable assistant worker and context-provider registry across Console and compiled Astro modules, with recovery, expiry, and shutdown lifecycle"
         }
       ]
@@ -86,12 +90,12 @@
         },
         {
           "path": "src/server/assistant/runtime.test.ts",
-          "blob": "3e0861423aa486f4dc0df92c96a4473c898eb002",
+          "blob": "558dda3576a3528d87131e55b750ae38288538d1",
           "command": "bun test src/server/assistant/runtime.test.ts (9 pass, 0 fail; queued work wakes before the idle expiry sweep)"
         },
         {
           "path": "src/lib/assistant-storage.test.ts",
-          "blob": "0e84dbfa8c878a2fd9d8b8ff7ff37448ca3dfd07",
+          "blob": "7c8a2de1ccf6e8a493ba4300aa69faf2fb708c50",
           "command": "bun test src/lib/assistant-storage.test.ts (10 pass, 0 fail; concurrent clipping first-turn deduplication, unified listing, and scoped request-id collision covered)"
         },
         {
@@ -154,7 +158,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.ts",
-          "blob": "cb3482b983e90fdf74c0ec716b352b7c71746489",
+          "blob": "3260338463423ddb79a11a376c34598dd7487679",
           "command": "Requires a frontend session for clipping discussion and keeps creator/admin authorization on management operations"
         }
       ]

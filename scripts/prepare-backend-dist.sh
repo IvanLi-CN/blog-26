@@ -30,6 +30,7 @@ copy_file "docker-entrypoint.sh" "${DIST_DIR}"
 copy_file "scripts/start-gateway.ts" "${DIST_DIR}/scripts"
 copy_file "scripts/start-console.ts" "${DIST_DIR}/scripts"
 copy_file "scripts/migrate.ts" "${DIST_DIR}/scripts"
+copy_file "scripts/migrate-assistant-discussions.ts" "${DIST_DIR}/scripts"
 
 copy_tree "${ROOT_DIR}/src" "${DIST_DIR}/src"
 find "${DIST_DIR}/src" -type d -name "__tests__" -prune -exec rm -rf {} +

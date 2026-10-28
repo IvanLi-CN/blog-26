@@ -10,7 +10,12 @@ import type {
 } from "@/lib/assistant-contracts";
 import { AssistantStorageError, createAssistantStorage } from "@/lib/assistant-storage";
 import { initializeDB } from "@/lib/db";
-import { type AssistantRuntime, getAssistantRuntime, startAssistantRuntime } from "./runtime";
+import {
+  type AssistantRuntime,
+  AssistantRuntimeClosedError,
+  getAssistantRuntime,
+  startAssistantRuntime,
+} from "./runtime";
 
 export class AssistantServiceError extends Error {
   constructor(
@@ -53,6 +58,41 @@ function activeJob(jobs: AssistantGenerationJob[]) {
   return jobs.find((job) => job.status === "queued" || job.status === "running") ?? null;
 }
 
+function assertRuntimeAccepting(runtime: AssistantRuntime) {
+  try {
+    runtime.assertAccepting();
+  } catch (error) {
+    if (error instanceof AssistantRuntimeClosedError)
+      throw new AssistantServiceError("conflict", "Assistant runtime is stopping");
+    throw error;
+  }
+}
+
+function resolveConversationInput(
+  conversation: AssistantConversation | null,
+  input: Omit<SubmitAssistantTurnInput, "frontendUserId" | "isAdmin">
+) {
+  if (!conversation) return input;
+  if (input.kind !== undefined && input.kind !== conversation.kind)
+    throw new AssistantServiceError("conflict", "Assistant conversation scope changed");
+  if (
+    input.clippingMemoId !== undefined &&
+    (input.clippingMemoId ?? null) !== conversation.clippingMemoId
+  )
+    throw new AssistantServiceError("conflict", "Assistant conversation scope changed");
+  if (
+    input.clippingVersionId !== undefined &&
+    (input.clippingVersionId ?? null) !== conversation.clippingVersionId
+  )
+    throw new AssistantServiceError("conflict", "Assistant conversation scope changed");
+  return {
+    ...input,
+    kind: conversation.kind,
+    clippingMemoId: conversation.clippingMemoId,
+    clippingVersionId: conversation.clippingVersionId,
+  };
+}
+
 export class AssistantService {
   readonly storage: AssistantMessageStorage;
   readonly runtime: AssistantRuntime;
@@ -66,19 +106,33 @@ export class AssistantService {
     principal: FrontendPrincipal,
     input: Omit<SubmitAssistantTurnInput, "frontendUserId" | "isAdmin">
   ) {
+    assertRuntimeAccepting(this.runtime);
+    try {
+      await this.runtime.start();
+    } catch (error) {
+      if (error instanceof AssistantRuntimeClosedError)
+        throw new AssistantServiceError("conflict", "Assistant runtime is stopping");
+      throw error;
+    }
+    const conversation = input.conversationId
+      ? await this.storage.getConversation(input.conversationId, principal.id)
+      : null;
+    if (input.conversationId && !conversation)
+      throw new AssistantServiceError("not-found", "Assistant conversation not found");
+    const resolvedInput = resolveConversationInput(conversation, input);
     let submission: AssistantTurnSubmission | null;
     const findExisting = async () => {
       try {
         return await this.storage.findIdempotentTurn(
           principal.id,
-          input.requestId,
-          input.clientRequestId,
-          input.conversationId,
+          resolvedInput.requestId,
+          resolvedInput.clientRequestId,
+          resolvedInput.conversationId,
           Date.now(),
           {
-            kind: input.kind,
-            clippingMemoId: input.clippingMemoId,
-            clippingVersionId: input.clippingVersionId,
+            kind: resolvedInput.kind,
+            clippingMemoId: resolvedInput.clippingMemoId,
+            clippingVersionId: resolvedInput.clippingVersionId,
           }
         );
       } catch (error) {
@@ -101,7 +155,7 @@ export class AssistantService {
     if (!submission) {
       try {
         submission = await this.storage.submitTurn({
-          ...input,
+          ...resolvedInput,
           frontendUserId: principal.id,
           isAdmin: principal.isAdmin,
         });
@@ -109,7 +163,7 @@ export class AssistantService {
         translateStorageError(error);
       }
     }
-    await this.runtime.start();
+    assertRuntimeAccepting(this.runtime);
     this.runtime.enqueue();
     return {
       status: "queued" as const,

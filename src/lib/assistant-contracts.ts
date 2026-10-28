@@ -319,7 +319,8 @@ export type AssistantMessageStorage = {
     conversationId: string,
     frontendUserId: string,
     clippingVersionId: string,
-    now?: number
+    now?: number,
+    expectedClippingVersionId?: string | null
   ): Promise<AssistantConversation | null>;
   appendMessage(input: AppendAssistantMessageInput): Promise<AssistantMessage>;
   listMessages(conversationId: string, frontendUserId: string): Promise<AssistantMessage[]>;

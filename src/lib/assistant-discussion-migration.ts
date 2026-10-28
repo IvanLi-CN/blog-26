@@ -578,17 +578,15 @@ function appendReference(
   reference: DiscussionReference
 ) {
   const existing = references.get(reference.sourceConversationId) ?? [];
-  if (
-    !existing.some(
-      (candidate) =>
-        candidate.memoId === reference.memoId &&
-        candidate.referenceKind === reference.referenceKind &&
-        candidate.targetUrl === reference.targetUrl &&
-        candidate.clippingVersionId === reference.clippingVersionId
-    )
-  ) {
-    existing.push(reference);
-  }
+  const duplicate = existing.find(
+    (candidate) =>
+      candidate.memoId === reference.memoId &&
+      candidate.referenceKind === reference.referenceKind &&
+      candidate.targetUrl === reference.targetUrl &&
+      candidate.clippingVersionId === reference.clippingVersionId
+  );
+  if (duplicate) duplicate.processing ||= reference.processing;
+  else existing.push(reference);
   references.set(reference.sourceConversationId, existing);
 }
 
@@ -638,6 +636,21 @@ function readReferenceData(target: Database): ReferenceData {
           .find((version) => version.id === manifest.activeVersionId)
       : undefined;
     const manifestProcessing = versionProcessing(activeVersion);
+    for (const version of Array.isArray(manifest.versions)
+      ? manifest.versions.filter(isObject)
+      : []) {
+      const jobConversationId = numericConversationId(version.jobConversationId);
+      if (jobConversationId === null) continue;
+      appendReference(references, {
+        sourceConversationId: jobConversationId,
+        memoId,
+        creatorId,
+        targetUrl: asString(version.targetUrl) ?? targetUrl,
+        clippingVersionId: asString(version.id),
+        referenceKind: "legacy-target",
+        processing: versionProcessing(version),
+      });
+    }
     if (currentConversationId !== null) {
       appendReference(references, {
         sourceConversationId: currentConversationId,

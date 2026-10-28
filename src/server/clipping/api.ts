@@ -183,16 +183,31 @@ async function frontendPrincipal(request: Request) {
 
 function mapAssistantSnapshot(snapshot: AssistantSnapshot | null) {
   if (!snapshot)
-    return { messages: [], generating: false, partial: "", conversationId: null, error: null };
+    return {
+      messages: [],
+      generating: false,
+      partial: "",
+      conversationId: null,
+      error: null,
+      errorCode: null,
+    };
   const active = snapshot.activeGenerationJob;
   const partial = active?.assistantMessageId
     ? (snapshot.messages.find((message) => message.id === active.assistantMessageId)?.content ?? "")
     : "";
+  const latestJob = snapshot.generationJobs.at(-1);
+  const publicError =
+    latestJob && (latestJob.status === "failed" || latestJob.status === "cancelled")
+      ? latestJob.status === "cancelled"
+        ? { code: "cancelled", message: "已停止生成" }
+        : { code: "generation-failed", message: "生成失败，请稍后重试" }
+      : null;
   return {
     messages: snapshot.messages
       .filter(
         (message) =>
           (message.role === "user" || message.role === "assistant") &&
+          message.id !== active?.assistantMessageId &&
           message.status !== "pending" &&
           message.status !== "streaming" &&
           (message.role === "user" || Boolean(message.content.trim()))
@@ -202,16 +217,13 @@ function mapAssistantSnapshot(snapshot: AssistantSnapshot | null) {
         role: message.role,
         text: message.content,
         timestamp: message.createdAt,
+        status: message.status,
       })),
     generating: Boolean(active),
     partial,
     conversationId: snapshot.conversation.id,
-    error:
-      active?.status === "failed"
-        ? active.errorCode
-        : snapshot.generationJobs.at(-1)?.status === "failed"
-          ? (snapshot.generationJobs.at(-1)?.errorCode ?? null)
-          : null,
+    error: publicError?.message ?? null,
+    errorCode: publicError?.code ?? null,
   };
 }
 
@@ -233,7 +245,7 @@ async function revalidateDiscussion(
   discussionPrincipal: FrontendPrincipal | null = null
 ) {
   const current = currentDiscussion(await access(slug, ctx, false, discussionPrincipal));
-  if (current.id !== expected.id || current.revision !== expected.revision)
+  if (current.id !== expected.id || current.targetUrl !== expected.targetUrl)
     throw new TRPCError({ code: "CONFLICT", message: "剪藏目标已变化，请重新打开对话。" });
 }
 
@@ -409,12 +421,7 @@ async function routeClippingRequest(
                 const snapshot = await service.assistantSnapshot(current.row.id, principal);
                 if (!snapshot) break;
                 const after = currentDiscussion(await access(slug, ctx, false, principal));
-                if (
-                  after.id !== before.id ||
-                  after.revision !== before.revision ||
-                  after.targetUrl !== before.targetUrl
-                )
-                  break;
+                if (after.id !== before.id || after.targetUrl !== before.targetUrl) break;
                 await frontendPrincipal(request);
                 if (cancelled || request.signal.aborted) break;
                 const data = JSON.stringify(mapAssistantSnapshot(snapshot));

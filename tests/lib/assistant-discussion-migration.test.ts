@@ -837,6 +837,24 @@ describe("assistant discussion migration", () => {
     try {
       const targetPath = createTarget(directory);
       const piPath = createPi(directory);
+      const source = new Database(piPath);
+      source
+        .query(
+          "INSERT INTO conversations (id, record, owner_conversation_id, owner_task_id) VALUES (?, ?, ?, ?)"
+        )
+        .run(3, '{"id":3,"ownership":{"kind":"ownerless"}}', null, null);
+      source
+        .query(
+          "INSERT INTO entries (id, conversation_id, head, commit_seq, record) VALUES (?, ?, ?, ?, ?)"
+        )
+        .run(
+          31,
+          3,
+          null,
+          7,
+          '{"id":31,"conversationId":3,"kind":"pi.user","model":[{"role":"user","content":"Processing question","timestamp":1200}]}'
+        );
+      source.close();
       const target = new Database(targetPath);
       target
         .query(
@@ -878,6 +896,7 @@ describe("assistant discussion migration", () => {
                 status: "processing",
                 summaryState: "pending",
                 translationState: "pending",
+                jobConversationId: "3",
               },
             ],
           }),
@@ -896,7 +915,7 @@ describe("assistant discussion migration", () => {
       });
       expect(report.status).toBe("complete");
       expect(report.cleanup.removed).toEqual([]);
-      expect(report.cleanup.skipped).toHaveLength(2);
+      expect(report.cleanup.skipped).toHaveLength(3);
       expect(report.cleanup.skipped.every((item) => item.reason === "clipping-processing")).toBe(
         true
       );
@@ -908,14 +927,15 @@ describe("assistant discussion migration", () => {
         )
         .all()
         .map((row) => row.clipping_version_id);
-      expect(clippingVersionIds).toHaveLength(2);
-      expect(clippingVersionIds.every((versionId) => versionId === null)).toBe(true);
+      expect(clippingVersionIds).toHaveLength(3);
+      expect(clippingVersionIds.filter((versionId) => versionId === null)).toHaveLength(2);
+      expect(clippingVersionIds).toContain("version-processing");
       migrated.close();
-      const source = new Database(piPath);
-      expect(source.query("SELECT COUNT(*) AS count FROM conversations").get()).toEqual({
-        count: 2,
+      const remainingSource = new Database(piPath);
+      expect(remainingSource.query("SELECT COUNT(*) AS count FROM conversations").get()).toEqual({
+        count: 3,
       });
-      source.close();
+      remainingSource.close();
     } finally {
       fs.rmSync(directory, { recursive: true, force: true });
     }

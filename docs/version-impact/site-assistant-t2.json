@@ -9,7 +9,7 @@
     "drizzle/0024_ai_usage_daily_result_counts.sql": "51839b875299f08f972d16fb8c137e542ef82558",
     "drizzle/meta/0024_snapshot.json": "35b706bb2b291a762c8beabce4a50640b5f81dfe",
     "drizzle/meta/_journal.json": "e04c27d13c458128218494a878957e224c1f839c",
-    "src/lib/assistant-contracts.ts": "24d72b23b6babf34dc7aef36d63fd946251fb8e8",
+    "src/lib/assistant-contracts.ts": "6f9209c48252b2575cf662310e39d265d4060958",
     "src/lib/schema.ts": "0d4c7e32c7d8c0b58dfcb593aa5e14283c561bd6",
     "src/lib/ai/embeddings.ts": "2c303c131c22191e53ccc35ece864c2f1b51fbf1",
     "src/lib/ai-usage.test.ts": "0aaf770057d2de72d6f43aae6c2d03cab36be683",
@@ -20,7 +20,7 @@
     "src/server/admin-api/router.ts": "d3033c0d6dfb96c10cd6135de88b208e79883ea0",
     "src/server/ai/icon-reranker.ts": "9b19608a004d6fd53a9ecb47e3bf0df8ba13b629",
     "src/server/clipping/agent-runtime.ts": "6b9991ca7b0515b425d4df45ce53d63f04cc502d",
-    "src/server/clipping/service.ts": "71a4740187933df3b2b5154761304edc52081548",
+    "src/server/clipping/service.ts": "9140486cd8982483eaeded6da4d4fc413ed9be4a",
     "src/server/jobs/definitions.ts": "b12ca785af83539ee22b1d8f11b27444e7e57d13",
     "src/server/jobs/index.ts": "96547ef6235a05d079a5c592fba7bdc44ac23ddd",
     "src/server/jobs/runtime.ts": "d6ef29d77b742b2ca00025717612dadbb307d743",
@@ -256,7 +256,7 @@
         },
         {
           "path": "src/server/clipping/service.ts",
-          "blob": "71a4740187933df3b2b5154761304edc52081548",
+          "blob": "9140486cd8982483eaeded6da4d4fc413ed9be4a",
           "command": "Existing clipping conversation and lifecycle responses remain unchanged"
         }
       ]

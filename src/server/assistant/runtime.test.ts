@@ -173,6 +173,78 @@ describe("assistant runtime", () => {
     await runtime.stop();
   });
 
+  it("replays an existing clipping turn through the generic service scope", async () => {
+    await addUser("assistant-runtime-clipping-owner");
+    const storage = createAssistantStorage(database);
+    const runtime = createAssistantRuntimeForTest({
+      storage,
+      pumpDelayMs: 0,
+      generate: async () => ({ content: "clipping answer", citations: [] }),
+    });
+    const service = createAssistantServiceForTest({ storage, runtime });
+    const principal = {
+      id: "assistant-runtime-clipping-owner",
+      kind: "reader" as const,
+      isAdmin: true,
+      displayName: "Clipping Owner",
+      email: null,
+      avatarUrl: "/site-assets/default-avatar.svg",
+      profileUrl: null,
+      adminUserId: null,
+      readerId: "assistant-runtime-clipping-owner",
+      github: null,
+    } satisfies FrontendPrincipal;
+    const first = await service.submit(principal, {
+      requestId: "generic-clipping-turn",
+      content: "Question about the clipping",
+      kind: "clipping",
+      clippingMemoId: "memo.md",
+      clippingVersionId: "version-1",
+    });
+    await waitFor(
+      async () =>
+        (await storage.getGenerationJob(first.turnId, principal.id))?.status === "completed"
+    );
+    const replay = await service.submit(principal, {
+      conversationId: first.conversationId,
+      requestId: "generic-clipping-turn",
+      content: "Question about the clipping",
+    });
+    expect(replay).toMatchObject({
+      conversationId: first.conversationId,
+      turnId: first.turnId,
+    });
+    expect((await storage.listMessages(first.conversationId, principal.id)).length).toBe(2);
+    await runtime.stop();
+  });
+
+  it("rejects new submissions after runtime shutdown begins", async () => {
+    await addUser("assistant-runtime-shutdown-owner");
+    const storage = createAssistantStorage(database);
+    const runtime = createAssistantRuntimeForTest({ storage });
+    const service = createAssistantServiceForTest({ storage, runtime });
+    const principal = {
+      id: "assistant-runtime-shutdown-owner",
+      kind: "reader" as const,
+      isAdmin: false,
+      displayName: "Shutdown Owner",
+      email: null,
+      avatarUrl: "/site-assets/default-avatar.svg",
+      profileUrl: null,
+      adminUserId: null,
+      readerId: "assistant-runtime-shutdown-owner",
+      github: null,
+    } satisfies FrontendPrincipal;
+    await runtime.start();
+    await runtime.stop();
+    await expect(
+      service.submit(principal, {
+        requestId: "after-shutdown",
+        content: "This must be rejected",
+      })
+    ).rejects.toMatchObject({ code: "conflict" });
+  });
+
   it("marks provider failures as terminal without retrying the job", async () => {
     await addUser("assistant-runtime-failure-owner");
     const storage = createAssistantStorage(database);

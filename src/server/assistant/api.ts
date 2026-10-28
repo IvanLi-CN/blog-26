@@ -3,6 +3,7 @@ import type { AssistantGenerationJob, FrontendPrincipal } from "@/lib/assistant-
 import { initializeDB } from "@/lib/db";
 import { getFrontendPrincipalFromRequest } from "@/lib/frontend-auth";
 import { appendPublicCorsHeaders, hasTrustedPublicOrigin } from "@/lib/public-cors";
+import { AssistantRuntimeClosedError } from "./runtime";
 import { type AssistantService, AssistantServiceError, getAssistantService } from "./service";
 
 const PUBLIC_API_ALLOWED_METHODS = ["GET", "HEAD", "POST", "PATCH", "DELETE", "OPTIONS"] as const;
@@ -62,6 +63,8 @@ function methodNotAllowed(request: Request) {
 
 function routeError(error: unknown): AssistantApiError {
   if (error instanceof AssistantApiError) return error;
+  if (error instanceof AssistantRuntimeClosedError)
+    return new AssistantApiError(409, "CONFLICT", "Assistant runtime is stopping");
   if (error instanceof AssistantServiceError) {
     const status =
       error.code === "not-found"

@@ -460,7 +460,8 @@ export function createAssistantStorage(
       conversationId: string,
       frontendUserId: string,
       clippingVersionId: string,
-      now = Date.now()
+      now = Date.now(),
+      expectedClippingVersionId?: string | null
     ) {
       const database = await getDatabase();
       return database.transaction(
@@ -471,6 +472,13 @@ export function createAssistantStorage(
             setConversationTerminal(tx, conversationId, "expired", now);
             return null;
           }
+          if (
+            expectedClippingVersionId !== undefined &&
+            conversation.clippingVersionId !== expectedClippingVersionId
+          )
+            return conversation.clippingVersionId === clippingVersionId
+              ? mapConversation(conversation)
+              : null;
           tx.update(assistantConversations)
             .set({ clippingVersionId })
             .where(eq(assistantConversations.id, conversationId))

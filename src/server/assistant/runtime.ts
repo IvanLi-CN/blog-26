@@ -74,6 +74,13 @@ if (!assistantRuntimeState) {
 }
 const contextProviders = assistantRuntimeState.contextProviders;
 
+export class AssistantRuntimeClosedError extends Error {
+  constructor() {
+    super("Assistant runtime is stopping");
+    this.name = "AssistantRuntimeClosedError";
+  }
+}
+
 export function registerAssistantContextProvider(
   kind: AssistantConversationKind,
   provider: AssistantContextProvider
@@ -425,6 +432,7 @@ export class AssistantRuntime {
   private pumpTask: Promise<void> | null = null;
   private readonly controllers = new Map<string, AbortController>();
   private readonly processing = new Set<Promise<void>>();
+  private acceptingSubmissions = true;
 
   constructor(options: AssistantRuntimeOptions = {}) {
     this.storage = options.storage ?? createAssistantStorage(options.database);
@@ -437,6 +445,7 @@ export class AssistantRuntime {
   }
 
   async start() {
+    this.assertAccepting();
     if (this.started && !this.stopped) return;
     this.started = true;
     this.stopped = false;
@@ -446,12 +455,17 @@ export class AssistantRuntime {
     this.schedule(0);
   }
 
+  assertAccepting() {
+    if (!this.acceptingSubmissions) throw new AssistantRuntimeClosedError();
+  }
+
   enqueue() {
     if (!this.started || this.stopped) return;
     this.schedule(this.pumpDelayMs, true);
   }
 
   async stop() {
+    this.acceptingSubmissions = false;
     this.stopped = true;
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;

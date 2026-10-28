@@ -5,11 +5,11 @@
   "covered_files": {
     "drizzle/0023_assistant_discussion_migration.sql": "2ac1b5b2adc42262ce390a96bafcd2a843a98e11",
     "drizzle/meta/_journal.json": "e04c27d13c458128218494a878957e224c1f839c",
-    "src/lib/assistant-discussion-migration.ts": "6ca8057e5532ff295735a3cfe70508c8945d6374",
+    "src/lib/assistant-discussion-migration.ts": "bc6af326e1ebc0e6dd6a23cd32954c01ca357042",
     "scripts/migrate-assistant-discussions.ts": "6593074ba3ea86fecbbebd5d6402ba9d1341c13b",
     "tests/fixtures/site-assistant-pi-discussions.sql": "2fddf6aee5f2a93c6aaf01aab72d46c7b3dda192",
     "tests/fixtures/site-assistant-pi-legacy.sql": "a72f15d97409907aa9127022c2201be2414bb52c",
-    "tests/lib/assistant-discussion-migration.test.ts": "052f7daf114d5cc701d320c5fec9ef7e3b34e1b3",
+    "tests/lib/assistant-discussion-migration.test.ts": "73eb6cc0bee372c33e3a6b01c5632edaeae0d58a",
     "tests/server/system-share-api.test.ts": "737e9f8f4cedf53ffddc4a4a47abf96a3aba7b4c",
     "docs/runbooks/site-assistant-discussion-migration.md": "7f6b6975cf074ecb085affcfe9b6bd0f4ff297bc",
     "package.json": "3d0e64c848f06801f9746e3d3cea091ff9929b73"
@@ -44,7 +44,7 @@
       "evidence": [
         {
           "path": "src/lib/assistant-discussion-migration.ts",
-          "blob": "6ca8057e5532ff295735a3cfe70508c8945d6374",
+          "blob": "bc6af326e1ebc0e6dd6a23cd32954c01ca357042",
           "command": "Read-only planning, deterministic identity mapping, per-conversation transactions, source-hash ledgering for every entry, raw quarantine, backup manifests, interruption-safe resume, stable target binding for same-URL clipping-version transitions, preserved bindings on conflicts, matching-current reading context, verification-gated cleanup, active-version and runtime/task protection"
         },
         {
@@ -70,12 +70,12 @@
       "evidence": [
         {
           "path": "tests/lib/assistant-discussion-migration.test.ts",
-          "blob": "052f7daf114d5cc701d320c5fec9ef7e3b34e1b3",
+          "blob": "73eb6cc0bee372c33e3a6b01c5632edaeae0d58a",
           "command": "bun test --timeout 15000 --isolate tests/lib/assistant-discussion-migration.test.ts (12 pass, 0 fail, 100 expectations)"
         },
         {
           "path": "src/lib/assistant-discussion-migration.ts",
-          "blob": "6ca8057e5532ff295735a3cfe70508c8945d6374",
+          "blob": "bc6af326e1ebc0e6dd6a23cd32954c01ca357042",
           "command": "bun test --timeout 15000 --isolate src/lib/assistant-contracts.test.ts src/lib/assistant-storage.test.ts tests/lib/site-assistant-migration.test.ts src/server/clipping/agent-runtime.test.ts src/server/clipping/service.test.ts tests/lib/assistant-discussion-migration.test.ts tests/server/system-share-api.test.ts (72 pass, 0 fail, 333 expectations)"
         },
         {
@@ -138,7 +138,7 @@
       "evidence": [
         {
           "path": "src/lib/assistant-discussion-migration.ts",
-          "blob": "6ca8057e5532ff295735a3cfe70508c8945d6374",
+          "blob": "bc6af326e1ebc0e6dd6a23cd32954c01ca357042",
           "command": "Offline migration module has no public HTTP route or runtime cutover; its additive storage and CLI changes remain compatible with the existing consumer version matrix"
         }
       ]
@@ -225,7 +225,7 @@
         },
         {
           "path": "tests/lib/assistant-discussion-migration.test.ts",
-          "blob": "052f7daf114d5cc701d320c5fec9ef7e3b34e1b3",
+          "blob": "73eb6cc0bee372c33e3a6b01c5632edaeae0d58a",
           "command": "Fixture tests verify backup creation, resumable idempotence, same-target reprocessing through a completed current-version transition, temporary attribution quarantine restoration, stable source/target binding, different-target isolation, partial settlement, source preservation on unsafe cleanup, and legacy schema compatibility"
         }
       ]
