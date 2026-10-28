@@ -42,7 +42,7 @@ VER-SKA-001–008 均有对应确定性测试和正式路由 Web Demo 场景；�
 - `bun run check`: pass (1022 files; 29 warnings and 13 infos already present in the candidate, no errors) after removing only the VM sync metadata file from the source tree.
 - `bun run test:admin-ui`: pass (3 tests, 6 expectations).
 - `bun run db:migrations:validate`: pass; the Drizzle journal remains strictly increasing and unchanged.
-- `bun run test`: 1567 passed and 6 failed in the full VM run. The remaining failures are unrelated baseline/environment cases: two HTTP compatibility rollback tests, release provenance without a transferred `.git` directory, two persistent-Tantivy fault-injection tests, and one interrupted-RAG timeout. The T8 focused contract/privacy/assistant batch passes 90/90 tests (472 expectations).
+- `bun run test`: 1567 passed and 6 failed in the full VM run. The remaining failures are unrelated baseline/environment cases: two HTTP compatibility rollback tests, release provenance without a transferred `.git` directory, two persistent-Tantivy fault-injection tests, and one interrupted-RAG timeout. The T8 focused contract/privacy/assistant batch passes 90/90 tests (480 expectations).
 - `bun run build`: pass with the CI-equivalent fixture database/local content and explicit release metadata; no production credentials or provider call were used.
 - `bun run web-demo:build`: pass; public site, Console, and admin Demo artifacts were produced.
 - Assistant E2E: pass on desktop and mobile (2/2 each); dual-origin frontend identity, static privacy/boundary checks, and migration/compatibility tests pass. Controlled screenshots are recorded for 1440×1000 desktop and 393×852 mobile viewports.

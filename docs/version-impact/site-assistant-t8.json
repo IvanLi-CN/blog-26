@@ -9,10 +9,10 @@
     "docs/specs/memo-clipping/HISTORY.md": "8faf0e9c11c43148681cdf57203409803e9ba7da",
     "docs/specs/memo-clipping/IMPLEMENTATION.md": "353649726cd62dd1ca2b88772b642b6796b43560",
     "docs/specs/site-knowledge-assistant/HISTORY.md": "3cccc3269def799be880248445303a9198b0d60d",
-    "docs/specs/site-knowledge-assistant/IMPLEMENTATION.md": "543f6b885cd9484ed336ea268176ce888a3dd3e2",
+    "docs/specs/site-knowledge-assistant/IMPLEMENTATION.md": "ab51410ada40fd85aafadd7fbcbfc9251e402c4d",
     "docs/specs/site-knowledge-assistant/SPEC.md": "8c65ecb350cd07a924facc9804a9749eab6aae73",
-    "src/server/public-api/frontend-auth.test.ts": "6045e9db7f0046f6a19f0cd6609d37d492dec931",
-    "src/server/public-api/router.ts": "2658426b7aae466bb75ec7445d0289094b184620",
+    "src/server/public-api/frontend-auth.test.ts": "aecc0171f593b9fa7ec320dc133076a575a2ad13",
+    "src/server/public-api/router.ts": "355b00504c7b52d5e3e9a6d32a7d9706f260fa22",
     "tests/e2e/web-demo/assistant.spec.ts": "19a3c9cc7a420ad8ee18b482bf2ac5494d041226",
     "drizzle/meta/_journal.json": "e04c27d13c458128218494a878957e224c1f839c"
   },
@@ -50,12 +50,12 @@
       "evidence": [
         {
           "path": "src/server/public-api/router.ts",
-          "blob": "2658426b7aae466bb75ec7445d0289094b184620",
+          "blob": "355b00504c7b52d5e3e9a6d32a7d9706f260fa22",
           "command": "Forwards all Set-Cookie values from a response header collection without collapsing the frontend session and CSRF cookies"
         },
         {
           "path": "src/server/public-api/frontend-auth.test.ts",
-          "blob": "6045e9db7f0046f6a19f0cd6609d37d492dec931",
+          "blob": "aecc0171f593b9fa7ec320dc133076a575a2ad13",
           "command": "Covers public-origin bootstrap, Console-origin session continuity, logout cookie attributes, and rejection of an unconfigured origin"
         },
         {
@@ -65,7 +65,7 @@
         },
         {
           "path": "docs/specs/site-knowledge-assistant/IMPLEMENTATION.md",
-          "blob": "543f6b885cd9484ed336ea268176ce888a3dd3e2",
+          "blob": "ab51410ada40fd85aafadd7fbcbfc9251e402c4d",
           "command": "Records REQ-SKA-001–022 coverage, exact T8 gate outcomes, visual evidence source, and remaining real-provider/OAuth/production gates"
         }
       ]
@@ -77,13 +77,13 @@
       "evidence": [
         {
           "path": "docs/specs/site-knowledge-assistant/IMPLEMENTATION.md",
-          "blob": "543f6b885cd9484ed336ea268176ce888a3dd3e2",
+          "blob": "ab51410ada40fd85aafadd7fbcbfc9251e402c4d",
           "command": "bun run check (pass, 1022 files; warnings/infos only); bun run test:admin-ui (3 pass); bun run db:migrations:validate (pass); bun run build (pass with CI-equivalent fixture metadata); bun run web-demo:build (pass)"
         },
         {
           "path": "src/server/public-api/frontend-auth.test.ts",
-          "blob": "6045e9db7f0046f6a19f0cd6609d37d492dec931",
-          "command": "Focused T8 assistant/API/privacy batch: bun test --isolate ... (90 pass, 0 fail, 472 expectations)"
+          "blob": "aecc0171f593b9fa7ec320dc133076a575a2ad13",
+          "command": "Focused T8 assistant/API/privacy batch: bun test --isolate ... (90 pass, 0 fail, 480 expectations)"
         },
         {
           "path": "tests/e2e/web-demo/assistant.spec.ts",
@@ -105,12 +105,12 @@
       "evidence": [
         {
           "path": "src/server/public-api/router.ts",
-          "blob": "2658426b7aae466bb75ec7445d0289094b184620",
+          "blob": "355b00504c7b52d5e3e9a6d32a7d9706f260fa22",
           "command": "Preserves every upstream Set-Cookie value while retaining existing status, body, and non-cookie header behavior"
         },
         {
           "path": "src/server/public-api/frontend-auth.test.ts",
-          "blob": "6045e9db7f0046f6a19f0cd6609d37d492dec931",
+          "blob": "aecc0171f593b9fa7ec320dc133076a575a2ad13",
           "command": "Verifies frontend session continuity across configured public and Console origins and rejects an unconfigured origin"
         }
       ]

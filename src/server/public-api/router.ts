@@ -272,11 +272,14 @@ function json(request: Request, data: unknown, init: ResponseInit = {}, extraHea
   if (extraHeaders) {
     const setCookies =
       typeof extraHeaders.getSetCookie === "function" ? extraHeaders.getSetCookie() : null;
+    let copiedSetCookies = false;
     for (const [key, value] of extraHeaders.entries()) {
       if (key.toLowerCase() === "set-cookie") {
+        if (copiedSetCookies) continue;
         for (const cookie of setCookies?.length ? setCookies : [value]) {
           headers.append(key, cookie);
         }
+        copiedSetCookies = true;
       } else {
         headers.set(key, value);
       }

@@ -17,6 +17,10 @@ const originalPublicSiteUrl = process.env.PUBLIC_SITE_URL;
 const originalPublicCorsAllowedOrigins = process.env.PUBLIC_CORS_ALLOWED_ORIGINS;
 const adminEmail = "public-frontend-admin@test.local";
 
+function cookieNames(cookies: string[]) {
+  return cookies.map((cookie) => cookie.slice(0, cookie.indexOf("=")));
+}
+
 function request(pathname: string, options: RequestInit = {}) {
   return new Request(`http://localhost/api/public${pathname}`, {
     ...options,
@@ -75,8 +79,10 @@ describe("public frontend auth routes", () => {
       authenticated: true,
       principal: { kind: "admin", avatarUrl: "/site-assets/avatar.jpg" },
     });
-    const sessionCookie = bootstrap.headers
-      .getSetCookie()
+    const bootstrapCookies = bootstrap.headers.getSetCookie();
+    expect(bootstrapCookies).toHaveLength(2);
+    expect(cookieNames(bootstrapCookies)).toEqual(["frontend_session_id", "frontend_logout"]);
+    const sessionCookie = bootstrapCookies
       .find((cookie) => cookie.startsWith("frontend_session_id="))
       ?.split(";", 1)[0];
     expect(sessionCookie).toBeTruthy();
@@ -96,7 +102,10 @@ describe("public frontend auth routes", () => {
       "/frontend-auth/logout"
     );
     expect(logout.status).toBe(200);
-    expect(logout.headers.get("set-cookie")).toContain("frontend_logout=1");
+    const logoutCookies = logout.headers.getSetCookie();
+    expect(logoutCookies).toHaveLength(2);
+    expect(cookieNames(logoutCookies)).toEqual(["frontend_session_id", "frontend_logout"]);
+    expect(logoutCookies[1]).toContain("frontend_logout=1");
   });
 
   it("keeps frontend identity across configured public and Console origins", async () => {
@@ -114,12 +123,14 @@ describe("public frontend auth routes", () => {
       "/frontend-auth/bootstrap"
     );
     expect(bootstrap.status).toBe(200);
-    const sessionCookie = bootstrap.headers
-      .getSetCookie()
+    const bootstrapCookies = bootstrap.headers.getSetCookie();
+    expect(bootstrapCookies).toHaveLength(2);
+    expect(cookieNames(bootstrapCookies)).toEqual(["frontend_session_id", "frontend_logout"]);
+    const sessionCookie = bootstrapCookies
       .find((cookie) => cookie.startsWith("frontend_session_id="))
       ?.split(";", 1)[0];
     expect(sessionCookie).toBeTruthy();
-    expect(bootstrap.headers.get("set-cookie")).toContain("SameSite=Lax");
+    expect(bootstrapCookies[0]).toContain("SameSite=Lax");
 
     const consoleMe = await handlePublicApiRequest(
       new Request("https://console.example.test/api/public/frontend-auth/me", {
@@ -147,8 +158,11 @@ describe("public frontend auth routes", () => {
       "/frontend-auth/logout"
     );
     expect(consoleLogout.status).toBe(200);
-    expect(consoleLogout.headers.get("set-cookie")).toContain("SameSite=None");
-    expect(consoleLogout.headers.get("set-cookie")).toContain("Secure");
+    const consoleLogoutCookies = consoleLogout.headers.getSetCookie();
+    expect(consoleLogoutCookies).toHaveLength(2);
+    expect(cookieNames(consoleLogoutCookies)).toEqual(["frontend_session_id", "frontend_logout"]);
+    expect(consoleLogoutCookies[0]).toContain("SameSite=None");
+    expect(consoleLogoutCookies[0]).toContain("Secure");
 
     const rejected = await handlePublicApiRequest(
       new Request("https://console.example.test/api/public/frontend-auth/bootstrap", {
