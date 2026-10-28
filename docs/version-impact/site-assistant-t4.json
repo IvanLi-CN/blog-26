@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
+  "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
   "covered_files": {
     "drizzle/0025_assistant_message_citations.sql": "1507cf1b94ed1c7a864d2033e4d259df905f6307",
     "drizzle/meta/0025_snapshot.json": "ba6c77a82ac2a462ac04f042c9bf3e8bc7252a7f",
@@ -16,10 +16,10 @@
     "src/lib/assistant-storage.ts": "f71be3986c49806d03aa533470ae3c95f87b70b4",
     "src/lib/db.ts": "4f264eaef16da3746ec5a0aa7d4af047550e7955",
     "src/lib/schema.ts": "0d4c7e32c7d8c0b58dfcb593aa5e14283c561bd6",
-    "src/server/assistant/api.ts": "2a0481920ded7722ab985e80d2cf594805617cc1",
-    "src/server/assistant/runtime.test.ts": "558dda3576a3528d87131e55b750ae38288538d1",
-    "src/server/assistant/runtime.ts": "92b52806701d11509e6ac1cf9d01798ba54601ab",
-    "src/server/assistant/service.ts": "29d856c5230446ce22eaf8993fbec0f68d85e03c",
+    "src/server/assistant/api.ts": "e470a31c83d3d8b5caa27875cc387e3bd20b3619",
+    "src/server/assistant/runtime.test.ts": "bf0054ab994c6f2b451f364542df22cbb8875e2e",
+    "src/server/assistant/runtime.ts": "30d3e06064302f1fecac57edc30c10803ba037d1",
+    "src/server/assistant/service.ts": "d1e1c4bd189d3410b25a40a0e018df187b41caf5",
     "src/server/public-api/assistant-chat.test.ts": "6e16e309312be607eda9cd2ac7afbaac9eba4f80",
     "src/server/public-api/router.ts": "27516e1bb0c2d3f8cfa2d1b6e7cd030b994a661f",
     "src/server/services/content-search.ts": "a0d21c73459b03749b9503d2e851b43e67a67e29",
@@ -66,12 +66,12 @@
         },
         {
           "path": "src/server/assistant/runtime.ts",
-          "blob": "92b52806701d11509e6ac1cf9d01798ba54601ab",
+          "blob": "30d3e06064302f1fecac57edc30c10803ba037d1",
           "command": "Runs the durable worker, renews leases, persists streamed deltas, uses authorized metered retrieval, and avoids automatic retry after restart"
         },
         {
           "path": "src/server/assistant/api.ts",
-          "blob": "2a0481920ded7722ab985e80d2cf594805617cc1",
+          "blob": "e470a31c83d3d8b5caa27875cc387e3bd20b3619",
           "command": "Maps authenticated owner-scoped chat operations to 202/401/404/410/409/429 contracts and SSE snapshots"
         },
         {
@@ -97,7 +97,7 @@
         },
         {
           "path": "src/server/assistant/runtime.test.ts",
-          "blob": "558dda3576a3528d87131e55b750ae38288538d1",
+          "blob": "bf0054ab994c6f2b451f364542df22cbb8875e2e",
           "command": "bun test src/server/assistant/runtime.test.ts (7 pass, 0 fail, 22 expectations)"
         },
         {
@@ -127,7 +127,7 @@
         },
         {
           "path": "src/server/assistant/runtime.ts",
-          "blob": "92b52806701d11509e6ac1cf9d01798ba54601ab",
+          "blob": "30d3e06064302f1fecac57edc30c10803ba037d1",
           "command": "Filtered bunx tsc --noEmit reports no diagnostic in T4 assistant/runtime/retrieval files; remaining matches are pre-existing router, migration, and search-test diagnostics"
         }
       ]

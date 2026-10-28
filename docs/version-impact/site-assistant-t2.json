@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
+  "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
   "covered_files": {
     "docs/adr/0035-personal-assistant-quota-and-sitewide-ai-metering.md": "ee6b4ca3dfd153104f645ad561419009b2465911",
     "docs/specs/site-knowledge-assistant/SPEC.md": "d11a224a6283c60aa276785997ee8a33a4586dad",
@@ -20,7 +20,7 @@
     "src/server/admin-api/router.ts": "d3033c0d6dfb96c10cd6135de88b208e79883ea0",
     "src/server/ai/icon-reranker.ts": "9b19608a004d6fd53a9ecb47e3bf0df8ba13b629",
     "src/server/clipping/agent-runtime.ts": "6b9991ca7b0515b425d4df45ce53d63f04cc502d",
-    "src/server/clipping/service.ts": "9140486cd8982483eaeded6da4d4fc413ed9be4a",
+    "src/server/clipping/service.ts": "ba68552660d84050d08b9bd5721e9d7c8f5c08f7",
     "src/server/jobs/definitions.ts": "b12ca785af83539ee22b1d8f11b27444e7e57d13",
     "src/server/jobs/index.ts": "96547ef6235a05d079a5c592fba7bdc44ac23ddd",
     "src/server/jobs/runtime.ts": "d6ef29d77b742b2ca00025717612dadbb307d743",
@@ -168,7 +168,7 @@
         },
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "9cf657d64be64e6a6e521330334ec3437279c482",
+          "blob": "a5c3bb6027a4860b72b68800239717c1eeda207f",
           "command": "bun test src/server/http-compat-api.test.ts (107 pass, 3 skipped; authenticated admin HTTP compatibility surface)"
         },
         {
@@ -256,7 +256,7 @@
         },
         {
           "path": "src/server/clipping/service.ts",
-          "blob": "9140486cd8982483eaeded6da4d4fc413ed9be4a",
+          "blob": "ba68552660d84050d08b9bd5721e9d7c8f5c08f7",
           "command": "Existing clipping conversation and lifecycle responses remain unchanged"
         }
       ]

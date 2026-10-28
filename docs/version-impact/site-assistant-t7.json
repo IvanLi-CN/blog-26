@@ -19,8 +19,8 @@
     "src/server/assistant/migration-gate.test.ts": "c94e1a1cdc52ea25f153986c2ddf10fe59679a9a",
     "src/server/clipping/api.test.ts": "6bbbcb15f8c13e3eea88dd37b240a5fbe6c02db8",
     "src/server/clipping/api.ts": "3260338463423ddb79a11a376c34598dd7487679",
-    "src/server/clipping/assistant-adapter.test.ts": "71d2c8ca3e0b394f821138af6fd54cdc5611b6ef",
-    "src/server/clipping/service.ts": "e904055ed6273ae5cc4f5ce67ba28ca863c8335d",
+    "src/server/clipping/assistant-adapter.test.ts": "4c7c467daa9ae4d4c1b7557694e66acded55fb31",
+    "src/server/clipping/service.ts": "ba68552660d84050d08b9bd5721e9d7c8f5c08f7",
     "src/server/public-api/assistant-chat.test.ts": "6e16e309312be607eda9cd2ac7afbaac9eba4f80",
     "src/server/public-api/router.ts": "27516e1bb0c2d3f8cfa2d1b6e7cd030b994a661f"
   },
@@ -75,7 +75,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/assistant-adapter.test.ts",
-          "blob": "71d2c8ca3e0b394f821138af6fd54cdc5611b6ef",
+          "blob": "4c7c467daa9ae4d4c1b7557694e66acded55fb31",
           "command": "bun test src/server/clipping/assistant-adapter.test.ts (1 pass, 0 fail; same-target continuity, changed-target separation, and invalid-target cancellation covered)"
         },
         {

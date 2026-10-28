@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
+  "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
   "covered_files": {
     "apps/admin/src/components/app-shell.tsx": "15bb5d159cae10c62c0b94a467259574768ff827",
     "apps/admin/src/components/ui.tsx": "a3a988251e898401b19a197c08ba9b1e7278b5a5",
@@ -12,7 +12,7 @@
     "apps/admin/src/router.tsx": "46ade3604894321ce829fb7b80c6e28277f48f25",
     "src/lib/admin-api-client.ts": "3ce42b7552712f858c17c6a93a023e7b24293762",
     "src/server/admin-api/router.ts": "d3033c0d6dfb96c10cd6135de88b208e79883ea0",
-    "src/server/http-compat-api.test.ts": "9cf657d64be64e6a6e521330334ec3437279c482",
+    "src/server/http-compat-api.test.ts": "a5c3bb6027a4860b72b68800239717c1eeda207f",
     "src/server/services/admin-ai-usage.test.ts": "184126b343896771d0cba579587b51585f03b5e0",
     "src/server/services/admin-ai-usage.ts": "76e51e57133c5b6ee8c3572782985c6b85873dc5",
     "tests/e2e/web-demo/ai-usage.spec.ts": "9d8aac562f5fdcbbe536ec512af2321bb71448f6",
@@ -79,7 +79,7 @@
         },
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "9cf657d64be64e6a6e521330334ec3437279c482",
+          "blob": "a5c3bb6027a4860b72b68800239717c1eeda207f",
           "command": "bun test src/server/http-compat-api.test.ts -t \"exposes protected AI usage overview, user list, and policy routes\" (1 pass, 16 expectations)"
         },
         {
