@@ -659,4 +659,53 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     expect(postedBody?.kind).toBe("general");
     expect(postedBody?.conversationId).toBeNull();
   });
+
+  test("keeps a frozen general draft generic when enlarging on a clipping page", async () => {
+    globalThis.fetch = (async (input, init) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/frontend-auth/me") return json(auth);
+      if (url.pathname === "/api/public/chat/quota") return json(quota);
+      if (url.pathname === "/api/public/chat") return json({ conversations: [], quota });
+      throw new Error(`Unexpected request: ${url.pathname} ${init?.method ?? "GET"}`);
+    }) as typeof fetch;
+
+    const view = render(<KnowledgeAssistant />);
+    fireEvent.click(await waitFor(() => view.getByTestId("assistant-fab")));
+    fireEvent.click(await waitFor(() => view.getByRole("button", { name: "新建对话" })));
+    const user = userEvent.setup({ document: window.document });
+    await user.type(view.getByLabelText("知识助手问题"), "保留为通用问题");
+
+    window.history.replaceState({}, "", "/posts/article/?clipping=article");
+    const marker = document.createElement("div");
+    marker.dataset.assistantClippingSlug = "article";
+    marker.dataset.assistantClippingMemoId = "Memos/article.md";
+    document.body.append(marker);
+
+    let assignedUrl = "";
+    const originalAssign = window.location.assign;
+    Object.defineProperty(window.location, "assign", {
+      configurable: true,
+      writable: true,
+      value: (value: string) => {
+        assignedUrl = value;
+      },
+    });
+    try {
+      fireEvent.click(view.getByRole("button", { name: "展开完整页面" }));
+    } finally {
+      Object.defineProperty(window.location, "assign", {
+        configurable: true,
+        writable: true,
+        value: originalAssign,
+      });
+    }
+
+    const state = JSON.parse(
+      window.sessionStorage.getItem("site-knowledge-assistant-ui:test-user") ?? "{}"
+    );
+    expect(state.newConversationContext).toBeNull();
+    expect(state.newConversationContextFrozen).toBe(true);
+    expect(assignedUrl).toContain("/chat");
+    expect(assignedUrl).not.toContain("clipping=");
+  });
 });

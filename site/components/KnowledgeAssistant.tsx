@@ -1128,12 +1128,14 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   };
 
   const enlarge = () => {
+    const pageContext = getClippingContext();
     const context =
       newConversationContextRef.current ??
-      (selectedId === "new" ? getClippingContext() : null) ??
+      (selectedId === "new" && !newConversationContextFrozenRef.current ? pageContext : null) ??
       contextForConversation(
         conversations.find((conversation) => conversation.id === selectedId),
-        getClippingContext()
+        pageContext,
+        { explicit: explicitConversationSelectionRef.current }
       );
     writeUiState(uiStateKey(auth?.principal?.id), {
       selectedId,
