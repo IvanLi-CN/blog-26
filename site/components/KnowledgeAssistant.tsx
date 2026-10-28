@@ -411,19 +411,11 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   const explicitNewConversationSelectionRef = useRef(false);
   const selectionRevisionRef = useRef(0);
   const listRequestRef = useRef(0);
-  const openRef = useRef(open);
   const snapshotRequestRef = useRef(0);
   const panelRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const principalIdRef = useRef<string | null>(null);
   principalIdRef.current = auth?.principal?.id ?? null;
-  openRef.current = open;
-
-  const setPanelOpen = useCallback((next: boolean) => {
-    openRef.current = next;
-    setOpen(next);
-  }, []);
-
   useEffect(() => {
     selectedRef.current = selectedId;
     draftsRef.current = drafts;
@@ -531,13 +523,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         hasExplicitDraft;
       const selectionChangedWhileLoading = selectionRevisionRef.current !== selectionRevision;
       explicitSelectionHandoffRef.current = false;
-      if (
-        preferContext &&
-        context &&
-        !openRef.current &&
-        !selectionChangedWhileLoading &&
-        !hasExplicitUiState
-      ) {
+      if (preferContext && context && !selectionChangedWhileLoading && !hasExplicitUiState) {
         const contextual = data.conversations.find(
           (conversation) =>
             conversation.kind === "clipping" && conversation.clippingMemoId === context.slug
@@ -705,11 +691,11 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
 
   useEffect(() => {
     const handlePageLoad = () => {
-      if (auth?.authenticated) void loadList({ preferContext: !open });
+      if (auth?.authenticated) void loadList({ preferContext: true });
     };
     document.addEventListener("astro:page-load", handlePageLoad);
     return () => document.removeEventListener("astro:page-load", handlePageLoad);
-  }, [auth?.authenticated, loadList, open]);
+  }, [auth?.authenticated, loadList]);
 
   const loadSnapshot = useCallback(
     async (conversationId: string) => {
@@ -785,7 +771,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        setPanelOpen(false);
+        setOpen(false);
         return;
       }
       if (event.key !== "Tab") return;
@@ -809,7 +795,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
       document.removeEventListener("keydown", handleKeyDown);
       previous?.focus();
     };
-  }, [fullPage, open, setPanelOpen]);
+  }, [fullPage, open]);
 
   const selectConversation = (id: string) => {
     selectionRevisionRef.current += 1;
@@ -930,12 +916,13 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         clippingMemoId: context?.slug ?? null,
       });
       const shouldMigrateDraft =
-        requestSelectedId === "new" && selectedRef.current === requestSelectedId;
+        (requestSelectedId === null || requestSelectedId === "new") &&
+        selectedRef.current === requestSelectedId;
       if (submittedDraft !== null) {
         setDrafts((current) => {
           const next = { ...current };
           const currentDraft = current[key];
-          if (shouldMigrateDraft) {
+          if (shouldMigrateDraft && currentDraft !== submittedDraft) {
             if (currentDraft !== undefined) next[result.conversationId] = currentDraft;
             delete next[key];
           } else if (currentDraft === submittedDraft) {
@@ -1195,7 +1182,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         className="knowledge-assistant-fab"
         data-testid="assistant-fab"
         ref={triggerRef}
-        onClick={() => setPanelOpen(true)}
+        onClick={() => setOpen(true)}
         aria-expanded={open}
       >
         <Icon name="tabler:sparkles" className="h-5 w-5" />
@@ -1207,7 +1194,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
             type="button"
             className="knowledge-assistant-overlay"
             aria-label="关闭知识助手"
-            onClick={() => setPanelOpen(false)}
+            onClick={() => setOpen(false)}
           />
           <section
             className="knowledge-assistant-panel"
@@ -1245,7 +1232,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                 <button
                   type="button"
                   className="knowledge-assistant-icon-button"
-                  onClick={() => setPanelOpen(false)}
+                  onClick={() => setOpen(false)}
                   aria-label="关闭知识助手"
                   title="关闭"
                 >

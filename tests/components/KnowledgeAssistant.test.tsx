@@ -138,6 +138,10 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
   test("migrates a new draft after an idempotent replay even when the replay says it was not created", async () => {
     let postCalls = 0;
     let listCalls = 0;
+    let releaseReplay: (() => void) | undefined;
+    const replayResponse = new Promise<void>((resolve) => {
+      releaseReplay = resolve;
+    });
     const postedBodies: Array<Record<string, unknown>> = [];
     const persisted = conversation("replayed-conversation", "general", null);
 
@@ -149,6 +153,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
         postCalls += 1;
         postedBodies.push(JSON.parse(String(init.body)) as Record<string, unknown>);
         if (postCalls === 1) throw new Error("response lost");
+        await replayResponse;
         return json(
           {
             status: "queued",
@@ -190,18 +195,79 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
 
     fireEvent.click(send);
     await waitFor(() => expect(postCalls).toBe(2));
+    await user.clear(textarea);
+    await user.type(textarea, "保留这份问题（后续修改）");
+    releaseReplay?.();
     await waitFor(() => {
       const rawState = window.sessionStorage.getItem("site-knowledge-assistant-ui:test-user");
       expect(rawState).toBeTruthy();
       const state = JSON.parse(rawState ?? "{}");
-      expect(state.drafts[persisted.id]).toBe("保留这份问题");
+      expect(state.drafts[persisted.id]).toBe("保留这份问题（后续修改）");
       expect(state.drafts.new).toBeUndefined();
     });
     expect(postedBodies[1].requestId).toBe(postedBodies[0].requestId);
   });
 
+  test("migrates a continuation when the first conversation has no selected id", async () => {
+    let postCalls = 0;
+    let releasePost: (() => void) | undefined;
+    const postResponse = new Promise<void>((resolve) => {
+      releasePost = resolve;
+    });
+    const posted = conversation("first-conversation", "general", null);
+
+    globalThis.fetch = (async (input, init) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/frontend-auth/me") return json(auth);
+      if (url.pathname === "/api/public/chat/quota") return json(quota);
+      if (url.pathname === "/api/public/chat" && init?.method === "POST") {
+        postCalls += 1;
+        await postResponse;
+        return json(
+          {
+            status: "queued",
+            conversationId: posted.id,
+            turnId: "first-turn",
+            requestId: JSON.parse(String(init.body)).requestId,
+            userMessageId: "first-user",
+            assistantMessageId: "first-assistant",
+            createdConversation: true,
+          },
+          202
+        );
+      }
+      if (url.pathname === "/api/public/chat" && url.searchParams.has("conversation"))
+        return json(snapshot(posted.id));
+      if (url.pathname === "/api/public/chat") return json({ conversations: [], quota });
+      throw new Error(`Unexpected request: ${url.pathname} ${init?.method ?? "GET"}`);
+    }) as typeof fetch;
+
+    const view = render(<KnowledgeAssistant fullPage />);
+    await waitFor(() => expect(view.getByRole("heading", { name: "知识助手" })).toBeTruthy());
+    const user = userEvent.setup({ document: window.document });
+    const textarea = view.getByLabelText("知识助手问题") as HTMLTextAreaElement;
+    await user.type(textarea, "首个问题");
+    fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
+    await waitFor(() => expect(postCalls).toBe(1));
+    await user.clear(textarea);
+    await user.type(textarea, "等待期间补充");
+    releasePost?.();
+
+    await waitFor(() => {
+      const rawState = window.sessionStorage.getItem("site-knowledge-assistant-ui:test-user");
+      expect(rawState).toBeTruthy();
+      const state = JSON.parse(rawState ?? "{}");
+      expect(state.drafts[posted.id]).toBe("等待期间补充");
+      expect(state.drafts.new).toBeUndefined();
+    });
+  });
+
   test("rebinds an empty auto-prepared clipping conversation to the next clipping page", async () => {
     let listCalls = 0;
+    let releaseSecondList: (() => void) | undefined;
+    const secondList = new Promise<void>((resolve) => {
+      releaseSecondList = resolve;
+    });
     let postedBody: Record<string, unknown> | null = null;
     const created = conversation("clip-b-conversation", "clipping", "clip-b");
 
@@ -228,6 +294,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
         return json({ ...snapshot(created.id), conversation: created });
       if (url.pathname === "/api/public/chat") {
         listCalls += 1;
+        if (listCalls === 2) await secondList;
         return json({ conversations: [], quota });
       }
       throw new Error(`Unexpected request: ${url.pathname} ${init?.method ?? "GET"}`);
@@ -248,6 +315,8 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     clippingMarker.dataset.assistantClippingSlug = "clip-b";
     document.dispatchEvent(new Event("astro:page-load"));
     await waitFor(() => expect(listCalls).toBe(2));
+    fireEvent.click(view.getByTestId("assistant-fab"));
+    releaseSecondList?.();
     await waitFor(() => {
       const rawState = window.sessionStorage.getItem("site-knowledge-assistant-ui:test-user");
       expect(rawState).toBeTruthy();

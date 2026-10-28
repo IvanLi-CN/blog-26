@@ -4,7 +4,7 @@
   "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
   "covered_files": {
     "site/components/KnowledgeAssistant.css": "f293bf27306a83584417ad1790c6de653f7d3eff",
-    "site/components/KnowledgeAssistant.tsx": "109ab2f7c92453fd125443c83549a63ed3eb7e84",
+    "site/components/KnowledgeAssistant.tsx": "988db0d47c8dd64fa33a0660fb4eb06ad06a4925",
     "site/components/PublicMemoAuthoring.public.tsx": "73ca42587cd5c2151f9f37a4f9dc7566f254919f",
     "site/components/PublicMemoAuthoring.tsx": "7ac61a5c7bfe80d3e18957638ae46271e5c99b70",
     "site/components/pages/memo.tsx": "67254f8d60514646999e26d17474d34171cc492a",
@@ -17,9 +17,9 @@
     "src/lib/web-demo-fetch.ts": "a4b598bfdefb7deaf93a44844612e7041b1256d4",
     "src/lib/web-demo-runtime.ts": "357f7cab956e9d15641e19df1193b711bd460025",
     "tests/components/ClippingDetail.test.tsx": "c0ac9ebc6a20e12fed223d7acfca0edec0ecd8e3",
-    "tests/components/KnowledgeAssistant.test.tsx": "1ef5406a03289c4501932c020f58c65c04a7f339",
+    "tests/components/KnowledgeAssistant.test.tsx": "2d604fe26cd69034171f1aaf0d01fe65336eda81",
     "tests/components/WebDemoIdentity.test.tsx": "59c0cb68531923f685a72c9f53ea74b803dc298a",
-    "tests/lib/web-demo-boundary.test.ts": "228f347095f065f7e6051675761f162195b62c5b",
+    "tests/lib/web-demo-boundary.test.ts": "ef61b3d36a358cbcdee648ea631c228c89d7a8ea",
     "tests/lib/web-demo-fetch.test.ts": "a65f67ddad321d2ad87e36f8579a5293f7aa7997",
     "tests/lib/web-demo-runtime.test.ts": "aa4532ac6ba5560de296a1e880fc55a63b6444c4"
   },
@@ -53,7 +53,7 @@
       "evidence": [
         {
           "path": "site/components/KnowledgeAssistant.tsx",
-          "blob": "109ab2f7c92453fd125443c83549a63ed3eb7e84",
+          "blob": "988db0d47c8dd64fa33a0660fb4eb06ad06a4925",
           "command": "Shared FAB, dock, full-page route, principal-scoped drafts, navigation-safe clipping context, idempotent draft migration, quota, retry, stop, citations, and simulated login handoff"
         },
         {
@@ -99,12 +99,12 @@
         },
         {
           "path": "tests/lib/web-demo-boundary.test.ts",
-          "blob": "228f347095f065f7e6051675761f162195b62c5b",
+          "blob": "ef61b3d36a358cbcdee648ea631c228c89d7a8ea",
           "command": "bun test focused suite: one shared assistant surface, navigation race guards, no private cache data, and route boundary enforcement"
         },
         {
           "path": "tests/components/KnowledgeAssistant.test.tsx",
-          "blob": "1ef5406a03289c4501932c020f58c65c04a7f339",
+          "blob": "2d604fe26cd69034171f1aaf0d01fe65336eda81",
           "command": "bun test focused suite: delayed list choices, idempotent draft replay migration, and empty clipping context rebinding"
         },
         {
@@ -181,7 +181,7 @@
       "evidence": [
         {
           "path": "site/components/KnowledgeAssistant.tsx",
-          "blob": "109ab2f7c92453fd125443c83549a63ed3eb7e84",
+          "blob": "988db0d47c8dd64fa33a0660fb4eb06ad06a4925",
           "command": "Session state is additive, namespaced by principal, read with safe defaults when keys are absent, and migrated after idempotent new-conversation replay"
         },
         {
