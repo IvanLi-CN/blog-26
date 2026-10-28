@@ -28,6 +28,25 @@ async function assertRenderedObjectCover(page: Page, image: Locator, pixelTolera
   expect(imageSrc).toBeTruthy();
   if (!imageSrc) throw new Error("expected rendered cover src");
 
+  await expect
+    .poll(() =>
+      image.evaluate((node) => {
+        const element = node as HTMLImageElement;
+        return element.complete && element.naturalWidth > 0;
+      })
+    )
+    .toBe(true);
+  await image.evaluate(async (node) => {
+    const element = node as HTMLImageElement;
+    if (typeof element.decode === "function") await element.decode().catch(() => undefined);
+  });
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      })
+  );
+
   const sourceResponse = await page.request.get(imageSrc);
   expect(sourceResponse.ok()).toBeTruthy();
   const source = await sharp(await sourceResponse.body())

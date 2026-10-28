@@ -14,7 +14,7 @@
     "src/server/public-api/frontend-auth.test.ts": "aecc0171f593b9fa7ec320dc133076a575a2ad13",
     "src/server/public-api/router.ts": "355b00504c7b52d5e3e9a6d32a7d9706f260fa22",
     "tests/e2e/web-demo/assistant.spec.ts": "19a3c9cc7a420ad8ee18b482bf2ac5494d041226",
-    "tests/e2e/web-demo/public-cover-media.spec.ts": "54b45622a6645636a8ad07a7f839e75dbc1271a2",
+    "tests/e2e/web-demo/public-cover-media.spec.ts": "2013a587ee251e2c4a79e050cc0127a6a4588746",
     "drizzle/meta/_journal.json": "e04c27d13c458128218494a878957e224c1f839c"
   },
   "change": {
@@ -66,8 +66,8 @@
         },
         {
           "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
-          "blob": "54b45622a6645636a8ad07a7f839e75dbc1271a2",
-          "command": "Public Web Demo cover-media regression retains URL, natural-size, opaque-corner, object-cover geometry, and source-neighborhood crop checks; the related mobile card allows the observed Linux Chromium cross-runtime delta"
+          "blob": "2013a587ee251e2c4a79e050cc0127a6a4588746",
+          "command": "Public Web Demo cover-media regression waits for complete/decode/two animation frames, then retains URL, natural-size, opaque-corner, object-cover geometry, and source-neighborhood crop checks; the related mobile card allows the observed Linux Chromium cross-runtime delta"
         },
         {
           "path": "docs/specs/site-knowledge-assistant/IMPLEMENTATION.md",
@@ -98,8 +98,8 @@
         },
         {
           "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
-          "blob": "54b45622a6645636a8ad07a7f839e75dbc1271a2",
-          "command": "Targeted Playwright Web Demo cover-media suite passes locally on desktop and mobile; mobile related card uses a 128 channel-sum tolerance after two CI runs reported a stable 106 delta while all crop and geometry checks remained intact"
+          "blob": "2013a587ee251e2c4a79e050cc0127a6a4588746",
+          "command": "Targeted Playwright Web Demo cover-media suite passes locally on desktop and mobile after complete/decode/two-animation-frame readiness; mobile related card uses a 128 channel-sum tolerance after two CI runs reported a stable 106 delta while all crop and geometry checks remained intact"
         },
         {
           "path": "drizzle/meta/_journal.json",
