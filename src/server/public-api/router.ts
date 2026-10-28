@@ -270,9 +270,16 @@ function json(request: Request, data: unknown, init: ResponseInit = {}, extraHea
   const headers = new Headers(init.headers);
   headers.set("content-type", "application/json; charset=utf-8");
   if (extraHeaders) {
+    const setCookies =
+      typeof extraHeaders.getSetCookie === "function" ? extraHeaders.getSetCookie() : null;
     for (const [key, value] of extraHeaders.entries()) {
-      if (key.toLowerCase() === "set-cookie") headers.append(key, value);
-      else headers.set(key, value);
+      if (key.toLowerCase() === "set-cookie") {
+        for (const cookie of setCookies?.length ? setCookies : [value]) {
+          headers.append(key, cookie);
+        }
+      } else {
+        headers.set(key, value);
+      }
     }
   }
   appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);

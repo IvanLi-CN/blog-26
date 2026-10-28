@@ -13,6 +13,8 @@ const migrationsPath = path.resolve("drizzle");
 const originalDbPath = process.env.DB_PATH;
 const originalAdminEmail = process.env.ADMIN_EMAIL;
 const originalNodeEnv = process.env.NODE_ENV;
+const originalPublicSiteUrl = process.env.PUBLIC_SITE_URL;
+const originalPublicCorsAllowedOrigins = process.env.PUBLIC_CORS_ALLOWED_ORIGINS;
 const adminEmail = "public-frontend-admin@test.local";
 
 function request(pathname: string, options: RequestInit = {}) {
@@ -52,6 +54,11 @@ describe("public frontend auth routes", () => {
     else process.env.ADMIN_EMAIL = originalAdminEmail;
     if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
     else process.env.NODE_ENV = originalNodeEnv;
+    if (originalPublicSiteUrl === undefined) delete process.env.PUBLIC_SITE_URL;
+    else process.env.PUBLIC_SITE_URL = originalPublicSiteUrl;
+    if (originalPublicCorsAllowedOrigins === undefined)
+      delete process.env.PUBLIC_CORS_ALLOWED_ORIGINS;
+    else process.env.PUBLIC_CORS_ALLOWED_ORIGINS = originalPublicCorsAllowedOrigins;
     if (fs.existsSync(testDbPath)) fs.rmSync(testDbPath);
   });
 
@@ -90,5 +97,66 @@ describe("public frontend auth routes", () => {
     );
     expect(logout.status).toBe(200);
     expect(logout.headers.get("set-cookie")).toContain("frontend_logout=1");
+  });
+
+  it("keeps frontend identity across configured public and Console origins", async () => {
+    process.env.PUBLIC_SITE_URL = "https://public.example.test";
+    process.env.PUBLIC_CORS_ALLOWED_ORIGINS = "https://console.example.test";
+
+    const bootstrap = await handlePublicApiRequest(
+      new Request("https://public.example.test/api/public/frontend-auth/bootstrap", {
+        method: "POST",
+        headers: {
+          origin: "https://public.example.test",
+          "Remote-Email": adminEmail,
+        },
+      }),
+      "/frontend-auth/bootstrap"
+    );
+    expect(bootstrap.status).toBe(200);
+    const sessionCookie = bootstrap.headers
+      .getSetCookie()
+      .find((cookie) => cookie.startsWith("frontend_session_id="))
+      ?.split(";", 1)[0];
+    expect(sessionCookie).toBeTruthy();
+    expect(bootstrap.headers.get("set-cookie")).toContain("SameSite=Lax");
+
+    const consoleMe = await handlePublicApiRequest(
+      new Request("https://console.example.test/api/public/frontend-auth/me", {
+        headers: {
+          origin: "https://public.example.test",
+          cookie: sessionCookie as string,
+        },
+      }),
+      "/frontend-auth/me"
+    );
+    expect(consoleMe.status).toBe(200);
+    expect(await consoleMe.json()).toMatchObject({
+      authenticated: true,
+      principal: { kind: "admin" },
+    });
+
+    const consoleLogout = await handlePublicApiRequest(
+      new Request("https://console.example.test/api/public/frontend-auth/logout", {
+        method: "POST",
+        headers: {
+          origin: "https://public.example.test",
+          cookie: sessionCookie as string,
+        },
+      }),
+      "/frontend-auth/logout"
+    );
+    expect(consoleLogout.status).toBe(200);
+    expect(consoleLogout.headers.get("set-cookie")).toContain("SameSite=None");
+    expect(consoleLogout.headers.get("set-cookie")).toContain("Secure");
+
+    const rejected = await handlePublicApiRequest(
+      new Request("https://console.example.test/api/public/frontend-auth/bootstrap", {
+        method: "POST",
+        headers: { origin: "https://evil.example.test", "Remote-Email": adminEmail },
+      }),
+      "/frontend-auth/bootstrap"
+    );
+    expect(rejected.status).toBe(403);
   });
 });
