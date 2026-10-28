@@ -46,6 +46,7 @@ describe("Web Demo request boundary", () => {
     expect(assistant).toContain("job.assistantMessageId === failedMessage.id");
     expect(assistant).toContain("onRetry={(message) => void retry(message)}");
     expect(clippingDetail).toContain("data-assistant-clipping-slug");
+    expect(clippingDetail).toContain("data-assistant-clipping-memo-id");
     expect(clippingDetail).toContain("hideChat?: boolean");
   });
 

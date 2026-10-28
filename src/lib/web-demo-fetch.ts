@@ -37,6 +37,7 @@ import {
   isWebDemoBuildEnabled,
   recordWebDemoMutation,
   WEB_DEMO_ACTION_EVENT,
+  WEB_DEMO_CLIPPING_SLUG,
   type WebDemoApp,
   type WebDemoEnvironment,
   type WebDemoScene,
@@ -1338,6 +1339,37 @@ async function getDemoPublicResponse(
   if (isConsoleWebDemoBuild()) {
     const consoleResponse = await getConsoleWebDemoResponse(url, method, body, init);
     if (consoleResponse) return consoleResponse;
+  }
+  const clippingChatMatch = url.pathname.match(
+    /^\/api\/public\/memos\/([^/]+)\/clipping\/chat(\/stop)?$/u
+  );
+  if (clippingChatMatch) {
+    const clippingSlug = decodeURIComponent(clippingChatMatch[1] ?? "");
+    if (clippingSlug !== WEB_DEMO_CLIPPING_SLUG)
+      return jsonResponse({ error: "剪藏不存在", code: "NOT_FOUND" }, 404);
+    const principal = demoFrontendPrincipal(environment);
+    if (!principal) return jsonResponse({ error: "需要登录", code: "UNAUTHORIZED" }, 401);
+    const existing = Array.from(demoAssistantRecords.values()).find(
+      (record) =>
+        record.conversation.frontendUserId === principal.id &&
+        record.conversation.kind === "clipping" &&
+        record.conversation.clippingMemoId === clippingSlug
+    );
+    const proxyUrl = new URL("/api/public/chat", url);
+    if (clippingChatMatch[2]) proxyUrl.pathname = "/api/public/chat/stop";
+    const proxyBody = clippingChatMatch[2]
+      ? { ...body, conversationId: body.conversationId ?? existing?.conversation.id }
+      : {
+          ...body,
+          content: typeof body.text === "string" ? body.text : body.content,
+          kind: "clipping",
+          clippingMemoId: clippingSlug,
+          ...(existing ? { conversationId: existing.conversation.id } : {}),
+        };
+    return getDemoAssistantResponse(proxyUrl, method, environment, scene, {
+      ...init,
+      body: JSON.stringify(proxyBody),
+    });
   }
   if (url.pathname === "/api/public/auth/me" && method === "GET") {
     return jsonResponse(demoPublicUser(environment));

@@ -226,6 +226,7 @@ function ChatPanel({
 
 export function ClippingDetail({
   slug,
+  memoId,
   memoContent,
   initialArticle,
   live = false,
@@ -241,6 +242,7 @@ export function ClippingDetail({
   hideChat = false,
 }: {
   slug: string;
+  memoId?: string | null;
   memoContent: string;
   initialArticle: ClippingArticle;
   live?: boolean;
@@ -460,6 +462,7 @@ export function ClippingDetail({
       data-clipping-discussion={canDiscuss}
       data-clipping-surface={surface}
       data-assistant-clipping-slug={hideChat ? slug : undefined}
+      data-assistant-clipping-memo-id={hideChat ? (memoId ?? undefined) : undefined}
     >
       <div className="clipping-reading-column">
         <section

@@ -23,9 +23,12 @@ import {
   readAssistantList,
   readAssistantQuota,
   readAssistantSnapshot,
+  readClippingAssistantSnapshot,
   startAssistantAdminAuth,
   stopAssistantGeneration,
+  stopClippingAssistantGeneration,
   submitAssistantMessage,
+  submitClippingAssistantMessage,
 } from "../lib/assistant-client";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 import "./KnowledgeAssistant.css";
@@ -36,7 +39,7 @@ type AuthState = FrontendAuthState | null;
 const UI_STATE_KEY = "site-knowledge-assistant-ui";
 const UI_LOGIN_HANDOFF_KEY = "site-knowledge-assistant-login-handoff";
 
-type AssistantContext = { slug: string };
+type AssistantContext = { slug: string; memoId: string | null };
 type PendingRequest = { content: string; requestId: string };
 type UiState = {
   selectedId: string | null;
@@ -96,7 +99,13 @@ function readUiState(key = UI_STATE_KEY): UiState {
         raw?.newConversationContext &&
         typeof raw.newConversationContext === "object" &&
         typeof (raw.newConversationContext as Record<string, unknown>).slug === "string"
-          ? { slug: (raw.newConversationContext as Record<string, string>).slug }
+          ? {
+              slug: (raw.newConversationContext as Record<string, string>).slug,
+              memoId:
+                typeof (raw.newConversationContext as Record<string, unknown>).memoId === "string"
+                  ? (raw.newConversationContext as Record<string, string>).memoId
+                  : null,
+            }
           : null,
       newConversationContextFrozen:
         raw?.newConversationContextFrozen === true || Boolean(raw?.newConversationContext),
@@ -140,10 +149,23 @@ function formatConversationExpiry(snapshot: AssistantSnapshot | null) {
 function getClippingContext(): AssistantContext | null {
   if (typeof window === "undefined") return null;
   const node = document.querySelector<HTMLElement>("[data-assistant-clipping-slug]");
-  const slug =
-    node?.dataset.assistantClippingSlug ||
-    new URL(window.location.href).searchParams.get("clipping");
-  return slug ? { slug } : null;
+  const params = new URL(window.location.href).searchParams;
+  const slug = node?.dataset.assistantClippingSlug || params.get("clipping");
+  if (!slug) return null;
+  return {
+    slug,
+    memoId: node?.dataset.assistantClippingMemoId || params.get("clippingMemoId"),
+  };
+}
+
+function contextForConversation(
+  conversation: AssistantConversation | undefined,
+  context: AssistantContext | null
+) {
+  if (conversation?.kind !== "clipping" || !context) return null;
+  if (context.memoId && conversation.clippingMemoId)
+    return context.memoId === conversation.clippingMemoId ? context : null;
+  return conversation.clippingMemoId === context.slug ? context : null;
 }
 
 function draftKey(selectedId: string | null, context: AssistantContext | null) {
@@ -524,12 +546,11 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
       const selectionChangedWhileLoading = selectionRevisionRef.current !== selectionRevision;
       explicitSelectionHandoffRef.current = false;
       if (preferContext && context && !selectionChangedWhileLoading && !hasExplicitUiState) {
-        const contextual = data.conversations.find(
-          (conversation) =>
-            conversation.kind === "clipping" && conversation.clippingMemoId === context.slug
+        const contextual = data.conversations.find((conversation) =>
+          contextForConversation(conversation, context)
         );
         const nextId = contextual?.id ?? "new";
-        const nextContext = nextId === "new" ? context : null;
+        const nextContext = contextual ? context : nextId === "new" ? context : null;
         const contextualDraftKey = draftKey("new", context);
         const sourceDraftKey = Object.hasOwn(draftsRef.current, contextualDraftKey)
           ? contextualDraftKey
@@ -586,8 +607,15 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         setNewConversationContextFrozen(newConversationContextFrozenRef.current);
         return;
       }
-      if (requested && data.conversations.some((conversation) => conversation.id === requested))
+      if (requested && data.conversations.some((conversation) => conversation.id === requested)) {
+        const requestedConversation = data.conversations.find(
+          (conversation) => conversation.id === requested
+        );
+        const nextContext = contextForConversation(requestedConversation, context);
+        newConversationContextRef.current = nextContext;
+        setNewConversationContext(nextContext);
         return;
+      }
       if (requested === "new") return;
       const nextId = data.conversations[0]?.id ?? null;
       selectedRef.current = nextId;
@@ -700,17 +728,34 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   const loadSnapshot = useCallback(
     async (conversationId: string) => {
       const requestSequence = ++snapshotRequestRef.current;
-      const isCurrent = () =>
-        selectedRef.current === conversationId && snapshotRequestRef.current === requestSequence;
+      const isCurrent = (id = conversationId) =>
+        selectedRef.current === id && snapshotRequestRef.current === requestSequence;
       try {
-        const next = await readAssistantSnapshot(conversationId);
-        if (!isCurrent()) return null;
+        let currentConversationId = conversationId;
+        const context = newConversationContextRef.current;
+        if (context) {
+          const clipping = await readClippingAssistantSnapshot(context.slug);
+          if (!isCurrent()) return null;
+          if (!clipping.conversationId) {
+            selectedRef.current = "new";
+            setSelectedId("new");
+            setSnapshot(null);
+            return null;
+          }
+          currentConversationId = clipping.conversationId;
+          if (currentConversationId !== conversationId) {
+            selectedRef.current = currentConversationId;
+            setSelectedId(currentConversationId);
+          }
+        }
+        const next = await readAssistantSnapshot(currentConversationId);
+        if (!isCurrent(currentConversationId)) return null;
         setSnapshot(next);
         setOffline(false);
         setRequestError(null);
         void readAssistantQuota()
           .then((nextQuota) => {
-            if (isCurrent()) setQuota(nextQuota);
+            if (isCurrent(currentConversationId)) setQuota(nextQuota);
           })
           .catch(() => undefined);
         return next;
@@ -802,9 +847,16 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     explicitNewConversationSelectionRef.current = id === "new";
     selectedRef.current = id;
     setSelectedId(id);
-    newConversationContextRef.current = id === "new" ? getClippingContext() : null;
+    const nextContext =
+      id === "new"
+        ? getClippingContext()
+        : contextForConversation(
+            conversations.find((conversation) => conversation.id === id),
+            getClippingContext()
+          );
+    newConversationContextRef.current = nextContext;
     newConversationContextFrozenRef.current = id === "new";
-    setNewConversationContext(newConversationContextRef.current);
+    setNewConversationContext(nextContext);
     setNewConversationContextFrozen(id === "new");
     setSnapshot(null);
     setRequestError(null);
@@ -907,14 +959,15 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     pendingRequestsRef.current = nextPendingRequests;
     setPendingRequests(nextPendingRequests);
     try {
-      const result = await submitAssistantMessage({
-        conversationId: selectedId === "new" ? null : selectedId,
-        requestId,
-        clientRequestId: requestId,
-        content,
-        kind: context ? "clipping" : "general",
-        clippingMemoId: context?.slug ?? null,
-      });
+      const result = context
+        ? await submitClippingAssistantMessage({ slug: context.slug, requestId, content })
+        : await submitAssistantMessage({
+            conversationId: selectedId === "new" ? null : selectedId,
+            requestId,
+            clientRequestId: requestId,
+            content,
+            kind: "general",
+          });
       const shouldMigrateDraft =
         (requestSelectedId === null || requestSelectedId === "new") &&
         selectedRef.current === requestSelectedId;
@@ -939,9 +992,9 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         explicitNewConversationSelectionRef.current = false;
         selectedRef.current = result.conversationId;
         setSelectedId(result.conversationId);
-        newConversationContextRef.current = null;
+        newConversationContextRef.current = context;
         newConversationContextFrozenRef.current = false;
-        setNewConversationContext(null);
+        setNewConversationContext(context);
         setNewConversationContextFrozen(false);
       }
       await loadList();
@@ -967,10 +1020,17 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   const stop = async () => {
     if (!selectedId || !snapshot?.activeGenerationJob) return;
     try {
-      await stopAssistantGeneration({
-        conversationId: selectedId,
-        turnId: snapshot.activeGenerationJob.id,
-      });
+      if (newConversationContextRef.current) {
+        await stopClippingAssistantGeneration({
+          slug: newConversationContextRef.current.slug,
+          turnId: snapshot.activeGenerationJob.id,
+        });
+      } else {
+        await stopAssistantGeneration({
+          conversationId: selectedId,
+          turnId: snapshot.activeGenerationJob.id,
+        });
+      }
       await loadSnapshot(selectedId);
     } catch (error) {
       setRequestError(errorMessage(error));
@@ -1010,8 +1070,11 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     });
     const url = new URL(toPublicSitePath("/chat"), window.location.origin);
     if (selectedId && selectedId !== "new") url.searchParams.set("conversation", selectedId);
-    else if (newConversationContextRef.current)
+    if (newConversationContextRef.current) {
       url.searchParams.set("clipping", newConversationContextRef.current.slug);
+      if (newConversationContextRef.current.memoId)
+        url.searchParams.set("clippingMemoId", newConversationContextRef.current.memoId);
+    }
     window.location.assign(url.toString());
   };
 

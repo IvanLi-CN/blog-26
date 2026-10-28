@@ -8,7 +8,7 @@ import {
   isSafeClippingResourceMimeType,
 } from "@/lib/clipping-resources";
 import { db } from "@/lib/db";
-import { getFrontendPrincipalFromRequest } from "@/lib/frontend-auth";
+import { ensureAdminFrontendUser, getFrontendPrincipalFromRequest } from "@/lib/frontend-auth";
 import { recognizeMemoClipping } from "@/lib/memo-clipping";
 import { resolveRequestOrigin } from "@/lib/public-cors";
 import { posts } from "@/lib/schema";
@@ -173,10 +173,11 @@ async function access(
   return { row, authored, manifest, recognition };
 }
 
-async function frontendPrincipal(request: Request) {
+async function frontendPrincipal(request: Request, ctx: TRPCContext) {
   const principal = await getFrontendPrincipalFromRequest(request);
   if (!principal)
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录前台账号后再讨论剪藏" });
+    if (ctx.isAdmin && ctx.user) return ensureAdminFrontendUser(ctx.user);
+    else throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录前台账号后再讨论剪藏" });
   return principal;
 }
 
@@ -283,7 +284,7 @@ async function routeClippingRequest(
   const privateOperation = operation === "reprocess";
   const discussionPrincipal =
     operation === "chat" || operation === "chat/events" || operation === "chat/stop"
-      ? await frontendPrincipal(request)
+      ? await frontendPrincipal(request, ctx)
       : null;
   const authorized = await access(slug, ctx, privateOperation, discussionPrincipal);
   const { row, manifest } = authorized;
@@ -306,7 +307,7 @@ async function routeClippingRequest(
           }
         : {}),
       canDiscuss:
-        Boolean(await getFrontendPrincipalFromRequest(request)) &&
+        (ctx.isAdmin || Boolean(await getFrontendPrincipalFromRequest(request))) &&
         Boolean(getClippingRuntime()?.assistantChatEnabled()),
       processorEnabled: Boolean(getClippingRuntime()),
     });
@@ -414,7 +415,7 @@ async function routeClippingRequest(
             const deadline = Date.now() + 60_000;
             while (!cancelled && !request.signal.aborted && Date.now() < deadline) {
               try {
-                const refreshedPrincipal = await frontendPrincipal(request);
+                const refreshedPrincipal = await frontendPrincipal(request, ctx);
                 if (refreshedPrincipal.id !== principal.id) break;
                 const current = await access(slug, ctx, false, refreshedPrincipal);
                 const before = currentDiscussion(current);
@@ -425,7 +426,7 @@ async function routeClippingRequest(
                 if (!snapshot) break;
                 const after = currentDiscussion(await access(slug, ctx, false, refreshedPrincipal));
                 if (after.id !== before.id || after.targetUrl !== before.targetUrl) break;
-                const finalPrincipal = await frontendPrincipal(request);
+                const finalPrincipal = await frontendPrincipal(request, ctx);
                 if (finalPrincipal.id !== principal.id) break;
                 const final = currentDiscussion(await access(slug, ctx, false, finalPrincipal));
                 if (final.id !== before.id || final.targetUrl !== before.targetUrl) break;

@@ -1131,6 +1131,7 @@ export function PublicMemoDetailControlsIsland({
               <ClippingDetail
                 key={memo.slug}
                 slug={memo.slug}
+                memoId={memo.id}
                 memoContent={detailBody}
                 header={
                   <>

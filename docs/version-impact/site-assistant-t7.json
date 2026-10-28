@@ -17,8 +17,9 @@
     "src/server/assistant/service.ts": "d1e1c4bd189d3410b25a40a0e018df187b41caf5",
     "src/server/assistant/migration-gate.ts": "7f085e4576cf46081b6ccebc69e0c1730ed93085",
     "src/server/assistant/migration-gate.test.ts": "c94e1a1cdc52ea25f153986c2ddf10fe59679a9a",
-    "src/server/clipping/api.test.ts": "6bbbcb15f8c13e3eea88dd37b240a5fbe6c02db8",
-    "src/server/clipping/api.ts": "f7aed53627c930db8326794a505620044355c0bd",
+    "src/lib/frontend-auth.ts": "99c6875d85af68716549c46d9e4edcad5090bc2c",
+    "src/server/clipping/api.test.ts": "911b5e1f3d4b4ef8b5bd2d41f0ad372ca0ef7b5b",
+    "src/server/clipping/api.ts": "c2ed115a4c5a31cd2591b29e2997fe9479848169",
     "src/server/clipping/assistant-adapter.test.ts": "03770cee4bb69116f8bd35a32cb90157f86d7e53",
     "src/server/clipping/service.ts": "32b5c32e58acf54fd2d461c5aa354115d3f93d8e",
     "src/server/public-api/assistant-chat.test.ts": "6e16e309312be607eda9cd2ac7afbaac9eba4f80",
@@ -58,8 +59,8 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.ts",
-          "blob": "f7aed53627c930db8326794a505620044355c0bd",
-          "command": "Uses frontend identity for clipping discussion and revalidates target/version binding"
+          "blob": "c2ed115a4c5a31cd2591b29e2997fe9479848169",
+          "command": "Uses frontend identity for clipping discussion, maps authenticated Console admins to managed frontend principals, and revalidates target/version binding"
         },
         {
           "path": "src/server/assistant/runtime.ts",
@@ -70,7 +71,7 @@
     },
     "verified": {
       "impact": "major",
-      "reasoning": "Focused clipping, assistant, storage, migration-gate, generic API isolation, and public API tests pass; the migration journal is unchanged and valid; changed files format cleanly and the diff has no whitespace errors. Full repository check remains affected by pre-existing unrelated site diagnostics; no real model provider was called.",
+      "reasoning": "Focused clipping, assistant, storage, migration-gate, generic API isolation, frontend-auth, and public API tests pass; the migration journal is unchanged and valid; the repository check exits successfully with existing warnings only, changed files format cleanly, and the diff has no whitespace errors. No real model provider was called.",
       "assessed_at": "2026-10-28T00:00:00+08:00",
       "evidence": [
         {
@@ -80,8 +81,8 @@
         },
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "6bbbcb15f8c13e3eea88dd37b240a5fbe6c02db8",
-          "command": "bun test src/server/clipping/api.test.ts (18 pass, 0 fail, 107 expectations; frontend unified chat, migration gate, SSE cap, and assistant error mapping covered)"
+          "blob": "911b5e1f3d4b4ef8b5bd2d41f0ad372ca0ef7b5b",
+          "command": "bun test src/server/clipping/api.test.ts -t 'frontend clipping chat routes use the unified assistant' (1 pass, 0 fail, 14 expectations; unified chat creation and continuation plus authenticated admin capability covered)"
         },
         {
           "path": "src/server/clipping/service.test.ts",
@@ -164,8 +165,8 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.ts",
-          "blob": "f7aed53627c930db8326794a505620044355c0bd",
-          "command": "Requires a frontend session for clipping discussion and keeps creator/admin authorization on management operations"
+          "blob": "c2ed115a4c5a31cd2591b29e2997fe9479848169",
+          "command": "Requires a frontend identity for clipping discussion, derives the managed frontend admin identity from an authenticated Console session, and keeps creator/admin authorization on management operations"
         }
       ]
     },

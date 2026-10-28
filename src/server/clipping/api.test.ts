@@ -802,6 +802,9 @@ test("frontend clipping chat routes use the unified assistant and cap SSE stream
   let release: (() => void) | undefined;
   try {
     globals[key].service = service;
+    const adminArticle = await request("", "admin");
+    expect(adminArticle.status).toBe(200);
+    expect((await adminArticle.json()).canDiscuss).toBe(true);
     const initial = await frontendRequest("chat");
     expect(initial.status).toBe(200);
     expect(await initial.json()).toMatchObject({ conversationId: null, messages: [] });
@@ -846,6 +849,14 @@ test("frontend clipping chat routes use the unified assistant and cap SSE stream
     expect(submission.conversationId).toBeString();
     const current = await frontendRequest("chat");
     expect((await current.json()).conversationId).toBe(submission.conversationId);
+
+    const continuation = await frontendRequest("chat", {
+      method: "POST",
+      headers: { origin: "http://localhost", "content-type": "application/json" },
+      body: JSON.stringify({ text: "What can be continued?", requestId: "http-chat-2" }),
+    });
+    expect(continuation.status).toBe(202);
+    expect((await continuation.json()).conversationId).toBe(submission.conversationId);
 
     const events = await frontendRequest("chat/events");
     expect(events.status).toBe(200);

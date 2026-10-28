@@ -112,9 +112,10 @@ describe("ClippingDetail", () => {
       },
     };
 
-    render(
+    const view = render(
       <ClippingDetail
         slug="clipping-live"
+        memoId="Memos/clipping-live.md"
         memoContent="实时剪藏正文"
         initialArticle={article}
         initialCanDiscuss
@@ -124,6 +125,9 @@ describe("ClippingDetail", () => {
       />
     );
     await act(async () => await Promise.resolve());
+    expect(
+      view.getByTestId("clipping-detail").getAttribute("data-assistant-clipping-memo-id")
+    ).toBe("Memos/clipping-live.md");
 
     expect(chatReads).toBe(0);
     expect(subscriptions).toBe(0);

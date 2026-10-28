@@ -64,6 +64,7 @@ export default function MemoPage(data: Awaited<ReturnType<typeof loadmemo>>) {
             {clippingArticle ? (
               <ClippingDetail
                 slug={memo.slug}
+                memoId={memo.id}
                 memoContent={memoDetailContent}
                 initialArticle={clippingArticle}
                 header={heading}

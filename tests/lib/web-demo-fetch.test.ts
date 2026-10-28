@@ -192,6 +192,30 @@ describe("webDemoFetch", () => {
     }
   });
 
+  it("routes Web Demo clipping assistant turns through the clipping adapter", async () => {
+    installBrowser("?d_persona=user&d_scene=assistant-ready&d_connection=online");
+    const first = await webDemoFetch("/api/public/memos/memo-web-demo-1181/clipping/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: "剪藏首问", requestId: "web-demo-clipping-1" }),
+    });
+    expect(first.status).toBe(202);
+    const firstSubmission = await first.json();
+
+    const second = await webDemoFetch("/api/public/memos/memo-web-demo-1181/clipping/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: "剪藏续问", requestId: "web-demo-clipping-2" }),
+    });
+    expect(second.status).toBe(202);
+    expect((await second.json()).conversationId).toBe(firstSubmission.conversationId);
+
+    const snapshot = await webDemoFetch(
+      `/api/public/chat?conversation=${encodeURIComponent(firstSubmission.conversationId)}`
+    );
+    expect((await snapshot.json()).messages).toHaveLength(4);
+  });
+
   it("does not fall back to a real public API for unknown endpoints", async () => {
     installBrowser("?d_persona=admin&d_connection=online&d_delay=normal");
     let fetchCalls = 0;

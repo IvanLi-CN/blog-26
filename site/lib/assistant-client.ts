@@ -95,6 +95,23 @@ export function readAssistantSnapshot(conversationId: string) {
   return request<AssistantSnapshot>(`/chat?${params.toString()}`);
 }
 
+export function readClippingAssistantSnapshot(slug: string) {
+  return request<{
+    messages: Array<{
+      id: string;
+      role: "user" | "assistant";
+      text: string;
+      timestamp: number;
+      status?: string;
+    }>;
+    generating: boolean;
+    partial: string;
+    conversationId: string | null;
+    error: string | null;
+    errorCode: string | null;
+  }>(`/memos/${encodeURIComponent(slug)}/clipping/chat`);
+}
+
 export function submitAssistantMessage(input: {
   conversationId?: string | null;
   requestId: string;
@@ -118,11 +135,42 @@ export function submitAssistantMessage(input: {
   });
 }
 
+export function submitClippingAssistantMessage(input: {
+  slug: string;
+  requestId: string;
+  content: string;
+}) {
+  return request<{
+    status: "queued";
+    conversationId: string;
+    turnId: string;
+    requestId: string;
+    userMessageId: string;
+    assistantMessageId: string;
+    createdConversation: boolean;
+  }>(`/memos/${encodeURIComponent(input.slug)}/clipping/chat`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ text: input.content, requestId: input.requestId }),
+  });
+}
+
 export function stopAssistantGeneration(input: { conversationId?: string; turnId?: string }) {
   return request<{ stopped: boolean; generationJob: AssistantGenerationJob | null }>("/chat/stop", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(input),
+  });
+}
+
+export function stopClippingAssistantGeneration(input: { slug: string; turnId: string }) {
+  return request<{
+    stopped: boolean;
+    generationJob: AssistantGenerationJob | null;
+  }>(`/memos/${encodeURIComponent(input.slug)}/clipping/chat/stop`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ turnId: input.turnId }),
   });
 }
 

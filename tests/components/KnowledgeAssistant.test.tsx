@@ -313,7 +313,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
       const url = new URL(String(input), "http://localhost");
       if (url.pathname === "/api/public/frontend-auth/me") return json(auth);
       if (url.pathname === "/api/public/chat/quota") return json(quota);
-      if (url.pathname === "/api/public/chat" && init?.method === "POST") {
+      if (url.pathname === "/api/public/memos/clip-b/clipping/chat" && init?.method === "POST") {
         postedBody = JSON.parse(String(init.body)) as Record<string, unknown>;
         return json(
           {
@@ -368,8 +368,73 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     await user.type(textarea, "询问 B");
     fireEvent.keyDown(view.getByLabelText("知识助手问题"), { key: "Enter", ctrlKey: true });
 
-    await waitFor(() => expect(postedBody?.clippingMemoId).toBe("clip-b"));
-    expect(postedBody?.clippingMemoId).not.toBe("clip-a");
-    expect(postedBody?.kind).toBe("clipping");
+    await waitFor(() => expect(postedBody?.text).toBe("询问 B"));
+    expect(postedBody?.requestId).toBeTruthy();
+  });
+
+  test("revalidates a clipping binding before loading history and continuing", async () => {
+    let clippingReads = 0;
+    let clippingPosts = 0;
+    let listCalls = 0;
+    const stale = conversation("stale-clipping", "clipping", "Memos/article.md");
+    const current = conversation("current-clipping", "clipping", "Memos/article.md");
+    const currentSnapshot = {
+      ...snapshot(current.id),
+      conversation: current,
+    };
+
+    globalThis.fetch = (async (input, init) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/frontend-auth/me") return json(auth);
+      if (url.pathname === "/api/public/chat/quota") return json(quota);
+      if (url.pathname === "/api/public/memos/article/clipping/chat") {
+        if (init?.method === "POST") {
+          clippingPosts += 1;
+          return json(
+            {
+              status: "queued",
+              conversationId: current.id,
+              turnId: "current-turn",
+              requestId: "current-request",
+              userMessageId: "current-user",
+              assistantMessageId: "current-assistant",
+              createdConversation: false,
+            },
+            202
+          );
+        }
+        clippingReads += 1;
+        return json({
+          messages: [],
+          generating: false,
+          partial: "",
+          conversationId: current.id,
+          error: null,
+          errorCode: null,
+        });
+      }
+      if (url.pathname === "/api/public/chat" && init?.method !== "POST") {
+        if (url.searchParams.has("conversation")) return json(currentSnapshot);
+        listCalls += 1;
+        return json({ conversations: [listCalls === 1 ? stale : current], quota });
+      }
+      throw new Error(`Unexpected request: ${url.pathname} ${init?.method ?? "GET"}`);
+    }) as typeof fetch;
+
+    window.history.replaceState({}, "", "/posts/article/");
+    const marker = document.createElement("div");
+    marker.dataset.assistantClippingSlug = "article";
+    marker.dataset.assistantClippingMemoId = "Memos/article.md";
+    document.body.append(marker);
+    const view = render(<KnowledgeAssistant />);
+    await waitFor(() => expect(clippingReads).toBeGreaterThan(0));
+    expect(view.getByTestId("assistant-fab")).toBeTruthy();
+    fireEvent.click(view.getByTestId("assistant-fab"));
+    const textarea = await waitFor(() => view.getByLabelText("知识助手问题"));
+    const user = userEvent.setup({ document: window.document });
+    await user.type(textarea, "继续当前文章讨论");
+    fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
+    await waitFor(() => expect(clippingPosts).toBe(1));
+    expect(listCalls).toBeGreaterThanOrEqual(2);
   });
 });
