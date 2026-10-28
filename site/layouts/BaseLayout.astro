@@ -245,7 +245,7 @@ const resolvedImage =
       </div>
     </div>
     {isConsoleRuntime ? <SystemShareToastViewport client:load /> : null}
-    {!isAssistantPage ? <KnowledgeAssistant client:load /> : null}
+    {!isAssistantPage && !isConsoleRuntime ? <KnowledgeAssistant client:load /> : null}
     {isWebDemoBuild ? (
       <WebDemoInspector
         client:load

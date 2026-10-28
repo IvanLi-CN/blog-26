@@ -8,7 +8,7 @@
     "site/components/PublicMemoAuthoring.public.tsx": "73ca42587cd5c2151f9f37a4f9dc7566f254919f",
     "site/components/PublicMemoAuthoring.tsx": "7ac61a5c7bfe80d3e18957638ae46271e5c99b70",
     "site/components/pages/memo.tsx": "ec1bbf6527a6a28b12d4e41c2cf7a2df4a72cc37",
-    "site/layouts/BaseLayout.astro": "884227d04b3a0802327189c30c3ebfbfabde5d29",
+    "site/layouts/BaseLayout.astro": "64b356bb76770d1ffe889d63b92ee4ab0be4e655",
     "site/lib/assistant-client.ts": "d65da0a71d1ae1b91708ef425226f7e4c17bd223",
     "site/pages/chat.astro": "3328491170a783cf905a135d28263390b45e1eba",
     "src/components/comments/CommentForm.tsx": "bdf4d8e7402b81a57e52affd1a27ea5c65662327",
@@ -19,7 +19,7 @@
     "tests/components/ClippingDetail.test.tsx": "c0ac9ebc6a20e12fed223d7acfca0edec0ecd8e3",
     "tests/components/KnowledgeAssistant.test.tsx": "268d9af3fa28273d67f8f8d3354b900170ade6b4",
     "tests/components/WebDemoIdentity.test.tsx": "59c0cb68531923f685a72c9f53ea74b803dc298a",
-    "tests/lib/web-demo-boundary.test.ts": "729e3888f1106fb53b60bdce1c71d130580419d7",
+    "tests/lib/web-demo-boundary.test.ts": "29ce8ad5d3f9355853f81159792aed57087eae90",
     "tests/lib/web-demo-fetch.test.ts": "a65f67ddad321d2ad87e36f8579a5293f7aa7997",
     "tests/lib/web-demo-runtime.test.ts": "aa4532ac6ba5560de296a1e880fc55a63b6444c4"
   },
@@ -99,7 +99,7 @@
         },
         {
           "path": "tests/lib/web-demo-boundary.test.ts",
-          "blob": "729e3888f1106fb53b60bdce1c71d130580419d7",
+          "blob": "29ce8ad5d3f9355853f81159792aed57087eae90",
           "command": "bun test focused suite: one shared assistant surface, navigation race guards, no private cache data, and Console clipping discussion boundary enforcement"
         },
         {

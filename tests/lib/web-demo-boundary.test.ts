@@ -52,5 +52,8 @@ describe("Web Demo request boundary", () => {
   it("keeps Console clipping discussion tabs while public routes use the shared assistant", () => {
     expect(memoPage).toContain('const isConsoleRuntime = process.env.CONSOLE_RUNTIME === "true";');
     expect(memoPage.match(/hideChat=\{!isConsoleRuntime\}/g)).toHaveLength(2);
+    expect(layout).toContain(
+      "{!isAssistantPage && !isConsoleRuntime ? <KnowledgeAssistant client:load /> : null}"
+    );
   });
 });
