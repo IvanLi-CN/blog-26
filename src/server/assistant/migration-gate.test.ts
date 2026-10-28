@@ -73,6 +73,44 @@ test("canonical manifests keep discussion disabled when the clipping index is mi
     status: "pending",
     reason: "assistant-discussion-migration-required",
   });
+  await expect(
+    readAssistantMigrationGate({
+      manifests: [
+        {
+          conversationId: null,
+          previousConversations: [],
+          versions: [{ id: "processing-version", jobConversationId: "processing-job" }],
+        },
+      ],
+    })
+  ).resolves.toMatchObject({
+    ready: false,
+    status: "pending",
+    reason: "assistant-discussion-migration-required",
+  });
+  await db.insert(memoClippings).values({
+    id: "job-only-clipping",
+    memoId: "Memos/job-only.md",
+    creatorId: "creator",
+    revision: 1,
+    enabled: true,
+    deleted: false,
+    targetUrl: "https://article.example/job-only",
+    currentVersionId: "processing-version",
+    conversationId: null,
+    manifest: JSON.stringify({
+      conversationId: null,
+      previousConversations: [],
+      versions: [{ id: "processing-version", jobConversationId: "processing-job" }],
+    }),
+    updatedAt: 1,
+  });
+  await expect(readAssistantMigrationGate()).resolves.toMatchObject({
+    ready: false,
+    status: "pending",
+    reason: "assistant-discussion-migration-required",
+  });
+  await db.delete(memoClippings);
   for (const previousConversations of [undefined] as const) {
     await expect(
       readAssistantMigrationGate({

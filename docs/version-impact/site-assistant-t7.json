@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
+  "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
   "covered_files": {
     "scripts/start-console.ts": "f9581e191ea8cf461a2bd70d22f2a88a31298042",
     "scripts/prepare-backend-dist.sh": "f3770d081a4e29cef6638c6ec9a847bb8b4c5555",
@@ -15,12 +15,12 @@
     "src/server/assistant/runtime.test.ts": "558dda3576a3528d87131e55b750ae38288538d1",
     "src/server/assistant/runtime.ts": "92b52806701d11509e6ac1cf9d01798ba54601ab",
     "src/server/assistant/service.ts": "29d856c5230446ce22eaf8993fbec0f68d85e03c",
-    "src/server/assistant/migration-gate.ts": "6990ac6c8d5a7bcb450f6b94514e00d2084a9a5c",
-    "src/server/assistant/migration-gate.test.ts": "c94e1a1cdc52ea25f153986c2ddf10fe59679a9a",
+    "src/server/assistant/migration-gate.ts": "972646946bc16c29376265ecc301b29a926dcbea",
+    "src/server/assistant/migration-gate.test.ts": "db9e9c6c0b1c670cc02157d27988b13257d86fdb",
     "src/server/clipping/api.test.ts": "6bbbcb15f8c13e3eea88dd37b240a5fbe6c02db8",
     "src/server/clipping/api.ts": "3260338463423ddb79a11a376c34598dd7487679",
     "src/server/clipping/assistant-adapter.test.ts": "71d2c8ca3e0b394f821138af6fd54cdc5611b6ef",
-    "src/server/clipping/service.ts": "9140486cd8982483eaeded6da4d4fc413ed9be4a",
+    "src/server/clipping/service.ts": "9a4757fed1996ca48c4b640dc28447c8eb0960a3",
     "src/server/public-api/assistant-chat.test.ts": "6e16e309312be607eda9cd2ac7afbaac9eba4f80",
     "src/server/public-api/router.ts": "27516e1bb0c2d3f8cfa2d1b6e7cd030b994a661f"
   },
@@ -100,7 +100,7 @@
         },
         {
           "path": "src/server/assistant/migration-gate.test.ts",
-          "blob": "c94e1a1cdc52ea25f153986c2ddf10fe59679a9a",
+          "blob": "db9e9c6c0b1c670cc02157d27988b13257d86fdb",
           "command": "bun test src/server/assistant/migration-gate.test.ts (3 pass, 0 fail)"
         },
         {
@@ -153,7 +153,8 @@
         "3.9.0",
         "3.10.0",
         "3.11.3",
-        "3.11.4"
+        "3.11.4",
+        "3.11.7"
       ],
       "evidence": [
         {
@@ -200,7 +201,8 @@
         "3.9.0",
         "3.10.0",
         "3.11.3",
-        "3.11.4"
+        "3.11.4",
+        "3.11.7"
       ],
       "upgrade_from_versions": [
         "2.7.0",

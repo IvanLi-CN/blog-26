@@ -9,10 +9,22 @@ export type AssistantMigrationGate = {
   reason: string | null;
 };
 
+function hasLegacyJobConversationReference(versions: unknown) {
+  if (versions === undefined) return false;
+  if (!Array.isArray(versions)) return true;
+  return versions.some((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return true;
+    const jobConversationId = (entry as Record<string, unknown>).jobConversationId;
+    if (jobConversationId === undefined || jobConversationId === null) return false;
+    return true;
+  });
+}
+
 function hasLegacyConversationReference(row: {
   conversationId: string | null;
   manifest?: string;
   previousConversations?: unknown;
+  versions?: unknown;
 }) {
   if (row.conversationId !== null) return true;
   if (row.previousConversations !== undefined) {
@@ -20,7 +32,8 @@ function hasLegacyConversationReference(row: {
     if (row.previousConversations.length > 0) return true;
   }
   if (row.manifest === undefined) {
-    return !("previousConversations" in row && row.previousConversations !== undefined);
+    if (!("previousConversations" in row && row.previousConversations !== undefined)) return true;
+    return hasLegacyJobConversationReference(row.versions);
   }
   try {
     const manifest: unknown = JSON.parse(row.manifest);
@@ -33,13 +46,13 @@ function hasLegacyConversationReference(row: {
     }
     if (!("previousConversations" in record)) return false;
     if (!Array.isArray(record.previousConversations)) return true;
-    if (record.previousConversations.length === 0) return false;
     const malformed = record.previousConversations.some((entry) => {
       if (!entry || typeof entry !== "object" || Array.isArray(entry)) return true;
       const conversationId = (entry as Record<string, unknown>).conversationId;
       return typeof conversationId !== "string" || !conversationId.trim();
     });
-    return malformed || record.previousConversations.length > 0;
+    if (malformed || record.previousConversations.length > 0) return true;
+    return hasLegacyJobConversationReference(record.versions);
   } catch {
     return true;
   }
@@ -53,6 +66,7 @@ type MigrationGateOptions = {
   manifests?: Array<{
     conversationId: string | null;
     previousConversations: unknown;
+    versions?: unknown;
   }>;
 };
 

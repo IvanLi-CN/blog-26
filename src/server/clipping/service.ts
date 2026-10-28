@@ -211,6 +211,7 @@ export class ClippingService {
               {
                 conversationId: manifest.conversationId,
                 previousConversations: manifest.previousConversations,
+                versions: manifest.versions,
               },
             ]
           : []
