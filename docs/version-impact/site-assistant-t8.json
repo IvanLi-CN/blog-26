@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "ad59ecab67da460aa3a5c6a0dd643fcd59df4030",
+  "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
   "covered_files": {
     "docs/runbooks/site-assistant-discussion-migration.md": "79e001e1df68182b6951b9e6f62ed1d51e818531",
     "docs/specs/README.md": "208f4e426fd301b149ff175b59c6f1b10918d729",

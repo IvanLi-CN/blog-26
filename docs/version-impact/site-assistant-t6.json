@@ -41,7 +41,7 @@
       "evidence": [
         {
           "path": "docs/specs/site-knowledge-assistant/SPEC.md",
-          "blob": "d11a224a6283c60aa276785997ee8a33a4586dad",
+          "blob": "8c65ecb350cd07a924facc9804a9749eab6aae73",
           "command": "Locks the shared frontend assistant, identity, quota, clipping context, responsive, and Web Demo requirements"
         },
         {

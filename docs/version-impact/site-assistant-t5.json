@@ -31,7 +31,7 @@
       "evidence": [
         {
           "path": "docs/specs/site-knowledge-assistant/SPEC.md",
-          "blob": "d11a224a6283c60aa276785997ee8a33a4586dad",
+          "blob": "8c65ecb350cd07a924facc9804a9749eab6aae73",
           "command": "REQ-SKA-018 requires the dashboard to show seven natural days, a consistent timezone, input/cache/output/call metrics, and incomplete usage visibility; review follow-up requires failure and cancelled call visibility"
         },
         {
