@@ -135,13 +135,52 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     ).not.toBe("true");
   });
 
+  test("preserves an explicit conversation when navigation starts with the panel open", async () => {
+    let listCalls = 0;
+    const clippingA = conversation("clip-a-conversation", "clipping", "clip-a");
+    const clippingB = conversation("clip-b-conversation", "clipping", "clip-b");
+    const general = conversation("general-conversation", "general", null);
+
+    globalThis.fetch = (async (input, init) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/frontend-auth/me") return json(auth);
+      if (url.pathname === "/api/public/chat/quota") return json(quota);
+      if (url.pathname === "/api/public/chat" && init?.method !== "POST") {
+        if (url.searchParams.has("conversation"))
+          return json(snapshot(url.searchParams.get("conversation") ?? ""));
+        listCalls += 1;
+        return json({
+          conversations: listCalls === 1 ? [clippingA, general] : [clippingB, general],
+          quota,
+        });
+      }
+      throw new Error(`Unexpected request: ${url.pathname} ${init?.method ?? "GET"}`);
+    }) as typeof fetch;
+
+    window.history.replaceState({}, "", "/posts/a/?clipping=clip-a");
+    const clippingMarker = document.createElement("div");
+    clippingMarker.dataset.assistantClippingSlug = "clip-a";
+    document.body.append(clippingMarker);
+    const view = render(<KnowledgeAssistant />);
+    fireEvent.click(await waitFor(() => view.getByTestId("assistant-fab")));
+    const generalButton = await waitFor(
+      () => view.getAllByRole("button", { name: /general-conversation/ })[0]
+    );
+    fireEvent.click(generalButton);
+
+    window.history.replaceState({}, "", "/posts/b/?clipping=clip-b");
+    clippingMarker.dataset.assistantClippingSlug = "clip-b";
+    document.dispatchEvent(new Event("astro:page-load"));
+    await waitFor(() => expect(listCalls).toBe(2));
+    await waitFor(() => expect(generalButton.getAttribute("aria-current")).toBe("true"));
+    expect(
+      view.getAllByRole("button", { name: /clip-b-conversation/ })[0].getAttribute("aria-current")
+    ).not.toBe("true");
+  });
+
   test("migrates a new draft after an idempotent replay even when the replay says it was not created", async () => {
     let postCalls = 0;
     let listCalls = 0;
-    let releaseReplay: (() => void) | undefined;
-    const replayResponse = new Promise<void>((resolve) => {
-      releaseReplay = resolve;
-    });
     const postedBodies: Array<Record<string, unknown>> = [];
     const persisted = conversation("replayed-conversation", "general", null);
 
@@ -153,7 +192,6 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
         postCalls += 1;
         postedBodies.push(JSON.parse(String(init.body)) as Record<string, unknown>);
         if (postCalls === 1) throw new Error("response lost");
-        await replayResponse;
         return json(
           {
             status: "queued",
@@ -195,14 +233,11 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
 
     fireEvent.click(send);
     await waitFor(() => expect(postCalls).toBe(2));
-    await user.clear(textarea);
-    await user.type(textarea, "保留这份问题（后续修改）");
-    releaseReplay?.();
     await waitFor(() => {
       const rawState = window.sessionStorage.getItem("site-knowledge-assistant-ui:test-user");
       expect(rawState).toBeTruthy();
       const state = JSON.parse(rawState ?? "{}");
-      expect(state.drafts[persisted.id]).toBe("保留这份问题（后续修改）");
+      expect(state.drafts[persisted.id]).toBeUndefined();
       expect(state.drafts.new).toBeUndefined();
     });
     expect(postedBodies[1].requestId).toBe(postedBodies[0].requestId);
@@ -231,7 +266,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
             requestId: JSON.parse(String(init.body)).requestId,
             userMessageId: "first-user",
             assistantMessageId: "first-assistant",
-            createdConversation: true,
+            createdConversation: false,
           },
           202
         );

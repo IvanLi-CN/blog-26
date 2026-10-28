@@ -691,11 +691,11 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
 
   useEffect(() => {
     const handlePageLoad = () => {
-      if (auth?.authenticated) void loadList({ preferContext: true });
+      if (auth?.authenticated) void loadList({ preferContext: !open });
     };
     document.addEventListener("astro:page-load", handlePageLoad);
     return () => document.removeEventListener("astro:page-load", handlePageLoad);
-  }, [auth?.authenticated, loadList]);
+  }, [auth?.authenticated, loadList, open]);
 
   const loadSnapshot = useCallback(
     async (conversationId: string) => {
