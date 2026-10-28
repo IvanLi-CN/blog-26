@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
   "covered_files": {
-    "scripts/start-console.ts": "f9581e191ea8cf461a2bd70d22f2a88a31298042",
+    "scripts/start-console.ts": "ad21273121c2275428f92f0adc58d11789afc742",
     "scripts/prepare-backend-dist.sh": "f3770d081a4e29cef6638c6ec9a847bb8b4c5555",
     "src/lib/assistant-discussion-migration.ts": "139819bffa42f17124fb629c0ee3463d70fd9a24",
     "tests/lib/assistant-discussion-migration.test.ts": "b0d18d3978b15fe8591db2ed26e5101d22d3befb",
@@ -18,9 +18,9 @@
     "src/server/assistant/migration-gate.ts": "7f085e4576cf46081b6ccebc69e0c1730ed93085",
     "src/server/assistant/migration-gate.test.ts": "c94e1a1cdc52ea25f153986c2ddf10fe59679a9a",
     "src/server/clipping/api.test.ts": "6bbbcb15f8c13e3eea88dd37b240a5fbe6c02db8",
-    "src/server/clipping/api.ts": "3260338463423ddb79a11a376c34598dd7487679",
-    "src/server/clipping/assistant-adapter.test.ts": "4c7c467daa9ae4d4c1b7557694e66acded55fb31",
-    "src/server/clipping/service.ts": "ba68552660d84050d08b9bd5721e9d7c8f5c08f7",
+    "src/server/clipping/api.ts": "f7aed53627c930db8326794a505620044355c0bd",
+    "src/server/clipping/assistant-adapter.test.ts": "03770cee4bb69116f8bd35a32cb90157f86d7e53",
+    "src/server/clipping/service.ts": "32b5c32e58acf54fd2d461c5aa354115d3f93d8e",
     "src/server/public-api/assistant-chat.test.ts": "6e16e309312be607eda9cd2ac7afbaac9eba4f80",
     "src/server/public-api/router.ts": "27516e1bb0c2d3f8cfa2d1b6e7cd030b994a661f"
   },
@@ -58,7 +58,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.ts",
-          "blob": "3260338463423ddb79a11a376c34598dd7487679",
+          "blob": "f7aed53627c930db8326794a505620044355c0bd",
           "command": "Uses frontend identity for clipping discussion and revalidates target/version binding"
         },
         {
@@ -75,7 +75,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/assistant-adapter.test.ts",
-          "blob": "4c7c467daa9ae4d4c1b7557694e66acded55fb31",
+          "blob": "03770cee4bb69116f8bd35a32cb90157f86d7e53",
           "command": "bun test src/server/clipping/assistant-adapter.test.ts (1 pass, 0 fail; same-target continuity, changed-target separation, and invalid-target cancellation covered)"
         },
         {
@@ -164,7 +164,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.ts",
-          "blob": "3260338463423ddb79a11a376c34598dd7487679",
+          "blob": "f7aed53627c930db8326794a505620044355c0bd",
           "command": "Requires a frontend session for clipping discussion and keeps creator/admin authorization on management operations"
         }
       ]

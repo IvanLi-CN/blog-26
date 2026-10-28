@@ -20,7 +20,7 @@
     "src/server/admin-api/router.ts": "d3033c0d6dfb96c10cd6135de88b208e79883ea0",
     "src/server/ai/icon-reranker.ts": "9b19608a004d6fd53a9ecb47e3bf0df8ba13b629",
     "src/server/clipping/agent-runtime.ts": "6b9991ca7b0515b425d4df45ce53d63f04cc502d",
-    "src/server/clipping/service.ts": "ba68552660d84050d08b9bd5721e9d7c8f5c08f7",
+    "src/server/clipping/service.ts": "32b5c32e58acf54fd2d461c5aa354115d3f93d8e",
     "src/server/jobs/definitions.ts": "b12ca785af83539ee22b1d8f11b27444e7e57d13",
     "src/server/jobs/index.ts": "96547ef6235a05d079a5c592fba7bdc44ac23ddd",
     "src/server/jobs/runtime.ts": "d6ef29d77b742b2ca00025717612dadbb307d743",
@@ -33,7 +33,7 @@
     "src/server/services/search-validation.ts": "5530f7aa80d8d17c848cf4551fd1f01f99137455",
     "src/server/services/tag-ai.ts": "b2a3d4302f9526e5b7f096afa3fb964bba15a118",
     "src/server/services/tag-icons.ts": "1ee8ac64445d6bdec836388a520b39387550b995",
-    "scripts/start-console.ts": "f9581e191ea8cf461a2bd70d22f2a88a31298042",
+    "scripts/start-console.ts": "ad21273121c2275428f92f0adc58d11789afc742",
     "tests/server/jobs/definitions.test.ts": "de44938911af1ffc8a4168b442402b4534db90be",
     "tests/server/jobs/runtime.test.ts": "dc63ce830bf75b7a4c67d260db210fd99bfc8597"
   },
@@ -107,7 +107,7 @@
         },
         {
           "path": "scripts/start-console.ts",
-          "blob": "f9581e191ea8cf461a2bd70d22f2a88a31298042",
+          "blob": "ad21273121c2275428f92f0adc58d11789afc742",
           "command": "Starts the unique jobs runtime in the production self-contained console and stops it through the existing shutdown flow"
         },
         {
@@ -257,7 +257,7 @@
         },
         {
           "path": "src/server/clipping/service.ts",
-          "blob": "ba68552660d84050d08b9bd5721e9d7c8f5c08f7",
+          "blob": "32b5c32e58acf54fd2d461c5aa354115d3f93d8e",
           "command": "Existing clipping conversation and lifecycle responses remain unchanged"
         }
       ]
