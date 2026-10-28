@@ -52,7 +52,9 @@ test.describe("GitHub admin binding Web Demo", () => {
     ).toContainText("待审核");
 
     const unboundAdmin = await openComments(page, "admin", "unbound");
-    await expect(unboundAdmin.getByText("管理员", { exact: true })).toBeVisible();
+    await expect(
+      unboundAdmin.locator(".comment-form").getByText("管理员", { exact: true })
+    ).toBeVisible();
     await expect(unboundAdmin.getByRole("button", { name: "直接发布" })).toBeVisible();
     await unboundAdmin
       .getByRole("textbox", { name: "评论内容" })
@@ -65,7 +67,9 @@ test.describe("GitHub admin binding Web Demo", () => {
     await expect(unboundCreated.getByText("管理员", { exact: true })).toBeVisible();
 
     const boundAdmin = await openComments(page, "admin", "bound");
-    await expect(boundAdmin.getByText("管理员", { exact: true })).toBeVisible();
+    await expect(
+      boundAdmin.locator(".comment-form").getByText("管理员", { exact: true })
+    ).toBeVisible();
     await expect(boundAdmin.getByRole("button", { name: "直接发布" })).toBeVisible();
     const seeded = boundAdmin.locator(".comment-item--root").filter({
       hasText: seededAdminComment,
@@ -134,7 +138,9 @@ test.describe("GitHub admin binding Web Demo", () => {
     expect(publicPage?.ok()).toBe(true);
     const section = page.locator(".comment-section");
     await expect(section).toBeVisible();
-    await expect(section.getByText("管理员", { exact: true })).toBeVisible();
+    await expect(
+      section.locator(".comment-form").getByText("管理员", { exact: true })
+    ).toBeVisible();
     await expect(section.getByRole("button", { name: "直接发布" })).toBeVisible();
     const seeded = section.locator(".comment-item--root").filter({ hasText: seededAdminComment });
     await expect(seeded).toBeVisible();
