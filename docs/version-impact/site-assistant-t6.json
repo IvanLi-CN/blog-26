@@ -4,7 +4,7 @@
   "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
   "covered_files": {
     "site/components/KnowledgeAssistant.css": "f293bf27306a83584417ad1790c6de653f7d3eff",
-    "site/components/KnowledgeAssistant.tsx": "3c4122f3796971897fd02cb5fb4617fbb883504d",
+    "site/components/KnowledgeAssistant.tsx": "af6348358add8a1812aaa933ee47f48a66cdb5aa",
     "site/components/PublicMemoAuthoring.public.tsx": "73ca42587cd5c2151f9f37a4f9dc7566f254919f",
     "site/components/PublicMemoAuthoring.tsx": "57f3c8a71b730b9df28e1b56a3302fc9d3a7be44",
     "site/components/pages/memo.tsx": "c34789742f1b7c03cbc3db72f097979f80714b6d",
@@ -17,7 +17,7 @@
     "src/lib/web-demo-fetch.ts": "83bcf9a748c3136ed70c50194ee65b14a387e99f",
     "src/lib/web-demo-runtime.ts": "357f7cab956e9d15641e19df1193b711bd460025",
     "tests/components/ClippingDetail.test.tsx": "bc3316c4e19039d199eec388ad389e0e2b7dbe42",
-    "tests/components/KnowledgeAssistant.test.tsx": "3f5d52c3ea69518456241fe55b6763ad9e903734",
+    "tests/components/KnowledgeAssistant.test.tsx": "30d686d6b8da53a51caf0ca9a824cb75beb81eb0",
     "tests/components/WebDemoIdentity.test.tsx": "59c0cb68531923f685a72c9f53ea74b803dc298a",
     "tests/e2e/clipping-detail.ts": "6d8a5509761767a08a7cb6ffa5d71d83c2dd90f1",
     "tests/lib/web-demo-boundary.test.ts": "95cb0ac26f54d921418198639e654943c311477a",
@@ -54,8 +54,8 @@
       "evidence": [
         {
           "path": "site/components/KnowledgeAssistant.tsx",
-          "blob": "3c4122f3796971897fd02cb5fb4617fbb883504d",
-          "command": "Shared FAB, dock, full-page route, principal-scoped drafts, navigation-safe clipping context, explicit cross-page clipping selection, idempotent draft migration, quota, retry, stop, citations, and simulated login handoff"
+          "blob": "af6348358add8a1812aaa933ee47f48a66cdb5aa",
+          "command": "Shared FAB, dock, full-page route, principal-scoped drafts, navigation-safe clipping context, explicit cross-page clipping selection, frozen draft handoff, idempotent draft migration, quota, retry, stop, citations, and simulated login handoff"
         },
         {
           "path": "site/components/KnowledgeAssistant.css",
@@ -110,8 +110,8 @@
         },
         {
           "path": "tests/components/KnowledgeAssistant.test.tsx",
-          "blob": "3f5d52c3ea69518456241fe55b6763ad9e903734",
-          "command": "bun test tests/components/KnowledgeAssistant.test.tsx: delayed list choices, idempotent draft replay migration, clipping adapter continuation, current-binding history revalidation, explicit cross-page clipping binding, and frozen generic draft navigation"
+          "blob": "30d686d6b8da53a51caf0ca9a824cb75beb81eb0",
+          "command": "bun test tests/components/KnowledgeAssistant.test.tsx: delayed list choices, idempotent draft replay migration, clipping adapter continuation, current-binding history revalidation, explicit cross-page clipping binding, frozen generic draft navigation, and full-page handoff"
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
@@ -193,7 +193,7 @@
       "evidence": [
         {
           "path": "site/components/KnowledgeAssistant.tsx",
-          "blob": "3c4122f3796971897fd02cb5fb4617fbb883504d",
+          "blob": "af6348358add8a1812aaa933ee47f48a66cdb5aa",
           "command": "Session state is additive, namespaced by principal, read with safe defaults when keys are absent, and migrated after idempotent new-conversation replay"
         },
         {
