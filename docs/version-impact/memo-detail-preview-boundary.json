@@ -31,7 +31,7 @@
     "src/lib/clipping-web-demo.ts": "ba7a3c371ac77c91aa6a7513635cd8aeafe691ce",
     "src/lib/console-web-demo.ts": "bd8439e4c3ab0d5b31ab9b5e250a3cd96230bac1",
     "src/lib/release/source.ts": "7725ab841f59bcd490d9caaba415deabc2aa5a3b",
-    "src/lib/web-demo-fetch.ts": "83bcf9a748c3136ed70c50194ee65b14a387e99f",
+    "src/lib/web-demo-fetch.ts": "11cd9df1c4dc31aad4f463dc23c6790faf0b03a7",
     "src/server/clipping/api.test.ts": "b215b6497aa88979a3a78097cced9a7651903a2c",
     "src/server/clipping/api.ts": "ea01ccbc1f2476d55225917ce5b72f1d433e2143",
     "src/server/http-compat-api.test.ts": "aa055bf98c2b7f090380189b34356ec9839a096a",
@@ -207,7 +207,7 @@
         },
         {
           "path": "src/lib/web-demo-fetch.ts",
-          "blob": "83bcf9a748c3136ed70c50194ee65b14a387e99f",
+          "blob": "11cd9df1c4dc31aad4f463dc23c6790faf0b03a7",
           "command": "Focused unit/component suite: 27 passed; Web Demo admin/preview mutation bridge and public route behavior are covered by 24 Console plus 36 public browser cases"
         },
         {

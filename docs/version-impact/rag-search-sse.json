@@ -10,14 +10,14 @@
     "site/components/SearchPageIsland.tsx": "fb1c5126bf492e5e9087c9e69ead660eb24306a6",
     "site/pages/api/[...path].ts": "f476a38298e08072381bab27f6ea57550d5d1918",
     "src/lib/__tests__/runtime-context.test.ts": "2282d551498f1e63a0a0bdff2e06d71ede3a3919",
-    "src/lib/web-demo-fetch.ts": "83bcf9a748c3136ed70c50194ee65b14a387e99f",
+    "src/lib/web-demo-fetch.ts": "11cd9df1c4dc31aad4f463dc23c6790faf0b03a7",
     "src/server/public-api/router.ts": "6af5c20d8015a9932b2ebf695f955adeefc6c4cf",
     "src/server/public-api/search-stream.test.ts": "533f51c75d71924aec91caee159973137a8be00e",
     "src/server/services/content-search.test.ts": "07573d1db6a6802e80979877a302ffd6905ffdb6",
     "src/server/services/content-search.ts": "9d302f9c08b1432b81a0ec148716554d9ffbc130",
     "src/server/services/search-model.ts": "1994b6e0938b10025b490e666b682c130994cbe9",
     "src/server/services/search-semantic-projection.ts": "49cc67a3f6f009fec09a2cd84fe35283f3e45a44",
-    "tests/lib/web-demo-fetch.test.ts": "c0aa663dbf5d395c35a1d2a32f90fb3546438b0a"
+    "tests/lib/web-demo-fetch.test.ts": "08a4b1b9b027c3fabe63991d2e4e1a4d9d5743f2"
   },
   "change": {
     "description": "Add a public AI-only SSE transport with immediate progress, bounded model waiting, request cancellation propagation, and compatibility-preserving JSON fallback for slow AI search.",
@@ -85,7 +85,7 @@
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "c0aa663dbf5d395c35a1d2a32f90fb3546438b0a",
+          "blob": "08a4b1b9b027c3fabe63991d2e4e1a4d9d5743f2",
           "command": "bun test tests/lib/web-demo-fetch.test.ts"
         },
         {

@@ -14,14 +14,15 @@
     "src/components/comments/CommentForm.tsx": "bdf4d8e7402b81a57e52affd1a27ea5c65662327",
     "src/components/comments/hooks.ts": "00680e47a73ec98dda96d20e57c53208f3b214b3",
     "src/components/memos/ClippingDetail.tsx": "963dc11c50e2f68908da03683548856c67e1d9b3",
-    "src/lib/web-demo-fetch.ts": "83bcf9a748c3136ed70c50194ee65b14a387e99f",
+    "src/lib/web-demo-fetch.ts": "11cd9df1c4dc31aad4f463dc23c6790faf0b03a7",
     "src/lib/web-demo-runtime.ts": "357f7cab956e9d15641e19df1193b711bd460025",
     "tests/components/ClippingDetail.test.tsx": "bc3316c4e19039d199eec388ad389e0e2b7dbe42",
     "tests/components/KnowledgeAssistant.test.tsx": "30d686d6b8da53a51caf0ca9a824cb75beb81eb0",
     "tests/components/WebDemoIdentity.test.tsx": "59c0cb68531923f685a72c9f53ea74b803dc298a",
     "tests/e2e/clipping-detail.ts": "6d8a5509761767a08a7cb6ffa5d71d83c2dd90f1",
+    "tests/e2e/web-demo/github-admin-binding.spec.ts": "9ae653aa6bdd1b76651aef8abba7cada58a231bd",
     "tests/lib/web-demo-boundary.test.ts": "95cb0ac26f54d921418198639e654943c311477a",
-    "tests/lib/web-demo-fetch.test.ts": "c0aa663dbf5d395c35a1d2a32f90fb3546438b0a",
+    "tests/lib/web-demo-fetch.test.ts": "08a4b1b9b027c3fabe63991d2e4e1a4d9d5743f2",
     "tests/lib/web-demo-runtime.test.ts": "aa4532ac6ba5560de296a1e880fc55a63b6444c4"
   },
   "change": {
@@ -49,8 +50,8 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The candidate adds one shared assistant surface across static and dynamic public routes, a full-page /chat route, additive frontend-auth client usage, principal-scoped browser drafts and request handoff, Web Demo assistant scenes, and a shared comment identity projection. The legacy clipping live chat remains available in the Console runtime and is hidden only on the public assistant-owned clipping surface; no database migration or server durable assistant state shape is changed.",
-      "assessed_at": "2026-10-28T02:45:15+08:00",
+      "reasoning": "The candidate adds one shared assistant surface across static and dynamic public routes, a full-page /chat route, additive frontend-auth client usage, principal-scoped browser drafts and request handoff, Web Demo assistant scenes, and a shared comment identity projection. Demo administrators now use the automatic station-admin principal for public comments even when the separate GitHub binding state is unbound; ordinary reader review gating and the binding-management surface remain intact. The legacy clipping live chat remains available in the Console runtime and is hidden only on the public assistant-owned clipping surface; no database migration or server durable assistant state shape is changed.",
+      "assessed_at": "2026-10-29T02:32:51+08:00",
       "evidence": [
         {
           "path": "site/components/KnowledgeAssistant.tsx",
@@ -74,8 +75,8 @@
         },
         {
           "path": "src/lib/web-demo-fetch.ts",
-          "blob": "83bcf9a748c3136ed70c50194ee65b14a387e99f",
-          "command": "Web Demo assistant records, ownership, idempotency, quota scenes, reset behavior, and cross-navigation session persistence"
+          "blob": "11cd9df1c4dc31aad4f463dc23c6790faf0b03a7",
+          "command": "Web Demo assistant records, ownership, idempotency, quota scenes, reset behavior, cross-navigation session persistence, and the unbound station-admin frontend comment identity"
         }
       ],
       "scope_drift": {
@@ -85,8 +86,8 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "The public and Console Astro builds pass, focused component/Web Demo tests cover the assistant races and the Console clipping discussion boundary, repository check and admin UI boundary checks pass, diff checks pass, browser smoke confirms guest draft handoff to simulated d_persona=user, and Tier4 review reports no remaining findings. Desktop/mobile immutable visual evidence covers the assistant surface; identity, responsive behavior, and legacy clipping entry compatibility remain covered by focused tests and route checks.",
-      "assessed_at": "2026-10-28T02:45:15+08:00",
+      "reasoning": "The public and Console Astro builds pass, focused component/Web Demo tests cover the assistant races, the unbound station-admin comment identity, and the Console clipping discussion boundary, repository check and admin UI boundary checks pass, diff checks pass, browser smoke confirms guest draft handoff to simulated d_persona=user, and Tier4 review reports no remaining findings. Desktop/mobile immutable visual evidence covers the assistant surface; identity, responsive behavior, and legacy clipping entry compatibility remain covered by focused tests and route checks.",
+      "assessed_at": "2026-10-29T02:32:51+08:00",
       "evidence": [
         {
           "path": "tests/components/ClippingDetail.test.tsx",
@@ -115,8 +116,13 @@
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "c0aa663dbf5d395c35a1d2a32f90fb3546438b0a",
-          "command": "bun test tests/lib/web-demo-fetch.test.ts: Web Demo clipping adapter creation and continuation stay in the in-memory route boundary"
+          "blob": "08a4b1b9b027c3fabe63991d2e4e1a4d9d5743f2",
+          "command": "bun test tests/lib/web-demo-fetch.test.ts: Web Demo clipping adapter creation and continuation stay in the in-memory route boundary; unbound admin frontend-auth identity has no GitHub binding and admin comments return approved"
+        },
+        {
+          "path": "tests/e2e/web-demo/github-admin-binding.spec.ts",
+          "blob": "9ae653aa6bdd1b76651aef8abba7cada58a231bd",
+          "command": "Web Demo comments keep ordinary readers review-gated while unbound and bound station administrators directly publish; the GitHub binding page retains its binding-state assertions"
         },
         {
           "path": "tests/e2e/clipping-detail.ts",
@@ -198,7 +204,7 @@
         },
         {
           "path": "src/lib/web-demo-fetch.ts",
-          "blob": "83bcf9a748c3136ed70c50194ee65b14a387e99f",
+          "blob": "11cd9df1c4dc31aad4f463dc23c6790faf0b03a7",
           "command": "Web Demo assistant records are session-scoped and resettable; no production database or durable file state is introduced"
         }
       ]

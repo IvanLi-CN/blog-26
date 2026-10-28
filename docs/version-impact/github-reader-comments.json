@@ -67,7 +67,7 @@
     "src/lib/release/inputs.ts": "4a4e43b3a34f5105a3e8a1b45374eadee74f3c1d",
     "src/lib/schema.ts": "8217b86504c951e3774c4297a2da48a639f2f389",
     "src/lib/session-cookie.ts": "688ecc90d7e3f618ca62f6eea49ae732991d00cc",
-    "src/lib/web-demo-fetch.ts": "83bcf9a748c3136ed70c50194ee65b14a387e99f",
+    "src/lib/web-demo-fetch.ts": "11cd9df1c4dc31aad4f463dc23c6790faf0b03a7",
     "src/lib/web-demo-runtime.ts": "7a5b7a60dda23347c53c158c31fc5eca528baad9",
     "src/server/admin-api/router.ts": "00923d2dd94beba5588c0e3cfccaf82516933ed0",
     "src/server/context.ts": "995fcb26b6d4db0228ca66760f1688fd8a0c02d4",
@@ -85,7 +85,7 @@
     "tests/components/WebDemoIdentity.test.tsx": "ce278f71fa67a54d60a6d3c22aa61f749fb91a3e",
     "tests/e2e/web-demo/console-comments.spec.ts": "643f5e3bc0faab21401dc4db719f3110c28f4794",
     "tests/e2e/web-demo/console-memo-boundary.spec.ts": "5396c2b20f8e96e0da64c0a1a2c054d67e5d1041",
-    "tests/e2e/web-demo/github-admin-binding.spec.ts": "2d6b7fdf275cf1f52dd980c6065b4e269b611ab6",
+    "tests/e2e/web-demo/github-admin-binding.spec.ts": "9ae653aa6bdd1b76651aef8abba7cada58a231bd",
     "tests/e2e/web-demo/public-comments.spec.ts": "e63ef75c079bd48de3323a1efd5f898f94f211ee",
     "tests/lib/web-demo-inspector-layout.test.ts": "fe23eede051d89aac3ee669b070887578072ae4f",
     "tests/lib/web-demo-runtime.test.ts": "01b2756e2f35343fb72a48a7819b6d3623bd2284",
@@ -161,12 +161,12 @@
         },
         {
           "path": "src/lib/web-demo-fetch.ts",
-          "blob": "83bcf9a748c3136ed70c50194ee65b14a387e99f",
+          "blob": "11cd9df1c4dc31aad4f463dc23c6790faf0b03a7",
           "command": "Web Demo Inspector comment identity, moderation, deletion, restoration, and target fixtures"
         },
         {
           "path": "tests/e2e/web-demo/github-admin-binding.spec.ts",
-          "blob": "2d6b7fdf275cf1f52dd980c6065b4e269b611ab6",
+          "blob": "9ae653aa6bdd1b76651aef8abba7cada58a231bd",
           "command": "Official Web Demo desktop/mobile binding, marker, unbind, soft-delete, restore, and overflow checks"
         },
         {
@@ -277,7 +277,7 @@
         },
         {
           "path": "tests/e2e/web-demo/github-admin-binding.spec.ts",
-          "blob": "2d6b7fdf275cf1f52dd980c6065b4e269b611ab6",
+          "blob": "9ae653aa6bdd1b76651aef8abba7cada58a231bd",
           "command": "Official Web Demo desktop/mobile binding, marker, unbind, soft-delete, restore, and overflow checks"
         },
         {

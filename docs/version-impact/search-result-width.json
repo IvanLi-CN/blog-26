@@ -7,7 +7,7 @@
     "docs/specs/nature-front-ui/assets/search-result-width-web-demo.png": "f9396b387eef7600f6340f9d09e960ebf6d499c1",
     "src/components/search/SearchResultsList.tsx": "5416bbdd70555a2b21ee2e8ce092e8e71e162e2c",
     "src/lib/search/web-demo-fixtures.ts": "7318cb2182423f95a35f215558aca4db34ad7ab3",
-    "tests/lib/web-demo-fetch.test.ts": "c0aa663dbf5d395c35a1d2a32f90fb3546438b0a"
+    "tests/lib/web-demo-fetch.test.ts": "08a4b1b9b027c3fabe63991d2e4e1a4d9d5743f2"
   },
   "change": {
     "description": "Allow search result previews to use the full result column width, strengthen the Web Demo fixture with long release-related content, and record owner-confirmed UI evidence.",
@@ -27,7 +27,7 @@
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "c0aa663dbf5d395c35a1d2a32f90fb3546438b0a",
+          "blob": "08a4b1b9b027c3fabe63991d2e4e1a4d9d5743f2",
           "command": "bun test tests/lib/web-demo-fetch.test.ts"
         },
         {
@@ -75,7 +75,7 @@
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "c0aa663dbf5d395c35a1d2a32f90fb3546438b0a",
+          "blob": "08a4b1b9b027c3fabe63991d2e4e1a4d9d5743f2",
           "command": "bun test tests/lib/web-demo-fetch.test.ts"
         },
         {
@@ -118,7 +118,7 @@
       "evidence": [
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "c0aa663dbf5d395c35a1d2a32f90fb3546438b0a",
+          "blob": "08a4b1b9b027c3fabe63991d2e4e1a4d9d5743f2",
           "command": "Web Demo search response shape and section rendering remain covered"
         },
         {
