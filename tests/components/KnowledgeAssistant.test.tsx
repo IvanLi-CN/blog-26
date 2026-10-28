@@ -55,6 +55,7 @@ function conversation(id: string, kind: "general" | "clipping", clippingMemoId: 
     kind,
     title: id,
     clippingMemoId,
+    clippingSlug: kind === "clipping" ? clippingMemoId : null,
     clippingVersionId: null,
     status: "active",
     createdAt: 1,
@@ -514,5 +515,148 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     await waitFor(() => expect(view.getByRole("alert").textContent).toContain("仅支持查看"));
     expect(clippingPosts).toBe(0);
     expect(genericPosts).toBe(0);
+  });
+
+  test("uses an explicitly selected clipping conversation's own binding across pages", async () => {
+    let clippingReads = 0;
+    let clippingPosts = 0;
+    let genericPosts = 0;
+    const current = {
+      ...conversation("current-article-a", "clipping", "Memos/article-a.md"),
+      clippingSlug: "article-a",
+    };
+    const other = {
+      ...conversation("other-article-b", "clipping", "Memos/article-b.md"),
+      clippingSlug: "article-b",
+    };
+    const snapshots = new Map([
+      [current.id, { ...snapshot(current.id), conversation: current }],
+      [other.id, { ...snapshot(other.id), conversation: other }],
+    ]);
+
+    globalThis.fetch = (async (input, init) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/frontend-auth/me") return json(auth);
+      if (url.pathname === "/api/public/chat/quota") return json(quota);
+      if (url.pathname === "/api/public/memos/article-a/clipping/chat") {
+        clippingReads += 1;
+        return json({
+          messages: [],
+          generating: false,
+          partial: "",
+          conversationId: current.id,
+          error: null,
+          errorCode: null,
+        });
+      }
+      if (url.pathname === "/api/public/memos/article-b/clipping/chat") {
+        clippingReads += 1;
+        if (init?.method === "POST") {
+          clippingPosts += 1;
+          return json(
+            {
+              status: "queued",
+              conversationId: other.id,
+              turnId: "other-turn",
+              requestId: JSON.parse(String(init.body)).requestId,
+              userMessageId: "other-user",
+              assistantMessageId: "other-assistant",
+              createdConversation: false,
+            },
+            202
+          );
+        }
+        return json({
+          messages: [],
+          generating: false,
+          partial: "",
+          conversationId: other.id,
+          error: null,
+          errorCode: null,
+        });
+      }
+      if (url.pathname === "/api/public/chat" && init?.method === "POST") {
+        genericPosts += 1;
+        throw new Error("explicit clipping selection must use its own adapter");
+      }
+      if (url.pathname === "/api/public/chat" && url.searchParams.has("conversation")) {
+        return json(
+          snapshots.get(url.searchParams.get("conversation") ?? "") ?? snapshot("missing")
+        );
+      }
+      if (url.pathname === "/api/public/chat")
+        return json({ conversations: [other, current], quota });
+      throw new Error(`Unexpected request: ${url.pathname} ${init?.method ?? "GET"}`);
+    }) as typeof fetch;
+
+    window.history.replaceState({}, "", "/posts/article-a/?clipping=article-a");
+    const marker = document.createElement("div");
+    marker.dataset.assistantClippingSlug = "article-a";
+    marker.dataset.assistantClippingMemoId = "Memos/article-a.md";
+    document.body.append(marker);
+    const view = render(<KnowledgeAssistant fullPage />);
+    await waitFor(() => expect(view.getByRole("heading", { name: current.id })).toBeTruthy());
+    expect(clippingReads).toBeGreaterThan(0);
+
+    fireEvent.click(view.getAllByRole("button", { name: /other-article-b/ })[0]);
+    await waitFor(() => expect(view.getByRole("heading", { name: other.id })).toBeTruthy());
+
+    const user = userEvent.setup({ document: window.document });
+    const textarea = view.getByLabelText("知识助手问题");
+    await user.type(textarea, "继续 B 文章讨论");
+    fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
+    await waitFor(() => expect(clippingPosts).toBe(1));
+    expect(genericPosts).toBe(0);
+  });
+
+  test("keeps a frozen general draft generic after navigating to a clipping page", async () => {
+    let genericPosts = 0;
+    let postedBody: Record<string, unknown> | null = null;
+    const created = conversation("generic-after-navigation", "general", null);
+
+    globalThis.fetch = (async (input, init) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/frontend-auth/me") return json(auth);
+      if (url.pathname === "/api/public/chat/quota") return json(quota);
+      if (url.pathname === "/api/public/chat" && init?.method === "POST") {
+        genericPosts += 1;
+        postedBody = JSON.parse(String(init.body)) as Record<string, unknown>;
+        return json(
+          {
+            status: "queued",
+            conversationId: created.id,
+            turnId: "generic-turn",
+            requestId: postedBody.requestId,
+            userMessageId: "generic-user",
+            assistantMessageId: "generic-assistant",
+            createdConversation: true,
+          },
+          202
+        );
+      }
+      if (url.pathname === "/api/public/chat" && url.searchParams.has("conversation"))
+        return json(snapshot(url.searchParams.get("conversation") ?? ""));
+      if (url.pathname === "/api/public/chat") return json({ conversations: [], quota });
+      throw new Error(`Unexpected request: ${url.pathname} ${init?.method ?? "GET"}`);
+    }) as typeof fetch;
+
+    const view = render(<KnowledgeAssistant fullPage />);
+    await waitFor(() => view.getByRole("button", { name: /新建对话/ }));
+    fireEvent.click(view.getByRole("button", { name: /新建对话/ }));
+    const user = userEvent.setup({ document: window.document });
+    const textarea = view.getByLabelText("知识助手问题");
+    await user.type(textarea, "保留为通用问题");
+
+    window.history.replaceState({}, "", "/posts/article/?clipping=article");
+    const marker = document.createElement("div");
+    marker.dataset.assistantClippingSlug = "article";
+    marker.dataset.assistantClippingMemoId = "Memos/article.md";
+    document.body.append(marker);
+    document.dispatchEvent(new Event("astro:page-load"));
+
+    fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
+    await waitFor(() => expect(genericPosts).toBe(1));
+    expect(postedBody?.kind).toBe("general");
+    expect(postedBody?.conversationId).toBeNull();
   });
 });

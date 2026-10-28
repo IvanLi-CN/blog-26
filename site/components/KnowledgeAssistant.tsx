@@ -160,16 +160,18 @@ function getClippingContext(): AssistantContext | null {
 
 function contextForConversation(
   conversation: AssistantConversation | undefined,
-  context: AssistantContext | null
+  context: AssistantContext | null,
+  { explicit = false }: { explicit?: boolean } = {}
 ) {
   if (conversation?.kind !== "clipping") return null;
   if (
+    !explicit &&
     context?.memoId &&
     conversation.clippingMemoId &&
     context.memoId !== conversation.clippingMemoId
   )
     return null;
-  const slug = conversation.clippingSlug ?? context?.slug ?? null;
+  const slug = conversation.clippingSlug ?? (!explicit ? context?.slug : null) ?? null;
   if (!slug) return null;
   return {
     slug,
@@ -611,7 +613,9 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         explicitConversationSelectionRef.current = true;
         selectedRef.current = "new";
         setSelectedId("new");
-        const nextContext = context ?? newConversationContextRef.current;
+        const nextContext = newConversationContextFrozenRef.current
+          ? newConversationContextRef.current
+          : (context ?? newConversationContextRef.current);
         newConversationContextRef.current = nextContext;
         newConversationContextFrozenRef.current =
           newConversationContextFrozenRef.current || Boolean(nextContext);
@@ -624,7 +628,9 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         const requestedConversation = data.conversations.find(
           (conversation) => conversation.id === requested
         );
-        const nextContext = contextForConversation(requestedConversation, context);
+        const nextContext = contextForConversation(requestedConversation, context, {
+          explicit: true,
+        });
         newConversationContextRef.current = nextContext;
         setNewConversationContext(nextContext);
         return;
@@ -752,7 +758,8 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
           newConversationContextRef.current ??
           contextForConversation(
             conversations.find((conversation) => conversation.id === conversationId),
-            getClippingContext()
+            getClippingContext(),
+            { explicit: explicitConversationSelectionRef.current }
           );
         if (context && !newConversationContextRef.current) {
           newConversationContextRef.current = context;
@@ -878,7 +885,8 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         ? getClippingContext()
         : contextForConversation(
             conversations.find((conversation) => conversation.id === id),
-            getClippingContext()
+            getClippingContext(),
+            { explicit: true }
           );
     newConversationContextRef.current = nextContext;
     newConversationContextFrozenRef.current = id === "new";
@@ -967,10 +975,13 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     const selectedConversation = conversations.find(
       (conversation) => conversation.id === selectedId
     );
+    const pageContext = getClippingContext();
     const context =
       newConversationContextRef.current ??
-      (selectedId === "new" ? getClippingContext() : null) ??
-      contextForConversation(selectedConversation, getClippingContext());
+      (selectedId === "new" && !newConversationContextFrozenRef.current ? pageContext : null) ??
+      contextForConversation(selectedConversation, pageContext, {
+        explicit: explicitConversationSelectionRef.current,
+      });
     if (selectedConversation?.kind === "clipping" && !context) {
       setRequestError("剪藏上下文已失效，请从文章页重新打开这段对话。");
       return;
