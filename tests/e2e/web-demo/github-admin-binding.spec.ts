@@ -15,6 +15,16 @@ async function expectNoHorizontalOverflow(page: import("@playwright/test").Page)
   expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth);
 }
 
+async function waitForWebDemoInspectorHydration(
+  page: import("@playwright/test").Page,
+  app: "public" | "admin"
+) {
+  await expect(page.locator(`body[data-web-demo-inspector-app="${app}"]`)).toHaveAttribute(
+    "data-web-demo-inspector-open",
+    /^(true|false)$/
+  );
+}
+
 async function openComments(
   page: import("@playwright/test").Page,
   persona: "user" | "admin",
@@ -126,6 +136,7 @@ test.describe("GitHub admin binding Web Demo", () => {
     await page.getByRole("button", { name: "绑定 GitHub" }).click();
     await expect(page.getByRole("status")).toContainText("演示绑定已完成");
     await expect(page.getByText("已绑定", { exact: true })).toBeVisible();
+    await waitForWebDemoInspectorHydration(page, "admin");
     await page.getByTestId("web-demo-inspector-trigger").click();
     const inspectorPanel = page.getByRole("region", { name: "Web Demo 调试控制面板" });
     await expect(inspectorPanel).toContainText("模拟绑定 GitHub");
@@ -154,6 +165,7 @@ test.describe("GitHub admin binding Web Demo", () => {
     await page.goto(`${articlePath}?d_persona=admin&d_github_binding=bound&d_delay=normal`, {
       waitUntil: "domcontentloaded",
     });
+    await waitForWebDemoInspectorHydration(page, "public");
     const inspector = page.getByTestId("web-demo-inspector-trigger");
     await expect(inspector).toHaveAccessibleName("打开 Web Demo 调试控制面板");
     await inspector.focus();

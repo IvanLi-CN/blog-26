@@ -21,7 +21,7 @@
     "tests/components/WebDemoIdentity.test.tsx": "59c0cb68531923f685a72c9f53ea74b803dc298a",
     "tests/e2e/clipping-detail.ts": "6d8a5509761767a08a7cb6ffa5d71d83c2dd90f1",
     "tests/e2e/web-demo/console-comments.spec.ts": "8048db539f003f09f9f1d96adac027460a9fa3a3",
-    "tests/e2e/web-demo/github-admin-binding.spec.ts": "ac8d81b8a7ce8bd234c529d430207e6746b63bd2",
+    "tests/e2e/web-demo/github-admin-binding.spec.ts": "61e976ab8a096e6a1d99ad65fc0aac4e355894d0",
     "tests/e2e/web-demo/public-comments.spec.ts": "169c416e6aea368e92da0cf02687f5c20f5d8507",
     "tests/lib/web-demo-boundary.test.ts": "95cb0ac26f54d921418198639e654943c311477a",
     "tests/lib/web-demo-fetch.test.ts": "265f238944f19292e0c2722bc10558374b717eaa",
@@ -53,7 +53,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "The candidate adds one shared assistant surface across static and dynamic public routes, a full-page /chat route, additive frontend-auth client usage, principal-scoped browser drafts and request handoff, Web Demo assistant scenes, and a shared comment identity projection. Demo administrators now use the automatic station-admin principal for public comments even when the separate GitHub binding state is unbound; ordinary reader review gating and the binding-management surface remain intact. The legacy clipping live chat remains available in the Console runtime and is hidden only on the public assistant-owned clipping surface; no database migration or server durable assistant state shape is changed.",
-      "assessed_at": "2026-10-29T02:32:51+08:00",
+      "assessed_at": "2026-10-29T03:40:05+08:00",
       "evidence": [
         {
           "path": "site/components/KnowledgeAssistant.tsx",
@@ -88,8 +88,8 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "The public and Console Astro builds pass, focused component/Web Demo tests cover the assistant races, the unbound station-admin comment identity, and the Console clipping discussion boundary, repository check and admin UI boundary checks pass, diff checks pass, browser smoke confirms guest draft handoff to simulated d_persona=user, and Tier4 review reports no remaining findings. Desktop/mobile immutable visual evidence covers the assistant surface; identity, responsive behavior, and legacy clipping entry compatibility remain covered by focused tests and route checks.",
-      "assessed_at": "2026-10-29T02:32:51+08:00",
+      "reasoning": "The public and Console Astro builds pass, focused component/Web Demo tests cover the assistant races, the unbound station-admin comment identity, the Console clipping discussion boundary, and deterministic Inspector hydration before keyboard interaction, repository check and admin UI boundary checks pass, diff checks pass, browser smoke confirms guest draft handoff to simulated d_persona=user, and Tier4 review reports no remaining findings. Desktop/mobile immutable visual evidence covers the assistant surface; identity, responsive behavior, and legacy clipping entry compatibility remain covered by focused tests and route checks.",
+      "assessed_at": "2026-10-29T03:40:05+08:00",
       "evidence": [
         {
           "path": "tests/components/ClippingDetail.test.tsx",
@@ -123,8 +123,8 @@
         },
         {
           "path": "tests/e2e/web-demo/github-admin-binding.spec.ts",
-          "blob": "ac8d81b8a7ce8bd234c529d430207e6746b63bd2",
-          "command": "Web Demo comments keep ordinary readers review-gated while unbound and bound station administrators directly publish; the GitHub binding page retains its binding-state assertions"
+          "blob": "61e976ab8a096e6a1d99ad65fc0aac4e355894d0",
+          "command": "Web Demo comments keep ordinary readers review-gated while unbound and bound station administrators directly publish; the GitHub binding page waits for Inspector hydration before keyboard and click interactions and retains its binding-state assertions"
         },
         {
           "path": "tests/e2e/clipping-detail.ts",
