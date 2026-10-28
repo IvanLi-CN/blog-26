@@ -33,10 +33,13 @@ describe("Web Demo request boundary", () => {
     expect(assistant).not.toContain("src/server/");
     expect(assistant).toContain("new:clipping:");
     expect(assistant).toContain("!hasExplicitUiState");
+    expect(assistant).toContain("explicitSelectionHandoffRef");
+    expect(assistant).not.toContain("requested !== null || hasExplicitDraft");
     expect(assistant).toContain("currentDraft === submittedDraft");
     expect(assistant).toContain(
-      "result.createdConversation && selectedRef.current === requestSelectedId"
+      "const shouldMigrateDraft =\n        result.createdConversation && selectedRef.current === requestSelectedId"
     );
+    expect(assistant).toContain("else if (shouldMigrateDraft)");
     expect(assistant).toContain("job.assistantMessageId === failedMessage.id");
     expect(assistant).toContain("onRetry={(message) => void retry(message)}");
     expect(clippingDetail).toContain("data-assistant-clipping-slug");

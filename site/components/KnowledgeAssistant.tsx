@@ -407,6 +407,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     initialUiState.newConversationContext
   );
   const newConversationContextFrozenRef = useRef(initialUiState.newConversationContextFrozen);
+  const explicitSelectionHandoffRef = useRef(Boolean(initialPathConversation));
   const snapshotRequestRef = useRef(0);
   const panelRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -459,6 +460,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
 
   const restoreAuthenticatedState = useCallback(
     (principalId: string, handoff: boolean) => {
+      if (handoff) explicitSelectionHandoffRef.current = true;
       const scopedState = readUiState(uiStateKey(principalId));
       const guestState = handoff ? readUiState() : emptyUiState();
       const guestHasNewDraft =
@@ -506,8 +508,15 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
       const hasExplicitDraft = Object.keys(draftsRef.current).some(
         (key) => key === "new" || key.startsWith("new:clipping:")
       );
+      const hasExplicitConversationPath =
+        typeof window !== "undefined" &&
+        Boolean(new URL(window.location.href).searchParams.get("conversation"));
       const hasExplicitUiState =
-        requested !== null || hasExplicitDraft || newConversationContextFrozenRef.current;
+        hasExplicitConversationPath ||
+        explicitSelectionHandoffRef.current ||
+        hasExplicitDraft ||
+        newConversationContextFrozenRef.current;
+      explicitSelectionHandoffRef.current = false;
       if (preferContext && context && !hasExplicitUiState) {
         const contextual = data.conversations.find(
           (conversation) =>
@@ -900,13 +909,15 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         kind: context ? "clipping" : "general",
         clippingMemoId: context?.slug ?? null,
       });
+      const shouldMigrateDraft =
+        result.createdConversation && selectedRef.current === requestSelectedId;
       if (submittedDraft !== null) {
         setDrafts((current) => {
           const next = { ...current };
           const currentDraft = current[key];
           if (currentDraft === submittedDraft) {
             delete next[key];
-          } else if (result.createdConversation && selectedRef.current === requestSelectedId) {
+          } else if (shouldMigrateDraft) {
             next[result.conversationId] = currentDraft ?? "";
             delete next[key];
           }
