@@ -78,7 +78,7 @@
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "08a4b1b9b027c3fabe63991d2e4e1a4d9d5743f2",
+          "blob": "265f238944f19292e0c2722bc10558374b717eaa",
           "command": "bun test tests/lib/public-csr-route.test.ts tests/lib/web-demo-fetch.test.ts"
         },
         {

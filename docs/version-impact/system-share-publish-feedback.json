@@ -40,7 +40,7 @@
     "src/lib/content-sources/utils.ts": "06aee000241f7e9055ecc760c70b47f761c88fd8",
     "src/lib/schema.ts": "ff8847d4f9a6d7c81f2be67748f990a8250e0346",
     "src/lib/system-share.ts": "36d2d6ad38a0d5b24ecbcb15c59ee31b0af10646",
-    "src/lib/web-demo-fetch.ts": "11cd9df1c4dc31aad4f463dc23c6790faf0b03a7",
+    "src/lib/web-demo-fetch.ts": "ac9265268af1abbad37d22c618b81726295b0afc",
     "src/lib/web-demo-runtime.ts": "462aaebf181ae75ec14f4d5dd561fe9a9c99a18d",
     "src/server/files-api/router.ts": "201bab0bfabb9606480cdf9074571e95a0938156",
     "src/server/public-api/router.ts": "31e9857f2461d4d7826e7a1a0eae0f7379dcde43",

@@ -26,7 +26,7 @@
     "site/pages/projects/index.astro": "28567272d31b418103b890392fc6654c2e2fc437",
     "src/components/projects/RuntimeCellGrid.stories.tsx": "41d0b255feeddd70559e0cbed1c927a26057d048",
     "src/components/ui/tooltip.tsx": "09c06b59a1f94bd62d0273a7cd8017fe88439c8f",
-    "src/lib/web-demo-fetch.ts": "11cd9df1c4dc31aad4f463dc23c6790faf0b03a7",
+    "src/lib/web-demo-fetch.ts": "ac9265268af1abbad37d22c618b81726295b0afc",
     "src/lib/web-demo-runtime.ts": "c30a0f0d6fed32d3fe77824145bac73c49f8f51c",
     "tests/components/runtime-cell-gesture.test.ts": "b06677b53c32f08d1a60a60e8803988354bd3652",
     "tests/components/runtime-cell-grid.test.tsx": "2ffe4cd28b4ac2c1ad53e69d962b05e56f1d5161",

@@ -19,7 +19,7 @@
     "src/components/comments/CommentSection.tsx": "40da0a0554b7ad4a804b27325140bd1a04cfad9f",
     "src/components/comments/CommentSectionWithProvider.tsx": "8262ce86a173d126ba93aebfeb1253db63c23c0e",
     "src/components/comments/hooks.ts": "f17f0989abbcaacf49f210ba4497bbdbf4e5b4e6",
-    "src/lib/web-demo-fetch.ts": "11cd9df1c4dc31aad4f463dc23c6790faf0b03a7",
+    "src/lib/web-demo-fetch.ts": "ac9265268af1abbad37d22c618b81726295b0afc",
     "src/lib/web-demo-runtime.ts": "fc9922bbcb5c19232b16ac1497896f1ae98bf202",
     "src/server/http-compat-api.test.ts": "4346604c0ed9a57c46429daac738395ada06dabd",
     "src/server/routers/comments.test.ts": "c83557ed44fcaa75143bf2508fc3419cf7e6c844",
@@ -29,7 +29,7 @@
     "tests/e2e/guest/astro-front-phase1.spec.ts": "678f98c74cc8eed9b343c1d8e245a692391e86e4",
     "tests/e2e/web-demo/public-comments.spec.ts": "e63ef75c079bd48de3323a1efd5f898f94f211ee",
     "tests/e2e/web-demo/public-csr.spec.ts": "8bfe304023fb9a628d0539da425b1907a634fb34",
-    "tests/lib/web-demo-fetch.test.ts": "08a4b1b9b027c3fabe63991d2e4e1a4d9d5743f2",
+    "tests/lib/web-demo-fetch.test.ts": "265f238944f19292e0c2722bc10558374b717eaa",
     "tests/lib/web-demo-runtime.test.ts": "a6194dd6019d03190f4eecb93545e4bcd6224840"
   },
   "change": {

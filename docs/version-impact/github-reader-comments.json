@@ -67,7 +67,7 @@
     "src/lib/release/inputs.ts": "4a4e43b3a34f5105a3e8a1b45374eadee74f3c1d",
     "src/lib/schema.ts": "8217b86504c951e3774c4297a2da48a639f2f389",
     "src/lib/session-cookie.ts": "688ecc90d7e3f618ca62f6eea49ae732991d00cc",
-    "src/lib/web-demo-fetch.ts": "11cd9df1c4dc31aad4f463dc23c6790faf0b03a7",
+    "src/lib/web-demo-fetch.ts": "ac9265268af1abbad37d22c618b81726295b0afc",
     "src/lib/web-demo-runtime.ts": "7a5b7a60dda23347c53c158c31fc5eca528baad9",
     "src/server/admin-api/router.ts": "00923d2dd94beba5588c0e3cfccaf82516933ed0",
     "src/server/context.ts": "995fcb26b6d4db0228ca66760f1688fd8a0c02d4",
@@ -161,7 +161,7 @@
         },
         {
           "path": "src/lib/web-demo-fetch.ts",
-          "blob": "11cd9df1c4dc31aad4f463dc23c6790faf0b03a7",
+          "blob": "ac9265268af1abbad37d22c618b81726295b0afc",
           "command": "Web Demo Inspector comment identity, moderation, deletion, restoration, and target fixtures"
         },
         {
