@@ -901,9 +901,17 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         clippingMemoId: context?.slug ?? null,
       });
       if (submittedDraft !== null) {
-        setDrafts((current) =>
-          current[key] === submittedDraft ? { ...current, [key]: "" } : current
-        );
+        setDrafts((current) => {
+          const next = { ...current };
+          const currentDraft = current[key];
+          if (currentDraft === submittedDraft) {
+            delete next[key];
+          } else if (result.createdConversation && selectedRef.current === requestSelectedId) {
+            next[result.conversationId] = currentDraft ?? "";
+            delete next[key];
+          }
+          return next;
+        });
       }
       delete submissionRequestsRef.current[key];
       const { [key]: _pending, ...remainingPendingRequests } = pendingRequestsRef.current;

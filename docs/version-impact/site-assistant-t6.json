@@ -4,7 +4,7 @@
   "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
   "covered_files": {
     "site/components/KnowledgeAssistant.css": "f293bf27306a83584417ad1790c6de653f7d3eff",
-    "site/components/KnowledgeAssistant.tsx": "3dc2c96c281052a3585c59ef9a84a3de272dde5f",
+    "site/components/KnowledgeAssistant.tsx": "60c3e11b5b8ea4c94e2468cd96d0ca39d58db2b9",
     "site/components/PublicMemoAuthoring.public.tsx": "73ca42587cd5c2151f9f37a4f9dc7566f254919f",
     "site/components/PublicMemoAuthoring.tsx": "7ac61a5c7bfe80d3e18957638ae46271e5c99b70",
     "site/components/pages/memo.tsx": "67254f8d60514646999e26d17474d34171cc492a",
@@ -18,7 +18,7 @@
     "src/lib/web-demo-runtime.ts": "357f7cab956e9d15641e19df1193b711bd460025",
     "tests/components/ClippingDetail.test.tsx": "c0ac9ebc6a20e12fed223d7acfca0edec0ecd8e3",
     "tests/components/WebDemoIdentity.test.tsx": "59c0cb68531923f685a72c9f53ea74b803dc298a",
-    "tests/lib/web-demo-boundary.test.ts": "8ea1624792399d69f9952fdbdf536770421fc0d4",
+    "tests/lib/web-demo-boundary.test.ts": "26d587e08eaebafde6e554aaa5815ebf2e89db84",
     "tests/lib/web-demo-fetch.test.ts": "a65f67ddad321d2ad87e36f8579a5293f7aa7997",
     "tests/lib/web-demo-runtime.test.ts": "aa4532ac6ba5560de296a1e880fc55a63b6444c4"
   },
@@ -52,7 +52,7 @@
       "evidence": [
         {
           "path": "site/components/KnowledgeAssistant.tsx",
-          "blob": "3dc2c96c281052a3585c59ef9a84a3de272dde5f",
+          "blob": "60c3e11b5b8ea4c94e2468cd96d0ca39d58db2b9",
           "command": "Shared FAB, dock, full-page route, principal-scoped drafts, frozen clipping/general context, quota, retry, stop, citations, and simulated login handoff"
         },
         {
@@ -98,7 +98,7 @@
         },
         {
           "path": "tests/lib/web-demo-boundary.test.ts",
-          "blob": "8ea1624792399d69f9952fdbdf536770421fc0d4",
+          "blob": "26d587e08eaebafde6e554aaa5815ebf2e89db84",
           "command": "bun test focused suite: one shared assistant surface, no private cache data, and route boundary enforcement"
         },
         {
@@ -175,7 +175,7 @@
       "evidence": [
         {
           "path": "site/components/KnowledgeAssistant.tsx",
-          "blob": "3dc2c96c281052a3585c59ef9a84a3de272dde5f",
+          "blob": "60c3e11b5b8ea4c94e2468cd96d0ca39d58db2b9",
           "command": "Session state is additive, namespaced by principal, and read with safe defaults when keys are absent"
         },
         {
