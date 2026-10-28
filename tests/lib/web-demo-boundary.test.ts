@@ -8,6 +8,7 @@ const assistant = readFileSync(
   "utf8"
 );
 const chatPage = readFileSync(resolve(process.cwd(), "site/pages/chat.astro"), "utf8");
+const memoPage = readFileSync(resolve(process.cwd(), "site/components/pages/memo.tsx"), "utf8");
 const clippingDetail = readFileSync(
   resolve(process.cwd(), "src/components/memos/ClippingDetail.tsx"),
   "utf8"
@@ -46,5 +47,10 @@ describe("Web Demo request boundary", () => {
     expect(assistant).toContain("onRetry={(message) => void retry(message)}");
     expect(clippingDetail).toContain("data-assistant-clipping-slug");
     expect(clippingDetail).toContain("hideChat?: boolean");
+  });
+
+  it("keeps Console clipping discussion tabs while public routes use the shared assistant", () => {
+    expect(memoPage).toContain('const isConsoleRuntime = process.env.CONSOLE_RUNTIME === "true";');
+    expect(memoPage.match(/hideChat=\{!isConsoleRuntime\}/g)).toHaveLength(2);
   });
 });

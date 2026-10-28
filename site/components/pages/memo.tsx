@@ -57,7 +57,7 @@ export default function MemoPage(data: Awaited<ReturnType<typeof loadmemo>>) {
               initialIsAdmin={initialIsAdmin}
               initialClippingArticle={clippingArticle}
               publicMediaContext={publicMediaContext}
-              hideChat
+              hideChat={!isConsoleRuntime}
             />
           ) : null}
           <div data-public-memo-static-shell="">
@@ -70,7 +70,7 @@ export default function MemoPage(data: Awaited<ReturnType<typeof loadmemo>>) {
                 publicMediaContext={publicMediaContext}
                 publicAssetVersion={assetVersion}
                 commentsTarget={isConsoleRuntime ? undefined : { type: "memo", key: memo.slug }}
-                hideChat
+                hideChat={!isConsoleRuntime}
               />
             ) : (
               <div
