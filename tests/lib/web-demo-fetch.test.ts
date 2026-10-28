@@ -362,23 +362,30 @@ describe("webDemoFetch", () => {
       },
     });
 
-    const response = await webDemoFetch(
-      "/api/public/comments?slug=demo-article&targetType=article&targetKey=demo-article",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          content: "未绑定管理员评论",
-          target: { type: "article", key: "demo-article" },
-          submissionKey: "unbound-admin-comment",
-        }),
-      }
-    );
+    const commentsUrl =
+      "/api/public/comments?slug=demo-article&targetType=article&targetKey=demo-article";
+    const response = await webDemoFetch(commentsUrl, {
+      method: "POST",
+      body: JSON.stringify({
+        content: "未绑定管理员评论",
+        target: { type: "article", key: "demo-article" },
+        submissionKey: "unbound-admin-comment",
+      }),
+    });
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
       authorRole: "admin",
       status: "approved",
       message: "管理员评论已公开",
     });
+    const commentsResponse = await webDemoFetch(commentsUrl);
+    const commentsPayload = (await commentsResponse.json()) as {
+      comments: Array<{ content: string; author: { avatarUrl: string } }>;
+    };
+    expect(
+      commentsPayload.comments.find((comment) => comment.content === "未绑定管理员评论")?.author
+        .avatarUrl
+    ).toBe("/site-assets/avatar.jpg");
   });
 
   it("keeps valid empty comments distinct from an unavailable target", async () => {

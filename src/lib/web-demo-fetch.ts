@@ -632,11 +632,14 @@ function demoCommentDto(
           : placeholder
             ? "评论暂不可见"
             : comment.authorName,
-      avatarUrl: avatarFailure
-        ? "/site-assets/__missing-comment-avatar__.svg"
-        : comment.readerPersona === "other"
-          ? ""
-          : "/site-assets/default-avatar.svg",
+      avatarUrl:
+        comment.authorRole === "admin"
+          ? "/site-assets/avatar.jpg"
+          : avatarFailure
+            ? "/site-assets/__missing-comment-avatar__.svg"
+            : comment.readerPersona === "other"
+              ? ""
+              : "/site-assets/default-avatar.svg",
       profileUrl: null,
     },
     canDelete: own,
