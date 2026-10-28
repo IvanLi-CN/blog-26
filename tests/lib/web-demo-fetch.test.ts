@@ -210,6 +210,15 @@ describe("webDemoFetch", () => {
     expect(second.status).toBe(202);
     expect((await second.json()).conversationId).toBe(firstSubmission.conversationId);
 
+    const clippingSnapshot = await webDemoFetch(
+      `/api/public/memos/memo-web-demo-1181/clipping/chat?conversationId=${encodeURIComponent(firstSubmission.conversationId)}`
+    );
+    expect(clippingSnapshot.status).toBe(200);
+    expect(await clippingSnapshot.json()).toMatchObject({
+      conversationId: firstSubmission.conversationId,
+      messages: expect.any(Array),
+    });
+
     const snapshot = await webDemoFetch(
       `/api/public/chat?conversation=${encodeURIComponent(firstSubmission.conversationId)}`
     );

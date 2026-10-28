@@ -1,3 +1,4 @@
+import { inArray } from "drizzle-orm";
 import { AiQuotaExceededError, getAssistantQuotaSnapshot } from "@/lib/ai-usage";
 import type {
   AssistantConversation,
@@ -9,7 +10,8 @@ import type {
   SubmitAssistantTurnInput,
 } from "@/lib/assistant-contracts";
 import { AssistantStorageError, createAssistantStorage } from "@/lib/assistant-storage";
-import { initializeDB } from "@/lib/db";
+import { db, initializeDB } from "@/lib/db";
+import { posts } from "@/lib/schema";
 import {
   type AssistantRuntime,
   AssistantRuntimeClosedError,
@@ -91,6 +93,29 @@ function resolveConversationInput(
     clippingMemoId: conversation.clippingMemoId,
     clippingVersionId: conversation.clippingVersionId,
   };
+}
+
+async function attachClippingSlugs(conversations: AssistantConversation[]) {
+  const memoIds = Array.from(
+    new Set(
+      conversations
+        .filter((conversation) => conversation.kind === "clipping")
+        .map((conversation) => conversation.clippingMemoId)
+        .filter((memoId): memoId is string => Boolean(memoId))
+    )
+  );
+  if (!db || !memoIds.length) return conversations;
+  const rows = await db
+    .select({ id: posts.id, slug: posts.slug })
+    .from(posts)
+    .where(inArray(posts.id, memoIds))
+    .all();
+  const slugs = new Map(rows.map((row) => [row.id, row.slug]));
+  return conversations.map((conversation) =>
+    conversation.kind === "clipping"
+      ? { ...conversation, clippingSlug: slugs.get(conversation.clippingMemoId ?? "") ?? null }
+      : conversation
+  );
 }
 
 export class AssistantService {
@@ -182,7 +207,10 @@ export class AssistantService {
 
   async list(principal: FrontendPrincipal) {
     const conversations = await this.storage.listConversations(principal.id);
-    return { conversations, quota: await this.quota(principal) };
+    return {
+      conversations: await attachClippingSlugs(conversations),
+      quota: await this.quota(principal),
+    };
   }
 
   async quota(principal: FrontendPrincipal): Promise<AssistantQuotaResponse> {
@@ -238,7 +266,7 @@ export class AssistantService {
     const generationJobs =
       (await this.storage.listGenerationJobs(conversationId, principal.id)) ?? [];
     return {
-      conversation,
+      conversation: (await attachClippingSlugs([conversation]))[0] ?? conversation,
       messages,
       generationJobs,
       activeGenerationJob: activeJob(generationJobs),

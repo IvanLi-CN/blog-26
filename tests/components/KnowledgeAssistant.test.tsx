@@ -437,4 +437,82 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     await waitFor(() => expect(clippingPosts).toBe(1));
     expect(listCalls).toBeGreaterThanOrEqual(2);
   });
+
+  test("keeps an explicitly selected old clipping conversation read-only", async () => {
+    let clippingReads = 0;
+    let clippingPosts = 0;
+    let genericSnapshots = 0;
+    let genericPosts = 0;
+    const old = {
+      ...conversation("old-clipping", "clipping", "Memos/article.md"),
+      clippingSlug: "article",
+    };
+    const current = {
+      ...conversation("current-clipping", "clipping", "Memos/article.md"),
+      clippingSlug: "article",
+    };
+    const currentSnapshot = { ...snapshot(current.id), conversation: current };
+    const oldSnapshot = { ...snapshot(old.id), conversation: old };
+
+    globalThis.fetch = (async (input, init) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/frontend-auth/me") return json(auth);
+      if (url.pathname === "/api/public/chat/quota") return json(quota);
+      if (url.pathname === "/api/public/memos/article/clipping/chat") {
+        if (init?.method === "POST") {
+          clippingPosts += 1;
+          return json(
+            {
+              status: "queued",
+              conversationId: current.id,
+              turnId: "current-turn",
+              requestId: "current-request",
+              userMessageId: "current-user",
+              assistantMessageId: "current-assistant",
+              createdConversation: false,
+            },
+            202
+          );
+        }
+        clippingReads += 1;
+        return json({
+          messages: [],
+          generating: false,
+          partial: "",
+          conversationId: current.id,
+          error: null,
+          errorCode: null,
+        });
+      }
+      if (url.pathname === "/api/public/chat" && init?.method === "POST") {
+        genericPosts += 1;
+        throw new Error("clipping continuation must not use the generic assistant route");
+      }
+      if (url.pathname === "/api/public/chat" && url.searchParams.has("conversation")) {
+        genericSnapshots += 1;
+        return json(
+          url.searchParams.get("conversation") === old.id ? oldSnapshot : currentSnapshot
+        );
+      }
+      if (url.pathname === "/api/public/chat")
+        return json({ conversations: [current, old], quota });
+      throw new Error(`Unexpected request: ${url.pathname} ${init?.method ?? "GET"}`);
+    }) as typeof fetch;
+
+    const view = render(<KnowledgeAssistant fullPage />);
+    await waitFor(() => expect(genericSnapshots).toBeGreaterThan(0));
+    await waitFor(() => expect(view.getByRole("heading", { name: current.id })).toBeTruthy());
+
+    fireEvent.click(view.getAllByRole("button", { name: /old-clipping/ })[0]);
+    await waitFor(() => expect(view.getByRole("heading", { name: old.id })).toBeTruthy());
+
+    const user = userEvent.setup({ document: window.document });
+    const textarea = view.getByLabelText("知识助手问题");
+    await user.type(textarea, "继续当前文章讨论");
+    fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
+    await waitFor(() => expect(clippingReads).toBeGreaterThan(0));
+    await waitFor(() => expect(view.getByRole("alert").textContent).toContain("仅支持查看"));
+    expect(clippingPosts).toBe(0);
+    expect(genericPosts).toBe(0);
+  });
 });

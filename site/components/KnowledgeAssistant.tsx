@@ -162,10 +162,19 @@ function contextForConversation(
   conversation: AssistantConversation | undefined,
   context: AssistantContext | null
 ) {
-  if (conversation?.kind !== "clipping" || !context) return null;
-  if (context.memoId && conversation.clippingMemoId)
-    return context.memoId === conversation.clippingMemoId ? context : null;
-  return conversation.clippingMemoId === context.slug ? context : null;
+  if (conversation?.kind !== "clipping") return null;
+  if (
+    context?.memoId &&
+    conversation.clippingMemoId &&
+    context.memoId !== conversation.clippingMemoId
+  )
+    return null;
+  const slug = conversation.clippingSlug ?? context?.slug ?? null;
+  if (!slug) return null;
+  return {
+    slug,
+    memoId: conversation.clippingMemoId ?? context?.memoId ?? null,
+  };
 }
 
 function draftKey(selectedId: string | null, context: AssistantContext | null) {
@@ -429,6 +438,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     initialUiState.newConversationContext
   );
   const newConversationContextFrozenRef = useRef(initialUiState.newConversationContextFrozen);
+  const explicitConversationSelectionRef = useRef(Boolean(initialPathConversation));
   const explicitSelectionHandoffRef = useRef(Boolean(initialPathConversation));
   const explicitNewConversationSelectionRef = useRef(false);
   const selectionRevisionRef = useRef(0);
@@ -551,6 +561,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         );
         const nextId = contextual?.id ?? "new";
         const nextContext = contextual ? context : nextId === "new" ? context : null;
+        explicitConversationSelectionRef.current = false;
         const contextualDraftKey = draftKey("new", context);
         const sourceDraftKey = Object.hasOwn(draftsRef.current, contextualDraftKey)
           ? contextualDraftKey
@@ -597,6 +608,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
           (key) => key === "new" || key.startsWith("new:clipping:")
         )
       ) {
+        explicitConversationSelectionRef.current = true;
         selectedRef.current = "new";
         setSelectedId("new");
         const nextContext = context ?? newConversationContextRef.current;
@@ -608,6 +620,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         return;
       }
       if (requested && data.conversations.some((conversation) => conversation.id === requested)) {
+        explicitConversationSelectionRef.current = true;
         const requestedConversation = data.conversations.find(
           (conversation) => conversation.id === requested
         );
@@ -617,12 +630,15 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         return;
       }
       if (requested === "new") return;
-      const nextId = data.conversations[0]?.id ?? null;
+      explicitConversationSelectionRef.current = false;
+      const nextConversation = data.conversations[0];
+      const nextId = nextConversation?.id ?? null;
+      const nextContext = contextForConversation(nextConversation, context);
       selectedRef.current = nextId;
       setSelectedId(nextId);
-      newConversationContextRef.current = null;
+      newConversationContextRef.current = nextContext;
       newConversationContextFrozenRef.current = false;
-      setNewConversationContext(null);
+      setNewConversationContext(nextContext);
       setNewConversationContextFrozen(false);
     },
     []
@@ -732,8 +748,17 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         selectedRef.current === id && snapshotRequestRef.current === requestSequence;
       try {
         let currentConversationId = conversationId;
-        const context = newConversationContextRef.current;
-        if (context) {
+        const context =
+          newConversationContextRef.current ??
+          contextForConversation(
+            conversations.find((conversation) => conversation.id === conversationId),
+            getClippingContext()
+          );
+        if (context && !newConversationContextRef.current) {
+          newConversationContextRef.current = context;
+          setNewConversationContext(context);
+        }
+        if (context && !explicitConversationSelectionRef.current) {
           const clipping = await readClippingAssistantSnapshot(context.slug);
           if (!isCurrent()) return null;
           if (!clipping.conversationId) {
@@ -780,7 +805,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         return null;
       }
     },
-    [applyUiState]
+    [applyUiState, conversations]
   );
 
   useEffect(() => {
@@ -844,6 +869,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
 
   const selectConversation = (id: string) => {
     selectionRevisionRef.current += 1;
+    explicitConversationSelectionRef.current = true;
     explicitNewConversationSelectionRef.current = id === "new";
     selectedRef.current = id;
     setSelectedId(id);
@@ -865,6 +891,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
 
   const createConversation = () => {
     selectionRevisionRef.current += 1;
+    explicitConversationSelectionRef.current = true;
     explicitNewConversationSelectionRef.current = true;
     selectedRef.current = "new";
     setSelectedId("new");
@@ -937,12 +964,34 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   };
 
   const send = async (contentOverride?: string) => {
-    const context = newConversationContextRef.current;
+    const selectedConversation = conversations.find(
+      (conversation) => conversation.id === selectedId
+    );
+    const context =
+      newConversationContextRef.current ??
+      (selectedId === "new" ? getClippingContext() : null) ??
+      contextForConversation(selectedConversation, getClippingContext());
+    if (selectedConversation?.kind === "clipping" && !context) {
+      setRequestError("剪藏上下文已失效，请从文章页重新打开这段对话。");
+      return;
+    }
     const key = draftKey(selectedId, context);
     const draftValue = contentOverride ?? draftsRef.current[key] ?? "";
     const content = draftValue.trim();
     const submittedDraft = contentOverride === undefined ? draftValue : null;
     if (!content || !auth?.authenticated || submittingRef.current) return;
+    if (context && selectedConversation?.kind === "clipping" && selectedId !== "new") {
+      try {
+        const current = await readClippingAssistantSnapshot(context.slug);
+        if (current.conversationId !== selectedId) {
+          setRequestError("这段对话对应旧的剪藏目标，仅支持查看；请从当前文章新建或继续对话。");
+          return;
+        }
+      } catch (error) {
+        setRequestError(errorMessage(error));
+        return;
+      }
+    }
     submittingRef.current = true;
     setIsSubmitting(true);
     setRequestError(null);
@@ -990,6 +1039,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
       setPendingRequests(remainingPendingRequests);
       if (selectedRef.current === requestSelectedId) {
         explicitNewConversationSelectionRef.current = false;
+        explicitConversationSelectionRef.current = true;
         selectedRef.current = result.conversationId;
         setSelectedId(result.conversationId);
         newConversationContextRef.current = context;
@@ -1019,10 +1069,16 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
 
   const stop = async () => {
     if (!selectedId || !snapshot?.activeGenerationJob) return;
+    const selectedConversation = conversations.find(
+      (conversation) => conversation.id === selectedId
+    );
+    const context =
+      newConversationContextRef.current ??
+      contextForConversation(selectedConversation, getClippingContext());
     try {
-      if (newConversationContextRef.current) {
+      if (context) {
         await stopClippingAssistantGeneration({
-          slug: newConversationContextRef.current.slug,
+          slug: context.slug,
           turnId: snapshot.activeGenerationJob.id,
         });
       } else {
@@ -1061,19 +1117,25 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   };
 
   const enlarge = () => {
+    const context =
+      newConversationContextRef.current ??
+      (selectedId === "new" ? getClippingContext() : null) ??
+      contextForConversation(
+        conversations.find((conversation) => conversation.id === selectedId),
+        getClippingContext()
+      );
     writeUiState(uiStateKey(auth?.principal?.id), {
       selectedId,
       drafts,
       pendingRequests: pendingRequestsRef.current,
-      newConversationContext: newConversationContextRef.current,
+      newConversationContext: context,
       newConversationContextFrozen: newConversationContextFrozenRef.current,
     });
     const url = new URL(toPublicSitePath("/chat"), window.location.origin);
     if (selectedId && selectedId !== "new") url.searchParams.set("conversation", selectedId);
-    if (newConversationContextRef.current) {
-      url.searchParams.set("clipping", newConversationContextRef.current.slug);
-      if (newConversationContextRef.current.memoId)
-        url.searchParams.set("clippingMemoId", newConversationContextRef.current.memoId);
+    if (context) {
+      url.searchParams.set("clipping", context.slug);
+      if (context.memoId) url.searchParams.set("clippingMemoId", context.memoId);
     }
     window.location.assign(url.toString());
   };

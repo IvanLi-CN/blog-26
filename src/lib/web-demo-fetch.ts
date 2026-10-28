@@ -246,6 +246,7 @@ function demoAssistantRecord(
     kind: options.kind ?? "general",
     title: "公开知识库问答",
     clippingMemoId: options.clippingMemoId ?? null,
+    clippingSlug: options.kind === "clipping" ? (options.clippingMemoId ?? null) : null,
     clippingVersionId: null,
     status: expired ? "expired" : "active",
     createdAt: now - 20_000,
@@ -313,7 +314,7 @@ function demoAssistantRecord(
 
 function demoAssistantSnapshot(record: DemoAssistantRecord) {
   return {
-    conversation: record.conversation,
+    conversation: demoAssistantConversation(record),
     messages: record.messages,
     generationJobs: record.generationJob ? [record.generationJob] : [],
     activeGenerationJob:
@@ -321,6 +322,58 @@ function demoAssistantSnapshot(record: DemoAssistantRecord) {
         ? record.generationJob
         : null,
     eventSequence: record.messages.at(-1)?.sequence ?? 0,
+  };
+}
+
+function demoAssistantConversation(record: DemoAssistantRecord): AssistantConversation {
+  if (record.conversation.kind !== "clipping") return record.conversation;
+  return {
+    ...record.conversation,
+    clippingSlug: record.conversation.clippingSlug ?? record.conversation.clippingMemoId,
+  };
+}
+
+function demoClippingAssistantSnapshot(record: DemoAssistantRecord | null) {
+  if (!record)
+    return {
+      messages: [],
+      generating: false,
+      partial: "",
+      conversationId: null,
+      error: null,
+      errorCode: null,
+    };
+  const active =
+    record.generationJob?.status === "queued" || record.generationJob?.status === "running"
+      ? record.generationJob
+      : null;
+  const partial = active
+    ? (record.messages.find((message) => message.id === active.assistantMessageId)?.content ?? "")
+    : "";
+  const latest = record.generationJob;
+  const failed = latest?.status === "failed" || latest?.status === "cancelled";
+  return {
+    messages: record.messages
+      .filter(
+        (message) =>
+          (message.role === "user" || message.role === "assistant") &&
+          message.id !== active?.assistantMessageId &&
+          message.status !== "pending" &&
+          message.status !== "streaming" &&
+          (message.role === "user" || Boolean(message.content.trim()))
+      )
+      .map((message) => ({
+        id: message.id,
+        role: message.role,
+        text: message.content,
+        timestamp: message.createdAt,
+        status: message.status,
+      })),
+    generating: Boolean(active),
+    partial,
+    conversationId: record.conversation.id,
+    error: failed ? (latest?.status === "cancelled" ? "已停止生成" : "生成失败，请稍后重试") : null,
+    errorCode: failed ? (latest?.status === "cancelled" ? "cancelled" : "generation-failed") : null,
   };
 }
 
@@ -978,7 +1031,7 @@ function getDemoAssistantResponse(
           (!record.isSeed || record.scene === scene) &&
           record.conversation.status !== "deleted"
       )
-      .map((record) => record.conversation);
+      .map(demoAssistantConversation);
     return jsonResponse({ conversations, quota: demoAssistantQuota(environment, scene) });
   }
 
@@ -1355,6 +1408,15 @@ async function getDemoPublicResponse(
         record.conversation.kind === "clipping" &&
         record.conversation.clippingMemoId === clippingSlug
     );
+    if (method === "GET") {
+      const requestedConversationId = url.searchParams.get("conversationId");
+      if (
+        requestedConversationId &&
+        (!existing || existing.conversation.id !== requestedConversationId)
+      )
+        return jsonResponse({ error: "仅能访问当前文章对话", code: "FORBIDDEN" }, 403);
+      return jsonResponse(demoClippingAssistantSnapshot(existing));
+    }
     const proxyUrl = new URL("/api/public/chat", url);
     if (clippingChatMatch[2]) proxyUrl.pathname = "/api/public/chat/stop";
     const proxyBody = clippingChatMatch[2]

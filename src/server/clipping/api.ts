@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import type { FrontendPrincipal } from "@/lib/assistant-contracts";
+import { extractAuthFromRequest } from "@/lib/auth-utils";
 import {
   buildClippingResourceBaseUrl,
   clippingResourceFilename,
@@ -173,12 +174,12 @@ async function access(
   return { row, authored, manifest, recognition };
 }
 
-async function frontendPrincipal(request: Request, ctx: TRPCContext) {
+async function frontendPrincipal(request: Request) {
   const principal = await getFrontendPrincipalFromRequest(request);
-  if (!principal)
-    if (ctx.isAdmin && ctx.user) return ensureAdminFrontendUser(ctx.user);
-    else throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录前台账号后再讨论剪藏" });
-  return principal;
+  if (principal) return principal;
+  const auth = await extractAuthFromRequest(request);
+  if (auth.isAdmin && auth.user) return ensureAdminFrontendUser(auth.user);
+  throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录前台账号后再讨论剪藏" });
 }
 
 function mapAssistantSnapshot(snapshot: AssistantSnapshot | null) {
@@ -284,7 +285,7 @@ async function routeClippingRequest(
   const privateOperation = operation === "reprocess";
   const discussionPrincipal =
     operation === "chat" || operation === "chat/events" || operation === "chat/stop"
-      ? await frontendPrincipal(request, ctx)
+      ? await frontendPrincipal(request)
       : null;
   const authorized = await access(slug, ctx, privateOperation, discussionPrincipal);
   const { row, manifest } = authorized;
@@ -306,9 +307,15 @@ async function routeClippingRequest(
                 : null,
           }
         : {}),
-      canDiscuss:
-        (ctx.isAdmin || Boolean(await getFrontendPrincipalFromRequest(request))) &&
-        Boolean(getClippingRuntime()?.assistantChatEnabled()),
+      canDiscuss: await (async () => {
+        if (!getClippingRuntime()?.assistantChatEnabled()) return false;
+        try {
+          await frontendPrincipal(request);
+          return true;
+        } catch {
+          return false;
+        }
+      })(),
       processorEnabled: Boolean(getClippingRuntime()),
     });
   }
@@ -352,7 +359,10 @@ async function routeClippingRequest(
       const snapshot = await runtime().assistantSnapshot(row.id, principal);
       if (requested && requested !== snapshot?.conversation.id)
         throw new TRPCError({ code: "FORBIDDEN", message: "仅能访问当前文章对话" });
-      await revalidateDiscussion(slug, ctx, currentManifest, principal);
+      const refreshedPrincipal = await frontendPrincipal(request);
+      if (refreshedPrincipal.id !== principal.id)
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录前台账号后再讨论剪藏" });
+      await revalidateDiscussion(slug, ctx, currentManifest, refreshedPrincipal);
       return response(mapAssistantSnapshot(snapshot));
     }
     if (request.method === "POST") {
@@ -368,7 +378,10 @@ async function routeClippingRequest(
         { revision: currentManifest.revision, targetUrl: currentManifest.targetUrl }
       );
       try {
-        await revalidateDiscussion(slug, ctx, currentManifest, principal);
+        const refreshedPrincipal = await frontendPrincipal(request);
+        if (refreshedPrincipal.id !== principal.id)
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录前台账号后再讨论剪藏" });
+        await revalidateDiscussion(slug, ctx, currentManifest, refreshedPrincipal);
       } catch (error) {
         await runtime()
           .assistantStop(row.id, principal, submission.turnId)
@@ -415,7 +428,7 @@ async function routeClippingRequest(
             const deadline = Date.now() + 60_000;
             while (!cancelled && !request.signal.aborted && Date.now() < deadline) {
               try {
-                const refreshedPrincipal = await frontendPrincipal(request, ctx);
+                const refreshedPrincipal = await frontendPrincipal(request);
                 if (refreshedPrincipal.id !== principal.id) break;
                 const current = await access(slug, ctx, false, refreshedPrincipal);
                 const before = currentDiscussion(current);
@@ -426,7 +439,7 @@ async function routeClippingRequest(
                 if (!snapshot) break;
                 const after = currentDiscussion(await access(slug, ctx, false, refreshedPrincipal));
                 if (after.id !== before.id || after.targetUrl !== before.targetUrl) break;
-                const finalPrincipal = await frontendPrincipal(request, ctx);
+                const finalPrincipal = await frontendPrincipal(request);
                 if (finalPrincipal.id !== principal.id) break;
                 const final = currentDiscussion(await access(slug, ctx, false, finalPrincipal));
                 if (final.id !== before.id || final.targetUrl !== before.targetUrl) break;
