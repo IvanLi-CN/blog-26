@@ -85,7 +85,7 @@
     "tests/components/WebDemoIdentity.test.tsx": "ce278f71fa67a54d60a6d3c22aa61f749fb91a3e",
     "tests/e2e/web-demo/console-comments.spec.ts": "8048db539f003f09f9f1d96adac027460a9fa3a3",
     "tests/e2e/web-demo/console-memo-boundary.spec.ts": "5396c2b20f8e96e0da64c0a1a2c054d67e5d1041",
-    "tests/e2e/web-demo/github-admin-binding.spec.ts": "9ae653aa6bdd1b76651aef8abba7cada58a231bd",
+    "tests/e2e/web-demo/github-admin-binding.spec.ts": "ac8d81b8a7ce8bd234c529d430207e6746b63bd2",
     "tests/e2e/web-demo/public-comments.spec.ts": "169c416e6aea368e92da0cf02687f5c20f5d8507",
     "tests/lib/web-demo-inspector-layout.test.ts": "fe23eede051d89aac3ee669b070887578072ae4f",
     "tests/lib/web-demo-runtime.test.ts": "01b2756e2f35343fb72a48a7819b6d3623bd2284",
@@ -166,7 +166,7 @@
         },
         {
           "path": "tests/e2e/web-demo/github-admin-binding.spec.ts",
-          "blob": "9ae653aa6bdd1b76651aef8abba7cada58a231bd",
+          "blob": "ac8d81b8a7ce8bd234c529d430207e6746b63bd2",
           "command": "Official Web Demo desktop/mobile binding, marker, unbind, soft-delete, restore, and overflow checks"
         },
         {
@@ -277,7 +277,7 @@
         },
         {
           "path": "tests/e2e/web-demo/github-admin-binding.spec.ts",
-          "blob": "9ae653aa6bdd1b76651aef8abba7cada58a231bd",
+          "blob": "ac8d81b8a7ce8bd234c529d430207e6746b63bd2",
           "command": "Official Web Demo desktop/mobile binding, marker, unbind, soft-delete, restore, and overflow checks"
         },
         {
