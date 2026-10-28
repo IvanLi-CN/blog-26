@@ -15,28 +15,28 @@
     "package.json": "b70913ecc7e6f53c2e1a77658e1bee9e7ca072b4",
     "scripts/build-web-demo.ts": "840522042ea0e6a348b05aa0f0ff4c53c35e26b4",
     "scripts/preview-web-demo.ts": "5d92e6c3d65147497a6a215fe27393571f6f43b3",
-    "site/components/pages/memo.tsx": "b19ddde06df9b0b761dd1369c0a4f9fbe26f2a9b",
+    "site/components/pages/memo.tsx": "c34789742f1b7c03cbc3db72f097979f80714b6d",
     "site/components/pages/memos.tsx": "5684a42521706c0d33c38c0881b0ddfe04c88cc0",
     "site/components/PublicMemoAuthoring.public.tsx": "f2d5178a4f6ef032b2b42e10fa51cc87bb920d63",
-    "site/components/PublicMemoAuthoring.tsx": "3cd5b2c8f8a71f3b9e5ec94ea63726bffcb3af72",
+    "site/components/PublicMemoAuthoring.tsx": "57f3c8a71b730b9df28e1b56a3302fc9d3a7be44",
     "site/components/PublicRouter.tsx": "528da86451956f2a4585b570241ff3034309f372",
     "site/components/VirtualizedMemoList.tsx": "107f3d0d36b640fc780a3554098f421cbfaac07c",
     "site/lib/page-data/memo.ts": "510bab276c045879f504affc5deb1c9ab678ace7",
     "site/lib/page-data/memos.ts": "0ff7547d2c62045ee8e6557968cf3f7c66e02540",
     "site/pages/memos/[slug].astro": "c19abf54d59fd88cc31a59e32ba14355e23799b5",
-    "src/components/memos/ClippingDetail.tsx": "9b97dbcb1f343525f43b813b361adb6a74586e37",
+    "src/components/memos/ClippingDetail.tsx": "963dc11c50e2f68908da03683548856c67e1d9b3",
     "src/components/memos/PublicMemoAuthoring.stories.tsx": "0f135c87ecb4755ff78a768c6ac43aaf4c359c22",
     "src/components/WebDemoInspector.css": "d7c0f572527944d9f1ec7d3ad74002d0df0783cd",
     "src/components/WebDemoInspector.tsx": "07a071d09a48a33545742e0ea91beeb89eb88988",
     "src/lib/clipping-web-demo.ts": "ba7a3c371ac77c91aa6a7513635cd8aeafe691ce",
     "src/lib/console-web-demo.ts": "bd8439e4c3ab0d5b31ab9b5e250a3cd96230bac1",
     "src/lib/release/source.ts": "7725ab841f59bcd490d9caaba415deabc2aa5a3b",
-    "src/lib/web-demo-fetch.ts": "05da9fc2fe4fd9fbb5178dc0cb89aad0ab635a7a",
-    "src/server/clipping/api.test.ts": "c49f19bb824e1534886fbb47cdbd0898e70e133d",
-    "src/server/clipping/api.ts": "c9f16d2ced4b0f248ad5a53d5e1f3f21a434b82e",
+    "src/lib/web-demo-fetch.ts": "b01a0e9bfa581ee9ae4f7a7bb6fb0ee1383daa58",
+    "src/server/clipping/api.test.ts": "911b5e1f3d4b4ef8b5bd2d41f0ad372ca0ef7b5b",
+    "src/server/clipping/api.ts": "c2ed115a4c5a31cd2591b29e2997fe9479848169",
     "src/server/http-compat-api.test.ts": "aa055bf98c2b7f090380189b34356ec9839a096a",
     "src/server/routers/memos.ts": "dae1d2f73077b47bd3cbe7fc65c309aacdbc4183",
-    "tests/components/ClippingDetail.test.tsx": "7a811cdcbcb8a39502f2365fdbf9de70fe47e7cc",
+    "tests/components/ClippingDetail.test.tsx": "bc3316c4e19039d199eec388ad389e0e2b7dbe42",
     "tests/components/PublicMemoAuthoring.test.tsx": "2f819a05b88b98bb646a747a038f4b2a06cfa5f7",
     "tests/e2e/admin/memos-admin.spec.ts": "173c142fa9274f0bba70c7181b0547bb09dd01c2",
     "tests/e2e/admin/memos/helpers.ts": "d858b41e327d7570fbed70c7f3481611209e0dde",
@@ -141,7 +141,7 @@
         },
         {
           "path": "tests/components/ClippingDetail.test.tsx",
-          "blob": "7a811cdcbcb8a39502f2365fdbf9de70fe47e7cc",
+          "blob": "bc3316c4e19039d199eec388ad389e0e2b7dbe42",
           "command": "bun test tests/components/ClippingDetail.test.tsx: 1 passed"
         }
       ],
@@ -207,7 +207,7 @@
         },
         {
           "path": "src/lib/web-demo-fetch.ts",
-          "blob": "05da9fc2fe4fd9fbb5178dc0cb89aad0ab635a7a",
+          "blob": "b01a0e9bfa581ee9ae4f7a7bb6fb0ee1383daa58",
           "command": "Focused unit/component suite: 27 passed; Web Demo admin/preview mutation bridge and public route behavior are covered by 24 Console plus 36 public browser cases"
         },
         {
@@ -217,7 +217,7 @@
         },
         {
           "path": "tests/components/ClippingDetail.test.tsx",
-          "blob": "7a811cdcbcb8a39502f2365fdbf9de70fe47e7cc",
+          "blob": "bc3316c4e19039d199eec388ad389e0e2b7dbe42",
           "command": "bun test tests/components/ClippingDetail.test.tsx: 1 passed"
         }
       ]
@@ -251,7 +251,7 @@
         },
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "c49f19bb824e1534886fbb47cdbd0898e70e133d",
+          "blob": "911b5e1f3d4b4ef8b5bd2d41f0ad372ca0ef7b5b",
           "command": "Clipping read and discussion authorization regression suite passes"
         }
       ]

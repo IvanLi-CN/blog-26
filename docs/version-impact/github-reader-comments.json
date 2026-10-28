@@ -42,8 +42,8 @@
     "scripts/build-web-demo.ts": "9fecc9affe2adb46c6ae5450bd9c0826254fc676",
     "scripts/package-public-media.test.ts": "59d9a06c2b9de952c98a40128d8fd8a30fb07af1",
     "scripts/package-public-media.ts": "ab44e4d54fe0e5a00ce58338018f9a37ac61aa85",
-    "site/components/PublicMemoAuthoring.tsx": "ae261d910d58fba2d63f7f9580c7beab70cd6534",
-    "site/components/pages/memo.tsx": "b2162e7617f7866b0d1c55b662d0e87d94aac1d3",
+    "site/components/PublicMemoAuthoring.tsx": "57f3c8a71b730b9df28e1b56a3302fc9d3a7be44",
+    "site/components/pages/memo.tsx": "c34789742f1b7c03cbc3db72f097979f80714b6d",
     "site/components/pages/post.tsx": "f31b28e9f9ee72534e040bd9a35151caf42c69d1",
     "site/components/pages/project.tsx": "b2288f976e69b54f3aaaac35ff242db71400636a",
     "site/styles/public-pages.css": "c51fac6d45538b76bed4b77c48e3a7109da282e8",
@@ -56,7 +56,7 @@
     "src/components/comments/CommentSectionWithProvider.tsx": "a17dcb3dc172cf02dd1b16c00f6816fcf81144bf",
     "src/components/comments/hooks.ts": "bea309874dc4cbc787bd6206fa9b57ae36534d08",
     "src/components/comments/types.ts": "388742ea1646369036cb04f8daea7f93f5c46683",
-    "src/components/memos/ClippingDetail.tsx": "8fb8a9d27cc2b6fc40b2548b55d510cba16c9163",
+    "src/components/memos/ClippingDetail.tsx": "963dc11c50e2f68908da03683548856c67e1d9b3",
     "src/components/memos/clipping-admin.css": "f15eb673c4ab44ef14369c0b7c24f6facd64827c",
     "src/lib/admin-api-client.ts": "a3584ad2cfd00a3e296b7efdbe50a8f6415780bb",
     "src/lib/admin-github-binding.ts": "578eb1aab06fce42c9aaa88381c1ae8c8ca9fa44",
@@ -67,7 +67,7 @@
     "src/lib/release/inputs.ts": "4a4e43b3a34f5105a3e8a1b45374eadee74f3c1d",
     "src/lib/schema.ts": "8217b86504c951e3774c4297a2da48a639f2f389",
     "src/lib/session-cookie.ts": "688ecc90d7e3f618ca62f6eea49ae732991d00cc",
-    "src/lib/web-demo-fetch.ts": "eff07390a8107b266ceb6aaf77ae74aece124a5b",
+    "src/lib/web-demo-fetch.ts": "b01a0e9bfa581ee9ae4f7a7bb6fb0ee1383daa58",
     "src/lib/web-demo-runtime.ts": "7a5b7a60dda23347c53c158c31fc5eca528baad9",
     "src/server/admin-api/router.ts": "00923d2dd94beba5588c0e3cfccaf82516933ed0",
     "src/server/context.ts": "995fcb26b6d4db0228ca66760f1688fd8a0c02d4",
@@ -81,7 +81,7 @@
     "src/server/routers/comments.ts": "0251253a39b8da534161c466313d7d99aa677ac2",
     "src/server/trpc.ts": "ced44e6bfee3413ca31a1e9312f44de7879b4a4a",
     "src/styles/globals.css": "73416c5a05121d3652ec34d59cf828ceb5ce1a43",
-    "tests/components/ClippingDetail.test.tsx": "447687f894e228786b07be4e354fed2fbc39e6cc",
+    "tests/components/ClippingDetail.test.tsx": "bc3316c4e19039d199eec388ad389e0e2b7dbe42",
     "tests/components/WebDemoIdentity.test.tsx": "ce278f71fa67a54d60a6d3c22aa61f749fb91a3e",
     "tests/e2e/web-demo/console-comments.spec.ts": "643f5e3bc0faab21401dc4db719f3110c28f4794",
     "tests/e2e/web-demo/console-memo-boundary.spec.ts": "5396c2b20f8e96e0da64c0a1a2c054d67e5d1041",
@@ -161,7 +161,7 @@
         },
         {
           "path": "src/lib/web-demo-fetch.ts",
-          "blob": "eff07390a8107b266ceb6aaf77ae74aece124a5b",
+          "blob": "b01a0e9bfa581ee9ae4f7a7bb6fb0ee1383daa58",
           "command": "Web Demo Inspector comment identity, moderation, deletion, restoration, and target fixtures"
         },
         {
@@ -186,12 +186,12 @@
         },
         {
           "path": "src/components/memos/ClippingDetail.tsx",
-          "blob": "8fb8a9d27cc2b6fc40b2548b55d510cba16c9163",
+          "blob": "963dc11c50e2f68908da03683548856c67e1d9b3",
           "command": "ClippingDetail uses named region semantics for standalone AI and returns to comments after expired AI access"
         },
         {
           "path": "tests/components/ClippingDetail.test.tsx",
-          "blob": "447687f894e228786b07be4e354fed2fbc39e6cc",
+          "blob": "bc3316c4e19039d199eec388ad389e0e2b7dbe42",
           "command": "bun test tests/components/ClippingDetail.test.tsx: standalone AI region accessibility"
         },
         {
@@ -292,12 +292,12 @@
         },
         {
           "path": "src/components/memos/ClippingDetail.tsx",
-          "blob": "8fb8a9d27cc2b6fc40b2548b55d510cba16c9163",
+          "blob": "963dc11c50e2f68908da03683548856c67e1d9b3",
           "command": "ClippingDetail uses named region semantics for standalone AI and returns to comments after expired AI access"
         },
         {
           "path": "tests/components/ClippingDetail.test.tsx",
-          "blob": "447687f894e228786b07be4e354fed2fbc39e6cc",
+          "blob": "bc3316c4e19039d199eec388ad389e0e2b7dbe42",
           "command": "bun test tests/components/ClippingDetail.test.tsx: standalone AI region accessibility"
         },
         {
