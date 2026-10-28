@@ -200,6 +200,12 @@
 - covers: `REQ-SKA-021`
 - Pass condition: 可归属记录完整且幂等地进入创建者列表，无归属记录原样隔离，没有作者猜测、丢失消息或对其他用户开放的旁路。
 
+## Visual Evidence
+
+页面级验收 MUST 使用正式路由的独立 Web Demo 构建，不新增页面级 Storybook 副本。T8 的可复现证据入口为 `/chat`，通过共享 Inspector 选择 `user`、`guest`、`admin` 及助手生命周期场景；桌面视口覆盖 1440×1000，小屏视口覆盖 393×852。证据 MUST 检查助手面板/完整页面、发送后的引用、访客登录前草稿、配额状态、无横向溢出以及 live 构建不受 Demo 查询参数影响。
+
+Web Demo 只使用隔离 fixture 和内存模拟回答；这些证据不代表真实模型、OAuth 提供方或生产迁移质量。当前可复现脚本见 [`tests/e2e/web-demo/assistant.spec.ts`](../../../tests/e2e/web-demo/assistant.spec.ts)，构建与验证记录见 [`docs/version-impact/site-assistant-t8.json`](../../version-impact/site-assistant-t8.json)。
+
 ## Related ADRs
 
 - [ADR 0003: Public Mobile Content Stream](../../adr/0003-public-mobile-content-stream.md)

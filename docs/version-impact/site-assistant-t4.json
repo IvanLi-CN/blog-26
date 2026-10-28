@@ -21,7 +21,7 @@
     "src/server/assistant/runtime.ts": "30d3e06064302f1fecac57edc30c10803ba037d1",
     "src/server/assistant/service.ts": "d1d0e83e40e902f8de316d3eb18d35c12c92e8e5",
     "src/server/public-api/assistant-chat.test.ts": "6e16e309312be607eda9cd2ac7afbaac9eba4f80",
-    "src/server/public-api/router.ts": "27516e1bb0c2d3f8cfa2d1b6e7cd030b994a661f",
+    "src/server/public-api/router.ts": "355b00504c7b52d5e3e9a6d32a7d9706f260fa22",
     "src/server/services/content-search.ts": "a0d21c73459b03749b9503d2e851b43e67a67e29",
     "src/server/services/search-semantic-projection.ts": "81837701ac0e701f07d7ebfed321315a4a9b09e6",
     "tests/server/system-share-api.test.ts": "737e9f8f4cedf53ffddc4a4a47abf96a3aba7b4c"
@@ -39,7 +39,7 @@
       "evidence": [
         {
           "path": "docs/specs/site-knowledge-assistant/SPEC.md",
-          "blob": "d11a224a6283c60aa276785997ee8a33a4586dad",
+          "blob": "8c65ecb350cd07a924facc9804a9749eab6aae73",
           "command": "Locks private ownership, retrieval authorization, retention, generation lifecycle, citations, and quota behavior"
         },
         {
@@ -176,7 +176,7 @@
       "evidence": [
         {
           "path": "src/server/public-api/router.ts",
-          "blob": "27516e1bb0c2d3f8cfa2d1b6e7cd030b994a661f",
+          "blob": "355b00504c7b52d5e3e9a6d32a7d9706f260fa22",
           "command": "Mounts the new authenticated /api/public/chat surface without changing existing routes"
         }
       ]

@@ -2,23 +2,27 @@
 
 ## Lifecycle / Compatibility
 
-- 本主题拥有一般助手对话与剪藏关联对话的统一能力，保留剪藏阅读材料继承 Memo 可见性、公开产物不携带私人讨论的边界。
-- 公开评论继续独立于私人助手对话；普通读者仍通过 GitHub 登录。管理员原生前台身份及绑定 GitHub 身份使用同一个可信管理员归属，后台管理仍独立认证。
+- 本主题仍为 `active`，当前实现状态为 `implemented`；需求、实现覆盖和验收事实分别以 [SPEC.md](./SPEC.md)、[IMPLEMENTATION.md](./IMPLEMENTATION.md) 与 T8 version-impact record 为准。
+- 统一助手在同一前台 principal 下承载一般对话和剪藏关联对话。静态公开内容、动态 Console、后台管理员身份和 GitHub reader identity 仍是不同边界；后台登录不会替代前台 session，管理员也不能由此读取其他用户的私人对话。
+- T1–T7 的数据库迁移为 forward-only；T3/T7 的历史讨论 backfill 是独立的 resumable operation，旧安装在 migration gate 未完成前不暴露统一 clipping chat。生产数据未由本地验收读取或变更。
 
 ## Replacements / Background
 
-- ADR 0032–0037 分别记录临时对话与用量保留、统一前台身份、检索授权、个人额度与运营计量、生成生命周期、剪藏归并的长期取舍。
-- 统一前台身份扩展 ADR 0031：管理员不再必须绑定 GitHub 才能在前台发表评论；已有绑定仍可识别管理员，邮箱/昵称自动认领及后台提权仍被禁止。
-- 剪藏原来由可信创建者和管理员共用一条讨论；新私人对话分别归属前台用户，管理员没有自动查看他人私人记录的权限。旧记录按可信创建者整体迁移，无逐条作者信息不补造，无归属记录原样隔离保留。
-- 对话删除或过期仅清理内容与释放名额；单用户恢复只补充可用额度。两者都不清除真实用量，运营调用明细与长期每日汇总按独立保留规则维护。
+- ADR 0032–0037 记录临时对话与用量保留、统一前台身份、检索授权、个人额度与运营计量、生成生命周期、剪藏归并的长期取舍；ADR 0038 记录前台身份与助手存储边界。
+- 原剪藏讨论的 creator/admin 共用模型已由 frontend-user-owned conversations 替代。具有可信创建者的记录整体迁移；无逐条作者或无法确认归属的记录保留 raw quarantine，不猜测作者、不自动开放给管理员、不直接删除。
+- 对话删除、到期和配额恢复不清除真实 AI usage；运营明细保留原始 provider dimensions，并由按日汇总承接九十日明细清理。估算 usage 与实际 correction 分开表示。
+- 新增的浏览器 sessionStorage 草稿、pending request 和 login handoff 是 T6 的 additive ephemeral state；旧版本缺失这些 key 时按空状态读取。T7 消费既有 assistant tables 和 migration ledger，不新增 Drizzle migration。
 
-## Related Changes
+## T8 Acceptance Boundary
 
-- 本主题仅整理已收敛需求，没有产品实现、数据库迁移、生产数据变更或交付关联。
+- T8 只收敛当前候选的 checks、assistant/API/E2E、迁移/兼容/隐私证据、Web Demo 视觉证据和文档 hash；所有 evidence 绑定实际 head SHA。
+- 确定性测试与 Web Demo 不证明真实模型回答质量、GitHub OAuth 配置、双生产 origin cookie/cache 行为、生产 backfill 或部署结果。上述项目仍是发布门禁，不能以本地 green suite 代替。
+- `docs/runbooks/site-assistant-discussion-migration.md` 是迁移的操作入口：先 DDL，再 dry-run/apply/resume，最后按独立条件执行 cleanup；任何旧运行时回滚都不能被解释为自动 down-migration。
 
 ## References
 
 - [需求契约](./SPEC.md)
 - [实现覆盖](./IMPLEMENTATION.md)
+- [剪藏讨论迁移运行手册](../../runbooks/site-assistant-discussion-migration.md)
 - [评论兼容背景](../github-reader-comments/HISTORY.md)
 - [剪藏兼容背景](../memo-clipping/HISTORY.md)

@@ -4,8 +4,8 @@
   "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
   "covered_files": {
     "docs/adr/0035-personal-assistant-quota-and-sitewide-ai-metering.md": "ee6b4ca3dfd153104f645ad561419009b2465911",
-    "docs/specs/site-knowledge-assistant/SPEC.md": "d11a224a6283c60aa276785997ee8a33a4586dad",
-    "docs/specs/site-knowledge-assistant/IMPLEMENTATION.md": "d3ca0286b2213f9cf4a52b823cc177a103383786",
+    "docs/specs/site-knowledge-assistant/SPEC.md": "8c65ecb350cd07a924facc9804a9749eab6aae73",
+    "docs/specs/site-knowledge-assistant/IMPLEMENTATION.md": "ab51410ada40fd85aafadd7fbcbfc9251e402c4d",
     "drizzle/0024_ai_usage_daily_result_counts.sql": "51839b875299f08f972d16fb8c137e542ef82558",
     "drizzle/meta/0024_snapshot.json": "35b706bb2b291a762c8beabce4a50640b5f81dfe",
     "drizzle/meta/_journal.json": "e04c27d13c458128218494a878957e224c1f839c",
@@ -55,7 +55,7 @@
         },
         {
           "path": "docs/specs/site-knowledge-assistant/SPEC.md",
-          "blob": "d11a224a6283c60aa276785997ee8a33a4586dad",
+          "blob": "8c65ecb350cd07a924facc9804a9749eab6aae73",
           "command": "Locks rolling token/question windows, three conversations, reset behavior, provider dimensions, and 90-day detail retention"
         }
       ]

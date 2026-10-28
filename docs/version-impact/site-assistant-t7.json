@@ -23,7 +23,7 @@
     "src/server/clipping/assistant-adapter.test.ts": "03770cee4bb69116f8bd35a32cb90157f86d7e53",
     "src/server/clipping/service.ts": "32b5c32e58acf54fd2d461c5aa354115d3f93d8e",
     "src/server/public-api/assistant-chat.test.ts": "6e16e309312be607eda9cd2ac7afbaac9eba4f80",
-    "src/server/public-api/router.ts": "27516e1bb0c2d3f8cfa2d1b6e7cd030b994a661f"
+    "src/server/public-api/router.ts": "355b00504c7b52d5e3e9a6d32a7d9706f260fa22"
   },
   "change": {
     "description": "Route public clipping discussion through the unified frontend-user assistant service, preserve same-target conversations across recaptures, split conversations on target changes, gate legacy installations until migration completion, and align Console/Gateway assistant lifecycle with clipping startup and shutdown.",
@@ -38,7 +38,7 @@
       "evidence": [
         {
           "path": "docs/specs/site-knowledge-assistant/SPEC.md",
-          "blob": "d11a224a6283c60aa276785997ee8a33a4586dad",
+          "blob": "8c65ecb350cd07a924facc9804a9749eab6aae73",
           "command": "Defines one unified frontend-user assistant runtime, clipping target identity, migration gating, and single-worker lifecycle"
         },
         {
