@@ -83,10 +83,10 @@
     "src/styles/globals.css": "73416c5a05121d3652ec34d59cf828ceb5ce1a43",
     "tests/components/ClippingDetail.test.tsx": "bc3316c4e19039d199eec388ad389e0e2b7dbe42",
     "tests/components/WebDemoIdentity.test.tsx": "ce278f71fa67a54d60a6d3c22aa61f749fb91a3e",
-    "tests/e2e/web-demo/console-comments.spec.ts": "643f5e3bc0faab21401dc4db719f3110c28f4794",
+    "tests/e2e/web-demo/console-comments.spec.ts": "e4052549d6f410083b8391cd131c0cedd42f54df",
     "tests/e2e/web-demo/console-memo-boundary.spec.ts": "5396c2b20f8e96e0da64c0a1a2c054d67e5d1041",
     "tests/e2e/web-demo/github-admin-binding.spec.ts": "9ae653aa6bdd1b76651aef8abba7cada58a231bd",
-    "tests/e2e/web-demo/public-comments.spec.ts": "e63ef75c079bd48de3323a1efd5f898f94f211ee",
+    "tests/e2e/web-demo/public-comments.spec.ts": "917a0a777c47930cc68602b2227197b6597f9d21",
     "tests/lib/web-demo-inspector-layout.test.ts": "fe23eede051d89aac3ee669b070887578072ae4f",
     "tests/lib/web-demo-runtime.test.ts": "01b2756e2f35343fb72a48a7819b6d3623bd2284",
     "tests/server/system-share-api.test.ts": "468a2441dddc024f6911dad7d007031eb8f92175"

@@ -25,9 +25,9 @@
     "src/server/routers/comments.test.ts": "c83557ed44fcaa75143bf2508fc3419cf7e6c844",
     "src/styles/globals.css": "f3d648c070f1fac3a00dc9caca6d899a2926095b",
     "tests/components/CommentSection.test.tsx": "72127c4f78d2db5bf41d09378c617262d8bb61f9",
-    "tests/e2e/web-demo/console-comments.spec.ts": "98b1cd41895222f3bae72e8dc28d822ca4c3e3e9",
+    "tests/e2e/web-demo/console-comments.spec.ts": "e4052549d6f410083b8391cd131c0cedd42f54df",
     "tests/e2e/guest/astro-front-phase1.spec.ts": "678f98c74cc8eed9b343c1d8e245a692391e86e4",
-    "tests/e2e/web-demo/public-comments.spec.ts": "e63ef75c079bd48de3323a1efd5f898f94f211ee",
+    "tests/e2e/web-demo/public-comments.spec.ts": "917a0a777c47930cc68602b2227197b6597f9d21",
     "tests/e2e/web-demo/public-csr.spec.ts": "8bfe304023fb9a628d0539da425b1907a634fb34",
     "tests/lib/web-demo-fetch.test.ts": "265f238944f19292e0c2722bc10558374b717eaa",
     "tests/lib/web-demo-runtime.test.ts": "a6194dd6019d03190f4eecb93545e4bcd6224840"
@@ -62,12 +62,12 @@
         },
         {
           "path": "tests/e2e/web-demo/public-comments.spec.ts",
-          "blob": "e63ef75c079bd48de3323a1efd5f898f94f211ee",
+          "blob": "917a0a777c47930cc68602b2227197b6597f9d21",
           "command": "Official public article, Memo, and project routes cover responsive comment behavior"
         },
         {
           "path": "tests/e2e/web-demo/console-comments.spec.ts",
-          "blob": "98b1cd41895222f3bae72e8dc28d822ca4c3e3e9",
+          "blob": "e4052549d6f410083b8391cd131c0cedd42f54df",
           "command": "Official Console Memo and clipping routes cover tabs, target states, retry, and avatar fallback"
         }
       ],
