@@ -26,6 +26,7 @@
     "tests/components/runtime-cell-grid.test.tsx": "8b98250bd95402691eb78177950b05390a40a66e",
     "tests/e2e/guest/nature-front-coverage.spec.ts": "c99cbb47daf2d00a5d5f863a09d0481e08d679b4",
     "tests/e2e/guest/project-visual-slot.spec.ts": "7bab505c5ffbfcbb0809b47c1e075575b590188e",
+    "tests/e2e/web-demo/public-cover-media.spec.ts": "7092592a4753e2e82925e6df378aa5f735a3d325",
     "tests/e2e/web-demo/project-runtime-motion.spec.ts": "df76e989fc3e51476f3f27430325d683204d35d7",
     "tests/lib/runtime-format.test.ts": "ce5d704bd4222aa86209699f2fa60f17e730c668",
     "tests/lib/runtime-metric-motion.test.ts": "cf35ed4e198510819166d4b52f46d0356f740185",
@@ -59,6 +60,11 @@
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
           "blob": "df76e989fc3e51476f3f27430325d683204d35d7",
           "command": "Official Web Demo motion, fallback, reduced-motion, responsive and latest-target browser coverage"
+        },
+        {
+          "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
+          "blob": "7092592a4753e2e82925e6df378aa5f735a3d325",
+          "command": "Wait for related cover decoding before rendered crop sampling"
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
