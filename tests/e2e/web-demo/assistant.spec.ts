@@ -2,7 +2,14 @@ import { expect, test } from "@playwright/test";
 
 async function hideInspector(page: import("@playwright/test").Page) {
   const collapse = page.getByRole("button", { name: "收起 Web Demo 控制面板" });
-  if (await collapse.isVisible()) await collapse.click();
+  if (await collapse.isVisible()) {
+    await collapse.click();
+    return;
+  }
+
+  await page.evaluate(() => window.localStorage.setItem("web-demo-inspector-open", "true"));
+  await page.reload();
+  await page.getByRole("button", { name: "收起 Web Demo 控制面板" }).click();
 }
 
 test.describe("Knowledge Assistant Web Demo", () => {
