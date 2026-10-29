@@ -39,7 +39,6 @@ type AuthState = FrontendAuthState | null;
 const UI_STATE_KEY = "site-knowledge-assistant-ui";
 const UI_LOGIN_HANDOFF_KEY = "site-knowledge-assistant-login-handoff";
 const ASSISTANT_DISPLAY_NAME = "知识对话";
-const ASSISTANT_SUBTITLE = "AI 辅助对话";
 
 type AssistantContext = { slug: string; memoId: string | null };
 type PendingRequest = { content: string; requestId: string };
@@ -1521,10 +1520,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                   aria-controls={listId}
                   onClick={() => setListExpanded((value) => !value)}
                 >
-                  <span className="knowledge-assistant-header-label">
-                    <span className="text-sm font-semibold">{ASSISTANT_DISPLAY_NAME}</span>
-                    <span className="knowledge-assistant-status">{ASSISTANT_SUBTITLE}</span>
-                  </span>
+                  <span className="text-sm font-semibold">{ASSISTANT_DISPLAY_NAME}</span>
                   <Icon
                     name={listExpanded ? "tabler:chevron-up" : "tabler:chevron-down"}
                     className="h-4 w-4"
@@ -1533,7 +1529,6 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
               ) : (
                 <div>
                   <p className="text-sm font-semibold">{ASSISTANT_DISPLAY_NAME}</p>
-                  <p className="knowledge-assistant-status">{ASSISTANT_SUBTITLE}</p>
                 </div>
               )}
               <div className="flex items-center gap-1">

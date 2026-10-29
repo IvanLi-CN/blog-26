@@ -26,7 +26,7 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await toggle.click();
     await expect(list).toBeVisible();
     await expect(list).toHaveCSS("flex-direction", "column");
-    await expect(panel.getByLabel("知识对话问题")).toBeHidden();
+    await expect(panel.getByLabel("知识对话问题")).toBeVisible();
     await list.locator(".knowledge-assistant-list-select").first().click();
     await expect(list).toBeHidden();
     await expect(panel.getByLabel("知识对话问题")).toBeVisible();
