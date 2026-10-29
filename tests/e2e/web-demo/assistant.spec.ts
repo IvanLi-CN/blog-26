@@ -17,7 +17,7 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await expect(page.getByTestId("assistant-quota")).toContainText("问题");
 
     const question = "如何验证公开内容？";
-    await page.getByLabel("知识助手问题").fill(question);
+    await page.getByLabel("智问助手问题").fill(question);
     await page.getByRole("button", { name: "发送", exact: true }).click();
     await expect(
       page.getByTestId("assistant-message-user").filter({ hasText: question })
@@ -48,8 +48,8 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await page.goto("/chat?d_persona=guest&d_scene=assistant-ready&d_delay=normal");
     await hideInspector(page);
 
-    await expect(page.getByRole("heading", { name: "登录后使用知识助手" })).toBeVisible();
-    const draft = page.getByLabel("登录前的知识助手草稿");
+    await expect(page.getByRole("heading", { name: "登录后使用智问助手" })).toBeVisible();
+    const draft = page.getByLabel("登录前的智问助手草稿");
     await draft.fill("先保存这段问题");
     await expect(page.getByRole("button", { name: "保存草稿并登录" })).toBeVisible();
     await expect(page.getByTestId("assistant-message-user")).toHaveCount(0);

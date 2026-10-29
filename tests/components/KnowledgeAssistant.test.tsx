@@ -123,7 +123,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     const fab = await waitFor(() => view.getByTestId("assistant-fab"));
     fireEvent.click(fab);
     await waitFor(() => view.getAllByRole("button", { name: /general-conversation/ })[0]);
-    fireEvent.click(view.getAllByRole("button", { name: "关闭知识助手" })[1]);
+    fireEvent.click(view.getAllByRole("button", { name: "关闭智问助手" })[1]);
     document.dispatchEvent(new Event("astro:page-load"));
     await waitFor(() => expect(listCalls).toBe(2));
     fireEvent.click(fab);
@@ -228,9 +228,9 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     const user = userEvent.setup({ document: window.document });
     fireEvent.click(newConversation);
     await waitFor(() => expect(view.getByRole("heading", { name: "新对话" })).toBeTruthy());
-    const textarea = view.getByLabelText("知识助手问题") as HTMLTextAreaElement;
+    const textarea = view.getByLabelText("智问助手问题") as HTMLTextAreaElement;
     await user.type(textarea, "保留这份问题");
-    fireEvent.keyDown(view.getByLabelText("知识助手问题"), { key: "Enter", ctrlKey: true });
+    fireEvent.keyDown(view.getByLabelText("智问助手问题"), { key: "Enter", ctrlKey: true });
     await waitFor(() => expect(postCalls).toBe(1));
     const send = view.getByRole("button", { name: "发送" }) as HTMLButtonElement;
     await waitFor(() => expect(send.disabled).toBe(false));
@@ -282,9 +282,9 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     }) as typeof fetch;
 
     const view = render(<KnowledgeAssistant fullPage />);
-    await waitFor(() => expect(view.getByRole("heading", { name: "知识助手" })).toBeTruthy());
+    await waitFor(() => expect(view.getByRole("heading", { name: "智问助手" })).toBeTruthy());
     const user = userEvent.setup({ document: window.document });
-    const textarea = view.getByLabelText("知识助手问题") as HTMLTextAreaElement;
+    const textarea = view.getByLabelText("智问助手问题") as HTMLTextAreaElement;
     await user.type(textarea, "首个问题");
     fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
     await waitFor(() => expect(postCalls).toBe(1));
@@ -348,7 +348,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     await waitFor(() => expect(view.getByTestId("assistant-fab")).toBeTruthy());
     fireEvent.click(view.getByTestId("assistant-fab"));
     await waitFor(() => expect(view.getByRole("heading", { name: "新对话" })).toBeTruthy());
-    fireEvent.click(view.getAllByRole("button", { name: "关闭知识助手" })[1]);
+    fireEvent.click(view.getAllByRole("button", { name: "关闭智问助手" })[1]);
 
     window.history.replaceState({}, "", "/posts/b/?clipping=clip-b");
     clippingMarker.dataset.assistantClippingSlug = "clip-b";
@@ -365,9 +365,9 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
 
     fireEvent.click(view.getByTestId("assistant-fab"));
     const user = userEvent.setup({ document: window.document });
-    const textarea = view.getByLabelText("知识助手问题") as HTMLTextAreaElement;
+    const textarea = view.getByLabelText("智问助手问题") as HTMLTextAreaElement;
     await user.type(textarea, "询问 B");
-    fireEvent.keyDown(view.getByLabelText("知识助手问题"), { key: "Enter", ctrlKey: true });
+    fireEvent.keyDown(view.getByLabelText("智问助手问题"), { key: "Enter", ctrlKey: true });
 
     await waitFor(() => expect(postedBody?.text).toBe("询问 B"));
     expect(postedBody?.requestId).toBeTruthy();
@@ -431,7 +431,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     await waitFor(() => expect(clippingReads).toBeGreaterThan(0));
     expect(view.getByTestId("assistant-fab")).toBeTruthy();
     fireEvent.click(view.getByTestId("assistant-fab"));
-    const textarea = await waitFor(() => view.getByLabelText("知识助手问题"));
+    const textarea = await waitFor(() => view.getByLabelText("智问助手问题"));
     const user = userEvent.setup({ document: window.document });
     await user.type(textarea, "继续当前文章讨论");
     fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
@@ -508,7 +508,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     await waitFor(() => expect(view.getByRole("heading", { name: old.id })).toBeTruthy());
 
     const user = userEvent.setup({ document: window.document });
-    const textarea = view.getByLabelText("知识助手问题");
+    const textarea = view.getByLabelText("智问助手问题");
     await user.type(textarea, "继续当前文章讨论");
     fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
     await waitFor(() => expect(clippingReads).toBeGreaterThan(0));
@@ -602,7 +602,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     await waitFor(() => expect(view.getByRole("heading", { name: other.id })).toBeTruthy());
 
     const user = userEvent.setup({ document: window.document });
-    const textarea = view.getByLabelText("知识助手问题");
+    const textarea = view.getByLabelText("智问助手问题");
     await user.type(textarea, "继续 B 文章讨论");
     fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
     await waitFor(() => expect(clippingPosts).toBe(1));
@@ -644,7 +644,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     await waitFor(() => view.getByRole("button", { name: /新建对话/ }));
     fireEvent.click(view.getByRole("button", { name: /新建对话/ }));
     const user = userEvent.setup({ document: window.document });
-    const textarea = view.getByLabelText("知识助手问题");
+    const textarea = view.getByLabelText("智问助手问题");
     await user.type(textarea, "保留为通用问题");
 
     window.history.replaceState({}, "", "/posts/article/?clipping=article");
@@ -673,7 +673,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     fireEvent.click(await waitFor(() => view.getByTestId("assistant-fab")));
     fireEvent.click(await waitFor(() => view.getByRole("button", { name: "新建对话" })));
     const user = userEvent.setup({ document: window.document });
-    await user.type(view.getByLabelText("知识助手问题"), "保留为通用问题");
+    await user.type(view.getByLabelText("智问助手问题"), "保留为通用问题");
 
     window.history.replaceState({}, "", "/posts/article/?clipping=article");
     const marker = document.createElement("div");

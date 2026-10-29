@@ -38,6 +38,8 @@ type AuthState = FrontendAuthState | null;
 
 const UI_STATE_KEY = "site-knowledge-assistant-ui";
 const UI_LOGIN_HANDOFF_KEY = "site-knowledge-assistant-login-handoff";
+const ASSISTANT_DISPLAY_NAME = "智问助手";
+const ASSISTANT_SUBTITLE = "AI 站内问答";
 
 type AssistantContext = { slug: string; memoId: string | null };
 type PendingRequest = { content: string; requestId: string };
@@ -218,7 +220,7 @@ function errorMessage(error: unknown) {
     return "本小时额度已用完，请稍后再试。";
   }
   if (error instanceof AssistantClientError && error.code === "RECONNECTING")
-    return "正在重新连接知识助手。";
+    return `正在重新连接${ASSISTANT_DISPLAY_NAME}。`;
   if (error instanceof AssistantClientError && error.status === 410)
     return "这段对话已过期，请新建对话。";
   if (error instanceof AssistantClientError && error.status === 401)
@@ -241,7 +243,7 @@ function LoginPrompt({
     <div className="flex min-h-48 flex-col gap-3 px-6 py-10">
       <div className="flex flex-col items-center gap-3 text-center">
         <Icon name="tabler:lock" className="h-7 w-7 text-[color:var(--nature-text-soft)]" />
-        <h2 className="font-semibold">登录后使用知识助手</h2>
+        <h2 className="font-semibold">登录后使用{ASSISTANT_DISPLAY_NAME}</h2>
         <p className="max-w-sm text-sm leading-6 text-[color:var(--nature-text-soft)]">
           可以先写下问题。登录只用于保存你的对话和额度状态，回到页面后不会自动发送。
         </p>
@@ -251,7 +253,7 @@ function LoginPrompt({
         value={draft}
         onChange={(event) => onDraftChange(event.target.value)}
         placeholder="先写下想问的问题……"
-        aria-label="登录前的知识助手草稿"
+        aria-label={`登录前的${ASSISTANT_DISPLAY_NAME}草稿`}
         maxLength={4000}
       />
       <div className="flex justify-center">
@@ -1158,7 +1160,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     ? formatConversationTitle(snapshot.conversation)
     : selectedId === "new"
       ? "新对话"
-      : "知识助手";
+      : ASSISTANT_DISPLAY_NAME;
   const body = (
     <>
       {authLoading ? (
@@ -1260,7 +1262,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                 value={currentDraft}
                 onChange={(event) => updateDraft(event.target.value)}
                 placeholder="询问公开文章或项目经验……"
-                aria-label="知识助手问题"
+                aria-label={`${ASSISTANT_DISPLAY_NAME}问题`}
                 maxLength={4000}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
@@ -1295,7 +1297,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
           <div>
             <p className="text-sm text-[color:var(--nature-text-soft)]">公开知识库</p>
             <h1 className="mt-1 font-[family:var(--font-heading)] text-2xl font-semibold">
-              知识助手
+              {ASSISTANT_DISPLAY_NAME}
             </h1>
           </div>
           <button
@@ -1324,14 +1326,14 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         aria-expanded={open}
       >
         <Icon name="tabler:sparkles" className="h-5 w-5" />
-        知识助手
+        {ASSISTANT_DISPLAY_NAME}
       </button>
       {open ? (
         <>
           <button
             type="button"
             className="knowledge-assistant-overlay"
-            aria-label="关闭知识助手"
+            aria-label={`关闭${ASSISTANT_DISPLAY_NAME}`}
             onClick={() => setOpen(false)}
           />
           <section
@@ -1340,12 +1342,12 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
             ref={panelRef}
             role="dialog"
             aria-modal="true"
-            aria-label="知识助手"
+            aria-label={ASSISTANT_DISPLAY_NAME}
           >
             <header className="knowledge-assistant-header">
               <div>
-                <p className="text-sm font-semibold">知识助手</p>
-                <p className="knowledge-assistant-status">公开内容问答</p>
+                <p className="text-sm font-semibold">{ASSISTANT_DISPLAY_NAME}</p>
+                <p className="knowledge-assistant-status">{ASSISTANT_SUBTITLE}</p>
               </div>
               <div className="flex items-center gap-1">
                 <button
@@ -1371,7 +1373,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                   type="button"
                   className="knowledge-assistant-icon-button"
                   onClick={() => setOpen(false)}
-                  aria-label="关闭知识助手"
+                  aria-label={`关闭${ASSISTANT_DISPLAY_NAME}`}
                   title="关闭"
                 >
                   <Icon name="tabler:x" className="h-5 w-5" />
