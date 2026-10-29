@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
+  "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
   "covered_files": {
     "docs/project-runtime-motion-design.md": "15a356ba54f3b6d72ce59b0904576db184b71b92",
     "docs/specs/nature-front-ui/HISTORY.md": "38231b67cbc697bcca0283c8f9ea9c0b3b2ddb87",
