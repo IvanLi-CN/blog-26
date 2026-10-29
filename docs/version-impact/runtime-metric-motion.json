@@ -15,7 +15,7 @@
     "site/lib/project-runtime-live.ts": "1bfd49bb04e2bdf0ee710b5e01f8f54ee5c63612",
     "site/lib/public-page-behaviors.ts": "11fbc199f13b7f0f5e4b8efcb7625938f960c2a1",
     "site/lib/runtime-format.ts": "0878df79ed1e2e5c861a1aaabe22cfe8a3a8ed60",
-    "site/lib/runtime-metric-motion.ts": "44cd996cf4f16ef1d60dbbc0c73530095a2aa6ee",
+    "site/lib/runtime-metric-motion.ts": "12f6eb282697cfea9c38a5bb16f1146e2f66451f",
     "site/styles/public-pages.css": "6aa118e2dbb21f16f8190de30746c141ba2698dc",
     "src/components/WebDemoInspector.css": "1b6d9721407ce3af91ff44d9314d29603482c71c",
     "src/components/WebDemoInspector.tsx": "e112a754094c8f7b1d61637f247b0c383b815515",
@@ -146,7 +146,7 @@
       "evidence": [
         {
           "path": "site/lib/runtime-metric-motion.ts",
-          "blob": "44cd996cf4f16ef1d60dbbc0c73530095a2aa6ee",
+          "blob": "12f6eb282697cfea9c38a5bb16f1146e2f66451f",
           "command": "Motion state is scoped to the page lifetime and has no durable storage"
         }
       ]
