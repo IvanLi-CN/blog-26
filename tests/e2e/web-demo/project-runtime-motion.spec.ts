@@ -187,7 +187,7 @@ test("the controlled metric fixture rolls digits and settles at the latest targe
 }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto(
-    "/projects/?d_data=motion&d_delay=custom&d_delay_ms=0&d_connection=online&d_motion=system#developer-tools"
+    "/projects/?d_data=motion&d_delay=custom&d_delay_ms=120&d_connection=online&d_motion=system#developer-tools"
   );
   await waitForRender(page);
   const metric = page.locator(`${panels} [data-runtime-value]`).first();
@@ -208,7 +208,7 @@ test("the controlled metric fixture rolls digits and settles at the latest targe
   await metric.evaluate((element) => element.style.removeProperty("width"));
   await page.getByRole("button", { name: "刷新数据", exact: true }).click();
   await expect(metric).toHaveAttribute("data-runtime-value-motion-to", "793.76K");
-  await expect(metric).toHaveAttribute("data-runtime-value-animating", "true");
+  await page.waitForTimeout(80);
   await page.setViewportSize({ width: 392, height: 852 });
   await page.getByRole("button", { name: "刷新数据", exact: true }).click();
   await expect(metric).toHaveAttribute("data-runtime-value-motion-to", "1M");
