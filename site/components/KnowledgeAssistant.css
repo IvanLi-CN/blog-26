@@ -342,31 +342,35 @@
   min-width: 0;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.8rem;
   color: var(--nature-text-soft);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   line-height: 1.35;
 }
 
 .knowledge-assistant-shortcut-item {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.3rem;
   color: inherit;
   line-height: 1;
 }
 
 .knowledge-assistant-shortcut-item kbd {
   display: inline-grid;
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.2rem;
+  height: 1.2rem;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid var(--nature-line-strong);
-  border-radius: 0.25rem;
+  border: 1px solid var(--nature-line);
+  border-radius: 0.3rem;
+  background: color-mix(in srgb, var(--nature-text) 5%, transparent);
   font: inherit;
-  font-size: 0.85rem;
   line-height: 1;
+}
+
+.knowledge-assistant-shortcut-plus {
+  margin-inline: -0.15rem;
 }
 
 @media (min-width: 640px) {

@@ -1374,14 +1374,21 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                     data-testid="assistant-send-shortcuts"
                   >
                     <span className="knowledge-assistant-shortcut-item">
-                      <kbd aria-label="Enter">↵</kbd>
+                      <kbd aria-label="Enter">
+                        <Icon name="tabler:corner-down-left" className="h-3 w-3" />
+                      </kbd>
                       <span>发送</span>
                     </span>
-                    <span aria-hidden="true">·</span>
                     <span className="knowledge-assistant-shortcut-item">
-                      <kbd aria-label="Shift">⇧</kbd>
-                      <span aria-hidden="true">+</span>
-                      <kbd aria-label="Enter">↵</kbd>
+                      <kbd aria-label="Shift">
+                        <Icon name="tabler:arrow-big-up" className="h-3 w-3" />
+                      </kbd>
+                      <span className="knowledge-assistant-shortcut-plus" aria-hidden="true">
+                        +
+                      </span>
+                      <kbd aria-label="Enter">
+                        <Icon name="tabler:corner-down-left" className="h-3 w-3" />
+                      </kbd>
                       <span>换行</span>
                     </span>
                   </span>
