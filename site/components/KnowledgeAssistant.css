@@ -343,10 +343,10 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
-  color: color-mix(in srgb, var(--nature-text-soft) 72%, transparent);
+  color: var(--nature-text);
   font-size: 0.68rem;
   line-height: 1.35;
-  opacity: 0.86;
+  opacity: 0.72;
 }
 
 .knowledge-assistant-shortcut-item {
@@ -471,9 +471,9 @@
 }
 
 @media (min-width: 1024px) {
-  /* Keep the optional Web Demo trigger out of the full-page composer controls. */
+  /* Keep the optional Web Demo trigger clear of the full-page composer controls. */
   body:has(.assistant-route-layout) .web-demo-inspector-bubble {
-    right: 8rem;
+    right: 14rem;
   }
 }
 

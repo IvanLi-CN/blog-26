@@ -1368,16 +1368,16 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                     <span className="sr-only">Enter 发送；Shift + Enter 换行</span>
                     <span className="knowledge-assistant-shortcut-item" title="Enter 发送">
                       <span aria-hidden="true">
-                        <Icon name="tabler:corner-down-left" className="h-3.5 w-3.5" />
+                        <Icon name="tabler:corner-down-left" className="h-4 w-4" />
                       </span>
                     </span>
                     <span aria-hidden="true">·</span>
                     <span className="knowledge-assistant-shortcut-item" title="Shift + Enter 换行">
                       <span aria-hidden="true">
-                        <Icon name="tabler:keyboard" className="h-3.5 w-3.5" />
+                        <Icon name="tabler:keyboard" className="h-4 w-4" />
                       </span>
                       <span aria-hidden="true">
-                        <Icon name="tabler:corner-down-left" className="h-3.5 w-3.5" />
+                        <Icon name="tabler:corner-down-left" className="h-4 w-4" />
                       </span>
                     </span>
                   </span>
