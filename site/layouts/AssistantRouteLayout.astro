@@ -44,7 +44,7 @@ const currentYear = new Date().getFullYear();
         </nav>
 
         <div class="assistant-route-header-tools">
-          <ThemeToggle client:load compactOnMobile iconClass="h-4 w-4" />
+          <ThemeToggle client:load compact iconClass="h-4 w-4" />
         </div>
       </div>
     </header>
@@ -123,10 +123,9 @@ const currentYear = new Date().getFullYear();
     width: 2rem;
     height: 2rem;
     flex: 0 0 auto;
-    background-image: var(--assistant-route-mark-url);
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: contain;
+    background-color: var(--nature-accent-strong);
+    -webkit-mask: var(--assistant-route-mark-url) center / contain no-repeat;
+    mask: var(--assistant-route-mark-url) center / contain no-repeat;
   }
 
   .assistant-route-brand-copy {

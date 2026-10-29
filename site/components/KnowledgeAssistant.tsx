@@ -343,14 +343,34 @@ function ConversationList({
   selectedId,
   onSelect,
   onDelete,
+  onCreate,
 }: {
   conversations: AssistantConversation[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onCreate: () => void;
 }) {
   return (
     <div className="knowledge-assistant-list" data-testid="assistant-conversation-list">
+      <div className="knowledge-assistant-list-heading">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">对话</p>
+          <p className="mt-0.5 text-xs text-[color:var(--nature-text-faint)]">
+            {conversations.length ? `${conversations.length} 段已保存` : "从这里开始"}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="knowledge-assistant-list-new"
+          onClick={onCreate}
+          aria-label="新建对话"
+          title="新建对话"
+        >
+          <Icon name="tabler:plus" className="h-4 w-4" />
+          <span>新建</span>
+        </button>
+      </div>
       {conversations.length === 0 ? (
         <p className="px-2 py-3 text-sm text-[color:var(--nature-text-soft)]">还没有保存的对话。</p>
       ) : (
@@ -1268,11 +1288,16 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
             selectedId={selectedId}
             onSelect={selectConversation}
             onDelete={remove}
+            onCreate={createConversation}
           />
           <div className="knowledge-assistant-content">
             <div className="knowledge-assistant-toolbar">
               <div className="min-w-0">
-                <h2 className="truncate text-sm font-semibold">{title}</h2>
+                {fullPage ? (
+                  <h1 className="truncate text-sm font-semibold">{title}</h1>
+                ) : (
+                  <h2 className="truncate text-sm font-semibold">{title}</h2>
+                )}
                 <p className="knowledge-assistant-status" data-testid="assistant-quota">
                   {formatQuota(quota)}
                 </p>
@@ -1356,23 +1381,6 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   if (fullPage) {
     return (
       <main className="knowledge-assistant-page" data-testid="assistant-page">
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-sm text-[color:var(--nature-text-soft)]">公开知识库</p>
-            <h1 className="mt-1 font-[family:var(--font-heading)] text-2xl font-semibold">
-              {ASSISTANT_DISPLAY_NAME}
-            </h1>
-          </div>
-          <button
-            type="button"
-            className="nature-button nature-button-ghost min-h-11"
-            onClick={createConversation}
-            disabled={!auth?.authenticated}
-          >
-            <Icon name="tabler:plus" className="h-4 w-4" />
-            新建对话
-          </button>
-        </div>
         <div className="knowledge-assistant-page-grid">{body}</div>
       </main>
     );
@@ -1413,16 +1421,6 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                 <p className="knowledge-assistant-status">{ASSISTANT_SUBTITLE}</p>
               </div>
               <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  className="knowledge-assistant-icon-button"
-                  onClick={createConversation}
-                  aria-label="新建对话"
-                  title="新建对话"
-                  disabled={!auth?.authenticated}
-                >
-                  <Icon name="tabler:plus" className="h-5 w-5" />
-                </button>
                 <button
                   type="button"
                   className="knowledge-assistant-icon-button"

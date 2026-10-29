@@ -22,6 +22,14 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await expect(footer).not.toContainText("站点入口");
     await expect(page.getByTestId("assistant-page")).toBeVisible();
     await expect(page.getByTestId("assistant-conversation-list")).toBeVisible();
+    await expect(
+      page.getByTestId("assistant-conversation-list").getByRole("button", { name: "新建对话" })
+    ).toBeVisible();
+    await expect(
+      page.locator(".assistant-route-header-tools .nature-header-theme-toggle")
+    ).toHaveCount(0);
+    await expect(page.locator(".assistant-route-header-tools select")).toBeVisible();
+    await expect(page.getByText("公开知识库", { exact: true })).toHaveCount(0);
     await expect(page.getByTestId("assistant-quota")).toContainText("问题");
 
     const question = "如何验证公开内容？";
