@@ -394,6 +394,10 @@ import "@/lib/public-playbook-resources";
         value.dataset.runtimeValueTruncated = String(isTruncated);
         value.tabIndex = isTruncated ? 0 : -1;
         if (!isTruncated) hideTooltip(tooltip);
+        else if (!tooltip.hidden) {
+          tooltip.textContent = fullValue;
+          positionTooltip(value, tooltip);
+        }
       };
       const showTooltip = () => {
         if (value.dataset.runtimeValueTruncated !== "true") return;
@@ -468,6 +472,10 @@ import "@/lib/public-playbook-resources";
     if ((event as CustomEvent<{ motion?: string }>).detail?.motion === "reduce") {
       settleRuntimeValues();
     }
+  });
+  const reducedMotionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+  reducedMotionQuery?.addEventListener("change", (event) => {
+    if (event.matches) settleRuntimeValues();
   });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) settleRuntimeValues();

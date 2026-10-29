@@ -205,6 +205,7 @@ test("the controlled metric fixture rolls digits and settles at the latest targe
 
   await page.getByRole("button", { name: "刷新数据", exact: true }).click();
   await expect(metric).toHaveAttribute("data-runtime-value-motion-to", "1M");
+  await page.setViewportSize({ width: 392, height: 852 });
   await page.locator('button[aria-controls="web-demo-inspector-advanced-content"]').click();
   await expect(page.getByRole("radio", { name: "减少动效", exact: true })).toBeAttached();
   await page.getByRole("radio", { name: "减少动效", exact: true }).click();

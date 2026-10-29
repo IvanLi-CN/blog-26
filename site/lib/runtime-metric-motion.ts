@@ -89,7 +89,17 @@ export function createRuntimeMetricMotionPlan(from: string, to: string): Runtime
     const toIndex = to.length - length + position;
     const fromChar = from[fromIndex] ?? "";
     const toChar = to[toIndex] ?? "";
-    if (fromChar === toChar || fromChar === "" || toChar === "") continue;
+    if (fromChar === toChar) continue;
+    if (fromChar === "" || toChar === "") {
+      wheels.push({
+        from: fromChar || " ",
+        to: toChar || " ",
+        direction: "neutral",
+        cycles: 1,
+        position,
+      });
+      continue;
+    }
     const digitStep = getDigitStep(fromChar, toChar, direction);
     wheels.push({
       from: fromChar,
@@ -185,6 +195,11 @@ export function createRuntimeMetricMotion(
     const linearProgress = Math.min(1, Math.max(0, (now() - animationStart) / duration));
     const progress = motionEaseY(linearProgress);
     const wheelsByPosition = new Map(activePlan.wheels.map((wheel) => [wheel.position, wheel]));
+    const visualWheels = new Map(
+      Array.from(value.querySelectorAll<HTMLElement>("[data-runtime-value-wheel-position]"))
+        .map((wheel) => [Number(wheel.dataset.runtimeValueWheelPosition), wheel] as const)
+        .filter(([position]) => Number.isFinite(position))
+    );
     const length = Math.max(activePlan.from.length, activePlan.to.length);
     let frameText = "";
     for (let position = 0; position < length; position += 1) {
@@ -196,7 +211,27 @@ export function createRuntimeMetricMotion(
         continue;
       }
       const sequence = sequenceForWheel(wheel);
-      const index = Math.min(sequence.length - 1, Math.round(progress * (sequence.length - 1)));
+      let index = Math.min(sequence.length - 1, Math.round(progress * (sequence.length - 1)));
+      const wheelNode = visualWheels.get(position);
+      const tokenNodes = wheelNode
+        ? Array.from(wheelNode.querySelectorAll<HTMLElement>(".runtime-value-wheel-token"))
+        : [];
+      if (wheelNode && tokenNodes.length > 0) {
+        const bounds = wheelNode.getBoundingClientRect();
+        const center = bounds.top + bounds.height / 2;
+        index = tokenNodes.reduce((best, token, tokenIndex) => {
+          const distance = Math.abs(
+            token.getBoundingClientRect().top + token.getBoundingClientRect().height / 2 - center
+          );
+          const bestToken = tokenNodes[best];
+          const bestDistance = Math.abs(
+            bestToken.getBoundingClientRect().top +
+              bestToken.getBoundingClientRect().height / 2 -
+              center
+          );
+          return distance < bestDistance ? tokenIndex : best;
+        }, 0);
+      }
       frameText += sequence[index] ?? "";
     }
     return frameText;
@@ -253,6 +288,7 @@ export function createRuntimeMetricMotion(
       const wheelNode = document.createElement("span");
       wheelNode.className = "runtime-value-wheel";
       wheelNode.dataset.runtimeValueWheel = "";
+      wheelNode.dataset.runtimeValueWheelPosition = String(position);
       wheelNode.dataset.runtimeValueWheelDirection = wheel.direction;
       wheelNode.dataset.runtimeValueWheelCycles = String(wheel.cycles);
       const track = document.createElement("span");

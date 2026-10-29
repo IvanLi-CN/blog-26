@@ -10,6 +10,7 @@ describe("runtime metric motion plans", () => {
     expect(plan.wheels.length).toBeGreaterThan(0);
     expect(plan.wheels.every((wheel) => wheel.cycles <= 3)).toBe(true);
     expect(plan.wheels.some((wheel) => wheel.from === "K" && wheel.to === "M")).toBe(true);
+    expect(plan.wheels.some((wheel) => wheel.from === "9" && wheel.to === " ")).toBe(true);
   });
 
   test("follows the whole-value direction for carry and borrow", () => {
