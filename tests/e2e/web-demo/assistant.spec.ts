@@ -13,6 +13,25 @@ async function hideInspector(page: import("@playwright/test").Page) {
 }
 
 test.describe("Knowledge Assistant Web Demo", () => {
+  test("loads home cover media after navigating from chat without a development error overlay", async ({
+    page,
+  }) => {
+    await page.goto("/chat?d_persona=user&d_scene=assistant-ready&d_delay=normal");
+    await page
+      .getByRole("navigation", { name: "站点导航" })
+      .getByRole("link", { name: "首页" })
+      .click();
+    await expect(page).toHaveURL(/\/$/);
+    const cover = page.locator('img[src*="/api/public/assets/post/"]').first();
+    await expect(cover).toBeVisible();
+    await expect
+      .poll(() =>
+        cover.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)
+      )
+      .toBe(true);
+    await expect(page.locator("vite-error-overlay")).toHaveCount(0);
+  });
+
   test("keeps a user conversation private and idempotent across the full-page flow", async ({
     page,
   }) => {
