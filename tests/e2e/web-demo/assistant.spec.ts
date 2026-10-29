@@ -12,6 +12,8 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await page.goto("/chat?d_persona=user&d_scene=assistant-ready&d_delay=normal");
     await hideInspector(page);
 
+    await expect(page.getByTestId("assistant-route-header")).toBeVisible();
+    await expect(page.getByTestId("assistant-route-footer")).toBeVisible();
     await expect(page.getByTestId("assistant-page")).toBeVisible();
     await expect(page.getByTestId("assistant-conversation-list")).toBeVisible();
     await expect(page.getByTestId("assistant-quota")).toContainText("问题");
@@ -48,6 +50,8 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await page.goto("/chat?d_persona=guest&d_scene=assistant-ready&d_delay=normal");
     await hideInspector(page);
 
+    await expect(page.getByTestId("assistant-route-header")).toBeVisible();
+    await expect(page.getByTestId("assistant-route-footer")).toBeVisible();
     await expect(page.getByRole("heading", { name: "登录后使用智问助手" })).toBeVisible();
     await expect(page.getByTestId("assistant-conversation-list")).toBeVisible();
     await expect(page.getByTestId("assistant-guest-empty-state")).toBeVisible();

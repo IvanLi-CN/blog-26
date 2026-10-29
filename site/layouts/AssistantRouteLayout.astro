@@ -1,0 +1,248 @@
+---
+import ThemeToggle from "@/components/common/ThemeToggle";
+import { toPublicSitePath } from "../lib/runtime-urls";
+import BaseLayout from "./BaseLayout.astro";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title = "智问助手", description = "站内知识问答" } = Astro.props;
+const homePath = toPublicSitePath("/") ?? "/";
+const memosPath = toPublicSitePath("/memos") ?? "/memos";
+const aboutPath = toPublicSitePath("/about") ?? "/about";
+const markPath = toPublicSitePath("/site-assets/ivan-blog-mark.svg") ?? "/site-assets/ivan-blog-mark.svg";
+---
+
+<BaseLayout pathname={Astro.url.pathname} title={title} description={description}>
+  <div class="assistant-route-layout" data-testid="assistant-route-layout">
+    <header class="assistant-route-header" data-testid="assistant-route-header">
+      <div class="assistant-route-header-inner">
+        <a class="assistant-route-brand" href={homePath} aria-label="返回 Ivan's Blog 首页">
+          <span
+            class="assistant-route-brand-mark"
+            aria-hidden="true"
+            style={`--assistant-route-mark-url: url("${markPath}")`}
+          ></span>
+          <span class="assistant-route-brand-copy">
+            <span class="assistant-route-brand-name">Ivan's Blog</span>
+            <span class="assistant-route-brand-divider" aria-hidden="true">/</span>
+            <span class="assistant-route-brand-title">智问助手</span>
+          </span>
+        </a>
+
+        <nav class="assistant-route-nav" aria-label="助手导航">
+          <a href={memosPath}>浏览 Memos</a>
+          <a href={homePath}>返回首页</a>
+          <ThemeToggle client:load compactOnMobile iconClass="h-4 w-4" />
+        </nav>
+      </div>
+    </header>
+
+    <div class="assistant-route-content">
+      <slot />
+    </div>
+
+    <footer class="assistant-route-footer" data-testid="assistant-route-footer">
+      <div class="assistant-route-footer-inner">
+        <div>
+          <span class="assistant-route-footer-title">智问助手</span>
+          <span class="assistant-route-footer-divider" aria-hidden="true">·</span>
+          <span>站内知识问答</span>
+        </div>
+        <div class="assistant-route-footer-meta">
+          <span>只检索公开内容</span>
+          <span>登录后保存对话</span>
+          <a href={aboutPath}>了解站点</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+</BaseLayout>
+
+<style>
+  .assistant-route-layout {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+  }
+
+  .assistant-route-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    flex: 0 0 auto;
+    padding: 0.55rem max(1rem, 3vw) 0;
+  }
+
+  .assistant-route-header-inner {
+    display: flex;
+    width: min(92rem, 100%);
+    min-height: 3.5rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 0 auto;
+    border-bottom: 1px solid var(--nature-line);
+    padding: 0.35rem 0.15rem 0.55rem;
+  }
+
+  .assistant-route-brand {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.65rem;
+    color: var(--nature-text);
+  }
+
+  .assistant-route-brand-mark {
+    display: block;
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 auto;
+    background-image: var(--assistant-route-mark-url);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+  }
+
+  .assistant-route-brand-copy {
+    display: inline-flex;
+    min-width: 0;
+    align-items: baseline;
+    gap: 0.45rem;
+    white-space: nowrap;
+  }
+
+  .assistant-route-brand-name {
+    font-family: var(--font-heading);
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  .assistant-route-brand-divider,
+  .assistant-route-footer-divider {
+    color: var(--nature-text-faint);
+  }
+
+  .assistant-route-brand-title {
+    color: var(--nature-text-soft);
+    font-size: 0.85rem;
+  }
+
+  .assistant-route-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .assistant-route-nav > a {
+    display: inline-flex;
+    min-height: 2.5rem;
+    align-items: center;
+    border-radius: 999px;
+    color: var(--nature-text-soft);
+    padding: 0.45rem 0.7rem;
+    font-size: 0.8rem;
+    transition:
+      background-color 160ms ease,
+      color 160ms ease;
+  }
+
+  .assistant-route-nav > a:hover,
+  .assistant-route-nav > a:focus-visible {
+    background: color-mix(in srgb, var(--nature-accent) 10%, transparent);
+    color: var(--nature-accent-strong);
+  }
+
+  .assistant-route-content {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .assistant-route-footer {
+    flex: 0 0 auto;
+    padding: 0.9rem max(1rem, 3vw) 1.25rem;
+  }
+
+  .assistant-route-footer-inner {
+    display: flex;
+    width: min(92rem, 100%);
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+    margin: 0 auto;
+    border-top: 1px solid var(--nature-line);
+    color: var(--nature-text-faint);
+    padding: 0.7rem 0.15rem 0;
+    font-size: 0.75rem;
+  }
+
+  .assistant-route-footer-title {
+    color: var(--nature-text-soft);
+    font-weight: 600;
+  }
+
+  .assistant-route-footer-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.25rem 0.8rem;
+  }
+
+  .assistant-route-footer-meta a {
+    color: var(--nature-text-soft);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+
+  @media (max-width: 639px) {
+    .assistant-route-header {
+      padding-top: 0.35rem;
+    }
+
+    .assistant-route-header-inner {
+      min-height: 3rem;
+      gap: 0.5rem;
+      padding-bottom: 0.4rem;
+    }
+
+    .assistant-route-brand-mark {
+      width: 1.75rem;
+      height: 1.75rem;
+    }
+
+    .assistant-route-brand-copy {
+      gap: 0.3rem;
+    }
+
+    .assistant-route-brand-name {
+      font-size: 0.85rem;
+    }
+
+    .assistant-route-brand-title {
+      font-size: 0.78rem;
+    }
+
+    .assistant-route-nav > a {
+      padding-inline: 0.45rem;
+      font-size: 0.72rem;
+    }
+
+    .assistant-route-nav > a:first-child {
+      display: none;
+    }
+
+    .assistant-route-footer-inner {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .assistant-route-footer-meta {
+      justify-content: flex-start;
+    }
+  }
+</style>
