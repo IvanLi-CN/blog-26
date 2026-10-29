@@ -208,19 +208,21 @@ test("the controlled metric fixture rolls digits and settles at the latest targe
   await metric.evaluate((element) => element.style.removeProperty("width"));
   await page.getByRole("button", { name: "刷新数据", exact: true }).click();
   await expect(metric).toHaveAttribute("data-runtime-value-motion-to", "793.76K");
+  await page.getByRole("button", { name: "刷新数据", exact: true }).click();
+  await expect(metric).toHaveAttribute("data-runtime-value-motion-to", "1M");
   await page.waitForTimeout(650);
   await expect(metric).toHaveAttribute("data-runtime-value-animating", "false");
-  await expect(metric).toHaveAttribute("aria-label", "793.76K");
+  await expect(metric).toHaveAttribute("aria-label", "1M");
   await expect(metric.locator("[data-runtime-value-wheel]")).toHaveCount(0);
 
   await page.getByRole("button", { name: "刷新数据", exact: true }).click();
-  await expect(metric).toHaveAttribute("data-runtime-value-motion-to", "1M");
+  await expect(metric).toHaveAttribute("data-runtime-value-motion-to", "793.76K");
   await page.setViewportSize({ width: 392, height: 852 });
   await page.locator('button[aria-controls="web-demo-inspector-advanced-content"]').click();
   await expect(page.getByRole("radio", { name: "减少动效", exact: true })).toBeAttached();
   await page.getByRole("radio", { name: "减少动效", exact: true }).click();
   await expect(metric).toHaveAttribute("data-runtime-value-animating", "false");
-  await expect(metric).toHaveAttribute("aria-label", "1M");
+  await expect(metric).toHaveAttribute("aria-label", "793.76K");
 });
 
 test("the controlled metric fixture settles on a narrow viewport", async ({ page }) => {

@@ -112,7 +112,7 @@ export function createRuntimeMetricMotionPlan(from: string, to: string): Runtime
   return { from, to, wheels };
 }
 
-function sequenceForWheel(wheel: RuntimeMetricWheel) {
+function sequenceForWheel(wheel: RuntimeMetricWheel, visual = false) {
   if (
     wheel.direction === "neutral" ||
     !digitPattern.test(wheel.from) ||
@@ -127,13 +127,14 @@ function sequenceForWheel(wheel: RuntimeMetricWheel) {
       ? (Number(wheel.to) - start + 10) % 10
       : (start - Number(wheel.to) + 10) % 10;
   const intermediateCount = Math.max(0, Math.min(distance, wheel.cycles) - 1);
-  return [
+  const sequence = [
     String(start),
     ...Array.from({ length: intermediateCount }, (_, index) =>
       String((start + direction * (index + 1) + 10) % 10)
     ),
     String(wheel.to),
   ];
+  return visual && wheel.direction === "down" ? sequence.reverse() : sequence;
 }
 
 function getVisualElement(value: HTMLElement) {
@@ -232,7 +233,7 @@ export function createRuntimeMetricMotion(
           return distance < bestDistance ? tokenIndex : best;
         }, 0);
       }
-      frameText += sequence[index] ?? "";
+      frameText += tokenNodes[index]?.textContent ?? sequence[index] ?? "";
     }
     return frameText;
   };
@@ -293,7 +294,7 @@ export function createRuntimeMetricMotion(
       wheelNode.dataset.runtimeValueWheelCycles = String(wheel.cycles);
       const track = document.createElement("span");
       track.className = "runtime-value-wheel-track";
-      for (const character of sequenceForWheel(wheel)) {
+      for (const character of sequenceForWheel(wheel, true)) {
         const token = document.createElement("span");
         token.className = "runtime-value-wheel-token";
         token.textContent = character;
@@ -304,11 +305,16 @@ export function createRuntimeMetricMotion(
 
       if (typeof track.animate !== "function") continue;
       const finalOffset = -((track.childElementCount - 1) / track.childElementCount) * 100;
+      const keyframes =
+        wheel.direction === "down"
+          ? [{ transform: `translateY(${finalOffset}%)` }, { transform: "translateY(0%)" }]
+          : [{ transform: "translateY(0%)" }, { transform: `translateY(${finalOffset}%)` }];
       try {
-        const animation = (track as RuntimeMetricMotionElement).animate(
-          [{ transform: "translateY(0%)" }, { transform: `translateY(${finalOffset}%)` }],
-          { duration, easing: motionEase, fill: "both" }
-        );
+        const animation = (track as RuntimeMetricMotionElement).animate(keyframes, {
+          duration,
+          easing: motionEase,
+          fill: "both",
+        });
         animations.push(animation);
       } catch {
         // A browser without Web Animations still gets the final readable value.

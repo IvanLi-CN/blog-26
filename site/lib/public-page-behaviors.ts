@@ -382,8 +382,8 @@ import "@/lib/public-playbook-resources";
           fullValue;
         const isTruncated =
           selectedValue !== fullValue || measuredWidth(fullValue) > availableWidth + 0.5;
-        const shouldAnimate = animate && !staticAfterFallback.has(value);
-        staticAfterFallback.delete(value);
+        const wasStaticAfterFallback = staticAfterFallback.has(value);
+        const shouldAnimate = animate && !wasStaticAfterFallback;
         const isAnimatingSameTarget =
           controller.isAnimating && controller.targetText === selectedValue;
         const retargetDuringResize =
@@ -391,6 +391,7 @@ import "@/lib/public-playbook-resources";
         if (!isAnimatingSameTarget) {
           controller.update(selectedValue, shouldAnimate || retargetDuringResize);
         }
+        if (animate || !wasStaticAfterFallback) staticAfterFallback.delete(value);
         value.dataset.runtimeValueTruncated = String(isTruncated);
         value.tabIndex = isTruncated ? 0 : -1;
         if (!isTruncated) hideTooltip(tooltip);

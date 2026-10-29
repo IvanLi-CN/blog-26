@@ -4,7 +4,7 @@
   "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
   "covered_files": {
     "docs/project-runtime-motion-design.md": "15a356ba54f3b6d72ce59b0904576db184b71b92",
-    "docs/specs/nature-front-ui/HISTORY.md": "1cd22038e18c97f70fa2f4d149d2a5613e911ec4",
+    "docs/specs/nature-front-ui/HISTORY.md": "496fc0151262b668cec425d1c6a49aef291a6156",
     "docs/specs/nature-front-ui/IMPLEMENTATION.md": "fec885e6eed861700f190fc08fa758cac0bc634a",
     "docs/specs/nature-front-ui/SPEC.md": "0e2494c250830a4a48dfe27911d74a3fad2dcd30",
     "docs/specs/nature-front-ui/assets/runtime-motion-desktop-dark.png": "269e01f0d96f4e4aaf86cc91d24c8b718d284256",
@@ -13,9 +13,9 @@
     "docs/specs/nature-front-ui/assets/runtime-motion-mobile-light.png": "2494bf82733afe2b17dddeaeb90f6a4589c6a418",
     "site/components/projects/RuntimeMetricValue.tsx": "205d842ee8b3b607bae0beab488fecbcfde61d00",
     "site/lib/project-runtime-live.ts": "1bfd49bb04e2bdf0ee710b5e01f8f54ee5c63612",
-    "site/lib/public-page-behaviors.ts": "595c4ac6d321ad03c15e71b3c842a8df1b790b4f",
+    "site/lib/public-page-behaviors.ts": "11fbc199f13b7f0f5e4b8efcb7625938f960c2a1",
     "site/lib/runtime-format.ts": "0878df79ed1e2e5c861a1aaabe22cfe8a3a8ed60",
-    "site/lib/runtime-metric-motion.ts": "a293b490821a3978f55925430dfd6688ba5a59a5",
+    "site/lib/runtime-metric-motion.ts": "44cd996cf4f16ef1d60dbbc0c73530095a2aa6ee",
     "site/styles/public-pages.css": "6aa118e2dbb21f16f8190de30746c141ba2698dc",
     "src/components/WebDemoInspector.css": "1b6d9721407ce3af91ff44d9314d29603482c71c",
     "src/components/WebDemoInspector.tsx": "e112a754094c8f7b1d61637f247b0c383b815515",
@@ -26,7 +26,7 @@
     "tests/components/runtime-cell-grid.test.tsx": "8b98250bd95402691eb78177950b05390a40a66e",
     "tests/e2e/guest/nature-front-coverage.spec.ts": "c99cbb47daf2d00a5d5f863a09d0481e08d679b4",
     "tests/e2e/guest/project-visual-slot.spec.ts": "7bab505c5ffbfcbb0809b47c1e075575b590188e",
-    "tests/e2e/web-demo/project-runtime-motion.spec.ts": "193fc350ce1c6570d27a1596a91019aa1ca0ed36",
+    "tests/e2e/web-demo/project-runtime-motion.spec.ts": "fc158985efe0b2860a430c8530a493aafd96ba59",
     "tests/lib/runtime-format.test.ts": "ce5d704bd4222aa86209699f2fa60f17e730c668",
     "tests/lib/runtime-metric-motion.test.ts": "cf35ed4e198510819166d4b52f46d0356f740185",
     "tests/lib/web-demo-fetch.test.ts": "99f8d4a490090bee81310561b33a43ed310c3920",
@@ -57,7 +57,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "193fc350ce1c6570d27a1596a91019aa1ca0ed36",
+          "blob": "fc158985efe0b2860a430c8530a493aafd96ba59",
           "command": "Official Web Demo motion, fallback, reduced-motion, responsive and latest-target browser coverage"
         },
         {
@@ -83,7 +83,7 @@
         },
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "193fc350ce1c6570d27a1596a91019aa1ca0ed36",
+          "blob": "fc158985efe0b2860a430c8530a493aafd96ba59",
           "command": "Official Web Demo motion regression"
         }
       ]
@@ -132,7 +132,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "193fc350ce1c6570d27a1596a91019aa1ca0ed36",
+          "blob": "fc158985efe0b2860a430c8530a493aafd96ba59",
           "command": "Public route and metric presentation contracts remain route-compatible"
         }
       ]
@@ -146,7 +146,7 @@
       "evidence": [
         {
           "path": "site/lib/runtime-metric-motion.ts",
-          "blob": "a293b490821a3978f55925430dfd6688ba5a59a5",
+          "blob": "44cd996cf4f16ef1d60dbbc0c73530095a2aa6ee",
           "command": "Motion state is scoped to the page lifetime and has no durable storage"
         }
       ]
