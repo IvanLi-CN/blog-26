@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Icon from "@/components/ui/Icon";
 import type {
   AssistantCitation,
@@ -341,18 +341,27 @@ function GuestAssistantPreview({
 function ConversationList({
   conversations,
   selectedId,
+  listId,
+  expanded,
   onSelect,
   onDelete,
   onCreate,
 }: {
   conversations: AssistantConversation[];
   selectedId: string | null;
+  listId: string;
+  expanded: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onCreate: () => void;
 }) {
   return (
-    <div className="knowledge-assistant-list" data-testid="assistant-conversation-list">
+    <div
+      id={listId}
+      className="knowledge-assistant-list"
+      data-expanded={expanded}
+      data-testid="assistant-conversation-list"
+    >
       <div className="knowledge-assistant-list-heading">
         <div className="min-w-0">
           <p className="text-sm font-semibold">对话</p>
@@ -494,6 +503,37 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     return new URL(window.location.href).searchParams.get("conversation");
   }, []);
   const [open, setOpen] = useState(fullPage);
+  const [listExpanded, setListExpanded] = useState(false);
+  const listId = useId();
+  const listToggleRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!listExpanded) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (
+        document.getElementById(listId)?.contains(target) ||
+        target.closest(".knowledge-assistant-list-toggle")
+      )
+        return;
+      setListExpanded(false);
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (document.getElementById(listId)?.contains(document.activeElement)) {
+        listToggleRef.current?.focus();
+      }
+      setListExpanded(false);
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape, true);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape, true);
+    };
+  }, [listExpanded, listId]);
   const [auth, setAuth] = useState<AuthState>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [conversations, setConversations] = useState<AssistantConversation[]>([]);
@@ -1286,9 +1326,19 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
           <ConversationList
             conversations={conversations}
             selectedId={selectedId}
-            onSelect={selectConversation}
+            listId={listId}
+            expanded={listExpanded}
+            onSelect={(id) => {
+              selectConversation(id);
+              if (listExpanded) listToggleRef.current?.focus();
+              setListExpanded(false);
+            }}
             onDelete={remove}
-            onCreate={createConversation}
+            onCreate={() => {
+              createConversation();
+              if (listExpanded) listToggleRef.current?.focus();
+              setListExpanded(false);
+            }}
           />
           <div className="knowledge-assistant-content">
             <div className="knowledge-assistant-toolbar">
@@ -1302,6 +1352,17 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                   {formatQuota(quota)}
                 </p>
               </div>
+              <button
+                type="button"
+                className="knowledge-assistant-list-toggle"
+                ref={listToggleRef}
+                aria-expanded={listExpanded}
+                aria-controls={listId}
+                onClick={() => setListExpanded((value) => !value)}
+              >
+                <Icon name="tabler:messages" className="h-4 w-4" />
+                <span>切换对话</span>
+              </button>
               {isGenerating(snapshot) ? (
                 <button
                   type="button"

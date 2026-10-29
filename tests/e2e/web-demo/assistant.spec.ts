@@ -47,10 +47,23 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await expect(footer).toContainText("©");
     await expect(footer).not.toContainText("站点入口");
     await expect(page.getByTestId("assistant-page")).toBeVisible();
+    const conversationToggle = page.getByRole("button", { name: "切换对话" });
+    if (await conversationToggle.isVisible()) {
+      await expect(page.getByTestId("assistant-conversation-list")).toBeHidden();
+      await conversationToggle.click();
+    }
     await expect(page.getByTestId("assistant-conversation-list")).toBeVisible();
+    await expect(page.getByTestId("assistant-conversation-list")).toHaveCSS(
+      "flex-direction",
+      "column"
+    );
     await expect(
       page.getByTestId("assistant-conversation-list").getByRole("button", { name: "新建对话" })
     ).toBeVisible();
+    if (await conversationToggle.isVisible()) {
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("assistant-conversation-list")).toBeHidden();
+    }
     await expect(
       page.locator(".assistant-route-header-tools .nature-header-theme-toggle")
     ).toHaveCount(0);

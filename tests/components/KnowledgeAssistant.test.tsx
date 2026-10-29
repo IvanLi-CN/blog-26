@@ -230,7 +230,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     await waitFor(() => expect(view.getByRole("heading", { name: "新对话" })).toBeTruthy());
     const textarea = view.getByLabelText("知识对话问题") as HTMLTextAreaElement;
     await user.type(textarea, "保留这份问题");
-    fireEvent.keyDown(view.getByLabelText("知识对话问题"), { key: "Enter", ctrlKey: true });
+    fireEvent.keyDown(view.getByLabelText("知识对话问题"), { key: "Enter" });
     await waitFor(() => expect(postCalls).toBe(1));
     const send = view.getByRole("button", { name: "发送" }) as HTMLButtonElement;
     await waitFor(() => expect(send.disabled).toBe(false));
@@ -286,7 +286,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     const user = userEvent.setup({ document: window.document });
     const textarea = view.getByLabelText("知识对话问题") as HTMLTextAreaElement;
     await user.type(textarea, "首个问题");
-    fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
+    fireEvent.keyDown(textarea, { key: "Enter" });
     await waitFor(() => expect(postCalls).toBe(1));
     await user.clear(textarea);
     await user.type(textarea, "等待期间补充");
@@ -367,7 +367,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     const user = userEvent.setup({ document: window.document });
     const textarea = view.getByLabelText("知识对话问题") as HTMLTextAreaElement;
     await user.type(textarea, "询问 B");
-    fireEvent.keyDown(view.getByLabelText("知识对话问题"), { key: "Enter", ctrlKey: true });
+    fireEvent.keyDown(view.getByLabelText("知识对话问题"), { key: "Enter" });
 
     await waitFor(() => expect(postedBody?.text).toBe("询问 B"));
     expect(postedBody?.requestId).toBeTruthy();
@@ -434,7 +434,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     const textarea = await waitFor(() => view.getByLabelText("知识对话问题"));
     const user = userEvent.setup({ document: window.document });
     await user.type(textarea, "继续当前文章讨论");
-    fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
+    fireEvent.keyDown(textarea, { key: "Enter" });
     await waitFor(() => expect(clippingPosts).toBe(1));
     expect(listCalls).toBeGreaterThanOrEqual(2);
   });
@@ -510,7 +510,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     const user = userEvent.setup({ document: window.document });
     const textarea = view.getByLabelText("知识对话问题");
     await user.type(textarea, "继续当前文章讨论");
-    fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
+    fireEvent.keyDown(textarea, { key: "Enter" });
     await waitFor(() => expect(clippingReads).toBeGreaterThan(0));
     await waitFor(() => expect(view.getByRole("alert").textContent).toContain("仅支持查看"));
     expect(clippingPosts).toBe(0);
@@ -604,7 +604,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     const user = userEvent.setup({ document: window.document });
     const textarea = view.getByLabelText("知识对话问题");
     await user.type(textarea, "继续 B 文章讨论");
-    fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
+    fireEvent.keyDown(textarea, { key: "Enter" });
     await waitFor(() => expect(clippingPosts).toBe(1));
     expect(genericPosts).toBe(0);
   });
@@ -654,7 +654,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     document.body.append(marker);
     document.dispatchEvent(new Event("astro:page-load"));
 
-    fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
+    fireEvent.keyDown(textarea, { key: "Enter" });
     await waitFor(() => expect(genericPosts).toBe(1));
     expect(postedBody?.kind).toBe("general");
     expect(postedBody?.conversationId).toBeNull();
