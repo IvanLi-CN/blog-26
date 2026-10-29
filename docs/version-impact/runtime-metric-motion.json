@@ -26,7 +26,7 @@
     "tests/components/runtime-cell-grid.test.tsx": "8b98250bd95402691eb78177950b05390a40a66e",
     "tests/e2e/guest/nature-front-coverage.spec.ts": "c99cbb47daf2d00a5d5f863a09d0481e08d679b4",
     "tests/e2e/guest/project-visual-slot.spec.ts": "7bab505c5ffbfcbb0809b47c1e075575b590188e",
-    "tests/e2e/web-demo/project-runtime-motion.spec.ts": "fc158985efe0b2860a430c8530a493aafd96ba59",
+    "tests/e2e/web-demo/project-runtime-motion.spec.ts": "20eaf2145c1f2ecbbae8b24ad77eea9f6f17a909",
     "tests/lib/runtime-format.test.ts": "ce5d704bd4222aa86209699f2fa60f17e730c668",
     "tests/lib/runtime-metric-motion.test.ts": "cf35ed4e198510819166d4b52f46d0356f740185",
     "tests/lib/web-demo-fetch.test.ts": "99f8d4a490090bee81310561b33a43ed310c3920",
@@ -57,7 +57,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "fc158985efe0b2860a430c8530a493aafd96ba59",
+          "blob": "20eaf2145c1f2ecbbae8b24ad77eea9f6f17a909",
           "command": "Official Web Demo motion, fallback, reduced-motion, responsive and latest-target browser coverage"
         },
         {
@@ -83,7 +83,7 @@
         },
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "fc158985efe0b2860a430c8530a493aafd96ba59",
+          "blob": "20eaf2145c1f2ecbbae8b24ad77eea9f6f17a909",
           "command": "Official Web Demo motion regression"
         }
       ]
@@ -132,7 +132,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "fc158985efe0b2860a430c8530a493aafd96ba59",
+          "blob": "20eaf2145c1f2ecbbae8b24ad77eea9f6f17a909",
           "command": "Public route and metric presentation contracts remain route-compatible"
         }
       ]

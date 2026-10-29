@@ -208,6 +208,8 @@ test("the controlled metric fixture rolls digits and settles at the latest targe
   await metric.evaluate((element) => element.style.removeProperty("width"));
   await page.getByRole("button", { name: "刷新数据", exact: true }).click();
   await expect(metric).toHaveAttribute("data-runtime-value-motion-to", "793.76K");
+  await expect(metric).toHaveAttribute("data-runtime-value-animating", "true");
+  await page.setViewportSize({ width: 392, height: 852 });
   await page.getByRole("button", { name: "刷新数据", exact: true }).click();
   await expect(metric).toHaveAttribute("data-runtime-value-motion-to", "1M");
   await page.waitForTimeout(650);
