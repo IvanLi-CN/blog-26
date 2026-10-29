@@ -54,45 +54,31 @@ const currentYear = new Date().getFullYear();
 
     <footer class="assistant-route-footer" data-testid="assistant-route-footer">
       <div class="assistant-route-footer-inner">
-        <div class="assistant-route-footer-brand">
-          <div class="assistant-route-footer-title">{SITE.name}</div>
-          <p>{SITE.description}</p>
-          <div class="assistant-route-footer-legal">
-            <span>Copyright © {currentYear} {SITE.owner}</span>
-            <span>Code: MIT</span>
-            <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" rel="noopener noreferrer">
-              Content: CC BY-NC-ND 4.0
+        <div class="assistant-route-footer-line">
+          <span class="assistant-route-footer-title">{SITE.name}</span>
+          <span class="assistant-route-footer-description">{SITE.description}</span>
+          <span class="assistant-route-footer-separator" aria-hidden="true">·</span>
+          <span>© {currentYear} {SITE.owner} · Code: MIT</span>
+          <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" rel="noopener noreferrer">
+            Content: CC BY-NC-ND 4.0
+          </a>
+          {footerData.socialLinks.map((social) => (
+            <a
+              href={social.href.startsWith("/") ? toPublicSitePath(social.href) : social.href}
+              target={social.href.startsWith("/") ? undefined : "_blank"}
+              rel={social.href.startsWith("/") ? undefined : "noopener noreferrer"}
+            >
+              {social.ariaLabel}
             </a>
-          </div>
-        </div>
-
-        <div class="assistant-route-footer-column">
-          <p class="assistant-route-footer-label">连接</p>
-          <div class="assistant-route-footer-links">
-            {footerData.socialLinks.map((social) => (
-              <a
-                href={social.href.startsWith("/") ? toPublicSitePath(social.href) : social.href}
-                target={social.href.startsWith("/") ? undefined : "_blank"}
-                rel={social.href.startsWith("/") ? undefined : "noopener noreferrer"}
-              >
-                {social.ariaLabel}
-              </a>
-            ))}
-            <a href={`mailto:${SITE.author.email}`}>联系作者</a>
-          </div>
-          <a
-            class="assistant-route-footer-record"
-            target="_blank"
-            rel="noopener noreferrer"
-            href="https://beian.miit.gov.cn"
-          >
+          ))}
+          <a href={`mailto:${SITE.author.email}`}>联系作者</a>
+          <a class="assistant-route-footer-record" target="_blank" rel="noopener noreferrer" href="https://beian.miit.gov.cn">
             闽ICP备2023000043号
           </a>
-        </div>
-
-        <div class="assistant-route-footer-note">
-          <span class="assistant-route-footer-note-title">智问助手</span>
-          <span>只检索本站公开内容 · 登录后保存对话</span>
+          <span class="assistant-route-footer-note">
+            <span class="assistant-route-footer-note-title">智问助手</span>
+            <span>仅检索本站公开内容 · 登录后保存对话</span>
+          </span>
         </div>
       </div>
     </footer>
@@ -220,90 +206,51 @@ const currentYear = new Date().getFullYear();
   }
 
   .assistant-route-footer-inner {
-    display: grid;
     width: min(92rem, 100%);
-    grid-template-columns: minmax(0, 1.6fr) minmax(16rem, 1fr);
-    align-items: start;
-    gap: 0.75rem 1.5rem;
     margin: 0 auto;
     border-top: 1px solid var(--nature-line);
     color: var(--nature-text-faint);
-    padding: 0.7rem 0.15rem 0;
-    font-size: 0.75rem;
+    padding: 0.55rem 0.15rem 0;
+    font-size: 0.7rem;
+    line-height: 1.45;
   }
 
-  .assistant-route-footer-brand {
-    min-width: 0;
+  .assistant-route-footer-line {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.2rem 0.65rem;
   }
 
   .assistant-route-footer-title {
     color: var(--nature-text-soft);
     font-family: var(--font-heading);
-    font-size: 1rem;
+    font-size: 0.85rem;
     font-weight: 600;
   }
 
-  .assistant-route-footer-brand p {
-    max-width: 30rem;
-    margin: 0.25rem 0 0;
+  .assistant-route-footer-description {
     color: var(--nature-text-faint);
-    line-height: 1.5;
   }
 
-  .assistant-route-footer-legal,
-  .assistant-route-footer-links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem 0.8rem;
-  }
-
-  .assistant-route-footer-legal {
-    margin-top: 0.65rem;
+  .assistant-route-footer-separator {
     color: var(--nature-text-faint);
-    font-size: 0.72rem;
   }
 
-  .assistant-route-footer-legal a,
-  .assistant-route-footer-links a,
+  .assistant-route-footer-line a,
   .assistant-route-footer-record {
     color: var(--nature-text-soft);
     text-decoration: underline;
     text-underline-offset: 0.15em;
   }
 
-  .assistant-route-footer-column {
-    min-width: 0;
-  }
-
-  .assistant-route-footer-label {
-    margin: 0 0 0.45rem;
-    color: var(--nature-text-faint);
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-  }
-
-  .assistant-route-footer-links {
-    gap: 0.3rem 0.7rem;
-    font-size: 0.75rem;
-  }
-
   .assistant-route-footer-record {
-    display: inline-flex;
-    margin-top: 0.65rem;
-    font-size: 0.72rem;
+    display: inline;
   }
 
   .assistant-route-footer-note {
-    display: flex;
-    grid-column: 1 / -1;
-    flex-wrap: wrap;
-    gap: 0.25rem 0.65rem;
-    border-top: 1px solid var(--nature-line);
-    padding-top: 0.65rem;
     color: var(--nature-text-faint);
-    font-size: 0.72rem;
+    margin-left: auto;
   }
 
   .assistant-route-footer-note-title {
@@ -358,12 +305,13 @@ const currentYear = new Date().getFullYear();
       margin-left: auto;
     }
 
-    .assistant-route-footer-inner {
-      grid-template-columns: 1fr;
+    .assistant-route-footer-line {
+      gap: 0.2rem 0.55rem;
     }
 
     .assistant-route-footer-note {
-      grid-column: auto;
+      flex-basis: 100%;
+      margin-left: 0;
     }
   }
 </style>
