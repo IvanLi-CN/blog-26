@@ -233,11 +233,13 @@ function LoginPrompt({
   onDraftChange,
   onLogin,
   onAdminLogin,
+  showAdminLogin,
 }: {
   draft: string;
   onDraftChange: (value: string) => void;
   onLogin: () => void;
   onAdminLogin: () => void;
+  showAdminLogin: boolean;
 }) {
   return (
     <div className="flex min-h-48 flex-col gap-3 px-6 py-10">
@@ -266,13 +268,15 @@ function LoginPrompt({
           保存草稿并登录
         </button>
       </div>
-      <button
-        type="button"
-        className="mx-auto min-h-11 px-3 text-sm text-[color:var(--nature-text-soft)] underline underline-offset-4"
-        onClick={onAdminLogin}
-      >
-        管理员入口
-      </button>
+      {showAdminLogin ? (
+        <button
+          type="button"
+          className="mx-auto min-h-11 px-3 text-sm text-[color:var(--nature-text-soft)] underline underline-offset-4"
+          onClick={onAdminLogin}
+        >
+          管理员入口
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -1189,6 +1193,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
             onDraftChange={updateDraft}
             onLogin={login}
             onAdminLogin={() => void adminLogin()}
+            showAdminLogin={auth?.canStartAdmin === true}
           />
         </>
       ) : !auth?.authenticated ? (
@@ -1197,6 +1202,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
           onDraftChange={updateDraft}
           onLogin={login}
           onAdminLogin={() => void adminLogin()}
+          showAdminLogin={auth?.canStartAdmin === true}
         />
       ) : (
         <div className="knowledge-assistant-body">

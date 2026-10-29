@@ -186,7 +186,8 @@ function demoFrontendAuth(environment: WebDemoEnvironment): FrontendAuthState {
     authenticated: Boolean(principal),
     principal,
     expiresAt: principal ? Date.now() + 7 * 86_400_000 : null,
-    loggedOut: !principal,
+    loggedOut: false,
+    canStartAdmin: environment.persona === "admin",
   };
 }
 
@@ -1455,7 +1456,14 @@ async function getDemoPublicResponse(
 
   if (url.pathname === "/api/public/frontend-auth/admin-start" && method === "POST") {
     if (environment.persona !== "admin")
-      return jsonResponse({ error: "请先登录管理员账号", code: "UNAUTHORIZED" }, 401);
+      return jsonResponse(
+        {
+          error: "请先登录管理员账号",
+          code: "UNAUTHORIZED",
+          canStartAdmin: false,
+        },
+        401
+      );
     return jsonResponse(demoFrontendAuth(environment));
   }
 
@@ -1465,6 +1473,7 @@ async function getDemoPublicResponse(
       principal: null,
       expiresAt: null,
       loggedOut: true,
+      canStartAdmin: environment.persona === "admin",
     });
   }
 

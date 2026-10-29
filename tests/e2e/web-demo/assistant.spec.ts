@@ -49,6 +49,7 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await hideInspector(page);
 
     await expect(page.getByRole("heading", { name: "登录后使用智问助手" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "管理员入口" })).toHaveCount(0);
     const draft = page.getByLabel("登录前的智问助手草稿");
     await draft.fill("先保存这段问题");
     await expect(page.getByRole("button", { name: "保存草稿并登录" })).toBeVisible();

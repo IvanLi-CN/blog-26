@@ -102,6 +102,7 @@ describe("frontend authentication", () => {
       github: null,
       avatarUrl: "/site-assets/avatar.jpg",
     });
+    expect(bootstrapped.canStartAdmin).toBe(true);
 
     const frontendOnly = await frontendAuthMe(
       new Request("http://localhost/api/public/frontend-auth/me", {
@@ -128,6 +129,7 @@ describe("frontend authentication", () => {
     expect(suppressed).toMatchObject({
       authenticated: false,
       loggedOut: true,
+      canStartAdmin: true,
       bootstrapped: false,
     });
 
@@ -136,7 +138,12 @@ describe("frontend authentication", () => {
         headers: { "Remote-Email": adminEmail, cookie: logoutCookie },
       })
     );
-    expect(restarted).toMatchObject({ authenticated: true, loggedOut: false, bootstrapped: true });
+    expect(restarted).toMatchObject({
+      authenticated: true,
+      canStartAdmin: true,
+      loggedOut: false,
+      bootstrapped: true,
+    });
     expect(restarted.setCookies.some((cookie) => cookie.startsWith("frontend_logout=;"))).toBe(
       true
     );
