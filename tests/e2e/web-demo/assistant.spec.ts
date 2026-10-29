@@ -45,8 +45,8 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await expect(page.locator("html")).toHaveAttribute("data-ui-preference", "dark");
     await expect(page.getByText("公开知识库", { exact: true })).toHaveCount(0);
     await expect(page.getByTestId("assistant-quota")).toContainText("问题");
-    await expect(page.getByTestId("assistant-send-shortcuts")).toContainText("Enter");
-    await expect(page.getByTestId("assistant-send-shortcuts")).toContainText("换行");
+    await expect(page.getByTestId("assistant-send-shortcuts").getByText("发送")).toBeVisible();
+    await expect(page.getByTestId("assistant-send-shortcuts").getByText("换行")).toBeVisible();
     const shortcutBox = await page.getByTestId("assistant-send-shortcuts").boundingBox();
     const sendButtonBox = await page
       .getByRole("button", { name: "发送", exact: true })
