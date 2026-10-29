@@ -1525,7 +1525,10 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                     <span className="text-sm font-semibold">{ASSISTANT_DISPLAY_NAME}</span>
                     <span className="knowledge-assistant-status">{ASSISTANT_SUBTITLE}</span>
                   </span>
-                  <Icon name="tabler:chevron-down" className="h-4 w-4" />
+                  <Icon
+                    name={listExpanded ? "tabler:chevron-up" : "tabler:chevron-down"}
+                    className="h-4 w-4"
+                  />
                 </button>
               ) : (
                 <div>
