@@ -592,12 +592,29 @@ export default function SystemShareConfirmation() {
 
           <aside className="system-share-memo-attachments">
             <section>
-              <span
-                className="block text-sm font-medium"
-                data-testid="system-share-attachments-title"
-              >
-                附件
-              </span>
+              <div className="system-share-attachments-header">
+                <span
+                  className="block text-sm font-medium"
+                  data-testid="system-share-attachments-title"
+                >
+                  附件
+                </span>
+                <label
+                  className="system-share-file-picker nature-button nature-button-outline inline-flex min-h-11 shrink-0 cursor-pointer items-center"
+                  title="添加附件"
+                >
+                  <Paperclip aria-hidden="true" />
+                  <span>添加附件</span>
+                  <input
+                    className="sr-only"
+                    type="file"
+                    multiple
+                    aria-label="添加附件"
+                    onChange={(event) => void addFiles(event)}
+                    disabled={submitting || successLocked}
+                  />
+                </label>
+              </div>
               <ul className="system-share-files" data-testid="system-share-files">
                 {pending.files.length ? (
                   pending.files.map((file, index) => (
@@ -628,17 +645,6 @@ export default function SystemShareConfirmation() {
                   </li>
                 )}
               </ul>
-              <label className="system-share-file-picker nature-button nature-button-outline inline-flex min-h-11 cursor-pointer items-center gap-2">
-                <Paperclip aria-hidden="true" />
-                添加附件
-                <input
-                  className="sr-only"
-                  type="file"
-                  multiple
-                  onChange={(event) => void addFiles(event)}
-                  disabled={submitting || successLocked}
-                />
-              </label>
             </section>
           </aside>
         </div>

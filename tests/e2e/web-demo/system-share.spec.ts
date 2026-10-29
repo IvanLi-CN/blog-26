@@ -487,6 +487,23 @@ test.describe("Console system share Web Demo", () => {
       await expectSharePage(page);
       const layout = await readShareLayout(page);
       const expectedInset = width < 375 ? 12 : 16;
+      const attachmentTitle = await page
+        .getByTestId("system-share-attachments-title")
+        .boundingBox();
+      const attachmentPicker = await page.locator(".system-share-file-picker").boundingBox();
+      expect(attachmentTitle).not.toBeNull();
+      expect(attachmentPicker).not.toBeNull();
+      if (!attachmentTitle || !attachmentPicker) {
+        throw new Error("Missing attachment title or picker layout");
+      }
+      expect(attachmentPicker.x).toBeGreaterThanOrEqual(
+        attachmentTitle.x + attachmentTitle.width - 1
+      );
+      expect(attachmentPicker.x + attachmentPicker.width).toBeLessThanOrEqual(
+        width - expectedInset + 1
+      );
+      expect(attachmentPicker.height).toBeGreaterThanOrEqual(44);
+      expect(attachmentPicker.width).toBeLessThan(140);
       expect(Math.abs(layout.main.left)).toBeLessThanOrEqual(1);
       expect(Math.abs(layout.main.right - width)).toBeLessThanOrEqual(1);
       expect(Math.abs(layout.form.left)).toBeLessThanOrEqual(1);
