@@ -50,9 +50,9 @@ test.describe("Knowledge Assistant Web Demo", () => {
 
     await expect(page.getByRole("heading", { name: "登录后使用智问助手" })).toBeVisible();
     await expect(page.getByTestId("assistant-conversation-list")).toBeVisible();
-    await expect(page.getByTestId("assistant-guest-preview-message")).toBeVisible();
+    await expect(page.getByTestId("assistant-guest-empty-state")).toBeVisible();
     await expect(
-      page.getByText("可以询问本站公开文章、项目经验和工作方法。", { exact: false })
+      page.getByText("登录后可以询问本站公开文章、项目经验和工作方法。", { exact: false })
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "管理员入口" })).toHaveCount(0);
     const draft = page.getByLabel("登录前的智问助手草稿");

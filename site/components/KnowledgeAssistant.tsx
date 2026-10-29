@@ -248,49 +248,47 @@ function GuestAssistantPreview({
     >
       <div className="knowledge-assistant-list" data-testid="assistant-conversation-list">
         <div className="knowledge-assistant-guest-list-heading">
-          <p className="text-sm font-semibold">你的对话</p>
-          <p className="mt-1 text-xs text-[color:var(--nature-text-faint)]">登录后保存并继续</p>
+          <p className="text-sm font-semibold">对话列表</p>
+          <p className="mt-1 text-xs text-[color:var(--nature-text-faint)]">登录后创建并保存</p>
         </div>
-        <div className="knowledge-assistant-guest-list-card is-selected">
-          <div className="min-w-0">
-            <span className="block truncate text-sm font-medium">公开内容问答</span>
-            <span className="mt-0.5 block text-xs text-[color:var(--nature-text-faint)]">
-              示例预览
-            </span>
+        <div className="knowledge-assistant-guest-empty-list">
+          <Icon name="tabler:lock" className="h-5 w-5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold">还没有对话</p>
+            <p className="mt-1 text-xs leading-5 text-[color:var(--nature-text-soft)]">
+              登录后可以创建最多 3 段临时对话。
+            </p>
           </div>
-          <Icon name="tabler:sparkles" className="h-4 w-4 shrink-0" />
-        </div>
-        <div className="knowledge-assistant-guest-list-card is-muted">
-          <div className="min-w-0">
-            <span className="block truncate text-sm font-medium">剪藏文章讨论</span>
-            <span className="mt-0.5 block text-xs text-[color:var(--nature-text-faint)]">
-              从文章继续对话
-            </span>
-          </div>
-          <Icon name="tabler:lock" className="h-4 w-4 shrink-0" />
         </div>
       </div>
       <div className="knowledge-assistant-content">
         <div className="knowledge-assistant-toolbar">
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold">公开内容问答</h2>
-            <p className="knowledge-assistant-status">示例对话 · 登录后保存</p>
+            <h2 className="truncate text-sm font-semibold">新对话</h2>
+            <p className="knowledge-assistant-status">尚未创建对话 · 登录后可用</p>
           </div>
-          <span className="knowledge-assistant-guest-badge">预览</span>
+          <span className="knowledge-assistant-guest-badge">登录后可用</span>
         </div>
         <p className="knowledge-assistant-notice mx-3 mt-3">
-          可以询问本站公开文章、项目经验和工作方法。回答会优先检索站内内容，并尽量附上可定位的来源。
+          登录后可以询问本站公开文章、项目经验和工作方法。回答会优先检索站内内容，并尽量附上可定位的来源。
         </p>
         <div className="knowledge-assistant-messages" data-testid="assistant-messages">
-          <div className="knowledge-assistant-guest-example-label">示例对话</div>
-          <div className="knowledge-assistant-message knowledge-assistant-message--user">
-            我可以问哪些内容？
-          </div>
           <div
-            className="knowledge-assistant-message knowledge-assistant-message--assistant"
-            data-testid="assistant-guest-preview-message"
+            className="knowledge-assistant-guest-empty-state"
+            data-testid="assistant-guest-empty-state"
           >
-            可以询问公开文章、项目经验和工作方法。我会根据站内知识库组织回答，并在适用时列出来源。
+            <Icon name="tabler:sparkles" className="h-7 w-7" />
+            <div>
+              <p className="font-medium">准备开始你的第一个问题</p>
+              <p className="mt-1 text-sm leading-6 text-[color:var(--nature-text-soft)]">
+                登录后，这里会显示你自己的问答记录和来源引用。
+              </p>
+            </div>
+            <ul>
+              <li>检索本站公开内容</li>
+              <li>围绕文章和项目多轮追问</li>
+              <li>保留可继续的临时对话</li>
+            </ul>
           </div>
         </div>
         <div className="knowledge-assistant-compose knowledge-assistant-compose--locked">
