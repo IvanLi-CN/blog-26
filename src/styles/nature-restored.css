@@ -581,6 +581,10 @@
     justify-content: center;
   }
 
+  .theme-toggle-select-value {
+    display: none;
+  }
+
   .theme-toggle-select-item {
     display: inline-flex;
     align-items: center;

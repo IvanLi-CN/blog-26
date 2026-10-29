@@ -38,6 +38,7 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await expect(page.locator(".assistant-route-header-tools select")).toHaveCount(0);
     const themeTrigger = page.getByRole("combobox", { name: /主题：/ });
     await expect(themeTrigger).toBeVisible();
+    await expect(themeTrigger.locator(".theme-toggle-select-value")).toBeHidden();
     await themeTrigger.click();
     await expect(page.getByRole("option", { name: "Dark" })).toBeVisible();
     await page.getByRole("option", { name: "Dark" }).click();

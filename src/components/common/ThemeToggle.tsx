@@ -92,7 +92,9 @@ export default function ThemeToggle({
           <span className="theme-toggle-select-icon" aria-hidden="true">
             <SelectedThemeIcon className={iconClass} aria-hidden="true" />
           </span>
-          <SelectValue className="sr-only" />
+          <span className="theme-toggle-select-value" aria-hidden="true">
+            <SelectValue />
+          </span>
         </SelectTrigger>
         <SelectContent align="end">
           {modes.map(({ theme, label, iconComponent: ModeIcon }) => (
