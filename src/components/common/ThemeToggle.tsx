@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useState } from "react";
+import { Monitor, Moon, Sun } from "lucide-react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import {
   isDarkTheme,
   normalizeThemeSelection,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/theme";
 import { UI, type UiThemeSelection } from "../../config/site";
 import Icon from "../ui/Icon";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
 interface ThemeToggleProps {
   iconClass?: string;
@@ -42,7 +44,6 @@ export default function ThemeToggle({
   compact = false,
 }: ThemeToggleProps) {
   const [currentTheme, setCurrentTheme] = useState<UiThemeSelection | null>(null);
-  const selectId = useId();
 
   useSafeLayoutEffect(() => {
     setCurrentTheme(readThemeSelectionFromDocument());
@@ -71,32 +72,41 @@ export default function ThemeToggle({
         : isDarkTheme(theme)
           ? "line-md:moon"
           : "line-md:sunny-outline",
+    iconComponent: theme === "system" ? Monitor : isDarkTheme(theme) ? Moon : Sun,
   }));
 
   const selectedTheme = currentTheme ?? UI.theme.default;
   const selectedMode = modes.find(({ theme }) => theme === selectedTheme) ?? modes[0];
+  const SelectedThemeIcon = selectedMode.iconComponent;
 
   const themeSelect = (
     <div className={`relative inline-flex ${compact ? "theme-toggle-compact" : "sm:hidden"}`}>
-      <label className="sr-only" htmlFor={selectId}>
-        主题
-      </label>
-      <select
-        id={selectId}
+      <Select
         value={selectedTheme}
-        onChange={(event) => setTheme(normalizeThemeSelection(event.target.value))}
-        className="nature-mobile-theme-select"
-        aria-label={`主题：${selectedMode.label}`}
+        onValueChange={(value) => setTheme(normalizeThemeSelection(value))}
       >
-        {modes.map(({ theme, label }) => (
-          <option key={theme} value={theme}>
-            {label}
-          </option>
-        ))}
-      </select>
-      <span className="nature-mobile-theme-trigger pointer-events-none" aria-hidden="true">
-        <Icon name={selectedMode.icon} className={iconClass} />
-      </span>
+        <SelectTrigger
+          className="theme-toggle-select-trigger"
+          aria-label={`主题：${selectedMode.label}`}
+        >
+          <span className="theme-toggle-select-icon" aria-hidden="true">
+            <SelectedThemeIcon className={iconClass} aria-hidden="true" />
+          </span>
+          <SelectValue className="sr-only" />
+        </SelectTrigger>
+        <SelectContent align="end">
+          {modes.map(({ theme, label, iconComponent: ModeIcon }) => (
+            <SelectItem key={theme} value={theme}>
+              <span className="theme-toggle-select-item">
+                <span className="theme-toggle-select-item-icon" aria-hidden="true">
+                  <ModeIcon className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <span>{label}</span>
+              </span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 

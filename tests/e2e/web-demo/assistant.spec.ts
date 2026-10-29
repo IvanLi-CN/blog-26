@@ -35,7 +35,13 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await expect(
       page.locator(".assistant-route-header-tools .nature-header-theme-toggle")
     ).toHaveCount(0);
-    await expect(page.locator(".assistant-route-header-tools select")).toBeVisible();
+    await expect(page.locator(".assistant-route-header-tools select")).toHaveCount(0);
+    const themeTrigger = page.getByRole("combobox", { name: /主题：/ });
+    await expect(themeTrigger).toBeVisible();
+    await themeTrigger.click();
+    await expect(page.getByRole("option", { name: "Dark" })).toBeVisible();
+    await page.getByRole("option", { name: "Dark" }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-ui-preference", "dark");
     await expect(page.getByText("公开知识库", { exact: true })).toHaveCount(0);
     await expect(page.getByTestId("assistant-quota")).toContainText("问题");
 

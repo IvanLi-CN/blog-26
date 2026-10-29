@@ -1356,7 +1356,7 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
     gap: 0;
   }
 
-  .nature-header-tools :where(.nature-icon-button, .nature-mobile-theme-trigger) {
+  .nature-header-tools :where(.nature-icon-button, .theme-toggle-select-trigger) {
     border-color: transparent;
     background: rgba(var(--nature-highlight-rgb), 0.12);
     background-clip: content-box;
