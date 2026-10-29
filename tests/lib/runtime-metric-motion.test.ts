@@ -12,9 +12,10 @@ describe("runtime metric motion plans", () => {
     expect(plan.wheels.some((wheel) => wheel.from === "K" && wheel.to === "M")).toBe(true);
   });
 
-  test("uses the shortest direction for digit carry and borrow", () => {
+  test("follows the whole-value direction for carry and borrow", () => {
     const carry = createRuntimeMetricMotionPlan("19", "20");
     const borrow = createRuntimeMetricMotionPlan("20", "19");
+    const wrappedCarry = createRuntimeMetricMotionPlan("1.10K", "1.19K");
 
     expect(carry.wheels.find((wheel) => wheel.from === "9" && wheel.to === "0")?.direction).toBe(
       "up"
@@ -22,6 +23,9 @@ describe("runtime metric motion plans", () => {
     expect(borrow.wheels.find((wheel) => wheel.from === "0" && wheel.to === "9")?.direction).toBe(
       "down"
     );
+    expect(
+      wrappedCarry.wheels.find((wheel) => wheel.from === "0" && wheel.to === "9")?.direction
+    ).toBe("up");
   });
 
   test("does not create wheels when the display value is unchanged", () => {

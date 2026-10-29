@@ -2,6 +2,7 @@ export const RUNTIME_METRIC_MOTION_DURATION = 500;
 
 const motionEase = "cubic-bezier(.22,1,.36,1)";
 const digitPattern = /^\d$/u;
+const compactValuePattern = /^(-?)([\d.]+)([KMBT]?)$/u;
 
 export type RuntimeMetricWheel = {
   from: string;
@@ -29,12 +30,25 @@ type RuntimeMetricMotionOptions = {
   cancelFrame?: (id: number) => void;
 };
 
-const getDigitStep = (from: string, to: string) => {
+const parseCompactValue = (value: string) => {
+  const match = compactValuePattern.exec(value.trim());
+  if (!match) return Number.NaN;
+  const multipliers = { "": 1, K: 1_000, M: 1_000_000, B: 1_000_000_000, T: 1_000_000_000_000 };
+  return Number(`${match[1]}${match[2]}`) * multipliers[match[3] as keyof typeof multipliers];
+};
+
+const getDigitStep = (from: string, to: string, direction: RuntimeMetricWheel["direction"]) => {
   if (!digitPattern.test(from) || !digitPattern.test(to) || from === to) {
     return { direction: "neutral" as const, cycles: 0 };
   }
   const fromDigit = Number(from);
   const toDigit = Number(to);
+  if (direction === "up") {
+    return { direction, cycles: Math.min((toDigit - fromDigit + 10) % 10, 3) };
+  }
+  if (direction === "down") {
+    return { direction, cycles: Math.min((fromDigit - toDigit + 10) % 10, 3) };
+  }
   const up = (toDigit - fromDigit + 10) % 10;
   const down = (fromDigit - toDigit + 10) % 10;
   if (up === 0 || down === 0) return { direction: "neutral" as const, cycles: 0 };
@@ -44,14 +58,22 @@ const getDigitStep = (from: string, to: string) => {
 
 export function createRuntimeMetricMotionPlan(from: string, to: string): RuntimeMetricMotionPlan {
   const wheels: RuntimeMetricWheel[] = [];
+  const fromNumber = parseCompactValue(from);
+  const toNumber = parseCompactValue(to);
+  const direction =
+    Number.isFinite(fromNumber) && Number.isFinite(toNumber) && toNumber !== fromNumber
+      ? toNumber > fromNumber
+        ? ("up" as const)
+        : ("down" as const)
+      : ("neutral" as const);
   const length = Math.max(from.length, to.length);
   for (let position = 0; position < length; position += 1) {
     const fromIndex = from.length - length + position;
     const toIndex = to.length - length + position;
     const fromChar = from[fromIndex] ?? "";
     const toChar = to[toIndex] ?? "";
-    if (fromChar === toChar) continue;
-    const digitStep = getDigitStep(fromChar, toChar);
+    if (fromChar === toChar || fromChar === "" || toChar === "") continue;
+    const digitStep = getDigitStep(fromChar, toChar, direction);
     wheels.push({
       from: fromChar,
       to: toChar,
@@ -73,9 +95,18 @@ function sequenceForWheel(wheel: RuntimeMetricWheel) {
   }
   const start = Number(wheel.from);
   const direction = wheel.direction === "up" ? 1 : -1;
-  return Array.from({ length: wheel.cycles + 1 }, (_, index) =>
-    String((start + direction * index + 10) % 10)
-  );
+  const distance =
+    wheel.direction === "up"
+      ? (Number(wheel.to) - start + 10) % 10
+      : (start - Number(wheel.to) + 10) % 10;
+  const intermediateCount = Math.max(0, Math.min(distance, wheel.cycles) - 1);
+  return [
+    String(start),
+    ...Array.from({ length: intermediateCount }, (_, index) =>
+      String((start + direction * (index + 1) + 10) % 10)
+    ),
+    String(wheel.to),
+  ];
 }
 
 function getVisualElement(value: HTMLElement) {
@@ -122,6 +153,7 @@ export function createRuntimeMetricMotion(
   let frameId: number | undefined;
   let settleTimer: number | undefined;
   let destroyed = false;
+  let activePlan: RuntimeMetricMotionPlan | null = null;
 
   const cancelAnimations = () => {
     for (const animation of animations.splice(0)) animation.cancel();
@@ -131,12 +163,33 @@ export function createRuntimeMetricMotion(
     settleTimer = undefined;
   };
 
-  const settleToCurrent = () => {
-    if (currentText !== targetText) {
-      const progress = Math.min(1, Math.max(0, (now() - animationStart) / duration));
-      currentText = progress >= 0.52 ? targetText : currentText;
+  const renderCurrentFrame = () => {
+    if (!activePlan) return currentText;
+    const progress = Math.min(1, Math.max(0, (now() - animationStart) / duration));
+    const wheelsByPosition = new Map(activePlan.wheels.map((wheel) => [wheel.position, wheel]));
+    const length = Math.max(activePlan.from.length, activePlan.to.length);
+    let frameText = "";
+    for (let position = 0; position < length; position += 1) {
+      const wheel = wheelsByPosition.get(position);
+      const fromIndex = activePlan.from.length - length + position;
+      const toIndex = activePlan.to.length - length + position;
+      if (!wheel) {
+        frameText += activePlan.to[toIndex] ?? activePlan.from[fromIndex] ?? "";
+        continue;
+      }
+      const sequence = sequenceForWheel(wheel);
+      const index = Math.min(sequence.length - 1, Math.floor(progress * (sequence.length - 1)));
+      frameText += sequence[index] ?? "";
+    }
+    return frameText;
+  };
+
+  const captureCurrentFrame = () => {
+    if (value.dataset.runtimeValueAnimating === "true") {
+      currentText = renderCurrentFrame();
     }
     cancelAnimations();
+    activePlan = null;
     renderStatic(value, currentText);
   };
 
@@ -144,7 +197,6 @@ export function createRuntimeMetricMotion(
     frameId = undefined;
     if (destroyed || value.dataset.runtimeValueAnimating !== "true") return;
     const progress = Math.min(1, Math.max(0, (now() - animationStart) / duration));
-    if (progress >= 0.52) currentText = targetText;
     if (progress < 1) frameId = frame(updateCurrentFrame);
   };
 
@@ -159,6 +211,7 @@ export function createRuntimeMetricMotion(
 
     targetText = nextText;
     animationStart = now();
+    activePlan = plan;
     const visual = getVisualElement(value);
     visual.replaceChildren();
     value.dataset.runtimeValueAnimating = "true";
@@ -214,6 +267,7 @@ export function createRuntimeMetricMotion(
       if (!destroyed && targetText === revision) {
         currentText = targetText;
         cancelAnimations();
+        activePlan = null;
         renderStatic(value, targetText);
       }
     }, duration);
@@ -225,7 +279,7 @@ export function createRuntimeMetricMotion(
   return {
     update(nextText: string, animate = true) {
       if (destroyed) return;
-      if (value.dataset.runtimeValueAnimating === "true") settleToCurrent();
+      if (value.dataset.runtimeValueAnimating === "true") captureCurrentFrame();
       if (!animate || prefersReducedMotion() || currentText === nextText) {
         targetText = nextText;
         renderStatic(value, nextText);
@@ -235,13 +289,16 @@ export function createRuntimeMetricMotion(
     },
     settle() {
       if (destroyed) return;
-      targetText = currentText;
-      settleToCurrent();
+      currentText = targetText;
+      cancelAnimations();
+      activePlan = null;
+      renderStatic(value, targetText);
     },
     destroy() {
       if (destroyed) return;
       destroyed = true;
       cancelAnimations();
+      activePlan = null;
       renderStatic(value, targetText);
     },
     get currentText() {
@@ -249,6 +306,9 @@ export function createRuntimeMetricMotion(
     },
     get isAnimating() {
       return value.dataset.runtimeValueAnimating === "true";
+    },
+    get targetText() {
+      return targetText;
     },
   };
 }

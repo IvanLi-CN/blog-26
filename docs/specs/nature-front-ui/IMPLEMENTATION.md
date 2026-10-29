@@ -40,11 +40,11 @@ The focused guest regression runs against the actual `/projects` route with all 
 
 ## Runtime metric value motion
 
-Status: implemented in the current candidate; browser evidence and final PR-bound validation remain in progress.
+Status: implemented and owner-confirmed in the current PR candidate; focused browser evidence and PR-bound validation pass.
 
 `site/lib/runtime-format.ts` now keeps plain values at the existing three-decimal maximum while compact K/M/B/T values use at most two decimals and promote after rounding. `RuntimeMetricValue`, the live metric updater, and activity-grid Tooltips all consume the same display contract; pressure continues to use fixed two-decimal precision.
 
-`site/lib/runtime-metric-motion.ts` owns the reusable right-aligned digit-wheel plan and DOM controller. It limits each changed digit to three cycles, animates the visible wheel tracks for 500ms, retargets from the current frame when a newer response arrives, and settles directly for initial/fallback/hidden/reduced-motion states. The public behavior binder keeps the final accessible name on the metric element and marks the wheel DOM `aria-hidden`.
+`site/lib/runtime-metric-motion.ts` owns the reusable right-aligned digit-wheel plan and DOM controller. It follows the whole formatted value's increasing or decreasing direction, caps each changed digit to three visible cycles while still landing on the target digit, animates the visible wheel tracks for 500ms, retargets from the sampled current frame when a newer response arrives, and settles directly for initial/fallback/hidden/reduced-motion states. Width observers remeasure truncation and Tooltip state during playback without cancelling an active target. The public behavior binder keeps the final accessible name on the metric element and marks the wheel DOM `aria-hidden`.
 
 The official Web Demo exposes a `滚轮测试` data mode that returns the baseline fixture on first read and controlled carry/borrow/unit-boundary targets on subsequent refreshes. The component Storybook entry covers compact units and fixed pressure precision; the official `/projects` browser suite owns the page-level rolling, retargeting, reduced-motion, fallback, and responsive evidence.
 

@@ -370,7 +370,6 @@ import "@/lib/public-playbook-resources";
       const controller = createRuntimeMetricMotion(value);
       runtimeValueControllers.set(value, controller);
       const applyValue = (animate = false) => {
-        if (!animate && controller.isAnimating) return;
         const options = readOptions(value);
         const fullValue = value.dataset.runtimeValueFull ?? options[0] ?? "0";
         setMeasureStyle(value);
@@ -383,7 +382,9 @@ import "@/lib/public-playbook-resources";
           selectedValue !== fullValue || measuredWidth(fullValue) > availableWidth + 0.5;
         const shouldAnimate = animate && !staticAfterFallback.has(value);
         staticAfterFallback.delete(value);
-        controller.update(selectedValue, shouldAnimate);
+        const retargetDuringResize =
+          controller.isAnimating && controller.targetText !== selectedValue;
+        controller.update(selectedValue, shouldAnimate || retargetDuringResize);
         value.dataset.runtimeValueTruncated = String(isTruncated);
         value.tabIndex = isTruncated ? 0 : -1;
         if (!isTruncated) hideTooltip(tooltip);

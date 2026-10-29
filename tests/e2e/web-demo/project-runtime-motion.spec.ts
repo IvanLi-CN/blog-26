@@ -196,15 +196,18 @@ test("the controlled metric fixture rolls digits and settles at the latest targe
   await expect(metric).toHaveAttribute("data-runtime-value-animating", "true");
   await expect(metric.locator("[data-runtime-value-wheel]").first()).toBeVisible();
   await expect(metric).toHaveAttribute("data-runtime-value-motion-to", "1M");
+  await page.getByRole("button", { name: "刷新数据", exact: true }).click();
+  await expect(metric).toHaveAttribute("data-runtime-value-animating", "true");
+  await expect(metric).toHaveAttribute("data-runtime-value-motion-to", "793.76K");
   await page.waitForTimeout(650);
   await expect(metric).toHaveAttribute("data-runtime-value-animating", "false");
-  await expect(metric).toHaveAttribute("aria-label", "1M");
+  await expect(metric).toHaveAttribute("aria-label", "793.76K");
   await expect(metric.locator("[data-runtime-value-wheel]")).toHaveCount(0);
 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.getByRole("button", { name: "刷新数据", exact: true }).click();
   await expect(metric).toHaveAttribute("data-runtime-value-animating", "false");
-  await expect(metric).toHaveAttribute("aria-label", "793.76K");
+  await expect(metric).toHaveAttribute("aria-label", "1M");
 });
 
 test("a fallback and recovery during playback continue toward the latest content", async ({
