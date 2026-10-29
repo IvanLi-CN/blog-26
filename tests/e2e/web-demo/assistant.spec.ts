@@ -17,7 +17,7 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await expect(page.getByRole("navigation", { name: "站点导航" })).toContainText("项目");
     const footer = page.getByTestId("assistant-route-footer");
     await expect(footer).toBeVisible();
-    await expect(footer).toContainText("Gitea");
+    await expect(footer).toContainText("RSS");
     await expect(footer).toContainText("©");
     await expect(footer).not.toContainText("站点入口");
     await expect(page.getByTestId("assistant-page")).toBeVisible();

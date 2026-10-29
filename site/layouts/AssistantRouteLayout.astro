@@ -14,6 +14,7 @@ const { title = "智问助手", description = "站内知识问答" } = Astro.pro
 const homePath = toPublicSitePath("/") ?? "/";
 const searchPath = toPublicSitePath("/search") ?? "/search";
 const markPath = toPublicSitePath("/site-assets/ivan-blog-mark.svg") ?? "/site-assets/ivan-blog-mark.svg";
+const footerUtilityLinks = footerData.socialLinks.filter((social) => social.href === "/feed.xml");
 const currentYear = new Date().getFullYear();
 ---
 
@@ -62,7 +63,7 @@ const currentYear = new Date().getFullYear();
           <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" rel="noopener noreferrer">
             Content: CC BY-NC-ND 4.0
           </a>
-          {footerData.socialLinks.map((social) => (
+          {footerUtilityLinks.map((social) => (
             <a
               href={social.href.startsWith("/") ? toPublicSitePath(social.href) : social.href}
               target={social.href.startsWith("/") ? undefined : "_blank"}
@@ -75,10 +76,6 @@ const currentYear = new Date().getFullYear();
           <a class="assistant-route-footer-record" target="_blank" rel="noopener noreferrer" href="https://beian.miit.gov.cn">
             闽ICP备2023000043号
           </a>
-          <span class="assistant-route-footer-note">
-            <span class="assistant-route-footer-note-title">智问助手</span>
-            <span>仅检索本站公开内容 · 登录后保存对话</span>
-          </span>
         </div>
       </div>
     </footer>
@@ -248,16 +245,6 @@ const currentYear = new Date().getFullYear();
     display: inline;
   }
 
-  .assistant-route-footer-note {
-    color: var(--nature-text-faint);
-    margin-left: auto;
-  }
-
-  .assistant-route-footer-note-title {
-    color: var(--nature-text-soft);
-    font-weight: 600;
-  }
-
   @media (max-width: 639px) {
     .assistant-route-header {
       padding-top: 0.35rem;
@@ -309,9 +296,5 @@ const currentYear = new Date().getFullYear();
       gap: 0.2rem 0.55rem;
     }
 
-    .assistant-route-footer-note {
-      flex-basis: 100%;
-      margin-left: 0;
-    }
   }
 </style>
