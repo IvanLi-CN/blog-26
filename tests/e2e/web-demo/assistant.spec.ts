@@ -13,6 +13,24 @@ async function hideInspector(page: import("@playwright/test").Page) {
 }
 
 test.describe("Knowledge Assistant Web Demo", () => {
+  test("opens the vertical conversation switcher from the floating panel header", async ({
+    page,
+  }) => {
+    await page.goto("/?d_persona=user&d_scene=assistant-ready");
+    await page.getByTestId("assistant-fab").click();
+    const panel = page.getByTestId("assistant-panel");
+    const toggle = panel.locator("header").getByRole("button", { name: "切换对话" });
+    const list = panel.getByTestId("assistant-conversation-list");
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(list).toBeHidden();
+    await toggle.click();
+    await expect(list).toBeVisible();
+    await expect(list).toHaveCSS("flex-direction", "column");
+    await list.locator(".knowledge-assistant-list-select").first().click();
+    await expect(list).toBeHidden();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  });
+
   test("loads home cover media after navigating from chat without a development error overlay", async ({
     page,
   }) => {

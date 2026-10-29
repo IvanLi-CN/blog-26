@@ -266,6 +266,26 @@
   color: var(--nature-text);
 }
 
+.knowledge-assistant-header-toggle {
+  justify-content: flex-start;
+  gap: 0.55rem;
+  margin: -0.35rem -0.5rem;
+  border-color: transparent;
+  color: var(--nature-text);
+  text-align: left;
+}
+
+.knowledge-assistant-header-label {
+  display: flex;
+  flex-direction: column;
+}
+
+.knowledge-assistant-panel .knowledge-assistant-list[data-expanded] {
+  top: 0.5rem;
+  right: auto;
+  left: 0.75rem;
+}
+
 .knowledge-assistant-list-item.is-selected {
   border-color: var(--nature-accent);
   background: color-mix(in srgb, var(--nature-accent) 9%, var(--nature-surface-strong));

@@ -1352,17 +1352,19 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                   {formatQuota(quota)}
                 </p>
               </div>
-              <button
-                type="button"
-                className="knowledge-assistant-list-toggle"
-                ref={listToggleRef}
-                aria-expanded={listExpanded}
-                aria-controls={listId}
-                onClick={() => setListExpanded((value) => !value)}
-              >
-                <Icon name="tabler:messages" className="h-4 w-4" />
-                <span>切换对话</span>
-              </button>
+              {fullPage ? (
+                <button
+                  type="button"
+                  className="knowledge-assistant-list-toggle"
+                  ref={listToggleRef}
+                  aria-expanded={listExpanded}
+                  aria-controls={listId}
+                  onClick={() => setListExpanded((value) => !value)}
+                >
+                  <Icon name="tabler:messages" className="h-4 w-4" />
+                  <span>切换对话</span>
+                </button>
+              ) : null}
               {isGenerating(snapshot) ? (
                 <button
                   type="button"
@@ -1509,10 +1511,28 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
             aria-label={ASSISTANT_DISPLAY_NAME}
           >
             <header className="knowledge-assistant-header">
-              <div>
-                <p className="text-sm font-semibold">{ASSISTANT_DISPLAY_NAME}</p>
-                <p className="knowledge-assistant-status">{ASSISTANT_SUBTITLE}</p>
-              </div>
+              {auth?.authenticated ? (
+                <button
+                  type="button"
+                  className="knowledge-assistant-list-toggle knowledge-assistant-header-toggle"
+                  ref={listToggleRef}
+                  aria-label="切换对话"
+                  aria-expanded={listExpanded}
+                  aria-controls={listId}
+                  onClick={() => setListExpanded((value) => !value)}
+                >
+                  <span className="knowledge-assistant-header-label">
+                    <span className="text-sm font-semibold">{ASSISTANT_DISPLAY_NAME}</span>
+                    <span className="knowledge-assistant-status">{ASSISTANT_SUBTITLE}</span>
+                  </span>
+                  <Icon name="tabler:chevron-down" className="h-4 w-4" />
+                </button>
+              ) : (
+                <div>
+                  <p className="text-sm font-semibold">{ASSISTANT_DISPLAY_NAME}</p>
+                  <p className="knowledge-assistant-status">{ASSISTANT_SUBTITLE}</p>
+                </div>
+              )}
               <div className="flex items-center gap-1">
                 <button
                   type="button"
