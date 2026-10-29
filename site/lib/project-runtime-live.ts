@@ -72,7 +72,6 @@ function updateMetricElements(panel: HTMLElement, metrics: ProjectRuntimeMetrics
       value.dataset.runtimeValueFull = fullValue;
       value.dataset.runtimeValueOptions = JSON.stringify(options);
       value.setAttribute("aria-label", fullValue);
-      value.textContent = options[0] ?? fullValue;
     }
 
     const sparkline = metric.querySelector<HTMLElement>("[data-runtime-sparkline]");

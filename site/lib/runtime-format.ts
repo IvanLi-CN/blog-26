@@ -5,7 +5,7 @@ const runtimeUnits = [
   { threshold: 1_000, suffix: "K" },
 ] as const;
 
-const compactNumberFormatter = new Intl.NumberFormat("en-US", {
+const plainNumberFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 3,
   useGrouping: false,
 });
@@ -36,14 +36,14 @@ export function formatRuntimeValue(value: number): string {
   while (unitIndex > 0) {
     const unit = runtimeUnits[unitIndex];
     const scaledValue = unit ? absoluteValue / unit.threshold : absoluteValue;
-    if (Number(scaledValue.toFixed(3)) < 1000) break;
+    if (Number(scaledValue.toFixed(2)) < 1000) break;
     unitIndex -= 1;
   }
 
   const formattedValue =
     unitIndex === runtimeUnits.length
-      ? compactNumberFormatter.format(value)
-      : formatScaledValue(Math.abs(value) * (value < 0 ? -1 : 1), unitIndex, 3);
+      ? plainNumberFormatter.format(value)
+      : formatScaledValue(Math.abs(value) * (value < 0 ? -1 : 1), unitIndex, 2);
   return value < 0 && !formattedValue.startsWith("-") ? `-${formattedValue}` : formattedValue;
 }
 
@@ -65,7 +65,8 @@ export function getRuntimeValueCandidates(value: number): string[] {
   for (const unitIndex of unitIndexes) {
     const unit = runtimeUnits[unitIndex];
     const scaledValue = unit ? absoluteValue / unit.threshold : absoluteValue;
-    for (const maximumFractionDigits of [3, 2, 1, 0]) {
+    const precisions = unitIndex === runtimeUnits.length ? [3, 2, 1, 0] : [2, 1, 0];
+    for (const maximumFractionDigits of precisions) {
       const roundedValue = Number(scaledValue.toFixed(maximumFractionDigits));
       if (unit && roundedValue >= 1000) continue;
       if (unit && unitIndex < normalizedBaseUnitIndex && roundedValue < 1) continue;

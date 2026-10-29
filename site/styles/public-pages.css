@@ -969,6 +969,33 @@ html[data-ui-theme="light"] .project-runtime-panel--octo-rill {
   color: var(--runtime-text);
 }
 
+.runtime-value-visual {
+  display: inline-flex;
+  min-width: 0;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.runtime-value-wheel {
+  display: inline-block;
+  height: 1em;
+  overflow: hidden;
+  vertical-align: top;
+}
+
+.runtime-value-wheel-track {
+  display: flex;
+  flex-direction: column;
+  height: max-content;
+  will-change: transform;
+}
+
+.runtime-value-wheel-token {
+  display: block;
+  height: 1em;
+  line-height: 1em;
+}
+
 .runtime-metric--accent .runtime-metric-value {
   color: rgb(var(--runtime-accent-rgb));
 }

@@ -71,7 +71,7 @@ export const DailyValues: Story = {
     await new Promise((resolve) => window.setTimeout(resolve, 180));
     const tooltip = within(document.body).getByRole("tooltip");
     await expect(tooltip).toHaveTextContent("2026-07-05");
-    await expect(tooltip).toHaveTextContent("1.235M Token");
+    await expect(tooltip).toHaveTextContent("1.23M Token");
     await userEvent.unhover(exactCell);
     await expect(within(document.body).queryByRole("tooltip")).not.toBeInTheDocument();
   },

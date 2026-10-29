@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
+  "covered_files": {
+    "docs/project-runtime-motion-design.md": "15a356ba54f3b6d72ce59b0904576db184b71b92",
+    "docs/specs/nature-front-ui/HISTORY.md": "496fc0151262b668cec425d1c6a49aef291a6156",
+    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "fec885e6eed861700f190fc08fa758cac0bc634a",
+    "docs/specs/nature-front-ui/SPEC.md": "0e2494c250830a4a48dfe27911d74a3fad2dcd30",
+    "docs/specs/nature-front-ui/assets/runtime-motion-desktop-dark.png": "269e01f0d96f4e4aaf86cc91d24c8b718d284256",
+    "docs/specs/nature-front-ui/assets/runtime-motion-desktop-light.png": "546d12507516a296fed9c9ed6ee80792d8c9a166",
+    "docs/specs/nature-front-ui/assets/runtime-motion-mobile-dark.png": "15b3755137d6b3764e1b8a40bc23212b7d6c839a",
+    "docs/specs/nature-front-ui/assets/runtime-motion-mobile-light.png": "2494bf82733afe2b17dddeaeb90f6a4589c6a418",
+    "site/components/projects/RuntimeMetricValue.tsx": "205d842ee8b3b607bae0beab488fecbcfde61d00",
+    "site/lib/project-runtime-live.ts": "1bfd49bb04e2bdf0ee710b5e01f8f54ee5c63612",
+    "site/lib/public-page-behaviors.ts": "11fbc199f13b7f0f5e4b8efcb7625938f960c2a1",
+    "site/lib/runtime-format.ts": "0878df79ed1e2e5c861a1aaabe22cfe8a3a8ed60",
+    "site/lib/runtime-metric-motion.ts": "12f6eb282697cfea9c38a5bb16f1146e2f66451f",
+    "site/styles/public-pages.css": "6aa118e2dbb21f16f8190de30746c141ba2698dc",
+    "src/components/WebDemoInspector.css": "1b6d9721407ce3af91ff44d9314d29603482c71c",
+    "src/components/WebDemoInspector.tsx": "e112a754094c8f7b1d61637f247b0c383b815515",
+    "src/components/projects/RuntimeCellGrid.stories.tsx": "fe64a1afb0a598e3846240cafb213fb75d31f350",
+    "src/components/projects/RuntimeMetricValue.stories.tsx": "d99756b7f0553da752d9f28150dadf34dde6965f",
+    "src/lib/web-demo-fetch.ts": "c84935574ec0b06260d0f5c2fa70c1b2b5a3aba8",
+    "src/lib/web-demo-runtime.ts": "dd250424f93238d6e604fd18e47484ab0b66b35e",
+    "tests/components/runtime-cell-grid.test.tsx": "8b98250bd95402691eb78177950b05390a40a66e",
+    "tests/e2e/guest/nature-front-coverage.spec.ts": "c99cbb47daf2d00a5d5f863a09d0481e08d679b4",
+    "tests/e2e/guest/project-visual-slot.spec.ts": "7bab505c5ffbfcbb0809b47c1e075575b590188e",
+    "tests/e2e/web-demo/public-cover-media.spec.ts": "7092592a4753e2e82925e6df378aa5f735a3d325",
+    "tests/e2e/web-demo/project-runtime-motion.spec.ts": "df76e989fc3e51476f3f27430325d683204d35d7",
+    "tests/lib/runtime-format.test.ts": "ce5d704bd4222aa86209699f2fa60f17e730c668",
+    "tests/lib/runtime-metric-motion.test.ts": "cf35ed4e198510819166d4b52f46d0356f740185",
+    "tests/lib/web-demo-fetch.test.ts": "99f8d4a490090bee81310561b33a43ed310c3920",
+    "tests/storybook/playbook-interactions.ts": "e417f5a7c57fa9d76c4a226e0d3e2ea8fdc765c2"
+  },
+  "change": {
+    "description": "Standardize compact runtime metric formatting and add accessible latest-target digit-wheel motion for the public project wall.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change is a backward-compatible presentation and transient browser-state update. Runtime endpoints, refresh cadence, persistence, and public route contracts remain unchanged.",
+      "assessed_at": "2026-10-29T19:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/runtime-format.test.ts",
+          "blob": "ce5d704bd4222aa86209699f2fa60f17e730c668",
+          "command": "bun test tests/lib/runtime-format.test.ts tests/lib/runtime-metric-motion.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The formatter and digit wheels alter only rendered metric text and in-memory animation state. API payloads, polling, Tooltip raw values, navigation, and durable state remain compatible.",
+      "assessed_at": "2026-10-29T19:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
+          "blob": "df76e989fc3e51476f3f27430325d683204d35d7",
+          "command": "Official Web Demo motion, fallback, reduced-motion, responsive and latest-target browser coverage"
+        },
+        {
+          "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
+          "blob": "7092592a4753e2e82925e6df378aa5f735a3d325",
+          "command": "Wait for related cover decoding before rendered crop sampling"
+        },
+        {
+          "path": "docs/specs/nature-front-ui/SPEC.md",
+          "blob": "0e2494c250830a4a48dfe27911d74a3fad2dcd30",
+          "command": "Nature UI runtime metric contract and owner-confirmed desktop/mobile evidence"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate stays within public runtime metric formatting, animation lifecycle, Web Demo controls, focused tests, stories, and synchronized design evidence; no backend or refresh changes are included."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused formatting and motion tests, repository checks, Storybook interactions, official Web Demo browser coverage, and owner-confirmed responsive captures verify a compatible presentation-only update without persistent-state changes.",
+      "assessed_at": "2026-10-29T19:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/runtime-metric-motion.test.ts",
+          "blob": "cf35ed4e198510819166d4b52f46d0356f740185",
+          "command": "Focused runtime motion plan and capped-wheel tests"
+        },
+        {
+          "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
+          "blob": "df76e989fc3e51476f3f27430325d683204d35d7",
+          "command": "Official Web Demo motion regression"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4",
+        "3.11.7"
+      ],
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
+          "blob": "df76e989fc3e51476f3f27430325d683204d35d7",
+          "command": "Public route and metric presentation contracts remain route-compatible"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No database schema, cache schema, browser persistence, authored content, API storage, or release ledger state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "site/lib/runtime-metric-motion.ts",
+          "blob": "12f6eb282697cfea9c38a5bb16f1146e2f66451f",
+          "command": "Motion state is scoped to the page lifetime and has no durable storage"
+        }
+      ]
+    }
+  }
+}
