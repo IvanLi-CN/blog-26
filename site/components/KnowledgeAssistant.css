@@ -95,6 +95,68 @@
   flex-direction: column;
 }
 
+.knowledge-assistant-guest-list-heading {
+  flex-shrink: 0;
+  padding: 0.35rem 0.25rem 0.2rem;
+}
+
+.knowledge-assistant-guest-list-card {
+  display: flex;
+  min-width: 12rem;
+  max-width: 16rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  border: 1px solid var(--nature-line);
+  border-radius: 8px;
+  background: var(--nature-surface-inset);
+  color: var(--nature-text);
+  padding: 0.65rem 0.7rem;
+}
+
+.knowledge-assistant-guest-list-card.is-selected {
+  border-color: var(--nature-accent);
+  background: color-mix(in srgb, var(--nature-accent) 9%, var(--nature-surface-strong));
+}
+
+.knowledge-assistant-guest-list-card.is-muted {
+  color: var(--nature-text-soft);
+  opacity: 0.78;
+}
+
+.knowledge-assistant-guest-badge {
+  flex-shrink: 0;
+  border: 1px solid var(--nature-line);
+  border-radius: 999px;
+  color: var(--nature-text-soft);
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+}
+
+.knowledge-assistant-guest-example-label {
+  align-self: center;
+  color: var(--nature-text-faint);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.knowledge-assistant-compose--locked {
+  background: color-mix(in srgb, var(--nature-surface-inset) 42%, transparent);
+}
+
+.knowledge-assistant-login-rail {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--nature-line);
+  border-radius: 8px;
+  background: var(--nature-surface-strong);
+  color: var(--nature-text-soft);
+  padding: 0.7rem 0.8rem;
+}
+
 .knowledge-assistant-list {
   display: flex;
   flex-shrink: 0;
@@ -241,6 +303,15 @@
   max-width: none;
 }
 
+.knowledge-assistant-page .knowledge-assistant-guest-list-heading {
+  padding: 0.35rem 0.25rem 0.45rem;
+}
+
+.knowledge-assistant-page .knowledge-assistant-guest-list-card {
+  min-width: 0;
+  max-width: none;
+}
+
 .knowledge-assistant-page .knowledge-assistant-content {
   min-height: 34rem;
 }
@@ -324,6 +395,14 @@
     overflow-y: hidden;
     border-right: 0;
     border-bottom: 1px solid var(--nature-line);
+  }
+
+  .knowledge-assistant-page .knowledge-assistant-guest-list-heading {
+    min-width: 9rem;
+  }
+
+  .knowledge-assistant-page .knowledge-assistant-guest-list-card {
+    min-width: 12rem;
   }
 
   .knowledge-assistant-page .knowledge-assistant-content {

@@ -228,7 +228,7 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "助手暂时不可用，请重试。";
 }
 
-function LoginPrompt({
+function GuestAssistantPreview({
   draft,
   onDraftChange,
   onLogin,
@@ -242,41 +242,100 @@ function LoginPrompt({
   showAdminLogin: boolean;
 }) {
   return (
-    <div className="flex min-h-48 flex-col gap-3 px-6 py-10">
-      <div className="flex flex-col items-center gap-3 text-center">
-        <Icon name="tabler:lock" className="h-7 w-7 text-[color:var(--nature-text-soft)]" />
-        <h2 className="font-semibold">登录后使用{ASSISTANT_DISPLAY_NAME}</h2>
-        <p className="max-w-sm text-sm leading-6 text-[color:var(--nature-text-soft)]">
-          可以先写下问题。登录只用于保存你的对话和额度状态，回到页面后不会自动发送。
+    <div
+      className="knowledge-assistant-body knowledge-assistant-guest-preview"
+      data-testid="assistant-guest-preview"
+    >
+      <div className="knowledge-assistant-list" data-testid="assistant-conversation-list">
+        <div className="knowledge-assistant-guest-list-heading">
+          <p className="text-sm font-semibold">你的对话</p>
+          <p className="mt-1 text-xs text-[color:var(--nature-text-faint)]">登录后保存并继续</p>
+        </div>
+        <div className="knowledge-assistant-guest-list-card is-selected">
+          <div className="min-w-0">
+            <span className="block truncate text-sm font-medium">公开内容问答</span>
+            <span className="mt-0.5 block text-xs text-[color:var(--nature-text-faint)]">
+              示例预览
+            </span>
+          </div>
+          <Icon name="tabler:sparkles" className="h-4 w-4 shrink-0" />
+        </div>
+        <div className="knowledge-assistant-guest-list-card is-muted">
+          <div className="min-w-0">
+            <span className="block truncate text-sm font-medium">剪藏文章讨论</span>
+            <span className="mt-0.5 block text-xs text-[color:var(--nature-text-faint)]">
+              从文章继续对话
+            </span>
+          </div>
+          <Icon name="tabler:lock" className="h-4 w-4 shrink-0" />
+        </div>
+      </div>
+      <div className="knowledge-assistant-content">
+        <div className="knowledge-assistant-toolbar">
+          <div className="min-w-0">
+            <h2 className="truncate text-sm font-semibold">公开内容问答</h2>
+            <p className="knowledge-assistant-status">示例对话 · 登录后保存</p>
+          </div>
+          <span className="knowledge-assistant-guest-badge">预览</span>
+        </div>
+        <p className="knowledge-assistant-notice mx-3 mt-3">
+          可以询问本站公开文章、项目经验和工作方法。回答会优先检索站内内容，并尽量附上可定位的来源。
         </p>
+        <div className="knowledge-assistant-messages" data-testid="assistant-messages">
+          <div className="knowledge-assistant-guest-example-label">示例对话</div>
+          <div className="knowledge-assistant-message knowledge-assistant-message--user">
+            我可以问哪些内容？
+          </div>
+          <div
+            className="knowledge-assistant-message knowledge-assistant-message--assistant"
+            data-testid="assistant-guest-preview-message"
+          >
+            可以询问公开文章、项目经验和工作方法。我会根据站内知识库组织回答，并在适用时列出来源。
+          </div>
+        </div>
+        <div className="knowledge-assistant-compose knowledge-assistant-compose--locked">
+          <div className="knowledge-assistant-login-rail">
+            <Icon name="tabler:lock" className="h-5 w-5 shrink-0" />
+            <div>
+              <h2 className="text-sm font-semibold">登录后使用{ASSISTANT_DISPLAY_NAME}</h2>
+              <p className="mt-1 text-xs leading-5 text-[color:var(--nature-text-soft)]">
+                登录后才能发送问题并保存对话；回到页面后不会自动发送。
+              </p>
+            </div>
+          </div>
+          <textarea
+            className="nature-input-shell rounded-lg border border-[color:var(--nature-line)] bg-transparent p-3 text-sm leading-6 outline-none focus:border-[color:var(--nature-accent-strong)]"
+            value={draft}
+            onChange={(event) => onDraftChange(event.target.value)}
+            placeholder="先写下想问的问题……"
+            aria-label={`登录前的${ASSISTANT_DISPLAY_NAME}草稿`}
+            aria-describedby="assistant-login-hint"
+            maxLength={4000}
+          />
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+            <span id="assistant-login-hint" className="knowledge-assistant-status">
+              草稿会保留在当前浏览器
+            </span>
+            <button
+              type="button"
+              className="nature-button nature-button-primary min-h-11 px-3 text-sm"
+              onClick={onLogin}
+            >
+              <Icon name="tabler:brand-github" className="h-4 w-4" />
+              保存草稿并登录
+            </button>
+          </div>
+          {showAdminLogin ? (
+            <button
+              type="button"
+              className="mx-auto mt-1 min-h-11 px-3 text-sm text-[color:var(--nature-text-soft)] underline underline-offset-4"
+              onClick={onAdminLogin}
+            >
+              管理员入口
+            </button>
+          ) : null}
+        </div>
       </div>
-      <textarea
-        className="nature-input-shell min-h-20 w-full resize-y rounded-lg border border-[color:var(--nature-line)] bg-transparent p-3 text-sm leading-6 outline-none focus:border-[color:var(--nature-accent-strong)]"
-        value={draft}
-        onChange={(event) => onDraftChange(event.target.value)}
-        placeholder="先写下想问的问题……"
-        aria-label={`登录前的${ASSISTANT_DISPLAY_NAME}草稿`}
-        maxLength={4000}
-      />
-      <div className="flex justify-center">
-        <button
-          type="button"
-          className="nature-button nature-button-primary min-h-11"
-          onClick={onLogin}
-        >
-          <Icon name="tabler:brand-github" className="h-4 w-4" />
-          保存草稿并登录
-        </button>
-      </div>
-      {showAdminLogin ? (
-        <button
-          type="button"
-          className="mx-auto min-h-11 px-3 text-sm text-[color:var(--nature-text-soft)] underline underline-offset-4"
-          onClick={onAdminLogin}
-        >
-          管理员入口
-        </button>
-      ) : null}
     </div>
   );
 }
@@ -1188,7 +1247,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
               </button>
             </div>
           </div>
-          <LoginPrompt
+          <GuestAssistantPreview
             draft={currentDraft}
             onDraftChange={updateDraft}
             onLogin={login}
@@ -1197,7 +1256,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
           />
         </>
       ) : !auth?.authenticated ? (
-        <LoginPrompt
+        <GuestAssistantPreview
           draft={currentDraft}
           onDraftChange={updateDraft}
           onLogin={login}
