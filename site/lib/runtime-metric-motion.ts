@@ -335,6 +335,7 @@ export function createRuntimeMetricMotion(
       if (destroyed) return;
       if (value.dataset.runtimeValueAnimating === "true") captureCurrentFrame();
       if (!animate || prefersReducedMotion() || currentText === nextText) {
+        currentText = nextText;
         targetText = nextText;
         renderStatic(value, nextText);
         return;

@@ -193,9 +193,19 @@ test("the controlled metric fixture rolls digits and settles at the latest targe
   const metric = page.locator(`${panels} [data-runtime-value]`).first();
   await expect(metric).toHaveAttribute("aria-label", "793.76K");
   await page.getByRole("button", { name: "打开 Web Demo 调试控制面板", exact: true }).click();
+  const tooltip = metric.locator("xpath=following-sibling::*[@data-runtime-value-tooltip]");
+  await metric.evaluate((element) => {
+    element.style.width = "5px";
+  });
+  await expect(metric).toHaveAttribute("data-runtime-value-truncated", "true");
+  await metric.hover();
+  await expect(tooltip).toBeVisible();
+  await expect(tooltip).toHaveText("793.76K");
   await page.getByRole("button", { name: "刷新数据", exact: true }).click();
-  await expect(metric).toHaveAttribute("data-runtime-value-animating", "true");
-  await expect(metric).toHaveAttribute("data-runtime-value-motion-to", "1M");
+  await expect(tooltip).toBeHidden();
+  await metric.hover();
+  await expect(tooltip).toHaveText("1M");
+  await metric.evaluate((element) => element.style.removeProperty("width"));
   await page.getByRole("button", { name: "刷新数据", exact: true }).click();
   await expect(metric).toHaveAttribute("data-runtime-value-motion-to", "793.76K");
   await page.waitForTimeout(650);

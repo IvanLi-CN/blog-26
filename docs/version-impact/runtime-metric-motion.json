@@ -15,7 +15,7 @@
     "site/lib/project-runtime-live.ts": "1bfd49bb04e2bdf0ee710b5e01f8f54ee5c63612",
     "site/lib/public-page-behaviors.ts": "595c4ac6d321ad03c15e71b3c842a8df1b790b4f",
     "site/lib/runtime-format.ts": "0878df79ed1e2e5c861a1aaabe22cfe8a3a8ed60",
-    "site/lib/runtime-metric-motion.ts": "1d44f04141c0462d3c99782c2332aa05a90659d3",
+    "site/lib/runtime-metric-motion.ts": "a293b490821a3978f55925430dfd6688ba5a59a5",
     "site/styles/public-pages.css": "6aa118e2dbb21f16f8190de30746c141ba2698dc",
     "src/components/WebDemoInspector.css": "1b6d9721407ce3af91ff44d9314d29603482c71c",
     "src/components/WebDemoInspector.tsx": "e112a754094c8f7b1d61637f247b0c383b815515",
@@ -26,9 +26,9 @@
     "tests/components/runtime-cell-grid.test.tsx": "8b98250bd95402691eb78177950b05390a40a66e",
     "tests/e2e/guest/nature-front-coverage.spec.ts": "c99cbb47daf2d00a5d5f863a09d0481e08d679b4",
     "tests/e2e/guest/project-visual-slot.spec.ts": "7bab505c5ffbfcbb0809b47c1e075575b590188e",
-    "tests/e2e/web-demo/project-runtime-motion.spec.ts": "c1bf071c24759047b154a3ecee542b02961512bc",
+    "tests/e2e/web-demo/project-runtime-motion.spec.ts": "193fc350ce1c6570d27a1596a91019aa1ca0ed36",
     "tests/lib/runtime-format.test.ts": "ce5d704bd4222aa86209699f2fa60f17e730c668",
-    "tests/lib/runtime-metric-motion.test.ts": "8051cdaff568423e54f333c162fa5ea876f2ec92",
+    "tests/lib/runtime-metric-motion.test.ts": "cf35ed4e198510819166d4b52f46d0356f740185",
     "tests/lib/web-demo-fetch.test.ts": "99f8d4a490090bee81310561b33a43ed310c3920",
     "tests/storybook/playbook-interactions.ts": "e417f5a7c57fa9d76c4a226e0d3e2ea8fdc765c2"
   },
@@ -57,7 +57,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "c1bf071c24759047b154a3ecee542b02961512bc",
+          "blob": "193fc350ce1c6570d27a1596a91019aa1ca0ed36",
           "command": "Official Web Demo motion, fallback, reduced-motion, responsive and latest-target browser coverage"
         },
         {
@@ -78,12 +78,12 @@
       "evidence": [
         {
           "path": "tests/lib/runtime-metric-motion.test.ts",
-          "blob": "8051cdaff568423e54f333c162fa5ea876f2ec92",
+          "blob": "cf35ed4e198510819166d4b52f46d0356f740185",
           "command": "Focused runtime motion plan and capped-wheel tests"
         },
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "c1bf071c24759047b154a3ecee542b02961512bc",
+          "blob": "193fc350ce1c6570d27a1596a91019aa1ca0ed36",
           "command": "Official Web Demo motion regression"
         }
       ]
@@ -132,7 +132,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "c1bf071c24759047b154a3ecee542b02961512bc",
+          "blob": "193fc350ce1c6570d27a1596a91019aa1ca0ed36",
           "command": "Public route and metric presentation contracts remain route-compatible"
         }
       ]
@@ -146,7 +146,7 @@
       "evidence": [
         {
           "path": "site/lib/runtime-metric-motion.ts",
-          "blob": "1d44f04141c0462d3c99782c2332aa05a90659d3",
+          "blob": "a293b490821a3978f55925430dfd6688ba5a59a5",
           "command": "Motion state is scoped to the page lifetime and has no durable storage"
         }
       ]
