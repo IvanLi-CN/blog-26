@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
+  BarChart3,
   BrainCircuit,
   ClipboardList,
   Files,
@@ -13,6 +14,7 @@ import {
   ScanSearch,
   Shield,
   Tags,
+  Users,
   Waypoints,
 } from "lucide-react";
 import {
@@ -101,6 +103,8 @@ const navSections = [
   {
     label: "系统",
     items: [
+      { to: "/users", label: "后台用户", icon: Users },
+      { to: "/ai-usage", label: "AI 用量", icon: BarChart3 },
       { to: "/pats", label: "访问令牌", icon: KeyRound },
       { to: "/github-binding", label: "GitHub 身份", icon: Link2 },
       { to: "/llm-settings", label: "LLM 设置", icon: BrainCircuit },

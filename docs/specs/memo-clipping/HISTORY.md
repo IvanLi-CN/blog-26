@@ -9,6 +9,8 @@
 
 ## Replacements / Background
 
+- [Unified assistant](../site-knowledge-assistant/SPEC.md) and [ADR 0037](../../adr/0037-unified-assistant-and-clipping-conversations.md) replace the creator/admin shared discussion boundary with per-user private conversations, a shared global entry and a unified conversation list. Existing messages migrate as a whole to the trusted clipping creator; unattributable records remain isolated. Earlier decisions against processing-version history and manual restoration remain, while the prohibition on browsing retained personal conversations no longer applies.
+- [ADR 0033](../../adr/0033-unified-frontend-user-identity.md) allows administrators to use a native frontend identity without GitHub binding. Ordinary GitHub readers may create their own clipping-context conversations using public materials and their normal temporary quotas. The unified assistant integration is now implemented; the historical clipping screenshots below remain background only, while current assistant evidence is owned by the official Web Demo route and the Site Knowledge Assistant Spec.
 - The topic resolves the boundary between author Memo content, captured article material, generated results, and private article conversation.
 - ADR 0012 records why captured material remains attached to a Memo and why conversation visibility is independent from Memo publication.
 

@@ -148,6 +148,48 @@
       "when": 1792939153338,
       "tag": "0020_github_admin_comment_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1793085576689,
+      "tag": "0021_site_knowledge_assistant_contracts",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1793089525913,
+      "tag": "0022_frontend_session_auth_source",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1793089525914,
+      "tag": "0023_assistant_discussion_migration",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1793095900505,
+      "tag": "0024_ai_usage_daily_result_counts",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1793107590595,
+      "tag": "0025_assistant_message_citations",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1793109851253,
+      "tag": "0026_assistant_lookup_indexes",
+      "breakpoints": true
     }
   ]
 }

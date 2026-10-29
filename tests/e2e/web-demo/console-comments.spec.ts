@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 
 const memoPath = "/memos/console-demo-public-weekly-notes/";
 const clippingPath = "/memos/console-demo-clipping-durable-workflows/";
+const stationAdminAvatar = "/site-assets/avatar.jpg";
+const defaultAvatar = "/site-assets/default-avatar.svg";
 
 async function openComments(page: import("@playwright/test").Page, persona: string) {
   await page.goto(`${memoPath}?d_persona=${persona}&d_delay=normal`, {
@@ -167,18 +169,26 @@ test.describe("Console comments Web Demo", () => {
       await expect(section).toContainText("这篇内容的边界整理得很清楚。");
       await expect(section.locator(".comment-form img")).toHaveAttribute(
         "src",
-        "/site-assets/default-avatar.svg",
+        stationAdminAvatar,
         { timeout: 15000 }
       );
       const authorAvatars = section.locator(".comment-item__avatar img");
       await expect(authorAvatars).not.toHaveCount(0);
       await expect
         .poll(() =>
-          authorAvatars.evaluateAll((images) =>
-            images.every((image) => image.getAttribute("src") === "/site-assets/default-avatar.svg")
+          authorAvatars.evaluateAll(
+            (images, allowedAvatars) =>
+              images.every((image) => allowedAvatars.includes(image.getAttribute("src"))),
+            [defaultAvatar, stationAdminAvatar]
           )
         )
         .toBe(true);
+      await expect(
+        section
+          .locator(".comment-item--root")
+          .filter({ hasText: "管理员身份绑定后的评论会直接公开，并保留作者标记。" })
+          .locator(".comment-item__avatar img")
+      ).toHaveAttribute("src", stationAdminAvatar);
       return;
     }
     const commentsTab = page.getByRole("tab", { name: "评论" });
@@ -188,20 +198,26 @@ test.describe("Console comments Web Demo", () => {
     const section = page.locator(`#${panelId} .comment-section`);
     await expect(section).toHaveCount(1);
     await expect(section).toContainText("这篇内容的边界整理得很清楚。");
-    await expect(section.locator(".comment-form img")).toHaveAttribute(
-      "src",
-      "/site-assets/default-avatar.svg",
-      { timeout: 15000 }
-    );
+    await expect(section.locator(".comment-form img")).toHaveAttribute("src", stationAdminAvatar, {
+      timeout: 15000,
+    });
     const authorAvatars = section.locator(".comment-item__avatar img");
     await expect(authorAvatars).not.toHaveCount(0);
     await expect
       .poll(() =>
-        authorAvatars.evaluateAll((images) =>
-          images.every((image) => image.getAttribute("src") === "/site-assets/default-avatar.svg")
+        authorAvatars.evaluateAll(
+          (images, allowedAvatars) =>
+            images.every((image) => allowedAvatars.includes(image.getAttribute("src"))),
+          [defaultAvatar, stationAdminAvatar]
         )
       )
       .toBe(true);
+    await expect(
+      section
+        .locator(".comment-item--root")
+        .filter({ hasText: "管理员身份绑定后的评论会直接公开，并保留作者标记。" })
+        .locator(".comment-item__avatar img")
+    ).toHaveAttribute("src", stationAdminAvatar);
   });
 
   test("normalizes empty avatar URLs in the Console clipping route", async ({ page }) => {
@@ -223,18 +239,23 @@ test.describe("Console comments Web Demo", () => {
     }
     await expect(section).toBeVisible();
     await expect(section).toContainText("这篇内容的边界整理得很清楚。");
-    await expect(section.locator(".comment-form img")).toHaveAttribute(
-      "src",
-      "/site-assets/default-avatar.svg"
-    );
+    await expect(section.locator(".comment-form img")).toHaveAttribute("src", stationAdminAvatar);
     const authorAvatars = section.locator(".comment-item__avatar img");
     await expect(authorAvatars).not.toHaveCount(0);
     await expect
       .poll(() =>
-        authorAvatars.evaluateAll((images) =>
-          images.every((image) => image.getAttribute("src") === "/site-assets/default-avatar.svg")
+        authorAvatars.evaluateAll(
+          (images, allowedAvatars) =>
+            images.every((image) => allowedAvatars.includes(image.getAttribute("src"))),
+          [defaultAvatar, stationAdminAvatar]
         )
       )
       .toBe(true);
+    await expect(
+      section
+        .locator(".comment-item--root")
+        .filter({ hasText: "管理员身份绑定后的评论会直接公开，并保留作者标记。" })
+        .locator(".comment-item__avatar img")
+    ).toHaveAttribute("src", stationAdminAvatar);
   });
 });

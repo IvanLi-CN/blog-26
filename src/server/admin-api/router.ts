@@ -1,6 +1,9 @@
 import { TRPCError } from "@trpc/server";
+import { eq } from "drizzle-orm";
 import OpenAI from "openai";
 import { ZodError, z } from "zod";
+import type { AiUsageContext } from "@/lib/ai-usage";
+import { db } from "@/lib/db";
 import { isValidIconId } from "@/lib/icons/aliases";
 import {
   decorateUpstreamLlmModelNames,
@@ -10,10 +13,19 @@ import {
 } from "@/lib/llm-models";
 import { type LlmTier, llmTierSchema } from "@/lib/llm-settings";
 import { hasTrustedSameOriginNavigation } from "@/lib/public-cors";
+import { frontendUsers } from "@/lib/schema";
 import { aiSearchModeSchema } from "@/lib/search/settings";
 import { createContext } from "@/server/context";
 import { handleAdminPreviewAssetRequest } from "@/server/public-media";
 import { appRouter } from "@/server/router";
+import {
+  ADMIN_USAGE_RANGES,
+  type AdminUsageGroupBy,
+  type AdminUsageRange,
+  getAdminAiUsageOverview,
+  listAdminUsers,
+  resetAdminUserQuota,
+} from "@/server/services/admin-ai-usage";
 import { getAdminLlmModelCatalog } from "@/server/services/llm-model-catalog";
 import {
   getAdminLlmSettingsPayload,
@@ -269,7 +281,25 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
       );
     }
 
-    const { caller, resHeaders } = await createAdminCallerForRequest(request);
+    const { caller, resHeaders, ctx } = await createAdminCallerForRequest(request);
+    const adminFrontendUserId = ctx.user
+      ? ((
+          await db
+            .select({ id: frontendUsers.id })
+            .from(frontendUsers)
+            .where(eq(frontendUsers.adminUserId, ctx.user.id))
+            .get()
+        )?.id ?? null)
+      : null;
+    const adminMetering = {
+      frontendUserId: adminFrontendUserId,
+      isAdmin: ctx.isAdmin,
+      chargePersonalQuota: false,
+      metadata: { adminUserId: ctx.user?.id ?? null },
+    } satisfies Pick<
+      AiUsageContext,
+      "frontendUserId" | "isAdmin" | "chargePersonalQuota" | "metadata"
+    >;
 
     if (pathname === "/github-binding") {
       if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
@@ -324,7 +354,14 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
         .object({ mode: aiSearchModeSchema })
         .strict()
         .parse(await request.json());
-      return json(await startSearchValidation(body.mode), { status: 202 }, resHeaders);
+      return json(
+        await startSearchValidation(body.mode, {
+          feature: "search-validation",
+          ...adminMetering,
+        }),
+        { status: 202 },
+        resHeaders
+      );
     }
     const validationMatch = pathname.match(/^\/search-settings\/validation\/([0-9a-f-]{36})$/u);
     if (validationMatch) {
@@ -385,7 +422,10 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
         const payload = body as { tier?: unknown; settings?: unknown };
         const tier = llmTierSchema.parse(payload.tier);
         return json(
-          await testAdminLlmSettings(tier, payload.settings as never),
+          await testAdminLlmSettings(tier, payload.settings as never, {
+            feature: "model-validation",
+            ...adminMetering,
+          }),
           { status: 200 },
           resHeaders
         );
@@ -504,6 +544,169 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
       return json(
         await caller.admin.dashboard.recentActivity({
           limit: getNumber(url.searchParams.get("limit"), 10),
+        }),
+        { status: 200 },
+        resHeaders
+      );
+    }
+
+    if (pathname === "/dashboard/ai-usage") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      const overview = await getAdminAiUsageOverview({ range: "7d" });
+      return json(
+        {
+          timezone: overview.timezone,
+          range: { from: overview.range.from, to: overview.range.to },
+          metric: overview.metric,
+          trend: overview.trend,
+        },
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+
+    if (pathname === "/users") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      return json(
+        await listAdminUsers({
+          search: getString(url.searchParams.get("search")),
+        }),
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+
+    const userQuotaResetMatch = pathname.match(/^\/users\/([^/]+)\/(?:quota-reset|reset-quota)$/u);
+    if (userQuotaResetMatch) {
+      if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
+      if (!hasTrustedSameOriginNavigation(request)) {
+        return json(
+          { error: { code: "FORBIDDEN", message: "请求来源不受信任" } },
+          { status: 403 },
+          resHeaders
+        );
+      }
+      let userId: string;
+      try {
+        userId = decodeURIComponent(userQuotaResetMatch[1]);
+      } catch {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid user id" });
+      }
+      const result = await resetAdminUserQuota(userId);
+      if (!result) {
+        return json(
+          { error: { code: "NOT_FOUND", message: "前台用户不存在" } },
+          { status: 404 },
+          resHeaders
+        );
+      }
+      return json({ success: true, ...result }, { status: 200 }, resHeaders);
+    }
+
+    if (pathname === "/ai-usage" || pathname === "/ai-usage/overview") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      const range = getString(url.searchParams.get("range")) as AdminUsageRange | undefined;
+      if (range && !ADMIN_USAGE_RANGES.includes(range)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid AI usage range" });
+      }
+      const status = getString(url.searchParams.get("status"));
+      const groupBy = (getString(url.searchParams.get("groupBy")) ??
+        "feature") as AdminUsageGroupBy;
+      if (!["user", "feature", "model"].includes(groupBy)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid AI usage group" });
+      }
+      if (
+        status &&
+        !["success", "failure", "cancelled", "missing", "incomplete"].includes(status)
+      ) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid AI usage result" });
+      }
+      const from = getString(url.searchParams.get("from"));
+      const to = getString(url.searchParams.get("to"));
+      if (range === "custom") {
+        const validDay = (value: string | undefined) => {
+          if (!value || !/^\d{4}-\d{2}-\d{2}$/u.test(value)) return false;
+          const [year, month, day] = value.split("-").map(Number);
+          const parsed = new Date(Date.UTC(year, month - 1, day));
+          return (
+            parsed.getUTCFullYear() === year &&
+            parsed.getUTCMonth() === month - 1 &&
+            parsed.getUTCDate() === day
+          );
+        };
+        if (!validDay(from) || !validDay(to) || (from as string) > (to as string)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid AI usage date range" });
+        }
+      }
+      return json(
+        await getAdminAiUsageOverview({
+          range,
+          from,
+          to,
+          groupBy,
+          filters: {
+            frontendUserId: getString(url.searchParams.get("user")),
+            feature: getString(url.searchParams.get("feature")),
+            model: getString(url.searchParams.get("model")),
+            status: status as
+              | "success"
+              | "failure"
+              | "cancelled"
+              | "missing"
+              | "incomplete"
+              | undefined,
+          },
+        }),
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+
+    if (pathname === "/ai-usage/policy") {
+      if (request.method === "GET") {
+        const { getAssistantQuotaPolicy } = await import("@/lib/ai-usage");
+        return json(await getAssistantQuotaPolicy(), { status: 200 }, resHeaders);
+      }
+      if (request.method !== "PUT") return methodNotAllowed(request.method, resHeaders);
+      if (!hasTrustedSameOriginNavigation(request)) {
+        return json(
+          { error: { code: "FORBIDDEN", message: "请求来源不受信任" } },
+          { status: 403 },
+          resHeaders
+        );
+      }
+      const body = await parseJsonBody(request);
+      if (!body || typeof body !== "object" || Array.isArray(body)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Request body must be an object" });
+      }
+      const positiveInteger = (value: unknown, name: string) => {
+        if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `${name} must be a non-negative integer`,
+          });
+        }
+        return value;
+      };
+      const timezone = typeof body.timezone === "string" ? body.timezone : "Asia/Shanghai";
+      try {
+        new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format();
+      } catch {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "timezone must be a valid IANA timezone",
+        });
+      }
+      const { setAssistantQuotaPolicy } = await import("@/lib/ai-usage");
+      return json(
+        await setAssistantQuotaPolicy({
+          tokenHourlyLimit: positiveInteger(body.tokenHourlyLimit, "tokenHourlyLimit"),
+          tokenWeeklyLimit: positiveInteger(body.tokenWeeklyLimit, "tokenWeeklyLimit"),
+          questionHourlyLimit: positiveInteger(body.questionHourlyLimit, "questionHourlyLimit"),
+          questionWeeklyLimit: positiveInteger(body.questionWeeklyLimit, "questionWeeklyLimit"),
+          maxConversations: positiveInteger(body.maxConversations, "maxConversations"),
+          retentionMs: positiveInteger(body.retentionMs, "retentionMs"),
+          timezone,
         }),
         { status: 200 },
         resHeaders
@@ -970,6 +1173,7 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
           targetGroups: body.targetGroups,
           model: body.model,
           signal: request.signal,
+          metering: { feature: "tag-organization", ...adminMetering },
         });
 
         if (body.persist) {
@@ -1047,13 +1251,17 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
       if (body.type === "tag") {
         const name = String(body.name || "").trim();
         if (!name) return json({ error: "name required" }, { status: 400 }, resHeaders);
-        const result = await suggestTagIcon(name);
+        const result = await suggestTagIcon(name, {
+          metering: { feature: "icon-rerank", ...adminMetering },
+        });
         return json({ type: "tag", name, ...result }, { status: 200 }, resHeaders);
       }
       if (body.type === "category") {
         const key = String(body.key || "").trim();
         if (!key) return json({ error: "key required" }, { status: 400 }, resHeaders);
-        const result = await suggestCategoryIcon(key, body.title ? String(body.title) : undefined);
+        const result = await suggestCategoryIcon(key, body.title ? String(body.title) : undefined, {
+          metering: { feature: "icon-rerank", ...adminMetering },
+        });
         return json(
           { type: "category", key, title: body.title, ...result },
           { status: 200 },

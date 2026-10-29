@@ -119,6 +119,14 @@ describe("Web Demo runtime state", () => {
     expect(
       getWebDemoSceneOptions("/admin/dashboard", "admin").map((option) => option.value)
     ).toEqual(["admin-dashboard", "admin-editor"]);
+    expect(getWebDemoSceneOptions("/chat", "public").map((option) => option.value)).toEqual([
+      "assistant-ready",
+      "assistant-generating",
+      "assistant-quota-exhausted",
+      "assistant-expired",
+      "assistant-failure",
+      "assistant-reconnecting",
+    ]);
   });
 
   it("keeps environment controls independent and applies request policy", () => {

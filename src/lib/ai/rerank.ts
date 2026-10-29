@@ -1,3 +1,10 @@
+import { randomUUID } from "node:crypto";
+import {
+  AiQuotaExceededError,
+  type AiUsageContext,
+  extractAiUsage,
+  meterProviderCall,
+} from "@/lib/ai-usage";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 
 type LlmConfigResolver = typeof getResolvedLlmConfig;
@@ -19,7 +26,12 @@ function sleep(ms: number) {
 
 async function fetchWithBackoff(
   makeRequest: () => Promise<Response>,
-  options?: { retries?: number; initialDelayMs?: number; maxDelayMs?: number }
+  options?: {
+    retries?: number;
+    initialDelayMs?: number;
+    maxDelayMs?: number;
+    meterAttempt?: (makeRequest: () => Promise<Response>, attempt: number) => Promise<Response>;
+  }
 ): Promise<Response> {
   const retries = options?.retries ?? 3;
   const initialDelayMs = options?.initialDelayMs ?? 100;
@@ -29,7 +41,9 @@ async function fetchWithBackoff(
   let delay = initialDelayMs;
   while (true) {
     try {
-      const res = await makeRequest();
+      const res = await (options?.meterAttempt
+        ? options.meterAttempt(makeRequest, attempt + 1)
+        : makeRequest());
       if (res.ok) return res;
       if (res.status === 429 || res.status >= 500) {
         if (attempt >= retries) return res;
@@ -44,6 +58,9 @@ async function fetchWithBackoff(
       }
       return res;
     } catch (err) {
+      if (err instanceof AiQuotaExceededError) {
+        throw err;
+      }
       if (attempt >= retries) throw err;
       const wait = Math.min(maxDelayMs, Math.floor(delay * (1 + Math.random() * 0.25)));
       await sleep(wait);
@@ -155,7 +172,7 @@ export function parseRerankResponse(payload: unknown) {
 export async function rerank(
   query: string,
   documents: string[],
-  opts?: { model?: string; topN?: number }
+  opts?: { model?: string; topN?: number; metering?: AiUsageContext }
 ): Promise<RerankItem[]> {
   const resolved = await resolveLlmConfig();
   const modelName = opts?.model || resolved.rerank.model;
@@ -174,6 +191,10 @@ export async function rerank(
     documents,
     top_n: opts?.topN,
   };
+  const logicalRequestId = opts?.metering?.logicalRequestId ?? `rerank:${randomUUID()}`;
+  const inputEstimateTokens = Math.ceil(
+    Buffer.byteLength(query + documents.join("\n"), "utf8") / 4
+  );
   const res = await fetchWithBackoff(
     () =>
       fetch(`${apiBase}/rerank`, {
@@ -184,7 +205,44 @@ export async function rerank(
         },
         body: JSON.stringify(payload),
       }),
-    { retries: 3, initialDelayMs: 100, maxDelayMs: 3000 }
+    {
+      retries: 3,
+      initialDelayMs: 100,
+      maxDelayMs: 3000,
+      meterAttempt: (makeRequest, attempt) =>
+        meterProviderCall({
+          context: {
+            ...opts?.metering,
+            feature: opts?.metering?.feature ?? "search-rerank",
+            provider: opts?.metering?.provider ?? "openai-compatible",
+            model: modelName,
+            logicalRequestId,
+            idempotencyKey: opts?.metering?.idempotencyKey
+              ? `${opts.metering.idempotencyKey}:attempt:${attempt}`
+              : undefined,
+            attempt,
+            automaticRetry: attempt > 1,
+            inputEstimateTokens,
+            outputEstimateTokens: Math.max(1, opts?.topN ?? documents.length),
+          },
+          call: makeRequest,
+          getOutcome: async (response) => {
+            let usage: unknown = null;
+            try {
+              usage = extractAiUsage(await response.clone().json());
+            } catch {
+              usage = null;
+            }
+            return {
+              status: response.ok ? "success" : "failure",
+              usage,
+              ...(response.ok
+                ? {}
+                : { error: { name: "ProviderHttpError", status: response.status } }),
+            };
+          },
+        }),
+    }
   );
 
   if (!res.ok) {

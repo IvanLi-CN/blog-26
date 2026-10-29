@@ -15,8 +15,20 @@ function installBrowser(search: string, enabled = true) {
     webDemoBuild: enabled ? "true" : "false",
   };
   const storage = new Map<string, string>();
+  const listeners = new Map<string, Set<(event: Event) => void>>();
   const fakeWindow = {
     location: new URL(`http://127.0.0.1:38110/posts/${search}`),
+    addEventListener: (type: string, listener: (event: Event) => void) => {
+      const current = listeners.get(type) ?? new Set();
+      current.add(listener);
+      listeners.set(type, current);
+    },
+    dispatchEvent: (event: Event) => {
+      listeners.get(event.type)?.forEach((listener) => {
+        listener(event);
+      });
+      return true;
+    },
     sessionStorage: {
       getItem: (key: string) => storage.get(key) ?? null,
       setItem: (key: string, value: string) => storage.set(key, value),
@@ -95,6 +107,122 @@ describe("webDemoFetch", () => {
 
     expect(await response.json()).toMatchObject({ id: "demo-admin", isAdmin: true });
     expect(fetchCalls).toBe(0);
+  });
+
+  it("keeps assistant conversation creation and deletion on the public route contract", async () => {
+    installBrowser("?d_persona=user&d_scene=assistant-ready&d_connection=online");
+
+    const initial = await (await webDemoFetch("/api/public/chat")).json();
+    expect(initial.conversations).toHaveLength(1);
+    const seedId = initial.conversations[0].id;
+
+    const submitted = await webDemoFetch("/api/public/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        requestId: "web-demo-assistant-request",
+        clientRequestId: "web-demo-assistant-client",
+        content: "这个站点记录什么？",
+      }),
+    });
+    expect(submitted.status).toBe(202);
+    const created = await submitted.json();
+    expect(created.conversationId).not.toBe(seedId);
+
+    const expanded = await (await webDemoFetch("/api/public/chat")).json();
+    expect(expanded.conversations.map((conversation: { id: string }) => conversation.id)).toContain(
+      created.conversationId
+    );
+
+    const deleted = await webDemoFetch(
+      `/api/public/chat/conversations/${encodeURIComponent(created.conversationId)}`,
+      { method: "DELETE" }
+    );
+    expect(deleted.status).toBe(200);
+    const afterDelete = await (await webDemoFetch("/api/public/chat")).json();
+    expect(
+      afterDelete.conversations.map((conversation: { id: string }) => conversation.id)
+    ).not.toContain(created.conversationId);
+    expect(
+      (
+        await webDemoFetch(
+          `/api/public/chat?conversation=${encodeURIComponent(created.conversationId)}`
+        )
+      ).status
+    ).toBe(404);
+  });
+
+  it("keeps created assistant conversations across scenes and exempts demo admins", async () => {
+    installBrowser("?d_persona=user&d_scene=clipping-ready&d_connection=online");
+    const submitted = await webDemoFetch("/api/public/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        requestId: "cross-scene-assistant-request",
+        content: "剪藏上下文问题",
+        kind: "clipping",
+        clippingMemoId: "memo-web-demo-1181",
+      }),
+    });
+    const created = await submitted.json();
+    const browser = (globalThis as unknown as { window?: { location: URL } }).window;
+    if (!browser) throw new Error("browser fixture is unavailable");
+    browser.location = new URL(
+      "http://127.0.0.1:38110/chat?d_persona=user&d_scene=assistant-ready"
+    );
+    expect(
+      (
+        await webDemoFetch(
+          `/api/public/chat?conversation=${encodeURIComponent(created.conversationId)}`
+        )
+      ).status
+    ).toBe(200);
+
+    installBrowser("?d_persona=admin&d_scene=assistant-ready&d_connection=online");
+    for (let index = 0; index < 4; index += 1) {
+      const response = await webDemoFetch("/api/public/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          requestId: `admin-assistant-request-${index}`,
+          content: `管理员问题 ${index}`,
+        }),
+      });
+      expect(response.status).toBe(202);
+    }
+  });
+
+  it("routes Web Demo clipping assistant turns through the clipping adapter", async () => {
+    installBrowser("?d_persona=user&d_scene=assistant-ready&d_connection=online");
+    const first = await webDemoFetch("/api/public/memos/memo-web-demo-1181/clipping/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: "剪藏首问", requestId: "web-demo-clipping-1" }),
+    });
+    expect(first.status).toBe(202);
+    const firstSubmission = await first.json();
+
+    const second = await webDemoFetch("/api/public/memos/memo-web-demo-1181/clipping/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: "剪藏续问", requestId: "web-demo-clipping-2" }),
+    });
+    expect(second.status).toBe(202);
+    expect((await second.json()).conversationId).toBe(firstSubmission.conversationId);
+
+    const clippingSnapshot = await webDemoFetch(
+      `/api/public/memos/memo-web-demo-1181/clipping/chat?conversationId=${encodeURIComponent(firstSubmission.conversationId)}`
+    );
+    expect(clippingSnapshot.status).toBe(200);
+    expect(await clippingSnapshot.json()).toMatchObject({
+      conversationId: firstSubmission.conversationId,
+      messages: expect.any(Array),
+    });
+
+    const snapshot = await webDemoFetch(
+      `/api/public/chat?conversation=${encodeURIComponent(firstSubmission.conversationId)}`
+    );
+    expect((await snapshot.json()).messages).toHaveLength(4);
   });
 
   it("does not fall back to a real public API for unknown endpoints", async () => {
@@ -225,6 +353,49 @@ describe("webDemoFetch", () => {
     expect(
       (await webDemoFetch("/api/public/comments/missing/moderate", { method: "POST" })).ok
     ).toBe(true);
+  });
+
+  it("keeps an unbound demo admin as an automatic frontend comment author", async () => {
+    installBrowser("?d_persona=admin&d_github_binding=unbound&d_connection=online");
+    const identity = await webDemoFetch("/api/public/frontend-auth/me");
+    expect(await identity.json()).toMatchObject({
+      authenticated: true,
+      principal: {
+        id: "demo-admin",
+        kind: "admin",
+        isAdmin: true,
+        displayName: "Ivan",
+        avatarUrl: "/site-assets/avatar.jpg",
+        profileUrl: null,
+        readerId: null,
+        github: null,
+      },
+    });
+
+    const commentsUrl =
+      "/api/public/comments?slug=demo-article&targetType=article&targetKey=demo-article";
+    const response = await webDemoFetch(commentsUrl, {
+      method: "POST",
+      body: JSON.stringify({
+        content: "未绑定管理员评论",
+        target: { type: "article", key: "demo-article" },
+        submissionKey: "unbound-admin-comment",
+      }),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      authorRole: "admin",
+      status: "approved",
+      message: "管理员评论已公开",
+    });
+    const commentsResponse = await webDemoFetch(commentsUrl);
+    const commentsPayload = (await commentsResponse.json()) as {
+      comments: Array<{ content: string; author: { avatarUrl: string } }>;
+    };
+    expect(
+      commentsPayload.comments.find((comment) => comment.content === "未绑定管理员评论")?.author
+        .avatarUrl
+    ).toBe("/site-assets/avatar.jpg");
   });
 
   it("keeps valid empty comments distinct from an unavailable target", async () => {

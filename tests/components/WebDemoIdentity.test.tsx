@@ -60,13 +60,13 @@ describe("Web Demo public identity", () => {
     changePersona("admin");
     await waitFor(() => {
       expect(getByTestId("auth").textContent).toBe("demo-admin");
-      expect(getByTestId("comments-user").textContent).toBe("demo-admin-reader");
+      expect(getByTestId("comments-user").textContent).toBe("demo-admin");
       expect(getByTestId("permission").textContent).toBe("true");
     });
     changePersona("user");
     await waitFor(() => {
       expect(getByTestId("auth").textContent).toBe("demo-user");
-      expect(getByTestId("comments-user").textContent).toBe("demo-user-reader");
+      expect(getByTestId("comments-user").textContent).toBe("demo-user");
       expect(getByTestId("permission").textContent).toBe("false");
     });
   });
@@ -82,7 +82,7 @@ describe("Web Demo public identity", () => {
     changePersona("admin");
     await waitFor(() => {
       expect(getByTestId("auth").textContent).toBe("demo-admin");
-      expect(getByTestId("comments-user").textContent).toBe("demo-admin-reader");
+      expect(getByTestId("comments-user").textContent).toBe("demo-admin");
       expect(getByTestId("error").textContent).toBe("none");
     });
   });

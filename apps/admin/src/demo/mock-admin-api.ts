@@ -1,5 +1,10 @@
 import type {
+  AdminAiUsageOverview,
+  AdminDashboardAiUsage,
   AdminPost,
+  AdminUsageMetric,
+  AdminUsageUser,
+  AdminUsersResponse,
   ContentSyncSourceStatus,
   DashboardStats,
   DataSourceInfo,
@@ -451,6 +456,12 @@ function ensureDemoCommentsResetListener() {
     const action = (event as CustomEvent<{ action?: string }>).detail?.action;
     if (action !== "reset-state") return;
     comments.splice(0, comments.length, ...initialDemoComments.map((comment) => ({ ...comment })));
+    Object.assign(demoUsagePolicy, initialDemoUsagePolicy);
+    for (const user of demoUsageUsers) {
+      const initialQuota = initialDemoUsageQuotas.get(user.id);
+      if (initialQuota) user.quota = { ...initialQuota, policy: demoUsagePolicy };
+      user.quotaStatus = initialDemoQuotaStatuses.get(user.id) ?? user.quotaStatus;
+    }
     resetDemoContentSyncState();
   });
 }
@@ -475,6 +486,539 @@ let pats: PersonalAccessTokenListRow[] = [
   createPat("pat-1", "CI deploy token", now - 8 * 86_400_000, null),
   createPat("pat-2", "Local automation", now - 18 * 86_400_000, now - 2 * 86_400_000),
 ];
+
+function demoMetric(input: Partial<AdminUsageMetric> = {}): AdminUsageMetric {
+  const metric: AdminUsageMetric = {
+    callCount: 0,
+    inputTokens: 0,
+    cachedInputTokens: 0,
+    outputTokens: 0,
+    reasoningTokens: 0,
+    totalTokens: 0,
+    estimatedCallCount: 0,
+    incompleteCallCount: 0,
+    successCallCount: 0,
+    failureCallCount: 0,
+    cancelledCallCount: 0,
+    actualCallCount: 0,
+    missingCallCount: 0,
+    ...input,
+  };
+  return metric;
+}
+
+const demoUsagePolicy: AdminUsersResponse["policy"] = {
+  id: "demo-global",
+  scope: "global",
+  tokenHourlyLimit: 10_000_000,
+  tokenWeeklyLimit: 100_000_000,
+  questionHourlyLimit: 60,
+  questionWeeklyLimit: 300,
+  maxConversations: 3,
+  retentionMs: 7 * 24 * 60 * 60 * 1000,
+  timezone: "Asia/Shanghai",
+  createdAt: now - 86_400_000,
+  updatedAt: now - 3_600_000,
+};
+
+const demoUsageUsers: AdminUsageUser[] = [
+  {
+    id: "demo-user-ivan",
+    displayName: "Ivan Li",
+    email: "ivan@example.com",
+    avatarUrl: "/site-assets/default-avatar.svg",
+    profileUrl: null,
+    isAdmin: true,
+    identityProviders: ["admin", "github"],
+    usage: {
+      hour: demoMetric({
+        callCount: 8,
+        inputTokens: 32_400,
+        cachedInputTokens: 8_100,
+        outputTokens: 6_800,
+        totalTokens: 39_200,
+        successCallCount: 7,
+        failureCallCount: 1,
+        actualCallCount: 8,
+      }),
+      week: demoMetric({
+        callCount: 76,
+        inputTokens: 283_000,
+        cachedInputTokens: 54_000,
+        outputTokens: 64_000,
+        totalTokens: 347_000,
+        successCallCount: 70,
+        failureCallCount: 4,
+        cancelledCallCount: 2,
+        actualCallCount: 76,
+      }),
+      allTime: demoMetric({
+        callCount: 428,
+        inputTokens: 1_840_000,
+        cachedInputTokens: 328_000,
+        outputTokens: 402_000,
+        totalTokens: 2_242_000,
+        successCallCount: 403,
+        failureCallCount: 16,
+        cancelledCallCount: 9,
+        actualCallCount: 428,
+      }),
+    },
+    quota: {
+      policy: demoUsagePolicy,
+      cycleId: "admin-unlimited",
+      cycleStartAt: 0,
+      tokenHour: 0,
+      tokenWeek: 0,
+      questionHour: 0,
+      questionWeek: 0,
+    },
+    quotaStatus: "unlimited",
+  },
+  {
+    id: "demo-user-rui",
+    displayName: "Rui Reader",
+    email: "rui@example.com",
+    avatarUrl: "/site-assets/default-avatar.svg",
+    profileUrl: "https://github.com/rui-demo",
+    isAdmin: false,
+    identityProviders: ["github"],
+    usage: {
+      hour: demoMetric({
+        callCount: 3,
+        inputTokens: 12_800,
+        cachedInputTokens: 2_400,
+        outputTokens: 2_900,
+        totalTokens: 15_700,
+        successCallCount: 3,
+        actualCallCount: 3,
+      }),
+      week: demoMetric({
+        callCount: 21,
+        inputTokens: 95_000,
+        cachedInputTokens: 18_000,
+        outputTokens: 22_000,
+        totalTokens: 117_000,
+        successCallCount: 19,
+        failureCallCount: 1,
+        incompleteCallCount: 1,
+        missingCallCount: 1,
+        actualCallCount: 21,
+      }),
+      allTime: demoMetric({
+        callCount: 113,
+        inputTokens: 492_000,
+        cachedInputTokens: 83_000,
+        outputTokens: 106_000,
+        totalTokens: 598_000,
+        successCallCount: 103,
+        failureCallCount: 6,
+        cancelledCallCount: 4,
+        estimatedCallCount: 2,
+        incompleteCallCount: 3,
+        missingCallCount: 3,
+        actualCallCount: 111,
+      }),
+    },
+    quota: {
+      policy: demoUsagePolicy,
+      cycleId: "rui-cycle",
+      cycleStartAt: now - 3 * 86_400_000,
+      tokenHour: 12_400,
+      tokenWeek: 117_000,
+      questionHour: 3,
+      questionWeek: 21,
+    },
+    quotaStatus: "available",
+  },
+  {
+    id: "demo-user-ming",
+    displayName: "Ming Reader",
+    email: "ming@example.com",
+    avatarUrl: "/site-assets/default-avatar.svg",
+    profileUrl: "https://github.com/ming-demo",
+    isAdmin: false,
+    identityProviders: ["github"],
+    usage: {
+      hour: demoMetric({
+        callCount: 18,
+        inputTokens: 1_900_000,
+        cachedInputTokens: 220_000,
+        outputTokens: 250_000,
+        totalTokens: 2_150_000,
+        successCallCount: 17,
+        incompleteCallCount: 1,
+        missingCallCount: 1,
+        actualCallCount: 18,
+      }),
+      week: demoMetric({
+        callCount: 59,
+        inputTokens: 8_200_000,
+        cachedInputTokens: 1_200_000,
+        outputTokens: 1_400_000,
+        totalTokens: 9_600_000,
+        successCallCount: 54,
+        failureCallCount: 3,
+        cancelledCallCount: 2,
+        actualCallCount: 59,
+      }),
+      allTime: demoMetric({
+        callCount: 240,
+        inputTokens: 26_800_000,
+        cachedInputTokens: 4_200_000,
+        outputTokens: 4_900_000,
+        totalTokens: 31_700_000,
+        successCallCount: 223,
+        failureCallCount: 10,
+        cancelledCallCount: 7,
+        actualCallCount: 240,
+      }),
+    },
+    quota: {
+      policy: demoUsagePolicy,
+      cycleId: "ming-cycle",
+      cycleStartAt: now - 4 * 86_400_000,
+      tokenHour: 9_700_000,
+      tokenWeek: 100_000_000,
+      questionHour: 60,
+      questionWeek: 300,
+    },
+    quotaStatus: "exhausted",
+  },
+];
+
+const initialDemoUsagePolicy = { ...demoUsagePolicy };
+const initialDemoUsageQuotas = new Map(
+  demoUsageUsers.map((user) => [user.id, { ...user.quota, policy: demoUsagePolicy }])
+);
+const initialDemoQuotaStatuses = new Map(
+  demoUsageUsers.map((user) => [user.id, user.quotaStatus] as const)
+);
+
+function demoUsageDay(offset: number) {
+  return shiftDemoDay(demoDayFromTimestamp(now), -offset);
+}
+
+function shiftDemoDay(day: string, offset: number) {
+  const date = new Date(`${day}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + offset);
+  return date.toISOString().slice(0, 10);
+}
+
+function demoDayCount(from: string, to: string) {
+  return Math.max(
+    1,
+    Math.floor((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1
+  );
+}
+
+const DEMO_DAY_MS = 86_400_000;
+const DEMO_TIMEZONE = "Asia/Shanghai";
+
+function demoLocalMidnightUtc(day: string) {
+  return Date.parse(`${day}T00:00:00.000Z`) - 8 * 60 * 60 * 1_000;
+}
+
+function demoDayFromTimestamp(timestamp: number) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: DEMO_TIMEZONE,
+    calendar: "iso8601",
+    numberingSystem: "latn",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(timestamp));
+  const values = Object.fromEntries(
+    parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value])
+  );
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+type DemoUsageRecord = {
+  id: string;
+  day: string;
+  occurredAt: number;
+  frontendUserId: string;
+  feature: string;
+  provider: string;
+  model: string;
+  status: AdminAiUsageOverview["details"][number]["status"];
+  inputTokens: number | null;
+  cachedInputTokens: number | null;
+  outputTokens: number | null;
+  reasoningTokens: number | null;
+  totalTokens: number | null;
+  estimated: boolean;
+  usageComplete: boolean;
+};
+
+function demoMetricFromRecords(records: DemoUsageRecord[]) {
+  const metric = demoMetric();
+  for (const record of records) {
+    metric.callCount += 1;
+    metric.inputTokens += record.inputTokens ?? 0;
+    metric.cachedInputTokens += record.cachedInputTokens ?? 0;
+    metric.outputTokens += record.outputTokens ?? 0;
+    metric.reasoningTokens += record.reasoningTokens ?? 0;
+    metric.totalTokens += record.totalTokens ?? 0;
+    if (record.estimated) metric.estimatedCallCount += 1;
+    if (!record.usageComplete) metric.incompleteCallCount += 1;
+    if (record.status === "success") metric.successCallCount += 1;
+    if (record.status === "failure") metric.failureCallCount += 1;
+    if (record.status === "cancelled") metric.cancelledCallCount += 1;
+  }
+  metric.actualCallCount = Math.max(0, metric.callCount - metric.estimatedCallCount);
+  metric.missingCallCount = metric.incompleteCallCount;
+  return metric;
+}
+
+function buildDemoUsageRecords(from: string, to: string) {
+  const days = demoDayCount(from, to);
+  const features = ["assistant", "search", "tag-organizer"];
+  const models = ["openai/gpt-4.1-mini", "BAAI/bge-m3"];
+  const users = ["demo-user-ivan", "demo-user-rui", "demo-user-ming"];
+  const todayDay = demoUsageDay(0);
+  const dayNumber = (day: string) => Math.floor(Date.parse(`${day}T00:00:00Z`) / DEMO_DAY_MS);
+  const positiveModulo = (value: number, divisor: number) =>
+    ((value % divisor) + divisor) % divisor;
+  return Array.from({ length: days }, (_, dayIndex) => {
+    const day = shiftDemoDay(from, dayIndex);
+    const stableDayIndex = dayNumber(day);
+    const stableOffset = positiveModulo(stableDayIndex, 12);
+    const callCount = 6 + positiveModulo(stableDayIndex, 4);
+    return Array.from({ length: callCount }, (_, callIndex): DemoUsageRecord => {
+      const status =
+        positiveModulo(stableDayIndex, 4) === 0 && callIndex === 0
+          ? "failure"
+          : positiveModulo(stableDayIndex, 7) === 0 && callIndex === 1
+            ? "cancelled"
+            : positiveModulo(stableDayIndex, 3) === 2 && callIndex === 2
+              ? "missing"
+              : "success";
+      const incomplete = status === "missing";
+      const inputTokens = incomplete ? null : 1_800 + stableOffset * 20 + callIndex * 80;
+      const cachedInputTokens = inputTokens === null ? null : 300 + (callIndex % 3) * 100;
+      const outputTokens = incomplete ? 2_100 : 650 + (callIndex % 4) * 120;
+      const reasoningTokens = incomplete ? null : callIndex % 2 === 0 ? 80 : 0;
+      const occurredAt =
+        day === todayDay
+          ? now - callIndex * 600_000
+          : Date.parse(`${day}T12:00:00.000Z`) - callIndex * 600_000;
+      return {
+        id: `demo-usage-${day}-${callIndex}`,
+        day,
+        occurredAt,
+        frontendUserId: users[positiveModulo(stableDayIndex + callIndex, users.length)],
+        feature: features[positiveModulo(stableDayIndex + callIndex, features.length)],
+        provider: "openai-compatible",
+        model: models[positiveModulo(stableDayIndex + callIndex, models.length)],
+        status,
+        inputTokens,
+        cachedInputTokens,
+        outputTokens,
+        reasoningTokens,
+        totalTokens:
+          inputTokens === null ? outputTokens : inputTokens + outputTokens + (reasoningTokens ?? 0),
+        estimated: incomplete,
+        usageComplete: !incomplete,
+      };
+    });
+  }).flat();
+}
+
+const demoUsageHistory = buildDemoUsageRecords(demoUsageDay(364), demoUsageDay(0));
+
+function syncDemoUsageUserMetrics() {
+  const today = demoUsageDay(0);
+  const ranges = {
+    week: demoUsageHistory.filter((record) => record.day >= demoUsageDay(6) && record.day <= today),
+    allTime: demoUsageHistory,
+  };
+  const recentHour = demoUsageHistory.filter((record) => record.occurredAt >= now - 3_600_000);
+  for (const user of demoUsageUsers) {
+    user.usage = {
+      hour: demoMetricFromRecords(recentHour.filter((record) => record.frontendUserId === user.id)),
+      week: demoMetricFromRecords(
+        ranges.week.filter((record) => record.frontendUserId === user.id)
+      ),
+      allTime: demoMetricFromRecords(
+        ranges.allTime.filter((record) => record.frontendUserId === user.id)
+      ),
+    };
+  }
+}
+
+syncDemoUsageUserMetrics();
+
+function syncDemoQuotaStatuses() {
+  for (const user of demoUsageUsers) {
+    if (user.isAdmin) {
+      user.quotaStatus = "unlimited";
+      continue;
+    }
+    const { policy } = user.quota;
+    user.quotaStatus =
+      user.quota.tokenHour >= policy.tokenHourlyLimit ||
+      user.quota.tokenWeek >= policy.tokenWeeklyLimit ||
+      user.quota.questionHour >= policy.questionHourlyLimit ||
+      user.quota.questionWeek >= policy.questionWeeklyLimit
+        ? "exhausted"
+        : "available";
+  }
+}
+
+function demoAiUsageOverview(url: URL): AdminAiUsageOverview {
+  const range = url.searchParams.get("range") ?? "7d";
+  const customFrom = url.searchParams.get("from") ?? demoUsageDay(6);
+  const customTo = url.searchParams.get("to") ?? demoUsageDay(0);
+  const dayCount =
+    range === "today"
+      ? 1
+      : range === "30d"
+        ? 30
+        : range === "90d"
+          ? 90
+          : range === "365d"
+            ? 365
+            : range === "custom"
+              ? demoDayCount(customFrom, customTo)
+              : 7;
+  const status = url.searchParams.get("status");
+  const user = url.searchParams.get("user");
+  const feature = url.searchParams.get("feature");
+  const model = url.searchParams.get("model");
+  const groupBy = url.searchParams.get("groupBy") ?? "feature";
+  const from = range === "custom" ? customFrom : demoUsageDay(dayCount - 1);
+  const to = range === "custom" ? customTo : demoUsageDay(0);
+  const detailCutoff = now - 90 * DEMO_DAY_MS;
+  const detailAvailableFrom = demoDayFromTimestamp(detailCutoff);
+  const records = demoUsageHistory.filter((record) => record.day >= from && record.day <= to);
+  const filteredRecords = records.filter((record) => {
+    if (user && record.frontendUserId !== user) return false;
+    if (feature && record.feature !== feature) return false;
+    if (model && record.model !== model) return false;
+    if (status && (record.occurredAt < detailCutoff || record.status !== status)) return false;
+    return true;
+  });
+  const days = Array.from({ length: dayCount }, (_, index) => {
+    const day = shiftDemoDay(from, index);
+    return {
+      day,
+      ...demoMetricFromRecords(filteredRecords.filter((record) => record.day === day)),
+    };
+  });
+  const metric = demoMetricFromRecords(filteredRecords);
+  const groupKeys = [
+    ...new Set(
+      filteredRecords.map((record) =>
+        groupBy === "user"
+          ? `user:${record.frontendUserId}`
+          : groupBy === "model"
+            ? `model:${record.model}`
+            : `feature:${record.feature}`
+      )
+    ),
+  ];
+  const groupRows = groupKeys.map((key) => {
+    const [kind, value] = key.split(":", 2);
+    const rows = filteredRecords.filter((record) =>
+      kind === "user"
+        ? record.frontendUserId === value
+        : kind === "model"
+          ? record.model === value
+          : record.feature === value
+    );
+    return {
+      key,
+      label:
+        kind === "user"
+          ? (demoUsageUsers.find((item) => item.id === value)?.displayName ?? value)
+          : kind === "feature"
+            ? value === "tag-organizer"
+              ? "标签整理"
+              : value === "assistant"
+                ? "站内助手"
+                : "搜索"
+            : value,
+      frontendUserId: kind === "user" ? value : null,
+      feature: kind === "feature" ? value : null,
+      model: kind === "model" ? value : null,
+      ...demoMetricFromRecords(rows),
+    };
+  });
+  const detailRecords = filteredRecords.filter((record) => record.occurredAt >= detailCutoff);
+  const details = detailRecords
+    .slice()
+    .sort((left, right) => right.occurredAt - left.occurredAt)
+    .slice(0, 500);
+  const hasSummaryCoverage = from < detailAvailableFrom;
+  const hasDetailCoverage = to >= detailAvailableFrom;
+  return {
+    timezone: DEMO_TIMEZONE,
+    range: {
+      preset: range as AdminAiUsageOverview["range"]["preset"],
+      from,
+      to,
+      startAt: demoLocalMidnightUtc(from),
+      endAt: demoLocalMidnightUtc(shiftDemoDay(to, 1)),
+    },
+    metric,
+    trend: days,
+    groups: groupRows,
+    details,
+    detailTotal: detailRecords.length,
+    detailsTruncated: detailRecords.length > details.length,
+    facets: {
+      users: demoUsageUsers.map((item) => ({ id: item.id, label: item.displayName })),
+      features: ["assistant", "search", "tag-organizer"],
+      models: ["openai/gpt-4.1-mini", "BAAI/bge-m3"],
+    },
+    retention: {
+      detailRetentionDays: 90,
+      detailAvailableFrom,
+      rangeCoverage:
+        hasSummaryCoverage && hasDetailCoverage
+          ? "mixed"
+          : hasSummaryCoverage
+            ? "summary"
+            : "detail",
+      resultFilterCoverage: status
+        ? hasSummaryCoverage
+          ? "summary"
+          : "detail"
+        : hasSummaryCoverage && hasDetailCoverage
+          ? "mixed"
+          : hasSummaryCoverage
+            ? "summary"
+            : "detail",
+    },
+  };
+}
+
+function demoDashboardAiUsage(): AdminDashboardAiUsage {
+  const today = demoUsageDay(0);
+  const from = demoUsageDay(6);
+  const dataMode = getWebDemoState(window.location, "admin").data;
+  const weekRecords = demoUsageHistory.filter(
+    (record) => record.day >= from && record.day <= today
+  );
+  const records =
+    dataMode === "empty"
+      ? []
+      : dataMode === "dense"
+        ? [...weekRecords, ...weekRecords]
+        : weekRecords;
+  const trend = Array.from({ length: 7 }, (_, index) => {
+    const day = shiftDemoDay(from, index);
+    return { day, ...demoMetricFromRecords(records.filter((record) => record.day === day)) };
+  });
+  return {
+    timezone: DEMO_TIMEZONE,
+    range: { from, to: today },
+    metric: demoMetricFromRecords(records),
+    trend,
+  };
+}
 
 const demoChatSecret: AdminLlmSettingsPayload["settings"]["chat"]["apiKey"] = {
   hasValue: true,
@@ -1138,6 +1682,49 @@ async function handleAdminRequest(
   }
   if (path === "/api/admin/dashboard/stats") return json(dashboardStats());
   if (path === "/api/admin/dashboard/recent-activity") return json(recentActivity());
+  if (path === "/api/admin/dashboard/ai-usage" && method === "GET") {
+    return json(demoDashboardAiUsage());
+  }
+  if (path === "/api/admin/users" && method === "GET") {
+    const search = (url.searchParams.get("search") ?? "").trim().toLocaleLowerCase();
+    const users = search
+      ? demoUsageUsers.filter((item) =>
+          `${item.displayName} ${item.email ?? ""}`.toLocaleLowerCase().includes(search)
+        )
+      : demoUsageUsers;
+    return json({
+      users,
+      total: demoUsageUsers.length,
+      policy: demoUsagePolicy,
+    } satisfies AdminUsersResponse);
+  }
+  const resetUserMatch = path.match(/^\/api\/admin\/users\/([^/]+)\/(?:quota-reset|reset-quota)$/u);
+  if (resetUserMatch && method === "POST") {
+    const user = demoUsageUsers.find((item) => item.id === decodeURIComponent(resetUserMatch[1]));
+    if (!user) return json({ error: { code: "NOT_FOUND", message: "前台用户不存在" } }, 404);
+    user.quota = {
+      ...user.quota,
+      cycleId: `${user.id}-new-cycle`,
+      cycleStartAt: Date.now(),
+      tokenHour: 0,
+      tokenWeek: 0,
+      questionHour: 0,
+      questionWeek: 0,
+    };
+    syncDemoQuotaStatuses();
+    recordWebDemoMutation("恢复单用户额度", `${user.displayName} 建立了新的个人额度周期。`);
+    return json({ success: true, resetAt: Date.now(), quota: user.quota });
+  }
+  if (path === "/api/admin/ai-usage" && method === "GET") return json(demoAiUsageOverview(url));
+  if (path === "/api/admin/ai-usage/policy") {
+    if (method === "GET") return json(demoUsagePolicy);
+    if (method === "PUT") {
+      Object.assign(demoUsagePolicy, body);
+      syncDemoQuotaStatuses();
+      recordWebDemoMutation("保存全局 AI 额度策略", "仅更新隔离 Web Demo 内存配置。");
+      return json(demoUsagePolicy);
+    }
+  }
   if (path.startsWith("/api/admin/preview/memos/") && method === "GET") {
     const slug = decodeURIComponent(path.split("/").at(-1) ?? "");
     const memo = consoleWebDemoPreviewStore.get(slug, "admin");

@@ -1,0 +1,274 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
+  "covered_files": {
+    "drizzle/0025_assistant_message_citations.sql": "1507cf1b94ed1c7a864d2033e4d259df905f6307",
+    "drizzle/meta/0025_snapshot.json": "ba6c77a82ac2a462ac04f042c9bf3e8bc7252a7f",
+    "drizzle/0026_assistant_lookup_indexes.sql": "72981660a24e68ad7342865de4ec6a85b0c114aa",
+    "drizzle/meta/0026_snapshot.json": "4751023ac4555d1167951358aef84d1b4df826ee",
+    "drizzle/meta/_journal.json": "e04c27d13c458128218494a878957e224c1f839c",
+    "scripts/start-gateway.ts": "9575b653d6bbf8f2f252ef01074cef5ece72b76e",
+    "src/lib/ai/search.test.ts": "5194e792f578b6aaf681775e829cd3b8d2d178d8",
+    "src/lib/ai/search.ts": "ae374c0a42a9116ee0d4541b3e4141d087dd79f9",
+    "src/lib/assistant-contracts.ts": "1a73ac705a9a86f9b7fe58febbe3379f1d47bbff",
+    "src/lib/assistant-storage.test.ts": "7c8a2de1ccf6e8a493ba4300aa69faf2fb708c50",
+    "src/lib/assistant-storage.ts": "f71be3986c49806d03aa533470ae3c95f87b70b4",
+    "src/lib/db.ts": "4f264eaef16da3746ec5a0aa7d4af047550e7955",
+    "src/lib/schema.ts": "0d4c7e32c7d8c0b58dfcb593aa5e14283c561bd6",
+    "src/server/assistant/api.ts": "e470a31c83d3d8b5caa27875cc387e3bd20b3619",
+    "src/server/assistant/runtime.test.ts": "bf0054ab994c6f2b451f364542df22cbb8875e2e",
+    "src/server/assistant/runtime.ts": "30d3e06064302f1fecac57edc30c10803ba037d1",
+    "src/server/assistant/service.ts": "d1d0e83e40e902f8de316d3eb18d35c12c92e8e5",
+    "src/server/public-api/assistant-chat.test.ts": "6e16e309312be607eda9cd2ac7afbaac9eba4f80",
+    "src/server/public-api/router.ts": "355b00504c7b52d5e3e9a6d32a7d9706f260fa22",
+    "src/server/services/content-search.ts": "a0d21c73459b03749b9503d2e851b43e67a67e29",
+    "src/server/services/search-semantic-projection.ts": "81837701ac0e701f07d7ebfed321315a4a9b09e6",
+    "tests/server/system-share-api.test.ts": "737e9f8f4cedf53ffddc4a4a47abf96a3aba7b4c"
+  },
+  "change": {
+    "description": "Add the durable assistant worker, atomic turn submission, lease and terminal-state protection, authorized metered retrieval, citations, and authenticated public chat HTTP/SSE endpoints.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "The additive citation table and public chat routes preserve existing storage and search contracts while introducing the approved assistant runtime boundary.",
+      "assessed_at": "2026-10-27T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "docs/specs/site-knowledge-assistant/SPEC.md",
+          "blob": "8c65ecb350cd07a924facc9804a9749eab6aae73",
+          "command": "Locks private ownership, retrieval authorization, retention, generation lifecycle, citations, and quota behavior"
+        },
+        {
+          "path": "docs/adr/0034-assistant-retrieval-follows-content-authorization.md",
+          "blob": "63f271726bc388041d7669dbb2d2550d68cd601a",
+          "command": "Requires public retrieval to use published-only content and administrator retrieval to use the frontend principal"
+        },
+        {
+          "path": "docs/adr/0036-assistant-generation-independent-of-ui-lifecycle.md",
+          "blob": "b20d06076e509d325582952266276f3cf01e785b",
+          "command": "Requires durable generation independent of browser connection lifecycle and explicit stop"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "The candidate adds forward-only citation and lookup-index migrations, a single SQLite worker with leases and restart-failure recovery, transactionally idempotent first-turn creation, authorization-scoped retrieval metering with unique stage keys, bounded provider execution, and owner-checked chat/snapshot/message/event/stop/delete routes. Lease expiry blocks renewals and late writes, idempotent replay cleans expired conversations before returning gone, late deltas and terminal conversations are rejected, provider SSE stops at an explicit completion marker, conversation history is bounded, and unknown in-flight provider calls are not retried automatically.",
+      "assessed_at": "2026-10-27T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/assistant-storage.ts",
+          "blob": "f71be3986c49806d03aa533470ae3c95f87b70b4",
+          "command": "Owns atomic submission, sequence allocation, one-active-generation conflict checks, lease transitions, late-body rejection, citation persistence, expiry, and deletion"
+        },
+        {
+          "path": "src/server/assistant/runtime.ts",
+          "blob": "30d3e06064302f1fecac57edc30c10803ba037d1",
+          "command": "Runs the durable worker, renews leases, persists streamed deltas, uses authorized metered retrieval, and avoids automatic retry after restart"
+        },
+        {
+          "path": "src/server/assistant/api.ts",
+          "blob": "e470a31c83d3d8b5caa27875cc387e3bd20b3619",
+          "command": "Maps authenticated owner-scoped chat operations to 202/401/404/410/409/429 contracts and SSE snapshots"
+        },
+        {
+          "path": "src/server/services/content-search.ts",
+          "blob": "a0d21c73459b03749b9503d2e851b43e67a67e29",
+          "command": "Propagates the assistant authorization and usage context through embedding, rewrite, semantic Playbook, and judgement calls"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate stays within T4 assistant runtime, retrieval, public API, and citation persistence surfaces; admin UI, public UI, clipping cutover, production migration, and deployment remain out of scope."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "Focused storage, worker, retrieval-context, and HTTP/SSE tests pass, including provider failure, restart recovery, owner isolation, cross-owner idempotency, stale-lease rejection, expired replay cleanup, and legacy migration coverage. The repository check passes with the existing Biome warnings and infos. Migration journal validation, changed-file formatting, diff checks, and changed-surface TypeScript filtering were run; the remaining filtered diagnostics are pre-existing in unrelated routes/tests.",
+      "assessed_at": "2026-10-27T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/assistant-storage.test.ts",
+          "blob": "7c8a2de1ccf6e8a493ba4300aa69faf2fb708c50",
+          "command": "bun test src/lib/assistant-storage.test.ts (7 pass, 0 fail, 44 expectations)"
+        },
+        {
+          "path": "src/server/assistant/runtime.test.ts",
+          "blob": "bf0054ab994c6f2b451f364542df22cbb8875e2e",
+          "command": "bun test src/server/assistant/runtime.test.ts (7 pass, 0 fail, 22 expectations)"
+        },
+        {
+          "path": "src/server/public-api/assistant-chat.test.ts",
+          "blob": "6e16e309312be607eda9cd2ac7afbaac9eba4f80",
+          "command": "bun test src/server/public-api/assistant-chat.test.ts (3 pass, 0 fail, 36 expectations)"
+        },
+        {
+          "path": "src/lib/ai/search.test.ts",
+          "blob": "5194e792f578b6aaf681775e829cd3b8d2d178d8",
+          "command": "bun test src/lib/ai/search.test.ts (3 pass, 0 fail, 8 expectations)"
+        },
+        {
+          "path": "drizzle/meta/_journal.json",
+          "blob": "e04c27d13c458128218494a878957e224c1f839c",
+          "command": "bun run db:migrations:validate"
+        },
+        {
+          "path": "tests/server/system-share-api.test.ts",
+          "blob": "737e9f8f4cedf53ffddc4a4a47abf96a3aba7b4c",
+          "command": "bun test tests/server/system-share-api.test.ts -t \"upgrades legacy comments and resumes a blocked backfill without losing identity\" (1 pass, 0 fail, 12 expectations)"
+        },
+        {
+          "path": "package.json",
+          "blob": "3d0e64c848f06801f9746e3d3cea091ff9929b73",
+          "command": "bun run check; bunx biome check on changed files; git diff --check"
+        },
+        {
+          "path": "src/server/assistant/runtime.ts",
+          "blob": "30d3e06064302f1fecac57edc30c10803ba037d1",
+          "command": "Filtered bunx tsc --noEmit reports no diagnostic in T4 assistant/runtime/retrieval files; remaining matches are pre-existing router, migration, and search-test diagnostics"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4",
+        "3.11.7"
+      ],
+      "evidence": [
+        {
+          "path": "src/server/public-api/router.ts",
+          "blob": "355b00504c7b52d5e3e9a6d32a7d9706f260fa22",
+          "command": "Mounts the new authenticated /api/public/chat surface without changing existing routes"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "minor",
+      "applicable": true,
+      "state_description": "The forward-only migrations add assistant_message_citations with a cascading message reference and lookup indexes; existing assistant conversation, message, job, and usage tables remain readable.",
+      "readable_by_prior_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4",
+        "3.11.7"
+      ],
+      "upgrade_from_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4",
+        "3.11.7"
+      ],
+      "evidence": [
+        {
+          "path": "drizzle/0025_assistant_message_citations.sql",
+          "blob": "1507cf1b94ed1c7a864d2033e4d259df905f6307",
+          "command": "Adds only the citation table and message/time index"
+        },
+        {
+          "path": "drizzle/0026_assistant_lookup_indexes.sql",
+          "blob": "72981660a24e68ad7342865de4ec6a85b0c114aa",
+          "command": "Adds lookup indexes for global client request and user-message job queries"
+        }
+      ]
+    }
+  }
+}

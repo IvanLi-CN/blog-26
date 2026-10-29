@@ -1,5 +1,6 @@
 import { isLocalContentEnabled, SYSTEM_CONFIG } from "@/config/paths";
 import { vectorizeAll } from "@/lib/ai/vectorization";
+import { runAiUsageMaintenance } from "@/lib/ai-usage";
 import { getContentSourceManager, LocalContentSource } from "@/lib/content-sources";
 
 export type Logger = {
@@ -123,6 +124,21 @@ export const jobDefinitions: JobDefinition[] = [
       if (stats.failed > 0) {
         log.error("vectorization_failures", { failed: stats.failed });
       }
+    },
+  },
+  {
+    key: "ai-usage-maintenance",
+    name: "AI 用量维护",
+    description: "每天汇总 AI 用量并清理九十天前的明细",
+    schedule: { kind: "dailyAt", hour: 2, minute: 0 },
+    run: async (log) => {
+      const result = await runAiUsageMaintenance();
+      log.info("ai_usage_maintenance_completed", {
+        rollupDays: result.rollups.length,
+        rollupRecords: result.rollups.reduce((total, rollup) => total + rollup.records, 0),
+        rollupDimensions: result.rollups.reduce((total, rollup) => total + rollup.dimensions, 0),
+        deletedDetails: result.cleanup.deleted,
+      });
     },
   },
   {

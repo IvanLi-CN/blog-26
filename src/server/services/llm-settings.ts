@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { desc, eq, sql } from "drizzle-orm";
+import { type AiUsageContext, extractAiUsage, meterProviderCall } from "@/lib/ai-usage";
 import { db, initializeDB } from "@/lib/db";
 import {
   type AdminChatSettings,
@@ -147,13 +148,36 @@ async function fetchWithTimeout(
   input: string,
   init: RequestInit,
   timeoutMs: number,
-  timeoutLabel: string
+  timeoutLabel: string,
+  metering?: AiUsageContext
 ) {
   try {
-    return await fetch(input, {
-      ...init,
-      signal: AbortSignal.timeout(timeoutMs),
-    });
+    const call = () =>
+      fetch(input, {
+        ...init,
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    return await (metering
+      ? meterProviderCall({
+          context: metering,
+          call,
+          getOutcome: async (response) => {
+            let usage: unknown = null;
+            try {
+              usage = extractAiUsage(await response.clone().json());
+            } catch {
+              usage = null;
+            }
+            return {
+              status: response.ok ? "success" : "failure",
+              usage,
+              ...(response.ok
+                ? {}
+                : { error: { name: "ProviderHttpError", status: response.status } }),
+            };
+          },
+        })
+      : call());
   } catch (error) {
     if (isAbortLikeError(error)) {
       throw new LlmSettingsTestError(
@@ -947,9 +971,11 @@ function buildNextRecordWithTimestamps({
 async function runLlmConnectionTest({
   tier,
   resolved,
+  metering: meteringInput,
 }: {
   tier: "chat" | "embedding" | "rerank";
   resolved: ResolvedTierConfig;
+  metering?: AiUsageContext;
 }): Promise<AdminLlmSettingsTestResponse> {
   if (!resolved.model) {
     throw new LlmSettingsInputError("请先选择要测试的模型");
@@ -966,6 +992,13 @@ async function runLlmConnectionTest({
     Authorization: `Bearer ${resolved.apiKey}`,
   };
   const timeoutMs = getPositiveIntEnv("LLM_SETTINGS_TEST_TIMEOUT_MS", DEFAULT_LLM_TEST_TIMEOUT_MS);
+  const metering = {
+    ...meteringInput,
+    feature: "model-validation",
+    provider: "openai-compatible",
+    model: resolved.model,
+    metadata: { ...meteringInput?.metadata, tier },
+  } satisfies AiUsageContext;
   const parseJsonPayload = async <T>(response: Response, failureMessage: string): Promise<T> => {
     try {
       return (await response.json()) as T;
@@ -988,7 +1021,8 @@ async function runLlmConnectionTest({
         }),
       },
       timeoutMs,
-      "对话模型测试超时"
+      "对话模型测试超时",
+      { ...metering, inputEstimateTokens: 8, outputEstimateTokens: 8 }
     );
     if (!response.ok) {
       const details = await response.text().catch(() => "");
@@ -1022,7 +1056,8 @@ async function runLlmConnectionTest({
         }),
       },
       timeoutMs,
-      "嵌入模型测试超时"
+      "嵌入模型测试超时",
+      { ...metering, inputEstimateTokens: 1, outputEstimateTokens: 1 }
     );
     if (!response.ok) {
       const details = await response.text().catch(() => "");
@@ -1060,7 +1095,8 @@ async function runLlmConnectionTest({
       }),
     },
     timeoutMs,
-    "重排序模型测试超时"
+    "重排序模型测试超时",
+    { ...metering, inputEstimateTokens: 16, outputEstimateTokens: 16 }
   );
   if (!response.ok) {
     const details = await response.text().catch(() => "");
@@ -1103,7 +1139,8 @@ export async function updateAdminLlmSettings(input: AdminLlmSettingsUpdateInput)
 
 export async function testAdminLlmSettings(
   tier: "chat" | "embedding" | "rerank",
-  input: AdminLlmSettingsUpdateInput
+  input: AdminLlmSettingsUpdateInput,
+  metering?: AiUsageContext
 ) {
   const { record } = await getPersistedLlmSettings();
   const prepared = buildNextRecordFromInput(record, input, {
@@ -1138,5 +1175,6 @@ export async function testAdminLlmSettings(
   return runLlmConnectionTest({
     tier,
     resolved: prepared.resolved[tier],
+    metering,
   });
 }

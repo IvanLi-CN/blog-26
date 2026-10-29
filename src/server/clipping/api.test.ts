@@ -10,9 +10,21 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import matter from "gray-matter";
+import { ASSISTANT_DISCUSSION_MIGRATION_ID } from "@/lib/assistant-discussion-migration";
+import { createAssistantStorage } from "@/lib/assistant-storage";
 import { db, initializeDB } from "@/lib/db";
-import { memoClippings, posts } from "@/lib/schema";
+import {
+  assistantMigrationState,
+  frontendSessions,
+  frontendUsers,
+  memoClippings,
+  posts,
+  sessions,
+  users,
+} from "@/lib/schema";
 import { buildPublicSnapshot, writePublicSnapshot } from "@/public-site/snapshot";
+import { createAssistantRuntimeForTest } from "@/server/assistant/runtime";
+import { AssistantServiceError, createAssistantServiceForTest } from "@/server/assistant/service";
 import type { TRPCContext } from "@/server/context";
 import { runWithMcpAuth } from "@/server/mcp-auth-context";
 import { memosRouter } from "@/server/routers/memos";
@@ -34,18 +46,58 @@ const fm: Record<string, unknown> = { public: true, tags: ["剪藏"] };
 const prior = { ...process.env };
 let clippingId: string;
 const versionId = randomUUID();
+const frontendToken = "clipping-frontend-session-token";
+const backendAdminToken = "clipping-backend-admin-session-token";
 const resourceFilename = `${createHash("sha256").update("captured image").digest("hex")}.png`;
+const sourceContent = `# Article\n\nSource.\n\n![Asset](./assets/${resourceFilename})`;
 let raw: string;
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), "clipping-api-"));
   process.env.DB_PATH = join(root, "app.sqlite");
   process.env.LOCAL_CONTENT_BASE_PATH = join(root, "authored");
   process.env.CLIPPING_CONTENT_BASE_PATH = join(root, "materials");
+  process.env.ADMIN_EMAIL = "admin@example.com";
   await mkdir(join(root, "authored", "Memos"), { recursive: true });
   const sqlite = new Database(process.env.DB_PATH);
   migrate(drizzle(sqlite), { migrationsFolder: "drizzle" });
   sqlite.close();
   await initializeDB(true);
+  await db.insert(users).values({
+    id: "clipping-backend-admin",
+    email: "admin@example.com",
+    name: "Clipping Admin",
+    createdAt: Date.now(),
+  });
+  await db.insert(sessions).values({
+    id: backendAdminToken,
+    userId: "clipping-backend-admin",
+    deviceInfo: null,
+    ipAddress: null,
+    expiresAt: Date.now() + 60_000,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    isActive: true,
+  });
+  await db.insert(frontendUsers).values({
+    id: "clipping-frontend-user",
+    adminUserId: null,
+    isAdmin: false,
+    displayName: "Clipping Reader",
+    email: "reader@example.com",
+    avatarUrl: "/site-assets/default-avatar.svg",
+    profileUrl: null,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+  await db.insert(frontendSessions).values({
+    id: "clipping-frontend-session",
+    frontendUserId: "clipping-frontend-user",
+    authSource: "github",
+    tokenHash: createHash("sha256").update(frontendToken).digest("hex"),
+    expiresAt: Date.now() + 60_000,
+    createdAt: Date.now(),
+    revokedAt: null,
+  });
   await attachClippingReference(body, fm, "creator", id);
   clippingId = (fm.clipping as { id: string }).id;
   raw = matter.stringify(body, fm);
@@ -89,7 +141,7 @@ beforeAll(async () => {
           status: "completed",
           summaryState: "completed",
           translationState: "completed",
-          sourceHash: createHash("sha256").update("# Article\n\nSource.").digest("hex"),
+          sourceHash: createHash("sha256").update(sourceContent).digest("hex"),
           pageTitle: "Article",
         }),
       ],
@@ -120,7 +172,7 @@ beforeAll(async () => {
   ];
   await store.save(stored);
   for (const [artifact, content] of Object.entries({
-    source: `# Article\n\nSource.\n\n![Asset](./assets/${resourceFilename})`,
+    source: sourceContent,
     summary: "摘要。",
     translation: "# 文章\n\n正文。",
   }))
@@ -132,7 +184,12 @@ beforeAll(async () => {
     );
 });
 afterAll(async () => {
-  for (const key of ["DB_PATH", "LOCAL_CONTENT_BASE_PATH", "CLIPPING_CONTENT_BASE_PATH"]) {
+  for (const key of [
+    "DB_PATH",
+    "LOCAL_CONTENT_BASE_PATH",
+    "CLIPPING_CONTENT_BASE_PATH",
+    "ADMIN_EMAIL",
+  ]) {
     if (prior[key] === undefined) delete process.env[key];
     else process.env[key] = prior[key];
   }
@@ -163,6 +220,33 @@ async function request(operation: string, actor: Parameters<typeof context>[0]) 
     "clip",
     operation,
     context(actor)
+  );
+}
+function frontendRequest(operation: string, init: RequestInit = {}) {
+  const headers = new Headers(init.headers);
+  headers.set("cookie", `frontend_session_id=${frontendToken}`);
+  return handleClippingRequest(
+    new Request(`http://localhost/api/public/memos/clip/clipping/${operation}`, {
+      ...init,
+      headers,
+    }),
+    "clip",
+    operation,
+    context("guest")
+  );
+}
+
+function backendAdminRequest(operation: string, init: RequestInit = {}) {
+  const headers = new Headers(init.headers);
+  headers.set("cookie", `session_id=${backendAdminToken}`);
+  return handleClippingRequest(
+    new Request(`http://localhost/api/public/memos/clip/clipping/${operation}`, {
+      ...init,
+      headers,
+    }),
+    "clip",
+    operation,
+    context("guest")
   );
 }
 
@@ -331,7 +415,7 @@ test("resource facade rejects captured files from an incomplete version", async 
   }
 });
 
-test("public reading exposes only materials; conversation is restricted to creator and admin and history/restore are absent", async () => {
+test("public reading exposes only materials; conversation requires a frontend session", async () => {
   const reading = await (await request("", "guest")).json();
   expect(reading.source).toContain("Source.");
   expect(reading.content).toBe("备注\n\n---\n\n**Agent 摘要**\n\n摘要。");
@@ -340,10 +424,10 @@ test("public reading exposes only materials; conversation is restricted to creat
   expect(JSON.stringify(reading)).not.toContain("cdn.example/image.png");
   expect(JSON.stringify(reading)).not.toContain("private-conversation");
   expect(JSON.stringify(reading)).not.toContain("creator");
-  for (const actor of ["guest", "other"] as const)
+  for (const actor of ["guest", "other", "creator", "admin"] as const)
     for (const operation of ["chat", "chat/events"])
       await expect(request(operation, actor)).rejects.toMatchObject({
-        code: actor === "guest" ? "UNAUTHORIZED" : "FORBIDDEN",
+        code: "UNAUTHORIZED",
       });
   for (const actor of ["guest", "creator", "admin"] as const) {
     expect((await request("history", actor)).status).toBe(404);
@@ -454,7 +538,7 @@ test("conversation selectors cannot expose an earlier target discussion", async 
         "chat",
         context(actor)
       )
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   }
 });
 
@@ -640,9 +724,11 @@ test("private operations reject a removed canonical marker before stale runtime 
       join(root, "authored", id),
       matter.stringify("https://article.example/one", { ...fm, tags: [] })
     );
-    for (const operation of ["chat", "chat/events", "reprocess"])
-      for (const actor of ["creator", "admin"] as const)
-        await expect(request(operation, actor)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    for (const actor of ["creator", "admin"] as const) {
+      for (const operation of ["chat", "chat/events"])
+        await expect(request(operation, actor)).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+      await expect(request("reprocess", actor)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    }
   } finally {
     await writeFile(join(root, "authored", id), raw);
   }
@@ -659,7 +745,7 @@ test("a snapshot loaded across a target change cannot be returned as the current
   const key = Symbol.for("blog26.clipping.runtime");
   const globals = globalThis as typeof globalThis & { [key]: { service: ClippingService | null } };
   const previous = globals[key].service;
-  const original = service.chatSnapshot;
+  const original = service.assistantSnapshot;
   let entered!: () => void;
   let release!: () => void;
   const blocked = new Promise<void>((resolve) => {
@@ -668,14 +754,14 @@ test("a snapshot loaded across a target change cannot be returned as the current
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
-  service.chatSnapshot = async () => {
+  service.assistantSnapshot = async () => {
     entered();
     await gate;
-    return { messages: [], generating: false, partial: "" };
+    return null;
   };
   globals[key].service = service;
   try {
-    const pending = request("chat", "creator");
+    const pending = frontendRequest("chat");
     const result = pending.then(
       () => ({ code: "unexpected-success" }),
       (error) => error
@@ -684,12 +770,241 @@ test("a snapshot loaded across a target change cannot be returned as the current
     await writeFile(join(root, "authored", id), matter.stringify(body.replace("/one", "/two"), fm));
     release();
     expect(await result).toMatchObject({ code: "CONFLICT" });
-    await expect(request("chat", "admin")).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(frontendRequest("chat")).rejects.toMatchObject({ code: "CONFLICT" });
   } finally {
     release();
     globals[key].service = previous;
-    service.chatSnapshot = original;
+    service.assistantSnapshot = original;
     await writeFile(join(root, "authored", id), raw);
+    await service.close();
+  }
+});
+
+test("frontend clipping chat routes use the unified assistant and cap SSE streams", async () => {
+  const manifest = await store.manifest(clippingId);
+  if (!manifest) throw new Error("Fixture manifest is missing");
+  const originalManifest = structuredClone(manifest);
+  const previousState = (
+    await db
+      .select()
+      .from(assistantMigrationState)
+      .where(eq(assistantMigrationState.id, ASSISTANT_DISCUSSION_MIGRATION_ID))
+  )[0];
+  store.beforePublish = undefined;
+  manifest.conversationId = null;
+  manifest.previousConversations = [];
+  await store.save(manifest);
+  await db
+    .insert(assistantMigrationState)
+    .values({
+      id: ASSISTANT_DISCUSSION_MIGRATION_ID,
+      status: "complete",
+      sourceVersion: "pi-durable-1",
+      cursor: null,
+      scanned: 0,
+      migrated: 0,
+      quarantined: 0,
+      errorCount: 0,
+      updatedAt: Date.now(),
+      lastError: null,
+    })
+    .onConflictDoUpdate({
+      target: assistantMigrationState.id,
+      set: { status: "complete", errorCount: 0, lastError: null, updatedAt: Date.now() },
+    });
+  const assistantStorage = createAssistantStorage(db ?? undefined);
+  const assistantRuntime = createAssistantRuntimeForTest({
+    storage: assistantStorage,
+    pumpDelayMs: 0,
+    generate: async ({ onDelta }) => {
+      await onDelta("HTTP unified answer");
+      return { content: "HTTP unified answer", citations: [] };
+    },
+  });
+  const assistantService = createAssistantServiceForTest({
+    storage: assistantStorage,
+    runtime: assistantRuntime,
+  });
+  const service = await ClippingService.open({
+    store,
+    assistantService,
+    runtimePath: join(root, "api-unified-assistant.sqlite"),
+    memoIds: async () => [id],
+    resolveModel: async () => ({ model: null, baseUrl: null, apiKey: null }),
+    scanIntervalMs: 60_000,
+    index: async () => undefined,
+  });
+  const key = Symbol.for("blog26.clipping.runtime");
+  const globals = globalThis as typeof globalThis & { [key]: { service: ClippingService | null } };
+  const previous = globals[key].service;
+  const originalSnapshot = service.assistantSnapshot;
+  let release: (() => void) | undefined;
+  try {
+    globals[key].service = service;
+    const adminArticle = await backendAdminRequest("");
+    expect(adminArticle.status).toBe(200);
+    expect((await adminArticle.json()).canDiscuss).toBe(true);
+    const initial = await frontendRequest("chat");
+    expect(initial.status).toBe(200);
+    expect(await initial.json()).toMatchObject({ conversationId: null, messages: [] });
+
+    const originalChat = service.assistantChat;
+    try {
+      for (const [error, status] of [
+        [new AssistantServiceError("conflict", "discussion changed"), 409],
+        [new AssistantServiceError("quota", "quota exceeded"), 429],
+      ] as const) {
+        service.assistantChat = async () => {
+          throw error;
+        };
+        const response = await handlePublicApiRequest(
+          new Request("http://localhost/api/public/memos/clip/clipping/chat", {
+            method: "POST",
+            headers: {
+              cookie: `frontend_session_id=${frontendToken}`,
+              origin: "http://localhost",
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({
+              text: "What does the article preserve?",
+              requestId: `error-${status}`,
+            }),
+          }),
+          "/memos/clip/clipping/chat"
+        );
+        expect(response.status).toBe(status);
+      }
+    } finally {
+      service.assistantChat = originalChat;
+    }
+
+    const submitted = await frontendRequest("chat", {
+      method: "POST",
+      headers: { origin: "http://localhost", "content-type": "application/json" },
+      body: JSON.stringify({ text: "What does the article preserve?", requestId: "http-chat-1" }),
+    });
+    expect(submitted.status).toBe(202);
+    const submission = await submitted.json();
+    expect(submission.conversationId).toBeString();
+    const current = await frontendRequest("chat");
+    expect((await current.json()).conversationId).toBe(submission.conversationId);
+
+    const continuation = await frontendRequest("chat", {
+      method: "POST",
+      headers: { origin: "http://localhost", "content-type": "application/json" },
+      body: JSON.stringify({ text: "What can be continued?", requestId: "http-chat-2" }),
+    });
+    expect(continuation.status).toBe(202);
+    expect((await continuation.json()).conversationId).toBe(submission.conversationId);
+
+    const events = await frontendRequest("chat/events");
+    expect(events.status).toBe(200);
+    const eventReader = events.body?.getReader();
+    expect(eventReader).toBeTruthy();
+    await eventReader?.read();
+    await eventReader?.cancel();
+
+    const originalAdminSnapshot = service.assistantSnapshot;
+    service.assistantSnapshot = async () => {
+      await db.update(sessions).set({ isActive: false }).where(eq(sessions.id, backendAdminToken));
+      return {
+        conversation: {
+          id: "admin-private-conversation",
+          frontendUserId: "admin",
+          kind: "clipping",
+          title: "private",
+          clippingMemoId: id,
+          clippingSlug: "clip",
+          clippingVersionId: versionId,
+          status: "active",
+          createdAt: Date.now(),
+          lastUserMessageAt: Date.now(),
+          expiresAt: Date.now() + 60_000,
+          deletedAt: null,
+        },
+        messages: [],
+        generationJobs: [],
+        activeGenerationJob: null,
+        eventSequence: 1,
+      };
+    };
+    try {
+      const revokedEvents = await backendAdminRequest("chat/events");
+      expect(await revokedEvents.text()).not.toContain("event: snapshot");
+    } finally {
+      service.assistantSnapshot = originalAdminSnapshot;
+      await db.update(sessions).set({ isActive: true }).where(eq(sessions.id, backendAdminToken));
+    }
+
+    let entered = 0;
+    let resolveEntered!: () => void;
+    const allEntered = new Promise<void>((resolve) => {
+      resolveEntered = resolve;
+    });
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    service.assistantSnapshot = async () => {
+      entered++;
+      if (entered === 4) resolveEntered();
+      await blocked;
+      return null;
+    };
+    const streams = await Promise.all(
+      Array.from({ length: 4 }, () => frontendRequest("chat/events"))
+    );
+    await allEntered;
+    await expect(frontendRequest("chat/events")).rejects.toMatchObject({
+      code: "TOO_MANY_REQUESTS",
+    });
+    await Promise.all(streams.map((stream) => stream.body?.cancel()));
+    release?.();
+  } finally {
+    release?.();
+    service.assistantSnapshot = originalSnapshot;
+    globals[key].service = previous;
+    await store.save(originalManifest);
+    await service.close();
+    await assistantRuntime.stop();
+    await db.delete(assistantMigrationState);
+    if (previousState) await db.insert(assistantMigrationState).values(previousState);
+  }
+});
+
+test("migration gate blocks clipping chat while reprocess remains available", async () => {
+  const manifest = await store.manifest(clippingId);
+  if (!manifest) throw new Error("Fixture manifest is missing");
+  const originalManifest = structuredClone(manifest);
+  const service = await ClippingService.open({
+    store,
+    runtimePath: join(root, "api-migration-gate.sqlite"),
+    memoIds: async () => [id],
+    resolveModel: async () => ({ model: null, baseUrl: null, apiKey: null }),
+    capture: async (target) => ({
+      markdown: "# Reprocessed article\n\nFresh source.",
+      title: "Reprocessed article",
+      url: target,
+      warning: null,
+      resources: [],
+    }),
+    scanIntervalMs: 60_000,
+    index: async () => undefined,
+  });
+  const key = Symbol.for("blog26.clipping.runtime");
+  const globals = globalThis as typeof globalThis & { [key]: { service: ClippingService | null } };
+  const previous = globals[key].service;
+  try {
+    globals[key].service = service;
+    await expect(frontendRequest("chat")).rejects.toMatchObject({
+      code: "SERVICE_UNAVAILABLE",
+    });
+    await expect(frontendRequest("chat/events")).rejects.toMatchObject({
+      code: "SERVICE_UNAVAILABLE",
+    });
+    expect((await request("reprocess", "creator")).status).toBe(202);
+  } finally {
+    globals[key].service = previous;
+    await store.save(originalManifest);
     await service.close();
   }
 });

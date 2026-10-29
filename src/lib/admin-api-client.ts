@@ -411,6 +411,129 @@ export interface JobRun {
   errorMessage: string | null;
 }
 
+export type AdminUsageRange = "today" | "7d" | "30d" | "90d" | "365d" | "custom";
+export type AdminUsageGroupBy = "user" | "feature" | "model";
+export type AdminUsageStatus = "success" | "failure" | "cancelled" | "missing" | "incomplete";
+
+export interface AdminUsageMetric {
+  callCount: number;
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  reasoningTokens: number;
+  totalTokens: number;
+  estimatedCallCount: number;
+  incompleteCallCount: number;
+  successCallCount: number;
+  failureCallCount: number;
+  cancelledCallCount: number;
+  actualCallCount: number;
+  missingCallCount: number;
+}
+
+export interface AdminUsageRetention {
+  detailRetentionDays: number;
+  detailAvailableFrom: string;
+  rangeCoverage: "detail" | "mixed" | "summary";
+  resultFilterCoverage: "detail" | "mixed" | "summary";
+}
+
+export interface AdminUsageDetail {
+  id: string;
+  day: string;
+  occurredAt: number;
+  frontendUserId: string | null;
+  feature: string;
+  provider: string | null;
+  model: string | null;
+  status: AdminUsageStatus;
+  inputTokens: number | null;
+  cachedInputTokens: number | null;
+  outputTokens: number | null;
+  reasoningTokens: number | null;
+  totalTokens: number | null;
+  estimated: boolean;
+  usageComplete: boolean;
+}
+
+export interface AdminAiUsageOverview {
+  timezone: string;
+  range: { preset: AdminUsageRange; from: string; to: string; startAt: number; endAt: number };
+  metric: AdminUsageMetric;
+  trend: Array<AdminUsageMetric & { day: string }>;
+  groups: Array<
+    AdminUsageMetric & {
+      key: string;
+      label: string;
+      frontendUserId: string | null;
+      feature: string | null;
+      model: string | null;
+    }
+  >;
+  details: AdminUsageDetail[];
+  detailTotal: number;
+  detailsTruncated: boolean;
+  facets: { users: Array<{ id: string; label: string }>; features: string[]; models: string[] };
+  retention: AdminUsageRetention;
+}
+
+export interface AdminDashboardAiUsage {
+  timezone: string;
+  range: { from: string; to: string };
+  metric: AdminUsageMetric;
+  trend: Array<AdminUsageMetric & { day: string }>;
+}
+
+export interface AdminUsageUser {
+  id: string;
+  displayName: string;
+  email: string | null;
+  avatarUrl: string;
+  profileUrl: string | null;
+  isAdmin: boolean;
+  identityProviders: string[];
+  usage: {
+    hour: AdminUsageMetric;
+    week: AdminUsageMetric;
+    allTime: AdminUsageMetric;
+  };
+  quota: {
+    policy: {
+      tokenHourlyLimit: number;
+      tokenWeeklyLimit: number;
+      questionHourlyLimit: number;
+      questionWeeklyLimit: number;
+      maxConversations: number;
+      timezone: string;
+    };
+    cycleId: string;
+    cycleStartAt: number;
+    tokenHour: number;
+    tokenWeek: number;
+    questionHour: number;
+    questionWeek: number;
+  };
+  quotaStatus: "unlimited" | "available" | "exhausted";
+}
+
+export interface AdminUsersResponse {
+  users: AdminUsageUser[];
+  total: number;
+  policy: {
+    id: string;
+    scope: "global";
+    tokenHourlyLimit: number;
+    tokenWeeklyLimit: number;
+    questionHourlyLimit: number;
+    questionWeeklyLimit: number;
+    maxConversations: number;
+    retentionMs: number;
+    timezone: string;
+    createdAt: number;
+    updatedAt: number;
+  };
+}
+
 export interface PersonalAccessTokenListRow {
   token: {
     id: string;
@@ -595,6 +718,41 @@ export const adminApi = {
   dashboardStats: () => adminRequest<DashboardStats>("/api/admin/dashboard/stats"),
   dashboardRecentActivity: (limit = 10) =>
     adminRequest<ActivityItem[]>(`/api/admin/dashboard/recent-activity${buildSearch({ limit })}`),
+  dashboardAiUsage: () => adminRequest<AdminDashboardAiUsage>("/api/admin/dashboard/ai-usage"),
+  listUsers: (search?: string) =>
+    adminRequest<AdminUsersResponse>(`/api/admin/users${buildSearch({ search })}`),
+  resetUserQuota: (userId: string) =>
+    adminRequest<{
+      success: boolean;
+      resetAt: number;
+      quota: AdminUsersResponse["users"][number]["quota"];
+    }>(`/api/admin/users/${encodeURIComponent(userId)}/quota-reset`, { method: "POST" }),
+  getAiUsage: (
+    params: {
+      range?: AdminUsageRange;
+      from?: string;
+      to?: string;
+      groupBy?: AdminUsageGroupBy;
+      user?: string;
+      feature?: string;
+      model?: string;
+      status?: AdminUsageStatus;
+    } = {}
+  ) => adminRequest<AdminAiUsageOverview>(`/api/admin/ai-usage${buildSearch(params)}`),
+  getAiUsagePolicy: () => adminRequest<AdminUsersResponse["policy"]>("/api/admin/ai-usage/policy"),
+  updateAiUsagePolicy: (input: {
+    tokenHourlyLimit: number;
+    tokenWeeklyLimit: number;
+    questionHourlyLimit: number;
+    questionWeeklyLimit: number;
+    maxConversations: number;
+    retentionMs: number;
+    timezone: string;
+  }) =>
+    adminRequest<AdminUsersResponse["policy"]>("/api/admin/ai-usage/policy", {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
   listPosts: (params: {
     page?: number;
     limit?: number;

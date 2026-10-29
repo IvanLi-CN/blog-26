@@ -664,6 +664,7 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
+  error,
   confirmLabel = "确认",
   cancelLabel = "取消",
   destructive,
@@ -676,6 +677,7 @@ export function ConfirmDialog({
   onOpenChange: (open: boolean) => void;
   title: string;
   description?: ReactNode;
+  error?: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;
@@ -700,6 +702,7 @@ export function ConfirmDialog({
               {description}
             </DialogDescription>
           ) : null}
+          {error ? <div className="mt-3">{error}</div> : null}
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={confirmPending}>

@@ -37,7 +37,7 @@
     "site/components/ClippingWebDemo.tsx": "353900f5fd2a0f6e91629ed83f72ca4a42bd9a18",
     "site/components/MemoCard.tsx": "c82624114e5e6321feab2472b45126c1e0b3d3f2",
     "site/components/MemoTimeline.tsx": "d7f6e8060c4a7c6aec11ccc0fc7d381b3effea81",
-    "site/components/PublicMemoAuthoring.tsx": "e4b2d96c43b1b0d40d16569f2c8b06b62019e95b",
+    "site/components/PublicMemoAuthoring.tsx": "57f3c8a71b730b9df28e1b56a3302fc9d3a7be44",
     "site/components/SearchPageIsland.tsx": "dde088e6a1fdf284c185ee87db6f61a0b7856958",
     "site/lib/feeds.ts": "5ca3af8739e47fbaeb7dfa9a3cf9f9b37be8a415",
     "site/lib/page-data/memo.ts": "4d7a448125072cb4e6785492d8de7d68699fd433",
@@ -53,7 +53,7 @@
     "src/components/common/markdown/utils.ts": "8902cb3e0519e31faf0d3dcf2294a5a21b8432df",
     "src/components/common/markdown/types.ts": "6d4226513de89a3ab2cf932e094568f2f5a4b782",
     "src/components/playbook/PlaybookPage.tsx": "0f2b90c774648f2f36ff40052c7f6ed83421a834",
-    "src/components/memos/ClippingDetail.tsx": "2677c532bcda21cfa4333a25804c18364c303110",
+    "src/components/memos/ClippingDetail.tsx": "963dc11c50e2f68908da03683548856c67e1d9b3",
     "src/components/memos/MemoTypeBadge.tsx": "fe36401e4351c285300c2a0362a3fd1e76479802",
     "src/components/memos/clipping-admin.css": "349c60d5c1590b5c5a04a65e4d2b43276458f7c3",
     "src/components/search/PublicSearchPage.stories.tsx": "4e982094e4934b35136ef18b6520afa762575d89",
@@ -81,8 +81,8 @@
     "src/public-site/snapshot.ts": "344e805dd3eb5ced704bcbbd8b5ddcad71f51082",
     "src/server/clipping/agent-runtime.test.ts": "b9c6feeee3f66cde97853e583d522137dbed4c45",
     "src/server/clipping/agent-runtime.ts": "a8ead68b7114cc989f5b8b2b7f639692d3c23bc5",
-    "src/server/clipping/api.test.ts": "72ec290acd97fc056ff9cd929ed1360c0e56a971",
-    "src/server/clipping/api.ts": "8b336025dad0a2fe3e4d27cf7f30eb63295ad419",
+    "src/server/clipping/api.test.ts": "b215b6497aa88979a3a78097cced9a7651903a2c",
+    "src/server/clipping/api.ts": "ea01ccbc1f2476d55225917ce5b72f1d433e2143",
     "src/server/clipping/article-segments.test.ts": "77fde805095f3ebd2478e6c258190eae40a97df7",
     "src/server/clipping/article-segments.ts": "7bf73b79a27d9a2d7b5fa067b74146e4b14c567e",
     "src/server/clipping/extract.test.ts": "dcd5442c3949f4f41e7bdc398aa3441f169550f6",
@@ -109,7 +109,7 @@
     "src/server/routers/memos.ts": "0bfc0669abaeee3abc6042d6dbc093e93bef75d0",
     "src/server/routers/tags.ts": "a375a6e04387c7ff8c8edfb00f67f36dea909ac0",
     "src/server/services/tag-content.ts": "909037210a01b2eeeab861224c2e7e9e9d6261a9",
-    "tests/e2e/clipping-detail.ts": "1a16934b457fca6a09aff6484760cd802f983750",
+    "tests/e2e/clipping-detail.ts": "6d8a5509761767a08a7cb6ffa5d71d83c2dd90f1",
     "tests/e2e/clipping-web-demo.ts": "996f804d348c184986bdf454963343f6470fd995",
     "tests/lib/clipping-web-demo.test.ts": "7b2a9ec797882d3249437825746d74b846825681",
     "tests/lib/playbook-contract.test.ts": "f4fb4bf45f224a0b2b9c3bb645787e77a88fb357",
@@ -132,7 +132,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "53fd89695086935039b01db6627928e2f0dc193b",
+          "blob": "b215b6497aa88979a3a78097cced9a7651903a2c",
           "command": "setpriv --bounding-set=-dac_override,-dac_read_search bun run test:precommit (session Agent VM; 939 passed)"
         },
         {
@@ -169,7 +169,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "72ec290acd97fc056ff9cd929ed1360c0e56a971",
+          "blob": "b215b6497aa88979a3a78097cced9a7651903a2c",
           "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
@@ -220,7 +220,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "72ec290acd97fc056ff9cd929ed1360c0e56a971",
+          "blob": "b215b6497aa88979a3a78097cced9a7651903a2c",
           "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {
@@ -293,7 +293,7 @@
       "evidence": [
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "72ec290acd97fc056ff9cd929ed1360c0e56a971",
+          "blob": "b215b6497aa88979a3a78097cced9a7651903a2c",
           "command": "bun run test (source candidate 136ab9f1; 1242 passed, 67 skipped; real model calls disabled)"
         },
         {

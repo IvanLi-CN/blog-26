@@ -5,7 +5,9 @@ import { extname, resolve } from "node:path";
 import { extractAuthFromRequest } from "@/lib/auth-utils";
 import { withForwardedProtocol } from "@/lib/forwarded-protocol";
 import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
+import { startAssistantRuntime, stopAssistantRuntime } from "@/server/assistant/runtime";
 import { startClippingRuntime, stopClippingRuntime } from "@/server/clipping/runtime";
+import { startJobsRuntime, stopJobsRuntime } from "@/server/jobs/runtime";
 import {
   startSearchIndexRuntime,
   stopSearchIndexRuntime,
@@ -211,8 +213,10 @@ await startClippingRuntime();
 await startSearchIndexRuntime();
 const playbook = getRuntimePlaybookStore();
 await playbook.load();
+await startAssistantRuntime();
 const { startContentSyncRuntime } = await import("../src/server/services/content-sync-runtime");
 await startContentSyncRuntime();
+await startJobsRuntime();
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
   if (url.pathname === "/api/version") {
@@ -238,9 +242,11 @@ const server = createServer(async (request, response) => {
 });
 
 async function shutdown() {
+  stopJobsRuntime();
   playbook.stop();
   const deadline = setTimeout(() => process.exit(1), 5000);
   deadline.unref();
+  await stopAssistantRuntime();
   await stopClippingRuntime();
   stopSearchIndexRuntime();
   server.close(() => {

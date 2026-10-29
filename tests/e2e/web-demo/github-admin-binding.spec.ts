@@ -15,6 +15,16 @@ async function expectNoHorizontalOverflow(page: import("@playwright/test").Page)
   expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth);
 }
 
+async function waitForWebDemoInspectorHydration(
+  page: import("@playwright/test").Page,
+  app: "public" | "admin"
+) {
+  await expect(page.locator(`body[data-web-demo-inspector-app="${app}"]`)).toHaveAttribute(
+    "data-web-demo-inspector-open",
+    /^(true|false)$/
+  );
+}
+
 async function openComments(
   page: import("@playwright/test").Page,
   persona: "user" | "admin",
@@ -52,11 +62,24 @@ test.describe("GitHub admin binding Web Demo", () => {
     ).toContainText("待审核");
 
     const unboundAdmin = await openComments(page, "admin", "unbound");
-    await expect(unboundAdmin.getByRole("button", { name: "GitHub 登录" })).toBeVisible();
-    await expect(unboundAdmin.getByRole("button", { name: "直接发布" })).toHaveCount(0);
+    await expect(
+      unboundAdmin.locator(".comment-form").getByText("管理员", { exact: true })
+    ).toBeVisible();
+    await expect(unboundAdmin.getByRole("button", { name: "直接发布" })).toBeVisible();
+    await unboundAdmin
+      .getByRole("textbox", { name: "评论内容" })
+      .fill("未绑定管理员的新评论也会直接公开。");
+    await unboundAdmin.getByRole("button", { name: "直接发布" }).click();
+    await expect(unboundAdmin.getByRole("alert")).toContainText("管理员评论已公开");
+    const unboundCreated = unboundAdmin.locator(".comment-item--root").filter({
+      hasText: "未绑定管理员的新评论也会直接公开。",
+    });
+    await expect(unboundCreated.getByText("管理员", { exact: true })).toBeVisible();
 
     const boundAdmin = await openComments(page, "admin", "bound");
-    await expect(boundAdmin.getByText("GitHub 管理员", { exact: true })).toBeVisible();
+    await expect(
+      boundAdmin.locator(".comment-form").getByText("管理员", { exact: true })
+    ).toBeVisible();
     await expect(boundAdmin.getByRole("button", { name: "直接发布" })).toBeVisible();
     const seeded = boundAdmin.locator(".comment-item--root").filter({
       hasText: seededAdminComment,
@@ -113,6 +136,7 @@ test.describe("GitHub admin binding Web Demo", () => {
     await page.getByRole("button", { name: "绑定 GitHub" }).click();
     await expect(page.getByRole("status")).toContainText("演示绑定已完成");
     await expect(page.getByText("已绑定", { exact: true })).toBeVisible();
+    await waitForWebDemoInspectorHydration(page, "admin");
     await page.getByTestId("web-demo-inspector-trigger").click();
     const inspectorPanel = page.getByRole("region", { name: "Web Demo 调试控制面板" });
     await expect(inspectorPanel).toContainText("模拟绑定 GitHub");
@@ -125,7 +149,10 @@ test.describe("GitHub admin binding Web Demo", () => {
     expect(publicPage?.ok()).toBe(true);
     const section = page.locator(".comment-section");
     await expect(section).toBeVisible();
-    await expect(section.getByRole("button", { name: "GitHub 登录" })).toBeVisible();
+    await expect(
+      section.locator(".comment-form").getByText("管理员", { exact: true })
+    ).toBeVisible();
+    await expect(section.getByRole("button", { name: "直接发布" })).toBeVisible();
     const seeded = section.locator(".comment-item--root").filter({ hasText: seededAdminComment });
     await expect(seeded).toBeVisible();
     await expect(seeded.getByText("管理员", { exact: true })).toBeVisible();
@@ -138,6 +165,7 @@ test.describe("GitHub admin binding Web Demo", () => {
     await page.goto(`${articlePath}?d_persona=admin&d_github_binding=bound&d_delay=normal`, {
       waitUntil: "domcontentloaded",
     });
+    await waitForWebDemoInspectorHydration(page, "public");
     const inspector = page.getByTestId("web-demo-inspector-trigger");
     await expect(inspector).toHaveAccessibleName("打开 Web Demo 调试控制面板");
     await inspector.focus();

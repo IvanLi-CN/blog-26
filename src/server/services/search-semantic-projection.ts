@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { cosineSimilarity } from "@/lib/ai/embeddings";
+import type { AiUsageContext } from "@/lib/ai-usage";
 import { db } from "@/lib/db";
 import { contentSyncLogs, searchSemanticEmbeddings } from "@/lib/schema";
 import { getResolvedLlmConfig, type ResolvedTierConfig } from "./llm-settings";
@@ -200,7 +202,7 @@ export async function semanticPlaybookCandidates(
   edition: PlaybookSearchEdition,
   limit: number,
   type: "all" | PlaybookSearchType = "all",
-  options: { timeoutMs?: number; signal?: AbortSignal } = {}
+  options: { timeoutMs?: number; signal?: AbortSignal; metering?: AiUsageContext } = {}
 ): Promise<PlaybookSearchCandidate[]> {
   if (options.signal?.aborted)
     throw options.signal.reason ?? new DOMException("Aborted", "AbortError");
@@ -229,11 +231,21 @@ export async function semanticPlaybookCandidates(
     .orderBy(asc(searchSemanticEmbeddings.id))
     .limit(10_000);
   if (!rows.length) return [];
+  const metering = options.metering
+    ? {
+        ...options.metering,
+        idempotencyKey: `${
+          options.metering.idempotencyKey ??
+          options.metering.logicalRequestId ??
+          `${options.metering.feature}:${randomUUID()}`
+        }:semantic-playbook`,
+      }
+    : undefined;
   const vector = await embedSearchQuery(
     config,
     query,
     options.timeoutMs,
-    options.signal ? { signal: options.signal } : undefined
+    options.signal || options.metering ? { signal: options.signal, metering } : undefined
   );
   const scoreByParent = new Map<string, number>();
   for (const row of rows) {

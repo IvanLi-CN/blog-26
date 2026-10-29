@@ -21,6 +21,13 @@ import { isAdminGithubId } from "@/lib/admin-github-binding";
 import type { SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import { generateSlugFromPath } from "@/lib/content-sources/utils";
 import { db, initializeDB } from "@/lib/db";
+import {
+  bootstrapFrontendAuth,
+  clearFrontendLogoutCookieHeader,
+  frontendAuthMe,
+  logoutFrontendAuth,
+  startAdminFrontendAuth,
+} from "@/lib/frontend-auth";
 import { buildMemoRelativePath, getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import {
   appendPublicCorsHeaders,
@@ -53,6 +60,8 @@ import {
   validateSystemShareFiles,
 } from "@/lib/system-share";
 import { buildPublicSnapshot, resolvePublicMemoTitle } from "@/public-site/snapshot";
+import { handleAssistantRequest } from "@/server/assistant/api";
+import type { AssistantService } from "@/server/assistant/service";
 import { handleClippingRequest, handleClippingResourceRequest } from "@/server/clipping/api";
 import { isClippingRowPublic, withClippingVisibilityLock } from "@/server/clipping/projection";
 import { readAuthoredMemo } from "@/server/clipping/store";
@@ -261,8 +270,19 @@ function json(request: Request, data: unknown, init: ResponseInit = {}, extraHea
   const headers = new Headers(init.headers);
   headers.set("content-type", "application/json; charset=utf-8");
   if (extraHeaders) {
+    const setCookies =
+      typeof extraHeaders.getSetCookie === "function" ? extraHeaders.getSetCookie() : null;
+    let copiedSetCookies = false;
     for (const [key, value] of extraHeaders.entries()) {
-      headers.set(key, value);
+      if (key.toLowerCase() === "set-cookie") {
+        if (copiedSetCookies) continue;
+        for (const cookie of setCookies?.length ? setCookies : [value]) {
+          headers.append(key, cookie);
+        }
+        copiedSetCookies = true;
+      } else {
+        headers.set(key, value);
+      }
     }
   }
   appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
@@ -1304,7 +1324,11 @@ function searchStreamResponse(request: Request, input: ContentSearchInput, resHe
   return new Response(stream, { status: 200, headers });
 }
 
-export async function handlePublicApiRequest(request: Request, subPath: string) {
+export async function handlePublicApiRequest(
+  request: Request,
+  subPath: string,
+  assistantService?: AssistantService
+) {
   try {
     if (request.method === "OPTIONS") {
       return createPublicCorsPreflightResponse(request, PUBLIC_API_ALLOWED_METHODS);
@@ -1492,6 +1516,7 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
           "cache-control": "no-store",
         });
         headers.append("set-cookie", result.cookie);
+        headers.append("set-cookie", clearFrontendLogoutCookieHeader(request));
         headers.append("set-cookie", clearReaderOAuthStateCookieHeader(request));
         appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
         return new Response(null, { status: 302, headers });
@@ -1537,7 +1562,74 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
       return response;
     }
 
+    if (pathname === "/chat" || pathname.startsWith("/chat/")) {
+      return handleAssistantRequest(request, pathname, new Headers(), assistantService);
+    }
+
     const { caller, resHeaders, ctx } = await createCallerForRequest(request);
+    if (pathname === "/frontend-auth/me") {
+      if (request.method !== "GET") return methodNotAllowed(request, request.method);
+      return json(
+        request,
+        await frontendAuthMe(request),
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+
+    if (pathname === "/frontend-auth/bootstrap") {
+      if (request.method !== "POST") return methodNotAllowed(request, request.method);
+      if (!hasTrustedPublicOrigin(request)) {
+        return json(request, { error: "请求来源不受信任" }, { status: 403 }, resHeaders);
+      }
+      const result = await bootstrapFrontendAuth(request);
+      for (const cookie of result.setCookies) resHeaders.append("set-cookie", cookie);
+      return json(
+        request,
+        result,
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+
+    if (pathname === "/frontend-auth/admin-start") {
+      if (request.method !== "POST") return methodNotAllowed(request, request.method);
+      if (!hasTrustedPublicOrigin(request)) {
+        return json(request, { error: "请求来源不受信任" }, { status: 403 }, resHeaders);
+      }
+      const result = await startAdminFrontendAuth(request);
+      for (const cookie of result.setCookies) resHeaders.append("set-cookie", cookie);
+      if (!result.authenticated) {
+        return json(
+          request,
+          { error: "请先登录管理员账号", ...result },
+          { status: 401, headers: { "cache-control": "no-store" } },
+          resHeaders
+        );
+      }
+      return json(
+        request,
+        result,
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+
+    if (pathname === "/frontend-auth/logout") {
+      if (request.method !== "POST") return methodNotAllowed(request, request.method);
+      if (!hasTrustedPublicOrigin(request)) {
+        return json(request, { error: "请求来源不受信任" }, { status: 403 }, resHeaders);
+      }
+      const result = await logoutFrontendAuth(request);
+      for (const cookie of result.setCookies) resHeaders.append("set-cookie", cookie);
+      return json(
+        request,
+        result,
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+
     if (pathname === "/system-share") {
       return await handleSystemShareRequest(request, caller, ctx, resHeaders);
     }
@@ -1556,7 +1648,7 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
       return result;
     }
     const clippingMatch = pathname.match(
-      /^\/memos\/([^/]+)\/clipping(?:\/(status|reprocess|chat(?:\/events)?))?$/
+      /^\/memos\/([^/]+)\/clipping(?:\/(status|reprocess|chat(?:\/(?:events|stop))?))?$/
     );
     if (clippingMatch) {
       const result = await handleClippingRequest(
