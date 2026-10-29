@@ -460,33 +460,41 @@ export async function getFrontendPrincipalFromRequest(request: Request) {
 
 function stateFromSession(
   session: Awaited<ReturnType<typeof getFrontendSession>>,
-  loggedOut: boolean
+  loggedOut: boolean,
+  canStartAdmin = session?.principal.isAdmin ?? false
 ): FrontendAuthState {
   return {
     authenticated: Boolean(session),
     principal: session?.principal ?? null,
     expiresAt: session?.session.expiresAt ?? null,
     loggedOut,
+    canStartAdmin,
   };
 }
 
 export async function frontendAuthMe(request: Request): Promise<FrontendAuthState> {
   const session = await getFrontendSession(request);
-  return stateFromSession(session, parseCookies(request)[FRONTEND_LOGOUT_COOKIE_NAME] === "1");
+  if (session) return stateFromSession(session, false);
+  const auth = await extractAuthFromRequest(request);
+  return stateFromSession(
+    null,
+    parseCookies(request)[FRONTEND_LOGOUT_COOKIE_NAME] === "1",
+    auth.isAdmin
+  );
 }
 
 export async function bootstrapFrontendAuth(request: Request): Promise<FrontendAuthMutation> {
   const current = await getFrontendSession(request);
   if (current) return { ...stateFromSession(current, false), setCookies: [], bootstrapped: false };
+  const auth = await extractAuthFromRequest(request);
   if (parseCookies(request)[FRONTEND_LOGOUT_COOKIE_NAME] === "1") {
     return {
-      ...stateFromSession(null, true),
+      ...stateFromSession(null, true, auth.isAdmin),
       setCookies: [clearFrontendSessionCookieHeader(request)],
       bootstrapped: false,
     };
   }
 
-  const auth = await extractAuthFromRequest(request);
   let principal: FrontendPrincipal | null = null;
   let authSource: FrontendAuthSession["authSource"] = "github";
   if (auth.user && auth.isAdmin) {
@@ -497,7 +505,11 @@ export async function bootstrapFrontendAuth(request: Request): Promise<FrontendA
     if (reader) principal = await ensureReaderFrontendUser(reader);
   }
   if (!principal) {
-    return { ...stateFromSession(null, false), setCookies: [], bootstrapped: false };
+    return {
+      ...stateFromSession(null, false, auth.isAdmin),
+      setCookies: [],
+      bootstrapped: false,
+    };
   }
   const created = await createFrontendSession(principal.id, authSource);
   return {
@@ -505,6 +517,7 @@ export async function bootstrapFrontendAuth(request: Request): Promise<FrontendA
     principal: created.principal,
     expiresAt: created.session.expiresAt,
     loggedOut: false,
+    canStartAdmin: principal.isAdmin,
     setCookies: [
       frontendSessionCookieHeader(request, created.token),
       clearFrontendLogoutCookieHeader(request),
@@ -521,6 +534,7 @@ export async function startAdminFrontendAuth(request: Request): Promise<Frontend
       principal: null,
       expiresAt: null,
       loggedOut: false,
+      canStartAdmin: false,
       setCookies: [],
       bootstrapped: false,
     };
@@ -540,6 +554,7 @@ export async function startAdminFrontendAuth(request: Request): Promise<Frontend
     principal: created.principal,
     expiresAt: created.session.expiresAt,
     loggedOut: false,
+    canStartAdmin: true,
     setCookies: [
       frontendSessionCookieHeader(request, created.token),
       clearFrontendLogoutCookieHeader(request),
@@ -557,11 +572,14 @@ export async function logoutFrontendAuth(request: Request): Promise<FrontendAuth
       .set({ revokedAt: Date.now() })
       .where(eq(frontendSessions.id, current.session.id));
   }
+  const canStartAdmin =
+    current?.principal.isAdmin ?? (await extractAuthFromRequest(request)).isAdmin;
   return {
     authenticated: false,
     principal: null,
     expiresAt: null,
     loggedOut: true,
+    canStartAdmin,
     setCookies: [clearFrontendSessionCookieHeader(request), frontendLogoutCookieHeader(request)],
     bootstrapped: false,
   };

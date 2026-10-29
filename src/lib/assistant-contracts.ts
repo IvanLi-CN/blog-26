@@ -39,6 +39,8 @@ export type FrontendAuthState = {
   principal: FrontendPrincipal | null;
   expiresAt: number | null;
   loggedOut: boolean;
+  /** Whether the current backend identity may restart an admin frontend session. */
+  canStartAdmin?: boolean;
 };
 
 export const ASSISTANT_CONVERSATION_KINDS = ["general", "clipping"] as const;

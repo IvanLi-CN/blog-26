@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Icon from "@/components/ui/Icon";
 import type {
   AssistantCitation,
@@ -38,6 +38,7 @@ type AuthState = FrontendAuthState | null;
 
 const UI_STATE_KEY = "site-knowledge-assistant-ui";
 const UI_LOGIN_HANDOFF_KEY = "site-knowledge-assistant-login-handoff";
+const ASSISTANT_DISPLAY_NAME = "知识对话";
 
 type AssistantContext = { slug: string; memoId: string | null };
 type PendingRequest = { content: string; requestId: string };
@@ -218,7 +219,7 @@ function errorMessage(error: unknown) {
     return "本小时额度已用完，请稍后再试。";
   }
   if (error instanceof AssistantClientError && error.code === "RECONNECTING")
-    return "正在重新连接知识助手。";
+    return `正在重新连接${ASSISTANT_DISPLAY_NAME}。`;
   if (error instanceof AssistantClientError && error.status === 410)
     return "这段对话已过期，请新建对话。";
   if (error instanceof AssistantClientError && error.status === 401)
@@ -226,51 +227,112 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "助手暂时不可用，请重试。";
 }
 
-function LoginPrompt({
+function GuestAssistantPreview({
   draft,
   onDraftChange,
   onLogin,
   onAdminLogin,
+  showAdminLogin,
 }: {
   draft: string;
   onDraftChange: (value: string) => void;
   onLogin: () => void;
   onAdminLogin: () => void;
+  showAdminLogin: boolean;
 }) {
   return (
-    <div className="flex min-h-48 flex-col gap-3 px-6 py-10">
-      <div className="flex flex-col items-center gap-3 text-center">
-        <Icon name="tabler:lock" className="h-7 w-7 text-[color:var(--nature-text-soft)]" />
-        <h2 className="font-semibold">登录后使用知识助手</h2>
-        <p className="max-w-sm text-sm leading-6 text-[color:var(--nature-text-soft)]">
-          可以先写下问题。登录只用于保存你的对话和额度状态，回到页面后不会自动发送。
+    <div
+      className="knowledge-assistant-body knowledge-assistant-guest-preview"
+      data-testid="assistant-guest-preview"
+    >
+      <div className="knowledge-assistant-list" data-testid="assistant-conversation-list">
+        <div className="knowledge-assistant-guest-list-heading">
+          <p className="text-sm font-semibold">对话列表</p>
+          <p className="mt-1 text-xs text-[color:var(--nature-text-faint)]">登录后创建并保存</p>
+        </div>
+        <div className="knowledge-assistant-guest-empty-list">
+          <Icon name="tabler:lock" className="h-5 w-5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold">还没有对话</p>
+            <p className="mt-1 text-xs leading-5 text-[color:var(--nature-text-soft)]">
+              登录后可以创建最多 3 段临时对话。
+            </p>
+          </div>
+        </div>
+      </div>
+      <div className="knowledge-assistant-content">
+        <div className="knowledge-assistant-toolbar">
+          <div className="min-w-0">
+            <h2 className="truncate text-sm font-semibold">新对话</h2>
+            <p className="knowledge-assistant-status">尚未创建对话 · 登录后可用</p>
+          </div>
+          <span className="knowledge-assistant-guest-badge">登录后可用</span>
+        </div>
+        <p className="knowledge-assistant-notice mx-3 mt-3">
+          登录后可以询问本站公开文章、项目经验和工作方法。回答会优先检索站内内容，并尽量附上可定位的来源。
         </p>
+        <div className="knowledge-assistant-messages" data-testid="assistant-messages">
+          <div
+            className="knowledge-assistant-guest-empty-state"
+            data-testid="assistant-guest-empty-state"
+          >
+            <Icon name="tabler:sparkles" className="h-7 w-7" />
+            <div>
+              <p className="font-medium">准备开始你的第一个问题</p>
+              <p className="mt-1 text-sm leading-6 text-[color:var(--nature-text-soft)]">
+                登录后，这里会显示你自己的问答记录和来源引用。
+              </p>
+            </div>
+            <ul>
+              <li>检索本站公开内容</li>
+              <li>围绕文章和项目多轮追问</li>
+              <li>保留可继续的临时对话</li>
+            </ul>
+          </div>
+        </div>
+        <div className="knowledge-assistant-compose knowledge-assistant-compose--locked">
+          <div className="knowledge-assistant-login-rail">
+            <Icon name="tabler:lock" className="h-5 w-5 shrink-0" />
+            <div>
+              <h2 className="text-sm font-semibold">登录后使用{ASSISTANT_DISPLAY_NAME}</h2>
+              <p className="mt-1 text-xs leading-5 text-[color:var(--nature-text-soft)]">
+                登录后才能发送问题并保存对话；回到页面后不会自动发送。
+              </p>
+            </div>
+          </div>
+          <textarea
+            className="nature-input-shell rounded-lg border border-[color:var(--nature-line)] bg-transparent p-3 text-sm leading-6 outline-none focus:border-[color:var(--nature-accent-strong)]"
+            value={draft}
+            onChange={(event) => onDraftChange(event.target.value)}
+            placeholder="先写下想问的问题……"
+            aria-label={`登录前的${ASSISTANT_DISPLAY_NAME}草稿`}
+            aria-describedby="assistant-login-hint"
+            maxLength={4000}
+          />
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+            <span id="assistant-login-hint" className="knowledge-assistant-status">
+              草稿会保留在当前浏览器
+            </span>
+            <button
+              type="button"
+              className="nature-button nature-button-primary min-h-11 px-3 text-sm"
+              onClick={onLogin}
+            >
+              <Icon name="tabler:brand-github" className="h-4 w-4" />
+              保存草稿并登录
+            </button>
+          </div>
+          {showAdminLogin ? (
+            <button
+              type="button"
+              className="mx-auto mt-1 min-h-11 px-3 text-sm text-[color:var(--nature-text-soft)] underline underline-offset-4"
+              onClick={onAdminLogin}
+            >
+              管理员入口
+            </button>
+          ) : null}
+        </div>
       </div>
-      <textarea
-        className="nature-input-shell min-h-20 w-full resize-y rounded-lg border border-[color:var(--nature-line)] bg-transparent p-3 text-sm leading-6 outline-none focus:border-[color:var(--nature-accent-strong)]"
-        value={draft}
-        onChange={(event) => onDraftChange(event.target.value)}
-        placeholder="先写下想问的问题……"
-        aria-label="登录前的知识助手草稿"
-        maxLength={4000}
-      />
-      <div className="flex justify-center">
-        <button
-          type="button"
-          className="nature-button nature-button-primary min-h-11"
-          onClick={onLogin}
-        >
-          <Icon name="tabler:brand-github" className="h-4 w-4" />
-          保存草稿并登录
-        </button>
-      </div>
-      <button
-        type="button"
-        className="mx-auto min-h-11 px-3 text-sm text-[color:var(--nature-text-soft)] underline underline-offset-4"
-        onClick={onAdminLogin}
-      >
-        管理员入口
-      </button>
     </div>
   );
 }
@@ -278,18 +340,70 @@ function LoginPrompt({
 function ConversationList({
   conversations,
   selectedId,
+  hasNewDraft,
+  listId,
+  expanded,
   onSelect,
   onDelete,
+  onCreate,
 }: {
   conversations: AssistantConversation[];
   selectedId: string | null;
+  hasNewDraft: boolean;
+  listId: string;
+  expanded: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onCreate: () => void;
 }) {
   return (
-    <div className="knowledge-assistant-list" data-testid="assistant-conversation-list">
+    <div
+      id={listId}
+      className="knowledge-assistant-list"
+      data-expanded={expanded}
+      data-testid="assistant-conversation-list"
+    >
+      <div className="knowledge-assistant-list-heading">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">对话</p>
+          <p className="mt-0.5 text-xs text-[color:var(--nature-text-faint)]">
+            {conversations.length ? `${conversations.length} 段已保存` : "从这里开始"}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="knowledge-assistant-list-new"
+          onClick={onCreate}
+          aria-label="新建对话"
+          title="新建对话"
+        >
+          <Icon name="tabler:plus" className="h-4 w-4" />
+          <span>新建</span>
+        </button>
+      </div>
+      {selectedId === "new" || hasNewDraft ? (
+        <div
+          className={`knowledge-assistant-list-item ${selectedId === "new" ? "is-selected" : ""}`}
+        >
+          <button
+            type="button"
+            className="knowledge-assistant-list-select"
+            aria-current={selectedId === "new" ? "true" : undefined}
+            onClick={() => onSelect("new")}
+          >
+            <span className="block truncate text-sm font-medium">新对话</span>
+            <span className="mt-0.5 block text-xs text-[color:var(--nature-text-faint)]">
+              草稿 · 发送第一条消息后保存
+            </span>
+          </button>
+        </div>
+      ) : null}
       {conversations.length === 0 ? (
-        <p className="px-2 py-3 text-sm text-[color:var(--nature-text-soft)]">还没有保存的对话。</p>
+        selectedId !== "new" ? (
+          <p className="px-2 py-3 text-sm text-[color:var(--nature-text-soft)]">
+            还没有保存的对话。
+          </p>
+        ) : null
       ) : (
         conversations.map((conversation) => (
           <div
@@ -411,6 +525,37 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     return new URL(window.location.href).searchParams.get("conversation");
   }, []);
   const [open, setOpen] = useState(fullPage);
+  const [listExpanded, setListExpanded] = useState(false);
+  const listId = useId();
+  const listToggleRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!listExpanded) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (
+        document.getElementById(listId)?.contains(target) ||
+        target.closest(".knowledge-assistant-list-toggle")
+      )
+        return;
+      setListExpanded(false);
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (document.getElementById(listId)?.contains(document.activeElement)) {
+        listToggleRef.current?.focus();
+      }
+      setListExpanded(false);
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape, true);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape, true);
+    };
+  }, [listExpanded, listId]);
   const [auth, setAuth] = useState<AuthState>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [conversations, setConversations] = useState<AssistantConversation[]>([]);
@@ -1026,6 +1171,10 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
             requestId,
             clientRequestId: requestId,
             content,
+            title:
+              selectedId === "new" || selectedId === null
+                ? Array.from(content.replace(/\s+/gu, " ")).slice(0, 60).join("")
+                : undefined,
             kind: "general",
           });
       const shouldMigrateDraft =
@@ -1158,7 +1307,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     ? formatConversationTitle(snapshot.conversation)
     : selectedId === "new"
       ? "新对话"
-      : "知识助手";
+      : ASSISTANT_DISPLAY_NAME;
   const body = (
     <>
       {authLoading ? (
@@ -1182,36 +1331,67 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
               </button>
             </div>
           </div>
-          <LoginPrompt
+          <GuestAssistantPreview
             draft={currentDraft}
             onDraftChange={updateDraft}
             onLogin={login}
             onAdminLogin={() => void adminLogin()}
+            showAdminLogin={auth?.canStartAdmin === true}
           />
         </>
       ) : !auth?.authenticated ? (
-        <LoginPrompt
+        <GuestAssistantPreview
           draft={currentDraft}
           onDraftChange={updateDraft}
           onLogin={login}
           onAdminLogin={() => void adminLogin()}
+          showAdminLogin={auth?.canStartAdmin === true}
         />
       ) : (
         <div className="knowledge-assistant-body">
           <ConversationList
             conversations={conversations}
             selectedId={selectedId}
-            onSelect={selectConversation}
+            hasNewDraft={Boolean(drafts[draftKey("new", getClippingContext())]?.trim())}
+            listId={listId}
+            expanded={listExpanded}
+            onSelect={(id) => {
+              selectConversation(id);
+              if (listExpanded) listToggleRef.current?.focus();
+              setListExpanded(false);
+            }}
             onDelete={remove}
+            onCreate={() => {
+              createConversation();
+              if (listExpanded) listToggleRef.current?.focus();
+              setListExpanded(false);
+            }}
           />
           <div className="knowledge-assistant-content">
             <div className="knowledge-assistant-toolbar">
               <div className="min-w-0">
-                <h2 className="truncate text-sm font-semibold">{title}</h2>
+                {fullPage ? (
+                  <h1 className="truncate text-sm font-semibold">{title}</h1>
+                ) : (
+                  <h2 className="truncate text-sm font-semibold">{title}</h2>
+                )}
                 <p className="knowledge-assistant-status" data-testid="assistant-quota">
                   {formatQuota(quota)}
                 </p>
               </div>
+              {fullPage ? (
+                <button
+                  type="button"
+                  className="knowledge-assistant-list-toggle"
+                  ref={listToggleRef}
+                  aria-expanded={listExpanded}
+                  aria-controls={listId}
+                  onClick={() => setListExpanded((value) => !value)}
+                >
+                  <Icon name="tabler:messages" className="h-4 w-4" />
+                  <span>切换对话</span>
+                </button>
+              ) : null}
               {isGenerating(snapshot) ? (
                 <button
                   type="button"
@@ -1260,26 +1440,58 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                 value={currentDraft}
                 onChange={(event) => updateDraft(event.target.value)}
                 placeholder="询问公开文章或项目经验……"
-                aria-label="知识助手问题"
+                aria-label={`${ASSISTANT_DISPLAY_NAME}问题`}
                 maxLength={4000}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-                    event.preventDefault();
-                    void send();
-                  }
+                  if (
+                    event.key !== "Enter" ||
+                    event.shiftKey ||
+                    event.ctrlKey ||
+                    event.altKey ||
+                    event.metaKey ||
+                    event.isComposing
+                  )
+                    return;
+                  event.preventDefault();
+                  void send();
                 }}
               />
-              <div className="mt-2 flex items-center justify-between gap-3">
+              <div className="knowledge-assistant-compose-footer">
                 <span className="knowledge-assistant-status">草稿会保留在当前浏览器</span>
-                <button
-                  type="button"
-                  className="nature-button nature-button-primary min-h-11 px-3 text-sm"
-                  onClick={() => void send()}
-                  disabled={!currentDraft.trim() || isGenerating(snapshot) || isSubmitting}
-                >
-                  <Icon name="tabler:send-2" className="h-4 w-4" />
-                  发送
-                </button>
+                <div className="knowledge-assistant-compose-actions">
+                  <span
+                    className="knowledge-assistant-shortcut"
+                    data-testid="assistant-send-shortcuts"
+                  >
+                    <span className="knowledge-assistant-shortcut-item">
+                      <kbd aria-label="Enter">
+                        <Icon name="tabler:corner-down-left" className="h-3 w-3" />
+                      </kbd>
+                      <span>发送</span>
+                    </span>
+                    <span className="knowledge-assistant-shortcut-item">
+                      <kbd aria-label="Shift">
+                        <Icon name="tabler:arrow-big-up" className="h-3 w-3" />
+                      </kbd>
+                      <span className="knowledge-assistant-shortcut-plus" aria-hidden="true">
+                        +
+                      </span>
+                      <kbd aria-label="Enter">
+                        <Icon name="tabler:corner-down-left" className="h-3 w-3" />
+                      </kbd>
+                      <span>换行</span>
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    className="nature-button nature-button-primary min-h-11 px-3 text-sm"
+                    onClick={() => void send()}
+                    disabled={!currentDraft.trim() || isGenerating(snapshot) || isSubmitting}
+                  >
+                    <Icon name="tabler:send-2" className="h-4 w-4" />
+                    发送
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1291,23 +1503,6 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   if (fullPage) {
     return (
       <main className="knowledge-assistant-page" data-testid="assistant-page">
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-sm text-[color:var(--nature-text-soft)]">公开知识库</p>
-            <h1 className="mt-1 font-[family:var(--font-heading)] text-2xl font-semibold">
-              知识助手
-            </h1>
-          </div>
-          <button
-            type="button"
-            className="nature-button nature-button-ghost min-h-11"
-            onClick={createConversation}
-            disabled={!auth?.authenticated}
-          >
-            <Icon name="tabler:plus" className="h-4 w-4" />
-            新建对话
-          </button>
-        </div>
         <div className="knowledge-assistant-page-grid">{body}</div>
       </main>
     );
@@ -1324,14 +1519,14 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         aria-expanded={open}
       >
         <Icon name="tabler:sparkles" className="h-5 w-5" />
-        知识助手
+        {ASSISTANT_DISPLAY_NAME}
       </button>
       {open ? (
         <>
           <button
             type="button"
             className="knowledge-assistant-overlay"
-            aria-label="关闭知识助手"
+            aria-label={`关闭${ASSISTANT_DISPLAY_NAME}`}
             onClick={() => setOpen(false)}
           />
           <section
@@ -1340,24 +1535,31 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
             ref={panelRef}
             role="dialog"
             aria-modal="true"
-            aria-label="知识助手"
+            aria-label={ASSISTANT_DISPLAY_NAME}
           >
             <header className="knowledge-assistant-header">
-              <div>
-                <p className="text-sm font-semibold">知识助手</p>
-                <p className="knowledge-assistant-status">公开内容问答</p>
-              </div>
-              <div className="flex items-center gap-1">
+              {auth?.authenticated ? (
                 <button
                   type="button"
-                  className="knowledge-assistant-icon-button"
-                  onClick={createConversation}
-                  aria-label="新建对话"
-                  title="新建对话"
-                  disabled={!auth?.authenticated}
+                  className="knowledge-assistant-list-toggle knowledge-assistant-header-toggle"
+                  ref={listToggleRef}
+                  aria-label="切换对话"
+                  aria-expanded={listExpanded}
+                  aria-controls={listId}
+                  onClick={() => setListExpanded((value) => !value)}
                 >
-                  <Icon name="tabler:plus" className="h-5 w-5" />
+                  <span className="text-sm font-semibold">{ASSISTANT_DISPLAY_NAME}</span>
+                  <Icon
+                    name={listExpanded ? "tabler:chevron-up" : "tabler:chevron-down"}
+                    className="h-4 w-4"
+                  />
                 </button>
+              ) : (
+                <div>
+                  <p className="text-sm font-semibold">{ASSISTANT_DISPLAY_NAME}</p>
+                </div>
+              )}
+              <div className="flex items-center gap-1">
                 <button
                   type="button"
                   className="knowledge-assistant-icon-button"
@@ -1371,7 +1573,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                   type="button"
                   className="knowledge-assistant-icon-button"
                   onClick={() => setOpen(false)}
-                  aria-label="关闭知识助手"
+                  aria-label={`关闭${ASSISTANT_DISPLAY_NAME}`}
                   title="关闭"
                 >
                   <Icon name="tabler:x" className="h-5 w-5" />

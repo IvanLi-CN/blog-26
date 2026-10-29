@@ -186,7 +186,8 @@ function demoFrontendAuth(environment: WebDemoEnvironment): FrontendAuthState {
     authenticated: Boolean(principal),
     principal,
     expiresAt: principal ? Date.now() + 7 * 86_400_000 : null,
-    loggedOut: !principal,
+    loggedOut: false,
+    canStartAdmin: environment.persona === "admin",
   };
 }
 
@@ -246,7 +247,7 @@ function demoAssistantRecord(
     id: recordId,
     frontendUserId: principal.id,
     kind: options.kind ?? "general",
-    title: "公开知识库问答",
+    title: withHistory ? "知识对话" : null,
     clippingMemoId: options.clippingMemoId ?? null,
     clippingSlug: options.kind === "clipping" ? (options.clippingMemoId ?? null) : null,
     clippingVersionId: null,
@@ -1084,6 +1085,9 @@ function getDemoAssistantResponse(
       return jsonResponse({ error: "对话已过期", code: "GONE" }, 410);
     const content = typeof body.content === "string" ? body.content.trim() : "";
     if (!content) return jsonResponse({ error: "问题不能为空", code: "BAD_REQUEST" }, 400);
+    if (!requestedId && typeof body.title === "string" && body.title.trim()) {
+      record.conversation.title = body.title.trim();
+    }
     const now = Date.now();
     const sequence = record.messages.length + 1;
     const userMessage: AssistantMessage = {
@@ -1455,7 +1459,14 @@ async function getDemoPublicResponse(
 
   if (url.pathname === "/api/public/frontend-auth/admin-start" && method === "POST") {
     if (environment.persona !== "admin")
-      return jsonResponse({ error: "请先登录管理员账号", code: "UNAUTHORIZED" }, 401);
+      return jsonResponse(
+        {
+          error: "请先登录管理员账号",
+          code: "UNAUTHORIZED",
+          canStartAdmin: false,
+        },
+        401
+      );
     return jsonResponse(demoFrontendAuth(environment));
   }
 
@@ -1465,6 +1476,7 @@ async function getDemoPublicResponse(
       principal: null,
       expiresAt: null,
       loggedOut: true,
+      canStartAdmin: environment.persona === "admin",
     });
   }
 

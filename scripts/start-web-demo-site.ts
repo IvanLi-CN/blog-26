@@ -10,6 +10,7 @@ const child = Bun.spawn(
   [
     "bun",
     "x",
+    "--bun",
     "astro",
     "dev",
     "--ignore-lock",

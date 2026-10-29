@@ -364,7 +364,8 @@
 .web-demo-inspector-bubble {
   position: fixed;
   right: 1rem;
-  bottom: 1rem;
+  /* Keep the Demo trigger clear of the public assistant FAB in the same corner. */
+  bottom: calc(max(1rem, env(safe-area-inset-bottom, 0px)) + 3.75rem);
   display: inline-flex;
   min-height: 2.9rem;
   align-items: center;
