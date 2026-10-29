@@ -117,6 +117,7 @@ export function submitAssistantMessage(input: {
   requestId: string;
   clientRequestId: string;
   content: string;
+  title?: string;
   kind?: "general" | "clipping";
   clippingMemoId?: string | null;
 }) {

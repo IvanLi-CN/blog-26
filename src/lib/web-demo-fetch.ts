@@ -247,7 +247,7 @@ function demoAssistantRecord(
     id: recordId,
     frontendUserId: principal.id,
     kind: options.kind ?? "general",
-    title: "知识对话",
+    title: withHistory ? "知识对话" : null,
     clippingMemoId: options.clippingMemoId ?? null,
     clippingSlug: options.kind === "clipping" ? (options.clippingMemoId ?? null) : null,
     clippingVersionId: null,
@@ -1085,6 +1085,9 @@ function getDemoAssistantResponse(
       return jsonResponse({ error: "对话已过期", code: "GONE" }, 410);
     const content = typeof body.content === "string" ? body.content.trim() : "";
     if (!content) return jsonResponse({ error: "问题不能为空", code: "BAD_REQUEST" }, 400);
+    if (!requestedId && typeof body.title === "string" && body.title.trim()) {
+      record.conversation.title = body.title.trim();
+    }
     const now = Date.now();
     const sequence = record.messages.length + 1;
     const userMessage: AssistantMessage = {

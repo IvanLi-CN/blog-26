@@ -232,6 +232,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     await user.type(textarea, "保留这份问题");
     fireEvent.keyDown(view.getByLabelText("知识对话问题"), { key: "Enter" });
     await waitFor(() => expect(postCalls).toBe(1));
+    expect(postedBodies[0].title).toBe("保留这份问题");
     const send = view.getByRole("button", { name: "发送" }) as HTMLButtonElement;
     await waitFor(() => expect(send.disabled).toBe(false));
 

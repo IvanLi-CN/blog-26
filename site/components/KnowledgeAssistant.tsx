@@ -340,6 +340,7 @@ function GuestAssistantPreview({
 function ConversationList({
   conversations,
   selectedId,
+  hasNewDraft,
   listId,
   expanded,
   onSelect,
@@ -348,6 +349,7 @@ function ConversationList({
 }: {
   conversations: AssistantConversation[];
   selectedId: string | null;
+  hasNewDraft: boolean;
   listId: string;
   expanded: boolean;
   onSelect: (id: string) => void;
@@ -379,8 +381,29 @@ function ConversationList({
           <span>新建</span>
         </button>
       </div>
+      {selectedId === "new" || hasNewDraft ? (
+        <div
+          className={`knowledge-assistant-list-item ${selectedId === "new" ? "is-selected" : ""}`}
+        >
+          <button
+            type="button"
+            className="knowledge-assistant-list-select"
+            aria-current={selectedId === "new" ? "true" : undefined}
+            onClick={() => onSelect("new")}
+          >
+            <span className="block truncate text-sm font-medium">新对话</span>
+            <span className="mt-0.5 block text-xs text-[color:var(--nature-text-faint)]">
+              草稿 · 发送第一条消息后保存
+            </span>
+          </button>
+        </div>
+      ) : null}
       {conversations.length === 0 ? (
-        <p className="px-2 py-3 text-sm text-[color:var(--nature-text-soft)]">还没有保存的对话。</p>
+        selectedId !== "new" ? (
+          <p className="px-2 py-3 text-sm text-[color:var(--nature-text-soft)]">
+            还没有保存的对话。
+          </p>
+        ) : null
       ) : (
         conversations.map((conversation) => (
           <div
@@ -1148,6 +1171,10 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
             requestId,
             clientRequestId: requestId,
             content,
+            title:
+              selectedId === "new" || selectedId === null
+                ? Array.from(content.replace(/\s+/gu, " ")).slice(0, 60).join("")
+                : undefined,
             kind: "general",
           });
       const shouldMigrateDraft =
@@ -1325,6 +1352,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
           <ConversationList
             conversations={conversations}
             selectedId={selectedId}
+            hasNewDraft={Boolean(drafts[draftKey("new", getClippingContext())]?.trim())}
             listId={listId}
             expanded={listExpanded}
             onSelect={(id) => {

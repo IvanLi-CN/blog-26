@@ -13,6 +13,37 @@ async function hideInspector(page: import("@playwright/test").Page) {
 }
 
 test.describe("Knowledge Assistant Web Demo", () => {
+  test("creates a distinct conversation after the first message", async ({ page }) => {
+    await page.goto("/?d_persona=user&d_scene=assistant-ready");
+    await page.getByTestId("assistant-fab").click();
+    const panel = page.getByTestId("assistant-panel");
+    const toggle = panel.getByRole("button", { name: "切换对话" });
+    const list = panel.getByTestId("assistant-conversation-list");
+    await toggle.click();
+    await list.getByRole("button", { name: "新建对话" }).click();
+    await expect(panel.getByRole("heading", { name: "新对话" })).toBeVisible();
+    await toggle.click();
+    await expect(list.getByText("草稿 · 发送第一条消息后保存")).toBeVisible();
+    await list.getByRole("button", { name: /新对话/ }).click();
+    const question = "如何找到项目经验？";
+    await panel.getByLabel("知识对话问题").fill(question);
+    await toggle.click();
+    await list
+      .getByRole("button", { name: /知识对话/ })
+      .first()
+      .click();
+    await toggle.click();
+    await list.getByRole("button", { name: /新对话/ }).click();
+    await expect(panel.getByLabel("知识对话问题")).toHaveValue(question);
+    await panel.getByRole("button", { name: "发送", exact: true }).click();
+    await expect(
+      panel.getByTestId("assistant-message-user").filter({ hasText: question })
+    ).toBeVisible();
+    await toggle.click();
+    await expect(list.getByRole("button", { name: new RegExp(question) }).first()).toBeVisible();
+    await expect(list).toContainText("2 段已保存");
+  });
+
   test("opens the vertical conversation switcher from the floating panel header", async ({
     page,
   }) => {
