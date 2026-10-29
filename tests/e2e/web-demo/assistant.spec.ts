@@ -15,7 +15,11 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await expect(page.getByTestId("assistant-route-header")).toBeVisible();
     await expect(page.getByRole("navigation", { name: "站点导航" })).toContainText("文章");
     await expect(page.getByRole("navigation", { name: "站点导航" })).toContainText("项目");
-    await expect(page.getByTestId("assistant-route-footer")).toBeVisible();
+    const footer = page.getByTestId("assistant-route-footer");
+    await expect(footer).toBeVisible();
+    await expect(footer).toContainText("连接");
+    await expect(footer).toContainText("Copyright");
+    await expect(footer).not.toContainText("站点入口");
     await expect(page.getByTestId("assistant-page")).toBeVisible();
     await expect(page.getByTestId("assistant-conversation-list")).toBeVisible();
     await expect(page.getByTestId("assistant-quota")).toContainText("问题");
@@ -53,7 +57,9 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await hideInspector(page);
 
     await expect(page.getByTestId("assistant-route-header")).toBeVisible();
-    await expect(page.getByTestId("assistant-route-footer")).toBeVisible();
+    const footer = page.getByTestId("assistant-route-footer");
+    await expect(footer).toBeVisible();
+    await expect(footer).not.toContainText("站点入口");
     await expect(page.getByRole("heading", { name: "登录后使用智问助手" })).toBeVisible();
     await expect(page.getByTestId("assistant-conversation-list")).toBeVisible();
     await expect(page.getByTestId("assistant-guest-empty-state")).toBeVisible();

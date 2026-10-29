@@ -12,13 +12,7 @@ interface Props {
 
 const { title = "智问助手", description = "站内知识问答" } = Astro.props;
 const homePath = toPublicSitePath("/") ?? "/";
-const memosPath = toPublicSitePath("/memos") ?? "/memos";
-const postsPath = toPublicSitePath("/posts") ?? "/posts";
-const projectsPath = toPublicSitePath("/projects") ?? "/projects";
-const tagsPath = toPublicSitePath("/tags") ?? "/tags";
-const playbookPath = toPublicSitePath("/playbook") ?? "/playbook";
 const searchPath = toPublicSitePath("/search") ?? "/search";
-const aboutPath = toPublicSitePath("/about") ?? "/about";
 const markPath = toPublicSitePath("/site-assets/ivan-blog-mark.svg") ?? "/site-assets/ivan-blog-mark.svg";
 const currentYear = new Date().getFullYear();
 ---
@@ -70,20 +64,6 @@ const currentYear = new Date().getFullYear();
               Content: CC BY-NC-ND 4.0
             </a>
           </div>
-        </div>
-
-        <div class="assistant-route-footer-column">
-          <p class="assistant-route-footer-label">站点入口</p>
-          <nav class="assistant-route-footer-links" aria-label="站点入口">
-            <a href={homePath}>首页</a>
-            <a href={postsPath}>文章</a>
-            <a href={memosPath}>闪念</a>
-            <a href={projectsPath}>项目</a>
-            <a href={tagsPath}>标签</a>
-            <a href={playbookPath}>执念</a>
-            <a href={searchPath}>搜索</a>
-            <a href={aboutPath}>关于</a>
-          </nav>
         </div>
 
         <div class="assistant-route-footer-column">
@@ -242,7 +222,7 @@ const currentYear = new Date().getFullYear();
   .assistant-route-footer-inner {
     display: grid;
     width: min(92rem, 100%);
-    grid-template-columns: minmax(0, 1.4fr) minmax(12rem, 1fr) minmax(12rem, 1fr);
+    grid-template-columns: minmax(0, 1.6fr) minmax(16rem, 1fr);
     align-items: start;
     gap: 0.75rem 1.5rem;
     margin: 0 auto;
