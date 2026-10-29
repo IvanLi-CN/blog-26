@@ -38,8 +38,8 @@ type AuthState = FrontendAuthState | null;
 
 const UI_STATE_KEY = "site-knowledge-assistant-ui";
 const UI_LOGIN_HANDOFF_KEY = "site-knowledge-assistant-login-handoff";
-const ASSISTANT_DISPLAY_NAME = "智问助手";
-const ASSISTANT_SUBTITLE = "AI 站内问答";
+const ASSISTANT_DISPLAY_NAME = "知识对话";
+const ASSISTANT_SUBTITLE = "AI 辅助对话";
 
 type AssistantContext = { slug: string; memoId: string | null };
 type PendingRequest = { content: string; requestId: string };

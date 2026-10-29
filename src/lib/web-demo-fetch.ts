@@ -247,7 +247,7 @@ function demoAssistantRecord(
     id: recordId,
     frontendUserId: principal.id,
     kind: options.kind ?? "general",
-    title: "AI 站内问答",
+    title: "知识对话",
     clippingMemoId: options.clippingMemoId ?? null,
     clippingSlug: options.kind === "clipping" ? (options.clippingMemoId ?? null) : null,
     clippingVersionId: null,
