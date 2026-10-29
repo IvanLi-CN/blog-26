@@ -1,11 +1,13 @@
 import uPlot from "uplot";
 import "@/lib/public-header-scroll";
 import "@/lib/public-scrollbar";
+import { WEB_DEMO_MOTION_EVENT } from "../../src/lib/web-demo-runtime";
 import {
   markProjectRuntimeRendered,
   readLatestProjectRuntimeMetrics,
 } from "./project-runtime-channel";
 import { initializeProjectRuntimeLiveData } from "./project-runtime-live";
+import { createRuntimeMetricMotion } from "./runtime-metric-motion";
 import "@/lib/public-playbook-outline";
 import "@/lib/public-playbook-resources";
 
@@ -283,7 +285,13 @@ import "@/lib/public-playbook-resources";
 })();
 (() => {
   let measureNode: HTMLSpanElement | null = null;
-  const runtimeValueRefreshers = new WeakMap<HTMLElement, () => void>();
+  const runtimeValueRefreshers = new WeakMap<HTMLElement, (animate?: boolean) => void>();
+  const runtimeValueControllers = new Map<
+    HTMLElement,
+    ReturnType<typeof createRuntimeMetricMotion>
+  >();
+  const runtimeValueObservers = new Map<HTMLElement, ResizeObserver>();
+  const staticAfterFallback = new WeakSet<HTMLElement>();
   const getMeasureNode = () => {
     if (measureNode) return measureNode;
     if (!document.body) return null;
@@ -361,7 +369,9 @@ import "@/lib/public-playbook-resources";
       );
       if (!tooltip) return;
 
-      const applyValue = () => {
+      const controller = createRuntimeMetricMotion(value);
+      runtimeValueControllers.set(value, controller);
+      const applyValue = (animate = false) => {
         const options = readOptions(value);
         const fullValue = value.dataset.runtimeValueFull ?? options[0] ?? "0";
         setMeasureStyle(value);
@@ -372,10 +382,23 @@ import "@/lib/public-playbook-resources";
           fullValue;
         const isTruncated =
           selectedValue !== fullValue || measuredWidth(fullValue) > availableWidth + 0.5;
-        value.textContent = selectedValue;
+        const wasStaticAfterFallback = staticAfterFallback.has(value);
+        const shouldAnimate = animate && !wasStaticAfterFallback;
+        const isAnimatingSameTarget =
+          controller.isAnimating && controller.targetText === selectedValue;
+        const retargetDuringResize =
+          controller.isAnimating && controller.targetText !== selectedValue;
+        if (!isAnimatingSameTarget) {
+          controller.update(selectedValue, shouldAnimate || retargetDuringResize);
+        }
+        if (animate || !wasStaticAfterFallback) staticAfterFallback.delete(value);
         value.dataset.runtimeValueTruncated = String(isTruncated);
         value.tabIndex = isTruncated ? 0 : -1;
         if (!isTruncated) hideTooltip(tooltip);
+        else if (!tooltip.hidden) {
+          tooltip.textContent = fullValue;
+          positionTooltip(value, tooltip);
+        }
       };
       const showTooltip = () => {
         if (value.dataset.runtimeValueTruncated !== "true") return;
@@ -394,15 +417,46 @@ import "@/lib/public-playbook-resources";
         if (event.key === "Escape") hideTooltip(tooltip);
       });
 
-      const resizeObserver = new ResizeObserver(applyValue);
+      const resizeObserver = new ResizeObserver(() => applyValue());
       resizeObserver.observe(value);
+      runtimeValueObservers.set(value, resizeObserver);
       runtimeValueRefreshers.set(value, applyValue);
       applyValue();
     });
   };
-  const refreshRuntimeValues = () => {
-    document.querySelectorAll<HTMLElement>("[data-runtime-value]").forEach((value) => {
-      runtimeValueRefreshers.get(value)?.();
+  const animateRuntimeValues = (event: Event) => {
+    const panel = (event as CustomEvent<{ panel?: HTMLElement }>).detail?.panel;
+    const values =
+      panel?.querySelectorAll<HTMLElement>("[data-runtime-value]") ??
+      document.querySelectorAll<HTMLElement>("[data-runtime-value]");
+    values.forEach((value) => {
+      runtimeValueRefreshers.get(value)?.(true);
+    });
+  };
+  const settleRuntimeValues = () => {
+    for (const [value, controller] of runtimeValueControllers) {
+      if (!value.isConnected) {
+        controller.destroy();
+        runtimeValueControllers.delete(value);
+      } else {
+        controller.settle();
+      }
+    }
+  };
+  const disposeRuntimeValues = () => {
+    for (const [value, controller] of runtimeValueControllers) {
+      runtimeValueObservers.get(value)?.disconnect();
+      controller.destroy();
+    }
+    runtimeValueObservers.clear();
+    runtimeValueControllers.clear();
+  };
+  const markRuntimeValuesStaticAfterFallback = (event: Event) => {
+    const panel = (event as CustomEvent<{ panel?: HTMLElement }>).detail?.panel;
+    if (!panel) return;
+    panel.querySelectorAll<HTMLElement>("[data-runtime-value]").forEach((value) => {
+      staticAfterFallback.add(value);
+      runtimeValueControllers.get(value)?.settle();
     });
   };
   const scheduleBind = () => window.requestAnimationFrame(bindRuntimeValues);
@@ -413,7 +467,21 @@ import "@/lib/public-playbook-resources";
   }
   document.addEventListener("astro:page-load", scheduleBind);
   document.fonts?.ready.then(scheduleBind);
-  window.addEventListener("project-runtime-metrics-updated", refreshRuntimeValues);
+  window.addEventListener("project-runtime-metrics-updated", animateRuntimeValues);
+  window.addEventListener("project-runtime-metrics-fallback", markRuntimeValuesStaticAfterFallback);
+  window.addEventListener(WEB_DEMO_MOTION_EVENT, (event) => {
+    if ((event as CustomEvent<{ motion?: string }>).detail?.motion === "reduce") {
+      settleRuntimeValues();
+    }
+  });
+  const reducedMotionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+  reducedMotionQuery?.addEventListener("change", (event) => {
+    if (event.matches) settleRuntimeValues();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) settleRuntimeValues();
+  });
+  document.addEventListener("astro:before-swap", disposeRuntimeValues);
 })();
 (() => {
   interface TrendPoint {

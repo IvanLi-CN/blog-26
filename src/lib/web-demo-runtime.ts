@@ -21,7 +21,7 @@ export type WebDemoGithubBinding = "unbound" | "bound";
 /** @deprecated Use WebDemoConnection and WebDemoDelayMode for new code. */
 export type WebDemoNetwork = "healthy" | "slow" | "offline";
 
-export type WebDemoDataMode = "fixture" | "dense" | "empty";
+export type WebDemoDataMode = "fixture" | "dense" | "empty" | "motion";
 export type WebDemoScene =
   | "public-reading"
   | "comments-target-unavailable"
@@ -192,7 +192,12 @@ const connections = ["online", "offline"] as const satisfies readonly WebDemoCon
 const delays = ["normal", "slow", "custom"] as const satisfies readonly WebDemoDelayMode[];
 const themes = ["light", "dark", "system"] as const satisfies readonly WebDemoThemeSelection[];
 const motions = ["system", "reduce"] as const satisfies readonly WebDemoMotionPreference[];
-const dataModes = ["fixture", "dense", "empty"] as const satisfies readonly WebDemoDataMode[];
+const dataModes = [
+  "fixture",
+  "dense",
+  "empty",
+  "motion",
+] as const satisfies readonly WebDemoDataMode[];
 
 function isValue<T extends string>(
   value: string | null | undefined,

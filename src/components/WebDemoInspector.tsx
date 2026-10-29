@@ -109,6 +109,7 @@ const dataOptions: Array<{ value: WebDemoDataMode; label: string }> = [
   { value: "fixture", label: "标准" },
   { value: "dense", label: "密集" },
   { value: "empty", label: "空数据" },
+  { value: "motion", label: "滚轮测试" },
 ];
 
 function readStoredBoolean(key: string, fallback: boolean) {
@@ -799,7 +800,7 @@ export default function WebDemoInspector({
                 Data
               </h3>
               <RadioGroup
-                className="web-demo-inspector-radio-group web-demo-inspector-radio-group-three web-demo-inspector-data-mode"
+                className="web-demo-inspector-radio-group web-demo-inspector-radio-group-four web-demo-inspector-data-mode"
                 orientation="horizontal"
                 value={sceneState.data}
                 onValueChange={(value) => updateScene({ data: value as WebDemoSceneState["data"] })}

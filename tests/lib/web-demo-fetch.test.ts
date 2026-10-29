@@ -199,6 +199,16 @@ describe("webDemoFetch", () => {
     expect(delivery.sections[0].snippet.length).toBeGreaterThan(120);
   });
 
+  it("serves a stable first metric read and controlled rolling targets", async () => {
+    installBrowser("?d_data=motion&d_connection=online");
+    const first = await (await webDemoFetch("/api/public/metrics/v1/codex-vibe-monitor")).json();
+    const second = await (await webDemoFetch("/api/public/metrics/v1/codex-vibe-monitor")).json();
+
+    expect(first.tokensPerMinute.value).toBe(793758);
+    expect(second.tokensPerMinute.value).toBe(1_002_345);
+    expect(second.todayTokens.value).toBe(999_999_999.9);
+  });
+
   it("rejects unauthenticated comment mutations and non-admin moderation", async () => {
     installBrowser("?d_persona=guest");
     expect((await webDemoFetch("/api/public/comments/missing", { method: "DELETE" })).status).toBe(

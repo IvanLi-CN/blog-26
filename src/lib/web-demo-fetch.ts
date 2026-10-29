@@ -30,12 +30,35 @@ import {
   recordWebDemoMutation,
   WEB_DEMO_ACTION_EVENT,
   type WebDemoApp,
+  type WebDemoDataMode,
   type WebDemoEnvironment,
   type WebDemoScene,
   waitForWebDemoRequest,
 } from "./web-demo-runtime";
 
 const consoleWebDemoStore = createConsoleWebDemoStore();
+const demoRuntimeMotionReads = new Map<string, number>();
+let demoRuntimeMotionRefreshes = 0;
+let demoRuntimeMotionResetWindow: Window | null = null;
+
+function prepareDemoRuntimeMotion() {
+  if (typeof window === "undefined" || demoRuntimeMotionResetWindow === window) return;
+  demoRuntimeMotionResetWindow = window;
+  demoRuntimeMotionReads.clear();
+  demoRuntimeMotionRefreshes = 0;
+  if (typeof window.addEventListener !== "function") {
+    return;
+  }
+  window.addEventListener(WEB_DEMO_ACTION_EVENT, (event) => {
+    const action = (event as CustomEvent<{ action?: string }>).detail?.action;
+    if (action === "reset-state") {
+      demoRuntimeMotionReads.clear();
+      demoRuntimeMotionRefreshes = 0;
+    } else if (action === "refresh-data") {
+      demoRuntimeMotionRefreshes += 1;
+    }
+  });
+}
 
 export function combineAbortSignals(...signals: Array<AbortSignal | null | undefined>) {
   const activeSignals = signals.filter((signal): signal is AbortSignal => Boolean(signal));
@@ -309,7 +332,7 @@ function decodeDemoReplyCursor(value: string | null): DemoReplyCursor | null {
 function getDemoComments(
   url: URL,
   environment: WebDemoEnvironment,
-  dataMode: "fixture" | "dense" | "empty",
+  dataMode: WebDemoDataMode,
   scene: WebDemoScene
 ) {
   const { targetType, targetKey } = demoCommentTarget(url);
@@ -587,9 +610,33 @@ function createDemoMemo(body: Record<string, unknown>) {
   return memo;
 }
 
-function demoRuntimeMetrics(slug: string, dataMode: "fixture" | "dense" | "empty") {
+function demoRuntimeMetrics(slug: string, dataMode: WebDemoDataMode) {
   const metrics = projectRuntimeMetricsBySlug[slug as keyof typeof projectRuntimeMetricsBySlug];
   if (!metrics) return null;
+  if (dataMode === "motion") prepareDemoRuntimeMotion();
+  const motionRead = dataMode === "motion" ? (demoRuntimeMotionReads.get(slug) ?? 0) + 1 : 0;
+  if (dataMode === "motion") {
+    demoRuntimeMotionReads.set(slug, motionRead);
+  }
+  const motionPhase =
+    dataMode === "motion" &&
+    (demoRuntimeMotionRefreshes % 2 === 1 ||
+      (demoRuntimeMotionRefreshes === 0 && motionRead > 1 && motionRead % 2 === 0));
+  const withMotionValue = <
+    T extends { value: number; trend: { points: Array<{ value: number | null }> } },
+  >(
+    stat: T,
+    value: number
+  ): T => ({
+    ...stat,
+    value,
+    trend: {
+      ...stat.trend,
+      points: stat.trend.points.map((point, index, points) =>
+        index === points.length - 1 ? { ...point, value } : point
+      ),
+    },
+  });
   if (metrics.kind === "codex-vibe-monitor") {
     const tokenActivity90d = metrics.tokenActivity90d.map((point, index) => ({
       ...point,
@@ -597,6 +644,24 @@ function demoRuntimeMetrics(slug: string, dataMode: "fixture" | "dense" | "empty
     }));
     return {
       ...metrics,
+      tokensPerMinute:
+        dataMode === "motion"
+          ? withMotionValue(
+              metrics.tokensPerMinute,
+              motionPhase ? 1_002_345 : metrics.tokensPerMinute.value
+            )
+          : metrics.tokensPerMinute,
+      parallelCalls:
+        dataMode === "motion"
+          ? withMotionValue(metrics.parallelCalls, motionPhase ? 21 : metrics.parallelCalls.value)
+          : metrics.parallelCalls,
+      todayTokens:
+        dataMode === "motion"
+          ? withMotionValue(
+              metrics.todayTokens,
+              motionPhase ? 999_999_999.9 : metrics.todayTokens.value
+            )
+          : metrics.todayTokens,
       tokenActivity90d: { status: "partial", points: tokenActivity90d },
     };
   }
@@ -604,6 +669,31 @@ function demoRuntimeMetrics(slug: string, dataMode: "fixture" | "dense" | "empty
     const { kind: _kind, ...payload } = metrics;
     return {
       ...payload,
+      todayRequests:
+        dataMode === "motion"
+          ? withMotionValue(
+              metrics.todayRequests,
+              motionPhase ? 1_234 : metrics.todayRequests.value
+            )
+          : metrics.todayRequests,
+      todayCredits:
+        dataMode === "motion"
+          ? withMotionValue(metrics.todayCredits, motionPhase ? 2_050 : metrics.todayCredits.value)
+          : metrics.todayCredits,
+      monthCredits:
+        dataMode === "motion"
+          ? withMotionValue(
+              metrics.monthCredits,
+              motionPhase ? 999_999.9 : metrics.monthCredits.value
+            )
+          : metrics.monthCredits,
+      totalCredits:
+        dataMode === "motion"
+          ? withMotionValue(
+              metrics.totalCredits,
+              motionPhase ? 1_000_001 : metrics.totalCredits.value
+            )
+          : metrics.totalCredits,
       requestActivity90d: payload.requestActivity90d.map((point) => ({
         ...point,
         value: dataMode === "empty" ? 0 : point.value,
@@ -614,9 +704,13 @@ function demoRuntimeMetrics(slug: string, dataMode: "fixture" | "dense" | "empty
   const count =
     dataMode === "empty"
       ? 0
-      : dataMode === "dense"
-        ? Math.max(freshness.length * 3, 720)
-        : freshness.length;
+      : dataMode === "motion"
+        ? motionPhase
+          ? 1074
+          : metrics.deduplicatedRepositories.value
+        : dataMode === "dense"
+          ? Math.max(freshness.length * 3, 720)
+          : freshness.length;
   const nextFreshness = Array.from({ length: count }, (_, index) => (count === 0 ? 4 : index % 5));
   const nextRepositories = {
     ...payload.deduplicatedRepositories,
@@ -628,7 +722,15 @@ function demoRuntimeMetrics(slug: string, dataMode: "fixture" | "dense" | "empty
       ),
     },
   };
-  return { ...payload, deduplicatedRepositories: nextRepositories, freshness: nextFreshness };
+  return {
+    ...payload,
+    deduplicatedRepositories: nextRepositories,
+    pressure:
+      dataMode === "motion"
+        ? withMotionValue(metrics.pressure, motionPhase ? 4.53 : metrics.pressure.value)
+        : metrics.pressure,
+    freshness: nextFreshness,
+  };
 }
 
 function demoSearchRelevance(
@@ -811,7 +913,7 @@ async function getDemoPublicResponse(
   url: URL,
   method: string,
   environment: WebDemoEnvironment,
-  dataMode: "fixture" | "dense" | "empty",
+  dataMode: WebDemoDataMode,
   scene: WebDemoScene,
   init?: RequestInit
 ) {
