@@ -343,10 +343,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
-  color: var(--nature-text);
-  font-size: 0.75rem;
+  color: var(--nature-text-soft);
+  font-size: 0.7rem;
   line-height: 1.35;
-  opacity: 0.72;
 }
 
 .knowledge-assistant-shortcut-item {
@@ -358,8 +357,15 @@
 }
 
 .knowledge-assistant-shortcut-item kbd {
+  display: inline-grid;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--nature-line-strong);
+  border-radius: 0.25rem;
   font: inherit;
-  font-size: 1rem;
+  font-size: 0.85rem;
   line-height: 1;
 }
 
