@@ -903,8 +903,8 @@ test.describe("Nature frontend public coverage", () => {
     await expect(cards.cvm.locator(".runtime-sparkline .uplot")).toHaveCount(3);
     await expect(cards.cvm.locator('[data-runtime-chart-mode="area"]')).toHaveCount(3);
     await expect(cards.cvm.locator('[aria-label*="面积趋势图"]')).toHaveCount(3);
-    await expect(cards.cvm.locator(".runtime-metric-value").nth(0)).toHaveText("793.758K");
-    await expect(cards.cvm.locator(".runtime-metric-value").nth(2)).toHaveText("2.111B");
+    await expect(cards.cvm.locator(".runtime-metric-value").nth(0)).toHaveText("793.76K");
+    await expect(cards.cvm.locator(".runtime-metric-value").nth(2)).toHaveText("2.11B");
     await expect(
       cards.cvm.locator('.runtime-sparkline[aria-label^="今日 Token 消耗量"]')
     ).toHaveAttribute("data-runtime-chart-placement", "right");
@@ -934,7 +934,7 @@ test.describe("Nature frontend public coverage", () => {
       cards.hikari.locator('[data-runtime-chart-variant="bars"][aria-label^="积分总量"]')
     ).toHaveCount(1);
     await expect(cards.hikari.locator('[data-runtime-chart-variant="line"]')).toHaveCount(2);
-    await expect(cards.hikari.locator(".runtime-metric-value").nth(2)).toHaveText("1.587K");
+    await expect(cards.hikari.locator(".runtime-metric-value").nth(2)).toHaveText("1.59K");
     await expect(cards.hikari.locator(".runtime-metric-value").nth(3)).toHaveText("21K");
     await expect
       .poll(() =>
@@ -1035,7 +1035,7 @@ test.describe("Nature frontend public coverage", () => {
     await expect(runtimeTooltip).toBeVisible();
     await expect(runtimeTooltip).toContainText("2026-09-27");
     await expect(runtimeTooltip).toContainText("Token 消耗量");
-    await expect(runtimeTooltip).toContainText("2.121B Token");
+    await expect(runtimeTooltip).toContainText("2.12B Token");
     await expect
       .poll(() =>
         cards.cvm
@@ -1067,7 +1067,7 @@ test.describe("Nature frontend public coverage", () => {
     await narrowCvmValue.hover();
     const narrowValueTooltip = cards.cvm.locator("[data-runtime-value-tooltip]").first();
     await expect(narrowValueTooltip).toBeVisible();
-    await expect(narrowValueTooltip).toHaveText("793.758K");
+    await expect(narrowValueTooltip).toHaveText("793.76K");
     await expect(narrowValueTooltip).toHaveCSS("position", "absolute");
 
     await page.setViewportSize({ width: 393, height: 852 });

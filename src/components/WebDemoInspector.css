@@ -540,6 +540,10 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.web-demo-inspector-radio-group-four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .web-demo-inspector-radio-group [role="radio"] {
   min-width: 0;
   border-color: var(--web-demo-line);

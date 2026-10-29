@@ -6,6 +6,7 @@ import {
   readLatestProjectRuntimeMetrics,
 } from "./project-runtime-channel";
 import { initializeProjectRuntimeLiveData } from "./project-runtime-live";
+import { createRuntimeMetricMotion } from "./runtime-metric-motion";
 import "@/lib/public-playbook-outline";
 import "@/lib/public-playbook-resources";
 
@@ -283,7 +284,12 @@ import "@/lib/public-playbook-resources";
 })();
 (() => {
   let measureNode: HTMLSpanElement | null = null;
-  const runtimeValueRefreshers = new WeakMap<HTMLElement, () => void>();
+  const runtimeValueRefreshers = new WeakMap<HTMLElement, (animate?: boolean) => void>();
+  const runtimeValueControllers = new Map<
+    HTMLElement,
+    ReturnType<typeof createRuntimeMetricMotion>
+  >();
+  const staticAfterFallback = new WeakSet<HTMLElement>();
   const getMeasureNode = () => {
     if (measureNode) return measureNode;
     if (!document.body) return null;
@@ -361,7 +367,10 @@ import "@/lib/public-playbook-resources";
       );
       if (!tooltip) return;
 
-      const applyValue = () => {
+      const controller = createRuntimeMetricMotion(value);
+      runtimeValueControllers.set(value, controller);
+      const applyValue = (animate = false) => {
+        if (!animate && controller.isAnimating) return;
         const options = readOptions(value);
         const fullValue = value.dataset.runtimeValueFull ?? options[0] ?? "0";
         setMeasureStyle(value);
@@ -372,7 +381,9 @@ import "@/lib/public-playbook-resources";
           fullValue;
         const isTruncated =
           selectedValue !== fullValue || measuredWidth(fullValue) > availableWidth + 0.5;
-        value.textContent = selectedValue;
+        const shouldAnimate = animate && !staticAfterFallback.has(value);
+        staticAfterFallback.delete(value);
+        controller.update(selectedValue, shouldAnimate);
         value.dataset.runtimeValueTruncated = String(isTruncated);
         value.tabIndex = isTruncated ? 0 : -1;
         if (!isTruncated) hideTooltip(tooltip);
@@ -394,15 +405,37 @@ import "@/lib/public-playbook-resources";
         if (event.key === "Escape") hideTooltip(tooltip);
       });
 
-      const resizeObserver = new ResizeObserver(applyValue);
+      const resizeObserver = new ResizeObserver(() => applyValue());
       resizeObserver.observe(value);
       runtimeValueRefreshers.set(value, applyValue);
       applyValue();
     });
   };
-  const refreshRuntimeValues = () => {
-    document.querySelectorAll<HTMLElement>("[data-runtime-value]").forEach((value) => {
-      runtimeValueRefreshers.get(value)?.();
+  const animateRuntimeValues = (event: Event) => {
+    const panel = (event as CustomEvent<{ panel?: HTMLElement }>).detail?.panel;
+    const values =
+      panel?.querySelectorAll<HTMLElement>("[data-runtime-value]") ??
+      document.querySelectorAll<HTMLElement>("[data-runtime-value]");
+    values.forEach((value) => {
+      runtimeValueRefreshers.get(value)?.(true);
+    });
+  };
+  const settleRuntimeValues = () => {
+    for (const [value, controller] of runtimeValueControllers) {
+      if (!value.isConnected) {
+        controller.destroy();
+        runtimeValueControllers.delete(value);
+      } else {
+        controller.settle();
+      }
+    }
+  };
+  const markRuntimeValuesStaticAfterFallback = (event: Event) => {
+    const panel = (event as CustomEvent<{ panel?: HTMLElement }>).detail?.panel;
+    if (!panel) return;
+    panel.querySelectorAll<HTMLElement>("[data-runtime-value]").forEach((value) => {
+      staticAfterFallback.add(value);
+      runtimeValueControllers.get(value)?.settle();
     });
   };
   const scheduleBind = () => window.requestAnimationFrame(bindRuntimeValues);
@@ -413,7 +446,12 @@ import "@/lib/public-playbook-resources";
   }
   document.addEventListener("astro:page-load", scheduleBind);
   document.fonts?.ready.then(scheduleBind);
-  window.addEventListener("project-runtime-metrics-updated", refreshRuntimeValues);
+  window.addEventListener("project-runtime-metrics-updated", animateRuntimeValues);
+  window.addEventListener("project-runtime-metrics-fallback", markRuntimeValuesStaticAfterFallback);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) settleRuntimeValues();
+  });
+  document.addEventListener("astro:before-swap", settleRuntimeValues);
 })();
 (() => {
   interface TrendPoint {

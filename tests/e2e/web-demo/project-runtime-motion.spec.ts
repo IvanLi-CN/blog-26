@@ -182,6 +182,31 @@ test("the official project route staggers both directions and keeps its geometry
   });
 });
 
+test("the controlled metric fixture rolls digits and settles at the latest target", async ({
+  page,
+}) => {
+  await page.goto(
+    "/projects/?d_data=motion&d_delay=custom&d_delay_ms=0&d_connection=online&d_motion=system#developer-tools"
+  );
+  await waitForRender(page);
+  const metric = page.locator(`${panels} [data-runtime-value]`).first();
+  await expect(metric).toHaveAttribute("aria-label", "793.76K");
+  await page.getByRole("button", { name: "打开 Web Demo 调试控制面板", exact: true }).click();
+  await page.getByRole("button", { name: "刷新数据", exact: true }).click();
+  await expect(metric).toHaveAttribute("data-runtime-value-animating", "true");
+  await expect(metric.locator("[data-runtime-value-wheel]").first()).toBeVisible();
+  await expect(metric).toHaveAttribute("data-runtime-value-motion-to", "1M");
+  await page.waitForTimeout(650);
+  await expect(metric).toHaveAttribute("data-runtime-value-animating", "false");
+  await expect(metric).toHaveAttribute("aria-label", "1M");
+  await expect(metric.locator("[data-runtime-value-wheel]")).toHaveCount(0);
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.getByRole("button", { name: "刷新数据", exact: true }).click();
+  await expect(metric).toHaveAttribute("data-runtime-value-animating", "false");
+  await expect(metric).toHaveAttribute("aria-label", "793.76K");
+});
+
 test("a fallback and recovery during playback continue toward the latest content", async ({
   page,
 }) => {
