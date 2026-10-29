@@ -1353,14 +1353,25 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                 aria-label={`${ASSISTANT_DISPLAY_NAME}问题`}
                 maxLength={4000}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-                    event.preventDefault();
-                    void send();
-                  }
+                  if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+                  event.preventDefault();
+                  void send();
                 }}
               />
-              <div className="mt-2 flex items-center justify-between gap-3">
-                <span className="knowledge-assistant-status">草稿会保留在当前浏览器</span>
+              <div className="knowledge-assistant-compose-footer">
+                <div className="knowledge-assistant-compose-meta">
+                  <span
+                    className="knowledge-assistant-shortcut"
+                    data-testid="assistant-send-shortcuts"
+                  >
+                    <kbd className="nature-kbd">Enter</kbd>
+                    <span>发送</span>
+                    <span aria-hidden="true">·</span>
+                    <kbd className="nature-kbd">Shift + Enter</kbd>
+                    <span>换行</span>
+                  </span>
+                  <span className="knowledge-assistant-status">草稿会保留在当前浏览器</span>
+                </div>
                 <button
                   type="button"
                   className="nature-button nature-button-primary min-h-11 px-3 text-sm"

@@ -44,10 +44,16 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await expect(page.locator("html")).toHaveAttribute("data-ui-preference", "dark");
     await expect(page.getByText("公开知识库", { exact: true })).toHaveCount(0);
     await expect(page.getByTestId("assistant-quota")).toContainText("问题");
+    await expect(page.getByTestId("assistant-send-shortcuts")).toContainText("Enter");
+    await expect(page.getByTestId("assistant-send-shortcuts")).toContainText("换行");
 
     const question = "如何验证公开内容？";
-    await page.getByLabel("知识对话问题").fill(question);
-    await page.getByRole("button", { name: "发送", exact: true }).click();
+    const composer = page.getByLabel("知识对话问题");
+    await composer.fill("先保留换行");
+    await composer.press("Shift+Enter");
+    await expect(composer).toHaveValue("先保留换行\n");
+    await composer.fill(question);
+    await composer.press("Enter");
     await expect(
       page.getByTestId("assistant-message-user").filter({ hasText: question })
     ).toBeVisible();
