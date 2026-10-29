@@ -4,18 +4,18 @@
   "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
   "covered_files": {
     "docs/project-runtime-motion-design.md": "15a356ba54f3b6d72ce59b0904576db184b71b92",
-    "docs/specs/nature-front-ui/HISTORY.md": "38231b67cbc697bcca0283c8f9ea9c0b3b2ddb87",
-    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "b12d8e7dae419eb944eb53548fd0bb70487afec1",
-    "docs/specs/nature-front-ui/SPEC.md": "f493d4a0fe633980fa3391c7954ecabb703c667a",
+    "docs/specs/nature-front-ui/HISTORY.md": "a27d664031f881a65c307ccaf1c6c9bf6ced7418",
+    "docs/specs/nature-front-ui/IMPLEMENTATION.md": "f16838e2b35e2359242ef25959bee874ba7ffef2",
+    "docs/specs/nature-front-ui/SPEC.md": "0e2494c250830a4a48dfe27911d74a3fad2dcd30",
     "docs/specs/nature-front-ui/assets/runtime-motion-desktop-dark.png": "269e01f0d96f4e4aaf86cc91d24c8b718d284256",
     "docs/specs/nature-front-ui/assets/runtime-motion-desktop-light.png": "546d12507516a296fed9c9ed6ee80792d8c9a166",
     "docs/specs/nature-front-ui/assets/runtime-motion-mobile-dark.png": "15b3755137d6b3764e1b8a40bc23212b7d6c839a",
     "docs/specs/nature-front-ui/assets/runtime-motion-mobile-light.png": "2494bf82733afe2b17dddeaeb90f6a4589c6a418",
     "site/components/projects/RuntimeMetricValue.tsx": "205d842ee8b3b607bae0beab488fecbcfde61d00",
     "site/lib/project-runtime-live.ts": "1bfd49bb04e2bdf0ee710b5e01f8f54ee5c63612",
-    "site/lib/public-page-behaviors.ts": "144b76acb64976401834cdb991e00d6a86558e19",
+    "site/lib/public-page-behaviors.ts": "2d74512e216e49c9abbc5692680e816a0e5c9d61",
     "site/lib/runtime-format.ts": "0878df79ed1e2e5c861a1aaabe22cfe8a3a8ed60",
-    "site/lib/runtime-metric-motion.ts": "8011173d27d79900257e8392ed87da5353a0cb71",
+    "site/lib/runtime-metric-motion.ts": "b1a5158be956648af40c2934f3aaa5326fbe6b21",
     "site/styles/public-pages.css": "6aa118e2dbb21f16f8190de30746c141ba2698dc",
     "src/components/WebDemoInspector.css": "1b6d9721407ce3af91ff44d9314d29603482c71c",
     "src/components/WebDemoInspector.tsx": "e112a754094c8f7b1d61637f247b0c383b815515",
@@ -26,7 +26,7 @@
     "tests/components/runtime-cell-grid.test.tsx": "8b98250bd95402691eb78177950b05390a40a66e",
     "tests/e2e/guest/nature-front-coverage.spec.ts": "c99cbb47daf2d00a5d5f863a09d0481e08d679b4",
     "tests/e2e/guest/project-visual-slot.spec.ts": "7bab505c5ffbfcbb0809b47c1e075575b590188e",
-    "tests/e2e/web-demo/project-runtime-motion.spec.ts": "5d4cd6b60f40f1e8c9042887f3ad242c904e68de",
+    "tests/e2e/web-demo/project-runtime-motion.spec.ts": "8a152e57476c3c0ef0af345628843a37ea328540",
     "tests/lib/runtime-format.test.ts": "ce5d704bd4222aa86209699f2fa60f17e730c668",
     "tests/lib/runtime-metric-motion.test.ts": "a6ce2142803d9fbf66dd596c1238f6086f50ff28",
     "tests/lib/web-demo-fetch.test.ts": "99f8d4a490090bee81310561b33a43ed310c3920",
@@ -57,12 +57,12 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "5d4cd6b60f40f1e8c9042887f3ad242c904e68de",
+          "blob": "8a152e57476c3c0ef0af345628843a37ea328540",
           "command": "Official Web Demo motion, fallback, reduced-motion, responsive and latest-target browser coverage"
         },
         {
           "path": "docs/specs/nature-front-ui/SPEC.md",
-          "blob": "f493d4a0fe633980fa3391c7954ecabb703c667a",
+          "blob": "0e2494c250830a4a48dfe27911d74a3fad2dcd30",
           "command": "Nature UI runtime metric contract and owner-confirmed desktop/mobile evidence"
         }
       ],
@@ -83,7 +83,7 @@
         },
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "5d4cd6b60f40f1e8c9042887f3ad242c904e68de",
+          "blob": "8a152e57476c3c0ef0af345628843a37ea328540",
           "command": "Official Web Demo motion regression"
         }
       ]
@@ -132,7 +132,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/project-runtime-motion.spec.ts",
-          "blob": "5d4cd6b60f40f1e8c9042887f3ad242c904e68de",
+          "blob": "8a152e57476c3c0ef0af345628843a37ea328540",
           "command": "Public route and metric presentation contracts remain route-compatible"
         }
       ]
