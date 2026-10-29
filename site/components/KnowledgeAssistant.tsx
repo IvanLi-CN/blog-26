@@ -1359,7 +1359,8 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                 }}
               />
               <div className="knowledge-assistant-compose-footer">
-                <div className="knowledge-assistant-compose-meta">
+                <span className="knowledge-assistant-status">草稿会保留在当前浏览器</span>
+                <div className="knowledge-assistant-compose-actions">
                   <span
                     className="knowledge-assistant-shortcut"
                     data-testid="assistant-send-shortcuts"
@@ -1370,17 +1371,16 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                     <kbd className="nature-kbd">Shift + Enter</kbd>
                     <span>换行</span>
                   </span>
-                  <span className="knowledge-assistant-status">草稿会保留在当前浏览器</span>
+                  <button
+                    type="button"
+                    className="nature-button nature-button-primary min-h-11 px-3 text-sm"
+                    onClick={() => void send()}
+                    disabled={!currentDraft.trim() || isGenerating(snapshot) || isSubmitting}
+                  >
+                    <Icon name="tabler:send-2" className="h-4 w-4" />
+                    发送
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="nature-button nature-button-primary min-h-11 px-3 text-sm"
-                  onClick={() => void send()}
-                  disabled={!currentDraft.trim() || isGenerating(snapshot) || isSubmitting}
-                >
-                  <Icon name="tabler:send-2" className="h-4 w-4" />
-                  发送
-                </button>
               </div>
             </div>
           </div>

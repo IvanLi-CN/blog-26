@@ -47,6 +47,15 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await expect(page.getByTestId("assistant-quota")).toContainText("问题");
     await expect(page.getByTestId("assistant-send-shortcuts")).toContainText("Enter");
     await expect(page.getByTestId("assistant-send-shortcuts")).toContainText("换行");
+    const shortcutBox = await page.getByTestId("assistant-send-shortcuts").boundingBox();
+    const sendButtonBox = await page
+      .getByRole("button", { name: "发送", exact: true })
+      .boundingBox();
+    expect(shortcutBox).not.toBeNull();
+    expect(sendButtonBox).not.toBeNull();
+    expect((shortcutBox?.x ?? 0) + (shortcutBox?.width ?? 0)).toBeLessThanOrEqual(
+      sendButtonBox?.x ?? Number.POSITIVE_INFINITY
+    );
 
     const question = "如何验证公开内容？";
     const composer = page.getByLabel("知识对话问题");
