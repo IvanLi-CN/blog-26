@@ -13,6 +13,8 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await hideInspector(page);
 
     await expect(page.getByTestId("assistant-route-header")).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "站点导航" })).toContainText("文章");
+    await expect(page.getByRole("navigation", { name: "站点导航" })).toContainText("项目");
     await expect(page.getByTestId("assistant-route-footer")).toBeVisible();
     await expect(page.getByTestId("assistant-page")).toBeVisible();
     await expect(page.getByTestId("assistant-conversation-list")).toBeVisible();

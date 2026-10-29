@@ -1,5 +1,7 @@
 ---
 import ThemeToggle from "@/components/common/ThemeToggle";
+import { footerData, headerData } from "@/config/navigation";
+import { SITE } from "@/config/site";
 import { toPublicSitePath } from "../lib/runtime-urls";
 import BaseLayout from "./BaseLayout.astro";
 
@@ -11,8 +13,14 @@ interface Props {
 const { title = "智问助手", description = "站内知识问答" } = Astro.props;
 const homePath = toPublicSitePath("/") ?? "/";
 const memosPath = toPublicSitePath("/memos") ?? "/memos";
+const postsPath = toPublicSitePath("/posts") ?? "/posts";
+const projectsPath = toPublicSitePath("/projects") ?? "/projects";
+const tagsPath = toPublicSitePath("/tags") ?? "/tags";
+const playbookPath = toPublicSitePath("/playbook") ?? "/playbook";
+const searchPath = toPublicSitePath("/search") ?? "/search";
 const aboutPath = toPublicSitePath("/about") ?? "/about";
 const markPath = toPublicSitePath("/site-assets/ivan-blog-mark.svg") ?? "/site-assets/ivan-blog-mark.svg";
+const currentYear = new Date().getFullYear();
 ---
 
 <BaseLayout pathname={Astro.url.pathname} title={title} description={description}>
@@ -32,11 +40,17 @@ const markPath = toPublicSitePath("/site-assets/ivan-blog-mark.svg") ?? "/site-a
           </span>
         </a>
 
-        <nav class="assistant-route-nav" aria-label="助手导航">
-          <a href={memosPath}>浏览 Memos</a>
-          <a href={homePath}>返回首页</a>
-          <ThemeToggle client:load compactOnMobile iconClass="h-4 w-4" />
+        <nav class="assistant-route-nav" aria-label="站点导航">
+          <a href={homePath}>首页</a>
+          {headerData.links.map((link) => (
+            <a href={toPublicSitePath(link.href) ?? link.href}>{link.text}</a>
+          ))}
+          <a href={searchPath}>搜索</a>
         </nav>
+
+        <div class="assistant-route-header-tools">
+          <ThemeToggle client:load compactOnMobile iconClass="h-4 w-4" />
+        </div>
       </div>
     </header>
 
@@ -46,15 +60,59 @@ const markPath = toPublicSitePath("/site-assets/ivan-blog-mark.svg") ?? "/site-a
 
     <footer class="assistant-route-footer" data-testid="assistant-route-footer">
       <div class="assistant-route-footer-inner">
-        <div>
-          <span class="assistant-route-footer-title">智问助手</span>
-          <span class="assistant-route-footer-divider" aria-hidden="true">·</span>
-          <span>站内知识问答</span>
+        <div class="assistant-route-footer-brand">
+          <div class="assistant-route-footer-title">{SITE.name}</div>
+          <p>{SITE.description}</p>
+          <div class="assistant-route-footer-legal">
+            <span>Copyright © {currentYear} {SITE.owner}</span>
+            <span>Code: MIT</span>
+            <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" rel="noopener noreferrer">
+              Content: CC BY-NC-ND 4.0
+            </a>
+          </div>
         </div>
-        <div class="assistant-route-footer-meta">
-          <span>只检索公开内容</span>
-          <span>登录后保存对话</span>
-          <a href={aboutPath}>了解站点</a>
+
+        <div class="assistant-route-footer-column">
+          <p class="assistant-route-footer-label">站点入口</p>
+          <nav class="assistant-route-footer-links" aria-label="站点入口">
+            <a href={homePath}>首页</a>
+            <a href={postsPath}>文章</a>
+            <a href={memosPath}>闪念</a>
+            <a href={projectsPath}>项目</a>
+            <a href={tagsPath}>标签</a>
+            <a href={playbookPath}>执念</a>
+            <a href={searchPath}>搜索</a>
+            <a href={aboutPath}>关于</a>
+          </nav>
+        </div>
+
+        <div class="assistant-route-footer-column">
+          <p class="assistant-route-footer-label">连接</p>
+          <div class="assistant-route-footer-links">
+            {footerData.socialLinks.map((social) => (
+              <a
+                href={social.href.startsWith("/") ? toPublicSitePath(social.href) : social.href}
+                target={social.href.startsWith("/") ? undefined : "_blank"}
+                rel={social.href.startsWith("/") ? undefined : "noopener noreferrer"}
+              >
+                {social.ariaLabel}
+              </a>
+            ))}
+            <a href={`mailto:${SITE.author.email}`}>联系作者</a>
+          </div>
+          <a
+            class="assistant-route-footer-record"
+            target="_blank"
+            rel="noopener noreferrer"
+            href="https://beian.miit.gov.cn"
+          >
+            闽ICP备2023000043号
+          </a>
+        </div>
+
+        <div class="assistant-route-footer-note">
+          <span class="assistant-route-footer-note-title">智问助手</span>
+          <span>只检索本站公开内容 · 登录后保存对话</span>
         </div>
       </div>
     </footer>
@@ -77,12 +135,12 @@ const markPath = toPublicSitePath("/site-assets/ivan-blog-mark.svg") ?? "/site-a
   }
 
   .assistant-route-header-inner {
-    display: flex;
+    display: grid;
     width: min(92rem, 100%);
     min-height: 3.5rem;
     align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.8rem;
     margin: 0 auto;
     border-bottom: 1px solid var(--nature-line);
     padding: 0.35rem 0.15rem 0.55rem;
@@ -133,8 +191,21 @@ const markPath = toPublicSitePath("/site-assets/ivan-blog-mark.svg") ?? "/site-a
 
   .assistant-route-nav {
     display: flex;
+    min-width: 0;
     align-items: center;
+    justify-content: flex-end;
     gap: 0.25rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .assistant-route-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .assistant-route-header-tools {
+    display: flex;
+    align-items: center;
   }
 
   .assistant-route-nav > a {
@@ -169,10 +240,10 @@ const markPath = toPublicSitePath("/site-assets/ivan-blog-mark.svg") ?? "/site-a
   }
 
   .assistant-route-footer-inner {
-    display: flex;
+    display: grid;
     width: min(92rem, 100%);
-    align-items: center;
-    justify-content: space-between;
+    grid-template-columns: minmax(0, 1.4fr) minmax(12rem, 1fr) minmax(12rem, 1fr);
+    align-items: start;
     gap: 0.75rem 1.5rem;
     margin: 0 auto;
     border-top: 1px solid var(--nature-line);
@@ -181,22 +252,83 @@ const markPath = toPublicSitePath("/site-assets/ivan-blog-mark.svg") ?? "/site-a
     font-size: 0.75rem;
   }
 
+  .assistant-route-footer-brand {
+    min-width: 0;
+  }
+
   .assistant-route-footer-title {
     color: var(--nature-text-soft);
+    font-family: var(--font-heading);
+    font-size: 1rem;
     font-weight: 600;
   }
 
-  .assistant-route-footer-meta {
+  .assistant-route-footer-brand p {
+    max-width: 30rem;
+    margin: 0.25rem 0 0;
+    color: var(--nature-text-faint);
+    line-height: 1.5;
+  }
+
+  .assistant-route-footer-legal,
+  .assistant-route-footer-links {
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-end;
     gap: 0.25rem 0.8rem;
   }
 
-  .assistant-route-footer-meta a {
+  .assistant-route-footer-legal {
+    margin-top: 0.65rem;
+    color: var(--nature-text-faint);
+    font-size: 0.72rem;
+  }
+
+  .assistant-route-footer-legal a,
+  .assistant-route-footer-links a,
+  .assistant-route-footer-record {
     color: var(--nature-text-soft);
     text-decoration: underline;
     text-underline-offset: 0.15em;
+  }
+
+  .assistant-route-footer-column {
+    min-width: 0;
+  }
+
+  .assistant-route-footer-label {
+    margin: 0 0 0.45rem;
+    color: var(--nature-text-faint);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .assistant-route-footer-links {
+    gap: 0.3rem 0.7rem;
+    font-size: 0.75rem;
+  }
+
+  .assistant-route-footer-record {
+    display: inline-flex;
+    margin-top: 0.65rem;
+    font-size: 0.72rem;
+  }
+
+  .assistant-route-footer-note {
+    display: flex;
+    grid-column: 1 / -1;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.65rem;
+    border-top: 1px solid var(--nature-line);
+    padding-top: 0.65rem;
+    color: var(--nature-text-faint);
+    font-size: 0.72rem;
+  }
+
+  .assistant-route-footer-note-title {
+    color: var(--nature-text-soft);
+    font-weight: 600;
   }
 
   @media (max-width: 639px) {
@@ -205,6 +337,8 @@ const markPath = toPublicSitePath("/site-assets/ivan-blog-mark.svg") ?? "/site-a
     }
 
     .assistant-route-header-inner {
+      display: flex;
+      flex-wrap: wrap;
       min-height: 3rem;
       gap: 0.5rem;
       padding-bottom: 0.4rem;
@@ -227,22 +361,29 @@ const markPath = toPublicSitePath("/site-assets/ivan-blog-mark.svg") ?? "/site-a
       font-size: 0.78rem;
     }
 
+    .assistant-route-nav {
+      order: 3;
+      width: 100%;
+      justify-content: flex-start;
+      border-top: 1px solid var(--nature-line);
+      padding-top: 0.35rem;
+    }
+
     .assistant-route-nav > a {
       padding-inline: 0.45rem;
       font-size: 0.72rem;
     }
 
-    .assistant-route-nav > a:first-child {
-      display: none;
+    .assistant-route-header-tools {
+      margin-left: auto;
     }
 
     .assistant-route-footer-inner {
-      align-items: flex-start;
-      flex-direction: column;
+      grid-template-columns: 1fr;
     }
 
-    .assistant-route-footer-meta {
-      justify-content: flex-start;
+    .assistant-route-footer-note {
+      grid-column: auto;
     }
   }
 </style>
