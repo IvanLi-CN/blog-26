@@ -1,6 +1,7 @@
 import uPlot from "uplot";
 import "@/lib/public-header-scroll";
 import "@/lib/public-scrollbar";
+import { WEB_DEMO_MOTION_EVENT } from "../../src/lib/web-demo-runtime";
 import {
   markProjectRuntimeRendered,
   readLatestProjectRuntimeMetrics,
@@ -289,6 +290,7 @@ import "@/lib/public-playbook-resources";
     HTMLElement,
     ReturnType<typeof createRuntimeMetricMotion>
   >();
+  const runtimeValueObservers = new Map<HTMLElement, ResizeObserver>();
   const staticAfterFallback = new WeakSet<HTMLElement>();
   const getMeasureNode = () => {
     if (measureNode) return measureNode;
@@ -382,9 +384,13 @@ import "@/lib/public-playbook-resources";
           selectedValue !== fullValue || measuredWidth(fullValue) > availableWidth + 0.5;
         const shouldAnimate = animate && !staticAfterFallback.has(value);
         staticAfterFallback.delete(value);
+        const isAnimatingSameTarget =
+          controller.isAnimating && controller.targetText === selectedValue;
         const retargetDuringResize =
           controller.isAnimating && controller.targetText !== selectedValue;
-        controller.update(selectedValue, shouldAnimate || retargetDuringResize);
+        if (!isAnimatingSameTarget) {
+          controller.update(selectedValue, shouldAnimate || retargetDuringResize);
+        }
         value.dataset.runtimeValueTruncated = String(isTruncated);
         value.tabIndex = isTruncated ? 0 : -1;
         if (!isTruncated) hideTooltip(tooltip);
@@ -408,6 +414,7 @@ import "@/lib/public-playbook-resources";
 
       const resizeObserver = new ResizeObserver(() => applyValue());
       resizeObserver.observe(value);
+      runtimeValueObservers.set(value, resizeObserver);
       runtimeValueRefreshers.set(value, applyValue);
       applyValue();
     });
@@ -431,6 +438,14 @@ import "@/lib/public-playbook-resources";
       }
     }
   };
+  const disposeRuntimeValues = () => {
+    for (const [value, controller] of runtimeValueControllers) {
+      runtimeValueObservers.get(value)?.disconnect();
+      controller.destroy();
+    }
+    runtimeValueObservers.clear();
+    runtimeValueControllers.clear();
+  };
   const markRuntimeValuesStaticAfterFallback = (event: Event) => {
     const panel = (event as CustomEvent<{ panel?: HTMLElement }>).detail?.panel;
     if (!panel) return;
@@ -449,10 +464,15 @@ import "@/lib/public-playbook-resources";
   document.fonts?.ready.then(scheduleBind);
   window.addEventListener("project-runtime-metrics-updated", animateRuntimeValues);
   window.addEventListener("project-runtime-metrics-fallback", markRuntimeValuesStaticAfterFallback);
+  window.addEventListener(WEB_DEMO_MOTION_EVENT, (event) => {
+    if ((event as CustomEvent<{ motion?: string }>).detail?.motion === "reduce") {
+      settleRuntimeValues();
+    }
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) settleRuntimeValues();
   });
-  document.addEventListener("astro:before-swap", settleRuntimeValues);
+  document.addEventListener("astro:before-swap", disposeRuntimeValues);
 })();
 (() => {
   interface TrendPoint {

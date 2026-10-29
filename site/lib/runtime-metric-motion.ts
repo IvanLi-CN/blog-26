@@ -4,6 +4,23 @@ const motionEase = "cubic-bezier(.22,1,.36,1)";
 const digitPattern = /^\d$/u;
 const compactValuePattern = /^(-?)([\d.]+)([KMBT]?)$/u;
 
+const motionEaseY = (x: number) => {
+  const clamped = Math.min(1, Math.max(0, x));
+  const cubic = (t: number, first: number, second: number) => {
+    const inverse = 1 - t;
+    return 3 * inverse * inverse * t * first + 3 * inverse * t * t * second + t * t * t;
+  };
+  let low = 0;
+  let high = 1;
+  for (let iteration = 0; iteration < 12; iteration += 1) {
+    const middle = (low + high) / 2;
+    if (cubic(middle, 0.22, 0.36) < clamped) low = middle;
+    else high = middle;
+  }
+  const t = (low + high) / 2;
+  return cubic(t, 1, 1);
+};
+
 export type RuntimeMetricWheel = {
   from: string;
   to: string;
@@ -165,7 +182,8 @@ export function createRuntimeMetricMotion(
 
   const renderCurrentFrame = () => {
     if (!activePlan) return currentText;
-    const progress = Math.min(1, Math.max(0, (now() - animationStart) / duration));
+    const linearProgress = Math.min(1, Math.max(0, (now() - animationStart) / duration));
+    const progress = motionEaseY(linearProgress);
     const wheelsByPosition = new Map(activePlan.wheels.map((wheel) => [wheel.position, wheel]));
     const length = Math.max(activePlan.from.length, activePlan.to.length);
     let frameText = "";
@@ -178,7 +196,7 @@ export function createRuntimeMetricMotion(
         continue;
       }
       const sequence = sequenceForWheel(wheel);
-      const index = Math.min(sequence.length - 1, Math.floor(progress * (sequence.length - 1)));
+      const index = Math.min(sequence.length - 1, Math.round(progress * (sequence.length - 1)));
       frameText += sequence[index] ?? "";
     }
     return frameText;
