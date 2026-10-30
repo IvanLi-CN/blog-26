@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
+  "base_sha": "e894b395f7690a7c5166b053164f407c6cb60f90",
   "covered_files": {
     "GLOSSARY.md": "f3031cc1d9c75459850a8e26365bd0c46b9f6703",
     "docs/specs/README.md": "51ed9671bf340c6cd2d5122e030f15d3cf7cd294",
@@ -128,7 +128,9 @@
         "3.9.0",
         "3.10.0",
         "3.11.3",
-        "3.11.4"
+        "3.11.4",
+        "3.11.7",
+        "3.11.8"
       ],
       "evidence": [
         {
