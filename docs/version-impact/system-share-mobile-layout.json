@@ -5,8 +5,10 @@
   "covered_files": {
     "GLOSSARY.md": "f3031cc1d9c75459850a8e26365bd0c46b9f6703",
     "docs/specs/README.md": "51ed9671bf340c6cd2d5122e030f15d3cf7cd294",
-    "docs/specs/system-share-memos/IMPLEMENTATION.md": "08ccf77ff20f76bd6126df7b1d52dba6055c13d8",
-    "docs/specs/system-share-memos/SPEC.md": "e475cb6ef21f8b8ddc2da5367da804c3430eb8e3",
+    "docs/specs/system-share-memos/IMPLEMENTATION.md": "aeb991832bb7d3e5a9844d8309dae37f694013ad",
+    "docs/specs/system-share-memos/SPEC.md": "fc0b6ebbb32a881f6eb2e77bad57fd8eb55b0be6",
+    "docs/specs/system-share-memos/assets/system-share-mobile-layout-360.png": "0a72f74ba4842cd8c1015291d38ec84d6256988c",
+    "docs/specs/system-share-memos/assets/system-share-mobile-layout-393.png": "2dc147bc64bc0c0a5c00d6ec714bf195e7b83cfc",
     "site/components/SystemShareConfirmation.css": "05ac3522878c401167c637dd388940291b45bff3",
     "site/components/SystemShareConfirmation.tsx": "61468824a251b0cf0aa6c66f0b28addc785a5ec5",
     "site/layouts/BaseLayout.astro": "0a163667e1e853c1ab9485cd400b915093997449",
@@ -48,6 +50,16 @@
           "command": "Inspect the share-only flex sizing, edge-to-edge mobile surface, and native overflow rules"
         },
         {
+          "path": "docs/specs/system-share-memos/assets/system-share-mobile-layout-360.png",
+          "blob": "0a72f74ba4842cd8c1015291d38ec84d6256988c",
+          "command": "Inspect the owner-confirmed compact 360x740 formal Web Demo capture"
+        },
+        {
+          "path": "docs/specs/system-share-memos/assets/system-share-mobile-layout-393.png",
+          "blob": "2dc147bc64bc0c0a5c00d6ec714bf195e7b83cfc",
+          "command": "Inspect the owner-confirmed compact 393x852 formal Web Demo capture"
+        },
+        {
           "path": "src/styles/milkdown-nature.css",
           "blob": "665489233ef7effd416144d9631fb52e814b9910",
           "command": "Inspect the share footer breakpoint that keeps controls inline from 360px upward"
@@ -85,8 +97,18 @@
         },
         {
           "path": "docs/specs/system-share-memos/SPEC.md",
-          "blob": "e475cb6ef21f8b8ddc2da5367da804c3430eb8e3",
+          "blob": "fc0b6ebbb32a881f6eb2e77bad57fd8eb55b0be6",
           "command": "spec_contract_check.py --path docs/specs/system-share-memos/SPEC.md"
+        },
+        {
+          "path": "docs/specs/system-share-memos/assets/system-share-mobile-layout-360.png",
+          "blob": "0a72f74ba4842cd8c1015291d38ec84d6256988c",
+          "command": "Owner-confirmed 360x740 compact first-viewport evidence from the formal /share route"
+        },
+        {
+          "path": "docs/specs/system-share-memos/assets/system-share-mobile-layout-393.png",
+          "blob": "2dc147bc64bc0c0a5c00d6ec714bf195e7b83cfc",
+          "command": "Owner-confirmed 393x852 compact first-viewport evidence from the formal /share route"
         }
       ]
     }

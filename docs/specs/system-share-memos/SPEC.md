@@ -303,8 +303,9 @@
 
 ## Visual Evidence
 
-- Required after candidate implementation and before production release: owner-reviewable captures from the official `/share` route at 390x844 and 1440x1000, covering populated, publishing, success, retryable failure, and resulting detail states. Production release waits for owner confirmation.
+- Required after candidate implementation and before production release: owner-reviewable captures from the official `/share` route at 390x844 and 1440x1000, covering populated, publishing, success, retryable failure, and resulting detail states. The current candidate's visual evidence is owner-confirmed; real-device keyboard, safe-area, and gesture acceptance remains tracked as a separate empirical requirement.
 - Mobile layout evidence MUST additionally cover the compact initial state at `360x740` and `393x852`, a content-overflow state, and attachment-origin touch scrolling as defined by `VER-SSM-008..010`. Earlier populated-state captures do not establish these layout and gesture pass conditions.
+- The current compact initial-state captures are `assets/system-share-mobile-layout-360.png` and `assets/system-share-mobile-layout-393.png`; both are from the formal `/share` Web Demo and include the compact `返回首页` escape control.
 
 ## References
 

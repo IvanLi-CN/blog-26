@@ -37,8 +37,8 @@
 ## Visual Evidence
 
 - 证据源：正式 console Web Demo `/share` 路由，受控管理员 persona；本次新增 `requested_viewport=360x740`、`393x852` 和 `360x568`，响应式回归另含 `320/375/639px`、`768x1024`、`1440x1000`，`viewport_strategy=devtools-emulate`，页面级证据采用 `trim_only`。
-- 状态覆盖：本次候选已采集浅色 360x740 与 393x852 首屏图，并通过 DOM 几何断言和 CDP 原生触控记录首屏、全宽、内容溢出和附件区域滚动；既有手机与桌面填充、发布中、成功、失败重试和详情状态来自同一正式路由和现有 Web Demo Inspector，不新增演示路由。
-- 主人确认仍是发布前门禁：当前候选截图和真实 Chromium Android 键盘/安全区记录尚待主人确认；Toast 会根据实际高度动态预留页面顶部空间，并在系统或 Web Demo 减少动画模式下关闭过渡与旋转。
+- 状态覆盖：本次候选已采集并提交浅色 360x740 与 393x852 首屏图（`assets/system-share-mobile-layout-360.png`、`assets/system-share-mobile-layout-393.png`），并通过 DOM 几何断言和 CDP 原生触控记录首屏、全宽、内容溢出和附件区域滚动；既有手机与桌面填充、发布中、成功、失败重试和详情状态来自同一正式路由和现有 Web Demo Inspector，不新增演示路由。
+- 当前候选截图已获主人确认；真实 Chromium Android 键盘、安全区和手指操作仍作为独立经验验收记录。Toast 会根据实际高度动态预留页面顶部空间，并在系统或 Web Demo 减少动画模式下关闭过渡与旋转。
 
 ## Related Changes
 
