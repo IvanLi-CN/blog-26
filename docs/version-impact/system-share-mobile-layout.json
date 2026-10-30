@@ -7,15 +7,15 @@
     "docs/specs/README.md": "51ed9671bf340c6cd2d5122e030f15d3cf7cd294",
     "docs/specs/system-share-memos/IMPLEMENTATION.md": "08ccf77ff20f76bd6126df7b1d52dba6055c13d8",
     "docs/specs/system-share-memos/SPEC.md": "e475cb6ef21f8b8ddc2da5367da804c3430eb8e3",
-    "site/components/SystemShareConfirmation.css": "90e07998ef96e3dcd676f6fbb82b7e794d3205da",
-    "site/components/SystemShareConfirmation.tsx": "7fb521d7331c7745732881160152d529b902cff8",
+    "site/components/SystemShareConfirmation.css": "05ac3522878c401167c637dd388940291b45bff3",
+    "site/components/SystemShareConfirmation.tsx": "61468824a251b0cf0aa6c66f0b28addc785a5ec5",
     "site/layouts/BaseLayout.astro": "0a163667e1e853c1ab9485cd400b915093997449",
     "site/pages/share.astro": "03a009cf2080d51e08093c16b2feabe2eaf5695f",
     "src/styles/milkdown-nature.css": "665489233ef7effd416144d9631fb52e814b9910",
-    "tests/e2e/web-demo/system-share.spec.ts": "63239bc071b5cd18445c9bdb4a03b00876a85372"
+    "tests/e2e/web-demo/system-share.spec.ts": "a61f39cb9538583c88e81cfe83e8a6c46be16043"
   },
   "change": {
-    "description": "Tighten the Console system-share confirmation layout on mobile, preserve natural document scrolling from the attachment area, and synchronize the responsive Web Demo evidence without changing publish or persistence contracts.",
+    "description": "Tighten the Console system-share publish layout on mobile, provide a public-home escape, preserve natural document scrolling from the attachment area, and synchronize the responsive Web Demo evidence without changing publish or persistence contracts.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api"]
   },
@@ -27,24 +27,24 @@
       "evidence": [
         {
           "path": "site/components/SystemShareConfirmation.tsx",
-          "blob": "7fb521d7331c7745732881160152d529b902cff8",
+          "blob": "61468824a251b0cf0aa6c66f0b28addc785a5ec5",
           "command": "Review the share confirmation structure and preserved publish handlers"
         },
         {
           "path": "tests/e2e/web-demo/system-share.spec.ts",
-          "blob": "63239bc071b5cd18445c9bdb4a03b00876a85372",
+          "blob": "a61f39cb9538583c88e81cfe83e8a6c46be16043",
           "command": "Review the mobile first-viewport, responsive-width, and native-touch regression contract"
         }
       ]
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The implementation is limited to a share-page-specific stylesheet, a default-off keyboard viewport option, the /share route wiring, synchronized requirements, and focused browser assertions. No API, authentication, publishing, or durable-state behavior changed.",
+      "reasoning": "The implementation is limited to a share-page-specific stylesheet, a default-off keyboard viewport option, the /share route wiring, a public-home escape, synchronized requirements, and focused browser assertions. No API, authentication, publishing, or durable-state behavior changed.",
       "assessed_at": "2026-10-27T21:20:00+08:00",
       "evidence": [
         {
           "path": "site/components/SystemShareConfirmation.css",
-          "blob": "90e07998ef96e3dcd676f6fbb82b7e794d3205da",
+          "blob": "05ac3522878c401167c637dd388940291b45bff3",
           "command": "Inspect the share-only flex sizing, edge-to-edge mobile surface, and native overflow rules"
         },
         {
@@ -60,22 +60,22 @@
       ],
       "scope_drift": {
         "detected": false,
-        "description": "The candidate remains within the system-share confirmation surface, its keyboard viewport configuration, its synchronized specification evidence, and its focused Web Demo regression tests. No service, persistence, or release-version contract drift was introduced."
+        "description": "The candidate remains within the system-share publish surface, its keyboard viewport configuration, its public-home escape, synchronized specification evidence, and focused Web Demo regression tests. No service, persistence, or release-version contract drift was introduced."
       }
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Repository checks, the Console build, focused system-share browser geometry and native-touch tests, and the synchronized specification evidence verify a compatible presentation correction with no API or persistent-state changes. Real Chromium Android keyboard and safe-area acceptance remains a device-level follow-up.",
+      "reasoning": "Repository checks, the Console build, focused system-share browser geometry, public-home navigation, and native-touch tests verify a compatible presentation correction with no API or persistent-state changes. Real Chromium Android keyboard and safe-area acceptance remains a device-level follow-up.",
       "assessed_at": "2026-10-27T21:20:00+08:00",
       "evidence": [
         {
           "path": "tests/e2e/web-demo/system-share.spec.ts",
-          "blob": "63239bc071b5cd18445c9bdb4a03b00876a85372",
-          "command": "Focused system-share mobile first-viewport, responsive-width, and native-touch tests pass"
+          "blob": "a61f39cb9538583c88e81cfe83e8a6c46be16043",
+          "command": "Focused system-share mobile first-viewport, responsive-width, public-home navigation, and native-touch tests pass"
         },
         {
           "path": "site/components/SystemShareConfirmation.css",
-          "blob": "90e07998ef96e3dcd676f6fbb82b7e794d3205da",
+          "blob": "05ac3522878c401167c637dd388940291b45bff3",
           "command": "bun run check and CONSOLE_RUNTIME=true bun run console:build"
         },
         {
@@ -135,12 +135,12 @@
       "evidence": [
         {
           "path": "site/components/SystemShareConfirmation.tsx",
-          "blob": "7fb521d7331c7745732881160152d529b902cff8",
+          "blob": "61468824a251b0cf0aa6c66f0b28addc785a5ec5",
           "command": "Existing share parsing, authentication, and publish payload handlers remain unchanged"
         },
         {
           "path": "tests/e2e/web-demo/system-share.spec.ts",
-          "blob": "63239bc071b5cd18445c9bdb4a03b00876a85372",
+          "blob": "a61f39cb9538583c88e81cfe83e8a6c46be16043",
           "command": "Focused publish, retry, attachment, and navigation regressions exercise the unchanged route contract"
         }
       ]
