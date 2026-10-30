@@ -12,7 +12,7 @@
     "site/layouts/BaseLayout.astro": "0a163667e1e853c1ab9485cd400b915093997449",
     "site/pages/share.astro": "03a009cf2080d51e08093c16b2feabe2eaf5695f",
     "src/styles/milkdown-nature.css": "665489233ef7effd416144d9631fb52e814b9910",
-    "tests/e2e/web-demo/system-share.spec.ts": "a9e73322c048afc96e969f3088c5b3c16db692b6"
+    "tests/e2e/web-demo/system-share.spec.ts": "4b1561720aa375ff3b41ef430a632ad8df421c8f"
   },
   "change": {
     "description": "Tighten the Console system-share publish layout on mobile, provide a public-home escape, preserve natural document scrolling from the attachment area, and synchronize the responsive Web Demo evidence without changing publish or persistence contracts.",
@@ -32,7 +32,7 @@
         },
         {
           "path": "tests/e2e/web-demo/system-share.spec.ts",
-          "blob": "a9e73322c048afc96e969f3088c5b3c16db692b6",
+          "blob": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
           "command": "Review the mobile first-viewport, responsive-width, and native-touch regression contract"
         }
       ]
@@ -70,7 +70,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/system-share.spec.ts",
-          "blob": "a9e73322c048afc96e969f3088c5b3c16db692b6",
+          "blob": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
           "command": "Focused system-share mobile first-viewport, responsive-width, public-home navigation, and native-touch tests pass"
         },
         {
@@ -140,7 +140,7 @@
         },
         {
           "path": "tests/e2e/web-demo/system-share.spec.ts",
-          "blob": "a9e73322c048afc96e969f3088c5b3c16db692b6",
+          "blob": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
           "command": "Focused publish, retry, attachment, and navigation regressions exercise the unchanged route contract"
         }
       ]

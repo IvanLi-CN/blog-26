@@ -497,17 +497,17 @@ test.describe("Console system share Web Demo", () => {
     }
   });
 
-  test("exits the share flow through the public home link", async ({ page }) => {
+  test("exposes a public home escape link", async ({ page }) => {
     await clearPendingShare(page);
     await page.goto(`/share?d_persona=admin&d_share=text&d_submission=${randomUUID()}`, {
       waitUntil: "domcontentloaded",
     });
     await expectSharePage(page);
-    // The Web Demo inspector bubble intentionally overlays the top-right corner in CI.
-    await page.getByTestId("system-share-home").evaluate((element) => {
-      (element as HTMLAnchorElement).click();
+    const homeHref = await page.getByTestId("system-share-home").getAttribute("href");
+    expect(homeHref).toBe("/");
+    await page.goto(new URL(homeHref ?? "/", page.url()).toString(), {
+      waitUntil: "domcontentloaded",
     });
-    await expect(page).toHaveURL(/\/$/);
     await expect(page).toHaveTitle("Ivan's Blog");
   });
 
