@@ -89,6 +89,125 @@ async function readPendingText(page: import("@playwright/test").Page) {
   );
 }
 
+type ShareLayoutSnapshot = {
+  viewport: { width: number; height: number };
+  document: { clientWidth: number; scrollWidth: number; scrollHeight: number; scrollTop: number };
+  main: { left: number; right: number; top: number; bottom: number };
+  form: { left: number; right: number; top: number; bottom: number };
+  editor: { left: number; right: number; top: number; bottom: number; height: number };
+  editorMeta: { left: number; right: number; top: number; bottom: number; height: number };
+  submit: { left: number; right: number; top: number; bottom: number; height: number };
+  visibility: { top: number; bottom: number; height: number };
+  bodyOverflow: { overflowX: string; overflowY: string; overscrollBehaviorY: string };
+  editorBody: { overflowY: string; overscrollBehaviorY: string };
+};
+
+async function readShareLayout(page: import("@playwright/test").Page) {
+  return page.evaluate(() => {
+    const rect = (selector: string) => {
+      const element = document.querySelector<HTMLElement>(selector);
+      if (!element) throw new Error(`Missing layout element: ${selector}`);
+      const box = element.getBoundingClientRect();
+      return {
+        left: box.left,
+        right: box.right,
+        top: box.top,
+        bottom: box.bottom,
+        height: box.height,
+      };
+    };
+    const scroll = document.scrollingElement ?? document.documentElement;
+    const editorBody = document.querySelector<HTMLElement>(
+      '[data-testid="system-share-memo-editor-body"]'
+    );
+    if (!editorBody) throw new Error("Missing share editor body");
+    return {
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      document: {
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        scrollHeight: scroll.scrollHeight,
+        scrollTop: scroll.scrollTop,
+      },
+      main: rect('[data-testid="system-share-page"]'),
+      form: rect('[data-testid="system-share-memo-editor"]'),
+      editor: rect('[data-testid="system-share-memo-editor-surface"]'),
+      editorMeta: rect('[data-testid="system-share-memo-editor-meta"]'),
+      submit: rect('[data-testid="system-share-submit"]'),
+      visibility: rect(".quick-memo-edit-visibility"),
+      bodyOverflow: {
+        overflowX: getComputedStyle(document.body).overflowX,
+        overflowY: getComputedStyle(document.body).overflowY,
+        overscrollBehaviorY: getComputedStyle(document.body).overscrollBehaviorY,
+      },
+      editorBody: {
+        overflowY: getComputedStyle(editorBody).overflowY,
+        overscrollBehaviorY: getComputedStyle(editorBody).overscrollBehaviorY,
+      },
+    } satisfies ShareLayoutSnapshot;
+  });
+}
+
+async function synthesizeTouchScroll(
+  page: import("@playwright/test").Page,
+  selector: string,
+  distance: number
+) {
+  const point = await page.evaluate(
+    ({ targetSelector, distance: gestureDistance }) => {
+      const target = document.querySelector<HTMLElement>(targetSelector);
+      const scroll = document.scrollingElement ?? document.documentElement;
+      if (!target) throw new Error(`Missing touch target: ${targetSelector}`);
+      const maxScrollTop = Math.max(0, scroll.scrollHeight - window.innerHeight);
+      const gestureHeadroom = Math.abs(gestureDistance);
+      target.scrollIntoView({ block: "center", inline: "nearest" });
+      const centeredBox = target.getBoundingClientRect();
+      const targetDocumentTop = centeredBox.top + scroll.scrollTop;
+      const minScrollTop = Math.min(gestureHeadroom, maxScrollTop);
+      const maxScrollTopWithHeadroom = Math.max(minScrollTop, maxScrollTop - gestureHeadroom);
+      const preferredScrollTop = targetDocumentTop - window.innerHeight / 2;
+      scroll.scrollTop = Math.max(
+        minScrollTop,
+        Math.min(maxScrollTopWithHeadroom, preferredScrollTop)
+      );
+      const box = target.getBoundingClientRect();
+      return {
+        x: Math.max(2, Math.min(window.innerWidth - 2, box.left + box.width / 2)),
+        y: Math.max(2, Math.min(window.innerHeight - 2, box.top + Math.min(24, box.height / 2))),
+        before: scroll.scrollTop,
+        maxScrollTop,
+      };
+    },
+    { targetSelector: selector, distance }
+  );
+  expect(point.maxScrollTop).toBeGreaterThan(0);
+
+  const before = await page.evaluate(() => {
+    const scroll = document.scrollingElement ?? document.documentElement;
+    return scroll.scrollTop;
+  });
+  const client = await page.context().newCDPSession(page);
+  await client.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 1 });
+  try {
+    await client.send("Input.synthesizeScrollGesture", {
+      x: point.x,
+      y: point.y,
+      yDistance: distance,
+      speed: 1000,
+      gestureSourceType: "default",
+    });
+  } finally {
+    await client.send("Emulation.setTouchEmulationEnabled", { enabled: false });
+    await client.detach();
+  }
+  await page.waitForTimeout(100);
+  const after = await page.evaluate(() => {
+    const scroll = document.scrollingElement ?? document.documentElement;
+    return scroll.scrollTop;
+  });
+  return { ...point, before, after };
+}
+
 test.describe("Console system share Web Demo", () => {
   test.describe.configure({ timeout: 60_000 });
 
@@ -328,5 +447,213 @@ test.describe("Console system share Web Demo", () => {
     );
     await expect(page).toHaveURL(/\/share\?/);
     await replacement.close();
+  });
+
+  test("keeps compact mobile publish controls in the first viewport", async ({ page }) => {
+    for (const size of [
+      { width: 360, height: 740 },
+      { width: 393, height: 852 },
+    ]) {
+      await page.setViewportSize(size);
+      await clearPendingShare(page);
+      await page.goto(`/share?d_persona=admin&d_share=url&d_submission=${randomUUID()}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await expectSharePage(page);
+      await expect(page.locator("body")).toHaveClass(/system-share-body/);
+      await expect(page).toHaveTitle("发布 Memo");
+      await expect(page.getByTestId("system-share-submit")).toHaveText("发布 Memo");
+      await expect(page.getByTestId("system-share-home")).toHaveAttribute("href", "/");
+      await expect(page.getByRole("link", { name: "返回首页" })).toHaveCount(1);
+
+      const compact = await readShareLayout(page);
+      await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
+        "content",
+        /interactive-widget=resizes-content/
+      );
+      const pageHeader = await page.locator(".system-share-page-header").boundingBox();
+      const pageTitle = await page.getByRole("heading", { name: "发布 Memo" }).boundingBox();
+      expect(pageHeader).not.toBeNull();
+      expect(pageTitle).not.toBeNull();
+      if (!pageHeader || !pageTitle) throw new Error("Missing compact share page header");
+      expect(pageHeader.height).toBeGreaterThanOrEqual(pageTitle.height);
+      expect(pageHeader.height).toBeLessThanOrEqual(52);
+      expect(compact.editor.height).toBeGreaterThanOrEqual(192);
+      expect(compact.editor.height).toBeGreaterThan(192);
+      expect(Math.abs(compact.editor.left)).toBeLessThanOrEqual(1);
+      expect(Math.abs(compact.editor.right - size.width)).toBeLessThanOrEqual(1);
+      expect(compact.editorMeta.top - compact.editor.bottom).toBeGreaterThanOrEqual(3);
+      expect(compact.editorMeta.top - compact.editor.bottom).toBeLessThanOrEqual(5);
+      expect(compact.submit.bottom).toBeLessThanOrEqual(size.height + 1);
+      expect(compact.visibility.bottom).toBeLessThanOrEqual(size.height + 1);
+      expect(Math.abs(compact.submit.top - compact.visibility.top)).toBeLessThanOrEqual(1);
+      expect(Math.abs(compact.submit.bottom - compact.visibility.bottom)).toBeLessThanOrEqual(1);
+
+      await page.setViewportSize({ width: size.width, height: size.height + 100 });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await expectSharePage(page);
+      const taller = await readShareLayout(page);
+      expect(taller.editor.height).toBeGreaterThan(compact.editor.height + 40);
+    }
+  });
+
+  test("exposes a public home escape link", async ({ page }) => {
+    await clearPendingShare(page);
+    await page.goto(`/share?d_persona=admin&d_share=text&d_submission=${randomUUID()}`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expectSharePage(page);
+    const homeHref = await page.getByTestId("system-share-home").getAttribute("href");
+    expect(homeHref).toBe("/");
+    await page.goto(new URL(homeHref ?? "/", page.url()).toString(), {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page).toHaveTitle("Ivan's Blog");
+  });
+
+  test("wraps publish controls only below the compact mobile width", async ({ page }) => {
+    for (const [width, shouldWrap] of [
+      [320, true],
+      [360, false],
+      [375, false],
+      [393, false],
+    ] as const) {
+      await page.setViewportSize({ width, height: 852 });
+      await clearPendingShare(page);
+      await page.goto(`/share?d_persona=admin&d_share=url&d_submission=${randomUUID()}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await expectSharePage(page);
+      const layout = await readShareLayout(page);
+      const sameRow = Math.abs(layout.submit.top - layout.visibility.top) <= 1;
+      expect(sameRow).toBe(!shouldWrap);
+      expect(layout.submit.height).toBeGreaterThanOrEqual(44);
+      expect(layout.visibility.height).toBeGreaterThanOrEqual(44);
+      expect(layout.document.scrollWidth).toBeLessThanOrEqual(layout.document.clientWidth + 1);
+    }
+  });
+
+  test("uses the mobile edge-to-edge surface without horizontal overflow", async ({ page }) => {
+    for (const width of [320, 360, 375, 393, 639]) {
+      await page.setViewportSize({ width, height: 852 });
+      await clearPendingShare(page);
+      await page.goto(`/share?d_persona=admin&d_share=text&d_submission=${randomUUID()}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await expectSharePage(page);
+      const layout = await readShareLayout(page);
+      const expectedInset = width < 375 ? 12 : 16;
+      const attachmentTitle = await page
+        .getByTestId("system-share-attachments-title")
+        .boundingBox();
+      const attachmentPicker = await page.locator(".system-share-file-picker").boundingBox();
+      expect(attachmentTitle).not.toBeNull();
+      expect(attachmentPicker).not.toBeNull();
+      if (!attachmentTitle || !attachmentPicker) {
+        throw new Error("Missing attachment title or picker layout");
+      }
+      expect(attachmentPicker.x).toBeGreaterThanOrEqual(
+        attachmentTitle.x + attachmentTitle.width - 1
+      );
+      expect(attachmentPicker.x + attachmentPicker.width).toBeLessThanOrEqual(
+        width - expectedInset + 1
+      );
+      expect(attachmentPicker.height).toBeGreaterThanOrEqual(44);
+      expect(attachmentPicker.width).toBeLessThan(140);
+      expect(Math.abs(layout.main.left)).toBeLessThanOrEqual(1);
+      expect(Math.abs(layout.main.right - width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(layout.form.left)).toBeLessThanOrEqual(1);
+      expect(Math.abs(layout.form.right - width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(layout.editor.left)).toBeLessThanOrEqual(1);
+      expect(Math.abs(layout.editor.right - width)).toBeLessThanOrEqual(1);
+      expect(layout.document.scrollWidth).toBeLessThanOrEqual(layout.document.clientWidth + 1);
+      const editorLabelLeft = await page
+        .getByTestId("system-share-memo-editor-content")
+        .locator("span")
+        .first()
+        .evaluate((element) => element.getBoundingClientRect().left);
+      expect(editorLabelLeft).toBeGreaterThanOrEqual(expectedInset - 1);
+    }
+
+    for (const size of [
+      { width: 768, height: 1024 },
+      { width: 1440, height: 1000 },
+    ]) {
+      await page.setViewportSize(size);
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await expectSharePage(page);
+      const layout = await readShareLayout(page);
+      expect(layout.document.scrollWidth).toBeLessThanOrEqual(layout.document.clientWidth + 1);
+      expect(layout.form.right - layout.form.left).toBeLessThan(size.width);
+      expect(layout.submit.right).toBeGreaterThan(layout.form.left);
+      expect(layout.submit.left).toBeLessThan(layout.form.right);
+    }
+  });
+
+  test("scrolls the document from attachment controls with a native touch gesture", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 360, height: 568 });
+    await clearPendingShare(page);
+    await page.goto(`/share?d_persona=admin&d_share=file&d_submission=${randomUUID()}`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expectSharePage(page);
+
+    const editor = page.getByTestId("system-share-memo-editor").locator(".ProseMirror");
+    await editor.click();
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.insertText(
+      Array.from({ length: 96 }, (_, index) => `滚动回归正文第 ${index + 1} 行`).join("\n")
+    );
+    await expect.poll(() => readPendingText(page), { timeout: 5_000 }).toContain("第 96 行");
+    await expect(page.getByTestId("system-share-files")).toContainText("分享附件.txt");
+    await page.getByTestId("system-share-original-toggle").click();
+    await expect(page.getByTestId("system-share-original").locator("dl")).toBeVisible();
+
+    const gestureDeltas: number[] = [];
+    for (const selector of [
+      '[data-testid="system-share-attachments-title"]',
+      '[data-testid="system-share-file-row-0"]',
+      '[data-testid="system-share-empty-attachments"]',
+      ".system-share-file-picker",
+    ]) {
+      if (selector === '[data-testid="system-share-empty-attachments"]') {
+        await page.getByRole("button", { name: "移除 分享附件.txt" }).click();
+        await expect(page.getByTestId("system-share-empty-attachments")).toBeVisible();
+      }
+      const result = await synthesizeTouchScroll(page, selector, 180);
+      expect(Math.abs(result.after - result.before)).toBeGreaterThan(0);
+      gestureDeltas.push(Math.abs(result.after - result.before));
+    }
+    expect(Math.max(...gestureDeltas)).toBeGreaterThan(0);
+
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles([
+      {
+        name: "触控回归-a.txt",
+        mimeType: "text/plain",
+        buffer: Buffer.from("附件增删回归 A"),
+      },
+      {
+        name: "触控回归-b.txt",
+        mimeType: "text/plain",
+        buffer: Buffer.from("附件增删回归 B"),
+      },
+    ]);
+    await expect(page.getByTestId("system-share-files")).toContainText("触控回归-a.txt");
+    await expect(page.getByTestId("system-share-files")).toContainText("触控回归-b.txt");
+    await page.getByRole("button", { name: "移除 触控回归-a.txt" }).click();
+    await page.getByRole("button", { name: "移除 触控回归-b.txt" }).click();
+    await expect(page.getByTestId("system-share-empty-attachments")).toBeVisible();
+
+    const layout = await readShareLayout(page);
+    expect(layout.bodyOverflow).toEqual({
+      overflowX: "clip",
+      overflowY: "visible",
+      overscrollBehaviorY: "auto",
+    });
+    expect(layout.editorBody.overflowY).toBe("visible");
+    expect(layout.editorBody.overscrollBehaviorY).toBe("auto");
   });
 });

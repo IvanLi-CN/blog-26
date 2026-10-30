@@ -1,0 +1,185 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e894b395f7690a7c5166b053164f407c6cb60f90",
+  "covered_files": {
+    "GLOSSARY.md": "f3031cc1d9c75459850a8e26365bd0c46b9f6703",
+    "docs/specs/README.md": "51ed9671bf340c6cd2d5122e030f15d3cf7cd294",
+    "docs/specs/system-share-memos/IMPLEMENTATION.md": "aeb991832bb7d3e5a9844d8309dae37f694013ad",
+    "docs/specs/system-share-memos/SPEC.md": "fc0b6ebbb32a881f6eb2e77bad57fd8eb55b0be6",
+    "docs/specs/system-share-memos/assets/system-share-mobile-layout-360.png": "0a72f74ba4842cd8c1015291d38ec84d6256988c",
+    "docs/specs/system-share-memos/assets/system-share-mobile-layout-393.png": "2dc147bc64bc0c0a5c00d6ec714bf195e7b83cfc",
+    "site/components/SystemShareConfirmation.css": "05ac3522878c401167c637dd388940291b45bff3",
+    "site/components/SystemShareConfirmation.tsx": "61468824a251b0cf0aa6c66f0b28addc785a5ec5",
+    "site/layouts/BaseLayout.astro": "0a163667e1e853c1ab9485cd400b915093997449",
+    "site/pages/share.astro": "03a009cf2080d51e08093c16b2feabe2eaf5695f",
+    "src/styles/milkdown-nature.css": "665489233ef7effd416144d9631fb52e814b9910",
+    "tests/e2e/web-demo/system-share.spec.ts": "4b1561720aa375ff3b41ef430a632ad8df421c8f"
+  },
+  "change": {
+    "description": "Tighten the Console system-share publish layout on mobile, provide a public-home escape, preserve natural document scrolling from the attachment area, and synchronize the responsive Web Demo evidence without changing publish or persistence contracts.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The candidate changes only the system-share confirmation layout, keyboard viewport metadata, and focused Web Demo coverage. Share parsing, authentication, publishing, persistence, and API contracts remain unchanged.",
+      "assessed_at": "2026-10-27T21:20:00+08:00",
+      "evidence": [
+        {
+          "path": "site/components/SystemShareConfirmation.tsx",
+          "blob": "61468824a251b0cf0aa6c66f0b28addc785a5ec5",
+          "command": "Review the share confirmation structure and preserved publish handlers"
+        },
+        {
+          "path": "tests/e2e/web-demo/system-share.spec.ts",
+          "blob": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
+          "command": "Review the mobile first-viewport, responsive-width, and native-touch regression contract"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The implementation is limited to a share-page-specific stylesheet, a default-off keyboard viewport option, the /share route wiring, a public-home escape, synchronized requirements, and focused browser assertions. No API, authentication, publishing, or durable-state behavior changed.",
+      "assessed_at": "2026-10-27T21:20:00+08:00",
+      "evidence": [
+        {
+          "path": "site/components/SystemShareConfirmation.css",
+          "blob": "05ac3522878c401167c637dd388940291b45bff3",
+          "command": "Inspect the share-only flex sizing, edge-to-edge mobile surface, and native overflow rules"
+        },
+        {
+          "path": "docs/specs/system-share-memos/assets/system-share-mobile-layout-360.png",
+          "blob": "0a72f74ba4842cd8c1015291d38ec84d6256988c",
+          "command": "Inspect the owner-confirmed compact 360x740 formal Web Demo capture"
+        },
+        {
+          "path": "docs/specs/system-share-memos/assets/system-share-mobile-layout-393.png",
+          "blob": "2dc147bc64bc0c0a5c00d6ec714bf195e7b83cfc",
+          "command": "Inspect the owner-confirmed compact 393x852 formal Web Demo capture"
+        },
+        {
+          "path": "src/styles/milkdown-nature.css",
+          "blob": "665489233ef7effd416144d9631fb52e814b9910",
+          "command": "Inspect the share footer breakpoint that keeps controls inline from 360px upward"
+        },
+        {
+          "path": "site/layouts/BaseLayout.astro",
+          "blob": "0a163667e1e853c1ab9485cd400b915093997449",
+          "command": "Inspect the default-off interactive-widget viewport option and share-page body class"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains within the system-share publish surface, its keyboard viewport configuration, its public-home escape, synchronized specification evidence, and focused Web Demo regression tests. No service, persistence, or release-version contract drift was introduced."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Repository checks, the Console build, focused system-share browser geometry, public-home navigation, and native-touch tests verify a compatible presentation correction with no API or persistent-state changes. Real Chromium Android keyboard and safe-area acceptance remains a device-level follow-up.",
+      "assessed_at": "2026-10-27T21:20:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/system-share.spec.ts",
+          "blob": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
+          "command": "Focused system-share mobile first-viewport, responsive-width, public-home navigation, and native-touch tests pass"
+        },
+        {
+          "path": "site/components/SystemShareConfirmation.css",
+          "blob": "05ac3522878c401167c637dd388940291b45bff3",
+          "command": "bun run check and CONSOLE_RUNTIME=true bun run console:build"
+        },
+        {
+          "path": "src/styles/milkdown-nature.css",
+          "blob": "665489233ef7effd416144d9631fb52e814b9910",
+          "command": "Verify the responsive footer row and narrow-screen wrap breakpoint"
+        },
+        {
+          "path": "docs/specs/system-share-memos/SPEC.md",
+          "blob": "fc0b6ebbb32a881f6eb2e77bad57fd8eb55b0be6",
+          "command": "spec_contract_check.py --path docs/specs/system-share-memos/SPEC.md"
+        },
+        {
+          "path": "docs/specs/system-share-memos/assets/system-share-mobile-layout-360.png",
+          "blob": "0a72f74ba4842cd8c1015291d38ec84d6256988c",
+          "command": "Owner-confirmed 360x740 compact first-viewport evidence from the formal /share route"
+        },
+        {
+          "path": "docs/specs/system-share-memos/assets/system-share-mobile-layout-393.png",
+          "blob": "2dc147bc64bc0c0a5c00d6ec714bf195e7b83cfc",
+          "command": "Owner-confirmed 393x852 compact first-viewport evidence from the formal /share route"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4",
+        "3.11.7",
+        "3.11.8"
+      ],
+      "evidence": [
+        {
+          "path": "site/components/SystemShareConfirmation.tsx",
+          "blob": "61468824a251b0cf0aa6c66f0b28addc785a5ec5",
+          "command": "Existing share parsing, authentication, and publish payload handlers remain unchanged"
+        },
+        {
+          "path": "tests/e2e/web-demo/system-share.spec.ts",
+          "blob": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
+          "command": "Focused publish, retry, attachment, and navigation regressions exercise the unchanged route contract"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local-content format, browser persistence schema, Memo storage format, attachment format, or release-ledger state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "site/layouts/BaseLayout.astro",
+          "blob": "0a163667e1e853c1ab9485cd400b915093997449",
+          "command": "The keyboard viewport option is presentation metadata and defaults to false"
+        }
+      ]
+    }
+  }
+}
