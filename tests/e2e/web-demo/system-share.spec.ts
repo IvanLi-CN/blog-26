@@ -471,7 +471,8 @@ test.describe("Console system share Web Demo", () => {
       expect(pageHeader).not.toBeNull();
       expect(pageTitle).not.toBeNull();
       if (!pageHeader || !pageTitle) throw new Error("Missing compact share page header");
-      expect(pageHeader.height).toBeLessThanOrEqual(pageTitle.height + 1);
+      expect(pageHeader.height).toBeGreaterThanOrEqual(pageTitle.height);
+      expect(pageHeader.height).toBeLessThanOrEqual(52);
       expect(compact.editor.height).toBeGreaterThanOrEqual(192);
       expect(compact.submit.bottom).toBeLessThanOrEqual(size.height + 1);
       expect(compact.visibility.bottom).toBeLessThanOrEqual(size.height + 1);

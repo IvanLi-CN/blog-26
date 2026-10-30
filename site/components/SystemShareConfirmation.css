@@ -24,12 +24,23 @@ body.system-share-body {
 }
 
 @media (max-width: 639px) {
+  .system-share-page-header {
+    min-block-size: 3rem;
+    align-items: center;
+    flex-wrap: nowrap;
+    border-bottom: 1px solid var(--nature-line);
+    padding-bottom: 8px;
+  }
+
   .system-share-page-kicker {
     display: none;
   }
 
   .system-share-page-header .nature-title {
     margin-top: 0;
+    font-size: 1.5rem;
+    line-height: 1.25;
+    white-space: nowrap;
   }
 }
 
