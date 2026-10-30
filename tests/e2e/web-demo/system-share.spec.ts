@@ -504,7 +504,9 @@ test.describe("Console system share Web Demo", () => {
     });
     await expectSharePage(page);
     // The Web Demo inspector bubble intentionally overlays the top-right corner in CI.
-    await page.getByTestId("system-share-home").click({ force: true });
+    await page.getByTestId("system-share-home").evaluate((element) => {
+      (element as HTMLAnchorElement).click();
+    });
     await expect(page).toHaveURL(/\/$/);
     await expect(page).toHaveTitle("Ivan's Blog");
   });
