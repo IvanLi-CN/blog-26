@@ -8,11 +8,11 @@
     "docs/specs/system-share-memos/IMPLEMENTATION.md": "08ccf77ff20f76bd6126df7b1d52dba6055c13d8",
     "docs/specs/system-share-memos/SPEC.md": "e475cb6ef21f8b8ddc2da5367da804c3430eb8e3",
     "site/components/SystemShareConfirmation.css": "90e07998ef96e3dcd676f6fbb82b7e794d3205da",
-    "site/components/SystemShareConfirmation.tsx": "f3c6fdfc1f798aface76f2ff42879c0bbd25dec1",
+    "site/components/SystemShareConfirmation.tsx": "7fb521d7331c7745732881160152d529b902cff8",
     "site/layouts/BaseLayout.astro": "0a163667e1e853c1ab9485cd400b915093997449",
-    "site/pages/share.astro": "d64b7765fb72aedea4145edd1f2c3aa979ce83eb",
+    "site/pages/share.astro": "03a009cf2080d51e08093c16b2feabe2eaf5695f",
     "src/styles/milkdown-nature.css": "665489233ef7effd416144d9631fb52e814b9910",
-    "tests/e2e/web-demo/system-share.spec.ts": "b8a7e0ca395fcf827129d0eb1c24cf8e85d3d258"
+    "tests/e2e/web-demo/system-share.spec.ts": "63239bc071b5cd18445c9bdb4a03b00876a85372"
   },
   "change": {
     "description": "Tighten the Console system-share confirmation layout on mobile, preserve natural document scrolling from the attachment area, and synchronize the responsive Web Demo evidence without changing publish or persistence contracts.",
@@ -27,12 +27,12 @@
       "evidence": [
         {
           "path": "site/components/SystemShareConfirmation.tsx",
-          "blob": "f3c6fdfc1f798aface76f2ff42879c0bbd25dec1",
+          "blob": "7fb521d7331c7745732881160152d529b902cff8",
           "command": "Review the share confirmation structure and preserved publish handlers"
         },
         {
           "path": "tests/e2e/web-demo/system-share.spec.ts",
-          "blob": "b8a7e0ca395fcf827129d0eb1c24cf8e85d3d258",
+          "blob": "63239bc071b5cd18445c9bdb4a03b00876a85372",
           "command": "Review the mobile first-viewport, responsive-width, and native-touch regression contract"
         }
       ]
@@ -70,7 +70,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/system-share.spec.ts",
-          "blob": "b8a7e0ca395fcf827129d0eb1c24cf8e85d3d258",
+          "blob": "63239bc071b5cd18445c9bdb4a03b00876a85372",
           "command": "Focused system-share mobile first-viewport, responsive-width, and native-touch tests pass"
         },
         {
@@ -135,12 +135,12 @@
       "evidence": [
         {
           "path": "site/components/SystemShareConfirmation.tsx",
-          "blob": "f3c6fdfc1f798aface76f2ff42879c0bbd25dec1",
+          "blob": "7fb521d7331c7745732881160152d529b902cff8",
           "command": "Existing share parsing, authentication, and publish payload handlers remain unchanged"
         },
         {
           "path": "tests/e2e/web-demo/system-share.spec.ts",
-          "blob": "b8a7e0ca395fcf827129d0eb1c24cf8e85d3d258",
+          "blob": "63239bc071b5cd18445c9bdb4a03b00876a85372",
           "command": "Focused publish, retry, attachment, and navigation regressions exercise the unchanged route contract"
         }
       ]

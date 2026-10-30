@@ -312,7 +312,7 @@ export default function SystemShareConfirmation() {
       currentPending = await readPendingSystemShare();
     } catch (nextError) {
       const message =
-        nextError instanceof Error ? nextError.message : "无法确认当前分享，请刷新后重试。";
+        nextError instanceof Error ? nextError.message : "无法读取当前分享，请刷新后重试。";
       showSystemShareError(message, () => window.location.reload(), "刷新");
       releaseSubmitLock();
       return;
@@ -425,7 +425,7 @@ export default function SystemShareConfirmation() {
       >
         <span className="nature-kicker">System Share</span>
         <h1 className="nature-title mt-3 text-3xl">登录后继续发布</h1>
-        <p className="nature-muted mt-3">分享内容已保存在当前浏览器，登录控制台后可以继续确认。</p>
+        <p className="nature-muted mt-3">分享内容已保存在当前浏览器，登录控制台后可以继续发布。</p>
         <div className="mt-6 flex flex-wrap gap-3">
           <a
             className="nature-button nature-button-primary inline-flex"
@@ -692,7 +692,7 @@ export default function SystemShareConfirmation() {
                 disabled={submitting || successLocked}
                 data-testid="system-share-submit"
               >
-                {submitting ? "发布中…" : successLocked ? "已发布" : "确认发布"}
+                {submitting ? "发布中…" : successLocked ? "已发布" : "发布 Memo"}
               </button>
             </div>
           </div>

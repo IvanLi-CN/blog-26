@@ -462,6 +462,7 @@ test.describe("Console system share Web Demo", () => {
       await expectSharePage(page);
       await expect(page.locator("body")).toHaveClass(/system-share-body/);
       await expect(page).toHaveTitle("发布 Memo");
+      await expect(page.getByTestId("system-share-submit")).toHaveText("发布 Memo");
 
       const compact = await readShareLayout(page);
       await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
