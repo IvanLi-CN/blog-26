@@ -209,6 +209,12 @@ test.describe("public cover media in Web Demo", () => {
     );
     expect(relatedSrc).not.toContain("/wm-");
     expect(await relatedImage.getAttribute("class")).toContain("object-cover");
+    await expect
+      .poll(() => relatedImage.evaluate((node) => (node as HTMLImageElement).naturalWidth))
+      .toBe(900);
+    await expect
+      .poll(() => relatedImage.evaluate((node) => (node as HTMLImageElement).naturalHeight))
+      .toBe(600);
     const relatedLayout = await relatedImage.evaluate((node) => {
       const container = node.parentElement;
       const imageRect = node.getBoundingClientRect();

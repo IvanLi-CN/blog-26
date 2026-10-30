@@ -22,7 +22,9 @@ export default function RuntimeMetricValue(props: Props) {
         role="img"
         tabIndex={-1}
       >
-        {initialValue}
+        <span className="runtime-value-visual" data-runtime-value-visual="" aria-hidden="true">
+          {initialValue}
+        </span>
       </strong>
       <span
         className="runtime-value-tooltip"
