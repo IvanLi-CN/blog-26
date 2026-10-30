@@ -29,7 +29,7 @@ body.system-share-body {
     align-items: center;
     flex-wrap: nowrap;
     border-bottom: 1px solid var(--nature-line);
-    padding-bottom: 8px;
+    padding-bottom: 7px;
   }
 
   .system-share-page-header .nature-title {

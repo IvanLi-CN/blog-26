@@ -1,6 +1,6 @@
 "use client";
 
-import { Paperclip, Trash2 } from "lucide-react";
+import { House, Paperclip, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { MilkdownEditor, type MilkdownEditorRef } from "@/components/memos/MilkdownEditor";
 import {
@@ -453,6 +453,15 @@ export default function SystemShareConfirmation() {
         <div className="min-w-0">
           <h1 className="nature-title mt-2 text-3xl sm:text-4xl">发布 Memo</h1>
         </div>
+        <a
+          className="nature-icon-button inline-flex shrink-0"
+          href="/"
+          aria-label="返回首页"
+          title="返回首页"
+          data-testid="system-share-home"
+        >
+          <House className="size-5" aria-hidden="true" />
+        </a>
       </header>
 
       <details

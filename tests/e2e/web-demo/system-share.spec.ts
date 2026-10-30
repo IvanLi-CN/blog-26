@@ -463,6 +463,8 @@ test.describe("Console system share Web Demo", () => {
       await expect(page.locator("body")).toHaveClass(/system-share-body/);
       await expect(page).toHaveTitle("发布 Memo");
       await expect(page.getByTestId("system-share-submit")).toHaveText("发布 Memo");
+      await expect(page.getByTestId("system-share-home")).toHaveAttribute("href", "/");
+      await expect(page.getByRole("link", { name: "返回首页" })).toHaveCount(1);
 
       const compact = await readShareLayout(page);
       await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
@@ -493,6 +495,17 @@ test.describe("Console system share Web Demo", () => {
       const taller = await readShareLayout(page);
       expect(taller.editor.height).toBeGreaterThan(compact.editor.height + 40);
     }
+  });
+
+  test("exits the share flow through the public home link", async ({ page }) => {
+    await clearPendingShare(page);
+    await page.goto(`/share?d_persona=admin&d_share=text&d_submission=${randomUUID()}`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expectSharePage(page);
+    await page.getByTestId("system-share-home").click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveTitle("Ivan's Blog");
   });
 
   test("wraps publish controls only below the compact mobile width", async ({ page }) => {
