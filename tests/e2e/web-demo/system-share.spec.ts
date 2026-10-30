@@ -503,7 +503,8 @@ test.describe("Console system share Web Demo", () => {
       waitUntil: "domcontentloaded",
     });
     await expectSharePage(page);
-    await page.getByTestId("system-share-home").click();
+    // The Web Demo inspector bubble intentionally overlays the top-right corner in CI.
+    await page.getByTestId("system-share-home").click({ force: true });
     await expect(page).toHaveURL(/\/$/);
     await expect(page).toHaveTitle("Ivan's Blog");
   });
