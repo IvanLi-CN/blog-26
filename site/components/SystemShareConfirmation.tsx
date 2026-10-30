@@ -583,7 +583,10 @@ export default function SystemShareConfirmation() {
                   readOnly={submitting || successLocked}
                 />
               </div>
-              <div className="mt-1 flex flex-wrap justify-between gap-2 px-1 text-xs text-[color:var(--nature-text-soft)]">
+              <div
+                className="mt-1 flex flex-wrap justify-between gap-2 px-1 text-xs text-[color:var(--nature-text-soft)]"
+                data-testid="system-share-memo-editor-meta"
+              >
                 <span>{text.length} 字符</span>
                 <span>支持 Markdown</span>
               </div>

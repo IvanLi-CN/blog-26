@@ -93,6 +93,12 @@ body.system-share-body {
   flex: 1 1 auto;
 }
 
+.system-share-memo-editor-content-section .quick-memo-edit-editor,
+.system-share-memo-editor-content-section .quick-memo-edit-editor .milkdown {
+  display: flex;
+  flex-direction: column;
+}
+
 .system-share-memo-attachments {
   display: flex;
   min-block-size: 0;
@@ -198,6 +204,10 @@ body.system-share-body {
     padding-block: 8px;
   }
 
+  .system-share-memo-editor-content-section .quick-memo-edit-container {
+    margin-inline: -16px;
+  }
+
   .system-share-memo-footer {
     padding-bottom: max(0.625rem, env(safe-area-inset-bottom));
   }
@@ -215,5 +225,9 @@ body.system-share-body {
 
   .system-share-memo-editor .milkdown .ProseMirror {
     padding-inline: 12px;
+  }
+
+  .system-share-memo-editor-content-section .quick-memo-edit-container {
+    margin-inline: -12px;
   }
 }

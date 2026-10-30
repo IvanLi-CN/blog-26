@@ -95,6 +95,7 @@ type ShareLayoutSnapshot = {
   main: { left: number; right: number; top: number; bottom: number };
   form: { left: number; right: number; top: number; bottom: number };
   editor: { left: number; right: number; top: number; bottom: number; height: number };
+  editorMeta: { left: number; right: number; top: number; bottom: number; height: number };
   submit: { left: number; right: number; top: number; bottom: number; height: number };
   visibility: { top: number; bottom: number; height: number };
   bodyOverflow: { overflowX: string; overflowY: string; overscrollBehaviorY: string };
@@ -131,6 +132,7 @@ async function readShareLayout(page: import("@playwright/test").Page) {
       main: rect('[data-testid="system-share-page"]'),
       form: rect('[data-testid="system-share-memo-editor"]'),
       editor: rect('[data-testid="system-share-memo-editor-surface"]'),
+      editorMeta: rect('[data-testid="system-share-memo-editor-meta"]'),
       submit: rect('[data-testid="system-share-submit"]'),
       visibility: rect(".quick-memo-edit-visibility"),
       bodyOverflow: {
@@ -474,6 +476,11 @@ test.describe("Console system share Web Demo", () => {
       expect(pageHeader.height).toBeGreaterThanOrEqual(pageTitle.height);
       expect(pageHeader.height).toBeLessThanOrEqual(52);
       expect(compact.editor.height).toBeGreaterThanOrEqual(192);
+      expect(compact.editor.height).toBeGreaterThan(192);
+      expect(Math.abs(compact.editor.left)).toBeLessThanOrEqual(1);
+      expect(Math.abs(compact.editor.right - size.width)).toBeLessThanOrEqual(1);
+      expect(compact.editorMeta.top - compact.editor.bottom).toBeGreaterThanOrEqual(3);
+      expect(compact.editorMeta.top - compact.editor.bottom).toBeLessThanOrEqual(5);
       expect(compact.submit.bottom).toBeLessThanOrEqual(size.height + 1);
       expect(compact.visibility.bottom).toBeLessThanOrEqual(size.height + 1);
       expect(Math.abs(compact.submit.top - compact.visibility.top)).toBeLessThanOrEqual(1);
@@ -540,6 +547,8 @@ test.describe("Console system share Web Demo", () => {
       expect(Math.abs(layout.main.right - width)).toBeLessThanOrEqual(1);
       expect(Math.abs(layout.form.left)).toBeLessThanOrEqual(1);
       expect(Math.abs(layout.form.right - width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(layout.editor.left)).toBeLessThanOrEqual(1);
+      expect(Math.abs(layout.editor.right - width)).toBeLessThanOrEqual(1);
       expect(layout.document.scrollWidth).toBeLessThanOrEqual(layout.document.clientWidth + 1);
       const editorLabelLeft = await page
         .getByTestId("system-share-memo-editor-content")
