@@ -461,15 +461,15 @@ test.describe("Console system share Web Demo", () => {
       });
       await expectSharePage(page);
       await expect(page.locator("body")).toHaveClass(/system-share-body/);
+      await expect(page).toHaveTitle("发布 Memo");
 
       const compact = await readShareLayout(page);
       await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
         "content",
         /interactive-widget=resizes-content/
       );
-      await expect(page.locator(".system-share-page-kicker")).toBeHidden();
       const pageHeader = await page.locator(".system-share-page-header").boundingBox();
-      const pageTitle = await page.getByRole("heading", { name: "确认发布 Memo" }).boundingBox();
+      const pageTitle = await page.getByRole("heading", { name: "发布 Memo" }).boundingBox();
       expect(pageHeader).not.toBeNull();
       expect(pageTitle).not.toBeNull();
       if (!pageHeader || !pageTitle) throw new Error("Missing compact share page header");
@@ -565,7 +565,6 @@ test.describe("Console system share Web Demo", () => {
       await page.setViewportSize(size);
       await page.reload({ waitUntil: "domcontentloaded" });
       await expectSharePage(page);
-      await expect(page.locator(".system-share-page-kicker")).toBeVisible();
       const layout = await readShareLayout(page);
       expect(layout.document.scrollWidth).toBeLessThanOrEqual(layout.document.clientWidth + 1);
       expect(layout.form.right - layout.form.left).toBeLessThan(size.width);

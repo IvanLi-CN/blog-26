@@ -32,13 +32,11 @@ body.system-share-body {
     padding-bottom: 8px;
   }
 
-  .system-share-page-kicker {
-    display: none;
-  }
-
   .system-share-page-header .nature-title {
     margin-top: 0;
     font-size: 1.5rem;
+    font-family: var(--font-body), "Noto Sans SC", "PingFang SC", sans-serif;
+    font-weight: 650;
     line-height: 1.25;
     white-space: nowrap;
   }

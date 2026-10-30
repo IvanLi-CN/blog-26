@@ -451,8 +451,7 @@ export default function SystemShareConfirmation() {
     <main className="nature-container system-share-page max-w-4xl" data-testid="system-share-page">
       <header className="system-share-page-header flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <span className="nature-kicker system-share-page-kicker">System Share</span>
-          <h1 className="nature-title mt-2 text-3xl sm:text-4xl">确认发布 Memo</h1>
+          <h1 className="nature-title mt-2 text-3xl sm:text-4xl">发布 Memo</h1>
         </div>
       </header>
 
