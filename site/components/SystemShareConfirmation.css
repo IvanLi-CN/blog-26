@@ -23,6 +23,16 @@ body.system-share-body {
   margin: 0;
 }
 
+@media (max-width: 639px) {
+  .system-share-page-kicker {
+    display: none;
+  }
+
+  .system-share-page-header .nature-title {
+    margin-top: 0;
+  }
+}
+
 .system-share-memo-form {
   display: flex;
   min-block-size: 0;
