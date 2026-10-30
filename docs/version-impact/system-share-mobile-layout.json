@@ -11,7 +11,8 @@
     "site/components/SystemShareConfirmation.tsx": "5663c5b037e0deb5a38a24c6552038a8292385a1",
     "site/layouts/BaseLayout.astro": "0a163667e1e853c1ab9485cd400b915093997449",
     "site/pages/share.astro": "317e791bc6260c08bccd37467855b7769ad51ffa",
-    "tests/e2e/web-demo/system-share.spec.ts": "ea371d7c8b8e2b656fbcf322ae75505d5394ab32"
+    "src/styles/milkdown-nature.css": "665489233ef7effd416144d9631fb52e814b9910",
+    "tests/e2e/web-demo/system-share.spec.ts": "16e859b40e52b865ebc806daed889efb6564741c"
   },
   "change": {
     "description": "Tighten the Console system-share confirmation layout on mobile, preserve natural document scrolling from the attachment area, and synchronize the responsive Web Demo evidence without changing publish or persistence contracts.",
@@ -31,7 +32,7 @@
         },
         {
           "path": "tests/e2e/web-demo/system-share.spec.ts",
-          "blob": "ea371d7c8b8e2b656fbcf322ae75505d5394ab32",
+          "blob": "16e859b40e52b865ebc806daed889efb6564741c",
           "command": "Review the mobile first-viewport, responsive-width, and native-touch regression contract"
         }
       ]
@@ -45,6 +46,11 @@
           "path": "site/components/SystemShareConfirmation.css",
           "blob": "a38ea5d542610792e2e59692d5e9a83154011cd0",
           "command": "Inspect the share-only flex sizing, edge-to-edge mobile surface, and native overflow rules"
+        },
+        {
+          "path": "src/styles/milkdown-nature.css",
+          "blob": "665489233ef7effd416144d9631fb52e814b9910",
+          "command": "Inspect the share footer breakpoint that keeps controls inline from 360px upward"
         },
         {
           "path": "site/layouts/BaseLayout.astro",
@@ -64,13 +70,18 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/system-share.spec.ts",
-          "blob": "ea371d7c8b8e2b656fbcf322ae75505d5394ab32",
+          "blob": "16e859b40e52b865ebc806daed889efb6564741c",
           "command": "Focused system-share mobile first-viewport, responsive-width, and native-touch tests pass"
         },
         {
           "path": "site/components/SystemShareConfirmation.css",
           "blob": "a38ea5d542610792e2e59692d5e9a83154011cd0",
           "command": "bun run check and CONSOLE_RUNTIME=true bun run console:build"
+        },
+        {
+          "path": "src/styles/milkdown-nature.css",
+          "blob": "665489233ef7effd416144d9631fb52e814b9910",
+          "command": "Verify the responsive footer row and narrow-screen wrap breakpoint"
         },
         {
           "path": "docs/specs/system-share-memos/SPEC.md",
@@ -127,7 +138,7 @@
         },
         {
           "path": "tests/e2e/web-demo/system-share.spec.ts",
-          "blob": "ea371d7c8b8e2b656fbcf322ae75505d5394ab32",
+          "blob": "16e859b40e52b865ebc806daed889efb6564741c",
           "command": "Focused publish, retry, attachment, and navigation regressions exercise the unchanged route contract"
         }
       ]

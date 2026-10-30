@@ -468,12 +468,36 @@ test.describe("Console system share Web Demo", () => {
       expect(compact.editor.height).toBeGreaterThanOrEqual(192);
       expect(compact.submit.bottom).toBeLessThanOrEqual(size.height + 1);
       expect(compact.visibility.bottom).toBeLessThanOrEqual(size.height + 1);
+      expect(Math.abs(compact.submit.top - compact.visibility.top)).toBeLessThanOrEqual(1);
+      expect(Math.abs(compact.submit.bottom - compact.visibility.bottom)).toBeLessThanOrEqual(1);
 
       await page.setViewportSize({ width: size.width, height: size.height + 100 });
       await page.reload({ waitUntil: "domcontentloaded" });
       await expectSharePage(page);
       const taller = await readShareLayout(page);
       expect(taller.editor.height).toBeGreaterThan(compact.editor.height + 40);
+    }
+  });
+
+  test("wraps publish controls only below the compact mobile width", async ({ page }) => {
+    for (const [width, shouldWrap] of [
+      [320, true],
+      [360, false],
+      [375, false],
+      [393, false],
+    ] as const) {
+      await page.setViewportSize({ width, height: 852 });
+      await clearPendingShare(page);
+      await page.goto(`/share?d_persona=admin&d_share=url&d_submission=${randomUUID()}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await expectSharePage(page);
+      const layout = await readShareLayout(page);
+      const sameRow = Math.abs(layout.submit.top - layout.visibility.top) <= 1;
+      expect(sameRow).toBe(!shouldWrap);
+      expect(layout.submit.height).toBeGreaterThanOrEqual(44);
+      expect(layout.visibility.height).toBeGreaterThanOrEqual(44);
+      expect(layout.document.scrollWidth).toBeLessThanOrEqual(layout.document.clientWidth + 1);
     }
   });
 
