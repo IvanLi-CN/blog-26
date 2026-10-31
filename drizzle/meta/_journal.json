@@ -162,6 +162,13 @@
       "when": 1793448282555,
       "tag": "0022_project_status_running_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1793449627796,
+      "tag": "0023_project_status_heartbeat",
+      "breakpoints": true
     }
   ]
 }

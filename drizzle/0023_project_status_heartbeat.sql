@@ -1,0 +1,1 @@
+ALTER TABLE `project_status_runs` ADD `heartbeat_at` integer;

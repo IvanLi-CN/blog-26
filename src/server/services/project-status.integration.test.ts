@@ -146,6 +146,22 @@ describe("project status service persistence", () => {
     await expect(runProjectStatusCheck("manual")).rejects.toThrow("already running");
   });
 
+  test("does not interrupt a fresh batch owned by another live process", async () => {
+    const startedAt = Date.now();
+    await db.insert(projectStatusRuns).values({
+      id: "status-test-fresh-active",
+      status: "running",
+      triggeredBy: "scheduler",
+      targetCount: 42,
+      startedAt,
+      heartbeatAt: startedAt,
+    });
+
+    await interruptActiveProjectStatusRuns(startedAt + 1_000);
+
+    expect((await db.select().from(projectStatusRuns))[0]?.status).toBe("running");
+  });
+
   test("allows only one concurrent batch to claim the running slot", async () => {
     const overrides = (prefix: string) => ({
       fetch: async () =>

@@ -3,7 +3,7 @@ import { lookup } from "node:dns/promises";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { isIP } from "node:net";
-import { desc, eq, inArray, lt, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
 import { db, initializeDB } from "@/lib/db";
 import {
   getProjectStatusCatalogEntries,
@@ -11,6 +11,8 @@ import {
 } from "@/lib/project-catalog";
 import {
   PROJECT_STATUS_BATCH_TIMEOUT_MS,
+  PROJECT_STATUS_HEARTBEAT_INTERVAL_MS,
+  PROJECT_STATUS_HEARTBEAT_STALE_AFTER_MS,
   PROJECT_STATUS_JOB_KEY,
   PROJECT_STATUS_MAX_CONCURRENCY,
   PROJECT_STATUS_RETENTION_MS,
@@ -410,8 +412,21 @@ function resultDto(
 export async function interruptActiveProjectStatusRuns(now = Date.now()) {
   await db
     .update(projectStatusRuns)
-    .set({ status: "interrupted", finishedAt: now, errorMessage: "服务重启，中断了活动批次" })
-    .where(eq(projectStatusRuns.status, "running"));
+    .set({
+      status: "interrupted",
+      finishedAt: now,
+      heartbeatAt: null,
+      errorMessage: "服务重启，中断了过期活动批次",
+    })
+    .where(
+      and(
+        eq(projectStatusRuns.status, "running"),
+        or(
+          isNull(projectStatusRuns.heartbeatAt),
+          lt(projectStatusRuns.heartbeatAt, now - PROJECT_STATUS_HEARTBEAT_STALE_AFTER_MS)
+        )
+      )
+    );
 }
 
 async function pruneHistory(now: number) {
@@ -454,6 +469,7 @@ export async function runProjectStatusCheck(
       triggeredBy,
       targetCount: entries.length,
       startedAt,
+      heartbeatAt: startedAt,
     });
   } catch (error) {
     const message = errorMessage(error);
@@ -465,6 +481,13 @@ export async function runProjectStatusCheck(
     }
     throw error;
   }
+  let heartbeatTimer: ReturnType<typeof setInterval> | null = setInterval(() => {
+    void db
+      .update(projectStatusRuns)
+      .set({ heartbeatAt: deps.now() })
+      .where(and(eq(projectStatusRuns.id, runId), eq(projectStatusRuns.status, "running")))
+      .catch(() => undefined);
+  }, PROJECT_STATUS_HEARTBEAT_INTERVAL_MS);
   try {
     await db.insert(projectStatusResults).values(
       entries.map((entry) => ({
@@ -534,17 +557,32 @@ export async function runProjectStatusCheck(
     const status = attemptedCount === entries.length ? "completed" : "partial";
     await db
       .update(projectStatusRuns)
-      .set({ status, attemptedCount, availableCount, unavailableCount, finishedAt })
+      .set({
+        status,
+        attemptedCount,
+        availableCount,
+        unavailableCount,
+        finishedAt,
+        heartbeatAt: null,
+      })
       .where(eq(projectStatusRuns.id, runId));
     return { id: runId, status, targetCount: entries.length, attemptedCount };
   } catch (error) {
     const finishedAt = deps.now();
-    await db.delete(projectStatusResults).where(eq(projectStatusResults.runId, runId));
+    let message = errorMessage(error);
+    try {
+      await db.delete(projectStatusResults).where(eq(projectStatusResults.runId, runId));
+    } catch (cleanupError) {
+      message = `${message}; result cleanup failed: ${errorMessage(cleanupError)}`;
+    }
     await db
       .update(projectStatusRuns)
-      .set({ status: "error", finishedAt, errorMessage: errorMessage(error) })
+      .set({ status: "error", finishedAt, heartbeatAt: null, errorMessage: message })
       .where(eq(projectStatusRuns.id, runId));
     throw error;
+  } finally {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
   }
 }
 
