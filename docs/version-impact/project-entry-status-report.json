@@ -60,7 +60,7 @@
     "src/server/trpc.ts": "2eb74085661d32ee954e24bd05a7239a9bbc3489",
     "tests/e2e/web-demo/system-share.spec.ts": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
     "tests/e2e/web-demo/project-status.spec.ts": "b07cec5fa416350f0b3f9c9ebcf158accaa5e325",
-    "tests/lib/manual-release-ledger.test.ts": "7eead40ff749d1cc21e0d41f827d5da355421856",
+    "tests/lib/manual-release-ledger.test.ts": "80888f7f7f905ba4f7984f8686ca181f53342771",
     "tests/server/system-share-api.test.ts": "063f98d0ba96951c879804c092f6fc8cc9ad420d"
   },
   "change": {
@@ -139,7 +139,7 @@
         },
         {
           "path": "tests/lib/manual-release-ledger.test.ts",
-          "blob": "7eead40ff749d1cc21e0d41f827d5da355421856",
+          "blob": "80888f7f7f905ba4f7984f8686ca181f53342771",
           "command": "bun test --isolate tests/lib/manual-release-ledger.test.ts"
         },
         {
