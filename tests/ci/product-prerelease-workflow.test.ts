@@ -84,6 +84,25 @@ const failedInputsRecovery = z
     }),
   })
   .parse(load(readFileSync(".github/workflows/abandon-failed-inputs-release.yml", "utf8")));
+const failedEvaluationRecovery = z
+  .object({
+    on: z.object({
+      workflow_dispatch: z.object({
+        inputs: z.object({
+          release_id: z.object({ type: z.string(), required: z.boolean() }),
+          incident_reason: z.object({ type: z.string(), required: z.boolean() }),
+        }),
+      }),
+    }),
+    jobs: z.object({
+      abandon: z.object({
+        if: z.string(),
+        "timeout-minutes": z.number(),
+        permissions: z.record(z.string(), z.string()),
+      }),
+    }),
+  })
+  .parse(load(readFileSync(".github/workflows/abandon-failed-release-evaluation.yml", "utf8")));
 const retryRecovery = z
   .object({
     on: z.object({
@@ -246,6 +265,20 @@ describe("prerelease workflow deployment boundary", () => {
     expect(failedInputsRecovery.jobs.abandon.permissions).toMatchObject({
       actions: "read",
       contents: "write",
+    });
+  });
+
+  test("failed preparation evaluation recovery requires exact failure evidence", () => {
+    expect(failedEvaluationRecovery.on.workflow_dispatch.inputs).toEqual({
+      release_id: { type: "string", required: true },
+      incident_reason: { type: "string", required: true },
+    });
+    expect(failedEvaluationRecovery.jobs.abandon.if).toContain("refs/heads/main");
+    expect(failedEvaluationRecovery.jobs.abandon["timeout-minutes"]).toBe(20);
+    expect(failedEvaluationRecovery.jobs.abandon.permissions).toMatchObject({
+      actions: "read",
+      contents: "write",
+      "pull-requests": "read",
     });
   });
 
