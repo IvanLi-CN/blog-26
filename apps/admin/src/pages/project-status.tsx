@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
-  ArrowUpRight,
   CheckCircle2,
   Clock3,
   ExternalLink,
@@ -103,61 +102,6 @@ function problemSort(left: ProjectStatusResultDto, right: ProjectStatusResultDto
     return 2;
   };
   return rank(left) - rank(right) || left.projectTitle.localeCompare(right.projectTitle, "zh-CN");
-}
-
-function ProblemEntry({ result }: { result: ProjectStatusResultDto }) {
-  const iconSurface = result.status === "unavailable" ? "bg-destructive/10" : "bg-warning/12";
-
-  return (
-    <article className="rounded-2xl border border-border/58 bg-card/78 p-4 shadow-sm shadow-shadow-soft lg:rounded-[1rem]">
-      <div className="flex items-start gap-3">
-        <div className={`mt-0.5 rounded-full p-2 ${iconSurface}`}>
-          <ResultIcon result={result} />
-        </div>
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold text-foreground">{result.projectTitle}</h3>
-            <Badge tone={resultTone(result)}>{problemLabel(result)}</Badge>
-          </div>
-          <p className="truncate text-sm text-muted-foreground">
-            {result.entryLabel} · {result.domain}
-          </p>
-        </div>
-        <Button
-          asChild
-          size="icon"
-          variant="ghost"
-          aria-label={`打开 ${result.entryLabel}`}
-          title={`打开 ${result.entryLabel}`}
-        >
-          <a href={result.href} target="_blank" rel="noreferrer">
-            <ArrowUpRight />
-          </a>
-        </Button>
-      </div>
-      <p className="mt-4 rounded-xl bg-destructive/7 px-3 py-2 text-sm leading-6 text-foreground">
-        {problemDetail(result)}
-      </p>
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <span>{result.entryKind}</span>
-        <span>HTTP {result.httpStatus ?? "-"}</span>
-        <span>{result.attemptCount} 次尝试</span>
-        <span>{result.latencyMs === null ? "无延迟数据" : `${result.latencyMs} ms`}</span>
-        <span>{result.checkedAt ? formatDateTime(result.checkedAt) : "未检查"}</span>
-      </div>
-      {result.finalUrl && result.finalUrl !== result.href ? (
-        <a
-          className="mt-3 inline-flex max-w-full items-center gap-1 text-xs text-primary hover:underline"
-          href={result.finalUrl}
-          target="_blank"
-          rel="noreferrer"
-        >
-          <span className="truncate">重定向到 {result.finalUrl}</span>
-          <ExternalLink className="size-3 shrink-0" />
-        </a>
-      ) : null}
-    </article>
-  );
 }
 
 export function ProjectStatusPage() {
@@ -343,7 +287,7 @@ export function ProjectStatusPage() {
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {problemResults.length > 0
-                ? `按异常优先显示 ${problemResults.length} 个入口，问题位置和原因直接列在每项下面。`
+                ? `按异常优先显示 ${problemResults.length} 个入口；项目、状态、原因和检查信息在同一行对照。`
                 : totalProblems > 0
                   ? "当前筛选下没有问题入口，尝试清除筛选。"
                   : "本批次所有入口均可用且结果仍在新鲜期。"}
@@ -369,10 +313,95 @@ export function ProjectStatusPage() {
             }
           />
         ) : (
-          <div className="grid gap-3 lg:grid-cols-2">
-            {problemResults.map((result) => (
-              <ProblemEntry key={result.entryKey} result={result} />
-            ))}
+          <div className="overflow-x-auto rounded-2xl border border-border/58 bg-card/72 lg:rounded-[1rem]">
+            <Table className="table-fixed md:min-w-[960px]">
+              <caption className="sr-only">需要处理的项目入口及其问题原因</caption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[34%] md:w-[20%]">项目 / 入口</TableHead>
+                  <TableHead className="hidden md:table-cell md:w-[24%]">目标 URL</TableHead>
+                  <TableHead className="w-[18%] md:w-[12%]">状态</TableHead>
+                  <TableHead className="w-[38%] md:w-[27%]">问题原因</TableHead>
+                  <TableHead className="hidden md:table-cell md:w-[17%]">检查信息</TableHead>
+                  <TableHead className="w-12 md:w-12" aria-label="操作" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {problemResults.map((result) => (
+                  <TableRow
+                    key={result.entryKey}
+                    className={
+                      result.status === "unavailable"
+                        ? "bg-destructive/[0.035]"
+                        : "bg-warning/[0.035]"
+                    }
+                  >
+                    <TableCell className="align-top">
+                      <div className="flex min-w-0 items-start gap-2">
+                        <ResultIcon result={result} />
+                        <div className="min-w-0">
+                          <div className="font-medium leading-5">{result.projectTitle}</div>
+                          <div className="mt-1 text-sm text-muted-foreground">
+                            {result.entryLabel}
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {result.entryKind}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden max-w-[260px] align-top md:table-cell">
+                      <a
+                        className="inline-flex max-w-full items-start gap-1 text-primary hover:underline"
+                        href={result.href}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <span className="break-all text-xs leading-5">{result.href}</span>
+                        <ExternalLink className="mt-0.5 size-3 shrink-0" />
+                      </a>
+                      {result.finalUrl && result.finalUrl !== result.href ? (
+                        <div className="mt-2 break-all text-xs leading-5 text-muted-foreground">
+                          最终：{result.finalUrl}
+                        </div>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="align-top">
+                      <Badge tone={resultTone(result)}>{problemLabel(result)}</Badge>
+                    </TableCell>
+                    <TableCell className="align-top">
+                      <div className="font-medium leading-5 text-foreground">
+                        {problemDetail(result)}
+                      </div>
+                      <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                        {result.domain}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden whitespace-nowrap align-top text-xs leading-5 text-muted-foreground md:table-cell">
+                      <div>HTTP {result.httpStatus ?? "-"}</div>
+                      <div>
+                        {result.attemptCount} 次尝试 ·{" "}
+                        {result.latencyMs === null ? "-" : `${result.latencyMs} ms`}
+                      </div>
+                      <div>{result.checkedAt ? formatDateTime(result.checkedAt) : "未检查"}</div>
+                    </TableCell>
+                    <TableCell className="align-top">
+                      <Button
+                        asChild
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`打开 ${result.entryLabel}`}
+                        title={`打开 ${result.entryLabel}`}
+                      >
+                        <a href={result.href} target="_blank" rel="noreferrer">
+                          <ExternalLink />
+                        </a>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         )}
       </section>
@@ -446,22 +475,73 @@ export function ProjectStatusPage() {
               }
               summaryClassName="block"
             >
-              <div className="divide-y divide-border/52 overflow-hidden rounded-2xl border border-border/52 bg-muted/16 lg:rounded-[1rem]">
-                {healthyResults.map((result) => (
-                  <div key={result.entryKey} className="flex items-center gap-3 px-4 py-3">
-                    <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                        <span className="font-medium">{result.projectTitle}</span>
-                        <span className="text-sm text-muted-foreground">{result.entryLabel}</span>
-                      </div>
-                      <div className="truncate text-xs text-muted-foreground">{result.href}</div>
-                    </div>
-                    <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
-                      {result.latencyMs === null ? "-" : `${result.latencyMs} ms`}
-                    </span>
-                  </div>
-                ))}
+              <div className="overflow-x-auto rounded-2xl border border-border/52 bg-muted/16 lg:rounded-[1rem]">
+                <Table className="table-fixed md:min-w-[760px]">
+                  <caption className="sr-only">正常项目入口列表</caption>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[42%] md:w-[24%]">项目 / 入口</TableHead>
+                      <TableHead className="hidden md:table-cell md:w-[40%]">目标 URL</TableHead>
+                      <TableHead className="w-[28%] md:w-[16%]">状态</TableHead>
+                      <TableHead className="hidden md:table-cell md:w-[16%]">检查信息</TableHead>
+                      <TableHead className="w-12 md:w-12" aria-label="操作" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {healthyResults.map((result) => (
+                      <TableRow key={result.entryKey}>
+                        <TableCell>
+                          <div className="flex min-w-0 items-start gap-2">
+                            <CheckCircle2
+                              className="mt-0.5 size-4 shrink-0 text-success"
+                              aria-hidden
+                            />
+                            <div className="min-w-0">
+                              <div className="font-medium leading-5">{result.projectTitle}</div>
+                              <div className="mt-1 text-sm text-muted-foreground">
+                                {result.entryLabel}
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden max-w-[320px] align-top md:table-cell">
+                          <a
+                            className="inline-flex max-w-full items-start gap-1 text-primary hover:underline"
+                            href={result.href}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <span className="break-all text-xs leading-5">{result.href}</span>
+                            <ExternalLink className="mt-0.5 size-3 shrink-0" />
+                          </a>
+                        </TableCell>
+                        <TableCell className="align-top">
+                          <Badge tone="success">可用</Badge>
+                        </TableCell>
+                        <TableCell className="hidden whitespace-nowrap align-top text-xs leading-5 text-muted-foreground md:table-cell">
+                          <div>HTTP {result.httpStatus ?? "-"}</div>
+                          <div>{result.latencyMs === null ? "-" : `${result.latencyMs} ms`}</div>
+                          <div>
+                            {result.checkedAt ? formatDateTime(result.checkedAt) : "未检查"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="align-top">
+                          <Button
+                            asChild
+                            size="icon"
+                            variant="ghost"
+                            aria-label={`打开 ${result.entryLabel}`}
+                            title={`打开 ${result.entryLabel}`}
+                          >
+                            <a href={result.href} target="_blank" rel="noreferrer">
+                              <ExternalLink />
+                            </a>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             </Disclosure>
           )}

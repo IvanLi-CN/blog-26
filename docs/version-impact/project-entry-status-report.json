@@ -6,8 +6,8 @@
     "GLOSSARY.md": "f3031cc1d9c75459850a8e26365bd0c46b9f6703",
     "apps/admin/src/components/app-shell.tsx": "39a3a18399fb61d65bdc27003157b2cbeb49d4b3",
     "apps/admin/src/demo/mock-admin-api.ts": "968beee5b0feacd1a573ca24810458c43a11c67c",
-    "apps/admin/src/pages/project-status.test.tsx": "7a6471c4874ad13f76bfac05d26ae75ceab65263",
-    "apps/admin/src/pages/project-status.tsx": "4731f82457b305e462708b3c3e61340402c2f5c5",
+    "apps/admin/src/pages/project-status.test.tsx": "42fb4674f7b44a6a59cd78042d88cb3b4493b52e",
+    "apps/admin/src/pages/project-status.tsx": "dc9294191e99d9da20c313798e27a93d136ea5e6",
     "apps/admin/src/router.tsx": "d0740e1e0313421a8149376d1167b6b64a09a302",
     "astro.config.mjs": "eb89dbcbdb6975f0ed76d49c486d6f9c0a1deaad",
     "drizzle/0021_project_status.sql": "3f3a5cd4a02859266c40b986f56926d7956205bc",
@@ -72,7 +72,7 @@
         },
         {
           "path": "apps/admin/src/pages/project-status.test.tsx",
-          "blob": "3df6f766aee8a55f5f136dff999093692b70d731",
+          "blob": "42fb4674f7b44a6a59cd78042d88cb3b4493b52e",
           "command": "Admin page coverage verifies rendered overview state and manual trigger loading state"
         }
       ],
@@ -98,8 +98,8 @@
         },
         {
           "path": "apps/admin/src/pages/project-status.tsx",
-          "blob": "4731f82457b305e462708b3c3e61340402c2f5c5",
-          "command": "Official /admin/project-status route verified at desktop and 393x852 mobile viewports; manual check reached checking state with no app console errors"
+          "blob": "dc9294191e99d9da20c313798e27a93d136ea5e6",
+          "command": "Official /admin/project-status route verified as a problem-first table at desktop and 393x852 mobile viewports; manual check reached checking state with no app console errors"
         },
         {
           "path": "drizzle/0021_project_status.sql",

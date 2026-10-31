@@ -105,6 +105,8 @@ describe("ProjectStatusPage", () => {
 
     expect(await findByText("项目入口状态")).toBeTruthy();
     expect(await findByRole("heading", { name: "需要处理的入口" })).toBeTruthy();
+    expect(await findByRole("table", { name: "需要处理的项目入口及其问题原因" })).toBeTruthy();
+    expect(await findByRole("columnheader", { name: "问题原因" })).toBeTruthy();
     expect(await findByText("目标返回 HTTP 503")).toBeTruthy();
     fireEvent.click(getByRole("button", { name: "手动检查" }));
     expect(await findByRole("button", { name: "检查中" })).toBeTruthy();
