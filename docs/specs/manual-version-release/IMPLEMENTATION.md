@@ -19,7 +19,7 @@
 
 ## Implementation Coverage
 
-- 登记读取支持 Verified 发布机器人提交中的 `Ledger-Recovery` 声明，只认可声明明确指向的 GitHub 签名异常提交；声明本身必须通过机器人作者与签名校验，未登记的人类提交仍阻断。恢复记录可保留在祖先提交中，不需要改写远端历史。登记、来源与单一工作流输入的 18 项针对性测试通过；真实远端登记只读探针通过并核验登记提交 `387b5c6e14cf1101799c5b61ae06394e989b8739`。当前 `2.8.3` 发布身份尚未完成，alpha 验收不得替换它。
+- 登记读取支持 Verified 发布机器人提交中的 `Ledger-Recovery` 声明；读取器只解析 head 到 bootstrap root 的实际单父链，要求 marker 指向声明提交的严格祖先，沿 bot-authored recovery wrapper 链最终到达 owner-authored、GitHub Verified 且带机器人 Signed-off-by 的历史提交，并逐一拒绝同提交多个 marker、active legacy target 之前彼此断开的 marker lineage、格式错误、冲突、非祖先或未绑定的 marker；legacy target 之后的历史 marker 仍逐一验证但不改写当前 recovery identity，未登记的人类提交仍阻断。bootstrap 之外的历史不会污染 ledger marker 解析；恢复记录可保留在祖先提交中，不需要改写远端历史。Bootstrap recovery workflow 通过 `GitHubLedgerStore.read` 复用 root/current state 的 schema/digest、严格 digest 声明、marker、签名和账本状态校验，同时保持既有历史 wrapper 可读；通过 `assertMerge` 核验 abandoned identity 的原始 PR 与 VERSION-only merge provenance，并通过 `compareAndSwap` 复用 expected-head、机器人签名和返回提交 postcondition 校验；只有已存在相同 recovery marker lineage 的请求幂等退出，未带 marker 的 owner head 会创建 bot wrapper，且读取器发现不到 owner legacy identity 或输入 target 不一致时拒绝写入。登记、来源与单一工作流输入的针对性测试覆盖嵌套 wrapper、root 边界、方向/冲突校验、历史 digest 声明、恢复 target 写入前校验与 CAS 并发确认；真实远端登记只读探针通过并核验登记提交 `387b5c6e14cf1101799c5b61ae06394e989b8739`。当前 `2.8.3` 发布身份尚未完成，alpha 验收不得替换它。
 - 版本、证据、并发预留、来源和故障恢复模块有固定样例测试；完整构建和生产模式 smoke 使用非生产 fixture。
 - 来源移动后的新手动准备保留废弃记录和已占用版本；原运行重跑及其他发版人不能替换旧身份。尚未绑定的 PR 也必须核验来源并关闭后才能重新准备。
 - 自动合并与 main 保护规则已通过实际配置读回核验：十项 required checks、严格 up-to-date、Verified commits、管理员受约束、禁止 force/delete、零新增人工审批。

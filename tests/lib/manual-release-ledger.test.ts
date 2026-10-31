@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import contractJson from "../../.github/release-contract.json";
-import { GitHubLedgerStore, GitHubRelease } from "../../src/lib/release/github";
+import {
+  assertRecoveryTarget,
+  GitHubLedgerStore,
+  GitHubRelease,
+} from "../../src/lib/release/github";
 import {
   abandonUnrecoverableFrozenInputs,
   changeLedger,
@@ -58,7 +62,7 @@ describe("durable product release reservations", () => {
       commit(
         head,
         recoveryCommit,
-        `chore(release): record product delivery state\n\n${digestLine}\n${signedOff}`
+        `chore(release): record product delivery state\n\n${digestLine}\nLedger-Recovery: ${recoveryCommit}\n${signedOff}`
       ),
       commit(
         recoveryCommit,
@@ -69,7 +73,7 @@ describe("durable product release reservations", () => {
         legacy,
         olderRecovery,
         `chore(release): recover legacy ledger\n\n${digestLine}\nLedger-Recovery: ${olderRecovery}\n${signedOff}`,
-        bot
+        contract.repository.split("/")[0]
       ),
       commit(
         olderRecovery,
@@ -87,6 +91,11 @@ describe("durable product release reservations", () => {
         root,
         contract.bootstrap.sourceSha,
         `chore(release): initialize product ledger\n\nBootstrap-Source: ${contract.bootstrap.sourceSha}\n${digestLine}\n${signedOff}`
+      ),
+      commit(
+        contract.bootstrap.sourceSha,
+        "0".repeat(40),
+        `chore(release): historical source commit\n\n${digestLine}\nLedger-Recovery: ${"7".repeat(40)}\n${signedOff}`
       ),
     ];
     const github = new GitHubRelease(contract, "github-actions", {
@@ -115,10 +124,120 @@ describe("durable product release reservations", () => {
     const result = await new GitHubLedgerStore(github).read();
     expect(result.sha).toBe(head);
     expect(result.legacySha).toBe(legacy);
+    expect(result.recoverySha).toBe(legacy);
     expect(result.ledger).toEqual(ledger);
+    const historicalCommit = commits[1];
+    if (!historicalCommit) throw new Error("Missing historical ledger fixture");
+    const headCommit = commits[0];
+    if (!headCommit) throw new Error("Missing head fixture");
+    const headAuthor = headCommit.author;
+    const headMessage = headCommit.commit.message;
+    headCommit.author = { login: contract.repository.split("/")[0] };
+    headCommit.commit.message = headMessage.replace(`\nLedger-Recovery: ${recoveryCommit}`, "");
+    const historicalOnly = await new GitHubLedgerStore(
+      new GitHubRelease(contract, "github-actions", github.transport)
+    ).read({ allowLegacyHead: true, allowLegacyAncestor: true });
+    expect(historicalOnly.legacySha).toBe(head);
+    expect(historicalOnly.recoverySha).toBeUndefined();
+    headCommit.author = headAuthor;
+    headCommit.commit.message = headMessage;
+    const historicalMessage = historicalCommit.commit.message;
+    historicalCommit.commit.message = historicalMessage.replace(digestLine, "Ledger-Digest: nope");
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
+    ).rejects.toThrow();
+    historicalCommit.commit.message = historicalMessage;
+    const malformedTarget = "8".repeat(40);
+    const headMarker = `Ledger-Recovery: ${recoveryCommit}`;
+    headCommit.commit.message = headCommit.commit.message.replace(
+      headMarker,
+      "Ledger-Recovery: nope"
+    );
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
+    ).rejects.toThrow("malformed");
+    headCommit.commit.message = headCommit.commit.message.replace(
+      "Ledger-Recovery: nope",
+      `Ledger-Recovery: ${malformedTarget}`
+    );
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
+    ).rejects.toThrow("does not bind its legacy commit");
+    headCommit.commit.message = headCommit.commit.message.replace(
+      `Ledger-Recovery: ${malformedTarget}`,
+      headMarker
+    );
+    headCommit.commit.message = headCommit.commit.message.replace(
+      headMarker,
+      `Ledger-Recovery: ${head}`
+    );
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
+    ).rejects.toThrow("does not bind its legacy commit");
+    headCommit.commit.message = headCommit.commit.message.replace(
+      `Ledger-Recovery: ${head}`,
+      headMarker
+    );
+    headCommit.commit.message += `\nLedger-Recovery: ${head}`;
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
+    ).rejects.toThrow("multiple recovery markers");
+    headCommit.commit.message = headCommit.commit.message.replace(`\nLedger-Recovery: ${head}`, "");
     const declaration = commits[1];
     const recovered = commits[2];
     if (!declaration || !recovered) throw new Error("Missing recovery fixture");
+    const recoveryCommitMessage = declaration.commit.message;
+    const legacyMessage = recovered.commit.message;
+    if (!recoveryCommitMessage || !legacyMessage) throw new Error("Missing conflict fixture");
+    headCommit.commit.message = headMessage.replace(headMarker, `Ledger-Recovery: ${legacy}`);
+    declaration.commit.message = recoveryCommitMessage.replace(
+      `Ledger-Recovery: ${legacy}`,
+      `Ledger-Recovery: ${olderLegacy}`
+    );
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
+    ).rejects.toThrow("recovery markers conflict");
+    headCommit.commit.message = headMessage;
+    declaration.commit.message = recoveryCommitMessage;
+    recovered.commit.message = legacyMessage;
+    const declarationMessage = declaration.commit.message;
+    const recoveredAuthor = recovered.author?.login;
+    const olderRecoveryCommit = commits[3];
+    if (!olderRecoveryCommit) throw new Error("Missing recovery fixture");
+    const olderRecoveryCommitMessage = olderRecoveryCommit.commit.message;
+    const olderLegacyCommit = commits[4];
+    if (!olderLegacyCommit) throw new Error("Missing recovery fixture");
+    const olderLegacyAuthor = olderLegacyCommit.author;
+    const olderRecoveryAuthor = olderRecoveryCommit.author;
+    headCommit.commit.message = headMessage.replace(headMarker, "");
+    declaration.commit.message = declarationMessage.replace(`Ledger-Recovery: ${legacy}`, "");
+    recovered.commit.message = legacyMessage.replace(`\nLedger-Recovery: ${olderRecovery}`, "");
+    olderRecoveryCommit.author = { login: bot };
+    const historicalAfterLegacy = await new GitHubLedgerStore(
+      new GitHubRelease(contract, "github-actions", github.transport)
+    ).read({ allowLegacyHead: true, allowLegacyAncestor: true });
+    expect(historicalAfterLegacy.legacySha).toBe(legacy);
+    expect(historicalAfterLegacy.recoverySha).toBeUndefined();
+    headCommit.commit.message = headMessage;
+    declaration.commit.message = declarationMessage;
+    recovered.commit.message = legacyMessage;
+    olderRecoveryCommit.author = olderRecoveryAuthor;
+    declaration.commit.message = `chore(release): recovery wrapper\n\n${digestLine}\n${signedOff}`;
+    recovered.author = { login: bot };
+    recovered.commit.message = legacyMessage.replace(`\nLedger-Recovery: ${olderRecovery}`, "");
+    olderRecoveryCommit.commit.message = olderRecoveryCommitMessage.replace(
+      `\nLedger-Recovery: ${olderLegacy}`,
+      ""
+    );
+    olderLegacyCommit.author = { login: bot };
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
+    ).rejects.toThrow(/does not bind its legacy commit|Release commit must be Verified/);
+    declaration.commit.message = declarationMessage;
+    recovered.author = recoveredAuthor ? { login: recoveredAuthor } : null;
+    recovered.commit.message = legacyMessage;
+    olderRecoveryCommit.commit.message = olderRecoveryCommitMessage;
+    olderLegacyCommit.author = olderLegacyAuthor;
     declaration.commit.verification = { verified: false, reason: "unsigned" };
     await expect(
       new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
@@ -166,7 +285,7 @@ describe("durable product release reservations", () => {
         if (endpoint.startsWith("users/")) return { id: 41898282 };
         if (endpoint === "graphql" && method === "POST") {
           payloadText = JSON.stringify(payload);
-          ref = next;
+          ref = "e".repeat(40);
           return { data: { createCommitOnBranch: { commit: { oid: next } } } };
         }
         if (endpoint.endsWith(`/git/ref/heads/${contract.ledgerBranch}`))
@@ -180,8 +299,20 @@ describe("durable product release reservations", () => {
       },
     });
 
-    await new GitHubLedgerStore(github).compareAndSwap(head, initialLedger(contract), legacy);
+    const committed = await new GitHubLedgerStore(github).compareAndSwap(
+      head,
+      initialLedger(contract),
+      legacy
+    );
+    expect(committed).toBe(next);
     expect(payloadText).toContain(`Ledger-Recovery: ${legacy}`);
+  });
+
+  test("requires the discovered verified legacy target before recovery", () => {
+    const legacy = "a".repeat(40);
+    expect(() => assertRecoveryTarget(undefined, legacy)).toThrow("verified active legacy");
+    expect(() => assertRecoveryTarget("b".repeat(40), legacy)).toThrow("verified active legacy");
+    expect(() => assertRecoveryTarget(legacy, legacy)).not.toThrow();
   });
 
   test("shared ledger changes carry legacy recovery provenance", async () => {

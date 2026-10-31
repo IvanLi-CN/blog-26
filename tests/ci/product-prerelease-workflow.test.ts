@@ -120,6 +120,10 @@ const retryRecovery = z
     }),
   })
   .parse(load(readFileSync(".github/workflows/retry-product-release.yml", "utf8")));
+const bootstrapLedgerRecovery = readFileSync(
+  ".github/workflows/bootstrap-release-ledger-recovery.yml",
+  "utf8"
+);
 
 describe("prerelease workflow deployment boundary", () => {
   test("product release can be resumed from the uniquely registered merged identity", () => {
@@ -289,5 +293,29 @@ describe("prerelease workflow deployment boundary", () => {
     expect(retryRecovery.permissions).toEqual({ contents: "read", actions: "write" });
     expect(retryRecovery.jobs.retry.if).toContain("github.ref == 'refs/heads/main'");
     expect(retryRecovery.jobs.retry.permissions).toEqual({ contents: "read", actions: "write" });
+  });
+
+  test("ledger recovery validates the target before writing an immutable marker", () => {
+    expect(bootstrapLedgerRecovery).toContain("GitHubLedgerStore");
+    expect(bootstrapLedgerRecovery).toContain("pull-requests: read");
+    expect(bootstrapLedgerRecovery).toContain("bun run - <<'BUN'");
+    expect(bootstrapLedgerRecovery).toContain("assertRecoveryTarget(current.legacySha, legacySha)");
+    expect(bootstrapLedgerRecovery).toContain(
+      "store.read({ allowLegacyHead: true, allowLegacyAncestor: true })"
+    );
+    expect(bootstrapLedgerRecovery).toContain(
+      "assertMerge(github, entry, github.pull(entry.prNumber), mergeSha)"
+    );
+    expect(bootstrapLedgerRecovery).toContain(
+      "store.compareAndSwap(current.sha, nextLedger, legacySha)"
+    );
+    expect(bootstrapLedgerRecovery).toContain("current.recoverySha === legacySha");
+    expect(bootstrapLedgerRecovery).toContain("Recovery already bound at");
+    expect(bootstrapLedgerRecovery).toContain("oven-sh/setup-bun@v2");
+    expect(bootstrapLedgerRecovery).toContain("bun install --frozen-lockfile");
+    const validation = bootstrapLedgerRecovery.indexOf("const current = await store.read");
+    const mutation = bootstrapLedgerRecovery.indexOf("store.compareAndSwap");
+    expect(validation).toBeGreaterThanOrEqual(0);
+    expect(mutation).toBeGreaterThan(validation);
   });
 });

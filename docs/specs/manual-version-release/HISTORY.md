@@ -17,6 +17,12 @@
 - 候选同步至远端 `main` 的 `ec6d69799380de5b2266798d802ebd871d685cd2` 后，修复了既有 `2.8.0` 登记身份摘要兼容与完整 verified 影响证据；`837` 个测试、稳定版和 alpha 非生产两产品 smoke 已通过，平台候选和真实 alpha 验收仍未完成。
 - 修复发布冻结阶段只重试连接建立、不重试公开快照响应体读取的问题；分块响应在读取中途超时或连接重置时按既有退避策略重新请求，完整读取后才进入快照校验。
 - 补充准备 PR 合并后 exact main CI/E2E 失败、但 Product Release 尚未绑定时的专用废弃恢复边界；该身份保持可审计并烧毁版本，后续发布必须走新的 Manual Product Release identity。
+- 补强 ledger recovery marker 链的读取：bot-authored recovery wrapper 可安全叠加，只有最终 owner-authored、GitHub Verified 的 legacy head 才能提供恢复权限。
+- 收紧 recovery marker 读取：每个 marker 都必须是合法且位于实际单父祖先链中的 SHA；孤立、格式错误或未绑定 marker 与合法 marker 共存时仍必须拒绝登记。
+- 继续收紧 recovery marker：只解析 head 到 bootstrap root 的 ledger 链，要求 marker 指向声明提交的严格祖先、active legacy target 之前的 marker lineage 收敛到同一 owner legacy，并拒绝同提交多个 marker 或 active lineage 中彼此断开的 marker；target 之后的历史 marker 仍逐一验证；CAS 返回已验证提交后即使 branch 被并发推进也不再误报写入失败。
+- 补强 bootstrap recovery workflow：不可变 marker 写入前必须确认 target 位于 root-bound 单父 ledger 链、由 owner 经 `web-flow` Verified 提交并带机器人 Signed-off-by，拒绝不存在、越过 bootstrap root 或签名不可信的 target。
+- Bootstrap recovery workflow 改为复用 `GitHubLedgerStore.read`、`assertMerge` 与 `compareAndSwap`，在写入前拒绝损坏账本和错误 PR merge，并对已完成的相同 recovery 请求幂等退出。
+- 收紧 recovery preflight：必须绑定读取器发现的 owner legacy identity，严格校验 root/current ledger state 和 traversed digest 声明，同时保留历史 recovery wrapper 的向后兼容；修复未带 marker 的 owner head 被误判为幂等完成、Bun heredoc 静默跳过和 PR 读取权限缺失。
 
 ## References
 

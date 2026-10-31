@@ -25,6 +25,22 @@ const repositoryCommitSchema = z.object({
     verification: z.object({ verified: z.boolean(), reason: z.string() }),
   }),
 });
+
+function ledgerDigestFromMessage(message: string): string {
+  const lines = message.split(/\r?\n/).filter((line) => line.startsWith("Ledger-Digest:"));
+  if (lines.length !== 1) throw new Error("Ledger commit must contain one state digest");
+  const digestValue = /^Ledger-Digest: ([a-f0-9]{64})$/.exec(lines[0])?.[1];
+  if (!digestValue) throw new Error("Ledger commit has an invalid state digest");
+  return digestValue;
+}
+
+export function assertRecoveryTarget(
+  currentLegacySha: string | undefined,
+  requestedLegacySha: string
+): void {
+  if (!currentLegacySha || currentLegacySha !== requestedLegacySha)
+    throw new Error("Recovery target does not match the verified active legacy identity");
+}
 const checkRunSchema = z.object({
   id: z.number().int().positive(),
   name: z.string(),
@@ -367,53 +383,24 @@ export class GitHubLedgerStore implements LedgerStore {
 
   async read(
     options: { allowLegacyHead?: boolean; allowLegacyAncestor?: boolean } = {}
-  ): Promise<{ sha: string; ledger: ReleaseLedger; legacySha?: string }> {
+  ): Promise<{ sha: string; ledger: ReleaseLedger; legacySha?: string; recoverySha?: string }> {
     const { contract } = this.github;
     const sha = this.github.reference(`heads/${contract.ledgerBranch}`);
     if (!sha)
       throw new Error(
         "Release ledger has not been initialized; run the token probe or preparation"
       );
-    let expected = sha;
-    let rootFound = false;
-    let legacySha: string | undefined;
     const commits = this.github.pages(`${this.github.root}/commits?sha=${sha}&per_page=100`);
     const parsedCommits = commits.map((raw) => repositoryCommitSchema.parse(raw));
-    let recoverySha: string | undefined;
-    const recoveryTargets = new Set<string>();
+    let expected = sha;
+    let rootFound = false;
+    const ledgerCommits: typeof parsedCommits = [];
     for (const commit of parsedCommits) {
-      const recovered = commit.commit.message.match(/^Ledger-Recovery: ([a-f0-9]{40})$/m)?.[1];
-      if (!recovered) continue;
-      // Defer authority checks until the ordered pass binds each target to its commit.
-      const target = shaSchema.parse(recovered);
-      recoverySha ||= target;
-      recoveryTargets.add(target);
-    }
-    for (const [index, commit] of parsedCommits.entries()) {
-      const raw = commits[index];
-      if (!raw) throw new Error("Ledger history response was truncated");
       if (commit.sha !== expected || commit.parents.length > 1)
         throw new Error("Ledger history is not a single-parent chain");
-      const owner = contract.repository.split("/")[0];
-      const recoveryRequested = recoveryTargets.has(commit.sha);
-      const legacyRequested =
-        (options.allowLegacyHead && commit.sha === sha) ||
-        (options.allowLegacyAncestor && commit.sha !== sha && !legacySha) ||
-        (recoveryRequested && commit.sha !== sha);
-      if (legacyRequested && (commit.author?.login === owner || recoveryRequested)) {
-        const bot = `${this.github.botSlug}[bot]`;
-        if (
-          ![owner, bot].includes(commit.author?.login || "") ||
-          commit.committer?.login !== "web-flow" ||
-          !commit.commit.verification.verified ||
-          commit.commit.verification.reason !== "valid" ||
-          !commit.commit.message.includes(`Signed-off-by: ${bot} <`)
-        )
-          throw new Error("Legacy ledger head is not a valid GitHub-signed recovery candidate");
-        legacySha ||= commit.sha;
-      } else this.github.verifyBotCommit(commit.sha, raw);
-      if (!/Ledger-Digest: [a-f0-9]{64}/.test(commit.commit.message))
-        throw new Error("Ledger commit lacks its state digest");
+      ledgerCommits.push(commit);
+      // Older recovery wrappers remain readable; root/head content is authoritative while
+      // every traversed wrapper still requires one exact, signed digest declaration.
       const parent = commit.parents[0];
       if (commit.commit.message.includes(`Bootstrap-Source: ${contract.bootstrap.sourceSha}`)) {
         if (parent?.sha !== contract.bootstrap.sourceSha)
@@ -422,10 +409,9 @@ export class GitHubLedgerStore implements LedgerStore {
           JSON.parse(this.github.file("ledger.json", commit.sha)),
           contract
         );
-        if (
-          root.entries.length ||
-          !commit.commit.message.includes(`Ledger-Digest: ${digest(root)}`)
-        )
+        if (ledgerDigestFromMessage(commit.commit.message) !== digest(root))
+          throw new Error("Ledger state digest does not match its committed state");
+        if (root.entries.length)
           throw new Error("Ledger initialization must contain only the approved bootstrap");
         rootFound = true;
         break;
@@ -434,17 +420,96 @@ export class GitHubLedgerStore implements LedgerStore {
       expected = parent.sha;
     }
     if (!rootFound) throw new Error("Incomplete ledger ancestry");
-    if (
-      recoverySha !== undefined &&
-      !options.allowLegacyHead &&
-      !options.allowLegacyAncestor &&
-      legacySha !== recoverySha
-    )
+    const indexBySha = new Map(ledgerCommits.map((commit, index) => [commit.sha, index]));
+    const recoveryMarkers = new Map<string, string>();
+    const recoveryTargets = new Set<string>();
+    for (const [index, commit] of ledgerCommits.entries()) {
+      const lines = commit.commit.message
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith("Ledger-Recovery:"));
+      if (lines.length > 1) throw new Error("Ledger commit has multiple recovery markers");
+      const line = lines[0];
+      if (!line) continue;
+      const recovered = /^Ledger-Recovery: ([a-f0-9]{40})$/.exec(line)?.[1];
+      if (!recovered) throw new Error("Ledger recovery marker is malformed");
+      const target = shaSchema.parse(recovered);
+      const targetIndex = indexBySha.get(target);
+      if (targetIndex === undefined || targetIndex <= index)
+        throw new Error("Ledger recovery marker does not bind its legacy commit");
+      recoveryMarkers.set(commit.sha, target);
+      recoveryTargets.add(target);
+    }
+    let recoverySha: string | undefined;
+    let legacySha: string | undefined;
+    const recoveryTerminalOwners = new Map<string, string>();
+    const owner = contract.repository.split("/")[0];
+    for (const [index, commit] of ledgerCommits.entries()) {
+      const raw = commits[index];
+      if (!raw) throw new Error("Ledger history response was truncated");
+      const recoveryRequested = recoveryTargets.has(commit.sha);
+      const legacyRequested =
+        (options.allowLegacyHead && commit.sha === sha) ||
+        (options.allowLegacyAncestor && commit.sha !== sha && !legacySha) ||
+        (recoveryRequested && commit.sha !== sha);
+      if (legacyRequested && commit.author?.login === owner) {
+        const bot = `${this.github.botSlug}[bot]`;
+        if (
+          commit.committer?.login !== "web-flow" ||
+          !commit.commit.verification.verified ||
+          commit.commit.verification.reason !== "valid" ||
+          !commit.commit.message.includes(`Signed-off-by: ${bot} <`)
+        )
+          throw new Error("Legacy ledger head is not a valid GitHub-signed recovery candidate");
+        legacySha ||= commit.sha;
+      } else this.github.verifyBotCommit(commit.sha, raw);
+      ledgerDigestFromMessage(commit.commit.message);
+    }
+    for (const [source, target] of recoveryMarkers) {
+      const seen = new Set<string>();
+      let current = target;
+      while (true) {
+        if (seen.has(current)) throw new Error("Ledger recovery marker chain is cyclic");
+        seen.add(current);
+        const targetIndex = indexBySha.get(current);
+        if (targetIndex === undefined)
+          throw new Error("Ledger recovery marker does not bind its legacy commit");
+        const targetCommit = ledgerCommits[targetIndex];
+        if (!targetCommit)
+          throw new Error("Ledger recovery marker does not bind its legacy commit");
+        if (targetCommit.author?.login === owner) {
+          recoveryTerminalOwners.set(source, current);
+          break;
+        }
+        const next = recoveryMarkers.get(current);
+        if (!next) throw new Error("Ledger recovery marker does not bind its legacy commit");
+        current = next;
+      }
+    }
+    if (legacySha !== undefined) {
+      const legacyIndex = indexBySha.get(legacySha);
+      if (legacyIndex === undefined)
+        throw new Error("Ledger recovery marker does not bind its legacy commit");
+      // A marker source newer than the selected legacy target is active. Markers
+      // at or after that target are historical compatibility data only.
+      const activeRecoveryTerminals = [...recoveryTerminalOwners.entries()].filter(([source]) => {
+        const sourceIndex = indexBySha.get(source);
+        return sourceIndex !== undefined && sourceIndex < legacyIndex;
+      });
+      for (const [source, terminal] of recoveryTerminalOwners) {
+        const sourceIndex = indexBySha.get(source);
+        if (sourceIndex !== undefined && sourceIndex < legacyIndex && terminal !== legacySha)
+          throw new Error("Ledger recovery markers conflict");
+      }
+      if (activeRecoveryTerminals.length > 0) recoverySha = legacySha;
+    }
+    if (recoveryTargets.size > 0 && legacySha === undefined)
+      throw new Error("Ledger recovery marker does not bind its legacy commit");
+    if (recoverySha !== undefined && legacySha !== recoverySha)
       throw new Error("Ledger recovery marker does not bind its legacy commit");
     const ledger = validateLedger(JSON.parse(this.github.file("ledger.json", sha)), contract);
-    if (!this.github.commit(sha).message.includes(`Ledger-Digest: ${digest(ledger)}`))
+    if (ledgerDigestFromMessage(parsedCommits[0]?.commit.message || "") !== digest(ledger))
       throw new Error("Ledger state digest does not match the signed head");
-    return { sha, ledger, legacySha };
+    return { sha, ledger, legacySha, recoverySha };
   }
 
   async compareAndSwap(
@@ -463,8 +528,6 @@ export class GitHubLedgerStore implements LedgerStore {
         recoverySha ? `\nLedger-Recovery: ${shaSchema.parse(recoverySha)}` : ""
       }`
     );
-    if (this.github.reference(`heads/${this.github.contract.ledgerBranch}`) !== sha)
-      throw new Error("Ledger update was not confirmed");
     return sha;
   }
 }
