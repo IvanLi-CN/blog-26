@@ -381,11 +381,13 @@ export class GitHubLedgerStore implements LedgerStore {
     const parsedCommits = commits.map((raw) => repositoryCommitSchema.parse(raw));
     const recoveryTargets = new Set<string>();
     for (const commit of parsedCommits) {
-      const recovered = commit.commit.message.match(/^Ledger-Recovery: ([a-f0-9]{40})$/m)?.[1];
-      if (!recovered) continue;
-      // Defer authority checks until the ordered pass binds each target to its commit.
-      const target = shaSchema.parse(recovered);
-      recoveryTargets.add(target);
+      for (const line of commit.commit.message.split(/\r?\n/)) {
+        if (!line.startsWith("Ledger-Recovery:")) continue;
+        const recovered = /^Ledger-Recovery: ([a-f0-9]{40})$/.exec(line)?.[1];
+        if (!recovered) throw new Error("Ledger recovery marker is malformed");
+        // Defer authority checks until the ordered pass binds each target to its commit.
+        recoveryTargets.add(shaSchema.parse(recovered));
+      }
     }
     let recoverySha: string | undefined;
     for (const [index, commit] of parsedCommits.entries()) {
@@ -433,6 +435,11 @@ export class GitHubLedgerStore implements LedgerStore {
       expected = parent.sha;
     }
     if (!rootFound) throw new Error("Incomplete ledger ancestry");
+    const ancestry = new Set(parsedCommits.map((commit) => commit.sha));
+    for (const target of recoveryTargets) {
+      if (!ancestry.has(target))
+        throw new Error("Ledger recovery marker does not bind its legacy commit");
+    }
     if (recoveryTargets.size > 0 && recoverySha === undefined)
       throw new Error("Ledger recovery marker does not bind its legacy commit");
     if (

@@ -116,6 +116,17 @@ describe("durable product release reservations", () => {
     expect(result.sha).toBe(head);
     expect(result.legacySha).toBe(legacy);
     expect(result.ledger).toEqual(ledger);
+    const malformedTarget = "8".repeat(40);
+    const headCommit = commits[0];
+    if (!headCommit) throw new Error("Missing head fixture");
+    headCommit.commit.message += `\nLedger-Recovery: ${malformedTarget}`;
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
+    ).rejects.toThrow("does not bind its legacy commit");
+    headCommit.commit.message = headCommit.commit.message.replace(
+      `\nLedger-Recovery: ${malformedTarget}`,
+      ""
+    );
     const declaration = commits[1];
     const recovered = commits[2];
     if (!declaration || !recovered) throw new Error("Missing recovery fixture");
