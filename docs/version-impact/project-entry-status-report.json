@@ -98,7 +98,7 @@
         },
         {
           "path": "apps/admin/src/pages/project-status.tsx",
-          "blob": "cc11ba5c25dace3c1614e53d820d20bb15b680a4",
+          "blob": "4731f82457b305e462708b3c3e61340402c2f5c5",
           "command": "Official /admin/project-status route verified at desktop and 393x852 mobile viewports; manual check reached checking state with no app console errors"
         },
         {
