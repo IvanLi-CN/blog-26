@@ -88,6 +88,11 @@ describe("durable product release reservations", () => {
         contract.bootstrap.sourceSha,
         `chore(release): initialize product ledger\n\nBootstrap-Source: ${contract.bootstrap.sourceSha}\n${digestLine}\n${signedOff}`
       ),
+      commit(
+        contract.bootstrap.sourceSha,
+        "0".repeat(40),
+        `chore(release): historical source commit\n\n${digestLine}\nLedger-Recovery: ${"7".repeat(40)}\n${signedOff}`
+      ),
     ];
     const github = new GitHubRelease(contract, "github-actions", {
       request(endpoint) {
@@ -119,17 +124,53 @@ describe("durable product release reservations", () => {
     const malformedTarget = "8".repeat(40);
     const headCommit = commits[0];
     if (!headCommit) throw new Error("Missing head fixture");
-    headCommit.commit.message += `\nLedger-Recovery: ${malformedTarget}`;
+    const headMarker = `Ledger-Recovery: ${recoveryCommit}`;
+    headCommit.commit.message = headCommit.commit.message.replace(
+      headMarker,
+      "Ledger-Recovery: nope"
+    );
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
+    ).rejects.toThrow("malformed");
+    headCommit.commit.message = headCommit.commit.message.replace(
+      "Ledger-Recovery: nope",
+      `Ledger-Recovery: ${malformedTarget}`
+    );
     await expect(
       new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
     ).rejects.toThrow("does not bind its legacy commit");
     headCommit.commit.message = headCommit.commit.message.replace(
-      `\nLedger-Recovery: ${malformedTarget}`,
-      ""
+      `Ledger-Recovery: ${malformedTarget}`,
+      headMarker
     );
+    headCommit.commit.message = headCommit.commit.message.replace(
+      headMarker,
+      `Ledger-Recovery: ${head}`
+    );
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
+    ).rejects.toThrow("does not bind its legacy commit");
+    headCommit.commit.message = headCommit.commit.message.replace(
+      `Ledger-Recovery: ${head}`,
+      headMarker
+    );
+    headCommit.commit.message += `\nLedger-Recovery: ${head}`;
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
+    ).rejects.toThrow("multiple recovery markers");
+    headCommit.commit.message = headCommit.commit.message.replace(`\nLedger-Recovery: ${head}`, "");
     const declaration = commits[1];
     const recovered = commits[2];
     if (!declaration || !recovered) throw new Error("Missing recovery fixture");
+    const declarationMessage = declaration.commit.message;
+    const recoveredAuthor = recovered.author?.login;
+    declaration.commit.message = `chore(release): recovery wrapper\n\n${digestLine}\n${signedOff}`;
+    recovered.author = { login: bot };
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
+    ).rejects.toThrow("does not bind its legacy commit");
+    declaration.commit.message = declarationMessage;
+    recovered.author = recoveredAuthor ? { login: recoveredAuthor } : null;
     declaration.commit.verification = { verified: false, reason: "unsigned" };
     await expect(
       new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
@@ -177,7 +218,7 @@ describe("durable product release reservations", () => {
         if (endpoint.startsWith("users/")) return { id: 41898282 };
         if (endpoint === "graphql" && method === "POST") {
           payloadText = JSON.stringify(payload);
-          ref = next;
+          ref = "e".repeat(40);
           return { data: { createCommitOnBranch: { commit: { oid: next } } } };
         }
         if (endpoint.endsWith(`/git/ref/heads/${contract.ledgerBranch}`))
@@ -191,7 +232,12 @@ describe("durable product release reservations", () => {
       },
     });
 
-    await new GitHubLedgerStore(github).compareAndSwap(head, initialLedger(contract), legacy);
+    const committed = await new GitHubLedgerStore(github).compareAndSwap(
+      head,
+      initialLedger(contract),
+      legacy
+    );
+    expect(committed).toBe(next);
     expect(payloadText).toContain(`Ledger-Recovery: ${legacy}`);
   });
 

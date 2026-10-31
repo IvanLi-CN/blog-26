@@ -19,6 +19,7 @@
 - 补充准备 PR 合并后 exact main CI/E2E 失败、但 Product Release 尚未绑定时的专用废弃恢复边界；该身份保持可审计并烧毁版本，后续发布必须走新的 Manual Product Release identity。
 - 补强 ledger recovery marker 链的读取：bot-authored recovery wrapper 可安全叠加，只有最终 owner-authored、GitHub Verified 的 legacy head 才能提供恢复权限。
 - 收紧 recovery marker 读取：每个 marker 都必须是合法且位于实际单父祖先链中的 SHA；孤立、格式错误或未绑定 marker 与合法 marker 共存时仍必须拒绝登记。
+- 继续收紧 recovery marker：只解析 head 到 bootstrap root 的 ledger 链，要求 marker 指向声明提交的严格祖先、沿 wrapper 链到达 owner legacy，并拒绝同提交冲突 marker；CAS 返回已验证提交后即使 branch 被并发推进也不再误报写入失败。
 
 ## References
 
