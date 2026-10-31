@@ -249,7 +249,7 @@ export function ProjectStatusPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="项目入口状态"
+        title="项目状态"
         description="按链接分组一览项目状态；展开项目行查看具体入口。"
         actions={
           <>

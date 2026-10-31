@@ -103,7 +103,7 @@ describe("ProjectStatusPage", () => {
       </QueryClientProvider>
     );
 
-    expect(await findByText("项目入口状态")).toBeTruthy();
+    expect(await findByText("项目状态")).toBeTruthy();
     expect(await findByRole("heading", { name: "问题列表" })).toBeTruthy();
     expect(await findByRole("table", { name: "项目入口问题列表" })).toBeTruthy();
     const matrixTable = await findByRole("table", {
