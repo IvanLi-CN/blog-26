@@ -167,6 +167,25 @@ describe("project status service persistence", () => {
     expect((await db.select().from(projectStatusRuns))[0]?.status).toBe("running");
   });
 
+  test("only force-interrupts a scheduler batch owned by the lost lease", async () => {
+    const now = Date.now();
+    await db.insert(projectStatusRuns).values({
+      id: "status-test-owned-run",
+      status: "running",
+      triggeredBy: "scheduler",
+      schedulerOwnerToken: "lost-scheduler",
+      targetCount: 42,
+      startedAt: now,
+      heartbeatAt: now,
+    });
+
+    await interruptActiveProjectStatusRuns(now, true, "other-scheduler");
+    expect((await db.select().from(projectStatusRuns))[0]?.status).toBe("running");
+
+    await interruptActiveProjectStatusRuns(now, true, "lost-scheduler");
+    expect((await db.select().from(projectStatusRuns))[0]?.status).toBe("interrupted");
+  });
+
   test("force-interrupts all active runs on restart and reconciles saved results", async () => {
     const now = Date.now();
     const [availableEntry, unknownEntry] = getProjectStatusCatalogEntries();

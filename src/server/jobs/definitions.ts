@@ -18,7 +18,7 @@ export type JobDefinition = {
   description?: string;
   schedule: JobSchedule;
   runOnStart?: boolean;
-  run: (log: Logger) => Promise<void>;
+  run: (log: Logger, context?: { schedulerOwnerToken?: string }) => Promise<void>;
 };
 
 function computeNextRunFrom(now: number, s: JobSchedule): number {
@@ -143,9 +143,11 @@ export const jobDefinitions: JobDefinition[] = [
     description: "启动时检查一次，之后每6小时检查共享目录中的外部入口",
     schedule: { kind: "interval", everyMs: 6 * 60 * 60 * 1000 },
     runOnStart: true,
-    run: async (log) => {
+    run: async (log, context) => {
       log.info("project_status_started");
-      const result = await runProjectStatusCheck("scheduler");
+      const result = await runProjectStatusCheck("scheduler", {
+        schedulerOwnerToken: context?.schedulerOwnerToken,
+      });
       log.info("project_status_completed", result);
     },
   },

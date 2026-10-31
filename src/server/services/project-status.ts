@@ -3,7 +3,7 @@ import { lookup } from "node:dns/promises";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { isIP } from "node:net";
-import { and, desc, eq, exists, inArray, isNull, lt, ne, or } from "drizzle-orm";
+import { and, desc, eq, exists, gte, inArray, isNull, lt, ne, or } from "drizzle-orm";
 import { db, initializeDB } from "@/lib/db";
 import {
   getProjectStatusCatalogEntries,
@@ -48,6 +48,7 @@ export type ProjectStatusServiceDeps = {
   fetchResolved?: FetchResolved;
   targetTimeoutMs?: number;
   retryDelayMs?: number;
+  schedulerOwnerToken?: string;
 };
 
 const productionDeps: ProjectStatusServiceDeps = {
@@ -485,13 +486,20 @@ async function updateProjectStatusRunCounts(runId: string) {
   return counts;
 }
 
-export async function interruptActiveProjectStatusRuns(now = Date.now(), force = false) {
+export async function interruptActiveProjectStatusRuns(
+  now = Date.now(),
+  force = false,
+  schedulerOwnerToken?: string
+) {
   const activeRuns = await db
     .select({ id: projectStatusRuns.id })
     .from(projectStatusRuns)
     .where(
       and(
         eq(projectStatusRuns.status, "running"),
+        schedulerOwnerToken
+          ? eq(projectStatusRuns.schedulerOwnerToken, schedulerOwnerToken)
+          : undefined,
         force
           ? undefined
           : or(
@@ -570,6 +578,7 @@ export async function runProjectStatusCheck(
       targetCount: entries.length,
       startedAt,
       heartbeatAt: startedAt,
+      schedulerOwnerToken: triggeredBy === "scheduler" ? (deps.schedulerOwnerToken ?? null) : null,
     });
   } catch (error) {
     const message = errorMessage(error);
@@ -810,13 +819,17 @@ export async function getProjectStatusOverview(
   };
 }
 
-export async function getProjectStatusHistory(limit = 200): Promise<ProjectStatusHistoryResponse> {
+export async function getProjectStatusHistory(
+  limit?: number
+): Promise<ProjectStatusHistoryResponse> {
   await initializeDB();
+  const cutoff = Date.now() - PROJECT_STATUS_RETENTION_MS;
   const rows = await db
     .select()
     .from(projectStatusRuns)
+    .where(gte(projectStatusRuns.startedAt, cutoff))
     .orderBy(desc(projectStatusRuns.startedAt))
-    .limit(Math.max(1, Math.min(200, limit)));
+    .then((history) => (limit ? history.slice(0, Math.max(1, limit)) : history));
   const resultRows = rows.length
     ? await db
         .select()

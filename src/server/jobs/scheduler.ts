@@ -29,6 +29,7 @@ class JobsScheduler {
   private leader = false;
   private leaseTimer: TimerRef = null;
   private readonly ownerToken = nanoid();
+  private startupRetryUsed = new Set<string>();
 
   async start(options: SchedulerStartOptions = {}) {
     if (this.started) return;
@@ -90,12 +91,14 @@ class JobsScheduler {
           if (st.timer) clearTimeout(st.timer);
           st.timer = null;
         }
+        void interruptActiveProjectStatusRuns(Date.now(), true, this.ownerToken);
       }
       return;
     }
     if (this.leader) return;
     this.leader = true;
-    await interruptActiveProjectStatusRuns(now, true);
+    this.startupRetryUsed.clear();
+    await interruptActiveProjectStatusRuns(now);
     for (const st of this.jobs.values()) {
       st.nextAt = this.computeNext(st.def);
       this.armTimer(st);
@@ -167,7 +170,7 @@ class JobsScheduler {
         logDeleted: false,
         attempt: 1,
       });
-      await st.def.run(logger);
+      await st.def.run(logger, { schedulerOwnerToken: this.ownerToken });
       await db
         .update(jobRuns)
         .set({ status: "success", finishedAt: Date.now() })
@@ -175,6 +178,19 @@ class JobsScheduler {
       logger.info("run_completed", { status: "success", durationMs: Date.now() - startedAt });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      if (
+        triggeredBy === "scheduler" &&
+        jobKey === "project-entry-status" &&
+        msg.includes("already running") &&
+        this.leader &&
+        !this.startupRetryUsed.has(jobKey)
+      ) {
+        this.startupRetryUsed.add(jobKey);
+        const retry = setTimeout(() => {
+          if (this.leader) this.trigger(jobKey, "scheduler");
+        }, SCHEDULER_LEASE_TTL_MS + 1_000);
+        retry.unref?.();
+      }
       logger.error("run_failed", {
         message: msg,
         stack: e instanceof Error ? e.stack : undefined,

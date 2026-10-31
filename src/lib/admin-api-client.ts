@@ -766,7 +766,7 @@ export const adminApi = {
     ),
   getProjectStatusOverview: () =>
     adminRequest<ProjectStatusOverviewResponse>("/api/admin/project-status/overview"),
-  getProjectStatusHistory: (limit = 200) =>
+  getProjectStatusHistory: (limit?: number) =>
     adminRequest<ProjectStatusHistoryResponse>(
       `/api/admin/project-status/history${buildSearch({ limit })}`
     ),

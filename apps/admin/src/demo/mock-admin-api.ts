@@ -2554,13 +2554,15 @@ function projectStatusOverview(): ProjectStatusOverviewResponse {
       ? results.map((result) => ({ ...result, runId: manualRunId }))
       : results;
   const activeAttemptedResults = currentResults.slice(0, activeAttemptedCount);
+  const manualAttemptedCount = currentResults.filter((result) => result.attempted).length;
   const latestRun = manualRunFinished
     ? {
         id: manualRunId,
-        status: "partial" as const,
+        status:
+          manualAttemptedCount === entries.length ? ("completed" as const) : ("partial" as const),
         triggeredBy: "manual" as const,
         targetCount: entries.length,
-        attemptedCount: entries.length - 1,
+        attemptedCount: manualAttemptedCount,
         availableCount: currentResults.filter((result) => result.status === "available").length,
         unavailableCount: currentResults.filter((result) => result.status === "unavailable").length,
         startedAt: activeStartedAt,

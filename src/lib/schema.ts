@@ -554,6 +554,7 @@ export const projectStatusRuns = sqliteTable(
     unavailableCount: integer("unavailable_count").notNull().default(0),
     startedAt: integer("started_at").notNull(),
     heartbeatAt: integer("heartbeat_at"),
+    schedulerOwnerToken: text("scheduler_owner_token"),
     finishedAt: integer("finished_at"),
     errorMessage: text("error_message"),
   },

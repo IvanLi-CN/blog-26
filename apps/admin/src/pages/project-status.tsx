@@ -155,7 +155,7 @@ export function ProjectStatusPage() {
   });
   const historyQuery = useQuery({
     queryKey: ["admin-project-status-history"],
-    queryFn: () => adminApi.getProjectStatusHistory(200),
+    queryFn: () => adminApi.getProjectStatusHistory(),
   });
   useEffect(() => {
     if (manualCheckQueuedAt === null) return;
