@@ -158,6 +158,10 @@ export function ProjectStatusPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-project-status-overview"] });
       queryClient.invalidateQueries({ queryKey: ["admin-project-status-history"] });
     },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-project-status-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-project-status-history"] });
+    },
   });
 
   const overview = overviewQuery.data;
@@ -298,16 +302,18 @@ export function ProjectStatusPage() {
             <div className="text-sm font-medium text-muted-foreground">当前需要处理</div>
             <div className="mt-1 flex items-baseline gap-3">
               <div className="text-5xl font-semibold tabular-nums text-destructive">
-                {totalProblems}
+                {overview ? totalProblems : "—"}
               </div>
               <div className="text-sm text-muted-foreground">
-                / {overview?.summary.total ?? 0} 个入口
+                / {overview ? overview.summary.total : "—"} 个入口
               </div>
             </div>
             <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-              {totalProblems > 0
-                ? "红色异常优先处理；未知和 stale 需要确认检查是否完整。"
-                : "当前没有需要处理的入口。"}
+              {!overview
+                ? "无法读取当前入口状态，请重试。"
+                : totalProblems > 0
+                  ? "红色异常优先处理；未知和 stale 需要确认检查是否完整。"
+                  : "当前没有需要处理的入口。"}
             </p>
           </div>
           <div className="grid grid-cols-3 gap-2">
@@ -326,7 +332,7 @@ export function ProjectStatusPage() {
                 <span
                   className={`text-2xl font-semibold tabular-nums ${tone === "danger" ? "text-destructive" : "text-warning"}`}
                 >
-                  {count}
+                  {overview ? count : "—"}
                 </span>
                 <span className="text-sm">{label}</span>
               </Button>
@@ -336,13 +342,15 @@ export function ProjectStatusPage() {
         <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-destructive/15 pt-4 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <CheckCircle2 className="size-3.5 text-success" aria-hidden />
-            {overview?.summary.available ?? 0} 个可用
+            {overview ? overview.summary.available : "—"} 个可用
           </span>
           <span className="inline-flex items-center gap-1.5">
             <Clock3 className="size-3.5" aria-hidden />
             {overview?.latestRun
               ? `最近批次 ${formatDateTime(overview.latestRun.finishedAt ?? overview.latestRun.startedAt)}`
-              : "尚未完成检查"}
+              : overview
+                ? "尚未完成检查"
+                : "当前状态不可用"}
           </span>
         </div>
       </section>
@@ -354,9 +362,11 @@ export function ProjectStatusPage() {
               问题列表
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {problemResults.length > 0
-                ? `当前筛选发现 ${problemResults.length} 个需要处理的入口。`
-                : "当前筛选没有需要处理的入口。"}
+              {!overview
+                ? "无法读取当前问题列表。"
+                : problemResults.length > 0
+                  ? `当前筛选发现 ${problemResults.length} 个需要处理的入口。`
+                  : "当前筛选没有需要处理的入口。"}
             </p>
           </div>
           {problemResults.length > 0 ? (
@@ -422,7 +432,7 @@ export function ProjectStatusPage() {
           </div>
         ) : (
           <div className="rounded-2xl border border-border/52 bg-card/54 px-4 py-3 text-sm text-muted-foreground">
-            没有异常入口，当前检查结果正常。
+            {overview ? "没有异常入口，当前检查结果正常。" : "当前状态不可用，请重试。"}
           </div>
         )}
       </section>
@@ -434,11 +444,13 @@ export function ProjectStatusPage() {
               项目状态一览表
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {matrixRows.length > 0
-                ? `行是 ${matrixRows.length} 个项目，列是 ${matrixLinkGroups.length} 个链接分组；${filteredResults.length} 个入口已压缩为状态摘要，${problemResults.length} 个问题优先标记。`
-                : totalProblems > 0
-                  ? "当前筛选没有匹配的项目，尝试清除筛选。"
-                  : "本批次尚未产生项目结果。"}
+              {!overview
+                ? "无法读取项目状态。"
+                : matrixRows.length > 0
+                  ? `行是 ${matrixRows.length} 个项目，列是 ${matrixLinkGroups.length} 个链接分组；${filteredResults.length} 个入口已压缩为状态摘要，${problemResults.length} 个问题优先标记。`
+                  : totalProblems > 0
+                    ? "当前筛选没有匹配的项目，尝试清除筛选。"
+                    : "本批次尚未产生项目结果。"}
             </p>
           </div>
           {filter !== "all" ? (
@@ -506,7 +518,9 @@ export function ProjectStatusPage() {
           </Select>
         </div>
 
-        {overviewQuery.isPending ? (
+        {overviewQuery.isError && !overview ? (
+          <EmptyState title="无法加载项目状态" description="请刷新后重试。" />
+        ) : overviewQuery.isPending ? (
           <div className="flex min-h-48 items-center justify-center rounded-2xl border border-border/52 bg-card/54">
             <Spinner className="size-6" />
           </div>

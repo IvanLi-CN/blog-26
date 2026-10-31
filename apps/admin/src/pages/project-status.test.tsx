@@ -120,4 +120,31 @@ describe("ProjectStatusPage", () => {
 
     globalThis.fetch = originalFetch;
   });
+
+  test("does not present an overview loading failure as a healthy state", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (input) => {
+      const path = String(input);
+      if (path.includes("/overview")) throw new Error("overview unavailable");
+      if (path.includes("/history")) {
+        return new Response(JSON.stringify({ runs: [] }), {
+          headers: { "content-type": "application/json" },
+        });
+      }
+      throw new Error(`Unexpected request: ${path}`);
+    }) as typeof fetch;
+
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { findByText, queryByText } = render(
+      <QueryClientProvider client={client}>
+        <ProjectStatusPage />
+      </QueryClientProvider>
+    );
+
+    expect(await findByText("无法加载项目状态")).toBeTruthy();
+    expect(await findByText("无法读取当前入口状态，请重试。")).toBeTruthy();
+    expect(queryByText("当前没有需要处理的入口")).toBeNull();
+
+    globalThis.fetch = originalFetch;
+  });
 });

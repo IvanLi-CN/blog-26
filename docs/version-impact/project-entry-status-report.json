@@ -5,9 +5,9 @@
   "covered_files": {
     "GLOSSARY.md": "f3031cc1d9c75459850a8e26365bd0c46b9f6703",
     "apps/admin/src/components/app-shell.tsx": "7d5b974a72a0776572fbf4eaaea40ae5e669c27c",
-    "apps/admin/src/demo/mock-admin-api.ts": "58a4d959f60d508ab547aeadd347fe1d8e8a73a6",
-    "apps/admin/src/pages/project-status.test.tsx": "4b8170c44f3da6bcbc41aa6efda552ce2f68bb45",
-    "apps/admin/src/pages/project-status.tsx": "d131a4dc68ab899ca9b36cea96bff7968d9d589a",
+    "apps/admin/src/demo/mock-admin-api.ts": "ab30d5623a6cf9083b7be71d03f9fb77e79150ec",
+    "apps/admin/src/pages/project-status.test.tsx": "0c057f1398399bc0659094d934faa68e1e1b19c3",
+    "apps/admin/src/pages/project-status.tsx": "57a0f5ccea8ac7c696c29cdf8cf5fb5a6d9feb54",
     "apps/admin/src/router.tsx": "d0740e1e0313421a8149376d1167b6b64a09a302",
     "astro.config.mjs": "eb89dbcbdb6975f0ed76d49c486d6f9c0a1deaad",
     "drizzle/0021_project_status.sql": "3f3a5cd4a02859266c40b986f56926d7956205bc",
@@ -30,18 +30,18 @@
     "src/lib/schema.ts": "18b715fc00549098bf0f4a78aa6f38439a7a82d3",
     "src/lib/search/web-demo-fixtures.ts": "dbafc4dabe3c04a57c4ca4320d64504355161bb4",
     "src/styles/milkdown-nature.css": "665489233ef7effd416144d9631fb52e814b9910",
-    "src/server/admin-api/router.ts": "90c2c7a391796ffa0ea9a51b69350936d4ef8a9a",
-    "src/server/http-compat-api.test.ts": "d8a526c0318240ecb76167c8bf528cae2063cf8e",
+    "src/server/admin-api/router.ts": "8b068746cda0a5fdde1da5abd36e8b851b5f1223",
+    "src/server/http-compat-api.test.ts": "7b55434b5e9c720b42114c060218abbc11ff6403",
     "src/server/jobs/definitions.ts": "95d178b82ee717fdf0b9033097623e58ae702a33",
-    "src/server/jobs/scheduler.ts": "e88f0726b00ed7aec84f53f2187fc1b525e28aec",
+    "src/server/jobs/scheduler.ts": "f708ec3145ba3cd373510ef9c858621afbd87013",
     "scripts/run-test-suite.ts": "4331c4a5de0e6ac1ae32be5435966227538662f3",
     "scripts/start-console.ts": "1dbe1f4897f204f9829918701b9efd0f8aa9b25f",
     ".github/workflows/e2e.yml": "3936f332df882f048a532d0a1eb7f8ff53d12239",
     "src/server/routers/admin/index.ts": "b3e8f76750e4df5798fdbf94cd8a8d2c93e69714",
     "src/server/routers/admin/project-status.ts": "293c030ca3473bd49699faf41dc64b4ab533bccf",
-    "src/server/services/project-status.integration.test.ts": "cd0018790c312f2490819178061be0a826ce9cdd",
-    "src/server/services/project-status.test.ts": "707cd827abb85470a3a66b1439f491c90249de39",
-    "src/server/services/project-status.ts": "8be0c2af7cc453d05c2352b8dc0039a99bb3c4f6",
+    "src/server/services/project-status.integration.test.ts": "e168edef1dc5bf01e9b9f7841b78fa8b692dd71a",
+    "src/server/services/project-status.test.ts": "9498335caf066c338140a5f71f0834be26959ab0",
+    "src/server/services/project-status.ts": "b70a9686c8186adac082d21dfe7b4a9820533fa5",
     "tests/e2e/web-demo/system-share.spec.ts": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
     "tests/e2e/web-demo/project-status.spec.ts": "0f0f33fa65b96fa7cb11fe3e8fe2175910604978",
     "tests/server/system-share-api.test.ts": "1cfe1b2da6031cb7cd34ac6ff0a01573deb84aaa"
@@ -71,12 +71,12 @@
       "evidence": [
         {
           "path": "src/server/services/project-status.integration.test.ts",
-          "blob": "cd0018790c312f2490819178061be0a826ce9cdd",
+          "blob": "e168edef1dc5bf01e9b9f7841b78fa8b692dd71a",
           "command": "bun test --isolate src/server/services/project-status.integration.test.ts"
         },
         {
           "path": "apps/admin/src/pages/project-status.test.tsx",
-          "blob": "4b8170c44f3da6bcbc41aa6efda552ce2f68bb45",
+          "blob": "0c057f1398399bc0659094d934faa68e1e1b19c3",
           "command": "bun test --isolate apps/admin/src/pages/project-status.test.tsx"
         },
         {
@@ -102,12 +102,12 @@
         },
         {
           "path": "src/server/services/project-status.test.ts",
-          "blob": "1b96e43ff1fc4708b077aeb4c8d108f276527f8d",
+          "blob": "9498335caf066c338140a5f71f0834be26959ab0",
           "command": "bun test --isolate src/server/services/project-status.test.ts"
         },
         {
           "path": "apps/admin/src/pages/project-status.tsx",
-          "blob": "d131a4dc68ab899ca9b36cea96bff7968d9d589a",
+          "blob": "57a0f5ccea8ac7c696c29cdf8cf5fb5a6d9feb54",
           "command": "bun /workspace/worktrees/blog26-project-status/src/node_modules/@playwright/test/cli.js test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
         },
         {
@@ -160,7 +160,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "d8a526c0318240ecb76167c8bf528cae2063cf8e",
+          "blob": "2473cdf68b5a96c91d19962c989f269fae319c70",
           "command": "bun test --isolate src/server/http-compat-api.test.ts"
         }
       ]

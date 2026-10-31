@@ -8,7 +8,11 @@ import { db, initializeDB } from "@/lib/db";
 import { getProjectStatusCatalogEntries } from "@/lib/project-catalog";
 import { PROJECT_STATUS_RETENTION_MS } from "@/lib/project-status";
 import { projectStatusResults, projectStatusRuns } from "@/lib/schema";
-import { getProjectStatusOverview, runProjectStatusCheck } from "./project-status";
+import {
+  getProjectStatusOverview,
+  interruptActiveProjectStatusRuns,
+  runProjectStatusCheck,
+} from "./project-status";
 
 const testDbPath = path.join(process.cwd(), "tmp/project-status-test.sqlite");
 
@@ -111,6 +115,7 @@ describe("project status service persistence", () => {
       httpStatus: 200,
       checkedAt: oldStartedAt + 100,
     });
+    await interruptActiveProjectStatusRuns();
 
     await runProjectStatusCheck("scheduler", {
       fetch: async () =>
@@ -127,5 +132,17 @@ describe("project status service persistence", () => {
     const runs = await db.select().from(projectStatusRuns);
     expect(runs.some((run) => run.id === oldRunId)).toBe(false);
     expect(runs.find((run) => run.id === activeRunId)?.status).toBe("interrupted");
+  });
+
+  test("refuses a second run while an active batch exists", async () => {
+    await db.insert(projectStatusRuns).values({
+      id: "status-test-active-conflict",
+      status: "running",
+      triggeredBy: "scheduler",
+      targetCount: 42,
+      startedAt: Date.now(),
+    });
+
+    await expect(runProjectStatusCheck("manual")).rejects.toThrow("already running");
   });
 });

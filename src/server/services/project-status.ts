@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { lookup } from "node:dns/promises";
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
 import { isIP } from "node:net";
 import { desc, eq, inArray, lt, or } from "drizzle-orm";
 import { db, initializeDB } from "@/lib/db";
@@ -28,6 +30,11 @@ type Sleep = (ms: number) => Promise<void>;
 type Now = () => number;
 type IdFactory = () => string;
 type ResolveHost = (hostname: string) => Promise<Array<{ address: string; family: number }>>;
+type FetchResolved = (
+  input: string,
+  init: RequestInit,
+  address: string | null
+) => Promise<Response>;
 
 export type ProjectStatusServiceDeps = {
   fetch: typeof fetch;
@@ -35,6 +42,7 @@ export type ProjectStatusServiceDeps = {
   now: Now;
   id: IdFactory;
   resolveHost: ResolveHost;
+  fetchResolved?: FetchResolved;
   targetTimeoutMs?: number;
   retryDelayMs?: number;
 };
@@ -45,6 +53,7 @@ const productionDeps: ProjectStatusServiceDeps = {
   now: () => Date.now(),
   id: randomUUID,
   resolveHost: (hostname) => lookup(hostname, { all: true, verbatim: true }),
+  fetchResolved: fetchResolvedTarget,
   targetTimeoutMs: PROJECT_STATUS_TARGET_TIMEOUT_MS,
   retryDelayMs: PROJECT_STATUS_RETRY_DELAY_MS,
 };
@@ -79,7 +88,16 @@ class UnsafeTargetError extends Error {
 
 function isPrivateAddress(address: string): boolean {
   const normalized = address.toLowerCase().replace(/^\[|\]$/g, "");
-  if (normalized.startsWith("::ffff:")) return isPrivateAddress(normalized.slice(7));
+  if (normalized.startsWith("::ffff:")) {
+    const mapped = normalized.slice(7);
+    if (mapped.includes(".")) return isPrivateAddress(mapped);
+    const mappedParts = mapped.split(":");
+    if (mappedParts.length === 2 && mappedParts.every((part) => /^[0-9a-f]{1,4}$/.test(part))) {
+      const high = Number.parseInt(mappedParts[0], 16);
+      const low = Number.parseInt(mappedParts[1], 16);
+      return isPrivateAddress(`${high >>> 8}.${high & 0xff}.${low >>> 8}.${low & 0xff}`);
+    }
+  }
   if (isIP(normalized) === 4) {
     const [first, second] = normalized.split(".").map(Number);
     return (
@@ -103,11 +121,59 @@ function isPrivateAddress(address: string): boolean {
   );
 }
 
+function headersForNodeResponse(headers: Record<string, string | string[] | undefined>) {
+  const normalized = new Headers();
+  for (const [key, value] of Object.entries(headers)) {
+    if (value !== undefined) normalized.set(key, Array.isArray(value) ? value.join(", ") : value);
+  }
+  return normalized;
+}
+
+function fetchResolvedTarget(input: string, init: RequestInit, address: string | null) {
+  if (!address) return fetch(input, init);
+  const target = new URL(input);
+  const request = target.protocol === "https:" ? httpsRequest : httpRequest;
+  const headers = new Headers(init.headers);
+  headers.set("host", target.host);
+  return new Promise<Response>((resolve, reject) => {
+    const req = request(
+      {
+        hostname: address,
+        port: target.port || undefined,
+        path: `${target.pathname}${target.search}`,
+        method: init.method ?? "GET",
+        headers: Object.fromEntries(headers.entries()),
+        ...(target.protocol === "https:"
+          ? { rejectUnauthorized: true, servername: target.hostname.replace(/^\[|\]$/g, "") }
+          : {}),
+      },
+      (response) => {
+        response.destroy();
+        resolve(
+          new Response(null, {
+            status: response.statusCode ?? 0,
+            headers: headersForNodeResponse(response.headers),
+          })
+        );
+      }
+    );
+    const abort = () => req.destroy(new DOMException("目标请求超时", "AbortError"));
+    if (init.signal?.aborted) {
+      abort();
+      return;
+    }
+    init.signal?.addEventListener("abort", abort, { once: true });
+    req.once("error", reject);
+    req.once("close", () => init.signal?.removeEventListener("abort", abort));
+    req.end();
+  });
+}
+
 async function assertSafeTarget(
   href: string,
   resolveHost: ResolveHost,
   signal: AbortSignal
-): Promise<URL> {
+): Promise<{ url: URL; address: string | null }> {
   let url: URL;
   try {
     url = new URL(href);
@@ -127,6 +193,7 @@ async function assertSafeTarget(
   if (isPrivateAddress(hostname)) {
     throw new UnsafeTargetError("目标地址指向私有或保留网络");
   }
+  let address: string | null = isIP(hostname) === 0 ? null : hostname.replace(/^\[|\]$/g, "");
   if (isIP(hostname) === 0) {
     let onAbort: (() => void) | null = null;
     const abort = new Promise<never>((_, reject) => {
@@ -146,8 +213,9 @@ async function assertSafeTarget(
     if (addresses.some(({ address }) => isPrivateAddress(address))) {
       throw new UnsafeTargetError("目标地址解析到私有或保留网络");
     }
+    address = addresses[0]?.address ?? null;
   }
-  return url;
+  return { url, address };
 }
 
 function freshnessFor(checkedAt: number | null, now: number): ProjectStatusFreshness {
@@ -192,16 +260,20 @@ async function checkTarget(
       let response: Response | null = null;
       let redirected = false;
       for (let redirectCount = 0; redirectCount <= 10; redirectCount += 1) {
-        const safeUrl = await assertSafeTarget(currentUrl, resolveHost, controller.signal);
-        response = await deps.fetch(safeUrl.toString(), {
+        const safeTarget = await assertSafeTarget(currentUrl, resolveHost, controller.signal);
+        const requestInit = {
           method: "GET",
           redirect: "manual",
           signal: controller.signal,
-        });
+        } as const;
+        response = deps.fetchResolved
+          ? await deps.fetchResolved(safeTarget.url.toString(), requestInit, safeTarget.address)
+          : await deps.fetch(safeTarget.url.toString(), requestInit);
+        await response.body?.cancel();
         if (response.status < 300 || response.status > 399) break;
         const location = response.headers.get("location");
         if (!location || redirectCount === 10) break;
-        currentUrl = new URL(location, safeUrl).toString();
+        currentUrl = new URL(location, safeTarget.url).toString();
         redirected = true;
       }
       if (!response) throw new Error("目标没有返回响应");
@@ -334,7 +406,7 @@ function resultDto(
   };
 }
 
-async function markActiveRunsInterrupted(now: number) {
+export async function interruptActiveProjectStatusRuns(now = Date.now()) {
   await db
     .update(projectStatusRuns)
     .set({ status: "interrupted", finishedAt: now, errorMessage: "服务重启，中断了活动批次" })
@@ -358,9 +430,18 @@ export async function runProjectStatusCheck(
   overrides: Partial<ProjectStatusServiceDeps> = {}
 ) {
   await initializeDB();
-  const deps = { ...productionDeps, ...overrides };
+  const deps = {
+    ...productionDeps,
+    ...overrides,
+    ...(overrides.fetch && !overrides.fetchResolved ? { fetchResolved: undefined } : {}),
+  };
   const startedAt = deps.now();
-  await markActiveRunsInterrupted(startedAt);
+  const activeRuns = await db
+    .select({ id: projectStatusRuns.id })
+    .from(projectStatusRuns)
+    .where(eq(projectStatusRuns.status, "running"))
+    .limit(1);
+  if (activeRuns.length > 0) throw new Error("Project status check is already running");
   await pruneHistory(startedAt);
 
   const entries = getProjectStatusCatalogEntries();

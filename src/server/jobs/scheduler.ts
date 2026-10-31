@@ -3,6 +3,7 @@ import { customAlphabet } from "nanoid";
 import { db, initializeDB } from "@/lib/db";
 import { cleanupOldLogs, createRunLog } from "@/lib/job-logger";
 import { jobRuns } from "@/lib/schema";
+import { interruptActiveProjectStatusRuns } from "@/server/services/project-status";
 import type { JobDefinition } from "./definitions";
 import { jobDefinitions, nextRunTime } from "./definitions";
 
@@ -24,8 +25,9 @@ class JobsScheduler {
 
   async start() {
     if (this.started) return;
-    this.started = true;
     await initializeDB();
+    await interruptActiveProjectStatusRuns();
+    this.started = true;
     for (const def of jobDefinitions) {
       const nextAt = nextRunTime(Date.now(), def.schedule);
       const st: InternalJobState = { def, nextAt, timer: null, running: false, queued: false };
@@ -86,22 +88,20 @@ class JobsScheduler {
         log.write({ level: "error", message, data }),
     } as const;
 
-    logger.info("run_initialized", { triggeredBy });
-
-    await initializeDB();
-    await db.insert(jobRuns).values({
-      id: runId,
-      jobKey,
-      jobName: st.def.name,
-      status: "running",
-      triggeredBy,
-      startedAt,
-      logPath: log.filePath,
-      logDeleted: false,
-      attempt: 1,
-    });
-
     try {
+      logger.info("run_initialized", { triggeredBy });
+      await initializeDB();
+      await db.insert(jobRuns).values({
+        id: runId,
+        jobKey,
+        jobName: st.def.name,
+        status: "running",
+        triggeredBy,
+        startedAt,
+        logPath: log.filePath,
+        logDeleted: false,
+        attempt: 1,
+      });
       await st.def.run(logger);
       await db
         .update(jobRuns)

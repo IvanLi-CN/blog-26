@@ -310,6 +310,35 @@ describe("HTTP compatibility APIs", () => {
       latestRun: null,
       summary: { total: 42, available: 0, unavailable: 0, unknown: 42 },
     });
+
+    const history = await handleAdminApiRequest(
+      buildRequest("/api/admin/project-status/history", {}, ADMIN_EMAIL),
+      "/project-status/history"
+    );
+    expect(history.status).toBe(200);
+    expect(await history.json()).toEqual({ runs: [] });
+
+    const anonymousTrigger = await handleAdminApiRequest(
+      buildRequest("/api/admin/project-status/trigger", { method: "POST" }),
+      "/project-status/trigger"
+    );
+    expect(anonymousTrigger.status).toBe(401);
+
+    const memberTrigger = await handleAdminApiRequest(
+      buildRequest("/api/admin/project-status/trigger", { method: "POST" }, USER_EMAIL),
+      "/project-status/trigger"
+    );
+    expect(memberTrigger.status).toBe(403);
+
+    const crossSiteTrigger = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/project-status/trigger",
+        { method: "POST", headers: { origin: "https://evil.example" } },
+        ADMIN_EMAIL
+      ),
+      "/project-status/trigger"
+    );
+    expect(crossSiteTrigger.status).toBe(403);
   });
 
   it("protects search settings and validates only saved mode policies", async () => {

@@ -2503,6 +2503,10 @@ function projectStatusOverview(): ProjectStatusOverviewResponse {
   });
   const activeStartedAt = demoProjectStatusStartedAt;
   const active = activeStartedAt !== null && Date.now() - activeStartedAt < 1800;
+  const activeAttemptedCount = active
+    ? Math.min(entries.length - 1, Math.floor((Date.now() - (activeStartedAt ?? Date.now())) / 300))
+    : 0;
+  const activeAttemptedResults = results.slice(0, activeAttemptedCount);
   const latestRun = {
     id: runId,
     status: "partial" as const,
@@ -2533,10 +2537,12 @@ function projectStatusOverview(): ProjectStatusOverviewResponse {
           id: "demo-project-status-run-active",
           status: "running" as const,
           triggeredBy: "manual" as const,
-          attemptedCount: Math.min(
-            entries.length - 1,
-            Math.floor((Date.now() - (activeStartedAt ?? Date.now())) / 300)
-          ),
+          attemptedCount: activeAttemptedCount,
+          availableCount: activeAttemptedResults.filter((result) => result.status === "available")
+            .length,
+          unavailableCount: activeAttemptedResults.filter(
+            (result) => result.status === "unavailable"
+          ).length,
           startedAt: activeStartedAt ?? Date.now(),
           finishedAt: null,
           durationMs: null,

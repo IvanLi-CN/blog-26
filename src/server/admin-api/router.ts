@@ -529,6 +529,13 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
 
     if (pathname === "/project-status/trigger") {
       if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
+      if (!hasTrustedSameOriginNavigation(request)) {
+        return json(
+          { error: { code: "FORBIDDEN", message: "请求来源不受信任" } },
+          { status: 403 },
+          resHeaders
+        );
+      }
       return json(await caller.admin.projectStatus.trigger(), { status: 202 }, resHeaders);
     }
 
