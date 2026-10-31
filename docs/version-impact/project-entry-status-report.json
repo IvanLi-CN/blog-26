@@ -5,9 +5,9 @@
   "covered_files": {
     "GLOSSARY.md": "f3031cc1d9c75459850a8e26365bd0c46b9f6703",
     "apps/admin/src/components/app-shell.tsx": "7d5b974a72a0776572fbf4eaaea40ae5e669c27c",
-    "apps/admin/src/demo/mock-admin-api.ts": "d9cbc7d4e9a3f40b6a61146b843cc48070751ec0",
-    "apps/admin/src/pages/project-status.test.tsx": "0c057f1398399bc0659094d934faa68e1e1b19c3",
-    "apps/admin/src/pages/project-status.tsx": "99dc476921958092ca9ff4d254ea1f0d6ef1abb7",
+    "apps/admin/src/demo/mock-admin-api.ts": "a723f31eb66990f9f64ed60c17d26146261feba5",
+    "apps/admin/src/pages/project-status.test.tsx": "6e0a6915c8685bfccd39677ebe8000e9675f21c8",
+    "apps/admin/src/pages/project-status.tsx": "caaf2af08deb34f1b893ca61eef7494e2314a537",
     "apps/admin/src/router.tsx": "d0740e1e0313421a8149376d1167b6b64a09a302",
     "astro.config.mjs": "eb89dbcbdb6975f0ed76d49c486d6f9c0a1deaad",
     "drizzle/0021_project_status.sql": "3f3a5cd4a02859266c40b986f56926d7956205bc",
@@ -30,7 +30,7 @@
     "src/lib/admin-api-client.ts": "1c47e4cec3e11cfca717febd0c69a530b96e5e58",
     "src/lib/project-catalog.test.ts": "2bfc0b4128416cf8384a471ce78880760c402fd6",
     "src/lib/project-catalog.ts": "caee12024ea5dbf17f3d3eefb5a325fca7983339",
-    "src/lib/project-status.ts": "ab7753db1bc249bf976a2117ed70de4204da471b",
+    "src/lib/project-status.ts": "ca2edaacde50e5dfc5c215e3ba3672df4ace61df",
     "src/lib/release/github.ts": "0db26d72849b270039cbb56b5297a5cc83fd5c8e",
     "src/lib/schema.ts": "daa7cd46334ace06257948a7abf3d3ceadfe646e",
     "src/lib/search/web-demo-fixtures.ts": "dbafc4dabe3c04a57c4ca4320d64504355161bb4",
@@ -45,12 +45,12 @@
     "src/server/routers/admin/index.ts": "b3e8f76750e4df5798fdbf94cd8a8d2c93e69714",
     "src/server/routers/admin/project-status.ts": "218ff54554c8b2a887aae0542e0b84ef3b111927",
     "src/server/routers/admin/project-status.test.ts": "6b813665fe38076d6504aaebf73917cc64cc3ec7",
-    "src/server/services/project-status.integration.test.ts": "5e37c39762f19b48a5ef1c1a596ad222ec92e366",
+    "src/server/services/project-status.integration.test.ts": "6726d539cff05ea8542e554a0a5c08594f8fdded",
     "src/server/services/project-status.test.ts": "416c2ad9c64350712dd4d12be7c66756852e69e0",
-    "src/server/services/project-status.ts": "b180e55b22e470e195cdb15c653caef49c5c5326",
+    "src/server/services/project-status.ts": "8ab019eb595153bd3448e2399d8d403eff70c4e3",
     "src/server/trpc.ts": "2eb74085661d32ee954e24bd05a7239a9bbc3489",
     "tests/e2e/web-demo/system-share.spec.ts": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
-    "tests/e2e/web-demo/project-status.spec.ts": "0e053262397239e6bc4fbebbfd6844e3860c0ea5",
+    "tests/e2e/web-demo/project-status.spec.ts": "3663dfc87d61ba341f3da2a7aa5bb056899da469",
     "tests/lib/manual-release-ledger.test.ts": "7eead40ff749d1cc21e0d41f827d5da355421856",
     "tests/server/system-share-api.test.ts": "122a48cfea9a7b48e0f3aa3ad48968f5ad7c3b77"
   },
@@ -63,7 +63,7 @@
     "planned": {
       "impact": "minor",
       "reasoning": "The approved MVP adds compatible administrator API capabilities and additive SQLite tables for project status runs and results. Existing public project routes, existing API semantics, and prior records remain readable.",
-      "assessed_at": "2026-10-31T22:05:00+08:00",
+      "assessed_at": "2026-10-31T22:25:00+08:00",
       "evidence": [
         {
           "path": "src/lib/project-status.ts",
@@ -75,16 +75,16 @@
     "current": {
       "impact": "minor",
       "reasoning": "The candidate implements the approved shared catalog and additive status-report workflow: external URL checks do not read response bodies or modify the catalog, the database migration is additive, and Admin consumers receive new overview/history/trigger endpoints without changing existing routes.",
-      "assessed_at": "2026-10-31T22:05:00+08:00",
+      "assessed_at": "2026-10-31T22:25:00+08:00",
       "evidence": [
         {
           "path": "src/server/services/project-status.integration.test.ts",
-          "blob": "5e37c39762f19b48a5ef1c1a596ad222ec92e366",
+          "blob": "6726d539cff05ea8542e554a0a5c08594f8fdded",
           "command": "bun test --isolate src/server/services/project-status.integration.test.ts"
         },
         {
           "path": "apps/admin/src/pages/project-status.test.tsx",
-          "blob": "0c057f1398399bc0659094d934faa68e1e1b19c3",
+          "blob": "6e0a6915c8685bfccd39677ebe8000e9675f21c8",
           "command": "bun test --isolate apps/admin/src/pages/project-status.test.tsx"
         },
         {
@@ -101,7 +101,7 @@
     "verified": {
       "impact": "minor",
       "reasoning": "Shared catalog, service, HTTP compatibility, Admin UI, migration, build, and browser evidence passed on the candidate SHA. The feature adds only compatible Admin capabilities and additive persistent state.",
-      "assessed_at": "2026-10-31T22:05:00+08:00",
+      "assessed_at": "2026-10-31T22:25:00+08:00",
       "evidence": [
         {
           "path": "src/lib/project-catalog.test.ts",
@@ -115,12 +115,12 @@
         },
         {
           "path": "apps/admin/src/pages/project-status.tsx",
-          "blob": "99dc476921958092ca9ff4d254ea1f0d6ef1abb7",
+          "blob": "caaf2af08deb34f1b893ca61eef7494e2314a537",
           "command": "bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
         },
         {
           "path": "tests/e2e/web-demo/project-status.spec.ts",
-          "blob": "0e053262397239e6bc4fbebbfd6844e3860c0ea5",
+          "blob": "3663dfc87d61ba341f3da2a7aa5bb056899da469",
           "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:38210 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
         },
         {

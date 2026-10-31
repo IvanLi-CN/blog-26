@@ -79,9 +79,12 @@ describe("ProjectStatusPage", () => {
         );
       }
       if (path.includes("/history")) {
-        return new Response(JSON.stringify({ runs: [overview.latestRun] }), {
-          headers: { "content-type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({ runs: [{ ...overview.latestRun, results: overview.results }] }),
+          {
+            headers: { "content-type": "application/json" },
+          }
+        );
       }
       if (path.includes("/trigger") && init?.method === "POST") {
         active = true;

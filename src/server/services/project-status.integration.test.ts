@@ -12,6 +12,7 @@ import {
 } from "@/lib/project-status";
 import { projectStatusResults, projectStatusRuns } from "@/lib/schema";
 import {
+  getProjectStatusHistory,
   getProjectStatusOverview,
   interruptActiveProjectStatusRuns,
   runProjectStatusCheck,
@@ -263,6 +264,52 @@ describe("project status service persistence", () => {
       "available"
     );
     expect(overview.summary).toMatchObject({ available: 1, unavailable: 0, unknown: 41 });
+  });
+
+  test("returns per-entry snapshots for historical batches", async () => {
+    const now = Date.now();
+    const entry = getProjectStatusCatalogEntries()[0];
+    await db.insert(projectStatusRuns).values({
+      id: "status-test-history-run",
+      status: "partial",
+      triggeredBy: "manual",
+      targetCount: 42,
+      attemptedCount: 1,
+      availableCount: 0,
+      unavailableCount: 1,
+      startedAt: now - 2_000,
+      finishedAt: now - 1_000,
+    });
+    await db.insert(projectStatusResults).values({
+      id: "status-test-history-result",
+      runId: "status-test-history-run",
+      entryKey: entry.entryKey,
+      projectSlug: entry.projectSlug,
+      projectTitle: entry.projectTitle,
+      domain: entry.domain,
+      entryKind: entry.kind,
+      entryLabel: entry.label,
+      href: entry.href,
+      status: "unavailable",
+      attempted: true,
+      httpStatus: 503,
+      errorKind: "http_503",
+      errorMessage: "目标返回 HTTP 503",
+      checkedAt: now - 1_000,
+    });
+
+    const history = await getProjectStatusHistory();
+
+    expect(history.runs[0]).toMatchObject({
+      id: "status-test-history-run",
+      results: [
+        expect.objectContaining({
+          entryKey: entry.entryKey,
+          status: "unavailable",
+          httpStatus: 503,
+        }),
+      ],
+    });
   });
 
   test("interrupts a non-null heartbeat that has expired", async () => {

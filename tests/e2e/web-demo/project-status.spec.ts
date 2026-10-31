@@ -39,5 +39,9 @@ test.describe("Project status Web Demo", () => {
       timeout: 10_000,
     });
     await expect(page.getByRole("cell", { name: "手动", exact: true })).toHaveCount(2);
+    const historyTable = page.locator("table").last();
+    await expect(
+      historyTable.locator("tbody > tr").first().getByText("手动", { exact: true })
+    ).toBeVisible();
   });
 });

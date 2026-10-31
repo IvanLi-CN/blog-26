@@ -66,7 +66,11 @@ export interface ProjectStatusOverviewResponse {
 }
 
 export interface ProjectStatusHistoryResponse {
-  runs: ProjectStatusRunDto[];
+  runs: ProjectStatusHistoryRunDto[];
+}
+
+export interface ProjectStatusHistoryRunDto extends ProjectStatusRunDto {
+  results: ProjectStatusResultDto[];
 }
 
 export interface ProjectStatusTriggerResponse {

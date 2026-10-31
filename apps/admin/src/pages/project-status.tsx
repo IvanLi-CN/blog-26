@@ -143,6 +143,7 @@ export function ProjectStatusPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [expandedHistoryRuns, setExpandedHistoryRuns] = useState<Set<string>>(new Set());
   const overviewQuery = useQuery({
     queryKey: ["admin-project-status-overview"],
     queryFn: adminApi.getProjectStatusOverview,
@@ -257,6 +258,18 @@ export function ProjectStatusPage() {
         next.delete(projectSlug);
       } else {
         next.add(projectSlug);
+      }
+      return next;
+    });
+  };
+
+  const toggleHistoryRun = (runId: string) => {
+    setExpandedHistoryRuns((current) => {
+      const next = new Set(current);
+      if (next.has(runId)) {
+        next.delete(runId);
+      } else {
+        next.add(runId);
       }
       return next;
     });
@@ -697,26 +710,78 @@ export function ProjectStatusPage() {
                     <TableHead>结果</TableHead>
                     <TableHead>开始时间</TableHead>
                     <TableHead>耗时</TableHead>
+                    <TableHead>入口快照</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(historyQuery.data?.runs ?? []).map((run) => (
-                    <TableRow key={run.id}>
-                      <TableCell className="font-mono text-xs">{run.id.slice(0, 8)}</TableCell>
-                      <TableCell>{run.triggeredBy === "manual" ? "手动" : "定时"}</TableCell>
-                      <TableCell>
-                        <Badge tone={statusTone(run.status)}>{statusLabel(run.status)}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {run.attemptedCount} / {run.targetCount}
-                      </TableCell>
-                      <TableCell>
-                        {run.availableCount} 可用 · {run.unavailableCount} 异常
-                      </TableCell>
-                      <TableCell>{formatDateTime(run.startedAt)}</TableCell>
-                      <TableCell>{formatDuration(run.durationMs)}</TableCell>
-                    </TableRow>
-                  ))}
+                  {(historyQuery.data?.runs ?? []).map((run) => {
+                    const expanded = expandedHistoryRuns.has(run.id);
+                    return (
+                      <Fragment key={run.id}>
+                        <TableRow>
+                          <TableCell className="font-mono text-xs">{run.id.slice(0, 8)}</TableCell>
+                          <TableCell>{run.triggeredBy === "manual" ? "手动" : "定时"}</TableCell>
+                          <TableCell>
+                            <Badge tone={statusTone(run.status)}>{statusLabel(run.status)}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {run.attemptedCount} / {run.targetCount}
+                          </TableCell>
+                          <TableCell>
+                            {run.availableCount} 可用 · {run.unavailableCount} 异常
+                          </TableCell>
+                          <TableCell>{formatDateTime(run.startedAt)}</TableCell>
+                          <TableCell>{formatDuration(run.durationMs)}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="bare"
+                              size="sm"
+                              className="gap-1 px-1"
+                              aria-expanded={expanded}
+                              onClick={() => toggleHistoryRun(run.id)}
+                            >
+                              <ChevronDown
+                                className={`size-3.5 transition-transform ${expanded ? "rotate-180" : ""}`}
+                                aria-hidden
+                              />
+                              {expanded ? "收起" : `${run.results.length} 个入口`}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {expanded ? (
+                          <TableRow>
+                            <TableCell colSpan={8} className="bg-muted/20 p-3">
+                              <div className="grid gap-px overflow-hidden rounded-lg border border-border/50 bg-border/50 sm:grid-cols-2 lg:grid-cols-3">
+                                {run.results.map((result) => (
+                                  <a
+                                    key={result.entryKey}
+                                    href={result.href}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="flex min-w-0 items-center gap-2 bg-card/90 px-2.5 py-2 text-xs hover:bg-card"
+                                  >
+                                    <ResultIcon result={result} className="size-3.5 shrink-0" />
+                                    <span className="min-w-0 truncate" title={result.href}>
+                                      {result.projectTitle} · {result.entryLabel}
+                                    </span>
+                                    <span className="ml-auto shrink-0 text-muted-foreground">
+                                      {result.status === "available" && result.freshness === "fresh"
+                                        ? "可用"
+                                        : result.status === "unavailable"
+                                          ? "异常"
+                                          : result.freshness === "stale"
+                                            ? "stale"
+                                            : "未知"}
+                                    </span>
+                                  </a>
+                                ))}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ) : null}
+                      </Fragment>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

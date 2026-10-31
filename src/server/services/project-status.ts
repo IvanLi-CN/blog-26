@@ -21,6 +21,7 @@ import {
   PROJECT_STATUS_TARGET_TIMEOUT_MS,
   type ProjectStatusFreshness,
   type ProjectStatusHistoryResponse,
+  type ProjectStatusHistoryRunDto,
   type ProjectStatusOverviewResponse,
   type ProjectStatusResultDto,
   type ProjectStatusRunDto,
@@ -28,7 +29,7 @@ import {
 } from "@/lib/project-status";
 import { projectStatusResults, projectStatusRuns } from "@/lib/schema";
 
-type Sleep = (ms: number) => Promise<void>;
+type Sleep = (ms: number, signal?: AbortSignal) => Promise<void>;
 type Now = () => number;
 type IdFactory = () => string;
 type ResolveHost = (hostname: string) => Promise<Array<{ address: string; family: number }>>;
@@ -51,7 +52,23 @@ export type ProjectStatusServiceDeps = {
 
 const productionDeps: ProjectStatusServiceDeps = {
   fetch,
-  sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  sleep: (ms, signal) =>
+    new Promise((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(new Error("Project status run was interrupted"));
+        return;
+      }
+      const timeout = setTimeout(() => {
+        signal?.removeEventListener("abort", abort);
+        resolve();
+      }, ms);
+      const abort = () => {
+        clearTimeout(timeout);
+        signal?.removeEventListener("abort", abort);
+        reject(new Error("Project status run was interrupted"));
+      };
+      signal?.addEventListener("abort", abort, { once: true });
+    }),
   now: () => Date.now(),
   id: randomUUID,
   resolveHost: (hostname) => lookup(hostname, { all: true, verbatim: true }),
@@ -344,7 +361,7 @@ async function checkTarget(
     if (!retryable || attemptCount >= 2) return lastOutcome;
     const retryDelayMs = deps.retryDelayMs ?? PROJECT_STATUS_RETRY_DELAY_MS;
     if (deps.now() + retryDelayMs >= deadline) return lastOutcome;
-    await deps.sleep(retryDelayMs);
+    await deps.sleep(retryDelayMs, runSignal);
   }
 
   return (
@@ -792,7 +809,31 @@ export async function getProjectStatusHistory(limit = 30): Promise<ProjectStatus
     .from(projectStatusRuns)
     .orderBy(desc(projectStatusRuns.startedAt))
     .limit(Math.max(1, Math.min(100, limit)));
-  return { runs: rows.map((row) => runDto(row, Date.now())) };
+  const resultRows = rows.length
+    ? await db
+        .select()
+        .from(projectStatusResults)
+        .where(
+          inArray(
+            projectStatusResults.runId,
+            rows.map((row) => row.id)
+          )
+        )
+    : [];
+  const resultsByRun = new Map<string, ProjectStatusResultDto[]>();
+  for (const row of resultRows) {
+    const results = resultsByRun.get(row.runId) ?? [];
+    results.push(resultDto(row, Date.now()));
+    resultsByRun.set(row.runId, results);
+  }
+  return {
+    runs: rows.map(
+      (row): ProjectStatusHistoryRunDto => ({
+        ...runDto(row, Date.now()),
+        results: resultsByRun.get(row.id) ?? [],
+      })
+    ),
+  };
 }
 
 export { checkTarget as checkProjectStatusTarget };

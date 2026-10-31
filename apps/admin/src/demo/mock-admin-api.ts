@@ -2430,6 +2430,10 @@ function syncHistory(): SyncHistoryEntry[] {
 }
 
 function jobs(): JobOverview[] {
+  const manualRunFinishedAt =
+    demoProjectStatusStartedAt !== null && Date.now() - demoProjectStatusStartedAt >= 1800
+      ? demoProjectStatusStartedAt + 1800
+      : null;
   return [
     {
       key: "content-sync",
@@ -2451,7 +2455,7 @@ function jobs(): JobOverview[] {
       key: "project-entry-status",
       name: "项目入口状态检查",
       scheduleText: "每 6 小时",
-      lastRunAt: now - 2_400_000,
+      lastRunAt: manualRunFinishedAt ?? now - 2_400_000,
       nextRunAt: now + 19_200_000,
       running: Boolean(
         demoProjectStatusStartedAt && Date.now() - demoProjectStatusStartedAt < 1800
@@ -2520,10 +2524,12 @@ function projectStatusOverview(): ProjectStatusOverviewResponse {
   });
   const activeStartedAt = demoProjectStatusStartedAt;
   const active = activeStartedAt !== null && Date.now() - activeStartedAt < 1800;
+  const manualRunFinished = activeStartedAt !== null && !active;
   const activeAttemptedCount = active
     ? Math.min(entries.length - 1, Math.floor((Date.now() - (activeStartedAt ?? Date.now())) / 300))
     : 0;
   const activeRunId = "demo-project-status-run-active";
+  const manualRunId = "demo-project-status-run-manual";
   const currentResults = active
     ? results.map((result, index) =>
         index < activeAttemptedCount
@@ -2544,10 +2550,25 @@ function projectStatusOverview(): ProjectStatusOverviewResponse {
               checkedAt: null,
             }
       )
-    : results;
+    : manualRunFinished
+      ? results.map((result) => ({ ...result, runId: manualRunId }))
+      : results;
   const activeAttemptedResults = currentResults.slice(0, activeAttemptedCount);
-  const latestRun =
-    dataMode === "empty"
+  const latestRun = manualRunFinished
+    ? {
+        id: manualRunId,
+        status: "partial" as const,
+        triggeredBy: "manual" as const,
+        targetCount: entries.length,
+        attemptedCount: entries.length - 1,
+        availableCount: currentResults.filter((result) => result.status === "available").length,
+        unavailableCount: currentResults.filter((result) => result.status === "unavailable").length,
+        startedAt: activeStartedAt,
+        finishedAt: activeStartedAt + 1800,
+        durationMs: 1800,
+        errorMessage: null,
+      }
+    : dataMode === "empty"
       ? null
       : {
           id: runId,
@@ -2606,37 +2627,28 @@ function projectStatusOverview(): ProjectStatusOverviewResponse {
 
 function projectStatusHistory(): ProjectStatusHistoryResponse {
   const overview = projectStatusOverview();
-  const latestRun = overview.latestRun;
-  if (!latestRun) return { runs: [] };
-  const manualRunFinished =
-    demoProjectStatusStartedAt !== null && Date.now() - demoProjectStatusStartedAt >= 1800;
-  const manualRun = manualRunFinished
-    ? {
-        ...latestRun,
-        id: "demo-project-status-run-manual",
-        status: "partial" as const,
-        triggeredBy: "manual" as const,
-        startedAt: demoProjectStatusStartedAt,
-        finishedAt: demoProjectStatusStartedAt + 1800,
-        durationMs: 1800,
-        attemptedCount: 41,
-      }
-    : null;
   return {
     runs: [
-      ...(overview.activeRun ? [overview.activeRun] : []),
-      ...(manualRun ? [manualRun] : []),
-      latestRun,
-      {
-        ...latestRun,
-        id: "demo-project-status-run-previous",
-        triggeredBy: "manual",
-        status: "partial",
-        startedAt: now - 8 * 60 * 60 * 1000,
-        finishedAt: now - 8 * 60 * 60 * 1000 + 120_000,
-        durationMs: 120_000,
-        attemptedCount: 39,
-      },
+      ...(overview.activeRun ? [{ ...overview.activeRun, results: overview.results }] : []),
+      ...(overview.latestRun
+        ? [
+            { ...overview.latestRun, results: overview.results },
+            {
+              ...overview.latestRun,
+              id: "demo-project-status-run-previous",
+              triggeredBy: "manual" as const,
+              status: "partial" as const,
+              startedAt: now - 8 * 60 * 60 * 1000,
+              finishedAt: now - 8 * 60 * 60 * 1000 + 120_000,
+              durationMs: 120_000,
+              attemptedCount: 39,
+              results: overview.results.map((result) => ({
+                ...result,
+                runId: "demo-project-status-run-previous",
+              })),
+            },
+          ]
+        : []),
     ],
   };
 }
