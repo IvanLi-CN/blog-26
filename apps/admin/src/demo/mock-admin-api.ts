@@ -2523,7 +2523,29 @@ function projectStatusOverview(): ProjectStatusOverviewResponse {
   const activeAttemptedCount = active
     ? Math.min(entries.length - 1, Math.floor((Date.now() - (activeStartedAt ?? Date.now())) / 300))
     : 0;
-  const activeAttemptedResults = results.slice(0, activeAttemptedCount);
+  const activeRunId = "demo-project-status-run-active";
+  const currentResults = active
+    ? results.map((result, index) =>
+        index < activeAttemptedCount
+          ? { ...result, runId: activeRunId }
+          : {
+              ...result,
+              runId: activeRunId,
+              status: "unknown" as const,
+              freshness: "unknown" as const,
+              attempted: false,
+              httpStatus: null,
+              finalUrl: null,
+              redirected: false,
+              latencyMs: null,
+              attemptCount: 0,
+              errorKind: null,
+              errorMessage: null,
+              checkedAt: null,
+            }
+      )
+    : results;
+  const activeAttemptedResults = currentResults.slice(0, activeAttemptedCount);
   const latestRun =
     dataMode === "empty"
       ? null
@@ -2553,7 +2575,7 @@ function projectStatusOverview(): ProjectStatusOverviewResponse {
     latestRun,
     activeRun: active
       ? {
-          id: "demo-project-status-run-active",
+          id: activeRunId,
           status: "running" as const,
           triggeredBy: "manual" as const,
           targetCount: entries.length,
@@ -2570,13 +2592,15 @@ function projectStatusOverview(): ProjectStatusOverviewResponse {
         }
       : null,
     summary: {
-      total: results.length,
-      available: results.filter((result) => result.status === "available").length,
-      unavailable: results.filter((result) => result.status === "unavailable").length,
-      unknown: results.filter((result) => result.status === "unknown").length,
-      stale: results.filter((result) => result.freshness === "stale").length,
+      total: currentResults.length,
+      available: currentResults.filter(
+        (result) => result.status === "available" && result.freshness !== "stale"
+      ).length,
+      unavailable: currentResults.filter((result) => result.status === "unavailable").length,
+      unknown: currentResults.filter((result) => result.status === "unknown").length,
+      stale: currentResults.filter((result) => result.freshness === "stale").length,
     },
-    results,
+    results: currentResults,
   };
 }
 

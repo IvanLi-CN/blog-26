@@ -128,6 +128,26 @@ describe("project status target checker", () => {
     expect(result).toMatchObject({ status: "unavailable", errorKind: "unsafe_target" });
   });
 
+  test("rejects IPv4 translation prefixes returned by DNS before making a request", async () => {
+    let calls = 0;
+    const result = await checkProjectStatusTarget(
+      "https://example.test/nat64",
+      10_000,
+      dependencies(
+        async () => {
+          calls += 1;
+          return response(200, "https://example.test/nat64");
+        },
+        {
+          resolveHost: async () => [{ address: "64:ff9b:1::192.0.2.1", family: 6 }],
+        }
+      )
+    );
+
+    expect(calls).toBe(0);
+    expect(result).toMatchObject({ status: "unavailable", errorKind: "unsafe_target" });
+  });
+
   test("does not retry 4xx but retries a 5xx once after the configured delay", async () => {
     let calls = 0;
     const notFound = await checkProjectStatusTarget(

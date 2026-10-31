@@ -115,11 +115,20 @@ function isPrivateAddress(address: string): boolean {
     );
   }
   const firstHextet = Number.parseInt(normalized.split(":")[0] ?? "", 16);
+  const [left, right] = normalized.split("::");
+  const leftHextets = left ? left.split(":") : [];
+  const rightHextets = right ? right.split(":") : [];
+  const expandedHextets = [
+    ...leftHextets,
+    ...Array(Math.max(0, 8 - leftHextets.length - rightHextets.length)).fill("0"),
+    ...rightHextets,
+  ].map((part) => Number.parseInt(part, 16));
   return (
     normalized === "::" ||
     normalized === "::1" ||
     (firstHextet >= 0xfe80 && firstHextet <= 0xfebf) ||
     (firstHextet >= 0xfec0 && firstHextet <= 0xfeff) ||
+    (expandedHextets[0] === 0x64 && expandedHextets[1] === 0xff9b) ||
     normalized.startsWith("fc") ||
     normalized.startsWith("fd")
   );
@@ -357,7 +366,8 @@ async function checkTarget(
 async function mapWithConcurrency<T, R>(
   items: T[],
   concurrency: number,
-  worker: (item: T) => Promise<R>
+  worker: (item: T) => Promise<R>,
+  onWorkerError?: (error: unknown) => void
 ): Promise<R[]> {
   const results = new Array<R>(items.length);
   let nextIndex = 0;
@@ -365,7 +375,12 @@ async function mapWithConcurrency<T, R>(
     while (true) {
       const index = nextIndex++;
       if (index >= items.length) return;
-      results[index] = await worker(items[index]);
+      try {
+        results[index] = await worker(items[index]);
+      } catch (error) {
+        onWorkerError?.(error);
+        throw error;
+      }
     }
   }
   const settled = await Promise.allSettled(
@@ -630,7 +645,8 @@ export async function runProjectStatusCheck(
           groupedEntries,
           outcome,
         };
-      }
+      },
+      () => leaseController.abort()
     );
 
     const { attemptedCount, availableCount, unavailableCount } =
@@ -758,7 +774,9 @@ export async function getProjectStatusOverview(
     activeRun: activeRun ? runDto(activeRun, now) : null,
     summary: {
       total: completeResults.length,
-      available: completeResults.filter((row) => row.status === "available").length,
+      available: completeResults.filter(
+        (row) => row.status === "available" && row.freshness !== "stale"
+      ).length,
       unavailable: completeResults.filter((row) => row.status === "unavailable").length,
       unknown: completeResults.filter((row) => row.status === "unknown").length,
       stale: completeResults.filter((row) => row.freshness === "stale").length,
