@@ -18,6 +18,7 @@
 - 版本文件：根目录 `VERSION`，由发布准备 PR 修改。
 - 发布登记：独立 `release-ledger` 分支上的签名状态链。
 - Ledger recovery marker：签名登记提交中的每一个 `Ledger-Recovery` marker 都必须是合法 SHA、指向被实际遍历到的单父链提交的严格祖先，并沿 wrapper 链最终绑定到 owner-authored、GitHub Verified 且带机器人 Signed-off-by 的历史提交；中间的 bot-authored recovery wrapper 可保留在单父链中，但不得被当作 legacy head。当前 head 到所选 legacy target 之间的多个 marker 必须收敛到同一 owner lineage；同一提交的多个 marker、该 active lineage 中彼此断开的 marker、缺失、非祖先、冲突或格式错误的 marker 必须 fail closed；legacy target 之后的历史 marker 仍须逐一验证，但不改变当前 recovery identity；bootstrap 祖先链之外的提交不属于 ledger marker 输入。
+- Bootstrap recovery workflow 在写入不可变 `Ledger-Recovery` marker 前 MUST 核验输入 target 存在于当前 `release-ledger` 的 root-bound 单父祖先链、为 owner-authored、`web-flow` 提交、GitHub Verified 且带机器人 Signed-off-by；target 不存在、越过 bootstrap root、链含 merge commit 或签名/作者不符合时 MUST 在写入前 fail closed。
 - Ledger CAS：登记写入使用 GitHub GraphQL `expectedHeadOid` 做原子比较交换；返回提交的单父、Verified 机器人签名和预期父 SHA 校验成功即证明该写入已持久化，随后其他 writer 推进 branch head 不得把已成功的写入误报为失败。
 - 构建身份：`productVersion`、`buildVersion`、`sourceSha`；静态 `/version.json` 和只读 `GET /api/version` 暴露相同产品版本及来源。
 - Product Release recovery：通过 `.github/workflows/retry-product-release.yml` 以 `release_id` 指向原 Product Release run，并在原 run 上执行 GitHub rerun；它不创建 successor release identity。

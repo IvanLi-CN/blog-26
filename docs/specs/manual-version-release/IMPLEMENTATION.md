@@ -19,7 +19,7 @@
 
 ## Implementation Coverage
 
-- 登记读取支持 Verified 发布机器人提交中的 `Ledger-Recovery` 声明；读取器只解析 head 到 bootstrap root 的实际单父链，要求 marker 指向声明提交的严格祖先，沿 bot-authored recovery wrapper 链最终到达 owner-authored、GitHub Verified 且带机器人 Signed-off-by 的历史提交，并逐一拒绝同提交多个 marker、active legacy target 之前彼此断开的 marker lineage、格式错误、冲突、非祖先或未绑定的 marker；legacy target 之后的历史 marker 仍逐一验证但不改写当前 recovery identity，未登记的人类提交仍阻断。bootstrap 之外的历史不会污染 ledger marker 解析；恢复记录可保留在祖先提交中，不需要改写远端历史。GraphQL expected-head mutation 返回的已验证提交即视为成功写入，即使并发 writer 随后推进 branch head。登记、来源与单一工作流输入的针对性测试覆盖嵌套 wrapper、root 边界、方向/冲突校验与 CAS 并发确认；真实远端登记只读探针通过并核验登记提交 `387b5c6e14cf1101799c5b61ae06394e989b8739`。当前 `2.8.3` 发布身份尚未完成，alpha 验收不得替换它。
+- 登记读取支持 Verified 发布机器人提交中的 `Ledger-Recovery` 声明；读取器只解析 head 到 bootstrap root 的实际单父链，要求 marker 指向声明提交的严格祖先，沿 bot-authored recovery wrapper 链最终到达 owner-authored、GitHub Verified 且带机器人 Signed-off-by 的历史提交，并逐一拒绝同提交多个 marker、active legacy target 之前彼此断开的 marker lineage、格式错误、冲突、非祖先或未绑定的 marker；legacy target 之后的历史 marker 仍逐一验证但不改写当前 recovery identity，未登记的人类提交仍阻断。bootstrap 之外的历史不会污染 ledger marker 解析；恢复记录可保留在祖先提交中，不需要改写远端历史。Bootstrap recovery workflow 在不可变写入前复用同一 root-bound 单父链、owner/web-flow/Verified/Signed-off-by 校验，拒绝不存在、越过 bootstrap root 或签名不可信的 target。GraphQL expected-head mutation 返回的已验证提交即视为成功写入，即使并发 writer 随后推进 branch head。登记、来源与单一工作流输入的针对性测试覆盖嵌套 wrapper、root 边界、方向/冲突校验、恢复 target 写入前校验与 CAS 并发确认；真实远端登记只读探针通过并核验登记提交 `387b5c6e14cf1101799c5b61ae06394e989b8739`。当前 `2.8.3` 发布身份尚未完成，alpha 验收不得替换它。
 - 版本、证据、并发预留、来源和故障恢复模块有固定样例测试；完整构建和生产模式 smoke 使用非生产 fixture。
 - 来源移动后的新手动准备保留废弃记录和已占用版本；原运行重跑及其他发版人不能替换旧身份。尚未绑定的 PR 也必须核验来源并关闭后才能重新准备。
 - 自动合并与 main 保护规则已通过实际配置读回核验：十项 required checks、严格 up-to-date、Verified commits、管理员受约束、禁止 force/delete、零新增人工审批。

@@ -120,6 +120,10 @@ const retryRecovery = z
     }),
   })
   .parse(load(readFileSync(".github/workflows/retry-product-release.yml", "utf8")));
+const bootstrapLedgerRecovery = readFileSync(
+  ".github/workflows/bootstrap-release-ledger-recovery.yml",
+  "utf8"
+);
 
 describe("prerelease workflow deployment boundary", () => {
   test("product release can be resumed from the uniquely registered merged identity", () => {
@@ -289,5 +293,22 @@ describe("prerelease workflow deployment boundary", () => {
     expect(retryRecovery.permissions).toEqual({ contents: "read", actions: "write" });
     expect(retryRecovery.jobs.retry.if).toContain("github.ref == 'refs/heads/main'");
     expect(retryRecovery.jobs.retry.permissions).toEqual({ contents: "read", actions: "write" });
+  });
+
+  test("ledger recovery validates the target before writing an immutable marker", () => {
+    expect(bootstrapLedgerRecovery).toContain("legacyCommit.author?.login !== owner");
+    expect(bootstrapLedgerRecovery).toContain('legacyCommit.committer?.login !== "web-flow"');
+    expect(bootstrapLedgerRecovery).toContain(
+      "legacyCommit.commit?.verification?.verified !== true"
+    );
+    expect(bootstrapLedgerRecovery).toContain(
+      "legacy_sha must be on the root-bound release ledger ancestor chain"
+    );
+    expect(bootstrapLedgerRecovery).toContain("commit.parents.length !== 1");
+    expect(bootstrapLedgerRecovery).toMatch(/Bootstrap-Source: \$\{bootstrapSource\}/);
+    const validation = bootstrapLedgerRecovery.indexOf("const legacyCommit = await api");
+    const mutation = bootstrapLedgerRecovery.indexOf("createCommitOnBranch");
+    expect(validation).toBeGreaterThanOrEqual(0);
+    expect(mutation).toBeGreaterThan(validation);
   });
 });

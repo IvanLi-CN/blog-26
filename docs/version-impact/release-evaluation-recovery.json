@@ -4,16 +4,17 @@
   "base_sha": "e894b395f7690a7c5166b053164f407c6cb60f90",
   "covered_files": {
     ".github/workflows/abandon-failed-release-evaluation.yml": "0c12f94350249ee056e5e0c243bfb130ed836172",
+    ".github/workflows/bootstrap-release-ledger-recovery.yml": "1abc0618a7ed09b6b0b4dd4310ded63b066551f3",
     "docs/adr/0033-release-preparation-gate-recovery.md": "f77040cd1eabe3592c840de0d54203fb15c38971",
     "docs/runbooks/manual-version-release.md": "5b78cbb051a9ef8922f81b75eff1ecd70bf33405",
-    "docs/specs/manual-version-release/HISTORY.md": "44ef6863550f16aa3a2cd1b24ae7de380f236ee5",
-    "docs/specs/manual-version-release/IMPLEMENTATION.md": "6d5ea1df910e419466f988ccf9fe31f680e12fde",
-    "docs/specs/manual-version-release/SPEC.md": "6b7a8b1a4cfd9f84320d1f637cd54df3e113942a",
+    "docs/specs/manual-version-release/HISTORY.md": "179a9ac539da001a0a2892299137cae0d272e6ec",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "7b8e8c4d71ba5738f481f0550db876742b58643a",
+    "docs/specs/manual-version-release/SPEC.md": "51cbc9dedc9a6c626e1714e77f137854f99713fa",
     "scripts/product-release.ts": "595df9ac11c909e5c95e4743e4448b65d7a48b0a",
     "src/lib/release/artifacts.ts": "81446d05a2b8be31e2e7a1726f4da196054a4d25",
     "src/lib/release/completion.ts": "6fea4a3fe0e492d7f225d31a706cbec32397c58a",
     "src/lib/release/github.ts": "f9ed13fe35231376b96f1e5484cb26c9f7ff2916",
-    "tests/ci/product-prerelease-workflow.test.ts": "27456fe7a614988bd6676de16549df9ec8c4df49",
+    "tests/ci/product-prerelease-workflow.test.ts": "13701e4216f6c6ecf586c35b046da6f17422f33d",
     "tests/lib/manual-release-completion.test.ts": "96992db8a5b13d5c642c4787619813b56d9ddb22",
     "tests/lib/manual-release-ledger.test.ts": "a60a428c79e2a1acdf2fd459011b559d86788ae1"
   },
@@ -37,7 +38,7 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The candidate validates the registered PR merge, terminal exact main evaluation failure, absence of Product Release state and absence of artifacts or publication before writing an Actions-signed abandonment; it also keeps nested signed ledger recovery markers readable while rejecting malformed, conflicting, non-ancestral, post-root and disconnected markers. Product routes, public responses, durable application state and product bytes remain unchanged.",
+      "reasoning": "The candidate validates the registered PR merge, terminal exact main evaluation failure, absence of Product Release state and absence of artifacts or publication before writing an Actions-signed abandonment; it also validates bootstrap recovery targets against the root-bound signed ledger chain before immutable writes, keeps nested signed ledger recovery markers readable, and rejects malformed, conflicting, non-ancestral, post-root and disconnected markers. Product routes, public responses, durable application state and product bytes remain unchanged.",
       "assessed_at": "2026-10-31T20:05:00+08:00",
       "evidence": [
         {
@@ -47,13 +48,18 @@
         },
         {
           "path": "tests/ci/product-prerelease-workflow.test.ts",
-          "blob": "27456fe7a614988bd6676de16549df9ec8c4df49",
+          "blob": "13701e4216f6c6ecf586c35b046da6f17422f33d",
           "command": "Focused workflow contract test verifies release_id-only recovery inputs and scoped write permissions"
         },
         {
           "path": "src/lib/release/github.ts",
           "blob": "f9ed13fe35231376b96f1e5484cb26c9f7ff2916",
           "command": "Ledger reader validates marker direction and active recovery-lineage convergence only on the traversed ledger chain"
+        },
+        {
+          "path": ".github/workflows/bootstrap-release-ledger-recovery.yml",
+          "blob": "1abc0618a7ed09b6b0b4dd4310ded63b066551f3",
+          "command": "Recovery workflow contract verifies target ancestry, owner/web-flow provenance, GitHub verification, and signoff before immutable marker creation"
         },
         {
           "path": "tests/lib/manual-release-ledger.test.ts",
@@ -68,7 +74,7 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Focused release recovery, workflow and ledger-chain tests pass; the full test suite reports 1420 passed, 67 skipped, and 0 failed; Biome, project checks, diff checks and Spec drift pass; and the synchronized manual-release specification records strict marker ancestry and successful expected-head CAS persistence without changing public or application persistence contracts.",
+      "reasoning": "Focused release recovery, workflow and ledger-chain tests pass; the local non-E2E suite reports 1420 passed, 67 skipped, and 0 failed; exact-head GitHub checks cover build, Docker, lint, unit, Release Policy and five E2E jobs; Biome, project checks, diff checks and Spec drift pass; and the synchronized manual-release specification records strict marker ancestry, pre-write recovery target validation and successful expected-head CAS persistence without changing public or application persistence contracts.",
       "assessed_at": "2026-10-31T20:05:00+08:00",
       "evidence": [
         {
@@ -87,8 +93,13 @@
           "command": "Biome check and focused ledger tests pass for strict recovery-marker ancestry, active-lineage convergence, and CAS validation"
         },
         {
+          "path": ".github/workflows/bootstrap-release-ledger-recovery.yml",
+          "blob": "1abc0618a7ed09b6b0b4dd4310ded63b066551f3",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts: recovery target validation is ordered before immutable marker creation"
+        },
+        {
           "path": "docs/specs/manual-version-release/SPEC.md",
-          "blob": "6b7a8b1a4cfd9f84320d1f637cd54df3e113942a",
+          "blob": "51cbc9dedc9a6c626e1714e77f137854f99713fa",
           "command": "Spec drift check passes with strict recovery-marker ancestry and CAS persistence contracts"
         }
       ]
