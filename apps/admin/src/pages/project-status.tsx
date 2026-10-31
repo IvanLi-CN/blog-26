@@ -90,6 +90,12 @@ function problemDetail(result: ProjectStatusResultDto) {
   return `HTTP ${result.httpStatus ?? "-"} 返回异常。`;
 }
 
+function problemStatusLabel(result: ProjectStatusResultDto) {
+  if (result.status === "unavailable") return "异常";
+  if (result.status === "unknown") return "未知";
+  return "stale";
+}
+
 type ProjectStatusMatrixRow = {
   projectSlug: string;
   projectTitle: string;
@@ -342,6 +348,86 @@ export function ProjectStatusPage() {
               : "尚未完成检查"}
           </span>
         </div>
+      </section>
+
+      <section aria-labelledby="project-status-problems" className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 id="project-status-problems" className="text-xl font-semibold">
+              问题列表
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {problemResults.length > 0
+                ? `当前筛选发现 ${problemResults.length} 个需要处理的入口。`
+                : "当前筛选没有需要处理的入口。"}
+            </p>
+          </div>
+          {problemResults.length > 0 ? (
+            <Badge tone="danger">{problemResults.length} 个问题</Badge>
+          ) : null}
+        </div>
+        {problemResults.length > 0 ? (
+          <div className="overflow-x-auto rounded-2xl border border-destructive/20 bg-card/72 lg:rounded-[1rem]">
+            <Table className="min-w-[780px] text-[13px]">
+              <caption className="sr-only">项目入口问题列表</caption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="h-10 py-2 normal-case tracking-normal">项目</TableHead>
+                  <TableHead className="h-10 py-2 normal-case tracking-normal">链接分组</TableHead>
+                  <TableHead className="h-10 py-2 normal-case tracking-normal">入口</TableHead>
+                  <TableHead className="h-10 py-2 normal-case tracking-normal">问题</TableHead>
+                  <TableHead className="h-10 py-2 normal-case tracking-normal">检查时间</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {problemResults.map((result) => {
+                  const linkGroup = projectPublicEntryKindDefinitions.find(
+                    (definition) => definition.id === result.entryKind
+                  );
+                  return (
+                    <TableRow key={result.entryKey} className="bg-destructive/[0.025]">
+                      <TableCell className="py-2 font-medium">{result.projectTitle}</TableCell>
+                      <TableCell className="py-2 text-muted-foreground">
+                        {linkGroup?.label ?? result.entryKind}
+                      </TableCell>
+                      <TableCell className="max-w-[18rem] py-2">
+                        <a
+                          className="inline-flex max-w-full items-center gap-1 truncate font-medium text-primary hover:underline"
+                          href={result.href}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <span className="truncate">{result.entryLabel}</span>
+                          <ExternalLink className="size-3 shrink-0" aria-hidden />
+                        </a>
+                      </TableCell>
+                      <TableCell className="max-w-[24rem] py-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <Badge tone={result.status === "unavailable" ? "danger" : "warning"}>
+                            {problemStatusLabel(result)}
+                          </Badge>
+                          <span
+                            className="truncate text-muted-foreground"
+                            title={problemDetail(result)}
+                          >
+                            {problemDetail(result)}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap py-2 text-muted-foreground">
+                        {result.checkedAt ? formatDateTime(result.checkedAt) : "—"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-border/52 bg-card/54 px-4 py-3 text-sm text-muted-foreground">
+            没有异常入口，当前检查结果正常。
+          </div>
+        )}
       </section>
 
       <section aria-labelledby="project-status-results" className="space-y-4">

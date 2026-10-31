@@ -6,8 +6,8 @@
     "GLOSSARY.md": "f3031cc1d9c75459850a8e26365bd0c46b9f6703",
     "apps/admin/src/components/app-shell.tsx": "39a3a18399fb61d65bdc27003157b2cbeb49d4b3",
     "apps/admin/src/demo/mock-admin-api.ts": "968beee5b0feacd1a573ca24810458c43a11c67c",
-    "apps/admin/src/pages/project-status.test.tsx": "3f6012a6968615bd5de498cb41eb6c30d5368fd6",
-    "apps/admin/src/pages/project-status.tsx": "2df286c3083caa4a0a8faf7deecc9a5eae35b408",
+    "apps/admin/src/pages/project-status.test.tsx": "7f7246bc1627c23b4004e49a4bac3c74d1564f3b",
+    "apps/admin/src/pages/project-status.tsx": "3959df093570e782f856819729bb8c8e93035c0a",
     "apps/admin/src/router.tsx": "d0740e1e0313421a8149376d1167b6b64a09a302",
     "astro.config.mjs": "eb89dbcbdb6975f0ed76d49c486d6f9c0a1deaad",
     "drizzle/0021_project_status.sql": "3f3a5cd4a02859266c40b986f56926d7956205bc",
@@ -72,8 +72,8 @@
         },
         {
           "path": "apps/admin/src/pages/project-status.test.tsx",
-          "blob": "3f6012a6968615bd5de498cb41eb6c30d5368fd6",
-          "command": "Admin page coverage verifies the compact project-by-link-group overview headers, expandable problem details, and manual trigger loading state"
+          "blob": "7f7246bc1627c23b4004e49a4bac3c74d1564f3b",
+          "command": "Admin page coverage verifies the visible problem list, compact project-by-link-group overview headers, expandable problem details, and manual trigger loading state"
         }
       ],
       "scope_drift": {
@@ -98,8 +98,8 @@
         },
         {
           "path": "apps/admin/src/pages/project-status.tsx",
-          "blob": "2df286c3083caa4a0a8faf7deecc9a5eae35b408",
-          "command": "Official /admin/project-status route verified as a compact 16-project by 5-link-group overview table containing all 42 entries, with problem projects first, expandable link details, and no horizontal document overflow at desktop and 393x852 mobile viewports"
+          "blob": "3959df093570e782f856819729bb8c8e93035c0a",
+          "command": "Official /admin/project-status route verified with a visible four-row problem list plus compact 16-project by 5-link-group overview table containing all 42 entries, expandable link details, and no horizontal document overflow at desktop and 393x852 mobile viewports"
         },
         {
           "path": "drizzle/0021_project_status.sql",
