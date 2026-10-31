@@ -2563,9 +2563,24 @@ function projectStatusHistory(): ProjectStatusHistoryResponse {
   const overview = projectStatusOverview();
   const latestRun = overview.latestRun;
   if (!latestRun) return { runs: [] };
+  const manualRunFinished =
+    demoProjectStatusStartedAt !== null && Date.now() - demoProjectStatusStartedAt >= 1800;
+  const manualRun = manualRunFinished
+    ? {
+        ...latestRun,
+        id: "demo-project-status-run-manual",
+        status: "partial" as const,
+        triggeredBy: "manual" as const,
+        startedAt: demoProjectStatusStartedAt,
+        finishedAt: demoProjectStatusStartedAt + 1800,
+        durationMs: 1800,
+        attemptedCount: 41,
+      }
+    : null;
   return {
     runs: [
       ...(overview.activeRun ? [overview.activeRun] : []),
+      ...(manualRun ? [manualRun] : []),
       latestRun,
       {
         ...latestRun,

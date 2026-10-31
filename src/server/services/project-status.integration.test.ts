@@ -145,4 +145,28 @@ describe("project status service persistence", () => {
 
     await expect(runProjectStatusCheck("manual")).rejects.toThrow("already running");
   });
+
+  test("allows only one concurrent batch to claim the running slot", async () => {
+    const overrides = (prefix: string) => ({
+      fetch: async () =>
+        ({ status: 200, url: "https://final.example.test", redirected: false }) as Response,
+      sleep: async () => undefined,
+      now: () => Date.now(),
+      resolveHost: async () => [{ address: "93.184.216.34", family: 4 }],
+      id: (() => {
+        let index = 0;
+        return () => `${prefix}-${index++}`;
+      })(),
+    });
+    const results = await Promise.allSettled([
+      runProjectStatusCheck("manual", overrides("status-test-race-a")),
+      runProjectStatusCheck("manual", overrides("status-test-race-b")),
+    ]);
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+    expect(results.find((result) => result.status === "rejected")).toMatchObject({
+      reason: expect.objectContaining({ message: expect.stringContaining("already running") }),
+    });
+  });
 });

@@ -5,14 +5,16 @@
   "covered_files": {
     "GLOSSARY.md": "f3031cc1d9c75459850a8e26365bd0c46b9f6703",
     "apps/admin/src/components/app-shell.tsx": "7d5b974a72a0776572fbf4eaaea40ae5e669c27c",
-    "apps/admin/src/demo/mock-admin-api.ts": "ab30d5623a6cf9083b7be71d03f9fb77e79150ec",
+    "apps/admin/src/demo/mock-admin-api.ts": "b2003b8ce894ce38d3efa0293ccf297be0ca5f03",
     "apps/admin/src/pages/project-status.test.tsx": "0c057f1398399bc0659094d934faa68e1e1b19c3",
-    "apps/admin/src/pages/project-status.tsx": "57a0f5ccea8ac7c696c29cdf8cf5fb5a6d9feb54",
+    "apps/admin/src/pages/project-status.tsx": "0d1a411819bb4ea11857589e596819fc20593368",
     "apps/admin/src/router.tsx": "d0740e1e0313421a8149376d1167b6b64a09a302",
     "astro.config.mjs": "eb89dbcbdb6975f0ed76d49c486d6f9c0a1deaad",
     "drizzle/0021_project_status.sql": "3f3a5cd4a02859266c40b986f56926d7956205bc",
+    "drizzle/0022_project_status_running_guard.sql": "22fb580fa107b255a273c80162fded49c941cc18",
     "drizzle/meta/0021_snapshot.json": "518671846ccc9922cd40b510a8939b5016974660",
-    "drizzle/meta/_journal.json": "87fc4cee80fe026bfc406077b9129ab3b1db18bc",
+    "drizzle/meta/0022_snapshot.json": "e3b6f6d9599f5b272e11393fa43de4b834342c18",
+    "drizzle/meta/_journal.json": "47f14f2c1e222d890c987fc93012071141a90058",
     "docs/specs/README.md": "51ed9671bf340c6cd2d5122e030f15d3cf7cd294",
     "docs/specs/system-share-memos/IMPLEMENTATION.md": "aeb991832bb7d3e5a9844d8309dae37f694013ad",
     "docs/specs/system-share-memos/SPEC.md": "fc0b6ebbb32a881f6eb2e77bad57fd8eb55b0be6",
@@ -27,7 +29,7 @@
     "src/lib/project-catalog.test.ts": "2bfc0b4128416cf8384a471ce78880760c402fd6",
     "src/lib/project-catalog.ts": "caee12024ea5dbf17f3d3eefb5a325fca7983339",
     "src/lib/project-status.ts": "2d60e4a9e567b768bdf688f0697d25034f339202",
-    "src/lib/schema.ts": "18b715fc00549098bf0f4a78aa6f38439a7a82d3",
+    "src/lib/schema.ts": "163fef514c31ab8702e4020dbfcde8fbd4fbe56a",
     "src/lib/search/web-demo-fixtures.ts": "dbafc4dabe3c04a57c4ca4320d64504355161bb4",
     "src/styles/milkdown-nature.css": "665489233ef7effd416144d9631fb52e814b9910",
     "src/server/admin-api/router.ts": "8b068746cda0a5fdde1da5abd36e8b851b5f1223",
@@ -38,12 +40,13 @@
     "scripts/start-console.ts": "1dbe1f4897f204f9829918701b9efd0f8aa9b25f",
     ".github/workflows/e2e.yml": "3936f332df882f048a532d0a1eb7f8ff53d12239",
     "src/server/routers/admin/index.ts": "b3e8f76750e4df5798fdbf94cd8a8d2c93e69714",
-    "src/server/routers/admin/project-status.ts": "293c030ca3473bd49699faf41dc64b4ab533bccf",
-    "src/server/services/project-status.integration.test.ts": "e168edef1dc5bf01e9b9f7841b78fa8b692dd71a",
-    "src/server/services/project-status.test.ts": "9498335caf066c338140a5f71f0834be26959ab0",
-    "src/server/services/project-status.ts": "b70a9686c8186adac082d21dfe7b4a9820533fa5",
+    "src/server/routers/admin/project-status.ts": "dbac117dce947ef876795aa4a5581374601938f8",
+    "src/server/routers/admin/project-status.test.ts": "739916194fa7842701f4d0925a4bde36ff9ba850",
+    "src/server/services/project-status.integration.test.ts": "6dccc4b8a50e9ad1cd7999ae2dc91be1930dbbac",
+    "src/server/services/project-status.test.ts": "caf10f674c6fdcb05be12db833ae92d2a8a2a4d4",
+    "src/server/services/project-status.ts": "2516e4395cad50e3e9a863062d80bf9d0481d432",
     "tests/e2e/web-demo/system-share.spec.ts": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
-    "tests/e2e/web-demo/project-status.spec.ts": "0f0f33fa65b96fa7cb11fe3e8fe2175910604978",
+    "tests/e2e/web-demo/project-status.spec.ts": "0e053262397239e6bc4fbebbfd6844e3860c0ea5",
     "tests/server/system-share-api.test.ts": "1cfe1b2da6031cb7cd34ac6ff0a01573deb84aaa"
   },
   "change": {
@@ -71,7 +74,7 @@
       "evidence": [
         {
           "path": "src/server/services/project-status.integration.test.ts",
-          "blob": "e168edef1dc5bf01e9b9f7841b78fa8b692dd71a",
+          "blob": "6dccc4b8a50e9ad1cd7999ae2dc91be1930dbbac",
           "command": "bun test --isolate src/server/services/project-status.integration.test.ts"
         },
         {
@@ -107,17 +110,17 @@
         },
         {
           "path": "apps/admin/src/pages/project-status.tsx",
-          "blob": "57a0f5ccea8ac7c696c29cdf8cf5fb5a6d9feb54",
+          "blob": "0d1a411819bb4ea11857589e596819fc20593368",
           "command": "bun /workspace/worktrees/blog26-project-status/src/node_modules/@playwright/test/cli.js test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
         },
         {
           "path": "tests/e2e/web-demo/project-status.spec.ts",
-          "blob": "0f0f33fa65b96fa7cb11fe3e8fe2175910604978",
+          "blob": "0e053262397239e6bc4fbebbfd6844e3860c0ea5",
           "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:38210 bun /workspace/worktrees/blog26-project-status/src/node_modules/@playwright/test/cli.js test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
         },
         {
-          "path": "drizzle/0021_project_status.sql",
-          "blob": "3f3a5cd4a02859266c40b986f56926d7956205bc",
+          "path": "drizzle/0022_project_status_running_guard.sql",
+          "blob": "22fb580fa107b255a273c80162fded49c941cc18",
           "command": "bun run db:migrations:validate && bunx drizzle-kit check"
         }
       ]
@@ -160,7 +163,7 @@
       "evidence": [
         {
           "path": "src/server/http-compat-api.test.ts",
-          "blob": "2473cdf68b5a96c91d19962c989f269fae319c70",
+          "blob": "7b55434b5e9c720b42114c060218abbc11ff6403",
           "command": "bun test --isolate src/server/http-compat-api.test.ts"
         }
       ]
@@ -202,8 +205,8 @@
       ],
       "evidence": [
         {
-          "path": "drizzle/0021_project_status.sql",
-          "blob": "3f3a5cd4a02859266c40b986f56926d7956205bc",
+          "path": "drizzle/0022_project_status_running_guard.sql",
+          "blob": "22fb580fa107b255a273c80162fded49c941cc18",
           "command": "bun run db:migrations:validate && bunx drizzle-kit check && bun test --isolate src/server/services/project-status.integration.test.ts"
         }
       ]

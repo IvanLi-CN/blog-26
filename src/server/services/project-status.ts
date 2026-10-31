@@ -112,10 +112,11 @@ function isPrivateAddress(address: string): boolean {
       first >= 224
     );
   }
+  const firstHextet = Number.parseInt(normalized.split(":")[0] ?? "", 16);
   return (
     normalized === "::" ||
     normalized === "::1" ||
-    normalized.startsWith("fe80:") ||
+    (firstHextet >= 0xfe80 && firstHextet <= 0xfebf) ||
     normalized.startsWith("fc") ||
     normalized.startsWith("fd")
   );
@@ -446,13 +447,24 @@ export async function runProjectStatusCheck(
 
   const entries = getProjectStatusCatalogEntries();
   const runId = deps.id();
-  await db.insert(projectStatusRuns).values({
-    id: runId,
-    status: "running",
-    triggeredBy,
-    targetCount: entries.length,
-    startedAt,
-  });
+  try {
+    await db.insert(projectStatusRuns).values({
+      id: runId,
+      status: "running",
+      triggeredBy,
+      targetCount: entries.length,
+      startedAt,
+    });
+  } catch (error) {
+    const message = errorMessage(error);
+    if (
+      message.includes("project_status_runs_uq_running") ||
+      message.includes("project_status_runs.status")
+    ) {
+      throw new Error("Project status check is already running");
+    }
+    throw error;
+  }
   try {
     await db.insert(projectStatusResults).values(
       entries.map((entry) => ({
@@ -527,6 +539,7 @@ export async function runProjectStatusCheck(
     return { id: runId, status, targetCount: entries.length, attemptedCount };
   } catch (error) {
     const finishedAt = deps.now();
+    await db.delete(projectStatusResults).where(eq(projectStatusResults.runId, runId));
     await db
       .update(projectStatusRuns)
       .set({ status: "error", finishedAt, errorMessage: errorMessage(error) })

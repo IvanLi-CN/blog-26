@@ -93,6 +93,21 @@ describe("project status target checker", () => {
     expect(result).toMatchObject({ status: "unavailable", errorKind: "unsafe_target" });
   });
 
+  test("rejects all IPv6 link-local targets before making a request", async () => {
+    let calls = 0;
+    const result = await checkProjectStatusTarget(
+      "http://[fe90::1]/internal",
+      10_000,
+      dependencies(async () => {
+        calls += 1;
+        return response(200, "http://[fe90::1]/internal");
+      })
+    );
+
+    expect(calls).toBe(0);
+    expect(result).toMatchObject({ status: "unavailable", errorKind: "unsafe_target" });
+  });
+
   test("does not retry 4xx but retries a 5xx once after the configured delay", async () => {
     let calls = 0;
     const notFound = await checkProjectStatusTarget(

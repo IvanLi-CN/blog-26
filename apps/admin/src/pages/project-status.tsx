@@ -9,7 +9,7 @@ import {
   Timer,
   XCircle,
 } from "lucide-react";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { adminApi } from "@/lib/admin-api-client";
 import { projectPublicEntryKindDefinitions } from "@/lib/project-catalog";
 import type { ProjectStatusResultDto, ProjectStatusResultStatus } from "@/lib/project-status";
@@ -152,6 +152,11 @@ export function ProjectStatusPage() {
     queryKey: ["admin-project-status-history"],
     queryFn: () => adminApi.getProjectStatusHistory(30),
   });
+  useEffect(() => {
+    if (!overviewQuery.data?.activeRun) {
+      queryClient.invalidateQueries({ queryKey: ["admin-project-status-history"] });
+    }
+  }, [overviewQuery.data?.activeRun, queryClient]);
   const triggerMutation = useMutation({
     mutationFn: adminApi.triggerProjectStatusCheck,
     onSuccess: () => {
@@ -310,7 +315,9 @@ export function ProjectStatusPage() {
             </div>
             <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
               {!overview
-                ? "无法读取当前入口状态，请重试。"
+                ? overviewQuery.isPending
+                  ? "正在加载当前入口状态。"
+                  : "无法读取当前入口状态，请重试。"
                 : totalProblems > 0
                   ? "红色异常优先处理；未知和 stale 需要确认检查是否完整。"
                   : "当前没有需要处理的入口。"}
@@ -363,7 +370,9 @@ export function ProjectStatusPage() {
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {!overview
-                ? "无法读取当前问题列表。"
+                ? overviewQuery.isPending
+                  ? "正在加载问题列表。"
+                  : "无法读取当前问题列表。"
                 : problemResults.length > 0
                   ? `当前筛选发现 ${problemResults.length} 个需要处理的入口。`
                   : "当前筛选没有需要处理的入口。"}
@@ -432,7 +441,11 @@ export function ProjectStatusPage() {
           </div>
         ) : (
           <div className="rounded-2xl border border-border/52 bg-card/54 px-4 py-3 text-sm text-muted-foreground">
-            {overview ? "没有异常入口，当前检查结果正常。" : "当前状态不可用，请重试。"}
+            {overview
+              ? "没有异常入口，当前检查结果正常。"
+              : overviewQuery.isPending
+                ? "正在加载检查结果。"
+                : "当前状态不可用，请重试。"}
           </div>
         )}
       </section>
@@ -445,7 +458,9 @@ export function ProjectStatusPage() {
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {!overview
-                ? "无法读取项目状态。"
+                ? overviewQuery.isPending
+                  ? "正在加载项目状态。"
+                  : "无法读取项目状态。"
                 : matrixRows.length > 0
                   ? `行是 ${matrixRows.length} 个项目，列是 ${matrixLinkGroups.length} 个链接分组；${filteredResults.length} 个入口已压缩为状态摘要，${problemResults.length} 个问题优先标记。`
                   : totalProblems > 0

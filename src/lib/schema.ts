@@ -553,6 +553,9 @@ export const projectStatusRuns = sqliteTable(
   (t) => ({
     statusTimeIdx: index("project_status_runs_idx_status_time").on(t.status, t.startedAt),
     startedTimeIdx: index("project_status_runs_idx_started_time").on(t.startedAt),
+    runningUniqueIdx: uniqueIndex("project_status_runs_uq_running")
+      .on(t.status)
+      .where(sql`${t.status} = 'running'`),
   })
 );
 

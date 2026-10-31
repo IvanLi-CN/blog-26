@@ -35,5 +35,9 @@ test.describe("Project status Web Demo", () => {
     await page.getByRole("button", { name: "手动检查", exact: true }).click();
     await expect(page.getByRole("button", { name: "检查中", exact: true })).toBeDisabled();
     await expect(page.getByText(/批次正在运行/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "手动检查", exact: true })).toBeEnabled({
+      timeout: 10_000,
+    });
+    await expect(page.getByRole("cell", { name: "手动", exact: true })).toHaveCount(2);
   });
 });
