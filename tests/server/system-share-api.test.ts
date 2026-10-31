@@ -780,6 +780,11 @@ describe("system share API", () => {
     fs.rmSync(path.join(legacyMigrationsPath, "0018_comments_backfill_gate.sql"));
     fs.rmSync(path.join(legacyMigrationsPath, "0019_playbook_snapshots.sql"));
     fs.rmSync(path.join(legacyMigrationsPath, "0020_github_admin_comment_identity.sql"));
+    fs.rmSync(path.join(legacyMigrationsPath, "0021_project_status.sql"));
+    fs.rmSync(path.join(legacyMigrationsPath, "0022_project_status_running_guard.sql"));
+    fs.rmSync(path.join(legacyMigrationsPath, "0023_project_status_heartbeat.sql"));
+    fs.rmSync(path.join(legacyMigrationsPath, "0024_scheduler_lease.sql"));
+    fs.rmSync(path.join(legacyMigrationsPath, "0025_project_status_scheduler_owner.sql"));
     const journalPath = path.join(legacyMigrationsPath, "meta", "_journal.json");
     const journal = JSON.parse(fs.readFileSync(journalPath, "utf8")) as {
       entries: Array<{ tag: string }>;
@@ -790,7 +795,12 @@ describe("system share API", () => {
         entry.tag !== "0017_github_reader_comments" &&
         entry.tag !== "0018_comments_backfill_gate" &&
         entry.tag !== "0019_playbook_snapshots" &&
-        entry.tag !== "0020_github_admin_comment_identity"
+        entry.tag !== "0020_github_admin_comment_identity" &&
+        entry.tag !== "0021_project_status" &&
+        entry.tag !== "0022_project_status_running_guard" &&
+        entry.tag !== "0023_project_status_heartbeat" &&
+        entry.tag !== "0024_scheduler_lease" &&
+        entry.tag !== "0025_project_status_scheduler_owner"
     );
     fs.writeFileSync(journalPath, `${JSON.stringify(journal)}\n`);
 

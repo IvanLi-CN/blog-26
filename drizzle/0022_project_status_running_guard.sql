@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `project_status_runs_uq_running` ON `project_status_runs` (`status`) WHERE "project_status_runs"."status" = 'running';

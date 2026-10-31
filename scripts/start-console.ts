@@ -6,6 +6,7 @@ import { extractAuthFromRequest } from "@/lib/auth-utils";
 import { withForwardedProtocol } from "@/lib/forwarded-protocol";
 import { getRuntimePlaybookStore } from "@/lib/playbook/cache";
 import { startClippingRuntime, stopClippingRuntime } from "@/server/clipping/runtime";
+import { startJobsScheduler } from "@/server/jobs";
 import {
   startSearchIndexRuntime,
   stopSearchIndexRuntime,
@@ -213,6 +214,7 @@ const playbook = getRuntimePlaybookStore();
 await playbook.load();
 const { startContentSyncRuntime } = await import("../src/server/services/content-sync-runtime");
 await startContentSyncRuntime();
+await startJobsScheduler();
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
   if (url.pathname === "/api/version") {

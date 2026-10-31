@@ -54,6 +54,7 @@ export async function vectorizeAll(params: {
   isFull: boolean;
   model?: string;
   chunking?: boolean;
+  signal?: AbortSignal;
 }) {
   await initializeDB();
   const resolved = await getResolvedLlmConfig();
@@ -97,6 +98,7 @@ export async function vectorizeAll(params: {
   let failed = 0;
 
   for (const p of allPosts) {
+    params.signal?.throwIfAborted();
     processed++;
     try {
       const status = await EmbeddingsRepository.getVectorizationStatus(
@@ -128,7 +130,9 @@ export async function vectorizeAll(params: {
       if (chunking) {
         const chunks = chunkText(input, chunkSize, chunkOverlap);
         await mapWithConcurrency(chunks, maxEmbedConcurrency, async (ch) => {
+          params.signal?.throwIfAborted();
           const { vector, dim } = await createEmbedding(ch.text, modelName, {
+            signal: params.signal,
             onRetry: ({ attempt, waitMs, reason, status, retryAfterMs }) => {
               syncEventManager.pushLog({
                 id: nanoid(),
@@ -155,7 +159,9 @@ export async function vectorizeAll(params: {
           });
         });
       } else {
+        params.signal?.throwIfAborted();
         const { vector, dim } = await createEmbedding(input, modelName, {
+          signal: params.signal,
           onRetry: ({ attempt, waitMs, reason, status, retryAfterMs }) => {
             syncEventManager.pushLog({
               id: nanoid(),

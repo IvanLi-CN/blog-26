@@ -530,6 +530,76 @@ export const jobRuns = sqliteTable(
   })
 );
 
+export const jobSchedulerLeases = sqliteTable("job_scheduler_leases", {
+  id: text("id").primaryKey(),
+  ownerToken: text("owner_token").notNull(),
+  heartbeatAt: integer("heartbeat_at").notNull(),
+});
+
+export const projectStatusRuns = sqliteTable(
+  "project_status_runs",
+  {
+    id: text("id").primaryKey(),
+    status: text("status", {
+      enum: ["running", "completed", "partial", "interrupted", "error"],
+    })
+      .notNull()
+      .default("running"),
+    triggeredBy: text("triggered_by", { enum: ["scheduler", "manual"] })
+      .notNull()
+      .default("scheduler"),
+    targetCount: integer("target_count").notNull().default(0),
+    attemptedCount: integer("attempted_count").notNull().default(0),
+    availableCount: integer("available_count").notNull().default(0),
+    unavailableCount: integer("unavailable_count").notNull().default(0),
+    startedAt: integer("started_at").notNull(),
+    heartbeatAt: integer("heartbeat_at"),
+    schedulerOwnerToken: text("scheduler_owner_token"),
+    finishedAt: integer("finished_at"),
+    errorMessage: text("error_message"),
+  },
+  (t) => ({
+    statusTimeIdx: index("project_status_runs_idx_status_time").on(t.status, t.startedAt),
+    startedTimeIdx: index("project_status_runs_idx_started_time").on(t.startedAt),
+    runningUniqueIdx: uniqueIndex("project_status_runs_uq_running")
+      .on(t.status)
+      .where(sql`${t.status} = 'running'`),
+  })
+);
+
+export const projectStatusResults = sqliteTable(
+  "project_status_results",
+  {
+    id: text("id").primaryKey(),
+    runId: text("run_id").notNull(),
+    entryKey: text("entry_key").notNull(),
+    projectSlug: text("project_slug").notNull(),
+    projectTitle: text("project_title").notNull(),
+    domain: text("domain").notNull(),
+    entryKind: text("entry_kind").notNull(),
+    entryLabel: text("entry_label").notNull(),
+    href: text("href").notNull(),
+    status: text("status", { enum: ["available", "unavailable", "unknown"] })
+      .notNull()
+      .default("unknown"),
+    attempted: integer("attempted", { mode: "boolean" }).notNull().default(false),
+    httpStatus: integer("http_status"),
+    finalUrl: text("final_url"),
+    redirected: integer("redirected", { mode: "boolean" }).notNull().default(false),
+    latencyMs: integer("latency_ms"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    errorKind: text("error_kind"),
+    errorMessage: text("error_message"),
+    checkedAt: integer("checked_at"),
+  },
+  (t) => ({
+    runEntryUnique: uniqueIndex("project_status_results_uq_run_entry").on(t.runId, t.entryKey),
+    runIdx: index("project_status_results_idx_run").on(t.runId),
+    entryIdx: index("project_status_results_idx_entry").on(t.entryKey),
+    checkedIdx: index("project_status_results_idx_checked").on(t.checkedAt),
+  })
+);
+
 // 类型导出
 export type VectorizedFile = typeof vectorizedFiles.$inferSelect; // Infer type for selecting data
 export type NewVectorizedFile = typeof vectorizedFiles.$inferInsert; // Infer type for inserting data
@@ -552,6 +622,11 @@ export type NewContentSyncStatus = typeof contentSyncStatus.$inferInsert;
 
 export type JobRun = typeof jobRuns.$inferSelect;
 export type NewJobRun = typeof jobRuns.$inferInsert;
+
+export type ProjectStatusRun = typeof projectStatusRuns.$inferSelect;
+export type NewProjectStatusRun = typeof projectStatusRuns.$inferInsert;
+export type ProjectStatusResult = typeof projectStatusResults.$inferSelect;
+export type NewProjectStatusResult = typeof projectStatusResults.$inferInsert;
 
 // Posts 类型导出
 export type Post = typeof posts.$inferSelect;

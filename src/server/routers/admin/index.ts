@@ -8,6 +8,7 @@ import { adminJobsRouter } from "./jobs";
 import { adminPersonalAccessTokensRouter } from "./personal-access-tokens";
 import { adminPlaybookRouter } from "./playbook";
 import { adminPostsRouter } from "./posts";
+import { adminProjectStatusRouter } from "./project-status";
 import { adminVectorizeRouter } from "./vectorize";
 
 /**
@@ -25,4 +26,5 @@ export const adminRouter = createTRPCRouter({
   jobs: adminJobsRouter,
   files: filesRouter,
   personalAccessTokens: adminPersonalAccessTokensRouter,
+  projectStatus: adminProjectStatusRouter,
 });
