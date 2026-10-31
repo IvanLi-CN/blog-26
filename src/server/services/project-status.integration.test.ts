@@ -2,6 +2,7 @@ import { Database } from "bun:sqlite";
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { db, initializeDB } from "@/lib/db";
@@ -10,7 +11,7 @@ import {
   PROJECT_STATUS_HEARTBEAT_STALE_AFTER_MS,
   PROJECT_STATUS_RETENTION_MS,
 } from "@/lib/project-status";
-import { projectStatusResults, projectStatusRuns } from "@/lib/schema";
+import { jobSchedulerLeases, projectStatusResults, projectStatusRuns } from "@/lib/schema";
 import {
   getProjectStatusHistory,
   getProjectStatusOverview,
@@ -32,6 +33,7 @@ describe("project status service persistence", () => {
   });
 
   beforeEach(async () => {
+    await db.delete(jobSchedulerLeases);
     await db.delete(projectStatusResults);
     await db.delete(projectStatusRuns);
   });
@@ -184,6 +186,46 @@ describe("project status service persistence", () => {
 
     await interruptActiveProjectStatusRuns(now, true, "lost-scheduler");
     expect((await db.select().from(projectStatusRuns))[0]?.status).toBe("interrupted");
+  });
+
+  test("does not persist results after a scheduler lease changes", async () => {
+    const ownerToken = "scheduler-owner-a";
+    const now = Date.now();
+    await db.insert(jobSchedulerLeases).values({
+      id: "global",
+      ownerToken,
+      heartbeatAt: now,
+    });
+    let releaseFetch!: () => void;
+    const fetchGate = new Promise<void>((resolve) => {
+      releaseFetch = resolve;
+    });
+    const runPromise = runProjectStatusCheck("scheduler", {
+      schedulerOwnerToken: ownerToken,
+      fetch: async () => {
+        await fetchGate;
+        return { status: 200, url: "https://final.example.test", redirected: false } as Response;
+      },
+      sleep: async () => undefined,
+      now: () => Date.now(),
+      resolveHost: async () => [{ address: "93.184.216.34", family: 4 }],
+      id: (() => {
+        let index = 0;
+        return () => `status-test-fenced-${index++}`;
+      })(),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await db
+      .update(jobSchedulerLeases)
+      .set({ ownerToken: "scheduler-owner-b", heartbeatAt: now })
+      .where(eq(jobSchedulerLeases.id, "global"));
+    releaseFetch();
+
+    await expect(runPromise).rejects.toThrow("scheduler lease was lost");
+    await interruptActiveProjectStatusRuns(Date.now(), true, ownerToken);
+    const [run] = await db.select().from(projectStatusRuns);
+    expect(run?.status).toBe("interrupted");
+    expect(run?.attemptedCount).toBe(0);
   });
 
   test("force-interrupts all active runs on restart and reconciles saved results", async () => {

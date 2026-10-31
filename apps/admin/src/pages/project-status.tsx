@@ -474,7 +474,10 @@ export function ProjectStatusPage() {
                       </TableCell>
                       <TableCell className="max-w-[24rem] py-2">
                         <div className="flex min-w-0 items-center gap-2">
-                          <Badge tone={result.status === "unavailable" ? "danger" : "warning"}>
+                          <Badge
+                            tone={result.status === "unavailable" ? "danger" : "warning"}
+                            className="shrink-0 whitespace-nowrap"
+                          >
                             {problemStatusLabel(result)}
                           </Badge>
                           <span

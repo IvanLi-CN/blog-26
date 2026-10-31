@@ -527,9 +527,6 @@ export const jobRuns = sqliteTable(
   (t) => ({
     jobKeyTimeIdx: index("job_runs_idx_job_time").on(t.jobKey, t.startedAt),
     statusIdx: index("job_runs_idx_status").on(t.status),
-    runningUniqueIdx: uniqueIndex("job_runs_uq_running_job")
-      .on(t.jobKey)
-      .where(sql`${t.status} = 'running'`),
   })
 );
 

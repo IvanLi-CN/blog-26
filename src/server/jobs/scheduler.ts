@@ -20,7 +20,7 @@ export async function markOrphanedSchedulerRuns(now: number) {
       finishedAt: now,
       errorMessage: "调度器租约失效，中断了未完成的任务",
     })
-    .where(eq(jobRuns.status, "running"));
+    .where(and(eq(jobRuns.status, "running"), eq(jobRuns.triggeredBy, "scheduler")));
 }
 
 type TimerRef = ReturnType<typeof setTimeout> | null;

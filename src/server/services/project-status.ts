@@ -27,7 +27,9 @@ import {
   type ProjectStatusRunDto,
   type ProjectStatusRunStatus,
 } from "@/lib/project-status";
-import { projectStatusResults, projectStatusRuns } from "@/lib/schema";
+import { jobSchedulerLeases, projectStatusResults, projectStatusRuns } from "@/lib/schema";
+
+const SCHEDULER_LEASE_ID = "global";
 
 type Sleep = (ms: number, signal?: AbortSignal) => Promise<void>;
 type Now = () => number;
@@ -480,12 +482,30 @@ async function getProjectStatusRunCounts(runId: string) {
   };
 }
 
-async function updateProjectStatusRunCounts(runId: string) {
+async function updateProjectStatusRunCounts(runId: string, schedulerOwnerToken?: string) {
   const counts = await getProjectStatusRunCounts(runId);
   await db
     .update(projectStatusRuns)
     .set(counts)
-    .where(and(eq(projectStatusRuns.id, runId), eq(projectStatusRuns.status, "running")));
+    .where(
+      and(
+        eq(projectStatusRuns.id, runId),
+        eq(projectStatusRuns.status, "running"),
+        schedulerOwnerToken
+          ? exists(
+              db
+                .select({ id: jobSchedulerLeases.id })
+                .from(jobSchedulerLeases)
+                .where(
+                  and(
+                    eq(jobSchedulerLeases.id, SCHEDULER_LEASE_ID),
+                    eq(jobSchedulerLeases.ownerToken, schedulerOwnerToken)
+                  )
+                )
+            )
+          : undefined
+      )
+    );
   return counts;
 }
 
@@ -655,7 +675,7 @@ export async function runProjectStatusCheck(
     let progressQueue = Promise.resolve();
     const persistOutcome = (groupedEntries: ProjectStatusCatalogEntry[], outcome: CheckOutcome) => {
       const next = progressQueue.then(async () => {
-        await assertProjectStatusRunActive(runId);
+        await assertProjectStatusRunActive(runId, deps.schedulerOwnerToken);
         for (const entry of groupedEntries) {
           const row = resultByEntry.get(entry.entryKey);
           if (!row) continue;
@@ -672,13 +692,26 @@ export async function runProjectStatusCheck(
                     .where(
                       and(eq(projectStatusRuns.id, runId), eq(projectStatusRuns.status, "running"))
                     )
-                )
+                ),
+                deps.schedulerOwnerToken
+                  ? exists(
+                      db
+                        .select({ id: jobSchedulerLeases.id })
+                        .from(jobSchedulerLeases)
+                        .where(
+                          and(
+                            eq(jobSchedulerLeases.id, SCHEDULER_LEASE_ID),
+                            eq(jobSchedulerLeases.ownerToken, deps.schedulerOwnerToken)
+                          )
+                        )
+                    )
+                  : undefined
               )
             )
             .returning({ id: projectStatusResults.id });
           if (!updated.length) throw new Error("Project status run was interrupted");
         }
-        await updateProjectStatusRunCounts(runId);
+        await updateProjectStatusRunCounts(runId, deps.schedulerOwnerToken);
       });
       progressQueue = next.catch(() => undefined);
       return next;
@@ -688,7 +721,7 @@ export async function runProjectStatusCheck(
       [...byHref.entries()],
       PROJECT_STATUS_MAX_CONCURRENCY,
       async ([href, groupedEntries]) => {
-        await assertProjectStatusRunActive(runId);
+        await assertProjectStatusRunActive(runId, deps.schedulerOwnerToken);
         const outcome = await checkTarget(href, deadline, deps, leaseController.signal);
         await persistOutcome(groupedEntries, outcome);
         return {
@@ -703,7 +736,7 @@ export async function runProjectStatusCheck(
       await getProjectStatusRunCounts(runId);
     const finishedAt = deps.now();
     const status = attemptedCount === entries.length ? "completed" : "partial";
-    await assertProjectStatusRunActive(runId);
+    await assertProjectStatusRunActive(runId, deps.schedulerOwnerToken);
     await db
       .update(projectStatusRuns)
       .set({
@@ -714,7 +747,25 @@ export async function runProjectStatusCheck(
         finishedAt,
         heartbeatAt: null,
       })
-      .where(and(eq(projectStatusRuns.id, runId), eq(projectStatusRuns.status, "running")));
+      .where(
+        and(
+          eq(projectStatusRuns.id, runId),
+          eq(projectStatusRuns.status, "running"),
+          deps.schedulerOwnerToken
+            ? exists(
+                db
+                  .select({ id: jobSchedulerLeases.id })
+                  .from(jobSchedulerLeases)
+                  .where(
+                    and(
+                      eq(jobSchedulerLeases.id, SCHEDULER_LEASE_ID),
+                      eq(jobSchedulerLeases.ownerToken, deps.schedulerOwnerToken)
+                    )
+                  )
+              )
+            : undefined
+        )
+      );
     const savedRun = await db
       .select({ status: projectStatusRuns.status })
       .from(projectStatusRuns)
@@ -739,7 +790,25 @@ export async function runProjectStatusCheck(
       await tx
         .update(projectStatusRuns)
         .set({ status: "error", finishedAt, heartbeatAt: null, errorMessage: message, ...counts })
-        .where(and(eq(projectStatusRuns.id, runId), eq(projectStatusRuns.status, "running")));
+        .where(
+          and(
+            eq(projectStatusRuns.id, runId),
+            eq(projectStatusRuns.status, "running"),
+            deps.schedulerOwnerToken
+              ? exists(
+                  tx
+                    .select({ id: jobSchedulerLeases.id })
+                    .from(jobSchedulerLeases)
+                    .where(
+                      and(
+                        eq(jobSchedulerLeases.id, SCHEDULER_LEASE_ID),
+                        eq(jobSchedulerLeases.ownerToken, deps.schedulerOwnerToken)
+                      )
+                    )
+                )
+              : undefined
+          )
+        );
     });
     throw error;
   } finally {
@@ -749,13 +818,29 @@ export async function runProjectStatusCheck(
   }
 }
 
-async function assertProjectStatusRunActive(runId: string) {
+async function assertProjectStatusRunActive(runId: string, schedulerOwnerToken?: string) {
   const rows = await db
-    .select({ status: projectStatusRuns.status })
+    .select({
+      status: projectStatusRuns.status,
+      schedulerOwnerToken: projectStatusRuns.schedulerOwnerToken,
+    })
     .from(projectStatusRuns)
     .where(eq(projectStatusRuns.id, runId))
     .limit(1);
   if (rows[0]?.status !== "running") throw new Error("Project status run was interrupted");
+  if (schedulerOwnerToken) {
+    const lease = await db
+      .select({ ownerToken: jobSchedulerLeases.ownerToken })
+      .from(jobSchedulerLeases)
+      .where(eq(jobSchedulerLeases.id, SCHEDULER_LEASE_ID))
+      .limit(1);
+    if (
+      rows[0]?.schedulerOwnerToken !== schedulerOwnerToken ||
+      lease[0]?.ownerToken !== schedulerOwnerToken
+    ) {
+      throw new Error("Project status scheduler lease was lost");
+    }
+  }
 }
 
 export async function getProjectStatusOverview(

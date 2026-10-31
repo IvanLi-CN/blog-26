@@ -29,7 +29,7 @@ afterAll(() => {
   fs.rmSync(testDbPath, { force: true });
 });
 
-test("reclaims every running job after scheduler lease takeover", async () => {
+test("reclaims scheduler jobs without interrupting manual work", async () => {
   const now = Date.now();
   await db.insert(jobRuns).values([
     {
@@ -58,12 +58,10 @@ test("reclaims every running job after scheduler lease takeover", async () => {
 
   await markOrphanedSchedulerRuns(now);
 
-  expect(
-    await db.select({ status: jobRuns.status, error: jobRuns.errorMessage }).from(jobRuns)
-  ).toEqual(
+  expect(await db.select({ id: jobRuns.id, status: jobRuns.status }).from(jobRuns)).toEqual(
     expect.arrayContaining([
-      { status: "error", error: "调度器租约失效，中断了未完成的任务" },
-      { status: "error", error: "调度器租约失效，中断了未完成的任务" },
+      { id: "scheduler-run", status: "error" },
+      { id: "manual-run", status: "running" },
     ])
   );
 });

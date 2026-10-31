@@ -24,9 +24,16 @@ test.describe("Project status Web Demo", () => {
       "开源仓库",
     ]);
     await expect(matrix.locator("tbody > tr")).toHaveCount(16);
-    await page.getByRole("combobox", { name: "筛选项目分类" }).click();
+    const categoryFilter = page.getByRole("combobox", { name: "筛选项目分类" });
+    await categoryFilter.click();
     await expect(page.getByRole("option", { name: "开发工具" })).toBeVisible();
     await page.keyboard.press("Escape");
+    await categoryFilter.click();
+    await page.getByRole("option", { name: "开发工具" }).click();
+    await expect(matrix.locator("tbody > tr")).toHaveCount(3);
+    await categoryFilter.click();
+    await page.getByRole("option", { name: "全部项目分类" }).click();
+    await expect(matrix.locator("tbody > tr")).toHaveCount(16);
     await expect(page.getByRole("heading", { name: "检查历史", exact: true })).toBeVisible();
     await expect(page.getByText("未知 / 陈旧", { exact: true })).toBeVisible();
     expect(
