@@ -38,7 +38,8 @@
     "src/server/services/project-status.integration.test.ts": "d90d2fca7280d331a9bb5e3a5a3a90c9fdb5e13e",
     "src/server/services/project-status.test.ts": "eb3536d456ea2ec80292fa13aacdb8a92b663598",
     "src/server/services/project-status.ts": "69ab7bbe9ca082d586a83f362497b6a8a4e1c61b",
-    "tests/e2e/web-demo/system-share.spec.ts": "4b1561720aa375ff3b41ef430a632ad8df421c8f"
+    "tests/e2e/web-demo/system-share.spec.ts": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
+    "tests/server/system-share-api.test.ts": "1cfe1b2da6031cb7cd34ac6ff0a01573deb84aaa"
   },
   "change": {
     "description": "Add a shared project entry catalog, persisted external-entry status checks, six-hour scheduling, protected Admin APIs, and a grouped project-status report with Web Demo fixtures.",
