@@ -43,7 +43,7 @@
     "src/server/admin-api/router.ts": "8b068746cda0a5fdde1da5abd36e8b851b5f1223",
     "src/server/http-compat-api.test.ts": "7b55434b5e9c720b42114c060218abbc11ff6403",
     "src/server/jobs/definitions.ts": "58c27584772ffbaa9bec53d1d44ee6a84d6bdfa2",
-    "src/server/jobs/scheduler.ts": "d5e7441953fd74f7812760d3a69908908d0fe4b5",
+    "src/server/jobs/scheduler.ts": "b03a4b69a9be0e234c3ac6f63de092b1a1ea7e34",
     "src/server/jobs/scheduler.test.ts": "b363c62a9132738529f9048cec53a1c7adc81e8e",
     "src/lib/ai/embeddings.ts": "02ca4afaae3b7c51c41bca01d08504ce8fbdd8b8",
     "src/lib/ai/vectorization.ts": "ae0d6c9f20061ce32d65f88e62fc8110e8daf470",
@@ -54,9 +54,9 @@
     "src/server/routers/admin/index.ts": "b3e8f76750e4df5798fdbf94cd8a8d2c93e69714",
     "src/server/routers/admin/project-status.ts": "1d4190a83a493148ccdbe02effb8b544146158f1",
     "src/server/routers/admin/project-status.test.ts": "6b813665fe38076d6504aaebf73917cc64cc3ec7",
-    "src/server/services/project-status.integration.test.ts": "a8b38071989e157bdc255c48205e0a65f5e38c2b",
+    "src/server/services/project-status.integration.test.ts": "027e64ad22e68c9cf6f502d00b897ac3de1cb054",
     "src/server/services/project-status.test.ts": "91ca63bffb14eb1e2d1d1ef6e722f92fcf8d38f1",
-    "src/server/services/project-status.ts": "7a14b930acbf5a580059c5281b4cbcff78185e9b",
+    "src/server/services/project-status.ts": "cdd2b3d1d26d84b4e0a50c645236de47f727e13d",
     "src/server/trpc.ts": "2eb74085661d32ee954e24bd05a7239a9bbc3489",
     "tests/e2e/web-demo/system-share.spec.ts": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
     "tests/e2e/web-demo/project-status.spec.ts": "b07cec5fa416350f0b3f9c9ebcf158accaa5e325",
@@ -84,11 +84,11 @@
     "current": {
       "impact": "minor",
       "reasoning": "The candidate implements the approved shared catalog and status-report workflow: external URL checks do not read response bodies or modify the catalog, project-status tables and scheduler lease state are additive, and Admin consumers receive new overview/history/trigger endpoints without changing existing routes.",
-      "assessed_at": "2026-10-31T23:32:14+08:00",
+      "assessed_at": "2026-10-31T23:41:00+08:00",
       "evidence": [
         {
           "path": "src/server/services/project-status.integration.test.ts",
-          "blob": "a8b38071989e157bdc255c48205e0a65f5e38c2b",
+          "blob": "027e64ad22e68c9cf6f502d00b897ac3de1cb054",
           "command": "bun test src/server/services/project-status.integration.test.ts src/server/jobs/scheduler.test.ts src/server/services/project-status.test.ts"
         },
         {
@@ -109,8 +109,8 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "Shared catalog, service, HTTP compatibility, Admin UI, scheduler takeover recovery, owner-fenced result writes, build, and browser evidence passed on the candidate SHA. The feature adds compatible Admin capabilities, bounded persistent state changes, and preserves manual work during scheduler lease takeover.",
-      "assessed_at": "2026-10-31T23:32:14+08:00",
+      "reasoning": "Shared catalog, service, HTTP compatibility, Admin UI, scheduler takeover recovery, lease-fenced result and recovery writes, build, and browser evidence passed on the candidate SHA. The feature adds compatible Admin capabilities, bounded persistent state changes, recovers stale status batches including manual batches after restart, and preserves manual job_runs during scheduler lease takeover.",
+      "assessed_at": "2026-10-31T23:41:00+08:00",
       "evidence": [
         {
           "path": "src/lib/project-catalog.test.ts",
@@ -124,7 +124,7 @@
         },
         {
           "path": "src/server/services/project-status.integration.test.ts",
-          "blob": "a8b38071989e157bdc255c48205e0a65f5e38c2b",
+          "blob": "027e64ad22e68c9cf6f502d00b897ac3de1cb054",
           "command": "bun test src/server/services/project-status.integration.test.ts src/server/jobs/scheduler.test.ts src/server/services/project-status.test.ts"
         },
         {

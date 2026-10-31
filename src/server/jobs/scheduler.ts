@@ -111,14 +111,17 @@ class JobsScheduler {
           st.timer = null;
           st.abortController?.abort(new Error("调度器租约失效"));
         }
-        void interruptActiveProjectStatusRuns(Date.now(), true, this.ownerToken, "scheduler");
+        void interruptActiveProjectStatusRuns(Date.now(), true, {
+          runOwnerToken: this.ownerToken,
+          leaseOwnerToken: this.ownerToken,
+        });
       }
       return;
     }
     if (this.leader) return;
     this.leader = true;
     this.startupRetryUsed.clear();
-    await interruptActiveProjectStatusRuns(now, false, undefined, "scheduler");
+    await interruptActiveProjectStatusRuns(now, false, { leaseOwnerToken: this.ownerToken });
     await markOrphanedSchedulerRuns(now);
     for (const st of this.jobs.values()) {
       st.nextAt = this.computeNext(st.def);

@@ -186,10 +186,16 @@ describe("project status service persistence", () => {
       heartbeatAt: now,
     });
 
-    await interruptActiveProjectStatusRuns(now, true, "other-scheduler");
+    await interruptActiveProjectStatusRuns(now, true, {
+      runOwnerToken: "other-scheduler",
+      leaseOwnerToken: "other-scheduler",
+    });
     expect((await db.select().from(projectStatusRuns))[0]?.status).toBe("running");
 
-    await interruptActiveProjectStatusRuns(now, true, "lost-scheduler");
+    await interruptActiveProjectStatusRuns(now, true, {
+      runOwnerToken: "lost-scheduler",
+      leaseOwnerToken: "lost-scheduler",
+    });
     expect((await db.select().from(projectStatusRuns))[0]?.status).toBe("interrupted");
   });
 
@@ -227,12 +233,17 @@ describe("project status service persistence", () => {
     releaseFetch();
 
     await expect(runPromise).rejects.toThrow("scheduler lease was lost");
-    await interruptActiveProjectStatusRuns(Date.now(), true, ownerToken, "scheduler");
+    await interruptActiveProjectStatusRuns(Date.now(), true, {
+      runOwnerToken: ownerToken,
+      leaseOwnerToken: ownerToken,
+    });
     const [run] = await db.select().from(projectStatusRuns);
     expect(run?.status).toBe("running");
     expect(run?.attemptedCount).toBe(0);
 
-    await interruptActiveProjectStatusRuns(Date.now(), true, undefined, "scheduler");
+    await interruptActiveProjectStatusRuns(Date.now(), true, {
+      leaseOwnerToken: "scheduler-owner-b",
+    });
     expect((await db.select().from(projectStatusRuns))[0]?.status).toBe("interrupted");
   });
 
@@ -397,7 +408,7 @@ describe("project status service persistence", () => {
     expect((await db.select().from(projectStatusRuns))[0]?.status).toBe("interrupted");
   });
 
-  test("does not reclaim stale manual runs during scheduler recovery", async () => {
+  test("reclaims stale manual runs during scheduler recovery", async () => {
     const now = Date.now();
     await db.insert(projectStatusRuns).values({
       id: "status-test-stale-manual",
@@ -408,9 +419,14 @@ describe("project status service persistence", () => {
       heartbeatAt: now - PROJECT_STATUS_HEARTBEAT_STALE_AFTER_MS - 1,
     });
 
-    await interruptActiveProjectStatusRuns(now, false, undefined, "scheduler");
+    await db.insert(jobSchedulerLeases).values({
+      id: "global",
+      ownerToken: "recovery-owner",
+      heartbeatAt: now,
+    });
+    await interruptActiveProjectStatusRuns(now, false, { leaseOwnerToken: "recovery-owner" });
 
-    expect((await db.select().from(projectStatusRuns))[0]?.status).toBe("running");
+    expect((await db.select().from(projectStatusRuns))[0]?.status).toBe("interrupted");
   });
 
   test("allows only one concurrent batch to claim the running slot", async () => {

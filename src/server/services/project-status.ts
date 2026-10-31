@@ -42,6 +42,11 @@ type FetchResolved = (
 ) => Promise<Response>;
 
 type InterruptScope = "all" | "scheduler" | "none";
+type InterruptOptions = {
+  runOwnerToken?: string;
+  leaseOwnerToken?: string;
+  scope?: InterruptScope;
+};
 
 export type ProjectStatusServiceDeps = {
   fetch: typeof fetch;
@@ -514,9 +519,9 @@ async function updateProjectStatusRunCounts(runId: string, schedulerOwnerToken?:
 export async function interruptActiveProjectStatusRuns(
   now = Date.now(),
   force = false,
-  schedulerOwnerToken?: string,
-  scope: InterruptScope = "all"
+  options: InterruptOptions = {}
 ) {
+  const { runOwnerToken, leaseOwnerToken, scope = "all" } = options;
   if (scope === "none") return;
   const staleCondition = force
     ? undefined
@@ -531,9 +536,7 @@ export async function interruptActiveProjectStatusRuns(
       and(
         eq(projectStatusRuns.status, "running"),
         scope === "scheduler" ? eq(projectStatusRuns.triggeredBy, "scheduler") : undefined,
-        schedulerOwnerToken
-          ? eq(projectStatusRuns.schedulerOwnerToken, schedulerOwnerToken)
-          : undefined,
+        runOwnerToken ? eq(projectStatusRuns.schedulerOwnerToken, runOwnerToken) : undefined,
         staleCondition
       )
     );
@@ -563,10 +566,8 @@ export async function interruptActiveProjectStatusRuns(
             eq(projectStatusRuns.id, activeRun.id),
             eq(projectStatusRuns.status, "running"),
             scope === "scheduler" ? eq(projectStatusRuns.triggeredBy, "scheduler") : undefined,
-            schedulerOwnerToken
-              ? eq(projectStatusRuns.schedulerOwnerToken, schedulerOwnerToken)
-              : undefined,
-            schedulerOwnerToken
+            runOwnerToken ? eq(projectStatusRuns.schedulerOwnerToken, runOwnerToken) : undefined,
+            leaseOwnerToken
               ? exists(
                   tx
                     .select({ id: jobSchedulerLeases.id })
@@ -574,7 +575,7 @@ export async function interruptActiveProjectStatusRuns(
                     .where(
                       and(
                         eq(jobSchedulerLeases.id, SCHEDULER_LEASE_ID),
-                        eq(jobSchedulerLeases.ownerToken, schedulerOwnerToken)
+                        eq(jobSchedulerLeases.ownerToken, leaseOwnerToken)
                       )
                     )
                 )
@@ -611,12 +612,10 @@ export async function runProjectStatusCheck(
     ...(overrides.fetch && !overrides.fetchResolved ? { fetchResolved: undefined } : {}),
   };
   const startedAt = deps.now();
-  await interruptActiveProjectStatusRuns(
-    startedAt,
-    false,
-    undefined,
-    triggeredBy === "scheduler" ? "scheduler" : "none"
-  );
+  await interruptActiveProjectStatusRuns(startedAt, false, {
+    leaseOwnerToken: triggeredBy === "scheduler" ? deps.schedulerOwnerToken : undefined,
+    scope: triggeredBy === "scheduler" ? "all" : "none",
+  });
   const activeRuns = await db
     .select({ id: projectStatusRuns.id })
     .from(projectStatusRuns)
