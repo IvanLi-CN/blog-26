@@ -41,6 +41,8 @@ type FetchResolved = (
   address: string | null
 ) => Promise<Response>;
 
+type InterruptScope = "all" | "scheduler" | "none";
+
 export type ProjectStatusServiceDeps = {
   fetch: typeof fetch;
   sleep: Sleep;
@@ -512,8 +514,10 @@ async function updateProjectStatusRunCounts(runId: string, schedulerOwnerToken?:
 export async function interruptActiveProjectStatusRuns(
   now = Date.now(),
   force = false,
-  schedulerOwnerToken?: string
+  schedulerOwnerToken?: string,
+  scope: InterruptScope = "all"
 ) {
+  if (scope === "none") return;
   const staleCondition = force
     ? undefined
     : or(
@@ -526,6 +530,7 @@ export async function interruptActiveProjectStatusRuns(
     .where(
       and(
         eq(projectStatusRuns.status, "running"),
+        scope === "scheduler" ? eq(projectStatusRuns.triggeredBy, "scheduler") : undefined,
         schedulerOwnerToken
           ? eq(projectStatusRuns.schedulerOwnerToken, schedulerOwnerToken)
           : undefined,
@@ -557,8 +562,22 @@ export async function interruptActiveProjectStatusRuns(
           and(
             eq(projectStatusRuns.id, activeRun.id),
             eq(projectStatusRuns.status, "running"),
+            scope === "scheduler" ? eq(projectStatusRuns.triggeredBy, "scheduler") : undefined,
             schedulerOwnerToken
               ? eq(projectStatusRuns.schedulerOwnerToken, schedulerOwnerToken)
+              : undefined,
+            schedulerOwnerToken
+              ? exists(
+                  tx
+                    .select({ id: jobSchedulerLeases.id })
+                    .from(jobSchedulerLeases)
+                    .where(
+                      and(
+                        eq(jobSchedulerLeases.id, SCHEDULER_LEASE_ID),
+                        eq(jobSchedulerLeases.ownerToken, schedulerOwnerToken)
+                      )
+                    )
+                )
               : undefined,
             staleCondition
           )
@@ -592,7 +611,12 @@ export async function runProjectStatusCheck(
     ...(overrides.fetch && !overrides.fetchResolved ? { fetchResolved: undefined } : {}),
   };
   const startedAt = deps.now();
-  await interruptActiveProjectStatusRuns(startedAt);
+  await interruptActiveProjectStatusRuns(
+    startedAt,
+    false,
+    undefined,
+    triggeredBy === "scheduler" ? "scheduler" : "none"
+  );
   const activeRuns = await db
     .select({ id: projectStatusRuns.id })
     .from(projectStatusRuns)
@@ -633,7 +657,28 @@ export async function runProjectStatusCheck(
         const touched = await db
           .update(projectStatusRuns)
           .set({ heartbeatAt: deps.now() })
-          .where(and(eq(projectStatusRuns.id, runId), eq(projectStatusRuns.status, "running")))
+          .where(
+            and(
+              eq(projectStatusRuns.id, runId),
+              eq(projectStatusRuns.status, "running"),
+              deps.schedulerOwnerToken
+                ? and(
+                    eq(projectStatusRuns.schedulerOwnerToken, deps.schedulerOwnerToken),
+                    exists(
+                      db
+                        .select({ id: jobSchedulerLeases.id })
+                        .from(jobSchedulerLeases)
+                        .where(
+                          and(
+                            eq(jobSchedulerLeases.id, SCHEDULER_LEASE_ID),
+                            eq(jobSchedulerLeases.ownerToken, deps.schedulerOwnerToken)
+                          )
+                        )
+                    )
+                  )
+                : undefined
+            )
+          )
           .returning({ id: projectStatusRuns.id });
         if (!touched.length) leaseController.abort();
       } catch {
@@ -642,22 +687,51 @@ export async function runProjectStatusCheck(
     })();
   }, PROJECT_STATUS_HEARTBEAT_INTERVAL_MS);
   try {
-    await db.insert(projectStatusResults).values(
-      entries.map((entry) => ({
-        id: deps.id(),
-        runId,
-        entryKey: entry.entryKey,
-        projectSlug: entry.projectSlug,
-        projectTitle: entry.projectTitle,
-        domain: entry.domain,
-        entryKind: entry.kind,
-        entryLabel: entry.label,
-        href: entry.href,
-        status: "unknown" as const,
-        attempted: false,
-        attemptCount: 0,
-      }))
-    );
+    await db.transaction(async (tx) => {
+      const claimed = await tx
+        .update(projectStatusRuns)
+        .set({ heartbeatAt: deps.now() })
+        .where(
+          and(
+            eq(projectStatusRuns.id, runId),
+            eq(projectStatusRuns.status, "running"),
+            deps.schedulerOwnerToken
+              ? and(
+                  eq(projectStatusRuns.schedulerOwnerToken, deps.schedulerOwnerToken),
+                  exists(
+                    tx
+                      .select({ id: jobSchedulerLeases.id })
+                      .from(jobSchedulerLeases)
+                      .where(
+                        and(
+                          eq(jobSchedulerLeases.id, SCHEDULER_LEASE_ID),
+                          eq(jobSchedulerLeases.ownerToken, deps.schedulerOwnerToken)
+                        )
+                      )
+                  )
+                )
+              : undefined
+          )
+        )
+        .returning({ id: projectStatusRuns.id });
+      if (!claimed.length) throw new Error("Project status run was interrupted");
+      await tx.insert(projectStatusResults).values(
+        entries.map((entry) => ({
+          id: deps.id(),
+          runId,
+          entryKey: entry.entryKey,
+          projectSlug: entry.projectSlug,
+          projectTitle: entry.projectTitle,
+          domain: entry.domain,
+          entryKind: entry.kind,
+          entryLabel: entry.label,
+          href: entry.href,
+          status: "unknown" as const,
+          attempted: false,
+          attemptCount: 0,
+        }))
+      );
+    });
 
     const deadline = startedAt + PROJECT_STATUS_BATCH_TIMEOUT_MS;
     const byHref = new Map<string, ProjectStatusCatalogEntry[]>();

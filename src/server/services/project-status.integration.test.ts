@@ -180,6 +180,11 @@ describe("project status service persistence", () => {
       startedAt: now,
       heartbeatAt: now,
     });
+    await db.insert(jobSchedulerLeases).values({
+      id: "global",
+      ownerToken: "lost-scheduler",
+      heartbeatAt: now,
+    });
 
     await interruptActiveProjectStatusRuns(now, true, "other-scheduler");
     expect((await db.select().from(projectStatusRuns))[0]?.status).toBe("running");
@@ -222,10 +227,13 @@ describe("project status service persistence", () => {
     releaseFetch();
 
     await expect(runPromise).rejects.toThrow("scheduler lease was lost");
-    await interruptActiveProjectStatusRuns(Date.now(), true, ownerToken);
+    await interruptActiveProjectStatusRuns(Date.now(), true, ownerToken, "scheduler");
     const [run] = await db.select().from(projectStatusRuns);
-    expect(run?.status).toBe("interrupted");
+    expect(run?.status).toBe("running");
     expect(run?.attemptedCount).toBe(0);
+
+    await interruptActiveProjectStatusRuns(Date.now(), true, undefined, "scheduler");
+    expect((await db.select().from(projectStatusRuns))[0]?.status).toBe("interrupted");
   });
 
   test("force-interrupts all active runs on restart and reconciles saved results", async () => {
@@ -387,6 +395,22 @@ describe("project status service persistence", () => {
     await interruptActiveProjectStatusRuns(now);
 
     expect((await db.select().from(projectStatusRuns))[0]?.status).toBe("interrupted");
+  });
+
+  test("does not reclaim stale manual runs during scheduler recovery", async () => {
+    const now = Date.now();
+    await db.insert(projectStatusRuns).values({
+      id: "status-test-stale-manual",
+      status: "running",
+      triggeredBy: "manual",
+      targetCount: 42,
+      startedAt: now - PROJECT_STATUS_HEARTBEAT_STALE_AFTER_MS - 1_000,
+      heartbeatAt: now - PROJECT_STATUS_HEARTBEAT_STALE_AFTER_MS - 1,
+    });
+
+    await interruptActiveProjectStatusRuns(now, false, undefined, "scheduler");
+
+    expect((await db.select().from(projectStatusRuns))[0]?.status).toBe("running");
   });
 
   test("allows only one concurrent batch to claim the running slot", async () => {
