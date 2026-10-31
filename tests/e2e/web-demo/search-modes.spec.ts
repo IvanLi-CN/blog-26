@@ -139,9 +139,9 @@ test("mobile mode controls remain keyboard accessible without horizontal overflo
   await hideInspector(page);
   await expect(page.locator("astro-island[data-search-ready='true']")).toHaveCount(1);
   const button = page.getByRole("button", { name: "RAG", exact: true });
+  const searchInput = page.getByRole("textbox", { name: "搜索关键词", exact: true });
   await expect(button).toBeEnabled({ timeout: 10_000 });
-  await button.focus();
-  await expect(button).toBeFocused();
+  await expect(searchInput).toBeFocused();
   await button.press("Enter");
   await expect(page).toHaveURL(/mode=rag/);
   await expect(button).toHaveAttribute("aria-pressed", "true");

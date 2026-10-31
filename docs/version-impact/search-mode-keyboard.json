@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "e894b395f7690a7c5166b053164f407c6cb60f90",
   "covered_files": {
-    "tests/e2e/web-demo/search-modes.spec.ts": "a29854247f30ac954552c2bc3c937aa14d8958f9"
+    "tests/e2e/web-demo/search-modes.spec.ts": "4d8117debdfe5b00ad36ced149ec5c0efd020581"
   },
   "change": {
     "description": "Make the mobile Web Demo search-mode keyboard assertion synchronize with the focused control and URL transition without changing product behavior.",
@@ -18,7 +18,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/search-modes.spec.ts",
-          "blob": "a29854247f30ac954552c2bc3c937aa14d8958f9",
+          "blob": "4d8117debdfe5b00ad36ced149ec5c0efd020581",
           "command": "Review the focused locator press and mode URL synchronization assertion"
         }
       ]
@@ -30,7 +30,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/search-modes.spec.ts",
-          "blob": "a29854247f30ac954552c2bc3c937aa14d8958f9",
+          "blob": "4d8117debdfe5b00ad36ced149ec5c0efd020581",
           "command": "The target mobile keyboard test and the full search-modes file pass"
         }
       ],
@@ -46,7 +46,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/search-modes.spec.ts",
-          "blob": "a29854247f30ac954552c2bc3c937aa14d8958f9",
+          "blob": "4d8117debdfe5b00ad36ced149ec5c0efd020581",
           "command": "Target mobile keyboard test and all 10 search-modes tests pass with retries disabled"
         }
       ]
@@ -96,7 +96,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/search-modes.spec.ts",
-          "blob": "a29854247f30ac954552c2bc3c937aa14d8958f9",
+          "blob": "4d8117debdfe5b00ad36ced149ec5c0efd020581",
           "command": "The focused search-mode interaction exercises the unchanged public route contract"
         }
       ]
@@ -110,7 +110,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/search-modes.spec.ts",
-          "blob": "a29854247f30ac954552c2bc3c937aa14d8958f9",
+          "blob": "4d8117debdfe5b00ad36ced149ec5c0efd020581",
           "command": "The change is confined to browser test synchronization"
         }
       ]
