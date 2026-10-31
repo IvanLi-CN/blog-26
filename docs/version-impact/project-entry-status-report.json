@@ -36,7 +36,7 @@
     "src/lib/project-catalog.test.ts": "2bfc0b4128416cf8384a471ce78880760c402fd6",
     "src/lib/project-catalog.ts": "caee12024ea5dbf17f3d3eefb5a325fca7983339",
     "src/lib/project-status.ts": "ca2edaacde50e5dfc5c215e3ba3672df4ace61df",
-    "src/lib/release/github.ts": "0db26d72849b270039cbb56b5297a5cc83fd5c8e",
+    "src/lib/release/github.ts": "64bd26b7184b8027c575f9b96975eec93c11f39c",
     "src/lib/schema.ts": "d402dbe6806b38b19592ee38fa3f6c07d0b7f746",
     "src/lib/search/web-demo-fixtures.ts": "dbafc4dabe3c04a57c4ca4320d64504355161bb4",
     "src/styles/milkdown-nature.css": "665489233ef7effd416144d9631fb52e814b9910",
