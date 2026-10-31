@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  ArrowUpRight,
   CheckCircle2,
+  Clock3,
   ExternalLink,
   RefreshCcw,
   Timer,
@@ -19,6 +21,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Disclosure,
   EmptyState,
   Input,
   Select,
@@ -38,12 +41,6 @@ function resultTone(result: ProjectStatusResultDto) {
   if (result.status === "available" && result.freshness === "fresh") return "success" as const;
   if (result.status === "unavailable") return "danger" as const;
   return "warning" as const;
-}
-
-function resultLabel(result: ProjectStatusResultDto) {
-  if (result.status === "available") return result.freshness === "stale" ? "可用 · stale" : "可用";
-  if (result.status === "unavailable") return "异常";
-  return "未知";
 }
 
 function ResultIcon({ result }: { result: ProjectStatusResultDto }) {
@@ -82,16 +79,85 @@ function formatDuration(durationMs: number | null) {
   return `${(durationMs / 1000).toFixed(1)} s`;
 }
 
-function groupResults(results: ProjectStatusResultDto[]) {
-  const domains = new Map<string, Map<string, ProjectStatusResultDto[]>>();
-  for (const result of results) {
-    const projects = domains.get(result.domain) ?? new Map<string, ProjectStatusResultDto[]>();
-    const entries = projects.get(result.projectSlug) ?? [];
-    entries.push(result);
-    projects.set(result.projectSlug, entries);
-    domains.set(result.domain, projects);
-  }
-  return [...domains.entries()];
+function isProblem(result: ProjectStatusResultDto) {
+  return result.status !== "available" || result.freshness === "stale";
+}
+
+function problemLabel(result: ProjectStatusResultDto) {
+  if (result.status === "unavailable") return "异常";
+  if (result.status === "unknown") return "未知";
+  return "stale";
+}
+
+function problemDetail(result: ProjectStatusResultDto) {
+  if (result.status === "unknown") return "尚未完成成功检查，暂时不能确认入口状态。";
+  if (result.errorMessage) return result.errorMessage;
+  if (result.freshness === "stale") return "最近一次结果超过 12 小时未更新。";
+  return `HTTP ${result.httpStatus ?? "-"} 返回异常。`;
+}
+
+function problemSort(left: ProjectStatusResultDto, right: ProjectStatusResultDto) {
+  const rank = (result: ProjectStatusResultDto) => {
+    if (result.status === "unavailable") return 0;
+    if (result.status === "unknown") return 1;
+    return 2;
+  };
+  return rank(left) - rank(right) || left.projectTitle.localeCompare(right.projectTitle, "zh-CN");
+}
+
+function ProblemEntry({ result }: { result: ProjectStatusResultDto }) {
+  const iconSurface = result.status === "unavailable" ? "bg-destructive/10" : "bg-warning/12";
+
+  return (
+    <article className="rounded-2xl border border-border/58 bg-card/78 p-4 shadow-sm shadow-shadow-soft lg:rounded-[1rem]">
+      <div className="flex items-start gap-3">
+        <div className={`mt-0.5 rounded-full p-2 ${iconSurface}`}>
+          <ResultIcon result={result} />
+        </div>
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-semibold text-foreground">{result.projectTitle}</h3>
+            <Badge tone={resultTone(result)}>{problemLabel(result)}</Badge>
+          </div>
+          <p className="truncate text-sm text-muted-foreground">
+            {result.entryLabel} · {result.domain}
+          </p>
+        </div>
+        <Button
+          asChild
+          size="icon"
+          variant="ghost"
+          aria-label={`打开 ${result.entryLabel}`}
+          title={`打开 ${result.entryLabel}`}
+        >
+          <a href={result.href} target="_blank" rel="noreferrer">
+            <ArrowUpRight />
+          </a>
+        </Button>
+      </div>
+      <p className="mt-4 rounded-xl bg-destructive/7 px-3 py-2 text-sm leading-6 text-foreground">
+        {problemDetail(result)}
+      </p>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span>{result.entryKind}</span>
+        <span>HTTP {result.httpStatus ?? "-"}</span>
+        <span>{result.attemptCount} 次尝试</span>
+        <span>{result.latencyMs === null ? "无延迟数据" : `${result.latencyMs} ms`}</span>
+        <span>{result.checkedAt ? formatDateTime(result.checkedAt) : "未检查"}</span>
+      </div>
+      {result.finalUrl && result.finalUrl !== result.href ? (
+        <a
+          className="mt-3 inline-flex max-w-full items-center gap-1 text-xs text-primary hover:underline"
+          href={result.finalUrl}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <span className="truncate">重定向到 {result.finalUrl}</span>
+          <ExternalLink className="size-3 shrink-0" />
+        </a>
+      ) : null}
+    </article>
+  );
 }
 
 export function ProjectStatusPage() {
@@ -158,13 +224,18 @@ export function ProjectStatusPage() {
     () => [...new Map((overview?.catalog ?? []).map((entry) => [entry.domain, entry.domain]))],
     [overview?.catalog]
   );
-  const groups = groupResults(filteredResults);
+  const problemResults = filteredResults.filter(isProblem).sort(problemSort);
+  const healthyResults = filteredResults.filter((result) => !isProblem(result));
+  const totalProblems =
+    (overview?.summary.unavailable ?? 0) +
+    (overview?.summary.unknown ?? 0) +
+    (overview?.summary.stale ?? 0);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="项目入口状态"
-        description="检查共享项目目录中的全部外部入口，保留 30 天批次历史。"
+        description="先定位需要处理的入口，再展开正常结果和历史批次。"
         actions={
           <>
             <Button
@@ -209,33 +280,108 @@ export function ProjectStatusPage() {
         </Alert>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {[
-          ["全部入口", overview?.summary.total ?? 0, "outline"],
-          ["可用", overview?.summary.available ?? 0, "success"],
-          ["异常", overview?.summary.unavailable ?? 0, "danger"],
-          ["未知", overview?.summary.unknown ?? 0, "warning"],
-          ["stale", overview?.summary.stale ?? 0, "warning"],
-        ].map(([label, value, tone]) => (
-          <Card key={String(label)}>
-            <CardContent className="space-y-2">
-              <div className="text-sm text-muted-foreground">{label}</div>
-              <div className="flex items-baseline justify-between gap-3">
-                <div className="text-3xl font-semibold tabular-nums">{value}</div>
-                <Badge tone={tone as "outline" | "success" | "danger" | "warning"}>{label}</Badge>
+      <section className="rounded-3xl border border-destructive/24 bg-destructive/6 p-5 shadow-lg shadow-shadow-soft lg:rounded-[1.25rem] lg:p-6">
+        <div className="grid gap-6 lg:grid-cols-[minmax(12rem,0.8fr)_minmax(0,1.6fr)] lg:items-center">
+          <div>
+            <div className="text-sm font-medium text-muted-foreground">当前需要处理</div>
+            <div className="mt-1 flex items-baseline gap-3">
+              <div className="text-5xl font-semibold tabular-nums text-destructive">
+                {totalProblems}
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              <div className="text-sm text-muted-foreground">
+                / {overview?.summary.total ?? 0} 个入口
+              </div>
+            </div>
+            <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
+              {totalProblems > 0
+                ? "红色异常优先处理；未知和 stale 需要确认检查是否完整。"
+                : "当前没有需要处理的入口。"}
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              ["unavailable", "异常", overview?.summary.unavailable ?? 0, "danger"],
+              ["unknown", "未知", overview?.summary.unknown ?? 0, "warning"],
+              ["stale", "stale", overview?.summary.stale ?? 0, "warning"],
+            ].map(([value, label, count, tone]) => (
+              <Button
+                key={value}
+                variant="row"
+                aria-pressed={filter === value}
+                className={`justify-center ${filter === value ? "bg-card/80 shadow-sm" : "bg-card/38"}`}
+                onClick={() => setFilter(value as Filter)}
+              >
+                <span
+                  className={`text-2xl font-semibold tabular-nums ${tone === "danger" ? "text-destructive" : "text-warning"}`}
+                >
+                  {count}
+                </span>
+                <span className="text-sm">{label}</span>
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-destructive/15 pt-4 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <CheckCircle2 className="size-3.5 text-success" aria-hidden />
+            {overview?.summary.available ?? 0} 个可用
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Clock3 className="size-3.5" aria-hidden />
+            {overview?.latestRun
+              ? `最近批次 ${formatDateTime(overview.latestRun.finishedAt ?? overview.latestRun.startedAt)}`
+              : "尚未完成检查"}
+          </span>
+        </div>
+      </section>
+
+      <section aria-labelledby="project-status-problems" className="space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 id="project-status-problems" className="text-xl font-semibold">
+              需要处理的入口
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {problemResults.length > 0
+                ? `按异常优先显示 ${problemResults.length} 个入口，问题位置和原因直接列在每项下面。`
+                : totalProblems > 0
+                  ? "当前筛选下没有问题入口，尝试清除筛选。"
+                  : "本批次所有入口均可用且结果仍在新鲜期。"}
+            </p>
+          </div>
+          {filter !== "all" ? (
+            <Button variant="quiet" size="sm" onClick={() => setFilter("all")}>
+              清除结果筛选
+            </Button>
+          ) : null}
+        </div>
+        {overviewQuery.isPending ? (
+          <div className="flex min-h-40 items-center justify-center rounded-3xl border border-border/52 bg-card/54 lg:rounded-[1rem]">
+            <Spinner className="size-6" />
+          </div>
+        ) : problemResults.length === 0 ? (
+          <EmptyState
+            title={totalProblems > 0 ? "当前筛选没有问题" : "没有待处理问题"}
+            description={
+              totalProblems > 0
+                ? "调整结果、领域、项目或入口类型筛选。"
+                : "当前批次所有入口均返回可用结果。"
+            }
+          />
+        ) : (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {problemResults.map((result) => (
+              <ProblemEntry key={result.entryKey} result={result} />
+            ))}
+          </div>
+        )}
+      </section>
 
       <Card>
         <CardHeader>
-          <CardTitle>入口结果</CardTitle>
+          <CardTitle>全部入口</CardTitle>
           <CardDescription>
-            {overview?.latestRun
-              ? `最近批次 ${formatDateTime(overview.latestRun.finishedAt ?? overview.latestRun.startedAt)} · ${statusLabel(overview.latestRun.status)}`
-              : "尚未完成检查，当前入口状态为未知。"}
+            用筛选缩小范围；问题入口已在上方单独列出，正常入口默认收起。
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -287,88 +433,37 @@ export function ProjectStatusPage() {
             <div className="flex min-h-48 items-center justify-center">
               <Spinner className="size-6" />
             </div>
-          ) : groups.length === 0 ? (
+          ) : filteredResults.length === 0 ? (
             <EmptyState title="没有匹配的入口" description="调整筛选条件后重试。" />
           ) : (
-            <div className="space-y-5">
-              {groups.map(([domainKey, projects]) => (
-                <section key={domainKey} className="space-y-3">
-                  <div className="flex items-center justify-between gap-3 border-b border-border/58 pb-2">
-                    <h3 className="font-semibold">{domainKey}</h3>
-                    <Badge tone="muted">{[...projects.values()].flat().length} 个入口</Badge>
-                  </div>
-                  {[...projects.entries()].map(([projectSlug, results]) => (
-                    <div
-                      key={projectSlug}
-                      className="overflow-hidden rounded-2xl border border-border/52 bg-muted/18"
-                    >
-                      <div className="flex items-center justify-between gap-3 border-b border-border/46 px-4 py-3">
-                        <div className="font-medium">{results[0]?.projectTitle}</div>
-                        <Badge tone="muted">{results.length} 个入口</Badge>
+            <Disclosure
+              defaultOpen={problemResults.length === 0}
+              summary={
+                <div className="flex min-h-11 items-center justify-between gap-3 rounded-2xl bg-muted/48 px-3 py-2 text-foreground lg:rounded-[0.75rem]">
+                  <span className="font-medium">查看 {healthyResults.length} 个正常入口</span>
+                  <Badge tone="success">可用</Badge>
+                </div>
+              }
+              summaryClassName="block"
+            >
+              <div className="divide-y divide-border/52 overflow-hidden rounded-2xl border border-border/52 bg-muted/16 lg:rounded-[1rem]">
+                {healthyResults.map((result) => (
+                  <div key={result.entryKey} className="flex items-center gap-3 px-4 py-3">
+                    <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        <span className="font-medium">{result.projectTitle}</span>
+                        <span className="text-sm text-muted-foreground">{result.entryLabel}</span>
                       </div>
-                      <div className="overflow-x-auto">
-                        <Table className="min-w-[820px]">
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>入口</TableHead>
-                              <TableHead>URL</TableHead>
-                              <TableHead>状态</TableHead>
-                              <TableHead>检查信息</TableHead>
-                              <TableHead>错误</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {results.map((result) => (
-                              <TableRow key={result.entryKey}>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    <ResultIcon result={result} />
-                                    <div>
-                                      <div className="font-medium">{result.entryLabel}</div>
-                                      <div className="text-xs text-muted-foreground">
-                                        {result.entryKind}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="max-w-[280px]">
-                                  <a
-                                    className="inline-flex max-w-full items-center gap-1 truncate text-primary hover:underline"
-                                    href={result.href}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                  >
-                                    <span className="truncate">{result.href}</span>
-                                    <ExternalLink className="size-3 shrink-0" />
-                                  </a>
-                                  {result.finalUrl && result.finalUrl !== result.href ? (
-                                    <div className="mt-1 truncate text-xs text-muted-foreground">
-                                      最终：{result.finalUrl}
-                                    </div>
-                                  ) : null}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge tone={resultTone(result)}>{resultLabel(result)}</Badge>
-                                </TableCell>
-                                <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                                  HTTP {result.httpStatus ?? "-"} ·{" "}
-                                  {result.latencyMs === null ? "-" : `${result.latencyMs} ms`}
-                                  <br />
-                                  {result.attemptCount} 次 · {formatDateTime(result.checkedAt)}
-                                </TableCell>
-                                <TableCell className="max-w-[190px] text-xs text-muted-foreground">
-                                  {result.errorMessage ?? "-"}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
+                      <div className="truncate text-xs text-muted-foreground">{result.href}</div>
                     </div>
-                  ))}
-                </section>
-              ))}
-            </div>
+                    <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
+                      {result.latencyMs === null ? "-" : `${result.latencyMs} ms`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Disclosure>
           )}
         </CardContent>
       </Card>

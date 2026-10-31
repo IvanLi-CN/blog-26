@@ -97,14 +97,15 @@ describe("ProjectStatusPage", () => {
     }) as typeof fetch;
 
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const { findAllByText, findByText, findByRole, getByRole } = render(
+    const { findByText, findByRole, getByRole } = render(
       <QueryClientProvider client={client}>
         <ProjectStatusPage />
       </QueryClientProvider>
     );
 
     expect(await findByText("项目入口状态")).toBeTruthy();
-    expect(await findAllByText("异常")).toHaveLength(3);
+    expect(await findByRole("heading", { name: "需要处理的入口" })).toBeTruthy();
+    expect(await findByText("目标返回 HTTP 503")).toBeTruthy();
     fireEvent.click(getByRole("button", { name: "手动检查" }));
     expect(await findByRole("button", { name: "检查中" })).toBeTruthy();
 
