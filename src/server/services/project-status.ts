@@ -119,6 +119,7 @@ function isPrivateAddress(address: string): boolean {
     normalized === "::" ||
     normalized === "::1" ||
     (firstHextet >= 0xfe80 && firstHextet <= 0xfebf) ||
+    (firstHextet >= 0xfec0 && firstHextet <= 0xfeff) ||
     normalized.startsWith("fc") ||
     normalized.startsWith("fd")
   );
@@ -367,9 +368,13 @@ async function mapWithConcurrency<T, R>(
       results[index] = await worker(items[index]);
     }
   }
-  await Promise.all(
+  const settled = await Promise.allSettled(
     Array.from({ length: Math.min(concurrency, Math.max(items.length, 1)) }, () => consume())
   );
+  const rejected = settled.find(
+    (result): result is PromiseRejectedResult => result.status === "rejected"
+  );
+  if (rejected) throw rejected.reason;
   return results;
 }
 
@@ -457,25 +462,29 @@ export async function interruptActiveProjectStatusRuns(now = Date.now(), force =
     );
 
   for (const activeRun of activeRuns) {
-    const interrupted = await db
-      .update(projectStatusRuns)
-      .set({
-        status: "interrupted",
-        finishedAt: now,
-        heartbeatAt: null,
-        errorMessage: "服务重启，中断了活动批次",
-      })
-      .where(and(eq(projectStatusRuns.id, activeRun.id), eq(projectStatusRuns.status, "running")))
-      .returning({ id: projectStatusRuns.id });
+    const interrupted = await db.transaction(async (tx) => {
+      const results = await tx
+        .select({ attempted: projectStatusResults.attempted, status: projectStatusResults.status })
+        .from(projectStatusResults)
+        .where(eq(projectStatusResults.runId, activeRun.id));
+      const counts = {
+        attemptedCount: results.filter((result) => result.attempted).length,
+        availableCount: results.filter((result) => result.status === "available").length,
+        unavailableCount: results.filter((result) => result.status === "unavailable").length,
+      };
+      return tx
+        .update(projectStatusRuns)
+        .set({
+          status: "interrupted",
+          finishedAt: now,
+          heartbeatAt: null,
+          errorMessage: "服务重启，中断了活动批次",
+          ...counts,
+        })
+        .where(and(eq(projectStatusRuns.id, activeRun.id), eq(projectStatusRuns.status, "running")))
+        .returning({ id: projectStatusRuns.id });
+    });
     if (!interrupted.length) continue;
-
-    const counts = await getProjectStatusRunCounts(activeRun.id);
-    await db
-      .update(projectStatusRuns)
-      .set(counts)
-      .where(
-        and(eq(projectStatusRuns.id, activeRun.id), eq(projectStatusRuns.status, "interrupted"))
-      );
   }
 }
 
@@ -648,13 +657,24 @@ export async function runProjectStatusCheck(
     if (savedRun[0]?.status !== status) throw new Error("Project status run was interrupted");
     return { id: runId, status, targetCount: entries.length, attemptedCount };
   } catch (error) {
+    leaseController.abort();
     const finishedAt = deps.now();
     const message = errorMessage(error);
-    const counts = await getProjectStatusRunCounts(runId);
-    await db
-      .update(projectStatusRuns)
-      .set({ status: "error", finishedAt, heartbeatAt: null, errorMessage: message, ...counts })
-      .where(and(eq(projectStatusRuns.id, runId), eq(projectStatusRuns.status, "running")));
+    await db.transaction(async (tx) => {
+      const results = await tx
+        .select({ attempted: projectStatusResults.attempted, status: projectStatusResults.status })
+        .from(projectStatusResults)
+        .where(eq(projectStatusResults.runId, runId));
+      const counts = {
+        attemptedCount: results.filter((result) => result.attempted).length,
+        availableCount: results.filter((result) => result.status === "available").length,
+        unavailableCount: results.filter((result) => result.status === "unavailable").length,
+      };
+      await tx
+        .update(projectStatusRuns)
+        .set({ status: "error", finishedAt, heartbeatAt: null, errorMessage: message, ...counts })
+        .where(and(eq(projectStatusRuns.id, runId), eq(projectStatusRuns.status, "running")));
+    });
     throw error;
   } finally {
     if (heartbeatTimer) clearInterval(heartbeatTimer);
@@ -689,11 +709,13 @@ export async function getProjectStatusOverview(
     .orderBy(desc(projectStatusRuns.startedAt))
     .limit(1);
   const latestRun = latestRows[0] ?? null;
-  const resultRows = latestRun
+  const activeRun = activeRows[0] ?? null;
+  const currentRun = activeRun ?? latestRun;
+  const resultRows = currentRun
     ? await db
         .select()
         .from(projectStatusResults)
-        .where(eq(projectStatusResults.runId, latestRun.id))
+        .where(eq(projectStatusResults.runId, currentRun.id))
     : [];
   const results = resultRows.map((row) => resultDto(row, now));
   const resultByEntry = new Map(results.map((result) => [result.entryKey, result]));
@@ -701,7 +723,7 @@ export async function getProjectStatusOverview(
     (entry) =>
       resultByEntry.get(entry.entryKey) ?? {
         id: `unknown:${entry.entryKey}`,
-        runId: latestRun?.id ?? "",
+        runId: currentRun?.id ?? "",
         entryKey: entry.entryKey,
         projectSlug: entry.projectSlug,
         projectTitle: entry.projectTitle,
@@ -733,7 +755,7 @@ export async function getProjectStatusOverview(
       href: entry.href,
     })),
     latestRun: latestRun ? runDto(latestRun, now) : null,
-    activeRun: activeRows[0] ? runDto(activeRows[0], now) : null,
+    activeRun: activeRun ? runDto(activeRun, now) : null,
     summary: {
       total: completeResults.length,
       available: completeResults.filter((row) => row.status === "available").length,

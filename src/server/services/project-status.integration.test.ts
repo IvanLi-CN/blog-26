@@ -226,6 +226,45 @@ describe("project status service persistence", () => {
     expect(overview.summary).toMatchObject({ available: 1, unavailable: 0, unknown: 41 });
   });
 
+  test("shows saved snapshots from the active run while it is checking", async () => {
+    const now = Date.now();
+    const entry = getProjectStatusCatalogEntries()[0];
+    await db.insert(projectStatusRuns).values({
+      id: "status-test-active-overview",
+      status: "running",
+      triggeredBy: "manual",
+      targetCount: 42,
+      attemptedCount: 1,
+      availableCount: 1,
+      unavailableCount: 0,
+      startedAt: now - 1_000,
+      heartbeatAt: now,
+    });
+    await db.insert(projectStatusResults).values({
+      id: "status-test-active-overview-result",
+      runId: "status-test-active-overview",
+      entryKey: entry.entryKey,
+      projectSlug: entry.projectSlug,
+      projectTitle: entry.projectTitle,
+      domain: entry.domain,
+      entryKind: entry.kind,
+      entryLabel: entry.label,
+      href: entry.href,
+      status: "available",
+      attempted: true,
+      httpStatus: 200,
+      checkedAt: now - 100,
+    });
+
+    const overview = await getProjectStatusOverview(now);
+
+    expect(overview.activeRun?.id).toBe("status-test-active-overview");
+    expect(overview.results.find((result) => result.entryKey === entry.entryKey)?.status).toBe(
+      "available"
+    );
+    expect(overview.summary).toMatchObject({ available: 1, unavailable: 0, unknown: 41 });
+  });
+
   test("interrupts a non-null heartbeat that has expired", async () => {
     const now = Date.now();
     await db.insert(projectStatusRuns).values({

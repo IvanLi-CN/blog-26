@@ -45,9 +45,9 @@
     "src/server/routers/admin/index.ts": "b3e8f76750e4df5798fdbf94cd8a8d2c93e69714",
     "src/server/routers/admin/project-status.ts": "218ff54554c8b2a887aae0542e0b84ef3b111927",
     "src/server/routers/admin/project-status.test.ts": "6b813665fe38076d6504aaebf73917cc64cc3ec7",
-    "src/server/services/project-status.integration.test.ts": "36e8d8108ddae6670db4dc05e56e010b9c55fae8",
-    "src/server/services/project-status.test.ts": "caf10f674c6fdcb05be12db833ae92d2a8a2a4d4",
-    "src/server/services/project-status.ts": "e7c846866511b2c47d606b6231c7d18a049184fc",
+    "src/server/services/project-status.integration.test.ts": "5e37c39762f19b48a5ef1c1a596ad222ec92e366",
+    "src/server/services/project-status.test.ts": "a383feb57d114b6002ff494ecb3435d43c11754f",
+    "src/server/services/project-status.ts": "1329fa460ec3f66dda336b1639e4c854f7c91866",
     "src/server/trpc.ts": "2eb74085661d32ee954e24bd05a7239a9bbc3489",
     "tests/e2e/web-demo/system-share.spec.ts": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
     "tests/e2e/web-demo/project-status.spec.ts": "0e053262397239e6bc4fbebbfd6844e3860c0ea5",
@@ -63,7 +63,7 @@
     "planned": {
       "impact": "minor",
       "reasoning": "The approved MVP adds compatible administrator API capabilities and additive SQLite tables for project status runs and results. Existing public project routes, existing API semantics, and prior records remain readable.",
-      "assessed_at": "2026-10-31T21:29:00+08:00",
+      "assessed_at": "2026-10-31T21:45:00+08:00",
       "evidence": [
         {
           "path": "src/lib/project-status.ts",
@@ -75,11 +75,11 @@
     "current": {
       "impact": "minor",
       "reasoning": "The candidate implements the approved shared catalog and additive status-report workflow: external URL checks do not read response bodies or modify the catalog, the database migration is additive, and Admin consumers receive new overview/history/trigger endpoints without changing existing routes.",
-      "assessed_at": "2026-10-31T21:29:00+08:00",
+      "assessed_at": "2026-10-31T21:45:00+08:00",
       "evidence": [
         {
           "path": "src/server/services/project-status.integration.test.ts",
-          "blob": "36e8d8108ddae6670db4dc05e56e010b9c55fae8",
+          "blob": "5e37c39762f19b48a5ef1c1a596ad222ec92e366",
           "command": "bun test --isolate src/server/services/project-status.integration.test.ts"
         },
         {
@@ -101,7 +101,7 @@
     "verified": {
       "impact": "minor",
       "reasoning": "Shared catalog, service, HTTP compatibility, Admin UI, migration, build, and browser evidence passed on the candidate SHA. The feature adds only compatible Admin capabilities and additive persistent state.",
-      "assessed_at": "2026-10-31T21:29:00+08:00",
+      "assessed_at": "2026-10-31T21:45:00+08:00",
       "evidence": [
         {
           "path": "src/lib/project-catalog.test.ts",
@@ -110,7 +110,7 @@
         },
         {
           "path": "src/server/services/project-status.test.ts",
-          "blob": "caf10f674c6fdcb05be12db833ae92d2a8a2a4d4",
+          "blob": "a383feb57d114b6002ff494ecb3435d43c11754f",
           "command": "bun test --isolate src/server/services/project-status.test.ts"
         },
         {
