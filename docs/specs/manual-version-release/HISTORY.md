@@ -17,6 +17,7 @@
 - 候选同步至远端 `main` 的 `ec6d69799380de5b2266798d802ebd871d685cd2` 后，修复了既有 `2.8.0` 登记身份摘要兼容与完整 verified 影响证据；`837` 个测试、稳定版和 alpha 非生产两产品 smoke 已通过，平台候选和真实 alpha 验收仍未完成。
 - 修复发布冻结阶段只重试连接建立、不重试公开快照响应体读取的问题；分块响应在读取中途超时或连接重置时按既有退避策略重新请求，完整读取后才进入快照校验。
 - 补充准备 PR 合并后 exact main CI/E2E 失败、但 Product Release 尚未绑定时的专用废弃恢复边界；该身份保持可审计并烧毁版本，后续发布必须走新的 Manual Product Release identity。
+- 补强 ledger recovery marker 链的读取：bot-authored recovery wrapper 可安全叠加，只有最终 owner-authored、GitHub Verified 的 legacy head 才能提供恢复权限。
 
 ## References
 

@@ -58,7 +58,7 @@ describe("durable product release reservations", () => {
       commit(
         head,
         recoveryCommit,
-        `chore(release): record product delivery state\n\n${digestLine}\n${signedOff}`
+        `chore(release): record product delivery state\n\n${digestLine}\nLedger-Recovery: ${recoveryCommit}\n${signedOff}`
       ),
       commit(
         recoveryCommit,

@@ -6,17 +6,19 @@
     ".github/workflows/abandon-failed-release-evaluation.yml": "0c12f94350249ee056e5e0c243bfb130ed836172",
     "docs/adr/0033-release-preparation-gate-recovery.md": "f77040cd1eabe3592c840de0d54203fb15c38971",
     "docs/runbooks/manual-version-release.md": "5b78cbb051a9ef8922f81b75eff1ecd70bf33405",
-    "docs/specs/manual-version-release/HISTORY.md": "630ca03692a2fbfa5f1c75a045d35b85a74d15ec",
-    "docs/specs/manual-version-release/IMPLEMENTATION.md": "e3a04d8da1e3d3c9a16ddeb86bb4a16f470a136a",
-    "docs/specs/manual-version-release/SPEC.md": "af4271cf84369065de6d86e5ef3599b474246e4e",
+    "docs/specs/manual-version-release/HISTORY.md": "2e415e5764b1e8a9b389c4429699f29a98ccf553",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "ac3f84a6bbff22cd13c9e35f03fe606162d56af1",
+    "docs/specs/manual-version-release/SPEC.md": "27e5df7b6817c55274e0b4051ca1d905fdd051ea",
     "scripts/product-release.ts": "595df9ac11c909e5c95e4743e4448b65d7a48b0a",
     "src/lib/release/artifacts.ts": "81446d05a2b8be31e2e7a1726f4da196054a4d25",
     "src/lib/release/completion.ts": "6fea4a3fe0e492d7f225d31a706cbec32397c58a",
+    "src/lib/release/github.ts": "9052cd803fc14b0cf3138fc6a5af5c286a114454",
     "tests/ci/product-prerelease-workflow.test.ts": "27456fe7a614988bd6676de16549df9ec8c4df49",
-    "tests/lib/manual-release-completion.test.ts": "96992db8a5b13d5c642c4787619813b56d9ddb22"
+    "tests/lib/manual-release-completion.test.ts": "96992db8a5b13d5c642c4787619813b56d9ddb22",
+    "tests/lib/manual-release-ledger.test.ts": "27d40f26b584091d5774ffe7b6c45e62a33e94cb"
   },
   "change": {
-    "description": "Add a fail-closed recovery workflow for merged release preparations whose exact main CI/E2E gates fail before Product Release binds the identity, with signed ledger abandonment and a fresh-version handoff.",
+    "description": "Add fail-closed recovery for merged release preparations whose exact main CI/E2E gates fail before Product Release binds the identity, and preserve signed ledger readability across nested bot-authored recovery wrappers.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api", "persistent-state"]
   },
@@ -35,7 +37,7 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The candidate validates the registered PR merge, terminal exact main evaluation failure, absence of Product Release state and absence of artifacts or publication before writing an Actions-signed abandonment. Product routes, public responses, durable application state and product bytes remain unchanged.",
+      "reasoning": "The candidate validates the registered PR merge, terminal exact main evaluation failure, absence of Product Release state and absence of artifacts or publication before writing an Actions-signed abandonment; it also keeps nested signed ledger recovery markers readable. Product routes, public responses, durable application state and product bytes remain unchanged.",
       "assessed_at": "2026-10-31T18:00:00+08:00",
       "evidence": [
         {
@@ -47,16 +49,26 @@
           "path": "tests/ci/product-prerelease-workflow.test.ts",
           "blob": "27456fe7a614988bd6676de16549df9ec8c4df49",
           "command": "Focused workflow contract test verifies release_id-only recovery inputs and scoped write permissions"
+        },
+        {
+          "path": "src/lib/release/github.ts",
+          "blob": "9052cd803fc14b0cf3138fc6a5af5c286a114454",
+          "command": "Ledger reader validates the owner-authored recovery target while treating nested bot wrappers as ordinary verified commits"
+        },
+        {
+          "path": "tests/lib/manual-release-ledger.test.ts",
+          "blob": "27d40f26b584091d5774ffe7b6c45e62a33e94cb",
+          "command": "Focused ledger contract test covers a bot-authored recovery wrapper around the signed legacy target"
         }
       ],
       "scope_drift": {
         "detected": false,
-        "description": "The candidate is limited to pre-publication release recovery, its signed-ledger documentation and focused contract tests; product runtime and artifact formats are unchanged."
+        "description": "The candidate is limited to pre-publication release recovery, signed-ledger chain validation, its documentation and focused contract tests; product runtime and artifact formats are unchanged."
       }
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Focused release recovery and workflow tests pass, Biome and diff checks pass, and the synchronized manual-release specification records the new fail-closed recovery boundary without changing public or application persistence contracts.",
+      "reasoning": "Focused release recovery, workflow and ledger-chain tests pass, Biome and diff checks pass, and the synchronized manual-release specification records the fail-closed recovery boundary without changing public or application persistence contracts.",
       "assessed_at": "2026-10-31T18:00:00+08:00",
       "evidence": [
         {
@@ -71,7 +83,7 @@
         },
         {
           "path": "docs/specs/manual-version-release/SPEC.md",
-          "blob": "af4271cf84369065de6d86e5ef3599b474246e4e",
+          "blob": "27e5df7b6817c55274e0b4051ca1d905fdd051ea",
           "command": "Spec drift check passes with the new ADR relationship and recovery contract"
         }
       ]
@@ -173,6 +185,11 @@
           "path": "scripts/product-release.ts",
           "blob": "595df9ac11c909e5c95e4743e4448b65d7a48b0a",
           "command": "Ledger abandonment uses the existing compare-and-swap store and burns the occupied version"
+        },
+        {
+          "path": "src/lib/release/github.ts",
+          "blob": "9052cd803fc14b0cf3138fc6a5af5c286a114454",
+          "command": "Recovery marker parsing preserves signed ledger readability across nested bot-authored wrapper commits"
         }
       ]
     }

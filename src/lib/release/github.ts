@@ -379,16 +379,15 @@ export class GitHubLedgerStore implements LedgerStore {
     let legacySha: string | undefined;
     const commits = this.github.pages(`${this.github.root}/commits?sha=${sha}&per_page=100`);
     const parsedCommits = commits.map((raw) => repositoryCommitSchema.parse(raw));
-    let recoverySha: string | undefined;
     const recoveryTargets = new Set<string>();
     for (const commit of parsedCommits) {
       const recovered = commit.commit.message.match(/^Ledger-Recovery: ([a-f0-9]{40})$/m)?.[1];
       if (!recovered) continue;
       // Defer authority checks until the ordered pass binds each target to its commit.
       const target = shaSchema.parse(recovered);
-      recoverySha ||= target;
       recoveryTargets.add(target);
     }
+    let recoverySha: string | undefined;
     for (const [index, commit] of parsedCommits.entries()) {
       const raw = commits[index];
       if (!raw) throw new Error("Ledger history response was truncated");
@@ -400,10 +399,9 @@ export class GitHubLedgerStore implements LedgerStore {
         (options.allowLegacyHead && commit.sha === sha) ||
         (options.allowLegacyAncestor && commit.sha !== sha && !legacySha) ||
         (recoveryRequested && commit.sha !== sha);
-      if (legacyRequested && (commit.author?.login === owner || recoveryRequested)) {
+      if (legacyRequested && commit.author?.login === owner) {
         const bot = `${this.github.botSlug}[bot]`;
         if (
-          commit.author?.login !== owner ||
           commit.committer?.login !== "web-flow" ||
           !commit.commit.verification.verified ||
           commit.commit.verification.reason !== "valid" ||
@@ -411,6 +409,7 @@ export class GitHubLedgerStore implements LedgerStore {
         )
           throw new Error("Legacy ledger head is not a valid GitHub-signed recovery candidate");
         legacySha ||= commit.sha;
+        if (recoveryRequested) recoverySha ||= commit.sha;
       } else this.github.verifyBotCommit(commit.sha, raw);
       if (!/Ledger-Digest: [a-f0-9]{64}/.test(commit.commit.message))
         throw new Error("Ledger commit lacks its state digest");
@@ -434,6 +433,8 @@ export class GitHubLedgerStore implements LedgerStore {
       expected = parent.sha;
     }
     if (!rootFound) throw new Error("Incomplete ledger ancestry");
+    if (recoveryTargets.size > 0 && recoverySha === undefined)
+      throw new Error("Ledger recovery marker does not bind its legacy commit");
     if (
       recoverySha !== undefined &&
       !options.allowLegacyHead &&
