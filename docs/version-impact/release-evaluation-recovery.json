@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e894b395f7690a7c5166b053164f407c6cb60f90",
+  "covered_files": {
+    ".github/workflows/abandon-failed-release-evaluation.yml": "0c12f94350249ee056e5e0c243bfb130ed836172",
+    "docs/adr/0033-release-preparation-gate-recovery.md": "f77040cd1eabe3592c840de0d54203fb15c38971",
+    "docs/runbooks/manual-version-release.md": "5b78cbb051a9ef8922f81b75eff1ecd70bf33405",
+    "docs/specs/manual-version-release/HISTORY.md": "630ca03692a2fbfa5f1c75a045d35b85a74d15ec",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "e3a04d8da1e3d3c9a16ddeb86bb4a16f470a136a",
+    "docs/specs/manual-version-release/SPEC.md": "af4271cf84369065de6d86e5ef3599b474246e4e",
+    "scripts/product-release.ts": "595df9ac11c909e5c95e4743e4448b65d7a48b0a",
+    "src/lib/release/artifacts.ts": "81446d05a2b8be31e2e7a1726f4da196054a4d25",
+    "src/lib/release/completion.ts": "6fea4a3fe0e492d7f225d31a706cbec32397c58a",
+    "tests/ci/product-prerelease-workflow.test.ts": "27456fe7a614988bd6676de16549df9ec8c4df49",
+    "tests/lib/manual-release-completion.test.ts": "96992db8a5b13d5c642c4787619813b56d9ddb22"
+  },
+  "change": {
+    "description": "Add a fail-closed recovery workflow for merged release preparations whose exact main CI/E2E gates fail before Product Release binds the identity, with signed ledger abandonment and a fresh-version handoff.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change only adds release-orchestration recovery. It preserves product artifacts, public API shapes, application data, and the existing signed ledger schema while closing an unpublishable preparation state.",
+      "assessed_at": "2026-10-31T18:00:00+08:00",
+      "evidence": [
+        {
+          "path": "docs/adr/0033-release-preparation-gate-recovery.md",
+          "blob": "f77040cd1eabe3592c840de0d54203fb15c38971",
+          "command": "Approved recovery boundary for a merged preparation with failed exact main gates"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate validates the registered PR merge, terminal exact main evaluation failure, absence of Product Release state and absence of artifacts or publication before writing an Actions-signed abandonment. Product routes, public responses, durable application state and product bytes remain unchanged.",
+      "assessed_at": "2026-10-31T18:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/release/completion.ts",
+          "blob": "6fea4a3fe0e492d7f225d31a706cbec32397c58a",
+          "command": "Focused completion contract test distinguishes failed exact main gates from pending evaluations"
+        },
+        {
+          "path": "tests/ci/product-prerelease-workflow.test.ts",
+          "blob": "27456fe7a614988bd6676de16549df9ec8c4df49",
+          "command": "Focused workflow contract test verifies release_id-only recovery inputs and scoped write permissions"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to pre-publication release recovery, its signed-ledger documentation and focused contract tests; product runtime and artifact formats are unchanged."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused release recovery and workflow tests pass, Biome and diff checks pass, and the synchronized manual-release specification records the new fail-closed recovery boundary without changing public or application persistence contracts.",
+      "assessed_at": "2026-10-31T18:00:00+08:00",
+      "evidence": [
+        {
+          "path": "scripts/product-release.ts",
+          "blob": "595df9ac11c909e5c95e4743e4448b65d7a48b0a",
+          "command": "bunx biome check scripts/product-release.ts src/lib/release/artifacts.ts src/lib/release/completion.ts"
+        },
+        {
+          "path": "tests/lib/manual-release-completion.test.ts",
+          "blob": "96992db8a5b13d5c642c4787619813b56d9ddb22",
+          "command": "bun test tests/lib/manual-release-completion.test.ts tests/ci/product-prerelease-workflow.test.ts tests/lib/manual-release-ledger.test.ts tests/lib/manual-release-policy.test.ts tests/lib/manual-release-recovery.test.ts tests/lib/manual-release-failure.test.ts: 62 passed, 0 failed"
+        },
+        {
+          "path": "docs/specs/manual-version-release/SPEC.md",
+          "blob": "af4271cf84369065de6d86e5ef3599b474246e4e",
+          "command": "Spec drift check passes with the new ADR relationship and recovery contract"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4",
+        "3.11.7",
+        "3.11.8"
+      ],
+      "evidence": [
+        {
+          "path": "src/lib/release/completion.ts",
+          "blob": "6fea4a3fe0e492d7f225d31a706cbec32397c58a",
+          "command": "Release evaluation inspection does not alter public API routes or response contracts"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": true,
+      "state_description": "The existing release-ledger state gains only a validated abandonment transition for an unbound preparation; the ledger schema, signed commit chain and prior release proofs remain readable.",
+      "readable_by_prior_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4",
+        "3.11.7",
+        "3.11.8"
+      ],
+      "upgrade_from_versions": ["3.11.8"],
+      "evidence": [
+        {
+          "path": "scripts/product-release.ts",
+          "blob": "595df9ac11c909e5c95e4743e4448b65d7a48b0a",
+          "command": "Ledger abandonment uses the existing compare-and-swap store and burns the occupied version"
+        }
+      ]
+    }
+  }
+}
