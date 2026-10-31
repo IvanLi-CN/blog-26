@@ -128,6 +128,19 @@ describe("durable product release reservations", () => {
     expect(result.ledger).toEqual(ledger);
     const historicalCommit = commits[1];
     if (!historicalCommit) throw new Error("Missing historical ledger fixture");
+    const headCommit = commits[0];
+    if (!headCommit) throw new Error("Missing head fixture");
+    const headAuthor = headCommit.author;
+    const headMessage = headCommit.commit.message;
+    headCommit.author = { login: contract.repository.split("/")[0] };
+    headCommit.commit.message = headMessage.replace(`\nLedger-Recovery: ${recoveryCommit}`, "");
+    const historicalOnly = await new GitHubLedgerStore(
+      new GitHubRelease(contract, "github-actions", github.transport)
+    ).read({ allowLegacyHead: true, allowLegacyAncestor: true });
+    expect(historicalOnly.legacySha).toBe(head);
+    expect(historicalOnly.recoverySha).toBeUndefined();
+    headCommit.author = headAuthor;
+    headCommit.commit.message = headMessage;
     const historicalMessage = historicalCommit.commit.message;
     historicalCommit.commit.message = historicalMessage.replace(digestLine, "Ledger-Digest: nope");
     await expect(
@@ -135,8 +148,6 @@ describe("durable product release reservations", () => {
     ).rejects.toThrow();
     historicalCommit.commit.message = historicalMessage;
     const malformedTarget = "8".repeat(40);
-    const headCommit = commits[0];
-    if (!headCommit) throw new Error("Missing head fixture");
     const headMarker = `Ledger-Recovery: ${recoveryCommit}`;
     headCommit.commit.message = headCommit.commit.message.replace(
       headMarker,
@@ -175,7 +186,6 @@ describe("durable product release reservations", () => {
     const declaration = commits[1];
     const recovered = commits[2];
     if (!declaration || !recovered) throw new Error("Missing recovery fixture");
-    const headMessage = headCommit.commit.message;
     const recoveryCommitMessage = declaration.commit.message;
     const legacyMessage = recovered.commit.message;
     if (!recoveryCommitMessage || !legacyMessage) throw new Error("Missing conflict fixture");
@@ -203,12 +213,11 @@ describe("durable product release reservations", () => {
     declaration.commit.message = declarationMessage.replace(`Ledger-Recovery: ${legacy}`, "");
     recovered.commit.message = legacyMessage.replace(`\nLedger-Recovery: ${olderRecovery}`, "");
     olderRecoveryCommit.author = { login: bot };
-    await expect(
-      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read({
-        allowLegacyHead: true,
-        allowLegacyAncestor: true,
-      })
-    ).rejects.toThrow("does not bind its legacy commit");
+    const historicalAfterLegacy = await new GitHubLedgerStore(
+      new GitHubRelease(contract, "github-actions", github.transport)
+    ).read({ allowLegacyHead: true, allowLegacyAncestor: true });
+    expect(historicalAfterLegacy.legacySha).toBe(legacy);
+    expect(historicalAfterLegacy.recoverySha).toBeUndefined();
     headCommit.commit.message = headMessage;
     declaration.commit.message = declarationMessage;
     recovered.commit.message = legacyMessage;

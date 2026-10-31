@@ -461,7 +461,6 @@ export class GitHubLedgerStore implements LedgerStore {
         )
           throw new Error("Legacy ledger head is not a valid GitHub-signed recovery candidate");
         legacySha ||= commit.sha;
-        if (recoveryRequested) recoverySha ||= commit.sha;
       } else this.github.verifyBotCommit(commit.sha, raw);
       ledgerDigestFromMessage(commit.commit.message);
     }
@@ -490,13 +489,20 @@ export class GitHubLedgerStore implements LedgerStore {
       const legacyIndex = indexBySha.get(legacySha);
       if (legacyIndex === undefined)
         throw new Error("Ledger recovery marker does not bind its legacy commit");
+      // A marker source newer than the selected legacy target is active. Markers
+      // at or after that target are historical compatibility data only.
+      const activeRecoveryTerminals = [...recoveryTerminalOwners.entries()].filter(([source]) => {
+        const sourceIndex = indexBySha.get(source);
+        return sourceIndex !== undefined && sourceIndex < legacyIndex;
+      });
       for (const [source, terminal] of recoveryTerminalOwners) {
         const sourceIndex = indexBySha.get(source);
         if (sourceIndex !== undefined && sourceIndex < legacyIndex && terminal !== legacySha)
           throw new Error("Ledger recovery markers conflict");
       }
+      if (activeRecoveryTerminals.length > 0) recoverySha = legacySha;
     }
-    if (recoveryTargets.size > 0 && recoverySha === undefined)
+    if (recoveryTargets.size > 0 && legacySha === undefined)
       throw new Error("Ledger recovery marker does not bind its legacy commit");
     if (recoverySha !== undefined && legacySha !== recoverySha)
       throw new Error("Ledger recovery marker does not bind its legacy commit");
