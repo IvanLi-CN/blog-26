@@ -2,13 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   Clock3,
   ExternalLink,
   RefreshCcw,
   Timer,
   XCircle,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { adminApi } from "@/lib/admin-api-client";
 import { projectPublicEntryKindDefinitions } from "@/lib/project-catalog";
 import type { ProjectStatusResultDto, ProjectStatusResultStatus } from "@/lib/project-status";
@@ -36,20 +37,20 @@ import { formatDateTime, getErrorMessage, PageHeader } from "~/pages/helpers";
 
 type Filter = "all" | ProjectStatusResultStatus | "stale";
 
-function resultTone(result: ProjectStatusResultDto) {
-  if (result.status === "available" && result.freshness === "fresh") return "success" as const;
-  if (result.status === "unavailable") return "danger" as const;
-  return "warning" as const;
-}
-
-function ResultIcon({ result }: { result: ProjectStatusResultDto }) {
+function ResultIcon({
+  result,
+  className = "size-4",
+}: {
+  result: ProjectStatusResultDto;
+  className?: string;
+}) {
   if (result.status === "available" && result.freshness === "fresh") {
-    return <CheckCircle2 className="size-4 text-success" aria-hidden />;
+    return <CheckCircle2 className={`${className} text-success`} aria-hidden />;
   }
   if (result.status === "unavailable") {
-    return <XCircle className="size-4 text-destructive" aria-hidden />;
+    return <XCircle className={`${className} text-destructive`} aria-hidden />;
   }
-  return <AlertTriangle className="size-4 text-warning" aria-hidden />;
+  return <AlertTriangle className={`${className} text-warning`} aria-hidden />;
 }
 
 function statusLabel(status: string) {
@@ -82,12 +83,6 @@ function isProblem(result: ProjectStatusResultDto) {
   return result.status !== "available" || result.freshness === "stale";
 }
 
-function problemLabel(result: ProjectStatusResultDto) {
-  if (result.status === "unavailable") return "异常";
-  if (result.status === "unknown") return "未知";
-  return "stale";
-}
-
 function problemDetail(result: ProjectStatusResultDto) {
   if (result.status === "unknown") return "尚未完成成功检查，暂时不能确认入口状态。";
   if (result.errorMessage) return result.errorMessage;
@@ -107,6 +102,33 @@ function matrixRowTone(row: ProjectStatusMatrixRow) {
   return "bg-warning/[0.025]";
 }
 
+function MatrixCellSummary({ results }: { results: ProjectStatusResultDto[] }) {
+  if (results.length === 0) {
+    return <span className="text-muted-foreground/45">—</span>;
+  }
+
+  const problemCount = results.filter(isProblem).length;
+  const availableCount = results.length - problemCount;
+  const statusResult = results.find(isProblem) ?? results[0];
+  const label =
+    problemCount > 0
+      ? `${problemCount} 个问题，${availableCount} 个可用`
+      : `${availableCount} 个可用`;
+
+  return (
+    <span
+      role="img"
+      className={`inline-flex items-center gap-1.5 text-xs font-semibold tabular-nums ${
+        problemCount > 0 ? "text-destructive" : "text-success"
+      }`}
+      aria-label={label}
+    >
+      <ResultIcon result={statusResult} className="size-3.5" />
+      <span>{problemCount > 0 ? `${problemCount}/${results.length}` : results.length}</span>
+    </span>
+  );
+}
+
 export function ProjectStatusPage() {
   const queryClient = useQueryClient();
   const [domain, setDomain] = useState("all");
@@ -114,6 +136,7 @@ export function ProjectStatusPage() {
   const [kind, setKind] = useState("all");
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const overviewQuery = useQuery({
     queryKey: ["admin-project-status-overview"],
     queryFn: adminApi.getProjectStatusOverview,
@@ -205,11 +228,23 @@ export function ProjectStatusPage() {
     (overview?.summary.unknown ?? 0) +
     (overview?.summary.stale ?? 0);
 
+  const toggleProject = (projectSlug: string) => {
+    setExpandedProjects((current) => {
+      const next = new Set(current);
+      if (next.has(projectSlug)) {
+        next.delete(projectSlug);
+      } else {
+        next.add(projectSlug);
+      }
+      return next;
+    });
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="项目入口状态"
-        description="按链接分组展示项目状态，异常项目排在矩阵顶部。"
+        description="按链接分组一览项目状态；展开项目行查看具体入口。"
         actions={
           <>
             <Button
@@ -313,11 +348,11 @@ export function ProjectStatusPage() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 id="project-status-results" className="text-xl font-semibold">
-              项目状态矩阵
+              项目状态一览表
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {matrixRows.length > 0
-                ? `行是 ${matrixRows.length} 个项目，列是 ${matrixLinkGroups.length} 个链接分组；${filteredResults.length} 个入口按项目归并，${problemResults.length} 个问题优先标记。`
+                ? `行是 ${matrixRows.length} 个项目，列是 ${matrixLinkGroups.length} 个链接分组；${filteredResults.length} 个入口已压缩为状态摘要，${problemResults.length} 个问题优先标记。`
                 : totalProblems > 0
                   ? "当前筛选没有匹配的项目，尝试清除筛选。"
                   : "本批次尚未产生项目结果。"}
@@ -328,6 +363,21 @@ export function ProjectStatusPage() {
               清除结果筛选
             </Button>
           ) : null}
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <span>状态图例</span>
+          <span className="inline-flex items-center gap-1.5">
+            <CheckCircle2 className="size-3.5 text-success" aria-hidden />
+            可用
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <XCircle className="size-3.5 text-destructive" aria-hidden />
+            异常
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <AlertTriangle className="size-3.5 text-warning" aria-hidden />
+            未知 / stale
+          </span>
         </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <Input
@@ -381,87 +431,110 @@ export function ProjectStatusPage() {
           <EmptyState title="没有匹配的项目" description="调整筛选条件后重试。" />
         ) : (
           <div className="overflow-x-auto rounded-2xl border border-border/58 bg-card/72 lg:rounded-[1rem]">
-            <Table className="table-fixed min-w-[980px]">
-              <caption className="sr-only">项目与链接分组状态矩阵（异常项目优先）</caption>
+            <Table className="table-fixed min-w-[760px] text-[13px]">
+              <caption className="sr-only">项目与链接分组状态一览表（异常项目优先）</caption>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[18%]">项目</TableHead>
+                  <TableHead className="h-10 w-[24%] py-2 normal-case tracking-normal">
+                    项目
+                  </TableHead>
                   {matrixLinkGroups.map((linkGroup) => (
-                    <TableHead key={linkGroup.id} className="w-[16.4%] align-top">
-                      <div className="font-semibold">{linkGroup.label}</div>
-                      <div className="mt-1 font-normal text-muted-foreground">{linkGroup.id}</div>
+                    <TableHead
+                      key={linkGroup.id}
+                      className="h-10 w-[15.2%] py-2 normal-case tracking-normal"
+                    >
+                      {linkGroup.label}
                     </TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {matrixRows.map((row) => {
+                  const expanded = expandedProjects.has(row.projectSlug);
+                  const rowResults = [...row.cells.values()].flat();
                   return (
-                    <TableRow key={row.projectSlug} className={matrixRowTone(row)}>
-                      <TableCell className="align-top">
-                        <div className="min-w-0">
-                          <div className="font-medium leading-5">{row.projectTitle}</div>
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            {row.problemCount > 0
-                              ? `${row.problemCount} 个问题`
-                              : `${[...row.cells.values()].flat().length} 个入口可用`}
+                    <Fragment key={row.projectSlug}>
+                      <TableRow className={matrixRowTone(row)}>
+                        <TableCell className="py-2 align-middle">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Button
+                              variant="bare"
+                              size="icon"
+                              className="shrink-0"
+                              aria-label={`${expanded ? "收起" : "展开"} ${row.projectTitle} 入口详情`}
+                              aria-expanded={expanded}
+                              onClick={() => toggleProject(row.projectSlug)}
+                            >
+                              <ChevronDown
+                                className={`size-4 transition-transform ${expanded ? "rotate-180" : ""}`}
+                                aria-hidden
+                              />
+                            </Button>
+                            <div className="min-w-0">
+                              <div className="truncate font-medium leading-5">
+                                {row.projectTitle}
+                              </div>
+                              <div className="mt-0.5 text-xs text-muted-foreground">
+                                {row.problemCount > 0
+                                  ? `${row.problemCount} 个问题`
+                                  : `${rowResults.length} 个入口可用`}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      {matrixLinkGroups.map((linkGroup) => {
-                        const results = row.cells.get(linkGroup.id) ?? [];
-                        return (
-                          <TableCell key={linkGroup.id} className="align-top">
-                            {results.length > 0 ? (
-                              <div className="space-y-2">
-                                {results.map((result) => {
+                        </TableCell>
+                        {matrixLinkGroups.map((linkGroup) => {
+                          const results = row.cells.get(linkGroup.id) ?? [];
+                          return (
+                            <TableCell key={linkGroup.id} className="py-2 align-middle">
+                              <MatrixCellSummary results={results} />
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                      {expanded ? (
+                        <TableRow className="bg-muted/20 hover:bg-muted/20">
+                          <TableCell colSpan={matrixLinkGroups.length + 1} className="px-4 py-3">
+                            <div className="grid gap-x-6 gap-y-2 md:grid-cols-2 xl:grid-cols-3">
+                              {matrixLinkGroups.flatMap((linkGroup) =>
+                                (row.cells.get(linkGroup.id) ?? []).map((result) => {
                                   const issue = isProblem(result);
                                   return (
                                     <div
                                       key={result.entryKey}
-                                      className={`rounded-lg border px-2.5 py-2 ${
-                                        issue
-                                          ? result.status === "unavailable"
-                                            ? "border-destructive/30 bg-destructive/7"
-                                            : "border-warning/35 bg-warning/8"
-                                          : "border-border/50 bg-background/35"
-                                      }`}
+                                      className="flex min-w-0 items-center gap-2 border-b border-border/35 pb-2 last:border-b-0"
+                                      title={issue ? problemDetail(result) : undefined}
                                     >
-                                      <div className="flex items-start gap-1.5">
-                                        <ResultIcon result={result} />
-                                        <div className="min-w-0 flex-1">
-                                          <a
-                                            className="inline-flex max-w-full items-start gap-1 text-sm font-medium leading-5 text-primary hover:underline"
-                                            href={result.href}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                          >
-                                            <span className="truncate">{result.entryLabel}</span>
-                                            <ExternalLink className="mt-0.5 size-3 shrink-0" />
-                                          </a>
-                                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                                            <Badge tone={resultTone(result)}>
-                                              {issue ? problemLabel(result) : "可用"}
-                                            </Badge>
-                                            <span className="text-[11px] text-muted-foreground">
-                                              {issue
-                                                ? problemDetail(result)
-                                                : `HTTP ${result.httpStatus ?? "-"}`}
-                                            </span>
-                                          </div>
-                                        </div>
-                                      </div>
+                                      <span className="w-16 shrink-0 truncate text-xs font-medium text-muted-foreground">
+                                        {linkGroup.label}
+                                      </span>
+                                      <ResultIcon result={result} className="size-3.5 shrink-0" />
+                                      <a
+                                        className="min-w-0 truncate text-xs font-medium text-primary hover:underline"
+                                        href={result.href}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                      >
+                                        {result.entryLabel}
+                                        <ExternalLink className="ml-1 inline size-3" aria-hidden />
+                                      </a>
+                                      <span
+                                        className={`ml-auto min-w-0 max-w-[18rem] truncate text-[11px] ${
+                                          issue ? "text-destructive" : "text-muted-foreground"
+                                        }`}
+                                      >
+                                        {issue
+                                          ? problemDetail(result)
+                                          : `HTTP ${result.httpStatus ?? "-"}`}
+                                      </span>
                                     </div>
                                   );
-                                })}
-                              </div>
-                            ) : (
-                              <span className="text-sm text-muted-foreground/45">—</span>
-                            )}
+                                })
+                              )}
+                            </div>
                           </TableCell>
-                        );
-                      })}
-                    </TableRow>
+                        </TableRow>
+                      ) : null}
+                    </Fragment>
                   );
                 })}
               </TableBody>
