@@ -21,6 +21,7 @@
 - 收紧 recovery marker 读取：每个 marker 都必须是合法且位于实际单父祖先链中的 SHA；孤立、格式错误或未绑定 marker 与合法 marker 共存时仍必须拒绝登记。
 - 继续收紧 recovery marker：只解析 head 到 bootstrap root 的 ledger 链，要求 marker 指向声明提交的严格祖先、active legacy target 之前的 marker lineage 收敛到同一 owner legacy，并拒绝同提交多个 marker 或 active lineage 中彼此断开的 marker；target 之后的历史 marker 仍逐一验证；CAS 返回已验证提交后即使 branch 被并发推进也不再误报写入失败。
 - 补强 bootstrap recovery workflow：不可变 marker 写入前必须确认 target 位于 root-bound 单父 ledger 链、由 owner 经 `web-flow` Verified 提交并带机器人 Signed-off-by，拒绝不存在、越过 bootstrap root 或签名不可信的 target。
+- Bootstrap recovery workflow 改为复用 `GitHubLedgerStore.read`、`assertMerge` 与 `compareAndSwap`，在写入前拒绝损坏账本和错误 PR merge，并对已完成的相同 recovery 请求幂等退出。
 
 ## References
 

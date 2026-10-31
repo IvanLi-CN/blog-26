@@ -296,18 +296,21 @@ describe("prerelease workflow deployment boundary", () => {
   });
 
   test("ledger recovery validates the target before writing an immutable marker", () => {
-    expect(bootstrapLedgerRecovery).toContain("legacyCommit.author?.login !== owner");
-    expect(bootstrapLedgerRecovery).toContain('legacyCommit.committer?.login !== "web-flow"');
+    expect(bootstrapLedgerRecovery).toContain("GitHubLedgerStore");
     expect(bootstrapLedgerRecovery).toContain(
-      "legacyCommit.commit?.verification?.verified !== true"
+      "store.read({ allowLegacyHead: true, allowLegacyAncestor: true })"
     );
     expect(bootstrapLedgerRecovery).toContain(
-      "legacy_sha must be on the root-bound release ledger ancestor chain"
+      "assertMerge(github, entry, github.pull(entry.prNumber), mergeSha)"
     );
-    expect(bootstrapLedgerRecovery).toContain("commit.parents.length !== 1");
-    expect(bootstrapLedgerRecovery).toMatch(/Bootstrap-Source: \$\{bootstrapSource\}/);
-    const validation = bootstrapLedgerRecovery.indexOf("const legacyCommit = await api");
-    const mutation = bootstrapLedgerRecovery.indexOf("createCommitOnBranch");
+    expect(bootstrapLedgerRecovery).toContain(
+      "store.compareAndSwap(current.sha, nextLedger, legacySha)"
+    );
+    expect(bootstrapLedgerRecovery).toContain("Recovery already bound at");
+    expect(bootstrapLedgerRecovery).toContain("oven-sh/setup-bun@v2");
+    expect(bootstrapLedgerRecovery).toContain("bun install --frozen-lockfile");
+    const validation = bootstrapLedgerRecovery.indexOf("const current = await store.read");
+    const mutation = bootstrapLedgerRecovery.indexOf("store.compareAndSwap");
     expect(validation).toBeGreaterThanOrEqual(0);
     expect(mutation).toBeGreaterThan(validation);
   });
