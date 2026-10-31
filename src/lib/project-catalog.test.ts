@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { getProjectStatusCatalogEntries, projectCatalog } from "./project-catalog";
+import {
+  getProjectStatusCatalogEntries,
+  projectCatalog,
+  projectPublicEntryKindDefinitions,
+} from "./project-catalog";
 
 describe("project status catalog projection", () => {
   test("projects the complete external directory and excludes internal routes", () => {
@@ -10,5 +14,12 @@ describe("project status catalog projection", () => {
     expect(new Set(entries.map((entry) => entry.href)).size).toBe(42);
     expect(entries.every((entry) => !entry.href.includes("/projects/"))).toBe(true);
     expect(entries.every((entry) => entry.entryKey.includes(entry.projectSlug))).toBe(true);
+    expect(projectPublicEntryKindDefinitions.map((entry) => entry.id)).toEqual([
+      "site",
+      "demo",
+      "officialDocs",
+      "docs",
+      "repository",
+    ]);
   });
 });

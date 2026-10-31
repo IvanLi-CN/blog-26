@@ -16,6 +16,11 @@ export interface ProjectPublicEntry {
   href: string;
 }
 
+export interface ProjectPublicEntryKindDefinition {
+  id: ProjectPublicEntryKind;
+  label: string;
+}
+
 export interface ProjectStatusCatalogEntry extends ProjectPublicEntry {
   entryKey: string;
   projectSlug: string;
@@ -94,6 +99,15 @@ const publicEntryMeta: Record<ProjectPublicEntryKind, { label: string }> = {
   docs: { label: "文档" },
   repository: { label: "开源仓库" },
 };
+
+/** Shared link-group projection used by status reports and other consumers. */
+export const projectPublicEntryKindDefinitions: readonly ProjectPublicEntryKindDefinition[] = [
+  { id: "site", label: publicEntryMeta.site.label },
+  { id: "demo", label: publicEntryMeta.demo.label },
+  { id: "officialDocs", label: publicEntryMeta.officialDocs.label },
+  { id: "docs", label: publicEntryMeta.docs.label },
+  { id: "repository", label: publicEntryMeta.repository.label },
+];
 
 /** Return the complete public destination projection used by every consumer. */
 export function getProjectPublicEntries(project: ProjectCatalogItem): ProjectPublicEntry[] {

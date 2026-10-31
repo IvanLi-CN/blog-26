@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { adminApi } from "@/lib/admin-api-client";
-import { projectDomains } from "@/lib/project-catalog";
+import { projectPublicEntryKindDefinitions } from "@/lib/project-catalog";
 import type { ProjectStatusResultDto, ProjectStatusResultStatus } from "@/lib/project-status";
 import {
   Alert,
@@ -161,9 +161,9 @@ export function ProjectStatusPage() {
       });
   }, [domain, filter, kind, overview?.results, project, query]);
 
-  const matrixDomains = useMemo(
-    () => projectDomains.filter(({ id }) => domain === "all" || id === domain),
-    [domain]
+  const matrixLinkGroups = useMemo(
+    () => projectPublicEntryKindDefinitions.filter(({ id }) => kind === "all" || id === kind),
+    [kind]
   );
 
   const matrixRows = useMemo(() => {
@@ -175,9 +175,9 @@ export function ProjectStatusPage() {
         cells: new Map<string, ProjectStatusResultDto[]>(),
         problemCount: 0,
       };
-      const cell = row.cells.get(result.domain) ?? [];
+      const cell = row.cells.get(result.entryKind) ?? [];
       cell.push(result);
-      row.cells.set(result.domain, cell);
+      row.cells.set(result.entryKind, cell);
       if (isProblem(result)) row.problemCount += 1;
       rows.set(result.projectSlug, row);
     }
@@ -209,7 +209,7 @@ export function ProjectStatusPage() {
     <div className="space-y-6">
       <PageHeader
         title="项目入口状态"
-        description="按共享域名分组展示项目状态，异常项目排在矩阵顶部。"
+        description="按链接分组展示项目状态，异常项目排在矩阵顶部。"
         actions={
           <>
             <Button
@@ -317,7 +317,7 @@ export function ProjectStatusPage() {
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {matrixRows.length > 0
-                ? `行是 ${matrixRows.length} 个项目，列是 ${matrixDomains.length} 个域名分组；${filteredResults.length} 个入口按项目归并，${problemResults.length} 个问题优先标记。`
+                ? `行是 ${matrixRows.length} 个项目，列是 ${matrixLinkGroups.length} 个链接分组；${filteredResults.length} 个入口按项目归并，${problemResults.length} 个问题优先标记。`
                 : totalProblems > 0
                   ? "当前筛选没有匹配的项目，尝试清除筛选。"
                   : "本批次尚未产生项目结果。"}
@@ -336,8 +336,8 @@ export function ProjectStatusPage() {
             placeholder="搜索项目、入口或 URL"
             aria-label="搜索入口"
           />
-          <Select value={domain} onValueChange={setDomain} aria-label="筛选域名分组">
-            <option value="all">全部域名分组</option>
+          <Select value={domain} onValueChange={setDomain} aria-label="筛选项目分类">
+            <option value="all">全部项目分类</option>
             {domainOptions.map(([value]) => (
               <option key={value} value={value}>
                 {value}
@@ -352,13 +352,13 @@ export function ProjectStatusPage() {
               </option>
             ))}
           </Select>
-          <Select value={kind} onValueChange={setKind} aria-label="筛选类型">
-            <option value="all">全部类型</option>
-            <option value="site">项目站点</option>
-            <option value="demo">Demo</option>
-            <option value="officialDocs">官方文档</option>
-            <option value="docs">文档</option>
-            <option value="repository">开源仓库</option>
+          <Select value={kind} onValueChange={setKind} aria-label="筛选链接分组">
+            <option value="all">全部链接分组</option>
+            {projectPublicEntryKindDefinitions.map(({ id, label }) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ))}
           </Select>
           <Select
             value={filter}
@@ -382,16 +382,14 @@ export function ProjectStatusPage() {
         ) : (
           <div className="overflow-x-auto rounded-2xl border border-border/58 bg-card/72 lg:rounded-[1rem]">
             <Table className="table-fixed min-w-[980px]">
-              <caption className="sr-only">项目与域名分组状态矩阵（异常项目优先）</caption>
+              <caption className="sr-only">项目与链接分组状态矩阵（异常项目优先）</caption>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[18%]">项目</TableHead>
-                  {matrixDomains.map((domainDefinition) => (
-                    <TableHead key={domainDefinition.id} className="w-[13.66%] align-top">
-                      <div className="font-semibold">{domainDefinition.title}</div>
-                      <div className="mt-1 font-normal text-muted-foreground">
-                        {domainDefinition.id}
-                      </div>
+                  {matrixLinkGroups.map((linkGroup) => (
+                    <TableHead key={linkGroup.id} className="w-[16.4%] align-top">
+                      <div className="font-semibold">{linkGroup.label}</div>
+                      <div className="mt-1 font-normal text-muted-foreground">{linkGroup.id}</div>
                     </TableHead>
                   ))}
                 </TableRow>
@@ -410,10 +408,10 @@ export function ProjectStatusPage() {
                           </div>
                         </div>
                       </TableCell>
-                      {matrixDomains.map((domainDefinition) => {
-                        const results = row.cells.get(domainDefinition.id) ?? [];
+                      {matrixLinkGroups.map((linkGroup) => {
+                        const results = row.cells.get(linkGroup.id) ?? [];
                         return (
-                          <TableCell key={domainDefinition.id} className="align-top">
+                          <TableCell key={linkGroup.id} className="align-top">
                             {results.length > 0 ? (
                               <div className="space-y-2">
                                 {results.map((result) => {

@@ -106,10 +106,11 @@ describe("ProjectStatusPage", () => {
     expect(await findByText("项目入口状态")).toBeTruthy();
     expect(await findByRole("heading", { name: "项目状态矩阵" })).toBeTruthy();
     expect(
-      await findByRole("table", { name: "项目与域名分组状态矩阵（异常项目优先）" })
+      await findByRole("table", { name: "项目与链接分组状态矩阵（异常项目优先）" })
     ).toBeTruthy();
     expect(await findByRole("columnheader", { name: "项目" })).toBeTruthy();
-    expect(await findByRole("columnheader", { name: /开发工具/ })).toBeTruthy();
+    expect(await findByRole("columnheader", { name: /项目站点/ })).toBeTruthy();
+    expect(await findByRole("columnheader", { name: /开源仓库/ })).toBeTruthy();
     expect(await findByText("目标返回 HTTP 503")).toBeTruthy();
     fireEvent.click(getByRole("button", { name: "手动检查" }));
     expect(await findByRole("button", { name: "检查中" })).toBeTruthy();

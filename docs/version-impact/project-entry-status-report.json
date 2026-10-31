@@ -6,8 +6,8 @@
     "GLOSSARY.md": "f3031cc1d9c75459850a8e26365bd0c46b9f6703",
     "apps/admin/src/components/app-shell.tsx": "39a3a18399fb61d65bdc27003157b2cbeb49d4b3",
     "apps/admin/src/demo/mock-admin-api.ts": "968beee5b0feacd1a573ca24810458c43a11c67c",
-    "apps/admin/src/pages/project-status.test.tsx": "8d7788d0bf3fabfa88238263edd969f66c0c19be",
-    "apps/admin/src/pages/project-status.tsx": "96317c310c83f8369510b1fc95989d087bd534c5",
+    "apps/admin/src/pages/project-status.test.tsx": "64222c0597abeb922c0a0829604c47fb5fcb03f5",
+    "apps/admin/src/pages/project-status.tsx": "a9ce87404e6b9e5fa95a3dd2c3574d9d387fbd3b",
     "apps/admin/src/router.tsx": "d0740e1e0313421a8149376d1167b6b64a09a302",
     "astro.config.mjs": "eb89dbcbdb6975f0ed76d49c486d6f9c0a1deaad",
     "drizzle/0021_project_status.sql": "3f3a5cd4a02859266c40b986f56926d7956205bc",
@@ -24,8 +24,8 @@
     "site/layouts/BaseLayout.astro": "0a163667e1e853c1ab9485cd400b915093997449",
     "site/pages/share.astro": "03a009cf2080d51e08093c16b2feabe2eaf5695f",
     "src/lib/admin-api-client.ts": "1c47e4cec3e11cfca717febd0c69a530b96e5e58",
-    "src/lib/project-catalog.test.ts": "44da6b3d535acd8ff686c9103d4e3df866af0a78",
-    "src/lib/project-catalog.ts": "ae19cf4045e79481467a98c8473fdcf13ea56896",
+    "src/lib/project-catalog.test.ts": "2bfc0b4128416cf8384a471ce78880760c402fd6",
+    "src/lib/project-catalog.ts": "caee12024ea5dbf17f3d3eefb5a325fca7983339",
     "src/lib/project-status.ts": "2d60e4a9e567b768bdf688f0697d25034f339202",
     "src/lib/schema.ts": "18b715fc00549098bf0f4a78aa6f38439a7a82d3",
     "src/lib/search/web-demo-fixtures.ts": "dbafc4dabe3c04a57c4ca4320d64504355161bb4",
@@ -72,8 +72,8 @@
         },
         {
           "path": "apps/admin/src/pages/project-status.test.tsx",
-          "blob": "8d7788d0bf3fabfa88238263edd969f66c0c19be",
-          "command": "Admin page coverage verifies the project-by-domain matrix headers, problem cell, and manual trigger loading state"
+          "blob": "64222c0597abeb922c0a0829604c47fb5fcb03f5",
+          "command": "Admin page coverage verifies the project-by-link-group matrix headers, problem cell, and manual trigger loading state"
         }
       ],
       "scope_drift": {
@@ -88,7 +88,7 @@
       "evidence": [
         {
           "path": "src/lib/project-catalog.test.ts",
-          "blob": "44da6b3d535acd8ff686c9103d4e3df866af0a78",
+          "blob": "2bfc0b4128416cf8384a471ce78880760c402fd6",
           "command": "Focused catalog test verifies 16 projects, 42 entries, unique URLs, stable keys, and exclusion of internal project routes"
         },
         {
@@ -98,8 +98,8 @@
         },
         {
           "path": "apps/admin/src/pages/project-status.tsx",
-          "blob": "96317c310c83f8369510b1fc95989d087bd534c5",
-          "command": "Official /admin/project-status route verified as a 16-project by 6-domain-group matrix containing all 42 entries, with problem projects first at desktop and 393x852 mobile viewports; manual check reached checking state with no app console errors"
+          "blob": "a9ce87404e6b9e5fa95a3dd2c3574d9d387fbd3b",
+          "command": "Official /admin/project-status route verified as a 16-project by 5-link-group matrix containing all 42 entries, with problem projects first at desktop and 393x852 mobile viewports; manual check reached checking state with no app console errors"
         },
         {
           "path": "drizzle/0021_project_status.sql",
