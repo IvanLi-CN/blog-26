@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { adminApi } from "@/lib/admin-api-client";
+import { projectDomains } from "@/lib/project-catalog";
 import type { ProjectStatusResultDto, ProjectStatusResultStatus } from "@/lib/project-status";
 import {
   Alert,
@@ -94,6 +95,18 @@ function problemDetail(result: ProjectStatusResultDto) {
   return `HTTP ${result.httpStatus ?? "-"} 返回异常。`;
 }
 
+type ProjectStatusMatrixRow = {
+  projectSlug: string;
+  projectTitle: string;
+  cells: Map<string, ProjectStatusResultDto[]>;
+  problemCount: number;
+};
+
+function matrixRowTone(row: ProjectStatusMatrixRow) {
+  if (row.problemCount === 0) return "";
+  return "bg-warning/[0.025]";
+}
+
 export function ProjectStatusPage() {
   const queryClient = useQueryClient();
   const [domain, setDomain] = useState("all");
@@ -148,6 +161,34 @@ export function ProjectStatusPage() {
       });
   }, [domain, filter, kind, overview?.results, project, query]);
 
+  const matrixDomains = useMemo(
+    () => projectDomains.filter(({ id }) => domain === "all" || id === domain),
+    [domain]
+  );
+
+  const matrixRows = useMemo(() => {
+    const rows = new Map<string, ProjectStatusMatrixRow>();
+    for (const result of filteredResults) {
+      const row = rows.get(result.projectSlug) ?? {
+        projectSlug: result.projectSlug,
+        projectTitle: result.projectTitle,
+        cells: new Map<string, ProjectStatusResultDto[]>(),
+        problemCount: 0,
+      };
+      const cell = row.cells.get(result.domain) ?? [];
+      cell.push(result);
+      row.cells.set(result.domain, cell);
+      if (isProblem(result)) row.problemCount += 1;
+      rows.set(result.projectSlug, row);
+    }
+    return [...rows.values()].sort(
+      (left, right) =>
+        Number(right.problemCount > 0) - Number(left.problemCount > 0) ||
+        right.problemCount - left.problemCount ||
+        left.projectTitle.localeCompare(right.projectTitle, "zh-CN")
+    );
+  }, [filteredResults]);
+
   const projectOptions = useMemo(
     () => [
       ...new Map((overview?.catalog ?? []).map((entry) => [entry.projectSlug, entry.projectTitle])),
@@ -168,7 +209,7 @@ export function ProjectStatusPage() {
     <div className="space-y-6">
       <PageHeader
         title="项目入口状态"
-        description="完整入口结果默认显示，异常、未知和 stale 排在表格顶部。"
+        description="按共享域名分组展示项目状态，异常项目排在矩阵顶部。"
         actions={
           <>
             <Button
@@ -272,14 +313,14 @@ export function ProjectStatusPage() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 id="project-status-results" className="text-xl font-semibold">
-              全部入口
+              项目状态矩阵
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {filteredResults.length > 0
-                ? `共 ${filteredResults.length} 个入口；${problemResults.length} 个问题排在最前，项目、状态、原因和检查信息在同一行对照。`
+              {matrixRows.length > 0
+                ? `行是 ${matrixRows.length} 个项目，列是 ${matrixDomains.length} 个域名分组；${filteredResults.length} 个入口按项目归并，${problemResults.length} 个问题优先标记。`
                 : totalProblems > 0
-                  ? "当前筛选没有匹配的入口，尝试清除筛选。"
-                  : "本批次尚未产生入口结果。"}
+                  ? "当前筛选没有匹配的项目，尝试清除筛选。"
+                  : "本批次尚未产生项目结果。"}
             </p>
           </div>
           {filter !== "all" ? (
@@ -295,8 +336,8 @@ export function ProjectStatusPage() {
             placeholder="搜索项目、入口或 URL"
             aria-label="搜索入口"
           />
-          <Select value={domain} onValueChange={setDomain} aria-label="筛选领域">
-            <option value="all">全部领域</option>
+          <Select value={domain} onValueChange={setDomain} aria-label="筛选域名分组">
+            <option value="all">全部域名分组</option>
             {domainOptions.map(([value]) => (
               <option key={value} value={value}>
                 {value}
@@ -336,108 +377,92 @@ export function ProjectStatusPage() {
           <div className="flex min-h-48 items-center justify-center rounded-2xl border border-border/52 bg-card/54">
             <Spinner className="size-6" />
           </div>
-        ) : filteredResults.length === 0 ? (
-          <EmptyState title="没有匹配的入口" description="调整筛选条件后重试。" />
+        ) : matrixRows.length === 0 ? (
+          <EmptyState title="没有匹配的项目" description="调整筛选条件后重试。" />
         ) : (
           <div className="overflow-x-auto rounded-2xl border border-border/58 bg-card/72 lg:rounded-[1rem]">
-            <Table className="table-fixed md:min-w-[1120px]">
-              <caption className="sr-only">全部项目入口状态（问题优先）</caption>
+            <Table className="table-fixed min-w-[980px]">
+              <caption className="sr-only">项目与域名分组状态矩阵（异常项目优先）</caption>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[34%] md:w-[20%]">项目 / 入口</TableHead>
-                  <TableHead className="hidden md:table-cell md:w-[24%]">目标 URL</TableHead>
-                  <TableHead className="w-[18%] md:w-[12%]">状态</TableHead>
-                  <TableHead className="w-[38%] md:w-[27%]">问题 / 结果</TableHead>
-                  <TableHead className="hidden md:table-cell md:w-[17%]">检查信息</TableHead>
-                  <TableHead className="w-12 md:w-12" aria-label="操作" />
+                  <TableHead className="w-[18%]">项目</TableHead>
+                  {matrixDomains.map((domainDefinition) => (
+                    <TableHead key={domainDefinition.id} className="w-[13.66%] align-top">
+                      <div className="font-semibold">{domainDefinition.title}</div>
+                      <div className="mt-1 font-normal text-muted-foreground">
+                        {domainDefinition.id}
+                      </div>
+                    </TableHead>
+                  ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredResults.map((result) => {
-                  const issue = isProblem(result);
+                {matrixRows.map((row) => {
                   return (
-                    <TableRow
-                      key={result.entryKey}
-                      className={
-                        issue
-                          ? result.status === "unavailable"
-                            ? "bg-destructive/[0.035]"
-                            : "bg-warning/[0.035]"
-                          : undefined
-                      }
-                    >
+                    <TableRow key={row.projectSlug} className={matrixRowTone(row)}>
                       <TableCell className="align-top">
-                        <div className="flex min-w-0 items-start gap-2">
-                          <ResultIcon result={result} />
-                          <div className="min-w-0">
-                            <div className="font-medium leading-5">{result.projectTitle}</div>
-                            <div className="mt-1 text-sm text-muted-foreground">
-                              {result.entryLabel}
-                            </div>
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              {result.entryKind}
-                            </div>
+                        <div className="min-w-0">
+                          <div className="font-medium leading-5">{row.projectTitle}</div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {row.problemCount > 0
+                              ? `${row.problemCount} 个问题`
+                              : `${[...row.cells.values()].flat().length} 个入口可用`}
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden max-w-[260px] align-top md:table-cell">
-                        <a
-                          className="inline-flex max-w-full items-start gap-1 text-primary hover:underline"
-                          href={result.href}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <span className="break-all text-xs leading-5">{result.href}</span>
-                          <ExternalLink className="mt-0.5 size-3 shrink-0" />
-                        </a>
-                        {result.finalUrl && result.finalUrl !== result.href ? (
-                          <div className="mt-2 break-all text-xs leading-5 text-muted-foreground">
-                            最终：{result.finalUrl}
-                          </div>
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="align-top">
-                        <Badge tone={resultTone(result)}>
-                          {issue ? problemLabel(result) : "可用"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="align-top">
-                        <div
-                          className={
-                            issue
-                              ? "font-medium leading-5 text-foreground"
-                              : "leading-5 text-muted-foreground"
-                          }
-                        >
-                          {issue
-                            ? problemDetail(result)
-                            : `HTTP ${result.httpStatus ?? "-"} 返回正常。`}
-                        </div>
-                        <div className="mt-1 text-xs leading-5 text-muted-foreground">
-                          {result.domain}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden whitespace-nowrap align-top text-xs leading-5 text-muted-foreground md:table-cell">
-                        <div>HTTP {result.httpStatus ?? "-"}</div>
-                        <div>
-                          {result.attemptCount} 次尝试 ·{" "}
-                          {result.latencyMs === null ? "-" : `${result.latencyMs} ms`}
-                        </div>
-                        <div>{result.checkedAt ? formatDateTime(result.checkedAt) : "未检查"}</div>
-                      </TableCell>
-                      <TableCell className="align-top">
-                        <Button
-                          asChild
-                          size="icon"
-                          variant="ghost"
-                          aria-label={`打开 ${result.entryLabel}`}
-                          title={`打开 ${result.entryLabel}`}
-                        >
-                          <a href={result.href} target="_blank" rel="noreferrer">
-                            <ExternalLink />
-                          </a>
-                        </Button>
-                      </TableCell>
+                      {matrixDomains.map((domainDefinition) => {
+                        const results = row.cells.get(domainDefinition.id) ?? [];
+                        return (
+                          <TableCell key={domainDefinition.id} className="align-top">
+                            {results.length > 0 ? (
+                              <div className="space-y-2">
+                                {results.map((result) => {
+                                  const issue = isProblem(result);
+                                  return (
+                                    <div
+                                      key={result.entryKey}
+                                      className={`rounded-lg border px-2.5 py-2 ${
+                                        issue
+                                          ? result.status === "unavailable"
+                                            ? "border-destructive/30 bg-destructive/7"
+                                            : "border-warning/35 bg-warning/8"
+                                          : "border-border/50 bg-background/35"
+                                      }`}
+                                    >
+                                      <div className="flex items-start gap-1.5">
+                                        <ResultIcon result={result} />
+                                        <div className="min-w-0 flex-1">
+                                          <a
+                                            className="inline-flex max-w-full items-start gap-1 text-sm font-medium leading-5 text-primary hover:underline"
+                                            href={result.href}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                          >
+                                            <span className="truncate">{result.entryLabel}</span>
+                                            <ExternalLink className="mt-0.5 size-3 shrink-0" />
+                                          </a>
+                                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                            <Badge tone={resultTone(result)}>
+                                              {issue ? problemLabel(result) : "可用"}
+                                            </Badge>
+                                            <span className="text-[11px] text-muted-foreground">
+                                              {issue
+                                                ? problemDetail(result)
+                                                : `HTTP ${result.httpStatus ?? "-"}`}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <span className="text-sm text-muted-foreground/45">—</span>
+                            )}
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
                   );
                 })}
