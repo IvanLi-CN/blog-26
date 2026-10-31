@@ -25,6 +25,22 @@ const repositoryCommitSchema = z.object({
     verification: z.object({ verified: z.boolean(), reason: z.string() }),
   }),
 });
+
+function ledgerDigestFromMessage(message: string): string {
+  const lines = message.split(/\r?\n/).filter((line) => line.startsWith("Ledger-Digest:"));
+  if (lines.length !== 1) throw new Error("Ledger commit must contain one state digest");
+  const digestValue = /^Ledger-Digest: ([a-f0-9]{64})$/.exec(lines[0])?.[1];
+  if (!digestValue) throw new Error("Ledger commit has an invalid state digest");
+  return digestValue;
+}
+
+export function assertRecoveryTarget(
+  currentLegacySha: string | undefined,
+  requestedLegacySha: string
+): void {
+  if (!currentLegacySha || currentLegacySha !== requestedLegacySha)
+    throw new Error("Recovery target does not match the verified active legacy identity");
+}
 const checkRunSchema = z.object({
   id: z.number().int().positive(),
   name: z.string(),
@@ -367,7 +383,7 @@ export class GitHubLedgerStore implements LedgerStore {
 
   async read(
     options: { allowLegacyHead?: boolean; allowLegacyAncestor?: boolean } = {}
-  ): Promise<{ sha: string; ledger: ReleaseLedger; legacySha?: string }> {
+  ): Promise<{ sha: string; ledger: ReleaseLedger; legacySha?: string; recoverySha?: string }> {
     const { contract } = this.github;
     const sha = this.github.reference(`heads/${contract.ledgerBranch}`);
     if (!sha)
@@ -383,6 +399,8 @@ export class GitHubLedgerStore implements LedgerStore {
       if (commit.sha !== expected || commit.parents.length > 1)
         throw new Error("Ledger history is not a single-parent chain");
       ledgerCommits.push(commit);
+      // Older recovery wrappers remain readable; root/head content is authoritative while
+      // every traversed wrapper still requires one exact, signed digest declaration.
       const parent = commit.parents[0];
       if (commit.commit.message.includes(`Bootstrap-Source: ${contract.bootstrap.sourceSha}`)) {
         if (parent?.sha !== contract.bootstrap.sourceSha)
@@ -391,10 +409,9 @@ export class GitHubLedgerStore implements LedgerStore {
           JSON.parse(this.github.file("ledger.json", commit.sha)),
           contract
         );
-        if (
-          root.entries.length ||
-          !commit.commit.message.includes(`Ledger-Digest: ${digest(root)}`)
-        )
+        if (ledgerDigestFromMessage(commit.commit.message) !== digest(root))
+          throw new Error("Ledger state digest does not match its committed state");
+        if (root.entries.length)
           throw new Error("Ledger initialization must contain only the approved bootstrap");
         rootFound = true;
         break;
@@ -446,8 +463,7 @@ export class GitHubLedgerStore implements LedgerStore {
         legacySha ||= commit.sha;
         if (recoveryRequested) recoverySha ||= commit.sha;
       } else this.github.verifyBotCommit(commit.sha, raw);
-      if (!/Ledger-Digest: [a-f0-9]{64}/.test(commit.commit.message))
-        throw new Error("Ledger commit lacks its state digest");
+      ledgerDigestFromMessage(commit.commit.message);
     }
     for (const [source, target] of recoveryMarkers) {
       const seen = new Set<string>();
@@ -485,9 +501,9 @@ export class GitHubLedgerStore implements LedgerStore {
     if (recoverySha !== undefined && legacySha !== recoverySha)
       throw new Error("Ledger recovery marker does not bind its legacy commit");
     const ledger = validateLedger(JSON.parse(this.github.file("ledger.json", sha)), contract);
-    if (!this.github.commit(sha).message.includes(`Ledger-Digest: ${digest(ledger)}`))
+    if (ledgerDigestFromMessage(parsedCommits[0]?.commit.message || "") !== digest(ledger))
       throw new Error("Ledger state digest does not match the signed head");
-    return { sha, ledger, legacySha };
+    return { sha, ledger, legacySha, recoverySha };
   }
 
   async compareAndSwap(

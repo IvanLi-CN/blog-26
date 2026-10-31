@@ -297,6 +297,9 @@ describe("prerelease workflow deployment boundary", () => {
 
   test("ledger recovery validates the target before writing an immutable marker", () => {
     expect(bootstrapLedgerRecovery).toContain("GitHubLedgerStore");
+    expect(bootstrapLedgerRecovery).toContain("pull-requests: read");
+    expect(bootstrapLedgerRecovery).toContain("bun run - <<'BUN'");
+    expect(bootstrapLedgerRecovery).toContain("assertRecoveryTarget(current.legacySha, legacySha)");
     expect(bootstrapLedgerRecovery).toContain(
       "store.read({ allowLegacyHead: true, allowLegacyAncestor: true })"
     );
@@ -306,6 +309,7 @@ describe("prerelease workflow deployment boundary", () => {
     expect(bootstrapLedgerRecovery).toContain(
       "store.compareAndSwap(current.sha, nextLedger, legacySha)"
     );
+    expect(bootstrapLedgerRecovery).toContain("current.recoverySha === legacySha");
     expect(bootstrapLedgerRecovery).toContain("Recovery already bound at");
     expect(bootstrapLedgerRecovery).toContain("oven-sh/setup-bun@v2");
     expect(bootstrapLedgerRecovery).toContain("bun install --frozen-lockfile");

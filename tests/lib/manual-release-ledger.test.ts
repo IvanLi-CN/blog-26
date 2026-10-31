@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import contractJson from "../../.github/release-contract.json";
-import { GitHubLedgerStore, GitHubRelease } from "../../src/lib/release/github";
+import {
+  assertRecoveryTarget,
+  GitHubLedgerStore,
+  GitHubRelease,
+} from "../../src/lib/release/github";
 import {
   abandonUnrecoverableFrozenInputs,
   changeLedger,
@@ -120,7 +124,16 @@ describe("durable product release reservations", () => {
     const result = await new GitHubLedgerStore(github).read();
     expect(result.sha).toBe(head);
     expect(result.legacySha).toBe(legacy);
+    expect(result.recoverySha).toBe(legacy);
     expect(result.ledger).toEqual(ledger);
+    const historicalCommit = commits[1];
+    if (!historicalCommit) throw new Error("Missing historical ledger fixture");
+    const historicalMessage = historicalCommit.commit.message;
+    historicalCommit.commit.message = historicalMessage.replace(digestLine, "Ledger-Digest: nope");
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
+    ).rejects.toThrow();
+    historicalCommit.commit.message = historicalMessage;
     const malformedTarget = "8".repeat(40);
     const headCommit = commits[0];
     if (!headCommit) throw new Error("Missing head fixture");
@@ -284,6 +297,13 @@ describe("durable product release reservations", () => {
     );
     expect(committed).toBe(next);
     expect(payloadText).toContain(`Ledger-Recovery: ${legacy}`);
+  });
+
+  test("requires the discovered verified legacy target before recovery", () => {
+    const legacy = "a".repeat(40);
+    expect(() => assertRecoveryTarget(undefined, legacy)).toThrow("verified active legacy");
+    expect(() => assertRecoveryTarget("b".repeat(40), legacy)).toThrow("verified active legacy");
+    expect(() => assertRecoveryTarget(legacy, legacy)).not.toThrow();
   });
 
   test("shared ledger changes carry legacy recovery provenance", async () => {

@@ -18,6 +18,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
   recover:
@@ -46,7 +47,8 @@ jobs:
           REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
-          bun --input-type=module <<'BUN'
+          bun run - <<'BUN'
+          import { assertRecoveryTarget } from "./src/lib/release/github";
           import { assertMerge } from "./src/lib/release/preparation";
           import {
             GitHubLedgerStore,
@@ -77,8 +79,7 @@ jobs:
           );
           const store = new GitHubLedgerStore(github);
           const current = await store.read({ allowLegacyHead: true, allowLegacyAncestor: true });
-          if (current.legacySha && current.legacySha !== legacySha)
-            throw new Error("Recovery target conflicts with the active ledger recovery identity");
+          assertRecoveryTarget(current.legacySha, legacySha);
 
           let nextLedger = current.ledger;
           if (releaseId && mergeSha) {
@@ -98,6 +99,7 @@ jobs:
           }
 
           if (
+            current.recoverySha === legacySha &&
             current.legacySha === legacySha &&
             canonicalJson(nextLedger) === canonicalJson(current.ledger)
           ) {
