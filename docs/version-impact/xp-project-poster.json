@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e894b395f7690a7c5166b053164f407c6cb60f90",
+  "covered_files": {
+    "site/assets/projects/posters-source/xp-dark.png": "4e43ecb8a124118d6e8501eb2facec5373805483",
+    "site/assets/projects/posters-source/xp-light.png": "c3dcea4b47b3d70f40434b8c63bcae6dc603aec4"
+  },
+  "change": {
+    "description": "Refresh the XP project page light and dark poster source artwork with the latest Chinese assets from the XP repository.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change replaces compatible static project poster artwork only. It does not alter public API shapes, persistence schemas, project routes, or runtime behavior.",
+      "assessed_at": "2026-10-31T14:01:28+08:00",
+      "evidence": [
+        {
+          "path": "site/assets/projects/posters-source/xp-dark.png",
+          "blob": "4e43ecb8a124118d6e8501eb2facec5373805483",
+          "command": "Source artwork matches the confirmed Chinese XP dark poster from the XP repository"
+        },
+        {
+          "path": "site/assets/projects/posters-source/xp-light.png",
+          "blob": "c3dcea4b47b3d70f40434b8c63bcae6dc603aec4",
+          "command": "Source artwork matches the confirmed Chinese XP light poster from the XP repository"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate remains limited to the two XP source images consumed by the existing project poster generator; no application code, route contract, public API shape, or persistent state changes.",
+      "assessed_at": "2026-10-31T14:01:28+08:00",
+      "evidence": [
+        {
+          "path": "scripts/verify-project-poster-assets.ts",
+          "blob": "c1b361b06108b95cd2239479543363476ca76145",
+          "command": "SHARP_CONCURRENCY=1 bun run verify:project-posters"
+        },
+        {
+          "path": "tests/lib/project-poster-assets.test.ts",
+          "blob": "ad27a775b18bd8dfa6eabdd4d2fa4db7bdb8a5bc",
+          "command": "bun test tests/lib/project-poster-assets.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate contains only the confirmed XP light and dark poster sources and this release evidence record; existing generators, consumers, routes, and runtime behavior remain unchanged."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The responsive poster generator produced all expected variants, the verifier passed for all theme and size combinations, the focused poster test passed, and official /projects Web Demo evidence confirms the XP card renders the loaded light and dark artwork without layout overflow.",
+      "assessed_at": "2026-10-31T14:01:28+08:00",
+      "evidence": [
+        {
+          "path": "scripts/verify-project-poster-assets.ts",
+          "blob": "c1b361b06108b95cd2239479543363476ca76145",
+          "command": "SHARP_CONCURRENCY=1 bun run verify:project-posters: verified 128 variants"
+        },
+        {
+          "path": "tests/lib/project-poster-assets.test.ts",
+          "blob": "ad27a775b18bd8dfa6eabdd4d2fa4db7bdb8a5bc",
+          "command": "bun test tests/lib/project-poster-assets.test.ts: 1 test and 10 expectations pass"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4",
+        "3.11.7",
+        "3.11.8"
+      ],
+      "evidence": [
+        {
+          "path": "scripts/verify-project-poster-assets.ts",
+          "blob": "c1b361b06108b95cd2239479543363476ca76145",
+          "command": "Existing project poster URLs and generated asset dimensions remain unchanged"
+        },
+        {
+          "path": "tests/lib/project-poster-assets.test.ts",
+          "blob": "ad27a775b18bd8dfa6eabdd4d2fa4db7bdb8a5bc",
+          "command": "Focused poster asset regression exercises the existing source-to-variant contract"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The change adds no database schema, local content format, browser storage, cache, generated manifest identity, or durable release state.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "site/assets/projects/posters-source/xp-light.png",
+          "blob": "c3dcea4b47b3d70f40434b8c63bcae6dc603aec4",
+          "command": "Static poster source artwork does not introduce persistent state or a migration"
+        }
+      ]
+    }
+  }
+}
