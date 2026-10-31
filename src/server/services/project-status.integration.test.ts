@@ -166,6 +166,66 @@ describe("project status service persistence", () => {
     expect((await db.select().from(projectStatusRuns))[0]?.status).toBe("running");
   });
 
+  test("force-interrupts all active runs on restart and reconciles saved results", async () => {
+    const now = Date.now();
+    const [availableEntry, unknownEntry] = getProjectStatusCatalogEntries();
+    await db.insert(projectStatusRuns).values({
+      id: "status-test-restart-run",
+      status: "running",
+      triggeredBy: "scheduler",
+      targetCount: 42,
+      attemptedCount: 0,
+      availableCount: 0,
+      unavailableCount: 0,
+      startedAt: now - 1_000,
+      heartbeatAt: now,
+    });
+    await db.insert(projectStatusResults).values([
+      {
+        id: "status-test-restart-available",
+        runId: "status-test-restart-run",
+        entryKey: availableEntry.entryKey,
+        projectSlug: availableEntry.projectSlug,
+        projectTitle: availableEntry.projectTitle,
+        domain: availableEntry.domain,
+        entryKind: availableEntry.kind,
+        entryLabel: availableEntry.label,
+        href: availableEntry.href,
+        status: "available",
+        attempted: true,
+        httpStatus: 200,
+        checkedAt: now - 100,
+      },
+      {
+        id: "status-test-restart-unknown",
+        runId: "status-test-restart-run",
+        entryKey: unknownEntry.entryKey,
+        projectSlug: unknownEntry.projectSlug,
+        projectTitle: unknownEntry.projectTitle,
+        domain: unknownEntry.domain,
+        entryKind: unknownEntry.kind,
+        entryLabel: unknownEntry.label,
+        href: unknownEntry.href,
+        status: "unknown",
+        attempted: false,
+      },
+    ]);
+
+    await interruptActiveProjectStatusRuns(now, true);
+
+    const run = (await db.select().from(projectStatusRuns))[0];
+    expect(run).toMatchObject({
+      id: "status-test-restart-run",
+      status: "interrupted",
+      attemptedCount: 1,
+      availableCount: 1,
+      unavailableCount: 0,
+    });
+    const overview = await getProjectStatusOverview(now);
+    expect(overview.latestRun?.status).toBe("interrupted");
+    expect(overview.summary).toMatchObject({ available: 1, unavailable: 0, unknown: 41 });
+  });
+
   test("interrupts a non-null heartbeat that has expired", async () => {
     const now = Date.now();
     await db.insert(projectStatusRuns).values({

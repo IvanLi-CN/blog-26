@@ -27,7 +27,7 @@ class JobsScheduler {
   async start(options: SchedulerStartOptions = {}) {
     if (this.started) return;
     await initializeDB();
-    await interruptActiveProjectStatusRuns();
+    await interruptActiveProjectStatusRuns(Date.now(), true);
     this.started = true;
     for (const def of jobDefinitions) {
       const nextAt = nextRunTime(Date.now(), def.schedule);

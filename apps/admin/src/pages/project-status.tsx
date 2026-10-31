@@ -239,6 +239,12 @@ export function ProjectStatusPage() {
   );
   const problemResults = filteredResults.filter(isProblem);
   const totalProblems = (overview?.results ?? []).filter(isProblem).length;
+  const hasActiveFilters =
+    domain !== "all" ||
+    project !== "all" ||
+    kind !== "all" ||
+    filter !== "all" ||
+    query.trim() !== "";
 
   const toggleProject = (projectSlug: string) => {
     setExpandedProjects((current) => {
@@ -442,7 +448,11 @@ export function ProjectStatusPage() {
         ) : (
           <div className="rounded-2xl border border-border/52 bg-card/54 px-4 py-3 text-sm text-muted-foreground">
             {overview
-              ? "没有异常入口，当前检查结果正常。"
+              ? !overview.latestRun
+                ? "本批次尚未产生检查结果。"
+                : totalProblems > 0 && hasActiveFilters
+                  ? "当前筛选没有匹配的问题。"
+                  : "没有异常入口，当前检查结果正常。"
               : overviewQuery.isPending
                 ? "正在加载检查结果。"
                 : "当前状态不可用，请重试。"}

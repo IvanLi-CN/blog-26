@@ -36,7 +36,7 @@
       "evidence": [
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "468a2441dddc024f6911dad7d007031eb8f92175",
+          "blob": "122a48cfea9a7b48e0f3aa3ad48968f5ad7c3b77",
           "command": "Full system-share API regression suite passes with deterministic memo cleanup"
         },
         {
@@ -67,7 +67,7 @@
         },
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "468a2441dddc024f6911dad7d007031eb8f92175",
+          "blob": "122a48cfea9a7b48e0f3aa3ad48968f5ad7c3b77",
           "command": "36 system-share API tests pass with 0 failures"
         }
       ]
@@ -117,7 +117,7 @@
       "evidence": [
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "468a2441dddc024f6911dad7d007031eb8f92175",
+          "blob": "122a48cfea9a7b48e0f3aa3ad48968f5ad7c3b77",
           "command": "Existing system-share API responses and permissions remain unchanged"
         }
       ]

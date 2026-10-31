@@ -419,24 +419,50 @@ function resultDto(
   };
 }
 
-export async function interruptActiveProjectStatusRuns(now = Date.now()) {
-  await db
-    .update(projectStatusRuns)
-    .set({
-      status: "interrupted",
-      finishedAt: now,
-      heartbeatAt: null,
-      errorMessage: "服务重启，中断了过期活动批次",
-    })
+export async function interruptActiveProjectStatusRuns(now = Date.now(), force = false) {
+  const activeRuns = await db
+    .select({ id: projectStatusRuns.id })
+    .from(projectStatusRuns)
     .where(
       and(
         eq(projectStatusRuns.status, "running"),
-        or(
-          isNull(projectStatusRuns.heartbeatAt),
-          lt(projectStatusRuns.heartbeatAt, now - PROJECT_STATUS_HEARTBEAT_STALE_AFTER_MS)
-        )
+        force
+          ? undefined
+          : or(
+              isNull(projectStatusRuns.heartbeatAt),
+              lt(projectStatusRuns.heartbeatAt, now - PROJECT_STATUS_HEARTBEAT_STALE_AFTER_MS)
+            )
       )
     );
+
+  for (const activeRun of activeRuns) {
+    const interrupted = await db
+      .update(projectStatusRuns)
+      .set({
+        status: "interrupted",
+        finishedAt: now,
+        heartbeatAt: null,
+        errorMessage: "服务重启，中断了活动批次",
+      })
+      .where(and(eq(projectStatusRuns.id, activeRun.id), eq(projectStatusRuns.status, "running")))
+      .returning({ id: projectStatusRuns.id });
+    if (!interrupted.length) continue;
+
+    const results = await db
+      .select({ attempted: projectStatusResults.attempted, status: projectStatusResults.status })
+      .from(projectStatusResults)
+      .where(eq(projectStatusResults.runId, activeRun.id));
+    await db
+      .update(projectStatusRuns)
+      .set({
+        attemptedCount: results.filter((result) => result.attempted).length,
+        availableCount: results.filter((result) => result.status === "available").length,
+        unavailableCount: results.filter((result) => result.status === "unavailable").length,
+      })
+      .where(
+        and(eq(projectStatusRuns.id, activeRun.id), eq(projectStatusRuns.status, "interrupted"))
+      );
+  }
 }
 
 async function pruneHistory(now: number) {
