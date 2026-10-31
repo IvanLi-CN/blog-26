@@ -9,6 +9,9 @@ import type {
   PersonalAccessTokenListRow,
   PlaybookContentSyncStatus,
   PlaybookSyncState,
+  ProjectStatusHistoryResponse,
+  ProjectStatusOverviewResponse,
+  ProjectStatusTriggerResponse,
   SyncHistoryEntry,
   SyncLog,
   SyncProgress,
@@ -27,6 +30,8 @@ import type {
   AdminSecretState,
 } from "@/lib/llm-settings";
 import { rebasePersistedLocalLinks, rebasePersistedLocalReferences } from "@/lib/persisted-paths";
+import { getProjectStatusCatalogEntries } from "@/lib/project-catalog";
+import type { ProjectStatusResultDto } from "@/lib/project-status";
 import {
   type AdminSearchSettings,
   aiSearchModeSchema,
@@ -435,6 +440,7 @@ let demoIndexCancelled = false;
 let demoIndexStarted = false;
 let demoPlaybookSyncCancelled = false;
 let demoPlaybookSyncStarted = false;
+let demoProjectStatusStartedAt: number | null = null;
 
 function resetDemoContentSyncState() {
   demoIndexCancelled = false;
@@ -1138,6 +1144,27 @@ async function handleAdminRequest(
   }
   if (path === "/api/admin/dashboard/stats") return json(dashboardStats());
   if (path === "/api/admin/dashboard/recent-activity") return json(recentActivity());
+  if (path === "/api/admin/project-status/overview" && method === "GET") {
+    return json(projectStatusOverview());
+  }
+  if (path === "/api/admin/project-status/history" && method === "GET") {
+    return json(projectStatusHistory());
+  }
+  if (path === "/api/admin/project-status/trigger" && method === "POST") {
+    if (demoProjectStatusStartedAt && Date.now() - demoProjectStatusStartedAt < 1800) {
+      return json({ error: { code: "CONFLICT", message: "项目入口状态检查正在运行" } }, 409);
+    }
+    demoProjectStatusStartedAt = Date.now();
+    recordWebDemoMutation("启动项目入口状态检查", "共享项目目录中的外部入口（模拟）");
+    return json(
+      {
+        success: true,
+        queued: true,
+        runKey: "project-entry-status",
+      } satisfies ProjectStatusTriggerResponse,
+      202
+    );
+  }
   if (path.startsWith("/api/admin/preview/memos/") && method === "GET") {
     const slug = decodeURIComponent(path.split("/").at(-1) ?? "");
     const memo = consoleWebDemoPreviewStore.get(slug, "admin");
@@ -2419,7 +2446,133 @@ function jobs(): JobOverview[] {
       nextRunAt: now + 9 * 3_600_000,
       running: false,
     },
+    {
+      key: "project-entry-status",
+      name: "项目入口状态检查",
+      scheduleText: "每 6 小时",
+      lastRunAt: now - 2_400_000,
+      nextRunAt: now + 19_200_000,
+      running: Boolean(
+        demoProjectStatusStartedAt && Date.now() - demoProjectStatusStartedAt < 1800
+      ),
+    },
   ];
+}
+
+function projectStatusOverview(): ProjectStatusOverviewResponse {
+  const entries = getProjectStatusCatalogEntries();
+  const runId = "demo-project-status-run-1";
+  const results: ProjectStatusResultDto[] = entries.map((entry, index) => {
+    const status: ProjectStatusResultDto["status"] =
+      index === 3 || index === 19 ? "unavailable" : index === 8 ? "unknown" : "available";
+    const freshness: ProjectStatusResultDto["freshness"] =
+      index === 12 ? "stale" : status === "unknown" ? "unknown" : "fresh";
+    return {
+      id: `demo-status-result-${index + 1}`,
+      runId,
+      entryKey: entry.entryKey,
+      projectSlug: entry.projectSlug,
+      projectTitle: entry.projectTitle,
+      domain: entry.domain,
+      entryKind: entry.kind,
+      entryLabel: entry.label,
+      href: entry.href,
+      status,
+      freshness,
+      attempted: status !== "unknown",
+      httpStatus: status === "unavailable" ? 503 : status === "available" ? 200 : null,
+      finalUrl: status === "available" && index === 2 ? `${entry.href}/` : null,
+      redirected: status === "available" && index === 2,
+      latencyMs: status === "unknown" ? null : 120 + index * 7,
+      attemptCount: status === "unavailable" ? 2 : status === "unknown" ? 0 : 1,
+      errorKind:
+        status === "unavailable" ? "http_503" : status === "unknown" ? "batch_timeout" : null,
+      errorMessage:
+        status === "unavailable"
+          ? "目标返回 HTTP 503"
+          : status === "unknown"
+            ? "批次截止时间已到"
+            : null,
+      checkedAt:
+        status === "unknown"
+          ? null
+          : index === 12
+            ? now - 13 * 60 * 60 * 1000
+            : now - 20 * 60 * 1000,
+    };
+  });
+  const activeStartedAt = demoProjectStatusStartedAt;
+  const active = activeStartedAt !== null && Date.now() - activeStartedAt < 1800;
+  const latestRun = {
+    id: runId,
+    status: "completed" as const,
+    triggeredBy: "scheduler" as const,
+    targetCount: entries.length,
+    attemptedCount: entries.length - 1,
+    availableCount: results.filter((result) => result.status === "available").length,
+    unavailableCount: results.filter((result) => result.status === "unavailable").length,
+    startedAt: now - 2_400_000,
+    finishedAt: now - 2_330_000,
+    durationMs: 70_000,
+    errorMessage: null,
+  };
+  return {
+    catalog: entries.map((entry) => ({
+      entryKey: entry.entryKey,
+      projectSlug: entry.projectSlug,
+      projectTitle: entry.projectTitle,
+      domain: entry.domain,
+      entryKind: entry.kind,
+      entryLabel: entry.label,
+      href: entry.href,
+    })),
+    latestRun,
+    activeRun: active
+      ? {
+          ...latestRun,
+          id: "demo-project-status-run-active",
+          status: "running" as const,
+          triggeredBy: "manual" as const,
+          attemptedCount: Math.min(
+            entries.length - 1,
+            Math.floor((Date.now() - (activeStartedAt ?? Date.now())) / 300)
+          ),
+          startedAt: activeStartedAt ?? Date.now(),
+          finishedAt: null,
+          durationMs: null,
+        }
+      : null,
+    summary: {
+      total: results.length,
+      available: results.filter((result) => result.status === "available").length,
+      unavailable: results.filter((result) => result.status === "unavailable").length,
+      unknown: results.filter((result) => result.status === "unknown").length,
+      stale: results.filter((result) => result.freshness === "stale").length,
+    },
+    results,
+  };
+}
+
+function projectStatusHistory(): ProjectStatusHistoryResponse {
+  const overview = projectStatusOverview();
+  const latestRun = overview.latestRun;
+  if (!latestRun) return { runs: [] };
+  return {
+    runs: [
+      ...(overview.activeRun ? [overview.activeRun] : []),
+      latestRun,
+      {
+        ...latestRun,
+        id: "demo-project-status-run-previous",
+        triggeredBy: "manual",
+        status: "partial",
+        startedAt: now - 8 * 60 * 60 * 1000,
+        finishedAt: now - 8 * 60 * 60 * 1000 + 120_000,
+        durationMs: 120_000,
+        attemptedCount: 39,
+      },
+    ],
+  };
 }
 
 function jobRuns(): JobRun[] {

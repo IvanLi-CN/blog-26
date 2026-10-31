@@ -9,6 +9,7 @@ import { LlmSettingsPage } from "~/pages/llm-settings";
 import { PatsPage } from "~/pages/pats";
 import { PostsPage } from "~/pages/posts";
 import { MemoPreviewPage, PostPreviewPage } from "~/pages/preview";
+import { ProjectStatusPage } from "~/pages/project-status";
 import { ScheduleDetailPage } from "~/pages/schedule-detail";
 import { ScheduleRunDetailPage } from "~/pages/schedule-run-detail";
 import { SchedulesPage } from "~/pages/schedules";
@@ -73,6 +74,11 @@ const schedulesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "schedules",
   component: SchedulesPage,
+});
+const projectStatusRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "project-status",
+  component: ProjectStatusPage,
 });
 const scheduleDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -140,6 +146,7 @@ export const routeTree = rootRoute.addChildren([
   githubBindingRoute,
   contentSyncRoute,
   schedulesRoute,
+  projectStatusRoute,
   scheduleDetailRoute,
   scheduleRunRoute,
   tagsRoute,

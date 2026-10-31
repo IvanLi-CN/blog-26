@@ -510,6 +510,27 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
       );
     }
 
+    if (pathname === "/project-status/overview") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      return json(await caller.admin.projectStatus.overview(), { status: 200 }, resHeaders);
+    }
+
+    if (pathname === "/project-status/history") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      return json(
+        await caller.admin.projectStatus.history({
+          limit: getNumber(url.searchParams.get("limit"), 30),
+        }),
+        { status: 200 },
+        resHeaders
+      );
+    }
+
+    if (pathname === "/project-status/trigger") {
+      if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
+      return json(await caller.admin.projectStatus.trigger(), { status: 202 }, resHeaders);
+    }
+
     if (pathname === "/posts") {
       if (request.method === "GET") {
         const result = await caller.admin.posts.list({

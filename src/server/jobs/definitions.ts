@@ -1,6 +1,7 @@
 import { isLocalContentEnabled, SYSTEM_CONFIG } from "@/config/paths";
 import { vectorizeAll } from "@/lib/ai/vectorization";
 import { getContentSourceManager, LocalContentSource } from "@/lib/content-sources";
+import { runProjectStatusCheck } from "@/server/services/project-status";
 
 export type Logger = {
   info: (message: string, data?: Record<string, unknown>) => void;
@@ -16,6 +17,7 @@ export type JobDefinition = {
   name: string;
   description?: string;
   schedule: JobSchedule;
+  runOnStart?: boolean;
   run: (log: Logger) => Promise<void>;
 };
 
@@ -133,6 +135,18 @@ export const jobDefinitions: JobDefinition[] = [
     run: async (log) => {
       // 实际清理在 scheduler 内部统一处理（删除文件并回写 DB 标记）
       log.info("cleanup_scheduled", { keepDays: 7 });
+    },
+  },
+  {
+    key: "project-entry-status",
+    name: "项目入口状态检查",
+    description: "启动时检查一次，之后每6小时检查共享目录中的外部入口",
+    schedule: { kind: "interval", everyMs: 6 * 60 * 60 * 1000 },
+    runOnStart: true,
+    run: async (log) => {
+      log.info("project_status_started");
+      const result = await runProjectStatusCheck("scheduler");
+      log.info("project_status_completed", result);
     },
   },
 ];

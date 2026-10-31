@@ -15,6 +15,7 @@ type InternalJobState = {
   nextAt: number;
   timer: TimerRef;
   running: boolean;
+  queued: boolean;
 };
 
 class JobsScheduler {
@@ -27,9 +28,12 @@ class JobsScheduler {
     await initializeDB();
     for (const def of jobDefinitions) {
       const nextAt = nextRunTime(Date.now(), def.schedule);
-      const st: InternalJobState = { def, nextAt, timer: null, running: false };
+      const st: InternalJobState = { def, nextAt, timer: null, running: false, queued: false };
       this.jobs.set(def.key, st);
       this.armTimer(st);
+    }
+    for (const def of jobDefinitions) {
+      if (def.runOnStart) this.trigger(def.key, "scheduler");
     }
   }
 
@@ -57,7 +61,8 @@ class JobsScheduler {
   trigger(jobKey: string, triggeredBy: "scheduler" | "manual" = "manual") {
     const st = this.jobs.get(jobKey);
     if (!st) throw new Error(`Unknown job: ${jobKey}`);
-    if (st.running) throw new Error(`Job is already running: ${jobKey}`);
+    if (st.running || st.queued) throw new Error(`Job is already running: ${jobKey}`);
+    st.queued = true;
     setTimeout(() => {
       this.runJob(jobKey, triggeredBy).catch((e) => console.error("job error", e));
     }, 0);
@@ -67,6 +72,7 @@ class JobsScheduler {
     const st = this.jobs.get(jobKey);
     if (!st) throw new Error(`Unknown job: ${jobKey}`);
     if (st.running) throw new Error(`Job is already running: ${jobKey}`);
+    st.queued = false;
     st.running = true;
 
     const runId = nanoid();
@@ -154,7 +160,7 @@ class JobsScheduler {
       key: st.def.key,
       name: st.def.name,
       schedule: st.def.schedule,
-      running: st.running,
+      running: st.running || st.queued,
       nextRunAt: st.nextAt,
     }));
   }

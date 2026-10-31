@@ -19,6 +19,11 @@ import type {
   LlmTier,
 } from "@/lib/llm-settings";
 import type { ClippingReading } from "@/lib/memo-clipping";
+import type {
+  ProjectStatusHistoryResponse,
+  ProjectStatusOverviewResponse,
+  ProjectStatusTriggerResponse,
+} from "@/lib/project-status";
 import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
 import type { LlmModelOption, LlmModelSource } from "./llm-models";
@@ -47,6 +52,12 @@ export interface AdminSession {
   user: AdminUser | null;
   isAdmin: boolean;
 }
+
+export type {
+  ProjectStatusHistoryResponse,
+  ProjectStatusOverviewResponse,
+  ProjectStatusTriggerResponse,
+};
 
 export interface AdminPlaybookBrowseResponse {
   source: PlaybookEditionIdentity["source"];
@@ -753,6 +764,16 @@ export const adminApi = {
     adminRequest<{ exists: boolean; content: string }>(
       `/api/admin/jobs/runs/${encodeURIComponent(id)}/log`
     ),
+  getProjectStatusOverview: () =>
+    adminRequest<ProjectStatusOverviewResponse>("/api/admin/project-status/overview"),
+  getProjectStatusHistory: (limit = 30) =>
+    adminRequest<ProjectStatusHistoryResponse>(
+      `/api/admin/project-status/history${buildSearch({ limit })}`
+    ),
+  triggerProjectStatusCheck: () =>
+    adminRequest<ProjectStatusTriggerResponse>("/api/admin/project-status/trigger", {
+      method: "POST",
+    }),
   listPersonalAccessTokens: (includeRevoked = false) =>
     adminRequest<PersonalAccessTokenListRow[]>(`/api/admin/pats${buildSearch({ includeRevoked })}`),
   createPersonalAccessToken: (label?: string) =>
