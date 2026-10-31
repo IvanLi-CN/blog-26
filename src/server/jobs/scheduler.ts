@@ -12,6 +12,23 @@ const SCHEDULER_LEASE_ID = "global";
 const SCHEDULER_LEASE_TTL_MS = 15_000;
 const SCHEDULER_LEASE_HEARTBEAT_MS = 5_000;
 
+async function markOrphanedSchedulerRuns(now: number) {
+  await db
+    .update(jobRuns)
+    .set({
+      status: "error",
+      finishedAt: now,
+      errorMessage: "调度器租约失效，中断了未完成的任务",
+    })
+    .where(
+      and(
+        eq(jobRuns.status, "running"),
+        eq(jobRuns.triggeredBy, "scheduler"),
+        lt(jobRuns.startedAt, now - SCHEDULER_LEASE_TTL_MS)
+      )
+    );
+}
+
 type TimerRef = ReturnType<typeof setTimeout> | null;
 type SchedulerStartOptions = { runOnStart?: boolean };
 
@@ -99,6 +116,7 @@ class JobsScheduler {
     this.leader = true;
     this.startupRetryUsed.clear();
     await interruptActiveProjectStatusRuns(now);
+    await markOrphanedSchedulerRuns(now);
     for (const st of this.jobs.values()) {
       st.nextAt = this.computeNext(st.def);
       this.armTimer(st);
@@ -129,7 +147,10 @@ class JobsScheduler {
   trigger(jobKey: string, triggeredBy: "scheduler" | "manual" = "manual") {
     const st = this.jobs.get(jobKey);
     if (!st) throw new Error(`Unknown job: ${jobKey}`);
-    if (triggeredBy === "scheduler" && !this.leader) return;
+    if (triggeredBy === "scheduler" && !this.leader) {
+      st.queued = false;
+      return;
+    }
     if (st.running || st.queued) throw new Error(`Job is already running: ${jobKey}`);
     st.queued = true;
     setTimeout(() => {
@@ -140,7 +161,10 @@ class JobsScheduler {
   async runJob(jobKey: string, triggeredBy: "scheduler" | "manual") {
     const st = this.jobs.get(jobKey);
     if (!st) throw new Error(`Unknown job: ${jobKey}`);
-    if (triggeredBy === "scheduler" && !this.leader) return;
+    if (triggeredBy === "scheduler" && !this.leader) {
+      st.queued = false;
+      return;
+    }
     if (st.running) throw new Error(`Job is already running: ${jobKey}`);
     st.queued = false;
     st.running = true;
@@ -170,7 +194,10 @@ class JobsScheduler {
         logDeleted: false,
         attempt: 1,
       });
-      await st.def.run(logger, { schedulerOwnerToken: this.ownerToken });
+      await st.def.run(logger, {
+        schedulerOwnerToken: this.ownerToken,
+        triggeredBy,
+      });
       await db
         .update(jobRuns)
         .set({ status: "success", finishedAt: Date.now() })

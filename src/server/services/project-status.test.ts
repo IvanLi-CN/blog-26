@@ -168,6 +168,22 @@ describe("project status target checker", () => {
     expect(result).toMatchObject({ status: "unavailable", errorKind: "unsafe_target" });
   });
 
+  test("rejects documentation-only IPv4 ranges before making a request", async () => {
+    let calls = 0;
+    for (const href of ["http://198.51.100.1/docs", "http://203.0.113.1/docs"]) {
+      const result = await checkProjectStatusTarget(
+        href,
+        10_000,
+        dependencies(async () => {
+          calls += 1;
+          return response(200, href);
+        })
+      );
+      expect(result).toMatchObject({ status: "unavailable", errorKind: "unsafe_target" });
+    }
+    expect(calls).toBe(0);
+  });
+
   test("does not retry 4xx but retries a 5xx once after the configured delay", async () => {
     let calls = 0;
     const notFound = await checkProjectStatusTarget(

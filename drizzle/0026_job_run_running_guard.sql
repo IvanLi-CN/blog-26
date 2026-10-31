@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `job_runs_uq_running_job` ON `job_runs` (`job_key`) WHERE "job_runs"."status" = 'running';

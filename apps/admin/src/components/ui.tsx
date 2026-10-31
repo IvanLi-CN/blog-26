@@ -208,6 +208,10 @@ type SelectOption = {
 function parseSelectOptions(children: ReactNode): SelectOption[] {
   const options: SelectOption[] = [];
   for (const child of Array.isArray(children) ? children : [children]) {
+    if (Array.isArray(child)) {
+      options.push(...parseSelectOptions(child));
+      continue;
+    }
     if (!isValidElement(child)) continue;
     const element = child as ReactElement<{
       value?: string | number;

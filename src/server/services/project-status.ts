@@ -129,6 +129,8 @@ function isPrivateAddress(address: string): boolean {
       (first === 172 && second >= 16 && second <= 31) ||
       (first === 192 && (second === 0 || second === 168)) ||
       (first === 198 && second >= 18 && second <= 19) ||
+      (first === 198 && second === 51) ||
+      (first === 203 && second === 0) ||
       first >= 224
     );
   }
@@ -491,6 +493,12 @@ export async function interruptActiveProjectStatusRuns(
   force = false,
   schedulerOwnerToken?: string
 ) {
+  const staleCondition = force
+    ? undefined
+    : or(
+        isNull(projectStatusRuns.heartbeatAt),
+        lt(projectStatusRuns.heartbeatAt, now - PROJECT_STATUS_HEARTBEAT_STALE_AFTER_MS)
+      );
   const activeRuns = await db
     .select({ id: projectStatusRuns.id })
     .from(projectStatusRuns)
@@ -500,12 +508,7 @@ export async function interruptActiveProjectStatusRuns(
         schedulerOwnerToken
           ? eq(projectStatusRuns.schedulerOwnerToken, schedulerOwnerToken)
           : undefined,
-        force
-          ? undefined
-          : or(
-              isNull(projectStatusRuns.heartbeatAt),
-              lt(projectStatusRuns.heartbeatAt, now - PROJECT_STATUS_HEARTBEAT_STALE_AFTER_MS)
-            )
+        staleCondition
       )
     );
 
@@ -529,7 +532,16 @@ export async function interruptActiveProjectStatusRuns(
           errorMessage: "服务重启，中断了活动批次",
           ...counts,
         })
-        .where(and(eq(projectStatusRuns.id, activeRun.id), eq(projectStatusRuns.status, "running")))
+        .where(
+          and(
+            eq(projectStatusRuns.id, activeRun.id),
+            eq(projectStatusRuns.status, "running"),
+            schedulerOwnerToken
+              ? eq(projectStatusRuns.schedulerOwnerToken, schedulerOwnerToken)
+              : undefined,
+            staleCondition
+          )
+        )
         .returning({ id: projectStatusRuns.id });
     });
     if (!interrupted.length) continue;

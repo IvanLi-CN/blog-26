@@ -32,11 +32,11 @@
     "current": {
       "impact": "patch",
       "reasoning": "The candidate remains limited to deterministic test cleanup and screenshot readiness. The memo router preserves production fire-and-forget behavior, while the public cover route, image geometry, API payloads, and persistent state are unchanged.",
-      "assessed_at": "2026-10-31T16:56:37+08:00",
+      "assessed_at": "2026-10-31T22:40:00+08:00",
       "evidence": [
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "122a48cfea9a7b48e0f3aa3ad48968f5ad7c3b77",
+          "blob": "bddc396d20dcf3aef0fc304bfb2b0f3870de9a6f",
           "command": "Full system-share API regression suite passes with deterministic memo cleanup"
         },
         {
@@ -53,7 +53,7 @@
     "verified": {
       "impact": "patch",
       "reasoning": "Repository checks, the complete unit suite, the system-share regression suite, and the targeted mobile public-cover Web Demo test pass. The fix removes timing races without changing production behavior or compatibility contracts.",
-      "assessed_at": "2026-10-31T16:56:37+08:00",
+      "assessed_at": "2026-10-31T22:40:00+08:00",
       "evidence": [
         {
           "path": "src/server/routers/memos.ts",
@@ -67,7 +67,7 @@
         },
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "122a48cfea9a7b48e0f3aa3ad48968f5ad7c3b77",
+          "blob": "bddc396d20dcf3aef0fc304bfb2b0f3870de9a6f",
           "command": "36 system-share API tests pass with 0 failures"
         }
       ]
@@ -117,7 +117,7 @@
       "evidence": [
         {
           "path": "tests/server/system-share-api.test.ts",
-          "blob": "122a48cfea9a7b48e0f3aa3ad48968f5ad7c3b77",
+          "blob": "bddc396d20dcf3aef0fc304bfb2b0f3870de9a6f",
           "command": "Existing system-share API responses and permissions remain unchanged"
         }
       ]

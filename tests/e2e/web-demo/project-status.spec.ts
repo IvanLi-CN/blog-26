@@ -24,6 +24,9 @@ test.describe("Project status Web Demo", () => {
       "开源仓库",
     ]);
     await expect(matrix.locator("tbody > tr")).toHaveCount(16);
+    await page.getByRole("combobox", { name: "筛选项目分类" }).click();
+    await expect(page.getByRole("option", { name: "开发工具" })).toBeVisible();
+    await page.keyboard.press("Escape");
     await expect(page.getByRole("heading", { name: "检查历史", exact: true })).toBeVisible();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)

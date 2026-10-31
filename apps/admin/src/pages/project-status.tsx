@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { adminApi } from "@/lib/admin-api-client";
-import { projectPublicEntryKindDefinitions } from "@/lib/project-catalog";
+import { projectDomains, projectPublicEntryKindDefinitions } from "@/lib/project-catalog";
 import type { ProjectStatusResultDto, ProjectStatusResultStatus } from "@/lib/project-status";
 import {
   Alert,
@@ -255,7 +255,15 @@ export function ProjectStatusPage() {
     [overview?.catalog]
   );
   const domainOptions = useMemo(
-    () => [...new Map((overview?.catalog ?? []).map((entry) => [entry.domain, entry.domain]))],
+    () =>
+      [...new Map((overview?.catalog ?? []).map((entry) => [entry.domain, entry.domain]))].map(
+        ([value]) =>
+          [
+            value,
+            projectDomains.find((domainDefinition) => domainDefinition.id === value)?.title ??
+              value,
+          ] as const
+      ),
     [overview?.catalog]
   );
   const problemResults = filteredResults.filter(isProblem);
@@ -549,9 +557,9 @@ export function ProjectStatusPage() {
           />
           <Select value={domain} onValueChange={setDomain} aria-label="筛选项目分类">
             <option value="all">全部项目分类</option>
-            {domainOptions.map(([value]) => (
+            {domainOptions.map(([value, label]) => (
               <option key={value} value={value}>
-                {value}
+                {label}
               </option>
             ))}
           </Select>

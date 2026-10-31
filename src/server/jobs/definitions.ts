@@ -18,7 +18,10 @@ export type JobDefinition = {
   description?: string;
   schedule: JobSchedule;
   runOnStart?: boolean;
-  run: (log: Logger, context?: { schedulerOwnerToken?: string }) => Promise<void>;
+  run: (
+    log: Logger,
+    context?: { schedulerOwnerToken?: string; triggeredBy?: "scheduler" | "manual" }
+  ) => Promise<void>;
 };
 
 function computeNextRunFrom(now: number, s: JobSchedule): number {
@@ -145,7 +148,7 @@ export const jobDefinitions: JobDefinition[] = [
     runOnStart: true,
     run: async (log, context) => {
       log.info("project_status_started");
-      const result = await runProjectStatusCheck("scheduler", {
+      const result = await runProjectStatusCheck(context?.triggeredBy ?? "scheduler", {
         schedulerOwnerToken: context?.schedulerOwnerToken,
       });
       log.info("project_status_completed", result);

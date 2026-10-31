@@ -5,9 +5,10 @@
   "covered_files": {
     "GLOSSARY.md": "f3031cc1d9c75459850a8e26365bd0c46b9f6703",
     "apps/admin/src/components/app-shell.tsx": "7d5b974a72a0776572fbf4eaaea40ae5e669c27c",
+    "apps/admin/src/components/ui.tsx": "16d86da17d8cbb471354ba982cbce040816a2e26",
     "apps/admin/src/demo/mock-admin-api.ts": "be13f5e115074f9107fd8257f2fd3cd4fbac6ec6",
     "apps/admin/src/pages/project-status.test.tsx": "6e0a6915c8685bfccd39677ebe8000e9675f21c8",
-    "apps/admin/src/pages/project-status.tsx": "1594d498ce87ffe750485513fa24533ebd6e28e6",
+    "apps/admin/src/pages/project-status.tsx": "7597084d3acbccf16d521476e8a970934b302a12",
     "apps/admin/src/router.tsx": "d0740e1e0313421a8149376d1167b6b64a09a302",
     "astro.config.mjs": "eb89dbcbdb6975f0ed76d49c486d6f9c0a1deaad",
     "drizzle/0021_project_status.sql": "3f3a5cd4a02859266c40b986f56926d7956205bc",
@@ -15,12 +16,14 @@
     "drizzle/0023_project_status_heartbeat.sql": "e6a563f78b582297dc7c89d2f9d45c3cc1e1478a",
     "drizzle/0024_scheduler_lease.sql": "b826dd5bc6ec203e8596fcb499d1ceb98e8b69c8",
     "drizzle/0025_project_status_scheduler_owner.sql": "6b65b240e3815e7081b0c306fff38951d82ff9b0",
+    "drizzle/0026_job_run_running_guard.sql": "8e47d76d5a68eb658aa46dc63c4a001db9493ef0",
     "drizzle/meta/0021_snapshot.json": "518671846ccc9922cd40b510a8939b5016974660",
     "drizzle/meta/0022_snapshot.json": "e3b6f6d9599f5b272e11393fa43de4b834342c18",
     "drizzle/meta/0023_snapshot.json": "7ddf43d2cab6604d97dffe630b790dca4b5e8cf9",
     "drizzle/meta/0024_snapshot.json": "b8786738daff2848509d4c09eacaf505a4d29d8e",
     "drizzle/meta/0025_snapshot.json": "bb0862d8bb337cc79b2994b85c72a3f2bb04c01b",
-    "drizzle/meta/_journal.json": "7592e2e7a553010a1f89bd8af620fc1d68540645",
+    "drizzle/meta/0026_snapshot.json": "e780879a0e155817c49231741a969017ff264486",
+    "drizzle/meta/_journal.json": "307e653feb961bcbe228be6ee132507d8b4c9b42",
     "docs/specs/README.md": "51ed9671bf340c6cd2d5122e030f15d3cf7cd294",
     "docs/specs/system-share-memos/IMPLEMENTATION.md": "aeb991832bb7d3e5a9844d8309dae37f694013ad",
     "docs/specs/system-share-memos/SPEC.md": "fc0b6ebbb32a881f6eb2e77bad57fd8eb55b0be6",
@@ -36,13 +39,13 @@
     "src/lib/project-catalog.ts": "caee12024ea5dbf17f3d3eefb5a325fca7983339",
     "src/lib/project-status.ts": "ca2edaacde50e5dfc5c215e3ba3672df4ace61df",
     "src/lib/release/github.ts": "0db26d72849b270039cbb56b5297a5cc83fd5c8e",
-    "src/lib/schema.ts": "d402dbe6806b38b19592ee38fa3f6c07d0b7f746",
+    "src/lib/schema.ts": "56a8ca6368088b6be7e052fdff863fd0e615ed7b",
     "src/lib/search/web-demo-fixtures.ts": "dbafc4dabe3c04a57c4ca4320d64504355161bb4",
     "src/styles/milkdown-nature.css": "665489233ef7effd416144d9631fb52e814b9910",
     "src/server/admin-api/router.ts": "8b068746cda0a5fdde1da5abd36e8b851b5f1223",
     "src/server/http-compat-api.test.ts": "7b55434b5e9c720b42114c060218abbc11ff6403",
-    "src/server/jobs/definitions.ts": "16452f354ff0c28ff7d6bb8e0552b841e097319b",
-    "src/server/jobs/scheduler.ts": "a0dc47ff95579b5ce9eb4423a04027ef1f7ec906",
+    "src/server/jobs/definitions.ts": "65e3cb2c4c32bd21b065b86c78971a1f106d22d1",
+    "src/server/jobs/scheduler.ts": "56cc246b0e701dc56d95d52cb2bf2d180050d2cb",
     "scripts/run-test-suite.ts": "4331c4a5de0e6ac1ae32be5435966227538662f3",
     "scripts/start-console.ts": "1dbe1f4897f204f9829918701b9efd0f8aa9b25f",
     ".github/workflows/e2e.yml": "3936f332df882f048a532d0a1eb7f8ff53d12239",
@@ -50,13 +53,13 @@
     "src/server/routers/admin/project-status.ts": "1d4190a83a493148ccdbe02effb8b544146158f1",
     "src/server/routers/admin/project-status.test.ts": "6b813665fe38076d6504aaebf73917cc64cc3ec7",
     "src/server/services/project-status.integration.test.ts": "f8016a9f4d07fff29967b319cd4be58df2a663f2",
-    "src/server/services/project-status.test.ts": "9e15df859688b4d219a4dd94d06e49fcc695ec77",
-    "src/server/services/project-status.ts": "f8072d3786bf4832aeef9834be0c4843d78c95ea",
+    "src/server/services/project-status.test.ts": "91ca63bffb14eb1e2d1d1ef6e722f92fcf8d38f1",
+    "src/server/services/project-status.ts": "aef318d6c8e9d276e761b4804b85e5dffd010f3f",
     "src/server/trpc.ts": "2eb74085661d32ee954e24bd05a7239a9bbc3489",
     "tests/e2e/web-demo/system-share.spec.ts": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
-    "tests/e2e/web-demo/project-status.spec.ts": "3663dfc87d61ba341f3da2a7aa5bb056899da469",
+    "tests/e2e/web-demo/project-status.spec.ts": "6da1649560406174a875f32ae8d6fe41d0ca94f0",
     "tests/lib/manual-release-ledger.test.ts": "7eead40ff749d1cc21e0d41f827d5da355421856",
-    "tests/server/system-share-api.test.ts": "122a48cfea9a7b48e0f3aa3ad48968f5ad7c3b77"
+    "tests/server/system-share-api.test.ts": "bddc396d20dcf3aef0fc304bfb2b0f3870de9a6f"
   },
   "change": {
     "description": "Add a shared project entry catalog, persisted external-entry status checks, six-hour scheduling, protected Admin APIs, and a grouped project-status report with Web Demo fixtures.",
@@ -79,7 +82,7 @@
     "current": {
       "impact": "minor",
       "reasoning": "The candidate implements the approved shared catalog and additive status-report workflow: external URL checks do not read response bodies or modify the catalog, the database migration is additive, and Admin consumers receive new overview/history/trigger endpoints without changing existing routes.",
-      "assessed_at": "2026-10-31T22:29:14+08:00",
+      "assessed_at": "2026-10-31T22:46:40+08:00",
       "evidence": [
         {
           "path": "src/server/services/project-status.integration.test.ts",
@@ -105,7 +108,7 @@
     "verified": {
       "impact": "minor",
       "reasoning": "Shared catalog, service, HTTP compatibility, Admin UI, migration, build, and browser evidence passed on the candidate SHA. The feature adds only compatible Admin capabilities and additive persistent state.",
-      "assessed_at": "2026-10-31T22:29:14+08:00",
+      "assessed_at": "2026-10-31T22:46:40+08:00",
       "evidence": [
         {
           "path": "src/lib/project-catalog.test.ts",
@@ -114,17 +117,17 @@
         },
         {
           "path": "src/server/services/project-status.test.ts",
-          "blob": "9e15df859688b4d219a4dd94d06e49fcc695ec77",
+          "blob": "91ca63bffb14eb1e2d1d1ef6e722f92fcf8d38f1",
           "command": "bun test --isolate src/server/services/project-status.test.ts"
         },
         {
           "path": "apps/admin/src/pages/project-status.tsx",
-          "blob": "1594d498ce87ffe750485513fa24533ebd6e28e6",
+          "blob": "7597084d3acbccf16d521476e8a970934b302a12",
           "command": "bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
         },
         {
           "path": "tests/e2e/web-demo/project-status.spec.ts",
-          "blob": "3663dfc87d61ba341f3da2a7aa5bb056899da469",
+          "blob": "6da1649560406174a875f32ae8d6fe41d0ca94f0",
           "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:38210 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
         },
         {
@@ -133,8 +136,8 @@
           "command": "bun test --isolate tests/lib/manual-release-ledger.test.ts"
         },
         {
-          "path": "drizzle/0025_project_status_scheduler_owner.sql",
-          "blob": "6b65b240e3815e7081b0c306fff38951d82ff9b0",
+          "path": "drizzle/0026_job_run_running_guard.sql",
+          "blob": "8e47d76d5a68eb658aa46dc63c4a001db9493ef0",
           "command": "bun run db:migrations:validate && bunx drizzle-kit check"
         }
       ]
