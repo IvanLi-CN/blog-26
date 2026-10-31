@@ -205,4 +205,62 @@ describe("project status service persistence", () => {
       reason: expect.objectContaining({ message: expect.stringContaining("already running") }),
     });
   });
+
+  test("uses the latest interrupted or failed batch as the current overview", async () => {
+    const now = Date.now();
+    await db.insert(projectStatusRuns).values([
+      {
+        id: "status-test-previous-complete",
+        status: "completed",
+        triggeredBy: "scheduler",
+        targetCount: 42,
+        attemptedCount: 42,
+        availableCount: 42,
+        startedAt: now - 2_000,
+        finishedAt: now - 1_000,
+      },
+      {
+        id: "status-test-latest-error",
+        status: "error",
+        triggeredBy: "manual",
+        targetCount: 42,
+        startedAt: now,
+        finishedAt: now + 100,
+        errorMessage: "synthetic failure",
+      },
+    ]);
+
+    const overview = await getProjectStatusOverview(now + 100);
+
+    expect(overview.latestRun?.id).toBe("status-test-latest-error");
+    expect(overview.summary).toMatchObject({ available: 0, unavailable: 0, unknown: 42 });
+  });
+
+  test("stops writing results after its lease is interrupted", async () => {
+    let interrupted = false;
+    await expect(
+      runProjectStatusCheck("manual", {
+        fetch: async () => {
+          if (!interrupted) {
+            interrupted = true;
+            await interruptActiveProjectStatusRuns(
+              Date.now() + PROJECT_STATUS_HEARTBEAT_STALE_AFTER_MS + 1
+            );
+          }
+          return { status: 200, url: "https://final.example.test", redirected: false } as Response;
+        },
+        sleep: async () => undefined,
+        now: () => Date.now(),
+        resolveHost: async () => [{ address: "93.184.216.34", family: 4 }],
+        id: (() => {
+          let index = 0;
+          return () => `status-test-lease-${index++}`;
+        })(),
+      })
+    ).rejects.toThrow("interrupted");
+
+    const runs = await db.select().from(projectStatusRuns);
+    expect(runs.find((run) => run.id === "status-test-lease-0")?.status).toBe("interrupted");
+    expect(await db.select().from(projectStatusResults)).toHaveLength(0);
+  });
 });

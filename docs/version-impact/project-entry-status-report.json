@@ -31,6 +31,7 @@
     "src/lib/project-catalog.test.ts": "2bfc0b4128416cf8384a471ce78880760c402fd6",
     "src/lib/project-catalog.ts": "caee12024ea5dbf17f3d3eefb5a325fca7983339",
     "src/lib/project-status.ts": "ab7753db1bc249bf976a2117ed70de4204da471b",
+    "src/lib/release/github.ts": "0db26d72849b270039cbb56b5297a5cc83fd5c8e",
     "src/lib/schema.ts": "daa7cd46334ace06257948a7abf3d3ceadfe646e",
     "src/lib/search/web-demo-fixtures.ts": "dbafc4dabe3c04a57c4ca4320d64504355161bb4",
     "src/styles/milkdown-nature.css": "665489233ef7effd416144d9631fb52e814b9910",
@@ -44,12 +45,13 @@
     "src/server/routers/admin/index.ts": "b3e8f76750e4df5798fdbf94cd8a8d2c93e69714",
     "src/server/routers/admin/project-status.ts": "218ff54554c8b2a887aae0542e0b84ef3b111927",
     "src/server/routers/admin/project-status.test.ts": "6b813665fe38076d6504aaebf73917cc64cc3ec7",
-    "src/server/services/project-status.integration.test.ts": "3e9f0116eb056f3fca7576edf96a2f28b298705b",
+    "src/server/services/project-status.integration.test.ts": "90fefbd346b1e1058df6fefd4af95395043f7631",
     "src/server/services/project-status.test.ts": "caf10f674c6fdcb05be12db833ae92d2a8a2a4d4",
-    "src/server/services/project-status.ts": "0faf9e1ae5e2cd676b7b656dfb6aeee13ea4490f",
+    "src/server/services/project-status.ts": "413a3794ea6ffd319135cec450ee9e6ba8eac8d7",
     "src/server/trpc.ts": "2eb74085661d32ee954e24bd05a7239a9bbc3489",
     "tests/e2e/web-demo/system-share.spec.ts": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
     "tests/e2e/web-demo/project-status.spec.ts": "0e053262397239e6bc4fbebbfd6844e3860c0ea5",
+    "tests/lib/manual-release-ledger.test.ts": "7eead40ff749d1cc21e0d41f827d5da355421856",
     "tests/server/system-share-api.test.ts": "1cfe1b2da6031cb7cd34ac6ff0a01573deb84aaa"
   },
   "change": {
@@ -77,7 +79,7 @@
       "evidence": [
         {
           "path": "src/server/services/project-status.integration.test.ts",
-          "blob": "3e9f0116eb056f3fca7576edf96a2f28b298705b",
+          "blob": "90fefbd346b1e1058df6fefd4af95395043f7631",
           "command": "bun test --isolate src/server/services/project-status.integration.test.ts"
         },
         {
@@ -113,13 +115,18 @@
         },
         {
           "path": "apps/admin/src/pages/project-status.tsx",
-          "blob": "0d1a411819bb4ea11857589e596819fc20593368",
+          "blob": "4c8c965336da69fdcf2d975ce6185f0d6ee3b40a",
           "command": "bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
         },
         {
           "path": "tests/e2e/web-demo/project-status.spec.ts",
           "blob": "0e053262397239e6bc4fbebbfd6844e3860c0ea5",
           "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:38210 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
+        },
+        {
+          "path": "tests/lib/manual-release-ledger.test.ts",
+          "blob": "7eead40ff749d1cc21e0d41f827d5da355421856",
+          "command": "bun test --isolate tests/lib/manual-release-ledger.test.ts"
         },
         {
           "path": "drizzle/0023_project_status_heartbeat.sql",

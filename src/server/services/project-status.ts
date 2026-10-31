@@ -3,7 +3,7 @@ import { lookup } from "node:dns/promises";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { isIP } from "node:net";
-import { and, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
+import { and, desc, eq, exists, inArray, isNull, lt, ne, or } from "drizzle-orm";
 import { db, initializeDB } from "@/lib/db";
 import {
   getProjectStatusCatalogEntries,
@@ -229,12 +229,14 @@ function freshnessFor(checkedAt: number | null, now: number): ProjectStatusFresh
 async function checkTarget(
   href: string,
   deadline: number,
-  deps: ProjectStatusServiceDeps
+  deps: ProjectStatusServiceDeps,
+  runSignal?: AbortSignal
 ): Promise<CheckOutcome> {
   let attemptCount = 0;
   let lastOutcome: CheckOutcome | null = null;
 
   while (attemptCount < 2) {
+    if (runSignal?.aborted) throw new Error("Project status run was interrupted");
     const remaining = deadline - deps.now();
     if (remaining <= 0) {
       return {
@@ -254,6 +256,11 @@ async function checkTarget(
     attemptCount += 1;
     const startedAt = deps.now();
     const controller = new AbortController();
+    const abortForLease = () => controller.abort();
+    if (runSignal) {
+      if (runSignal.aborted) throw new Error("Project status run was interrupted");
+      runSignal.addEventListener("abort", abortForLease, { once: true });
+    }
     const timeoutMs = Math.min(deps.targetTimeoutMs ?? PROJECT_STATUS_TARGET_TIMEOUT_MS, remaining);
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -314,7 +321,10 @@ async function checkTarget(
       };
     } finally {
       clearTimeout(timeout);
+      runSignal?.removeEventListener("abort", abortForLease);
     }
+
+    if (runSignal?.aborted) throw new Error("Project status run was interrupted");
 
     const retryable =
       lastOutcome.status === "unavailable" &&
@@ -482,12 +492,20 @@ export async function runProjectStatusCheck(
     }
     throw error;
   }
+  const leaseController = new AbortController();
   let heartbeatTimer: ReturnType<typeof setInterval> | null = setInterval(() => {
-    void db
-      .update(projectStatusRuns)
-      .set({ heartbeatAt: deps.now() })
-      .where(and(eq(projectStatusRuns.id, runId), eq(projectStatusRuns.status, "running")))
-      .catch(() => undefined);
+    void (async () => {
+      try {
+        const touched = await db
+          .update(projectStatusRuns)
+          .set({ heartbeatAt: deps.now() })
+          .where(and(eq(projectStatusRuns.id, runId), eq(projectStatusRuns.status, "running")))
+          .returning({ id: projectStatusRuns.id });
+        if (!touched.length) leaseController.abort();
+      } catch {
+        // A transient heartbeat write failure must not interrupt a live run.
+      }
+    })();
   }, PROJECT_STATUS_HEARTBEAT_INTERVAL_MS);
   try {
     await db.insert(projectStatusResults).values(
@@ -518,10 +536,13 @@ export async function runProjectStatusCheck(
     const outcomes = await mapWithConcurrency(
       [...byHref.entries()],
       PROJECT_STATUS_MAX_CONCURRENCY,
-      async ([href, groupedEntries]) => ({
-        groupedEntries,
-        outcome: await checkTarget(href, deadline, deps),
-      })
+      async ([href, groupedEntries]) => {
+        await assertProjectStatusRunActive(runId);
+        return {
+          groupedEntries,
+          outcome: await checkTarget(href, deadline, deps, leaseController.signal),
+        };
+      }
     );
 
     const resultRows = await db
@@ -534,10 +555,24 @@ export async function runProjectStatusCheck(
         await assertProjectStatusRunActive(runId);
         const row = resultByEntry.get(entry.entryKey);
         if (!row) continue;
-        await db
+        const updated = await db
           .update(projectStatusResults)
           .set(outcome)
-          .where(eq(projectStatusResults.id, row.id));
+          .where(
+            and(
+              eq(projectStatusResults.id, row.id),
+              exists(
+                db
+                  .select({ id: projectStatusRuns.id })
+                  .from(projectStatusRuns)
+                  .where(
+                    and(eq(projectStatusRuns.id, runId), eq(projectStatusRuns.status, "running"))
+                  )
+              )
+            )
+          )
+          .returning({ id: projectStatusResults.id });
+        if (!updated.length) throw new Error("Project status run was interrupted");
       }
     }
 
@@ -618,7 +653,7 @@ export async function getProjectStatusOverview(
   const latestRows = await db
     .select()
     .from(projectStatusRuns)
-    .where(or(eq(projectStatusRuns.status, "completed"), eq(projectStatusRuns.status, "partial")))
+    .where(ne(projectStatusRuns.status, "running"))
     .orderBy(desc(projectStatusRuns.startedAt))
     .limit(1);
   const latestRun = latestRows[0] ?? null;
