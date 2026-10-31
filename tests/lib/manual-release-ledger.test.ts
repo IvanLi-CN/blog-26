@@ -171,7 +171,6 @@ describe("durable product release reservations", () => {
       `Ledger-Recovery: ${legacy}`,
       `Ledger-Recovery: ${olderLegacy}`
     );
-    recovered.commit.message = legacyMessage.replace(`\nLedger-Recovery: ${olderRecovery}`, "");
     await expect(
       new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
     ).rejects.toThrow("recovery markers conflict");
@@ -186,6 +185,21 @@ describe("durable product release reservations", () => {
     const olderLegacyCommit = commits[4];
     if (!olderLegacyCommit) throw new Error("Missing recovery fixture");
     const olderLegacyAuthor = olderLegacyCommit.author;
+    const olderRecoveryAuthor = olderRecoveryCommit.author;
+    headCommit.commit.message = headMessage.replace(headMarker, "");
+    declaration.commit.message = declarationMessage.replace(`Ledger-Recovery: ${legacy}`, "");
+    recovered.commit.message = legacyMessage.replace(`\nLedger-Recovery: ${olderRecovery}`, "");
+    olderRecoveryCommit.author = { login: bot };
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read({
+        allowLegacyHead: true,
+        allowLegacyAncestor: true,
+      })
+    ).rejects.toThrow("does not bind its legacy commit");
+    headCommit.commit.message = headMessage;
+    declaration.commit.message = declarationMessage;
+    recovered.commit.message = legacyMessage;
+    olderRecoveryCommit.author = olderRecoveryAuthor;
     declaration.commit.message = `chore(release): recovery wrapper\n\n${digestLine}\n${signedOff}`;
     recovered.author = { login: bot };
     recovered.commit.message = legacyMessage.replace(`\nLedger-Recovery: ${olderRecovery}`, "");

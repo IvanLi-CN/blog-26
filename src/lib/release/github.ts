@@ -422,31 +422,9 @@ export class GitHubLedgerStore implements LedgerStore {
       recoveryMarkers.set(commit.sha, target);
       recoveryTargets.add(target);
     }
-    const markerGraph = new Map<string, Set<string>>();
-    for (const [source, target] of recoveryMarkers) {
-      const sourceLinks = markerGraph.get(source) || new Set<string>();
-      sourceLinks.add(target);
-      markerGraph.set(source, sourceLinks);
-      const targetLinks = markerGraph.get(target) || new Set<string>();
-      targetLinks.add(source);
-      markerGraph.set(target, targetLinks);
-    }
-    const visitedMarkers = new Set<string>();
-    let markerComponents = 0;
-    for (const node of markerGraph.keys()) {
-      if (visitedMarkers.has(node)) continue;
-      markerComponents += 1;
-      const pending = [node];
-      while (pending.length) {
-        const current = pending.pop();
-        if (!current || visitedMarkers.has(current)) continue;
-        visitedMarkers.add(current);
-        for (const linked of markerGraph.get(current) || []) pending.push(linked);
-      }
-    }
-    if (markerComponents > 1) throw new Error("Ledger recovery markers conflict");
     let recoverySha: string | undefined;
     let legacySha: string | undefined;
+    const recoveryTerminalOwners = new Map<string, string>();
     const owner = contract.repository.split("/")[0];
     for (const [index, commit] of ledgerCommits.entries()) {
       const raw = commits[index];
@@ -471,7 +449,7 @@ export class GitHubLedgerStore implements LedgerStore {
       if (!/Ledger-Digest: [a-f0-9]{64}/.test(commit.commit.message))
         throw new Error("Ledger commit lacks its state digest");
     }
-    for (const target of recoveryMarkers.values()) {
+    for (const [source, target] of recoveryMarkers) {
       const seen = new Set<string>();
       let current = target;
       while (true) {
@@ -483,20 +461,28 @@ export class GitHubLedgerStore implements LedgerStore {
         const targetCommit = ledgerCommits[targetIndex];
         if (!targetCommit)
           throw new Error("Ledger recovery marker does not bind its legacy commit");
-        if (targetCommit.author?.login === owner) break;
+        if (targetCommit.author?.login === owner) {
+          recoveryTerminalOwners.set(source, current);
+          break;
+        }
         const next = recoveryMarkers.get(current);
         if (!next) throw new Error("Ledger recovery marker does not bind its legacy commit");
         current = next;
       }
     }
+    if (legacySha !== undefined) {
+      const legacyIndex = indexBySha.get(legacySha);
+      if (legacyIndex === undefined)
+        throw new Error("Ledger recovery marker does not bind its legacy commit");
+      for (const [source, terminal] of recoveryTerminalOwners) {
+        const sourceIndex = indexBySha.get(source);
+        if (sourceIndex !== undefined && sourceIndex < legacyIndex && terminal !== legacySha)
+          throw new Error("Ledger recovery markers conflict");
+      }
+    }
     if (recoveryTargets.size > 0 && recoverySha === undefined)
       throw new Error("Ledger recovery marker does not bind its legacy commit");
-    if (
-      recoverySha !== undefined &&
-      !options.allowLegacyHead &&
-      !options.allowLegacyAncestor &&
-      legacySha !== recoverySha
-    )
+    if (recoverySha !== undefined && legacySha !== recoverySha)
       throw new Error("Ledger recovery marker does not bind its legacy commit");
     const ledger = validateLedger(JSON.parse(this.github.file("ledger.json", sha)), contract);
     if (!this.github.commit(sha).message.includes(`Ledger-Digest: ${digest(ledger)}`))
