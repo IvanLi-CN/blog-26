@@ -28,6 +28,7 @@ test.describe("Project status Web Demo", () => {
     await expect(page.getByRole("option", { name: "开发工具" })).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("heading", { name: "检查历史", exact: true })).toBeVisible();
+    await expect(page.getByText("未知 / 陈旧", { exact: true })).toBeVisible();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
     ).toBe(true);

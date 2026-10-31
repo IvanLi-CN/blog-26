@@ -12,7 +12,7 @@ const SCHEDULER_LEASE_ID = "global";
 const SCHEDULER_LEASE_TTL_MS = 15_000;
 const SCHEDULER_LEASE_HEARTBEAT_MS = 5_000;
 
-async function markOrphanedSchedulerRuns(now: number) {
+export async function markOrphanedSchedulerRuns(now: number) {
   await db
     .update(jobRuns)
     .set({
@@ -20,13 +20,7 @@ async function markOrphanedSchedulerRuns(now: number) {
       finishedAt: now,
       errorMessage: "调度器租约失效，中断了未完成的任务",
     })
-    .where(
-      and(
-        eq(jobRuns.status, "running"),
-        eq(jobRuns.triggeredBy, "scheduler"),
-        lt(jobRuns.startedAt, now - SCHEDULER_LEASE_TTL_MS)
-      )
-    );
+    .where(eq(jobRuns.status, "running"));
 }
 
 type TimerRef = ReturnType<typeof setTimeout> | null;
@@ -38,6 +32,7 @@ type InternalJobState = {
   timer: TimerRef;
   running: boolean;
   queued: boolean;
+  abortController: AbortController | null;
 };
 
 class JobsScheduler {
@@ -54,7 +49,14 @@ class JobsScheduler {
     this.started = true;
     for (const def of jobDefinitions) {
       const nextAt = nextRunTime(Date.now(), def.schedule);
-      const st: InternalJobState = { def, nextAt, timer: null, running: false, queued: false };
+      const st: InternalJobState = {
+        def,
+        nextAt,
+        timer: null,
+        running: false,
+        queued: false,
+        abortController: null,
+      };
       this.jobs.set(def.key, st);
     }
     await this.tryBecomeLeader(options);
@@ -107,6 +109,7 @@ class JobsScheduler {
         for (const st of this.jobs.values()) {
           if (st.timer) clearTimeout(st.timer);
           st.timer = null;
+          st.abortController?.abort(new Error("调度器租约失效"));
         }
         void interruptActiveProjectStatusRuns(Date.now(), true, this.ownerToken);
       }
@@ -141,6 +144,18 @@ class JobsScheduler {
     return nextRunTime(Date.now(), def.schedule);
   }
 
+  private async assertSchedulerLease(triggeredBy: "scheduler" | "manual") {
+    if (triggeredBy !== "scheduler") return;
+    const lease = await db
+      .select({ ownerToken: jobSchedulerLeases.ownerToken })
+      .from(jobSchedulerLeases)
+      .where(eq(jobSchedulerLeases.id, SCHEDULER_LEASE_ID))
+      .limit(1);
+    if (!this.leader || lease[0]?.ownerToken !== this.ownerToken) {
+      throw new Error("调度器租约失效");
+    }
+  }
+
   /**
    * 非阻塞触发：立即在下一个事件循环中运行，不阻塞调用方。
    */
@@ -168,6 +183,8 @@ class JobsScheduler {
     if (st.running) throw new Error(`Job is already running: ${jobKey}`);
     st.queued = false;
     st.running = true;
+    const abortController = triggeredBy === "scheduler" ? new AbortController() : null;
+    st.abortController = abortController;
 
     const runId = nanoid();
     const log = createRunLog(jobKey, runId);
@@ -194,14 +211,18 @@ class JobsScheduler {
         logDeleted: false,
         attempt: 1,
       });
+      await this.assertSchedulerLease(triggeredBy);
       await st.def.run(logger, {
         schedulerOwnerToken: this.ownerToken,
         triggeredBy,
+        signal: abortController?.signal,
       });
+      abortController?.signal.throwIfAborted();
+      await this.assertSchedulerLease(triggeredBy);
       await db
         .update(jobRuns)
         .set({ status: "success", finishedAt: Date.now() })
-        .where(eq(jobRuns.id, runId));
+        .where(and(eq(jobRuns.id, runId), eq(jobRuns.status, "running")));
       logger.info("run_completed", { status: "success", durationMs: Date.now() - startedAt });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -225,10 +246,11 @@ class JobsScheduler {
       await db
         .update(jobRuns)
         .set({ status: "error", finishedAt: Date.now(), errorMessage: msg })
-        .where(eq(jobRuns.id, runId));
+        .where(and(eq(jobRuns.id, runId), eq(jobRuns.status, "running")));
       logger.info("run_completed", { status: "error", durationMs: Date.now() - startedAt });
     } finally {
       st.running = false;
+      st.abortController = null;
       st.nextAt = this.computeNext(st.def);
       this.armTimer(st);
 

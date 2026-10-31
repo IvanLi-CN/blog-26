@@ -20,7 +20,11 @@ export type JobDefinition = {
   runOnStart?: boolean;
   run: (
     log: Logger,
-    context?: { schedulerOwnerToken?: string; triggeredBy?: "scheduler" | "manual" }
+    context?: {
+      schedulerOwnerToken?: string;
+      signal?: AbortSignal;
+      triggeredBy?: "scheduler" | "manual";
+    }
   ) => Promise<void>;
 };
 
@@ -80,35 +84,43 @@ export const jobDefinitions: JobDefinition[] = [
     name: "定时增量同步",
     description: "每30分钟增量同步内容源",
     schedule: { kind: "interval", everyMs: 30 * 60 * 1000 },
-    run: async (log) => {
+    run: async (log, context) => {
       const manager = await ensureContentSourcesRegistered();
       const sources = manager.getSources();
       if (sources.length === 0) {
         log.info("sync_skipped", { reason: "no_sources" });
         return;
       }
+      const abortSync = () => {
+        void manager.cancelSync();
+      };
+      context?.signal?.addEventListener("abort", abortSync, { once: true });
       log.info("sync_started");
-      const res = await manager.syncAll(false);
-      const noSourcesError =
-        res.errors.length > 0 &&
-        res.errors.every((err) =>
-          typeof err.message === "string" ? err.message.includes("没有启用的内容源") : false
-        );
-      if (noSourcesError) {
-        log.info("sync_skipped", { reason: "no_sources" });
-        return;
-      }
+      try {
+        const res = await manager.syncAll(false);
+        const noSourcesError =
+          res.errors.length > 0 &&
+          res.errors.every((err) =>
+            typeof err.message === "string" ? err.message.includes("没有启用的内容源") : false
+          );
+        if (noSourcesError) {
+          log.info("sync_skipped", { reason: "no_sources" });
+          return;
+        }
 
-      log.info("sync_completed", {
-        stats: res.stats,
-        errors: res.errors,
-        warnings: res.warnings ?? [],
-      });
-      if (res.errors.length > 0) {
-        log.error("sync_errors", {
-          count: res.errors.length,
-          samples: res.errors.slice(0, 3),
+        log.info("sync_completed", {
+          stats: res.stats,
+          errors: res.errors,
+          warnings: res.warnings ?? [],
         });
+        if (res.errors.length > 0) {
+          log.error("sync_errors", {
+            count: res.errors.length,
+            samples: res.errors.slice(0, 3),
+          });
+        }
+      } finally {
+        context?.signal?.removeEventListener("abort", abortSync);
       }
     },
   },
@@ -117,9 +129,9 @@ export const jobDefinitions: JobDefinition[] = [
     name: "定时增量向量化",
     description: "每1小时对增量内容进行向量化",
     schedule: { kind: "interval", everyMs: 60 * 60 * 1000 },
-    run: async (log) => {
+    run: async (log, context) => {
       log.info("vectorization_started", { mode: "incremental" });
-      const { stats } = await vectorizeAll({ isFull: false });
+      const { stats } = await vectorizeAll({ isFull: false, signal: context?.signal });
       log.info("vectorization_completed", {
         processed: stats.processed,
         success: stats.success,
@@ -150,6 +162,7 @@ export const jobDefinitions: JobDefinition[] = [
       log.info("project_status_started");
       const result = await runProjectStatusCheck(context?.triggeredBy ?? "scheduler", {
         schedulerOwnerToken: context?.schedulerOwnerToken,
+        signal: context?.signal,
       });
       log.info("project_status_completed", result);
     },

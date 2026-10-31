@@ -95,7 +95,7 @@ function problemDetail(result: ProjectStatusResultDto) {
 function problemStatusLabel(result: ProjectStatusResultDto) {
   if (result.status === "unavailable") return "异常";
   if (result.status === "unknown") return "未知";
-  return "stale";
+  return "陈旧";
 }
 
 type ProjectStatusMatrixRow = {
@@ -374,7 +374,7 @@ export function ProjectStatusPage() {
                   ? "正在加载当前入口状态。"
                   : "无法读取当前入口状态，请重试。"
                 : totalProblems > 0
-                  ? "红色异常优先处理；未知和 stale 需要确认检查是否完整。"
+                  ? "红色异常优先处理；未知和陈旧需要确认检查是否完整。"
                   : "当前没有需要处理的入口。"}
             </p>
           </div>
@@ -382,7 +382,7 @@ export function ProjectStatusPage() {
             {[
               ["unavailable", "异常", overview?.summary.unavailable ?? 0, "danger"],
               ["unknown", "未知", overview?.summary.unknown ?? 0, "warning"],
-              ["stale", "stale", overview?.summary.stale ?? 0, "warning"],
+              ["stale", "陈旧", overview?.summary.stale ?? 0, "warning"],
             ].map(([value, label, count, tone]) => (
               <Button
                 key={value}
@@ -545,7 +545,7 @@ export function ProjectStatusPage() {
           </span>
           <span className="inline-flex items-center gap-1.5">
             <AlertTriangle className="size-3.5 text-warning" aria-hidden />
-            未知 / stale
+            未知 / 陈旧
           </span>
         </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
@@ -587,7 +587,7 @@ export function ProjectStatusPage() {
             <option value="all">全部结果</option>
             <option value="unavailable">异常优先</option>
             <option value="unknown">未知</option>
-            <option value="stale">stale</option>
+            <option value="stale">陈旧</option>
             <option value="available">可用</option>
           </Select>
         </div>
@@ -813,7 +813,7 @@ export function ProjectStatusPage() {
                                         : result.status === "unavailable"
                                           ? "异常"
                                           : result.freshness === "stale"
-                                            ? "stale"
+                                            ? "陈旧"
                                             : "未知"}
                                     </span>
                                   </a>

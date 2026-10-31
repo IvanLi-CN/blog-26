@@ -8,7 +8,7 @@
     "apps/admin/src/components/ui.tsx": "16d86da17d8cbb471354ba982cbce040816a2e26",
     "apps/admin/src/demo/mock-admin-api.ts": "be13f5e115074f9107fd8257f2fd3cd4fbac6ec6",
     "apps/admin/src/pages/project-status.test.tsx": "6e0a6915c8685bfccd39677ebe8000e9675f21c8",
-    "apps/admin/src/pages/project-status.tsx": "7597084d3acbccf16d521476e8a970934b302a12",
+    "apps/admin/src/pages/project-status.tsx": "d8694997eefaa4485dce7cde22158bd318d5af26",
     "apps/admin/src/router.tsx": "d0740e1e0313421a8149376d1167b6b64a09a302",
     "astro.config.mjs": "eb89dbcbdb6975f0ed76d49c486d6f9c0a1deaad",
     "drizzle/0021_project_status.sql": "3f3a5cd4a02859266c40b986f56926d7956205bc",
@@ -16,7 +16,7 @@
     "drizzle/0023_project_status_heartbeat.sql": "e6a563f78b582297dc7c89d2f9d45c3cc1e1478a",
     "drizzle/0024_scheduler_lease.sql": "b826dd5bc6ec203e8596fcb499d1ceb98e8b69c8",
     "drizzle/0025_project_status_scheduler_owner.sql": "6b65b240e3815e7081b0c306fff38951d82ff9b0",
-    "drizzle/0026_job_run_running_guard.sql": "8e47d76d5a68eb658aa46dc63c4a001db9493ef0",
+    "drizzle/0026_job_run_running_guard.sql": "0795784813ea6a2eab7c75ba945c1bf7a2ae5ca9",
     "drizzle/meta/0021_snapshot.json": "518671846ccc9922cd40b510a8939b5016974660",
     "drizzle/meta/0022_snapshot.json": "e3b6f6d9599f5b272e11393fa43de4b834342c18",
     "drizzle/meta/0023_snapshot.json": "7ddf43d2cab6604d97dffe630b790dca4b5e8cf9",
@@ -44,20 +44,25 @@
     "src/styles/milkdown-nature.css": "665489233ef7effd416144d9631fb52e814b9910",
     "src/server/admin-api/router.ts": "8b068746cda0a5fdde1da5abd36e8b851b5f1223",
     "src/server/http-compat-api.test.ts": "7b55434b5e9c720b42114c060218abbc11ff6403",
-    "src/server/jobs/definitions.ts": "65e3cb2c4c32bd21b065b86c78971a1f106d22d1",
-    "src/server/jobs/scheduler.ts": "56cc246b0e701dc56d95d52cb2bf2d180050d2cb",
+    "src/server/jobs/definitions.ts": "58c27584772ffbaa9bec53d1d44ee6a84d6bdfa2",
+    "src/server/jobs/scheduler.ts": "af1c8f73e1a4df7be70348bec280c21fb2ccf47c",
+    "src/server/jobs/scheduler.test.ts": "19d4e0a05be8019e8eb9a01520232a761e51956b",
+    "src/lib/ai/embeddings.ts": "02ca4afaae3b7c51c41bca01d08504ce8fbdd8b8",
+    "src/lib/ai/vectorization.ts": "ae0d6c9f20061ce32d65f88e62fc8110e8daf470",
     "scripts/run-test-suite.ts": "4331c4a5de0e6ac1ae32be5435966227538662f3",
     "scripts/start-console.ts": "1dbe1f4897f204f9829918701b9efd0f8aa9b25f",
     ".github/workflows/e2e.yml": "3936f332df882f048a532d0a1eb7f8ff53d12239",
+    "tests/e2e/web-demo/playwright.config.ts": "7ea28022a065a2e7806175b85fc25f018a3d6db8",
     "src/server/routers/admin/index.ts": "b3e8f76750e4df5798fdbf94cd8a8d2c93e69714",
     "src/server/routers/admin/project-status.ts": "1d4190a83a493148ccdbe02effb8b544146158f1",
     "src/server/routers/admin/project-status.test.ts": "6b813665fe38076d6504aaebf73917cc64cc3ec7",
     "src/server/services/project-status.integration.test.ts": "f8016a9f4d07fff29967b319cd4be58df2a663f2",
     "src/server/services/project-status.test.ts": "91ca63bffb14eb1e2d1d1ef6e722f92fcf8d38f1",
-    "src/server/services/project-status.ts": "aef318d6c8e9d276e761b4804b85e5dffd010f3f",
+    "src/server/services/project-status.ts": "dbc4672d9bc19fd87fc9d77cc2436dc6e7dcda73",
+    "src/server/services/search-migration.test.ts": "4a3f1ce4966dd44f4dd50be650a375a36535796b",
     "src/server/trpc.ts": "2eb74085661d32ee954e24bd05a7239a9bbc3489",
     "tests/e2e/web-demo/system-share.spec.ts": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
-    "tests/e2e/web-demo/project-status.spec.ts": "6da1649560406174a875f32ae8d6fe41d0ca94f0",
+    "tests/e2e/web-demo/project-status.spec.ts": "dea76f66bfdb210bd9641eb9b06428c7383fa7dc",
     "tests/lib/manual-release-ledger.test.ts": "7eead40ff749d1cc21e0d41f827d5da355421856",
     "tests/server/system-share-api.test.ts": "bddc396d20dcf3aef0fc304bfb2b0f3870de9a6f"
   },
@@ -81,8 +86,8 @@
     },
     "current": {
       "impact": "minor",
-      "reasoning": "The candidate implements the approved shared catalog and additive status-report workflow: external URL checks do not read response bodies or modify the catalog, the database migration is additive, and Admin consumers receive new overview/history/trigger endpoints without changing existing routes.",
-      "assessed_at": "2026-10-31T22:46:40+08:00",
+      "reasoning": "The candidate implements the approved shared catalog and status-report workflow: external URL checks do not read response bodies or modify the catalog, the project-status tables are additive, the job-run guard repairs duplicate legacy in-flight records before adding its index, and Admin consumers receive new overview/history/trigger endpoints without changing existing routes.",
+      "assessed_at": "2026-10-31T23:02:28+08:00",
       "evidence": [
         {
           "path": "src/server/services/project-status.integration.test.ts",
@@ -107,8 +112,8 @@
     },
     "verified": {
       "impact": "minor",
-      "reasoning": "Shared catalog, service, HTTP compatibility, Admin UI, migration, build, and browser evidence passed on the candidate SHA. The feature adds only compatible Admin capabilities and additive persistent state.",
-      "assessed_at": "2026-10-31T22:46:40+08:00",
+      "reasoning": "Shared catalog, service, HTTP compatibility, Admin UI, migration-upgrade recovery, scheduler takeover, build, and browser evidence passed on the candidate SHA. The feature adds compatible Admin capabilities, bounded persistent state changes, and fenced scheduler recovery.",
+      "assessed_at": "2026-10-31T23:02:28+08:00",
       "evidence": [
         {
           "path": "src/lib/project-catalog.test.ts",
@@ -122,13 +127,13 @@
         },
         {
           "path": "apps/admin/src/pages/project-status.tsx",
-          "blob": "7597084d3acbccf16d521476e8a970934b302a12",
-          "command": "bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
+          "blob": "d8694997eefaa4485dce7cde22158bd318d5af26",
+          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:29680 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
         },
         {
           "path": "tests/e2e/web-demo/project-status.spec.ts",
-          "blob": "6da1649560406174a875f32ae8d6fe41d0ca94f0",
-          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:38210 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
+          "blob": "dea76f66bfdb210bd9641eb9b06428c7383fa7dc",
+          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:29680 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts && WEB_DEMO_VIEWPORT=tablet WEB_DEMO_TEST_URL=http://127.0.0.1:29680 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts && WEB_DEMO_VIEWPORT=mobile WEB_DEMO_TEST_URL=http://127.0.0.1:29680 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
         },
         {
           "path": "tests/lib/manual-release-ledger.test.ts",
@@ -137,8 +142,13 @@
         },
         {
           "path": "drizzle/0026_job_run_running_guard.sql",
-          "blob": "8e47d76d5a68eb658aa46dc63c4a001db9493ef0",
-          "command": "bun run db:migrations:validate && bunx drizzle-kit check"
+          "blob": "0795784813ea6a2eab7c75ba945c1bf7a2ae5ca9",
+          "command": "bun run db:migrations:validate && bunx drizzle-kit check && bun test src/server/services/search-migration.test.ts"
+        },
+        {
+          "path": "src/server/jobs/scheduler.test.ts",
+          "blob": "19d4e0a05be8019e8eb9a01520232a761e51956b",
+          "command": "bun test src/server/jobs/scheduler.test.ts"
         }
       ]
     }
@@ -188,7 +198,7 @@
     "persistent_state": {
       "impact": "minor",
       "applicable": true,
-      "state_description": "The candidate adds projectStatusRuns and projectStatusResults as additive SQLite tables. Prior versions ignore these tables; the candidate can upgrade from every supported 3.x state without rewriting existing tables or records.",
+      "state_description": "The candidate adds projectStatusRuns and projectStatusResults plus a single-flight index on jobRuns. The migration first marks duplicate running job records as recovered errors, preserving the newest record per job key before creating the index; prior versions ignore the new project-status tables, and supported 3.x states can upgrade without losing existing records.",
       "readable_by_prior_versions": [],
       "upgrade_from_versions": [
         "3.0.3",
@@ -222,9 +232,9 @@
       ],
       "evidence": [
         {
-          "path": "drizzle/0023_project_status_heartbeat.sql",
-          "blob": "e6a563f78b582297dc7c89d2f9d45c3cc1e1478a",
-          "command": "bun run db:migrations:validate && bunx drizzle-kit check && bun test --isolate src/server/services/project-status.integration.test.ts"
+          "path": "drizzle/0026_job_run_running_guard.sql",
+          "blob": "0795784813ea6a2eab7c75ba945c1bf7a2ae5ca9",
+          "command": "bun run db:migrations:validate && bunx drizzle-kit check && bun test src/server/services/search-migration.test.ts src/server/jobs/scheduler.test.ts"
         }
       ]
     }

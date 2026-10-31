@@ -49,6 +49,7 @@ export type ProjectStatusServiceDeps = {
   targetTimeoutMs?: number;
   retryDelayMs?: number;
   schedulerOwnerToken?: string;
+  signal?: AbortSignal;
 };
 
 const productionDeps: ProjectStatusServiceDeps = {
@@ -603,6 +604,9 @@ export async function runProjectStatusCheck(
     throw error;
   }
   const leaseController = new AbortController();
+  const abortFromScheduler = () => leaseController.abort(new Error("调度器租约失效"));
+  deps.signal?.addEventListener("abort", abortFromScheduler, { once: true });
+  if (deps.signal?.aborted) abortFromScheduler();
   let heartbeatTimer: ReturnType<typeof setInterval> | null = setInterval(() => {
     void (async () => {
       try {
@@ -739,6 +743,7 @@ export async function runProjectStatusCheck(
     });
     throw error;
   } finally {
+    deps.signal?.removeEventListener("abort", abortFromScheduler);
     if (heartbeatTimer) clearInterval(heartbeatTimer);
     heartbeatTimer = null;
   }

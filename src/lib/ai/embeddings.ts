@@ -5,6 +5,23 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function sleepWithSignal(ms: number, signal?: AbortSignal) {
+  if (!signal) return sleep(ms);
+  if (signal.aborted) return Promise.reject(signal.reason ?? new Error("Operation aborted"));
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", abort);
+      resolve();
+    }, ms);
+    const abort = () => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", abort);
+      reject(signal.reason ?? new Error("Operation aborted"));
+    };
+    signal.addEventListener("abort", abort, { once: true });
+  });
+}
+
 // 全局限流与冷却状态（进程内共享）
 const GLOBAL_LIMITS = {
   maxInflight: Math.max(
@@ -82,6 +99,7 @@ type BackoffOptions = {
   retries?: number;
   initialDelayMs?: number;
   maxDelayMs?: number;
+  signal?: AbortSignal;
   onRetry?: (info: {
     attempt: number;
     waitMs: number;
@@ -103,6 +121,9 @@ async function fetchWithBackoff(
   let delay = initialDelayMs;
 
   while (true) {
+    if (options?.signal?.aborted) {
+      throw options.signal.reason ?? new Error("Operation aborted");
+    }
     try {
       const res = await makeRequest();
       if (res.ok) return res;
@@ -128,7 +149,7 @@ async function fetchWithBackoff(
           status: res.status,
           retryAfterMs,
         });
-        await sleep(wait);
+        await sleepWithSignal(wait, options.signal);
         attempt++;
         delay = Math.min(maxDelayMs, Math.floor(delay * 2));
         continue;
@@ -136,6 +157,9 @@ async function fetchWithBackoff(
 
       return res;
     } catch (err) {
+      if (options?.signal?.aborted) {
+        throw options.signal.reason ?? err;
+      }
       // network error: retry with backoff
       if (attempt >= retries) throw err;
       const wait = Math.min(maxDelayMs, Math.floor(delay * (1 + Math.random() * 0.25)));
@@ -143,7 +167,7 @@ async function fetchWithBackoff(
         `[embeddings] network error on attempt ${attempt + 1}, waitMs=${wait}: ${String(err)}`
       );
       options?.onRetry?.({ attempt: attempt + 1, waitMs: wait, reason: "network_error" });
-      await sleep(wait);
+      await sleepWithSignal(wait, options?.signal);
       attempt++;
       delay = Math.min(maxDelayMs, Math.floor(delay * 2));
     }
@@ -172,7 +196,7 @@ export type EmbeddingResponse = {
 export async function createEmbedding(
   input: string,
   model?: string,
-  opts?: { onRetry?: BackoffOptions["onRetry"] }
+  opts?: { onRetry?: BackoffOptions["onRetry"]; signal?: AbortSignal }
 ): Promise<EmbeddingResponse> {
   const resolved = await getResolvedLlmConfig();
   const modelName = model || resolved.embedding.model;
@@ -182,9 +206,11 @@ export async function createEmbedding(
   if (!apiBase || !apiKey || !modelName) {
     throw new Error("Embedding model/baseUrl/apiKey is not configured");
   }
+  opts?.signal?.throwIfAborted();
   await acquireGlobalSlot();
   let res: Response | undefined;
   try {
+    opts?.signal?.throwIfAborted();
     res = await fetchWithBackoff(
       () =>
         fetch(`${apiBase}/embeddings`, {
@@ -194,11 +220,13 @@ export async function createEmbedding(
             Authorization: `Bearer ${apiKey}`,
           },
           body: JSON.stringify({ model: modelName, input }),
+          signal: opts?.signal,
         }),
       {
         retries: 5,
         initialDelayMs: 100,
         maxDelayMs: 3000,
+        signal: opts?.signal,
         onRetry: (info) => {
           // 命中 429/Retry-After 或网络错误时，应用全局冷却，避免风暴式重试
           if (info.reason === "rate_limited" || info.status === 429) {
