@@ -6,7 +6,10 @@ import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { db, initializeDB } from "@/lib/db";
 import { getProjectStatusCatalogEntries } from "@/lib/project-catalog";
-import { PROJECT_STATUS_RETENTION_MS } from "@/lib/project-status";
+import {
+  PROJECT_STATUS_HEARTBEAT_STALE_AFTER_MS,
+  PROJECT_STATUS_RETENTION_MS,
+} from "@/lib/project-status";
 import { projectStatusResults, projectStatusRuns } from "@/lib/schema";
 import {
   getProjectStatusOverview,
@@ -141,6 +144,7 @@ describe("project status service persistence", () => {
       triggeredBy: "scheduler",
       targetCount: 42,
       startedAt: Date.now(),
+      heartbeatAt: Date.now(),
     });
 
     await expect(runProjectStatusCheck("manual")).rejects.toThrow("already running");
@@ -160,6 +164,22 @@ describe("project status service persistence", () => {
     await interruptActiveProjectStatusRuns(startedAt + 1_000);
 
     expect((await db.select().from(projectStatusRuns))[0]?.status).toBe("running");
+  });
+
+  test("interrupts a non-null heartbeat that has expired", async () => {
+    const now = Date.now();
+    await db.insert(projectStatusRuns).values({
+      id: "status-test-stale-active",
+      status: "running",
+      triggeredBy: "scheduler",
+      targetCount: 42,
+      startedAt: now - PROJECT_STATUS_HEARTBEAT_STALE_AFTER_MS - 1_000,
+      heartbeatAt: now - PROJECT_STATUS_HEARTBEAT_STALE_AFTER_MS - 1,
+    });
+
+    await interruptActiveProjectStatusRuns(now);
+
+    expect((await db.select().from(projectStatusRuns))[0]?.status).toBe("interrupted");
   });
 
   test("allows only one concurrent batch to claim the running slot", async () => {

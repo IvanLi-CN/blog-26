@@ -452,6 +452,7 @@ export async function runProjectStatusCheck(
     ...(overrides.fetch && !overrides.fetchResolved ? { fetchResolved: undefined } : {}),
   };
   const startedAt = deps.now();
+  await interruptActiveProjectStatusRuns(startedAt);
   const activeRuns = await db
     .select({ id: projectStatusRuns.id })
     .from(projectStatusRuns)
@@ -530,6 +531,7 @@ export async function runProjectStatusCheck(
     const resultByEntry = new Map(resultRows.map((row) => [row.entryKey, row]));
     for (const { groupedEntries, outcome } of outcomes) {
       for (const entry of groupedEntries) {
+        await assertProjectStatusRunActive(runId);
         const row = resultByEntry.get(entry.entryKey);
         if (!row) continue;
         await db
@@ -555,6 +557,7 @@ export async function runProjectStatusCheck(
     );
     const finishedAt = deps.now();
     const status = attemptedCount === entries.length ? "completed" : "partial";
+    await assertProjectStatusRunActive(runId);
     await db
       .update(projectStatusRuns)
       .set({
@@ -565,7 +568,13 @@ export async function runProjectStatusCheck(
         finishedAt,
         heartbeatAt: null,
       })
-      .where(eq(projectStatusRuns.id, runId));
+      .where(and(eq(projectStatusRuns.id, runId), eq(projectStatusRuns.status, "running")));
+    const savedRun = await db
+      .select({ status: projectStatusRuns.status })
+      .from(projectStatusRuns)
+      .where(eq(projectStatusRuns.id, runId))
+      .limit(1);
+    if (savedRun[0]?.status !== status) throw new Error("Project status run was interrupted");
     return { id: runId, status, targetCount: entries.length, attemptedCount };
   } catch (error) {
     const finishedAt = deps.now();
@@ -578,12 +587,21 @@ export async function runProjectStatusCheck(
     await db
       .update(projectStatusRuns)
       .set({ status: "error", finishedAt, heartbeatAt: null, errorMessage: message })
-      .where(eq(projectStatusRuns.id, runId));
+      .where(and(eq(projectStatusRuns.id, runId), eq(projectStatusRuns.status, "running")));
     throw error;
   } finally {
     if (heartbeatTimer) clearInterval(heartbeatTimer);
     heartbeatTimer = null;
   }
+}
+
+async function assertProjectStatusRunActive(runId: string) {
+  const rows = await db
+    .select({ status: projectStatusRuns.status })
+    .from(projectStatusRuns)
+    .where(eq(projectStatusRuns.id, runId))
+    .limit(1);
+  if (rows[0]?.status !== "running") throw new Error("Project status run was interrupted");
 }
 
 export async function getProjectStatusOverview(

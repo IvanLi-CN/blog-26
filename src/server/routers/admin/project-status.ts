@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { hasTrustedSameOriginNavigation } from "@/lib/public-cors";
 import { getScheduler, startJobsScheduler } from "../../jobs";
 import {
   getProjectStatusHistory,
@@ -14,7 +15,7 @@ type ProjectStatusScheduler = {
 };
 
 type SchedulerFactory = () => ProjectStatusScheduler;
-type SchedulerStarter = () => Promise<ProjectStatusScheduler>;
+type SchedulerStarter = (options?: { runOnStart?: boolean }) => Promise<ProjectStatusScheduler>;
 
 export async function queueProjectStatusCheck(
   getSchedulerImpl: SchedulerFactory = getScheduler,
@@ -23,7 +24,8 @@ export async function queueProjectStatusCheck(
   try {
     const scheduler = getSchedulerImpl();
     if (!scheduler.getDefinition(PROJECT_STATUS_KEY)) {
-      await startSchedulerImpl();
+      const startedScheduler = await startSchedulerImpl({ runOnStart: false });
+      (startedScheduler ?? getSchedulerImpl()).trigger(PROJECT_STATUS_KEY, "manual");
       return { success: true as const, queued: true as const, runKey: PROJECT_STATUS_KEY };
     }
     scheduler.trigger(PROJECT_STATUS_KEY, "manual");
@@ -44,5 +46,10 @@ export const adminProjectStatusRouter = createTRPCRouter({
     .input(z.object({ limit: z.number().min(1).max(100).optional() }).optional())
     .query(({ input }) => getProjectStatusHistory(input?.limit ?? 30)),
 
-  trigger: adminProcedure.mutation(() => queueProjectStatusCheck()),
+  trigger: adminProcedure.mutation(({ ctx }) => {
+    if (!hasTrustedSameOriginNavigation(ctx.req)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "需要同源请求" });
+    }
+    return queueProjectStatusCheck();
+  }),
 });

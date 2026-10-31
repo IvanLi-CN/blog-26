@@ -65,7 +65,7 @@ const enforceUserIsAuthed = t.middleware(({ ctx, next }) => {
   }
   return next({
     ctx: {
-      // infers the `user` as non-nullable
+      ...ctx,
       user: ctx.user,
     },
   });
@@ -78,6 +78,7 @@ const enforceUserIsAdmin = t.middleware(({ ctx, next }) => {
   }
   return next({
     ctx: {
+      ...ctx,
       user: ctx.user,
       isAdmin: ctx.isAdmin,
     },

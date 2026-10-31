@@ -661,40 +661,52 @@ export function ProjectStatusPage() {
           <CardDescription>保存最近 30 天的批次结果。</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table className="min-w-[700px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>批次</TableHead>
-                  <TableHead>来源</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead>目标</TableHead>
-                  <TableHead>结果</TableHead>
-                  <TableHead>开始时间</TableHead>
-                  <TableHead>耗时</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(historyQuery.data?.runs ?? []).map((run) => (
-                  <TableRow key={run.id}>
-                    <TableCell className="font-mono text-xs">{run.id.slice(0, 8)}</TableCell>
-                    <TableCell>{run.triggeredBy === "manual" ? "手动" : "定时"}</TableCell>
-                    <TableCell>
-                      <Badge tone={statusTone(run.status)}>{statusLabel(run.status)}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {run.attemptedCount} / {run.targetCount}
-                    </TableCell>
-                    <TableCell>
-                      {run.availableCount} 可用 · {run.unavailableCount} 异常
-                    </TableCell>
-                    <TableCell>{formatDateTime(run.startedAt)}</TableCell>
-                    <TableCell>{formatDuration(run.durationMs)}</TableCell>
+          {historyQuery.isPending ? (
+            <div className="flex min-h-32 items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Spinner className="size-4" />
+              正在加载检查历史…
+            </div>
+          ) : historyQuery.data?.runs.length === 0 ? (
+            <EmptyState
+              title="暂无检查历史"
+              description="完成一次项目状态检查后，批次会显示在这里。"
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <Table className="min-w-[700px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>批次</TableHead>
+                    <TableHead>来源</TableHead>
+                    <TableHead>状态</TableHead>
+                    <TableHead>目标</TableHead>
+                    <TableHead>结果</TableHead>
+                    <TableHead>开始时间</TableHead>
+                    <TableHead>耗时</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {(historyQuery.data?.runs ?? []).map((run) => (
+                    <TableRow key={run.id}>
+                      <TableCell className="font-mono text-xs">{run.id.slice(0, 8)}</TableCell>
+                      <TableCell>{run.triggeredBy === "manual" ? "手动" : "定时"}</TableCell>
+                      <TableCell>
+                        <Badge tone={statusTone(run.status)}>{statusLabel(run.status)}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {run.attemptedCount} / {run.targetCount}
+                      </TableCell>
+                      <TableCell>
+                        {run.availableCount} 可用 · {run.unavailableCount} 异常
+                      </TableCell>
+                      <TableCell>{formatDateTime(run.startedAt)}</TableCell>
+                      <TableCell>{formatDuration(run.durationMs)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

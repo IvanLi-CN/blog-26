@@ -5,9 +5,9 @@
   "covered_files": {
     "GLOSSARY.md": "f3031cc1d9c75459850a8e26365bd0c46b9f6703",
     "apps/admin/src/components/app-shell.tsx": "7d5b974a72a0776572fbf4eaaea40ae5e669c27c",
-    "apps/admin/src/demo/mock-admin-api.ts": "b2003b8ce894ce38d3efa0293ccf297be0ca5f03",
+    "apps/admin/src/demo/mock-admin-api.ts": "f28532c7fd20e2063ba365bb6ba52eeeee64133b",
     "apps/admin/src/pages/project-status.test.tsx": "0c057f1398399bc0659094d934faa68e1e1b19c3",
-    "apps/admin/src/pages/project-status.tsx": "0d1a411819bb4ea11857589e596819fc20593368",
+    "apps/admin/src/pages/project-status.tsx": "4c8c965336da69fdcf2d975ce6185f0d6ee3b40a",
     "apps/admin/src/router.tsx": "d0740e1e0313421a8149376d1167b6b64a09a302",
     "astro.config.mjs": "eb89dbcbdb6975f0ed76d49c486d6f9c0a1deaad",
     "drizzle/0021_project_status.sql": "3f3a5cd4a02859266c40b986f56926d7956205bc",
@@ -37,16 +37,17 @@
     "src/server/admin-api/router.ts": "8b068746cda0a5fdde1da5abd36e8b851b5f1223",
     "src/server/http-compat-api.test.ts": "7b55434b5e9c720b42114c060218abbc11ff6403",
     "src/server/jobs/definitions.ts": "95d178b82ee717fdf0b9033097623e58ae702a33",
-    "src/server/jobs/scheduler.ts": "f708ec3145ba3cd373510ef9c858621afbd87013",
+    "src/server/jobs/scheduler.ts": "88dbdc6b08c4e07e8aa3f38685413e2ecc548fa9",
     "scripts/run-test-suite.ts": "4331c4a5de0e6ac1ae32be5435966227538662f3",
     "scripts/start-console.ts": "1dbe1f4897f204f9829918701b9efd0f8aa9b25f",
     ".github/workflows/e2e.yml": "3936f332df882f048a532d0a1eb7f8ff53d12239",
     "src/server/routers/admin/index.ts": "b3e8f76750e4df5798fdbf94cd8a8d2c93e69714",
-    "src/server/routers/admin/project-status.ts": "dbac117dce947ef876795aa4a5581374601938f8",
-    "src/server/routers/admin/project-status.test.ts": "739916194fa7842701f4d0925a4bde36ff9ba850",
-    "src/server/services/project-status.integration.test.ts": "c7701338f81ba8ce00475b3087d9612b4cdad544",
+    "src/server/routers/admin/project-status.ts": "218ff54554c8b2a887aae0542e0b84ef3b111927",
+    "src/server/routers/admin/project-status.test.ts": "6b813665fe38076d6504aaebf73917cc64cc3ec7",
+    "src/server/services/project-status.integration.test.ts": "3e9f0116eb056f3fca7576edf96a2f28b298705b",
     "src/server/services/project-status.test.ts": "caf10f674c6fdcb05be12db833ae92d2a8a2a4d4",
-    "src/server/services/project-status.ts": "e3db58c6ab72344c1094c34fcb101e12448a420b",
+    "src/server/services/project-status.ts": "0faf9e1ae5e2cd676b7b656dfb6aeee13ea4490f",
+    "src/server/trpc.ts": "2eb74085661d32ee954e24bd05a7239a9bbc3489",
     "tests/e2e/web-demo/system-share.spec.ts": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
     "tests/e2e/web-demo/project-status.spec.ts": "0e053262397239e6bc4fbebbfd6844e3860c0ea5",
     "tests/server/system-share-api.test.ts": "1cfe1b2da6031cb7cd34ac6ff0a01573deb84aaa"
@@ -76,7 +77,7 @@
       "evidence": [
         {
           "path": "src/server/services/project-status.integration.test.ts",
-          "blob": "c7701338f81ba8ce00475b3087d9612b4cdad544",
+          "blob": "3e9f0116eb056f3fca7576edf96a2f28b298705b",
           "command": "bun test --isolate src/server/services/project-status.integration.test.ts"
         },
         {
@@ -107,18 +108,18 @@
         },
         {
           "path": "src/server/services/project-status.test.ts",
-          "blob": "9498335caf066c338140a5f71f0834be26959ab0",
+          "blob": "caf10f674c6fdcb05be12db833ae92d2a8a2a4d4",
           "command": "bun test --isolate src/server/services/project-status.test.ts"
         },
         {
           "path": "apps/admin/src/pages/project-status.tsx",
           "blob": "0d1a411819bb4ea11857589e596819fc20593368",
-          "command": "bun /workspace/worktrees/blog26-project-status/src/node_modules/@playwright/test/cli.js test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
+          "command": "bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
         },
         {
           "path": "tests/e2e/web-demo/project-status.spec.ts",
           "blob": "0e053262397239e6bc4fbebbfd6844e3860c0ea5",
-          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:38210 bun /workspace/worktrees/blog26-project-status/src/node_modules/@playwright/test/cli.js test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
+          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:38210 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
         },
         {
           "path": "drizzle/0023_project_status_heartbeat.sql",

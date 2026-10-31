@@ -447,6 +447,7 @@ function resetDemoContentSyncState() {
   demoIndexStarted = false;
   demoPlaybookSyncCancelled = false;
   demoPlaybookSyncStarted = false;
+  demoProjectStatusStartedAt = null;
 }
 
 function ensureDemoCommentsResetListener() {

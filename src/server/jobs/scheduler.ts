@@ -10,6 +10,7 @@ import { jobDefinitions, nextRunTime } from "./definitions";
 const nanoid = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 16);
 
 type TimerRef = ReturnType<typeof setTimeout> | null;
+type SchedulerStartOptions = { runOnStart?: boolean };
 
 type InternalJobState = {
   def: JobDefinition;
@@ -23,7 +24,7 @@ class JobsScheduler {
   private jobs = new Map<string, InternalJobState>();
   private started = false;
 
-  async start() {
+  async start(options: SchedulerStartOptions = {}) {
     if (this.started) return;
     await initializeDB();
     await interruptActiveProjectStatusRuns();
@@ -34,8 +35,10 @@ class JobsScheduler {
       this.jobs.set(def.key, st);
       this.armTimer(st);
     }
-    for (const def of jobDefinitions) {
-      if (def.runOnStart) this.trigger(def.key, "scheduler");
+    if (options.runOnStart !== false) {
+      for (const def of jobDefinitions) {
+        if (def.runOnStart) this.trigger(def.key, "scheduler");
+      }
     }
   }
 
@@ -180,9 +183,9 @@ export function getScheduler() {
   return global.__jobsScheduler;
 }
 
-export async function startJobsScheduler() {
+export async function startJobsScheduler(options?: SchedulerStartOptions) {
   const s = getScheduler();
-  await s.start();
+  await s.start(options);
   return s;
 }
 
