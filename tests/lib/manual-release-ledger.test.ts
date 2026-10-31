@@ -162,15 +162,46 @@ describe("durable product release reservations", () => {
     const declaration = commits[1];
     const recovered = commits[2];
     if (!declaration || !recovered) throw new Error("Missing recovery fixture");
-    const declarationMessage = declaration.commit.message;
-    const recoveredAuthor = recovered.author?.login;
-    declaration.commit.message = `chore(release): recovery wrapper\n\n${digestLine}\n${signedOff}`;
-    recovered.author = { login: bot };
+    const headMessage = headCommit.commit.message;
+    const recoveryCommitMessage = declaration.commit.message;
+    const legacyMessage = recovered.commit.message;
+    if (!recoveryCommitMessage || !legacyMessage) throw new Error("Missing conflict fixture");
+    headCommit.commit.message = headMessage.replace(headMarker, `Ledger-Recovery: ${legacy}`);
+    declaration.commit.message = recoveryCommitMessage.replace(
+      `Ledger-Recovery: ${legacy}`,
+      `Ledger-Recovery: ${olderLegacy}`
+    );
+    recovered.commit.message = legacyMessage.replace(`\nLedger-Recovery: ${olderRecovery}`, "");
     await expect(
       new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
-    ).rejects.toThrow("does not bind its legacy commit");
+    ).rejects.toThrow("recovery markers conflict");
+    headCommit.commit.message = headMessage;
+    declaration.commit.message = recoveryCommitMessage;
+    recovered.commit.message = legacyMessage;
+    const declarationMessage = declaration.commit.message;
+    const recoveredAuthor = recovered.author?.login;
+    const olderRecoveryCommit = commits[3];
+    if (!olderRecoveryCommit) throw new Error("Missing recovery fixture");
+    const olderRecoveryCommitMessage = olderRecoveryCommit.commit.message;
+    const olderLegacyCommit = commits[4];
+    if (!olderLegacyCommit) throw new Error("Missing recovery fixture");
+    const olderLegacyAuthor = olderLegacyCommit.author;
+    declaration.commit.message = `chore(release): recovery wrapper\n\n${digestLine}\n${signedOff}`;
+    recovered.author = { login: bot };
+    recovered.commit.message = legacyMessage.replace(`\nLedger-Recovery: ${olderRecovery}`, "");
+    olderRecoveryCommit.commit.message = olderRecoveryCommitMessage.replace(
+      `\nLedger-Recovery: ${olderLegacy}`,
+      ""
+    );
+    olderLegacyCommit.author = { login: bot };
+    await expect(
+      new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()
+    ).rejects.toThrow(/does not bind its legacy commit|Release commit must be Verified/);
     declaration.commit.message = declarationMessage;
     recovered.author = recoveredAuthor ? { login: recoveredAuthor } : null;
+    recovered.commit.message = legacyMessage;
+    olderRecoveryCommit.commit.message = olderRecoveryCommitMessage;
+    olderLegacyCommit.author = olderLegacyAuthor;
     declaration.commit.verification = { verified: false, reason: "unsigned" };
     await expect(
       new GitHubLedgerStore(new GitHubRelease(contract, "github-actions", github.transport)).read()

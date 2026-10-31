@@ -17,7 +17,7 @@
 - 已占用版本下界：所有已发布、预留及废弃身份的最高 SemVer 顺序，用于新身份的严格向前分配；与正式语义基线分别计算。
 - 版本文件：根目录 `VERSION`，由发布准备 PR 修改。
 - 发布登记：独立 `release-ledger` 分支上的签名状态链。
-- Ledger recovery marker：签名登记提交中的每一个 `Ledger-Recovery` marker 都必须是合法 SHA、指向被实际遍历到的单父链提交的严格祖先，并沿 wrapper 链最终绑定到 owner-authored、GitHub Verified 且带机器人 Signed-off-by 的历史提交；中间的 bot-authored recovery wrapper 可保留在单父链中，但不得被当作 legacy head。同一提交的多个 marker、缺失、非祖先、冲突或格式错误的 marker 必须 fail closed；bootstrap 祖先链之外的提交不属于 ledger marker 输入。
+- Ledger recovery marker：签名登记提交中的每一个 `Ledger-Recovery` marker 都必须是合法 SHA、指向被实际遍历到的单父链提交的严格祖先，并沿 wrapper 链最终绑定到 owner-authored、GitHub Verified 且带机器人 Signed-off-by 的历史提交；中间的 bot-authored recovery wrapper 可保留在单父链中，但不得被当作 legacy head。同一提交的多个 marker、彼此断开的 marker lineage、缺失、非祖先、冲突或格式错误的 marker 必须 fail closed；bootstrap 祖先链之外的提交不属于 ledger marker 输入。
 - Ledger CAS：登记写入使用 GitHub GraphQL `expectedHeadOid` 做原子比较交换；返回提交的单父、Verified 机器人签名和预期父 SHA 校验成功即证明该写入已持久化，随后其他 writer 推进 branch head 不得把已成功的写入误报为失败。
 - 构建身份：`productVersion`、`buildVersion`、`sourceSha`；静态 `/version.json` 和只读 `GET /api/version` 暴露相同产品版本及来源。
 - Product Release recovery：通过 `.github/workflows/retry-product-release.yml` 以 `release_id` 指向原 Product Release run，并在原 run 上执行 GitHub rerun；它不创建 successor release identity。

@@ -422,6 +422,29 @@ export class GitHubLedgerStore implements LedgerStore {
       recoveryMarkers.set(commit.sha, target);
       recoveryTargets.add(target);
     }
+    const markerGraph = new Map<string, Set<string>>();
+    for (const [source, target] of recoveryMarkers) {
+      const sourceLinks = markerGraph.get(source) || new Set<string>();
+      sourceLinks.add(target);
+      markerGraph.set(source, sourceLinks);
+      const targetLinks = markerGraph.get(target) || new Set<string>();
+      targetLinks.add(source);
+      markerGraph.set(target, targetLinks);
+    }
+    const visitedMarkers = new Set<string>();
+    let markerComponents = 0;
+    for (const node of markerGraph.keys()) {
+      if (visitedMarkers.has(node)) continue;
+      markerComponents += 1;
+      const pending = [node];
+      while (pending.length) {
+        const current = pending.pop();
+        if (!current || visitedMarkers.has(current)) continue;
+        visitedMarkers.add(current);
+        for (const linked of markerGraph.get(current) || []) pending.push(linked);
+      }
+    }
+    if (markerComponents > 1) throw new Error("Ledger recovery markers conflict");
     let recoverySha: string | undefined;
     let legacySha: string | undefined;
     const owner = contract.repository.split("/")[0];

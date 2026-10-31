@@ -6,16 +6,16 @@
     ".github/workflows/abandon-failed-release-evaluation.yml": "0c12f94350249ee056e5e0c243bfb130ed836172",
     "docs/adr/0033-release-preparation-gate-recovery.md": "f77040cd1eabe3592c840de0d54203fb15c38971",
     "docs/runbooks/manual-version-release.md": "5b78cbb051a9ef8922f81b75eff1ecd70bf33405",
-    "docs/specs/manual-version-release/HISTORY.md": "364d83506e1237efef6227f71599f8d19a3d6a23805d8fc5c31675a275a482a5",
-    "docs/specs/manual-version-release/IMPLEMENTATION.md": "2f2051d7ccdd5abcb2c46a4ee0258a9856bbc22ecaa3e81fa4a32ecf0192b06e",
-    "docs/specs/manual-version-release/SPEC.md": "22b8860115fc0663f5ffe170a90c2873a9679544ec83170d09de7c51a09bd550",
+    "docs/specs/manual-version-release/HISTORY.md": "70f4a6933f6c5ecb253a742305958da71ea2545c",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "8b9c5f7c692bf21eaaaab089ecfde1bf8c193ca1",
+    "docs/specs/manual-version-release/SPEC.md": "79f3a89e7f79c59cc3b3444114ba768d95ca988f",
     "scripts/product-release.ts": "595df9ac11c909e5c95e4743e4448b65d7a48b0a",
     "src/lib/release/artifacts.ts": "81446d05a2b8be31e2e7a1726f4da196054a4d25",
     "src/lib/release/completion.ts": "6fea4a3fe0e492d7f225d31a706cbec32397c58a",
-    "src/lib/release/github.ts": "3520893bf999535439ef337c6cb31072d9ef5f16124225c07ea36d003b3780a3",
+    "src/lib/release/github.ts": "41ae169177adef73897837d6114ef73ca8b96d0d",
     "tests/ci/product-prerelease-workflow.test.ts": "27456fe7a614988bd6676de16549df9ec8c4df49",
     "tests/lib/manual-release-completion.test.ts": "96992db8a5b13d5c642c4787619813b56d9ddb22",
-    "tests/lib/manual-release-ledger.test.ts": "ebbf586e4d13659164adb1cb79e996c7d71e1627a578ebc49bb231da34b84a14"
+    "tests/lib/manual-release-ledger.test.ts": "3a5c0573ffa31c5ff3d23786a53d688b2d2692ed"
   },
   "change": {
     "description": "Add fail-closed recovery for merged release preparations whose exact main CI/E2E gates fail before Product Release binds the identity, preserve signed ledger readability across nested bot-authored recovery wrappers, and strictly validate recovery marker ancestry and CAS persistence.",
@@ -52,12 +52,12 @@
         },
         {
           "path": "src/lib/release/github.ts",
-          "blob": "3520893bf999535439ef337c6cb31072d9ef5f16124225c07ea36d003b3780a3",
+          "blob": "41ae169177adef73897837d6114ef73ca8b96d0d",
           "command": "Ledger reader validates marker direction and wrapper provenance only on the traversed ledger chain"
         },
         {
           "path": "tests/lib/manual-release-ledger.test.ts",
-          "blob": "ebbf586e4d13659164adb1cb79e996c7d71e1627a578ebc49bb231da34b84a14",
+          "blob": "3a5c0573ffa31c5ff3d23786a53d688b2d2692ed",
           "command": "Focused ledger contract test covers nested wrappers, root boundaries, malformed/self/conflicting markers, disconnected wrappers, and concurrent CAS confirmation"
         }
       ],
@@ -78,17 +78,17 @@
         },
         {
           "path": "tests/lib/manual-release-ledger.test.ts",
-          "blob": "ebbf586e4d13659164adb1cb79e996c7d71e1627a578ebc49bb231da34b84a14",
+          "blob": "3a5c0573ffa31c5ff3d23786a53d688b2d2692ed",
           "command": "bun test tests/lib/manual-release-ledger.test.ts tests/lib/manual-release-source.test.ts tests/lib/manual-release-completion.test.ts tests/ci/product-prerelease-workflow.test.ts: 40 passed, 0 failed"
         },
         {
           "path": "src/lib/release/github.ts",
-          "blob": "3520893bf999535439ef337c6cb31072d9ef5f16124225c07ea36d003b3780a3",
+          "blob": "41ae169177adef73897837d6114ef73ca8b96d0d",
           "command": "Biome check and focused ledger tests pass for strict recovery-marker ancestry and CAS validation"
         },
         {
           "path": "docs/specs/manual-version-release/SPEC.md",
-          "blob": "22b8860115fc0663f5ffe170a90c2873a9679544ec83170d09de7c51a09bd550",
+          "blob": "79f3a89e7f79c59cc3b3444114ba768d95ca988f",
           "command": "Spec drift check passes with strict recovery-marker ancestry and CAS persistence contracts"
         }
       ]
@@ -193,7 +193,7 @@
         },
         {
           "path": "src/lib/release/github.ts",
-          "blob": "3520893bf999535439ef337c6cb31072d9ef5f16124225c07ea36d003b3780a3",
+          "blob": "41ae169177adef73897837d6114ef73ca8b96d0d",
           "command": "Recovery marker parsing preserves signed ledger readability and rejects malformed, conflicting, non-ancestral, post-root, or disconnected markers"
         }
       ]
