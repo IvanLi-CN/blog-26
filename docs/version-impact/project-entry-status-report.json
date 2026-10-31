@@ -27,7 +27,7 @@
     "src/lib/project-catalog.ts": "ae19cf4045e79481467a98c8473fdcf13ea56896",
     "src/lib/project-status.ts": "2d60e4a9e567b768bdf688f0697d25034f339202",
     "src/lib/schema.ts": "18b715fc00549098bf0f4a78aa6f38439a7a82d3",
-    "src/lib/search/web-demo-fixtures.ts": "8d2650e7b6817224b218d7cdeb0922b7846a11ba",
+    "src/lib/search/web-demo-fixtures.ts": "ec5b9aa37775d085fc8dd178af9c99b814d23cf6",
     "src/styles/milkdown-nature.css": "665489233ef7effd416144d9631fb52e814b9910",
     "src/server/admin-api/router.ts": "087b0426fd6e5d03c87c9826fd7aa274d4f5609d",
     "src/server/http-compat-api.test.ts": "d8a526c0318240ecb76167c8bf528cae2063cf8e",
