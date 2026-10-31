@@ -141,7 +141,9 @@ test("mobile mode controls remain keyboard accessible without horizontal overflo
   const button = page.getByRole("button", { name: "RAG", exact: true });
   await expect(button).toBeEnabled({ timeout: 10_000 });
   await button.focus();
-  await page.keyboard.press("Enter");
+  await expect(button).toBeFocused();
+  await button.press("Enter");
+  await expect(page).toHaveURL(/mode=rag/);
   await expect(button).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("region", { name: "搜索结果" })).toContainText(
     "SQLite3：嵌入式数据库实践"
