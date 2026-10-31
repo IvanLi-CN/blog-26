@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e894b395f7690a7c5166b053164f407c6cb60f90",
+  "covered_files": {
+    "src/server/routers/memos.ts": "c76f98c4a4c2d90d5b701b7c9f6f0cc2243212d9",
+    "tests/e2e/web-demo/public-cover-media.spec.ts": "68e59da12567b0755f8ce6f4a28104396cf88ecb"
+  },
+  "change": {
+    "description": "Stabilize release quality gates by awaiting test-environment content synchronization and decoding public cover images before pixel assertions.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change only removes a test-environment cleanup race and makes an existing Web Demo image assertion wait for browser decode completion; production API behavior, persistent state, and release inputs remain unchanged.",
+      "assessed_at": "2026-10-31T16:56:37+08:00",
+      "evidence": [
+        {
+          "path": "src/server/routers/memos.ts",
+          "blob": "c76f98c4a4c2d90d5b701b7c9f6f0cc2243212d9",
+          "command": "Review the NODE_ENV=test-only awaited content synchronization paths"
+        },
+        {
+          "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
+          "blob": "68e59da12567b0755f8ce6f4a28104396cf88ecb",
+          "command": "Review the image decode wait before the pixel-level cover assertion"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate remains limited to deterministic test cleanup and screenshot readiness. The memo router preserves production fire-and-forget behavior, while the public cover route, image geometry, API payloads, and persistent state are unchanged.",
+      "assessed_at": "2026-10-31T16:56:37+08:00",
+      "evidence": [
+        {
+          "path": "tests/server/system-share-api.test.ts",
+          "blob": "468a2441dddc024f6911dad7d007031eb8f92175",
+          "command": "Full system-share API regression suite passes with deterministic memo cleanup"
+        },
+        {
+          "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
+          "blob": "68e59da12567b0755f8ce6f4a28104396cf88ecb",
+          "command": "Targeted mobile public-cover Web Demo assertion passes after image decode"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "Only the test-environment synchronization path and the existing public-cover E2E readiness helper are changed; shipped route behavior, API contracts, persistent data, and release inputs remain untouched."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Repository checks, the complete unit suite, the system-share regression suite, and the targeted mobile public-cover Web Demo test pass. The fix removes timing races without changing production behavior or compatibility contracts.",
+      "assessed_at": "2026-10-31T16:56:37+08:00",
+      "evidence": [
+        {
+          "path": "src/server/routers/memos.ts",
+          "blob": "c76f98c4a4c2d90d5b701b7c9f6f0cc2243212d9",
+          "command": "bun run test:unit: 1533 passed, 52 skipped, 0 failed; test environment awaits sync completion"
+        },
+        {
+          "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
+          "blob": "68e59da12567b0755f8ce6f4a28104396cf88ecb",
+          "command": "Targeted mobile public-cover Web Demo test passes with the decode readiness wait"
+        },
+        {
+          "path": "tests/server/system-share-api.test.ts",
+          "blob": "468a2441dddc024f6911dad7d007031eb8f92175",
+          "command": "36 system-share API tests pass with 0 failures"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4",
+        "3.11.7",
+        "3.11.8"
+      ],
+      "evidence": [
+        {
+          "path": "tests/server/system-share-api.test.ts",
+          "blob": "468a2441dddc024f6911dad7d007031eb8f92175",
+          "command": "Existing system-share API responses and permissions remain unchanged"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local content format, browser persistence, authored Memo data, or release-ledger state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/server/routers/memos.ts",
+          "blob": "c76f98c4a4c2d90d5b701b7c9f6f0cc2243212d9",
+          "command": "The awaited sync is test-environment scheduling only and does not alter persisted formats"
+        }
+      ]
+    }
+  }
+}

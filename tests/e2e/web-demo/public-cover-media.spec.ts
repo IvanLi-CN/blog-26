@@ -34,6 +34,7 @@ async function assertRenderedObjectCover(page: Page, image: Locator, pixelTolera
     .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
+  await image.evaluate((node) => (node as HTMLImageElement).decode());
   const screenshot = await image.screenshot();
   const rendered = await sharp(screenshot)
     .ensureAlpha()
