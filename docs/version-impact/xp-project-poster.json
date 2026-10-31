@@ -4,7 +4,7 @@
   "base_sha": "e894b395f7690a7c5166b053164f407c6cb60f90",
   "covered_files": {
     "site/assets/projects/posters-source/xp-dark.png": "4e43ecb8a124118d6e8501eb2facec5373805483",
-    "site/assets/projects/posters-source/xp-light.png": "c3dcea4b47b3d70f40434b8c63bcae6dc603aec4"
+    "site/assets/projects/posters-source/xp-light.png": "c3dcea4b47b3d70f40434b8c63bcae6dc603aec1"
   },
   "change": {
     "description": "Refresh the XP project page light and dark poster source artwork with the latest Chinese assets from the XP repository.",
@@ -24,7 +24,7 @@
         },
         {
           "path": "site/assets/projects/posters-source/xp-light.png",
-          "blob": "c3dcea4b47b3d70f40434b8c63bcae6dc603aec4",
+          "blob": "c3dcea4b47b3d70f40434b8c63bcae6dc603aec1",
           "command": "Source artwork matches the confirmed Chinese XP light poster from the XP repository"
         }
       ]
@@ -131,7 +131,7 @@
       "evidence": [
         {
           "path": "site/assets/projects/posters-source/xp-light.png",
-          "blob": "c3dcea4b47b3d70f40434b8c63bcae6dc603aec4",
+          "blob": "c3dcea4b47b3d70f40434b8c63bcae6dc603aec1",
           "command": "Static poster source artwork does not introduce persistent state or a migration"
         }
       ]
