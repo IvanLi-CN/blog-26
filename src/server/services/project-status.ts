@@ -223,7 +223,11 @@ async function assertSafeTarget(
   if (isPrivateAddress(hostname)) {
     throw new UnsafeTargetError("目标地址指向私有或保留网络");
   }
-  let address: string | null = isIP(hostname) === 0 ? null : hostname.replace(/^\[|\]$/g, "");
+  const hostnameAddress = hostname.replace(/^\[|\]$/g, "");
+  if (isIP(hostnameAddress) === 6) {
+    throw new UnsafeTargetError("暂不支持仅 IPv6 的目标地址");
+  }
+  let address: string | null = isIP(hostnameAddress) === 0 ? null : hostnameAddress;
   if (isIP(hostname) === 0) {
     let onAbort: (() => void) | null = null;
     const abort = new Promise<never>((_, reject) => {
@@ -243,7 +247,11 @@ async function assertSafeTarget(
     if (addresses.some(({ address }) => isPrivateAddress(address))) {
       throw new UnsafeTargetError("目标地址解析到私有或保留网络");
     }
-    address = addresses[0]?.address ?? null;
+    const ipv4Address = addresses.find(
+      ({ address: resolvedAddress }) => isIP(resolvedAddress) === 4
+    );
+    if (!ipv4Address) throw new UnsafeTargetError("目标未解析到可检查的 IPv4 地址");
+    address = ipv4Address.address;
   }
   return { url, address };
 }
@@ -802,13 +810,13 @@ export async function getProjectStatusOverview(
   };
 }
 
-export async function getProjectStatusHistory(limit = 30): Promise<ProjectStatusHistoryResponse> {
+export async function getProjectStatusHistory(limit = 200): Promise<ProjectStatusHistoryResponse> {
   await initializeDB();
   const rows = await db
     .select()
     .from(projectStatusRuns)
     .orderBy(desc(projectStatusRuns.startedAt))
-    .limit(Math.max(1, Math.min(100, limit)));
+    .limit(Math.max(1, Math.min(200, limit)));
   const resultRows = rows.length
     ? await db
         .select()

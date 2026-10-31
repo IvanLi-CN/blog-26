@@ -43,8 +43,8 @@ export const adminProjectStatusRouter = createTRPCRouter({
   overview: adminProcedure.query(() => getProjectStatusOverview()),
 
   history: adminProcedure
-    .input(z.object({ limit: z.number().min(1).max(100).optional() }).optional())
-    .query(({ input }) => getProjectStatusHistory(input?.limit ?? 30)),
+    .input(z.object({ limit: z.number().min(1).max(200).optional() }).optional())
+    .query(({ input }) => getProjectStatusHistory(input?.limit ?? 200)),
 
   trigger: adminProcedure.mutation(({ ctx }) => {
     if (!hasTrustedSameOriginNavigation(ctx.req)) {

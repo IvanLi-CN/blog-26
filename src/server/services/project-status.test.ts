@@ -128,6 +128,26 @@ describe("project status target checker", () => {
     expect(result).toMatchObject({ status: "unavailable", errorKind: "unsafe_target" });
   });
 
+  test("rejects IPv6-only targets so custom translation prefixes cannot reach private IPv4 hosts", async () => {
+    let calls = 0;
+    const result = await checkProjectStatusTarget(
+      "https://example.test/ipv6-only",
+      10_000,
+      dependencies(
+        async () => {
+          calls += 1;
+          return response(200, "https://example.test/ipv6-only");
+        },
+        {
+          resolveHost: async () => [{ address: "2001:4860:4860::8888", family: 6 }],
+        }
+      )
+    );
+
+    expect(calls).toBe(0);
+    expect(result).toMatchObject({ status: "unavailable", errorKind: "unsafe_target" });
+  });
+
   test("rejects IPv4 translation prefixes returned by DNS before making a request", async () => {
     let calls = 0;
     const result = await checkProjectStatusTarget(

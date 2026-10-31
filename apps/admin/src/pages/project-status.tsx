@@ -40,11 +40,13 @@ type Filter = "all" | ProjectStatusResultStatus | "stale";
 function ResultIcon({
   result,
   className = "size-4",
+  historical = false,
 }: {
   result: ProjectStatusResultDto;
   className?: string;
+  historical?: boolean;
 }) {
-  if (result.status === "available" && result.freshness === "fresh") {
+  if (result.status === "available" && (historical || result.freshness === "fresh")) {
     return <CheckCircle2 className={`${className} text-success`} aria-hidden />;
   }
   if (result.status === "unavailable") {
@@ -144,15 +146,28 @@ export function ProjectStatusPage() {
   const [query, setQuery] = useState("");
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [expandedHistoryRuns, setExpandedHistoryRuns] = useState<Set<string>>(new Set());
+  const [manualCheckQueuedAt, setManualCheckQueuedAt] = useState<number | null>(null);
   const overviewQuery = useQuery({
     queryKey: ["admin-project-status-overview"],
     queryFn: adminApi.getProjectStatusOverview,
-    refetchInterval: (current) => (current.state.data?.activeRun ? 2000 : false),
+    refetchInterval: (current) =>
+      current.state.data?.activeRun || manualCheckQueuedAt !== null ? 2000 : false,
   });
   const historyQuery = useQuery({
     queryKey: ["admin-project-status-history"],
-    queryFn: () => adminApi.getProjectStatusHistory(30),
+    queryFn: () => adminApi.getProjectStatusHistory(200),
   });
+  useEffect(() => {
+    if (manualCheckQueuedAt === null) return;
+    const latestRun = overviewQuery.data?.latestRun;
+    if (overviewQuery.data?.activeRun) return;
+    if (latestRun && latestRun.startedAt >= manualCheckQueuedAt) {
+      setManualCheckQueuedAt(null);
+      return;
+    }
+    const timeout = window.setTimeout(() => setManualCheckQueuedAt(null), 10 * 60 * 1000);
+    return () => window.clearTimeout(timeout);
+  }, [manualCheckQueuedAt, overviewQuery.data]);
   useEffect(() => {
     if (!overviewQuery.data?.activeRun) {
       queryClient.invalidateQueries({ queryKey: ["admin-project-status-history"] });
@@ -165,6 +180,7 @@ export function ProjectStatusPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-project-status-history"] });
     },
     onError: () => {
+      setManualCheckQueuedAt(null);
       queryClient.invalidateQueries({ queryKey: ["admin-project-status-overview"] });
       queryClient.invalidateQueries({ queryKey: ["admin-project-status-history"] });
     },
@@ -294,15 +310,22 @@ export function ProjectStatusPage() {
               刷新
             </Button>
             <Button
-              onClick={() => triggerMutation.mutate()}
-              disabled={Boolean(overview?.activeRun) || triggerMutation.isPending}
+              onClick={() => {
+                setManualCheckQueuedAt(Date.now());
+                triggerMutation.mutate();
+              }}
+              disabled={
+                Boolean(overview?.activeRun) ||
+                triggerMutation.isPending ||
+                manualCheckQueuedAt !== null
+              }
             >
-              {triggerMutation.isPending || overview?.activeRun ? (
+              {triggerMutation.isPending || overview?.activeRun || manualCheckQueuedAt !== null ? (
                 <Spinner />
               ) : (
                 <Timer className="size-4" />
               )}
-              {overview?.activeRun ? "检查中" : "手动检查"}
+              {overview?.activeRun || manualCheckQueuedAt !== null ? "检查中" : "手动检查"}
             </Button>
           </>
         }
@@ -317,10 +340,11 @@ export function ProjectStatusPage() {
       {triggerMutation.error ? (
         <Alert tone="danger">{getErrorMessage(triggerMutation.error)}</Alert>
       ) : null}
-      {overview?.activeRun ? (
+      {overview?.activeRun || manualCheckQueuedAt !== null ? (
         <Alert tone="warning">
-          批次正在运行：已处理 {overview.activeRun.attemptedCount} /{" "}
-          {overview.activeRun.targetCount} 个入口，页面会自动刷新。
+          {overview?.activeRun
+            ? `批次正在运行：已处理 ${overview.activeRun.attemptedCount} / ${overview.activeRun.targetCount} 个入口，页面会自动刷新。`
+            : "检查已排队，等待任务写入批次；页面会自动刷新。"}
         </Alert>
       ) : null}
 
@@ -710,6 +734,7 @@ export function ProjectStatusPage() {
                     <TableHead>结果</TableHead>
                     <TableHead>开始时间</TableHead>
                     <TableHead>耗时</TableHead>
+                    <TableHead>说明</TableHead>
                     <TableHead>入口快照</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -732,6 +757,12 @@ export function ProjectStatusPage() {
                           </TableCell>
                           <TableCell>{formatDateTime(run.startedAt)}</TableCell>
                           <TableCell>{formatDuration(run.durationMs)}</TableCell>
+                          <TableCell
+                            className="max-w-52 truncate text-muted-foreground"
+                            title={run.errorMessage ?? undefined}
+                          >
+                            {run.errorMessage ?? "—"}
+                          </TableCell>
                           <TableCell>
                             <Button
                               variant="bare"
@@ -750,7 +781,7 @@ export function ProjectStatusPage() {
                         </TableRow>
                         {expanded ? (
                           <TableRow>
-                            <TableCell colSpan={8} className="bg-muted/20 p-3">
+                            <TableCell colSpan={9} className="bg-muted/20 p-3">
                               <div className="grid gap-px overflow-hidden rounded-lg border border-border/50 bg-border/50 sm:grid-cols-2 lg:grid-cols-3">
                                 {run.results.map((result) => (
                                   <a
@@ -760,12 +791,16 @@ export function ProjectStatusPage() {
                                     rel="noreferrer"
                                     className="flex min-w-0 items-center gap-2 bg-card/90 px-2.5 py-2 text-xs hover:bg-card"
                                   >
-                                    <ResultIcon result={result} className="size-3.5 shrink-0" />
+                                    <ResultIcon
+                                      result={result}
+                                      historical
+                                      className="size-3.5 shrink-0"
+                                    />
                                     <span className="min-w-0 truncate" title={result.href}>
                                       {result.projectTitle} · {result.entryLabel}
                                     </span>
                                     <span className="ml-auto shrink-0 text-muted-foreground">
-                                      {result.status === "available" && result.freshness === "fresh"
+                                      {result.status === "available"
                                         ? "可用"
                                         : result.status === "unavailable"
                                           ? "异常"

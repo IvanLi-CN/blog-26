@@ -530,6 +530,12 @@ export const jobRuns = sqliteTable(
   })
 );
 
+export const jobSchedulerLeases = sqliteTable("job_scheduler_leases", {
+  id: text("id").primaryKey(),
+  ownerToken: text("owner_token").notNull(),
+  heartbeatAt: integer("heartbeat_at").notNull(),
+});
+
 export const projectStatusRuns = sqliteTable(
   "project_status_runs",
   {

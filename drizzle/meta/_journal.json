@@ -169,6 +169,13 @@
       "when": 1793449627796,
       "tag": "0023_project_status_heartbeat",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1793456133516,
+      "tag": "0024_scheduler_lease",
+      "breakpoints": true
     }
   ]
 }

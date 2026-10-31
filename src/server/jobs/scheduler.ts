@@ -1,13 +1,16 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import { db, initializeDB } from "@/lib/db";
 import { cleanupOldLogs, createRunLog } from "@/lib/job-logger";
-import { jobRuns } from "@/lib/schema";
+import { jobRuns, jobSchedulerLeases } from "@/lib/schema";
 import { interruptActiveProjectStatusRuns } from "@/server/services/project-status";
 import type { JobDefinition } from "./definitions";
 import { jobDefinitions, nextRunTime } from "./definitions";
 
 const nanoid = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 16);
+const SCHEDULER_LEASE_ID = "global";
+const SCHEDULER_LEASE_TTL_MS = 15_000;
+const SCHEDULER_LEASE_HEARTBEAT_MS = 5_000;
 
 type TimerRef = ReturnType<typeof setTimeout> | null;
 type SchedulerStartOptions = { runOnStart?: boolean };
@@ -23,16 +26,78 @@ type InternalJobState = {
 class JobsScheduler {
   private jobs = new Map<string, InternalJobState>();
   private started = false;
+  private leader = false;
+  private leaseTimer: TimerRef = null;
+  private readonly ownerToken = nanoid();
 
   async start(options: SchedulerStartOptions = {}) {
     if (this.started) return;
     await initializeDB();
-    await interruptActiveProjectStatusRuns(Date.now(), true);
     this.started = true;
     for (const def of jobDefinitions) {
       const nextAt = nextRunTime(Date.now(), def.schedule);
       const st: InternalJobState = { def, nextAt, timer: null, running: false, queued: false };
       this.jobs.set(def.key, st);
+    }
+    await this.tryBecomeLeader(options);
+    this.leaseTimer = setInterval(() => {
+      void this.tryBecomeLeader(options);
+    }, SCHEDULER_LEASE_HEARTBEAT_MS);
+  }
+
+  stop() {
+    if (this.leaseTimer) clearInterval(this.leaseTimer);
+    this.leaseTimer = null;
+    for (const st of this.jobs.values()) if (st.timer) clearTimeout(st.timer);
+    this.jobs.clear();
+    if (this.leader) {
+      void db
+        .delete(jobSchedulerLeases)
+        .where(
+          and(
+            eq(jobSchedulerLeases.id, SCHEDULER_LEASE_ID),
+            eq(jobSchedulerLeases.ownerToken, this.ownerToken)
+          )
+        );
+    }
+    this.leader = false;
+    this.started = false;
+  }
+
+  private async tryBecomeLeader(options: SchedulerStartOptions) {
+    const now = Date.now();
+    await db
+      .insert(jobSchedulerLeases)
+      .values({ id: SCHEDULER_LEASE_ID, ownerToken: this.ownerToken, heartbeatAt: now })
+      .onConflictDoNothing();
+    const acquired = await db
+      .update(jobSchedulerLeases)
+      .set({ ownerToken: this.ownerToken, heartbeatAt: now })
+      .where(
+        and(
+          eq(jobSchedulerLeases.id, SCHEDULER_LEASE_ID),
+          or(
+            eq(jobSchedulerLeases.ownerToken, this.ownerToken),
+            lt(jobSchedulerLeases.heartbeatAt, now - SCHEDULER_LEASE_TTL_MS)
+          )
+        )
+      )
+      .returning({ id: jobSchedulerLeases.id });
+    if (!acquired.length) {
+      if (this.leader) {
+        this.leader = false;
+        for (const st of this.jobs.values()) {
+          if (st.timer) clearTimeout(st.timer);
+          st.timer = null;
+        }
+      }
+      return;
+    }
+    if (this.leader) return;
+    this.leader = true;
+    await interruptActiveProjectStatusRuns(now, true);
+    for (const st of this.jobs.values()) {
+      st.nextAt = this.computeNext(st.def);
       this.armTimer(st);
     }
     if (options.runOnStart !== false) {
@@ -42,16 +107,11 @@ class JobsScheduler {
     }
   }
 
-  stop() {
-    for (const st of this.jobs.values()) if (st.timer) clearTimeout(st.timer);
-    this.jobs.clear();
-    this.started = false;
-  }
-
   private armTimer(st: InternalJobState) {
     const ms = Math.max(0, st.nextAt - Date.now());
     if (st.timer) clearTimeout(st.timer);
     st.timer = setTimeout(() => {
+      if (!this.leader) return;
       this.runJob(st.def.key, "scheduler").catch((e) => console.error("job error", e));
     }, ms);
   }
@@ -66,6 +126,7 @@ class JobsScheduler {
   trigger(jobKey: string, triggeredBy: "scheduler" | "manual" = "manual") {
     const st = this.jobs.get(jobKey);
     if (!st) throw new Error(`Unknown job: ${jobKey}`);
+    if (triggeredBy === "scheduler" && !this.leader) return;
     if (st.running || st.queued) throw new Error(`Job is already running: ${jobKey}`);
     st.queued = true;
     setTimeout(() => {
@@ -76,6 +137,7 @@ class JobsScheduler {
   async runJob(jobKey: string, triggeredBy: "scheduler" | "manual") {
     const st = this.jobs.get(jobKey);
     if (!st) throw new Error(`Unknown job: ${jobKey}`);
+    if (triggeredBy === "scheduler" && !this.leader) return;
     if (st.running) throw new Error(`Job is already running: ${jobKey}`);
     st.queued = false;
     st.running = true;
