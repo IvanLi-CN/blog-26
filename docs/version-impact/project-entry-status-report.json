@@ -1,0 +1,239 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e894b395f7690a7c5166b053164f407c6cb60f90",
+  "covered_files": {
+    "GLOSSARY.md": "f3031cc1d9c75459850a8e26365bd0c46b9f6703",
+    "apps/admin/src/components/app-shell.tsx": "7d5b974a72a0776572fbf4eaaea40ae5e669c27c",
+    "apps/admin/src/components/ui.tsx": "16d86da17d8cbb471354ba982cbce040816a2e26",
+    "apps/admin/src/demo/mock-admin-api.ts": "be13f5e115074f9107fd8257f2fd3cd4fbac6ec6",
+    "apps/admin/src/pages/project-status.test.tsx": "6e0a6915c8685bfccd39677ebe8000e9675f21c8",
+    "apps/admin/src/pages/project-status.tsx": "cdf009b33ee5ebb4e0855649f45bc7a1f757dd69",
+    "apps/admin/src/router.tsx": "d0740e1e0313421a8149376d1167b6b64a09a302",
+    "astro.config.mjs": "eb89dbcbdb6975f0ed76d49c486d6f9c0a1deaad",
+    "drizzle/0021_project_status.sql": "3f3a5cd4a02859266c40b986f56926d7956205bc",
+    "drizzle/0022_project_status_running_guard.sql": "22fb580fa107b255a273c80162fded49c941cc18",
+    "drizzle/0023_project_status_heartbeat.sql": "e6a563f78b582297dc7c89d2f9d45c3cc1e1478a",
+    "drizzle/0024_scheduler_lease.sql": "b826dd5bc6ec203e8596fcb499d1ceb98e8b69c8",
+    "drizzle/0025_project_status_scheduler_owner.sql": "6b65b240e3815e7081b0c306fff38951d82ff9b0",
+    "drizzle/meta/0021_snapshot.json": "518671846ccc9922cd40b510a8939b5016974660",
+    "drizzle/meta/0022_snapshot.json": "e3b6f6d9599f5b272e11393fa43de4b834342c18",
+    "drizzle/meta/0023_snapshot.json": "7ddf43d2cab6604d97dffe630b790dca4b5e8cf9",
+    "drizzle/meta/0024_snapshot.json": "b8786738daff2848509d4c09eacaf505a4d29d8e",
+    "drizzle/meta/0025_snapshot.json": "bb0862d8bb337cc79b2994b85c72a3f2bb04c01b",
+    "drizzle/meta/_journal.json": "7592e2e7a553010a1f89bd8af620fc1d68540645",
+    "docs/specs/README.md": "51ed9671bf340c6cd2d5122e030f15d3cf7cd294",
+    "docs/specs/system-share-memos/IMPLEMENTATION.md": "aeb991832bb7d3e5a9844d8309dae37f694013ad",
+    "docs/specs/system-share-memos/SPEC.md": "fc0b6ebbb32a881f6eb2e77bad57fd8eb55b0be6",
+    "docs/specs/system-share-memos/assets/system-share-mobile-layout-360.png": "0a72f74ba4842cd8c1015291d38ec84d6256988c",
+    "docs/specs/system-share-memos/assets/system-share-mobile-layout-393.png": "2dc147bc64bc0c0a5c00d6ec714bf195e7b83cfc",
+    "site/lib/projects.ts": "b15392d42a2ec8a97e7099d636460423df9a79f4",
+    "site/components/SystemShareConfirmation.css": "05ac3522878c401167c637dd388940291b45bff3",
+    "site/components/SystemShareConfirmation.tsx": "61468824a251b0cf0aa6c66f0b28addc785a5ec5",
+    "site/layouts/BaseLayout.astro": "0a163667e1e853c1ab9485cd400b915093997449",
+    "site/pages/share.astro": "03a009cf2080d51e08093c16b2feabe2eaf5695f",
+    "src/lib/admin-api-client.ts": "08d2bc455297286b14b5139155a20586e2b95b86",
+    "src/lib/project-catalog.test.ts": "2bfc0b4128416cf8384a471ce78880760c402fd6",
+    "src/lib/project-catalog.ts": "caee12024ea5dbf17f3d3eefb5a325fca7983339",
+    "src/lib/project-status.ts": "ca2edaacde50e5dfc5c215e3ba3672df4ace61df",
+    "src/lib/release/github.ts": "0db26d72849b270039cbb56b5297a5cc83fd5c8e",
+    "src/lib/schema.ts": "d402dbe6806b38b19592ee38fa3f6c07d0b7f746",
+    "src/lib/search/web-demo-fixtures.ts": "dbafc4dabe3c04a57c4ca4320d64504355161bb4",
+    "src/styles/milkdown-nature.css": "665489233ef7effd416144d9631fb52e814b9910",
+    "src/server/admin-api/router.ts": "8b068746cda0a5fdde1da5abd36e8b851b5f1223",
+    "src/server/http-compat-api.test.ts": "7b55434b5e9c720b42114c060218abbc11ff6403",
+    "src/server/jobs/definitions.ts": "58c27584772ffbaa9bec53d1d44ee6a84d6bdfa2",
+    "src/server/jobs/scheduler.ts": "b03a4b69a9be0e234c3ac6f63de092b1a1ea7e34",
+    "src/server/jobs/scheduler.test.ts": "b363c62a9132738529f9048cec53a1c7adc81e8e",
+    "src/lib/ai/embeddings.ts": "02ca4afaae3b7c51c41bca01d08504ce8fbdd8b8",
+    "src/lib/ai/vectorization.ts": "ae0d6c9f20061ce32d65f88e62fc8110e8daf470",
+    "scripts/run-test-suite.ts": "4331c4a5de0e6ac1ae32be5435966227538662f3",
+    "scripts/start-console.ts": "1dbe1f4897f204f9829918701b9efd0f8aa9b25f",
+    ".github/workflows/e2e.yml": "3936f332df882f048a532d0a1eb7f8ff53d12239",
+    "tests/e2e/web-demo/playwright.config.ts": "7ea28022a065a2e7806175b85fc25f018a3d6db8",
+    "src/server/routers/admin/index.ts": "b3e8f76750e4df5798fdbf94cd8a8d2c93e69714",
+    "src/server/routers/admin/project-status.ts": "1d4190a83a493148ccdbe02effb8b544146158f1",
+    "src/server/routers/admin/project-status.test.ts": "6b813665fe38076d6504aaebf73917cc64cc3ec7",
+    "src/server/services/project-status.integration.test.ts": "027e64ad22e68c9cf6f502d00b897ac3de1cb054",
+    "src/server/services/project-status.test.ts": "91ca63bffb14eb1e2d1d1ef6e722f92fcf8d38f1",
+    "src/server/services/project-status.ts": "cdd2b3d1d26d84b4e0a50c645236de47f727e13d",
+    "src/server/trpc.ts": "2eb74085661d32ee954e24bd05a7239a9bbc3489",
+    "tests/e2e/web-demo/system-share.spec.ts": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
+    "tests/e2e/web-demo/project-status.spec.ts": "b07cec5fa416350f0b3f9c9ebcf158accaa5e325",
+    "tests/lib/manual-release-ledger.test.ts": "7eead40ff749d1cc21e0d41f827d5da355421856",
+    "tests/server/system-share-api.test.ts": "063f98d0ba96951c879804c092f6fc8cc9ad420d"
+  },
+  "change": {
+    "description": "Add a shared project entry catalog, persisted external-entry status checks, six-hour scheduling, protected Admin APIs, and a grouped project-status report with Web Demo fixtures.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "The approved MVP adds compatible administrator API capabilities and additive SQLite tables for project status runs and results. Existing public project routes, existing API semantics, and prior records remain readable.",
+      "assessed_at": "2026-10-31T22:29:14+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/project-status.ts",
+          "blob": "2d60e4a9e567b768bdf688f0697d25034f339202",
+          "command": "Shared status DTOs and fixed timeout, retry, concurrency, stale, and retention contracts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "The candidate implements the approved shared catalog and status-report workflow: external URL checks do not read response bodies or modify the catalog, project-status tables and scheduler lease state are additive, and Admin consumers receive new overview/history/trigger endpoints without changing existing routes.",
+      "assessed_at": "2026-10-31T23:41:00+08:00",
+      "evidence": [
+        {
+          "path": "src/server/services/project-status.integration.test.ts",
+          "blob": "027e64ad22e68c9cf6f502d00b897ac3de1cb054",
+          "command": "bun test src/server/services/project-status.integration.test.ts src/server/jobs/scheduler.test.ts src/server/services/project-status.test.ts"
+        },
+        {
+          "path": "apps/admin/src/pages/project-status.test.tsx",
+          "blob": "6e0a6915c8685bfccd39677ebe8000e9675f21c8",
+          "command": "bun test --isolate apps/admin/src/pages/project-status.test.tsx"
+        },
+        {
+          "path": "scripts/start-console.ts",
+          "blob": "1dbe1f4897f204f9829918701b9efd0f8aa9b25f",
+          "command": "bun run check"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains within the approved project entry status MVP and its required shared catalog, persistence, scheduler, Admin, Web Demo, and test surfaces."
+      }
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "Shared catalog, service, HTTP compatibility, Admin UI, scheduler takeover recovery, lease-fenced result and recovery writes, build, and browser evidence passed on the candidate SHA. The feature adds compatible Admin capabilities, bounded persistent state changes, recovers stale status batches including manual batches after restart, and preserves manual job_runs during scheduler lease takeover.",
+      "assessed_at": "2026-10-31T23:41:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/project-catalog.test.ts",
+          "blob": "2bfc0b4128416cf8384a471ce78880760c402fd6",
+          "command": "bun test --isolate src/lib/project-catalog.test.ts"
+        },
+        {
+          "path": "src/server/services/project-status.test.ts",
+          "blob": "91ca63bffb14eb1e2d1d1ef6e722f92fcf8d38f1",
+          "command": "bun test --isolate src/server/services/project-status.test.ts"
+        },
+        {
+          "path": "src/server/services/project-status.integration.test.ts",
+          "blob": "027e64ad22e68c9cf6f502d00b897ac3de1cb054",
+          "command": "bun test src/server/services/project-status.integration.test.ts src/server/jobs/scheduler.test.ts src/server/services/project-status.test.ts"
+        },
+        {
+          "path": "apps/admin/src/pages/project-status.tsx",
+          "blob": "cdf009b33ee5ebb4e0855649f45bc7a1f757dd69",
+          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:29680 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
+        },
+        {
+          "path": "tests/e2e/web-demo/project-status.spec.ts",
+          "blob": "b07cec5fa416350f0b3f9c9ebcf158accaa5e325",
+          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:29680 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts && WEB_DEMO_VIEWPORT=tablet WEB_DEMO_TEST_URL=http://127.0.0.1:29680 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts && WEB_DEMO_VIEWPORT=mobile WEB_DEMO_TEST_URL=http://127.0.0.1:29680 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
+        },
+        {
+          "path": "tests/lib/manual-release-ledger.test.ts",
+          "blob": "7eead40ff749d1cc21e0d41f827d5da355421856",
+          "command": "bun test --isolate tests/lib/manual-release-ledger.test.ts"
+        },
+        {
+          "path": "src/server/jobs/scheduler.test.ts",
+          "blob": "b363c62a9132738529f9048cec53a1c7adc81e8e",
+          "command": "bun test src/server/jobs/scheduler.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4",
+        "3.11.7",
+        "3.11.8"
+      ],
+      "evidence": [
+        {
+          "path": "src/server/http-compat-api.test.ts",
+          "blob": "7b55434b5e9c720b42114c060218abbc11ff6403",
+          "command": "bun test --isolate src/server/http-compat-api.test.ts"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "minor",
+      "applicable": true,
+      "state_description": "The candidate adds projectStatusRuns and projectStatusResults plus scheduler lease state. Existing project-status runs are protected by their own partial running index, and scheduler takeover is fenced by the lease owner; supported 3.x states can upgrade without rewriting existing records.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4",
+        "3.11.7",
+        "3.11.8"
+      ],
+      "evidence": [
+        {
+          "path": "drizzle/0025_project_status_scheduler_owner.sql",
+          "blob": "6b65b240e3815e7081b0c306fff38951d82ff9b0",
+          "command": "bun run db:migrations:validate && bunx drizzle-kit check && bun test src/server/jobs/scheduler.test.ts src/server/services/project-status.integration.test.ts"
+        }
+      ]
+    }
+  }
+}

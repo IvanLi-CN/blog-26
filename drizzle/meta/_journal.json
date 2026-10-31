@@ -148,6 +148,41 @@
       "when": 1792939153338,
       "tag": "0020_github_admin_comment_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1793425503516,
+      "tag": "0021_project_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1793448282555,
+      "tag": "0022_project_status_running_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1793449627796,
+      "tag": "0023_project_status_heartbeat",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1793456133516,
+      "tag": "0024_scheduler_lease",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1793456751106,
+      "tag": "0025_project_status_scheduler_owner",
+      "breakpoints": true
     }
   ]
 }

@@ -287,6 +287,60 @@ describe("HTTP compatibility APIs", () => {
     expect(await routeResponse.json()).not.toHaveProperty("code");
   });
 
+  it("protects project status overview and exposes the shared 42-entry catalog", async () => {
+    const anonymous = await handleAdminApiRequest(
+      buildRequest("/api/admin/project-status/overview"),
+      "/project-status/overview"
+    );
+    expect(anonymous.status).toBe(401);
+
+    const member = await handleAdminApiRequest(
+      buildRequest("/api/admin/project-status/overview", {}, USER_EMAIL),
+      "/project-status/overview"
+    );
+    expect(member.status).toBe(403);
+
+    const overview = await handleAdminApiRequest(
+      buildRequest("/api/admin/project-status/overview", {}, ADMIN_EMAIL),
+      "/project-status/overview"
+    );
+    expect(overview.status).toBe(200);
+    expect(await overview.json()).toMatchObject({
+      catalog: expect.arrayContaining([expect.objectContaining({ entryKind: "repository" })]),
+      latestRun: null,
+      summary: { total: 42, available: 0, unavailable: 0, unknown: 42 },
+    });
+
+    const history = await handleAdminApiRequest(
+      buildRequest("/api/admin/project-status/history", {}, ADMIN_EMAIL),
+      "/project-status/history"
+    );
+    expect(history.status).toBe(200);
+    expect(await history.json()).toEqual({ runs: [] });
+
+    const anonymousTrigger = await handleAdminApiRequest(
+      buildRequest("/api/admin/project-status/trigger", { method: "POST" }),
+      "/project-status/trigger"
+    );
+    expect(anonymousTrigger.status).toBe(401);
+
+    const memberTrigger = await handleAdminApiRequest(
+      buildRequest("/api/admin/project-status/trigger", { method: "POST" }, USER_EMAIL),
+      "/project-status/trigger"
+    );
+    expect(memberTrigger.status).toBe(403);
+
+    const crossSiteTrigger = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/project-status/trigger",
+        { method: "POST", headers: { origin: "https://evil.example" } },
+        ADMIN_EMAIL
+      ),
+      "/project-status/trigger"
+    );
+    expect(crossSiteTrigger.status).toBe(403);
+  });
+
   it("protects search settings and validates only saved mode policies", async () => {
     for (const [method, route] of [
       ["GET", "/api/admin/search-settings"],

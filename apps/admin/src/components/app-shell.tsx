@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
+  Activity,
   BrainCircuit,
   ClipboardList,
   Files,
@@ -94,6 +95,7 @@ const navSections = [
     label: "运营",
     items: [
       { to: "/schedules", label: "计划任务", icon: ClipboardList },
+      { to: "/project-status", label: "项目状态", icon: Activity },
       { to: "/tags", label: "标签分组", icon: Tags },
       { to: "/tag-icons", label: "图标匹配", icon: ScanSearch },
     ],

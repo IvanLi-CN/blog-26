@@ -171,6 +171,7 @@ export default defineConfig({
       ],
     },
     define: {
+      "globalThis.__BLOG26_PUBLIC_WEB_DEMO_PLAYBOOK_BASE__": JSON.stringify(webDemoPlaybookBase),
       "process.env.PUBLIC_WEB_DEMO_PLAYBOOK_BASE": JSON.stringify(webDemoPlaybookBase),
       "process.env.PUBLIC_LUOSIMAO_SITE_KEY": JSON.stringify(
         process.env.PUBLIC_LUOSIMAO_SITE_KEY ?? ""

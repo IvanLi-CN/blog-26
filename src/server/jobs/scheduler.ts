@@ -1,48 +1,144 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import { db, initializeDB } from "@/lib/db";
 import { cleanupOldLogs, createRunLog } from "@/lib/job-logger";
-import { jobRuns } from "@/lib/schema";
+import { jobRuns, jobSchedulerLeases } from "@/lib/schema";
+import { interruptActiveProjectStatusRuns } from "@/server/services/project-status";
 import type { JobDefinition } from "./definitions";
 import { jobDefinitions, nextRunTime } from "./definitions";
 
 const nanoid = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 16);
+const SCHEDULER_LEASE_ID = "global";
+const SCHEDULER_LEASE_TTL_MS = 15_000;
+const SCHEDULER_LEASE_HEARTBEAT_MS = 5_000;
+
+export async function markOrphanedSchedulerRuns(now: number) {
+  await db
+    .update(jobRuns)
+    .set({
+      status: "error",
+      finishedAt: now,
+      errorMessage: "调度器租约失效，中断了未完成的任务",
+    })
+    .where(and(eq(jobRuns.status, "running"), eq(jobRuns.triggeredBy, "scheduler")));
+}
 
 type TimerRef = ReturnType<typeof setTimeout> | null;
+type SchedulerStartOptions = { runOnStart?: boolean };
 
 type InternalJobState = {
   def: JobDefinition;
   nextAt: number;
   timer: TimerRef;
   running: boolean;
+  queued: boolean;
+  abortController: AbortController | null;
 };
 
 class JobsScheduler {
   private jobs = new Map<string, InternalJobState>();
   private started = false;
+  private leader = false;
+  private leaseTimer: TimerRef = null;
+  private readonly ownerToken = nanoid();
+  private startupRetryUsed = new Set<string>();
 
-  async start() {
+  async start(options: SchedulerStartOptions = {}) {
     if (this.started) return;
-    this.started = true;
     await initializeDB();
+    this.started = true;
     for (const def of jobDefinitions) {
       const nextAt = nextRunTime(Date.now(), def.schedule);
-      const st: InternalJobState = { def, nextAt, timer: null, running: false };
+      const st: InternalJobState = {
+        def,
+        nextAt,
+        timer: null,
+        running: false,
+        queued: false,
+        abortController: null,
+      };
       this.jobs.set(def.key, st);
-      this.armTimer(st);
     }
+    await this.tryBecomeLeader(options);
+    this.leaseTimer = setInterval(() => {
+      void this.tryBecomeLeader(options);
+    }, SCHEDULER_LEASE_HEARTBEAT_MS);
   }
 
   stop() {
+    if (this.leaseTimer) clearInterval(this.leaseTimer);
+    this.leaseTimer = null;
     for (const st of this.jobs.values()) if (st.timer) clearTimeout(st.timer);
     this.jobs.clear();
+    if (this.leader) {
+      void db
+        .delete(jobSchedulerLeases)
+        .where(
+          and(
+            eq(jobSchedulerLeases.id, SCHEDULER_LEASE_ID),
+            eq(jobSchedulerLeases.ownerToken, this.ownerToken)
+          )
+        );
+    }
+    this.leader = false;
     this.started = false;
+  }
+
+  private async tryBecomeLeader(options: SchedulerStartOptions) {
+    const now = Date.now();
+    await db
+      .insert(jobSchedulerLeases)
+      .values({ id: SCHEDULER_LEASE_ID, ownerToken: this.ownerToken, heartbeatAt: now })
+      .onConflictDoNothing();
+    const acquired = await db
+      .update(jobSchedulerLeases)
+      .set({ ownerToken: this.ownerToken, heartbeatAt: now })
+      .where(
+        and(
+          eq(jobSchedulerLeases.id, SCHEDULER_LEASE_ID),
+          or(
+            eq(jobSchedulerLeases.ownerToken, this.ownerToken),
+            lt(jobSchedulerLeases.heartbeatAt, now - SCHEDULER_LEASE_TTL_MS)
+          )
+        )
+      )
+      .returning({ id: jobSchedulerLeases.id });
+    if (!acquired.length) {
+      if (this.leader) {
+        this.leader = false;
+        for (const st of this.jobs.values()) {
+          if (st.timer) clearTimeout(st.timer);
+          st.timer = null;
+          st.abortController?.abort(new Error("调度器租约失效"));
+        }
+        void interruptActiveProjectStatusRuns(Date.now(), true, {
+          runOwnerToken: this.ownerToken,
+          leaseOwnerToken: this.ownerToken,
+        });
+      }
+      return;
+    }
+    if (this.leader) return;
+    this.leader = true;
+    this.startupRetryUsed.clear();
+    await interruptActiveProjectStatusRuns(now, false, { leaseOwnerToken: this.ownerToken });
+    await markOrphanedSchedulerRuns(now);
+    for (const st of this.jobs.values()) {
+      st.nextAt = this.computeNext(st.def);
+      this.armTimer(st);
+    }
+    if (options.runOnStart !== false) {
+      for (const def of jobDefinitions) {
+        if (def.runOnStart) this.trigger(def.key, "scheduler");
+      }
+    }
   }
 
   private armTimer(st: InternalJobState) {
     const ms = Math.max(0, st.nextAt - Date.now());
     if (st.timer) clearTimeout(st.timer);
     st.timer = setTimeout(() => {
+      if (!this.leader) return;
       this.runJob(st.def.key, "scheduler").catch((e) => console.error("job error", e));
     }, ms);
   }
@@ -51,13 +147,30 @@ class JobsScheduler {
     return nextRunTime(Date.now(), def.schedule);
   }
 
+  private async assertSchedulerLease(triggeredBy: "scheduler" | "manual") {
+    if (triggeredBy !== "scheduler") return;
+    const lease = await db
+      .select({ ownerToken: jobSchedulerLeases.ownerToken })
+      .from(jobSchedulerLeases)
+      .where(eq(jobSchedulerLeases.id, SCHEDULER_LEASE_ID))
+      .limit(1);
+    if (!this.leader || lease[0]?.ownerToken !== this.ownerToken) {
+      throw new Error("调度器租约失效");
+    }
+  }
+
   /**
    * 非阻塞触发：立即在下一个事件循环中运行，不阻塞调用方。
    */
   trigger(jobKey: string, triggeredBy: "scheduler" | "manual" = "manual") {
     const st = this.jobs.get(jobKey);
     if (!st) throw new Error(`Unknown job: ${jobKey}`);
-    if (st.running) throw new Error(`Job is already running: ${jobKey}`);
+    if (triggeredBy === "scheduler" && !this.leader) {
+      st.queued = false;
+      return;
+    }
+    if (st.running || st.queued) throw new Error(`Job is already running: ${jobKey}`);
+    st.queued = true;
     setTimeout(() => {
       this.runJob(jobKey, triggeredBy).catch((e) => console.error("job error", e));
     }, 0);
@@ -66,8 +179,15 @@ class JobsScheduler {
   async runJob(jobKey: string, triggeredBy: "scheduler" | "manual") {
     const st = this.jobs.get(jobKey);
     if (!st) throw new Error(`Unknown job: ${jobKey}`);
+    if (triggeredBy === "scheduler" && !this.leader) {
+      st.queued = false;
+      return;
+    }
     if (st.running) throw new Error(`Job is already running: ${jobKey}`);
+    st.queued = false;
     st.running = true;
+    const abortController = triggeredBy === "scheduler" ? new AbortController() : null;
+    st.abortController = abortController;
 
     const runId = nanoid();
     const log = createRunLog(jobKey, runId);
@@ -80,30 +200,48 @@ class JobsScheduler {
         log.write({ level: "error", message, data }),
     } as const;
 
-    logger.info("run_initialized", { triggeredBy });
-
-    await initializeDB();
-    await db.insert(jobRuns).values({
-      id: runId,
-      jobKey,
-      jobName: st.def.name,
-      status: "running",
-      triggeredBy,
-      startedAt,
-      logPath: log.filePath,
-      logDeleted: false,
-      attempt: 1,
-    });
-
     try {
-      await st.def.run(logger);
+      logger.info("run_initialized", { triggeredBy });
+      await initializeDB();
+      await db.insert(jobRuns).values({
+        id: runId,
+        jobKey,
+        jobName: st.def.name,
+        status: "running",
+        triggeredBy,
+        startedAt,
+        logPath: log.filePath,
+        logDeleted: false,
+        attempt: 1,
+      });
+      await this.assertSchedulerLease(triggeredBy);
+      await st.def.run(logger, {
+        schedulerOwnerToken: triggeredBy === "scheduler" ? this.ownerToken : undefined,
+        triggeredBy,
+        signal: abortController?.signal,
+      });
+      abortController?.signal.throwIfAborted();
+      await this.assertSchedulerLease(triggeredBy);
       await db
         .update(jobRuns)
         .set({ status: "success", finishedAt: Date.now() })
-        .where(eq(jobRuns.id, runId));
+        .where(and(eq(jobRuns.id, runId), eq(jobRuns.status, "running")));
       logger.info("run_completed", { status: "success", durationMs: Date.now() - startedAt });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      if (
+        triggeredBy === "scheduler" &&
+        jobKey === "project-entry-status" &&
+        msg.includes("already running") &&
+        this.leader &&
+        !this.startupRetryUsed.has(jobKey)
+      ) {
+        this.startupRetryUsed.add(jobKey);
+        const retry = setTimeout(() => {
+          if (this.leader) this.trigger(jobKey, "scheduler");
+        }, SCHEDULER_LEASE_TTL_MS + 1_000);
+        retry.unref?.();
+      }
       logger.error("run_failed", {
         message: msg,
         stack: e instanceof Error ? e.stack : undefined,
@@ -111,10 +249,11 @@ class JobsScheduler {
       await db
         .update(jobRuns)
         .set({ status: "error", finishedAt: Date.now(), errorMessage: msg })
-        .where(eq(jobRuns.id, runId));
+        .where(and(eq(jobRuns.id, runId), eq(jobRuns.status, "running")));
       logger.info("run_completed", { status: "error", durationMs: Date.now() - startedAt });
     } finally {
       st.running = false;
+      st.abortController = null;
       st.nextAt = this.computeNext(st.def);
       this.armTimer(st);
 
@@ -154,7 +293,7 @@ class JobsScheduler {
       key: st.def.key,
       name: st.def.name,
       schedule: st.def.schedule,
-      running: st.running,
+      running: st.running || st.queued,
       nextRunAt: st.nextAt,
     }));
   }
@@ -174,9 +313,9 @@ export function getScheduler() {
   return global.__jobsScheduler;
 }
 
-export async function startJobsScheduler() {
+export async function startJobsScheduler(options?: SchedulerStartOptions) {
   const s = getScheduler();
-  await s.start();
+  await s.start(options);
   return s;
 }
 

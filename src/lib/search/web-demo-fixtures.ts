@@ -83,8 +83,14 @@ export const SEARCH_DEMO_DENSE_DOCUMENTS = [
   },
 ] as const;
 
+const injectedPlaybookDemoBase = (
+  globalThis as typeof globalThis & {
+    __BLOG26_PUBLIC_WEB_DEMO_PLAYBOOK_BASE__?: string;
+  }
+).__BLOG26_PUBLIC_WEB_DEMO_PLAYBOOK_BASE__;
 const playbookDemoBase =
-  process.env.PUBLIC_WEB_DEMO_PLAYBOOK_BASE ||
+  injectedPlaybookDemoBase ||
+  (typeof process !== "undefined" ? process.env.PUBLIC_WEB_DEMO_PLAYBOOK_BASE : undefined) ||
   "/playbook/editions/v3.0.0/100/16a8b0657c998acc8e7c6371b4a74983a52dd1da61da4ceb9d31e7124d88fdce";
 
 /** Version-bound Playbook rows used by the official Web Demo search flow. */

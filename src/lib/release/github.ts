@@ -403,7 +403,7 @@ export class GitHubLedgerStore implements LedgerStore {
       if (legacyRequested && (commit.author?.login === owner || recoveryRequested)) {
         const bot = `${this.github.botSlug}[bot]`;
         if (
-          commit.author?.login !== owner ||
+          ![owner, bot].includes(commit.author?.login || "") ||
           commit.committer?.login !== "web-flow" ||
           !commit.commit.verification.verified ||
           commit.commit.verification.reason !== "valid" ||
