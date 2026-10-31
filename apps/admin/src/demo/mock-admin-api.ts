@@ -2505,7 +2505,7 @@ function projectStatusOverview(): ProjectStatusOverviewResponse {
   const active = activeStartedAt !== null && Date.now() - activeStartedAt < 1800;
   const latestRun = {
     id: runId,
-    status: "completed" as const,
+    status: "partial" as const,
     triggeredBy: "scheduler" as const,
     targetCount: entries.length,
     attemptedCount: entries.length - 1,

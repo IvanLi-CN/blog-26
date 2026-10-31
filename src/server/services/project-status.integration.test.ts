@@ -46,6 +46,7 @@ describe("project status service persistence", () => {
       },
       sleep: async () => undefined,
       now: () => Date.now(),
+      resolveHost: async () => [{ address: "93.184.216.34", family: 4 }],
       id: (() => {
         let index = 0;
         return () => `status-test-${index++}`;
@@ -116,6 +117,7 @@ describe("project status service persistence", () => {
         ({ status: 200, url: "https://final.example.test", redirected: false }) as Response,
       sleep: async () => undefined,
       now: () => Date.now(),
+      resolveHost: async () => [{ address: "93.184.216.34", family: 4 }],
       id: (() => {
         let index = 0;
         return () => `status-test-new-${index++}`;

@@ -136,6 +136,7 @@ function getString(value: string | null): string | undefined {
 }
 
 function getNumber(value: string | null, fallback: number): number {
+  if (value === null || value.trim() === "") return fallback;
   const raw = Number(value);
   return Number.isFinite(raw) ? raw : fallback;
 }

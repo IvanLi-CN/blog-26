@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import { desc, eq, inArray, lt, or } from "drizzle-orm";
 import { db, initializeDB } from "@/lib/db";
 import {
@@ -25,12 +27,14 @@ import { projectStatusResults, projectStatusRuns } from "@/lib/schema";
 type Sleep = (ms: number) => Promise<void>;
 type Now = () => number;
 type IdFactory = () => string;
+type ResolveHost = (hostname: string) => Promise<Array<{ address: string; family: number }>>;
 
 export type ProjectStatusServiceDeps = {
   fetch: typeof fetch;
   sleep: Sleep;
   now: Now;
   id: IdFactory;
+  resolveHost: ResolveHost;
   targetTimeoutMs?: number;
   retryDelayMs?: number;
 };
@@ -40,6 +44,7 @@ const productionDeps: ProjectStatusServiceDeps = {
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   now: () => Date.now(),
   id: randomUUID,
+  resolveHost: (hostname) => lookup(hostname, { all: true, verbatim: true }),
   targetTimeoutMs: PROJECT_STATUS_TARGET_TIMEOUT_MS,
   retryDelayMs: PROJECT_STATUS_RETRY_DELAY_MS,
 };
@@ -63,6 +68,86 @@ function errorMessage(error: unknown) {
 
 function isRetryableHttpStatus(status: number) {
   return status >= 500 && status <= 599;
+}
+
+class UnsafeTargetError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UnsafeTargetError";
+  }
+}
+
+function isPrivateAddress(address: string): boolean {
+  const normalized = address.toLowerCase().replace(/^\[|\]$/g, "");
+  if (normalized.startsWith("::ffff:")) return isPrivateAddress(normalized.slice(7));
+  if (isIP(normalized) === 4) {
+    const [first, second] = normalized.split(".").map(Number);
+    return (
+      first === 0 ||
+      first === 10 ||
+      first === 127 ||
+      (first === 100 && second >= 64 && second <= 127) ||
+      (first === 169 && second === 254) ||
+      (first === 172 && second >= 16 && second <= 31) ||
+      (first === 192 && (second === 0 || second === 168)) ||
+      (first === 198 && second >= 18 && second <= 19) ||
+      first >= 224
+    );
+  }
+  return (
+    normalized === "::" ||
+    normalized === "::1" ||
+    normalized.startsWith("fe80:") ||
+    normalized.startsWith("fc") ||
+    normalized.startsWith("fd")
+  );
+}
+
+async function assertSafeTarget(
+  href: string,
+  resolveHost: ResolveHost,
+  signal: AbortSignal
+): Promise<URL> {
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    throw new UnsafeTargetError("目标 URL 无效");
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new UnsafeTargetError("只允许检查 HTTP(S) 目标");
+  }
+  if (url.username || url.password) {
+    throw new UnsafeTargetError("目标 URL 不允许包含凭据");
+  }
+  const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
+  if (hostname === "localhost" || hostname.endsWith(".localhost") || hostname.endsWith(".local")) {
+    throw new UnsafeTargetError("目标地址指向本机网络");
+  }
+  if (isPrivateAddress(hostname)) {
+    throw new UnsafeTargetError("目标地址指向私有或保留网络");
+  }
+  if (isIP(hostname) === 0) {
+    let onAbort: (() => void) | null = null;
+    const abort = new Promise<never>((_, reject) => {
+      onAbort = () => reject(new DOMException("目标请求超时", "AbortError"));
+      if (signal.aborted) {
+        onAbort();
+        return;
+      }
+      signal.addEventListener("abort", onAbort, { once: true });
+    });
+    let addresses: Awaited<ReturnType<ResolveHost>>;
+    try {
+      addresses = await Promise.race([resolveHost(hostname), abort]);
+    } finally {
+      if (onAbort) signal.removeEventListener("abort", onAbort);
+    }
+    if (addresses.some(({ address }) => isPrivateAddress(address))) {
+      throw new UnsafeTargetError("目标地址解析到私有或保留网络");
+    }
+  }
+  return url;
 }
 
 function freshnessFor(checkedAt: number | null, now: number): ProjectStatusFreshness {
@@ -102,19 +187,32 @@ async function checkTarget(
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const response = await deps.fetch(href, {
-        method: "GET",
-        redirect: "follow",
-        signal: controller.signal,
-      });
+      const resolveHost = deps.resolveHost;
+      let currentUrl = href;
+      let response: Response | null = null;
+      let redirected = false;
+      for (let redirectCount = 0; redirectCount <= 10; redirectCount += 1) {
+        const safeUrl = await assertSafeTarget(currentUrl, resolveHost, controller.signal);
+        response = await deps.fetch(safeUrl.toString(), {
+          method: "GET",
+          redirect: "manual",
+          signal: controller.signal,
+        });
+        if (response.status < 300 || response.status > 399) break;
+        const location = response.headers.get("location");
+        if (!location || redirectCount === 10) break;
+        currentUrl = new URL(location, safeUrl).toString();
+        redirected = true;
+      }
+      if (!response) throw new Error("目标没有返回响应");
       const latencyMs = Math.max(0, deps.now() - startedAt);
       const available = response.status >= 200 && response.status <= 299;
       lastOutcome = {
         status: available ? "available" : "unavailable",
         attempted: true,
         httpStatus: response.status,
-        finalUrl: response.url || href,
-        redirected: response.redirected,
+        finalUrl: response.url || currentUrl,
+        redirected: redirected || response.redirected,
         latencyMs,
         attemptCount,
         errorKind: available ? null : `http_${response.status}`,
@@ -131,7 +229,11 @@ async function checkTarget(
         redirected: false,
         latencyMs: Math.max(0, deps.now() - startedAt),
         attemptCount,
-        errorKind: timedOut ? "timeout" : "network",
+        errorKind: timedOut
+          ? "timeout"
+          : error instanceof UnsafeTargetError
+            ? "unsafe_target"
+            : "network",
         errorMessage: timedOut ? "目标请求超时" : errorMessage(error),
         checkedAt: deps.now(),
       };
@@ -270,32 +372,32 @@ export async function runProjectStatusCheck(
     targetCount: entries.length,
     startedAt,
   });
-  await db.insert(projectStatusResults).values(
-    entries.map((entry) => ({
-      id: deps.id(),
-      runId,
-      entryKey: entry.entryKey,
-      projectSlug: entry.projectSlug,
-      projectTitle: entry.projectTitle,
-      domain: entry.domain,
-      entryKind: entry.kind,
-      entryLabel: entry.label,
-      href: entry.href,
-      status: "unknown" as const,
-      attempted: false,
-      attemptCount: 0,
-    }))
-  );
-
-  const deadline = startedAt + PROJECT_STATUS_BATCH_TIMEOUT_MS;
-  const byHref = new Map<string, ProjectStatusCatalogEntry[]>();
-  for (const entry of entries) {
-    const group = byHref.get(entry.href) ?? [];
-    group.push(entry);
-    byHref.set(entry.href, group);
-  }
-
   try {
+    await db.insert(projectStatusResults).values(
+      entries.map((entry) => ({
+        id: deps.id(),
+        runId,
+        entryKey: entry.entryKey,
+        projectSlug: entry.projectSlug,
+        projectTitle: entry.projectTitle,
+        domain: entry.domain,
+        entryKind: entry.kind,
+        entryLabel: entry.label,
+        href: entry.href,
+        status: "unknown" as const,
+        attempted: false,
+        attemptCount: 0,
+      }))
+    );
+
+    const deadline = startedAt + PROJECT_STATUS_BATCH_TIMEOUT_MS;
+    const byHref = new Map<string, ProjectStatusCatalogEntry[]>();
+    for (const entry of entries) {
+      const group = byHref.get(entry.href) ?? [];
+      group.push(entry);
+      byHref.set(entry.href, group);
+    }
+
     const outcomes = await mapWithConcurrency(
       [...byHref.entries()],
       PROJECT_STATUS_MAX_CONCURRENCY,

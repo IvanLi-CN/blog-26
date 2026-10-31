@@ -1,8 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { checkProjectStatusTarget } from "./project-status";
 
-function response(status: number, url: string, redirected = false) {
-  return { status, url, redirected } as Response;
+function response(
+  status: number,
+  url: string,
+  redirected = false,
+  headers: Record<string, string> = {}
+) {
+  return { status, url, redirected, headers: new Headers(headers) } as Response;
 }
 
 function dependencies(
@@ -19,28 +24,56 @@ function dependencies(
     id: () => "test-id",
     targetTimeoutMs: 10,
     retryDelayMs: 30,
+    resolveHost: async () => [{ address: "93.184.216.34", family: 4 }],
     ...overrides,
   };
 }
 
 describe("project status target checker", () => {
-  test("follows the GET contract and records redirected 2xx metadata without reading a body", async () => {
+  test("follows redirects manually and records redirected 2xx metadata without reading a body", async () => {
     let requestInit: RequestInit | undefined;
+    let calls = 0;
     const result = await checkProjectStatusTarget(
       "https://example.test/start",
       10_000,
       dependencies(async (_input, init) => {
+        calls += 1;
         requestInit = init;
-        return response(200, "https://example.test/final", true);
+        return calls === 1
+          ? response(302, "https://example.test/start", false, {
+              location: "https://example.test/final",
+            })
+          : response(200, "https://example.test/final");
       })
     );
 
     expect(requestInit?.method).toBe("GET");
-    expect(requestInit?.redirect).toBe("follow");
+    expect(requestInit?.redirect).toBe("manual");
     expect(result).toMatchObject({
       status: "available",
       finalUrl: "https://example.test/final",
       redirected: true,
+      attemptCount: 1,
+    });
+  });
+
+  test("rejects redirects into private networks before making the redirected request", async () => {
+    let calls = 0;
+    const result = await checkProjectStatusTarget(
+      "https://example.test/start",
+      10_000,
+      dependencies(async () => {
+        calls += 1;
+        return response(302, "https://example.test/start", false, {
+          location: "http://127.0.0.1:8080/internal",
+        });
+      })
+    );
+
+    expect(calls).toBe(1);
+    expect(result).toMatchObject({
+      status: "unavailable",
+      errorKind: "unsafe_target",
       attemptCount: 1,
     });
   });
@@ -101,6 +134,26 @@ describe("project status target checker", () => {
       )
     );
     expect(timeout).toMatchObject({ status: "unavailable", errorKind: "timeout", attemptCount: 2 });
+  });
+
+  test("counts DNS resolution against the target timeout", async () => {
+    let fetchCalls = 0;
+    const result = await checkProjectStatusTarget(
+      "https://example.test/dns-timeout",
+      10_000,
+      dependencies(
+        async () => {
+          fetchCalls += 1;
+          return response(200, "https://example.test/dns-timeout");
+        },
+        {
+          resolveHost: () => new Promise(() => undefined),
+        }
+      )
+    );
+
+    expect(fetchCalls).toBe(0);
+    expect(result).toMatchObject({ status: "unavailable", errorKind: "timeout" });
   });
 
   test("returns unknown when the batch deadline is already exhausted", async () => {

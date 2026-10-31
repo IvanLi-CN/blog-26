@@ -21,7 +21,7 @@ const EXCLUDE_DIRS = new Set([
   "e2e", // 排除 E2E 测试目录
 ]);
 
-const ROOTS = ["src", "tests", "tests/integration", "tests/lib", "tests/server"];
+const ROOTS = ["src", "apps/admin/src", "tests", "tests/integration", "tests/lib", "tests/server"];
 const EXPLICIT_TEST_FILES = [
   "scripts/package-public-media.test.ts",
   "scripts/verify-pages-build.test.ts",

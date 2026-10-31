@@ -229,10 +229,7 @@ export function ProjectStatusPage() {
     [overview?.catalog]
   );
   const problemResults = filteredResults.filter(isProblem);
-  const totalProblems =
-    (overview?.summary.unavailable ?? 0) +
-    (overview?.summary.unknown ?? 0) +
-    (overview?.summary.stale ?? 0);
+  const totalProblems = (overview?.results ?? []).filter(isProblem).length;
 
   const toggleProject = (projectSlug: string) => {
     setExpandedProjects((current) => {
