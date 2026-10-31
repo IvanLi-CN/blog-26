@@ -40,7 +40,7 @@
     "current": {
       "impact": "patch",
       "reasoning": "The candidate validates the registered PR merge, terminal exact main evaluation failure, absence of Product Release state and absence of artifacts or publication before writing an Actions-signed abandonment; bootstrap recovery now requires the discovered owner legacy identity, strict root/current state digests and marker syntax, original PR provenance, CAS postconditions, and a marker-aware idempotency path. Historical recovery wrappers remain readable and product routes, public responses, durable application state and product bytes remain unchanged.",
-      "assessed_at": "2026-10-31T23:07:32+08:00",
+      "assessed_at": "2026-10-31T23:59:24+08:00",
       "evidence": [
         {
           "path": "src/lib/release/completion.ts",
@@ -81,7 +81,7 @@
     "verified": {
       "impact": "patch",
       "reasoning": "Focused release recovery and workflow contract tests pass; the local non-E2E suite reports 1421 passed, 67 skipped, and 0 failed; the exact-head PR CI covers build, Docker, lint, unit, Release Policy and five E2E jobs; Biome, project checks, actionlint, diff checks, remote ledger read and Spec drift pass; and the synchronized manual-release specification records discovered-target validation, marker-aware idempotency, strict root/current state checks and successful expected-head CAS persistence without changing public or application persistence contracts.",
-      "assessed_at": "2026-10-31T23:07:32+08:00",
+      "assessed_at": "2026-10-31T23:59:24+08:00",
       "evidence": [
         {
           "path": "scripts/product-release.ts",
