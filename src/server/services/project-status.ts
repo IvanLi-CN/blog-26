@@ -419,6 +419,27 @@ function resultDto(
   };
 }
 
+async function getProjectStatusRunCounts(runId: string) {
+  const results = await db
+    .select({ attempted: projectStatusResults.attempted, status: projectStatusResults.status })
+    .from(projectStatusResults)
+    .where(eq(projectStatusResults.runId, runId));
+  return {
+    attemptedCount: results.filter((result) => result.attempted).length,
+    availableCount: results.filter((result) => result.status === "available").length,
+    unavailableCount: results.filter((result) => result.status === "unavailable").length,
+  };
+}
+
+async function updateProjectStatusRunCounts(runId: string) {
+  const counts = await getProjectStatusRunCounts(runId);
+  await db
+    .update(projectStatusRuns)
+    .set(counts)
+    .where(and(eq(projectStatusRuns.id, runId), eq(projectStatusRuns.status, "running")));
+  return counts;
+}
+
 export async function interruptActiveProjectStatusRuns(now = Date.now(), force = false) {
   const activeRuns = await db
     .select({ id: projectStatusRuns.id })
@@ -448,17 +469,10 @@ export async function interruptActiveProjectStatusRuns(now = Date.now(), force =
       .returning({ id: projectStatusRuns.id });
     if (!interrupted.length) continue;
 
-    const results = await db
-      .select({ attempted: projectStatusResults.attempted, status: projectStatusResults.status })
-      .from(projectStatusResults)
-      .where(eq(projectStatusResults.runId, activeRun.id));
+    const counts = await getProjectStatusRunCounts(activeRun.id);
     await db
       .update(projectStatusRuns)
-      .set({
-        attemptedCount: results.filter((result) => result.attempted).length,
-        availableCount: results.filter((result) => result.status === "available").length,
-        unavailableCount: results.filter((result) => result.status === "unavailable").length,
-      })
+      .set(counts)
       .where(
         and(eq(projectStatusRuns.id, activeRun.id), eq(projectStatusRuns.status, "interrupted"))
       );
@@ -559,63 +573,59 @@ export async function runProjectStatusCheck(
       byHref.set(entry.href, group);
     }
 
-    const outcomes = await mapWithConcurrency(
-      [...byHref.entries()],
-      PROJECT_STATUS_MAX_CONCURRENCY,
-      async ([href, groupedEntries]) => {
-        await assertProjectStatusRunActive(runId);
-        return {
-          groupedEntries,
-          outcome: await checkTarget(href, deadline, deps, leaseController.signal),
-        };
-      }
-    );
-
     const resultRows = await db
       .select()
       .from(projectStatusResults)
       .where(eq(projectStatusResults.runId, runId));
     const resultByEntry = new Map(resultRows.map((row) => [row.entryKey, row]));
-    for (const { groupedEntries, outcome } of outcomes) {
-      for (const entry of groupedEntries) {
+    let progressQueue = Promise.resolve();
+    const persistOutcome = (groupedEntries: ProjectStatusCatalogEntry[], outcome: CheckOutcome) => {
+      const next = progressQueue.then(async () => {
         await assertProjectStatusRunActive(runId);
-        const row = resultByEntry.get(entry.entryKey);
-        if (!row) continue;
-        const updated = await db
-          .update(projectStatusResults)
-          .set(outcome)
-          .where(
-            and(
-              eq(projectStatusResults.id, row.id),
-              exists(
-                db
-                  .select({ id: projectStatusRuns.id })
-                  .from(projectStatusRuns)
-                  .where(
-                    and(eq(projectStatusRuns.id, runId), eq(projectStatusRuns.status, "running"))
-                  )
+        for (const entry of groupedEntries) {
+          const row = resultByEntry.get(entry.entryKey);
+          if (!row) continue;
+          const updated = await db
+            .update(projectStatusResults)
+            .set(outcome)
+            .where(
+              and(
+                eq(projectStatusResults.id, row.id),
+                exists(
+                  db
+                    .select({ id: projectStatusRuns.id })
+                    .from(projectStatusRuns)
+                    .where(
+                      and(eq(projectStatusRuns.id, runId), eq(projectStatusRuns.status, "running"))
+                    )
+                )
               )
             )
-          )
-          .returning({ id: projectStatusResults.id });
-        if (!updated.length) throw new Error("Project status run was interrupted");
-      }
-    }
+            .returning({ id: projectStatusResults.id });
+          if (!updated.length) throw new Error("Project status run was interrupted");
+        }
+        await updateProjectStatusRunCounts(runId);
+      });
+      progressQueue = next.catch(() => undefined);
+      return next;
+    };
 
-    const attemptedCount = outcomes.reduce(
-      (count, item) => count + (item.outcome.attempted ? item.groupedEntries.length : 0),
-      0
+    await mapWithConcurrency(
+      [...byHref.entries()],
+      PROJECT_STATUS_MAX_CONCURRENCY,
+      async ([href, groupedEntries]) => {
+        await assertProjectStatusRunActive(runId);
+        const outcome = await checkTarget(href, deadline, deps, leaseController.signal);
+        await persistOutcome(groupedEntries, outcome);
+        return {
+          groupedEntries,
+          outcome,
+        };
+      }
     );
-    const availableCount = outcomes.reduce(
-      (count, item) =>
-        count + (item.outcome.status === "available" ? item.groupedEntries.length : 0),
-      0
-    );
-    const unavailableCount = outcomes.reduce(
-      (count, item) =>
-        count + (item.outcome.status === "unavailable" ? item.groupedEntries.length : 0),
-      0
-    );
+
+    const { attemptedCount, availableCount, unavailableCount } =
+      await getProjectStatusRunCounts(runId);
     const finishedAt = deps.now();
     const status = attemptedCount === entries.length ? "completed" : "partial";
     await assertProjectStatusRunActive(runId);
@@ -639,15 +649,11 @@ export async function runProjectStatusCheck(
     return { id: runId, status, targetCount: entries.length, attemptedCount };
   } catch (error) {
     const finishedAt = deps.now();
-    let message = errorMessage(error);
-    try {
-      await db.delete(projectStatusResults).where(eq(projectStatusResults.runId, runId));
-    } catch (cleanupError) {
-      message = `${message}; result cleanup failed: ${errorMessage(cleanupError)}`;
-    }
+    const message = errorMessage(error);
+    const counts = await getProjectStatusRunCounts(runId);
     await db
       .update(projectStatusRuns)
-      .set({ status: "error", finishedAt, heartbeatAt: null, errorMessage: message })
+      .set({ status: "error", finishedAt, heartbeatAt: null, errorMessage: message, ...counts })
       .where(and(eq(projectStatusRuns.id, runId), eq(projectStatusRuns.status, "running")));
     throw error;
   } finally {

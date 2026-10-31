@@ -176,9 +176,13 @@ export function ProjectStatusPage() {
       .filter((result) => domain === "all" || result.domain === domain)
       .filter((result) => project === "all" || result.projectSlug === project)
       .filter((result) => kind === "all" || result.entryKind === kind)
-      .filter(
-        (result) => filter === "all" || result.status === filter || result.freshness === filter
-      )
+      .filter((result) => {
+        if (filter === "all") return true;
+        if (filter === "available")
+          return result.status === "available" && result.freshness !== "stale";
+        if (filter === "stale") return result.freshness === "stale";
+        return result.status === filter;
+      })
       .filter((result) => {
         if (!text) return true;
         return [result.projectTitle, result.entryLabel, result.href].some((value) =>

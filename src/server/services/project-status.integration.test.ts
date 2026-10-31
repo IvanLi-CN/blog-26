@@ -321,6 +321,11 @@ describe("project status service persistence", () => {
 
     const runs = await db.select().from(projectStatusRuns);
     expect(runs.find((run) => run.id === "status-test-lease-0")?.status).toBe("interrupted");
-    expect(await db.select().from(projectStatusResults)).toHaveLength(0);
+    expect(await db.select().from(projectStatusResults)).toHaveLength(42);
+    expect(runs.find((run) => run.id === "status-test-lease-0")).toMatchObject({
+      attemptedCount: 0,
+      availableCount: 0,
+      unavailableCount: 0,
+    });
   });
 });

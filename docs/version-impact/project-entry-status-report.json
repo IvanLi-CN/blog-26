@@ -5,9 +5,9 @@
   "covered_files": {
     "GLOSSARY.md": "f3031cc1d9c75459850a8e26365bd0c46b9f6703",
     "apps/admin/src/components/app-shell.tsx": "7d5b974a72a0776572fbf4eaaea40ae5e669c27c",
-    "apps/admin/src/demo/mock-admin-api.ts": "e1da5ba4cf692bb8a9d5123b5666470ebea0b6bd",
+    "apps/admin/src/demo/mock-admin-api.ts": "e98d31236ff1ca88ba849368c5b1cc27b62e67a6",
     "apps/admin/src/pages/project-status.test.tsx": "0c057f1398399bc0659094d934faa68e1e1b19c3",
-    "apps/admin/src/pages/project-status.tsx": "65fb0d4bbf498808fe5712a80e10684ed0977d95",
+    "apps/admin/src/pages/project-status.tsx": "99dc476921958092ca9ff4d254ea1f0d6ef1abb7",
     "apps/admin/src/router.tsx": "d0740e1e0313421a8149376d1167b6b64a09a302",
     "astro.config.mjs": "eb89dbcbdb6975f0ed76d49c486d6f9c0a1deaad",
     "drizzle/0021_project_status.sql": "3f3a5cd4a02859266c40b986f56926d7956205bc",
@@ -45,9 +45,9 @@
     "src/server/routers/admin/index.ts": "b3e8f76750e4df5798fdbf94cd8a8d2c93e69714",
     "src/server/routers/admin/project-status.ts": "218ff54554c8b2a887aae0542e0b84ef3b111927",
     "src/server/routers/admin/project-status.test.ts": "6b813665fe38076d6504aaebf73917cc64cc3ec7",
-    "src/server/services/project-status.integration.test.ts": "a108c59e92e7a88448b661b1b65d28c23e6c949d",
+    "src/server/services/project-status.integration.test.ts": "36e8d8108ddae6670db4dc05e56e010b9c55fae8",
     "src/server/services/project-status.test.ts": "caf10f674c6fdcb05be12db833ae92d2a8a2a4d4",
-    "src/server/services/project-status.ts": "4dc766ef05ffa7793e2aafbd07aa2301fb42d9be",
+    "src/server/services/project-status.ts": "e7c846866511b2c47d606b6231c7d18a049184fc",
     "src/server/trpc.ts": "2eb74085661d32ee954e24bd05a7239a9bbc3489",
     "tests/e2e/web-demo/system-share.spec.ts": "4b1561720aa375ff3b41ef430a632ad8df421c8f",
     "tests/e2e/web-demo/project-status.spec.ts": "0e053262397239e6bc4fbebbfd6844e3860c0ea5",
@@ -63,7 +63,7 @@
     "planned": {
       "impact": "minor",
       "reasoning": "The approved MVP adds compatible administrator API capabilities and additive SQLite tables for project status runs and results. Existing public project routes, existing API semantics, and prior records remain readable.",
-      "assessed_at": "2026-10-31T21:05:00+08:00",
+      "assessed_at": "2026-10-31T21:29:00+08:00",
       "evidence": [
         {
           "path": "src/lib/project-status.ts",
@@ -75,11 +75,11 @@
     "current": {
       "impact": "minor",
       "reasoning": "The candidate implements the approved shared catalog and additive status-report workflow: external URL checks do not read response bodies or modify the catalog, the database migration is additive, and Admin consumers receive new overview/history/trigger endpoints without changing existing routes.",
-      "assessed_at": "2026-10-31T21:05:00+08:00",
+      "assessed_at": "2026-10-31T21:29:00+08:00",
       "evidence": [
         {
           "path": "src/server/services/project-status.integration.test.ts",
-          "blob": "a108c59e92e7a88448b661b1b65d28c23e6c949d",
+          "blob": "36e8d8108ddae6670db4dc05e56e010b9c55fae8",
           "command": "bun test --isolate src/server/services/project-status.integration.test.ts"
         },
         {
@@ -101,7 +101,7 @@
     "verified": {
       "impact": "minor",
       "reasoning": "Shared catalog, service, HTTP compatibility, Admin UI, migration, build, and browser evidence passed on the candidate SHA. The feature adds only compatible Admin capabilities and additive persistent state.",
-      "assessed_at": "2026-10-31T21:05:00+08:00",
+      "assessed_at": "2026-10-31T21:29:00+08:00",
       "evidence": [
         {
           "path": "src/lib/project-catalog.test.ts",
@@ -115,7 +115,7 @@
         },
         {
           "path": "apps/admin/src/pages/project-status.tsx",
-          "blob": "65fb0d4bbf498808fe5712a80e10684ed0977d95",
+          "blob": "99dc476921958092ca9ff4d254ea1f0d6ef1abb7",
           "command": "bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/project-status.spec.ts"
         },
         {

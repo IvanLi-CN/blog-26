@@ -2464,65 +2464,60 @@ function projectStatusOverview(): ProjectStatusOverviewResponse {
   const dataMode = getWebDemoState(window.location, "admin").data;
   const entries = getProjectStatusCatalogEntries();
   const runId = "demo-project-status-run-1";
-  const results: ProjectStatusResultDto[] =
-    dataMode === "empty"
-      ? []
-      : entries.map((entry, index) => {
-          const status: ProjectStatusResultDto["status"] =
-            dataMode === "empty"
+  const results: ProjectStatusResultDto[] = entries.map((entry, index) => {
+    const status: ProjectStatusResultDto["status"] =
+      dataMode === "empty"
+        ? "unknown"
+        : dataMode === "dense" || dataMode === "motion"
+          ? "available"
+          : index === 3 || index === 19
+            ? "unavailable"
+            : index === 8
               ? "unknown"
-              : dataMode === "dense" || dataMode === "motion"
-                ? "available"
-                : index === 3 || index === 19
-                  ? "unavailable"
-                  : index === 8
-                    ? "unknown"
-                    : "available";
-          const freshness: ProjectStatusResultDto["freshness"] =
-            dataMode === "empty"
-              ? "unknown"
-              : dataMode === "fixture" && index === 12
-                ? "stale"
-                : status === "unknown"
-                  ? "unknown"
-                  : "fresh";
-          return {
-            id: `demo-status-result-${index + 1}`,
-            runId,
-            entryKey: entry.entryKey,
-            projectSlug: entry.projectSlug,
-            projectTitle: entry.projectTitle,
-            domain: entry.domain,
-            entryKind: entry.kind,
-            entryLabel: entry.label,
-            href: entry.href,
-            status,
-            freshness,
-            attempted: status !== "unknown",
-            httpStatus: status === "unavailable" ? 503 : status === "available" ? 200 : null,
-            finalUrl:
-              status === "available" && dataMode === "fixture" && index === 2
-                ? `${entry.href}/`
-                : null,
-            redirected: status === "available" && dataMode === "fixture" && index === 2,
-            latencyMs: status === "unknown" ? null : 120 + index * 7,
-            attemptCount: status === "unavailable" ? 2 : status === "unknown" ? 0 : 1,
-            errorKind:
-              status === "unavailable" ? "http_503" : status === "unknown" ? "batch_timeout" : null,
-            errorMessage:
-              status === "unavailable"
-                ? "目标返回 HTTP 503"
-                : status === "unknown"
-                  ? "批次截止时间已到"
-                  : null,
-            checkedAt:
-              status === "unknown"
-                ? null
-                : dataMode === "fixture" && index === 12
-                  ? now - 13 * 60 * 60 * 1000
-                  : now - 20 * 60 * 1000,
-          };
-        });
+              : "available";
+    const freshness: ProjectStatusResultDto["freshness"] =
+      dataMode === "empty"
+        ? "unknown"
+        : dataMode === "fixture" && index === 12
+          ? "stale"
+          : status === "unknown"
+            ? "unknown"
+            : "fresh";
+    return {
+      id: `demo-status-result-${index + 1}`,
+      runId,
+      entryKey: entry.entryKey,
+      projectSlug: entry.projectSlug,
+      projectTitle: entry.projectTitle,
+      domain: entry.domain,
+      entryKind: entry.kind,
+      entryLabel: entry.label,
+      href: entry.href,
+      status,
+      freshness,
+      attempted: status !== "unknown",
+      httpStatus: status === "unavailable" ? 503 : status === "available" ? 200 : null,
+      finalUrl:
+        status === "available" && dataMode === "fixture" && index === 2 ? `${entry.href}/` : null,
+      redirected: status === "available" && dataMode === "fixture" && index === 2,
+      latencyMs: status === "unknown" ? null : 120 + index * 7,
+      attemptCount: status === "unavailable" ? 2 : status === "unknown" ? 0 : 1,
+      errorKind:
+        status === "unavailable" ? "http_503" : status === "unknown" ? "batch_timeout" : null,
+      errorMessage:
+        status === "unavailable"
+          ? "目标返回 HTTP 503"
+          : status === "unknown"
+            ? "批次截止时间已到"
+            : null,
+      checkedAt:
+        status === "unknown"
+          ? null
+          : dataMode === "fixture" && index === 12
+            ? now - 13 * 60 * 60 * 1000
+            : now - 20 * 60 * 1000,
+    };
+  });
   const activeStartedAt = demoProjectStatusStartedAt;
   const active = activeStartedAt !== null && Date.now() - activeStartedAt < 1800;
   const activeAttemptedCount = active
