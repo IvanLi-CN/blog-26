@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - develop
+      - th/site-knowledge-assistant
   release:
     types: [ published ]
   merge_group:

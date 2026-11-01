@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 const articlePath = "/posts/hello-world/";
+const stationAdminAvatar = "/site-assets/avatar.jpg";
+const defaultAvatar = "/site-assets/default-avatar.svg";
 
 async function openComments(page: import("@playwright/test").Page, path: string, persona: string) {
   await page.goto(`${path}?d_persona=${persona}&d_delay=normal`, {
@@ -192,11 +194,10 @@ test.describe("Public comments Web Demo", () => {
           avatarFailure
             .locator(".comment-item__avatar img")
             .evaluateAll(
-              (images) =>
+              (images, allowedAvatars) =>
                 images.length > 0 &&
-                images.every(
-                  (image) => image.getAttribute("src") === "/site-assets/default-avatar.svg"
-                )
+                images.every((image) => allowedAvatars.includes(image.getAttribute("src"))),
+              [defaultAvatar, stationAdminAvatar]
             )
         )
         .toBe(true);
@@ -223,8 +224,10 @@ test.describe("Public comments Web Demo", () => {
       await expect(authorAvatars).not.toHaveCount(0);
       await expect
         .poll(() =>
-          authorAvatars.evaluateAll((images) =>
-            images.every((image) => image.getAttribute("src") === "/site-assets/default-avatar.svg")
+          authorAvatars.evaluateAll(
+            (images, allowedAvatars) =>
+              images.every((image) => allowedAvatars.includes(image.getAttribute("src"))),
+            [defaultAvatar, stationAdminAvatar]
           )
         )
         .toBe(true);
@@ -250,10 +253,18 @@ test.describe("Public comments Web Demo", () => {
     await expect(authorAvatars).not.toHaveCount(0);
     await expect
       .poll(() =>
-        authorAvatars.evaluateAll((images) =>
-          images.every((image) => image.getAttribute("src") === "/site-assets/default-avatar.svg")
+        authorAvatars.evaluateAll(
+          (images, allowedAvatars) =>
+            images.every((image) => allowedAvatars.includes(image.getAttribute("src"))),
+          [defaultAvatar, stationAdminAvatar]
         )
       )
       .toBe(true);
+    await expect(
+      section
+        .locator(".comment-item--root")
+        .filter({ hasText: "管理员身份绑定后的评论会直接公开，并保留作者标记。" })
+        .locator(".comment-item__avatar img")
+    ).toHaveAttribute("src", stationAdminAvatar);
   });
 });

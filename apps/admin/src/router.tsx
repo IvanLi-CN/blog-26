@@ -1,5 +1,6 @@
 import { createRootRoute, createRoute, createRouter, redirect } from "@tanstack/react-router";
 import { AppShell } from "~/components/app-shell";
+import { AiUsagePage } from "~/pages/ai-usage";
 import { CommentsPage } from "~/pages/comments";
 import { ContentSyncPage } from "~/pages/content-sync";
 import { DashboardPage } from "~/pages/dashboard";
@@ -15,6 +16,7 @@ import { ScheduleRunDetailPage } from "~/pages/schedule-run-detail";
 import { SchedulesPage } from "~/pages/schedules";
 import { TagIconsPage } from "~/pages/tag-icons";
 import { TagsPage } from "~/pages/tags";
+import { UsersPage } from "~/pages/users";
 
 const rootRoute = createRootRoute({
   component: AppShell,
@@ -110,6 +112,16 @@ const llmSettingsRoute = createRoute({
   path: "llm-settings",
   component: LlmSettingsPage,
 });
+const usersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "users",
+  component: UsersPage,
+});
+const aiUsageRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "ai-usage",
+  component: AiUsagePage,
+});
 const postPreviewRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "preview/posts/$slug",
@@ -153,6 +165,8 @@ export const routeTree = rootRoute.addChildren([
   tagIconsRoute,
   patsRoute,
   llmSettingsRoute,
+  usersRoute,
+  aiUsageRoute,
   postPreviewRoute,
   memoPreviewRoute,
   dataSyncAliasRoute,

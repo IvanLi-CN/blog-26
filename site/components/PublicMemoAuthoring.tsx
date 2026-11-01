@@ -899,12 +899,14 @@ export function PublicMemoDetailControlsIsland({
   initialIsAdmin = false,
   initialClippingArticle,
   publicMediaContext,
+  hideChat = true,
 }: {
   slug: string;
   initialMemo?: PublicMemoRecord;
   initialIsAdmin?: boolean;
   initialClippingArticle?: ClippingArticle | null;
   publicMediaContext?: PublicMediaContext;
+  hideChat?: boolean;
 }) {
   const readJson = useMemoRequest();
   const { user, isAdmin, isLoading, isResolved, isInitialAuthPending } =
@@ -1129,6 +1131,7 @@ export function PublicMemoDetailControlsIsland({
               <ClippingDetail
                 key={memo.slug}
                 slug={memo.slug}
+                memoId={memo.id}
                 memoContent={detailBody}
                 header={
                   <>
@@ -1152,6 +1155,7 @@ export function PublicMemoDetailControlsIsland({
                 publicMediaContext={publicMediaContext}
                 commentsTarget={{ type: "memo", key: memo.slug }}
                 commentsCanCompose={canComment}
+                hideChat={hideChat}
                 onTitleChange={(title) =>
                   setMemo((current) =>
                     current && current.title !== title ? { ...current, title } : current

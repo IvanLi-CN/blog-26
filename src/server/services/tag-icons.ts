@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import type { AiUsageContext } from "@/lib/ai-usage";
 import { db, initializeDB } from "@/lib/db";
 import { isValidIconId } from "@/lib/icons/aliases";
 import { tagCategories, tags as tagsTable } from "@/lib/schema";
@@ -9,7 +10,7 @@ async function ensureDB() {
   if (!db) await initializeDB();
 }
 
-export async function suggestTagIcon(tagId: string) {
+export async function suggestTagIcon(tagId: string, options: { metering?: AiUsageContext } = {}) {
   // 提供上下文样本（最多3条）以提升 LLM 语义匹配质量
   let samples: Array<{ title: string; excerpt?: string | null }> = [];
   try {
@@ -18,7 +19,7 @@ export async function suggestTagIcon(tagId: string) {
   } catch {
     // ignore errors, fallback to no samples
   }
-  const ai = await pickBestIcon({ type: "tag", name: tagId, samples });
+  const ai = await pickBestIcon({ type: "tag", name: tagId, samples }, options);
   const candidates = ai.considered || [];
   return { candidates, ai };
 }
@@ -43,8 +44,12 @@ export async function assignTagIcon(tagId: string, icon: string | null | undefin
     .onConflictDoUpdate({ target: tagsTable.id, set: { icon: validIcon, updatedAt: now } });
 }
 
-export async function suggestCategoryIcon(key: string, title?: string) {
-  const ai = await pickBestIcon({ type: "category", name: key, title });
+export async function suggestCategoryIcon(
+  key: string,
+  title?: string,
+  options: { metering?: AiUsageContext } = {}
+) {
+  const ai = await pickBestIcon({ type: "category", name: key, title }, options);
   const candidates = ai.considered || [];
   return { candidates, ai };
 }

@@ -44,7 +44,7 @@
     "src/lib/schema.ts": "4da5492592b8ffc901065d97c6ab12c899bd1321",
     "src/lib/search/native-query.ts": "7a866db5554b2060bb9fe172cb62d810da97d442",
     "src/lib/search/web-demo-fixtures.ts": "7138647d74c36935833183a88b4ffc6e048fbd0b",
-    "src/lib/web-demo-fetch.ts": "05da9fc2fe4fd9fbb5178dc0cb89aad0ab635a7a",
+    "src/lib/web-demo-fetch.ts": "ac9265268af1abbad37d22c618b81726295b0afc",
     "src/server/admin-api/router.ts": "17715636b6eeccf305d1c92d877c1c2ffb758cdc",
     "src/server/mcp.ts": "3ae77be0a97545c114c550955d3232958a550e61",
     "src/server/public-api/playbook.ts": "df4a67a133e4585534f30c670f3bdf766e213a94",

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { scoreKeywordSearchCandidate } from "./search";
+import { meteringForStage, scoreKeywordSearchCandidate } from "./search";
 
 describe("keyword search scoring", () => {
   test("ranks title matches above body-only matches", () => {
@@ -33,5 +33,14 @@ describe("keyword search scoring", () => {
     expect(archLinux).toBeGreaterThan(searchTool);
     expect(archive).toBe(0);
     expect(searchTool).toBe(0);
+  });
+
+  test("does not reuse a feature-only metering key across semantic calls", () => {
+    const first = meteringForStage({ feature: "search-embedding" }, "semantic-embedding");
+    const second = meteringForStage({ feature: "search-embedding" }, "semantic-embedding");
+
+    expect(first?.idempotencyKey).toMatch(/^search-embedding:[0-9a-f-]+:semantic-embedding$/u);
+    expect(second?.idempotencyKey).toMatch(/^search-embedding:[0-9a-f-]+:semantic-embedding$/u);
+    expect(first?.idempotencyKey).not.toBe(second?.idempotencyKey);
   });
 });

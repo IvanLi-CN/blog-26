@@ -1,0 +1,1 @@
+ALTER TABLE `frontend_sessions` ADD `auth_source` text DEFAULT 'admin' NOT NULL;

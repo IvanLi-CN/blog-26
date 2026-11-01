@@ -1,0 +1,2 @@
+CREATE INDEX `assistant_generation_jobs_user_message_idx` ON `assistant_generation_jobs` (`user_message_id`);--> statement-breakpoint
+CREATE INDEX `assistant_messages_client_request_idx` ON `assistant_messages` (`client_request_id`);

@@ -474,6 +474,7 @@ async function prepareEmbedding(
   signal: AbortSignal | undefined,
   stillCurrent: () => Promise<boolean>
 ) {
+  const logicalRequestId = `rag-index:${randomUUID()}`;
   return withEmbeddingSlot(async () => {
     for (let attempt = 0; ; attempt++) {
       if (signal?.aborted) throw signal.reason;
@@ -487,7 +488,15 @@ async function prepareEmbedding(
         throw new Error("Embedding configuration unavailable or changed");
       if (signal?.aborted) throw signal.reason;
       try {
-        return await embedSearchQuery(config, input, 10000, { signal });
+        return await embedSearchQuery(config, input, 10000, {
+          signal,
+          metering: {
+            feature: "indexing",
+            logicalRequestId,
+            attempt: attempt + 1,
+            automaticRetry: attempt > 0,
+          },
+        });
       } catch (error) {
         if (
           signal?.aborted ||

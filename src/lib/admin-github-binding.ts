@@ -1,7 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "./db";
-import { adminGithubBindingEvents, adminGithubBindings } from "./schema";
+import {
+  adminGithubBindingEvents,
+  adminGithubBindings,
+  frontendSessions,
+  frontendUsers,
+} from "./schema";
 
 export type AdminGithubBinding = typeof adminGithubBindings.$inferSelect;
 export type AdminGithubBindingEventRow = typeof adminGithubBindingEvents.$inferSelect;
@@ -88,6 +93,24 @@ export async function unbindAdminGithubBinding(adminUserId: string) {
       .returning()
       .get();
     if (!deleted) return null;
+
+    const frontendUser = await tx
+      .select({ id: frontendUsers.id })
+      .from(frontendUsers)
+      .where(eq(frontendUsers.adminUserId, adminUserId))
+      .get();
+    if (frontendUser) {
+      await tx
+        .update(frontendSessions)
+        .set({ revokedAt: Date.now() })
+        .where(
+          and(
+            eq(frontendSessions.frontendUserId, frontendUser.id),
+            eq(frontendSessions.authSource, "github"),
+            isNull(frontendSessions.revokedAt)
+          )
+        );
+    }
 
     await tx.insert(adminGithubBindingEvents).values({
       id: randomUUID(),

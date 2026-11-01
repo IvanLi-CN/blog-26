@@ -203,6 +203,7 @@ describe("playbook deployment boundaries", () => {
 
     const backendDist = await readFile("scripts/prepare-backend-dist.sh", "utf8");
     expect(backendDist).not.toContain("playbook-private-supplement.json");
+    expect(backendDist).toContain('copy_file "scripts/migrate-assistant-discussions.ts"');
   });
   test("supplement sync endpoints require credential-free HTTPS", () => {
     expect(

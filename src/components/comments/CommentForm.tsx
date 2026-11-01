@@ -127,7 +127,7 @@ export default function CommentForm({
           <div className="min-w-0 flex-1">
             <h3 className="font-semibold text-[color:var(--nature-text)]">{userInfo.nickname}</h3>
             <p className="text-xs text-[color:var(--nature-text-soft)]">
-              {userInfo.isAdminAuthor ? "GitHub 管理员" : "GitHub 读者"}
+              {userInfo.isAdminAuthor ? "管理员" : "GitHub 读者"}
             </p>
           </div>
           <button

@@ -1,4 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import type { AiUsageContext } from "@/lib/ai-usage";
 import { uniqueRankedContent } from "@/lib/search/content-identity";
 import { isClippingRowPublic } from "@/server/clipping/projection";
 import { executeContentModes } from "@/server/services/content-search";
@@ -18,6 +20,7 @@ export type SemanticSearchInput = {
   type?: "all" | "post" | "memo";
   publishedOnly?: boolean;
   model?: string;
+  metering?: AiUsageContext;
 };
 
 export type SearchResult = {
@@ -167,6 +170,13 @@ type SemanticExecution = {
 const MAX_SEMANTIC_VECTOR_ROWS = 10_000;
 type ResolvedSearchConfig = Awaited<ReturnType<typeof getResolvedLlmConfig>>;
 
+export function meteringForStage(metering: AiUsageContext | undefined, stage: string) {
+  if (!metering) return undefined;
+  const root =
+    metering.idempotencyKey ?? metering.logicalRequestId ?? `${metering.feature}:${randomUUID()}`;
+  return { ...metering, idempotencyKey: `${root}:${stage}` };
+}
+
 function buildProviderFingerprint(
   mode: "semantic" | "enhanced",
   input: SemanticSearchInput & { rerankerModel?: string },
@@ -266,7 +276,12 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
 
   let qv: number[];
   try {
-    const { vector } = await createEmbedding(input.q, model);
+    const { vector } = await createEmbedding(input.q, model, {
+      metering: meteringForStage(
+        { ...input.metering, feature: input.metering?.feature ?? "search-embedding" },
+        "semantic-embedding"
+      ),
+    });
     qv = vector;
   } catch {
     return fallback();
@@ -353,7 +368,7 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
     .map(({ id, publishDate: _publishDate, ...result }) => {
       Object.defineProperty(result, "id", { value: id });
       return result;
-    });
+    }) as SearchResult[];
   return { results, source: "semantic" };
 }
 
@@ -433,9 +448,10 @@ export async function enhanced(
         publishedOnly: input.publishedOnly,
         embeddingModel: input.model,
         candidateLimit: input.rerankTopK,
+        metering: input.metering,
       }
     )
-  ).results;
+  ).results as SearchResult[];
 }
 
 async function legacyEnhancedWithReranker(
@@ -450,6 +466,7 @@ async function legacyEnhancedWithReranker(
     const items = await rerankApi(input.q, docs, {
       model: input.rerankerModel,
       topN: docs.length,
+      metering: meteringForStage(input.metering, "legacy-rerank"),
     });
     const max = Math.max(...items.map((item) => item.score));
     const min = Math.min(...items.map((item) => item.score));

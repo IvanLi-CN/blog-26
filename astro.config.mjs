@@ -95,6 +95,7 @@ export default defineConfig({
   site: astroSiteUrl,
   base: astroBasePath || undefined,
   cacheDir: astroCacheDir,
+  devToolbar: { enabled: !webDemoRuntime },
   server: {
     host: siteHost,
     port: sitePort,

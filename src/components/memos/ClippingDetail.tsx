@@ -226,6 +226,7 @@ function ChatPanel({
 
 export function ClippingDetail({
   slug,
+  memoId,
   memoContent,
   initialArticle,
   live = false,
@@ -238,8 +239,10 @@ export function ClippingDetail({
   publicAssetVersion,
   commentsTarget,
   commentsCanCompose,
+  hideChat = false,
 }: {
   slug: string;
+  memoId?: string | null;
   memoContent: string;
   initialArticle: ClippingArticle;
   live?: boolean;
@@ -252,6 +255,7 @@ export function ClippingDetail({
   publicAssetVersion?: string | null;
   commentsTarget?: { type: "article" | "memo" | "project"; key: string };
   commentsCanCompose?: boolean;
+  hideChat?: boolean;
 }) {
   const [transport] = useState(() => providedTransport ?? createTransport(slug));
   const [article, setArticle] = useState(initialArticle);
@@ -298,6 +302,7 @@ export function ClippingDetail({
   const aiPanelA11y = commentsTarget
     ? { role: "tabpanel" as const, "aria-labelledby": aiTabId }
     : { role: "region" as const, "aria-label": "文章对话" };
+  const showChat = canDiscuss && !hideChat;
   const reading = article.reading;
   const memoContentChanged = previousMemoContent.current !== memoContent;
   const displayedMemoContent = memoContentChanged ? memoContent : (article.content ?? memoContent);
@@ -389,10 +394,10 @@ export function ClippingDetail({
     }
   }, [transport]);
   useEffect(() => {
-    if (!live || !canDiscuss) return;
+    if (!live || !canDiscuss || hideChat) return;
     void readChat();
     return transport.subscribe(setSnapshot, () => void readChat());
-  }, [live, canDiscuss, readChat, transport]);
+  }, [live, canDiscuss, hideChat, readChat, transport]);
 
   async function send() {
     if (sending || snapshot.generating || !draft.trim()) return;
@@ -452,10 +457,12 @@ export function ClippingDetail({
     ) : null;
   return (
     <section
-      className={`clipping-detail-layout min-w-0 ${surface === "admin" ? "clipping-admin-surface admin-editor-preview" : ""} ${(canDiscuss && desktop) || (commentsTarget && desktop) ? "" : "clipping-detail-layout-single"}`}
+      className={`clipping-detail-layout min-w-0 ${surface === "admin" ? "clipping-admin-surface admin-editor-preview" : ""} ${(showChat && desktop) || (commentsTarget && desktop) ? "" : "clipping-detail-layout-single"}`}
       data-testid="clipping-detail"
       data-clipping-discussion={canDiscuss}
       data-clipping-surface={surface}
+      data-assistant-clipping-slug={hideChat ? slug : undefined}
+      data-assistant-clipping-memo-id={hideChat ? (memoId ?? undefined) : undefined}
     >
       <div className="clipping-reading-column">
         <section
@@ -608,14 +615,14 @@ export function ClippingDetail({
           </div>
         </article>
       </div>
-      {desktop && (canDiscuss || commentsTarget) ? (
+      {desktop && (showChat || commentsTarget) ? (
         <aside
           className="clipping-chat-card nature-panel nature-mobile-reading-surface sticky top-6 flex min-h-0 min-w-0 flex-col"
           aria-label={
-            commentsTarget && canDiscuss ? "评论与文章对话" : commentsTarget ? "评论" : "文章对话"
+            commentsTarget && showChat ? "评论与文章对话" : commentsTarget ? "评论" : "文章对话"
           }
         >
-          {commentsTarget && canDiscuss ? (
+          {commentsTarget && showChat ? (
             <div
               className="clipping-reader-tabs border-b border-[color:var(--nature-line)] px-4 pt-3"
               role="tablist"
@@ -667,7 +674,7 @@ export function ClippingDetail({
               />
             </div>
           ) : null}
-          {canDiscuss ? (
+          {showChat ? (
             <div id={aiPanelId} {...aiPanelA11y} hidden={activePanel !== "ai"} className="min-h-0">
               <div className="flex min-h-0 flex-1 flex-col">
                 <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 border-b border-[color:var(--nature-line)] px-5 py-4">
@@ -689,7 +696,7 @@ export function ClippingDetail({
           />
         </div>
       ) : null}
-      {canDiscuss && !desktop ? (
+      {showChat && !desktop ? (
         <BottomSheet
           open={sheetOpen}
           onOpenChange={setSheetOpen}

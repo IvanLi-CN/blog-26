@@ -780,6 +780,12 @@ describe("system share API", () => {
     fs.rmSync(path.join(legacyMigrationsPath, "0018_comments_backfill_gate.sql"));
     fs.rmSync(path.join(legacyMigrationsPath, "0019_playbook_snapshots.sql"));
     fs.rmSync(path.join(legacyMigrationsPath, "0020_github_admin_comment_identity.sql"));
+    fs.rmSync(path.join(legacyMigrationsPath, "0026_site_knowledge_assistant_contracts.sql"));
+    fs.rmSync(path.join(legacyMigrationsPath, "0027_frontend_session_auth_source.sql"));
+    fs.rmSync(path.join(legacyMigrationsPath, "0028_assistant_discussion_migration.sql"));
+    fs.rmSync(path.join(legacyMigrationsPath, "0029_ai_usage_daily_result_counts.sql"));
+    fs.rmSync(path.join(legacyMigrationsPath, "0030_assistant_message_citations.sql"));
+    fs.rmSync(path.join(legacyMigrationsPath, "0031_assistant_lookup_indexes.sql"));
     fs.rmSync(path.join(legacyMigrationsPath, "0021_project_status.sql"));
     fs.rmSync(path.join(legacyMigrationsPath, "0022_project_status_running_guard.sql"));
     fs.rmSync(path.join(legacyMigrationsPath, "0023_project_status_heartbeat.sql"));
@@ -796,6 +802,12 @@ describe("system share API", () => {
         entry.tag !== "0018_comments_backfill_gate" &&
         entry.tag !== "0019_playbook_snapshots" &&
         entry.tag !== "0020_github_admin_comment_identity" &&
+        entry.tag !== "0026_site_knowledge_assistant_contracts" &&
+        entry.tag !== "0027_frontend_session_auth_source" &&
+        entry.tag !== "0028_assistant_discussion_migration" &&
+        entry.tag !== "0029_ai_usage_daily_result_counts" &&
+        entry.tag !== "0030_assistant_message_citations" &&
+        entry.tag !== "0031_assistant_lookup_indexes" &&
         entry.tag !== "0021_project_status" &&
         entry.tag !== "0022_project_status_running_guard" &&
         entry.tag !== "0023_project_status_heartbeat" &&

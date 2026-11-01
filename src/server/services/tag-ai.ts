@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
 import OpenAI, { type APIError } from "openai";
 import type { ChatCompletion } from "openai/resources/chat/completions";
+import { type AiUsageContext, meterProviderCall } from "@/lib/ai-usage";
 import { resolveTagGroupIdentities } from "@/lib/tag-group-identity";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import type { TagGroup } from "@/types/tag-groups";
@@ -22,6 +24,7 @@ export async function organizeTagsWithAI(options?: {
   targetGroups?: number;
   model?: string;
   signal?: AbortSignal;
+  metering?: AiUsageContext;
 }): Promise<AiTagOrganizerResult> {
   const resolved = await getResolvedLlmConfig();
   const apiKey = resolved.chat.apiKey;
@@ -110,26 +113,45 @@ export async function organizeTagsWithAI(options?: {
     exampleJson,
   ].join("\n");
 
-  const openai = new OpenAI({ apiKey, baseURL });
+  const openai = new OpenAI({ apiKey, baseURL, maxRetries: 0 });
   const maxAttempts = Number(process.env.TAG_AI_MAX_RETRY ?? 3);
+  const logicalRequestId =
+    options?.metering?.logicalRequestId ?? `tag-organization:${randomUUID()}`;
   let completion: ChatCompletion | undefined;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const attemptLabel = `[ai-tag-organize attempt ${attempt}/${maxAttempts}]`;
     try {
       throwIfAborted();
       console.time(attemptLabel);
-      completion = await openai.chat.completions.create(
-        {
+      completion = await meterProviderCall({
+        context: {
+          ...options?.metering,
+          feature: "tag-organization",
+          provider: "openai-compatible",
           model,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
-          stream: false,
-          temperature: 0.2,
+          logicalRequestId,
+          idempotencyKey: options?.metering?.idempotencyKey
+            ? `${options.metering.idempotencyKey}:attempt:${attempt}`
+            : undefined,
+          attempt,
+          automaticRetry: attempt > 1,
+          inputEstimateTokens: Math.ceil(Buffer.byteLength(systemPrompt + userPrompt, "utf8") / 4),
+          outputEstimateTokens: 2048,
         },
-        { signal }
-      );
+        call: () =>
+          openai.chat.completions.create(
+            {
+              model,
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt },
+              ],
+              stream: false,
+              temperature: 0.2,
+            },
+            { signal }
+          ),
+      });
       console.timeEnd(attemptLabel);
       break;
     } catch (error) {

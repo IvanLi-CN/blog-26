@@ -6,7 +6,7 @@
     "docs/specs/memo-admin-inline-view/HISTORY.md": "d676529fa6fd43687bc75d625befa8b66e9df2e4",
     "docs/specs/memo-admin-inline-view/IMPLEMENTATION.md": "723383e87f015be265a217058d4426ee74be9c7e",
     "docs/specs/memo-admin-inline-view/SPEC.md": "167e2b07fab0372f6a17e25bd26039089f1c41a1",
-    "site/components/PublicMemoAuthoring.tsx": "e4b2d96c43b1b0d40d16569f2c8b06b62019e95b",
+    "site/components/PublicMemoAuthoring.tsx": "57f3c8a71b730b9df28e1b56a3302fc9d3a7be44",
     "tests/e2e/web-demo/console-memo-boundary.spec.ts": "a4f273ab3ac4fd940bf17a017f44b9e383353954"
   },
   "change": {
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "path": "site/components/PublicMemoAuthoring.tsx",
-          "blob": "e4b2d96c43b1b0d40d16569f2c8b06b62019e95b",
+          "blob": "57f3c8a71b730b9df28e1b56a3302fc9d3a7be44",
           "command": "Review Console and Admin Preview clipping surface inputs"
         },
         {
@@ -39,7 +39,7 @@
       "evidence": [
         {
           "path": "site/components/PublicMemoAuthoring.tsx",
-          "blob": "e4b2d96c43b1b0d40d16569f2c8b06b62019e95b",
+          "blob": "57f3c8a71b730b9df28e1b56a3302fc9d3a7be44",
           "command": "bun run check"
         },
         {
@@ -60,7 +60,7 @@
       "evidence": [
         {
           "path": "site/components/PublicMemoAuthoring.tsx",
-          "blob": "e4b2d96c43b1b0d40d16569f2c8b06b62019e95b",
+          "blob": "57f3c8a71b730b9df28e1b56a3302fc9d3a7be44",
           "command": "bun run check"
         },
         {
@@ -70,7 +70,7 @@
         },
         {
           "path": "site/components/PublicMemoAuthoring.tsx",
-          "blob": "e4b2d96c43b1b0d40d16569f2c8b06b62019e95b",
+          "blob": "57f3c8a71b730b9df28e1b56a3302fc9d3a7be44",
           "command": "bun run web-demo:build"
         },
         {
@@ -105,7 +105,7 @@
       "evidence": [
         {
           "path": "site/components/PublicMemoAuthoring.tsx",
-          "blob": "e4b2d96c43b1b0d40d16569f2c8b06b62019e95b",
+          "blob": "57f3c8a71b730b9df28e1b56a3302fc9d3a7be44",
           "command": "The Console detail route and discussion permission contract remain unchanged"
         },
         {
@@ -124,7 +124,7 @@
       "evidence": [
         {
           "path": "site/components/PublicMemoAuthoring.tsx",
-          "blob": "e4b2d96c43b1b0d40d16569f2c8b06b62019e95b",
+          "blob": "57f3c8a71b730b9df28e1b56a3302fc9d3a7be44",
           "command": "No persistence or durable-state implementation is changed"
         }
       ]

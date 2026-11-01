@@ -29,7 +29,7 @@
     "site/components/PostCard.astro": null,
     "site/components/PostCard.tsx": "4d33f4ab6cff26a88dc8baa0d60f0f30e917e835",
     "site/components/ProjectBody.tsx": "1772b04a6be86ae3a24d4a232e7cc5dd4ae662e1",
-    "site/components/PublicMemoAuthoring.tsx": "d58d56f8fc9c8291b4890d2c51aee13d2bdc7d78",
+    "site/components/PublicMemoAuthoring.tsx": "57f3c8a71b730b9df28e1b56a3302fc9d3a7be44",
     "site/components/PublicRouter.tsx": "30219df748fabc934fbbea340a499fb8b3627212",
     "site/components/RelatedPostCard.astro": null,
     "site/components/RelatedPostCard.tsx": "4223508aa835af3397900f934124d0c53642ddee",
@@ -45,7 +45,7 @@
     "site/components/TimelineCard.tsx": "8c288691b17f5bbcc92488a45fa24977f9e95084",
     "site/components/pages/about.tsx": "7161a2a62c9fdb67ce5070587fa69596162e4512",
     "site/components/pages/home.tsx": "4dbf9ee603e2546ac50b4c1b0866b15586b57de8",
-    "site/components/pages/memo.tsx": "9b9b241b72b8a89447084ca919bc50ca564325e9",
+    "site/components/pages/memo.tsx": "c34789742f1b7c03cbc3db72f097979f80714b6d",
     "site/components/pages/memos.tsx": "f9a312bd5c41802cdc763924558f8d7e846743fd",
     "site/components/pages/notFound.tsx": "a3977f086ed58cc058e7598e8a5f204c0348c4e1",
     "site/components/pages/playbook.tsx": "e83eb453c9a322d5c359f420c64023ab5e13f2c4",
@@ -125,7 +125,7 @@
     "site/pages/tags/index.astro": "28567272d31b418103b890392fc6654c2e2fc437",
     "site/styles/public-pages.css": "b04877b653451cd945cfa14feda663d2dc661910",
     "src/components/playbook/PlaybookPage.tsx": "c5ceacb9769c6d7f012a558c5fa217aec7267632",
-    "src/lib/web-demo-fetch.ts": "314d5062d9ac6775b44c36b2652e2e64737f290e",
+    "src/lib/web-demo-fetch.ts": "ac9265268af1abbad37d22c618b81726295b0afc",
     "tests/components/PublicMemoAuthoring.test.tsx": "64c5676df7110b1ce06494c7d4f933f4652c4f17",
     "tests/e2e/admin/public-csr-authoring.spec.ts": "b2d9e8c7dcc2edaf9c589dcbeec62d0073aa4b70",
     "tests/e2e/clipping-web-demo.ts": "996f804d348c184986bdf454963343f6470fd995",
@@ -137,8 +137,8 @@
     "tests/e2e/web-demo/public-csr.spec.ts": "ea610949ea4c4d938b4f9c62c27f035f1588f529",
     "tests/lib/project-content.test.ts": "9b6a8c126935cbcddb51196d7e6ea4fcd71f9b06",
     "tests/lib/public-csr-route.test.ts": "1c1000aa508884951596ee6ddf13b06bb6506ed3",
-    "tests/lib/web-demo-boundary.test.ts": "9687b36aef3778b96a93a3b128bc2ab9921cf949",
-    "tests/lib/web-demo-fetch.test.ts": "85c0dd2a6ef5b11d1e369350fdc5460b3fe3b6cf",
+    "tests/lib/web-demo-boundary.test.ts": "95cb0ac26f54d921418198639e654943c311477a",
+    "tests/lib/web-demo-fetch.test.ts": "265f238944f19292e0c2722bc10558374b717eaa",
     "tests/storybook/story-boundary.test.ts": "94803bd632f1372a2c7529c56aa7a6e1ad78ff8d"
   },
   "change": {
@@ -159,7 +159,7 @@
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "85c0dd2a6ef5b11d1e369350fdc5460b3fe3b6cf",
+          "blob": "265f238944f19292e0c2722bc10558374b717eaa",
           "command": "bun test tests/lib/web-demo-fetch.test.ts tests/lib/web-demo-boundary.test.ts (Agent VM)"
         },
         {
@@ -186,7 +186,7 @@
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "85c0dd2a6ef5b11d1e369350fdc5460b3fe3b6cf",
+          "blob": "265f238944f19292e0c2722bc10558374b717eaa",
           "command": "bun test tests/lib/web-demo-fetch.test.ts tests/lib/web-demo-boundary.test.ts (Agent VM)"
         },
         {
@@ -217,7 +217,7 @@
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "85c0dd2a6ef5b11d1e369350fdc5460b3fe3b6cf",
+          "blob": "265f238944f19292e0c2722bc10558374b717eaa",
           "command": "bun test tests/lib/web-demo-fetch.test.ts tests/lib/web-demo-boundary.test.ts (Agent VM)"
         },
         {
@@ -265,7 +265,7 @@
       "evidence": [
         {
           "path": "tests/lib/web-demo-boundary.test.ts",
-          "blob": "9687b36aef3778b96a93a3b128bc2ab9921cf949",
+          "blob": "95cb0ac26f54d921418198639e654943c311477a",
           "command": "bun test tests/lib/web-demo-boundary.test.ts (Agent VM)"
         },
         {

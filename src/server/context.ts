@@ -1,6 +1,8 @@
 import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
+import type { FrontendPrincipal } from "../lib/assistant-contracts";
 import { extractAuthFromRequest } from "../lib/auth-utils";
 import { initializeDB } from "../lib/db";
+import { getFrontendPrincipalFromRequest } from "../lib/frontend-auth";
 import { getReaderFromRequest, type Reader } from "../lib/reader-auth";
 
 export interface User {
@@ -16,6 +18,7 @@ export interface TRPCContext {
   user?: User;
   isAdmin: boolean;
   reader?: Reader;
+  frontendPrincipal?: FrontendPrincipal;
   clientAddress?: string;
 }
 
@@ -33,6 +36,7 @@ export async function createContext({
   // 使用统一的认证逻辑（所有环境）
   const { user, isAdmin } = await extractAuthFromRequest(req);
   const reader = await getReaderFromRequest(req);
+  const frontendPrincipal = await getFrontendPrincipalFromRequest(req);
 
   // 3. 获取客户端 IP 地址
   const clientAddress =
@@ -47,6 +51,7 @@ export async function createContext({
     user,
     isAdmin,
     reader: reader ?? undefined,
+    frontendPrincipal: frontendPrincipal ?? undefined,
     clientAddress,
   };
 }

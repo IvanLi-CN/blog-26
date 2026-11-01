@@ -57,18 +57,21 @@ export default function MemoPage(data: Awaited<ReturnType<typeof loadmemo>>) {
               initialIsAdmin={initialIsAdmin}
               initialClippingArticle={clippingArticle}
               publicMediaContext={publicMediaContext}
+              hideChat={!isConsoleRuntime}
             />
           ) : null}
           <div data-public-memo-static-shell="">
             {clippingArticle ? (
               <ClippingDetail
                 slug={memo.slug}
+                memoId={memo.id}
                 memoContent={memoDetailContent}
                 initialArticle={clippingArticle}
                 header={heading}
                 publicMediaContext={publicMediaContext}
                 publicAssetVersion={assetVersion}
                 commentsTarget={isConsoleRuntime ? undefined : { type: "memo", key: memo.slug }}
+                hideChat={!isConsoleRuntime}
               />
             ) : (
               <div

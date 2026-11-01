@@ -183,6 +183,48 @@
       "when": 1793456751106,
       "tag": "0025_project_status_scheduler_owner",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1793456751107,
+      "tag": "0026_site_knowledge_assistant_contracts",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "6",
+      "when": 1793456751108,
+      "tag": "0027_frontend_session_auth_source",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "6",
+      "when": 1793456751109,
+      "tag": "0028_assistant_discussion_migration",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1793456751110,
+      "tag": "0029_ai_usage_daily_result_counts",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1793456751111,
+      "tag": "0030_assistant_message_citations",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1793456751112,
+      "tag": "0031_assistant_lookup_indexes",
+      "breakpoints": true
     }
   ]
 }
