@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "9bfb87799b1951ab415ca6a15e368b71c7eb2744",
+  "base_sha": "e06c2b64bc50c65fb4afadde5f7c21eff32dba0e",
   "covered_files": {
     "scripts/prepare-edgeone-pwa-config.ts": "a0f6e0d2577f5c5f00608dc310a60a06bf882e38",
     "tests/lib/public-pwa-edgeone-config.test.ts": "f9df3fe7a1964d5eaa2a3a1953138fdfad1b9a6f"
